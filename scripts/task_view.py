@@ -13,6 +13,8 @@ from __future__ import annotations
 import sys, json, shutil
 from pathlib import Path
 from datetime import datetime, timezone
+# Base data directory (relative to this script): ../data
+DATA_DIR = (Path(__file__).resolve().parent / ".." / ".." / "data").resolve()
 # -------- args --------
 page = 1
 sort = "priority"
@@ -51,9 +53,9 @@ def rebuild():
     """Rebuild data/views/current.json from tasks/inbox
     Sorted by priority (null last), due, created.
     """
-    inbox = Path('data/tasks/inbox')
-    queue = Path('data/tasks/queue')
-    archived = Path('data/tasks/archived')
+    inbox = DATA_DIR / 'tasks/inbox'
+    queue = DATA_DIR / 'tasks/queue'
+    archived = DATA_DIR / 'tasks/archived'
     cand_paths = []
     if inbox.exists():
         cand_paths.extend(inbox.glob('*.json'))
@@ -73,15 +75,12 @@ def rebuild():
         tasks.append(t)
     tasks.sort(key=sort_key)
 
-    # Ensure stable sequential index for selection (1-based)
-    for i, t in enumerate(tasks, start=1):
-        t["index"] = i
     view = {
         'generated': datetime.now(timezone.utc).isoformat(),
         'task_count': len(tasks),
         'tasks': tasks
     }
-    out_path = Path('data/views/current.json')
+    out_path = DATA_DIR / 'views/current.json'
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(json.dumps(view, indent=2, default=str))
     return view
@@ -143,6 +142,9 @@ if start >= total and total > 0:
     start = (page - 1) * per_page
     end = min(start + per_page, total)
 
+# Assign index after full sort and pagination basis (1-based across full list)
+for i, t in enumerate(tasks_sorted, start=1):
+    t["index"] = i
 subset = tasks_sorted[start:end]
 
 # -------- formatting --------
@@ -174,13 +176,13 @@ if not subset:
     print(color("No tasks to show.", GREY))
     sys.exit(0)
 
-# layout: [#.] [P] [Due] Title
+# layout: [#.] [P#] [⏰ +3d] — Title with inline tags
 # make columns compact and compute dynamic widths for nicer wrapping
 idx_col = max(3, len(str(total)) + 1)  # e.g., " 12."
-prio_col = 1                           # single char indicator (1/2/3/–)
-due_col = 10                           # YYYY-MM-DD
+prio_col = 3                           # e.g., "P1" (plus a space in print)
+due_col = 7                            # space for "⏰ +3d" (or blank)
 padding = 2
-title_w = max(20, term_width - (idx_col + 1 + prio_col + 1 + due_col + padding*2))
+title_w = max(20, term_width - (idx_col + 1 + prio_col + 1 + due_col + 3 + padding))
 
 def due_delta_str(ts):
     """Return a short relative due string like -2d, +3d (negative means overdue)."""
@@ -283,11 +285,14 @@ for t in subset:
     # Build columns
     idx_vis = f"{idx:>{idx_col-1}}."
     idx_str = color(idx_vis, BOLD)
-    # compact priority indicator (1/2/3/–)
-    p_char = str(p) if isinstance(p, int) else "–"
+    # compact priority indicator with leading P
+    p_char = f"P{p}" if isinstance(p, int) else "P–"
     p_str = color(p_char, prio_color(p if isinstance(p,int) else 999))
-    due_vis = f"{fmt_date(due):>{due_col}}"
-    # color due by urgency
+    # relative due string only
+    rel = due_delta_str(due)
+    rel_text = f"⏰ {rel}" if rel else ""
+    rel_vis = rel_text.rjust(due_col)
+    # color relative by urgency similar to absolute
     d_parsed = parse_iso(due)
     due_color = CYAN
     if d_parsed:
@@ -296,10 +301,11 @@ for t in subset:
             due_color = RED
         elif d_parsed.date() == today:
             due_color = YELLOW
-    due_str = color(due_vis, due_color)
+    due_str = color(rel_vis, due_color)
 
     # compute indentation for wrapped lines
-    left_pad = " " * (idx_col + 1 + prio_col + 1 + due_col + padding)
+    # space for index + space + prio + space + rel + space # + '—' + space
+    left_pad = " " * (idx_col + 1 + prio_col + 1 + padding)
 
     # Title wrapping varies by urgency
     lvl = urgency_level(t)
@@ -321,7 +327,7 @@ for t in subset:
         title_lines = [""]
 
     # First line: columns + prefix + first title line
-    print(f"{idx_str} {p_str} {due_str}  {prefix_colored}{color(title_lines[0], BOLD)}")
+    print(f"{idx_str} {p_str} {due_str}  —  {prefix_colored}{color(title_lines[0], BOLD)}")
     
     # Continuation of wrapped title (aligned under the title start)
     cont_pad = left_pad + (" " * (prefix_len))
@@ -329,13 +335,11 @@ for t in subset:
         print(cont_pad + color(cont, BOLD))
 
     # Summary lines, deduplicated against title
-    
-    # compute indentation for wrapped lines
-    summary_left_pad = " " * (idx_col + 1 + prio_col + padding)
     if summary:
         # allocate summary height by urgency
         max_summary = 5 if lvl >= 3 else (4 if lvl == 2 else 3)
-        sum_w = max(10, term_width - (idx_col + 1 + prio_col + 1 + due_col + padding))
+        # width from the divider alignment
+        sum_w = max(10, term_width - (idx_col + 1 + prio_col + 1 + due_col + 3 + padding))
         raw_lines = str(summary).replace("\r\n", "\n").replace("\r", "\n").split("\n")
         # drop lines that duplicate title text
         title_lc = " ".join(title_lines).lower().strip()
@@ -351,6 +355,6 @@ for t in subset:
                 break
         if cleaned:
             for line in wrap_lines("\n".join(cleaned), width=sum_w, max_lines=max_summary):
-                print(summary_left_pad + color(line, DIM))
+                print(left_pad + color(line, DIM))
 
 print(color(f"Showing {start+1}-{end} of {total}. Use: page N, --per-page=N, --sort=priority|date|due", GREY))
