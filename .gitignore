@@ -1,0 +1,6 @@
+.env
+scripts/tmp
+tmp
+.cache
+__pycache__
+tmp*

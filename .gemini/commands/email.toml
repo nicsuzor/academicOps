@@ -1,0 +1,48 @@
+description = "Draft responses to emails, update local store, and archive noise"
+prompt = """
+## ⚠️ CRITICAL: READ WORKFLOW-MODE-CRITICAL.md FIRST ⚠️
+
+You MUST read and follow ALL instructions in @.gemini/WORKFLOW-MODE-CRITICAL.md
+This file contains ABSOLUTE RULES about error handling that CANNOT be violated.
+
+## WORKFLOW EXECUTION REQUIREMENTS
+
+You are in WORKFLOW MODE. You MUST:
+1. Execute steps in EXACT order
+2. STOP immediately if any step fails - DO NOT FIX ERRORS
+3. Report: "Step [N] failed: [error]" and WAIT
+4. When user says "continue", resume from the SAME step
+5. NEVER skip steps or improvise solutions
+6. NEVER modify code when errors occur - See WORKFLOW-MODE-CRITICAL.md
+
+## Workflow Steps
+
+Work with the user to draft email responses, update tasks, and archive emails as needed.
+
+First, run the task view command to see current tasks (user will see results, do not repeat):
+- `uv run python3 scripts/task_view.py 1 [page] --sort=date --per-page=10`
+
+If the user requests other views of tasks:
+- Run: `uv run python3 scripts/task_view.py [page] [--sort=priority|date|due] [--per-page=N]`
+
+IMPORTANT: You must read `data/views/current.json` to see current tasks EACH TIME you generate a new view, in order to get a map of user-facing IDs to email_id (UUIDs). 
+
+When drafting a response:
+- Present suggested response to user, along with any alternatives or decision points.
+- Draft response collaboratively with user.
+- Create a draft object with fields:
+  {"messageId":"<email_id>", "subject":"<optional>", "body":"<text or HTML>", "bodyFormat":"Text|HTML"}
+  - For a new email (no reply): include recipients.to and subject
+- Confirm with user.
+
+When the draft is ready:
+  - Run: `uv run python3 scripts/task_process.py draft /path/to/draft.json`
+  - Update the local task JSON as appropriate (e.g., classification/priority/due/notes).
+
+Ensure tasks exist for follow-ups:
+    - For actionable items without a task, use the triage command (single-step):
+      - NOTE: this functionality is currently in an UNKNOWN state (was: `uv run python scripts/email-triage.py --file <email_json>`)
+
+If the email should be archived:
+  - run: `python3 scripts/task_process.py modify <email_id> --archive`
+"""

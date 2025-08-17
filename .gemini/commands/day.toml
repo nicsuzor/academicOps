@@ -1,0 +1,4 @@
+description = "Starts the daily planning process based on energy and priorities."
+prompt = """
+Execute the Daily Planning workflow: @docs/workflows.daily-planning.md. I will start by asking for your energy level and a summary of your fixed calendar commitments. Based on your response, I will query your Tasks and suggest a prioritized list for the day.
+"""

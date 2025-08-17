@@ -1,0 +1,12 @@
+name = "task_complete"
+prompt = """
+You are in WORKFLOW MODE. Complete a task.
+Inputs: filename of task JSON currently in inbox (exact).
+Steps:
+1. Verify filename ends with .json
+2. Run: bash scripts/task_complete.sh <filename>
+3. If success, output the completion JSON from script.
+4. Do not add commentary.
+If error:
+- Output the error JSON only.
+"""

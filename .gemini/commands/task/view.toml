@@ -1,0 +1,10 @@
+name = "task_view"
+prompt = """
+You are in WORKFLOW MODE. Show current tasks.
+Steps:
+1. Run: python3 scripts/task_view.py 10
+2. Output JSON only.
+Rules:
+- No extra prose.
+- If the script errors, output error JSON.
+"""
