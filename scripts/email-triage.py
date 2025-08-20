@@ -27,8 +27,8 @@ from typing import Optional
 from logging import getLogger
 from pydantic import BaseModel, Field
 
-ROOT = Path(__file__).resolve().parents[1]  # repo root
-SCRIPTS_DIR = ROOT / "scripts"
+ROOT = Path(__file__).resolve().parents[2]  # parent repo root
+SCRIPTS_DIR = ROOT / "bot" / "scripts"
 WORK_BASE = ROOT / "data" / "emails" / "work"
 PROCESSED_DIR = ROOT / "data" / "emails" / "processed"
 TASKS_INBOX = ROOT / "data" / "tasks" / "inbox"

@@ -25,7 +25,9 @@ First, run the task view command to see current tasks (user will see results, do
 If the user requests other views of tasks:
 - Run: `uv run python3 scripts/task_view.py [page] [--sort=priority|date|due] [--per-page=N]`
 
-IMPORTANT: You must read `data/views/current.json` to see current tasks EACH TIME you generate a new view, in order to get a map of user-facing IDs to email_id (UUIDs). 
+IMPORTANT: You must read `../data/views/current.json` to see current tasks EACH TIME you generate a new view, in order to get a map of user-facing IDs to email_id (UUIDs).
+
+NOTE: The `data` directory is located in the parent repository, which is private. The `bot` directory is a public submodule and should not contain any personal or sensitive information.
 
 When drafting a response:
 - Present suggested response to user, along with any alternatives or decision points.

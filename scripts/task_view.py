@@ -14,7 +14,9 @@ import sys, json, shutil
 from pathlib import Path
 from datetime import datetime, timezone
 # Base data directory (relative to this script): ../data
-DATA_DIR = (Path(__file__).resolve().parent / ".." / ".." / "data").resolve()
+
+ROOT = Path(__file__).resolve().parents[2]  # parent repo root
+DATA_DIR = ROOT / "data"
 # -------- args --------
 page = 1
 sort = "priority"
