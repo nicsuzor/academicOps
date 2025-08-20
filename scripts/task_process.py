@@ -77,8 +77,12 @@ def _find_task_by_email_id(email_id: str):
         t = _load_json(p)
         if not isinstance(t, dict):
             continue
-        mid = (t.get('metadata') or {}).get('email_id')
-        if mid and str(mid) == str(email_id):
+        # Check new location: source.email_id
+        source_email_id = t.get('source', {}).get('email_id')
+        # Also check old location for backwards compatibility during transition
+        old_email_id = t.get('metadata', {}).get('email_id')
+        if (source_email_id and str(source_email_id) == str(email_id)) or \
+           (old_email_id and str(old_email_id) == str(email_id)):
             return (p, t)
     return None
 
@@ -103,22 +107,21 @@ def create_draft(draft_json):
     temp_file.write_text(json.dumps(draft_json, ensure_ascii=False, indent=2))
     
     result = run_powershell('outlook-draft.ps1', '-JsonFile', str(temp_file))
-    # Best-effort: update local processed store with draft info
+    # Best-effort: update task source with draft info
     try:
         msg_id = draft_json.get('messageId') if isinstance(draft_json, dict) else None
         if result and result.get('success') and msg_id:
-            proc_path = Path('data/emails/processed') / f"{msg_id}.json"
-            if proc_path.exists():
-                data = json.loads(proc_path.read_text(encoding='utf-8'))
-                meta = data.get('drafts') or []
-                meta.append({
+            # Find task by email ID
+            task_info = _find_task_by_email_id(msg_id)
+            if task_info:
+                task_path, task_dict = task_info
+                task_dict.setdefault('source', {}).setdefault('draft_history', []).append({
                     'created_at': datetime.now(UTC).strftime('%Y-%m-%dT%H:%M:%SZ'),
                     'draft_id': result.get('draftId'),
                     'subject': result.get('subject'),
                     'type': result.get('type')
                 })
-                data['drafts'] = meta
-                proc_path.write_text(json.dumps(data, ensure_ascii=False, indent=2))
+                task_path.write_text(json.dumps(task_dict, ensure_ascii=False, indent=2))
     except Exception:
         pass
     temp_file.unlink()
@@ -205,21 +208,16 @@ def modify_email(message_id, archive=False, flag_action=None, add_categories=Non
         # Keep track of corresponding local task to update after success
         related_task = _find_task_by_email_id(message_id)
         result = run_powershell('outlook-message.ps1', *args)
-        # Best-effort: record archive action in local processed store and local task
+        # Best-effort: record archive action in local task
         try:
             if archive and result and result.get('success'):
-                proc_path = Path('data/emails/processed') / f"{message_id}.json"
-                if proc_path.exists():
-                    data = json.loads(proc_path.read_text(encoding='utf-8'))
-                    data['archived_at'] = datetime.now(UTC).strftime('%Y-%m-%dT%H:%M:%SZ')
+                # Archive local task mirror if present
+                if related_task:
+                    t_path, t_data = related_task
                     # Preserve finalMessageId if changed
                     fm = result.get('finalMessageId') or (result.get('actions') or {}).get('archive', {}).get('newId')
                     if fm:
-                        data['finalMessageId'] = fm
-                    proc_path.write_text(json.dumps(data, ensure_ascii=False, indent=2))
-                # Also archive local task mirror if present
-                if related_task:
-                    t_path, t_data = related_task
+                        t_data.setdefault('source', {})['final_message_id'] = fm
                     _archive_local_task(t_path, t_data)
         except Exception:
             pass

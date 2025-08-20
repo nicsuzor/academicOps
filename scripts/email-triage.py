@@ -5,18 +5,18 @@ Single-step Email Triage script.
 Capabilities:
 - Fetch next unseen Outlook email using PowerShell (scripts/outlook-read.ps1), or accept --file <raw.json> for testing.
 - Analyze locally to produce: classification (Action|Waiting|Reference|Optional|Noise), priority (High|Medium|Low), and a ≤12 line summary.
-- Create a task JSON in the existing schema and store it in data/tasks/inbox (for Action/Waiting) or data/tasks/queue (others).
-- Persist minimal processed metadata in data/emails/processed/<id>.json.
+- Create a unified Task object and store it in data/tasks/inbox (for Action/Waiting) or data/tasks/queue (others).
+- All email metadata is stored within the Task's 'source' field.
 
 Notes:
 - On Linux, PowerShell may be unavailable. Use --file for testing if PowerShell is not installed.
+- This script no longer creates separate processed email files - everything is in the Task.
 """
 import argparse
 import json
 import os
 import re
 import shutil
-import socket
 import subprocess
 import sys
 import time
@@ -28,9 +28,13 @@ from logging import getLogger
 from pydantic import BaseModel, Field
 
 ROOT = Path(__file__).resolve().parents[2]  # parent repo root
+
+# Add parent directory to path to import models
+sys.path.insert(0, str(ROOT / "bot"))
+from models import Task
 SCRIPTS_DIR = ROOT / "bot" / "scripts"
 WORK_BASE = ROOT / "data" / "emails" / "work"
-PROCESSED_DIR = ROOT / "data" / "emails" / "processed"
+# PROCESSED_DIR is deprecated - we no longer store separate processed email files
 TASKS_INBOX = ROOT / "data" / "tasks" / "inbox"
 TASKS_QUEUE = ROOT / "data" / "tasks" / "queue"
 TASKS_ARCHIVED = ROOT / "data" / "tasks" / "archived"
@@ -228,7 +232,22 @@ def get_field(d: dict, *paths, default=None):
 
 
 def already_processed(email_id: str) -> bool:
-    return (PROCESSED_DIR / f"{email_id}.json").exists()
+    """Check if an email has already been processed by looking for a task with this email_id."""
+    if not email_id:
+        return False
+    # Check all task directories for a task with this email_id in source
+    for task_dir in [TASKS_INBOX, TASKS_QUEUE, TASKS_ARCHIVED]:
+        if not task_dir.exists():
+            continue
+        for task_file in task_dir.glob("*.json"):
+            try:
+                with task_file.open() as f:
+                    task_data = json.load(f)
+                    if task_data.get("source", {}).get("email_id") == email_id:
+                        return True
+            except Exception:
+                continue
+    return False
 
 
 def fetch_next_email_via_powershell(page_size=20, max_pages=10) -> dict | None:
@@ -476,72 +495,62 @@ def analyze_email_llm(raw: dict, llm_timeout: int | None = None) -> TriageResult
     return result
 
 
-def build_task_json(raw: dict, classification: str, prio_num: int, summary: str) -> dict:
-    subject = get_field(raw, "subject", "Subject", default="(no subject)")
-    sender_email = get_field(raw, "senderAddress", "sender_email", "senderEmailAddress", "From", "sender", default=None)
-    sender_name = get_field(raw, "senderName", "FromName", default=None)
-    preview = clip(get_field(raw, "snippet", "preview", "bodyPreview", "BodyPreview", "textBody", "TextBody", "body", "Body", default=""), 160)
-    email_id = get_field(raw, "id", "Id", default=None)
-
-    t = {
-        "id": task_id(),
-        "priority": prio_num,
-        "classification": classification,
-        "type": "email_reply",
-        "title": f"Email: {subject}",
-        "preview": preview,
-        "description": summary,
-        "project": "",
-        "created": iso_now(),
-        "due": None,
-        "source": {},
-        "metadata": {
-            "email_id": email_id,
-            "sender": sender_email,
-            "sender_name": sender_name,
-        },
+def build_task_from_email(raw: dict, triage_result: TriageResult) -> Task:
+    """Build a Task object from email data and triage results.
+    
+    This replaces the old build_task_json function and uses the unified Task model.
+    """
+    # Map classification and priority
+    cls_raw = (triage_result.classification or "").strip().lower()
+    cls_map = {
+        "urgent": "Action", "task": "Action", "action": "Action",
+        "waiting": "Waiting",
+        "info": "Reference", "reference": "Reference", "fyi": "Reference",
+        "idea": "Optional", "optional": "Optional",
+        "archive": "Noise", "spam": "Noise", "noise": "Noise",
     }
-    return t
-
-
-def persist_processed(raw: dict, classification: str, priority_str: str, summary: str, analysis: str | None = None) -> Path:
-    email_id = get_field(raw, "id", "Id")
-    if not email_id:
-        raise RuntimeError("Missing email id in raw object")
-
-    # Keep the cleaned body for local search/reference
-    def _clean_full_body() -> str:
-        body = get_field(raw, "textBody", "TextBody", "body", "Body", default="") or ""
-        try:
-            from email_reply_parser import EmailReplyParser  # type: ignore
-
-            cleaned = EmailReplyParser.parse_reply(str(body))
-        except Exception:
-            cleaned = str(body)
-        return cleaned
-
-    minimal = {
-        "id": get_field(raw, "id", "Id"),
-        "subject": get_field(raw, "subject", "Subject"),
-        "senderAddress": get_field(raw, "senderAddress", "sender_email", "senderEmailAddress", "From", "sender"),
-        "senderName": get_field(raw, "senderName", "FromName", "sender"),
-        "to": get_field(raw, "to", "To", default=""),
-        "cc": get_field(raw, "cc", "Cc", default=""),
-        "hasAttachments": bool(get_field(raw, "hasAttachments", default=False)),
-        "attachment_names": [a.get("fileName") or a.get("name") for a in (raw.get("attachments") or []) if isinstance(a, dict)],
-        "size": get_field(raw, "size", default=None),
-        "receivedTime": get_field(raw, "receivedTime", "date", "Date", default=None),
-        "importance": get_field(raw, "importance", default="Normal"),
+    classification = cls_map.get(cls_raw, triage_result.classification or "Reference")
+    
+    pr_map = {"high": 1, "medium": 2, "low": 3}
+    priority = pr_map.get((triage_result.priority or "").strip().lower(), 3)
+    
+    # Build description from triage results
+    abstract = (triage_result.abstract or "").strip()
+    smry = (triage_result.summary or "").strip()
+    
+    bullets = []
+    if abstract:
+        bullets.append(abstract)
+    if smry and smry != abstract:
+        # split into lines and take up to 2 highlights
+        for seg in re.split(r"[\n\r]+|\u2022|\.|;", smry):
+            seg = seg.strip()
+            if seg:
+                bullets.append(seg)
+            if len(bullets) >= 3:
+                break
+    bullet_lines = "\n".join([f"• {clip(b, 200)}" for b in bullets[:3]])
+    description = (
+        (smry or abstract or "").strip() + ("\n" + bullet_lines if bullet_lines else "")
+    ).strip()
+    
+    # Create triage data dict for Task.from_email
+    triage_data = {
         "classification": classification,
-        "priority": priority_str,
-        "summary": summary,
-        "analysis": analysis or None,
-        "body": _clean_full_body(),
-        "processed_at": iso_now(),
+        "priority": priority,
+        "description": description,
+        "summary": triage_result.summary,
+        "action_required": triage_result.action_required,
+        "requires_reply": triage_result.requires_reply,
+        "due_date": triage_result.due_date,
+        "time_estimate": triage_result.time_estimate,
+        "response_draft": triage_result.response_draft,
     }
-    out_path = PROCESSED_DIR / f"{email_id}.json"
-    json_dump(minimal, out_path)
-    return out_path
+    
+    return Task.from_email(raw, triage_data)
+
+
+# REMOVED: persist_processed() function - no longer needed with unified Task model
 
 
 def _load_json(path: Path) -> dict | None:
@@ -560,31 +569,35 @@ def _iter_task_files() -> list[Path]:
 
 
 def find_task_by_email_id(email_id: str) -> tuple[Path, dict] | None:
-    """Return (path, task) for the first task whose metadata.email_id matches."""
+    """Return (path, task) for the first task whose source.email_id matches."""
     if not email_id:
         return None
     for p in _iter_task_files():
         t = _load_json(p)
         if not isinstance(t, dict):
             continue
-        mid = ((t.get("metadata") or {}).get("email_id"))
-        if mid and str(mid) == str(email_id):
+        # Check new location: source.email_id
+        source_email_id = t.get("source", {}).get("email_id")
+        # Also check old location for backwards compatibility during transition
+        old_email_id = t.get("metadata", {}).get("email_id")
+        if (source_email_id and str(source_email_id) == str(email_id)) or \
+           (old_email_id and str(old_email_id) == str(email_id)):
             return (p, t)
     return None
 
 
-def save_or_update_task(task: dict, classification: str) -> Path:
+def save_or_update_task(task: Task) -> Path:
     """Create a new task or update existing one if same email_id already tracked.
 
     - Moves file between inbox/queue as needed based on classification.
     - Preserves existing task id if updating.
     - Adds archived_at if already archived (no revive here).
     """
-    email_id = ((task.get("metadata") or {}).get("email_id"))
+    email_id = task.source.get("email_id")
     existing = find_task_by_email_id(email_id) if email_id else None
 
     # Decide destination directory by classification
-    dest_dir = TASKS_INBOX if classification in ("Action", "Waiting") else TASKS_QUEUE
+    dest_dir = TASKS_INBOX if task.classification in ("Action", "Waiting") else TASKS_QUEUE
     dest_dir.mkdir(parents=True, exist_ok=True)
 
     if existing:
@@ -596,15 +609,15 @@ def save_or_update_task(task: dict, classification: str) -> Path:
         else:
             # Update selected fields in place
             old_task.update({
-                "priority": task.get("priority", old_task.get("priority")),
-                "classification": classification,
-                "title": task.get("title", old_task.get("title")),
-                "description": task.get("description", old_task.get("description")),
+                "priority": task.priority,
+                "classification": task.classification,
+                "title": task.title,
+                "description": task.description,
             })
-            # Keep metadata but merge any new keys (e.g., response_draft)
-            meta = old_task.get("metadata") or {}
-            meta.update(task.get("metadata") or {})
-            old_task["metadata"] = meta
+            # Merge source data (preserving any existing keys)
+            source = old_task.get("source") or {}
+            source.update(task.source)
+            old_task["source"] = source
             # Move file if directory changed
             new_path = dest_dir / old_path.name
             json_dump(old_task, new_path)
@@ -616,8 +629,10 @@ def save_or_update_task(task: dict, classification: str) -> Path:
             return new_path
 
     # Create new task
-    path = dest_dir / f"{task['id']}.json"
-    json_dump(task, path)
+    path = dest_dir / f"{task.id}.json"
+    # Convert task to dict, excluding internal fields
+    task_dict = task.dict(exclude={"_filename"})
+    json_dump(task_dict, path)
     # Best-effort git add/commit (non-fatal)
     try:
         env = os.environ.copy()
@@ -674,9 +689,10 @@ def main():
     ap.add_argument("--no-color", action="store_true", help="Disable colored logs")
     args = ap.parse_args()
 
-    ROOT.mkdir(parents=True, exist_ok=True)
-    PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
+    # Ensure work directories exist
     WORK_BASE.mkdir(parents=True, exist_ok=True)
+    TASKS_INBOX.mkdir(parents=True, exist_ok=True)
+    TASKS_QUEUE.mkdir(parents=True, exist_ok=True)
 
     # Setup progress or logging
     if args.log:
@@ -743,94 +759,58 @@ def main():
     else:
         progress.done("Analysis complete")
 
-    # Normalize outputs
+    # Build Task from email and triage results
     if log:
-        log.info("[3/6] Normalizing outputs")
+        log.info("[3/6] Building task from triage results")
     else:
-        progress.begin("Normalizing outputs")
-    cls_raw = (triage.classification or "").strip().lower()
-    cls_map = {
-        "urgent": "Action", "task": "Action", "action": "Action",
-        "waiting": "Waiting",
-        "info": "Reference", "reference": "Reference", "fyi": "Reference",
-        "idea": "Optional", "optional": "Optional",
-        "archive": "Noise", "spam": "Noise", "noise": "Noise",
-    }
-    classification = cls_map.get(cls_raw, triage.classification or "Reference")
-
-    pr_map = {"high": ("High", 1), "medium": ("Medium", 2), "low": ("Low", 3)}
-    p_tuple = pr_map.get((triage.priority or "").strip().lower(), ("Low", 3))
-    priority_str, prio_num = p_tuple
+        progress.begin("Building task from triage results")
+    
+    task = build_task_from_email(raw, triage)
+    
+    # Extract classification and priority for logging
+    classification = task.classification
+    priority_str = {1: "High", 2: "Medium", 3: "Low"}.get(task.priority, "Low")
     brief_norm = f"{classification} {priority_str}"
+    
     if log:
-        log.info("Outputs normalized: %s", brief_norm)
+        log.info("Task built: %s", brief_norm)
     else:
-        progress.done(f"Outputs normalized: {brief_norm}")
+        progress.done(f"Task built: {brief_norm}")
 
-    # Build human-friendly description
-    subject = get_field(raw, "subject", "Subject", default="(no subject)") or ""
-    sender_email = get_field(raw, "senderAddress", "sender_email", "senderEmailAddress", "From", "sender", default="") or ""
-    sender_name = get_field(raw, "senderName", "FromName", default="") or ""
-    who = (f"{sender_name} <{sender_email}>" if sender_email or sender_name else "Unknown").strip()
-    abstract = (triage.abstract or "").strip()
-    smry = (triage.summary or "").strip()
-    due = (triage.due_date or "").strip() or "None"
-    action_required = (triage.action_required or ("Reply" if triage.requires_reply else "None")).strip()
-
-    bullets = []
-    if abstract:
-        bullets.append(abstract)
-    if smry and smry != abstract:
-        # split into lines and take up to 2 highlights
-        for seg in re.split(r"[\n\r]+|\u2022|\.|;", smry):
-            seg = seg.strip()
-            if seg:
-                bullets.append(seg)
-            if len(bullets) >= 3:
-                break
-    bullet_lines = "\n".join([f"• {clip(b, 200)}" for b in bullets[:3]])
-    # For the human task, keep description mostly as the short summary; include a few bullets
-    description = (
-        (smry or abstract or "").strip() + ("\n" + bullet_lines if bullet_lines else "")
-    ).strip()
-
-    # 4. Create task always; store to inbox normally
+    # 4. Save task to appropriate directory
     if log:
-        log.info("[4/6] Creating and saving task")
+        log.info("[4/6] Saving task")
     else:
-        progress.begin("Creating and saving task")
-    task = build_task_json(raw, classification, prio_num, description)
-    # include response draft if provided
-    if triage.response_draft:
-        task.setdefault("metadata", {})["response_draft"] = triage.response_draft
-    task_path = save_or_update_task(task, classification)
+        progress.begin("Saving task")
+    
+    task_path = save_or_update_task(task)
+    
     if args.artifact:
-        json_dump(task, work_dir / "02_task.json")
-    dest_ctx = "inbox" if classification in ("Action", "Waiting") else "queue"
+        json_dump(task.dict(exclude={"_filename"}), work_dir / "02_task.json")
+    
+    dest_ctx = "inbox" if task.classification in ("Action", "Waiting") else "queue"
+    
     if log:
-        log.info("Task saved: id=%s -> %s", task["id"], dest_ctx)
+        log.info("Task saved: id=%s -> %s", task.id, dest_ctx)
     else:
-        progress.done(f"Task saved: id={task['id']} -> {dest_ctx}")
+        progress.done(f"Task saved: id={task.id} -> {dest_ctx}")
 
-    # 5. Persist processed metadata
+    # 5. Mark processing complete (no separate processed file needed)
     if log:
-        log.info("[5/6] Persisting processed metadata")
+        log.info("[5/6] Processing complete")
     else:
-        progress.begin("Persisting processed metadata")
-    processed_summary = smry or abstract or description
-    processed_path = persist_processed(raw, classification, priority_str, processed_summary, analysis=(triage.analysis or None))
-    if args.artifact:
-        shutil.copy2(processed_path, work_dir / "03_processed.json")
-    proc_name = (PROCESSED_DIR / f"{email_id}.json").name
+        progress.begin("Processing complete")
+    
+    # All data is now in the Task - no separate processed file
     if log:
-        log.info("Processed metadata saved: %s", proc_name)
+        log.info("All email data stored in task")
     else:
-        progress.done(f"Processed metadata saved: {proc_name}")
+        progress.done("All email data stored in task")
 
     # 6. Auto-archive clearly ignorable email (Noise only) for inbox zero momentum
     try:
         auto_archive = os.environ.get("TRIAGE_AUTO_ARCHIVE", "1") not in ("0", "false", "False")
-        if auto_archive and classification == "Noise":
+        if auto_archive and task.classification == "Noise":
             if log:
                 log.info("[6/6] Auto-archiving Noise email: id=%s", email_id)
             else:
@@ -866,14 +846,13 @@ def main():
     # Output per-email result JSON
     out = {
         "id": email_id,
-        "classification": classification,
+        "classification": task.classification,
         "priority": priority_str,
-        "task_id": task["id"],
-        "summary": processed_summary,
-    "analysis": triage.analysis or None,
+        "task_id": task.id,
+        "summary": task.summary or task.description,
+        "analysis": triage.analysis or None,
         "stored": True,
         "task_path": str(task_path.relative_to(ROOT)),
-        "processed_path": str(processed_path.relative_to(ROOT)),
     }
     # Close progress UI before emitting final JSON
     if not args.log and progress:
