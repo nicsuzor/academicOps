@@ -52,8 +52,8 @@ def sort_key(t):
     return (pri, t.get('due') or '9999', t.get('created') or '9999')
 
 def rebuild():
-    """Rebuild data/views/current.json from tasks/inbox
-    Sorted by priority (null last), due, created.
+    """Load all active tasks from tasks/inbox and queue.
+    Returns tasks but doesn't write to disk yet.
     """
     inbox = DATA_DIR / 'tasks/inbox'
     queue = DATA_DIR / 'tasks/queue'
@@ -76,19 +76,9 @@ def rebuild():
             continue
         tasks.append(t)
     tasks.sort(key=sort_key)
+    return tasks
 
-    view = {
-        'generated': datetime.now(timezone.utc).isoformat(),
-        'task_count': len(tasks),
-        'tasks': tasks
-    }
-    out_path = DATA_DIR / 'views/current.json'
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-    out_path.write_text(json.dumps(view, indent=2, default=str))
-    return view
-
-data = rebuild()
-tasks = data.get("tasks", [])
+tasks = rebuild()
 
     # index already applied in rebuild
 
@@ -169,8 +159,7 @@ def clip(text, width):
     s = str(text).replace("\n", " ").strip()
     return s if len(s) <= width else s[:max(0, width-1)] + "…"
 
-generated = data.get("generated", "")
-# concise header focused on controls; drop verbose timestamp
+# concise header focused on controls
 header = f"Tasks: {total} • Page {page}/{max(1,(total-1)//per_page+1)} • sort={sort}"
 print(color(header, BOLD))
 
@@ -360,3 +349,17 @@ for t in subset:
                 print(left_pad + color(line, DIM))
 
 print(color(f"Showing {start+1}-{end} of {total}. Use: page N, --per-page=N, --sort=priority|date|due", GREY))
+
+# Save current_view.json with ONLY the displayed tasks
+view = {
+    'generated': datetime.now(timezone.utc).isoformat(),
+    'page': page,
+    'per_page': per_page,
+    'sort': sort,
+    'total_tasks': total,
+    'displayed_range': f"{start+1}-{end}",
+    'tasks': subset  # Only the tasks actually shown
+}
+out_path = DATA_DIR / 'views/current_view.json'
+out_path.parent.mkdir(parents=True, exist_ok=True)
+out_path.write_text(json.dumps(view, indent=2, default=str))

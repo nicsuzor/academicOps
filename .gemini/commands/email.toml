@@ -20,12 +20,18 @@ You are in WORKFLOW MODE. You MUST:
 Work with the user to draft email responses, update tasks, and archive emails as needed.
 
 First, run the task view command to see current tasks (user will see results, do not repeat):
-- `uv run python3 scripts/task_view.py 1 [page] --sort=date --per-page=10`
+- `uv run python3 ./scripts/task_view.py 1 [page] --sort=date --per-page=10` 
+
+CRITICAL: After running task_view.py, IMMEDIATELY read `../data/views/current_view.json` to access the displayed tasks in memory. This file contains ONLY the tasks that were just shown to the user, with their display indices.
 
 If the user requests other views of tasks:
 - Run: `uv run python3 scripts/task_view.py [page] [--sort=priority|date|due] [--per-page=N]`
+- Then IMMEDIATELY read `../data/views/current_view.json` again to get the new view
 
-IMPORTANT: You must read `../data/views/current.json` to see current tasks EACH TIME you generate a new view, in order to get a map of user-facing IDs to email_id (UUIDs).
+The current_view.json file contains:
+- The exact tasks shown to the user with their display indices
+- Metadata about the view (page, sort, total count)
+- This allows you to answer questions like "what's task N about?" or "archive task M"
 
 NOTE: The `data` directory is located in the parent repository, which is private. The `bot` directory is a public submodule and should not contain any personal or sensitive information.
 
@@ -47,4 +53,7 @@ Ensure tasks exist for follow-ups:
 
 If the email should be archived:
   - run: `python3 scripts/task_process.py modify <email_id> --archive`
+
+Note:
+- Use relative paths
 """

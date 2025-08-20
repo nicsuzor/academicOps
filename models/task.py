@@ -1,6 +1,6 @@
 """Unified Task model for all task sources (email, Slack, notes, etc.)."""
 from typing import Any, Dict, Literal, Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, PrivateAttr
 
 
 class Task(BaseModel):
@@ -45,7 +45,7 @@ class Task(BaseModel):
     completed_at: Optional[str] = Field(default=None, description="ISO 8601 timestamp when completed")
     
     # Internal fields (not persisted, used by scripts)
-    _filename: Optional[str] = Field(default=None, exclude=True, description="Filename (used by task_view.py)")
+    _filename: Optional[str] = PrivateAttr(default=None)
     
     class Config:
         # Allow extra fields for forward compatibility
