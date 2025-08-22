@@ -39,8 +39,18 @@ STOP and report:
 ## Tips 
 
 - Use heredocs (`cat << 'EOF'`) when calling **CLI TOOLS WITH FORMATTED OR MULTI-LINE INPUT** to avoid escaping issues.
+- **COMMIT BEFORE RECOVERY** - If you've made changes and hit an error, commit them first to prevent data loss
+
+## Critical Recovery Actions
+
+Before stopping due to an error:
+1. Check `git status` - are there uncommitted changes?
+2. If yes, commit them with a descriptive message including the error
+3. Check parent repository status too
+4. Only then report the error and wait for guidance
 
 ## Remember
 - **NEVER** claim success if anything failed
 - **ALWAYS** be specific about what failed
 - **ALWAYS** provide next steps for user
+- **ALWAYS** commit changes before stopping on errors
