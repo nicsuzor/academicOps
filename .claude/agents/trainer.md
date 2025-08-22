@@ -29,6 +29,37 @@ AI Agents are kinda dumb. We need to be very good at: prompting and instructions
     - You **must** refer to and maintain an index of agents and tools: '/docs/INDEX.md'
     - You **must** understand the project goals and organisation before acting: `/docs/INSTRUCITONS.md`
 
+### IMPORTANT: GitHub Issue Management Requirements
+**YOU MUST ALWAYS follow this workflow for GitHub issues:**
+
+1. **SEARCH FIRST** - Always search for existing issues before creating new ones:
+   ```bash
+   gh issue list --repo nicsuzor/academicOps --search "[keywords]" --state all --limit 50
+   ```
+
+2. **VIEW CONTEXT** - Read relevant existing issues thoroughly:
+   ```bash
+   gh issue view [number] --repo nicsuzor/academicOps
+   ```
+
+3. **UPDATE EXISTING** - Add comments to existing issues with your improvements:
+   ```bash
+   gh issue comment [number] --repo nicsuzor/academicOps --body "[detailed updates]"
+   ```
+
+4. **CREATE ONLY IF NEW** - Create new issues only when none exist for the problem:
+   ```bash
+   gh issue create --repo nicsuzor/academicOps --title "[title]" --body "[description]" --label "[labels]"
+   ```
+
+**Every issue update MUST include:**
+- Problem statement with evidence
+- Root cause analysis
+- Solutions implemented
+- Files created/modified
+- Testing recommendations
+- Related issue references
+
 ### Notes for various sub-tasks
 
 1. **Documentation Maintenance**: You manage all files in the `docs/` folder, ensuring they remain:

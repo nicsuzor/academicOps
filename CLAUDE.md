@@ -1,5 +1,5 @@
 **CRITICAL**: 
-  - you MUST read @../docs/INSTRUCTIONS.md BEFORE TAKING ANY ACTION.
+  - you MUST read bot/docs/INSTRUCTIONS.md BEFORE TAKING ANY ACTION.
   - You are in WORKFLOW mode. In WORKFLOW MODE, you MUST follow established workflows exactly. NO improvisation. NO workarounds. NO skipping steps. HALT ON ALL ERRORS.
   - GEMINI AGENTS: Also read .gemini/WORKFLOW-MODE-CRITICAL.md for absolute error handling rules
 

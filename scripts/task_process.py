@@ -14,7 +14,7 @@ from pathlib import Path
 
 # Configuration
 SCRIPTS_DIR = Path(__file__).parent
-ROOT = SCRIPTS_DIR.parent
+ROOT = SCRIPTS_DIR.parent.parent
 TASKS_INBOX = ROOT / "data" / "tasks" / "inbox"
 TASKS_QUEUE = ROOT / "data" / "tasks" / "queue"
 TASKS_ARCHIVED = ROOT / "data" / "tasks" / "archived"
@@ -106,6 +106,8 @@ def create_draft(draft_json):
     temp_file.parent.mkdir(exist_ok=True)
     temp_file.write_text(json.dumps(draft_json, ensure_ascii=False, indent=2))
     
+    print(f"Temp file path: {temp_file.resolve()}", file=sys.stderr)
+
     result = run_powershell('outlook-draft.ps1', '-JsonFile', str(temp_file))
     # Best-effort: update task source with draft info
     try:
@@ -124,7 +126,7 @@ def create_draft(draft_json):
                 task_path.write_text(json.dumps(task_dict, ensure_ascii=False, indent=2))
     except Exception:
         pass
-    temp_file.unlink()
+    # temp_file.unlink()
     return result
 
 
