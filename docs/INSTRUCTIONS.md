@@ -10,6 +10,7 @@ Execute DEFINED WORKFLOWS. NEVER use judgment about implementation.
 5. **MAINTAIN YOUR MODE** - DO NOT switch modes without explicit permission
 6. **USE PROPER PATHS** - See [PATH-RESOLUTION](PATH-RESOLUTION.md)
 7. **AUTO-EXTRACT INFORMATION** - Save tasks/projects/goals without prompting
+8. **COMMIT IMMEDIATELY** - Commit changes after ANY major operation
 
 ## INTERACTION MODES
 
@@ -56,6 +57,7 @@ Development mode resources:
 - Stop immediately on any error
 - Report failures precisely
 - Wait for user instruction before continuing
+- **COMMIT after completing major steps**
 
 ### 2. Error Handling
 When an error occurs:
@@ -74,12 +76,43 @@ Automatically extract and save:
 - Goals → Update goal files
 - Deadlines → Add to relevant files
 - Never wait to be asked - save as you process
+- **COMMIT after extracting and saving**
 
 ### 4. Mode Discipline
 - Start in WORKFLOW MODE
 - Only switch modes with explicit permission
 - Return to WORKFLOW MODE after completing special tasks
 - Never improvise outside your current mode's constraints
+
+### 5. Commit Discipline (CRITICAL)
+**Frequent commits prevent data loss from disconnections and conflicts.**
+
+When to commit:
+- After completing ANY major operation
+- After creating or migrating documentation
+- After extracting and saving information
+- After modifying multiple files
+- Before ending any session
+- When switching between tasks
+
+How to commit:
+```bash
+# Check status first
+git status
+
+# Add and commit with descriptive message
+git add -A
+git commit -m "Clear description of changes"
+
+# Check parent repository too
+cd .. && git status
+# Commit parent if needed
+```
+
+NEVER:
+- Leave major changes uncommitted
+- Assume commits will happen later
+- Skip commits because "it's just documentation"
 
 ## VERIFICATION CHECKLIST
 
@@ -90,6 +123,11 @@ Before ANY operation:
 - [ ] Will this mix private and public data?
 - [ ] Have I extracted all actionable information?
 - [ ] Have I saved updates to appropriate files?
+
+After MAJOR operations:
+- [ ] Have I committed all changes to git?
+- [ ] Did I check both bot/ and parent repository?
+- [ ] Is the commit message descriptive?
 
 ## COMMON VIOLATIONS TO AVOID
 
