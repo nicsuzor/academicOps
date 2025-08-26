@@ -72,61 +72,17 @@ When extracting:
 - Preserve relationships between items
 - Include source context (email subject, meeting topic)
 
-### 4. Project Classification Guidelines
+### 4. Project Classification
 
-#### UNDERSTAND Project Categories First
-Before assigning tasks to projects:
-1. **READ project files** to understand their purpose
-2. **READ goal files** to understand the taxonomy
-3. **ASK for clarification** if project type is ambiguous
-
-#### Common Project Categories
-- **Academic Profile Building**:
-  - Academic conferences and symposiums
-  - Scholarly publications
-  - Research collaborations
-  - University presentations
-  - Academic networking
-
-- **Impact Work** (Industry/Government/Civil Society):
-  - Policy submissions
-  - Industry reports
-  - Government consultations
-  - Civil society engagement
-  - Media commentary
-  - Public impact pieces
-
-- **Research Projects**:
-  - Specific research initiatives (e.g., computational-legal-studies)
-  - Grant-funded projects
-  - Experimental work
-  - Tool development
-
-- **Operational/Administrative**:
-  - QUT obligations
-  - Administrative tasks
-  - Infrastructure projects
-
-#### Classification Process
-```python
-def classify_task_project(task_description):
-    # 1. Read available projects
-    projects = list_project_files()
-    
-    # 2. If uncertain about classification:
-    if ambiguous_classification:
-        print("Available projects:")
-        for project in projects:
-            print(f"- {project}: {brief_description}")
-        ask_user("Which project should this task belong to?")
-    
-    # 3. Verify project exists
-    if selected_project not in projects:
-        ask_user(f"Project '{selected_project}' doesn't exist. Create it?")
-    
-    # 4. Assign to project
-    assign_task_to_project(task, selected_project)
+Use the task_add.sh script with appropriate project parameter:
+```bash
+$ACADEMIC_OPS_SCRIPTS/task_add.sh "Task description" "project-name"
 ```
+
+If uncertain about project classification, list available projects and ask user:
+```bash
+ls $ACADEMIC_OPS_DATA/projects/
+# Show user the list and ask which project fits
 
 ## MODE-SPECIFIC BEHAVIORS
 
@@ -165,30 +121,13 @@ during_conversation:
 ## FILE OPERATIONS
 
 ### Creating New Task
+Use the task_add.sh script:
 ```bash
-# Use absolute path
-TASK_FILE="/home/nic/src/writing/data/tasks/inbox/$(date +%Y%m%d-%H%M%S)-task.md"
-echo "---
-created: $(date +%Y-%m-%d)
-project: $PROJECT_NAME
----
-# $TASK_TITLE
-
-$TASK_DESCRIPTION" > "$TASK_FILE"
+$ACADEMIC_OPS_SCRIPTS/task_add.sh "Task description" "project-name"
 ```
 
 ### Updating Project File
-```python
-project_path = f"/home/nic/src/writing/data/projects/{project_name}.md"
-# Read existing content
-with open(project_path, 'r') as f:
-    content = f.read()
-# Append new information
-content += f"\n## Update {datetime.now()}\n{new_info}\n"
-# Write back
-with open(project_path, 'w') as f:
-    f.write(content)
-```
+Use direct file editing with the Edit tool to append information to project files.
 
 ## VALIDATION CHECKLIST
 
@@ -226,17 +165,14 @@ After any conversation/email/meeting:
 → Extract: Feedback as project note, potential task
 ```
 
-## ERROR PREVENTION
+## PATH USAGE
 
-### Always Use Absolute Paths
+### Use Environment Variables
 ```bash
-# WRONG
-"./data/tasks/..."
-"../data/projects/..."
-
-# CORRECT
-"/home/nic/src/writing/data/tasks/..."
-"/home/nic/src/writing/data/projects/..."
+# Use configured paths
+$ACADEMIC_OPS_DATA/tasks/...
+$ACADEMIC_OPS_DATA/projects/...
+$ACADEMIC_OPS_SCRIPTS/...
 ```
 
 ### Always Commit After Extraction

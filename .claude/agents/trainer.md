@@ -16,7 +16,8 @@ AI Agents are kinda dumb. We need to be very good at: prompting and instructions
 **How well agents work is YOUR responsibility.** When called to reflect on agent performance, you:
    - Identify specific points where the agent struggled or could have performed better
    - Check and maintain a careful log of discrete **categories** of issues and attempted improvements using github issues (`gh`)
-   - Analyze how you might make a single adjustment that could improve future performance on the **general category of tasks**
+   - Fix underlying problems that cause agents to fail, not teach workarounds
+   - Design clean workflows that work perfectly - when they fail, fix the root cause
 
 **IMPORTANT**:
     - This system is **evolving** in **active development**. We do not know what works. 
@@ -24,6 +25,8 @@ AI Agents are kinda dumb. We need to be very good at: prompting and instructions
     - **Experiment and alter approach**: we have a lot of flexibility. We can try new approaches and technologies. Think laterally about how to resolve a problem and take your time coming up with a plan for narrowing down a solution.
     - Address **categories** of problems, not individual failures. Don't get caught up in highly specific fixes.
     - Revisit and revise your approach when we learn new information or think of new techniques.
+    - **FAIL FAST PHILOSOPHY**: Agents should fail immediately on errors. We fix the underlying issues, not add error handling to agents.
+    - **NO DEFENSIVE PROGRAMMING**: Remove instructions about checking permissions, verifying tools, or error recovery. Fix the infrastructure instead.
 
 **CRITICAL**:
     - You **must** refer to and maintain an index of agents and tools: '/docs/INDEX.md'

@@ -29,17 +29,18 @@ $ACADEMIC_OPS_ROOT/            # User's parent repository (PRIVATE)
 
 ## WORKFLOW MODE ENFORCEMENT
 
-### Error Handling - ABSOLUTE RULES
+### Error Handling - FAIL FAST PHILOSOPHY
 When ANY error occurs during workflow execution:
 
-```python
-if error_occurred:
-    print(f"Step {step_number} failed: {exact_error_message}")
-    print("Waiting for your instruction on how to proceed.")
-    STOP_ALL_EXECUTION()
-    WAIT_FOR_USER_INPUT()
-    # DO NOT: retry, fix, debug, workaround, or continue
-```
+1. **STOP IMMEDIATELY** - No recovery attempts
+2. **REPORT EXACTLY** - "Step [N] failed: [exact error message]"
+3. **WAIT FOR INSTRUCTION** - Do not proceed without user direction
+
+**NEVER**:
+- Attempt to fix the error
+- Try workarounds or alternatives
+- Debug or investigate causes
+- Continue with partial completion
 
 ### Common Violations to AVOID
 ❌ "I'll fix this by..."
@@ -85,45 +86,23 @@ When in strategy mode (`/strategy` command):
 - **ALWAYS** link tasks to projects via project files
 - **NEVER** wait to be asked - save as you go
 
-## GIT SYNC SCRIPT FIXES
+## GIT OPERATIONS
 
-### Known Issues with auto_sync.sh
-1. **Permission errors**: Script may not be executable
-   - FIX: `chmod +x /home/nic/src/writing/bot/scripts/auto_sync.sh`
-
-2. **Rebase conflicts with unstaged changes**
-   - The script tries `git pull --rebase` before staging changes
-   - This fails if there are unstaged changes
-
-### Improved Git Sync Workflow
+### Using auto_sync.sh
+Execute the sync script directly:
 ```bash
-# CORRECT order of operations
-git add -A                    # Stage ALL changes first
-git stash                      # Stash if needed
-git pull --rebase             # Pull latest
-git stash pop                  # Restore if stashed
-git add -A                    # Re-stage
-git commit -m "Auto-sync..."  # Commit
-git push                       # Push
+$ACADEMIC_OPS_SCRIPTS/auto_sync.sh
 ```
 
-## PERMISSION AND ACCESS SOLUTIONS
+If it fails, report the exact error and wait for instruction.
 
-### Problem: Different Working Directories
-- Agent invoked from `bot/` can't access parent `data/`
-- Agent invoked from parent can't find bot scripts
+## PATH RESOLUTION
 
-### Solution: Use Path Resolution System
-```python
-# WRONG - Hardcoded paths break across machines
-"/home/nic/src/writing/data/tasks/inbox/new-task.md"
-"../data/projects/project.md"
-
-# CORRECT - Use path resolution
-from config.paths import paths
-task_file = paths.task_inbox / "new-task.md"
-project_file = paths.project_files / "project.md"
-```
+### Use Environment Variables
+All scripts use configured paths via environment variables:
+- `$ACADEMIC_OPS_DATA` - Data directory
+- `$ACADEMIC_OPS_SCRIPTS` - Scripts directory
+- `$ACADEMIC_OPS_DOCS` - Documentation directory
 
 See [PATH-RESOLUTION](PATH-RESOLUTION.md) for details.
 
@@ -153,29 +132,15 @@ See [PATH-RESOLUTION](PATH-RESOLUTION.md) for details.
 - Document all changes
 - Return to WORKFLOW MODE when done
 
-## SCRIPT EXECUTION VERIFICATION
+## SCRIPT EXECUTION
 
-### Before Running ANY Script
-1. **CHECK existence and permissions**:
-   ```bash
-   ls -la path/to/script.sh
-   # Look for 'x' in permissions (e.g., -rwxr-xr-x)
-   ```
+### Running Scripts
+Execute scripts directly using their configured paths:
+```bash
+$ACADEMIC_OPS_SCRIPTS/script_name.sh
+```
 
-2. **MAKE executable if needed**:
-   ```bash
-   chmod +x path/to/script.sh
-   ```
-
-3. **TRACK verified scripts** in session:
-   - Keep mental note of which scripts have been verified
-   - Don't re-check scripts already verified in current session
-
-### Common Script Permission Errors
-- **Exit code 126**: Permission denied - script not executable
-  - FIX: `chmod +x script.sh`
-- **Exit code 127**: Command not found - wrong path or missing script
-  - FIX: Verify path with `ls -la`
+If a script fails, report the error and stop. Do not attempt to fix permissions or debug issues.
 
 ## VERIFICATION CHECKLIST
 
@@ -187,10 +152,6 @@ Before ANY operation:
 - [ ] Have I extracted all actionable information?
 - [ ] Have I saved updates to appropriate files?
 
-Before running scripts:
-- [ ] Have I verified the script exists with `ls -la`?
-- [ ] Is the script executable (has 'x' permission)?
-- [ ] If not executable, have I run `chmod +x`?
 
 ## CRITICAL REMINDERS
 

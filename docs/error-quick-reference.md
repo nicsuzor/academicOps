@@ -1,96 +1,39 @@
 # Error Handling Quick Reference
 
-This system is a work-in-progress! We love finding errors and limitations: they are a great opportunity to think carefully about design and future development.
+## FAIL FAST PHILOSOPHY
 
-## Pre-execution Verification Checklist
+When you encounter ANY error:
+1. **STOP** - Do not continue
+2. **REPORT** - State exact error message
+3. **WAIT** - Get user instruction
 
-### Before Running Scripts
-```
-1. CHECK - Does the script exist?
-   ls -la /path/to/script.sh
-   
-2. VERIFY - Is it executable?
-   Look for 'x' in permissions (-rwxr-xr-x)
-   
-3. FIX - Make executable if needed
-   chmod +x /path/to/script.sh
-   
-4. TRACK - Remember verified scripts in session
-```
-
-### Before Assigning Projects
-```
-1. LIST - Check available projects
-   ls /home/nic/src/writing/data/projects/
-   
-2. READ - Understand project purpose
-   cat /home/nic/src/writing/data/projects/[project].md
-   
-3. VERIFY - Does project match task type?
-   - Academic conferences → academic-profile projects
-   - Industry/government → impact projects
-   
-4. ASK - If uncertain, show options to user
-```
-
-### Before Classifying Tasks
-```
-1. CONTEXT - Read relevant goal files
-   /home/nic/src/writing/data/goals/*.md
-   
-2. UNDERSTAND - Know the taxonomy
-   - What are the project categories?
-   - What goes where?
-   
-3. VERIFY - Project exists and is appropriate
-```
+**NEVER**:
+- Try to fix the error yourself
+- Work around the problem
+- Debug or investigate
+- Continue with partial success
 
 ## When You Hit an Error
 
 ```
-1. STOP - Don't continue with bad state
-2. CHECK - Is this a known issue? (search GitHub)  
-3. DECIDE - Can I recover? Should I retry?
-4. REPORT - Tell user what failed and why
-5. TRACK - Create issue if new/recurring
+1. STOP - Halt all execution
+2. REPORT - "Step [N] failed: [exact error]"
+3. WAIT - "Waiting for your instruction."
 ```
 
-## Decision Tree
+## Error Reporting Format
 
 ```
-Error Occurred
-    ↓
-Is it in GitHub issues? 
-    YES → Reference issue # and apply workaround
-    NO ↓
-    
-Can I retry?
-    YES → Retry 3x with backoff
-    NO ↓
-    
-Is there alternative approach?
-    YES → Try alternative and note in report
-    NO ↓
-    
-STOP and report:
-- What failed
-- Why it failed  
-- Impact on task
-- Create GitHub issue
+Step 3 failed: [exact error message]
+Waiting for your instruction on how to proceed.
 ```
 
-## Tips 
+## Commit Discipline
 
-- Use heredocs (`cat << 'EOF'`) when calling **CLI TOOLS WITH FORMATTED OR MULTI-LINE INPUT** to avoid escaping issues.
-- **COMMIT BEFORE RECOVERY** - If you've made changes and hit an error, commit them first to prevent data loss
-
-## Critical Recovery Actions
-
-Before stopping due to an error:
-1. Check `git status` - are there uncommitted changes?
-2. If yes, commit them with a descriptive message including the error
-3. Check parent repository status too
-4. Only then report the error and wait for guidance
+When stopping due to error:
+1. Check `git status` for uncommitted changes
+2. If changes exist, commit them before reporting error
+3. Then report error and wait
 
 ## Remember
 - **NEVER** claim success if anything failed
