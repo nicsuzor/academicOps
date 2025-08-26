@@ -7,6 +7,7 @@
 
 ## Architecture & Design
 - [architecture](architecture.md) - System components and data flow
+- [FAIL-FAST-PHILOSOPHY](FAIL-FAST-PHILOSOPHY.md) - Core design principle for error handling
 - [AUTO-EXTRACTION](AUTO-EXTRACTION.md) - Automatic information extraction from conversations
 
 ## Development
