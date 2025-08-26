@@ -72,6 +72,62 @@ When extracting:
 - Preserve relationships between items
 - Include source context (email subject, meeting topic)
 
+### 4. Project Classification Guidelines
+
+#### UNDERSTAND Project Categories First
+Before assigning tasks to projects:
+1. **READ project files** to understand their purpose
+2. **READ goal files** to understand the taxonomy
+3. **ASK for clarification** if project type is ambiguous
+
+#### Common Project Categories
+- **Academic Profile Building**:
+  - Academic conferences and symposiums
+  - Scholarly publications
+  - Research collaborations
+  - University presentations
+  - Academic networking
+
+- **Impact Work** (Industry/Government/Civil Society):
+  - Policy submissions
+  - Industry reports
+  - Government consultations
+  - Civil society engagement
+  - Media commentary
+  - Public impact pieces
+
+- **Research Projects**:
+  - Specific research initiatives (e.g., computational-legal-studies)
+  - Grant-funded projects
+  - Experimental work
+  - Tool development
+
+- **Operational/Administrative**:
+  - QUT obligations
+  - Administrative tasks
+  - Infrastructure projects
+
+#### Classification Process
+```python
+def classify_task_project(task_description):
+    # 1. Read available projects
+    projects = list_project_files()
+    
+    # 2. If uncertain about classification:
+    if ambiguous_classification:
+        print("Available projects:")
+        for project in projects:
+            print(f"- {project}: {brief_description}")
+        ask_user("Which project should this task belong to?")
+    
+    # 3. Verify project exists
+    if selected_project not in projects:
+        ask_user(f"Project '{selected_project}' doesn't exist. Create it?")
+    
+    # 4. Assign to project
+    assign_task_to_project(task, selected_project)
+```
+
 ## MODE-SPECIFIC BEHAVIORS
 
 ### Email Processing Mode

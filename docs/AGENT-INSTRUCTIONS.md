@@ -153,6 +153,30 @@ See [PATH-RESOLUTION](PATH-RESOLUTION.md) for details.
 - Document all changes
 - Return to WORKFLOW MODE when done
 
+## SCRIPT EXECUTION VERIFICATION
+
+### Before Running ANY Script
+1. **CHECK existence and permissions**:
+   ```bash
+   ls -la path/to/script.sh
+   # Look for 'x' in permissions (e.g., -rwxr-xr-x)
+   ```
+
+2. **MAKE executable if needed**:
+   ```bash
+   chmod +x path/to/script.sh
+   ```
+
+3. **TRACK verified scripts** in session:
+   - Keep mental note of which scripts have been verified
+   - Don't re-check scripts already verified in current session
+
+### Common Script Permission Errors
+- **Exit code 126**: Permission denied - script not executable
+  - FIX: `chmod +x script.sh`
+- **Exit code 127**: Command not found - wrong path or missing script
+  - FIX: Verify path with `ls -la`
+
 ## VERIFICATION CHECKLIST
 
 Before ANY operation:
@@ -162,6 +186,11 @@ Before ANY operation:
 - [ ] Will this leak private data to public repos?
 - [ ] Have I extracted all actionable information?
 - [ ] Have I saved updates to appropriate files?
+
+Before running scripts:
+- [ ] Have I verified the script exists with `ls -la`?
+- [ ] Is the script executable (has 'x' permission)?
+- [ ] If not executable, have I run `chmod +x`?
 
 ## CRITICAL REMINDERS
 

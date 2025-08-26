@@ -18,6 +18,8 @@ When you encounter ANY error during workflow execution:
 - Any file not found
 - Any operation that doesn't complete successfully
 - Any unexpected output format
+- Exit code 126 (Permission denied - script not executable)
+- Exit code 127 (Command not found - wrong path or missing)
 
 ## FORBIDDEN ACTIONS WHEN ERRORS OCCUR
 

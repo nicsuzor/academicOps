@@ -2,6 +2,49 @@
 
 This system is a work-in-progress! We love finding errors and limitations: they are a great opportunity to think carefully about design and future development.
 
+## Pre-execution Verification Checklist
+
+### Before Running Scripts
+```
+1. CHECK - Does the script exist?
+   ls -la /path/to/script.sh
+   
+2. VERIFY - Is it executable?
+   Look for 'x' in permissions (-rwxr-xr-x)
+   
+3. FIX - Make executable if needed
+   chmod +x /path/to/script.sh
+   
+4. TRACK - Remember verified scripts in session
+```
+
+### Before Assigning Projects
+```
+1. LIST - Check available projects
+   ls /home/nic/src/writing/data/projects/
+   
+2. READ - Understand project purpose
+   cat /home/nic/src/writing/data/projects/[project].md
+   
+3. VERIFY - Does project match task type?
+   - Academic conferences → academic-profile projects
+   - Industry/government → impact projects
+   
+4. ASK - If uncertain, show options to user
+```
+
+### Before Classifying Tasks
+```
+1. CONTEXT - Read relevant goal files
+   /home/nic/src/writing/data/goals/*.md
+   
+2. UNDERSTAND - Know the taxonomy
+   - What are the project categories?
+   - What goes where?
+   
+3. VERIFY - Project exists and is appropriate
+```
+
 ## When You Hit an Error
 
 ```
