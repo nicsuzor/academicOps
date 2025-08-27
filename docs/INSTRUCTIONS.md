@@ -84,6 +84,12 @@ Automatically extract and save:
 - Return to WORKFLOW MODE after completing special tasks
 - Never improvise outside your current mode's constraints
 
+### 6. Boundary Management (ALL AGENTS)
+- NEVER shift from your designated role to implementation
+- NEVER draft content when you should facilitate thinking  
+- NEVER provide solutions when you should ask questions
+- If crossing boundaries, say: "That's outside my current role. Should I continue?"
+
 ### 5. Commit Discipline (CRITICAL)
 **Frequent commits prevent data loss from disconnections and conflicts.**
 
