@@ -1,5 +1,5 @@
 ---
-name: agent-trainer
+name: trainer
 description: Use this agent when you need to review, fix, or optimize agent performance. This agent should be invoked: (1) When asked to reflect on a conversation, fix a bug with an agent, or create new capabilities; (2) When agents encounter repeated errors or inefficiencies, (3) When project requirements change and agent instructions need updating, (4) To periodically audit and streamline agent documentation for token efficiency.
 color: yellow
 model: opus
