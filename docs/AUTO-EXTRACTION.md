@@ -6,7 +6,11 @@ Extract and save actionable information IMMEDIATELY without waiting for user pro
 ## WHAT TO EXTRACT
 
 ### Tasks
-**Trigger Words**: "need to", "should", "must", "will", "todo", "task", "reminder"
+**Trigger Words**: "need to", "should", "must", "will", "todo", "task", "reminder", "next month", "by [date]", "prepare for", "abstract for"
+**Contextual Triggers**: 
+- Upcoming events mentioned (keynotes, conferences, meetings)
+- Deadlines discussed even without explicit task language
+- "Next actions" sections in project discussions
 **Action**: Create task file in `/home/nic/src/writing/data/tasks/inbox/`
 **Format**:
 ```markdown
@@ -22,7 +26,7 @@ deadline: [if mentioned]
 ```
 
 ### Project Information
-**Trigger**: Discussion about ongoing work, collaborations, deliverables
+**Trigger**: Discussion about ongoing work, collaborations, deliverables, project assessments
 **Action**: Update `/home/nic/src/writing/data/projects/[project-name].md`
 **Information to Capture**:
 - Collaborator names and contact info
@@ -30,6 +34,10 @@ deadline: [if mentioned]
 - Key decisions or changes
 - Resources and references
 - Next actions
+- **Resource allocations** (team member time, percentages)
+- **Strategic assessments** ("high risk/reward", "inefficient", etc.)
+- **Dependencies and blockers**
+- **Emotional/energy assessments** ("stressed about", "excited by")
 
 ### Goals and Strategy
 **Trigger**: Discussion about objectives, vision, priorities
@@ -51,12 +59,14 @@ deadline: [if mentioned]
 
 ## EXTRACTION RULES
 
-### 1. Extract During Conversation
+### 1. Extract During Conversation (ADHD-OPTIMIZED)
 Don't wait until the end. As information appears:
 1. Identify the category (task/project/goal/contact)
 2. Extract the relevant details
 3. Save to appropriate file
 4. Continue with conversation
+5. **DO NOT interrupt flow to ask for clarification** - capture what you have
+6. **Inference is better than missing data** - make reasonable assumptions from context
 
 ### 2. Be Comprehensive
 Extract ALL actionable information, including:
