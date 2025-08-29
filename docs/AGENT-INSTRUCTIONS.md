@@ -53,38 +53,27 @@ When ANY error occurs during workflow execution:
 
 ## AUTOMATIC INFORMATION EXTRACTION
 
-### When Processing Conversations/Emails
-1. **IDENTIFY** key information categories:
-   - Tasks → Create in `$ACADEMIC_OPS_DATA/tasks/inbox/`
-   - Project updates → Update `$ACADEMIC_OPS_DATA/projects/*.md`
-   - Goals/strategies → Update `$ACADEMIC_OPS_DATA/goals/*.md`
-   - Deadlines → Add to relevant project/task files
-   - Contacts → Note in project files
+**See [AUTO-EXTRACTION](AUTO-EXTRACTION.md) for comprehensive ADHD-optimized extraction guide**
 
-2. **EXTRACT** without prompting:
-   ```python
-   # Pseudocode for automatic extraction
-   if conversation_contains_actionable_items():
-       for item in actionable_items:
-           if is_task(item):
-               create_task_file(item)
-           elif is_project_info(item):
-               update_project_file(item)
-           elif is_strategic_info(item):
-               update_goal_file(item)
-   ```
+### Core Principles
+1. **EXTRACT IMMEDIATELY** - During conversation, not after
+2. **INFER WHEN UNCLEAR** - Better to capture with assumptions than miss
+3. **MAINTAIN FLOW** - Never interrupt to ask for clarification
+4. **SAVE EVERYTHING** - Tasks, projects, goals, deadlines, contacts
 
-3. **SAVE** immediately:
-   - Use task_add.sh for new tasks
-   - Use direct file operations for project/goal updates
-   - Commit changes with auto_sync.sh
+### Quick Reference
+- Tasks with trigger words → `$ACADEMIC_OPS_DATA/tasks/inbox/`
+- Project information → `$ACADEMIC_OPS_DATA/projects/*.md`
+- Strategic goals → `$ACADEMIC_OPS_DATA/goals/*.md`
+- Use `task_add.sh` for tasks with project classification
+- Commit immediately after extraction
 
-### Strategy Mode Specific Extraction
-When in strategy mode (`/strategy` command):
-- **ALWAYS** update relevant project files with discussed details
-- **ALWAYS** save new goals to `$ACADEMIC_OPS_DATA/goals/`
-- **ALWAYS** link tasks to projects via project files
-- **NEVER** wait to be asked - save as you go
+### Mode-Specific Behaviors
+- **Email Processing**: Extract sender info, tasks, deadlines, updates
+- **Strategy Mode**: Update projects, create goals, link tasks
+- **Meeting Mode**: Capture action items without interrupting flow
+
+**CRITICAL**: Read [AUTO-EXTRACTION](AUTO-EXTRACTION.md) for trigger words, patterns, and detailed workflows
 
 ## GIT OPERATIONS
 

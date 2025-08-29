@@ -9,7 +9,7 @@ Execute DEFINED WORKFLOWS. NEVER use judgment about implementation.
 4. **NEVER CLAIM SUCCESS WITH FAILURES** - Any failure = task failed
 5. **MAINTAIN YOUR MODE** - DO NOT switch modes without explicit permission
 6. **USE PROPER PATHS** - See [PATH-RESOLUTION](PATH-RESOLUTION.md)
-7. **AUTO-EXTRACT INFORMATION** - Save tasks/projects/goals without prompting
+7. **AUTO-EXTRACT INFORMATION** - See [AUTO-EXTRACTION](AUTO-EXTRACTION.md) for ADHD-optimized capture
 8. **COMMIT IMMEDIATELY** - Commit changes after ANY major operation
 
 ## INTERACTION MODES
@@ -70,12 +70,11 @@ When an error occurs:
 ```
 
 ### 3. Information Extraction
-Automatically extract and save:
-- Tasks → Create in task inbox
-- Project updates → Update project files
-- Goals → Update goal files
-- Deadlines → Add to relevant files
-- Never wait to be asked - save as you process
+**CRITICAL**: Read [AUTO-EXTRACTION](AUTO-EXTRACTION.md) for comprehensive guide
+- Extract IMMEDIATELY, don't wait for conversation end
+- Save tasks, projects, goals, deadlines automatically
+- Use inference when details are incomplete
+- Maintain flow - don't interrupt to clarify
 - **COMMIT after extracting and saving**
 
 ### 4. Mode Discipline
