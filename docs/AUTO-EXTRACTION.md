@@ -6,12 +6,14 @@ Extract and save actionable information IMMEDIATELY without waiting for user pro
 ## WHAT TO EXTRACT
 
 ### Tasks
-**Trigger Words**: "need to", "should", "must", "will", "todo", "task", "reminder", "next month", "by [date]", "prepare for", "abstract for"
+**Trigger Words**: "need to", "should", "must", "will", "todo", "task", "reminder", "next month", "by [date]", "prepare for", "abstract for", "peer review", "evaluation", "due today"
 **Contextual Triggers**: 
 - Upcoming events mentioned (keynotes, conferences, meetings)
 - Deadlines discussed even without explicit task language
 - "Next actions" sections in project discussions
-**Action**: Create task file in `/home/nic/src/writing/data/tasks/inbox/`
+- Service obligations (reviews, evaluations, committee work)
+**Action**: Create SEPARATE task file in `/home/nic/src/writing/data/tasks/inbox/`
+**CRITICAL**: Tasks are NOT project updates - create dedicated files
 **Format**:
 ```markdown
 ---

@@ -68,10 +68,21 @@ When ANY error occurs during workflow execution:
 - Use `task_add.sh` for tasks with project classification
 - Commit immediately after extraction
 
+### CRITICAL DISTINCTION: Projects vs Tasks
+- **Project files** (`projects/*.md`): Strategic descriptions, goals, stakeholders
+- **Task files** (`tasks/*.md`): Specific actionable items with deadlines
+- **NEVER** embed tasks in project descriptions - create separate task files
+- When user mentions action items, CREATE TASK FILES, don't update project files
+
 ### Mode-Specific Behaviors
 - **Email Processing**: Extract sender info, tasks, deadlines, updates
 - **Strategy Mode**: Update projects, create goals, link tasks
 - **Meeting Mode**: Capture action items without interrupting flow
+
+### Conversation Thread Management
+- **TRACK INCOMPLETE ITEMS**: Before switching topics, note unresolved questions
+- **RETURN TO THREADS**: After handling interruptions, check for dropped items
+- **EXPLICIT CONFIRMATION**: When user provides clarification, update ALL affected files
 
 **CRITICAL**: Read [AUTO-EXTRACTION](AUTO-EXTRACTION.md) for trigger words, patterns, and detailed workflows
 
