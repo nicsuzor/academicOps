@@ -3,7 +3,8 @@
     "allow": [
       "Bash(git:*)",
       "Bash(gh:*)",
-      "Bash(./scripts:*)"
+      "Bash(./scripts:*)",
+      "Read(//tmp/**)"
     ],
     "deny": []
   }
