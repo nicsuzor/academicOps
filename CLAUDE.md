@@ -15,4 +15,10 @@
 - Changes to BOTREPO are ONLY permitted in DEVELOPMENT MODE.
 - It is YOUR RESPONSIBILITY to ensure that the author's main repository is ALWAYS up-to-date and committed, INCLUDING `../data/`. Save and commit frequently (disconnections and conflicts are common).
 
+## WRITING STYLE GUIDES
+When drafting or editing content in the author's voice:
+- **For quick tasks** (emails, social media, short edits): Use `docs/STYLE-QUICK.md`
+- **For deep writing** (papers, articles, submissions >500 words): Use `docs/STYLE.md`
+- Default to the quick guide unless substantial content creation is required
+
 

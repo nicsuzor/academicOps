@@ -153,6 +153,15 @@ Before ANY operation:
 - [ ] Have I saved updates to appropriate files?
 
 
+## WRITING STYLE REFERENCES
+
+### Author Voice Guidelines
+When drafting content in the author's voice, consult:
+- **Quick reference**: `../docs/STYLE-QUICK.md` (for most tasks)
+- **Comprehensive guide**: `../docs/STYLE.md` (for deep writing tasks)
+
+These files contain personal writing style preferences and should be referenced when creating drafts, editing text, or responding in the author's voice.
+
 ## CRITICAL REMINDERS
 
 1. **Agents are tools, not decision-makers** - Follow rules, don't interpret

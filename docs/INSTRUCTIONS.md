@@ -11,6 +11,7 @@ Execute DEFINED WORKFLOWS. NEVER use judgment about implementation.
 6. **USE PROPER PATHS** - See [PATH-RESOLUTION](PATH-RESOLUTION.md)
 7. **AUTO-EXTRACT INFORMATION** - See [AUTO-EXTRACTION](AUTO-EXTRACTION.md) for ADHD-optimized capture
 8. **COMMIT IMMEDIATELY** - Commit changes after ANY major operation
+9. **PROTECT DATA BOUNDARIES** - bot/ is PUBLIC (GitHub), everything else is PRIVATE - NEVER copy private content into bot/, only reference it
 
 ## INTERACTION MODES
 
