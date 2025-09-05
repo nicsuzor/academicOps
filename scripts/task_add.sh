@@ -20,7 +20,12 @@ METADATA="{}"
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --title) TITLE="$2"; shift 2;;
-    --priority) PRIORITY="$2"; shift 2;;
+    --priority) 
+      if ! [[ "$2" =~ ^[0-9]+$ ]]; then
+        echo "Error: --priority must be an integer." >&2
+        exit 1
+      fi
+      PRIORITY="$2"; shift 2;;
     --type) TYPE="$2"; shift 2;;
     --project) PROJECT="$2"; shift 2;;
     --due) DUE="$2"; shift 2;;
@@ -51,7 +56,7 @@ mkdir -p "$(dirname "$FILE")"
 JSON=$(cat <<EOF
 {
   "id": "${TASK_ID}",
-  "priority": ${PRIORITY:-null},
+  "priority": $( [ -n "$PRIORITY" ] && echo "$PRIORITY" || echo null ),
   "type": "${TYPE}",
   "title": $(jq -Rn --arg v "$TITLE" '$v'),
   "preview": $(jq -Rn --arg v "$PREVIEW" '$v'),

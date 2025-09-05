@@ -47,8 +47,10 @@ def load_task(path: Path):
         return None
 
 def sort_key(t):
-    pri = t.get('priority')
-    if pri is None: pri = 9999
+    try:
+        pri = int(t.get('priority'))
+    except (ValueError, TypeError):
+        pri = 9999
     return (pri, t.get('due') or '9999', t.get('created') or '9999')
 
 def rebuild():
