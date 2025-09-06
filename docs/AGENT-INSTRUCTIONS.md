@@ -21,11 +21,24 @@ $ACADEMIC_OPS_ROOT/            # User's parent repository (PRIVATE)
 
 **Path Resolution**: See [PATH-RESOLUTION](PATH-RESOLUTION.md) for multi-machine support.
 
-### CRITICAL SECURITY RULES
-1. **NEVER** leak data from parent repository into the public `bot/` submodule
-2. **ALWAYS** verify current working directory before operations
-3. **UNDERSTAND**: Agents invoked from different folders have different access permissions
-4. **SOLUTION**: Use path resolution system - see [PATH-RESOLUTION](PATH-RESOLUTION.md)
+### CRITICAL SECURITY RULES - DATA BOUNDARIES
+
+**FUNDAMENTAL PRINCIPLE**: bot/ = PUBLIC (published to GitHub), everything else = PRIVATE
+
+1. **NEVER COPY** private content into bot/ - this would leak personal data to GitHub
+2. **ONLY REFERENCE** private content from bot/ documentation when needed
+3. **bot/ CONTENTS**: Generic framework, tools, workflows - usable by ANY user
+4. **PRIVATE CONTENTS**: Personal data, projects, emails, tasks - specific to one user
+
+**Examples of CORRECT behavior**:
+✅ "See ../docs/STYLE.md for writing guidelines" (reference, not copy)
+✅ Creating generic workflow in bot/scripts/ that reads from $ACADEMIC_OPS_DATA
+✅ Documenting a pattern without including personal examples
+
+**Examples of VIOLATIONS**:
+❌ Copying personal writing style into bot/docs/
+❌ Including actual project names in bot/ documentation
+❌ Embedding personal task content in bot/ workflows
 
 ## WORKFLOW MODE ENFORCEMENT
 
