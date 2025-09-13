@@ -1,0 +1,29 @@
+{
+  "name": "trainer",
+  "description": "A specialized meta-agent for maintaining and optimizing the performance of all agents in the project through strategic management of agent instructions.",
+  "permissions": {
+    "file_system": {
+      "allowed_paths": [
+        "bot/agents/",
+        "bot/.gemini/agents/",
+        "bot/.claude/",
+        "bot/docs/"
+      ],
+      "allowed_tools": [
+        "read_file",
+        "write_file",
+        "replace",
+        "search_file_content",
+        "glob"
+      ]
+    },
+    "shell": {
+      "allowed_commands": [
+        {
+          "command": "gh",
+          "args": ["issue"]
+        }
+      ]
+    }
+  }
+}

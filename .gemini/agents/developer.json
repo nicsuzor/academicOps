@@ -1,0 +1,35 @@
+{
+  "name": "developer",
+  "description": "A specialized agent for software development tasks, including writing, refactoring, testing, and debugging code, while strictly following project conventions and safety protocols.",
+  "permissions": {
+    "file_system": {
+      "allowed_paths": [
+        "bot/",
+        "projects/",
+        "scripts/",
+        "pyproject.toml",
+        "README.md"
+      ],
+      "allowed_tools": [
+        "read_file",
+        "write_file",
+        "replace",
+        "search_file_content",
+        "glob",
+        "run_shell_command"
+      ]
+    },
+    "shell": {
+      "allowed_commands": [
+        {"command": "gh"},
+        {"command": "uv"},
+        {"command": "git"},
+        {"command": "grep"},
+        {"command": "ls"},
+        {"command": "cat"},
+        {"command": "mkdir"},
+        {"command": "rm"}
+      ]
+    }
+  }
+}

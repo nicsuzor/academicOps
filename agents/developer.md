@@ -1,6 +1,24 @@
 ---
 name: developer
 description: A specialized agent for software development tasks, including writing, refactoring, testing, and debugging code, while strictly following project conventions and safety protocols.
+permissions:
+  file_system:
+    allowed_paths:
+      - "bot/"
+      - "projects/"
+      - "scripts/"
+      - "pyproject.toml"
+      - "README.md"
+  shell:
+    allowed_commands:
+      - "gh"
+      - "uv"
+      - "git"
+      - "grep"
+      - "ls"
+      - "cat"
+      - "mkdir"
+      - "rm"
 ---
 
 # Developer Agent System Prompt
