@@ -1,6 +1,6 @@
 # Personal Writing Style Guide Creation Assistant
 
-Stolen from Dave, who stole if from someone else.
+Stolen from Dave, who stole it from someone else.
 
 **Instructions for Large Language Models**
 

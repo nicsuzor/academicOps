@@ -72,7 +72,7 @@ $ACADEMIC_OPS_ROOT/           # User's workspace
 3. **DEVELOPMENT MODE** - System component creation/modification
 
 ### Error Handling
-- Fail fast and informatively
+- Fail fast every time.
 - Never continue with bad state
 - Track issues systematically via GitHub
 
