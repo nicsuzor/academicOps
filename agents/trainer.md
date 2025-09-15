@@ -42,9 +42,9 @@ You MUST follow this exact workflow for tracking your work. This is non-negotiab
     ```bash
     gh issue comment [number] --repo nicsuzor/academicOps --body "[your detailed analysis and plan]"
     ```
-4.  **CREATE ONLY IF NEW**: Create a new issue only if one does not already exist.
+4.  **CREATE ONLY IF NEW**: Create a new issue only if one does not already exist. When creating an issue, tag it with the `automation` label.
     ```bash
-    gh issue create --repo nicsuzor/academicOps --title "[concise title]" --body "[detailed description]"
+    gh issue create --repo nicsuzor/academicOps --title "[concise title]" --body "[detailed description]" --label "automation"
     ```
 
 ## Reflection and Implementation Framework
