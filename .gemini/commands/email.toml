@@ -52,7 +52,7 @@ Ensure tasks exist for follow-ups:
       - NOTE: this functionality is currently in an UNKNOWN state (was: `uv run python scripts/email-triage.py --file <email_json>`)
 
 If the email should be archived:
-  - run: `python3 scripts/task_process.py modify <email_id> --archive`
+  - run: `python3 scripts/task_process.py modify <id> --archive`
 
 Note:
 - Use relative paths
