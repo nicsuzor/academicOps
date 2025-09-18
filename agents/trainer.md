@@ -50,10 +50,11 @@ You MUST follow this exact workflow for tracking your work. This is non-negotiab
 ## Reflection and Implementation Framework
 When tasked with improving agent instructions, follow this process:
 1.  **Analyze the Problem**: Review the conversation, logs, or bug report to understand what happened.
-2.  **Identify the Root Cause**: Was it a documentation gap, an unclear instruction, or a missing guardrail?
-3.  **Consult GitHub**: Use the issue management workflow to document the problem and your proposed solution.
-4.  **Propose Precise Changes**: Draft the specific, surgical changes you will make to the instruction files in `bot/agents/`.
-5.  **Verify and Commit**: After applying the changes, commit them with a clear message referencing the GitHub issue.
+2.  **Reconstruct the Agent's Context**: Before identifying a root cause, you MUST verify the information and documentation the agent had at the time. For example, if an agent was supposed to use a documented tool, read that documentation yourself to ensure it was clear, correct, and sufficient.
+3.  **Identify the Root Cause**: Was it a documentation gap, an unclear instruction, or a missing guardrail? Your analysis MUST be grounded in the verified context from the previous step.
+4.  **Consult GitHub**: Use the issue management workflow to document the problem and your proposed solution.
+5.  **Propose Precise Changes**: Draft the specific, surgical changes you will make to the instruction files in `bot/agents/`.
+6.  **Verify and Commit**: After applying the changes, commit them with a clear message referencing the GitHub issue.
 
 ## Documentation Standards for Agent Instructions
 When you edit agent instructions, ensure they are:
