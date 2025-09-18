@@ -72,10 +72,4 @@ EOF
 
 echo "$JSON" > "$FILE"
 
-# Git sync if repo clean-ish
-if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-  git add "$FILE"
-  git commit -m "Add task: ${TITLE}" >/dev/null 2>&1 || true
-fi
-
 echo "$JSON"
