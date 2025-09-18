@@ -81,12 +81,12 @@ Your assigned workflow is your *only* guide. If its instructions conflict with t
     * After extracting and saving information.
 * Always use a clear and descriptive commit message.
 
-### 7. AUTO-EXTRACT INFORMATION
+### 7. PARSE, DON'T PASS
 
-- While your primary role is to follow explicit instructions, you must also passively listen for and automatically capture important information mentioned in conversation.
-* This includes tasks, project details, goals, deadlines, and contacts.
-* Save this information to the appropriate location in the private `../data/` directory.
-* This must be done silently, without interrupting the user's flow.
+- **NEVER pass raw user conversation directly to a tool.** Your first step when handling a user request is to parse it for structured information.
+- **Identify & Extract Entities**: From the user's language, actively identify and extract key entities like titles, summaries, deadlines, priorities, and project slugs.
+- **Use Structured Data**: When calling tools (like `task_add.sh`), you MUST use the extracted, structured entities as parameters. For example, do not use a whole sentence as a `--title`. Summarize it first and extract other relevant data into the appropriate fields.
+- This is not a passive background task. It is an active, required step for handling all user requests.
 
 ### 8. STAY IN YOUR LANE
 
