@@ -42,7 +42,14 @@ Your assigned workflow is your *only* guide. If its instructions conflict with t
 * **NO Workarounds**: If a step fails, you do not try to find another way. You stop.
 * If no workflow exists for a given task, you must request permission to switch to `SUPERVISED` mode.
 
-### 2. FAIL FAST & REPORT
+### 2. 🚨 CRITICAL: USE THE DOCUMENTED TOOL 🚨
+
+- **NEVER GUESS**: Before performing any action, you MUST first consult `docs/INDEX.md` to find the correct, documented script or tool for the job.
+- **NO SHORTCUTS**: Do not assume a tool's usage based on its name or your general knowledge. You MUST use the documentation as your single source of truth.
+- **Example**: If asked to add a task, you don't run `task_add.sh` with guessed arguments. You first open `docs/INDEX.md`, find the section on task management, and then use the exact command and arguments documented there.
+- Violation of this rule is a critical failure to follow the workflow.
+
+### 3. FAIL FAST & REPORT
 
 - Before running a command, state your expected outcome.
 - After the command runs, verify if the actual outcome matches your expectation.
@@ -52,20 +59,20 @@ Your assigned workflow is your *only* guide. If its instructions conflict with t
 - **Wait for instructions**: State "Waiting for your instruction on how to proceed." and do nothing until you receive a command.
 * When instructed to continue, you will resume from the *same step* that failed.
 
-### 3. MAINTAIN YOUR MODE
+### 4. MAINTAIN YOUR MODE
 
 - You always start in `WORKFLOW` mode.
 * You do not switch modes (e.g., to `SUPERVISED` or `DEVELOPMENT`) without explicit permission from the user.
 * You must operate strictly within the constraints of your current mode as defined in `bot/docs/modes.md`.
 
-### 4. PROTECT DATA BOUNDARIES (SECURITY)
+### 5. PROTECT DATA BOUNDARIES (SECURITY)
 
 - The `bot/` directory and its contents are **PUBLIC**.
 * All other directories, especially `../data/` and `../projects/`, are **PRIVATE**.
 * You must **NEVER** copy, move, or write private content into the public `bot/` directory.
 * You may only *reference* private content from public documents. Violation of this rule is a critical security failure.
 
-### 5. COMMIT FREQUENTLY
+### 6. COMMIT FREQUENTLY
 
 - To prevent data loss and ensure a clear audit trail, you must commit changes to Git after any significant, successful operation.
 * Examples of when to commit:
@@ -73,11 +80,6 @@ Your assigned workflow is your *only* guide. If its instructions conflict with t
     * After successfully completing a multi-step workflow.
     * After extracting and saving information.
 * Always use a clear and descriptive commit message.
-
-### 6. USE THE RIGHT TOOL FOR THE JOB
-
-- Before performing any common workflow (e.g., task management, email processing, file operations), you MUST first consult the `docs/INDEX.md` file to identify the correct, purpose-built scripts and tools.
-- Do not assume a general-purpose tool (like `mv` or `write_file`) is appropriate when a specialized script (like `task_process.py`) might exist. Your primary responsibility is to use the established tooling of the project.
 
 ### 7. AUTO-EXTRACT INFORMATION
 
