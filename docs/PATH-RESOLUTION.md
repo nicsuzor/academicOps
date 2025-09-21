@@ -45,7 +45,7 @@ if not valid:
 
 # Use the path objects
 task_file = paths.task_inbox / "new-task.md"
-script = paths.scripts / "task_add.sh"
+script = paths.scripts / "task_add.py"
 ```
 
 ### For Agents (Claude/Gemini)

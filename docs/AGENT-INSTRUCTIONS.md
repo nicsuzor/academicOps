@@ -78,7 +78,7 @@ When ANY error occurs during workflow execution:
 - Tasks with trigger words → `$ACADEMIC_OPS_DATA/tasks/inbox/`
 - Project information → `$ACADEMIC_OPS_DATA/projects/*.md`
 - Strategic goals → `$ACADEMIC_OPS_DATA/goals/*.md`
-- Use `task_add.sh` for tasks with project classification
+- Use `task_add.py` for tasks with project classification
 - Commit immediately after extraction
 
 ### CRITICAL DISTINCTION: Projects vs Tasks

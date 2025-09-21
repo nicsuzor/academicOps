@@ -26,7 +26,7 @@
 
 ### Task Management
 Located in `scripts/`:
-- `task_add.sh` - Add new tasks to inbox
+- `task_add.py` - Add new tasks to inbox
 - `task_complete.sh` - Mark tasks as completed
 - `task_view.py` - Generate current task view
 - `task_process.py` - Process and organize tasks

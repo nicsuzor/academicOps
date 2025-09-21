@@ -86,9 +86,9 @@ When extracting:
 
 ### 4. Project Classification
 
-Use the task_add.sh script with appropriate project parameter:
+Use the task_add.py script with appropriate project parameter:
 ```bash
-$ACADEMIC_OPS_SCRIPTS/task_add.sh "Task description" "project-name"
+$ACADEMIC_OPS_SCRIPTS/task_add.py "Task description" "project-name"
 ```
 
 If uncertain about project classification, list available projects and ask user:

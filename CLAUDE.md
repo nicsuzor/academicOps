@@ -1,1 +1,1 @@
-**CRITICAL**: Read `bot/agents/base.md` for your instructions and follow them precisely.
+Read `./docs/agent/INSTRUCTIONS.md` for project instructions.
