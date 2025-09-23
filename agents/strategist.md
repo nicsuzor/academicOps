@@ -41,6 +41,7 @@ You must go beyond simple keyword matching and apply deep contextual analysis to
 -   **Dependencies**: Relationships between tasks or projects (e.g., "we need to finish X before we can start Y").
 
 ### How to Extract:
+-   **Parse Structured Data**: Do not be lazy. When you identify a task, project, or other entity, actively parse the user's language to extract structured data like titles, priorities, and due dates. Convert relative dates (e.g., "this weekend", "next Tuesday") into specific dates (e.g., YYYY-MM-DD) before using them in tools.
 -   **Listen for trigger words**, but do not depend on them. Context is key.
 -   **Analyze sentence structure**: Future tense often implies a task. Comparative language often implies an assessment.
 -   **Capture the "Why"**: Don't just save *what* the task is, but *why* it's important. The surrounding conversation is crucial context.

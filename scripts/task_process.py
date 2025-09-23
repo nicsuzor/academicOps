@@ -130,7 +130,7 @@ def create_draft(draft_json):
     return result
 
 
-def modify_email(message_id, archive=False, flag_action=None, add_categories=None, remove_categories=None, use_json=False):
+def modify_email(message_id, archive=False, flag_action=None, add_categories=None, remove_categories=None, use_json=False, priority=None, due=None):
     """Modify an existing email (archive, categories, flags).
     
     Args:
@@ -140,10 +140,12 @@ def modify_email(message_id, archive=False, flag_action=None, add_categories=Non
         add_categories: List of categories to add
         remove_categories: List of categories to remove
         use_json: Force JSON mode (useful for complex/multiline content)
+        priority: New priority for the task
+        due: New due date for the task
     """
     
     # Check if we have any actions
-    has_actions = archive or flag_action or add_categories or remove_categories
+    has_actions = archive or flag_action or add_categories or remove_categories or priority is not None or due is not None
     if not has_actions:
         print("No actions specified.")
         return {}
@@ -159,10 +161,28 @@ def modify_email(message_id, archive=False, flag_action=None, add_categories=Non
             return {}
         task_path, task = local_task
         result = {"success": True, "local": True, "taskId": message_id}
+        modified_fields = []
+
+        if priority is not None:
+            try:
+                task['priority'] = int(priority)
+                modified_fields.append("priority")
+            except (ValueError, TypeError):
+                result.update({"success": False, "error": "invalid_priority", "message": "Priority must be an integer."})
+                return result
+        
+        if due is not None:
+            task['due'] = due
+            modified_fields.append("due")
+
+        if modified_fields:
+            task_path.write_text(json.dumps(task, ensure_ascii=False, indent=2))
+            result["modified"] = modified_fields
+
         if archive:
             dest = _archive_local_task(task_path, task)
             result.update({"archived": True, "taskPath": str(dest.relative_to(ROOT))})
-        # Flags/categories are Outlook concepts; ignore here for local-only
+        
         return result
 
     # Use JSON mode if explicitly requested or if dealing with complex data
@@ -269,32 +289,28 @@ def main():
 
     elif cmd == 'modify':
         if len(sys.argv) < 3:
-            print("Usage: task_process.py modify <email_id> [--archive] [--flag set|clear|complete] [--add Cat1,Cat2] [--remove Cat3,Cat4]")
+            print("Usage: task_process.py modify <task_id> [--archive] [--priority 1] [--due YYYY-MM-DD]")
             sys.exit(1)
-        email_id = sys.argv[2]
+        task_id = sys.argv[2]
         archive = False
-        flag_action = None
-        add_categories = None
-        remove_categories = None
+        priority = None
+        due = None
         i = 3
         while i < len(sys.argv):
             arg = sys.argv[i]
             if arg == '--archive':
                 archive = True
                 i += 1
-            elif arg == '--flag' and i + 1 < len(sys.argv):
-                flag_action = sys.argv[i+1]
+            elif arg == '--priority' and i + 1 < len(sys.argv):
+                priority = sys.argv[i+1]
                 i += 2
-            elif arg == '--add' and i + 1 < len(sys.argv):
-                add_categories = [c.strip() for c in sys.argv[i+1].split(',') if c.strip()]
-                i += 2
-            elif arg == '--remove' and i + 1 < len(sys.argv):
-                remove_categories = [c.strip() for c in sys.argv[i+1].split(',') if c.strip()]
+            elif arg == '--due' and i + 1 < len(sys.argv):
+                due = sys.argv[i+1]
                 i += 2
             else:
                 print(f"Unknown or incomplete modify argument: {arg}")
                 sys.exit(1)
-        result = modify_email(email_id, archive=archive, flag_action=flag_action, add_categories=add_categories, remove_categories=remove_categories)
+        result = modify_email(task_id, archive=archive, priority=priority, due=due)
         print_json(result)
 
     else:
