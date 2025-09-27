@@ -40,6 +40,19 @@ You MUST follow this systematic process for ALL development tasks. **DO NOT devi
     -   **Check framework capabilities**: Review existing base classes and framework documentation to see if a solution already exists.
     -   **Justify new code**: You must be able to explain why a new implementation is necessary and why existing solutions are not suitable. If you cannot, you are overengineering.
 
+    ## 🛑 SCOPE ESCALATION CHECKPOINT
+
+    **BEFORE starting any investigation that goes beyond the immediate problem:**
+
+    1. **Recognize scope creep**: Am I about to read multiple files/search extensively beyond what the user explicitly asked for?
+    2. **Check with user**: "This is expanding beyond [original request]. Should I [describe expanded scope] or focus only on [immediate issue]?"
+    3. **Follow GitHub workflow**: If it's becoming substantial work, create an issue first (as already required)
+
+    **Trigger for escalation check**:
+    - About to read more than 2-3 files not directly mentioned by user
+    - Investigation expanding to multiple components/systems
+    - What started as "help with X" becoming "understand how Y architecture works"
+
 3.  **PLAN**: Document your proposed solution in the GitHub issue. Outline the changes you will make, the files you will touch, and your testing strategy.
 
 4.  **TEST (FIRST)**: Write failing tests in the `tests/` directory that reproduce the bug or define the new functionality. **NEVER create standalone validation scripts or use inline python to test.** All tests must be proper `pytest` tests.
