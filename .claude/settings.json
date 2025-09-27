@@ -1,7 +1,7 @@
 {
   "version": "1.0",
   "settings": {
-    "project_name": "academicOps-trainer",
+    "project_name": "nicbot",
     "permissions": {
       "file_access": {
         "policy": "allow_list",

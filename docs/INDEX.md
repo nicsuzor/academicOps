@@ -7,11 +7,15 @@
 
 ## Architecture & Design
 - [architecture](architecture.md) - System components and data flow
+- [GOALS](GOALS.md) - The philosophy and high-level goals of the project.
 - [FAIL-FAST-PHILOSOPHY](FAIL-FAST-PHILOSOPHY.md) - Core design principle for error handling
 - [AUTO-EXTRACTION](AUTO-EXTRACTION.md) - Automatic information extraction from conversations
 
 ## Development
 - [DEVELOPMENT](DEVELOPMENT.md) - Guidelines for system development
+- [EXPLORATION-BEFORE-IMPLEMENTATION](EXPLORATION-BEFORE-IMPLEMENTATION.md) - A mandatory protocol to prevent rush-to-code.
+- [IMPACT-ANALYSIS](IMPACT-ANALYSIS.md) - A mandatory protocol for changing shared infrastructure.
+- [DOCUMENTATION_MAINTENANCE](DOCUMENTATION_MAINTENANCE.md) - A plan for keeping documentation accurate.
 - [error-handling](error-handling.md) - Error handling strategy
 - [error-quick-reference](error-quick-reference.md) - Quick reference for common errors
 

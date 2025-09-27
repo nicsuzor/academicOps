@@ -1,76 +1,119 @@
-# DEVELOPMENT MODE
+# Development Workflow
 
-DEVELOPMENT MODE allows you to make changes to architecture, prompts, workflow, documentation, or other components of the meta-project.
+## 🚨 CRITICAL: Systematic Development Process
 
-In DEVELOPMENT MODE, you need to be EXTRA CAREFUL in identifying root causes and proposing solutions that fit our goals and design choices.
+The #1 rule: **STOP → ANALYZE → PLAN → TEST → IMPLEMENT → DOCUMENT → COMMIT**
 
-The reliability of our system is paramount, and its integrity relies on ensuring that workflows are CAREFULLY DESIGNED and RIGOROUSLY TESTED. 
+## Development Phases
 
+### Phase 1: STOP - Don't Rush
+Before writing ANY code:
+- Understand the full problem scope.
+- Check GitHub issues for related work.
+- Identify all stakeholders and impacts.
+- Question assumptions.
 
-## DEVELOPMENT MODE PROCESS:
+### Phase 2: ANALYZE - Map the Territory
+```bash
+# Check existing issues
+gh issue list --search "relevant keywords"
 
-1. First **CHECK EXISTING ISSUES**: Search for issues and discussion on GitHub to understand decisions and progress to date
-2. **MAKE A PLAN**: Create a new issue if required or update an open issue; create a details implementation plan with testing strategy and acceptance criteria.
-3. **FIX THE ROOT CAUSE**: Address the underlying issue in the project's instructions, prompts, or workflows. Do not just complete the specific task that failed.
-4. **BE CONCISE**: Keep all changes to prompts and documentation concise to manage token costs and improve clarity.
-5. **IMPLEMENT SOLUTION**: Write code, create workflows, update architecture
-6. **Log actions**: Create meaningful git commits describing what you did
-7. **Update your progress** in the relevant GitHub issues.
+# If no issue exists, create one
+gh issue create --title "Clear problem description" --body "Detailed analysis"
+```
 
-### INTERACTIVE DEVELOPMENT
+Key Analysis Steps:
+1. **Trace Data Flow**: Understand the data lifecycle.
+2. **Map Dependencies**: What touches what?
+3. **Identify Root Cause**: Not symptoms, but actual problems.
+4. **Check Error Propagation**: Are exceptions being handled and logged properly?
+5. **Verify Configuration Chain**: Check for proper inheritance and paths.
+6. **Check Schema Contracts**: Ensure data structures match across all components.
+7. **Document Findings**: Update the GitHub issue.
+
+### Phase 3: PLAN - Design Before Code
+Create a clear plan in a GitHub issue with:
+- Phases and milestones
+- Success criteria
+- Test cases
+- Rollback strategy
+
+### Phase 4: TEST - Failing Tests First
+**CRITICAL: Tests MUST be in the `tests/` directory using pytest conventions.**
+
+```python
+# File: tests/module/test_feature.py (NEVER create test files elsewhere)
+import pytest
+
+@pytest.mark.anyio
+async def test_expected_behavior():
+    """Test that demonstrates the problem."""
+    # This should pass when fixed
+    assert 1 == 1 # Replace with real test
+```
+
+**Run tests with:** `uv run pytest tests/`
+
+### Phase 5: IMPLEMENT - Minimal Changes
+- Make the smallest change that fixes the root cause.
+- Don't add "nice to have" features.
+- Keep existing interfaces stable.
+- Follow existing patterns.
+
+### Phase 6: DOCUMENT - Keep It Current
+- Update docstrings.
+- Add inline comments for complex logic.
+- Update relevant `.md` files.
+- Ensure examples still work.
+
+### Phase 7: COMMIT - Track Progress
+```bash
+# Commit with clear message referencing the issue
+git add -A
+git commit -m "fix: Clear description of what and why
+
+Fixes #123"
+
+# Update GitHub issue
+gh issue comment 123 --body "Fixed in commit abc123."
+```
+
+## GitHub Workflow
+
+- **ALWAYS** check for existing issues before starting work.
+- **ALWAYS** create or update an issue to document your plan and progress.
+- **ALWAYS** link commits to issues.
+
+## INTERACTIVE DEVELOPMENT
 When working directly with the user in a back-and-forth exchange, you must follow their directions PRECISELY.
 - **DO NOT** jump ahead or anticipate steps.
 - Acknowledge and wait at each step if the user indicates a pause.
 - Your role is to be a tool that the user is guiding, not an autonomous agent.
 
-## REMEMBER
-- Don't over-engineer, but adopt best practices.
-- **ALL CHANGES** must be committed to GitHub. Local artifacts are temporary only.
-- Adopt modular design for efficient reuse.
+## Anti-Patterns to Avoid
 
+### 🚫 Red Flags - Stop Immediately If You're:
+1. About to create ANY test file outside the `tests/` directory.
+2. Saying "let me test this" or "validate my implementation" without using pytest.
+3. Proposing config changes without understanding the data flow.
+4. Making multiple small fixes instead of one root cause fix.
+5. Suggesting "try this" without a systematic plan.
+6. Modifying code without tests demonstrating the problem.
+7. Making "quick fixes" to suppress errors.
 
-### Documentation Strategy - AVOID DUPLICATION
+### 🚫 Never Do These:
 
-**GitHub Issues** are for:
-- Problem identification and tracking
-- Implementation planning and discussion
-- Progress updates and resolution status
-- Known bugs and feature requests
+- **Standalone Test Scripts**: All tests must be in the `tests/` directory and use `pytest`.
+- **Superficial Fixes**: Do not change validation rules (e.g. Pydantic's `extra="forbid"`) to hide errors.
+- **Type Suppression**: Do not use `type: ignore`.
+- **Defensive Overload**: Do not add excessive checks for valid data. Let it fail.
+- **Schema Violations**: Do not support multiple locations for the same data or provide "safe" defaults. Trust the schema.
+- **Manual Configuration**: Do not create configurations in code; use YAML or designated config files.
 
+## Remember
 
-**DO NOT** create local files for bugs or progress tracking.
-**DO NOT** copy issue content into workflow files
-**DO NOT** create "Known Issues" sections in operational docs
-
-INSTEAD:
-- Reference GitHub issue numbers in commits
-- Link to workflow files from issues when relevant
-- Keep operational docs focused on HOW TO DO things
-- Keep issues focused on WHAT needs fixing/building
-
-### IMPORTANT: iterate and document!
-
-We are BUILDING a system and LEARNING what works. Every time you complete a task:
-
-1. **REFLECT** on what could be improved
-2. **UPDATE** this documentation accordingly
-3. **TRACK** progress using GitHub issues
-## Instructions
-
-**BEFORE** commencing a development task, you **MUST** read:
-
-
-## Core Principles
-
-**Don't over-engineer.** You're helping one person manage their projects more effectively. Keep solutions simple and focused on reducing cognitive load.
-
-## When Building Workflows
-- Start simple and iterate
-- Use existing tools (like Zapier) instead of building from scratch
-- Test with small batches first
-- Focus on what actually saves time
-
-## When Writing Documentation
-- Be concise and practical
-- Focus on what the workflow does, not implementation details
-- Update docs when things change significantly
+1. **Systematic Approach**: Don't guess, investigate.
+2. **One Change at a Time**: Isolate variables.
+3. **Document Everything**: Your future self will thank you.
+4. **Ask for Help**: Check issues, ask the team.
+5. **Take Breaks**: Fresh eyes see more.
