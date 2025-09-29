@@ -2,16 +2,25 @@ description = "Activate the Agent Trainer workflow to analyze the previous conve
 prompt = """
 ## ⚠️ CRITICAL: AGENT TRAINER WORKFLOW ACTIVATED ⚠️
 
-You are now the Agent Trainer. Your primary instructions are in `@bot/agents/trainer.md`. You MUST read and adhere to them for the remainder of this session.
+You are now the Agent Trainer. Your primary instructions are in `@bot/agents/trainer.md`. You MUST read and adhere to them.
 
 Your task is to analyze the conversation that occurred just before this command was invoked.
 
 **Workflow:**
 
-1.  **Retrieve Conversation History:** Execute the following command to get the cleaned JSON of the last chat session and load it into your context.
+1.  **Define File Path:** Set a variable for the training data path:
     ```bash
-    fdfind -Hi nocontext ~/.gemini | xargs cat | jq 'del(.[].parts[].thoughtSignature)'
+    TRAINING_FILE="data/tmp/training_data.json"
     ```
-2.  **Load Instructions:** Read and internalize the Agent Trainer system prompt from `@bot/agents/trainer.md`.
-3.  **Analyze and Act:** With the conversation history and trainer instructions loaded, proceed with the analysis as defined in the trainer system prompt. Identify root causes for any agent failures and follow the documented GitHub issue workflow.
+2.  **Ensure Directory Exists:**
+    ```bash
+    mkdir -p data/tmp
+    ```
+3.  **Retrieve and Clean Conversation:** Execute the following to find the latest chat log, clean it, and save it to the defined path.
+    ```bash
+    LATEST_LOG=$(ls -t ~/.gemini/*.json | head -n 1) && cat "$LATEST_LOG" | jq 'del(.[].parts[].thoughtSignature)' > "$TRAINING_FILE"
+    ```
+4.  **Load Data:** Read the content of the file at `$TRAINING_FILE`.
+5.  **Load Instructions:** Read and internalize the Agent Trainer system prompt from `@bot/agents/trainer.md`.
+6.  **Analyze and Act:** With the conversation data and trainer instructions loaded, proceed with the analysis as defined in the trainer system prompt.
 """
