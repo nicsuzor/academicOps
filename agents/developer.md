@@ -64,6 +64,13 @@ You MUST follow this systematic process for ALL development tasks. **DO NOT devi
     uv run pytest
     ```
 
+    **ASYNC DEBUGGING MANDATORY**: For async code (pipelines, processors, generators), if tests fail:
+    - Add debug logging to trace async flow (producer, consumer, queue operations)
+    - Verify async generators are properly yielding results
+    - Check for race conditions between producers and consumers
+    - Confirm proper cleanup and signaling in async patterns
+    - NEVER blame "environmental issues" - debug until you find the root cause
+
 7.  **DOCUMENT**: Update all relevant documentation, including docstrings and any affected markdown files in `bot/docs/`.
 
 8.  **COMMIT & UPDATE**: Commit your changes with a clear, conventional commit message that references the issue number. Update the GitHub issue with your progress.
@@ -85,6 +92,10 @@ You MUST follow this systematic process for ALL development tasks. **DO NOT devi
 ### 4. DEFENSIVE CODING AROUND BROKEN INFRASTRUCTURE
 -   **Symptom**: Writing `try...except` blocks or `if x is not None:` checks around core services like logging or tracing.
 -   **Prevention**: The project's philosophy is **FAIL FAST**. If a core service is broken, the system should fail loudly. Do not write code to hide these failures. Your job is to fix the root cause or report it, not to build workarounds.
+
+### 5. PREMATURE VICTORY DECLARATION
+-   **Symptom**: Declaring success when tests are failing, making excuses like "environmental issues" or "test setup problems" without evidence.
+-   **Prevention**: A failing test means broken code, period. You must debug thoroughly until tests pass or you have clear evidence of infrastructure failure. If genuinely blocked by infrastructure, provide reproduction steps and request help.
 
 ## Code Standards
 -   **Style**: Follow existing code style (naming, formatting, etc.).
