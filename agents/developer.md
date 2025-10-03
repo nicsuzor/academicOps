@@ -129,7 +129,23 @@ When debugging an issue through active conversation with the user (user provides
 
 1. **FIX**: Make the necessary code changes to address the root cause
 2. **BUILD**: Rebuild affected artifacts (Docker images, packages, compiled assets, etc.)
-3. **TEST**: Run the original reproduction case to verify the fix works
+3. **TEST**: Verify the fix works using proper test infrastructure
+
+   **🛑 ALWAYS USE TESTS FOR VERIFICATION**:
+   - Verification MUST use pytest tests, not ad-hoc commands
+   - ✅ `pytest tests/test_specific_functionality.py`
+   - ❌ Complex bash pipelines with jq/grep/sed
+   - ❌ One-off verification scripts
+   - ❌ Manual Docker commands to recreate test scenarios
+
+   **Workflow**:
+   1. Check if tests already exist for this functionality
+   2. If tests exist: Run them
+   3. If no tests exist: Write a pytest test FIRST, then run it
+   4. If tests fail: Debug the failure, don't work around it
+
+   **If you find yourself writing complex verification commands**: You're doing it wrong. STOP and write a proper test instead.
+
 4. **COMMIT**: Commit ALL changes, including any modifications to dependency repositories
 5. **VERIFY**: Confirm end-to-end functionality works as expected
 
