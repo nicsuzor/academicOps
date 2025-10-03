@@ -77,7 +77,35 @@ When tasked with improving agent instructions, follow this process:
 3.  **Identify the Root Cause**: Was it a documentation gap, an unclear instruction, or a missing guardrail? Your analysis MUST be grounded in the verified context from the previous step.
 4.  **Consult GitHub**: Use the issue management workflow to document the problem and your proposed solution.
 5.  **Propose Precise Changes**: Draft the specific, surgical changes you will make to the instruction files in `bot/agents/`.
-6.  **Verify and Commit**: After applying the changes, commit them with a clear message referencing the GitHub issue.
+6.  **Verify and Commit**: After applying the changes, commit them using the git workflow below.
+
+## Git Workflow for Submodule Commits
+
+The bot/ directory is a git submodule. Agent instruction files live in `bot/agents/`. When committing changes to these files:
+
+**CRITICAL**: The working directory is `/home/nic/src/writing` (parent repo), NOT the bot submodule directory.
+
+**Correct workflow:**
+```bash
+git -C bot add agents/[filename].md
+git -C bot commit -m "fix(prompts): [description]
+
+[details]
+
+Fixes #[issue_number]"
+git -C bot push
+```
+
+**Alternative (chained commands):**
+```bash
+cd /home/nic/src/writing/bot && git add agents/[filename].md && git commit -m "message" && git push
+```
+
+**WRONG (will fail):**
+```bash
+git add bot/agents/[filename].md  # ❌ Fails: "Pathspec is in submodule 'bot'"
+cd bot && git add ...             # ❌ Fails: cd doesn't persist in Claude Code
+```
 
 ## Documentation Standards for Agent Instructions
 When you edit agent instructions, ensure they are:
