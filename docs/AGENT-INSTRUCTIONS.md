@@ -4,7 +4,7 @@
 
 ### Repository Layout
 ```
-$ACADEMIC_OPS_ROOT/            # User's parent repository (PRIVATE)
+${OUTER}/                      # User's parent repository (PRIVATE)
 ├── data/                      # Personal task/project database
 │   ├── goals/                 # Strategic goals
 │   ├── projects/              # Active projects  
@@ -16,7 +16,7 @@ $ACADEMIC_OPS_ROOT/            # User's parent repository (PRIVATE)
     ├── scripts/               # Automation tools
     ├── models/                # Data models
     ├── config/                # Path configuration
-    └── .claude/.gemini/       # Agent configs
+    └── agents/                # Agent persona definitions
 ```
 
 **Path Resolution**: See [PATH-RESOLUTION](PATH-RESOLUTION.md) for multi-machine support.

@@ -71,6 +71,20 @@
 3. **You haven't looked at framework capabilities**
 4. **Your solution seems overly complex**
 
+## Case Study: Tool Creation Failure
+
+**Task**: Create a tool from a Pydantic schema for models without structured output support
+
+**What Happened**: Immediate jump to custom Tool implementation with manual schema building
+
+**What Should Have Happened**:
+1. **Search**: `grep -r "Tool" --include="*.py"`
+2. **Discover**: BaseTool already exists and does exactly this
+3. **Solution**: Simply inherit from BaseTool and pass Pydantic model as args_type
+4. **Result**: 10x simpler solution, 90% less code
+
+**The Pattern**: Surface-level keyword matching ("Pydantic", "tool") triggered implementation mode instead of exploration mode.
+
 ## Enforcement Mechanisms
 
 ### Before ANY Implementation:

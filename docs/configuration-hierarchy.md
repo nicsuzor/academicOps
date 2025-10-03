@@ -8,13 +8,10 @@ The agent configuration system uses a three-layer hierarchy with standardized lo
 
 ```
 /writing/                           # Repository root
-├── CLAUDE.md                      # Simple pointer to ./docs/agent/
-├── GEMINI.md                      # Simple pointer to ./docs/agent/
 ├── docs/
 │   └── agent/
 │       └── INSTRUCTIONS.md        # Global personal preferences
 ├── bot/                           # academicOps submodule
-│   ├── CLAUDE.md                  # Simple pointer to ./docs/agent/
 │   ├── agents/                    # Base agent definitions
 │   │   ├── base.md               # Core operational principles
 │   │   ├── strategist.md         # Strategic planning agent
@@ -24,12 +21,10 @@ The agent configuration system uses a three-layer hierarchy with standardized lo
 │       └── configuration-hierarchy.md  # This file
 └── projects/
     ├── wikijuris/                # WikiJuris submodule
-    │   ├── CLAUDE.md             # Simple pointer to ./docs/agent/
     │   └── docs/
     │       └── agent/
     │           └── INSTRUCTIONS.md   # WikiJuris-specific rules
     └── buttermilk/               # Buttermilk submodule
-        ├── CLAUDE.md             # Simple pointer to ./docs/agent/
         └── docs/
             └── agent/
                 └── INSTRUCTIONS.md   # Buttermilk-specific rules
@@ -37,12 +32,12 @@ The agent configuration system uses a three-layer hierarchy with standardized lo
 
 ## Configuration Precedence (Highest to Lowest)
 
-1. **Project-Specific** (`./docs/agent/INSTRUCTIONS.md`)
+1. **Project-Specific** (`./docs/agents/INSTRUCTIONS.md`)
    - Always checked first in the current working directory
    - Contains project-specific overrides and workflows
    - Completely overrides lower levels for specified behaviors
 
-2. **Personal/Global** (`/writing/docs/agent/INSTRUCTIONS.md`)
+2. **Personal/Global** (`/writing/docs/agents/INSTRUCTIONS.md`)
    - User's personal preferences across all projects
    - Applied when no project-specific configuration exists
    - Can reference and modify base agent behaviors
@@ -56,18 +51,18 @@ The agent configuration system uses a three-layer hierarchy with standardized lo
 
 ### Agent Loading Process
 
-1. When an agent starts, it reads its initial instructions (usually from CLAUDE.md)
-2. CLAUDE.md contains a single line: `Read './docs/agent/INSTRUCTIONS.md' for project instructions.`
-3. The agent checks for `./docs/agent/INSTRUCTIONS.md` in the current directory
-4. If found, those instructions take precedence
-5. If not found, it checks `/writing/docs/agent/INSTRUCTIONS.md` for global preferences
-6. Base agent definitions from `/writing/bot/agents/*.md` provide the foundation
+1. When an agent starts, it checks for instructions in a specific order
+2. First, it looks for `./docs/agents/INSTRUCTIONS.md` in the current directory
+3. If found, those project-specific instructions take precedence
+4. If not found, it checks `/writing/docs/agents/INSTRUCTIONS.md` for global preferences
+5. Base agent definitions from `/writing/bot/agents/*.md` provide the foundation
+6. More specific instructions always override more general ones
 
 ### Key Benefits
 
 - **Robust**: Works regardless of directory structure or submodule configuration
-- **Consistent**: Same pattern everywhere - always check `./docs/agent/INSTRUCTIONS.md`
-- **Simple**: One-line CLAUDE.md files, all logic in INSTRUCTIONS.md
+- **Consistent**: Same pattern everywhere - always check `./docs/agents/INSTRUCTIONS.md`
+- **Simple**: All configuration in standardized INSTRUCTIONS.md files
 - **Discoverable**: Standard location makes configurations easy to find
 - **Flexible**: Projects can override anything while maintaining base definitions
 - **Clean**: No empty directories or duplicate files
@@ -89,7 +84,7 @@ To add agent configuration to a new project:
    This is the project-specific configuration for [Project].
    
    1. **Project-Specific** (this file) - Overrides all other configurations
-   2. **Global** (`/writing/docs/agent/INSTRUCTIONS.md`) - Repository-wide preferences
+   2. **Global** (`/writing/docs/agents/INSTRUCTIONS.md`) - Repository-wide preferences
    3. **Base** (`/writing/bot/agents/*.md`) - Core agent definitions
    
    ## [Project]-Specific Instructions
@@ -101,17 +96,15 @@ To add agent configuration to a new project:
    - Use [agent] with these modifications: [...]
    ```
 
-3. Create or update CLAUDE.md:
-   ```markdown
-   Read `./docs/agent/INSTRUCTIONS.md` for project instructions.
-   ```
+3. That's it! Agents will automatically find and use these instructions.
 
 ## Migration from Old System
 
 The previous system had:
-- Multiple CLAUDE.md files with full instructions
+
+- Multiple configuration files with unclear precedence
 - BOT_INSTRUCTIONS.md files
-- Empty .claude/ and .gemini/ directories
+- Various scattered instruction files
 - Unclear precedence and duplication
 
 The new system consolidates everything into a clear, three-layer hierarchy with standardized locations.
@@ -119,18 +112,21 @@ The new system consolidates everything into a clear, three-layer hierarchy with 
 ## Troubleshooting
 
 ### Agent not finding instructions
-- Check you're using `./docs/agent/INSTRUCTIONS.md` (note the `./`)
+
+- Check you're using `./docs/agents/INSTRUCTIONS.md` (note the `./`)
 - Verify the directory structure matches the standard
-- Ensure CLAUDE.md points to the correct location
+- Ensure the INSTRUCTIONS.md file exists in the expected location
 
 ### Conflicting instructions
+
 - Remember: Project-specific > Global > Base
 - More specific instructions always win
 - Check all three layers to understand the full context
 
 ### Updating configurations
-- Project changes: Edit `./docs/agent/INSTRUCTIONS.md` in that project
-- Global changes: Edit `/writing/docs/agent/INSTRUCTIONS.md`
+
+- Project changes: Edit `./docs/agents/INSTRUCTIONS.md` in that project
+- Global changes: Edit `/writing/docs/agents/INSTRUCTIONS.md`
 - Base changes: Edit files in `/writing/bot/agents/`
 
 ## Best Practices

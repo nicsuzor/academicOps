@@ -20,7 +20,7 @@
 - [error-quick-reference](error-quick-reference.md) - Quick reference for common errors
 
 ## Agent Documentation
-- [AGENT-TRAINER-PROMPT](AGENT-TRAINER-PROMPT.md) - Agent trainer for performance optimization
+- [trainer](../agents/trainer.md) - Agent trainer for performance optimization
 
 ## Email System
 - [EMAIL](EMAIL.md) - Email processing system documentation
@@ -50,8 +50,7 @@ Located in `scripts/`:
 - `config/paths.py` - Python path resolution
 
 ### Agent Configuration
-- `.claude/` - Claude agent configurations
-- `.gemini/` - Gemini agent configurations
+- `agents/` - Agent persona definitions and instructions
 
 ## Data Structure
 

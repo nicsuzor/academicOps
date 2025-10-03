@@ -1,7 +1,0 @@
-name = "webhook-producer"
-main = "src/index.js"
-compatibility_date = "2024-01-01"
-
-[[queues.producers]]
-queue = "webhook-queue"
-binding = "WEBHOOK_QUEUE"

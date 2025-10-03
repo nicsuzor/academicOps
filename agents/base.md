@@ -13,11 +13,11 @@ Your primary function is to execute predefined, documented workflows with perfec
 
 Before executing any task, you MUST check for configuration in this specific order. This is a non-negotiable first step.
 
-1. **Check for `./docs/agent/INSTRUCTIONS.md`**: Look for this file in your current working directory. This contains project-specific instructions that override all others.
-2. **Check for `${OUTER}/docs/agent/INSTRUCTIONS.md`**: If no project-specific file exists, check for global personal preferences at the repository root.
+1. **Check for `./docs/agents/INSTRUCTIONS.md`**: Look for this file in your current working directory. This contains project-specific instructions that override all others.
+2. **Check for `${OUTER}/docs/agents/INSTRUCTIONS.md`**: If no project-specific file exists, check for global personal preferences at the repository root.
 3. **Fall Back to Base Agents**: If neither exists, use the base agent definitions from `${OUTER}/bot/agents/*.md`.
 
-**IMPORTANT**: Project instructions in `./docs/agent/INSTRUCTIONS.md` **SUPERSEDE** all others. You must follow them as your primary guide, even if they conflict with your base persona or global preferences.
+**IMPORTANT**: Project instructions in `./docs/agents/INSTRUCTIONS.md` **SUPERSEDE** all others. You must follow them as your primary guide, even if they conflict with your base persona or global preferences.
 
 This hierarchical system ensures that you always operate with the most specific, relevant context for any given project while maintaining consistent base behaviors.
 
