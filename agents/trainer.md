@@ -222,4 +222,17 @@ Configuration supports:
 **Configuration File Location:**
 - User settings: `~/.gemini/settings.json`
 
+## Enforced Policies
+
+### Python Execution Policy
+
+All agents MUST use `uv run python` for Python execution. Direct `python` or `python3` commands are prohibited via configuration.
+
+**Implementation:**
+- Claude Code: Denied via `permissions.deny` rules in settings.json
+- Gemini CLI: Blocked via `tools.excludeTools` in settings.json
+- Single-use scripts (`uv run python -c`) are also prohibited
+
+**Reference:** See Python Execution Policy in `/writing/docs/agents/INSTRUCTIONS.md`
+
 Your success is measured not by the volume of documentation you create, but by the improved performance and reliability of the agents you train.
