@@ -116,4 +116,110 @@ When you edit agent instructions, ensure they are:
 -   **Actionable**: Provide specific, implementable guidance.
 -   **Current**: Reflect the latest project standards and best practices.
 
+## LLM Client Software Documentation Reference
+
+When modifying agent instructions or addressing security concerns, reference the official documentation for the LLM client tools we use. This documentation covers configuration, security settings, and command restrictions.
+
+### Claude Code
+
+**Official Documentation:**
+- Overview & Configuration: https://docs.claude.com/en/docs/claude-code/overview
+- Settings Reference: https://docs.claude.com/en/docs/claude-code/settings
+- Security: https://docs.claude.com/en/docs/claude-code/security
+- SDK Permissions: https://docs.claude.com/en/docs/claude-code/sdk/sdk-permissions
+- MCP Integration: https://docs.claude.com/en/docs/claude-code/mcp
+
+**Key Configuration Files:**
+- User settings: `~/.claude/settings.json` (applies to all projects)
+- Project settings: `.claude/settings.json` (shared with team, in git)
+- Local settings: `.claude/settings.local.json` (personal, gitignored)
+
+**Restricting Commands:**
+```json
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run lint)",
+      "Bash(npm run test:*)",
+      "Read(~/.zshrc)"
+    ],
+    "deny": [
+      "Bash(curl:*)",
+      "Bash(rm:*)",
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Read(./secrets/**)"
+    ],
+    "ask": [
+      "Bash(git push:*)"
+    ]
+  }
+}
+```
+
+**Permission Rule Syntax:**
+- Tool name only: `"Read"` (matches all uses of Read tool)
+- With specifier: `"Bash(git log:*)"` (matches bash commands starting with "git log")
+- Glob patterns for files: `"Read(./secrets/**)"` (matches all files in secrets/)
+- Deny rules take precedence over allow/ask rules
+
+### Claude Desktop
+
+**Official Documentation:**
+- MCP Clients Guide: https://docs.mcp.run/mcp-clients/claude-desktop/
+- Getting Started with MCP: https://support.claude.com/en/articles/10949351-getting-started-with-local-mcp-servers-on-claude-desktop
+- Configuration: https://claude-desktop-config.readthedocs.io/
+
+**Configuration File Locations:**
+- macOS: `~/Library/Application\ Support/Claude/claude_desktop_config.json`
+- Windows: `%APPDATA%/Claude/config.json`
+
+**Enterprise Policy Controls:**
+```json
+{
+  "isDxtEnabled": true/false,              // Enable/disable desktop extensions
+  "isDxtDirectoryEnabled": true/false,     // Control public extension directory
+  "isDxtSignatureRequired": true/false,    // Require cryptographic signatures
+  "isLocalDevMcpEnabled": true/false       // Enable/disable local MCP servers
+}
+```
+
+**Security Features:**
+- Sensitive fields marked with `"sensitive": true` are automatically encrypted
+- Uses Keychain on macOS, Credential Manager on Windows
+- Machine-wide settings override user-specific settings
+
+### Gemini CLI
+
+**Official Documentation:**
+- Main Repository: https://github.com/google-gemini/gemini-cli
+- Configuration: https://google-gemini.github.io/gemini-cli/docs/cli/configuration.html
+- Authentication: https://google-gemini.github.io/gemini-cli/docs/cli/authentication.html
+- Sandboxing: Covered in configuration docs
+
+**Configuration Precedence (highest to lowest):**
+1. Command-line arguments
+2. Environment variables
+3. System settings file
+4. Project settings file
+5. User settings file
+6. System defaults file
+7. Default values
+
+**Restricting Tools:**
+Configuration supports:
+- `excludeTools`: Array of tool names to exclude from model
+- Command-specific restrictions: `"excludeTools": ["run_shell_command(rm -rf)"]`
+- Tool allowlisting for trusted operations
+
+**Sandboxing:**
+- Disabled by default
+- Enable via `--sandbox` flag or `GEMINI_SANDBOX` environment variable
+- Automatically enabled in `--yolo` mode
+- Custom sandbox: Create `.gemini/sandbox.Dockerfile` in project root
+- Uses Docker container isolation
+
+**Configuration File Location:**
+- User settings: `~/.gemini/settings.json`
+
 Your success is measured not by the volume of documentation you create, but by the improved performance and reliability of the agents you train.
