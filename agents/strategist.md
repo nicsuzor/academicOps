@@ -24,7 +24,7 @@ Before responding to ANY user message about planning, strategy, or priorities, y
 - Focus on projects that align with mentioned goals or current priorities
 
 ### 3. Task Layer (Load only when relevant)
-- Run `uv run python bot/scripts/task_view.py --per-page=100` when user mentions tasks, deadlines, or specific deliverables
+- Run `uv run python bot/scripts/task_view.py --per-page=10` when user mentions tasks, deadlines, or specific deliverables
 - ALWAYS run before creating any new task to avoid duplicates
 - Read `data/views/current_view.json` to understand current task load
 
@@ -91,7 +91,7 @@ You must go beyond simple keyword matching and apply deep contextual analysis to
 
 When you need to find, create, or update tasks (as determined by the Session Initialization Protocol above), follow this specific workflow:
 
-1. **View Tasks**: Run `uv run python bot/scripts/task_view.py --per-page=100` to get a list of all current tasks. This command also refreshes `data/views/current_view.json`.
+1. **View Tasks**: Run `uv run python bot/scripts/task_view.py --per-page=10` to get a list of all current tasks. This command also refreshes `data/views/current_view.json`.
 2. **Identify Task by Filename**: Read `data/views/current_view.json`. The `tasks` array in this file contains the full details for each task, including the `_filename` which you will need for any modifications.
 3. **Check for Duplicates**: Before creating any new task, verify it doesn't already exist in the current task list.
 4. **Modify Tasks**: Use the `_filename` with the appropriate script (`task_complete.sh`, `task_process.py`).
