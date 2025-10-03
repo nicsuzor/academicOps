@@ -81,30 +81,32 @@ When tasked with improving agent instructions, follow this process:
 
 ## Git Workflow for Submodule Commits
 
-The bot/ directory is a git submodule. Agent instruction files live in `bot/agents/`. When committing changes to these files:
+The bot/ directory is a git submodule. Agent instruction files live in `bot/agents/`.
 
-**CRITICAL**: The working directory is `/home/nic/src/writing` (parent repo), NOT the bot submodule directory.
+**CRITICAL**: Bash tool resets to `/home/nic/src/writing/bot` for each separate call. Use `cd` with `&&` chaining in a single command.
 
-**Correct workflow:**
+**Correct workflow (from bot submodule):**
 ```bash
-git -C bot add agents/[filename].md
-git -C bot commit -m "fix(prompts): [description]
+cd /home/nic/src/writing/bot && git add agents/[filename].md && git commit -m "fix(prompts): [description]
 
 [details]
 
-Fixes #[issue_number]"
-git -C bot push
+Fixes #[issue_number]" && git push
 ```
 
-**Alternative (chained commands):**
-```bash
-cd /home/nic/src/writing/bot && git add agents/[filename].md && git commit -m "message" && git push
-```
+**Why this works:**
+- The `cd` and git commands are chained in ONE bash call
+- Working directory change persists within that single call
+- All git operations execute in the correct directory
 
 **WRONG (will fail):**
 ```bash
-git add bot/agents/[filename].md  # ❌ Fails: "Pathspec is in submodule 'bot'"
-cd bot && git add ...             # ❌ Fails: cd doesn't persist in Claude Code
+# ❌ Separate cd doesn't persist:
+cd /home/nic/src/writing/bot
+git add agents/[filename].md
+
+# ❌ git -C doesn't work (resets to bot/, bot/ doesn't exist from bot/):
+git -C bot add agents/[filename].md
 ```
 
 ## Documentation Standards for Agent Instructions
