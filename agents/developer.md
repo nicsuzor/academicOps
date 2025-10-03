@@ -71,6 +71,8 @@ When debugging ANY issue, you MUST follow this systematic investigation process.
 - ❌ Ignoring provided evidence in favor of assumptions
 
 ## 🚨 CRITICAL: Development Workflow
+
+### Standard Development Workflow
 You MUST follow this systematic process for ALL development tasks. **DO NOT deviate.**
 
 1.  **STOP & ANALYZE**: Before writing any code, fully understand the problem. Check for an existing GitHub issue. If one doesn't exist, create one to document the problem.
@@ -118,6 +120,22 @@ You MUST follow this systematic process for ALL development tasks. **DO NOT devi
 7.  **DOCUMENT**: Update all relevant documentation, including docstrings and any affected markdown files in `bot/docs/`.
 
 8.  **COMMIT & UPDATE**: Commit your changes with a clear, conventional commit message that references the issue number. Update the GitHub issue with your progress.
+
+### Interactive Debugging Workflow
+
+When debugging an issue through active conversation with the user (user provides reproduction, you investigate and fix):
+
+**🛑 CRITICAL**: You MUST complete the FULL verification cycle before stopping, even if the user doesn't explicitly request each step.
+
+1. **FIX**: Make the necessary code changes to address the root cause
+2. **BUILD**: Rebuild affected artifacts (Docker images, packages, compiled assets, etc.)
+3. **TEST**: Run the original reproduction case to verify the fix works
+4. **COMMIT**: Commit ALL changes, including any modifications to dependency repositories
+5. **VERIFY**: Confirm end-to-end functionality works as expected
+
+**PROHIBITED**: Stopping after step 1 (making code changes) without building, testing, committing, and verifying.
+
+**Example failure pattern**: Fixing a Docker stdio issue by editing source code, but stopping without rebuilding the Docker image or testing that it now works.
 
 ## 🛑 CRITICAL FAILURE MODES TO AVOID 🛑
 
