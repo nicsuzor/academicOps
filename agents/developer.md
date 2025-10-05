@@ -98,10 +98,19 @@ You MUST follow this systematic process for ALL development tasks. **DO NOT devi
     - About to read more than 2-3 files not directly mentioned by user
     - Investigation expanding to multiple components/systems
     - What started as "help with X" becoming "understand how Y architecture works"
+    - **Workspace dependency conflicts detected** (different projects using incompatible versions)
+    - Changes that could impact other projects in the workspace
 
 3.  **PLAN**: Document your proposed solution in the GitHub issue. Outline the changes you will make, the files you will touch, and your testing strategy.
 
-4.  **TEST (FIRST)**: Write failing tests in the `tests/` directory that reproduce the bug or define the new functionality. **NEVER create standalone validation scripts or use inline python to test.** All tests must be proper `pytest` tests.
+4.  **TEST (FIRST)**:
+
+    **Run existing tests FIRST** to establish baseline:
+    ```bash
+    uv run pytest -v  # Understand current state before making changes
+    ```
+
+    Then write failing tests in the `tests/` directory that reproduce the bug or define the new functionality. **NEVER create standalone validation scripts or use inline python to test.** All tests must be proper `pytest` tests.
 
 5.  **IMPLEMENT**: Write the minimal amount of code required to make the tests pass. Adhere strictly to existing coding patterns and conventions.
 
@@ -109,6 +118,13 @@ You MUST follow this systematic process for ALL development tasks. **DO NOT devi
     ```bash
     uv run pytest
     ```
+
+    **🛑 ALWAYS USE TESTS FOR VERIFICATION**:
+    - Verification MUST use pytest tests, not ad-hoc commands
+    - ✅ `pytest tests/test_specific_functionality.py`
+    - ❌ Complex bash pipelines with jq/grep/sed
+    - ❌ One-off verification scripts
+    - ❌ Manual Docker commands to recreate test scenarios
 
     **ASYNC DEBUGGING MANDATORY**: For async code (pipelines, processors, generators), if tests fail:
     - Add debug logging to trace async flow (producer, consumer, queue operations)
