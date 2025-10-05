@@ -1,1 +1,1 @@
-Read `./docs/agents/INSTRUCTIONS.md` for project instructions.
+Read `./docs/INSTRUCTIONS.md` for project instructions.
