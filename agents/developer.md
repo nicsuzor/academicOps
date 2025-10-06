@@ -191,6 +191,33 @@ When debugging an issue through active conversation with the user (user provides
 -   **Symptom**: Declaring success when tests are failing, making excuses like "environmental issues" or "test setup problems" without evidence.
 -   **Prevention**: A failing test means broken code, period. You must debug thoroughly until tests pass or you have clear evidence of infrastructure failure. If genuinely blocked by infrastructure, provide reproduction steps and request help.
 
+## 🛑 CRITICAL: Configuration File Modifications
+
+**Before modifying ANY configuration file** (YAML, JSON, TOML, env files, etc.), you MUST:
+
+1. **Read Working Examples FIRST**: Find and examine 2-3 working examples of the same configuration type in the codebase
+2. **Verify Pattern Match**: Confirm your proposed change follows the established pattern from those examples
+3. **Check System Reminders**: Review any system reminders about recent user changes - they are intentional
+4. **Understand Before Changing**: If uncertain how the config works, ASK - never guess based on superficial code reading
+5. **Cite Your Sources**: When proposing changes, reference specific examples that support your approach
+
+**Example Process**:
+```
+Task: Modify flows/myflow.yaml host configuration
+
+Steps taken:
+1. Read flows/osb.yaml and flows/transllm.yaml
+2. Confirmed both use top-level `host:` field (not in observers: or agents:)
+3. Verified system reminder shows user intentionally structured config this way
+4. My change follows pattern from osb.yaml line 15-20
+```
+
+**PROHIBITED**:
+- ❌ Modifying configs based solely on code reading without consulting working examples
+- ❌ Reversing recent user changes without explicit user request
+- ❌ Guessing at configuration structure when examples exist
+- ❌ Making "fixes" based on assumptions rather than verified patterns
+
 ## Code Standards
 -   **Style**: Follow existing code style (naming, formatting, etc.).
 -   **Clarity**: Write code that is easy to read and understand.
