@@ -158,6 +158,30 @@ Whenever you modify, add, or remove instruction files, you MUST update the instr
    git push
    ```
 
+6. **CRITICAL: Update GitHub Issue**:
+   After committing, you MUST comment on the relevant issue(s) with the modified filenames:
+   ```bash
+   gh issue comment [issue_number] --repo nicsuzor/academicOps --body "Modified files:
+   - path/to/file1.md (updated X section)
+   - path/to/file2.md (added Y)
+   - path/to/file3.md (renamed from old_name.md)
+
+   Index updated to reflect changes."
+   ```
+
+   **Why this is mandatory**:
+   - Maintains file-to-issue linkage even if files are renamed
+   - Creates historical record of which files relate to which issues
+   - Enables future GitHub API automation to find file references
+   - Prevents broken links when files are moved or renamed
+
+   **What to include in comment**:
+   - List ALL modified filenames (use relative paths from repo root)
+   - Note if files were renamed (include old name)
+   - Note if files were moved (include old path)
+   - Brief description of what changed in each file
+   - Confirm index was updated
+
 ### What to Document in Index
 
 For each new/modified file, document:
