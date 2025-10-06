@@ -95,6 +95,109 @@ When tasked with improving agent instructions, follow this process:
 5.  **Propose Precise Changes**: Draft the specific, surgical changes you will make to the instruction files in `bot/agents/`.
 6.  **Verify and Commit**: After applying the changes, commit them using the git workflow below.
 
+## CRITICAL: Maintaining Instruction Indexes
+
+Whenever you modify, add, or remove instruction files, you MUST update the instruction indexes and run the orphan checker.
+
+### Two Instruction Indexes
+
+**1. bot/docs/INSTRUCTION-INDEX.md (PUBLIC)**
+- For third-party users of academicOps
+- Documents all files in bot/ repository
+- Describes external files agents reference (abstractly)
+- Updated when bot/ files change
+
+**2. $OUTER/docs/INSTRUCTION-INDEX.md (PRIVATE)**
+- For this specific user's complete setup
+- Documents all parent repo, bot, and project files
+- Updated when ANY instruction file changes
+
+### Mandatory Update Workflow
+
+**After ANY change to instruction files:**
+
+1. **Update Appropriate Index**:
+   - Changed bot/ files → Update `bot/docs/INSTRUCTION-INDEX.md`
+   - Changed parent/project files → Update `$OUTER/docs/INSTRUCTION-INDEX.md`
+   - Changed both → Update both indexes
+
+2. **Run Orphan Checker**:
+   ```bash
+   # From bot submodule
+   cd /home/nic/src/writing/bot && python scripts/check_instruction_orphans.py
+
+   # Or from parent repo
+   cd /home/nic/src/writing && python bot/scripts/check_instruction_orphans.py
+   ```
+
+3. **Fix Any Orphans**:
+   - If critical orphans found: Link from parent files OR move to non-critical location
+   - If non-critical orphans: Link from appropriate parent OR archive
+
+4. **Update Index Entries**:
+   - Add new files to File Registry section
+   - Update "Loaded by", "References", "Status" fields
+   - Add GitHub issue references if applicable
+   - Update "Shadow & Override" section if relevant
+
+5. **Commit Together**:
+   ```bash
+   # Bot changes
+   cd /home/nic/src/writing/bot && \
+   git add agents/ docs/INSTRUCTION-INDEX.md && \
+   git commit -m "fix(prompts): [description]
+
+   Updated INSTRUCTION-INDEX.md to reflect changes.
+
+   Fixes #[issue]" && git push
+
+   # Parent changes (if needed)
+   cd /home/nic/src/writing && \
+   git add docs/INSTRUCTION-INDEX.md && \
+   git commit -m "docs: Update instruction index" && \
+   git push
+   ```
+
+### What to Document in Index
+
+For each new/modified file, document:
+- **Purpose**: What this file does (one line)
+- **Loaded by**: What explicitly references it
+- **References**: What files it points to
+- **Status**: ✅ Required | ⚠️ Optional | ❌ Orphaned | 🔧 Maintenance
+- **Issues**: GitHub issue numbers (e.g., #73)
+- **Shadows**: If it overrides another file
+
+### Shadow/Override Documentation
+
+When files shadow or duplicate each other, explain the relationship:
+
+```markdown
+**docs/DEVELOPMENT.md vs bot/docs/DEVELOPMENT.md vs bot/agents/developer.md**
+- **Parent docs/DEVELOPMENT.md**: User's development workflows
+- **Bot docs/DEVELOPMENT.md**: How to develop academicOps itself
+- **Bot agents/developer.md**: How developer agent should behave
+- **NOT duplicates**: Three different purposes
+```
+
+### CI/CD Integration
+
+The orphan checker runs automatically on GitHub PRs/pushes that modify instruction files. If it fails:
+1. Check the workflow logs for orphaned files
+2. Fix the orphans (link or archive)
+3. Update the index
+4. Push the fix
+
+### Quarterly Maintenance
+
+Every 3 months, perform complete index review:
+1. Run orphan checker
+2. Verify all "Loaded by" references still accurate
+3. Check for new duplicate files
+4. Archive outdated/unused files
+5. Update GitHub issue references
+6. Verify shadow relationships still accurate
+
 ## Git Workflow for Submodule Commits
 
 The bot/ directory is a git submodule. Agent instruction files live in `bot/agents/`.
