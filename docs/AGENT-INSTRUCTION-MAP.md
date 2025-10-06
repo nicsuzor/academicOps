@@ -1,505 +1,714 @@
-# Agent Instruction Map
+# Agent Instruction Map - Loading Trees & File Registry
 
-**Purpose**: Complete reference showing which agents read which instruction files and when.
+**Purpose**: Navigate the agent instruction system by understanding what loads what and when.
 
-**Maintenance**: Update this file when adding new agents, instruction files, or changing loading patterns.
-
----
-
-## Quick Reference
-
-### Agent List (8 Total)
-
-**Core Agents** (bot/agents/):
-- `base` - Default workflow execution
-- `developer` - Code development, testing, debugging
-- `analyst` - Data analysis and insights
-- `strategist` - Planning and information extraction
-- `academic_writer` - Academic prose expansion
-- `documenter` - Documentation maintenance
-- `mentor` - Strategic guidance (read-only)
-- `trainer` - Meta-agent for improving other agents
-
-**Project-Specific Agents**:
-- Buttermilk: `debugger`, `tester` (functional agents defined in docs/agents/*.md)
-- WikiJuris: None defined (uses core agents only)
+**Quick Answers**:
+- "What loads this file?" → See [File Registry](#file-registry)
+- "What files are orphaned?" → See [Disconnected Files](#disconnected-files)
+- "How do agents load in X context?" → See [Loading Trees](#loading-trees)
 
 ---
 
-## Instruction Loading Hierarchy
+## Loading Trees
 
-### Universal Loading Pattern (ALL Agents)
-
-Every agent follows this mandatory hierarchy:
-
-1. **CLAUDE.md Entry Point** (Project root or bot root)
-   - Parent repo: `/writing/CLAUDE.md` → `docs/INSTRUCTIONS.md`
-   - Bot submodule: `/writing/bot/CLAUDE.md` → `bot/docs/INSTRUCTIONS.md`
-   - Projects: `{project}/CLAUDE.md` → `{project}/docs/agent/INSTRUCTIONS.md`
-
-2. **Hierarchical Override System** (from base.md)
-   - Project-specific: `./docs/agents/INSTRUCTIONS.md` (if exists) **SUPERSEDES ALL**
-   - Global preferences: `${OUTER}/docs/agents/INSTRUCTIONS.md` (if exists)
-   - Base agents: `${OUTER}/bot/agents/{agent_name}.md` (fallback)
-
-3. **Additional Context** (loaded as needed)
-   - Project context: `docs/projects/{project}.md`
-   - Cross-cutting concerns: `docs/CROSS_CUTTING_CONCERNS.md`
-   - Writing style: `docs/STYLE.md` or `docs/STYLE-QUICK.md`
-
----
-
-## Instruction File Inventory
+Each tree shows the actual loading path from CLAUDE.md entry points.
 
 ### Parent Repository (/writing/)
 
-#### Entry Points
-- `CLAUDE.md` → Points to `docs/INSTRUCTIONS.md`
-
-#### Core Instructions
-- **`docs/INSTRUCTIONS.md`** - Complete parent repo instructions
-  - Loaded by: ALL agents working in parent repo
-  - Contains: Scope detection, project context system, modes, auto-extraction
-  - References: Multiple supporting docs below
-
-#### Supporting Documentation
-- **`docs/INDEX.md`** - Resource identifiers and tool locations
-- **`docs/modes.md`** - Interaction mode definitions
-- **`docs/accommodations.md`** - User needs and preferences
-- **`docs/STYLE.md`** - Comprehensive writing style guide
-- **`docs/STYLE-QUICK.md`** - Quick style reference
-- **`docs/AGENT_HIERARCHY.md`** - Agent system overview
-- **`docs/DEVELOPMENT.md`** - Development workflow rules
-- **`docs/architecture.md`** - System architecture
-- **`docs/error-handling.md`** - Error handling strategy
-- **`docs/error-quick-reference.md`** - Quick error responses
-- **`docs/EMAIL.md`** - Email processing workflow
-- **`docs/STRATEGY.md`** - Strategic planning guidance
-- **`docs/CROSS_CUTTING_CONCERNS.md`** - Cross-project dependencies
-
-#### Project Context (Cross-Project Coordination)
-- **`docs/projects/INDEX.md`** - Project registry
-- **`docs/projects/{project}.md`** - Per-project context (7 files):
-  - automod.md, buttermilk.md, mediamarkets.md, osbchatmcp.md, tja.md, wikijuris.md, zotmcp.md
-
-#### Workflow Documentation
-- **`docs/workflows/INDEX.md`** - Workflow index
-- **`docs/workflows/daily-planning.md`**
-- **`docs/workflows/idea-capture.md`**
-- **`docs/workflows/project-creation.md`**
-- **`docs/workflows/strategy.md`**
-- **`docs/workflows/weekly-review.md`**
+```
+CLAUDE.md (Root)
+├─→ docs/INSTRUCTIONS.md (PRIMARY - all parent repo agents)
+│   ├─→ docs/INDEX.md (tool/resource lookup)
+│   ├─→ docs/modes.md (interaction modes)
+│   ├─→ docs/error-quick-reference.md (quick error responses)
+│   ├─→ docs/error-handling.md (comprehensive error strategy)
+│   ├─→ docs/architecture.md (system architecture)
+│   ├─→ docs/DEVELOPMENT.md (development workflow)
+│   ├─→ docs/accommodations.md (user preferences)
+│   ├─→ docs/STYLE-QUICK.md (writing style quick ref)
+│   ├─→ docs/STYLE.md (comprehensive style guide)
+│   ├─→ docs/CROSS_CUTTING_CONCERNS.md (project dependencies)
+│   ├─→ docs/projects/INDEX.md (project registry)
+│   └─→ docs/projects/{7 project files} (project context)
+│
+└─→ bot/README.md (overview, referenced from INSTRUCTIONS)
+    ├─→ bot/docs/AGENT-INSTRUCTIONS.md (core operational guide)
+    ├─→ bot/docs/AUTO-EXTRACTION.md (extraction patterns)
+    ├─→ bot/docs/PATH-RESOLUTION.md (path configuration)
+    ├─→ bot/docs/SETUP.md (setup instructions)
+    └─→ bot/agents/{8 agent definitions}
+        ├─→ base.md
+        │   ├─→ docs/INDEX.md (tool lookup)
+        │   └─→ bot/docs/modes.md (mode constraints)
+        ├─→ developer.md (inherits base)
+        ├─→ analyst.md (inherits base)
+        │   └─→ README.md files + data/projects/*.md (auto-loads context)
+        ├─→ strategist.md (inherits base)
+        │   ├─→ bot/docs/scripts.md (tool documentation)
+        │   └─→ data/goals/*.md + data/context/*.md (session init)
+        ├─→ academic_writer.md (inherits base)
+        │   └─→ docs/STYLE.md, docs/STYLE-QUICK.md (writing style)
+        ├─→ documenter.md (inherits base)
+        │   ├─→ docs/STYLE.md, docs/STYLE-QUICK.md (writing style)
+        │   └─→ bot/docs/WRITING-STYLE-EXTRACTOR.md
+        ├─→ mentor.md (read-only)
+        └─→ trainer.md
+            └─→ Claude Code/Gemini docs (external references)
+```
 
 ### Bot Submodule (/writing/bot/)
 
-#### Entry Points
-- `README.md` - Core axioms and quick reference
-- `CLAUDE.md` → Points to `bot/docs/INSTRUCTIONS.md`
+```
+bot/CLAUDE.md
+└─→ bot/docs/INSTRUCTIONS.md (PRIMARY - bot context)
+    ├─→ bot/docs/AGENT-INSTRUCTIONS.md (core operational guide)
+    │   ├─→ bot/docs/AUTO-EXTRACTION.md
+    │   └─→ bot/docs/PATH-RESOLUTION.md
+    ├─→ bot/docs/INDEX.md (resource index)
+    ├─→ bot/docs/modes.md
+    ├─→ bot/docs/error-quick-reference.md
+    ├─→ bot/docs/error-handling.md
+    ├─→ bot/docs/architecture.md
+    ├─→ bot/docs/DEVELOPMENT.md
+    └─→ bot/docs/PATH-RESOLUTION.md
+```
 
-#### Core Instructions
-- **`docs/INSTRUCTIONS.md`** - Bot-specific core instructions
-  - Loaded by: ALL agents working in bot submodule
-  - Contains: Workflow mode, error handling, path resolution, git operations
-  - References: All supporting docs below
+### Buttermilk Project (/writing/projects/buttermilk/)
 
-#### Agent Definitions (bot/agents/)
-- **`base.md`** - Base agent with core operational principles
-  - Loaded by: Base agent, inherited by all agents
-  - Contains: Hierarchical instructions, workflow rules, data boundaries, submodule independence
-  - Critical sections: Rules 1-11 that ALL agents must follow
+```
+projects/buttermilk/CLAUDE.md
+└─→ docs/agent/INSTRUCTIONS.md (PRIMARY - Buttermilk context)
+    ├─→ docs/TESTING_PHILOSOPHY.md (testing principles)
+    ├─→ docs/bots/TEST_FIXER_AGENT.md (test fixing protocol)
+    ├─→ docs/bots/debugging.md (GOLDEN PATH - read first for debugging)
+    ├─→ docs/bots/exploration-before-implementation.md
+    ├─→ docs/bots/impact-analysis.md
+    ├─→ docs/bots/INDEX.md (buttermilk docs index)
+    ├─→ docs/bots/config.md
+    ├─→ docs/bots/data-architecture.md
+    ├─→ docs/bots/techstack.md
+    └─→ docs/agents/{3 functional agents}
+        ├─→ debugger.md → debugging.md (references golden path)
+        ├─→ tester.md → TESTING_PHILOSOPHY.md
+        └─→ debugging.md (guide, not agent definition)
+```
 
-- **`developer.md`** - Development agent
-  - Loaded by: Developer agent
-  - Contains: Debugging methodology, polyrepo constraints, development workflow
-  - Critical sections: Rush-to-code prevention, exploration mandate, testing requirements
+### WikiJuris Project (/writing/projects/wikijuris/)
 
-- **`analyst.md`** - Analysis agent
-  - Loaded by: Analyst agent
-  - Contains: Automatic context loading (README files, project overviews)
-  - Critical sections: Primary workflow for analysis tasks
-
-- **`strategist.md`** - Strategic planning agent
-  - Loaded by: Strategist agent
-  - Contains: Session initialization protocol, zero-friction capture, task management
-  - Critical sections: Deep mining patterns, state reconciliation
-
-- **`academic_writer.md`** - Academic writing agent
-  - Loaded by: Academic writer agent
-  - Contains: Expansion protocol, source fidelity rules, verification checklist
-  - Critical sections: What CAN/CANNOT do, quality control
-
-- **`documenter.md`** - Documentation agent
-  - Loaded by: Documenter agent
-  - Contains: Quality standards, single source of truth, style guides
-  - Critical sections: Workflow for creating/updating docs
-
-- **`mentor.md`** - Strategic mentor agent
-  - Loaded by: Mentor agent
-  - Contains: Socratic guidance, pattern recognition, intervention protocols
-  - Tools: Read-only (Glob, Grep, Read, WebFetch, TodoWrite)
-
-- **`trainer.md`** - Meta-agent for training other agents
-  - Loaded by: Trainer agent
-  - Contains: Agent performance responsibility, GitHub workflow, git submodule operations
-  - Critical sections: Scope of work, reflection framework, documentation standards
-
-#### Supporting Documentation
-- **`docs/AGENT-INSTRUCTIONS.md`** - Core operational guide
-  - Referenced by: base.md, all agent definitions
-  - Contains: Project structure, security rules, extraction patterns, tool matrix
-
-- **`docs/INDEX.md`** - Documentation index
-- **`docs/PATH-RESOLUTION.md`** - Path configuration system
-- **`docs/AUTO-EXTRACTION.md`** - ADHD-optimized extraction guide
-- **`docs/CONTEXT-EXTRACTION-ARCHITECTURE.md`** - Context system design
-- **`docs/DEEP-MINING-PATTERNS.md`** - Advanced extraction patterns
-- **`docs/WRITING-STYLE-EXTRACTOR.md`** - Style guide creation process
-- **`docs/EXPLORATION-BEFORE-IMPLEMENTATION.md`** - Pre-coding exploration requirements
-- **`docs/IMPACT-ANALYSIS.md`** - Shared infrastructure analysis
-- **`docs/FAIL-FAST-PHILOSOPHY.md`** - Fail-fast principles
-- **`docs/WORKFLOW-MODE-CRITICAL.md`** - Workflow mode enforcement
-- **`docs/DEBUGGING.md`** - Debugging methodology
-- **`docs/DOCUMENTATION_MAINTENANCE.md`** - Doc maintenance guide
-- **`docs/architecture.md`** - Bot architecture
-- **`docs/error-handling.md`** - Bot error handling
-- **`docs/error-quick-reference.md`** - Bot quick error reference
-- **`docs/configuration-hierarchy.md`** - Config hierarchy
-- **`docs/scripts.md`** - Script documentation
-- **`docs/LOGS.md`** - Logging conventions
-- **`docs/GOALS.md`** - Bot goals and principles
-- **`docs/TECHSTACK.md`** - Technology stack
-- **`docs/DEVELOPMENT.md`** - Bot development guide
-- **`docs/DATA-ARCHITECTURE.md`** - Data architecture
-- **`docs/SETUP.md`** - Setup instructions
-
-### Project: Buttermilk (/writing/projects/buttermilk/)
-
-#### Entry Points
-- `CLAUDE.md` → Points to `docs/agent/INSTRUCTIONS.md`
-
-#### Core Instructions
-- **`docs/agent/INSTRUCTIONS.md`** - Buttermilk-specific instructions
-  - Loaded by: ALL agents when working in Buttermilk
-  - Contains: Critical failure modes, testing protocols, validation rules, debugging workflow
-  - Critical sections: Standalone validation prohibition, fail-fast enforcement, shared infrastructure rules
-
-- **`docs/AGENT_INSTRUCTIONS.md`** - Alternative instruction file (appears duplicate)
-
-#### Functional Agent Definitions
-- **`docs/agents/debugger.md`** - Debug Pipeline Manager
-  - Type: Operational persona (not in bot/agents/)
-  - Contains: Live debugging protocols, tool hierarchy, configuration validation
-  - Tools: ws_debug_cli.py, buttermilk_logs.py, Playwright MCP
-
-- **`docs/agents/debugging.md`** - Debugging golden path guide
-  - Type: Documentation (not agent definition)
-  - Contains: Validated debugging workflow, tool commands, success criteria
-
-- **`docs/agents/tester.md`** - Test Fixer Agent
-  - Type: Operational persona
-  - Contains: Testing philosophy, fixture usage, command reference
-
-#### Supporting Documentation
-- **`docs/README.md`** - Buttermilk overview
-- **`docs/bots/INDEX.md`** - Bot documentation index
-- **`docs/bots/config.md`** - Configuration guide
-- **`docs/bots/data-architecture.md`** - Buttermilk data architecture
-- **`docs/bots/techstack.md`** - Tech stack
-- **`docs/bots/TEST_FIXER_AGENT.md`** - Test fixing protocol
-- **`docs/bots/exploration-before-implementation.md`** - Exploration requirements
-- **`docs/bots/impact-analysis.md`** - Impact analysis protocol
-- **`docs/TESTING_PHILOSOPHY.md`** - Testing philosophy
-- **`docs/TEST_FIXING_PATTERNS.md`** - Test fixing patterns
-- **`docs/testing/BOUNDARY_MOCKING.md`** - Mocking guidelines
-- **`docs/reference/*.md`** - Technical reference docs
-  - cloud_infrastructure_setup.md
-  - concepts.md
-  - job_queue.md
-  - llm_agent.md
-  - osb_vector_database_guide.md
-  - tracing.md
-  - vector_database_guide.md
-  - zotero_vectordb_guide.md
-
-### Project: WikiJuris (/writing/projects/wikijuris/)
-
-#### Entry Points
-- `CLAUDE.md` → Points to `docs/agent/INSTRUCTIONS.md` (NOTE: Path mismatch - CLAUDE.md says `docs/agents/INSTRUCTIONS.md` but file is at `docs/agent/INSTRUCTIONS.md`)
-
-#### Core Instructions
-- **`docs/agent/INSTRUCTIONS.md`** - WikiJuris-specific instructions
-  - Loaded by: ALL agents when working in WikiJuris
-  - Contains: Editorial guidelines, workflow types, formatting standards, git workflow
-  - Critical sections: Content treatment, legal analysis focus, quality standards
+```
+projects/wikijuris/CLAUDE.md
+└─→ docs/agent/INSTRUCTIONS.md (PRIMARY - WikiJuris context)
+    └─→ (self-contained editorial guidelines, no sub-references)
+```
 
 ---
 
-## Agent-to-File Matrix
+## File Registry
 
-### All Agents (Universal)
+Every instruction/documentation file with connection analysis.
 
-**Always Load** (based on working directory):
-1. Entry point CLAUDE.md → primary INSTRUCTIONS.md
-2. Hierarchical override check (project → global → base)
-3. Agent-specific file from bot/agents/{name}.md
-
-### Agent: base
-
-**Core Files**:
-- bot/agents/base.md (agent definition)
-- bot/docs/AGENT-INSTRUCTIONS.md (referenced)
-- docs/modes.md (referenced for mode constraints)
-- docs/INDEX.md (for tool lookup)
-
-**Working Directory Context**:
-- If in parent repo: docs/INSTRUCTIONS.md
-- If in bot/: bot/docs/INSTRUCTIONS.md
-- If in project: {project}/docs/agent/INSTRUCTIONS.md
-
-### Agent: developer
-
-**Core Files**:
-- bot/agents/developer.md (agent definition)
-- All base agent files (inherits from base)
-- bot/docs/EXPLORATION-BEFORE-IMPLEMENTATION.md (mandatory before coding)
-- bot/docs/IMPACT-ANALYSIS.md (before modifying shared files)
-
-**Project-Specific**:
-- Buttermilk: docs/agent/INSTRUCTIONS.md (critical failure modes, testing protocols)
-- WikiJuris: docs/agent/INSTRUCTIONS.md (editorial guidelines)
-
-**References**:
-- GitHub issues (always check before starting work)
-
-### Agent: analyst
-
-**Core Files**:
-- bot/agents/analyst.md (agent definition)
-- All base agent files
-
-**Auto-Load Context** (from analyst.md):
-1. README.md files in current directory and parents
-2. data/README.md
-3. data/projects/{project}.md (corresponding project overview)
-
-**Working Directory Context**:
-- Project-specific INSTRUCTIONS.md if exists
-
-### Agent: strategist
-
-**Core Files**:
-- bot/agents/strategist.md (agent definition)
-- All base agent files
-- bot/docs/AUTO-EXTRACTION.md (comprehensive extraction guide)
-- bot/docs/DEEP-MINING-PATTERNS.md (advanced patterns)
-- bot/docs/scripts.md (tool documentation)
-
-**Session Initialization** (auto-load silently):
-1. data/goals/*.md (strategic priorities)
-2. data/context/current-priorities.md
-3. data/context/future-planning.md
-4. data/context/accomplishments.md
-5. Recently modified files in data/projects/
-6. data/views/current_view.json (when tasks mentioned)
-
-**Working Directory Context**:
-- Parent repo: docs/INSTRUCTIONS.md (auto-extraction rules)
-
-### Agent: academic_writer
-
-**Core Files**:
-- bot/agents/academic_writer.md (agent definition)
-- All base agent files
-
-**Writing Style** (referenced when drafting):
-- docs/STYLE-QUICK.md (for most tasks)
-- docs/STYLE.md (for deep writing)
-
-**Working Directory Context**:
-- Project-specific INSTRUCTIONS.md if exists
-
-### Agent: documenter
-
-**Core Files**:
-- bot/agents/documenter.md (agent definition)
-- All base agent files
-- bot/docs/DOCUMENTATION_MAINTENANCE.md (maintenance guide)
-
-**Writing Style** (referenced when creating docs):
-- docs/STYLE-QUICK.md (for most tasks)
-- docs/STYLE.md (for substantial content)
-- bot/docs/WRITING-STYLE-EXTRACTOR.md (if creating style guide)
-
-**Working Directory Context**:
-- Project-specific INSTRUCTIONS.md if exists
-
-### Agent: mentor
-
-**Core Files**:
-- bot/agents/mentor.md (agent definition)
-- All base agent files
-
-**Investigation** (reads as needed):
-- Project documentation
-- GitHub issues
-- Architecture files
-- Relevant code via Glob/Grep
-
-**Constraints**:
-- Read-only tools (no Write, Edit, or Bash)
-- Uses ExitPlanMode to deliver recommendations
-
-### Agent: trainer
-
-**Core Files**:
-- bot/agents/trainer.md (agent definition)
-- All base agent files
-- LLM client documentation (referenced for security/config)
-
-**Target Files** (modifies as needed):
-- bot/agents/*.md (agent definitions)
-- bot/docs/*.md (supporting documentation)
-- .claude/settings.json (Claude Code config)
-- .gemini/settings.json (Gemini CLI config)
-
-**References**:
-- GitHub issues in academicOps (ALL training issues tracked centrally)
-- Official docs: docs.claude.com, google-gemini.github.io
-
-**Git Workflow**:
-- Works in bot/ submodule
-- Must use `cd /home/nic/src/writing/bot && git add ... && git commit ... && git push` (single command chain)
-
-### Buttermilk Functional Agents
-
-**debugger** (Debug Pipeline Manager):
-- docs/agents/debugger.md (definition)
-- docs/agents/debugging.md (golden path guide) - **MUST read FIRST**
-- docs/agent/INSTRUCTIONS.md (project rules)
-- Uses: ws_debug_cli.py, buttermilk_logs.py, Playwright MCP
-- GitHub issues (required for all findings)
-
-**tester** (Test Fixer Agent):
-- docs/agents/tester.md (definition)
-- docs/agent/INSTRUCTIONS.md (project rules)
-- docs/TESTING_PHILOSOPHY.md (philosophy)
-- docs/bots/TEST_FIXER_AGENT.md (protocol)
-- Uses: pytest, ruff, existing fixtures
+### Format:
+**File**: Path
+- **Loaded by**: What explicitly loads it
+- **References**: What it points to
+- **Purpose**: What it's for
+- **Status**: Connected/Weakly-connected/Orphaned
 
 ---
 
-## File Categories
+### Entry Points (4 files)
 
-### Entry Points (3)
-- Parent CLAUDE.md → docs/INSTRUCTIONS.md
-- Bot CLAUDE.md → bot/docs/INSTRUCTIONS.md
-- Project CLAUDE.md → {project}/docs/agent/INSTRUCTIONS.md
+**CLAUDE.md** (parent)
+- **Loaded by**: All agents in parent repo context
+- **References**: docs/INSTRUCTIONS.md, bot/README.md
+- **Purpose**: Entry point for parent repository
+- **Status**: ✅ Connected (root)
 
-### Agent Definitions (8 core + project-specific)
-- bot/agents/base.md
-- bot/agents/developer.md
-- bot/agents/analyst.md
-- bot/agents/strategist.md
-- bot/agents/academic_writer.md
-- bot/agents/documenter.md
-- bot/agents/mentor.md
-- bot/agents/trainer.md
-- projects/buttermilk/docs/agents/debugger.md (functional)
-- projects/buttermilk/docs/agents/tester.md (functional)
+**bot/CLAUDE.md**
+- **Loaded by**: All agents in bot context
+- **References**: bot/docs/INSTRUCTIONS.md
+- **Purpose**: Entry point for bot submodule
+- **Status**: ✅ Connected (root)
 
-### Primary Instructions (3)
-- docs/INSTRUCTIONS.md (parent repo)
-- bot/docs/INSTRUCTIONS.md (bot submodule)
-- bot/docs/AGENT-INSTRUCTIONS.md (core operational guide)
+**projects/buttermilk/CLAUDE.md**
+- **Loaded by**: All agents in Buttermilk context
+- **References**: docs/agent/INSTRUCTIONS.md
+- **Purpose**: Entry point for Buttermilk project
+- **Status**: ✅ Connected (root)
 
-### Project-Specific Instructions (2)
-- projects/buttermilk/docs/agent/INSTRUCTIONS.md
-- projects/wikijuris/docs/agent/INSTRUCTIONS.md
-
-### Supporting Documentation (~50+ files)
-- Mode definitions, workflows, error handling
-- Writing style guides
-- Technical architecture
-- Tool documentation
-- Project context files
+**projects/wikijuris/CLAUDE.md**
+- **Loaded by**: All agents in WikiJuris context
+- **References**: docs/agents/INSTRUCTIONS.md (**BROKEN PATH** - should be `docs/agent/INSTRUCTIONS.md`)
+- **Purpose**: Entry point for WikiJuris project
+- **Status**: ⚠️ Broken reference
 
 ---
 
-## Critical Dependencies
+### Primary Instruction Files (3 files)
 
-### Referenced by ALL Agents
-- Entry point CLAUDE.md
-- Primary INSTRUCTIONS.md (repo-specific)
-- bot/agents/base.md (core rules)
-- bot/docs/AGENT-INSTRUCTIONS.md (operational guide)
+**docs/INSTRUCTIONS.md** (parent repo primary)
+- **Loaded by**: CLAUDE.md → All agents in parent context
+- **References**: 16 supporting docs (modes, INDEX, error handling, DEVELOPMENT, architecture, etc.)
+- **Purpose**: Complete instructions for parent repository operations
+- **Status**: ✅ Connected (primary)
 
-### Referenced by Multiple Agents
-- docs/STYLE.md, docs/STYLE-QUICK.md (writer, documenter)
-- bot/docs/AUTO-EXTRACTION.md (strategist, base references)
-- docs/modes.md (base, all agents check mode)
-- docs/INDEX.md (base references for tool lookup)
-- GitHub issues (developer, trainer, debugger)
+**bot/docs/INSTRUCTIONS.md** (bot primary)
+- **Loaded by**: bot/CLAUDE.md → All agents in bot context
+- **References**: 8 supporting docs (AGENT-INSTRUCTIONS, AUTO-EXTRACTION, modes, INDEX, etc.)
+- **Purpose**: Bot-specific core instructions
+- **Status**: ✅ Connected (primary)
 
-### Agent-Specific Critical Files
-- developer → EXPLORATION-BEFORE-IMPLEMENTATION.md, IMPACT-ANALYSIS.md
-- strategist → AUTO-EXTRACTION.md, DEEP-MINING-PATTERNS.md, scripts.md
-- analyst → Project README files, data/projects/*.md
-- trainer → LLM client docs, bot/agents/*.md
-- debugger → debugging.md (golden path)
-- tester → TESTING_PHILOSOPHY.md, TEST_FIXER_AGENT.md
+**bot/docs/AGENT-INSTRUCTIONS.md** (core operational)
+- **Loaded by**: bot/README.md, bot/docs/INSTRUCTIONS.md
+- **References**: AUTO-EXTRACTION.md, PATH-RESOLUTION.md, ../docs/STYLE.md
+- **Purpose**: Core operational guide for all agents
+- **Status**: ✅ Connected (primary)
 
 ---
 
-## Gaps and Issues Identified
+### Agent Definitions (8 core + 2 project-specific)
 
-### 1. Path Inconsistencies
-- WikiJuris CLAUDE.md references `docs/agents/INSTRUCTIONS.md` but file is at `docs/agent/INSTRUCTIONS.md`
+**bot/agents/base.md**
+- **Loaded by**: All agents (inherit from this)
+- **References**: docs/INDEX.md, bot/docs/modes.md, agent definition files
+- **Purpose**: Core rules all agents must follow
+- **Status**: ✅ Connected (foundational)
 
-### 2. Duplicate/Overlapping Files
-- Buttermilk has both `docs/agent/INSTRUCTIONS.md` and `docs/AGENT_INSTRUCTIONS.md`
-- Multiple error-handling docs: parent docs/error-*.md and bot/docs/error-*.md
-- Multiple architecture docs: parent docs/architecture.md and bot/docs/architecture.md
+**bot/agents/developer.md**
+- **Loaded by**: Developer agent
+- **References**: Base agent (inherits all base rules)
+- **Purpose**: Development workflow, debugging methodology
+- **Status**: ✅ Connected
 
-### 3. Missing Links
-- No clear documentation on when to use debugger vs tester agents in Buttermilk
-- Project context files (docs/projects/*.md) referenced but loading mechanism unclear
-- Auto-extraction patterns in bot/docs/ not clearly linked from parent docs/INSTRUCTIONS.md
+**bot/agents/analyst.md**
+- **Loaded by**: Analyst agent
+- **References**: Base agent, README.md, data/projects/*.md
+- **Purpose**: Data analysis with automatic context loading
+- **Status**: ✅ Connected
 
-### 4. Documentation Debt
-- Some files may be outdated (need verification):
-  - bot/docs/WORKFLOW-MODE-CRITICAL.md (separate from modes.md?)
-  - Duplicate INDEX.md files (docs/INDEX.md vs bot/docs/INDEX.md)
+**bot/agents/strategist.md**
+- **Loaded by**: Strategist agent
+- **References**: Base agent, bot/docs/scripts.md, data/goals/*.md, data/context/*.md
+- **Purpose**: Planning and zero-friction information extraction
+- **Status**: ✅ Connected
 
-### 5. Unlinked Files
-Files found but not clearly referenced in agent loading:
-- docs/PROJECT_SETUP.md
-- docs/EMAIL-TRIAGE-DESIGN.md
-- bot/docs/DATA-ARCHITECTURE.md (referenced by Buttermilk but in bot/)
-- Various workflow files in docs/workflows/ (some may be unused)
+**bot/agents/academic_writer.md**
+- **Loaded by**: Academic writer agent
+- **References**: Base agent, docs/STYLE.md, docs/STYLE-QUICK.md
+- **Purpose**: Academic prose expansion with source fidelity
+- **Status**: ✅ Connected
+
+**bot/agents/documenter.md**
+- **Loaded by**: Documenter agent
+- **References**: Base agent, docs/STYLE.md, bot/docs/WRITING-STYLE-EXTRACTOR.md
+- **Purpose**: Documentation creation and maintenance
+- **Status**: ✅ Connected
+
+**bot/agents/mentor.md**
+- **Loaded by**: Mentor agent
+- **References**: Base agent
+- **Purpose**: Strategic guidance (read-only)
+- **Status**: ✅ Connected
+
+**bot/agents/trainer.md**
+- **Loaded by**: Trainer agent
+- **References**: Base agent, external LLM client docs
+- **Purpose**: Meta-agent for improving other agents
+- **Status**: ✅ Connected
+
+**projects/buttermilk/docs/agents/debugger.md**
+- **Loaded by**: Explicitly invoked in Buttermilk context
+- **References**: debugging.md (golden path)
+- **Purpose**: Live debugging and validation
+- **Status**: ✅ Connected (Buttermilk-specific)
+
+**projects/buttermilk/docs/agents/tester.md**
+- **Loaded by**: Explicitly invoked in Buttermilk context
+- **References**: TESTING_PHILOSOPHY.md
+- **Purpose**: Test maintenance and fixing
+- **Status**: ✅ Connected (Buttermilk-specific)
 
 ---
 
-## Maintenance Protocol
+### Project-Specific Instructions (2 files)
 
-### When Adding New Agents
-1. Create agent definition in bot/agents/{name}.md
-2. Update this map with agent's file dependencies
-3. Update bot/README.md agent list
-4. Create GitHub issue in academicOps documenting the addition
+**projects/buttermilk/docs/agent/INSTRUCTIONS.md**
+- **Loaded by**: Buttermilk CLAUDE.md → All agents in Buttermilk
+- **References**: 7 supporting docs (TESTING_PHILOSOPHY, debugging, TEST_FIXER_AGENT, exploration, impact-analysis, INDEX, data-architecture)
+- **Purpose**: Buttermilk-specific rules (testing, validation, debugging)
+- **Status**: ✅ Connected (project primary)
 
-### When Adding New Instruction Files
-1. Determine scope (parent, bot, project)
-2. Add references to relevant agent definitions
+**projects/wikijuris/docs/agent/INSTRUCTIONS.md**
+- **Loaded by**: WikiJuris CLAUDE.md → All agents in WikiJuris
+- **References**: None (self-contained)
+- **Purpose**: WikiJuris editorial guidelines and workflows
+- **Status**: ✅ Connected (project primary)
+
+---
+
+### Supporting Documentation - Parent Repo (13 files)
+
+**docs/INDEX.md**
+- **Loaded by**: docs/INSTRUCTIONS.md, base.md
+- **References**: 12 tool/workflow files
+- **Purpose**: Resource identifiers and tool locations
+- **Status**: ✅ Connected
+
+**docs/modes.md**
+- **Loaded by**: docs/INSTRUCTIONS.md, bot/docs/INSTRUCTIONS.md, base.md
+- **References**: None
+- **Purpose**: Interaction mode definitions (WORKFLOW, SUPERVISED, DEVELOPMENT)
+- **Status**: ✅ Connected
+
+**docs/STYLE.md**
+- **Loaded by**: academic_writer, documenter, AGENT-INSTRUCTIONS
+- **References**: None
+- **Purpose**: Comprehensive writing style guide
+- **Status**: ✅ Connected
+
+**docs/STYLE-QUICK.md**
+- **Loaded by**: academic_writer, documenter, docs/INSTRUCTIONS.md
+- **References**: None
+- **Purpose**: Quick writing style reference
+- **Status**: ✅ Connected
+
+**docs/error-quick-reference.md**
+- **Loaded by**: docs/INSTRUCTIONS.md, bot/docs/INSTRUCTIONS.md
+- **References**: None
+- **Purpose**: Quick error response guide
+- **Status**: ✅ Connected
+
+**docs/error-handling.md**
+- **Loaded by**: docs/INSTRUCTIONS.md, bot/docs/INSTRUCTIONS.md
+- **References**: None
+- **Purpose**: Comprehensive error handling strategy
+- **Status**: ✅ Connected
+
+**docs/architecture.md**
+- **Loaded by**: docs/INSTRUCTIONS.md, bot/docs/INSTRUCTIONS.md
+- **References**: workflows/*.md, error-handling.md
+- **Purpose**: System architecture overview
+- **Status**: ✅ Connected
+
+**docs/DEVELOPMENT.md**
+- **Loaded by**: docs/INSTRUCTIONS.md, docs/INDEX.md
+- **References**: .md (malformed reference)
+- **Purpose**: Development workflow rules
+- **Status**: ✅ Connected
+
+**docs/accommodations.md**
+- **Loaded by**: docs/INSTRUCTIONS.md
+- **References**: None
+- **Purpose**: User needs and work style preferences
+- **Status**: ✅ Connected
+
+**docs/CROSS_CUTTING_CONCERNS.md**
+- **Loaded by**: docs/INSTRUCTIONS.md (when infrastructure changes)
+- **References**: data/projects/{project}.md, docs/projects/{project}.md
+- **Purpose**: Cross-project dependency tracking
+- **Status**: ✅ Connected
+
+**docs/STRATEGY.md**
+- **Loaded by**: docs/INDEX.md
+- **References**: reviews/YYYY-MM-weekly-WW.md
+- **Purpose**: Strategic planning guidance
+- **Status**: ✅ Connected
+
+**docs/AGENT_HIERARCHY.md**
+- **Loaded by**: (Not explicitly loaded)
+- **References**: bot/agents/*.md, instructions files
+- **Purpose**: Agent system overview
+- **Status**: ⚠️ Weakly connected (not in loading path)
+
+**docs/EMAIL.md**
+- **Loaded by**: docs/INDEX.md
+- **References**: None
+- **Purpose**: Email processing workflow
+- **Status**: ✅ Connected
+
+---
+
+### Supporting Documentation - Bot Submodule (17 files)
+
+**bot/docs/AUTO-EXTRACTION.md**
+- **Loaded by**: bot/README.md, bot/docs/AGENT-INSTRUCTIONS.md, bot/docs/INSTRUCTIONS.md
+- **References**: data file paths
+- **Purpose**: ADHD-optimized extraction guide
+- **Status**: ✅ Connected
+
+**bot/docs/PATH-RESOLUTION.md**
+- **Loaded by**: bot/README.md, bot/docs/AGENT-INSTRUCTIONS.md, bot/docs/INSTRUCTIONS.md, bot/docs/SETUP.md
+- **References**: None
+- **Purpose**: Multi-machine path configuration
+- **Status**: ✅ Connected
+
+**bot/docs/SETUP.md**
+- **Loaded by**: bot/README.md
+- **References**: bot/docs/PATH-RESOLUTION.md, docs/INSTRUCTIONS.md
+- **Purpose**: Setup instructions
+- **Status**: ✅ Connected
+
+**bot/docs/INDEX.md**
+- **Loaded by**: bot/docs/INSTRUCTIONS.md
+- **References**: 14 bot doc files
+- **Purpose**: Bot documentation index
+- **Status**: ✅ Connected
+
+**bot/docs/scripts.md**
+- **Loaded by**: strategist.md
+- **References**: None
+- **Purpose**: Script documentation and parallel-safety
+- **Status**: ✅ Connected
+
+**bot/docs/WRITING-STYLE-EXTRACTOR.md**
+- **Loaded by**: documenter.md
+- **References**: None
+- **Purpose**: Process for creating style guides
+- **Status**: ✅ Connected
+
+**bot/docs/configuration-hierarchy.md**
+- **Loaded by**: (Not explicitly loaded)
+- **References**: Instruction file paths
+- **Purpose**: Configuration hierarchy explanation
+- **Status**: ⚠️ Weakly connected (INDEX lists it but not loaded)
+
+**bot/docs/DEVELOPMENT.md**
+- **Loaded by**: bot/docs/INDEX.md, bot/docs/INSTRUCTIONS.md
+- **References**: .md (malformed)
+- **Purpose**: Bot development guide
+- **Status**: ✅ Connected
+
+**bot/docs/architecture.md**
+- **Loaded by**: bot/docs/INSTRUCTIONS.md
+- **References**: None
+- **Purpose**: Bot architecture
+- **Status**: ✅ Connected
+
+**bot/docs/error-handling.md**
+- **Loaded by**: bot/docs/INSTRUCTIONS.md
+- **References**: None
+- **Purpose**: Bot error handling
+- **Status**: ✅ Connected
+
+**bot/docs/error-quick-reference.md**
+- **Loaded by**: bot/docs/INSTRUCTIONS.md
+- **References**: None
+- **Purpose**: Bot quick error reference
+- **Status**: ✅ Connected
+
+**bot/docs/modes.md**
+- **Loaded by**: base.md
+- **References**: None
+- **Purpose**: Mode definitions (appears to duplicate parent docs/modes.md)
+- **Status**: ⚠️ Possible duplicate
+
+---
+
+### Orphaned Files - Bot Submodule (8 files)
+
+These files are NOT explicitly referenced in any loading path:
+
+**bot/docs/CONTEXT-EXTRACTION-ARCHITECTURE.md**
+- **Loaded by**: Never referenced
+- **References**: N/A
+- **Purpose**: Context system design
+- **Status**: ❌ Orphaned
+- **Action**: Link from AUTO-EXTRACTION.md or archive
+
+**bot/docs/DATA-ARCHITECTURE.md**
+- **Loaded by**: Never referenced (but Buttermilk references bot/docs/data-architecture.md?)
+- **References**: N/A
+- **Purpose**: Data architecture
+- **Status**: ❌ Orphaned
+- **Action**: Verify if needed, link from architecture.md or remove
+
+**bot/docs/DEBUGGING.md**
+- **Loaded by**: Never referenced
+- **References**: N/A
+- **Purpose**: Debugging methodology
+- **Status**: ❌ Orphaned
+- **Action**: Link from developer.md or consolidate with Buttermilk debugging.md
+
+**bot/docs/DEEP-MINING-PATTERNS.md**
+- **Loaded by**: Never referenced
+- **References**: N/A
+- **Purpose**: Advanced extraction patterns
+- **Status**: ❌ Orphaned
+- **Action**: Link from AUTO-EXTRACTION.md or strategist.md
+
+**bot/docs/DOCUMENTATION_MAINTENANCE.md**
+- **Loaded by**: Never referenced
+- **References**: N/A
+- **Purpose**: Doc maintenance guide
+- **Status**: ❌ Orphaned
+- **Action**: Link from documenter.md
+
+**bot/docs/EXPLORATION-BEFORE-IMPLEMENTATION.md**
+- **Loaded by**: Never referenced in bot/ (but Buttermilk references it)
+- **References**: N/A
+- **Purpose**: Pre-coding exploration requirements
+- **Status**: ⚠️ Cross-referenced but not in bot loading path
+- **Action**: Link from developer.md
+
+**bot/docs/FAIL-FAST-PHILOSOPHY.md**
+- **Loaded by**: Never referenced
+- **References**: N/A
+- **Purpose**: Fail-fast principles
+- **Status**: ❌ Orphaned
+- **Action**: Link from bot/docs/INSTRUCTIONS.md or error-handling.md
+
+**bot/docs/IMPACT-ANALYSIS.md**
+- **Loaded by**: Never referenced in bot/ (but Buttermilk references it)
+- **References**: N/A
+- **Purpose**: Shared infrastructure analysis protocol
+- **Status**: ⚠️ Cross-referenced but not in bot loading path
+- **Action**: Link from developer.md
+
+**bot/docs/GOALS.md**
+- **Loaded by**: Never referenced
+- **References**: N/A
+- **Purpose**: Bot goals and principles
+- **Status**: ❌ Orphaned
+- **Action**: Link from bot/README.md or archive
+
+**bot/docs/LOGS.md**
+- **Loaded by**: Never referenced
+- **References**: N/A
+- **Purpose**: Logging conventions
+- **Status**: ❌ Orphaned
+- **Action**: Link from bot/docs/INSTRUCTIONS.md or archive
+
+**bot/docs/TECHSTACK.md**
+- **Loaded by**: Never referenced
+- **References**: N/A
+- **Purpose**: Technology stack
+- **Status**: ❌ Orphaned
+- **Action**: Link from bot/README.md or archive
+
+**bot/docs/WORKFLOW-MODE-CRITICAL.md**
+- **Loaded by**: Never referenced (INDEX mentions bot/.gemini/WORKFLOW-MODE-CRITICAL.md)
+- **References**: N/A
+- **Purpose**: Workflow mode enforcement (may duplicate modes.md)
+- **Status**: ❌ Orphaned
+- **Action**: Consolidate with modes.md or link from INSTRUCTIONS.md
+
+---
+
+### Orphaned Files - Buttermilk (8 files)
+
+**projects/buttermilk/docs/agents/debugging.md**
+- **Loaded by**: debugger.md references it, INSTRUCTIONS references it
+- **References**: Many (it's the golden path guide)
+- **Purpose**: Debugging golden path (GUIDE, not agent definition)
+- **Status**: ✅ Connected (functional guide)
+- **Note**: Confusing location (in agents/ but not an agent)
+
+**projects/buttermilk/docs/bots/TEST_FIXER_AGENT.md**
+- **Loaded by**: INSTRUCTIONS.md references it
+- **References**: None
+- **Purpose**: Test fixing protocol
+- **Status**: ✅ Connected
+
+**projects/buttermilk/docs/bots/config.md**
+- **Loaded by**: INSTRUCTIONS.md references it
+- **References**: None
+- **Purpose**: Configuration guide
+- **Status**: ✅ Connected
+
+**projects/buttermilk/docs/bots/data-architecture.md**
+- **Loaded by**: INSTRUCTIONS.md references it
+- **References**: None
+- **Purpose**: Buttermilk data architecture
+- **Status**: ✅ Connected
+
+**projects/buttermilk/docs/bots/techstack.md**
+- **Loaded by**: INSTRUCTIONS.md references it, INDEX references it
+- **References**: None
+- **Purpose**: Tech stack
+- **Status**: ✅ Connected
+
+**projects/buttermilk/docs/TESTING_PHILOSOPHY.md**
+- **Loaded by**: INSTRUCTIONS.md, tester.md
+- **References**: None
+- **Purpose**: Testing philosophy
+- **Status**: ✅ Connected
+
+**projects/buttermilk/docs/bots/exploration-before-implementation.md**
+- **Loaded by**: INSTRUCTIONS.md
+- **References**: None
+- **Purpose**: Exploration requirements (duplicates bot/docs/EXPLORATION-BEFORE-IMPLEMENTATION.md?)
+- **Status**: ✅ Connected (but may be duplicate)
+
+**projects/buttermilk/docs/bots/impact-analysis.md**
+- **Loaded by**: INSTRUCTIONS.md
+- **References**: None
+- **Purpose**: Impact analysis protocol (duplicates bot/docs/IMPACT-ANALYSIS.md?)
+- **Status**: ✅ Connected (but may be duplicate)
+
+---
+
+### Supporting Documentation - Buttermilk Reference (5+ files)
+
+**projects/buttermilk/docs/reference/concepts.md**
+- **Loaded by**: README.md
+- **References**: None
+- **Purpose**: Core concepts
+- **Status**: ✅ Connected (user-facing)
+
+**projects/buttermilk/docs/reference/cloud_infrastructure_setup.md**
+- **Loaded by**: Never referenced
+- **References**: None
+- **Purpose**: Cloud setup guide
+- **Status**: ⚠️ Orphaned (user doc, not agent)
+
+**projects/buttermilk/docs/reference/llm_agent.md**
+- **Loaded by**: Never referenced
+- **References**: None
+- **Purpose**: LLM agent guide
+- **Status**: ⚠️ Orphaned (user doc, not agent)
+
+**projects/buttermilk/docs/reference/tracing.md**
+- **Loaded by**: Never referenced
+- **References**: None
+- **Purpose**: Tracing guide
+- **Status**: ⚠️ Orphaned (user doc, not agent)
+
+**projects/buttermilk/docs/reference/zotero_vectordb_guide.md**
+- **Loaded by**: Never referenced
+- **References**: None
+- **Purpose**: Zotero vector DB guide
+- **Status**: ⚠️ Orphaned (user doc, not agent)
+
+**projects/buttermilk/docs/testing/BOUNDARY_MOCKING.md**
+- **Loaded by**: Never referenced
+- **References**: None
+- **Purpose**: Mocking guidelines
+- **Status**: ⚠️ Weakly connected (testing doc)
+
+---
+
+## Disconnected Files Summary
+
+### Orphaned (Never Referenced) - 12 files
+
+These are never explicitly loaded by any agent:
+
+**bot/docs/** (8):
+- CONTEXT-EXTRACTION-ARCHITECTURE.md
+- DATA-ARCHITECTURE.md
+- DEBUGGING.md
+- DEEP-MINING-PATTERNS.md
+- DOCUMENTATION_MAINTENANCE.md
+- FAIL-FAST-PHILOSOPHY.md
+- GOALS.md
+- LOGS.md
+- TECHSTACK.md
+- WORKFLOW-MODE-CRITICAL.md
+
+**Buttermilk reference/** (3):
+- cloud_infrastructure_setup.md
+- llm_agent.md
+- tracing.md
+
+### Cross-Referenced but Not in Bot Loading Path - 2 files
+
+Referenced by project-specific instructions but not linked from bot:
+- bot/docs/EXPLORATION-BEFORE-IMPLEMENTATION.md (Buttermilk uses it)
+- bot/docs/IMPACT-ANALYSIS.md (Buttermilk uses it)
+
+### Weakly Connected - 4 files
+
+In file system but not explicitly in loading tree:
+- docs/AGENT_HIERARCHY.md (overview doc, not loaded)
+- bot/docs/configuration-hierarchy.md (INDEX lists it)
+- bot/docs/modes.md (possibly duplicates parent docs/modes.md)
+- projects/buttermilk/docs/testing/BOUNDARY_MOCKING.md
+
+---
+
+## Issues Identified
+
+### 1. Broken References
+
+**WikiJuris CLAUDE.md**: References `docs/agents/INSTRUCTIONS.md` but file is at `docs/agent/INSTRUCTIONS.md` (singular)
+
+### 2. Duplicates
+
+**Potential duplicates across parent/bot**:
+- docs/modes.md vs bot/docs/modes.md
+- docs/error-handling.md vs bot/docs/error-handling.md
+- docs/error-quick-reference.md vs bot/docs/error-quick-reference.md
+- docs/architecture.md vs bot/docs/architecture.md
+
+**Confirmed duplicates bot/Buttermilk**:
+- bot/docs/EXPLORATION-BEFORE-IMPLEMENTATION.md vs projects/buttermilk/docs/bots/exploration-before-implementation.md
+- bot/docs/IMPACT-ANALYSIS.md vs projects/buttermilk/docs/bots/impact-analysis.md
+
+### 3. Confusing File Locations
+
+**projects/buttermilk/docs/agents/debugging.md**: Is a GUIDE not an agent definition, but lives in agents/ folder
+
+### 4. Missing Links
+
+- developer.md should link to EXPLORATION-BEFORE-IMPLEMENTATION.md and IMPACT-ANALYSIS.md
+- strategist.md should link to DEEP-MINING-PATTERNS.md
+- documenter.md should link to DOCUMENTATION_MAINTENANCE.md
+
+---
+
+## Recommended Actions
+
+### Immediate (Fix Broken References)
+1. Fix WikiJuris CLAUDE.md path reference
+2. Link EXPLORATION-BEFORE-IMPLEMENTATION.md from developer.md
+3. Link IMPACT-ANALYSIS.md from developer.md
+
+### Short-term (Connect Orphaned Files)
+1. Link DEEP-MINING-PATTERNS.md from strategist.md or AUTO-EXTRACTION.md
+2. Link DOCUMENTATION_MAINTENANCE.md from documenter.md
+3. Link FAIL-FAST-PHILOSOPHY.md from INSTRUCTIONS.md or error-handling.md
+4. Link DEBUGGING.md from developer.md
+
+### Medium-term (Consolidate Duplicates)
+1. Determine if bot/docs/{error,modes,architecture}.md should exist separately
+2. Merge or clarify relationship between bot/ and Buttermilk exploration/impact-analysis docs
+3. Move debugging.md out of agents/ folder or rename to indicate it's a guide
+
+### Archive Candidates
+Consider archiving if not needed:
+- bot/docs/GOALS.md (covered in bot/README.md?)
+- bot/docs/LOGS.md (if logging conventions are stable)
+- bot/docs/TECHSTACK.md (if stable and in README)
+- bot/docs/CONTEXT-EXTRACTION-ARCHITECTURE.md (if AUTO-EXTRACTION.md is sufficient)
+
+---
+
+## Maintenance
+
+### Check for Disconnected Files
+
+Run this to find files not referenced anywhere:
+
+```bash
+# In /writing/ directory
+find . -name "*.md" \( -path "*/docs/*" -o -name "CLAUDE.md" -o -name "INSTRUCTIONS.md" \) \
+  ! -path "*/papers/*" ! -path "*/vendor/*" ! -path "*/node_modules/*" \
+  ! -path "*/.venv/*" ! -path "*/dbt_packages/*" ! -path "*/archive/*" ! -path "*/lib/*" \
+  -type f -print0 | \
+  xargs -0 -I {} sh -c 'grep -r -l --include="*.md" "$(basename {})" . > /dev/null || echo "Orphaned: {}"'
+```
+
+### Adding New Files
+
+When adding new instruction/documentation:
+1. Determine where it fits in loading tree (which agent/file should reference it)
+2. Add reference from parent file
 3. Update this map
-4. Verify no duplication with existing files
+4. Create GitHub issue if significant
 
-### When Modifying Instruction Hierarchy
-1. Update CLAUDE.md entry points if needed
-2. Update base.md hierarchical override rules if changed
-3. Update this map
-4. Test with agents in different contexts
+### Quarterly Review
 
-### Regular Maintenance
-- Quarterly: Review for outdated files
-- After major changes: Verify all links still valid
-- When files removed: Update all references and this map
+- Run disconnected file check
+- Verify all loading tree paths still valid
+- Check for new orphaned files
+- Review archive candidates
