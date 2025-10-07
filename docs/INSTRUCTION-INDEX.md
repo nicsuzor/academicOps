@@ -144,12 +144,12 @@ Every instruction file in academicOps with metadata.
 - **Issues**: -
 
 **agents/strategist.md**
-- **Purpose**: Planning, zero-friction information extraction
+- **Purpose**: Planning, zero-friction information extraction, task prioritization
 - **Loaded by**: When strategist agent is invoked
 - **References**: base.md, scripts.md
 - **Auto-loads**: data/goals/*.md, data/context/*.md, data/views/*.json
 - **Status**: ✅ Required
-- **Issues**: -
+- **Issues**: #75 (prioritization framework)
 
 **agents/academic_writer.md**
 - **Purpose**: Academic prose expansion with source fidelity
