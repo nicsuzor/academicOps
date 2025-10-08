@@ -149,7 +149,7 @@ Every instruction file in academicOps with metadata.
 - **References**: base.md, scripts.md
 - **Auto-loads**: data/goals/*.md, data/context/*.md, data/views/*.json
 - **Status**: ✅ Required
-- **Issues**: #75 (prioritization framework)
+- **Issues**: #75 (prioritization framework), #77 (task summary guidance)
 
 **agents/academic_writer.md**
 - **Purpose**: Academic prose expansion with source fidelity
