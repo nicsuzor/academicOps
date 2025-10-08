@@ -2,6 +2,27 @@
 
 This document outlines best practices for using dbt (data build tool) in computational research projects.
 
+## 🚨 CRITICAL: Data Access Policy
+
+**ALL data access MUST go through dbt models. Direct queries to upstream sources (BigQuery, databases, APIs) are PROHIBITED.**
+
+**Why this is mandatory:**
+- **Reproducibility**: Queries are version-controlled in dbt
+- **Data governance**: dbt models are the single source of truth
+- **Quality**: Data passes through validated transformation pipeline
+- **Consistency**: All analysts use same transformations
+
+**Workflow when data is missing:**
+1. ❌ **NEVER** query upstream source directly (e.g., `SELECT * FROM bigquery.raw.table`)
+2. ✅ **CREATE** appropriate dbt model (staging/intermediate/mart)
+3. ✅ **REFERENCE** the model via `{{ ref('model_name') }}`
+
+**If you need data not in existing marts:**
+- Ask user: "Should I create a dbt model for this data?"
+- Create model in appropriate layer (staging for raw cleanup, marts for analysis)
+- Run `dbt run --select model_name` to materialize
+- Query the materialized model, not the upstream source
+
 ## Overview
 
 dbt is used to define, document, and validate data transformations. In academicOps projects, dbt serves as the foundation for reproducible empirical analysis by:

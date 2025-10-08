@@ -25,6 +25,15 @@ When working on computational research projects (identified by presence of `dbt/
 2. **Personal workflow**: `docs/workflows/empirical-research-workflow.md` (if it exists)
 3. **Project-specific README**: `projects/[project-name]/README.md` for implementation details
 
+### 🚨 CRITICAL: Data Access Rules
+
+**NEVER query upstream data sources directly (BigQuery, databases, APIs).** ALL data access MUST go through dbt models.
+
+- ❌ **PROHIBITED**: `SELECT * FROM bigquery.raw.table`
+- ✅ **REQUIRED**: `SELECT * FROM {{ ref('stg_table') }}`
+
+**See `bot/docs/methodologies/dbt-practices.md` for complete data access policy and workflow.**
+
 **When to apply these methodologies:**
 - Working with dbt models (staging, intermediate, marts)
 - Creating or reviewing data tests
@@ -37,6 +46,7 @@ When working on computational research projects (identified by presence of `dbt/
 - Analysis consumes validated data from dbt
 - Tests validate quality at every pipeline stage
 - Documentation lives alongside code
+- **NO direct upstream queries - dbt models only**
 
 ## Primary Workflow
 When asked to perform analysis, you MUST follow this systematic process:
