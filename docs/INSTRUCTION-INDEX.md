@@ -138,10 +138,10 @@ Every instruction file in academicOps with metadata.
 **agents/analyst.md**
 - **Purpose**: Data analysis, running queries, generating insights
 - **Loaded by**: When analyst agent is invoked
-- **References**: base.md, project README files
-- **Auto-loads**: README.md files, data/README.md, data/projects/*.md
+- **References**: base.md, project README files, docs/methodologies/*.md
+- **Auto-loads**: README.md files, data/README.md, data/projects/*.md, docs/methodologies/*.md (for dbt projects)
 - **Status**: ✅ Required
-- **Issues**: -
+- **Issues**: #78 (computational research methodologies)
 
 **agents/strategist.md**
 - **Purpose**: Planning, zero-friction information extraction, task prioritization
@@ -257,6 +257,20 @@ Every instruction file in academicOps with metadata.
 - **References**: None
 - **Status**: ✅ Required
 - **Issues**: -
+
+**docs/methodologies/computational-research.md**
+- **Purpose**: Overview of academicOps approach to computational research
+- **Loaded by**: analyst.md (when working on empirical projects)
+- **References**: dbt-practices.md
+- **Status**: ✅ Required
+- **Issues**: #78 (computational research methodologies)
+
+**docs/methodologies/dbt-practices.md**
+- **Purpose**: DBT best practices for data transformation and testing
+- **Loaded by**: analyst.md (when working on dbt projects)
+- **References**: None
+- **Status**: ✅ Required
+- **Issues**: #78 (computational research methodologies)
 
 **docs/WRITING-STYLE-EXTRACTOR.md**
 - **Purpose**: Process for creating writing style guides
