@@ -79,15 +79,58 @@ columns:
 - Aspirational standards not yet achieved
 - Optional fields with expected nulls in some contexts
 
-### 4. When to Use Each Test Type
+### 4. Package Tests (dbt-utils)
+
+The `dbt-utils` package provides reusable tests for common patterns:
+
+```yaml
+# Install: packages.yml
+packages:
+  - package: dbt-labs/dbt_utils
+    version: 1.1.1
+
+# Use in schema.yml
+tests:
+  - dbt_utils.expression_is_true:
+      expression: "revenue >= 0"
+  - dbt_utils.recency:
+      datepart: day
+      field: created_at
+      interval: 1
+  - dbt_utils.unique_combination_of_columns:
+      combination_of_columns: ['user_id', 'date']
+```
+
+**When to use:** Common patterns like recency checks, multi-column uniqueness, value ranges.
+
+### 5. Diagnostic Models
+
+Create ephemeral views for data quality monitoring:
+
+```sql
+-- models/diagnostics/data_quality_summary.sql
+{{ config(materialized='view', tags=['diagnostic']) }}
+
+select
+    'content_populated' as check_name,
+    count(*) as total_rows,
+    count(case when content is not null then 1 end) as passing_rows
+from {{ ref('stg_documents') }}
+```
+
+Run with `dbt show --select data_quality_summary` to inspect quality issues interactively.
+
+### 6. When to Use Each Test Type
 
 | Test Type | Use For | Example |
 |-----------|---------|---------|
 | **Schema tests** | Quick column-level checks | Nulls, uniqueness, allowed values |
 | **Singular tests** | Complex multi-column logic | Date ranges, cross-table consistency |
+| **Package tests** | Common reusable patterns | Recency, multi-column uniqueness, value ranges |
+| **Diagnostic models** | Interactive quality inspection | Aggregated quality metrics, `dbt show` for quick checks |
 | **Dashboards** | Human review, visual analysis | Exploratory data analysis, trend identification |
 
-**General principle:** Start with schema tests (fast, declarative), add singular tests for complex logic, use dashboards for human judgment.
+**General principle:** Start with schema tests (fast, declarative), add package tests for common patterns, write singular tests for project-specific logic, create diagnostic models for quality monitoring, use dashboards for human judgment.
 
 ## Model Organization
 
