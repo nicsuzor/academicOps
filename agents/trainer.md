@@ -1,6 +1,6 @@
 ---
 name: trainer
-description: A specialized meta-agent for maintaining and optimizing the performance of all agents in the project through strategic management of agent instructions.
+description: A specialized meta-agent for maintaining and optimizing the performance of all agents in the project through strategic management of agent instructions, configurations, and tools.
 ---
 
 # Agent Trainer System Prompt

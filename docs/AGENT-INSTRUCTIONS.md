@@ -101,8 +101,45 @@ When ANY error occurs during workflow execution:
 
 ## GIT OPERATIONS
 
+### CRITICAL: Understanding Polyrepo Structure
+
+**This is a POLYREPO with git submodules, NOT a monorepo.**
+
+- `bot/` is a git submodule (separate repository: nicsuzor/academicOps)
+- Parent repository and bot submodule have SEPARATE git histories
+- **You CANNOT mix files from both repos in a single git commit**
+
+### Common Failure Pattern (DO NOT DO THIS)
+```bash
+# ❌ FAILS - Cannot add files from both repos together:
+git add docs/strategy.md bot/agents/strategist.md && git commit -m "..."
+# Error: fatal: Pathspec 'bot/agents/strategist.md' is in submodule 'bot'
+```
+
+### Correct Workflow: Two-Step Commits
+
+**When changes span both repositories, commit separately:**
+
+**Step 1: Commit in bot submodule FIRST**
+```bash
+cd /home/nic/src/writing/bot && \
+git add agents/file.md && \
+git commit -m "fix(prompts): description" && \
+git push
+```
+
+**Step 2: Commit in parent repo SECOND**
+```bash
+cd /home/nic/src/writing && \
+git add docs/file.md && \
+git commit -m "docs: description" && \
+git push
+```
+
+**CRITICAL**: Use `cd` with `&&` chaining in a single bash command (working directory resets between separate tool calls).
+
 ### Using auto_sync.sh
-Execute the sync script directly:
+For simple commits in the current repository:
 ```bash
 $ACADEMIC_OPS_SCRIPTS/auto_sync.sh
 ```
@@ -154,6 +191,30 @@ $ACADEMIC_OPS_SCRIPTS/script_name.sh
 ```
 
 If a script fails, report the error and stop. Do not attempt to fix permissions or debug issues.
+
+### Python Execution Policy
+
+**CRITICAL: Always use `uv run python` for Python execution.**
+
+**Prohibited:**
+- ❌ `python script.py` (use `uv run python` instead)
+- ❌ `python3 script.py` (use `uv run python` instead)
+- ❌ `python -c "code"` (no ad-hoc scripts)
+- ❌ `uv run python -c "code"` (no ad-hoc scripts)
+
+**Required:**
+- ✅ `uv run python script.py`
+- ✅ `uv run pytest`
+- ✅ `uv sync` (NOT `pip install`)
+- ✅ `uv pip install` for direct installs (NOT `pip install`)
+
+**Rationale:**
+- Ensures consistent dependency management via uv
+- Prevents environment-related bugs
+- Enforces reproducible script execution
+- Ad-hoc scripts (`-c`) bypass proper code review and testing
+
+**If you need to test Python code**: Write it to a proper file first (e.g., `tests/test_feature.py`), then run with `uv run pytest`.
 
 ## VERIFICATION CHECKLIST
 

@@ -105,10 +105,11 @@ Every instruction file in academicOps with metadata.
 - **Note**: This is the BASE. Project-specific or parent repo INSTRUCTIONS.md files override this.
 
 **docs/AGENT-INSTRUCTIONS.md**
-- **Purpose**: Detailed operational guide with security rules, extraction patterns
+- **Purpose**: Detailed operational guide with security rules, extraction patterns, git polyrepo workflow, Python execution policy
 - **Loaded by**: docs/INSTRUCTIONS.md
 - **References**: AUTO-EXTRACTION.md, PATH-RESOLUTION.md
 - **Status**: ✅ Required
+- **Issues**: #81 (git polyrepo), #82 (Python execution policy)
 
 **README.md**
 - **Purpose**: Repository overview, quick reference, core axioms
