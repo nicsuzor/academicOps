@@ -86,6 +86,57 @@ You MUST follow this exact workflow for tracking your work. This is non-negotiab
 
 **Cross-Project Issues**: When working on project-specific repos (buttermilk, etc.), still create issues in academicOps but reference the specific project in the title and body (e.g., "[buttermilk] Agent fails to find debugging tools").
 
+### Issue Documentation Standards
+
+**CRITICAL**: Issues in academicOps are KNOWLEDGE ARTIFACTS, not just task trackers.
+
+**Purpose of Issues:**
+- Document analysis, decisions, and learnings
+- Enable future decision-making (for agents and humans)
+- Track interventions (what was tried, what worked, what didn't)
+- Serve as learning tools for process improvement
+
+**What Makes a Complete Issue:**
+1. **Executive summary** - What failed, root causes, solution approach, status
+2. **Root cause analysis** - Why it happened (multiple layers)
+3. **Solution design** - Multi-layer prevention strategy
+4. **External research** - Tools evaluated, pros/cons, recommendations
+5. **Implementation roadmap** - Phased approach with specific files to modify
+6. **Related issues** - Links to connected work
+7. **Open questions** - Unresolved decisions
+
+**Issue Completion Checklist:**
+
+Before closing an issue or considering work "done", verify:
+- [ ] Root cause analysis documented (not just symptoms)
+- [ ] Solution design captured (multi-layer approach)
+- [ ] External research findings included (tools evaluated)
+- [ ] Implementation roadmap clear (phases, files, risks)
+- [ ] Related issues linked
+- [ ] Future reader can understand full context without reading code
+- [ ] Modified files documented in issue comments (for tracking)
+
+**When to Create Issues:**
+- Agent failures requiring systemic fixes
+- Infrastructure improvements needed
+- Configuration changes affecting multiple agents
+- New enforcement mechanisms
+- Process improvements
+- Template or tooling additions
+
+**When an Issue is "Complete":**
+- NOT when created (that's just the beginning)
+- NOT when problem identified (analysis required)
+- ONLY when comprehensive documentation added
+- Future agents/reviews can understand full context
+- All checklist items verified
+
+**Empty Issues Are Failures:**
+- Creating issue without documentation = incomplete work
+- Defeats purpose of issue system
+- False sense of completion
+- Future agents cannot learn from it
+
 ## Reflection and Implementation Framework
 When tasked with improving agent instructions, follow this process:
 1.  **Analyze the Problem**: Review the conversation, logs, or bug report to understand what happened.
