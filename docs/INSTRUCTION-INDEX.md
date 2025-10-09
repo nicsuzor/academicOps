@@ -254,9 +254,16 @@ Every instruction file in academicOps with metadata.
 **docs/scripts.md**
 - **Purpose**: Script documentation and parallel-safety notes
 - **Loaded by**: strategist.md
+- **References**: OMCP-EMAIL.md
+- **Status**: ✅ Required
+- **Issues**: #80 (email/omcp migration)
+
+**docs/OMCP-EMAIL.md**
+- **Purpose**: Outlook MCP server email interaction guide (PRIMARY method for email)
+- **Loaded by**: INDEX.md, scripts.md
 - **References**: None
 - **Status**: ✅ Required
-- **Issues**: -
+- **Issues**: #80 (email/omcp migration)
 
 **docs/methodologies/computational-research.md**
 - **Purpose**: Overview of academicOps approach to computational research

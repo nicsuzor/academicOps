@@ -23,6 +23,7 @@
 - [trainer](../agents/trainer.md) - Agent trainer for performance optimization
 
 ## Email System
+- [OMCP-EMAIL](OMCP-EMAIL.md) - **PRIMARY**: Outlook MCP server interaction guide
 - [EMAIL](EMAIL.md) - Email processing system documentation
 - [EMAIL-TRIAGE-DESIGN](EMAIL-TRIAGE-DESIGN.md) - Email triage system design
 
@@ -37,11 +38,9 @@ Located in `scripts/`:
 - `auto_sync.sh` - Git sync with automatic commit/push
 
 ### Email Processing
-Located in `scripts/`:
-- `email-triage.py` - Triage and categorize emails
-- `outlook-read.ps1` - Read emails from Outlook (Windows)
-- `outlook-draft.ps1` - Create draft responses (Windows)
-- `outlook-message.ps1` - Send messages (Windows)
+- **Use omcp MCP server** - See [OMCP-EMAIL](OMCP-EMAIL.md)
+- `email-triage.py` - Email triage (legacy, uses PowerShell)
+- `outlook-*.ps1` - **DEPRECATED**: Use omcp MCP server instead
 
 ## Configuration
 

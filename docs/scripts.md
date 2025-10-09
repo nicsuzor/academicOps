@@ -2,6 +2,12 @@
 
 This document provides details on the scripts available in `bot/scripts/`.
 
+## Email Interaction
+
+**IMPORTANT**: Email interaction is handled via the `omcp` MCP server, NOT via scripts. See [OMCP-EMAIL](OMCP-EMAIL.md) for complete documentation.
+
+Use MCP tools like `mcp__omcp__messages_search`, `mcp__omcp__messages_get`, etc. The old PowerShell scripts (`outlook-*.ps1`) are deprecated.
+
 ## `task_add.py`
 
 **Purpose:** Creates a new task.
