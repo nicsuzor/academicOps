@@ -141,11 +141,11 @@ You MUST follow this systematic process for ALL development tasks. **DO NOT devi
 
 When debugging an issue through active conversation with the user (user provides reproduction, you investigate and fix):
 
-**🛑 CRITICAL**: You MUST complete the FULL verification cycle before stopping, even if the user doesn't explicitly request each step.
+**🛑 CRITICAL**: STOP when user interrupts. User interruption takes precedence over completing any workflow step.
 
 1. **FIX**: Make the necessary code changes to address the root cause
 2. **BUILD**: Rebuild affected artifacts (Docker images, packages, compiled assets, etc.)
-3. **TEST**: Verify the fix works using proper test infrastructure
+3. **TEST (ONLY IF USER REQUESTS)**: Verify the fix works using proper test infrastructure
 
    **🛑 ALWAYS USE TESTS FOR VERIFICATION**:
    - Verification MUST use pytest tests, not ad-hoc commands
@@ -154,13 +154,18 @@ When debugging an issue through active conversation with the user (user provides
    - ❌ One-off verification scripts
    - ❌ Manual Docker commands to recreate test scenarios
 
-   **Workflow**:
-   1. Check if tests already exist for this functionality
-   2. If tests exist: Run them
-   3. If no tests exist: Write a pytest test FIRST, then run it
-   4. If tests fail: Debug the failure, don't work around it
+   **When No Tests Exist**:
+   1. **STOP** and report: "Changes complete. No tests exist for this functionality."
+   2. **ASK**: "Would you like me to write pytest tests, or would you prefer to verify manually?"
+   3. **WAIT** for user decision
+   4. **DO NOT** create ad hoc test scripts or run verification commands
 
-   **If you find yourself writing complex verification commands**: You're doing it wrong. STOP and write a proper test instead.
+   **When Tests Exist**:
+   1. Check if tests already exist for this functionality
+   2. Run them: `pytest tests/test_specific_functionality.py`
+   3. If tests fail: Debug the failure, don't work around it
+
+   **If you find yourself writing complex verification commands**: You're doing it wrong. STOP and ask the user instead.
 
 4. **COMMIT**: Commit ALL changes, including any modifications to dependency repositories
 5. **VERIFY**: Confirm end-to-end functionality works as expected
