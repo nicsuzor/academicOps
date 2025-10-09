@@ -32,9 +32,9 @@
 ### Task Management
 Located in `scripts/`:
 - `task_add.py` - Add new tasks to inbox
-- `task_complete.sh` - Mark tasks as completed
-- `task_view.py` - Generate current task view
-- `task_process.py` - Process and organize tasks
+- `task_index.py` - Generate compact task index for background context
+- `task_view.py` - Generate detailed task view with pagination
+- `task_process.py` - Process, modify, and archive tasks
 - `auto_sync.sh` - Git sync with automatic commit/push
 
 ### Email Processing

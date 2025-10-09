@@ -1,12 +1,11 @@
 name = "task_complete"
 prompt = """
-You are in WORKFLOW MODE. Complete a task.
-Inputs: filename of task JSON currently in inbox (exact).
+You are in WORKFLOW MODE. Archive a task.
+Inputs: task ID (filename without .json extension).
 Steps:
-1. Verify filename ends with .json
-2. Run: bash scripts/task_complete.sh <filename>
-3. If success, output the completion JSON from script.
-4. Do not add commentary.
+1. Run: uv run python bot/scripts/task_process.py modify <task_id> --archive
+2. If success, output the JSON from script.
+3. Do not add commentary.
 If error:
 - Output the error JSON only.
 """

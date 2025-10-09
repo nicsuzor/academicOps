@@ -27,32 +27,42 @@ uv run python bot/scripts/task_add.py --title "Task Title" [--priority PRIORITY]
 
 ## `task_process.py`
 
-**Purpose:** Processes tasks, primarily for email-related actions.
+**Purpose:** Processes tasks, primarily for email-related actions and archiving.
 
 **Usage:**
 ```bash
-uv run python bot/scripts/task_process.py modify <task_id> [--archive]
+uv run python bot/scripts/task_process.py modify <task_id> [--archive] [--priority N] [--due YYYY-MM-DD]
 ```
 
 **Arguments:**
-*   `<task_id>`: (string, required) The ID of the task to process.
-*   `--archive`: Archives the task.
+*   `<task_id>`: (string, required) The ID of the task to process (filename without .json extension).
+*   `--archive`: Archives the task by moving it to `data/tasks/archived/` and marking it with `archived_at` timestamp.
+*   `--priority N`: Updates the task priority.
+*   `--due YYYY-MM-DD`: Updates the task due date.
 
 **Operational Notes:**
-*   This script is primarily for email-related tasks. It can be used to archive local tasks, but it does not modify other task attributes.
+*   Safe for parallel execution.
+*   Can handle both local tasks and email-based tasks.
+*   Archival is the standard completion method - there are only two states: active (inbox/queue) or archived.
 
-## `task_complete.sh`
+## `task_index.py`
 
-**Purpose:** Marks a task as complete and archives it.
+**Purpose:** Generates a compact, LLM-friendly index of all active tasks for background context.
 
 **Usage:**
 ```bash
-bot/scripts/task_complete.sh <task_filename>
+uv run python bot/scripts/task_index.py [--format=text|json]
 ```
 
 **Arguments:**
-*   `<task_filename>`: (string, required) The filename of the task to complete (e.g., `20250921-213541-nicwin-b2ca8699.json`).
+*   `--format=text|json`: (optional) Output format. Defaults to `text`.
+
+**Output:**
+*   **Text format**: Compact one-line-per-task format with priority, ID, due date, and title
+*   **JSON format**: Array of minimal task objects with id, priority, title, project, and due fields
 
 **Operational Notes:**
-*   **NOT parallel-safe.** This script performs a `git commit` and will fail if run concurrently.
-*   This script will be updated to search for tasks in `inbox` and `queue` directories.
+*   Safe for parallel execution.
+*   Designed for inclusion in strategist agent context without overwhelming token budgets.
+*   Sorted by priority (ascending), then due date (ascending).
+*   Use this for accomplishment matching and task awareness in background context.
