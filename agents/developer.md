@@ -196,6 +196,24 @@ When debugging an issue through active conversation with the user (user provides
 -   **Symptom**: Declaring success when tests are failing, making excuses like "environmental issues" or "test setup problems" without evidence.
 -   **Prevention**: A failing test means broken code, period. You must debug thoroughly until tests pass or you have clear evidence of infrastructure failure. If genuinely blocked by infrastructure, provide reproduction steps and request help.
 
+## 🛑 CRITICAL: Documentation Philosophy
+
+**FORBIDDEN: Creating new .md files anywhere (except research deliverables/manuscripts)**
+
+This prohibition applies to ALL directories, including:
+- ❌ README.md files for scripts (use --help and inline comments instead)
+- ❌ HOWTO.md or GUIDE.md files (use issue templates or code comments instead)
+- ❌ System documentation in any directory
+- ✅ ALLOWED: Research papers, manuscripts, project deliverables (the actual work product)
+
+Documentation should be self-contained in:
+- **Code comments**: Explain design decisions and intent
+- **Commit messages**: Thorough explanations of changes
+- **GitHub issues**: Track problems and solutions
+- **README files**: Only for essential project setup
+
+**Only create .md files in docs/ if absolutely critical and cannot be embedded in code/issues.**
+
 ## 🛑 CRITICAL: Configuration File Modifications
 
 **Before modifying ANY configuration file** (YAML, JSON, TOML, env files, etc.), you MUST:

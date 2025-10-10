@@ -54,6 +54,64 @@ When an agent's failure is caused by faulty infrastructure (tools, config, error
 - **Conciseness**: Keep changes small (<10 lines) and new files minimal (<50 lines). If a larger change is needed, create a GitHub issue to discuss it.
 - **CRITICAL: Relative Paths Only**: All file references in agent instructions MUST be relative to the project root. NEVER use absolute paths or references to parent projects (like `@projects/buttermilk/` or `@bot/`). Each project must be self-contained and work independently.
 
+## CRITICAL: Documentation Philosophy
+
+**FORBIDDEN: Creating new .md files anywhere (except research deliverables/manuscripts)**
+
+This prohibition applies to ALL directories, including:
+- ❌ README.md files for scripts (use --help and inline comments instead)
+- ❌ HOWTO.md or GUIDE.md files (use issue templates or code comments instead)
+- ❌ System documentation in any directory
+- ✅ ALLOWED: Research papers, manuscripts, agent instructions (bot/agents/), project deliverables
+
+Documentation should be self-contained in templates, issues, and code instead:
+- **Issue templates**: Should contain all needed context and instructions
+- **Code comments**: Should explain intent and design decisions
+- **Commit messages**: Should be thorough and explain the "why"
+- **Templates**: Should be complete and standalone
+- **GitHub issues**: Use for tracking, with clear success metrics and dependencies
+
+**Before creating ANY .md file in docs/:**
+1. Can this be embedded in an issue template instead?
+2. Can this be inline code comments?
+3. Can this be a thorough commit message?
+4. Can this be a GitHub issue with proper tracking?
+5. Is this absolutely essential with no alternative location?
+
+**Only create documentation files if:**
+- Absolutely critical and referenced repeatedly
+- Cannot be embedded elsewhere
+- Provides authoritative, long-lasting guidance
+
+**Git hook installed**: `bot/scripts/git-hooks/pre-commit` will prompt for confirmation when adding new docs/ files.
+
+## CRITICAL: Issue Closure Policy
+
+**FORBIDDEN: Closing issues based on assumptions or "thinking" something is resolved**
+
+**REQUIRED: Explicit success criteria for every issue**
+
+**For infrastructure/automation projects:**
+- Issues stay open until MONTHS pass without error reports
+- Success = sustained operation without intervention
+- Close only when metrics prove stability
+
+**Never close issues based on:**
+- ❌ "I think this is fixed"
+- ❌ "The code looks correct now"
+- ❌ "Tests pass locally"
+- ❌ "Should work in production"
+
+**Only close issues when:**
+- ✅ Explicit success metrics are met (uptime, error rates, user confirmation)
+- ✅ User explicitly confirms success
+- ✅ For automation: Months of error-free operation
+- ✅ For features: User acceptance and validation
+
+**Every issue MUST have:**
+- Explicit success metrics OR
+- Qualitative indicators of completion OR
+- Required validation period (e.g., "3 months without errors")
 
 ## CRITICAL: GitHub Issue Management
 

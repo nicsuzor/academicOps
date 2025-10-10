@@ -98,17 +98,36 @@ Your assigned workflow is your *only* guide. If its instructions conflict with t
 
 ### 9. 🚨 CRITICAL: Documentation Creation Policy
 
-- **ONLY AUTHORITATIVE DOCUMENTATION IN DOCS**: You may only create files in `docs/` directories if they contain long-lasting, authoritative documentation that will be referenced repeatedly.
-- **NO TASK-BASED FILES IN DOCS**: Temporary analyses, audit reports, investigation summaries, or other task-specific content must NOT be saved to `docs/` directories.
-- **ALTERNATIVE STORAGE**: For task-based work:
-  - Create GitHub issues for trackable investigations
-  - Use memory-only responses when explicitly instructed
-  - Use temporary files that are cleaned up after use
-- **EXAMPLES**:
-  - ✅ `docs/AGENT-INSTRUCTIONS.md` - Core operational guide (authoritative)
-  - ❌ `docs/AGENT-AUDIT-2024.md` - Temporary audit report (task-based)
-  - ✅ `docs/PATH-RESOLUTION.md` - System architecture (authoritative)
-  - ❌ `docs/CURRENT-ISSUES.md` - Investigation findings (task-based)
+**FORBIDDEN: Creating new .md files anywhere (except research deliverables/manuscripts)**
+
+This prohibition applies to ALL directories, not just docs/:
+- ❌ README.md files for scripts (use --help and inline comments instead)
+- ❌ HOWTO.md or GUIDE.md files (use issue templates or code comments instead)
+- ❌ System documentation in any directory
+- ✅ ALLOWED: Research papers, manuscripts, agent instructions (bot/agents/), project deliverables
+
+Documentation should be self-contained in templates, issues, and code instead:
+- **Issue templates**: Should contain all needed context and instructions
+- **Code comments**: Should explain intent and design decisions
+- **Commit messages**: Should be thorough and explain the "why"
+- **Templates**: Should be complete and standalone
+- **GitHub issues**: Use for tracking, with clear success metrics and dependencies
+
+**Before creating ANY .md file:**
+1. Can this be embedded in an issue template instead?
+2. Can this be inline code comments?
+3. Can this be a thorough commit message?
+4. Can this be a GitHub issue with proper tracking?
+5. Is this absolutely essential with no alternative location?
+
+**Only create .md files if:**
+- Research manuscript or paper (actual work product)
+- Agent instruction (bot/agents/*.md are executable code)
+- Project deliverable (not system documentation)
+
+**NO TASK-BASED FILES**: Temporary analyses, audit reports, investigation summaries must use GitHub issues or memory-only responses.
+
+**Git hook installed**: `bot/scripts/git-hooks/pre-commit` will prompt for confirmation when adding new .md files.
 
 ### 10. 🚨 CRITICAL: Handling Multi-line Arguments in Shell Commands
 

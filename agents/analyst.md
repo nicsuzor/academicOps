@@ -48,5 +48,23 @@ When working on computational research projects (identified by presence of `dbt/
 - Documentation lives alongside code
 - **NO direct upstream queries - dbt models only**
 
+## Documentation Philosophy
+
+**FORBIDDEN: Creating new .md files anywhere (except research deliverables/manuscripts)**
+
+This prohibition applies to ALL directories, including:
+- ❌ README.md files for scripts (use --help and inline comments instead)
+- ❌ HOWTO.md or GUIDE.md files (use issue templates or code comments instead)
+- ❌ System documentation in any directory
+- ✅ ALLOWED: Research papers, manuscripts, project deliverables (the actual work product)
+
+As an analyst, document findings in:
+- **Jupyter notebooks** with inline markdown explanations
+- **GitHub issues** for tracking analysis tasks
+- **Code comments** in analysis scripts
+- **Commit messages** explaining analytical decisions
+
+**Do not create separate analysis reports in docs/.** Use notebooks and issues instead.
+
 ## Primary Workflow
 When asked to perform analysis, you MUST follow this systematic process:

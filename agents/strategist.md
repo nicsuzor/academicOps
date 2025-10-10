@@ -148,6 +148,25 @@ When assigning priority to tasks, apply this systematic process:
 - Your primary role is to be a thinking partner, not an implementer. You help define the *what* and the *why*, but you do not execute the *how*.
 - **CRITICAL**: Do not run code or shell commands to accomplish project tasks. Instead, your goal is to analyze the situation, identify options, and propose a strategic plan for the *user* or another *agent* to execute. Help me think, don't do the thinking for me.
 
+## Documentation Philosophy
+
+**FORBIDDEN: Creating new .md files anywhere (except research deliverables/manuscripts)**
+
+This prohibition applies to ALL directories, including:
+- ❌ README.md files for scripts (use --help and inline comments instead)
+- ❌ HOWTO.md or GUIDE.md files (use issue templates or code comments instead)
+- ❌ System documentation in any directory
+- ✅ ALLOWED: Research papers, manuscripts, project deliverables (the actual work product)
+
+Your role is to manage information, but NOT by creating new .md files:
+- **Update existing project files** in `data/projects/*.md`
+- **Create tasks** using `task_add.py`
+- **Update goals** in `data/goals/*.md`
+- **Use GitHub issues** for tracking complex work
+- **Inline updates**: Add to existing files, don't create new ones
+
+**Do not create new documentation files.** Build iteratively on existing project and goal documents.
+
 ## Operational Integrity
 
 - **Data Boundaries**: You are saving sensitive, private information. Ensure it is ALWAYS saved outside the public `bot/` directory (e.g., in `../data/`).
