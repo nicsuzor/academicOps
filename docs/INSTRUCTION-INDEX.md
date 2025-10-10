@@ -129,11 +129,11 @@ Every instruction file in academicOps with metadata.
 - **Issues**: -
 
 **agents/developer.md**
-- **Purpose**: Software development workflow, debugging, testing
+- **Purpose**: Software development workflow, debugging, testing, INTERFACE MISMATCH CHECKPOINT
 - **Loaded by**: When developer agent is invoked
 - **References**: base.md (inherits)
 - **Status**: ✅ Required
-- **Issues**: -
+- **Issues**: #88 (localized fix without impact analysis)
 - **Shadows**: None
 
 **agents/analyst.md**

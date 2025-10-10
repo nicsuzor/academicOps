@@ -62,6 +62,7 @@ When debugging ANY issue, you MUST follow this systematic investigation process.
 3. **FOLLOW THE EVIDENCE**: When the user provides evidence (logs, traces, error messages), that is your PRIMARY source of truth. Start there, not with assumptions.
 4. **NO HYPOTHESES WITHOUT EVIDENCE**: You may NOT propose a cause without showing the specific code or data that supports it.
 5. **ONE INVESTIGATION PATH**: Follow one systematic path from input to failure. Do not jump between multiple unrelated guesses.
+6. **VERIFY NAMING CONVENTIONS**: When encountering interface/parameter mismatches, use grep to count occurrences of all variants. Majority variant (>5:1 ratio) is the correct convention. Fix minority variant, not majority. Never trust error messages over codebase evidence.
 
 ### PROHIBITED DEBUGGING BEHAVIORS:
 - ❌ "This might be..." or "This could be..." without evidence
@@ -69,6 +70,40 @@ When debugging ANY issue, you MUST follow this systematic investigation process.
 - ❌ Assuming data structures without examining them
 - ❌ Suggesting fixes without identifying the actual problem
 - ❌ Ignoring provided evidence in favor of assumptions
+- ❌ Changing code to match error messages without verifying codebase-wide impact
+
+## 🛑 INTERFACE MISMATCH CHECKPOINT
+
+**CRITICAL: BEFORE changing any parameter name, function signature, or interface to match an error:**
+
+1. **SEARCH BOTH VARIANTS**:
+   ```bash
+   # Count occurrences of each variant
+   grep -r "variant_a" . --include="*.py" | wc -l
+   grep -r "variant_b" . --include="*.py" | wc -l
+   ```
+
+2. **DETERMINE CORRECT CONVENTION**:
+   - Majority variant (>5:1 ratio) = CORRECT convention
+   - Minority variant = WRONG (fix these)
+   - Equal split or unclear = ASK USER for decision
+
+3. **FIX AT THE ROOT**:
+   - ✅ Fix protocol/interface definitions (if they use minority variant)
+   - ✅ Fix minority call sites to match majority
+   - ❌ NEVER change majority to match error message
+
+4. **EXAMPLES OF INTERFACE MISMATCHES**:
+   - Parameter name differences (processor_stage vs pipeline_stage)
+   - Method signature changes (process() vs execute())
+   - Protocol definition errors
+   - API contract violations
+
+**REMEMBER**: Error messages can be WRONG. The codebase majority wins.
+
+**Real-world failure**: Changing `processor_stage` to `pipeline_stage` would have broken 38 references across 9 files. The protocol definition was wrong, not the call sites.
+
+**See**: Issue #88 for complete analysis of this failure pattern
 
 ## 🚨 CRITICAL: Development Workflow
 
@@ -195,6 +230,16 @@ When debugging an issue through active conversation with the user (user provides
 ### 5. PREMATURE VICTORY DECLARATION
 -   **Symptom**: Declaring success when tests are failing, making excuses like "environmental issues" or "test setup problems" without evidence.
 -   **Prevention**: A failing test means broken code, period. You must debug thoroughly until tests pass or you have clear evidence of infrastructure failure. If genuinely blocked by infrastructure, provide reproduction steps and request help.
+
+### 6. LOCALIZED FIX WITHOUT IMPACT ANALYSIS
+-   **Symptom**: Changing code to match error messages without verifying codebase-wide impact, leading to cascading breakage.
+-   **Prevention**:
+    - Run INTERFACE MISMATCH CHECKPOINT for all naming conflicts
+    - Use grep with count to determine majority convention
+    - Fix at root (protocol/interface definition) not call sites
+    - Trust codebase evidence over error messages
+-   **Example**: Changing `processor_stage` to `pipeline_stage` would break 38 references. The correct fix was updating the protocol definition to use `processor_stage`.
+-   **See**: Issue #88
 
 ## 🛑 CRITICAL: Documentation Philosophy
 
