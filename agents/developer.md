@@ -216,8 +216,9 @@ When debugging an issue through active conversation with the user (user provides
 -   **Prevention**: Follow the **EXPLORE (MANDATORY)** step above. Search before you code. Justify every new line of code.
 
 ### 2. STANDALONE VALIDATION
--   **Symptom**: Creating `test.py` files, quick validation scripts, or using `python -c "..."` to "check if something works".
--   **Prevention**: **ALL** testing and validation MUST happen within the `pytest` framework in the `tests/` directory. If you feel the urge to write a one-off test, create a proper `pytest` test case instead.
+-   **Symptom**: Creating `test.py`, `debug_*.py`, `verify_*.py`, or any validation scripts outside `tests/`, or using `python -c "..."` to "check if something works".
+-   **Prevention**: **ALL** testing, validation, debugging verification, and "checking" MUST happen within the `pytest` framework in the `tests/` directory. If you feel the urge to write a one-off test, debug script, or verification file, create a proper `pytest` test case instead. Use existing test fixtures (like `real_bm`, `real_logger`) for debugging.
+-   **See**: Pre-Action Checkpoint below for mandatory halt check before creating any .py file.
 
 ### 3. SHARED INFRASTRUCTURE TUNNEL VISION
 -   **Symptom**: Modifying shared files (e.g., `conftest.py`, base classes, core utilities) to fix a specific, narrow problem, thereby breaking other parts of the system.
@@ -285,6 +286,49 @@ Steps taken:
 - ❌ Reversing recent user changes without explicit user request
 - ❌ Guessing at configuration structure when examples exist
 - ❌ Making "fixes" based on assumptions rather than verified patterns
+
+## 🛑 PRE-ACTION CHECKPOINTS
+
+### Before Creating Any .py File Outside tests/
+
+**MANDATORY HALT CHECK** - Execute this checkpoint BEFORE creating any Python file:
+
+1. **Location check**: Is this file being created in `tests/` directory?
+   - YES → Proceed (proper pytest test)
+   - NO → Continue to step 2
+
+2. **Purpose evaluation** - What is this file for?
+   - Testing/validation/verification → **PROHIBITED**, use pytest in tests/
+   - Debugging/checking/examining → **PROHIBITED**, use pytest in tests/
+   - Temporary/quick/ad-hoc script → **PROHIBITED**, use pytest in tests/
+   - Production code → Proceed with normal review
+
+3. **If prohibited purpose detected**:
+   - **STOP** the file creation attempt
+   - Instead: Create proper pytest test in `tests/` directory
+   - Use existing test fixtures (`real_bm`, `real_logger`, etc.)
+   - Make test reusable for future debugging
+
+**Prohibited file patterns**:
+- ❌ `debug_*.py` → Create `tests/test_*_debug.py` instead
+- ❌ `test_*.py` (outside tests/) → Create `tests/test_*.py` instead
+- ❌ `verify_*.py` → Create `tests/test_*_verification.py` instead
+- ❌ `check_*.py` → Create `tests/test_*_check.py` instead
+- ❌ `tmp*.py` → Create `tests/test_*.py` instead
+
+**Examples of correct approach**:
+- ❌ Create `debug_logging.py` to check logger config
+- ✅ Create `tests/test_logger_config.py` with proper fixtures
+
+- ❌ Create `verify_handler.py` to test handler setup
+- ✅ Create `tests/test_handler_verification.py` using pytest
+
+- ❌ Create `test_connection.py` in project root
+- ✅ Create `tests/test_database_connection.py` in tests/
+
+**Remember**: If you need to verify, check, debug, or test something, that's TESTING. Use pytest in the tests/ directory.
+
+**See**: STANDALONE VALIDATION failure mode above for the underlying prohibition and rationale.
 
 ## Code Standards
 -   **Style**: Follow existing code style (naming, formatting, etc.).
