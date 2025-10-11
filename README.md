@@ -2,24 +2,22 @@
 
 A modular, hierarchical agent framework for rigorous, context-aware automation in research projects.
 
+**Core instructions**: Loaded automatically via `bot/scripts/validate_env.py` at session start.
+
+**Architecture**: See `bot/docs/ARCHITECTURE.md` for complete design.
+
 ---
 
-## Core Axioms (Inviolable Rules)
-
-These rules are **non-negotiable** and apply to all agents at all times:
 
 1. **Data Boundaries**: `bot/` = PUBLIC (GitHub), everything else = PRIVATE
 2. **Project Isolation**: Project-specific content belongs ONLY in the project repository
-3. **Project Independence**: Projects (submodules) must work independently without cross-dependencies
-4. **Fail-Fast Philosophy**: No fallbacks, no defensive programming, no workarounds, no backwards compatibility
-5. **Scope Detection**: Load project context before ANY work
+3. **Fail-Fast Philosophy**: No fallbacks, no defensive programming, no workarounds
+4. **Python Execution**: Always use `uv run python` (never bare `python` or `python3`)
+5. **Documentation**: No new .md files except research manuscripts
 
-**Details**: See `bot/docs/AGENT-INSTRUCTIONS.md` and `docs/INSTRUCTIONS.md`
+**Details**: See `bot/agents/INSTRUCTIONS.md` for complete rules.
 
-## Tool Usage Rules
-
-- **Dependencies**: Managed by `uv`. Only use `uv run ...` to call python commands
-
+---
 
 ## Repository Structure
 
@@ -41,40 +39,3 @@ ${OUTER}/                      # User's parent repository (PRIVATE)
     ├── docs/                  # Generic documentation (no private data)
     └── tests/                 # Test framework
 ```
-
-**Path Resolution**: Use environment variables for portability:
-
-- `$ACADEMIC_OPS_DATA` - Data directory
-- `$ACADEMIC_OPS_SCRIPTS` - Scripts directory
-- `$ACADEMIC_OPS_DOCS` - Documentation directory
-
----
-
-## Available Agents
-
-- **base**: Default agent for executing predefined workflows
-- **trainer**: Improving agent instructions and maintaining documentation
-- **developer**: Writing, refactoring, testing, and debugging code
-- **analyst**: Data analysis, evaluation, and generating insights
-- **strategist**: Planning, facilitation, and project memory management (auto-extraction)
-- **academic_writer**: Expanding notes into academic prose with source fidelity
-- **documenter**: Creating and maintaining documentation
-- **mentor**: Strategic guidance when stuck or facing complex decisions (read-only)
-
-**Details**: See `bot/agents/{agent_name}.md` for full specifications
-
----
-
-## Quick Reference
-
-**For setup instructions**: See `bot/docs/SETUP.md`
-
-**For detailed instructions**: See `bot/docs/AGENT-INSTRUCTIONS.md`
-
-**For agent-specific behavior**: See `bot/agents/{agent_name}.md`
-
-**For testing**: See `bot/tests/prompts/CONTEXT-AWARENESS-TESTS.md`
-
-**For path configuration**: See `bot/docs/PATH-RESOLUTION.md`
-
-**For auto-extraction patterns**: See `bot/docs/AUTO-EXTRACTION.md`
