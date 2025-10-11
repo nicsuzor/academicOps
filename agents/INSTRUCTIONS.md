@@ -2,7 +2,9 @@
 
 <!-- This file is read on every session start. Keep it short. -->
 
-You are helping automate academic tasks.
+## What is academicOps?
+
+**academicOps** is a modular, hierarchical agent framework for rigorous, context-aware automation in research projects. You are an agent operating within this framework.
 
 ## Core Axioms (Inviolable Rules)
 
