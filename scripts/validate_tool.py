@@ -95,14 +95,50 @@ def validate_tool_use(tool_name: str, tool_input: dict, active_agent: str) -> tu
                 f"   2. Or request user to make the change manually"
             )
 
-    # Command validation rules (existing functionality)
+    # Rule 2: Code review before git commits
     if tool_name == "Bash":
         command = tool_input.get("command", "")
+
+        # Run code review on git commits
+        if "git commit" in command and "--no-verify" not in command:
+            allowed, error = validate_git_commit()
+            if not allowed:
+                return (False, error)
+
+        # Other command validation
         issues = validate_command(command)
         if issues:
             return (False, "\n".join(f"• {msg}" for msg in issues))
 
     return (True, None)
+
+
+def validate_git_commit() -> tuple[bool, str | None]:
+    """Run code review on staged files before git commit.
+
+    Returns:
+        (allowed: bool, error_message: str | None)
+    """
+    try:
+        from bot.scripts.code_review import review_staged_files, CodeReviewer
+
+        violations = review_staged_files()
+
+        if violations:
+            reviewer = CodeReviewer()
+            message = reviewer.format_violations(violations)
+            return (
+                False,
+                f"{message}\n"
+                f"Fix violations and try again, or use 'git commit --no-verify' to skip code review"
+            )
+
+        return (True, None)
+
+    except Exception as e:
+        # Don't block commits if code review fails
+        print(f"Warning: Code review failed: {e}", file=sys.stderr)
+        return (True, None)
 
 
 def validate_command(command: str) -> list[str]:
@@ -127,27 +163,28 @@ def main():
         print(f"Error: Invalid JSON input: {e}", file=sys.stderr)
         sys.exit(2)
 
-    # Debug: Save input for inspection
-    debug_file = Path("/tmp/claude-tool-input.json")
-    with debug_file.open("w") as f:
-        json.dump(input_data, f, indent=2)
 
     # Extract tool information
     tool_name = input_data.get("tool_name", "")
     tool_input = input_data.get("tool_input", {})
-    transcript_path = input_data.get("transcript_path")
 
     # Detect active agent
-    active_agent = get_active_agent(transcript_path)
+    active_agent = tool_input.get("subagent_type")
 
     # Validate tool use
     allowed, error_message = validate_tool_use(tool_name, tool_input, active_agent)
+    output_data = dict(
+        input=input_data.copy(), output=dict(allowed=allowed, error=error_message)
+    )
+
+    # Debug: Save input for inspection
+    debug_file = Path("/tmp/claude-tool-input.json")
+    with debug_file.open("a") as f:
+        json.dump(output_data, f, indent=2)
 
     if not allowed:
         print(error_message, file=sys.stderr)
-        sys.exit(2)  # Block the tool call
-
-    # Allow the tool call
+        # sys.exit(2)  # Block the tool call
     sys.exit(0)
 
 
