@@ -37,6 +37,10 @@ All agents follow this strict loading sequence:
 - Validates agent permissions via `bot/scripts/validate_tool.py`
 - Blocks unauthorized tool use based on agent configuration
 - Enforces write restrictions, mode compliance
+- Enforces Axiom #5 (documentation-as-code): blocks .md file creation except for:
+  - Research papers (papers/, manuscripts/)
+  - Agent instructions (bot/agents/)
+  - Trainer agent override (can create any .md if truly needed)
 
 ## Repository Structure
 
@@ -47,12 +51,12 @@ ${OUTER}/                          # Parent repo (PRIVATE)
 ├── CLAUDE.md                      # Entry point (1 line)
 ├── bot/                           # academicOps submodule (PUBLIC on GitHub)
 │   ├── agents/
+│   │   ├── INSTRUCTIONS.md        # Generic rules (PUBLIC)
 │   │   ├── trainer.md             # Agent definitions
 │   │   └── ...
-│   ├── scripts/                    # Public tools
-│   └── docs/                       
-│   │   ├── INSTRUCTIONS.md        # Generic rules (PUBLIC)
-│   │   └── ...
+│   ├── scripts/                   # Public tools
+│   └── docs/                      # Documentation (legacy files)
+│       └── ...
 ├── docs/
 │   └── agents/
 │       └── INSTRUCTIONS.md        # User-specific context (PRIVATE)

@@ -1,1 +1,1 @@
-Read `./docs/INSTRUCTIONS.md` for project instructions.
+Read `./agents/INSTRUCTIONS.md` for core axioms and project instructions.
