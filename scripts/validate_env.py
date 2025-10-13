@@ -55,10 +55,12 @@ def main():
         print(user_content, file=sys.stderr)
         sys.exit(1)
 
-    # Construct the additional context message
+    # Construct the additional context message in the correct format for SessionStart hooks
+    # See: https://docs.claude.com/en/docs/claude-code/hooks
     context = {
-        "type": "additional_context",
-        "content": f"""# Required Agent Instructions
+        "hookSpecificOutput": {
+            "hookEventName": "SessionStart",
+            "additionalContext": f"""# Required Agent Instructions
 
 The following instruction files have been loaded and MUST be followed:
 
@@ -76,6 +78,7 @@ The following instruction files have been loaded and MUST be followed:
 
 **These instructions are MANDATORY. They override any default behaviors.**
 """
+        }
     }
 
     # Output as JSON for Claude Code to parse
