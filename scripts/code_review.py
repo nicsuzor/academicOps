@@ -193,28 +193,42 @@ class CodeReviewer:
         return "\n".join(lines)
 
 
-def get_staged_files() -> list[Path]:
-    """Get list of Python files staged for commit."""
+def get_staged_files(cwd: str | None = None) -> list[Path]:
+    """Get list of Python files staged for commit.
+
+    Args:
+        cwd: Working directory for git command (defaults to current directory)
+    """
     try:
         result = subprocess.run(
             ["git", "diff", "--cached", "--name-only", "--diff-filter=ACM"],
             capture_output=True,
             text=True,
             check=True,
+            cwd=cwd,
         )
 
         files = result.stdout.strip().split("\n")
-        # Filter for Python files
-        return [Path(f) for f in files if f.endswith(".py") and f]
+        # Filter for Python files and make absolute paths if cwd provided
+        python_files = [f for f in files if f.endswith(".py") and f]
+
+        if cwd:
+            return [Path(cwd) / f for f in python_files]
+        else:
+            return [Path(f) for f in python_files]
 
     except subprocess.CalledProcessError:
         return []
 
 
-def review_staged_files() -> list[Violation]:
-    """Review all staged Python files (for git hooks)."""
+def review_staged_files(cwd: str | None = None) -> list[Violation]:
+    """Review all staged Python files (for git hooks).
+
+    Args:
+        cwd: Working directory where git command is run (for hook context)
+    """
     reviewer = CodeReviewer()
-    staged_files = get_staged_files()
+    staged_files = get_staged_files(cwd)
 
     if not staged_files:
         return []

@@ -4,3 +4,4 @@ tmp
 .cache
 __pycache__
 tmp*
+*.orig
