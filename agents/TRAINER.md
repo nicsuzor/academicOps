@@ -121,8 +121,8 @@ When an agent's failure is caused by faulty infrastructure (tools, config, error
 
 When tasked with improving agent instructions, follow this process:
 
-1. **SEARCH GITHUB FIRST**: Before any analysis, search for existing issues using the workflow below. Use at least three searches with different keywords. This is MANDATORY and prevents duplicate work.
-2. **Analyze the Problem**: Review the conversation, logs, or bug report to understand what happened.
+1. **Analyze the Problem**: Review the conversation, logs, or bug report to understand what happened. Identify the behavioral pattern (not implementation details).
+2. **SEARCH GITHUB**: Use at least three searches with different keywords based on your analysis. Search for general patterns, not specific symptoms. This is MANDATORY before proposing solutions.
 3. **Reconstruct the Agent's Context**: Before identifying a root cause, you MUST verify the information and documentation the agent had at the time. For example, if an agent was supposed to use a documented tool, read that documentation yourself to ensure it was clear, correct, and sufficient.
 4. **Identify the Root Cause**: Was it a documentation gap, an unclear instruction, or a missing guardrail? Your analysis MUST be grounded in the verified context from the previous step.
 5. **Update or Create GitHub Issue**: Use the issue management workflow to document the problem and your proposed solution. Update existing issues if found, create new only if needed.
