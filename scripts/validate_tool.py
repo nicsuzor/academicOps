@@ -344,7 +344,7 @@ def _requires_uv_run(command: str) -> bool:
     Check if a command should be run with 'uv run' prefix.
 
     Returns True if:
-    - Command contains python-related tools (python, pytest, fastapi, streamlit, fastmcp)
+    - Command starts with python-related tools (python, pytest, fastapi, streamlit, fastmcp)
     - The python tool is NOT prefixed with 'uv run'
     - Skips tools invoked as Python modules (e.g., 'python -m pytest')
 
@@ -354,6 +354,7 @@ def _requires_uv_run(command: str) -> bool:
     - "timeout 60 python script.py" -> True (warn)
     - "timeout 60 uv run python script.py" -> False (no warn)
     - "uv run python -m pytest" -> False (no warn, pytest invoked via python -m)
+    - "gh issue comment ... python ..." -> False (python in args, not command)
     """
     if not command:
         return False
@@ -363,31 +364,58 @@ def _requires_uv_run(command: str) -> bool:
     # Python-related commands that should use uv run
     python_tools = ["python", "pytest", "fastapi", "streamlit", "fastmcp"]
 
-    for tool in python_tools:
-        # Look for the tool with word boundaries, capturing the position
-        # Word boundary patterns: start of string, after whitespace, or after shell operators
-        pattern = r"(^|[\s;&|])({tool}(?:\d+)?)(?:$|[\s;&|])".format(
-            tool=re.escape(tool)
-        )
+    # Split command into tokens, handling common shell patterns
+    # We only check if the COMMAND itself (not arguments) is a Python tool
+    # Split on whitespace and shell operators, but only check early tokens
+    tokens = re.split(r'[\s;&|]+', command_lower.strip())
 
-        for match in re.finditer(pattern, command_lower):
-            # Get the position where the tool starts
-            tool_start = match.start(2)
+    # Check first few tokens (to handle cases like "timeout 60 python script.py")
+    # We check up to 6 tokens to handle wrappers with arguments
+    for i, token in enumerate(tokens[:6]):
+        # Skip empty tokens
+        if not token:
+            continue
 
-            # Look backwards from the tool to check if 'uv run' appears immediately before
-            before_tool = command_lower[:tool_start]
+        # Skip numeric tokens (arguments to wrappers like "timeout 60")
+        if re.match(r'^\d+$', token):
+            continue
 
-            # Skip if this tool is invoked as a Python module (e.g., 'python -m pytest')
-            # Check if '-m' appears right before this tool
-            if re.search(r'python(?:\d+)?\s+-m\s*$', before_tool):
-                # This tool is being invoked via python -m, skip validation
-                # (it's covered by the python validation)
-                continue
+        # Skip common command wrappers that don't need uv run
+        if token in ['timeout', 'nice', 'env', 'time', 'sudo', 'sh', 'bash']:
+            continue
 
-            # Check if 'uv run' appears at the end of before_tool (with optional whitespace)
-            if not re.search(r'uv\s+run\s*$', before_tool):
-                # This tool invocation is not prefixed with 'uv run'
-                return True
+        # Check if this token is a Python tool
+        for tool in python_tools:
+            # Match exact tool name (with optional version number like python3)
+            if re.match(rf'^{re.escape(tool)}(?:\d+)?$', token):
+                # Found a Python tool as the actual command
+                # Now check if it's properly prefixed with 'uv run'
+
+                # Look at tokens before this one
+                before_tokens = tokens[:i]
+
+                # Skip if invoked via 'python -m' (check previous token)
+                if i > 0 and tokens[i-1] == '-m':
+                    # This tool is a module name (e.g., 'python -m pytest')
+                    # It's covered by the python validation
+                    continue
+
+                # Check if 'uv run' appears in the tokens before this tool
+                # We need both 'uv' and 'run' to appear consecutively
+                has_uv_run = False
+                for j in range(len(before_tokens) - 1):
+                    if before_tokens[j] == 'uv' and before_tokens[j+1] == 'run':
+                        has_uv_run = True
+                        break
+
+                if not has_uv_run:
+                    # Python tool found without 'uv run' prefix
+                    return True
+
+        # If we found a non-wrapper, non-Python command, stop checking
+        # (the actual command is something else, like 'gh', 'git', 'echo', etc.)
+        if token not in ['timeout', 'nice', 'env', 'time', 'sudo', 'sh', 'bash', 'uv', 'run'] and not re.match(r'^\d+$', token):
+            break
 
     return False
 
