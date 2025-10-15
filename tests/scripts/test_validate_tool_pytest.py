@@ -149,12 +149,25 @@ class TestMarkdownProhibition:
         assert result["returncode"] == 0
         assert result["permission_decision"] == "allow"
 
-    def test_blocks_md_outside_working_dir(self):
-        """Should block .md file creation outside working directory."""
+    def test_allows_md_in_tmp(self):
+        """Should allow .md file creation in /tmp directory."""
         result = run_validation(
             "Write",
             {
-                "file_path": "/tmp/external.md",
+                "file_path": "/tmp/test_file.md",
+                "content": "# Test",
+                "subagent_type": "developer"
+            }
+        )
+        assert result["returncode"] == 0  # Allow = exit code 0
+        assert result["permission_decision"] == "allow"
+
+    def test_blocks_md_outside_working_dir(self):
+        """Should block .md file creation outside working directory (except /tmp)."""
+        result = run_validation(
+            "Write",
+            {
+                "file_path": "/opt/external.md",
                 "content": "# External",
                 "subagent_type": "developer"
             }
@@ -231,7 +244,7 @@ class TestPythonInlineProhibition:
         assert result["returncode"] == 0
 
     def test_allows_python_module_execution(self):
-        """Should allow python -m module execution (but warns about pytest needing uv run)."""
+        """Should allow python -m module execution with uv run."""
         result = run_validation(
             "Bash",
             {
@@ -240,17 +253,16 @@ class TestPythonInlineProhibition:
             }
         )
         # python -m is allowed (not blocked), only python -c is blocked
-        # However, pytest needs uv run, so we get a warning
-        # NOTE: This is because _requires_uv_run detects 'pytest' keyword
-        assert result["returncode"] == 1  # Warn = exit code 1 (pytest needs uv run)
+        # With uv run present, no blocking should occur
+        assert result["returncode"] == 0  # Allow = exit code 0
         assert result["permission_decision"] == "allow"
 
 
 class TestUvRunWarning:
-    """Test uv run warning (should warn, not block)."""
+    """Test uv run enforcement (blocks without uv run)."""
 
     def test_warns_python_without_uv_run(self):
-        """Should warn when using python without uv run."""
+        """Should block when using python without uv run."""
         result = run_validation(
             "Bash",
             {
@@ -258,8 +270,8 @@ class TestUvRunWarning:
                 "subagent_type": "developer"
             }
         )
-        assert result["returncode"] == 1  # Warn = exit code 1
-        assert result["permission_decision"] == "allow"  # Allows with warning
+        assert result["returncode"] == 2  # Block = exit code 2
+        assert result["permission_decision"] == "deny"  # Blocks without uv run
         assert "uv run" in result["reason"].lower()
 
     def test_no_warning_with_uv_run(self):

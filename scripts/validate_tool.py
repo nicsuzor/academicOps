@@ -266,7 +266,7 @@ VALIDATION_RULES = [
     ),
     ValidationRule(
         name="You must use 'uv run ...' to activate python environments for python-based tools.",
-        severity="warn",
+        severity="block",
         tool_patterns=["Bash"],
         allowed_agents=set(),  # Empty set means no agents are "allowed" (always triggers)
         custom_matcher=lambda tool_name, tool_input: (
@@ -282,6 +282,7 @@ def _is_allowed_md_path(file_path: str) -> bool:
     Check if .md file is in an allowed path (mirrors pre-commit hook logic).
 
     Allowed paths:
+    - /tmp/**/*.md: Temporary files (for testing, debugging, etc.)
     - bot/agents/*.md: Agent instructions (executable behavior definitions)
     - papers/**/*.md: Research papers
     - manuscripts/**/*.md: Manuscript drafts
@@ -298,6 +299,10 @@ def _is_allowed_md_path(file_path: str) -> bool:
 
     # Convert to Path object
     path_obj = Path(file_path)
+
+    # Allow /tmp directory (for temporary files, testing, debugging)
+    if path_obj.is_absolute() and str(path_obj).startswith("/tmp/"):
+        return True
 
     # If absolute path, convert to relative path from cwd
     # This handles the case where Claude Code passes absolute paths
@@ -341,12 +346,14 @@ def _requires_uv_run(command: str) -> bool:
     Returns True if:
     - Command contains python-related tools (python, pytest, fastapi, streamlit, fastmcp)
     - The python tool is NOT prefixed with 'uv run'
+    - Skips tools invoked as Python modules (e.g., 'python -m pytest')
 
     Examples:
     - "python script.py" -> True (warn)
     - "uv run python script.py" -> False (no warn)
     - "timeout 60 python script.py" -> True (warn)
     - "timeout 60 uv run python script.py" -> False (no warn)
+    - "uv run python -m pytest" -> False (no warn, pytest invoked via python -m)
     """
     if not command:
         return False
@@ -369,6 +376,13 @@ def _requires_uv_run(command: str) -> bool:
 
             # Look backwards from the tool to check if 'uv run' appears immediately before
             before_tool = command_lower[:tool_start]
+
+            # Skip if this tool is invoked as a Python module (e.g., 'python -m pytest')
+            # Check if '-m' appears right before this tool
+            if re.search(r'python(?:\d+)?\s+-m\s*$', before_tool):
+                # This tool is being invoked via python -m, skip validation
+                # (it's covered by the python validation)
+                continue
 
             # Check if 'uv run' appears at the end of before_tool (with optional whitespace)
             if not re.search(r'uv\s+run\s*$', before_tool):
