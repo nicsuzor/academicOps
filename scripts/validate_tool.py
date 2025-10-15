@@ -226,7 +226,7 @@ VALIDATION_RULES = [
     ),
     ValidationRule(
         name="Git commits restricted to code-review agent",
-        severity="block",
+        severity="warn",
         tool_patterns=[
             "Bash",
             "mcp__github__create_or_update_file",

@@ -34,7 +34,8 @@ def run_validation(tool_name: str, tool_input: dict) -> dict:
         [sys.executable, str(SCRIPT_PATH)],
         input=json.dumps(input_data),
         capture_output=True,
-        text=True
+        text=True,
+        cwd=str(WORKING_DIR)  # Run from working directory for path resolution
     )
 
     # Parse JSON output
@@ -66,7 +67,7 @@ class TestMarkdownProhibition:
                 "subagent_type": "developer"
             }
         )
-        assert result["returncode"] == 1
+        assert result["returncode"] == 2  # Block = exit code 2
         assert result["permission_decision"] == "deny"
         assert "All code should be self-documenting" in result["reason"]
 
@@ -80,7 +81,7 @@ class TestMarkdownProhibition:
                 "subagent_type": "developer"
             }
         )
-        assert result["returncode"] == 1
+        assert result["returncode"] == 2  # Block = exit code 2
         assert result["permission_decision"] == "deny"
 
     def test_allows_md_in_papers(self):
@@ -93,7 +94,7 @@ class TestMarkdownProhibition:
                 "subagent_type": "developer"
             }
         )
-        assert result["returncode"] == 0
+        assert result["returncode"] == 0  # Allow = exit code 0
         assert result["permission_decision"] == "allow"
 
     def test_allows_md_in_manuscripts(self):
@@ -158,7 +159,7 @@ class TestMarkdownProhibition:
                 "subagent_type": "developer"
             }
         )
-        assert result["returncode"] == 1
+        assert result["returncode"] == 2  # Block = exit code 2
         assert result["permission_decision"] == "deny"
 
 
@@ -174,7 +175,7 @@ class TestPythonInlineProhibition:
                 "subagent_type": "developer"
             }
         )
-        assert result["returncode"] == 1
+        assert result["returncode"] == 2  # Block = exit code 2
         assert result["permission_decision"] == "deny"
         assert "Inline Python execution" in result["reason"]
         assert "Create a proper test file" in result["reason"]
@@ -188,7 +189,7 @@ class TestPythonInlineProhibition:
                 "subagent_type": "developer"
             }
         )
-        assert result["returncode"] == 1
+        assert result["returncode"] == 2  # Block = exit code 2
         assert result["permission_decision"] == "deny"
 
     def test_blocks_python_dash_c_for_trainer(self):
@@ -200,7 +201,7 @@ class TestPythonInlineProhibition:
                 "subagent_type": "trainer"
             }
         )
-        assert result["returncode"] == 1
+        assert result["returncode"] == 2  # Block = exit code 2
         assert result["permission_decision"] == "deny"
         assert "prohibited for all agents" in result["reason"]
 
@@ -213,7 +214,7 @@ class TestPythonInlineProhibition:
                 "subagent_type": "developer"
             }
         )
-        assert result["returncode"] == 1
+        assert result["returncode"] == 2  # Block = exit code 2
         assert result["permission_decision"] == "deny"
 
     def test_allows_python_script_execution(self):
@@ -230,7 +231,7 @@ class TestPythonInlineProhibition:
         assert result["returncode"] == 0
 
     def test_allows_python_module_execution(self):
-        """Should allow python -m module execution."""
+        """Should allow python -m module execution (but warns about pytest needing uv run)."""
         result = run_validation(
             "Bash",
             {
@@ -238,8 +239,11 @@ class TestPythonInlineProhibition:
                 "subagent_type": "developer"
             }
         )
-        # python -m is allowed, only python -c is blocked
-        assert result["returncode"] == 0
+        # python -m is allowed (not blocked), only python -c is blocked
+        # However, pytest needs uv run, so we get a warning
+        # NOTE: This is because _requires_uv_run detects 'pytest' keyword
+        assert result["returncode"] == 1  # Warn = exit code 1 (pytest needs uv run)
+        assert result["permission_decision"] == "allow"
 
 
 class TestUvRunWarning:
@@ -254,8 +258,8 @@ class TestUvRunWarning:
                 "subagent_type": "developer"
             }
         )
-        assert result["returncode"] == 0  # Warns but doesn't block
-        assert result["permission_decision"] == "allow"
+        assert result["returncode"] == 1  # Warn = exit code 1
+        assert result["permission_decision"] == "allow"  # Allows with warning
         assert "uv run" in result["reason"].lower()
 
     def test_no_warning_with_uv_run(self):
@@ -339,7 +343,7 @@ class TestProtectedFileRestriction:
                 "subagent_type": "developer"
             }
         )
-        assert result["returncode"] == 1
+        assert result["returncode"] == 2  # Block = exit code 2
         assert result["permission_decision"] == "deny"
         assert "trainer" in result["reason"]
 
