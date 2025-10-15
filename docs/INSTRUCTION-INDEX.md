@@ -173,12 +173,13 @@ Every instruction file in academicOps with metadata.
 - **Status**: ✅ Required
 - **Issues**: -
 
-**agents/trainer.md**
-- **Purpose**: Meta-agent for improving other agents
+**agents/TRAINER.md**
+- **Purpose**: Meta-agent for improving other agents, includes Design Principles & Decision Framework
 - **Loaded by**: When trainer agent is invoked
 - **References**: base.md, LLM client docs (external)
 - **Status**: ✅ Required
-- **Issues**: #73
+- **Issues**: #73, #97 (silent documentation evaluation)
+- **Note**: Contains evolving design philosophy consulted before all interventions
 
 ---
 
