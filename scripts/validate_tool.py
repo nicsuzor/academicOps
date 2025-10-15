@@ -5,7 +5,8 @@ PreToolUse hook for Claude Code: Validates tool usage against agent permissions.
 This script enforces agent-specific tool restrictions using a modular rule system.
 
 Exit codes:
-- 0: Allow tool use
+- 0: Allow tool use (includes user prompts)
+- 1: Warn (allow with warning message)
 - 2: Block tool use (shows stderr message to agent)
 """
 
@@ -204,28 +205,28 @@ VALIDATION_RULES = [
         name="Protected file modifications restricted to trainer agent",
         tool_patterns=["Write", "Edit", "MultiEdit"],
         file_patterns=[
-            "bot/*",
-            "bot/**/*",
             "**/.claude/*",
             "**/.gemini/*",
-            "**/agents/*",
         ],
         allowed_agents={"trainer"},
         get_context=lambda tool_input: f"file: {tool_input.get('file_path', 'unknown')}",
+        severity="block",
     ),
     ValidationRule(
-        name="Creating new markdown files requires user confirmation",
+        name="All code should be self-documenting; no new documentation allowed",
         tool_patterns=["Write"],
-        allowed_agents=set(),  # force-ask ignores this field
+        allowed_agents={"trainer"},  # Trainer can create any .md file if truly needed
         custom_matcher=lambda tool_name, tool_input: (
             tool_name == "Write"
             and tool_input.get("file_path", "").lower().endswith(".md")
+            and not _is_allowed_md_path(tool_input.get("file_path", ""))
         ),
         get_context=lambda tool_input: f"file: {tool_input.get('file_path', 'unknown')}",
-        severity="force-ask",
+        severity="block",
     ),
     ValidationRule(
         name="Git commits restricted to code-review agent",
+        severity="block",
         tool_patterns=[
             "Bash",
             "mcp__github__create_or_update_file",
@@ -253,10 +254,21 @@ VALIDATION_RULES = [
         ),
     ),
     ValidationRule(
+        name="Inline Python execution (python -c) is prohibited. Create a proper test file instead.",
+        severity="block",
+        tool_patterns=["Bash"],
+        allowed_agents=set(),  # No exceptions - hard block for all agents
+        custom_matcher=lambda tool_name, tool_input: (
+            tool_name == "Bash"
+            and bool(re.search(r"\bpython[3]?\s+-c\b", tool_input.get("command", "")))
+        ),
+        get_context=lambda tool_input: f"command: {tool_input.get('command', '')[:80]}",
+    ),
+    ValidationRule(
         name="You must use 'uv run ...' to activate python environments for python-based tools.",
+        severity="warn",
         tool_patterns=["Bash"],
         allowed_agents=set(),  # Empty set means no agents are "allowed" (always triggers)
-        severity="warn",
         custom_matcher=lambda tool_name, tool_input: (
             tool_name == "Bash" and _requires_uv_run(tool_input.get("command", ""))
         ),
@@ -265,49 +277,103 @@ VALIDATION_RULES = [
 ]
 
 
+def _is_allowed_md_path(file_path: str) -> bool:
+    """
+    Check if .md file is in an allowed path (mirrors pre-commit hook logic).
+
+    Allowed paths:
+    - bot/agents/*.md: Agent instructions (executable behavior definitions)
+    - papers/**/*.md: Research papers
+    - manuscripts/**/*.md: Manuscript drafts
+    - projects/*/papers/**/*.md: Project-specific research papers
+    - projects/*/manuscripts/**/*.md: Project-specific manuscript drafts
+
+    Everything else is considered documentation and is prohibited per Axiom #5.
+
+    NOTE: Claude Code passes absolute paths to this function, so we need to
+    convert them to relative paths for pattern matching.
+    """
+    if not file_path:
+        return False
+
+    # Convert to Path object
+    path_obj = Path(file_path)
+
+    # If absolute path, convert to relative path from cwd
+    # This handles the case where Claude Code passes absolute paths
+    if path_obj.is_absolute():
+        try:
+            # Get current working directory
+            cwd = Path.cwd()
+            # Convert to relative path
+            path_obj = path_obj.relative_to(cwd)
+        except ValueError:
+            # Path is not relative to cwd, return False (block it)
+            # Files outside the working directory should not be created
+            return False
+
+    # Convert to POSIX string for pattern matching
+    path = path_obj.as_posix()
+
+    # Allow agent instructions (these ARE executable code)
+    if re.match(r"^bot/agents/.*\.md$", path):
+        return True
+
+    # Allow research papers in top-level papers/ directory
+    if re.match(r"^papers/.*\.md$", path):
+        return True
+
+    # Allow manuscripts in top-level manuscripts/ directory
+    if re.match(r"^manuscripts/.*\.md$", path):
+        return True
+
+    # Allow project manuscripts and papers
+    if re.match(r"^projects/[^/]+/(papers|manuscripts)/.*\.md$", path):
+        return True
+
+    return False
+
+
 def _requires_uv_run(command: str) -> bool:
     """
     Check if a command should be run with 'uv run' prefix.
 
     Returns True if:
     - Command contains python-related tools (python, pytest, fastapi, streamlit, fastmcp)
-    - Command does NOT already start with 'uv run'
+    - The python tool is NOT prefixed with 'uv run'
+
+    Examples:
+    - "python script.py" -> True (warn)
+    - "uv run python script.py" -> False (no warn)
+    - "timeout 60 python script.py" -> True (warn)
+    - "timeout 60 uv run python script.py" -> False (no warn)
     """
     if not command:
         return False
 
-    # Strip leading whitespace to check start of command
-    command_stripped = command.lstrip()
-
-    # If already using uv run, no warning needed
-    if command_stripped.startswith("uv run "):
-        return False
+    command_lower = command.lower()
 
     # Python-related commands that should use uv run
     python_tools = ["python", "pytest", "fastapi", "streamlit", "fastmcp"]
 
-    # Check if command contains any python tools
-    # Split by common shell delimiters to check individual commands
-    # This handles cases like: "cd foo && python script.py" or "echo hi | python"
-    command_lower = command.lower()
-
     for tool in python_tools:
-        # Check if tool appears as a standalone command (not as part of another word)
-        # Match patterns like:
-        # - "python script.py"
-        # - "python3 script.py"
-        # - "cd dir && python ..."
-        # - "something | python ..."
-        # But not: "my-python-dir" or "pythonscript"
-
-        # Look for the tool name with word boundaries
-
+        # Look for the tool with word boundaries, capturing the position
         # Word boundary patterns: start of string, after whitespace, or after shell operators
-        pattern = r"(?:^|[\s;&|]){tool}(?:\d+)?(?:$|[\s;&|])".format(
+        pattern = r"(^|[\s;&|])({tool}(?:\d+)?)(?:$|[\s;&|])".format(
             tool=re.escape(tool)
         )
-        if re.search(pattern, command_lower):
-            return True
+
+        for match in re.finditer(pattern, command_lower):
+            # Get the position where the tool starts
+            tool_start = match.start(2)
+
+            # Look backwards from the tool to check if 'uv run' appears immediately before
+            before_tool = command_lower[:tool_start]
+
+            # Check if 'uv run' appears at the end of before_tool (with optional whitespace)
+            if not re.search(r'uv\s+run\s*$', before_tool):
+                # This tool invocation is not prefixed with 'uv run'
+                return True
 
     return False
 
@@ -352,21 +418,41 @@ def main():
     allowed, error_message, severity = validate_tool_use(
         tool_name, tool_input, active_agent
     )
+    should_continue = True
+    systemMessage = None
+    exit_code = 0
 
     # Map severity to permissionDecision
     if allowed:
         allow_message = "allow"
+        should_continue = True
+        exit_code = 0
+
     elif severity == "force-ask":
         allow_message = "ask"
+        systemMessage = error_message
+        should_continue = False  # Pause execution until user confirms
+        exit_code = 0
+    elif severity == "warn":
+        # Warnings don't block execution, but show a message
+        allow_message = "allow"
+        should_continue = True
+        systemMessage = error_message
+        exit_code = 1
     else:
         allow_message = "deny"
+        should_continue = False
+        exit_code = 2  # Block execution
 
     # Format for claude code
     output = {
-        "continue": True,  # Whether Claude should continue after hook execution (default: true)
-        "stopReason": "string",  # Message shown when continue is false
+        # Whether Claude should continue after hook execution (default: true)
+        # it seems like we shouldn't have 'continue' be true if we are denying permission
+        "continue": should_continue,
+        # Message shown when continue is false
+        "stopReason": None,
         "suppressOutput": False,  # Hide stdout from transcript mode (default: false)
-        "systemMessage": None,  # Optional warning message shown to the user
+        "systemMessage": systemMessage,  # Optional warning message shown to the user
         "hookSpecificOutput": {
             "hookEventName": "PreToolUse",
             # permissionDecision": "allow" | "deny" | "ask",
@@ -378,6 +464,7 @@ def main():
         },
     }
 
+
     # Debug: Save input for inspection
     debug_file = Path("/tmp/claude-tool-input.json")
     debug_data = dict(input=input_data, output=output)
@@ -386,13 +473,8 @@ def main():
         f.write("\n")
 
     print(json.dumps(output), file=sys.stderr)
-    if not allowed:
-        # For warnings, show message but allow the tool (exit 0)
-        # For blocks, show message and block the tool (exit 2)
-        if severity == "hardblock":
-            sys.exit(2)
 
-    sys.exit(0 if allowed else 1)
+    sys.exit(exit_code)
 
 
 if __name__ == "__main__":
