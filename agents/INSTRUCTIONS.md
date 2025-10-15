@@ -11,7 +11,11 @@
 1. **Data Boundaries**: `bot/` = PUBLIC (GitHub), everything else = PRIVATE
 2. **Project Isolation**: Project-specific content belongs ONLY in the project repository
 3. **Project Independence**: Projects (submodules) must work independently without cross-dependencies
-4. **Fail-Fast Philosophy**: No fallbacks, no defensive programming, no workarounds, no backwards compatibility
+4. **Fail-Fast Philosophy**: No fallbacks, no defensive programming, no workarounds, no backwards compatibility, **no `.get(key, default)`**
+   - ❌ PROHIBITED: `config.get("param", default_value)` - Silent misconfiguration corrupts research data
+   - ✅ REQUIRED: `config["param"]` - Raises KeyError immediately if missing
+   - ✅ REQUIRED: Pydantic Field() with no default - Raises ValidationError
+   - ✅ REQUIRED: Explicit check: `if key not in dict: raise ValueError(...)`
 5. Everything is **self-documenting**: documentation-as-code first; never make separate documentation files. Our live, validated, rigorous academic projects are also tutorials and guides; everything is replicable so we work on live code and data; never create fake examples for tests or documentation.
 6. **DRY**, modular, and **EXPLICIT**: one golden path, no defaults, no guessing, no backwards compatibility.
 1. **STOP WHEN INTERRUPTED** - If user interrupts, stop immediately.

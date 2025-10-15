@@ -109,6 +109,66 @@ When working directly with the user in a back-and-forth exchange, you must follo
 - **Defensive Overload**: Do not add excessive checks for valid data. Let it fail.
 - **Schema Violations**: Do not support multiple locations for the same data or provide "safe" defaults. Trust the schema.
 - **Manual Configuration**: Do not create configurations in code; use YAML or designated config files.
+- **Silent Configuration Defaults**: NEVER use `.get(key, default)` for configuration parameters (see below).
+
+## Configuration Anti-Patterns
+
+### ❌ PROHIBITED: `.get()` with Defaults on Configuration
+
+**DO NOT use `.get()` with default values for configuration parameters:**
+
+```python
+# ❌ PROHIBITED - Silent misconfiguration corrupts research data
+timeout = kwargs.get("timeout", 30)
+error_threshold = config.get("error_threshold", 0.5)
+max_retries = params.get("max_retries", 3)
+```
+
+**WHY THIS IS CRITICAL:**
+- Silent defaults hide misconfiguration for **months**
+- Research data can be corrupted without any errors
+- Violates fail-fast philosophy essential for academic integrity
+- Pre-commit hook will **BLOCK** commits with this pattern
+
+### ✅ REQUIRED: Explicit Configuration Validation
+
+**Option 1: Pydantic (PREFERRED for all new code)**
+```python
+from pydantic import BaseModel, Field
+
+class HostConfig(BaseModel):
+    """Configuration with REQUIRED parameters."""
+    timeout: int = Field(description="Max seconds to wait")
+    error_threshold: float = Field(ge=0.0, le=1.0)
+    max_retries: int = Field(gt=0)
+
+    # NO defaults - raises ValidationError if missing
+
+# Usage
+config = HostConfig(**kwargs)  # Fails immediately if timeout not provided
+```
+
+**Option 2: Explicit KeyError**
+```python
+# Fails immediately with clear error
+if "timeout" not in kwargs:
+    raise ValueError("timeout must be explicitly configured")
+timeout = kwargs["timeout"]
+```
+
+**Option 3: Property with Validation**
+```python
+@property
+def timeout(self) -> int:
+    """Get timeout from parameters. Must be explicitly set."""
+    if "timeout" not in self.parameters:
+        raise ValueError(
+            f"{self.agent_name}: 'timeout' must be explicitly set in parameters"
+        )
+    return self.parameters["timeout"]
+```
+
+**See:** Issue #100 for full analysis and enforcement strategy.
 
 ## Remember
 
