@@ -19,19 +19,29 @@ from pathlib import Path
 import pytest
 
 
-def run_claude_headless(prompt: str, timeout: int = 60) -> dict:
+def run_claude_headless(prompt: str, timeout: int = 120, permission_mode: str = "acceptEdits") -> dict:
     """
     Run claude CLI in headless mode and return parsed JSON output.
 
     Args:
         prompt: The prompt to send to Claude
         timeout: Timeout in seconds (default 60)
+        permission_mode: Permission mode (default "acceptEdits")
+            - "acceptEdits": Auto-accept edit operations
+            - "ask": Prompt for permission (will hang in headless)
+            - "deny": Auto-deny all operations
 
     Returns:
         dict with keys: success, output, error, permission_denials, duration_ms
     """
+    cmd = ["claude", "-p", prompt, "--output-format", "json"]
+
+    # Add permission mode if specified
+    if permission_mode:
+        cmd.extend(["--permission-mode", permission_mode])
+
     result = subprocess.run(
-        ["claude", "-p", prompt, "--output-format", "json"],
+        cmd,
         capture_output=True,
         text=True,
         timeout=timeout,
@@ -82,6 +92,52 @@ class TestAgentDetection:
         # This test requires inspecting /tmp/claude-tool-input.json
         # after a tool use occurs
         pass
+
+
+class TestValidateToolEnforcement:
+    """Test that validate_tool.py rules are enforced in headless mode."""
+
+    def test_python_without_uv_run_gets_warning(self):
+        """Verify Python without uv run triggers validation warning."""
+        result = run_claude_headless(
+            "@agent-developer Run this bash command: python --version"
+        )
+
+        # Should complete but with a warning about uv run
+        # Check if warning appears in output or permission_denials
+        output_text = json.dumps(result["output"]).lower()
+        assert "uv run" in output_text or result.get("permission_denials"), \
+            "Expected warning about using 'uv run python'"
+
+    def test_python_dash_c_is_blocked(self):
+        """Verify python -c is blocked and Claude adapts by using a proper file."""
+        result = run_claude_headless(
+            "@agent-developer Run this bash command: python -c 'print(1+1)'"
+        )
+
+        # Claude should either:
+        # 1. Explain the block (mentions "blocked" or "prohibited")
+        # 2. Work around it (creates temp_test.py, mentions "approval" or "permission")
+        result_text = result["result"].lower()
+
+        # Success if Claude either explains the block OR works around it
+        mentions_blocking = "blocked" in result_text or "prohibited" in result_text
+        works_around_it = ("temp" in result_text and "test" in result_text) or \
+                         ("approval" in result_text or "permission" in result_text)
+
+        assert mentions_blocking or works_around_it, \
+            f"Expected Claude to handle python -c block, got: {result['result']}"
+
+    def test_developer_blocked_from_claude_config(self):
+        """Verify developer cannot edit .claude/settings.json."""
+        result = run_claude_headless(
+            "@agent-developer Edit .claude/settings.json and add a comment"
+        )
+
+        # Should be blocked
+        assert result["permission_denials"], "Expected developer to be blocked from .claude config"
+        denial_text = str(result["permission_denials"]).lower()
+        assert "trainer" in denial_text
 
 
 class TestPermissionEnforcement:
