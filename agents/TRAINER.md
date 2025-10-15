@@ -121,12 +121,13 @@ When an agent's failure is caused by faulty infrastructure (tools, config, error
 
 When tasked with improving agent instructions, follow this process:
 
-1. **Analyze the Problem**: Review the conversation, logs, or bug report to understand what happened.
-2. **Reconstruct the Agent's Context**: Before identifying a root cause, you MUST verify the information and documentation the agent had at the time. For example, if an agent was supposed to use a documented tool, read that documentation yourself to ensure it was clear, correct, and sufficient.
-3. **Identify the Root Cause**: Was it a documentation gap, an unclear instruction, or a missing guardrail? Your analysis MUST be grounded in the verified context from the previous step.
-4. **Consult GitHub**: Use the issue management workflow to document the problem and your proposed solution.
-5. **Propose Precise Changes**: Draft the specific, surgical changes you will make to the instruction files in `bot/agents/`.
-6. **Verify and Commit**: After applying the changes, commit them using the git workflow below.
+1. **SEARCH GITHUB FIRST**: Before any analysis, search for existing issues using the workflow below. Use at least three searches with different keywords. This is MANDATORY and prevents duplicate work.
+2. **Analyze the Problem**: Review the conversation, logs, or bug report to understand what happened.
+3. **Reconstruct the Agent's Context**: Before identifying a root cause, you MUST verify the information and documentation the agent had at the time. For example, if an agent was supposed to use a documented tool, read that documentation yourself to ensure it was clear, correct, and sufficient.
+4. **Identify the Root Cause**: Was it a documentation gap, an unclear instruction, or a missing guardrail? Your analysis MUST be grounded in the verified context from the previous step.
+5. **Update or Create GitHub Issue**: Use the issue management workflow to document the problem and your proposed solution. Update existing issues if found, create new only if needed.
+6. **Propose Precise Changes**: Draft the specific, surgical changes you will make to the instruction files in `bot/agents/`.
+7. **Verify and Commit**: After applying the changes, commit them using the git workflow below.
 
 ## CRITICAL: GitHub Issue Management
 
