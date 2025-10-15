@@ -49,6 +49,9 @@ class ValidationRule:
     get_context: Callable[[dict], str] = lambda _: ""
     """Function that extracts context info for error messages"""
 
+    get_fix_guidance: Optional[Callable[[dict], str]] = None
+    """Optional function that provides specific guidance on how to fix the error"""
+
     severity: str = "block"
     """Severity level: 'block' (hard deny), 'warn' (allow with warning), or 'force-ask' (prompt user)"""
 
@@ -165,10 +168,17 @@ class ValidationRule:
             if context:
                 error += f"   Context: {context}\n"
 
-            error += (
-                f"\n   This is a hard prohibition enforced by the validation system.\n"
-                f"   If you believe this operation should be allowed, contact the user."
-            )
+            # Add specific fix guidance if available
+            if self.get_fix_guidance:
+                fix_guidance = self.get_fix_guidance(tool_input)
+                if fix_guidance:
+                    error += f"\n   How to fix:\n{fix_guidance}\n"
+            else:
+                # Generic guidance if no specific fix available
+                error += (
+                    f"\n   This is a hard prohibition enforced by the validation system.\n"
+                    f"   If you believe this operation should be allowed, contact the user."
+                )
         else:
             # Agent-restricted operation
             agents_list = "', '".join(sorted(self.allowed_agents))
@@ -263,6 +273,13 @@ VALIDATION_RULES = [
             and bool(re.search(r"\bpython[3]?\s+-c\b", tool_input.get("command", "")))
         ),
         get_context=lambda tool_input: f"command: {tool_input.get('command', '')[:80]}",
+        get_fix_guidance=lambda tool_input: (
+            "   - WHY: Inline Python code creates unreproducible, untestable one-off scripts.\n"
+            "   - FIX: Write your code to a proper test file instead:\n"
+            "     1. Create a file: Write(/tmp/test_script.py, your_code)\n"
+            "     2. Run it: uv run python /tmp/test_script.py\n"
+            "   - POLICY: All code must be in files for reproducibility and testing."
+        ),
     ),
     ValidationRule(
         name="You must use 'uv run ...' to activate python environments for python-based tools.",
@@ -273,6 +290,16 @@ VALIDATION_RULES = [
             tool_name == "Bash" and _requires_uv_run(tool_input.get("command", ""))
         ),
         get_context=lambda tool_input: f"command: {tool_input.get('command', '')[:80]}",
+        get_fix_guidance=lambda tool_input: (
+            f"   - WHY: Python tools must run in the project's virtual environment.\n"
+            f"   - FIX: Prefix your command with 'uv run':\n"
+            f"     ❌ {tool_input.get('command', '')[:60]}\n"
+            f"     ✅ uv run {tool_input.get('command', '')[:60]}\n"
+            f"   - EXAMPLES:\n"
+            f"     • uv run python script.py\n"
+            f"     • uv run pytest tests/\n"
+            f"     • uv run python -m module_name"
+        ),
     ),
 ]
 
