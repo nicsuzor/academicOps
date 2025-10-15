@@ -121,13 +121,23 @@ When an agent's failure is caused by faulty infrastructure (tools, config, error
 
 When tasked with improving agent instructions, follow this process:
 
+### Phase 1: Investigation & Diagnostics
+
 1. **Analyze the Problem**: Review the conversation, logs, or bug report to understand what happened. Identify the behavioral pattern (not implementation details).
 2. **SEARCH GITHUB**: Use at least three searches with different keywords based on your analysis. Search for general patterns, not specific symptoms. This is MANDATORY before proposing solutions.
 3. **Reconstruct the Agent's Context**: Before identifying a root cause, you MUST verify the information and documentation the agent had at the time. For example, if an agent was supposed to use a documented tool, read that documentation yourself to ensure it was clear, correct, and sufficient.
 4. **Identify the Root Cause**: Was it a documentation gap, an unclear instruction, or a missing guardrail? Your analysis MUST be grounded in the verified context from the previous step.
-5. **Update or Create GitHub Issue**: Use the issue management workflow to document the problem and your proposed solution. Update existing issues if found, create new only if needed.
-6. **Propose Precise Changes**: Draft the specific, surgical changes you will make to the instruction files in `bot/agents/`.
-7. **Verify and Commit**: After applying the changes, commit them using the git workflow below.
+5. **DOCUMENT DIAGNOSTICS in GitHub**: Post your analysis to the relevant issue. Include: problem instance, agent context, root cause, related issues. Do NOT include solutions yet. This preserves diagnostic work if interrupted.
+
+### Phase 2: Solution Design
+
+6. **Research Solutions**: Investigate technical approaches, read documentation, test assumptions. Consider constraints (CWD limitations, token budgets, etc.). Research thoroughly BEFORE proposing.
+7. **DOCUMENT SOLUTIONS in GitHub**: Post solutions as a SEPARATE comment. Include: options evaluated, pros/cons, recommendation, implementation plan.
+
+### Phase 3: Implementation
+
+8. **Implement Changes**: Make the specific, surgical changes to instruction files in `bot/agents/`.
+9. **Verify and Commit**: After applying the changes, commit them using the git workflow below.
 
 ## CRITICAL: GitHub Issue Management
 
