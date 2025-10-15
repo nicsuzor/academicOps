@@ -274,8 +274,8 @@ class TestUvRunWarning:
 class TestGitCommitRestriction:
     """Test git commit restriction to code-review agent."""
 
-    def test_blocks_git_commit_for_developer(self):
-        """Should block git commit for non-code-review agents."""
+    def test_warns_git_commit_for_developer(self):
+        """Should warn (not block) git commit for non-code-review agents."""
         result = run_validation(
             "Bash",
             {
@@ -283,8 +283,8 @@ class TestGitCommitRestriction:
                 "subagent_type": "developer"
             }
         )
-        assert result["returncode"] == 1
-        assert result["permission_decision"] == "deny"
+        assert result["returncode"] == 1  # Warning
+        assert result["permission_decision"] == "allow"  # Allows with warning
         assert "code-review" in result["reason"]
 
     def test_allows_git_commit_for_code_review(self):
@@ -310,6 +310,19 @@ class TestGitCommitRestriction:
         )
         assert result["returncode"] == 0
         assert result["permission_decision"] == "allow"
+
+    def test_allows_gh_issue_comment(self):
+        """Should allow gh issue comment commands (contains 'commit' substring but not 'git commit')."""
+        result = run_validation(
+            "Bash",
+            {
+                "command": "gh issue comment 98 --repo nicsuzor/academicOps --body 'test'",
+                "subagent_type": "developer"
+            }
+        )
+        assert result["returncode"] == 0
+        assert result["permission_decision"] == "allow"
+        # Should NOT trigger git commit restriction
 
 
 class TestProtectedFileRestriction:
