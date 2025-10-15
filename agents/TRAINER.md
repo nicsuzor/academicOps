@@ -37,15 +37,23 @@ It is **NOT** your responsibility to fix any specific mistake the user has repor
 - **Principle**: One source of truth per concept. If instruction appears in multiple places, that's a bug to fix
 - **Default**: When in doubt, DELETE documentation rather than add to it
 
-### Hierarchical Instructions (Critical Gap)
-- **Current Problem**: Agents don't know how to switch workflows/personas, find project-specific info, or compose multi-layered instructions
-- **Load Order** (must be explicit):
-  1. Generic rules (bot/agents/INSTRUCTIONS.md)
-  2. User context (docs/agents/INSTRUCTIONS.md)
-  3. Project context (projects/*/docs/agents/INSTRUCTIONS.md)
-  4. Mode-specific (bot/agents/STRATEGIST.md, etc.)
-- **Resolution**: Need formal inheritance model (see code-conductor patterns)
-- **Action**: Slowly add minimal required instructions as issues arise - no wholesale rewrites
+### Hierarchical Instructions
+- **Load Order** (automatic):
+  1. Generic rules (bot/agents/INSTRUCTIONS.md) - SessionStart hook
+  2. User context (docs/agents/INSTRUCTIONS.md) - SessionStart hook
+  3. Project context (projects/*/CLAUDE.md) - Discovered when accessing files in that directory
+  4. Agent-specific (bot/agents/STRATEGIST.md, etc.) - Loaded on @agent-{name} invocation
+
+- **CLAUDE.md Discovery** (Issue #84):
+  - Launch Claude from project root (normal)
+  - Work on files in subdirectories (e.g., papers/automod/tja/...)
+  - Claude discovers CLAUDE.md automatically when accessing those files
+  - Searches UP to parent directories (session start) and DOWN to subdirectories (on-demand)
+
+- **Pattern for Project Instructions**:
+  - Create `projects/{name}/CLAUDE.md` with project-specific rules
+  - Reference `@bot/agents/{agent}.md` for workflow-specific rules (e.g., analyst.md for dbt work)
+  - No SessionStart hook changes needed
 
 ### Enforcement Hierarchy (Most → Least Reliable)
 1. **Scripts** - Code that prevents bad behavior (most reliable)
