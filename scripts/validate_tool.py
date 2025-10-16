@@ -17,7 +17,7 @@ from dataclasses import dataclass, field
 from fnmatch import fnmatch
 from pathlib import Path
 from typing import Callable, Optional
-
+import datetime
 
 # ============================================================================
 # Rule System - Define tool restrictions here
@@ -213,6 +213,7 @@ class ValidationRule:
 VALIDATION_RULES = [
     ValidationRule(
         name="Protected file modifications restricted to trainer agent",
+        severity="warn",
         tool_patterns=["Write", "Edit", "MultiEdit"],
         file_patterns=[
             "**/.claude/*",
@@ -220,10 +221,10 @@ VALIDATION_RULES = [
         ],
         allowed_agents={"trainer"},
         get_context=lambda tool_input: f"file: {tool_input.get('file_path', 'unknown')}",
-        severity="warn",
     ),
     ValidationRule(
         name="All code should be self-documenting; no new documentation allowed",
+        severity="warn",
         tool_patterns=["Write"],
         allowed_agents={"trainer"},  # Trainer can create any .md file if truly needed
         custom_matcher=lambda tool_name, tool_input: (
@@ -232,7 +233,6 @@ VALIDATION_RULES = [
             and not _is_allowed_md_path(tool_input.get("file_path", ""))
         ),
         get_context=lambda tool_input: f"file: {tool_input.get('file_path', 'unknown')}",
-        severity="block",
     ),
     ValidationRule(
         name="Git commits restricted to code-review agent",
@@ -264,6 +264,32 @@ VALIDATION_RULES = [
         ),
     ),
     ValidationRule(
+        name="Files in /tmp prohibited - violates academicOps axiom #5 (build for replication)",
+        severity="block",
+        tool_patterns=["Write"],
+        allowed_agents=set(),  # No exceptions - hard block for all agents
+        custom_matcher=lambda tool_name, tool_input: (
+            tool_name == "Write"
+            and tool_input.get("file_path", "").startswith("/tmp/")
+            and (
+                "test" in tool_input.get("file_path", "").lower()
+                or tool_input.get("file_path", "").endswith(".py")
+            )
+        ),
+        get_context=lambda tool_input: f"file: {tool_input.get('file_path', 'unknown')}",
+        get_fix_guidance=lambda tool_input: (
+            "   - WHY: /tmp files violate academicOps axiom #5 - we build infrastructure for\n"
+            "     long-term replication, not single-use throwaway scripts.\n"
+            "   - FIX: Create test in proper project location:\n"
+            "     1. Identify the project (e.g., 'buttermilk' in projects/buttermilk/)\n"
+            "     2. Create test: Write(projects/<project>/tests/test_<feature>.py, your_code)\n"
+            "     3. Add to git: git add projects/<project>/tests/test_<feature>.py\n"
+            "     4. Run: uv run pytest projects/<project>/tests/test_<feature>.py\n"
+            "   - POLICY: All tests must be permanent, versioned, and replicable.\n"
+            "   - ONLY exception: /tmp is allowed ONLY for trainer agent doing diagnostics."
+        ),
+    ),
+    ValidationRule(
         name="Inline Python execution (python -c) is prohibited. Create a proper test file instead.",
         severity="block",
         tool_patterns=["Bash"],
@@ -276,8 +302,9 @@ VALIDATION_RULES = [
         get_fix_guidance=lambda tool_input: (
             "   - WHY: Inline Python code creates unreproducible, untestable one-off scripts.\n"
             "   - FIX: Write your code to a proper test file instead:\n"
-            "     1. Create a file: Write(/tmp/test_script.py, your_code)\n"
-            "     2. Run it: uv run python /tmp/test_script.py\n"
+            "     1. Identify the project (e.g., 'buttermilk' in projects/buttermilk/)\n"
+            "     2. Create test: Write(projects/<project>/tests/test_<feature>.py, your_code)\n"
+            "     3. Run it: uv run pytest projects/<project>/tests/test_<feature>.py\n"
             "   - POLICY: All code must be in files for reproducibility and testing."
         ),
     ),
@@ -309,14 +336,15 @@ def _is_allowed_md_path(file_path: str) -> bool:
     Check if .md file is in an allowed path (mirrors pre-commit hook logic).
 
     Allowed paths:
-    - /tmp/**/*.md: Temporary files (for testing, debugging, etc.)
     - bot/agents/*.md: Agent instructions (executable behavior definitions)
     - papers/**/*.md: Research papers
     - manuscripts/**/*.md: Manuscript drafts
     - projects/*/papers/**/*.md: Project-specific research papers
     - projects/*/manuscripts/**/*.md: Project-specific manuscript drafts
 
-    Everything else is considered documentation and is prohibited per Axiom #5.
+    PROHIBITED paths:
+    - /tmp/**/*.md: Violates academicOps axiom #5 (build for replication, not single-use)
+    - Everything else is considered documentation and is prohibited per Axiom #5
 
     NOTE: Claude Code passes absolute paths to this function, so we need to
     convert them to relative paths for pattern matching.
@@ -327,9 +355,10 @@ def _is_allowed_md_path(file_path: str) -> bool:
     # Convert to Path object
     path_obj = Path(file_path)
 
-    # Allow /tmp directory (for temporary files, testing, debugging)
+    # PROHIBIT /tmp directory - violates academicOps axiom #5
+    # (no single-use scripts, build infrastructure for long-term replication)
     if path_obj.is_absolute() and str(path_obj).startswith("/tmp/"):
-        return True
+        return False
 
     # If absolute path, convert to relative path from cwd
     # This handles the case where Claude Code passes absolute paths
@@ -474,6 +503,7 @@ def main():
     """Main hook entry point."""
     try:
         input_data = json.load(sys.stdin)
+        input_data["argv"] = sys.argv
     except json.JSONDecodeError as e:
         print(f"Error: Invalid JSON input: {e}", file=sys.stderr)
         sys.exit(2)
@@ -481,7 +511,9 @@ def main():
     # Extract tool information
     tool_name = input_data.get("tool_name", "")
     tool_input = input_data.get("tool_input", {})
-    active_agent = tool_input.get("subagent_type", "unknown")
+    # Note: Claude Code enforces agent tool restrictions via frontmatter `tools` field
+    # This hook only validates patterns (paths, commands, operations)
+    active_agent = "unknown"  # Not used for validation
 
     # Validate tool use
     allowed, error_message, severity = validate_tool_use(
@@ -535,8 +567,10 @@ def main():
 
 
     # Debug: Save input for inspection
-    debug_file = Path("/tmp/claude-tool-input.json")
-    debug_data = dict(input=input_data, output=output)
+    debug_file = Path("/tmp/validate_tool.json")
+    debug_data = dict(
+        input=input_data, output=output, tiemstamp=datetime.datetime.now().isoformat()
+    )
     with debug_file.open("a") as f:
         json.dump(debug_data, f, indent=None)
         f.write("\n")
