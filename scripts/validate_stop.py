@@ -42,17 +42,17 @@ def log_to_debug_file(
         input_data: Input data received from Claude Code
         output_data: Output data being sent back to Claude Code
     """
-    repo_root = get_repo_root()
+    _repo_root = get_repo_root()
     # log_dir = repo_root / "data" / "logs" / "hooks"
     # log_dir.mkdir(parents=True, exist_ok=True)
     log_dir = Path("/tmp")
 
-    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+    timestamp = datetime.datetime.now(datetime.UTC).strftime("%Y%m%d_%H%M%S_%f")
     log_file = log_dir / f"{hook_event.lower()}_{timestamp}.json"
 
     debug_data = {
         "hook_event": hook_event,
-        "timestamp": datetime.datetime.now().isoformat(),
+        "timestamp": datetime.datetime.now(datetime.UTC).isoformat(),
         "input": input_data,
         "output": output_data,
     }
@@ -75,7 +75,7 @@ def extract_context_info(input_data: dict[str, Any]) -> dict[str, Any]:
     context = {
         "hook_event": input_data.get("hook_event", "unknown"),
         "subagent": input_data.get("subagent", "unknown"),
-        "timestamp": datetime.datetime.now().isoformat(),
+        "timestamp": datetime.datetime.now(datetime.UTC).isoformat(),
         "argv": input_data.get("argv", []),
     }
 
@@ -90,7 +90,7 @@ def extract_context_info(input_data: dict[str, Any]) -> dict[str, Any]:
 
 
 def validate_workflow_transition(
-    hook_event: str, context: dict[str, Any]
+    _hook_event: str, _context: dict[str, Any]
 ) -> tuple[bool, str | None]:
     """
     Validate workflow transition logic (placeholder for future implementation).
