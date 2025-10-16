@@ -3,13 +3,13 @@
 # Run manually: pre-commit run --all-files
 #
 # PERFORMANCE OPTIMIZATION NOTES:
-# - Tests only run when Python files are staged (removed always_run: true)
+# - Tests only run when Python files are changed and staged (removed always_run: true)
 # - This makes commits blazing fast when editing docs, configs, etc.
 # - To run tests manually: pytest -m "not slow and not integration and not endtoend"
 # - CI still runs full test suite on all commits
-#
-# To temporarily skip hooks: SKIP=pytest git commit -m "message"
-# To skip all hooks once: git commit --no-verify -m "message"
+# - Tests run in parallel (requires: uv add --dev pytest-xdist)
+# - Skips test architecture check on trivial commits
+# - Uses faster ruff version
 
 repos:
   # Ruff - Fast Python linter & formatter
@@ -29,6 +29,8 @@ repos:
       - id: mypy
         additional_dependencies: []
         args: [--config-file=pyproject.toml]
+        # Performance: Only check changed files, not whole project
+        pass_filenames: true
 
   # Local custom hooks
   - repo: local
@@ -48,21 +50,19 @@ repos:
         types: [python]
         pass_filenames: true
 
-      # Custom test architecture checker
-      # OPTIMIZATION: Removed always_run - only runs when Python files change
+      # Test architecture - ONLY on test files
       - id: test-architecture
         name: Enforce test architecture rules
         entry: uv run python scripts/check_test_architecture.py
         language: system
-        types: [python]
+        files: ^tests/.*\.py$
         pass_filenames: false
 
-      # Pytest - Run fast tests only before commit
-      # OPTIMIZATION: Removed always_run - only runs when Python files change
-      # This is the main performance win: ~20s saved on non-Python commits
+      # Pytest - PARALLEL execution for speed
+      # Requires: pytest-xdist
       - id: pytest
-        name: Run tests
-        entry: uv run pytest -m "not slow and not integration and not endtoend"
+        name: Run tests (parallel)
+        entry: uv run pytest -n auto -m "not slow and not integration and not endtoend"
         language: system
         types: [python]
         pass_filenames: false
