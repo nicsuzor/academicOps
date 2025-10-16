@@ -8,7 +8,7 @@ repos:
     rev: v0.14.0
     hooks:
       # Linter
-      - id: ruff
+      - id: ruff-check
         args: [--fix, --unsafe-fixes]
       # Formatter
       - id: ruff-format
