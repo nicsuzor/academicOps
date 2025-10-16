@@ -4,6 +4,11 @@
 import json
 import subprocess
 
+import pytest
+
+# Mark all tests in this file as slow (integration tests invoking Claude CLI)
+pytestmark = [pytest.mark.slow, pytest.mark.timeout(120)]
+
 
 def test_see_output():
     """Just print what we get back."""

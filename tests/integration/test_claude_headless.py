@@ -18,6 +18,9 @@ from pathlib import Path
 
 import pytest
 
+# Mark all tests in this file as slow (integration tests)
+pytestmark = [pytest.mark.slow, pytest.mark.timeout(120)]
+
 
 def run_claude_headless(prompt: str, timeout: int = 120, permission_mode: str = "acceptEdits") -> dict:
     """

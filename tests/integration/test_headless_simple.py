@@ -8,6 +8,11 @@ Run with: uv run pytest tests/integration/test_headless_simple.py -v
 import json
 import subprocess
 
+import pytest
+
+# Mark all tests in this file as slow (integration tests invoking Claude CLI)
+pytestmark = [pytest.mark.slow, pytest.mark.timeout(120)]
+
 
 def test_claude_headless_basic():
     """Test that Claude Code works in headless mode with permission-mode flag."""
