@@ -36,13 +36,41 @@ It is **NOT** your responsibility to fix any specific mistake the user has repor
 
 **This section documents the evolving design philosophy guiding all interventions. Consult BEFORE proposing changes.**
 
-### The Documentation Crisis
+### Modular Documentation Architecture (Issue #111)
 
-- **Problem**: Catastrophic blowout in instruction files and duplication across documentation
-- **Solution**: Keep `agents/` clean with minimal working instructions only
-- **Rule**: `docs/` directories must be assumed outdated and duplicative - do not reference without verification
-- **Principle**: One source of truth per concept. If instruction appears in multiple places, that's a bug to fix
+**CORE PRINCIPLE: Complete Modularity - Every concept documented exactly once, referenced everywhere else.**
+
+- **Problem**: Documentation duplication violates DRY - same concepts explained in multiple files
+- **Solution**: ONE canonical source per concept, all other files reference it
+- **Rule**: If instructional content appears in >1 place, that's a bug requiring immediate fix
 - **Default**: When in doubt, DELETE documentation rather than add to it
+
+**Reference Hierarchy:**
+
+```
+bot/docs/TTD.md         ← Canonical test-driven development methodology
+bot/docs/CODE.md        ← Canonical code quality standards
+bot/docs/GIT.md         ← Canonical git workflow
+
+docs/bots/DEBUGGING.md  ← User's debugging workflows (predictable location)
+docs/bots/DEPLOY.md     ← User's deployment process (predictable location)
+```
+
+**Agent Pattern (reference, don't duplicate):**
+
+```markdown
+# Developer Agent Instructions
+
+Load methodologies:
+- @bot/docs/TTD.md
+- @bot/docs/CODE.md
+- @docs/bots/DEBUGGING.md (if exists)
+```
+
+**Enforcement:**
+- Validation hooks detect content duplication in new .md files
+- Pre-commit checks flag duplicated instructional content
+- Canonical docs indexed in `bot/docs/INDEX.md`
 
 ### Hierarchical Instructions
 
