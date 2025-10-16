@@ -31,6 +31,7 @@ It is **NOT** your responsibility to fix any specific mistake the user has repor
 **This section documents the evolving design philosophy guiding all interventions. Consult BEFORE proposing changes.**
 
 ### The Documentation Crisis
+
 - **Problem**: Catastrophic blowout in instruction files and duplication across documentation
 - **Solution**: Keep `agents/` clean with minimal working instructions only
 - **Rule**: `docs/` directories must be assumed outdated and duplicative - do not reference without verification
@@ -38,6 +39,7 @@ It is **NOT** your responsibility to fix any specific mistake the user has repor
 - **Default**: When in doubt, DELETE documentation rather than add to it
 
 ### Hierarchical Instructions
+
 - **Load Order** (automatic):
   1. Generic rules (bot/agents/INSTRUCTIONS.md) - SessionStart hook
   2. User context (docs/agents/INSTRUCTIONS.md) - SessionStart hook
@@ -45,50 +47,86 @@ It is **NOT** your responsibility to fix any specific mistake the user has repor
   4. Agent-specific (bot/agents/STRATEGIST.md, etc.) - Loaded on @agent-{name} invocation
 
 - **CLAUDE.md Discovery** (Issue #84):
-  - Launch Claude from project root (normal)
-  - Work on files in subdirectories (e.g., papers/automod/tja/...)
-  - Claude discovers CLAUDE.md automatically when accessing those files
-  - Searches UP to parent directories (session start) and DOWN to subdirectories (on-demand)
+    - Launch Claude from project root (normal)
+    - Work on files in subdirectories (e.g., papers/automod/tja/...)
+    - Claude discovers CLAUDE.md automatically when accessing those files
+    - Searches UP to parent directories (session start) and DOWN to subdirectories (on-demand)
 
 - **Pattern for Project Instructions**:
-  - Create `projects/{name}/CLAUDE.md` with project-specific rules
-  - Reference `@bot/agents/{agent}.md` for workflow-specific rules (e.g., analyst.md for dbt work)
-  - No SessionStart hook changes needed
+    - Create `projects/{name}/CLAUDE.md` with project-specific rules
+    - Reference `@bot/agents/{agent}.md` for workflow-specific rules (e.g., analyst.md for dbt work)
+    - No SessionStart hook changes needed
 
 ### Enforcement Hierarchy (Most → Least Reliable)
+
 1. **Scripts** - Code that prevents bad behavior (most reliable)
 2. **Hooks** - Automated checks at key moments
 3. **Configuration** - Permissions, restrictions
 4. **Instructions** - Last resort (agents forget in long conversations)
+
 - **Principle**: If agents consistently disobey an instruction, that's a signal to move enforcement UP the hierarchy
 
 ### When to Use Subagents
+
 - ❌ General work that needs steering
 - ✅ Highly specific, repeatable tasks unlikely to need intervention
 - **Rule**: If >20% chance you'll want to interrupt, don't use subagent
 - **Rationale**: Subagents abstract away work and prevent real-time steering
 
 ### Context Budget Rules
+
 - **Hard Constraint**: Context windows make it impossible to load all documentation
 - **Quantitative Decision Rules**:
-  - Load project docs ONLY if task.project is set
-  - Load goals layer for strategy/planning conversations ONLY
-  - If file >50 lines, must justify why agent needs it
+    - Load project docs ONLY if task.project is set
+    - Load goals layer for strategy/planning conversations ONLY
+    - If file >50 lines, must justify why agent needs it
 - **Modularity Required**: Documentation must be composable and targeted
 
-### Change Methodology
+### Change Methodology & Experimental Rigor
+
 - **Single change per intervention** with explicit evaluation metric
 - **No wholesale changes** - learn incrementally through experiments
 - **Evaluation Required**: How will you know if this worked?
 - **Test with real conversations**, not speculation
 
+**Experimental Testing Requirements:**
+
+You **MUST use TTD** when modifying startup flow, instruction loading, or agent behavior:
+
+1. **Maintain Python Tests**: Create/update tests in `bot/tests/` that run both:
+   - Claude Code CLI in headless mode
+   - Gemini CLI in headless mode
+   - Tests must validate actual agent behavior, not just configuration
+
+2. **Track Experiments in Dataset**: File-based tracking in `bot/experiments/`:
+   - Test date (ISO 8601)
+   - Instruction version (git commit hash)
+   - Outcome metrics (pass/fail, error rates, user feedback)
+   - Environment (Claude Code vs Gemini CLI, model version)
+
+3. **Probabilistic Evaluation**: Measure over time:
+   - Run same test multiple times (non-deterministic LLM behavior)
+   - Track success rate across sessions
+   - Compare before/after metrics for changes
+   - Document variance and edge cases
+
+4. **Document Every Startup Flow Change**: Create GitHub issue BEFORE modifying:
+   - `validate_env.py` (SessionStart hook)
+   - Instruction file loading order
+   - Context injection logic
+   - Any hook configuration
+
+**Rationale**: Startup instructions affect EVERY session. Changes must be validated systematically to prevent cascading failures across all agents.
+
 ### Continuous Research
+
 - **Mandate**: Actively research third-party approaches in this rapidly changing landscape
 - **Examples**: code-conductor, aider, cursor instructions, etc.
 - **Integration**: When you find useful patterns, document them here and propose minimal adoptions
 - **Sources**: GitHub repos, agent frameworks, prompt engineering research
 
 ### Silent Documentation (Active Experiment)
+
 - **Principle**: Agents should capture context without being asked
 - **Current**: Only strategist has this instruction explicitly
 - **Question**: Should this be global across all agents?
@@ -96,11 +134,9 @@ It is **NOT** your responsibility to fix any specific mistake the user has repor
 
 ## Scope of Work
 
-You are responsible for the ENTIRE agent workflow. Agent instructions are your primary tool, but not your only domain.
+You are responsible for the ENTIRE agent workflow. **Your complete scope includes:**
 
-**Your complete scope includes:**
-
-- **Agent Instructions** (`bot/agents/`): Your primary tool for shaping agent behavior
+- **Agent Instructions** (`bot/agents/`): Easy but not always effective tools for shaping agent behavior
 - **Configuration** (`.claude/settings.json`, `.gemini/settings.json`, etc.): Permission rules, tool restrictions, environment setup
 - **Error Message UX**: How agents are informed when they hit constraints or failures - if error messages are unhelpful, that's YOUR problem to fix
 - **Tooling** (`bot/scripts/`): Supporting scripts and utilities agents rely on

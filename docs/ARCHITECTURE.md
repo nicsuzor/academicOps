@@ -1,28 +1,74 @@
 # academicOps Architecture
 
+## Core Concept: Framework vs Personalization
+
+**academicOps** provides a PUBLIC framework for AI-assisted academic work. This framework is designed to be:
+- **Generic**: Works for any researcher using these tools
+- **Modular**: Components can be adopted independently
+- **Hierarchical**: Instructions layer from generic to specific
+
+**Your personalized setup** uses academicOps as infrastructure but prioritizes YOUR work:
+- academicOps is a TOOL, not the primary focus
+- Framework development happens when needed, not by default
+- User-specific strategic needs ALWAYS take priority over framework issues
+
+## The Golden Path: Single Activation Pattern
+
+**ONE way to activate agents across all contexts:**
+
+```bash
+# In any repository (writing, buttermilk, automod, etc.)
+claude code @agent-{name}
+```
+
+This works consistently because:
+1. SessionStart hook loads foundational context automatically
+2. Agent-specific instructions loaded on `@agent-{name}` invocation
+3. Project-specific context discovered when accessing files in that directory
+
+**No multiple invocation methods. No confusion. One golden path.**
+
 ## Document Loading Hierarchy
 
 All agents follow this strict loading sequence:
 
-1. **CLAUDE.md** (${OUTER}/CLAUDE.md)
-   - Entry point read by Claude Code CLI
-   - Single line: "Read `bot/README.md` and `docs/INSTRUCTIONS.md` IMMEDIATELY."
-   - Exists in parent repo (PRIVATE)
+### Layer 1: Foundational Context (Automatic)
 
-2. **bot/agents/INSTRUCTIONS.md** (PUBLIC)
+Loaded via SessionStart hook (`validate_env.py`) at every session start:
+
+1. **bot/agents/INSTRUCTIONS.md** (PUBLIC)
    - Generic agent rules applicable to ANY user
    - Core axioms, fail-fast philosophy, critical constraints
    - Token-optimized (must be read on EVERY session)
-   - Loaded via validate_env.py hook
 
-3. **docs/agents/INSTRUCTIONS.md** (PRIVATE)
-   - User-specific context (Nic's workflow, repos, structure)
-   - Project names, paths, accommodations
-   - Loaded via validate_env.py hook
+2. **docs/agents/INSTRUCTIONS.md** (PRIVATE)
+   - User-specific context (workflow, repos, structure, accommodations)
+   - Project names, paths, strategic priorities
+   - **Priority context**: What the user actually cares about
 
-4. **Agent-Specific Instructions** (bot/agents/{name}.md)
-   - Loaded when specific agent is invoked
-   - Inherits all rules from layers 1-3
+**CRITICAL PRIORITY ORDER**: User-specific needs (Layer 1.2) must be emphasized over generic framework rules (Layer 1.1) in startup context.
+
+### Layer 2: Agent-Specific Instructions (On-Demand)
+
+3. **bot/agents/{NAME}.md** or **.claude/agents/{name}.md**
+   - Loaded when specific agent is invoked via `@agent-{name}`
+   - Inherits all rules from Layer 1
+   - Adds specialized behaviors for that agent type
+
+### Layer 3: Project-Specific Instructions (Discovery)
+
+4. **projects/{name}/CLAUDE.md** (Project context)
+   - Discovered automatically when accessing files in that directory
+   - Loaded on-demand, not at session start
+   - Claude Code searches UP to parent directories and DOWN to subdirectories
+   - Contains project-specific rules, workflows, constraints
+
+### Layer 4: Nested Directory Instructions (Discovery)
+
+5. **projects/{name}/subdir/CLAUDE.md** (Deep context)
+   - Discovered when working in deeply nested directories
+   - Example: `papers/automod/tja/CLAUDE.md` for TJA evaluation work
+   - Most specific context, closest to actual files being edited
 
 ## Enforcement Mechanism
 
@@ -127,6 +173,62 @@ Allow (exit 0) or Block (exit 2)
 - `docs/agents/INSTRUCTIONS.md`: User context (PRIVATE)
 - `bot/README.md`: Agent framework overview
 - `docs/INSTRUCTIONS.md`: Legacy (being phased out)
+
+## LLM Client Instruction Loading Behavior
+
+Understanding how different LLM clients load instructions is critical for architecture decisions.
+
+### Claude Code CLI
+
+**Instruction Discovery:**
+- **CLAUDE.md files**: Discovered automatically when accessing files in directories
+  - Searches UP to parent directories (at session start)
+  - Searches DOWN to subdirectories (on-demand when accessing files)
+- **Agent files**: Loaded via `@agent-{name}` syntax
+- **SessionStart hook**: Runs `validate_env.py` to inject foundational context
+
+**Working Directory Behavior:**
+- CWD resets between Bash calls (absolute paths required in scripts)
+- File access triggers directory-specific CLAUDE.md discovery
+- Project context loaded lazily, not eagerly
+
+**Configuration:**
+- `.claude/settings.json`: Project-level settings (in git)
+- `.claude/settings.local.json`: User-level overrides (gitignored)
+- `~/.claude/settings.json`: Global user settings (DO NOT EDIT)
+
+### Gemini CLI
+
+**Instruction Discovery:**
+- `.gemini/` directory structure similar to `.claude/`
+- Different hook execution model (TBD: needs research)
+- Configuration precedence hierarchy (7 levels)
+
+**Configuration:**
+- `.gemini/settings.json`: Project settings
+- Environment variables override settings
+- Sandboxing available via Docker
+
+**Key Differences from Claude Code:**
+- [RESEARCH NEEDED] How does Gemini discover CLAUDE.md files?
+- [RESEARCH NEEDED] Does Gemini have SessionStart hook equivalent?
+- [RESEARCH NEEDED] How does agent invocation work?
+
+**Action Item**: Document Gemini CLI behavior through systematic testing (Issue TBD)
+
+### Impact on Architecture
+
+**Why This Matters:**
+1. **Nested directory hierarchies**: Must work consistently across both clients
+2. **Hook timing**: SessionStart vs on-demand loading affects what context is available when
+3. **CWD limitations**: Affects how scripts reference files and directories
+4. **Token budgets**: Eager loading (SessionStart) vs lazy loading (discovery) trade-offs
+
+**Design Constraints:**
+- Cannot assume eager loading of ALL context files
+- Must support both SessionStart injection and lazy discovery
+- Instructions must work regardless of which client loads them
+- Absolute paths required in any code that runs across Bash calls
 
 ## Related Issues
 
