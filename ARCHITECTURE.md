@@ -181,13 +181,15 @@ When you invoke `@agent-{name}`, Claude loads:
 - `docs/methodologies/computational-research.md` - Research workflows
 - `docs/methodologies/dbt-practices.md` - Analytics engineering patterns
 
-### Pre-commit Documentation (3 files)
+### Experimental Methodology Chunks (3 files)
 
-- `docs/PRE_COMMIT_OPTIMIZATION.md` - Performance optimization notes
-- `docs/PRECOMMIT_CONFIGS_COMPARISON.md` - Config comparison analysis
-- `docs/QUICK_REFERENCE_PRECOMMIT.md` - Quick reference guide
+**Location:** `docs/_CHUNKS/` (Issue #111 Phase 2)
 
-**Note:** These 3 files likely contain duplication and should be consolidated (Issue #111).
+- `_CHUNKS/FAIL-FAST.md` - Fail-fast philosophy for agents
+- `_CHUNKS/GIT-WORKFLOW.md` - Git submodule workflow patterns
+- `_CHUNKS/README.md` - Chunk usage and promotion process
+
+**Status:** Experimental - awaiting Phase 3 integration experiments
 
 ### Test Infrastructure (3 files)
 
@@ -203,18 +205,21 @@ When you invoke `@agent-{name}`, Claude loads:
 
 - `prompts/editor-structural.md` - Structural editing prompts (status unclear)
 
-## Quarantined Files
+## Archived Files
 
-**Location:** `bot/docs/_UNCHECKED/` (34 files)
+**Location:** `bot/docs/_UNUSED/` (34 files)
 
-**Status:** Under review for Phase 2 refactoring (Issue #111)
+**Status:** Archived obsolete documentation (Issue #111 Phase 2 complete)
 
-**Process:**
-1. Extract modular chunks to `docs/_CHUNKS/`
-2. Move unusable material to `docs/_UNUSED/`
-3. Link approved chunks via formal experiments
+**Categories:**
+- Obsolete architecture docs (superseded by ARCHITECTURE.md)
+- Deprecated agent templates
+- Outdated indexes and references
+- Project-specific content (not framework-level)
 
-**Do not reference these files** - they may be outdated or duplicative.
+**Note:** 2 chunks extracted to `_CHUNKS/` for experimental use. Remaining 32 files archived as-is.
+
+**Do not reference these files** - they are obsolete or duplicative.
 
 ## Design Principles
 
