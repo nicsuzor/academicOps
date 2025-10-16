@@ -85,6 +85,20 @@
 
 **The Pattern**: Surface-level keyword matching ("Pydantic", "tool") triggered implementation mode instead of exploration mode.
 
+## Case Study: Duplicate dbt Model Creation
+
+**Task**: Create diagnostic model for box office data quality analysis
+
+**What Happened**: Agent immediately created 170-line `fct_box_office_coverage_analysis.sql` without checking existing models
+
+**What Should Have Happened**:
+1. **Search**: `ls -1 dbt/models/**/*.sql | grep -i gross`
+2. **Discover**: `mart_gross_worldwide_analysis.sql` already parses box office data, `dim_titles_by_decade.sql` has coverage stats
+3. **Evaluate**: Could query existing models in Streamlit instead of creating new mart
+4. **Result**: Avoid duplicate 170-line model, reuse existing infrastructure
+
+**The Pattern**: Agent had a plan (create diagnostic model) and executed it without exploring what already exists in the dbt project.
+
 ## Enforcement Mechanisms
 
 ### Before ANY Implementation:

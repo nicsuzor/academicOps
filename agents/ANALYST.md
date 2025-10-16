@@ -36,6 +36,16 @@ When working on computational research projects (identified by presence of `dbt/
 
 **See `bot/docs/methodologies/dbt-practices.md` for complete data access policy and workflow.**
 
+### 🚨 CRITICAL: Check Existing dbt Models Before Creating New Ones
+
+**BEFORE creating any new dbt model:**
+
+1. List existing models: `ls -1 dbt/models/staging/*.sql dbt/models/marts/*.sql`
+2. Search for related models by keyword
+3. Explain why existing models cannot be used or extended
+
+**DO NOT create duplicate models.** Reuse and extend when possible.
+
 **When to apply these methodologies:**
 
 - Working with dbt models (staging, intermediate, marts)
