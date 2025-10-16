@@ -1,6 +1,15 @@
 # Pre-commit hooks for academicOps
 # Install: pre-commit install
 # Run manually: pre-commit run --all-files
+#
+# PERFORMANCE OPTIMIZATION NOTES:
+# - Tests only run when Python files are staged (removed always_run: true)
+# - This makes commits blazing fast when editing docs, configs, etc.
+# - To run tests manually: pytest -m "not slow and not integration and not endtoend"
+# - CI still runs full test suite on all commits
+#
+# To temporarily skip hooks: SKIP=pytest git commit -m "message"
+# To skip all hooks once: git commit --no-verify -m "message"
 
 repos:
   # Ruff - Fast Python linter & formatter
@@ -40,20 +49,21 @@ repos:
         pass_filenames: true
 
       # Custom test architecture checker
+      # OPTIMIZATION: Removed always_run - only runs when Python files change
       - id: test-architecture
         name: Enforce test architecture rules
         entry: uv run python scripts/check_test_architecture.py
         language: system
         types: [python]
         pass_filenames: false
-        always_run: true
 
       # Pytest - Run fast tests only before commit
+      # OPTIMIZATION: Removed always_run - only runs when Python files change
+      # This is the main performance win: ~20s saved on non-Python commits
       - id: pytest
         name: Run tests
         entry: uv run pytest -m "not slow and not integration and not endtoend"
         language: system
         types: [python]
         pass_filenames: false
-        always_run: true
         stages: [pre-commit]
