@@ -14,10 +14,8 @@ Exit codes:
 
 import re
 import sys
-from pathlib import Path
 from collections import defaultdict
-from typing import Set, Dict, List, Tuple
-
+from pathlib import Path
 
 # Critical paths where orphans should cause CI failure
 CRITICAL_PATHS = [
@@ -44,46 +42,52 @@ EXCLUDE_PATTERNS = [
 ]
 
 
-def should_exclude(path: Path, exclude_patterns: List[str]) -> bool:
+def should_exclude(path: Path, exclude_patterns: list[str]) -> bool:
     """Check if path should be excluded from analysis."""
     path_str = str(path)
     return any(excl in path_str for excl in exclude_patterns)
 
 
-def extract_references(content: str) -> Set[str]:
+def extract_references(content: str) -> set[str]:
     """Extract markdown file references from content."""
     refs = set()
 
     # Extract markdown link targets
-    for match in re.finditer(r'\[([^\]]+)\]\(([^)]+\.md)\)', content):
+    for match in re.finditer(r"\[([^\]]+)\]\(([^)]+\.md)\)", content):
         refs.add(match.group(2))
 
     # Extract backtick references
-    for match in re.finditer(r'`([^`]*\.md)`', content):
+    for match in re.finditer(r"`([^`]*\.md)`", content):
         refs.add(match.group(1))
 
     # Extract "Read X" style references
     for match in re.finditer(
-        r'(?:Read|See|Consult|refer to|Check for|Look for)\s+([^\s,]+\.md)',
+        r"(?:Read|See|Consult|refer to|Check for|Look for)\s+([^\s,]+\.md)",
         content,
-        re.IGNORECASE
+        re.IGNORECASE,
     ):
         refs.add(match.group(1))
 
     return refs
 
 
-def find_markdown_files(root: Path, exclude_patterns: List[str]) -> List[Path]:
+def find_markdown_files(root: Path, exclude_patterns: list[str]) -> list[Path]:
     """Find all relevant markdown files."""
     files = []
-    for pattern in ["**/docs/**/*.md", "**/{CLAUDE,INSTRUCTIONS,README}.md", "**/agents/*.md"]:
+    for pattern in [
+        "**/docs/**/*.md",
+        "**/{CLAUDE,INSTRUCTIONS,README}.md",
+        "**/agents/*.md",
+    ]:
         for p in root.glob(pattern):
             if p.is_file() and not should_exclude(p, exclude_patterns):
                 files.append(p)
     return files
 
 
-def analyze_references(root: Path, exclude_patterns: List[str]) -> Tuple[Dict[str, Set[str]], Set[str]]:
+def analyze_references(
+    root: Path, exclude_patterns: list[str]
+) -> tuple[dict[str, set[str]], set[str]]:
     """
     Analyze file references.
 
@@ -111,7 +115,7 @@ def analyze_references(root: Path, exclude_patterns: List[str]) -> Tuple[Dict[st
     return references, all_referenced
 
 
-def find_orphans(root: Path, exclude_patterns: List[str]) -> Dict[str, List[str]]:
+def find_orphans(root: Path, exclude_patterns: list[str]) -> dict[str, list[str]]:
     """
     Find orphaned markdown files.
 
@@ -121,17 +125,21 @@ def find_orphans(root: Path, exclude_patterns: List[str]) -> Dict[str, List[str]
     references, all_referenced = analyze_references(root, exclude_patterns)
 
     # Get all markdown files
-    all_files = {str(p.relative_to(root)) for p in find_markdown_files(root, exclude_patterns)}
+    all_files = {
+        str(p.relative_to(root)) for p in find_markdown_files(root, exclude_patterns)
+    }
 
     # Files that are never referenced
     never_referenced = all_files - all_referenced - set(references.keys())
 
     # Filter to documentation/instruction files
     orphans = {
-        f for f in never_referenced
-        if any(pattern in f for pattern in [
-            'docs/', 'INSTRUCTIONS', 'CLAUDE', 'agents/', 'README'
-        ])
+        f
+        for f in never_referenced
+        if any(
+            pattern in f
+            for pattern in ["docs/", "INSTRUCTIONS", "CLAUDE", "agents/", "README"]
+        )
     }
 
     # Categorize orphans
@@ -145,10 +153,7 @@ def find_orphans(root: Path, exclude_patterns: List[str]) -> Dict[str, List[str]
         else:
             non_critical.append(orphan)
 
-    return {
-        'critical': critical,
-        'non_critical': non_critical
-    }
+    return {"critical": critical, "non_critical": non_critical}
 
 
 def main():
@@ -158,13 +163,13 @@ def main():
     root = script_dir.parent  # Assumes script is in bot/scripts/
 
     # Check if we're in the bot submodule or parent repo
-    if (root / '.git').exists() and (root / 'agents').exists():
+    if (root / ".git").exists() and (root / "agents").exists():
         # We're in the bot submodule
         analysis_root = root
         context = "academicOps (bot)"
-    elif (root.parent / 'bot').exists():
+    elif (root.parent / "bot").exists():
         # We're in parent repo, check bot submodule
-        analysis_root = root.parent / 'bot'
+        analysis_root = root.parent / "bot"
         context = "academicOps (from parent)"
     else:
         # Try current directory
@@ -180,28 +185,28 @@ def main():
     # Report findings
     exit_code = 0
 
-    if orphans['critical']:
+    if orphans["critical"]:
         print("❌ CRITICAL ORPHANED FILES FOUND:")
         print("=" * 80)
         print("These files are in critical paths but not referenced anywhere:")
         print()
-        for orphan in orphans['critical']:
+        for orphan in orphans["critical"]:
             print(f"  - {orphan}")
         print()
         print("Critical files should be referenced in the loading hierarchy.")
         print("Add references from parent files or move to non-critical locations.")
         exit_code = 1
 
-    if orphans['non_critical']:
+    if orphans["non_critical"]:
         print("⚠️  Non-critical orphaned files:")
         print("=" * 80)
-        for orphan in orphans['non_critical']:
+        for orphan in orphans["non_critical"]:
             print(f"  - {orphan}")
         print()
         print("These files may be user-facing documentation or reference material.")
         print("Consider linking them or moving to an archive/ folder.")
 
-    if not orphans['critical'] and not orphans['non_critical']:
+    if not orphans["critical"] and not orphans["non_critical"]:
         print("✅ No orphaned instruction files found.")
         print("All documentation appears to be properly linked.")
 
@@ -210,11 +215,12 @@ def main():
     return exit_code
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     try:
         sys.exit(main())
     except Exception as e:
         print(f"ERROR: {e}", file=sys.stderr)
         import traceback
+
         traceback.print_exc()
         sys.exit(2)

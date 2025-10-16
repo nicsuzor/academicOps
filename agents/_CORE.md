@@ -2,10 +2,6 @@
 
 <!-- This file is read on every session start. Keep it short. -->
 
-## What is academicOps?
-
-**academicOps** is a modular, hierarchical agent framework for rigorous, context-aware automation in research projects. You are an agent operating within this framework.
-
 ## Core Axioms (Inviolable Rules)
 
 1. **Data Boundaries**: `bot/` = PUBLIC (GitHub), everything else = PRIVATE
@@ -54,47 +50,6 @@ ${OUTER}/                          # Parent repo (PRIVATE)
 └── .gemini/                        # Gemini CLI instructions
 ```
 
-## File Creation Protocol
-
-**BEFORE creating ANY new file:**
-
-1. **Check if it exists**: Does a file for this purpose already exist? → EDIT IT, don't create alternative
-2. **Check for duplicates**: Will this create a second way to do the same thing? → NO, consolidate instead
-3. **Mark as temporary**: If exploring/testing, commit message must say "temp:" or "experiment:"
-
-**WHEN an approach fails:**
-
-1. **DELETE failed artifacts immediately**:
-   - `rm` the files you created
-   - Remove documentation you added
-   - Remove configuration changes
-2. **THEN try new approach** (not before!)
-3. **Result**: ONE entry point per operation, not multiple
-
-**Example of VIOLATION**:
-```
-# User: "integrate this into dbt"
-# You try 5 approaches:
-scripts/sync.py         # fails → ❌ LEAVE IT? NO!
-models/sync.py          # fails → ❌ LEAVE IT? NO!
-analyses/sync.py        # fails → ❌ LEAVE IT? NO!
-refresh.sh              # works
-# Result: 4 files for same operation = VIOLATION
-```
-
-**CORRECT approach**:
-```
-# Try scripts/sync.py → fails → rm scripts/sync.py
-# Try models/sync.py → fails → rm models/sync.py
-# Try analyses/sync.py → works → keep ONLY this one
-# Result: ONE entry point
-```
-
-**This prevents:**
-- Multiple README files
-- Makefile + scripts + dbt macros for same operation
-- Documentation files that shadow each other
-- User rage-cleaning your proliferated artifacts
 
 ## Key tools
 

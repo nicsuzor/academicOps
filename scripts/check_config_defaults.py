@@ -12,6 +12,7 @@ Why this matters:
 Usage:
     python check_config_defaults.py file1.py file2.py ...
 """
+
 import ast
 import sys
 from pathlib import Path
@@ -25,32 +26,33 @@ class ConfigDefaultFinder(ast.NodeVisitor):
         # Object names that represent configuration
         # Expand this list as patterns emerge
         self.config_objects = {
-            'kwargs',
-            'parameters',
-            'config',
-            'settings',
-            'params',
-            'options',
-            'self.parameters',
-            'self.config',
-            'self.settings',
-            'ctx.parameters',
+            "kwargs",
+            "parameters",
+            "config",
+            "settings",
+            "params",
+            "options",
+            "self.parameters",
+            "self.config",
+            "self.settings",
+            "ctx.parameters",
         }
 
     def visit_Call(self, node):
         """Visit all function call nodes in the AST."""
-        if isinstance(node.func, ast.Attribute) and node.func.attr == 'get':
+        if isinstance(node.func, ast.Attribute) and node.func.attr == "get":
             # Check if called on a config-like object
             obj_name = ast.unparse(node.func.value)
 
             # Check if this is a configuration object
-            is_config = any(config in obj_name.lower() for config in self.config_objects)
+            is_config = any(
+                config in obj_name.lower() for config in self.config_objects
+            )
 
             if is_config:
                 # Check if it has a default (2nd positional arg or 'default' kwarg)
-                has_default = (
-                    len(node.args) >= 2 or
-                    any(kw.arg == 'default' for kw in node.keywords)
+                has_default = len(node.args) >= 2 or any(
+                    kw.arg == "default" for kw in node.keywords
                 )
 
                 if has_default:
@@ -58,20 +60,24 @@ class ConfigDefaultFinder(ast.NodeVisitor):
                     if len(node.args) >= 2:
                         default_val = ast.unparse(node.args[1])
                     else:
-                        default_kw = next(kw for kw in node.keywords if kw.arg == 'default')
+                        default_kw = next(
+                            kw for kw in node.keywords if kw.arg == "default"
+                        )
                         default_val = ast.unparse(default_kw.value)
 
                     # Extract key
                     key = ast.unparse(node.args[0]) if node.args else "unknown"
 
-                    self.violations.append({
-                        'line': node.lineno,
-                        'col': node.col_offset,
-                        'object': obj_name,
-                        'key': key,
-                        'default': default_val,
-                        'call': ast.unparse(node)
-                    })
+                    self.violations.append(
+                        {
+                            "line": node.lineno,
+                            "col": node.col_offset,
+                            "object": obj_name,
+                            "key": key,
+                            "default": default_val,
+                            "call": ast.unparse(node),
+                        }
+                    )
 
         # Continue visiting child nodes
         self.generic_visit(node)
@@ -87,18 +93,19 @@ def check_file(filepath: Path) -> int:
         0 if no violations found, 1 if violations found
     """
     try:
-        with open(filepath, encoding='utf-8') as f:
-            content = f.read()
-            tree = ast.parse(content, filename=str(filepath))
+        content = filepath.read_text(encoding="utf-8")
+        tree = ast.parse(content, filename=str(filepath))
 
         finder = ConfigDefaultFinder()
         finder.visit(tree)
 
         if finder.violations:
-            print(f"\n{'='*80}")
+            print(f"\n{'=' * 80}")
             print(f"ERROR: Configuration defaults found in {filepath}")
-            print(f"{'='*80}")
-            print("\nConfiguration parameters must be REQUIRED, not optional with defaults.")
+            print(f"{'=' * 80}")
+            print(
+                "\nConfiguration parameters must be REQUIRED, not optional with defaults."
+            )
             print("This violates the NO DEFAULTS, FAIL-FAST core axiom.\n")
 
             for v in finder.violations:
@@ -125,7 +132,7 @@ def check_file(filepath: Path) -> int:
             print("         return self.parameters['param']")
             print()
             print("See: https://github.com/nicsuzor/academicOps/issues/100")
-            print(f"{'='*80}\n")
+            print(f"{'=' * 80}\n")
             return 1
 
         return 0
@@ -149,7 +156,7 @@ def main() -> int:
 
     for arg in sys.argv[1:]:
         filepath = Path(arg)
-        if filepath.suffix == '.py' and filepath.exists():
+        if filepath.suffix == ".py" and filepath.exists():
             exit_code |= check_file(filepath)
             checked_files += 1
 

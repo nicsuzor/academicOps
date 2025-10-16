@@ -36,7 +36,7 @@ All agents follow this strict loading sequence:
 
 Loaded via SessionStart hook (`validate_env.py`) at every session start:
 
-1. **bot/agents/INSTRUCTIONS.md** (PUBLIC)
+1. **bot/agents/_CORE.md** (PUBLIC)
    - Generic agent rules applicable to ANY user
    - Core axioms, fail-fast philosophy, critical constraints
    - Token-optimized (must be read on EVERY session)
@@ -153,7 +153,7 @@ Session Start
     ↓
 validate_env.py runs
     ↓
-Injects bot/agents/INSTRUCTIONS.md (generic)
+Injects bot/agents/_CORE.md (generic)
 Injects docs/agents/INSTRUCTIONS.md (user-specific)
     ↓
 Agent loaded with full context
@@ -169,7 +169,7 @@ Allow (exit 0) or Block (exit 2)
 
 - `.claude/settings.json`: Hook configuration, global permissions
 - `.claude/agents/*.md`: Agent-specific tool allowlists
-- `bot/agents/INSTRUCTIONS.md`: Generic rules (PUBLIC)
+- `bot/agents/_CORE.md`: Generic rules (PUBLIC)
 - `docs/agents/INSTRUCTIONS.md`: User context (PRIVATE)
 - `bot/README.md`: Agent framework overview
 - `docs/INSTRUCTIONS.md`: Legacy (being phased out)

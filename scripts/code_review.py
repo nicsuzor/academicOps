@@ -12,12 +12,14 @@ Usage:
     # Standalone
     python3 bot/scripts/code_review.py --git-staged
 """
+
+import argparse
 import re
 import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Protocol
+from typing import ClassVar, Protocol
 
 
 @dataclass
@@ -51,7 +53,7 @@ class EnvironmentVariableRule:
     - conftest.py (where fixtures are defined)
     """
 
-    patterns = [
+    patterns: ClassVar[list[str]] = [
         r"os\.getenv\(",
         r'os\.environ\["',
         r"os\.environ\['",
@@ -98,7 +100,7 @@ class MockUsageRule:
     """
 
     # Buttermilk classes that should not be mocked
-    buttermilk_classes = [
+    buttermilk_classes: ClassVar[list[str]] = [
         "ZoteroSource",
         "ZoteroDownloadProcessor",
         "ChromaDBEmbeddings",
@@ -140,6 +142,56 @@ class MockUsageRule:
         return violations
 
 
+class TestFileLocationRule:
+    """Enforce proper test file locations per academicOps axiom #5.
+
+    Tests must be in project-specific tests/ directories, not /tmp.
+    We build infrastructure for long-term replication, not throwaway scripts.
+
+    Required structure:
+    - projects/<project>/tests/test_*.py (project-specific tests)
+    - bot/tests/test_*.py (framework tests)
+
+    PROHIBITED:
+    - /tmp/test_*.py (violates axiom #5: build for replication)
+    - Any test file outside a tests/ directory
+    """
+
+    def check(self, file_path: Path, _content: str) -> list[Violation]:
+        """Check test files are in proper locations."""
+        path_str = str(file_path)
+
+        # Only check test files (by name)
+        if not ("test" in file_path.name.lower() and file_path.suffix == ".py"):
+            return []
+
+        # Check for /tmp violation
+        if path_str.startswith("/tmp/"):
+            return [
+                Violation(
+                    file=file_path,
+                    line=1,
+                    rule="no-tmp-tests",
+                    message="/tmp test files violate academicOps axiom #5 (build for replication)",
+                    fix="Move to projects/<project>/tests/test_<feature>.py and commit to git",
+                )
+            ]
+
+        # Check for tests/ directory requirement
+        if "/tests/" not in path_str:
+            return [
+                Violation(
+                    file=file_path,
+                    line=1,
+                    rule="tests-in-tests-dir",
+                    message="Test files must be in a tests/ directory",
+                    fix="Move to projects/<project>/tests/ or bot/tests/",
+                )
+            ]
+
+        return []
+
+
 class CodeReviewer:
     """Main code review orchestrator that runs all rules."""
 
@@ -148,6 +200,7 @@ class CodeReviewer:
         self.rules: list[CodeReviewRule] = [
             EnvironmentVariableRule(),
             MockUsageRule(),
+            TestFileLocationRule(),
         ]
 
     def check_file(self, file_path: Path, content: str) -> list[Violation]:
@@ -214,8 +267,7 @@ def get_staged_files(cwd: str | None = None) -> list[Path]:
 
         if cwd:
             return [Path(cwd) / f for f in python_files]
-        else:
-            return [Path(f) for f in python_files]
+        return [Path(f) for f in python_files]
 
     except subprocess.CalledProcessError:
         return []
@@ -238,8 +290,6 @@ def review_staged_files(cwd: str | None = None) -> list[Violation]:
 
 def main():
     """CLI entry point for standalone usage."""
-    import argparse
-
     parser = argparse.ArgumentParser(description="Run code review on files")
     parser.add_argument(
         "--git-staged", action="store_true", help="Review git staged files"

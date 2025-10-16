@@ -1,6 +1,5 @@
 # academicOps Agent Framework
-
-A modular, hierarchical agent framework for rigorous, context-aware automation in research projects.
+A modular, hierarchical agent framework for rigorous, context-aware automation in academic research projects.
 
 **Core instructions**: Loaded automatically via `bot/scripts/validate_env.py` at session start.
 
@@ -15,7 +14,7 @@ A modular, hierarchical agent framework for rigorous, context-aware automation i
 4. **Python Execution**: Always use `uv run python` (never bare `python` or `python3`)
 5. **Documentation**: No new .md files except research manuscripts
 
-**Details**: See `bot/agents/INSTRUCTIONS.md` for complete rules.
+**Details**: See `bot/agents/_CORE.md` for complete rules.
 
 ---
 
@@ -39,3 +38,11 @@ ${OUTER}/                      # User's parent repository (PRIVATE)
     ├── docs/                  # Generic documentation (no private data)
     └── tests/                 # Test framework
 ```
+
+## Installation
+
+not yet.
+
+## Testing
+
+Use: `uv run pytest`

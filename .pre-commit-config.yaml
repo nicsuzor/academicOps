@@ -1,0 +1,59 @@
+# Pre-commit hooks for academicOps
+# Install: pre-commit install
+# Run manually: pre-commit run --all-files
+
+repos:
+  # Ruff - Fast Python linter & formatter
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.14.0
+    hooks:
+      # Linter
+      - id: ruff
+        args: [--fix, --unsafe-fixes]
+      # Formatter
+      - id: ruff-format
+
+  # MyPy - Static type checking
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.18.2
+    hooks:
+      - id: mypy
+        additional_dependencies: []
+        args: [--config-file=pyproject.toml]
+
+  # Local custom hooks
+  - repo: local
+    hooks:
+      # Radon - Complexity metrics
+      - id: radon-complexity
+        name: Check code complexity
+        entry: uv run radon cc --min B --total-average
+        language: system
+        types: [python]
+        pass_filenames: true
+
+      - id: radon-maintainability
+        name: Check maintainability index
+        entry: uv run radon mi --min B
+        language: system
+        types: [python]
+        pass_filenames: true
+
+      # Custom test architecture checker
+      - id: test-architecture
+        name: Enforce test architecture rules
+        entry: uv run python scripts/check_test_architecture.py
+        language: system
+        types: [python]
+        pass_filenames: false
+        always_run: true
+
+      # Pytest - Run fast tests only before commit
+      - id: pytest
+        name: Run tests
+        entry: uv run pytest -m "not slow and not integration and not endtoend"
+        language: system
+        types: [python]
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]

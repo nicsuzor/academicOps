@@ -10,7 +10,6 @@ Run with: uv run pytest /tmp/test_validation_hooks.py -v
 
 import json
 import subprocess
-import sys
 from pathlib import Path
 from typing import Any
 
@@ -65,6 +64,7 @@ def run_hook(
     """
     result = subprocess.run(
         ["uv", "run", "python", str(script_path)],
+        check=False,
         input=json.dumps(hook_input),
         capture_output=True,
         text=True,
@@ -102,7 +102,8 @@ def parse_hook_output(stderr: str) -> dict[str, Any]:
             json_str = "\n".join(json_lines)
             return json.loads(json_str)
 
-    raise ValueError(f"No JSON found in stderr: {stderr}")
+    msg = f"No JSON found in stderr: {stderr}"
+    raise ValueError(msg)
 
 
 # ============================================================================
@@ -115,14 +116,14 @@ class TestSessionStartHook:
 
     def test_hook_runs_successfully(self, validate_env_script: Path):
         """Test that the SessionStart hook runs without errors."""
-        exit_code, stdout, stderr = run_hook(validate_env_script, {})
+        exit_code, _stdout, stderr = run_hook(validate_env_script, {})
 
         assert exit_code == 0, f"Hook failed with exit code {exit_code}: {stderr}"
         assert "Loaded core instruction files" in stderr
 
     def test_hook_outputs_valid_json(self, validate_env_script: Path):
         """Test that the hook outputs valid JSON."""
-        exit_code, stdout, stderr = run_hook(validate_env_script, {})
+        exit_code, stdout, _stderr = run_hook(validate_env_script, {})
 
         assert exit_code == 0
         output = parse_hook_output(stdout)
@@ -135,7 +136,7 @@ class TestSessionStartHook:
 
     def test_hook_loads_both_instruction_files(self, validate_env_script: Path):
         """Test that both instruction files are loaded."""
-        exit_code, stdout, stderr = run_hook(validate_env_script, {})
+        exit_code, stdout, _stderr = run_hook(validate_env_script, {})
 
         assert exit_code == 0
         output = parse_hook_output(stdout)
@@ -143,8 +144,14 @@ class TestSessionStartHook:
         context = output["hookSpecificOutput"]["additionalContext"]
 
         # Check for both files
-        assert "Generic Agent Rules (bot/agents/_CORE.md)" in context or "BACKGROUND: Framework Operating Rules" in context
-        assert "User-Specific Context (docs/agents/INSTRUCTIONS.md)" in context or "PRIMARY: Your Work Context" in context
+        assert (
+            "Generic Agent Rules (bot/agents/_CORE.md)" in context
+            or "BACKGROUND: Framework Operating Rules" in context
+        )
+        assert (
+            "User-Specific Context (docs/agents/INSTRUCTIONS.md)" in context
+            or "PRIMARY: Your Work Context" in context
+        )
 
         # Check for key content from each file
         assert "Core Axioms" in context  # From generic instructions
@@ -157,7 +164,6 @@ class TestSessionStartHook:
         # This test would require modifying the script to point to non-existent files
         # For now, we just verify the script would exit with code 1
         # We can't easily test this without modifying the script or using mocks
-        pass
 
 
 # ============================================================================
@@ -178,7 +184,7 @@ class TestPreToolUseHook:
             "tool_input": {"file_path": "/tmp/test.txt"},
         }
 
-        exit_code, stdout, stderr = run_hook(validate_tool_script, hook_input)
+        exit_code, _stdout, stderr = run_hook(validate_tool_script, hook_input)
 
         assert exit_code == 0
         output = parse_hook_output(stderr)
@@ -196,14 +202,17 @@ class TestPreToolUseHook:
             "tool_input": {"command": "python -c 'print(1+1)'"},
         }
 
-        exit_code, stdout, stderr = run_hook(validate_tool_script, hook_input)
+        exit_code, _stdout, stderr = run_hook(validate_tool_script, hook_input)
 
         assert exit_code == 2  # Block
         output = parse_hook_output(stderr)
 
         assert output["continue"] is False
         assert output["hookSpecificOutput"]["permissionDecision"] == "deny"
-        assert "Inline Python execution" in output["hookSpecificOutput"]["permissionDecisionReason"]
+        assert (
+            "Inline Python execution"
+            in output["hookSpecificOutput"]["permissionDecisionReason"]
+        )
 
     def test_hook_blocks_python_without_uv_run(self, validate_tool_script: Path):
         """Test that Python commands without 'uv run' are blocked."""
@@ -215,7 +224,7 @@ class TestPreToolUseHook:
             "tool_input": {"command": "python script.py"},
         }
 
-        exit_code, stdout, stderr = run_hook(validate_tool_script, hook_input)
+        exit_code, _stdout, stderr = run_hook(validate_tool_script, hook_input)
 
         assert exit_code == 2  # Block
         output = parse_hook_output(stderr)
@@ -234,7 +243,7 @@ class TestPreToolUseHook:
             "tool_input": {"command": "uv run python script.py"},
         }
 
-        exit_code, stdout, stderr = run_hook(validate_tool_script, hook_input)
+        exit_code, _stdout, stderr = run_hook(validate_tool_script, hook_input)
 
         assert exit_code == 0
         output = parse_hook_output(stderr)
@@ -252,7 +261,7 @@ class TestPreToolUseHook:
             "tool_input": {"command": "pytest tests/"},
         }
 
-        exit_code, stdout, stderr = run_hook(validate_tool_script, hook_input)
+        exit_code, _stdout, stderr = run_hook(validate_tool_script, hook_input)
 
         assert exit_code == 2
         output = parse_hook_output(stderr)
@@ -270,7 +279,7 @@ class TestPreToolUseHook:
             "tool_input": {"command": "uv run pytest tests/"},
         }
 
-        exit_code, stdout, stderr = run_hook(validate_tool_script, hook_input)
+        exit_code, _stdout, stderr = run_hook(validate_tool_script, hook_input)
 
         assert exit_code == 0
         output = parse_hook_output(stderr)
@@ -278,9 +287,7 @@ class TestPreToolUseHook:
         assert output["continue"] is True
         assert output["hookSpecificOutput"]["permissionDecision"] == "allow"
 
-    def test_hook_warns_trainer_agent_on_claude_files(
-        self, validate_tool_script: Path
-    ):
+    def test_hook_warns_trainer_agent_on_claude_files(self, validate_tool_script: Path):
         """Test that non-trainer agents get warnings for .claude files."""
         hook_input = {
             "session_id": "test-session",
@@ -294,7 +301,7 @@ class TestPreToolUseHook:
             },
         }
 
-        exit_code, stdout, stderr = run_hook(validate_tool_script, hook_input)
+        exit_code, _stdout, stderr = run_hook(validate_tool_script, hook_input)
 
         assert exit_code == 1  # Warn
         output = parse_hook_output(stderr)
@@ -320,7 +327,7 @@ class TestPreToolUseHook:
             },
         }
 
-        exit_code, stdout, stderr = run_hook(validate_tool_script, hook_input)
+        exit_code, _stdout, stderr = run_hook(validate_tool_script, hook_input)
 
         assert exit_code == 0
         output = parse_hook_output(stderr)
@@ -344,7 +351,7 @@ class TestPreToolUseHook:
             },
         }
 
-        exit_code, stdout, stderr = run_hook(validate_tool_script, hook_input)
+        exit_code, _stdout, stderr = run_hook(validate_tool_script, hook_input)
 
         assert exit_code == 2  # Block
         output = parse_hook_output(stderr)
@@ -366,7 +373,7 @@ class TestPreToolUseHook:
             },
         }
 
-        exit_code, stdout, stderr = run_hook(validate_tool_script, hook_input)
+        exit_code, _stdout, stderr = run_hook(validate_tool_script, hook_input)
 
         assert exit_code == 0
         output = parse_hook_output(stderr)
@@ -388,7 +395,7 @@ class TestPreToolUseHook:
             },
         }
 
-        exit_code, stdout, stderr = run_hook(validate_tool_script, hook_input)
+        exit_code, _stdout, stderr = run_hook(validate_tool_script, hook_input)
 
         assert exit_code == 0
         output = parse_hook_output(stderr)
@@ -410,7 +417,7 @@ class TestPreToolUseHook:
             },
         }
 
-        exit_code, stdout, stderr = run_hook(validate_tool_script, hook_input)
+        exit_code, _stdout, stderr = run_hook(validate_tool_script, hook_input)
 
         assert exit_code == 0
         output = parse_hook_output(stderr)
@@ -444,7 +451,7 @@ class TestHookIntegration:
             "tool_input": {"file_path": "/tmp/test.txt"},
         }
 
-        exit_code, stdout, stderr = run_hook(validate_tool_script, hook_input)
+        _exit_code, _stdout, stderr = run_hook(validate_tool_script, hook_input)
 
         # Verify stderr starts with JSON (no leading text)
         stderr_stripped = stderr.strip()
@@ -476,7 +483,7 @@ class TestHookIntegration:
             },
         }
 
-        exit_code, stdout, stderr = run_hook(validate_tool_script, hook_input)
+        exit_code, _stdout, stderr = run_hook(validate_tool_script, hook_input)
 
         # Should succeed - we're just testing agent detection
         assert exit_code == 0
@@ -494,7 +501,7 @@ class TestEdgeCases:
 
     def test_hook_handles_empty_input(self, validate_tool_script: Path):
         """Test that hook handles empty input gracefully."""
-        exit_code, stdout, stderr = run_hook(validate_tool_script, {})
+        exit_code, _stdout, _stderr = run_hook(validate_tool_script, {})
 
         # Should not crash, but may fail validation
         assert exit_code in [0, 1, 2]
@@ -503,6 +510,7 @@ class TestEdgeCases:
         """Test that hook handles malformed JSON."""
         result = subprocess.run(
             ["uv", "run", "python", str(validate_tool_script)],
+            check=False,
             input="not json",
             capture_output=True,
             text=True,
@@ -522,7 +530,7 @@ class TestEdgeCases:
             "tool_input": {},
         }
 
-        exit_code, stdout, stderr = run_hook(validate_tool_script, hook_input)
+        exit_code, _stdout, _stderr = run_hook(validate_tool_script, hook_input)
 
         # Should handle gracefully
         assert exit_code in [0, 1, 2]

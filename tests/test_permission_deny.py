@@ -9,7 +9,6 @@ This test verifies:
 
 import json
 import subprocess
-import tempfile
 from pathlib import Path
 
 import pytest
@@ -18,7 +17,7 @@ import pytest
 pytestmark = pytest.mark.timeout(0)
 
 
-def test_permission_deny_exact_match(tmp_path):
+def test_permission_deny_exact_match(tmp_path: Path) -> None:
     """Test that exact filename deny rules work."""
     # Create a test project directory
     test_dir = tmp_path / "test_project"
@@ -28,13 +27,7 @@ def test_permission_deny_exact_match(tmp_path):
     claude_dir = test_dir / ".claude"
     claude_dir.mkdir()
 
-    settings = {
-        "permissions": {
-            "deny": [
-                "Write(./test-exact-match.txt)"
-            ]
-        }
-    }
+    settings = {"permissions": {"deny": ["Write(./test-exact-match.txt)"]}}
 
     (claude_dir / "settings.json").write_text(json.dumps(settings, indent=2))
 
@@ -42,12 +35,14 @@ def test_permission_deny_exact_match(tmp_path):
     result = subprocess.run(
         [
             "claude",
-            "-p", "please create a file called test-exact-match.txt with content 'testing'"
+            "-p",
+            "please create a file called test-exact-match.txt with content 'testing'",
         ],
+        check=False,
         cwd=test_dir,
         capture_output=True,
         text=True,
-        timeout=30
+        timeout=30,
     )
 
     # Check if file was created (should NOT be created if deny works)
@@ -60,7 +55,7 @@ def test_permission_deny_exact_match(tmp_path):
     )
 
 
-def test_permission_deny_glob_pattern(tmp_path):
+def test_permission_deny_glob_pattern(tmp_path: Path) -> None:
     """Test that glob pattern deny rules work."""
     test_dir = tmp_path / "test_project"
     test_dir.mkdir()
@@ -68,13 +63,7 @@ def test_permission_deny_glob_pattern(tmp_path):
     claude_dir = test_dir / ".claude"
     claude_dir.mkdir()
 
-    settings = {
-        "permissions": {
-            "deny": [
-                "Write(./test-*.txt)"
-            ]
-        }
-    }
+    settings = {"permissions": {"deny": ["Write(./test-*.txt)"]}}
 
     (claude_dir / "settings.json").write_text(json.dumps(settings, indent=2))
 
@@ -82,12 +71,14 @@ def test_permission_deny_glob_pattern(tmp_path):
     result = subprocess.run(
         [
             "claude",
-            "-p", "please create a file called test-glob-pattern.txt with content 'testing'"
+            "-p",
+            "please create a file called test-glob-pattern.txt with content 'testing'",
         ],
+        check=False,
         cwd=test_dir,
         capture_output=True,
         text=True,
-        timeout=30
+        timeout=30,
     )
 
     denied_file = test_dir / "test-glob-pattern.txt"
@@ -98,7 +89,7 @@ def test_permission_deny_glob_pattern(tmp_path):
     )
 
 
-def test_subagent_cannot_override_deny(tmp_path):
+def test_subagent_cannot_override_deny(tmp_path: Path) -> None:
     """Test that subagent frontmatter tools cannot override global deny rules."""
     test_dir = tmp_path / "test_project"
     test_dir.mkdir()
@@ -110,13 +101,7 @@ def test_subagent_cannot_override_deny(tmp_path):
     agents_dir.mkdir()
 
     # Create settings with deny rule
-    settings = {
-        "permissions": {
-            "deny": [
-                "Write(./test-denied.txt)"
-            ]
-        }
-    }
+    settings = {"permissions": {"deny": ["Write(./test-denied.txt)"]}}
     (claude_dir / "settings.json").write_text(json.dumps(settings, indent=2))
 
     # Create test agent with Write in tools
@@ -133,12 +118,14 @@ Test agent with Write tool in frontmatter.
     result = subprocess.run(
         [
             "claude",
-            "-p", "@agent-test-writer-agent please create a file called test-denied.txt with content 'testing'"
+            "-p",
+            "@agent-test-writer-agent please create a file called test-denied.txt with content 'testing'",
         ],
+        check=False,
         cwd=test_dir,
         capture_output=True,
         text=True,
-        timeout=30
+        timeout=30,
     )
 
     denied_file = test_dir / "test-denied.txt"
@@ -149,7 +136,7 @@ Test agent with Write tool in frontmatter.
     )
 
 
-def test_permission_deny_does_not_block_allowed_files(tmp_path):
+def test_permission_deny_does_not_block_allowed_files(tmp_path: Path) -> None:
     """Test that deny rules don't block files outside the pattern."""
     test_dir = tmp_path / "test_project"
     test_dir.mkdir()
@@ -157,16 +144,7 @@ def test_permission_deny_does_not_block_allowed_files(tmp_path):
     claude_dir = test_dir / ".claude"
     claude_dir.mkdir()
 
-    settings = {
-        "permissions": {
-            "allow": [
-                "Write"
-            ],
-            "deny": [
-                "Write(./test-*.txt)"
-            ]
-        }
-    }
+    settings = {"permissions": {"allow": ["Write"], "deny": ["Write(./test-*.txt)"]}}
 
     (claude_dir / "settings.json").write_text(json.dumps(settings, indent=2))
 
@@ -174,12 +152,14 @@ def test_permission_deny_does_not_block_allowed_files(tmp_path):
     result = subprocess.run(
         [
             "claude",
-            "-p", "please create a file called allowed-file.txt with content 'testing'"
+            "-p",
+            "please create a file called allowed-file.txt with content 'testing'",
         ],
+        check=False,
         cwd=test_dir,
         capture_output=True,
         text=True,
-        timeout=30
+        timeout=30,
     )
 
     allowed_file = test_dir / "allowed-file.txt"

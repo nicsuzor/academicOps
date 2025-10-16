@@ -30,7 +30,12 @@ def validate_env_script(repo_root: Path) -> Path:
     return repo_root / "bot" / "scripts" / "validate_env.py"
 
 
-def run_claude_headless(prompt: str, timeout: int = 120, permission_mode: str = "acceptEdits") -> dict:
+def run_claude_headless(
+    prompt: str,
+    timeout: int = 120,
+    permission_mode: str = "acceptEdits",
+    model: str | None = None,
+) -> dict:
     """
     Run claude CLI in headless mode and return parsed JSON output.
 
@@ -41,6 +46,8 @@ def run_claude_headless(prompt: str, timeout: int = 120, permission_mode: str = 
             - "acceptEdits": Auto-accept edit operations
             - "ask": Prompt for permission (will hang in headless)
             - "deny": Auto-deny all operations
+        model: Model to use (e.g. "haiku", "sonnet", "opus" or full model name)
+            - If not specified, uses default model from settings
 
     Returns:
         dict with keys: success, output, error, permission_denials, result, duration_ms
@@ -51,8 +58,13 @@ def run_claude_headless(prompt: str, timeout: int = 120, permission_mode: str = 
     if permission_mode:
         cmd.extend(["--permission-mode", permission_mode])
 
+    # Add model if specified
+    if model:
+        cmd.extend(["--model", model])
+
     result = subprocess.run(
         cmd,
+        check=False,
         capture_output=True,
         text=True,
         timeout=timeout,
@@ -62,7 +74,7 @@ def run_claude_headless(prompt: str, timeout: int = 120, permission_mode: str = 
     try:
         output = json.loads(result.stdout)
         return {
-            "success": output.get("is_error", True) == False,
+            "success": not output.get("is_error", True),
             "output": output,
             "error": result.stderr,
             "permission_denials": output.get("permission_denials", []),

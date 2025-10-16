@@ -2,7 +2,7 @@
 
 These tests define the behavior of our code review system that enforces coding standards.
 """
-import pytest
+
 from pathlib import Path
 
 
@@ -139,9 +139,7 @@ def test_hook():
         rule = MockUsageRule()
         violations = rule.check(Path("bot/tests/test_validate_tool.py"), code)
 
-        assert (
-            len(violations) == 0
-        ), "Should not check non-buttermilk tests"
+        assert len(violations) == 0, "Should not check non-buttermilk tests"
 
 
 class TestCodeReviewer:
@@ -154,7 +152,8 @@ class TestCodeReviewer:
         code = """
 def test_bad():
     api_key = os.getenv("KEY")
-    mock = Mock()
+    mock_zotero = Mock()
+    source = ZoteroSource(library_id="123")
 """
 
         reviewer = CodeReviewer()
@@ -162,7 +161,7 @@ def test_bad():
             Path("projects/buttermilk/tests/test_bad.py"), code
         )
 
-        # Should catch both: env var + mock usage
+        # Should catch both: env var + mock usage (ZoteroSource mentioned)
         assert len(violations) >= 2
         rules_triggered = {v.rule for v in violations}
         assert "no-direct-env-vars" in rules_triggered
@@ -189,6 +188,65 @@ def test_bad():
         assert "no-direct-env-vars" in formatted
         assert "Use config instead" in formatted
         assert "pytest fixture" in formatted
+
+
+class TestFileLocationRule:
+    """Test rule that enforces proper test file locations (academicOps axiom #5)."""
+
+    def test_blocks_tmp_test_files(self):
+        """Test files in /tmp should be blocked (violates axiom #5: build for replication)."""
+        from bot.scripts.code_review import TestFileLocationRule
+
+        rule = TestFileLocationRule()
+        violations = rule.check(Path("/tmp/test_foo.py"), "")
+
+        assert len(violations) == 1
+        assert violations[0].rule == "no-tmp-tests"
+        assert "axiom #5" in violations[0].message
+        assert "projects/" in violations[0].fix
+
+    def test_allows_proper_project_tests(self):
+        """Test files in projects/*/tests/ should be allowed."""
+        from bot.scripts.code_review import TestFileLocationRule
+
+        rule = TestFileLocationRule()
+        violations = rule.check(Path("projects/buttermilk/tests/test_foo.py"), "")
+
+        assert len(violations) == 0
+
+    def test_blocks_tests_outside_tests_directory(self):
+        """Test files outside tests/ directories should be blocked."""
+        from bot.scripts.code_review import TestFileLocationRule
+
+        rule = TestFileLocationRule()
+        violations = rule.check(Path("projects/buttermilk/test_foo.py"), "")
+
+        assert len(violations) == 1
+        assert violations[0].rule == "tests-in-tests-dir"
+        assert "tests/ directory" in violations[0].message
+
+    def test_allows_bot_framework_tests(self):
+        """Framework tests in bot/tests/ should be allowed."""
+        from bot.scripts.code_review import TestFileLocationRule
+
+        rule = TestFileLocationRule()
+        violations = rule.check(Path("bot/tests/test_validation.py"), "")
+
+        assert len(violations) == 0
+
+    def test_ignores_non_test_files(self):
+        """Non-test files should not be checked."""
+        from bot.scripts.code_review import TestFileLocationRule
+
+        rule = TestFileLocationRule()
+
+        # /tmp Python file without "test" in name - allowed (not a test)
+        violations = rule.check(Path("/tmp/script.py"), "")
+        assert len(violations) == 0
+
+        # Regular source file - allowed (not a test)
+        violations = rule.check(Path("projects/buttermilk/src/config.py"), "")
+        assert len(violations) == 0
 
 
 class TestGitIntegration:

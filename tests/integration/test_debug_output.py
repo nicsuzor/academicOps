@@ -15,14 +15,18 @@ def test_see_output():
     result = subprocess.run(
         [
             "claude",
-            "-p", "@agent-developer Run this bash command: python -c 'print(1+1)'",
-            "--output-format", "json",
-            "--permission-mode", "acceptEdits"
+            "-p",
+            "@agent-developer Run this bash command: python -c 'print(1+1)'",
+            "--output-format",
+            "json",
+            "--permission-mode",
+            "acceptEdits",
         ],
+        check=False,
         capture_output=True,
         text=True,
         timeout=120,
-        cwd="/home/nic/src/writing"
+        cwd="/home/nic/src/writing",
     )
 
     print("\n=== STDOUT ===")

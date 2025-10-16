@@ -10,14 +10,14 @@ Exit codes:
 - 2: Block tool use (shows stderr message to agent)
 """
 
+import datetime
 import json
 import re
 import sys
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from fnmatch import fnmatch
 from pathlib import Path
-from typing import Callable, Optional
-import datetime
 
 # ============================================================================
 # Rule System - Define tool restrictions here
@@ -43,13 +43,13 @@ class ValidationRule:
     allowed_agents: set[str] = field(default_factory=set)
     """Set of agent names that are allowed to use this tool"""
 
-    custom_matcher: Optional[Callable[[str, dict], bool]] = None
+    custom_matcher: Callable[[str, dict], bool] | None = None
     """Optional custom matcher function for complex logic"""
 
     get_context: Callable[[dict], str] = lambda _: ""
     """Function that extracts context info for error messages"""
 
-    get_fix_guidance: Optional[Callable[[dict], str]] = None
+    get_fix_guidance: Callable[[dict], str] | None = None
     """Optional function that provides specific guidance on how to fix the error"""
 
     severity: str = "block"
@@ -118,7 +118,7 @@ class ValidationRule:
 
     def check(
         self, tool_name: str, tool_input: dict, active_agent: str
-    ) -> tuple[bool, Optional[str], str]:
+    ) -> tuple[bool, str | None, str]:
         """Check if tool use is allowed and return (allowed, error_message, severity)."""
         if not self.matches(tool_name, tool_input):
             return (True, None, self.severity)
@@ -153,7 +153,7 @@ class ValidationRule:
             error = f"{prefix} {self.name}\n"
             if context:
                 error += f"   Context: {context}\n"
-            error += f"\n   This operation requires explicit user confirmation."
+            error += "\n   This operation requires explicit user confirmation."
             return (False, error, self.severity)
 
         # For blocks, include full instructions
@@ -176,8 +176,8 @@ class ValidationRule:
             else:
                 # Generic guidance if no specific fix available
                 error += (
-                    f"\n   This is a hard prohibition enforced by the validation system.\n"
-                    f"   If you believe this operation should be allowed, contact the user."
+                    "\n   This is a hard prohibition enforced by the validation system.\n"
+                    "   If you believe this operation should be allowed, contact the user."
                 )
         else:
             # Agent-restricted operation
@@ -191,19 +191,19 @@ class ValidationRule:
             if context:
                 error += f"   Context: {context}\n"
 
-            error += f"\n   To perform this action:\n"
+            error += "\n   To perform this action:\n"
 
             if len(self.allowed_agents) == 1:
-                agent = list(self.allowed_agents)[0]
+                agent = next(iter(self.allowed_agents))
                 error += f"   1. Switch to agent: @agent-{agent}\n"
             else:
                 error += (
-                    f"   1. Switch to one of: "
+                    "   1. Switch to one of: "
                     + ", ".join(f"@agent-{a}" for a in sorted(self.allowed_agents))
                     + "\n"
                 )
 
-            error += f"   2. Or request user to perform the action manually"
+            error += "   2. Or request user to perform the action manually"
 
         return (False, error, self.severity)
 
@@ -224,7 +224,7 @@ VALIDATION_RULES = [
     ),
     ValidationRule(
         name="All code should be self-documenting; no new documentation allowed",
-        severity="warn",
+        severity="block",
         tool_patterns=["Write"],
         allowed_agents={"trainer"},  # Trainer can create any .md file if truly needed
         custom_matcher=lambda tool_name, tool_input: (
@@ -389,10 +389,7 @@ def _is_allowed_md_path(file_path: str) -> bool:
         return True
 
     # Allow project manuscripts and papers
-    if re.match(r"^projects/[^/]+/(papers|manuscripts)/.*\.md$", path):
-        return True
-
-    return False
+    return bool(re.match(r"^projects/[^/]+/(papers|manuscripts)/.*\.md$", path))
 
 
 def _requires_uv_run(command: str) -> bool:
@@ -423,7 +420,7 @@ def _requires_uv_run(command: str) -> bool:
     # Split command into tokens, handling common shell patterns
     # We only check if the COMMAND itself (not arguments) is a Python tool
     # Split on whitespace and shell operators, but only check early tokens
-    tokens = re.split(r'[\s;&|]+', command_lower.strip())
+    tokens = re.split(r"[\s;&|]+", command_lower.strip())
 
     # Check first few tokens (to handle cases like "timeout 60 python script.py")
     # We check up to 6 tokens to handle wrappers with arguments
@@ -433,17 +430,17 @@ def _requires_uv_run(command: str) -> bool:
             continue
 
         # Skip numeric tokens (arguments to wrappers like "timeout 60")
-        if re.match(r'^\d+$', token):
+        if re.match(r"^\d+$", token):
             continue
 
         # Skip common command wrappers that don't need uv run
-        if token in ['timeout', 'nice', 'env', 'time', 'sudo', 'sh', 'bash']:
+        if token in ["timeout", "nice", "env", "time", "sudo", "sh", "bash"]:
             continue
 
         # Check if this token is a Python tool
         for tool in python_tools:
             # Match exact tool name (with optional version number like python3)
-            if re.match(rf'^{re.escape(tool)}(?:\d+)?$', token):
+            if re.match(rf"^{re.escape(tool)}(?:\d+)?$", token):
                 # Found a Python tool as the actual command
                 # Now check if it's properly prefixed with 'uv run'
 
@@ -451,7 +448,7 @@ def _requires_uv_run(command: str) -> bool:
                 before_tokens = tokens[:i]
 
                 # Skip if invoked via 'python -m' (check previous token)
-                if i > 0 and tokens[i-1] == '-m':
+                if i > 0 and tokens[i - 1] == "-m":
                     # This tool is a module name (e.g., 'python -m pytest')
                     # It's covered by the python validation
                     continue
@@ -460,7 +457,7 @@ def _requires_uv_run(command: str) -> bool:
                 # We need both 'uv' and 'run' to appear consecutively
                 has_uv_run = False
                 for j in range(len(before_tokens) - 1):
-                    if before_tokens[j] == 'uv' and before_tokens[j+1] == 'run':
+                    if before_tokens[j] == "uv" and before_tokens[j + 1] == "run":
                         has_uv_run = True
                         break
 
@@ -470,7 +467,17 @@ def _requires_uv_run(command: str) -> bool:
 
         # If we found a non-wrapper, non-Python command, stop checking
         # (the actual command is something else, like 'gh', 'git', 'echo', etc.)
-        if token not in ['timeout', 'nice', 'env', 'time', 'sudo', 'sh', 'bash', 'uv', 'run'] and not re.match(r'^\d+$', token):
+        if token not in [
+            "timeout",
+            "nice",
+            "env",
+            "time",
+            "sudo",
+            "sh",
+            "bash",
+            "uv",
+            "run",
+        ] and not re.match(r"^\d+$", token):
             break
 
     return False
@@ -565,17 +572,19 @@ def main():
         },
     }
 
-
     # Debug: Save input for inspection
     debug_file = Path("/tmp/validate_tool.json")
-    debug_data = dict(
-        input=input_data, output=output, tiemstamp=datetime.datetime.now().isoformat()
-    )
+    debug_data = {
+        "input": input_data,
+        "output": output,
+        "tiemstamp": datetime.datetime.now().isoformat(),
+    }
     with debug_file.open("a") as f:
         json.dump(debug_data, f, indent=None)
         f.write("\n")
 
-    print(json.dumps(output), file=sys.stderr)
+    # Output JSON to stdout (Claude Code hook specification)
+    print(json.dumps(output))
 
     sys.exit(exit_code)
 

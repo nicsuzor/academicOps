@@ -28,11 +28,13 @@ The index includes:
 
 Sorted by priority (ascending), then due date (ascending).
 """
+
 from __future__ import annotations
-import sys
+
 import json
+import sys
+from datetime import UTC, datetime
 from pathlib import Path
-from datetime import datetime, timezone
 
 # Base data directory (relative to this script): ../../data
 ROOT = Path(__file__).resolve().parents[2]  # parent repo root
@@ -53,7 +55,7 @@ def load_task(path: Path):
         with path.open() as f:
             t = json.load(f)
             # Skip archived tasks
-            if t.get('archived_at'):
+            if t.get("archived_at"):
                 return None
 
             # Extract filename without extension for ID
@@ -76,13 +78,13 @@ def parse_iso(ts: str):
         return None
     try:
         if isinstance(ts, (int, float)):
-            return datetime.fromtimestamp(float(ts), tz=timezone.utc)
+            return datetime.fromtimestamp(float(ts), tz=UTC)
         s = str(ts)
         if s.endswith("Z"):
             s = s[:-1] + "+00:00"
         dt = datetime.fromisoformat(s)
         if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=timezone.utc)
+            dt = dt.replace(tzinfo=UTC)
         return dt
     except Exception:
         return None
@@ -97,22 +99,22 @@ def sort_key(task):
     # Due date sorting: None goes last
     d = parse_iso(task.get("due"))
     if d is None:
-        d = datetime.max.replace(tzinfo=timezone.utc)
+        d = datetime.max.replace(tzinfo=UTC)
 
     return (p, d)
 
 
 def load_all_tasks():
     """Load all active tasks from inbox and queue."""
-    inbox = DATA_DIR / 'tasks/inbox'
-    queue = DATA_DIR / 'tasks/queue'
-    archived = DATA_DIR / 'tasks/archived'
+    inbox = DATA_DIR / "tasks/inbox"
+    queue = DATA_DIR / "tasks/queue"
+    archived = DATA_DIR / "tasks/archived"
 
     cand_paths = []
     if inbox.exists():
-        cand_paths.extend(inbox.glob('*.json'))
+        cand_paths.extend(inbox.glob("*.json"))
     if queue.exists():
-        cand_paths.extend(queue.glob('*.json'))
+        cand_paths.extend(queue.glob("*.json"))
 
     tasks = []
     for p in cand_paths:
