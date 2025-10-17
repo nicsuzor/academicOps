@@ -12,10 +12,6 @@ import time
 
 import pytest
 
-# Mark all tests as slow to bypass default timeout
-# Using 180s timeout since Haiku can be slower than Sonnet with large context
-pytestmark = [pytest.mark.slow, pytest.mark.timeout(180)]
-
 
 def test_haiku_performance(claude_headless):
     """Test execution time with Haiku model."""

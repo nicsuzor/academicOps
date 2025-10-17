@@ -28,7 +28,7 @@ addopts = [
     "-v",                              # show name of tests 
     "-rfEX",                           # show extra summary info, including for failed, eXpected failures, and Errors
     "-s",
-    "-m 'not slow'",
+    "-m not slow",
     "--tb=short",
 ]
 

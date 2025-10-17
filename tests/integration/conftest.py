@@ -12,6 +12,13 @@ from pathlib import Path
 import pytest
 
 
+def pytest_collection_modifyitems(config, items):
+    for item in items:
+        if "claude_headless" in item.fixturenames:
+            item.add_marker(pytest.mark.slow)
+            item.add_marker(pytest.mark.timeout(120))
+
+
 @pytest.fixture
 def repo_root() -> Path:
     """Get the repository root directory."""
@@ -90,7 +97,6 @@ def run_claude_headless(
             "result": "",
             "duration_ms": 0,
         }
-
 
 @pytest.fixture
 def claude_headless():

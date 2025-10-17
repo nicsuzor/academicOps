@@ -526,47 +526,28 @@ def main():
     allowed, error_message, severity = validate_tool_use(
         tool_name, tool_input, active_agent
     )
-    should_continue = True
-    systemMessage = None
     exit_code = 0
 
     # Map severity to permissionDecision
     if allowed:
         allow_message = "allow"
-        should_continue = True
         exit_code = 0
 
     elif severity == "force-ask":
         allow_message = "ask"
-        systemMessage = error_message
-        should_continue = False  # Pause execution until user confirms
         exit_code = 0
     elif severity == "warn":
         # Warnings don't block execution, but show a message
         allow_message = "allow"
-        should_continue = True
-        systemMessage = error_message
         exit_code = 1
     else:
         allow_message = "deny"
-        should_continue = False
         exit_code = 2  # Block execution
 
     # Format for claude code
     output = {
-        # Whether Claude should continue after hook execution (default: true)
-        # it seems like we shouldn't have 'continue' be true if we are denying permission
-        "continue": should_continue,
-        # Message shown when continue is false
-        "stopReason": None,
-        "suppressOutput": False,  # Hide stdout from transcript mode (default: false)
-        "systemMessage": systemMessage,  # Optional warning message shown to the user
         "hookSpecificOutput": {
             "hookEventName": "PreToolUse",
-            # permissionDecision": "allow" | "deny" | "ask",
-            #    "allow" bypasses the permission system. permissionDecisionReason is shown to the user but not to Claude.
-            #    "deny" prevents the tool call from executing. permissionDecisionReason is shown to Claude.
-            #    "ask" asks the user to confirm the tool call in the UI. permissionDecisionReason is shown to the user but not to Claude.
             "permissionDecision": allow_message,
             "permissionDecisionReason": error_message,
         },

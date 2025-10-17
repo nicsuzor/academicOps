@@ -19,16 +19,54 @@ Output:
 
 import datetime
 import json
+import os
 import sys
 from pathlib import Path
 
 
-def get_repo_root() -> Path:
-    """Find the repository root (parent of bot/ submodule)."""
-    # This script is at bot/scripts/validate_env.py
-    # Repo root is two levels up
+def get_academicops_root() -> Path:
+    """
+    Find the academicOps framework root using environment variable or fallback.
+
+    Returns the parent directory of this script (bot/scripts/ -> bot/).
+    """
+    # Check environment variable first
+    if env_path := os.environ.get("ACADEMICOPS_BOT"):
+        return Path(env_path).resolve()
+
+    # Fallback: assume script is at bot/scripts/validate_env.py
     script_path = Path(__file__).resolve()
-    return script_path.parent.parent.parent
+    return script_path.parent.parent
+
+
+def get_personal_context_root() -> Path | None:
+    """
+    Find personal context directory using environment variable or fallback.
+
+    Returns None if not found (personal context is optional).
+    """
+    # Check environment variable first
+    if env_path := os.environ.get("ACADEMICOPS_PERSONAL"):
+        path = Path(env_path).resolve()
+        if path.exists():
+            return path
+
+    # Fallback: assume script is at bot/scripts/ inside parent repo
+    # Parent repo is two levels up from bot/
+    script_path = Path(__file__).resolve()
+    repo_root = script_path.parent.parent.parent
+
+    # Verify this looks like a parent repo (has docs/agents/)
+    if (repo_root / "docs" / "agents").exists():
+        return repo_root
+
+    # No personal context found
+    return None
+
+
+def get_project_root() -> Path:
+    """Find the current project root (where Claude Code was launched from)."""
+    return Path.cwd()
 
 
 def read_instruction_file(path: Path) -> str:
@@ -48,59 +86,91 @@ def main():
         input_data = {}
     input_data["argv"] = sys.argv
 
-    repo_root = get_repo_root()
+    # Get paths using environment variables or fallbacks
+    academicops_root = get_academicops_root()
+    personal_root = get_personal_context_root()
+    project_root = get_project_root()
 
-    # Required instruction files (in load order)
-    generic_instructions = repo_root / "bot" / "agents" / "_CORE.md"
-    user_instructions = repo_root / "docs" / "agents" / "INSTRUCTIONS.md"
-
-    # Read both files
+    # Required: Core framework instructions
+    generic_instructions = academicops_root / "agents" / "_CORE.md"
     generic_content = read_instruction_file(generic_instructions)
-    user_content = read_instruction_file(user_instructions)
 
-    # Check for errors
-    if generic_content.startswith("ERROR:") or user_content.startswith("ERROR:"):
-        print("CRITICAL: Failed to load required instruction files", file=sys.stderr)
+    if generic_content.startswith("ERROR:"):
+        print("CRITICAL: Failed to load core framework instructions", file=sys.stderr)
         print(generic_content, file=sys.stderr)
-        print(user_content, file=sys.stderr)
+        print(f"Searched at: {generic_instructions}", file=sys.stderr)
+        print(f"ACADEMICOPS_BOT={os.environ.get('ACADEMICOPS_BOT', 'not set')}", file=sys.stderr)
         sys.exit(1)
+
+    # Optional: Personal context
+    user_content = ""
+    if personal_root:
+        user_instructions = personal_root / "docs" / "agents" / "INSTRUCTIONS.md"
+        user_content = read_instruction_file(user_instructions)
+        if user_content.startswith("ERROR:"):
+            # Personal context is optional - just note it
+            print(f"Note: Personal context not found at {user_instructions}", file=sys.stderr)
+            user_content = ""
+
+    # Optional: Project-specific instructions
+    project_content = ""
+    project_instructions = project_root / "docs" / "agents" / "INSTRUCTIONS.md"
+    if project_instructions.exists() and project_instructions != (personal_root / "docs" / "agents" / "INSTRUCTIONS.md" if personal_root else None):
+        project_content = read_instruction_file(project_instructions)
+        if project_content.startswith("ERROR:"):
+            project_content = ""
+
+    # Build context based on what's available
+    sections = []
+
+    if user_content:
+        sections.append(f"""## PRIMARY: Your Work Context
+
+{user_content}""")
+
+    if project_content:
+        sections.append(f"""## PROJECT: Current Project Context
+
+{project_content}""")
+
+    sections.append(f"""## BACKGROUND: Framework Operating Rules
+
+{generic_content}""")
+
+    additional_context = "# Required Agent Instructions\n\n" + "\n\n---\n\n".join(sections)
+    additional_context += "\n\n---\n\n**Priority**: Your strategic goals and active projects take precedence. Framework development happens when needed, not by default.\n"
 
     # Construct the additional context message in the correct format for SessionStart hooks
     # See: https://docs.claude.com/en/docs/claude-code/hooks
     context = {
         "hookSpecificOutput": {
             "hookEventName": "SessionStart",
-            "additionalContext": f"""# Required Agent Instructions
-
-## PRIMARY: Your Work Context
-
-{user_content}
-
----
-
-## BACKGROUND: Framework Operating Rules
-
-{generic_content}
-
----
-
-**Priority**: Your strategic goals and active projects take precedence. Framework development happens when needed, not by default.
-""",
+            "additionalContext": additional_context,
         }
     }
 
     # Output as JSON for Claude Code to parse
     print(json.dumps(context), file=sys.stdout)
 
-    # Also print a simple reminder to stderr (visible to user maybe?)
-    print("✓ Loaded core instruction files", file=sys.stderr)
+    # Status message to stderr
+    loaded = ["core"]
+    if user_content:
+        loaded.append("personal")
+    if project_content:
+        loaded.append("project")
+    print(f"✓ Loaded {', '.join(loaded)} instruction files", file=sys.stderr)
 
     # Debug: Save input for inspection
     debug_file = Path("/tmp/validate_env.json")
     debug_data = {
         "input": input_data,
         "output": context,
-        "tiemstamp": datetime.datetime.now().isoformat(),
+        "timestamp": datetime.datetime.now().isoformat(),
+        "paths": {
+            "academicops_root": str(academicops_root),
+            "personal_root": str(personal_root) if personal_root else None,
+            "project_root": str(project_root),
+        },
     }
     with debug_file.open("a") as f:
         json.dump(debug_data, f, indent=None)

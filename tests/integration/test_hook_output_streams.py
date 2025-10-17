@@ -18,9 +18,6 @@ from pathlib import Path
 
 import pytest
 
-# Mark all tests in this file as slow (integration tests)
-pytestmark = [pytest.mark.slow, pytest.mark.timeout(120)]
-
 
 class TestHookOutputStreams:
     """Test that validate_tool.py outputs to correct streams."""
@@ -149,7 +146,8 @@ class TestClaudeCodeInterpretation:
         and the tool executes successfully.
         """
         result = claude_headless(
-            "Use the Read tool to read the file bot/README.md and tell me the first line"
+            "Use the Read tool to read the file bot/README.md and tell me the first line",
+            model="haiku",
         )
 
         # Should succeed - Read is always allowed
@@ -165,7 +163,9 @@ class TestClaudeCodeInterpretation:
         This tests end-to-end: hook outputs 'deny' to stdout, Claude parses it,
         and the operation is blocked.
         """
-        result = claude_headless("Run this exact bash command: python -c 'print(1+1)'")
+        result = claude_headless(
+            "Run this exact bash command: python -c 'print(1+1)'", model="haiku"
+        )
 
         # Claude should either:
         # 1. Show permission denial in output
@@ -201,7 +201,8 @@ class TestClaudeCodeInterpretation:
         Claude parses it and shows warning to user.
         """
         result = claude_headless(
-            "@agent-developer Create a new file called bot/test_doc.md with content 'test'"
+            "@agent-developer Create a new file called bot/test_doc.md with content 'test'",
+            model="haiku",
         )
 
         # Should complete but may show warning about .md files

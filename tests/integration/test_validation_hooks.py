@@ -15,10 +15,6 @@ from typing import Any
 
 import pytest
 
-# Mark all tests in this file as slow (integration tests that invoke actual hooks)
-pytestmark = [pytest.mark.slow, pytest.mark.timeout(30)]
-
-
 # ============================================================================
 # Test Fixtures
 # ============================================================================
