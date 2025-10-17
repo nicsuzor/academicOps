@@ -117,10 +117,10 @@ def main() -> int:
     staged_files = result.stdout.strip().split("\n")
 
     # Filter to instruction files only
+    # Patterns match from any level (works in both parent repo and submodules)
     instruction_patterns = [
-        "bot/agents/*.md",
-        "docs/agents/*.md",
-        "projects/*/agents/*.md",
+        "*/agents/*.md",  # Matches bot/agents/*.md, docs/agents/*.md, projects/*/agents/*.md
+        "agents/*.md",  # Matches when run from within submodule
     ]
 
     instruction_files = []
