@@ -12,7 +12,7 @@ Extract and save actionable information IMMEDIATELY without waiting for user pro
 - Deadlines discussed even without explicit task language
 - "Next actions" sections in project discussions
 - Service obligations (reviews, evaluations, committee work)
-**Action**: Create SEPARATE task file in `/home/nic/src/writing/data/tasks/inbox/`
+**Action**: Create SEPARATE task file in `${ACADEMICOPS_PERSONAL}/data/tasks/inbox/`
 **CRITICAL**: Tasks are NOT project updates - create dedicated files
 **Format**:
 ```markdown
@@ -29,7 +29,7 @@ deadline: [if mentioned]
 
 ### Project Information
 **Trigger**: Discussion about ongoing work, collaborations, deliverables, project assessments
-**Action**: Update `/home/nic/src/writing/data/projects/[project-name].md`
+**Action**: Update `${ACADEMICOPS_PERSONAL}/data/projects/[project-name].md`
 **Information to Capture**:
 - Collaborator names and contact info
 - Deadlines and milestones
@@ -43,7 +43,7 @@ deadline: [if mentioned]
 
 ### Goals and Strategy
 **Trigger**: Discussion about objectives, vision, priorities
-**Action**: Update `/home/nic/src/writing/data/goals/[goal-name].md`
+**Action**: Update `${ACADEMICOPS_PERSONAL}/data/goals/[goal-name].md`
 **Information to Capture**:
 - Theory of change
 - Success metrics

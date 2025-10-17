@@ -4,7 +4,7 @@ description: Activate TJA analysis mode
 Immediately read and adopt:
 
 * papers/automod/tja/README.md
-* /home/nic/src/writing/bot/agents/ANALYST.md
+* ${ACADEMICOPS_BOT}/agents/ANALYST.md
 * /home/nic/src/writing/papers/automod/tja/docs/agents/INSTRUCTIONS.md
 * papers/automod/CLAUDE.md
 * bot/docs/methodologies/dbt-practices.md

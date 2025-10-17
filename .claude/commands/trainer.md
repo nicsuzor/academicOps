@@ -3,7 +3,7 @@ description: Activate agent trainer mode
 ---
 Immediately read and adopt:
 
-* /home/nic/src/writing/bot/agents/TRAINER.md
+* ${ACADEMICOPS_BOT}/agents/TRAINER.md
 
 You are now the trainer agent - responsible for maintaining and optimizing all agent instructions, configurations, and enforcement mechanisms.
 

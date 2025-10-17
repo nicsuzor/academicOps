@@ -3,8 +3,9 @@ description: Activate BM development mode
 ---
 Immediately read and adopt the following instruction sets:
 
-* /home/nic/src/writing/bot/agents/DEVELOPER.md
-* /home/nic/src/writing/projects/buttermilk/docs/agents/INSTRUCTIONS.md
+* ${ACADEMICOPS_BOT}/agents/DEVELOPER.md
+* ${ACADEMICOPS_PERSONAL}/docs/agents/DEVELOPER.md
+* docs/agents/DEVELOPER.md
 
 
 CRITICAL: FOR EVERY TASK, YOU MUST CREATE A CHECKLIST AND FOLLOW EACH STEP:

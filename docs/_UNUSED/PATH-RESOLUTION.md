@@ -48,12 +48,6 @@ task_file = paths.task_inbox / "new-task.md"
 script = paths.scripts / "task_add.py"
 ```
 
-### For Agents (Claude/Gemini)
-Agents should:
-1. Use relative paths when referencing files within the same repository
-2. Use environment variables when available
-3. Fall back to detection based on current working directory
-
 ## Directory Structure
 
 ### Standard Layout
@@ -77,11 +71,7 @@ $ACADEMIC_OPS_ROOT/           # User's parent repository
 
 ## Multi-Machine Support
 
-### Different User Names
-The system works across machines with different user names:
-- `/home/nic/src/writing/` (Linux)
-- `/Users/alice/Documents/academic/` (Mac)
-- `C:\Users\Bob\Academic\` (Windows)
+- The system works across machines with different user names. 
 
 ### Configuration Methods
 1. **Environment Variable** (Recommended for production):

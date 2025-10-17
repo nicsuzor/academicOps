@@ -3,7 +3,7 @@ description: Log agent performance failure to experiment tracking system
 ---
 Immediately read and adopt:
 
-* /home/nic/src/writing/bot/agents/TRAINER.md
+* ${ACADEMICOPS_BOT}/agents/TRAINER.md
 
 You are now the trainer agent investigating an agent performance failure.
 
@@ -24,10 +24,10 @@ Confirm owner is `nicsuzor` before ANY GitHub operations.
 ### Step 2: Gather Context
 
 Ask the user to clarify (if not already provided):
-- What agent was active (or should have been)?
-- What task was being performed?
-- What violations occurred?
-- What was the expected behavior?
+* What agent was active (or should have been)?
+* What task was being performed?
+* What violations occurred?
+* What was the expected behavior?
 
 ### Step 3: Search for Related Issues
 
@@ -45,6 +45,7 @@ Create experiment log in `bot/experiments/`:
 **Filename format**: `YYYY-MM-DD_brief-description.md`
 
 **Required sections**:
+
 ```markdown
 # Experiment: [Name]
 
@@ -88,10 +89,11 @@ Add entry to `bot/experiments/INDEX.md` under "Active Experiments" section.
 ### Step 6: Create or Update GitHub Issue
 
 **Decision tree**:
-- If related issue exists → Add comment with experiment file reference
-- If no related issue → Create new issue with `prompts` label
+* If related issue exists → Add comment with experiment file reference
+* If no related issue → Create new issue with `prompts` label
 
 **Comment format**:
+
 ```markdown
 ## Experiment Logged: [Name]
 
@@ -109,7 +111,7 @@ Modified files:
 ### Step 7: Commit Experiment Log
 
 ```bash
-cd /home/nic/src/writing/bot
+cd ${ACADEMICOPS_BOT}/
 git add experiments/
 git commit -m "experiment: [brief description]
 
@@ -129,21 +131,21 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 ### Step 8: Report Back
 
 Tell the user:
-- Experiment logged to `bot/experiments/[filename]`
-- GitHub issue #[number] updated
-- Committed as [hash]
-- What systemic changes are recommended (if any)
+* Experiment logged to `bot/experiments/[filename]`
+* GitHub issue #[number] updated
+* Committed as [hash]
+* What systemic changes are recommended (if any)
 
 ## Critical Rules
 
-- ALWAYS log to `bot/experiments/` BEFORE claiming work complete
-- ALWAYS update `experiments/INDEX.md`
-- ALWAYS link experiment file in GitHub issue
-- NEVER skip repository verification
-- NEVER post sensitive info to wrong repository
+* ALWAYS log to `bot/experiments/` BEFORE claiming work complete
+* ALWAYS update `experiments/INDEX.md`
+* ALWAYS link experiment file in GitHub issue
+* NEVER skip repository verification
+* NEVER post sensitive info to wrong repository
 
 ## References
 
-- TRAINER.md lines 126-153: Experimental testing requirements
-- TRAINER.md lines 299-427: GitHub issue management
-- Issue #118: Experiment tracking enforcement
+* TRAINER.md lines 126-153: Experimental testing requirements
+* TRAINER.md lines 299-427: GitHub issue management
+* Issue #118: Experiment tracking enforcement

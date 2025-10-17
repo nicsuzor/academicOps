@@ -60,7 +60,7 @@ def test_md_file_blocking():
 
     # Test 4: Allowed path (bot/agents/) should be allowed for trainer
     tool_input = {
-        "file_path": "/home/nic/src/writing/bot/agents/newagent.md",
+        "file_path": ${ACADEMICOPS_BOT}/agents/newagent.md",
         "content": "agent instructions",
     }
     active_agent = "trainer"

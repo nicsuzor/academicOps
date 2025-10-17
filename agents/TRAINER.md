@@ -581,7 +581,7 @@ Whenever you modify, add, or remove instruction files, you MUST update the instr
 
    ```bash
    # From bot submodule
-   cd /home/nic/src/writing/bot && python scripts/check_instruction_orphans.py
+   cd ${ACADEMICOPS_BOT}/ && python scripts/check_instruction_orphans.py
 
    # Or from parent repo
    cd /home/nic/src/writing && python bot/scripts/check_instruction_orphans.py
@@ -601,7 +601,7 @@ Whenever you modify, add, or remove instruction files, you MUST update the instr
 
    ```bash
    # Bot changes
-   cd /home/nic/src/writing/bot && \
+   cd ${ACADEMICOPS_BOT}/ && \
    git add agents/ docs/INSTRUCTION-INDEX.md && \
    git commit -m "fix(prompts): [description]
 

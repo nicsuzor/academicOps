@@ -1,7 +1,7 @@
 <!-- AUTO-GENERATED TEST SPECIFICATIONS -->
 # Agent Context Awareness Tests
 
-**Purpose**: Validate that agents starting in the parent repo (`/home/nic/src/writing/`) immediately understand their context and know where to find required information.
+**Purpose**: Validate that agents starting in the parent repo (`${ACADEMICOPS_PERSONAL}/`) immediately understand their context and know where to find required information.
 
 **Related Issues**: #64 (project context system), #66 (documentation consolidation), #67 (automated testing)
 
@@ -33,7 +33,7 @@ An agent starting in the parent repo MUST demonstrate immediate awareness of:
 
 - **MUST** recognize they are in parent repo (not a submodule)
 - **MUST** understand parent repo is private, submodules may be public
-- **SHOULD** use absolute paths starting with `/home/nic/src/writing/`
+- **SHOULD** use absolute paths starting with `${ACADEMICOPS_PERSONAL}/`
 
 ### 2. Documentation Navigation
 
