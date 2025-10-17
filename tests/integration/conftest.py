@@ -12,80 +12,28 @@ from pathlib import Path
 import pytest
 
 
+# ============================================================================
+# Pytest Configuration
+# ============================================================================
+
+
+def pytest_configure(config):
+    """Configure pytest for integration tests - override parallelism."""
+    # Override -n flag for integration tests (use 4 workers instead of 20)
+    # Integration tests spawn subprocesses, so we want less parallelism
+    config.option.numprocesses = 4
+
+
+# ============================================================================
+# Test Fixtures
+# ============================================================================
+
+
 def pytest_collection_modifyitems(config, items):
     for item in items:
         if "claude_headless" in item.fixturenames:
             item.add_marker(pytest.mark.slow)
             item.add_marker(pytest.mark.timeout(120))
-
-
-@pytest.fixture
-def personal_repo_root() -> Path:
-    """Get the personal repository root from environment variable."""
-    import os
-
-    personal_root = os.getenv("ACADEMICOPS_PERSONAL")
-    if not personal_root:
-        raise RuntimeError(
-            "ACADEMICOPS_PERSONAL environment variable not set. "
-            "This must point to your personal repository root."
-        )
-
-    path = Path(personal_root)
-    if not path.exists():
-        raise RuntimeError(
-            f"ACADEMICOPS_PERSONAL path does not exist: {personal_root}"
-        )
-
-    return path
-
-
-@pytest.fixture
-def has_user_context(personal_repo_root: Path) -> bool:
-    """Check if user context files are available."""
-    return (personal_repo_root / "docs" / "agents" / "INSTRUCTIONS.md").exists()
-
-
-@pytest.fixture
-def validate_tool_script() -> Path:
-    """Path to validate_tool.py script."""
-    import os
-
-    bot_root = os.getenv("ACADEMICOPS_BOT")
-    if not bot_root:
-        raise RuntimeError(
-            "ACADEMICOPS_BOT environment variable not set. "
-            "This must point to the academicOps bot repository root."
-        )
-
-    path = Path(bot_root) / "scripts" / "validate_tool.py"
-    if not path.exists():
-        raise RuntimeError(
-            f"validate_tool.py not found at expected path: {path}"
-        )
-
-    return path
-
-
-@pytest.fixture
-def validate_env_script() -> Path:
-    """Path to load_instructions.py script (renamed from validate_env.py)."""
-    import os
-
-    bot_root = os.getenv("ACADEMICOPS_BOT")
-    if not bot_root:
-        raise RuntimeError(
-            "ACADEMICOPS_BOT environment variable not set. "
-            "This must point to the academicOps bot repository root."
-        )
-
-    path = Path(bot_root) / "scripts" / "load_instructions.py"
-    if not path.exists():
-        raise RuntimeError(
-            f"load_instructions.py not found at expected path: {path}"
-        )
-
-    return path
 
 
 def run_claude_headless(
@@ -150,6 +98,7 @@ def run_claude_headless(
             "result": "",
             "duration_ms": 0,
         }
+
 
 @pytest.fixture
 def claude_headless(personal_repo_root: Path):

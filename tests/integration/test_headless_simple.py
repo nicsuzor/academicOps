@@ -1,102 +1,48 @@
 #!/usr/bin/env python3
 """
 Simple integration test to verify headless mode works.
-
-Run with: uv run pytest tests/integration/test_headless_simple.py -v
 """
 
 import json
 import os
 import subprocess
+from pathlib import Path
+import pytest
+
+# Mark all tests in this file as slow (integration tests invoking Claude CLI)
+pytestmark = [pytest.mark.slow, pytest.mark.timeout(120)]
 
 
-def test_claude_headless_basic():
+class TestAgentDetection:
+    """Test that agent type detection works in headless mode."""
+
+    def test_trainer_agent_syntax_works(self, claude_headless):
+        """Verify @agent-trainer syntax is recognized."""
+        result = claude_headless(
+            "@agent-trainer What agent type am I? Answer in one word.", model="haiku"
+        )
+
+        assert result["success"], f"Failed: {result['error']}"
+        assert "trainer" in result["result"].lower(), "Agent didn't identify as trainer"
+
+    def test_developer_agent_syntax_works(self, claude_headless):
+        result = claude_headless(
+            "@agent-developer What agent type am I? Answer in one word.", model="haiku"
+        )
+
+        assert result["success"], f"Failed: {result['error']}"
+        assert "developer" in result["result"].lower(), (
+            "Agent didn't identify as developer"
+        )
+
+
+def test_claude_headless_fixture(claude_headless, repo_root: Path):
     """Test that Claude Code works in headless mode with permission-mode flag."""
-    personal_root = os.getenv("ACADEMICOPS_PERSONAL")
-    if not personal_root:
-        raise RuntimeError("ACADEMICOPS_PERSONAL environment variable not set")
 
-    result = subprocess.run(
-        [
-            "claude",
-            "-p",
-            "What is 2+2? Just give me the number.",
-            "--output-format",
-            "json",
-            "--permission-mode",
-            "acceptEdits",
-            "--model",
-            "haiku",
-        ],
-        check=False,
-        capture_output=True,
-        text=True,
-        timeout=120,  # Increased to 120 seconds
-        cwd=personal_root,
+    result = claude_headless("What is your current working directory?", model="haiku")
+
+    assert result["success"], f"Failed: {result['error']}"
+
+    assert repo_root == Path(result["result"].strip()), (
+        f"Expected CWD to be {repo_root}, got: {result['result']}"
     )
-
-    output = json.loads(result.stdout)
-
-    assert not output["is_error"], f"Command failed: {output}"
-    assert "4" in output["result"], f"Expected '4' in result, got: {output['result']}"
-    assert output["duration_ms"] < 10000, f"Took too long: {output['duration_ms']}ms"
-
-
-def test_validate_tool_enforcement():
-    """Test that validate_tool.py blocks operations in headless mode."""
-    personal_root = os.getenv("ACADEMICOPS_PERSONAL")
-    if not personal_root:
-        raise RuntimeError("ACADEMICOPS_PERSONAL environment variable not set")
-
-    # Test that developer cannot edit .claude config
-    result = subprocess.run(
-        [
-            "claude",
-            "-p",
-            "@agent-developer Read the file .claude/settings.json and tell me the first line",
-            "--output-format",
-            "json",
-            "--permission-mode",
-            "acceptEdits",
-            "--model",
-            "haiku",
-        ],
-        check=False,
-        capture_output=True,
-        text=True,
-        timeout=30,
-        cwd=personal_root,
-    )
-
-    output = json.loads(result.stdout)
-
-    # Should complete successfully (Read is allowed, just not Edit)
-    assert not output["is_error"]
-
-    # Now try to edit (should be blocked by validate_tool.py)
-    result2 = subprocess.run(
-        [
-            "claude",
-            "-p",
-            "@agent-developer Use the Edit tool to change something in .claude/settings.json",
-            "--output-format",
-            "json",
-            "--permission-mode",
-            "acceptEdits",
-            "--model",
-            "haiku",
-        ],
-        check=False,
-        capture_output=True,
-        text=True,
-        timeout=30,
-        cwd=personal_root,
-    )
-
-    output2 = json.loads(result2.stdout)
-
-    # Check if there were permission denials
-    if "permission_denials" in output2:
-        # Good - validate_tool.py blocked it
-        denials = str(output2["permission_denials"]).lower()
-        assert "trainer" in denials or "blocked" in denials

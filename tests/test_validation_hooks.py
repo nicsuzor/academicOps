@@ -16,74 +16,6 @@ from typing import Any
 import pytest
 
 # ============================================================================
-# Test Fixtures
-# ============================================================================
-
-
-@pytest.fixture
-def repo_root() -> Path:
-    """Get the personal repository root directory from environment variable."""
-    import os
-
-    personal_root = os.getenv("ACADEMICOPS_PERSONAL")
-    if not personal_root:
-        raise RuntimeError(
-            "ACADEMICOPS_PERSONAL environment variable not set. "
-            "This must point to your personal repository root."
-        )
-
-    path = Path(personal_root)
-    if not path.exists():
-        raise RuntimeError(
-            f"ACADEMICOPS_PERSONAL path does not exist: {personal_root}"
-        )
-
-    return path
-
-
-@pytest.fixture
-def validate_tool_script() -> Path:
-    """Path to validate_tool.py script."""
-    import os
-
-    bot_root = os.getenv("ACADEMICOPS_BOT")
-    if not bot_root:
-        raise RuntimeError(
-            "ACADEMICOPS_BOT environment variable not set. "
-            "This must point to the academicOps bot repository root."
-        )
-
-    path = Path(bot_root) / "scripts" / "validate_tool.py"
-    if not path.exists():
-        raise RuntimeError(
-            f"validate_tool.py not found at expected path: {path}"
-        )
-
-    return path
-
-
-@pytest.fixture
-def validate_env_script() -> Path:
-    """Path to load_instructions.py script (renamed from validate_env.py)."""
-    import os
-
-    bot_root = os.getenv("ACADEMICOPS_BOT")
-    if not bot_root:
-        raise RuntimeError(
-            "ACADEMICOPS_BOT environment variable not set. "
-            "This must point to the academicOps bot repository root."
-        )
-
-    path = Path(bot_root) / "scripts" / "load_instructions.py"
-    if not path.exists():
-        raise RuntimeError(
-            f"load_instructions.py not found at expected path: {path}"
-        )
-
-    return path
-
-
-# ============================================================================
 # Helper Functions
 # ============================================================================
 
@@ -585,7 +517,3 @@ class TestEdgeCases:
         # Should handle gracefully
         assert exit_code in [0, 1, 2]
 
-
-if __name__ == "__main__":
-    # Allow running directly with: python /tmp/test_validation_hooks.py
-    pytest.main([__file__, "-v"])

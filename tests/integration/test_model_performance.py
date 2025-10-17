@@ -48,7 +48,3 @@ def test_sonnet_performance(claude_headless):
     print(f"API duration: {result['duration_ms'] / 1000:.2f}s")
     print(f"Overhead: {execution_time - result['duration_ms'] / 1000:.2f}s")
     print(f"Result: {result['result'][:100]}...")
-
-
-if __name__ == "__main__":
-    pytest.main([__file__, "-v", "-s"])

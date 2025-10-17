@@ -8,5 +8,8 @@
 # Agent instructions
 agents/
 
+# academicOps deployment directory (symlinked scripts)
+.academicOps/
+
 # Personal settings (if created)
 .claude/settings.local.json
