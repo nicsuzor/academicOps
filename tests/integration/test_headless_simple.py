@@ -6,11 +6,16 @@ Run with: uv run pytest tests/integration/test_headless_simple.py -v
 """
 
 import json
+import os
 import subprocess
 
 
 def test_claude_headless_basic():
     """Test that Claude Code works in headless mode with permission-mode flag."""
+    personal_root = os.getenv("ACADEMICOPS_PERSONAL")
+    if not personal_root:
+        raise RuntimeError("ACADEMICOPS_PERSONAL environment variable not set")
+
     result = subprocess.run(
         [
             "claude",
@@ -27,7 +32,7 @@ def test_claude_headless_basic():
         capture_output=True,
         text=True,
         timeout=120,  # Increased to 120 seconds
-        cwd="/home/nic/src/writing",
+        cwd=personal_root,
     )
 
     output = json.loads(result.stdout)
@@ -39,6 +44,10 @@ def test_claude_headless_basic():
 
 def test_validate_tool_enforcement():
     """Test that validate_tool.py blocks operations in headless mode."""
+    personal_root = os.getenv("ACADEMICOPS_PERSONAL")
+    if not personal_root:
+        raise RuntimeError("ACADEMICOPS_PERSONAL environment variable not set")
+
     # Test that developer cannot edit .claude config
     result = subprocess.run(
         [
@@ -56,7 +65,7 @@ def test_validate_tool_enforcement():
         capture_output=True,
         text=True,
         timeout=30,
-        cwd="/home/nic/src/writing",
+        cwd=personal_root,
     )
 
     output = json.loads(result.stdout)
@@ -81,7 +90,7 @@ def test_validate_tool_enforcement():
         capture_output=True,
         text=True,
         timeout=30,
-        cwd="/home/nic/src/writing",
+        cwd=personal_root,
     )
 
     output2 = json.loads(result2.stdout)

@@ -49,15 +49,43 @@ def has_user_context(personal_repo_root: Path) -> bool:
 @pytest.fixture
 def validate_tool_script() -> Path:
     """Path to validate_tool.py script."""
-    # Running from academicOps repo - scripts are in local scripts/ directory
-    return Path.cwd() / "scripts" / "validate_tool.py"
+    import os
+
+    bot_root = os.getenv("ACADEMICOPS_BOT")
+    if not bot_root:
+        raise RuntimeError(
+            "ACADEMICOPS_BOT environment variable not set. "
+            "This must point to the academicOps bot repository root."
+        )
+
+    path = Path(bot_root) / "scripts" / "validate_tool.py"
+    if not path.exists():
+        raise RuntimeError(
+            f"validate_tool.py not found at expected path: {path}"
+        )
+
+    return path
 
 
 @pytest.fixture
 def validate_env_script() -> Path:
     """Path to load_instructions.py script (renamed from validate_env.py)."""
-    # Running from academicOps repo - scripts are in local scripts/ directory
-    return Path.cwd() / "scripts" / "load_instructions.py"
+    import os
+
+    bot_root = os.getenv("ACADEMICOPS_BOT")
+    if not bot_root:
+        raise RuntimeError(
+            "ACADEMICOPS_BOT environment variable not set. "
+            "This must point to the academicOps bot repository root."
+        )
+
+    path = Path(bot_root) / "scripts" / "load_instructions.py"
+    if not path.exists():
+        raise RuntimeError(
+            f"load_instructions.py not found at expected path: {path}"
+        )
+
+    return path
 
 
 def run_claude_headless(

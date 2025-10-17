@@ -22,21 +22,65 @@ import pytest
 
 @pytest.fixture
 def repo_root() -> Path:
-    """Get the repository root directory."""
-    # Assume we're running from /home/nic/src/writing
-    return Path("/home/nic/src/writing")
+    """Get the personal repository root directory from environment variable."""
+    import os
+
+    personal_root = os.getenv("ACADEMICOPS_PERSONAL")
+    if not personal_root:
+        raise RuntimeError(
+            "ACADEMICOPS_PERSONAL environment variable not set. "
+            "This must point to your personal repository root."
+        )
+
+    path = Path(personal_root)
+    if not path.exists():
+        raise RuntimeError(
+            f"ACADEMICOPS_PERSONAL path does not exist: {personal_root}"
+        )
+
+    return path
 
 
 @pytest.fixture
-def validate_tool_script(repo_root: Path) -> Path:
+def validate_tool_script() -> Path:
     """Path to validate_tool.py script."""
-    return repo_root / "bot" / "scripts" / "validate_tool.py"
+    import os
+
+    bot_root = os.getenv("ACADEMICOPS_BOT")
+    if not bot_root:
+        raise RuntimeError(
+            "ACADEMICOPS_BOT environment variable not set. "
+            "This must point to the academicOps bot repository root."
+        )
+
+    path = Path(bot_root) / "scripts" / "validate_tool.py"
+    if not path.exists():
+        raise RuntimeError(
+            f"validate_tool.py not found at expected path: {path}"
+        )
+
+    return path
 
 
 @pytest.fixture
-def validate_env_script(repo_root: Path) -> Path:
-    """Path to validate_env.py script."""
-    return repo_root / "bot" / "scripts" / "validate_env.py"
+def validate_env_script() -> Path:
+    """Path to load_instructions.py script (renamed from validate_env.py)."""
+    import os
+
+    bot_root = os.getenv("ACADEMICOPS_BOT")
+    if not bot_root:
+        raise RuntimeError(
+            "ACADEMICOPS_BOT environment variable not set. "
+            "This must point to the academicOps bot repository root."
+        )
+
+    path = Path(bot_root) / "scripts" / "load_instructions.py"
+    if not path.exists():
+        raise RuntimeError(
+            f"load_instructions.py not found at expected path: {path}"
+        )
+
+    return path
 
 
 # ============================================================================
@@ -115,7 +159,14 @@ class TestSessionStartHook:
         exit_code, stdout, _stderr = run_hook(validate_env_script, {})
 
         assert exit_code == 0, f"Hook failed with exit code {exit_code}: {_stderr}"
-        assert "Loaded core, personal instruction files" in stdout or "Loaded core instruction files" in stdout
+
+        # Parse JSON output and verify it contains instruction content
+        output = parse_hook_output(stdout)
+        assert "hookSpecificOutput" in output
+        assert "additionalContext" in output["hookSpecificOutput"]
+        # Check that the context contains expected content from instruction files
+        context = output["hookSpecificOutput"]["additionalContext"]
+        assert "Core Axioms" in context or "BACKGROUND" in context
 
     def test_hook_outputs_valid_json(self, validate_env_script: Path):
         """Test that the hook outputs valid JSON."""
@@ -170,11 +221,11 @@ class TestSessionStartHook:
 class TestPreToolUseHook:
     """Tests for PreToolUse hook (validate_tool.py)."""
 
-    def test_hook_allows_safe_tool(self, validate_tool_script: Path):
+    def test_hook_allows_safe_tool(self, validate_tool_script: Path, repo_root: Path):
         """Test that safe tools are allowed."""
         hook_input = {
             "session_id": "test-session",
-            "cwd": "/home/nic/src/writing",
+            "cwd": str(repo_root),
             "hook_event_name": "PreToolUse",
             "tool_name": "Read",
             "tool_input": {"file_path": "/tmp/test.txt"},
@@ -188,11 +239,11 @@ class TestPreToolUseHook:
         # continue field is optional and excluded when None
         assert output["hookSpecificOutput"]["permissionDecision"] == "allow"
 
-    def test_hook_blocks_inline_python(self, validate_tool_script: Path):
+    def test_hook_blocks_inline_python(self, validate_tool_script: Path, repo_root: Path):
         """Test that inline Python (python -c) is blocked."""
         hook_input = {
             "session_id": "test-session",
-            "cwd": "/home/nic/src/writing",
+            "cwd": str(repo_root),
             "hook_event_name": "PreToolUse",
             "tool_name": "Bash",
             "tool_input": {"command": "python -c 'print(1+1)'"},
@@ -210,11 +261,11 @@ class TestPreToolUseHook:
             in output["hookSpecificOutput"]["permissionDecisionReason"]
         )
 
-    def test_hook_blocks_python_without_uv_run(self, validate_tool_script: Path):
+    def test_hook_blocks_python_without_uv_run(self, validate_tool_script: Path, repo_root: Path):
         """Test that Python commands without 'uv run' are blocked."""
         hook_input = {
             "session_id": "test-session",
-            "cwd": "/home/nic/src/writing",
+            "cwd": str(repo_root),
             "hook_event_name": "PreToolUse",
             "tool_name": "Bash",
             "tool_input": {"command": "python script.py"},
@@ -229,11 +280,11 @@ class TestPreToolUseHook:
         assert output["hookSpecificOutput"]["permissionDecision"] == "deny"
         assert "uv run" in output["hookSpecificOutput"]["permissionDecisionReason"]
 
-    def test_hook_allows_python_with_uv_run(self, validate_tool_script: Path):
+    def test_hook_allows_python_with_uv_run(self, validate_tool_script: Path, repo_root: Path):
         """Test that Python commands with 'uv run' are allowed."""
         hook_input = {
             "session_id": "test-session",
-            "cwd": "/home/nic/src/writing",
+            "cwd": str(repo_root),
             "hook_event_name": "PreToolUse",
             "tool_name": "Bash",
             "tool_input": {"command": "uv run python script.py"},
@@ -247,11 +298,11 @@ class TestPreToolUseHook:
         # continue field is optional and excluded when None
         assert output["hookSpecificOutput"]["permissionDecision"] == "allow"
 
-    def test_hook_blocks_pytest_without_uv_run(self, validate_tool_script: Path):
+    def test_hook_blocks_pytest_without_uv_run(self, validate_tool_script: Path, repo_root: Path):
         """Test that pytest without 'uv run' is blocked."""
         hook_input = {
             "session_id": "test-session",
-            "cwd": "/home/nic/src/writing",
+            "cwd": str(repo_root),
             "hook_event_name": "PreToolUse",
             "tool_name": "Bash",
             "tool_input": {"command": "pytest tests/"},
@@ -265,11 +316,11 @@ class TestPreToolUseHook:
         # continue field is optional and excluded when None
         assert output["hookSpecificOutput"]["permissionDecision"] == "deny"
 
-    def test_hook_allows_pytest_with_uv_run(self, validate_tool_script: Path):
-        """Test that pytest with 'uv run' is allowed."""
+    def test_hook_allows_pytest_with_uv_run(self, validate_tool_script: Path, repo_root: Path):
+        """Test that pytest with 'uv run' are allowed."""
         hook_input = {
             "session_id": "test-session",
-            "cwd": "/home/nic/src/writing",
+            "cwd": str(repo_root),
             "hook_event_name": "PreToolUse",
             "tool_name": "Bash",
             "tool_input": {"command": "uv run pytest tests/"},
@@ -283,15 +334,15 @@ class TestPreToolUseHook:
         # continue field is optional and excluded when None
         assert output["hookSpecificOutput"]["permissionDecision"] == "allow"
 
-    def test_hook_warns_trainer_agent_on_claude_files(self, validate_tool_script: Path):
+    def test_hook_warns_trainer_agent_on_claude_files(self, validate_tool_script: Path, repo_root: Path):
         """Test that non-trainer agents get warnings for .claude files."""
         hook_input = {
             "session_id": "test-session",
-            "cwd": "/home/nic/src/writing",
+            "cwd": str(repo_root),
             "hook_event_name": "PreToolUse",
             "tool_name": "Write",
             "tool_input": {
-                "file_path": "/home/nic/src/writing/.claude/test.json",
+                "file_path": str(repo_root / ".claude" / "test.json"),
                 "content": "{}",
                 "subagent_type": "developer",  # Not trainer
             },
@@ -308,16 +359,16 @@ class TestPreToolUseHook:
         assert "trainer" in output["hookSpecificOutput"]["permissionDecisionReason"]
 
     def test_hook_allows_trainer_agent_on_claude_files(
-        self, validate_tool_script: Path
+        self, validate_tool_script: Path, repo_root: Path
     ):
         """Test that trainer agent can modify .claude files."""
         hook_input = {
             "session_id": "test-session",
-            "cwd": "/home/nic/src/writing",
+            "cwd": str(repo_root),
             "hook_event_name": "PreToolUse",
             "tool_name": "Write",
             "tool_input": {
-                "file_path": "/home/nic/src/writing/.claude/test.json",
+                "file_path": str(repo_root / ".claude" / "test.json"),
                 "content": "{}",
                 "subagent_type": "trainer",
             },
@@ -332,16 +383,16 @@ class TestPreToolUseHook:
         assert output["hookSpecificOutput"]["permissionDecision"] == "allow"
 
     def test_hook_blocks_md_creation_outside_allowed_paths(
-        self, validate_tool_script: Path
+        self, validate_tool_script: Path, repo_root: Path
     ):
         """Test that .md files outside allowed paths are blocked."""
         hook_input = {
             "session_id": "test-session",
-            "cwd": "/home/nic/src/writing",
+            "cwd": str(repo_root),
             "hook_event_name": "PreToolUse",
             "tool_name": "Write",
             "tool_input": {
-                "file_path": "/home/nic/src/writing/docs/README.md",
+                "file_path": str(repo_root / "docs" / "README.md"),
                 "content": "# Test",
                 "subagent_type": "developer",
             },
@@ -355,11 +406,11 @@ class TestPreToolUseHook:
         # continue field is optional and excluded when None
         assert output["hookSpecificOutput"]["permissionDecision"] == "deny"
 
-    def test_hook_allows_md_in_tmp(self, validate_tool_script: Path):
+    def test_hook_allows_md_in_tmp(self, validate_tool_script: Path, repo_root: Path):
         """Test that .md files in /tmp are allowed."""
         hook_input = {
             "session_id": "test-session",
-            "cwd": "/home/nic/src/writing",
+            "cwd": str(repo_root),
             "hook_event_name": "PreToolUse",
             "tool_name": "Write",
             "tool_input": {
@@ -377,15 +428,15 @@ class TestPreToolUseHook:
         # continue field is optional and excluded when None
         assert output["hookSpecificOutput"]["permissionDecision"] == "allow"
 
-    def test_hook_allows_md_in_papers(self, validate_tool_script: Path):
+    def test_hook_allows_md_in_papers(self, validate_tool_script: Path, repo_root: Path):
         """Test that .md files in papers/ are allowed."""
         hook_input = {
             "session_id": "test-session",
-            "cwd": "/home/nic/src/writing",
+            "cwd": str(repo_root),
             "hook_event_name": "PreToolUse",
             "tool_name": "Write",
             "tool_input": {
-                "file_path": "/home/nic/src/writing/papers/test.md",
+                "file_path": str(repo_root / "papers" / "test.md"),
                 "content": "# Test Paper",
                 "subagent_type": "developer",
             },
@@ -399,15 +450,18 @@ class TestPreToolUseHook:
         # continue field is optional and excluded when None
         assert output["hookSpecificOutput"]["permissionDecision"] == "allow"
 
-    def test_hook_allows_agent_instructions(self, validate_tool_script: Path):
+    def test_hook_allows_agent_instructions(self, validate_tool_script: Path, repo_root: Path):
         """Test that agent instruction files are allowed."""
+        import os
+
+        bot_root = Path(os.getenv("ACADEMICOPS_BOT"))
         hook_input = {
             "session_id": "test-session",
-            "cwd": "/home/nic/src/writing",
+            "cwd": str(repo_root),
             "hook_event_name": "PreToolUse",
             "tool_name": "Write",
             "tool_input": {
-                "file_path": "/home/nic/src/writing/bot/agents/test-agent.md",
+                "file_path": str(bot_root / "agents" / "test-agent.md"),
                 "content": "# Agent Instructions",
                 "subagent_type": "trainer",
             },
@@ -431,7 +485,7 @@ class TestHookIntegration:
     """Integration tests for hook system."""
 
     def test_json_output_format_matches_claude_expectations(
-        self, validate_tool_script: Path
+        self, validate_tool_script: Path, repo_root: Path
     ):
         """
         Test that hook output matches Claude Code's expected format.
@@ -441,7 +495,7 @@ class TestHookIntegration:
         """
         hook_input = {
             "session_id": "test-session",
-            "cwd": "/home/nic/src/writing",
+            "cwd": str(repo_root),
             "hook_event_name": "PreToolUse",
             "tool_name": "Read",
             "tool_input": {"file_path": "/tmp/test.txt"},
@@ -464,12 +518,12 @@ class TestHookIntegration:
         assert "hookEventName" in output["hookSpecificOutput"]
         assert "permissionDecision" in output["hookSpecificOutput"]
 
-    def test_hook_handles_task_agent_invocation(self, validate_tool_script: Path):
+    def test_hook_handles_task_agent_invocation(self, validate_tool_script: Path, repo_root: Path):
         """Test that Task tool invocations extract agent type correctly."""
         # When the Task tool is called, the agent type is in tool_input.subagent_type
         hook_input = {
             "session_id": "test-session",
-            "cwd": "/home/nic/src/writing",
+            "cwd": str(repo_root),
             "hook_event_name": "PreToolUse",
             "tool_name": "Task",
             "tool_input": {
@@ -516,11 +570,11 @@ class TestEdgeCases:
         assert result.returncode == 2
         assert "Invalid JSON" in result.stderr
 
-    def test_hook_handles_missing_tool_name(self, validate_tool_script: Path):
+    def test_hook_handles_missing_tool_name(self, validate_tool_script: Path, repo_root: Path):
         """Test that hook handles missing tool_name."""
         hook_input = {
             "session_id": "test-session",
-            "cwd": "/home/nic/src/writing",
+            "cwd": str(repo_root),
             "hook_event_name": "PreToolUse",
             # Missing tool_name
             "tool_input": {},
