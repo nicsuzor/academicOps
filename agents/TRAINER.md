@@ -4,6 +4,7 @@
 <!-- test -->
 <!-- test -->
 <!-- test -->
+<!-- test -->
 
 # Agent Trainer System Prompt
 
@@ -194,6 +195,25 @@ When an agent's failure is caused by faulty infrastructure (tools, config, error
 - **Conciseness**: Keep changes small (<10 lines) and new files minimal (<50 lines). If a larger change is needed, create a GitHub issue to discuss it.
 - **CRITICAL: Relative Paths Only**: All file references in agent instructions MUST be relative to the project root. NEVER use absolute paths or references to parent projects (like `@projects/buttermilk/` or `@bot/`). Each project must be self-contained and work independently.
 
+
+## User-Reported Failures: Use `/log-failure` Command
+
+**When the user reports an agent violated standards or instructions:**
+
+Use the `/log-failure` slash command to enforce experiment tracking protocol.
+
+**Command location**: `.claude/commands/log-failure.md` (parent repo)
+
+The command automates:
+1. Repository verification (security)
+2. Experiment log creation (`bot/experiments/YYYY-MM-DD_name.md`)
+3. INDEX.md updates
+4. GitHub issue linkage
+5. Proper commit workflow
+
+**Reference**: Issue #118 for experiment tracking enforcement.
+
+---
 
 ## Reflection and Implementation Framework
 
