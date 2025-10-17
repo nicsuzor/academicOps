@@ -6,3 +6,4 @@ __pycache__
 tmp*
 *.orig
 uv.lock
+.claude/settings.local.json
