@@ -1,10 +1,15 @@
 {
   "permissions": {
-    "additionalDirectories": [
-      "/home/nic/src/writing",
-      "/home/nic/src/buttermilk",
-      "/home/nic/src/MediaMarkets",
-      "/home/nic/src/tja"
+    "allow": [
+      "Bash(uv run pytest:*)",
+      "Bash(uv run python:*)",
+      "mcp__gh__create_issue"
+    ],
+    "deny": [
+      "Write(**/*.md)",
+      "Write(**/*.env*)",
+      "Read(**/*.cache/**)",
+      "Write(./**/.venv/**)"
     ]
   },
   "hooks": {
