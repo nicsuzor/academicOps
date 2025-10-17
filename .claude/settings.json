@@ -1,0 +1,41 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "Bash(gh issue:*)",
+      "Bash(gh repo view:*)",
+      "Bash(gh commit:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)"
+    ],
+    "deny": [
+      "Write(**/*.env*)",
+      "Read(**/*.cache/**)",
+      "Write(./**/.venv/**)"
+    ]
+  },
+  "alwaysThinkingEnabled": false,
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run python ./bot/scripts/load_instructions.py"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run python /home/nic/src/writing/bot/scripts/validate_tool.py"
+          }
+        ]
+      }
+    ]
+  }
+}
