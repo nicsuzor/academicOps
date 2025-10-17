@@ -205,7 +205,30 @@ When tasked with improving agent instructions, follow this process:
 2. **SEARCH GITHUB**: Use at least three searches with different keywords based on your analysis. Search for general patterns, not specific symptoms. This is MANDATORY before proposing solutions.
 3. **Reconstruct the Agent's Context**: Before identifying a root cause, you MUST verify the information and documentation the agent had at the time. For example, if an agent was supposed to use a documented tool, read that documentation yourself to ensure it was clear, correct, and sufficient.
 4. **Identify the Root Cause**: Was it a documentation gap, an unclear instruction, or a missing guardrail? Your analysis MUST be grounded in the verified context from the previous step.
-5. **DOCUMENT DIAGNOSTICS in GitHub**: Post your analysis to the relevant issue. Include: problem instance, agent context, root cause, related issues. Do NOT include solutions yet. This preserves diagnostic work if interrupted.
+5. **MANDATORY: DOCUMENT DIAGNOSTICS in GitHub**: You MUST post your diagnostic analysis to GitHub before proceeding to solution design. This is NON-NEGOTIABLE.
+
+   ```bash
+   gh issue comment [number] --repo nicsuzor/academicOps --body "$(cat <<'EOF'
+   ## Diagnostic Analysis
+
+   **Problem Instance:** [What specifically failed]
+   **Agent Context:** [What information/instructions agent had]
+   **Root Cause:** [Why it happened - one level deep]
+   **Related Issues:** [Links to related issues]
+
+   Solution design will follow in separate comment.
+   EOF
+   )"
+   ```
+
+   **Why This Is Mandatory:**
+   - Protects work if interrupted before solution implemented
+   - Creates knowledge artifact even if solution never completed
+   - Enables future decision-making based on analysis
+   - Separates analysis (facts) from solution design (opinions)
+   - Prevents skipping critical diagnostic thinking
+
+   **Verification:** Did you post diagnostic comment to GitHub? If NO, STOP and post it now before proceeding.
 
 ### Phase 2: Solution Design
 
@@ -223,7 +246,72 @@ You MUST follow this exact workflow for tracking your work. This is non-negotiab
 
 **IMPORTANT**: ALL agent training issues are tracked centrally in academicOps, regardless of which project they relate to. The agent system is designed to be generic and project-agnostic, so all improvements must be tracked centrally.
 
-1. **SEARCH FIRST**: Before making changes, search for existing issues in academicOps. Use at least three search commands with different keywords, ranging from specific to very general.
+### MANDATORY: Repository Verification Protocol
+
+**BEFORE ANY GitHub write operation (create issue, comment, edit), you MUST:**
+
+1. **Verify Repository Ownership:**
+   ```bash
+   gh repo view --json nameWithOwner,owner -q '.nameWithOwner, .owner.login'
+   ```
+
+2. **Verify Expected Repository:**
+   - For trainer/agent issues: MUST be `nicsuzor/academicOps`
+   - For project issues: Verify against current git remote (`git config --get remote.origin.url`)
+   - NEVER hardcode or assume - ALWAYS verify
+
+3. **Security Checklist (verify ALL before proceeding):**
+   - [ ] Repository owner verified (not hallucinated or pattern-matched)
+   - [ ] Repository name matches expected destination
+   - [ ] For trainer work: confirmed academicOps repository
+   - [ ] Not posting to unrelated or stranger's account
+
+**RATIONALE:** Prevents leaking private information to wrong GitHub accounts. This is a CRITICAL SECURITY requirement.
+
+**Example of CORRECT workflow:**
+```bash
+# STEP 0: VERIFY (MANDATORY)
+gh repo view --json owner -q '.owner.login'  # Output: nicsuzor
+# Confirmed correct owner, proceed
+
+# STEP 1: Use verified repository
+gh issue create --repo nicsuzor/academicOps --title "..." --body "..."
+```
+
+**Example of FORBIDDEN behavior:**
+```bash
+# WRONG - Assumed/hallucinated username
+gh issue create --repo nicholaschenai/writing  # SECURITY VIOLATION
+
+# WRONG - Skipped verification
+gh issue create --repo nicsuzor/writing  # Could be wrong repo
+```
+
+### Repository Selection Decision Tree
+
+**Which repository should this issue go to?**
+
+1. **Agent/trainer behavior issue?** → `nicsuzor/academicOps`
+   - Agent instructions failing or need improvement
+   - Agent workflow problems
+   - Configuration/tooling for agents
+   - Meta-improvements to agent system
+   - Enforcement mechanisms
+
+2. **Project-specific issue?** → Current project repository (verify with `git config --get remote.origin.url`)
+   - Project-specific code bugs
+   - Project-specific workflows
+   - Project configuration
+
+3. **Unclear which repository?** → Post diagnostic comment to existing related issue in academicOps and ask user
+
+**CRITICAL RULE:** ALL trainer work goes to academicOps, regardless of which repository you're currently working in.
+
+### GitHub Workflow Steps
+
+1. **VERIFY REPOSITORY** (see protocol above - MANDATORY)
+
+2. **SEARCH FIRST**: Before making changes, search for existing issues in academicOps. Use at least three search commands with different keywords, ranging from specific to very general.
 
     ```bash
     gh issue list --repo nicsuzor/academicOps --search "[keywords]" --state all
@@ -248,6 +336,38 @@ You MUST follow this exact workflow for tracking your work. This is non-negotiab
     ```
 
 **Cross-Project Issues**: When working on project-specific repos (buttermilk, etc.), still create issues in academicOps but reference the specific project in the title and body (e.g., "[buttermilk] Agent fails to find debugging tools").
+
+### Issue Granularity: One Issue vs. Multiple Issues
+
+**Create SEPARATE issues when:**
+- Multiple distinct root causes requiring different solutions
+- Solutions affect different systems (e.g., one needs config change, another needs instruction update)
+- Can be worked on independently by different people
+- Have different success criteria or validation approaches
+- Different timelines or priorities
+
+**CONSOLIDATE into ONE issue when:**
+- Single root cause with multi-faceted solution
+- Solutions tightly coupled (changing one requires changing all others)
+- Must be implemented together to work
+- Share unified success criteria
+- Part of coherent architectural change
+
+**Link related issues using:**
+- "Related to #84" in comments (for thematically related)
+- "Blocks #92" for dependencies (this must be done before that)
+- "Duplicate of #73" for identical issues
+- "Depends on #105" when waiting on another issue
+
+**When in doubt:** Create separate issues and link them. Easier to consolidate later than to decompose a monolithic issue.
+
+**Example - SEPARATE issues:**
+- Issue A: "Agent hallucinates repository names" (verification protocol)
+- Issue B: "Agent posts to wrong repository" (decision tree)
+- Link: "Issue A Related to #B - both address GitHub security"
+
+**Example - ONE issue:**
+- "Multi-layer venv prevention" (single architectural change requiring config + hooks + instructions together)
 
 ### Issue Documentation Standards
 
