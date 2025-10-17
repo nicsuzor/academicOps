@@ -26,41 +26,36 @@ from pathlib import Path
 
 def get_academicops_root() -> Path:
     """
-    Find the academicOps framework root using environment variable or fallback.
+    Find the academicOps framework root using environment variable.
 
-    Returns the parent directory of this script (bot/scripts/ -> bot/).
+    Returns the academicOps root directory.
+    Raises ValueError if ACADEMICOPS_BOT is not set.
     """
-    # Check environment variable first
     if env_path := os.environ.get("ACADEMICOPS_BOT"):
         return Path(env_path).resolve()
 
-    # Fallback: assume script is at bot/scripts/validate_env.py
-    script_path = Path(__file__).resolve()
-    return script_path.parent.parent
+    # ACADEMICOPS_BOT is required - no fallback
+    raise ValueError(
+        "ACADEMICOPS_BOT environment variable is not set. "
+        "Add to your shell profile: export ACADEMICOPS_BOT=/path/to/academicOps"
+    )
 
 
 def get_personal_context_root() -> Path | None:
     """
-    Find personal context directory using environment variable or fallback.
+    Find personal context directory using environment variable.
 
     Returns None if not found (personal context is optional).
     """
-    # Check environment variable first
+    # Check environment variable
     if env_path := os.environ.get("ACADEMICOPS_PERSONAL"):
         path = Path(env_path).resolve()
         if path.exists():
             return path
+        # ACADEMICOPS_PERSONAL is set but path doesn't exist - warn but continue
+        print(f"Warning: ACADEMICOPS_PERSONAL is set but path does not exist: {env_path}", file=sys.stderr)
 
-    # Fallback: assume script is at bot/scripts/ inside parent repo
-    # Parent repo is two levels up from bot/
-    script_path = Path(__file__).resolve()
-    repo_root = script_path.parent.parent.parent
-
-    # Verify this looks like a parent repo (has docs/agents/)
-    if (repo_root / "docs" / "agents").exists():
-        return repo_root
-
-    # No personal context found
+    # No personal context found (this is OK - it's optional)
     return None
 
 
