@@ -69,22 +69,22 @@ def run_hook(
     return result.returncode, result.stdout, result.stderr
 
 
-def parse_hook_output(stderr: str) -> dict[str, Any]:
+def parse_hook_output(stdout: str) -> dict[str, Any]:
     """
-    Parse hook JSON output from stderr.
+    Parse hook JSON output from stdout.
 
-    Claude Code hooks output JSON to stderr.
+    Claude Code hooks output JSON to stdout per the specification.
     This function handles both pure JSON and JSON with surrounding text.
     """
-    # Try to find JSON in stderr
-    stderr = stderr.strip()
+    # Try to find JSON in stdout
+    stdout = stdout.strip()
 
-    # Check if stderr starts with {
-    if stderr.startswith("{"):
-        return json.loads(stderr)
+    # Check if stdout starts with {
+    if stdout.startswith("{"):
+        return json.loads(stdout)
 
-    # Try to find JSON block in stderr
-    lines = stderr.split("\n")
+    # Try to find JSON block in stdout
+    lines = stdout.split("\n")
     for i, line in enumerate(lines):
         if line.strip().startswith("{"):
             # Found start of JSON, extract until end
@@ -98,7 +98,7 @@ def parse_hook_output(stderr: str) -> dict[str, Any]:
             json_str = "\n".join(json_lines)
             return json.loads(json_str)
 
-    msg = f"No JSON found in stderr: {stderr}"
+    msg = f"No JSON found in stdout: {stdout}"
     raise ValueError(msg)
 
 
@@ -112,10 +112,10 @@ class TestSessionStartHook:
 
     def test_hook_runs_successfully(self, validate_env_script: Path):
         """Test that the SessionStart hook runs without errors."""
-        exit_code, _stdout, stderr = run_hook(validate_env_script, {})
+        exit_code, stdout, _stderr = run_hook(validate_env_script, {})
 
-        assert exit_code == 0, f"Hook failed with exit code {exit_code}: {stderr}"
-        assert "Loaded core instruction files" in stderr
+        assert exit_code == 0, f"Hook failed with exit code {exit_code}: {_stderr}"
+        assert "Loaded core, personal instruction files" in stdout or "Loaded core instruction files" in stdout
 
     def test_hook_outputs_valid_json(self, validate_env_script: Path):
         """Test that the hook outputs valid JSON."""
@@ -180,12 +180,12 @@ class TestPreToolUseHook:
             "tool_input": {"file_path": "/tmp/test.txt"},
         }
 
-        exit_code, _stdout, stderr = run_hook(validate_tool_script, hook_input)
+        exit_code, stdout, _stderr = run_hook(validate_tool_script, hook_input)
 
         assert exit_code == 0
-        output = parse_hook_output(stderr)
+        output = parse_hook_output(stdout)
 
-        assert output["continue"] is True
+        # continue field is optional and excluded when None
         assert output["hookSpecificOutput"]["permissionDecision"] == "allow"
 
     def test_hook_blocks_inline_python(self, validate_tool_script: Path):
@@ -198,12 +198,12 @@ class TestPreToolUseHook:
             "tool_input": {"command": "python -c 'print(1+1)'"},
         }
 
-        exit_code, _stdout, stderr = run_hook(validate_tool_script, hook_input)
+        exit_code, stdout, _stderr = run_hook(validate_tool_script, hook_input)
 
         assert exit_code == 2  # Block
-        output = parse_hook_output(stderr)
+        output = parse_hook_output(stdout)
 
-        assert output["continue"] is False
+        # continue field is optional and excluded when None
         assert output["hookSpecificOutput"]["permissionDecision"] == "deny"
         assert (
             "Inline Python execution"
@@ -220,12 +220,12 @@ class TestPreToolUseHook:
             "tool_input": {"command": "python script.py"},
         }
 
-        exit_code, _stdout, stderr = run_hook(validate_tool_script, hook_input)
+        exit_code, stdout, _stderr = run_hook(validate_tool_script, hook_input)
 
         assert exit_code == 2  # Block
-        output = parse_hook_output(stderr)
+        output = parse_hook_output(stdout)
 
-        assert output["continue"] is False
+        # continue field is optional and excluded when None
         assert output["hookSpecificOutput"]["permissionDecision"] == "deny"
         assert "uv run" in output["hookSpecificOutput"]["permissionDecisionReason"]
 
@@ -239,12 +239,12 @@ class TestPreToolUseHook:
             "tool_input": {"command": "uv run python script.py"},
         }
 
-        exit_code, _stdout, stderr = run_hook(validate_tool_script, hook_input)
+        exit_code, stdout, _stderr = run_hook(validate_tool_script, hook_input)
 
         assert exit_code == 0
-        output = parse_hook_output(stderr)
+        output = parse_hook_output(stdout)
 
-        assert output["continue"] is True
+        # continue field is optional and excluded when None
         assert output["hookSpecificOutput"]["permissionDecision"] == "allow"
 
     def test_hook_blocks_pytest_without_uv_run(self, validate_tool_script: Path):
@@ -257,12 +257,12 @@ class TestPreToolUseHook:
             "tool_input": {"command": "pytest tests/"},
         }
 
-        exit_code, _stdout, stderr = run_hook(validate_tool_script, hook_input)
+        exit_code, stdout, _stderr = run_hook(validate_tool_script, hook_input)
 
         assert exit_code == 2
-        output = parse_hook_output(stderr)
+        output = parse_hook_output(stdout)
 
-        assert output["continue"] is False
+        # continue field is optional and excluded when None
         assert output["hookSpecificOutput"]["permissionDecision"] == "deny"
 
     def test_hook_allows_pytest_with_uv_run(self, validate_tool_script: Path):
@@ -275,12 +275,12 @@ class TestPreToolUseHook:
             "tool_input": {"command": "uv run pytest tests/"},
         }
 
-        exit_code, _stdout, stderr = run_hook(validate_tool_script, hook_input)
+        exit_code, stdout, _stderr = run_hook(validate_tool_script, hook_input)
 
         assert exit_code == 0
-        output = parse_hook_output(stderr)
+        output = parse_hook_output(stdout)
 
-        assert output["continue"] is True
+        # continue field is optional and excluded when None
         assert output["hookSpecificOutput"]["permissionDecision"] == "allow"
 
     def test_hook_warns_trainer_agent_on_claude_files(self, validate_tool_script: Path):
@@ -297,15 +297,15 @@ class TestPreToolUseHook:
             },
         }
 
-        exit_code, _stdout, stderr = run_hook(validate_tool_script, hook_input)
+        exit_code, stdout, _stderr = run_hook(validate_tool_script, hook_input)
 
         assert exit_code == 1  # Warn
-        output = parse_hook_output(stderr)
+        output = parse_hook_output(stdout)
 
-        assert output["continue"] is True  # Allow but warn
+        # continue field is optional and excluded when None  # Allow but warn
         assert output["hookSpecificOutput"]["permissionDecision"] == "allow"
-        assert output["systemMessage"] is not None
-        assert "trainer" in output["systemMessage"]
+        assert output["hookSpecificOutput"]["permissionDecisionReason"] is not None
+        assert "trainer" in output["hookSpecificOutput"]["permissionDecisionReason"]
 
     def test_hook_allows_trainer_agent_on_claude_files(
         self, validate_tool_script: Path
@@ -323,12 +323,12 @@ class TestPreToolUseHook:
             },
         }
 
-        exit_code, _stdout, stderr = run_hook(validate_tool_script, hook_input)
+        exit_code, stdout, _stderr = run_hook(validate_tool_script, hook_input)
 
         assert exit_code == 0
-        output = parse_hook_output(stderr)
+        output = parse_hook_output(stdout)
 
-        assert output["continue"] is True
+        # continue field is optional and excluded when None
         assert output["hookSpecificOutput"]["permissionDecision"] == "allow"
 
     def test_hook_blocks_md_creation_outside_allowed_paths(
@@ -347,12 +347,12 @@ class TestPreToolUseHook:
             },
         }
 
-        exit_code, _stdout, stderr = run_hook(validate_tool_script, hook_input)
+        exit_code, stdout, _stderr = run_hook(validate_tool_script, hook_input)
 
         assert exit_code == 2  # Block
-        output = parse_hook_output(stderr)
+        output = parse_hook_output(stdout)
 
-        assert output["continue"] is False
+        # continue field is optional and excluded when None
         assert output["hookSpecificOutput"]["permissionDecision"] == "deny"
 
     def test_hook_allows_md_in_tmp(self, validate_tool_script: Path):
@@ -369,12 +369,12 @@ class TestPreToolUseHook:
             },
         }
 
-        exit_code, _stdout, stderr = run_hook(validate_tool_script, hook_input)
+        exit_code, stdout, _stderr = run_hook(validate_tool_script, hook_input)
 
         assert exit_code == 0
-        output = parse_hook_output(stderr)
+        output = parse_hook_output(stdout)
 
-        assert output["continue"] is True
+        # continue field is optional and excluded when None
         assert output["hookSpecificOutput"]["permissionDecision"] == "allow"
 
     def test_hook_allows_md_in_papers(self, validate_tool_script: Path):
@@ -391,12 +391,12 @@ class TestPreToolUseHook:
             },
         }
 
-        exit_code, _stdout, stderr = run_hook(validate_tool_script, hook_input)
+        exit_code, stdout, _stderr = run_hook(validate_tool_script, hook_input)
 
         assert exit_code == 0
-        output = parse_hook_output(stderr)
+        output = parse_hook_output(stdout)
 
-        assert output["continue"] is True
+        # continue field is optional and excluded when None
         assert output["hookSpecificOutput"]["permissionDecision"] == "allow"
 
     def test_hook_allows_agent_instructions(self, validate_tool_script: Path):
@@ -413,12 +413,12 @@ class TestPreToolUseHook:
             },
         }
 
-        exit_code, _stdout, stderr = run_hook(validate_tool_script, hook_input)
+        exit_code, stdout, _stderr = run_hook(validate_tool_script, hook_input)
 
         assert exit_code == 0
-        output = parse_hook_output(stderr)
+        output = parse_hook_output(stdout)
 
-        assert output["continue"] is True
+        # continue field is optional and excluded when None
         assert output["hookSpecificOutput"]["permissionDecision"] == "allow"
 
 
@@ -437,7 +437,7 @@ class TestHookIntegration:
         Test that hook output matches Claude Code's expected format.
 
         This is the critical test that catches the issue from the debug logs:
-        Claude Code expects JSON on stderr, but was seeing non-JSON text.
+        Claude Code expects JSON on stdout per the specification.
         """
         hook_input = {
             "session_id": "test-session",
@@ -447,19 +447,19 @@ class TestHookIntegration:
             "tool_input": {"file_path": "/tmp/test.txt"},
         }
 
-        _exit_code, _stdout, stderr = run_hook(validate_tool_script, hook_input)
+        _exit_code, stdout, _stderr = run_hook(validate_tool_script, hook_input)
 
-        # Verify stderr starts with JSON (no leading text)
-        stderr_stripped = stderr.strip()
-        assert stderr_stripped.startswith("{"), (
-            f"Hook output should start with '{{' but got: {stderr_stripped[:100]}"
+        # Verify stdout starts with JSON (no leading text)
+        stdout_stripped = stdout.strip()
+        assert stdout_stripped.startswith("{"), (
+            f"Hook output should start with '{{'  but got: {stdout_stripped[:100]}"
         )
 
         # Verify it's valid JSON
-        output = json.loads(stderr_stripped)
+        output = json.loads(stdout_stripped)
 
         # Verify required fields
-        assert "continue" in output
+        # Note: 'continue' is optional and excluded when None
         assert "hookSpecificOutput" in output
         assert "hookEventName" in output["hookSpecificOutput"]
         assert "permissionDecision" in output["hookSpecificOutput"]
@@ -479,12 +479,12 @@ class TestHookIntegration:
             },
         }
 
-        exit_code, _stdout, stderr = run_hook(validate_tool_script, hook_input)
+        exit_code, stdout, _stderr = run_hook(validate_tool_script, hook_input)
 
         # Should succeed - we're just testing agent detection
         assert exit_code == 0
-        output = parse_hook_output(stderr)
-        assert output["continue"] is True
+        output = parse_hook_output(stdout)
+        # continue field is optional and excluded when None
 
 
 # ============================================================================

@@ -78,7 +78,6 @@ class TestHookOutputStreams:
         result = run_hook("Read", {"file_path": "test.txt"})
 
         assert result["exit_code"] == 0
-        assert result["parsed_json"]["continue"] is True
         assert (
             result["parsed_json"]["hookSpecificOutput"]["permissionDecision"] == "allow"
         )
@@ -94,8 +93,8 @@ class TestPermissionDecisions:
 
         json_output = result["parsed_json"]
         assert json_output["hookSpecificOutput"]["permissionDecision"] == "allow"
-        assert json_output["continue"] is True
-        assert json_output["systemMessage"] is None
+        # permissionDecisionReason is None, so it should be excluded from output
+        assert "permissionDecisionReason" not in json_output["hookSpecificOutput"]
 
     def test_warn_decision(self):
         """Test 'warn' permission decision (allow with warning)."""
@@ -104,9 +103,8 @@ class TestPermissionDecisions:
 
         json_output = result["parsed_json"]
         assert json_output["hookSpecificOutput"]["permissionDecision"] == "allow"
-        assert json_output["continue"] is True
-        assert json_output["systemMessage"] is not None
-        assert "code-review" in json_output["systemMessage"].lower()
+        assert json_output["hookSpecificOutput"]["permissionDecisionReason"] is not None
+        assert "code-review" in json_output["hookSpecificOutput"]["permissionDecisionReason"].lower()
         assert result["exit_code"] == 1
 
     def test_deny_decision(self):
@@ -116,7 +114,7 @@ class TestPermissionDecisions:
 
         json_output = result["parsed_json"]
         assert json_output["hookSpecificOutput"]["permissionDecision"] == "deny"
-        assert json_output["continue"] is False
+        assert json_output["hookSpecificOutput"]["permissionDecisionReason"] is not None
         assert result["exit_code"] == 2
 
 
@@ -174,8 +172,8 @@ class TestValidationRules:
         json_output = result["parsed_json"]
         # Should warn (allow but with message)
         assert json_output["hookSpecificOutput"]["permissionDecision"] == "allow"
-        assert json_output["systemMessage"] is not None
-        assert "code-review" in json_output["systemMessage"].lower()
+        assert json_output["hookSpecificOutput"]["permissionDecisionReason"] is not None
+        assert "code-review" in json_output["hookSpecificOutput"]["permissionDecisionReason"].lower()
 
 
 class TestHookStructure:
@@ -186,17 +184,14 @@ class TestHookStructure:
         result = run_hook("Read", {"file_path": "test.txt"})
         json_output = result["parsed_json"]
 
-        # Top-level fields
-        assert "continue" in json_output
-        assert "stopReason" in json_output
-        assert "systemMessage" in json_output
+        # Top-level field (required)
         assert "hookSpecificOutput" in json_output
 
-        # Hook-specific fields
+        # Hook-specific fields (required)
         hook_output = json_output["hookSpecificOutput"]
         assert "hookEventName" in hook_output
         assert "permissionDecision" in hook_output
-        assert "permissionDecisionReason" in hook_output
+        # permissionDecisionReason is optional and excluded when None
 
         assert hook_output["hookEventName"] == "PreToolUse"
 

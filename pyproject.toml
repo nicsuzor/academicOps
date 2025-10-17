@@ -5,6 +5,7 @@ description = "A modular, hierarchical agent framework for rigorous, context-awa
 readme = "README.md"
 requires-python = ">=3.11.0"
 dependencies = [
+    "pydantic>=2.12.2",
     "pytest",
     "pytest-anyio>=0.0.0",
     "pytest-timeout>=2.4.0",

@@ -52,7 +52,7 @@ class TestHookOutputStreams:
             pytest.fail(f"Hook stdout is not valid JSON: {e}\nstdout: {result.stdout}")
 
         # Verify structure matches Claude Code spec
-        assert "continue" in parsed, "Missing 'continue' field"
+        # Note: 'continue' is optional and excluded when None
         assert "hookSpecificOutput" in parsed, "Missing 'hookSpecificOutput'"
         assert "permissionDecision" in parsed["hookSpecificOutput"], (
             "Missing 'permissionDecision'"
@@ -86,7 +86,7 @@ class TestHookOutputStreams:
 
         parsed = json.loads(result.stdout)
         assert parsed["hookSpecificOutput"]["permissionDecision"] == "allow"
-        assert parsed["continue"] is True
+        # 'continue' field is optional and excluded when None
         assert result.returncode == 0
 
     def test_permission_decision_deny_in_stdout(self, validate_tool_script):
@@ -106,7 +106,7 @@ class TestHookOutputStreams:
 
         parsed = json.loads(result.stdout)
         assert parsed["hookSpecificOutput"]["permissionDecision"] == "deny"
-        assert parsed["continue"] is False
+        # 'continue' field is optional and excluded when None
         assert result.returncode == 2
         # Error message should be in permissionDecisionReason
         assert parsed["hookSpecificOutput"]["permissionDecisionReason"]
@@ -115,7 +115,7 @@ class TestHookOutputStreams:
         """Verify 'warn' decisions are properly formatted in stdout."""
         hook_input = {
             "tool_name": "Write",
-            "tool_input": {"file_path": "docs/test.md", "content": "test"},
+            "tool_input": {"file_path": ".claude/settings.json", "content": "{}"},
         }
 
         result = subprocess.run(
@@ -128,11 +128,11 @@ class TestHookOutputStreams:
 
         parsed = json.loads(result.stdout)
         assert parsed["hookSpecificOutput"]["permissionDecision"] == "allow"
-        assert parsed["continue"] is True
+        # 'continue' field is optional and excluded when None
         assert result.returncode == 1  # Warning exit code
-        # Warning message should be in systemMessage
-        assert parsed["systemMessage"]
-        assert "WARNING" in parsed["systemMessage"]
+        # Warning message should be in permissionDecisionReason
+        assert parsed["hookSpecificOutput"]["permissionDecisionReason"]
+        assert "WARNING" in parsed["hookSpecificOutput"]["permissionDecisionReason"]
 
 
 class TestClaudeCodeInterpretation:
@@ -251,9 +251,9 @@ class TestClaudeCodeInterpretation:
 
         assert "input" in parsed, "Debug log should contain input"
         assert "output" in parsed, "Debug log should contain output"
-        assert "tiemstamp" in parsed, (
+        assert "timestamp" in parsed, (
             "Debug log should contain timestamp"
-        )  # Note: typo in original
+        )  # Fixed: was 'tiemstamp'
 
 
 class TestPermissionDecisionTypes:
@@ -271,7 +271,7 @@ class TestPermissionDecisionTypes:
             ("Bash", {"command": "python -c 'x'"}, "deny", 2),
             ("Write", {"file_path": "/tmp/test.py", "content": "x"}, "deny", 2),
             # Warn cases (allow with warning)
-            ("Write", {"file_path": "docs/test.md", "content": "x"}, "allow", 1),
+            ("Write", {"file_path": ".claude/settings.json", "content": "{}"}, "allow", 1),
             ("Bash", {"command": "git commit -m 'test'"}, "allow", 1),
         ],
     )

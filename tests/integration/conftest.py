@@ -20,21 +20,44 @@ def pytest_collection_modifyitems(config, items):
 
 
 @pytest.fixture
-def repo_root() -> Path:
-    """Get the repository root directory."""
-    return Path("/home/nic/src/writing")
+def personal_repo_root() -> Path:
+    """Get the personal repository root from environment variable."""
+    import os
+
+    personal_root = os.getenv("ACADEMICOPS_PERSONAL")
+    if not personal_root:
+        raise RuntimeError(
+            "ACADEMICOPS_PERSONAL environment variable not set. "
+            "This must point to your personal repository root."
+        )
+
+    path = Path(personal_root)
+    if not path.exists():
+        raise RuntimeError(
+            f"ACADEMICOPS_PERSONAL path does not exist: {personal_root}"
+        )
+
+    return path
 
 
 @pytest.fixture
-def validate_tool_script(repo_root: Path) -> Path:
+def has_user_context(personal_repo_root: Path) -> bool:
+    """Check if user context files are available."""
+    return (personal_repo_root / "docs" / "agents" / "INSTRUCTIONS.md").exists()
+
+
+@pytest.fixture
+def validate_tool_script() -> Path:
     """Path to validate_tool.py script."""
-    return repo_root / "bot" / "scripts" / "validate_tool.py"
+    # Running from academicOps repo - scripts are in local scripts/ directory
+    return Path.cwd() / "scripts" / "validate_tool.py"
 
 
 @pytest.fixture
-def validate_env_script(repo_root: Path) -> Path:
-    """Path to validate_env.py script."""
-    return repo_root / "bot" / "scripts" / "validate_env.py"
+def validate_env_script() -> Path:
+    """Path to load_instructions.py script (renamed from validate_env.py)."""
+    # Running from academicOps repo - scripts are in local scripts/ directory
+    return Path.cwd() / "scripts" / "load_instructions.py"
 
 
 def run_claude_headless(
@@ -42,6 +65,7 @@ def run_claude_headless(
     timeout: int = 120,
     permission_mode: str = "acceptEdits",
     model: str | None = None,
+    cwd: str | None = None,
 ) -> dict:
     """
     Run claude CLI in headless mode and return parsed JSON output.
@@ -55,6 +79,7 @@ def run_claude_headless(
             - "deny": Auto-deny all operations
         model: Model to use (e.g. "haiku", "sonnet", "opus" or full model name)
             - If not specified, uses default model from settings
+        cwd: Working directory for the command (default: current directory)
 
     Returns:
         dict with keys: success, output, error, permission_denials, result, duration_ms
@@ -75,7 +100,7 @@ def run_claude_headless(
         capture_output=True,
         text=True,
         timeout=timeout,
-        cwd="/home/nic/src/writing",
+        cwd=cwd or Path.cwd(),
     )
 
     try:
@@ -99,13 +124,28 @@ def run_claude_headless(
         }
 
 @pytest.fixture
-def claude_headless():
+def claude_headless(personal_repo_root: Path):
     """
-    Fixture that provides the run_claude_headless function.
+    Fixture that provides the run_claude_headless function with proper cwd.
 
     Usage:
         def test_something(claude_headless):
             result = claude_headless("test prompt")
             assert result["success"]
     """
-    return run_claude_headless
+
+    def _run_claude(
+        prompt: str,
+        timeout: int = 120,
+        permission_mode: str = "acceptEdits",
+        model: str | None = None,
+    ) -> dict:
+        return run_claude_headless(
+            prompt=prompt,
+            timeout=timeout,
+            permission_mode=permission_mode,
+            model=model,
+            cwd=str(personal_repo_root),
+        )
+
+    return _run_claude

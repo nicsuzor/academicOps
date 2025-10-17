@@ -19,6 +19,8 @@ from dataclasses import dataclass, field
 from fnmatch import fnmatch
 from pathlib import Path
 
+from hook_models import PreToolUseHookOutput, PreToolUseOutput
+
 # ============================================================================
 # Rule System - Define tool restrictions here
 # ============================================================================
@@ -528,44 +530,45 @@ def main():
     )
     exit_code = 0
 
-    # Map severity to permissionDecision
+    # Map severity to permissionDecision and exit code
     if allowed:
-        allow_message = "allow"
+        permission_decision = "allow"
         exit_code = 0
-
     elif severity == "force-ask":
-        allow_message = "ask"
+        permission_decision = "ask"
         exit_code = 0
     elif severity == "warn":
         # Warnings don't block execution, but show a message
-        allow_message = "allow"
+        permission_decision = "allow"
         exit_code = 1
     else:
-        allow_message = "deny"
+        permission_decision = "deny"
         exit_code = 2  # Block execution
 
-    # Format for claude code
-    output = {
-        "hookSpecificOutput": {
-            "hookEventName": "PreToolUse",
-            "permissionDecision": allow_message,
-            "permissionDecisionReason": error_message,
-        },
-    }
+    # Build output using Pydantic models
+    hook_output = PreToolUseOutput(
+        hookSpecificOutput=PreToolUseHookOutput(
+            permissionDecision=permission_decision,
+            permissionDecisionReason=error_message,
+        )
+    )
+
+    # Convert to dict for JSON serialization
+    output_dict = hook_output.model_dump(by_alias=True, exclude_none=True)
 
     # Debug: Save input for inspection
     debug_file = Path("/tmp/validate_tool.json")
     debug_data = {
         "input": input_data,
-        "output": output,
-        "tiemstamp": datetime.datetime.now().isoformat(),
+        "output": output_dict,
+        "timestamp": datetime.datetime.now().isoformat(),
     }
     with debug_file.open("a") as f:
         json.dump(debug_data, f, indent=None)
         f.write("\n")
 
     # Output JSON to stdout (Claude Code hook specification)
-    print(json.dumps(output))
+    print(json.dumps(output_dict))
 
     sys.exit(exit_code)
 
