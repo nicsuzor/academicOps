@@ -67,3 +67,16 @@ repos:
         types: [python]
         pass_filenames: false
         stages: [pre-commit]
+
+      # Instruction bloat prevention
+      - id: check-instruction-bloat
+        name: Prevent instruction file bloat (>25 lines OR >20% growth)
+        entry: python scripts/check_instruction_bloat.py
+        language: system
+        types: [markdown]
+        pass_filenames: false
+        description: |
+          Enforces Anti-Bloat Protocol by blocking commits that grow instruction
+          files beyond thresholds (25 lines OR 20% growth). Architectural solutions
+          (scripts, hooks, config) should be used instead of adding instructions.
+          See: https://github.com/nicsuzor/academicOps/issues/116
