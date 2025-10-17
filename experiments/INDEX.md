@@ -62,3 +62,14 @@ See TRAINER.md lines 126-153 for requirements.
 ## Lessons
 [What to change in instructions/enforcement]
 ```
+
+## 2025-10-18: Trainer Role Violation - Fixed Code Instead of Instructions
+
+**File**: `experiments/2025-10-18_trainer-role-violation.md`
+**Issue**: #111
+**Status**: FAILED
+**Violations**: Jumped to fix code, violated DRY, skipped anti-bloat checks, no experiment tracking
+
+Trainer fixed `load_instructions.py` instead of updating instructions to prevent future similar failures. Added duplicate fail-fast content to TRAINER.md instead of referencing _CORE.md.
+
+**Lessons**: Need explicit workflow decision tree, blocking DRY checks, mandatory experiment logging.
