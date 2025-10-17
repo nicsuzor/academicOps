@@ -232,13 +232,69 @@ When tasked with improving agent instructions, follow this process:
 
 ### Phase 2: Solution Design
 
-6. **Research Solutions**: Investigate technical approaches, read documentation, test assumptions. Consider constraints (CWD limitations, token budgets, etc.). Research thoroughly BEFORE proposing.
-7. **DOCUMENT SOLUTIONS in GitHub**: Post solutions as a SEPARATE comment. Include: options evaluated, pros/cons, recommendation, implementation plan.
+6. **MANDATORY: Apply Enforcement Hierarchy Decision Tree**
+
+   **BEFORE proposing ANY solution, you MUST work through this decision tree:**
+
+   ```
+   START: Agent behavior problem identified
+   ↓
+   Q1: Can SCRIPTS prevent this? (e.g., validation script, automation tool)
+   YES → Design script solution, SKIP instructions
+   NO ↓
+
+   Q2: Can HOOKS enforce this? (e.g., pre-commit, SessionStart validation)
+   YES → Design hook solution, SKIP instructions
+   NO ↓
+
+   Q3: Can CONFIGURATION block this? (e.g., .claude/settings.json permissions)
+   YES → Design config solution, SKIP instructions
+   NO ↓
+
+   Q4: Is this truly instruction-only territory?
+   YES → Proceed to Anti-Bloat Protocol (Step 7)
+   NO → STOP. You missed an architectural solution. Go back to Q1.
+   ```
+
+   **Why this is mandatory:**
+   - Lines 94-101 already state Scripts > Hooks > Config > Instructions
+   - But you keep skipping straight to instructions
+   - This decision tree BLOCKS you from bypassing the hierarchy
+   - Document your answers to Q1-Q4 in GitHub comment
+
+7. **MANDATORY: Anti-Bloat Protocol (if instructions are truly necessary)**
+
+   **Before adding >10 lines of instructions, you MUST verify ALL of these:**
+
+   - [ ] **Hierarchy Check**: Verified Q1-Q4 above show NO architectural solution exists
+   - [ ] **Bloat Estimate**: Calculated token cost vs. writing enforcement code
+   - [ ] **Modularity Check**: Can this be a separate referenced doc instead of inline?
+   - [ ] **DRY Check**: Does similar guidance exist elsewhere that could be referenced?
+   - [ ] **Complexity Budget**: Total instruction file stays under 500 lines
+   - [ ] **Justification**: Documented in GitHub why code/config/hooks won't work
+
+   **If adding >50 lines:**
+   - STOP immediately
+   - Create GitHub issue proposing the large addition
+   - Get user approval before proceeding
+   - This is architectural bloat requiring discussion
+
+   **RATIONALE:** You just added 140 lines when architectural solutions existed (issue #87). This protocol prevents repeating that mistake.
+
+8. **Research Solutions**: Investigate technical approaches, read documentation, test assumptions. Consider constraints (CWD limitations, token budgets, etc.). Research thoroughly BEFORE proposing.
+
+9. **DOCUMENT SOLUTIONS in GitHub**: Post solutions as a SEPARATE comment. Include:
+   - Enforcement hierarchy decision tree answers (Q1-Q4)
+   - Options evaluated (scripts, hooks, config, instructions)
+   - Pros/cons of each approach
+   - Bloat cost estimate if instructions chosen
+   - Recommendation with justification
+   - Implementation plan
 
 ### Phase 3: Implementation
 
-8. **Implement Changes**: Make the specific, surgical changes to instruction files in `bot/agents/`.
-9. **Verify and Commit**: After applying the changes, commit them using the git workflow below.
+10. **Implement Changes**: Make the specific, surgical changes to instruction files in `bot/agents/`.
+11. **Verify and Commit**: After applying the changes, commit them using the git workflow below.
 
 ## CRITICAL: GitHub Issue Management
 
