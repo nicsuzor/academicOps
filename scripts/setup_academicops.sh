@@ -51,8 +51,8 @@ fi
 echo
 echo "Setting up Claude Code configuration..."
 
-BUTTERMILK_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-CLAUDE_DIR="$BUTTERMILK_ROOT/.claude"
+PROJECT_ROOT="$(pwd)"
+CLAUDE_DIR="$PROJECT_ROOT/.claude"
 
 if [ ! -d "$CLAUDE_DIR" ]; then
     mkdir -p "$CLAUDE_DIR"
@@ -81,7 +81,7 @@ EOF
 echo -e "${GREEN}✓${NC} Created $SETTINGS_FILE with SessionStart hook"
 
 # 4. Create docs/agents/ directory if needed
-AGENTS_DIR="$BUTTERMILK_ROOT/docs/agents"
+AGENTS_DIR="$PROJECT_ROOT/docs/agents"
 
 if [ ! -d "$AGENTS_DIR" ]; then
     mkdir -p "$AGENTS_DIR"
