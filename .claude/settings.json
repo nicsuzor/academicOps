@@ -1,28 +1,20 @@
 {
   "permissions": {
-    "allow": [
-      "WebSearch",
-      "Bash(gh issue:*)",
-      "Bash(gh repo view:*)",
-      "Bash(gh commit:*)",
-      "Bash(git add:*)",
-      "Bash(git commit:*)",
-      "Bash(git push:*)"
-    ],
-    "deny": [
-      "Write(**/*.env*)",
-      "Read(**/*.cache/**)",
-      "Write(./**/.venv/**)"
+    "additionalDirectories": [
+      "/home/nic/src/writing",
+      "/home/nic/src/buttermilk",
+      "/home/nic/src/MediaMarkets",
+      "/home/nic/src/tja"
     ]
   },
-  "alwaysThinkingEnabled": false,
   "hooks": {
     "SessionStart": [
       {
         "hooks": [
           {
             "type": "command",
-            "command": "uv run python ./bot/scripts/load_instructions.py"
+            "command": "python3 ${env:ACADEMICOPS_BOT}/scripts/load_instructions.py",
+            "timeout": 5000
           }
         ]
       }
@@ -32,7 +24,30 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run python /home/nic/src/writing/bot/scripts/validate_tool.py"
+            "command": "python3 ${env:ACADEMICOPS_BOT}/scripts/validate_tool.py",
+            "timeout": 3000
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 ${env:ACADEMICOPS_BOT}/scripts/validate_stop.py SubagentStop",
+            "timeout": 2000
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 ${env:ACADEMICOPS_BOT}/scripts/validate_stop.py Stop",
+            "timeout": 2000
           }
         ]
       }
