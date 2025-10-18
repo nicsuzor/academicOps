@@ -1,5 +1,3 @@
-# CODING RULES CHECKLIST
-
 Follow coding standards in `bot/agents/DEVELOPER.md`
 
 ## Test files
@@ -9,8 +7,4 @@ Follow coding standards in `bot/agents/DEVELOPER.md`
 - Tests use REAL fixtures that work with our EXISTING initialisation and configuration process
 - Tests NEVER mock or fake internal logic or objects. Any tests that operate WITHIN the bounds of our codebase MUST be live code
 - Async tests are decorated with `@pytest.mark.anyio`
-
-## Configuration
-
-- Configuration uses composable yaml files through hydra. NO configuration in code, NO direct access to environment variables, NO defaults.
 

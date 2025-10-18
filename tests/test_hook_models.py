@@ -15,7 +15,7 @@ from pathlib import Path
 
 import pytest
 from pydantic import ValidationError
-
+from .hooks import parse_hook_output, run_hook
 # Add scripts directory to path
 SCRIPTS_DIR = Path(__file__).parent.parent / "scripts"
 sys.path.insert(0, str(SCRIPTS_DIR))

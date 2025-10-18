@@ -6,7 +6,6 @@ __pycache__
 tmp*
 *.orig
 uv.lock
-.claude/settings.local.json
 
 # academicOps managed files - DO NOT COMMIT
 # These files are symlinked/copied from academicOps framework
@@ -14,9 +13,6 @@ uv.lock
 # Claude Code configuration
 .claude/settings.json
 .claude/agents/
-
-# Agent instructions
-agents/
 
 # Personal settings (if created)
 .claude/settings.local.json

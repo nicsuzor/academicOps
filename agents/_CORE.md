@@ -22,6 +22,9 @@
 7. **DON'T MAKE SHIT UP**. If you don't know, say so. No guesses.
 8. **ALWAYS** cite your sources. No plagiarism. Ever.
 
+- **Issues**: Close only when explicit success metrics met or user confirms. For automation: months of error-free operation required.
+- **Error Handling**: Stop immediately, report exactly, wait for instruction
+
 ## Repository Structure
 
 ```
@@ -32,7 +35,7 @@ ${OUTER}/                          # Parent repo (PRIVATE)
 │   │   ├── trainer.md             # Agent definitions
 │   │   └── ...
 │   ├── scripts/                    # Public tools
-│   └── docs/                       
+│   └── docs/
 │   │   ├── INSTRUCTIONS.md        # Generic rules (PUBLIC)
 │   │   └── ...
 ├── docs/
@@ -54,5 +57,3 @@ ${OUTER}/                          # Parent repo (PRIVATE)
 ## Key tools
 
 - **Python**: Use `uv run python` for all execution.
-- **Issues**: Close only when explicit success metrics met or user confirms. For automation: months of error-free operation required.
-- **Error Handling**: Stop immediately, report exactly, wait for instruction

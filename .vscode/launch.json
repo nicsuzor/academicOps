@@ -1,0 +1,107 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python Debugger: Python File",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "justMyCode": false
+        },
+        {
+            "name": "Python: Streamlit (uv)",
+            "type": "debugpy",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "python": "uv",
+            "pythonArgs": [
+                "run",
+                "python"
+            ],
+            "module": "streamlit",
+            "args": [
+                "run",
+                "${file}",
+                "--server.port",
+                "8502"
+            ],
+            "envFile": "${workspaceFolder}/.env",
+            "console": "integratedTerminal",
+            "justMyCode": false
+        },
+        {
+            "name": "DBR Streamlit",
+            "type": "debugpy",
+            "request": "launch",
+            "cwd": "${workspaceFolder}/projects/dbr",
+            "python": "uv",
+            "pythonArgs": [
+                "run",
+                "python"
+            ],
+            "module": "streamlit",
+            "args": [
+                "run",
+                "app/streamlit_app.py",
+                "--server.port",
+                "8503"
+            ],
+            "envFile": "${workspaceFolder}/.env",
+            "console": "integratedTerminal",
+            "justMyCode": false
+        },
+        {
+            "name": "DBR batch",
+            "type": "debugpy",
+            "request": "launch",
+            "cwd": "${workspaceFolder}/projects/dbr",
+            "python": "uv",
+            "pythonArgs": [
+                "run",
+                "python"
+            ],
+            "module": "run_batch",
+            "args": [
+            ],
+            "envFile": "${workspaceFolder}/.env",
+            "console": "integratedTerminal",
+            "justMyCode": false
+        },
+        {
+            "name": "OSBChat MCP (HTTP server)",
+            "type": "debugpy",
+            "request": "launch",
+            "cwd": "${workspaceFolder}/projects/osbchatmcp",
+            "python": "uv",
+            "module": "src.main",
+            "pythonArgs": [
+                "run",
+                "python",
+            ],
+            "envFile": "${workspaceFolder}/.env",
+            "console": "integratedTerminal",
+            "justMyCode": true
+        },
+        {
+            "name": "Zot MCP (stdio server)",
+            "type": "debugpy",
+            "request": "launch",
+            "cwd": "${workspaceFolder}/projects/zotmcp",
+            "python": "uv",
+            "module": "src.main",
+            "pythonArgs": [
+                "run",
+                "python",
+            ],
+            "env": {
+                "MCP_TRANSPORT": "http"
+            },
+            "envFile": "${workspaceFolder}/.env",
+            "console": "integratedTerminal",
+            "justMyCode": true
+        }
+    ]
+}
