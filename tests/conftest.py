@@ -74,6 +74,25 @@ def validate_env_script() -> Path:
     return path
 
 @pytest.fixture
+def validate_stop_script() -> Path:
+    """Path to validate_stop.py script."""
+    import os
+
+    bot_root = os.getenv("ACADEMICOPS_BOT")
+    if not bot_root:
+        raise RuntimeError(
+            "ACADEMICOPS_BOT environment variable not set. "
+            "This must point to the academicOps bot repository root."
+        )
+
+    path = Path(bot_root) / "scripts" / "validate_stop.py"
+    if not path.exists():
+        raise RuntimeError(f"validate_stop.py not found at expected path: {path}")
+
+    return path
+
+
+@pytest.fixture
 def personal_repo_root() -> Path:
     """Get the personal repository root from environment variable."""
     import os

@@ -140,15 +140,13 @@ def main() -> int:
     is_valid, error_message = validate_workflow_transition(hook_event, context)
 
     # Prepare output for Claude Code
+    # Stop hooks use a simpler schema than PreToolUse hooks
+    # See: https://docs.claude.com/en/docs/claude-code/hooks#stop-hook-output-schema
     output = {
         "continue": True,  # Always continue for now
         "stopReason": error_message if not is_valid else None,
         "suppressOutput": False,
         "systemMessage": None,
-        "hookSpecificOutput": {
-            "hookEventName": hook_event,
-            "additionalContext": None,  # Future: inject workflow state
-        },
     }
 
     # Log to debug file

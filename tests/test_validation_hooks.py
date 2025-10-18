@@ -409,6 +409,96 @@ class TestPreToolUseHook:
 
 
 # ============================================================================
+# Stop Hook Tests (validate_stop.py)
+# ============================================================================
+
+
+class TestStopHook:
+    """Tests for Stop/SubagentStop hooks (validate_stop.py)."""
+
+    def test_stop_hook_outputs_valid_json_schema(self, validate_stop_script: Path):
+        """
+        Test that Stop hook outputs valid JSON matching Claude Code's expected schema.
+
+        This is the critical test that catches the issue from the live test:
+        Stop hooks should NOT include hookSpecificOutput.hookEventName.
+        """
+        hook_input = {
+            "session_id": "test-session",
+            "hook_event": "Stop",
+        }
+
+        exit_code, stdout, _stderr = run_hook(validate_stop_script, hook_input)
+
+        assert exit_code == 0, f"Hook failed with exit code {exit_code}"
+
+        # Verify stdout starts with JSON (no leading text)
+        stdout_stripped = stdout.strip()
+        assert stdout_stripped.startswith(
+            "{"
+        ), f"Hook output should start with '{{' but got: {stdout_stripped[:100]}"
+
+        # Verify it's valid JSON
+        output = json.loads(stdout_stripped)
+
+        # Verify required fields for Stop hook
+        assert "continue" in output
+        assert isinstance(output["continue"], bool)
+
+        # Optional fields
+        if "stopReason" in output:
+            assert output["stopReason"] is None or isinstance(output["stopReason"], str)
+        if "suppressOutput" in output:
+            assert isinstance(output["suppressOutput"], bool)
+        if "systemMessage" in output:
+            assert output["systemMessage"] is None or isinstance(
+                output["systemMessage"], str
+            )
+
+        # CRITICAL: Stop hooks should NOT include hookSpecificOutput
+        assert (
+            "hookSpecificOutput" not in output
+        ), "Stop hooks should not include hookSpecificOutput field"
+
+    def test_subagent_stop_hook_outputs_valid_json_schema(
+        self, validate_stop_script: Path
+    ):
+        """Test that SubagentStop hook outputs valid JSON schema."""
+        hook_input = {
+            "session_id": "test-session",
+            "hook_event": "SubagentStop",
+            "subagent": "test-agent",
+        }
+
+        exit_code, stdout, _stderr = run_hook(validate_stop_script, hook_input)
+
+        assert exit_code == 0
+
+        # Parse and validate JSON
+        output = json.loads(stdout.strip())
+
+        assert "continue" in output
+        assert isinstance(output["continue"], bool)
+
+        # CRITICAL: SubagentStop hooks should NOT include hookSpecificOutput
+        assert (
+            "hookSpecificOutput" not in output
+        ), "SubagentStop hooks should not include hookSpecificOutput field"
+
+    def test_stop_hook_continues_by_default(self, validate_stop_script: Path):
+        """Test that Stop hook continues execution by default."""
+        hook_input = {"session_id": "test-session", "hook_event": "Stop"}
+
+        exit_code, stdout, _stderr = run_hook(validate_stop_script, hook_input)
+
+        assert exit_code == 0
+        output = json.loads(stdout.strip())
+
+        assert output["continue"] is True
+        assert output.get("stopReason") is None
+
+
+# ============================================================================
 # Integration Tests
 # ============================================================================
 
