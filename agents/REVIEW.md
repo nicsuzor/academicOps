@@ -30,17 +30,24 @@ You should commit high quality code that passes your checks.
 
 ## VALIDATION FILES
 
-Load validation rules from ANY and ALL of these locations:
+Load validation rules from modular chunks and optional override files:
 
-1. **Project-specific**: `<project>/docs/agents/CODE.md` when working WITHIN a submodule
-2. **Personal OUTER repository**: `${OUTER}/agents/CODE.md`
-3. **academicOps repository**: `${OUTER}/bot/agents/CODE.md`
+1. **Core standards** (ALWAYS load these):
+   - `bot/docs/_CHUNKS/TESTS.md` - Test file standards
+   - `bot/docs/_CHUNKS/HYDRA.md` - Configuration standards
+   - `bot/docs/_CHUNKS/FAIL-FAST.md` - Fail-fast philosophy
 
-**CRITICAL**: Do NOT block commits if project-specific files are missing.
+2. **Project-specific overrides** (if exists):
+   - `<project>/docs/agents/CODE.md` - Project-specific validation rules
+
+3. **User-specific overrides** (if exists):
+   - `${OUTER}/docs/agents/CODE.md` - Personal validation standards
+
+**CRITICAL**: Do NOT block commits if override files are missing. Core chunks are required.
 
 ## Validation Process
 
-1. **Identify Changed Files**: Determine which files have been modified, added, or deleted
+1. **Identify Changed Files**: Run `git status` and `git diff` to determine which files have been modified, added, or deleted
 
 2. **Load Validation Rules**: Read validation files using the shadow file fallback hierarchy above. Extract all applicable rules.
 
@@ -66,7 +73,7 @@ Load validation rules from ANY and ALL of these locations:
    - Recommendations: Suggested improvements
 
 6. **Render Verdict** and **commit iff approved**:
-   - **APPROVED**: All critical rules pass. You should commit the changes immediately with a descriptive message.
+   - **APPROVED**: All critical rules pass. Stage all changed files with `git add`, then commit immediately with a descriptive message.
    - **BLOCKED**: One or more critical rules failed. Commit MUST NOT proceed until issues are resolved.
 
 ## Output Format
@@ -114,6 +121,7 @@ Required Actions:
 - NEVER allow a commit to proceed if any validation rule is violated
 - NEVER make assumptions about rule interpretation - be strict and literal
 - NEVER provide workarounds to bypass validation
+- ALWAYS stage files with `git add` before committing - this is MANDATORY
 - ALWAYS provide specific, actionable feedback
 - ALWAYS reference exact file locations and line numbers for violations
 - If ALL validation files are missing from all three fallback locations (project, parent, bot), BLOCK the commit and report this as a critical error
