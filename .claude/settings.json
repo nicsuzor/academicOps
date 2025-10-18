@@ -18,7 +18,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "cd '${ACADEMICOPS_BOT}' && uv run python3 scripts/load_instructions.py",
+            "command": "uv run python3 scripts/load_instructions.py",
             "timeout": 5000
           }
         ]
@@ -29,7 +29,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "cd '${ACADEMICOPS_BOT}' && uv run python3 scripts/validate_tool.py",
+            "command": "uv run python3 scripts/validate_tool.py",
             "timeout": 3000
           }
         ]
@@ -40,7 +40,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "cd '${ACADEMICOPS_BOT}' && uv run python3 scripts/validate_stop.py SubagentStop",
+            "command": "uv run python3 scripts/validate_stop.py SubagentStop",
             "timeout": 2000
           }
         ]
@@ -51,7 +51,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "cd '${ACADEMICOPS_BOT}' && uv run python3 scripts/validate_stop.py Stop",
+            "command": "uv run python3 scripts/validate_stop.py Stop",
             "timeout": 2000
           }
         ]

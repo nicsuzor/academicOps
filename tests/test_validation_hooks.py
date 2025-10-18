@@ -266,6 +266,47 @@ class TestPreToolUseHook:
         # continue field is optional and excluded when None
         assert output["hookSpecificOutput"]["permissionDecision"] == "allow"
 
+    def test_hook_blocks_python_module_without_uv_run(
+        self, validate_tool_script: Path, repo_root: Path
+    ):
+        """Test that 'python -m module' without 'uv run' is blocked."""
+        hook_input = {
+            "session_id": "test-session",
+            "cwd": str(repo_root),
+            "hook_event_name": "PreToolUse",
+            "tool_name": "Bash",
+            "tool_input": {"command": "python -m buttermilk.debug.ws_debug_cli logs"},
+        }
+
+        exit_code, stdout, _stderr = run_hook(validate_tool_script, hook_input)
+
+        assert exit_code == 2  # Block
+        output = parse_hook_output(stdout)
+
+        assert output["hookSpecificOutput"]["permissionDecision"] == "deny"
+        assert "uv run" in output["hookSpecificOutput"]["permissionDecisionReason"]
+
+    def test_hook_allows_python_module_with_uv_run(
+        self, validate_tool_script: Path, repo_root: Path
+    ):
+        """Test that 'uv run python -m module' is allowed."""
+        hook_input = {
+            "session_id": "test-session",
+            "cwd": str(repo_root),
+            "hook_event_name": "PreToolUse",
+            "tool_name": "Bash",
+            "tool_input": {
+                "command": "uv run python -m buttermilk.debug.ws_debug_cli logs"
+            },
+        }
+
+        exit_code, stdout, _stderr = run_hook(validate_tool_script, hook_input)
+
+        assert exit_code == 0
+        output = parse_hook_output(stdout)
+
+        assert output["hookSpecificOutput"]["permissionDecision"] == "allow"
+
     def test_hook_warns_trainer_agent_on_claude_files(self, validate_tool_script: Path, repo_root: Path):
         """Test that non-trainer agents get warnings for .claude files."""
         hook_input = {

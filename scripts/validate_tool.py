@@ -449,10 +449,20 @@ def _requires_uv_run(command: str) -> bool:
                 # Look at tokens before this one
                 before_tokens = tokens[:i]
 
-                # Skip if invoked via 'python -m' (check previous token)
-                if i > 0 and tokens[i - 1] == "-m":
-                    # This tool is a module name (e.g., 'python -m pytest')
-                    # It's covered by the python validation
+                # Skip if invoked via 'python -m' (check NEXT token)
+                # Example: "python -m pytest" should be allowed without uv run
+                # because it's invoking a module via python, not a standalone tool
+                if i + 1 < len(tokens) and tokens[i + 1] == "-m":
+                    # This is 'python -m <module>' pattern
+                    # The python itself still needs 'uv run' prefix
+                    # So we DON'T skip - we continue checking for 'uv run'
+                    pass
+                # Also check if this is a module name after 'python -m'
+                # Example: in "python -m pytest", when we find "pytest" token,
+                # we check if it came after "-m"
+                elif i > 0 and tokens[i - 1] == "-m":
+                    # This tool is a module name (e.g., 'pytest' in 'python -m pytest')
+                    # Skip validation - it's covered by the python validation
                     continue
 
                 # Check if 'uv run' appears in the tokens before this tool
