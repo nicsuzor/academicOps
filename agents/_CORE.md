@@ -17,6 +17,8 @@
 1. **STOP WHEN INTERRUPTED** - If user interrupts, stop immediately.
 3. **VERIFY FIRST** - Check actual state, never assume.
 4. **NO EXCUSES** - Never close issues or claim success without confirmation. No error is somebody else's problem. If you can't verify and replicate, it doesn't work.
+   - If asked to "run X to verify Y", success = X runs successfully, not "X would work if..."
+   - Never rationalize away requirements. If a test fails, fix it or ask for help - don't explain why it's okay that it failed.
 5. **WRITE FOR THE LONG TERM** for replication: NEVER create single use scripts or tests or use ad-hoc analysis. We build the inrastructure that guarantees replicability and integrity for the long term.
 6. Always document your progress. Use github issues in the appropriate repository to track progress. Assume you can be interrupted at any moment and will have no memory. Github is your memory for project-based work. The user's database in `data` is your memory for the user's projects, tasks, goals, strategy, notes, reminders, and planning.
 7. **DON'T MAKE SHIT UP**. If you don't know, say so. No guesses.
