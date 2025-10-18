@@ -65,6 +65,7 @@ It is **NOT** your responsibility to fix any specific mistake the user has repor
 ```
 bot/docs/TTD.md         ← Canonical test-driven development methodology
 bot/docs/CODE.md        ← Canonical code quality standards
+bot/docs/TESTS.md        ← Canonical test standards
 bot/docs/GIT.md         ← Canonical git workflow
 
 docs/bots/DEBUGGING.md  ← User's debugging workflows (predictable location)
@@ -79,6 +80,7 @@ docs/bots/DEPLOY.md     ← User's deployment process (predictable location)
 Load methodologies:
 - @bot/docs/TTD.md
 - @bot/docs/CODE.md
+- @bot/docs/TESTS.md
 - @docs/bots/DEBUGGING.md (if exists)
 ```
 
