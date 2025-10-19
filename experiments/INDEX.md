@@ -14,6 +14,27 @@ See TRAINER.md lines 126-153 for requirements.
 
 ## Active Experiments
 
+### 2025-10-19: Supervisor + Test-Cleaner Subagent Chaining
+
+**File**: `2025-10-19_supervisor-testcleaner-chain.md`
+**Issue**: #127, #126
+**Status**: SUCCESS (91% failure reduction, minor gaps identified)
+**Commit**: [overnight run - no commit needed, analysis only]
+
+**Results**:
+- 347 failures → 30 failures (91% reduction)
+- 647 passing tests (up from 484)
+- 70+ files fixed autonomously
+
+**Gaps Identified**:
+1. Code-review agent not invoked despite user request (#126)
+2. API failures need resilience
+3. No completion threshold detection
+
+**Outcome**: Validates supervisor + specialist pattern. Gaps are refinements, not fundamental issues.
+
+---
+
 ### 2025-10-17: validate_env.py Flat Architecture Refactor
 
 **File**: `2025-10-17_validate-env-flat-arch.md`
