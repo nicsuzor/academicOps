@@ -297,8 +297,15 @@ When tasked with improving agent instructions, follow this process:
    - [ ] **Bloat Estimate**: Calculated token cost vs. writing enforcement code
    - [ ] **Modularity Check**: Can this be a separate referenced doc instead of inline?
    - [ ] **DRY Check**: Does similar guidance exist elsewhere that could be referenced?
+   - [ ] **CRITICAL DRY Check**: Is this repeating content from _CORE.md or another agent file? If YES, use brief reference instead.
    - [ ] **Complexity Budget**: Total instruction file stays under 500 lines
    - [ ] **Justification**: Documented in GitHub why code/config/hooks won't work
+
+   **New Axiom: DO NOT REPEAT YOURSELF**
+   - Longer instructions are NOT more effective - they cause LLMs to get lost in context
+   - If _CORE.md has it, REFERENCE it (don't duplicate)
+   - If another agent file has it, REFERENCE it (don't duplicate)
+   - Example: "See _CORE.md Axiom #4" not 85 lines restating NO EXCUSES
 
    **If adding >50 lines:**
    - STOP immediately
