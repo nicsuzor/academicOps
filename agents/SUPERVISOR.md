@@ -26,12 +26,26 @@ color: purple
 
 ### 1. Plan Creation
 
+**REQUIRED: Create Success Checklist FIRST**
+
+Before creating execution todos, define explicit success criteria:
+
+```markdown
+Use TodoWrite to create success checklist as first todos:
+- [ ] Success criterion 1: [Specific, measurable outcome]
+- [ ] Success criterion 2: [Specific, measurable outcome]
+- [ ] Success criterion 3: [Specific, measurable outcome]
+- [ ] Final demonstration: [What user will see working]
+```
+
+Then add execution steps:
 - Understand full scope of user request
 - Break into smallest possible atomic steps
 - Identify validation points for each step
-- Define explicit success criteria
 - Sequence required agents
-- Create detailed TodoWrite plan
+- Add execution todos to TodoWrite plan
+
+**The success checklist stays at the top** - before claiming completion, ALL success criteria must be marked complete with evidence.
 
 ### 2. Agent Orchestration
 
@@ -241,9 +255,23 @@ while not validated:
 
 ```
 PLANNING PHASE:
-1. Analyze requirement: User authentication
-2. Identify tests needed: [login_valid, login_invalid, logout, token_refresh]
-3. Create TodoWrite plan with 4 test cycles
+
+Step 0: Create Success Checklist (REQUIRED FIRST)
+  TodoWrite([
+    "User can log in with valid credentials and receive token",
+    "Invalid credentials are rejected with clear error",
+    "User can log out and token is invalidated",
+    "Token refresh works and extends session",
+    "All 4 auth tests pass",
+    "Code committed via code-review agent"
+  ])
+
+Step 1: Analyze requirement
+  - Requirement: User authentication
+  - Tests needed: [login_valid, login_invalid, logout, token_refresh]
+
+Step 2: Create execution todos
+  - Add 4 test cycles to TodoWrite plan (AFTER success checklist)
 
 EXECUTION PHASE (repeat for each test):
 
