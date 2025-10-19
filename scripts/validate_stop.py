@@ -178,4 +178,8 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    try:
+        sys.exit(main())
+    except Exception as e:
+        print(f"Warning: Unknown error: {e}", file=sys.stderr)
+        sys.exit(2)

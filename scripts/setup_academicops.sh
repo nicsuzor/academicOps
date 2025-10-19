@@ -189,7 +189,27 @@ if [ ! -x "$LOAD_SCRIPT" ]; then
     echo -e "${GREEN}✓${NC} Made $LOAD_SCRIPT executable"
 fi
 
-# 9. Test the setup
+# 9. Install git hooks
+echo
+echo "Installing git pre-commit hooks..."
+
+INSTALL_HOOKS_SCRIPT="$ACADEMICOPS_BOT/scripts/git-hooks/install-hooks.sh"
+
+if [ ! -f "$INSTALL_HOOKS_SCRIPT" ]; then
+    echo -e "${YELLOW}⚠${NC}  Git hooks installer not found at $INSTALL_HOOKS_SCRIPT"
+    echo "    Skipping git hooks installation"
+else
+    if [ -d ".git" ] || [ -f ".git" ]; then
+        # Run the installer from the target directory
+        bash "$INSTALL_HOOKS_SCRIPT"
+        echo -e "${GREEN}✓${NC} Git pre-commit hooks installed"
+    else
+        echo -e "${YELLOW}⚠${NC}  Not a git repository - skipping git hooks installation"
+        echo "    Initialize git and re-run this script to install hooks"
+    fi
+fi
+
+# 10. Test the setup
 echo
 echo "Testing configuration..."
 
@@ -199,7 +219,7 @@ else
     echo -e "${YELLOW}⚠${NC}  load_instructions.py test had warnings (may be expected)"
 fi
 
-# 10. Success summary
+# 11. Success summary
 echo
 echo -e "${GREEN}=== Setup Complete ===${NC}"
 echo
@@ -208,6 +228,7 @@ echo "  - $CLAUDE_DIR/settings.json (copied from dist/ template)"
 echo "  - $CLAUDE_DIR/agents/ (symlinked to academicOps)"
 echo "  - $PROJECT_AGENTS_DIR/_CORE.md (project context)"
 echo "  - $ACADEMICOPS_DIR/scripts/ (symlinked validation scripts)"
+echo "  - .git/hooks/pre-commit (documentation quality enforcement)"
 echo "  - .gitignore (excludes academicOps managed files)"
 echo
 echo "Environment configuration:"

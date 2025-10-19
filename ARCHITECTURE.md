@@ -127,34 +127,195 @@ When you invoke `@agent-{name}`, Claude Code loads:
 
 ## Validation & Enforcement System
 
-### Pre-Tool-Use Hook (`validate_tool.py`)
+academicOps uses a **multi-layered enforcement hierarchy** to ensure quality and consistency:
 
-**Purpose:** Enforces tool usage rules before agents execute tools
+### 1. Claude Code Hooks (Runtime Validation)
+
+Configured in `.claude/settings.json`, these hooks run during Claude Code sessions.
+
+#### SessionStart Hook (`load_instructions.py`)
+
+**Purpose:** Loads hierarchical instructions at every session start
+
+**Process:**
+
+1. Calls `read_instructions.py _CORE.md`
+2. Loads from 3-tier hierarchy (bot → personal → project)
+3. Returns context to agent via stderr
+4. Shows user-friendly status via stdout
+
+**Output to user:**
+```
+Loaded _CORE.md: ✓ bot ✓ personal ✓ project
+```
+
+**Fail-fast:** Blocks session if ALL three tiers are missing
+
+#### PreToolUse Hook (`validate_tool.py`)
+
+**Purpose:** Validates every tool call before execution
 
 **Rules Enforced:**
 
-1. Markdown file creation restricted (prevents documentation bloat)
-2. Python execution requires `uv run` prefix
-3. Inline Python (`python -c`) blocked
-4. Git commits warn for non-code-review agents
-5. `/tmp` test files blocked (violates Axiom #5 - build for replication)
+1. **Markdown file creation restricted** (prevents documentation bloat)
+   - Blocks: `Write(**/*.md)`, except research papers
+   - Enforces: Self-documenting code principle
+2. **Python execution requires `uv run` prefix**
+   - Blocks: `python script.py`, `python3 script.py`
+   - Allows: `uv run python script.py`
+3. **Inline Python blocked**
+   - Blocks: `python -c "code"`
+   - Reason: Non-reproducible, untestable
+4. **Git commits restricted to code-review agent**
+   - Warns: Non-review agents attempting commits
+   - Enforces: Quality gate separation
+5. **Temporary test files blocked**
+   - Blocks: Files in `/tmp`
+   - Enforces: Axiom #5 (build for replication)
 
-**Configuration:** Runs automatically via Claude Code's PreToolUse hook
+**Exit Codes:**
+- `0` - Allow (with optional prompt)
+- `1` - Warn (allow with warning message)
+- `2` - Block (show error to agent)
 
-### Pre-Commit Hooks (`.pre-commit-config.yaml`)
+#### SubagentStop/Stop Hooks (`validate_stop.py`)
 
-**Purpose:** Code quality enforcement before git commits
+**Purpose:** Validates agent completion state
+
+**Configuration:**
+```json
+{
+  "hooks": {
+    "SubagentStop": [{
+      "hooks": [{
+        "type": "command",
+        "command": "uv run python3 scripts/validate_stop.py SubagentStop"
+      }]
+    }]
+  }
+}
+```
+
+### 2. Git Pre-Commit Hooks (Commit-Time Quality)
+
+Installed via `scripts/git-hooks/install-hooks.sh`, enforced before every git commit.
+
+#### Documentation Bloat Prevention (`pre-commit`)
+
+**Purpose:** Prevents proliferation of `.md` documentation files
+
+**What it blocks:**
+- New `.md` files anywhere (except allowed paths)
+- README.md, HOWTO.md, GUIDE.md files
+- System documentation files
+
+**What it allows:**
+- Research papers (`papers/`, `manuscripts/`)
+- Agent instructions (`agents/*.md` - these ARE executable code)
+- Explicitly confirmed deliverables
+
+**Enforcement:**
+1. Detects all new `.md` files being added (status A)
+2. Filters out allowed paths
+3. Prompts user for confirmation if forbidden files found
+4. Blocks commit unless user confirms files are allowed content types
+
+**User experience:**
+```
+🛑 WARNING: New .md file(s) detected that may violate documentation philosophy:
+
+  - scripts/setup/README.md
+
+Documentation Philosophy:
+  ✅ ALLOWED: Research papers, manuscripts, agent instructions
+  ❌ FORBIDDEN: README.md, HOWTO.md, GUIDE.md, system documentation
+
+Instead of creating documentation files, use:
+  • Scripts with --help output and comprehensive inline comments
+  • Issue templates with complete instructions
+  • Code comments for design decisions
+
+Are you CERTAIN these are allowed content types? (y/N)
+```
+
+**Installation:**
+```bash
+$ACADEMICOPS_BOT/scripts/git-hooks/install-hooks.sh
+```
+
+Options:
+- Default: Backs up existing pre-commit hook
+- `--force`: Overwrites without backup
+- `--help`: Shows usage information
+
+#### Python Code Quality (`.pre-commit-config.yaml`)
+
+**Purpose:** Automated code quality checks for Python files
 
 **Hooks:**
 
 - `ruff-check` - Python linting with auto-fixes
-- `ruff-format` - Python code formatting
+- `ruff-format` - Code formatting (Black-compatible)
 - `mypy` - Static type checking
 - `radon` - Complexity and maintainability metrics
-- `test-architecture` - Test file location validation
-- `pytest` - Fast unit tests only
+- `test-architecture` - Validates test file locations
+- `pytest` - Runs fast unit tests only
 
-**Performance:** Only runs on Python file changes (optimized for fast doc commits)
+**Performance optimization:** Only runs on Python file changes (`.py` files)
+
+**Installation:**
+```bash
+cd $ACADEMICOPS_BOT
+uv run pre-commit install
+```
+
+### 3. Permission System (Configuration-Level)
+
+Fine-grained tool access control in `.claude/settings.json`.
+
+**Allow List:**
+```json
+{
+  "permissions": {
+    "allow": [
+      "Bash(uv run pytest:*)",
+      "Bash(uv run python:*)",
+      "mcp__gh__create_issue"
+    ]
+  }
+}
+```
+
+**Deny List:**
+```json
+{
+  "permissions": {
+    "deny": [
+      "Write(**/*.md)",
+      "Write(**/*.env*)",
+      "Read(**/*.cache/**)",
+      "Write(./**/.venv/**)"
+    ]
+  }
+}
+```
+
+### Enforcement Hierarchy
+
+**Reliability Order (most → least reliable):**
+
+1. **Scripts** - Code that prevents bad behavior (hooks, validation)
+2. **Hooks** - Automated checks at key moments (SessionStart, PreToolUse)
+3. **Configuration** - Permissions and restrictions (settings.json)
+4. **Instructions** - Agent directives (last resort - agents forget in long conversations)
+
+**Principle:** If agents consistently disobey instructions, move enforcement UP the hierarchy.
+
+**Example:** If agents keep creating README.md files despite instructions:
+1. ❌ Instruction: "Don't create README files" (ignored)
+2. ⚠️ Configuration: `deny: ["Write(**/*.md)"]` (can be overridden)
+3. ✅ PreToolUse Hook: Blocks Write tool for `.md` files (enforced)
+4. ✅ Git Hook: Blocks commit if `.md` files added (enforced)
 
 ## Agent Responsibilities
 
@@ -264,27 +425,67 @@ Fail-Fast Philosophy
 - Fix underlying infrastructure, don't teach workarounds
 - Reliable systems > defensive programming instructions
 
-Setup Process
+## Setup Process
 
-Installing academicOps in a New Project
+### Installing academicOps in a New Project
 
-Run setup script:
-cd $PROJECT
-$ACADEMICOPS_BOT/scripts/setup_academicops.sh
-
-What it creates:
-1. .claude/settings.json (copied from dist/.claude/settings.json)
-2. .claude/agents/ (symlinked to academicOps agents)
-3. agents/_CORE.md (template for project context)
-4. .academicOps/scripts/ (symlinked validation scripts)
-5. .gitignore updates (excludes academicOps managed files)
-
-What it verifies:
-- ACADEMICOPS_BOT environment variable set and directory exists
-- ACADEMICOPS_PERSONAL environment variable (optional)
-- load_instructions.py exists and is executable
-
-Environment Variables Required
-
+**Prerequisites:**
+```bash
 export ACADEMICOPS_BOT=/path/to/academicOps      # Required
 export ACADEMICOPS_PERSONAL=/path/to/writing     # Optional
+```
+
+**Run setup script:**
+```bash
+cd $PROJECT
+$ACADEMICOPS_BOT/scripts/setup_academicops.sh
+```
+
+**What it creates:**
+
+1. `.claude/settings.json` - Claude Code configuration with hooks
+2. `.claude/agents/` - Symlinked to academicOps agents
+3. `agents/_CORE.md` - Template for project-specific context
+4. `.academicOps/scripts/` - Symlinked validation scripts
+5. `.git/hooks/pre-commit` - Documentation quality enforcement
+6. `.gitignore` updates - Excludes academicOps managed files
+
+**What it verifies:**
+
+- `ACADEMICOPS_BOT` environment variable set and directory exists
+- `ACADEMICOPS_PERSONAL` environment variable (optional)
+- `load_instructions.py` exists and is executable
+- Git repository exists (for hook installation)
+
+**Output:**
+```
+=== academicOps Setup for Third-Party Repository ===
+
+Setting up: /path/to/project
+
+Checking environment variables...
+✓ ACADEMICOPS_BOT=/path/to/academicOps
+✓ ACADEMICOPS_PERSONAL=/path/to/writing
+
+Setting up Claude Code configuration...
+✓ Created .claude
+✓ Copied settings.json from dist/ template
+✓ Symlinked agents from academicOps
+
+Setting up .academicOps deployment directory...
+✓ Created .academicOps/scripts
+✓ Symlinked validate_tool.py
+✓ Symlinked validate_stop.py
+✓ Symlinked hook_models.py
+✓ Symlinked load_instructions.py
+
+Installing git pre-commit hooks...
+✓ Pre-commit hook installed
+
+Testing configuration...
+✓ load_instructions.py executes successfully
+
+=== Setup Complete ===
+```
+
+See `INSTALL.md` for detailed installation instructions.

@@ -16,3 +16,4 @@ uv.lock
 
 # Personal settings (if created)
 .claude/settings.local.json
+logs/
