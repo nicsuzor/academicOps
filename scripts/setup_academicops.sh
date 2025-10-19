@@ -5,7 +5,10 @@
 # when academicOps is in a flat directory structure.
 #
 # Usage:
-#   ./scripts/setup_academicops.sh [target-directory]
+#   ./scripts/setup_academicops.sh [OPTIONS] [target-directory]
+#
+# Options:
+#   --no-symlink    Copy files instead of symlinking (for Windows/NTFS filesystems)
 #
 # If target-directory is not provided, uses current directory (PWD)
 
@@ -17,6 +20,21 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
+# Parse options
+USE_SYMLINKS=true
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --no-symlink)
+            USE_SYMLINKS=false
+            shift
+            ;;
+        *)
+            # Assume it's the target directory
+            break
+            ;;
+    esac
+done
+
 echo "=== academicOps Setup for Third-Party Repository ==="
 echo
 
@@ -26,6 +44,11 @@ cd "$TARGET_DIR"
 PROJECT_ROOT="$PWD"
 
 echo "Setting up: $PROJECT_ROOT"
+if [ "$USE_SYMLINKS" = false ]; then
+    echo "Mode: Copy (--no-symlink enabled for Windows/NTFS compatibility)"
+else
+    echo "Mode: Symlink (default)"
+fi
 echo
 
 # 1. Verify environment variables
@@ -81,8 +104,9 @@ fi
 cp "$DIST_SETTINGS" "$SETTINGS_FILE"
 echo -e "${GREEN}✓${NC} Copied settings.json from dist/ template"
 
-# 4. Symlink agents directory
+# 4. Link or copy agents directory
 AGENTS_LINK="$CLAUDE_DIR/agents"
+AGENTS_SOURCE="$ACADEMICOPS_BOT/.claude/agents"
 
 if [ -L "$AGENTS_LINK" ]; then
     echo -e "${YELLOW}⚠${NC}  Removing existing agents symlink"
@@ -92,8 +116,14 @@ elif [ -d "$AGENTS_LINK" ]; then
     mv "$AGENTS_LINK" "${AGENTS_LINK}.backup"
 fi
 
-ln -s "$ACADEMICOPS_BOT/.claude/agents" "$AGENTS_LINK"
-echo -e "${GREEN}✓${NC} Symlinked agents from $ACADEMICOPS_BOT/.claude/agents"
+if [ "$USE_SYMLINKS" = true ]; then
+    ln -s "$AGENTS_SOURCE" "$AGENTS_LINK"
+    echo -e "${GREEN}✓${NC} Symlinked agents from $AGENTS_SOURCE"
+else
+    # Use -L to follow symlinks and copy actual files (not symlinks themselves)
+    cp -rL "$AGENTS_SOURCE" "$AGENTS_LINK"
+    echo -e "${GREEN}✓${NC} Copied agents from $AGENTS_SOURCE"
+fi
 
 # 5. Create agents/ directory for project-specific instructions if needed
 PROJECT_AGENTS_DIR="$PROJECT_ROOT/agents"
@@ -141,7 +171,7 @@ else
     echo -e "${GREEN}✓${NC} $SCRIPTS_DIR already exists"
 fi
 
-# Symlink validation scripts from academicOps
+# Link or copy validation scripts from academicOps
 VALIDATION_SCRIPTS=("validate_tool.py" "validate_stop.py" "hook_models.py" "load_instructions.py")
 
 for script in "${VALIDATION_SCRIPTS[@]}"; do
@@ -157,8 +187,14 @@ for script in "${VALIDATION_SCRIPTS[@]}"; do
     fi
 
     if [ -f "$SOURCE" ]; then
-        ln -s "$SOURCE" "$TARGET"
-        echo -e "${GREEN}✓${NC} Symlinked $script"
+        if [ "$USE_SYMLINKS" = true ]; then
+            ln -s "$SOURCE" "$TARGET"
+            echo -e "${GREEN}✓${NC} Symlinked $script"
+        else
+            cp "$SOURCE" "$TARGET"
+            chmod +x "$TARGET"
+            echo -e "${GREEN}✓${NC} Copied $script"
+        fi
     else
         echo -e "${RED}ERROR: Source script not found: $SOURCE${NC}"
     fi
@@ -225,9 +261,14 @@ echo -e "${GREEN}=== Setup Complete ===${NC}"
 echo
 echo "Created/verified:"
 echo "  - $CLAUDE_DIR/settings.json (copied from dist/ template)"
-echo "  - $CLAUDE_DIR/agents/ (symlinked to academicOps)"
+if [ "$USE_SYMLINKS" = true ]; then
+    echo "  - $CLAUDE_DIR/agents/ (symlinked to academicOps)"
+    echo "  - $ACADEMICOPS_DIR/scripts/ (symlinked validation scripts)"
+else
+    echo "  - $CLAUDE_DIR/agents/ (copied from academicOps)"
+    echo "  - $ACADEMICOPS_DIR/scripts/ (copied validation scripts)"
+fi
 echo "  - $PROJECT_AGENTS_DIR/_CORE.md (project context)"
-echo "  - $ACADEMICOPS_DIR/scripts/ (symlinked validation scripts)"
 echo "  - .git/hooks/pre-commit (documentation quality enforcement)"
 echo "  - .gitignore (excludes academicOps managed files)"
 echo
@@ -235,6 +276,12 @@ echo "Environment configuration:"
 echo "  - ACADEMICOPS_BOT=$ACADEMICOPS_BOT"
 [ -n "${ACADEMICOPS_PERSONAL:-}" ] && echo "  - ACADEMICOPS_PERSONAL=$ACADEMICOPS_PERSONAL"
 echo
+if [ "$USE_SYMLINKS" = false ]; then
+    echo -e "${YELLOW}NOTE: Running in copy mode (--no-symlink)${NC}"
+    echo "  Updates to academicOps will NOT automatically sync to this project."
+    echo "  Re-run this script to update after academicOps changes."
+    echo
+fi
 echo "Next steps:"
 echo "  1. Launch Claude Code from this directory"
 echo "  2. Verify core instructions load at session start"
