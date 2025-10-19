@@ -189,7 +189,7 @@ Loaded _CORE.md: ✓ bot ✓ personal ✓ project
     "SubagentStop": [{
       "hooks": [{
         "type": "command",
-        "command": "uv run python3 scripts/validate_stop.py SubagentStop"
+        "command": "uv run python scripts/validate_stop.py SubagentStop"
       }]
     }]
   }

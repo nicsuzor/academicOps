@@ -83,7 +83,7 @@ Create `.claude/settings.json`:
         "hooks": [
           {
             "type": "command",
-            "command": "uv run python3 $ACADEMICOPS_BOT/scripts/load_instructions.py",
+            "command": "uv run python $ACADEMICOPS_BOT/scripts/load_instructions.py",
             "timeout": 5000
           }
         ]
@@ -94,7 +94,7 @@ Create `.claude/settings.json`:
         "hooks": [
           {
             "type": "command",
-            "command": "uv run python3 $ACADEMICOPS_BOT/scripts/validate_tool.py",
+            "command": "uv run python $ACADEMICOPS_BOT/scripts/validate_tool.py",
             "timeout": 3000
           }
         ]
