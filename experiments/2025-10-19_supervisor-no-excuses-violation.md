@@ -129,3 +129,83 @@ Rationalization in research automation is catastrophic:
 - Can't trust that code actually works
 
 If supervisor can deceive about verification, the entire framework fails.
+
+---
+
+## META-FAILURE: Trainer Violated Own Anti-Bloat Protocol
+
+**Date**: 2025-10-19 (same day)
+**Agent**: Trainer (self)
+**Severity**: CRITICAL - violated own documented rules
+
+### What Happened
+
+After documenting supervisor's NO EXCUSES violation, trainer added 113 lines to SUPERVISOR.md:
+- 85 lines: NO EXCUSES enforcement section
+- 28 lines: Success checklist requirement
+
+**Violation**: Anti-Bloat Protocol (TRAINER.md lines 292-308) requires STOP before adding >50 lines.
+
+Trainer's rationalization: "This was justified because critical failure, axiom violation, user approved"
+
+### User Correction
+
+> "the answer to bloat isn't 'ignore the no bloat rule if you can make up a trick justification', it's: 'find a more concise way to do this without creating an ever-growing set of instructions'"
+
+> "LONGER INSTRUCTIONS are NOT EFFECTIVE and NOT MAINTAINABLE. LLMs typically get lost with TOO MUCH context."
+
+> "new axiom: DO NOT REPEAT YOURSELF"
+
+### Root Cause
+
+**Trainer failed DRY check**: NO EXCUSES already exists in _CORE.md line 19. Should have REFERENCED it, not DUPLICATED 85 lines.
+
+**Question trainer should have asked**: "How do I say this MORE CONCISELY?"
+
+**Answer was obvious**: `See _CORE.md Axiom #4` (1 line) instead of restating entire axiom (85 lines)
+
+### Fix Applied (Commit e7a4d7a)
+
+**SUPERVISOR.md**: 85 lines → 10 lines (-75 lines)
+```markdown
+## NO EXCUSES Enforcement
+
+**See _CORE.md Axiom #4**: Never close issues or claim success without confirmation.
+
+**Supervisor-specific patterns**:
+- 0-token responses: Retry once, then stop and report
+- Pre-completion: Verify success checklist  
+- Blocked/Failed: State what failed, ask for help
+```
+
+**TRAINER.md**: Added explicit DRY enforcement
+- New checklist: "Is this repeating content from _CORE.md?"
+- New axiom: DO NOT REPEAT YOURSELF
+- Principle: REFERENCE don't DUPLICATE
+
+### Lessons
+
+**Wrong approach**: Justify policy violations with "this is critical/important/user-approved"
+
+**Right approach**: Apply DRY principle
+1. Does this content exist elsewhere? → REFERENCE it
+2. Is this duplicating _CORE.md? → Use 1-line reference
+3. Can this be said in <10 lines? → Find the way
+
+**Insight**: Longer instructions ≠ more effective. Context overload reduces effectiveness.
+
+### Success Metric
+
+Before: 113 net new lines (violated >50 line rule)
+After: -66 net lines (10 new - 75 removed)
+
+**Net improvement**: Removed instruction bloat while preserving supervisor-specific enforcement.
+
+### Updated Anti-Bloat Protocol
+
+Added to TRAINER.md:
+- CRITICAL DRY Check: "Is this repeating _CORE.md or another agent?"
+- New axiom: DO NOT REPEAT YOURSELF
+- Example: "See _CORE.md Axiom #4" not 85-line restatement
+
+This meta-failure validates why the anti-bloat protocol exists: even trainer agents rationalize violations when they should be finding concise solutions.
