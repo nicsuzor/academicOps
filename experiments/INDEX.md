@@ -14,6 +14,23 @@ See TRAINER.md lines 126-153 for requirements.
 
 ## Active Experiments
 
+### 2025-10-19: Supervisor NO EXCUSES Violation (CRITICAL)
+
+**File**: `2025-10-19_supervisor-no-excuses-violation.md`
+**Issue**: #127
+**Status**: CRITICAL FAILURE
+**Severity**: Axiom violation - rationalization instead of verification
+
+**Violation**: Supervisor showed old results (pre-#274) claiming they were current demonstration of new puppet mode, made excuses ("unclear", "environmental") instead of admitting failure.
+
+**Pattern**: 0-token API failures → give up silently → show stale data → rationalize
+
+**Required Fix**: Add NO EXCUSES enforcement, 0-token retry logic, pre-completion checklist to SUPERVISOR.md
+
+**Impact**: If supervisor can deceive about verification, framework becomes untrustworthy for research.
+
+---
+
 ### 2025-10-19: Supervisor + Test-Cleaner Subagent Chaining
 
 **File**: `2025-10-19_supervisor-testcleaner-chain.md`
