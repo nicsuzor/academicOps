@@ -11,6 +11,7 @@ Following testing practices: Integration tests, not unit tests.
 Validates the whole system works together.
 """
 
+import json
 import subprocess
 from pathlib import Path
 
@@ -47,47 +48,57 @@ class TestCommandFileReferences:
         dev_cmd = commands_dir / "dev.md"
         content = dev_cmd.read_text()
 
-        # Extract referenced files (looking for patterns like scripts/X.py or _CHUNKS/Y.md)
-        if "read_instructions.py" in content:
-            script = bot_root / "scripts" / "read_instructions.py"
+        # Should reference load_instructions.py (consolidated script)
+        if "load_instructions.py" in content:
+            script = bot_root / "scripts" / "load_instructions.py"
             assert script.exists(), f"/dev references {script} which doesn't exist"
             assert script.stat().st_mode & 0o111, f"{script} is not executable"
 
-        if "_CHUNKS/DEVELOPER.md" in content:
-            # Check where read_instructions.py actually looks
-            chunk_file = bot_root / "docs" / "_CHUNKS" / "DEVELOPER.md"
-            agents_file = bot_root / "agents" / "_CHUNKS" / "DEVELOPER.md"
+        # If it references DEVELOPER.md, check it exists at new location
+        if "DEVELOPER.md" in content:
+            # New location (bots/agents/)
+            dev_file = bot_root / "bots" / "agents" / "DEVELOPER.md"
 
-            assert chunk_file.exists() or agents_file.exists(), (
-                f"/dev references _CHUNKS/DEVELOPER.md but not found at:\n"
-                f"  - {chunk_file}\n"
-                f"  - {agents_file}"
+            # If not migrated yet, might still be in old location
+            old_locations = [
+                bot_root / "docs" / "_CHUNKS" / "DEVELOPER.md",
+                bot_root / "agents" / "DEVELOPER.md",
+            ]
+
+            exists_somewhere = dev_file.exists() or any(loc.exists() for loc in old_locations)
+            assert exists_somewhere, (
+                f"/dev references DEVELOPER.md but not found at:\n"
+                f"  - {dev_file} (new location)\n" +
+                "\n".join(f"  - {loc} (old location)" for loc in old_locations)
             )
 
     def test_ttd_command_references_valid_files(self, bot_root, commands_dir):
         """Test /ttd command references files that actually exist."""
         ttd_cmd = commands_dir / "ttd.md"
-        content = ttd_cmd.read_text()
+        content = ttd_cmd.read_text(encoding='utf-8', errors='replace')
 
         # Should reference TESTING.md and FAIL-FAST.md
         if "TESTING.md" in content:
-            # Check all possible locations
-            locations = [
+            # New location (bots/agents/) or old locations
+            new_loc = bot_root / "bots" / "agents" / "TESTING.md"
+            old_locations = [
                 bot_root / "docs" / "TESTING.md",
-                bot_root / "agents" / "TESTING.md",
                 bot_root / "docs" / "_CHUNKS" / "TESTING.md",
             ]
-            assert any(loc.exists() for loc in locations), (
-                f"/ttd references TESTING.md but not found at any location:\n" +
-                "\n".join(f"  - {loc}" for loc in locations)
+            exists_somewhere = new_loc.exists() or any(loc.exists() for loc in old_locations)
+            assert exists_somewhere, (
+                f"/ttd references TESTING.md but not found at:\n"
+                f"  - {new_loc} (new location)\n" +
+                "\n".join(f"  - {loc} (old location)" for loc in old_locations)
             )
 
         if "FAIL-FAST.md" in content:
-            locations = [
+            new_loc = bot_root / "bots" / "agents" / "FAIL-FAST.md"
+            old_locations = [
                 bot_root / "docs" / "_CHUNKS" / "FAIL-FAST.md",
-                bot_root / "agents" / "FAIL-FAST.md",
             ]
-            assert any(loc.exists() for loc in locations), (
+            exists_somewhere = new_loc.exists() or any(loc.exists() for loc in old_locations)
+            assert exists_somewhere, (
                 f"/ttd references FAIL-FAST.md but not found"
             )
 
@@ -153,7 +164,7 @@ class TestEnvironmentVariableUsage:
         commands_dir = bot_root / ".claude" / "commands"
 
         for cmd_file in commands_dir.glob("*.md"):
-            content = cmd_file.read_text()
+            content = cmd_file.read_text(encoding='utf-8', errors='replace')
 
             # Should not contain absolute paths to home directory
             assert "/home/" not in content, (
@@ -182,52 +193,43 @@ class TestEnvironmentVariableUsage:
         assert bot_path.exists(), f"ACADEMICOPS_BOT points to non-existent path: {bot_path}"
 
 
-class TestReadInstructionsScript:
-    """Test that read_instructions.py works with actual file structure."""
+class TestLoadInstructionsScript:
+    """Test that load_instructions.py works with actual file structure."""
 
     @pytest.fixture
     def bot_root(self):
         return Path(__file__).parent.parent
 
-    def test_read_instructions_finds_developer_md(self, bot_root, monkeypatch):
-        """Test that read_instructions.py can find DEVELOPER.md."""
+    def test_load_instructions_finds_core_md(self, bot_root, monkeypatch):
+        """Test that load_instructions.py can find _CORE.md at new location."""
         monkeypatch.setenv("ACADEMICOPS_BOT", str(bot_root))
 
-        # Where does DEVELOPER.md actually exist?
-        possible_locations = [
-            bot_root / "docs" / "_CHUNKS" / "DEVELOPER.md",
-            bot_root / "agents" / "_CHUNKS" / "DEVELOPER.md",
-            bot_root / "agents" / "DEVELOPER.md",
-        ]
+        # _CORE.md should be at new location
+        core_md = bot_root / "bots" / "agents" / "_CORE.md"
+        assert core_md.exists(), f"_CORE.md not found at {core_md}"
 
-        developer_md = None
-        for loc in possible_locations:
-            if loc.exists():
-                developer_md = loc
-                break
-
-        assert developer_md is not None, (
-            "DEVELOPER.md not found at any expected location"
-        )
-
-        # Test if read_instructions.py can find it
-        # Note: read_instructions.py looks in agents/<filename>
-        # So if we pass "_CHUNKS/DEVELOPER.md", it looks in agents/_CHUNKS/DEVELOPER.md
-
+        # Test default usage (loads _CORE.md, outputs JSON)
         result = subprocess.run(
-            ["uv", "run", "python", "scripts/read_instructions.py", "_CHUNKS/DEVELOPER.md"],
+            ["uv", "run", "python", "scripts/load_instructions.py"],
             cwd=bot_root,
             capture_output=True,
             text=True,
+            input="{}",  # Empty JSON input
         )
 
-        # Should either succeed (exit 0) or explain what's missing
-        if result.returncode != 0:
-            pytest.fail(
-                f"read_instructions.py failed to find _CHUNKS/DEVELOPER.md\n"
-                f"stdout: {result.stdout}\n"
-                f"stderr: {result.stderr}"
-            )
+        assert result.returncode == 0, (
+            f"load_instructions.py failed to load _CORE.md\n"
+            f"stdout: {result.stdout}\n"
+            f"stderr: {result.stderr}"
+        )
+
+        # Should output valid JSON
+        try:
+            output = json.loads(result.stdout)
+            assert "hookSpecificOutput" in output
+            assert "additionalContext" in output["hookSpecificOutput"]
+        except json.JSONDecodeError as e:
+            pytest.fail(f"Output is not valid JSON: {e}\n{result.stdout}")
 
 
 # Test execution notes
