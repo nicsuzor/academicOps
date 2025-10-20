@@ -1,0 +1,65 @@
+#!/bin/bash
+################################################################################
+# Delegating Pre-commit Hook
+################################################################################
+#
+# PURPOSE:
+#   Runs all executable scripts in pre-commit.d/ directory in lexical order.
+#   Stops on first failure (non-zero exit code).
+#
+# USAGE:
+#   This hook is automatically installed by academicOps install-hooks.sh
+#   It executes all hooks found in .git/hooks/pre-commit.d/
+#
+# ADDING HOOKS:
+#   1. Create executable script in .git/hooks/pre-commit.d/
+#   2. Use numeric prefix for execution order (00-, 10-, 20-, etc.)
+#   3. Exit with 0 for success, non-zero for failure
+#
+# HOOK NAMING CONVENTION:
+#   00-academicops.sh     - academicOps validation (runs first)
+#   10-project-lint.sh    - Project-specific linters
+#   20-project-tests.sh   - Project-specific tests
+#   30-custom.sh          - Additional custom hooks
+#
+# EXECUTION ORDER:
+#   - Hooks execute in lexical (alphabetical) order
+#   - First hook to fail (exit ≠ 0) stops execution
+#   - All hooks must succeed for commit to proceed
+#
+# EXAMPLE:
+#   Create a new hook:
+#     echo '#!/bin/bash\necho "My hook"\nexit 0' > .git/hooks/pre-commit.d/15-my-hook.sh
+#     chmod +x .git/hooks/pre-commit.d/15-my-hook.sh
+#
+################################################################################
+
+set -e
+
+HOOK_DIR="$(dirname "$0")/pre-commit.d"
+
+# If no hooks directory exists, exit successfully
+if [ ! -d "$HOOK_DIR" ]; then
+    exit 0
+fi
+
+# Execute all executable hooks in lexical order
+EXIT_CODE=0
+for hook in "$HOOK_DIR"/*; do
+    # Skip if no files found (glob didn't match)
+    [ -e "$hook" ] || continue
+
+    # Skip non-executable files
+    [ -x "$hook" ] || continue
+
+    # Run the hook
+    echo "Running pre-commit hook: $(basename "$hook")"
+    if ! "$hook"; then
+        EXIT_CODE=$?
+        echo "❌ Hook failed: $(basename "$hook") (exit code: $EXIT_CODE)"
+        exit $EXIT_CODE
+    fi
+done
+
+# All hooks succeeded
+exit 0
