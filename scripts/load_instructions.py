@@ -1,223 +1,193 @@
 #!/usr/bin/env python3
 """
-SessionStart hook to enforce reading core instruction files.
+Load instruction files from 3-tier hierarchy: framework → personal → project.
 
-This script is called by Claude Code at the start of every session.
-It forces agents to read the hierarchical instruction files by injecting
-them as additional context.
+ONE script, ONE pattern, TWO output modes.
 
-Loading Hierarchy:
-1. Framework Core (REQUIRED): $ACADEMICOPS_BOT/agents/_CORE.md
-2. Personal Context (OPTIONAL): $ACADEMICOPS_PERSONAL/docs/agents/INSTRUCTIONS.md
-3. Project Context (OPTIONAL): $PWD/bots/docs/INSTRUCTIONS.md
-   - Falls back to: $PWD/docs/bots/INSTRUCTIONS.md (legacy support)
+Usage:
+    # SessionStart hook (default: loads _CORE.md, outputs JSON)
+    load_instructions.py
 
-Input: JSON with session start source.
+    # Slash commands (custom file, outputs plain text)
+    load_instructions.py DEVELOPER.md
+    load_instructions.py _CHUNKS/FAIL-FAST.md
+
+    # Force plain text output
+    load_instructions.py _CORE.md --format=text
+
+Loading Hierarchy (ALWAYS the same, NO legacy fallbacks):
+1. Framework: $ACADEMICOPS_BOT/bots/agents/<filename>
+2. Personal:  $ACADEMICOPS_PERSONAL/bots/agents/<filename> (if exists)
+3. Project:   $PWD/bots/agents/<filename> (if exists)
+
+Output Modes:
+- JSON (default when no filename): For SessionStart hook
+- Text (when filename given): For slash commands
 
 Exit codes:
-    0: Success (stdout shown to Claude)
-    2: Blocking errors are ignored
-    other exit codes: show stderr to user only
-
-Output:
-    Prints instructions on STDOUT that will be injected into agent context
+    0: Success
+    1: Error (missing required env var or file)
 """
 
-import datetime
+import argparse
 import json
 import os
 import sys
 from pathlib import Path
 
 
-def get_academicops_root() -> Path:
+def get_tier_paths(filename: str) -> dict[str, Path | None]:
     """
-    Find the academicOps framework root using environment variable.
+    Get paths to instruction file at all three tiers.
 
-    Returns the academicOps root directory.
-    Raises ValueError if ACADEMICOPS_BOT is not set.
+    Returns dict with keys: framework, personal, project
+    Each value is a Path or None.
     """
-    if env_path := os.environ.get("ACADEMICOPS_BOT"):
-        return Path(env_path).resolve()
+    paths = {}
 
-    # ACADEMICOPS_BOT is required - no fallback
-    raise ValueError(
-        "ACADEMICOPS_BOT environment variable is not set. "
-        "Add to your shell profile: export ACADEMICOPS_BOT=/path/to/academicOps"
-    )
+    # Framework tier (REQUIRED)
+    if bot_path := os.environ.get("ACADEMICOPS_BOT"):
+        paths["framework"] = Path(bot_path) / "bots" / "agents" / filename
+    else:
+        # Fail fast - ACADEMICOPS_BOT is required
+        raise ValueError(
+            "ACADEMICOPS_BOT environment variable not set. "
+            "Add to shell: export ACADEMICOPS_BOT=/path/to/bot"
+        )
 
+    # Personal tier (OPTIONAL)
+    if personal_path := os.environ.get("ACADEMICOPS_PERSONAL"):
+        paths["personal"] = Path(personal_path) / "bots" / "agents" / filename
+    else:
+        paths["personal"] = None
 
-def get_personal_context_root() -> Path | None:
-    """
-    Find personal context directory using environment variable.
+    # Project tier (OPTIONAL)
+    paths["project"] = Path.cwd() / "bots" / "agents" / filename
 
-    Returns None if not found (personal context is optional).
-    """
-    # Check environment variable
-    if env_path := os.environ.get("ACADEMICOPS_PERSONAL"):
-        path = Path(env_path).resolve()
-        if path.exists():
-            return path
-        # ACADEMICOPS_PERSONAL is set but path doesn't exist - warn but continue
-        print(f"Warning: ACADEMICOPS_PERSONAL is set but path does not exist: {env_path}", file=sys.stderr)
-
-    # No personal context found (this is OK - it's optional)
-    return None
+    return paths
 
 
-def get_project_root() -> Path:
-    """Find the current project root (where Claude Code was launched from)."""
-    return Path.cwd()
+def load_tier_content(path: Path | None) -> str | None:
+    """Load content from a tier path. Returns None if missing."""
+    if path is None:
+        return None
 
+    if not path.exists():
+        return None
 
-def read_instruction_file(path: Path) -> str:
-    """Read an instruction file and return its contents."""
     try:
         return path.read_text()
-    except FileNotFoundError:
-        return f"ERROR: Required instruction file not found: {path}"
     except Exception as e:
-        return f"ERROR: Failed to read {path}: {e}"
+        print(f"Error reading {path}: {e}", file=sys.stderr)
+        return None
 
 
-def get_project_instructions_path(project_root: Path) -> Path | None:
-    """
-    Find project-specific instructions following the new /bots/ structure.
-    
-    Search order:
-    1. bots/docs/INSTRUCTIONS.md (NEW standard)
-    2. docs/bots/INSTRUCTIONS.md (LEGACY support)
-    3. docs/agents/INSTRUCTIONS.md (LEGACY support)
-    
-    Returns the first found path, or None if none exist.
-    """
-    # Preferred: new /bots/ structure
-    new_path = project_root / "bots" / "docs" / "INSTRUCTIONS.md"
-    if new_path.exists():
-        return new_path
-    
-    # Legacy: docs/bots/ (previous standard)
-    legacy_bots = project_root / "docs" / "bots" / "INSTRUCTIONS.md"
-    if legacy_bots.exists():
-        return legacy_bots
-    
-    # Legacy: docs/agents/ (oldest standard)
-    legacy_agents = project_root / "docs" / "agents" / "INSTRUCTIONS.md"
-    if legacy_agents.exists():
-        return legacy_agents
-    
-    # No project instructions found
-    return None
-
-
-def main():
-    try:
-        input_data = json.load(sys.stdin)
-    except json.JSONDecodeError:
-        input_data = {}
-    input_data["argv"] = sys.argv
-
-    # Get paths using environment variables or fallbacks
-    academicops_root = get_academicops_root()
-    personal_root = get_personal_context_root()
-    project_root = get_project_root()
-
-    # Required: Core framework instructions
-    generic_instructions = academicops_root / "agents" / "_CORE.md"
-    generic_content = read_instruction_file(generic_instructions)
-
-    if generic_content.startswith("ERROR:"):
-        print("CRITICAL: Failed to load core framework instructions", file=sys.stderr)
-        print(generic_content, file=sys.stderr)
-        print(f"Searched at: {generic_instructions}", file=sys.stderr)
-        print(f"ACADEMICOPS_BOT={os.environ.get('ACADEMICOPS_BOT', 'not set')}", file=sys.stderr)
-        sys.exit(1)
-
-    # Optional: Personal context
-    user_content = ""
-    if personal_root:
-        user_instructions = personal_root / "docs" / "agents" / "INSTRUCTIONS.md"
-        user_content = read_instruction_file(user_instructions)
-        if user_content.startswith("ERROR:"):
-            # Personal context is optional - just note it
-            print(f"Note: Personal context not found at {user_instructions}", file=sys.stderr)
-            user_content = ""
-
-    # Optional: Project-specific instructions (with legacy fallback)
-    project_content = ""
-    project_instructions = get_project_instructions_path(project_root)
-    
-    if project_instructions:
-        # Don't load if it's the same as personal context
-        if personal_root and project_instructions == (personal_root / "docs" / "agents" / "INSTRUCTIONS.md"):
-            print(f"Note: Project instructions same as personal context, skipping duplicate", file=sys.stderr)
-        else:
-            project_content = read_instruction_file(project_instructions)
-            if project_content.startswith("ERROR:"):
-                project_content = ""
-            else:
-                # Inform user which path was used
-                if "bots/docs" in str(project_instructions):
-                    print(f"✓ Loaded project instructions from bots/docs/INSTRUCTIONS.md", file=sys.stderr)
-                else:
-                    print(f"✓ Loaded project instructions from {project_instructions.relative_to(project_root)} (legacy location)", file=sys.stderr)
-
-    # Build context based on what's available
+def output_json(contents: dict[str, str], filename: str) -> None:
+    """Output in JSON format for SessionStart hook."""
+    # Build context sections in priority order: project → personal → framework
     sections = []
 
-    if user_content:
-        sections.append(f"""## PRIMARY: Your Work Context
+    if "project" in contents:
+        sections.append(f"## PROJECT: Current Project Context\n\n{contents['project']}")
 
-{user_content}""")
+    if "personal" in contents:
+        sections.append(f"## PERSONAL: Your Work Context\n\n{contents['personal']}")
 
-    if project_content:
-        sections.append(f"""## PROJECT: Current Project Context
+    if "framework" in contents:
+        sections.append(f"## FRAMEWORK: Core Rules\n\n{contents['framework']}")
 
-{project_content}""")
+    additional_context = "# Agent Instructions\n\n" + "\n\n---\n\n".join(sections)
 
-    sections.append(f"""## BACKGROUND: Framework Operating Rules
-
-{generic_content}""")
-
-    additional_context = "# Required Agent Instructions\n\n" + "\n\n---\n\n".join(sections)
-    additional_context += "\n\n---\n\n**Priority**: Your strategic goals and active projects take precedence. Framework development happens when needed, not by default.\n"
-
-    # Construct the additional context message in the correct format for SessionStart hooks
-    # See: https://docs.claude.com/en/docs/claude-code/hooks
-    context = {
+    # Output JSON for Claude Code hook
+    output = {
         "hookSpecificOutput": {
             "hookEventName": "SessionStart",
             "additionalContext": additional_context,
         }
     }
 
-    # Output as JSON for Claude Code to parse
-    print(json.dumps(context), file=sys.stdout)
+    print(json.dumps(output), file=sys.stdout)
 
-    # Status message to stderr
-    loaded = ["core"]
-    if user_content:
-        loaded.append("personal")
-    if project_content:
-        loaded.append("project")
-    print(f"✓ Loaded {', '.join(loaded)} instruction files", file=sys.stderr)
+    # Status to stderr
+    loaded = [tier for tier in ["framework", "personal", "project"] if tier in contents]
+    print(f"✓ Loaded {filename} from: {', '.join(loaded)}", file=sys.stderr)
 
-    # Debug: Save input for inspection
-    debug_file = Path("/tmp/validate_env.json")
-    debug_data = {
-        "input": input_data,
-        "output": context,
-        "timestamp": datetime.datetime.now().isoformat(),
-        "paths": {
-            "academicops_root": str(academicops_root),
-            "personal_root": str(personal_root) if personal_root else None,
-            "project_root": str(project_root),
-            "project_instructions": str(project_instructions) if project_instructions else None,
-        },
-    }
-    with debug_file.open("a") as f:
-        json.dump(debug_data, f, indent=None)
-        f.write("\n")
+
+def output_text(contents: dict[str, str], filename: str) -> None:
+    """Output in plain text format for slash commands."""
+    # Output in priority order: project → personal → framework
+    for tier in ["project", "personal", "framework"]:
+        if tier in contents:
+            print(f"# === {tier.upper()}: {filename} ===\n", file=sys.stderr)
+            print(contents[tier], file=sys.stderr)
+            print("\n", file=sys.stderr)
+
+    # Status summary to stdout (visible to user)
+    loaded = [tier for tier in ["framework", "personal", "project"] if tier in contents]
+    missing = [tier for tier in ["framework", "personal", "project"] if tier not in contents]
+
+    status_parts = []
+    if "framework" in contents:
+        status_parts.append("✓ framework")
+    if "personal" in contents:
+        status_parts.append("✓ personal")
+    if "project" in contents:
+        status_parts.append("✓ project")
+
+    print(f"Loaded {filename}: {' '.join(status_parts)}", file=sys.stdout)
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Load instruction files from 3-tier hierarchy"
+    )
+    parser.add_argument(
+        "filename",
+        nargs="?",
+        default="_CORE.md",
+        help="Instruction file to load (default: _CORE.md)",
+    )
+    parser.add_argument(
+        "--format",
+        choices=["json", "text"],
+        help="Output format (default: json if _CORE.md, text otherwise)",
+    )
+
+    args = parser.parse_args()
+
+    # Determine output format
+    if args.format:
+        output_format = args.format
+    else:
+        # Default: JSON for _CORE.md (SessionStart), text for others (commands)
+        output_format = "json" if args.filename == "_CORE.md" else "text"
+
+    # Get paths for all three tiers
+    try:
+        paths = get_tier_paths(args.filename)
+    except ValueError as e:
+        print(f"ERROR: {e}", file=sys.stderr)
+        sys.exit(1)
+
+    # Load content from each tier
+    contents = {}
+    for tier, path in paths.items():
+        if content := load_tier_content(path):
+            contents[tier] = content
+
+    # Framework tier is REQUIRED
+    if "framework" not in contents:
+        print(f"ERROR: Framework file not found: {paths['framework']}", file=sys.stderr)
+        print(f"Searched at: {paths['framework']}", file=sys.stderr)
+        print(f"ACADEMICOPS_BOT={os.environ.get('ACADEMICOPS_BOT', 'NOT SET')}", file=sys.stderr)
+        sys.exit(1)
+
+    # Output in requested format
+    if output_format == "json":
+        output_json(contents, args.filename)
+    else:
+        output_text(contents, args.filename)
+
     sys.exit(0)
 
 
