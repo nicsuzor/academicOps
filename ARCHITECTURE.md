@@ -1,279 +1,296 @@
 # academicOps Architecture
 
-Single source of truth for the academicOps agent framework: what exists, how it works, and who is responsible.
+**Human-readable documentation of system design and current implementation.**
 
-## Core Design Philosophy
+This document explains how academicOps works, what design decisions have been made, and what's still evolving. Written for developers, contributors, and users who want to understand the system.
 
-**Sleek and Minimal:** Simple, flexible architecture. Every layer has a clear purpose. No over-engineering.
+---
 
-**Single Instruction Loading Pathway:** All agents load `_CORE.md` from the 3-tier hierarchy at SessionStart. No project-specific slash commands. No complex discovery
-mechanisms.
+## Philosophy: Designing for Evolution
 
-**Modular by Reference:** Documentation lives once, gets referenced everywhere. DRY principle strictly enforced.
+academicOps is experimental infrastructure. The design evolves based on real-world usage and user feedback.
+
+**Documentation principles:**
+- Describes current state, not aspirational goals
+- Design decisions inferred from working implementations
+- Tensions and evolving preferences tracked explicitly in "Open Questions" section
+- When documentation diverges from reality, reality wins—update docs to match
+
+**File organization:**
+- `agents/*.md` - Agent instructions (rules agents must follow)
+- `docs/*.md`, `*.md` (root) - Human documentation (explanations of how system works)
+- Agent rules use imperative voice ("You MUST..."), documentation uses descriptive voice ("The system does...")
+
+---
+
+## Core Concepts
+
+### Agent Instructions vs Documentation
+
+**Critical distinction maintained throughout academicOps:**
+
+**`agents/` directory = Agent Instructions (executable rules)**
+- Files loaded by agents at runtime
+- Written in imperative voice for AI consumption
+- Contains MUST/NEVER/ALWAYS rules
+- Example: `agents/_CORE.md` with fail-fast axioms
+- Example: `agents/TRAINER.md` with trainer agent instructions
+
+**`docs/` directory = Human Documentation (explanatory)**
+- Files for humans to read and understand the system
+- Written in descriptive/explanatory voice
+- Explains design decisions, usage, architecture
+- Example: `docs/hooks_guide.md` explaining how hooks work
+- Example: `ARCHITECTURE.md` (this file)
+
+This separation prevents confusion between "what agents must do" and "what humans need to know."
+
+### Namespace Rule
+
+All projects using academicOps follow this structure:
+
+```
+any-repo/
+├── agents/              # Agent instruction files (rules)
+│   └── _CORE.md        # Core axioms loaded at SessionStart
+├── docs/               # Human documentation (explanations)
+│   └── (user's docs)
+├── bots/               # academicOps installation (NEW standard)
+│   ├── .academicOps/  # Symlink to framework
+│   ├── agents/        # Repo-local agent overrides
+│   ├── docs/          # Repo-local agent instructions
+│   └── commands/      # Repo-local slash commands
+└── .claude/
+    ├── agents -> bots/.academicOps/.claude/agents
+    └── settings.json
+```
+
+**Rule enforced in agent instructions**: Never put agent rules in `docs/`, never put human documentation in `agents/`.
+
+---
 
 ## Instruction Loading System
 
-### Automatic Loading (SessionStart Hook)
+### How Agents Get Their Instructions
 
-**Single Script Chain:**
+At session start and when agents are invoked, academicOps loads instructions from multiple locations in a hierarchical order.
 
-1. `load_instructions.py` (SessionStart hook) → calls
-2. `read_instructions.py _CORE.md` → loads 3-tier hierarchy
+### SessionStart: Three-Tier Hierarchy
 
-**3-Tier Hierarchy (Priority: Project → Personal → Bot):**
+Every session loads instructions from up to three tiers:
 
-$PROJECT/agents/_CORE.md              ← Highest priority (project-specific)
-$ACADEMICOPS_PERSONAL/agents/_CORE.md ← Medium priority (user global)
-$ACADEMICOPS_BOT/agents/_CORE.md      ← Lowest priority (framework defaults)
+```
+$PROJECT/bots/docs/INSTRUCTIONS.md           (HIGHEST PRIORITY)
+$ACADEMICOPS_PERSONAL/bots/docs/INSTRUCTIONS.md (MEDIUM PRIORITY)
+$ACADEMICOPS_BOT/agents/_CORE.md             (LOWEST PRIORITY)
+```
 
-**Output:**
+**Loading behavior:**
+- At least one file must exist (exits with error if all missing)
+- Missing tiers silently skipped
+- All loaded tiers visible to agent simultaneously
+- Priority determines which guidance takes precedence in conflicts
 
-- **To User** (stdout): Colored status line showing which levels loaded
-Loaded _CORE.md: ✓ bot ✓ personal ✓ project
-- **To Agent** (stderr): Full text of all 3 files for agent consumption
+**Content organization by tier:**
 
-**Behavior:**
+**Framework tier** (`$ACADEMICOPS_BOT/agents/_CORE.md`):
+- Generic work axioms (fail-fast, DRY, verify first)
+- Repository structure overview
+- Tool requirements
 
-- **At least ONE file MUST exist** (blocks with exit code 1 if all missing)
-- Files loaded in priority order (project overrides personal overrides bot)
-- Missing files at any tier are silently skipped (fail-fast only if ALL missing)
+**Personal tier** (`$ACADEMICOPS_PERSONAL/bots/docs/INSTRUCTIONS.md`):
+- User's global preferences across all repos
+- Work style, ADHD accommodations, communication preferences
+- Writing style guide references
+- Tool preferences (BigQuery over Redshift, etc.)
+- Workflow defaults
 
-### Agent-Specific Loading
+**Project tier** (`$PROJECT/bots/docs/INSTRUCTIONS.md`):
+- Project-specific architecture and conventions
+- Domain knowledge
+- Dependencies and cross-cutting concerns
+- Local tool and data paths
 
-When you invoke `@agent-{name}`, Claude Code loads:
+**Current migration note**: Legacy paths (`docs/bots/INSTRUCTIONS.md`, `docs/agents/INSTRUCTIONS.md`) still supported as fallback during transition to new `/bots/` standard.
 
-1. SessionStart instructions (all 3 tiers of `_CORE.md`)
-2. Agent-specific file: `${ACADEMICOPS_BOT}/agents/{NAME}.md`
+### Agent-Specific Instructions
 
-**Example:** `@agent-developer` loads:
+When user invokes a specific agent (e.g., `@agent-developer`):
 
-1. `_CORE.md` (all 3 tiers - core axioms + user context + project context)
-2. `DEVELOPER.md` (developer-specific workflows)
+1. SessionStart instructions already loaded (3-tier hierarchy)
+2. Framework agent file loads: `$ACADEMICOPS_BOT/agents/{NAME}.md`
+3. Optional repo-local override: `$PROJECT/bots/agents/{name}.md`
 
-### No Project-Specific Slash Commands
+**Example loading sequence for `@agent-developer` in buttermilk repo:**
 
-**Old System (removed):**
+1. `bot/agents/_CORE.md` (core axioms)
+2. `~/src/writing/bots/docs/INSTRUCTIONS.md` (user preferences)
+3. `buttermilk/bots/docs/INSTRUCTIONS.md` (project architecture)
+4. `bot/agents/DEVELOPER.md` (developer agent instructions)
+5. `buttermilk/bots/agents/developer.md` (if exists - buttermilk dev rules)
 
-- `/mm` → MediaMarkets analysis mode
-- `/bm` → Buttermilk development mode
-- `/tja` → TJA analysis mode
+**Priority in conflicts**: Repo-local > Framework agent > Project > Personal > Framework core
 
-**New System:**
+### Personal Repository: Dual Purpose
 
-- Project context auto-loads from `$PROJECT/agents/_CORE.md`
-- Agent definitions remain generic (`DEVELOPER.md`, `ANALYST.md`)
-- Project-specific knowledge lives in project repos, not bot framework
+An important pattern observed in actual usage:
 
-**Rationale:** Most projects don't need dedicated commands. Auto-loaded project context is sufficient.
+The repository referenced by `$ACADEMICOPS_PERSONAL` typically serves two purposes:
+
+1. **Preference source for all repos** - Contains user's global preferences in `bots/docs/INSTRUCTIONS.md`
+2. **Working project** - Has its own purpose (strategic planning, email triage, task management)
+
+**Example**: User's `~/src/writing` repo:
+- Provides user preferences loaded by ALL repos (writing style, tool choices, ADHD accommodations)
+- Also does actual work (strategic planning, email processing)
+- Contains `data/` directory (goals, tasks, projects) used by strategist agent when working in this repo
+
+**Privacy boundary:**
+- User preferences (in `bots/docs/INSTRUCTIONS.md`) = shareable patterns, loaded globally
+- Strategic data (in `data/`) = private information, accessed only when working directory is personal repo
+- Scope determined automatically by working directory
+
+---
 
 ## File Structure
 
-### Bot Framework (`$ACADEMICOPS_BOT/`)
+### Framework Repository (`$ACADEMICOPS_BOT`)
 
-**Agent Definitions** (`agents/`):
+The academicOps framework itself organized as:
 
-- `_CORE.md` - Core axioms loaded for ALL agents at SessionStart
-- `TRAINER.md` - Agent framework maintenance
-- `STRATEGIST.md` - Planning and project management
+**Agent instructions** (`agents/`):
+- `_CORE.md` - Core axioms for all agents
+- `TRAINER.md` - Framework maintenance instructions
+- `STRATEGIST.md` - Planning and task management
 - `DEVELOPER.md` - Code implementation
-- `CODE.md` - Code review and commits (invoked as `@agent-code-review`)
-- `ANALYST.md` - Data analysis workflows (dbt, SQL)
+- `REVIEW.md` - Code review and git operations
+- `SUPERVISOR.md` - Multi-step workflow orchestration
+- `TEST-CLEANER.md` - Test simplification and cleanup
 
-**Framework Documentation** (`docs/`):
+**Automation scripts** (`scripts/`):
+- `load_instructions.py` - SessionStart hook (loads 3-tier hierarchy)
+- `read_instructions.py` - Generic hierarchical file loader
+- `validate_tool.py` - PreToolUse hook (enforces tool usage rules)
+- `validate_stop.py` - Stop hooks
+- `install_bot.sh` - One-command installation for new repos
+- `setup_academicops.sh` - Legacy installation script
 
-- `hooks_guide.md` - Hook system documentation
-- `methodologies/computational-research.md` - Research workflows
-- `methodologies/dbt-practices.md` - Analytics engineering patterns
+**Configuration templates** (`dist/`):
+- `.claude/settings.json` - Template Claude Code configuration
+- `bots/docs/INSTRUCTIONS.md` - Template for project instructions
+- `bots/agents/EXAMPLE.md` - Agent override example
+- `.gitignore` - Standard exclusions
 
-**Scripts** (`scripts/`):
+**Human documentation** (`docs/`):
+- `hooks_guide.md` - Explains hook system
+- `TESTING.md` - Test writing guidance
+- `INSTRUCTION-INDEX.md` - Index of all instruction files
+- `methodologies/` - Workflow explanations (dbt, computational research)
 
-- `load_instructions.py` - SessionStart hook (calls read_instructions.py)
-- `read_instructions.py` - Reads `<filename>` from 3-tier hierarchy
-- `validate_tool.py` - PreToolUse hook (enforces tool rules)
-- `validate_stop.py` - SubagentStop/Stop hooks
-- `setup_academicops.sh` - Setup script for new projects
-- `check_instruction_orphans.py` - Validates instruction file linkage
-- Other utility scripts for tasks, code review, etc.
+**Top-level documentation** (root):
+- `README.md` - Quick start for users
+- `ARCHITECTURE.md` - This file (system design explanation)
+- `INSTALL.md` - Installation instructions
 
-**Configuration Templates** (`dist/`):
+**Archived content** (`docs/_UNUSED/`):
+- 30+ obsolete documentation files
+- Kept for historical reference
+- Not referenced in active system
 
-- `.claude/settings.json` - Template Claude Code settings
-- `agents/INSTRUCTIONS.md` - Template for project `_CORE.md` files
-- `.gitignore` - academicOps exclusions
+### Installation Standard: `/bots/` Directory
 
-**Archived Files** (`docs/_UNUSED/`):
+New standard for academicOps installation in target repositories:
 
-- 32+ archived obsolete documentation files
-- Not referenced in active loading paths
-- Kept for historical reference only
-
-### Personal Context (`$ACADEMICOPS_PERSONAL/`)
-
-**User Global Preferences:**
-
-- `agents/_CORE.md` - User's global preferences across all projects
-- `agents/DEVELOPER.md` - User's development patterns (optional)
-- `docs/**` - User-specific documentation (optional)
-- `data/` - User's tasks, goals, projects, context (for strategist)
-
-### Project Level (`$PROJECT/`)
-
-**Project-Specific Context:**
-
-- `agents/_CORE.md` - Project-specific rules and context
-- `.claude/settings.json` - Project Claude Code configuration
-- `.claude/commands/` - Project-specific slash commands (if truly needed)
-- `.academicOps/scripts/` - Symlinked validation scripts (created by setup)
-
-## Validation & Enforcement System
-
-academicOps uses a **multi-layered enforcement hierarchy** to ensure quality and consistency:
-
-### 1. Claude Code Hooks (Runtime Validation)
-
-Configured in `.claude/settings.json`, these hooks run during Claude Code sessions.
-
-#### SessionStart Hook (`load_instructions.py`)
-
-**Purpose:** Loads hierarchical instructions at every session start
-
-**Process:**
-
-1. Calls `read_instructions.py _CORE.md`
-2. Loads from 3-tier hierarchy (bot → personal → project)
-3. Returns context to agent via stderr
-4. Shows user-friendly status via stdout
-
-**Output to user:**
 ```
-Loaded _CORE.md: ✓ bot ✓ personal ✓ project
+target-repo/
+├── bots/
+│   ├── .academicOps/              # Symlink to $ACADEMICOPS_BOT
+│   ├── docs/INSTRUCTIONS.md       # Project-specific agent instructions
+│   ├── agents/*.md                # Repo-local agent overrides (optional)
+│   ├── commands/*.sh              # Repo-local slash commands (optional)
+│   └── scripts/*.py               # Repo-local automation (optional)
+├── .claude/
+│   ├── agents -> bots/.academicOps/.claude/agents
+│   ├── commands -> bots/.academicOps/.claude/commands
+│   └── settings.json              # Project configuration
+├── agents/                        # Legacy location
+│   └── _CORE.md                  # Project instructions (being migrated)
+└── docs/                          # User's existing documentation
+    └── (never touched by academicOps)
 ```
 
-**Fail-fast:** Blocks session if ALL three tiers are missing
+**Design rationale:**
+- All academicOps files in `/bots/` namespace - no conflicts with user directories
+- Clear visual separation: `bots/.academicOps/` (symlink, never edit) vs `bots/docs/`, `bots/agents/` (repo-local, edit freely)
+- Legacy paths still supported during migration
 
-#### PreToolUse Hook (`validate_tool.py`)
+**Migration status:**
+- New standard defined and tested on reference implementation
+- Installation script available (`scripts/install_bot.sh`)
+- Legacy fallback paths active during transition
+- Deprecation timeline not yet set
 
-**Purpose:** Validates every tool call before execution
+---
 
-**Rules Enforced:**
+## Validation & Enforcement
 
-1. **Markdown file creation restricted** (prevents documentation bloat)
-   - Blocks: `Write(**/*.md)`, except research papers
-   - Enforces: Self-documenting code principle
-2. **Python execution requires `uv run` prefix**
-   - Blocks: `python script.py`, `python3 script.py`
-   - Allows: `uv run python script.py`
-3. **Inline Python blocked**
-   - Blocks: `python -c "code"`
-   - Reason: Non-reproducible, untestable
-4. **Git commits restricted to code-review agent**
-   - Warns: Non-review agents attempting commits
-   - Enforces: Quality gate separation
-5. **Temporary test files blocked**
-   - Blocks: Files in `/tmp`
-   - Enforces: Axiom #5 (build for replication)
+academicOps uses multiple enforcement layers to ensure code quality and maintain design principles.
 
-**Exit Codes:**
-- `0` - Allow (with optional prompt)
-- `1` - Warn (allow with warning message)
-- `2` - Block (show error to agent)
+### Enforcement Hierarchy
 
-#### SubagentStop/Stop Hooks (`validate_stop.py`)
+Reliability from most to least reliable:
 
-**Purpose:** Validates agent completion state
+1. **Scripts** - Code that prevents bad behavior (most reliable)
+2. **Hooks** - Automated checks at key moments
+3. **Configuration** - Permissions and restrictions
+4. **Instructions** - Agent directives (least reliable, agents forget in long conversations)
 
-**Configuration:**
-```json
-{
-  "hooks": {
-    "SubagentStop": [{
-      "hooks": [{
-        "type": "command",
-        "command": "uv run python scripts/validate_stop.py SubagentStop"
-      }]
-    }]
-  }
-}
-```
+**Design principle**: If agents consistently disobey instructions, the solution is to move enforcement up the hierarchy (towards scripts/hooks), not to add more detailed instructions.
 
-### 2. Git Pre-Commit Hooks (Commit-Time Quality)
+### Claude Code Hooks
 
-Installed via `scripts/git-hooks/install-hooks.sh`, enforced before every git commit.
+Configured in `.claude/settings.json`, these run during Claude Code sessions.
 
-#### Documentation Bloat Prevention (`pre-commit`)
+**SessionStart** (`load_instructions.py`):
+- Loads 3-tier instruction hierarchy
+- Blocks session if all tiers missing
+- Shows user confirmation: `Loaded _CORE.md: ✓ bot ✓ personal ✓ project`
 
-**Purpose:** Prevents proliferation of `.md` documentation files
+**PreToolUse** (`validate_tool.py`):
+- Validates every tool call before execution
+- Blocks markdown file creation (prevents documentation bloat)
+- Requires `uv run python` prefix for Python execution
+- Blocks inline Python (`python -c`)
+- Warns on git commits outside code-review agent
+- Blocks temporary test files in `/tmp/`
 
-**What it blocks:**
-- New `.md` files anywhere (except allowed paths)
-- README.md, HOWTO.md, GUIDE.md files
-- System documentation files
+**Exit codes:**
+- `0` - Allow (optionally with prompt)
+- `1` - Warn (allow with warning to agent)
+- `2` - Block (show error, prevent execution)
 
-**What it allows:**
-- Research papers (`papers/`, `manuscripts/`)
-- Agent instructions (`agents/*.md` - these ARE executable code)
-- Explicitly confirmed deliverables
+**SubagentStop/Stop** (`validate_stop.py`):
+- Validates agent completion state
+- Can enforce completion requirements
 
-**Enforcement:**
-1. Detects all new `.md` files being added (status A)
-2. Filters out allowed paths
-3. Prompts user for confirmation if forbidden files found
-4. Blocks commit unless user confirms files are allowed content types
+### Git Pre-Commit Hooks
 
-**User experience:**
-```
-🛑 WARNING: New .md file(s) detected that may violate documentation philosophy:
+Installed via `scripts/git-hooks/install-hooks.sh`.
 
-  - scripts/setup/README.md
+**Documentation bloat prevention**:
+- Blocks new `.md` files (except research papers, agent instructions)
+- Prompts user for explicit confirmation
+- Enforces "self-documenting code" principle
 
-Documentation Philosophy:
-  ✅ ALLOWED: Research papers, manuscripts, agent instructions
-  ❌ FORBIDDEN: README.md, HOWTO.md, GUIDE.md, system documentation
-
-Instead of creating documentation files, use:
-  • Scripts with --help output and comprehensive inline comments
-  • Issue templates with complete instructions
-  • Code comments for design decisions
-
-Are you CERTAIN these are allowed content types? (y/N)
-```
-
-**Installation:**
-```bash
-$ACADEMICOPS_BOT/scripts/git-hooks/install-hooks.sh
-```
-
-Options:
-- Default: Backs up existing pre-commit hook
-- `--force`: Overwrites without backup
-- `--help`: Shows usage information
-
-#### Python Code Quality (`.pre-commit-config.yaml`)
-
-**Purpose:** Automated code quality checks for Python files
-
-**Hooks:**
-
-- `ruff-check` - Python linting with auto-fixes
-- `ruff-format` - Code formatting (Black-compatible)
+**Python code quality** (`.pre-commit-config.yaml`):
+- `ruff` - Linting and formatting
 - `mypy` - Static type checking
-- `radon` - Complexity and maintainability metrics
-- `test-architecture` - Validates test file locations
-- `pytest` - Runs fast unit tests only
+- `pytest` - Fast unit tests
 
-**Performance optimization:** Only runs on Python file changes (`.py` files)
+### Permission System
 
-**Installation:**
-```bash
-cd $ACADEMICOPS_BOT
-uv run pre-commit install
-```
+Fine-grained tool access control in `.claude/settings.json`:
 
-### 3. Permission System (Configuration-Level)
-
-Fine-grained tool access control in `.claude/settings.json`.
-
-**Allow List:**
 ```json
 {
   "permissions": {
@@ -281,211 +298,277 @@ Fine-grained tool access control in `.claude/settings.json`.
       "Bash(uv run pytest:*)",
       "Bash(uv run python:*)",
       "mcp__gh__create_issue"
-    ]
-  }
-}
-```
-
-**Deny List:**
-```json
-{
-  "permissions": {
+    ],
     "deny": [
       "Write(**/*.md)",
       "Write(**/*.env*)",
-      "Read(**/*.cache/**)",
-      "Write(./**/.venv/**)"
+      "Read(**/*.cache/**)"
     ]
   }
 }
 ```
 
-### Enforcement Hierarchy
+Deny rules take precedence over allow rules.
 
-**Reliability Order (most → least reliable):**
-
-1. **Scripts** - Code that prevents bad behavior (hooks, validation)
-2. **Hooks** - Automated checks at key moments (SessionStart, PreToolUse)
-3. **Configuration** - Permissions and restrictions (settings.json)
-4. **Instructions** - Agent directives (last resort - agents forget in long conversations)
-
-**Principle:** If agents consistently disobey instructions, move enforcement UP the hierarchy.
-
-**Example:** If agents keep creating README.md files despite instructions:
-1. ❌ Instruction: "Don't create README files" (ignored)
-2. ⚠️ Configuration: `deny: ["Write(**/*.md)"]` (can be overridden)
-3. ✅ PreToolUse Hook: Blocks Write tool for `.md` files (enforced)
-4. ✅ Git Hook: Blocks commit if `.md` files added (enforced)
+---
 
 ## Agent Responsibilities
 
+academicOps provides specialized agents for different types of work. Each has clear scope and boundaries.
+
 ### @agent-trainer
 
-**Scope:** Agent framework infrastructure and meta-system maintenance
+**Purpose**: Maintains and optimizes the agent framework itself
 
-Responsible for:
-
+**Responsible for:**
 - Agent instruction files (`agents/*.md`)
-- Framework documentation (`docs/`, ARCHITECTURE.md, INSTRUCTION-INDEX.md)
-- Configuration (`.claude/settings.json`, validation hooks)
-- Instruction loading system (SessionStart hooks, read scripts)
-- Error message UX for validation failures
+- Framework documentation (`ARCHITECTURE.md`, `INSTRUCTION-INDEX.md`)
+- Configuration files (`.claude/settings.json`, hooks)
+- Instruction loading system
+- Error message UX
 - Pre-commit hook configuration
 
-**NOT responsible for:** Project-specific work, writing application code, research tasks
+**Not responsible for:** Project-specific work, writing application code, research tasks
 
 ### @agent-strategist
 
-**Scope:** Planning, scheduling, project management, context capture
+**Purpose**: Planning, scheduling, project management, context capture
 
-Responsible for:
-
-- Task management (creating, organizing, prioritizing tasks)
-- Project planning and milestone tracking
-- Meeting notes and decision documentation
+**Responsible for:**
+- Task management
+- Project planning and milestones
+- Meeting notes and decision capture
 - Goal setting and progress reviews
-- Context capture from conversations
+- Auto-extraction during conversations
 
-**NOT responsible for:** Writing code, modifying agent instructions, framework changes
+**Data access:** Only accesses `data/` directory when working in `$ACADEMICOPS_PERSONAL` repo
+
+**Not responsible for:** Writing code, modifying framework, committing changes
+
+### @agent-supervisor
+
+**Purpose**: Orchestrates complex multi-step workflows
+
+**Responsible for:**
+- Breaking tasks into steps
+- Calling specialized agents in sequence
+- Validating each step
+- Iterating until completion
+
+**Not responsible for:** Direct code writing (delegates to other agents)
 
 ### @agent-developer
 
-**Scope:** Writing, testing, and debugging application code
+**Purpose**: Application code implementation
 
-Responsible for:
-
-- Implementing features in project code
-- Writing tests (following TDD methodology)
-- Debugging and fixing bugs
+**Responsible for:**
+- Feature implementation
+- Test writing (TDD methodology)
+- Debugging and bug fixes
 - Refactoring application code
 - Running test suites
 
-**NOT responsible for:** Agent framework changes, project planning, committing code
+**Not responsible for:** Framework changes, planning, committing code
 
 ### @agent-code-review
 
-**Scope:** Code review and git commit operations
+**Purpose**: Code review and git operations
 
-Responsible for:
-
-- Reviewing staged changes for quality
-- Running pre-commit validation hooks
-- Creating git commits with conventional messages
+**Responsible for:**
+- Reviewing staged changes
+- Running pre-commit hooks
+- Creating git commits
 - Creating pull requests
 - Enforcing code standards
 
-**NOT responsible for:** Writing code, planning features, modifying agent instructions
+**Not responsible for:** Writing code, planning, framework modifications
 
-### @agent-analyst
+### @agent-test-cleaner
 
-**Scope:** Data analysis workflows (dbt, SQL, data pipelines)
+**Purpose**: Test simplification and cleanup
 
-Responsible for:
+**Responsible for:**
+- Ruthlessly simplifying test suites
+- Eliminating brittle unit tests
+- Creating robust integration tests
+- Working through broken tests
 
-- dbt model development and testing
-- SQL query optimization
-- Data pipeline debugging
-- Analytics code review
+**Not responsible for:** Application code, framework changes
 
-**NOT responsible for:** General application development, agent framework changes
+---
 
 ## Design Principles
 
-### Complete Modularity (Issue #111)
+### Complete Modularity
 
 **Every concept documented exactly once, referenced everywhere else.**
 
+Implemented through:
 - ONE canonical source per concept
 - Agent files reference, never duplicate
-- Predictable file locations for discovery
 - Validation hooks prevent duplication
+- If content appears in multiple places, that's a bug requiring fix
 
-**Reference Pattern:**
-
+**Reference pattern in agent instructions:**
 ```markdown
 # Agent Instructions
 
-Load methodologies:
-- @bot/docs/methodologies/dbt-practices.md
-- @docs/agents/INSTRUCTIONS.md (if exists)
-
-Enforcement Hierarchy
-
-Reliability Order (most → least):
-1. Scripts - Code that prevents bad behavior
-2. Hooks - Automated checks at key moments
-3. Configuration - Permissions and restrictions
-4. Instructions - Last resort (agents forget in long conversations)
-
-Principle: If agents consistently disobey instructions, move enforcement UP the hierarchy.
-
-Fail-Fast Philosophy
-
-- Agents should fail immediately on errors
-- Fix underlying infrastructure, don't teach workarounds
-- Reliable systems > defensive programming instructions
-
-## Setup Process
-
-### Installing academicOps in a New Project
-
-**Prerequisites:**
-```bash
-export ACADEMICOPS_BOT=/path/to/academicOps      # Required
-export ACADEMICOPS_PERSONAL=/path/to/writing     # Optional
+For dbt workflows, see @bot/docs/methodologies/dbt-practices.md
+For user accommodations, see @docs/accommodations.md
 ```
 
-**Run setup script:**
+### Fail-Fast Philosophy
+
+Described in agent instructions (`agents/_CORE.md`), enforced in framework design:
+
+- Agents fail immediately on errors
+- Fix underlying infrastructure instead of teaching workarounds
+- Reliable systems preferred over defensive programming instructions
+- No `.get(key, default)` - explicit configuration required
+
+### Project Isolation
+
+Described in agent instructions, enforced in framework:
+
+- Projects work independently
+- No cross-dependencies between submodules
+- Project-specific content stays in project repositories
+- Shared infrastructure versioned explicitly
+
+---
+
+## Installation
+
+### Prerequisites
+
+- Python 3.12+ with `uv` package manager
+- Claude Code CLI installed and configured
+- Git repository for your project
+
+### Environment Variables
+
 ```bash
-cd $PROJECT
-$ACADEMICOPS_BOT/scripts/setup_academicops.sh
+# Required
+export ACADEMICOPS_BOT=/path/to/academicOps
+
+# Optional (for personal context/preferences)
+export ACADEMICOPS_PERSONAL=/path/to/your/writing
+```
+
+Add to shell profile (`~/.bashrc`, `~/.zshrc`, etc.) to persist.
+
+### One-Command Setup
+
+```bash
+cd /path/to/your/project
+$ACADEMICOPS_BOT/scripts/install_bot.sh
 ```
 
 **What it creates:**
+- `/bots/` directory structure
+- `.claude/settings.json` with hook configuration
+- Symlinks to framework agents and commands
+- Git pre-commit hooks
+- `.gitignore` updates
 
-1. `.claude/settings.json` - Claude Code configuration with hooks
-2. `.claude/agents/` - Symlinked to academicOps agents
-3. `agents/_CORE.md` - Template for project-specific context
-4. `.academicOps/scripts/` - Symlinked validation scripts
-5. `.git/hooks/pre-commit` - Documentation quality enforcement
-6. `.gitignore` updates - Excludes academicOps managed files
-
-**What it verifies:**
-
-- `ACADEMICOPS_BOT` environment variable set and directory exists
-- `ACADEMICOPS_PERSONAL` environment variable (optional)
-- `load_instructions.py` exists and is executable
-- Git repository exists (for hook installation)
-
-**Output:**
-```
-=== academicOps Setup for Third-Party Repository ===
-
-Setting up: /path/to/project
-
-Checking environment variables...
-✓ ACADEMICOPS_BOT=/path/to/academicOps
-✓ ACADEMICOPS_PERSONAL=/path/to/writing
-
-Setting up Claude Code configuration...
-✓ Created .claude
-✓ Copied settings.json from dist/ template
-✓ Symlinked agents from academicOps
-
-Setting up .academicOps deployment directory...
-✓ Created .academicOps/scripts
-✓ Symlinked validate_tool.py
-✓ Symlinked validate_stop.py
-✓ Symlinked hook_models.py
-✓ Symlinked load_instructions.py
-
-Installing git pre-commit hooks...
-✓ Pre-commit hook installed
-
-Testing configuration...
-✓ load_instructions.py executes successfully
-
-=== Setup Complete ===
+**Verification:**
+```bash
+claude  # Launch Claude Code
+# Should see: "Loaded _CORE.md: ✓ bot ✓ project"
 ```
 
-See `INSTALL.md` for detailed installation instructions.
+See `INSTALL.md` for detailed installation instructions and troubleshooting.
+
+---
+
+## Open Questions & Evolution Tracking
+
+This section documents design decisions still being validated and known tensions in current implementation.
+
+### Context Loading Scope
+
+**Current implementation** (inferred from reference repo):
+- Personal preferences load in all repos ✓
+- Strategic data (`data/`) only accessible when working in personal repo ✓
+
+**Needs validation:**
+- Integration tests to confirm behavior across repo boundaries
+- Real-world testing with multiple project repos
+- Documented specification of privacy boundary semantics
+
+**Tracking:** Issue #128
+
+### Privacy Boundaries for Shared Repositories
+
+**Current behavior:**
+- Project repos can read from `$ACADEMICOPS_PERSONAL` (user preferences)
+- Strategic data not automatically loaded in project repos
+- Symlinks gitignored (safe to share repos publicly)
+
+**Open questions:**
+- Formal specification for mixed public/private repo scenarios
+- Security review for shared repository contexts
+- Best practices documentation
+
+**Tracking:** Issue #128
+
+### Migration from Legacy Structure
+
+**Current state:**
+- New `/bots/` standard defined
+- Installation script functional
+- Reference implementation (`~/src/writing`) migrated
+- Legacy paths supported as fallback
+
+**Needs completion:**
+- Migration procedure documentation
+- Bulk migration script for existing installations
+- Deprecation timeline for legacy paths
+- Communication plan for users
+
+**Tracking:** Issue #128
+
+### Slash Command Organization
+
+**Current implementation:**
+- Framework commands in `$ACADEMICOPS_BOT/.claude/commands/`
+- Repo-local commands in `bots/commands/` (new standard)
+- No formal override/shadowing specification
+
+**Needs design:**
+- How do repo-local commands override framework commands?
+- Command discovery order specification
+- Namespace collision handling
+- Documentation for command authors
+
+---
+
+## Updating This Documentation
+
+**When to update ARCHITECTURE.md:**
+- Design decision made based on real usage
+- Tension discovered between documentation and reality
+- Migration completed (move from "Open Questions" to implementation section)
+- New component added to framework
+- User asks "how does X work?" and answer isn't here
+
+**How to update:**
+1. Describe current state, not future plans
+2. Move completed items from "Open Questions" to appropriate sections
+3. Add newly discovered tensions to "Open Questions"
+4. Keep concise - link to detailed docs for specifics
+5. Maintain descriptive voice (not imperative)
+
+**Principle**: This file always describes the working system as it exists today.
+
+---
+
+## See Also
+
+- `README.md` - Quick start guide for new users
+- `INSTALL.md` - Detailed installation instructions
+- `docs/hooks_guide.md` - Deep dive on hook system
+- `docs/TESTING.md` - Test writing guidance
+- `docs/INSTRUCTION-INDEX.md` - Complete index of instruction files
+- `agents/_CORE.md` - Core axioms (agent instructions)
+- `agents/TRAINER.md` - Trainer agent instructions

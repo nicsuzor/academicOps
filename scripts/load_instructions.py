@@ -6,6 +6,12 @@ This script is called by Claude Code at the start of every session.
 It forces agents to read the hierarchical instruction files by injecting
 them as additional context.
 
+Loading Hierarchy:
+1. Framework Core (REQUIRED): $ACADEMICOPS_BOT/agents/_CORE.md
+2. Personal Context (OPTIONAL): $ACADEMICOPS_PERSONAL/docs/agents/INSTRUCTIONS.md
+3. Project Context (OPTIONAL): $PWD/bots/docs/INSTRUCTIONS.md
+   - Falls back to: $PWD/docs/bots/INSTRUCTIONS.md (legacy support)
+
 Input: JSON with session start source.
 
 Exit codes:
@@ -74,6 +80,36 @@ def read_instruction_file(path: Path) -> str:
         return f"ERROR: Failed to read {path}: {e}"
 
 
+def get_project_instructions_path(project_root: Path) -> Path | None:
+    """
+    Find project-specific instructions following the new /bots/ structure.
+    
+    Search order:
+    1. bots/docs/INSTRUCTIONS.md (NEW standard)
+    2. docs/bots/INSTRUCTIONS.md (LEGACY support)
+    3. docs/agents/INSTRUCTIONS.md (LEGACY support)
+    
+    Returns the first found path, or None if none exist.
+    """
+    # Preferred: new /bots/ structure
+    new_path = project_root / "bots" / "docs" / "INSTRUCTIONS.md"
+    if new_path.exists():
+        return new_path
+    
+    # Legacy: docs/bots/ (previous standard)
+    legacy_bots = project_root / "docs" / "bots" / "INSTRUCTIONS.md"
+    if legacy_bots.exists():
+        return legacy_bots
+    
+    # Legacy: docs/agents/ (oldest standard)
+    legacy_agents = project_root / "docs" / "agents" / "INSTRUCTIONS.md"
+    if legacy_agents.exists():
+        return legacy_agents
+    
+    # No project instructions found
+    return None
+
+
 def main():
     try:
         input_data = json.load(sys.stdin)
@@ -107,13 +143,24 @@ def main():
             print(f"Note: Personal context not found at {user_instructions}", file=sys.stderr)
             user_content = ""
 
-    # Optional: Project-specific instructions
+    # Optional: Project-specific instructions (with legacy fallback)
     project_content = ""
-    project_instructions = project_root / "docs" / "agents" / "INSTRUCTIONS.md"
-    if project_instructions.exists() and project_instructions != (personal_root / "docs" / "agents" / "INSTRUCTIONS.md" if personal_root else None):
-        project_content = read_instruction_file(project_instructions)
-        if project_content.startswith("ERROR:"):
-            project_content = ""
+    project_instructions = get_project_instructions_path(project_root)
+    
+    if project_instructions:
+        # Don't load if it's the same as personal context
+        if personal_root and project_instructions == (personal_root / "docs" / "agents" / "INSTRUCTIONS.md"):
+            print(f"Note: Project instructions same as personal context, skipping duplicate", file=sys.stderr)
+        else:
+            project_content = read_instruction_file(project_instructions)
+            if project_content.startswith("ERROR:"):
+                project_content = ""
+            else:
+                # Inform user which path was used
+                if "bots/docs" in str(project_instructions):
+                    print(f"✓ Loaded project instructions from bots/docs/INSTRUCTIONS.md", file=sys.stderr)
+                else:
+                    print(f"✓ Loaded project instructions from {project_instructions.relative_to(project_root)} (legacy location)", file=sys.stderr)
 
     # Build context based on what's available
     sections = []
@@ -165,6 +212,7 @@ def main():
             "academicops_root": str(academicops_root),
             "personal_root": str(personal_root) if personal_root else None,
             "project_root": str(project_root),
+            "project_instructions": str(project_instructions) if project_instructions else None,
         },
     }
     with debug_file.open("a") as f:
