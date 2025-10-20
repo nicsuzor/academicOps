@@ -316,6 +316,32 @@ Deny rules take precedence over allow rules.
 
 academicOps provides specialized agents for different types of work. Each has clear scope and boundaries.
 
+### Agent Architecture: Two Types
+
+**Critical design decision** (Issue #134, _CORE.md Axiom 4):
+
+**Regular Agents** (all agents except SUPERVISOR):
+- **Bounded workers** - do ONE specific thing, then stop
+- Complete the task requested, nothing more
+- If more work needed → ASK user for permission
+- If related issues found → REPORT but don't fix
+- Examples: Developer, Test-Cleaner, Review, Trainer
+
+**SUPERVISOR Agent**:
+- **Orchestrator** - manages multi-step workflows
+- Breaks complex tasks into smallest atomic steps
+- Calls specialized agents ONE AT A TIME via Task tool
+- Validates each step before proceeding
+- Continues until entire workflow complete
+
+**Rationale**: Prevents scope creep, recursive debugging, and agents expanding their own workflows indefinitely. Regular agents are constrained; SUPERVISOR handles complexity.
+
+**Pattern**:
+- Single task needed → Regular agent does it and stops
+- Multi-step workflow → Use SUPERVISOR to orchestrate
+- Agent finds related issue → Reports it, doesn't expand scope
+- User asks question → Agent answers and stops (doesn't launch into investigation)
+
 ### @agent-trainer
 
 **Purpose**: Maintains and optimizes the agent framework itself
