@@ -533,7 +533,25 @@ This section documents design decisions still being validated and known tensions
 **Current implementation:**
 - Framework commands in `$ACADEMICOPS_BOT/.claude/commands/`
 - Repo-local commands in `bots/commands/` (new standard)
+- Commands symlinked to `.claude/commands` in project repos
 - No formal override/shadowing specification
+
+**Available framework commands:**
+- `/dev` - Load developer workflow (DEVELOPER.md with 6-step process, EXPLORE MANDATORY)
+- `/ttd` - Load test-driven development methodology
+- `/log-failure` - Report agent/framework issues to academicOps
+- `/trainer` - Activate trainer mode for framework improvements
+- `/ops` - View all available commands
+
+**Design decision: On-demand loading vs auto-loading** (Issue #133)
+
+**Chosen approach**: Specialized workflows loaded on-demand via slash commands
+- `/dev` for development workflow (not auto-loaded)
+- `/ttd` for test-driven development methodology
+- User explicitly signals intent ("I'm developing now")
+- Zero token cost for non-development sessions
+
+**Evaluation**: Track usage patterns over time to determine if frequently-used commands should become auto-loaded in specific project types.
 
 **Needs design:**
 - How do repo-local commands override framework commands?
