@@ -14,6 +14,25 @@ See TRAINER.md lines 126-153 for requirements.
 
 ## Active Experiments
 
+### 2025-10-20: Failed to Answer Direct Question
+
+**File**: `2025-10-20_failed-to-answer-direct-question.md`
+**Issue**: #132
+**Status**: FAILED
+**Severity**: Core behavior violation - poor listening, premature action
+
+**Violation**: User asked "what makes you think it's not working?" → Agent launched into solutions instead of answering with evidence ("error shows 'Available flows: []'")
+
+**Pattern**: Ignore user question → try to solve problem → ignore user correction → create noise
+
+**Required Fixes**:
+1. Add "ANSWER DIRECT QUESTIONS DIRECTLY" axiom to _CORE.md
+2. Remove repository verification from /log-failure command (blocked usage in buttermilk)
+
+**Impact**: Wasted time, created spurious GitHub issues, didn't help with actual debugging
+
+---
+
 ### 2025-10-19: Supervisor NO EXCUSES Violation (CRITICAL)
 
 **File**: `2025-10-19_supervisor-no-excuses-violation.md`
