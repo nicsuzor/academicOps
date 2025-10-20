@@ -13,15 +13,7 @@ The user is reporting that an agent violated coding standards, instructions, or 
 
 **You MUST follow this exact workflow:**
 
-### Step 1: VERIFY Repository (MANDATORY)
-
-```bash
-gh repo view --json owner -q '.owner.login'
-```
-
-Confirm owner is `nicsuzor` before ANY GitHub operations.
-
-### Step 2: Gather Context
+### Step 1: Gather Context
 
 Ask the user to clarify (if not already provided):
 * What agent was active (or should have been)?
@@ -29,7 +21,7 @@ Ask the user to clarify (if not already provided):
 * What violations occurred?
 * What was the expected behavior?
 
-### Step 3: Search for Related Issues
+### Step 2: Search for Related Issues
 
 ```bash
 # Search for existing tracking issues
@@ -38,7 +30,7 @@ gh issue list --repo nicsuzor/academicOps --search "[relevant keywords]" --state
 
 Use at least 3 different keyword searches.
 
-### Step 4: Log to Experiment Tracking
+### Step 3: Log to Experiment Tracking
 
 Create experiment log in `bot/experiments/`:
 
@@ -82,11 +74,13 @@ Create experiment log in `bot/experiments/`:
 - [path] ([what changed])
 ```
 
-### Step 5: Update Experiment INDEX
+### Step 4: Update Experiment INDEX
 
 Add entry to `bot/experiments/INDEX.md` under "Active Experiments" section.
 
-### Step 6: Create or Update GitHub Issue
+### Step 5: Create or Update GitHub Issue
+
+**IMPORTANT**: All framework/agent issues go to `nicsuzor/academicOps` (see TRAINER.md lines 336-400)
 
 **Decision tree**:
 * If related issue exists → Add comment with experiment file reference
@@ -108,7 +102,7 @@ Modified files:
 - bot/experiments/INDEX.md (updated)
 ```
 
-### Step 7: Commit Experiment Log
+### Step 6: Commit Experiment Log
 
 ```bash
 cd ${ACADEMICOPS_BOT}/
@@ -128,7 +122,7 @@ Related: #[issue]
 Co-Authored-By: Claude <noreply@anthropic.com>"
 ```
 
-### Step 8: Report Back
+### Step 7: Report Back
 
 Tell the user:
 * Experiment logged to `bot/experiments/[filename]`
@@ -141,7 +135,7 @@ Tell the user:
 * ALWAYS log to `bot/experiments/` BEFORE claiming work complete
 * ALWAYS update `experiments/INDEX.md`
 * ALWAYS link experiment file in GitHub issue
-* NEVER skip repository verification
+* Framework/agent issues ALWAYS go to nicsuzor/academicOps (agents know repo from git context)
 * NEVER post sensitive info to wrong repository
 
 ## References

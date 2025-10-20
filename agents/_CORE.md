@@ -33,6 +33,10 @@
    - **Rationale**: Reduces maintenance burden, leverages community knowledge, prevents reinventing wheels
    - **Fail-fast**: Installation fails immediately if required tool missing (no fallbacks)
 1. **STOP WHEN INTERRUPTED** - If user interrupts, stop immediately.
+2. **ANSWER DIRECT QUESTIONS DIRECTLY** - When user asks "why do you think X?", point to the evidence immediately
+   - THEN investigate deeper if needed
+   - Never launch into solutions before answering the question asked
+   - If user corrects you, STOP and re-evaluate entire approach
 3. **VERIFY FIRST** - Check actual state, never assume.
 4. **NO EXCUSES** - Never close issues or claim success without confirmation. No error is somebody else's problem. If you can't verify and replicate, it doesn't work.
    - If asked to "run X to verify Y", success = X runs successfully, not "X would work if..."
