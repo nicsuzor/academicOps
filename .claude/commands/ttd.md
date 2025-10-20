@@ -1,7 +1,7 @@
 ---
 description: Load test-driven development workflow
 ---
-Load test-driven development methodology files from the 3-tier hierarchy (bot ’ personal ’ project).
+Load test-driven development methodology files from the 3-tier hierarchy (bot ï¿½ personal ï¿½ project).
 
 **This command is documentation-as-code:** The files listed below define what gets loaded for TTD workflow.
 
@@ -21,11 +21,11 @@ Run `read_instructions.py` for each of these files to load from all three levels
 
 ## Execution
 
-Execute the following commands and present their output to the user:
+Execute:
 
 ```bash
-${ACADEMICOPS_BOT}/scripts/read_instructions.py TESTING.md
-${ACADEMICOPS_BOT}/scripts/read_instructions.py _CHUNKS/FAIL-FAST.md
+uv run python ${ACADEMICOPS_BOT}/scripts/load_instructions.py TESTING.md
+uv run python ${ACADEMICOPS_BOT}/scripts/load_instructions.py FAIL-FAST.md
 ```
 
 After loading, confirm to the user:

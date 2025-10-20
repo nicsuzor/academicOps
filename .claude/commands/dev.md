@@ -1,16 +1,12 @@
 ---
 description: Load development workflow and coding standards
 ---
-Load developer workflow files from the academicOps framework.
+Load developer workflow from 3-tier hierarchy.
 
-**This command is documentation-as-code:** The files listed below define what gets loaded for development work.
-
-## Files to Load
-
-Execute the following and present output to user:
+Execute:
 
 ```bash
-${ACADEMICOPS_BOT}/scripts/read_instructions.py _CHUNKS/DEVELOPER.md
+uv run python ${ACADEMICOPS_BOT}/scripts/load_instructions.py DEVELOPER.md
 ```
 
 ## What This Loads
