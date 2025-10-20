@@ -380,11 +380,28 @@ academicOps provides specialized agents for different types of work. Each has cl
    ```
 
 **Loading mechanisms**:
-- `@agent-trainer` (Task tool) → SubagentStart hook enforces 3-tier loading
-- `/trainer` (command) → Manually loads via `read_instructions.py` (no hook available)
+- `@agent-trainer` (Task tool) → Agent self-loads via Read tool (no SubagentStart hook available)
+- `/trainer` (command) → Manually loads instructions
 - Both result in same instructions (framework + personal + project)
 
-**Status**: Architecture defined, implementation pending (need to verify SubagentStart hook inputs)
+**Status**: Self-loading pattern implemented (SubagentStart hook does not exist in Claude Code)
+
+**Implementation** (interim solution until SubagentStart hook becomes available):
+
+1. **Minimal agent file** (`.claude/agents/trainer.md`):
+   - Instructs agent to self-load from `bots/agents/trainer.md`
+   - Uses Read tool to load 3-tier hierarchy
+   - ~15 lines (mostly loading instructions)
+
+2. **Full instructions** (`bots/agents/trainer.md`):
+   - Framework base instructions (~700 lines)
+   - Same location in every repo for consistency
+
+3. **Project overrides** (`[project]/bots/agents/trainer.md`):
+   - Optional project-specific additions
+   - Loaded if exists
+
+**Limitation**: Not enforced by hooks, relies on agent following self-loading instruction
 
 ### @agent-trainer
 
