@@ -342,6 +342,50 @@ academicOps provides specialized agents for different types of work. Each has cl
 - Agent finds related issue → Reports it, doesn't expand scope
 - User asks question → Agent answers and stops (doesn't launch into investigation)
 
+---
+
+### Agent Instructions: 3-Tier Loading (Issue #135)
+
+**Desired state** (not yet implemented):
+
+**Where instructions live** - Same location in every repo:
+```
+[nicsuzor/academicOps]/bots/agents/trainer.md    # Framework (base)
+[nicsuzor/writing]/bots/agents/trainer.md        # Personal addenda
+[otherproject]/bots/agents/trainer.md            # Project overrides
+```
+
+**All three use `bots/agents/` directory** - consistent across all repos.
+
+**Thin wrappers**:
+
+1. **Subagent file** (`.claude/agents/trainer.md`):
+   ```yaml
+   ---
+   name: trainer
+   description: Agent trainer
+   model: opus
+   ---
+
+   Instructions loaded via SubagentStart hook from bots/agents/trainer.md
+   ```
+
+2. **Command file** (`.claude/commands/trainer.md`):
+   ```markdown
+   ---
+   description: Activate trainer mode
+   ---
+
+   Load: ${ACADEMICOPS_BOT}/scripts/read_instructions.py bots/agents/trainer.md
+   ```
+
+**Loading mechanisms**:
+- `@agent-trainer` (Task tool) → SubagentStart hook enforces 3-tier loading
+- `/trainer` (command) → Manually loads via `read_instructions.py` (no hook available)
+- Both result in same instructions (framework + personal + project)
+
+**Status**: Architecture defined, implementation pending (need to verify SubagentStart hook inputs)
+
 ### @agent-trainer
 
 **Purpose**: Maintains and optimizes the agent framework itself
