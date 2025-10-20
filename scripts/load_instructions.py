@@ -32,6 +32,7 @@ Exit codes:
 import argparse
 import json
 import os
+import subprocess
 import sys
 from pathlib import Path
 
@@ -82,8 +83,31 @@ def load_tier_content(path: Path | None) -> str | None:
         return None
 
 
+def get_git_remote_info() -> str | None:
+    """Get git remote origin URL if in a git repository."""
+    try:
+        result = subprocess.run(
+            ["git", "remote", "get-url", "origin"],
+            capture_output=True,
+            text=True,
+            timeout=2,
+            check=False,
+        )
+        if result.returncode == 0:
+            return result.stdout.strip()
+    except Exception:
+        pass
+    return None
+
+
 def output_json(contents: dict[str, str], filename: str) -> None:
     """Output in JSON format for SessionStart hook."""
+    # Get git remote info
+    git_remote = get_git_remote_info()
+    git_section = ""
+    if git_remote:
+        git_section = f"## REPOSITORY\n\nGit remote origin: {git_remote}\n\n---\n\n"
+
     # Build context sections in priority order: project → personal → framework
     sections = []
 
@@ -96,7 +120,7 @@ def output_json(contents: dict[str, str], filename: str) -> None:
     if "framework" in contents:
         sections.append(f"## FRAMEWORK: Core Rules\n\n{contents['framework']}")
 
-    additional_context = "# Agent Instructions\n\n" + "\n\n---\n\n".join(sections)
+    additional_context = "# Agent Instructions\n\n" + git_section + "\n\n---\n\n".join(sections)
 
     # Output JSON for Claude Code hook
     output = {
