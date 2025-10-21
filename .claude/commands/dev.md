@@ -1,5 +1,20 @@
 ---
 description: Load development workflow and coding standards
+extra: |
+   ## When to Use This Command
+
+   Use `/dev` when:
+   - Starting development work in a project
+   - Need the structured workflow enforced
+   - Want "EXPLORE MANDATORY" reminder (prevent rushing to code)
+   - Beginning a coding session
+
+   ## Related Commands
+
+   - `/ttd` - Load test-driven development methodology
+   - `/ops` - View all available academicOps commands
+   - `/trainer` - Switch to trainer mode for framework improvements
+
 ---
 Load developer workflow from 3-tier hierarchy.
 
@@ -34,17 +49,3 @@ After loading, confirm to user:
 ✅ Loaded developer workflow
 Ready for development with systematic 6-step process
 ```
-
-## When to Use This Command
-
-Use `/dev` when:
-- Starting development work in a project
-- Need the structured workflow enforced
-- Want "EXPLORE MANDATORY" reminder (prevent rushing to code)
-- Beginning a coding session
-
-## Related Commands
-
-- `/ttd` - Load test-driven development methodology
-- `/ops` - View all available academicOps commands
-- `/trainer` - Switch to trainer mode for framework improvements

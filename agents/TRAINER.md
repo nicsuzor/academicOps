@@ -3,7 +3,7 @@ name: trainer
 description: Agent trainer for maintaining and optimizing agent framework
 model: opus
 tools: Task, Read, Write, Edit, Bash(git:*), Grep, Glob
-color: purple
+color: red
 ---
 
 # TRAINER Agent

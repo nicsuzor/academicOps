@@ -1,9 +1,11 @@
 ---
 name: agent-optimization
-description: This skill should be used when reviewing and improving agents, skills, hooks, permissions, and configurations. It enforces an experiment-driven, anti-bloat approach with enforcement hierarchy of Scripts, Hooks, Config, then Instructions. The skill prevents adding repetitive or overly specific instructions, understands how different enforcement mechanisms fit together, and makes strategic decisions about where to intervene. Use this skill when agent performance issues arise, when evaluating new techniques, or when maintaining the agent framework. Always test before claiming something works.
+description: This skill should be used when reviewing and improving agents, skills, hooks, permissions, and configurations. It enforces an experiment-driven, anti-bloat approach with enforcement hierarchy of Scripts, Hooks, Config, then Instructions. The skill prevents adding repetitive or overly specific instructions, understands how different enforcement mechanisms fit together, and makes strategic decisions about where to intervene. Use this skill when agent performance issues arise, when evaluating new techniques, or when maintaining the agent framework. Always test before claiming something works. Specific to academicOps framework.
 ---
 
 # Agent Optimization
+
+You are responsible for agent performance in the @nicsuzor/academicOps project.
 
 ## Overview
 
@@ -20,6 +22,7 @@ Use agent-optimization when:
 5. **Experiment evaluation** - Analyzing test results and metrics
 
 **Concrete trigger examples**:
+
 - "Agent X didn't follow instruction Y - how do we fix this?"
 - "Should we add these 50 lines to the agent instructions?"
 - "I found a new prompting technique - should we adopt it?"
@@ -33,12 +36,14 @@ Use agent-optimization when:
 ### 1. Experiment-Driven Development
 
 **We don't know until we test**:
+
 - No speculation about what "will work"
 - Every change requires evaluation metric
 - Test with real conversations, not theory
 - Document outcomes in experiments dataset
 
 **Single change per intervention**:
+
 - One variable at a time
 - Explicit success/failure criteria
 - Before/after metrics comparison
@@ -58,6 +63,7 @@ Use agent-optimization when:
 ### 3. Modular Documentation (DRY)
 
 **ONE canonical source per concept**:
+
 - If content appears in >1 place, that's a BUG
 - Reference, don't duplicate
 - Default: DELETE documentation rather than add
@@ -66,6 +72,7 @@ Use agent-optimization when:
 ### 4. Surgical Interventions
 
 **Maximum 3 changes** per intervention:
+
 - Small, precise modifications (<10 lines)
 - New files minimal (<50 lines)
 - Larger changes → GitHub issue for discussion
@@ -85,11 +92,13 @@ Use agent-optimization when:
    - What should have happened?
 
 2. **MANDATORY: Search GitHub** (3+ searches):
+
    ```bash
    gh issue list --repo nicsuzor/academicOps --search "keyword1"
    gh issue list --repo nicsuzor/academicOps --search "keyword2"
    gh issue list --repo nicsuzor/academicOps --search "keyword3"
    ```
+
    - Search for patterns, not specific symptoms
    - Find related issues
    - Check if this has happened before
@@ -107,6 +116,7 @@ Use agent-optimization when:
    - Infrastructure issue?
 
 5. **MANDATORY: Document diagnostics in GitHub**:
+
    ```bash
    gh issue comment [number] --repo nicsuzor/academicOps --body "$(cat <<'EOF'
    ## Diagnostic Analysis
@@ -188,6 +198,7 @@ Use agent-optimization when:
    - Consider constraints (context budget, CWD limitations)
 
 9. **MANDATORY: Document solutions in GitHub** (separate comment):
+
    ```bash
    gh issue comment [number] --repo nicsuzor/academicOps --body "$(cat <<'EOF'
    ## Solution Design
@@ -228,6 +239,7 @@ Use agent-optimization when:
     - Use Edit tool for precision
 
 11. **Create experiment log**:
+
     ```markdown
     # bot/experiments/YYYY-MM-DD_name.md
 
@@ -254,6 +266,7 @@ Use agent-optimization when:
     ```
 
 12. **Commit changes**:
+
     ```bash
     git add bot/agents/[file].md
     git add bot/experiments/YYYY-MM-DD_name.md
@@ -296,6 +309,7 @@ Use agent-optimization when:
     - **Partial** → Iterate with refinements
 
 17. **Update GitHub issue**:
+
     ```bash
     gh issue comment [number] --repo nicsuzor/academicOps --body "$(cat <<'EOF'
     ## Experiment Results
@@ -321,18 +335,21 @@ Use agent-optimization when:
 ### Components & Their Roles
 
 **Skills** (`.claude/*/SKILL.md`):
+
 - Atomic, reusable workflows
 - Portable across projects
 - Invoked by agents
 - Should NOT duplicate agent instructions
 
 **Agents** (`agents/*.md`):
+
 - Orchestrate skills
 - Light on procedural detail (reference skills)
 - Agent-specific context and authority
 - Load via Task tool
 
 **Hooks** (`.claude/settings.json`):
+
 - `SessionStart`: Validate environment, load context
 - `PreToolUse`: Check permissions before tool use
 - `PostToolUse`: React to tool results
@@ -340,17 +357,20 @@ Use agent-optimization when:
 - Configure in settings.json
 
 **Permissions** (`.claude/settings.json`):
+
 - Tool restrictions (e.g., `Bash(git:*)`)
 - Subagent permissions
 - Model selection
 - Configured per agent/skill
 
 **Commands** (`.claude/commands/*.md`):
+
 - Slash commands that expand to prompts
 - User-facing shortcuts
 - Load specific workflows
 
 **Configuration** (`.claude/settings.json`, `.gemini/settings.json`):
+
 - Client-specific settings
 - Permission rules
 - Hook configurations
@@ -359,17 +379,20 @@ Use agent-optimization when:
 ### Decision Matrix: Where to Intervene
 
 **Agent keeps forgetting to X**:
+
 1. Can we write a script that does X automatically? → Script
 2. Can we hook the moment before X is needed? → Hook
 3. Can we block Y until X happens? → Config
 4. Only if none above → Add instruction (with DRY check)
 
 **New workflow to add**:
+
 1. Is it reusable across projects? → Skill
 2. Is it agent-specific authority/orchestration? → Agent (referencing skills)
 3. Is it user shortcut? → Command
 
 **Validation needed**:
+
 1. Can run automatically at key moment? → Hook
 2. Needs human decision? → Instruction to use skill
 
@@ -378,6 +401,7 @@ Use agent-optimization when:
 ### Anti-Pattern 1: Instruction Bloat
 
 **Bad**:
+
 ```markdown
 # Agent Instructions
 
@@ -391,6 +415,7 @@ When you finish a task, you must:
 ```
 
 **Good**:
+
 ```markdown
 # Agent Instructions
 
@@ -402,6 +427,7 @@ After completing tasks, use the `git-commit` skill to validate and commit change
 ### Anti-Pattern 2: Repeating Core Axioms
 
 **Bad**:
+
 ```markdown
 # Developer Agent
 
@@ -413,6 +439,7 @@ After completing tasks, use the `git-commit` skill to validate and commit change
 ```
 
 **Good**:
+
 ```markdown
 # Developer Agent
 
@@ -428,6 +455,7 @@ Load development workflow via `/dev` command.
 ### Anti-Pattern 3: Adding Instructions When Code Would Work
 
 **Bad**:
+
 ```markdown
 # Agent Instructions
 
@@ -440,6 +468,7 @@ Before committing, you must:
 ```
 
 **Good**:
+
 ```bash
 # pre-commit hook (runs automatically)
 if ! validation_check; then
@@ -471,12 +500,14 @@ Success criteria: Zero cascade failures over 10 test runs.
 ## Continuous Research
 
 **Actively research** third-party approaches:
+
 - code-conductor, aider, cursor
 - Prompt engineering research
 - Agent framework patterns
 - LLM client documentation
 
 **When finding useful patterns**:
+
 1. Document in GitHub issue
 2. Propose MINIMAL adoption
 3. Design experiment to test
@@ -487,6 +518,7 @@ Success criteria: Zero cascade failures over 10 test runs.
 ## Critical Rules
 
 **NEVER**:
+
 - Add >10 lines without Anti-Bloat Protocol
 - Duplicate content from _CORE.md or other files
 - Add instructions when scripts/hooks/config would work
@@ -495,6 +527,7 @@ Success criteria: Zero cascade failures over 10 test runs.
 - Skip GitHub documentation (diagnostics + solution design)
 
 **ALWAYS**:
+
 - Search GitHub first (3+ searches)
 - Work through Enforcement Hierarchy Decision Tree
 - Document diagnostics before solutions
@@ -506,12 +539,14 @@ Success criteria: Zero cascade failures over 10 test runs.
 ## Quick Reference
 
 **Enforcement hierarchy** (prefer top):
+
 1. Scripts - Automated code
 2. Hooks - SessionStart, PreToolUse, etc.
 3. Config - Permissions, restrictions
 4. Instructions - Last resort
 
 **Intervention workflow**:
+
 ```
 1. Search GitHub (3+ searches)
 2. Post diagnostic analysis
@@ -526,6 +561,7 @@ Success criteria: Zero cascade failures over 10 test runs.
 ```
 
 **Anti-Bloat checklist** (before adding >10 lines):
+
 - [ ] Tried scripts/hooks/config first
 - [ ] Checked for existing content to reference
 - [ ] Verified not repeating _CORE.md
@@ -534,6 +570,7 @@ Success criteria: Zero cascade failures over 10 test runs.
 - [ ] File stays under 500 lines
 
 **Experiment log template**:
+
 ```markdown
 # Metadata
 Date, Issue, Commit, Model

@@ -5,6 +5,8 @@ description: Track bugs, agent violations, and framework improvements in the aca
 
 # academicOps Bug and Framework Tracking
 
+You are responsible for bug tracking in the @nicsuzor/academicOps project.
+
 ## Overview
 
 Track and manage bugs, agent violations, and improvements specific to the academicOps agent framework. This skill understands framework architecture, core axioms, behavioral patterns, and enforcement hierarchy. It calls the `github-issue` skill for GitHub operations while providing academicOps-specific context and decision-making.
