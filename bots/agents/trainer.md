@@ -41,6 +41,7 @@ When reviewing code (either directly or advising on code quality), you MUST appl
 **NOT:** "The fallback is fine" or "This is reasonable defensive programming"
 
 ### GENERAL PATTERNS, NOT SPECIFIC MISTAKES
+
 It is **NOT** your responsibility to fix any specific mistake the user has reported (e.g., "these emails aren't committed", "this file has wrong content")
 
 - These are symptoms that illustrate the pattern
@@ -63,13 +64,13 @@ It is **NOT** your responsibility to fix any specific mistake the user has repor
 **Reference Hierarchy:**
 
 ```
-bot/docs/TTD.md         ← Canonical test-driven development methodology
-bot/docs/CODE.md        ← Canonical code quality standards
-bot/docs/TESTS.md        ← Canonical test standards
-bot/docs/GIT.md         ← Canonical git workflow
+.academicOps/docs/TTD.md         ← Canonical test-driven development methodology
+.academicOps/docs/CODE.md        ← Canonical code quality standards
+.academicOps/docs/TESTS.md        ← Canonical test standards
+.academicOps/docs/GIT.md         ← Canonical git workflow
 
-docs/bots/DEBUGGING.md  ← User's debugging workflows (predictable location)
-docs/bots/DEPLOY.md     ← User's deployment process (predictable location)
+bots/DEBUGGING.md  ← User's debugging workflows (predictable location)
+bots/DEPLOY.md     ← User's deployment process (predictable location)
 ```
 
 **Agent Pattern (reference, don't duplicate):**
@@ -78,17 +79,17 @@ docs/bots/DEPLOY.md     ← User's deployment process (predictable location)
 # Developer Agent Instructions
 
 Load methodologies:
-- @bot/docs/TTD.md
-- @bot/docs/CODE.md
-- @bot/docs/TESTS.md
-- @docs/bots/DEBUGGING.md (if exists)
+- @.academicOps/docs/TTD.md
+- @.academicOps/docs/CODE.md
+- @.academicOps/docs/TESTS.md
+- @bots/DEBUGGING.md (if exists)
 ```
 
 **Enforcement:**
 
 - Validation hooks detect content duplication in new .md files
 - Pre-commit checks flag duplicated instructional content
-- Canonical docs indexed in `bot/docs/INDEX.md`
+- Canonical docs indexed in `.academicOps/docs/INDEX.md`
 
 ### Hierarchical Instructions
 
@@ -420,6 +421,7 @@ gh issue create --repo nicsuzor/writing  # Could be wrong repo
     ```bash
     gh issue comment [number] --repo nicsuzor/academicOps --body "[your detailed analysis and plan]"
     ```
+
 4. **CREATE ONLY IF NEW**: Create a new issue only if one does not already exist. When creating an issue, tag it with the `prompts` label.
 
     ```bash
@@ -553,7 +555,7 @@ Whenever you modify, add, or remove instruction files, you MUST update the instr
 
 ### Two Instruction Indexes
 
-**1. bot/docs/INDEX.md (PUBLIC)**
+**1. .academicOps/docs/INDEX.md (PUBLIC)**
 
 - For third-party users of academicOps
 - Documents all files in bot/ repository
@@ -571,7 +573,7 @@ Whenever you modify, add, or remove instruction files, you MUST update the instr
 **After ANY change to instruction files:**
 
 1. **Update Appropriate Index**:
-   - Changed bot/ files → Update `bot/docs/INSTRUCTION-INDEX.md`
+   - Changed bot/ files → Update `.academicOps/docs/INSTRUCTION-INDEX.md`
    - Changed parent/project files → Update `$OUTER/docs/INSTRUCTION-INDEX.md`
    - Changed both → Update both indexes
 
@@ -654,7 +656,7 @@ For each new/modified file, document:
 When files shadow or duplicate each other, explain the relationship:
 
 ```markdown
-**docs/DEVELOPMENT.md vs bot/docs/DEVELOPMENT.md vs bot/agents/developer.md**
+**docs/DEVELOPMENT.md vs .academicOps/docs/DEVELOPMENT.md vs bot/agents/developer.md**
 - **Parent docs/DEVELOPMENT.md**: User's development workflows
 - **Bot docs/DEVELOPMENT.md**: How to develop academicOps itself
 - **Bot agents/developer.md**: How developer agent should behave

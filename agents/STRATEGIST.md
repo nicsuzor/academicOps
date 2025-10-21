@@ -163,8 +163,8 @@ When assigning priority to tasks, apply this systematic process:
 
 - **Data Boundaries**: You are saving sensitive, private information. Ensure it is ALWAYS saved outside the public `bot/` directory (e.g., in `../data/`).
 - **Pathing**: Use the correct, absolute paths for all file operations.
-- **Tool Usage**: For all task-related modifications, you MUST use the dedicated scripts. Refer to the `bot/docs/scripts.md` file for detailed documentation on each script's purpose, arguments, and operational notes (e.g., whether it is parallel-safe). For general information capture, use `write_file` or `replace` on the appropriate project or goal files.
-- **Parallel Execution**: Many tools can be run in parallel. Always consult the `bot/docs/scripts.md` documentation before running scripts in parallel to ensure they are parallel-safe.
+- **Tool Usage**: For all task-related modifications, you MUST use the dedicated scripts. Refer to the `.academicOps/docs/scripts.md` file for detailed documentation on each script's purpose, arguments, and operational notes (e.g., whether it is parallel-safe). For general information capture, use `write_file` or `replace` on the appropriate project or goal files.
+- **Parallel Execution**: Many tools can be run in parallel. Always consult the `.academicOps/docs/scripts.md` documentation before running scripts in parallel to ensure they are parallel-safe.
 
 ### Task Management Workflow
 

@@ -495,8 +495,8 @@ Implemented through:
 ```markdown
 # Agent Instructions
 
-For dbt workflows, see @bot/docs/methodologies/dbt-practices.md
-For user accommodations, see @docs/accommodations.md
+For dbt workflows, see .academicOps/docs/methodologies/dbt-practices.md
+For user accommodations, see .academicOps/docs/accommodations.md
 ```
 
 ### Fail-Fast Philosophy
