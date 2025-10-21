@@ -14,6 +14,23 @@ See TRAINER.md lines 126-153 for requirements.
 
 ## Active Experiments
 
+### 2025-10-21: Agent Creates _new File Instead of Trusting Git
+
+**File**: `2025-10-21_agent-creates-new-file-instead-of-editing.md`
+**Issue**: #139
+**Status**: FAILED
+**Severity**: DRY violation, doesn't trust version control
+
+**Violation**: When asked to simplify `setup_academicops.sh`, agent created `setup_academicops_new.sh` instead of editing existing file directly.
+
+**Pattern**: Defensive behavior - create safety net instead of trusting infrastructure (git)
+
+**Required Fix**: Add explicit instruction to trust version control, never create `_new`, `_backup`, `_old` files
+
+**Impact**: Code duplication, extra cleanup work, violates DRY axiom
+
+---
+
 ### 2025-10-20: Failed to Answer Direct Question
 
 **File**: `2025-10-20_failed-to-answer-direct-question.md`
