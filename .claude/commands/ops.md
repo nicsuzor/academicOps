@@ -23,6 +23,6 @@ Available slash commands for the academicOps framework:
 
 ## More Information
 
-- Framework documentation: `${ACADEMICOPS_BOT}/ARCHITECTURE.md`
-- Test methodology: `${ACADEMICOPS_BOT}/docs/TESTING.md`
+- Framework documentation: `.academicOps/ARCHITECTURE.md`
+- Test methodology: `.academicOps/docs/TESTING.md`
 - GitHub issues: https://github.com/nicsuzor/academicOps/issues

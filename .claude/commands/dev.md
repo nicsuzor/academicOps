@@ -6,7 +6,7 @@ Load developer workflow from 3-tier hierarchy.
 Execute:
 
 ```bash
-uv run python ${ACADEMICOPS_BOT}/scripts/load_instructions.py DEVELOPER.md
+uv run python .academicOps/scripts/load_instructions.py DEVELOPER.md
 ```
 
 ## What This Loads

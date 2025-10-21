@@ -32,7 +32,7 @@ ${OUTER}/                      # User's parent repository (PRIVATE)
 
 **Examples of CORRECT behavior**:
 ✅ "See ../docs/STYLE.md for writing guidelines" (reference, not copy)
-✅ Creating generic workflow in bot/scripts/ that reads from $ACADEMIC_OPS_DATA
+✅ Creating generic workflow in .academicOps/scripts/ that reads from $ACADEMIC_OPS_DATA
 ✅ Documenting a pattern without including personal examples
 
 **Examples of VIOLATIONS**:
@@ -159,7 +159,7 @@ See [PATH-RESOLUTION](PATH-RESOLUTION.md) for details.
 ### Tool Access Matrix
 | Tool Location | Accessible From | Solution |
 |--------------|-----------------|----------|
-| bot/scripts/ | Any directory | Use: `$ACADEMIC_OPS_SCRIPTS/` |
+| .academicOps/scripts/ | Any directory | Use: `$ACADEMIC_OPS_SCRIPTS/` |
 | data/ folder | Any directory | Use: `$ACADEMIC_OPS_DATA/` |
 | docs/ folder | Any directory | Use: `$ACADEMIC_OPS_DOCS/` |
 

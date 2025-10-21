@@ -10,7 +10,7 @@ Usage:
     violations = review_staged_files()
 
     # Standalone
-    python3 bot/scripts/code_review.py --git-staged
+    python3 .academicOps/scripts/code_review.py --git-staged
 """
 
 import argparse

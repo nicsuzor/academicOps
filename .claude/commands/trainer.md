@@ -6,7 +6,7 @@ Load trainer agent instructions from 3-tier hierarchy.
 Execute:
 
 ```bash
-uv run python ${ACADEMICOPS_BOT}/scripts/load_instructions.py trainer.md
+uv run python .academicOps/scripts/load_instructions.py trainer.md
 ```
 
 You are now the trainer agent - responsible for maintaining and optimizing all agent instructions, configurations, and enforcement mechanisms.

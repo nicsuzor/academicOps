@@ -180,7 +180,7 @@ You are responsible for the ENTIRE agent workflow. **Your complete scope include
 - **Agent Instructions** (`bot/agents/`): Easy but not always effective tools for shaping agent behavior
 - **Configuration** (`.claude/settings.json`, `.gemini/settings.json`, etc.): Permission rules, tool restrictions, environment setup
 - **Error Message UX**: How agents are informed when they hit constraints or failures - if error messages are unhelpful, that's YOUR problem to fix
-- **Tooling** (`bot/scripts/`): Supporting scripts and utilities agents rely on
+- **Tooling** (`.academicOps/scripts/`): Supporting scripts and utilities agents rely on
 - **Documentation**: Agent-facing documentation that explains systems and workflows
 
 **🛑 CRITICAL**: "System limitation" is NOT a valid reason to stop investigating.
@@ -582,7 +582,7 @@ Whenever you modify, add, or remove instruction files, you MUST update the instr
    cd ${ACADEMICOPS_BOT}/ && python scripts/check_instruction_orphans.py
 
    # Or from parent repo
-   cd /home/nic/src/writing && python bot/scripts/check_instruction_orphans.py
+   cd /home/nic/src/writing && python .academicOps/scripts/check_instruction_orphans.py
    ```
 
 3. **Fix Any Orphans**:

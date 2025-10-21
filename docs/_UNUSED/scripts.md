@@ -1,6 +1,6 @@
 # Bot Scripts Documentation
 
-This document provides details on the scripts available in `bot/scripts/`.
+This document provides details on the scripts available in `.academicOps/scripts/`.
 
 ## Email Interaction
 
@@ -14,7 +14,7 @@ Use MCP tools like `mcp__omcp__messages_search`, `mcp__omcp__messages_get`, etc.
 
 **Usage:**
 ```bash
-uv run python bot/scripts/task_add.py --title "Task Title" [--priority PRIORITY] [--project PROJECT_SLUG]
+uv run python .academicOps/scripts/task_add.py --title "Task Title" [--priority PRIORITY] [--project PROJECT_SLUG]
 ```
 
 **Arguments:**
@@ -31,7 +31,7 @@ uv run python bot/scripts/task_add.py --title "Task Title" [--priority PRIORITY]
 
 **Usage:**
 ```bash
-uv run python bot/scripts/task_process.py modify <task_id> [--archive] [--priority N] [--due YYYY-MM-DD]
+uv run python .academicOps/scripts/task_process.py modify <task_id> [--archive] [--priority N] [--due YYYY-MM-DD]
 ```
 
 **Arguments:**
@@ -51,7 +51,7 @@ uv run python bot/scripts/task_process.py modify <task_id> [--archive] [--priori
 
 **Usage:**
 ```bash
-uv run python bot/scripts/task_index.py [--format=text|json]
+uv run python .academicOps/scripts/task_index.py [--format=text|json]
 ```
 
 **Arguments:**

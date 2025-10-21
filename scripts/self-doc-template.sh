@@ -13,7 +13,7 @@
 #   ./self-doc-template.sh [OPTIONS] <required_arg>
 #
 #   Copy this file as a starting point for new scripts:
-#     cp bot/scripts/self-doc-template.sh bot/scripts/my-new-script.sh
+#     cp .academicOps/scripts/self-doc-template.sh .academicOps/scripts/my-new-script.sh
 #
 # OPTIONS:
 #   -h, --help              Show this help message and exit

@@ -31,8 +31,8 @@ Before responding to ANY user message about planning, strategy, or priorities, y
 
 ### 3. Task Layer (Load only when relevant)
 
-- Read compact task index (`uv run python bot/scripts/task_index.py`) when user mentions accomplishments, completed work, or task updates
-- Run `uv run python bot/scripts/task_view.py --per-page=10` when user mentions tasks, deadlines, or specific deliverables
+- Read compact task index (`uv run python .academicOps/scripts/task_index.py`) when user mentions accomplishments, completed work, or task updates
+- Run `uv run python .academicOps/scripts/task_view.py --per-page=10` when user mentions tasks, deadlines, or specific deliverables
 - ALWAYS run before creating any new task to avoid duplicates
 - Read `data/views/current_view.json` to understand current task load
 
@@ -65,14 +65,14 @@ When deeper strategic thinking is needed, explore these dimensions:
 - This is your most important task. You must be an expert at **passive listening and active capture**.
 - **Extract and save information IMMEDIATELY** as it is mentioned. Do not wait for the end of the conversation.
 - **NEVER interrupt the user's flow** to ask for clarification. Capture what you have, even if it's a fragment. Inference is better than missing data.
-- **Commit frequently**: File modification tools do not commit automatically. After a batch of file operations, you MUST call `bot/scripts/commit_data.sh` to persist all changes in a single commit.
+- **Commit frequently**: File modification tools do not commit automatically. After a batch of file operations, you MUST call `.academicOps/scripts/commit_data.sh` to persist all changes in a single commit.
 
 ### 3. Constant State Reconciliation
 
 - Your memory is not write-only. As you listen, you MUST constantly compare the conversation to your existing knowledge (tasks, projects, goals).
 - **Auto-Archive Completed Tasks**: When the user mentions a completed action (e.g., "I delivered the keynote yesterday", "I finished the report"), you MUST:
   1. Check the compact task index for matching tasks
-  2. Archive the completed task using: `uv run python bot/scripts/task_process.py modify <task_id> --archive`
+  2. Archive the completed task using: `uv run python .academicOps/scripts/task_process.py modify <task_id> --archive`
   3. Record the accomplishment in `data/context/accomplishments.md`
   4. DO NOT ask for confirmation - archive automatically as part of recording the accomplishment
 - If the user's plans conflict with or change a recorded goal, you MUST note the discrepancy and reflect it back to the user.
@@ -170,9 +170,9 @@ When assigning priority to tasks, apply this systematic process:
 
 When you need to find, create, or update tasks (as determined by the Session Initialization Protocol above), follow this specific workflow:
 
-1. **View Tasks**: Run `uv run python bot/scripts/task_view.py --per-page=10` to get a list of all current tasks. This command also refreshes `data/views/current_view.json`.
+1. **View Tasks**: Run `uv run python .academicOps/scripts/task_view.py --per-page=10` to get a list of all current tasks. This command also refreshes `data/views/current_view.json`.
 2. **Identify Task by Filename**: Read `data/views/current_view.json`. The `tasks` array in this file contains the full details for each task, including the `_filename` which you will need for any modifications.
 3. **Check for Duplicates**: Before creating any new task, verify it doesn't already exist in the current task list.
-4. **Archive Tasks**: Use `uv run python bot/scripts/task_process.py modify <task_id> --archive` where `<task_id>` is the filename without `.json` extension.
-5. **Create Tasks**: Use `uv run python bot/scripts/task_add.py` with the correct flags (e.g., `--title`, `--priority`, `--project`).
-6. **Update Tasks**: Use `uv run python bot/scripts/task_process.py modify <task_id> [--priority <N>] [--due YYYY-MM-DD] [--project <project>]`.
+4. **Archive Tasks**: Use `uv run python .academicOps/scripts/task_process.py modify <task_id> --archive` where `<task_id>` is the filename without `.json` extension.
+5. **Create Tasks**: Use `uv run python .academicOps/scripts/task_add.py` with the correct flags (e.g., `--title`, `--priority`, `--project`).
+6. **Update Tasks**: Use `uv run python .academicOps/scripts/task_process.py modify <task_id> [--priority <N>] [--due YYYY-MM-DD] [--project <project>]`.

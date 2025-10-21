@@ -127,7 +127,7 @@ Documentation should be self-contained in templates, issues, and code instead:
 
 **NO TASK-BASED FILES**: Temporary analyses, audit reports, investigation summaries must use GitHub issues or memory-only responses.
 
-**Git hook installed**: `bot/scripts/git-hooks/pre-commit` will prompt for confirmation when adding new .md files.
+**Git hook installed**: `.academicOps/scripts/git-hooks/pre-commit` will prompt for confirmation when adding new .md files.
 
 ### 10. 🚨 CRITICAL: Handling Multi-line Arguments in Shell Commands
 
@@ -136,7 +136,7 @@ Documentation should be self-contained in templates, issues, and code instead:
     1. **Write to a temporary file**: Use the `write_file` tool to save the multi-line text to a temporary file (e.g., `/tmp/temp_details.md`).
     2. **Pass the file path**: Call the shell command and pass the *path* to the temporary file as an argument. The tool should have a specific argument for this, such as `--details-from-file`.
     3. **Clean up the file**: After the command has successfully completed, use the `rm` command to delete the temporary file.
-- **Example**: To create a task with a long description, you would first write the description to `/tmp/task_description.txt`, then call `uv run python bot/scripts/task_add.py --details-from-file /tmp/task_description.txt`, and finally run `rm /tmp/task_description.txt` after it succeeds.
+* **Example**: To create a task with a long description, you would first write the description to `/tmp/task_description.txt`, then call `uv run python .academicOps/scripts/task_add.py --details-from-file /tmp/task_description.txt`, and finally run `rm /tmp/task_description.txt` after it succeeds.
 - This is the **only** approved method for passing multi-line text to shell tools.
 
 ### 11. 🚨 CRITICAL: Submodule Independence Policy

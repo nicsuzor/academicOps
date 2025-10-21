@@ -4,14 +4,24 @@
 
 ## Core Axioms (Inviolable Rules)
 
-1. **Namespace Separation**: NEVER mix agent instructions with human documentation
+1. **DO ONE THING** - Complete the task requested, then STOP.
+   - User asks question → Answer it, then stop
+   - User requests task → Do it, then stop
+   - Find related issues → Report them, don't fix them
+   - **Exception**: SUPERVISOR agent orchestrates multi-step workflows
+2. **ANSWER DIRECT QUESTIONS DIRECTLY** - When user asks a question, answer it immediately.
+   - Point to evidence first
+   - Don't launch into solutions before answering
+   - Don't identify problems and immediately fix them
+   - If user corrects you, STOP and re-evaluate
+3. **Namespace Separation**: NEVER mix agent instructions with human documentation
    - `agents/*.md` and `bots/*/` = Agent instructions (rules for AI, imperative voice: "You MUST...")
    - `docs/*.md` and root `*.md` = Human documentation (explanations for developers/users, descriptive voice: "The system does...")
    - ❌ PROHIBITED: Agent rules in `docs/`, human documentation in `agents/`
-2. **Data Boundaries**: `bot/` = PUBLIC (GitHub), everything else = PRIVATE
-3. **Project Isolation**: Project-specific content belongs ONLY in the project repository
-4. **Project Independence**: Projects (submodules) must work independently without cross-dependencies
-5. **Fail-Fast Philosophy (Code)**: No defaults, no fallbacks, no workarounds, **no `.get(key, default)`**
+4. **Data Boundaries**: `bot/` = PUBLIC (GitHub), everything else = PRIVATE
+5. **Project Isolation**: Project-specific content belongs ONLY in the project repository
+6. **Project Independence**: Projects (submodules) must work independently without cross-dependencies
+7. **Fail-Fast Philosophy (Code)**: No defaults, no fallbacks, no workarounds, **no `.get(key, default)`**
    - **Means**: Fail immediately when configuration is missing or incorrect
    - ❌ PROHIBITED: `config.get("param", default_value)` - Silent misconfiguration corrupts research data
    - ❌ PROHIBITED: `try/except` returning fallback values - Hides errors
@@ -21,8 +31,8 @@
    - ✅ REQUIRED: Explicit check: `if key not in dict: raise ValueError(...)`
    - **Does NOT mean**: Avoid using industry-standard tools as dependencies
    - ✅ CORRECT: Require `pre-commit`, `uv`, `pytest` and fail if missing
-   - ✅ CORRECT: Use best standard tool for the job (see Axiom 8)
-6. **Fail-Fast Philosophy (Agents)**: When YOUR instructions or tools fail, STOP immediately
+   - ✅ CORRECT: Use best standard tool for the job (see Axiom 10)
+8. **Fail-Fast Philosophy (Agents)**: When YOUR instructions or tools fail, STOP immediately
    - ❌ PROHIBITED: Attempting recovery when slash commands fail
    - ❌ PROHIBITED: Working around broken paths or missing environment variables
    - ❌ PROHIBITED: "Figuring it out" when infrastructure is broken
@@ -30,9 +40,9 @@
    - ✅ REQUIRED: Report error immediately and stop
    - ✅ REQUIRED: Demand infrastructure be fixed, don't bypass it
    - **Rationale**: Just like code shouldn't silently fail with defaults, agents shouldn't silently work around broken infrastructure. Fail-fast exposes problems so they get fixed, not hidden.
-7. Everything is **self-documenting**: documentation-as-code first; never make separate documentation files. Our live, validated, rigorous academic projects are also tutorials and guides; everything is replicable so we work on live code and data; never create fake examples for tests or documentation.
-8. **DRY**, modular, and **EXPLICIT**: one golden path, no defaults, no guessing, no backwards compatibility.
-9. **Use Standard Tools**: ONE GOLDEN PATH - use the best industry-standard tool for each job
+9. Everything is **self-documenting**: documentation-as-code first; never make separate documentation files. Our live, validated, rigorous academic projects are also tutorials and guides; everything is replicable so we work on live code and data; never create fake examples for tests or documentation.
+10. **DRY**, modular, and **EXPLICIT**: one golden path, no defaults, no guessing, no backwards compatibility.
+11. **Use Standard Tools**: ONE GOLDEN PATH - use the best industry-standard tool for each job
    - Package management: `uv` (not pip, poetry, or custom solutions)
    - Testing: `pytest` (not unittest or custom frameworks)
    - Git hooks: `pre-commit` (not custom bash scripts)
@@ -43,18 +53,8 @@
 
 ## Behavioral Rules
 
-10. **STOP WHEN INTERRUPTED** - If user interrupts, stop immediately.
-11. **ANSWER DIRECT QUESTIONS DIRECTLY** - When user asks "why do you think X?", point to the evidence immediately
-   - THEN investigate deeper if needed
-   - Never launch into solutions before answering the question asked
-   - If user corrects you, STOP and re-evaluate entire approach
-12. **VERIFY FIRST** - Check actual state, never assume.
-13. **DO ONE THING** - Complete the specific task requested, then stop
-   - If asked to debug X, debug X only - don't expand scope
-   - If you find related issues, REPORT them but don't fix them
-   - If task requires multiple steps, use TodoWrite and complete ONE at a time
-   - If you need to do more, ASK user for permission to continue
-   - **Exception**: SUPERVISOR agent orchestrates multi-step workflows (see SUPERVISOR.md)
+12. **STOP WHEN INTERRUPTED** - If user interrupts, stop immediately.
+13. **VERIFY FIRST** - Check actual state, never assume.
 14. **NO EXCUSES** - Never close issues or claim success without confirmation. No error is somebody else's problem. If you can't verify and replicate, it doesn't work.
    - If asked to "run X to verify Y", success = X runs successfully, not "X would work if..."
    - Never rationalize away requirements. If a test fails, fix it or ask for help - don't explain why it's okay that it failed.

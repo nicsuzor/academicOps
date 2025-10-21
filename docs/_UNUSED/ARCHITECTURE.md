@@ -74,13 +74,13 @@ Loaded via SessionStart hook (`validate_env.py`) at every session start:
 
 **SessionStart Hook** (.claude/settings.json):
 
-- Runs `bot/scripts/validate_env.py` at session start
+- Runs `.academicOps/scripts/validate_env.py` at session start
 - Script injects both instruction files as `additionalContext`
 - Agents MUST read these before any tool use
 
 **PreToolUse Hook**:
 
-- Validates agent permissions via `bot/scripts/validate_tool.py`
+- Validates agent permissions via `.academicOps/scripts/validate_tool.py`
 - Blocks unauthorized tool use based on agent configuration
 - Enforces write restrictions, mode compliance
 - Enforces Axiom #5 (documentation-as-code): blocks .md file creation except for:

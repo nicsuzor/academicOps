@@ -77,13 +77,15 @@ At session start and when agents are invoked, academicOps loads instructions fro
 
 ### SessionStart: Three-Tier Hierarchy
 
-Every session loads instructions from up to three tiers:
+Every session loads `_CORE.md` from up to three tiers:
 
 ```
-$PROJECT/bots/docs/INSTRUCTIONS.md           (HIGHEST PRIORITY)
-$ACADEMICOPS_PERSONAL/bots/docs/INSTRUCTIONS.md (MEDIUM PRIORITY)
-$ACADEMICOPS_BOT/agents/_CORE.md             (LOWEST PRIORITY)
+$ACADEMICOPS_BOT/bots/agents/_CORE.md              (Framework - REQUIRED)
+$ACADEMICOPS_PERSONAL/bots/agents/_CORE.md         (Personal - optional)
+$PWD/bots/agents/_CORE.md                          (Project - optional)
 ```
+
+**All use `bots/agents/` directory** - consistent across all tiers.
 
 **Loading behavior:**
 - At least one file must exist (exits with error if all missing)
@@ -93,62 +95,55 @@ $ACADEMICOPS_BOT/agents/_CORE.md             (LOWEST PRIORITY)
 
 **Content organization by tier:**
 
-**Framework tier** (`$ACADEMICOPS_BOT/agents/_CORE.md`):
-- Generic work axioms (fail-fast, DRY, verify first)
+**Framework tier** (`$ACADEMICOPS_BOT/bots/agents/_CORE.md`):
+- Generic work axioms (DO ONE THING, ANSWER DIRECTLY, fail-fast, DRY, verify first)
 - Repository structure overview
 - Tool requirements
 
-**Personal tier** (`$ACADEMICOPS_PERSONAL/bots/docs/INSTRUCTIONS.md`):
-- User's global preferences across all repos
+**Personal tier** (`$ACADEMICOPS_PERSONAL/bots/agents/_CORE.md`):
+- User's global preferences/overrides across all repos
 - Work style, ADHD accommodations, communication preferences
-- Writing style guide references
-- Tool preferences (BigQuery over Redshift, etc.)
-- Workflow defaults
+- Tool preferences
+- Workflow customizations
 
-**Project tier** (`$PROJECT/bots/docs/INSTRUCTIONS.md`):
-- Project-specific architecture and conventions
-- Domain knowledge
-- Dependencies and cross-cutting concerns
-- Local tool and data paths
-
-**Current migration note**: Legacy paths (`docs/bots/INSTRUCTIONS.md`, `docs/agents/INSTRUCTIONS.md`) still supported as fallback during transition to new `/bots/` standard.
+**Project tier** (`$PWD/bots/agents/_CORE.md`):
+- Project-specific overrides to core axioms
+- Domain-specific rules
+- Local conventions
 
 ### Agent-Specific Instructions
 
-When user invokes a specific agent (e.g., `@agent-developer`):
+When user invokes `/dev` or other slash commands, same 3-tier pattern applies:
 
-1. SessionStart instructions already loaded (3-tier hierarchy)
-2. Framework agent file loads: `$ACADEMICOPS_BOT/agents/{NAME}.md`
-3. Optional repo-local override: `$PROJECT/bots/agents/{name}.md`
+```
+$ACADEMICOPS_BOT/bots/agents/DEVELOPER.md          (Framework - REQUIRED)
+$ACADEMICOPS_PERSONAL/bots/agents/DEVELOPER.md     (Personal - optional)
+$PWD/bots/agents/DEVELOPER.md                      (Project - optional)
+```
 
-**Example loading sequence for `@agent-developer` in buttermilk repo:**
+**Example: Running `/dev` in buttermilk repo loads:**
 
-1. `bot/agents/_CORE.md` (core axioms)
-2. `~/src/writing/bots/docs/INSTRUCTIONS.md` (user preferences)
-3. `buttermilk/bots/docs/INSTRUCTIONS.md` (project architecture)
-4. `bot/agents/DEVELOPER.md` (developer agent instructions)
-5. `buttermilk/bots/agents/developer.md` (if exists - buttermilk dev rules)
+1. `$ACADEMICOPS_BOT/bots/agents/DEVELOPER.md` (6-step dev workflow)
+2. `$ACADEMICOPS_PERSONAL/bots/agents/DEVELOPER.md` (user's dev preferences, if exists)
+3. `buttermilk/bots/agents/DEVELOPER.md` (buttermilk-specific dev rules, if exists)
 
-**Priority in conflicts**: Repo-local > Framework agent > Project > Personal > Framework core
+**Priority in conflicts**: Project > Personal > Framework
 
-### Personal Repository: Dual Purpose
+### Path Reference
 
-An important pattern observed in actual usage:
+**All paths use `.academicOps/` relative symlink:**
 
-The repository referenced by `$ACADEMICOPS_PERSONAL` typically serves two purposes:
+**Hooks** (in `settings.json`):
+```json
+"command": "uv run python .academicOps/scripts/load_instructions.py"
+```
 
-1. **Preference source for all repos** - Contains user's global preferences in `bots/docs/INSTRUCTIONS.md`
-2. **Working project** - Has its own purpose (strategic planning, email triage, task management)
+**Slash commands** (in `.claude/commands/*.md`):
+```bash
+uv run python .academicOps/scripts/load_instructions.py DEVELOPER.md
+```
 
-**Example**: User's `~/src/writing` repo:
-- Provides user preferences loaded by ALL repos (writing style, tool choices, ADHD accommodations)
-- Also does actual work (strategic planning, email processing)
-- Contains `data/` directory (goals, tasks, projects) used by strategist agent when working in this repo
-
-**Privacy boundary:**
-- User preferences (in `bots/docs/INSTRUCTIONS.md`) = shareable patterns, loaded globally
-- Strategic data (in `data/`) = private information, accessed only when working directory is personal repo
-- Scope determined automatically by working directory
+**Why consistent**: Commands get symlinked into target repos, so both hooks and commands run with `.academicOps/` available.
 
 ---
 

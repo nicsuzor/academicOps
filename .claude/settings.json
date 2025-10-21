@@ -18,7 +18,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash bots/hooks/safe_hook_wrapper.sh bots/hooks/load_instructions.py",
+            "command": "test -f bots/hooks/load_instructions.py && uv run python bots/hooks/load_instructions.py || echo '{\"hookSpecificOutput\":{\"hookEventName\":\"SessionStart\",\"additionalContext\":\"# WARNING: Hook script not found at bots/hooks/load_instructions.py\"}}'",
             "timeout": 5000
           }
         ]
@@ -29,7 +29,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash bots/hooks/safe_hook_wrapper.sh bots/hooks/validate_tool.py",
+            "command": "test -f bots/hooks/validate_tool.py && uv run python bots/hooks/validate_tool.py || echo '{\"continue\":true,\"systemMessage\":\"WARNING: Hook script not found at bots/hooks/validate_tool.py\"}'",
             "timeout": 3000
           }
         ]
@@ -40,7 +40,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash bots/hooks/safe_hook_wrapper.sh bots/hooks/validate_stop.py SubagentStop",
+            "command": "test -f bots/hooks/validate_stop.py && uv run python bots/hooks/validate_stop.py SubagentStop || echo '{\"continue\":true,\"systemMessage\":\"WARNING: Hook script not found at bots/hooks/validate_stop.py\"}'",
             "timeout": 2000
           }
         ]
@@ -51,7 +51,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash bots/hooks/safe_hook_wrapper.sh bots/hooks/validate_stop.py Stop",
+            "command": "test -f bots/hooks/validate_stop.py && uv run python bots/hooks/validate_stop.py Stop || echo '{\"continue\":true,\"systemMessage\":\"WARNING: Hook script not found at bots/hooks/validate_stop.py\"}'",
             "timeout": 2000
           }
         ]

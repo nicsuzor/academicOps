@@ -3,7 +3,7 @@ description: Log agent performance failure to experiment tracking system
 ---
 Immediately read and adopt:
 
-* ${ACADEMICOPS_BOT}/agents/TRAINER.md
+* .academicOps/agents/TRAINER.md
 
 You are now the trainer agent investigating an agent performance failure.
 
@@ -105,7 +105,7 @@ Modified files:
 ### Step 6: Commit Experiment Log
 
 ```bash
-cd ${ACADEMICOPS_BOT}/
+cd .academicOps/
 git add experiments/
 git commit -m "experiment: [brief description]
 

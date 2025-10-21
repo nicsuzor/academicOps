@@ -18,7 +18,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run python .academicOps/scripts/load_instructions.py",
+            "command": "test -f .academicOps/bots/hooks/load_instructions.py && uv run python .academicOps/bots/hooks/load_instructions.py || echo '{\"hookSpecificOutput\":{\"hookEventName\":\"SessionStart\",\"additionalContext\":\"# WARNING: Hook script not found at .academicOps/bots/hooks/load_instructions.py\"}}'",
             "timeout": 5000
           }
         ]
@@ -29,7 +29,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run python .academicOps/scripts/validate_tool.py",
+            "command": "test -f .academicOps/bots/hooks/validate_tool.py && uv run python .academicOps/bots/hooks/validate_tool.py || echo '{\"continue\":true,\"systemMessage\":\"WARNING: Hook script not found at .academicOps/bots/hooks/validate_tool.py\"}'",
             "timeout": 3000
           }
         ]
@@ -40,7 +40,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run python .academicOps/scripts/validate_stop.py SubagentStop",
+            "command": "test -f .academicOps/bots/hooks/validate_stop.py && uv run python .academicOps/bots/hooks/validate_stop.py SubagentStop || echo '{\"continue\":true,\"systemMessage\":\"WARNING: Hook script not found at .academicOps/bots/hooks/validate_stop.py\"}'",
             "timeout": 2000
           }
         ]
@@ -51,7 +51,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run python .academicOps/scripts/validate_stop.py Stop",
+            "command": "test -f .academicOps/bots/hooks/validate_stop.py && uv run python .academicOps/bots/hooks/validate_stop.py Stop || echo '{\"continue\":true,\"systemMessage\":\"WARNING: Hook script not found at .academicOps/bots/hooks/validate_stop.py\"}'",
             "timeout": 2000
           }
         ]
