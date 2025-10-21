@@ -24,8 +24,8 @@ Run `read_instructions.py` for each of these files to load from all three levels
 Execute:
 
 ```bash
-uv run python .academicOps/scripts/load_instructions.py TESTING.md
-uv run python .academicOps/scripts/load_instructions.py FAIL-FAST.md
+uv run python ${ACADEMICOPS_BOT}/bots/hooks/load_instructions.py TESTING.md
+uv run python ${ACADEMICOPS_BOT}/bots/hooks/load_instructions.py FAIL-FAST.md
 ```
 
 After loading, confirm to the user:
