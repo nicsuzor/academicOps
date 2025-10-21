@@ -202,6 +202,32 @@ When an agent's failure is caused by faulty infrastructure (tools, config, error
 - **Conciseness**: Keep changes small (<10 lines) and new files minimal (<50 lines). If a larger change is needed, create a GitHub issue to discuss it.
 - **CRITICAL: Relative Paths Only**: All file references in agent instructions MUST be relative to the project root. NEVER use absolute paths or references to parent projects (like `@projects/buttermilk/` or `@bot/`). Each project must be self-contained and work independently.
 
+### CLAUDE.md Maintenance (Issue #120)
+
+When modifying code structure or adding directories, maintain just-in-time documentation loading:
+
+**New Python source directory** → Add `CLAUDE.md` with @ references:
+```markdown
+@../agents/_CORE.md
+@../docs/_CHUNKS/FAIL-FAST.md
+@../.claude/skills/python-dev/SKILL.md
+```
+
+**New test directory** → Add `CLAUDE.md` with @ references:
+```markdown
+@../agents/_CORE.md
+@../docs/TESTING.md
+@../.claude/skills/test-writing/SKILL.md
+```
+
+**New script directory** → Add `CLAUDE.md` with @ references:
+```markdown
+@../agents/_CORE.md
+@../docs/_CHUNKS/FAIL-FAST.md
+```
+
+**CRITICAL**: CLAUDE.md files contain ONLY @ references, never duplicate content. This enables context-appropriate loading only when agents work in specific directories, reducing token usage and providing relevant guidelines just-in-time.
+
 
 ## User-Reported Failures: Use `/log-failure` Command
 
