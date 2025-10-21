@@ -18,7 +18,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run python3 scripts/load_instructions.py",
+            "command": "bash bots/hooks/safe_hook_wrapper.sh bots/hooks/load_instructions.py",
             "timeout": 5000
           }
         ]
@@ -29,7 +29,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run python3 scripts/validate_tool.py",
+            "command": "bash bots/hooks/safe_hook_wrapper.sh bots/hooks/validate_tool.py",
             "timeout": 3000
           }
         ]
@@ -40,7 +40,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run python3 scripts/validate_stop.py SubagentStop",
+            "command": "bash bots/hooks/safe_hook_wrapper.sh bots/hooks/validate_stop.py SubagentStop",
             "timeout": 2000
           }
         ]
@@ -51,7 +51,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run python3 scripts/validate_stop.py Stop",
+            "command": "bash bots/hooks/safe_hook_wrapper.sh bots/hooks/validate_stop.py Stop",
             "timeout": 2000
           }
         ]
