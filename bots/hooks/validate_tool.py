@@ -293,9 +293,9 @@ VALIDATION_RULES = [
     ),
     ValidationRule(
         name="Inline Python execution (python -c) is prohibited. Create a proper test file instead.",
-        severity="block",
+        severity="warn",  # Changed from block to warn - allows ad-hoc analysis with warning
         tool_patterns=["Bash"],
-        allowed_agents=set(),  # No exceptions - hard block for all agents
+        allowed_agents=set(),  # Warning for all agents, but not blocked
         custom_matcher=lambda tool_name, tool_input: (
             tool_name == "Bash"
             and bool(re.search(r"\bpython[3]?\s+-c\b", tool_input.get("command", "")))
