@@ -19,11 +19,10 @@ import sys
 from datetime import UTC, datetime
 from pathlib import Path
 
-# Base data directory (relative to this repo root): ./data
+# Base data directory (relative to this script): ../data
 
-ROOT = Path(__file__).resolve().parent  # parent repo root
-DATA_DIR = Path().cwd() / "data"
-print(f"Using data_dir: {DATA_DIR}")
+ROOT = Path(__file__).resolve().parents[2]  # parent repo root
+DATA_DIR = ROOT / "data"
 # -------- args --------
 page = 1
 sort = "priority"
