@@ -106,6 +106,21 @@ echo -e "${GREEN}✓${NC} bots/agents/ ready"
 # Also create bots/skills/ for project-specific skills
 mkdir -p "bots/skills"
 echo -e "${GREEN}✓${NC} bots/skills/ ready for project-specific skills"
+
+# Create bots/scripts/ symlink to academicOps scripts
+echo "Creating bots/scripts/ symlink..."
+
+mkdir -p "bots"
+
+if [ -L "bots/scripts" ]; then
+    rm "bots/scripts"
+elif [ -d "bots/scripts" ]; then
+    echo -e "${YELLOW}⚠${NC}  Backing up bots/scripts to bots/scripts.backup"
+    mv "bots/scripts" "bots/scripts.backup"
+fi
+
+ln -s "../.academicOps/scripts" "bots/scripts"
+echo -e "${GREEN}✓${NC} Symlinked bots/scripts/"
 echo
 
 # 4. Update .gitignore
@@ -130,6 +145,7 @@ echo "  - .claude/settings.json"
 echo "  - .claude/agents/, commands/, skills/ (symlinked)"
 echo "  - bots/agents/ (for project agent overrides)"
 echo "  - bots/skills/ (for project-specific skills)"
+echo "  - bots/scripts/ (symlinked to academicOps scripts)"
 echo "  - .gitignore (updated)"
 echo
 echo "Next:"

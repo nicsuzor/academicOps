@@ -4,9 +4,14 @@
 # Claude Code configuration
 .claude/settings.json
 .claude/agents/
+.claude/commands/
+.claude/skills/
 
 # Agent instructions
 agents/
+
+# Bots directory symlinked scripts
+bots/scripts/
 
 # academicOps deployment directory (symlinked scripts)
 .academicOps/
