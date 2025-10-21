@@ -79,6 +79,16 @@ elif [ -d ".claude/commands" ]; then
 fi
 ln -s "../.academicOps/.claude/commands" ".claude/commands"
 echo -e "${GREEN}✓${NC} Symlinked .claude/commands/"
+
+# Symlink skills directory
+if [ -L ".claude/skills" ]; then
+    rm ".claude/skills"
+elif [ -d ".claude/skills" ]; then
+    echo -e "${YELLOW}⚠${NC}  Backing up .claude/skills to .claude/skills.backup"
+    mv ".claude/skills" ".claude/skills.backup"
+fi
+ln -s "../.academicOps/.claude/skills" ".claude/skills"
+echo -e "${GREEN}✓${NC} Symlinked .claude/skills/"
 echo
 
 # 3. Create bots/agents/ for project overrides
@@ -92,6 +102,10 @@ if [ ! -f "bots/agents/_CORE.md" ] && [ -f ".academicOps/dist/bots/agents/_CORE.
 fi
 
 echo -e "${GREEN}✓${NC} bots/agents/ ready"
+
+# Also create bots/skills/ for project-specific skills
+mkdir -p "bots/skills"
+echo -e "${GREEN}✓${NC} bots/skills/ ready for project-specific skills"
 echo
 
 # 4. Update .gitignore
@@ -113,7 +127,9 @@ echo
 echo "Installed:"
 echo "  - .academicOps/ → $ACADEMICOPS_BOT"
 echo "  - .claude/settings.json"
-echo "  - bots/agents/ (for project overrides)"
+echo "  - .claude/agents/, commands/, skills/ (symlinked)"
+echo "  - bots/agents/ (for project agent overrides)"
+echo "  - bots/skills/ (for project-specific skills)"
 echo "  - .gitignore (updated)"
 echo
 echo "Next:"
