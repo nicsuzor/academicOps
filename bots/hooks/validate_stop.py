@@ -19,12 +19,13 @@ Input: JSON with hook event data from Claude Code
 Output: JSON response for Claude Code hooks system
 """
 
-import datetime
 import json
 import os
 import sys
 from pathlib import Path
 from typing import Any
+
+from hook_debug import safe_log_to_debug_file
 
 # SAFEGUARD: Max iterations to prevent infinite recursion
 MAX_ITERATIONS_FILE = "/tmp/claude_stop_hook_iterations.txt"
@@ -95,44 +96,6 @@ def get_repo_root() -> Path:
     except Exception:
         # Safeguard: return a sensible default
         return Path("/home/nic/src/bot")
-
-
-def safe_log_to_debug_file(
-    hook_event: str,
-    input_data: dict[str, Any],
-    output_data: dict[str, Any],
-) -> None:
-    """
-    Safely log hook invocation to a timestamped debug file.
-    
-    This function is wrapped in try-catch to prevent logging failures
-    from crashing the hook.
-
-    Args:
-        hook_event: Name of the hook event (SubagentStop, Stop)
-        input_data: Input data received from Claude Code
-        output_data: Output data being sent back to Claude Code
-    """
-    try:
-        # Use /tmp for logs to avoid permission issues
-        log_dir = Path("/tmp")
-        
-        timestamp = datetime.datetime.now(datetime.UTC).strftime("%Y%m%d_%H%M%S_%f")
-        log_file = log_dir / f"claude_{hook_event.lower()}_{timestamp}.json"
-        
-        debug_data = {
-            "hook_event": hook_event,
-            "timestamp": datetime.datetime.now(datetime.UTC).isoformat(),
-            "input": input_data,
-            "output": output_data,
-        }
-        
-        with log_file.open("w") as f:
-            json.dump(debug_data, f, indent=2)
-            f.write("\n")
-    except Exception:
-        # Silently ignore logging failures
-        pass
 
 
 def extract_context_info(input_data: dict[str, Any]) -> dict[str, Any]:

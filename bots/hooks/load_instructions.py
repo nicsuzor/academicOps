@@ -35,6 +35,9 @@ import os
 import subprocess
 import sys
 from pathlib import Path
+from typing import Any
+
+from hook_debug import safe_log_to_debug_file
 
 
 def get_tier_paths(filename: str) -> dict[str, Path | None]:
@@ -179,6 +182,15 @@ def main():
 
     args = parser.parse_args()
 
+    # Read input from stdin (hook input data)
+    input_data: dict[str, Any] = {}
+    try:
+        if not sys.stdin.isatty():
+            input_data = json.load(sys.stdin)
+    except Exception:
+        # If no stdin or parsing fails, continue with empty input
+        pass
+
     # Determine output format
     if args.format:
         output_format = args.format
@@ -205,6 +217,17 @@ def main():
         print(f"Searched at: {paths['framework']}", file=sys.stderr)
         print(f"ACADEMICOPS_BOT={os.environ.get('ACADEMICOPS_BOT', 'NOT SET')}", file=sys.stderr)
         sys.exit(1)
+
+    # Prepare output data for logging
+    output_data: dict[str, Any] = {
+        "filename": args.filename,
+        "format": output_format,
+        "tiers_loaded": list(contents.keys()),
+        "paths": {k: str(v) for k, v in paths.items() if v is not None},
+    }
+
+    # Debug log hook execution
+    safe_log_to_debug_file("SessionStart", input_data, output_data)
 
     # Output in requested format
     if output_format == "json":

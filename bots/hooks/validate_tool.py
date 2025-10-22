@@ -10,15 +10,14 @@ Exit codes:
 - 2: Block tool use (shows stderr message to agent)
 """
 
-import datetime
 import json
 import re
 import sys
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from fnmatch import fnmatch
-from pathlib import Path
 
+from hook_debug import safe_log_to_debug_file
 from hook_models import PreToolUseHookOutput, PreToolUseOutput
 
 # ============================================================================
@@ -571,16 +570,8 @@ def main():
     # Convert to dict for JSON serialization
     output_dict = hook_output.model_dump(by_alias=True, exclude_none=True)
 
-    # Debug: Save input for inspection
-    debug_file = Path("/tmp/validate_tool.json")
-    debug_data = {
-        "input": input_data,
-        "output": output_dict,
-        "timestamp": datetime.datetime.now().isoformat(),
-    }
-    with debug_file.open("a") as f:
-        json.dump(debug_data, f, indent=None)
-        f.write("\n")
+    # Debug log hook execution
+    safe_log_to_debug_file("PreToolUse", input_data, output_dict)
 
     # Output JSON to stdout (Claude Code hook specification)
     print(json.dumps(output_dict))
