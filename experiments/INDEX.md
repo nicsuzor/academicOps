@@ -14,6 +14,32 @@ See TRAINER.md lines 126-153 for requirements.
 
 ## Active Experiments
 
+### 2025-10-22: Supervisor Never Declare Success with Failing Tests
+
+**File**: `2025-10-22_supervisor-never-declare-success-with-failing-tests.md`
+**Issue**: #52
+**Status**: ACTIVE (testing instruction-based enforcement)
+**Severity**: CRITICAL - Undermines framework trustworthiness
+
+**Violation**: Supervisor agent declared "Implementation Complete" and "Ready for Manual Testing" despite 5 tests still failing on issue #128. Rationalized failures as "specification tests" instead of fixing them.
+
+**Pattern**: Premature victory declaration + rationalization. Has recurred twice (Sep 2025 developer agent, Oct 2025 supervisor agent) despite Axiom #14 existing in _CORE.md.
+
+**Hypothesis**: Adding explicit, context-specific instructions to SUPERVISOR.md will prevent pattern. If fails, must escalate to hook-based enforcement.
+
+**Implementation**: Added "CRITICAL: Never Declare Success with Failing Tests" section to SUPERVISOR.md with:
+- Absolute prohibition on declaring complete with any failing tests
+- Anti-rationalization rules (no excuses for test types)
+- Required iteration pattern (fix code, fix test, or ask user)
+- Explicit prohibited behaviors
+- Applies to ALL test types
+
+**Success Criteria**: Zero instances for 90 days. If recurs, escalate to hooks/scripts.
+
+**Impact**: If supervisor can rationalize away failing tests, entire framework becomes untrustworthy for research validation.
+
+---
+
 ### 2025-10-21: Agent Creates _new File Instead of Trusting Git
 
 **File**: `2025-10-21_agent-creates-new-file-instead-of-editing.md`
