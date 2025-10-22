@@ -6,7 +6,6 @@
       "mcp__gh__create_issue"
     ],
     "deny": [
-      "Write(**/*.md)",
       "Write(**/*.env*)",
       "Read(**/*.cache/**)",
       "Write(./**/.venv/**)"
@@ -18,7 +17,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "test -f bots/hooks/load_instructions.py && uv run python bots/hooks/load_instructions.py || echo '{\"hookSpecificOutput\":{\"hookEventName\":\"SessionStart\",\"additionalContext\":\"# WARNING: Hook script not found at bots/hooks/load_instructions.py\"}}'",
+            "command": "REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || echo .) && test -f $REPO_ROOT/bots/hooks/load_instructions.py && uv run python $REPO_ROOT/bots/hooks/load_instructions.py || echo '{\"hookSpecificOutput\":{\"hookEventName\":\"SessionStart\",\"additionalContext\":\"# WARNING: Hook script not found at bots/hooks/load_instructions.py\"}}'",
             "timeout": 5000
           }
         ]
@@ -29,7 +28,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "test -f bots/hooks/validate_tool.py && uv run python bots/hooks/validate_tool.py || echo '{\"continue\":true,\"systemMessage\":\"WARNING: Hook script not found at bots/hooks/validate_tool.py\"}'",
+            "command": "REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || echo .) && test -f $REPO_ROOT/bots/hooks/validate_tool.py && uv run python $REPO_ROOT/bots/hooks/validate_tool.py || echo '{\"continue\":true,\"systemMessage\":\"WARNING: Hook script not found at bots/hooks/validate_tool.py\"}'",
             "timeout": 3000
           }
         ]
@@ -40,7 +39,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "test -f bots/hooks/validate_stop.py && uv run python bots/hooks/validate_stop.py SubagentStop || echo '{\"continue\":true,\"systemMessage\":\"WARNING: Hook script not found at bots/hooks/validate_stop.py\"}'",
+            "command": "REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || echo .) && test -f $REPO_ROOT/bots/hooks/validate_stop.py && uv run python $REPO_ROOT/bots/hooks/validate_stop.py SubagentStop || echo '{\"continue\":true,\"systemMessage\":\"WARNING: Hook script not found at bots/hooks/validate_stop.py\"}'",
             "timeout": 2000
           }
         ]
@@ -51,7 +50,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "test -f bots/hooks/validate_stop.py && uv run python bots/hooks/validate_stop.py Stop || echo '{\"continue\":true,\"systemMessage\":\"WARNING: Hook script not found at bots/hooks/validate_stop.py\"}'",
+            "command": "REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || echo .) && test -f $REPO_ROOT/bots/hooks/validate_stop.py && uv run python $REPO_ROOT/bots/hooks/validate_stop.py Stop || echo '{\"continue\":true,\"systemMessage\":\"WARNING: Hook script not found at bots/hooks/validate_stop.py\"}'",
             "timeout": 2000
           }
         ]
