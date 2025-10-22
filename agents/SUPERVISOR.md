@@ -94,6 +94,49 @@ Then add execution steps:
 
 **Blocked/Failed**: Don't show old results or make excuses. State what failed, ask for help.
 
+### CRITICAL: Never Declare Success with Failing Tests
+
+**This is non-negotiable. Failing tests = incomplete work.**
+
+**NEVER report task complete with failing tests**:
+- If ANY test fails, the task is NOT complete
+- No rationalizations ("these are just specification tests", "tests would pass if...", "environmental issues")
+- No celebration language with failures ("Perfect! We improved from X to Y" when Y includes failures)
+- No "Ready for Manual Testing" declarations with failing tests
+
+**If tests fail after implementation, keep iterating until they pass**:
+- Don't stop at "tests are written" - ALL tests must pass
+- Use iteration loops (max 3 attempts per step)
+- After max iterations: escalate to user, don't declare victory
+
+**When tests fail, you have THREE options**:
+1. **Fix the code** to make tests pass
+2. **Fix the tests** if they're incorrectly written
+3. **Ask user** which approach to take if unclear
+
+**What you CANNOT do**:
+- ❌ Declare "implementation complete" with failing tests
+- ❌ Explain WHY tests fail as if that excuses them
+- ❌ Mark todos as completed when tests are still red
+- ❌ Report "ready for validation" when validation is already failing
+
+**Required pattern**:
+```
+Step X: Run tests
+  - Bash: uv run pytest [specific test path] -xvs
+  - Parse output
+  - If ANY failures:
+    - DO NOT advance
+    - DO NOT mark complete
+    - Choose: fix code, fix test, or ask user
+    - Iterate until all pass
+  - If ALL pass:
+    - Mark step completed
+    - Advance to next step
+```
+
+This applies to ALL test types: unit tests, integration tests, specification tests, smoke tests. If it's in the test suite and it fails, you're not done.
+
 ## Key Patterns
 
 ### One Thing At A Time
