@@ -104,8 +104,8 @@ data/
    - Focus on projects aligned with mentioned goals
 
 3. **Task Layer** (when relevant):
-   - Run `task_index.py` for compact task overview
-   - Run `task_view.py --per-page=10` for detailed tasks
+   - Run `.claude/skills/task-management/scripts/task_index.py` for compact task overview
+   - Run `.claude/skills/task-management/scripts/task_view.py --per-page=10` for detailed tasks
    - Read `data/views/current_view.json` for current load
    - ALWAYS check before creating tasks (avoid duplicates)
 
@@ -151,13 +151,13 @@ data/
 **Check for duplicates FIRST**:
 ```bash
 # Always run before creating tasks
-uv run python scripts/task_view.py --per-page=50
+uv run python .claude/skills/task-management/scripts/task_view.py --per-page=50
 # Check data/views/current_view.json for existing tasks
 ```
 
 **Create new task**:
 ```bash
-uv run python scripts/task_add.py \
+uv run python .claude/skills/task-management/scripts/task_add.py \
   --title "Prepare keynote slides" \
   --priority 2 \
   --project "academic-profile" \
@@ -176,7 +176,7 @@ uv run python scripts/task_add.py \
 **Update existing task**:
 ```bash
 # Modify priority, due date, project
-uv run python scripts/task_process.py modify <task_id> \
+uv run python .claude/skills/task-management/scripts/task_process.py modify <task_id> \
   --priority 1 \
   --due "2025-11-10"
 ```
@@ -184,7 +184,7 @@ uv run python scripts/task_process.py modify <task_id> \
 **Archive completed task**:
 ```bash
 # When user mentions completion, auto-archive
-uv run python scripts/task_process.py modify <task_id> --archive
+uv run python .claude/skills/task-management/scripts/task_process.py modify <task_id> --archive
 ```
 
 **Task ID** is the filename without `.json` extension, found in `_filename` field of `current_view.json`.
@@ -310,13 +310,13 @@ uv run python scripts/task_process.py modify <task_id> --archive
 
 **Compact task index** (quick overview):
 ```bash
-uv run python scripts/task_index.py
+uv run python .claude/skills/task-management/scripts/task_index.py
 ```
 Shows: count by priority, upcoming deadlines, recent additions.
 
 **Detailed task view** (full information):
 ```bash
-uv run python scripts/task_view.py --per-page=10 --sort=priority
+uv run python .claude/skills/task-management/scripts/task_view.py --per-page=10 --sort=priority
 ```
 Paginated, color-coded, sorted view.
 
@@ -327,11 +327,12 @@ Paginated, color-coded, sorted view.
 
 **Output**: Also writes to `data/views/current_view.json` for programmatic access.
 
+**CRITICAL - Direct Output Presentation**:
+When the user asks for their tasks (e.g., "What are my tasks?", "Show me my current tasks", "What do I need to do?"), present the ACTUAL OUTPUT of `task_view.py` DIRECTLY to them without summarizing, reformatting, or interpreting. The script's formatted output is designed for human readability with color coding, priority indicators, and proper formatting. Simply run the script and show the user exactly what it outputs.
+
 **Present to user**:
-- Format for human readability
-- Highlight P1 tasks
-- Group by project if useful
-- Show upcoming deadlines
+- For task list requests: Show the raw script output directly (top 10 items by default)
+- For analysis/planning: Format for strategic discussion, highlight P1 tasks, group by project if useful
 
 ## Task Summary Writing Guidelines
 
@@ -362,16 +363,16 @@ Paginated, color-coded, sorted view.
 
 **Paths**:
 - Use absolute paths from `$ACADEMICOPS_PERSONAL/data/`
-- Task scripts expect to run from repo root
-- Use `uv run python scripts/task_*.py` format
+- Task scripts are packaged with this skill in `.claude/skills/task-management/scripts/`
+- Use `uv run python .claude/skills/task-management/scripts/task_*.py` format
 
 ### Tool Usage
 
 **Task operations** (use dedicated scripts):
-- `scripts/task_add.py` - Create tasks
-- `scripts/task_view.py` - View/query tasks
-- `scripts/task_index.py` - Compact overview
-- `scripts/task_process.py` - Modify/archive tasks (if exists)
+- `.claude/skills/task-management/scripts/task_add.py` - Create tasks
+- `.claude/skills/task-management/scripts/task_view.py` - View/query tasks
+- `.claude/skills/task-management/scripts/task_index.py` - Compact overview
+- `.claude/skills/task-management/scripts/task_process.py` - Modify/archive tasks
 
 **General information** (use file operations):
 - Write to project files: `data/projects/*.md`
@@ -397,7 +398,7 @@ User: "I need to prepare for the keynote next month"
 - Summary: "Create slides for keynote. Focus on [topic from context]."
 
 [Execute]:
-uv run python scripts/task_add.py --title "Prepare keynote presentation" --priority 2 --project "academic-profile" --due "2025-12-01" --summary "..."
+uv run python .claude/skills/task-management/scripts/task_add.py --title "Prepare keynote presentation" --priority 2 --project "academic-profile" --due "2025-12-01" --summary "..."
 ```
 
 ### Pattern 2: Auto-Archive Completed Task
@@ -409,7 +410,7 @@ User: "I delivered the keynote yesterday"
 1. Check task_index for keynote-related tasks
 2. Found task: "Prepare keynote presentation"
 3. Archive it:
-   uv run python scripts/task_process.py modify <task_id> --archive
+   uv run python .claude/skills/task-management/scripts/task_process.py modify <task_id> --archive
 4. Record in accomplishments.md
 
 [No announcement] - Just quietly update knowledge base
@@ -429,7 +430,7 @@ Subject: Reminder: Keynote abstract due Nov 1
 - Project: academic-profile
 
 [Create task]:
-uv run python scripts/task_add.py --title "Submit keynote abstract" --priority 1 --due "2025-11-01" --project "academic-profile" --summary "Abstract for conference keynote. Submitted to [organizer]."
+uv run python .claude/skills/task-management/scripts/task_add.py --title "Submit keynote abstract" --priority 1 --due "2025-11-01" --project "academic-profile" --summary "Abstract for conference keynote. Submitted to [organizer]."
 ```
 
 ### Pattern 4: Strategic Alignment Check
@@ -489,19 +490,19 @@ This skill succeeds when:
 **Task lifecycle**:
 ```bash
 # Create
-uv run python scripts/task_add.py --title "..." --priority N --project "..." --due "YYYY-MM-DD"
+uv run python .claude/skills/task-management/scripts/task_add.py --title "..." --priority N --project "..." --due "YYYY-MM-DD"
 
 # View all
-uv run python scripts/task_view.py --per-page=20
+uv run python .claude/skills/task-management/scripts/task_view.py --per-page=20
 
 # Index (compact)
-uv run python scripts/task_index.py
+uv run python .claude/skills/task-management/scripts/task_index.py
 
 # Update
-uv run python scripts/task_process.py modify <task_id> --priority N --due "YYYY-MM-DD"
+uv run python .claude/skills/task-management/scripts/task_process.py modify <task_id> --priority N --due "YYYY-MM-DD"
 
 # Archive (when complete)
-uv run python scripts/task_process.py modify <task_id> --archive
+uv run python .claude/skills/task-management/scripts/task_process.py modify <task_id> --archive
 ```
 
 **Data paths**:
