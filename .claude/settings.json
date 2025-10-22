@@ -55,6 +55,28 @@
           }
         ]
       }
+    ],
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "test -f $CLAUDE_PROJECT_DIR/bots/hooks/log_posttooluse.py && uv run python $CLAUDE_PROJECT_DIR/bots/hooks/log_posttooluse.py || echo '{}'",
+            "timeout": 2000
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "test -f $CLAUDE_PROJECT_DIR/bots/hooks/log_userpromptsubmit.py && uv run python $CLAUDE_PROJECT_DIR/bots/hooks/log_userpromptsubmit.py || echo '{}'",
+            "timeout": 2000
+          }
+        ]
+      }
     ]
   }
 }
