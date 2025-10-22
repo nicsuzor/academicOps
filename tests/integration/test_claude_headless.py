@@ -57,14 +57,15 @@ class TestHookIntegration:
         )
 
     def test_hook_allow_permits_execution(self, claude_headless):
+        # Test hooks work from subdirectory (validates $CLAUDE_PROJECT_DIR)
         result = claude_headless(
-            "Use the Read tool to read bot/README.md and tell me if it exists",
+            "First cd to tests/ subdirectory, then use the Read tool to read ../README.md and tell me if it exists",
             model="haiku",
         )
 
-        assert result["success"], f"Read should be allowed. Error: {result['error']}"
+        assert result["success"], f"Read should be allowed from subdirectory. Error: {result['error']}"
         assert not result["permission_denials"], (
-            "Read should not trigger permission denials"
+            "Read should not trigger permission denials from subdirectory"
         )
 
 
