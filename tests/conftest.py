@@ -38,7 +38,7 @@ def repo_root() -> Path:
 
 @pytest.fixture
 def validate_tool_script() -> Path:
-    """Path to validate_tool.py script."""
+    """Path to validate_tool.py hook script."""
     import os
 
     bot_root = os.getenv("ACADEMICOPS_BOT")
@@ -48,7 +48,7 @@ def validate_tool_script() -> Path:
             "This must point to the academicOps bot repository root."
         )
 
-    path = Path(bot_root) / "scripts" / "validate_tool.py"
+    path = Path(bot_root) / "bots" / "hooks" / "validate_tool.py"
     if not path.exists():
         raise RuntimeError(f"validate_tool.py not found at expected path: {path}")
 
@@ -57,7 +57,7 @@ def validate_tool_script() -> Path:
 
 @pytest.fixture
 def validate_env_script() -> Path:
-    """Path to load_instructions.py script (renamed from validate_env.py)."""
+    """Path to load_instructions.py hook script (SessionStart hook)."""
     import os
 
     bot_root = os.getenv("ACADEMICOPS_BOT")
@@ -67,7 +67,7 @@ def validate_env_script() -> Path:
             "This must point to the academicOps bot repository root."
         )
 
-    path = Path(bot_root) / "scripts" / "load_instructions.py"
+    path = Path(bot_root) / "bots" / "hooks" / "load_instructions.py"
     if not path.exists():
         raise RuntimeError(f"load_instructions.py not found at expected path: {path}")
 
@@ -75,7 +75,7 @@ def validate_env_script() -> Path:
 
 @pytest.fixture
 def validate_stop_script() -> Path:
-    """Path to validate_stop.py script."""
+    """Path to validate_stop.py hook script (Stop/SubagentStop hooks)."""
     import os
 
     bot_root = os.getenv("ACADEMICOPS_BOT")
@@ -85,7 +85,7 @@ def validate_stop_script() -> Path:
             "This must point to the academicOps bot repository root."
         )
 
-    path = Path(bot_root) / "scripts" / "validate_stop.py"
+    path = Path(bot_root) / "bots" / "hooks" / "validate_stop.py"
     if not path.exists():
         raise RuntimeError(f"validate_stop.py not found at expected path: {path}")
 
