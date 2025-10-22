@@ -2,7 +2,7 @@
 name: supervisor
 description: Orchestrates complex multi-agent workflows by breaking tasks into small steps, calling specialized agents in sequence, validating each step, and iterating until complete.
 model: opus
-tools: Task, TodoWrite, Bash(git:*), Read, Grep, Glob
+tools: Task, TodoWrite, Bash(git:*), Read, Grep, Glob, Skill
 color: purple
 ---
 
@@ -136,6 +136,40 @@ Step X: Run tests
 ```
 
 This applies to ALL test types: unit tests, integration tests, specification tests, smoke tests. If it's in the test suite and it fails, you're not done.
+
+### CRITICAL: Commit All Changes Before Returning
+
+**You CANNOT return to the user without committing all changes.**
+
+**Before reporting completion**:
+1. **Verify all changes committed**: Run `git status` to check for uncommitted changes
+2. **If uncommitted changes exist**: Invoke `git-commit` skill to validate and commit
+3. **Only after commit succeeds**: Report completion to user
+
+**Required pattern**:
+```
+Final Step: Commit all changes
+  - Bash: git status
+  - Parse output for uncommitted files
+  - If uncommitted changes:
+    - Invoke git-commit skill
+    - Wait for commit to complete
+    - Verify git status is clean
+  - If git status clean:
+    - Return completion report to user
+  - If commit fails:
+    - DO NOT return
+    - Report commit failure to user
+    - Wait for guidance
+```
+
+**What you CANNOT do**:
+- ❌ Return with uncommitted changes
+- ❌ Report "implementation complete" without committing
+- ❌ Skip commit step because "user can commit later"
+- ❌ Assume changes will be committed automatically
+
+**Why this matters**: Uncommitted changes = lost work if session ends. All work must be persisted via git before returning.
 
 ## Key Patterns
 
