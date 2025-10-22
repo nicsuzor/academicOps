@@ -10,10 +10,7 @@
 # Agent instructions
 agents/
 
-# Bots directory symlinked scripts
-bots/scripts/
-
-# academicOps deployment directory (symlinked scripts)
+# academicOps deployment directory (symlinked to framework)
 .academicOps/
 
 # Personal settings (if created)

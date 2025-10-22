@@ -64,7 +64,6 @@ class TestDogfoodingInstallation:
             ".claude/skills",  # Symlink or dir
             "bots/agents",
             "bots/hooks",
-            "bots/scripts",  # Symlink or dir
         ]
 
         for path_str in expected_structure:

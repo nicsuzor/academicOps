@@ -36,7 +36,6 @@ This document specifies the "flat architecture" deployment model for academicOps
 | `/bots/` | ✅ Real (source) | ✅ Real | ✅ Real | Core + project overrides |
 | `/bots/agents/` | ✅ Source files | ✅ Personal agents | ✅ Project agents | Agent instructions |
 | `/bots/hooks/` | ✅ Source files | Symlink → bot | Symlink → bot | Hook scripts |
-| `/bots/scripts/` | ✅ Source files | Symlink → bot | Symlink → bot | Utility scripts |
 | `/.claude/` | ✅ Real | ✅ Real | ✅ Real | Claude Code config |
 | `/.claude/settings.json` | ✅ Real | ✅ Real | ✅ Copied from dist/ | Configuration |
 | `/.claude/agents/` | Symlink → bots/agents | Symlink → bot | Symlink → bot | Agent discovery |
@@ -112,7 +111,7 @@ uv run pytest tests/test_deployment_architecture.py::TestPathPredictability -v
 - .claude/agents/ is symlink to framework
 - .claude/commands/ is symlink to framework
 - .claude/skills/ is symlink to framework
-- bots/scripts/ is symlink to framework
+- # Scripts accessed via .academicOps/scripts/ is symlink to framework
 
 **Success Criteria**:
 - All `TestSymlinkCreation` tests pass
@@ -125,7 +124,7 @@ uv run pytest tests/test_deployment_architecture.py::TestPathPredictability -v
 # Example (pseudocode)
 ln -s ${ACADEMICOPS_BOT}/.claude/commands <project>/.claude/commands
 ln -s ${ACADEMICOPS_BOT}/.claude/skills <project>/.claude/skills
-ln -s ${ACADEMICOPS_BOT}/scripts <project>/bots/scripts
+# Scripts accessed via .academicOps/scripts/ symlink
 ```
 
 ### Requirement 3: Gitignore Coverage
@@ -155,7 +154,7 @@ ln -s ${ACADEMICOPS_BOT}/scripts <project>/bots/scripts
 .claude/settings.local.json
 
 # Symlinked scripts
-bots/scripts/
+# Scripts accessed via .academicOps/scripts/
 
 # Local overrides
 *.local.*
@@ -241,18 +240,18 @@ Project-specific DBT patterns:
 
 ### Requirement 7: Script Invocation
 
-**Goal**: Scripts accessible via symlink at bots/scripts/.
+**Goal**: Scripts accessible via symlink at # Scripts accessed via .academicOps/scripts/.
 
 **Test Class**: `TestScriptInvocation`
 
 **Validates**:
-- bots/scripts/ is symlink to framework scripts
+- # Scripts accessed via .academicOps/scripts/ is symlink to framework scripts
 - Scripts are executable via symlink
 - Scripts invokable from project without absolute paths
 
 **Success Criteria**:
 - All `TestScriptInvocation` tests pass
-- Projects invoke scripts via `bots/scripts/script.sh`
+- Projects invoke scripts via `# Scripts accessed via .academicOps/scripts/script.sh`
 - No hardcoded paths to ${ACADEMICOPS}
 
 ### Requirement 8: Pre-commit Integration
@@ -303,7 +302,7 @@ cd /path/to/project
 ${ACADEMICOPS_BOT}/scripts/setup_academicops.sh
 
 # 3. Verify installation
-${ACADEMICOPS_BOT}/bots/scripts/check_instruction_orphans.py
+${ACADEMICOPS_BOT}/# Scripts accessed via .academicOps/scripts/check_instruction_orphans.py
 
 # 4. Customize (optional)
 # Add project-specific agents to bots/agents/
@@ -509,3 +508,13 @@ For upgrading old installations to new architecture:
 **Scripts**:
 - `scripts/setup_academicops.sh` - Installation script
 - `scripts/check_instruction_orphans.py` - Validation utility
+
+## Future Extensibility
+
+Currently, project repos contain only `/bots/agents/` for instruction file overrides. The framework provides commands and skills via `.claude/` symlinks.
+
+**Future possibilities** (not implemented yet):
+- `/bots/commands/` - Project-specific custom commands
+- `/bots/skills/` - Project-specific custom skills
+
+These extension points may be added in future versions when the need arises. For now, the simplified structure focuses on the most useful customization point: agent instructions.

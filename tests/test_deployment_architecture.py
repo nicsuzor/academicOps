@@ -10,7 +10,7 @@ Requirements tested:
 4. Modular instructions - /bots/ structure validated
 5. Project overrides - Override mechanism works
 6. CLAUDE.md discovery - Just-in-time loading works
-7. Script invocation - Scripts accessible via symlinks
+7. Script invocation - Scripts accessible via .academicOps/scripts/ symlink
 8. Pre-commit integration - Hooks installed correctly
 9. Dogfooding - academicOps can install into itself
 
@@ -22,6 +22,7 @@ import os
 from pathlib import Path
 import json
 import pytest
+import subprocess
 
 
 # =============================================================================
@@ -64,21 +65,42 @@ class TestPathPredictability:
         for path in expected:
             assert path.exists(), f"Missing in ${ACADEMICOPS}/.claude/: {path.name}"
 
+    @pytest.mark.slow
     def test_project_bots_mirrors_academicops_structure(self, tmp_path):
-        """<project>/bots/ should mirror ${ACADEMICOPS}/bots/ structure."""
-        # Simulated project installation
+        """<project>/bots/ should contain only /bots/agents/ for now."""
+        # Run installation script first
+        academicops = Path(os.environ.get("ACADEMICOPS_BOT", "/home/nic/src/bot"))
+        install_script = academicops / "scripts/setup_academicops.sh"
+        
+        # Run installation to create the structure
+        result = subprocess.run(
+            [str(install_script), str(tmp_path)],
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+        
+        assert result.returncode == 0, f"Installation failed: {result.stderr}"
+        
+        # Now verify the structure was created
         project_bots = tmp_path / "bots"
-        project_bots.mkdir()
 
-        # After installation, should have same subdirectory structure
-        expected_structure = ["agents", "hooks", "scripts"]
+        # After installation, should have ONLY agents directory
+        # Scripts are accessed via .academicOps/scripts/ symlink instead
+        expected_structure = ["agents"]  # ONLY agents directory for now
 
-        # This test will FAIL until installation script creates structure
-        # Expected behavior: install creates symlinks OR copies structure
         for subdir in expected_structure:
             assert (project_bots / subdir).exists(), (
                 f"Project /bots/{subdir}/ missing - installation incomplete"
             )
+        
+        # Verify NO bots/scripts or bots/skills directories are created
+        assert not (project_bots / "scripts").exists(), (
+            "Project /bots/scripts/ should NOT exist - use .academicOps/scripts/ instead"
+        )
+        assert not (project_bots / "skills").exists(), (
+            "Project /bots/skills/ should NOT exist - not supported yet"
+        )
 
 
 # =============================================================================
@@ -89,73 +111,93 @@ class TestPathPredictability:
 class TestSymlinkCreation:
     """Validate that framework files are symlinked, not duplicated."""
 
+    @pytest.mark.slow
     def test_project_claude_agents_are_symlinked(self, tmp_path):
         """<project>/.claude/agents/ should be symlink to framework."""
-        project_claude = tmp_path / ".claude"
-        project_claude.mkdir()
-
-        agents_link = project_claude / "agents"
-
-        # Installation should create symlink
-        # This will FAIL until install script implements symlinking
-        assert agents_link.exists() or agents_link.is_symlink(), (
-            ".claude/agents/ not created by installation"
+        academicops = Path(os.environ.get("ACADEMICOPS_BOT", "/home/nic/src/bot"))
+        install_script = academicops / "scripts/setup_academicops.sh"
+        
+        # Run installation
+        result = subprocess.run(
+            [str(install_script), str(tmp_path)],
+            capture_output=True,
+            text=True,
+            timeout=30,
         )
+        
+        assert result.returncode == 0, f"Installation failed: {result.stderr}"
+        
+        # Now verify symlink created
+        agents_link = tmp_path / ".claude/agents"
+        assert agents_link.exists(), ".claude/agents/ not created by installation"
+        assert agents_link.is_symlink(), ".claude/agents/ should be SYMLINK, not copy"
 
-        if agents_link.exists():
-            assert agents_link.is_symlink(), (
-                ".claude/agents/ should be SYMLINK, not copy"
-            )
-
+    @pytest.mark.slow
     def test_project_claude_commands_are_symlinked(self, tmp_path):
         """<project>/.claude/commands/ should be symlink to framework."""
-        project_claude = tmp_path / ".claude"
-        project_claude.mkdir()
-
-        commands_link = project_claude / "commands"
-
-        # Should be symlink after installation
-        assert commands_link.exists() or commands_link.is_symlink(), (
-            ".claude/commands/ not created"
+        academicops = Path(os.environ.get("ACADEMICOPS_BOT", "/home/nic/src/bot"))
+        install_script = academicops / "scripts/setup_academicops.sh"
+        
+        # Run installation
+        result = subprocess.run(
+            [str(install_script), str(tmp_path)],
+            capture_output=True,
+            text=True,
+            timeout=30,
         )
+        
+        assert result.returncode == 0, f"Installation failed: {result.stderr}"
+        
+        # Now verify symlink created
+        commands_link = tmp_path / ".claude/commands"
+        assert commands_link.exists(), ".claude/commands/ not created"
+        assert commands_link.is_symlink(), ".claude/commands/ should be SYMLINK, not copy"
 
-        if commands_link.exists():
-            assert commands_link.is_symlink(), (
-                ".claude/commands/ should be SYMLINK, not copy"
-            )
-
+    @pytest.mark.slow
     def test_project_claude_skills_are_symlinked(self, tmp_path):
         """<project>/.claude/skills/ should be symlink to framework."""
-        project_claude = tmp_path / ".claude"
-        project_claude.mkdir()
-
-        skills_link = project_claude / "skills"
-
-        assert skills_link.exists() or skills_link.is_symlink(), (
-            ".claude/skills/ not created"
+        academicops = Path(os.environ.get("ACADEMICOPS_BOT", "/home/nic/src/bot"))
+        install_script = academicops / "scripts/setup_academicops.sh"
+        
+        # Run installation
+        result = subprocess.run(
+            [str(install_script), str(tmp_path)],
+            capture_output=True,
+            text=True,
+            timeout=30,
         )
+        
+        assert result.returncode == 0, f"Installation failed: {result.stderr}"
+        
+        # Now verify symlink created
+        skills_link = tmp_path / ".claude/skills"
+        assert skills_link.exists(), ".claude/skills/ not created"
+        assert skills_link.is_symlink(), ".claude/skills/ should be SYMLINK, not copy"
 
-        if skills_link.exists():
-            assert skills_link.is_symlink(), (
-                ".claude/skills/ should be SYMLINK, not copy"
-            )
-
-    def test_project_bots_scripts_are_symlinked(self, tmp_path):
-        """<project>/bots/scripts/ should be symlink to framework scripts."""
-        project_bots = tmp_path / "bots"
-        project_bots.mkdir()
-
-        scripts_link = project_bots / "scripts"
-
-        # Installation should create symlink for script invocation
-        assert scripts_link.exists() or scripts_link.is_symlink(), (
-            "bots/scripts/ not created"
+    @pytest.mark.slow
+    def test_project_academicops_scripts_symlink(self, tmp_path):
+        """<project>/.academicOps/scripts/ should be symlink to framework scripts."""
+        academicops = Path(os.environ.get("ACADEMICOPS_BOT", "/home/nic/src/bot"))
+        install_script = academicops / "scripts/setup_academicops.sh"
+        
+        # Run installation
+        result = subprocess.run(
+            [str(install_script), str(tmp_path)],
+            capture_output=True,
+            text=True,
+            timeout=30,
         )
-
-        if scripts_link.exists():
-            assert scripts_link.is_symlink(), (
-                "bots/scripts/ should be SYMLINK for script invocation"
-            )
+        
+        assert result.returncode == 0, f"Installation failed: {result.stderr}"
+        
+        # Now verify symlink created
+        academicops_link = tmp_path / ".academicOps"
+        assert academicops_link.exists(), ".academicOps not created"
+        assert academicops_link.is_symlink(), ".academicOps should be SYMLINK to framework"
+        
+        # Verify scripts are accessible through the symlink
+        scripts_path = tmp_path / ".academicOps/scripts"
+        assert scripts_path.exists(), ".academicOps/scripts/ not accessible"
 
 
 # =============================================================================
@@ -176,19 +218,25 @@ class TestGitignoreCoverage:
         content = gitignore.read_text()
 
         # Should ignore symlinked framework files
+        # NOTE: bots/scripts/ pattern removed - no longer created
         required_ignores = [
             ".claude/settings.json",  # Copied, not custom
             ".claude/agents/",  # Symlinked
             ".claude/commands/",  # Symlinked
             ".claude/skills/",  # Symlinked
-            "bots/scripts/",  # Symlinked
             ".claude/settings.local.json",  # Local overrides
+            ".academicOps/",  # Symlinked directory
         ]
 
         for pattern in required_ignores:
             assert pattern in content, (
                 f"dist/.gitignore missing pattern: {pattern}"
             )
+        
+        # Verify old pattern NOT present
+        assert "bots/scripts/" not in content, (
+            "dist/.gitignore should NOT contain bots/scripts/ pattern (no longer created)"
+        )
 
     def test_gitignore_does_not_ignore_custom_bots_files(self):
         """Gitignore should allow custom project files in bots/."""
@@ -198,8 +246,11 @@ class TestGitignoreCoverage:
         content = gitignore.read_text()
 
         # Should NOT have blanket "bots/" ignore
-        # (only specific subdirectories like bots/scripts/)
-        assert "bots/" not in content or "bots/scripts/" in content, (
+        # (only specific subdirectories if needed)
+        lines = [line.strip() for line in content.split('\n') if line.strip()]
+        bots_only = [line for line in lines if line == "bots/"]
+        
+        assert len(bots_only) == 0, (
             "Gitignore should not block all /bots/ files (custom prompts allowed)"
         )
 
@@ -331,28 +382,62 @@ class TestCLAUDEmdDiscovery:
 
 # =============================================================================
 # Requirement 7: Script Invocation
-# Scripts accessible via symlink at <project>/bots/scripts/
+# Scripts accessible via .academicOps/scripts/ symlink (NOT bots/scripts/)
 # =============================================================================
 
 class TestScriptInvocation:
     """Validate scripts can be invoked from project via symlinks."""
-
-    def test_bots_scripts_exists_and_is_symlink(self, tmp_path):
-        """<project>/bots/scripts/ should symlink to framework scripts."""
-        # This duplicates TestSymlinkCreation but validates from script invocation perspective
-        project_bots = tmp_path / "bots"
-        project_bots.mkdir()
-
-        scripts_link = project_bots / "scripts"
-
-        # After installation
-        if scripts_link.exists():
-            assert scripts_link.is_symlink(), (
-                "bots/scripts/ must be symlink for invocation to work"
+    
+    def test_no_references_to_bots_scripts(self):
+        """Verify no files reference bots/scripts/ (should use .academicOps/scripts/)."""
+        academicops = Path(os.environ.get("ACADEMICOPS_BOT", "/home/nic/src/bot"))
+        
+        # Files that should NOT contain bots/scripts/ references
+        # (excluding test files and backup files)
+        files_to_check = [
+            academicops / "scripts/setup_academicops.sh",
+            academicops / "scripts/install_bot.sh", 
+            academicops / "dist/.gitignore",
+            academicops / "docs/DEPLOYMENT.md",
+        ]
+        
+        for filepath in files_to_check:
+            if filepath.exists():
+                content = filepath.read_text()
+                # Check for bots/scripts/ references (but allow .academicOps/scripts/)
+                lines_with_bots_scripts = [
+                    line for line in content.split('\n') 
+                    if 'bots/scripts/' in line and '.academicOps/scripts/' not in line
+                ]
+                
+                assert len(lines_with_bots_scripts) == 0, (
+                    f"{filepath.name} contains references to bots/scripts/ - "
+                    f"should use .academicOps/scripts/ instead. "
+                    f"Found: {lines_with_bots_scripts[:3]}"  # Show first 3 problematic lines
+                )
+    
+    def test_all_script_references_use_academicops_path(self):
+        """Verify script invocations use .academicOps/scripts/ pattern."""
+        academicops = Path(os.environ.get("ACADEMICOPS_BOT", "/home/nic/src/bot"))
+        
+        # Check that key files properly reference scripts via .academicOps/scripts/
+        trainer_file = academicops / "bots/agents/trainer.md"
+        
+        if trainer_file.exists():
+            content = trainer_file.read_text()
+            
+            # Should reference scripts via .academicOps/scripts/
+            assert ".academicOps/scripts/" in content, (
+                "trainer.md should reference scripts via .academicOps/scripts/"
+            )
+            
+            # Should NOT reference scripts via bots/scripts/
+            assert "bots/scripts/" not in content, (
+                "trainer.md should NOT reference bots/scripts/ (use .academicOps/scripts/)"
             )
 
-    def test_scripts_are_executable_via_symlink(self):
-        """Framework scripts should be executable via project symlink."""
+    def test_scripts_are_executable_via_academicops_symlink(self):
+        """Framework scripts should be executable via .academicOps symlink."""
         academicops = Path(os.environ.get("ACADEMICOPS_BOT", "/home/nic/src/bot"))
 
         # Example: check one core script

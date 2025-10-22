@@ -2,7 +2,7 @@
 # Simplified setup script for academicOps integration
 #
 # Creates single .academicOps symlink and copies settings
-
+#
 set -euo pipefail
 
 # Colors
@@ -52,7 +52,7 @@ ln -s "$ACADEMICOPS_BOT" ".academicOps"
 echo -e "${GREEN}✓${NC} .academicOps → $ACADEMICOPS_BOT"
 echo
 
-# 2. Create .claude directory and symlink agents/commands
+# 2. Create .claude directory and symlink agents/commands/skills
 echo "Setting up Claude Code configuration..."
 
 mkdir -p ".claude"
@@ -91,7 +91,8 @@ ln -s "../.academicOps/.claude/skills" ".claude/skills"
 echo -e "${GREEN}✓${NC} Symlinked .claude/skills/"
 echo
 
-# 3. Create bots/agents/ for project overrides
+# 3. Create bots/agents/ for project overrides ONLY
+# Scripts and skills are accessed via .academicOps/
 echo "Creating bots/agents/ for project-specific overrides..."
 
 mkdir -p "bots/agents"
@@ -101,27 +102,11 @@ if [ ! -f "bots/agents/_CORE.md" ] && [ -f ".academicOps/dist/bots/agents/_CORE.
     echo -e "${GREEN}✓${NC} Created bots/agents/_CORE.md template"
 fi
 
-echo -e "${GREEN}✓${NC} bots/agents/ ready"
-
-# Also create bots/skills/ for project-specific skills
-mkdir -p "bots/skills"
-echo -e "${GREEN}✓${NC} bots/skills/ ready for project-specific skills"
-
-# Create bots/scripts/ symlink to academicOps scripts
-echo "Creating bots/scripts/ symlink..."
-
-mkdir -p "bots"
-
-if [ -L "bots/scripts" ]; then
-    rm "bots/scripts"
-elif [ -d "bots/scripts" ]; then
-    echo -e "${YELLOW}⚠${NC}  Backing up bots/scripts to bots/scripts.backup"
-    mv "bots/scripts" "bots/scripts.backup"
-fi
-
-ln -s "../.academicOps/scripts" "bots/scripts"
-echo -e "${GREEN}✓${NC} Symlinked bots/scripts/"
+echo -e "${GREEN}✓${NC} bots/agents/ ready for project-specific agent overrides"
 echo
+
+# Note: Scripts are accessed via .academicOps/scripts/ symlink
+# Note: Skills might be supported via bots/skills/ in future but not now
 
 # 4. Update .gitignore
 echo "Updating .gitignore..."
@@ -144,9 +129,10 @@ echo "  - .academicOps/ → $ACADEMICOPS_BOT"
 echo "  - .claude/settings.json"
 echo "  - .claude/agents/, commands/, skills/ (symlinked)"
 echo "  - bots/agents/ (for project agent overrides)"
-echo "  - bots/skills/ (for project-specific skills)"
-echo "  - bots/scripts/ (symlinked to academicOps scripts)"
 echo "  - .gitignore (updated)"
+echo
+echo "Scripts accessible via:"
+echo "  - .academicOps/scripts/"
 echo
 echo "Next:"
 echo "  1. Launch Claude Code"
