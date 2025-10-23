@@ -39,7 +39,7 @@ Please report the following diagnostic information:
 
 **Commands**: List all available slash commands from the SlashCommand tool
 
-**Subagents**: List available subagent types from the Task tool (general-purpose, statusline-setup, output-style-setup, Explore)
+**Subagents**: List available subagent types from the Task tool (e.g., general-purpose, statusline-setup, output-style-setup, Explore)
 
 ### Folder Configuration
 
