@@ -28,6 +28,8 @@ Use test-writing when:
 
 ## Core Test Philosophy
 
+**For TRUE end-to-end testing patterns, see**: `@bots/docs/_CHUNKS/E2E-TESTING.md`
+
 ### 1. Integration Tests Over Unit Tests
 
 **Delete brittle unit tests**:
