@@ -1,14 +1,14 @@
-# Script Development Standards
+# Script Development Context
 
 @../agents/_CORE.md
 @../docs/_CHUNKS/FAIL-FAST.md
 
 ## Key Principles
 
-- **Scripts must be executable in git**: `git update-index --chmod=+x script.sh`
-- **Fail-fast**: No defensive programming, no error recovery
-- **Explicit configuration**: Use Pydantic, no defaults
-- **Standard tools**: Use `uv run python` for Python scripts
+- Scripts must be executable in git: `git update-index --chmod=+x script.sh`
+- Fail-fast: No defensive programming, no error recovery
+- Explicit configuration: Use Pydantic, no defaults
+- Standard tools: Use `uv run python` for Python scripts
 
 ## What NOT to Do
 
