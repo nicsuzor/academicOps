@@ -35,7 +35,7 @@ Please report the following diagnostic information:
 
 ### Available Resources
 
-**Skills**: List all available skills from the Skill tool (analyst, aops-bug, aops-trainer, git-commit, github-issue, no-throwaway-code, python-dev, skill-creator, skill-migration, test-writing, task-management)
+**Skills**: List all available skills from the Skill tool (e.g., analyst, aops-bug, aops-trainer, git-commit, github-issue, no-throwaway-code, python-dev, skill-creator, skill-migration, test-writing, task-management)
 
 **Commands**: List all available slash commands from the SlashCommand tool
 
