@@ -283,12 +283,38 @@ uv run python .claude/skills/task-management/scripts/task_process.py modify <tas
 
 ### Step 6: Continuous Context Capture
 
-**Throughout conversation, silently capture**:
+#### What is an Accomplishment?
 
-**To `data/context/accomplishments.md`**:
-- Completed tasks (and auto-archive the task)
-- Delivered milestones
-- Progress updates
+An accomplishment is **completed work that creates value**.
+
+**✅ ACCOMPLISHMENTS** (write to accomplishments.md):
+- Task completed and archived
+- Meeting/event attended and concluded
+- Paper/report/deliverable submitted or delivered
+- Presentation given
+- Milestone reached
+- Collaboration session completed
+
+**❌ NOT ACCOMPLISHMENTS** (do NOT write to accomplishments.md):
+- Email processed (operational work - use task system only)
+- Task created (that's tracking future work, not completing it)
+- Meeting scheduled (not yet done)
+- Decision pending (not yet resolved)
+- Reading/research without deliverable produced
+- Planning or preparation (unless explicitly completed as a task)
+
+**Test**: Ask "Did I deliver something or complete something?"
+- YES → accomplishment (write to accomplishments.md)
+- NO → operational work (use task system or other context files)
+
+#### When to Write to Each Context File
+
+**To `data/context/accomplishments.md`** - ONLY when:
+- User explicitly mentions completing work ("I finished...", "I delivered...", "I shipped...")
+- You help user complete a task and archive it
+- A scheduled meeting/event occurred and concluded
+- A deliverable was submitted/shipped/delivered
+- User reports milestone reached
 
 **To `data/context/current-priorities.md`**:
 - What's actively important now
@@ -305,6 +331,23 @@ uv run python .claude/skills/task-management/scripts/task_process.py modify <tas
 - Decisions, ruled-out ideas
 - People, roles, connections
 - Save notes AS YOU GO, don't wait
+
+#### Data Boundaries: Task System vs Accomplishments
+
+**Task System** (task scripts in `.claude/skills/task-management/scripts/`):
+- Task creation, updates, archiving
+- Deadlines, priorities, assignments
+- Task status tracking
+- ALL operational task state
+- Future work planning
+
+**Accomplishments** (accomplishments.md):
+- ONLY completed, valuable work
+- Celebration and morale tracking
+- Motivational reflection
+- Monthly/weekly progress review
+
+**Rule**: If it's not complete, it's not an accomplishment. Use task system for tracking future work.
 
 ### Step 7: Generate Views for User
 
@@ -474,16 +517,18 @@ This skill succeeds when:
 - Save private data to `bot/` directory
 - Announce that you're capturing information
 - Miss completed task mentions (auto-archive them)
+- Write operational work to accomplishments.md (email processing, task creation, planning)
 
 **ALWAYS**:
 - Load context SILENTLY at conversation start
 - Extract information IMMEDIATELY as mentioned
 - Link tasks to projects and goals
 - Flag strategic misalignments
-- Auto-archive when user mentions completion
+- Auto-archive when user mentions completion AND record in accomplishments.md
 - Check for duplicates before creating tasks
 - Use absolute ISO dates (YYYY-MM-DD)
 - Prioritize by importance + urgency + alignment
+- Ask "Did they deliver or complete something?" before writing to accomplishments.md
 
 ## Quick Reference
 
