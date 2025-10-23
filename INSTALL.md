@@ -6,20 +6,32 @@ Agent framework for academic research repositories.
 
 - **Python 3.12+** with `uv` package manager
 - **Claude Code CLI** installed and configured
-- **Git** repository for your project
+- **Git** (optional, for version control)
 
-## Installation Methods
+## Installation Overview
 
-### Method 1: Automated Setup (Recommended)
+academicOps installs **globally** into `~/.claude/` and makes itself available everywhere via the `$ACADEMICOPS_BOT` environment variable. Individual projects can optionally add local overrides.
 
-The automated setup script configures everything for you.
+## Installation Steps
 
-**Step 1: Set Environment Variable**
+### Step 1: Clone academicOps
+
+```bash
+git clone https://github.com/nicsuzor/academicOps.git ~/academicOps
+# or your preferred location
+```
+
+### Step 2: Set Environment Variable
 
 Add to your shell profile (`~/.bashrc`, `~/.zshrc`, etc.):
 
 ```bash
-export ACADEMICOPS_BOT=/path/to/academicOps
+export ACADEMICOPS_BOT=~/academicOps
+```
+
+Reload your shell:
+```bash
+source ~/.bashrc  # or ~/.zshrc
 ```
 
 Optional (for personal context):
@@ -27,171 +39,86 @@ Optional (for personal context):
 export ACADEMICOPS_PERSONAL=/path/to/your/writing
 ```
 
-**Step 2: Run Setup Script**
+### Step 3: Run Global Installation Script
 
 ```bash
-# Navigate to your project
-cd /path/to/your/project
-
-# Run setup
-$ACADEMICOPS_BOT/scripts/setup_academicops.sh
+$ACADEMICOPS_BOT/scripts/install_global.sh
 ```
 
 **What it does:**
 
-- ✅ Creates `.claude/settings.json` with hook configuration
-- ✅ Symlinks `.claude/agents/` to academicOps agents
-- ✅ Creates `agents/_CORE.md` template for project-specific context
-- ✅ Symlinks validation scripts to `.academicOps/scripts/`
-- ✅ Installs git pre-commit hooks for documentation quality enforcement
-- ✅ Updates `.gitignore` to exclude managed files
-- ✅ Validates environment variables and dependencies
+- ✅ Configures `~/.claude/settings.json` with global hooks and environment variables
+- ✅ Installs all skills to `~/.claude/skills/` (extracted from `dist/skills/*.zip`)
+- ✅ Sets up validation hooks that run before every tool use
+- ✅ Makes `$ACADEMICOPS_BOT` available to all Claude Code sessions
+- ✅ Validates Python dependencies and environment
 
-**Step 3: Launch Claude Code**
+### Step 4: Verify Installation
+
+Launch Claude Code from **any directory**:
 
 ```bash
+cd ~  # Or any directory
 claude
 ```
 
-You'll see confirmation that core instructions loaded at session start.
+The global hooks should activate and you'll have access to all academicOps skills.
+
+Test environment variable:
+```bash
+echo $ACADEMICOPS_BOT  # Should print your installation path
+```
 
 ---
 
-### Method 2: Manual Setup (Advanced)
+## Optional: Project-Specific Overrides
 
-For custom installations or troubleshooting.
+Individual projects can add local configuration in `.claude/settings.json` to override or extend global settings.
 
-**1. Create Claude Code Configuration**
+### Example: Project with Local Hooks
 
-Create `.claude/settings.json`:
+```bash
+cd /path/to/your/project
+mkdir -p .claude bots/agents bots/hooks
 
-```json
+# Create local settings
+cat > .claude/settings.json << 'EOF'
 {
-  "permissions": {
-    "allow": [
-      "Bash(uv run pytest:*)",
-      "Bash(uv run python:*)"
-    ],
-    "deny": [
-      "Write(**/*.md)",
-      "Write(**/*.env*)"
-    ]
-  },
   "hooks": {
     "SessionStart": [
       {
         "hooks": [
           {
             "type": "command",
-            "command": "uv run python $ACADEMICOPS_BOT/scripts/load_instructions.py",
+            "command": "test -f $CLAUDE_PROJECT_DIR/bots/hooks/load_instructions.py && uv run python $CLAUDE_PROJECT_DIR/bots/hooks/load_instructions.py || echo 'No project instructions'",
             "timeout": 5000
-          }
-        ]
-      }
-    ],
-    "PreToolUse": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "uv run python $ACADEMICOPS_BOT/scripts/validate_tool.py",
-            "timeout": 3000
           }
         ]
       }
     ]
   }
 }
+EOF
 ```
 
-**2. Symlink Agents**
-
-```bash
-ln -s $ACADEMICOPS_BOT/.claude/agents .claude/agents
-```
-
-**3. Create Project Context File**
-
-```bash
-mkdir -p agents
-cp $ACADEMICOPS_BOT/dist/agents/INSTRUCTIONS.md agents/_CORE.md
-```
-
-Edit `agents/_CORE.md` with your project-specific context.
-
-**4. Install Git Hooks**
-
-```bash
-$ACADEMICOPS_BOT/scripts/git-hooks/install-hooks.sh
-```
-
-**5. Update .gitignore**
-
-```bash
-cat $ACADEMICOPS_BOT/dist/.gitignore >> .gitignore
-```
-
----
-
-## Post-Installation
-
-### Verify Installation
-
-```bash
-# Test instruction loading
-uv run python $ACADEMICOPS_BOT/scripts/load_instructions.py
-
-# Launch Claude and check for SessionStart confirmation
-claude
-```
-
-You should see: `Loaded _CORE.md: ✓ bot ✓ project`
-
-### Customize for Your Project
-
-Edit `agents/_CORE.md` in your project to add:
-
-- Project-specific rules and workflows
-- Domain knowledge and terminology
-- Team conventions and standards
-- Tool configurations
-
-### Available Agents
-
-- `@agent-trainer` - Framework maintenance
-- `@agent-strategist` - Planning and task management
-- `@agent-developer` - Code implementation
-- `@agent-code-review` - Code review and commits
-- `@agent-analyst` - Data analysis workflows
-
-### Slash Commands
-
-- `/ops` - Framework help
-- `/ttd` - Test-driven development workflow
-- `/trainer` - Activate trainer mode
+Project-local settings **merge with or override** global `~/.claude/settings.json` depending on hook configuration.
 
 ---
 
 ## Updating academicOps
 
-### If Installed as Submodule
-
-```bash
-cd bot
-git pull origin main
-cd ..
-git add bot
-git commit -m "Update academicOps framework"
-```
-
-### If Using Flat Architecture
+Pull latest changes and re-run installation:
 
 ```bash
 cd $ACADEMICOPS_BOT
 git pull origin main
+$ACADEMICOPS_BOT/scripts/install_global.sh
 ```
 
-No project changes needed—symlinks automatically reference updated code.
+The installation script will:
+- Update `~/.claude/settings.json` if needed
+- Re-deploy updated skills to `~/.claude/skills/`
+- Preserve any custom configuration you've added
 
 ---
 
@@ -199,33 +126,38 @@ No project changes needed—symlinks automatically reference updated code.
 
 ### "ACADEMICOPS_BOT not set" error
 
-Add to your shell profile:
+Add to your shell profile and reload:
 ```bash
-export ACADEMICOPS_BOT=/path/to/academicOps
-source ~/.bashrc  # or ~/.zshrc
+echo 'export ACADEMICOPS_BOT=~/academicOps' >> ~/.bashrc
+source ~/.bashrc
 ```
 
-### SessionStart hook not running
+### Hooks not running
 
-Check `.claude/settings.json` exists and contains SessionStart hook configuration.
-
-Run manually to debug:
+Check global settings exist:
 ```bash
-uv run python $ACADEMICOPS_BOT/scripts/load_instructions.py
+cat ~/.claude/settings.json
 ```
 
-### Git hooks not working
+Should contain `"env"` section with `ACADEMICOPS_BOT`.
 
-Reinstall:
+### Skills not found
+
+Verify skills are deployed:
 ```bash
-$ACADEMICOPS_BOT/scripts/git-hooks/install-hooks.sh --force
+ls ~/.claude/skills/
 ```
 
-### PreToolUse validation failing
-
-Check that validation scripts are accessible:
+Re-run installation if missing:
 ```bash
-ls -la $ACADEMICOPS_BOT/scripts/validate_tool.py
+$ACADEMICOPS_BOT/scripts/install_global.sh
+```
+
+### Hook scripts failing
+
+Test manually with `uv run --directory`:
+```bash
+uv run --directory "$ACADEMICOPS_BOT" python "$ACADEMICOPS_BOT/bots/hooks/validate_tool.py"
 ```
 
 ---

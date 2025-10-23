@@ -50,22 +50,40 @@ This separation prevents confusion between "what agents must do" and "what human
 All projects using academicOps follow this structure:
 
 ```
-any-repo/
-├── agents/              # Agent instruction files (rules)
-│   └── _CORE.md        # Core axioms loaded at SessionStart
-├── docs/               # Human documentation (explanations)
-│   └── (user's docs)
-├── bots/               # academicOps installation (NEW standard)
-│   ├── .academicOps/  # Symlink to framework
-│   ├── agents/        # Repo-local agent overrides
-│   ├── docs/          # Repo-local agent instructions
-│   └── commands/      # Repo-local slash commands
-└── .claude/
-    ├── agents -> bots/.academicOps/.claude/agents
-    └── settings.json
+~/.claude/                      # Global Claude Code configuration (OWNED by academicOps)
+├── settings.json               # Global hooks and environment variables
+│   └── env.ACADEMICOPS_BOT    # Points to academicOps installation
+└── skills/                     # Deployed portable workflows (from dist/skills/*.zip)
+
+/path/to/academicOps/          # academicOps framework installation
+├── bots/                       # Agent instructions and hooks
+│   ├── agents/                # Agent instruction files (rules)
+│   │   └── _CORE.md          # Core axioms
+│   └── hooks/                 # Hook scripts (called via $ACADEMICOPS_BOT)
+├── .claude/skills/            # Skill source code (for development)
+├── dist/skills/               # Packaged skills (*.zip for deployment)
+├── scripts/                   # Utility scripts
+└── docs/                      # Human documentation
+
+any-repo/                      # Individual project repos
+├── .claude/settings.json      # Project-specific hooks (optional, overrides global)
+├── bots/                      # Project-specific bot configuration (optional)
+│   ├── agents/               # Project-specific agent rules
+│   │   └── _CORE.md         # Project context
+│   └── hooks/                # Project-specific hooks
+└── docs/                      # Human documentation
 ```
 
-**Rule enforced in agent instructions**: Never put agent rules in `docs/`, never put human documentation in `agents/`.
+**Key architectural decisions:**
+
+1. **Global `~/.claude/` ownership**: academicOps installs hooks and environment variables globally
+2. **`$ACADEMICOPS_BOT` environment variable**: Available everywhere, points to framework installation
+3. **Skills deployed to `~/.claude/skills/`**: Extracted from `dist/skills/*.zip`, available globally
+4. **Project-local overrides**: Projects can override global hooks with `.claude/settings.json`
+5. **Hook invocation**: Global hooks use `uv run --directory "$ACADEMICOPS_BOT"` for dependencies
+6. **`bots/` namespace**: All agent instructions and hooks live under `bots/` directory
+
+**Rule enforced in agent instructions**: Never put agent rules in `docs/`, never put human documentation in `bots/`.
 
 ---
 
