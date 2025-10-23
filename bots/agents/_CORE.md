@@ -51,6 +51,8 @@
    - **Rationale**: Reduces maintenance burden, leverages community knowledge, prevents reinventing wheels
    - **Fail-fast**: Installation fails immediately if required tool missing (no fallbacks)
 
+12. **Always dogfooding**: The tools we are building are tested, proven, documented, and versioned. We use our own research projects as development guides, test cases, tutorials, and ongoing measures of reliability. We're aiming to make it easy for HASS scholars to use AI tools in a way that is understandable, traceable, and reproducible.
+
 ## Behavioral Rules
 
 12. **STOP WHEN INTERRUPTED** - If user interrupts, stop immediately.
