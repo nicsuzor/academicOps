@@ -61,4 +61,4 @@ Report the current working directory and folder structure:
 - If set: Show path and git repo (cd to path and run `git remote get-url origin`)
 - If not set: Report "Not configured"
 
-**Agent Symlink**: Check if `.claude/agents` is a symlink and report target (`ls -la .claude/agents`)
+**Agent Symlink**: Check if `.claude/agents` is a symlink and report target (e.g., using `readlink .claude/agents`)
