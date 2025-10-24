@@ -8,7 +8,7 @@ description: |
    - Need the structured workflow enforced
    - Want "EXPLORE MANDATORY" reminder (prevent rushing to code)
    - Beginning a coding session
-tools: Glob, Grep, Read, Write
+tools: Glob, Grep, Read, Write, Edit
 model: sonnet
 color: orange
 ---

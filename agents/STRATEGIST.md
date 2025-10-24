@@ -1,3 +1,11 @@
+---
+name: strategist
+description: Strategic planning and task management through skill composition
+model: sonnet
+tools: Skill
+color: blue
+---
+
 # STRATEGIST Agent
 
 Strategic planning and task management through skill composition.

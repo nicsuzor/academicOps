@@ -16,6 +16,7 @@ import sys
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from fnmatch import fnmatch
+from pathlib import Path 
 
 from hook_debug import safe_log_to_debug_file
 from hook_models import PreToolUseHookOutput, PreToolUseOutput
