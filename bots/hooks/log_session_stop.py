@@ -75,16 +75,18 @@ def extract_transcript_summary(transcript_path: str) -> dict:
                         tool = entry["tool_name"]
                         summary["tools_used"].add(tool)
 
-                        # Track file modifications
+                        # Track file modifications (deduplicate)
                         if tool in ["Write", "Edit"]:
                             file_path = entry.get("tool_input", {}).get("file_path")
-                            if file_path:
+                            if file_path and file_path not in summary["files_modified"]:
                                 summary["files_modified"].append(file_path)
 
                     # Look for errors in tool results
                     if entry.get("type") == "tool_result":
-                        if "error" in entry.get("content", "").lower():
-                            summary["errors"].append(entry.get("content", "")[:200])
+                        content = entry.get("content", "")
+                        # Only check string content to avoid false positives
+                        if isinstance(content, str) and "error" in content.lower():
+                            summary["errors"].append(content[:200])
 
                 except json.JSONDecodeError:
                     continue

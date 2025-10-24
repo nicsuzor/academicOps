@@ -528,12 +528,19 @@ $ACADEMICOPS_PERSONAL/data/views/current_view.json
 
 **Background**: Every session is automatically logged to daily JSON files to create a detailed history of work done. This helps track progress, maintain context across sessions, and associate work with tasks.
 
+**Two-phase logging captures objectives and outcomes**:
+1. **Planning phase** (PreToolUse hook on TodoWrite): Captures session objectives when you create todos
+2. **Completion phase** (Stop hook): Captures what was actually accomplished
+
+This dual approach focuses on high-level context (what we planned vs what we did) rather than low-level tracing (git handles that).
+
 **How it works**:
-1. A Stop hook runs automatically when the session ends
-2. The hook analyzes the session transcript (tools used, files modified, etc.)
-3. A concise summary is created and saved to `$ACADEMICOPS_PERSONAL/data/sessions/YYYY-MM-DD.json`
+1. When TodoWrite is called, a PreToolUse hook logs the session objectives automatically
+2. When the session ends, a Stop hook analyzes the transcript (tools used, files modified, etc.)
+3. Concise summaries are saved to `$ACADEMICOPS_PERSONAL/data/sessions/YYYY-MM-DD.json`
 4. Entries can be associated with task IDs for progress tracking
 5. Task files are updated with progress notes when applicable
+6. File locking prevents race conditions when multiple sessions end simultaneously
 
 **Session log structure**:
 ```json

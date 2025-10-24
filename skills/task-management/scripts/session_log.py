@@ -7,8 +7,10 @@ associates entries with tasks, and updates task files with progress.
 """
 
 import argparse
+import fcntl
 import json
 import os
+import re
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -25,7 +27,23 @@ def get_data_dir() -> Path:
 
 
 def get_daily_log_path(data_dir: Path, date: str) -> Path:
-    """Get the path to today's session log file."""
+    """
+    Get the path to today's session log file.
+
+    Args:
+        data_dir: Base data directory
+        date: Date string in YYYY-MM-DD format
+
+    Returns:
+        Path to the daily log file
+
+    Raises:
+        ValueError: If date format is invalid (prevents path traversal)
+    """
+    # Validate date format to prevent path traversal attacks
+    if not re.match(r'^\d{4}-\d{2}-\d{2}$', date):
+        raise ValueError(f"Invalid date format: {date}. Expected YYYY-MM-DD")
+
     log_dir = data_dir / "sessions"
     log_dir.mkdir(parents=True, exist_ok=True)
     return log_dir / f"{date}.json"
@@ -43,9 +61,24 @@ def load_daily_log(log_path: Path) -> list:
 
 
 def save_daily_log(log_path: Path, entries: list):
-    """Save daily log to file."""
+    """
+    Save daily log to file with file locking.
+
+    Uses fcntl.flock for exclusive locking to prevent race conditions
+    when multiple sessions end simultaneously.
+
+    Args:
+        log_path: Path to the daily log file
+        entries: List of log entries to save
+    """
     with open(log_path, "w") as f:
-        json.dump(entries, f, indent=2)
+        # Acquire exclusive lock to prevent concurrent write corruption
+        fcntl.flock(f.fileno(), fcntl.LOCK_EX)
+        try:
+            json.dump(entries, f, indent=2)
+        finally:
+            # Release lock (also happens automatically when file closes)
+            fcntl.flock(f.fileno(), fcntl.LOCK_UN)
 
 
 def extract_session_summary(transcript_path: Optional[str]) -> dict:
@@ -101,8 +134,19 @@ def extract_session_summary(transcript_path: Optional[str]) -> dict:
 
 def update_task_progress(
     data_dir: Path, task_id: str, progress_note: str, session_id: str
-):
-    """Update a task file with progress information."""
+) -> bool:
+    """
+    Update a task file with progress information.
+
+    Args:
+        data_dir: Base data directory
+        task_id: Task identifier
+        progress_note: Note describing progress made
+        session_id: Session identifier
+
+    Returns:
+        True if task was found and updated, False otherwise
+    """
     # Search for task in inbox, queue, and archived
     for subdir in ["inbox", "queue", "archived"]:
         task_path = data_dir / "tasks" / subdir / f"{task_id}.json"
