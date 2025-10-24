@@ -6,6 +6,7 @@ Handles priority changes, due date updates, and archiving.
 
 import contextlib
 import json
+import re
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
@@ -68,9 +69,7 @@ def modify_task(
     """Modify a local task (priority, due date, archive).
 
     Args:
-        task_id: The local task ID (filename without .json extension)
-                 Format: YYYYMMDD-HHMMSS-hostname-uuid
-                 Example: 20250929-004918-nicwin-7ce2c06b
+        task_id: The local task ID (YYYYMMDD-XXXXXXXX format)
         archive: Whether to archive the task
         priority: New priority for the task (1-3)
         due: New due date for the task (YYYY-MM-DD format)
@@ -84,9 +83,19 @@ def modify_task(
         )
         return {}
 
-    # Find the local task by searching for matching file
-    # No need for regex validation - file search is the validation
+    # Find the local task
+    task_id_pattern = re.compile(r"^\d{8}-[0-9a-fA-F]{8}$")
     local_task = _find_task_by_id(task_id)
+
+    if not local_task and not task_id_pattern.match(str(task_id) or ""):
+        print_json(
+            {
+                "success": False,
+                "error": "invalid_task_id",
+                "message": f"Invalid task ID format: {task_id}. Expected YYYYMMDD-XXXXXXXX",
+            }
+        )
+        return {}
 
     if not local_task:
         print_json(

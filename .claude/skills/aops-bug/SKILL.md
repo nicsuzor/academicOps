@@ -33,6 +33,57 @@ Use aops-bug when:
 - Project-specific bugs → Use project's issue tracker
 - User questions about academicOps → Answer directly, don't track
 
+## Scope Boundaries
+
+This skill operates in **two distinct modes** depending on invocation context:
+
+### Mode 1: Documentation-Only (via `/log-failure` command)
+
+**When invoked via `/log-failure`**, your scope is strictly LIMITED to:
+
+✅ **DO**:
+- Analyze the violation/bug pattern
+- Search for existing GitHub issues
+- Document findings in GitHub (update existing or create new issue)
+- Report analysis to user
+
+❌ **DO NOT**:
+- Fix the user's original request that triggered the failure
+- Implement solutions or code changes
+- Investigate deeply beyond initial categorization
+- Attempt workarounds for the reported problem
+
+**Rationale**: `/log-failure` is for rapid documentation based on single data points. Fixes require experiment-driven validation with multiple data points.
+
+**Example**:
+```
+User: "/log-failure agent didn't archive task correctly"
+
+✅ CORRECT:
+1. Identify violation pattern (e.g., didn't read tool docs)
+2. Search for related issues
+3. Update issue #123 with new instance
+4. Report: "Documented in issue #123. This is the 3rd instance of not reading tool documentation."
+
+❌ WRONG:
+1. Archive the task for the user
+2. Fix the tool's code
+3. Investigate why the tool failed
+4. Propose solutions
+```
+
+### Mode 2: Full Intervention (direct invocation)
+
+**When invoked directly** (not via `/log-failure`), full scope includes:
+
+- All documentation steps from Mode 1
+- Deep investigation of root causes
+- Experiment log creation
+- Solution design and implementation
+- Testing and validation
+
+**When to use**: After multiple data points confirm a pattern, use direct invocation for comprehensive intervention.
+
 ## Core Workflow
 
 This skill uses a **workflow-based** structure with decision trees for different scenarios.
