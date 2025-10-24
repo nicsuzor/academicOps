@@ -25,7 +25,15 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-from hook_debug import safe_log_to_debug_file
+# Optional debug logging - gracefully handle missing hook_debug module
+try:
+    from hook_debug import safe_log_to_debug_file
+    HAS_DEBUG = True
+except ImportError:
+    HAS_DEBUG = False
+    def safe_log_to_debug_file(*args, **kwargs):
+        """Fallback no-op function when hook_debug is not available."""
+        pass
 
 
 def get_project_dir() -> Path:

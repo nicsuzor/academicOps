@@ -12,6 +12,7 @@ import json
 import os
 import re
 import sys
+import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
@@ -49,36 +50,86 @@ def get_daily_log_path(data_dir: Path, date: str) -> Path:
     return log_dir / f"{date}.json"
 
 
-def load_daily_log(log_path: Path) -> list:
-    """Load existing daily log or return empty list."""
-    if log_path.exists():
-        try:
-            with open(log_path) as f:
-                return json.load(f)
-        except (json.JSONDecodeError, IOError):
-            return []
-    return []
-
-
-def save_daily_log(log_path: Path, entries: list):
+def append_to_daily_log(log_path: Path, new_entry: dict) -> bool:
     """
-    Save daily log to file with file locking.
+    Atomically append a new entry to the daily log file.
 
-    Uses fcntl.flock for exclusive locking to prevent race conditions
-    when multiple sessions end simultaneously.
+    Uses file locking and atomic write pattern (write-to-temp-then-rename)
+    to prevent race conditions and data corruption when multiple sessions
+    end simultaneously.
 
     Args:
         log_path: Path to the daily log file
-        entries: List of log entries to save
+        new_entry: New log entry to append
+
+    Returns:
+        True if successful, False otherwise
     """
-    with open(log_path, "w") as f:
-        # Acquire exclusive lock to prevent concurrent write corruption
-        fcntl.flock(f.fileno(), fcntl.LOCK_EX)
+    try:
+        # Ensure parent directory exists
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+
+        # Use a lock file to coordinate access
+        lock_path = log_path.parent / f"{log_path.name}.lock"
+
+        with open(lock_path, "w") as lock_file:
+            # Acquire exclusive lock for entire read-modify-write operation
+            fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX)
+
+            try:
+                # Read existing entries
+                entries = []
+                if log_path.exists():
+                    try:
+                        with open(log_path, "r") as f:
+                            entries = json.load(f)
+                    except (json.JSONDecodeError, IOError):
+                        # If file is corrupted, start fresh
+                        entries = []
+
+                # Append new entry
+                entries.append(new_entry)
+
+                # Write to temporary file in same directory (atomic rename requires same filesystem)
+                temp_fd, temp_path = tempfile.mkstemp(
+                    dir=log_path.parent,
+                    prefix=f".{log_path.name}.tmp.",
+                    text=True
+                )
+
+                try:
+                    with os.fdopen(temp_fd, 'w') as temp_file:
+                        json.dump(entries, temp_file, indent=2)
+                        # Ensure data is written to disk before rename
+                        temp_file.flush()
+                        os.fsync(temp_file.fileno())
+
+                    # Atomic rename (replaces old file)
+                    os.rename(temp_path, log_path)
+
+                except Exception as e:
+                    # Clean up temp file on error
+                    try:
+                        os.unlink(temp_path)
+                    except OSError:
+                        pass
+                    raise e
+
+            finally:
+                # Release lock (also happens automatically when file closes)
+                fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
+
+        # Clean up lock file (best effort, not critical)
         try:
-            json.dump(entries, f, indent=2)
-        finally:
-            # Release lock (also happens automatically when file closes)
-            fcntl.flock(f.fileno(), fcntl.LOCK_UN)
+            lock_path.unlink()
+        except OSError:
+            pass
+
+        return True
+
+    except Exception as e:
+        print(f"Error appending to daily log: {e}", file=sys.stderr)
+        return False
 
 
 def extract_session_summary(transcript_path: Optional[str]) -> dict:
@@ -202,9 +253,8 @@ def main():
     # Get today's date
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
-    # Load daily log
+    # Get log path
     log_path = get_daily_log_path(data_dir, today)
-    entries = load_daily_log(log_path)
 
     # Extract session summary from transcript
     session_summary = extract_session_summary(args.transcript)
@@ -222,11 +272,10 @@ def main():
         "commands_run": session_summary["commands_run"],
     }
 
-    # Add to entries
-    entries.append(entry)
-
-    # Save daily log
-    save_daily_log(log_path, entries)
+    # Atomically append to daily log (handles locking and race conditions)
+    if not append_to_daily_log(log_path, entry):
+        print(json.dumps({"success": False, "error": "Failed to append to log"}))
+        sys.exit(1)
 
     # Update task progress if task_id provided
     if args.task_id and args.progress_note:

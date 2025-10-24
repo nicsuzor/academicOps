@@ -27,31 +27,36 @@ def test_session_logging_hook():
         return False
 
     # Create a temporary transcript file
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.jsonl', delete=False) as f:
-        transcript_path = f.name
+    # Using explicit file operations to ensure file is closed before use (Windows compatibility)
+    temp_file = tempfile.NamedTemporaryFile(mode='w', suffix='.jsonl', delete=False)
+    transcript_path = temp_file.name
 
+    try:
         # Write sample transcript entries
-        f.write(json.dumps({
+        temp_file.write(json.dumps({
             "type": "message",
             "role": "user",
             "content": "Test message"
         }) + "\n")
 
-        f.write(json.dumps({
+        temp_file.write(json.dumps({
             "type": "message",
             "role": "assistant",
             "content": "Test response"
         }) + "\n")
 
-        f.write(json.dumps({
+        temp_file.write(json.dumps({
             "tool_name": "Read",
             "tool_input": {"file_path": "/test/file.py"}
         }) + "\n")
 
-        f.write(json.dumps({
+        temp_file.write(json.dumps({
             "tool_name": "Edit",
             "tool_input": {"file_path": "/test/file.py", "old_string": "old", "new_string": "new"}
         }) + "\n")
+    finally:
+        # Explicitly close file handle before passing path to subprocess (Windows compatibility)
+        temp_file.close()
 
     # Create sample hook input
     hook_input = {
