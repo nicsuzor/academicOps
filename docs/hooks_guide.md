@@ -401,3 +401,230 @@ Gemini CLI relies entirely on **probabilistic AI following instructions** in GEM
 - Consider GitButler hooks for automatic session isolation into branches
 
 The flat architecture pattern—maintaining a personal context repository outside project directories and referencing it via hooks with absolute paths—is fully supported and represents a documented best practice for sophisticated multi-project setups.
+
+## Hook Input/Output Schemas (academicOps Implementation)
+
+Based on analysis of actual hook execution logs and our Pydantic models in `bots/hooks/hook_models.py`:
+
+### Common Input Structure (All Hooks)
+
+All hooks receive JSON on stdin with these common fields:
+
+```json
+{
+  "session_id": "uuid-string",
+  "transcript_path": "/path/to/.claude/projects/[project]/[session-id].jsonl",
+  "cwd": "/current/working/directory",
+  "permission_mode": "bypassPermissions" | "requirePermissions",
+  "hook_event_name": "PreToolUse" | "PostToolUse" | "UserPromptSubmit" | "SessionStart" | "Stop" | "SubagentStop"
+}
+```
+
+### PreToolUse Hook
+
+**Input** (in addition to common fields):
+```json
+{
+  "tool_name": "Bash" | "Read" | "Write" | "Edit" | "Grep" | "Glob" | ...,
+  "tool_input": {
+    // Tool-specific parameters
+    // Examples:
+    // Bash: {"command": "ls -la", "description": "..."}
+    // Read: {"file_path": "/path/to/file"}
+    // Write: {"file_path": "/path", "content": "..."}
+    // Edit: {"file_path": "/path", "old_string": "...", "new_string": "..."}
+  }
+}
+```
+
+**Output** (required structure):
+```json
+{
+  "hookSpecificOutput": {
+    "hookEventName": "PreToolUse",
+    "permissionDecision": "allow" | "deny" | "ask",
+    "permissionDecisionReason": "Optional explanation"
+  },
+  "continue": true | false,
+  "systemMessage": "Optional warning shown to user",
+  "stopReason": "Optional message when continue=false"
+}
+```
+
+**Exit codes**:
+- `0` - Allow execution (hook succeeded)
+- `1` - Warn but allow (show systemMessage)
+- `2` - Block execution (show permissionDecisionReason)
+
+### PostToolUse Hook
+
+**Input** (in addition to common fields):
+```json
+{
+  "tool_name": "Bash" | "Read" | "Write" | ...,
+  "tool_input": {
+    // Same as PreToolUse
+  },
+  "tool_response": {
+    "type": "text" | "error" | ...,
+    // Tool-specific response data
+    // Examples:
+    // Read: {"file": {"filePath": "...", "content": "...", "numLines": 56, ...}}
+    // Bash: {"output": "command output", "exitCode": 0}
+  }
+}
+```
+
+**Output**:
+```json
+{
+  "hookSpecificOutput": {
+    "hookEventName": "PostToolUse",
+    "additionalContext": "Optional context injected into conversation"
+  },
+  "continue": true | false,
+  "systemMessage": "Optional message",
+  "suppressOutput": true | false
+}
+```
+
+**Exit code**: Always `0` (PostToolUse hooks don't block)
+
+### UserPromptSubmit Hook
+
+**Input** (in addition to common fields):
+```json
+{
+  "prompt": "The user's input text"
+}
+```
+
+**Output**:
+```json
+{
+  "hookSpecificOutput": {
+    "hookEventName": "UserPromptSubmit",
+    "additionalContext": "Optional context to inject"
+  },
+  "continue": true | false,
+  "systemMessage": "Optional message"
+}
+```
+
+**Exit code**: Always `0`
+
+### SessionStart Hook
+
+**Input** (in addition to common fields):
+```json
+{
+  // No additional fields beyond common structure
+}
+```
+
+**Output**:
+```json
+{
+  "hookSpecificOutput": {
+    "hookEventName": "SessionStart",
+    "additionalContext": "Context injected at session start (instructions, environment info, etc.)"
+  },
+  "systemMessage": "Optional startup message",
+  "suppressOutput": true | false
+}
+```
+
+**Exit code**: `0` for success
+
+### Stop and SubagentStop Hooks
+
+**Input** (in addition to common fields):
+```json
+{
+  // No additional fields beyond common structure
+}
+```
+
+**Output**:
+```json
+{
+  "decision": "block" | null,
+  "reason": "Required when decision='block'",
+  "continue": true | false
+}
+```
+
+**Exit codes**:
+- `0` - Allow stop
+- `1` - Warn but allow
+- `2` - Block stop
+
+### Environment Variables Available in Hooks
+
+- `$CLAUDE_PROJECT_DIR` - Absolute path to project root (where Claude Code started)
+- `$CLAUDE_PLUGIN_ROOT` - For plugin hooks, path to plugin directory
+- Standard shell variables: `$HOME`, `$PATH`, `$PYTHONPATH`, etc.
+- Any variables defined in `settings.json` `env` object
+
+### Best Practices for Hook Implementation
+
+1. **Always output valid JSON** - Even on error, output `{}` and exit 0
+2. **Validate input defensively** - Check for missing fields before accessing
+3. **Use Pydantic models** - Validate output structure (see `bots/hooks/hook_models.py`)
+4. **Handle errors gracefully** - Wrap logic in try/except, never crash
+5. **Log for debugging** - Use separate log files (e.g., `/tmp/claude_*.json`)
+6. **Set timeouts** - Configure reasonable timeout in settings (default 2-5s)
+7. **Absolute paths** - Use `$CLAUDE_PROJECT_DIR` or absolute paths, not relative
+8. **Exit codes matter** - PreToolUse: 0=allow, 1=warn, 2=block; Others: always 0
+
+### Example: Minimal Hook Implementation
+
+```python
+#!/usr/bin/env python3
+import json
+import sys
+
+def main():
+    # Read input
+    try:
+        input_data = json.load(sys.stdin)
+    except:
+        input_data = {}
+
+    # Process (hook-specific logic)
+    output = {
+        "hookSpecificOutput": {
+            "hookEventName": "PreToolUse",  # or SessionStart, etc.
+            "permissionDecision": "allow"   # PreToolUse only
+        }
+    }
+
+    # Output and exit
+    print(json.dumps(output))
+    sys.exit(0)
+
+if __name__ == "__main__":
+    main()
+```
+
+### Debugging Hook Execution
+
+Enable debug logging to see actual hook I/O:
+
+```python
+from hook_debug import safe_log_to_debug_file
+
+# Logs to /tmp/claude_{hook_event}_{timestamp}.json
+safe_log_to_debug_file("PreToolUse", input_data, output_data)
+```
+
+Run Claude Code with debug flag to see hook execution:
+```bash
+claude --debug
+```
+
+Check logs in `/tmp/`:
+```bash
+ls -lt /tmp/claude_* | head
+cat /tmp/claude_pretooluse_TIMESTAMP.json
+```

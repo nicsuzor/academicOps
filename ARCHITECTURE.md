@@ -89,13 +89,13 @@ any-repo/                      # Individual project repos
 
 ## Instruction Loading System
 
-### How Agents Get Their Instructions
+### Simplified Mental Model (Current Implementation)
 
-At session start and when agents are invoked, academicOps loads instructions from multiple locations in a hierarchical order.
+academicOps uses **ONE tiered file** and **explicit references** for everything else.
 
-### SessionStart: Three-Tier Hierarchy
+### SessionStart: `_CORE.md` Only (3-Tier)
 
-Every session loads `_CORE.md` from up to three tiers:
+Every session automatically loads `_CORE.md` from up to three tiers:
 
 ```
 $ACADEMICOPS_BOT/bots/agents/_CORE.md              (Framework - REQUIRED)
@@ -103,49 +103,59 @@ $ACADEMICOPS_PERSONAL/bots/agents/_CORE.md         (Personal - optional)
 $PWD/bots/agents/_CORE.md                          (Project - optional)
 ```
 
-**All use `bots/agents/` directory** - consistent across all tiers.
+**Why tiered?** Core axioms, personal style, and project conventions legitimately vary:
+- **Framework**: Core axioms (DO ONE THING, fail-fast, DRY)
+- **Personal**: Your work style, preferences, accommodations
+- **Project**: Project-specific conventions, team agreements
 
 **Loading behavior:**
-- At least one file must exist (exits with error if all missing)
-- Missing tiers silently skipped
-- All loaded tiers visible to agent simultaneously
-- Priority determines which guidance takes precedence in conflicts
+- Framework tier is REQUIRED (fails if missing)
+- Personal and Project tiers are OPTIONAL (silently skipped if missing)
+- All found tiers merged and presented together
+- Priority in conflicts: Project > Personal > Framework
 
-**Content organization by tier:**
+### Everything Else: Single-Tier, Explicit
 
-**Framework tier** (`$ACADEMICOPS_BOT/bots/agents/_CORE.md`):
-- Generic work axioms (DO ONE THING, ANSWER DIRECTLY, fail-fast, DRY, verify first)
-- Repository structure overview
-- Tool requirements
+**Slash commands** (like `/dev`, `/trainer`) load from **framework only**:
 
-**Personal tier** (`$ACADEMICOPS_PERSONAL/bots/agents/_CORE.md`):
-- User's global preferences/overrides across all repos
-- Work style, ADHD accommodations, communication preferences
-- Tool preferences
-- Workflow customizations
+```bash
+# /dev loads ONLY from framework
+$ACADEMICOPS_BOT/bots/agents/DEVELOPER.md
 
-**Project tier** (`$PWD/bots/agents/_CORE.md`):
-- Project-specific overrides to core axioms
-- Domain-specific rules
-- Local conventions
-
-### Agent-Specific Instructions
-
-When user invokes `/dev` or other slash commands, same 3-tier pattern applies:
-
-```
-$ACADEMICOPS_BOT/bots/agents/DEVELOPER.md          (Framework - REQUIRED)
-$ACADEMICOPS_PERSONAL/bots/agents/DEVELOPER.md     (Personal - optional)
-$PWD/bots/agents/DEVELOPER.md                      (Project - optional)
+# /trainer loads ONLY from framework
+$ACADEMICOPS_BOT/bots/agents/trainer.md
 ```
 
-**Example: Running `/dev` in buttermilk repo loads:**
+**Why?** These are generic workflows that don't need project customization. If you need project-specific variations, reference them explicitly in your project's CLAUDE.md:
 
-1. `$ACADEMICOPS_BOT/bots/agents/DEVELOPER.md` (6-step dev workflow)
-2. `$ACADEMICOPS_PERSONAL/bots/agents/DEVELOPER.md` (user's dev preferences, if exists)
-3. `buttermilk/bots/agents/DEVELOPER.md` (buttermilk-specific dev rules, if exists)
+```markdown
+# Project CLAUDE.md
+@agents/_CORE.md                          # Gets 3-tier loading automatically
+@bots/DEBUGGING.md                        # Project-specific debugging guide
+@bots/DEPLOYMENT.md                       # Project-specific deployment process
+@../.claude/skills/test-writing/SKILL.md  # Framework skill
+```
 
-**Priority in conflicts**: Project > Personal > Framework
+**Project-specific instructions**: Put them in `bots/*.md` in your project and reference explicitly. No magic, clear ownership.
+
+**Implementation note**: The `load_instructions.py` script technically supports 3-tier loading for any file, but we only use it for `_CORE.md` to keep the mental model simple. Other files are single-tier by convention.
+
+### Quick Reference: Where Do Instructions Go?
+
+**"Where do I put debugging instructions for my project?"**
+→ `your-project/bots/DEBUGGING.md` and reference it in `CLAUDE.md`
+
+**"Where do I put my personal work style preferences?"**
+→ `$ACADEMICOPS_PERSONAL/bots/agents/_CORE.md`
+
+**"Where do I put project-specific conventions?"**
+→ `your-project/bots/agents/_CORE.md`
+
+**"Where do generic development workflows go?"**
+→ Already in framework at `$ACADEMICOPS_BOT/bots/agents/DEVELOPER.md`
+
+**"How do I know what gets auto-loaded?"**
+→ Only `_CORE.md` is auto-loaded at SessionStart. Everything else requires explicit invocation (`/dev`) or reference (`@bots/DEBUGGING.md`)
 
 ### Path Reference
 
