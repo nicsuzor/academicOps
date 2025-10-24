@@ -31,7 +31,7 @@ uv run python ${ACADEMICOPS_BOT}/bots/hooks/load_instructions.py FAIL-FAST.md
 After loading, confirm to the user:
 
 ```
- Loaded TTD workflow files
+Loaded TTD workflow files
 Ready for test-driven development
 ```
 
