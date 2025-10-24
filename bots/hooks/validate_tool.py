@@ -214,6 +214,31 @@ class ValidationRule:
 # IMPORTANT: Rules are checked in order. More specific rules should come before general rules.
 VALIDATION_RULES = [
     ValidationRule(
+        name="killall command is prohibited - too dangerous on shared machine",
+        severity="block",
+        tool_patterns=["Bash"],
+        allowed_agents=set(),  # No agents allowed - hard prohibition
+        custom_matcher=lambda tool_name, tool_input: (
+            tool_name == "Bash"
+            and any(
+                # Match killall as a command (with word boundaries)
+                part.strip().startswith("killall ")
+                or part.strip() == "killall"
+                or " killall " in part
+                for part in tool_input.get("command", "").split(";")
+            )
+        ),
+        get_context=lambda tool_input: f"command: {tool_input.get('command', 'unknown')}",
+        get_fix_guidance=lambda tool_input: (
+            "   Instead of 'killall':\n"
+            "   - Use 'pkill -f <pattern>' to kill by pattern\n"
+            "   - Use 'ps aux | grep <pattern>' to find PIDs, then 'kill <pid>'\n"
+            "   - For specific processes, find exact PID: 'kill $(pgrep -f <pattern>)'\n"
+            "   \n"
+            "   This machine runs many processes. 'killall' is too indiscriminate."
+        ),
+    ),
+    ValidationRule(
         name="Protected file modifications restricted to trainer agent",
         severity="warn",
         tool_patterns=["Write", "Edit", "MultiEdit"],
