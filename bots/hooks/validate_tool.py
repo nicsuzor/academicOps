@@ -230,12 +230,54 @@ VALIDATION_RULES = [
         ),
         get_context=lambda tool_input: f"command: {tool_input.get('command', 'unknown')}",
         get_fix_guidance=lambda tool_input: (
-            "   Instead of 'killall':\n"
-            "   - Use 'pkill -f <pattern>' to kill by pattern\n"
-            "   - Use 'ps aux | grep <pattern>' to find PIDs, then 'kill <pid>'\n"
-            "   - For specific processes, find exact PID: 'kill $(pgrep -f <pattern>)'\n"
+            "   CRITICAL: This machine runs multiple projects simultaneously.\n"
+            "   You must target THIS PROJECT'S processes specifically.\n"
             "   \n"
-            "   This machine runs many processes. 'killall' is too indiscriminate."
+            "   Instead of 'killall' or generic patterns:\n"
+            "   ❌ WRONG: kill $(pgrep -f python)      # Kills ALL Python processes\n"
+            "   ❌ WRONG: pkill streamlit               # Kills ALL Streamlit instances\n"
+            "   ❌ WRONG: killall node                  # Kills ALL Node processes\n"
+            "   \n"
+            "   ✅ CORRECT approaches:\n"
+            "   1. Use project-specific pattern with full path:\n"
+            "      kill $(pgrep -f '/full/path/to/this/project')\n"
+            "   \n"
+            "   2. List processes first, verify they're yours, then kill specific PID:\n"
+            "      ps aux | grep '/path/to/project'\n"
+            "      kill <specific-pid>\n"
+            "   \n"
+            "   3. Use port-based targeting if applicable:\n"
+            "      lsof -ti:8501 | xargs kill  # Only if you know the port is yours\n"
+        ),
+    ),
+    ValidationRule(
+        name="Generic process termination patterns are too broad - must be project-specific",
+        severity="warn",  # Warn instead of block - allows override with caution
+        tool_patterns=["Bash"],
+        allowed_agents=set(),
+        custom_matcher=lambda tool_name, tool_input: (
+            tool_name == "Bash"
+            and (
+                # Match dangerous generic patterns
+                "pgrep -f python" in tool_input.get("command", "")
+                or "pgrep -f node" in tool_input.get("command", "")
+                or "pgrep -f streamlit" in tool_input.get("command", "")
+                or "pkill python" in tool_input.get("command", "")
+                or "pkill node" in tool_input.get("command", "")
+                or "pkill streamlit" in tool_input.get("command", "")
+                or "pkill -f python" in tool_input.get("command", "")
+                or "pkill -f node" in tool_input.get("command", "")
+                or "pkill -f streamlit" in tool_input.get("command", "")
+            )
+        ),
+        get_context=lambda tool_input: f"command: {tool_input.get('command', 'unknown')}",
+        get_fix_guidance=lambda tool_input: (
+            "   This pattern will affect ALL projects on this machine.\n"
+            "   \n"
+            "   Use project-specific targeting:\n"
+            "   - Include full path: pgrep -f '/full/path/to/this/project/'\n"
+            "   - Use working directory: pgrep -f \"$PWD\"\n"
+            "   - Verify PIDs before acting: ps aux | grep <pattern> | grep $PWD\n"
         ),
     ),
     ValidationRule(
