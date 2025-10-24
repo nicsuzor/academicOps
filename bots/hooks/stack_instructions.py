@@ -43,8 +43,8 @@ def extract_bots_relative_path(file_path: str) -> str | None:
     # Normalize path
     path_str = str(Path(file_path).as_posix())
 
-    # Check if this is a /bots/ path
-    if "/bots/" not in path_str:
+    # Check if "bots" is a component of the path
+    if "bots" not in Path(file_path).parts:
         return None
 
     # Extract everything after /bots/
