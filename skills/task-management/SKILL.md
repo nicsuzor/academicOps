@@ -83,6 +83,8 @@ data/
     current-priorities.md
     future-planning.md
     accomplishments.md
+  sessions/                 # Session activity logs (automatic)
+    YYYY-MM-DD.json         # Daily log of session activity
   views/                    # Generated views
     current_view.json       # Latest task view output
 ```
@@ -513,6 +515,7 @@ $ACADEMICOPS_PERSONAL/data/tasks/archived/*.json
 $ACADEMICOPS_PERSONAL/data/projects/*.md
 $ACADEMICOPS_PERSONAL/data/goals/*.md
 $ACADEMICOPS_PERSONAL/data/context/*.md
+$ACADEMICOPS_PERSONAL/data/sessions/*.json
 $ACADEMICOPS_PERSONAL/data/views/current_view.json
 ```
 
@@ -520,3 +523,55 @@ $ACADEMICOPS_PERSONAL/data/views/current_view.json
 - P1: Today/tomorrow (action window closing, immediate blocker)
 - P2: This week (important deadline, strategic value, prep needed)
 - P3: Within 2 weeks (longer timeline, lower urgency)
+
+## Session Logging (Automatic)
+
+**Background**: Every session is automatically logged to daily JSON files to create a detailed history of work done. This helps track progress, maintain context across sessions, and associate work with tasks.
+
+**How it works**:
+1. A Stop hook runs automatically when the session ends
+2. The hook analyzes the session transcript (tools used, files modified, etc.)
+3. A concise summary is created and saved to `$ACADEMICOPS_PERSONAL/data/sessions/YYYY-MM-DD.json`
+4. Entries can be associated with task IDs for progress tracking
+5. Task files are updated with progress notes when applicable
+
+**Session log structure**:
+```json
+{
+  "session_id": "unique-session-id",
+  "timestamp": "2025-10-24T12:34:56Z",
+  "summary": "Extended session; used Read, Edit, Bash; modified 3 file(s)",
+  "finished": false,
+  "next_step": null,
+  "task_id": null,
+  "tools_used": ["Read", "Edit", "Bash"],
+  "files_modified": ["/path/to/file1.py", "/path/to/file2.md"],
+  "commands_run": ["git status", "pytest tests/"]
+}
+```
+
+**Manual session logging** (optional):
+```bash
+# Log a session with custom summary
+uv run python .claude/skills/task-management/scripts/session_log.py \
+  --session-id "session-123" \
+  --transcript "/path/to/transcript.jsonl" \
+  --summary "Implemented session logging feature" \
+  --finished \
+  --next-step "Test the hook and commit changes" \
+  --task-id "20251024-hostname-abc123" \
+  --progress-note "Completed session logging implementation"
+```
+
+**Usage**:
+- Automatic: Runs silently on every session stop
+- No user interaction needed
+- Logs stored in `$ACADEMICOPS_PERSONAL/data/sessions/` organized by date
+- Review logs to see what was accomplished in previous sessions
+- Associate sessions with tasks to track progress
+
+**Integration with tasks**:
+When a `task_id` is provided, the session log entry includes:
+- Progress note added to task's `progress` array
+- Task's `modified` timestamp updated
+- Session ID linked for traceability
