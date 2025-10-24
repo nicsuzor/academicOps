@@ -2,11 +2,14 @@
 """
 Load instruction files from 3-tier hierarchy: framework → personal → project.
 
-ONE script, ONE pattern, TWO output modes.
+ONE script, ONE pattern, TWO output modes, OPTIONAL discovery.
 
 Usage:
     # SessionStart hook (default: loads _CORE.md, outputs JSON)
     load_instructions.py
+
+    # SessionStart hook with discovery manifest
+    load_instructions.py --discovery
 
     # Slash commands (custom file, outputs plain text)
     load_instructions.py DEVELOPER.md
@@ -23,6 +26,11 @@ Loading Hierarchy (ALWAYS the same, NO legacy fallbacks):
 Output Modes:
 - JSON (default when no filename): For SessionStart hook
 - Text (when filename given): For slash commands
+
+Discovery Mode (--discovery):
+- Scans framework tier for available bot instruction files
+- Includes lightweight manifest in SessionStart output
+- Enables agents to discover what files they can read
 
 Exit codes:
     0: Success
@@ -103,7 +111,7 @@ def get_git_remote_info() -> str | None:
     return None
 
 
-def output_json(contents: dict[str, str], filename: str) -> None:
+def output_json(contents: dict[str, str], filename: str, include_discovery: bool = False) -> None:
     """Output in JSON format for SessionStart hook."""
     # Get git remote info
     git_remote = get_git_remote_info()
@@ -123,6 +131,12 @@ def output_json(contents: dict[str, str], filename: str) -> None:
     if "framework" in contents:
         sections.append(f"## FRAMEWORK: Core Rules\n\n{contents['framework']}")
 
+    # Add discovery manifest if requested
+    if include_discovery:
+        discovery = generate_discovery_manifest()
+        if discovery:
+            sections.append(f"---\n\n{discovery}")
+
     additional_context = "# Agent Instructions\n\n" + git_section + "\n\n---\n\n".join(sections)
 
     # Output JSON for Claude Code hook
@@ -137,7 +151,8 @@ def output_json(contents: dict[str, str], filename: str) -> None:
 
     # Status to stderr
     loaded = [tier for tier in ["framework", "personal", "project"] if tier in contents]
-    print(f"✓ Loaded {filename} from: {', '.join(loaded)}", file=sys.stderr)
+    discovery_note = " (with discovery)" if include_discovery else ""
+    print(f"✓ Loaded {filename} from: {', '.join(loaded)}{discovery_note}", file=sys.stderr)
 
 
 def output_text(contents: dict[str, str], filename: str) -> None:
@@ -164,6 +179,54 @@ def output_text(contents: dict[str, str], filename: str) -> None:
     print(f"Loaded {filename}: {' '.join(status_parts)}", file=sys.stdout)
 
 
+def generate_discovery_manifest() -> str:
+    """
+    Generate a manifest of available bot instruction files.
+
+    Scans framework tier to discover what files are available,
+    then creates a lightweight manifest for agents.
+    """
+    bot_path = os.environ.get("ACADEMICOPS_BOT")
+    if not bot_path:
+        return ""
+
+    agents_dir = Path(bot_path) / "bots" / "agents"
+    if not agents_dir.exists():
+        return ""
+
+    # Find all .md files in bots/agents/
+    available_files = []
+    try:
+        for md_file in sorted(agents_dir.glob("*.md")):
+            if md_file.name.startswith("_"):
+                # Skip _CORE.md and other internal files
+                continue
+            available_files.append(md_file.name)
+    except Exception as e:
+        print(f"Warning: Could not scan {agents_dir}: {e}", file=sys.stderr)
+        return ""
+
+    if not available_files:
+        return ""
+
+    # Build manifest
+    manifest = ["## Available Bot Instructions", ""]
+    manifest.append("The following bot instruction files are available via the 3-tier system:")
+    manifest.append("(framework → personal → project)")
+    manifest.append("")
+
+    for filename in available_files:
+        # Extract a simple description from the filename
+        name = filename.replace(".md", "").replace("_", " ").title()
+        manifest.append(f"- `/bots/agents/{filename}` - {name} mode")
+
+    manifest.append("")
+    manifest.append("Read these files when relevant to your task. They will be automatically")
+    manifest.append("stacked from all available tiers (framework/personal/project).")
+
+    return "\n".join(manifest)
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Load instruction files from 3-tier hierarchy"
@@ -178,6 +241,11 @@ def main():
         "--format",
         choices=["json", "text"],
         help="Output format (default: json if _CORE.md, text otherwise)",
+    )
+    parser.add_argument(
+        "--discovery",
+        action="store_true",
+        help="Include discovery manifest of available bot files",
     )
 
     args = parser.parse_args()
@@ -231,7 +299,7 @@ def main():
 
     # Output in requested format
     if output_format == "json":
-        output_json(contents, args.filename)
+        output_json(contents, args.filename, include_discovery=args.discovery)
     else:
         output_text(contents, args.filename)
 

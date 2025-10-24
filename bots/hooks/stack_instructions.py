@@ -1,13 +1,17 @@
 #!/usr/bin/env python3
 """
-PostToolUse hook: Stack instructions from 3 tiers when reading bot/prompts/*.
+PostToolUse hook: Stack instructions from 3 tiers when reading /bots/**/*.md.
 
-When an agent reads a file in bot/prompts/, this hook augments the result with:
-1. Framework tier (bot/prompts/FILE.md) - already read
-2. User tier ($ACADEMICOPS_PERSONAL/prompts/FILE.md) - if exists
-3. Project tier ($CLAUDE_PROJECT_DIR/prompts/FILE.md) - if exists
+When an agent reads a file matching /bots/**/*.md, this hook provides stacked content:
+1. Framework tier ($ACADEMICOPS_BOT/bots/...) - REQUIRED
+2. Personal tier ($ACADEMICOPS_PERSONAL/bots/...) - if exists
+3. Project tier ($PWD/bots/...) - if exists
 
 This enables 3-tier instruction inheritance without manual file management.
+
+CRITICAL: This hook fires even when the Read fails (file doesn't exist in working dir).
+This is by design - it allows us to provide stacked content for files that only exist
+in framework/personal tiers, not in the current project.
 """
 
 import json
@@ -27,77 +31,161 @@ def load_tier(tier_path: Path) -> str | None:
         return None
 
 
-def stack_instructions(tool_use: dict, tool_result: dict) -> dict:
+def extract_bots_relative_path(file_path: str) -> str | None:
     """
-    Stack instructions from 3 tiers if reading bot/prompts/*.
+    Extract the relative path within /bots/ directory.
+
+    Examples:
+        /bots/agents/DEVELOPER.md -> agents/DEVELOPER.md
+        /home/user/project/bots/agents/trainer.md -> agents/trainer.md
+        /something/else.md -> None
+    """
+    # Normalize path
+    path_str = str(Path(file_path).as_posix())
+
+    # Check if this is a /bots/ path
+    if "/bots/" not in path_str:
+        return None
+
+    # Extract everything after /bots/
+    try:
+        bots_index = path_str.index("/bots/")
+        relative_path = path_str[bots_index + 6:]  # +6 to skip "/bots/"
+        return relative_path
+    except ValueError:
+        return None
+
+
+def stack_instructions(tool_name: str, tool_input: dict, tool_response: dict) -> dict:
+    """
+    Stack instructions from 3 tiers if reading /bots/**/*.md.
 
     Args:
-        tool_use: The original tool use (contains tool name and parameters)
-        tool_result: The result from the Read tool
+        tool_name: The name of the tool that was used
+        tool_input: The input parameters to the tool
+        tool_response: The result from the tool (may contain error if file not found)
 
     Returns:
-        Hook output dict with systemMessage containing stacked instructions
+        Hook output dict with additionalContext containing stacked instructions
     """
     # Only process Read tool
-    if tool_use.get("tool") != "Read":
+    if tool_name != "Read":
         return {}
 
-    # Only process reads to bot/prompts/*
-    file_path = tool_use.get("params", {}).get("file_path", "")
-    if "bot/prompts/" not in file_path and "bots/prompts/" not in file_path:
+    # Only process reads to /bots/**/*.md
+    file_path = tool_input.get("file_path", "")
+    relative_path = extract_bots_relative_path(file_path)
+
+    if not relative_path:
         return {}
 
-    # Extract filename from path
-    filename = Path(file_path).name
+    # Only process .md files
+    if not relative_path.endswith(".md"):
+        return {}
 
-    # Framework tier already in tool_result (that's what they just read)
-    framework_content = tool_result.get("content", "")
+    # Get tier paths
+    bot_path = os.getenv("ACADEMICOPS_BOT")
+    personal_path = os.getenv("ACADEMICOPS_PERSONAL")
+    project_path = Path.cwd()
 
-    # User tier
-    user_tier_path = None
-    if academicops_personal := os.getenv("ACADEMICOPS_PERSONAL"):
-        user_tier_path = Path(academicops_personal) / "prompts" / filename
+    # Framework tier (REQUIRED)
+    framework_tier_path = None
+    if bot_path:
+        framework_tier_path = Path(bot_path) / "bots" / relative_path
 
-    # Project tier
-    project_tier_path = None
-    if claude_project_dir := os.getenv("CLAUDE_PROJECT_DIR"):
-        project_tier_path = Path(claude_project_dir) / "prompts" / filename
+    # Personal tier (OPTIONAL)
+    personal_tier_path = None
+    if personal_path:
+        personal_tier_path = Path(personal_path) / "bots" / relative_path
 
-    # Load additional tiers
-    user_content = load_tier(user_tier_path) if user_tier_path else None
+    # Project tier (OPTIONAL)
+    project_tier_path = project_path / "bots" / relative_path
+
+    # Load content from each tier
+    framework_content = load_tier(framework_tier_path) if framework_tier_path else None
+    personal_content = load_tier(personal_tier_path) if personal_tier_path else None
     project_content = load_tier(project_tier_path) if project_tier_path else None
 
-    # Build stacked message
+    # Framework tier is REQUIRED
+    if not framework_content:
+        # No stacking possible without framework tier
+        return {}
+
+    # Build stacked content
     parts = []
 
-    # Framework tier (always present since they just read it)
-    parts.append("# Framework Tier (bot/prompts/)")
+    # Framework tier (base)
+    parts.append(f"# Framework Tier: {relative_path}")
+    parts.append(f"_Source: {framework_tier_path}_")
+    parts.append("")
     parts.append(framework_content)
 
-    # User tier (if exists)
-    if user_content:
+    # Personal tier (if exists)
+    if personal_content:
         parts.append("")
         parts.append("---")
         parts.append("")
-        parts.append(f"# User Tier ({user_tier_path})")
-        parts.append(user_content)
+        parts.append(f"# Personal Tier: {relative_path}")
+        parts.append(f"_Source: {personal_tier_path}_")
+        parts.append("")
+        parts.append(personal_content)
 
     # Project tier (if exists)
     if project_content:
         parts.append("")
         parts.append("---")
         parts.append("")
-        parts.append(f"# Project Tier ({project_tier_path})")
+        parts.append(f"# Project Tier: {relative_path}")
+        parts.append(f"_Source: {project_tier_path}_")
+        parts.append("")
         parts.append(project_content)
 
-    # Only add system message if we have additional tiers
-    if user_content or project_content:
-        stacked_message = "\n".join(parts)
-        return {
-            "systemMessage": f"**3-Tier Stacked Instructions Loaded:**\n\n{stacked_message}"
-        }
+    # Build final stacked message
+    stacked_message = "\n".join(parts)
 
-    return {}
+    # Determine if original Read succeeded or failed
+    read_failed = "error" in tool_response or not tool_response.get("success", True)
+
+    # Build context message
+    if read_failed:
+        # Read failed (file doesn't exist in project) - provide full stacked content
+        tiers_loaded = ["framework"]
+        if personal_content:
+            tiers_loaded.append("personal")
+        if project_content:
+            tiers_loaded.append("project")
+
+        context_header = (
+            f"**3-Tier Stacked Instructions**: `{relative_path}`\n\n"
+            f"_Loaded from: {' → '.join(tiers_loaded)}_\n\n"
+            "---\n\n"
+        )
+        additional_context = context_header + stacked_message
+    else:
+        # Read succeeded (file exists in project) - supplement with other tiers
+        if personal_content or project_content:
+            tiers_loaded = []
+            if personal_content:
+                tiers_loaded.append("personal")
+            if project_content:
+                tiers_loaded.append("project")
+
+            context_header = (
+                f"**Additional tier(s) found for** `{relative_path}`:\n\n"
+                f"_Supplementing with: {', '.join(tiers_loaded)}_\n\n"
+                "---\n\n"
+            )
+            additional_context = context_header + stacked_message
+        else:
+            # Only framework tier exists, which was already read
+            return {}
+
+    return {
+        "hookSpecificOutput": {
+            "hookEventName": "PostToolUse",
+            "additionalContext": additional_context,
+        }
+    }
 
 
 def main():
@@ -106,14 +194,19 @@ def main():
         # Read hook input from stdin
         hook_input = json.loads(sys.stdin.read())
 
-        tool_use = hook_input.get("toolUse", {})
-        tool_result = hook_input.get("toolResult", {})
+        tool_name = hook_input.get("tool_name", "")
+        tool_input = hook_input.get("tool_input", {})
+        tool_response = hook_input.get("tool_response", {})
 
         # Stack instructions if applicable
-        result = stack_instructions(tool_use, tool_result)
+        result = stack_instructions(tool_name, tool_input, tool_response)
 
-        # Output hook result
-        print(json.dumps(result))
+        # Output hook result (always output valid JSON)
+        if result:
+            print(json.dumps(result))
+        else:
+            # Empty result means no stacking needed
+            print(json.dumps({}))
 
     except Exception as e:
         # Fail gracefully - don't block workflow
