@@ -85,7 +85,7 @@ You must go beyond simple keyword matching and apply deep contextual analysis to
 
 ### What to Extract
 
-- **Tasks**: Explicit "todos" and implicit future actions (e.g., "I'll need to prepare for the keynote next month"). Use `task_add.sh` to save to `data/tasks/inbox/`.
+- **Tasks**: Explicit "todos" and implicit future actions (e.g., "I'll need to prepare for the keynote next month"). Use `uv run python .academicOps/scripts/task_add.py` to save to `data/tasks/inbox/`.
 - **Projects**: Updates to ongoing work, new ideas, deliverables, and milestones. Update files in `data/projects/`.
 - **Goals & Strategy**: High-level objectives, theories of change, and strategic priorities. Update files in `data/goals/`.
 - **People & Contacts**: Any person mentioned with a potential role or connection. Add them to the relevant project file.
