@@ -3,8 +3,8 @@
 ## Metadata
 
 - **Date**: 2025-10-24
-- **Issue**: TBD (to be created)
-- **Commit**: [pending]
+- **Issue**: #157
+- **Commit**: bc71b94
 - **Agent**: Claude Sonnet 4.5
 - **Invocation Context**: `/log-failure` command via trainer
 
@@ -119,5 +119,5 @@ Added "CRITICAL - Documentation-Only Mode" section:
 
 ## Related Issues
 
-- Issue #155: Agent violated Axiom #7 (existing issue being tracked)
-- [TBD]: Create new issue for this experiment if warranted
+- #155: Agent violated Axiom #7 (existing issue being tracked)
+- #157: This experiment (scope boundaries for /log-failure)
