@@ -59,10 +59,15 @@ Shifting from instruction-heavy to skills-first architecture with just-in-time c
 - [ ] Invalidate prior experiments (mark as DEPRECATED)
 
 #### 1.2 Instruction Stacking Hook
-- [ ] Implement `bots/hooks/stack_instructions.py`
-- [ ] Add to `~/.claude/settings.json` as PostToolUse hook
-- [ ] Test with reads to `bot/prompts/DEVELOPER.md`
-- [ ] Verify 3-tier aggregation works
+- [x] Implement `bots/hooks/stack_instructions.py`
+- [x] Add to `~/.claude/settings.json` as PostToolUse hook
+- [x] Updated to handle `/bots/**/*.md` patterns (not `bot/prompts/`)
+- [x] Handles Read failures (provides content even when file doesn't exist locally)
+- [x] Test with reads to `/bots/agents/DEVELOPER.md`
+- [x] Verify 3-tier aggregation works
+- [x] Add discovery mode to `load_instructions.py` (SessionStart hook)
+- [x] Discovery manifest lists available bot instruction files
+- [x] Comprehensive testing: all tests pass
 
 #### 1.3 CLAUDE.md Templates
 - [ ] Create `CLAUDE.md` template with best practices

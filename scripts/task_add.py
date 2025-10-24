@@ -1,7 +1,6 @@
 import argparse
 import json
 import os
-import socket
 import sys
 import uuid
 from datetime import datetime
@@ -45,11 +44,10 @@ def main():
             )
             sys.exit(1)
 
-    # Generate ID
-    timestamp = datetime.utcnow().strftime("%Y%m%d-%H%M%S")
-    hostname = socket.gethostname().split(".")[0]
-    task_uuid = str(uuid.uuid4()).split("-")[0]
-    task_id = f"{timestamp}-{hostname}-{task_uuid}"
+    # Generate ID in YYYYMMDD-XXXXXXXX format (8 hex chars from UUID)
+    timestamp = datetime.utcnow().strftime("%Y%m%d")
+    task_uuid = str(uuid.uuid4()).split("-")[0]  # First 8 hex chars of UUID
+    task_id = f"{timestamp}-{task_uuid}"
     created_iso = datetime.utcnow().isoformat() + "Z"
 
     # Validate and parse metadata
