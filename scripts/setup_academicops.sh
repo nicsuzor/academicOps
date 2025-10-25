@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-# Simplified setup script for academicOps integration
+# Setup script for academicOps - installs to ~/.claude/ (user global config)
 #
-# Creates single .academicOps symlink and copies settings
+# Symlinks settings, hooks, agents, commands, and skills to ~/.claude/
+# so they apply globally to all Claude Code sessions.
 #
 set -euo pipefail
 
@@ -12,14 +13,6 @@ YELLOW='\033[1;33m'
 NC='\033[0m'
 
 echo "=== academicOps Setup ==="
-echo
-
-# Determine target
-TARGET_DIR="${1:-$PWD}"
-cd "$TARGET_DIR"
-PROJECT_ROOT="$PWD"
-
-echo "Setting up: $PROJECT_ROOT"
 echo
 
 # Verify ACADEMICOPS_BOT
@@ -37,105 +30,99 @@ fi
 echo -e "${GREEN}✓${NC} ACADEMICOPS_BOT=$ACADEMICOPS_BOT"
 echo
 
-# 1. Create single .academicOps symlink
-echo "Creating .academicOps symlink..."
-
-if [ -L ".academicOps" ]; then
-    echo -e "${YELLOW}⚠${NC}  Removing existing symlink"
-    rm ".academicOps"
-elif [ -d ".academicOps" ]; then
-    echo -e "${YELLOW}⚠${NC}  Backing up to .academicOps.backup"
-    mv ".academicOps" ".academicOps.backup"
-fi
-
-ln -s "$ACADEMICOPS_BOT" ".academicOps"
-echo -e "${GREEN}✓${NC} .academicOps → $ACADEMICOPS_BOT"
+# Create ~/.claude if it doesn't exist
+CLAUDE_HOME="$HOME/.claude"
+mkdir -p "$CLAUDE_HOME"
+echo -e "${GREEN}✓${NC} ~/.claude/ exists"
 echo
 
-# 2. Create .claude directory and symlink agents/commands/skills
-echo "Setting up Claude Code configuration..."
+# Symlink settings.json
+echo "Setting up global Claude Code configuration..."
 
-mkdir -p ".claude"
+SETTINGS_SRC="$ACADEMICOPS_BOT/.claude/settings.json"
+SETTINGS_DEST="$CLAUDE_HOME/settings.json"
 
-cp ".academicOps/dist/.claude/settings.json" ".claude/settings.json"
-echo -e "${GREEN}✓${NC} Copied settings.json"
+if [ -L "$SETTINGS_DEST" ]; then
+    echo -e "${YELLOW}⚠${NC}  Removing existing settings.json symlink"
+    rm "$SETTINGS_DEST"
+elif [ -f "$SETTINGS_DEST" ]; then
+    echo -e "${YELLOW}⚠${NC}  Backing up existing settings.json"
+    mv "$SETTINGS_DEST" "$SETTINGS_DEST.backup"
+fi
+
+ln -s "$SETTINGS_SRC" "$SETTINGS_DEST"
+echo -e "${GREEN}✓${NC} ~/.claude/settings.json → $SETTINGS_SRC"
+
+# Symlink hooks directory
+HOOKS_SRC="$ACADEMICOPS_BOT/bots/hooks"
+HOOKS_DEST="$CLAUDE_HOME/hooks"
+
+if [ -L "$HOOKS_DEST" ]; then
+    rm "$HOOKS_DEST"
+elif [ -d "$HOOKS_DEST" ]; then
+    echo -e "${YELLOW}⚠${NC}  Backing up existing hooks/"
+    mv "$HOOKS_DEST" "$HOOKS_DEST.backup"
+fi
+
+ln -s "$HOOKS_SRC" "$HOOKS_DEST"
+echo -e "${GREEN}✓${NC} ~/.claude/hooks/ → $HOOKS_SRC"
 
 # Symlink agents directory
-if [ -L ".claude/agents" ]; then
-    rm ".claude/agents"
-elif [ -d ".claude/agents" ]; then
-    echo -e "${YELLOW}⚠${NC}  Backing up .claude/agents to .claude/agents.backup"
-    mv ".claude/agents" ".claude/agents.backup"
+AGENTS_SRC="$ACADEMICOPS_BOT/bots/agents"
+AGENTS_DEST="$CLAUDE_HOME/agents"
+
+if [ -L "$AGENTS_DEST" ]; then
+    rm "$AGENTS_DEST"
+elif [ -d "$AGENTS_DEST" ]; then
+    echo -e "${YELLOW}⚠${NC}  Backing up existing agents/"
+    mv "$AGENTS_DEST" "$AGENTS_DEST.backup"
 fi
-ln -s "../.academicOps/.claude/agents" ".claude/agents"
-echo -e "${GREEN}✓${NC} Symlinked .claude/agents/"
+
+ln -s "$AGENTS_SRC" "$AGENTS_DEST"
+echo -e "${GREEN}✓${NC} ~/.claude/agents/ → $AGENTS_SRC"
 
 # Symlink commands directory
-if [ -L ".claude/commands" ]; then
-    rm ".claude/commands"
-elif [ -d ".claude/commands" ]; then
-    echo -e "${YELLOW}⚠${NC}  Backing up .claude/commands to .claude/commands.backup"
-    mv ".claude/commands" ".claude/commands.backup"
+COMMANDS_SRC="$ACADEMICOPS_BOT/.claude/commands"
+COMMANDS_DEST="$CLAUDE_HOME/commands"
+
+if [ -L "$COMMANDS_DEST" ]; then
+    rm "$COMMANDS_DEST"
+elif [ -d "$COMMANDS_DEST" ]; then
+    echo -e "${YELLOW}⚠${NC}  Backing up existing commands/"
+    mv "$COMMANDS_DEST" "$COMMANDS_DEST.backup"
 fi
-ln -s "../.academicOps/.claude/commands" ".claude/commands"
-echo -e "${GREEN}✓${NC} Symlinked .claude/commands/"
+
+ln -s "$COMMANDS_SRC" "$COMMANDS_DEST"
+echo -e "${GREEN}✓${NC} ~/.claude/commands/ → $COMMANDS_SRC"
 
 # Symlink skills directory
-if [ -L ".claude/skills" ]; then
-    rm ".claude/skills"
-elif [ -d ".claude/skills" ]; then
-    echo -e "${YELLOW}⚠${NC}  Backing up .claude/skills to .claude/skills.backup"
-    mv ".claude/skills" ".claude/skills.backup"
-fi
-ln -s "../.academicOps/.claude/skills" ".claude/skills"
-echo -e "${GREEN}✓${NC} Symlinked .claude/skills/"
-echo
+SKILLS_SRC="$ACADEMICOPS_BOT/.claude/skills"
+SKILLS_DEST="$CLAUDE_HOME/skills"
 
-# 3. Create bots/agents/ for project overrides ONLY
-# Scripts and skills are accessed via .academicOps/
-echo "Creating bots/agents/ for project-specific overrides..."
-
-mkdir -p "bots/agents"
-
-if [ ! -f "bots/agents/_CORE.md" ] && [ -f ".academicOps/dist/bots/agents/_CORE.md" ]; then
-    cp ".academicOps/dist/bots/agents/_CORE.md" "bots/agents/_CORE.md"
-    echo -e "${GREEN}✓${NC} Created bots/agents/_CORE.md template"
+if [ -L "$SKILLS_DEST" ]; then
+    rm "$SKILLS_DEST"
+elif [ -d "$SKILLS_DEST" ]; then
+    echo -e "${YELLOW}⚠${NC}  Backing up existing skills/"
+    mv "$SKILLS_DEST" "$SKILLS_DEST.backup"
 fi
 
-echo -e "${GREEN}✓${NC} bots/agents/ ready for project-specific agent overrides"
-echo
-
-# Note: Scripts are accessed via .academicOps/scripts/ symlink
-# Note: Skills might be supported via bots/skills/ in future but not now
-
-# 4. Update .gitignore
-echo "Updating .gitignore..."
-
-GITIGNORE_MARKER="# academicOps managed files"
-
-if [ -f ".gitignore" ] && grep -q "$GITIGNORE_MARKER" ".gitignore"; then
-    echo -e "${GREEN}✓${NC} .gitignore already updated"
-else
-    echo "" >> ".gitignore"
-    cat ".academicOps/dist/.gitignore" >> ".gitignore"
-    echo -e "${GREEN}✓${NC} Added academicOps exclusions to .gitignore"
-fi
+ln -s "$SKILLS_SRC" "$SKILLS_DEST"
+echo -e "${GREEN}✓${NC} ~/.claude/skills/ → $SKILLS_SRC"
 
 echo
 echo -e "${GREEN}=== Setup Complete ===${NC}"
 echo
-echo "Installed:"
-echo "  - .academicOps/ → $ACADEMICOPS_BOT"
-echo "  - .claude/settings.json"
-echo "  - .claude/agents/, commands/, skills/ (symlinked)"
-echo "  - bots/agents/ (for project agent overrides)"
-echo "  - .gitignore (updated)"
+echo "Installed to ~/.claude/:"
+echo "  - settings.json (symlinked)"
+echo "  - hooks/ (symlinked)"
+echo "  - agents/ (symlinked)"
+echo "  - commands/ (symlinked)"
+echo "  - skills/ (symlinked)"
 echo
-echo "Scripts accessible via:"
-echo "  - .academicOps/scripts/"
+echo "All Claude Code sessions will now use academicOps configuration."
 echo
 echo "Next:"
-echo "  1. Launch Claude Code"
+echo "  1. Launch Claude Code in any project"
 echo "  2. Verify hooks work"
-echo "  3. Customize bots/agents/_CORE.md"
+echo "  3. Configuration is global - no per-project setup needed"
 echo
