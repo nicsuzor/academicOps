@@ -19,6 +19,8 @@ import os
 import sys
 from pathlib import Path
 
+from hook_debug import safe_log_to_debug_file
+
 
 def load_tier(tier_path: Path) -> str | None:
     """Load a tier's content if it exists."""
@@ -200,6 +202,9 @@ def main():
 
         # Stack instructions if applicable
         result = stack_instructions(tool_name, tool_input, tool_response)
+
+        # Debug log hook execution
+        safe_log_to_debug_file("PostToolUse", hook_input, result)
 
         # Output hook result (always output valid JSON)
         if result:

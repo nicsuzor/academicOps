@@ -7,6 +7,7 @@ understand available data and design future hooks.
 """
 
 import datetime
+import fcntl
 import json
 from pathlib import Path
 from typing import Any
@@ -18,11 +19,14 @@ def safe_log_to_debug_file(
     output_data: dict[str, Any],
 ) -> None:
     """
-    Safely log hook invocation to a timestamped debug file.
+    Safely log hook invocation to a session-based JSONL debug file.
 
     This function is wrapped in try-catch to prevent logging failures
     from crashing the hook. All logs are written to /tmp for easy
     inspection without affecting the repository.
+
+    Logs are consolidated by session ID when available, creating one
+    JSONL file per session for easier tracking and analysis.
 
     Args:
         hook_event: Name of the hook event (SessionStart, PreToolUse, etc.)
@@ -30,15 +34,24 @@ def safe_log_to_debug_file(
         output_data: Output data being sent back to Claude Code
 
     Output:
-        Creates a JSON file at /tmp/claude_{hook_event}_{timestamp}.json
-        containing the full hook context for inspection.
+        Appends to /tmp/claude_session_{session_id}.jsonl
+
+    Raises:
+        ValueError: If session_id is not present in input_data
     """
     try:
         # Use /tmp for logs to avoid permission issues
         log_dir = Path("/tmp")
 
-        timestamp = datetime.datetime.now(datetime.UTC).strftime("%Y%m%d_%H%M%S_%f")
-        log_file = log_dir / f"claude_{hook_event.lower()}_{timestamp}.json"
+        # Extract session ID - REQUIRED (fail-fast, no fallbacks)
+        session_id = input_data.get("session_id")
+        if not session_id:
+            raise ValueError(
+                f"session_id missing from {hook_event} hook input_data. "
+                "Claude Code should provide session_id in all hook invocations."
+            )
+
+        log_file = log_dir / f"claude_session_{session_id}.jsonl"
 
         debug_data = {
             "hook_event": hook_event,
@@ -47,9 +60,17 @@ def safe_log_to_debug_file(
             "output": output_data,
         }
 
-        with log_file.open("w") as f:
-            json.dump(debug_data, f, indent=2)
-            f.write("\n")
+        # Append to JSONL file with file locking to prevent race conditions
+        with log_file.open("a") as f:
+            # Acquire exclusive lock
+            fcntl.flock(f.fileno(), fcntl.LOCK_EX)
+            try:
+                # Write single-line JSON
+                json.dump(debug_data, f, separators=(',', ':'))
+                f.write("\n")
+            finally:
+                # Release lock
+                fcntl.flock(f.fileno(), fcntl.LOCK_UN)
     except Exception:
         # Silently ignore logging failures - never crash a hook
         pass
