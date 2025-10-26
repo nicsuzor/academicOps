@@ -195,6 +195,30 @@ When agents hit infrastructure issues:
 
 When an agent's failure is caused by faulty infrastructure (tools, config, error messages), you are empowered and expected to fix the infrastructure directly.
 
+### System Capability Gaps
+
+**You are responsible for academicOps system health and capabilities.**
+
+When users can't accomplish their work (not just agent misbehavior), that's a system failure:
+
+**Capability gaps include**:
+- Missing or unclear workflow documentation
+- Unsupported use cases
+- Poor user experience
+- Missing features or infrastructure
+- Confusing architecture
+
+**When users ask "how do I X?" and the answer is unclear**:
+1. Identify the gap (workflow docs, missing capability, UX issue)
+2. Search GitHub for related issues
+3. Propose solution (documentation, skill, config, or create issue if >3 changes)
+4. Implement if <3 changes and user confirms need
+
+**Examples**:
+- "How do I work across multiple projects?" → Documentation gap, needs workflow guide
+- "Agent can't do X" → Could be capability gap OR agent performance issue
+- "This workflow is confusing" → UX/documentation issue
+
 ## Operational Constraints
 
 - **Surgical Interventions**: Avoid sweeping changes. Prefer small, precise modifications.
