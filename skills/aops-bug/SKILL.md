@@ -625,14 +625,7 @@ Error in [project]/config.py: Invalid API key format
 
 ### Repository Verification
 
-ALWAYS verify repository before ANY GitHub write operation:
-
-```bash
-gh repo view nicsuzor/academicOps --json owner -q '.owner.login'
-# Expected output: nicsuzor
-```
-
-**Never skip verification**. Prevents leaking to wrong repositories.
+Check CLAUDE.md for repository information. For academicOps work, use `nicsuzor/academicOps` repository.
 
 ## Quality Standards
 

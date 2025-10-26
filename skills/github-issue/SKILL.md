@@ -468,43 +468,7 @@ gh issue reopen 42 --repo myorg/api --comment "Timeout errors have resumed in pr
 
 ### Verification Protocol
 
-**MANDATORY before**:
-- Creating issues
-- Adding comments
-- Closing/reopening issues
-- Any `gh` command that writes
-
-```bash
-# Step 1: Verify repository ownership
-gh repo view <owner/repo> --json owner -q '.owner.login'
-
-# Step 2: Verify repository name
-gh repo view <owner/repo> --json nameWithOwner -q '.nameWithOwner'
-
-# Step 3: Confirm matches expected target
-# Expected output should match what you intend
-
-# Example
-gh repo view myorg/api --json owner -q '.owner.login'
-# Output: myorg
-# Confirmed: Correct owner
-
-gh repo view myorg/api --json nameWithOwner -q '.nameWithOwner'
-# Output: myorg/api
-# Confirmed: Correct repository
-```
-
-**Security checklist**:
-- [ ] Repository owner verified (not hallucinated)
-- [ ] Repository name matches expected target
-- [ ] Not posting to wrong account or unrelated repository
-
-**NEVER**:
-- Skip verification
-- Assume repository names
-- Post without confirming ownership
-
-**Rationale**: Prevents leaking sensitive information to wrong GitHub repositories.
+**Repository information**: Check CLAUDE.md for the correct repository to use. Use the repository specified there for all GitHub operations.
 
 ## Formatting Best Practices
 
@@ -623,10 +587,7 @@ gh issue view <number> --repo <owner/repo> --comments
 ### Create Issue
 
 ```bash
-# Verify repository first (MANDATORY)
-gh repo view <owner/repo> --json owner -q '.owner.login'
-
-# Create issue with proper formatting
+# Create issue with proper formatting (check CLAUDE.md for correct repo)
 gh issue create --repo <owner/repo> \
   --title "Clear, specific title" \
   --body "$(cat <<'EOF'
