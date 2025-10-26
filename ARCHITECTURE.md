@@ -426,61 +426,67 @@ academicOps provides specialized agents for different types of work. Each has cl
 
 **Limitation**: Not enforced by hooks, relies on agent following self-loading instruction
 
-### @agent-trainer
+### trainer (`/trainer`, `TRAINER.md`)
 
 **Purpose**: Maintains and optimizes the agent framework itself
 
 **Responsible for:**
-- Agent instruction files (`agents/*.md`)
+- Agent instruction files (`bots/agents/*.md`)
 - Framework documentation (`ARCHITECTURE.md`, `INSTRUCTION-INDEX.md`)
 - Configuration files (`.claude/settings.json`, hooks)
 - Instruction loading system
 - Error message UX
 - Pre-commit hook configuration
 
+**Invoked via:** `/trainer` slash command or Task tool with subagent_type="trainer"
+
 **Not responsible for:** Project-specific work, writing application code, research tasks
 
-### @agent-strategist
+### strategist (`/STRATEGIST`, `STRATEGIST.md`)
 
-**Purpose**: Planning, scheduling, project management, context capture
+**Purpose**: Planning, facilitation, context capture
 
 **Responsible for:**
-- Task management
-- Project planning and milestones
-- Meeting notes and decision capture
-- Goal setting and progress reviews
-- Auto-extraction during conversations
+- Strategic thinking partnership
+- Facilitation through questioning frameworks
+- Silent context capture during conversations
+- Planning and brainstorming sessions
+- Meeting users where they are
 
-**Data access:** Only accesses `data/` directory when working in `$ACADEMICOPS_PERSONAL` repo
+**Invoked via:** `/STRATEGIST` slash command
 
 **Not responsible for:** Writing code, modifying framework, committing changes
 
-### @agent-supervisor
+### supervisor (Task tool, `SUPERVISOR.md`)
 
 **Purpose**: Orchestrates complex multi-step workflows
 
 **Responsible for:**
-- Breaking tasks into steps
-- Calling specialized agents in sequence
-- Validating each step
-- Iterating until completion
+- Breaking tasks into smallest atomic steps
+- Calling specialized agents ONE AT A TIME
+- Validating each step before proceeding
+- Iterating until entire workflow complete
+
+**Invoked via:** Task tool with subagent_type="supervisor"
 
 **Not responsible for:** Direct code writing (delegates to other agents)
 
-### @agent-developer
+### developer (`/dev`, `DEV.md`)
 
 **Purpose**: Application code implementation
 
 **Responsible for:**
-- Feature implementation
-- Test writing (TDD methodology)
+- Feature implementation following TDD
+- Test writing (integration test patterns)
 - Debugging and bug fixes
-- Refactoring application code
+- MANDATORY exploration before implementation
 - Running test suites
+
+**Invoked via:** `/dev` slash command
 
 **Not responsible for:** Framework changes, planning, committing code
 
-### @agent-code-review
+### code-review (invoked by agents, `REVIEW.md`)
 
 **Purpose**: Code review and git operations
 
@@ -491,19 +497,9 @@ academicOps provides specialized agents for different types of work. Each has cl
 - Creating pull requests
 - Enforcing code standards
 
+**Invoked via:** Task tool by other agents (not directly by users)
+
 **Not responsible for:** Writing code, planning, framework modifications
-
-### @agent-test-cleaner
-
-**Purpose**: Test simplification and cleanup
-
-**Responsible for:**
-- Ruthlessly simplifying test suites
-- Eliminating brittle unit tests
-- Creating robust integration tests
-- Working through broken tests
-
-**Not responsible for:** Application code, framework changes
 
 ---
 
@@ -647,11 +643,14 @@ This section documents design decisions still being validated and known tensions
 - No formal override/shadowing specification
 
 **Available framework commands:**
-- `/dev` - Load developer workflow (DEVELOPER.md with 6-step process, EXPLORE MANDATORY)
-- `/ttd` - Load test-driven development methodology
+- `/analyst` - Load analyst skill for academic research data analysis (dbt & Streamlit)
+- `/dev` - Load developer workflow (DEV.md with 6-step process, EXPLORE MANDATORY)
+- `/error` - Quick experiment outcome logging (aOps repo only)
 - `/log-failure` - Report agent/framework issues to academicOps
+- `/ops` - academicOps framework help and commands
+- `/STRATEGIST` - Strategic thinking partner with silent context capture
 - `/trainer` - Activate trainer mode for framework improvements
-- `/ops` - View all available commands
+- `/ttd` - Load test-driven development methodology
 
 **Design decision: On-demand loading vs auto-loading** (Issue #133)
 

@@ -61,24 +61,47 @@ ${OUTER}/                      # User's parent repository (PRIVATE)
 
 ## Available Agents
 
-Invoke specialized agents for different workflows:
+Specialized agents accessed via slash commands or Task tool:
 
-- **`@agent-trainer`** - Maintains the agent framework itself (meta-system)
-- **`@agent-strategist`** - Planning, task management, project coordination
-- **`@agent-developer`** - Code implementation, testing, debugging
-- **`@agent-code-review`** - Code review and git commit operations (only agent that can commit)
-- **`@agent-analyst`** - Data analysis workflows (dbt, SQL, data pipelines)
-- **`@agent-supervisor`** - Orchestrates complex multi-agent workflows
-- **`@agent-test-cleaner`** - Ruthlessly simplifies test suites
+- **`trainer`** (`/trainer`) - Maintains the agent framework itself (meta-system)
+- **`strategist`** (`/STRATEGIST`) - Planning, facilitation, silent context capture
+- **`developer`** (`/dev`) - Code implementation, TDD workflow, debugging
+- **`code-review`** (invoked by other agents) - Code review and git commit operations
+- **`supervisor`** (Task tool) - Orchestrates complex multi-step workflows
 
 ## Slash Commands
 
 Available project commands:
 
-- **`/ops`** - Load academicOps framework help and commands
-- **`/ttd`** - Load test-driven development workflow
-- **`/trainer`** - Activate agent trainer mode
+- **`/analyst`** - Load analyst skill for academic research data analysis (dbt & Streamlit)
+- **`/dev`** - Load development workflow and coding standards
+- **`/error`** - Quick experiment outcome logging (aOps repo only)
 - **`/log-failure`** - Log agent performance failures to experiment tracking
+- **`/ops`** - academicOps framework help and commands
+- **`/STRATEGIST`** - Strategic thinking partner with silent context capture
+- **`/trainer`** - Activate agent trainer mode
+- **`/ttd`** - Load test-driven development workflow
+
+## Skills
+
+Portable, reusable workflows available globally (installed in `~/.claude/skills/`):
+
+- **`agent-initialization`** - Create/update AGENT.md skill index files
+- **`analyst`** - Academic research data analysis (dbt, Streamlit, academicOps best practices)
+- **`aops-bug`** - Track bugs, agent violations, framework improvements in academicOps
+- **`aops-trainer`** - Review and improve agents, skills, hooks, configurations
+- **`claude-hooks`** - Create, configure, debug Claude Code hooks with technical reference
+- **`claude-md-maintenance`** - Maintain CLAUDE.md files with @reference patterns
+- **`git-commit`** - Validate code quality and execute commits with conventional format
+- **`github-issue`** - Manage GitHub issues with exhaustive search and precise documentation
+- **`no-throwaway-code`** - Intervention skill enforcing Axiom 15 (no temporary Python scripts)
+- **`skill-creator`** - Guide for creating effective skills
+- **`skill-maintenance`** - Ongoing skill maintenance and evolution
+- **`strategic-partner`** - Strategic facilitation and thinking partnership
+- **`task-management`** - Proactive task/context capture to personal knowledge base
+- **`test-writing`** - Test creation enforcing integration test patterns and TDD
+
+Skills are invoked automatically by agents or explicitly via the Skill tool.
 
 ## Automated Enforcement
 
