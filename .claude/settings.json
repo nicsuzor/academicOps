@@ -1,0 +1,128 @@
+{
+  "env": {
+    "ACADEMICOPS_BOT": "/home/nic/src/bot"
+  },
+  "permissions": {
+    "allow": [
+      "Bash(uv run pytest:*)",
+      "Bash(uv run python:*)",
+      "mcp__gh__create_issue"
+    ],
+    "deny": [
+      "Write(**/*.env*)",
+      "Read(**/*.cache/**)",
+      "Write(./**/.venv/**)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if [ -f \"$ACADEMICOPS_BOT/bots/hooks/validate_tool.py\" ]; then uv run --directory \"$ACADEMICOPS_BOT\" python \"$ACADEMICOPS_BOT/bots/hooks/validate_tool.py\"; else echo '{\"continue\":true,\"systemMessage\":\"Hook not found: validate_tool.py\"}'; fi",
+            "timeout": 3000
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if [ -f \"$ACADEMICOPS_BOT/bots/hooks/validate_stop.py\" ]; then uv run --directory \"$ACADEMICOPS_BOT\" python \"$ACADEMICOPS_BOT/bots/hooks/validate_stop.py\" SubagentStop; else echo '{\"continue\":true}'; fi",
+            "timeout": 2000
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if [ -f \"$ACADEMICOPS_BOT/bots/hooks/validate_stop.py\" ]; then uv run --directory \"$ACADEMICOPS_BOT\" python \"$ACADEMICOPS_BOT/bots/hooks/validate_stop.py\" Stop; else echo '{\"continue\":true}'; fi",
+            "timeout": 2000
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if [ -f \"$ACADEMICOPS_BOT/bots/hooks/stack_instructions.py\" ]; then uv run --directory \"$ACADEMICOPS_BOT\" python \"$ACADEMICOPS_BOT/bots/hooks/stack_instructions.py\"; else echo '{}'; fi",
+            "timeout": 2000
+          },
+          {
+            "type": "command",
+            "command": "if [ -f \"$ACADEMICOPS_BOT/bots/hooks/log_posttooluse.py\" ]; then uv run --directory \"$ACADEMICOPS_BOT\" python \"$ACADEMICOPS_BOT/bots/hooks/log_posttooluse.py\"; else echo '{}'; fi",
+            "timeout": 2000
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if [ -f \"$ACADEMICOPS_BOT/bots/hooks/log_userpromptsubmit.py\" ]; then uv run --directory \"$ACADEMICOPS_BOT\" python \"$ACADEMICOPS_BOT/bots/hooks/log_userpromptsubmit.py\"; else echo '{}'; fi",
+            "timeout": 2000
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if [ -f \"$ACADEMICOPS_BOT/bots/hooks/load_instructions.py\" ]; then uv run --directory \"$ACADEMICOPS_BOT\" python \"$ACADEMICOPS_BOT/bots/hooks/load_instructions.py\"; else echo '{}'; fi",
+            "timeout": 3000
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if [ -f \"$ACADEMICOPS_BOT/bots/hooks/log_sessionend.py\" ]; then uv run --directory \"$ACADEMICOPS_BOT\" python \"$ACADEMICOPS_BOT/bots/hooks/log_sessionend.py\"; else echo '{}'; fi",
+            "timeout": 2000
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if [ -f \"$ACADEMICOPS_BOT/bots/hooks/log_precompact.py\" ]; then uv run --directory \"$ACADEMICOPS_BOT\" python \"$ACADEMICOPS_BOT/bots/hooks/log_precompact.py\"; else echo '{}'; fi",
+            "timeout": 2000
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if [ -f \"$ACADEMICOPS_BOT/bots/hooks/log_notification.py\" ]; then uv run --directory \"$ACADEMICOPS_BOT\" python \"$ACADEMICOPS_BOT/bots/hooks/log_notification.py\"; else echo '{}'; fi",
+            "timeout": 2000
+          }
+        ]
+      }
+    ]
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "user=$(whoami); host=$(hostname -s); dir=$(pwd); dir=${dir/#$HOME/\\~}; git_info=''; if git rev-parse --git-dir >/dev/null 2>&1; then branch=$(git --no-optional-locks symbolic-ref --short HEAD 2>/dev/null || git --no-optional-locks rev-parse --short HEAD 2>/dev/null); if ! git --no-optional-locks diff --quiet 2>/dev/null || ! git --no-optional-locks diff --cached --quiet 2>/dev/null; then status='*'; else status=''; fi; [ -n \"$branch\" ] && git_info=$(printf ' \\033[38;5;99mon \\033[38;5;141m%s%s' \"$branch\" \"$status\"); fi; venv_info=''; [ -n \"$VIRTUAL_ENV\" ] && venv_info=$(printf ' \\033[38;5;45mvia \\033[38;5;51m%s' \"$(basename \"$VIRTUAL_ENV\")\"); printf '\\033[38;5;244m%s\\033[38;5;214m@%s \\033[38;5;75min \\033[38;5;81m%s%s%s' \"$user\" \"$host\" \"$dir\" \"$git_info\" \"$venv_info\""
+  },
+  "alwaysThinkingEnabled": false
+}

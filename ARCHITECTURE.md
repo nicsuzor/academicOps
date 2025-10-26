@@ -78,12 +78,35 @@ any-repo/                      # Individual project repos
 
 1. **Global `~/.claude/` ownership**: academicOps installs hooks and environment variables globally
 2. **`$ACADEMICOPS_BOT` environment variable**: Available everywhere, points to framework installation
-3. **Skills deployed to `~/.claude/skills/`**: Extracted from `dist/skills/*.zip`, available globally
-4. **Project-local overrides**: Projects can override global hooks with `.claude/settings.json`
-5. **Hook invocation**: Global hooks use `uv run --directory "$ACADEMICOPS_BOT"` for dependencies
-6. **`bots/` namespace**: All agent instructions and hooks live under `bots/` directory
+3. **Settings symlinked**: `~/.claude/settings.json` → `$ACADEMICOPS_BOT/.claude/settings.json` (single source of truth)
+4. **Skills deployed to `~/.claude/skills/`**: Extracted from `dist/skills/*.zip`, available globally
+5. **Project-local overrides**: Projects can override global hooks with `.claude/settings.json`
+6. **Hook invocation**: Global hooks use `uv run --directory "$ACADEMICOPS_BOT"` for dependencies
+7. **`bots/` namespace**: All agent instructions and hooks live under `bots/` directory
 
 **Rule enforced in agent instructions**: Never put agent rules in `docs/`, never put human documentation in `bots/`.
+
+### Configuration Management
+
+**Canonical settings.json** lives in `$ACADEMICOPS_BOT/.claude/settings.json` and is **symlinked** to `~/.claude/settings.json` by `scripts/setup_academicops.sh`.
+
+**Why symlink instead of copy:**
+- **Single source of truth**: Hook configuration version-controlled in academicOps repo
+- **Automatic updates**: Changes to hooks propagate immediately when git pulling updates
+- **No drift**: User's local config stays in sync with framework improvements
+- **Easier maintenance**: No manual copying of hook configurations
+
+**What's in canonical settings.json:**
+- `ACADEMICOPS_BOT` environment variable
+- All 9 Claude Code hook events (SessionStart, PreToolUse, PostToolUse, UserPromptSubmit, Stop, SubagentStop, SessionEnd, PreCompact, Notification)
+- Standard permissions (allow `uv run pytest/python`, `gh issue create`)
+- Deny patterns (prevent writing to `.env`, `.venv`, `.cache`)
+- Custom status line showing user@host, directory, git branch, venv
+
+**Local customization:**
+If you need machine-specific settings, you have two options:
+1. **Edit the canonical file** in `$ACADEMICOPS_BOT/.claude/settings.json` (commit if universal, gitignore if personal)
+2. **Break the symlink**: Remove symlink and copy the file to customize locally (not recommended—you'll lose auto-updates)
 
 ---
 
