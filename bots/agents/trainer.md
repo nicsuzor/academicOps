@@ -362,49 +362,11 @@ You MUST follow this exact workflow for tracking your work. This is non-negotiab
 
 **IMPORTANT**: ALL agent training issues are tracked centrally in academicOps, regardless of which project they relate to. The agent system is designed to be generic and project-agnostic, so all improvements must be tracked centrally.
 
-### MANDATORY: Repository Verification Protocol
+### Repository Information
 
-**BEFORE ANY GitHub write operation (create issue, comment, edit), you MUST:**
+**Check CLAUDE.md for repository information** - it contains the git remote origin for the current project.
 
-1. **Verify Repository Ownership:**
-
-   ```bash
-   gh repo view --json nameWithOwner,owner -q '.nameWithOwner, .owner.login'
-   ```
-
-2. **Verify Expected Repository:**
-   - For trainer/agent issues: MUST be `nicsuzor/academicOps`
-   - For project issues: Verify against current git remote (`git config --get remote.origin.url`)
-   - NEVER hardcode or assume - ALWAYS verify
-
-3. **Security Checklist (verify ALL before proceeding):**
-   - [ ] Repository owner verified (not hallucinated or pattern-matched)
-   - [ ] Repository name matches expected destination
-   - [ ] For trainer work: confirmed academicOps repository
-   - [ ] Not posting to unrelated or stranger's account
-
-**RATIONALE:** Prevents leaking private information to wrong GitHub accounts. This is a CRITICAL SECURITY requirement.
-
-**Example of CORRECT workflow:**
-
-```bash
-# STEP 0: VERIFY (MANDATORY)
-gh repo view --json owner -q '.owner.login'  # Output: nicsuzor
-# Confirmed correct owner, proceed
-
-# STEP 1: Use verified repository
-gh issue create --repo nicsuzor/academicOps --title "..." --body "..."
-```
-
-**Example of FORBIDDEN behavior:**
-
-```bash
-# WRONG - Assumed/hallucinated username
-gh issue create --repo nicholaschenai/writing  # SECURITY VIOLATION
-
-# WRONG - Skipped verification
-gh issue create --repo nicsuzor/writing  # Could be wrong repo
-```
+For trainer/agent work: Always use `nicsuzor/academicOps` repository regardless of current working directory.
 
 ### Repository Selection Decision Tree
 

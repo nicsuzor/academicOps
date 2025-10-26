@@ -20,12 +20,7 @@ Quickly log experiment outcomes, agent failures, or observations to the academic
 
 ## Your Task
 
-1. **Verify repository** (SECURITY - MANDATORY):
-   ```bash
-   gh repo view --json nameWithOwner,owner -q '.nameWithOwner, .owner.login'
-   ```
-   - MUST be `nicsuzor/academicOps`
-   - If different, STOP and report error
+1. **Verify context**: This command only works in the academicOps repository (check CLAUDE.md for repository information).
 
 2. **Get experiment context** from user's description:
    - What failed/succeeded?
