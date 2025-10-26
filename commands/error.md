@@ -20,7 +20,7 @@ Quickly log experiment outcomes, agent failures, or observations to the academic
 
 ## Your Task
 
-1. **Get repository**: Use repository from CLAUDE.md (logs to nicsuzor/academicOps regardless of current directory).
+1. **Target repository**: ALWAYS log to nicsuzor/academicOps regardless of current working directory.
 
 2. **Get experiment context** from user's description:
    - What failed/succeeded?
@@ -120,6 +120,6 @@ Response to user: "Logged to issue #152"
 
 (Wait for user response, then log accordingly)
 
-## Note
+## Critical
 
-This command always logs to nicsuzor/academicOps (documented in CLAUDE.md).
+This command ALWAYS logs to nicsuzor/academicOps regardless of current repository. Do not use current repository or CLAUDE.md repository - always hardcode nicsuzor/academicOps.
