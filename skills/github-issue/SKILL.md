@@ -26,7 +26,7 @@ Use github-issue when:
 - "Find all open issues tagged with 'performance'"
 - "Close issue #17 as resolved"
 
-## Core Workflow
+## Follow Core Workflow
 
 This skill uses a **workflow-based** structure centered on the GitHub issue lifecycle.
 
@@ -176,7 +176,7 @@ gh issue view 123 --repo myorg/api --comments
 - The problem is distinct enough to warrant separate tracking
 - You have sufficient information to create a complete, actionable issue
 
-### Issue Creation Workflow
+### Follow Issue Creation Workflow
 
 #### 2.1: Prepare Issue Content
 

@@ -77,12 +77,12 @@ Track significant framework pattern changes that affect skills.
 Use these patterns in audit_skills.py to detect outdated code:
 
 ### Pre-Skills-First Patterns
-- References to `.claude/agents`
+- References to `.claude/skills`
 - Agent-specific language: "agent should"
 - Embedded procedural knowledge in agents
 
 ### Old Reference System
-- References to `docs/_CHUNKS`
+- References to `references`
 - Large embedded documentation in SKILL.md
 - Missing references/ directory usage
 

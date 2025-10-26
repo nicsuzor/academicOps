@@ -117,7 +117,7 @@ After context discovery, summarize findings to user:
 
 "I've reviewed the project context. This is a [research topic] project investigating [questions]. The dbt pipeline has [N] staging models and [M] mart models. I see existing work on [areas]. What would you like me to help with?"
 
-## Data Access Workflow
+## Follow Data Access Workflow
 
 **🚨 CRITICAL RULE: ALL data access MUST go through dbt models. NEVER query upstream sources directly.**
 
@@ -178,7 +178,7 @@ def load_data():
 
 **See:** `references/dbt-workflow.md` for detailed dbt patterns
 
-## DBT Model Workflow
+## Follow DBT Model Workflow
 
 Create or modify dbt models following academicOps layered architecture.
 
@@ -217,7 +217,7 @@ Ask yourself:
    - `dim_*`: Dimension tables (entities, classifications)
    - Materialized for performance
 
-### Single-Step Workflow
+### Follow Single-Step Workflow
 
 When creating a dbt model, take ONE step, then stop:
 
@@ -277,7 +277,7 @@ dbt test --select stg_cases
 
 **See:** `references/dbt-workflow.md` for model patterns and testing strategies
 
-## Visualization Workflow
+## Follow Visualization Workflow
 
 Create Streamlit visualizations following single-step collaborative pattern.
 
@@ -329,7 +329,7 @@ if __name__ == "__main__":
     main()
 ```
 
-### Single-Step Visualization Workflow
+### Follow Single-Step Visualization Workflow
 
 **Step 1: Load data from dbt model**
 
@@ -375,7 +375,7 @@ if status_filter:
 
 **See:** `references/streamlit-patterns.md` for visualization best practices
 
-## Testing Workflow
+## Follow Testing Workflow
 
 Add tests to validate data quality at every pipeline stage.
 
@@ -390,7 +390,7 @@ Use appropriate test type for the validation:
 | **Package tests** | Common patterns | Recency checks, multi-column uniqueness |
 | **Diagnostic models** | Quality monitoring | Aggregated metrics for manual review |
 
-### Single-Step Testing Workflow
+### Follow Single-Step Testing Workflow
 
 **Step 1: Identify what to test**
 
@@ -463,7 +463,7 @@ tests:
 
 **See:** `references/dbt-workflow.md` for complete testing patterns
 
-## Data Investigation Workflow
+## Follow Data Investigation Workflow
 
 **🚨 CRITICAL: Axiom #15 - WRITE FOR THE LONG TERM**
 
@@ -534,7 +534,7 @@ if __name__ == "__main__":
     investigate_missing_values('judge_scores', 'expected_violating')
 ```
 
-### Investigation Workflow
+### Follow Investigation Workflow
 
 **Step 1: Create investigation script**
 

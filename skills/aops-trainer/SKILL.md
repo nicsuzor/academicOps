@@ -78,7 +78,7 @@ Use agent-optimization when:
 - Larger changes → GitHub issue for discussion
 - No sweeping rewrites
 
-## Agent Optimization Workflow
+## Follow Agent Optimization Workflow
 
 ### Phase 1: Investigation & Diagnostics
 

@@ -1,0 +1,19 @@
+{
+  "files": {
+    "/CLAUDE.md": [
+      "Use type hints for all functions.",
+      "Follow PEP 8 style guide.",
+      "Use pathlib for file operations."
+    ],
+    "/src/CLAUDE.md": [
+      "Use type hints for all functions.",
+      "Follow PEP 8 style guide.",
+      "Use pathlib for file operations."
+    ],
+    "/tests/CLAUDE.md": [
+      "Use type hints for all functions.",
+      "Follow PEP 8 style guide.",
+      "Use pathlib for file operations."
+    ]
+  }
+}

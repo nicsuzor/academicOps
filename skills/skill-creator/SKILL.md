@@ -84,7 +84,7 @@ Skills use a three-level loading system to manage context efficiently:
 
 *Unlimited because scripts can be executed without reading into context window.
 
-## Skill Creation Process
+## Execute Skill Creation
 
 To create a skill, follow the "Skill Creation Process" in order, skipping steps only if there is a clear reason why they are not applicable.
 
@@ -164,7 +164,7 @@ Also, delete any example files and directories not needed for the skill. The ini
 
 #### Update SKILL.md
 
-**Writing Style:** Write the entire skill using **imperative/infinitive form** (verb-first instructions), not second person. Use objective, instructional language (e.g., "To accomplish X, do Y" rather than "You should do X" or "If you need to do X"). This maintains consistency and clarity for AI consumption.
+**Writing Style:** Write the entire skill using **imperative/infinitive form** (verb-first instructions), not second person. Use objective, instructional language (e.g., "To accomplish X, do Y" rather than "do X" or "If you need to do X"). This maintains consistency and clarity for AI consumption.
 
 To complete SKILL.md, answer the following questions:
 

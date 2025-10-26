@@ -272,7 +272,7 @@ api_url = config["api"]["url"]  # From YAML config
 
 ## References
 
-- Fail-Fast Philosophy: `docs/_CHUNKS/FAIL-FAST.md`
-- Test Standards: `docs/_CHUNKS/TESTS.md`
-- Hydra Configuration: `docs/_CHUNKS/HYDRA.md`
-- Git Workflow: `docs/_CHUNKS/GIT-WORKFLOW.md`
+- Fail-Fast Philosophy: `references/FAIL-FAST.md`
+- Test Standards: `references/TESTS.md`
+- Hydra Configuration: `references/HYDRA.md`
+- Git Workflow: `references/GIT-WORKFLOW.md`

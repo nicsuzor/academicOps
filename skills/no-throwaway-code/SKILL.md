@@ -11,7 +11,7 @@ description: Intervention skill that triggers when agents attempt temporary/thro
 
 This is a lightweight intervention skill that activates when an agent attempts to write temporary, throwaway Python code. Instead of allowing one-off scripts or inline Python commands, redirect to proper development practices that ensure replicability.
 
-## When This Skill Triggers
+## Recognize Throwaway Code Patterns
 
 Activate this skill when an agent is about to:
 
@@ -31,7 +31,7 @@ Activate this skill when an agent is about to:
    - "I'll create a temp script to verify this behavior"
    - "Let me check this with a quick Python command"
 
-## The Intervention
+## Execute Intervention Workflow
 
 When detecting throwaway code intent, **STOP immediately** and present this decision tree:
 

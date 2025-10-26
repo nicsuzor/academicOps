@@ -26,7 +26,7 @@ repo/
 │   └── docs/                   # Project agent instructions
 ├── .claude/
 │   ├── settings.json           # Hook configuration
-│   ├── agents -> bots/.academicOps/.claude/agents
+│   ├── agents -> bots/.academicOps/.claude/skills
 │   └── commands -> bots/.academicOps/.claude/commands
 ```
 
@@ -251,7 +251,7 @@ def main():
 
 ## Fail-Fast Hook Pattern
 
-**From `docs/_CHUNKS/FAIL-FAST.md`:**
+**From `references/FAIL-FAST.md`:**
 
 **Agents don't defend against missing hooks:**
 ```json

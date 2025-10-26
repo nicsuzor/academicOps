@@ -84,7 +84,7 @@ User: "/log-failure agent didn't archive task correctly"
 
 **When to use**: After multiple data points confirm a pattern, use direct invocation for comprehensive intervention.
 
-## Core Workflow
+## Follow Core Workflow
 
 This skill uses a **workflow-based** structure with decision trees for different scenarios.
 
@@ -521,7 +521,7 @@ Edit sections to match reality:
 
 **Writing style**: Descriptive voice (not imperative)
 - ✅ "The system loads instructions from..."
-- ❌ "You must load instructions from..."
+- ❌ "load instructions from..."
 
 ### Step 4.4: Create GitHub Issue for Major Drifts
 

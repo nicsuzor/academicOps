@@ -26,7 +26,7 @@ Use git-commit when:
 
 **Critical**: This skill has absolute authority over commits. If validation fails, it BLOCKS the commit and reports specific issues. It does NOT fix problems - agents must address issues and retry.
 
-## Commit Workflow
+## Follow Commit Workflow
 
 Follow this 6-step validation and commit workflow.
 
@@ -65,10 +65,10 @@ Follow this 6-step validation and commit workflow.
 **File Hierarchy** (3-tier fallback):
 
 1. **Core standards** (ALWAYS load if they exist):
-   - `bot/docs/_CHUNKS/TESTS.md` - Test file standards
-   - `bot/docs/_CHUNKS/HYDRA.md` - Configuration standards
-   - `bot/docs/_CHUNKS/FAIL-FAST.md` - Fail-fast philosophy
-   - `bot/docs/_CHUNKS/GIT-WORKFLOW.md` - Git workflow patterns
+   - `references/TESTS.md` - Test file standards
+   - `references/HYDRA.md` - Configuration standards
+   - `references/FAIL-FAST.md` - Fail-fast philosophy
+   - `references/GIT-WORKFLOW.md` - Git workflow patterns
 
 2. **Project-specific rules** (if exists):
    - `<project>/docs/agents/CODE.md` - Project validation rules
@@ -90,7 +90,7 @@ Follow this 6-step validation and commit workflow.
 4. **If ALL core files missing**: BLOCK commit with error
 
 **Generalization Note**: The exact paths above are examples from one repository structure. In any repository:
-- Look for validation rules in `docs/_CHUNKS/`, `docs/agents/`, or similar documentation directories
+- Look for validation rules in `references/`, `docs/agents/`, or similar documentation directories
 - Adapt paths to the repository's structure
 - Fail-fast if NO validation rules found anywhere
 
@@ -177,7 +177,7 @@ File-Specific Rules:
   - Line 15: `initialize_config_dir(config_path="conf")`
   - Violation: Test files MUST use real_bm or real_conf fixtures
   - Fix: Replace with `def test_auth(real_bm)` and use real_bm fixture
-  - Source: bot/docs/_CHUNKS/TESTS.md line 17
+  - Source: references/TESTS.md line 17
 
 - ✅ PASS: Uses real fixture pattern correctly in test_login()
 
@@ -212,7 +212,7 @@ Testing Requirements:
   - Line 15: `initialize_config_dir(config_path="conf")`
   - Violation: Test files MUST use real_bm or real_conf fixtures
   - Fix: Replace with `def test_auth(real_bm)` and use real_bm fixture
-  - Source: bot/docs/_CHUNKS/TESTS.md line 17
+  - Source: references/TESTS.md line 17
 
 #### auth.py
 - Rules Applied: 12
@@ -472,7 +472,7 @@ A successful git-commit skill invocation achieves:
 git status
 git diff
 
-# 2. [Skill loads validation rules from docs/_CHUNKS/ or similar]
+# 2. [Skill loads validation rules from references/ or similar]
 
 # 3. [Skill validates each file against rules]
 

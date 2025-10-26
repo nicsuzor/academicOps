@@ -89,7 +89,7 @@ data/
     current_view.json       # Latest task view output
 ```
 
-## Task Management Workflow
+## Follow Task Management Workflow
 
 ### Initialization Protocol (SILENT - Every Conversation)
 
