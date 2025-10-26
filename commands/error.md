@@ -1,6 +1,6 @@
 ---
 name: error
-description: Quick experiment outcome logging - capture success/failure without full diagnosis (aOps repo only)
+description: Quick experiment outcome logging to academicOps - works from any repository
 ---
 
 # Quick Error/Outcome Logger
@@ -20,7 +20,7 @@ Quickly log experiment outcomes, agent failures, or observations to the academic
 
 ## Your Task
 
-1. **Verify context**: This command only works in the academicOps repository (check CLAUDE.md for repository information).
+1. **Get repository**: Use repository from CLAUDE.md (logs to nicsuzor/academicOps regardless of current directory).
 
 2. **Get experiment context** from user's description:
    - What failed/succeeded?
@@ -120,8 +120,6 @@ Response to user: "Logged to issue #152"
 
 (Wait for user response, then log accordingly)
 
-## Security
+## Note
 
-**CRITICAL**: ALWAYS verify repository is `nicsuzor/academicOps` before ANY GitHub write operation.
-
-See trainer.md lines 215-252 for Repository Verification Protocol.
+This command always logs to nicsuzor/academicOps (documented in CLAUDE.md).
