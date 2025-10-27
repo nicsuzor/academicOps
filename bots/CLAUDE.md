@@ -2,7 +2,6 @@
 
 @../agents/_CORE.md
 @../docs/_CHUNKS/FAIL-FAST.md
-@../.claude/skills/python-dev/SKILL.md
 
 ## Repository Structure
 

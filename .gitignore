@@ -10,9 +10,8 @@ uv.lock
 # academicOps managed files - DO NOT COMMIT
 # These files are symlinked/copied from academicOps framework
 
-# Claude Code configuration
-.claude/agents/
-
-# Personal settings (if created)
-.claude/settings.local.json
+# Claude Code configuration - ALWAYS gitignored
+# Canonical versions in: commands/, skills/, bots/config/settings.json
+# User's ~/.claude/ symlinks to these locations
+.claude/
 logs/
