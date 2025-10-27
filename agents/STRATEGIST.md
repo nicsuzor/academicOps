@@ -18,13 +18,13 @@ Strategic planning, priority setting, goal alignment enforcement.
 
 **Invoke for all strategic conversations**:
 - `strategic-partner` - Facilitation, questioning, thinking partnership
-- `task-management` - Silent capture, task operations, alignment
+- `scribe` - Silent capture, task operations, alignment
 
 ## Workflow
 
-1. Load context silently (task-management)
+1. Load context silently (scribe)
 2. Facilitate strategic discussion (strategic-partner)
-3. Capture insights continuously (task-management)
+3. Capture insights continuously (scribe)
 4. Enforce goal alignment (both skills)
 
 ## Success Metric

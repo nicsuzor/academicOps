@@ -60,19 +60,13 @@ class TestSessionStartHook:
 
         context = output["hookSpecificOutput"]["additionalContext"]
 
-        # Check for both files
-        assert (
-            "Generic Agent Rules (bot/agents/_CORE.md)" in context
-            or "BACKGROUND: Framework Operating Rules" in context
-        )
-        assert (
-            "User-Specific Context (docs/agents/INSTRUCTIONS.md)" in context
-            or "PRIMARY: Your Work Context" in context
-        )
+        # Check for key content from framework tier (_CORE.md)
+        assert "Core Axioms (Inviolable Rules)" in context, "Framework _CORE.md not loaded"
+        assert "NO WORKAROUNDS" in context, "Framework behavioral rules not loaded"
 
-        # Check for key content from each file
-        assert "Core Axioms" in context  # From generic instructions
-        assert "Nicolas Suzor" in context  # From user-specific instructions
+        # Check for key content from personal tier (unique to nicsuzor/writing)
+        assert "Law professor with ADHD" in context, "Personal _CORE.md not loaded"
+        assert "buttermilk" in context, "Personal polyrepo structure not loaded"
 
     def test_hook_handles_missing_files_gracefully(
         self, validate_env_script: Path, tmp_path: Path
