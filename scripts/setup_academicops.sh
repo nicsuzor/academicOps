@@ -39,7 +39,7 @@ echo
 # Symlink settings.json
 echo "Setting up global Claude Code configuration..."
 
-SETTINGS_SRC="$ACADEMICOPS_BOT/bots/config/settings.json"
+SETTINGS_SRC="$ACADEMICOPS_BOT/config/settings.json"
 SETTINGS_DEST="$CLAUDE_HOME/settings.json"
 
 if [ -L "$SETTINGS_DEST" ]; then
@@ -54,7 +54,7 @@ ln -s "$SETTINGS_SRC" "$SETTINGS_DEST"
 echo -e "${GREEN}✓${NC} ~/.claude/settings.json → $SETTINGS_SRC"
 
 # Symlink hooks directory
-HOOKS_SRC="$ACADEMICOPS_BOT/bots/hooks"
+HOOKS_SRC="$ACADEMICOPS_BOT/hooks"
 HOOKS_DEST="$CLAUDE_HOME/hooks"
 
 if [ -L "$HOOKS_DEST" ]; then
@@ -68,7 +68,7 @@ ln -s "$HOOKS_SRC" "$HOOKS_DEST"
 echo -e "${GREEN}✓${NC} ~/.claude/hooks/ → $HOOKS_SRC"
 
 # Symlink agents directory
-AGENTS_SRC="$ACADEMICOPS_BOT/bots/agents"
+AGENTS_SRC="$ACADEMICOPS_BOT/agents"
 AGENTS_DEST="$CLAUDE_HOME/agents"
 
 if [ -L "$AGENTS_DEST" ]; then
