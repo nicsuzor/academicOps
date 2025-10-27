@@ -65,10 +65,10 @@ Like a scribe who continuously records important information, this skill operate
 **Commands**:
 ```bash
 # Compact overview
-uv run python .claude/skills/scribe/scripts/task_index.py
+uv run python ~/.claude/skills/scribe/scripts/task_index.py
 
 # Detailed view (default: top 10 by priority)
-uv run python .claude/skills/scribe/scripts/task_view.py --per-page=10
+uv run python ~/.claude/skills/scribe/scripts/task_view.py --per-page=10
 
 # Sort options: --sort=priority (default), --sort=date, --sort=due
 ```
@@ -110,13 +110,13 @@ Default mode: Mode 1 (always capturing)
 
 **Check for duplicates FIRST**:
 ```bash
-uv run python .claude/skills/scribe/scripts/task_view.py --per-page=50
+uv run python ~/.claude/skills/scribe/scripts/task_view.py --per-page=50
 # Review data/views/current_view.json for existing tasks
 ```
 
 **Create task**:
 ```bash
-uv run python .claude/skills/scribe/scripts/task_add.py \
+uv run python ~/.claude/skills/scribe/scripts/task_add.py \
   --title "Prepare keynote slides" \
   --priority 2 \
   --project "academic-profile" \
@@ -134,14 +134,14 @@ uv run python .claude/skills/scribe/scripts/task_add.py \
 
 **Update task**:
 ```bash
-uv run python .claude/skills/scribe/scripts/task_process.py modify <task_id> \
+uv run python ~/.claude/skills/scribe/scripts/task_process.py modify <task_id> \
   --priority 1 \
   --due "2025-11-10"
 ```
 
 **Archive task** (when user mentions completion):
 ```bash
-uv run python .claude/skills/scribe/scripts/task_process.py modify <task_id> --archive
+uv run python ~/.claude/skills/scribe/scripts/task_process.py modify <task_id> --archive
 ```
 
 ### Prioritization Framework
@@ -338,26 +338,26 @@ Your goals are the source of truth for focus."
 **Task lifecycle**:
 ```bash
 # Create
-uv run python .claude/skills/scribe/scripts/task_add.py --title "..." --priority N --project "..." --due "YYYY-MM-DD"
+uv run python ~/.claude/skills/scribe/scripts/task_add.py --title "..." --priority N --project "..." --due "YYYY-MM-DD"
 
 # View all
-uv run python .claude/skills/scribe/scripts/task_view.py --per-page=20
+uv run python ~/.claude/skills/scribe/scripts/task_view.py --per-page=20
 
 # Index (compact)
-uv run python .claude/skills/scribe/scripts/task_index.py
+uv run python ~/.claude/skills/scribe/scripts/task_index.py
 
 # Update
-uv run python .claude/skills/scribe/scripts/task_process.py modify <task_id> --priority N --due "YYYY-MM-DD"
+uv run python ~/.claude/skills/scribe/scripts/task_process.py modify <task_id> --priority N --due "YYYY-MM-DD"
 
 # Archive
-uv run python .claude/skills/scribe/scripts/task_process.py modify <task_id> --archive
+uv run python ~/.claude/skills/scribe/scripts/task_process.py modify <task_id> --archive
 ```
 
 **Script paths**:
-- `.claude/skills/scribe/scripts/task_add.py`
-- `.claude/skills/scribe/scripts/task_view.py`
-- `.claude/skills/scribe/scripts/task_index.py`
-- `.claude/skills/scribe/scripts/task_process.py`
+- `~/.claude/skills/scribe/scripts/task_add.py`
+- `~/.claude/skills/scribe/scripts/task_view.py`
+- `~/.claude/skills/scribe/scripts/task_index.py`
+- `~/.claude/skills/scribe/scripts/task_process.py`
 
 **Data paths**:
 ```
@@ -386,7 +386,7 @@ $ACADEMICOPS_PERSONAL/data/views/current_view.json
 
 **Manual logging** (optional):
 ```bash
-uv run python .claude/skills/scribe/scripts/session_log.py \
+uv run python ~/.claude/skills/scribe/scripts/session_log.py \
   --session-id "session-123" \
   --transcript "/path/to/transcript.jsonl" \
   --summary "Implemented feature X" \
