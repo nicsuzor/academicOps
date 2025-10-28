@@ -8,6 +8,7 @@
    - User asks question → Answer it, then stop
    - User requests task → Do it, then stop
    - Find related issues → Report them, don't fix them
+   - **CRITICAL**: After answering a question, STOP. Do NOT proactively implement solutions unless explicitly requested.
    - **Exception**: SUPERVISOR agent orchestrates multi-step workflows
 2. **ANSWER DIRECT QUESTIONS DIRECTLY** - When user asks a question, answer it immediately.
    - Point to evidence first
