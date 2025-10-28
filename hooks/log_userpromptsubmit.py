@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """
-UserPromptSubmit hook for Claude Code: Debug logging only (noop).
+UserPromptSubmit hook for Claude Code: Debug logging and scribe state cleanup.
 
-This hook logs all UserPromptSubmit events to help understand what data is
-available for future hook development. It does not modify behavior.
+This hook logs all UserPromptSubmit events and cleans up the scribe invocation
+state flag from the previous turn, allowing the Stop hook to request scribe
+again on the next stop.
 
 Exit codes:
     0: Success (always continues)
@@ -11,9 +12,17 @@ Exit codes:
 
 import json
 import sys
+from pathlib import Path
 from typing import Any
 
 from hook_debug import safe_log_to_debug_file
+
+
+def cleanup_scribe_state(session_id: str) -> None:
+    """Remove scribe invocation flag at start of new user turn."""
+    state_file = Path(f"/tmp/claude_scribe_requested_{session_id}.flag")
+    if state_file.exists():
+        state_file.unlink()
 
 
 def main():
@@ -26,6 +35,11 @@ def main():
     except Exception:
         # If no stdin or parsing fails, continue with empty input
         pass
+
+    session_id = input_data.get("session_id", "unknown")
+
+    # Clean up scribe state from previous turn
+    cleanup_scribe_state(session_id)
 
     # Noop output - just continue
     output_data: dict[str, Any] = {}
