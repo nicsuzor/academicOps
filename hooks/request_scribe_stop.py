@@ -55,7 +55,7 @@ def main():
 
     output = {
         "decision": "block",
-        "reason": "Please invoke the scribe skill to capture context about what was just accomplished before stopping. Use: Skill(command='scribe')"
+        "reason": "If this marks the end of a substantial chunk of work, please invoke the scribe skill to capture context about what was just accomplished before stopping. Use: Skill(command='scribe')"
     }
 
     safe_log_to_debug_file("Stop", input_data, output)
