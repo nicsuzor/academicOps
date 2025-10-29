@@ -286,9 +286,12 @@ $ACADEMICOPS_PERSONAL/data/
 
 3. **Non-task work** (minimal, one line):
    - Brief mention if work done wasn't aligned with existing tasks
-   - Example: "Framework maintenance" or "Ad-hoc student meeting"
+   - Include specific areas in parentheses: "Framework maintenance (scribe skill, hooks)"
+   - Can add commit hashes on same line for traceability
+   - Example: "Framework maintenance (scribe skill, validate_tool.py) d346cd6 811c407"
+   - Or: "Ad-hoc student meeting (thesis revision feedback)"
    - Purpose: Evaluate whether doing what we said we would
-   - No detail - just enough to spot misalignment
+   - Keep it scannable - just enough to spot misalignment
 
 **DO NOT capture**:
 - Infrastructure changes (documented in git log)
