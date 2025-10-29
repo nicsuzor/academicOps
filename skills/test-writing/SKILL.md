@@ -1,6 +1,6 @@
 ---
 name: test-writing
-description: This skill should be used for all test creation and editing tasks. It enforces integration test patterns using real configurations and data, follows TDD methodology, and eliminates brittle unit tests. The skill ensures tests use real_bm or real_conf fixtures, never mock internal code, and test business behaviors rather than implementation details. Use this skill whenever writing new tests or refactoring existing test suites.
+description: This skill should be proactively used for all test creation and editing tasks. It enforces integration test patterns using real configurations and data, follows TDD methodology, and eliminates brittle unit tests. The skill ensures tests use real_bm or real_conf fixtures, never mock internal code, and test business behaviors rather than implementation details. Use this skill whenever writing new tests or refactoring existing test suites.
 ---
 
 # Test Writing

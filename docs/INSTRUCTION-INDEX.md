@@ -10,78 +10,153 @@
 
 ## Quick Reference
 
+- **What do agents automatically know?** → See [What Agents Actually See](#what-agents-actually-see)
 - **What is this file for?** → See [File Registry](#file-registry)
 - **How do agents load instructions?** → See [Loading System](#loading-system)
 - **What files do I need in my repo?** → See [Setup Requirements](#setup-requirements)
 - **What changed recently?** → See [Migration Notes](#migration-notes-2025-10-18)
 
+## TL;DR - What Agents Know vs Don't Know
+
+**Agents AUTOMATICALLY SEE at session start (SHOWN):**
+- `agents/_CORE.md` from all 3 tiers (framework/personal/project) - FULL TEXT
+- Git repository info
+- That's it.
+
+**Agents DON'T know unless explicitly told (REFERENCED):**
+- This INSTRUCTION-INDEX.md
+- Other agent files (DEVELOPER.md, ANALYST.md, etc.)
+- Documentation files (ARCHITECTURE.md, hooks_guide.md, etc.)
+- What hooks are configured
+- What slash commands exist
+- Directory structure
+
+**How agents discover additional context:**
+1. User says "Read docs/INSTRUCTION-INDEX.md"
+2. User invokes slash command like `/trainer` (loads agents/trainer.md)
+3. References in `_CORE.md` suggest reading specific files
+
+---
+
+## What Agents Actually See
+
+### Critical Distinction: Shown vs Referenced
+
+**SHOWN = Full text injected into agent context (they MUST read it)**
+**REFERENCED = Mentioned/suggested but NOT loaded (agents MIGHT read it IF they choose)**
+
+This distinction is critical for understanding what agents know vs what they can discover.
+
 ---
 
 ## Loading System
 
-### Single Instruction Loading Pathway
+### SessionStart: What Every Agent Gets (SHOWN)
 
-academicOps uses a **simplified 3-tier hierarchy** where all agents load `_CORE.md` from all three levels at SessionStart.
+When Claude Code starts, the SessionStart hook (`hooks/load_instructions.py`) AUTOMATICALLY loads and INJECTS full text into every agent's context:
 
-**No project-specific slash commands. No complex discovery. Just one clear path.**
+**1. Git Repository Info** (if in a git repo)
+   - Git remote origin URL
 
-### SessionStart Hook Chain
+**2. agents/_CORE.md from all 3 tiers** (stacked in priority order)
+   - `$PROJECT/agents/_CORE.md` (Project-specific, HIGHEST priority)
+   - `$ACADEMICOPS_PERSONAL/agents/_CORE.md` (User global preferences)
+   - `$ACADEMICOPS_BOT/agents/_CORE.md` (Framework defaults, REQUIRED)
 
-Claude Code starts session
-    ↓
-SessionStart hook triggers
-    ↓
-load_instructions.py executes
-    ↓
-Calls: read_instructions.py _CORE.md
-    ↓
-Loads from 3 tiers:
-    1. $ACADEMICOPS_BOT/agents/_CORE.md      (required)
-    2. $ACADEMICOPS_PERSONAL/agents/_CORE.md (optional)
-    3. $PROJECT/agents/_CORE.md              (optional)
-    ↓
-Output to user (stdout): "Loaded _CORE.md: ✓ bot ✓ personal ✓ project"
-Output to agent (stderr): Full text of all 3 files
-    ↓
-Agent has complete context
+**Format in agent context:**
+```
+# Agent Instructions
 
-### Agent-Specific Loading
+## REPOSITORY
+Git remote origin: git@github.com:...
 
-When you invoke `@agent-{name}`:
+---
 
-1. SessionStart instructions already loaded (`_CORE.md` from all 3 tiers)
-2. Agent-specific file loads: `$ACADEMICOPS_BOT/agents/{NAME}.md`
+## PROJECT: Current Project Context
+[Full text of $PROJECT/agents/_CORE.md]
 
-**Example**: `@agent-developer`
+---
 
-- Already has: `_CORE.md` (core axioms + user context + project context)
-- Loads: `DEVELOPER.md` (developer-specific workflows)
+## PERSONAL: Your Work Context
+[Full text of $ACADEMICOPS_PERSONAL/agents/_CORE.md]
 
-### Priority Order
+---
+
+## FRAMEWORK: Core Rules
+[Full text of $ACADEMICOPS_BOT/agents/_CORE.md]
+```
+
+**What agents know at session start:**
+- Core axioms and behavioral rules
+- Repository they're working in
+- User's global preferences and context
+- Project-specific context and rules
+- **THEY DO NOT KNOW:** What other instruction files exist, what hooks are configured, what the INSTRUCTION-INDEX contains
+
+### Slash Commands: Additional Context Loading (SHOWN)
+
+Slash commands can load additional instruction files using the same 3-tier system:
+
+**Example:** `/trainer` command loads `agents/trainer.md`
+
+1. Command executes: `uv run python ${ACADEMICOPS_BOT}/hooks/load_instructions.py trainer.md`
+2. Agent receives FULL TEXT from all available tiers (project → personal → framework)
+3. This supplements (doesn't replace) the `_CORE.md` already loaded at SessionStart
+
+**Format:**
+```
+# === PROJECT: trainer.md ===
+[Full text if exists]
+
+# === PERSONAL: trainer.md ===
+[Full text if exists]
+
+# === FRAMEWORK: trainer.md ===
+[Full text - REQUIRED]
+```
+
+### What Agents DON'T Automatically Know (REFERENCED)
+
+Unless explicitly loaded via slash command, agents have NO KNOWLEDGE of:
+
+- **This INSTRUCTION-INDEX.md** - They don't know what files exist or where things are documented
+- **docs/hooks_guide.md** - They don't know how hooks work
+- **Other agent files** (DEVELOPER.md, ANALYST.md, etc.) - Until loaded via slash command
+- **Chunked instructions** (docs/_CHUNKS/*) - Unless symlinked into agents/ and loaded
+- **Hook configuration** - They don't see config/settings.json
+- **Available slash commands** - They don't get a command list
+
+**How they discover these:**
+1. **Explicit user instruction** - "Read docs/INSTRUCTION-INDEX.md"
+2. **References in _CORE.md** - "See docs/X.md for details"
+3. **Trial and error** - Running commands and seeing if they exist
+
+### Priority Order (When Same File Exists in Multiple Tiers)
 
 **Highest to Lowest:**
 
-1. **Project** (`$PROJECT/agents/_CORE.md`) - Project-specific rules
-2. **Personal** (`$ACADEMICOPS_PERSONAL/agents/_CORE.md`) - User global preferences
-3. **Bot** (`$ACADEMICOPS_BOT/agents/_CORE.md`) - Framework defaults
+1. **Project** (`$PROJECT/agents/`) - Overrides everything
+2. **Personal** (`$ACADEMICOPS_PERSONAL/agents/`) - Overrides framework defaults
+3. **Framework** (`$ACADEMICOPS_BOT/agents/`) - Base defaults
 
-Later files can reference or override earlier ones.
+All three are shown to agents (stacked). Later tiers can reference or override earlier ones.
 
 ### Fail-Fast Behavior
 
-- **At least ONE `_CORE.md` must exist** (blocks with exit code 1 if all missing)
-- Missing files at any tier are silently skipped
-- No fallbacks, no defaults, no guessing
+- **Framework tier REQUIRED** - Blocks with exit code 1 if `$ACADEMICOPS_BOT/agents/_CORE.md` missing
+- **Other tiers optional** - Silently skipped if missing (no errors)
+- **No fallbacks, no defaults, no guessing**
 
 ---
 
 ## File Registry
 
-Complete list of instruction files with metadata.
+Complete list of instruction files with visibility metadata.
 
 ### Format
 
 - **Purpose**: What this file does
+- **Visibility**: 🔴 SHOWN (auto-loaded, full text) | 🔵 REFERENCED (agents must explicitly read) | 🟡 INFRASTRUCTURE (hooks/config)
 - **Loaded by**: What triggers loading this file
 - **References**: What other files it points to
 - **Status**: ✅ Required | ⚠️ Optional | 🔧 Maintenance | ❌ Archived
@@ -93,17 +168,20 @@ Complete list of instruction files with metadata.
 ### CLAUDE.md
 
 - **Path**: `$ACADEMICOPS_BOT/CLAUDE.md`
-- **Purpose**: Entry point for Claude Code agents
-- **Content**: Single line: `Read \`./agents/_CORE.md\` for core axioms and project instructions.`
-- **Loaded by**: AI agent on startup (automatic)
+- **Purpose**: Initial entry point that Claude Code reads, then defers to SessionStart hook
+- **Visibility**: 🔵 REFERENCED (Claude reads this first, but actual loading happens via SessionStart hook)
+- **Content**: Points to `agents/_CORE.md` and includes repository info
+- **Loaded by**: Claude Code startup (automatic, before SessionStart hook)
 - **References**: `agents/_CORE.md`
 - **Status**: ✅ Required
+- **Note**: This is a vestigial mechanism - the real loading happens via SessionStart hook
 
 ### GEMINI.md
 
 - **Path**: `$ACADEMICOPS_BOT/GEMINI.md`
 - **Purpose**: Entry point for Gemini CLI agents
-- **Loaded by**: AI agent on startup (automatic)
+- **Visibility**: 🔵 REFERENCED
+- **Loaded by**: Gemini CLI on startup (automatic)
 - **References**: `agents/_CORE.md`
 - **Status**: ⚠️ Optional (experimental)
 
@@ -115,97 +193,87 @@ Complete list of instruction files with metadata.
 
 - **Path**: `$ACADEMICOPS_BOT/agents/_CORE.md`
 - **Purpose**: Core axioms and inviolable rules for ALL agents
-- **Loaded by**: SessionStart hook → `load_instructions.py` → `read_instructions.py`
+- **Visibility**: 🔴 SHOWN (auto-loaded at SessionStart, FULL TEXT injected into every agent)
+- **Loaded by**: SessionStart hook → `hooks/load_instructions.py` (automatic, every session)
 - **Content**:
-- Core Axioms (fail-fast, DRY, no fallbacks, etc.)
-- Repository structure
-- Key tools and policies
-- Error handling philosophy
+  - Core Axioms (fail-fast, DRY, no fallbacks, etc.)
+  - Behavioral Rules (NO WORKAROUNDS, VERIFY FIRST, etc.)
+  - Tool Failure Protocol
+  - Key tools and policies
 - **References**: None (this is the foundation)
-- **Status**: ✅ Required (blocking if missing)
+- **Status**: ✅ Required (blocks session start if missing)
 - **Issues**: #119 (modular configuration architecture)
 
-**External Versions** (loaded by same mechanism):
+**External Versions** (also SHOWN via same mechanism):
 
-- `$ACADEMICOPS_PERSONAL/agents/_CORE.md` - User global preferences
-- `$PROJECT/agents/_CORE.md` - Project-specific context
+- `$ACADEMICOPS_PERSONAL/agents/_CORE.md` - User global preferences (SHOWN if exists)
+- `$PROJECT/agents/_CORE.md` - Project-specific context (SHOWN if exists)
 
 ---
 
 ## Agent Definitions (5 files)
 
-### agents/TRAINER.md
+### agents/trainer.md
 
-- **Path**: `$ACADEMICOPS_BOT/agents/TRAINER.md`
+- **Path**: `$ACADEMICOPS_BOT/agents/trainer.md`
 - **Purpose**: Meta-agent for framework maintenance and optimization
-- **Loaded by**: `/trainer` slash command OR `@agent-trainer` invocation
+- **Visibility**: 🔴 SHOWN (when slash command `/trainer` invoked)
+- **Loaded by**: `/trainer` slash command → `hooks/load_instructions.py trainer.md`
 - **Content**:
-- Agent performance responsibility
-- Fail-fast enforcement checklist
-- Design principles & decision framework
-- Modular documentation architecture
-- Enforcement hierarchy (scripts > hooks > config > instructions)
-- GitHub issue management protocol
-- Instruction index maintenance workflow
+  - Agent performance responsibility
+  - Fail-fast enforcement checklist
+  - Design principles & decision framework
+  - Modular documentation architecture
+  - Enforcement hierarchy (scripts > hooks > config > instructions)
+  - GitHub issue management protocol
+  - Instruction index maintenance workflow
 - **References**: LLM client docs (Claude Code, Gemini CLI)
 - **Status**: ✅ Required
 - **Issues**: #111 (modularity), #119 (configuration architecture)
-
-### agents/STRATEGIST.md
-
-- **Path**: `$ACADEMICOPS_BOT/agents/STRATEGIST.md`
-- **Purpose**: Planning, task prioritization, context extraction
-- **Loaded by**: `@agent-strategist` invocation
-- **Content**:
-- Zero-friction information extraction
-- Task management workflows
-- Planning and scheduling
-- Auto-extraction patterns
-- **Auto-loads**: `data/goals/*.md`, `data/context/*.md`, `data/views/*.json`
-- **References**: `_CORE.md` (inherits)
-- **Status**: ✅ Required
-- **Issues**: #75 (prioritization framework), #77 (task summary guidance)
 
 ### agents/DEVELOPER.md
 
 - **Path**: `$ACADEMICOPS_BOT/agents/DEVELOPER.md`
 - **Purpose**: Software development workflow, debugging, testing
-- **Loaded by**: `@agent-developer` invocation
+- **Visibility**: 🔵 REFERENCED (agents must explicitly load via slash command or Read tool)
+- **Loaded by**: Manual - no slash command currently configured
 - **Content**:
-- TDD methodology
-- Interface mismatch checkpoint
-- Debugging workflows
-- Testing patterns
+  - TDD methodology
+  - Interface mismatch checkpoint
+  - Debugging workflows
+  - Testing patterns
 - **References**: `_CORE.md` (inherits)
 - **Status**: ✅ Required
 - **Issues**: #88 (localized fix without impact analysis)
 
-### agents/CODE.md
+### agents/ANALYST.md (symlink)
 
-- **Path**: `$ACADEMICOPS_BOT/agents/CODE.md`
-- **Purpose**: Code review and git commit operations
-- **Loaded by**: `@agent-code-review` invocation
-- **Content**:
-- Code quality validation
-- Git commit workflow
-- Pre-commit hook execution
-- Pull request creation
-- **References**: `_CORE.md` (inherits)
-- **Status**: ✅ Required
-
-### agents/ANALYST.md
-
-- **Path**: `$ACADEMICOPS_BOT/agents/ANALYST.md`
+- **Path**: `$ACADEMICOPS_BOT/agents/ANALYST.md` → `docs/_CHUNKS/ANALYST.md`
 - **Purpose**: Data analysis, dbt workflows, SQL optimization
-- **Loaded by**: `@agent-analyst` invocation
+- **Visibility**: 🔴 SHOWN (when slash command `/analyst` invoked)
+- **Loaded by**: `/analyst` slash command → `hooks/load_instructions.py ANALYST.md`
 - **Content**:
-- MANDATORY dbt-only data access policy
-- Computational research methodologies
-- Data pipeline patterns
-- **Auto-loads**: `README.md`, `data/README.md`, `data/projects/*.md`, `docs/methodologies/*.md`
-- **References**: `_CORE.md`, `docs/methodologies/dbt-practices.md`, `docs/methodologies/computational-research.md`
+  - MANDATORY dbt-only data access policy
+  - Computational research methodologies
+  - Data pipeline patterns
+- **References**: `_CORE.md`, DBT.md, TESTING.md
 - **Status**: ✅ Required
 - **Issues**: #78 (computational research), #79 (data access enforcement)
+
+### Other Agent Files (symlinked to docs/_CHUNKS/)
+
+All symlinked to docs/_CHUNKS/ for modular management:
+
+- **DBT.md** - dbt best practices
+- **E2E-TESTING.md** - End-to-end testing workflows
+- **FAIL-FAST.md** - Extended fail-fast philosophy examples
+- **GIT-WORKFLOW.md** - Git commit and PR workflows
+- **HYDRA.md** - Hydra configuration patterns
+- **TESTING.md** - Testing architecture and patterns
+- **TESTS.md** - Test writing guidelines
+
+**Visibility**: 🔵 REFERENCED (must be explicitly loaded)
+**Status**: ⚠️ Optional (loaded when relevant to task)
 
 ---
 
@@ -215,22 +283,25 @@ Complete list of instruction files with metadata.
 
 - **Path**: `$ACADEMICOPS_BOT/ARCHITECTURE.md`
 - **Purpose**: System overview, design philosophy, loading mechanisms
-- **Loaded by**: Not auto-loaded (reference documentation)
+- **Visibility**: 🔵 REFERENCED (agents must explicitly read)
+- **Loaded by**: Never auto-loaded
 - **Content**:
-- Single instruction loading pathway
-- Agent responsibilities
-- Validation & enforcement system
-- Setup process
-- Migration notes
+  - Single instruction loading pathway
+  - Agent responsibilities
+  - Validation & enforcement system
+  - Setup process
+  - Migration notes
 - **References**: All major system components
-- **Status**: 🔧 Maintenance (this file)
+- **Status**: 🔧 Maintenance
 - **Issues**: #119 (reflects new simplified architecture)
 
 ### docs/INSTRUCTION-INDEX.md (this file)
 
 - **Path**: `$ACADEMICOPS_BOT/docs/INSTRUCTION-INDEX.md`
-- **Purpose**: Complete file registry with metadata
-- **Loaded by**: Not auto-loaded (reference documentation)
+- **Purpose**: Complete file registry with SHOWN vs REFERENCED metadata
+- **Visibility**: 🔵 REFERENCED (agents don't know this exists unless told)
+- **Loaded by**: Never auto-loaded
+- **Content**: What agents see at session start, what files exist, how to discover additional context
 - **References**: All instruction files
 - **Status**: 🔧 Maintenance
 - **Issues**: #119 (updated for new structure)
@@ -239,14 +310,16 @@ Complete list of instruction files with metadata.
 
 - **Path**: `$ACADEMICOPS_BOT/docs/hooks_guide.md`
 - **Purpose**: Hook system documentation and usage guide
-- **Loaded by**: Referenced by trainer agent
+- **Visibility**: 🔵 REFERENCED
+- **Loaded by**: Never auto-loaded
 - **Status**: ⚠️ Optional
 
 ### README.md
 
 - **Path**: `$ACADEMICOPS_BOT/README.md`
 - **Purpose**: Repository overview, quick start, installation
-- **Loaded by**: Referenced from parent INSTRUCTIONS.md files
+- **Visibility**: 🔵 REFERENCED
+- **Loaded by**: Never auto-loaded
 - **References**: ARCHITECTURE.md, setup instructions
 - **Status**: ✅ Required
 
@@ -274,149 +347,133 @@ Complete list of instruction files with metadata.
 
 ---
 
-## Scripts (8 critical files)
+## Scripts (Hook Infrastructure)
 
-### scripts/load_instructions.py
+All scripts are INFRASTRUCTURE - agents never see them, but they control what agents see.
 
-- **Path**: `$ACADEMICOPS_BOT/scripts/load_instructions.py`
-- **Purpose**: SessionStart hook that triggers instruction loading
-- **Loaded by**: Claude Code SessionStart hook (automatic)
-- **Behavior**: Calls `read_instructions.py _CORE.md` and formats output for Claude
-- **Exit codes**: 0 (success), 1 (all files missing)
-- **Status**: ✅ Required (blocking)
-- **Issues**: #119 (simplified to call read script)
+### hooks/load_instructions.py
 
-### scripts/read_instructions.py
+- **Path**: `$ACADEMICOPS_BOT/hooks/load_instructions.py`
+- **Purpose**: SessionStart hook that loads _CORE.md from 3 tiers and injects into agent context
+- **Visibility**: 🟡 INFRASTRUCTURE (agents never see this, but it determines what they DO see)
+- **Loaded by**: Claude Code SessionStart hook (automatic, every session)
+- **Behavior**: Loads _CORE.md from framework/personal/project tiers, outputs JSON with full text
+- **Exit codes**: 0 (success), 1 (framework tier missing)
+- **Status**: ✅ Required (blocks session start if fails)
+- **Issues**: #119 (simplified to unified 3-tier loading)
 
-- **Path**: `$ACADEMICOPS_BOT/scripts/read_instructions.py`
-- **Purpose**: Unified 3-tier instruction file reader
-- **Loaded by**: `load_instructions.py` OR manual invocation
-- **Usage**: `read_instructions.py <filename>`
-- **Behavior**:
-- Reads `<filename>` from bot, personal, project levels
-- stdout: User-friendly colored status
-- stderr: Full instruction text for agent
-- Exit 1 if ALL files missing
-- **Status**: ✅ Required (blocking)
-- **Issues**: #119 (new script for simplified loading)
+### hooks/validate_tool.py
 
-### scripts/validate_tool.py
-
-- **Path**: `$ACADEMICOPS_BOT/scripts/validate_tool.py`
+- **Path**: `$ACADEMICOPS_BOT/hooks/validate_tool.py`
 - **Purpose**: PreToolUse hook for enforcing tool restrictions
-- **Loaded by**: Claude Code PreToolUse hook (automatic)
+- **Visibility**: 🟡 INFRASTRUCTURE (agents only see block/warn messages)
+- **Loaded by**: Claude Code PreToolUse hook (automatic, before every tool use)
 - **Rules Enforced**:
-- Protected file modifications (`.claude/*`, `.gemini/*`)
-- No new documentation files (prevents bloat)
-- Python requires `uv run` prefix
-- Inline Python blocked
-- Git commits warn for non-code-review agents
-- `/tmp` files blocked (violates replication axiom)
+  - Protected file modifications (config/*, hooks/*)
+  - No new documentation files (prevents bloat)
+  - Python requires `uv run` prefix
+  - Git commits warn for non-code-review agents
+  - `/tmp` files blocked (violates replication axiom)
 - **Exit codes**: 0 (allow), 1 (warn), 2 (block)
 - **Status**: ✅ Required
-- **Issues**: Fixed in Issue #119 (hook syntax corrected)
+- **Issues**: #119 (updated paths after refactoring)
 
-### scripts/validate_stop.py
+### hooks/validate_stop.py
 
-- **Path**: `$ACADEMICOPS_BOT/scripts/validate_stop.py`
-- **Purpose**: SubagentStop and Stop hooks
+- **Path**: `$ACADEMICOPS_BOT/hooks/validate_stop.py`
+- **Purpose**: SubagentStop and Stop hooks validation
+- **Visibility**: 🟡 INFRASTRUCTURE
 - **Loaded by**: Claude Code Stop hooks (automatic)
 - **Status**: ✅ Required
 
-### scripts/setup_academicops.sh
+### hooks/stack_instructions.py
 
-- **Path**: `$ACADEMICOPS_BOT/scripts/setup_academicops.sh`
-- **Purpose**: Setup script for installing academicOps in new projects
-- **Usage**: `./scripts/setup_academicops.sh [target-directory]`
-- **Creates**:
-- `.claude/settings.json` (from `dist/.claude/settings.json`)
-- `.claude/agents/` (symlinked to academicOps)
-- `agents/_CORE.md` (from `dist/agents/INSTRUCTIONS.md` template)
-- `.academicOps/scripts/` (symlinked validation scripts)
-- `.gitignore` updates
-- **Verifies**: Environment variables, load_instructions.py exists
-- **Status**: ✅ Required
-- **Issues**: #119 (updated to create `_CORE.md` and deploy scripts to `.academicOps/`)
-
-### scripts/check_instruction_orphans.py
-
-- **Path**: `$ACADEMICOPS_BOT/scripts/check_instruction_orphans.py`
-- **Purpose**: Validates instruction files are properly linked
-- **Usage**: `python scripts/check_instruction_orphans.py`
-- **Behavior**: Fails CI if critical files are orphaned
-- **Status**: 🔧 Maintenance
-- **Issues**: #73 (orphan tracking)
-
-### scripts/code_review.py
-
-- **Path**: `$ACADEMICOPS_BOT/scripts/code_review.py`
-- **Purpose**: Code quality validation rules
-- **Loaded by**: Code review agent
+- **Path**: `$ACADEMICOPS_BOT/hooks/stack_instructions.py`
+- **Purpose**: PostToolUse hook for context-aware instruction loading
+- **Visibility**: 🟡 INFRASTRUCTURE (may inject additional context based on tool use)
+- **Loaded by**: Claude Code PostToolUse hook (automatic, after tool use)
 - **Status**: ⚠️ Optional
 
-### scripts/check_test_architecture.py
+### Logging Hooks
 
-- **Path**: `$ACADEMICOPS_BOT/scripts/check_test_architecture.py`
-- **Purpose**: Test file location validation (pre-commit hook)
-- **Status**: ⚠️ Optional
+- **hooks/log_posttooluse.py** - Logs tool usage
+- **hooks/log_userpromptsubmit.py** - Logs user prompts
+- **hooks/log_sessionend.py** - Logs session end
+- **hooks/log_precompact.py** - Logs context compaction
+- **hooks/log_notification.py** - Logs notifications
+
+**Visibility**: 🟡 INFRASTRUCTURE (silent logging, agents never see output)
+**Status**: ⚠️ Optional (telemetry)
+
+### Other Supporting Scripts
+
+- **scripts/setup_academicops.sh** - Setup script for new projects
+- **scripts/check_instruction_orphans.py** - CI validation for orphaned instruction files
+- **scripts/code_review.py** - Code quality validation
+- **scripts/check_test_architecture.py** - Test architecture validation
+
+**Visibility**: 🟡 INFRASTRUCTURE
+**Status**: 🔧 Maintenance tools
 
 ---
 
-## Configuration Templates (3 files)
+## Configuration (INFRASTRUCTURE)
 
-### dist/.claude/settings.json
+### config/settings.json
 
-- **Path**: `$ACADEMICOPS_BOT/dist/.claude/settings.json`
-- **Purpose**: Template Claude Code settings for new projects
-- **Copied to**: `$PROJECT/.claude/settings.json` by setup script
+- **Path**: `$ACADEMICOPS_BOT/config/settings.json`
+- **Purpose**: Claude Code settings - defines hooks, permissions, status line
+- **Visibility**: 🟡 INFRASTRUCTURE (agents never see this, but it controls their environment)
 - **Content**:
-- Permission rules (allow, deny patterns)
-- Hook definitions (SessionStart, PreToolUse, Stop)
-- Hook paths use `.academicOps/scripts/` (local symlinks)
-- **Status**: ✅ Required (template)
-- **Issues**: #119 (hook paths updated to use `.academicOps/scripts/`)
+  - Environment variables (ACADEMICOPS_BOT)
+  - Permissions (allow/deny patterns)
+  - Hook definitions (SessionStart, PreToolUse, PostToolUse, Stop, etc.)
+  - Status line configuration
+- **Loaded by**: Claude Code at startup (automatic)
+- **Status**: ✅ Required
+- **Note**: Hook paths reference `$ACADEMICOPS_BOT/hooks/` directly
 
-### dist/agents/INSTRUCTIONS.md
+### Template Files (dist/)
 
-- **Path**: `$ACADEMICOPS_BOT/dist/agents/INSTRUCTIONS.md`
-- **Purpose**: Template for project `_CORE.md` files
-- **Copied to**: `$PROJECT/agents/_CORE.md` by setup script
-- **Content**: Placeholder project instructions
-- **Status**: ✅ Required (template)
-- **Issues**: #119 (used as `_CORE.md` template)
+Distribution templates for new project setup:
 
-### dist/.gitignore
+- **dist/.claude/settings.json** - Legacy template (deprecated in favor of root config/)
+- **dist/agents/INSTRUCTIONS.md** - Template for project `_CORE.md`
+- **dist/.gitignore** - academicOps exclusions for project `.gitignore`
 
-- **Path**: `$ACADEMICOPS_BOT/dist/.gitignore`
-- **Purpose**: academicOps exclusions to add to project `.gitignore`
-- **Appended by**: `setup_academicops.sh`
-- **Status**: ✅ Required (template)
+**Visibility**: 🟡 INFRASTRUCTURE (templates, not used directly)
+**Status**: 🔧 Maintenance
 
 ---
 
-## Slash Commands (2 active)
+## Slash Commands
 
-### .claude/commands/trainer.md
+Slash commands trigger additional instruction loading or specific workflows.
 
-- **Path**: `$ACADEMICOPS_BOT/.claude/commands/trainer.md`
-- **Purpose**: Activate trainer agent mode
-- **Loads**: `agents/TRAINER.md`
-- **Status**: ✅ Required
+### Active Commands (7)
 
-### .claude/commands/log-failure.md
+- **commands/trainer.md** - Loads agents/trainer.md, invokes aops-trainer skill
+- **commands/analyst.md** - Loads agents/ANALYST.md for data analysis workflows
+- **commands/dev.md** - Development workflow guidance (TDD, testing, debugging)
+- **commands/ttd.md** - Test-driven development workflow
+- **commands/STRATEGIST.md** - Strategic planning and task extraction
+- **commands/ops.md** - academicOps framework help and guidance
+- **commands/error.md** - Quick experiment outcome logging
+- **commands/log-failure.md** - Log agent performance failures to experiment tracker
 
-- **Path**: `$ACADEMICOPS_BOT/.claude/commands/log-failure.md`
-- **Purpose**: Log agent performance failures to experiment tracking
-- **Status**: ✅ Required
-- **Issues**: #118 (experiment tracking enforcement)
+**Visibility**: 🔴 SHOWN (when invoked, loads full text of corresponding agent file)
+**Status**: ✅ Required
+
+**Mechanism**: Slash commands execute `hooks/load_instructions.py <filename>` to load additional context from 3-tier system.
 
 ### REMOVED Commands (migrated to project `_CORE.md`)
 
-- `/mm` - MediaMarkets analysis mode → `$PROJECT/agents/_CORE.md`
-- `/bm` - Buttermilk development mode → `$PROJECT/agents/_CORE.md`
-- `/tja` - TJA analysis mode → `$PROJECT/agents/_CORE.md`
+Project-specific commands removed in Issue #119:
+- `/mm` - MediaMarkets → moved to project `_CORE.md`
+- `/bm` - Buttermilk → moved to project `_CORE.md`
+- `/tja` - TJA analysis → moved to project `_CORE.md`
 
-**Rationale**: Project context now auto-loads. No need for dedicated commands.
+**Rationale**: Project context auto-loads at SessionStart. No separate commands needed.
 
 ---
 
