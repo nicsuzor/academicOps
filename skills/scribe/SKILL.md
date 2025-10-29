@@ -268,6 +268,49 @@ $ACADEMICOPS_PERSONAL/data/
 - Role definitions or org hierarchy
 - Dependency chains (keep internal)
 
+### Strategic Capture: Level of Detail
+
+**Principle**: Git logs record technical changes. Accomplishments record STRATEGIC progress and decisions.
+
+**Three levels of importance**:
+
+1. **Strategic work** (always document):
+   - Big decisions affecting priorities or direction
+   - Major milestones delivered
+   - Significant collaborations or opportunities
+   - Work directly aligned with top goals
+   - Problems that changed approach
+   - **Detail level**: 2-5 lines explaining context and impact
+
+2. **Routine technical work** (document sparingly):
+   - Infrastructure improvements
+   - Bug fixes and refactoring
+   - Configuration updates
+   - **Detail level**: Merge into one line per project, or omit entirely
+   - **Example**: "[Project] improved repository automation" (not "fixed pre-commit hook to allow JSON with comments")
+
+3. **Trivial updates** (omit):
+   - Dependency updates
+   - Formatting changes
+   - Minor script edits
+   - **These belong in git log only**
+
+**Decision framework**:
+- Does this relate to user's top 3 strategic goals? → Strategic work
+- Would user mention this in a monthly report? → Strategic work
+- Is this a technical detail they'll forget by next week? → Routine or trivial
+- Did this change the plan or open new opportunities? → Strategic work
+- Is this just making existing things work better? → Routine
+
+**Writing location**:
+- ALWAYS write to `$ACADEMICOPS_PERSONAL/data/context/accomplishments.md` (personal repo: @nicsuzor/writing)
+- NEVER write to project repos (buttermilk/data/, bot/data/, etc.)
+- Personal strategic database is authoritative regardless of which project user is working on
+
+**Detail placement**:
+- Accomplishments.md: Strategic summary only
+- Project data files (`data/projects/*.md`): Technical details if needed
+
 ## Email Processing (MCP Integration)
 
 **When processing emails** (using `outlook` or `omcp` MCP tool):
