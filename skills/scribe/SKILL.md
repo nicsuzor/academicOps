@@ -293,6 +293,13 @@ $ACADEMICOPS_PERSONAL/data/
    - Purpose: Evaluate whether doing what we said we would
    - Keep it scannable - just enough to spot misalignment
 
+**Detail level - "Weekly standup report"**:
+- Write what you'd say in a 30-second verbal update to your manager
+- "Completed X, working on Y, blocked on Z" - that's the level
+- One line per item unless truly significant strategic decision
+- If you wouldn't mention it in a weekly standup → don't capture it
+- Git commits already document the technical work
+
 **DO NOT capture**:
 - Infrastructure changes (documented in git log)
 - Bug fixes (documented in git log)
@@ -300,8 +307,12 @@ $ACADEMICOPS_PERSONAL/data/
 - Configuration updates (documented in git log)
 - Agent framework improvements (documented in git log)
 - Anything with a commit message (that's the record)
+- Routine meetings (unless strategic decision made)
+- Minor task updates (task system tracks these)
 
-**Test**: Would this appear in a weekly report to supervisor? If not, omit it.
+**Two tests before capturing**:
+1. Would this appear in weekly report to supervisor? If NO → omit
+2. Would I mention this in a 30-second standup? If NO → omit
 
 **Writing location**:
 - ALWAYS write to `$ACADEMICOPS_PERSONAL/data/context/accomplishments.md` (personal repo: @nicsuzor/writing)

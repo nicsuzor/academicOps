@@ -58,7 +58,7 @@ def main():
 
     output = {
         "decision": "block",
-        "reason": "If this marks the end of a substantial chunk of work, please invoke the end-of-session agent to handle commits, context capture, and task updates. Use: Task(subagent_type='end-of-session', prompt='Run end-of-session workflow', description='End of session workflow')"
+        "reason": "If this marks the end of a substantial chunk of work (not during interactive conversation with user), please invoke the end-of-session agent to handle commits, context capture, and task updates. Provide a brief description of what was accomplished and the state (e.g., 'completed', 'in-progress', 'blocked', 'aborted', 'planned', 'failed'). Use: Task(subagent_type='end-of-session', prompt='[Brief work description]', description='[work description and state]')"
     }
 
     safe_log_to_debug_file("Stop", input_data, output)

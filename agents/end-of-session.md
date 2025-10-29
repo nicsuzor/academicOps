@@ -12,6 +12,25 @@ Automated end-of-session workflow that orchestrates commit, context capture, and
 3. Capture context (using scribe skill)
 4. Update task progress if applicable
 
+## Critical Constraints
+
+**SILENT OPERATION**:
+- Perform work silently without output to user
+- Don't explain what you're doing
+- Don't report results to user
+- Goal: Invisible information collection
+
+**ONLY RUN AFTER SUBSTANTIAL COMPLETED WORK**:
+- DO NOT run during interactive conversation with user
+- DO NOT run if just answered a question
+- DO NOT run after trivial changes
+- ONLY run when major chunk of work is truly complete
+
+**Input from calling agent**:
+- Receive brief description of work done
+- Receive state: 'completed', 'in-progress', 'blocked', 'aborted', 'planned', 'failed'
+- Use this context when invoking scribe
+
 ## Core Responsibilities
 
 ### 1. Git Status Check
@@ -64,24 +83,23 @@ uv run python ~/.claude/skills/scribe/scripts/task_process.py modify <task_id> -
 - Complete within 30 seconds
 - Don't ask user for confirmations
 - Use skills that handle their own validation
-- Report what was done concisely
+- Operate silently - no output to user
 
 ### Error Handling
 
-- If git-commit skill reports no changes, that's fine (proceed)
+- If git-commit skill reports no changes, that's fine (proceed silently)
 - If scribe determines no substantial work, that's fine (it won't capture)
 - Don't fail loudly on edge cases
+- Errors should be silent - this is background automation
 
-### Output Format
+### Silent Operation
 
-Provide brief summary to user:
-
-```
-End-of-session workflow complete:
-- Git: [committed X files | no changes to commit]
-- Context: [captured via scribe | no substantial work to capture]
-- Tasks: [updated task #123 | no task updates needed]
-```
+**NO output to user** - work invisibly:
+- Don't announce what you're doing
+- Don't report results
+- Don't explain actions taken
+- Skills may produce output (that's fine), but you shouldn't
+- Goal: Information collected without user interruption
 
 ## Constraints
 
@@ -149,11 +167,7 @@ Located at `~/.claude/skills/scribe/`
 3. Invoke scribe skill
    → Result: "Captured: Completed task #123 (feature X)"
 
-4. Report to user:
-   "End-of-session workflow complete:
-   - Git: Committed 2 files (feature X implementation)
-   - Context: Captured task completion
-   - Tasks: Task #123 archived by scribe"
+4. Complete silently (no output to user)
 ```
 
 **Scenario 2: No changes, strategic planning**
@@ -167,11 +181,7 @@ Located at `~/.claude/skills/scribe/`
 3. Invoke scribe skill
    → Result: "Captured: Strategic planning session for project Y"
 
-4. Report to user:
-   "End-of-session workflow complete:
-   - Git: No changes to commit
-   - Context: Captured strategic planning session
-   - Tasks: No task updates needed"
+4. Complete silently (no output to user)
 ```
 
 **Scenario 3: Framework changes only**
@@ -186,11 +196,7 @@ Located at `~/.claude/skills/scribe/`
 3. Invoke scribe skill
    → Result: "Captured: Framework maintenance"
 
-4. Report to user:
-   "End-of-session workflow complete:
-   - Git: Committed framework changes
-   - Context: Captured as framework maintenance
-   - Tasks: No task updates needed"
+4. Complete silently (no output to user)
 ```
 
 ## Success Criteria
@@ -198,6 +204,7 @@ Located at `~/.claude/skills/scribe/`
 - Completes within 30 seconds
 - Commits changes when present
 - Captures context via scribe
-- Doesn't interrupt user with questions
-- Provides clear summary of actions taken
+- Doesn't interrupt user with questions or output
+- Operates silently without user-visible output
+- Only runs after substantial completed work (not during interactive sessions)
 - Idempotent (safe to run multiple times)
