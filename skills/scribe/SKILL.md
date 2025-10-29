@@ -268,48 +268,42 @@ $ACADEMICOPS_PERSONAL/data/
 - Role definitions or org hierarchy
 - Dependency chains (keep internal)
 
-### Strategic Capture: Level of Detail
+### Strategic Capture: What to Record
 
-**Principle**: Git logs record technical changes. Accomplishments record STRATEGIC progress and decisions.
+**Principle**: Git logs record technical changes. Accomplishments record TASK PROGRESS and STRATEGIC DECISIONS.
 
-**Three levels of importance**:
+**ONLY capture in accomplishments**:
 
-1. **Strategic work** (always document):
-   - Big decisions affecting priorities or direction
-   - Major milestones delivered
-   - Significant collaborations or opportunities
-   - Work directly aligned with top goals
-   - Problems that changed approach
-   - **Detail level**: 2-5 lines explaining context and impact
+1. **Task completion**: When tasks from task system are completed
+   - Format: "Completed [task title]" with task ID link
+   - Progress details go in task notes (not accomplishments)
+   - Archive the task using task_process.py
 
-2. **Routine technical work** (document sparingly):
-   - Infrastructure improvements
-   - Bug fixes and refactoring
-   - Configuration updates
-   - **Detail level**: Merge into one line per project, or omit entirely
-   - **Example**: "[Project] improved repository automation" (not "fixed pre-commit hook to allow JSON with comments")
+2. **Strategic decisions**: Big choices affecting priorities or direction
+   - Update `data/goals/*.md` or `data/context/current-priorities.md` directly
+   - Brief note in accomplishments if not part of an existing task
+   - Example: "Decided to deprioritize [project] to focus on [goal]"
 
-3. **Trivial updates** (omit):
-   - Dependency updates
-   - Formatting changes
-   - Minor script edits
-   - **These belong in git log only**
+3. **Non-task work** (minimal, one line):
+   - Brief mention if work done wasn't aligned with existing tasks
+   - Example: "Framework maintenance" or "Ad-hoc student meeting"
+   - Purpose: Evaluate whether doing what we said we would
+   - No detail - just enough to spot misalignment
 
-**Decision framework**:
-- Does this relate to user's top 3 strategic goals? → Strategic work
-- Would user mention this in a monthly report? → Strategic work
-- Is this a technical detail they'll forget by next week? → Routine or trivial
-- Did this change the plan or open new opportunities? → Strategic work
-- Is this just making existing things work better? → Routine
+**DO NOT capture**:
+- Infrastructure changes (documented in git log)
+- Bug fixes (documented in git log)
+- Code refactoring (documented in git log)
+- Configuration updates (documented in git log)
+- Agent framework improvements (documented in git log)
+- Anything with a commit message (that's the record)
+
+**Test**: Would this appear in a weekly report to supervisor? If not, omit it.
 
 **Writing location**:
 - ALWAYS write to `$ACADEMICOPS_PERSONAL/data/context/accomplishments.md` (personal repo: @nicsuzor/writing)
 - NEVER write to project repos (buttermilk/data/, bot/data/, etc.)
 - Personal strategic database is authoritative regardless of which project user is working on
-
-**Detail placement**:
-- Accomplishments.md: Strategic summary only
-- Project data files (`data/projects/*.md`): Technical details if needed
 
 ## Email Processing (MCP Integration)
 
