@@ -14,6 +14,48 @@ See TRAINER.md lines 126-153 for requirements.
 
 ## Active Experiments
 
+### 2025-10-29: Multi-Stage Quality-Gated Supervisor Agent
+
+**File**: `2025-10-29_supervisor-multi-stage-quality-gates.md`
+**Issue**: #127
+**Status**: ACTIVE (design and implementation complete, awaiting testing)
+**Severity**: ENHANCEMENT - Critical orchestration capability
+
+**Enhancement**: Created comprehensive SUPERVISOR agent with multi-stage quality-gated workflow based on 2025 LLM orchestration research and user requirements.
+
+**User Requirements**:
+- Plan-first with independent review
+- Test-first micro-iterations
+- One tiny change at a time with review gates
+- Continuous plan reconciliation and scope drift detection
+- Self-monitoring for missing/buggy agents, thrashing
+- Infrastructure gap logging via aops-bug skill
+
+**Implementation**: Created `agents/SUPERVISOR.md` (424 lines) with:
+- 4-stage workflow (Planning → Test-First → Implementation → Iteration Gate → Completion)
+- Success checklist protocol (created first, verified last)
+- Multi-agent request parsing (#126)
+- Self-monitoring protocols (missing agents, thrashing, scope drift)
+- NO EXCUSES enforcement (references _CORE.md)
+- Quality gate checklists at each stage
+- 0-token failure recovery protocol
+
+**Research Foundation**:
+- Checklist-based supervision (AutoGen, CrewAI)
+- Validation layers (ScenGen pattern)
+- Evaluation-driven development
+- Multi-agent delegation patterns (LangGraph)
+
+**Success Criteria**:
+- Task completion with zero regressions
+- Scope drift detection working
+- Infrastructure gaps logged when encountered
+- Success criteria verified with evidence (no claims without demonstration)
+
+**Next Steps**: Phase 2 testing on real complex task
+
+---
+
 ### 2025-10-22: Supervisor Never Declare Success with Failing Tests
 
 **File**: `2025-10-22_supervisor-never-declare-success-with-failing-tests.md`

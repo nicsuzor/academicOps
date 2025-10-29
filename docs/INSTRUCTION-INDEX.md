@@ -260,6 +260,26 @@ Complete list of instruction files with visibility metadata.
 - **Status**: ✅ Required
 - **Issues**: #78 (computational research), #79 (data access enforcement)
 
+### agents/SUPERVISOR.md
+
+- **Path**: `$ACADEMICOPS_BOT/agents/SUPERVISOR.md`
+- **Purpose**: Orchestrate multi-agent workflows with comprehensive quality gates and test-first development
+- **Visibility**: 🔵 REFERENCED (invoked via Task tool with subagent_type: "supervisor")
+- **Loaded by**: Task tool when supervisor orchestration needed
+- **Content**:
+  - Multi-stage quality-gated workflow (Planning → Test-First → Implementation → Iteration Gate)
+  - Success checklist protocol (create first, verify last)
+  - Multi-agent request parsing and coordination
+  - Self-monitoring protocols (missing agents, thrashing, scope drift detection)
+  - NO EXCUSES enforcement (references _CORE.md Axiom #4)
+  - Quality gate checklists at each stage
+  - 0-token failure recovery protocol
+- **References**: `_CORE.md` (NO EXCUSES), `aops-bug` skill, `git-commit` skill, `test-writing` skill
+- **Status**: ✅ Required for complex orchestration tasks
+- **Exception**: Explicit exception to Axiom #1 (DO ONE THING) - authorized to coordinate multi-step workflows
+- **Issues**: #127 (SUPERVISOR agent creation), #126 (agent chaining)
+- **Experiments**: 2025-10-29_supervisor-multi-stage-quality-gates.md
+
 ### Other Agent Files (symlinked to docs/_CHUNKS/)
 
 All symlinked to docs/_CHUNKS/ for modular management:
