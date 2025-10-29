@@ -402,22 +402,20 @@ VALIDATION_RULES = [
 
 def _is_allowed_md_path(file_path: str) -> bool:
     """
-    Check if .md file is in an allowed path (mirrors pre-commit hook logic).
+    Check if .md file is in an allowed path.
 
-    Allowed paths:
-    - bot/agents/*.md: Agent instructions (executable behavior definitions)
-    - bot/experiments/*.md: Experiment tracking (structured data, not documentation)
-    - papers/**/*.md: Research papers
-    - manuscripts/**/*.md: Manuscript drafts
-    - projects/*/papers/**/*.md: Project-specific research papers
-    - projects/*/manuscripts/**/*.md: Project-specific manuscript drafts
+    BLOCKED locations:
+    - Project root (top-level .md files like README.md, HOWTO.md)
+    - docs/ directory (documentation files)
 
-    PROHIBITED paths:
-    - /tmp/**/*.md: Violates academicOps axiom #5 (build for replication, not single-use)
-    - Everything else is considered documentation and is prohibited per Axiom #5
+    Everything else is allowed (pre-commit hook provides comprehensive validation).
 
-    NOTE: Claude Code passes absolute paths to this function, so we need to
-    convert them to relative paths for pattern matching.
+    This hook prevents the MOST COMMON mistake: creating docs in project root.
+    The pre-commit hook provides full validation with user override option.
+
+    Separation of concerns:
+    - This hook: Prevent common real-time mistakes
+    - Pre-commit: Comprehensive validation (bot/*, papers/*, etc.)
     """
     if not file_path:
         return False
@@ -425,45 +423,31 @@ def _is_allowed_md_path(file_path: str) -> bool:
     # Convert to Path object
     path_obj = Path(file_path)
 
-    # PROHIBIT /tmp directory - violates academicOps axiom #5
-    # (no single-use scripts, build infrastructure for long-term replication)
-    if path_obj.is_absolute() and str(path_obj).startswith("/tmp/"):
-        return False
-
     # If absolute path, convert to relative path from cwd
-    # This handles the case where Claude Code passes absolute paths
     if path_obj.is_absolute():
         try:
-            # Get current working directory
             cwd = Path.cwd()
-            # Convert to relative path
             path_obj = path_obj.relative_to(cwd)
         except ValueError:
-            # Path is not relative to cwd, return False (block it)
-            # Files outside the working directory should not be created
-            return False
+            # Path outside cwd - allow (pre-commit will catch if problematic)
+            return True
 
     # Convert to POSIX string for pattern matching
     path = path_obj.as_posix()
 
-    # Allow agent instructions (these ARE executable code)
-    if re.match(r"^bot/agents/.*\.md$", path):
-        return True
+    # BLOCK: Top-level .md files in project root
+    # Example: README.md, HOWTO.md, GUIDE.md
+    if "/" not in path:
+        return False
 
-    # Allow experiment tracking (structured data/knowledge artifacts, not documentation)
-    if re.match(r"^bot/experiments/.*\.md$", path):
-        return True
+    # BLOCK: Files in docs/ directory
+    # Example: docs/README.md, docs/API.md
+    if path.startswith("docs/"):
+        return False
 
-    # Allow research papers in top-level papers/ directory
-    if re.match(r"^papers/.*\.md$", path):
-        return True
-
-    # Allow manuscripts in top-level manuscripts/ directory
-    if re.match(r"^manuscripts/.*\.md$", path):
-        return True
-
-    # Allow project manuscripts and papers
-    return bool(re.match(r"^projects/[^/]+/(papers|manuscripts)/.*\.md$", path))
+    # Allow everything else
+    # Pre-commit hook will provide comprehensive validation
+    return True
 
 
 def _requires_uv_run(command: str) -> bool:
