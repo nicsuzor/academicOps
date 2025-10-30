@@ -14,6 +14,27 @@
       "Write(./**/.venv/**)"
     ]
   },
+  "subagents": {
+    "supervisor": {
+      "permissions": {
+        "allow": [
+          "Task",
+          "TodoWrite",
+          "Skill",
+          "Bash(git *)",
+          "Bash(uv run pytest*)",
+          "Read",
+          "Grep",
+          "Glob"
+        ],
+        "deny": [
+          "Edit",
+          "Write",
+          "NotebookEdit"
+        ]
+      }
+    }
+  },
   "hooks": {
     "PreToolUse": [
       {
