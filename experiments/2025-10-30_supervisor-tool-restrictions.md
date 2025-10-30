@@ -3,7 +3,7 @@
 ## Metadata
 - Date: 2025-10-30
 - Issue: #127
-- Commit: [to be filled after commit]
+- Commit: 38debe1
 - Model: claude-sonnet-4-5-20250929
 
 ## Hypothesis
