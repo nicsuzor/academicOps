@@ -66,7 +66,6 @@ Follow this 6-step validation and commit workflow.
 
 1. **Core standards** (ALWAYS load if they exist):
    - `references/TESTS.md` - Test file standards
-   - `references/HYDRA.md` - Configuration standards
    - `references/FAIL-FAST.md` - Fail-fast philosophy
    - `references/GIT-WORKFLOW.md` - Git workflow patterns
 

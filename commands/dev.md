@@ -8,6 +8,7 @@ extra: |
    - Need the structured workflow enforced
    - Want "EXPLORE MANDATORY" reminder (prevent rushing to code)
    - Beginning a coding session
+   - Need access to capability guides (Hydra, dbt, Python, data science)
 
    ## Related Commands
 
@@ -15,37 +16,33 @@ extra: |
    - `/ops` - View all available academicOps commands
    - `/trainer` - Switch to trainer mode for framework improvements
 
+   ## What This Loads
+
+   The `dev` skill provides:
+
+   1. **🚨 CRITICAL 6-Step Development Workflow** (ONE STEP AT A TIME):
+      - STOP & ANALYZE (check GitHub issues first)
+      - EXPLORE (MANDATORY - search codebase, prevent rushing to code)
+      - PLAN (document solution in issue)
+      - TEST DRIVEN DEVELOPMENT (run tests first, write failing test, iterate)
+      - VALIDATE (full test suite)
+      - COMMIT & UPDATE (conventional commits, update issues)
+
+   2. **Capabilities Index** with comprehensive guides:
+      - Configuration (Hydra)
+      - Data pipelines (dbt)
+      - Python best practices
+      - Visualization (Matplotlib, Seaborn)
+      - Statistical modeling (Statsmodels)
+      - Interactive dashboards (Streamlit)
+
+   3. **Project Rules**:
+      - Keep projects self-contained (polyrepo, not monorepo)
+      - Everything self-documenting
+      - Fail-fast (no fallbacks)
+      - TDD mandatory
+      - Document in GitHub issues
+
 ---
-Load developer workflow from 3-tier hierarchy.
 
-Execute:
-
-```bash
-uv run python ${ACADEMICOPS_BOT}/bots/hooks/load_instructions.py DEVELOPER.md
-```
-
-## What This Loads
-
-**DEVELOPER.md** provides:
-
-1. **🚨 CRITICAL 6-Step Development Workflow**:
-   - STOP & ANALYZE (check GitHub issues first)
-   - EXPLORE (MANDATORY - search codebase, prevent rushing to code)
-   - PLAN (document solution in issue)
-   - TEST DRIVEN DEVELOPMENT (run tests first, write failing test, iterate)
-   - VALIDATE (full test suite)
-   - COMMIT & UPDATE (conventional commits, update issues)
-
-2. **Project Rules**:
-   - Keep projects self-contained (polyrepo, not monorepo)
-   - Everything self-documenting
-   - Fail-fast (no fallbacks)
-   - TDD mandatory
-   - Document in GitHub issues
-
-After loading, confirm to user:
-
-```
-✅ Loaded developer workflow
-Ready for development with systematic 6-step process
-```
+Invoke the `dev` skill for systematic development workflow with comprehensive capability guides.

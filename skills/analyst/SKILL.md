@@ -38,7 +38,21 @@ This skill includes both inline guidance and detailed reference documentation:
 - `references/streamlit-patterns.md` - Visualization best practices and layout patterns
 - `references/context-discovery.md` - Guide to finding and reading project context
 
-**Note**: Chunk files are loaded on-demand when detailed technical specifications are needed. Use `@reference _CHUNKS/filename.md` to load specific documentation.
+### Statistical Analysis (references/)
+- `references/statistical-analysis.md` - **Complete guide to hypothesis testing and statistical analysis**
+- `references/test_selection_guide.md` - Choosing the right statistical test
+- `references/assumptions_and_diagnostics.md` - Checking and validating statistical assumptions
+- `references/effect_sizes_and_power.md` - Effect sizes, confidence intervals, and power analysis
+- `references/bayesian_statistics.md` - Bayesian alternatives and Bayes factors
+- `references/reporting_standards.md` - APA-style statistical reporting
+
+### Data Science References (references/)
+- `references/MATPLOTLIB.md` → Visualization with matplotlib
+- `references/SEABORN.md` → Statistical visualization with seaborn
+- `references/STATSMODELS.md` → Statistical modeling and econometrics
+- `references/PYTHON-DEV.md` → Python best practices and development standards
+
+**Note**: Chunk files are loaded on-demand when detailed technical specifications are needed. Use `@reference _CHUNKS/filename.md` or `@references/filename.md` to load specific documentation.
 
 ## When to Use This Skill
 

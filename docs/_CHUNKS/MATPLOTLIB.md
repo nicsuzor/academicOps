@@ -1,8 +1,3 @@
----
-name: matplotlib
-description: "Foundational plotting library. Create line plots, scatter, bar, histograms, heatmaps, 3D, subplots, export PNG/PDF/SVG, for scientific visualization and publication figures."
----
-
 # Matplotlib
 
 ## Overview
@@ -102,8 +97,8 @@ axes[1, 1].hist(data, bins=30)
 
 # Method 2: Mosaic layout (more flexible)
 fig, axes = plt.subplot_mosaic([['left', 'right_top'],
-                                 ['left', 'right_bottom']],
-                                figsize=(10, 8))
+                                ['left', 'right_bottom']],
+                               figsize=(10, 8))
 axes['left'].plot(x, y)
 axes['right_top'].scatter(x, y)
 axes['right_bottom'].hist(data)

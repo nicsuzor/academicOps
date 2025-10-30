@@ -1,8 +1,3 @@
----
-name: statsmodels
-description: "Statistical modeling toolkit. OLS, GLM, logistic, ARIMA, time series, hypothesis tests, diagnostics, AIC/BIC, for rigorous statistical inference and econometric analysis."
----
-
 # Statsmodels: Statistical Modeling and Econometrics
 
 ## Overview
@@ -44,8 +39,8 @@ print(results.summary())
 
 # Key results
 print(f"R-squared: {results.rsquared:.4f}")
-print(f"Coefficients:\\n{results.params}")
-print(f"P-values:\\n{results.pvalues}")
+print(f"Coefficients:\n{results.params}")
+print(f"P-values:\n{results.pvalues}")
 
 # Predictions with confidence intervals
 predictions = results.get_prediction(X_new)
@@ -82,7 +77,7 @@ print(results.summary())
 
 # Odds ratios
 odds_ratios = np.exp(results.params)
-print("Odds ratios:\\n", odds_ratios)
+print("Odds ratios:\n", odds_ratios)
 
 # Predicted probabilities
 probs = results.predict(X)
@@ -155,7 +150,7 @@ print(results.summary())
 
 # Rate ratios (for Poisson with log link)
 rate_ratios = np.exp(results.params)
-print("Rate ratios:\\n", rate_ratios)
+print("Rate ratios:\n", rate_ratios)
 
 # Check overdispersion
 overdispersion = results.pearson_chi2 / results.df_resid

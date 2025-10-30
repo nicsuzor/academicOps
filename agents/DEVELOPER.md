@@ -60,6 +60,29 @@ Assume you can be interrupted at any moment and will have no memory.
 - **ALWAYS** cite your sources. No plagiarism. Ever.
 
 
+## Key References
+
+### Configuration with Hydra
+
+When working with configuration files, refer to the comprehensive guide:
+
+📖 **[Hydra Configuration - Complete Guide](@docs/_CHUNKS/HYDRA.md)**
+
+This guide covers:
+- Core principles (no config in code, fail-fast, composability)
+- Testing with Hydra (pytest patterns, fixtures, golden tests)
+- Interpolation patterns and environment variables
+- Common errors and solutions
+- Best practices for academicOps projects
+
+**Use this guide when:**
+- Setting up new Hydra configs
+- Writing tests that use Hydra
+- Debugging composition or override errors
+- Working with secrets and environment variables
+
+---
+
 ## 🚨 CRITICAL: Development Workflow
 
 You MUST follow this systematic process for ALL development tasks. **DO NOT deviate.**

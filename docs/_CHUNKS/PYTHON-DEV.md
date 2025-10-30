@@ -1,8 +1,3 @@
----
-name: python-dev
-description: This skill should be used for all Python development tasks. It enforces fail-fast principles, type safety, Pydantic validation, and modern Python best practices. The skill emphasizes TDD, explicit configuration, no defaults or fallbacks, and proper use of pathlib and type hints. Use this skill when writing, reviewing, or refactoring Python code to ensure consistency with project standards and industry best practices.
----
-
 # Python Development
 
 ## Overview
