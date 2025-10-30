@@ -5,7 +5,7 @@ Tests the complete workflow:
 1. 3-tier hierarchy loading (framework → personal → project)
 2. Environment variable substitution (${ACADEMICOPS_BOT})
 3. Two output modes (JSON for hooks, text for commands)
-4. Files in new location (bots/agents/)
+4. Files in new location (core/)
 5. No legacy fallbacks
 
 Following testing practices: Integration tests, not unit tests.
@@ -28,17 +28,17 @@ class TestLoadInstructionsBasics:
 
     def test_load_instructions_exists_and_executable(self, bot_root):
         """Verify load_instructions.py exists and is executable."""
-        script = bot_root / "scripts" / "load_instructions.py"
+        script = bot_root / "hooks" / "load_instructions.py"
         assert script.exists(), f"Script not found: {script}"
         assert script.stat().st_mode & 0o111, f"Script not executable: {script}"
 
     def test_core_md_at_new_location(self, bot_root):
-        """Verify _CORE.md is at bots/agents/ (new standard location)."""
-        core_md = bot_root / "bots" / "agents" / "_CORE.md"
+        """Verify _CORE.md is at core/ (new standard location)."""
+        core_md = bot_root / "core" / "_CORE.md"
         assert core_md.exists(), f"_CORE.md not at new location: {core_md}"
 
-        # Old location should NOT exist
-        old_location = bot_root / "agents" / "_CORE.md"
+        # Old location (bots/) should NOT exist
+        old_location = bot_root / "bots" / "_CORE.md"
         assert not old_location.exists(), (
             f"_CORE.md still at old location: {old_location}"
         )
@@ -62,7 +62,7 @@ class TestThreeTierHierarchy:
         monkeypatch.chdir(empty_project)
 
         result = subprocess.run(
-            ["uv", "run", "python", "scripts/load_instructions.py"],
+            ["uv", "run", "python", "hooks/load_instructions.py"],
             cwd=bot_root,
             capture_output=True,
             text=True,
@@ -87,8 +87,8 @@ class TestThreeTierHierarchy:
         # Setup personal tier
         personal_repo = tmp_path / "personal"
         personal_repo.mkdir()
-        (personal_repo / "bots" / "agents").mkdir(parents=True)
-        (personal_repo / "bots" / "agents" / "_CORE.md").write_text(
+        (personal_repo / "core").mkdir(parents=True)
+        (personal_repo / "core" / "_CORE.md").write_text(
             "# Personal Preferences\nTEST_PERSONAL_CONTENT"
         )
         monkeypatch.setenv("ACADEMICOPS_PERSONAL", str(personal_repo))
@@ -96,14 +96,14 @@ class TestThreeTierHierarchy:
         # Setup project tier
         project_repo = tmp_path / "project"
         project_repo.mkdir()
-        (project_repo / "bots" / "agents").mkdir(parents=True)
-        (project_repo / "bots" / "agents" / "_CORE.md").write_text(
+        (project_repo / "docs" / "bots").mkdir(parents=True)
+        (project_repo / "docs" / "bots" / "_CORE.md").write_text(
             "# Project Context\nTEST_PROJECT_CONTENT"
         )
         monkeypatch.chdir(project_repo)
 
         result = subprocess.run(
-            ["uv", "run", "python", "scripts/load_instructions.py"],
+            ["uv", "run", "python", "hooks/load_instructions.py"],
             cwd=bot_root,
             capture_output=True,
             text=True,
@@ -128,8 +128,8 @@ class TestThreeTierHierarchy:
         # Setup personal tier
         personal_repo = tmp_path / "personal"
         personal_repo.mkdir()
-        (personal_repo / "bots" / "agents").mkdir(parents=True)
-        (personal_repo / "bots" / "agents" / "_CORE.md").write_text(
+        (personal_repo / "core").mkdir(parents=True)
+        (personal_repo / "core" / "_CORE.md").write_text(
             "PERSONAL_MARKER"
         )
         monkeypatch.setenv("ACADEMICOPS_PERSONAL", str(personal_repo))
@@ -137,14 +137,14 @@ class TestThreeTierHierarchy:
         # Setup project tier
         project_repo = tmp_path / "project"
         project_repo.mkdir()
-        (project_repo / "bots" / "agents").mkdir(parents=True)
-        (project_repo / "bots" / "agents" / "_CORE.md").write_text(
+        (project_repo / "docs" / "bots").mkdir(parents=True)
+        (project_repo / "docs" / "bots" / "_CORE.md").write_text(
             "PROJECT_MARKER"
         )
         monkeypatch.chdir(project_repo)
 
         result = subprocess.run(
-            ["uv", "run", "python", "scripts/load_instructions.py"],
+            ["uv", "run", "python", "hooks/load_instructions.py"],
             cwd=bot_root,
             capture_output=True,
             text=True,
@@ -175,7 +175,7 @@ class TestTwoOutputModes:
         monkeypatch.chdir(tmp_path)
 
         result = subprocess.run(
-            ["uv", "run", "python", "scripts/load_instructions.py"],
+            ["uv", "run", "python", "hooks/load_instructions.py"],
             cwd=bot_root,
             capture_output=True,
             text=True,
@@ -196,12 +196,12 @@ class TestTwoOutputModes:
         monkeypatch.chdir(tmp_path)
 
         # DEVELOPER.md should exist at new location
-        dev_file = bot_root / "bots" / "agents" / "DEVELOPER.md"
+        dev_file = bot_root / "agents" / "DEVELOPER.md"
         if not dev_file.exists():
-            pytest.skip("DEVELOPER.md not yet migrated to bots/agents/")
+            pytest.skip("DEVELOPER.md not found in agents/ directory")
 
         result = subprocess.run(
-            ["uv", "run", "python", "scripts/load_instructions.py", "DEVELOPER.md"],
+            ["uv", "run", "python", "hooks/load_instructions.py", "DEVELOPER.md"],
             cwd=bot_root,
             capture_output=True,
             text=True,
@@ -223,7 +223,7 @@ class TestTwoOutputModes:
 
         # Force text output for _CORE.md (normally JSON)
         result = subprocess.run(
-            ["uv", "run", "python", "scripts/load_instructions.py", "--format=text"],
+            ["uv", "run", "python", "hooks/load_instructions.py", "--format=text"],
             cwd=bot_root,
             capture_output=True,
             text=True,
@@ -255,14 +255,14 @@ class TestNoLegacyFallbacks:
         (old_agents / "_CORE.md").write_text("OLD_LOCATION_CONTENT")
 
         # New location DOES NOT EXIST
-        new_agents = fake_bot / "bots" / "agents"
-        assert not new_agents.exists()
+        new_core = fake_bot / "core"
+        assert not new_core.exists()
 
         monkeypatch.setenv("ACADEMICOPS_BOT", str(fake_bot))
         monkeypatch.chdir(tmp_path)
 
         result = subprocess.run(
-            ["uv", "run", "python", "scripts/load_instructions.py"],
+            ["uv", "run", "python", "hooks/load_instructions.py"],
             cwd=bot_root,
             capture_output=True,
             text=True,
@@ -284,14 +284,14 @@ class TestNoLegacyFallbacks:
         (chunks_dir / "DEVELOPER.md").write_text("OLD_CHUNKS_LOCATION")
 
         # New location DOES NOT EXIST
-        new_location = fake_bot / "bots" / "agents" / "DEVELOPER.md"
+        new_location = fake_bot / "agents" / "DEVELOPER.md"
         assert not new_location.exists()
 
         monkeypatch.setenv("ACADEMICOPS_BOT", str(fake_bot))
         monkeypatch.chdir(tmp_path)
 
         result = subprocess.run(
-            ["uv", "run", "python", "scripts/load_instructions.py", "DEVELOPER.md"],
+            ["uv", "run", "python", "hooks/load_instructions.py", "DEVELOPER.md"],
             cwd=bot_root,
             capture_output=True,
             text=True,
@@ -315,7 +315,7 @@ class TestEnvironmentVariables:
         monkeypatch.chdir(tmp_path)
 
         result = subprocess.run(
-            ["uv", "run", "python", "scripts/load_instructions.py"],
+            ["uv", "run", "python", "hooks/load_instructions.py"],
             cwd=bot_root,
             capture_output=True,
             text=True,
@@ -334,7 +334,7 @@ class TestEnvironmentVariables:
         monkeypatch.chdir(tmp_path)
 
         result = subprocess.run(
-            ["uv", "run", "python", "scripts/load_instructions.py"],
+            ["uv", "run", "python", "hooks/load_instructions.py"],
             cwd=bot_root,
             capture_output=True,
             text=True,

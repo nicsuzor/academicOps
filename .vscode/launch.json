@@ -96,6 +96,7 @@
                 "run",
                 "python",
             ],
+            "args": ["db=dev"],
             "env": {
                 "MCP_TRANSPORT": "http"
             },

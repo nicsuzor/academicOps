@@ -1,12 +1,31 @@
 Read `./agents/_CORE.md` for core axioms and project instructions.
 
-## Repository Information
+## Repository: nicsuzor/academicOps
 
-Git remote origin: git@github.com:nicsuzor/academicOps
+This is the **academicOps** framework repository (PUBLIC), providing agent infrastructure for academic projects.
 
-- We're in the `@nicsuzor/academicOps` repository (public).
-This is the main academicOps automation framework repository where we've been working on:
-  - Deployment architecture tests (Issue #128)
-  - CLAUDE.md just-in-time loading (Issue #120)
-  - All the core agent instructions, skills, and infrastructure (ALWAYS ONGOING)
-- We do evidence-based changes and experiments. NEVER try to fix a problem based on a single data point! Associate errors with a general category of error or failure mode, don't treat them as discrete (we're building a SYSTEM!) Save evidence of failures to our experiment tracker and to github issues, highly preferring existing issues wherever possible.
+**Directory structure:**
+```
+$ACADEMICOPS_BOT/          # This repository
+├── agents/                # Self-contained agentic workflows (subagents)
+├── commands/              # Slash command definitions
+├── config/                # Claude Code settings (hooks, permissions)
+├── core/                  # Universal instructions (auto-loaded at SessionStart)
+├── docs/                  # Framework documentation
+│   ├── bots/              # Framework development context (auto-loaded at SessionStart)
+│   └── INSTRUCTION-INDEX.md  # Complete file registry
+├── hooks/                 # SessionStart, PreToolUse, Stop hooks
+├── scripts/               # Supporting automation
+└── skills/                # Packaged skills (installed to ~/.claude/skills/)
+```
+
+**How projects use this framework:**
+- Projects reference via `$ACADEMICOPS_BOT` environment variable
+- SessionStart hook auto-loads `core/_CORE.md` and `docs/bots/INDEX.md` from 3 tiers (framework/personal/project)
+- Specialized agents invoked via slash commands (`/trainer`, `/analyst`, `/dev`, etc.)
+- Hooks run automatically to validate tool use and load context
+
+**Working in this repository:**
+- Evidence-based changes and experiments (we're building a SYSTEM, not fixing discrete bugs)
+- Log failures to experiment tracker and GitHub issues (prefer existing issues)
+- See `docs/INSTRUCTION-INDEX.md` for complete file visibility (SHOWN vs REFERENCED)

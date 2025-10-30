@@ -16,9 +16,9 @@
    - Don't identify problems and immediately fix them
    - If user corrects you, STOP and re-evaluate
 3. **Namespace Separation**: NEVER mix agent instructions with human documentation
-   - `agents/*.md` and `bots/*/` = Agent instructions (rules for AI, imperative voice: "You MUST...")
-   - `docs/*.md` and root `*.md` = Human documentation (explanations for developers/users, descriptive voice: "The system does...")
-   - ❌ PROHIBITED: Agent rules in `docs/`, human documentation in `agents/`
+   - `core/*.md` and `docs/bots/*.md` = Agent instructions (rules for AI, imperative voice: "You MUST...")
+   - `docs/*.md` (except docs/bots/) and root `*.md` = Human documentation (explanations for developers/users, descriptive voice: "The system does...")
+   - ❌ PROHIBITED: Agent rules in general `docs/`, human documentation in `core/` or `agents/`
 4. **Data Boundaries**: `bot/` = PUBLIC (GitHub), everything else = PRIVATE
 5. **Project Isolation**: Project-specific content belongs ONLY in the project repository
 6. **Project Independence**: Projects (submodules) must work independently without cross-dependencies

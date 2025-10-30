@@ -79,7 +79,7 @@ Individual projects can add local configuration in `.claude/settings.json` to ov
 
 ```bash
 cd /path/to/your/project
-mkdir -p .claude bots/agents bots/hooks
+mkdir -p .claude agents hooks
 
 # Create local settings
 cat > .claude/settings.json << 'EOF'
@@ -90,7 +90,7 @@ cat > .claude/settings.json << 'EOF'
         "hooks": [
           {
             "type": "command",
-            "command": "test -f $CLAUDE_PROJECT_DIR/bots/hooks/load_instructions.py && uv run python $CLAUDE_PROJECT_DIR/bots/hooks/load_instructions.py || echo 'No project instructions'",
+            "command": "test -f $CLAUDE_PROJECT_DIR/hooks/load_instructions.py && uv run python $CLAUDE_PROJECT_DIR/hooks/load_instructions.py || echo 'No project instructions'",
             "timeout": 5000
           }
         ]

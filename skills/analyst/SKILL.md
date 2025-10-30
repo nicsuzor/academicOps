@@ -11,6 +11,35 @@ Support academic research data analysis by working collaboratively with dbt (dat
 
 **Core principle:** Take ONE action at a time (generate a chart, update database, create a test), then yield to the user for feedback before proceeding.
 
+## Documentation Index
+
+This skill includes both inline guidance and detailed reference documentation:
+
+### Core Workflow Documentation (Inline)
+- Context Discovery - How to discover project context
+- Data Access Workflow - Critical rules for accessing data through dbt
+- Testing Workflow - Adding tests to validate data quality
+- Data Investigation - Reusable investigation scripts
+- Exploratory Analysis - Collaborative data exploration
+- Quick Reference Commands
+
+### Research Documentation Standards (_CHUNKS/)
+- `_CHUNKS/research-documentation.md` - **REQUIRED documentation structure and maintenance rules**
+- `_CHUNKS/methodology-files.md` - What goes in METHODOLOGY.md files
+- `_CHUNKS/methods-vs-methodology.md` - Distinguishing METHODS from METHODOLOGY
+- `_CHUNKS/experiment-logging.md` - Experiment directory structure and lifecycle
+
+### Detailed Technical Workflows (_CHUNKS/)
+- `_CHUNKS/dbt-workflow.md` - dbt model creation and data access patterns
+- `_CHUNKS/streamlit-workflow.md` - Streamlit visualization workflow
+
+### Additional Resources (references/)
+- `references/dbt-workflow.md` - Comprehensive dbt patterns and testing strategies
+- `references/streamlit-patterns.md` - Visualization best practices and layout patterns
+- `references/context-discovery.md` - Guide to finding and reading project context
+
+**Note**: Chunk files are loaded on-demand when detailed technical specifications are needed. Use `@reference _CHUNKS/filename.md` to load specific documentation.
+
 ## When to Use This Skill
 
 Invoke this skill when:
@@ -182,198 +211,41 @@ def load_data():
 
 Create or modify dbt models following academicOps layered architecture.
 
-### Before Creating New Model: Check for Duplicates
+**For detailed dbt workflow including model layers, single-step workflow, and examples, see `@reference _CHUNKS/dbt-workflow.md`**
 
-**REQUIRED:** Always check existing models first to avoid duplication.
+### Quick Reference: Model Layers
 
-```bash
-# List all existing models
-ls -1 dbt/models/staging/*.sql dbt/models/intermediate/*.sql dbt/models/marts/*.sql
+1. **Staging (`stg_*`)** - Clean and standardize raw data (no business logic)
+2. **Intermediate (`int_*`)** - Business logic transformations (can be ephemeral)
+3. **Marts (`fct_*`, `dim_*`)** - Analysis-ready datasets (materialized)
 
-# Search for related models
-grep -r "keyword" dbt/models/
-```
+### Quick Reference: Workflow Pattern
 
-Ask yourself:
-- Can I extend an existing model instead of creating new one?
-- Does this transformation already exist?
-- Can I reuse intermediate models?
+1. Create model file → STOP, show user
+2. Add documentation → STOP, show user
+3. Add tests → STOP, show user
+4. Run model and tests → STOP, report results
 
-### Model Layers
+**ALWAYS check for duplicate models before creating new ones.**
 
-1. **Staging (`stg_*`)** - Clean and standardize raw data
-   - Type casting
-   - Rename to conventions
-   - Basic filtering (remove test data, invalid records)
-   - NO business logic
-
-2. **Intermediate (`int_*`)** - Business logic transformations
-   - Can be ephemeral (not materialized)
-   - Focused transformations
-   - Reusable logic
-
-3. **Marts (`fct_*`, `dim_*`)** - Analysis-ready datasets
-   - `fct_*`: Fact tables (events, transactions, measurements)
-   - `dim_*`: Dimension tables (entities, classifications)
-   - Materialized for performance
-
-### Follow Single-Step Workflow
-
-When creating a dbt model, take ONE step, then stop:
-
-**Step 1: Create the model file**
-```bash
-# Create staging model
-touch dbt/models/staging/stg_source_name.sql
-```
-
-Write SQL:
-```sql
--- models/staging/stg_cases.sql
-select
-    id as case_id,
-    cast(submitted_at as date) as submission_date,
-    lower(status) as status,
-    decision_text
-from {{ source('raw', 'cases') }}
-where id is not null
-```
-
-**STOP. Show to user. Wait for feedback.**
-
-**Step 2: Add documentation** (only after user approves model)
-```yaml
-# dbt/schema.yml
-models:
-  - name: stg_cases
-    description: Cleaned case data from raw source
-    columns:
-      - name: case_id
-        description: Unique identifier for case
-      - name: status
-        description: Case status (pending, reviewed, published)
-```
-
-**STOP. Show to user. Wait for feedback.**
-
-**Step 3: Add tests** (only after user approves documentation)
-```yaml
-columns:
-  - name: case_id
-    tests:
-      - unique
-      - not_null
-```
-
-**STOP. Show to user. Wait for feedback.**
-
-**Step 4: Run the model** (only after user approves tests)
-```bash
-dbt run --select stg_cases
-dbt test --select stg_cases
-```
-
-**STOP. Report results. Wait for next instruction.**
-
-**See:** `references/dbt-workflow.md` for model patterns and testing strategies
+**See:** `_CHUNKS/dbt-workflow.md` for complete workflow details and `references/dbt-workflow.md` for comprehensive patterns
 
 ## Follow Visualization Workflow
 
 Create Streamlit visualizations following single-step collaborative pattern.
 
-### Streamlit Structure
+**For detailed Streamlit workflow including structure, single-step patterns, and examples, see `@reference _CHUNKS/streamlit-workflow.md`**
 
-Standard Streamlit app structure for academicOps projects:
+### Quick Reference: Workflow Pattern
 
-```python
-import streamlit as st
-import duckdb
-import plotly.express as px
+1. Load data from dbt model → STOP, confirm data
+2. Create single chart → STOP, get feedback
+3. Add interactivity → STOP, confirm works
+4. Continue one change at a time
 
-# Page config
-st.set_page_config(page_title="Project Analysis", layout="wide")
+**Key principle:** Always load data through dbt models using DuckDB, cache with `@st.cache_data`
 
-# Data loading (cached)
-@st.cache_data
-def load_data():
-    conn = duckdb.connect('data/warehouse.db')
-    return conn.execute("SELECT * FROM fct_cases").df()
-
-# Main app
-def main():
-    st.title("Case Analysis Dashboard")
-
-    df = load_data()
-
-    # Filters in sidebar
-    with st.sidebar:
-        st.header("Filters")
-        status_filter = st.multiselect("Status", df['status'].unique())
-
-    # Apply filters
-    if status_filter:
-        df = df[df['status'].isin(status_filter)]
-
-    # Visualizations
-    st.header("Overview Metrics")
-    col1, col2, col3 = st.columns(3)
-    col1.metric("Total Cases", len(df))
-    col2.metric("Avg Processing Days", df['processing_days'].mean().round(1))
-    col3.metric("Completion Rate", f"{(df['status']=='published').mean():.1%}")
-
-    # Chart
-    fig = px.histogram(df, x='processing_days', title='Processing Time Distribution')
-    st.plotly_chart(fig, use_container_width=True)
-
-if __name__ == "__main__":
-    main()
-```
-
-### Follow Single-Step Visualization Workflow
-
-**Step 1: Load data from dbt model**
-
-```python
-import streamlit as st
-import duckdb
-
-@st.cache_data
-def load_data():
-    conn = duckdb.connect('data/warehouse.db')
-    return conn.execute("SELECT * FROM fct_cases").df()
-
-df = load_data()
-st.dataframe(df.head())
-```
-
-**STOP. Show to user. Confirm data is correct.**
-
-**Step 2: Create single chart** (only after user confirms data)
-
-```python
-import plotly.express as px
-
-fig = px.histogram(df, x='processing_days', title='Processing Time Distribution')
-st.plotly_chart(fig, use_container_width=True)
-```
-
-**STOP. Show to user. Get feedback on chart.**
-
-**Step 3: Add interactivity** (only after user approves chart)
-
-```python
-with st.sidebar:
-    status_filter = st.multiselect("Status", df['status'].unique())
-
-if status_filter:
-    df = df[df['status'].isin(status_filter)]
-```
-
-**STOP. Show to user. Confirm filter works as expected.**
-
-**Continue this pattern:** One change at a time, user feedback, then proceed.
-
-**See:** `references/streamlit-patterns.md` for visualization best practices
+**See:** `_CHUNKS/streamlit-workflow.md` for complete workflow and `references/streamlit-patterns.md` for best practices
 
 ## Follow Testing Workflow
 
@@ -643,26 +515,40 @@ Continue one step at a time, yielding to user after each finding.
 
 ## Documentation Philosophy
 
-**Self-documenting work**: Do NOT create separate analysis reports or documentation files.
+**Self-documenting work**: Do NOT create separate analysis reports or random documentation files.
 
-### Where to Document
+**🚨 CRITICAL: Research projects must follow STRICT documentation structure. See `@reference _CHUNKS/research-documentation.md` for complete requirements.**
+
+### Required Documentation Structure
+
+Research projects MUST maintain:
+- **README.md** - Project overview and quick start
+- **METHODOLOGY.md** - Research design and approach (see `@reference _CHUNKS/methodology-files.md`)
+- **methods/*.md** - Technical implementation details (see `@reference _CHUNKS/methods-vs-methodology.md`)
+- **data/README.md** - Data sources and schema
+- **dbt/schema.yml** - Model and column documentation
+- **experiments/YYYYMMDD-description/** - Experimental work (see `@reference _CHUNKS/experiment-logging.md`)
+
+### Where Analysis Documentation Lives
 
 1. **Streamlit dashboards** - Interactive exploration and validation
-2. **Jupyter notebooks** - Detailed analysis with inline markdown
+2. **Jupyter notebooks** - Detailed analysis with inline markdown (in experiments/ if exploratory)
 3. **GitHub issues** - Track analysis tasks and decisions
 4. **Code comments** - Explain analytical decisions in dbt models
 5. **Commit messages** - Document why changes were made
 6. **dbt schema.yml** - Document model purposes and column meanings
+7. **methods/*.md** - Technical method specifications
 
-### What NOT to Do
+### Prohibited
 
-❌ Create `analysis_report.md`
+❌ Create `analysis_report.md` or any random markdown files
 ❌ Create `findings_summary.docx`
-❌ Create separate documentation for what code already shows
+❌ Proliferate documentation files without defined structure
+❌ Leave documentation stale when code changes
 
-✅ Put explanations in Jupyter markdown cells
-✅ Put findings in Streamlit dashboard text
-✅ Put decisions in GitHub issue comments
+✅ Follow strict structure defined in `_CHUNKS/research-documentation.md`
+✅ Update documentation in SAME commit as code changes
+✅ One source of truth for each piece of information
 
 ## Collaborative Workflow Principles
 
@@ -709,27 +595,30 @@ duckdb data/warehouse.db -c "SELECT * FROM fct_cases LIMIT 10"
 
 ## Resources
 
-This skill includes detailed reference documentation:
+This skill includes comprehensive documentation organized in three tiers:
 
-### references/dbt-workflow.md
-Comprehensive dbt patterns including:
-- Data access policy (why no direct upstream queries)
-- Model layering (staging, intermediate, marts)
-- Testing strategies (schema, singular, package tests)
-- Documentation practices
-- Common patterns (incremental models, source freshness)
+### Research Documentation Standards (_CHUNKS/)
 
-### references/streamlit-patterns.md
-Streamlit dashboard best practices including:
-- Standard app structure
-- Data loading and caching
-- Interactive components (filters, selections)
-- Visualization libraries (Plotly, Altair)
-- Layout patterns (columns, tabs, expanders)
+**Load these to understand required project documentation:**
 
-### references/context-discovery.md
-Guide to finding and reading project context:
-- Required context files (README, data docs, project overview)
-- How to identify project conventions
-- What information to extract
-- Context summarization template
+- `_CHUNKS/research-documentation.md` - Required documentation structure and maintenance rules
+- `_CHUNKS/methodology-files.md` - What goes in METHODOLOGY.md files
+- `_CHUNKS/methods-vs-methodology.md` - Distinguishing METHODS from METHODOLOGY
+- `_CHUNKS/experiment-logging.md` - Experiment directory structure and lifecycle
+
+### Technical Workflow Details (_CHUNKS/)
+
+**Load these for detailed technical workflows:**
+
+- `_CHUNKS/dbt-workflow.md` - dbt model creation, data access patterns, and workflow
+- `_CHUNKS/streamlit-workflow.md` - Streamlit visualization workflow and structure
+
+### Comprehensive Reference Documentation (references/)
+
+**Load these for in-depth best practices:**
+
+- `references/dbt-workflow.md` - Complete dbt patterns (testing, documentation, common patterns)
+- `references/streamlit-patterns.md` - Complete Streamlit best practices (layout, components, libraries)
+- `references/context-discovery.md` - Project context discovery guide
+
+**Usage**: Reference chunk files using `@reference _CHUNKS/filename.md` to load detailed documentation on-demand.

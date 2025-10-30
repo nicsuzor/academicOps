@@ -54,8 +54,14 @@ ${OUTER}/                      # User's parent repository (PRIVATE)
 │       └── docs/              # Project-specific content goes HERE
 └── bot/                       # THIS SUBMODULE (PUBLIC as nicsuzor/academicOps)
     ├── agents/                # Agent persona definitions
-    ├── scripts/               # Automation tools
+    ├── commands/              # Slash command definitions
+    ├── config/                # Global configuration
     ├── docs/                  # Generic documentation (no private data)
+    ├── experiments/           # Experiment tracking logs
+    ├── hooks/                 # Claude Code hook scripts
+    ├── prompts/               # Agent prompt templates
+    ├── scripts/               # Automation tools
+    ├── skills/                # Packaged skill sources
     └── tests/                 # Test framework
 ```
 

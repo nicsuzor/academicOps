@@ -5,6 +5,12 @@
 		},
 		{
 			"path": "../../bot"
+		},
+		{
+			"path": "../../zotmcp"
+		},
+		{
+			"path": "../../automod"
 		}
 	],
 	"settings": {

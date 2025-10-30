@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """
-PostToolUse hook: Stack instructions from 3 tiers when reading /bots/**/*.md.
+PostToolUse hook: Stack instructions from 3 tiers when reading /core/**/*.md or /docs/bots/**/*.md.
 
-When an agent reads a file matching /bots/**/*.md, this hook provides stacked content:
-1. Framework tier ($ACADEMICOPS_BOT/bots/...) - REQUIRED
-2. Personal tier ($ACADEMICOPS_PERSONAL/bots/...) - if exists
-3. Project tier ($PWD/bots/...) - if exists
+When an agent reads a file matching these patterns, this hook provides stacked content:
+1. Framework tier ($ACADEMICOPS_BOT/core/... or /docs/bots/...) - REQUIRED
+2. Personal tier ($ACADEMICOPS_PERSONAL/core/... or /docs/bots/...) - if exists
+3. Project tier ($PWD/docs/bots/...) - if exists
 
 This enables 3-tier instruction inheritance without manual file management.
 
@@ -33,29 +33,42 @@ def load_tier(tier_path: Path) -> str | None:
         return None
 
 
-def extract_bots_relative_path(file_path: str) -> str | None:
+def extract_instruction_relative_path(file_path: str) -> tuple[str, str] | None:
     """
-    Extract the relative path within /bots/ directory.
+    Extract the relative path within instruction directories.
+
+    Returns: (tier_type, relative_path) or None
+    tier_type is either "core" or "docs/bots"
 
     Examples:
-        /bots/agents/DEVELOPER.md -> agents/DEVELOPER.md
-        /home/user/project/bots/agents/trainer.md -> agents/trainer.md
+        /core/_CORE.md -> ("core", "_CORE.md")
+        /home/user/project/docs/bots/INDEX.md -> ("docs/bots", "INDEX.md")
         /something/else.md -> None
     """
     # Normalize path
     path_str = str(Path(file_path).as_posix())
+    parts = Path(file_path).parts
 
-    # Check if "bots" is a component of the path
-    if "bots" not in Path(file_path).parts:
-        return None
+    # Check for /core/ pattern
+    if "core" in parts:
+        try:
+            core_index = path_str.index("/core/")
+            relative_path = path_str[core_index + 6:]  # +6 to skip "/core/"
+            return ("core", relative_path)
+        except ValueError:
+            pass
 
-    # Extract everything after /bots/
-    try:
-        bots_index = path_str.index("/bots/")
-        relative_path = path_str[bots_index + 6:]  # +6 to skip "/bots/"
-        return relative_path
-    except ValueError:
-        return None
+    # Check for /docs/bots/ pattern
+    if "docs" in parts and "bots" in parts:
+        try:
+            # Find "/docs/bots/" in path
+            docs_index = path_str.index("/docs/bots/")
+            relative_path = path_str[docs_index + 11:]  # +11 to skip "/docs/bots/"
+            return ("docs/bots", relative_path)
+        except ValueError:
+            pass
+
+    return None
 
 
 def stack_instructions(tool_name: str, tool_input: dict, tool_response: dict) -> dict:
@@ -74,12 +87,14 @@ def stack_instructions(tool_name: str, tool_input: dict, tool_response: dict) ->
     if tool_name != "Read":
         return {}
 
-    # Only process reads to /bots/**/*.md
+    # Only process reads to /core/**/*.md or /docs/bots/**/*.md
     file_path = tool_input.get("file_path", "")
-    relative_path = extract_bots_relative_path(file_path)
+    extraction_result = extract_instruction_relative_path(file_path)
 
-    if not relative_path:
+    if not extraction_result:
         return {}
+
+    tier_type, relative_path = extraction_result
 
     # Only process .md files
     if not relative_path.endswith(".md"):
@@ -93,15 +108,20 @@ def stack_instructions(tool_name: str, tool_input: dict, tool_response: dict) ->
     # Framework tier (REQUIRED)
     framework_tier_path = None
     if bot_path:
-        framework_tier_path = Path(bot_path) / "bots" / relative_path
+        framework_tier_path = Path(bot_path) / tier_type / relative_path
 
     # Personal tier (OPTIONAL)
     personal_tier_path = None
     if personal_path:
-        personal_tier_path = Path(personal_path) / "bots" / relative_path
+        personal_tier_path = Path(personal_path) / tier_type / relative_path
 
-    # Project tier (OPTIONAL)
-    project_tier_path = project_path / "bots" / relative_path
+    # Project tier (OPTIONAL) - always goes to docs/bots/
+    if tier_type == "core":
+        # For core files, project tier also uses core/
+        project_tier_path = project_path / "core" / relative_path
+    else:
+        # For docs/bots files, project tier uses docs/bots/
+        project_tier_path = project_path / "docs" / "bots" / relative_path
 
     # Load content from each tier
     framework_content = load_tier(framework_tier_path) if framework_tier_path else None

@@ -19,9 +19,9 @@ Usage:
     load_instructions.py _CORE.md --format=text
 
 Loading Hierarchy (ALWAYS the same, NO legacy fallbacks):
-1. Framework: $ACADEMICOPS_BOT/agents/<filename>
-2. Personal:  $ACADEMICOPS_PERSONAL/agents/<filename> (if exists)
-3. Project:   $PWD/agents/<filename> (if exists)
+1. Framework: $ACADEMICOPS_BOT/core/<filename>
+2. Personal:  $ACADEMICOPS_PERSONAL/core/<filename> (if exists)
+3. Project:   $PWD/docs/bots/<filename> (if exists)
 
 Output Modes:
 - JSON (default when no filename): For SessionStart hook
@@ -59,7 +59,7 @@ def get_tier_paths(filename: str) -> dict[str, Path | None]:
 
     # Framework tier (REQUIRED)
     if bot_path := os.environ.get("ACADEMICOPS_BOT"):
-        paths["framework"] = Path(bot_path) / "agents" / filename
+        paths["framework"] = Path(bot_path) / "core" / filename
     else:
         # Fail fast - ACADEMICOPS_BOT is required
         raise ValueError(
@@ -69,12 +69,12 @@ def get_tier_paths(filename: str) -> dict[str, Path | None]:
 
     # Personal tier (OPTIONAL)
     if personal_path := os.environ.get("ACADEMICOPS_PERSONAL"):
-        paths["personal"] = Path(personal_path) / "agents" / filename
+        paths["personal"] = Path(personal_path) / "core" / filename
     else:
         paths["personal"] = None
 
     # Project tier (OPTIONAL)
-    paths["project"] = Path.cwd() / "agents" / filename
+    paths["project"] = Path.cwd() / "docs" / "bots" / filename
 
     return paths
 
@@ -190,11 +190,11 @@ def generate_discovery_manifest() -> str:
     if not bot_path:
         return ""
 
-    agents_dir = Path(bot_path) / "agents"
+    agents_dir = Path(bot_path) / "core"
     if not agents_dir.exists():
         return ""
 
-    # Find all .md files in agents/
+    # Find all .md files in core/
     available_files = []
     try:
         for md_file in sorted(agents_dir.glob("*.md")):
@@ -218,7 +218,7 @@ def generate_discovery_manifest() -> str:
     for filename in available_files:
         # Extract a simple description from the filename
         name = filename.replace(".md", "").replace("_", " ").title()
-        manifest.append(f"- `/agents/{filename}` - {name} mode")
+        manifest.append(f"- `/core/{filename}` - {name} mode")
 
     manifest.append("")
     manifest.append("Read these files when relevant to your task. They will be automatically")
