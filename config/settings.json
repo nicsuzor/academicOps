@@ -1,6 +1,12 @@
 {
   "env": {
-    "ACADEMICOPS_BOT": "/home/nic/src/bot"
+    "ACADEMICOPS_BOT": "/home/nic/src/bot",
+    "CLAUDE_CODE_ENABLE_TELEMETRY": "1",
+    "OTEL_EXPORTER_OTLP_ENDPOINT": "https://telemetry.googleapis.com",
+    "OTEL_EXPORTER_OTLP_PROTOCOL": "grpc",
+    "OTEL_METRICS_EXPORTER": "otlp",
+    "OTEL_LOGS_EXPORTER": "otlp",
+    "OTEL_RESOURCE_ATTRIBUTES": "gcp.project_id=prosocial-443205"
   },
   "permissions": {
     "allow": [

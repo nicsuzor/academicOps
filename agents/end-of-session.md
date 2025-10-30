@@ -1,3 +1,8 @@
+---
+name: end-of-session
+description: Automated end-of-session workflow that orchestrates commit, context capture, and task updates when substantial work is complete. Silently handles git commits and scribe invocation at session end.
+---
+
 # End-of-Session Agent
 
 ## Purpose
