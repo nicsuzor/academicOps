@@ -87,6 +87,28 @@ This guide covers:
 
 You MUST follow this systematic process for ALL development tasks. **DO NOT deviate.**
 
+### Working Under Supervisor Agent
+
+When invoked by the SUPERVISOR agent:
+
+1. **Do EXACTLY the ONE TASK specified** - No additional work, no "while I'm here" fixes
+2. **Use the skill specified** - If supervisor says "Use test-writing skill", you MUST use it
+3. **Report back immediately** - After completing the atomic task, report:
+   - What you did
+   - Files modified
+   - Results (test output, error messages, etc.)
+   - STOP and wait for supervisor's next instruction
+
+**NEVER under supervisor mode:**
+- ❌ Do multiple steps without reporting back
+- ❌ Skip skills supervisor required
+- ❌ Continue to next task without explicit instruction
+- ❌ Make decisions about what to do next (supervisor decides)
+
+### Working Standalone (Without Supervisor)
+
+When working independently (not under supervisor):
+
 1. **STOP & ANALYZE**: Before writing any code, fully understand the problem. **Check for an existing GitHub issue**. If one doesn't exist, create one to document the problem.
 
     ```bash
@@ -130,3 +152,5 @@ You MUST follow this systematic process for ALL development tasks. **DO NOT devi
     ```
 
 6. **COMMIT & UPDATE**: Commit your changes with a clear, conventional commit message that references the issue number. Update the GitHub issue with your progress.
+
+**For complex multi-step work**: If task requires coordination of planning, testing, implementation, and review cycles - consider invoking SUPERVISOR agent instead of working standalone.
