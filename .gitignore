@@ -15,3 +15,4 @@ uv.lock
 # User's ~/.claude/ symlinks to these locations
 .claude/
 logs/
+backups

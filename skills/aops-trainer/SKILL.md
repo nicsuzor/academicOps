@@ -396,6 +396,87 @@ Use agent-optimization when:
 1. Can run automatically at key moment? → Hook
 2. Needs human decision? → Instruction to use skill
 
+## Analyzing Subagent Execution Logs
+
+### When to Use Log Analysis
+
+Inspect subagent execution logs when investigating:
+
+1. **Instruction adherence**: Did agent follow workflow guidelines? Did it skip steps?
+2. **Delegation patterns**: For supervisor agents, did it delegate to subagents as designed? Or did it attempt solo execution?
+3. **Unexpected behavior**: Agent produced wrong output or took unexpected path
+4. **Tool usage**: What exact commands/tools did agent invoke? Did it make atomic commits or batch changes?
+5. **Git operations**: Verify agent didn't run destructive commands or force pushes
+
+### Locating Logs
+
+Log files are stored in Claude Code project directory structure. Use environment variables rather than hardcoded paths:
+
+```bash
+# Find main session log (lists all tool calls and subagent invocations)
+ls -t "${CLAUDE_HOME:-$HOME/.claude}"/projects/[project-dir]/*.jsonl | head -1
+
+# When Task tool invoked (main session), response contains agentId:
+# Line N: Task tool call
+# Line N+3: Response with agentId field
+cat session-id.jsonl | jq 'select(.message.content) | .message.content[] | select(.type == "tool_use" and .name == "Task") | .input.skill'
+
+# Find corresponding subagent log using the agentId from Task response:
+cat "${CLAUDE_HOME:-$HOME/.claude}"/projects/[project-dir]/agent-[agentId].jsonl
+```
+
+### Extracting Tool Call Sequences
+
+Review what tools agent actually invoked:
+
+```bash
+# All tool calls from subagent
+cat agent-[agentId].jsonl | jq -r 'select(.type == "assistant") | .message.content[] | select(.type == "tool_use") | .name' | sort | uniq -c
+
+# Specific skill/task delegation (shows agent orchestration)
+cat agent-[agentId].jsonl | jq 'select(.type == "assistant") | .message.content[] | select(.type == "tool_use" and (.name == "Skill" or .name == "Task")) | {name, input: {skill: .input.skill, command: .input.command}}'
+
+# Git operations (verify workflow compliance)
+cat agent-[agentId].jsonl | jq -r 'select(.type == "assistant") | .message.content[] | select(.type == "tool_use" and .name == "Bash") | .input.command' | grep -E "^git"
+
+# File modifications (Edit/Write calls)
+cat agent-[agentId].jsonl | jq 'select(.type == "assistant") | .message.content[] | select(.type == "tool_use" and (.name == "Edit" or .name == "Write")) | {name, file_path: .input.file_path}'
+```
+
+### Pattern Detection Checklist
+
+Use log analysis to identify:
+
+- **Workflow adherence**: Did agent follow experiment → test → commit cycle?
+- **Delegation success**: For supervisor agents, count Task calls to subagents
+- **Atomic operations**: Single commit per logical change, or batch modifications?
+- **Instruction violations**: Look for git force-push, skipped validation, or unauthorized tools
+- **Error handling**: When tools failed, did agent retry or give up?
+- **Tool sequencing**: Did agent call tools in correct order (e.g., Edit before Bash)?
+
+### Example: Investigating Delegation Failure
+
+**Scenario**: Supervisor agent should have delegated to git-commit skill but didn't.
+
+```bash
+# 1. Find supervisor's task invocation in main session log
+grep "Skill.*git-commit" session.jsonl
+
+# 2. If Skill/Task tools appear, extract agentId from response
+jq 'select(.type == "user") | .message.content' | tail -10
+
+# 3. If Task tool used, examine what subagent actually did
+cat agent-[agentId].jsonl | jq '.message.content[] | select(.type == "tool_use") | .name' | head -20
+
+# 4. If git-commit not invoked, check supervisor's reasoning
+jq 'select(.type == "assistant") | .message.content | map(select(.type == "text")) | .[0].text' agent-[supervisor-id].jsonl
+
+# 5. Determine: Was git-commit in agent's available skills? Did it refuse?
+# Update agent permissions/instructions and re-test
+```
+
+**Key insight**: Logs reveal not just what agent tried, but what tools it had available when it made decisions.
+
 ## Common Anti-Patterns to Prevent
 
 ### Anti-Pattern 1: Instruction Bloat
