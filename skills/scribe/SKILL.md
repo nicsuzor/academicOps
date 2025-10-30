@@ -248,6 +248,42 @@ $ACADEMICOPS_PERSONAL/data/
 - Progress toward goals
 - Resource allocations
 
+### Detail Level Guidelines
+
+Different file types serve different purposes and need different detail levels:
+
+**Accomplishments (Concise - "Weekly Standup Level")**:
+- One line per item unless truly significant strategic decision
+- Result + brief impact, NO implementation details
+- "What got done" that you'd mention in 30-second verbal update
+- ✅ GOOD: "TJA scorer validation - STRONG SUCCESS (88.9% accuracy, 9.7% FN rate, exceeds targets)"
+- ❌ TOO MUCH: "Fixed test_batch_cli.py: Reduced from 132 lines to 52 lines (60% reduction), eliminated ALL mocking..."
+
+**Project Files (Moderate - "Resumption Context Level")**:
+- Enough detail to resume work after interruption without searching
+- Key decisions made and WHY
+- Next steps or open questions
+- References to detailed docs/experiments if they exist
+- Current status and blockers
+- ✅ GOOD: "Scorer validation experiment (scorer_validation_v1 vs BASELINE) achieved 88.9% accuracy (vs 60.3% baseline), 9.7% FN rate (vs 52.7% baseline). Validates redesigned QualScore scorer with structured error detection. Ready for production deployment. Dashboard at localhost:8502. See tja/docs/SCORER_VALIDATION_EXPERIMENT.md for full analysis."
+- ❌ TOO LITTLE: "TJA scorer validation - STRONG SUCCESS"
+
+**Goals Files (Strategic - "Theory of Change Level")**:
+- High-level objectives and why they matter
+- Progress indicators and assessments
+- Resource allocations
+- Strategic pivots or realignments
+
+**Balance Principle**:
+- Accomplishments grows DAILY → must be scannable at a glance
+- Project files grow PER-PROJECT → can afford moderate detail for resumption
+- Goals files are STRATEGIC → focus on why and direction, not implementation
+- NONE should duplicate git commit messages (technical implementation details belong in git log)
+
+**Two tests before writing**:
+1. Accomplishments: "Would I say this in 30-second standup?" → Keep it that brief
+2. Project files: "Can I resume work from this in 2 weeks?" → Add that much context
+
 ### Task Summary Writing
 
 **Write for the USER, not for analysis**:
@@ -372,6 +408,8 @@ Your goals are the source of truth for focus."
 - Announce that you're capturing information
 - Miss completed task mentions (auto-archive them)
 - Summarize or reformat task_view.py output (show it directly)
+- Write implementation details to accomplishments (keep "standup level")
+- Write bare one-liners to project files (add "resumption context")
 
 **ALWAYS**:
 - Load context SILENTLY at conversation start
@@ -383,6 +421,7 @@ Your goals are the source of truth for focus."
 - Use absolute ISO dates (YYYY-MM-DD)
 - Prioritize by importance + urgency + alignment
 - Present task view output DIRECTLY to user (Mode 2)
+- Match detail level to file type (see Detail Level Guidelines)
 
 ## Quick Reference
 
