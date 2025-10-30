@@ -56,13 +56,13 @@ class TestCommandFileReferences:
 
         # If it references DEVELOPER.md, check it exists at new location
         if "DEVELOPER.md" in content:
-            # New location (bots/agents/)
-            dev_file = bot_root / "bots" / "agents" / "DEVELOPER.md"
+            # New location (agents/)
+            dev_file = bot_root / "agents" / "DEVELOPER.md"
 
             # If not migrated yet, might still be in old location
             old_locations = [
                 bot_root / "docs" / "_CHUNKS" / "DEVELOPER.md",
-                bot_root / "agents" / "DEVELOPER.md",
+                bot_root / "core" / "DEVELOPER.md",
             ]
 
             exists_somewhere = dev_file.exists() or any(loc.exists() for loc in old_locations)
@@ -79,8 +79,8 @@ class TestCommandFileReferences:
 
         # Should reference TESTING.md and FAIL-FAST.md
         if "TESTING.md" in content:
-            # New location (bots/agents/) or old locations
-            new_loc = bot_root / "bots" / "agents" / "TESTING.md"
+            # New location (agents/) or old locations
+            new_loc = bot_root / "agents" / "TESTING.md"
             old_locations = [
                 bot_root / "docs" / "TESTING.md",
                 bot_root / "docs" / "_CHUNKS" / "TESTING.md",
@@ -93,7 +93,7 @@ class TestCommandFileReferences:
             )
 
         if "FAIL-FAST.md" in content:
-            new_loc = bot_root / "bots" / "agents" / "FAIL-FAST.md"
+            new_loc = bot_root / "agents" / "FAIL-FAST.md"
             old_locations = [
                 bot_root / "docs" / "_CHUNKS" / "FAIL-FAST.md",
             ]
@@ -107,9 +107,9 @@ class TestCommandFileReferences:
         trainer_cmd = commands_dir / "trainer.md"
         content = trainer_cmd.read_text()
 
-        # Check for bots/agents/trainer.md
-        if "bots/agents/trainer.md" in content:
-            trainer_file = bot_root / "bots" / "agents" / "trainer.md"
+        # Check for agents/trainer.md
+        if "agents/trainer.md" in content:
+            trainer_file = bot_root / "agents" / "trainer.md"
             assert trainer_file.exists(), (
                 f"/trainer references {trainer_file} which doesn't exist"
             )
@@ -133,14 +133,14 @@ class TestAgentFileIntegrity:
 
         content = trainer.read_text()
 
-        # Should reference bots/agents/trainer.md for full instructions
-        assert "bots/agents/trainer.md" in content, (
-            "Trainer agent should reference bots/agents/trainer.md"
+        # Should reference agents/trainer.md for full instructions
+        assert "agents/trainer.md" in content, (
+            "Trainer agent should reference agents/trainer.md"
         )
 
     def test_trainer_full_instructions_exist(self, bot_root):
-        """Verify full trainer instructions exist at bots/agents/trainer.md."""
-        full_instructions = bot_root / "bots" / "agents" / "trainer.md"
+        """Verify full trainer instructions exist at agents/trainer.md."""
+        full_instructions = bot_root / "agents" / "trainer.md"
         assert full_instructions.exists(), (
             f"Full trainer instructions missing: {full_instructions}"
         )
@@ -205,12 +205,12 @@ class TestLoadInstructionsScript:
         monkeypatch.setenv("ACADEMICOPS_BOT", str(bot_root))
 
         # _CORE.md should be at new location
-        core_md = bot_root / "bots" / "agents" / "_CORE.md"
+        core_md = bot_root / "core" / "_CORE.md"
         assert core_md.exists(), f"_CORE.md not found at {core_md}"
 
         # Test default usage (loads _CORE.md, outputs JSON)
         result = subprocess.run(
-            ["uv", "run", "python", "scripts/load_instructions.py"],
+            ["uv", "run", "python", "hooks/load_instructions.py"],
             cwd=bot_root,
             capture_output=True,
             text=True,

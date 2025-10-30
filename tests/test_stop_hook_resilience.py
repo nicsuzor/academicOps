@@ -13,7 +13,7 @@ from pathlib import Path
 
 def test_safe_wrapper_rejects_nonexistent_script():
     """Test that safe wrapper returns error code 1 for missing scripts."""
-    wrapper_path = Path(__file__).parent.parent / "bots/hooks/safe_hook_wrapper.sh"
+    wrapper_path = Path(__file__).parent.parent / "hooks/safe_hook_wrapper.sh"
     nonexistent_script = "/nonexistent/script.py"
     
     result = subprocess.run(
@@ -29,8 +29,8 @@ def test_safe_wrapper_rejects_nonexistent_script():
 
 def test_safe_wrapper_executes_valid_script():
     """Test that safe wrapper successfully executes existing scripts."""
-    wrapper_path = Path(__file__).parent.parent / "bots/hooks/safe_hook_wrapper.sh"
-    script_path = Path(__file__).parent.parent / "bots/hooks/validate_stop.py"
+    wrapper_path = Path(__file__).parent.parent / "hooks/safe_hook_wrapper.sh"
+    script_path = Path(__file__).parent.parent / "hooks/validate_stop.py"
     
     input_data = {"hook_event": "Stop", "subagent": "test"}
     
@@ -50,7 +50,7 @@ def test_safe_wrapper_executes_valid_script():
 
 def test_validate_stop_handles_invalid_json():
     """Test that validate_stop.py handles invalid JSON gracefully."""
-    script_path = Path(__file__).parent.parent / "bots/hooks/validate_stop.py"
+    script_path = Path(__file__).parent.parent / "hooks/validate_stop.py"
     
     result = subprocess.run(
         ["python3", str(script_path), "Stop"],
@@ -71,7 +71,7 @@ def test_validate_stop_handles_invalid_json():
 
 def test_validate_stop_iteration_limit():
     """Test that iteration counter prevents infinite recursion."""
-    script_path = Path(__file__).parent.parent / "bots/hooks/validate_stop.py"
+    script_path = Path(__file__).parent.parent / "hooks/validate_stop.py"
     
     # Create temporary iteration counter file
     with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.txt') as f:
@@ -96,7 +96,7 @@ def test_validate_stop_iteration_limit():
 
 def test_validate_stop_exception_handling():
     """Test that validate_stop.py has comprehensive exception handling."""
-    script_path = Path(__file__).parent.parent / "bots/hooks/validate_stop.py"
+    script_path = Path(__file__).parent.parent / "hooks/validate_stop.py"
     
     with open(script_path, 'r') as f:
         script_content = f.read()
@@ -133,8 +133,8 @@ def test_settings_json_uses_safe_wrapper():
 
 def test_end_to_end_safe_execution():
     """Test complete end-to-end execution with all safeguards."""
-    wrapper_path = Path(__file__).parent.parent / "bots/hooks/safe_hook_wrapper.sh"
-    script_path = Path(__file__).parent.parent / "bots/hooks/validate_stop.py"
+    wrapper_path = Path(__file__).parent.parent / "hooks/safe_hook_wrapper.sh"
+    script_path = Path(__file__).parent.parent / "hooks/validate_stop.py"
     
     input_data = {
         "hook_event": "Stop",

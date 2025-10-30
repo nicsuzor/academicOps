@@ -62,8 +62,8 @@ class TestDogfoodingInstallation:
             ".claude/settings.json",
             ".claude/commands",  # Symlink or dir
             ".claude/skills",  # Symlink or dir
-            "bots/agents",
-            "bots/hooks",
+            "core",
+            "hooks",
         ]
 
         for path_str in expected_structure:
@@ -92,7 +92,7 @@ class TestDogfoodingInstallation:
 
         # Deployment files should also exist
         deployment_files = [
-            "bots/agents",
+            "core",
             ".claude/settings.json",
         ]
 
@@ -112,7 +112,7 @@ class TestDogfoodingRuntime:
         academicops = Path(os.environ.get("ACADEMICOPS_BOT", "/home/nic/src/bot"))
 
         # Test SessionStart hook (load_instructions.py)
-        hook_script = academicops / "bots/hooks/load_instructions.py"
+        hook_script = academicops / "hooks/load_instructions.py"
 
         if not hook_script.exists():
             pytest.skip("Hook script not in /bots/ yet")
@@ -139,7 +139,7 @@ class TestDogfoodingRuntime:
         """PreToolUse hook should work in ${ACADEMICOPS}."""
         academicops = Path(os.environ.get("ACADEMICOPS_BOT", "/home/nic/src/bot"))
 
-        hook_script = academicops / "bots/hooks/validate_tool.py"
+        hook_script = academicops / "hooks/validate_tool.py"
 
         if not hook_script.exists():
             pytest.skip("validate_tool.py not in /bots/ yet")
@@ -176,10 +176,10 @@ class TestDogfoodingRuntime:
             pytest.fail(f"Hook returned invalid JSON: {e}\n{result.stdout}")
 
     def test_agents_can_be_loaded(self):
-        """Agent instructions should be loadable from /bots/agents/."""
+        """Agent instructions should be loadable from /core/."""
         academicops = Path(os.environ.get("ACADEMICOPS_BOT", "/home/nic/src/bot"))
 
-        core_agents = academicops / "bots/agents/_CORE.md"
+        core_agents = academicops / "core/_CORE.md"
 
         assert core_agents.exists(), "Core agent instructions missing"
 
@@ -271,8 +271,8 @@ class TestDogfoodingGitIntegration:
         assert len(tracked_files) > 0, (
             "/bots/ directory not tracked in git (should be source code)"
         )
-        assert any("bots/agents" in f for f in tracked_files), (
-            "bots/agents/ not tracked"
+        assert any("core" in f for f in tracked_files), (
+            "core/ not tracked"
         )
 
 

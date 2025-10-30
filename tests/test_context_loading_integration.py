@@ -25,7 +25,7 @@ class TestContextLoadingHierarchy:
 
     def test_personal_preferences_load_in_project_repo(self, tmp_path, monkeypatch):
         """
-        VALIDATES: Personal preferences (bots/docs/INSTRUCTIONS.md) should load
+        VALIDATES: Personal preferences (docs/bots/INSTRUCTIONS.md) should load
         when working in a project repo.
 
         Design decision (ARCHITECTURE.md lines 82-85):
@@ -33,8 +33,8 @@ class TestContextLoadingHierarchy:
         - But they do NOT load strategic context (data/) ✗
 
         Test structure:
-        - personal_repo/bots/docs/INSTRUCTIONS.md contains "TOOL_PREFERENCE: BigQuery"
-        - project_repo/bots/docs/INSTRUCTIONS.md contains "PROJECT: buttermilk"
+        - personal_repo/docs/bots/INSTRUCTIONS.md contains "TOOL_PREFERENCE: BigQuery"
+        - project_repo/docs/bots/INSTRUCTIONS.md contains "PROJECT: buttermilk"
         - Working directory: project_repo
 
         Expected:
@@ -99,7 +99,7 @@ class TestContextLoadingHierarchy:
         - data/ directory → used by strategist agent ONLY when working in writing repo
 
         Test structure:
-        - personal_repo/bots/docs/INSTRUCTIONS.md has reference to data/
+        - personal_repo/docs/bots/INSTRUCTIONS.md has reference to data/
         - Working directory: personal_repo
 
         Expected:
@@ -153,8 +153,8 @@ When working in THIS repo, strategist agent accesses these paths.
         - Priority: Project > Personal > Framework
 
         Test structure:
-        - personal/bots/docs/INSTRUCTIONS.md says "Use Streamlit"
-        - project/bots/docs/INSTRUCTIONS.md says "Use Tableau for this project"
+        - personal/docs/bots/INSTRUCTIONS.md says "Use Streamlit"
+        - project/docs/bots/INSTRUCTIONS.md says "Use Tableau for this project"
 
         Expected:
         - Both load, project context listed first (higher priority)
@@ -275,7 +275,7 @@ bots/.academicOps
         )
 
         content = gitignore.read_text()
-        assert "bots/.academicOps" in content, "Framework symlink should be ignored"
+        assert ".academicOps" in content, "Framework symlink should be ignored"
 
 
 class TestFallbackBehavior:
@@ -287,10 +287,10 @@ class TestFallbackBehavior:
 
         Design decision (ARCHITECTURE.md line 67):
         - Personal tier currently uses legacy paths (docs/bots/INSTRUCTIONS.md)
-        - Migration to bots/docs/INSTRUCTIONS.md in progress
+        - Migration to docs/bots/INSTRUCTIONS.md in progress
 
         Expected:
-        - If bots/docs/INSTRUCTIONS.md missing, fall back to docs/bots/INSTRUCTIONS.md
+        - If docs/bots/INSTRUCTIONS.md missing, fall back to docs/bots/INSTRUCTIONS.md
         - Graceful degradation during migration period
         """
         personal_repo = tmp_path / "personal"
