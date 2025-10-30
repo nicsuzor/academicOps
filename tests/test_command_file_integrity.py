@@ -29,10 +29,10 @@ class TestCommandFileReferences:
     @pytest.fixture
     def commands_dir(self, bot_root):
         """Get commands directory."""
-        return bot_root / ".claude" / "commands"
+        return bot_root / "commands"
 
     def test_all_command_files_exist(self, commands_dir):
-        """Verify .claude/commands directory exists and has files."""
+        """Verify commands directory exists and has files."""
         assert commands_dir.exists(), f"Commands directory missing: {commands_dir}"
 
         commands = list(commands_dir.glob("*.md"))
@@ -50,7 +50,7 @@ class TestCommandFileReferences:
 
         # Should reference load_instructions.py (consolidated script)
         if "load_instructions.py" in content:
-            script = bot_root / "scripts" / "load_instructions.py"
+            script = bot_root / "hooks" / "load_instructions.py"
             assert script.exists(), f"/dev references {script} which doesn't exist"
             assert script.stat().st_mode & 0o111, f"{script} is not executable"
 
@@ -124,18 +124,18 @@ class TestAgentFileIntegrity:
 
     @pytest.fixture
     def agents_dir(self, bot_root):
-        return bot_root / ".claude" / "agents"
+        return bot_root / "agents"
 
     def test_trainer_agent_file_exists(self, agents_dir):
-        """Verify trainer agent file exists in .claude/agents/."""
+        """Verify trainer agent file exists in agents/."""
         trainer = agents_dir / "trainer.md"
         assert trainer.exists(), f"Trainer agent file missing: {trainer}"
 
         content = trainer.read_text()
 
-        # Should reference agents/trainer.md for full instructions
-        assert "agents/trainer.md" in content, (
-            "Trainer agent should reference agents/trainer.md"
+        # File should be substantial (actual trainer instructions)
+        assert len(content) > 1000, (
+            "Trainer agent file seems too short (< 1000 chars)"
         )
 
     def test_trainer_full_instructions_exist(self, bot_root):
@@ -161,7 +161,7 @@ class TestEnvironmentVariableUsage:
 
     def test_commands_use_env_vars_not_absolute_paths(self, bot_root):
         """Commands should use ${ACADEMICOPS_BOT} not absolute paths."""
-        commands_dir = bot_root / ".claude" / "commands"
+        commands_dir = bot_root / "commands"
 
         for cmd_file in commands_dir.glob("*.md"):
             content = cmd_file.read_text(encoding='utf-8', errors='replace')

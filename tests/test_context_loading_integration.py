@@ -70,7 +70,7 @@ class TestContextLoadingHierarchy:
 
         # Run load_instructions.py
         result = subprocess.run(
-            ["uv", "run", "python", "scripts/load_instructions.py"],
+            ["uv", "run", "python", "hooks/load_instructions.py"],
             cwd=Path(__file__).parent.parent,
             capture_output=True,
             text=True,
@@ -129,7 +129,7 @@ When working in THIS repo, strategist agent accesses these paths.
 
         # Run load_instructions.py
         result = subprocess.run(
-            ["uv", "run", "python", "scripts/load_instructions.py"],
+            ["uv", "run", "python", "hooks/load_instructions.py"],
             cwd=Path(__file__).parent.parent,
             capture_output=True,
             text=True,
@@ -178,7 +178,7 @@ When working in THIS repo, strategist agent accesses these paths.
         monkeypatch.chdir(project_repo)
 
         result = subprocess.run(
-            ["uv", "run", "python", "scripts/load_instructions.py"],
+            ["uv", "run", "python", "hooks/load_instructions.py"],
             cwd=Path(__file__).parent.parent,
             capture_output=True,
             text=True,
@@ -228,7 +228,7 @@ class TestPrivacyBoundaries:
                             {
                                 "type": "command",
                                 # Should use env var, not absolute path
-                                "command": "uv run python $ACADEMICOPS_BOT/scripts/load_instructions.py",
+                                "command": "uv run python $ACADEMICOPS_BOT/hooks/load_instructions.py",
                             }
                         ]
                     }
@@ -307,7 +307,7 @@ class TestFallbackBehavior:
         monkeypatch.chdir(personal_repo)
 
         result = subprocess.run(
-            ["uv", "run", "python", "scripts/load_instructions.py"],
+            ["uv", "run", "python", "hooks/load_instructions.py"],
             cwd=Path(__file__).parent.parent,
             capture_output=True,
             text=True,
@@ -342,7 +342,7 @@ class TestEnvironmentVariableRequirements:
         monkeypatch.delenv("ACADEMICOPS_PERSONAL", raising=False)
 
         result = subprocess.run(
-            ["uv", "run", "python", "scripts/load_instructions.py"],
+            ["uv", "run", "python", "hooks/load_instructions.py"],
             cwd=Path(__file__).parent.parent,
             capture_output=True,
             text=True,
@@ -371,7 +371,7 @@ class TestEnvironmentVariableRequirements:
         monkeypatch.chdir(project_repo)
 
         result = subprocess.run(
-            ["uv", "run", "python", "scripts/load_instructions.py"],
+            ["uv", "run", "python", "hooks/load_instructions.py"],
             cwd=Path(__file__).parent.parent,
             capture_output=True,
             text=True,
@@ -411,7 +411,7 @@ class TestRealWorldScenarios:
                 "run",
                 "python",
                 os.path.expanduser(
-                    "~/src/bot/scripts/load_instructions.py"
+                    "~/src/bot/hooks/load_instructions.py"
                 ),
             ],
             capture_output=True,
@@ -443,7 +443,7 @@ class TestRealWorldScenarios:
                 "run",
                 "python",
                 os.path.expanduser(
-                    "~/src/bot/scripts/load_instructions.py"
+                    "~/src/bot/hooks/load_instructions.py"
                 ),
             ],
             capture_output=True,
