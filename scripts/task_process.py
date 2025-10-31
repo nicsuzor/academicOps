@@ -12,11 +12,31 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 # Configuration
-SCRIPTS_DIR = Path(__file__).parent
-ROOT = SCRIPTS_DIR.parent.parent
-TASKS_INBOX = ROOT / "data" / "tasks" / "inbox"
-TASKS_QUEUE = ROOT / "data" / "tasks" / "queue"
-TASKS_ARCHIVED = ROOT / "data" / "tasks" / "archived"
+# Use current working directory for data (matches task_view.py and task_add.py)
+DATA_DIR = Path.cwd() / "data"
+TASKS_INBOX = DATA_DIR / "tasks" / "inbox"
+TASKS_QUEUE = DATA_DIR / "tasks" / "queue"
+TASKS_ARCHIVED = DATA_DIR / "tasks" / "archived"
+
+
+def _validate_data_directory():
+    """Validate that data directory exists.
+
+    Fail-fast principle: Fail immediately with clear error if data directory
+    doesn't exist, rather than silently searching wrong locations.
+
+    Raises:
+        SystemExit: If data directory doesn't exist
+    """
+    if not DATA_DIR.exists():
+        print(
+            f"Error: Data directory not found: {DATA_DIR}\n"
+            f"Current working directory: {Path.cwd()}\n"
+            f"Expected data/ subdirectory to exist in current directory.\n"
+            f"Please run this script from a directory containing data/tasks/",
+            file=sys.stderr
+        )
+        sys.exit(1)
 
 
 def print_json(obj):
@@ -135,12 +155,15 @@ def modify_task(
 
     if archive:
         dest = _archive_local_task(task_path, task)
-        result.update({"archived": True, "taskPath": str(dest.relative_to(ROOT))})
+        result.update({"archived": True, "taskPath": str(dest.relative_to(DATA_DIR))})
 
     return result
 
 
 def main():
+    # Validate data directory exists (fail-fast)
+    _validate_data_directory()
+
     if len(sys.argv) < 2:
         print("Usage: task_process.py modify <task_id> [--archive] [--priority N] [--due YYYY-MM-DD]")
         sys.exit(1)
