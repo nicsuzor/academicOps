@@ -15,19 +15,19 @@ if [ -z "$ACADEMIC_OPS_ROOT" ]; then
 fi
 
 # Export standardized paths
-export ACADEMIC_OPS_BOT="$BOT_ROOT"
-export ACADEMIC_OPS_DATA="$ACADEMIC_OPS_ROOT/data"
-export ACADEMIC_OPS_DOCS="$ACADEMIC_OPS_ROOT/docs"
-export ACADEMIC_OPS_PROJECTS="$ACADEMIC_OPS_ROOT/projects"
-export ACADEMIC_OPS_SCRIPTS="$BOT_ROOT/scripts"
+export ACADEMICOPS_BOT="$BOT_ROOT"
+export ACADEMICOPS_DATA="$ACADEMIC_OPS_ROOT/data"
+export ACADEMICOPS_DOCS="$ACADEMIC_OPS_ROOT/docs"
+export ACADEMICOPS_PROJECTS="$ACADEMIC_OPS_ROOT/projects"
+export ACADEMICOPS_SCRIPTS="$BOT_ROOT/scripts"
 
 # Validation function to ensure required directories exist
 validate_paths() {
     local missing_dirs=()
     
     [ ! -d "$ACADEMIC_OPS_ROOT" ] && missing_dirs+=("ACADEMIC_OPS_ROOT: $ACADEMIC_OPS_ROOT")
-    [ ! -d "$ACADEMIC_OPS_BOT" ] && missing_dirs+=("ACADEMIC_OPS_BOT: $ACADEMIC_OPS_BOT")
-    [ ! -d "$ACADEMIC_OPS_DATA" ] && missing_dirs+=("ACADEMIC_OPS_DATA: $ACADEMIC_OPS_DATA")
+    [ ! -d "$ACADEMICOPS_BOT" ] && missing_dirs+=("ACADEMICOPS_BOT: $ACADEMICOPS_BOT")
+    [ ! -d "$ACADEMICOPS_DATA" ] && missing_dirs+=("ACADEMICOPS_DATA: $ACADEMICOPS_DATA")
     
     if [ ${#missing_dirs[@]} -gt 0 ]; then
         echo "ERROR: Missing required directories:" >&2
@@ -43,9 +43,9 @@ validate_paths() {
 print_config() {
     echo "Academic Ops Path Configuration:"
     echo "  ACADEMIC_OPS_ROOT: $ACADEMIC_OPS_ROOT"
-    echo "  ACADEMIC_OPS_BOT: $ACADEMIC_OPS_BOT"
-    echo "  ACADEMIC_OPS_DATA: $ACADEMIC_OPS_DATA"
-    echo "  ACADEMIC_OPS_DOCS: $ACADEMIC_OPS_DOCS"
-    echo "  ACADEMIC_OPS_PROJECTS: $ACADEMIC_OPS_PROJECTS"
-    echo "  ACADEMIC_OPS_SCRIPTS: $ACADEMIC_OPS_SCRIPTS"
+    echo "  ACADEMICOPS_BOT: $ACADEMICOPS_BOT"
+    echo "  ACADEMICOPS_DATA: $ACADEMICOPS_DATA"
+    echo "  ACADEMICOPS_DOCS: $ACADEMICOPS_DOCS"
+    echo "  ACADEMICOPS_PROJECTS: $ACADEMICOPS_PROJECTS"
+    echo "  ACADEMICOPS_SCRIPTS: $ACADEMICOPS_SCRIPTS"
 }

@@ -93,11 +93,11 @@ class AcademicOpsPaths:
         """Print current configuration"""
         return f"""Academic Ops Path Configuration:
   ACADEMIC_OPS_ROOT: {self.root}
-  ACADEMIC_OPS_BOT: {self.bot_root}
-  ACADEMIC_OPS_DATA: {self.data}
-  ACADEMIC_OPS_DOCS: {self.docs}
-  ACADEMIC_OPS_PROJECTS: {self.projects}
-  ACADEMIC_OPS_SCRIPTS: {self.scripts}"""
+  ACADEMICOPS_BOT: {self.bot_root}
+  ACADEMICOPS_DATA: {self.data}
+  ACADEMICOPS_DOCS: {self.docs}
+  ACADEMICOPS_PROJECTS: {self.projects}
+  ACADEMICOPS_SCRIPTS: {self.scripts}"""
 
 
 # Create a singleton instance
