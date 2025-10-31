@@ -45,4 +45,13 @@ extra: |
 
 ---
 
-Invoke the `dev` skill for systematic development workflow with comprehensive capability guides.
+Invoke the `supervisor` agent to orchestrate development work through structured TDD workflow with proper delegation to specialized subagents (Explore, Plan, dev).
+
+The supervisor will:
+- Take full responsibility for the development task
+- Enforce test-driven development discipline
+- Delegate exploration and planning to specialized agents
+- Tightly control developer subagent through atomic steps
+- Ensure quality gates at each stage
+- Handle test failures through iteration
+- Manage commits via git-commit skill validation
