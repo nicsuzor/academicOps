@@ -93,6 +93,8 @@ You figure out the exact implementation. Report what you changed."
 
 Follow this workflow for EVERY development task. Each step is MANDATORY and ENFORCED.
 
+⚠️ **CRITICAL**: Each TDD cycle MUST end with committed and pushed changes before proceeding to the next cycle. An iteration is NOT complete until code is safely persisted to the remote repository.
+
 ### ✓ STEP 0: PLANNING (Mandatory First)
 
 **0.1 Create Success Checklist**
@@ -367,32 +369,69 @@ Iterate until quality check passes and commit succeeds.
 
 ### ✓ STEP 4: ITERATION GATE (After Each Cycle)
 
-**4.1 Mark Micro-Task Complete**
+**4.1 MANDATORY Commit and Push**
+
+⚠️ **CRITICAL**: An iteration is NOT complete until changes are safely committed and pushed.
+
+Before proceeding to next cycle:
+- [ ] Git-commit skill completed successfully (from Step 3.1)
+- [ ] Commit hash received and verified
+- [ ] Changes pushed to remote repository
+
+**If Step 3 git-commit not yet completed**: DO NOT proceed to 4.2. Return to Step 3.1.
+
+```
+Task(subagent_type="dev", prompt="
+Push committed changes to remote repository.
+
+Tools to use:
+1. Bash: git push
+
+If push fails (e.g., diverged branches):
+- DO NOT force push
+- STOP and report error
+- Wait for supervisor instructions
+
+After successful push, report:
+- Push status (success/failure)
+- Remote branch updated
+- Commit hash pushed
+")
+```
+
+**Verification**:
+- [ ] Developer reported successful push
+- [ ] Remote repository contains this cycle's commit
+- [ ] No uncommitted changes remain (git status clean)
+
+**If push fails**: DO NOT continue to next cycle. Fix remote sync issues first.
+
+**4.2 Mark Micro-Task Complete**
 
 Update TodoWrite - mark this TDD cycle completed.
 
-**4.2 Plan Reconciliation**
+**4.3 Plan Reconciliation**
 
 Compare current state with Step 0 plan:
 - Still on track?
 - Scope grown? By how much?
 - Solving original problem?
 
-**4.3 Scope Drift Detection**
+**4.4 Scope Drift Detection**
 
 If plan grown >20% from original:
 - **STOP immediately**
 - Ask user: "Plan grown from [X tasks] to [Y tasks]. Continue or re-scope?"
 - Get explicit approval
 
-**4.4 Thrashing Detection**
+**4.5 Thrashing Detection**
 
 If same file modified 3+ times without progress:
 - **STOP immediately**
 - Log via aops-bug skill: "Thrashing detected on [file]"
 - Ask user for help
 
-**4.5 Next Micro-Task**
+**4.6 Next Micro-Task**
 
 If plan on track, scope stable, no thrashing:
 - Move to next micro-task
@@ -436,6 +475,7 @@ Provide user with:
 4. **Iterate on failures** - Do NOT ask user, YOU decide fix and delegate
 5. **Quality gates enforced** - No commits without passing tests and code review
 6. **Tight control maintained** - Developer never does multiple steps without reporting back
+7. **COMMIT AND PUSH EACH CYCLE** - An iteration is NOT complete until changes are committed AND pushed to remote repository
 
 ## Reference Documentation
 
@@ -566,13 +606,15 @@ Otherwise: Continue work or escalate to user.
 - [ ] Success criteria clear and measurable
 - [ ] Current micro-task has a failing test
 
-### Before Committing Change
+### Before Proceeding to Next Cycle
 
 - [ ] New test passes
 - [ ] All other tests pass (no regressions)
 - [ ] Code reviewed (via git-commit skill)
 - [ ] Fail-fast compliance verified (no .get(), no defaults)
-- [ ] Commit message clear and links to issue/plan
+- [ ] Commit created successfully (commit hash received)
+- [ ] Changes pushed to remote repository
+- [ ] Git status clean (no uncommitted changes)
 
 ### Before Reporting Completion
 
@@ -614,9 +656,14 @@ Stage 2: Implementation (Task 1)
 - Minimal change: Updated token decode to handle OAuth provider format
 - Running tests: test_oauth_login_with_valid_token PASSES
 - All other tests: PASS (no regressions)
-- Using git-commit skill to validate and commit
 
-Stage 3: Iteration Gate
+Stage 3: Quality Check & Commit
+- Using git-commit skill to validate and commit
+- Quality check: PASSED
+- Commit created: a1b2c3d
+- Pushing to remote: SUCCESS
+
+Stage 4: Iteration Gate
 - Marking "Fix token validation" complete
 - Reconciling with plan: On track, 1/3 tasks done
 - Scope unchanged
@@ -641,6 +688,7 @@ Stage 4: Completion
 ❌ **Gold-plating implementations** - Minimal code to pass ONE test
 ❌ **Skipping code review** - Every change must be reviewed
 ❌ **Batch committing** - Commit after each micro-task, not at end
+❌ **Committing without pushing** - Each cycle must push to remote before proceeding
 ❌ **Ignoring scope drift** - Stop at 20% growth, get approval
 ❌ **Silent failures** - Always log 0-token responses and thrashing
 ❌ **Claiming success without demonstration** - Show working result
