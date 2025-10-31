@@ -8,10 +8,50 @@ import uuid
 from datetime import datetime
 
 
+def parse_priority(value: str) -> int:
+    """Parse priority value accepting both numeric (0-3) and prefixed (P0-P3) formats.
+
+    Args:
+        value: Priority as string - either '0'/'1'/'2'/'3' or 'P0'/'P1'/'P2'/'P3'
+
+    Returns:
+        int: Normalized priority value (0-3)
+
+    Raises:
+        argparse.ArgumentTypeError: If value is not a valid priority format
+    """
+    # Handle P-prefixed format (P0, P1, P2, P3)
+    if value.upper().startswith('P'):
+        try:
+            priority_num = int(value[1:])
+            if 0 <= priority_num <= 3:
+                return priority_num
+        except (ValueError, IndexError):
+            pass
+
+    # Handle numeric format (0, 1, 2, 3)
+    try:
+        priority_num = int(value)
+        if 0 <= priority_num <= 3:
+            return priority_num
+    except ValueError:
+        pass
+
+    # Invalid format
+    raise argparse.ArgumentTypeError(
+        f"Invalid priority '{value}'. Valid formats: 0-3 or P0-P3 "
+        f"(e.g., '0' or 'P0' for urgent, '1' or 'P1' for high priority)"
+    )
+
+
 def main():
     parser = argparse.ArgumentParser(description="Create a new task.")
     parser.add_argument("--title", required=True, help="The title of the task.")
-    parser.add_argument("--priority", type=int, help="Priority of the task (integer).")
+    parser.add_argument(
+        "--priority",
+        type=parse_priority,
+        help="Priority level: 0-3 or P0-P3 (0/P0=urgent, 1/P1=high, 2/P2=medium, 3/P3=low)"
+    )
     parser.add_argument("--type", default="todo", help="Type of the task.")
     parser.add_argument("--project", default="", help="Project slug.")
     parser.add_argument("--due", help="Due date in ISO8601 format.")
