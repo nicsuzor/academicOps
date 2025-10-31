@@ -422,6 +422,7 @@ Your goals are the source of truth for focus."
 - Prioritize by importance + urgency + alignment
 - Present task view output DIRECTLY to user (Mode 2)
 - Match detail level to file type (see Detail Level Guidelines)
+- Commit and push all changes to $ACADEMICOPS_PERSONAL before completing
 
 ## Quick Reference
 
@@ -486,6 +487,46 @@ uv run python ~/.claude/skills/scribe/scripts/session_log.py \
   --progress-note "Completed implementation"
 ```
 
+## Commit and Push Changes (MANDATORY Before Completion)
+
+⚠️ **CRITICAL**: Before finishing, you MUST commit and push all changes to the personal repository.
+
+**At the end of EVERY scribe session**:
+
+1. **Check for uncommitted changes**:
+```bash
+cd $ACADEMICOPS_PERSONAL && git status
+```
+
+2. **If changes exist, commit them**:
+```bash
+cd $ACADEMICOPS_PERSONAL && git add data/ && git commit -m "update(scribe): [brief summary of what was captured]
+
+Captured: [list what was added/updated]
+- Tasks: [count] added/modified
+- Projects: [which projects updated]
+- Context: [which context files updated]
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude <noreply@anthropic.com>"
+```
+
+3. **Push to remote**:
+```bash
+cd $ACADEMICOPS_PERSONAL && git push
+```
+
+**Verification**:
+- [ ] Git status shows clean working directory
+- [ ] Commit created with descriptive message
+- [ ] Changes pushed to remote repository
+- [ ] No uncommitted scribe data remains
+
+**If commit/push fails**: Report error to user. DO NOT complete silently with uncommitted changes.
+
+**Rationale**: Task and context data in personal repository must be safely persisted. Losing this data means losing strategic context, task tracking, and project history.
+
 ## Success Criteria
 
 This skill succeeds when:
@@ -498,3 +539,4 @@ This skill succeeds when:
 6. **Completed work archived** - Auto-archive when user mentions completion
 7. **Email integration** - Tasks extracted from emails automatically
 8. **User feels supported** - "Ideas are magically organized"
+9. **Changes persisted** - All data committed and pushed before completion

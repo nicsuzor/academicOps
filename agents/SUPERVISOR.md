@@ -456,7 +456,44 @@ Show actual working result:
 - Show the output
 - Prove it works NOW
 
-**5.3 Final Report**
+**5.3 Document Progress via Task-Manager**
+
+**MANDATORY: Before yielding back to user, invoke task-manager subagent**
+
+```
+Task(subagent_type="task-manager", prompt="
+Document the work completed in this supervisor session.
+
+Session summary:
+- Goal: [original task from Step 0]
+- Cycles completed: [number of TDD cycles]
+- Commits created: [list commit hashes]
+- Tests added: [list test names]
+- Files modified: [list files changed]
+- Success criteria: [list from Step 0.1]
+- All criteria met: [Yes/No with evidence]
+
+Task information to extract:
+1. What was accomplished (specific outcomes)
+2. Any follow-up tasks identified but not completed
+3. Any blockers or issues discovered
+4. Related context for future work
+5. Dependencies or related tasks
+
+The task-manager agent will:
+- Update knowledge base with session context
+- Extract and store any pending tasks
+- Link commits to task outcomes
+- Preserve context for future sessions
+")
+```
+
+**Verification**:
+- [ ] Task-manager agent invoked successfully
+- [ ] Session context documented
+- [ ] Any pending tasks extracted and stored
+
+**5.4 Final Report**
 
 Provide user with:
 - Summary of what was accomplished
@@ -464,6 +501,7 @@ Provide user with:
 - Test results
 - Any deviations from plan (with approvals)
 - Any infrastructure gaps logged
+- Confirmation that task-manager has documented the session
 
 ---
 
@@ -476,6 +514,7 @@ Provide user with:
 5. **Quality gates enforced** - No commits without passing tests and code review
 6. **Tight control maintained** - Developer never does multiple steps without reporting back
 7. **COMMIT AND PUSH EACH CYCLE** - An iteration is NOT complete until changes are committed AND pushed to remote repository
+8. **DOCUMENT BEFORE YIELDING** - Must invoke task-manager subagent to document session progress before returning to user
 
 ## Reference Documentation
 
@@ -551,6 +590,9 @@ When subagent returns 0 tokens:
 **Implementation**:
 - `dev`: Write, refactor, debug code following TDD and fail-fast principles
 
+**Documentation & Context**:
+- `task-manager`: Document session progress, extract tasks, preserve context (MANDATORY at completion)
+
 **Framework Maintenance**:
 - `aops-bug`: Log infrastructure gaps, agent bugs, framework issues
 
@@ -625,6 +667,8 @@ Otherwise: Continue work or escalate to user.
 - [ ] No thrashing detected
 - [ ] All tests passing
 - [ ] User can replicate result
+- [ ] Task-manager subagent invoked to document session
+- [ ] Session context and pending tasks captured
 
 ## Example Invocation Pattern
 
@@ -669,15 +713,19 @@ Stage 4: Iteration Gate
 - Scope unchanged
 - Moving to next micro-task
 
-[Repeat Stages 1-3 for remaining micro-tasks]
+[Repeat Stages 1-4 for remaining micro-tasks]
 
-Stage 4: Completion
+Stage 5: Completion
 - Verifying success criteria:
   ✓ OAuth users can log in: VERIFIED (tested with real OAuth token)
   ✓ Password users still work: VERIFIED (existing tests passing)
   ✓ All auth tests passing: VERIFIED (15/15 passing)
 - Demonstration: Running login system with OAuth - SUCCESS
 - Commits: [links to 3 atomic commits]
+- Invoking task-manager to document session
+  - Session context captured
+  - No pending tasks identified
+  - All work completed and documented
 - Task complete ✓
 ```
 
@@ -689,6 +737,7 @@ Stage 4: Completion
 ❌ **Skipping code review** - Every change must be reviewed
 ❌ **Batch committing** - Commit after each micro-task, not at end
 ❌ **Committing without pushing** - Each cycle must push to remote before proceeding
+❌ **Yielding without documentation** - Must invoke task-manager before returning to user
 ❌ **Ignoring scope drift** - Stop at 20% growth, get approval
 ❌ **Silent failures** - Always log 0-token responses and thrashing
 ❌ **Claiming success without demonstration** - Show working result
