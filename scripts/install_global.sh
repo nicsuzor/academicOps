@@ -125,6 +125,16 @@ sed -i "s|\${ACADEMICOPS_BOT}|$ACADEMICOPS_BOT|g" ~/.claude/settings.json
 
 echo "✅ Installed ~/.claude/settings.json with hooks"
 
+# Symlink MCP configuration
+echo
+echo "🔗 Symlinking MCP configuration"
+if [ -f "$ACADEMICOPS_BOT/config/mcp.json" ]; then
+    ln -sf "$ACADEMICOPS_BOT/config/mcp.json" ~/.claude/mcp.json
+    echo "✅ Symlinked ~/.claude/mcp.json -> $ACADEMICOPS_BOT/config/mcp.json"
+else
+    echo "⚠️  No MCP config found at $ACADEMICOPS_BOT/config/mcp.json"
+fi
+
 # Deploy skills to ~/.claude/skills/
 echo
 echo "📦 Deploying skills to ~/.claude/skills/"
