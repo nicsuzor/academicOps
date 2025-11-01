@@ -218,8 +218,7 @@ The academicOps framework itself organized as:
 - `read_instructions.py` - Generic hierarchical file loader
 - `validate_tool.py` - PreToolUse hook (enforces tool usage rules)
 - `validate_stop.py` - Stop hooks
-- `install_bot.sh` - One-command installation for new repos
-- `setup_academicops.sh` - Legacy installation script
+- `setup_academicops.sh` - Installation script (creates symlinks to ~/.claude/)
 
 **Configuration templates** (`dist/`):
 - `.claude/settings.json` - Template Claude Code configuration
@@ -272,7 +271,7 @@ target-repo/
 
 **Migration status:**
 - New standard defined and tested on reference implementation
-- Installation script available (`scripts/install_bot.sh`)
+- Installation script available (`scripts/setup_academicops.sh`)
 - Legacy fallback paths active during transition
 - Deprecation timeline not yet set
 
@@ -607,8 +606,7 @@ Add to shell profile (`~/.bashrc`, `~/.zshrc`, etc.) to persist.
 ### One-Command Setup
 
 ```bash
-cd /path/to/your/project
-$ACADEMICOPS_BOT/scripts/install_bot.sh
+$ACADEMICOPS_BOT/scripts/setup_academicops.sh
 ```
 
 **What it creates:**

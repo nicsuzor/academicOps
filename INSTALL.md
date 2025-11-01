@@ -113,7 +113,7 @@ Pull latest changes and re-run installation:
 ```bash
 cd $ACADEMICOPS_BOT
 git pull origin main
-$ACADEMICOPS_BOT/scripts/install_global.sh
+$ACADEMICOPS_BOT/scripts/setup_academicops.sh
 ```
 
 The installation script will:
@@ -151,7 +151,7 @@ ls ~/.claude/skills/
 
 Re-run installation if missing:
 ```bash
-$ACADEMICOPS_BOT/scripts/install_global.sh
+$ACADEMICOPS_BOT/scripts/setup_academicops.sh
 ```
 
 ### Hook scripts failing
