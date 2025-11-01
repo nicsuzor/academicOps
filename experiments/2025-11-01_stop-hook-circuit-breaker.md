@@ -113,3 +113,24 @@ The core issue is **RESOLVED**. The `|| echo '{"continue":true}'` pattern succes
 - Trade-off: Might mask legitimate validation failures if `uv` breaks unexpectedly
 - Alternative: Circuit breaker script would track failure counts and alert user (more complex)
 - Decision: Start with simple solution, upgrade if false-negatives become problematic
+
+## Follow-up Enhancement: Stderr Logging (2025-11-01)
+
+**Issue**: Original circuit breaker had no user-visible output when hook failed
+
+**Solution**: Added stderr echo to fallback path:
+```bash
+|| { echo 'Stop hook validation failed - session continuing despite error' >&2; echo '{"continue":true}'; }
+```
+
+**Pattern breakdown**:
+- `{ ... }` groups commands
+- `echo '...' >&2` sends message to stderr (visible to user)
+- `echo '{...}'` sends JSON to stdout (for Claude Code)
+- Both execute when `uv run` fails
+
+**Applied to**:
+- Stop hook (line 33)
+- SubagentStop hook (line 22)
+
+**Testing note**: Stderr visibility confirmed via claude-hooks skill documentation. User will see error message when hook fails, providing transparency about degraded validation.

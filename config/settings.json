@@ -19,7 +19,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "if [ -f \"$ACADEMICOPS_BOT/hooks/validate_stop.py\" ]; then uv run --directory \"$ACADEMICOPS_BOT\" python \"$ACADEMICOPS_BOT/hooks/validate_stop.py\" SubagentStop || echo '{\"continue\":true}'; else echo '{\"continue\":true}'; fi",
+            "command": "if [ -f \"$ACADEMICOPS_BOT/hooks/validate_stop.py\" ]; then uv run --directory \"$ACADEMICOPS_BOT\" python \"$ACADEMICOPS_BOT/hooks/validate_stop.py\" SubagentStop || { echo 'SubagentStop hook validation failed - subagent continuing despite error' >&2; echo '{\"continue\":true}'; }; else echo '{\"continue\":true}'; fi",
             "timeout": 2000
           }
         ]
@@ -30,7 +30,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "if [ -f \"$ACADEMICOPS_BOT/hooks/validate_stop.py\" ]; then uv run --directory \"$ACADEMICOPS_BOT\" python \"$ACADEMICOPS_BOT/hooks/validate_stop.py\" Stop || echo '{\"continue\":true}'; else echo '{\"continue\":true}'; fi",
+            "command": "if [ -f \"$ACADEMICOPS_BOT/hooks/validate_stop.py\" ]; then uv run --directory \"$ACADEMICOPS_BOT\" python \"$ACADEMICOPS_BOT/hooks/validate_stop.py\" Stop || { echo 'Stop hook validation failed - session continuing despite error' >&2; echo '{\"continue\":true}'; }; else echo '{\"continue\":true}'; fi",
             "timeout": 2000
           }
         ]
