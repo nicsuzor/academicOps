@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # SessionStart hook: Sync Python environment dependencies
-# Ensures uv dependencies are up to date when Claude Code session starts
+# Runs only on "startup" (matcher configured in settings.json)
 
 set -euo pipefail
 

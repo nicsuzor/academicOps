@@ -11,8 +11,14 @@
         "hooks": [
           {
             "type": "command",
-            "command": "if [ -f \"$ACADEMICOPS/hooks/sync_environment.sh\" ]; then \"$ACADEMICOPS/hooks/sync_environment.sh\"; else echo '{\"continue\":true}'; fi",
+            "command": "if [ -f \"$ACADEMICOPS/hooks/load_instructions.py\" ]; then uv run --directory \"$ACADEMICOPS\" python \"$ACADEMICOPS/hooks/load_instructions.py\"; else echo '{\"hookSpecificOutput\":{\"hookEventName\":\"SessionStart\",\"additionalContext\":\"# WARNING: load_instructions.py not found\"}}'; fi",
             "timeout": 5000
+          },
+          {
+            "type": "command",
+            "command": "if [ -f \"$ACADEMICOPS/hooks/sync_environment.sh\" ]; then \"$ACADEMICOPS/hooks/sync_environment.sh\"; else echo '{\"continue\":true}'; fi",
+            "timeout": 5000,
+            "matcher": "startup"
           }
         ]
       }
