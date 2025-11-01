@@ -69,11 +69,13 @@ ${OUTER}/                      # User's parent repository (PRIVATE)
 
 Specialized agents accessed via slash commands or Task tool:
 
-- **`trainer`** (`/trainer`) - Maintains the agent framework itself (meta-system)
-- **`strategist`** (`/STRATEGIST`) - Planning, facilitation, silent context capture
+- **`analyst`** (`/analyst`) - Academic research data analysis (dbt & Streamlit)
 - **`developer`** (`/dev`) - Code implementation, TDD workflow, debugging
-- **`code-review`** (invoked by other agents) - Code review and git commit operations
+- **`end-of-session`** (Stop hook) - Automated end-of-session workflow (git commits, context capture)
+- **`strategist`** (`/STRATEGIST`) - Planning, facilitation, silent context capture
 - **`supervisor`** (Task tool) - Orchestrates complex multi-step workflows
+- **`task-manager`** (Task tool) - EXPERIMENTAL silent background processor for task extraction
+- **`trainer`** (`/trainer`) - Maintains the agent framework itself (meta-system)
 
 ## Slash Commands
 
@@ -96,18 +98,33 @@ Portable, reusable workflows available globally (installed in `~/.claude/skills/
 - **`analyst`** - Academic research data analysis (dbt, Streamlit, academicOps best practices)
 - **`aops-bug`** - Track bugs, agent violations, framework improvements in academicOps
 - **`aops-trainer`** - Review and improve agents, skills, hooks, configurations
+- **`archiver`** - Archive experimental analysis to long-lived Jupyter notebooks before data removal
 - **`claude-hooks`** - Create, configure, debug Claude Code hooks with technical reference
 - **`claude-md-maintenance`** - Maintain CLAUDE.md files with @reference patterns
+- **`docx`** - Document toolkit (.docx): create/edit documents, tracked changes, formatting
 - **`git-commit`** - Validate code quality and execute commits with conventional format
 - **`github-issue`** - Manage GitHub issues with exhaustive search and precise documentation
 - **`no-throwaway-code`** - Intervention skill enforcing Axiom 15 (no temporary Python scripts)
+- **`pdf`** - Convert markdown to professionally formatted PDFs with academic typography
+- **`pptx`** - Presentation toolkit (.pptx): create/edit slides, layouts, speaker notes
+- **`scribe`** - Automatic context capture (tasks, priorities, strategic alignment) - operates silently
 - **`skill-creator`** - Guide for creating effective skills
 - **`skill-maintenance`** - Ongoing skill maintenance and evolution
 - **`strategic-partner`** - Strategic facilitation and thinking partnership
-- **`task-management`** - Proactive task/context capture to personal knowledge base
 - **`test-writing`** - Test creation enforcing integration test patterns and TDD
+- **`xlsx`** - Spreadsheet toolkit (.xlsx/.csv): create/edit with formulas, data analysis
 
 Skills are invoked automatically by agents or explicitly via the Skill tool.
+
+### Agents vs Skills
+
+**Agents** (in `bot/agents/`): Specialized subprocesses for complex workflows, invoked via Task tool or slash commands
+- Examples: `developer`, `analyst`, `supervisor`, `task-manager`, `end-of-session`
+
+**Skills** (in `~/.claude/skills/`): Portable capabilities available globally, auto-invoked or explicit
+- Examples: `scribe`, `test-writing`, `git-commit`, `docx`, `xlsx`, `pptx`, `pdf`
+
+**Note**: `task-manager` is an experimental agent testing whether a simpler non-conversational interface achieves better auto-invocation than `scribe` skill's multi-mode design.
 
 ## Automated Enforcement
 

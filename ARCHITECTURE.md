@@ -526,6 +526,24 @@ academicOps provides specialized agents for different types of work. Each has cl
 
 ---
 
+## Skills vs Subagents vs Commands
+
+**Skills** (HOW): Technical expertise - single source of truth for operations
+- `tasks` - task script operations, `email` - Outlook MCP, `pdf`/`xlsx`/`docx` - documents
+- Location: `~/.claude/skills/`
+
+**Subagents** (WHAT): Workflows that invoke skills
+- `scribe` - background capture (uses tasks skill), `strategist` - planning (uses tasks + email skills)
+- Location: `agents/`
+
+**Commands** (shortcuts): User convenience
+- `/email` → strategist, `/dev` → developer
+- Location: `commands/`
+
+**Rule**: Subagents decide WHAT, skills provide HOW. Never duplicate HOW across subagents.
+
+---
+
 ## Design Principles
 
 ### Complete Modularity

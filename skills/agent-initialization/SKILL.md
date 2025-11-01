@@ -33,7 +33,7 @@ Creates or updates `AGENT.md` in the workspace root (typically `.claude/` or pro
 - Preserving any custom instructions or modifications
 - Maintaining the essential skills-first directives
 
-## Execute Implementation
+## Implementation Process
 
 ### Step 1: Scan Available Skills
 

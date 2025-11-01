@@ -1,6 +1,6 @@
 ---
 name: no-throwaway-code
-description: Intervention skill that triggers when agents attempt temporary/throwaway Python code (python -c, temp scripts, one-off investigations). Enforces Axiom 15 - WRITE FOR THE LONG TERM. Nudges toward reusable solutions using python-dev or test-writing skills instead.
+description: Intervention skill that triggers when agents attempt temporary/throwaway Python code (python -c, temp scripts, one-off investigations). Enforces Axiom 15 - WRITE FOR THE LONG TERM. Nudges toward reusable solutions using dev agent or test-writing skill instead.
 ---
 
 # No Throwaway Code
@@ -44,9 +44,9 @@ Agent wants to write temporary Python code to investigate/check/verify something
 │     → Invoke test-writing skill to create proper test in tests/
 │
 ├─ IS THIS DEVELOPMENT/IMPLEMENTATION WORK?
-│  └─ YES → Use python-dev skill
+│  └─ YES → Use dev agent
 │     "This code should be reusable infrastructure. Create proper module instead."
-│     → Invoke python-dev skill to create maintainable code
+│     → Invoke dev agent to create maintainable code
 │
 ├─ IS THIS DATA EXPLORATION/ANALYSIS?
 │  └─ YES → Use analyst skill or create reusable analysis
@@ -87,7 +87,7 @@ Instead of throwaway code, let's build something durable:
    → This ensures [X] stays correct over time
 
 ✅ If building functionality:
-   → Create proper module using python-dev skill
+   → Create proper module using dev agent
    → This makes [X] reusable infrastructure
 
 ✅ If analyzing data:
@@ -171,7 +171,7 @@ Instead, let's create a durable test:
 → We ensure format stays correct across Python versions
 
 OR if this is for implementation:
-→ Use python-dev skill to create utility function
+→ Use dev agent to create utility function
 → datetime_utils.py with get_iso_timestamp()
 → Reusable across the codebase
 
@@ -224,7 +224,7 @@ Throwaway code attempt
 no-throwaway-code (intervention)
     ↓
 ├─ Behavior validation → test-writing skill
-├─ Implementation work → python-dev skill
+├─ Implementation work → dev agent
 └─ Data analysis → analyst skill or Jupyter/Streamlit
 ```
 

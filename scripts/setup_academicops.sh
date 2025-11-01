@@ -42,14 +42,7 @@ echo "Setting up global Claude Code configuration..."
 SETTINGS_SRC="$ACADEMICOPS_BOT/config/settings.json"
 SETTINGS_DEST="$CLAUDE_HOME/settings.json"
 
-if [ -L "$SETTINGS_DEST" ]; then
-    echo -e "${YELLOW}⚠${NC}  Removing existing settings.json symlink"
-    rm "$SETTINGS_DEST"
-elif [ -f "$SETTINGS_DEST" ]; then
-    echo -e "${YELLOW}⚠${NC}  Backing up existing settings.json"
-    mv "$SETTINGS_DEST" "$SETTINGS_DEST.backup"
-fi
-
+[ -e "$SETTINGS_DEST" ] && rm -rf "$SETTINGS_DEST"
 ln -s "$SETTINGS_SRC" "$SETTINGS_DEST"
 echo -e "${GREEN}✓${NC} ~/.claude/settings.json → $SETTINGS_SRC"
 
@@ -57,13 +50,7 @@ echo -e "${GREEN}✓${NC} ~/.claude/settings.json → $SETTINGS_SRC"
 HOOKS_SRC="$ACADEMICOPS_BOT/hooks"
 HOOKS_DEST="$CLAUDE_HOME/hooks"
 
-if [ -L "$HOOKS_DEST" ]; then
-    rm "$HOOKS_DEST"
-elif [ -d "$HOOKS_DEST" ]; then
-    echo -e "${YELLOW}⚠${NC}  Backing up existing hooks/"
-    mv "$HOOKS_DEST" "$HOOKS_DEST.backup"
-fi
-
+[ -e "$HOOKS_DEST" ] && rm -rf "$HOOKS_DEST"
 ln -s "$HOOKS_SRC" "$HOOKS_DEST"
 echo -e "${GREEN}✓${NC} ~/.claude/hooks/ → $HOOKS_SRC"
 
@@ -71,13 +58,7 @@ echo -e "${GREEN}✓${NC} ~/.claude/hooks/ → $HOOKS_SRC"
 AGENTS_SRC="$ACADEMICOPS_BOT/agents"
 AGENTS_DEST="$CLAUDE_HOME/agents"
 
-if [ -L "$AGENTS_DEST" ]; then
-    rm "$AGENTS_DEST"
-elif [ -d "$AGENTS_DEST" ]; then
-    echo -e "${YELLOW}⚠${NC}  Backing up existing agents/"
-    mv "$AGENTS_DEST" "$AGENTS_DEST.backup"
-fi
-
+[ -e "$AGENTS_DEST" ] && rm -rf "$AGENTS_DEST"
 ln -s "$AGENTS_SRC" "$AGENTS_DEST"
 echo -e "${GREEN}✓${NC} ~/.claude/agents/ → $AGENTS_SRC"
 
@@ -85,13 +66,7 @@ echo -e "${GREEN}✓${NC} ~/.claude/agents/ → $AGENTS_SRC"
 COMMANDS_SRC="$ACADEMICOPS_BOT/commands"
 COMMANDS_DEST="$CLAUDE_HOME/commands"
 
-if [ -L "$COMMANDS_DEST" ]; then
-    rm "$COMMANDS_DEST"
-elif [ -d "$COMMANDS_DEST" ]; then
-    echo -e "${YELLOW}⚠${NC}  Backing up existing commands/"
-    mv "$COMMANDS_DEST" "$COMMANDS_DEST.backup"
-fi
-
+[ -e "$COMMANDS_DEST" ] && rm -rf "$COMMANDS_DEST"
 ln -s "$COMMANDS_SRC" "$COMMANDS_DEST"
 echo -e "${GREEN}✓${NC} ~/.claude/commands/ → $COMMANDS_SRC"
 
@@ -99,13 +74,7 @@ echo -e "${GREEN}✓${NC} ~/.claude/commands/ → $COMMANDS_SRC"
 SKILLS_SRC="$ACADEMICOPS_BOT/skills"
 SKILLS_DEST="$CLAUDE_HOME/skills"
 
-if [ -L "$SKILLS_DEST" ]; then
-    rm "$SKILLS_DEST"
-elif [ -d "$SKILLS_DEST" ]; then
-    echo -e "${YELLOW}⚠${NC}  Backing up existing skills/"
-    mv "$SKILLS_DEST" "$SKILLS_DEST.backup"
-fi
-
+[ -e "$SKILLS_DEST" ] && rm -rf "$SKILLS_DEST"
 ln -s "$SKILLS_SRC" "$SKILLS_DEST"
 echo -e "${GREEN}✓${NC} ~/.claude/skills/ → $SKILLS_SRC"
 

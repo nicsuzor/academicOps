@@ -2,10 +2,11 @@
 
 ## Metadata
 - Date: 2025-10-30
+- Updated: 2025-10-31
 - Issue: #170 (https://github.com/nicsuzor/academicOps/issues/170)
 - Commit: 498912c
 - Model: claude-sonnet-4-5
-- Status: Testing - Phase 1 Complete
+- Status: ONGOING - Experiment continues, agent retained as alternative to scribe
 
 ## Hypothesis
 
@@ -248,6 +249,60 @@ uv run python ~/.claude/skills/scribe/scripts/task_add.py \
 - Root cause: Mode detection in scribe treating explicit invocation as "display" mode
 - Solution attempted: Create specialized agent with explicit constraints
 
+## Update 2025-10-31: Experiment Direction Clarified
+
+### Current Status
+
+**Decision**: Keep task-manager agent as experimental alternative to scribe skill.
+
+**Rationale**: Testing whether simpler non-conversational interface achieves better auto-invocation rates than scribe's multi-mode design.
+
+### Changes Made
+
+1. **Agent description updated** (`agents/task-manager.md:3`):
+   - Added "EXPERIMENTAL" label
+   - Clarified auto-invocation triggers (end of substantial work, when task info presented)
+   - Documented hypothesis about agent invocation patterns
+
+2. **Experiment note added** (`agents/task-manager.md:8-17`):
+   - Documents relationship to scribe skill
+   - States hypothesis about "decision paralysis" with conversational modes
+   - Defines success criteria (compare auto-invocation rates)
+
+3. **Python-dev references removed**:
+   - `agent-initialization/references/AGENT.md:19` - removed python-dev entry
+   - `no-throwaway-code/SKILL.md:3,47,90,174,227` - replaced "python-dev skill" with "dev agent"
+   - Clarifies that dev is an AGENT (bot/agents/DEVELOPER.md), not a skill
+
+### Key Insight
+
+**Phantom skills discovered**: User reported seeing both task-manager and scribe, plus non-existent python-dev.
+
+**Root causes**:
+- task-manager is agent (not skill), appears in agent list
+- python-dev never existed, was template placeholder in agent-initialization
+- dev is agent, not skill
+
+**Resolution**:
+- task-manager: Kept as experiment, description clarified
+- python-dev: All references removed or corrected to "dev agent"
+- Documentation now accurately reflects installed skills vs available agents
+
+### Actual Installed Skills (18)
+
+```
+agent-initialization, analyst, aops-bug, aops-trainer, archiver,
+claude-hooks, claude-md-maintenance, document-skills, git-commit,
+github-issue, no-throwaway-code, pdf, scribe, skill-creator,
+skill-maintenance, strategic-partner, test-writing
+```
+
+### Next Steps
+
+1. **Monitor auto-invocation patterns**: Track whether task-manager gets invoked more readily than scribe
+2. **Evaluate after 2-4 weeks**: Compare usage patterns
+3. **Decision point**: Keep task-manager if it shows better auto-invocation, otherwise remove and improve scribe
+
 ## Notes
 
 - Followed academicOps experiment log format
@@ -255,3 +310,4 @@ uv run python ~/.claude/skills/scribe/scripts/task_add.py \
 - Applied fail-fast principle (stop after Phase 1, document, then test)
 - DRY maintained by referencing scribe skill
 - No scribe refactoring in this experiment (isolate changes)
+- 2025-10-31: Clarified as ongoing experiment comparing agent vs skill invocation patterns
