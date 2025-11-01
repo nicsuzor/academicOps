@@ -39,19 +39,20 @@ Optional (for personal context):
 export ACADEMICOPS_PERSONAL=/path/to/your/writing
 ```
 
-### Step 3: Run Global Installation Script
+### Step 3: Run Setup Script
 
 ```bash
-$ACADEMICOPS_BOT/scripts/install_global.sh
+$ACADEMICOPS_BOT/scripts/setup_academicops.sh
 ```
 
 **What it does:**
 
-- ✅ Configures `~/.claude/settings.json` with global hooks and environment variables
-- ✅ Installs all skills to `~/.claude/skills/` (extracted from `dist/skills/*.zip`)
-- ✅ Sets up validation hooks that run before every tool use
-- ✅ Makes `$ACADEMICOPS_BOT` available to all Claude Code sessions
-- ✅ Validates Python dependencies and environment
+- ✅ Symlinks `~/.claude/settings.json` → `$ACADEMICOPS_BOT/config/settings.json`
+- ✅ Symlinks `~/.claude/hooks/` → `$ACADEMICOPS_BOT/hooks/`
+- ✅ Symlinks `~/.claude/agents/` → `$ACADEMICOPS_BOT/agents/`
+- ✅ Symlinks `~/.claude/commands/` → `$ACADEMICOPS_BOT/commands/`
+- ✅ Symlinks `~/.claude/skills/` → `$ACADEMICOPS_BOT/skills/`
+- ✅ Global configuration applies to all Claude Code sessions
 
 ### Step 4: Verify Installation
 
