@@ -2,9 +2,6 @@
   "permissions": {
     "deny": []
   },
-  "env": {
-    "ACADEMICOPS": "${ACADEMICOPS}"
-  },
   "hooks": {
     "SessionStart": [
       {
