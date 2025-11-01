@@ -6,7 +6,7 @@ This is the **academicOps** framework repository (PUBLIC), providing agent infra
 
 **Directory structure:**
 ```
-$ACADEMICOPS_BOT/          # This repository
+$ACADEMICOPS/          # This repository
 ├── agents/                # Self-contained agentic workflows (subagents)
 ├── commands/              # Slash command definitions
 ├── config/                # Claude Code settings (hooks, permissions)
@@ -20,7 +20,7 @@ $ACADEMICOPS_BOT/          # This repository
 ```
 
 **How projects use this framework:**
-- Projects reference via `$ACADEMICOPS_BOT` environment variable
+- Projects reference via `$ACADEMICOPS` environment variable
 - SessionStart hook auto-loads `core/_CORE.md` and `docs/bots/INDEX.md` from 3 tiers (framework/personal/project)
 - Specialized agents invoked via slash commands (`/trainer`, `/analyst`, `/dev`, etc.)
 - Hooks run automatically to validate tool use and load context

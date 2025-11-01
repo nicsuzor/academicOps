@@ -160,7 +160,7 @@ class TestEnvironmentVariableUsage:
         return Path(__file__).parent.parent
 
     def test_commands_use_env_vars_not_absolute_paths(self, bot_root):
-        """Commands should use ${ACADEMICOPS_BOT} not absolute paths."""
+        """Commands should use ${ACADEMICOPS} not absolute paths."""
         commands_dir = bot_root / "commands"
 
         for cmd_file in commands_dir.glob("*.md"):
@@ -172,25 +172,25 @@ class TestEnvironmentVariableUsage:
             )
 
             # If it references bot scripts, should use env var
-            if "scripts/" in content and "ACADEMICOPS_BOT" not in content:
+            if "scripts/" in content and "ACADEMICOPS" not in content:
                 # This might be okay if it's just documentation
                 # But flag it for review
                 pytest.skip(
-                    f"{cmd_file.name} references scripts/ without $ACADEMICOPS_BOT"
+                    f"{cmd_file.name} references scripts/ without $ACADEMICOPS"
                 )
 
     def test_academicops_bot_env_var_is_set(self):
-        """ACADEMICOPS_BOT should be set in test environment."""
+        """ACADEMICOPS should be set in test environment."""
         import os
 
-        academicops_bot = os.environ.get("ACADEMICOPS_BOT")
+        academicops_bot = os.environ.get("ACADEMICOPS")
         assert academicops_bot is not None, (
-            "ACADEMICOPS_BOT environment variable not set. "
-            "Add to your shell: export ACADEMICOPS_BOT=/path/to/bot"
+            "ACADEMICOPS environment variable not set. "
+            "Add to your shell: export ACADEMICOPS=/path/to/bot"
         )
 
         bot_path = Path(academicops_bot)
-        assert bot_path.exists(), f"ACADEMICOPS_BOT points to non-existent path: {bot_path}"
+        assert bot_path.exists(), f"ACADEMICOPS points to non-existent path: {bot_path}"
 
 
 class TestLoadInstructionsScript:
@@ -202,7 +202,7 @@ class TestLoadInstructionsScript:
 
     def test_load_instructions_finds_core_md(self, bot_root, monkeypatch):
         """Test that load_instructions.py can find _CORE.md at new location."""
-        monkeypatch.setenv("ACADEMICOPS_BOT", str(bot_root))
+        monkeypatch.setenv("ACADEMICOPS", str(bot_root))
 
         # _CORE.md should be at new location
         core_md = bot_root / "core" / "_CORE.md"

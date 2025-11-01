@@ -3,7 +3,7 @@ Integration tests for consolidated load_instructions.py script.
 
 Tests the complete workflow:
 1. 3-tier hierarchy loading (framework → personal → project)
-2. Environment variable substitution (${ACADEMICOPS_BOT})
+2. Environment variable substitution (${ACADEMICOPS})
 3. Two output modes (JSON for hooks, text for commands)
 4. Files in new location (core/)
 5. No legacy fallbacks
@@ -53,7 +53,7 @@ class TestThreeTierHierarchy:
 
     def test_loads_from_framework_tier(self, bot_root, monkeypatch, tmp_path):
         """Test loading from framework tier only."""
-        monkeypatch.setenv("ACADEMICOPS_BOT", str(bot_root))
+        monkeypatch.setenv("ACADEMICOPS", str(bot_root))
         monkeypatch.delenv("ACADEMICOPS_PERSONAL", raising=False)
 
         # Run from empty project (no project tier)
@@ -82,7 +82,7 @@ class TestThreeTierHierarchy:
     def test_loads_from_all_three_tiers(self, bot_root, monkeypatch, tmp_path):
         """Test loading from framework + personal + project tiers."""
         # Setup framework
-        monkeypatch.setenv("ACADEMICOPS_BOT", str(bot_root))
+        monkeypatch.setenv("ACADEMICOPS", str(bot_root))
 
         # Setup personal tier
         personal_repo = tmp_path / "personal"
@@ -123,7 +123,7 @@ class TestThreeTierHierarchy:
 
     def test_project_tier_appears_first_in_output(self, bot_root, monkeypatch, tmp_path):
         """Test that project tier has highest priority in output order."""
-        monkeypatch.setenv("ACADEMICOPS_BOT", str(bot_root))
+        monkeypatch.setenv("ACADEMICOPS", str(bot_root))
 
         # Setup personal tier
         personal_repo = tmp_path / "personal"
@@ -171,7 +171,7 @@ class TestTwoOutputModes:
 
     def test_json_output_mode_for_core_md(self, bot_root, monkeypatch, tmp_path):
         """Test JSON output mode (default for _CORE.md)."""
-        monkeypatch.setenv("ACADEMICOPS_BOT", str(bot_root))
+        monkeypatch.setenv("ACADEMICOPS", str(bot_root))
         monkeypatch.chdir(tmp_path)
 
         result = subprocess.run(
@@ -192,7 +192,7 @@ class TestTwoOutputModes:
 
     def test_text_output_mode_for_custom_file(self, bot_root, monkeypatch, tmp_path):
         """Test text output mode (custom file like DEVELOPER.md)."""
-        monkeypatch.setenv("ACADEMICOPS_BOT", str(bot_root))
+        monkeypatch.setenv("ACADEMICOPS", str(bot_root))
         monkeypatch.chdir(tmp_path)
 
         # DEVELOPER.md should exist at new location
@@ -218,7 +218,7 @@ class TestTwoOutputModes:
 
     def test_explicit_format_flag(self, bot_root, monkeypatch, tmp_path):
         """Test --format flag to override default."""
-        monkeypatch.setenv("ACADEMICOPS_BOT", str(bot_root))
+        monkeypatch.setenv("ACADEMICOPS", str(bot_root))
         monkeypatch.chdir(tmp_path)
 
         # Force text output for _CORE.md (normally JSON)
@@ -258,7 +258,7 @@ class TestNoLegacyFallbacks:
         new_core = fake_bot / "core"
         assert not new_core.exists()
 
-        monkeypatch.setenv("ACADEMICOPS_BOT", str(fake_bot))
+        monkeypatch.setenv("ACADEMICOPS", str(fake_bot))
         monkeypatch.chdir(tmp_path)
 
         result = subprocess.run(
@@ -287,7 +287,7 @@ class TestNoLegacyFallbacks:
         new_location = fake_bot / "agents" / "DEVELOPER.md"
         assert not new_location.exists()
 
-        monkeypatch.setenv("ACADEMICOPS_BOT", str(fake_bot))
+        monkeypatch.setenv("ACADEMICOPS", str(fake_bot))
         monkeypatch.chdir(tmp_path)
 
         result = subprocess.run(
@@ -310,8 +310,8 @@ class TestEnvironmentVariables:
         return Path(__file__).parent.parent
 
     def test_fails_without_academicops_bot(self, bot_root, monkeypatch, tmp_path):
-        """Test that script fails without ACADEMICOPS_BOT env var."""
-        monkeypatch.delenv("ACADEMICOPS_BOT", raising=False)
+        """Test that script fails without ACADEMICOPS env var."""
+        monkeypatch.delenv("ACADEMICOPS", raising=False)
         monkeypatch.chdir(tmp_path)
 
         result = subprocess.run(
@@ -324,12 +324,12 @@ class TestEnvironmentVariables:
 
         # Should fail with clear error message
         assert result.returncode != 0
-        assert "ACADEMICOPS_BOT" in result.stderr
+        assert "ACADEMICOPS" in result.stderr
         assert "not set" in result.stderr.lower()
 
     def test_works_without_academicops_personal(self, bot_root, monkeypatch, tmp_path):
         """Test that script works without ACADEMICOPS_PERSONAL (optional)."""
-        monkeypatch.setenv("ACADEMICOPS_BOT", str(bot_root))
+        monkeypatch.setenv("ACADEMICOPS", str(bot_root))
         monkeypatch.delenv("ACADEMICOPS_PERSONAL", raising=False)
         monkeypatch.chdir(tmp_path)
 
@@ -353,7 +353,7 @@ Test Coverage:
 2. **3-Tier Hierarchy**: Framework, personal, project loading and priority
 3. **Output Modes**: JSON (hooks), text (commands), --format flag
 4. **No Legacy Fallbacks**: Ignores old locations (agents/, docs/_CHUNKS/)
-5. **Environment Variables**: Required (ACADEMICOPS_BOT), optional (ACADEMICOPS_PERSONAL)
+5. **Environment Variables**: Required (ACADEMICOPS), optional (ACADEMICOPS_PERSONAL)
 
 Run tests:
     pytest tests/test_load_instructions_integration.py -v

@@ -22,7 +22,7 @@ class TestDogfoodingInstallation:
 
     def test_install_script_exists(self):
         """Installation script should exist and be executable."""
-        academicops = Path(os.environ.get("ACADEMICOPS_BOT", "/home/nic/src/bot"))
+        academicops = Path(os.environ.get("ACADEMICOPS", "/home/nic/src/bot"))
 
         install_script = academicops / "scripts/setup_academicops.sh"
 
@@ -33,7 +33,7 @@ class TestDogfoodingInstallation:
 
     def test_install_script_can_run_in_academicops(self):
         """Installation script should successfully run in ${ACADEMICOPS}."""
-        academicops = Path(os.environ.get("ACADEMICOPS_BOT", "/home/nic/src/bot"))
+        academicops = Path(os.environ.get("ACADEMICOPS", "/home/nic/src/bot"))
 
         install_script = academicops / "scripts/setup_academicops.sh"
 
@@ -55,7 +55,7 @@ class TestDogfoodingInstallation:
 
     def test_installation_creates_expected_structure(self):
         """After installation, ${ACADEMICOPS} should have complete structure."""
-        academicops = Path(os.environ.get("ACADEMICOPS_BOT", "/home/nic/src/bot"))
+        academicops = Path(os.environ.get("ACADEMICOPS", "/home/nic/src/bot"))
 
         # Expected after running install script
         expected_structure = [
@@ -74,7 +74,7 @@ class TestDogfoodingInstallation:
 
     def test_no_conflicts_between_development_and_deployment(self):
         """Development files should not conflict with deployment structure."""
-        academicops = Path(os.environ.get("ACADEMICOPS_BOT", "/home/nic/src/bot"))
+        academicops = Path(os.environ.get("ACADEMICOPS", "/home/nic/src/bot"))
 
         # Development files should still exist after installation
         dev_files = [
@@ -109,7 +109,7 @@ class TestDogfoodingRuntime:
 
     def test_hooks_execute_successfully(self):
         """Hooks should execute without errors in ${ACADEMICOPS}."""
-        academicops = Path(os.environ.get("ACADEMICOPS_BOT", "/home/nic/src/bot"))
+        academicops = Path(os.environ.get("ACADEMICOPS", "/home/nic/src/bot"))
 
         # Test SessionStart hook (load_instructions.py)
         hook_script = academicops / "hooks/load_instructions.py"
@@ -137,7 +137,7 @@ class TestDogfoodingRuntime:
 
     def test_validate_tool_hook_works(self):
         """PreToolUse hook should work in ${ACADEMICOPS}."""
-        academicops = Path(os.environ.get("ACADEMICOPS_BOT", "/home/nic/src/bot"))
+        academicops = Path(os.environ.get("ACADEMICOPS", "/home/nic/src/bot"))
 
         hook_script = academicops / "hooks/validate_tool.py"
 
@@ -177,7 +177,7 @@ class TestDogfoodingRuntime:
 
     def test_agents_can_be_loaded(self):
         """Agent instructions should be loadable from /core/."""
-        academicops = Path(os.environ.get("ACADEMICOPS_BOT", "/home/nic/src/bot"))
+        academicops = Path(os.environ.get("ACADEMICOPS", "/home/nic/src/bot"))
 
         core_agents = academicops / "core/_CORE.md"
 
@@ -192,7 +192,7 @@ class TestDogfoodingRuntime:
 
     def test_claude_md_files_discoverable(self):
         """CLAUDE.md files should be discoverable in ${ACADEMICOPS}."""
-        academicops = Path(os.environ.get("ACADEMICOPS_BOT", "/home/nic/src/bot"))
+        academicops = Path(os.environ.get("ACADEMICOPS", "/home/nic/src/bot"))
 
         # Should have CLAUDE.md in key directories (Issue #120)
         expected_claude_files = [
@@ -220,7 +220,7 @@ class TestDogfoodingGitIntegration:
 
     def test_symlinks_are_gitignored(self):
         """Symlinked framework files should be gitignored."""
-        academicops = Path(os.environ.get("ACADEMICOPS_BOT", "/home/nic/src/bot"))
+        academicops = Path(os.environ.get("ACADEMICOPS", "/home/nic/src/bot"))
 
         # Check if .gitignore covers symlinks
         gitignore = academicops / ".gitignore"
@@ -237,7 +237,7 @@ class TestDogfoodingGitIntegration:
 
     def test_development_files_not_ignored(self):
         """Development files should NOT be gitignored."""
-        academicops = Path(os.environ.get("ACADEMICOPS_BOT", "/home/nic/src/bot"))
+        academicops = Path(os.environ.get("ACADEMICOPS", "/home/nic/src/bot"))
 
         # Run git status to verify development files tracked
         result = subprocess.run(
@@ -253,7 +253,7 @@ class TestDogfoodingGitIntegration:
 
     def test_bots_directory_tracked_in_git(self):
         """/bots/ directory should be tracked (it's source code, not deployment)."""
-        academicops = Path(os.environ.get("ACADEMICOPS_BOT", "/home/nic/src/bot"))
+        academicops = Path(os.environ.get("ACADEMICOPS", "/home/nic/src/bot"))
 
         # In ${ACADEMICOPS}, /bots/ is source, should be in git
         result = subprocess.run(
@@ -282,7 +282,7 @@ class TestDogfoodingVsProjectInstallation:
 
     def test_claude_folder_structure_matches(self):
         """${ACADEMICOPS}/.claude/ should match project installation template."""
-        academicops = Path(os.environ.get("ACADEMICOPS_BOT", "/home/nic/src/bot"))
+        academicops = Path(os.environ.get("ACADEMICOPS", "/home/nic/src/bot"))
 
         # Load dist/ template to compare
         dist_template = academicops / "dist/.claude/settings.json"
@@ -317,7 +317,7 @@ class TestDogfoodingVsProjectInstallation:
 
     def test_bots_structure_matches_what_we_install(self):
         """${ACADEMICOPS}/bots/ should be source for what we symlink in projects."""
-        academicops = Path(os.environ.get("ACADEMICOPS_BOT", "/home/nic/src/bot"))
+        academicops = Path(os.environ.get("ACADEMICOPS", "/home/nic/src/bot"))
 
         # ${ACADEMICOPS}/bots/ is the source
         source_bots = academicops / "bots"

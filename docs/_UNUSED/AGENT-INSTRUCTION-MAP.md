@@ -57,7 +57,7 @@ CLAUDE.md (Root)
             └─→ Claude Code/Gemini docs (external references)
 ```
 
-### Bot (${ACADEMICOPS_BOT}/)
+### Bot (${ACADEMICOPS}/)
 
 ```
 bot/CLAUDE.md

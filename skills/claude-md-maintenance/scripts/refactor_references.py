@@ -37,7 +37,7 @@ class ReferenceRefactorer:
             base_dir: Root directory to work in
         """
         self.base_dir = Path(base_dir).resolve()
-        self.framework_dir = Path(os.environ.get("ACADEMICOPS_BOT", "")).resolve() if os.environ.get("ACADEMICOPS_BOT") else None
+        self.framework_dir = Path(os.environ.get("ACADEMICOPS", "")).resolve() if os.environ.get("ACADEMICOPS") else None
         self.personal_dir = Path(os.environ.get("ACADEMICOPS_PERSONAL", "")).resolve() if os.environ.get("ACADEMICOPS_PERSONAL") else None
         
         # Cache of existing chunks
@@ -290,7 +290,7 @@ class ReferenceRefactorer:
         # If chunk is in framework
         if self.framework_dir and self.framework_dir in chunk_file.parents:
             relative = chunk_file.relative_to(self.framework_dir)
-            return f"@$ACADEMICOPS_BOT/{relative.as_posix()}"
+            return f"@$ACADEMICOPS/{relative.as_posix()}"
         
         # If chunk is in personal
         if self.personal_dir and self.personal_dir in chunk_file.parents:

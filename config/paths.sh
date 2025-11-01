@@ -15,7 +15,7 @@ if [ -z "$ACADEMIC_OPS_ROOT" ]; then
 fi
 
 # Export standardized paths
-export ACADEMICOPS_BOT="$BOT_ROOT"
+export ACADEMICOPS="$BOT_ROOT"
 export ACADEMICOPS_DATA="$ACADEMIC_OPS_ROOT/data"
 export ACADEMICOPS_DOCS="$ACADEMIC_OPS_ROOT/docs"
 export ACADEMICOPS_PROJECTS="$ACADEMIC_OPS_ROOT/projects"
@@ -26,7 +26,7 @@ validate_paths() {
     local missing_dirs=()
     
     [ ! -d "$ACADEMIC_OPS_ROOT" ] && missing_dirs+=("ACADEMIC_OPS_ROOT: $ACADEMIC_OPS_ROOT")
-    [ ! -d "$ACADEMICOPS_BOT" ] && missing_dirs+=("ACADEMICOPS_BOT: $ACADEMICOPS_BOT")
+    [ ! -d "$ACADEMICOPS" ] && missing_dirs+=("ACADEMICOPS: $ACADEMICOPS")
     [ ! -d "$ACADEMICOPS_DATA" ] && missing_dirs+=("ACADEMICOPS_DATA: $ACADEMICOPS_DATA")
     
     if [ ${#missing_dirs[@]} -gt 0 ]; then
@@ -43,7 +43,7 @@ validate_paths() {
 print_config() {
     echo "Academic Ops Path Configuration:"
     echo "  ACADEMIC_OPS_ROOT: $ACADEMIC_OPS_ROOT"
-    echo "  ACADEMICOPS_BOT: $ACADEMICOPS_BOT"
+    echo "  ACADEMICOPS: $ACADEMICOPS"
     echo "  ACADEMICOPS_DATA: $ACADEMICOPS_DATA"
     echo "  ACADEMICOPS_DOCS: $ACADEMICOPS_DOCS"
     echo "  ACADEMICOPS_PROJECTS: $ACADEMICOPS_PROJECTS"

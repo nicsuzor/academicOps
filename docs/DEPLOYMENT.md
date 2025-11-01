@@ -122,8 +122,8 @@ uv run pytest tests/test_deployment_architecture.py::TestPathPredictability -v
 
 ```bash
 # Example (pseudocode)
-ln -s ${ACADEMICOPS_BOT}/.claude/commands <project>/.claude/commands
-ln -s ${ACADEMICOPS_BOT}/.claude/skills <project>/.claude/skills
+ln -s ${ACADEMICOPS}/.claude/commands <project>/.claude/commands
+ln -s ${ACADEMICOPS}/.claude/skills <project>/.claude/skills
 # Scripts accessed via .academicOps/scripts/ symlink
 ```
 
@@ -299,10 +299,10 @@ Project-specific DBT patterns:
 cd /path/to/project
 
 # 2. Run installation script
-${ACADEMICOPS_BOT}/scripts/setup_academicops.sh
+${ACADEMICOPS}/scripts/setup_academicops.sh
 
 # 3. Verify installation
-${ACADEMICOPS_BOT}/# Scripts accessed via .academicOps/scripts/check_instruction_orphans.py
+${ACADEMICOPS}/# Scripts accessed via .academicOps/scripts/check_instruction_orphans.py
 
 # 4. Customize (optional)
 # Add project-specific agents to bots/agents/
@@ -313,7 +313,7 @@ ${ACADEMICOPS_BOT}/# Scripts accessed via .academicOps/scripts/check_instruction
 
 ```bash
 # 1. Navigate to academicOps
-cd ${ACADEMICOPS_BOT}
+cd ${ACADEMICOPS}
 
 # 2. Run installation on itself
 ./scripts/setup_academicops.sh .
@@ -332,7 +332,7 @@ uv run python bots/hooks/load_instructions.py _CORE.md
 cd ${ACADEMICOPS_PERSONAL}
 
 # 2. Run installation
-${ACADEMICOPS_BOT}/scripts/setup_academicops.sh
+${ACADEMICOPS}/scripts/setup_academicops.sh
 
 # 3. Add personal customizations
 # - bots/agents/INSTRUCTIONS.md (personal preferences)

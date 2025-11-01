@@ -6,11 +6,11 @@ A modular, hierarchical agent framework for rigorous, context-aware automation i
 
 ```bash
 # Set environment variable
-export ACADEMICOPS_BOT=/path/to/academicOps
+export ACADEMICOPS=/path/to/academicOps
 
 # Run setup in your project
 cd /path/to/your/project
-$ACADEMICOPS_BOT/scripts/setup_academicops.sh
+$ACADEMICOPS/scripts/setup_academicops.sh
 
 # Launch Claude Code
 claude

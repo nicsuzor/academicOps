@@ -52,14 +52,14 @@ All projects using academicOps follow this structure:
 ```
 ~/.claude/                      # Global Claude Code configuration (OWNED by academicOps)
 ├── settings.json               # Global hooks and environment variables
-│   └── env.ACADEMICOPS_BOT    # Points to academicOps installation
+│   └── env.ACADEMICOPS    # Points to academicOps installation
 └── skills/                     # Deployed portable workflows (from dist/skills/*.zip)
 
 /path/to/academicOps/          # academicOps framework installation
 ├── bots/                       # Agent instructions and hooks
 │   ├── agents/                # Agent instruction files (rules)
 │   │   └── _CORE.md          # Core axioms
-│   └── hooks/                 # Hook scripts (called via $ACADEMICOPS_BOT)
+│   └── hooks/                 # Hook scripts (called via $ACADEMICOPS)
 ├── .claude/skills/            # Skill source code (for development)
 ├── dist/skills/               # Packaged skills (*.zip for deployment)
 ├── scripts/                   # Utility scripts
@@ -77,18 +77,18 @@ any-repo/                      # Individual project repos
 **Key architectural decisions:**
 
 1. **Global `~/.claude/` ownership**: academicOps installs hooks and environment variables globally
-2. **`$ACADEMICOPS_BOT` environment variable**: Available everywhere, points to framework installation
-3. **Settings symlinked**: `~/.claude/settings.json` → `$ACADEMICOPS_BOT/.claude/settings.json` (single source of truth)
+2. **`$ACADEMICOPS` environment variable**: Available everywhere, points to framework installation
+3. **Settings symlinked**: `~/.claude/settings.json` → `$ACADEMICOPS/.claude/settings.json` (single source of truth)
 4. **Skills deployed to `~/.claude/skills/`**: Extracted from `dist/skills/*.zip`, available globally
 5. **Project-local overrides**: Projects can override global hooks with `.claude/settings.json`
-6. **Hook invocation**: Global hooks use `uv run --directory "$ACADEMICOPS_BOT"` for dependencies
+6. **Hook invocation**: Global hooks use `uv run --directory "$ACADEMICOPS"` for dependencies
 7. **`bots/` namespace**: All agent instructions and hooks live under `bots/` directory
 
 **Rule enforced in agent instructions**: Never put agent rules in `docs/`, never put human documentation in `bots/`.
 
 ### Configuration Management
 
-**Canonical settings.json** lives in `$ACADEMICOPS_BOT/.claude/settings.json` and is **symlinked** to `~/.claude/settings.json` by `scripts/setup_academicops.sh`.
+**Canonical settings.json** lives in `$ACADEMICOPS/.claude/settings.json` and is **symlinked** to `~/.claude/settings.json` by `scripts/setup_academicops.sh`.
 
 **Why symlink instead of copy:**
 - **Single source of truth**: Hook configuration version-controlled in academicOps repo
@@ -97,7 +97,7 @@ any-repo/                      # Individual project repos
 - **Easier maintenance**: No manual copying of hook configurations
 
 **What's in canonical settings.json:**
-- `ACADEMICOPS_BOT` environment variable
+- `ACADEMICOPS` environment variable
 - All 9 Claude Code hook events (SessionStart, PreToolUse, PostToolUse, UserPromptSubmit, Stop, SubagentStop, SessionEnd, PreCompact, Notification)
 - Standard permissions (allow `uv run pytest/python`, `gh issue create`)
 - Deny patterns (prevent writing to `.env`, `.venv`, `.cache`)
@@ -105,7 +105,7 @@ any-repo/                      # Individual project repos
 
 **Local customization:**
 If you need machine-specific settings, you have two options:
-1. **Edit the canonical file** in `$ACADEMICOPS_BOT/.claude/settings.json` (commit if universal, gitignore if personal)
+1. **Edit the canonical file** in `$ACADEMICOPS/.claude/settings.json` (commit if universal, gitignore if personal)
 2. **Break the symlink**: Remove symlink and copy the file to customize locally (not recommended—you'll lose auto-updates)
 
 ---
@@ -121,7 +121,7 @@ academicOps uses **ONE tiered file** and **explicit references** for everything 
 Every session automatically loads `_CORE.md` from up to three tiers:
 
 ```
-$ACADEMICOPS_BOT/bots/agents/_CORE.md              (Framework - REQUIRED)
+$ACADEMICOPS/bots/agents/_CORE.md              (Framework - REQUIRED)
 $ACADEMICOPS_PERSONAL/bots/agents/_CORE.md         (Personal - optional)
 $PWD/bots/agents/_CORE.md                          (Project - optional)
 ```
@@ -143,10 +143,10 @@ $PWD/bots/agents/_CORE.md                          (Project - optional)
 
 ```bash
 # /dev loads ONLY from framework
-$ACADEMICOPS_BOT/bots/agents/DEVELOPER.md
+$ACADEMICOPS/bots/agents/DEVELOPER.md
 
 # /trainer loads ONLY from framework
-$ACADEMICOPS_BOT/bots/agents/trainer.md
+$ACADEMICOPS/bots/agents/trainer.md
 ```
 
 **Why?** These are generic workflows that don't need project customization. If you need project-specific variations, reference them explicitly in your project's CLAUDE.md:
@@ -175,7 +175,7 @@ $ACADEMICOPS_BOT/bots/agents/trainer.md
 → `your-project/bots/agents/_CORE.md`
 
 **"Where do generic development workflows go?"**
-→ Already in framework at `$ACADEMICOPS_BOT/bots/agents/DEVELOPER.md`
+→ Already in framework at `$ACADEMICOPS/bots/agents/DEVELOPER.md`
 
 **"How do I know what gets auto-loaded?"**
 → Only `_CORE.md` is auto-loaded at SessionStart. Everything else requires explicit invocation (`/dev`) or reference (`@bots/DEBUGGING.md`)
@@ -200,7 +200,7 @@ uv run python .academicOps/scripts/load_instructions.py DEVELOPER.md
 
 ## File Structure
 
-### Framework Repository (`$ACADEMICOPS_BOT`)
+### Framework Repository (`$ACADEMICOPS`)
 
 The academicOps framework itself organized as:
 
@@ -249,7 +249,7 @@ New standard for academicOps installation in target repositories:
 ```
 target-repo/
 ├── bots/
-│   ├── .academicOps/              # Symlink to $ACADEMICOPS_BOT
+│   ├── .academicOps/              # Symlink to $ACADEMICOPS
 │   ├── docs/INSTRUCTIONS.md       # Project-specific agent instructions
 │   ├── agents/*.md                # Repo-local agent overrides (optional)
 │   ├── commands/*.sh              # Repo-local slash commands (optional)
@@ -421,7 +421,7 @@ academicOps provides specialized agents for different types of work. Each has cl
    description: Activate trainer mode
    ---
 
-   Load: ${ACADEMICOPS_BOT}/scripts/read_instructions.py bots/agents/trainer.md
+   Load: ${ACADEMICOPS}/scripts/read_instructions.py bots/agents/trainer.md
    ```
 
 **Loading mechanisms**:
@@ -595,7 +595,7 @@ Described in agent instructions, enforced in framework:
 
 ```bash
 # Required
-export ACADEMICOPS_BOT=/path/to/academicOps
+export ACADEMICOPS=/path/to/academicOps
 
 # Optional (for personal context/preferences)
 export ACADEMICOPS_PERSONAL=/path/to/your/writing
@@ -606,7 +606,7 @@ Add to shell profile (`~/.bashrc`, `~/.zshrc`, etc.) to persist.
 ### One-Command Setup
 
 ```bash
-$ACADEMICOPS_BOT/scripts/setup_academicops.sh
+$ACADEMICOPS/scripts/setup_academicops.sh
 ```
 
 **What it creates:**
@@ -676,7 +676,7 @@ This section documents design decisions still being validated and known tensions
 ### Slash Command Organization
 
 **Current implementation:**
-- Framework commands in `$ACADEMICOPS_BOT/.claude/commands/`
+- Framework commands in `$ACADEMICOPS/.claude/commands/`
 - Repo-local commands in `bots/commands/` (new standard)
 - Commands symlinked to `.claude/commands` in project repos
 - No formal override/shadowing specification

@@ -75,9 +75,9 @@ Use JSON for request/response bodies.
 @bots/prompts/PROJECT_overview.md
 
 ## Development Standards
-@$ACADEMICOPS_BOT/bots/prompts/python_best_practices.md
-@$ACADEMICOPS_BOT/bots/prompts/testing_standards.md
-@$ACADEMICOPS_BOT/bots/prompts/git_workflow.md
+@$ACADEMICOPS/bots/prompts/python_best_practices.md
+@$ACADEMICOPS/bots/prompts/testing_standards.md
+@$ACADEMICOPS/bots/prompts/git_workflow.md
 
 ## Infrastructure
 @bots/prompts/PROJECT_docker_config.md
@@ -94,7 +94,7 @@ This is the AcademicOps automation framework for research computing...
 [Project-specific description]
 ```
 
-**$ACADEMICOPS_BOT/bots/prompts/python_best_practices.md**:
+**$ACADEMICOPS/bots/prompts/python_best_practices.md**:
 ```markdown
 # Python Development Standards
 
@@ -133,14 +133,14 @@ Use parametrize for testing multiple inputs.
 # CLAUDE.md
 
 @bots/prompts/PROJECT_overview.md
-@$ACADEMICOPS_BOT/bots/prompts/python_best_practices.md
+@$ACADEMICOPS/bots/prompts/python_best_practices.md
 ```
 
 **tests/CLAUDE.md** (new file):
 ```markdown
 # tests/CLAUDE.md
 
-@$ACADEMICOPS_BOT/bots/prompts/pytest_standards.md
+@$ACADEMICOPS/bots/prompts/pytest_standards.md
 @bots/prompts/PROJECT_test_fixtures.md
 ```
 
@@ -191,23 +191,23 @@ Write comprehensive docstrings.
 
 **/CLAUDE.md**:
 ```markdown
-@$ACADEMICOPS_BOT/bots/prompts/python_standards.md
+@$ACADEMICOPS/bots/prompts/python_standards.md
 @bots/prompts/PROJECT_overview.md
 ```
 
 **/src/CLAUDE.md**:
 ```markdown
-@$ACADEMICOPS_BOT/bots/prompts/python_standards.md
+@$ACADEMICOPS/bots/prompts/python_standards.md
 @bots/prompts/PROJECT_source_guidelines.md
 ```
 
 **/tests/CLAUDE.md**:
 ```markdown
-@$ACADEMICOPS_BOT/bots/prompts/python_standards.md
+@$ACADEMICOPS/bots/prompts/python_standards.md
 @bots/prompts/PROJECT_test_guidelines.md
 ```
 
-**$ACADEMICOPS_BOT/bots/prompts/python_standards.md** (shared):
+**$ACADEMICOPS/bots/prompts/python_standards.md** (shared):
 ```markdown
 # Python Development Standards
 
@@ -285,7 +285,7 @@ I like to organize tests by feature...
 
 ### After (properly separated)
 
-**Framework Tier** (`$ACADEMICOPS_BOT/bots/prompts/python_standards.md`):
+**Framework Tier** (`$ACADEMICOPS/bots/prompts/python_standards.md`):
 ```markdown
 # Python Standards
 Use type hints everywhere...
@@ -308,7 +308,7 @@ I like to organize tests by feature...
 
 **Updated CLAUDE.md**:
 ```markdown
-@$ACADEMICOPS_BOT/bots/prompts/python_standards.md
+@$ACADEMICOPS/bots/prompts/python_standards.md
 @bots/prompts/PROJECT_api.md
 @$ACADEMICOPS_PERSONAL/prompts/my_preferences.md
 ```
@@ -361,10 +361,10 @@ scripts/audit_claude_files.py .
 scripts/extract_chunks.py CLAUDE.md
 
 # 3. Create subdirectory CLAUDE.md files
-echo "@$ACADEMICOPS_BOT/bots/prompts/python_standards.md" > src/CLAUDE.md
+echo "@$ACADEMICOPS/bots/prompts/python_standards.md" > src/CLAUDE.md
 echo "@bots/prompts/PROJECT_source_structure.md" >> src/CLAUDE.md
 
-echo "@$ACADEMICOPS_BOT/bots/prompts/pytest_standards.md" > tests/CLAUDE.md
+echo "@$ACADEMICOPS/bots/prompts/pytest_standards.md" > tests/CLAUDE.md
 echo "@bots/prompts/PROJECT_test_fixtures.md" >> tests/CLAUDE.md
 
 echo "@bots/prompts/PROJECT_deployment.md" > deploy/CLAUDE.md
@@ -387,8 +387,8 @@ scripts/audit_claude_files.py .
 # CLAUDE.md
 
 @bots/prompts/PROJECT_overview.md
-@$ACADEMICOPS_BOT/bots/prompts/development_standards.md
-@$ACADEMICOPS_BOT/bots/prompts/code_quality.md
+@$ACADEMICOPS/bots/prompts/development_standards.md
+@$ACADEMICOPS/bots/prompts/code_quality.md
 @$ACADEMICOPS_PERSONAL/prompts/my_workflow.md
 @bots/prompts/PROJECT_getting_started.md
 ```

@@ -299,7 +299,7 @@ class TestPreToolUseHook:
         """Test that agent instruction files are allowed."""
         import os
 
-        bot_root = Path(os.getenv("ACADEMICOPS_BOT"))
+        bot_root = Path(os.getenv("ACADEMICOPS"))
         hook_input = {
             "session_id": "test-session",
             "cwd": str(repo_root),

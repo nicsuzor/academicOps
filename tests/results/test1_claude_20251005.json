@@ -212,7 +212,7 @@
                 {
                     "tool_use_id": "toolu_0162Nx1UCKYZFxvXw9P1nxZo",
                     "type": "tool_result",
-                    "content": ${ACADEMICOPS_BOT
+                    "content": ${ACADEMICOPS
                     }/docs/INSTRUCTIONS.md\n/home/nic/src/writing/projects/wikijuris/docs/agent/INSTRUCTIONS.md\n/home/nic/src/writing/projects/buttermilk/docs/bots/INSTRUCTIONS.md\n/home/nic/src/writing/docs/INSTRUCTIONS.md"
                 }
             ]

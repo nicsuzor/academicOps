@@ -10,7 +10,7 @@ Agent framework for academic research repositories.
 
 ## Installation Overview
 
-academicOps installs **globally** into `~/.claude/` and makes itself available everywhere via the `$ACADEMICOPS_BOT` environment variable. Individual projects can optionally add local overrides.
+academicOps installs **globally** into `~/.claude/` and makes itself available everywhere via the `$ACADEMICOPS` environment variable. Individual projects can optionally add local overrides.
 
 ## Installation Steps
 
@@ -26,7 +26,7 @@ git clone https://github.com/nicsuzor/academicOps.git ~/academicOps
 Add to your shell profile (`~/.bashrc`, `~/.zshrc`, etc.):
 
 ```bash
-export ACADEMICOPS_BOT=~/academicOps
+export ACADEMICOPS=~/academicOps
 ```
 
 Reload your shell:
@@ -42,16 +42,16 @@ export ACADEMICOPS_PERSONAL=/path/to/your/writing
 ### Step 3: Run Setup Script
 
 ```bash
-$ACADEMICOPS_BOT/scripts/setup_academicops.sh
+$ACADEMICOPS/scripts/setup_academicops.sh
 ```
 
 **What it does:**
 
-- ✅ Symlinks `~/.claude/settings.json` → `$ACADEMICOPS_BOT/config/settings.json`
-- ✅ Symlinks `~/.claude/hooks/` → `$ACADEMICOPS_BOT/hooks/`
-- ✅ Symlinks `~/.claude/agents/` → `$ACADEMICOPS_BOT/agents/`
-- ✅ Symlinks `~/.claude/commands/` → `$ACADEMICOPS_BOT/commands/`
-- ✅ Symlinks `~/.claude/skills/` → `$ACADEMICOPS_BOT/skills/`
+- ✅ Symlinks `~/.claude/settings.json` → `$ACADEMICOPS/config/settings.json`
+- ✅ Symlinks `~/.claude/hooks/` → `$ACADEMICOPS/hooks/`
+- ✅ Symlinks `~/.claude/agents/` → `$ACADEMICOPS/agents/`
+- ✅ Symlinks `~/.claude/commands/` → `$ACADEMICOPS/commands/`
+- ✅ Symlinks `~/.claude/skills/` → `$ACADEMICOPS/skills/`
 - ✅ Global configuration applies to all Claude Code sessions
 
 ### Step 4: Verify Installation
@@ -67,7 +67,7 @@ The global hooks should activate and you'll have access to all academicOps skill
 
 Test environment variable:
 ```bash
-echo $ACADEMICOPS_BOT  # Should print your installation path
+echo $ACADEMICOPS  # Should print your installation path
 ```
 
 ---
@@ -111,9 +111,9 @@ Project-local settings **merge with or override** global `~/.claude/settings.jso
 Pull latest changes and re-run installation:
 
 ```bash
-cd $ACADEMICOPS_BOT
+cd $ACADEMICOPS
 git pull origin main
-$ACADEMICOPS_BOT/scripts/setup_academicops.sh
+$ACADEMICOPS/scripts/setup_academicops.sh
 ```
 
 The installation script will:
@@ -125,11 +125,11 @@ The installation script will:
 
 ## Troubleshooting
 
-### "ACADEMICOPS_BOT not set" error
+### "ACADEMICOPS not set" error
 
 Add to your shell profile and reload:
 ```bash
-echo 'export ACADEMICOPS_BOT=~/academicOps' >> ~/.bashrc
+echo 'export ACADEMICOPS=~/academicOps' >> ~/.bashrc
 source ~/.bashrc
 ```
 
@@ -140,7 +140,7 @@ Check global settings exist:
 cat ~/.claude/settings.json
 ```
 
-Should contain `"env"` section with `ACADEMICOPS_BOT`.
+Should contain `"env"` section with `ACADEMICOPS`.
 
 ### Skills not found
 
@@ -151,14 +151,14 @@ ls ~/.claude/skills/
 
 Re-run installation if missing:
 ```bash
-$ACADEMICOPS_BOT/scripts/setup_academicops.sh
+$ACADEMICOPS/scripts/setup_academicops.sh
 ```
 
 ### Hook scripts failing
 
 Test manually with `uv run --directory`:
 ```bash
-uv run --directory "$ACADEMICOPS_BOT" python "$ACADEMICOPS_BOT/bots/hooks/validate_tool.py"
+uv run --directory "$ACADEMICOPS" python "$ACADEMICOPS/bots/hooks/validate_tool.py"
 ```
 
 ---

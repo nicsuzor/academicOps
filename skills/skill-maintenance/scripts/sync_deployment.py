@@ -22,8 +22,8 @@ from pathlib import Path
 from typing import List, Dict, Any, Tuple
 
 # Get paths
-ACADEMICOPS_BOT = os.environ.get("ACADEMICOPS_BOT", Path.home() / "src" / "bot")
-SOURCE_DIR = Path(ACADEMICOPS_BOT) / "skills"
+ACADEMICOPS = os.environ.get("ACADEMICOPS", Path.home() / "src" / "bot")
+SOURCE_DIR = Path(ACADEMICOPS) / "skills"
 DEPLOY_DIR = Path.home() / ".claude" / "skills"
 
 

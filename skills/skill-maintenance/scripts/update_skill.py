@@ -24,8 +24,8 @@ from typing import List, Dict, Any, Tuple, Optional
 from datetime import datetime
 
 # Get academicOps paths
-ACADEMICOPS_BOT = os.environ.get("ACADEMICOPS_BOT", Path.home() / "src" / "bot")
-SKILLS_DIR = Path(ACADEMICOPS_BOT) / "skills"
+ACADEMICOPS = os.environ.get("ACADEMICOPS", Path.home() / "src" / "bot")
+SKILLS_DIR = Path(ACADEMICOPS) / "skills"
 BACKUP_DIR = Path(__file__).parent / "backups"
 
 # Update patterns

@@ -96,7 +96,7 @@ Write docstrings for public APIs.
 **Good Example**:
 ```markdown
 # All three files reference:
-@$ACADEMICOPS_BOT/bots/prompts/python_standards.md
+@$ACADEMICOPS/bots/prompts/python_standards.md
 ```
 
 ### 4. Kitchen Sink Anti-Pattern
@@ -135,15 +135,15 @@ Write docstrings for public APIs.
 
 ## Development
 @bots/prompts/PROJECT_overview.md
-@$ACADEMICOPS_BOT/bots/prompts/python_standards.md
+@$ACADEMICOPS/bots/prompts/python_standards.md
 
 ## Infrastructure
 @bots/prompts/PROJECT_docker_setup.md
 @bots/prompts/PROJECT_deployment.md
 
 ## Quality
-@$ACADEMICOPS_BOT/bots/prompts/testing_practices.md
-@$ACADEMICOPS_BOT/bots/prompts/code_review.md
+@$ACADEMICOPS/bots/prompts/testing_practices.md
+@$ACADEMICOPS/bots/prompts/code_review.md
 ```
 
 ### 5. Informal Notes Anti-Pattern
@@ -194,7 +194,7 @@ btw tests are flaky sometimes
 # CLAUDE.md
 
 @bots/prompts/PROJECT_overview.md
-@$ACADEMICOPS_BOT/bots/prompts/development_standards.md
+@$ACADEMICOPS/bots/prompts/development_standards.md
 @$ACADEMICOPS_PERSONAL/prompts/my_workflow.md
 ```
 
@@ -233,7 +233,7 @@ Is it project-specific?
   YES → bots/prompts/PROJECT_*.md
   NO → Is it a personal preference?
     YES → $ACADEMICOPS_PERSONAL/prompts/*.md
-    NO → $ACADEMICOPS_BOT/bots/prompts/*.md
+    NO → $ACADEMICOPS/bots/prompts/*.md
 ```
 
 ### 4. Descriptive Naming Pattern
@@ -275,11 +275,11 @@ Is it project-specific?
 
 # Version 2: Add standards
 @bots/prompts/PROJECT_setup.md
-@$ACADEMICOPS_BOT/bots/prompts/python_standards.md
+@$ACADEMICOPS/bots/prompts/python_standards.md
 
 # Version 3: Add personal preferences
 @bots/prompts/PROJECT_setup.md
-@$ACADEMICOPS_BOT/bots/prompts/python_standards.md
+@$ACADEMICOPS/bots/prompts/python_standards.md
 @$ACADEMICOPS_PERSONAL/prompts/my_dev_workflow.md
 ```
 
@@ -332,7 +332,7 @@ scripts/audit_claude_files.py . | grep duplication
 **Step 2**: Extract to shared chunk
 ```bash
 # Create shared chunk in appropriate tier
-echo "Content" > $ACADEMICOPS_BOT/bots/prompts/shared_pattern.md
+echo "Content" > $ACADEMICOPS/bots/prompts/shared_pattern.md
 ```
 
 **Step 3**: Replace with references

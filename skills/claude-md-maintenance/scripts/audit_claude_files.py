@@ -48,7 +48,7 @@ class ClaudeFileAuditor:
             base_dir: Root directory to scan for CLAUDE.md files
         """
         self.base_dir = Path(base_dir).resolve()
-        self.framework_dir = Path(os.environ.get("ACADEMICOPS_BOT", "")).resolve() if os.environ.get("ACADEMICOPS_BOT") else None
+        self.framework_dir = Path(os.environ.get("ACADEMICOPS", "")).resolve() if os.environ.get("ACADEMICOPS") else None
         self.personal_dir = Path(os.environ.get("ACADEMICOPS_PERSONAL", "")).resolve() if os.environ.get("ACADEMICOPS_PERSONAL") else None
         self.issues: List[Issue] = []
 
@@ -234,7 +234,7 @@ class ClaudeFileAuditor:
         if is_project_specific:
             return f"bots/prompts/PROJECT_{self._infer_chunk_name(content)}.md"
         elif self._is_reusable(content):
-            return f"$ACADEMICOPS_BOT/bots/prompts/{self._infer_chunk_name(content)}.md"
+            return f"$ACADEMICOPS/bots/prompts/{self._infer_chunk_name(content)}.md"
         else:
             return f"$ACADEMICOPS_PERSONAL/prompts/{self._infer_chunk_name(content)}.md"
 

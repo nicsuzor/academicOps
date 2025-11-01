@@ -18,7 +18,7 @@ See `paths.toml` in repo root for canonical path definitions.
 
 ## Three-Tier Loading System
 
-1. **Framework** (`$ACADEMICOPS_BOT/core/`): Universal instructions
+1. **Framework** (`$ACADEMICOPS/core/`): Universal instructions
 2. **Personal** (`$ACADEMICOPS_PERSONAL/core/`): User customizations
 3. **Project** (`$PWD/docs/bots/`): Project-specific instructions
 

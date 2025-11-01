@@ -20,7 +20,7 @@ Storing canonical settings.json in academicOps repo and symlinking from ~/.claud
 
 1. **Created `.claude/settings.json`** with:
    - All 9 Claude Code hooks (added 3 new logging hooks: SessionEnd, PreCompact, Notification)
-   - ACADEMICOPS_BOT environment variable
+   - ACADEMICOPS environment variable
    - Standard permissions and deny patterns
    - Custom statusLine
 

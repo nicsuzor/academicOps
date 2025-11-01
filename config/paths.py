@@ -93,7 +93,7 @@ class AcademicOpsPaths:
         """Print current configuration"""
         return f"""Academic Ops Path Configuration:
   ACADEMIC_OPS_ROOT: {self.root}
-  ACADEMICOPS_BOT: {self.bot_root}
+  ACADEMICOPS: {self.bot_root}
   ACADEMICOPS_DATA: {self.data}
   ACADEMICOPS_DOCS: {self.docs}
   ACADEMICOPS_PROJECTS: {self.projects}

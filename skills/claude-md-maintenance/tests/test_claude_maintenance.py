@@ -281,10 +281,10 @@ class TestReferenceValidator:
         (framework_dir / "bots" / "prompts").mkdir(parents=True)
         (framework_dir / "bots" / "prompts" / "python.md").write_text("Content")
         
-        monkeypatch.setenv("ACADEMICOPS_BOT", str(framework_dir))
+        monkeypatch.setenv("ACADEMICOPS", str(framework_dir))
         
         claude_file = tmp_path / "CLAUDE.md"
-        claude_file.write_text("@$ACADEMICOPS_BOT/bots/prompts/python.md")
+        claude_file.write_text("@$ACADEMICOPS/bots/prompts/python.md")
         
         validator = ReferenceValidator(tmp_path)
         references = validator.validate_file(claude_file)

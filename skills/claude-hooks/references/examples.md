@@ -23,10 +23,10 @@ def get_tier_paths(filename: str) -> dict[str, Path | None]:
     paths = {}
 
     # Framework tier (REQUIRED)
-    if bot_path := os.environ.get("ACADEMICOPS_BOT"):
+    if bot_path := os.environ.get("ACADEMICOPS"):
         paths["framework"] = Path(bot_path) / "bots" / "agents" / filename
     else:
-        raise ValueError("ACADEMICOPS_BOT environment variable not set")
+        raise ValueError("ACADEMICOPS environment variable not set")
 
     # Personal tier (OPTIONAL)
     if personal_path := os.environ.get("ACADEMICOPS_PERSONAL"):

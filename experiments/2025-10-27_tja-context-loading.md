@@ -50,7 +50,7 @@ Agent in TJA directory (2025-10-27) tried 6+ random Python commands to query dat
 **Problem:** Had broken paths:
 ```markdown
 - **Parent Project**: papers/automod (see `papers/automod/CLAUDE.md` for context)
-- **dbt Practices**: Follow `${ACADEMICOPS_BOT}/docs/methodologies/dbt-practices.md`
+- **dbt Practices**: Follow `${ACADEMICOPS}/docs/methodologies/dbt-practices.md`
 ```
 
 **Fix:** Corrected to actual paths:

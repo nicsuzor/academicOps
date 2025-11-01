@@ -64,7 +64,7 @@ class TestContextLoadingHierarchy:
         # Set environment to point to personal repo
         monkeypatch.setenv("ACADEMICOPS_PERSONAL", str(personal_repo))
         monkeypatch.setenv(
-            "ACADEMICOPS_BOT", str(Path(__file__).parent.parent)
+            "ACADEMICOPS", str(Path(__file__).parent.parent)
         )  # Framework root
         monkeypatch.chdir(project_repo)
 
@@ -124,7 +124,7 @@ When working in THIS repo, strategist agent accesses these paths.
         (personal_repo / "data" / "goals").mkdir(parents=True)
 
         monkeypatch.setenv("ACADEMICOPS_PERSONAL", str(personal_repo))
-        monkeypatch.setenv("ACADEMICOPS_BOT", str(Path(__file__).parent.parent))
+        monkeypatch.setenv("ACADEMICOPS", str(Path(__file__).parent.parent))
         monkeypatch.chdir(personal_repo)
 
         # Run load_instructions.py
@@ -174,7 +174,7 @@ When working in THIS repo, strategist agent accesses these paths.
         )
 
         monkeypatch.setenv("ACADEMICOPS_PERSONAL", str(personal_repo))
-        monkeypatch.setenv("ACADEMICOPS_BOT", str(Path(__file__).parent.parent))
+        monkeypatch.setenv("ACADEMICOPS", str(Path(__file__).parent.parent))
         monkeypatch.chdir(project_repo)
 
         result = subprocess.run(
@@ -228,7 +228,7 @@ class TestPrivacyBoundaries:
                             {
                                 "type": "command",
                                 # Should use env var, not absolute path
-                                "command": "uv run python $ACADEMICOPS_BOT/hooks/load_instructions.py",
+                                "command": "uv run python $ACADEMICOPS/hooks/load_instructions.py",
                             }
                         ]
                     }
@@ -247,7 +247,7 @@ class TestPrivacyBoundaries:
             "/home/" not in content
         ), "Should not contain absolute paths to user home"
         assert (
-            "$ACADEMICOPS_BOT" in content or "${ACADEMICOPS_BOT}" in content
+            "$ACADEMICOPS" in content or "${ACADEMICOPS}" in content
         ), "Should use environment variable"
 
     def test_symlinks_are_gitignored(self, tmp_path):
@@ -303,7 +303,7 @@ class TestFallbackBehavior:
         )
 
         monkeypatch.setenv("ACADEMICOPS_PERSONAL", str(personal_repo))
-        monkeypatch.setenv("ACADEMICOPS_BOT", str(Path(__file__).parent.parent))
+        monkeypatch.setenv("ACADEMICOPS", str(Path(__file__).parent.parent))
         monkeypatch.chdir(personal_repo)
 
         result = subprocess.run(
@@ -327,18 +327,18 @@ class TestEnvironmentVariableRequirements:
 
     def test_academicops_bot_required(self, tmp_path, monkeypatch):
         """
-        VALIDATES: ACADEMICOPS_BOT is required, ACADEMICOPS_PERSONAL is optional.
+        VALIDATES: ACADEMICOPS is required, ACADEMICOPS_PERSONAL is optional.
 
         Design decision (INSTALL.md lines 18-28):
-        - ACADEMICOPS_BOT: Required
+        - ACADEMICOPS: Required
         - ACADEMICOPS_PERSONAL: Optional (for personal context)
 
         Expected:
-        - Missing ACADEMICOPS_BOT raises clear error
+        - Missing ACADEMICOPS raises clear error
         - Missing ACADEMICOPS_PERSONAL is acceptable (framework-only mode)
         """
         # Clear environment variables
-        monkeypatch.delenv("ACADEMICOPS_BOT", raising=False)
+        monkeypatch.delenv("ACADEMICOPS", raising=False)
         monkeypatch.delenv("ACADEMICOPS_PERSONAL", raising=False)
 
         result = subprocess.run(
@@ -349,9 +349,9 @@ class TestEnvironmentVariableRequirements:
             input="{}",
         )
 
-        assert result.returncode != 0, "Should fail if ACADEMICOPS_BOT not set"
+        assert result.returncode != 0, "Should fail if ACADEMICOPS not set"
         assert (
-            "ACADEMICOPS_BOT" in result.stderr
+            "ACADEMICOPS" in result.stderr
         ), "Error message should mention missing variable"
 
     def test_works_without_personal_context(self, tmp_path, monkeypatch):
@@ -359,11 +359,11 @@ class TestEnvironmentVariableRequirements:
         VALIDATES: System works with only framework, no personal context.
 
         Expected:
-        - ACADEMICOPS_BOT set → works
+        - ACADEMICOPS set → works
         - ACADEMICOPS_PERSONAL not set → silently skipped
         - Framework tier loads successfully
         """
-        monkeypatch.setenv("ACADEMICOPS_BOT", str(Path(__file__).parent.parent))
+        monkeypatch.setenv("ACADEMICOPS", str(Path(__file__).parent.parent))
         monkeypatch.delenv("ACADEMICOPS_PERSONAL", raising=False)
 
         project_repo = tmp_path / "project"

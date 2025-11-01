@@ -17,13 +17,13 @@ Modified `commands/ops.md` (lines 9-41):
 **Before** (32 lines):
 - Instructions to run `pwd`
 - Instructions to run `git remote get-url origin` in current directory
-- Instructions to conditionally cd to `$ACADEMICOPS_BOT` and verify git repo
+- Instructions to conditionally cd to `$ACADEMICOPS` and verify git repo
 - Instructions to conditionally cd to `$ACADEMICOPS_PERSONAL` and verify git repo
 - Instructions to check `.claude/agents` symlink with readlink
 
 **After** (22 lines):
 - Direct reporting of `$PWD`
-- Direct reporting of `$ACADEMICOPS_BOT` environment variable
+- Direct reporting of `$ACADEMICOPS` environment variable
 - Direct reporting of `$ACADEMICOPS_PERSONAL` environment variable
 - Simple check for `.claude/agents` symlink if exists
 

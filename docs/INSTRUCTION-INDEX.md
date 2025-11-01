@@ -61,7 +61,7 @@ When Claude Code starts, the SessionStart hook (`hooks/load_instructions.py`) AU
 **2. agents/_CORE.md from all 3 tiers** (stacked in priority order)
    - `$PROJECT/agents/_CORE.md` (Project-specific, HIGHEST priority)
    - `$ACADEMICOPS_PERSONAL/agents/_CORE.md` (User global preferences)
-   - `$ACADEMICOPS_BOT/agents/_CORE.md` (Framework defaults, REQUIRED)
+   - `$ACADEMICOPS/agents/_CORE.md` (Framework defaults, REQUIRED)
 
 **Format in agent context:**
 ```
@@ -83,7 +83,7 @@ Git remote origin: git@github.com:...
 ---
 
 ## FRAMEWORK: Core Rules
-[Full text of $ACADEMICOPS_BOT/agents/_CORE.md]
+[Full text of $ACADEMICOPS/agents/_CORE.md]
 ```
 
 **What agents know at session start:**
@@ -99,7 +99,7 @@ Slash commands can load additional instruction files using the same 3-tier syste
 
 **Example:** `/trainer` command loads `agents/trainer.md`
 
-1. Command executes: `uv run python ${ACADEMICOPS_BOT}/hooks/load_instructions.py trainer.md`
+1. Command executes: `uv run python ${ACADEMICOPS}/hooks/load_instructions.py trainer.md`
 2. Agent receives FULL TEXT from all available tiers (project → personal → framework)
 3. This supplements (doesn't replace) the `_CORE.md` already loaded at SessionStart
 
@@ -137,13 +137,13 @@ Unless explicitly loaded via slash command, agents have NO KNOWLEDGE of:
 
 1. **Project** (`$PROJECT/agents/`) - Overrides everything
 2. **Personal** (`$ACADEMICOPS_PERSONAL/agents/`) - Overrides framework defaults
-3. **Framework** (`$ACADEMICOPS_BOT/agents/`) - Base defaults
+3. **Framework** (`$ACADEMICOPS/agents/`) - Base defaults
 
 All three are shown to agents (stacked). Later tiers can reference or override earlier ones.
 
 ### Fail-Fast Behavior
 
-- **Framework tier REQUIRED** - Blocks with exit code 1 if `$ACADEMICOPS_BOT/agents/_CORE.md` missing
+- **Framework tier REQUIRED** - Blocks with exit code 1 if `$ACADEMICOPS/agents/_CORE.md` missing
 - **Other tiers optional** - Silently skipped if missing (no errors)
 - **No fallbacks, no defaults, no guessing**
 
@@ -167,7 +167,7 @@ Complete list of instruction files with visibility metadata.
 
 ### CLAUDE.md
 
-- **Path**: `$ACADEMICOPS_BOT/CLAUDE.md`
+- **Path**: `$ACADEMICOPS/CLAUDE.md`
 - **Purpose**: Initial entry point that Claude Code reads, then defers to SessionStart hook
 - **Visibility**: 🔵 REFERENCED (Claude reads this first, but actual loading happens via SessionStart hook)
 - **Content**: Points to `agents/_CORE.md` and includes repository info
@@ -178,7 +178,7 @@ Complete list of instruction files with visibility metadata.
 
 ### GEMINI.md
 
-- **Path**: `$ACADEMICOPS_BOT/GEMINI.md`
+- **Path**: `$ACADEMICOPS/GEMINI.md`
 - **Purpose**: Entry point for Gemini CLI agents
 - **Visibility**: 🔵 REFERENCED
 - **Loaded by**: Gemini CLI on startup (automatic)
@@ -191,7 +191,7 @@ Complete list of instruction files with visibility metadata.
 
 ### agents/_CORE.md
 
-- **Path**: `$ACADEMICOPS_BOT/agents/_CORE.md`
+- **Path**: `$ACADEMICOPS/agents/_CORE.md`
 - **Purpose**: Core axioms and inviolable rules for ALL agents
 - **Visibility**: 🔴 SHOWN (auto-loaded at SessionStart, FULL TEXT injected into every agent)
 - **Loaded by**: SessionStart hook → `hooks/load_instructions.py` (automatic, every session)
@@ -215,7 +215,7 @@ Complete list of instruction files with visibility metadata.
 
 ### agents/trainer.md
 
-- **Path**: `$ACADEMICOPS_BOT/agents/trainer.md`
+- **Path**: `$ACADEMICOPS/agents/trainer.md`
 - **Purpose**: Meta-agent for framework maintenance and optimization
 - **Visibility**: 🔴 SHOWN (when slash command `/trainer` invoked)
 - **Loaded by**: `/trainer` slash command → `hooks/load_instructions.py trainer.md`
@@ -233,7 +233,7 @@ Complete list of instruction files with visibility metadata.
 
 ### agents/DEVELOPER.md
 
-- **Path**: `$ACADEMICOPS_BOT/agents/DEVELOPER.md`
+- **Path**: `$ACADEMICOPS/agents/DEVELOPER.md`
 - **Purpose**: Software development workflow, debugging, testing
 - **Visibility**: 🔵 REFERENCED (agents must explicitly load via slash command or Read tool)
 - **Loaded by**: Manual - no slash command currently configured
@@ -248,7 +248,7 @@ Complete list of instruction files with visibility metadata.
 
 ### agents/ANALYST.md (symlink)
 
-- **Path**: `$ACADEMICOPS_BOT/agents/ANALYST.md` → `docs/_CHUNKS/ANALYST.md`
+- **Path**: `$ACADEMICOPS/agents/ANALYST.md` → `docs/_CHUNKS/ANALYST.md`
 - **Purpose**: Data analysis, dbt workflows, SQL optimization
 - **Visibility**: 🔴 SHOWN (when slash command `/analyst` invoked)
 - **Loaded by**: `/analyst` slash command → `hooks/load_instructions.py ANALYST.md`
@@ -262,7 +262,7 @@ Complete list of instruction files with visibility metadata.
 
 ### agents/SUPERVISOR.md
 
-- **Path**: `$ACADEMICOPS_BOT/agents/SUPERVISOR.md`
+- **Path**: `$ACADEMICOPS/agents/SUPERVISOR.md`
 - **Purpose**: Orchestrate multi-agent workflows with comprehensive quality gates and test-first development
 - **Visibility**: 🔵 REFERENCED (invoked via Task tool with subagent_type: "supervisor")
 - **Loaded by**: Task tool when supervisor orchestration needed
@@ -301,7 +301,7 @@ All symlinked to docs/_CHUNKS/ for modular management:
 
 ### ARCHITECTURE.md
 
-- **Path**: `$ACADEMICOPS_BOT/ARCHITECTURE.md`
+- **Path**: `$ACADEMICOPS/ARCHITECTURE.md`
 - **Purpose**: System overview, design philosophy, loading mechanisms
 - **Visibility**: 🔵 REFERENCED (agents must explicitly read)
 - **Loaded by**: Never auto-loaded
@@ -317,7 +317,7 @@ All symlinked to docs/_CHUNKS/ for modular management:
 
 ### docs/INSTRUCTION-INDEX.md (this file)
 
-- **Path**: `$ACADEMICOPS_BOT/docs/INSTRUCTION-INDEX.md`
+- **Path**: `$ACADEMICOPS/docs/INSTRUCTION-INDEX.md`
 - **Purpose**: Complete file registry with SHOWN vs REFERENCED metadata
 - **Visibility**: 🔵 REFERENCED (agents don't know this exists unless told)
 - **Loaded by**: Never auto-loaded
@@ -328,7 +328,7 @@ All symlinked to docs/_CHUNKS/ for modular management:
 
 ### docs/hooks_guide.md
 
-- **Path**: `$ACADEMICOPS_BOT/docs/hooks_guide.md`
+- **Path**: `$ACADEMICOPS/docs/hooks_guide.md`
 - **Purpose**: Hook system documentation and usage guide
 - **Visibility**: 🔵 REFERENCED
 - **Loaded by**: Never auto-loaded
@@ -336,7 +336,7 @@ All symlinked to docs/_CHUNKS/ for modular management:
 
 ### README.md
 
-- **Path**: `$ACADEMICOPS_BOT/README.md`
+- **Path**: `$ACADEMICOPS/README.md`
 - **Purpose**: Repository overview, quick start, installation
 - **Visibility**: 🔵 REFERENCED
 - **Loaded by**: Never auto-loaded
@@ -349,7 +349,7 @@ All symlinked to docs/_CHUNKS/ for modular management:
 
 ### docs/methodologies/computational-research.md
 
-- **Path**: `$ACADEMICOPS_BOT/docs/methodologies/computational-research.md`
+- **Path**: `$ACADEMICOPS/docs/methodologies/computational-research.md`
 - **Purpose**: academicOps approach to computational research
 - **Loaded by**: `agents/ANALYST.md` (when working on empirical projects)
 - **References**: `dbt-practices.md`
@@ -358,7 +358,7 @@ All symlinked to docs/_CHUNKS/ for modular management:
 
 ### docs/methodologies/dbt-practices.md
 
-- **Path**: `$ACADEMICOPS_BOT/docs/methodologies/dbt-practices.md`
+- **Path**: `$ACADEMICOPS/docs/methodologies/dbt-practices.md`
 - **Purpose**: DBT best practices and MANDATORY data access policy
 - **Loaded by**: `agents/ANALYST.md` (when working on dbt projects)
 - **Content**: No direct upstream queries - dbt models only
@@ -373,7 +373,7 @@ All scripts are INFRASTRUCTURE - agents never see them, but they control what ag
 
 ### hooks/load_instructions.py
 
-- **Path**: `$ACADEMICOPS_BOT/hooks/load_instructions.py`
+- **Path**: `$ACADEMICOPS/hooks/load_instructions.py`
 - **Purpose**: SessionStart hook that loads _CORE.md from 3 tiers and injects into agent context
 - **Visibility**: 🟡 INFRASTRUCTURE (agents never see this, but it determines what they DO see)
 - **Loaded by**: Claude Code SessionStart hook (automatic, every session)
@@ -384,7 +384,7 @@ All scripts are INFRASTRUCTURE - agents never see them, but they control what ag
 
 ### hooks/validate_tool.py
 
-- **Path**: `$ACADEMICOPS_BOT/hooks/validate_tool.py`
+- **Path**: `$ACADEMICOPS/hooks/validate_tool.py`
 - **Purpose**: PreToolUse hook for enforcing tool restrictions
 - **Visibility**: 🟡 INFRASTRUCTURE (agents only see block/warn messages)
 - **Loaded by**: Claude Code PreToolUse hook (automatic, before every tool use)
@@ -400,7 +400,7 @@ All scripts are INFRASTRUCTURE - agents never see them, but they control what ag
 
 ### hooks/validate_stop.py
 
-- **Path**: `$ACADEMICOPS_BOT/hooks/validate_stop.py`
+- **Path**: `$ACADEMICOPS/hooks/validate_stop.py`
 - **Purpose**: SubagentStop and Stop hooks validation
 - **Visibility**: 🟡 INFRASTRUCTURE
 - **Loaded by**: Claude Code Stop hooks (automatic)
@@ -408,7 +408,7 @@ All scripts are INFRASTRUCTURE - agents never see them, but they control what ag
 
 ### hooks/stack_instructions.py
 
-- **Path**: `$ACADEMICOPS_BOT/hooks/stack_instructions.py`
+- **Path**: `$ACADEMICOPS/hooks/stack_instructions.py`
 - **Purpose**: PostToolUse hook for context-aware instruction loading
 - **Visibility**: 🟡 INFRASTRUCTURE (may inject additional context based on tool use)
 - **Loaded by**: Claude Code PostToolUse hook (automatic, after tool use)
@@ -441,17 +441,17 @@ All scripts are INFRASTRUCTURE - agents never see them, but they control what ag
 
 ### config/settings.json
 
-- **Path**: `$ACADEMICOPS_BOT/config/settings.json`
+- **Path**: `$ACADEMICOPS/config/settings.json`
 - **Purpose**: Claude Code settings - defines hooks, permissions, status line
 - **Visibility**: 🟡 INFRASTRUCTURE (agents never see this, but it controls their environment)
 - **Content**:
-  - Environment variables (ACADEMICOPS_BOT)
+  - Environment variables (ACADEMICOPS)
   - Permissions (allow/deny patterns)
   - Hook definitions (SessionStart, PreToolUse, PostToolUse, Stop, etc.)
   - Status line configuration
 - **Loaded by**: Claude Code at startup (automatic)
 - **Status**: ✅ Required
-- **Note**: Hook paths reference `$ACADEMICOPS_BOT/hooks/` directly
+- **Note**: Hook paths reference `$ACADEMICOPS/hooks/` directly
 
 ### Template Files (dist/)
 
@@ -501,7 +501,7 @@ Project-specific commands removed in Issue #119:
 
 ### docs/_UNUSED/
 
-- **Path**: `$ACADEMICOPS_BOT/docs/_UNUSED/`
+- **Path**: `$ACADEMICOPS/docs/_UNUSED/`
 - **Purpose**: Archived obsolete documentation
 - **Status**: ❌ Archived (not referenced in active loading paths)
 - **Issues**: #111 (Phase 2 cleanup)
@@ -523,7 +523,7 @@ These files exist in external repositories and are loaded by the same mechanisms
 
 - **When referenced**: SessionStart (if `ACADEMICOPS_PERSONAL` set)
 - **Purpose**: User's global preferences across all projects
-- **Overrides**: `$ACADEMICOPS_BOT/agents/_CORE.md`
+- **Overrides**: `$ACADEMICOPS/agents/_CORE.md`
 - **Optional**: Yes (skipped with warning if missing)
 
 ### $PROJECT/agents/_CORE.md
@@ -545,7 +545,7 @@ These files exist in external repositories and are loaded by the same mechanisms
 
 - **When referenced**: By hooks (SessionStart, PreToolUse, Stop)
 - **Purpose**: Local deployment of validation scripts
-- **Created by**: `setup_academicops.sh` (symlinked from `$ACADEMICOPS_BOT/scripts/`)
+- **Created by**: `setup_academicops.sh` (symlinked from `$ACADEMICOPS/scripts/`)
 - **Contains**: `load_instructions.py`, `validate_tool.py`, `validate_stop.py`, `hook_models.py`
 - **Status**: ✅ Required for hook execution
 
@@ -564,7 +564,7 @@ These files exist in external repositories and are loaded by the same mechanisms
 **Required:**
 
 ```bash
-export ACADEMICOPS_BOT=/path/to/academicOps
+export ACADEMICOPS=/path/to/academicOps
 
 Optional:
 export ACADEMICOPS_PERSONAL=/path/to/writing  # User global context
@@ -576,7 +576,7 @@ Installation Steps
 1. Set environment variables (see above)
 2. Run setup script:
 cd $PROJECT
-$ACADEMICOPS_BOT/scripts/setup_academicops.sh
+$ACADEMICOPS/scripts/setup_academicops.sh
 3. Customize agents/_CORE.md for your project
 4. Launch Claude Code from project directory
 5. Verify core instructions load at session start

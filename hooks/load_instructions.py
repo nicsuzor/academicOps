@@ -19,7 +19,7 @@ Usage:
     load_instructions.py _CORE.md --format=text
 
 Loading Hierarchy (ALWAYS the same, NO legacy fallbacks):
-1. Framework: $ACADEMICOPS_BOT/core/<filename>
+1. Framework: $ACADEMICOPS/core/<filename>
 2. Personal:  $ACADEMICOPS_PERSONAL/core/<filename> (if exists)
 3. Project:   $PWD/docs/bots/<filename> (if exists)
 
@@ -58,13 +58,13 @@ def get_tier_paths(filename: str) -> dict[str, Path | None]:
     paths = {}
 
     # Framework tier (REQUIRED)
-    if bot_path := os.environ.get("ACADEMICOPS_BOT"):
+    if bot_path := os.environ.get("ACADEMICOPS"):
         paths["framework"] = Path(bot_path) / "core" / filename
     else:
-        # Fail fast - ACADEMICOPS_BOT is required
+        # Fail fast - ACADEMICOPS is required
         raise ValueError(
-            "ACADEMICOPS_BOT environment variable not set. "
-            "Add to shell: export ACADEMICOPS_BOT=/path/to/bot"
+            "ACADEMICOPS environment variable not set. "
+            "Add to shell: export ACADEMICOPS=/path/to/bot"
         )
 
     # Personal tier (OPTIONAL)
@@ -186,7 +186,7 @@ def generate_discovery_manifest() -> str:
     Scans framework tier to discover what files are available,
     then creates a lightweight manifest for agents.
     """
-    bot_path = os.environ.get("ACADEMICOPS_BOT")
+    bot_path = os.environ.get("ACADEMICOPS")
     if not bot_path:
         return ""
 
@@ -283,7 +283,7 @@ def main():
     if "framework" not in contents:
         print(f"ERROR: Framework file not found: {paths['framework']}", file=sys.stderr)
         print(f"Searched at: {paths['framework']}", file=sys.stderr)
-        print(f"ACADEMICOPS_BOT={os.environ.get('ACADEMICOPS_BOT', 'NOT SET')}", file=sys.stderr)
+        print(f"ACADEMICOPS={os.environ.get('ACADEMICOPS', 'NOT SET')}", file=sys.stderr)
         sys.exit(1)
 
     # Prepare output data for logging

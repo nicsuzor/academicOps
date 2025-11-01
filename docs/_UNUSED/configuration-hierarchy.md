@@ -42,7 +42,7 @@ The agent configuration system uses a three-layer hierarchy with standardized lo
    - Applied when no project-specific configuration exists
    - Can reference and modify base agent behaviors
 
-3. **Base/Default** ${ACADEMICOPS_BOT}/agents/*.md`)
+3. **Base/Default** ${ACADEMICOPS}/agents/*.md`)
    - Core agent definitions and shared behaviors
    - Public, reusable components
    - Foundation for all agent operations
@@ -55,7 +55,7 @@ The agent configuration system uses a three-layer hierarchy with standardized lo
 2. First, it looks for `./docs/agents/INSTRUCTIONS.md` in the current directory
 3. If found, those project-specific instructions take precedence
 4. If not found, it checks `/writing/docs/agents/INSTRUCTIONS.md` for global preferences
-5. Base agent definitions from ${ACADEMICOPS_BOT}/agents/*.md` provide the foundation
+5. Base agent definitions from ${ACADEMICOPS}/agents/*.md` provide the foundation
 6. More specific instructions always override more general ones
 
 ### Key Benefits
@@ -85,14 +85,14 @@ To add agent configuration to a new project:
    
    1. **Project-Specific** (this file) - Overrides all other configurations
    2. **Global** (`/writing/docs/agents/INSTRUCTIONS.md`) - Repository-wide preferences
-   3. **Base** ${ACADEMICOPS_BOT}/agents/*.md`) - Core agent definitions
+   3. **Base** ${ACADEMICOPS}/agents/*.md`) - Core agent definitions
    
    ## [Project]-Specific Instructions
    
    [Your project-specific instructions here]
    
    ## Agent Overrides
-   When using base agents from ${ACADEMICOPS_BOT}/agents/`:
+   When using base agents from ${ACADEMICOPS}/agents/`:
    - Use [agent] with these modifications: [...]
    ```
 
@@ -127,7 +127,7 @@ The new system consolidates everything into a clear, three-layer hierarchy with 
 
 - Project changes: Edit `./docs/agents/INSTRUCTIONS.md` in that project
 - Global changes: Edit `/writing/docs/agents/INSTRUCTIONS.md`
-- Base changes: Edit files in ${ACADEMICOPS_BOT}/agents/`
+- Base changes: Edit files in ${ACADEMICOPS}/agents/`
 
 ## Best Practices
 

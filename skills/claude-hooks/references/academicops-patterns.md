@@ -20,7 +20,7 @@ From `ARCHITECTURE.md`:
 ```
 repo/
 ├── bots/
-│   ├── .academicOps/           # Symlink to $ACADEMICOPS_BOT
+│   ├── .academicOps/           # Symlink to $ACADEMICOPS
 │   ├── hooks/                  # Repo-local hook scripts (optional)
 │   ├── agents/                 # Repo-local agent overrides (optional)
 │   └── docs/                   # Project agent instructions
@@ -71,7 +71,7 @@ repo/
 **Script:** `bots/hooks/load_instructions.py`
 
 **What it does:**
-1. Loads `_CORE.md` from framework tier (`$ACADEMICOPS_BOT/bots/agents/`)
+1. Loads `_CORE.md` from framework tier (`$ACADEMICOPS/bots/agents/`)
 2. Loads from personal tier if exists (`$ACADEMICOPS_PERSONAL/bots/agents/`)
 3. Loads from project tier if exists (`$PWD/bots/agents/`)
 4. Combines all into `additionalContext` with priority headers

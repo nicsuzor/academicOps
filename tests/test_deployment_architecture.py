@@ -35,7 +35,7 @@ class TestPathPredictability:
 
     def test_academicops_has_standard_bots_structure(self):
         """${ACADEMICOPS}/bots/ contains all core instructions."""
-        academicops = Path(os.environ.get("ACADEMICOPS_BOT", "/home/nic/src/bot"))
+        academicops = Path(os.environ.get("ACADEMICOPS", "/home/nic/src/bot"))
 
         required_dirs = [
             academicops / "bots/agents",
@@ -49,7 +49,7 @@ class TestPathPredictability:
 
     def test_academicops_claude_folder_structure(self):
         """${ACADEMICOPS}/.claude/ has same structure as project repos."""
-        academicops = Path(os.environ.get("ACADEMICOPS_BOT", "/home/nic/src/bot"))
+        academicops = Path(os.environ.get("ACADEMICOPS", "/home/nic/src/bot"))
 
         # Should have .claude/ with standard structure
         claude_dir = academicops / ".claude"
@@ -69,7 +69,7 @@ class TestPathPredictability:
     def test_project_bots_mirrors_academicops_structure(self, tmp_path):
         """<project>/bots/ should contain only /bots/agents/ for now."""
         # Run installation script first
-        academicops = Path(os.environ.get("ACADEMICOPS_BOT", "/home/nic/src/bot"))
+        academicops = Path(os.environ.get("ACADEMICOPS", "/home/nic/src/bot"))
         install_script = academicops / "scripts/setup_academicops.sh"
         
         # Run installation to create the structure
@@ -114,7 +114,7 @@ class TestSymlinkCreation:
     @pytest.mark.slow
     def test_project_claude_agents_are_symlinked(self, tmp_path):
         """<project>/.claude/agents/ should be symlink to framework."""
-        academicops = Path(os.environ.get("ACADEMICOPS_BOT", "/home/nic/src/bot"))
+        academicops = Path(os.environ.get("ACADEMICOPS", "/home/nic/src/bot"))
         install_script = academicops / "scripts/setup_academicops.sh"
         
         # Run installation
@@ -135,7 +135,7 @@ class TestSymlinkCreation:
     @pytest.mark.slow
     def test_project_claude_commands_are_symlinked(self, tmp_path):
         """<project>/.claude/commands/ should be symlink to framework."""
-        academicops = Path(os.environ.get("ACADEMICOPS_BOT", "/home/nic/src/bot"))
+        academicops = Path(os.environ.get("ACADEMICOPS", "/home/nic/src/bot"))
         install_script = academicops / "scripts/setup_academicops.sh"
         
         # Run installation
@@ -156,7 +156,7 @@ class TestSymlinkCreation:
     @pytest.mark.slow
     def test_project_claude_skills_are_symlinked(self, tmp_path):
         """<project>/.claude/skills/ should be symlink to framework."""
-        academicops = Path(os.environ.get("ACADEMICOPS_BOT", "/home/nic/src/bot"))
+        academicops = Path(os.environ.get("ACADEMICOPS", "/home/nic/src/bot"))
         install_script = academicops / "scripts/setup_academicops.sh"
         
         # Run installation
@@ -177,7 +177,7 @@ class TestSymlinkCreation:
     @pytest.mark.slow
     def test_project_academicops_scripts_symlink(self, tmp_path):
         """<project>/.academicOps/scripts/ should be symlink to framework scripts."""
-        academicops = Path(os.environ.get("ACADEMICOPS_BOT", "/home/nic/src/bot"))
+        academicops = Path(os.environ.get("ACADEMICOPS", "/home/nic/src/bot"))
         install_script = academicops / "scripts/setup_academicops.sh"
         
         # Run installation
@@ -210,7 +210,7 @@ class TestGitignoreCoverage:
 
     def test_dist_gitignore_covers_symlinks(self):
         """dist/.gitignore should ignore all framework symlinks."""
-        academicops = Path(os.environ.get("ACADEMICOPS_BOT", "/home/nic/src/bot"))
+        academicops = Path(os.environ.get("ACADEMICOPS", "/home/nic/src/bot"))
         gitignore = academicops / "dist/.gitignore"
 
         assert gitignore.exists(), "dist/.gitignore template missing"
@@ -240,7 +240,7 @@ class TestGitignoreCoverage:
 
     def test_gitignore_does_not_ignore_custom_bots_files(self):
         """Gitignore should allow custom project files in bots/."""
-        academicops = Path(os.environ.get("ACADEMICOPS_BOT", "/home/nic/src/bot"))
+        academicops = Path(os.environ.get("ACADEMICOPS", "/home/nic/src/bot"))
         gitignore = academicops / "dist/.gitignore"
 
         content = gitignore.read_text()
@@ -265,7 +265,7 @@ class TestModularInstructions:
 
     def test_bots_agents_contains_core_instructions(self):
         """bots/agents/ contains core modular agent instructions."""
-        academicops = Path(os.environ.get("ACADEMICOPS_BOT", "/home/nic/src/bot"))
+        academicops = Path(os.environ.get("ACADEMICOPS", "/home/nic/src/bot"))
 
         agents_dir = academicops / "bots/agents"
         assert agents_dir.exists(), "bots/agents/ missing"
@@ -282,7 +282,7 @@ class TestModularInstructions:
 
     def test_bots_hooks_contains_validation_scripts(self):
         """bots/hooks/ contains hook validation scripts."""
-        academicops = Path(os.environ.get("ACADEMICOPS_BOT", "/home/nic/src/bot"))
+        academicops = Path(os.environ.get("ACADEMICOPS", "/home/nic/src/bot"))
 
         hooks_dir = academicops / "bots/hooks"
         assert hooks_dir.exists(), "bots/hooks/ missing"
@@ -347,7 +347,7 @@ class TestCLAUDEmdDiscovery:
 
     def test_bots_directory_has_claude_md(self):
         """bots/ directories have CLAUDE.md for context loading."""
-        academicops = Path(os.environ.get("ACADEMICOPS_BOT", "/home/nic/src/bot"))
+        academicops = Path(os.environ.get("ACADEMICOPS", "/home/nic/src/bot"))
 
         # Should have CLAUDE.md in key directories (from Issue #120 implementation)
         expected_claude_files = [
@@ -364,7 +364,7 @@ class TestCLAUDEmdDiscovery:
 
     def test_claude_md_contains_only_references(self):
         """CLAUDE.md files should contain ONLY @ references (no duplication)."""
-        academicops = Path(os.environ.get("ACADEMICOPS_BOT", "/home/nic/src/bot"))
+        academicops = Path(os.environ.get("ACADEMICOPS", "/home/nic/src/bot"))
 
         claude_file = academicops / "bots/CLAUDE.md"
         if claude_file.exists():
@@ -390,7 +390,7 @@ class TestScriptInvocation:
     
     def test_no_references_to_bots_scripts(self):
         """Verify no files reference bots/scripts/ (should use .academicOps/scripts/)."""
-        academicops = Path(os.environ.get("ACADEMICOPS_BOT", "/home/nic/src/bot"))
+        academicops = Path(os.environ.get("ACADEMICOPS", "/home/nic/src/bot"))
         
         # Files that should NOT contain bots/scripts/ references
         # (excluding test files and backup files)
@@ -418,7 +418,7 @@ class TestScriptInvocation:
     
     def test_all_script_references_use_academicops_path(self):
         """Verify script invocations use .academicOps/scripts/ pattern."""
-        academicops = Path(os.environ.get("ACADEMICOPS_BOT", "/home/nic/src/bot"))
+        academicops = Path(os.environ.get("ACADEMICOPS", "/home/nic/src/bot"))
         
         # Check that key files properly reference scripts via .academicOps/scripts/
         trainer_file = academicops / "bots/agents/trainer.md"
@@ -438,7 +438,7 @@ class TestScriptInvocation:
 
     def test_scripts_are_executable_via_academicops_symlink(self):
         """Framework scripts should be executable via .academicOps symlink."""
-        academicops = Path(os.environ.get("ACADEMICOPS_BOT", "/home/nic/src/bot"))
+        academicops = Path(os.environ.get("ACADEMICOPS", "/home/nic/src/bot"))
 
         # Example: check one core script
         script = academicops / "scripts/check_instruction_orphans.py"
@@ -459,7 +459,7 @@ class TestPreCommitIntegration:
 
     def test_academicops_uses_precommit_config(self):
         """academicOps should use .pre-commit-config.yaml, not custom hooks."""
-        academicops = Path(os.environ.get("ACADEMICOPS_BOT", "/home/nic/src/bot"))
+        academicops = Path(os.environ.get("ACADEMICOPS", "/home/nic/src/bot"))
 
         precommit_config = academicops / ".pre-commit-config.yaml"
         assert precommit_config.exists(), (
@@ -468,7 +468,7 @@ class TestPreCommitIntegration:
 
     def test_no_custom_git_hooks_in_framework(self):
         """Framework should NOT have custom .git/hooks/ (use pre-commit)."""
-        academicops = Path(os.environ.get("ACADEMICOPS_BOT", "/home/nic/src/bot"))
+        academicops = Path(os.environ.get("ACADEMICOPS", "/home/nic/src/bot"))
 
         git_hooks = academicops / ".git/hooks"
 
@@ -498,7 +498,7 @@ class TestDogfooding:
 
     def test_academicops_has_bots_directory(self):
         """${ACADEMICOPS} itself should have /bots/ structure."""
-        academicops = Path(os.environ.get("ACADEMICOPS_BOT", "/home/nic/src/bot"))
+        academicops = Path(os.environ.get("ACADEMICOPS", "/home/nic/src/bot"))
 
         bots_dir = academicops / "bots"
         assert bots_dir.exists(), (
@@ -507,7 +507,7 @@ class TestDogfooding:
 
     def test_academicops_bots_not_symlink(self):
         """/bots/ in ${ACADEMICOPS} should be REAL, not symlink (source of truth)."""
-        academicops = Path(os.environ.get("ACADEMICOPS_BOT", "/home/nic/src/bot"))
+        academicops = Path(os.environ.get("ACADEMICOPS", "/home/nic/src/bot"))
 
         bots_dir = academicops / "bots"
 
@@ -518,7 +518,7 @@ class TestDogfooding:
 
     def test_academicops_claude_structure_matches_projects(self):
         """${ACADEMICOPS}/.claude/ should match project installation structure."""
-        academicops = Path(os.environ.get("ACADEMICOPS_BOT", "/home/nic/src/bot"))
+        academicops = Path(os.environ.get("ACADEMICOPS", "/home/nic/src/bot"))
 
         claude_dir = academicops / ".claude"
 
@@ -534,7 +534,7 @@ class TestDogfooding:
 
     def test_development_files_coexist_with_deployment(self):
         """Development files (tests/, src/) should coexist with deployment (/bots/)."""
-        academicops = Path(os.environ.get("ACADEMICOPS_BOT", "/home/nic/src/bot"))
+        academicops = Path(os.environ.get("ACADEMICOPS", "/home/nic/src/bot"))
 
         # Development files
         assert (academicops / "tests").exists(), "tests/ missing (development)"

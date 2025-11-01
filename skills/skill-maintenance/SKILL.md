@@ -11,7 +11,7 @@ Maintain and evolve the academicOps skill ecosystem as framework patterns advanc
 
 ## Core Principles
 
-**Source of Truth**: `$ACADEMICOPS_BOT/skills/` is authoritative and version-controlled. Deployment at `~/.claude/skills/` must be symlinks, never independent copies. Packages in `$ACADEMICOPS_BOT/dist/skills/*.zip` are regenerated from source.
+**Source of Truth**: `$ACADEMICOPS/skills/` is authoritative and version-controlled. Deployment at `~/.claude/skills/` must be symlinks, never independent copies. Packages in `$ACADEMICOPS/dist/skills/*.zip` are regenerated from source.
 
 **Framework Evolution**: As academicOps evolves, skills must evolve alongside. Monitor changes to core patterns (CLAUDE.md, @references, enforcement hierarchy) and propagate updates to existing skills.
 
@@ -108,7 +108,7 @@ python scripts/package_skills.py skill-name
 python scripts/package_skills.py --all
 ```
 
-Creates fresh .zip files in `$ACADEMICOPS_BOT/dist/skills/` with:
+Creates fresh .zip files in `$ACADEMICOPS/dist/skills/` with:
 - Validated skill contents
 - Proper directory structure
 - Executable scripts preserved

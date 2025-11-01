@@ -15,19 +15,19 @@ NC='\033[0m'
 echo "=== academicOps Setup ==="
 echo
 
-# Verify ACADEMICOPS_BOT
-if [ -z "${ACADEMICOPS_BOT:-}" ]; then
-    echo -e "${RED}ERROR: ACADEMICOPS_BOT environment variable not set${NC}"
-    echo "Add to shell profile: export ACADEMICOPS_BOT=/path/to/academicOps"
+# Verify ACADEMICOPS
+if [ -z "${ACADEMICOPS:-}" ]; then
+    echo -e "${RED}ERROR: ACADEMICOPS environment variable not set${NC}"
+    echo "Add to shell profile: export ACADEMICOPS=/path/to/academicOps"
     exit 1
 fi
 
-if [ ! -d "$ACADEMICOPS_BOT" ]; then
-    echo -e "${RED}ERROR: ACADEMICOPS_BOT directory not found: $ACADEMICOPS_BOT${NC}"
+if [ ! -d "$ACADEMICOPS" ]; then
+    echo -e "${RED}ERROR: ACADEMICOPS directory not found: $ACADEMICOPS${NC}"
     exit 1
 fi
 
-echo -e "${GREEN}✓${NC} ACADEMICOPS_BOT=$ACADEMICOPS_BOT"
+echo -e "${GREEN}✓${NC} ACADEMICOPS=$ACADEMICOPS"
 echo
 
 # Create ~/.claude if it doesn't exist
@@ -39,7 +39,7 @@ echo
 # Symlink settings.json
 echo "Setting up global Claude Code configuration..."
 
-SETTINGS_SRC="$ACADEMICOPS_BOT/config/settings.json"
+SETTINGS_SRC="$ACADEMICOPS/config/settings.json"
 SETTINGS_DEST="$CLAUDE_HOME/settings.json"
 
 [ -e "$SETTINGS_DEST" ] && rm -rf "$SETTINGS_DEST"
@@ -47,7 +47,7 @@ ln -s "$SETTINGS_SRC" "$SETTINGS_DEST"
 echo -e "${GREEN}✓${NC} ~/.claude/settings.json → $SETTINGS_SRC"
 
 # Symlink hooks directory
-HOOKS_SRC="$ACADEMICOPS_BOT/hooks"
+HOOKS_SRC="$ACADEMICOPS/hooks"
 HOOKS_DEST="$CLAUDE_HOME/hooks"
 
 [ -e "$HOOKS_DEST" ] && rm -rf "$HOOKS_DEST"
@@ -55,7 +55,7 @@ ln -s "$HOOKS_SRC" "$HOOKS_DEST"
 echo -e "${GREEN}✓${NC} ~/.claude/hooks/ → $HOOKS_SRC"
 
 # Symlink agents directory
-AGENTS_SRC="$ACADEMICOPS_BOT/agents"
+AGENTS_SRC="$ACADEMICOPS/agents"
 AGENTS_DEST="$CLAUDE_HOME/agents"
 
 [ -e "$AGENTS_DEST" ] && rm -rf "$AGENTS_DEST"
@@ -63,7 +63,7 @@ ln -s "$AGENTS_SRC" "$AGENTS_DEST"
 echo -e "${GREEN}✓${NC} ~/.claude/agents/ → $AGENTS_SRC"
 
 # Symlink commands directory
-COMMANDS_SRC="$ACADEMICOPS_BOT/commands"
+COMMANDS_SRC="$ACADEMICOPS/commands"
 COMMANDS_DEST="$CLAUDE_HOME/commands"
 
 [ -e "$COMMANDS_DEST" ] && rm -rf "$COMMANDS_DEST"
@@ -71,7 +71,7 @@ ln -s "$COMMANDS_SRC" "$COMMANDS_DEST"
 echo -e "${GREEN}✓${NC} ~/.claude/commands/ → $COMMANDS_SRC"
 
 # Symlink skills directory
-SKILLS_SRC="$ACADEMICOPS_BOT/skills"
+SKILLS_SRC="$ACADEMICOPS/skills"
 SKILLS_DEST="$CLAUDE_HOME/skills"
 
 [ -e "$SKILLS_DEST" ] && rm -rf "$SKILLS_DEST"

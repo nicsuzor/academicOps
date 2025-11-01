@@ -22,16 +22,16 @@ def repo_root() -> Path:
     """Get the personal repository root directory from environment variable."""
     import os
 
-    project_root = os.getenv("ACADEMICOPS_BOT")
+    project_root = os.getenv("ACADEMICOPS")
     if not project_root:
         raise RuntimeError(
-            "ACADEMICOPS_BOT environment variable not set. "
+            "ACADEMICOPS environment variable not set. "
             "This must point to your personal repository root."
         )
 
     path = Path(project_root)
     if not path.exists():
-        raise RuntimeError(f"ACADEMICOPS_BOT path does not exist: {project_root}")
+        raise RuntimeError(f"ACADEMICOPS path does not exist: {project_root}")
 
     return path
 
@@ -41,10 +41,10 @@ def validate_tool_script() -> Path:
     """Path to validate_tool.py hook script."""
     import os
 
-    bot_root = os.getenv("ACADEMICOPS_BOT")
+    bot_root = os.getenv("ACADEMICOPS")
     if not bot_root:
         raise RuntimeError(
-            "ACADEMICOPS_BOT environment variable not set. "
+            "ACADEMICOPS environment variable not set. "
             "This must point to the academicOps bot repository root."
         )
 
@@ -60,10 +60,10 @@ def validate_env_script() -> Path:
     """Path to load_instructions.py hook script (SessionStart hook)."""
     import os
 
-    bot_root = os.getenv("ACADEMICOPS_BOT")
+    bot_root = os.getenv("ACADEMICOPS")
     if not bot_root:
         raise RuntimeError(
-            "ACADEMICOPS_BOT environment variable not set. "
+            "ACADEMICOPS environment variable not set. "
             "This must point to the academicOps bot repository root."
         )
 
@@ -78,10 +78,10 @@ def validate_stop_script() -> Path:
     """Path to validate_stop.py hook script (Stop/SubagentStop hooks)."""
     import os
 
-    bot_root = os.getenv("ACADEMICOPS_BOT")
+    bot_root = os.getenv("ACADEMICOPS")
     if not bot_root:
         raise RuntimeError(
-            "ACADEMICOPS_BOT environment variable not set. "
+            "ACADEMICOPS environment variable not set. "
             "This must point to the academicOps bot repository root."
         )
 

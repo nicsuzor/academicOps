@@ -41,7 +41,7 @@ Use this skill when:
 
 The skill understands the 3-tier hierarchy for instruction chunks:
 
-1. **Framework Tier** (`$ACADEMICOPS_BOT/bots/prompts/`)
+1. **Framework Tier** (`$ACADEMICOPS/bots/prompts/`)
    - Reusable across all projects
    - Generic Python, Git, Docker instructions
    - Best practices that apply everywhere
@@ -100,7 +100,7 @@ This script:
 
 **Tier determination**:
 - **Project-specific** content → `bots/prompts/PROJECT_<name>.md`
-- **Reusable** content → `$ACADEMICOPS_BOT/bots/prompts/<name>.md`
+- **Reusable** content → `$ACADEMICOPS/bots/prompts/<name>.md`
 - **Personal** preferences → `$ACADEMICOPS_PERSONAL/prompts/<name>.md`
 
 ### Step 3: Refactor to References
@@ -134,7 +134,7 @@ Validates:
 
 **Reference formats supported**:
 - `@bots/prompts/chunk.md` - Project tier
-- `@$ACADEMICOPS_BOT/bots/prompts/chunk.md` - Framework tier
+- `@$ACADEMICOPS/bots/prompts/chunk.md` - Framework tier
 - `@$ACADEMICOPS_PERSONAL/prompts/chunk.md` - User tier
 - `@references/doc.md` - Reference documentation
 - `@.claude/prompts/chunk.md` - Claude-specific
@@ -185,11 +185,11 @@ Share chunks across repositories:
 
 ```bash
 # Extract reusable content to framework tier
-ACADEMICOPS_BOT=/path/to/academicOps scripts/extract_chunks.py .
+ACADEMICOPS=/path/to/academicOps scripts/extract_chunks.py .
 
-# This creates chunks in $ACADEMICOPS_BOT/bots/prompts/
+# This creates chunks in $ACADEMICOPS/bots/prompts/
 # Other repositories can reference with:
-# @$ACADEMICOPS_BOT/bots/prompts/python_typing.md
+# @$ACADEMICOPS/bots/prompts/python_typing.md
 ```
 
 ### Pattern 4: Formalize Shorthand Notes
@@ -252,7 +252,7 @@ Use type hints for all functions...
 **Good** (single reference):
 ```markdown
 # Both files reference:
-@$ACADEMICOPS_BOT/bots/prompts/python_typing.md
+@$ACADEMICOPS/bots/prompts/python_typing.md
 ```
 
 ### ❌ Overly Long Files
@@ -268,7 +268,7 @@ Use type hints for all functions...
 # CLAUDE.md
 @bots/prompts/PROJECT_overview.md
 @bots/prompts/PROJECT_development.md
-@$ACADEMICOPS_BOT/bots/prompts/python_best_practices.md
+@$ACADEMICOPS/bots/prompts/python_best_practices.md
 ```
 
 ## Script Reference
@@ -352,10 +352,10 @@ A well-maintained CLAUDE.md structure has:
 
 ### Environment Variables Not Set
 
-If references to `$ACADEMICOPS_BOT` or `$ACADEMICOPS_PERSONAL` fail:
+If references to `$ACADEMICOPS` or `$ACADEMICOPS_PERSONAL` fail:
 
 ```bash
-export ACADEMICOPS_BOT=/path/to/academicOps
+export ACADEMICOPS=/path/to/academicOps
 export ACADEMICOPS_PERSONAL=/path/to/personal
 export CLAUDE_PROJECT_DIR=$(pwd)
 ```
@@ -364,7 +364,7 @@ export CLAUDE_PROJECT_DIR=$(pwd)
 
 Check reference syntax:
 - Project: `@bots/prompts/chunk.md`
-- Framework: `@$ACADEMICOPS_BOT/bots/prompts/chunk.md`
+- Framework: `@$ACADEMICOPS/bots/prompts/chunk.md`
 - Personal: `@$ACADEMICOPS_PERSONAL/prompts/chunk.md`
 
 ### Chunks in Wrong Tier

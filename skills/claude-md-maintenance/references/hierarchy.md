@@ -14,7 +14,7 @@ Each tier has a specific purpose and location, allowing for maximum reusability 
 
 ## Tier 1: Framework Tier
 
-**Location**: `$ACADEMICOPS_BOT/bots/prompts/`
+**Location**: `$ACADEMICOPS/bots/prompts/`
 
 **Purpose**: Reusable instructions that apply to all projects using academicOps.
 
@@ -28,9 +28,9 @@ Each tier has a specific purpose and location, allowing for maximum reusability 
 
 **Examples**:
 ```markdown
-@$ACADEMICOPS_BOT/bots/prompts/python_typing.md
-@$ACADEMICOPS_BOT/bots/prompts/git_commit_standards.md
-@$ACADEMICOPS_BOT/bots/prompts/docker_best_practices.md
+@$ACADEMICOPS/bots/prompts/python_typing.md
+@$ACADEMICOPS/bots/prompts/git_commit_standards.md
+@$ACADEMICOPS/bots/prompts/docker_best_practices.md
 ```
 
 **When to Use**:
@@ -108,7 +108,7 @@ Ask these questions in order:
    - NO → Continue
 
 3. **Would this benefit all projects?**
-   - YES → Framework Tier (`$ACADEMICOPS_BOT/bots/prompts/*.md`)
+   - YES → Framework Tier (`$ACADEMICOPS/bots/prompts/*.md`)
    - NO → Reconsider if it needs to be a chunk at all
 
 ### Content Examples by Tier
@@ -166,10 +166,10 @@ When content becomes more generally useful:
 ```bash
 # Project → Framework
 mv bots/prompts/PROJECT_testing.md \
-   $ACADEMICOPS_BOT/bots/prompts/testing_practices.md
+   $ACADEMICOPS/bots/prompts/testing_practices.md
 
 # Update references
-sed -i 's|@bots/prompts/PROJECT_testing.md|@$ACADEMICOPS_BOT/bots/prompts/testing_practices.md|g' CLAUDE.md
+sed -i 's|@bots/prompts/PROJECT_testing.md|@$ACADEMICOPS/bots/prompts/testing_practices.md|g' CLAUDE.md
 ```
 
 ### Moving Down Tiers
@@ -178,7 +178,7 @@ When content needs more specificity:
 
 ```bash
 # Framework → Project
-cp $ACADEMICOPS_BOT/bots/prompts/python_dev.md \
+cp $ACADEMICOPS/bots/prompts/python_dev.md \
    bots/prompts/PROJECT_python_dev.md
 
 # Customize for project
@@ -191,7 +191,7 @@ Ensure these environment variables are set:
 
 ```bash
 # Framework repository location
-export ACADEMICOPS_BOT=/path/to/academicOps
+export ACADEMICOPS=/path/to/academicOps
 
 # Personal configuration location
 export ACADEMICOPS_PERSONAL=/path/to/personal
@@ -234,7 +234,7 @@ Add to your shell profile (`~/.bashrc` or `~/.zshrc`) for persistence.
 Check tier locations:
 ```bash
 # Framework
-ls $ACADEMICOPS_BOT/bots/prompts/
+ls $ACADEMICOPS/bots/prompts/
 
 # User
 ls $ACADEMICOPS_PERSONAL/prompts/

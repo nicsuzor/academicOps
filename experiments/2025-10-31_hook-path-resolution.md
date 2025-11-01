@@ -7,18 +7,18 @@
 - Model: claude-sonnet-4-5-20250929
 
 ## Hypothesis
-Standardizing environment variable name to `ACADEMICOPS_BOT` and fixing hook paths from `/bots/hooks/` to `/hooks/` will enable hooks to execute successfully from any project directory.
+Standardizing environment variable name to `ACADEMICOPS` and fixing hook paths from `/bots/hooks/` to `/hooks/` will enable hooks to execute successfully from any project directory.
 
 ## Changes Made
 
-1. **config/paths.sh**: Renamed all `ACADEMIC_OPS_BOT` → `ACADEMICOPS_BOT` (also DATA, DOCS, PROJECTS, SCRIPTS)
+1. **config/paths.sh**: Renamed all `ACADEMIC_OPS_BOT` → `ACADEMICOPS` (also DATA, DOCS, PROJECTS, SCRIPTS)
 2. **config/paths.py**: Updated `__str__()` method to use `ACADEMICOPS_*` variable names
 3. **config/settings.json**: Fixed hook paths `/bots/hooks/` → `/hooks/` (5 hooks)
 4. **~/.claude/settings.json**: Fixed hook paths `/bots/hooks/` → `/hooks/` (5 hooks)
 
 ## Root Causes Addressed
 
-- Variable name mismatch between paths.sh (`ACADEMIC_OPS_BOT`) and settings.json (`ACADEMICOPS_BOT`)
+- Variable name mismatch between paths.sh (`ACADEMIC_OPS_BOT`) and settings.json (`ACADEMICOPS`)
 - Incorrect hook directory path (non-existent `/bots/` subdirectory)
 - Environment variable not available in hook execution context
 
@@ -39,7 +39,7 @@ Standardizing environment variable name to `ACADEMICOPS_BOT` and fixing hook pat
 - Should see hook validation running, NOT "Hook not found" error
 
 **Technical validation complete**:
-- ✅ paths.sh exports ACADEMICOPS_BOT=/home/nic/src/bot (verified in new shell)
+- ✅ paths.sh exports ACADEMICOPS=/home/nic/src/bot (verified in new shell)
 - ✅ Hook commands reference correct path (/hooks/ not /bots/hooks/)
 - ✅ Variable name consistent across all files
 

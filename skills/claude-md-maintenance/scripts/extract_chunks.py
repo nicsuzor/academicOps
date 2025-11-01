@@ -37,7 +37,7 @@ class ChunkExtractor:
             base_dir: Root directory to work in
         """
         self.base_dir = Path(base_dir).resolve()
-        self.framework_dir = Path(os.environ.get("ACADEMICOPS_BOT", "")).resolve() if os.environ.get("ACADEMICOPS_BOT") else None
+        self.framework_dir = Path(os.environ.get("ACADEMICOPS", "")).resolve() if os.environ.get("ACADEMICOPS") else None
         self.personal_dir = Path(os.environ.get("ACADEMICOPS_PERSONAL", "")).resolve() if os.environ.get("ACADEMICOPS_PERSONAL") else None
         self.chunks_created: List[ContentChunk] = []
 
@@ -260,7 +260,7 @@ class ChunkExtractor:
         # If in framework dir
         if self.framework_dir and self.framework_dir in target_path.parents:
             relative = target_path.relative_to(self.framework_dir)
-            return f"@$ACADEMICOPS_BOT/{relative.as_posix()}"
+            return f"@$ACADEMICOPS/{relative.as_posix()}"
         
         # If in personal dir
         if self.personal_dir and self.personal_dir in target_path.parents:

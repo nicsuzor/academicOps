@@ -41,7 +41,7 @@ class ReferenceValidator:
         re.compile(r'@(bots/prompts/[^\s]+\.md)'),
         re.compile(r'@(references/[^\s]+\.md)'),
         re.compile(r'@(\.claude/prompts/[^\s]+\.md)'),
-        re.compile(r'@(\$ACADEMICOPS_BOT/[^\s]+\.md)'),
+        re.compile(r'@(\$ACADEMICOPS/[^\s]+\.md)'),
         re.compile(r'@(\$ACADEMICOPS_PERSONAL/[^\s]+\.md)'),
         re.compile(r'@(\$CLAUDE_PROJECT_DIR/[^\s]+\.md)'),
         re.compile(r'@([^\s]+\.md)'),  # Catch-all for other patterns
@@ -54,7 +54,7 @@ class ReferenceValidator:
             base_dir: Root directory to validate
         """
         self.base_dir = Path(base_dir).resolve()
-        self.framework_dir = Path(os.environ.get("ACADEMICOPS_BOT", "")).resolve() if os.environ.get("ACADEMICOPS_BOT") else None
+        self.framework_dir = Path(os.environ.get("ACADEMICOPS", "")).resolve() if os.environ.get("ACADEMICOPS") else None
         self.personal_dir = Path(os.environ.get("ACADEMICOPS_PERSONAL", "")).resolve() if os.environ.get("ACADEMICOPS_PERSONAL") else None
         self.project_dir = Path(os.environ.get("CLAUDE_PROJECT_DIR", str(self.base_dir))).resolve()
         
@@ -140,11 +140,11 @@ class ReferenceValidator:
         Returns:
             Tuple of (resolved_path, status, error_message)
         """
-        if ref_path.startswith("$ACADEMICOPS_BOT/"):
+        if ref_path.startswith("$ACADEMICOPS/"):
             if not self.framework_dir:
-                return None, ReferenceStatus.INVALID_PATH, "$ACADEMICOPS_BOT not set"
+                return None, ReferenceStatus.INVALID_PATH, "$ACADEMICOPS not set"
             
-            relative = ref_path.replace("$ACADEMICOPS_BOT/", "")
+            relative = ref_path.replace("$ACADEMICOPS/", "")
             target = self.framework_dir / relative
             
         elif ref_path.startswith("$ACADEMICOPS_PERSONAL/"):

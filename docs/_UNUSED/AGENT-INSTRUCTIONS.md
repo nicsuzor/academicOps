@@ -122,7 +122,7 @@ git add docs/strategy.md bot/agents/strategist.md && git commit -m "..."
 
 **Step 1: Commit in bot submodule FIRST**
 ```bash
-cd ${ACADEMICOPS_BOT}/ && \
+cd ${ACADEMICOPS}/ && \
 git add agents/file.md && \
 git commit -m "fix(prompts): description" && \
 git push

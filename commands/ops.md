@@ -2,7 +2,7 @@
 description: academicOps framework help and commands
 ---
 
-@reference $ACADEMICOPS_BOT/docs/QUICK_REFERENCE.md
+@reference $ACADEMICOPS/docs/QUICK_REFERENCE.md
 
 ---
 
@@ -24,7 +24,7 @@ Report the following diagnostic information:
 
 **Project Folder**: Current directory (`$PWD`)
 
-**Framework Folder (ACADEMICOPS_BOT)**: `$ACADEMICOPS_BOT` (report "Not configured" if empty)
+**Framework Folder (ACADEMICOPS)**: `$ACADEMICOPS` (report "Not configured" if empty)
 
 **Personal Folder (ACADEMICOPS_PERSONAL)**: `$ACADEMICOPS_PERSONAL` (report "Not configured" if empty)
 
