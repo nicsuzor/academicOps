@@ -25,7 +25,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "if [ -f \"$ACADEMICOPS/bots/hooks/validate_tool.py\" ]; then uv run --directory \"$ACADEMICOPS\" python \"$ACADEMICOPS/bots/hooks/validate_tool.py\"; else echo '{\"continue\":true,\"systemMessage\":\"Hook not found: validate_tool.py\"}'; fi",
+            "command": "if [ -f \"$ACADEMICOPS/hooks/validate_tool.py\" ]; then uv run --directory \"$ACADEMICOPS\" python \"$ACADEMICOPS/hooks/validate_tool.py\"; else echo '{\"continue\":true,\"systemMessage\":\"Hook not found: validate_tool.py\"}'; fi",
             "timeout": 3000
           }
         ]
@@ -36,7 +36,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "if [ -f \"$ACADEMICOPS/bots/hooks/validate_stop.py\" ]; then uv run --directory \"$ACADEMICOPS\" python \"$ACADEMICOPS/bots/hooks/validate_stop.py\" SubagentStop; else echo '{\"continue\":true}'; fi",
+            "command": "if [ -f \"$ACADEMICOPS/hooks/validate_stop.py\" ]; then uv run --directory \"$ACADEMICOPS\" python \"$ACADEMICOPS/hooks/validate_stop.py\" SubagentStop; else echo '{\"continue\":true}'; fi",
             "timeout": 2000
           }
         ]
@@ -47,7 +47,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "if [ -f \"$ACADEMICOPS/bots/hooks/validate_stop.py\" ]; then uv run --directory \"$ACADEMICOPS\" python \"$ACADEMICOPS/bots/hooks/validate_stop.py\" Stop; else echo '{\"continue\":true}'; fi",
+            "command": "if [ -f \"$ACADEMICOPS/hooks/validate_stop.py\" ]; then uv run --directory \"$ACADEMICOPS\" python \"$ACADEMICOPS/hooks/validate_stop.py\" Stop; else echo '{\"continue\":true}'; fi",
             "timeout": 2000
           }
         ]
@@ -58,7 +58,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "if [ -f \"$ACADEMICOPS/bots/hooks/log_posttooluse.py\" ]; then uv run --directory \"$ACADEMICOPS\" python \"$ACADEMICOPS/bots/hooks/log_posttooluse.py\"; else echo '{}'; fi",
+            "command": "if [ -f \"$ACADEMICOPS/hooks/log_posttooluse.py\" ]; then uv run --directory \"$ACADEMICOPS\" python \"$ACADEMICOPS/hooks/log_posttooluse.py\"; else echo '{}'; fi",
             "timeout": 2000
           }
         ]
@@ -69,7 +69,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "if [ -f \"$ACADEMICOPS/bots/hooks/log_userpromptsubmit.py\" ]; then uv run --directory \"$ACADEMICOPS\" python \"$ACADEMICOPS/bots/hooks/log_userpromptsubmit.py\"; else echo '{}'; fi",
+            "command": "if [ -f \"$ACADEMICOPS/hooks/log_userpromptsubmit.py\" ]; then uv run --directory \"$ACADEMICOPS\" python \"$ACADEMICOPS/hooks/log_userpromptsubmit.py\"; else echo '{}'; fi",
             "timeout": 2000
           }
         ]
