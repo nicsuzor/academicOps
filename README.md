@@ -77,6 +77,56 @@ Specialized agents accessed via slash commands or Task tool:
 - **`task-manager`** (Task tool) - EXPERIMENTAL silent background processor for task extraction
 - **`trainer`** (`/trainer`) - Maintains the agent framework itself (meta-system)
 
+## Core User Workflows
+
+### Email Processing (`/email`)
+
+**User action**: `/email` or "Check my email"
+
+**What happens**:
+1. Loads user's strategic database (`$ACADEMICOPS_PERSONAL/data/`) to check existing tasks, priorities, and context
+2. Fetches recent emails from all accounts via Outlook MCP
+3. Automatically creates/updates tasks in task database
+4. Presents digest of new/updated tasks and FYI information
+5. Proposes emails to archive (awaits user confirmation)
+
+**Technical implementation**:
+- Subagent: `task-manager` (silent email-to-task extraction)
+- Skills: `email` (Outlook MCP integration), `tasks` (task operations)
+- MCP Server: `outlook` (Microsoft Outlook access)
+
+### End-of-Session Context Capture (Automatic)
+
+**User action**: None (automatic on session end)
+
+**What happens**:
+1. Hook fires at session end
+2. Silently reviews session transcript
+3. Updates strategic database:
+   - Marks completed tasks as done
+   - Logs substantial progress to daily log file (`data/sessions/YYYY-MM-DD.json`)
+   - Captures outstanding work in relevant project/task files
+4. Runs frequently but extracts selectively (only significant updates)
+
+**Technical implementation**:
+- Hook: `Stop` hook (`.claude/settings.json`)
+- Agent: `end-of-session` (automated workflow orchestrator)
+- Skills: `scribe` (context capture and task operations)
+
+### Task Planning (`/STRATEGIST`)
+
+**User action**: `/STRATEGIST` or "Show my task list"
+
+**What happens**:
+1. Presents formatted priority task list
+2. Engages in planning conversation
+3. Helps plan, prioritize, and update tasks
+4. Silently captures any new information during conversation
+
+**Technical implementation**:
+- Subagent: `strategist` (planning facilitation + silent capture)
+- Skills: `strategic-partner` (facilitation), `scribe` (task operations, context capture)
+
 ## Slash Commands
 
 Available project commands:

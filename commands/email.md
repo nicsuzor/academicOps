@@ -1,20 +1,23 @@
 ---
 name: email
-description: Check email, extract tasks, and manage priorities using strategist subagent
+description: Check email, automatically update task database, and present digest
 ---
 
 # Email Management
 
-Invoke the strategist subagent to:
-1. Check recent emails (using email skill)
-2. Extract actionable tasks (using tasks skill)
-3. Present email summary to user
-4. Take instructions for managing tasks and priorities
+Invoke the task-manager subagent to:
+1. Load strategic database (existing tasks, priorities, context)
+2. Fetch recent emails from all accounts (using email skill)
+3. Automatically create/update tasks (using tasks skill)
+4. Present digest of new/updated tasks and FYI information
+5. Propose emails to archive and request confirmation
 
-**This is a shortcut for**: "Invoke strategist to check my email, extract tasks, present summary, and help me plan"
+**This is a shortcut for**: "Check my email and automatically update my task database"
 
-The strategist will:
-- Use email skill to fetch and triage recent messages
-- Present high-priority emails
-- Offer to create tasks for actionable items (using tasks skill)
-- Help with planning and prioritization if requested
+The task-manager will:
+- Silently load `$ACADEMICOPS_PERSONAL/data/` (tasks, projects, goals, context)
+- Use email skill to fetch emails via Outlook MCP
+- Create tasks automatically (no prompting for permission)
+- Update existing tasks if email provides new information
+- Present summary of changes made
+- Suggest emails to archive based on completion/FYI status
