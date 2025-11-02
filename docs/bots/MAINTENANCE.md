@@ -3,10 +3,10 @@
 ## The Problem
 
 The supervisor agent references four critical files:
-- `references/skills-inventory.md` - Catalog of available skills
-- `references/dev-tools-reference.md` - Dev agent tool capabilities
-- `references/challenge-responses.md` - Decision-making frameworks
-- `references/delegation-architecture.md` - Three-level delegation patterns
+- `$ACADEMICOPS/docs/bots/skills-inventory.md` - Catalog of available skills
+- `$ACADEMICOPS/docs/bots/dev-tools-reference.md` - Dev agent tool capabilities
+- `$ACADEMICOPS/docs/bots/challenge-responses.md` - Decision-making frameworks
+- `$ACADEMICOPS/docs/bots/delegation-architecture.md` - Three-level delegation patterns
 
 These can become stale when:
 - New skills are added
@@ -20,7 +20,7 @@ These can become stale when:
 ### 1. Version-Controlled Source of Truth
 
 **Status**: ✅ IMPLEMENTED
-- All reference files are in git at `/home/nic/src/bot/agents/references/`
+- All reference files are in git at `$ACADEMICOPS/docs/bots/`
 - Changes tracked in repository history
 - Can be reviewed in PRs
 
@@ -167,7 +167,7 @@ def validate_dev_tools():
 def validate_cross_references():
     """Check that @references and links resolve."""
     all_refs = extract_references_from_files(
-        "agents/references/*.md"
+        "docs/bots/*.md"
     )
 
     for ref in all_refs:
@@ -177,7 +177,7 @@ def validate_cross_references():
 def validate_examples():
     """Check that example Task() calls are valid."""
     examples = extract_code_blocks(
-        "agents/references/*.md",
+        "docs/bots/*.md",
         lang="Task"
     )
 
@@ -287,7 +287,7 @@ Checks:
 **Trigger**: [New skill X / Framework pattern Y changed / etc.]
 **Issue**: #[NUMBER]
 **Files Modified**:
-- agents/references/skills-inventory.md
+- docs/bots/skills-inventory.md
 - [other files]
 
 ## Change Description

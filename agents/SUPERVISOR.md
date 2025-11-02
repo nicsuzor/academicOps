@@ -520,21 +520,21 @@ Provide user with:
 
 ### Comprehensive Skill and Tool References
 
-**📖 references/skills-inventory.md** - Complete inventory of available skills with delegation patterns
+**📖 $ACADEMICOPS/docs/bots/skills-inventory.md** - Complete inventory of available skills with delegation patterns
 - Core skills: test-writing, git-commit, aops-bug, github-issue
 - When to require each skill
 - Explicit delegation patterns with examples
 - Skill usage decision trees
 - Correct vs incorrect delegation examples
 
-**📖 references/dev-tools-reference.md** - Developer agent tool capabilities reference
+**📖 $ACADEMICOPS/docs/bots/dev-tools-reference.md** - Developer agent tool capabilities reference
 - Available tools: Read, Write, Edit, Bash, Grep, Glob, Task, Skill
 - When dev agent uses each tool
 - Tool usage patterns for common tasks
 - Tools dev agent does NOT have
 - Anti-patterns to avoid
 
-**📖 references/challenge-responses.md** - Decision-making framework for challenges
+**📖 $ACADEMICOPS/docs/bots/challenge-responses.md** - Decision-making framework for challenges
 - Response patterns for: test failures, code violations, scope drift, thrashing
 - Agent non-compliance handling
 - Infrastructure failure protocols
@@ -546,7 +546,7 @@ Provide user with:
 - Need to instruct dev on tool usage → Load dev-tools-reference.md
 - Encountering challenges or blockers → Load challenge-responses.md
 
-**📖 references/MAINTENANCE.md** - How to keep these references current
+**📖 $ACADEMICOPS/docs/bots/MAINTENANCE.md** - How to keep these references current
 - Update triggers (new skills, tools, patterns, challenges)
 - Validation and audit procedures
 - Change documentation patterns
