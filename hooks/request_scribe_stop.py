@@ -1,21 +1,15 @@
 #!/usr/bin/env python3
 """
-Stop/SubagentStop hook that requests end-of-session subagent on first stop, allows on second.
+Stop/SubagentStop hook for logging (reminder disabled per issue #188).
 
-This hook blocks the first Stop/SubagentStop event after completing work and instructs
-Claude to invoke the end-of-session subagent which handles: commits, scribe, task updates.
+This hook logs stop events for debugging but does not block or show reminders.
 
-Prevents infinite loop by:
-1. Tracking state in /tmp/claude_end_of_session_requested_{session_id}.flag
-2. UserPromptSubmit hook cleans up state on new user interaction
-3. First stop → Block with "invoke end-of-session subagent"
-4. SubagentStop (after subagent finishes) → Flag exists → Allow
-5. Stop (when returning to main agent) → Flag exists → Allow
-
-Used by both Stop and SubagentStop hooks with identical logic.
+Previously blocked to request end-of-session subagent, but the conditional reminder
+"(not during interactive conversation with user)" caused agents to misinterpret and
+self-answer instead of waiting for user input.
 
 Exit codes:
-    0: Success (allow stop or block with instruction)
+    0: Success (allow stop with logging)
 """
 
 import json
@@ -44,24 +38,10 @@ def main():
     session_id = input_data.get("session_id", "unknown")
     state_file = get_state_file(session_id)
 
-    # Check if end-of-session subagent already requested this turn
-    if state_file.exists():
-        # Second/third stop - end-of-session subagent was invoked, now allow stop
-        # (Can be SubagentStop when subagent finishes, then Stop when returning to main)
-        output: dict[str, Any] = {}
-        safe_log_to_debug_file("Stop/SubagentStop", input_data, output)
-        print(json.dumps(output))
-        sys.exit(0)
-
-    # First stop - block and request end-of-session subagent invocation
-    state_file.touch()
-
-    output = {
-        "decision": "block",
-        "reason": "If this marks the end of a substantial chunk of work (not during interactive conversation with user), please invoke the end-of-session agent to handle commits, context capture, and task updates. Provide a brief description of what was accomplished and the state (e.g., 'completed', 'in-progress', 'blocked', 'aborted', 'planned', 'failed'). Use: Task(subagent_type='end-of-session', prompt='[Brief work description]', description='[work description and state]')"
-    }
-
-    safe_log_to_debug_file("Stop", input_data, output)
+    # Disabled per issue #188 - conditional reminder was causing agents to self-answer
+    # Keep logging for debugging but don't block
+    output: dict[str, Any] = {}
+    safe_log_to_debug_file("Stop/SubagentStop", input_data, output)
     print(json.dumps(output))
     sys.exit(0)
 
