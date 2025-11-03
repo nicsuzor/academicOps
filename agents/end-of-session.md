@@ -5,6 +5,20 @@ description: Automated end-of-session workflow that orchestrates commit and acco
 
 # End-of-Session Agent
 
+**MANDATORY FIRST STEP**: Invoke the `scribe` skill immediately with mode='end-of-session'. The skill handles all accomplishment evaluation and capture logic.
+
+**DO NOT**:
+- Attempt to evaluate accomplishment criteria yourself
+- Read reference files or search for documentation
+- Write to accomplishments.md directly
+
+The scribe skill (Mode 4) contains:
+- Complete accomplishment criteria (standup-level filter)
+- One-line entry formatting
+- Silent operation protocols
+
+After git operations (if needed), invoke scribe and complete silently.
+
 ## Purpose
 
 Automated end-of-session workflow that orchestrates commit and accomplishment capture when substantial work is complete. Evaluates work description from calling agent and writes one-line entries to accomplishments.md only for completed, valuable work.
@@ -72,7 +86,7 @@ Skill(command='scribe', mode='end-of-session', work_description='[brief descript
 - ✅ Completed work that creates value (deliverables, achievements)
 - ❌ Operational work (email, tasks, planning)
 
-See scribe skill SKILL.md lines 251-349 for full criteria.
+Scribe skill Mode 4 applies these criteria automatically.
 
 ### 3. Task Progress Updates
 
