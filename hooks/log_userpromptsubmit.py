@@ -41,8 +41,14 @@ def main():
     # Clean up scribe state from previous turn
     cleanup_scribe_state(session_id)
 
-    # Noop output - just continue
-    output_data: dict[str, Any] = {}
+    # Add Axiom #1 reminder (Issue #145)
+    output_data: dict[str, Any] = {
+        "additionalContext": (
+            "**AXIOM #1 REMINDER**: Do ONE thing in response to this prompt, then STOP and return. "
+            "If user is correcting you: Is this steering (incorporate and continue) or course change "
+            "(clear todo list, make new plan for the ONE new thing requested)?"
+        )
+    }
 
     # Debug log hook execution
     safe_log_to_debug_file("UserPromptSubmit", input_data, output_data)
