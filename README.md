@@ -1,6 +1,6 @@
 # academicOps Agent Framework
 
-A modular, hierarchical agent framework for rigorous, context-aware automation in academic research projects.
+Modular, hierarchical agent framework for rigorous, context-aware automation in academic research projects.
 
 ## Quick Start
 
@@ -18,223 +18,118 @@ claude
 
 ## What is academicOps?
 
-**academicOps** provides a structured agent system with:
+**academicOps** provides:
 
-- **Specialized agents** for different workflows (strategy, development, code review, analysis)
-- **Automated validation hooks** that enforce quality standards and best practices
-- **Hierarchical instruction loading** (framework → personal → project)
-- **Git commit hooks** that prevent documentation bloat
-- **Zero-configuration context** loaded at every session start
+- **Modular context system** - Chunks architecture with DRY symlinks
+- **Specialized agents** - Development, analysis, strategy, framework maintenance
+- **Automated validation hooks** - Quality standards enforced at runtime
+- **Hierarchical instruction loading** - Framework → personal → project tiers
+- **Zero-configuration context** - Loaded at every session start
 
 ## Core Principles
 
-1. **Data Boundaries**: `bot/` = PUBLIC (GitHub), everything else = PRIVATE
-2. **Project Isolation**: Project-specific content belongs ONLY in the project repository
-3. **Fail-Fast Philosophy**: No fallbacks, no defensive programming, no workarounds
-4. **Self-Documenting**: No new .md files except research manuscripts—use `--help`, inline comments, and issue templates
-5. **Python Execution**: Always use `uv run python` (never bare `python` or `python3`)
+1. **Fail-Fast Philosophy**: No fallbacks, no defensive programming, no workarounds
+2. **DRY (Don't Repeat Yourself)**: One source of truth, symlinks for reuse
+3. **Project Isolation**: Project-specific content stays in project repos
+4. **Self-Documenting**: Code and inline docs, not separate markdown files
 
-**Full rules**: See `agents/_CORE.md`
+**Full axioms**: `core/_CORE.md` (loaded automatically via SessionStart hook)
 
 ---
 
 ## Repository Structure
 
 ```
-${OUTER}/                      # User's parent repository (PRIVATE)
-├── data/                      # Personal task/project database
-│   ├── goals/                 # Strategic goals
-│   ├── projects/              # Active projects
-│   ├── tasks/                 # Task management
-│   └── views/                 # Aggregated views
-├── docs/                      # System documentation
-│   └── projects/              # Cross-project coordination (NOT project content)
-├── projects/                  # Academic project submodules (self-contained)
-│   └── {project}/
-│       └── docs/              # Project-specific content goes HERE
-└── bot/                       # THIS SUBMODULE (PUBLIC as nicsuzor/academicOps)
-    ├── agents/                # Agent persona definitions
-    ├── commands/              # Slash command definitions
-    ├── config/                # Global configuration
-    ├── docs/                  # Generic documentation (no private data)
-    ├── experiments/           # Experiment tracking logs
-    ├── hooks/                 # Claude Code hook scripts
-    ├── prompts/               # Agent prompt templates
-    ├── scripts/               # Automation tools
-    ├── skills/                # Packaged skill sources
-    └── tests/                 # Test framework
+$ACADEMICOPS/                  # Framework repository (this repo)
+├── chunks/                    # Shared context modules (DRY single sources)
+│   ├── AXIOMS.md             # Universal principles
+│   ├── INFRASTRUCTURE.md     # Framework paths, env vars, repo structure
+│   ├── AGENT-BEHAVIOR.md     # Conversational/agent-specific rules
+│   └── SKILL-PRIMER.md       # Skill execution context
+├── core/
+│   └── _CORE.md              # References chunks/ (loaded at SessionStart)
+├── agents/                    # Subagent definitions
+├── commands/                  # Slash command definitions
+├── hooks/                     # SessionStart, PreToolUse, Stop hooks
+├── scripts/                   # Automation tools
+├── skills/                    # Packaged skill sources
+├── docs/                      # Human documentation
+└── tests/                     # Integration tests (including chunks loading tests)
 ```
 
-## Available Agents
+## Context Architecture: Modular Chunks
 
-Specialized agents accessed via slash commands or Task tool:
+**Problem**: Skills don't receive SessionStart hooks, so they lack framework context.
 
-- **`analyst`** (`/analyst`) - Academic research data analysis (dbt & Streamlit)
-- **`developer`** (`/dev`) - Code implementation, TDD workflow, debugging
-- **`end-of-session`** (Stop hook) - Automated end-of-session workflow (git commits, context capture)
-- **`strategist`** (`/STRATEGIST`) - Planning, facilitation, silent context capture
-- **`supervisor`** (Task tool) - Orchestrates complex multi-step workflows
-- **`task-manager`** (Task tool) - EXPERIMENTAL silent background processor for task extraction
-- **`trainer`** (`/trainer`) - Maintains the agent framework itself (meta-system)
+**Solution**: Modular `chunks/` with symlinks to skill `resources/` directories.
 
-## Core User Workflows
+```
+chunks/AXIOMS.md (single source)
+    ↓ @reference from core/_CORE.md (agents receive via SessionStart)
+    ↓ symlink to skills/*/resources/AXIOMS.md (skills load explicitly)
+```
 
-### Email Processing (`/email`)
+**Benefits**:
+- ✅ DRY compliant (single source via filesystem symlinks)
+- ✅ Skills know framework paths, conventions, axioms
+- ✅ No duplication between _CORE.md and skill context
+- ✅ Live integration tests verify infrastructure works
 
-**User action**: `/email` or "Check my email"
-
-**What happens**:
-1. Loads user's strategic database (`$ACADEMICOPS_PERSONAL/data/`) to check existing tasks, priorities, and context
-2. Fetches recent emails from all accounts via Outlook MCP
-3. Automatically creates/updates tasks in task database
-4. Presents digest of new/updated tasks and FYI information
-5. Proposes emails to archive (awaits user confirmation)
-
-**Technical implementation**:
-- Subagent: `task-manager` (silent email-to-task extraction)
-- Skills: `email` (Outlook MCP integration), `tasks` (task operations)
-- MCP Server: `outlook` (Microsoft Outlook access)
-
-### End-of-Session Context Capture (Automatic)
-
-**User action**: None (automatic on session end)
-
-**What happens**:
-1. Hook fires at session end
-2. Silently reviews session transcript
-3. Updates strategic database:
-   - Marks completed tasks as done
-   - Logs substantial progress to daily log file (`data/sessions/YYYY-MM-DD.json`)
-   - Captures outstanding work in relevant project/task files
-4. Runs frequently but extracts selectively (only significant updates)
-
-**Technical implementation**:
-- Hook: `Stop` hook (`.claude/settings.json`)
-- Agent: `end-of-session` (automated workflow orchestrator)
-- Skills: `scribe` (context capture and task operations)
-
-### Task Planning (`/STRATEGIST`)
-
-**User action**: `/STRATEGIST` or "Show my task list"
-
-**What happens**:
-1. Presents formatted priority task list
-2. Engages in planning conversation
-3. Helps plan, prioritize, and update tasks
-4. Silently captures any new information during conversation
-
-**Technical implementation**:
-- Subagent: `strategist` (planning facilitation + silent capture)
-- Skills: `strategic-partner` (facilitation), `scribe` (task operations, context capture)
+See `tests/test_chunks_loading.py` for verified behavior.
 
 ## Slash Commands
 
-Available project commands:
-
-- **`/analyst`** - Load analyst skill for academic research data analysis (dbt & Streamlit)
-- **`/dev`** - Load development workflow and coding standards
-- **`/error`** - Quick experiment outcome logging (aOps repo only)
-- **`/log-failure`** - Log agent performance failures to experiment tracking
-- **`/ops`** - academicOps framework help and commands
-- **`/STRATEGIST`** - Strategic thinking partner with silent context capture
-- **`/trainer`** - Activate agent trainer mode
-- **`/ttd`** - Load test-driven development workflow
+- `/analyst` - Data analysis (dbt & Streamlit)
+- `/dev` - Development workflow and TDD
+- `/email` - Email processing and task extraction
+- `/error` - Quick experiment logging
+- `/STRATEGIST` - Planning and context capture
+- `/trainer` - Framework maintenance
+- `/ttd` - Test-driven development methodology
 
 ## Skills
 
-Portable, reusable workflows available globally (installed in `~/.claude/skills/`):
+Portable workflows installed to `~/.claude/skills/`:
 
-- **`agent-initialization`** - Create/update AGENT.md skill index files
-- **`analyst`** - Academic research data analysis (dbt, Streamlit, academicOps best practices)
-- **`aops-bug`** - Track bugs, agent violations, framework improvements in academicOps
-- **`aops-trainer`** - Review and improve agents, skills, hooks, configurations
-- **`archiver`** - Archive experimental analysis to long-lived Jupyter notebooks before data removal
-- **`claude-hooks`** - Create, configure, debug Claude Code hooks with technical reference
-- **`claude-md-maintenance`** - Maintain CLAUDE.md files with @reference patterns
-- **`docx`** - Document toolkit (.docx): create/edit documents, tracked changes, formatting
-- **`git-commit`** - Validate code quality and execute commits with conventional format
-- **`github-issue`** - Manage GitHub issues with exhaustive search and precise documentation
-- **`no-throwaway-code`** - Intervention skill enforcing Axiom 15 (no temporary Python scripts)
-- **`pdf`** - Convert markdown to professionally formatted PDFs with academic typography
-- **`pptx`** - Presentation toolkit (.pptx): create/edit slides, layouts, speaker notes
-- **`scribe`** - Automatic context capture (tasks, priorities, strategic alignment) - operates silently
-- **`skill-creator`** - Guide for creating effective skills
-- **`skill-maintenance`** - Ongoing skill maintenance and evolution
-- **`strategic-partner`** - Strategic facilitation and thinking partnership
-- **`test-writing`** - Test creation enforcing integration test patterns and TDD
-- **`xlsx`** - Spreadsheet toolkit (.xlsx/.csv): create/edit with formulas, data analysis
+**Framework maintenance**: aops-trainer, skill-creator, skill-maintenance, claude-hooks, claude-md-maintenance
 
-Skills are invoked automatically by agents or explicitly via the Skill tool.
+**Development**: test-writing, git-commit
 
-### Agents vs Skills
+**Documents**: pdf, docx, pptx, xlsx
 
-**Agents** (in `bot/agents/`): Specialized subprocesses for complex workflows, invoked via Task tool or slash commands
-- Examples: `developer`, `analyst`, `supervisor`, `task-manager`, `end-of-session`
+**Academic**: analyst, archiver
 
-**Skills** (in `~/.claude/skills/`): Portable capabilities available globally, auto-invoked or explicit
-- Examples: `scribe`, `test-writing`, `git-commit`, `docx`, `xlsx`, `pptx`, `pdf`
+**Context**: scribe (silent capture), strategic-partner
 
-**Note**: `task-manager` is an experimental agent testing whether a simpler non-conversational interface achieves better auto-invocation than `scribe` skill's multi-mode design.
+Skills are invoked automatically by agents or explicitly via Skill tool.
 
 ## Automated Enforcement
 
-academicOps enforces quality through multiple validation layers:
+### Claude Code Hooks
 
-### Claude Code Hooks (Runtime Validation)
+- **SessionStart**: Loads 3-tier `_CORE.md` (framework → personal → project)
+- **PreToolUse**: Validates tool calls, blocks `.md` creation, requires `uv run python`
+- **SubagentStop/Stop**: Validates agent completion
 
-Configured in `.claude/settings.json`, automatically enforced during Claude Code sessions:
+### Git Pre-Commit Hooks
 
-- **SessionStart** - Loads hierarchical instructions (`_CORE.md` from bot → personal → project)
-- **PreToolUse** - Validates every tool call against agent permissions:
-  - Blocks `.md` file creation (except research papers)
-  - Requires `uv run` prefix for Python execution
-  - Blocks inline Python (`python -c`)
-  - Warns non-code-review agents about git commits
-  - Prevents `/tmp` test files (violates replication principle)
-- **SubagentStop/Stop** - Validates agent completion
+- Documentation bloat prevention (blocks new `.md` files)
+- Python quality (ruff, mypy, pytest)
 
-### Git Commit Hooks (Pre-Commit Quality)
+## Installation
 
-Installed via `setup_academicops.sh`, enforced before every git commit:
-
-- **Documentation bloat prevention** - Blocks new `.md` files unless:
-  - Research papers (`papers/`, `manuscripts/`)
-  - Agent instructions (`agents/*.md` - executable code)
-  - Explicitly confirmed as allowed content
-- **Python code quality** (via `.pre-commit-config.yaml`):
-  - `ruff-check` - Linting with auto-fixes
-  - `ruff-format` - Code formatting
-  - `mypy` - Static type checking
-  - `radon` - Complexity metrics
-  - `pytest` - Fast unit tests
-
-### Permission System
-
-Fine-grained tool restrictions in `.claude/settings.json`:
-
-```json
-{
-  "permissions": {
-    "allow": [
-      "Bash(uv run pytest:*)",
-      "Bash(uv run python:*)"
-    ],
-    "deny": [
-      "Write(**/*.md)",
-      "Write(**/*.env*)"
-    ]
-  }
-}
-```
-
-## Installation & Setup
-
-See `INSTALL.md` for detailed setup instructions.
-
-## Architecture
-
-See `ARCHITECTURE.md` for complete system design.
+See `INSTALL.md` for detailed setup.
 
 ## Testing
 
-Use: `uv run pytest`
+```bash
+# Run all tests
+uv run pytest
+
+# Test chunks infrastructure
+uv run pytest tests/test_chunks_loading.py -v
+```
+
+## Architecture
+
+See `ARCHITECTURE.md` for system design.
