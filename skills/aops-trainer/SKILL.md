@@ -7,9 +7,17 @@ description: This skill should be used when reviewing and improving agents, skil
 
 You are responsible for agent performance in the @nicsuzor/academicOps project.
 
+## Framework Context
+
+@resources/SKILL-PRIMER.md
+@resources/AXIOMS.md
+@resources/INFRASTRUCTURE.md
+
 ## Overview
 
 Maintain and optimize agent framework performance through surgical, experiment-driven interventions. This skill enforces anti-bloat principles, prioritizes architectural solutions over instructions, and ensures changes are tested rather than speculated.
+
+**Evidence-Based Foundation**: This skill follows evidence-based best practices documented in `@$ACADEMICOPS/docs/bots/BEST-PRACTICES.md`, incorporating official Anthropic guidance on context engineering, subagent design, and effective AI agents.
 
 ## When to Use This Skill
 
@@ -20,6 +28,8 @@ Use agent-optimization when:
 3. **Bloat prevention** - Reviewing proposed instruction additions
 4. **Architecture decisions** - Choosing between scripts/hooks/config/instructions
 5. **Experiment evaluation** - Analyzing test results and metrics
+6. **Component refinement** - Improving subagents, skills, commands, or hooks for conciseness and effectiveness
+7. **Creating/updating components** - Establishing mandatory skill-first patterns for all subagents and slash commands
 
 **Concrete trigger examples**:
 
@@ -28,6 +38,8 @@ Use agent-optimization when:
 - "I found a new prompting technique - should we adopt it?"
 - "This agent keeps making the same mistake"
 - "Evaluate whether this change actually improved performance"
+- "Refine this subagent/skill/command to follow best practices"
+- "Remove bloat from this agent instruction file"
 
 **Core principle**: We NEVER know if something will work until we test it. Embrace uncertainty with rigorous experiments.
 
@@ -77,6 +89,33 @@ Use agent-optimization when:
 - New files minimal (<50 lines)
 - Larger changes → GitHub issue for discussion
 - No sweeping rewrites
+
+### 5. Context Engineering Principles (Anthropic Official)
+
+**Context as Finite Resource**:
+- LLMs have "attention budget" that depletes with excessive tokens
+- Target "smallest set of high-signal tokens" for desired outcomes
+- Even with large context windows, context pollution degrades performance
+
+**The Goldilocks Altitude**:
+- Too Low: Overly complex, brittle hardcoded logic
+- Too High: Vague guidance assuming shared context
+- Just Right: Specific paired with flexible guidance through strong heuristics
+
+**Examples Over Exhaustive Rules**:
+- "Examples are the 'pictures' worth a thousand words"
+- Use 2-3 canonical examples showing expected behavior
+- More effective than exhaustive rule documentation
+
+**What to AVOID** (from official best practices):
+- ❌ Unnecessary background history that doesn't affect behavior
+- ❌ FAQ sections answering questions the agent hasn't asked
+- ❌ Excessive scene-setting and motivational preambles
+- ❌ Negative instructions ("Don't do X") without saying what to do
+- ❌ Vague instructions ("be concise" vs "limit to 2-3 sentences")
+- ❌ Mixing instructions with context (use XML tags or headers to separate)
+
+**Source**: See `@$ACADEMICOPS/docs/bots/BEST-PRACTICES.md` for complete evidence-based guidance with citations.
 
 ## Follow Agent Optimization Workflow
 
@@ -330,6 +369,113 @@ Use agent-optimization when:
     )"
     ```
 
+## Component Refinement Workflow
+
+### When to Refine Components
+
+Use this workflow when:
+- Component (subagent/skill/command/hook) shows signs of bloat (>500 lines)
+- Instructions contain FAQ-style content or excessive examples
+- Background context doesn't directly affect behavior
+- Mixing instructions with context without clear separation
+- Vague or negative instructions instead of specific directives
+
+### Refinement Process
+
+**1. Load Best Practices**:
+
+Read `@$ACADEMICOPS/docs/bots/BEST-PRACTICES.md` to ensure current understanding of evidence-based principles.
+
+**2. Audit Component**:
+
+Review component against best practices checklist:
+- [ ] Is context minimal and high-signal? (not comprehensive)
+- [ ] Are instructions specific, not vague?
+- [ ] Do I use 2-3 examples vs exhaustive rules?
+- [ ] Is structure clear with XML tags or headers?
+- [ ] Have I removed bloat (FAQs, background fluff, excessive examples)?
+- [ ] Is component focused on one purpose?
+- [ ] Does this follow "smallest set of high-signal tokens" principle?
+
+**3. Identify Bloat Categories**:
+
+Classify what to remove/refactor:
+- **Background fluff**: History, motivation, philosophical preambles → DELETE or move to reference doc
+- **FAQ content**: Answering questions not asked → DELETE
+- **Excessive examples**: >3 examples → Reduce to 2-3 canonical cases
+- **Negative instructions**: "Don't do X" → Replace with "Do Y instead"
+- **Vague directives**: "Be concise" → Replace with specific metrics
+- **Duplicate content**: Repeating _CORE.md or other files → Replace with reference
+- **Mixed sections**: Instructions buried in context → Separate with XML tags/headers
+
+**4. Refactor Component**:
+
+Apply surgical changes:
+- Extract bloat to separate reference document (if useful)
+- Replace vague with specific instructions
+- Consolidate duplicate content with references
+- Add structure (XML tags, clear headers)
+- Reduce to essential high-signal tokens
+
+**5. Validate Effectiveness**:
+
+Before/after comparison:
+- Token count reduction (target: 20-50% reduction for bloated components)
+- Clarity improvement (specific vs vague instruction count)
+- Structure improvement (clear sections vs mixed content)
+
+**6. Test Component**:
+
+Create experiment log and test refined component:
+- Does it still achieve intended behavior?
+- Is performance improved, maintained, or degraded?
+- Document outcome and iterate if needed
+
+**Example Refinement**:
+
+```markdown
+❌ BEFORE (150 lines, bloated):
+# Agent X
+
+## Background
+[50 lines of history and motivation]
+
+## Instructions
+When you do task Y, follow these steps:
+1. Step one
+2. Step two
+[30 lines of detailed steps]
+
+## FAQ
+Q: What if X happens?
+A: [Answer]
+[40 lines of Q&A]
+
+## Examples
+[30 lines of 10 different examples]
+
+✅ AFTER (40 lines, focused):
+# Agent X
+
+<background_information>
+Essential context: [5 lines only]
+</background_information>
+
+<instructions>
+Task Y workflow:
+1. Use skill-name for [specific purpose]
+2. Apply fail-fast principles (see _CORE.md Axiom #7)
+3. Commit via git-commit skill
+
+See @$ACADEMICOPS/references/task-y-details.md for edge cases.
+</instructions>
+
+<examples>
+**Example 1**: [Canonical case]
+**Example 2**: [Edge case]
+</examples>
+```
+
 ## Framework Architecture Understanding
 
 ### Components & Their Roles
@@ -395,6 +541,219 @@ Use agent-optimization when:
 
 1. Can run automatically at key moment? → Hook
 2. Needs human decision? → Instruction to use skill
+
+## Universal Pattern: Mandatory Skill-First Architecture
+
+### The Problem
+
+Agents often try to "figure out" instructions on their own by:
+- Searching for documentation manually
+- Guessing at workflows
+- Attempting tasks without proper context
+- Missing critical references and checklists
+
+This wastes tokens, creates inconsistency, and leads to errors.
+
+### The Solution: Mandatory Skill Invocation
+
+**PRINCIPLE**: All subagents and slash commands MUST invoke their corresponding skill FIRST before attempting any work.
+
+**Benefits**:
+1. **Context efficiency**: Skills have built-in context that loads once
+2. **Consistency**: Same workflow every time
+3. **Documentation discovery**: Skills contain references and indices
+4. **Prevents improvisation**: Agents follow established patterns instead of guessing
+5. **Token efficiency**: Consolidated context vs scattered instructions
+
+### Implementation Pattern
+
+**For Slash Commands** (`.claude/commands/*.md`):
+
+```markdown
+---
+description: [One-line description]
+---
+
+**MANDATORY FIRST STEP**: Invoke the `skill-name` skill IMMEDIATELY. The skill provides all context, workflows, and documentation needed for [task type].
+
+**DO NOT**:
+- Attempt to figure out instructions on your own
+- Search for documentation manually
+- Start work before loading the skill
+
+The skill-name skill contains:
+- [Key capability 1]
+- [Key capability 2]
+- [Key capability 3]
+
+After the skill loads, follow its instructions precisely.
+
+ARGUMENTS: $ARGUMENTS
+```
+
+**For Subagents** (`agents/*.md`):
+
+```yaml
+---
+name: agent-name
+description: "Clear one-sentence purpose"
+tools: [list]
+---
+
+# Agent Name
+
+**MANDATORY FIRST STEP**: Invoke the `skill-name` skill before proceeding with any task.
+
+## Core Responsibilities
+
+[Agent-specific authority and orchestration - keep minimal]
+
+## Workflow
+
+1. Load skill-name skill (MANDATORY)
+2. Follow skill instructions for [task type]
+3. [Any agent-specific orchestration]
+
+See skill-name for complete workflow details.
+```
+
+### Required Components for All Skills
+
+When creating skills to support this pattern, ensure they include:
+
+1. **Documentation Index**: Clear references to all relevant docs
+   ```markdown
+   ## References
+   - Core instructions: `@$ACADEMICOPS/core/_CORE.md`
+   - Best practices: `@$ACADEMICOPS/docs/bots/BEST-PRACTICES.md`
+   - Detailed guide: `@$ACADEMICOPS/references/specific-guide.md`
+   ```
+
+2. **Workflow Checklist**: Step-by-step process
+   ```markdown
+   ## Workflow
+   1. [Step 1 with specifics]
+   2. [Step 2 with specifics]
+   3. [Step 3 with specifics]
+   ```
+
+3. **Critical Rules**: Key principles and constraints
+   ```markdown
+   ## Critical Rules
+   **NEVER**: [List of prohibited actions]
+   **ALWAYS**: [List of required actions]
+   ```
+
+4. **Quick Reference**: Condensed lookup for experienced users
+   ```markdown
+   ## Quick Reference
+   - Pattern A: [Brief description]
+   - Pattern B: [Brief description]
+   ```
+
+### Enforcement
+
+When reviewing or creating components, verify:
+
+- [ ] Slash command includes MANDATORY skill invocation instruction
+- [ ] Subagent includes MANDATORY skill invocation as first step
+- [ ] Supporting skill exists with documentation index
+- [ ] Supporting skill includes workflow checklist
+- [ ] Supporting skill includes critical rules section
+- [ ] Supporting skill includes quick reference
+
+**Rationale**: This pattern solves the dual problems of (1) agents trying to figure things out independently, and (2) difficulty discovering relevant documentation. Skills become the single entry point for all task-specific context.
+
+## Universal Pattern: Skill Resources Symlinks
+
+### The Problem
+
+Skills don't receive SessionStart hooks, so they lack:
+- Universal principles (axioms, fail-fast, DRY)
+- Framework infrastructure knowledge ($ACADEMICOPS paths, repo structure)
+- Repository-specific context
+
+### The Solution: resources/ with Symlinks
+
+**ALL skills** must include a `resources/` directory with symlinks to shared chunks:
+
+```
+skills/skill-name/
+├── SKILL.md
+└── resources/                    # NEW - Required for all skills
+    ├── SKILL-PRIMER.md → ../../chunks/SKILL-PRIMER.md (symlink)
+    ├── AXIOMS.md → ../../chunks/AXIOMS.md (symlink)
+    └── INFRASTRUCTURE.md → ../../chunks/INFRASTRUCTURE.md (symlink - framework skills only)
+```
+
+### When to Include Each Chunk
+
+**All skills MUST include**:
+- `SKILL-PRIMER.md` - Explains skill execution context
+- `AXIOMS.md` - Universal principles (fail-fast, DRY, standard tools, etc.)
+
+**Framework-touching skills MUST include**:
+- `INFRASTRUCTURE.md` - Repository structure, $ACADEMICOPS paths, environment variables
+
+**Framework-touching skills** are those that:
+- Read/write framework files (commands/, agents/, skills/, core/)
+- Need to know about $ACADEMICOPS repository structure
+- Work with multi-tier loading system
+
+Examples: aops-trainer, skill-creator, skill-maintenance, claude-hooks, claude-md-maintenance, agent-initialization
+
+**Non-framework skills** (skip INFRASTRUCTURE.md):
+- General-purpose utilities that don't touch framework files
+- Examples: pdf, archiver, strategic-partner, analyst
+
+### Creating Symlinks
+
+**In development** (bot repo - for skills in bot/skills/):
+```bash
+cd bot/skills/skill-name/
+mkdir -p resources
+cd resources
+ln -s ../../../chunks/SKILL-PRIMER.md SKILL-PRIMER.md
+ln -s ../../../chunks/AXIOMS.md AXIOMS.md
+ln -s ../../../chunks/INFRASTRUCTURE.md INFRASTRUCTURE.md  # If framework-touching
+```
+
+**In installed skills** (~/.claude/skills/):
+```bash
+cd ~/.claude/skills/skill-name/
+mkdir -p resources
+cd resources
+ln -s /home/nic/src/bot/chunks/SKILL-PRIMER.md SKILL-PRIMER.md
+ln -s /home/nic/src/bot/chunks/AXIOMS.md AXIOMS.md
+ln -s /home/nic/src/bot/chunks/INFRASTRUCTURE.md INFRASTRUCTURE.md  # If framework-touching
+```
+
+### Referencing in SKILL.md
+
+Add at the top of every SKILL.md (after frontmatter, before first section):
+
+```markdown
+## Framework Context
+
+@resources/SKILL-PRIMER.md
+@resources/AXIOMS.md
+@resources/INFRASTRUCTURE.md  # If framework-touching only
+```
+
+### DRY Compliance
+
+This pattern maintains DRY because:
+- ✅ Each principle exists in EXACTLY ONE file (`chunks/*.md`)
+- ✅ Skills access via filesystem symlinks (not duplication)
+- ✅ Updates to chunks/ automatically propagate to all skills
+- ✅ No content copied between files
+
+### Packaging and Installation
+
+When packaging skills for distribution:
+- Symlinks should be resolved to actual file contents
+- Result: Self-contained skills with embedded context
+- No runtime dependency on bot repo location
 
 ## Analyzing Subagent Execution Logs
 
@@ -578,7 +937,7 @@ Success criteria: Zero cascade failures over 10 test runs.
 
 **Why**: We don't know until we test.
 
-## Continuous Research
+## Continuous Research & Self-Improvement
 
 **Actively research** third-party approaches:
 
@@ -586,6 +945,7 @@ Success criteria: Zero cascade failures over 10 test runs.
 - Prompt engineering research
 - Agent framework patterns
 - LLM client documentation
+- Official Anthropic updates on Claude Code and agent best practices
 
 **When finding useful patterns**:
 
@@ -595,6 +955,27 @@ Success criteria: Zero cascade failures over 10 test runs.
 4. Measure actual impact
 
 **Integration philosophy**: Steal good ideas, adapt minimally, test rigorously.
+
+### Updating Best Practices
+
+As new learnings emerge from experiments and research:
+
+1. **Update BEST-PRACTICES.md** with new evidence-based findings
+   - Add new principles with citations
+   - Remove disproven patterns with explanation
+   - Keep document concise (follow its own principles)
+
+2. **Update this skill** to reflect new patterns
+   - Extract critical insights into skill instructions
+   - Reference BEST-PRACTICES.md for details
+   - Test refinements through experiments
+
+3. **Propagate to components** systematically
+   - Audit existing components against updated practices
+   - Refine high-priority components first
+   - Document improvements in experiment logs
+
+**This skill is self-improving**: When you discover better approaches to agent optimization through experimentation, update BEST-PRACTICES.md and this skill accordingly.
 
 ## Critical Rules
 
@@ -606,6 +987,8 @@ Success criteria: Zero cascade failures over 10 test runs.
 - Claim something "will work" without testing
 - Make >3 changes per intervention
 - Skip GitHub documentation (diagnostics + solution design)
+- Include FAQ-style content or extensive background that doesn't affect behavior
+- Use vague instructions ("be concise") instead of specific directives ("2-3 sentences")
 
 **ALWAYS**:
 
@@ -616,6 +999,8 @@ Success criteria: Zero cascade failures over 10 test runs.
 - Test with real conversations
 - Measure actual outcomes
 - Update GitHub with results
+- Follow "smallest set of high-signal tokens" principle (context engineering)
+- Check BEST-PRACTICES.md when refining components
 
 ## Quick Reference
 
@@ -641,6 +1026,17 @@ Success criteria: Zero cascade failures over 10 test runs.
 10. Decide: keep/revert/iterate
 ```
 
+**Component refinement workflow**:
+
+```
+1. Load BEST-PRACTICES.md
+2. Audit component against checklist
+3. Identify bloat categories (FAQ, background, vague instructions)
+4. Refactor surgically (extract/consolidate/specify)
+5. Validate effectiveness (token reduction, clarity)
+6. Test refined component with experiment log
+```
+
 **Anti-Bloat checklist** (before adding >10 lines):
 
 - [ ] Tried scripts/hooks/config first
@@ -649,6 +1045,17 @@ Success criteria: Zero cascade failures over 10 test runs.
 - [ ] Calculated bloat cost
 - [ ] Justified why architecture won't work
 - [ ] File stays under 500 lines
+- [ ] No FAQ content or excessive background
+- [ ] Instructions specific, not vague
+
+**Context engineering checklist** (component design):
+
+- [ ] Context minimal and high-signal (not comprehensive)
+- [ ] 2-3 canonical examples (not exhaustive)
+- [ ] Specific directives (not vague like "be concise")
+- [ ] Structured with XML tags or headers
+- [ ] No negative instructions without alternatives
+- [ ] References external docs instead of duplicating
 
 **Experiment log template**:
 
