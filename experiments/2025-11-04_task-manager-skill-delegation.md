@@ -3,7 +3,7 @@
 ## Metadata
 - Date: 2025-11-04
 - Issue: #181
-- Commit: [to be added]
+- Commit: adf0caca482b4aaed39e5bdb00507cec998268fc
 - Model: claude-sonnet-4-5-20250929
 
 ## Hypothesis
@@ -69,6 +69,11 @@
 
 ## Token Count Analysis
 
-- BEFORE: commands/email.md (24 lines) + agents/task-manager.md (~289 lines) = 313 lines
-- AFTER: [to be measured]
-- NET CHANGE: [to be calculated]
+- BEFORE: commands/email.md (24 lines) + agents/task-manager.md (296 lines) = 320 lines
+- AFTER: commands/email.md (15 lines) + agents/task-manager.md (289 lines) = 304 lines
+- NET CHANGE: -16 lines (-5% reduction)
+
+Bloat removed:
+- 9 lines from commands/email.md (procedural detail now in agent)
+- 7 lines from agents/task-manager.md (bash examples replaced with skill reference)
+- +1 line for tools field in frontmatter
