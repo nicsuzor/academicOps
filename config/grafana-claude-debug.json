@@ -1,0 +1,75 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "description": "Claude Code Debugging - Chronological conversation thread showing prompts, tools, hooks, and results by session",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "liveNow": true,
+  "panels": [
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "title": "Conversation Thread (Chronological)",
+      "description": "All events in order: prompts → API calls → tool uses → tool results → hooks",
+      "type": "logs",
+      "gridPos": {"h": 24, "w": 24, "x": 0, "y": 0},
+      "targets": [
+        {
+          "datasource": {"type": "loki", "uid": "loki"},
+          "expr": "{service_name=\"claude-code\"} ${session_id:pipe} | line_format \"{{.event_name}}: {{.body}}\"",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "showLabels": false,
+        "showTime": true,
+        "wrapLogMessage": true,
+        "prettifyLogMessage": false,
+        "enableLogDetails": true,
+        "dedupStrategy": "none",
+        "sortOrder": "Ascending"
+      }
+    }
+  ],
+  "refresh": "10s",
+  "schemaVersion": 38,
+  "style": "dark",
+  "tags": ["claude-code", "debugging"],
+  "templating": {
+    "list": [
+      {
+        "name": "session_id",
+        "type": "query",
+        "label": "Session",
+        "datasource": {"type": "loki", "uid": "loki"},
+        "definition": "label_values({service_name=\"claude-code\"}, session_id)",
+        "current": {
+          "selected": true,
+          "text": "All",
+          "value": "$__all"
+        },
+        "includeAll": true,
+        "multi": false,
+        "refresh": 2,
+        "sort": 2
+      }
+    ]
+  },
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "timepicker": {
+    "refresh_intervals": ["5s", "10s", "30s", "1m", "5m", "15m"]
+  },
+  "timezone": "browser",
+  "title": "Claude Code Debug: Conversation Thread",
+  "uid": "claude-code-debug-simple",
+  "version": 1
+}
