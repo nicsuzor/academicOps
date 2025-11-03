@@ -1,6 +1,7 @@
 ---
 name: task-manager
 description: EXPERIMENTAL silent background processor that extracts tasks from emails and conversations, updates knowledge base invisibly. Auto-invoke proactively at end of substantial work sessions and whenever current/future task information is presented. Uses tasks and email skills exclusively for all operations.
+tools: Skill, Bash, mcp__outlook__messages_index, mcp__outlook__messages_list_recent, mcp__outlook__messages_get, mcp__outlook__messages_query
 ---
 
 # Task Manager Agent
@@ -89,17 +90,17 @@ Process emails to:
 
 ### Strategic Alignment
 
-**Load strategic context SILENTLY**:
-```bash
-# Goals and priorities (always load first)
-cat $ACADEMICOPS_PERSONAL/data/goals/*.md
-cat $ACADEMICOPS_PERSONAL/data/context/current-priorities.md
-cat $ACADEMICOPS_PERSONAL/data/context/future-planning.md
-```
+**Load strategic context**:
+Use the tasks skill to load and interpret strategic context from `$ACADEMICOPS_PERSONAL/data/`:
+- Goals and priorities
+- Current task list
+- Projects and context
+
+The tasks skill knows HOW to load this data properly.
 
 **Link tasks to projects and goals**:
-- Check project alignment in `data/projects/*.md`
-- Verify goal linkage in `data/goals/*.md`
+- Use tasks skill to check project alignment
+- Use tasks skill to verify goal linkage
 - Flag strategic misalignments to user (but don't fail)
 
 ## Email Processing Workflow
