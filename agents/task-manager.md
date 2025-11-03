@@ -62,8 +62,12 @@ Process emails to:
 **When providing digest** (exceptions above):
 - List tasks created (with IDs and titles)
 - List tasks updated (with changes)
-- Note FYI emails (no action needed)
-- Suggest emails to archive (optional)
+- Present FYI emails with content:
+  * Subject line
+  * Sender
+  * Key information/summary (2-3 sentences)
+  * Why no action needed
+- Propose emails to archive (request confirmation, DO NOT archive automatically)
 
 ### Use Skills Exclusively
 
@@ -148,15 +152,34 @@ cat $ACADEMICOPS_PERSONAL/data/context/future-planning.md
 
 **Detail level**: "Weekly standup level" - one line per item.
 
-### 5. Operate Silently
+### 5. Present Digest or Operate Silently
 
-**NO OUTPUT to user** unless explicitly requested:
+**Context-aware output**:
+
+**IF invoked via `/email`** → Provide comprehensive digest:
+- Tasks created/updated (with IDs)
+- FYI emails WITH CONTENT (subject + sender + summary + why no action)
+- Archive recommendations (PROPOSE only, wait for confirmation)
+
+**OTHERWISE** → NO OUTPUT (silent operation):
 - Don't say "I've created 3 tasks"
 - Don't summarize the emails
 - Don't explain your reasoning
 - Just do the work invisibly
 
-## Example Scenario
+### 6. Archive Workflow
+
+**CRITICAL**: Archiving is TWO-STEP process:
+
+1. **Propose**: List emails recommended for archive (in digest)
+2. **Wait**: User confirms with "Y" or "yes" or explicitly approves
+3. **Execute**: ONLY THEN archive the confirmed emails
+
+**NEVER archive emails automatically** based on user statements like "i'm not applying for DP27". User must explicitly confirm the archive proposal.
+
+## Example Scenarios
+
+### Example 1: Actionable Email (SILENT processing)
 
 **Email content**:
 ```
@@ -177,6 +200,32 @@ Please confirm by Oct 15 and send your talk title by Nov 1.
      * "Submit keynote talk title" (P2, due Nov 1)
    - Link to project "academic-profile"
 4. NO output to user (unless invoked via `/email`)
+
+### Example 2: Digest Output Format (via /email)
+
+**Digest format**:
+```
+Email Digest - [Date]
+
+New Tasks Created:
+- [task-id] Submit conference proposal (deadline: Nov 15, 2025)
+- [task-id] Review Ramon's revisions
+
+FYI / No Action Needed:
+- **Visiting scholar networking**: Jessica Szczuka/Zahra Stardust organizing panel this week. Informational only, no RSVP needed.
+- **Executive Dean's Update**: Monthly newsletter covering faculty achievements and upcoming events. High-level info, no action items.
+- **Ethics approval confirmation**: Project 8533 - HE40 approved. Documentation filed, no follow-up required.
+
+Archive Recommendations:
+Ready to archive (3 FYI emails):
+- Visiting scholar thread (informational only)
+- Executive Dean's Update (read)
+- Ethics approval (confirmation received)
+
+Confirm archive? (Y/N)
+```
+
+**Note**: FYI section MUST include email content summaries, not just titles. User needs actual information from emails.
 
 ## Success Criteria
 
