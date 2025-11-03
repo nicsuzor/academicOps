@@ -17,18 +17,30 @@ Reverting Stop/SubagentStop hooks from `validate_stop.py` → `request_scribe_st
 - Removed `SubagentStop`/`Stop` arguments (request_scribe_stop uses same logic for both)
 - Changed fallback from `{\"continue\":true}` → `{}` (matches original pattern)
 
+**hooks/log_userpromptsubmit.py** (line 23):
+- Fixed state flag naming mismatch
+- Was: `claude_scribe_requested_{session_id}.flag`
+- Now: `claude_end_of_session_requested_{session_id}.flag`
+- Matches flag name used by request_scribe_stop.py:31
+
 ## Root Causes Addressed
 
-**Regression introduced in commit f03088b (Oct 31)**:
+**Regression #1 - Wrong Stop hook (commit f03088b, Oct 31)**:
 - Hook path resolution experiment inadvertently replaced functional Stop hook
 - `validate_stop.py` only logs transitions (placeholder for future workflow chaining)
 - `request_scribe_stop.py` actually blocks Stop and requests end-of-session invocation
 - No design rationale documented for the switch
 
+**Regression #2 - State flag naming mismatch (original bug)**:
+- `request_scribe_stop.py` creates: `claude_end_of_session_requested_{session_id}.flag`
+- `log_userpromptsubmit.py` cleaned up: `claude_scribe_requested_{session_id}.flag`
+- Flags never cleaned up → Stop hook would only work once per boot
+- Likely never tested in practice (hook wasn't configured until now)
+
 **Original design (Oct 28-29)**:
 - Created `request_scribe_stop.py` to invoke end-of-session agent
 - Created `end-of-session.md` agent for automated commits/scribe/task updates
-- System worked briefly before path resolution experiment
+- System worked briefly before path resolution experiment broke it
 
 ## Success Criteria
 

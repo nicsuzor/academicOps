@@ -20,7 +20,7 @@ from hook_debug import safe_log_to_debug_file
 
 def cleanup_scribe_state(session_id: str) -> None:
     """Remove scribe invocation flag at start of new user turn."""
-    state_file = Path(f"/tmp/claude_scribe_requested_{session_id}.flag")
+    state_file = Path(f"/tmp/claude_end_of_session_requested_{session_id}.flag")
     if state_file.exists():
         state_file.unlink()
 
