@@ -11,6 +11,9 @@
 		},
 		{
 			"path": "../../automod"
+		},
+		{
+			"path": "../../omcp"
 		}
 	],
 	"settings": {

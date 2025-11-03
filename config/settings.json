@@ -59,6 +59,11 @@
             "type": "command",
             "command": "if [ -f \"$ACADEMICOPS/hooks/log_posttooluse.py\" ]; then uv run --directory \"$ACADEMICOPS\" python \"$ACADEMICOPS/hooks/log_posttooluse.py\"; else echo '{}'; fi",
             "timeout": 2000
+          },
+          {
+            "type": "command",
+            "command": "if [ -f \"$ACADEMICOPS/hooks/autocommit_tasks.py\" ]; then uv run --directory \"$ACADEMICOPS\" python \"$ACADEMICOPS/hooks/autocommit_tasks.py\"; else echo '{}'; fi",
+            "timeout": 35000
           }
         ]
       }
