@@ -414,6 +414,57 @@ Use directory structure for grouping:
 
 **Source**: [Slash Commands - Claude Docs](https://docs.claude.com/en/docs/claude-code/slash-commands)
 
+**6. Limit YAML Frontmatter Bloat**
+
+Keep frontmatter minimal - only `description` required:
+
+```markdown
+❌ BAD (42 lines of extra: bloat):
+---
+description: "Short description"
+extra: |
+  ## When to Use
+  [20 lines]
+  ## What This Loads
+  [15 lines]
+  ## Related Commands
+  [7 lines]
+---
+
+✅ GOOD (minimal frontmatter):
+---
+description: "Short description"
+---
+
+[Concise body with actual instructions]
+```
+
+**Hard limit**: `extra:` blocks >10 lines are bloat. Move content to body or delete.
+
+**Why**: YAML frontmatter is loaded into agent context immediately. Extensive `extra:` content wastes tokens on scene-setting that doesn't affect behavior. Use body for essential instructions, reference external docs for details.
+
+**7. Supervisor Orchestration Pattern**
+
+When invoking supervisor agent, provide explicit checklist requirements:
+
+```markdown
+✅ CORRECT (explicit requirements):
+Invoke `supervisor` agent.
+
+Supervisor MUST create TodoWrite with:
+1. ✓ Independent plan review (second agent validates)
+2. ✓ Atomic TDD cycles as todo items
+3. ✓ Independent final state review vs original plan
+4. ✓ Commit and push all changes
+
+❌ INCORRECT (vague delegation):
+The supervisor will handle the development task and enforce TDD.
+```
+
+**Why**: Supervisor needs explicit checklist to enforce workflow gates. Vague delegation ("will handle", "will enforce") allows skipping critical reviews. Imperative requirements ("MUST create TodoWrite with...") ensure supervisor creates visible, trackable workflow.
+
+**Pattern applies to**: Any command invoking orchestration agents (supervisor, strategist, etc.) where specific workflow steps are mandatory.
+
 ---
 
 ## Hooks
