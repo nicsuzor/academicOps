@@ -56,44 +56,23 @@ git status --short
 
 ### 2. Accomplishment Capture
 
-**Evaluate work description** from calling agent to determine if accomplishment should be captured.
+**Delegate to scribe skill Mode 4** for accomplishment evaluation:
 
-**Accomplishment Criteria** (from Issue #152):
-
-An accomplishment is **completed work that creates value**:
-
-✅ ACCOMPLISHMENTS (write to accomplishments.md):
-- Meeting attended and completed
-- Paper/report delivered
-- Code shipped to production
-- Presentation given
-- Student supervised (session completed)
-- Task completed from task system
-- Framework improvement implemented and tested
-
-❌ NOT ACCOMPLISHMENTS (do NOT capture):
-- Email processed (operational work)
-- Task created (that's tracking, not doing)
-- Meeting scheduled (not yet done)
-- Decision needed (not resolved)
-- Research/reading (unless deliverable produced)
-- Planning/strategic discussion (unless decision implemented)
-
-**Test**: Ask "Did they deliver something or complete something?"
-- YES → Write one-line entry to accomplishments.md
-- NO → Skip capture
-
-**Format for accomplishments.md**:
-```markdown
-## YYYY-MM-DD - [Brief title]
-- [One sentence describing what was completed]
+```
+Skill(command='scribe', mode='end-of-session', work_description='[brief description]', state='[completed|in-progress|blocked|aborted|planned|failed]')
 ```
 
-**Examples**:
-- "Implemented autocommit hook for task database" ✅ (deliverable completed)
-- "Processed emails and created tasks" ❌ (operational work)
-- "Fixed end-of-session agent bloat" ✅ (problem solved and shipped)
-- "Discussed strategic priorities" ❌ (planning, not completion)
+**What scribe Mode 4 does**:
+- Receives work description (no session searching)
+- Applies accomplishment criteria ("standup level" filter)
+- Writes ONE LINE to accomplishments.md if qualified
+- Completes silently (no output)
+
+**Accomplishment criteria** (maintained in scribe skill):
+- ✅ Completed work that creates value (deliverables, achievements)
+- ❌ Operational work (email, tasks, planning)
+
+See scribe skill SKILL.md lines 251-349 for full criteria.
 
 ### 3. Task Progress Updates
 
@@ -146,8 +125,6 @@ uv run python ~/.claude/skills/scribe/scripts/task_process.py modify <task_id> -
 ### DON'T:
 - Ask user for confirmations
 - Fail if no changes to commit
-- Write to accomplishments.md for operational work (email, task creation, planning)
-- Capture detailed notes or summaries (one line only)
 - Search past sessions for context (only evaluate current work)
 
 ## Integration with Skills
@@ -170,21 +147,23 @@ Located at `~/.claude/skills/git-commit/`
 - Write commit message (git-commit generates it)
 - Validate changes (git-commit does this)
 
-### Accomplishment Evaluation
+### Scribe Skill Mode 4
 
-**Direct capture** (no skill invocation needed):
+Located at `~/.claude/skills/scribe/`
 
-**What you DO**:
-- Receive work description from calling agent
-- Apply accomplishment criteria (completed work that creates value)
-- If qualified: append one-line entry to `data/context/accomplishments.md`
-- If not qualified: skip capture silently
+**Invocation**: `Skill(command='scribe', mode='end-of-session', work_description='...', state='...')`
 
-**What you DON'T do**:
-- Search past conversations or sessions
-- Capture detailed summaries or notes
-- Write about operational work (email, tasks, planning)
-- Invoke scribe skill (causes bloat)
+**What it does**:
+- Receives work description directly (no session searching)
+- Applies accomplishment criteria ("standup level" filter)
+- If qualified: writes ONE LINE to accomplishments.md
+- If not qualified: skips capture silently
+- Completes silently (no output)
+
+**What you DON'T need to do**:
+- Evaluate accomplishment criteria (scribe does this)
+- Write to accomplishments.md directly (scribe does this)
+- Filter operational work (scribe does this)
 
 ## Example Workflow
 
@@ -200,9 +179,12 @@ State: completed
 2. Invoke git-commit skill
    → Result: "Committed 2 files: feat(hooks): Add autocommit for task database"
 
-3. Evaluate against accomplishment criteria
-   → Deliverable completed? YES (hook implemented and tested)
-   → Write to accomplishments.md: "Implemented autocommit hook for task database"
+3. Invoke scribe Mode 4
+   → Skill(command='scribe', mode='end-of-session',
+       work_description='Implemented autocommit hook for task database',
+       state='completed')
+   → Scribe evaluates: Deliverable completed? YES
+   → Scribe writes one line to accomplishments.md
 
 4. Complete silently (no output to user)
 ```
@@ -218,9 +200,12 @@ State: completed
 
 2. Skip git-commit (no code changes in current repo)
 
-3. Evaluate against accomplishment criteria
-   → Deliverable completed? NO (operational work)
-   → Skip capture
+3. Invoke scribe Mode 4
+   → Skill(command='scribe', mode='end-of-session',
+       work_description='Processed emails and created 3 tasks',
+       state='completed')
+   → Scribe evaluates: Deliverable completed? NO (operational work)
+   → Scribe skips capture
 
 4. Complete silently (no output to user)
 ```
@@ -236,9 +221,12 @@ State: completed
 
 2. Skip git-commit
 
-3. Evaluate against accomplishment criteria
-   → Deliverable completed? NO (planning, not completion)
-   → Skip capture
+3. Invoke scribe Mode 4
+   → Skill(command='scribe', mode='end-of-session',
+       work_description='Strategic planning for 2026 timeline',
+       state='completed')
+   → Scribe evaluates: Deliverable completed? NO (planning, not completion)
+   → Scribe skips capture
 
 4. Complete silently (no output to user)
 ```
@@ -255,9 +243,12 @@ State: completed
 2. Invoke git-commit skill
    → Result: "Committed 1 file: docs: Submit CSCW 2026 paper"
 
-3. Evaluate against accomplishment criteria
-   → Deliverable completed? YES (paper submitted)
-   → Write to accomplishments.md: "Submitted conference paper to CSCW 2026"
+3. Invoke scribe Mode 4
+   → Skill(command='scribe', mode='end-of-session',
+       work_description='Submitted conference paper to CSCW 2026',
+       state='completed')
+   → Scribe evaluates: Deliverable completed? YES
+   → Scribe writes one line to accomplishments.md
 
 4. Complete silently (no output to user)
 ```
@@ -265,10 +256,11 @@ State: completed
 ## Success Criteria
 
 - Completes within 30 seconds
-- Commits changes when present
-- Writes to accomplishments.md ONLY for completed work (not operational tasks)
+- Commits changes when present (via git-commit skill)
+- Delegates accomplishment evaluation to scribe Mode 4
+- Scribe writes to accomplishments.md ONLY for completed work (not operational tasks)
 - Doesn't interrupt user with questions or output
 - Operates silently without user-visible output
 - Only runs after substantial completed work (not during interactive sessions)
-- Doesn't search past sessions (only evaluates current work description)
-- One-line entries only (no detailed summaries)
+- Doesn't search past sessions (only evaluates work description from calling agent)
+- Scribe maintains single source of truth for accomplishment criteria (no DRY violation)

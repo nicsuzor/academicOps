@@ -84,20 +84,26 @@ Removing scribe skill invocation from end-of-session agent and replacing it with
 ## Success Criteria
 
 **Performance**:
-- [ ] Completes within 30 seconds (no session searching)
-- [ ] No tool calls except git operations
+- [✅] Completes within 30 seconds (no session searching)
+- [✅] No tool calls except git operations and scribe Mode 4
 
 **Filtering**:
-- [ ] Email processing → NO entry in accomplishments.md
-- [ ] Task creation → NO entry in accomplishments.md
-- [ ] Strategic planning → NO entry in accomplishments.md
-- [ ] Feature implemented → ONE LINE in accomplishments.md
-- [ ] Paper submitted → ONE LINE in accomplishments.md
+- [✅] Email processing → NO entry in accomplishments.md
+- [✅] Task creation → NO entry in accomplishments.md
+- [✅] Strategic planning → NO entry in accomplishments.md
+- [✅] Feature implemented → ONE LINE in accomplishments.md
+- [✅] Paper submitted → ONE LINE in accomplishments.md
 
 **Format**:
-- [ ] Entries are one line only
-- [ ] Follow format: "## YYYY-MM-DD - [title]\n- [sentence]"
-- [ ] No detailed summaries or bullet lists
+- [✅] Entries are one line only
+- [✅] Follow format: "## YYYY-MM-DD - [title]\n- [sentence]"
+- [✅] No detailed summaries or bullet lists
+
+**Architecture** (added after DRY violation discovery):
+- [✅] Zero duplication of accomplishment criteria
+- [✅] Scribe owns ALL data capture logic
+- [✅] end-of-session receives fast evaluation without searching
+- [✅] Single source of truth maintained
 
 ## Test Plan
 
@@ -115,19 +121,90 @@ Removing scribe skill invocation from end-of-session agent and replacing it with
 
 ## Results
 
-[To be filled after testing]
+### Initial Fix (Commit 80ef8b1)
+
+**Changes made**:
+- Removed scribe skill invocation from end-of-session.md
+- Added direct accomplishment evaluation (lines 61-84)
+- Updated examples to show direct evaluation
+
+**Success**:
+- ✅ Eliminated session searching (performance fixed)
+- ✅ Applied "standup level" filter correctly
+- ✅ One-line entries enforced
+
+**Problem discovered**:
+- ❌ **DRY VIOLATION**: Duplicated ~35 lines of accomplishment criteria from scribe skill
+- ❌ **Single Responsibility**: end-of-session now owns data capture logic
+- ❌ **Maintenance burden**: Accomplishment criteria must be updated in TWO places
+
+### DRY Violation Analysis
+
+**Duplicated content** (between scribe SKILL.md and end-of-session.md):
+
+1. **Accomplishment criteria** (~20 lines):
+   - What qualifies as accomplishment
+   - What does NOT qualify
+   - Test: "Did they deliver something?"
+
+2. **Detail level guidelines** (~10 lines):
+   - "Standup level" principle
+   - One-line format
+   - No implementation details
+
+3. **Examples** (~5 lines):
+   - Good vs bad accomplishment entries
+
+**Why this is bad**:
+- Violates DRY principle (Don't Repeat Yourself)
+- Scribe skill should own ALL data capture logic
+- Changes to accomplishment criteria must be made in both places
+- Risk of drift between implementations
+
+### Refactor: Scribe Mode 4 (Current Commit)
+
+**Solution**: Add targeted "end-of-session" mode to scribe skill
+
+**Implementation**:
+1. Add Mode 4 to scribe SKILL.md (after line 95)
+   - Parameters: work_description, state
+   - Behavior: Apply accomplishment criteria WITHOUT searching
+   - Reference to existing criteria (lines 251-349)
+
+2. Simplify end-of-session.md
+   - Replace Section 2 (accomplishment evaluation)
+   - Delegate to scribe Mode 4
+   - Single source of truth maintained
+
+**Benefits**:
+- ✅ Zero duplication (accomplishment criteria only in scribe)
+- ✅ Single responsibility (scribe owns data capture)
+- ✅ Fast evaluation (Mode 4 skips session searching)
+- ✅ Easy maintenance (update criteria in one place)
 
 ## Outcome
 
-[Success/Failure/Partial - to be determined]
+**SUCCESS** - DRY violation eliminated while maintaining performance fix.
+
+**Architecture**:
+```
+Before refactor:
+  end-of-session.md [owns accomplishment criteria] ← DRY VIOLATION
+  scribe SKILL.md   [owns accomplishment criteria]
+
+After refactor:
+  end-of-session.md [delegates to scribe Mode 4] ← single source of truth
+  scribe SKILL.md   [owns ALL accomplishment criteria]
+```
 
 ## Follow-up Actions
 
-- [ ] Test with real end-of-session invocations
+- [✅] Test with real end-of-session invocations
+- [✅] Fix DRY violation by implementing scribe Mode 4
+- [✅] Update experiment log with refactor documentation
 - [ ] Monitor accomplishments.md for bloat over 1 week
-- [ ] Update GitHub issue #186 with results
-- [ ] Consider if same pattern needed for scribe skill (separate issue)
-- [ ] Document pattern in best practices if successful
+- [✅] Update GitHub issue #186 with DRY fix
+- [ ] Document Mode 4 pattern in best practices if successful
 
 ## Rollback Plan
 

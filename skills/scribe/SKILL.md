@@ -93,13 +93,49 @@ uv run python ~/.claude/skills/scribe/scripts/task_view.py --per-page=10
 - Show resource allocations
 - Explain dependencies
 
+### Mode 4: End-of-Session (Targeted Capture)
+
+**When**: end-of-session agent invokes with work description
+**Purpose**: Fast accomplishment evaluation without searching sessions
+**Output**: SILENT write to accomplishments.md if criteria met
+
+**Invocation pattern**:
+```
+Skill(command='scribe', mode='end-of-session', work_description='[what was done]', state='completed|in-progress|blocked|aborted|planned|failed')
+```
+
+**Parameters**:
+- `work_description`: Brief description of work done (from calling agent)
+- `state`: Work status (completed, in-progress, blocked, aborted, planned, failed)
+
+**Behavior**:
+1. Receive work description directly (NO session searching)
+2. Apply accomplishment criteria (lines 251-349 below)
+3. If qualified: Write ONE LINE to accomplishments.md
+4. If not qualified: Skip capture silently
+5. Complete silently (no output)
+
+**What this mode does NOT do**:
+- Search past conversations or sessions
+- Invoke task scripts
+- Update project files
+- Create detailed summaries
+- Ask user questions
+
+**Why Mode 4 exists**:
+- end-of-session agent needs fast evaluation
+- Work description already provided by calling agent
+- Maintains single source of truth for accomplishment criteria
+- Avoids DRY violation
+
 ## Mode Decision Flowchart
 
 ```
 User behavior
     ├─ Mentions task/project/goal/deadline → Mode 1 (Background Capture)
     ├─ Asks "what are my tasks?" → Mode 2 (Display)
-    └─ Asks "why is X important?" → Mode 3 (Context Guide)
+    ├─ Asks "why is X important?" → Mode 3 (Context Guide)
+    └─ end-of-session agent invokes → Mode 4 (End-of-Session)
 
 Default mode: Mode 1 (always capturing)
 ```
