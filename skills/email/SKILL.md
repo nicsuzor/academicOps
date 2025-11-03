@@ -168,6 +168,16 @@ When checking email (e.g., via `/email` command):
 3. Agent uses tasks skill to create tasks for actionable items
 4. Agent presents summary to user
 
+## Email Thread Handling
+
+**CRITICAL**: Outlook email bodies include ENTIRE THREAD HISTORY (quoted messages).
+
+When processing emails:
+- Content BEFORE `On [date]...wrote:` or `>` quote markers = CURRENT message
+- Everything after = old quoted history
+- Use `received` field for dating (NOT dates found in quoted text)
+- Extract and summarize CURRENT message only (ignore quoted history)
+
 ## Email Processing Constraints
 
 **DO**:
@@ -175,6 +185,8 @@ When checking email (e.g., via `/email` command):
 - Filter/prioritize based on signals
 - Present summaries to user
 - Extract information for task creation
+- Parse email threads to extract CURRENT message only
+- Use metadata (received date) not body content for dating
 
 **DO NOT**:
 - Archive or delete emails (user controls this)
@@ -182,6 +194,8 @@ When checking email (e.g., via `/email` command):
 - Move emails between folders (user controls this)
 - Process entire mailbox uninvited (fetch recent only)
 - Mark emails as read/unread (MCP may not support)
+- Present entire email thread history (summarize instead)
+- Extract dates from quoted portions of email body
 
 ## Common Usage Patterns
 

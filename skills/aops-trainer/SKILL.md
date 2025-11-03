@@ -209,26 +209,27 @@ Use agent-optimization when:
 
 7. **IF instructions necessary → Anti-Bloat Protocol**:
 
-   **Before adding >10 lines, verify ALL**:
+   **Before adding >5 lines, verify ALL**:
 
    - [ ] **Hierarchy Check**: Verified Q1-Q4 show NO architectural solution
    - [ ] **Bloat Estimate**: Calculated token cost vs writing code
    - [ ] **Modularity**: Can this be separate referenced doc?
    - [ ] **DRY Check**: Does similar guidance exist elsewhere?
    - [ ] **CRITICAL DRY**: Repeating _CORE.md or other agent? Use brief reference instead
-   - [ ] **Complexity Budget**: File stays under 500 lines
+   - [ ] **Complexity Budget**: File stays under 300 lines
    - [ ] **Justification**: Documented WHY code/config/hooks won't work
+   - [ ] **Condensed**: Can this be expressed in bullet points vs paragraphs?
 
    **AXIOM: DO NOT REPEAT YOURSELF**:
-   - Longer instructions NOT more effective
+   - Longer instructions NOT more effective (LLMs get lost in bloat)
    - If _CORE.md has it → REFERENCE (don't duplicate)
    - Example: "See _CORE.md Axiom #4" NOT 85 lines restating
+   - Default to BULLET POINTS, not prose
 
-   **If adding >50 lines**:
-   - STOP immediately
-   - Create GitHub issue
-   - Get user approval
-   - This is architectural bloat requiring discussion
+   **HARD LIMITS**:
+   - Adding >5 lines: Requires bloat justification
+   - Adding >10 lines: STOP, create GitHub issue, get user approval
+   - File >300 lines total: Architectural bloat, must refactor
 
 8. **Research solutions**:
    - Investigate technical approaches
@@ -981,7 +982,8 @@ As new learnings emerge from experiments and research:
 
 **NEVER**:
 
-- Add >10 lines without Anti-Bloat Protocol
+- Add >5 lines without bloat justification
+- Add >10 lines without GitHub issue + user approval
 - Duplicate content from _CORE.md or other files
 - Add instructions when scripts/hooks/config would work
 - Claim something "will work" without testing
@@ -989,6 +991,7 @@ As new learnings emerge from experiments and research:
 - Skip GitHub documentation (diagnostics + solution design)
 - Include FAQ-style content or extensive background that doesn't affect behavior
 - Use vague instructions ("be concise") instead of specific directives ("2-3 sentences")
+- Write prose paragraphs when bullet points suffice
 
 **ALWAYS**:
 
@@ -1037,16 +1040,18 @@ As new learnings emerge from experiments and research:
 6. Test refined component with experiment log
 ```
 
-**Anti-Bloat checklist** (before adding >10 lines):
+**Anti-Bloat checklist** (before adding >5 lines):
 
 - [ ] Tried scripts/hooks/config first
 - [ ] Checked for existing content to reference
 - [ ] Verified not repeating _CORE.md
-- [ ] Calculated bloat cost
+- [ ] Calculated bloat cost (tokens wasted vs code written)
 - [ ] Justified why architecture won't work
-- [ ] File stays under 500 lines
+- [ ] Condensed to bullet points (not prose)
+- [ ] File stays under 300 lines
 - [ ] No FAQ content or excessive background
 - [ ] Instructions specific, not vague
+- [ ] Adding >10 lines: STOP, needs GitHub issue + approval
 
 **Context engineering checklist** (component design):
 
