@@ -406,3 +406,459 @@ class TestStopHookEdgeCases:
             "stdout should not contain status messages"
         )
         assert "✓" not in stdout, "stdout should not contain status symbols"
+
+
+# ============================================================================
+# Request Scribe Stop Hook Tests (request_scribe_stop.py)
+# ============================================================================
+
+
+class TestRequestScribeStopHook:
+    """Tests for request_scribe_stop.py - the actual Stop hook we use."""
+
+    def test_first_stop_blocks_and_creates_flag(self, request_scribe_stop_script: Path):
+        """
+        Test that first Stop blocks with decision='block' and creates state flag.
+
+        This is the core behavior: on first stop, block and instruct agent
+        to invoke end-of-session subagent.
+        """
+        import tempfile
+        import time
+        from pathlib import Path
+
+        # Use unique session_id to avoid conflicts with other tests
+        session_id = f"test-first-stop-{int(time.time() * 1000)}"
+        hook_input = {
+            "session_id": session_id,
+            "hook_event": "Stop",
+        }
+
+        # Ensure no flag exists before test
+        state_file = Path(f"/tmp/claude_end_of_session_requested_{session_id}.flag")
+        if state_file.exists():
+            state_file.unlink()
+
+        exit_code, stdout, stderr = run_hook(request_scribe_stop_script, hook_input)
+
+        assert exit_code == 0, f"Hook failed: {stderr}"
+
+        # Parse output
+        output = json.loads(stdout.strip())
+
+        # Verify it blocks
+        assert output.get("decision") == "block", (
+            f"First stop should block, got: {output}"
+        )
+
+        # Verify reason mentions end-of-session
+        assert "reason" in output, "Blocked decision must have reason"
+        assert "end-of-session" in output["reason"].lower(), (
+            f"Reason should mention end-of-session, got: {output['reason']}"
+        )
+
+        # Verify state flag was created
+        assert state_file.exists(), (
+            f"State flag should be created at {state_file}"
+        )
+
+        # Cleanup
+        if state_file.exists():
+            state_file.unlink()
+
+    def test_second_stop_allows_when_flag_exists(self, request_scribe_stop_script: Path):
+        """
+        Test that second Stop allows (returns {}) when flag exists.
+
+        After end-of-session subagent is invoked, the second Stop should allow
+        to prevent infinite loop.
+        """
+        import time
+        from pathlib import Path
+
+        session_id = f"test-second-stop-{int(time.time() * 1000)}"
+        hook_input = {
+            "session_id": session_id,
+            "hook_event": "Stop",
+        }
+
+        # Create flag to simulate first stop already happened
+        state_file = Path(f"/tmp/claude_end_of_session_requested_{session_id}.flag")
+        state_file.touch()
+
+        try:
+            exit_code, stdout, stderr = run_hook(request_scribe_stop_script, hook_input)
+
+            assert exit_code == 0, f"Hook failed: {stderr}"
+
+            # Parse output
+            output = json.loads(stdout.strip())
+
+            # Should allow (empty {} or no "block" decision)
+            if "decision" in output:
+                assert output["decision"] != "block", (
+                    f"Second stop should allow, got: {output}"
+                )
+            # Empty {} is also valid (allows by default)
+
+        finally:
+            # Cleanup
+            if state_file.exists():
+                state_file.unlink()
+
+    def test_third_stop_still_allows(self, request_scribe_stop_script: Path):
+        """
+        Test that third Stop still allows when flag exists.
+
+        Flag persists until UserPromptSubmit, so multiple stops should all allow.
+        """
+        import time
+        from pathlib import Path
+
+        session_id = f"test-third-stop-{int(time.time() * 1000)}"
+        hook_input = {
+            "session_id": session_id,
+            "hook_event": "Stop",
+        }
+
+        # Create flag
+        state_file = Path(f"/tmp/claude_end_of_session_requested_{session_id}.flag")
+        state_file.touch()
+
+        try:
+            # Second stop
+            exit_code, stdout, stderr = run_hook(request_scribe_stop_script, hook_input)
+            assert exit_code == 0
+            output = json.loads(stdout.strip())
+            if "decision" in output:
+                assert output["decision"] != "block"
+
+            # Third stop - flag still exists
+            assert state_file.exists(), "Flag should persist across stops"
+
+            exit_code, stdout, stderr = run_hook(request_scribe_stop_script, hook_input)
+            assert exit_code == 0
+            output = json.loads(stdout.strip())
+            if "decision" in output:
+                assert output["decision"] != "block", (
+                    "Third stop should still allow"
+                )
+
+        finally:
+            if state_file.exists():
+                state_file.unlink()
+
+    def test_invalid_json_allows_failsafe(self, request_scribe_stop_script: Path):
+        """
+        Test that invalid JSON input allows (fail-safe behavior).
+
+        If JSON parsing fails, hook should allow to prevent breaking agent.
+        """
+        result = subprocess.run(
+            ["uv", "run", "python", str(request_scribe_stop_script)],
+            check=False,
+            input="not valid json",
+            capture_output=True,
+            text=True,
+        )
+
+        # Should exit successfully (fail-safe)
+        assert result.returncode == 0, (
+            f"Invalid JSON should be handled gracefully, got exit code {result.returncode}"
+        )
+
+        # Should output valid empty JSON (allows)
+        output = json.loads(result.stdout.strip())
+        if "decision" in output:
+            assert output["decision"] != "block", (
+                "Invalid JSON should allow (fail-safe)"
+            )
+
+    def test_subagent_stop_event_works_same_as_stop(self, request_scribe_stop_script: Path):
+        """
+        Test that SubagentStop event uses same logic as Stop.
+
+        Both hooks use request_scribe_stop.py, so behavior should be identical.
+        """
+        import time
+        from pathlib import Path
+
+        session_id = f"test-subagent-{int(time.time() * 1000)}"
+        hook_input = {
+            "session_id": session_id,
+            "hook_event": "SubagentStop",
+            "subagent": "test-agent",
+        }
+
+        state_file = Path(f"/tmp/claude_end_of_session_requested_{session_id}.flag")
+        if state_file.exists():
+            state_file.unlink()
+
+        try:
+            # First SubagentStop should block
+            exit_code, stdout, stderr = run_hook(request_scribe_stop_script, hook_input)
+            assert exit_code == 0
+            output = json.loads(stdout.strip())
+            assert output.get("decision") == "block"
+            assert state_file.exists()
+
+            # Second SubagentStop should allow
+            exit_code, stdout, stderr = run_hook(request_scribe_stop_script, hook_input)
+            assert exit_code == 0
+            output = json.loads(stdout.strip())
+            if "decision" in output:
+                assert output["decision"] != "block"
+
+        finally:
+            if state_file.exists():
+                state_file.unlink()
+
+
+# ============================================================================
+# UserPromptSubmit Flag Cleanup Tests
+# ============================================================================
+
+
+class TestUserPromptSubmitFlagCleanup:
+    """Tests for flag cleanup in log_userpromptsubmit.py."""
+
+    def test_cleanup_removes_flag(self, log_userpromptsubmit_script: Path):
+        """
+        Test that UserPromptSubmit hook removes end-of-session flag.
+
+        This resets state for next user turn.
+        """
+        import time
+        from pathlib import Path
+
+        session_id = f"test-cleanup-{int(time.time() * 1000)}"
+        hook_input = {
+            "session_id": session_id,
+            "hook_event": "UserPromptSubmit",
+        }
+
+        # Create flag to simulate previous stop cycle
+        state_file = Path(f"/tmp/claude_end_of_session_requested_{session_id}.flag")
+        state_file.touch()
+        assert state_file.exists(), "Setup: flag should exist before cleanup"
+
+        # Run UserPromptSubmit hook
+        exit_code, stdout, stderr = run_hook(log_userpromptsubmit_script, hook_input)
+
+        assert exit_code == 0, f"Hook failed: {stderr}"
+
+        # Verify flag was removed
+        assert not state_file.exists(), (
+            f"Flag should be removed by UserPromptSubmit, but still exists at {state_file}"
+        )
+
+        # Output should be valid JSON (continue execution)
+        output = json.loads(stdout.strip())
+        # Empty {} is valid
+
+    def test_cleanup_succeeds_when_flag_missing(self, log_userpromptsubmit_script: Path):
+        """
+        Test that cleanup succeeds silently when flag doesn't exist.
+
+        Should not error if there's no flag to clean up.
+        """
+        import time
+        from pathlib import Path
+
+        session_id = f"test-no-flag-{int(time.time() * 1000)}"
+        hook_input = {
+            "session_id": session_id,
+            "hook_event": "UserPromptSubmit",
+        }
+
+        # Ensure no flag exists
+        state_file = Path(f"/tmp/claude_end_of_session_requested_{session_id}.flag")
+        if state_file.exists():
+            state_file.unlink()
+
+        # Run UserPromptSubmit hook
+        exit_code, stdout, stderr = run_hook(log_userpromptsubmit_script, hook_input)
+
+        # Should succeed silently
+        assert exit_code == 0, f"Hook should succeed even when no flag exists: {stderr}"
+
+        # Output should be valid JSON
+        output = json.loads(stdout.strip())
+
+    def test_cleanup_with_missing_session_id(self, log_userpromptsubmit_script: Path, request_scribe_stop_script: Path):
+        """
+        Test cleanup with missing session_id defaults to 'unknown'.
+
+        Combined test that:
+        1. Creates flag via stop hook with missing session_id
+        2. Verifies flag created with session_id='unknown'
+        3. Cleanup via UserPromptSubmit removes the flag
+
+        Combined to avoid race conditions with parallel test execution.
+        """
+        from pathlib import Path
+
+        # Create flag with 'unknown' session_id via stop hook
+        state_file = Path("/tmp/claude_end_of_session_requested_unknown.flag")
+
+        # Cleanup any existing flag
+        if state_file.exists():
+            state_file.unlink()
+
+        try:
+            # Step 1: Stop hook with missing session_id creates flag
+            stop_input = {
+                "hook_event": "Stop",
+                # Missing session_id - should default to 'unknown'
+            }
+
+            exit_code, stdout, stderr = run_hook(request_scribe_stop_script, stop_input)
+            assert exit_code == 0, f"Stop hook failed: {stderr}"
+            output = json.loads(stdout.strip())
+            assert output.get("decision") == "block", "First stop should block"
+            assert state_file.exists(), "Flag should be created with session_id='unknown'"
+
+            # Step 2: UserPromptSubmit hook removes flag
+            cleanup_input = {
+                "hook_event": "UserPromptSubmit",
+                # Also missing session_id - should default to 'unknown'
+            }
+
+            exit_code, stdout, stderr = run_hook(log_userpromptsubmit_script, cleanup_input)
+            assert exit_code == 0, f"UserPromptSubmit hook failed: {stderr}"
+
+            # Verify flag was removed
+            assert not state_file.exists(), (
+                "Flag with session_id='unknown' should be removed by UserPromptSubmit"
+            )
+        finally:
+            if state_file.exists():
+                state_file.unlink()
+
+
+# ============================================================================
+# Full Lifecycle Integration Tests
+# ============================================================================
+
+
+class TestStopHookFullCycle:
+    """Integration tests for complete Stop hook lifecycle."""
+
+    def test_full_stop_cycle_with_cleanup(
+        self, request_scribe_stop_script: Path, log_userpromptsubmit_script: Path
+    ):
+        """
+        Test complete cycle: Stop → Stop → UserPromptSubmit → Stop.
+
+        Workflow:
+        1. First Stop → blocks (creates flag)
+        2. Second Stop → allows (flag exists)
+        3. UserPromptSubmit → cleanup (removes flag)
+        4. Third Stop → blocks again (flag gone, restart cycle)
+        """
+        import time
+        from pathlib import Path
+
+        session_id = f"test-full-cycle-{int(time.time() * 1000)}"
+        state_file = Path(f"/tmp/claude_end_of_session_requested_{session_id}.flag")
+
+        # Cleanup any existing flag
+        if state_file.exists():
+            state_file.unlink()
+
+        try:
+            # Step 1: First Stop → blocks
+            hook_input = {"session_id": session_id, "hook_event": "Stop"}
+            exit_code, stdout, _ = run_hook(request_scribe_stop_script, hook_input)
+            assert exit_code == 0
+            output = json.loads(stdout.strip())
+            assert output.get("decision") == "block", "First stop should block"
+            assert state_file.exists(), "First stop should create flag"
+
+            # Step 2: Second Stop → allows
+            exit_code, stdout, _ = run_hook(request_scribe_stop_script, hook_input)
+            assert exit_code == 0
+            output = json.loads(stdout.strip())
+            if "decision" in output:
+                assert output["decision"] != "block", "Second stop should allow"
+            assert state_file.exists(), "Flag should still exist"
+
+            # Step 3: UserPromptSubmit → cleanup
+            hook_input_submit = {"session_id": session_id, "hook_event": "UserPromptSubmit"}
+            exit_code, stdout, _ = run_hook(log_userpromptsubmit_script, hook_input_submit)
+            assert exit_code == 0
+            assert not state_file.exists(), "UserPromptSubmit should remove flag"
+
+            # Step 4: Third Stop → blocks again (restart cycle)
+            hook_input = {"session_id": session_id, "hook_event": "Stop"}
+            exit_code, stdout, _ = run_hook(request_scribe_stop_script, hook_input)
+            assert exit_code == 0
+            output = json.loads(stdout.strip())
+            assert output.get("decision") == "block", (
+                "After cleanup, next stop should block again"
+            )
+            assert state_file.exists(), "Stop should create flag again"
+
+        finally:
+            if state_file.exists():
+                state_file.unlink()
+
+    def test_multiple_sessions_independent(
+        self, request_scribe_stop_script: Path
+    ):
+        """
+        Test that different session IDs have independent state.
+
+        One session blocking shouldn't affect another session.
+        """
+        import time
+        from pathlib import Path
+
+        session_1 = f"test-session-1-{int(time.time() * 1000)}"
+        session_2 = f"test-session-2-{int(time.time() * 1000)}"
+
+        state_file_1 = Path(f"/tmp/claude_end_of_session_requested_{session_1}.flag")
+        state_file_2 = Path(f"/tmp/claude_end_of_session_requested_{session_2}.flag")
+
+        # Cleanup
+        for f in [state_file_1, state_file_2]:
+            if f.exists():
+                f.unlink()
+
+        try:
+            # Session 1: First stop blocks
+            hook_input_1 = {"session_id": session_1, "hook_event": "Stop"}
+            exit_code, stdout, _ = run_hook(request_scribe_stop_script, hook_input_1)
+            assert exit_code == 0
+            output = json.loads(stdout.strip())
+            assert output.get("decision") == "block"
+            assert state_file_1.exists()
+
+            # Session 2: First stop also blocks (independent)
+            hook_input_2 = {"session_id": session_2, "hook_event": "Stop"}
+            exit_code, stdout, _ = run_hook(request_scribe_stop_script, hook_input_2)
+            assert exit_code == 0
+            output = json.loads(stdout.strip())
+            assert output.get("decision") == "block", (
+                "Session 2 should block independently of session 1"
+            )
+            assert state_file_2.exists()
+
+            # Session 1: Second stop allows
+            exit_code, stdout, _ = run_hook(request_scribe_stop_script, hook_input_1)
+            assert exit_code == 0
+            output = json.loads(stdout.strip())
+            if "decision" in output:
+                assert output["decision"] != "block"
+
+            # Session 2: Second stop allows (independent)
+            exit_code, stdout, _ = run_hook(request_scribe_stop_script, hook_input_2)
+            assert exit_code == 0
+            output = json.loads(stdout.strip())
+            if "decision" in output:
+                assert output["decision"] != "block"
+
+        finally:
+            for f in [state_file_1, state_file_2]:
+                if f.exists():
+                    f.unlink()

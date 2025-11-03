@@ -85,9 +85,47 @@ def validate_stop_script() -> Path:
             "This must point to the academicOps bot repository root."
         )
 
-    path = Path(bot_root) / "bots" / "hooks" / "validate_stop.py"
+    path = Path(bot_root) / "hooks" / "validate_stop.py"
     if not path.exists():
         raise RuntimeError(f"validate_stop.py not found at expected path: {path}")
+
+    return path
+
+
+@pytest.fixture
+def request_scribe_stop_script() -> Path:
+    """Path to request_scribe_stop.py hook script (Stop/SubagentStop hooks)."""
+    import os
+
+    bot_root = os.getenv("ACADEMICOPS")
+    if not bot_root:
+        raise RuntimeError(
+            "ACADEMICOPS environment variable not set. "
+            "This must point to the academicOps bot repository root."
+        )
+
+    path = Path(bot_root) / "hooks" / "request_scribe_stop.py"
+    if not path.exists():
+        raise RuntimeError(f"request_scribe_stop.py not found at expected path: {path}")
+
+    return path
+
+
+@pytest.fixture
+def log_userpromptsubmit_script() -> Path:
+    """Path to log_userpromptsubmit.py hook script (UserPromptSubmit hook)."""
+    import os
+
+    bot_root = os.getenv("ACADEMICOPS")
+    if not bot_root:
+        raise RuntimeError(
+            "ACADEMICOPS environment variable not set. "
+            "This must point to the academicOps bot repository root."
+        )
+
+    path = Path(bot_root) / "hooks" / "log_userpromptsubmit.py"
+    if not path.exists():
+        raise RuntimeError(f"log_userpromptsubmit.py not found at expected path: {path}")
 
     return path
 
