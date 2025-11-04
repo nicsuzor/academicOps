@@ -13,9 +13,19 @@ uv run python ${ACADEMICOPS}/hooks/load_instructions.py DEBUGGING.md
 uv run python ${ACADEMICOPS}/hooks/load_instructions.py STYLE.md
 ```
 
-**STEP 2: MANDATORY - Invoke Supervisor Agent**
+**STEP 2: Invoke Supervisor Agent - MANDATORY FOR ALL /DEV TASKS**
 
-You MUST invoke the supervisor agent to orchestrate this work. Do NOT attempt development tasks directly.
+ALL tasks initiated via /dev require supervisor orchestration, including:
+- Code implementation and new features
+- Debugging and investigation work
+- Refactoring and code cleanup
+- Understanding infrastructure before making changes
+
+The ONLY exception: Pure information questions with no implementation intent (e.g., "What is X?", "Explain how Y works").
+
+If unclear whether task requires implementation, default to invoking supervisor.
+
+Invoke supervisor with complete user request and loaded context.
 
 **Supervisor MUST create explicit TodoWrite checklist containing**:
 
@@ -26,15 +36,5 @@ You MUST invoke the supervisor agent to orchestrate this work. Do NOT attempt de
 5. ✓ **E2E Validation**: Live end-to-end tests pass with real data/APIs (MANDATORY for task completion)
 6. ✓ **Independent Review**: Compare actual outcome vs original plan, verify all requirements met
 7. ✓ **Persistence**: All commits pushed to remote repository
-
-**Context Efficiency Strategy**:
-
-The supervisor will:
-- Read all loaded instructions (DEVELOPMENT, TESTING, DEBUGGING, STYLE)
-- Delegate atomic tasks to specialized subagents (dev, tester, etc.)
-- Each subagent loads only its needed context
-- Supervisor maintains overall workflow and quality gates
-
-This approach saves context by having supervisor coordinate while subagents execute with focused context.
 
 ARGUMENTS: $ARGUMENTS
