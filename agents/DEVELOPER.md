@@ -143,6 +143,7 @@ When working independently (not under supervisor):
 
       - Test behavior, not implementation
       - Mock external dependencies only
+      - Use fixtures and extend parameterized tests for interchangeable components
       - Descriptive test names
 
 5. **VALIDATE**: Run the full test suite to ensure your changes have not introduced regressions.

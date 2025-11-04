@@ -411,7 +411,53 @@ def test_multiple_scenarios(real_conf, fixture_file, expected_file):
     assert results == expected
 ```
 
-### Pattern 4: File System Operations
+### Pattern 4: Interchangeable Components (Fixtures + Parameterization)
+
+**CRITICAL PRINCIPLE**: When testing interchangeable components (clients, models, formatters, handlers), **ALWAYS prefer extending existing parameterized tests** over creating new standalone test functions.
+
+**Interchangeable components** share:
+- Same interface/base class
+- Same test scenarios
+- Different implementations (providers, models, formats)
+
+**WRONG - Creating redundant standalone test**:
+```python
+# ❌ Existing parameterized test
+@pytest.mark.parametrize("client", [OpenAIClient, AnthropicClient])
+async def test_client(client):
+    result = await client().generate("test")
+    assert result.content
+
+# ❌ WRONG - New standalone test for new client
+async def test_gemini_client():
+    """Test Gemini client."""
+    result = await GeminiClient().generate("test")
+    assert result.content
+```
+
+**RIGHT - Extending parameterized test**:
+```python
+# ✅ Add to existing list/enum
+LLMClients = [OpenAIClient, AnthropicClient, GeminiClient]
+
+# ✅ Existing parameterized test now covers all clients
+@pytest.mark.parametrize("client", LLMClients)
+async def test_client(client):
+    result = await client().generate("test")
+    assert result.content
+```
+
+**When to create standalone tests**:
+- Component has **unique behavior** not shared with others
+- Testing **integration between** multiple components
+- **Error conditions** specific to one implementation
+
+**Before creating new test function, ask**:
+1. Does a parameterized test already cover this pattern?
+2. Is this component interchangeable with existing ones?
+3. Could I add this to an existing fixture/enum/list instead?
+
+### Pattern 5: File System Operations
 
 ```python
 def test_file_output(real_bm, tmp_path):
@@ -437,6 +483,7 @@ Before committing tests, verify:
 ✅ **No mocking internal code** (only external boundaries)
 ✅ **Uses real data** from JSON fixtures
 ✅ **Tests behavior**, not implementation
+✅ **Extends parameterized tests** for interchangeable components (don't create redundant standalone tests)
 ✅ **Descriptive test names** (test_user_can_login_with_valid_credentials)
 ✅ **Clear arrange-act-assert** structure
 ✅ **Async tests use @pytest.mark.anyio**
