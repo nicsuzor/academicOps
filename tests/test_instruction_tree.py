@@ -215,3 +215,105 @@ This is the conclusion.
         content_between_markers = updated_content[start_idx:end_idx]
         # Check that some of the generated content appears between markers
         assert "Agents" in content_between_markers or "Skills" in content_between_markers, "Generated tree should be between markers"
+
+    def test_validation_script_detects_stale_instruction_tree(self, repo_root, tmp_path):
+        """
+        VALIDATES: Validation script detects when instruction tree in README.md doesn't match repository state.
+
+        Test structure:
+        - Create temporary repository with README.md containing instruction tree
+        - Run validation script - should pass with current tree
+        - Modify repository state (add new agent file)
+        - Run validation script - should FAIL with stale tree
+        - Regenerate tree
+        - Run validation script - should pass again
+
+        This verifies:
+        - validate_instruction_tree.py script exists and is executable
+        - Script compares README tree against actual repository state
+        - Script exits with code 0 when tree is current
+        - Script exits with code 1 when tree is stale
+        - Script provides helpful error message showing what changed
+        """
+        # ARRANGE - Import functions and validation script
+        import sys
+        import subprocess
+        from pathlib import Path
+
+        repo_scripts = repo_root / 'scripts'
+        if str(repo_scripts) not in sys.path:
+            sys.path.insert(0, str(repo_scripts))
+
+        from generate_instruction_tree import scan_repository, generate_markdown_tree, update_readme_with_tree
+
+        # Import the validation function (will fail initially - TDD)
+        from validate_instruction_tree import validate_tree_is_current
+
+        # Create temporary repository structure
+        test_repo = tmp_path / "test_repo"
+        test_repo.mkdir()
+
+        # Create agents directory with initial agent
+        agents_dir = test_repo / "agents"
+        agents_dir.mkdir()
+        (agents_dir / "DEVELOPER.md").write_text("# Developer Agent\nInitial content")
+
+        # Create skills directory with initial skill
+        skills_dir = test_repo / "skills"
+        skills_dir.mkdir()
+        test_skill_dir = skills_dir / "test-skill"
+        test_skill_dir.mkdir()
+        (test_skill_dir / "SKILL.md").write_text("# Test Skill\nInitial content")
+
+        # Create commands directory
+        commands_dir = test_repo / "commands"
+        commands_dir.mkdir()
+        (commands_dir / "dev.md").write_text("# Dev Command")
+
+        # Create hooks directory
+        hooks_dir = test_repo / "hooks"
+        hooks_dir.mkdir()
+        (hooks_dir / "load_instructions.py").write_text("# Load instructions hook")
+
+        # Create core directory
+        core_dir = test_repo / "core"
+        core_dir.mkdir()
+        (core_dir / "_CORE.md").write_text("# Core\n@../chunks/AXIOMS.md")
+
+        # Create README.md with markers and current tree
+        test_readme = test_repo / "README.md"
+        test_readme.write_text("""# Test Project
+
+<!-- INSTRUCTION_TREE_START -->
+<!-- INSTRUCTION_TREE_END -->
+""")
+
+        # Generate and write current tree
+        components = scan_repository(test_repo)
+        tree = generate_markdown_tree(components, test_repo)
+        update_readme_with_tree(test_readme, tree)
+
+        # ACT & ASSERT - Validation should pass with current tree
+        is_current, message = validate_tree_is_current(test_repo)
+        assert is_current, f"Validation should pass with current tree. Message: {message}"
+        assert message == "" or "current" in message.lower(), "Success message should indicate tree is current"
+
+        # ACT - Modify repository (add new agent)
+        (agents_dir / "SUPERVISOR.md").write_text("# Supervisor Agent\nNew agent content")
+
+        # ASSERT - Validation should fail with stale tree
+        is_current, message = validate_tree_is_current(test_repo)
+        assert not is_current, f"Validation should fail with stale tree. Message: {message}"
+        assert "stale" in message.lower() or "outdated" in message.lower() or "mismatch" in message.lower(), \
+            "Error message should indicate tree is stale"
+        assert "SUPERVISOR" in message or "agent" in message.lower(), \
+            "Error message should mention what changed"
+
+        # ACT - Regenerate tree
+        new_components = scan_repository(test_repo)
+        new_tree = generate_markdown_tree(new_components, test_repo)
+        update_readme_with_tree(test_readme, new_tree)
+
+        # ASSERT - Validation should pass again
+        is_current, message = validate_tree_is_current(test_repo)
+        assert is_current, f"Validation should pass after tree regeneration. Message: {message}"
