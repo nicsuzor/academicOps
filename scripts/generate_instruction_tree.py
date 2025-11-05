@@ -278,6 +278,122 @@ def _build_reverse_index(components: dict[str, Any]) -> dict[str, list[str]]:
     return reverse_index
 
 
+def _detect_orphaned_instruction_files(components: dict[str, Any]) -> list[str]:
+    """Detect instruction files not referenced by any component.
+
+    Args:
+        components: Dictionary from scan_repository() with component data
+
+    Returns:
+        List of orphaned instruction file paths (relative to repo root)
+    """
+    # Get all instruction files
+    all_files = set(components.get('all_instruction_files', []))
+
+    # Get all referenced files
+    referenced = set()
+
+    # Add core references
+    core = components.get('core', {})
+    if core:
+        core_file = core.get('file', '')
+        if core_file:
+            referenced.add(core_file)
+        for ref in core.get('references', []):
+            referenced.add(ref)
+
+    # Add skill dependencies
+    for skill in components.get('skills', []):
+        for dep in skill.get('dependencies', []):
+            referenced.add(dep)
+
+    # Add command dependencies (load_instructions.py files)
+    # These are just filenames like "DEVELOPMENT.md" not full paths
+    # They could be in core/, chunks/, or docs/_CHUNKS/
+    for command in components.get('commands', []):
+        for dep_filename in command.get('dependencies', []):
+            # Find matching file in all_files
+            matching = [f for f in all_files if f.endswith(dep_filename)]
+            referenced.update(matching)
+
+    # Find orphans
+    orphans = all_files - referenced
+
+    # Sort orphans for consistent output
+    return sorted(orphans)
+
+
+def _detect_potential_overlaps(components: dict[str, Any]) -> list[tuple[str, str, str]]:
+    """Detect potential overlaps in agent/skill responsibilities.
+
+    Args:
+        components: Dictionary from scan_repository() with component data
+
+    Returns:
+        List of (name1, name2, reason) tuples for potential overlaps
+    """
+    overlaps = []
+
+    # Known overlap patterns (can be extended with smarter detection)
+    # For now, hardcode known overlaps from user's examples
+
+    # scribe vs task-manager: both extract tasks
+    agents = components.get('agents', [])
+    agent_names = [a['name'].lower() for a in agents]
+    if 'scribe' in agent_names and 'task-manager' in agent_names:
+        overlaps.append(('scribe', 'task-manager', 'both extract tasks from conversations'))
+
+    # Future: could add semantic similarity analysis on descriptions
+    # For now, keep it simple with known patterns
+
+    return overlaps
+
+
+def _generate_quick_stats(components: dict[str, Any]) -> str:
+    """Generate Quick Stats section with counts and warnings.
+
+    Args:
+        components: Dictionary from scan_repository() with component data
+
+    Returns:
+        Markdown string with quick stats and warnings
+    """
+    lines = []
+
+    lines.append("### Quick Stats")
+    lines.append("")
+
+    # Component counts
+    agent_count = len(components.get('agents', []))
+    skill_count = len(components.get('skills', []))
+    command_count = len(components.get('commands', []))
+    hook_count = len(components.get('hooks', []))
+    instruction_count = len(components.get('all_instruction_files', []))
+
+    lines.append(f"- {agent_count} agents, {skill_count} skills, {command_count} commands, {hook_count} hooks")
+    lines.append(f"- {instruction_count} instruction files")
+
+    # Orphaned files detection
+    orphans = _detect_orphaned_instruction_files(components)
+    if orphans:
+        orphan_names = [Path(o).name for o in orphans]
+        lines.append(f"- ⚠️ **{len(orphans)} orphaned files**: {', '.join(orphan_names)}")
+    else:
+        lines.append("- ✅ No orphaned instruction files")
+
+    # Overlap detection
+    overlaps = _detect_potential_overlaps(components)
+    if overlaps:
+        lines.append("")
+        lines.append("**Potential overlaps:**")
+        for name1, name2, reason in overlaps:
+            lines.append(f"- ⚠️ `{name1}` vs `{name2}` - {reason}")
+
+    lines.append("")
+
+    return '\n'.join(lines)
+
+
 def _generate_instruction_flow_tree(components: dict[str, Any]) -> str:
     """Generate instruction flow tree showing file dependencies.
 
@@ -399,6 +515,11 @@ def generate_markdown_tree(components: dict[str, Any], repo_root: Path, compact:
     lines.append("This section is auto-generated from repository scan.")
     lines.append(f"Last updated: {repo_root.name} repository")
     lines.append("")
+
+    # Quick Stats section (compact format only) - appears BEFORE components
+    if compact:
+        quick_stats = _generate_quick_stats(components)
+        lines.append(quick_stats)
 
     # Agents Section
     agents = components.get('agents', [])

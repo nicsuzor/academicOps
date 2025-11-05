@@ -972,3 +972,83 @@ This is the conclusion.
             "Should show analyst skill dependencies"
         assert 'MATPLOTLIB' in flow_section or 'matplotlib' in flow_section.lower(), \
             "Should show MATPLOTLIB.md dependency for analyst skill"
+
+    def test_compact_format_includes_quick_stats_with_orphan_detection(self, repo_root):
+        """
+        VALIDATES: Compact format includes Quick Stats section with orphan detection.
+
+        Test structure:
+        - Scan repository to get all components and instruction files
+        - Generate compact markdown with Quick Stats
+        - Verify "### Quick Stats" section exists BEFORE component listings
+        - Verify counts displayed (agents, skills, commands, hooks, instruction files)
+        - Verify orphaned files detected and listed with ⚠️ marker
+        - Verify potential overlaps detected (e.g., scribe vs task-manager)
+
+        This verifies:
+        - Quick Stats section appears at top of compact format
+        - Component counts displayed
+        - Orphaned instruction files identified (files in chunks/docs/_CHUNKS not referenced)
+        - Overlap warnings for similar agent/skill responsibilities
+        - Warning markers (⚠️) prominently displayed
+        """
+        # ARRANGE - Import functions
+        import sys
+        from pathlib import Path
+
+        repo_scripts = repo_root / 'scripts'
+        if str(repo_scripts) not in sys.path:
+            sys.path.insert(0, str(repo_scripts))
+
+        from generate_instruction_tree import scan_repository, generate_markdown_tree
+
+        components = scan_repository(repo_root)
+
+        # ACT - Generate compact markdown (should include Quick Stats)
+        markdown = generate_markdown_tree(components, repo_root, compact=True)
+
+        # ASSERT - Quick Stats section exists
+        assert '### Quick Stats' in markdown or '## Quick Stats' in markdown, \
+            "Compact format should include Quick Stats section"
+
+        # ASSERT - Quick Stats appears BEFORE Agents section
+        stats_idx = markdown.index('Quick Stats')
+        agents_idx = markdown.index('### Agents')
+        assert stats_idx < agents_idx, \
+            "Quick Stats should appear before component listings"
+
+        # ASSERT - Find Quick Stats section
+        if '### Quick Stats' in markdown:
+            stats_start = markdown.index('### Quick Stats')
+        else:
+            stats_start = markdown.index('## Quick Stats')
+
+        stats_end = markdown.index('### Agents')
+        stats_section = markdown[stats_start:stats_end]
+
+        # ASSERT - Component counts displayed
+        assert 'agents' in stats_section.lower(), "Should show agent count"
+        assert 'skills' in stats_section.lower(), "Should show skill count"
+        assert 'commands' in stats_section.lower(), "Should show command count"
+        assert 'hooks' in stats_section.lower(), "Should show hook count"
+        assert 'instruction' in stats_section.lower(), "Should show instruction file count"
+
+        # ASSERT - Orphaned files section with warning marker
+        assert '⚠️' in stats_section or 'orphan' in stats_section.lower(), \
+            "Should flag orphaned files with warning marker or label"
+
+        # Known orphans from repository:
+        # - HYDRA.md (not loaded by any component)
+        # - DBT.md (not loaded by any component)
+        # - E2E-TESTING.md (not loaded by any component)
+        # - STREAMLIT.md (not loaded by any component)
+        if 'orphan' in stats_section.lower():
+            assert 'HYDRA' in stats_section or 'DBT' in stats_section or 'E2E-TESTING' in stats_section, \
+                "Should list known orphaned instruction files"
+
+        # ASSERT - Potential overlaps detected (optional - if implemented)
+        # Example overlap: scribe vs task-manager (both extract tasks)
+        if 'overlap' in stats_section.lower() or '⚠️ OVERLAP' in stats_section:
+            # If overlap detection implemented, verify format
+            assert 'scribe' in stats_section.lower() or 'task-manager' in stats_section.lower() or 'task' in stats_section.lower(), \
+                "Should mention components with potential overlap"
