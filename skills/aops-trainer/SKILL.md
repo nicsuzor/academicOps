@@ -30,6 +30,7 @@ Use agent-optimization when:
 5. **Experiment evaluation** - Analyzing test results and metrics
 6. **Component refinement** - Improving subagents, skills, commands, or hooks for conciseness and effectiveness
 7. **Creating/updating components** - Establishing mandatory skill-first patterns for all subagents and slash commands
+8. **Instruction tree maintenance** - Keeping README.md documentation synchronized with repository structure
 
 **Concrete trigger examples**:
 
@@ -40,6 +41,7 @@ Use agent-optimization when:
 - "Evaluate whether this change actually improved performance"
 - "Refine this subagent/skill/command to follow best practices"
 - "Remove bloat from this agent instruction file"
+- "Update README instruction tree after adding new skill"
 
 **Core principle**: We NEVER know if something will work until we test it. Embrace uncertainty with rigorous experiments.
 
@@ -476,6 +478,63 @@ See @$ACADEMICOPS/references/task-y-details.md for edge cases.
 **Example 2**: [Edge case]
 </examples>
 ```
+
+## Instruction Tree Maintenance
+
+### When to Update Instruction Tree
+
+Update README.md instruction tree documentation when:
+
+- New agent files added to `agents/`
+- New skills added to `skills/`
+- New slash commands added to `commands/`
+- New hooks added to `hooks/`
+- Components removed or renamed
+- After any structural changes to repository
+
+### Maintenance Workflow
+
+**1. Validate Current State**:
+
+```bash
+python scripts/validate_instruction_tree.py
+```
+
+- Exit code 0: Tree is current, no action needed
+- Exit code 1: Tree is stale, shows what changed
+
+**2. Regenerate Tree** (if stale):
+
+```bash
+python scripts/generate_instruction_tree.py
+```
+
+- Scans repository for all components
+- Generates updated markdown tree
+- Updates README.md between markers `<!-- INSTRUCTION_TREE_START -->` and `<!-- INSTRUCTION_TREE_END -->`
+
+**3. Review Changes**:
+
+```bash
+git diff README.md
+```
+
+Verify generated tree accurately reflects repository structure.
+
+**4. Commit**:
+
+Use git-commit skill to validate and commit documentation update.
+
+### Integration with Component Creation
+
+When creating/updating components:
+
+1. Implement component (agent/skill/command/hook)
+2. Test component functionality
+3. **Regenerate instruction tree** (mandatory)
+4. Commit component + updated README together
+
+This ensures documentation never falls out of sync with code.
 
 ## Framework Architecture Understanding
 

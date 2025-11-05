@@ -317,3 +317,39 @@ This is the conclusion.
         # ASSERT - Validation should pass again
         is_current, message = validate_tree_is_current(test_repo)
         assert is_current, f"Validation should pass after tree regeneration. Message: {message}"
+
+    def test_aops_trainer_skill_documents_instruction_tree_maintenance(self):
+        """
+        VALIDATES: aops-trainer skill includes instruction tree maintenance as a core responsibility.
+
+        Test structure:
+        - Read aops-trainer SKILL.md file
+        - Verify "instruction tree" or "documentation maintenance" mentioned
+        - Verify maintenance script references included
+        - Verify workflow guidance provided
+
+        This verifies:
+        - aops-trainer skill documents its responsibility for instruction tree
+        - Skill includes references to maintenance scripts
+        - Skill provides guidance on when to update documentation
+        """
+        # ARRANGE - Locate aops-trainer skill
+        skill_path = Path.home() / ".claude" / "skills" / "aops-trainer" / "SKILL.md"
+
+        if not skill_path.exists():
+            pytest.skip(f"aops-trainer skill not found at {skill_path}")
+
+        # ACT - Read skill documentation
+        skill_content = skill_path.read_text().lower()
+
+        # ASSERT - Instruction tree maintenance is documented
+        assert "instruction tree" in skill_content or "documentation maintenance" in skill_content, \
+            "Skill should mention instruction tree or documentation maintenance"
+
+        # ASSERT - Script references present
+        assert "generate_instruction_tree" in skill_content or "validate_instruction_tree" in skill_content, \
+            "Skill should reference instruction tree scripts"
+
+        # ASSERT - Maintenance workflow described
+        assert "readme" in skill_content or "documentation" in skill_content, \
+            "Skill should describe documentation maintenance workflow"
