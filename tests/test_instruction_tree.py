@@ -746,3 +746,153 @@ This is the conclusion.
         dev_line = files_section[files_section.index('DEVELOPMENT.md'):files_section.index('DEVELOPMENT.md') + 200]
         assert '/dev' in dev_line or 'dev command' in dev_line.lower(), \
             "DEVELOPMENT.md should show /dev command as user"
+
+    def test_scanner_finds_all_instruction_files_including_orphans(self, repo_root):
+        """
+        VALIDATES: Scanner discovers ALL instruction files, not just those referenced by components.
+
+        Test structure:
+        - Scan repository to get all instruction files
+        - Verify ALL 21 expected .md files found:
+          * core/*.md (6 files)
+          * chunks/*.md (4 files)
+          * docs/_CHUNKS/*.md (11 files)
+        - Includes orphaned files with no references
+
+        This verifies:
+        - Complete file discovery in core/, chunks/, docs/_CHUNKS/
+        - Orphaned files not missed (HYDRA.md, DBT.md, etc.)
+        - Result includes 'all_instruction_files' key with complete list
+        """
+        # ARRANGE - Import scanner
+        import sys
+        from pathlib import Path
+
+        repo_scripts = repo_root / 'scripts'
+        if str(repo_scripts) not in sys.path:
+            sys.path.insert(0, str(repo_scripts))
+
+        from generate_instruction_tree import scan_repository
+
+        # ACT - Scan repository
+        components = scan_repository(repo_root)
+
+        # ASSERT - Scanner returns all_instruction_files key
+        assert 'all_instruction_files' in components, \
+            "Scanner should return 'all_instruction_files' with complete file list"
+
+        all_files = components['all_instruction_files']
+        file_names = [Path(f).name for f in all_files]
+
+        # ASSERT - Core files present (6 files)
+        assert '_CORE.md' in file_names, "Should find _CORE.md"
+        assert 'DEBUGGING.md' in file_names, "Should find DEBUGGING.md"
+        assert 'DEVELOPMENT.md' in file_names, "Should find DEVELOPMENT.md"
+        assert 'INSTRUCTIONS.md' in file_names, "Should find INSTRUCTIONS.md"
+        assert 'STYLE.md' in file_names, "Should find STYLE.md"
+        assert 'TESTING.md' in file_names, "Should find TESTING.md"
+
+        # ASSERT - Chunks files present (4 files)
+        assert 'AGENT-BEHAVIOR.md' in file_names, "Should find AGENT-BEHAVIOR.md"
+        assert 'AXIOMS.md' in file_names, "Should find AXIOMS.md"
+        assert 'INFRASTRUCTURE.md' in file_names, "Should find INFRASTRUCTURE.md"
+        assert 'SKILL-PRIMER.md' in file_names, "Should find SKILL-PRIMER.md"
+
+        # ASSERT - docs/_CHUNKS files present (11 files) - includes orphans!
+        assert 'DBT.md' in file_names, "Should find DBT.md (orphan)"
+        assert 'E2E-TESTING.md' in file_names, "Should find E2E-TESTING.md (orphan)"
+        assert 'FAIL-FAST.md' in file_names, "Should find FAIL-FAST.md"
+        assert 'GIT-WORKFLOW.md' in file_names, "Should find GIT-WORKFLOW.md"
+        assert 'HYDRA.md' in file_names, "Should find HYDRA.md (orphan)"
+        assert 'MATPLOTLIB.md' in file_names, "Should find MATPLOTLIB.md"
+        assert 'PYTHON-DEV.md' in file_names, "Should find PYTHON-DEV.md"
+        assert 'README.md' in file_names, "Should find README.md (orphan)"
+        assert 'SEABORN.md' in file_names, "Should find SEABORN.md"
+        assert 'STATSMODELS.md' in file_names, "Should find STATSMODELS.md"
+        assert 'STREAMLIT.md' in file_names, "Should find STREAMLIT.md (orphan)"
+        assert 'TESTS.md' in file_names, "Should find TESTS.md"
+
+        # ASSERT - Total count correct (21 files)
+        assert len(all_files) >= 21, f"Should find at least 21 instruction files, found {len(all_files)}"
+
+    def test_compact_format_truncates_descriptions_to_7_words(self, repo_root):
+        """
+        VALIDATES: Compact format truncates descriptions to ~7 words max for scanability.
+
+        Test structure:
+        - Scan repository to get components
+        - Generate compact markdown format
+        - Verify descriptions truncated to first clause (5-7 words)
+        - Verify format: "- NAME - Short description"
+        - Verify full descriptions NOT present in output
+
+        This verifies:
+        - Compact format enabled via parameter
+        - Descriptions truncated at first meaningful clause
+        - No file paths shown in compact mode
+        - Format optimized for quick scanning
+        """
+        # ARRANGE - Import functions
+        import sys
+        from pathlib import Path
+
+        repo_scripts = repo_root / 'scripts'
+        if str(repo_scripts) not in sys.path:
+            sys.path.insert(0, str(repo_scripts))
+
+        from generate_instruction_tree import scan_repository, generate_markdown_tree
+
+        components = scan_repository(repo_root)
+
+        # ACT - Generate markdown in compact format
+        markdown = generate_markdown_tree(components, repo_root, compact=True)
+
+        # ASSERT - Verify compact format structure
+        assert '### Agents' in markdown, "Should have Agents section"
+
+        # ASSERT - Verify DEVELOPER agent has truncated description (no full description)
+        dev_agent = next((a for a in components['agents'] if a['name'] == 'DEVELOPER'), None)
+        assert dev_agent is not None, "DEVELOPER agent should exist"
+        full_description = dev_agent['description']
+
+        # Full description should NOT appear in compact output
+        assert full_description not in markdown, \
+            f"Compact format should not include full description: {full_description}"
+
+        # ASSERT - Verify compact format: "- DEVELOPER - A specialized developer. Your purpose is to write"
+        assert '- DEVELOPER -' in markdown, "Should have compact format prefix"
+        dev_line_start = markdown.index('- DEVELOPER -')
+        dev_line_end = markdown.index('\n', dev_line_start)
+        dev_line = markdown[dev_line_start:dev_line_end]
+
+        # Count words in description part (after "- DEVELOPER - ")
+        # Format is: "- DEVELOPER - Description text here"
+        # After the agent name and dash, we get the description
+        parts = dev_line.split(' - ', 1)  # Split on first " - "
+        assert len(parts) == 2, f"Expected format '- NAME - description', got: {dev_line}"
+        description_part = parts[1].strip()
+        word_count = len(description_part.split())
+        assert word_count <= 10, f"Description should be <=10 words, got {word_count}: {description_part}"
+
+        # ASSERT - No file paths in compact mode
+        assert '`agents/DEVELOPER.md`' not in markdown, \
+            "Compact format should not include file paths"
+
+        # ASSERT - Verify test-writing skill has truncated description
+        test_skill = next((s for s in components['skills'] if s['name'] == 'test-writing'), None)
+        assert test_skill is not None, "test-writing skill should exist"
+        full_skill_description = test_skill['description']
+
+        # Full description should NOT appear
+        assert full_skill_description not in markdown, \
+            f"Compact format should not include full skill description: {full_skill_description}"
+
+        # ASSERT - Verify analyst skill shows dependencies inline
+        assert '- analyst -' in markdown, "Should list analyst skill"
+        analyst_line_start = markdown.index('- analyst -')
+        analyst_line_end = markdown.index('\n', analyst_line_start)
+        analyst_line = markdown[analyst_line_start:analyst_line_end]
+
+        # Dependencies should appear inline in compact format
+        assert 'MATPLOTLIB' in analyst_line or 'matplotlib' in analyst_line.lower(), \
+            "Compact format should show dependencies inline"

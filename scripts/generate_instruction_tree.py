@@ -71,6 +71,39 @@ def _extract_python_docstring(file_path: Path) -> str:
     return first_line
 
 
+def _scan_all_instruction_files(repo_root: Path) -> list[str]:
+    """Scan repository for ALL instruction markdown files.
+
+    Args:
+        repo_root: Path to repository root directory
+
+    Returns:
+        List of instruction file paths relative to repo_root
+        Includes files from: core/*.md, chunks/*.md, docs/_CHUNKS/*.md
+    """
+    instruction_files = []
+
+    # Scan core/*.md
+    core_dir = repo_root / 'core'
+    if core_dir.exists():
+        for md_file in core_dir.glob('*.md'):
+            instruction_files.append(str(md_file.relative_to(repo_root)))
+
+    # Scan chunks/*.md
+    chunks_dir = repo_root / 'chunks'
+    if chunks_dir.exists():
+        for md_file in chunks_dir.glob('*.md'):
+            instruction_files.append(str(md_file.relative_to(repo_root)))
+
+    # Scan docs/_CHUNKS/*.md
+    docs_chunks_dir = repo_root / 'docs' / '_CHUNKS'
+    if docs_chunks_dir.exists():
+        for md_file in docs_chunks_dir.glob('*.md'):
+            instruction_files.append(str(md_file.relative_to(repo_root)))
+
+    return instruction_files
+
+
 def scan_repository(repo_root: Path) -> dict[str, Any]:
     """Scan repository and discover all instruction components.
 
@@ -78,7 +111,7 @@ def scan_repository(repo_root: Path) -> dict[str, Any]:
         repo_root: Path to repository root directory
 
     Returns:
-        Dictionary with keys: 'agents', 'skills', 'commands', 'hooks', 'core'
+        Dictionary with keys: 'agents', 'skills', 'commands', 'hooks', 'core', 'all_instruction_files'
         Each containing list of discovered components with metadata
     """
     components = {
@@ -86,7 +119,8 @@ def scan_repository(repo_root: Path) -> dict[str, Any]:
         'skills': [],
         'commands': [],
         'hooks': [],
-        'core': {}
+        'core': {},
+        'all_instruction_files': []
     }
 
     # Scan agents/*.md files
@@ -176,6 +210,9 @@ def scan_repository(repo_root: Path) -> dict[str, Any]:
             'references': references
         }
 
+    # Scan all instruction files
+    components['all_instruction_files'] = _scan_all_instruction_files(repo_root)
+
     return components
 
 
@@ -241,12 +278,46 @@ def _build_reverse_index(components: dict[str, Any]) -> dict[str, list[str]]:
     return reverse_index
 
 
-def generate_markdown_tree(components: dict[str, Any], repo_root: Path) -> str:
+def _truncate_description(description: str, max_words: int = 10) -> str:
+    """Truncate description to first clause or max_words.
+
+    Args:
+        description: Full description text
+        max_words: Maximum number of words to keep (default: 10)
+
+    Returns:
+        Truncated description suitable for compact format
+    """
+    if not description:
+        return ''
+
+    # Split on common clause boundaries: period, comma, colon, semicolon, dash, parenthesis
+    clause_separators = ['. ', ', ', ': ', '; ', ' - ', ' (', '—']
+
+    # Find first clause boundary
+    first_clause = description
+    for sep in clause_separators:
+        if sep in description:
+            parts = description.split(sep, 1)
+            if len(parts[0].split()) > 3:  # Only use if clause is meaningful (>3 words)
+                first_clause = parts[0]
+                break
+
+    # Truncate to max_words if still too long
+    words = first_clause.split()
+    if len(words) > max_words:
+        first_clause = ' '.join(words[:max_words])
+
+    return first_clause.strip()
+
+
+def generate_markdown_tree(components: dict[str, Any], repo_root: Path, compact: bool = False) -> str:
     """Generate markdown documentation from scanned components.
 
     Args:
         components: Dictionary from scan_repository() with component data
         repo_root: Path to repository root (for context)
+        compact: If True, generate ultra-compact format with truncated descriptions (default: False)
 
     Returns:
         Formatted markdown string suitable for README.md insertion
@@ -265,14 +336,22 @@ def generate_markdown_tree(components: dict[str, Any], repo_root: Path) -> str:
     lines.append(f"### Agents ({len(agents)})")
     lines.append("")
     if agents:
-        lines.append("Specialized agent definitions loaded via slash commands or subagent invocation:")
-        lines.append("")
+        if not compact:
+            lines.append("Specialized agent definitions loaded via slash commands or subagent invocation:")
+            lines.append("")
         for agent in sorted(agents, key=lambda x: x['name']):
             description = agent.get('description', '')
             if description:
-                lines.append(f"- **{agent['name']}** - {description} (`{agent['path']}`)")
+                if compact:
+                    truncated_desc = _truncate_description(description)
+                    lines.append(f"- {agent['name']} - {truncated_desc}")
+                else:
+                    lines.append(f"- **{agent['name']}** - {description} (`{agent['path']}`)")
             else:
-                lines.append(f"- **{agent['name']}** (`{agent['path']}`)")
+                if compact:
+                    lines.append(f"- {agent['name']}")
+                else:
+                    lines.append(f"- **{agent['name']}** (`{agent['path']}`)")
         lines.append("")
     else:
         lines.append("No agents found.")
@@ -283,20 +362,35 @@ def generate_markdown_tree(components: dict[str, Any], repo_root: Path) -> str:
     lines.append(f"### Skills ({len(skills)})")
     lines.append("")
     if skills:
-        lines.append("Packaged workflows installed to `~/.claude/skills/`:")
-        lines.append("")
+        if not compact:
+            lines.append("Packaged workflows installed to `~/.claude/skills/`:")
+            lines.append("")
         for skill in sorted(skills, key=lambda x: x['name']):
             description = skill.get('description', '')
-            if description:
-                lines.append(f"- **{skill['name']}** - {description} (`{skill['path']}`)")
-            else:
-                lines.append(f"- **{skill['name']}** (`{skill['path']}`)")
-
-            # Show dependencies if present
             dependencies = skill.get('dependencies', [])
-            if dependencies:
-                dep_names = [Path(d).name for d in dependencies]
-                lines.append(f"  - Dependencies: {', '.join(dep_names)}")
+
+            if compact:
+                # Compact format: inline dependencies
+                truncated_desc = _truncate_description(description) if description else ''
+                dep_info = ''
+                if dependencies:
+                    dep_basenames = [Path(d).stem for d in dependencies]  # Remove .md extension
+                    dep_info = f" [{', '.join(dep_basenames)}]"
+
+                if truncated_desc:
+                    lines.append(f"- {skill['name']} - {truncated_desc}{dep_info}")
+                else:
+                    lines.append(f"- {skill['name']}{dep_info}")
+            else:
+                if description:
+                    lines.append(f"- **{skill['name']}** - {description} (`{skill['path']}`)")
+                else:
+                    lines.append(f"- **{skill['name']}** (`{skill['path']}`)")
+
+                # Show dependencies if present
+                if dependencies:
+                    dep_names = [Path(d).name for d in dependencies]
+                    lines.append(f"  - Dependencies: {', '.join(dep_names)}")
 
         lines.append("")
     else:
@@ -308,19 +402,28 @@ def generate_markdown_tree(components: dict[str, Any], repo_root: Path) -> str:
     lines.append(f"### Commands ({len(commands)})")
     lines.append("")
     if commands:
-        lines.append("Slash commands that load additional context:")
-        lines.append("")
+        if not compact:
+            lines.append("Slash commands that load additional context:")
+            lines.append("")
         for command in sorted(commands, key=lambda x: x['name']):
             description = command.get('description', '')
-            if description:
-                lines.append(f"- **/{command['name']}** - {description} (`{command['path']}`)")
-            else:
-                lines.append(f"- **/{command['name']}** (`{command['path']}`)")
-
-            # Show dependencies (load_instructions.py calls) if present
             dependencies = command.get('dependencies', [])
-            if dependencies:
-                lines.append(f"  - Loads: {', '.join(dependencies)} (3-tier: framework → personal → project)")
+
+            if compact:
+                truncated_desc = _truncate_description(description) if description else ''
+                if truncated_desc:
+                    lines.append(f"- /{command['name']} - {truncated_desc}")
+                else:
+                    lines.append(f"- /{command['name']}")
+            else:
+                if description:
+                    lines.append(f"- **/{command['name']}** - {description} (`{command['path']}`)")
+                else:
+                    lines.append(f"- **/{command['name']}** (`{command['path']}`)")
+
+                # Show dependencies (load_instructions.py calls) if present
+                if dependencies:
+                    lines.append(f"  - Loads: {', '.join(dependencies)} (3-tier: framework → personal → project)")
 
         lines.append("")
     else:
@@ -332,14 +435,22 @@ def generate_markdown_tree(components: dict[str, Any], repo_root: Path) -> str:
     lines.append(f"### Hooks ({len(hooks)})")
     lines.append("")
     if hooks:
-        lines.append("Validation and enforcement hooks:")
-        lines.append("")
+        if not compact:
+            lines.append("Validation and enforcement hooks:")
+            lines.append("")
         for hook in sorted(hooks, key=lambda x: x['name']):
             description = hook.get('description', '')
-            if description:
-                lines.append(f"- **{hook['name']}** - {description} (`{hook['path']}`)")
+            if compact:
+                truncated_desc = _truncate_description(description) if description else ''
+                if truncated_desc:
+                    lines.append(f"- {hook['name']} - {truncated_desc}")
+                else:
+                    lines.append(f"- {hook['name']}")
             else:
-                lines.append(f"- **{hook['name']}** (`{hook['path']}`)")
+                if description:
+                    lines.append(f"- **{hook['name']}** - {description} (`{hook['path']}`)")
+                else:
+                    lines.append(f"- **{hook['name']}** (`{hook['path']}`)")
         lines.append("")
     else:
         lines.append("No hooks found.")
@@ -347,7 +458,7 @@ def generate_markdown_tree(components: dict[str, Any], repo_root: Path) -> str:
 
     # Core Section
     core = components.get('core', {})
-    if core:
+    if core and not compact:
         lines.append("### Core Instructions")
         lines.append("")
         lines.append(f"- **File**: `{core.get('file', 'N/A')}`")
@@ -358,30 +469,31 @@ def generate_markdown_tree(components: dict[str, Any], repo_root: Path) -> str:
                 lines.append(f"  - `{ref}`")
         lines.append("")
 
-    # Reverse Index Section - Instruction Files
-    reverse_index = _build_reverse_index(components)
-    if reverse_index:
-        lines.append("### Instruction Files")
-        lines.append("")
-        lines.append("Reverse index showing which components load each instruction file:")
-        lines.append("")
-
-        # Group files by directory for better organization
-        by_directory = {}
-        for filepath, consumers in reverse_index.items():
-            directory = str(Path(filepath).parent)
-            if directory not in by_directory:
-                by_directory[directory] = []
-            by_directory[directory].append((Path(filepath).name, consumers))
-
-        # Output grouped by directory
-        for directory in sorted(by_directory.keys()):
-            lines.append(f"**{directory}/:**")
+    # Reverse Index Section - Instruction Files (not in compact mode)
+    if not compact:
+        reverse_index = _build_reverse_index(components)
+        if reverse_index:
+            lines.append("### Instruction Files")
             lines.append("")
-            for filename, consumers in sorted(by_directory[directory]):
-                consumer_list = ', '.join(sorted(consumers))
-                lines.append(f"- `{filename}` - Used by: {consumer_list}")
+            lines.append("Reverse index showing which components load each instruction file:")
             lines.append("")
+
+            # Group files by directory for better organization
+            by_directory = {}
+            for filepath, consumers in reverse_index.items():
+                directory = str(Path(filepath).parent)
+                if directory not in by_directory:
+                    by_directory[directory] = []
+                by_directory[directory].append((Path(filepath).name, consumers))
+
+            # Output grouped by directory
+            for directory in sorted(by_directory.keys()):
+                lines.append(f"**{directory}/:**")
+                lines.append("")
+                for filename, consumers in sorted(by_directory[directory]):
+                    consumer_list = ', '.join(sorted(consumers))
+                    lines.append(f"- `{filename}` - Used by: {consumer_list}")
+                lines.append("")
 
     return '\n'.join(lines)
 
