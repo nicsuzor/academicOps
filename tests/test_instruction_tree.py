@@ -139,3 +139,79 @@ class TestInstructionTreeGeneration:
 
         # ASSERT - Verify markdown formatting (lists or tables)
         assert '-' in markdown or '|' in markdown, "Should use markdown list or table format"
+
+    def test_readme_update_preserves_content_outside_markers(self, repo_root, tmp_path):
+        """
+        VALIDATES: update_readme_with_tree() updates content between markers while preserving other content.
+
+        Test structure:
+        - Create temporary README.md with marker comments
+        - Generate tree content from repository scan
+        - Call update_readme_with_tree() to update README
+        - Verify content between markers was replaced
+        - Verify content before markers preserved
+        - Verify content after markers preserved
+
+        This verifies:
+        - Function finds marker comments correctly
+        - Content replacement works
+        - Manual content is preserved
+        - File is written correctly
+        """
+        # ARRANGE - Import function and set up test README
+        import sys
+        from pathlib import Path
+
+        repo_scripts = repo_root / 'scripts'
+        if str(repo_scripts) not in sys.path:
+            sys.path.insert(0, str(repo_scripts))
+
+        from generate_instruction_tree import scan_repository, generate_markdown_tree, update_readme_with_tree
+
+        # Create test README with markers
+        test_readme = tmp_path / "README.md"
+        original_content = """# Test Project
+
+This is the introduction.
+
+<!-- INSTRUCTION_TREE_START -->
+OLD CONTENT TO BE REPLACED
+<!-- INSTRUCTION_TREE_END -->
+
+This is the conclusion.
+"""
+        test_readme.write_text(original_content)
+
+        # Generate new tree content
+        components = scan_repository(repo_root)
+        new_tree_content = generate_markdown_tree(components, repo_root)
+
+        # ACT - Update README with new tree
+        update_readme_with_tree(test_readme, new_tree_content)
+
+        # ASSERT - Read updated README
+        updated_content = test_readme.read_text()
+
+        # ASSERT - Content before markers preserved
+        assert "# Test Project" in updated_content, "Title should be preserved"
+        assert "This is the introduction." in updated_content, "Introduction should be preserved"
+
+        # ASSERT - Content after markers preserved
+        assert "This is the conclusion." in updated_content, "Conclusion should be preserved"
+
+        # ASSERT - Old content replaced with new tree
+        assert "OLD CONTENT TO BE REPLACED" not in updated_content, "Old content should be removed"
+        assert "## Instruction Tree" in new_tree_content or "### Agents" in new_tree_content, "New tree content should be present"
+
+        # ASSERT - Markers still present
+        assert "<!-- INSTRUCTION_TREE_START -->" in updated_content, "Start marker should remain"
+        assert "<!-- INSTRUCTION_TREE_END -->" in updated_content, "End marker should remain"
+
+        # ASSERT - New tree content is between markers
+        start_idx = updated_content.index("<!-- INSTRUCTION_TREE_START -->")
+        end_idx = updated_content.index("<!-- INSTRUCTION_TREE_END -->")
+        assert start_idx < end_idx, "Start marker should come before end marker"
+
+        content_between_markers = updated_content[start_idx:end_idx]
+        # Check that some of the generated content appears between markers
+        assert "Agents" in content_between_markers or "Skills" in content_between_markers, "Generated tree should be between markers"

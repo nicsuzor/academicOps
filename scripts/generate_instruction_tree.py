@@ -201,6 +201,56 @@ def generate_markdown_tree(components: dict[str, Any], repo_root: Path) -> str:
     return '\n'.join(lines)
 
 
+def update_readme_with_tree(readme_path: Path, tree_content: str) -> None:
+    """Update README.md file with new instruction tree content between markers.
+
+    Args:
+        readme_path: Path to README.md file to update
+        tree_content: New content to insert between markers
+
+    The function looks for marker comments:
+        <!-- INSTRUCTION_TREE_START -->
+        <!-- INSTRUCTION_TREE_END -->
+
+    And replaces everything between them with tree_content.
+    Content before and after markers is preserved.
+    """
+    # Read current README content
+    current_content = readme_path.read_text()
+
+    # Define markers
+    start_marker = "<!-- INSTRUCTION_TREE_START -->"
+    end_marker = "<!-- INSTRUCTION_TREE_END -->"
+
+    # Find marker positions
+    start_idx = current_content.find(start_marker)
+    end_idx = current_content.find(end_marker)
+
+    if start_idx == -1 or end_idx == -1:
+        raise ValueError(
+            f"README.md missing markers. Expected {start_marker} and {end_marker}"
+        )
+
+    if start_idx >= end_idx:
+        raise ValueError("Start marker must come before end marker")
+
+    # Build new content
+    # Keep everything before start marker
+    before_markers = current_content[:start_idx + len(start_marker)]
+
+    # Add newline, tree content, newline
+    new_middle = f"\n{tree_content}\n"
+
+    # Keep everything from end marker onward
+    after_markers = current_content[end_idx:]
+
+    # Combine parts
+    new_content = before_markers + new_middle + after_markers
+
+    # Write updated content
+    readme_path.write_text(new_content)
+
+
 def main():
     """Main entry point for script."""
     parser = argparse.ArgumentParser(
