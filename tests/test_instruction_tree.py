@@ -681,3 +681,68 @@ This is the conclusion.
             "Should mention loaded instruction files"
         assert '3-tier' in dev_section or 'framework' in dev_section or 'personal' in dev_section or 'project' in dev_section, \
             "Should indicate 3-tier loading pattern"
+
+    def test_markdown_includes_reverse_dependency_index(self, repo_root):
+        """
+        VALIDATES: Markdown generator includes reverse index showing which components use each instruction file.
+
+        Test structure:
+        - Scan repository to get all components and dependencies
+        - Generate markdown section
+        - Verify "Instruction Files" section exists
+        - Verify instruction files listed with their consumers
+
+        This verifies:
+        - Reverse index section appears in markdown
+        - Instruction files grouped by type (chunks, core, etc.)
+        - Each file shows which components use it
+        - Format: "FILENAME.md - Used by: skill1, skill2, command1"
+        """
+        # ARRANGE - Scan and generate markdown
+        import sys
+        from pathlib import Path
+
+        repo_scripts = repo_root / 'scripts'
+        if str(repo_scripts) not in sys.path:
+            sys.path.insert(0, str(repo_scripts))
+
+        from generate_instruction_tree import scan_repository, generate_markdown_tree
+
+        components = scan_repository(repo_root)
+        markdown = generate_markdown_tree(components, repo_root)
+
+        # ASSERT - Reverse index section exists
+        assert '### Instruction Files' in markdown or '## Instruction Files' in markdown, \
+            "Should have Instruction Files reverse index section"
+
+        # ASSERT - Find the instruction files section
+        if '### Instruction Files' in markdown:
+            files_section_start = markdown.index('### Instruction Files')
+        else:
+            files_section_start = markdown.index('## Instruction Files')
+
+        files_section = markdown[files_section_start:]
+
+        # ASSERT - MATPLOTLIB.md shows analyst skill as consumer
+        assert 'MATPLOTLIB.md' in files_section or 'matplotlib' in files_section.lower(), \
+            "Should list MATPLOTLIB.md instruction file"
+        # Find MATPLOTLIB section and check for analyst
+        if 'MATPLOTLIB.md' in files_section:
+            matplotlib_line = files_section[files_section.index('MATPLOTLIB.md'):files_section.index('MATPLOTLIB.md') + 200]
+            assert 'analyst' in matplotlib_line.lower(), \
+                "MATPLOTLIB.md should show analyst skill as user"
+
+        # ASSERT - FAIL-FAST.md shows git-commit skill as consumer
+        assert 'FAIL-FAST.md' in files_section or 'fail-fast' in files_section.lower(), \
+            "Should list FAIL-FAST.md instruction file"
+        if 'FAIL-FAST.md' in files_section:
+            failfast_line = files_section[files_section.index('FAIL-FAST.md'):files_section.index('FAIL-FAST.md') + 200]
+            assert 'git-commit' in failfast_line, \
+                "FAIL-FAST.md should show git-commit skill as user"
+
+        # ASSERT - DEVELOPMENT.md shows /dev command as consumer
+        assert 'DEVELOPMENT.md' in files_section, \
+            "Should list DEVELOPMENT.md instruction file"
+        dev_line = files_section[files_section.index('DEVELOPMENT.md'):files_section.index('DEVELOPMENT.md') + 200]
+        assert '/dev' in dev_line or 'dev command' in dev_line.lower(), \
+            "DEVELOPMENT.md should show /dev command as user"

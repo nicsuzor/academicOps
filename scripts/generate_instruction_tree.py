@@ -210,6 +210,37 @@ def _parse_load_instructions_calls(content: str) -> list[str]:
     return matches
 
 
+def _build_reverse_index(components: dict[str, Any]) -> dict[str, list[str]]:
+    """Build reverse index mapping instruction files to components that use them.
+
+    Args:
+        components: Dictionary from scan_repository() with component data
+
+    Returns:
+        Dictionary mapping instruction file paths to list of component names
+        Example: {'docs/_CHUNKS/MATPLOTLIB.md': ['analyst skill'], ...}
+    """
+    reverse_index = {}
+
+    # Process skills
+    for skill in components.get('skills', []):
+        skill_name = f"{skill['name']} skill"
+        for dep in skill.get('dependencies', []):
+            if dep not in reverse_index:
+                reverse_index[dep] = []
+            reverse_index[dep].append(skill_name)
+
+    # Process commands
+    for command in components.get('commands', []):
+        command_name = f"/{command['name']} command"
+        for dep in command.get('dependencies', []):
+            if dep not in reverse_index:
+                reverse_index[dep] = []
+            reverse_index[dep].append(command_name)
+
+    return reverse_index
+
+
 def generate_markdown_tree(components: dict[str, Any], repo_root: Path) -> str:
     """Generate markdown documentation from scanned components.
 
@@ -326,6 +357,31 @@ def generate_markdown_tree(components: dict[str, Any], repo_root: Path) -> str:
             for ref in references:
                 lines.append(f"  - `{ref}`")
         lines.append("")
+
+    # Reverse Index Section - Instruction Files
+    reverse_index = _build_reverse_index(components)
+    if reverse_index:
+        lines.append("### Instruction Files")
+        lines.append("")
+        lines.append("Reverse index showing which components load each instruction file:")
+        lines.append("")
+
+        # Group files by directory for better organization
+        by_directory = {}
+        for filepath, consumers in reverse_index.items():
+            directory = str(Path(filepath).parent)
+            if directory not in by_directory:
+                by_directory[directory] = []
+            by_directory[directory].append((Path(filepath).name, consumers))
+
+        # Output grouped by directory
+        for directory in sorted(by_directory.keys()):
+            lines.append(f"**{directory}/:**")
+            lines.append("")
+            for filename, consumers in sorted(by_directory[directory]):
+                consumer_list = ', '.join(sorted(consumers))
+                lines.append(f"- `{filename}` - Used by: {consumer_list}")
+            lines.append("")
 
     return '\n'.join(lines)
 
