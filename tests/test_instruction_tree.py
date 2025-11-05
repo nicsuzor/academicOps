@@ -506,3 +506,72 @@ This is the conclusion.
         assert ("when to use" in skill_content_lower and "description" in skill_content_lower) or \
                ("instruction tree" in skill_content_lower and "maintenance" in skill_content_lower), \
             "Skill should integrate description maintenance into existing triggers/workflows"
+
+    def test_scanner_collects_skill_symlink_dependencies(self, repo_root):
+        """
+        VALIDATES: Repository scanner discovers symlinks in skills/ directories.
+
+        Test structure:
+        - Scan repository (repo_root fixture)
+        - Verify skills with symlinks have 'dependencies' field
+        - Verify symlink targets are resolved to relative paths
+        - Test with analyst skill (has symlinks to MATPLOTLIB.md, STATSMODELS.md, etc.)
+        - Test with git-commit skill (has symlinks to FAIL-FAST.md, TESTS.md, etc.)
+
+        This verifies:
+        - Scanner discovers symlinks in skills/*/references/ directories
+        - Scanner discovers symlinks in skills/*/resources/ directories
+        - Scanner resolves symlink targets to repository-relative paths
+        - Dependencies stored in skill metadata
+        """
+        # ARRANGE - Import scanner
+        import sys
+        from pathlib import Path
+
+        repo_scripts = repo_root / 'scripts'
+        if str(repo_scripts) not in sys.path:
+            sys.path.insert(0, str(repo_scripts))
+
+        from generate_instruction_tree import scan_repository
+
+        # ACT - Scan repository
+        components = scan_repository(repo_root)
+
+        # ASSERT - analyst skill has dependencies from references/ symlinks
+        analyst_skill = next((s for s in components['skills'] if s['name'] == 'analyst'), None)
+        assert analyst_skill is not None, "analyst skill should exist"
+        assert 'dependencies' in analyst_skill, "analyst skill should have dependencies field"
+
+        dependencies = analyst_skill['dependencies']
+        assert len(dependencies) > 0, "analyst skill should have at least one dependency"
+
+        # Check for known symlinked files
+        dep_basenames = [Path(d).name for d in dependencies]
+        assert 'MATPLOTLIB.md' in dep_basenames, "Should find MATPLOTLIB.md symlink"
+        assert 'STATSMODELS.md' in dep_basenames, "Should find STATSMODELS.md symlink"
+
+        # ASSERT - git-commit skill has dependencies from references/ symlinks
+        git_commit_skill = next((s for s in components['skills'] if s['name'] == 'git-commit'), None)
+        assert git_commit_skill is not None, "git-commit skill should exist"
+        assert 'dependencies' in git_commit_skill, "git-commit skill should have dependencies field"
+
+        git_dependencies = git_commit_skill['dependencies']
+        assert len(git_dependencies) > 0, "git-commit skill should have at least one dependency"
+
+        # Check for known symlinked files
+        git_dep_basenames = [Path(d).name for d in git_dependencies]
+        assert 'FAIL-FAST.md' in git_dep_basenames, "Should find FAIL-FAST.md symlink"
+        assert 'TESTS.md' in git_dep_basenames, "Should find TESTS.md symlink"
+
+        # ASSERT - aops-trainer skill has dependencies from resources/ symlinks
+        trainer_skill = next((s for s in components['skills'] if s['name'] == 'aops-trainer'), None)
+        assert trainer_skill is not None, "aops-trainer skill should exist"
+        assert 'dependencies' in trainer_skill, "aops-trainer skill should have dependencies field"
+
+        trainer_dependencies = trainer_skill['dependencies']
+        assert len(trainer_dependencies) > 0, "aops-trainer skill should have at least one dependency"
+
+        # Check for known symlinked files
+        trainer_dep_basenames = [Path(d).name for d in trainer_dependencies]
+        assert 'AXIOMS.md' in trainer_dep_basenames, "Should find AXIOMS.md symlink"
+        assert 'SKILL-PRIMER.md' in trainer_dep_basenames, "Should find SKILL-PRIMER.md symlink"

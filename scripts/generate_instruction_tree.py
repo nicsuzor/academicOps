@@ -113,10 +113,24 @@ def scan_repository(repo_root: Path) -> dict[str, Any]:
                     frontmatter = _extract_yaml_frontmatter(skill_file)
                     description = frontmatter.get('description', '')
 
+                # Collect symlinks from references/ and resources/ directories
+                dependencies = []
+                for subdir_name in ['references', 'resources']:
+                    subdir = skill_dir / subdir_name
+                    if subdir.exists() and subdir.is_dir():
+                        for item in subdir.iterdir():
+                            if item.is_symlink():
+                                # Resolve symlink and get target relative to repo_root
+                                target = item.resolve()
+                                if target.is_relative_to(repo_root):
+                                    relative_target = target.relative_to(repo_root)
+                                    dependencies.append(str(relative_target))
+
                 components['skills'].append({
                     'name': skill_dir.name,
                     'path': str(skill_dir.relative_to(repo_root)),
-                    'description': description
+                    'description': description,
+                    'dependencies': dependencies
                 })
 
     # Scan commands/*.md files
