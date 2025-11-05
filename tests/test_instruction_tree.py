@@ -575,3 +575,47 @@ This is the conclusion.
         trainer_dep_basenames = [Path(d).name for d in trainer_dependencies]
         assert 'AXIOMS.md' in trainer_dep_basenames, "Should find AXIOMS.md symlink"
         assert 'SKILL-PRIMER.md' in trainer_dep_basenames, "Should find SKILL-PRIMER.md symlink"
+
+    def test_scanner_collects_command_load_instructions_dependencies(self, repo_root):
+        """
+        VALIDATES: Repository scanner discovers load_instructions.py calls in command files.
+
+        Test structure:
+        - Scan repository (repo_root fixture)
+        - Verify commands with load_instructions.py calls have 'dependencies' field
+        - Test with /dev command which loads DEVELOPMENT.md, TESTING.md, DEBUGGING.md, STYLE.md
+        - Verify dependencies are in 3-tier format (loaded from framework/personal/project)
+
+        This verifies:
+        - Scanner parses command markdown files for load_instructions.py calls
+        - Scanner extracts filenames from uv run python ... load_instructions.py FILENAME.md
+        - Dependencies stored in command metadata
+        - Format shows 3-tier loading pattern
+        """
+        # ARRANGE - Import scanner
+        import sys
+        from pathlib import Path
+
+        repo_scripts = repo_root / 'scripts'
+        if str(repo_scripts) not in sys.path:
+            sys.path.insert(0, str(repo_scripts))
+
+        from generate_instruction_tree import scan_repository
+
+        # ACT - Scan repository
+        components = scan_repository(repo_root)
+
+        # ASSERT - dev command has dependencies from load_instructions.py calls
+        dev_command = next((c for c in components['commands'] if c['name'] == 'dev'), None)
+        assert dev_command is not None, "dev command should exist"
+        assert 'dependencies' in dev_command, "dev command should have dependencies field"
+
+        dependencies = dev_command['dependencies']
+        assert len(dependencies) > 0, "dev command should have at least one dependency"
+
+        # Check for known loaded files (from commands/dev.md)
+        # Expected: DEVELOPMENT.md, TESTING.md, DEBUGGING.md, STYLE.md
+        assert 'DEVELOPMENT.md' in dependencies, "Should find DEVELOPMENT.md in load_instructions calls"
+        assert 'TESTING.md' in dependencies, "Should find TESTING.md in load_instructions calls"
+        assert 'DEBUGGING.md' in dependencies, "Should find DEBUGGING.md in load_instructions calls"
+        assert 'STYLE.md' in dependencies, "Should find STYLE.md in load_instructions calls"

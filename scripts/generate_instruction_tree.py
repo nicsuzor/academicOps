@@ -138,11 +138,17 @@ def scan_repository(repo_root: Path) -> dict[str, Any]:
     if commands_dir.exists():
         for command_file in commands_dir.glob('*.md'):
             frontmatter = _extract_yaml_frontmatter(command_file)
+
+            # Parse load_instructions.py calls from command content
+            content = command_file.read_text()
+            dependencies = _parse_load_instructions_calls(content)
+
             components['commands'].append({
                 'name': command_file.stem,
                 'file': command_file.name,
                 'path': str(command_file.relative_to(repo_root)),
-                'description': frontmatter.get('description', '')
+                'description': frontmatter.get('description', ''),
+                'dependencies': dependencies
             })
 
     # Scan hooks/*.py files
@@ -185,6 +191,22 @@ def _parse_references(content: str) -> list[str]:
     # Match @../path/to/file.md patterns
     reference_pattern = r'@([\w/.+-]+\.md)'
     matches = re.findall(reference_pattern, content)
+    return matches
+
+
+def _parse_load_instructions_calls(content: str) -> list[str]:
+    """Parse load_instructions.py calls from command markdown content.
+
+    Args:
+        content: Command markdown file content
+
+    Returns:
+        List of instruction filenames (e.g., ['DEVELOPMENT.md', 'TESTING.md'])
+    """
+    # Match: uv run python ... load_instructions.py FILENAME.md
+    # Pattern handles various path formats: ${ACADEMICOPS}/hooks/, $ACADEMICOPS/hooks/, etc.
+    load_pattern = r'load_instructions\.py\s+([A-Z_/-]+\.md)'
+    matches = re.findall(load_pattern, content)
     return matches
 
 
