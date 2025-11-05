@@ -74,6 +74,12 @@ class TestInstructionTreeGeneration:
         assert 'git-commit' in skill_names, "Should find git-commit skill"
         assert 'aops-trainer' in skill_names, "Should find aops-trainer skill"
 
+        # ASSERT - Verify skill descriptions extracted
+        test_writing_skill = next(s for s in components['skills'] if s['name'] == 'test-writing')
+        assert 'description' in test_writing_skill, "Should extract description from skill SKILL.md frontmatter"
+        assert len(test_writing_skill['description']) > 0, "Description should not be empty"
+        assert 'test' in test_writing_skill['description'].lower(), "Description should mention testing"
+
         # ASSERT - Verify commands discovered
         command_names = [c['name'] for c in components['commands']]
         assert len(command_names) > 0, "Should find at least one command"

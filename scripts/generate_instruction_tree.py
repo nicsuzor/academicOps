@@ -81,9 +81,17 @@ def scan_repository(repo_root: Path) -> dict[str, Any]:
     if skills_dir.exists():
         for skill_dir in skills_dir.iterdir():
             if skill_dir.is_dir() and not skill_dir.name.startswith('.'):
+                # Look for SKILL.md in skill directory
+                skill_file = skill_dir / 'SKILL.md'
+                description = ''
+                if skill_file.exists():
+                    frontmatter = _extract_yaml_frontmatter(skill_file)
+                    description = frontmatter.get('description', '')
+
                 components['skills'].append({
                     'name': skill_dir.name,
-                    'path': str(skill_dir.relative_to(repo_root))
+                    'path': str(skill_dir.relative_to(repo_root)),
+                    'description': description
                 })
 
     # Scan commands/*.md files
