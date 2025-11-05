@@ -164,6 +164,77 @@ class TestInstructionTreeGeneration:
         # ASSERT - Verify markdown formatting (lists or tables)
         assert '-' in markdown or '|' in markdown, "Should use markdown list or table format"
 
+    def test_markdown_includes_component_descriptions(self, repo_root):
+        """
+        VALIDATES: Markdown output includes descriptions for all component types.
+
+        Test structure:
+        - Scan repository to get components with descriptions
+        - Generate markdown section from components
+        - Verify descriptions appear in formatted output
+        - Verify format: **name** - Description (`path`)
+
+        This verifies:
+        - generate_markdown_tree() includes description field
+        - Format matches specification
+        - Descriptions appear for agents, skills, commands, hooks
+        """
+        # ARRANGE - Scan and import generator
+        import sys
+        from pathlib import Path
+
+        repo_scripts = repo_root / 'scripts'
+        if str(repo_scripts) not in sys.path:
+            sys.path.insert(0, str(repo_scripts))
+
+        from generate_instruction_tree import scan_repository, generate_markdown_tree
+
+        components = scan_repository(repo_root)
+
+        # ACT - Generate markdown
+        markdown = generate_markdown_tree(components, repo_root)
+
+        # ASSERT - Verify DEVELOPER agent has description in correct format
+        # Expected format: - **DEVELOPER** - {description} (`agents/DEVELOPER.md`)
+        dev_agent = next((a for a in components['agents'] if a['name'] == 'DEVELOPER'), None)
+        assert dev_agent is not None, "DEVELOPER agent should exist for testing"
+        assert dev_agent['description'], "DEVELOPER agent should have description"
+
+        # Check that markdown contains agent name, description, and path in proper format
+        assert '**DEVELOPER**' in markdown, "Should include agent name in bold"
+        assert dev_agent['description'] in markdown, f"Should include description: {dev_agent['description']}"
+        assert '`agents/DEVELOPER.md`' in markdown, "Should include agent path in backticks"
+
+        # ASSERT - Verify test-writing skill has description in correct format
+        # Expected format: - **test-writing** - {description} (`skills/test-writing`)
+        test_skill = next((s for s in components['skills'] if s['name'] == 'test-writing'), None)
+        assert test_skill is not None, "test-writing skill should exist for testing"
+        assert test_skill['description'], "test-writing skill should have description"
+
+        assert '**test-writing**' in markdown, "Should include skill name in bold"
+        assert test_skill['description'] in markdown, f"Should include description: {test_skill['description']}"
+        assert '`skills/test-writing`' in markdown, "Should include skill path in backticks"
+
+        # ASSERT - Verify dev command has description in correct format
+        # Expected format: - **/dev** - {description} (`commands/dev.md`)
+        dev_command = next((c for c in components['commands'] if c['name'] == 'dev'), None)
+        assert dev_command is not None, "dev command should exist for testing"
+        assert dev_command['description'], "dev command should have description"
+
+        assert '**/dev**' in markdown or '**dev**' in markdown, "Should include command name in bold"
+        assert dev_command['description'] in markdown, f"Should include description: {dev_command['description']}"
+        assert '`commands/dev.md`' in markdown, "Should include command path in backticks"
+
+        # ASSERT - Verify load_instructions hook has description in correct format
+        # Expected format: - **load_instructions** - {description} (`hooks/load_instructions.py`)
+        load_hook = next((h for h in components['hooks'] if h['name'] == 'load_instructions'), None)
+        assert load_hook is not None, "load_instructions hook should exist for testing"
+        assert load_hook['description'], "load_instructions hook should have description"
+
+        assert '**load_instructions**' in markdown, "Should include hook name in bold"
+        assert load_hook['description'] in markdown, f"Should include description: {load_hook['description']}"
+        assert '`hooks/load_instructions.py`' in markdown, "Should include hook path in backticks"
+
     def test_readme_update_preserves_content_outside_markers(self, repo_root, tmp_path):
         """
         VALIDATES: update_readme_with_tree() updates content between markers while preserving other content.

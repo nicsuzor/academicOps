@@ -201,7 +201,11 @@ def generate_markdown_tree(components: dict[str, Any], repo_root: Path) -> str:
         lines.append("Specialized agent definitions loaded via slash commands or subagent invocation:")
         lines.append("")
         for agent in sorted(agents, key=lambda x: x['name']):
-            lines.append(f"- **{agent['name']}** (`{agent['path']}`)")
+            description = agent.get('description', '')
+            if description:
+                lines.append(f"- **{agent['name']}** - {description} (`{agent['path']}`)")
+            else:
+                lines.append(f"- **{agent['name']}** (`{agent['path']}`)")
         lines.append("")
     else:
         lines.append("No agents found.")
@@ -215,7 +219,11 @@ def generate_markdown_tree(components: dict[str, Any], repo_root: Path) -> str:
         lines.append("Packaged workflows installed to `~/.claude/skills/`:")
         lines.append("")
         for skill in sorted(skills, key=lambda x: x['name']):
-            lines.append(f"- **{skill['name']}** (`{skill['path']}`)")
+            description = skill.get('description', '')
+            if description:
+                lines.append(f"- **{skill['name']}** - {description} (`{skill['path']}`)")
+            else:
+                lines.append(f"- **{skill['name']}** (`{skill['path']}`)")
         lines.append("")
     else:
         lines.append("No skills found.")
@@ -229,7 +237,11 @@ def generate_markdown_tree(components: dict[str, Any], repo_root: Path) -> str:
         lines.append("Slash commands that load additional context:")
         lines.append("")
         for command in sorted(commands, key=lambda x: x['name']):
-            lines.append(f"- **/{command['name']}** (`{command['path']}`)")
+            description = command.get('description', '')
+            if description:
+                lines.append(f"- **/{command['name']}** - {description} (`{command['path']}`)")
+            else:
+                lines.append(f"- **/{command['name']}** (`{command['path']}`)")
         lines.append("")
     else:
         lines.append("No commands found.")
@@ -243,7 +255,11 @@ def generate_markdown_tree(components: dict[str, Any], repo_root: Path) -> str:
         lines.append("Validation and enforcement hooks:")
         lines.append("")
         for hook in sorted(hooks, key=lambda x: x['name']):
-            lines.append(f"- **{hook['name']}** (`{hook['path']}`)")
+            description = hook.get('description', '')
+            if description:
+                lines.append(f"- **{hook['name']}** - {description} (`{hook['path']}`)")
+            else:
+                lines.append(f"- **{hook['name']}** (`{hook['path']}`)")
         lines.append("")
     else:
         lines.append("No hooks found.")
