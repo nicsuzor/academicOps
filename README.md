@@ -81,14 +81,17 @@ Packaged workflows installed to `~/.claude/skills/`:
 
 - **agent-initialization** - This skill should be automatically invoked when initializing a workspace to create/update an AGENT.md file that instructs agents to search for and use existing skills before attempting tasks. The skill scans available skills and maintains an up-to-date index with descriptions of when to invoke each skill. (`skills/agent-initialization`)
 - **analyst** - Support academic research data analysis using dbt and Streamlit. Use this skill when working with computational research projects (identified by dbt/ directory, Streamlit apps, or empirical data pipelines). The skill enforces academicOps best practices for reproducible, transparent, self-documenting research with collaborative single-step workflow. (`skills/analyst`)
+  - Dependencies: MATPLOTLIB.md, STATSMODELS.md, PYTHON-DEV.md, SEABORN.md
 - **aops-bug** - Track bugs, agent violations, and framework improvements in the academicOps agent system. Understand core axioms, categorize behavioral patterns, manage experiment logs, detect architecture drift, and maintain framework health. Calls github-issue skill for GitHub operations. Use when agents violate axioms, framework bugs occur, experiments complete, or architecture needs updating. Specific to academicOps framework. (`skills/aops-bug`)
 - **aops-trainer** - This skill should be used when reviewing and improving agents, skills, hooks, permissions, and configurations. It enforces an experiment-driven, anti-bloat approach with enforcement hierarchy of Scripts, Hooks, Config, then Instructions. The skill prevents adding repetitive or overly specific instructions, understands how different enforcement mechanisms fit together, and makes strategic decisions about where to intervene. Use this skill when agent performance issues arise, when evaluating new techniques, or when maintaining the agent framework. Always test before claiming something works. Specific to academicOps framework. (`skills/aops-trainer`)
+  - Dependencies: AXIOMS.md, SKILL-PRIMER.md, INFRASTRUCTURE.md
 - **archiver** - Archive experimental analysis and intermediate work into long-lived Jupyter notebooks with HTML exports before data removal or major pipeline changes. Cleans up working directories to maintain only current state. Use when completing experiments that will become unreproducible due to data removal or when major analytical decisions need to be permanently documented. (`skills/archiver`)
 - **claude-hooks** - This skill should be used when working with Claude Code hooks - creating, configuring, debugging, or understanding hook input/output schemas. Provides complete technical reference for all hook types, academicOps patterns, and real-world examples. (`skills/claude-hooks`)
 - **claude-md-maintenance** - This skill maintains CLAUDE.md files across repositories by extracting substantive content to chunks, enforcing @reference patterns, and ensuring proper hierarchical organization. Use when CLAUDE.md files contain inline instructions, are too long, have duplication, or need refactoring to follow academicOps best practices. (`skills/claude-md-maintenance`)
 - **document-skills** (`skills/document-skills`)
 - **email** - This skill provides expertise for interacting with Outlook email via MCP tools. Use when agents or subagents need to fetch, read, list, or search emails. Includes email triage patterns, signal detection (urgent/deadlines), and filtering guidelines. Does NOT handle task extraction (use tasks skill for that). (`skills/email`)
 - **git-commit** - This skill should be used when committing code changes to git repositories. It validates code quality against defined standards, enforces conventional commit format, handles submodule patterns, and executes commits only when all validation passes. The skill reports problems without fixing them, maintaining fail-fast principles. Use this skill any time code needs to be committed to ensure quality gates are enforced. (`skills/git-commit`)
+  - Dependencies: FAIL-FAST.md, TESTS.md, GIT-WORKFLOW.md
 - **github-issue** - Manage GitHub issues across any repository with exhaustive search, precise documentation, and proactive updates. Search existing issues before creating new ones, format technical content clearly, link commits and PRs, and maintain issue lifecycle. Works universally - not specific to any project or framework. Use when documenting bugs, tracking features, updating issue status, or searching for related work. (`skills/github-issue`)
 - **no-throwaway-code** - Intervention skill that triggers when agents attempt temporary/throwaway Python code (python -c, temp scripts, one-off investigations). Enforces Axiom 15 - WRITE FOR THE LONG TERM. Nudges toward reusable solutions using dev agent or test-writing skill instead. (`skills/no-throwaway-code`)
 - **pdf** - This skill should be used when converting markdown documents to professionally formatted PDFs. It provides academic-style typography with Roboto fonts, proper page layouts, and styling suitable for research documents, reviews, reports, and academic writing. Use when users request PDF generation from markdown files or need professional document formatting. (`skills/pdf`)
@@ -106,6 +109,7 @@ Slash commands that load additional context:
 - **/STRATEGIST** - Strategic thinking partner that facilitates planning while silently capturing context (`commands/STRATEGIST.md`)
 - **/analyst** - Load analyst skill for academic research data analysis (dbt & Streamlit) (`commands/analyst.md`)
 - **/dev** - Load development workflow and coding standards (`commands/dev.md`)
+  - Loads: DEVELOPMENT.md, TESTING.md, DEBUGGING.md, STYLE.md (3-tier: framework → personal → project)
 - **/email** - Check email, automatically update task database, and present digest (`commands/email.md`)
 - **/error** - Quick experiment outcome logging to academicOps - works from any repository (`commands/error.md`)
 - **/log-failure** - Log agent performance failure to experiment tracking system (`commands/log-failure.md`)
@@ -140,6 +144,33 @@ Validation and enforcement hooks:
   - `../chunks/AXIOMS.md`
   - `../chunks/INFRASTRUCTURE.md`
   - `../chunks/AGENT-BEHAVIOR.md`
+
+### Instruction Files
+
+Reverse index showing which components load each instruction file:
+
+**./:**
+
+- `DEBUGGING.md` - Used by: /dev command
+- `DEVELOPMENT.md` - Used by: /dev command
+- `STYLE.md` - Used by: /dev command
+- `TESTING.md` - Used by: /dev command
+
+**chunks/:**
+
+- `AXIOMS.md` - Used by: aops-trainer skill
+- `INFRASTRUCTURE.md` - Used by: aops-trainer skill
+- `SKILL-PRIMER.md` - Used by: aops-trainer skill
+
+**docs/_CHUNKS/:**
+
+- `FAIL-FAST.md` - Used by: git-commit skill
+- `GIT-WORKFLOW.md` - Used by: git-commit skill
+- `MATPLOTLIB.md` - Used by: analyst skill
+- `PYTHON-DEV.md` - Used by: analyst skill
+- `SEABORN.md` - Used by: analyst skill
+- `STATSMODELS.md` - Used by: analyst skill
+- `TESTS.md` - Used by: git-commit skill
 
 <!-- INSTRUCTION_TREE_END -->
 
