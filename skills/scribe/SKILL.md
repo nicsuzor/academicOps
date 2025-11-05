@@ -324,6 +324,8 @@ Different file types serve different purposes and need different detail levels:
 
 **Write for the USER, not for analysis**:
 
+✅ GOOD: "Review Joel's chapter draft on marginal value of films (https://sharepoint.com/...). Focus on storytelling and platform realities. Provide feedback before supervision meeting."
+
 ✅ GOOD: "Prepare keynote slides for Nov 15 conference. Focus on accountability frameworks. Review with team by Nov 10."
 
 ❌ TOO MUCH: "As the invited keynote speaker for the conference on Nov 15, which aligns with your Academic Profile goal and was mentioned in your current priorities, you need to prepare slides..."
@@ -332,7 +334,7 @@ Different file types serve different purposes and need different detail levels:
 - What needs to be done
 - Minimal context (why it matters, briefly)
 - When it's due
-- Where to find materials
+- Where to find materials (include direct links so user doesn't need to search emails)
 
 **Don't include**:
 - Strategic analysis of priority choices
