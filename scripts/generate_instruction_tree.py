@@ -46,6 +46,31 @@ def _extract_yaml_frontmatter(file_path: Path) -> dict[str, Any]:
         return {}
 
 
+def _extract_python_docstring(file_path: Path) -> str:
+    """Extract first line of module docstring from Python file.
+
+    Args:
+        file_path: Path to Python file
+
+    Returns:
+        First line of docstring (empty string if no docstring)
+    """
+    content = file_path.read_text()
+
+    # Match module docstring (""" or ''' at start of file, after shebang/comments)
+    # Pattern: shebang (optional), any # comments (optional), then """ or '''
+    docstring_pattern = r'^(?:#!.*\n)?(?:#.*\n)*\s*(?:"""|\'\'\')(.*?)(?:"""|\'\'\')'
+    match = re.search(docstring_pattern, content, re.DOTALL)
+
+    if not match:
+        return ''
+
+    # Get first line of docstring, strip whitespace
+    docstring_content = match.group(1).strip()
+    first_line = docstring_content.split('\n')[0].strip() if docstring_content else ''
+    return first_line
+
+
 def scan_repository(repo_root: Path) -> dict[str, Any]:
     """Scan repository and discover all instruction components.
 
@@ -98,10 +123,12 @@ def scan_repository(repo_root: Path) -> dict[str, Any]:
     commands_dir = repo_root / 'commands'
     if commands_dir.exists():
         for command_file in commands_dir.glob('*.md'):
+            frontmatter = _extract_yaml_frontmatter(command_file)
             components['commands'].append({
                 'name': command_file.stem,
                 'file': command_file.name,
-                'path': str(command_file.relative_to(repo_root))
+                'path': str(command_file.relative_to(repo_root)),
+                'description': frontmatter.get('description', '')
             })
 
     # Scan hooks/*.py files
@@ -111,10 +138,12 @@ def scan_repository(repo_root: Path) -> dict[str, Any]:
             # Skip __pycache__ and __init__.py
             if hook_file.stem.startswith('__'):
                 continue
+            description = _extract_python_docstring(hook_file)
             components['hooks'].append({
                 'name': hook_file.stem,
                 'file': hook_file.name,
-                'path': str(hook_file.relative_to(repo_root))
+                'path': str(hook_file.relative_to(repo_root)),
+                'description': description
             })
 
     # Scan core/_CORE.md and parse @references

@@ -86,11 +86,23 @@ class TestInstructionTreeGeneration:
         assert 'dev' in command_names, "Should find dev.md command"
         assert 'trainer' in command_names, "Should find trainer.md command"
 
+        # ASSERT - Verify command descriptions extracted
+        dev_command = next(c for c in components['commands'] if c['name'] == 'dev')
+        assert 'description' in dev_command, "Should extract description from command frontmatter"
+        assert len(dev_command['description']) > 0, "Description should not be empty"
+        assert 'development' in dev_command['description'].lower() or 'dev' in dev_command['description'].lower(), "Description should mention development"
+
         # ASSERT - Verify hooks discovered
         hook_names = [h['name'] for h in components['hooks']]
         assert len(hook_names) > 0, "Should find at least one hook"
         assert 'load_instructions' in hook_names, "Should find load_instructions.py hook"
         assert 'validate_tool' in hook_names, "Should find validate_tool.py hook"
+
+        # ASSERT - Verify hook descriptions extracted from docstrings
+        load_hook = next(h for h in components['hooks'] if h['name'] == 'load_instructions')
+        assert 'description' in load_hook, "Should extract description from hook docstring"
+        assert len(load_hook['description']) > 0, "Description should not be empty"
+        assert 'load' in load_hook['description'].lower() or 'instruction' in load_hook['description'].lower(), "Description should mention loading/instructions"
 
         # ASSERT - Verify core discovered
         assert 'file' in components['core'], "Should have core file path"
