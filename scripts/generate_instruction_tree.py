@@ -348,15 +348,26 @@ def main():
     repo_root = script_dir.parent
 
     # Scan repository
+    print(f"Scanning repository: {repo_root}")
     components = scan_repository(repo_root)
 
-    # Print summary for now (will generate markdown in next cycle)
-    print(f"Scanned repository: {repo_root}")
+    # Print summary
     print(f"Found {len(components['agents'])} agents")
     print(f"Found {len(components['skills'])} skills")
     print(f"Found {len(components['commands'])} commands")
     print(f"Found {len(components['hooks'])} hooks")
     print(f"Found core with {len(components['core'].get('references', []))} references")
+
+    # Generate markdown tree
+    print(f"\nGenerating instruction tree markdown...")
+    tree_content = generate_markdown_tree(components, repo_root)
+
+    # Update README
+    readme_path = repo_root / args.output
+    print(f"Updating {readme_path}...")
+    update_readme_with_tree(readme_path, tree_content)
+
+    print(f"\n✓ Successfully updated {args.output}")
 
 
 if __name__ == '__main__':
