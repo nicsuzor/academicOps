@@ -1,6 +1,14 @@
 {
   "permissions": {
-    "deny": []
+    "deny": [
+      "Write(/data/tasks/**)",
+      "Write(*/data/tasks/**)",
+      "Edit(/data/tasks/**)",
+      "Edit(*/data/tasks/**)",
+      "Bash(rm */data/tasks/**)",
+      "Bash(mv */data/tasks/**)",
+      "Bash(cp */data/tasks/**)"
+    ]
   },
   "hooks": {
     "SessionStart": [
