@@ -11,6 +11,7 @@ Exit codes:
 """
 
 import json
+import os
 import re
 import sys
 from collections.abc import Callable
@@ -408,6 +409,11 @@ def _is_allowed_md_path(file_path: str) -> bool:
     - Project root (top-level .md files like README.md, HOWTO.md)
     - docs/ directory (documentation files)
 
+    ALLOWED locations (content directories in $ACADEMICOPS_PERSONAL):
+    - talks/ - Presentation content
+    - slides/ - Slide decks
+    - data/ - Data files
+
     Everything else is allowed (pre-commit hook provides comprehensive validation).
 
     This hook prevents the MOST COMMON mistake: creating docs in project root.
@@ -434,6 +440,18 @@ def _is_allowed_md_path(file_path: str) -> bool:
 
     # Convert to POSIX string for pattern matching
     path = path_obj.as_posix()
+
+    # ALLOW: Content directories in $ACADEMICOPS_PERSONAL (writing repo)
+    # These are legitimate content artifacts, not documentation
+    personal_path = os.getenv("ACADEMICOPS_PERSONAL")
+    if personal_path:
+        cwd = Path.cwd()
+        personal_dir = Path(personal_path).resolve()
+        if cwd.resolve() == personal_dir:
+            # We're in the personal repo - allow content directories
+            content_dirs = ["talks/", "slides/", "data/"]
+            if any(path.startswith(d) for d in content_dirs):
+                return True
 
     # BLOCK: Top-level .md files in project root
     # Example: README.md, HOWTO.md, GUIDE.md
