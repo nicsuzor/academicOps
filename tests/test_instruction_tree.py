@@ -61,6 +61,12 @@ class TestInstructionTreeGeneration:
         assert 'DEVELOPER' in agent_names, "Should find DEVELOPER.md agent"
         assert 'SUPERVISOR' in agent_names, "Should find SUPERVISOR.md agent"
 
+        # ASSERT - Verify agent descriptions extracted
+        dev_agent = next(a for a in components['agents'] if a['name'] == 'DEVELOPER')
+        assert 'description' in dev_agent, "Should extract description from agent frontmatter"
+        assert len(dev_agent['description']) > 0, "Description should not be empty"
+        assert 'developer' in dev_agent['description'].lower(), "Description should mention developer"
+
         # ASSERT - Verify skills discovered
         skill_names = [s['name'] for s in components['skills']]
         assert len(skill_names) > 0, "Should find at least one skill"

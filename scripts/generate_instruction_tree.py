@@ -17,8 +17,33 @@ The script:
 
 import argparse
 import re
+import yaml
 from pathlib import Path
 from typing import Any
+
+
+def _extract_yaml_frontmatter(file_path: Path) -> dict[str, Any]:
+    """Extract YAML frontmatter from markdown file.
+
+    Args:
+        file_path: Path to markdown file with YAML frontmatter
+
+    Returns:
+        Dictionary with frontmatter fields (empty dict if no frontmatter)
+    """
+    content = file_path.read_text()
+
+    # Match YAML frontmatter between --- delimiters
+    frontmatter_pattern = r'^---\n(.*?)\n---'
+    match = re.search(frontmatter_pattern, content, re.DOTALL)
+
+    if not match:
+        return {}
+
+    try:
+        return yaml.safe_load(match.group(1)) or {}
+    except yaml.YAMLError:
+        return {}
 
 
 def scan_repository(repo_root: Path) -> dict[str, Any]:
@@ -43,10 +68,12 @@ def scan_repository(repo_root: Path) -> dict[str, Any]:
     agents_dir = repo_root / 'agents'
     if agents_dir.exists():
         for agent_file in agents_dir.glob('*.md'):
+            frontmatter = _extract_yaml_frontmatter(agent_file)
             components['agents'].append({
                 'name': agent_file.stem,
                 'file': agent_file.name,
-                'path': str(agent_file.relative_to(repo_root))
+                'path': str(agent_file.relative_to(repo_root)),
+                'description': frontmatter.get('description', '')
             })
 
     # Scan skills/*/ directories
