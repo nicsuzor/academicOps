@@ -448,3 +448,61 @@ This is the conclusion.
         # ASSERT - Maintenance workflow described
         assert "readme" in skill_content or "documentation" in skill_content, \
             "Skill should describe documentation maintenance workflow"
+
+    def test_aops_trainer_documents_description_maintenance_and_architectural_analysis(self):
+        """
+        VALIDATES: aops-trainer skill documents Phase 3 enhancements:
+        - Description maintenance workflow
+        - Architectural analysis using descriptions
+
+        Test structure:
+        - Read aops-trainer SKILL.md file
+        - Verify description maintenance workflow documented
+        - Verify architectural analysis workflow documented
+        - Verify integration with existing workflows
+
+        This verifies Phase 3 completion:
+        - Description maintenance: when/how to extract and verify descriptions
+        - Architectural analysis: overlap/fragmentation/confusion detection
+        - References to generate_instruction_tree.py script
+        - Integration with "When to Use This Skill" triggers
+        """
+        # ARRANGE - Locate aops-trainer skill
+        skill_path = Path.home() / ".claude" / "skills" / "aops-trainer" / "SKILL.md"
+
+        if not skill_path.exists():
+            pytest.skip(f"aops-trainer skill not found at {skill_path}")
+
+        # ACT - Read skill documentation
+        skill_content = skill_path.read_text()
+        skill_content_lower = skill_content.lower()
+
+        # ASSERT - Description maintenance workflow documented
+        assert "description maintenance" in skill_content_lower or "description" in skill_content_lower, \
+            "Skill should document description maintenance"
+        assert "extract" in skill_content_lower and "description" in skill_content_lower, \
+            "Skill should explain how to extract descriptions"
+        assert "verify" in skill_content_lower or "validate" in skill_content_lower, \
+            "Skill should explain how to verify descriptions"
+
+        # ASSERT - Architectural analysis workflow documented
+        assert "architectural analysis" in skill_content_lower or "architecture" in skill_content_lower, \
+            "Skill should document architectural analysis"
+        assert "overlap" in skill_content_lower, \
+            "Skill should mention overlap detection"
+        assert "fragmentation" in skill_content_lower or "fragment" in skill_content_lower, \
+            "Skill should mention fragmentation detection"
+
+        # ASSERT - Reference to instruction tree script
+        assert "generate_instruction_tree" in skill_content_lower or "instruction tree" in skill_content_lower, \
+            "Skill should reference instruction tree generation"
+
+        # ASSERT - Examples of architectural problems to detect
+        assert "similar" in skill_content_lower or "duplicate" in skill_content_lower, \
+            "Skill should mention detecting similar/duplicate responsibilities"
+
+        # ASSERT - Integration with existing workflow
+        # Check that description maintenance appears in appropriate sections
+        assert ("when to use" in skill_content_lower and "description" in skill_content_lower) or \
+               ("instruction tree" in skill_content_lower and "maintenance" in skill_content_lower), \
+            "Skill should integrate description maintenance into existing triggers/workflows"

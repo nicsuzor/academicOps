@@ -491,6 +491,94 @@ Update README.md instruction tree documentation when:
 - New hooks added to `hooks/`
 - Components removed or renamed
 - After any structural changes to repository
+- **Component descriptions updated or missing**
+
+### Description Maintenance Workflow
+
+**When descriptions need updating**:
+
+- New component created without description in frontmatter
+- Existing component modified but description stale
+- Description vague or doesn't match actual behavior
+- After refactoring that changes component responsibilities
+
+**How to extract and verify descriptions**:
+
+1. **Check current state**: Run `python scripts/generate_instruction_tree.py` to see which components lack descriptions
+2. **Read component code**: Understand actual behavior and purpose
+3. **Add/update frontmatter**:
+   - Agents: Add `description:` field to YAML frontmatter in `agents/*.md`
+   - Skills: Add `description:` field to YAML frontmatter in `skills/*/SKILL.md`
+   - Commands: Add `description:` field to YAML frontmatter in `commands/*.md`
+   - Hooks: Update first line of module docstring in `hooks/*.py`
+4. **Validate extraction**: Run `python scripts/generate_instruction_tree.py` again to verify description appears
+5. **Verify accuracy**: Ensure description matches actual component behavior
+
+**Description quality criteria**:
+
+- **Concise**: One sentence, 10-20 words
+- **Specific**: What does it DO, not general platitudes
+- **Accurate**: Matches current behavior, not aspirational
+- **Unique**: Distinguishable from other components (if similar descriptions → architectural smell)
+
+**Reference**: The `scripts/generate_instruction_tree.py` script automatically extracts descriptions from:
+- YAML frontmatter `description:` field (agents, skills, commands)
+- Python module docstring first line (hooks)
+
+### Architectural Analysis Using Descriptions
+
+**Purpose**: Use component descriptions to identify architectural problems that manifest as description similarities.
+
+**Overlap detection** - Components with similar descriptions:
+
+- **Symptom**: Multiple components have nearly identical description keywords
+- **Example**: Three skills all described as "workflow automation" or "task management"
+- **Problem**: Unclear boundaries, duplicate functionality, user confusion about which to use
+- **Action**: Propose consolidation or clearer differentiation
+
+**Fragmentation detection** - Related functionality split across components:
+
+- **Symptom**: Descriptions that are complementary halves of same workflow
+- **Example**: "Creates tasks" (one component) + "Updates task status" (another) + "Archives tasks" (third)
+- **Problem**: Related functionality scattered, forces users to learn multiple components
+- **Action**: Evaluate whether consolidation into single workflow makes sense
+
+**Confusion detection** - Vague or overlapping responsibilities:
+
+- **Symptom**: Descriptions using vague terms like "manages", "handles", "processes"
+- **Example**: "Manages agent configurations" overlaps with "Handles agent settings"
+- **Problem**: Unclear which component owns what, leads to missed responsibilities
+- **Action**: Sharpen descriptions OR clarify actual responsibilities via refactoring
+
+**Workflow for architectural analysis**:
+
+1. **Generate descriptions**: Run `python scripts/generate_instruction_tree.py` and review README.md
+2. **Identify patterns**: Look for keyword clusters (grep for "manage", "workflow", "task", etc.)
+3. **Flag similarities**: Note any 3+ components with similar description terms
+4. **Investigate root cause**: Read component code to understand actual vs described behavior
+5. **Document findings**: Create GitHub issue with evidence of overlap/fragmentation/confusion
+6. **Propose solution**: Consolidate, differentiate, or refactor as appropriate
+
+**Examples of architectural problems to catch**:
+
+```markdown
+❌ OVERLAP DETECTED:
+- skill-creator: "Guide for creating effective skills"
+- skill-maintenance: "Ongoing skill maintenance and evolution"
+- aops-trainer: "Reviewing and improving skills"
+→ All three mention "skills" - are responsibilities clear?
+
+❌ FRAGMENTATION DETECTED:
+- email-fetch: "Fetches emails from Outlook"
+- email-parse: "Extracts tasks from email content"
+- email-archive: "Archives processed emails"
+→ Three skills for email workflow - should be one?
+
+❌ CONFUSION DETECTED:
+- agent-config: "Manages agent configurations"
+- settings-handler: "Handles framework settings"
+→ What's difference between "manage" and "handle"? Between "agent configurations" and "framework settings"?
+```
 
 ### Maintenance Workflow
 
@@ -510,6 +598,7 @@ python scripts/generate_instruction_tree.py
 ```
 
 - Scans repository for all components
+- Extracts descriptions from frontmatter/docstrings
 - Generates updated markdown tree
 - Updates README.md between markers `<!-- INSTRUCTION_TREE_START -->` and `<!-- INSTRUCTION_TREE_END -->`
 
@@ -519,9 +608,15 @@ python scripts/generate_instruction_tree.py
 git diff README.md
 ```
 
-Verify generated tree accurately reflects repository structure.
+Verify generated tree accurately reflects repository structure and descriptions.
 
-**4. Commit**:
+**4. Architectural Review** (during regeneration):
+
+- Scan generated descriptions for similar keywords
+- Flag potential overlap/fragmentation/confusion
+- Create GitHub issues for architectural smells
+
+**5. Commit**:
 
 Use git-commit skill to validate and commit documentation update.
 
@@ -530,11 +625,13 @@ Use git-commit skill to validate and commit documentation update.
 When creating/updating components:
 
 1. Implement component (agent/skill/command/hook)
-2. Test component functionality
-3. **Regenerate instruction tree** (mandatory)
-4. Commit component + updated README together
+2. **Add description to frontmatter/docstring** (mandatory)
+3. Test component functionality
+4. **Regenerate instruction tree** (mandatory)
+5. **Review descriptions for architectural smells**
+6. Commit component + updated README together
 
-This ensures documentation never falls out of sync with code.
+This ensures documentation never falls out of sync with code, and architectural problems surface early.
 
 ## Framework Architecture Understanding
 
