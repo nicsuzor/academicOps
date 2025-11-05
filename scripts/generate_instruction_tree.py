@@ -110,6 +110,97 @@ def _parse_references(content: str) -> list[str]:
     return matches
 
 
+def generate_markdown_tree(components: dict[str, Any], repo_root: Path) -> str:
+    """Generate markdown documentation from scanned components.
+
+    Args:
+        components: Dictionary from scan_repository() with component data
+        repo_root: Path to repository root (for context)
+
+    Returns:
+        Formatted markdown string suitable for README.md insertion
+    """
+    lines = []
+
+    # Header
+    lines.append("## Instruction Tree")
+    lines.append("")
+    lines.append("This section is auto-generated from repository scan.")
+    lines.append(f"Last updated: {repo_root.name} repository")
+    lines.append("")
+
+    # Agents Section
+    agents = components.get('agents', [])
+    lines.append(f"### Agents ({len(agents)})")
+    lines.append("")
+    if agents:
+        lines.append("Specialized agent definitions loaded via slash commands or subagent invocation:")
+        lines.append("")
+        for agent in sorted(agents, key=lambda x: x['name']):
+            lines.append(f"- **{agent['name']}** (`{agent['path']}`)")
+        lines.append("")
+    else:
+        lines.append("No agents found.")
+        lines.append("")
+
+    # Skills Section
+    skills = components.get('skills', [])
+    lines.append(f"### Skills ({len(skills)})")
+    lines.append("")
+    if skills:
+        lines.append("Packaged workflows installed to `~/.claude/skills/`:")
+        lines.append("")
+        for skill in sorted(skills, key=lambda x: x['name']):
+            lines.append(f"- **{skill['name']}** (`{skill['path']}`)")
+        lines.append("")
+    else:
+        lines.append("No skills found.")
+        lines.append("")
+
+    # Commands Section
+    commands = components.get('commands', [])
+    lines.append(f"### Commands ({len(commands)})")
+    lines.append("")
+    if commands:
+        lines.append("Slash commands that load additional context:")
+        lines.append("")
+        for command in sorted(commands, key=lambda x: x['name']):
+            lines.append(f"- **/{command['name']}** (`{command['path']}`)")
+        lines.append("")
+    else:
+        lines.append("No commands found.")
+        lines.append("")
+
+    # Hooks Section
+    hooks = components.get('hooks', [])
+    lines.append(f"### Hooks ({len(hooks)})")
+    lines.append("")
+    if hooks:
+        lines.append("Validation and enforcement hooks:")
+        lines.append("")
+        for hook in sorted(hooks, key=lambda x: x['name']):
+            lines.append(f"- **{hook['name']}** (`{hook['path']}`)")
+        lines.append("")
+    else:
+        lines.append("No hooks found.")
+        lines.append("")
+
+    # Core Section
+    core = components.get('core', {})
+    if core:
+        lines.append("### Core Instructions")
+        lines.append("")
+        lines.append(f"- **File**: `{core.get('file', 'N/A')}`")
+        references = core.get('references', [])
+        if references:
+            lines.append(f"- **References**: {len(references)} chunks")
+            for ref in references:
+                lines.append(f"  - `{ref}`")
+        lines.append("")
+
+    return '\n'.join(lines)
+
+
 def main():
     """Main entry point for script."""
     parser = argparse.ArgumentParser(

@@ -83,3 +83,59 @@ class TestInstructionTreeGeneration:
         # ASSERT - Verify core discovered
         assert 'file' in components['core'], "Should have core file path"
         assert 'references' in components['core'], "Should parse @references from core/_CORE.md"
+
+    def test_markdown_generator_produces_readme_section(self, repo_root):
+        """
+        VALIDATES: Markdown generator creates formatted README section from scan results.
+
+        Test structure:
+        - Scan repository to get components
+        - Generate markdown section from components
+        - Verify markdown contains all component types
+        - Verify markdown is properly formatted
+        - Verify specific components listed
+
+        This verifies:
+        - generate_markdown_tree() produces valid markdown
+        - All component types appear in output
+        - Output includes counts and descriptions
+        - Format is README-compatible
+        """
+        # ARRANGE - Scan and import generator
+        import sys
+        from pathlib import Path
+
+        repo_scripts = repo_root / 'scripts'
+        if str(repo_scripts) not in sys.path:
+            sys.path.insert(0, str(repo_scripts))
+
+        from generate_instruction_tree import scan_repository, generate_markdown_tree
+
+        components = scan_repository(repo_root)
+
+        # ACT - Generate markdown
+        markdown = generate_markdown_tree(components, repo_root)
+
+        # ASSERT - Verify markdown structure
+        assert isinstance(markdown, str), "Should return string"
+        assert len(markdown) > 100, "Should have substantial content"
+
+        # ASSERT - Verify section headers present
+        assert '## Agents' in markdown or '### Agents' in markdown, "Should have Agents section"
+        assert '## Skills' in markdown or '### Skills' in markdown, "Should have Skills section"
+        assert '## Commands' in markdown or '### Commands' in markdown, "Should have Commands section"
+        assert '## Hooks' in markdown or '### Hooks' in markdown, "Should have Hooks section"
+
+        # ASSERT - Verify specific known components listed
+        assert 'DEVELOPER' in markdown, "Should list DEVELOPER agent"
+        assert 'test-writing' in markdown, "Should list test-writing skill"
+        assert 'dev' in markdown or '/dev' in markdown, "Should list dev command"
+        assert 'load_instructions' in markdown, "Should list load_instructions hook"
+
+        # ASSERT - Verify counts present
+        assert 'agent' in markdown.lower(), "Should mention agents"
+        assert 'skill' in markdown.lower(), "Should mention skills"
+        assert 'command' in markdown.lower(), "Should mention commands"
+
+        # ASSERT - Verify markdown formatting (lists or tables)
+        assert '-' in markdown or '|' in markdown, "Should use markdown list or table format"
