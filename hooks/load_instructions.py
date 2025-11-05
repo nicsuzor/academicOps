@@ -73,8 +73,12 @@ def get_tier_paths(filename: str) -> dict[str, Path | None]:
     else:
         paths["personal"] = None
 
-    # Project tier (OPTIONAL)
-    paths["project"] = Path.cwd() / "docs" / "bots" / filename
+    # Project tier (REQUIRED if docs/bots/ exists)
+    project_dir = Path.cwd() / "docs" / "bots"
+    if project_dir.exists():
+        paths["project"] = project_dir / filename
+    else:
+        paths["project"] = None
 
     return paths
 
@@ -284,6 +288,18 @@ def main():
         print(f"ERROR: Framework file not found: {paths['framework']}", file=sys.stderr)
         print(f"Searched at: {paths['framework']}", file=sys.stderr)
         print(f"ACADEMICOPS={os.environ.get('ACADEMICOPS', 'NOT SET')}", file=sys.stderr)
+        sys.exit(1)
+
+    # Project tier is REQUIRED if docs/bots/ exists
+    if paths["project"] is not None and "project" not in contents:
+        print(f"ERROR: docs/bots/ directory exists but {args.filename} not found", file=sys.stderr)
+        print(f"Searched at: {paths['project']}", file=sys.stderr)
+        print(f"", file=sys.stderr)
+        print(f"This usually means:", file=sys.stderr)
+        print(f"  1. File has wrong name (e.g., INSTRUCTIONS.md instead of {args.filename})", file=sys.stderr)
+        print(f"  2. File needs to be created in docs/bots/", file=sys.stderr)
+        print(f"", file=sys.stderr)
+        print(f"Fix: Rename existing file or create {args.filename} in docs/bots/", file=sys.stderr)
         sys.exit(1)
 
     # Prepare output data for logging
