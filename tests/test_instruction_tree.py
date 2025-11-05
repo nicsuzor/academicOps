@@ -896,3 +896,79 @@ This is the conclusion.
         # Dependencies should appear inline in compact format
         assert 'MATPLOTLIB' in analyst_line or 'matplotlib' in analyst_line.lower(), \
             "Compact format should show dependencies inline"
+
+    def test_compact_format_includes_instruction_flow_tree(self, repo_root):
+        """
+        VALIDATES: Compact format includes instruction flow tree showing file dependencies.
+
+        Test structure:
+        - Scan repository to get components
+        - Generate compact markdown with instruction flow
+        - Verify "### Instruction Flow" section exists
+        - Verify tree format with └─ and ├─ symbols
+        - Verify SessionStart section shows core/_CORE.md dependencies
+        - Verify /dev command section shows loaded files
+        - Verify skill sections show their dependencies
+
+        This verifies:
+        - Instruction Flow section appears in compact format
+        - Tree visualization uses proper Unicode box drawing characters
+        - Dependencies grouped by loading context (SessionStart, commands, skills)
+        - Clear hierarchy showing file relationships
+        """
+        # ARRANGE - Import functions
+        import sys
+        from pathlib import Path
+
+        repo_scripts = repo_root / 'scripts'
+        if str(repo_scripts) not in sys.path:
+            sys.path.insert(0, str(repo_scripts))
+
+        from generate_instruction_tree import scan_repository, generate_markdown_tree
+
+        components = scan_repository(repo_root)
+
+        # ACT - Generate compact markdown (should include instruction flow)
+        markdown = generate_markdown_tree(components, repo_root, compact=True)
+
+        # ASSERT - Instruction Flow section exists
+        assert '### Instruction Flow' in markdown or '## Instruction Flow' in markdown, \
+            "Compact format should include Instruction Flow section"
+
+        # ASSERT - Find instruction flow section
+        if '### Instruction Flow' in markdown:
+            flow_start = markdown.index('### Instruction Flow')
+        else:
+            flow_start = markdown.index('## Instruction Flow')
+
+        flow_section = markdown[flow_start:]
+
+        # ASSERT - Tree format with Unicode box drawing characters
+        assert '└─' in flow_section or '├─' in flow_section, \
+            "Instruction flow should use tree visualization characters"
+
+        # ASSERT - SessionStart section showing core/_CORE.md
+        assert 'SessionStart' in flow_section or 'session start' in flow_section.lower(), \
+            "Should show SessionStart instruction loading"
+        assert '_CORE.md' in flow_section, \
+            "Should show core/_CORE.md loaded at SessionStart"
+
+        # ASSERT - core/_CORE.md shows its chunk dependencies
+        assert 'AXIOMS.md' in flow_section, \
+            "Should show AXIOMS.md as dependency of _CORE.md"
+        assert 'INFRASTRUCTURE.md' in flow_section, \
+            "Should show INFRASTRUCTURE.md as dependency of _CORE.md"
+        assert 'AGENT-BEHAVIOR.md' in flow_section, \
+            "Should show AGENT-BEHAVIOR.md as dependency of _CORE.md"
+
+        # ASSERT - /dev command shows loaded instructions
+        assert '/dev' in flow_section or 'dev command' in flow_section.lower(), \
+            "Should show /dev command instruction loading"
+        assert 'DEVELOPMENT.md' in flow_section or 'TESTING.md' in flow_section, \
+            "Should show instruction files loaded by /dev command"
+
+        # ASSERT - Skills section shows dependencies
+        assert 'analyst' in flow_section.lower(), \
+            "Should show analyst skill dependencies"
+        assert 'MATPLOTLIB' in flow_section or 'matplotlib' in flow_section.lower(), \
+            "Should show MATPLOTLIB.md dependency for analyst skill"

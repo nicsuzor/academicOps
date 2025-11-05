@@ -278,6 +278,75 @@ def _build_reverse_index(components: dict[str, Any]) -> dict[str, list[str]]:
     return reverse_index
 
 
+def _generate_instruction_flow_tree(components: dict[str, Any]) -> str:
+    """Generate instruction flow tree showing file dependencies.
+
+    Args:
+        components: Dictionary from scan_repository() with component data
+
+    Returns:
+        Markdown string with tree visualization of instruction dependencies
+    """
+    lines = []
+
+    lines.append("### Instruction Flow")
+    lines.append("")
+
+    # SessionStart section - core/_CORE.md and its @references
+    core = components.get('core', {})
+    if core:
+        lines.append("**SessionStart (all agents)**")
+        core_file = core.get('file', '')
+        if core_file:
+            lines.append(f"└─ {core_file}")
+
+            # Show @references from _CORE.md
+            references = core.get('references', [])
+            for i, ref in enumerate(references):
+                is_last = (i == len(references) - 1)
+                prefix = "   └─" if is_last else "   ├─"
+                lines.append(f"{prefix} {ref}")
+
+        lines.append("")
+
+    # Commands section - show load_instructions.py dependencies
+    commands = components.get('commands', [])
+    commands_with_deps = [c for c in commands if c.get('dependencies')]
+    if commands_with_deps:
+        for command in commands_with_deps:
+            command_name = f"/{command['name']} command"
+            lines.append(f"**{command_name}** (3-tier)")
+            dependencies = command.get('dependencies', [])
+
+            for i, dep in enumerate(dependencies):
+                is_last = (i == len(dependencies) - 1)
+                prefix = "└─" if is_last else "├─"
+                lines.append(f"{prefix} {dep}")
+
+            lines.append("")
+
+    # Skills section - show symlink dependencies
+    skills = components.get('skills', [])
+    skills_with_deps = [s for s in skills if s.get('dependencies')]
+    if skills_with_deps:
+        lines.append("**Skills**")
+
+        for i, skill in enumerate(skills_with_deps):
+            skill_name = skill['name']
+            dependencies = skill.get('dependencies', [])
+            is_last_skill = (i == len(skills_with_deps) - 1)
+
+            # Get just filenames (not full paths)
+            dep_names = [Path(d).name for d in dependencies]
+
+            skill_prefix = "└─" if is_last_skill else "├─"
+            lines.append(f"{skill_prefix} {skill_name} → {', '.join(dep_names)}")
+
+        lines.append("")
+
+    return '\n'.join(lines)
+
+
 def _truncate_description(description: str, max_words: int = 10) -> str:
     """Truncate description to first clause or max_words.
 
@@ -455,6 +524,11 @@ def generate_markdown_tree(components: dict[str, Any], repo_root: Path, compact:
     else:
         lines.append("No hooks found.")
         lines.append("")
+
+    # Instruction Flow section (compact format only)
+    if compact:
+        instruction_flow = _generate_instruction_flow_tree(components)
+        lines.append(instruction_flow)
 
     # Core Section
     core = components.get('core', {})
