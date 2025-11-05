@@ -57,6 +57,92 @@ $ACADEMICOPS/                  # Framework repository (this repo)
 └── tests/                     # Integration tests (including chunks loading tests)
 ```
 
+<!-- INSTRUCTION_TREE_START -->
+## Instruction Tree
+
+This section is auto-generated from repository scan.
+Last updated: bot repository
+
+### Agents (7)
+
+Specialized agent definitions loaded via slash commands or subagent invocation:
+
+- **ANALYST** (`agents/ANALYST.md`)
+- **DEVELOPER** (`agents/DEVELOPER.md`)
+- **STRATEGIST** (`agents/STRATEGIST.md`)
+- **SUPERVISOR** (`agents/SUPERVISOR.md`)
+- **end-of-session** (`agents/end-of-session.md`)
+- **scribe** (`agents/scribe.md`)
+- **task-manager** (`agents/task-manager.md`)
+
+### Skills (19)
+
+Packaged workflows installed to `~/.claude/skills/`:
+
+- **agent-initialization** (`skills/agent-initialization`)
+- **analyst** (`skills/analyst`)
+- **aops-bug** (`skills/aops-bug`)
+- **aops-trainer** (`skills/aops-trainer`)
+- **archiver** (`skills/archiver`)
+- **claude-hooks** (`skills/claude-hooks`)
+- **claude-md-maintenance** (`skills/claude-md-maintenance`)
+- **document-skills** (`skills/document-skills`)
+- **email** (`skills/email`)
+- **git-commit** (`skills/git-commit`)
+- **github-issue** (`skills/github-issue`)
+- **no-throwaway-code** (`skills/no-throwaway-code`)
+- **pdf** (`skills/pdf`)
+- **scribe** (`skills/scribe`)
+- **skill-creator** (`skills/skill-creator`)
+- **skill-maintenance** (`skills/skill-maintenance`)
+- **strategic-partner** (`skills/strategic-partner`)
+- **tasks** (`skills/tasks`)
+- **test-writing** (`skills/test-writing`)
+
+### Commands (8)
+
+Slash commands that load additional context:
+
+- **/STRATEGIST** (`commands/STRATEGIST.md`)
+- **/analyst** (`commands/analyst.md`)
+- **/dev** (`commands/dev.md`)
+- **/email** (`commands/email.md`)
+- **/error** (`commands/error.md`)
+- **/log-failure** (`commands/log-failure.md`)
+- **/ops** (`commands/ops.md`)
+- **/trainer** (`commands/trainer.md`)
+
+### Hooks (16)
+
+Validation and enforcement hooks:
+
+- **autocommit_tasks** (`hooks/autocommit_tasks.py`)
+- **hook_debug** (`hooks/hook_debug.py`)
+- **hook_models** (`hooks/hook_models.py`)
+- **load_instructions** (`hooks/load_instructions.py`)
+- **log_notification** (`hooks/log_notification.py`)
+- **log_posttooluse** (`hooks/log_posttooluse.py`)
+- **log_precompact** (`hooks/log_precompact.py`)
+- **log_session_stop** (`hooks/log_session_stop.py`)
+- **log_sessionend** (`hooks/log_sessionend.py`)
+- **log_subagentstop** (`hooks/log_subagentstop.py`)
+- **log_todowrite** (`hooks/log_todowrite.py`)
+- **log_userpromptsubmit** (`hooks/log_userpromptsubmit.py`)
+- **request_scribe_stop** (`hooks/request_scribe_stop.py`)
+- **stack_instructions** (`hooks/stack_instructions.py`)
+- **validate_stop** (`hooks/validate_stop.py`)
+- **validate_tool** (`hooks/validate_tool.py`)
+
+### Core Instructions
+
+- **File**: `core/_CORE.md`
+- **References**: 3 chunks
+  - `../chunks/AXIOMS.md`
+  - `../chunks/INFRASTRUCTURE.md`
+  - `../chunks/AGENT-BEHAVIOR.md`
+
+<!-- INSTRUCTION_TREE_END -->
+
 ## Context Architecture: Modular Chunks
 
 **Problem**: Skills don't receive SessionStart hooks, so they lack framework context.
