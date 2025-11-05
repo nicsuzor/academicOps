@@ -619,3 +619,65 @@ This is the conclusion.
         assert 'TESTING.md' in dependencies, "Should find TESTING.md in load_instructions calls"
         assert 'DEBUGGING.md' in dependencies, "Should find DEBUGGING.md in load_instructions calls"
         assert 'STYLE.md' in dependencies, "Should find STYLE.md in load_instructions calls"
+
+    def test_markdown_displays_component_dependencies(self, repo_root):
+        """
+        VALIDATES: Markdown generator displays instruction dependencies under each component.
+
+        Test structure:
+        - Scan repository to get components with dependencies
+        - Generate markdown section
+        - Verify dependencies appear under component descriptions
+        - Test format: "Loads: file1, file2, file3"
+
+        This verifies:
+        - Skills with symlink dependencies show "Resources: ..." or "References: ..."
+        - Commands with load_instructions.py show "Loads: FILENAME.md (3-tier)"
+        - Dependencies appear immediately after component description
+        - Format is clear and readable
+        """
+        # ARRANGE - Scan and generate markdown
+        import sys
+        from pathlib import Path
+
+        repo_scripts = repo_root / 'scripts'
+        if str(repo_scripts) not in sys.path:
+            sys.path.insert(0, str(repo_scripts))
+
+        from generate_instruction_tree import scan_repository, generate_markdown_tree
+
+        components = scan_repository(repo_root)
+        markdown = generate_markdown_tree(components, repo_root)
+
+        # ASSERT - analyst skill shows its dependencies
+        # Should see: - **analyst** - description
+        #              - Dependencies: docs/_CHUNKS/MATPLOTLIB.md, docs/_CHUNKS/STATSMODELS.md, ...
+        assert '**analyst**' in markdown, "Should list analyst skill"
+        analyst_section = markdown[markdown.index('**analyst**'):markdown.index('**analyst**') + 500]
+        assert 'Dependencies:' in analyst_section or 'Loads:' in analyst_section, \
+            "Analyst skill should show dependencies"
+        assert 'MATPLOTLIB' in analyst_section or 'matplotlib' in analyst_section.lower(), \
+            "Should mention MATPLOTLIB dependency"
+
+        # ASSERT - git-commit skill shows its dependencies
+        assert '**git-commit**' in markdown, "Should list git-commit skill"
+        git_commit_section = markdown[markdown.index('**git-commit**'):markdown.index('**git-commit**') + 500]
+        assert 'Dependencies:' in git_commit_section or 'Loads:' in git_commit_section, \
+            "git-commit skill should show dependencies"
+        assert 'FAIL-FAST' in git_commit_section or 'fail-fast' in git_commit_section.lower(), \
+            "Should mention FAIL-FAST dependency"
+
+        # ASSERT - /dev command shows its load_instructions.py dependencies
+        assert '**/dev**' in markdown or '**dev**' in markdown, "Should list dev command"
+        # Find dev command (with or without /)
+        if '**/dev**' in markdown:
+            dev_section_start = markdown.index('**/dev**')
+        else:
+            dev_section_start = markdown.index('**dev**')
+        dev_section = markdown[dev_section_start:dev_section_start + 500]
+        assert 'Loads:' in dev_section or 'Dependencies:' in dev_section, \
+            "dev command should show loaded instructions"
+        assert 'DEVELOPMENT.md' in dev_section or 'TESTING.md' in dev_section, \
+            "Should mention loaded instruction files"
+        assert '3-tier' in dev_section or 'framework' in dev_section or 'personal' in dev_section or 'project' in dev_section, \
+            "Should indicate 3-tier loading pattern"

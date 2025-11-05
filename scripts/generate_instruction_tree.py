@@ -260,6 +260,13 @@ def generate_markdown_tree(components: dict[str, Any], repo_root: Path) -> str:
                 lines.append(f"- **{skill['name']}** - {description} (`{skill['path']}`)")
             else:
                 lines.append(f"- **{skill['name']}** (`{skill['path']}`)")
+
+            # Show dependencies if present
+            dependencies = skill.get('dependencies', [])
+            if dependencies:
+                dep_names = [Path(d).name for d in dependencies]
+                lines.append(f"  - Dependencies: {', '.join(dep_names)}")
+
         lines.append("")
     else:
         lines.append("No skills found.")
@@ -278,6 +285,12 @@ def generate_markdown_tree(components: dict[str, Any], repo_root: Path) -> str:
                 lines.append(f"- **/{command['name']}** - {description} (`{command['path']}`)")
             else:
                 lines.append(f"- **/{command['name']}** (`{command['path']}`)")
+
+            # Show dependencies (load_instructions.py calls) if present
+            dependencies = command.get('dependencies', [])
+            if dependencies:
+                lines.append(f"  - Loads: {', '.join(dependencies)} (3-tier: framework → personal → project)")
+
         lines.append("")
     else:
         lines.append("No commands found.")
