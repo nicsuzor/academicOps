@@ -47,15 +47,31 @@ skills/*/resources/            # Symlinks to chunks/ for skills
 
 ### Environment Variables
 
+**Recommended deployment** (framework as submodule):
+
 ```bash
-export ACADEMICOPS=/path/to/academicOps          # Required
-export ACADEMICOPS_PERSONAL=/path/to/personal    # Optional
+# In ~/.zshrc
+export ACADEMICOPS="$HOME/src/writing/aops"              # Framework (submodule)
+export ACADEMICOPS_PERSONAL="$HOME/src/writing/bots"     # Personal overrides
+```
+
+**Alternative deployment** (framework standalone):
+
+```bash
+export ACADEMICOPS=/path/to/academicOps          # Framework repo
+export ACADEMICOPS_PERSONAL=/path/to/personal    # Personal overrides
 ```
 
 Available to all agents and skills. Used for:
 - Path resolution (`$ACADEMICOPS/commands/trainer.md`)
 - Three-tier loading (framework → personal → project)
 - Hook invocation
+
+**Submodule benefits**:
+- Single Basic Memory project indexes framework + personal content
+- WikiLinks work across repos: `[[aops/concepts/fail-fast]]`
+- Unified search
+- Framework versioned with personal repo
 
 ---
 
