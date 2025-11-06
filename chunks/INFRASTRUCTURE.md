@@ -44,9 +44,30 @@ SessionStart hook auto-loads instructions from three tiers:
 
 **NOTE**: Skills do NOT receive SessionStart hooks. Skills access framework context via `@resources/` symlinks only.
 
+## Knowledge Organization (bmem)
+
+**basic-memory** (internal ref: `bmem`) provides vector search and relational mapping:
+
+- **MCP Server**: `mcp__basic-memory__*` tools (read_note, write_note, search_notes, open_entities, create_relation)
+- **Projects**:
+  - `aops`: Framework repository ($ACADEMICOPS)
+  - `ns`: Personal repository ($ACADEMICOPS_PERSONAL)
+- **Storage**: Markdown files with YAML frontmatter + SQLite graph
+- **Access Pattern**: Just-in-time concept loading via vector search
+
+**Directory Conventions**:
+```
+$ACADEMICOPS_PERSONAL/
+├── concepts/              # Concept nodes (core/patterns/workflows)
+└── data/tasks_md/         # Task files (inbox/queue/archived)
+```
+
+See: Issue #193 for integration architecture and migration status.
+
 ## How Projects Use This Framework
 
 - Projects reference via `$ACADEMICOPS` environment variable
 - Specialized agents invoked via slash commands (`/trainer`, `/analyst`, `/dev`, etc.)
 - Hooks run automatically to validate tool use and load context
 - Skills provide reusable, portable workflows across projects
+- bmem enables vector search and relational context across repositories

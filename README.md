@@ -88,6 +88,32 @@ chunks/FILE.md (single source)
 
 **Source**: `ARCHITECTURE.md`, `tests/test_chunks_loading.py`
 
+### 6. Knowledge Organization (bmem)
+
+**Vector search + relational mapping for documentation and tasks**
+
+**basic-memory** (internal ref: `bmem`) provides:
+- Just-in-time concept loading via vector search (<2s)
+- Relational mapping between concepts
+- Task management with markdown + YAML frontmatter
+- Cross-repository context building
+
+**Integration**:
+- MCP server: `mcp__basic-memory__*` tools
+- Projects: `aops` ($ACADEMICOPS), `ns` ($ACADEMICOPS_PERSONAL)
+- Storage: Markdown files + SQLite graph
+- Access pattern: Search → load relevant concepts only
+
+**Benefits**:
+- Reduced SessionStart token cost (load on-demand vs load-all)
+- Documentation discoverability via vector search
+- Learning loops (agents update concepts from experiment outcomes)
+- Unified knowledge graph across framework + personal repos
+
+**Status**: Integration in progress (Issue #193)
+
+**Source**: `chunks/INFRASTRUCTURE.md`, Issue #193
+
 ---
 
 ## Repository Structure (Specification)
