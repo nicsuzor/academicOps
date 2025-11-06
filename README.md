@@ -116,201 +116,148 @@ chunks/FILE.md (single source)
 
 ---
 
-## Repository Structure (Specification)
+## Components & Capabilities
+
+Quick reference for what tools to use for what tasks. See ARCHITECTURE.md for technical specifications.
+
+### Core Instructions (Auto-loaded)
 
 ```
-$ACADEMICOPS/                  # This repository (PUBLIC framework)
-├── chunks/                    # Shared context modules (DRY single sources)
-│   ├── AXIOMS.md             # Universal principles (97 lines)
-│   ├── INFRASTRUCTURE.md     # Framework paths, env vars (52 lines)
-│   ├── AGENT-BEHAVIOR.md     # Conversational rules (26 lines)
-│   └── SKILL-PRIMER.md       # Skill execution context (19 lines)
-│
-├── core/                      # Auto-loaded at SessionStart
-│   ├── _CORE.md              # References chunks/
-│   ├── DEVELOPMENT.md        # Development standards
-│   ├── TESTING.md            # Testing requirements
-│   ├── DEBUGGING.md          # Debugging workflow
-│   └── STYLE.md              # Writing style guide
-│
-├── agents/                    # Subagent definitions (<500 lines each)
-│   ├── ANALYST.md
-│   ├── DEVELOPER.md
-│   ├── STRATEGIST.md
-│   ├── SUPERVISOR.md
-│   ├── scribe.md
-│   ├── task-manager.md
-│   └── end-of-session.md
-│
-├── commands/                  # Slash command definitions
-│   ├── analyst.md            # /analyst
-│   ├── dev.md                # /dev
-│   ├── email.md              # /email
-│   ├── error.md              # /error
-│   ├── log-failure.md        # /log-failure
-│   ├── ops.md                # /ops
-│   ├── STRATEGIST.md         # /STRATEGIST
-│   └── trainer.md            # /trainer
-│
-├── hooks/                     # Runtime behavior enforcement
-│   ├── load_instructions.py      # SessionStart: Load 3-tier context
-│   ├── validate_tool.py          # PreToolUse: Check permissions
-│   ├── validate_stop.py          # Stop: Validate completion
-│   ├── stack_instructions.py     # PostToolUse: Conditional loading
-│   └── log_*.py, autocommit_tasks.py, request_scribe_stop.py
-│
-├── skills/                    # Packaged skills (installed to ~/.claude/skills/)
-│   ├── [skill-name]/
-│   │   ├── SKILL.md          # <300 lines, YAML frontmatter
-│   │   ├── resources/        # MANDATORY symlinks
-│   │   │   ├── SKILL-PRIMER.md → ../../chunks/SKILL-PRIMER.md
-│   │   │   ├── AXIOMS.md → ../../chunks/AXIOMS.md
-│   │   │   └── INFRASTRUCTURE.md → ../../chunks/INFRASTRUCTURE.md  # Framework-touching only
-│   │   ├── scripts/          # Executable code (Python/Bash)
-│   │   ├── references/       # Documentation (loaded as needed)
-│   │   └── assets/           # Output files (templates, boilerplate)
-│   │
-│   ├── Framework skills (8):
-│   │   agent-initialization, aops-bug, aops-trainer,
-│   │   claude-hooks, claude-md-maintenance, skill-creator,
-│   │   skill-maintenance, document-skills
-│   │
-│   ├── Development skills (4):
-│   │   git-commit, github-issue, test-writing, no-throwaway-code
-│   │
-│   └── Utility skills (8):
-│       analyst, archiver, email, pdf, scribe,
-│       strategic-partner, tasks, tja-research
-│
-├── docs/                      # Framework documentation
-│   ├── bots/                 # Agent development context
-│   │   ├── BEST-PRACTICES.md      # Evidence-based guidance
-│   │   ├── skills-inventory.md    # Skill catalog
-│   │   ├── skill-invocation-guide.md
-│   │   ├── delegation-architecture.md
-│   │   └── INDEX.md
-│   │
-│   ├── _CHUNKS/              # Domain-specific documentation
-│   │   ├── HYDRA.md, PYTHON-DEV.md, DBT.md
-│   │   ├── SEABORN.md, STATSMODELS.md, STREAMLIT.md
-│   │   └── E2E-TESTING.md, FAIL-FAST.md, GIT-WORKFLOW.md
-│   │
-│   ├── methodologies/
-│   ├── _UNUSED/              # Archived legacy docs
-│   ├── AUDIT.md              # Current state vs desired state
-│   ├── INSTRUCTION-INDEX.md  # Complete file registry
-│   ├── TESTING.md, DEPLOYMENT.md, hooks_guide.md
-│   └── CLAUDE_MD_GUIDE.md
-│
-├── experiments/               # Experiment logs (YYYY-MM-DD_name.md)
-├── scripts/                   # Automation tools
-│   ├── generate_instruction_tree.py
-│   ├── validate_instruction_tree.py
-│   └── setup_academicops.sh
-│
-├── tests/                     # Integration & unit tests
-│   └── test_chunks_loading.py
-│
-├── config/                    # Client configurations
-│   ├── mcp.json
-│   └── settings.json
-│
-├── ARCHITECTURE.md            # System design documentation
-├── CLAUDE.md                  # Project instructions (auto-loaded)
-├── LICENSE                    # Apache 2.0
-└── README.md                  # This file (authoritative specification)
+core/
+├── _CORE.md              # References chunks/ - Universal axioms
+├── DEVELOPMENT.md        # Development standards
+├── TESTING.md            # Testing requirements
+├── DEBUGGING.md          # Debugging workflow
+└── STYLE.md              # Writing style guide
+
+chunks/                   # Shared context modules (symlinked to skills)
+├── AXIOMS.md             # Universal principles (fail-fast, DRY, experiment-driven)
+├── INFRASTRUCTURE.md     # Framework paths, env vars, bmem integration
+├── AGENT-BEHAVIOR.md     # Conversational rules
+└── SKILL-PRIMER.md       # Skill execution context
 ```
 
+### Agents (Specialized Workflows)
+
+Invoke via Task tool or slash commands. Load specific instructions + orchestrate skills.
+
+```
+agents/
+├── ANALYST.md            # Data analysis, experimental evaluation with academic rigor
+├── DEVELOPER.md          # Code writing, refactoring, testing, debugging
+├── STRATEGIST.md         # Strategic planning, task review, context navigation
+├── SUPERVISOR.md         # Multi-agent workflow orchestration with quality gates
+├── scribe.md             # Silent task/context extraction from conversations
+├── task-manager.md       # EXPERIMENTAL: Email-to-task extraction
+└── end-of-session.md     # Automated commit + accomplishment capture
+```
+
+### Slash Commands (User Shortcuts)
+
+Quick invocations that load workflows. Type `/command` to activate.
+
+```
+commands/
+├── /analyst              # Load analyst skill for data analysis (dbt & Streamlit)
+├── /dev                  # Load development workflow and coding standards
+├── /email                # Check email, update task DB, present digest
+├── /error                # Quick experiment outcome logging
+├── /log-failure          # Log agent performance failure
+├── /ops                  # academicOps framework help
+├── /STRATEGIST           # Strategic facilitation with silent context capture
+└── /trainer              # Activate agent trainer mode
+```
+
+### Skills (Reusable Expertise)
+
+Installed to `~/.claude/skills/`. Invoked by agents or directly.
+
+**Framework Skills** (academicOps-specific):
+```
+├── agent-initialization  # Workspace setup, skill index generation
+├── aops-bug              # Bug tracking, experiment logs, architecture drift
+├── aops-trainer          # Agent optimization, anti-bloat enforcement
+├── claude-hooks          # Hook creation, configuration, debugging
+├── claude-md-maintenance # CLAUDE.md refactoring, @reference enforcement
+├── skill-creator         # Create/maintain skills with anti-bloat principles
+└── skill-maintenance     # Audit/update skills to current framework patterns
+```
+
+**Development Skills**:
+```
+├── git-commit            # Validated commits with quality gates
+├── github-issue          # Exhaustive issue search, documentation, lifecycle
+├── test-writing          # TDD with integration tests, real configs/data
+└── no-throwaway-code     # Intervention: nudge toward reusable solutions
+```
+
+**Utility Skills**:
+```
+├── analyst               # Academic research data analysis (dbt + Streamlit)
+├── archiver              # Archive experiments to Jupyter notebooks with HTML
+├── email                 # Outlook MCP integration, triage, signal detection
+├── markdown-ops          # Enforce academicOps + bmem markdown structure
+├── pdf                   # Convert markdown → professional PDFs
+├── scribe                # Silent knowledge base maintenance
+├── strategic-partner     # Strategic facilitation, thinking partnership
+├── tasks                 # Task management operations (create, view, update, archive)
+└── tja-research          # TJA research methodology tracing
+```
+
+### Hooks (Runtime Enforcement)
+
+Automated checks at key moments. Configured in `.claude/settings.json`.
+
+```
+hooks/
+├── load_instructions.py      # SessionStart: Load 3-tier context hierarchy
+├── validate_tool.py          # PreToolUse: Check permissions before tool execution
+├── validate_stop.py          # Stop: Validate workflow completion
+├── stack_instructions.py     # PostToolUse: Conditional loading on file reads
+├── autocommit_tasks.py       # PostToolUse: Auto-commit task DB changes
+└── log_*.py                  # Various: Debug logging and state tracking
+```
+
+### Documentation
+
+```
+docs/
+├── bots/                     # Agent development context (SessionStart loaded)
+│   ├── BEST-PRACTICES.md     # Evidence-based guidance (Anthropic + experiments)
+│   ├── skills-inventory.md   # Skill catalog with invocation guide
+│   └── INDEX.md              # Navigation to all framework docs
+│
+├── _CHUNKS/                  # Domain-specific documentation
+│   ├── HYDRA.md, PYTHON-DEV.md, DBT.md
+│   ├── SEABORN.md, STATSMODELS.md, STREAMLIT.md
+│   └── E2E-TESTING.md, FAIL-FAST.md, GIT-WORKFLOW.md
+│
+├── AUDIT.md                  # Current state vs desired state
+└── INSTRUCTION-INDEX.md      # Complete file registry (SHOWN vs REFERENCED)
+```
+
+### Quick Reference: Which Tool When
+
+| Task | Use This |
+|------|----------|
+| Extract tasks from conversation | **scribe** skill (auto-invoke proactively) |
+| Commit code changes | **git-commit** skill |
+| Data analysis (dbt/Streamlit) | **analyst** agent (via `/analyst`) |
+| Write/refactor/debug code | **dev** agent (via `/dev`) |
+| Strategic planning | **STRATEGIST** agent (via `/STRATEGIST`) |
+| Check/process email | **email** skill (via `/email`) |
+| Create/update tasks | **tasks** skill |
+| Generate PDFs | **pdf** skill |
+| Multi-step complex workflows | **supervisor** agent |
+| Track framework bugs | **aops-bug** skill |
+| Optimize agents/skills | **aops-trainer** skill (via `/trainer`) |
+| Convert markdown to PDF | **pdf** skill |
+| Archive experiments | **archiver** skill |
+| Work with GitHub issues | **github-issue** skill |
+| Write tests | **test-writing** skill |
+| Knowledge organization (bmem) | Use bmem MCP tools (search, write, read notes) |
+
 ---
-
-## Component Specifications
-
-### Agents
-
-**Purpose**: Orchestrate skills, provide agent-specific authority
-
-**Requirements**:
-- YAML frontmatter with `name`, `description`
-- <500 lines total (architectural bloat if exceeded)
-- Light on procedural detail (reference skills instead)
-- MANDATORY skill invocation as first step
-- Load via Task tool or slash commands
-
-**Anti-pattern**: Duplicating skill workflows inline
-
-### Skills
-
-**Purpose**: Reusable workflows, domain expertise, tool integrations
-
-**Requirements**:
-- YAML frontmatter: `name`, `description`, `license`, `permalink`
-- SKILL.md <300 lines
-- **MANDATORY**: `resources/` directory with symlinks:
-  - ALL skills: SKILL-PRIMER.md, AXIOMS.md
-  - Framework-touching: + INFRASTRUCTURE.md
-- Framework Context section at top (references @resources/)
-- Optional: `scripts/`, `references/`, `assets/`
-- Imperative/infinitive writing style
-- Passes `scripts/package_skill.py` validation
-
-**Framework-touching skills**: Read/write framework files, need $ACADEMICOPS paths
-- Examples: aops-trainer, skill-creator, claude-hooks
-
-**Non-framework skills**: General utilities
-- Examples: pdf, archiver, strategic-partner
-
-### Slash Commands
-
-**Purpose**: User-facing shortcuts to load workflows
-
-**Requirements**:
-- YAML frontmatter with `description`
-- **MANDATORY skill-first pattern**:
-  ```markdown
-  **MANDATORY FIRST STEP**: Invoke the `skill-name` skill IMMEDIATELY.
-
-  After the skill loads, follow its instructions precisely.
-
-  ARGUMENTS: $ARGUMENTS
-  ```
-- Keep under 50 lines (just invocation instructions)
-
-**Anti-pattern**: Duplicating skill content inline
-
-### Hooks
-
-**Purpose**: Automated runtime enforcement
-
-**Types**:
-- **SessionStart**: Load 3-tier context (`load_instructions.py`)
-- **PreToolUse**: Validate tool calls (`validate_tool.py`)
-- **PostToolUse**: Conditional loading (`stack_instructions.py`)
-- **Stop/SubagentStop**: Validate completion (`validate_stop.py`)
-- **Logging**: Capture events (`log_*.py`)
-
-**Requirements**:
-- Python module with docstring (first line = description)
-- Fail-fast implementation
-- No defensive programming
-
-### Chunks
-
-**Purpose**: DRY single sources for universal concepts
-
-**Files**:
-- `AXIOMS.md` - Universal principles (97 lines)
-- `INFRASTRUCTURE.md` - Framework structure (52 lines)
-- `SKILL-PRIMER.md` - Skill context (19 lines)
-- `AGENT-BEHAVIOR.md` - Conversational rules (26 lines)
-
-**Requirements**:
-- Referenced by `core/_CORE.md` (agents get via SessionStart)
-- Symlinked to `skills/*/resources/` (skills load explicitly)
-- Never duplicated elsewhere
-- Integration tested (`tests/test_chunks_loading.py`)
-
----
-
 ## Architectural Patterns (Standards)
 
 ### 1. resources/ Symlinks (Universal)

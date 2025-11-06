@@ -147,6 +147,94 @@ $ACADEMICOPS/
 
 ---
 
+## Component Specifications
+
+### Agents
+
+**Purpose**: Orchestrate skills, provide agent-specific authority
+
+**Requirements**:
+- YAML frontmatter with `name`, `description`
+- <500 lines total (architectural bloat if exceeded)
+- Light on procedural detail (reference skills instead)
+- MANDATORY skill invocation as first step
+- Load via Task tool or slash commands
+
+**Anti-pattern**: Duplicating skill workflows inline
+
+### Skills
+
+**Purpose**: Reusable workflows, domain expertise, tool integrations
+
+**Requirements**:
+- YAML frontmatter: `name`, `description`, `license`, `permalink`
+- SKILL.md <300 lines
+- **MANDATORY**: `resources/` directory with symlinks:
+  - ALL skills: SKILL-PRIMER.md, AXIOMS.md
+  - Framework-touching: + INFRASTRUCTURE.md
+- Framework Context section at top (references @resources/)
+- Optional: `scripts/`, `references/`, `assets/`
+- Imperative/infinitive writing style
+- Passes `scripts/package_skill.py` validation
+
+**Framework-touching skills**: Read/write framework files, need $ACADEMICOPS paths
+- Examples: aops-trainer, skill-creator, claude-hooks
+
+**Non-framework skills**: General utilities
+- Examples: pdf, archiver, strategic-partner
+
+### Slash Commands
+
+**Purpose**: User-facing shortcuts to load workflows
+
+**Requirements**:
+- YAML frontmatter with `description`
+- **MANDATORY skill-first pattern**:
+  ```markdown
+  **MANDATORY FIRST STEP**: Invoke the `skill-name` skill IMMEDIATELY.
+
+  After the skill loads, follow its instructions precisely.
+
+  ARGUMENTS: $ARGUMENTS
+  ```
+- Keep under 50 lines (just invocation instructions)
+
+**Anti-pattern**: Duplicating skill content inline
+
+### Hooks
+
+**Purpose**: Automated runtime enforcement
+
+**Types**:
+- **SessionStart**: Load 3-tier context (`load_instructions.py`)
+- **PreToolUse**: Validate tool calls (`validate_tool.py`)
+- **PostToolUse**: Conditional loading (`stack_instructions.py`)
+- **Stop/SubagentStop**: Validate completion (`validate_stop.py`)
+- **Logging**: Capture events (`log_*.py`)
+
+**Requirements**:
+- Python module with docstring (first line = description)
+- Fail-fast implementation
+- No defensive programming
+
+### Chunks
+
+**Purpose**: DRY single sources for universal concepts
+
+**Files**:
+- `AXIOMS.md` - Universal principles (97 lines)
+- `INFRASTRUCTURE.md` - Framework structure (52 lines)
+- `SKILL-PRIMER.md` - Skill context (19 lines)
+- `AGENT-BEHAVIOR.md` - Conversational rules (26 lines)
+
+**Requirements**:
+- Referenced by `core/_CORE.md` (agents get via SessionStart)
+- Symlinked to `skills/*/resources/` (skills load explicitly)
+- Never duplicated elsewhere
+- Integration tested (`tests/test_chunks_loading.py`)
+
+---
+
 ## Validation & Enforcement
 
 ### Enforcement Hierarchy
