@@ -1,6 +1,10 @@
 ---
 name: no-throwaway-code
-description: Intervention skill that triggers when agents attempt temporary/throwaway Python code (python -c, temp scripts, one-off investigations). Enforces Axiom 15 - WRITE FOR THE LONG TERM. Nudges toward reusable solutions using dev agent or test-writing skill instead.
+description: Intervention skill that triggers when agents attempt temporary/throwaway
+  Python code (python -c, temp scripts, one-off investigations). Enforces Axiom 15
+  - WRITE FOR THE LONG TERM. Nudges toward reusable solutions using dev agent or test-writing
+  skill instead.
+permalink: aops/skills/no-throwaway-code/skill
 ---
 
 # No Throwaway Code

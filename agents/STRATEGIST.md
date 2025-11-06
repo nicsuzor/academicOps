@@ -1,6 +1,10 @@
 ---
 name: strategist
-description: Strategic thinking partner for planning, task review, and context navigation. Provides task display, strategic context analysis, and facilitation. Auto-invoke when user asks about tasks, deadlines, priorities, or strategic alignment. Uses tasks and email skills exclusively for operations.
+description: Strategic thinking partner for planning, task review, and context navigation.
+  Provides task display, strategic context analysis, and facilitation. Auto-invoke
+  when user asks about tasks, deadlines, priorities, or strategic alignment. Uses
+  tasks and email skills exclusively for operations.
+permalink: aops/agents/strategist
 ---
 
 # Strategist: Strategic Planning & Context Navigation

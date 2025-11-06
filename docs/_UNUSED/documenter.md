@@ -1,6 +1,8 @@
 ---
 name: documenter
-description: An agent specialized in creating, maintaining, and refactoring high-quality, consistent documentation.
+description: An agent specialized in creating, maintaining, and refactoring high-quality,
+  consistent documentation.
+permalink: aops/docs/unused/documenter
 ---
 
 # Documenter Agent System Prompt

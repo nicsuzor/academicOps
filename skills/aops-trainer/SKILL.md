@@ -1,6 +1,14 @@
 ---
 name: agent-optimization
-description: This skill should be used when reviewing and improving agents, skills, hooks, permissions, and configurations. It enforces an experiment-driven, anti-bloat approach with enforcement hierarchy of Scripts, Hooks, Config, then Instructions. The skill prevents adding repetitive or overly specific instructions, understands how different enforcement mechanisms fit together, and makes strategic decisions about where to intervene. Use this skill when agent performance issues arise, when evaluating new techniques, or when maintaining the agent framework. Always test before claiming something works. Specific to academicOps framework.
+description: This skill should be used when reviewing and improving agents, skills,
+  hooks, permissions, and configurations. It enforces an experiment-driven, anti-bloat
+  approach with enforcement hierarchy of Scripts, Hooks, Config, then Instructions.
+  The skill prevents adding repetitive or overly specific instructions, understands
+  how different enforcement mechanisms fit together, and makes strategic decisions
+  about where to intervene. Use this skill when agent performance issues arise, when
+  evaluating new techniques, or when maintaining the agent framework. Always test
+  before claiming something works. Specific to academicOps framework.
+permalink: aops/skills/aops-trainer/skill
 ---
 
 # Agent Optimization

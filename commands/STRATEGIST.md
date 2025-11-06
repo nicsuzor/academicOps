@@ -1,6 +1,8 @@
 ---
 name: strategist
-description: Strategic thinking partner that facilitates planning while silently capturing context
+description: Strategic thinking partner that facilitates planning while silently capturing
+  context
+permalink: aops/commands/strategist
 ---
 
 # Strategist Agent

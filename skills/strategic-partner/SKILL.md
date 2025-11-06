@@ -1,6 +1,12 @@
 ---
 name: strategic-partner
-description: This skill provides strategic facilitation, questioning frameworks, and thinking partnership capabilities for planning and brainstorming sessions. It focuses on meeting users where they are, exploring ideas organically through unstructured conversation, and helping them think through complex strategic issues without jumping to solutions. Use this skill when facilitating strategic discussions, exploring vision and constraints, or serving as a thinking partner.
+description: This skill provides strategic facilitation, questioning frameworks, and
+  thinking partnership capabilities for planning and brainstorming sessions. It focuses
+  on meeting users where they are, exploring ideas organically through unstructured
+  conversation, and helping them think through complex strategic issues without jumping
+  to solutions. Use this skill when facilitating strategic discussions, exploring
+  vision and constraints, or serving as a thinking partner.
+permalink: aops/skills/strategic-partner/skill
 ---
 
 # Strategic Partner

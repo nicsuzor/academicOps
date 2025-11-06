@@ -1,5 +1,6 @@
 ---
 description: Activate agent trainer mode
+permalink: aops/commands/trainer
 ---
 
 **MANDATORY FIRST STEP**: Invoke the `aops-trainer` skill IMMEDIATELY. The skill provides all context, workflows, and documentation needed for agent optimization tasks.

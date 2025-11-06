@@ -1,6 +1,10 @@
 ---
 name: claude-md-maintenance
-description: This skill maintains CLAUDE.md files across repositories by extracting substantive content to chunks, enforcing @reference patterns, and ensuring proper hierarchical organization. Use when CLAUDE.md files contain inline instructions, are too long, have duplication, or need refactoring to follow academicOps best practices.
+description: This skill maintains CLAUDE.md files across repositories by extracting
+  substantive content to chunks, enforcing @reference patterns, and ensuring proper
+  hierarchical organization. Use when CLAUDE.md files contain inline instructions,
+  are too long, have duplication, or need refactoring to follow academicOps best practices.
+permalink: aops/skills/claude-md-maintenance/skill
 ---
 
 # CLAUDE.md Maintenance Skill

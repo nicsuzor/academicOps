@@ -1,7 +1,9 @@
 ---
 name: pptx
-description: "Presentation toolkit (.pptx). Create/edit slides, layouts, content, speaker notes, comments, for programmatic presentation creation and modification."
+description: Presentation toolkit (.pptx). Create/edit slides, layouts, content, speaker
+  notes, comments, for programmatic presentation creation and modification.
 license: Proprietary. LICENSE.txt has complete terms
+permalink: aops/skills/document-skills/pptx/skill
 ---
 
 # PPTX creation, editing, and analysis

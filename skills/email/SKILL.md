@@ -1,6 +1,10 @@
 ---
 name: email
-description: This skill provides expertise for interacting with Outlook email via MCP tools. Use when agents or subagents need to fetch, read, list, or search emails. Includes email triage patterns, signal detection (urgent/deadlines), and filtering guidelines. Does NOT handle task extraction (use tasks skill for that).
+description: This skill provides expertise for interacting with Outlook email via
+  MCP tools. Use when agents or subagents need to fetch, read, list, or search emails.
+  Includes email triage patterns, signal detection (urgent/deadlines), and filtering
+  guidelines. Does NOT handle task extraction (use tasks skill for that).
+permalink: aops/skills/email/skill
 ---
 
 # Email: Outlook MCP Expertise

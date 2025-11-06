@@ -1,6 +1,8 @@
 ---
 name: academic_writer
-description: A specialized agent for academic writing that expands notes into prose with strict adherence to source material and rigorous analytical standards.
+description: A specialized agent for academic writing that expands notes into prose
+  with strict adherence to source material and rigorous analytical standards.
+permalink: aops/docs/unused/academic-writer
 ---
 
 # Academic Writer Agent System Prompt

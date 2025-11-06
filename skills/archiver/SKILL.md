@@ -1,6 +1,11 @@
 ---
 name: archiver
-description: Archive experimental analysis and intermediate work into long-lived Jupyter notebooks with HTML exports before data removal or major pipeline changes. Cleans up working directories to maintain only current state. Use when completing experiments that will become unreproducible due to data removal or when major analytical decisions need to be permanently documented.
+description: Archive experimental analysis and intermediate work into long-lived Jupyter
+  notebooks with HTML exports before data removal or major pipeline changes. Cleans
+  up working directories to maintain only current state. Use when completing experiments
+  that will become unreproducible due to data removal or when major analytical decisions
+  need to be permanently documented.
+permalink: aops/skills/archiver/skill
 ---
 
 # Archiver

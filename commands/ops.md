@@ -1,5 +1,6 @@
 ---
 description: academicOps framework help and commands
+permalink: aops/commands/ops
 ---
 
 @reference $ACADEMICOPS/docs/QUICK_REFERENCE.md

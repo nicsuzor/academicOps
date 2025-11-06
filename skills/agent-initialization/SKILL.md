@@ -1,6 +1,10 @@
 ---
 name: agent-initialization
-description: This skill should be automatically invoked when initializing a workspace to create/update an AGENT.md file that instructs agents to search for and use existing skills before attempting tasks. The skill scans available skills and maintains an up-to-date index with descriptions of when to invoke each skill.
+description: This skill should be automatically invoked when initializing a workspace
+  to create/update an AGENT.md file that instructs agents to search for and use existing
+  skills before attempting tasks. The skill scans available skills and maintains an
+  up-to-date index with descriptions of when to invoke each skill.
+permalink: aops/skills/agent-initialization/skill
 ---
 
 # Agent Initialization

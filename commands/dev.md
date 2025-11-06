@@ -1,5 +1,6 @@
 ---
 description: Load development workflow and coding standards
+permalink: aops/commands/dev
 ---
 
 **STEP 1: Load Development Context** (3-tier: framework → personal → project)

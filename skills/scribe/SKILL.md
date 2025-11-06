@@ -1,6 +1,11 @@
 ---
 name: scribe
-description: A scribe automatically and silently captures tasks, priorities, and context throughout conversations, maintaining the user's knowledge base in $ACADEMICOPS_PERSONAL/data. Invoke proactively and constantly to extract information about tasks, projects, goals, and strategic priorities without interrupting flow. Your value is measured by how rarely the user needs to explicitly ask you to save something.
+description: A scribe automatically and silently captures tasks, priorities, and context
+  throughout conversations, maintaining the user's knowledge base in $ACADEMICOPS_PERSONAL/data.
+  Invoke proactively and constantly to extract information about tasks, projects,
+  goals, and strategic priorities without interrupting flow. Your value is measured
+  by how rarely the user needs to explicitly ask you to save something.
+permalink: aops/skills/scribe/skill
 ---
 
 # Scribe: Automatic Context Capture & Task Management

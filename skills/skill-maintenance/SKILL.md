@@ -1,6 +1,11 @@
 ---
 name: skill-maintenance
-description: This skill should be used for ongoing skill maintenance and evolution. It audits skills for outdated patterns, updates skills to current framework best practices, validates scripts and references, packages skills for distribution, and ensures deployment symlinks are correct. Use this when framework patterns evolve, skills need updates, or the entire skill ecosystem requires auditing.
+description: This skill should be used for ongoing skill maintenance and evolution.
+  It audits skills for outdated patterns, updates skills to current framework best
+  practices, validates scripts and references, packages skills for distribution, and
+  ensures deployment symlinks are correct. Use this when framework patterns evolve,
+  skills need updates, or the entire skill ecosystem requires auditing.
+permalink: aops/skills/skill-maintenance/skill
 ---
 
 # Skill Maintenance

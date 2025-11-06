@@ -1,6 +1,11 @@
 ---
 name: aops-bug
-description: Track bugs, agent violations, and framework improvements in the academicOps agent system. Understand core axioms, categorize behavioral patterns, manage experiment logs, detect architecture drift, and maintain framework health. Calls github-issue skill for GitHub operations. Use when agents violate axioms, framework bugs occur, experiments complete, or architecture needs updating. Specific to academicOps framework.
+description: Track bugs, agent violations, and framework improvements in the academicOps
+  agent system. Understand core axioms, categorize behavioral patterns, manage experiment
+  logs, detect architecture drift, and maintain framework health. Calls github-issue
+  skill for GitHub operations. Use when agents violate axioms, framework bugs occur,
+  experiments complete, or architecture needs updating. Specific to academicOps framework.
+permalink: aops/skills/aops-bug/skill
 ---
 
 # academicOps Bug and Framework Tracking

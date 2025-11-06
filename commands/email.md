@@ -1,6 +1,7 @@
 ---
 name: email
 description: Check email, automatically update task database, and present digest
+permalink: aops/commands/email
 ---
 
 # Email Management

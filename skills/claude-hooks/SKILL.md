@@ -1,6 +1,9 @@
 ---
 name: claude-hooks
-description: This skill should be used when working with Claude Code hooks - creating, configuring, debugging, or understanding hook input/output schemas. Provides complete technical reference for all hook types, academicOps patterns, and real-world examples.
+description: This skill should be used when working with Claude Code hooks - creating,
+  configuring, debugging, or understanding hook input/output schemas. Provides complete
+  technical reference for all hook types, academicOps patterns, and real-world examples.
+permalink: aops/skills/claude-hooks/skill
 ---
 
 # Claude Code Hooks

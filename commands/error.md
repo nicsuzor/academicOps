@@ -1,6 +1,7 @@
 ---
 name: error
 description: Quick experiment outcome logging to academicOps - works from any repository
+permalink: aops/commands/error
 ---
 
 # Quick Error/Outcome Logger

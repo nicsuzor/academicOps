@@ -1,6 +1,11 @@
 ---
 name: git-commit
-description: This skill should be used when committing code changes to git repositories. It validates code quality against defined standards, enforces conventional commit format, handles submodule patterns, and executes commits only when all validation passes. The skill reports problems without fixing them, maintaining fail-fast principles. Use this skill any time code needs to be committed to ensure quality gates are enforced.
+description: This skill should be used when committing code changes to git repositories.
+  It validates code quality against defined standards, enforces conventional commit
+  format, handles submodule patterns, and executes commits only when all validation
+  passes. The skill reports problems without fixing them, maintaining fail-fast principles.
+  Use this skill any time code needs to be committed to ensure quality gates are enforced.
+permalink: aops/skills/git-commit/skill
 ---
 
 # Git Commit

@@ -1,6 +1,10 @@
 ---
 name: tasks
-description: This skill provides expertise for task management operations using the academicOps task scripts. Use when agents or subagents need to create, view, update, or archive tasks in the knowledge base. Includes prioritization framework, duplicate checking protocols, and strategic alignment enforcement.
+description: This skill provides expertise for task management operations using the
+  academicOps task scripts. Use when agents or subagents need to create, view, update,
+  or archive tasks in the knowledge base. Includes prioritization framework, duplicate
+  checking protocols, and strategic alignment enforcement.
+permalink: aops/skills/tasks/skill
 ---
 
 # Tasks: Task Management Expertise

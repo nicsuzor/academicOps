@@ -1,6 +1,8 @@
 ---
 description: Log agent performance failure to experiment tracking system
+permalink: aops/commands/log-failure
 ---
+
 Pause what you are doing and **IMMEDIATELY** invoke the `aops-bug` skill. The user is reporting that an agent violated coding standards, instructions, or expected behavior. Use the `aops-bug` skill to review the conversation and identify the problem, saving your diagnosis to the nicsuzor/academicOps github issues using the github issues skill.
 
 **CRITICAL - Documentation-Only Mode**: When invoked via this command, the aops-bug skill operates in DOCUMENTATION-ONLY mode. You MUST:

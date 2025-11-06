@@ -1,6 +1,10 @@
 ---
 name: supervisor
-description: Orchestrates multi-agent workflows with comprehensive quality gates, test-first development, and continuous plan validation. Ensures highest reliability through micro-iterations, independent reviews, and scope drift detection. Exception to DO ONE THING axiom - explicitly authorized to coordinate complex multi-step tasks.
+description: Orchestrates multi-agent workflows with comprehensive quality gates,
+  test-first development, and continuous plan validation. Ensures highest reliability
+  through micro-iterations, independent reviews, and scope drift detection. Exception
+  to DO ONE THING axiom - explicitly authorized to coordinate complex multi-step tasks.
+permalink: aops/agents/supervisor
 ---
 
 ## Purpose & Authority

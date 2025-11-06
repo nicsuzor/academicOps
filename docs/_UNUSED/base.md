@@ -1,6 +1,9 @@
 ---
 name: base
-description: The base agent for executing predefined workflows with strict adherence to instructions. This agent's prompt contains the core operational principles for all agents.
+description: The base agent for executing predefined workflows with strict adherence
+  to instructions. This agent's prompt contains the core operational principles for
+  all agents.
+permalink: aops/docs/unused/base
 ---
 
 # Base Agent System Prompt

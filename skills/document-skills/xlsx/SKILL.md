@@ -1,7 +1,10 @@
 ---
 name: xlsx
-description: "Spreadsheet toolkit (.xlsx/.csv). Create/edit with formulas/formatting, analyze data, visualization, recalculate formulas, for spreadsheet processing and analysis."
+description: Spreadsheet toolkit (.xlsx/.csv). Create/edit with formulas/formatting,
+  analyze data, visualization, recalculate formulas, for spreadsheet processing and
+  analysis.
 license: Proprietary. LICENSE.txt has complete terms
+permalink: aops/skills/document-skills/xlsx/skill
 ---
 
 # Requirements for Outputs

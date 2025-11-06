@@ -1,6 +1,10 @@
 ---
 name: scribe
-description: Silent background processor that automatically captures tasks, priorities, and context from conversations, maintaining the knowledge base in $ACADEMICOPS_PERSONAL/data. Auto-invoke proactively and constantly to extract tasks, projects, goals, and strategic information without interrupting user flow. Uses tasks skill for all task operations.
+description: Silent background processor that automatically captures tasks, priorities,
+  and context from conversations, maintaining the knowledge base in $ACADEMICOPS_PERSONAL/data.
+  Auto-invoke proactively and constantly to extract tasks, projects, goals, and strategic
+  information without interrupting user flow. Uses tasks skill for all task operations.
+permalink: aops/agents/scribe
 ---
 
 # Scribe: Automatic Context Capture

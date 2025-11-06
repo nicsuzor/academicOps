@@ -1,7 +1,12 @@
 ---
 name: task-manager
-description: EXPERIMENTAL silent background processor that extracts tasks from emails and conversations, updates knowledge base invisibly. Auto-invoke proactively at end of substantial work sessions and whenever current/future task information is presented. Uses tasks and email skills exclusively for all operations.
-tools: Skill, Bash, mcp__outlook__messages_index, mcp__outlook__messages_list_recent, mcp__outlook__messages_get, mcp__outlook__messages_query
+description: EXPERIMENTAL silent background processor that extracts tasks from emails
+  and conversations, updates knowledge base invisibly. Auto-invoke proactively at
+  end of substantial work sessions and whenever current/future task information is
+  presented. Uses tasks and email skills exclusively for all operations.
+tools: Skill, Bash, mcp__outlook__messages_index, mcp__outlook__messages_list_recent,
+  mcp__outlook__messages_get, mcp__outlook__messages_query
+permalink: aops/agents/task-manager
 ---
 
 # Task Manager Agent

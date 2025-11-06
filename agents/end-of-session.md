@@ -1,6 +1,9 @@
 ---
 name: end-of-session
-description: Automated end-of-session workflow that orchestrates commit and accomplishment capture when substantial work is complete. Silently handles git commits and writes one-line accomplishment entries for completed work only.
+description: Automated end-of-session workflow that orchestrates commit and accomplishment
+  capture when substantial work is complete. Silently handles git commits and writes
+  one-line accomplishment entries for completed work only.
+permalink: aops/agents/end-of-session
 ---
 
 # End-of-Session Agent

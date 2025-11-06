@@ -1,6 +1,12 @@
 ---
 name: github-issue
-description: Manage GitHub issues across any repository with exhaustive search, precise documentation, and proactive updates. Search existing issues before creating new ones, format technical content clearly, link commits and PRs, and maintain issue lifecycle. Works universally - not specific to any project or framework. Use when documenting bugs, tracking features, updating issue status, or searching for related work.
+description: Manage GitHub issues across any repository with exhaustive search, precise
+  documentation, and proactive updates. Search existing issues before creating new
+  ones, format technical content clearly, link commits and PRs, and maintain issue
+  lifecycle. Works universally - not specific to any project or framework. Use when
+  documenting bugs, tracking features, updating issue status, or searching for related
+  work.
+permalink: aops/skills/github-issue/skill
 ---
 
 # GitHub Issue Management

@@ -1,6 +1,8 @@
 ---
 name: analyst
-description: An agent for data analysis, evaluation, and generating insights from experimental results with academic rigor.
+description: An agent for data analysis, evaluation, and generating insights from
+  experimental results with academic rigor.
+permalink: aops/agents/analyst
 ---
 
 # Analyst Agent System Prompt
