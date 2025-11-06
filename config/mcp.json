@@ -55,6 +55,17 @@
         "http://nicwin.stoat-musical.ts.net:8023/mcp"
       ],
       "env": {}
+    },
+    "bmem": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": [
+        "basic-memory",
+        "mcp",
+        "--project",
+        "aops"
+      ],
+      "env": {}
     }
   }
 }
