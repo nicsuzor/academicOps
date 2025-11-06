@@ -3,7 +3,7 @@
 ## Metadata
 - Date: 2025-11-06
 - Issue: User request via /trainer command
-- Commit: [to be added]
+- Commit: a1a1931
 - Model: claude-sonnet-4-5
 
 ## Context
