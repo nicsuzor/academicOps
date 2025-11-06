@@ -50,6 +50,13 @@ repos:
       # Trim trailing whitespace
       - id: trailing-whitespace
         args: [--markdown-linebreak-ext=md]
+      # Prevent committing merge conflict markers
+      - id: check-merge-conflict
+      # Prevent case-sensitive filename conflicts
+      - id: check-case-conflict
+      # Fix mixed line endings (use LF)
+      - id: mixed-line-ending
+        args: ['--fix=lf']
 
   # Local custom hooks
   - repo: local
