@@ -63,10 +63,10 @@
 |-------|---------|------|--------|
 | ANALYST | Data analysis workflows | 1.7 KB |  Minimal |
 | DEVELOPER | Development workflows | 6.4 KB |  Good |
-| STRATEGIST | Strategic thinking partner | 9.9 KB |   Check bloat |
-| SUPERVISOR | Multi-agent orchestration | 24 KB |   Check bloat |
-| scribe | Silent context capture | 11 KB |   Check bloat |
-| task-manager | Email-to-task extraction | 11 KB |   Check bloat |
+| STRATEGIST | Strategic thinking partner | 9.9 KB |   Check bloat |
+| SUPERVISOR | Multi-agent orchestration | 24 KB |   Check bloat |
+| scribe | Silent context capture | 11 KB |   Check bloat |
+| task-manager | Email-to-task extraction | 11 KB |   Check bloat |
 | end-of-session | Session cleanup | 8.9 KB |  Good |
 
 ### Skills (20)
@@ -148,7 +148,7 @@
 ### Core Documentation (agents/)
 
 **Auto-loaded at SessionStart**:
-- core/_CORE.md ’ References chunks/
+- core/_CORE.md ' References chunks/
 
 **Available via commands**:
 - DEVELOPMENT.md
@@ -212,8 +212,8 @@
 -  /analyst command (mandatory skill-first)
 
 **Needs Verification**:
--   /dev, /email, /error, /log-failure commands
--   Agent delegation patterns
+-   /dev, /email, /error, /log-failure commands
+-   Agent delegation patterns
 
 ### Anti-Bloat Enforcement
 
@@ -287,7 +287,7 @@
 4. **Anti-bloat pattern** documented in skill-creator
 5. **DRY compliance** via symlinks proven effective
 
-###   Areas for Improvement
+###   Areas for Improvement
 
 1. **resources/ symlinks** not universally applied (2/20 skills)
 2. **Anti-bloat violations** in 3 components (python-dev, git-commit, TRAINER.md)
@@ -295,7 +295,7 @@
 4. **CI validation** missing for anti-bloat rules
 5. **Documentation bloat** in several large files
 
-### <¯ Immediate Priorities
+### <Â¯ Immediate Priorities
 
 1. Apply modular references pattern to python-dev and git-commit (Issue #142)
 2. Add resources/ symlinks to remaining 18 skills
