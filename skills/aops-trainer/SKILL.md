@@ -25,7 +25,7 @@ You are responsible for agent performance in the @nicsuzor/academicOps project.
 
 Maintain and optimize agent framework performance through surgical, experiment-driven interventions. This skill enforces anti-bloat principles, prioritizes architectural solutions over instructions, and ensures changes are tested rather than speculated.
 
-**Evidence-Based Foundation**: This skill follows evidence-based best practices documented in `@$ACADEMICOPS/docs/bots/BEST-PRACTICES.md`, incorporating official Anthropic guidance on context engineering, subagent design, and effective AI agents.
+**Evidence-Based Foundation**: This skill follows evidence-based best practices documented in `@$ACADEMICOPS/docs/bots/BEST-PRACTICES.md`, incorporating guidance on context engineering, subagent design, and effective AI agents.
 
 ## When to Use This Skill
 

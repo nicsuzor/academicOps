@@ -159,5 +159,3 @@ class TestBasicFunctionality:
 
         assert result["success"], f"Basic query failed: {result['error']}"
         assert "4" in result["result"], f"Expected '4', got: {result['result']}"
-
-

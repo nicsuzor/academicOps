@@ -155,4 +155,3 @@ def personal_repo_root() -> Path:
 def has_user_context(personal_repo_root: Path) -> bool:
     """Check if user context files are available."""
     return (personal_repo_root / "docs" / "agents" / "INSTRUCTIONS.md").exists()
-

@@ -32,6 +32,25 @@ repos:
         # Performance: Only check changed files, not whole project
         pass_filenames: true
 
+  # Standard pre-commit hooks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      # Fix UTF-8 BOM markers (removes them)
+      - id: fix-byte-order-marker
+      # Check files parse as valid UTF-8
+      - id: check-yaml
+      - id: check-json
+      - id: check-toml
+      # Prevent giant files from being committed
+      - id: check-added-large-files
+        args: ['--maxkb=500']
+      # Ensure files end with newline
+      - id: end-of-file-fixer
+      # Trim trailing whitespace
+      - id: trailing-whitespace
+        args: [--markdown-linebreak-ext=md]
+
   # Local custom hooks
   - repo: local
     hooks:

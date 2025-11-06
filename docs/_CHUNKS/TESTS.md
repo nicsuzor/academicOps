@@ -29,4 +29,3 @@ Search test files for these FORBIDDEN patterns:
 ### If Violated
 **BLOCK commit** with message:
 "Test file {filename} loads configs directly. Use real_bm or real_conf fixtures instead. See TEST-CLEANER.md for details."
-

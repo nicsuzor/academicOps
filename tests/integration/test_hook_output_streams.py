@@ -246,4 +246,3 @@ class TestPermissionDecisionTypes:
         assert result.returncode == expected_exit, (
             f"Expected exit code {expected_exit} for {tool_name}, got {result.returncode}"
         )
-

@@ -44,9 +44,9 @@ def main():
     # Add Axiom #1 reminder (Issue #145)
     output_data: dict[str, Any] = {
         "additionalContext": (
-            "**AXIOM #1 REMINDER**: Do ONE thing in response to this prompt, then STOP and return. "
-            "If user is correcting you: Is this steering (incorporate and continue) or course change "
-            "(clear todo list, make new plan for the ONE new thing requested)?"
+            "**CRITICAL**: follow the user's instructions, answer any questions the user asks, "
+            "and then HALT IMMEDIATELY. DO NOT CONTINUE on your own initiative beyond what the user "
+            "has SPECIFICALLY asked for. DO NOT ASSUME YOU KNOW WHAT THE USER WANTS TO DO."
         )
     }
 

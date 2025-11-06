@@ -429,4 +429,3 @@ class TestEdgeCases:
 
         # Should handle gracefully
         assert exit_code in [0, 1, 2]
-
