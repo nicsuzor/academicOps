@@ -339,6 +339,46 @@ Every concept documented exactly once, referenced everywhere else.
 - No cross-dependencies between submodules
 - Project-specific content stays in project repos
 
+### Mandatory Skill-First Pattern
+
+**ALL slash commands MUST**:
+- Invoke corresponding skill FIRST
+- Include "MANDATORY FIRST STEP" instruction
+- Pass $ARGUMENTS to skill
+
+**ALL agents MUST**:
+- Invoke supporting skill FIRST
+- Keep procedural details in skill, not agent
+
+**Rationale**: Prevents improvisation, ensures consistency, enables documentation discovery
+
+### Anti-Bloat Enforcement
+
+**Pre-addition checklist** (before adding >5 lines):
+- [ ] Tried scripts/hooks/config first?
+- [ ] Checked existing content to reference?
+- [ ] Verified not repeating chunks/ or _CORE.md?
+- [ ] Using bullet points, not prose?
+- [ ] Instructions specific, not vague?
+- [ ] File stays under limits?
+
+**Hard limits**:
+- Skills: <300 lines
+- Agents: <500 lines
+- Adding >10 lines: GitHub issue + approval required
+
+### Experiment-Driven Development
+
+**ALL changes require**:
+1. GitHub issue (search first - 3+ searches)
+2. Experiment log: `experiments/YYYY-MM-DD_name.md`
+3. Hypothesis, success criteria, changes
+4. Testing with real scenarios
+5. Results documentation
+6. Decision: Keep/Revert/Iterate
+
+**No speculation**. Test, measure, decide.
+
 ---
 
 ## Testing

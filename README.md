@@ -258,264 +258,21 @@ docs/
 | Knowledge organization (bmem) | Use bmem MCP tools (search, write, read notes) |
 
 ---
-## Architectural Patterns (Standards)
+---
 
-### 1. resources/ Symlinks (Universal)
+## Three-Tier Instruction Loading
 
-**ALL skills MUST include**:
-
-```bash
-skills/skill-name/
-├── SKILL.md
-└── resources/
-    ├── SKILL-PRIMER.md → ../../chunks/SKILL-PRIMER.md
-    ├── AXIOMS.md → ../../chunks/AXIOMS.md
-    └── INFRASTRUCTURE.md → ../../chunks/INFRASTRUCTURE.md  # If framework-touching
-```
-
-**In SKILL.md header**:
-```markdown
-## Framework Context
-@resources/SKILL-PRIMER.md
-@resources/AXIOMS.md
-@resources/INFRASTRUCTURE.md  # If framework-touching
-```
-
-### 2. Mandatory Skill-First Pattern
-
-**ALL slash commands MUST**:
-- Invoke corresponding skill FIRST
-- Include "MANDATORY FIRST STEP" instruction
-- Pass $ARGUMENTS to skill
-
-**ALL agents MUST**:
-- Invoke supporting skill FIRST
-- Keep procedural details in skill, not agent
-
-**Rationale**: Prevents improvisation, ensures consistency, enables documentation discovery
-
-### 3. Anti-Bloat Enforcement
-
-**Pre-addition checklist** (before adding >5 lines):
-- [ ] Tried scripts/hooks/config first?
-- [ ] Checked existing content to reference?
-- [ ] Verified not repeating chunks/ or _CORE.md?
-- [ ] Using bullet points, not prose?
-- [ ] Instructions specific, not vague?
-- [ ] File stays under limits?
-
-**Hard limits**:
-- Skills: <300 lines
-- Agents: <500 lines
-- Adding >10 lines: GitHub issue + approval required
-
-**CI enforcement** (to be implemented):
-- Pre-commit hook checks line counts
-- Blocks commits exceeding limits
-
-### 4. Experiment-Driven Changes
-
-**ALL changes require**:
-
-1. GitHub issue (search first - 3+ searches)
-2. Experiment log: `experiments/YYYY-MM-DD_name.md`
-3. Hypothesis, success criteria, changes
-4. Testing with real scenarios
-5. Results documentation
-6. Decision: Keep/Revert/Iterate
-
-**Template**:
-```markdown
-## Metadata
-- Date, Issue, Commit, Model
-
-## Hypothesis
-[What we expect]
-
-## Changes Made
-[Specific modifications]
-
-## Success Criteria
-[How to measure]
-
-## Results
-[What actually happened]
-
-## Outcome
-[Success/Failure/Partial]
-```
-
-### 5. Three-Tier Instruction Loading
-
-**SessionStart hook loads**:
+**SessionStart hook loads instructions from three tiers**:
 
 ```
 Framework tier    ($ACADEMICOPS/core/_CORE.md, docs/bots/INDEX.md)
     ↓
-Personal tier     ($OUTER/docs/agents/*.md)
+Personal tier     ($ACADEMICOPS_PERSONAL/docs/bots/*.md)
     ↓
-Project tier      (./docs/agents/*.md)
+Project tier      ($PWD/docs/bots/*.md)
 ```
 
-Each tier can override or extend previous tier.
-
----
-
-## Installation & Setup
-
-### Environment Variable
-
-```bash
-# Add to shell profile (~/.bashrc, ~/.zshrc)
-export ACADEMICOPS=/path/to/academicOps
-```
-
-### As Submodule
-
-```bash
-# In your personal/project repository
-git submodule add https://github.com/nicsuzor/academicOps.git aops
-git submodule update --init --recursive
-
-# Set environment variable
-export ACADEMICOPS=/path/to/your-repo/aops
-```
-
-### Skills Installation
-
-```bash
-# Package and install skills
-cd $ACADEMICOPS/skills/skill-name
-uv run python scripts/package_skill.py .
-
-# Install to Claude Code
-cp skill-name.zip ~/.claude/skills/
-cd ~/.claude/skills && unzip skill-name.zip
-```
-
----
-
-## Validation & Testing
-
-### Pre-Commit Checks
-
-```bash
-# Validation
-python scripts/validate_instruction_tree.py
-
-# Regenerate instruction tree (if stale)
-python scripts/generate_instruction_tree.py
-```
-
-### Integration Tests
-
-```bash
-# Run all tests
-uv run pytest
-
-# Test chunks infrastructure
-uv run pytest tests/test_chunks_loading.py -v
-
-# Test skill validation
-uv run python skills/skill-creator/scripts/package_skill.py skills/skill-name
-```
-
-### Anti-Bloat Validation
-
-```bash
-# Check file sizes
-wc -l agents/*.md
-wc -l skills/*/SKILL.md
-
-# Verify resources/ compliance
-find skills/ -type d -name "resources" | wc -l  # Should equal skill count
-```
-
----
-
-## Usage Patterns
-
-### Invoking Agents
-
-```bash
-# Via Task tool (from another agent)
-Task(subagent_type="general-purpose", prompt="...", description="...")
-
-# Via slash command (user-facing)
-/trainer
-/dev
-/analyst
-```
-
-### Invoking Skills
-
-```bash
-# Explicit invocation
-Skill(command="skill-name")
-
-# Automatic invocation (via agents/commands)
-# Slash command → Loads skill → Agent follows skill instructions
-```
-
-### Creating New Components
-
-**New skill**:
-1. `cd $ACADEMICOPS/skills && python skill-creator/scripts/init_skill.py skill-name --path .`
-2. Add `resources/` symlinks (SKILL-PRIMER, AXIOMS, INFRASTRUCTURE if framework-touching)
-3. Edit SKILL.md (follow anti-bloat checklist)
-4. Validate: `python skill-creator/scripts/package_skill.py skill-name`
-5. Create experiment log
-6. Commit via git-commit skill
-
-**New agent**:
-1. Create `agents/AGENT-NAME.md` with YAML frontmatter
-2. Keep <500 lines
-3. Reference skills, don't duplicate workflows
-4. Include MANDATORY skill-first step
-5. Regenerate instruction tree
-6. Create experiment log
-7. Commit via git-commit skill
-
-**New slash command**:
-1. Create `commands/command-name.md` with YAML frontmatter
-2. Include MANDATORY skill-first pattern
-3. Keep under 50 lines
-4. Regenerate instruction tree
-5. Commit via git-commit skill
-
----
-
-## Compliance Monitoring
-
-**Auditing frequency**: After structural changes or quarterly
-
-**Audit process**:
-1. Run validation scripts
-2. Check file sizes against limits
-3. Verify resources/ symlinks (all skills)
-4. Confirm skill-first patterns (all commands/agents)
-5. Update `docs/AUDIT.md` with findings
-6. Create GitHub issues for violations
-7. Apply modular references pattern to bloated files
-
-**See**: `docs/AUDIT.md` for current compliance status
-
----
-
-## Contributing
-
-**All changes follow**:
-
-1. Search GitHub issues (3+ searches)
-2. Document in issue (diagnostics + solution design)
-3. Create experiment log
-4. Implement (max 3 changes, <10 lines each)
-5. Test with real scenarios
-6. Update experiment log with results
-7. Commit via git-commit skill
-8. Update audit if structural change
-
-**See**: `skills/aops-trainer/SKILL.md` for complete workflow
+Each tier can override or extend the previous tier, allowing customization while maintaining framework defaults.
 
 ---
 
@@ -523,7 +280,7 @@ Skill(command="skill-name")
 
 - **Core axioms**: `chunks/AXIOMS.md`, `core/_CORE.md`
 - **Best practices**: `docs/bots/BEST-PRACTICES.md` (evidence-based guidance)
-- **Architecture**: `ARCHITECTURE.md`
+- **Architecture**: `ARCHITECTURE.md` (technical specifications)
 - **Testing**: `docs/TESTING.md`, `tests/`
 - **Current state**: `docs/AUDIT.md`
 - **Skill creation**: `skills/skill-creator/SKILL.md`
@@ -537,11 +294,8 @@ Skill(command="skill-name")
 # Set environment
 export ACADEMICOPS=/path/to/academicOps
 
-# Validate structure
-python scripts/validate_instruction_tree.py
-
-# Run tests
-uv run pytest
+# Install via setup script
+$ACADEMICOPS/scripts/setup_academicops.sh
 
 # Launch Claude Code
 claude
@@ -557,6 +311,6 @@ Apache 2.0 - See LICENSE file
 
 ---
 
-**This README is the authoritative specification.** The repository should always align with this document. See `docs/AUDIT.md` for current compliance status and `experiments/` for change history.
+**This README is the authoritative user guide.** See `ARCHITECTURE.md` for technical specifications and `docs/AUDIT.md` for current compliance status.
 
 **Last updated**: 2025-11-06
