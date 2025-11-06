@@ -1,1 +1,1 @@
-/home/nic/src/bot/docs/_CHUNKS/TESTS.md
+../../../docs/_CHUNKS/TESTS.md

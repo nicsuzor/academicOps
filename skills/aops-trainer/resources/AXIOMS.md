@@ -1,1 +1,1 @@
-/home/nic/src/bot/chunks/AXIOMS.md
+../../../chunks/AXIOMS.md

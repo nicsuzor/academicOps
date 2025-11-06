@@ -1,1 +1,1 @@
-/home/nic/src/bot/docs/_CHUNKS/GIT-WORKFLOW.md
+../../../docs/_CHUNKS/GIT-WORKFLOW.md

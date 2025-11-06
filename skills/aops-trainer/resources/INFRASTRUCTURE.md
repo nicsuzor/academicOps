@@ -1,1 +1,1 @@
-/home/nic/src/bot/chunks/INFRASTRUCTURE.md
+../../../chunks/INFRASTRUCTURE.md

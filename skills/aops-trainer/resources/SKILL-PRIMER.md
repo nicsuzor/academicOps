@@ -1,1 +1,1 @@
-/home/nic/src/bot/chunks/SKILL-PRIMER.md
+../../../chunks/SKILL-PRIMER.md
