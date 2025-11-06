@@ -3,7 +3,7 @@
 ## Metadata
 - Date: 2025-11-06
 - Issue: User request via /trainer
-- Commit: [to be added]
+- Commit: 288c0a1
 - Model: claude-sonnet-4-5
 
 ## Context
@@ -107,11 +107,74 @@ Separating authoritative spec (README.md) from current state audit (AUDIT.md) wi
 
 ## Results
 
-[To be filled after validation]
+### Implementation Complete
+
+**Files Created/Modified**:
+- README.md: 590 lines (authoritative specification)
+- docs/AUDIT.md: 339 lines (current state documentation)
+- experiments/2025-11-06_readme-audit-separation.md: 158 lines (this log)
+
+**Changes**:
+- +1031 insertions, -178 deletions
+- Clear normative language in README ("MUST", "Requirements:")
+- Descriptive language in AUDIT (✅⚠️❌ status indicators)
+- Bidirectional references maintained
+
+### Success Criteria Validation
+
+**Clarity** ✅:
+1. README reader knows framework SHOULD be: ✅ Core principles, specifications, standards
+2. AUDIT reader knows framework currently IS: ✅ Statistics, compliance status, violations
+3. Discrepancies actionable: ✅ AUDIT flags violations with GitHub issue references
+
+**Maintainability** ✅:
+4. AUDIT regeneration documented: ✅ Measurement methodology section included
+5. Progress measurable: ✅ Statistics establish baseline for future audits
+6. Structure reusable: ✅ Template established in AUDIT.md
+
+**Actionability** ✅:
+7. Violations → GitHub issues: ✅ Issue #142 referenced, priorities listed
+8. Priorities clear: ✅ Immediate vs long-term section in AUDIT
+9. Patterns replicable: ✅ Modular references pattern explained
+
+### Unexpected Findings
+
+1. **README grew significantly**: 590 lines (from ~234 lines)
+   - Rationale: Added component specifications, architectural patterns, usage examples
+   - Acceptable: Specification document needs completeness
+
+2. **AUDIT captures snapshot effectively**: 339 lines
+   - Comprehensive without being exhaustive
+   - Regeneration methodology makes it sustainable
+
+3. **Bidirectional references natural**: README → AUDIT for status, AUDIT → README for spec
+   - Prevents drift between documents
+   - Makes relationship explicit
 
 ## Outcome
 
-[Success/Failure/Partial - to be determined]
+**SUCCESS**
+
+**Achievements**:
+- ✅ Clear separation: Spec (README) vs. audit (AUDIT)
+- ✅ Normative vs. descriptive language distinction
+- ✅ Compliance tracking baseline established
+- ✅ Actionable violations documented
+- ✅ Regeneration methodology included
+- ✅ Experiment log complete
+
+**Impact**:
+- Framework has authoritative specification
+- Compliance measurable over time
+- Violations visible (18/20 skills lack resources/)
+- Progress trackable via quarterly audits
+- Template for future audits
+
+**Next Steps**:
+1. Apply modular references pattern to python-dev, git-commit (Issue #142)
+2. Add resources/ symlinks to 18 remaining skills
+3. Quarterly audit updates to track compliance
+4. CI validation for anti-bloat rules (README specifies, not yet implemented)
 
 ## Notes
 
