@@ -15,7 +15,10 @@
     "**/data/projects_original",
     "**/data/views",
     "**/projects/dev",
-    "**/aops/tests/results"
+    "**/projects/nic.suzor.net",
+    "**/aops/tests/results",
+    "**/all_corruption.json",
+    "**/corruption_with_chunkids.json"
   ],
   "plugins": [
     "https://plugins.dprint.dev/typescript-0.95.11.wasm",
