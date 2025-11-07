@@ -77,11 +77,43 @@ core/
 ├── DEBUGGING.md          # Debugging workflow
 └── STYLE.md              # Writing style guide
 
-chunks/                   # Shared context modules (symlinked to skills)
-├── AXIOMS.md             # Universal principles (fail-fast, DRY, experiment-driven)
-├── INFRASTRUCTURE.md     # Framework paths, env vars, bmem integration
-├── AGENT-BEHAVIOR.md     # Conversational rules
+chunks/                   # Shared context modules (symlinked to skills/*/resources/)
+├── AXIOMS.md             # Universal principles (17 rules)
+│   ├── Core Axioms (11)
+│   │   ├── #1:  DO ONE THING - Complete task, then STOP
+│   │   ├── #2:  Namespace Separation - Agent instructions vs human docs
+│   │   ├── #3:  Data Boundaries - bot/ = PUBLIC, else PRIVATE
+│   │   ├── #4:  Project Isolation - Content belongs in project repo only
+│   │   ├── #5:  Project Independence - No cross-dependencies
+│   │   ├── #6:  Fail-Fast (Code) - No .get(key, default), no fallbacks
+│   │   ├── #7:  Fail-Fast (Agents) - STOP when tools/instructions fail
+│   │   ├── #8:  Self-documenting - Documentation-as-code first
+│   │   ├── #9:  DRY, modular, EXPLICIT - One golden path
+│   │   ├── #10: Use Standard Tools - uv, pytest, pre-commit, mypy, ruff
+│   │   └── #11: Dogfooding - Use our tools on real research projects
+│   ├── Behavioral Rules (6)
+│   │   ├── #12: NO WORKAROUNDS - Log failures, halt work
+│   │   ├── #13: VERIFY FIRST - Check state, never assume
+│   │   ├── #14: NO EXCUSES - Verify and replicate, or it doesn't work
+│   │   ├── #15: WRITE FOR LONG TERM - Replicable infrastructure, no ad-hoc
+│   │   ├── #16: DON'T MAKE SHIT UP - Say "I don't know", no guesses
+│   │   └── #17: ALWAYS CITE SOURCES - No plagiarism
+│   └── Tool Failure Protocol - Read error, retry once, STOP and report
+├── INFRASTRUCTURE.md     # Framework structure and paths
+│   ├── Environment Variables - $ACADEMICOPS, $ACADEMICOPS_PERSONAL, $PWD
+│   ├── Directory Structure - agents/, commands/, skills/, hooks/, core/, docs/, chunks/
+│   ├── Path Conventions - Where framework files live
+│   ├── Three-Tier Loading - Framework → Personal → Project
+│   └── Knowledge Organization (bmem) - Vector search, Basic Memory integration
+├── AGENT-BEHAVIOR.md     # Agent conversational rules
+│   ├── Stopping Rules - DO ONE THING, then STOP
+│   ├── Direct Interaction - Answer questions directly
+│   ├── Session Management - STOP when interrupted, document progress
+│   └── Error Handling - Stop immediately, report exactly
 └── SKILL-PRIMER.md       # Skill execution context
+    ├── Isolated context - No SessionStart hooks in skills
+    ├── Framework access - Via @resources/ symlinks only
+    └── Single purpose - Focus on specific skill function
 ```
 
 ### Agents (Specialized Workflows)
