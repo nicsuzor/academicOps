@@ -20,6 +20,16 @@ dprint check
 dprint fmt
 ```
 
+**Updating config across all repos:**
+
+```bash
+# Preview what would change
+$ACADEMICOPS/scripts/sync_dprint_config.sh --dry-run
+
+# Apply updates to all known repos
+$ACADEMICOPS/scripts/sync_dprint_config.sh
+```
+
 ## Using academicOps Pre-commit Hooks
 
 Other repos can reference academicOps hooks instead of duplicating configuration.
@@ -61,3 +71,13 @@ repos:
 - `dprint.json` in repo root (copy from templates/)
 
 **Note:** The parent `writing` repo uses `repo: local` since academicOps is a submodule there. Other standalone repos reference via GitHub URL.
+
+## Maintenance
+
+**When you update dprint.json:**
+
+1. Edit `$ACADEMICOPS/templates/dprint.json`
+2. Run `$ACADEMICOPS/scripts/sync_dprint_config.sh` to push to all repos
+3. Commit the changes in each affected repo
+
+This keeps all repos synchronized with a single source of truth.
