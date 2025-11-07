@@ -53,6 +53,24 @@ repos:
       - id: mixed-line-ending
         args: ["--fix=lf"]
 
+  # Shell script linting
+  - repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: v0.10.0.1
+    hooks:
+      - id: shellcheck
+
+  # JavaScript/TypeScript linting
+  - repo: https://github.com/pre-commit/mirrors-eslint
+    rev: v9.17.0
+    hooks:
+      - id: eslint
+        files: \.[jt]sx?$
+        types: [file]
+        additional_dependencies:
+          - eslint@9.17.0
+          - "@eslint/js@9.17.0"
+          - typescript-eslint@8.18.2
+
   # Python formatting (if Python project)
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.8.4

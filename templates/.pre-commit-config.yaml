@@ -1,0 +1,52 @@
+repos:
+  # Standard file hygiene
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-json
+        exclude: |
+          (?x)^(
+            \.vscode/.*\.json|
+            \.claude/.*\.json|
+            .*\.ipynb
+          )$
+      - id: check-toml
+      - id: mixed-line-ending
+        args: ["--fix=lf"]
+
+  # Shell script linting
+  - repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: v0.10.0.1
+    hooks:
+      - id: shellcheck
+
+  # JavaScript/TypeScript linting
+  - repo: https://github.com/pre-commit/mirrors-eslint
+    rev: v9.17.0
+    hooks:
+      - id: eslint
+        files: \.[jt]sx?$
+        types: [file]
+        additional_dependencies:
+          - eslint@9.17.0
+          - "@eslint/js@9.17.0"
+          - typescript-eslint@8.18.2
+
+  # Python formatting (if Python project)
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.8.4
+    hooks:
+      - id: ruff
+        args: [--fix, --unsafe-fixes, --exit-non-zero-on-fix]
+      - id: ruff-format
+
+  # academicOps framework hooks
+  - repo: https://github.com/nicsuzor/academicOps
+    rev: main
+    hooks:
+      - id: dprint
+      - id: no-config-defaults
+      - id: check-instruction-bloat

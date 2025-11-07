@@ -30,6 +30,17 @@ $ACADEMICOPS/scripts/init_project_standards.sh /home/nic/src/zotmcp
 # ... etc
 ```
 
+## Pre-commit Configuration
+
+Standard pre-commit setup includes:
+- **File hygiene** (trailing whitespace, EOF, line endings)
+- **Syntax checks** (YAML, JSON, TOML)
+- **shellcheck** - Shell script linting
+- **eslint** - JavaScript/TypeScript linting
+- **ruff** - Python linting + formatting
+- **dprint** - Fast formatting (markdown, JSON, TOML, YAML, TS/JS, CSS, etc.)
+- **academicOps hooks** (no-config-defaults, instruction-bloat)
+
 ## Using academicOps Pre-commit Hooks
 
 Other repos can reference academicOps hooks instead of duplicating configuration.
