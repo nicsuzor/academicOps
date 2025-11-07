@@ -46,10 +46,11 @@ def safe_log_to_debug_file(
         # Extract session ID - REQUIRED (fail-fast, no fallbacks)
         session_id = input_data.get("session_id")
         if not session_id:
-            raise ValueError(
+            msg = (
                 f"session_id missing from {hook_event} hook input_data. "
                 "Claude Code should provide session_id in all hook invocations."
             )
+            raise ValueError(msg)
 
         log_file = log_dir / f"claude_session_{session_id}.jsonl"
 
@@ -66,7 +67,7 @@ def safe_log_to_debug_file(
             fcntl.flock(f.fileno(), fcntl.LOCK_EX)
             try:
                 # Write single-line JSON
-                json.dump(debug_data, f, separators=(',', ':'))
+                json.dump(debug_data, f, separators=(",", ":"))
                 f.write("\n")
             finally:
                 # Release lock

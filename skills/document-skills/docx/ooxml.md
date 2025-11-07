@@ -240,7 +240,7 @@ When adding content, update these files:
 </w:hyperlink>
 
 <!-- In word/_rels/document.xml.rels -->
-<Relationship Id="rId5" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink" 
+<Relationship Id="rId5" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink"
               Target="https://www.example.com/" TargetMode="External"/>
 ```
 
@@ -309,16 +309,16 @@ PYTHONPATH=/mnt/skills/docx python your_script.py
 from scripts.document import Document, DocxXMLEditor
 
 # Basic initialization (automatically creates temp copy and sets up infrastructure)
-doc = Document('unpacked')
+doc = Document("unpacked")
 
 # Customize author and initials
-doc = Document('unpacked', author="John Doe", initials="JD")
+doc = Document("unpacked", author="John Doe", initials="JD")
 
 # Enable track revisions mode
-doc = Document('unpacked', track_revisions=True)
+doc = Document("unpacked", track_revisions=True)
 
 # Specify custom RSID (auto-generated if not provided)
-doc = Document('unpacked', rsid="07DC5ECB")
+doc = Document("unpacked", rsid="07DC5ECB")
 ```
 
 ### Creating Tracked Changes
@@ -352,30 +352,32 @@ doc["word/document.xml"].replace_node(node, replacement)
 # Complete replacement - preserve formatting even when replacing all text
 node = doc["word/document.xml"].get_node(tag="w:r", contains="apple")
 rpr = tags[0].toxml() if (tags := node.getElementsByTagName("w:rPr")) else ""
-replacement = f'<w:del><w:r>{rpr}<w:delText>apple</w:delText></w:r></w:del><w:ins><w:r>{rpr}<w:t>banana orange</w:t></w:r></w:ins>'
+replacement = f"<w:del><w:r>{rpr}<w:delText>apple</w:delText></w:r></w:del><w:ins><w:r>{rpr}<w:t>banana orange</w:t></w:r></w:ins>"
 doc["word/document.xml"].replace_node(node, replacement)
 
 # Insert new content (no attributes needed - auto-injected)
 node = doc["word/document.xml"].get_node(tag="w:r", contains="existing text")
-doc["word/document.xml"].insert_after(node, '<w:ins><w:r><w:t>new text</w:t></w:r></w:ins>')
+doc["word/document.xml"].insert_after(
+    node, "<w:ins><w:r><w:t>new text</w:t></w:r></w:ins>"
+)
 
 # Partially delete another author's insertion
 # Original: <w:ins w:author="Jane Smith" w:date="..."><w:r><w:t>quarterly financial report</w:t></w:r></w:ins>
 # Goal: Delete only "financial" to make it "quarterly report"
 node = doc["word/document.xml"].get_node(tag="w:ins", attrs={"w:id": "5"})
 # IMPORTANT: Preserve w:author="Jane Smith" on the outer <w:ins> to maintain authorship
-replacement = '''<w:ins w:author="Jane Smith" w:date="2025-01-15T10:00:00Z">
+replacement = """<w:ins w:author="Jane Smith" w:date="2025-01-15T10:00:00Z">
   <w:r><w:t>quarterly </w:t></w:r>
   <w:del><w:r><w:delText>financial </w:delText></w:r></w:del>
   <w:r><w:t>report</w:t></w:r>
-</w:ins>'''
+</w:ins>"""
 doc["word/document.xml"].replace_node(node, replacement)
 
 # Change part of another author's insertion
 # Original: <w:ins w:author="Jane Smith"><w:r><w:t>in silence, safe and sound</w:t></w:r></w:ins>
 # Goal: Change "safe and sound" to "soft and unbound"
 node = doc["word/document.xml"].get_node(tag="w:ins", attrs={"w:id": "8"})
-replacement = f'''<w:ins w:author="Jane Smith" w:date="2025-01-15T10:00:00Z">
+replacement = f"""<w:ins w:author="Jane Smith" w:date="2025-01-15T10:00:00Z">
   <w:r><w:t>in silence, </w:t></w:r>
 </w:ins>
 <w:ins>
@@ -383,7 +385,7 @@ replacement = f'''<w:ins w:author="Jane Smith" w:date="2025-01-15T10:00:00Z">
 </w:ins>
 <w:ins w:author="Jane Smith" w:date="2025-01-15T10:00:00Z">
   <w:del><w:r><w:delText>safe and sound</w:delText></w:r></w:del>
-</w:ins>'''
+</w:ins>"""
 doc["word/document.xml"].replace_node(node, replacement)
 
 # Delete entire run (use only when deleting all content; use replace_node for partial deletions)
@@ -395,9 +397,11 @@ para = doc["word/document.xml"].get_node(tag="w:p", contains="paragraph to delet
 doc["word/document.xml"].suggest_deletion(para)
 
 # Add new numbered list item
-target_para = doc["word/document.xml"].get_node(tag="w:p", contains="existing list item")
+target_para = doc["word/document.xml"].get_node(
+    tag="w:p", contains="existing list item"
+)
 pPr = tags[0].toxml() if (tags := target_para.getElementsByTagName("w:pPr")) else ""
-new_item = f'<w:p>{pPr}<w:r><w:t>New item</w:t></w:r></w:p>'
+new_item = f"<w:p>{pPr}<w:r><w:t>New item</w:t></w:r></w:p>"
 tracked_para = DocxXMLEditor.suggest_paragraph(new_item)
 doc["word/document.xml"].insert_after(target_para, tracked_para)
 # Optional: add spacing paragraph before content for better visual separation
@@ -423,11 +427,13 @@ doc.add_comment(start=para, end=para, text="Comment on this paragraph")
 node = doc["word/document.xml"].get_node(tag="w:r", contains="old")
 new_nodes = doc["word/document.xml"].replace_node(
     node,
-    '<w:del><w:r><w:delText>old</w:delText></w:r></w:del><w:ins><w:r><w:t>new</w:t></w:r></w:ins>'
+    "<w:del><w:r><w:delText>old</w:delText></w:r></w:del><w:ins><w:r><w:t>new</w:t></w:r></w:ins>",
 )
 # Then add comment on the newly created elements
 # new_nodes[0] is the <w:del>, new_nodes[1] is the <w:ins>
-doc.add_comment(start=new_nodes[0], end=new_nodes[1], text="Changed old to new per requirements")
+doc.add_comment(
+    start=new_nodes[0], end=new_nodes[1], text="Changed old to new per requirements"
+)
 
 # Reply to existing comment
 doc.reply_to_comment(parent_comment_id=0, text="I agree with this change")
@@ -446,7 +452,9 @@ nodes = doc["word/document.xml"].revert_insertion(ins)  # Returns [ins]
 # Reject deletion (creates insertion to restore deleted content)
 # Use this when another author deleted text that you want to restore
 del_elem = doc["word/document.xml"].get_node(tag="w:del", attrs={"w:id": "3"})
-nodes = doc["word/document.xml"].revert_deletion(del_elem)  # Returns [del_elem, new_ins]
+nodes = doc["word/document.xml"].revert_deletion(
+    del_elem
+)  # Returns [del_elem, new_ins]
 
 # Reject all insertions in a paragraph
 para = doc["word/document.xml"].get_node(tag="w:p", contains="paragraph text")
@@ -466,27 +474,33 @@ from PIL import Image
 import shutil, os
 
 # Initialize document first
-doc = Document('unpacked')
+doc = Document("unpacked")
 
 # Copy image and calculate full-width dimensions with aspect ratio
-media_dir = os.path.join(doc.unpacked_path, 'word/media')
+media_dir = os.path.join(doc.unpacked_path, "word/media")
 os.makedirs(media_dir, exist_ok=True)
-shutil.copy('image.png', os.path.join(media_dir, 'image1.png'))
-img = Image.open(os.path.join(media_dir, 'image1.png'))
+shutil.copy("image.png", os.path.join(media_dir, "image1.png"))
+img = Image.open(os.path.join(media_dir, "image1.png"))
 width_emus = int(6.5 * 914400)  # 6.5" usable width, 914400 EMUs/inch
 height_emus = int(width_emus * img.size[1] / img.size[0])
 
 # Add relationship and content type
-rels_editor = doc['word/_rels/document.xml.rels']
+rels_editor = doc["word/_rels/document.xml.rels"]
 next_rid = rels_editor.get_next_rid()
-rels_editor.append_to(rels_editor.dom.documentElement,
-    f'<Relationship Id="{next_rid}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/image1.png"/>')
-doc['[Content_Types].xml'].append_to(doc['[Content_Types].xml'].dom.documentElement,
-    '<Default Extension="png" ContentType="image/png"/>')
+rels_editor.append_to(
+    rels_editor.dom.documentElement,
+    f'<Relationship Id="{next_rid}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/image1.png"/>',
+)
+doc["[Content_Types].xml"].append_to(
+    doc["[Content_Types].xml"].dom.documentElement,
+    '<Default Extension="png" ContentType="image/png"/>',
+)
 
 # Insert image
 node = doc["word/document.xml"].get_node(tag="w:p", line_number=100)
-doc["word/document.xml"].insert_after(node, f'''<w:p>
+doc["word/document.xml"].insert_after(
+    node,
+    f'''<w:p>
   <w:r>
     <w:drawing>
       <wp:inline distT="0" distB="0" distL="0" distR="0">
@@ -504,7 +518,8 @@ doc["word/document.xml"].insert_after(node, f'''<w:p>
       </wp:inline>
     </w:drawing>
   </w:r>
-</w:p>''')
+</w:p>''',
+)
 ```
 
 ### Getting Nodes
@@ -523,10 +538,14 @@ node = doc["word/document.xml"].get_node(tag="w:del", attrs={"w:id": "1"})
 para = doc["word/document.xml"].get_node(tag="w:p", line_number=42)
 
 # Combine filters
-node = doc["word/document.xml"].get_node(tag="w:r", line_number=range(40, 60), contains="text")
+node = doc["word/document.xml"].get_node(
+    tag="w:r", line_number=range(40, 60), contains="text"
+)
 
 # Disambiguate when text appears multiple times - add line_number range
-node = doc["word/document.xml"].get_node(tag="w:r", contains="Section", line_number=range(2400, 2500))
+node = doc["word/document.xml"].get_node(
+    tag="w:r", contains="Section", line_number=range(2400, 2500)
+)
 ```
 
 ### Saving
@@ -536,7 +555,7 @@ node = doc["word/document.xml"].get_node(tag="w:r", contains="Section", line_num
 doc.save()  # Validates by default, raises error if validation fails
 
 # Save to different location
-doc.save('modified-unpacked')
+doc.save("modified-unpacked")
 
 # Skip validation (debugging only - needing this in production indicates XML issues)
 doc.save(validate=False)
@@ -559,7 +578,9 @@ parent.appendChild(node)  # Move to end
 
 # General document manipulation (without tracked changes)
 old_node = doc["word/document.xml"].get_node(tag="w:p", contains="original text")
-doc["word/document.xml"].replace_node(old_node, "<w:p><w:r><w:t>replacement text</w:t></w:r></w:p>")
+doc["word/document.xml"].replace_node(
+    old_node, "<w:p><w:r><w:t>replacement text</w:t></w:r></w:p>"
+)
 
 # Multiple insertions - use return value to maintain order
 node = doc["word/document.xml"].get_node(tag="w:r", line_number=100)

@@ -298,7 +298,8 @@ dbt creates analysis-ready datasets. Connect to them via:
 
 ```python
 import duckdb
-conn = duckdb.connect('data/warehouse.db')
+
+conn = duckdb.connect("data/warehouse.db")
 df = conn.execute("SELECT * FROM fct_case_decisions").df()
 ```
 
@@ -307,7 +308,8 @@ df = conn.execute("SELECT * FROM fct_case_decisions").df()
 ```python
 # Use dbt's ref() pattern via sqlalchemy
 from sqlalchemy import create_engine
-engine = create_engine('duckdb:///data/warehouse.db')
+
+engine = create_engine("duckdb:///data/warehouse.db")
 df = pd.read_sql("SELECT * FROM fct_case_decisions", engine)
 ```
 

@@ -46,8 +46,8 @@ To retrieve recent emails from inbox:
 
 ```python
 mcp__outlook__messages_list_recent(
-    folder="inbox",      # Optional: "inbox" (default), "sent", "drafts", etc.
-    limit=20             # Optional: number of messages to return (default: 20)
+    folder="inbox",  # Optional: "inbox" (default), "sent", "drafts", etc.
+    limit=20,  # Optional: number of messages to return (default: 20)
 )
 ```
 
@@ -66,8 +66,8 @@ To retrieve full content of a specific email:
 
 ```python
 mcp__outlook__messages_get(
-    entry_id="...",      # Required: from messages_list_recent
-    format="text"        # Optional: "text" (default) or "html"
+    entry_id="...",  # Required: from messages_list_recent
+    format="text",  # Optional: "text" (default) or "html"
 )
 ```
 
@@ -84,8 +84,8 @@ To search for specific emails:
 ```python
 mcp__outlook__messages_query(
     query="subject:conference",  # Search query
-    folder="inbox",              # Optional: folder to search
-    limit=50                     # Optional: max results
+    folder="inbox",  # Optional: folder to search
+    limit=50,  # Optional: max results
 )
 ```
 
@@ -222,10 +222,12 @@ When processing emails:
 recent = mcp__outlook__messages_list_recent(limit=20)
 
 # Filter unread with urgency signals
-urgent = [msg for msg in recent
-          if not msg.is_read
-          and ("urgent" in msg.subject.lower()
-               or "asap" in msg.subject.lower())]
+urgent = [
+    msg
+    for msg in recent
+    if not msg.is_read
+    and ("urgent" in msg.subject.lower() or "asap" in msg.subject.lower())
+]
 
 # Read full content of urgent messages
 for msg in urgent:
@@ -252,8 +254,7 @@ for msg in deadline_emails:
 ```python
 # Search for emails from specific person
 supervisor_emails = mcp__outlook__messages_query(
-    query="from:supervisor@university.edu",
-    limit=10
+    query="from:supervisor@university.edu", limit=10
 )
 
 # Process recent messages from supervisor
@@ -286,9 +287,7 @@ supervisor_emails = mcp__outlook__messages_query(
 messages = mcp__outlook__messages_list_recent(limit=30)
 
 # 2. Filter for actionable items
-actionable = [msg for msg in messages
-              if not msg.is_read
-              and is_high_priority(msg)]
+actionable = [msg for msg in messages if not msg.is_read and is_high_priority(msg)]
 
 # 3. Read high-priority messages
 for msg in actionable:

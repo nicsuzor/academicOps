@@ -20,18 +20,18 @@ import json
 import os
 import subprocess
 import sys
-from datetime import datetime, timezone
 from pathlib import Path
 
 # Optional debug logging - gracefully handle missing hook_debug module
 try:
     from hook_debug import safe_log_to_debug_file
+
     HAS_DEBUG = True
 except ImportError:
     HAS_DEBUG = False
+
     def safe_log_to_debug_file(*args, **kwargs):
         """Fallback no-op function when hook_debug is not available."""
-        pass
 
 
 def get_project_dir() -> Path:
@@ -98,11 +98,7 @@ def log_session_objective(
         True if logging succeeded, False otherwise
     """
     script_path = (
-        project_dir
-        / "skills"
-        / "task-management"
-        / "scripts"
-        / "session_log.py"
+        project_dir / "skills" / "task-management" / "scripts" / "session_log.py"
     )
 
     if not script_path.exists():
@@ -176,22 +172,14 @@ def main() -> int:
 
         # Always allow the tool use (return empty JSON with permissionDecision)
         # PreToolUse hooks must return hookSpecificOutput with permissionDecision
-        response = {
-            "hookSpecificOutput": {
-                "permissionDecision": "allow"
-            }
-        }
+        response = {"hookSpecificOutput": {"permissionDecision": "allow"}}
         print(json.dumps(response))
 
         return 0
 
     except Exception as e:
         # Always return success to prevent blocking tool use
-        response = {
-            "hookSpecificOutput": {
-                "permissionDecision": "allow"
-            }
-        }
+        response = {"hookSpecificOutput": {"permissionDecision": "allow"}}
         print(json.dumps(response))
         print(f"Warning: TodoWrite logging hook error: {e}", file=sys.stderr)
         return 0
@@ -202,10 +190,6 @@ if __name__ == "__main__":
         sys.exit(main())
     except Exception:
         # Ultimate safeguard
-        response = {
-            "hookSpecificOutput": {
-                "permissionDecision": "allow"
-            }
-        }
+        response = {"hookSpecificOutput": {"permissionDecision": "allow"}}
         print(json.dumps(response))
         sys.exit(0)

@@ -6,12 +6,11 @@ priority formats are accepted.
 
 Relates to GitHub issue #173.
 """
+
 import json
 import subprocess
 import tempfile
 from pathlib import Path
-
-import pytest
 
 
 def test_task_add_accepts_numeric_priority():
@@ -19,19 +18,24 @@ def test_task_add_accepts_numeric_priority():
     with tempfile.TemporaryDirectory() as tmpdir:
         # Arrange
         script = Path(__file__).parent.parent / "scripts" / "task_add.py"
-        result_file = Path(tmpdir) / "data" / "tasks" / "inbox"
+        Path(tmpdir) / "data" / "tasks" / "inbox"
 
         # Act - Create task with numeric priority
         result = subprocess.run(
             [
-                "python3", str(script),
-                "--title", "Test task with numeric priority",
-                "--priority", "1",
-                "--project", "test"
+                "python3",
+                str(script),
+                "--title",
+                "Test task with numeric priority",
+                "--priority",
+                "1",
+                "--project",
+                "test",
             ],
+            check=False,
             cwd=tmpdir,
             capture_output=True,
-            text=True
+            text=True,
         )
 
         # Assert
@@ -52,14 +56,19 @@ def test_task_add_accepts_p0_priority_format():
         # Act - Create task with P0 priority
         result = subprocess.run(
             [
-                "python3", str(script),
-                "--title", "Test task with P0 priority",
-                "--priority", "P0",
-                "--project", "test"
+                "python3",
+                str(script),
+                "--title",
+                "Test task with P0 priority",
+                "--priority",
+                "P0",
+                "--project",
+                "test",
             ],
+            check=False,
             cwd=tmpdir,
             capture_output=True,
-            text=True
+            text=True,
         )
 
         # Assert
@@ -80,14 +89,19 @@ def test_task_add_accepts_p1_priority_format():
         # Act - Create task with P1 priority
         result = subprocess.run(
             [
-                "python3", str(script),
-                "--title", "Test task with P1 priority",
-                "--priority", "P1",
-                "--project", "test"
+                "python3",
+                str(script),
+                "--title",
+                "Test task with P1 priority",
+                "--priority",
+                "P1",
+                "--project",
+                "test",
             ],
+            check=False,
             cwd=tmpdir,
             capture_output=True,
-            text=True
+            text=True,
         )
 
         # Assert
@@ -108,14 +122,19 @@ def test_task_add_accepts_p2_priority_format():
         # Act - Create task with P2 priority
         result = subprocess.run(
             [
-                "python3", str(script),
-                "--title", "Test task with P2 priority",
-                "--priority", "P2",
-                "--project", "test"
+                "python3",
+                str(script),
+                "--title",
+                "Test task with P2 priority",
+                "--priority",
+                "P2",
+                "--project",
+                "test",
             ],
+            check=False,
             cwd=tmpdir,
             capture_output=True,
-            text=True
+            text=True,
         )
 
         # Assert
@@ -136,21 +155,29 @@ def test_task_add_rejects_invalid_priority_with_clear_error():
         # Act - Try invalid priority
         result = subprocess.run(
             [
-                "python3", str(script),
-                "--title", "Test task",
-                "--priority", "invalid",
-                "--project", "test"
+                "python3",
+                str(script),
+                "--title",
+                "Test task",
+                "--priority",
+                "invalid",
+                "--project",
+                "test",
             ],
+            check=False,
             cwd=tmpdir,
             capture_output=True,
-            text=True
+            text=True,
         )
 
         # Assert - Should fail with clear error
         assert result.returncode != 0
         assert "priority" in result.stderr.lower()
         # Error should mention valid formats
-        assert any(hint in result.stderr.lower() for hint in ["p0", "p1", "p2", "0", "1", "2", "valid"])
+        assert any(
+            hint in result.stderr.lower()
+            for hint in ["p0", "p1", "p2", "0", "1", "2", "valid"]
+        )
 
 
 def test_task_add_help_documents_priority_formats():
@@ -159,9 +186,7 @@ def test_task_add_help_documents_priority_formats():
 
     # Act
     result = subprocess.run(
-        ["python3", str(script), "--help"],
-        capture_output=True,
-        text=True
+        ["python3", str(script), "--help"], check=False, capture_output=True, text=True
     )
 
     # Assert

@@ -133,17 +133,17 @@ import duckdb
 from pathlib import Path
 
 # Configure plotting
-plt.style.use('seaborn-v0_8-darkgrid')
-sns.set_palette('colorblind')
-plt.rcParams['figure.figsize'] = (10, 6)
-plt.rcParams['font.size'] = 11
+plt.style.use("seaborn-v0_8-darkgrid")
+sns.set_palette("colorblind")
+plt.rcParams["figure.figsize"] = (10, 6)
+plt.rcParams["font.size"] = 11
 
 # Load data
 # Option 1: From DuckDB warehouse
-conn = duckdb.connect('data/warehouse.db', read_only=True)
+conn = duckdb.connect("data/warehouse.db", read_only=True)
 
 # Option 2: From cached DuckDB
-cache_db = Path('path/to/local_cache.duckdb')
+cache_db = Path("path/to/local_cache.duckdb")
 conn = duckdb.connect(str(cache_db), read_only=True)
 
 # Option 3: From CSV/Parquet
@@ -225,12 +225,12 @@ Break down results for each [model/condition/group]:
 
 ```python
 # Calculate and display results for each subgroup
-for group in results_df['group_column'].unique():
-    group_data = results_df[results_df['group_column'] == group]
+for group in results_df["group_column"].unique():
+    group_data = results_df[results_df["group_column"] == group]
 
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"GROUP: {group}")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
 
     # Display metrics
     print(f"Sample size: {len(group_data):,}")
@@ -239,8 +239,10 @@ for group in results_df['group_column'].unique():
 
     # Success criteria check
     print(f"\nSuccess Criteria:")
-    if group_data['metric1'].mean() < threshold:
-        print(f"  ✅ SUCCESS: Metric 1 {group_data['metric1'].mean():.1%} meets threshold")
+    if group_data["metric1"].mean() < threshold:
+        print(
+            f"  ✅ SUCCESS: Metric 1 {group_data['metric1'].mean():.1%} meets threshold"
+        )
     else:
         print(f"  ❌ MISS: Metric 1 {group_data['metric1'].mean():.1%} above threshold")
 ```
@@ -361,21 +363,22 @@ print("\n📚 This notebook is archived as a historical record of [experiment na
 
 ```python
 # Pattern 1: DuckDB warehouse
-conn = duckdb.connect('data/warehouse.db', read_only=True)
+conn = duckdb.connect("data/warehouse.db", read_only=True)
 df = conn.execute("SELECT * FROM mart_name").df()
 
 # Pattern 2: BigQuery (if still accessible)
 from google.cloud import bigquery
-client = bigquery.Client(project='project-id')
+
+client = bigquery.Client(project="project-id")
 query = "SELECT * FROM dataset.table WHERE date = '2025-10-29'"
 df = client.query(query).to_dataframe()
 
 # Pattern 3: Cached results
-df = pd.read_parquet('cache/experiment_results.parquet')
+df = pd.read_parquet("cache/experiment_results.parquet")
 
 # Pattern 4: Multiple sources joined
-baseline = pd.read_csv('results/baseline.csv')
-treatment = pd.read_csv('results/treatment.csv')
+baseline = pd.read_csv("results/baseline.csv")
+treatment = pd.read_csv("results/treatment.csv")
 combined = pd.concat([baseline, treatment], ignore_index=True)
 ```
 
@@ -385,25 +388,33 @@ combined = pd.concat([baseline, treatment], ignore_index=True)
 # Grouped bar chart comparing baseline vs treatment
 fig, ax = plt.subplots(figsize=(12, 6))
 
-groups = df['group'].unique()
+groups = df["group"].unique()
 x = np.arange(len(groups))
 width = 0.35
 
-baseline_values = [df[(df['group']==g) & (df['type']=='baseline')]['metric'].mean()
-                   for g in groups]
-treatment_values = [df[(df['group']==g) & (df['type']=='treatment')]['metric'].mean()
-                    for g in groups]
+baseline_values = [
+    df[(df["group"] == g) & (df["type"] == "baseline")]["metric"].mean() for g in groups
+]
+treatment_values = [
+    df[(df["group"] == g) & (df["type"] == "treatment")]["metric"].mean()
+    for g in groups
+]
 
-bars1 = ax.bar(x - width/2, baseline_values, width, label='Baseline', alpha=0.8)
-bars2 = ax.bar(x + width/2, treatment_values, width, label='Treatment', alpha=0.8)
+bars1 = ax.bar(x - width / 2, baseline_values, width, label="Baseline", alpha=0.8)
+bars2 = ax.bar(x + width / 2, treatment_values, width, label="Treatment", alpha=0.8)
 
 # Add value labels
 for bars in [bars1, bars2]:
     for bar in bars:
         height = bar.get_height()
-        ax.text(bar.get_x() + bar.get_width()/2., height,
-                f'{height:.1%}',
-                ha='center', va='bottom', fontweight='bold')
+        ax.text(
+            bar.get_x() + bar.get_width() / 2.0,
+            height,
+            f"{height:.1%}",
+            ha="center",
+            va="bottom",
+            fontweight="bold",
+        )
 
 ax.set_xticks(x)
 ax.set_xticklabels(groups)
@@ -418,8 +429,8 @@ plt.show()
 from scipy import stats
 
 # T-test comparing two groups
-baseline = df[df['type'] == 'baseline']['metric']
-treatment = df[df['type'] == 'treatment']['metric']
+baseline = df[df["type"] == "baseline"]["metric"]
+treatment = df[df["type"] == "treatment"]["metric"]
 
 t_stat, p_value = stats.ttest_ind(baseline, treatment)
 

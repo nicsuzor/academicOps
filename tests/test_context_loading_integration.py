@@ -71,6 +71,7 @@ class TestContextLoadingHierarchy:
         # Run load_instructions.py
         result = subprocess.run(
             ["uv", "run", "python", "hooks/load_instructions.py"],
+            check=False,
             cwd=Path(__file__).parent.parent,
             capture_output=True,
             text=True,
@@ -84,13 +85,11 @@ class TestContextLoadingHierarchy:
         # Assertions
         assert "BigQuery > Redshift" in context, "Personal preferences should load"
         assert "buttermilk analytics engine" in context, "Project context should load"
-        assert (
-            "Book is deprioritized" not in context
-        ), "Strategic data should NOT auto-load in project repo"
+        assert "Book is deprioritized" not in context, (
+            "Strategic data should NOT auto-load in project repo"
+        )
 
-    def test_strategic_data_accessible_in_personal_repo(
-        self, tmp_path, monkeypatch
-    ):
+    def test_strategic_data_accessible_in_personal_repo(self, tmp_path, monkeypatch):
         """
         VALIDATES: Strategic data (data/goals, data/tasks) should be accessible
         when working IN the personal repo.
@@ -130,6 +129,7 @@ When working in THIS repo, strategist agent accesses these paths.
         # Run load_instructions.py
         result = subprocess.run(
             ["uv", "run", "python", "hooks/load_instructions.py"],
+            check=False,
             cwd=Path(__file__).parent.parent,
             capture_output=True,
             text=True,
@@ -141,9 +141,7 @@ When working in THIS repo, strategist agent accesses these paths.
 
         # When in personal repo, instructions should reference data/ paths
         assert "data/goals" in context, "Strategic data paths should be documented"
-        assert (
-            "data/tasks" in context
-        ), "Task management paths should be accessible"
+        assert "data/tasks" in context, "Task management paths should be accessible"
 
     def test_project_context_overrides_personal(self, tmp_path, monkeypatch):
         """
@@ -179,6 +177,7 @@ When working in THIS repo, strategist agent accesses these paths.
 
         result = subprocess.run(
             ["uv", "run", "python", "hooks/load_instructions.py"],
+            check=False,
             cwd=Path(__file__).parent.parent,
             capture_output=True,
             text=True,
@@ -195,9 +194,9 @@ When working in THIS repo, strategist agent accesses these paths.
         # Project should appear first (higher priority in context)
         streamlit_pos = context.index("Streamlit")
         tableau_pos = context.index("Tableau")
-        assert (
-            tableau_pos < streamlit_pos
-        ), "Project context should appear before personal"
+        assert tableau_pos < streamlit_pos, (
+            "Project context should appear before personal"
+        )
 
 
 class TestPrivacyBoundaries:
@@ -243,12 +242,10 @@ class TestPrivacyBoundaries:
         content = settings_file.read_text()
 
         # Privacy checks
-        assert (
-            "/home/" not in content
-        ), "Should not contain absolute paths to user home"
-        assert (
-            "$ACADEMICOPS" in content or "${ACADEMICOPS}" in content
-        ), "Should use environment variable"
+        assert "/home/" not in content, "Should not contain absolute paths to user home"
+        assert "$ACADEMICOPS" in content or "${ACADEMICOPS}" in content, (
+            "Should use environment variable"
+        )
 
     def test_symlinks_are_gitignored(self, tmp_path):
         """
@@ -308,6 +305,7 @@ class TestFallbackBehavior:
 
         result = subprocess.run(
             ["uv", "run", "python", "hooks/load_instructions.py"],
+            check=False,
             cwd=Path(__file__).parent.parent,
             capture_output=True,
             text=True,
@@ -317,9 +315,9 @@ class TestFallbackBehavior:
         output = json.loads(result.stdout)
         context = output["hookSpecificOutput"]["additionalContext"]
 
-        assert (
-            "LEGACY_CONTENT" in context
-        ), "Should fall back to legacy path if new path missing"
+        assert "LEGACY_CONTENT" in context, (
+            "Should fall back to legacy path if new path missing"
+        )
 
 
 class TestEnvironmentVariableRequirements:
@@ -343,6 +341,7 @@ class TestEnvironmentVariableRequirements:
 
         result = subprocess.run(
             ["uv", "run", "python", "hooks/load_instructions.py"],
+            check=False,
             cwd=Path(__file__).parent.parent,
             capture_output=True,
             text=True,
@@ -350,9 +349,9 @@ class TestEnvironmentVariableRequirements:
         )
 
         assert result.returncode != 0, "Should fail if ACADEMICOPS not set"
-        assert (
-            "ACADEMICOPS" in result.stderr
-        ), "Error message should mention missing variable"
+        assert "ACADEMICOPS" in result.stderr, (
+            "Error message should mention missing variable"
+        )
 
     def test_works_without_personal_context(self, tmp_path, monkeypatch):
         """
@@ -372,6 +371,7 @@ class TestEnvironmentVariableRequirements:
 
         result = subprocess.run(
             ["uv", "run", "python", "hooks/load_instructions.py"],
+            check=False,
             cwd=Path(__file__).parent.parent,
             capture_output=True,
             text=True,
@@ -379,14 +379,12 @@ class TestEnvironmentVariableRequirements:
         )
 
         # Should succeed with just framework tier
-        assert (
-            result.returncode == 0
-        ), "Should work without personal context (framework-only mode)"
+        assert result.returncode == 0, (
+            "Should work without personal context (framework-only mode)"
+        )
 
         # Check stderr for user-facing message
-        assert (
-            "✓ bot" in result.stderr
-        ), "Should confirm framework tier loaded"
+        assert "✓ bot" in result.stderr, "Should confirm framework tier loaded"
 
 
 @pytest.mark.skip(reason="Requires actual repo setup - run manually")
@@ -410,10 +408,9 @@ class TestRealWorldScenarios:
                 "uv",
                 "run",
                 "python",
-                os.path.expanduser(
-                    "~/src/bot/hooks/load_instructions.py"
-                ),
+                os.path.expanduser("~/src/bot/hooks/load_instructions.py"),
             ],
+            check=False,
             capture_output=True,
             text=True,
             input="{}",
@@ -442,10 +439,9 @@ class TestRealWorldScenarios:
                 "uv",
                 "run",
                 "python",
-                os.path.expanduser(
-                    "~/src/bot/hooks/load_instructions.py"
-                ),
+                os.path.expanduser("~/src/bot/hooks/load_instructions.py"),
             ],
+            check=False,
             capture_output=True,
             text=True,
             input="{}",
@@ -456,9 +452,7 @@ class TestRealWorldScenarios:
         context = output["hookSpecificOutput"]["additionalContext"]
 
         # Should see user preferences from ~/src/writing
-        assert (
-            "ADHD" in context or "BigQuery" in context or "Streamlit" in context
-        )
+        assert "ADHD" in context or "BigQuery" in context or "Streamlit" in context
 
         # Should NOT see private strategic data
         assert "Book is deprioritized" not in context

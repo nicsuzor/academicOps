@@ -6,6 +6,7 @@ These tests verify that Claude Code correctly integrates with our hook system.
 """
 
 import pytest
+
 # Mark all tests in this file as slow (integration tests invoking Claude CLI)
 pytestmark = [pytest.mark.slow, pytest.mark.timeout(120)]
 
@@ -63,7 +64,9 @@ class TestHookIntegration:
             model="haiku",
         )
 
-        assert result["success"], f"Read should be allowed from subdirectory. Error: {result['error']}"
+        assert result["success"], (
+            f"Read should be allowed from subdirectory. Error: {result['error']}"
+        )
         assert not result["permission_denials"], (
             "Read should not trigger permission denials from subdirectory"
         )

@@ -104,7 +104,10 @@ class TestPermissionDecisions:
         json_output = result["parsed_json"]
         assert json_output["hookSpecificOutput"]["permissionDecision"] == "allow"
         assert json_output["hookSpecificOutput"]["permissionDecisionReason"] is not None
-        assert "code-review" in json_output["hookSpecificOutput"]["permissionDecisionReason"].lower()
+        assert (
+            "code-review"
+            in json_output["hookSpecificOutput"]["permissionDecisionReason"].lower()
+        )
         assert result["exit_code"] == 1
 
     def test_deny_decision(self):
@@ -173,7 +176,10 @@ class TestValidationRules:
         # Should warn (allow but with message)
         assert json_output["hookSpecificOutput"]["permissionDecision"] == "allow"
         assert json_output["hookSpecificOutput"]["permissionDecisionReason"] is not None
-        assert "code-review" in json_output["hookSpecificOutput"]["permissionDecisionReason"].lower()
+        assert (
+            "code-review"
+            in json_output["hookSpecificOutput"]["permissionDecisionReason"].lower()
+        )
 
 
 class TestHookStructure:

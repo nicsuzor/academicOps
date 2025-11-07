@@ -12,10 +12,7 @@ import json
 import subprocess
 from pathlib import Path
 
-import pytest
-
-from .hooks import parse_hook_output, run_hook
-
+from .hooks import run_hook
 
 # ============================================================================
 # Stop Hook Tests (validate_stop.py)
@@ -44,13 +41,15 @@ class TestStopHook:
 
         exit_code, stdout, stderr = run_hook(validate_stop_script, hook_input)
 
-        assert exit_code == 0, f"Hook failed with exit code {exit_code}\nstderr: {stderr}"
+        assert exit_code == 0, (
+            f"Hook failed with exit code {exit_code}\nstderr: {stderr}"
+        )
 
         # Verify stdout starts with JSON (no leading text)
         stdout_stripped = stdout.strip()
-        assert stdout_stripped.startswith(
-            "{"
-        ), f"Hook output should start with '{{' but got: {stdout_stripped[:100]}"
+        assert stdout_stripped.startswith("{"), (
+            f"Hook output should start with '{{' but got: {stdout_stripped[:100]}"
+        )
 
         # Verify it's valid JSON
         output = json.loads(stdout_stripped)
@@ -70,14 +69,14 @@ class TestStopHook:
             assert isinstance(output["reason"], str), "'reason' must be a string"
 
         # CRITICAL: Stop hooks should NOT include hookSpecificOutput
-        assert (
-            "hookSpecificOutput" not in output
-        ), "Stop hooks should not include hookSpecificOutput field"
+        assert "hookSpecificOutput" not in output, (
+            "Stop hooks should not include hookSpecificOutput field"
+        )
 
         # CRITICAL: Stop hooks should NOT include hookEventName at top level
-        assert (
-            "hookEventName" not in output
-        ), "Stop hooks should not include hookEventName field at top level"
+        assert "hookEventName" not in output, (
+            "Stop hooks should not include hookEventName field at top level"
+        )
 
     def test_subagent_stop_hook_outputs_valid_json_schema(
         self, validate_stop_script: Path
@@ -95,7 +94,9 @@ class TestStopHook:
 
         exit_code, stdout, stderr = run_hook(validate_stop_script, hook_input)
 
-        assert exit_code == 0, f"Hook failed with exit code {exit_code}\nstderr: {stderr}"
+        assert exit_code == 0, (
+            f"Hook failed with exit code {exit_code}\nstderr: {stderr}"
+        )
 
         # Parse and validate JSON
         stdout_stripped = stdout.strip()
@@ -118,14 +119,14 @@ class TestStopHook:
             assert isinstance(output["reason"], str), "'reason' must be a string"
 
         # CRITICAL: SubagentStop hooks should NOT include hookSpecificOutput
-        assert (
-            "hookSpecificOutput" not in output
-        ), "SubagentStop hooks should not include hookSpecificOutput field"
+        assert "hookSpecificOutput" not in output, (
+            "SubagentStop hooks should not include hookSpecificOutput field"
+        )
 
         # CRITICAL: SubagentStop hooks should NOT include hookEventName
-        assert (
-            "hookEventName" not in output
-        ), "SubagentStop hooks should not include hookEventName field"
+        assert "hookEventName" not in output, (
+            "SubagentStop hooks should not include hookEventName field"
+        )
 
     def test_stop_hook_allows_by_default(self, validate_stop_script: Path):
         """Test that Stop hook allows execution by default (no block)."""
@@ -141,9 +142,7 @@ class TestStopHook:
         # - Return {"decision": null} (explicitly allow)
         # - Not include "decision": "block"
         if "decision" in output:
-            assert output["decision"] != "block", (
-                "Hook should not block by default"
-            )
+            assert output["decision"] != "block", "Hook should not block by default"
         # If no decision field, that's also valid (allows by default)
 
     def test_stop_hook_json_is_clean(self, validate_stop_script: Path):
@@ -222,7 +221,7 @@ class TestStopHook:
             "hook_event": "Stop",
         }
 
-        exit_code, stdout, stderr = run_hook(validate_stop_script, hook_input)
+        exit_code, _stdout, stderr = run_hook(validate_stop_script, hook_input)
 
         assert exit_code == 0, f"Hook failed: {stderr}"
 
@@ -393,7 +392,7 @@ class TestStopHookEdgeCases:
 
         # stdout should ONLY contain JSON
         stdout_stripped = stdout.strip()
-        output = json.loads(stdout_stripped)  # Should parse without error
+        json.loads(stdout_stripped)  # Should parse without error
 
         # stderr should contain human-readable messages
         assert stderr.strip(), "stderr should contain debug/status messages"
@@ -423,7 +422,6 @@ class TestRequestScribeStopHook:
         This is the core behavior: on first stop, block and instruct agent
         to invoke end-of-session subagent.
         """
-        import tempfile
         import time
         from pathlib import Path
 
@@ -458,15 +456,15 @@ class TestRequestScribeStopHook:
         )
 
         # Verify state flag was created
-        assert state_file.exists(), (
-            f"State flag should be created at {state_file}"
-        )
+        assert state_file.exists(), f"State flag should be created at {state_file}"
 
         # Cleanup
         if state_file.exists():
             state_file.unlink()
 
-    def test_second_stop_allows_when_flag_exists(self, request_scribe_stop_script: Path):
+    def test_second_stop_allows_when_flag_exists(
+        self, request_scribe_stop_script: Path
+    ):
         """
         Test that second Stop allows (returns {}) when flag exists.
 
@@ -536,13 +534,13 @@ class TestRequestScribeStopHook:
             # Third stop - flag still exists
             assert state_file.exists(), "Flag should persist across stops"
 
-            exit_code, stdout, stderr = run_hook(request_scribe_stop_script, hook_input)
+            exit_code, stdout, _stderr = run_hook(
+                request_scribe_stop_script, hook_input
+            )
             assert exit_code == 0
             output = json.loads(stdout.strip())
             if "decision" in output:
-                assert output["decision"] != "block", (
-                    "Third stop should still allow"
-                )
+                assert output["decision"] != "block", "Third stop should still allow"
 
         finally:
             if state_file.exists():
@@ -574,7 +572,9 @@ class TestRequestScribeStopHook:
                 "Invalid JSON should allow (fail-safe)"
             )
 
-    def test_subagent_stop_event_works_same_as_stop(self, request_scribe_stop_script: Path):
+    def test_subagent_stop_event_works_same_as_stop(
+        self, request_scribe_stop_script: Path
+    ):
         """
         Test that SubagentStop event uses same logic as Stop.
 
@@ -603,7 +603,9 @@ class TestRequestScribeStopHook:
             assert state_file.exists()
 
             # Second SubagentStop should allow
-            exit_code, stdout, stderr = run_hook(request_scribe_stop_script, hook_input)
+            exit_code, stdout, _stderr = run_hook(
+                request_scribe_stop_script, hook_input
+            )
             assert exit_code == 0
             output = json.loads(stdout.strip())
             if "decision" in output:
@@ -653,10 +655,12 @@ class TestUserPromptSubmitFlagCleanup:
         )
 
         # Output should be valid JSON (continue execution)
-        output = json.loads(stdout.strip())
+        json.loads(stdout.strip())
         # Empty {} is valid
 
-    def test_cleanup_succeeds_when_flag_missing(self, log_userpromptsubmit_script: Path):
+    def test_cleanup_succeeds_when_flag_missing(
+        self, log_userpromptsubmit_script: Path
+    ):
         """
         Test that cleanup succeeds silently when flag doesn't exist.
 
@@ -683,9 +687,11 @@ class TestUserPromptSubmitFlagCleanup:
         assert exit_code == 0, f"Hook should succeed even when no flag exists: {stderr}"
 
         # Output should be valid JSON
-        output = json.loads(stdout.strip())
+        json.loads(stdout.strip())
 
-    def test_cleanup_with_missing_session_id(self, log_userpromptsubmit_script: Path, request_scribe_stop_script: Path):
+    def test_cleanup_with_missing_session_id(
+        self, log_userpromptsubmit_script: Path, request_scribe_stop_script: Path
+    ):
         """
         Test cleanup with missing session_id defaults to 'unknown'.
 
@@ -716,7 +722,9 @@ class TestUserPromptSubmitFlagCleanup:
             assert exit_code == 0, f"Stop hook failed: {stderr}"
             output = json.loads(stdout.strip())
             assert output.get("decision") == "block", "First stop should block"
-            assert state_file.exists(), "Flag should be created with session_id='unknown'"
+            assert state_file.exists(), (
+                "Flag should be created with session_id='unknown'"
+            )
 
             # Step 2: UserPromptSubmit hook removes flag
             cleanup_input = {
@@ -724,7 +732,9 @@ class TestUserPromptSubmitFlagCleanup:
                 # Also missing session_id - should default to 'unknown'
             }
 
-            exit_code, stdout, stderr = run_hook(log_userpromptsubmit_script, cleanup_input)
+            exit_code, stdout, stderr = run_hook(
+                log_userpromptsubmit_script, cleanup_input
+            )
             assert exit_code == 0, f"UserPromptSubmit hook failed: {stderr}"
 
             # Verify flag was removed
@@ -784,8 +794,13 @@ class TestStopHookFullCycle:
             assert state_file.exists(), "Flag should still exist"
 
             # Step 3: UserPromptSubmit → cleanup
-            hook_input_submit = {"session_id": session_id, "hook_event": "UserPromptSubmit"}
-            exit_code, stdout, _ = run_hook(log_userpromptsubmit_script, hook_input_submit)
+            hook_input_submit = {
+                "session_id": session_id,
+                "hook_event": "UserPromptSubmit",
+            }
+            exit_code, stdout, _ = run_hook(
+                log_userpromptsubmit_script, hook_input_submit
+            )
             assert exit_code == 0
             assert not state_file.exists(), "UserPromptSubmit should remove flag"
 
@@ -803,9 +818,7 @@ class TestStopHookFullCycle:
             if state_file.exists():
                 state_file.unlink()
 
-    def test_multiple_sessions_independent(
-        self, request_scribe_stop_script: Path
-    ):
+    def test_multiple_sessions_independent(self, request_scribe_stop_script: Path):
         """
         Test that different session IDs have independent state.
 

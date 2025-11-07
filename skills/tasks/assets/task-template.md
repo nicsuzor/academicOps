@@ -3,15 +3,15 @@ title: [TASK_TITLE]
 permalink: tasks/[TASK_ID]
 type: task
 tags:
-- [TASK_TYPE]
-- priority-p[PRIORITY]
-- project:[PROJECT_SLUG]
-created: '[CREATED_ISO]'
-modified: '[CREATED_ISO]'
+  - [TASK_TYPE]
+  - priority-p[PRIORITY]
+  - project:[PROJECT_SLUG]
+created: "[CREATED_ISO]"
+modified: "[CREATED_ISO]"
 task_id: [TASK_ID]
 priority: [PRIORITY]
 status: inbox
-due: '[DUE_DATE_ISO]'
+due: "[DUE_DATE_ISO]"
 project: [PROJECT_SLUG]
 classification: [CLASSIFICATION]
 ---

@@ -14,11 +14,10 @@ Test approach:
 
 Status: TDD - Writing failing tests first
 """
+
 import json
 import os
 import subprocess
-import tempfile
-from pathlib import Path
 
 import pytest
 
@@ -78,30 +77,27 @@ class TestChunksLoadingInfrastructure:
 
         settings = {
             "hooks": {
-                "SessionStart": [{
-                    "matcher": {"type": "all"},
-                    "context": [
-                        {"type": "file", "path": "core/_CORE.md"}
-                    ]
-                }]
+                "SessionStart": [
+                    {
+                        "matcher": {"type": "all"},
+                        "context": [{"type": "file", "path": "core/_CORE.md"}],
+                    }
+                ]
             }
         }
         (claude_dir / "settings.json").write_text(json.dumps(settings, indent=2))
 
         # ACT - Run Claude Code in headless mode asking about axioms
-        prompt = 'List the first 3 Core Axioms you know about. Just list them briefly.'
+        prompt = "List the first 3 Core Axioms you know about. Just list them briefly."
 
         result = subprocess.run(
-            [
-                "claude", "--print",
-                "--output-format", "text",
-                prompt
-            ],
+            ["claude", "--print", "--output-format", "text", prompt],
+            check=False,
             cwd=test_repo,
             capture_output=True,
             text=True,
             timeout=30,
-            env={**os.environ, "CLAUDE_CODE_ENABLE_TELEMETRY": "0"}
+            env={**os.environ, "CLAUDE_CODE_ENABLE_TELEMETRY": "0"},
         )
 
         # ASSERT - Verify chunks content loaded into agent context
@@ -111,13 +107,14 @@ class TestChunksLoadingInfrastructure:
 
         # Check for evidence that AXIOMS.md content was loaded
         # Agent should mention the axioms if it has access to them
-        assert "do one thing" in response or "one thing" in response, \
+        assert "do one thing" in response or "one thing" in response, (
             f"Agent doesn't know about 'DO ONE THING' axiom. Response: {result.stdout}"
+        )
 
         # Additional check - should know about fail-fast
-        assert "fail" in response and "fast" in response, \
+        assert "fail" in response and "fast" in response, (
             f"Agent doesn't know about 'Fail-Fast' axiom. Response: {result.stdout}"
-
+        )
 
     def test_infrastructure_chunk_loads_via_core_reference(self, tmp_path):
         """
@@ -162,26 +159,27 @@ Framework provides agents, skills, commands, hooks.
 
         settings = {
             "hooks": {
-                "SessionStart": [{
-                    "matcher": {"type": "all"},
-                    "context": [
-                        {"type": "file", "path": "core/_CORE.md"}
-                    ]
-                }]
+                "SessionStart": [
+                    {
+                        "matcher": {"type": "all"},
+                        "context": [{"type": "file", "path": "core/_CORE.md"}],
+                    }
+                ]
             }
         }
         (claude_dir / "settings.json").write_text(json.dumps(settings, indent=2))
 
         # ACT - Ask Claude about environment variables
-        prompt = 'What is the ACADEMICOPS environment variable used for? Brief answer.'
+        prompt = "What is the ACADEMICOPS environment variable used for? Brief answer."
 
         result = subprocess.run(
             ["claude", "--print", "--output-format", "text", prompt],
+            check=False,
             cwd=test_repo,
             capture_output=True,
             text=True,
             timeout=30,
-            env={**os.environ, "CLAUDE_CODE_ENABLE_TELEMETRY": "0"}
+            env={**os.environ, "CLAUDE_CODE_ENABLE_TELEMETRY": "0"},
         )
 
         # ASSERT - Verify infrastructure content loaded
@@ -190,12 +188,13 @@ Framework provides agents, skills, commands, hooks.
         response = result.stdout.lower()
 
         # Should know what ACADEMICOPS is for
-        assert "academicops" in response, \
+        assert "academicops" in response, (
             f"Agent doesn't know about ACADEMICOPS variable. Response: {result.stdout}"
+        )
 
-        assert "framework" in response or "root" in response, \
+        assert "framework" in response or "root" in response, (
             f"Agent doesn't understand ACADEMICOPS purpose. Response: {result.stdout}"
-
+        )
 
     def test_skill_resources_symlinks_load_chunks(self, tmp_path):
         """
@@ -266,15 +265,16 @@ When asked about axioms, list the core axioms you know from your instructions.
         (test_skill_dir / "SKILL.md").write_text(skill_content)
 
         # ACT - Invoke skill asking about axioms
-        prompt = 'Use the test-skill skill. List the first 2 Core Axioms. Be brief.'
+        prompt = "Use the test-skill skill. List the first 2 Core Axioms. Be brief."
 
         result = subprocess.run(
             ["claude", "--print", "--output-format", "text", prompt],
+            check=False,
             cwd=test_repo,
             capture_output=True,
             text=True,
             timeout=45,
-            env={**os.environ, "CLAUDE_CODE_ENABLE_TELEMETRY": "0"}
+            env={**os.environ, "CLAUDE_CODE_ENABLE_TELEMETRY": "0"},
         )
 
         # ASSERT - Verify chunks content loaded via symlink
@@ -283,13 +283,14 @@ When asked about axioms, list the core axioms you know from your instructions.
         response = result.stdout.lower()
 
         # Should know about DO ONE THING axiom from symlinked resource
-        assert "do one thing" in response or "one thing" in response, \
+        assert "do one thing" in response or "one thing" in response, (
             f"Skill doesn't have access to AXIOMS via symlink. Response: {result.stdout}"
+        )
 
         # Should know about fail-fast
-        assert "fail" in response, \
+        assert "fail" in response, (
             f"Skill doesn't know about Fail-Fast axiom. Response: {result.stdout}"
-
+        )
 
     def test_academicops_env_var_available_to_agent(self, tmp_path):
         """
@@ -310,15 +311,19 @@ When asked about axioms, list the core axioms you know from your instructions.
         test_framework.mkdir()
 
         # Create a marker file that agent can verify exists
-        (test_framework / "FRAMEWORK_MARKER.txt").write_text("This is the framework root")
+        (test_framework / "FRAMEWORK_MARKER.txt").write_text(
+            "This is the framework root"
+        )
 
         # Create chunks directory
         chunks_dir = test_framework / "chunks"
         chunks_dir.mkdir()
-        (chunks_dir / "TEST.md").write_text("# Test Chunk\n\nThis file exists in framework.")
+        (chunks_dir / "TEST.md").write_text(
+            "# Test Chunk\n\nThis file exists in framework."
+        )
 
         # ACT - Run Claude with ACADEMICOPS pointing to test framework
-        prompt = 'What is the value of the ACADEMICOPS environment variable? Just state the path.'
+        prompt = "What is the value of the ACADEMICOPS environment variable? Just state the path."
 
         env = os.environ.copy()
         env["ACADEMICOPS"] = str(test_framework)
@@ -326,11 +331,12 @@ When asked about axioms, list the core axioms you know from your instructions.
 
         result = subprocess.run(
             ["claude", "--print", "--output-format", "text", prompt],
+            check=False,
             cwd=tmp_path,
             capture_output=True,
             text=True,
             timeout=30,
-            env=env
+            env=env,
         )
 
         # ASSERT - Verify agent knows about ACADEMICOPS
@@ -340,5 +346,6 @@ When asked about axioms, list the core axioms you know from your instructions.
 
         # Agent should mention the environment variable or its value
         # Note: Claude may or may not have direct access to env vars, so we test what it knows
-        assert "academicops" in response.lower() or str(test_framework) in response, \
+        assert "academicops" in response.lower() or str(test_framework) in response, (
             f"Agent doesn't seem to know about ACADEMICOPS. Response: {result.stdout}"
+        )

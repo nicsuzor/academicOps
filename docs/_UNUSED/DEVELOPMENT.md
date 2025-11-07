@@ -52,11 +52,12 @@ Create a clear plan in a GitHub issue with:
 # File: tests/module/test_feature.py (NEVER create test files elsewhere)
 import pytest
 
+
 @pytest.mark.anyio
 async def test_expected_behavior():
     """Test that demonstrates the problem."""
     # This should pass when fixed
-    assert 1 == 1 # Replace with real test
+    assert 1 == 1  # Replace with real test
 ```
 
 **Run tests with:** `uv run pytest tests/`
@@ -151,13 +152,16 @@ max_retries = params.get("max_retries", 3)
 ```python
 from pydantic import BaseModel, Field
 
+
 class HostConfig(BaseModel):
     """Configuration with REQUIRED parameters."""
+
     timeout: int = Field(description="Max seconds to wait")
     error_threshold: float = Field(ge=0.0, le=1.0)
     max_retries: int = Field(gt=0)
 
     # NO defaults - raises ValidationError if missing
+
 
 # Usage
 config = HostConfig(**kwargs)  # Fails immediately if timeout not provided

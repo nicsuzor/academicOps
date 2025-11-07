@@ -11,8 +11,9 @@ Success: All tests pass = installation script works correctly.
 """
 
 import os
-from pathlib import Path
 import subprocess
+from pathlib import Path
+
 import pytest
 
 
@@ -27,9 +28,7 @@ class TestDogfoodingInstallation:
         install_script = academicops / "scripts/setup_academicops.sh"
 
         assert install_script.exists(), "Installation script missing"
-        assert os.access(install_script, os.X_OK), (
-            "Installation script not executable"
-        )
+        assert os.access(install_script, os.X_OK), "Installation script not executable"
 
     def test_install_script_can_run_in_academicops(self):
         """Installation script should successfully run in ${ACADEMICOPS}."""
@@ -43,6 +42,7 @@ class TestDogfoodingInstallation:
         # Run installation in academicOps itself (dogfooding)
         result = subprocess.run(
             [str(install_script), str(academicops)],
+            check=False,
             capture_output=True,
             text=True,
             timeout=30,
@@ -68,9 +68,7 @@ class TestDogfoodingInstallation:
 
         for path_str in expected_structure:
             path = academicops / path_str
-            assert path.exists(), (
-                f"Installation incomplete: missing {path_str}"
-            )
+            assert path.exists(), f"Installation incomplete: missing {path_str}"
 
     def test_no_conflicts_between_development_and_deployment(self):
         """Development files should not conflict with deployment structure."""
@@ -86,9 +84,7 @@ class TestDogfoodingInstallation:
 
         for dev_file in dev_files:
             path = academicops / dev_file
-            assert path.exists(), (
-                f"Installation damaged development file: {dev_file}"
-            )
+            assert path.exists(), f"Installation damaged development file: {dev_file}"
 
         # Deployment files should also exist
         deployment_files = [
@@ -118,13 +114,12 @@ class TestDogfoodingRuntime:
             pytest.skip("Hook script not in /bots/ yet")
 
         # Should be executable
-        assert os.access(hook_script, os.X_OK), (
-            "load_instructions.py not executable"
-        )
+        assert os.access(hook_script, os.X_OK), "load_instructions.py not executable"
 
         # Should run without error
         result = subprocess.run(
             ["uv", "run", "python", str(hook_script), "_CORE.md"],
+            check=False,
             cwd=str(academicops),
             capture_output=True,
             text=True,
@@ -144,9 +139,7 @@ class TestDogfoodingRuntime:
         if not hook_script.exists():
             pytest.skip("validate_tool.py not in /bots/ yet")
 
-        assert os.access(hook_script, os.X_OK), (
-            "validate_tool.py not executable"
-        )
+        assert os.access(hook_script, os.X_OK), "validate_tool.py not executable"
 
         # Test with sample tool invocation
         test_input = {
@@ -155,8 +148,10 @@ class TestDogfoodingRuntime:
         }
 
         import json
+
         result = subprocess.run(
             ["uv", "run", "python", str(hook_script)],
+            check=False,
             input=json.dumps(test_input),
             capture_output=True,
             text=True,
@@ -164,9 +159,7 @@ class TestDogfoodingRuntime:
             timeout=5,
         )
 
-        assert result.returncode == 0, (
-            f"validate_tool.py failed:\n{result.stderr}"
-        )
+        assert result.returncode == 0, f"validate_tool.py failed:\n{result.stderr}"
 
         # Should return valid JSON
         try:
@@ -203,15 +196,11 @@ class TestDogfoodingRuntime:
 
         for claude_path in expected_claude_files:
             full_path = academicops / claude_path
-            assert full_path.exists(), (
-                f"CLAUDE.md missing: {claude_path}"
-            )
+            assert full_path.exists(), f"CLAUDE.md missing: {claude_path}"
 
             # Should contain @ references
             content = full_path.read_text()
-            assert "@" in content, (
-                f"{claude_path} should contain @ references"
-            )
+            assert "@" in content, f"{claude_path} should contain @ references"
 
 
 @pytest.mark.slow
@@ -231,9 +220,9 @@ class TestDogfoodingGitIntegration:
         content = gitignore.read_text()
 
         # Should ignore .claude/settings.local.json
-        assert ".claude/settings.local.json" in content or "settings.local.json" in content, (
-            "Gitignore should cover local settings"
-        )
+        assert (
+            ".claude/settings.local.json" in content or "settings.local.json" in content
+        ), "Gitignore should cover local settings"
 
     def test_development_files_not_ignored(self):
         """Development files should NOT be gitignored."""
@@ -242,6 +231,7 @@ class TestDogfoodingGitIntegration:
         # Run git status to verify development files tracked
         result = subprocess.run(
             ["git", "status", "--porcelain", "tests/", "pyproject.toml"],
+            check=False,
             cwd=str(academicops),
             capture_output=True,
             text=True,
@@ -258,6 +248,7 @@ class TestDogfoodingGitIntegration:
         # In ${ACADEMICOPS}, /bots/ is source, should be in git
         result = subprocess.run(
             ["git", "ls-files", "bots/"],
+            check=False,
             cwd=str(academicops),
             capture_output=True,
             text=True,
@@ -271,9 +262,7 @@ class TestDogfoodingGitIntegration:
         assert len(tracked_files) > 0, (
             "/bots/ directory not tracked in git (should be source code)"
         )
-        assert any("core" in f for f in tracked_files), (
-            "core/ not tracked"
-        )
+        assert any("core" in f for f in tracked_files), "core/ not tracked"
 
 
 @pytest.mark.slow
@@ -333,6 +322,4 @@ class TestDogfoodingVsProjectInstallation:
 
             # Should contain files (not empty)
             files = list(path.iterdir())
-            assert len(files) > 0, (
-                f"${ACADEMICOPS}/bots/{subdir}/ empty"
-            )
+            assert len(files) > 0, f"${ACADEMICOPS}/bots/{subdir}/ empty"

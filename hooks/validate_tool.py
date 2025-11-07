@@ -17,7 +17,7 @@ import sys
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from fnmatch import fnmatch
-from pathlib import Path 
+from pathlib import Path
 
 from hook_debug import safe_log_to_debug_file
 from hook_models import PreToolUseHookOutput, PreToolUseOutput
@@ -277,7 +277,7 @@ VALIDATION_RULES = [
             "   \n"
             "   Use project-specific targeting:\n"
             "   - Include full path: pgrep -f '/full/path/to/this/project/'\n"
-            "   - Use working directory: pgrep -f \"$PWD\"\n"
+            '   - Use working directory: pgrep -f "$PWD"\n'
             "   - Verify PIDs before acting: ps aux | grep <pattern> | grep $PWD\n"
         ),
     ),

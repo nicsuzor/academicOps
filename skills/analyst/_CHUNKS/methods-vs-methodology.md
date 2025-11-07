@@ -205,9 +205,7 @@ Quality score combines three normalized dimensions:
 
 ```python
 quality_score = (
-    0.4 * speed_component +
-    0.4 * accuracy_component +
-    0.2 * consistency_component
+    0.4 * speed_component + 0.4 * accuracy_component + 0.2 * consistency_component
 )
 ```
 ````

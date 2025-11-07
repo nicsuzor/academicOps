@@ -6,32 +6,42 @@ priority formats are accepted in the scribe version.
 
 Relates to GitHub issue #173.
 """
+
 import json
 import subprocess
 import tempfile
 from pathlib import Path
-
-import pytest
 
 
 def test_scribe_task_add_accepts_numeric_priority():
     """Verify scribe task_add.py accepts numeric priority format (0, 1, 2)."""
     with tempfile.TemporaryDirectory() as tmpdir:
         # Arrange
-        script = Path(__file__).parent.parent / "skills" / "scribe" / "scripts" / "task_add.py"
-        result_file = Path(tmpdir) / "data" / "tasks" / "inbox"
+        script = (
+            Path(__file__).parent.parent
+            / "skills"
+            / "scribe"
+            / "scripts"
+            / "task_add.py"
+        )
+        Path(tmpdir) / "data" / "tasks" / "inbox"
 
         # Act - Create task with numeric priority
         result = subprocess.run(
             [
-                "python3", str(script),
-                "--title", "Test scribe task with numeric priority",
-                "--priority", "1",
-                "--project", "test"
+                "python3",
+                str(script),
+                "--title",
+                "Test scribe task with numeric priority",
+                "--priority",
+                "1",
+                "--project",
+                "test",
             ],
+            check=False,
             cwd=tmpdir,
             capture_output=True,
-            text=True
+            text=True,
         )
 
         # Assert
@@ -47,26 +57,41 @@ def test_scribe_task_add_accepts_p_format():
     """Verify scribe task_add.py accepts P0/P1/P2 priority formats."""
     with tempfile.TemporaryDirectory() as tmpdir:
         # Arrange
-        script = Path(__file__).parent.parent / "skills" / "scribe" / "scripts" / "task_add.py"
+        script = (
+            Path(__file__).parent.parent
+            / "skills"
+            / "scribe"
+            / "scripts"
+            / "task_add.py"
+        )
 
         # Test all P-format priorities
         for p_format, expected_value in [("P0", 0), ("P1", 1), ("P2", 2), ("P3", 3)]:
             # Act
             result = subprocess.run(
                 [
-                    "python3", str(script),
-                    "--title", f"Test task with {p_format}",
-                    "--priority", p_format,
-                    "--project", "test"
+                    "python3",
+                    str(script),
+                    "--title",
+                    f"Test task with {p_format}",
+                    "--priority",
+                    p_format,
+                    "--project",
+                    "test",
                 ],
+                check=False,
                 cwd=tmpdir,
                 capture_output=True,
-                text=True
+                text=True,
             )
 
             # Assert
-            assert result.returncode == 0, f"Script failed for {p_format}: {result.stderr}"
+            assert result.returncode == 0, (
+                f"Script failed for {p_format}: {result.stderr}"
+            )
 
             # Verify JSON output
             output = json.loads(result.stdout)
-            assert output["priority"] == expected_value, f"Expected {expected_value} for {p_format}"
+            assert output["priority"] == expected_value, (
+                f"Expected {expected_value} for {p_format}"
+            )

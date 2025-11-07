@@ -51,8 +51,8 @@ repos:
     rev: main
     hooks:
       - id: dprint
-      - id: no-config-defaults  # Python only
-      - id: check-instruction-bloat  # If using academicOps patterns
+      - id: no-config-defaults # Python only
+      - id: check-instruction-bloat # If using academicOps patterns
 ```
 
 **4. Install and test:**
@@ -95,17 +95,17 @@ Prevents agent instruction files from growing beyond maintainability thresholds.
 The `writing` repo contains academicOps as a submodule at `aops/`, so it uses `repo: local` instead:
 
 ```yaml
-  # Custom project-specific hooks (from academicOps submodule)
-  - repo: local
-    hooks:
-      - id: dprint
-        entry: dprint fmt --config dprint.json
-        language: system
-        # ... rest of config
-      - id: no-config-defaults
-        entry: python aops/scripts/check_config_defaults.py
-        language: system
-        # ... rest of config
+# Custom project-specific hooks (from academicOps submodule)
+- repo: local
+  hooks:
+    - id: dprint
+      entry: dprint fmt --config dprint.json
+      language: system
+      # ... rest of config
+    - id: no-config-defaults
+      entry: python aops/scripts/check_config_defaults.py
+      language: system
+      # ... rest of config
 ```
 
 ## Updating Hooks
@@ -115,8 +115,8 @@ The `writing` repo contains academicOps as a submodule at `aops/`, so it uses `r
 Update the `rev:` in your `.pre-commit-config.yaml`:
 
 ```yaml
-  - repo: https://github.com/nicsuzor/academicOps
-    rev: main  # or specific tag like v1.0.0
+- repo: https://github.com/nicsuzor/academicOps
+  rev: main # or specific tag like v1.0.0
 ```
 
 Then run:
@@ -138,7 +138,7 @@ Edit `dprint.json` to customize formatting:
 {
   "markdown": {
     "lineWidth": 120,
-    "textWrap": "never"  // or "always" to wrap prose
+    "textWrap": "never" // or "always" to wrap prose
   },
   "json": {
     "indentWidth": 2

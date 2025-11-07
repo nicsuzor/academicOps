@@ -5,14 +5,14 @@ description: Framework infrastructure details including environment variables, d
   structure, path conventions, three-tier loading system, and Basic Memory (bmem)
   integration.
 tags:
-- infrastructure
-- environment
-- paths
-- three-tier
-- framework
+  - infrastructure
+  - environment
+  - paths
+  - three-tier
+  - framework
 relations:
-- '[[ARCHITECTURE]]'
-- '[[paths.toml]]'
+  - "[[ARCHITECTURE]]"
+  - "[[paths.toml]]"
 permalink: aops/skills/supervisor/resources/infrastructure
 ---
 

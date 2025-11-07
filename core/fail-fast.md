@@ -3,9 +3,9 @@ title: fail-fast
 type: note
 permalink: concepts/core/fail-fast
 tags:
-- core-axiom
-- error-handling
-- reliability
+  - core-axiom
+  - error-handling
+  - reliability
 ---
 
 **Core idea**: Abort immediately when assumptions are invalid, rather than continuing with uncertain state.

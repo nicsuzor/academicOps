@@ -54,14 +54,23 @@ Added after framework validation:
 ```python
 # Project tier is REQUIRED if docs/bots/ exists
 if paths["project"] is not None and "project" not in contents:
-    print(f"ERROR: docs/bots/ directory exists but {args.filename} not found", file=sys.stderr)
+    print(
+        f"ERROR: docs/bots/ directory exists but {args.filename} not found",
+        file=sys.stderr,
+    )
     print(f"Searched at: {paths['project']}", file=sys.stderr)
     print(f"", file=sys.stderr)
     print(f"This usually means:", file=sys.stderr)
-    print(f"  1. File has wrong name (e.g., INSTRUCTIONS.md instead of {args.filename})", file=sys.stderr)
+    print(
+        f"  1. File has wrong name (e.g., INSTRUCTIONS.md instead of {args.filename})",
+        file=sys.stderr,
+    )
     print(f"  2. File needs to be created in docs/bots/", file=sys.stderr)
     print(f"", file=sys.stderr)
-    print(f"Fix: Rename existing file or create {args.filename} in docs/bots/", file=sys.stderr)
+    print(
+        f"Fix: Rename existing file or create {args.filename} in docs/bots/",
+        file=sys.stderr,
+    )
     sys.exit(1)
 ```
 

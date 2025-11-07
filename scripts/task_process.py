@@ -34,7 +34,7 @@ def _validate_data_directory():
             f"Current working directory: {Path.cwd()}\n"
             f"Expected data/ subdirectory to exist in current directory.\n"
             f"Please run this script from a directory containing data/tasks/",
-            file=sys.stderr
+            file=sys.stderr,
         )
         sys.exit(1)
 
@@ -99,7 +99,11 @@ def modify_task(
     has_actions = archive or priority is not None or due is not None
     if not has_actions:
         print_json(
-            {"success": False, "error": "no_actions", "message": "No actions specified."}
+            {
+                "success": False,
+                "error": "no_actions",
+                "message": "No actions specified.",
+            }
         )
         return {}
 
@@ -165,7 +169,9 @@ def main():
     _validate_data_directory()
 
     if len(sys.argv) < 2:
-        print("Usage: task_process.py modify <task_id> [--archive] [--priority N] [--due YYYY-MM-DD]")
+        print(
+            "Usage: task_process.py modify <task_id> [--archive] [--priority N] [--due YYYY-MM-DD]"
+        )
         sys.exit(1)
 
     cmd = sys.argv[1]

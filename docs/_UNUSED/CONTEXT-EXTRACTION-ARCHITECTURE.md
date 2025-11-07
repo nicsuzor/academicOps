@@ -49,9 +49,9 @@ Extract not just explicit tasks but:
 # Pseudo-code for strategic session extraction
 if discussing_priorities:
     extract_resource_allocations()  # "60% of time on X"
-    capture_uncertainty_factors()   # "depends on whether..."
-    note_energy_levels()            # "stressed about", "excited by"
-    save_strategic_reasoning()      # "because", "in order to"
+    capture_uncertainty_factors()  # "depends on whether..."
+    note_energy_levels()  # "stressed about", "excited by"
+    save_strategic_reasoning()  # "because", "in order to"
 ```
 
 ### Project Discussions
@@ -68,10 +68,10 @@ if discussing_priorities:
 ```python
 # Pseudo-code for project extraction
 if project_mentioned:
-    extract_assessment()        # "inefficient", "high-risk"
-    capture_dependencies()      # "needs X first"
-    note_stakeholders()        # "Jenni @ GLAAD"
-    infer_success_metrics()    # from discussion context
+    extract_assessment()  # "inefficient", "high-risk"
+    capture_dependencies()  # "needs X first"
+    note_stakeholders()  # "Jenni @ GLAAD"
+    infer_success_metrics()  # from discussion context
 ```
 
 ### Event Planning
@@ -88,10 +88,10 @@ if project_mentioned:
 ```python
 # Pseudo-code for event extraction
 if event_mentioned:
-    create_task_immediately()      # even without full details
-    link_to_relevant_project()    # infer from context
-    set_tentative_deadline()       # "next month" → estimate
-    note_preparation_needs()       # "need to prepare"
+    create_task_immediately()  # even without full details
+    link_to_relevant_project()  # infer from context
+    set_tentative_deadline()  # "next month" → estimate
+    note_preparation_needs()  # "need to prepare"
 ```
 
 ## INFORMATION HIERARCHY

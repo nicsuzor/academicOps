@@ -37,7 +37,7 @@ Use this skill for:
 
 - Task execution or implementation
 - Technical problem solving
-- Data capture (use task-management skill)
+- Data capture (use tasks skill)
 - Operational work
 
 ## Core Philosophy
@@ -331,7 +331,7 @@ When discussing projects and priorities:
 
 **Not data management**:
 
-- Don't capture tasks (use task-management)
+- Don't capture tasks (use tasks)
 - Don't manage project files
 - Don't track operational details
 - Don't maintain task lists
@@ -340,7 +340,7 @@ When discussing projects and priorities:
 
 **Works with**:
 
-- `task-management` - Captures tasks and context from strategic discussions
+- `tasks` - Captures tasks and context from strategic discussions
 - `analyst` - Provides analytical support for strategic decisions
 - `goal-setting` (if exists) - Aligns work with objectives
 

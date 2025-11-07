@@ -17,9 +17,10 @@ The script:
 
 import argparse
 import re
-import yaml
 from pathlib import Path
 from typing import Any
+
+import yaml
 
 
 def _extract_yaml_frontmatter(file_path: Path) -> dict[str, Any]:
@@ -34,7 +35,7 @@ def _extract_yaml_frontmatter(file_path: Path) -> dict[str, Any]:
     content = file_path.read_text()
 
     # Match YAML frontmatter between --- delimiters
-    frontmatter_pattern = r'^---\n(.*?)\n---'
+    frontmatter_pattern = r"^---\n(.*?)\n---"
     match = re.search(frontmatter_pattern, content, re.DOTALL)
 
     if not match:
@@ -63,12 +64,11 @@ def _extract_python_docstring(file_path: Path) -> str:
     match = re.search(docstring_pattern, content, re.DOTALL)
 
     if not match:
-        return ''
+        return ""
 
     # Get first line of docstring, strip whitespace
     docstring_content = match.group(1).strip()
-    first_line = docstring_content.split('\n')[0].strip() if docstring_content else ''
-    return first_line
+    return docstring_content.split("\n")[0].strip() if docstring_content else ""
 
 
 def _scan_all_instruction_files(repo_root: Path) -> list[str]:
@@ -84,21 +84,21 @@ def _scan_all_instruction_files(repo_root: Path) -> list[str]:
     instruction_files = []
 
     # Scan core/*.md
-    core_dir = repo_root / 'core'
+    core_dir = repo_root / "core"
     if core_dir.exists():
-        for md_file in core_dir.glob('*.md'):
+        for md_file in core_dir.glob("*.md"):
             instruction_files.append(str(md_file.relative_to(repo_root)))
 
     # Scan chunks/*.md
-    chunks_dir = repo_root / 'chunks'
+    chunks_dir = repo_root / "chunks"
     if chunks_dir.exists():
-        for md_file in chunks_dir.glob('*.md'):
+        for md_file in chunks_dir.glob("*.md"):
             instruction_files.append(str(md_file.relative_to(repo_root)))
 
     # Scan docs/_CHUNKS/*.md
-    docs_chunks_dir = repo_root / 'docs' / '_CHUNKS'
+    docs_chunks_dir = repo_root / "docs" / "_CHUNKS"
     if docs_chunks_dir.exists():
-        for md_file in docs_chunks_dir.glob('*.md'):
+        for md_file in docs_chunks_dir.glob("*.md"):
             instruction_files.append(str(md_file.relative_to(repo_root)))
 
     return instruction_files
@@ -115,41 +115,43 @@ def scan_repository(repo_root: Path) -> dict[str, Any]:
         Each containing list of discovered components with metadata
     """
     components = {
-        'agents': [],
-        'skills': [],
-        'commands': [],
-        'hooks': [],
-        'core': {},
-        'all_instruction_files': []
+        "agents": [],
+        "skills": [],
+        "commands": [],
+        "hooks": [],
+        "core": {},
+        "all_instruction_files": [],
     }
 
     # Scan agents/*.md files
-    agents_dir = repo_root / 'agents'
+    agents_dir = repo_root / "agents"
     if agents_dir.exists():
-        for agent_file in agents_dir.glob('*.md'):
+        for agent_file in agents_dir.glob("*.md"):
             frontmatter = _extract_yaml_frontmatter(agent_file)
-            components['agents'].append({
-                'name': agent_file.stem,
-                'file': agent_file.name,
-                'path': str(agent_file.relative_to(repo_root)),
-                'description': frontmatter.get('description', '')
-            })
+            components["agents"].append(
+                {
+                    "name": agent_file.stem,
+                    "file": agent_file.name,
+                    "path": str(agent_file.relative_to(repo_root)),
+                    "description": frontmatter.get("description", ""),
+                }
+            )
 
     # Scan skills/*/ directories
-    skills_dir = repo_root / 'skills'
+    skills_dir = repo_root / "skills"
     if skills_dir.exists():
         for skill_dir in skills_dir.iterdir():
-            if skill_dir.is_dir() and not skill_dir.name.startswith('.'):
+            if skill_dir.is_dir() and not skill_dir.name.startswith("."):
                 # Look for SKILL.md in skill directory
-                skill_file = skill_dir / 'SKILL.md'
-                description = ''
+                skill_file = skill_dir / "SKILL.md"
+                description = ""
                 if skill_file.exists():
                     frontmatter = _extract_yaml_frontmatter(skill_file)
-                    description = frontmatter.get('description', '')
+                    description = frontmatter.get("description", "")
 
                 # Collect symlinks from references/ and resources/ directories
                 dependencies = []
-                for subdir_name in ['references', 'resources']:
+                for subdir_name in ["references", "resources"]:
                     subdir = skill_dir / subdir_name
                     if subdir.exists() and subdir.is_dir():
                         for item in subdir.iterdir():
@@ -160,58 +162,64 @@ def scan_repository(repo_root: Path) -> dict[str, Any]:
                                     relative_target = target.relative_to(repo_root)
                                     dependencies.append(str(relative_target))
 
-                components['skills'].append({
-                    'name': skill_dir.name,
-                    'path': str(skill_dir.relative_to(repo_root)),
-                    'description': description,
-                    'dependencies': dependencies
-                })
+                components["skills"].append(
+                    {
+                        "name": skill_dir.name,
+                        "path": str(skill_dir.relative_to(repo_root)),
+                        "description": description,
+                        "dependencies": dependencies,
+                    }
+                )
 
     # Scan commands/*.md files
-    commands_dir = repo_root / 'commands'
+    commands_dir = repo_root / "commands"
     if commands_dir.exists():
-        for command_file in commands_dir.glob('*.md'):
+        for command_file in commands_dir.glob("*.md"):
             frontmatter = _extract_yaml_frontmatter(command_file)
 
             # Parse load_instructions.py calls from command content
             content = command_file.read_text()
             dependencies = _parse_load_instructions_calls(content)
 
-            components['commands'].append({
-                'name': command_file.stem,
-                'file': command_file.name,
-                'path': str(command_file.relative_to(repo_root)),
-                'description': frontmatter.get('description', ''),
-                'dependencies': dependencies
-            })
+            components["commands"].append(
+                {
+                    "name": command_file.stem,
+                    "file": command_file.name,
+                    "path": str(command_file.relative_to(repo_root)),
+                    "description": frontmatter.get("description", ""),
+                    "dependencies": dependencies,
+                }
+            )
 
     # Scan hooks/*.py files
-    hooks_dir = repo_root / 'hooks'
+    hooks_dir = repo_root / "hooks"
     if hooks_dir.exists():
-        for hook_file in hooks_dir.glob('*.py'):
+        for hook_file in hooks_dir.glob("*.py"):
             # Skip __pycache__ and __init__.py
-            if hook_file.stem.startswith('__'):
+            if hook_file.stem.startswith("__"):
                 continue
             description = _extract_python_docstring(hook_file)
-            components['hooks'].append({
-                'name': hook_file.stem,
-                'file': hook_file.name,
-                'path': str(hook_file.relative_to(repo_root)),
-                'description': description
-            })
+            components["hooks"].append(
+                {
+                    "name": hook_file.stem,
+                    "file": hook_file.name,
+                    "path": str(hook_file.relative_to(repo_root)),
+                    "description": description,
+                }
+            )
 
     # Scan core/_CORE.md and parse @references
-    core_file = repo_root / 'core' / '_CORE.md'
+    core_file = repo_root / "core" / "_CORE.md"
     if core_file.exists():
         core_content = core_file.read_text()
         references = _parse_references(core_content)
-        components['core'] = {
-            'file': str(core_file.relative_to(repo_root)),
-            'references': references
+        components["core"] = {
+            "file": str(core_file.relative_to(repo_root)),
+            "references": references,
         }
 
     # Scan all instruction files
-    components['all_instruction_files'] = _scan_all_instruction_files(repo_root)
+    components["all_instruction_files"] = _scan_all_instruction_files(repo_root)
 
     return components
 
@@ -226,9 +234,8 @@ def _parse_references(content: str) -> list[str]:
         List of referenced file paths (e.g., ['../chunks/AXIOMS.md'])
     """
     # Match @../path/to/file.md patterns
-    reference_pattern = r'@([\w/.+-]+\.md)'
-    matches = re.findall(reference_pattern, content)
-    return matches
+    reference_pattern = r"@([\w/.+-]+\.md)"
+    return re.findall(reference_pattern, content)
 
 
 def _parse_load_instructions_calls(content: str) -> list[str]:
@@ -242,9 +249,8 @@ def _parse_load_instructions_calls(content: str) -> list[str]:
     """
     # Match: uv run python ... load_instructions.py FILENAME.md
     # Pattern handles various path formats: ${ACADEMICOPS}/hooks/, $ACADEMICOPS/hooks/, etc.
-    load_pattern = r'load_instructions\.py\s+([A-Z_/-]+\.md)'
-    matches = re.findall(load_pattern, content)
-    return matches
+    load_pattern = r"load_instructions\.py\s+([A-Z_/-]+\.md)"
+    return re.findall(load_pattern, content)
 
 
 def _build_reverse_index(components: dict[str, Any]) -> dict[str, list[str]]:
@@ -260,17 +266,17 @@ def _build_reverse_index(components: dict[str, Any]) -> dict[str, list[str]]:
     reverse_index = {}
 
     # Process skills
-    for skill in components.get('skills', []):
+    for skill in components.get("skills", []):
         skill_name = f"{skill['name']} skill"
-        for dep in skill.get('dependencies', []):
+        for dep in skill.get("dependencies", []):
             if dep not in reverse_index:
                 reverse_index[dep] = []
             reverse_index[dep].append(skill_name)
 
     # Process commands
-    for command in components.get('commands', []):
+    for command in components.get("commands", []):
         command_name = f"/{command['name']} command"
-        for dep in command.get('dependencies', []):
+        for dep in command.get("dependencies", []):
             if dep not in reverse_index:
                 reverse_index[dep] = []
             reverse_index[dep].append(command_name)
@@ -288,30 +294,30 @@ def _detect_orphaned_instruction_files(components: dict[str, Any]) -> list[str]:
         List of orphaned instruction file paths (relative to repo root)
     """
     # Get all instruction files
-    all_files = set(components.get('all_instruction_files', []))
+    all_files = set(components.get("all_instruction_files", []))
 
     # Get all referenced files
     referenced = set()
 
     # Add core references
-    core = components.get('core', {})
+    core = components.get("core", {})
     if core:
-        core_file = core.get('file', '')
+        core_file = core.get("file", "")
         if core_file:
             referenced.add(core_file)
-        for ref in core.get('references', []):
+        for ref in core.get("references", []):
             referenced.add(ref)
 
     # Add skill dependencies
-    for skill in components.get('skills', []):
-        for dep in skill.get('dependencies', []):
+    for skill in components.get("skills", []):
+        for dep in skill.get("dependencies", []):
             referenced.add(dep)
 
     # Add command dependencies (load_instructions.py files)
     # These are just filenames like "DEVELOPMENT.md" not full paths
     # They could be in core/, chunks/, or docs/_CHUNKS/
-    for command in components.get('commands', []):
-        for dep_filename in command.get('dependencies', []):
+    for command in components.get("commands", []):
+        for dep_filename in command.get("dependencies", []):
             # Find matching file in all_files
             matching = [f for f in all_files if f.endswith(dep_filename)]
             referenced.update(matching)
@@ -323,7 +329,9 @@ def _detect_orphaned_instruction_files(components: dict[str, Any]) -> list[str]:
     return sorted(orphans)
 
 
-def _detect_potential_overlaps(components: dict[str, Any]) -> list[tuple[str, str, str]]:
+def _detect_potential_overlaps(
+    components: dict[str, Any],
+) -> list[tuple[str, str, str]]:
     """Detect potential overlaps in agent/skill responsibilities.
 
     Args:
@@ -338,10 +346,12 @@ def _detect_potential_overlaps(components: dict[str, Any]) -> list[tuple[str, st
     # For now, hardcode known overlaps from user's examples
 
     # scribe vs task-manager: both extract tasks
-    agents = components.get('agents', [])
-    agent_names = [a['name'].lower() for a in agents]
-    if 'scribe' in agent_names and 'task-manager' in agent_names:
-        overlaps.append(('scribe', 'task-manager', 'both extract tasks from conversations'))
+    agents = components.get("agents", [])
+    agent_names = [a["name"].lower() for a in agents]
+    if "scribe" in agent_names and "task-manager" in agent_names:
+        overlaps.append(
+            ("scribe", "task-manager", "both extract tasks from conversations")
+        )
 
     # Future: could add semantic similarity analysis on descriptions
     # For now, keep it simple with known patterns
@@ -364,20 +374,24 @@ def _generate_quick_stats(components: dict[str, Any]) -> str:
     lines.append("")
 
     # Component counts
-    agent_count = len(components.get('agents', []))
-    skill_count = len(components.get('skills', []))
-    command_count = len(components.get('commands', []))
-    hook_count = len(components.get('hooks', []))
-    instruction_count = len(components.get('all_instruction_files', []))
+    agent_count = len(components.get("agents", []))
+    skill_count = len(components.get("skills", []))
+    command_count = len(components.get("commands", []))
+    hook_count = len(components.get("hooks", []))
+    instruction_count = len(components.get("all_instruction_files", []))
 
-    lines.append(f"- {agent_count} agents, {skill_count} skills, {command_count} commands, {hook_count} hooks")
+    lines.append(
+        f"- {agent_count} agents, {skill_count} skills, {command_count} commands, {hook_count} hooks"
+    )
     lines.append(f"- {instruction_count} instruction files")
 
     # Orphaned files detection
     orphans = _detect_orphaned_instruction_files(components)
     if orphans:
         orphan_names = [Path(o).name for o in orphans]
-        lines.append(f"- ⚠️ **{len(orphans)} orphaned files**: {', '.join(orphan_names)}")
+        lines.append(
+            f"- ⚠️ **{len(orphans)} orphaned files**: {', '.join(orphan_names)}"
+        )
     else:
         lines.append("- ✅ No orphaned instruction files")
 
@@ -391,7 +405,7 @@ def _generate_quick_stats(components: dict[str, Any]) -> str:
 
     lines.append("")
 
-    return '\n'.join(lines)
+    return "\n".join(lines)
 
 
 def _generate_instruction_flow_tree(components: dict[str, Any]) -> str:
@@ -409,48 +423,48 @@ def _generate_instruction_flow_tree(components: dict[str, Any]) -> str:
     lines.append("")
 
     # SessionStart section - core/_CORE.md and its @references
-    core = components.get('core', {})
+    core = components.get("core", {})
     if core:
         lines.append("**SessionStart (all agents)**")
-        core_file = core.get('file', '')
+        core_file = core.get("file", "")
         if core_file:
             lines.append(f"└─ {core_file}")
 
             # Show @references from _CORE.md
-            references = core.get('references', [])
+            references = core.get("references", [])
             for i, ref in enumerate(references):
-                is_last = (i == len(references) - 1)
+                is_last = i == len(references) - 1
                 prefix = "   └─" if is_last else "   ├─"
                 lines.append(f"{prefix} {ref}")
 
         lines.append("")
 
     # Commands section - show load_instructions.py dependencies
-    commands = components.get('commands', [])
-    commands_with_deps = [c for c in commands if c.get('dependencies')]
+    commands = components.get("commands", [])
+    commands_with_deps = [c for c in commands if c.get("dependencies")]
     if commands_with_deps:
         for command in commands_with_deps:
             command_name = f"/{command['name']} command"
             lines.append(f"**{command_name}** (3-tier)")
-            dependencies = command.get('dependencies', [])
+            dependencies = command.get("dependencies", [])
 
             for i, dep in enumerate(dependencies):
-                is_last = (i == len(dependencies) - 1)
+                is_last = i == len(dependencies) - 1
                 prefix = "└─" if is_last else "├─"
                 lines.append(f"{prefix} {dep}")
 
             lines.append("")
 
     # Skills section - show symlink dependencies
-    skills = components.get('skills', [])
-    skills_with_deps = [s for s in skills if s.get('dependencies')]
+    skills = components.get("skills", [])
+    skills_with_deps = [s for s in skills if s.get("dependencies")]
     if skills_with_deps:
         lines.append("**Skills**")
 
         for i, skill in enumerate(skills_with_deps):
-            skill_name = skill['name']
-            dependencies = skill.get('dependencies', [])
-            is_last_skill = (i == len(skills_with_deps) - 1)
+            skill_name = skill["name"]
+            dependencies = skill.get("dependencies", [])
+            is_last_skill = i == len(skills_with_deps) - 1
 
             # Get just filenames (not full paths)
             dep_names = [Path(d).name for d in dependencies]
@@ -460,7 +474,7 @@ def _generate_instruction_flow_tree(components: dict[str, Any]) -> str:
 
         lines.append("")
 
-    return '\n'.join(lines)
+    return "\n".join(lines)
 
 
 def _truncate_description(description: str, max_words: int = 10) -> str:
@@ -474,10 +488,10 @@ def _truncate_description(description: str, max_words: int = 10) -> str:
         Truncated description suitable for compact format
     """
     if not description:
-        return ''
+        return ""
 
     # Split on common clause boundaries: period, comma, colon, semicolon, dash, parenthesis
-    clause_separators = ['. ', ', ', ': ', '; ', ' - ', ' (', '—']
+    clause_separators = [". ", ", ", ": ", "; ", " - ", " (", "—"]
 
     # Find first clause boundary
     first_clause = description
@@ -491,12 +505,14 @@ def _truncate_description(description: str, max_words: int = 10) -> str:
     # Truncate to max_words if still too long
     words = first_clause.split()
     if len(words) > max_words:
-        first_clause = ' '.join(words[:max_words])
+        first_clause = " ".join(words[:max_words])
 
     return first_clause.strip()
 
 
-def generate_markdown_tree(components: dict[str, Any], repo_root: Path, compact: bool = False) -> str:
+def generate_markdown_tree(
+    components: dict[str, Any], repo_root: Path, compact: bool = False
+) -> str:
     """Generate markdown documentation from scanned components.
 
     Args:
@@ -522,49 +538,56 @@ def generate_markdown_tree(components: dict[str, Any], repo_root: Path, compact:
         lines.append(quick_stats)
 
     # Agents Section
-    agents = components.get('agents', [])
+    agents = components.get("agents", [])
     lines.append(f"### Agents ({len(agents)})")
     lines.append("")
     if agents:
         if not compact:
-            lines.append("Specialized agent definitions loaded via slash commands or subagent invocation:")
+            lines.append(
+                "Specialized agent definitions loaded via slash commands or subagent invocation:"
+            )
             lines.append("")
-        for agent in sorted(agents, key=lambda x: x['name']):
-            description = agent.get('description', '')
+        for agent in sorted(agents, key=lambda x: x["name"]):
+            description = agent.get("description", "")
             if description:
                 if compact:
                     truncated_desc = _truncate_description(description)
                     lines.append(f"- {agent['name']} - {truncated_desc}")
                 else:
-                    lines.append(f"- **{agent['name']}** - {description} (`{agent['path']}`)")
+                    lines.append(
+                        f"- **{agent['name']}** - {description} (`{agent['path']}`)"
+                    )
+            elif compact:
+                lines.append(f"- {agent['name']}")
             else:
-                if compact:
-                    lines.append(f"- {agent['name']}")
-                else:
-                    lines.append(f"- **{agent['name']}** (`{agent['path']}`)")
+                lines.append(f"- **{agent['name']}** (`{agent['path']}`)")
         lines.append("")
     else:
         lines.append("No agents found.")
         lines.append("")
 
     # Skills Section
-    skills = components.get('skills', [])
+    skills = components.get("skills", [])
     lines.append(f"### Skills ({len(skills)})")
     lines.append("")
     if skills:
         if not compact:
             lines.append("Packaged workflows installed to `~/.claude/skills/`:")
             lines.append("")
-        for skill in sorted(skills, key=lambda x: x['name']):
-            description = skill.get('description', '')
-            dependencies = skill.get('dependencies', [])
+        for skill in sorted(skills, key=lambda x: x["name"]):
+            description = skill.get("description", "")
+            dependencies = skill.get("dependencies", [])
 
             if compact:
                 # Compact format: inline dependencies
-                truncated_desc = _truncate_description(description) if description else ''
-                dep_info = ''
+                truncated_desc = (
+                    _truncate_description(description) if description else ""
+                )
+                dep_info = ""
                 if dependencies:
-                    dep_basenames = [Path(d).stem for d in dependencies]  # Remove .md extension
+                    dep_basenames = [
+                        Path(d).stem for d in dependencies
+                    ]  # Remove .md extension
                     dep_info = f" [{', '.join(dep_basenames)}]"
 
                 if truncated_desc:
@@ -573,7 +596,9 @@ def generate_markdown_tree(components: dict[str, Any], repo_root: Path, compact:
                     lines.append(f"- {skill['name']}{dep_info}")
             else:
                 if description:
-                    lines.append(f"- **{skill['name']}** - {description} (`{skill['path']}`)")
+                    lines.append(
+                        f"- **{skill['name']}** - {description} (`{skill['path']}`)"
+                    )
                 else:
                     lines.append(f"- **{skill['name']}** (`{skill['path']}`)")
 
@@ -588,32 +613,38 @@ def generate_markdown_tree(components: dict[str, Any], repo_root: Path, compact:
         lines.append("")
 
     # Commands Section
-    commands = components.get('commands', [])
+    commands = components.get("commands", [])
     lines.append(f"### Commands ({len(commands)})")
     lines.append("")
     if commands:
         if not compact:
             lines.append("Slash commands that load additional context:")
             lines.append("")
-        for command in sorted(commands, key=lambda x: x['name']):
-            description = command.get('description', '')
-            dependencies = command.get('dependencies', [])
+        for command in sorted(commands, key=lambda x: x["name"]):
+            description = command.get("description", "")
+            dependencies = command.get("dependencies", [])
 
             if compact:
-                truncated_desc = _truncate_description(description) if description else ''
+                truncated_desc = (
+                    _truncate_description(description) if description else ""
+                )
                 if truncated_desc:
                     lines.append(f"- /{command['name']} - {truncated_desc}")
                 else:
                     lines.append(f"- /{command['name']}")
             else:
                 if description:
-                    lines.append(f"- **/{command['name']}** - {description} (`{command['path']}`)")
+                    lines.append(
+                        f"- **/{command['name']}** - {description} (`{command['path']}`)"
+                    )
                 else:
                     lines.append(f"- **/{command['name']}** (`{command['path']}`)")
 
                 # Show dependencies (load_instructions.py calls) if present
                 if dependencies:
-                    lines.append(f"  - Loads: {', '.join(dependencies)} (3-tier: framework → personal → project)")
+                    lines.append(
+                        f"  - Loads: {', '.join(dependencies)} (3-tier: framework → personal → project)"
+                    )
 
         lines.append("")
     else:
@@ -621,26 +652,27 @@ def generate_markdown_tree(components: dict[str, Any], repo_root: Path, compact:
         lines.append("")
 
     # Hooks Section
-    hooks = components.get('hooks', [])
+    hooks = components.get("hooks", [])
     lines.append(f"### Hooks ({len(hooks)})")
     lines.append("")
     if hooks:
         if not compact:
             lines.append("Validation and enforcement hooks:")
             lines.append("")
-        for hook in sorted(hooks, key=lambda x: x['name']):
-            description = hook.get('description', '')
+        for hook in sorted(hooks, key=lambda x: x["name"]):
+            description = hook.get("description", "")
             if compact:
-                truncated_desc = _truncate_description(description) if description else ''
+                truncated_desc = (
+                    _truncate_description(description) if description else ""
+                )
                 if truncated_desc:
                     lines.append(f"- {hook['name']} - {truncated_desc}")
                 else:
                     lines.append(f"- {hook['name']}")
+            elif description:
+                lines.append(f"- **{hook['name']}** - {description} (`{hook['path']}`)")
             else:
-                if description:
-                    lines.append(f"- **{hook['name']}** - {description} (`{hook['path']}`)")
-                else:
-                    lines.append(f"- **{hook['name']}** (`{hook['path']}`)")
+                lines.append(f"- **{hook['name']}** (`{hook['path']}`)")
         lines.append("")
     else:
         lines.append("No hooks found.")
@@ -652,12 +684,12 @@ def generate_markdown_tree(components: dict[str, Any], repo_root: Path, compact:
         lines.append(instruction_flow)
 
     # Core Section
-    core = components.get('core', {})
+    core = components.get("core", {})
     if core and not compact:
         lines.append("### Core Instructions")
         lines.append("")
         lines.append(f"- **File**: `{core.get('file', 'N/A')}`")
-        references = core.get('references', [])
+        references = core.get("references", [])
         if references:
             lines.append(f"- **References**: {len(references)} chunks")
             for ref in references:
@@ -670,7 +702,9 @@ def generate_markdown_tree(components: dict[str, Any], repo_root: Path, compact:
         if reverse_index:
             lines.append("### Instruction Files")
             lines.append("")
-            lines.append("Reverse index showing which components load each instruction file:")
+            lines.append(
+                "Reverse index showing which components load each instruction file:"
+            )
             lines.append("")
 
             # Group files by directory for better organization
@@ -686,11 +720,11 @@ def generate_markdown_tree(components: dict[str, Any], repo_root: Path, compact:
                 lines.append(f"**{directory}/:**")
                 lines.append("")
                 for filename, consumers in sorted(by_directory[directory]):
-                    consumer_list = ', '.join(sorted(consumers))
+                    consumer_list = ", ".join(sorted(consumers))
                     lines.append(f"- `{filename}` - Used by: {consumer_list}")
                 lines.append("")
 
-    return '\n'.join(lines)
+    return "\n".join(lines)
 
 
 def update_readme_with_tree(readme_path: Path, tree_content: str) -> None:
@@ -719,16 +753,16 @@ def update_readme_with_tree(readme_path: Path, tree_content: str) -> None:
     end_idx = current_content.find(end_marker)
 
     if start_idx == -1 or end_idx == -1:
-        raise ValueError(
-            f"README.md missing markers. Expected {start_marker} and {end_marker}"
-        )
+        msg = f"README.md missing markers. Expected {start_marker} and {end_marker}"
+        raise ValueError(msg)
 
     if start_idx >= end_idx:
-        raise ValueError("Start marker must come before end marker")
+        msg = "Start marker must come before end marker"
+        raise ValueError(msg)
 
     # Build new content
     # Keep everything before start marker
-    before_markers = current_content[:start_idx + len(start_marker)]
+    before_markers = current_content[: start_idx + len(start_marker)]
 
     # Add newline, tree content, newline
     new_middle = f"\n{tree_content}\n"
@@ -746,12 +780,12 @@ def update_readme_with_tree(readme_path: Path, tree_content: str) -> None:
 def main():
     """Main entry point for script."""
     parser = argparse.ArgumentParser(
-        description='Generate instruction tree documentation'
+        description="Generate instruction tree documentation"
     )
     parser.add_argument(
-        '--output',
-        default='README.md',
-        help='Output file to update (default: README.md)'
+        "--output",
+        default="README.md",
+        help="Output file to update (default: README.md)",
     )
     args = parser.parse_args()
 
@@ -771,7 +805,7 @@ def main():
     print(f"Found core with {len(components['core'].get('references', []))} references")
 
     # Generate markdown tree
-    print(f"\nGenerating instruction tree markdown...")
+    print("\nGenerating instruction tree markdown...")
     tree_content = generate_markdown_tree(components, repo_root)
 
     # Update README
@@ -782,5 +816,5 @@ def main():
     print(f"\n✓ Successfully updated {args.output}")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

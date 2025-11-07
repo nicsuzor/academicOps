@@ -169,6 +169,7 @@ def validate_skills_inventory():
         if not validate_task_syntax(pattern):
             error(f"{skill}: Invalid Task() syntax")
 
+
 def validate_dev_tools():
     """Check dev-tools-reference matches actual tool availability."""
     # Parse DEVELOPER.md or built-in tool list
@@ -183,22 +184,19 @@ def validate_dev_tools():
     if obsolete:
         warning(f"Documented tools don't exist: {obsolete}")
 
+
 def validate_cross_references():
     """Check that @references and links resolve."""
-    all_refs = extract_references_from_files(
-        "docs/bots/*.md"
-    )
+    all_refs = extract_references_from_files("docs/bots/*.md")
 
     for ref in all_refs:
         if not file_exists(ref):
             error(f"Broken reference: {ref}")
 
+
 def validate_examples():
     """Check that example Task() calls are valid."""
-    examples = extract_code_blocks(
-        "docs/bots/*.md",
-        lang="Task"
-    )
+    examples = extract_code_blocks("docs/bots/*.md", lang="Task")
 
     for example in examples:
         if not validate_task_syntax(example):

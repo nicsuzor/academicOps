@@ -36,7 +36,7 @@ Matplotlib uses a hierarchical structure of objects:
 import matplotlib.pyplot as plt
 
 plt.plot([1, 2, 3, 4])
-plt.ylabel('some numbers')
+plt.ylabel("some numbers")
 plt.show()
 ```
 
@@ -51,7 +51,7 @@ import matplotlib.pyplot as plt
 
 fig, ax = plt.subplots()
 ax.plot([1, 2, 3, 4])
-ax.set_ylabel('some numbers')
+ax.set_ylabel("some numbers")
 plt.show()
 ```
 
@@ -74,19 +74,19 @@ import numpy as np
 fig, ax = plt.subplots(figsize=(10, 6))
 
 # Generate and plot data
-x = np.linspace(0, 2*np.pi, 100)
-ax.plot(x, np.sin(x), label='sin(x)')
-ax.plot(x, np.cos(x), label='cos(x)')
+x = np.linspace(0, 2 * np.pi, 100)
+ax.plot(x, np.sin(x), label="sin(x)")
+ax.plot(x, np.cos(x), label="cos(x)")
 
 # Customize
-ax.set_xlabel('x')
-ax.set_ylabel('y')
-ax.set_title('Trigonometric Functions')
+ax.set_xlabel("x")
+ax.set_ylabel("y")
+ax.set_title("Trigonometric Functions")
 ax.legend()
 ax.grid(True, alpha=0.3)
 
 # Save and/or display
-plt.savefig('plot.png', dpi=300, bbox_inches='tight')
+plt.savefig("plot.png", dpi=300, bbox_inches="tight")
 plt.show()
 ```
 
@@ -103,15 +103,16 @@ axes[1, 0].bar(categories, values)
 axes[1, 1].hist(data, bins=30)
 
 # Method 2: Mosaic layout (more flexible)
-fig, axes = plt.subplot_mosaic([['left', 'right_top'],
-                                ['left', 'right_bottom']],
-                               figsize=(10, 8))
-axes['left'].plot(x, y)
-axes['right_top'].scatter(x, y)
-axes['right_bottom'].hist(data)
+fig, axes = plt.subplot_mosaic(
+    [["left", "right_top"], ["left", "right_bottom"]], figsize=(10, 8)
+)
+axes["left"].plot(x, y)
+axes["right_top"].scatter(x, y)
+axes["right_bottom"].hist(data)
 
 # Method 3: GridSpec (maximum control)
 from matplotlib.gridspec import GridSpec
+
 fig = plt.figure(figsize=(12, 8))
 gs = GridSpec(3, 3, figure=fig)
 ax1 = fig.add_subplot(gs[0, :])  # Top row, all columns
@@ -124,19 +125,19 @@ ax3 = fig.add_subplot(gs[1:, 1:])  # Bottom two rows, last two columns
 **Line plots** - Time series, continuous data, trends
 
 ```python
-ax.plot(x, y, linewidth=2, linestyle='--', marker='o', color='blue')
+ax.plot(x, y, linewidth=2, linestyle="--", marker="o", color="blue")
 ```
 
 **Scatter plots** - Relationships between variables, correlations
 
 ```python
-ax.scatter(x, y, s=sizes, c=colors, alpha=0.6, cmap='viridis')
+ax.scatter(x, y, s=sizes, c=colors, alpha=0.6, cmap="viridis")
 ```
 
 **Bar charts** - Categorical comparisons
 
 ```python
-ax.bar(categories, values, color='steelblue', edgecolor='black')
+ax.bar(categories, values, color="steelblue", edgecolor="black")
 # For horizontal bars:
 ax.barh(categories, values)
 ```
@@ -144,13 +145,13 @@ ax.barh(categories, values)
 **Histograms** - Distributions
 
 ```python
-ax.hist(data, bins=30, edgecolor='black', alpha=0.7)
+ax.hist(data, bins=30, edgecolor="black", alpha=0.7)
 ```
 
 **Heatmaps** - Matrix data, correlations
 
 ```python
-im = ax.imshow(matrix, cmap='coolwarm', aspect='auto')
+im = ax.imshow(matrix, cmap="coolwarm", aspect="auto")
 plt.colorbar(im, ax=ax)
 ```
 
@@ -164,7 +165,7 @@ ax.clabel(contour, inline=True, fontsize=8)
 **Box plots** - Statistical distributions
 
 ```python
-ax.boxplot([data1, data2, data3], labels=['A', 'B', 'C'])
+ax.boxplot([data1, data2, data3], labels=["A", "B", "C"])
 ```
 
 **Violin plots** - Distribution densities
@@ -187,7 +188,7 @@ For comprehensive plot type examples and variations, refer to `references/plot_t
 **Using style sheets:**
 
 ```python
-plt.style.use('seaborn-v0_8-darkgrid')  # Apply predefined style
+plt.style.use("seaborn-v0_8-darkgrid")  # Apply predefined style
 # Available styles: 'ggplot', 'bmh', 'fivethirtyeight', etc.
 print(plt.style.available)  # List all available styles
 ```
@@ -195,21 +196,25 @@ print(plt.style.available)  # List all available styles
 **Customizing with rcParams:**
 
 ```python
-plt.rcParams['font.size'] = 12
-plt.rcParams['axes.labelsize'] = 14
-plt.rcParams['axes.titlesize'] = 16
-plt.rcParams['xtick.labelsize'] = 10
-plt.rcParams['ytick.labelsize'] = 10
-plt.rcParams['legend.fontsize'] = 12
-plt.rcParams['figure.titlesize'] = 18
+plt.rcParams["font.size"] = 12
+plt.rcParams["axes.labelsize"] = 14
+plt.rcParams["axes.titlesize"] = 16
+plt.rcParams["xtick.labelsize"] = 10
+plt.rcParams["ytick.labelsize"] = 10
+plt.rcParams["legend.fontsize"] = 12
+plt.rcParams["figure.titlesize"] = 18
 ```
 
 **Text and annotations:**
 
 ```python
-ax.text(x, y, 'annotation', fontsize=12, ha='center')
-ax.annotate('important point', xy=(x, y), xytext=(x+1, y+1),
-            arrowprops=dict(arrowstyle='->', color='red'))
+ax.text(x, y, "annotation", fontsize=12, ha="center")
+ax.annotate(
+    "important point",
+    xy=(x, y),
+    xytext=(x + 1, y + 1),
+    arrowprops=dict(arrowstyle="->", color="red"),
+)
 ```
 
 For detailed styling options and colormap guidelines, see `references/styling_guide.md`.
@@ -220,14 +225,14 @@ For detailed styling options and colormap guidelines, see `references/styling_gu
 
 ```python
 # High-resolution PNG for presentations/papers
-plt.savefig('figure.png', dpi=300, bbox_inches='tight', facecolor='white')
+plt.savefig("figure.png", dpi=300, bbox_inches="tight", facecolor="white")
 
 # Vector format for publications (scalable)
-plt.savefig('figure.pdf', bbox_inches='tight')
-plt.savefig('figure.svg', bbox_inches='tight')
+plt.savefig("figure.pdf", bbox_inches="tight")
+plt.savefig("figure.svg", bbox_inches="tight")
 
 # Transparent background
-plt.savefig('figure.png', dpi=300, bbox_inches='tight', transparent=True)
+plt.savefig("figure.png", dpi=300, bbox_inches="tight", transparent=True)
 ```
 
 **Important parameters:**
@@ -243,21 +248,21 @@ plt.savefig('figure.png', dpi=300, bbox_inches='tight', transparent=True)
 from mpl_toolkits.mplot3d import Axes3D
 
 fig = plt.figure(figsize=(10, 8))
-ax = fig.add_subplot(111, projection='3d')
+ax = fig.add_subplot(111, projection="3d")
 
 # Surface plot
-ax.plot_surface(X, Y, Z, cmap='viridis')
+ax.plot_surface(X, Y, Z, cmap="viridis")
 
 # 3D scatter
-ax.scatter(x, y, z, c=colors, marker='o')
+ax.scatter(x, y, z, c=colors, marker="o")
 
 # 3D line plot
 ax.plot(x, y, z, linewidth=2)
 
 # Labels
-ax.set_xlabel('X Label')
-ax.set_ylabel('Y Label')
-ax.set_zlabel('Z Label')
+ax.set_xlabel("X Label")
+ax.set_ylabel("Y Label")
+ax.set_zlabel("Z Label")
 ```
 
 ## Best Practices
@@ -310,19 +315,20 @@ def create_analysis_plot(data, title):
     fig, ax = plt.subplots(figsize=(10, 6), constrained_layout=True)
 
     # Plot data
-    ax.plot(data['x'], data['y'], linewidth=2)
+    ax.plot(data["x"], data["y"], linewidth=2)
 
     # Customize
-    ax.set_xlabel('X Axis Label', fontsize=12)
-    ax.set_ylabel('Y Axis Label', fontsize=12)
-    ax.set_title(title, fontsize=14, fontweight='bold')
+    ax.set_xlabel("X Axis Label", fontsize=12)
+    ax.set_ylabel("Y Axis Label", fontsize=12)
+    ax.set_title(title, fontsize=14, fontweight="bold")
     ax.grid(True, alpha=0.3)
 
     return fig, ax
 
+
 # Use the function
-fig, ax = create_analysis_plot(my_data, 'My Analysis')
-plt.savefig('analysis.png', dpi=300, bbox_inches='tight')
+fig, ax = create_analysis_plot(my_data, "My Analysis")
+plt.savefig("analysis.png", dpi=300, bbox_inches="tight")
 ```
 
 ## Quick Reference Scripts

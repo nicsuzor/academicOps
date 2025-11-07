@@ -50,15 +50,17 @@ print(pred_summary)  # includes mean, CI, prediction intervals
 
 # Diagnostics
 from statsmodels.stats.diagnostic import het_breuschpagan
+
 bp_test = het_breuschpagan(results.resid, X)
 print(f"Breusch-Pagan p-value: {bp_test[1]:.4f}")
 
 # Visualize residuals
 import matplotlib.pyplot as plt
+
 plt.scatter(results.fittedvalues, results.resid)
-plt.axhline(y=0, color='r', linestyle='--')
-plt.xlabel('Fitted values')
-plt.ylabel('Residuals')
+plt.axhline(y=0, color="r", linestyle="--")
+plt.xlabel("Fitted values")
+plt.ylabel("Residuals")
 plt.show()
 ```
 
@@ -160,6 +162,7 @@ print(f"Overdispersion: {overdispersion:.2f}")
 if overdispersion > 1.5:
     # Use Negative Binomial instead
     from statsmodels.discrete.count_model import NegativeBinomial
+
     nb_model = NegativeBinomial(y_counts, X)
     nb_results = nb_model.fit()
     print(nb_results.summary())
@@ -355,22 +358,22 @@ Statsmodels supports R-style formulas for intuitive model specification:
 import statsmodels.formula.api as smf
 
 # OLS with formula
-results = smf.ols('y ~ x1 + x2 + x1:x2', data=df).fit()
+results = smf.ols("y ~ x1 + x2 + x1:x2", data=df).fit()
 
 # Categorical variables (automatic dummy coding)
-results = smf.ols('y ~ x1 + C(category)', data=df).fit()
+results = smf.ols("y ~ x1 + C(category)", data=df).fit()
 
 # Interactions
-results = smf.ols('y ~ x1 * x2', data=df).fit()  # x1 + x2 + x1:x2
+results = smf.ols("y ~ x1 * x2", data=df).fit()  # x1 + x2 + x1:x2
 
 # Polynomial terms
-results = smf.ols('y ~ x + I(x**2)', data=df).fit()
+results = smf.ols("y ~ x + I(x**2)", data=df).fit()
 
 # Logit
-results = smf.logit('y ~ x1 + x2 + C(group)', data=df).fit()
+results = smf.logit("y ~ x1 + x2 + C(group)", data=df).fit()
 
 # Poisson
-results = smf.poisson('count ~ x1 + x2', data=df).fit()
+results = smf.poisson("count ~ x1 + x2", data=df).fit()
 
 # ARIMA (not available via formula, use regular API)
 ```
@@ -382,18 +385,20 @@ results = smf.poisson('count ~ x1 + x2', data=df).fit()
 ```python
 # Compare models using AIC/BIC
 models = {
-    'Model 1': model1_results,
-    'Model 2': model2_results,
-    'Model 3': model3_results
+    "Model 1": model1_results,
+    "Model 2": model2_results,
+    "Model 3": model3_results,
 }
 
-comparison = pd.DataFrame({
-    'AIC': {name: res.aic for name, res in models.items()},
-    'BIC': {name: res.bic for name, res in models.items()},
-    'Log-Likelihood': {name: res.llf for name, res in models.items()}
-})
+comparison = pd.DataFrame(
+    {
+        "AIC": {name: res.aic for name, res in models.items()},
+        "BIC": {name: res.bic for name, res in models.items()},
+        "Log-Likelihood": {name: res.llf for name, res in models.items()},
+    }
+)
 
-print(comparison.sort_values('AIC'))
+print(comparison.sort_values("AIC"))
 # Lower AIC/BIC indicates better model
 ```
 

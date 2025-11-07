@@ -216,13 +216,15 @@ response = requests.get("https://api.example.com/data")
 ```python
 # Query through dbt mart - CORRECT
 import duckdb
-conn = duckdb.connect('data/warehouse.db')
+
+conn = duckdb.connect("data/warehouse.db")
 df = conn.execute("SELECT * FROM fct_case_decisions").df()
+
 
 # Or reference in Streamlit
 @st.cache_data
 def load_data():
-    conn = duckdb.connect('data/warehouse.db')
+    conn = duckdb.connect("data/warehouse.db")
     return conn.execute("SELECT * FROM fct_case_decisions").df()
 ```
 
@@ -410,13 +412,15 @@ Context: [Why this investigation is needed]
 Date: [YYYY-MM-DD]
 Issue: [Link to GitHub issue if applicable]
 """
+
 import duckdb
 from google.cloud import bigquery
 import pandas as pd
 
+
 def investigate_missing_values(table_name: str, column_name: str):
     """Check what proportion of records have missing values."""
-    conn = duckdb.connect('data/warehouse.db')
+    conn = duckdb.connect("data/warehouse.db")
 
     query = f"""
     SELECT
@@ -432,9 +436,10 @@ def investigate_missing_values(table_name: str, column_name: str):
     print(result)
     return result
 
+
 if __name__ == "__main__":
     # Example investigation
-    investigate_missing_values('judge_scores', 'expected_violating')
+    investigate_missing_values("judge_scores", "expected_violating")
 ```
 
 ### Follow Investigation Workflow
@@ -507,7 +512,8 @@ Exploratory analysis is for understanding PATTERNS and RELATIONSHIPS in clean da
 
 ```python
 import duckdb
-conn = duckdb.connect('data/warehouse.db')
+
+conn = duckdb.connect("data/warehouse.db")
 df = conn.execute("SELECT * FROM fct_cases").df()
 
 print(f"Rows: {len(df)}")
@@ -522,8 +528,14 @@ print(df.describe())
 
 ```python
 import plotly.express as px
-fig = px.scatter(df, x='submission_date', y='processing_days',
-                 color='status', title='Processing Time Over Time')
+
+fig = px.scatter(
+    df,
+    x="submission_date",
+    y="processing_days",
+    color="status",
+    title="Processing Time Over Time",
+)
 fig.show()
 ```
 

@@ -8,14 +8,10 @@ invoked by agents, not just in interactive sessions.
 Run with: uv run pytest /tmp/test_validation_hooks.py -v
 """
 
-import json
-import subprocess
 from pathlib import Path
-from typing import Any
-
-import pytest
 
 from .hooks import parse_hook_output, run_hook
+
 # ============================================================================
 # SessionStart Hook Tests (validate_env.py)
 # ============================================================================
@@ -61,7 +57,9 @@ class TestSessionStartHook:
         context = output["hookSpecificOutput"]["additionalContext"]
 
         # Check for key content from framework tier (_CORE.md)
-        assert "Core Axioms (Inviolable Rules)" in context, "Framework _CORE.md not loaded"
+        assert "Core Axioms (Inviolable Rules)" in context, (
+            "Framework _CORE.md not loaded"
+        )
         assert "NO WORKAROUNDS" in context, "Framework behavioral rules not loaded"
 
         # Check for key content from personal tier (unique to nicsuzor/writing)

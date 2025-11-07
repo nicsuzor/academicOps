@@ -190,6 +190,7 @@ WHERE scorer.outputs->>'confidence' = 'low'
 
 ```python
 import duckdb
+
 db = duckdb.connect("/home/nic/src/automod/tja/data/local_cache.duckdb", read_only=True)
 df = db.sql("SELECT * FROM stg_flows WHERE agent_role = 'SCORERS'").df()
 ```

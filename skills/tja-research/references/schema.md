@@ -228,10 +228,7 @@ cd /home/nic/src/automod/tja/tjadbt
 import duckdb
 
 # Connect to cache
-db = duckdb.connect(
-    "/home/nic/src/automod/tja/data/local_cache.duckdb",
-    read_only=True
-)
+db = duckdb.connect("/home/nic/src/automod/tja/data/local_cache.duckdb", read_only=True)
 
 # Query scorers with structured output
 scorers_df = db.sql("""
@@ -247,11 +244,12 @@ scorers_df = db.sql("""
 
 # Parse JSON outputs
 import json
+
 for _, row in scorers_df.iterrows():
-    output = json.loads(row['outputs'])
+    output = json.loads(row["outputs"])
     print(f"Confidence: {output['confidence']}")
-    if output['critical_errors']['reasons']:
-        for error in output['critical_errors']['reasons']:
+    if output["critical_errors"]["reasons"]:
+        for error in output["critical_errors"]["reasons"]:
             print(f"  - {error['error_type']}: {error['explanation']}")
 ```
 

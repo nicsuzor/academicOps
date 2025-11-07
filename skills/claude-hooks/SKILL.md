@@ -178,6 +178,7 @@ from typing import Any
 # Import shared debug utility
 from hook_debug import safe_log_to_debug_file
 
+
 def main():
     # Read input from stdin
     try:
@@ -195,16 +196,12 @@ def main():
         output = {
             "hookSpecificOutput": {
                 "permissionDecision": "deny",
-                "permissionDecisionReason": "Explanation for Claude"
+                "permissionDecisionReason": "Explanation for Claude",
             }
         }
         exit_code = 2
     else:
-        output = {
-            "hookSpecificOutput": {
-                "permissionDecision": "allow"
-            }
-        }
+        output = {"hookSpecificOutput": {"permissionDecision": "allow"}}
         exit_code = 0
 
     # Debug log (safe, never crashes)
@@ -213,6 +210,7 @@ def main():
     # Output JSON to stdout
     print(json.dumps(output))
     sys.exit(exit_code)
+
 
 if __name__ == "__main__":
     main()
@@ -275,8 +273,7 @@ claude     # Launch Claude Code
 ```python
 def test_my_hook_from_subdirectory(claude_headless):
     result = claude_headless(
-        "First cd to tests/, then [trigger hook operation]",
-        model="haiku"
+        "First cd to tests/, then [trigger hook operation]", model="haiku"
     )
 
     assert result["success"]
@@ -384,6 +381,7 @@ From ARCHITECTURE.md, academicOps uses layered enforcement:
 ```python
 from hook_debug import safe_log_to_debug_file
 
+
 def main():
     input_data = json.load(sys.stdin)
 
@@ -474,7 +472,7 @@ if violates_rule(tool_input):
     return {
         "hookSpecificOutput": {
             "permissionDecision": "deny",
-            "permissionDecisionReason": "Rule violated. Try this instead: <alternative>"
+            "permissionDecisionReason": "Rule violated. Try this instead: <alternative>",
         }
     }
 ```
@@ -497,11 +495,7 @@ if questionable_pattern(tool_input):
 # SessionStart or UserPromptSubmit
 context = generate_dynamic_context()
 
-return {
-    "hookSpecificOutput": {
-        "additionalContext": context
-    }
-}
+return {"hookSpecificOutput": {"additionalContext": context}}
 ```
 
 **Why:** Provide runtime-specific information agents can't know ahead of time.

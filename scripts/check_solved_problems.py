@@ -29,7 +29,7 @@ import re
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Pattern
+from re import Pattern
 
 
 @dataclass
@@ -40,7 +40,9 @@ class SolvedProblem:
     description: str
     pattern: Pattern[str]
     recommended_library: str
-    min_lines: int = 30  # Minimum file lines to trigger (avoid false positives on small code)
+    min_lines: int = (
+        30  # Minimum file lines to trigger (avoid false positives on small code)
+    )
 
 
 # Patterns for common solved problems
@@ -176,11 +178,14 @@ def main() -> int:
 
         result = subprocess.run(
             ["git", "diff", "--name-only", "--cached", "*.py"],
+            check=False,
             capture_output=True,
             text=True,
         )
         if result.returncode == 0:
-            files_to_check = [Path(f.strip()) for f in result.stdout.splitlines() if f.strip()]
+            files_to_check = [
+                Path(f.strip()) for f in result.stdout.splitlines() if f.strip()
+            ]
 
     if not files_to_check:
         print("No Python files to check", file=sys.stderr)
@@ -200,7 +205,9 @@ def main() -> int:
 
     # Found potential issues
     print("\n⚠️  POTENTIAL REINVENTED WHEELS DETECTED\n")
-    print("The following files may be reimplementing functionality available in standard libraries.")
+    print(
+        "The following files may be reimplementing functionality available in standard libraries."
+    )
     print("This violates Axiom #11: Use Standard Tools\n")
 
     for file_path, issues in all_issues.items():

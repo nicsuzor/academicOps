@@ -1,1 +1,0 @@
-../../../chunks/SKILL-PRIMER.md

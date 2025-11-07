@@ -8,6 +8,7 @@ This test verifies:
 3. session_log.py script security features
 """
 
+import contextlib
 import json
 import subprocess
 import sys
@@ -28,32 +29,43 @@ def test_session_logging_hook():
 
     # Create a temporary transcript file
     # Using explicit file operations to ensure file is closed before use (Windows compatibility)
-    temp_file = tempfile.NamedTemporaryFile(mode='w', suffix='.jsonl', delete=False)
+    temp_file = tempfile.NamedTemporaryFile(mode="w", suffix=".jsonl", delete=False)
     transcript_path = temp_file.name
 
     try:
         # Write sample transcript entries
-        temp_file.write(json.dumps({
-            "type": "message",
-            "role": "user",
-            "content": "Test message"
-        }) + "\n")
+        temp_file.write(
+            json.dumps({"type": "message", "role": "user", "content": "Test message"})
+            + "\n"
+        )
 
-        temp_file.write(json.dumps({
-            "type": "message",
-            "role": "assistant",
-            "content": "Test response"
-        }) + "\n")
+        temp_file.write(
+            json.dumps(
+                {"type": "message", "role": "assistant", "content": "Test response"}
+            )
+            + "\n"
+        )
 
-        temp_file.write(json.dumps({
-            "tool_name": "Read",
-            "tool_input": {"file_path": "/test/file.py"}
-        }) + "\n")
+        temp_file.write(
+            json.dumps(
+                {"tool_name": "Read", "tool_input": {"file_path": "/test/file.py"}}
+            )
+            + "\n"
+        )
 
-        temp_file.write(json.dumps({
-            "tool_name": "Edit",
-            "tool_input": {"file_path": "/test/file.py", "old_string": "old", "new_string": "new"}
-        }) + "\n")
+        temp_file.write(
+            json.dumps(
+                {
+                    "tool_name": "Edit",
+                    "tool_input": {
+                        "file_path": "/test/file.py",
+                        "old_string": "old",
+                        "new_string": "new",
+                    },
+                }
+            )
+            + "\n"
+        )
     finally:
         # Explicitly close file handle before passing path to subprocess (Windows compatibility)
         temp_file.close()
@@ -65,18 +77,19 @@ def test_session_logging_hook():
         "cwd": str(repo_root),
         "permission_mode": "bypassPermissions",
         "hook_event_name": "Stop",
-        "stop_hook_active": False
+        "stop_hook_active": False,
     }
 
     try:
         # Run the hook
         result = subprocess.run(
             ["python3", str(hook_script)],
+            check=False,
             input=json.dumps(hook_input),
             capture_output=True,
             text=True,
             timeout=5,
-            env={**subprocess.os.environ, "CLAUDE_PROJECT_DIR": str(repo_root)}
+            env={**subprocess.os.environ, "CLAUDE_PROJECT_DIR": str(repo_root)},
         )
 
         # Check exit code
@@ -125,17 +138,17 @@ def test_session_logging_hook():
         return False
     finally:
         # Clean up temporary file
-        try:
+        with contextlib.suppress(Exception):
             Path(transcript_path).unlink()
-        except Exception:
-            pass
 
 
 def test_session_log_script():
     """Test the session_log.py script directly."""
 
     repo_root = Path(__file__).parent.parent
-    script_path = repo_root / "skills" / "task-management" / "scripts" / "session_log.py"
+    script_path = (
+        repo_root / "skills" / "task-management" / "scripts" / "session_log.py"
+    )
 
     if not script_path.exists():
         print(f"ERROR: Script not found at {script_path}")
@@ -152,12 +165,15 @@ def test_session_log_script():
             [
                 "python3",
                 str(script_path),
-                "--session-id", "test-123",
-                "--summary", "Test session"
+                "--session-id",
+                "test-123",
+                "--summary",
+                "Test session",
             ],
+            check=False,
             capture_output=True,
             text=True,
-            timeout=5
+            timeout=5,
         )
 
         if result.returncode != 0:
@@ -208,28 +224,29 @@ def test_todowrite_hook():
                 {
                     "content": "Test task 1",
                     "status": "in_progress",
-                    "activeForm": "Testing task 1"
+                    "activeForm": "Testing task 1",
                 },
                 {
                     "content": "Test task 2",
                     "status": "pending",
-                    "activeForm": "Testing task 2"
-                }
+                    "activeForm": "Testing task 2",
+                },
             ]
         },
         "permission_mode": "bypassPermissions",
-        "hook_event_name": "PreToolUse"
+        "hook_event_name": "PreToolUse",
     }
 
     try:
         # Run the hook
         result = subprocess.run(
             ["python3", str(hook_script)],
+            check=False,
             input=json.dumps(hook_input),
             capture_output=True,
             text=True,
             timeout=5,
-            env={**subprocess.os.environ, "CLAUDE_PROJECT_DIR": str(repo_root)}
+            env={**subprocess.os.environ, "CLAUDE_PROJECT_DIR": str(repo_root)},
         )
 
         # Check exit code
@@ -256,11 +273,15 @@ def test_todowrite_hook():
             return False
 
         if output["hookSpecificOutput"]["permissionDecision"] != "allow":
-            print(f"ERROR: Expected 'allow', got: {output['hookSpecificOutput']['permissionDecision']}")
+            print(
+                f"ERROR: Expected 'allow', got: {output['hookSpecificOutput']['permissionDecision']}"
+            )
             return False
 
         print("✓ TodoWrite hook executed successfully")
-        print(f"✓ Permission decision: {output['hookSpecificOutput']['permissionDecision']}")
+        print(
+            f"✓ Permission decision: {output['hookSpecificOutput']['permissionDecision']}"
+        )
 
         return True
 
@@ -276,7 +297,9 @@ def test_date_validation():
     """Test that date validation prevents path traversal."""
 
     repo_root = Path(__file__).parent.parent
-    script_path = repo_root / "skills" / "task-management" / "scripts" / "session_log.py"
+    script_path = (
+        repo_root / "skills" / "task-management" / "scripts" / "session_log.py"
+    )
 
     if not script_path.exists():
         print(f"ERROR: Script not found at {script_path}")
@@ -293,10 +316,10 @@ def test_date_validation():
         "../../secrets",
         "2025-10-24/../../../etc",
         "2025/10/24",  # Wrong separator
-        "20251024",    # No separators
+        "20251024",  # No separators
     ]
 
-    for bad_date in malicious_dates:
+    for _bad_date in malicious_dates:
         # We can't easily test this without modifying the script to accept date as arg
         # Instead, we'll import and test the function directly
         # For now, just verify the script has the validation
@@ -325,9 +348,9 @@ def main():
     failed = 0
 
     for name, test_func in tests:
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print(f"Running: {name}")
-        print('='*60)
+        print("=" * 60)
 
         if test_func():
             passed += 1
@@ -336,9 +359,9 @@ def main():
             failed += 1
             print(f"✗ FAILED: {name}")
 
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"Results: {passed} passed, {failed} failed")
-    print('='*60)
+    print("=" * 60)
 
     return 0 if failed == 0 else 1
 

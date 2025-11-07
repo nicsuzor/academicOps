@@ -5,8 +5,6 @@ description: "Core axioms and behavioral rules for the academicOps framework, in
 tags:
   - axioms
   - principles
-  - fail-fast
-  - DRY
   - framework
 relations:
   - "[[core/_CORE]]"
@@ -62,13 +60,14 @@ relations:
 11. **Always dogfooding**: The tools we are building are tested, proven, documented, and versioned. We use our own research projects as development guides, test cases, tutorials, and ongoing measures of reliability. We're aiming to make it easy for HASS scholars to use AI tools in a way that is understandable, traceable, and reproducible. Our live, validated, rigorous academic projects are also tutorials and guides; everything is replicable so we work on live code and data; never create fake examples for tests or documentation.
 
 12. **Trust Version Control**: We work in git repositories - git is the backup system
-   - ❌ NEVER create backup files: `_new`, `.bak`, `_old`, `_ARCHIVED_*`, `file_2`, `file.backup`
-   - ❌ NEVER preserve directories/files "for reference" - git history IS the reference
-   - ✅ Edit files directly, rely on git to track changes
-   - ✅ Commit AND push after completing logical work units
-   - ✅ Use `git diff`, `git log`, `git restore`, `git revert` to review/restore history
-   - **Rationale**: Backup files indicate distrust of infrastructure (violates fail-fast philosophy). Git tracks ALL changes - creating backups shows you don't trust the version control system that's specifically designed for this.
-   - **Tool usage**: Major changes use git-commit skill; quick fixes use direct `git add . && git commit -m "..." && git push`
+
+- ❌ NEVER create backup files: `_new`, `.bak`, `_old`, `_ARCHIVED_*`, `file_2`, `file.backup`
+- ❌ NEVER preserve directories/files "for reference" - git history IS the reference
+- ✅ Edit files directly, rely on git to track changes
+- ✅ Commit AND push after completing logical work units
+- ✅ Use `git diff`, `git log`, `git restore`, `git revert` to review/restore history
+- **Rationale**: Backup files indicate distrust of infrastructure (violates fail-fast philosophy). Git tracks ALL changes - creating backups shows you don't trust the version control system that's specifically designed for this.
+- **Tool usage**: Major changes use git-commit skill; quick fixes use direct `git add . && git commit -m "..." && git push`
 
 ## Behavioral Rules
 

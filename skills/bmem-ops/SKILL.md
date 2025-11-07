@@ -29,6 +29,7 @@ Use bmem-ops when:
 - **Enforcing link syntax** with `[[Entity Title]]` references
 
 **Do NOT use** for:
+
 - aOps framework structure decisions (that's aops-trainer)
 - Non-markdown files
 - External project files outside knowledge base
@@ -91,6 +92,7 @@ When file lacks frontmatter:
 **Observations are NEW, categorized facts that ADD information beyond the document body and frontmatter.**
 
 Observations should be:
+
 - **Specific**: Concrete facts, not vague statements
 - **Atomic**: One fact per observation
 - **Additive**: New information not in body/frontmatter
@@ -100,6 +102,7 @@ Observations should be:
 ### What Observations Are NOT
 
 **NEVER create observations that**:
+
 - Repeat the document body (self-referential)
 - Duplicate frontmatter metadata (due dates, types, status)
 - State the obvious ("This is a task")
@@ -117,15 +120,18 @@ status: inbox
 ---
 
 ## Context
+
 Review student thesis by Nov 7.
 
 ## Observations
+
 - [task] Review student thesis by Nov 7. #status-inbox
 - [requirement] Due date: 2025-11-07 #deadline
 - [fact] Task type: todo #type-todo
 ```
 
 Problems:
+
 - First observation repeats context verbatim
 - Due date already in frontmatter
 - Type already in frontmatter
@@ -143,9 +149,11 @@ goal: academic-profile
 ---
 
 ## Context
+
 Review Rhyle Simcock's PhD thesis lodgement. Do NOT name examiners in comments.
 
 ## Observations
+
 - [fact] Rhyle Simcock is PhD candidate in platform governance #student-rhyle-simcock #supervision
 - [requirement] Cannot name examiners in comments as student will see them #compliance #privacy
 - [insight] This is thesis examination stage requiring supervisor approval #phd-process #milestone
@@ -153,6 +161,7 @@ Review Rhyle Simcock's PhD thesis lodgement. Do NOT name examiners in comments.
 ```
 
 Why this is good:
+
 - Each observation adds NEW information
 - No duplication of frontmatter
 - Specific details about people, constraints, process
@@ -187,12 +196,14 @@ project: research         # ← Project here
 ```
 
 **DON'T create observations like**:
+
 - ❌ `[requirement] Due date: 2025-11-15`
 - ❌ `[fact] Priority: 1`
 - ❌ `[fact] Type: task`
 - ❌ `[fact] Status: inbox`
 
 **DO create observations that ADD context**:
+
 - ✅ `[insight] Deadline chosen to align with conference submission #strategic-timing`
 - ✅ `[decision] Prioritized high because blocks other work #dependencies`
 - ✅ `[fact] Research involves 50 participants across 3 universities #scope #collaboration`
@@ -202,6 +213,7 @@ project: research         # ← Project here
 For task entities (`type: task`), observations should capture:
 
 **People and relationships**:
+
 ```markdown
 - [fact] Working with Dr. Sarah Johnson on methodology #collaborator-sarah-johnson
 - [fact] Student Maria Garcia needs feedback by Friday #student-maria-garcia
@@ -209,6 +221,7 @@ For task entities (`type: task`), observations should capture:
 ```
 
 **Work type and method**:
+
 ```markdown
 - [decision] Will use qualitative coding for analysis #methodology #review
 - [technique] Reviewing in 2-hour focused blocks #time-management
@@ -216,6 +229,7 @@ For task entities (`type: task`), observations should capture:
 ```
 
 **Strategic context**:
+
 ```markdown
 - [insight] Supervision work contributes to Academic Profile goal #strategic-alignment
 - [fact] This is 3rd thesis in platform governance specialization #expertise-building
@@ -223,6 +237,7 @@ For task entities (`type: task`), observations should capture:
 ```
 
 **Constraints and requirements**:
+
 ```markdown
 - [requirement] Cannot name examiners in student-visible comments #compliance #privacy
 - [requirement] Must complete via QUT My Tasks system #process #workflow
@@ -230,10 +245,9 @@ For task entities (`type: task`), observations should capture:
 ```
 
 **NOT tasks themselves**:
+
 ```markdown
-❌ [task] Review thesis  # This IS the task, don't observe it
-❌ [action] Complete by Nov 7  # Due date already in frontmatter
-❌ [fact] This is a todo  # Meaningless type
+❌ [task] Review thesis # This IS the task, don't observe it ❌ [action] Complete by Nov 7 # Due date already in frontmatter ❌ [fact] This is a todo # Meaningless type
 ```
 
 ### Meaningful Tags
@@ -241,6 +255,7 @@ For task entities (`type: task`), observations should capture:
 **Use specific, semantic tags**:
 
 **Work type** (not "todo"):
+
 - `#review` - Reviewing work
 - `#writing` - Writing content
 - `#research` - Research tasks
@@ -250,18 +265,22 @@ For task entities (`type: task`), observations should capture:
 - `#meeting` - Meeting tasks
 
 **People**:
+
 - `#student-firstname-lastname`
 - `#collaborator-firstname-lastname`
 - `#stakeholder-role`
 
 **Subject matter**:
+
 - `#thesis` `#research` `#teaching`
 - `#platform-governance` `#copyright` (domain-specific)
 
 **Process/method**:
+
 - `#review-strategy` `#methodology` `#compliance`
 
 **Avoid**:
+
 - ❌ `#status-inbox` (already in frontmatter)
 - ❌ `#priority-p1` (already in frontmatter)
 - ❌ `#type-todo` (meaningless and redundant)
@@ -272,12 +291,15 @@ Extract atomic facts that ADD information:
 
 ```markdown
 # Document body says:
+
 "Review student thesis. Focus on methodology chapter."
 
 # DON'T observe:
+
 - [task] Review student thesis ← Just repeats body
 
 # DO observe:
+
 - [decision] Will prioritize methodology chapter due to student's concerns #review-strategy
 - [insight] Methodology needs strengthening based on preliminary read #quality-issue
 ```
@@ -290,12 +312,12 @@ Replace all informal references with explicit links:
 
 ```markdown
 # Before
-See the authentication system documentation for details.
-Related to platform governance research.
+
+See the authentication system documentation for details. Related to platform governance research.
 
 # After
-See [[Authentication System]] for details.
-Related to [[Platform Governance Research]].
+
+See [[Authentication System]] for details. Related to [[Platform Governance Research]].
 ```
 
 ### Relation Syntax
@@ -434,6 +456,7 @@ When converting multiple files in a directory:
 ### Frontmatter
 
 ✅ Valid:
+
 ```yaml
 ---
 title: My Note
@@ -443,6 +466,7 @@ type: note
 ```
 
 ❌ Invalid (missing required):
+
 ```yaml
 ---
 title: My Note
@@ -450,6 +474,7 @@ title: My Note
 ```
 
 ❌ Invalid (bad permalink):
+
 ```yaml
 ---
 title: My Note
@@ -461,16 +486,19 @@ type: note
 ### Observations
 
 ✅ Valid:
+
 ```markdown
 - [fact] Content here #tag1 #tag2
 ```
 
 ❌ Invalid (missing category):
+
 ```markdown
 - Content without category #tag1
 ```
 
 ❌ Invalid (wrong bracket type):
+
 ```markdown
 - (fact) Content with wrong brackets
 ```
@@ -478,16 +506,19 @@ type: note
 ### Relations
 
 ✅ Valid:
+
 ```markdown
 - implements [[Target Entity]]
 ```
 
 ❌ Invalid (missing double brackets):
+
 ```markdown
 - implements [Target Entity]
 ```
 
 ❌ Invalid (no relation type):
+
 ```markdown
 - [[Target Entity]]
 ```
@@ -495,15 +526,18 @@ type: note
 ## Integration with Other Skills
 
 **context-search** uses bmem-ops for:
+
 - Validating entity titles before search
 - Checking relation syntax
 
 **tasks** uses bmem-ops for:
+
 - Creating task files in BM format
 - Updating task frontmatter
 - Adding task observations
 
 **scribe** orchestrates bmem-ops for:
+
 - All knowledge base file operations
 - Ensuring semantic structure
 - Maintaining consistent format
@@ -534,6 +568,7 @@ type: note
 ## Quick Reference
 
 **Frontmatter template**:
+
 ```yaml
 ---
 title: Title Here
@@ -550,6 +585,7 @@ type: note
 **Link syntax**: `[[Entity Title]]` (double brackets)
 
 **File structure**:
+
 ```markdown
 # Title
 
@@ -568,11 +604,11 @@ One-liner summary.
 
 **Common operations**:
 
-| Task              | Action                              |
-| ----------------- | ----------------------------------- |
-| New file          | Use @assets/bmem-template.md        |
-| Missing frontmatter | Add with conversion strategy |
-| Prose content     | Extract observations                |
-| Entity mentions   | Convert to [[Entity]] links         |
-| No observations   | Skip if purely procedural           |
-| Config file       | Check exclusion list, skip if match |
+| Task                | Action                              |
+| ------------------- | ----------------------------------- |
+| New file            | Use @assets/bmem-template.md        |
+| Missing frontmatter | Add with conversion strategy        |
+| Prose content       | Extract observations                |
+| Entity mentions     | Convert to [[Entity]] links         |
+| No observations     | Skip if purely procedural           |
+| Config file         | Check exclusion list, skip if match |

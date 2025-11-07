@@ -1,3 +1,5 @@
+https://github.com/basicmachines-co/basic-memory/blob/main/docs/ai-assistant-guide-extended.md
+
 # AI Assistant Guide for Basic Memory - Extended Edition
 
 **This is the comprehensive guide for AI assistants using Basic Memory through MCP.**
@@ -151,10 +153,7 @@ projects = await list_memory_projects()
 ```python
 # Enable default_project_mode in config
 # ~/.basic-memory/config.json
-{
-  "default_project": "main",
-  "default_project_mode": true
-}
+{"default_project": "main", "default_project_mode": true}
 
 # Then tools work without project parameter
 await write_note("Note", "Content", "folder")
@@ -221,14 +220,12 @@ activity = await recent_activity(timeframe="7d", project="main")
 await create_memory_project(
     project_name="research",
     project_path="/Users/name/Documents/research",
-    set_default=False
+    set_default=False,
 )
 
 # Create and set as default
 await create_memory_project(
-    project_name="primary",
-    project_path="/Users/name/notes",
-    set_default=True
+    project_name="primary", project_path="/Users/name/notes", set_default=True
 )
 ```
 
@@ -419,7 +416,7 @@ await write_note(
 - requires [[Database Models]]
 """,
     folder="api",
-    project="main"
+    project="main",
 )
 # Creates forward references to "API Specification" and "Database Models"
 
@@ -428,7 +425,7 @@ await write_note(
     title="API Specification",
     content="# API Specification\n...",
     folder="specs",
-    project="main"
+    project="main",
 )
 # Forward reference automatically resolved!
 
@@ -436,7 +433,7 @@ await write_note(
     title="Database Models",
     content="# Database Models\n...",
     folder="database",
-    project="main"
+    project="main",
 )
 # Second forward reference resolved!
 ```
@@ -470,7 +467,7 @@ await write_note(
     title="Quick Note",
     content="# Quick Note\n\nSome basic content.",
     folder="notes",
-    project="main"
+    project="main",
 )
 ```
 
@@ -499,7 +496,7 @@ Documenting our database architecture choices for the authentication system.
 """,
     folder="architecture",
     tags=["database", "design", "authentication"],
-    project="main"
+    project="main",
 )
 ```
 
@@ -615,7 +612,7 @@ Adopt GraphQL instead of REST for our API layer.
     folder="decisions",
     tags=["decision", "api", "graphql"],
     entity_type="decision",
-    project="main"
+    project="main",
 )
 ```
 
@@ -652,7 +649,7 @@ await write_note(
     folder="meetings",
     tags=["meeting", "api", "team"],
     entity_type="meeting",
-    project="main"
+    project="main",
 )
 ```
 
@@ -740,7 +737,7 @@ await write_note(
 """,
     folder="features",
     tags=["oauth", "authentication", "integration"],
-    project="main"
+    project="main",
 )
 ```
 
@@ -756,32 +753,20 @@ await write_note(
 
 ```python
 # Simple title
-note = await read_note(
-    identifier="Authentication System",
-    project="main"
-)
+note = await read_note(identifier="Authentication System", project="main")
 
 # Title in specific folder
-note = await read_note(
-    identifier="specs/Authentication System",
-    project="main"
-)
+note = await read_note(identifier="specs/Authentication System", project="main")
 ```
 
 **Read by permalink**:
 
 ```python
 # Permalink is auto-generated from title
-note = await read_note(
-    identifier="authentication-system",
-    project="main"
-)
+note = await read_note(identifier="authentication-system", project="main")
 
 # Permalink with folder
-note = await read_note(
-    identifier="specs/authentication-system",
-    project="main"
-)
+note = await read_note(identifier="specs/authentication-system", project="main")
 ```
 
 ### Reading by memory:// URL
@@ -790,36 +775,23 @@ note = await read_note(
 
 ```python
 # By title
-note = await read_note(
-    identifier="memory://Authentication System",
-    project="main"
-)
+note = await read_note(identifier="memory://Authentication System", project="main")
 
 # By folder and title
 note = await read_note(
-    identifier="memory://specs/Authentication System",
-    project="main"
+    identifier="memory://specs/Authentication System", project="main"
 )
 
 # By permalink
-note = await read_note(
-    identifier="memory://authentication-system",
-    project="main"
-)
+note = await read_note(identifier="memory://authentication-system", project="main")
 
 # Wildcards for folder contents
-notes = await read_note(
-    identifier="memory://specs/*",
-    project="main"
-)
+notes = await read_note(identifier="memory://specs/*", project="main")
 ```
 
 ```python
 # Underscores automatically converted to hyphens
-note = await read_note(
-    identifier="memory://my_note_title",
-    project="main"
-)
+note = await read_note(identifier="memory://my_note_title", project="main")
 # Finds entity with permalink "my-note-title"
 
 # Both forms work
@@ -846,16 +818,16 @@ note2 = await read_note("memory://api-design", project="main")
         {
             "category": "decision",
             "content": "Use JWT for authentication",
-            "tags": ["security"]
+            "tags": ["security"],
         }
     ],
     "relations": [
         {
             "type": "implemented_by",
             "target": "Authentication Service",
-            "target_permalink": "authentication-service"
+            "target_permalink": "authentication-service",
         }
-    ]
+    ],
 }
 ```
 
@@ -866,26 +838,17 @@ note2 = await read_note("memory://api-design", project="main")
 ```python
 # First page (default: 10 items)
 page1 = await read_note(
-    identifier="Long Document",
-    page=1,
-    page_size=10,
-    project="main"
+    identifier="Long Document", page=1, page_size=10, project="main"
 )
 
 # Second page
 page2 = await read_note(
-    identifier="Long Document",
-    page=2,
-    page_size=10,
-    project="main"
+    identifier="Long Document", page=2, page_size=10, project="main"
 )
 
 # Large page size for complete content
 full = await read_note(
-    identifier="Long Document",
-    page=1,
-    page_size=1000,
-    project="main"
+    identifier="Long Document", page=1, page_size=1000, project="main"
 )
 ```
 
@@ -895,22 +858,13 @@ full = await read_note(
 
 ```python
 # Read text file
-content = await read_content(
-    path="config/settings.json",
-    project="main"
-)
+content = await read_content(path="config/settings.json", project="main")
 
 # Read image (returned as base64)
-image = await read_content(
-    path="diagrams/architecture.png",
-    project="main"
-)
+image = await read_content(path="diagrams/architecture.png", project="main")
 
 # Read any file type
-data = await read_content(
-    path="data/export.csv",
-    project="main"
-)
+data = await read_content(path="data/export.csv", project="main")
 ```
 
 **Difference from read_note**:
@@ -926,10 +880,7 @@ data = await read_content(
 
 ```python
 # Display as formatted artifact
-artifact = await view_note(
-    identifier="Authentication System",
-    project="main"
-)
+artifact = await view_note(identifier="Authentication System", project="main")
 
 # Returns formatted markdown suitable for display
 # - Syntax highlighting
@@ -950,29 +901,17 @@ artifact = await view_note(
 
 ```python
 # List top-level folders
-root = await list_directory(
-    dir_name="/",
-    project="main"
-)
+root = await list_directory(dir_name="/", project="main")
 
 # List specific folder
-specs = await list_directory(
-    dir_name="specs",
-    project="main"
-)
+specs = await list_directory(dir_name="specs", project="main")
 
 # Recursive listing
-all_files = await list_directory(
-    dir_name="/",
-    depth=3,
-    project="main"
-)
+all_files = await list_directory(dir_name="/", depth=3, project="main")
 
 # Filter by pattern
 markdown_files = await list_directory(
-    dir_name="docs",
-    file_name_glob="*.md",
-    project="main"
+    dir_name="docs", file_name_glob="*.md", project="main"
 )
 ```
 
@@ -987,17 +926,12 @@ markdown_files = await list_directory(
             "path": "specs/authentication-system.md",
             "type": "file",
             "size": 2048,
-            "modified": "2025-01-15T09:15:00Z"
+            "modified": "2025-01-15T09:15:00Z",
         }
     ],
     "directories": [
-        {
-            "name": "api",
-            "path": "specs/api",
-            "type": "directory",
-            "file_count": 5
-        }
-    ]
+        {"name": "api", "path": "specs/api", "type": "directory", "file_count": 5}
+    ],
 }
 ```
 
@@ -1013,25 +947,16 @@ markdown_files = await list_directory(
 
 ```python
 # Search across all content
-results = await search_notes(
-    query="authentication",
-    project="main"
-)
+results = await search_notes(query="authentication", project="main")
 
 # Search with pagination
 results = await search_notes(
-    query="authentication",
-    page=1,
-    page_size=10,
-    project="main"
+    query="authentication", page=1, page_size=10, project="main"
 )
 
 # Get more results
 results = await search_notes(
-    query="authentication",
-    page=1,
-    page_size=50,
-    project="main"
+    query="authentication", page=1, page_size=50, project="main"
 )
 ```
 
@@ -1041,17 +966,11 @@ results = await search_notes(
 
 ```python
 # Search only specifications
-specs = await search_notes(
-    query="authentication",
-    types=["spec"],
-    project="main"
-)
+specs = await search_notes(query="authentication", types=["spec"], project="main")
 
 # Search decisions and meetings
 decisions = await search_notes(
-    query="api design",
-    types=["decision", "meeting"],
-    project="main"
+    query="api design", types=["decision", "meeting"], project="main"
 )
 ```
 
@@ -1059,17 +978,11 @@ decisions = await search_notes(
 
 ```python
 # Find all decisions
-decisions = await search_notes(
-    query="",
-    entity_types=["decision"],
-    project="main"
-)
+decisions = await search_notes(query="", entity_types=["decision"], project="main")
 
 # Find problems and solutions
 issues = await search_notes(
-    query="performance",
-    entity_types=["problem", "solution"],
-    project="main"
+    query="performance", entity_types=["problem", "solution"], project="main"
 )
 ```
 
@@ -1077,18 +990,11 @@ issues = await search_notes(
 
 ```python
 # Find recent changes
-recent = await search_notes(
-    query="api",
-    after_date="2025-01-01",
-    project="main"
-)
+recent = await search_notes(query="api", after_date="2025-01-01", project="main")
 
 # Combine with other filters
 recent_decisions = await search_notes(
-    query="authentication",
-    types=["decision"],
-    after_date="2025-01-01",
-    project="main"
+    query="authentication", types=["decision"], after_date="2025-01-01", project="main"
 )
 ```
 
@@ -1099,9 +1005,7 @@ recent_decisions = await search_notes(
 ```python
 # Full-text search across all content
 results = await search_notes(
-    query="JWT authentication",
-    search_type="text",
-    project="main"
+    query="JWT authentication", search_type="text", project="main"
 )
 ```
 
@@ -1110,9 +1014,7 @@ results = await search_notes(
 ```python
 # Semantic/vector search (if enabled)
 results = await search_notes(
-    query="user login security",
-    search_type="semantic",
-    project="main"
+    query="user login security", search_type="semantic", project="main"
 )
 ```
 
@@ -1131,13 +1033,13 @@ results = await search_notes(
             "score": 0.95,
             "tags": ["auth", "security"],
             "type": "spec",
-            "updated": "2025-01-15T09:15:00Z"
+            "updated": "2025-01-15T09:15:00Z",
         }
     ],
     "total": 15,
     "page": 1,
     "page_size": 10,
-    "has_more": true
+    "has_more": true,
 }
 ```
 
@@ -1147,16 +1049,11 @@ results = await search_notes(
 
 ```python
 # Start broad
-all_auth = await search_notes(
-    query="authentication",
-    project="main"
-)
+all_auth = await search_notes(query="authentication", project="main")
 
 # Narrow down
 jwt_auth = await search_notes(
-    query="JWT authentication",
-    types=["spec", "decision"],
-    project="main"
+    query="JWT authentication", types=["spec", "decision"], project="main"
 )
 
 # Very specific
@@ -1164,7 +1061,7 @@ recent_jwt = await search_notes(
     query="JWT token implementation",
     types=["spec"],
     after_date="2025-01-01",
-    project="main"
+    project="main",
 )
 ```
 
@@ -1172,30 +1069,21 @@ recent_jwt = await search_notes(
 
 ```python
 # 1. Search for main topic
-auth_notes = await search_notes(
-    query="authentication",
-    project="main"
-)
+auth_notes = await search_notes(query="authentication", project="main")
 
 # 2. Read top result
 main_note = await read_note(
-    identifier=auth_notes["results"][0]["permalink"],
-    project="main"
+    identifier=auth_notes["results"][0]["permalink"], project="main"
 )
 
 # 3. Build context from relations
 context = await build_context(
-    url=f"memory://{main_note['permalink']}",
-    depth=2,
-    project="main"
+    url=f"memory://{main_note['permalink']}", depth=2, project="main"
 )
 
 # 4. Search for related terms from relations
 for relation in main_note["relations"]:
-    related = await search_notes(
-        query=relation["target"],
-        project="main"
-    )
+    related = await search_notes(query=relation["target"], project="main")
 ```
 
 **Multi-faceted search**:
@@ -1210,10 +1098,7 @@ by_type = await search_notes(query="", types=["decision"], project="main")
 
 # Combine for precision
 precise = await search_notes(
-    query="API security",
-    types=["decision"],
-    after_date="2025-01-01",
-    project="main"
+    query="API security", types=["decision"], after_date="2025-01-01", project="main"
 )
 ```
 
@@ -1229,10 +1114,7 @@ precise = await search_notes(
 
 ```python
 # Build context from entity
-context = await build_context(
-    url="memory://Authentication System",
-    project="main"
-)
+context = await build_context(url="memory://Authentication System", project="main")
 
 # Returns:
 # - The root entity
@@ -1248,9 +1130,7 @@ context = await build_context(
 ```python
 # Only immediate connections
 shallow = await build_context(
-    url="memory://Authentication System",
-    depth=1,
-    project="main"
+    url="memory://Authentication System", depth=1, project="main"
 )
 
 # Returns:
@@ -1264,9 +1144,7 @@ shallow = await build_context(
 ```python
 # Two levels of connections
 deep = await build_context(
-    url="memory://Authentication System",
-    depth=2,
-    project="main"
+    url="memory://Authentication System", depth=2, project="main"
 )
 
 # Returns:
@@ -1281,9 +1159,7 @@ deep = await build_context(
 ```python
 # Three or more levels
 very_deep = await build_context(
-    url="memory://Authentication System",
-    depth=3,
-    project="main"
+    url="memory://Authentication System", depth=3, project="main"
 )
 
 # Warning: Can return a lot of data
@@ -1298,22 +1174,16 @@ very_deep = await build_context(
 ```python
 # Last 7 days
 recent = await build_context(
-    url="memory://Authentication System",
-    timeframe="7d",
-    project="main"
+    url="memory://Authentication System", timeframe="7d", project="main"
 )
 
 # Natural language timeframes
 last_week = await build_context(
-    url="memory://API Design",
-    timeframe="1 week",
-    project="main"
+    url="memory://API Design", timeframe="1 week", project="main"
 )
 
 last_month = await build_context(
-    url="memory://Project Planning",
-    timeframe="30 days",
-    project="main"
+    url="memory://Project Planning", timeframe="30 days", project="main"
 )
 
 # Minimum: 1 day (enforced since v0.15.0)
@@ -1324,9 +1194,7 @@ last_month = await build_context(
 ```python
 # No timeframe = all history
 complete = await build_context(
-    url="memory://Authentication System",
-    depth=2,
-    project="main"
+    url="memory://Authentication System", depth=2, project="main"
 )
 ```
 
@@ -1341,7 +1209,7 @@ complete = await build_context(
         "permalink": "authentication-system",
         "content": "...",
         "observations": [...],
-        "relations": [...]
+        "relations": [...],
     },
     "related_entities": [
         {
@@ -1351,7 +1219,7 @@ complete = await build_context(
             "distance": 1,
             "content": "...",
             "observations": [...],
-            "relations": [...]
+            "relations": [...],
         },
         {
             "title": "Login API",
@@ -1360,8 +1228,8 @@ complete = await build_context(
             "distance": 1,
             "content": "...",
             "observations": [...],
-            "relations": [...]
-        }
+            "relations": [...],
+        },
     ],
     "paths": [
         {
@@ -1369,16 +1237,16 @@ complete = await build_context(
             "to": "login-api",
             "path": [
                 {"entity": "authentication-system", "relation": "implemented_by"},
-                {"entity": "login-api"}
-            ]
+                {"entity": "login-api"},
+            ],
         }
     ],
     "summary": {
         "total_entities": 5,
         "total_relations": 8,
         "max_depth": 2,
-        "timeframe": "7d"
-    }
+        "timeframe": "7d",
+    },
 }
 ```
 
@@ -1390,17 +1258,14 @@ complete = await build_context(
 # User: "Let's discuss authentication"
 
 # 1. Search for topic
-results = await search_notes(
-    query="authentication",
-    project="main"
-)
+results = await search_notes(query="authentication", project="main")
 
 # 2. Build context from most relevant
 context = await build_context(
     url=f"memory://{results['results'][0]['permalink']}",
     depth=2,
     timeframe="30d",
-    project="main"
+    project="main",
 )
 
 # 3. Use context to inform response
@@ -1412,19 +1277,13 @@ context = await build_context(
 
 ```python
 # Start with broad topic
-initial = await build_context(
-    url="memory://API Design",
-    depth=1,
-    project="main"
-)
+initial = await build_context(url="memory://API Design", depth=1, project="main")
 
 # Explore interesting branches
 for entity in initial["related_entities"]:
     if "GraphQL" in entity["title"]:
         graphql_context = await build_context(
-            url=f"memory://{entity['permalink']}",
-            depth=2,
-            project="main"
+            url=f"memory://{entity['permalink']}", depth=2, project="main"
         )
 ```
 
@@ -1433,15 +1292,11 @@ for entity in initial["related_entities"]:
 ```python
 # Build context from both endpoints
 start_context = await build_context(
-    url="memory://Frontend App",
-    depth=2,
-    project="main"
+    url="memory://Frontend App", depth=2, project="main"
 )
 
 end_context = await build_context(
-    url="memory://Database Schema",
-    depth=2,
-    project="main"
+    url="memory://Database Schema", depth=2, project="main"
 )
 
 # Analyze paths in response
@@ -1506,7 +1361,7 @@ Chose GraphQL for new features, maintain REST for legacy.
 - affects [[Mobile Development]]
 """,
     folder="decisions",
-    project="main"
+    project="main",
 )
 ```
 
@@ -1535,7 +1390,7 @@ Created index on email column, query time improved 20x.
 - caused_by [[Database Schema Migration]]
 """,
     folder="troubleshooting",
-    project="main"
+    project="main",
 )
 ```
 
@@ -1568,7 +1423,7 @@ Discussed migration strategy from REST v1 to GraphQL v2.
 - affects [[All API Clients]]
 """,
     folder="planning",
-    project="main"
+    project="main",
 )
 ```
 
@@ -1606,7 +1461,7 @@ User asked about security measures for new API.
 - requires [[Rate Limiting Service]]
 """,
     folder="conversations",
-    project="main"
+    project="main",
 )
 ```
 
@@ -1640,7 +1495,7 @@ await write_note(
 """,
     folder="conversations",
     tags=["conversation", topic_tags],
-    project="main"
+    project="main",
 )
 ```
 
@@ -1672,7 +1527,7 @@ await write_note(
 """,
     folder="decisions",
     entity_type="decision",
-    project="main"
+    project="main",
 )
 ```
 
@@ -1697,7 +1552,7 @@ await write_note(
 {connected_knowledge}
 """,
     folder="learnings",
-    project="main"
+    project="main",
 )
 ```
 
@@ -1708,9 +1563,7 @@ await write_note(
 ```python
 # 1. Search for related past conversations
 past = await search_notes(
-    query="API authentication",
-    types=["conversation", "decision"],
-    project="main"
+    query="API authentication", types=["conversation", "decision"], project="main"
 )
 
 # 2. Build context
@@ -1718,7 +1571,7 @@ context = await build_context(
     url=f"memory://{past['results'][0]['permalink']}",
     depth=2,
     timeframe="30d",
-    project="main"
+    project="main",
 )
 
 # 3. Reference in new conversation
@@ -1735,7 +1588,7 @@ await write_note(
 - implements [[JWT Authentication Decision]]
 """,
     folder="implementation",
-    project="main"
+    project="main",
 )
 ```
 
@@ -1771,7 +1624,7 @@ Additional information discovered.
 ## Observations
 - [fact] New security requirement identified #security
 """,
-    project="main"
+    project="main",
 )
 ```
 
@@ -1797,7 +1650,7 @@ Important development since meeting.
 ---
 
 """,
-    project="main"
+    project="main",
 )
 ```
 
@@ -1819,7 +1672,7 @@ await edit_note(
     find_text="http://api.example.com",
     content="https://api.example.com",
     expected_replacements=3,
-    project="main"
+    project="main",
 )
 ```
 
@@ -1833,7 +1686,7 @@ await edit_note(
     find_text="DEBUG = True",
     content="DEBUG = False",
     expected_replacements=1,
-    project="main"
+    project="main",
 )
 
 # Error if count doesn't match
@@ -1862,7 +1715,7 @@ Project completed successfully.
 
 All milestones achieved ahead of schedule.
 """,
-    project="main"
+    project="main",
 )
 ```
 
@@ -1879,7 +1732,7 @@ Updated authentication flow using OAuth 2.0.
 
 See [[OAuth Implementation]] for details.
 """,
-    project="main"
+    project="main",
 )
 ```
 
@@ -1907,7 +1760,7 @@ await edit_note(
 - [decision] Implement query complexity limiting #security
 - [action] Document schema changes weekly #documentation
 """,
-    project="main"
+    project="main",
 )
 ```
 
@@ -1923,7 +1776,7 @@ await edit_note(
 - integrates_with [[OAuth Provider]]
 - requires [[Rate Limiting Service]]
 """,
-    project="main"
+    project="main",
 )
 ```
 
@@ -1941,7 +1794,7 @@ await edit_note(
 - monitored_by [[Logging System]]
 - deployed_to [[Production Infrastructure]]
 """,
-    project="main"
+    project="main",
 )
 ```
 
@@ -1951,10 +1804,7 @@ await edit_note(
 
 ```python
 # Search for notes to update
-notes = await search_notes(
-    query="deprecated",
-    project="main"
-)
+notes = await search_notes(query="deprecated", project="main")
 
 # Update each note
 for note in notes["results"]:
@@ -1962,7 +1812,7 @@ for note in notes["results"]:
         identifier=note["permalink"],
         operation="prepend",
         content="⚠️ **DEPRECATED** - See [[New Implementation]]\n\n---\n\n",
-        project="main"
+        project="main",
     )
 ```
 
@@ -1985,7 +1835,7 @@ await edit_note(
 - Fixed broken links
 
 """,
-    project="main"
+    project="main",
 )
 ```
 
@@ -2003,7 +1853,7 @@ await edit_note(
 await move_note(
     identifier="API Documentation",
     destination_path="docs/api/api-documentation.md",
-    project="main"
+    project="main",
 )
 ```
 
@@ -2012,15 +1862,13 @@ await move_note(
 ```python
 # Both work (v0.15.0+)
 await move_note(
-    identifier="Note",
-    destination_path="new-folder/note.md",
-    project="main"
+    identifier="Note", destination_path="new-folder/note.md", project="main"
 )
 
 await move_note(
     identifier="Note",
     destination_path="new-folder/note",  # .md added automatically
-    project="main"
+    project="main",
 )
 ```
 
@@ -2043,7 +1891,9 @@ await move_note("API Server", "services/api/api-server.md", project="main")
 await move_note("Decision: OAuth", "decisions/oauth-decision.md", project="main")
 
 # Move meetings
-await move_note("API Review 2025-01-15", "meetings/2025/01/api-review.md", project="main")
+await move_note(
+    "API Review 2025-01-15", "meetings/2025/01/api-review.md", project="main"
+)
 ```
 
 **Folder hierarchy**:
@@ -2070,10 +1920,7 @@ project/
 
 ```python
 # Get all auth-related notes
-auth_notes = await search_notes(
-    query="authentication",
-    project="main"
-)
+auth_notes = await search_notes(query="authentication", project="main")
 
 # Move to auth folder
 for note in auth_notes["results"]:
@@ -2081,13 +1928,13 @@ for note in auth_notes["results"]:
         await move_note(
             identifier=note["permalink"],
             destination_path=f"specs/auth/{note['permalink']}.md",
-            project="main"
+            project="main",
         )
     elif note["type"] == "decision":
         await move_note(
             identifier=note["permalink"],
             destination_path=f"decisions/auth/{note['permalink']}.md",
-            project="main"
+            project="main",
         )
 ```
 
@@ -2102,9 +1949,7 @@ for note in auth_notes["results"]:
 
 # Move Note B
 await move_note(
-    identifier="Note B",
-    destination_path="subfolder/note-b.md",
-    project="main"
+    identifier="Note B", destination_path="subfolder/note-b.md", project="main"
 )
 
 # After move:
@@ -2120,9 +1965,7 @@ await move_note(
 ```python
 # Rename by moving to same folder with new name
 await move_note(
-    identifier="Old Name",
-    destination_path="same-folder/new-name.md",
-    project="main"
+    identifier="Old Name", destination_path="same-folder/new-name.md", project="main"
 )
 
 # Title and permalink updated
@@ -2138,22 +1981,18 @@ await move_note(
 await move_note(
     identifier="Deprecated Feature",
     destination_path="archive/deprecated/deprecated-feature.md",
-    project="main"
+    project="main",
 )
 
 # Batch archive by date
-old_notes = await search_notes(
-    query="",
-    after_date="2024-01-01",
-    project="main"
-)
+old_notes = await search_notes(query="", after_date="2024-01-01", project="main")
 
 for note in old_notes["results"]:
     if note["updated"] < "2024-06-01":
         await move_note(
             identifier=note["permalink"],
             destination_path=f"archive/2024/{note['permalink']}.md",
-            project="main"
+            project="main",
         )
 ```
 
@@ -2225,7 +2064,7 @@ response = await write_note(
     title="Implementation",
     content="## Relations\n- implements [[Future Spec]]",
     folder="code",
-    project="main"
+    project="main",
 )
 
 # Response may indicate unresolved reference
@@ -2233,10 +2072,7 @@ response = await write_note(
 
 # Later, create target
 await write_note(
-    title="Future Spec",
-    content="# Future Spec\n...",
-    folder="specs",
-    project="main"
+    title="Future Spec", content="# Future Spec\n...", folder="specs", project="main"
 )
 
 # Reference automatically resolved
@@ -2341,7 +2177,7 @@ try:
         find_text="old_value",
         content="new_value",
         expected_replacements=1,
-        project="main"
+        project="main",
     )
 except:
     # Read note to check
@@ -2359,7 +2195,7 @@ except:
             find_text="old_value",
             content="new_value",
             replace_all=True,
-            project="main"
+            project="main",
         )
 ```
 
@@ -2372,9 +2208,7 @@ except:
 ```python
 try:
     await move_note(
-        identifier="Note",
-        destination_path="/restricted/note.md",
-        project="main"
+        identifier="Note", destination_path="/restricted/note.md", project="main"
     )
 except:
     # Inform user about permission issue
@@ -2385,9 +2219,7 @@ except:
 
     # Use valid path
     await move_note(
-        identifier="Note",
-        destination_path="archive/note.md",
-        project="main"
+        identifier="Note", destination_path="archive/note.md", project="main"
     )
 ```
 
@@ -2404,9 +2236,7 @@ except:
 ```python
 # Gather entities to visualize
 auth_context = await build_context(
-    url="memory://Authentication System",
-    depth=2,
-    project="main"
+    url="memory://Authentication System", depth=2, project="main"
 )
 
 # Create nodes
@@ -2418,7 +2248,7 @@ nodes = [
         "x": 0,
         "y": 0,
         "width": 400,
-        "height": 300
+        "height": 300,
     },
     {
         "id": "user-db",
@@ -2427,7 +2257,7 @@ nodes = [
         "x": 500,
         "y": 0,
         "width": 400,
-        "height": 300
+        "height": 300,
     },
     {
         "id": "login-api",
@@ -2436,8 +2266,8 @@ nodes = [
         "x": 250,
         "y": 400,
         "width": 400,
-        "height": 300
-    }
+        "height": 300,
+    },
 ]
 
 # Create edges showing relations
@@ -2446,14 +2276,14 @@ edges = [
         "id": "edge-1",
         "fromNode": "auth-system",
         "toNode": "user-db",
-        "label": "requires"
+        "label": "requires",
     },
     {
         "id": "edge-2",
         "fromNode": "auth-system",
         "toNode": "login-api",
-        "label": "implemented_by"
-    }
+        "label": "implemented_by",
+    },
 ]
 
 # Generate canvas
@@ -2462,7 +2292,7 @@ canvas = await canvas(
     edges=edges,
     title="Authentication System Overview",
     folder="diagrams",
-    project="main"
+    project="main",
 )
 
 # Opens in Obsidian for interactive exploration
@@ -2485,7 +2315,7 @@ await write_note(
 - relates_to [[Mobile Development]]
 """,
     folder="planning",
-    project="main"
+    project="main",
 )
 
 # Session 2: Add details
@@ -2496,7 +2326,7 @@ await edit_note(
 - [decision] Using FastAPI framework #python
 - [technique] Auto-generate OpenAPI docs
 """,
-    project="main"
+    project="main",
 )
 
 # Session 3: Add related entities
@@ -2508,7 +2338,7 @@ await write_note(
 - part_of [[API Design]]
 """,
     folder="specs",
-    project="main"
+    project="main",
 )
 
 # Update original with relation
@@ -2518,7 +2348,7 @@ await edit_note(
     content="""
 - includes [[API Authentication]]
 """,
-    project="main"
+    project="main",
 )
 
 # Session 4: Add implementation
@@ -2530,7 +2360,7 @@ await write_note(
 - implements [[API Design]]
 """,
     folder="code",
-    project="main"
+    project="main",
 )
 ```
 
@@ -2540,23 +2370,17 @@ await write_note(
 
 ```python
 # Read from source project
-template = await read_note(
-    identifier="API Architecture Template",
-    project="templates"
-)
+template = await read_note(identifier="API Architecture Template", project="templates")
 
 # Adapt for target project
-adapted_content = template["content"].replace(
-    "{{PROJECT_NAME}}",
-    "New Project"
-)
+adapted_content = template["content"].replace("{{PROJECT_NAME}}", "New Project")
 
 # Write to target project
 await write_note(
     title="API Architecture",
     content=adapted_content,
     folder="architecture",
-    project="new-project"
+    project="new-project",
 )
 ```
 
@@ -2603,10 +2427,7 @@ week1 = await recent_activity(timeframe="7d", project="main")
 week2 = await recent_activity(timeframe="14d", project="main")
 
 # Compare what's new
-new_this_week = [
-    item for item in week1
-    if item not in week2
-]
+new_this_week = [item for item in week1 if item not in week2]
 
 # Identify trends
 # - What topics are active
@@ -2628,10 +2449,7 @@ for note in all_notes["results"]:
 
     for relation in full_note["relations"]:
         if not relation.get("target_exists"):
-            unresolved.append({
-                "source": note["title"],
-                "target": relation["target"]
-            })
+            unresolved.append({"source": note["title"], "target": relation["target"]})
 
 # Report unresolved references
 # "Found {len(unresolved)} unresolved references:"
@@ -2645,11 +2463,7 @@ for note in all_notes["results"]:
 
 ```python
 # Gather all specs
-specs = await search_notes(
-    query="",
-    types=["spec"],
-    project="main"
-)
+specs = await search_notes(query="", types=["spec"], project="main")
 
 # Build comprehensive documentation
 doc_content = "# System Documentation\n\n"
@@ -2662,13 +2476,12 @@ for spec in specs["results"]:
 
     # Add related implementations
     context = await build_context(
-        url=f"memory://{spec['permalink']}",
-        depth=1,
-        project="main"
+        url=f"memory://{spec['permalink']}", depth=1, project="main"
     )
 
     implementations = [
-        e for e in context["related_entities"]
+        e
+        for e in context["related_entities"]
         if e.get("relation_type") == "implemented_by"
     ]
 
@@ -2682,7 +2495,7 @@ await write_note(
     title="Generated System Documentation",
     content=doc_content,
     folder="docs",
-    project="main"
+    project="main",
 )
 ```
 
@@ -2692,10 +2505,7 @@ await write_note(
 
 ```python
 # Find related notes
-related = await search_notes(
-    query="authentication",
-    project="main"
-)
+related = await search_notes(query="authentication", project="main")
 
 # Read all related
 notes_to_merge = []
@@ -2714,20 +2524,18 @@ for note in notes_to_merge:
     merged_relations.extend(note.get("relations", []))
 
 # Deduplicate
-unique_observations = list({
-    obs["content"]: obs for obs in merged_observations
-}.values())
+unique_observations = list(
+    {obs["content"]: obs for obs in merged_observations}.values()
+)
 
-unique_relations = list({
-    rel["target"]: rel for rel in merged_relations
-}.values())
+unique_relations = list({rel["target"]: rel for rel in merged_relations}.values())
 
 # Build consolidated note
 merged_content += "## Observations\n"
 for obs in unique_observations:
     merged_content += f"- [{obs['category']}] {obs['content']}"
-    if obs.get('tags'):
-        merged_content += " " + " ".join(f"#{tag}" for tag in obs['tags'])
+    if obs.get("tags"):
+        merged_content += " " + " ".join(f"#{tag}" for tag in obs["tags"])
     merged_content += "\n"
 
 merged_content += "\n## Relations\n"
@@ -2739,7 +2547,7 @@ await write_note(
     title="Consolidated: Authentication",
     content=merged_content,
     folder="consolidated",
-    project="main"
+    project="main",
 )
 ```
 
@@ -2771,7 +2579,7 @@ await write_note(
     folder="specs",
     tags=["api", "design"],
     entity_type="spec",
-    project="main"
+    project="main",
 )
 ```
 
@@ -2787,10 +2595,7 @@ await write_note(
 - Example:
 
 ```python
-note = await read_note(
-    identifier="memory://specs/api-design",
-    project="main"
-)
+note = await read_note(identifier="memory://specs/api-design", project="main")
 ```
 
 **edit_note(identifier, operation, content, find_text, section, expected_replacements, project)**
@@ -2812,7 +2617,7 @@ await edit_note(
     identifier="API Design",
     operation="append",
     content="\n- [fact] New requirement",
-    project="main"
+    project="main",
 )
 ```
 
@@ -2828,9 +2633,7 @@ await edit_note(
 
 ```python
 await move_note(
-    identifier="API Design",
-    destination_path="archive/api-design.md",
-    project="main"
+    identifier="API Design", destination_path="archive/api-design.md", project="main"
 )
 ```
 
@@ -2844,10 +2647,7 @@ await move_note(
 - Example:
 
 ```python
-await delete_note(
-    identifier="outdated-note",
-    project="main"
-)
+await delete_note(identifier="outdated-note", project="main")
 ```
 
 **read_content(path, project)**
@@ -2860,10 +2660,7 @@ await delete_note(
 - Example:
 
 ```python
-content = await read_content(
-    path="config/settings.json",
-    project="main"
-)
+content = await read_content(path="config/settings.json", project="main")
 ```
 
 **view_note(identifier, page, page_size, project)**
@@ -2874,10 +2671,7 @@ content = await read_content(
 - Example:
 
 ```python
-artifact = await view_note(
-    identifier="API Design",
-    project="main"
-)
+artifact = await view_note(identifier="API Design", project="main")
 ```
 
 ### Knowledge Graph Navigation
@@ -2898,10 +2692,7 @@ artifact = await view_note(
 
 ```python
 context = await build_context(
-    url="memory://api-design",
-    depth=2,
-    timeframe="30d",
-    project="main"
+    url="memory://api-design", depth=2, timeframe="30d", project="main"
 )
 ```
 
@@ -2917,10 +2708,7 @@ context = await build_context(
 - Example:
 
 ```python
-activity = await recent_activity(
-    timeframe="7d",
-    project="main"
-)
+activity = await recent_activity(timeframe="7d", project="main")
 ```
 
 **list_directory(dir_name, depth, file_name_glob, project)**
@@ -2936,10 +2724,7 @@ activity = await recent_activity(
 
 ```python
 contents = await list_directory(
-    dir_name="specs",
-    depth=2,
-    file_name_glob="*.md",
-    project="main"
+    dir_name="specs", depth=2, file_name_glob="*.md", project="main"
 )
 ```
 
@@ -2965,7 +2750,7 @@ results = await search_notes(
     query="authentication",
     types=["spec", "decision"],
     after_date="2025-01-01",
-    project="main"
+    project="main",
 )
 ```
 
@@ -2994,9 +2779,7 @@ projects = await list_memory_projects()
 
 ```python
 await create_memory_project(
-    project_name="research",
-    project_path="/Users/name/research",
-    set_default=False
+    project_name="research", project_path="/Users/name/research", set_default=False
 )
 ```
 
@@ -3044,7 +2827,7 @@ await canvas(
     edges=[],
     title="Graph View",
     folder="diagrams",
-    project="main"
+    project="main",
 )
 ```
 
@@ -3122,10 +2905,7 @@ Brief background
 
 ```python
 # Before writing new note
-existing = await search_notes(
-    query="topic name",
-    project="main"
-)
+existing = await search_notes(query="topic name", project="main")
 
 if existing["total"] > 0:
     # Update existing instead of creating duplicate
@@ -3133,7 +2913,7 @@ if existing["total"] > 0:
         identifier=existing["results"][0]["permalink"],
         operation="append",
         content=new_information,
-        project="main"
+        project="main",
     )
 else:
     # Create new
@@ -3205,7 +2985,7 @@ await write_note(
     title="Topic",
     content="Basic structure with initial observations",
     folder="notes",
-    project="main"
+    project="main",
 )
 
 # Session 2: Add details
@@ -3213,7 +2993,7 @@ await edit_note(
     identifier="Topic",
     operation="append",
     content="Additional observations and insights",
-    project="main"
+    project="main",
 )
 
 # Session 3: Add relations
@@ -3221,7 +3001,7 @@ await edit_note(
     identifier="Topic",
     operation="append",
     content="Relations to related topics",
-    project="main"
+    project="main",
 )
 ```
 
@@ -3284,7 +3064,7 @@ context = await build_context(
     url=f"memory://{results['results'][0]['permalink']}",
     depth=2,
     timeframe="30d",
-    project="main"
+    project="main",
 )
 
 # 3. Use context to inform response
@@ -3313,10 +3093,7 @@ except:
 ```python
 # Good: Incremental update
 await edit_note(
-    identifier="Note",
-    operation="append",
-    content="New information",
-    project="main"
+    identifier="Note", operation="append", content="New information", project="main"
 )
 
 # Avoid: Complete rewrite

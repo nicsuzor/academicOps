@@ -22,18 +22,18 @@ import json
 import os
 import subprocess
 import sys
-from datetime import datetime, timezone
 from pathlib import Path
 
 # Optional debug logging - gracefully handle missing hook_debug module
 try:
     from hook_debug import safe_log_to_debug_file
+
     HAS_DEBUG = True
 except ImportError:
     HAS_DEBUG = False
+
     def safe_log_to_debug_file(*args, **kwargs):
         """Fallback no-op function when hook_debug is not available."""
-        pass
 
 
 def get_project_dir() -> Path:
@@ -98,7 +98,7 @@ def extract_transcript_summary(transcript_path: str) -> dict:
 
                 except json.JSONDecodeError:
                     continue
-    except IOError as e:
+    except OSError as e:
         print(f"Warning: Could not read transcript: {e}", file=sys.stderr)
 
     # Convert set to list for JSON serialization
@@ -150,7 +150,7 @@ def invoke_session_logger(
     session_id: str,
     transcript_path: str,
     summary: str,
-    task_id: str = None,
+    task_id: str | None = None,
 ) -> bool:
     """
     Invoke the session logging script in the background.
@@ -166,11 +166,7 @@ def invoke_session_logger(
         True if invocation succeeded, False otherwise
     """
     script_path = (
-        project_dir
-        / "skills"
-        / "task-management"
-        / "scripts"
-        / "session_log.py"
+        project_dir / "skills" / "task-management" / "scripts" / "session_log.py"
     )
 
     if not script_path.exists():
@@ -225,7 +221,7 @@ def main() -> int:
         # Extract session info
         session_id = input_data.get("session_id", "unknown")
         transcript_path = input_data.get("transcript_path")
-        cwd = input_data.get("cwd", ".")
+        input_data.get("cwd", ".")
 
         # Get project directory
         project_dir = get_project_dir()

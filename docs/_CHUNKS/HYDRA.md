@@ -46,9 +46,11 @@ Complete reference for Hydra configuration in academicOps projects. Covers princ
 import hydra
 from omegaconf import DictConfig
 
+
 @hydra.main(version_base=None, config_path="conf", config_name="config")
 def run(cfg: DictConfig):
     print(cfg.db.host, cfg.app.workers)
+
 
 if __name__ == "__main__":
     run()
@@ -278,13 +280,13 @@ import pytest
 from hydra import initialize_config_dir, compose
 from pathlib import Path
 
+
 @pytest.fixture
 def hydra_cfg():
     """Initialize Hydra for testing."""
     config_dir = Path(__file__).parent / "conf"
     with initialize_config_dir(
-        version_base=None,
-        config_dir=str(config_dir.absolute())
+        version_base=None, config_dir=str(config_dir.absolute())
     ):
         cfg = compose(config_name="config")
         yield cfg
@@ -298,12 +300,10 @@ def test_db_override(tmp_path):
     config_dir = Path(__file__).parent / "conf"
 
     with initialize_config_dir(
-        version_base=None,
-        config_dir=str(config_dir.absolute())
+        version_base=None, config_dir=str(config_dir.absolute())
     ):
         cfg = compose(
-            config_name="config",
-            overrides=["db=sqlite", "db.path=/tmp/test.db"]
+            config_name="config", overrides=["db=sqlite", "db.path=/tmp/test.db"]
         )
 
         assert cfg.db.driver == "sqlite"
@@ -318,7 +318,9 @@ def test_env_configs(env):
     """Verify each environment config loads."""
     config_dir = Path(__file__).parent / "conf"
 
-    with initialize_config_dir(version_base=None, config_dir=str(config_dir.absolute())):
+    with initialize_config_dir(
+        version_base=None, config_dir=str(config_dir.absolute())
+    ):
         cfg = compose(config_name="config", overrides=[f"env={env}"])
 
         # Verify environment-specific settings
@@ -334,6 +336,7 @@ def test_env_configs(env):
 
 ```python
 from omegaconf import OmegaConf
+
 
 def test_interpolations_resolve(hydra_cfg):
     """Ensure all interpolations resolve without errors."""
@@ -352,7 +355,9 @@ def test_prod_config_matches_golden():
     """Prevent accidental prod config changes."""
     config_dir = Path(__file__).parent / "conf"
 
-    with initialize_config_dir(version_base=None, config_dir=str(config_dir.absolute())):
+    with initialize_config_dir(
+        version_base=None, config_dir=str(config_dir.absolute())
+    ):
         cfg = compose(config_name="config", overrides=["env=prod"])
         resolved = OmegaConf.to_container(cfg, resolve=True)
 
@@ -459,14 +464,14 @@ from omegaconf import OmegaConf
 
 log = logging.getLogger(__name__)
 
+
 @hydra.main(...)
 def run(cfg: DictConfig):
     # ✅ SAFE - Log non-sensitive config
-    log.info("Connecting to database", extra={
-        "db_host": cfg.db.host,
-        "db_user": cfg.db.user,
-        "db_port": cfg.db.port
-    })
+    log.info(
+        "Connecting to database",
+        extra={"db_host": cfg.db.host, "db_user": cfg.db.user, "db_port": cfg.db.port},
+    )
 
     # ❌ NEVER log passwords/secrets
     # log.info(f"Password: {cfg.db.password}")  # PROHIBITED
@@ -478,6 +483,7 @@ def run(cfg: DictConfig):
 from dataclasses import dataclass
 from hydra.core.config_store import ConfigStore
 
+
 @dataclass
 class DBConfig:
     driver: str
@@ -485,6 +491,7 @@ class DBConfig:
     port: int
     user: str
     password: str  # No default - must be provided
+
 
 cs = ConfigStore.instance()
 cs.store(name="db_schema", node=DBConfig)
@@ -657,6 +664,7 @@ env:
 ```python
 from omegaconf import OmegaConf
 
+
 @hydra.main(...)
 def run(cfg: DictConfig):
     # Print full config as YAML
@@ -753,6 +761,7 @@ port: 5432
 def process_data(cfg: DictConfig):
     db_host = cfg.db.host  # Interpolations still work
     # ... business logic ...
+
 
 # Only resolve when crossing boundaries
 def send_to_external_api(cfg: DictConfig):
@@ -924,6 +933,7 @@ defaults:
 from dataclasses import dataclass
 from hydra.core.config_store import ConfigStore
 
+
 @dataclass
 class DBConfig:
     driver: str
@@ -931,10 +941,12 @@ class DBConfig:
     port: int
     # No defaults - all required!
 
+
 @dataclass
 class Config:
     db: DBConfig
     app_name: str
+
 
 cs = ConfigStore.instance()
 cs.store(name="base_schema", node=Config)

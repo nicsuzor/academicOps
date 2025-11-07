@@ -13,10 +13,8 @@ Always use type hints:
 ```python
 from typing import Optional, List
 
-def process_users(
-    users: List[dict[str, str]],
-    active_only: bool = False
-) -> List[str]:
+
+def process_users(users: List[dict[str, str]], active_only: bool = False) -> List[str]:
     """Process user data and return names."""
     return [u["name"] for u in users if not active_only or u.get("active")]
 ```
@@ -281,11 +279,13 @@ Prefer immutable data structures:
 ```python
 from dataclasses import dataclass
 
+
 @dataclass(frozen=True)
 class User:
     id: int
     name: str
     roles: tuple[str, ...]  # tuple, not list
+
 
 def add_role(user: User, role: str) -> User:
     return dataclasses.replace(user, roles=user.roles + (role,))
@@ -300,10 +300,11 @@ Same inputs → same outputs, no side effects:
 def calculate_discount(price: float, pct: float) -> float:
     return price * (1 - pct)
 
+
 # Bad: Side effects
 def apply_discount(order: Order) -> None:
     order.total *= 0.9  # Mutation
-    save_to_db(order)   # Side effect
+    save_to_db(order)  # Side effect
 ```
 
 ## Error Handling
@@ -315,6 +316,7 @@ def load_config(path: str) -> dict:
     if not os.path.exists(path):
         raise FileNotFoundError(f"Config: {path}")
     return json.load(open(path))
+
 
 def find_user(id: int) -> Optional[User]:
     return db.query(User).filter_by(id=id).first()
@@ -335,9 +337,10 @@ def test_user_registration_with_valid_email():
     result = register_user("user@example.com", "pass123")
     assert result.success is True
 
+
 # Bad: Tests implementation
 def test_register_calls_validate_email():
-    with patch('validate_email') as mock:
+    with patch("validate_email") as mock:
         register_user("user@example.com", "pass123")
         assert mock.called
 ```

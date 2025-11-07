@@ -26,7 +26,7 @@ This workspace contains the following skills:
 
 ### Project & Task Management
 
-- **task-management**: Invoked SILENTLY and AUTOMATICALLY throughout conversations to capture tasks, priorities, and context. Manages the user's personal knowledge base, extracting information about tasks, projects, goals, and strategic priorities.
+- **tasks**: Invoked SILENTLY and AUTOMATICALLY throughout conversations to capture tasks, priorities, and context. Manages the user's personal knowledge base, extracting information about tasks, projects, goals, and strategic priorities.
 
 - **github-issue**: Manage GitHub issues across any repository with exhaustive search, precise documentation, and proactive updates. Use when documenting bugs, tracking features, updating issue status, or searching for related work.
 

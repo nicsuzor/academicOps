@@ -7,11 +7,13 @@ description: Core axioms and behavioral rules for the academicOps framework, inc
 tags:
   - axioms
   - principles
+  - fail-fast
+  - DRY
   - framework
 relations:
   - "[[core/_CORE]]"
   - "[[ARCHITECTURE]]"
-permalink: aops/skills/supervisor/resources/axioms
+permalink: aops/skills/bmem-ops/resources/axioms
 ---
 
 # Universal Principles
@@ -62,28 +64,18 @@ permalink: aops/skills/supervisor/resources/axioms
 
 11. **Always dogfooding**: The tools we are building are tested, proven, documented, and versioned. We use our own research projects as development guides, test cases, tutorials, and ongoing measures of reliability. We're aiming to make it easy for HASS scholars to use AI tools in a way that is understandable, traceable, and reproducible. Our live, validated, rigorous academic projects are also tutorials and guides; everything is replicable so we work on live code and data; never create fake examples for tests or documentation.
 
-12. **Trust Version Control**: We work in git repositories - git is the backup system
-
-- ❌ NEVER create backup files: `_new`, `.bak`, `_old`, `_ARCHIVED_*`, `file_2`, `file.backup`
-- ❌ NEVER preserve directories/files "for reference" - git history IS the reference
-- ✅ Edit files directly, rely on git to track changes
-- ✅ Commit AND push after completing logical work units
-- ✅ Use `git diff`, `git log`, `git restore`, `git revert` to review/restore history
-- **Rationale**: Backup files indicate distrust of infrastructure (violates fail-fast philosophy). Git tracks ALL changes - creating backups shows you don't trust the version control system that's specifically designed for this.
-- **Tool usage**: Major changes use git-commit skill; quick fixes use direct `git add . && git commit -m "..." && git push`
-
 ## Behavioral Rules
 
-13. **NO WORKAROUNDS**. We're building a toolkit. If your tooling or instructions don't work PRECISELY, then CONGRATULATIONS! You've discovered a bug for us! Don't work around it; log the failure and HALT ALL WORK until the user decides what to do.
-14. **VERIFY FIRST** - Check actual state, never assume.
-15. **NO EXCUSES** - Never close issues or claim success without confirmation. No error is somebody else's problem. If you can't verify and replicate, it doesn't work.
+12. **NO WORKAROUNDS**. We're building a toolkit. If your tooling or instructions don't work PRECISELY, then CONGRATULATIONS! You've discovered a bug for us! Don't work around it; log the failure and HALT ALL WORK until the user decides what to do.
+13. **VERIFY FIRST** - Check actual state, never assume.
+14. **NO EXCUSES** - Never close issues or claim success without confirmation. No error is somebody else's problem. If you can't verify and replicate, it doesn't work.
 
 - If asked to "run X to verify Y", success = X runs successfully, not "X would work if..."
 - Never rationalize away requirements. If a test fails, fix it or ask for help - don't explain why it's okay that it failed.
 
-16. **WRITE FOR THE LONG TERM** for replication: NEVER create single use scripts or tests or use ad-hoc analysis. We build the infrastructure that guarantees replicability and integrity for the long term.
-17. **DON'T MAKE SHIT UP**. If you don't know, say so. No guesses.
-18. **ALWAYS CITE SOURCES**. No plagiarism. Ever.
+15. **WRITE FOR THE LONG TERM** for replication: NEVER create single use scripts or tests or use ad-hoc analysis. We build the infrastructure that guarantees replicability and integrity for the long term.
+16. **DON'T MAKE SHIT UP**. If you don't know, say so. No guesses.
+17. **ALWAYS CITE SOURCES**. No plagiarism. Ever.
 
 ## Tool Failure Protocol
 
@@ -123,7 +115,7 @@ validation bug in task_process.py line 87.
 Should I investigate the script bug or handle this differently?
 ```
 
-**See also**: Rule 13 (NO WORKAROUNDS), Axiom #7 (Fail-Fast for Agents)
+**See also**: Rule 12 (NO WORKAROUNDS), Axiom #7 (Fail-Fast for Agents)
 
 ## Key Tools
 

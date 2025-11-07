@@ -109,6 +109,7 @@ task_file = "/home/nic/src/writing/data/tasks/inbox/task.md"
 ```python
 # DO THIS INSTEAD
 from config.paths import paths
+
 task_file = paths.task_inbox / "task.md"
 ```
 
@@ -129,6 +130,7 @@ task_file = paths.task_inbox / "task.md"
 3. Create missing directories:
    ```python
    from config.paths import paths
+
    paths.ensure_directories()
    ```
 

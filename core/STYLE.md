@@ -127,11 +127,11 @@ def process_user_data(user_id: str, options: dict) -> Result:
 ```python
 # ✅ Good - explains WHY
 # Use exponential backoff to avoid overwhelming the API
-retry_delay = base_delay * (2 ** attempt)
+retry_delay = base_delay * (2**attempt)
 
 # ❌ Bad - explains WHAT (code already shows this)
 # Multiply base_delay by 2 to the power of attempt
-retry_delay = base_delay * (2 ** attempt)
+retry_delay = base_delay * (2**attempt)
 ```
 
 **TODOs**:
@@ -166,6 +166,7 @@ def process_data(data: dict):
 
     # Process data...
 
+
 # ❌ Bad - fail late
 def process_data(data: dict):
     # Process data...
@@ -180,10 +181,11 @@ def process_data(data: dict):
 ```python
 from typing import List, Dict, Optional, Union
 
-def get_users(user_ids: List[str],
-              include_deleted: bool = False) -> Dict[str, User]:
+
+def get_users(user_ids: List[str], include_deleted: bool = False) -> Dict[str, User]:
     """Retrieve users by IDs."""
     # Implementation
+
 
 def find_user(user_id: str) -> Optional[User]:
     """Find user by ID, returns None if not found."""

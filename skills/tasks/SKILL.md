@@ -53,6 +53,7 @@ Invoke context-search skill with:
 ```
 
 **DO NOT**:
+
 - Page through task_view.py results
 - Use Glob/Grep to find tasks
 - Randomly search file system

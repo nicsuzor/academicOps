@@ -10,6 +10,7 @@
 ## Hypothesis
 
 Adding explicit axiom about trusting git version control will prevent agents from:
+
 1. Creating backup files (`_new`, `.bak`, `_ARCHIVED_*`, etc.)
 2. Preserving files/directories "for reference"
 3. Failing to commit and push changes after operations

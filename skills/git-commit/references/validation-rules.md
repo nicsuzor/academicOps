@@ -45,6 +45,7 @@ def test_config():
     initialize_config_dir(config_path="conf")
     cfg = compose(config_name="config")
 
+
 # ✅ CORRECT
 def test_config(real_bm):
     # real_bm fixture provides configured ButtermilkManager
@@ -245,6 +246,7 @@ def test_config():
     initialize_config_dir(config_path="conf")
     cfg = compose(config_name="config")
 
+
 # After
 def test_config(real_bm):
     cfg = real_bm.config
@@ -276,6 +278,7 @@ data_path = "/home/user/data/file.csv"
 
 # After
 from pathlib import Path
+
 data_path = Path(config["data_dir"]) / "file.csv"
 ```
 

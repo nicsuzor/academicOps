@@ -19,7 +19,7 @@ def parse_priority(value: str) -> int:
         argparse.ArgumentTypeError: If value is not a valid priority format
     """
     # Handle P-prefixed format (P0, P1, P2, P3)
-    if value.upper().startswith('P'):
+    if value.upper().startswith("P"):
         try:
             priority_num = int(value[1:])
             if 0 <= priority_num <= 3:
@@ -36,10 +36,11 @@ def parse_priority(value: str) -> int:
         pass
 
     # Invalid format
-    raise argparse.ArgumentTypeError(
+    msg = (
         f"Invalid priority '{value}'. Valid formats: 0-3 or P0-P3 "
         f"(e.g., '0' or 'P0' for urgent, '1' or 'P1' for high priority)"
     )
+    raise argparse.ArgumentTypeError(msg)
 
 
 def main():
@@ -48,7 +49,7 @@ def main():
     parser.add_argument(
         "--priority",
         type=parse_priority,
-        help="Priority level: 0-3 or P0-P3 (0/P0=urgent, 1/P1=high, 2/P2=medium, 3/P3=low)"
+        help="Priority level: 0-3 or P0-P3 (0/P0=urgent, 1/P1=high, 2/P2=medium, 3/P3=low)",
     )
     parser.add_argument("--type", default="todo", help="Type of the task.")
     parser.add_argument("--project", default="", help="Project slug.")

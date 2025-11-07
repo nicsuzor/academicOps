@@ -231,6 +231,7 @@ All hooks use `safe_log_to_debug_file()` for consistent logging:
 ```python
 from hook_debug import safe_log_to_debug_file
 
+
 def main():
     input_data = json.load(sys.stdin)
 
@@ -333,8 +334,7 @@ From `tests/integration/test_claude_headless.py`:
 def test_hook_allow_permits_execution(claude_headless):
     # Test hooks work from subdirectory (validates $CLAUDE_PROJECT_DIR)
     result = claude_headless(
-        "First cd to tests/ subdirectory, then use the Read tool...",
-        model="haiku"
+        "First cd to tests/ subdirectory, then use the Read tool...", model="haiku"
     )
 
     assert result["success"]

@@ -55,19 +55,21 @@ Example code to scan skills:
 import yaml
 from pathlib import Path
 
-skills_dir = Path('.claude/skills')
+skills_dir = Path(".claude/skills")
 skills = []
 
-for skill_file in sorted(skills_dir.glob('*/SKILL.md')):
+for skill_file in sorted(skills_dir.glob("*/SKILL.md")):
     content = skill_file.read_text()
-    if content.startswith('---'):
-        yaml_end = content.find('---', 3)
+    if content.startswith("---"):
+        yaml_end = content.find("---", 3)
         if yaml_end > 0:
             frontmatter = yaml.safe_load(content[3:yaml_end])
-            skills.append({
-                'name': frontmatter.get('name'),
-                'description': frontmatter.get('description')
-            })
+            skills.append(
+                {
+                    "name": frontmatter.get("name"),
+                    "description": frontmatter.get("description"),
+                }
+            )
 ```
 
 ### Step 2: Categorize Skills
@@ -75,7 +77,7 @@ for skill_file in sorted(skills_dir.glob('*/SKILL.md')):
 Organize discovered skills into categories based on their purpose:
 
 - **Development & Code Quality**: python-dev, test-writing, git-commit, etc.
-- **Project & Task Management**: task-management, github-issue, etc.
+- **Project & Task Management**: tasks, github-issue, etc.
 - **Framework & Skills**: skill-creator, skill-migration, aops-bug, aops-trainer, etc.
 - **Domain-Specific**: analyst, strategic-partner, etc.
 
@@ -143,7 +145,7 @@ Found 12 skills:
   - skill-creator
   - skill-migration
   - strategic-partner
-  - task-management
+  - tasks
   - test-writing
 
 Updating AGENT.md with current skills index...

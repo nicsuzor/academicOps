@@ -19,6 +19,7 @@ from typing import Any
 
 from hook_debug import safe_log_to_debug_file
 
+
 def get_tier_paths(filename: str) -> dict[str, Path | None]:
     """Get paths to instruction file at all three tiers."""
     paths = {}
@@ -39,6 +40,7 @@ def get_tier_paths(filename: str) -> dict[str, Path | None]:
     paths["project"] = Path.cwd() / "bots" / "agents" / filename
 
     return paths
+
 
 def main():
     # Read input from stdin
@@ -70,14 +72,14 @@ def main():
     output = {
         "hookSpecificOutput": {
             "hookEventName": "SessionStart",
-            "additionalContext": additional_context
+            "additionalContext": additional_context,
         }
     }
 
     # Debug log
     output_data = {
         "tiers_loaded": list(contents.keys()),
-        "paths": {k: str(v) for k, v in paths.items() if v}
+        "paths": {k: str(v) for k, v in paths.items() if v},
     }
     safe_log_to_debug_file("SessionStart", input_data, output_data)
 
@@ -117,14 +119,16 @@ class ValidationRule:
     command_patterns: list[str] = ["*python -c*", "*python3 -c*"]
     allowed_agents: set[str] = set()  # No exceptions
 
-    def validate(self, tool_name: str, tool_input: dict, agent: str) -> tuple[bool, str, str]:
+    def validate(
+        self, tool_name: str, tool_input: dict, agent: str
+    ) -> tuple[bool, str, str]:
         command = tool_input.get("command", "")
 
         if "python -c" in command or "python3 -c" in command:
             return (
                 False,
                 "Inline Python (python -c) is blocked. Create a proper script file instead.",
-                "block"
+                "block",
             )
 
         return (True, "", "allow")
@@ -170,18 +174,22 @@ class ValidationRule:
     file_patterns: list[str] = ["**/*.md"]
     allowed_agents: set[str] = {"trainer"}  # Trainer can create docs
 
-    def validate(self, tool_name: str, tool_input: dict, agent: str) -> tuple[bool, str, str]:
+    def validate(
+        self, tool_name: str, tool_input: dict, agent: str
+    ) -> tuple[bool, str, str]:
         file_path = tool_input.get("file_path", "")
 
         # Allow certain paths
-        if any(pattern in file_path for pattern in ["papers/", "/tmp/", "bots/agents/"]):
+        if any(
+            pattern in file_path for pattern in ["papers/", "/tmp/", "bots/agents/"]
+        ):
             return (True, "", "allow")
 
         # Warn but allow
         return (
             True,
             "Creating .md file outside allowed paths. Consider whether documentation is necessary - prefer self-documenting code.",
-            "warn"
+            "warn",
         )
 ```
 
@@ -213,6 +221,7 @@ import sys
 from typing import Any
 
 from hook_debug import safe_log_to_debug_file
+
 
 def main():
     # Read input
@@ -272,6 +281,7 @@ import sys
 from typing import Any
 
 from hook_debug import safe_log_to_debug_file
+
 
 def main():
     # Read input
@@ -339,6 +349,7 @@ import json
 from pathlib import Path
 from typing import Any
 
+
 def safe_log_to_debug_file(
     hook_event: str,
     input_data: dict[str, Any],
@@ -372,6 +383,7 @@ def safe_log_to_debug_file(
 
 ```python
 from hook_debug import safe_log_to_debug_file
+
 
 def main():
     input_data = json.load(sys.stdin)
@@ -459,7 +471,7 @@ def test_hook_allow_permits_execution(claude_headless):
     # Test hooks work from subdirectory
     result = claude_headless(
         "First cd to tests/ subdirectory, then use the Read tool to read ../README.md",
-        model="haiku"
+        model="haiku",
     )
 
     assert result["success"], "Hook should work from subdirectory"

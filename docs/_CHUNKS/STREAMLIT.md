@@ -17,25 +17,28 @@ st.set_page_config(
     page_title="Project Analysis",
     page_icon="📊",
     layout="wide",  # or "centered"
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="expanded",
 )
+
 
 # Data loading with caching
 @st.cache_data
 def load_data():
     """Load data from dbt warehouse"""
-    conn = duckdb.connect('data/warehouse.db')
+    conn = duckdb.connect("data/warehouse.db")
     return conn.execute("SELECT * FROM fct_cases").df()
+
 
 # Helper functions
 @st.cache_data
 def compute_metrics(df):
     """Compute summary metrics"""
     return {
-        'total': len(df),
-        'avg_processing': df['processing_days'].mean(),
-        'completion_rate': (df['status'] == 'published').mean()
+        "total": len(df),
+        "avg_processing": df["processing_days"].mean(),
+        "completion_rate": (df["status"] == "published").mean(),
     }
+
 
 # Main application
 def main():
@@ -49,19 +52,17 @@ def main():
     with st.sidebar:
         st.header("Filters")
         status_filter = st.multiselect(
-            "Status",
-            options=df['status'].unique(),
-            default=df['status'].unique()
+            "Status", options=df["status"].unique(), default=df["status"].unique()
         )
         date_range = st.date_input(
             "Date Range",
-            value=(df['submission_date'].min(), df['submission_date'].max())
+            value=(df["submission_date"].min(), df["submission_date"].max()),
         )
 
     # Apply filters
     filtered_df = df[
-        (df['status'].isin(status_filter)) &
-        (df['submission_date'].between(date_range[0], date_range[1]))
+        (df["status"].isin(status_filter))
+        & (df["submission_date"].between(date_range[0], date_range[1]))
     ]
 
     # Metrics
@@ -77,25 +78,20 @@ def main():
 
     # Chart 1
     fig = px.histogram(
-        filtered_df,
-        x='processing_days',
-        title='Processing Time Distribution',
-        nbins=30
+        filtered_df, x="processing_days", title="Processing Time Distribution", nbins=30
     )
     st.plotly_chart(fig, use_container_width=True)
 
     # Chart 2
     fig2 = px.box(
-        filtered_df,
-        x='status',
-        y='processing_days',
-        title='Processing Days by Status'
+        filtered_df, x="status", y="processing_days", title="Processing Days by Status"
     )
     st.plotly_chart(fig2, use_container_width=True)
 
     # Data table
     with st.expander("View Raw Data"):
         st.dataframe(filtered_df, use_container_width=True)
+
 
 if __name__ == "__main__":
     main()
@@ -108,10 +104,11 @@ if __name__ == "__main__":
 ```python
 import duckdb
 
+
 @st.cache_data
 def load_data():
     """Load data from dbt warehouse"""
-    conn = duckdb.connect('data/warehouse.db', read_only=True)
+    conn = duckdb.connect("data/warehouse.db", read_only=True)
     query = """
         SELECT
             case_id,
@@ -136,18 +133,20 @@ def load_data():
 ```python
 @st.cache_data
 def load_cases():
-    conn = duckdb.connect('data/warehouse.db', read_only=True)
+    conn = duckdb.connect("data/warehouse.db", read_only=True)
     return conn.execute("SELECT * FROM fct_case_decisions").df()
+
 
 @st.cache_data
 def load_jurisdictions():
-    conn = duckdb.connect('data/warehouse.db', read_only=True)
+    conn = duckdb.connect("data/warehouse.db", read_only=True)
     return conn.execute("SELECT * FROM dim_jurisdictions").df()
+
 
 # In main():
 cases = load_cases()
 jurisdictions = load_jurisdictions()
-merged = cases.merge(jurisdictions, on='jurisdiction_id')
+merged = cases.merge(jurisdictions, on="jurisdiction_id")
 ```
 
 ### Cache Control
@@ -155,13 +154,13 @@ merged = cases.merge(jurisdictions, on='jurisdiction_id')
 ```python
 # Cache expires after 1 hour
 @st.cache_data(ttl=3600)
-def load_data():
-    ...
+def load_data(): ...
+
 
 # Don't cache (for debugging)
 # @st.cache_data  # commented out
-def load_data():
-    ...
+def load_data(): ...
+
 
 # Clear cache button
 if st.sidebar.button("Refresh Data"):
@@ -245,32 +244,32 @@ with st.sidebar:
 # Multiselect
 status_filter = st.multiselect(
     "Status",
-    options=df['status'].unique(),
-    default=df['status'].unique(),  # All selected by default
-    help="Select one or more statuses to filter"
+    options=df["status"].unique(),
+    default=df["status"].unique(),  # All selected by default
+    help="Select one or more statuses to filter",
 )
 
 # Selectbox (single selection)
 jurisdiction = st.selectbox(
     "Jurisdiction",
-    options=df['jurisdiction'].unique(),
-    index=0  # Default to first
+    options=df["jurisdiction"].unique(),
+    index=0,  # Default to first
 )
 
 # Slider
 processing_days = st.slider(
     "Processing Days",
-    min_value=int(df['processing_days'].min()),
-    max_value=int(df['processing_days'].max()),
+    min_value=int(df["processing_days"].min()),
+    max_value=int(df["processing_days"].max()),
     value=(0, 100),  # Range slider
-    step=1
+    step=1,
 )
 
 # Date input
 date_range = st.date_input(
     "Date Range",
-    value=(df['submission_date'].min(), df['submission_date'].max()),
-    help="Select start and end dates"
+    value=(df["submission_date"].min(), df["submission_date"].max()),
+    help="Select start and end dates",
 )
 
 # Text input
@@ -282,15 +281,15 @@ search = st.text_input("Search decision text", "")
 ```python
 # Boolean indexing
 filtered_df = df[
-    (df['status'].isin(status_filter)) &
-    (df['processing_days'].between(processing_days[0], processing_days[1])) &
-    (df['submission_date'].between(date_range[0], date_range[1]))
+    (df["status"].isin(status_filter))
+    & (df["processing_days"].between(processing_days[0], processing_days[1]))
+    & (df["submission_date"].between(date_range[0], date_range[1]))
 ]
 
 # Text search
 if search:
     filtered_df = filtered_df[
-        filtered_df['decision_text'].str.contains(search, case=False, na=False)
+        filtered_df["decision_text"].str.contains(search, case=False, na=False)
     ]
 ```
 
@@ -303,7 +302,7 @@ if st.button("Run Analysis"):
     st.write(result)
 
 # Button with state
-if 'analysis_run' not in st.session_state:
+if "analysis_run" not in st.session_state:
     st.session_state.analysis_run = False
 
 if st.button("Run Analysis"):
@@ -341,58 +340,52 @@ import plotly.graph_objects as go
 # Histogram
 fig = px.histogram(
     df,
-    x='processing_days',
-    title='Processing Time Distribution',
+    x="processing_days",
+    title="Processing Time Distribution",
     nbins=30,
-    color='status',
-    marginal='box'  # Show distribution summary
+    color="status",
+    marginal="box",  # Show distribution summary
 )
 st.plotly_chart(fig, use_container_width=True)
 
 # Scatter plot
 fig = px.scatter(
     df,
-    x='submission_date',
-    y='processing_days',
-    color='status',
-    hover_data=['case_id', 'jurisdiction'],
-    title='Processing Time Over Time'
+    x="submission_date",
+    y="processing_days",
+    color="status",
+    hover_data=["case_id", "jurisdiction"],
+    title="Processing Time Over Time",
 )
 st.plotly_chart(fig, use_container_width=True)
 
 # Box plot
 fig = px.box(
     df,
-    x='jurisdiction',
-    y='processing_days',
-    color='status',
-    title='Processing Days by Jurisdiction and Status'
+    x="jurisdiction",
+    y="processing_days",
+    color="status",
+    title="Processing Days by Jurisdiction and Status",
 )
 fig.update_xaxis(tickangle=45)
 st.plotly_chart(fig, use_container_width=True)
 
 # Time series
-daily_counts = df.groupby('submission_date').size().reset_index(name='count')
+daily_counts = df.groupby("submission_date").size().reset_index(name="count")
 fig = px.line(
-    daily_counts,
-    x='submission_date',
-    y='count',
-    title='Daily Case Submissions'
+    daily_counts, x="submission_date", y="count", title="Daily Case Submissions"
 )
 st.plotly_chart(fig, use_container_width=True)
 
 # Heatmap
 pivot = df.pivot_table(
-    values='processing_days',
-    index='jurisdiction',
-    columns='status',
-    aggfunc='mean'
+    values="processing_days", index="jurisdiction", columns="status", aggfunc="mean"
 )
 fig = px.imshow(
     pivot,
-    title='Avg Processing Days by Jurisdiction and Status',
-    aspect='auto',
-    color_continuous_scale='RdYlGn_r'
+    title="Avg Processing Days by Jurisdiction and Status",
+    aspect="auto",
+    color_continuous_scale="RdYlGn_r",
 )
 st.plotly_chart(fig, use_container_width=True)
 ```
@@ -410,19 +403,18 @@ st.plotly_chart(fig, use_container_width=True)
 import altair as alt
 
 # Basic chart
-chart = alt.Chart(df).mark_bar().encode(
-    x='status',
-    y='count()',
-    color='status'
-).properties(
-    title='Cases by Status'
+chart = (
+    alt.Chart(df)
+    .mark_bar()
+    .encode(x="status", y="count()", color="status")
+    .properties(title="Cases by Status")
 )
 st.altair_chart(chart, use_container_width=True)
 
 # Layered chart
-base = alt.Chart(df).encode(x='submission_date:T')
-line = base.mark_line().encode(y='mean(processing_days):Q')
-points = base.mark_point().encode(y='processing_days:Q')
+base = alt.Chart(df).encode(x="submission_date:T")
+line = base.mark_line().encode(y="mean(processing_days):Q")
+points = base.mark_point().encode(y="processing_days:Q")
 chart = line + points
 st.altair_chart(chart, use_container_width=True)
 ```
@@ -433,10 +425,10 @@ st.altair_chart(chart, use_container_width=True)
 import matplotlib.pyplot as plt
 
 fig, ax = plt.subplots()
-ax.hist(df['processing_days'], bins=30)
-ax.set_xlabel('Processing Days')
-ax.set_ylabel('Count')
-ax.set_title('Processing Time Distribution')
+ax.hist(df["processing_days"], bins=30)
+ax.set_xlabel("Processing Days")
+ax.set_ylabel("Count")
+ax.set_title("Processing Time Distribution")
 st.pyplot(fig)
 ```
 
@@ -445,11 +437,7 @@ st.pyplot(fig)
 ### Simple Metrics
 
 ```python
-st.metric(
-    label="Total Cases",
-    value=f"{len(df):,}",
-    delta=f"+{new_cases} this month"
-)
+st.metric(label="Total Cases", value=f"{len(df):,}", delta=f"+{new_cases} this month")
 ```
 
 ### Metrics in Columns
@@ -457,22 +445,18 @@ st.metric(
 ```python
 col1, col2, col3 = st.columns(3)
 
-col1.metric(
-    "Total Cases",
-    f"{len(df):,}",
-    help="Total number of cases in dataset"
-)
+col1.metric("Total Cases", f"{len(df):,}", help="Total number of cases in dataset")
 
 col2.metric(
     "Avg Processing Days",
     f"{df['processing_days'].mean():.1f}",
-    delta=f"{df['processing_days'].mean() - benchmark:.1f} vs benchmark"
+    delta=f"{df['processing_days'].mean() - benchmark:.1f} vs benchmark",
 )
 
 col3.metric(
     "Completion Rate",
-    f"{(df['status']=='published').mean():.1%}",
-    delta=f"{current_rate - last_month_rate:.1%} vs last month"
+    f"{(df['status'] == 'published').mean():.1%}",
+    delta=f"{current_rate - last_month_rate:.1%} vs last month",
 )
 ```
 
@@ -480,18 +464,22 @@ col3.metric(
 
 ```python
 def metric_card(title, value, description=""):
-    st.markdown(f"""
+    st.markdown(
+        f"""
     <div style="padding: 1rem; border-radius: 0.5rem; background-color: #f0f2f6;">
         <h3>{title}</h3>
         <h2>{value}</h2>
         <p style="color: #666;">{description}</p>
     </div>
-    """, unsafe_allow_html=True)
+    """,
+        unsafe_allow_html=True,
+    )
+
 
 metric_card(
     "Processing Time",
     f"{df['processing_days'].mean():.1f} days",
-    "Average across all cases"
+    "Average across all cases",
 )
 ```
 
@@ -510,15 +498,12 @@ st.dataframe(
     hide_index=True,
     column_config={
         "processing_days": st.column_config.NumberColumn(
-            "Processing Days",
-            help="Days from submission to decision",
-            format="%d days"
+            "Processing Days", help="Days from submission to decision", format="%d days"
         ),
         "submission_date": st.column_config.DateColumn(
-            "Submission Date",
-            format="YYYY-MM-DD"
-        )
-    }
+            "Submission Date", format="YYYY-MM-DD"
+        ),
+    },
 )
 ```
 
@@ -529,7 +514,7 @@ st.dataframe(
 edited_df = st.data_editor(
     df,
     use_container_width=True,
-    num_rows="dynamic"  # Allow adding rows
+    num_rows="dynamic",  # Allow adding rows
 )
 
 if edited_df.equals(df):
@@ -546,7 +531,10 @@ else:
 ```python
 def highlight_slow(row):
     """Highlight slow processing times"""
-    return ['background-color: yellow' if row['processing_days'] > 90 else '' for _ in row]
+    return [
+        "background-color: yellow" if row["processing_days"] > 90 else "" for _ in row
+    ]
+
 
 styled_df = df.style.apply(highlight_slow, axis=1)
 st.dataframe(styled_df)
@@ -558,7 +546,7 @@ st.dataframe(styled_df)
 
 ```python
 # Initialize state
-if 'analysis_results' not in st.session_state:
+if "analysis_results" not in st.session_state:
     st.session_state.analysis_results = None
 
 # Store results
@@ -575,15 +563,15 @@ if st.session_state.analysis_results:
 
 ```python
 # Initialize filter state
-if 'status_filter' not in st.session_state:
-    st.session_state.status_filter = df['status'].unique().tolist()
+if "status_filter" not in st.session_state:
+    st.session_state.status_filter = df["status"].unique().tolist()
 
 # Use state in filter
 status_filter = st.multiselect(
     "Status",
-    options=df['status'].unique(),
+    options=df["status"].unique(),
     default=st.session_state.status_filter,
-    key='status_filter'  # Automatically syncs with session_state
+    key="status_filter",  # Automatically syncs with session_state
 )
 ```
 
@@ -594,18 +582,17 @@ status_filter = st.multiselect(
 ```python
 # Cache data loading
 @st.cache_data
-def load_data():
-    ...
+def load_data(): ...
+
 
 # Cache expensive computations
 @st.cache_data
-def compute_statistics(df):
-    ...
+def compute_statistics(df): ...
+
 
 # Cache ML models
 @st.cache_resource
-def load_model():
-    ...
+def load_model(): ...
 ```
 
 ### Lazy Loading
@@ -617,7 +604,7 @@ if st.button("Load Full Dataset"):
         df = load_large_dataset()
         st.session_state.df = df
 
-if 'df' in st.session_state:
+if "df" in st.session_state:
     st.dataframe(st.session_state.df)
 ```
 
@@ -627,10 +614,7 @@ if 'df' in st.session_state:
 # Paginate large datasets
 page_size = 100
 page_number = st.number_input(
-    "Page",
-    min_value=1,
-    max_value=(len(df) // page_size) + 1,
-    value=1
+    "Page", min_value=1, max_value=(len(df) // page_size) + 1, value=1
 )
 
 start_idx = (page_number - 1) * page_size

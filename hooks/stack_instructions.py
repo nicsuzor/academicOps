@@ -53,7 +53,7 @@ def extract_instruction_relative_path(file_path: str) -> tuple[str, str] | None:
     if "core" in parts:
         try:
             core_index = path_str.index("/core/")
-            relative_path = path_str[core_index + 6:]  # +6 to skip "/core/"
+            relative_path = path_str[core_index + 6 :]  # +6 to skip "/core/"
             return ("core", relative_path)
         except ValueError:
             pass
@@ -63,7 +63,7 @@ def extract_instruction_relative_path(file_path: str) -> tuple[str, str] | None:
         try:
             # Find "/docs/bots/" in path
             docs_index = path_str.index("/docs/bots/")
-            relative_path = path_str[docs_index + 11:]  # +11 to skip "/docs/bots/"
+            relative_path = path_str[docs_index + 11 :]  # +11 to skip "/docs/bots/"
             return ("docs/bots", relative_path)
         except ValueError:
             pass
@@ -183,24 +183,23 @@ def stack_instructions(tool_name: str, tool_input: dict, tool_response: dict) ->
             "---\n\n"
         )
         additional_context = context_header + stacked_message
-    else:
-        # Read succeeded (file exists in project) - supplement with other tiers
-        if personal_content or project_content:
-            tiers_loaded = []
-            if personal_content:
-                tiers_loaded.append("personal")
-            if project_content:
-                tiers_loaded.append("project")
+    # Read succeeded (file exists in project) - supplement with other tiers
+    elif personal_content or project_content:
+        tiers_loaded = []
+        if personal_content:
+            tiers_loaded.append("personal")
+        if project_content:
+            tiers_loaded.append("project")
 
-            context_header = (
-                f"**Additional tier(s) found for** `{relative_path}`:\n\n"
-                f"_Supplementing with: {', '.join(tiers_loaded)}_\n\n"
-                "---\n\n"
-            )
-            additional_context = context_header + stacked_message
-        else:
-            # Only framework tier exists, which was already read
-            return {}
+        context_header = (
+            f"**Additional tier(s) found for** `{relative_path}`:\n\n"
+            f"_Supplementing with: {', '.join(tiers_loaded)}_\n\n"
+            "---\n\n"
+        )
+        additional_context = context_header + stacked_message
+    else:
+        # Only framework tier exists, which was already read
+        return {}
 
     return {
         "hookSpecificOutput": {

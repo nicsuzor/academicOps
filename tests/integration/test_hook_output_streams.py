@@ -21,6 +21,7 @@ import pytest
 # Mark all tests in this file as somewhat slow (integration tests)
 pytestmark = [pytest.mark.slow, pytest.mark.timeout(20)]
 
+
 class TestHookOutputStreams:
     """Test that validate_tool.py outputs to correct streams."""
 
@@ -136,8 +137,6 @@ class TestHookOutputStreams:
         assert parsed["hookSpecificOutput"]["permissionDecisionReason"]
         assert "WARNING" in parsed["hookSpecificOutput"]["permissionDecisionReason"]
 
-
-
     def test_debug_log_still_works(self, validate_tool_script, tmp_path):
         """
         Verify debug logging to /tmp/validate_tool.json still works.
@@ -195,7 +194,12 @@ class TestPermissionDecisionTypes:
             ("Bash", {"command": "python -c 'x'"}, "deny", 2),
             ("Write", {"file_path": "/tmp/test.py", "content": "x"}, "deny", 2),
             # Warn cases (allow with warning)
-            ("Write", {"file_path": ".claude/settings.json", "content": "{}"}, "allow", 1),
+            (
+                "Write",
+                {"file_path": ".claude/settings.json", "content": "{}"},
+                "allow",
+                1,
+            ),
             ("Bash", {"command": "git commit -m 'test'"}, "allow", 1),
         ],
     )

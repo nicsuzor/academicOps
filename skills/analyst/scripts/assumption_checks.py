@@ -9,20 +9,18 @@ This module provides functions to check common statistical assumptions:
 - Outliers
 """
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from scipy import stats
-import matplotlib.pyplot as plt
-import seaborn as sns
-from typing import Dict, List, Tuple, Optional, Union
 
 
 def check_normality(
-    data: Union[np.ndarray, pd.Series, List],
+    data: np.ndarray | pd.Series | list,
     name: str = "data",
     alpha: float = 0.05,
-    plot: bool = True
-) -> Dict:
+    plot: bool = True,
+) -> dict:
     """
     Check normality assumption using Shapiro-Wilk test and visualizations.
 
@@ -57,7 +55,7 @@ def check_normality(
 
     # Visual checks
     if plot:
-        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 4))
+        _fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 4))
 
         # Q-Q plot
         stats.probplot(data_clean, dist="norm", plot=ax1)
@@ -65,13 +63,22 @@ def check_normality(
         ax1.grid(alpha=0.3)
 
         # Histogram with normal curve
-        ax2.hist(data_clean, bins='auto', density=True, alpha=0.7, color='steelblue', edgecolor='black')
+        ax2.hist(
+            data_clean,
+            bins="auto",
+            density=True,
+            alpha=0.7,
+            color="steelblue",
+            edgecolor="black",
+        )
         mu, sigma = data_clean.mean(), data_clean.std()
         x = np.linspace(data_clean.min(), data_clean.max(), 100)
-        ax2.plot(x, stats.norm.pdf(x, mu, sigma), 'r-', linewidth=2, label='Normal curve')
-        ax2.set_xlabel('Value')
-        ax2.set_ylabel('Density')
-        ax2.set_title(f'Histogram: {name}')
+        ax2.plot(
+            x, stats.norm.pdf(x, mu, sigma), "r-", linewidth=2, label="Normal curve"
+        )
+        ax2.set_xlabel("Value")
+        ax2.set_ylabel("Density")
+        ax2.set_title(f"Histogram: {name}")
         ax2.legend()
         ax2.grid(alpha=0.3)
 
@@ -79,16 +86,17 @@ def check_normality(
         plt.show()
 
     return {
-        'test': 'Shapiro-Wilk',
-        'statistic': statistic,
-        'p_value': p_value,
-        'is_normal': is_normal,
-        'interpretation': interpretation,
-        'n': len(data_clean),
-        'recommendation': (
-            "Proceed with parametric test" if is_normal
+        "test": "Shapiro-Wilk",
+        "statistic": statistic,
+        "p_value": p_value,
+        "is_normal": is_normal,
+        "interpretation": interpretation,
+        "n": len(data_clean),
+        "recommendation": (
+            "Proceed with parametric test"
+            if is_normal
             else "Consider non-parametric alternative or transformation"
-        )
+        ),
     }
 
 
@@ -97,7 +105,7 @@ def check_normality_per_group(
     value_col: str,
     group_col: str,
     alpha: float = 0.05,
-    plot: bool = True
+    plot: bool = True,
 ) -> pd.DataFrame:
     """
     Check normality assumption for each group separately.
@@ -125,7 +133,7 @@ def check_normality_per_group(
 
     if plot:
         n_groups = len(groups)
-        fig, axes = plt.subplots(1, n_groups, figsize=(5 * n_groups, 4))
+        _fig, axes = plt.subplots(1, n_groups, figsize=(5 * n_groups, 4))
         if n_groups == 1:
             axes = [axes]
 
@@ -133,13 +141,15 @@ def check_normality_per_group(
         group_data = data[data[group_col] == group][value_col].dropna()
         stat, p = stats.shapiro(group_data)
 
-        results.append({
-            'Group': group,
-            'N': len(group_data),
-            'W': stat,
-            'p-value': p,
-            'Normal': 'Yes' if p > alpha else 'No'
-        })
+        results.append(
+            {
+                "Group": group,
+                "N": len(group_data),
+                "W": stat,
+                "p-value": p,
+                "Normal": "Yes" if p > alpha else "No",
+            }
+        )
 
         if plot:
             stats.probplot(group_data, dist="norm", plot=axes[idx])
@@ -158,8 +168,8 @@ def check_homogeneity_of_variance(
     value_col: str,
     group_col: str,
     alpha: float = 0.05,
-    plot: bool = True
-) -> Dict:
+    plot: bool = True,
+) -> dict:
     """
     Check homogeneity of variance using Levene's test.
 
@@ -197,11 +207,11 @@ def check_homogeneity_of_variance(
     )
 
     if plot:
-        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 4))
+        _fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 4))
 
         # Box plot
         data.boxplot(column=value_col, by=group_col, ax=ax1)
-        ax1.set_title('Box Plots by Group')
+        ax1.set_title("Box Plots by Group")
         ax1.set_xlabel(group_col)
         ax1.set_ylabel(value_col)
         plt.sca(ax1)
@@ -209,36 +219,37 @@ def check_homogeneity_of_variance(
 
         # Variance plot
         group_names = data[group_col].unique()
-        ax2.bar(range(len(variances)), variances, color='steelblue', edgecolor='black')
+        ax2.bar(range(len(variances)), variances, color="steelblue", edgecolor="black")
         ax2.set_xticks(range(len(variances)))
         ax2.set_xticklabels(group_names, rotation=45)
-        ax2.set_ylabel('Variance')
-        ax2.set_title('Variance by Group')
-        ax2.grid(alpha=0.3, axis='y')
+        ax2.set_ylabel("Variance")
+        ax2.set_title("Variance by Group")
+        ax2.grid(alpha=0.3, axis="y")
 
         plt.tight_layout()
         plt.show()
 
     return {
-        'test': 'Levene',
-        'statistic': statistic,
-        'p_value': p_value,
-        'is_homogeneous': is_homogeneous,
-        'variance_ratio': var_ratio,
-        'interpretation': interpretation,
-        'recommendation': (
-            "Proceed with standard test" if is_homogeneous
+        "test": "Levene",
+        "statistic": statistic,
+        "p_value": p_value,
+        "is_homogeneous": is_homogeneous,
+        "variance_ratio": var_ratio,
+        "interpretation": interpretation,
+        "recommendation": (
+            "Proceed with standard test"
+            if is_homogeneous
             else "Consider Welch's correction or transformation"
-        )
+        ),
     }
 
 
 def check_linearity(
-    x: Union[np.ndarray, pd.Series],
-    y: Union[np.ndarray, pd.Series],
+    x: np.ndarray | pd.Series,
+    y: np.ndarray | pd.Series,
     x_name: str = "X",
-    y_name: str = "Y"
-) -> Dict:
+    y_name: str = "Y",
+) -> dict:
     """
     Check linearity assumption for regression.
 
@@ -262,56 +273,56 @@ def check_linearity(
     y = np.asarray(y)
 
     # Fit linear regression
-    slope, intercept, r_value, p_value, std_err = stats.linregress(x, y)
+    slope, intercept, r_value, _p_value, _std_err = stats.linregress(x, y)
     y_pred = intercept + slope * x
 
     # Calculate residuals
     residuals = y - y_pred
 
     # Visualization
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 4))
+    _fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 4))
 
     # Scatter plot with regression line
-    ax1.scatter(x, y, alpha=0.6, s=50, edgecolors='black', linewidths=0.5)
-    ax1.plot(x, y_pred, 'r-', linewidth=2, label=f'y = {intercept:.2f} + {slope:.2f}x')
+    ax1.scatter(x, y, alpha=0.6, s=50, edgecolors="black", linewidths=0.5)
+    ax1.plot(x, y_pred, "r-", linewidth=2, label=f"y = {intercept:.2f} + {slope:.2f}x")
     ax1.set_xlabel(x_name)
     ax1.set_ylabel(y_name)
-    ax1.set_title('Scatter Plot with Regression Line')
+    ax1.set_title("Scatter Plot with Regression Line")
     ax1.legend()
     ax1.grid(alpha=0.3)
 
     # Residuals vs fitted
-    ax2.scatter(y_pred, residuals, alpha=0.6, s=50, edgecolors='black', linewidths=0.5)
-    ax2.axhline(y=0, color='r', linestyle='--', linewidth=2)
-    ax2.set_xlabel('Fitted values')
-    ax2.set_ylabel('Residuals')
-    ax2.set_title('Residuals vs Fitted Values')
+    ax2.scatter(y_pred, residuals, alpha=0.6, s=50, edgecolors="black", linewidths=0.5)
+    ax2.axhline(y=0, color="r", linestyle="--", linewidth=2)
+    ax2.set_xlabel("Fitted values")
+    ax2.set_ylabel("Residuals")
+    ax2.set_title("Residuals vs Fitted Values")
     ax2.grid(alpha=0.3)
 
     plt.tight_layout()
     plt.show()
 
     return {
-        'r': r_value,
-        'r_squared': r_value ** 2,
-        'interpretation': (
+        "r": r_value,
+        "r_squared": r_value**2,
+        "interpretation": (
             "Examine residual plot. Points should be randomly scattered around zero. "
             "Patterns (curves, funnels) suggest non-linearity or heteroscedasticity."
         ),
-        'recommendation': (
+        "recommendation": (
             "If non-linear pattern detected: Consider polynomial terms, "
             "transformations, or non-linear models"
-        )
+        ),
     }
 
 
 def detect_outliers(
-    data: Union[np.ndarray, pd.Series, List],
+    data: np.ndarray | pd.Series | list,
     name: str = "data",
     method: str = "iqr",
     threshold: float = 1.5,
-    plot: bool = True
-) -> Dict:
+    plot: bool = True,
+) -> dict:
     """
     Detect outliers using IQR method or z-score method.
 
@@ -353,7 +364,8 @@ def detect_outliers(
         upper_bound = data_clean.mean() + threshold * data_clean.std()
 
     else:
-        raise ValueError("method must be 'iqr' or 'zscore'")
+        msg = "method must be 'iqr' or 'zscore'"
+        raise ValueError(msg)
 
     outlier_indices = np.where(outlier_mask)[0]
     outlier_values = data_clean[outlier_mask]
@@ -361,27 +373,46 @@ def detect_outliers(
     pct_outliers = (n_outliers / len(data_clean)) * 100
 
     if plot:
-        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 4))
+        _fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 4))
 
         # Box plot
         bp = ax1.boxplot(data_clean, vert=True, patch_artist=True)
-        bp['boxes'][0].set_facecolor('steelblue')
-        ax1.set_ylabel('Value')
-        ax1.set_title(f'Box Plot: {name}')
-        ax1.grid(alpha=0.3, axis='y')
+        bp["boxes"][0].set_facecolor("steelblue")
+        ax1.set_ylabel("Value")
+        ax1.set_title(f"Box Plot: {name}")
+        ax1.grid(alpha=0.3, axis="y")
 
         # Scatter plot highlighting outliers
         x_coords = np.arange(len(data_clean))
-        ax2.scatter(x_coords[~outlier_mask], data_clean[~outlier_mask],
-                   alpha=0.6, s=50, color='steelblue', label='Normal', edgecolors='black', linewidths=0.5)
+        ax2.scatter(
+            x_coords[~outlier_mask],
+            data_clean[~outlier_mask],
+            alpha=0.6,
+            s=50,
+            color="steelblue",
+            label="Normal",
+            edgecolors="black",
+            linewidths=0.5,
+        )
         if n_outliers > 0:
-            ax2.scatter(x_coords[outlier_mask], data_clean[outlier_mask],
-                       alpha=0.8, s=100, color='red', label='Outliers', marker='D', edgecolors='black', linewidths=0.5)
-        ax2.axhline(y=lower_bound, color='orange', linestyle='--', linewidth=1.5, label='Bounds')
-        ax2.axhline(y=upper_bound, color='orange', linestyle='--', linewidth=1.5)
-        ax2.set_xlabel('Index')
-        ax2.set_ylabel('Value')
-        ax2.set_title(f'Outlier Detection: {name}')
+            ax2.scatter(
+                x_coords[outlier_mask],
+                data_clean[outlier_mask],
+                alpha=0.8,
+                s=100,
+                color="red",
+                label="Outliers",
+                marker="D",
+                edgecolors="black",
+                linewidths=0.5,
+            )
+        ax2.axhline(
+            y=lower_bound, color="orange", linestyle="--", linewidth=1.5, label="Bounds"
+        )
+        ax2.axhline(y=upper_bound, color="orange", linestyle="--", linewidth=1.5)
+        ax2.set_xlabel("Index")
+        ax2.set_ylabel("Value")
+        ax2.set_title(f"Outlier Detection: {name}")
         ax2.legend()
         ax2.grid(alpha=0.3)
 
@@ -389,29 +420,29 @@ def detect_outliers(
         plt.show()
 
     return {
-        'method': method,
-        'threshold': threshold,
-        'n_outliers': n_outliers,
-        'pct_outliers': pct_outliers,
-        'outlier_indices': outlier_indices,
-        'outlier_values': outlier_values,
-        'lower_bound': lower_bound,
-        'upper_bound': upper_bound,
-        'interpretation': f"Found {n_outliers} outliers ({pct_outliers:.1f}% of data)",
-        'recommendation': (
+        "method": method,
+        "threshold": threshold,
+        "n_outliers": n_outliers,
+        "pct_outliers": pct_outliers,
+        "outlier_indices": outlier_indices,
+        "outlier_values": outlier_values,
+        "lower_bound": lower_bound,
+        "upper_bound": upper_bound,
+        "interpretation": f"Found {n_outliers} outliers ({pct_outliers:.1f}% of data)",
+        "recommendation": (
             "Investigate outliers for data entry errors. "
             "Consider: (1) removing if errors, (2) winsorizing, "
             "(3) keeping if legitimate, (4) using robust methods"
-        )
+        ),
     }
 
 
 def comprehensive_assumption_check(
     data: pd.DataFrame,
     value_col: str,
-    group_col: Optional[str] = None,
-    alpha: float = 0.05
-) -> Dict:
+    group_col: str | None = None,
+    alpha: float = 0.05,
+) -> dict:
     """
     Perform comprehensive assumption checking for common statistical tests.
 
@@ -441,12 +472,9 @@ def comprehensive_assumption_check(
     print("\n1. OUTLIER DETECTION")
     print("-" * 70)
     outlier_results = detect_outliers(
-        data[value_col].dropna(),
-        name=value_col,
-        method='iqr',
-        plot=True
+        data[value_col].dropna(), name=value_col, method="iqr", plot=True
     )
-    results['outliers'] = outlier_results
+    results["outliers"] = outlier_results
     print(f"   {outlier_results['interpretation']}")
     print(f"   {outlier_results['recommendation']}")
 
@@ -458,35 +486,34 @@ def comprehensive_assumption_check(
         normality_results = check_normality_per_group(
             data, value_col, group_col, alpha=alpha, plot=True
         )
-        results['normality_per_group'] = normality_results
+        results["normality_per_group"] = normality_results
         print(normality_results.to_string(index=False))
 
-        all_normal = normality_results['Normal'].eq('Yes').all()
+        all_normal = normality_results["Normal"].eq("Yes").all()
         print(f"\n   All groups normal: {'Yes' if all_normal else 'No'}")
         if not all_normal:
-            print("   → Consider non-parametric alternative (Mann-Whitney, Kruskal-Wallis)")
+            print(
+                "   → Consider non-parametric alternative (Mann-Whitney, Kruskal-Wallis)"
+            )
 
         # Homogeneity of variance
-        print(f"\n3. HOMOGENEITY OF VARIANCE")
+        print("\n3. HOMOGENEITY OF VARIANCE")
         print("-" * 70)
         homogeneity_results = check_homogeneity_of_variance(
             data, value_col, group_col, alpha=alpha, plot=True
         )
-        results['homogeneity'] = homogeneity_results
+        results["homogeneity"] = homogeneity_results
         print(f"   {homogeneity_results['interpretation']}")
         print(f"   {homogeneity_results['recommendation']}")
 
     else:
         # Overall normality
-        print(f"\n2. NORMALITY CHECK")
+        print("\n2. NORMALITY CHECK")
         print("-" * 70)
         normality_results = check_normality(
-            data[value_col].dropna(),
-            name=value_col,
-            alpha=alpha,
-            plot=True
+            data[value_col].dropna(), name=value_col, alpha=alpha, plot=True
         )
-        results['normality'] = normality_results
+        results["normality"] = normality_results
         print(f"   {normality_results['interpretation']}")
         print(f"   {normality_results['recommendation']}")
 
@@ -496,21 +523,30 @@ def comprehensive_assumption_check(
     print("=" * 70)
 
     if group_col is not None:
-        all_normal = results.get('normality_per_group', pd.DataFrame()).get('Normal', pd.Series()).eq('Yes').all()
-        is_homogeneous = results.get('homogeneity', {}).get('is_homogeneous', False)
+        all_normal = (
+            results.get("normality_per_group", pd.DataFrame())
+            .get("Normal", pd.Series())
+            .eq("Yes")
+            .all()
+        )
+        is_homogeneous = results.get("homogeneity", {}).get("is_homogeneous", False)
 
         if all_normal and is_homogeneous:
-            print("✓ All assumptions met. Proceed with parametric test (t-test, ANOVA).")
+            print(
+                "✓ All assumptions met. Proceed with parametric test (t-test, ANOVA)."
+            )
         elif not all_normal:
             print("✗ Normality violated. Use non-parametric alternative.")
         elif not is_homogeneous:
             print("✗ Homogeneity violated. Use Welch's correction or transformation.")
     else:
-        is_normal = results.get('normality', {}).get('is_normal', False)
+        is_normal = results.get("normality", {}).get("is_normal", False)
         if is_normal:
             print("✓ Normality assumption met.")
         else:
-            print("✗ Normality violated. Consider transformation or non-parametric method.")
+            print(
+                "✗ Normality violated. Consider transformation or non-parametric method."
+            )
 
     print("=" * 70)
 
@@ -525,15 +561,11 @@ if __name__ == "__main__":
     group_a = np.random.normal(75, 8, 50)
     group_b = np.random.normal(68, 10, 50)
 
-    df = pd.DataFrame({
-        'score': np.concatenate([group_a, group_b]),
-        'group': ['A'] * 50 + ['B'] * 50
-    })
+    df = pd.DataFrame(
+        {"score": np.concatenate([group_a, group_b]), "group": ["A"] * 50 + ["B"] * 50}
+    )
 
     # Run comprehensive check
     results = comprehensive_assumption_check(
-        df,
-        value_col='score',
-        group_col='group',
-        alpha=0.05
+        df, value_col="score", group_col="group", alpha=0.05
     )

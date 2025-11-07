@@ -62,10 +62,11 @@ def get_tier_paths(filename: str) -> dict[str, Path | None]:
         paths["framework"] = Path(bot_path) / "core" / filename
     else:
         # Fail fast - ACADEMICOPS is required
-        raise ValueError(
+        msg = (
             "ACADEMICOPS environment variable not set. "
             "Add to shell: export ACADEMICOPS=/path/to/bot"
         )
+        raise ValueError(msg)
 
     # Personal tier (OPTIONAL)
     if personal_path := os.environ.get("ACADEMICOPS_PERSONAL"):
@@ -115,7 +116,9 @@ def get_git_remote_info() -> str | None:
     return None
 
 
-def output_json(contents: dict[str, str], filename: str, include_discovery: bool = False) -> None:
+def output_json(
+    contents: dict[str, str], filename: str, include_discovery: bool = False
+) -> None:
     """Output in JSON format for SessionStart hook."""
     # Get git remote info
     git_remote = get_git_remote_info()
@@ -141,7 +144,9 @@ def output_json(contents: dict[str, str], filename: str, include_discovery: bool
         if discovery:
             sections.append(f"---\n\n{discovery}")
 
-    additional_context = "# Agent Instructions\n\n" + git_section + "\n\n---\n\n".join(sections)
+    additional_context = (
+        "# Agent Instructions\n\n" + git_section + "\n\n---\n\n".join(sections)
+    )
 
     # Output JSON for Claude Code hook
     output = {
@@ -156,7 +161,10 @@ def output_json(contents: dict[str, str], filename: str, include_discovery: bool
     # Status to stderr
     loaded = [tier for tier in ["framework", "personal", "project"] if tier in contents]
     discovery_note = " (with discovery)" if include_discovery else ""
-    print(f"✓ Loaded {filename} from: {', '.join(loaded)}{discovery_note}", file=sys.stderr)
+    print(
+        f"✓ Loaded {filename} from: {', '.join(loaded)}{discovery_note}",
+        file=sys.stderr,
+    )
 
 
 def output_text(contents: dict[str, str], filename: str) -> None:
@@ -169,8 +177,8 @@ def output_text(contents: dict[str, str], filename: str) -> None:
             print("\n", file=sys.stderr)
 
     # Status summary to stdout (visible to user)
-    loaded = [tier for tier in ["framework", "personal", "project"] if tier in contents]
-    missing = [tier for tier in ["framework", "personal", "project"] if tier not in contents]
+    [tier for tier in ["framework", "personal", "project"] if tier in contents]
+    [tier for tier in ["framework", "personal", "project"] if tier not in contents]
 
     status_parts = []
     if "framework" in contents:
@@ -215,7 +223,9 @@ def generate_discovery_manifest() -> str:
 
     # Build manifest
     manifest = ["## Available Bot Instructions", ""]
-    manifest.append("The following bot instruction files are available via the 3-tier system:")
+    manifest.append(
+        "The following bot instruction files are available via the 3-tier system:"
+    )
     manifest.append("(framework → personal → project)")
     manifest.append("")
 
@@ -225,7 +235,9 @@ def generate_discovery_manifest() -> str:
         manifest.append(f"- `/core/{filename}` - {name} mode")
 
     manifest.append("")
-    manifest.append("Read these files when relevant to your task. They will be automatically")
+    manifest.append(
+        "Read these files when relevant to your task. They will be automatically"
+    )
     manifest.append("stacked from all available tiers (framework/personal/project).")
 
     return "\n".join(manifest)
@@ -287,19 +299,30 @@ def main():
     if "framework" not in contents:
         print(f"ERROR: Framework file not found: {paths['framework']}", file=sys.stderr)
         print(f"Searched at: {paths['framework']}", file=sys.stderr)
-        print(f"ACADEMICOPS={os.environ.get('ACADEMICOPS', 'NOT SET')}", file=sys.stderr)
+        print(
+            f"ACADEMICOPS={os.environ.get('ACADEMICOPS', 'NOT SET')}", file=sys.stderr
+        )
         sys.exit(1)
 
     # Project tier is REQUIRED if docs/bots/ exists
     if paths["project"] is not None and "project" not in contents:
-        print(f"ERROR: docs/bots/ directory exists but {args.filename} not found", file=sys.stderr)
+        print(
+            f"ERROR: docs/bots/ directory exists but {args.filename} not found",
+            file=sys.stderr,
+        )
         print(f"Searched at: {paths['project']}", file=sys.stderr)
-        print(f"", file=sys.stderr)
-        print(f"This usually means:", file=sys.stderr)
-        print(f"  1. File has wrong name (e.g., INSTRUCTIONS.md instead of {args.filename})", file=sys.stderr)
-        print(f"  2. File needs to be created in docs/bots/", file=sys.stderr)
-        print(f"", file=sys.stderr)
-        print(f"Fix: Rename existing file or create {args.filename} in docs/bots/", file=sys.stderr)
+        print("", file=sys.stderr)
+        print("This usually means:", file=sys.stderr)
+        print(
+            f"  1. File has wrong name (e.g., INSTRUCTIONS.md instead of {args.filename})",
+            file=sys.stderr,
+        )
+        print("  2. File needs to be created in docs/bots/", file=sys.stderr)
+        print("", file=sys.stderr)
+        print(
+            f"Fix: Rename existing file or create {args.filename} in docs/bots/",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
     # Prepare output data for logging

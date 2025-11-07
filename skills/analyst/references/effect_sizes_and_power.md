@@ -45,7 +45,7 @@ import numpy as np
 
 # Independent t-test with effect size
 result = pg.ttest(group1, group2, correction=False)
-cohens_d = result['cohen-d'].values[0]
+cohens_d = result["cohen-d"].values[0]
 
 # Manual calculation
 mean_diff = np.mean(group1) - np.mean(group2)
@@ -54,7 +54,7 @@ cohens_d = mean_diff / pooled_std
 
 # Paired t-test
 result = pg.ttest(pre, post, paired=True)
-cohens_d = result['cohen-d'].values[0]
+cohens_d = result["cohen-d"].values[0]
 ```
 
 **Confidence intervals for d**:
@@ -62,7 +62,7 @@ cohens_d = result['cohen-d'].values[0]
 ```python
 from pingouin import compute_effsize_from_t
 
-d, ci = compute_effsize_from_t(t_statistic, nx=n1, ny=n2, eftype='cohen')
+d, ci = compute_effsize_from_t(t_statistic, nx=n1, ny=n2, eftype="cohen")
 ```
 
 ---
@@ -77,7 +77,7 @@ d, ci = compute_effsize_from_t(t_statistic, nx=n1, ny=n2, eftype='cohen')
 
 ```python
 result = pg.ttest(group1, group2, correction=False)
-hedges_g = result['hedges'].values[0]
+hedges_g = result["hedges"].values[0]
 ```
 
 **Use Hedges' g when**:
@@ -122,12 +122,12 @@ hedges_g = result['hedges'].values[0]
 import pingouin as pg
 
 # One-way ANOVA
-aov = pg.anova(dv='value', between='group', data=df)
-eta_squared = aov['SS'][0] / aov['SS'].sum()
+aov = pg.anova(dv="value", between="group", data=df)
+eta_squared = aov["SS"][0] / aov["SS"].sum()
 
 # Or use pingouin directly
-aov = pg.anova(dv='value', between='group', data=df, detailed=True)
-eta_squared = aov['np2'][0]  # Note: pingouin reports partial eta-squared
+aov = pg.anova(dv="value", between="group", data=df, detailed=True)
+eta_squared = aov["np2"][0]  # Note: pingouin reports partial eta-squared
 ```
 
 ---
@@ -145,9 +145,9 @@ eta_squared = aov['np2'][0]  # Note: pingouin reports partial eta-squared
 **Python calculation**:
 
 ```python
-aov = pg.anova(dv='value', between=['factor1', 'factor2'], data=df)
+aov = pg.anova(dv="value", between=["factor1", "factor2"], data=df)
 # pingouin reports partial eta-squared by default
-partial_eta_sq = aov['np2']
+partial_eta_sq = aov["np2"]
 ```
 
 ---
@@ -166,10 +166,10 @@ partial_eta_sq = aov['np2']
 
 ```python
 def omega_squared(aov_table):
-    ss_effect = aov_table.loc[0, 'SS']
-    ss_total = aov_table['SS'].sum()
-    ms_error = aov_table.loc[aov_table.index[-1], 'MS']  # Residual MS
-    df_effect = aov_table.loc[0, 'DF']
+    ss_effect = aov_table.loc[0, "SS"]
+    ss_total = aov_table["SS"].sum()
+    ms_error = aov_table.loc[aov_table.index[-1], "MS"]  # Residual MS
+    df_effect = aov_table.loc[0, "DF"]
 
     omega_sq = (ss_effect - df_effect * ms_error) / (ss_total + ms_error)
     return omega_sq
@@ -222,13 +222,13 @@ cohens_f = np.sqrt(eta_squared / (1 - eta_squared))
 import pingouin as pg
 
 # Pearson correlation with CI
-result = pg.corr(x, y, method='pearson')
-r = result['r'].values[0]
-ci = [result['CI95%'][0][0], result['CI95%'][0][1]]
+result = pg.corr(x, y, method="pearson")
+r = result["r"].values[0]
+ci = [result["CI95%"][0][0], result["CI95%"][0][1]]
 
 # Spearman correlation
-result = pg.corr(x, y, method='spearman')
-rho = result['r'].values[0]
+result = pg.corr(x, y, method="spearman")
+rho = result["r"].values[0]
 ```
 
 ---
@@ -359,10 +359,10 @@ Where k = min(rows, columns)
 from scipy.stats.contingency import association
 
 # Cramér's V
-cramers_v = association(contingency_table, method='cramer')
+cramers_v = association(contingency_table, method="cramer")
 
 # Phi coefficient (for 2x2)
-phi = association(contingency_table, method='pearson')
+phi = association(contingency_table, method="pearson")
 ```
 
 ---
@@ -490,7 +490,7 @@ from statsmodels.stats.power import (
     tt_ind_solve_power,
     zt_ind_solve_power,
     FTestAnovaPower,
-    NormalIndPower
+    NormalIndPower,
 )
 
 # T-test power analysis
@@ -499,7 +499,7 @@ n_required = tt_ind_solve_power(
     alpha=0.05,
     power=0.80,
     ratio=1.0,  # Equal group sizes
-    alternative='two-sided'
+    alternative="two-sided",
 )
 
 # ANOVA power analysis
@@ -508,11 +508,12 @@ n_per_group = anova_power.solve_power(
     effect_size=0.25,  # Cohen's f
     ngroups=3,
     alpha=0.05,
-    power=0.80
+    power=0.80,
 )
 
 # Correlation power analysis
 from pingouin import power_corr
+
 n_required = power_corr(r=0.30, power=0.80, alpha=0.05)
 ```
 
@@ -559,7 +560,7 @@ detectable_effect = tt_ind_solve_power(
     alpha=0.05,
     power=0.80,
     ratio=1.0,
-    alternative='two-sided'
+    alternative="two-sided",
 )
 
 print(f"With n=50 per group, we could detect d ≥ {detectable_effect:.2f}")

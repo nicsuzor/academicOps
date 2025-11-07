@@ -65,17 +65,19 @@ class TestCommandFileReferences:
                 bot_root / "core" / "DEVELOPER.md",
             ]
 
-            exists_somewhere = dev_file.exists() or any(loc.exists() for loc in old_locations)
+            exists_somewhere = dev_file.exists() or any(
+                loc.exists() for loc in old_locations
+            )
             assert exists_somewhere, (
                 f"/dev references DEVELOPER.md but not found at:\n"
-                f"  - {dev_file} (new location)\n" +
-                "\n".join(f"  - {loc} (old location)" for loc in old_locations)
+                f"  - {dev_file} (new location)\n"
+                + "\n".join(f"  - {loc} (old location)" for loc in old_locations)
             )
 
     def test_ttd_command_references_valid_files(self, bot_root, commands_dir):
         """Test /ttd command references files that actually exist."""
         ttd_cmd = commands_dir / "ttd.md"
-        content = ttd_cmd.read_text(encoding='utf-8', errors='replace')
+        content = ttd_cmd.read_text(encoding="utf-8", errors="replace")
 
         # Should reference TESTING.md and FAIL-FAST.md
         if "TESTING.md" in content:
@@ -85,11 +87,13 @@ class TestCommandFileReferences:
                 bot_root / "docs" / "TESTING.md",
                 bot_root / "docs" / "_CHUNKS" / "TESTING.md",
             ]
-            exists_somewhere = new_loc.exists() or any(loc.exists() for loc in old_locations)
+            exists_somewhere = new_loc.exists() or any(
+                loc.exists() for loc in old_locations
+            )
             assert exists_somewhere, (
                 f"/ttd references TESTING.md but not found at:\n"
-                f"  - {new_loc} (new location)\n" +
-                "\n".join(f"  - {loc} (old location)" for loc in old_locations)
+                f"  - {new_loc} (new location)\n"
+                + "\n".join(f"  - {loc} (old location)" for loc in old_locations)
             )
 
         if "FAIL-FAST.md" in content:
@@ -97,10 +101,10 @@ class TestCommandFileReferences:
             old_locations = [
                 bot_root / "docs" / "_CHUNKS" / "FAIL-FAST.md",
             ]
-            exists_somewhere = new_loc.exists() or any(loc.exists() for loc in old_locations)
-            assert exists_somewhere, (
-                f"/ttd references FAIL-FAST.md but not found"
+            exists_somewhere = new_loc.exists() or any(
+                loc.exists() for loc in old_locations
             )
+            assert exists_somewhere, "/ttd references FAIL-FAST.md but not found"
 
     def test_trainer_command_references_valid_files(self, bot_root, commands_dir):
         """Test /trainer command references files that actually exist."""
@@ -134,9 +138,7 @@ class TestAgentFileIntegrity:
         content = trainer.read_text()
 
         # File should be substantial (actual trainer instructions)
-        assert len(content) > 1000, (
-            "Trainer agent file seems too short (< 1000 chars)"
-        )
+        assert len(content) > 1000, "Trainer agent file seems too short (< 1000 chars)"
 
     def test_trainer_full_instructions_exist(self, bot_root):
         """Verify full trainer instructions exist at agents/trainer.md."""
@@ -147,9 +149,7 @@ class TestAgentFileIntegrity:
 
         # Should be substantial (not just a stub)
         content = full_instructions.read_text()
-        assert len(content) > 1000, (
-            "Trainer instructions seem too short (< 1000 chars)"
-        )
+        assert len(content) > 1000, "Trainer instructions seem too short (< 1000 chars)"
 
 
 class TestEnvironmentVariableUsage:
@@ -164,7 +164,7 @@ class TestEnvironmentVariableUsage:
         commands_dir = bot_root / "commands"
 
         for cmd_file in commands_dir.glob("*.md"):
-            content = cmd_file.read_text(encoding='utf-8', errors='replace')
+            content = cmd_file.read_text(encoding="utf-8", errors="replace")
 
             # Should not contain absolute paths to home directory
             assert "/home/" not in content, (
@@ -175,9 +175,7 @@ class TestEnvironmentVariableUsage:
             if "scripts/" in content and "ACADEMICOPS" not in content:
                 # This might be okay if it's just documentation
                 # But flag it for review
-                pytest.skip(
-                    f"{cmd_file.name} references scripts/ without $ACADEMICOPS"
-                )
+                pytest.skip(f"{cmd_file.name} references scripts/ without $ACADEMICOPS")
 
     def test_academicops_bot_env_var_is_set(self):
         """ACADEMICOPS should be set in test environment."""
@@ -211,6 +209,7 @@ class TestLoadInstructionsScript:
         # Test default usage (loads _CORE.md, outputs JSON)
         result = subprocess.run(
             ["uv", "run", "python", "hooks/load_instructions.py"],
+            check=False,
             cwd=bot_root,
             capture_output=True,
             text=True,

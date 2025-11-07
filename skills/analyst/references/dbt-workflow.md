@@ -570,7 +570,7 @@ dbt compile
 import duckdb
 
 # Connect to warehouse
-conn = duckdb.connect('data/warehouse.db')
+conn = duckdb.connect("data/warehouse.db")
 
 # Query materialized dbt models
 df = conn.execute("SELECT * FROM fct_case_decisions").df()
@@ -585,11 +585,13 @@ print(df.describe())
 import streamlit as st
 import duckdb
 
+
 @st.cache_data
 def load_data():
     """Load data from dbt warehouse"""
-    conn = duckdb.connect('data/warehouse.db')
+    conn = duckdb.connect("data/warehouse.db")
     return conn.execute("SELECT * FROM fct_case_decisions").df()
+
 
 df = load_data()
 st.dataframe(df)
@@ -603,11 +605,11 @@ import pandas as pd
 import plotly.express as px
 
 # Load from dbt warehouse
-conn = duckdb.connect('data/warehouse.db')
+conn = duckdb.connect("data/warehouse.db")
 df = conn.execute("SELECT * FROM fct_case_decisions").df()
 
 # Analyze
-fig = px.histogram(df, x='processing_days')
+fig = px.histogram(df, x="processing_days")
 fig.show()
 ```
 

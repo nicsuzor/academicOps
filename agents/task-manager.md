@@ -77,8 +77,6 @@ Process emails to:
 
 ### Use Skills Exclusively
 
-**CRITICAL**: Skills are NOT tools. See `$ACADEMICOPS/docs/bots/skill-invocation-guide.md` for HOW to invoke skills.
-
 **For ALL task operations, use tasks skill**:
 1. Invoke: `Skill(command="tasks")` to load task management expertise
 2. Follow the tasks skill instructions to call appropriate scripts

@@ -603,6 +603,7 @@ All hooks receive JSON on stdin with these common fields:
 import json
 import sys
 
+
 def main():
     # Read input
     try:
@@ -614,13 +615,14 @@ def main():
     output = {
         "hookSpecificOutput": {
             "hookEventName": "PreToolUse",  # or SessionStart, etc.
-            "permissionDecision": "allow"   # PreToolUse only
+            "permissionDecision": "allow",  # PreToolUse only
         }
     }
 
     # Output and exit
     print(json.dumps(output))
     sys.exit(0)
+
 
 if __name__ == "__main__":
     main()

@@ -71,7 +71,8 @@ mock_obj = MagicMock(spec=OurClass)
 @respx.mock
 async def test_llm_call(real_bm):
     respx.post("https://api.openai.com/v1/chat/completions").mock(
-        return_value=httpx.Response(200, json={"choices": [...]}))
+        return_value=httpx.Response(200, json={"choices": [...]})
+    )
 
     # Use REAL internal objects
     result = await real_bm.cfg.llm.generate("test prompt")
@@ -101,6 +102,7 @@ def test_with_configured_objects(real_bm):
     orchestrator = real_bm.cfg.orchestrator
     llm = real_bm.cfg.llm
     # Test with real objects
+
 
 def test_with_config_dict(real_conf):
     # Access raw Hydra DictConfig
@@ -460,6 +462,7 @@ async def test_client(client):
     result = await client().generate("test")
     assert result.content
 
+
 # ❌ WRONG - New standalone test for new client
 async def test_gemini_client():
     """Test Gemini client."""
@@ -472,6 +475,7 @@ async def test_gemini_client():
 ```python
 # ✅ Add to existing list/enum
 LLMClients = [OpenAIClient, AnthropicClient, GeminiClient]
+
 
 # ✅ Existing parameterized test now covers all clients
 @pytest.mark.parametrize("client", LLMClients)

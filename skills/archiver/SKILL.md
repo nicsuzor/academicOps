@@ -131,11 +131,12 @@ Create a Jupyter notebook documenting the entire experiment. Use the structure f
 ```python
 # Load from DuckDB cache or dbt warehouse
 import duckdb
-conn = duckdb.connect('data/warehouse.db')
+
+conn = duckdb.connect("data/warehouse.db")
 df = conn.execute("SELECT * FROM analysis_table").df()
 
 # Or from cached DuckDB
-cache_path = Path('tjadbt/data/local_cache.duckdb')
+cache_path = Path("tjadbt/data/local_cache.duckdb")
 conn = duckdb.connect(str(cache_path), read_only=True)
 ```
 
@@ -169,6 +170,7 @@ If analysis is in dbt diagnostics:
 ```python
 # Ensure all visualizations are shown
 import matplotlib.pyplot as plt
+
 plt.show()  # This saves output in notebook
 
 # Document findings in markdown cells

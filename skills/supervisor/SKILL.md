@@ -3,10 +3,10 @@ name: supervisor
 description: Orchestrates multi-agent workflows with comprehensive quality gates,
   test-first development, and continuous plan validation through tight TDD discipline
 tags:
-- workflow
-- orchestration
-- tdd
-- quality-gates
+  - workflow
+  - orchestration
+  - tdd
+  - quality-gates
 permalink: aops/skills/supervisor/skill
 ---
 
@@ -14,9 +14,7 @@ permalink: aops/skills/supervisor/skill
 
 ## Framework Context
 
-@resources/SKILL-PRIMER.md
-@resources/AXIOMS.md
-@resources/INFRASTRUCTURE.md
+@resources/SKILL-PRIMER.md @resources/AXIOMS.md @resources/INFRASTRUCTURE.md
 
 ## Purpose & Authority
 
@@ -25,12 +23,14 @@ You are invoking the SUPERVISOR workflow - the **only workflow explicitly author
 **Mission**: Ensure tasks are completed with highest reliability and quality by TIGHTLY CONTROLLING the developer subagent through strict TDD discipline.
 
 **When to invoke this skill**:
+
 - Complex tasks requiring planning, testing, implementation, and review cycles
 - Tasks requiring coordination of multiple development steps
 - Tasks where quality and correctness are paramount
 - Tasks prone to scope creep or recursive complexity
 
 **When NOT to use**:
+
 - Simple, single-step tasks (use specialized agent directly)
 - Pure research/exploration (use Explore agent)
 - Quick fixes or trivial changes
@@ -49,6 +49,7 @@ You are invoking the SUPERVISOR workflow - the **only workflow explicitly author
 - ✅ DO iterate when tests fail until they pass
 
 **You TIGHTLY CONTROL what the developer does:**
+
 - Give COMPLETE, SPECIFIC instructions for each atomic step
 - TELL dev which tools to use: "Use Read to..., then Edit to..., then Bash to run..."
 - REQUIRE skill usage: "Use test-writing skill to..." / "Use git-commit skill to..."
@@ -59,6 +60,7 @@ You are invoking the SUPERVISOR workflow - the **only workflow explicitly author
 ### Delegation Balance: What to Specify vs What Dev Decides
 
 **YOU (Supervisor) specify**:
+
 - ✅ Which file to modify
 - ✅ Which tools to use (Read, Edit, Bash, Grep)
 - ✅ Which skills to invoke (test-writing, git-commit)
@@ -68,6 +70,7 @@ You are invoking the SUPERVISOR workflow - the **only workflow explicitly author
 - ✅ Success criteria (what test should pass, what output expected)
 
 **DEV AGENT decides**:
+
 - ✅ Exact code implementation
 - ✅ Specific variable names and logic
 - ✅ Best approach within your constraints
@@ -76,6 +79,7 @@ You are invoking the SUPERVISOR workflow - the **only workflow explicitly author
 **Examples**:
 
 ❌ **TOO DETAILED** (you're writing code for dev):
+
 ```
 "Edit src/auth.py line 45 and add:
 if token is None:
@@ -84,11 +88,13 @@ if token is None:
 ```
 
 ❌ **TOO VAGUE** (dev doesn't know what to do):
+
 ```
 "Fix the authentication"
 ```
 
 ✅ **CORRECT BALANCE** (clear guidance, dev implements):
+
 ```
 "Fix token validation in src/auth.py around line 45.
 
@@ -101,8 +107,7 @@ Tools: Read src/auth.py to understand context, Edit to add check
 You figure out the exact implementation. Report what you changed."
 ```
 
-**When tests fail**: YOU decide the fix strategy, give developer specific instructions, iterate until passing.
-**When code written**: YOU enforce quality check via git-commit skill before allowing next step.
+**When tests fail**: YOU decide the fix strategy, give developer specific instructions, iterate until passing. **When code written**: YOU enforce quality check via git-commit skill before allowing next step.
 
 ## MANDATORY TDD WORKFLOW
 
@@ -127,6 +132,7 @@ TodoWrite([
 **0.2 Create Initial Plan**
 
 Invoke Plan subagent:
+
 ```
 Task(subagent_type="Plan", prompt="
 Create detailed plan for [task].
@@ -142,6 +148,7 @@ Requirements:
 **0.3 MANDATORY Plan Review (Second Pass)**
 
 Invoke second Plan or Explore subagent to review:
+
 ```
 Task(subagent_type="Plan", prompt="
 Review this plan:
@@ -198,6 +205,7 @@ After test-writing skill completes, STOP and report:
 ```
 
 **Verification**:
+
 - [ ] Dev reported using test-writing skill (not just "created test")
 - [ ] Test uses real_bm or real_conf (check dev's report)
 - [ ] Test location provided with full path
@@ -207,6 +215,7 @@ After test-writing skill completes, STOP and report:
 **1.2 Verify Test Created Correctly**
 
 Wait for developer report. Check:
+
 - [ ] Test uses test-writing skill? (required)
 - [ ] Uses real fixtures? (no fake data)
 - [ ] No mocked internal code? (only external APIs)
@@ -270,6 +279,7 @@ uv run pytest                                        # All tests (check regressi
 DO NOT ASK USER. YOU handle this:
 
 **Analyze failure:**
+
 - Read error message carefully
 - Identify specific issue (file:line if available)
 - Determine what behavior is wrong (not exact code fix)
@@ -303,6 +313,7 @@ Figure out the exact implementation. Report back with:
 ```
 
 **Iterate until all tests pass.** Maximum 3 iterations per issue - if still failing after 3 attempts:
+
 - Log via aops-bug skill: "Stuck on test failure: [details]"
 - Ask user for help
 
@@ -361,6 +372,7 @@ Iterate until quality check passes and commit succeeds.
 ⚠️ **CRITICAL**: An iteration is NOT complete until changes are safely committed and pushed.
 
 Before proceeding to next cycle:
+
 - [ ] Git-commit skill completed successfully
 - [ ] Commit hash received and verified
 - [ ] Changes pushed to remote repository
@@ -389,6 +401,7 @@ Update TodoWrite - mark this TDD cycle completed.
 **4.3 Plan Reconciliation**
 
 Compare current state with Step 0 plan:
+
 - Still on track?
 - Scope grown? By how much?
 - Solving original problem?
@@ -396,6 +409,7 @@ Compare current state with Step 0 plan:
 **4.4 Scope Drift Detection**
 
 If plan grown >20% from original:
+
 - **STOP immediately**
 - Ask user: "Plan grown from [X tasks] to [Y tasks]. Continue or re-scope?"
 - Get explicit approval
@@ -403,6 +417,7 @@ If plan grown >20% from original:
 **4.5 Thrashing Detection**
 
 If same file modified 3+ times without progress:
+
 - **STOP immediately**
 - Log via aops-bug skill
 - Ask user for help
@@ -410,6 +425,7 @@ If same file modified 3+ times without progress:
 **4.6 Next Micro-Task**
 
 If plan on track, scope stable, no thrashing:
+
 - Move to next micro-task
 - Return to STEP 1 (test creation)
 - Repeat full TDD cycle
@@ -421,6 +437,7 @@ If plan on track, scope stable, no thrashing:
 **5.1 Verify ALL Success Criteria Met**
 
 Review TodoWrite success checklist from Step 0.1:
+
 - Each criterion verified with evidence
 - No rationalizing
 - See Axiom #14 (NO EXCUSES)
@@ -428,6 +445,7 @@ Review TodoWrite success checklist from Step 0.1:
 **5.2 Demonstrate Working Result**
 
 Show actual working result:
+
 - Run the program/test
 - Show the output
 - Prove it works NOW
@@ -454,6 +472,7 @@ Session summary:
 **5.4 Final Report**
 
 Provide user with:
+
 - Summary of accomplishments
 - Links to commits
 - Test results
@@ -476,28 +495,22 @@ Provide user with:
 ## Available Subagent Types
 
 **Planning & Research**:
+
 - `Plan`: Create detailed plans, break down tasks
 - `Explore`: Understand codebase, find files, research patterns
 
 **Implementation**:
+
 - `dev`: Write, refactor, debug code with TDD and fail-fast
 
 **Documentation**:
+
 - `task-manager`: Document session progress (MANDATORY at completion)
 
 **Framework**:
+
 - `aops-bug`: Log infrastructure gaps
 
 ## Anti-Patterns to Avoid
 
-❌ **Skipping plan review** - Always get independent validation
-❌ **Writing multiple tests at once** - ONE failing test per micro-task
-❌ **Gold-plating implementations** - Minimal code to pass ONE test
-❌ **Skipping code review** - Every change must be reviewed
-❌ **Batch committing** - Commit after each micro-task
-❌ **Committing without pushing** - Each cycle must push before proceeding
-❌ **Yielding without documentation** - Must invoke task-manager first
-❌ **Ignoring scope drift** - Stop at 20% growth
-❌ **Silent failures** - Always log issues
-❌ **Claiming success without demonstration** - Show working result
-❌ **Working around broken infrastructure** - Log via aops-bug and stop
+❌ **Skipping plan review** - Always get independent validation ❌ **Writing multiple tests at once** - ONE failing test per micro-task ❌ **Gold-plating implementations** - Minimal code to pass ONE test ❌ **Skipping code review** - Every change must be reviewed ❌ **Batch committing** - Commit after each micro-task ❌ **Committing without pushing** - Each cycle must push before proceeding ❌ **Yielding without documentation** - Must invoke task-manager first ❌ **Ignoring scope drift** - Stop at 20% growth ❌ **Silent failures** - Always log issues ❌ **Claiming success without demonstration** - Show working result ❌ **Working around broken infrastructure** - Log via aops-bug and stop

@@ -376,9 +376,9 @@ title: Validate scribe architecture workflow
 type: task
 permalink: tasks/inbox/validate-scribe-architecture-workflow
 tags:
-- testing
-- priority-p3
-- project:academicops-platform
+  - testing
+  - priority-p3
+  - project:academicops-platform
 ---
 
 Test task to validate the complete scribe architecture workflow...

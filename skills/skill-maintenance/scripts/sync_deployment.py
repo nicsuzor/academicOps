@@ -15,11 +15,11 @@ Examples:
     sync_deployment.py --fix --clean
 """
 
-import sys
 import os
 import shutil
+import sys
 from pathlib import Path
-from typing import List, Dict, Any, Tuple
+from typing import Any
 
 # Get paths
 ACADEMICOPS = os.environ.get("ACADEMICOPS", Path.home() / "src" / "bot")
@@ -27,11 +27,11 @@ SOURCE_DIR = Path(ACADEMICOPS) / "skills"
 DEPLOY_DIR = Path.home() / ".claude" / "skills"
 
 
-def check_deployment(skill_name: str) -> Dict[str, Any]:
+def check_deployment(skill_name: str) -> dict[str, Any]:
     """Check deployment status of a single skill."""
     source_path = SOURCE_DIR / skill_name
     deploy_path = DEPLOY_DIR / skill_name
-    
+
     status = {
         "name": skill_name,
         "source": str(source_path),
@@ -40,7 +40,7 @@ def check_deployment(skill_name: str) -> Dict[str, Any]:
         "issues": [],
         "actions_needed": [],
     }
-    
+
     # Check if source exists
     if not source_path.exists():
         status["status"] = "source_missing"
@@ -48,14 +48,14 @@ def check_deployment(skill_name: str) -> Dict[str, Any]:
         if deploy_path.exists():
             status["actions_needed"].append("Remove orphaned deployment")
         return status
-    
+
     # Check if deployment exists
     if not deploy_path.exists():
         status["status"] = "not_deployed"
         status["issues"].append("Not deployed")
         status["actions_needed"].append("Create symlink")
         return status
-    
+
     # Check if deployment is a symlink
     if deploy_path.is_symlink():
         # Check if symlink points to correct location
@@ -71,38 +71,38 @@ def check_deployment(skill_name: str) -> Dict[str, Any]:
         status["status"] = "not_symlink"
         status["issues"].append("Deployment is not a symlink (local copy)")
         status["actions_needed"].append("Replace with symlink")
-    
+
     return status
 
 
-def fix_deployment(skill_name: str) -> Dict[str, Any]:
+def fix_deployment(skill_name: str) -> dict[str, Any]:
     """Fix deployment issues for a single skill."""
     source_path = SOURCE_DIR / skill_name
     deploy_path = DEPLOY_DIR / skill_name
-    
+
     result = {
         "name": skill_name,
         "fixed": False,
         "actions": [],
         "errors": [],
     }
-    
+
     try:
         # Check current status
         status = check_deployment(skill_name)
-        
+
         if status["status"] == "correct":
             result["fixed"] = True
             result["actions"].append("Already correct")
             return result
-        
+
         if status["status"] == "source_missing":
             result["errors"].append("Source skill not found - cannot fix")
             return result
-        
+
         # Create deployment directory if needed
         DEPLOY_DIR.mkdir(parents=True, exist_ok=True)
-        
+
         # Remove existing deployment if needed
         if deploy_path.exists():
             if deploy_path.is_symlink():
@@ -115,30 +115,30 @@ def fix_deployment(skill_name: str) -> Dict[str, Any]:
                     shutil.rmtree(backup_path)
                 shutil.move(str(deploy_path), str(backup_path))
                 result["actions"].append(f"Backed up local copy to {backup_path.name}")
-        
+
         # Create correct symlink
         deploy_path.symlink_to(source_path)
         result["actions"].append(f"Created symlink to {source_path}")
         result["fixed"] = True
-        
+
     except Exception as e:
         result["errors"].append(str(e))
-    
+
     return result
 
 
-def clean_orphaned_deployments() -> List[Dict[str, Any]]:
+def clean_orphaned_deployments() -> list[dict[str, Any]]:
     """Remove deployments that have no corresponding source."""
     if not DEPLOY_DIR.exists():
         return []
-    
+
     cleaned = []
-    
+
     for item in DEPLOY_DIR.iterdir():
         if item.is_dir() or item.is_symlink():
             skill_name = item.name
             source_path = SOURCE_DIR / skill_name
-            
+
             if not source_path.exists():
                 # Orphaned deployment
                 try:
@@ -151,23 +151,27 @@ def clean_orphaned_deployments() -> List[Dict[str, Any]]:
                             shutil.rmtree(backup_path)
                         shutil.move(str(item), str(backup_path))
                         action = f"Moved to {backup_path.name}"
-                    
-                    cleaned.append({
-                        "name": skill_name,
-                        "action": action,
-                        "success": True,
-                    })
+
+                    cleaned.append(
+                        {
+                            "name": skill_name,
+                            "action": action,
+                            "success": True,
+                        }
+                    )
                 except Exception as e:
-                    cleaned.append({
-                        "name": skill_name,
-                        "error": str(e),
-                        "success": False,
-                    })
-    
+                    cleaned.append(
+                        {
+                            "name": skill_name,
+                            "error": str(e),
+                            "success": False,
+                        }
+                    )
+
     return cleaned
 
 
-def sync_all_deployments(fix: bool = False, clean: bool = False) -> Dict[str, Any]:
+def sync_all_deployments(fix: bool = False, clean: bool = False) -> dict[str, Any]:
     """Sync all skill deployments."""
     results = {
         "source_dir": str(SOURCE_DIR),
@@ -179,14 +183,14 @@ def sync_all_deployments(fix: bool = False, clean: bool = False) -> Dict[str, An
         "orphaned": 0,
         "details": {},
     }
-    
+
     # Check all source skills
     if SOURCE_DIR.exists():
         for skill_dir in SOURCE_DIR.iterdir():
             if skill_dir.is_dir() and (skill_dir / "SKILL.md").exists():
                 skill_name = skill_dir.name
                 results["skills_checked"] += 1
-                
+
                 if fix:
                     fix_result = fix_deployment(skill_name)
                     results["details"][skill_name] = fix_result
@@ -204,20 +208,20 @@ def sync_all_deployments(fix: bool = False, clean: bool = False) -> Dict[str, An
                         results["correct"] += 1
                     else:
                         results["issues"] += 1
-    
+
     # Clean orphaned deployments if requested
     if clean:
         orphaned = clean_orphaned_deployments()
         results["orphaned_cleaned"] = orphaned
         results["orphaned"] = len(orphaned)
-    
+
     return results
 
 
-def format_sync_result(result: Dict[str, Any]) -> str:
+def format_sync_result(result: dict[str, Any]) -> str:
     """Format sync result for human reading."""
     output = []
-    
+
     output.append("=" * 60)
     output.append("DEPLOYMENT SYNC REPORT")
     output.append("=" * 60)
@@ -226,20 +230,20 @@ def format_sync_result(result: Dict[str, Any]) -> str:
     output.append(f"Skills Checked: {result['skills_checked']}")
     output.append(f"✅ Correct: {result['correct']}")
     output.append(f"⚠️  Issues: {result['issues']}")
-    
+
     if "fixed" in result:
         output.append(f"🔧 Fixed: {result['fixed']}")
-    
+
     if "orphaned" in result:
         output.append(f"🗑️  Orphaned Cleaned: {result['orphaned']}")
-    
+
     output.append("")
-    
+
     # Detailed results
     if result.get("details"):
         output.append("DETAILS:")
         output.append("-" * 40)
-        
+
         for skill_name, details in sorted(result["details"].items()):
             if "status" in details:
                 # Check mode
@@ -264,7 +268,7 @@ def format_sync_result(result: Dict[str, Any]) -> str:
                 if details.get("errors"):
                     for error in details["errors"]:
                         output.append(f"   ❌ {error}")
-    
+
     # Orphaned deployments
     if result.get("orphaned_cleaned"):
         output.append("")
@@ -274,8 +278,10 @@ def format_sync_result(result: Dict[str, Any]) -> str:
             if item["success"]:
                 output.append(f"✅ {item['name']}: {item['action']}")
             else:
-                output.append(f"❌ {item['name']}: {item.get('error', 'Unknown error')}")
-    
+                output.append(
+                    f"❌ {item['name']}: {item.get('error', 'Unknown error')}"
+                )
+
     return "\n".join(output)
 
 
@@ -283,15 +289,15 @@ def main():
     """Main entry point."""
     fix = "--fix" in sys.argv
     clean = "--clean" in sys.argv
-    
+
     if fix:
         print("🔧 Running in FIX mode - will create/fix symlinks")
     if clean:
         print("🗑️  Running with CLEAN - will remove orphaned deployments")
-    
+
     result = sync_all_deployments(fix=fix, clean=clean)
     print(format_sync_result(result))
-    
+
     # Exit with error if issues remain
     if fix:
         # In fix mode, error if we couldn't fix everything

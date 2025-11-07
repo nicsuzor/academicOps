@@ -63,6 +63,7 @@ class TestThreeTierHierarchy:
 
         result = subprocess.run(
             ["uv", "run", "python", "hooks/load_instructions.py"],
+            check=False,
             cwd=bot_root,
             capture_output=True,
             text=True,
@@ -104,6 +105,7 @@ class TestThreeTierHierarchy:
 
         result = subprocess.run(
             ["uv", "run", "python", "hooks/load_instructions.py"],
+            check=False,
             cwd=bot_root,
             capture_output=True,
             text=True,
@@ -121,7 +123,9 @@ class TestThreeTierHierarchy:
         # Framework tier should also be present
         assert "FRAMEWORK" in context or "framework" in result.stderr.lower()
 
-    def test_project_tier_appears_first_in_output(self, bot_root, monkeypatch, tmp_path):
+    def test_project_tier_appears_first_in_output(
+        self, bot_root, monkeypatch, tmp_path
+    ):
         """Test that project tier has highest priority in output order."""
         monkeypatch.setenv("ACADEMICOPS", str(bot_root))
 
@@ -129,22 +133,19 @@ class TestThreeTierHierarchy:
         personal_repo = tmp_path / "personal"
         personal_repo.mkdir()
         (personal_repo / "core").mkdir(parents=True)
-        (personal_repo / "core" / "_CORE.md").write_text(
-            "PERSONAL_MARKER"
-        )
+        (personal_repo / "core" / "_CORE.md").write_text("PERSONAL_MARKER")
         monkeypatch.setenv("ACADEMICOPS_PERSONAL", str(personal_repo))
 
         # Setup project tier
         project_repo = tmp_path / "project"
         project_repo.mkdir()
         (project_repo / "docs" / "bots").mkdir(parents=True)
-        (project_repo / "docs" / "bots" / "_CORE.md").write_text(
-            "PROJECT_MARKER"
-        )
+        (project_repo / "docs" / "bots" / "_CORE.md").write_text("PROJECT_MARKER")
         monkeypatch.chdir(project_repo)
 
         result = subprocess.run(
             ["uv", "run", "python", "hooks/load_instructions.py"],
+            check=False,
             cwd=bot_root,
             capture_output=True,
             text=True,
@@ -176,6 +177,7 @@ class TestTwoOutputModes:
 
         result = subprocess.run(
             ["uv", "run", "python", "hooks/load_instructions.py"],
+            check=False,
             cwd=bot_root,
             capture_output=True,
             text=True,
@@ -202,6 +204,7 @@ class TestTwoOutputModes:
 
         result = subprocess.run(
             ["uv", "run", "python", "hooks/load_instructions.py", "DEVELOPER.md"],
+            check=False,
             cwd=bot_root,
             capture_output=True,
             text=True,
@@ -224,6 +227,7 @@ class TestTwoOutputModes:
         # Force text output for _CORE.md (normally JSON)
         result = subprocess.run(
             ["uv", "run", "python", "hooks/load_instructions.py", "--format=text"],
+            check=False,
             cwd=bot_root,
             capture_output=True,
             text=True,
@@ -243,7 +247,9 @@ class TestNoLegacyFallbacks:
     def bot_root(self):
         return Path(__file__).parent.parent
 
-    def test_does_not_load_from_old_agents_location(self, bot_root, monkeypatch, tmp_path):
+    def test_does_not_load_from_old_agents_location(
+        self, bot_root, monkeypatch, tmp_path
+    ):
         """Test that script ignores old agents/ location."""
         # Setup: Put file ONLY in old location
         fake_bot = tmp_path / "fake_bot"
@@ -263,6 +269,7 @@ class TestNoLegacyFallbacks:
 
         result = subprocess.run(
             ["uv", "run", "python", "hooks/load_instructions.py"],
+            check=False,
             cwd=bot_root,
             capture_output=True,
             text=True,
@@ -292,6 +299,7 @@ class TestNoLegacyFallbacks:
 
         result = subprocess.run(
             ["uv", "run", "python", "hooks/load_instructions.py", "DEVELOPER.md"],
+            check=False,
             cwd=bot_root,
             capture_output=True,
             text=True,
@@ -316,6 +324,7 @@ class TestEnvironmentVariables:
 
         result = subprocess.run(
             ["uv", "run", "python", "hooks/load_instructions.py"],
+            check=False,
             cwd=bot_root,
             capture_output=True,
             text=True,
@@ -335,6 +344,7 @@ class TestEnvironmentVariables:
 
         result = subprocess.run(
             ["uv", "run", "python", "hooks/load_instructions.py"],
+            check=False,
             cwd=bot_root,
             capture_output=True,
             text=True,

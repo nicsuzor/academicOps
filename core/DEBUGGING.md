@@ -55,11 +55,11 @@ import cProfile
 import pstats
 
 # Profile function
-cProfile.run('my_function()', '/tmp/profile.stats')
+cProfile.run("my_function()", "/tmp/profile.stats")
 
 # Analyze
-stats = pstats.Stats('/tmp/profile.stats')
-stats.sort_stats('cumulative').print_stats(20)
+stats = pstats.Stats("/tmp/profile.stats")
+stats.sort_stats("cumulative").print_stats(20)
 ```
 
 **Memory Profiling** (Python):
@@ -87,10 +87,7 @@ import structlog
 logger = structlog.get_logger()
 
 # ✅ Good - structured data
-logger.info("user_authenticated",
-            user_id=user.id,
-            method="oauth",
-            duration_ms=elapsed)
+logger.info("user_authenticated", user_id=user.id, method="oauth", duration_ms=elapsed)
 
 # ❌ Bad - unstructured string
 logger.info(f"User {user.id} authenticated via oauth in {elapsed}ms")

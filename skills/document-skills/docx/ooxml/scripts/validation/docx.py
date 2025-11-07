@@ -116,10 +116,9 @@ class DOCXSchemaValidator(BaseSchemaValidator):
             for error in errors:
                 print(error)
             return False
-        else:
-            if self.verbose:
-                print("PASSED - All whitespace is properly preserved")
-            return True
+        if self.verbose:
+            print("PASSED - All whitespace is properly preserved")
+        return True
 
     def validate_deletions(self):
         """
@@ -165,10 +164,9 @@ class DOCXSchemaValidator(BaseSchemaValidator):
             for error in errors:
                 print(error)
             return False
-        else:
-            if self.verbose:
-                print("PASSED - No w:t elements found within w:del elements")
-            return True
+        if self.verbose:
+            print("PASSED - No w:t elements found within w:del elements")
+        return True
 
     def count_paragraphs_in_unpacked(self):
         """Count the number of paragraphs in the unpacked document."""
@@ -230,8 +228,7 @@ class DOCXSchemaValidator(BaseSchemaValidator):
 
                 # Find w:delText in w:ins that are NOT within w:del
                 invalid_elements = root.xpath(
-                    ".//w:ins//w:delText[not(ancestor::w:del)]",
-                    namespaces=namespaces
+                    ".//w:ins//w:delText[not(ancestor::w:del)]", namespaces=namespaces
                 )
 
                 for elem in invalid_elements:
@@ -255,10 +252,9 @@ class DOCXSchemaValidator(BaseSchemaValidator):
             for error in errors:
                 print(error)
             return False
-        else:
-            if self.verbose:
-                print("PASSED - No w:delText elements within w:ins elements")
-            return True
+        if self.verbose:
+            print("PASSED - No w:delText elements within w:ins elements")
+        return True
 
     def compare_paragraph_counts(self):
         """Compare paragraph counts between original and new document."""
@@ -271,4 +267,5 @@ class DOCXSchemaValidator(BaseSchemaValidator):
 
 
 if __name__ == "__main__":
-    raise RuntimeError("This module should not be run directly.")
+    msg = "This module should not be run directly."
+    raise RuntimeError(msg)

@@ -75,12 +75,14 @@ Generic testing principles and pytest patterns. Project-specific testing require
 import pytest
 from myproject.mymodule import MyClass
 
+
 def test_myclass_initialization():
     """Test MyClass initializes with correct defaults."""
     obj = MyClass(param="value")
 
     assert obj.param == "value"
     assert obj.state == "initialized"
+
 
 def test_myclass_process_valid_input():
     """Test MyClass processes valid input correctly."""
@@ -104,6 +106,7 @@ def test_myclass_process_valid_input():
 def sample_data():
     """Provide sample data for tests."""
     return {"key": "value"}
+
 
 def test_with_fixture(sample_data):
     assert sample_data["key"] == "value"
@@ -154,6 +157,7 @@ def test_with_fixture(sample_data):
 import tempfile
 from pathlib import Path
 
+
 def test_with_temp_dir():
     with tempfile.TemporaryDirectory() as tmpdir:
         db_path = Path(tmpdir) / "test.db"
@@ -166,6 +170,7 @@ def test_with_temp_dir():
 
 ```python
 import uuid
+
 
 def test_with_unique_collection():
     collection_name = f"test_{uuid.uuid4()}"

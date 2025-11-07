@@ -1,9 +1,9 @@
 ---
 name: Agent Failure Analysis
 about: Document systematic analysis of agent failures and systemic improvements
-title: '[AGENT FAILURE] '
+title: "[AGENT FAILURE] "
 labels: prompts, agent-failure
-assignees: ''
+assignees: ""
 ---
 
 ## Failure Summary

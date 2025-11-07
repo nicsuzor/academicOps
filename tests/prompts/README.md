@@ -170,9 +170,12 @@ Example:
 ```python
 # bot/tests/agent_behavior/test_context_awareness.py
 
+
 def test_documentation_location():
     """Test 1 from CONTEXT-AWARENESS-TESTS.md"""
-    response = ask_agent("Where should I document project-specific auto-extraction patterns?")
+    response = ask_agent(
+        "Where should I document project-specific auto-extraction patterns?"
+    )
 
     # Success criteria from spec
     assert "docs/INSTRUCTIONS.md" in response or "parent repo docs" in response

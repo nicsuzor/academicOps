@@ -35,13 +35,16 @@ The project philosophy explicitly rejects defensive coding:
 # BAD: Defensive programming
 def get_uri(record):
     try:
-        return record.metadata.get('uri', record.uri if hasattr(record, 'uri') else None)
+        return record.metadata.get(
+            "uri", record.uri if hasattr(record, "uri") else None
+        )
     except:
         return None
 
+
 # GOOD: Trust the schema
 def get_uri(record):
-    return record.metadata['uri']  # Let KeyError propagate if missing
+    return record.metadata["uri"]  # Let KeyError propagate if missing
 ```
 
 ### Configuration vs Errors

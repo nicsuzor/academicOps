@@ -147,15 +147,15 @@ import pymc as pm
 
 # Model with different priors
 priors = [
-    ('weakly_informative', pm.Normal.dist(0, 1)),
-    ('diffuse', pm.Normal.dist(0, 10)),
-    ('informative', pm.Normal.dist(0.5, 0.3))
+    ("weakly_informative", pm.Normal.dist(0, 1)),
+    ("diffuse", pm.Normal.dist(0, 10)),
+    ("informative", pm.Normal.dist(0.5, 0.3)),
 ]
 
 results = {}
 for name, prior in priors:
     with pm.Model():
-        effect = pm.Normal('effect', mu=prior.mu, sigma=prior.sigma)
+        effect = pm.Normal("effect", mu=prior.mu, sigma=prior.sigma)
         # ... rest of model
         trace = pm.sample()
         results[name] = trace
@@ -210,6 +210,7 @@ import pingouin as pg
 # Using Jeffreys-Zellner-Siow prior
 from scipy import stats
 
+
 def bf_from_t(t, n1, n2, r_scale=0.707):
     """
     Approximate Bayes Factor from t-statistic
@@ -245,10 +246,9 @@ def bf_from_t(t, n1, n2, r_scale=0.707):
 rope_lower, rope_upper = -0.1, 0.1
 
 # Calculate % of posterior in ROPE
-in_rope = np.mean((posterior_samples > rope_lower) &
-                  (posterior_samples < rope_upper))
+in_rope = np.mean((posterior_samples > rope_lower) & (posterior_samples < rope_upper))
 
-print(f"{in_rope*100:.1f}% of posterior in ROPE")
+print(f"{in_rope * 100:.1f}% of posterior in ROPE")
 ```
 
 ---
@@ -351,31 +351,31 @@ import arviz as az
 # Bayesian independent samples t-test
 with pm.Model() as model:
     # Priors for group means
-    mu1 = pm.Normal('mu1', mu=0, sigma=10)
-    mu2 = pm.Normal('mu2', mu=0, sigma=10)
+    mu1 = pm.Normal("mu1", mu=0, sigma=10)
+    mu2 = pm.Normal("mu2", mu=0, sigma=10)
 
     # Prior for pooled standard deviation
-    sigma = pm.HalfNormal('sigma', sigma=10)
+    sigma = pm.HalfNormal("sigma", sigma=10)
 
     # Likelihood
-    y1 = pm.Normal('y1', mu=mu1, sigma=sigma, observed=group1)
-    y2 = pm.Normal('y2', mu=mu2, sigma=sigma, observed=group2)
+    y1 = pm.Normal("y1", mu=mu1, sigma=sigma, observed=group1)
+    y2 = pm.Normal("y2", mu=mu2, sigma=sigma, observed=group2)
 
     # Derived quantity: mean difference
-    diff = pm.Deterministic('diff', mu1 - mu2)
+    diff = pm.Deterministic("diff", mu1 - mu2)
 
     # Sample posterior
     trace = pm.sample(2000, tune=1000, return_inferencedata=True)
 
 # Analyze results
-print(az.summary(trace, var_names=['mu1', 'mu2', 'diff']))
+print(az.summary(trace, var_names=["mu1", "mu2", "diff"]))
 
 # Probability that group1 > group2
-prob_greater = np.mean(trace.posterior['diff'].values > 0)
+prob_greater = np.mean(trace.posterior["diff"].values > 0)
 print(f"P(μ₁ > μ₂) = {prob_greater:.3f}")
 
 # Plot posterior
-az.plot_posterior(trace, var_names=['diff'], ref_val=0)
+az.plot_posterior(trace, var_names=["diff"], ref_val=0)
 ```
 
 ---
@@ -391,26 +391,24 @@ import pymc as pm
 
 with pm.Model() as anova_model:
     # Hyperpriors
-    mu_global = pm.Normal('mu_global', mu=0, sigma=10)
-    sigma_between = pm.HalfNormal('sigma_between', sigma=5)
-    sigma_within = pm.HalfNormal('sigma_within', sigma=5)
+    mu_global = pm.Normal("mu_global", mu=0, sigma=10)
+    sigma_between = pm.HalfNormal("sigma_between", sigma=5)
+    sigma_within = pm.HalfNormal("sigma_within", sigma=5)
 
     # Group means (hierarchical)
-    group_means = pm.Normal('group_means',
-                            mu=mu_global,
-                            sigma=sigma_between,
-                            shape=n_groups)
+    group_means = pm.Normal(
+        "group_means", mu=mu_global, sigma=sigma_between, shape=n_groups
+    )
 
     # Likelihood
-    y = pm.Normal('y',
-                  mu=group_means[group_idx],
-                  sigma=sigma_within,
-                  observed=data)
+    y = pm.Normal("y", mu=group_means[group_idx], sigma=sigma_within, observed=data)
 
     trace = pm.sample(2000, tune=1000, return_inferencedata=True)
 
 # Posterior contrasts
-contrast_1_2 = trace.posterior['group_means'][:,:,0] - trace.posterior['group_means'][:,:,1]
+contrast_1_2 = (
+    trace.posterior["group_means"][:, :, 0] - trace.posterior["group_means"][:, :, 1]
+)
 ```
 
 ---
@@ -428,25 +426,23 @@ import pymc as pm
 
 with pm.Model() as corr_model:
     # Prior on correlation
-    rho = pm.Uniform('rho', lower=-1, upper=1)
+    rho = pm.Uniform("rho", lower=-1, upper=1)
 
     # Convert to covariance matrix
-    cov_matrix = pm.math.stack([[1, rho],
-                                [rho, 1]])
+    cov_matrix = pm.math.stack([[1, rho], [rho, 1]])
 
     # Likelihood (bivariate normal)
-    obs = pm.MvNormal('obs',
-                     mu=[0, 0],
-                     cov=cov_matrix,
-                     observed=np.column_stack([x, y]))
+    obs = pm.MvNormal(
+        "obs", mu=[0, 0], cov=cov_matrix, observed=np.column_stack([x, y])
+    )
 
     trace = pm.sample(2000, tune=1000, return_inferencedata=True)
 
 # Summarize correlation
-print(az.summary(trace, var_names=['rho']))
+print(az.summary(trace, var_names=["rho"]))
 
 # Probability that correlation is positive
-prob_positive = np.mean(trace.posterior['rho'].values > 0)
+prob_positive = np.mean(trace.posterior["rho"].values > 0)
 ```
 
 ---
@@ -469,15 +465,15 @@ import pymc as pm
 
 with pm.Model() as regression_model:
     # Priors for coefficients
-    alpha = pm.Normal('alpha', mu=0, sigma=10)  # Intercept
-    beta = pm.Normal('beta', mu=0, sigma=10, shape=n_predictors)
-    sigma = pm.HalfNormal('sigma', sigma=10)
+    alpha = pm.Normal("alpha", mu=0, sigma=10)  # Intercept
+    beta = pm.Normal("beta", mu=0, sigma=10, shape=n_predictors)
+    sigma = pm.HalfNormal("sigma", sigma=10)
 
     # Expected value
     mu = alpha + pm.math.dot(X, beta)
 
     # Likelihood
-    y_obs = pm.Normal('y_obs', mu=mu, sigma=sigma, observed=y)
+    y_obs = pm.Normal("y_obs", mu=mu, sigma=sigma, observed=y)
 
     trace = pm.sample(2000, tune=1000, return_inferencedata=True)
 
@@ -489,7 +485,7 @@ az.plot_ppc(ppc)
 
 # Predictions with uncertainty
 with regression_model:
-    pm.set_data({'X': X_new})
+    pm.set_data({"X": X_new})
     posterior_pred = pm.sample_posterior_predictive(trace)
 ```
 
@@ -515,21 +511,15 @@ with regression_model:
 ```python
 with pm.Model() as hierarchical_model:
     # Hyperpriors
-    mu_global = pm.Normal('mu_global', mu=0, sigma=10)
-    sigma_between = pm.HalfNormal('sigma_between', sigma=5)
-    sigma_within = pm.HalfNormal('sigma_within', sigma=5)
+    mu_global = pm.Normal("mu_global", mu=0, sigma=10)
+    sigma_between = pm.HalfNormal("sigma_between", sigma=5)
+    sigma_within = pm.HalfNormal("sigma_within", sigma=5)
 
     # Group-level intercepts
-    alpha = pm.Normal('alpha',
-                     mu=mu_global,
-                     sigma=sigma_between,
-                     shape=n_groups)
+    alpha = pm.Normal("alpha", mu=mu_global, sigma=sigma_between, shape=n_groups)
 
     # Likelihood
-    y_obs = pm.Normal('y_obs',
-                     mu=alpha[group_idx],
-                     sigma=sigma_within,
-                     observed=y)
+    y_obs = pm.Normal("y_obs", mu=alpha[group_idx], sigma=sigma_within, observed=y)
 
     trace = pm.sample()
 ```
@@ -573,11 +563,7 @@ print(f"WAIC: {waic.elpd_waic:.2f}")
 print(f"LOO: {loo.elpd_loo:.2f}")
 
 # Compare multiple models
-comparison = az.compare({
-    'model1': trace1,
-    'model2': trace2,
-    'model3': trace3
-})
+comparison = az.compare({"model1": trace1, "model2": trace2, "model3": trace3})
 print(comparison)
 ```
 
@@ -609,7 +595,7 @@ print(comparison)
 
 ```python
 # Automatic summary with diagnostics
-print(az.summary(trace, var_names=['parameter']))
+print(az.summary(trace, var_names=["parameter"]))
 
 # Visual diagnostics
 az.plot_trace(trace)
@@ -639,7 +625,7 @@ az.plot_ppc(ppc, num_pp_samples=100)
 
 # Quantitative checks
 obs_mean = np.mean(observed_data)
-pred_means = [np.mean(sample) for sample in ppc.posterior_predictive['y_obs']]
+pred_means = [np.mean(sample) for sample in ppc.posterior_predictive["y_obs"]]
 p_value = np.mean(pred_means >= obs_mean)  # Bayesian p-value
 ```
 

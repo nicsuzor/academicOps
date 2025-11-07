@@ -51,10 +51,12 @@ if value is None:
 value = config["api_key"]  # KeyError if missing - GOOD
 value = os.environ["API_KEY"]  # Fails if not set - GOOD
 
+
 # ✅ Pydantic validation (fails at startup)
 class Config(BaseModel):
     api_key: str  # No default - required field
     timeout: int  # No default - required field
+
 
 # ✅ Explicit checks with errors
 if "api_key" not in config:
@@ -78,6 +80,7 @@ if "api_key" not in config:
 from typing import Optional, List, Dict, Set, Tuple, Union, Any
 from pathlib import Path
 from datetime import datetime
+
 
 # ✅ Function signatures
 def process_records(
@@ -105,6 +108,7 @@ def process_records(
     # Implementation
     return len(records)
 
+
 # ✅ Class with typed attributes
 class DataProcessor:
     """Process research data with validation."""
@@ -122,10 +126,12 @@ class DataProcessor:
         """Process data and return stats."""
         ...
 
+
 # ✅ Optional for nullable values
 def find_user(user_id: str) -> Optional[User]:
     """Find user by ID, return None if not found."""
     ...
+
 
 # ✅ Union for multiple types
 def load_config(source: Union[str, Path, Dict[str, Any]]) -> Config:
@@ -148,6 +154,7 @@ def load_config(source: Union[str, Path, Dict[str, Any]]) -> Config:
 from pydantic import BaseModel, Field, field_validator
 from pathlib import Path
 
+
 class ProjectConfig(BaseModel):
     """Project configuration with validation."""
 
@@ -161,9 +168,9 @@ class ProjectConfig(BaseModel):
     timeout: float = 30.0
 
     # Validated fields
-    email: str = Field(..., pattern=r'^[\w\.-]+@[\w\.-]+\.\w+$')
+    email: str = Field(..., pattern=r"^[\w\.-]+@[\w\.-]+\.\w+$")
 
-    @field_validator('data_dir')
+    @field_validator("data_dir")
     @classmethod
     def validate_data_dir(cls, v: Path) -> Path:
         """Ensure data directory exists."""
@@ -171,13 +178,14 @@ class ProjectConfig(BaseModel):
             raise ValueError(f"data_dir does not exist: {v}")
         return v
 
-    @field_validator('max_retries')
+    @field_validator("max_retries")
     @classmethod
     def validate_retries(cls, v: int) -> int:
         """Ensure retries is positive."""
         if v < 0:
             raise ValueError("max_retries must be non-negative")
         return v
+
 
 # Usage
 config = ProjectConfig(
@@ -198,6 +206,7 @@ def process_api_response(raw_data: Dict[str, Any]) -> ProcessedData:
 
     # Work with validated data
     return process_validated(validated)
+
 
 # ❌ Don't validate internal data repeatedly
 def internal_function(data: ProcessedData) -> Result:
@@ -222,6 +231,7 @@ if input_file.exists():
 
 # ❌ Old os.path
 import os
+
 data_dir = "/data"
 input_file = os.path.join(data_dir, "input.json")
 
@@ -382,15 +392,17 @@ def test_calculate_statistics_basic(real_conf):
 
     stats = calculate_statistics(data)
 
-    assert stats['mean'] == 3.0
-    assert stats['median'] == 3.0
-    assert 'p25' in stats
-    assert 'p75' in stats
+    assert stats["mean"] == 3.0
+    assert stats["median"] == 3.0
+    assert "p25" in stats
+    assert "p75" in stats
+
 
 def test_calculate_statistics_empty_raises():
     """Test that empty data raises ValueError."""
     with pytest.raises(ValueError, match="data cannot be empty"):
         calculate_statistics([])
+
 
 def test_calculate_statistics_invalid_percentiles():
     """Test that invalid percentiles raise ValueError."""
@@ -421,11 +433,14 @@ from typing import List, Dict
 import json
 from pydantic import BaseModel
 
+
 class ProcessingConfig(BaseModel):
     """Configuration for data processing."""
+
     input_dir: Path
     output_dir: Path
     batch_size: int
+
 
 def load_data(file_path: Path) -> List[Dict[str, Any]]:
     """Load JSON data from file.
@@ -445,6 +460,7 @@ def load_data(file_path: Path) -> List[Dict[str, Any]]:
 
     content = file_path.read_text()
     return json.loads(content)
+
 
 def process_batch(
     records: List[Dict[str, Any]],
@@ -504,6 +520,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+
 def process_data(data: List[str]) -> List[str]:
     """Process data with logging."""
     logger.info(f"Processing {len(data)} records")
@@ -526,12 +543,15 @@ from pydantic import BaseModel
 from pathlib import Path
 import yaml
 
+
 class AppConfig(BaseModel):
     """Application configuration."""
+
     database_url: str
     api_key: str
     data_dir: Path
     batch_size: int = 100  # Only simple defaults
+
 
 def load_config(config_path: Path) -> AppConfig:
     """Load and validate configuration.
@@ -552,6 +572,7 @@ def load_config(config_path: Path) -> AppConfig:
     content = yaml.safe_load(config_path.read_text())
     return AppConfig(**content)  # Pydantic validates
 
+
 # Usage
 config = load_config(Path("config.yaml"))
 # If config missing/invalid, fails immediately - GOOD
@@ -563,9 +584,11 @@ config = load_config(Path("config.yaml"))
 from typing import List, Dict, Any, Callable
 from pathlib import Path
 
+
 def load_data(source: Path) -> List[Dict[str, Any]]:
     """Load data from source."""
     ...
+
 
 def validate_data(records: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """Validate records, raise on invalid data."""
@@ -574,6 +597,7 @@ def validate_data(records: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
             raise ValueError(f"Record missing id: {record}")
     return records
 
+
 def transform_data(
     records: List[Dict[str, Any]],
     transformer: Callable[[Dict[str, Any]], Dict[str, Any]],
@@ -581,9 +605,11 @@ def transform_data(
     """Apply transformation to each record."""
     return [transformer(r) for r in records]
 
+
 def save_data(records: List[Dict[str, Any]], destination: Path) -> None:
     """Save records to destination."""
     ...
+
 
 # Pipeline
 data = load_data(input_path)
@@ -597,6 +623,7 @@ save_data(transformed, output_path)
 ```python
 import httpx
 from typing import Dict, Any
+
 
 def fetch_api_data(url: str, api_key: str) -> Dict[str, Any]:
     """Fetch data from API with error handling at boundary.
@@ -641,6 +668,7 @@ def fetch_api_data(url: str, api_key: str) -> Dict[str, Any]:
 from pathlib import Path
 from typing import List
 import json
+
 
 def process_directory(
     input_dir: Path,
@@ -751,6 +779,7 @@ When reviewing Python code, check:
 from typing import List, Dict, Any
 from pathlib import Path
 
+
 def function_name(
     param1: str,
     param2: List[int],
@@ -786,6 +815,7 @@ def function_name(
 from pydantic import BaseModel, Field, field_validator
 from pathlib import Path
 
+
 class MyConfig(BaseModel):
     """Configuration with validation."""
 
@@ -796,7 +826,7 @@ class MyConfig(BaseModel):
     # Optional (with defaults)
     optional_field: int = 10
 
-    @field_validator('required_path')
+    @field_validator("required_path")
     @classmethod
     def validate_path(cls, v: Path) -> Path:
         if not v.exists():

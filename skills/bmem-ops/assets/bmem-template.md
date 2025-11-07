@@ -5,7 +5,7 @@ tags: []
 type: note
 ---
 
-# 
+#
 
 ## Context
 

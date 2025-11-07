@@ -28,7 +28,7 @@ def validate_tree_is_current(repo_root: Path) -> tuple[bool, str]:
         - is_current: True if tree matches repository state
         - message: Empty string if current, error details if stale
     """
-    from generate_instruction_tree import scan_repository, generate_markdown_tree
+    from generate_instruction_tree import generate_markdown_tree, scan_repository
 
     # Check if README.md exists
     readme_path = repo_root / "README.md"
@@ -43,7 +43,7 @@ def validate_tree_is_current(repo_root: Path) -> tuple[bool, str]:
     end_marker = "<!-- INSTRUCTION_TREE_END -->"
 
     if start_marker not in readme_content or end_marker not in readme_content:
-        return False, f"Instruction tree markers not found in README.md"
+        return False, "Instruction tree markers not found in README.md"
 
     # Extract current tree from README
     start_idx = readme_content.index(start_marker) + len(start_marker)
@@ -60,27 +60,29 @@ def validate_tree_is_current(repo_root: Path) -> tuple[bool, str]:
 
     # Trees don't match - identify what changed
     # Simple difference detection: check for component names
-    readme_lines = set(current_tree_in_readme.split('\n'))
-    expected_lines = set(expected_tree.split('\n'))
+    readme_lines = set(current_tree_in_readme.split("\n"))
+    expected_lines = set(expected_tree.split("\n"))
 
     added_lines = expected_lines - readme_lines
     removed_lines = readme_lines - expected_lines
 
-    diff_msg = "Instruction tree is stale (mismatch between README.md and repository state).\n"
+    diff_msg = (
+        "Instruction tree is stale (mismatch between README.md and repository state).\n"
+    )
 
     if added_lines:
-        diff_msg += f"\nNew components in repository not in README:\n"
+        diff_msg += "\nNew components in repository not in README:\n"
         for line in sorted(added_lines):
             if line.strip():
                 diff_msg += f"  + {line.strip()}\n"
 
     if removed_lines:
-        diff_msg += f"\nComponents in README not in repository:\n"
+        diff_msg += "\nComponents in README not in repository:\n"
         for line in sorted(removed_lines):
             if line.strip():
                 diff_msg += f"  - {line.strip()}\n"
 
-    diff_msg += f"\nRun: python scripts/generate_instruction_tree.py"
+    diff_msg += "\nRun: python scripts/generate_instruction_tree.py"
 
     return False, diff_msg
 
@@ -88,10 +90,7 @@ def validate_tree_is_current(repo_root: Path) -> tuple[bool, str]:
 def main():
     """CLI entry point."""
     # Get repository root from command line or default to current directory
-    if len(sys.argv) > 1:
-        repo_root = Path(sys.argv[1])
-    else:
-        repo_root = Path.cwd()
+    repo_root = Path(sys.argv[1]) if len(sys.argv) > 1 else Path.cwd()
 
     is_current, message = validate_tree_is_current(repo_root)
 

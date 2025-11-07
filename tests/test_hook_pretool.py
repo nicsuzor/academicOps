@@ -11,9 +11,6 @@ Run with: uv run pytest /tmp/test_validation_hooks.py -v
 import json
 import subprocess
 from pathlib import Path
-from typing import Any
-
-import pytest
 
 from .hooks import parse_hook_output, run_hook
 
@@ -43,7 +40,9 @@ class TestPreToolUseHook:
         # continue field is optional and excluded when None
         assert output["hookSpecificOutput"]["permissionDecision"] == "allow"
 
-    def test_hook_blocks_inline_python(self, validate_tool_script: Path, repo_root: Path):
+    def test_hook_blocks_inline_python(
+        self, validate_tool_script: Path, repo_root: Path
+    ):
         """Test that inline Python (python -c) is blocked."""
         hook_input = {
             "session_id": "test-session",
@@ -65,7 +64,9 @@ class TestPreToolUseHook:
             in output["hookSpecificOutput"]["permissionDecisionReason"]
         )
 
-    def test_hook_blocks_python_without_uv_run(self, validate_tool_script: Path, repo_root: Path):
+    def test_hook_blocks_python_without_uv_run(
+        self, validate_tool_script: Path, repo_root: Path
+    ):
         """Test that Python commands without 'uv run' are blocked."""
         hook_input = {
             "session_id": "test-session",
@@ -84,7 +85,9 @@ class TestPreToolUseHook:
         assert output["hookSpecificOutput"]["permissionDecision"] == "deny"
         assert "uv run" in output["hookSpecificOutput"]["permissionDecisionReason"]
 
-    def test_hook_allows_python_with_uv_run(self, validate_tool_script: Path, repo_root: Path):
+    def test_hook_allows_python_with_uv_run(
+        self, validate_tool_script: Path, repo_root: Path
+    ):
         """Test that Python commands with 'uv run' are allowed."""
         hook_input = {
             "session_id": "test-session",
@@ -102,7 +105,9 @@ class TestPreToolUseHook:
         # continue field is optional and excluded when None
         assert output["hookSpecificOutput"]["permissionDecision"] == "allow"
 
-    def test_hook_blocks_pytest_without_uv_run(self, validate_tool_script: Path, repo_root: Path):
+    def test_hook_blocks_pytest_without_uv_run(
+        self, validate_tool_script: Path, repo_root: Path
+    ):
         """Test that pytest without 'uv run' is blocked."""
         hook_input = {
             "session_id": "test-session",
@@ -120,7 +125,9 @@ class TestPreToolUseHook:
         # continue field is optional and excluded when None
         assert output["hookSpecificOutput"]["permissionDecision"] == "deny"
 
-    def test_hook_allows_pytest_with_uv_run(self, validate_tool_script: Path, repo_root: Path):
+    def test_hook_allows_pytest_with_uv_run(
+        self, validate_tool_script: Path, repo_root: Path
+    ):
         """Test that pytest with 'uv run' are allowed."""
         hook_input = {
             "session_id": "test-session",
@@ -179,7 +186,9 @@ class TestPreToolUseHook:
 
         assert output["hookSpecificOutput"]["permissionDecision"] == "allow"
 
-    def test_hook_warns_trainer_agent_on_claude_files(self, validate_tool_script: Path, repo_root: Path):
+    def test_hook_warns_trainer_agent_on_claude_files(
+        self, validate_tool_script: Path, repo_root: Path
+    ):
         """Test that non-trainer agents get warnings for .claude files."""
         hook_input = {
             "session_id": "test-session",
@@ -273,7 +282,9 @@ class TestPreToolUseHook:
         # continue field is optional and excluded when None
         assert output["hookSpecificOutput"]["permissionDecision"] == "allow"
 
-    def test_hook_allows_md_in_papers(self, validate_tool_script: Path, repo_root: Path):
+    def test_hook_allows_md_in_papers(
+        self, validate_tool_script: Path, repo_root: Path
+    ):
         """Test that .md files in papers/ are allowed."""
         hook_input = {
             "session_id": "test-session",
@@ -295,7 +306,9 @@ class TestPreToolUseHook:
         # continue field is optional and excluded when None
         assert output["hookSpecificOutput"]["permissionDecision"] == "allow"
 
-    def test_hook_allows_agent_instructions(self, validate_tool_script: Path, repo_root: Path):
+    def test_hook_allows_agent_instructions(
+        self, validate_tool_script: Path, repo_root: Path
+    ):
         """Test that agent instruction files are allowed."""
         import os
 
@@ -363,7 +376,9 @@ class TestHookIntegration:
         assert "hookEventName" in output["hookSpecificOutput"]
         assert "permissionDecision" in output["hookSpecificOutput"]
 
-    def test_hook_handles_task_agent_invocation(self, validate_tool_script: Path, repo_root: Path):
+    def test_hook_handles_task_agent_invocation(
+        self, validate_tool_script: Path, repo_root: Path
+    ):
         """Test that Task tool invocations extract agent type correctly."""
         # When the Task tool is called, the agent type is in tool_input.subagent_type
         hook_input = {
@@ -382,7 +397,7 @@ class TestHookIntegration:
 
         # Should succeed - we're just testing agent detection
         assert exit_code == 0
-        output = parse_hook_output(stdout)
+        parse_hook_output(stdout)
         # continue field is optional and excluded when None
 
 
@@ -415,7 +430,9 @@ class TestEdgeCases:
         assert result.returncode == 2
         assert "Invalid JSON" in result.stderr
 
-    def test_hook_handles_missing_tool_name(self, validate_tool_script: Path, repo_root: Path):
+    def test_hook_handles_missing_tool_name(
+        self, validate_tool_script: Path, repo_root: Path
+    ):
         """Test that hook handles missing tool_name."""
         hook_input = {
             "session_id": "test-session",

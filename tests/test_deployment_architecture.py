@@ -19,16 +19,16 @@ Success: All tests pass = architecture correctly implemented.
 """
 
 import os
-from pathlib import Path
-import json
-import pytest
 import subprocess
+from pathlib import Path
 
+import pytest
 
 # =============================================================================
 # Requirement 1: Path Predictability
 # Same folder hierarchy everywhere
 # =============================================================================
+
 
 class TestPathPredictability:
     """Validate that folder structure is consistent across all repo types."""
@@ -71,17 +71,18 @@ class TestPathPredictability:
         # Run installation script first
         academicops = Path(os.environ.get("ACADEMICOPS", "/home/nic/src/bot"))
         install_script = academicops / "scripts/setup_academicops.sh"
-        
+
         # Run installation to create the structure
         result = subprocess.run(
             [str(install_script), str(tmp_path)],
+            check=False,
             capture_output=True,
             text=True,
             timeout=30,
         )
-        
+
         assert result.returncode == 0, f"Installation failed: {result.stderr}"
-        
+
         # Now verify the structure was created
         project_bots = tmp_path / "bots"
 
@@ -93,7 +94,7 @@ class TestPathPredictability:
             assert (project_bots / subdir).exists(), (
                 f"Project /bots/{subdir}/ missing - installation incomplete"
             )
-        
+
         # Verify NO bots/scripts or bots/skills directories are created
         assert not (project_bots / "scripts").exists(), (
             "Project /bots/scripts/ should NOT exist - use .academicOps/scripts/ instead"
@@ -108,6 +109,7 @@ class TestPathPredictability:
 # Framework files symlinked, not copied
 # =============================================================================
 
+
 class TestSymlinkCreation:
     """Validate that framework files are symlinked, not duplicated."""
 
@@ -116,17 +118,18 @@ class TestSymlinkCreation:
         """<project>/.claude/agents/ should be symlink to framework."""
         academicops = Path(os.environ.get("ACADEMICOPS", "/home/nic/src/bot"))
         install_script = academicops / "scripts/setup_academicops.sh"
-        
+
         # Run installation
         result = subprocess.run(
             [str(install_script), str(tmp_path)],
+            check=False,
             capture_output=True,
             text=True,
             timeout=30,
         )
-        
+
         assert result.returncode == 0, f"Installation failed: {result.stderr}"
-        
+
         # Now verify symlink created
         agents_link = tmp_path / ".claude/agents"
         assert agents_link.exists(), ".claude/agents/ not created by installation"
@@ -137,38 +140,42 @@ class TestSymlinkCreation:
         """<project>/.claude/commands/ should be symlink to framework."""
         academicops = Path(os.environ.get("ACADEMICOPS", "/home/nic/src/bot"))
         install_script = academicops / "scripts/setup_academicops.sh"
-        
+
         # Run installation
         result = subprocess.run(
             [str(install_script), str(tmp_path)],
+            check=False,
             capture_output=True,
             text=True,
             timeout=30,
         )
-        
+
         assert result.returncode == 0, f"Installation failed: {result.stderr}"
-        
+
         # Now verify symlink created
         commands_link = tmp_path / ".claude/commands"
         assert commands_link.exists(), ".claude/commands/ not created"
-        assert commands_link.is_symlink(), ".claude/commands/ should be SYMLINK, not copy"
+        assert commands_link.is_symlink(), (
+            ".claude/commands/ should be SYMLINK, not copy"
+        )
 
     @pytest.mark.slow
     def test_project_claude_skills_are_symlinked(self, tmp_path):
         """<project>/.claude/skills/ should be symlink to framework."""
         academicops = Path(os.environ.get("ACADEMICOPS", "/home/nic/src/bot"))
         install_script = academicops / "scripts/setup_academicops.sh"
-        
+
         # Run installation
         result = subprocess.run(
             [str(install_script), str(tmp_path)],
+            check=False,
             capture_output=True,
             text=True,
             timeout=30,
         )
-        
+
         assert result.returncode == 0, f"Installation failed: {result.stderr}"
-        
+
         # Now verify symlink created
         skills_link = tmp_path / ".claude/skills"
         assert skills_link.exists(), ".claude/skills/ not created"
@@ -179,22 +186,25 @@ class TestSymlinkCreation:
         """<project>/.academicOps/scripts/ should be symlink to framework scripts."""
         academicops = Path(os.environ.get("ACADEMICOPS", "/home/nic/src/bot"))
         install_script = academicops / "scripts/setup_academicops.sh"
-        
+
         # Run installation
         result = subprocess.run(
             [str(install_script), str(tmp_path)],
+            check=False,
             capture_output=True,
             text=True,
             timeout=30,
         )
-        
+
         assert result.returncode == 0, f"Installation failed: {result.stderr}"
-        
+
         # Now verify symlink created
         academicops_link = tmp_path / ".academicOps"
         assert academicops_link.exists(), ".academicOps not created"
-        assert academicops_link.is_symlink(), ".academicOps should be SYMLINK to framework"
-        
+        assert academicops_link.is_symlink(), (
+            ".academicOps should be SYMLINK to framework"
+        )
+
         # Verify scripts are accessible through the symlink
         scripts_path = tmp_path / ".academicOps/scripts"
         assert scripts_path.exists(), ".academicOps/scripts/ not accessible"
@@ -204,6 +214,7 @@ class TestSymlinkCreation:
 # Requirement 3: Gitignore Coverage
 # All symlinks gitignored, custom prompts preserved
 # =============================================================================
+
 
 class TestGitignoreCoverage:
     """Validate that symlinks are gitignored but custom files preserved."""
@@ -229,10 +240,8 @@ class TestGitignoreCoverage:
         ]
 
         for pattern in required_ignores:
-            assert pattern in content, (
-                f"dist/.gitignore missing pattern: {pattern}"
-            )
-        
+            assert pattern in content, f"dist/.gitignore missing pattern: {pattern}"
+
         # Verify old pattern NOT present
         assert "bots/scripts/" not in content, (
             "dist/.gitignore should NOT contain bots/scripts/ pattern (no longer created)"
@@ -247,9 +256,9 @@ class TestGitignoreCoverage:
 
         # Should NOT have blanket "bots/" ignore
         # (only specific subdirectories if needed)
-        lines = [line.strip() for line in content.split('\n') if line.strip()]
+        lines = [line.strip() for line in content.split("\n") if line.strip()]
         bots_only = [line for line in lines if line == "bots/"]
-        
+
         assert len(bots_only) == 0, (
             "Gitignore should not block all /bots/ files (custom prompts allowed)"
         )
@@ -259,6 +268,7 @@ class TestGitignoreCoverage:
 # Requirement 4: Modular Instructions
 # /bots/ contains ALL core instructions in modular form
 # =============================================================================
+
 
 class TestModularInstructions:
     """Validate that bots/ contains core instructions in modular form."""
@@ -297,15 +307,14 @@ class TestModularInstructions:
             hook_path = hooks_dir / hook_file
             assert hook_path.exists(), f"Missing core hook: {hook_file}"
             # Verify it's executable
-            assert os.access(hook_path, os.X_OK), (
-                f"Hook not executable: {hook_file}"
-            )
+            assert os.access(hook_path, os.X_OK), f"Hook not executable: {hook_file}"
 
 
 # =============================================================================
 # Requirement 5: Project Overrides
 # <project>/bots/ adds project-specific instructions
 # =============================================================================
+
 
 class TestProjectOverrides:
     """Validate that project-specific bots/ files work correctly."""
@@ -317,7 +326,9 @@ class TestProjectOverrides:
 
         # Create custom project agent
         custom_agent = project_bots / "custom.md"
-        custom_agent.write_text("# Custom Project Agent\n\nProject-specific instructions.")
+        custom_agent.write_text(
+            "# Custom Project Agent\n\nProject-specific instructions."
+        )
 
         # Should be readable (not blocked by gitignore)
         assert custom_agent.exists()
@@ -331,7 +342,9 @@ class TestProjectOverrides:
 
         # Create project-specific override
         override = project_bots / "trainer.md"
-        override.write_text("# Project Trainer Override\n\nLoad after framework trainer.")
+        override.write_text(
+            "# Project Trainer Override\n\nLoad after framework trainer."
+        )
 
         assert override.exists()
         # Load order: framework → project (both loaded, project second)
@@ -341,6 +354,7 @@ class TestProjectOverrides:
 # Requirement 6: CLAUDE.md Discovery
 # Just-in-time documentation via CLAUDE.md
 # =============================================================================
+
 
 class TestCLAUDEmdDiscovery:
     """Validate CLAUDE.md just-in-time loading (Issue #120)."""
@@ -385,52 +399,54 @@ class TestCLAUDEmdDiscovery:
 # Scripts accessible via .academicOps/scripts/ symlink (NOT bots/scripts/)
 # =============================================================================
 
+
 class TestScriptInvocation:
     """Validate scripts can be invoked from project via symlinks."""
-    
+
     def test_no_references_to_bots_scripts(self):
         """Verify no files reference bots/scripts/ (should use .academicOps/scripts/)."""
         academicops = Path(os.environ.get("ACADEMICOPS", "/home/nic/src/bot"))
-        
+
         # Files that should NOT contain bots/scripts/ references
         # (excluding test files and backup files)
         files_to_check = [
             academicops / "scripts/setup_academicops.sh",
-            academicops / "scripts/install_bot.sh", 
+            academicops / "scripts/install_bot.sh",
             academicops / "dist/.gitignore",
             academicops / "docs/DEPLOYMENT.md",
         ]
-        
+
         for filepath in files_to_check:
             if filepath.exists():
                 content = filepath.read_text()
                 # Check for bots/scripts/ references (but allow .academicOps/scripts/)
                 lines_with_bots_scripts = [
-                    line for line in content.split('\n') 
-                    if 'bots/scripts/' in line and '.academicOps/scripts/' not in line
+                    line
+                    for line in content.split("\n")
+                    if "bots/scripts/" in line and ".academicOps/scripts/" not in line
                 ]
-                
+
                 assert len(lines_with_bots_scripts) == 0, (
                     f"{filepath.name} contains references to bots/scripts/ - "
                     f"should use .academicOps/scripts/ instead. "
                     f"Found: {lines_with_bots_scripts[:3]}"  # Show first 3 problematic lines
                 )
-    
+
     def test_all_script_references_use_academicops_path(self):
         """Verify script invocations use .academicOps/scripts/ pattern."""
         academicops = Path(os.environ.get("ACADEMICOPS", "/home/nic/src/bot"))
-        
+
         # Check that key files properly reference scripts via .academicOps/scripts/
         trainer_file = academicops / "bots/agents/trainer.md"
-        
+
         if trainer_file.exists():
             content = trainer_file.read_text()
-            
+
             # Should reference scripts via .academicOps/scripts/
             assert ".academicOps/scripts/" in content, (
                 "trainer.md should reference scripts via .academicOps/scripts/"
             )
-            
+
             # Should NOT reference scripts via bots/scripts/
             assert "bots/scripts/" not in content, (
                 "trainer.md should NOT reference bots/scripts/ (use .academicOps/scripts/)"
@@ -444,15 +460,14 @@ class TestScriptInvocation:
         script = academicops / "scripts/check_instruction_orphans.py"
 
         if script.exists():
-            assert os.access(script, os.X_OK), (
-                f"Script not executable: {script.name}"
-            )
+            assert os.access(script, os.X_OK), f"Script not executable: {script.name}"
 
 
 # =============================================================================
 # Requirement 8: Pre-commit Integration
 # Piggyback on pre-commit for git hooks
 # =============================================================================
+
 
 class TestPreCommitIntegration:
     """Validate pre-commit is used for git hooks."""
@@ -475,7 +490,8 @@ class TestPreCommitIntegration:
         if git_hooks.exists():
             # Should only have pre-commit installed hooks
             custom_hooks = [
-                f for f in git_hooks.iterdir()
+                f
+                for f in git_hooks.iterdir()
                 if f.is_file() and not f.name.endswith(".sample")
             ]
 
@@ -492,6 +508,7 @@ class TestPreCommitIntegration:
 # Requirement 9: Dogfooding
 # academicOps can install into itself
 # =============================================================================
+
 
 class TestDogfooding:
     """Validate academicOps can install into itself without conflicts."""
@@ -552,6 +569,7 @@ class TestDogfooding:
 # ${ACADEMICOPS_PERSONAL} should follow same patterns
 # =============================================================================
 
+
 class TestPersonalRepoStructure:
     """Validate ${ACADEMICOPS_PERSONAL} follows architecture."""
 
@@ -566,9 +584,7 @@ class TestPersonalRepoStructure:
         bots_dir = personal_path / "bots"
 
         # Personal repo should have /bots/ structure
-        assert bots_dir.exists(), (
-            f"${ACADEMICOPS_PERSONAL}/bots/ missing"
-        )
+        assert bots_dir.exists(), f"${ACADEMICOPS_PERSONAL}/bots/ missing"
 
     def test_personal_has_data_directory(self):
         """${ACADEMICOPS_PERSONAL}/data/ for strategic context."""
@@ -581,9 +597,7 @@ class TestPersonalRepoStructure:
         data_dir = personal_path / "data"
 
         # Personal repo contains strategic data
-        assert data_dir.exists(), (
-            f"${ACADEMICOPS_PERSONAL}/data/ missing"
-        )
+        assert data_dir.exists(), f"${ACADEMICOPS_PERSONAL}/data/ missing"
 
     def test_personal_has_claude_directory(self):
         """${ACADEMICOPS_PERSONAL}/.claude/ should exist."""
@@ -595,6 +609,4 @@ class TestPersonalRepoStructure:
         personal_path = Path(personal)
         claude_dir = personal_path / ".claude"
 
-        assert claude_dir.exists(), (
-            f"${ACADEMICOPS_PERSONAL}/.claude/ missing"
-        )
+        assert claude_dir.exists(), f"${ACADEMICOPS_PERSONAL}/.claude/ missing"

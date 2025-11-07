@@ -6,12 +6,11 @@ use consistent path resolution and can find tasks created by each other.
 
 Relates to GitHub issue #174.
 """
+
 import json
 import subprocess
 import tempfile
 from pathlib import Path
-
-import pytest
 
 
 def test_all_scripts_find_same_tasks():
@@ -33,14 +32,19 @@ def test_all_scripts_find_same_tasks():
         # Act 1 - Create task using task_add.py
         result_add = subprocess.run(
             [
-                "python3", str(task_add),
-                "--title", "Test task for path resolution",
-                "--priority", "1",
-                "--project", "test-path"
+                "python3",
+                str(task_add),
+                "--title",
+                "Test task for path resolution",
+                "--priority",
+                "1",
+                "--project",
+                "test-path",
             ],
+            check=False,
             cwd=tmpdir,
             capture_output=True,
-            text=True
+            text=True,
         )
 
         # Assert task created successfully
@@ -55,9 +59,10 @@ def test_all_scripts_find_same_tasks():
         # Act 2 - Verify task_view.py can see the task
         result_view = subprocess.run(
             ["python3", str(task_view)],
+            check=False,
             cwd=tmpdir,
             capture_output=True,
-            text=True
+            text=True,
         )
 
         # Assert task_view.py runs successfully
@@ -69,24 +74,26 @@ def test_all_scripts_find_same_tasks():
 
         view_data = json.loads(view_file.read_text())
         task_ids_in_view = [t.get("id") for t in view_data.get("tasks", [])]
-        assert task_id in task_ids_in_view, \
+        assert task_id in task_ids_in_view, (
             f"task_view.py didn't find task {task_id}. Found: {task_ids_in_view}"
+        )
 
         # Act 3 - Verify task_process.py can find and modify the task
         result_process = subprocess.run(
-            [
-                "python3", str(task_process),
-                "modify", task_id,
-                "--priority", "2"
-            ],
+            ["python3", str(task_process), "modify", task_id, "--priority", "2"],
+            check=False,
             cwd=tmpdir,
             capture_output=True,
-            text=True
+            text=True,
         )
 
         # Assert task_process.py can find and modify the task
         # Parse JSON output (task_process.py outputs multiple JSON lines)
-        stdout_lines = [line.strip() for line in result_process.stdout.strip().split('\n') if line.strip()]
+        stdout_lines = [
+            line.strip()
+            for line in result_process.stdout.strip().split("\n")
+            if line.strip()
+        ]
 
         # First line is the error/success result, last line might be empty return value
         process_result = {}
@@ -99,17 +106,20 @@ def test_all_scripts_find_same_tasks():
             except json.JSONDecodeError:
                 continue
 
-        assert process_result.get("success") is True, \
-            f"task_process.py returned success=False: {process_result}\n" \
-            f"Full stdout: {result_process.stdout}\n" \
+        assert process_result.get("success") is True, (
+            f"task_process.py returned success=False: {process_result}\n"
+            f"Full stdout: {result_process.stdout}\n"
             f"Stderr: {result_process.stderr}"
-        assert task_id in process_result.get("taskId", ""), \
+        )
+        assert task_id in process_result.get("taskId", ""), (
             f"task_process.py modified wrong task: {process_result}"
+        )
 
         # Verify modification actually happened
         modified_task = json.loads(task_file.read_text())
-        assert modified_task["priority"] == 2, \
+        assert modified_task["priority"] == 2, (
             f"Priority not updated. Expected 2, got {modified_task.get('priority')}"
+        )
 
 
 def test_task_process_fails_fast_when_data_directory_missing():
@@ -126,21 +136,31 @@ def test_task_process_fails_fast_when_data_directory_missing():
         # Act - Try to modify task when data directory doesn't exist
         result = subprocess.run(
             [
-                "python3", str(task_process),
-                "modify", "20250101-12345678",
-                "--priority", "2"
+                "python3",
+                str(task_process),
+                "modify",
+                "20250101-12345678",
+                "--priority",
+                "2",
             ],
+            check=False,
             cwd=tmpdir,
             capture_output=True,
-            text=True
+            text=True,
         )
 
         # Assert - Should fail with non-zero exit code
-        assert result.returncode != 0, \
-            f"task_process.py should exit with error when data directory missing. " \
+        assert result.returncode != 0, (
+            f"task_process.py should exit with error when data directory missing. "
             f"Exit code: {result.returncode}, Stderr: {result.stderr}, Stdout: {result.stdout}"
+        )
 
         # Assert - Error message should mention data directory
         error_output = result.stderr.lower()
-        assert "data" in error_output or "directory" in error_output or "not found" in error_output, \
+        assert (
+            "data" in error_output
+            or "directory" in error_output
+            or "not found" in error_output
+        ), (
             f"Error message should mention data directory or not found. Got stderr: {result.stderr}"
+        )

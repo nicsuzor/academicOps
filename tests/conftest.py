@@ -5,12 +5,9 @@ Shared fixtures for integration tests.
 This provides common utilities for testing Claude Code in headless mode.
 """
 
-import json
-import subprocess
 from pathlib import Path
 
 import pytest
-
 
 # ============================================================================
 # Test Fixtures
@@ -24,14 +21,16 @@ def repo_root() -> Path:
 
     project_root = os.getenv("ACADEMICOPS")
     if not project_root:
-        raise RuntimeError(
+        msg = (
             "ACADEMICOPS environment variable not set. "
             "This must point to your personal repository root."
         )
+        raise RuntimeError(msg)
 
     path = Path(project_root)
     if not path.exists():
-        raise RuntimeError(f"ACADEMICOPS path does not exist: {project_root}")
+        msg = f"ACADEMICOPS path does not exist: {project_root}"
+        raise RuntimeError(msg)
 
     return path
 
@@ -43,14 +42,16 @@ def validate_tool_script() -> Path:
 
     bot_root = os.getenv("ACADEMICOPS")
     if not bot_root:
-        raise RuntimeError(
+        msg = (
             "ACADEMICOPS environment variable not set. "
             "This must point to the academicOps bot repository root."
         )
+        raise RuntimeError(msg)
 
     path = Path(bot_root) / "bots" / "hooks" / "validate_tool.py"
     if not path.exists():
-        raise RuntimeError(f"validate_tool.py not found at expected path: {path}")
+        msg = f"validate_tool.py not found at expected path: {path}"
+        raise RuntimeError(msg)
 
     return path
 
@@ -62,16 +63,19 @@ def validate_env_script() -> Path:
 
     bot_root = os.getenv("ACADEMICOPS")
     if not bot_root:
-        raise RuntimeError(
+        msg = (
             "ACADEMICOPS environment variable not set. "
             "This must point to the academicOps bot repository root."
         )
+        raise RuntimeError(msg)
 
     path = Path(bot_root) / "bots" / "hooks" / "load_instructions.py"
     if not path.exists():
-        raise RuntimeError(f"load_instructions.py not found at expected path: {path}")
+        msg = f"load_instructions.py not found at expected path: {path}"
+        raise RuntimeError(msg)
 
     return path
+
 
 @pytest.fixture
 def validate_stop_script() -> Path:
@@ -80,14 +84,16 @@ def validate_stop_script() -> Path:
 
     bot_root = os.getenv("ACADEMICOPS")
     if not bot_root:
-        raise RuntimeError(
+        msg = (
             "ACADEMICOPS environment variable not set. "
             "This must point to the academicOps bot repository root."
         )
+        raise RuntimeError(msg)
 
     path = Path(bot_root) / "hooks" / "validate_stop.py"
     if not path.exists():
-        raise RuntimeError(f"validate_stop.py not found at expected path: {path}")
+        msg = f"validate_stop.py not found at expected path: {path}"
+        raise RuntimeError(msg)
 
     return path
 
@@ -99,14 +105,16 @@ def request_scribe_stop_script() -> Path:
 
     bot_root = os.getenv("ACADEMICOPS")
     if not bot_root:
-        raise RuntimeError(
+        msg = (
             "ACADEMICOPS environment variable not set. "
             "This must point to the academicOps bot repository root."
         )
+        raise RuntimeError(msg)
 
     path = Path(bot_root) / "hooks" / "request_scribe_stop.py"
     if not path.exists():
-        raise RuntimeError(f"request_scribe_stop.py not found at expected path: {path}")
+        msg = f"request_scribe_stop.py not found at expected path: {path}"
+        raise RuntimeError(msg)
 
     return path
 
@@ -118,14 +126,16 @@ def log_userpromptsubmit_script() -> Path:
 
     bot_root = os.getenv("ACADEMICOPS")
     if not bot_root:
-        raise RuntimeError(
+        msg = (
             "ACADEMICOPS environment variable not set. "
             "This must point to the academicOps bot repository root."
         )
+        raise RuntimeError(msg)
 
     path = Path(bot_root) / "hooks" / "log_userpromptsubmit.py"
     if not path.exists():
-        raise RuntimeError(f"log_userpromptsubmit.py not found at expected path: {path}")
+        msg = f"log_userpromptsubmit.py not found at expected path: {path}"
+        raise RuntimeError(msg)
 
     return path
 
@@ -137,16 +147,16 @@ def personal_repo_root() -> Path:
 
     personal_root = os.getenv("ACADEMICOPS_PERSONAL")
     if not personal_root:
-        raise RuntimeError(
+        msg = (
             "ACADEMICOPS_PERSONAL environment variable not set. "
             "This must point to your personal repository root."
         )
+        raise RuntimeError(msg)
 
     path = Path(personal_root)
     if not path.exists():
-        raise RuntimeError(
-            f"ACADEMICOPS_PERSONAL path does not exist: {personal_root}"
-        )
+        msg = f"ACADEMICOPS_PERSONAL path does not exist: {personal_root}"
+        raise RuntimeError(msg)
 
     return path
 
