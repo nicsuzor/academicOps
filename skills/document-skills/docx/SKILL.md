@@ -15,24 +15,25 @@ A .docx file is a ZIP archive containing XML files and resources. Create, edit, 
 ## Workflow Decision Tree
 
 ### Reading/Analyzing Content
+
 Use "Text extraction" or "Raw XML access" sections below
 
 ### Creating New Document
+
 Use "Creating a new Word document" workflow
 
 ### Editing Existing Document
-- **Your own document + simple changes**
-  Use "Basic OOXML editing" workflow
 
-- **Someone else's document**
-  Use **"Redlining workflow"** (recommended default)
+- **Your own document + simple changes** Use "Basic OOXML editing" workflow
 
-- **Legal, academic, business, or government docs**
-  Use **"Redlining workflow"** (required)
+- **Someone else's document** Use **"Redlining workflow"** (recommended default)
+
+- **Legal, academic, business, or government docs** Use **"Redlining workflow"** (required)
 
 ## Reading and analyzing content
 
 ### Text extraction
+
 To read the text contents of a document, convert the document to markdown using pandoc. Pandoc provides excellent support for preserving document structure and can show tracked changes:
 
 ```bash
@@ -42,22 +43,26 @@ pandoc --track-changes=all path-to-file.docx -o output.md
 ```
 
 ### Raw XML access
+
 Raw XML access is required for: comments, complex formatting, document structure, embedded media, and metadata. For any of these features, unpack a document and read its raw XML contents.
 
 #### Unpacking a file
+
 `python ooxml/scripts/unpack.py <office_file> <output_directory>`
 
 #### Key file structures
-* `word/document.xml` - Main document contents
-* `word/comments.xml` - Comments referenced in document.xml
-* `word/media/` - Embedded images and media files
-* Tracked changes use `<w:ins>` (insertions) and `<w:del>` (deletions) tags
+
+- `word/document.xml` - Main document contents
+- `word/comments.xml` - Comments referenced in document.xml
+- `word/media/` - Embedded images and media files
+- Tracked changes use `<w:ins>` (insertions) and `<w:del>` (deletions) tags
 
 ## Creating a new Word document
 
 When creating a new Word document from scratch, use **docx-js**, which allows you to create Word documents using JavaScript/TypeScript.
 
 ### Workflow
+
 1. **MANDATORY - READ ENTIRE FILE**: Read [`docx-js.md`](docx-js.md) (~500 lines) completely from start to finish. **NEVER set any range limits when reading this file.** Read the full file content for detailed syntax, critical formatting rules, and best practices before proceeding with document creation.
 2. Create a JavaScript/TypeScript file using Document, Paragraph, TextRun components (You can assume all dependencies are installed, but if not, refer to the dependencies section below)
 3. Export as .docx using Packer.toBuffer()
@@ -67,6 +72,7 @@ When creating a new Word document from scratch, use **docx-js**, which allows yo
 When editing an existing Word document, use the **Document library** (a Python library for OOXML manipulation). The library automatically handles infrastructure setup and provides methods for document manipulation. For complex scenarios, you can access the underlying DOM directly through the library.
 
 ### Workflow
+
 1. **MANDATORY - READ ENTIRE FILE**: Read [`ooxml.md`](ooxml.md) (~600 lines) completely from start to finish. **NEVER set any range limits when reading this file.** Read the full file content for the Document library API and XML patterns for directly editing document files.
 2. Unpack the document: `python ooxml/scripts/unpack.py <office_file> <output_directory>`
 3. Create and run a Python script using the Document library (see "Document Library" section in ooxml.md)
@@ -80,10 +86,10 @@ This workflow allows planning comprehensive tracked changes using markdown befor
 
 **Batching Strategy**: Group related changes into batches of 3-10 changes. This makes debugging manageable while maintaining efficiency. Test each batch before moving to the next.
 
-**Principle: Minimal, Precise Edits**
-When implementing tracked changes, only mark text that actually changes. Repeating unchanged text makes edits harder to review and appears unprofessional. Break replacements into: [unchanged text] + [deletion] + [insertion] + [unchanged text]. Preserve the original run's RSID for unchanged text by extracting the `<w:r>` element from the original and reusing it.
+**Principle: Minimal, Precise Edits** When implementing tracked changes, only mark text that actually changes. Repeating unchanged text makes edits harder to review and appears unprofessional. Break replacements into: [unchanged text] + [deletion] + [insertion] + [unchanged text]. Preserve the original run's RSID for unchanged text by extracting the `<w:r>` element from the original and reusing it.
 
 Example - Changing "30 days" to "60 days" in a sentence:
+
 ```python
 # BAD - Replaces entire sentence
 '<w:del><w:r><w:delText>The term is 30 days.</w:delText></w:r></w:del><w:ins><w:r><w:t>The term is 60 days.</w:t></w:r></w:ins>'
@@ -154,7 +160,6 @@ Example - Changing "30 days" to "60 days" in a sentence:
      ```
    - Check that no unintended changes were introduced
 
-
 ## Converting Documents to Images
 
 To visually analyze Word documents, convert them to images using a two-step process:
@@ -171,6 +176,7 @@ To visually analyze Word documents, convert them to images using a two-step proc
    This creates files like `page-1.jpg`, `page-2.jpg`, etc.
 
 Options:
+
 - `-r 150`: Sets resolution to 150 DPI (adjust for quality/size balance)
 - `-jpeg`: Output JPEG format (use `-png` for PNG if preferred)
 - `-f N`: First page to convert (e.g., `-f 2` starts from page 2)
@@ -178,12 +184,15 @@ Options:
 - `page`: Prefix for output files
 
 Example for specific range:
+
 ```bash
 pdftoppm -jpeg -r 150 -f 2 -l 5 document.pdf page  # Converts only pages 2-5
 ```
 
 ## Code Style Guidelines
+
 **IMPORTANT**: When generating code for DOCX operations:
+
 - Write concise code
 - Avoid verbose variable names and redundant operations
 - Avoid unnecessary print statements

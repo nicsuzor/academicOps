@@ -3,6 +3,7 @@
 **Purpose**: Systematic evaluation of how well agents understand their context when starting in the parent repo.
 
 **Related Issues**:
+
 - #64 - Agent project context system
 - #66 - Documentation consolidation
 - #67 - Evidence-based documentation (Plan B)
@@ -31,6 +32,7 @@ claude -p "Evaluate test results in bot/tests/results/test1_*.txt against CONTEX
 ```
 
 The evaluator agent will:
+
 1. Read the test specification from `CONTEXT-AWARENESS-TESTS.md`
 2. Read the test output files
 3. Compare against success criteria
@@ -70,6 +72,7 @@ bot/tests/
 ### Why Headless Mode (`-p`)
 
 Using `-p` flag ensures:
+
 - No interactive clarifications
 - Agent must answer from loaded context only
 - Simulates real autonomous operation
@@ -78,6 +81,7 @@ Using `-p` flag ensures:
 ### Self-Contained Evaluation
 
 The test specification (`CONTEXT-AWARENESS-TESTS.md`) contains:
+
 - Complete success/failure criteria
 - Rationale for each test
 - Evaluation rubric
@@ -104,6 +108,7 @@ This allows **any** agent (or human) to evaluate results without additional cont
    **Question**: "[Single, clear question]"
 
    **Success Criteria**:
+
    - ✅ PASS: [specific observable behavior]
    - ❌ FAIL: [specific anti-pattern]
 
@@ -115,11 +120,13 @@ This allows **any** agent (or human) to evaluate results without additional cont
 ### Tracking Changes
 
 Use `bot/docs/CHANGES.md` (when created per #67 Plan A) to track:
+
 - Test additions/modifications
 - Hypothesis about what behavior will change
 - Results after implementation
 
 Example:
+
 ```markdown
 ## 2025-10-05: Initial Context Awareness Tests (#67)
 
@@ -137,11 +144,13 @@ Example:
 These manual tests form the foundation for automated testing (Issue #67 Plan B):
 
 ### Current (Manual)
+
 1. Human runs `claude -p "question" > output.txt`
 2. Human/Agent evaluates against criteria
 3. Human logs results
 
 ### Future (Automated via Plan B)
+
 1. Script runs `claude -p "question" > output.txt`
 2. Assertion framework evaluates against criteria
 3. CI/CD logs results and fails on regression
@@ -149,6 +158,7 @@ These manual tests form the foundation for automated testing (Issue #67 Plan B):
 ### Migration Path
 
 When implementing Plan B:
+
 1. Convert test questions → Python test functions
 2. Convert success criteria → `assert` statements
 3. Convert evaluation rubric → test suite scoring
@@ -156,6 +166,7 @@ When implementing Plan B:
 5. Auto-generate test code from specification
 
 Example:
+
 ```python
 # bot/tests/agent_behavior/test_context_awareness.py
 
@@ -198,6 +209,7 @@ def test_documentation_location():
 **Symptoms**: Agent asks for clarification or gives generic answer
 
 **Check**:
+
 1. Is CLAUDE.md in repo root pointing to correct instructions?
 2. Does docs/INSTRUCTIONS.md exist and have expected content?
 3. Try running `claude -p "What documentation should you read first?"` to debug
@@ -205,6 +217,7 @@ def test_documentation_location():
 ### "Results don't match expectations"
 
 **Could mean**:
+
 1. Documentation unclear (fix docs)
 2. Test criteria too strict (update test)
 3. Agent genuinely failing (escalate to trainer)
@@ -218,6 +231,7 @@ def test_documentation_location():
 **Concerning**: If PASS/FAIL status changes between runs
 
 **Action**:
+
 1. Check if docs changed between runs
 2. Note non-determinism in evaluation
 3. Consider making success criteria more specific
@@ -227,6 +241,7 @@ def test_documentation_location():
 **Maintained by**: Agent Trainer (bot/agents/trainer.md)
 
 **Review frequency**:
+
 - After each major docs/INSTRUCTIONS.md change
 - Monthly during trainer reflection sessions
 - Quarterly comprehensive review

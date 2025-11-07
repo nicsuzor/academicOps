@@ -1,6 +1,7 @@
 # End-of-Session Agent: Add Mandatory Skill-First Pattern
 
 ## Metadata
+
 - Date: 2025-11-03
 - Issue: #184
 - Commit: [pending]
@@ -25,6 +26,7 @@ Adding the mandatory skill-first invocation pattern to end-of-session.md will pr
 ## Success Criteria
 
 When end-of-session agent is invoked:
+
 1. **Immediate delegation**: Agent invokes `Skill(command='scribe', mode='end-of-session', ...)` as first action after git operations
 2. **No file reads**: Agent does not attempt Read operations on reference files
 3. **No searches**: Agent does not search for documentation (VALID, CODE, COMMIT patterns)
@@ -34,15 +36,17 @@ When end-of-session agent is invoked:
 ## Test Plan
 
 **Manual test**:
+
 1. Complete substantial work (e.g., implement feature, fix bug)
 2. Trigger end-of-session agent via Stop hook
 3. Review execution log for:
    - Skill(command='scribe') invocation present
    - No Read(file_path="/home/nic/src/writing/...") errors
-   - No Search(pattern="**/*VALID*.md") attempts
+   - No Search(pattern="**/_VALID_.md") attempts
    - Accomplishment entry in accomplishments.md (if qualified)
 
 **Expected execution sequence**:
+
 ```
 1. Bash(git status --short)
 2. Skill(command='git-commit')  # If changes present

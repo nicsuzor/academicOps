@@ -44,11 +44,13 @@ export ACADEMICOPS=~/academicOps
 ```
 
 Reload your shell:
+
 ```bash
 source ~/.bashrc  # or ~/.zshrc
 ```
 
 Optional (for personal context):
+
 ```bash
 export ACADEMICOPS_PERSONAL=/path/to/your/writing
 ```
@@ -80,6 +82,7 @@ claude
 The global hooks should activate and you'll have access to all academicOps skills.
 
 Test environment variable:
+
 ```bash
 echo $ACADEMICOPS  # Should print your installation path
 ```
@@ -131,6 +134,7 @@ $ACADEMICOPS/scripts/setup_academicops.sh
 ```
 
 The installation script will:
+
 - Update `~/.claude/settings.json` if needed
 - Re-deploy updated skills to `~/.claude/skills/`
 - Preserve any custom configuration you've added
@@ -142,6 +146,7 @@ The installation script will:
 ### "ACADEMICOPS not set" error
 
 Add to your shell profile and reload:
+
 ```bash
 echo 'export ACADEMICOPS=~/academicOps' >> ~/.bashrc
 source ~/.bashrc
@@ -150,6 +155,7 @@ source ~/.bashrc
 ### Hooks not running
 
 Check global settings exist:
+
 ```bash
 cat ~/.claude/settings.json
 ```
@@ -159,11 +165,13 @@ Should contain `"env"` section with `ACADEMICOPS`.
 ### Skills not found
 
 Verify skills are deployed:
+
 ```bash
 ls ~/.claude/skills/
 ```
 
 Re-run installation if missing:
+
 ```bash
 $ACADEMICOPS/scripts/setup_academicops.sh
 ```
@@ -171,6 +179,7 @@ $ACADEMICOPS/scripts/setup_academicops.sh
 ### Hook scripts failing
 
 Test manually with `uv run --directory`:
+
 ```bash
 uv run --directory "$ACADEMICOPS" python "$ACADEMICOPS/bots/hooks/validate_tool.py"
 ```

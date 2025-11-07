@@ -24,6 +24,7 @@ Use this skill when:
 7. **Auditing existing projects** - Reviewing CLAUDE.md files for compliance with best practices
 
 **Concrete trigger examples**:
+
 - "Clean up the CLAUDE.md files in this repository"
 - "Extract inline instructions from CLAUDE.md to chunks"
 - "Validate all references in CLAUDE.md files"
@@ -71,13 +72,15 @@ scripts/audit_claude_files.py [directory]
 ```
 
 The audit identifies:
+
 - Substantive content that should be in chunks
 - Wrong location (instructions in incorrect directory)
-- Duplication across files  
+- Duplication across files
 - Files that are too long
 - Missing @reference syntax
 
 **Example output**:
+
 ```
 📄 CLAUDE.md:
   📝 substantive_content
@@ -97,12 +100,14 @@ scripts/extract_chunks.py [path] [--dry-run]
 ```
 
 This script:
+
 - Identifies substantive content blocks
 - Creates chunk files in the appropriate tier
 - Replaces content with @reference syntax
 - Preserves file structure and formatting
 
 **Tier determination**:
+
 - **Project-specific** content → `bots/prompts/PROJECT_<name>.md`
 - **Reusable** content → `$ACADEMICOPS/bots/prompts/<name>.md`
 - **Personal** preferences → `$ACADEMICOPS_PERSONAL/prompts/<name>.md`
@@ -116,6 +121,7 @@ scripts/refactor_references.py [path] [--dry-run] [--consolidate]
 ```
 
 This script:
+
 - Identifies instruction patterns
 - Finds existing chunks that match content
 - Suggests new chunks for unmatched content
@@ -130,6 +136,7 @@ scripts/validate_references.py [path] [--fix]
 ```
 
 Validates:
+
 - All referenced files exist
 - Paths are correct
 - No circular references
@@ -137,6 +144,7 @@ Validates:
 - Suggests fixes with `--fix` flag
 
 **Reference formats supported**:
+
 - `@bots/prompts/chunk.md` - Project tier
 - `@$ACADEMICOPS/bots/prompts/chunk.md` - Framework tier
 - `@$ACADEMICOPS_PERSONAL/prompts/chunk.md` - User tier
@@ -217,27 +225,31 @@ scripts/extract_chunks.py CLAUDE.md
 ### ❌ Inline Instructions
 
 **Bad**:
+
 ```markdown
 # CLAUDE.md
-Always use pytest for testing.
-Never mock internal code.
-Use real_bm fixture for all tests.
+
+Always use pytest for testing. Never mock internal code. Use real_bm fixture for all tests.
 ```
 
 **Good**:
+
 ```markdown
 # CLAUDE.md
+
 @bots/prompts/testing_practices.md
 ```
 
 ### ❌ Wrong Location
 
 **Bad** (in root CLAUDE.md):
+
 ```markdown
 When writing tests, use pytest...
 ```
 
 **Good** (in tests/CLAUDE.md):
+
 ```markdown
 @bots/prompts/PROJECT_test_guidelines.md
 ```
@@ -245,34 +257,41 @@ When writing tests, use pytest...
 ### ❌ Duplication
 
 **Bad** (same content in multiple files):
+
 ```markdown
 # /CLAUDE.md
+
 Use type hints for all functions...
 
-# /src/CLAUDE.md  
+# /src/CLAUDE.md
+
 Use type hints for all functions...
 ```
 
 **Good** (single reference):
+
 ```markdown
 # Both files reference:
+
 @$ACADEMICOPS/bots/prompts/python_typing.md
 ```
 
 ### ❌ Overly Long Files
 
 **Bad** (100+ line CLAUDE.md):
+
 ```markdown
 # CLAUDE.md
+
 [100 lines of instructions...]
 ```
 
 **Good** (concise references):
+
 ```markdown
 # CLAUDE.md
-@bots/prompts/PROJECT_overview.md
-@bots/prompts/PROJECT_development.md
-@$ACADEMICOPS/bots/prompts/python_best_practices.md
+
+@bots/prompts/PROJECT_overview.md @bots/prompts/PROJECT_development.md @$ACADEMICOPS/bots/prompts/python_best_practices.md
 ```
 
 ## Script Reference
@@ -284,9 +303,11 @@ Use type hints for all functions...
 **Purpose**: Scan and report issues in CLAUDE.md files
 
 **Options**:
+
 - `directory` - Directory to audit (default: current directory)
 
 **Exit codes**:
+
 - 0 - No issues found
 - 1 - Issues found
 
@@ -297,10 +318,12 @@ Use type hints for all functions...
 **Purpose**: Extract substantive content to chunk files
 
 **Options**:
+
 - `path` - CLAUDE.md file or directory to process
 - `--dry-run` - Show what would be extracted without writing files
 
 **Creates**:
+
 - Chunk files in appropriate tier directories
 - Updated CLAUDE.md with @references
 
@@ -311,11 +334,13 @@ Use type hints for all functions...
 **Purpose**: Convert inline content to @references
 
 **Options**:
+
 - `path` - CLAUDE.md file or directory to process
 - `--dry-run` - Show changes without writing
 - `--consolidate` - Remove duplicate references
 
 **Actions**:
+
 - Identifies instruction patterns
 - Matches with existing chunks
 - Suggests new chunks
@@ -328,16 +353,19 @@ Use type hints for all functions...
 **Purpose**: Validate all @references resolve correctly
 
 **Options**:
+
 - `path` - CLAUDE.md file or directory to validate
 - `--fix` - Show suggested fixes for broken references
 
 **Checks**:
+
 - File existence
 - Path correctness
 - Environment variable resolution
 - Circular references
 
 **Exit codes**:
+
 - 0 - All references valid
 - 1 - Invalid references found
 
@@ -367,6 +395,7 @@ export CLAUDE_PROJECT_DIR=$(pwd)
 ### References Not Resolving
 
 Check reference syntax:
+
 - Project: `@bots/prompts/chunk.md`
 - Framework: `@$ACADEMICOPS/bots/prompts/chunk.md`
 - Personal: `@$ACADEMICOPS_PERSONAL/prompts/chunk.md`
@@ -374,6 +403,7 @@ Check reference syntax:
 ### Chunks in Wrong Tier
 
 Review tier criteria:
+
 - **Project**: Specific to this repository
 - **Framework**: Reusable across all projects
 - **Personal**: User preferences across projects
@@ -381,6 +411,7 @@ Review tier criteria:
 ## Integration with Other Tools
 
 This skill works with:
+
 - **skill-migration** - Extract instructions from agent files
 - **aops-trainer** - Maintain agent instruction quality
 - **git-commit** - Validate CLAUDE.md changes before commit

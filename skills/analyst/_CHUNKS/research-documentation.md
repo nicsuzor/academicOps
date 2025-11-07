@@ -11,6 +11,7 @@ Academic research projects require rigorous, transparent, and reproducible docum
 ### Prohibited Patterns
 
 ❌ **NEVER** create these files:
+
 - `analysis_notes.md`
 - `findings_summary.md`
 - `weekly_update.md`
@@ -20,6 +21,7 @@ Academic research projects require rigorous, transparent, and reproducible docum
 - Any ad-hoc markdown file without defined purpose
 
 ❌ **NEVER** proliferate documentation:
+
 - Multiple README files in subdirectories
 - Redundant explanations in different files
 - "Notes" or "scratch" directories
@@ -109,6 +111,7 @@ project_root/
 **REQUIRED**: Documentation MUST be kept up to date with code changes.
 
 When you modify:
+
 - **dbt models** → Update `dbt/schema.yml` in SAME commit
 - **Methods implementation** → Update `methods/*.md` in SAME commit
 - **Data sources** → Update `data/README.md` in SAME commit
@@ -120,12 +123,7 @@ When you modify:
 
 Prefer these INSTEAD of separate documentation:
 
-✅ **Code comments** - Explain WHY decisions were made
-✅ **dbt model descriptions** - Inline {{ doc("description") }} in SQL
-✅ **Streamlit dashboards** - Interactive explanations with `st.markdown()`
-✅ **Jupyter notebooks** - Analysis with inline markdown cells
-✅ **GitHub issues** - Track decisions and discussions
-✅ **Git commit messages** - Document what and why
+✅ **Code comments** - Explain WHY decisions were made ✅ **dbt model descriptions** - Inline {{ doc("description") }} in SQL ✅ **Streamlit dashboards** - Interactive explanations with `st.markdown()` ✅ **Jupyter notebooks** - Analysis with inline markdown cells ✅ **GitHub issues** - Track decisions and discussions ✅ **Git commit messages** - Document what and why
 
 ### Rule 3: Fail-Fast on Stale Documentation
 
@@ -137,6 +135,7 @@ Prefer these INSTEAD of separate documentation:
 4. **Then proceed** with original task
 
 **NEVER:**
+
 - Work around stale documentation
 - Make mental notes to "fix it later"
 - Create NEW documentation files because old ones are wrong
@@ -147,29 +146,31 @@ Prefer these INSTEAD of separate documentation:
 **Each piece of information lives in EXACTLY ONE place.**
 
 ❌ **NEVER**:
+
 - Repeat README content in METHODOLOGY.md
 - Duplicate schema documentation between data/README.md and code comments
 - Copy method descriptions across multiple files
 
 ✅ **ALWAYS**:
+
 - Reference other files when needed: "See `methods/scoring.md` for details"
 - Use `@reference` pattern in agent instructions
 - Link to GitHub issues for historical context
 
 ## Where Different Information Lives
 
-| Information Type | Location | Example |
-|-----------------|----------|---------|
-| Research questions | README.md | "How does X affect Y?" |
-| Research design | METHODOLOGY.md | "We use quasi-experimental design..." |
-| Data sources | data/README.md | "Data from BigQuery project X..." |
-| Column meanings | dbt/schema.yml | "case_id: Unique identifier for..." |
-| Technical implementation | methods/*.md | "Scoring algorithm implementation..." |
-| Experimental results | experiments/YYYYMMDD-*/ | "Results from testing approach X" |
-| Data transformations | dbt models (SQL) | SQL with inline comments |
-| Analysis narratives | Streamlit dashboards | Interactive explanations |
-| Decisions and discussions | GitHub issues | "Why we chose X over Y" |
-| Code rationale | Code comments | "Using X here because Y constraint" |
+| Information Type          | Location                | Example                               |
+| ------------------------- | ----------------------- | ------------------------------------- |
+| Research questions        | README.md               | "How does X affect Y?"                |
+| Research design           | METHODOLOGY.md          | "We use quasi-experimental design..." |
+| Data sources              | data/README.md          | "Data from BigQuery project X..."     |
+| Column meanings           | dbt/schema.yml          | "case_id: Unique identifier for..."   |
+| Technical implementation  | methods/*.md            | "Scoring algorithm implementation..." |
+| Experimental results      | experiments/YYYYMMDD-*/ | "Results from testing approach X"     |
+| Data transformations      | dbt models (SQL)        | SQL with inline comments              |
+| Analysis narratives       | Streamlit dashboards    | Interactive explanations              |
+| Decisions and discussions | GitHub issues           | "Why we chose X over Y"               |
+| Code rationale            | Code comments           | "Using X here because Y constraint"   |
 
 ## Documentation Quality Standards
 
@@ -188,6 +189,7 @@ All documentation files must be:
 These documentation standards are MANDATORY, not suggestions.
 
 **Violations are BUGS** and must be:
+
 1. Logged as GitHub issues
 2. Fixed immediately
 3. Tracked like code defects

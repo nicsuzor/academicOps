@@ -1,6 +1,7 @@
 # Hook Path Regression Fix
 
 ## Metadata
+
 - Date: 2025-11-02
 - Issue: #176
 - Commit: c1227b2
@@ -19,6 +20,7 @@ This is a REGRESSION fix. The original fix in commit 9302bdf (Oct 31) correctly 
 ## Changes Made
 
 Fixed 5 hook paths in `config/settings.json`:
+
 1. PreToolUse: `validate_tool.py` - removed `/bots/` from path
 2. SubagentStop: `validate_stop.py` - removed `/bots/` from path
 3. Stop: `validate_stop.py` - removed `/bots/` from path
@@ -40,6 +42,7 @@ Note: `~/.claude/settings.json` was automatically updated when config/settings.j
 **Implementation Complete** - User must test in production.
 
 **Expected behavior**:
+
 - Start new session from any project directory
 - Run command triggering PreToolUse hook (WebFetch, Bash, Edit, etc.)
 - Hook should execute without "Hook not found" error
@@ -53,10 +56,10 @@ PARTIAL - Implementation complete, awaiting user testing to confirm success.
 
 ## Prevention Strategy
 
-**Why did regression happen?**
-When SessionStart hooks were restored in later commits, developers copy-pasted old broken paths instead of checking the corrected paths from commit 9302bdf.
+**Why did regression happen?** When SessionStart hooks were restored in later commits, developers copy-pasted old broken paths instead of checking the corrected paths from commit 9302bdf.
 
 **How to prevent future regressions?**
+
 1. **Enforcement Hierarchy**: Move hook path validation UP the stack
    - Q1 (Scripts): Could we auto-validate hook paths?
    - Q2 (Hooks): SessionStart hook could validate other hook paths (bootstrapping problem)

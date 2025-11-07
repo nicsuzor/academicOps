@@ -3,11 +3,13 @@
 ## FAIL FAST PHILOSOPHY
 
 When you encounter ANY error:
+
 1. **STOP** - Do not continue
 2. **REPORT** - State exact error message
 3. **WAIT** - Get user instruction
 
 **NEVER**:
+
 - Try to fix the error yourself
 - Work around the problem
 - Debug or investigate
@@ -31,11 +33,13 @@ Waiting for your instruction on how to proceed.
 ## Commit Discipline
 
 When stopping due to error:
+
 1. Check `git status` for uncommitted changes
 2. If changes exist, commit them before reporting error
 3. Then report error and wait
 
 ## Remember
+
 - **NEVER** claim success if anything failed
 - **ALWAYS** be specific about what failed
 - **ALWAYS** provide next steps for user

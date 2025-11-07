@@ -7,6 +7,7 @@ Statsmodels is Python's premier library for statistical modeling, providing tool
 ## When to Use This Skill
 
 This skill should be used when:
+
 - Fitting regression models (OLS, WLS, GLS, quantile regression)
 - Performing generalized linear modeling (logistic, Poisson, Gamma, etc.)
 - Analyzing discrete outcomes (binary, multinomial, count, ordinal)
@@ -171,6 +172,7 @@ if overdispersion > 1.5:
 Comprehensive suite of linear models for continuous outcomes with various error structures.
 
 **Available models:**
+
 - **OLS**: Standard linear regression with i.i.d. errors
 - **WLS**: Weighted least squares for heteroskedastic errors
 - **GLS**: Generalized least squares for arbitrary covariance structure
@@ -180,6 +182,7 @@ Comprehensive suite of linear models for continuous outcomes with various error 
 - **Recursive/Rolling**: Time-varying parameter estimation
 
 **Key features:**
+
 - Comprehensive diagnostic tests
 - Robust standard errors (HC, HAC, cluster-robust)
 - Influence statistics (Cook's distance, leverage, DFFITS)
@@ -196,6 +199,7 @@ Comprehensive suite of linear models for continuous outcomes with various error 
 Flexible framework extending linear models to non-normal distributions.
 
 **Distribution families:**
+
 - **Binomial**: Binary outcomes or proportions (logistic regression)
 - **Poisson**: Count data
 - **Negative Binomial**: Overdispersed counts
@@ -205,10 +209,12 @@ Flexible framework extending linear models to non-normal distributions.
 - **Tweedie**: Flexible family for semi-continuous data
 
 **Link functions:**
+
 - Logit, Probit, Log, Identity, Inverse, Sqrt, CLogLog, Power
 - Choose based on interpretation needs and model fit
 
 **Key features:**
+
 - Maximum likelihood estimation via IRLS
 - Deviance and Pearson residuals
 - Goodness-of-fit statistics
@@ -224,21 +230,25 @@ Flexible framework extending linear models to non-normal distributions.
 Models for categorical and count outcomes.
 
 **Binary models:**
+
 - **Logit**: Logistic regression (odds ratios)
 - **Probit**: Probit regression (normal distribution)
 
 **Multinomial models:**
+
 - **MNLogit**: Unordered categories (3+ levels)
 - **Conditional Logit**: Choice models with alternative-specific variables
 - **Ordered Model**: Ordinal outcomes (ordered categories)
 
 **Count models:**
+
 - **Poisson**: Standard count model
 - **Negative Binomial**: Overdispersed counts
 - **Zero-Inflated**: Excess zeros (ZIP, ZINB)
 - **Hurdle Models**: Two-stage models for zero-heavy data
 
 **Key features:**
+
 - Maximum likelihood estimation
 - Marginal effects at means or average marginal effects
 - Model comparison via AIC/BIC
@@ -254,6 +264,7 @@ Models for categorical and count outcomes.
 Comprehensive time series modeling and forecasting capabilities.
 
 **Univariate models:**
+
 - **AutoReg (AR)**: Autoregressive models
 - **ARIMA**: Autoregressive integrated moving average
 - **SARIMAX**: Seasonal ARIMA with exogenous variables
@@ -261,17 +272,20 @@ Comprehensive time series modeling and forecasting capabilities.
 - **ETS**: Innovations state space models
 
 **Multivariate models:**
+
 - **VAR**: Vector autoregression
 - **VARMAX**: VAR with MA and exogenous variables
 - **Dynamic Factor Models**: Extract common factors
 - **VECM**: Vector error correction models (cointegration)
 
 **Advanced models:**
+
 - **State Space**: Kalman filtering, custom specifications
 - **Regime Switching**: Markov switching models
 - **ARDL**: Autoregressive distributed lag
 
 **Key features:**
+
 - ACF/PACF analysis for model identification
 - Stationarity tests (ADF, KPSS)
 - Forecasting with prediction intervals
@@ -289,12 +303,14 @@ Comprehensive time series modeling and forecasting capabilities.
 Extensive testing and diagnostic capabilities for model validation.
 
 **Residual diagnostics:**
+
 - Autocorrelation tests (Ljung-Box, Durbin-Watson, Breusch-Godfrey)
 - Heteroskedasticity tests (Breusch-Pagan, White, ARCH)
 - Normality tests (Jarque-Bera, Omnibus, Anderson-Darling, Lilliefors)
 - Specification tests (RESET, Harvey-Collier)
 
 **Influence and outliers:**
+
 - Leverage (hat values)
 - Cook's distance
 - DFFITS and DFBETAs
@@ -302,6 +318,7 @@ Extensive testing and diagnostic capabilities for model validation.
 - Influence plots
 
 **Hypothesis testing:**
+
 - t-tests (one-sample, two-sample, paired)
 - Proportion tests
 - Chi-square tests
@@ -309,16 +326,19 @@ Extensive testing and diagnostic capabilities for model validation.
 - ANOVA (one-way, two-way, repeated measures)
 
 **Multiple comparisons:**
+
 - Tukey's HSD
 - Bonferroni correction
 - False Discovery Rate (FDR)
 
 **Effect sizes and power:**
+
 - Cohen's d, eta-squared
 - Power analysis for t-tests, proportions
 - Sample size calculations
 
 **Robust inference:**
+
 - Heteroskedasticity-consistent SEs (HC0-HC3)
 - HAC standard errors (Newey-West)
 - Cluster-robust standard errors
@@ -511,7 +531,9 @@ print(f"CV RMSE: {np.mean(cv_scores):.4f} ± {np.std(cv_scores):.4f}")
 This skill includes comprehensive reference files for detailed guidance:
 
 ### references/linear_models.md
+
 Detailed coverage of linear regression models including:
+
 - OLS, WLS, GLS, GLSAR, Quantile Regression
 - Mixed effects models
 - Recursive and rolling regression
@@ -521,7 +543,9 @@ Detailed coverage of linear regression models including:
 - Hypothesis testing and model comparison
 
 ### references/glm.md
+
 Complete guide to generalized linear models:
+
 - All distribution families (Binomial, Poisson, Gamma, etc.)
 - Link functions and when to use each
 - Model fitting and interpretation
@@ -530,7 +554,9 @@ Complete guide to generalized linear models:
 - Applications (logistic, Poisson, Gamma regression)
 
 ### references/discrete_choice.md
+
 Comprehensive guide to discrete outcome models:
+
 - Binary models (Logit, Probit)
 - Multinomial models (MNLogit, Conditional Logit)
 - Count models (Poisson, Negative Binomial, Zero-Inflated, Hurdle)
@@ -539,7 +565,9 @@ Comprehensive guide to discrete outcome models:
 - Model diagnostics and comparison
 
 ### references/time_series.md
+
 In-depth time series analysis guidance:
+
 - Univariate models (AR, ARIMA, SARIMAX, Exponential Smoothing)
 - Multivariate models (VAR, VARMAX, Dynamic Factor)
 - State space models
@@ -548,7 +576,9 @@ In-depth time series analysis guidance:
 - Granger causality, IRF, FEVD
 
 ### references/stats_diagnostics.md
+
 Comprehensive statistical testing and diagnostics:
+
 - Residual diagnostics (autocorrelation, heteroskedasticity, normality)
 - Influence and outlier detection
 - Hypothesis tests (parametric and non-parametric)
@@ -558,6 +588,7 @@ Comprehensive statistical testing and diagnostics:
 - Power analysis and effect sizes
 
 **When to reference:**
+
 - Need detailed parameter explanations
 - Choosing between similar models
 - Troubleshooting convergence or diagnostic issues
@@ -565,6 +596,7 @@ Comprehensive statistical testing and diagnostics:
 - Looking for code examples for advanced features
 
 **Search patterns:**
+
 ```bash
 # Find information about specific models
 grep -r "Quantile Regression" references/
@@ -597,6 +629,7 @@ grep -r "SARIMAX" references/time_series.md
 ## Getting Help
 
 For detailed documentation and examples:
+
 - Official docs: https://www.statsmodels.org/stable/
 - User guide: https://www.statsmodels.org/stable/user-guide.html
 - Examples: https://www.statsmodels.org/stable/examples/index.html

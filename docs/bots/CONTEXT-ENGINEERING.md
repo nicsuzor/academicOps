@@ -89,9 +89,7 @@ Rather than pre-loading all data, maintain lightweight identifiers and dynamical
 Use XML tags or Markdown headers to delineate sections:
 
 ```markdown
-<background_information>
-[Essential context only]
-</background_information>
+<background_information> [Essential context only] </background_information>
 
 <instructions>
 [Clear, actionable steps]

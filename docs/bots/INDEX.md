@@ -7,6 +7,7 @@ This repository is the academicOps framework - the core instruction and tooling 
 See `paths.toml` in repo root for canonical path definitions.
 
 **Key directories:**
+
 - `core/` - Universal instructions loaded at SessionStart
 - `agents/` - Self-contained agentic workflows (subagents)
 - `commands/` - User-invoked slash commands
@@ -27,6 +28,7 @@ All `.md` files support 3-tier stacking when read by agents.
 ## Maintenance
 
 When adding/moving instruction files:
+
 1. Update `paths.toml` if new directory types needed
 2. Update `docs/INSTRUCTION-INDEX.md` with file registry
 3. Run `scripts/check_instruction_orphans.py` to verify linkage

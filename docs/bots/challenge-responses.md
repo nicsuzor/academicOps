@@ -11,6 +11,7 @@ When challenges arise, the supervisor has THREE core responsibilities:
 3. **DELEGATE** - Give dev agent specific, actionable instructions
 
 **NEVER**:
+
 - Ask user "should I fix this?" - YOU decide
 - Work around problems - Fix them or escalate
 - Continue without addressing root cause
@@ -23,6 +24,7 @@ When challenges arise, the supervisor has THREE core responsibilities:
 #### Scenario: Test fails after implementation
 
 **Analysis checklist**:
+
 - [ ] Is error message clear and specific?
 - [ ] Is it a coding error (wrong logic)?
 - [ ] Is it a configuration issue (wrong setup)?
@@ -30,6 +32,7 @@ When challenges arise, the supervisor has THREE core responsibilities:
 - [ ] Is file:line information available?
 
 **Decision tree**:
+
 ```
 Q: Is error message clear?
 ├─ YES → Can identify specific fix?
@@ -43,6 +46,7 @@ Q: Has this been attempted 3+ times?
 ```
 
 **Response Pattern A: Clear Fix Needed**
+
 ```
 Task(subagent_type="dev", prompt="
 Fix this test failure:
@@ -72,6 +76,7 @@ Report back:
 ```
 
 **Response Pattern B: Investigation Needed**
+
 ```
 Task(subagent_type="dev", prompt="
 Investigate this test failure:
@@ -92,6 +97,7 @@ Do NOT fix yet - investigate and report back first.
 ```
 
 **Response Pattern C: Add Debugging**
+
 ```
 Task(subagent_type="dev", prompt="
 Add debugging to diagnose test failure:
@@ -116,6 +122,7 @@ After diagnosing, we'll remove debug code and fix root cause.
 **This indicates test is wrong, not implementation.**
 
 **Response**:
+
 ```
 Task(subagent_type="dev", prompt="
 The test passes but functionality doesn't work correctly. Test needs fixing.
@@ -150,12 +157,14 @@ Report back:
 #### Scenario: git-commit skill blocks with violations
 
 **Analysis checklist**:
+
 - [ ] Are violations clearly listed with file:line?
 - [ ] Do I understand which rule was violated?
 - [ ] Is fix straightforward?
 - [ ] Are there multiple violations?
 
 **Response Pattern: Fix Violations Serially**
+
 ```
 Task(subagent_type="dev", prompt="
 Fix these code quality violations:
@@ -180,6 +189,7 @@ Fix ONLY Violation 1 in this step. Report back after re-validation.
 ```
 
 **After first violation fixed**:
+
 ```
 Violation 1: FIXED ✓
 
@@ -188,6 +198,7 @@ Moving to Violation 2:
 ```
 
 **If violations keep appearing (3+ iterations)**:
+
 ```
 Multiple violations persist after 3 fix attempts.
 
@@ -217,6 +228,7 @@ C) Different approach?"
 **Immediate action**: STOP work.
 
 **Response to user**:
+
 ```
 🚨 SCOPE DRIFT DETECTED
 
@@ -239,11 +251,13 @@ Which direction should I take?
 ```
 
 **Do NOT**:
+
 - Continue without user approval
 - Silently expand scope
 - Rationalize why growth is acceptable
 
 **After user decides**:
+
 - Update TodoWrite with approved scope
 - Document decision in planning section
 - Reset thrashing/drift counters
@@ -257,6 +271,7 @@ Which direction should I take?
 **Immediate action**: STOP work.
 
 **Analysis**:
+
 ```
 File: [filename]
 Modifications:
@@ -274,6 +289,7 @@ Root cause hypothesis: [your analysis]
 ```
 
 **Response**:
+
 ```
 Use aops-bug skill to log thrashing:
 
@@ -305,6 +321,7 @@ How should I proceed?"
 #### Scenario: Dev agent does multiple steps instead of one
 
 **Immediate response**:
+
 ```
 Task(subagent_type="dev", prompt="
 STOP. You did multiple steps when instructed to do ONE.
@@ -325,10 +342,10 @@ Required action:
 ")
 ```
 
-**After dev confirms**:
-Re-issue original instruction with STRONGER emphasis on single task.
+**After dev confirms**: Re-issue original instruction with STRONGER emphasis on single task.
 
 **If pattern repeats (3+ times)**:
+
 ```
 Use aops-bug skill to log:
 
@@ -348,6 +365,7 @@ After logging, continue with EXTREME explicit instructions:
 #### Scenario: Dev agent skips required skill usage
 
 **Immediate response**:
+
 ```
 Task(subagent_type="dev", prompt="
 STOP. You did not use the required skill.
@@ -369,6 +387,7 @@ Required action:
 ```
 
 **If pattern repeats**:
+
 ```
 Use aops-bug skill to log:
 
@@ -389,6 +408,7 @@ After logging, strengthen instructions:
 #### Scenario: Script/hook/tool fails with error
 
 **Analysis**:
+
 ```
 Component: [script/hook/tool name]
 Error: [full error message]
@@ -401,6 +421,7 @@ Is this:
 ```
 
 **Response Pattern: User Error**
+
 ```
 Error is due to incorrect usage.
 
@@ -411,6 +432,7 @@ Retry with correct usage:
 ```
 
 **Response Pattern: Environment Issue**
+
 ```
 Error indicates missing dependency or environment problem.
 
@@ -429,6 +451,7 @@ Blocking further work until this is resolved."
 ```
 
 **Response Pattern: Infrastructure Bug**
+
 ```
 Use aops-bug skill to log infrastructure bug:
 
@@ -464,6 +487,7 @@ How should I proceed?"
 **DO NOT guess or assume.**
 
 **Response to user**:
+
 ```
 Ambiguity encountered: [specific unclear aspect]
 
@@ -486,6 +510,7 @@ Which approach should I take?
 ```
 
 **After user clarifies**:
+
 - Document decision in plan
 - Proceed with chosen approach
 - Reference decision in commit messages
@@ -494,26 +519,28 @@ Which approach should I take?
 
 ## Response Time Guidelines
 
-| Challenge | Analysis Time | Max Iterations | Escalation Point |
-|-----------|---------------|----------------|------------------|
-| Test failure | 30 seconds | 3 attempts | After 3rd failure |
-| Code violation | 20 seconds | 5 violations | After 3+ iteration loops |
-| Scope drift | Immediate | N/A | Immediate (always escalate) |
-| Thrashing | Immediate | 3 modifications | After 3rd modification |
-| Agent non-compliance | Immediate | 3 violations | After 3rd violation |
-| Infrastructure failure | 1 minute | 1 retry | After 2nd failure or if bug confirmed |
-| Uncertainty | Immediate | N/A | Immediate (never guess) |
+| Challenge              | Analysis Time | Max Iterations  | Escalation Point                      |
+| ---------------------- | ------------- | --------------- | ------------------------------------- |
+| Test failure           | 30 seconds    | 3 attempts      | After 3rd failure                     |
+| Code violation         | 20 seconds    | 5 violations    | After 3+ iteration loops              |
+| Scope drift            | Immediate     | N/A             | Immediate (always escalate)           |
+| Thrashing              | Immediate     | 3 modifications | After 3rd modification                |
+| Agent non-compliance   | Immediate     | 3 violations    | After 3rd violation                   |
+| Infrastructure failure | 1 minute      | 1 retry         | After 2nd failure or if bug confirmed |
+| Uncertainty            | Immediate     | N/A             | Immediate (never guess)               |
 
 ## Anti-Patterns to Avoid
 
 ### ❌ Asking User About Routine Decisions
 
 **BAD**:
+
 ```
 "Test failed with NameError. Should I fix it?"
 ```
 
 **GOOD**:
+
 ```
 [Analyze error]
 [Instruct dev to fix specific issue]
@@ -526,12 +553,14 @@ Which approach should I take?
 ### ❌ Continuing Despite Red Flags
 
 **BAD**:
+
 ```
 [Scope grows to 20 tasks from original 10]
 [Supervisor continues without mentioning]
 ```
 
 **GOOD**:
+
 ```
 [Scope hits 20% growth threshold]
 🚨 STOP IMMEDIATELY
@@ -544,11 +573,13 @@ Which approach should I take?
 ### ❌ Vague Error Reporting
 
 **BAD**:
+
 ```
 "Something's wrong with the authentication code"
 ```
 
 **GOOD**:
+
 ```
 "Test failed at src/auth/oauth.py:45 with AttributeError: 'NoneType' has no attribute 'expiry'.
 Root cause: Token validation doesn't check for None before accessing expiry.
@@ -560,12 +591,14 @@ Instructing dev to add explicit None check."
 ### ❌ Working Around Infrastructure Issues
 
 **BAD**:
+
 ```
 [Hook fails]
 "Let's skip the hook and commit directly"
 ```
 
 **GOOD**:
+
 ```
 [Hook fails]
 "Hook validation failed. This is an infrastructure issue.

@@ -11,6 +11,7 @@ This reference documents all available skills that the supervisor can explicitly
 **When supervisor should require**: EVERY time tests need to be written or modified.
 
 **Explicit delegation pattern**:
+
 ```
 Task(subagent_type="dev", prompt="
 Use test-writing skill to create ONE failing test for [specific behavior].
@@ -33,9 +34,10 @@ After creating test, STOP and report:
 ```
 
 **Key constraints to enforce**:
+
 - MUST use real_bm or real_conf fixtures
 - FORBIDDEN: initialize_config_dir(), compose(), GlobalHydra in test files
-- FORBIDDEN: Mocking internal code (buttermilk.*, bot.*, project code)
+- FORBIDDEN: Mocking internal code (buttermilk._, bot._, project code)
 - REQUIRED: JSON fixture files for test data
 - REQUIRED: Integration test pattern (test complete workflows)
 
@@ -52,6 +54,7 @@ After creating test, STOP and report:
 **When supervisor should require**: EVERY time code is ready to commit (after tests pass).
 
 **Explicit delegation pattern**:
+
 ```
 Task(subagent_type="dev", prompt="
 Use git-commit skill to validate and commit these changes:
@@ -83,6 +86,7 @@ After git-commit skill completes, report:
 ```
 
 **Key constraints to enforce**:
+
 - Blocks commit if ANY critical rule violated
 - Reports specific violations (file:line, what's wrong, how to fix)
 - Does NOT fix problems automatically
@@ -104,6 +108,7 @@ After git-commit skill completes, report:
 **When supervisor should require**: When agent violates axioms, infrastructure fails, or experiments need documentation.
 
 **Explicit delegation pattern**:
+
 ```
 Task(subagent_type="dev", prompt="
 Use aops-bug skill to document this [violation/bug/experiment]:
@@ -127,6 +132,7 @@ After aops-bug skill completes, report:
 ```
 
 **Key constraints to enforce**:
+
 - MUST search exhaustively before creating new issue
 - MUST categorize by behavioral pattern
 - MUST link to violated axiom from _CORE.md
@@ -145,6 +151,7 @@ After aops-bug skill completes, report:
 **When supervisor should require**: When documenting bugs in any project (not academicOps-specific).
 
 **Explicit delegation pattern**:
+
 ```
 Task(subagent_type="dev", prompt="
 Use github-issue skill to [search/create/update] issue in [owner/repo]:
@@ -174,6 +181,7 @@ After github-issue skill completes, report:
 ```
 
 **Key constraints to enforce**:
+
 - MUST search before creating (3+ strategies)
 - MUST use clear, specific titles
 - MUST include technical details (file:line, errors, environment)
@@ -204,6 +212,7 @@ After github-issue skill completes, report:
 **When supervisor should require**: When completing experiments that will become unreproducible (data removal, major pipeline changes).
 
 **Explicit delegation pattern**:
+
 ```
 Task(subagent_type="dev", prompt="
 Use archiver skill to preserve this experimental work:
@@ -227,6 +236,7 @@ After archiver skill completes, report:
 ```
 
 **Key constraints to enforce**:
+
 - MUST export to HTML (permanent record)
 - MUST document methodology and findings
 - Cleans up only AFTER archive complete
@@ -274,6 +284,7 @@ DECISION POINT: Experiment complete with data removal pending?
 ## Forbidden Patterns
 
 **NEVER allow dev agent to**:
+
 - Write tests without using test-writing skill
 - Commit code without using git-commit skill
 - Mock internal code (use respx for external APIs only)
@@ -283,6 +294,7 @@ DECISION POINT: Experiment complete with data removal pending?
 - Do multiple steps without reporting back
 
 **ALWAYS require dev agent to**:
+
 - Use specified skill when supervisor requires it
 - Report back after EACH atomic task
 - Stop and wait for next instruction
@@ -307,11 +319,13 @@ When instructing dev agent:
 ## Example: Correct vs Incorrect Delegation
 
 ❌ **INCORRECT** (vague, no skill required):
+
 ```
 Task(subagent_type="dev", prompt="Write a test for authentication and commit it")
 ```
 
 ✅ **CORRECT** (explicit, skill required, specific):
+
 ```
 Task(subagent_type="dev", prompt="
 Use test-writing skill to create ONE failing test:

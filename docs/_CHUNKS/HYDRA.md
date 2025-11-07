@@ -1,7 +1,6 @@
 # Hydra Configuration - Complete Guide
 
-**Last Updated:** 2025-10-30
-**Hydra Version:** 1.3+ (backward compatible with 1.1+)
+**Last Updated:** 2025-10-30 **Hydra Version:** 1.3+ (backward compatible with 1.1+)
 
 Complete reference for Hydra configuration in academicOps projects. Covers principles, patterns, testing, and solutions to common errors.
 
@@ -79,6 +78,7 @@ log_level: INFO
 ```
 
 **Run with overrides:**
+
 ```bash
 python main.py db.host=prod-db.example.com app.workers=8
 python main.py db=sqlite  # Switch to conf/db/sqlite.yaml
@@ -125,11 +125,11 @@ The `defaults` list controls composition order. **It is NOT included in the fina
 
 ```yaml
 defaults:
-  - _self_                  # Position of this config's values
-  - db: postgres            # Select from db/ group
-  - optional cache: redis   # Don't error if missing
-  - override db: sqlite     # Replace previous db choice
-  - db@replica: postgres    # Second instance with custom package
+  - _self_ # Position of this config's values
+  - db: postgres # Select from db/ group
+  - optional cache: redis # Don't error if missing
+  - override db: sqlite # Replace previous db choice
+  - db@replica: postgres # Second instance with custom package
 ```
 
 ### The `_self_` Keyword (Critical!)
@@ -140,20 +140,20 @@ Controls where the primary config's values appear in composition order.
 # Pattern 1: Primary config OVERRIDES defaults (RECOMMENDED)
 defaults:
   - db: postgres
-  - _self_        # ← config.yaml values placed AFTER db/postgres.yaml
+  - _self_ # ← config.yaml values placed AFTER db/postgres.yaml
 
 db:
-  port: 3306      # This WINS over postgres.yaml's port
+  port: 3306 # This WINS over postgres.yaml's port
 ```
 
 ```yaml
 # Pattern 2: Defaults OVERRIDE primary config (rare)
 defaults:
-  - _self_        # ← config.yaml values placed FIRST
+  - _self_ # ← config.yaml values placed FIRST
   - db: postgres
 
 db:
-  port: 3306      # db/postgres.yaml WINS over this
+  port: 3306 # db/postgres.yaml WINS over this
 ```
 
 **Rule:** Always include `_self_` explicitly. Hydra 1.1+ warns if missing.
@@ -169,20 +169,22 @@ defaults:
 
 app_name: myapp
 db:
-  port: 9999      # Override postgres default
+  port: 9999 # Override postgres default
 ```
 
 **Composition order:**
+
 1. `db/postgres.yaml` → `{driver: postgres, host: localhost, port: 5432}`
 2. `cache/redis.yaml` → adds `{cache: {host: localhost, port: 6379}}`
 3. `_self_` (config.yaml) → overrides `db.port: 9999`, adds `app_name: myapp`
 
 **Final config:**
+
 ```yaml
 db:
   driver: postgres
   host: localhost
-  port: 9999        # ← Overridden by config.yaml
+  port: 9999 # ← Overridden by config.yaml
 cache:
   host: localhost
   port: 6379
@@ -194,6 +196,7 @@ app_name: myapp
 Use `override` to **change** a group selection that was already defined (e.g., in a parent config).
 
 **Problem:**
+
 ```yaml
 # base.yaml
 defaults:
@@ -202,22 +205,25 @@ defaults:
 # child.yaml
 defaults:
   - base
-  - db: sqlite    # ❌ ERROR: "db appears more than once"
+  - db: sqlite # ❌ ERROR: "db appears more than once"
 ```
 
 **Solution:**
+
 ```yaml
 # child.yaml
 defaults:
   - base
-  - override db: sqlite  # ✅ Replace inherited db choice
+  - override db: sqlite # ✅ Replace inherited db choice
 ```
 
 **When to use:**
+
 - Inheriting from a base config that already selects a group
 - Changing a group choice later in the same defaults list
 
 **When NOT to use:**
+
 - First time selecting a group (just use `db: postgres`)
 
 ### Package Directive (`@package`)
@@ -242,11 +248,12 @@ port: 5432
 ```
 
 **Using packages in defaults:**
+
 ```yaml
 # config.yaml
 defaults:
-  - db@primary: postgres    # Package as 'primary'
-  - db@replica: postgres    # Package as 'replica'
+  - db@primary: postgres # Package as 'primary'
+  - db@replica: postgres # Package as 'replica'
 
 # Result:
 # primary:
@@ -366,21 +373,22 @@ Keep values DRY by referencing other config values.
 ```yaml
 # conf/env/prod.yaml
 region: ap-south-1
-bucket: myapp-${env.region}          # → myapp-ap-south-1
+bucket: myapp-${env.region} # → myapp-ap-south-1
 db:
-  host: prod-db.internal.${env.region}  # → prod-db.internal.ap-south-1
+  host: prod-db.internal.${env.region} # → prod-db.internal.ap-south-1
 ```
 
 ### Environment Variable Interpolation
 
 ```yaml
 # conf/db/postgres.yaml
-user: ${oc.env:DB_USER}           # Required - fails if missing
-password: ${oc.env:DB_PASSWORD}   # Required - fails if missing
+user: ${oc.env:DB_USER} # Required - fails if missing
+password: ${oc.env:DB_PASSWORD} # Required - fails if missing
 host: ${oc.env:DB_HOST,localhost} # Optional - defaults to localhost
 ```
 
 **Key syntax:**
+
 - `${oc.env:VAR}` - Required env var (fails if missing)
 - `${oc.env:VAR,default}` - Optional with default
 - `${oc.env:VAR,?}` - Required (alternative syntax)
@@ -390,7 +398,7 @@ host: ${oc.env:DB_HOST,localhost} # Optional - defaults to localhost
 ```yaml
 # conf/config.yaml
 defaults:
-  - db: ${oc.env:DB_TYPE,postgres}  # Use env var, default to postgres
+  - db: ${oc.env:DB_TYPE,postgres} # Use env var, default to postgres
   - optional monitoring: ${oc.env:ENABLE_MONITORING,null}
 ```
 
@@ -433,7 +441,7 @@ log_level: ${oc.select:debug,DEBUG,INFO}
 ```yaml
 # ✅ CORRECT - Fail fast if secret missing
 # conf/db/postgres.yaml
-user: ${oc.env:DB_USER,?}      # '?' means required
+user: ${oc.env:DB_USER,?} # '?' means required
 password: ${oc.env:DB_PASSWORD,?}
 ```
 
@@ -504,15 +512,16 @@ password: ${oc.env:DB_PASSWORD,?}
 # ❌ WRONG
 defaults:
   - db: postgres
-  - db: sqlite    # Error!
+  - db: sqlite # Error!
 ```
 
 **Solution:** Use `override` for the second selection:
+
 ```yaml
 # ✅ CORRECT
 defaults:
   - db: postgres
-  - override db: sqlite  # Replaces postgres
+  - override db: sqlite # Replaces postgres
 ```
 
 ### Error 2: "Multiple values for X. To override use 'override X: value'"
@@ -527,20 +536,22 @@ defaults:
 # child.yaml
 defaults:
   - base
-  - db: sqlite    # ❌ Conflicts with inherited db: postgres
+  - db: sqlite # ❌ Conflicts with inherited db: postgres
 ```
 
 **Solution:**
+
 ```yaml
 # child.yaml
 defaults:
   - base
-  - override db: sqlite  # ✅ Replace inherited choice
+  - override db: sqlite # ✅ Replace inherited choice
 ```
 
 ### Error 3: Missing `_self_` Warning
 
 **Warning message:**
+
 ```
 'config' is validated against ConfigStore schema.
 This behavior is deprecated in Hydra 1.1 and will be removed in Hydra 1.2.
@@ -549,11 +560,12 @@ This behavior is deprecated in Hydra 1.1 and will be removed in Hydra 1.2.
 **Cause:** Primary config has values but defaults list missing `_self_`.
 
 **Solution:** Add `_self_` explicitly:
+
 ```yaml
 # ✅ CORRECT
 defaults:
   - db: postgres
-  - _self_      # Always include!
+  - _self_ # Always include!
 
 my_value: 123
 ```
@@ -565,6 +577,7 @@ my_value: 123
 **Cause:** Using `OmegaConf.to_container()` without `resolve=True`.
 
 **Solution:**
+
 ```python
 # ❌ WRONG
 plain_dict = OmegaConf.to_container(cfg)
@@ -578,6 +591,7 @@ plain_dict = OmegaConf.to_container(cfg, resolve=True)
 **Cause:** Trying to override a key that doesn't exist.
 
 **Solution:** Use `+` prefix to add new keys:
+
 ```bash
 # ❌ WRONG (if 'new_key' doesn't exist)
 python main.py new_key=value
@@ -693,8 +707,8 @@ defaults:
 ```yaml
 # ✅ GOOD - Explicit config files
 defaults:
-  - cache: redis      # conf/cache/redis.yaml
-  - cache: memory     # conf/cache/memory.yaml
+  - cache: redis # conf/cache/redis.yaml
+  - cache: memory # conf/cache/memory.yaml
 
 # ❌ BAD - Boolean flags
 use_redis: true
@@ -780,6 +794,7 @@ python main.py -m db=postgres,sqlite cache=redis,memory env=local,prod
 ### 10. Version Control `.hydra/` Output
 
 Add to `.gitignore`:
+
 ```
 # Hydra output
 outputs/
@@ -797,12 +812,12 @@ But keep `conf/` in version control.
 
 ```yaml
 defaults:
-  - CONFIG              # Include config file
-  - GROUP: value        # Select from group
+  - CONFIG # Include config file
+  - GROUP: value # Select from group
   - optional GROUP: val # Suppress error if missing
   - override GROUP: val # Replace previous selection
-  - GROUP@pkg: val      # Custom package location
-  - _self_              # Position of this config
+  - GROUP@pkg: val # Custom package location
+  - _self_ # Position of this config
 ```
 
 ### Interpolation Syntax
@@ -828,13 +843,13 @@ python main.py -m key=v1,v2,v3        # Multi-run sweep
 
 ### Common Keywords
 
-| Keyword | Purpose |
-|---------|---------|
-| `_self_` | Position primary config in composition |
-| `_global_` | Place content at root |
-| `_group_` | Use group path as package |
-| `override` | Replace existing group selection |
-| `optional` | Don't error if config missing |
+| Keyword    | Purpose                                |
+| ---------- | -------------------------------------- |
+| `_self_`   | Position primary config in composition |
+| `_global_` | Place content at root                  |
+| `_group_`  | Use group path as package              |
+| `override` | Replace existing group selection       |
+| `optional` | Don't error if config missing          |
 
 ---
 
@@ -847,7 +862,7 @@ python main.py -m key=v1,v2,v3        # Multi-run sweep
 defaults:
   - db: postgres
   - app: api
-  - env: local        # Default environment
+  - env: local # Default environment
   - _self_
 
 # Switch at runtime
@@ -881,6 +896,7 @@ replica:
 ```
 
 **Result:**
+
 ```yaml
 primary:
   driver: postgres
@@ -932,6 +948,7 @@ def run(cfg: Config):  # Type-checked!
 ```
 
 **Benefits:**
+
 - Type checking in IDE
 - Automatic validation
 - Fails fast on typos (`cfg.db.hozt` → error)

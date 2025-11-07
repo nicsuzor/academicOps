@@ -43,11 +43,13 @@ $ACADEMICOPS/                  # Framework root
 **Purpose**: Orchestrate skills, provide agent-specific authority
 
 **When to create here**:
+
 - Creating new subagent workflow
 - Defining agent with specific tool permissions
 - Orchestrating multiple skills
 
 **Requirements**:
+
 - YAML frontmatter: `name`, `description`
 - <500 lines total
 - MANDATORY skill-first pattern (invoke skill before work)
@@ -60,17 +62,20 @@ $ACADEMICOPS/                  # Framework root
 **Purpose**: Reusable workflows, domain expertise
 
 **When to create here**:
+
 - Creating portable, reusable workflow
 - Packaging domain-specific knowledge
 - Building tool integration
 
 **Requirements**:
+
 - YAML frontmatter: `name`, `description`, `license`, `permalink`
 - SKILL.md <300 lines
 - MANDATORY `resources/` directory with symlinks
 - Follow anti-bloat checklist
 
 **Structure**:
+
 ```
 skills/skill-name/
 ├── SKILL.md              # Main skill file
@@ -88,10 +93,12 @@ skills/skill-name/
 **Purpose**: User-facing shortcuts to load workflows
 
 **When to create here**:
+
 - Creating slash command (e.g., `/trainer`, `/analyst`)
 - Building user shortcut to agent/skill
 
 **Requirements**:
+
 - YAML frontmatter: `description`
 - MANDATORY skill-first pattern
 - Keep under 50 lines
@@ -102,17 +109,20 @@ skills/skill-name/
 **Purpose**: DRY single sources for universal concepts
 
 **When to create here**:
+
 - Content needed by multiple agents/skills
 - Universal principles or standards
 - Framework infrastructure knowledge
 
 **Current files**:
+
 - `AXIOMS.md` - Universal principles (97 lines)
 - `INFRASTRUCTURE.md` - Framework structure (52 lines)
 - `SKILL-PRIMER.md` - Skill context (19 lines)
 - `AGENT-BEHAVIOR.md` - Conversational rules (26 lines)
 
 **Requirements**:
+
 - Referenced by `core/_CORE.md`
 - Symlinked to `skills/*/resources/`
 - Never duplicated elsewhere
@@ -123,12 +133,14 @@ skills/skill-name/
 **Purpose**: Auto-loaded context at SessionStart
 
 **When to create here**:
+
 - Universal instructions for all agents
 - Development standards
 - Testing requirements
 - Style guidelines
 
 **Current files**:
+
 - `_CORE.md` - References chunks/
 - `DEVELOPMENT.md` - Development standards
 - `TESTING.md` - Testing requirements
@@ -142,12 +154,14 @@ skills/skill-name/
 **Purpose**: Agent development and framework context
 
 **When to create here**:
+
 - Best practices documentation
 - Framework architecture guides
 - Agent development patterns
 - Skills inventory
 
 **Current files**:
+
 - `BEST-PRACTICES.md` - Evidence-based guidance
 - `skills-inventory.md` - Skill catalog
 - `skill-invocation-guide.md`
@@ -159,11 +173,13 @@ skills/skill-name/
 **Purpose**: Domain-specific documentation loaded by skills
 
 **When to create here**:
+
 - Python/dbt/Streamlit/Seaborn documentation
 - Technology-specific guides
 - Testing methodology docs
 
 **Examples**:
+
 - `PYTHON-DEV.md`, `DBT.md`, `HYDRA.md`
 - `SEABORN.md`, `STATSMODELS.md`, `STREAMLIT.md`
 - `E2E-TESTING.md`, `FAIL-FAST.md`, `GIT-WORKFLOW.md`
@@ -171,12 +187,14 @@ skills/skill-name/
 #### Framework Docs (`docs/`)
 
 **When to create here**:
+
 - Framework-level documentation
 - Audit reports
 - Deployment guides
 - Testing documentation
 
 **Special files**:
+
 - `AUDIT.md` - Current state tracking
 - `INSTRUCTION-INDEX.md` - Complete file registry
 - `TESTING.md` - Testing documentation
@@ -187,6 +205,7 @@ skills/skill-name/
 **Purpose**: Document all framework changes with metrics
 
 **When to create here**:
+
 - MANDATORY for ALL framework changes
 - Testing new patterns
 - Measuring impact of modifications
@@ -194,34 +213,43 @@ skills/skill-name/
 **Naming**: `YYYY-MM-DD_descriptive-name.md`
 
 **Required structure**:
+
 ```markdown
 # Experiment Name
 
 ## Metadata
+
 - Date: YYYY-MM-DD
 - Issue: #NNN
 - Commit: [hash]
 - Model: [model-name]
 
 ## Context
+
 [Background and motivation]
 
 ## Hypothesis
+
 [What you expect to happen]
 
 ## Changes Made
+
 [Specific modifications]
 
 ## Success Criteria
+
 [How to measure if this worked]
 
 ## Results
+
 [What actually happened]
 
 ## Outcome
+
 [Success/Failure/Partial]
 
 ## Notes
+
 [Additional observations]
 ```
 
@@ -230,6 +258,7 @@ skills/skill-name/
 **Purpose**: Automated runtime enforcement
 
 **When to create here**:
+
 - SessionStart automation
 - PreToolUse validation
 - PostToolUse conditional loading
@@ -237,6 +266,7 @@ skills/skill-name/
 - Event logging
 
 **Requirements**:
+
 - Python module with docstring (first line = description)
 - Fail-fast implementation
 - No defensive programming
@@ -246,11 +276,13 @@ skills/skill-name/
 **Purpose**: Framework automation tools
 
 **When to create here**:
+
 - Validation scripts
 - Code generation
 - Setup automation
 
 **Examples**:
+
 - `generate_instruction_tree.py`
 - `validate_instruction_tree.py`
 - `setup_academicops.sh`
@@ -266,6 +298,7 @@ Before creating any markdown file:
 - [ ] Does file stay under limits? (Skills <300, Agents <500)
 
 **Hard limits**:
+
 - Skills: SKILL.md <300 lines
 - Agents: <500 lines
 - Adding >10 lines: GitHub issue + approval required

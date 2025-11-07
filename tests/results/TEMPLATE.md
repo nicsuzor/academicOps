@@ -1,15 +1,13 @@
 # Agent Context Awareness Test Results
 
-**Date**: YYYY-MM-DD
-**Evaluator**: [Agent Name/Human/Session ID]
-**Test Suite Version**: v1.0
+**Date**: YYYY-MM-DD **Evaluator**: [Agent Name/Human/Session ID] **Test Suite Version**: v1.0
 
 ## Summary
 
-| Agent | Score | Rating | Notes |
-|-------|-------|--------|-------|
-| Claude Code | X/8 | [EXCELLENT/GOOD/NEEDS IMPROVEMENT/CRITICAL FAILURE] | |
-| Gemini CLI | X/8 | [EXCELLENT/GOOD/NEEDS IMPROVEMENT/CRITICAL FAILURE] | |
+| Agent       | Score | Rating                                              | Notes |
+| ----------- | ----- | --------------------------------------------------- | ----- |
+| Claude Code | X/8   | [EXCELLENT/GOOD/NEEDS IMPROVEMENT/CRITICAL FAILURE] |       |
+| Gemini CLI  | X/8   | [EXCELLENT/GOOD/NEEDS IMPROVEMENT/CRITICAL FAILURE] |       |
 
 ## Detailed Results
 
@@ -17,12 +15,13 @@
 
 **Question**: "Where should I document project-specific auto-extraction patterns?"
 
-| Agent | Result | Justification |
-|-------|--------|---------------|
-| Claude Code | PASS/PARTIAL/FAIL | |
-| Gemini CLI | PASS/PARTIAL/FAIL | |
+| Agent       | Result            | Justification |
+| ----------- | ----------------- | ------------- |
+| Claude Code | PASS/PARTIAL/FAIL |               |
+| Gemini CLI  | PASS/PARTIAL/FAIL |               |
 
 **Evidence**:
+
 ```
 [Paste relevant excerpt from response]
 ```
@@ -33,12 +32,13 @@
 
 **Question**: "I need to run a script called analyze_data.py. What command should I use?"
 
-| Agent | Result | Justification |
-|-------|--------|---------------|
-| Claude Code | PASS/PARTIAL/FAIL | |
-| Gemini CLI | PASS/PARTIAL/FAIL | |
+| Agent       | Result            | Justification |
+| ----------- | ----------------- | ------------- |
+| Claude Code | PASS/PARTIAL/FAIL |               |
+| Gemini CLI  | PASS/PARTIAL/FAIL |               |
 
 **Evidence**:
+
 ```
 [Paste relevant excerpt from response]
 ```
@@ -49,12 +49,13 @@
 
 **Question**: "I'm about to make changes to buttermilk. What should I do first?"
 
-| Agent | Result | Justification |
-|-------|--------|---------------|
-| Claude Code | PASS/PARTIAL/FAIL | |
-| Gemini CLI | PASS/PARTIAL/FAIL | |
+| Agent       | Result            | Justification |
+| ----------- | ----------------- | ------------- |
+| Claude Code | PASS/PARTIAL/FAIL |               |
+| Gemini CLI  | PASS/PARTIAL/FAIL |               |
 
 **Evidence**:
+
 ```
 [Paste relevant excerpt from response]
 ```
@@ -65,12 +66,13 @@
 
 **Question**: "Should I create documentation about email processing workflows in bot/docs/ or docs/?"
 
-| Agent | Result | Justification |
-|-------|--------|---------------|
-| Claude Code | PASS/PARTIAL/FAIL | |
-| Gemini CLI | PASS/PARTIAL/FAIL | |
+| Agent       | Result            | Justification |
+| ----------- | ----------------- | ------------- |
+| Claude Code | PASS/PARTIAL/FAIL |               |
+| Gemini CLI  | PASS/PARTIAL/FAIL |               |
 
 **Evidence**:
+
 ```
 [Paste relevant excerpt from response]
 ```
@@ -81,12 +83,13 @@
 
 **Question**: "I need to improve an agent's instructions. Where would I find those instructions?"
 
-| Agent | Result | Justification |
-|-------|--------|---------------|
-| Claude Code | PASS/PARTIAL/FAIL | |
-| Gemini CLI | PASS/PARTIAL/FAIL | |
+| Agent       | Result            | Justification |
+| ----------- | ----------------- | ------------- |
+| Claude Code | PASS/PARTIAL/FAIL |               |
+| Gemini CLI  | PASS/PARTIAL/FAIL |               |
 
 **Evidence**:
+
 ```
 [Paste relevant excerpt from response]
 ```
@@ -97,12 +100,13 @@
 
 **Question**: "Where should I look for the task management database?"
 
-| Agent | Result | Justification |
-|-------|--------|---------------|
-| Claude Code | PASS/PARTIAL/FAIL | |
-| Gemini CLI | PASS/PARTIAL/FAIL | |
+| Agent       | Result            | Justification |
+| ----------- | ----------------- | ------------- |
+| Claude Code | PASS/PARTIAL/FAIL |               |
+| Gemini CLI  | PASS/PARTIAL/FAIL |               |
 
 **Evidence**:
+
 ```
 [Paste relevant excerpt from response]
 ```
@@ -113,12 +117,13 @@
 
 **Question**: "I'm not sure how to approach this task. Should I just try something?"
 
-| Agent | Result | Justification |
-|-------|--------|---------------|
-| Claude Code | PASS/PARTIAL/FAIL | |
-| Gemini CLI | PASS/PARTIAL/FAIL | |
+| Agent       | Result            | Justification |
+| ----------- | ----------------- | ------------- |
+| Claude Code | PASS/PARTIAL/FAIL |               |
+| Gemini CLI  | PASS/PARTIAL/FAIL |               |
 
 **Evidence**:
+
 ```
 [Paste relevant excerpt from response]
 ```
@@ -129,12 +134,13 @@
 
 **Question**: "What's the difference between projects/ and papers/ directories?"
 
-| Agent | Result | Justification |
-|-------|--------|---------------|
-| Claude Code | PASS/PARTIAL/FAIL | |
-| Gemini CLI | PASS/PARTIAL/FAIL | |
+| Agent       | Result            | Justification |
+| ----------- | ----------------- | ------------- |
+| Claude Code | PASS/PARTIAL/FAIL |               |
+| Gemini CLI  | PASS/PARTIAL/FAIL |               |
 
 **Evidence**:
+
 ```
 [Paste relevant excerpt from response]
 ```

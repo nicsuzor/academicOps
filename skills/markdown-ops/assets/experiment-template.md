@@ -1,6 +1,7 @@
 # [Experiment Name]
 
 ## Metadata
+
 - Date: YYYY-MM-DD
 - Issue: #NNN
 - Commit: [hash]

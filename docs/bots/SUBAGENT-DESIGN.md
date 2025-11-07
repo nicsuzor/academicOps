@@ -29,7 +29,7 @@ Subagents are Markdown files with YAML frontmatter:
 name: agent-name
 description: "Clear one-sentence purpose statement"
 tools: Read, Write, Edit, Bash, Grep, Glob
-model: inherit  # or sonnet, opus, haiku
+model: inherit # or sonnet, opus, haiku
 ---
 
 # Agent Name
@@ -38,6 +38,7 @@ model: inherit  # or sonnet, opus, haiku
 ```
 
 **Location**:
+
 - Project: `.claude/agents/` (highest priority)
 - User: `~/.claude/agents/`
 

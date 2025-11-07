@@ -37,12 +37,14 @@ The area of the codebase being changed:
 **Repository-specific examples**:
 
 For bot/ repository:
+
 - `prompts` - Agent instructions and definitions
 - `infrastructure` - Scripts, hooks, configurations
 - `docs` - Documentation files
 - `skills` - Skill definitions
 
 For application projects:
+
 - `api` - API endpoints and routes
 - `models` - Data models and schemas
 - `ui` - User interface components
@@ -64,11 +66,13 @@ Brief summary of the change:
 - Focus on WHY, not WHAT (the diff shows what changed)
 
 **Good examples**:
+
 - `fix validation error in login form`
 - `add real-time notifications`
 - `improve query performance for user search`
 
 **Bad examples**:
+
 - `Fixed bug` (too vague)
 - `Changes to the authentication system` (not imperative, too vague)
 - `Update README.md` (what's in the diff, not why it matters)
@@ -84,6 +88,7 @@ Detailed explanation of the change:
 - Wrap at 72 characters
 
 **Example**:
+
 ```
 Refactor authentication to use JWT tokens instead of sessions.
 
@@ -97,6 +102,7 @@ and improve horizontal scaling.
 Reference issues, breaking changes, or other metadata:
 
 **Issue references**:
+
 ```
 Fixes #123
 Closes #456, #789
@@ -104,11 +110,13 @@ Relates to #101
 ```
 
 **Breaking changes**:
+
 ```
 BREAKING CHANGE: API endpoint /auth/login now requires email instead of username
 ```
 
 **Claude Code attribution** (ALWAYS include):
+
 ```
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 
@@ -220,6 +228,7 @@ Note the `!` after type/scope to indicate breaking change.
 ## Tools
 
 Check commit message format:
+
 ```bash
 # View last commit
 git log -1

@@ -27,6 +27,7 @@ Invoke this skill when:
 5. **Documenting decisions** - Why we chose approach X over Y, with supporting analysis
 
 **Key indicators:**
+
 - User says "archive this before we remove..."
 - Major experiment just completed with significant findings
 - About to clean up working directory
@@ -36,6 +37,7 @@ Invoke this skill when:
 ## Archival vs. Reproducible Research
 
 ### Reproducible Research (Production)
+
 - **Location:** `dbt/models/`, `streamlit/`, `methods/`
 - **Purpose:** Final analysis for publication
 - **Quality:** Production-ready, fully documented
@@ -43,6 +45,7 @@ Invoke this skill when:
 - **Maintenance:** Active, version-controlled, tested
 
 ### Process Documentation (Archives)
+
 - **Location:** `experiments/YYYYMMDD-archive-description/`
 - **Purpose:** Research decisions, intermediate findings
 - **Quality:** Complete and honest, not polished
@@ -56,6 +59,7 @@ Invoke this skill when:
 ### Step 1: Identify What to Archive
 
 **Ask user to confirm:**
+
 - What experiment or analysis is being archived?
 - What findings need to be preserved?
 - What data will be removed/unavailable after this?
@@ -64,6 +68,7 @@ Invoke this skill when:
 - What decisions were made based on this work?
 
 **Review existing artifacts:**
+
 ```bash
 # Find Streamlit pages
 ls -1 streamlit/*.py
@@ -90,6 +95,7 @@ mkdir -p experiments/$(date +%Y%m%d)-archive-description
 **Naming convention:** `YYYYMMDD-archive-short-description`
 
 Examples:
+
 - `20251029-archive-scorer-transition`
 - `20251105-archive-quality-experiment`
 - `20251110-archive-old-schema`
@@ -101,6 +107,7 @@ Examples:
 Create a Jupyter notebook documenting the entire experiment. Use the structure from `@reference _CHUNKS/notebook-template.md`
 
 **Notebook sections:**
+
 1. Executive Summary - What was done, key findings, decision made
 2. Background/Problem - Why this work was needed
 3. Approach/Solution - How it was done
@@ -111,6 +118,7 @@ Create a Jupyter notebook documenting the entire experiment. Use the structure f
 8. Appendix - Technical details, code references, data locations
 
 **Key principles:**
+
 - **Run all code cells** - Save outputs in the notebook
 - **Include all charts** - Re-create visualizations from Streamlit/scripts
 - **Document data sources** - Where data came from (even if being removed)
@@ -119,6 +127,7 @@ Create a Jupyter notebook documenting the entire experiment. Use the structure f
 - **Mark as non-reproducible** - If data will be removed, say so explicitly
 
 **Code loading pattern:**
+
 ```python
 # Load from DuckDB cache or dbt warehouse
 import duckdb
@@ -137,22 +146,26 @@ conn = duckdb.connect(str(cache_path), read_only=True)
 **Transfer analysis from existing code:**
 
 If analysis is in Streamlit:
+
 - Copy data loading logic
 - Re-create charts using matplotlib/plotly
 - Extract metrics calculations
 - Document findings from dashboard text
 
 If analysis is in Python scripts:
+
 - Copy investigation functions
 - Run and capture outputs
 - Document findings
 
 If analysis is in dbt diagnostics:
+
 - Query results tables
 - Document issue and resolution
 - Show before/after metrics
 
 **Execute all cells to save outputs:**
+
 ```python
 # Ensure all visualizations are shown
 import matplotlib.pyplot as plt
@@ -174,12 +187,14 @@ jupyter nbconvert --to html \
 ```
 
 **Why HTML?**
+
 - ✅ Stable - Won't break with Python/library updates
 - ✅ Portable - Viewable in any browser without Jupyter
 - ✅ Complete - Includes all outputs, charts, formatting
 - ✅ Archival-quality - Can be stored long-term
 
 **Verify HTML export:**
+
 ```bash
 # Open in browser to verify
 xdg-open experiments/YYYYMMDD-archive-description/archive_YYYYMMDD.html
@@ -194,9 +209,7 @@ Write `experiments/YYYYMMDD-archive-description/README.md`:
 ```markdown
 # Archive: [Short Description]
 
-**Date Archived:** YYYY-MM-DD
-**Status:** ✅ COMPLETE - Historical Reference Only
-**Reproducible:** No (data removed on YYYY-MM-DD)
+**Date Archived:** YYYY-MM-DD **Status:** ✅ COMPLETE - Historical Reference Only **Reproducible:** No (data removed on YYYY-MM-DD)
 
 ## Why This Archive Exists
 
@@ -237,6 +250,7 @@ Write `experiments/YYYYMMDD-archive-description/README.md`:
 **After archive is complete and verified, clean up:**
 
 Identify files to remove:
+
 - Streamlit pages only for this experiment
 - Investigation scripts in `analyses/`
 - Diagnostic markdown files in `data/`
@@ -244,6 +258,7 @@ Identify files to remove:
 - Temporary diagnostic dbt models
 
 **Pattern:**
+
 ```bash
 # Example: Remove experimental Streamlit page
 git rm streamlit/experimental_scorer_page.py
@@ -256,14 +271,15 @@ git rm analyses/investigate_scorer_issue.py
 ```
 
 **DO NOT REMOVE:**
+
 - Production code
 - dbt models in use
 - Active Streamlit dashboards
 - Current documentation
 - Ongoing experiments
 
-**Ask user before removing each file:**
-"I've identified these files as experiment-specific and ready for removal:
+**Ask user before removing each file:** "I've identified these files as experiment-specific and ready for removal:
+
 - `file1.py`
 - `file2.md`
 
@@ -276,6 +292,7 @@ Should I remove these? Or should any be kept?"
 **Two commits: Archive first, cleanup second**
 
 Commit 1 - Archive:
+
 ```bash
 git add experiments/YYYYMMDD-archive-description/
 git commit -m "archive: [Experiment description]
@@ -295,6 +312,7 @@ Issue: #XXX"
 ```
 
 Commit 2 - Cleanup:
+
 ```bash
 git rm [files to remove]
 git commit -m "chore: Remove archived experiment code
@@ -336,6 +354,7 @@ Before considering archive complete, verify:
 **Source:** Existing Streamlit page with charts and metrics
 
 **Process:**
+
 1. Copy data loading code to notebook
 2. Re-create charts using matplotlib/plotly
 3. Extract text explanations to markdown cells
@@ -347,6 +366,7 @@ Before considering archive complete, verify:
 **Source:** Python scripts in `analyses/` directory
 
 **Process:**
+
 1. Copy investigation functions to notebook
 2. Run functions and capture outputs
 3. Document what was discovered
@@ -358,6 +378,7 @@ Before considering archive complete, verify:
 **Source:** Diagnostic dbt models or investigation markdown
 
 **Process:**
+
 1. Query diagnostic results
 2. Document issue and resolution
 3. Show before/after metrics
@@ -369,6 +390,7 @@ Before considering archive complete, verify:
 **Critical case:** Analysis depends on data that will be deleted
 
 **Process:**
+
 1. Run all analysis while data still exists
 2. Save ALL outputs in notebook (no external dependencies)
 3. Mark clearly as "Non-Reproducible" in notebook header
@@ -387,15 +409,15 @@ Archives complement but don't replace standard research documentation:
 **Cross-reference pattern:**
 
 In METHODOLOGY.md:
+
 ```markdown
-We chose QualScore over template matching based on validation
-experiments (see experiments/20251029-archive-scorer-transition/).
+We chose QualScore over template matching based on validation experiments (see experiments/20251029-archive-scorer-transition/).
 ```
 
 In archive README.md:
+
 ```markdown
-This work led to production implementation documented in
-methods/qualScore_scoring.md and updated methodology in METHODOLOGY.md.
+This work led to production implementation documented in methods/qualScore_scoring.md and updated methodology in METHODOLOGY.md.
 ```
 
 ## Error Recovery
@@ -422,6 +444,7 @@ If archival process is interrupted:
 ### Notebook Template
 
 See `_CHUNKS/notebook-template.md` for complete Jupyter notebook template with:
+
 - Standard section structure
 - Code patterns for loading data
 - Chart creation examples
@@ -431,6 +454,7 @@ See `_CHUNKS/notebook-template.md` for complete Jupyter notebook template with:
 ### Example Archive
 
 See TJA project: `experiments/20251029_scorer_validation_experiment.ipynb`
+
 - Comprehensive structure
 - Executive summary with key findings
 - Visual results with charts

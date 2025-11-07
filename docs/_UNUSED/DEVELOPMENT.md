@@ -7,13 +7,16 @@ The #1 rule: **STOP → ANALYZE → PLAN → TEST → IMPLEMENT → DOCUMENT →
 ## Development Phases
 
 ### Phase 1: STOP - Don't Rush
+
 Before writing ANY code:
+
 - Understand the full problem scope.
 - Check GitHub issues for related work.
 - Identify all stakeholders and impacts.
 - Question assumptions.
 
 ### Phase 2: ANALYZE - Map the Territory
+
 ```bash
 # Check existing issues
 gh issue list --search "relevant keywords"
@@ -23,6 +26,7 @@ gh issue create --title "Clear problem description" --body "Detailed analysis"
 ```
 
 Key Analysis Steps:
+
 1. **Trace Data Flow**: Understand the data lifecycle.
 2. **Map Dependencies**: What touches what?
 3. **Identify Root Cause**: Not symptoms, but actual problems.
@@ -32,13 +36,16 @@ Key Analysis Steps:
 7. **Document Findings**: Update the GitHub issue.
 
 ### Phase 3: PLAN - Design Before Code
+
 Create a clear plan in a GitHub issue with:
+
 - Phases and milestones
 - Success criteria
 - Test cases
 - Rollback strategy
 
 ### Phase 4: TEST - Failing Tests First
+
 **CRITICAL: Tests MUST be in the `tests/` directory using pytest conventions.**
 
 ```python
@@ -55,18 +62,21 @@ async def test_expected_behavior():
 **Run tests with:** `uv run pytest tests/`
 
 ### Phase 5: IMPLEMENT - Minimal Changes
+
 - Make the smallest change that fixes the root cause.
 - Don't add "nice to have" features.
 - Keep existing interfaces stable.
 - Follow existing patterns.
 
 ### Phase 6: DOCUMENT - Keep It Current
+
 - Update docstrings.
 - Add inline comments for complex logic.
 - Update relevant `.md` files.
 - Ensure examples still work.
 
 ### Phase 7: COMMIT - Track Progress
+
 ```bash
 # Commit with clear message referencing the issue
 git add -A
@@ -85,7 +95,9 @@ gh issue comment 123 --body "Fixed in commit abc123."
 - **ALWAYS** link commits to issues.
 
 ## INTERACTIVE DEVELOPMENT
+
 When working directly with the user in a back-and-forth exchange, you must follow their directions PRECISELY.
+
 - **DO NOT** jump ahead or anticipate steps.
 - Acknowledge and wait at each step if the user indicates a pause.
 - Your role is to be a tool that the user is guiding, not an autonomous agent.
@@ -93,6 +105,7 @@ When working directly with the user in a back-and-forth exchange, you must follo
 ## Anti-Patterns to Avoid
 
 ### 🚫 Red Flags - Stop Immediately If You're:
+
 1. About to create ANY test file outside the `tests/` directory.
 2. Saying "let me test this" or "validate my implementation" without using pytest.
 3. Proposing config changes without understanding the data flow.
@@ -125,6 +138,7 @@ max_retries = params.get("max_retries", 3)
 ```
 
 **WHY THIS IS CRITICAL:**
+
 - Silent defaults hide misconfiguration for **months**
 - Research data can be corrupted without any errors
 - Violates fail-fast philosophy essential for academic integrity
@@ -133,6 +147,7 @@ max_retries = params.get("max_retries", 3)
 ### ✅ REQUIRED: Explicit Configuration Validation
 
 **Option 1: Pydantic (PREFERRED for all new code)**
+
 ```python
 from pydantic import BaseModel, Field
 
@@ -149,6 +164,7 @@ config = HostConfig(**kwargs)  # Fails immediately if timeout not provided
 ```
 
 **Option 2: Explicit KeyError**
+
 ```python
 # Fails immediately with clear error
 if "timeout" not in kwargs:
@@ -157,6 +173,7 @@ timeout = kwargs["timeout"]
 ```
 
 **Option 3: Property with Validation**
+
 ```python
 @property
 def timeout(self) -> int:

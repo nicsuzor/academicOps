@@ -20,6 +20,7 @@ Create `CLAUDE.md` in a directory when:
 4. **Standards enforcement**: Directory has specific quality requirements
 
 **Don't create CLAUDE.md when:**
+
 - Generic project-wide context (use root CLAUDE.md instead)
 - One-off temporary directories
 - Auto-generated directories (build/, .venv/, etc.)
@@ -64,9 +65,7 @@ Context for working in [directory name].
 ```markdown
 # Python Development Context
 
-@../agents/_CORE.md
-@../docs/_CHUNKS/FAIL-FAST.md
-@../.claude/skills/python-dev/SKILL.md
+@../agents/_CORE.md @../docs/_CHUNKS/FAIL-FAST.md @../.claude/skills/python-dev/SKILL.md
 
 Use fail-fast principles: no defaults, explicit configuration only.
 ```
@@ -76,9 +75,7 @@ Use fail-fast principles: no defaults, explicit configuration only.
 ```markdown
 # Test Development Context
 
-@../agents/_CORE.md
-@../docs/TESTING.md
-@../.claude/skills/test-writing/SKILL.md
+@../agents/_CORE.md @../docs/TESTING.md @../.claude/skills/test-writing/SKILL.md
 
 Write integration tests using real configurations. No mocking internal code.
 ```
@@ -88,9 +85,7 @@ Write integration tests using real configurations. No mocking internal code.
 ```markdown
 # Script Development Context
 
-@../agents/_CORE.md
-@../docs/_CHUNKS/FAIL-FAST.md
-@../scripts/CLAUDE.md
+@../agents/_CORE.md @../docs/_CHUNKS/FAIL-FAST.md @../scripts/CLAUDE.md
 
 Scripts must be executable in git. Fail-fast, no error recovery.
 ```
@@ -100,8 +95,7 @@ Scripts must be executable in git. Fail-fast, no error recovery.
 ```markdown
 # [Module Name] Context
 
-@../../bot/docs/PYTHON_DEV.md
-@./MODULE_DESIGN.md
+@../../bot/docs/PYTHON_DEV.md @./MODULE_DESIGN.md
 
 [Module-specific notes about architecture, dependencies, or constraints]
 ```
@@ -178,18 +172,19 @@ CLAUDE.md complements skills:
 ## Migration from Agent Instructions
 
 **Old approach** (agent instructions):
+
 ```markdown
 # Developer Agent
 
 When working in tests/:
+
 1. Use pytest framework
 2. Write integration tests
-3. No mocking internal code
-...
-[50 lines of test-specific instructions]
+3. No mocking internal code ... [50 lines of test-specific instructions]
 ```
 
 **New approach** (CLAUDE.md):
+
 ```markdown
 # tests/CLAUDE.md
 
@@ -199,6 +194,7 @@ Integration tests use real configurations from conf/.
 ```
 
 **Benefits:**
+
 - Context loads only when needed
 - Reduces agent instruction bloat
 - Modular, reusable documentation
@@ -207,6 +203,7 @@ Integration tests use real configurations from conf/.
 ## Technical Implementation
 
 Claude Code automatically:
+
 1. Detects CLAUDE.md in current working directory
 2. Reads file and expands `@references`
 3. Loads referenced content into context
@@ -224,6 +221,7 @@ Claude Code automatically:
 ## Examples in Practice
 
 See these directories for reference implementations:
+
 - `bot/scripts/CLAUDE.md`
 - `bot/tests/CLAUDE.md`
 - `bot/bots/CLAUDE.md`

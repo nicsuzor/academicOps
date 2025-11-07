@@ -97,6 +97,7 @@ if status_filter:
 ## Additional Resources
 
 See `references/streamlit-patterns.md` for comprehensive visualization best practices, including:
+
 - Interactive components (filters, selections)
 - Visualization libraries (Plotly, Altair)
 - Layout patterns (columns, tabs, expanders)

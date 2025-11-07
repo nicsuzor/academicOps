@@ -32,11 +32,13 @@ relations:
 ## TL;DR - What Agents Know vs Don't Know
 
 **Agents AUTOMATICALLY SEE at session start (SHOWN):**
+
 - `agents/_CORE.md` from all 3 tiers (framework/personal/project) - FULL TEXT
 - Git repository info
 - That's it.
 
 **Agents DON'T know unless explicitly told (REFERENCED):**
+
 - This INSTRUCTION-INDEX.md
 - Other agent files (DEVELOPER.md, ANALYST.md, etc.)
 - Documentation files (ARCHITECTURE.md, hooks_guide.md, etc.)
@@ -45,6 +47,7 @@ relations:
 - Directory structure
 
 **How agents discover additional context:**
+
 1. User says "Read docs/INSTRUCTION-INDEX.md"
 2. User invokes slash command like `/trainer` (loads agents/trainer.md)
 3. References in `_CORE.md` suggest reading specific files
@@ -55,8 +58,7 @@ relations:
 
 ### Critical Distinction: Shown vs Referenced
 
-**SHOWN = Full text injected into agent context (they MUST read it)**
-**REFERENCED = Mentioned/suggested but NOT loaded (agents MIGHT read it IF they choose)**
+**SHOWN = Full text injected into agent context (they MUST read it)** **REFERENCED = Mentioned/suggested but NOT loaded (agents MIGHT read it IF they choose)**
 
 This distinction is critical for understanding what agents know vs what they can discover.
 
@@ -69,14 +71,17 @@ This distinction is critical for understanding what agents know vs what they can
 When Claude Code starts, the SessionStart hook (`hooks/load_instructions.py`) AUTOMATICALLY loads and INJECTS full text into every agent's context:
 
 **1. Git Repository Info** (if in a git repo)
-   - Git remote origin URL
+
+- Git remote origin URL
 
 **2. agents/_CORE.md from all 3 tiers** (stacked in priority order)
-   - `$PROJECT/agents/_CORE.md` (Project-specific, HIGHEST priority)
-   - `$ACADEMICOPS_PERSONAL/agents/_CORE.md` (User global preferences)
-   - `$ACADEMICOPS/agents/_CORE.md` (Framework defaults, REQUIRED)
+
+- `$PROJECT/agents/_CORE.md` (Project-specific, HIGHEST priority)
+- `$ACADEMICOPS_PERSONAL/agents/_CORE.md` (User global preferences)
+- `$ACADEMICOPS/agents/_CORE.md` (Framework defaults, REQUIRED)
 
 **Format in agent context:**
+
 ```
 # Agent Instructions
 
@@ -100,6 +105,7 @@ Git remote origin: git@github.com:...
 ```
 
 **What agents know at session start:**
+
 - Core axioms and behavioral rules
 - Repository they're working in
 - User's global preferences and context
@@ -117,6 +123,7 @@ Slash commands can load additional instruction files using the same 3-tier syste
 3. This supplements (doesn't replace) the `_CORE.md` already loaded at SessionStart
 
 **Format:**
+
 ```
 # === PROJECT: trainer.md ===
 [Full text if exists]
@@ -140,6 +147,7 @@ Unless explicitly loaded via slash command, agents have NO KNOWLEDGE of:
 - **Available slash commands** - They don't get a command list
 
 **How they discover these:**
+
 1. **Explicit user instruction** - "Read docs/INSTRUCTION-INDEX.md"
 2. **References in _CORE.md** - "See docs/X.md for details"
 3. **Trial and error** - Running commands and seeing if they exist
@@ -305,8 +313,7 @@ All symlinked to docs/_CHUNKS/ for modular management:
 - **TESTING.md** - Testing architecture and patterns
 - **TESTS.md** - Test writing guidelines
 
-**Visibility**: 🔵 REFERENCED (must be explicitly loaded)
-**Status**: ⚠️ Optional (loaded when relevant to task)
+**Visibility**: 🔵 REFERENCED (must be explicitly loaded) **Status**: ⚠️ Optional (loaded when relevant to task)
 
 ---
 
@@ -402,7 +409,7 @@ All scripts are INFRASTRUCTURE - agents never see them, but they control what ag
 - **Visibility**: 🟡 INFRASTRUCTURE (agents only see block/warn messages)
 - **Loaded by**: Claude Code PreToolUse hook (automatic, before every tool use)
 - **Rules Enforced**:
-  - Protected file modifications (config/*, hooks/*)
+  - Protected file modifications (config/_, hooks/_)
   - No new documentation files (prevents bloat)
   - Python requires `uv run` prefix
   - Git commits warn for non-code-review agents
@@ -435,8 +442,7 @@ All scripts are INFRASTRUCTURE - agents never see them, but they control what ag
 - **hooks/log_precompact.py** - Logs context compaction
 - **hooks/log_notification.py** - Logs notifications
 
-**Visibility**: 🟡 INFRASTRUCTURE (silent logging, agents never see output)
-**Status**: ⚠️ Optional (telemetry)
+**Visibility**: 🟡 INFRASTRUCTURE (silent logging, agents never see output) **Status**: ⚠️ Optional (telemetry)
 
 ### Other Supporting Scripts
 
@@ -445,8 +451,7 @@ All scripts are INFRASTRUCTURE - agents never see them, but they control what ag
 - **scripts/code_review.py** - Code quality validation
 - **scripts/check_test_architecture.py** - Test architecture validation
 
-**Visibility**: 🟡 INFRASTRUCTURE
-**Status**: 🔧 Maintenance tools
+**Visibility**: 🟡 INFRASTRUCTURE **Status**: 🔧 Maintenance tools
 
 ---
 
@@ -474,8 +479,7 @@ Distribution templates for new project setup:
 - **dist/agents/INSTRUCTIONS.md** - Template for project `_CORE.md`
 - **dist/.gitignore** - academicOps exclusions for project `.gitignore`
 
-**Visibility**: 🟡 INFRASTRUCTURE (templates, not used directly)
-**Status**: 🔧 Maintenance
+**Visibility**: 🟡 INFRASTRUCTURE (templates, not used directly) **Status**: 🔧 Maintenance
 
 ---
 
@@ -494,14 +498,14 @@ Slash commands trigger additional instruction loading or specific workflows.
 - **commands/error.md** - Quick experiment outcome logging
 - **commands/log-failure.md** - Log agent performance failures to experiment tracker
 
-**Visibility**: 🔴 SHOWN (when invoked, loads full text of corresponding agent file)
-**Status**: ✅ Required
+**Visibility**: 🔴 SHOWN (when invoked, loads full text of corresponding agent file) **Status**: ✅ Required
 
 **Mechanism**: Slash commands execute `hooks/load_instructions.py <filename>` to load additional context from 3-tier system.
 
 ### REMOVED Commands (migrated to project `_CORE.md`)
 
 Project-specific commands removed in Issue #119:
+
 - `/mm` - MediaMarkets → moved to project `_CORE.md`
 - `/bm` - Buttermilk → moved to project `_CORE.md`
 - `/tja` - TJA analysis → moved to project `_CORE.md`
@@ -679,3 +683,4 @@ System is working when:
 - This index is up-to-date with all active files
 - No project-specific slash commands needed (context auto-loads)
 - .academicOps/scripts/ contains validation scripts in all projects
+```

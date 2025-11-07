@@ -1,9 +1,6 @@
 # Experiment: Agent Creates _new.sh Instead of Editing Existing File
 
-**Date**: 2025-10-21
-**Commit**: (current session, not yet committed)
-**Issue**: #139
-**Agent**: Main assistant (general-purpose)
+**Date**: 2025-10-21 **Commit**: (current session, not yet committed) **Issue**: #139 **Agent**: Main assistant (general-purpose)
 
 ## Hypothesis
 
@@ -37,6 +34,7 @@ Add to `bots/agents/_CORE.md` near Axiom #10 (DRY):
 
 ```markdown
 **Trust Version Control**: Never create `_new`, `_backup`, or `_old` files
+
 - Git tracks all changes - use `git diff`, `git restore`, `git revert`
 - Edit files directly, commit atomically
 - ❌ PROHIBITED: `file_new.sh`, `file.bak`, `file_2.sh`

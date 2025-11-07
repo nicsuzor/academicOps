@@ -17,6 +17,7 @@ uv run python ${ACADEMICOPS}/hooks/load_instructions.py STYLE.md
 **STEP 2: Invoke Supervisor Agent - MANDATORY FOR ALL /DEV TASKS**
 
 ALL tasks initiated via /dev require supervisor orchestration, including:
+
 - Code implementation and new features
 - Debugging and investigation work
 - Refactoring and code cleanup

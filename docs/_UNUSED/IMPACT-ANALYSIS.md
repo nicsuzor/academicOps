@@ -7,14 +7,16 @@
 ## The Shared Infrastructure Trap
 
 ### ❌ Common Failure Pattern:
+
 1. **Focus on a specific failure**: "These tests are failing."
 2. **Tunnel vision on an immediate fix**: "I need to change X to make them pass."
 3. **Modify shared infrastructure**: Edit a file that affects ALL tests or modules (e.g., `conftest.py`, a base class, a core utility).
 4. **Break other functionality**: Other tests or modules that relied on the original behavior now fail.
 
 ### ✅ Correct Approach:
+
 1. **Identify shared vs. specific scope**: "This file serves multiple modules."
-2. **Analyze true requirements**: "Do these tests *really* need this global change?"
+2. **Analyze true requirements**: "Do these tests _really_ need this global change?"
 3. **Create targeted solutions**: "I will create a specific fixture/helper for this test module instead of changing the global one."
 4. **Preserve existing functionality**: "I will ensure other tests continue to work by not modifying their shared setup."
 
@@ -55,6 +57,7 @@
 ## No workarounds!
 
 If you hit a problem related to some other part of the project, STOP.
+
 - DO NOT build a workaround that addresses only your current objective.
 - STEP BACK and IMMEDIATELY activate your error handling protocol.
 - Do not proceed. Raise an issue and seek help.
@@ -93,7 +96,7 @@ If you hit a problem related to some other part of the project, STOP.
 
 **Before modifying ANY file, ask:**
 
-1. **Is this file imported by multiple modules?** 
+1. **Is this file imported by multiple modules?**
    - If YES: Requires impact analysis.
 
 2. **Does this file contain fixtures used by multiple tests?**

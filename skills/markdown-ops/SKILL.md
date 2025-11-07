@@ -9,13 +9,12 @@ permalink: aops/skills/markdown-ops/skill
 
 ## Framework Context
 
-@resources/SKILL-PRIMER.md
-@resources/AXIOMS.md
-@resources/INFRASTRUCTURE.md
+@resources/SKILL-PRIMER.md @resources/AXIOMS.md @resources/INFRASTRUCTURE.md
 
 ## Overview
 
 Guide all markdown file operations to ensure:
+
 1. Files are created in the correct location (aOps structure rules)
 2. Files follow appropriate syntax (Basic Memory vs regular markdown)
 3. Anti-bloat principles are enforced
@@ -35,6 +34,7 @@ Use markdown-ops for:
 - **Choosing templates** for standardized file types
 
 **Trigger examples**:
+
 - "Create experiment log for X changes"
 - "Document this in Basic Memory"
 - "Add new agent/skill/command to aOps"
@@ -64,19 +64,19 @@ C. Other project repository
 
 **Quick reference**:
 
-| File Type | Location | Template |
-|-----------|----------|----------|
-| Experiment log | `experiments/YYYY-MM-DD_name.md` | `@assets/experiment-template.md` |
-| Agent | `agents/AGENT-NAME.md` | YAML frontmatter + workflow |
-| Skill | `skills/skill-name/SKILL.md` | Use skill-creator skill |
-| Command | `commands/command-name.md` | YAML frontmatter + skill invocation |
-| Chunk | `chunks/CONCEPT.md` | DRY single source |
-| Framework doc | `docs/filename.md` | Regular markdown |
-| Agent dev doc | `docs/bots/filename.md` | Regular markdown |
-| Domain doc | `docs/_CHUNKS/DOMAIN.md` | Regular markdown |
-| Audit | `docs/AUDIT.md` | Current state tracking |
-| Hook | `hooks/hookname.py` | Python with docstring |
-| Script | `scripts/scriptname.py` | Python/Bash |
+| File Type      | Location                         | Template                            |
+| -------------- | -------------------------------- | ----------------------------------- |
+| Experiment log | `experiments/YYYY-MM-DD_name.md` | `@assets/experiment-template.md`    |
+| Agent          | `agents/AGENT-NAME.md`           | YAML frontmatter + workflow         |
+| Skill          | `skills/skill-name/SKILL.md`     | Use skill-creator skill             |
+| Command        | `commands/command-name.md`       | YAML frontmatter + skill invocation |
+| Chunk          | `chunks/CONCEPT.md`              | DRY single source                   |
+| Framework doc  | `docs/filename.md`               | Regular markdown                    |
+| Agent dev doc  | `docs/bots/filename.md`          | Regular markdown                    |
+| Domain doc     | `docs/_CHUNKS/DOMAIN.md`         | Regular markdown                    |
+| Audit          | `docs/AUDIT.md`                  | Current state tracking              |
+| Hook           | `hooks/hookname.py`              | Python with docstring               |
+| Script         | `scripts/scriptname.py`          | Python/Bash                         |
 
 **Anti-bloat checklist** (before creating):
 
@@ -127,7 +127,7 @@ C. Other project repository
 3. Enforce anti-bloat limits:
    - Skills: <300 lines
    - Agents: <500 lines
-   - >10 lines addition: Requires GitHub issue + approval
+   - 10 lines addition: Requires GitHub issue + approval
 4. Add resources/ symlinks for skills (MANDATORY)
 5. Create experiment log documenting the change
 
@@ -210,10 +210,11 @@ Use standard markdown without special requirements.
 
 ```markdown
 # Before (regular markdown)
-The fail-fast philosophy means scripts and hooks are preferred
-over instructions. This ensures reliability through automation.
+
+The fail-fast philosophy means scripts and hooks are preferred over instructions. This ensures reliability through automation.
 
 # After (Basic Memory)
+
 ---
 title: Fail-Fast Philosophy
 permalink: fail-fast-philosophy
@@ -224,14 +225,17 @@ type: note
 # Fail-Fast Philosophy
 
 ## Context
+
 Architectural principle prioritizing automated enforcement over documentation.
 
 ## Observations
+
 - [principle] Fail-fast philosophy: scripts > hooks > config > instructions #architecture
 - [rationale] Ensures reliability through automation rather than documentation #design-decisions
 - [technique] Move enforcement up hierarchy when agents consistently violate instructions #enforcement
 
 ## Relations
+
 - part_of [[academicOps Framework]]
 - implements [[AXIOMS]]
 - relates_to [[Anti-Bloat Principles]]
@@ -268,6 +272,7 @@ Location: `@assets/experiment-template.md`
 **When to use**: MANDATORY for all aOps framework changes
 
 **Structure**:
+
 - Metadata (Date, Issue, Commit, Model)
 - Context (Background)
 - Hypothesis (Expected outcome)
@@ -284,6 +289,7 @@ Location: `@assets/bmem-template.md`
 **When to use**: Creating new entities in Basic Memory projects
 
 **Structure**:
+
 - YAML frontmatter (title, permalink, tags, type)
 - Title heading
 - Context section
@@ -293,6 +299,7 @@ Location: `@assets/bmem-template.md`
 ## Critical Rules
 
 **NEVER**:
+
 - Create aOps files without consulting structure rules
 - Create Basic Memory files without YAML frontmatter
 - Add >10 lines to aOps files without GitHub issue
@@ -302,6 +309,7 @@ Location: `@assets/bmem-template.md`
 - Forget resources/ symlinks for new skills
 
 **ALWAYS**:
+
 - Use templates for standardized file types
 - Validate location before creating files
 - Check anti-bloat limits before edits
@@ -333,10 +341,10 @@ Regular markdown (no special requirements)
 
 **Common operations**:
 
-| Operation | aOps | Basic Memory |
-|-----------|------|--------------|
-| Create file | Check structure rules | Use bmem-template.md |
-| Edit file | Check anti-bloat limits | Preserve semantic structure |
-| Move file | Update references + instruction tree | Use move_note() tool |
-| Validate | Check line count + DRY | Check frontmatter + syntax |
-| Document change | Create experiment log | Update observations |
+| Operation       | aOps                                 | Basic Memory                |
+| --------------- | ------------------------------------ | --------------------------- |
+| Create file     | Check structure rules                | Use bmem-template.md        |
+| Edit file       | Check anti-bloat limits              | Preserve semantic structure |
+| Move file       | Update references + instruction tree | Use move_note() tool        |
+| Validate        | Check line count + DRY               | Check frontmatter + syntax  |
+| Document change | Create experiment log                | Update observations         |

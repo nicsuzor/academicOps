@@ -1,6 +1,7 @@
 # README/AUDIT Separation Experiment
 
 ## Metadata
+
 - Date: 2025-11-06
 - Issue: User request via /trainer
 - Commit: 288c0a1
@@ -17,6 +18,7 @@ User requested separation of "audit information" (current state) from "desired s
 ## Hypothesis
 
 Separating authoritative spec (README.md) from current state audit (AUDIT.md) will:
+
 1. Clarify what the framework is designed to be
 2. Enable compliance tracking over time
 3. Make violations visible and actionable
@@ -30,6 +32,7 @@ Separating authoritative spec (README.md) from current state audit (AUDIT.md) wi
 **Purpose**: Document current state for comparison against README spec
 
 **Contents**:
+
 - Component counts and statistics
 - File sizes with bloat status
 - Architecture pattern compliance (resources/, skill-first, anti-bloat)
@@ -38,6 +41,7 @@ Separating authoritative spec (README.md) from current state audit (AUDIT.md) wi
 - Measurement methodology for regenerating audit
 
 **Key sections**:
+
 - Current statistics (7 agents, 20 skills, 8 commands, 17 hooks)
 - Anti-bloat violations (python-dev 797 lines, git-commit 516 lines)
 - resources/ symlinks status (2/20 implemented)
@@ -50,6 +54,7 @@ Separating authoritative spec (README.md) from current state audit (AUDIT.md) wi
 **Transformation**:
 
 **REMOVED** (moved to AUDIT.md):
+
 - Current line counts and file sizes
 - "Quick Stats" from instruction tree
 - "⚠️ 6 orphaned files" warnings
@@ -57,6 +62,7 @@ Separating authoritative spec (README.md) from current state audit (AUDIT.md) wi
 - Current implementation status
 
 **KEPT/ENHANCED** (specification):
+
 - Core principles (fail-fast, DRY, anti-bloat, experiment-driven, modular)
 - Repository structure (desired state)
 - Component specifications (requirements, not current state)
@@ -65,6 +71,7 @@ Separating authoritative spec (README.md) from current state audit (AUDIT.md) wi
 - Compliance monitoring process
 
 **NEW sections**:
+
 - "This README defines the desired state" (explicit purpose)
 - Component specifications with requirements
 - Architectural patterns as standards
@@ -72,6 +79,7 @@ Separating authoritative spec (README.md) from current state audit (AUDIT.md) wi
 - Compliance monitoring workflow
 
 **Key changes**:
+
 - Present tense → Normative language ("MUST include", "Requirements:")
 - Statistics → Specifications
 - Observations → Standards
@@ -80,10 +88,12 @@ Separating authoritative spec (README.md) from current state audit (AUDIT.md) wi
 ### 3. Established Bidirectional References
 
 **README → AUDIT**:
+
 - "See `docs/AUDIT.md` for current compliance status" (throughout)
 - Explicit at top and bottom of README
 
 **AUDIT → README**:
+
 - References README as specification
 - Uses README sections as compliance targets
 - Documents deviations from README standards
@@ -91,30 +101,27 @@ Separating authoritative spec (README.md) from current state audit (AUDIT.md) wi
 ## Success Criteria
 
 **Clarity**:
+
 1. README reader knows what framework SHOULD be
 2. AUDIT reader knows what framework currently IS
 3. Discrepancies between README/AUDIT are actionable
 
-**Maintainability**:
-4. AUDIT can be regenerated with documented methodology
-5. Compliance tracking enables progress measurement
-6. Future audits use same structure
+**Maintainability**: 4. AUDIT can be regenerated with documented methodology 5. Compliance tracking enables progress measurement 6. Future audits use same structure
 
-**Actionability**:
-7. Violations become GitHub issues
-8. Priorities clear (immediate vs long-term)
-9. Modular references pattern replicable
+**Actionability**: 7. Violations become GitHub issues 8. Priorities clear (immediate vs long-term) 9. Modular references pattern replicable
 
 ## Results
 
 ### Implementation Complete
 
 **Files Created/Modified**:
+
 - README.md: 590 lines (authoritative specification)
 - docs/AUDIT.md: 339 lines (current state documentation)
 - experiments/2025-11-06_readme-audit-separation.md: 158 lines (this log)
 
 **Changes**:
+
 - +1031 insertions, -178 deletions
 - Clear normative language in README ("MUST", "Requirements:")
 - Descriptive language in AUDIT (✅⚠️❌ status indicators)
@@ -123,19 +130,14 @@ Separating authoritative spec (README.md) from current state audit (AUDIT.md) wi
 ### Success Criteria Validation
 
 **Clarity** ✅:
+
 1. README reader knows framework SHOULD be: ✅ Core principles, specifications, standards
 2. AUDIT reader knows framework currently IS: ✅ Statistics, compliance status, violations
 3. Discrepancies actionable: ✅ AUDIT flags violations with GitHub issue references
 
-**Maintainability** ✅:
-4. AUDIT regeneration documented: ✅ Measurement methodology section included
-5. Progress measurable: ✅ Statistics establish baseline for future audits
-6. Structure reusable: ✅ Template established in AUDIT.md
+**Maintainability** ✅: 4. AUDIT regeneration documented: ✅ Measurement methodology section included 5. Progress measurable: ✅ Statistics establish baseline for future audits 6. Structure reusable: ✅ Template established in AUDIT.md
 
-**Actionability** ✅:
-7. Violations → GitHub issues: ✅ Issue #142 referenced, priorities listed
-8. Priorities clear: ✅ Immediate vs long-term section in AUDIT
-9. Patterns replicable: ✅ Modular references pattern explained
+**Actionability** ✅: 7. Violations → GitHub issues: ✅ Issue #142 referenced, priorities listed 8. Priorities clear: ✅ Immediate vs long-term section in AUDIT 9. Patterns replicable: ✅ Modular references pattern explained
 
 ### Unexpected Findings
 
@@ -156,6 +158,7 @@ Separating authoritative spec (README.md) from current state audit (AUDIT.md) wi
 **SUCCESS**
 
 **Achievements**:
+
 - ✅ Clear separation: Spec (README) vs. audit (AUDIT)
 - ✅ Normative vs. descriptive language distinction
 - ✅ Compliance tracking baseline established
@@ -164,6 +167,7 @@ Separating authoritative spec (README.md) from current state audit (AUDIT.md) wi
 - ✅ Experiment log complete
 
 **Impact**:
+
 - Framework has authoritative specification
 - Compliance measurable over time
 - Violations visible (18/20 skills lack resources/)
@@ -171,6 +175,7 @@ Separating authoritative spec (README.md) from current state audit (AUDIT.md) wi
 - Template for future audits
 
 **Next Steps**:
+
 1. Apply modular references pattern to python-dev, git-commit (Issue #142)
 2. Add resources/ symlinks to 18 remaining skills
 3. Quarterly audit updates to track compliance
@@ -200,22 +205,26 @@ Separating authoritative spec (README.md) from current state audit (AUDIT.md) wi
 **Comparison to Other Patterns**:
 
 Similar to:
+
 - OpenAPI spec (API.yaml) vs. actual implementation
 - RFC specifications vs. implementation reports
 - SQL schema vs. database state
 
 **Benefits**:
+
 - Clear separation of concerns
 - Compliance measurable over time
 - Violations become actionable tasks
 - Progress trackable via experiments
 
 **Risks**:
+
 - AUDIT may fall out of sync (requires discipline)
 - README may become aspirational (need enforcement)
 - Users may confuse which document to follow
 
 **Mitigations**:
+
 - AUDIT includes regeneration instructions
 - README references AUDIT frequently
 - Compliance monitoring in contributing workflow

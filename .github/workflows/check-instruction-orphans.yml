@@ -3,20 +3,20 @@ name: Check Instruction File Orphans
 on:
   pull_request:
     paths:
-      - 'agents/**/*.md'
-      - 'docs/**/*.md'
-      - 'CLAUDE.md'
-      - 'INSTRUCTIONS.md'
-      - 'README.md'
+      - "agents/**/*.md"
+      - "docs/**/*.md"
+      - "CLAUDE.md"
+      - "INSTRUCTIONS.md"
+      - "README.md"
   push:
     branches:
       - main
     paths:
-      - 'agents/**/*.md'
-      - 'docs/**/*.md'
-      - 'CLAUDE.md'
-      - 'INSTRUCTIONS.md'
-      - 'README.md'
+      - "agents/**/*.md"
+      - "docs/**/*.md"
+      - "CLAUDE.md"
+      - "INSTRUCTIONS.md"
+      - "README.md"
 
 jobs:
   check-orphans:
@@ -28,7 +28,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
       - name: Check for orphaned instruction files
         run: |

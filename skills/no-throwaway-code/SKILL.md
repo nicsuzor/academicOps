@@ -68,6 +68,7 @@ Agent wants to write temporary Python code to investigate/check/verify something
 **REPLICABILITY is the key.**
 
 Even if we only notice an issue once and fix it right away, we want to create durable infrastructure that:
+
 - Ensures the issue never re-emerges down the line
 - Documents what we learned
 - Can be run again to verify behavior
@@ -112,11 +113,13 @@ What durable solution should we create instead?
 ### Example 1: Inline Python to Check Data
 
 **Agent intends:**
+
 ```bash
 python -c "import json; data = json.load(open('config.json')); print(data.keys())"
 ```
 
 **Intervention:**
+
 ```
 🚫 STOP - Axiom #15: No single-use scripts
 
@@ -133,6 +136,7 @@ What should the test verify about config.json?
 ### Example 2: Temp Script to Investigate Bug
 
 **Agent intends:**
+
 ```python
 # /tmp/debug_parser.py
 from myapp.parser import parse_input
@@ -143,6 +147,7 @@ print(f"Type: {type(result)}")
 ```
 
 **Intervention:**
+
 ```
 🚫 STOP - Axiom #15: No single-use scripts
 
@@ -159,11 +164,13 @@ What edge case behavior should we test?
 ### Example 3: Quick Check Before Implementation
 
 **Agent intends:**
+
 ```bash
 python -c "from datetime import datetime; print(datetime.now().isoformat())"
 ```
 
 **Intervention:**
+
 ```
 🚫 STOP - Axiom #15: No single-use scripts
 
@@ -185,14 +192,15 @@ Which approach fits the need?
 ### Example 4: "Just Checking" Something
 
 **Agent intends:**
+
 ```bash
 python -c "import sys; print(sys.version)"
 ```
 
-**Acceptable exception:**
-This is checking environment/system state, not testing behavior or building functionality.
+**Acceptable exception:** This is checking environment/system state, not testing behavior or building functionality.
 
 **But if recurring:**
+
 ```
 If we need to verify Python version frequently:
 → Create tests/test_environment.py
@@ -214,6 +222,7 @@ If we need to verify Python version frequently:
    - `uv run python script.py` (running existing script)
 
 **Key distinction:**
+
 - ❌ Creating new throwaway code → INTERVENE
 - ✅ Using existing tools/scripts → ALLOW
 - ✅ Checking system state once → ALLOW (but if recurring, suggest test)
@@ -244,6 +253,7 @@ This skill succeeds when:
 ## Tone
 
 Keep interventions:
+
 - **Brief** - This is a lightweight nudge, not a lecture
 - **Constructive** - Offer the better path immediately
 - **Practical** - "Let's create X instead" not "You shouldn't do Y"

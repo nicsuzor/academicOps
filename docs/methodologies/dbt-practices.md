@@ -7,17 +7,20 @@ This document outlines best practices for using dbt (data build tool) in computa
 **ALL data access MUST go through dbt models. Direct queries to upstream sources (BigQuery, databases, APIs) are PROHIBITED.**
 
 **Why this is mandatory:**
+
 - **Reproducibility**: Queries are version-controlled in dbt
 - **Data governance**: dbt models are the single source of truth
 - **Quality**: Data passes through validated transformation pipeline
 - **Consistency**: All analysts use same transformations
 
 **Workflow when data is missing:**
+
 1. ❌ **NEVER** query upstream source directly (e.g., `SELECT * FROM bigquery.raw.table`)
 2. ✅ **CREATE** appropriate dbt model (staging/intermediate/mart)
 3. ✅ **REFERENCE** the model via `{{ ref('model_name') }}`
 
 **If you need data not in existing marts:**
+
 - Ask user: "Should I create a dbt model for this data?"
 - Create model in appropriate layer (staging for raw cleanup, marts for analysis)
 - Run `dbt run --select model_name` to materialize
@@ -26,6 +29,7 @@ This document outlines best practices for using dbt (data build tool) in computa
 ## Overview
 
 dbt is used to define, document, and validate data transformations. In academicOps projects, dbt serves as the foundation for reproducible empirical analysis by:
+
 - Defining data models as SQL transformations
 - Documenting data lineage and relationships
 - Validating data quality through tests
@@ -38,12 +42,14 @@ dbt is used to define, document, and validate data transformations. In academicO
 Built-in tests for common column-level checks. Define these in your `schema.yml` files alongside model documentation.
 
 **Available schema tests:**
+
 - `not_null`: Column has no nulls
 - `unique`: Column values are unique
 - `relationships`: Foreign key constraints (references another model/column)
 - `accepted_values`: Column has only specific values from a defined list
 
 **Example:**
+
 ```yaml
 models:
   - name: stg_cases
@@ -55,7 +61,7 @@ models:
       - name: status
         tests:
           - accepted_values:
-              values: ['pending', 'reviewed', 'published']
+              values: ["pending", "reviewed", "published"]
 ```
 
 ### 2. Singular Tests (in tests/)
@@ -63,11 +69,13 @@ models:
 Custom SQL queries for complex validation logic. Create `.sql` files in the `tests/` directory.
 
 **How they work:**
+
 - Return 0 rows = PASS ✓
 - Return >0 rows = FAIL ✗ (shows you the problematic data)
 - Great for multi-column logic, data quality checks, business rules
 
 **Example:**
+
 ```sql
 -- tests/assert_decision_dates_logical.sql
 -- Fail if any case has decision_date before submission_date
@@ -88,14 +96,16 @@ columns:
   - name: optional_field
     tests:
       - not_null:
-          severity: warn  # Show warning but don't fail build
+          severity: warn # Show warning but don't fail build
 ```
 
 **Severity levels:**
+
 - `error` (default): Fails the build, stops execution
 - `warn`: Shows warning but continues build
 
 **When to use warn:**
+
 - Known data quality issues you're tracking
 - Aspirational standards not yet achieved
 - Optional fields with expected nulls in some contexts
@@ -119,7 +129,7 @@ tests:
       field: created_at
       interval: 1
   - dbt_utils.unique_combination_of_columns:
-      combination_of_columns: ['user_id', 'date']
+      combination_of_columns: ["user_id", "date"]
 ```
 
 **When to use:** Common patterns like recency checks, multi-column uniqueness, value ranges.
@@ -143,13 +153,13 @@ Run with `dbt show --select data_quality_summary` to inspect quality issues inte
 
 ### 6. When to Use Each Test Type
 
-| Test Type | Use For | Example |
-|-----------|---------|---------|
-| **Schema tests** | Quick column-level checks | Nulls, uniqueness, allowed values |
-| **Singular tests** | Complex multi-column logic | Date ranges, cross-table consistency |
-| **Package tests** | Common reusable patterns | Recency, multi-column uniqueness, value ranges |
+| Test Type             | Use For                        | Example                                                 |
+| --------------------- | ------------------------------ | ------------------------------------------------------- |
+| **Schema tests**      | Quick column-level checks      | Nulls, uniqueness, allowed values                       |
+| **Singular tests**    | Complex multi-column logic     | Date ranges, cross-table consistency                    |
+| **Package tests**     | Common reusable patterns       | Recency, multi-column uniqueness, value ranges          |
 | **Diagnostic models** | Interactive quality inspection | Aggregated quality metrics, `dbt show` for quick checks |
-| **Dashboards** | Human review, visual analysis | Exploratory data analysis, trend identification |
+| **Dashboards**        | Human review, visual analysis  | Exploratory data analysis, trend identification         |
 
 **General principle:** Start with schema tests (fast, declarative), add package tests for common patterns, write singular tests for project-specific logic, create diagnostic models for quality monitoring, use dashboards for human judgment.
 
@@ -158,12 +168,14 @@ Run with `dbt show --select data_quality_summary` to inspect quality issues inte
 ### Staging Models (stg_)
 
 First layer of transformation from raw sources. Focus on:
+
 - Type casting
 - Renaming to consistent conventions
 - Basic filtering (remove test data, invalid records)
 - No business logic yet
 
 **Example:**
+
 ```sql
 -- models/staging/stg_cases.sql
 select
@@ -180,6 +192,7 @@ where id is not null
 Business logic and transformations. Can be ephemeral (not materialized).
 
 **Example:**
+
 ```sql
 -- models/intermediate/int_case_metrics.sql
 select
@@ -193,6 +206,7 @@ from {{ ref('stg_cases') }}
 ### Mart Models (fct_, dim_)
 
 Final analysis-ready models:
+
 - `fct_*`: Fact tables (events, transactions, measurements)
 - `dim_*`: Dimension tables (entities, classifications)
 
@@ -215,6 +229,7 @@ models:
 ```
 
 **Why document:**
+
 - Agents can understand your data model
 - Future you remembers what fields mean
 - Collaborators can navigate the project
@@ -269,8 +284,8 @@ sources:
   - name: raw
     database: mydb
     freshness:
-      warn_after: {count: 24, period: hour}
-      error_after: {count: 48, period: hour}
+      warn_after: { count: 24, period: hour }
+      error_after: { count: 48, period: hour }
     tables:
       - name: cases
 ```
@@ -280,6 +295,7 @@ sources:
 dbt creates analysis-ready datasets. Connect to them via:
 
 **Streamlit:**
+
 ```python
 import duckdb
 conn = duckdb.connect('data/warehouse.db')
@@ -287,6 +303,7 @@ df = conn.execute("SELECT * FROM fct_case_decisions").df()
 ```
 
 **Jupyter:**
+
 ```python
 # Use dbt's ref() pattern via sqlalchemy
 from sqlalchemy import create_engine

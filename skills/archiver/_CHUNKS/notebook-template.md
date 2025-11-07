@@ -7,21 +7,21 @@ This template provides the standard structure for archiving experimental analysi
 ```markdown
 # [Experiment Title]: [Short Description]
 
-**Date:** Month DD, YYYY
-**Experiment ID:** [identifier if applicable]
-**Status:** ✅ [SUCCESS / PARTIAL SUCCESS / ARCHIVED]
+**Date:** Month DD, YYYY **Experiment ID:** [identifier if applicable] **Status:** ✅ [SUCCESS / PARTIAL SUCCESS / ARCHIVED]
 
 ---
 
 ## Executive Summary
 
 [2-4 paragraphs summarizing:]
+
 - **The Problem:** What issue or question prompted this work
 - **The Solution:** What approach was tested
 - **The Results:** Key quantitative findings
 - **The Impact:** What changed in production as a result
 
 **Key Findings:**
+
 - Finding 1 with specific metrics
 - Finding 2 with specific metrics
 - Finding 3 with specific metrics
@@ -47,18 +47,19 @@ This template provides the standard structure for archiving experimental analysi
 [How the problem was discovered or identified]
 
 **Pattern Observed:**
+
 - Symptom 1
 - Symptom 2
 
 **Evidence:**
+
 - Quantitative evidence (numbers, percentages)
 - Sample cases or examples
 - Affected systems/models/criteria
 
 ### Why This Matters
 
-[Why solving this problem is important]
-[Impact if left unaddressed]
+[Why solving this problem is important] [Impact if left unaddressed]
 ```
 
 ### Part 2: Solution/Approach (Markdown Cell)
@@ -77,14 +78,14 @@ This template provides the standard structure for archiving experimental analysi
 [Detailed explanation of the solution]
 
 **Key Design Principles:**
+
 1. Principle 1 - Explanation
 2. Principle 2 - Explanation
 3. Principle 3 - Explanation
 
 ### Implementation
 
-[How the solution was implemented]
-[Code patterns, configurations, model changes]
+[How the solution was implemented] [Code patterns, configurations, model changes]
 ```
 
 ### Part 3: Experiment Design (Markdown Cell)
@@ -106,10 +107,12 @@ This template provides the standard structure for archiving experimental analysi
 ### Success Criteria
 
 **Minimum Success:**
+
 - Criterion 1 with threshold
 - Criterion 2 with threshold
 
 **Strong Success:**
+
 - Criterion 1 with higher threshold
 - Criterion 2 with higher threshold
 
@@ -254,10 +257,12 @@ for group in results_df['group_column'].unique():
 [List which success criteria were met or not met with checkmarks]
 
 **✅ MINIMUM/STRONG SUCCESS:**
+
 - Criterion 1: [Status with evidence]
 - Criterion 2: [Status with evidence]
 
 **⚠️ PARTIAL SUCCESS / ❌ MISSED:**
+
 - Criterion X: [Status with evidence]
 
 ### Key Insights
@@ -271,14 +276,17 @@ for group in results_df['group_column'].unique():
 ### What This Means
 
 **For the pipeline:**
+
 - Implication 1
 - Implication 2
 
 **For research integrity:**
+
 - Implication 1
 - Implication 2
 
 **For future work:**
+
 - Next step 1
 - Next step 2
 
@@ -293,6 +301,7 @@ for group in results_df['group_column'].unique():
 ## Conclusion
 
 [2-3 paragraphs summarizing:]
+
 - What the experiment demonstrated
 - Key quantitative results
 - Impact and implications
@@ -309,31 +318,32 @@ for group in results_df['group_column'].unique():
 ## Appendix: Technical Details
 
 ### Data Sources
+
 - **Database:** [Path/connection details]
 - **Tables:** [List tables used]
 - **Query Filters:** [Any important filters]
 
 ### Code References
+
 - **Analysis Code:** `path/to/file.py` at commit `abc123`
 - **dbt Models:** [List models]
 - **Configuration:** `path/to/config.yaml`
 
 ### Execution
+
 - **Run Command:** [How to execute]
 - **Dependencies:** [Required packages/tools]
 - **Runtime:** [How long it takes]
 
 ### Related Documentation
+
 - `docs/METHODOLOGY.md` - [Relevant section]
 - `methods/method_name.md` - [Production implementation]
 - GitHub Issue #XXX - [Related discussion]
 
 ---
 
-**Archive Date:** [Month DD, YYYY]
-**Notebook Version:** 1.0
-**Reproducible:** [Yes/No] [(If No: data removed on YYYY-MM-DD)]
-**Status:** [Final - For Historical Reference Only / Active]
+**Archive Date:** [Month DD, YYYY] **Notebook Version:** 1.0 **Reproducible:** [Yes/No] [(If No: data removed on YYYY-MM-DD)] **Status:** [Final - For Historical Reference Only / Active]
 ```
 
 ### Cleanup Code (Code Cell)

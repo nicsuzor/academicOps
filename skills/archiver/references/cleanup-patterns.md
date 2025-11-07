@@ -11,6 +11,7 @@ Files that served the experiment but are no longer needed once archived:
 #### Experimental Analysis Code
 
 **Streamlit pages for experiments:**
+
 ```
 streamlit/experimental_*.py
 streamlit/*_test.py
@@ -19,6 +20,7 @@ streamlit/old_*.py
 ```
 
 **Characteristics:**
+
 - Created specifically for one experiment
 - Not part of ongoing dashboards
 - Functionality superseded by new approach
@@ -29,6 +31,7 @@ streamlit/old_*.py
 #### Investigation Scripts
 
 **Analysis investigation scripts:**
+
 ```
 analyses/investigate_*.py
 analyses/debug_*.py
@@ -37,6 +40,7 @@ analyses/*_experiment.py
 ```
 
 **Characteristics:**
+
 - One-off investigative code
 - Created to diagnose specific issue
 - Findings now documented in archive
@@ -47,6 +51,7 @@ analyses/*_experiment.py
 #### Diagnostic Documentation
 
 **Investigation markdown files:**
+
 ```
 data/*_investigation.md
 data/*_diagnosis.md
@@ -55,6 +60,7 @@ tjadbt/data/*_investigation.md
 ```
 
 **Characteristics:**
+
 - Temporary documentation of issues
 - Created during problem diagnosis
 - Findings now in archive or proper docs
@@ -65,12 +71,14 @@ tjadbt/data/*_investigation.md
 #### Experimental dbt Models
 
 **Diagnostic dbt models:**
+
 ```
 dbt/models/diagnostics/*.sql  (if no longer needed)
 dbt/models/experiments/*.sql
 ```
 
 **Characteristics:**
+
 - Created to investigate data issues
 - Not part of production pipeline
 - Results captured in archive
@@ -81,6 +89,7 @@ dbt/models/experiments/*.sql
 #### Temporary Test Data
 
 **Sample/test data files:**
+
 ```
 data/*_sample.csv
 data/test_*.json
@@ -88,6 +97,7 @@ data/*_experiment.parquet
 ```
 
 **Characteristics:**
+
 - Created for specific experiment
 - Not used by production pipeline
 - Can be regenerated if needed
@@ -106,6 +116,7 @@ streamlit/quality_metrics.py
 ```
 
 **Characteristics:**
+
 - Used by team regularly
 - Part of ongoing monitoring
 - Not specific to one experiment
@@ -120,6 +131,7 @@ scripts/refresh_data.py
 ```
 
 **Characteristics:**
+
 - Reusable for multiple analyses
 - Part of standard workflow
 - Called by other systems
@@ -134,6 +146,7 @@ dbt/models/intermediate/*.sql
 ```
 
 **Characteristics:**
+
 - Part of active data pipeline
 - Referenced by other models
 - Tested and documented
@@ -149,6 +162,7 @@ data/README.md
 ```
 
 **Characteristics:**
+
 - Documents current system
 - Referenced by team
 - Kept up-to-date
@@ -161,22 +175,26 @@ For each file, ask:
 ### 1. Was this created for a specific experiment?
 
 **YES → Consider for removal**
+
 - Check if findings are in archive
 - Verify not used elsewhere
 - Remove after archiving
 
 **NO → Keep**
+
 - Part of general workflow
 - Used by multiple projects
 
 ### 2. Is this still being used?
 
 **YES → Keep**
+
 - Active in workflow
 - Referenced by other code
 - Used in dashboards
 
 **NO → Consider for removal**
+
 - Check git history for last use
 - Verify not a dependency
 - Remove if experiment-specific
@@ -184,11 +202,13 @@ For each file, ask:
 ### 3. Could this be reused for future work?
 
 **YES → Keep**
+
 - General-purpose tool
 - Reusable functions
 - Part of standard toolkit
 
 **NO → Consider for removal**
+
 - One-off investigation
 - Specific to past issue
 - Not generalizable
@@ -196,11 +216,13 @@ For each file, ask:
 ### 4. Is functionality superseded?
 
 **YES → Remove**
+
 - New approach implemented
 - Old code no longer needed
 - Kept in archive for reference
 
 **NO → Keep**
+
 - Still relevant
 - No replacement
 - Current approach
@@ -243,17 +265,20 @@ grep -r "filename" . --exclude-dir=.git
 Organize files into categories:
 
 **Definitely Remove:**
+
 - Experiment-specific
 - Functionality in archive
 - No dependencies
 - Superseded by new approach
 
 **Maybe Remove:**
+
 - Created for experiment but possibly reusable
 - Not sure if still referenced
 - Need user confirmation
 
 **Definitely Keep:**
+
 - Production code
 - Active use
 - General-purpose
@@ -310,12 +335,14 @@ Follows archive: [commit hash]"
 ### Streamlit Cleanup
 
 **Remove:**
+
 - Pages created for specific investigation
 - "Test" or "experimental" pages
 - Superseded visualizations
 - One-off comparison pages
 
 **Keep:**
+
 - Main dashboard
 - Ongoing monitoring pages
 - Production visualization tools
@@ -324,12 +351,14 @@ Follows archive: [commit hash]"
 ### Analysis Scripts Cleanup
 
 **Remove:**
+
 - Scripts that investigate specific issues
 - One-time data exploration
 - Debugging scripts
 - Experiment-specific calculations
 
 **Keep:**
+
 - Reusable utility functions
 - Standard reporting scripts
 - Data pipeline scripts
@@ -338,12 +367,14 @@ Follows archive: [commit hash]"
 ### Documentation Cleanup
 
 **Remove:**
+
 - Investigation markdown files
 - Diagnostic summaries
 - Issue-specific documentation
 - Temporary notes
 
 **Keep:**
+
 - README files
 - METHODOLOGY.md
 - methods/*.md files
@@ -353,12 +384,14 @@ Follows archive: [commit hash]"
 ### dbt Models Cleanup
 
 **Remove:**
+
 - Diagnostic models for specific issues
 - Experimental transformations
 - Superseded models (after migration)
 - Test models
 
 **Keep:**
+
 - All production staging models
 - All production marts
 - Intermediate models in use
@@ -489,12 +522,14 @@ find . -name "*experiment*" -o -name "*test*" -o -name "*investigation*"
 **After archiving scorer validation experiment:**
 
 Remove:
+
 - `streamlit/scorer_reliability.py` - Investigation dashboard
 - `analyses/investigate_false_negatives.py` - Diagnostic script
 - `tjadbt/data/scorer_assessments_investigation.md` - Issue doc
 - `data/test_samples_false_negatives.json` - Test data
 
 Keep:
+
 - `streamlit/main_dashboard.py` - Production dashboard
 - `dbt/models/marts/fct_scorer_results.sql` - Production model
 - `methods/qualScore_scoring.md` - Production documentation
@@ -504,12 +539,14 @@ Keep:
 **After archiving old schema analysis:**
 
 Remove:
+
 - `analyses/compare_old_new_schema.py` - Migration comparison
 - `streamlit/schema_migration_check.py` - Migration dashboard
 - `dbt/models/diagnostics/old_schema_coverage.sql` - Diagnostic
 - `data/schema_migration_summary.md` - Migration notes
 
 Keep:
+
 - `dbt/models/staging/stg_*.sql` - Production staging (new schema)
 - `data/README.md` - Updated with new schema docs
 - `methods/data_extraction.md` - Updated for new schema
@@ -519,11 +556,13 @@ Keep:
 **After archiving A/B test results:**
 
 Remove:
+
 - `analyses/ab_test_analysis.py` - Test-specific analysis
 - `streamlit/ab_comparison.py` - Test dashboard
 - `experiments/test_results_*.csv` - Raw test data (in archive)
 
 Keep:
+
 - `streamlit/production_metrics.py` - Ongoing monitoring
 - `methods/treatment_allocation.md` - General A/B methodology
 - `dbt/models/marts/fct_experiments.sql` - Experiment infrastructure

@@ -1,8 +1,6 @@
 # Test Development Context
 
-@../agents/_CORE.md
-@../docs/_CHUNKS/FAIL-FAST.md
-@../.claude/skills/test-writing/SKILL.md
+@../agents/_CORE.md @../docs/_CHUNKS/FAIL-FAST.md @../.claude/skills/test-writing/SKILL.md
 
 ## Testing Philosophy
 

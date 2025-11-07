@@ -21,6 +21,7 @@ Support academic research data analysis by working collaboratively with dbt (dat
 This skill includes both inline guidance and detailed reference documentation:
 
 ### Core Workflow Documentation (Inline)
+
 - Context Discovery - How to discover project context
 - Data Access Workflow - Critical rules for accessing data through dbt
 - Testing Workflow - Adding tests to validate data quality
@@ -29,21 +30,25 @@ This skill includes both inline guidance and detailed reference documentation:
 - Quick Reference Commands
 
 ### Research Documentation Standards (_CHUNKS/)
+
 - `_CHUNKS/research-documentation.md` - **REQUIRED documentation structure and maintenance rules**
 - `_CHUNKS/methodology-files.md` - What goes in METHODOLOGY.md files
 - `_CHUNKS/methods-vs-methodology.md` - Distinguishing METHODS from METHODOLOGY
 - `_CHUNKS/experiment-logging.md` - Experiment directory structure and lifecycle
 
 ### Detailed Technical Workflows (_CHUNKS/)
+
 - `_CHUNKS/dbt-workflow.md` - dbt model creation and data access patterns
 - `_CHUNKS/streamlit-workflow.md` - Streamlit visualization workflow
 
 ### Additional Resources (references/)
+
 - `references/dbt-workflow.md` - Comprehensive dbt patterns and testing strategies
 - `references/streamlit-patterns.md` - Visualization best practices and layout patterns
 - `references/context-discovery.md` - Guide to finding and reading project context
 
 ### Statistical Analysis (references/)
+
 - `references/statistical-analysis.md` - **Complete guide to hypothesis testing and statistical analysis**
 - `references/test_selection_guide.md` - Choosing the right statistical test
 - `references/assumptions_and_diagnostics.md` - Checking and validating statistical assumptions
@@ -52,6 +57,7 @@ This skill includes both inline guidance and detailed reference documentation:
 - `references/reporting_standards.md` - APA-style statistical reporting
 
 ### Data Science References (references/)
+
 - `references/MATPLOTLIB.md` → Visualization with matplotlib
 - `references/SEABORN.md` → Statistical visualization with seaborn
 - `references/STATSMODELS.md` → Statistical modeling and econometrics
@@ -70,6 +76,7 @@ Invoke this skill when:
 5. **Validating data quality** - Adding tests, checking consistency
 
 **Key indicators in project structure:**
+
 - `dbt/models/` directory (staging, intermediate, marts)
 - `streamlit/` or `.py` files with Streamlit code
 - `data/warehouse.db` or similar analytical database
@@ -192,6 +199,7 @@ Need data for analysis?
 ### Prohibited Actions
 
 ❌ **NEVER** do this:
+
 ```python
 # Direct BigQuery query - PROHIBITED
 df = client.query("SELECT * FROM bigquery.raw.cases").to_dataframe()
@@ -204,6 +212,7 @@ response = requests.get("https://api.example.com/data")
 ```
 
 ✅ **ALWAYS** do this:
+
 ```python
 # Query through dbt mart - CORRECT
 import duckdb
@@ -274,18 +283,19 @@ Add tests to validate data quality at every pipeline stage.
 
 Use appropriate test type for the validation:
 
-| Test Type | Use For | Example |
-|-----------|---------|---------|
-| **Schema tests** | Column-level checks | not_null, unique, accepted_values |
-| **Singular tests** | Multi-column logic | Date range validation, cross-table consistency |
-| **Package tests** | Common patterns | Recency checks, multi-column uniqueness |
-| **Diagnostic models** | Quality monitoring | Aggregated metrics for manual review |
+| Test Type             | Use For             | Example                                        |
+| --------------------- | ------------------- | ---------------------------------------------- |
+| **Schema tests**      | Column-level checks | not_null, unique, accepted_values              |
+| **Singular tests**    | Multi-column logic  | Date range validation, cross-table consistency |
+| **Package tests**     | Common patterns     | Recency checks, multi-column uniqueness        |
+| **Diagnostic models** | Quality monitoring  | Aggregated metrics for manual review           |
 
 ### Follow Single-Step Testing Workflow
 
 **Step 1: Identify what to test**
 
 Review the model and ask:
+
 - Which columns should never be null?
 - Which columns should be unique?
 - Are there accepted value lists?
@@ -307,7 +317,7 @@ models:
       - name: status
         tests:
           - accepted_values:
-              values: ['pending', 'reviewed', 'published']
+              values: ["pending", "reviewed", "published"]
 ```
 
 **STOP. Show to user.**
@@ -349,7 +359,7 @@ Use `severity: warn` for known issues or aspirational standards:
 ```yaml
 tests:
   - not_null:
-      severity: warn  # Don't fail build, just warn
+      severity: warn # Don't fail build, just warn
 ```
 
 **See:** `references/dbt-workflow.md` for complete testing patterns
@@ -363,6 +373,7 @@ When investigating data issues (missing values, unexpected patterns, data qualit
 ### When to Create Investigation Scripts
 
 Create reusable scripts for:
+
 - ✅ **Root cause analysis** - Tracing why data is missing or incorrect
 - ✅ **Coverage analysis** - Checking how much data satisfies conditions
 - ✅ **Data quality checks** - Investigating completeness, accuracy
@@ -370,6 +381,7 @@ Create reusable scripts for:
 - ✅ **Join validation** - Checking coverage of joins between tables
 
 Use throwaway queries ONLY for:
+
 - ❌ Quick calculations (simple arithmetic, counts)
 - ❌ Checking if single command worked
 - ❌ One-time data fixes
@@ -460,6 +472,7 @@ Used to diagnose issue #[number].
 ```
 
 **Why This Matters:**
+
 - **Reproducibility** - Can rerun after data changes
 - **Documentation** - Shows how issue was diagnosed
 - **Testing** - Can validate fix by running investigation again
@@ -522,15 +535,9 @@ Continue one step at a time, yielding to user after each finding.
 
 ### Exploratory Analysis Anti-Patterns
 
-❌ **Don't** create comprehensive analysis notebook without user input
-❌ **Don't** generate 10 charts at once
-❌ **Don't** make assumptions about what's interesting
-❌ **Don't** query upstream data sources directly
+❌ **Don't** create comprehensive analysis notebook without user input ❌ **Don't** generate 10 charts at once ❌ **Don't** make assumptions about what's interesting ❌ **Don't** query upstream data sources directly
 
-✅ **Do** take one analytical step at a time
-✅ **Do** explain each finding and ask for direction
-✅ **Do** use dbt models for all data access
-✅ **Do** document interesting findings in code comments
+✅ **Do** take one analytical step at a time ✅ **Do** explain each finding and ask for direction ✅ **Do** use dbt models for all data access ✅ **Do** document interesting findings in code comments
 
 ## Documentation Philosophy
 
@@ -541,6 +548,7 @@ Continue one step at a time, yielding to user after each finding.
 ### Required Documentation Structure
 
 Research projects MUST maintain:
+
 - **README.md** - Project overview and quick start
 - **METHODOLOGY.md** - Research design and approach (see `@reference _CHUNKS/methodology-files.md`)
 - **methods/*.md** - Technical implementation details (see `@reference _CHUNKS/methods-vs-methodology.md`)
@@ -560,14 +568,9 @@ Research projects MUST maintain:
 
 ### Prohibited
 
-❌ Create `analysis_report.md` or any random markdown files
-❌ Create `findings_summary.docx`
-❌ Proliferate documentation files without defined structure
-❌ Leave documentation stale when code changes
+❌ Create `analysis_report.md` or any random markdown files ❌ Create `findings_summary.docx` ❌ Proliferate documentation files without defined structure ❌ Leave documentation stale when code changes
 
-✅ Follow strict structure defined in `_CHUNKS/research-documentation.md`
-✅ Update documentation in SAME commit as code changes
-✅ One source of truth for each piece of information
+✅ Follow strict structure defined in `_CHUNKS/research-documentation.md` ✅ Update documentation in SAME commit as code changes ✅ One source of truth for each piece of information
 
 ## Collaborative Workflow Principles
 
@@ -580,11 +583,13 @@ Research projects MUST maintain:
 5. Proceed based on user direction
 
 **Never:**
+
 - Create multiple artifacts without checkpoints
 - Make assumptions about next steps
 - Implement complex workflows end-to-end without user input
 
 **Always:**
+
 - Explain options and ask for user preference
 - Show intermediate results
 - Yield control back to user frequently

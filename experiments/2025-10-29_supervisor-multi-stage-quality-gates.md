@@ -1,15 +1,11 @@
 # Experiment: Multi-Stage Quality-Gated Supervisor Agent
 
-**Date**: 2025-10-29
-**Commit**: [pending]
-**Issue**: #127 (SUPERVISOR agent for orchestrating multi-agent workflows)
-**Agent**: New SUPERVISOR agent with comprehensive quality gates
-**Environment**: Design and implementation phase
-**Model**: Sonnet 4.5
+**Date**: 2025-10-29 **Commit**: [pending] **Issue**: #127 (SUPERVISOR agent for orchestrating multi-agent workflows) **Agent**: New SUPERVISOR agent with comprehensive quality gates **Environment**: Design and implementation phase **Model**: Sonnet 4.5
 
 ## Hypothesis
 
 A multi-stage supervisor agent with explicit quality gates at each phase will:
+
 1. Ensure higher reliability through test-first micro-iterations
 2. Prevent scope drift through continuous plan reconciliation
 3. Detect infrastructure gaps (missing/buggy agents) and log them systematically
@@ -19,6 +15,7 @@ A multi-stage supervisor agent with explicit quality gates at each phase will:
 ## User Requirements
 
 User requested supervisor that:
+
 1. ✅ Calls planning agent first to create detailed plan
 2. ✅ Calls review agent to validate plan before execution
 3. ✅ Chunks work into very small components (micro-tasks)
@@ -39,6 +36,7 @@ User requested supervisor that:
 Based on 2025 LLM orchestration research:
 
 **Patterns integrated**:
+
 - **Checklist-based supervision** (AutoGen, CrewAI): TodoWrite for success criteria and micro-tasks
 - **Validation layers** (ScenGen): Independent plan review before execution
 - **Evaluation-driven development**: Inspired by TDD but for LLM agent workflows
@@ -46,6 +44,7 @@ Based on 2025 LLM orchestration research:
 - **Multi-agent delegation patterns** (LangGraph): Structured agent invocation with context flow
 
 **Key insight applied**:
+
 > "Even with RAG and schema enforcement, LLM agents can go astray, which is why real-time validation is essential."
 
 This informed the iteration gate (Stage 3) with scope drift and thrashing detection.
@@ -57,6 +56,7 @@ This informed the iteration gate (Stage 3) with scope drift and thrashing detect
 **Line count**: 424 lines
 
 **Anti-Bloat Analysis**:
+
 - **Target**: <250 lines (from solution design)
 - **Actual**: 424 lines
 - **Justification**: Complex orchestration logic inherent to supervisor responsibility
@@ -107,6 +107,7 @@ Stage 4: Completion
 ```
 
 **Self-Monitoring Capabilities**:
+
 - Missing agent detection → log via aops-bug with suggestion
 - Buggy agent detection (0 tokens 2+ times) → log performance issue
 - Thrashing detection (same file 3+ modifications) → STOP and log
@@ -116,17 +117,20 @@ Stage 4: Completion
 ### Integration Points
 
 **Skills**:
+
 - `aops-bug`: Infrastructure gap reporting
 - `git-commit`: Code quality validation and atomic commits
 - `test-writing`: TDD test creation
 
 **Subagents**:
+
 - `Plan`: Planning and plan review
 - `Explore`: Codebase understanding
 - `dev`: Implementation
 - Code-review invoked via git-commit skill
 
 **Compliance**:
+
 - Axiom #1 exception: Explicit DO ONE THING exception for orchestration
 - Axiom #4: References _CORE.md for NO EXCUSES enforcement
 - Axiom #7: Fail-fast on scope drift, thrashing, missing infrastructure
@@ -135,6 +139,7 @@ Stage 4: Completion
 ## Success Criteria
 
 **For this implementation phase**:
+
 - [x] SUPERVISOR.md created with all required stages
 - [x] Self-monitoring protocols documented
 - [x] Multi-agent request parsing included (from #126)
@@ -147,6 +152,7 @@ Stage 4: Completion
 - [ ] User validation received
 
 **For future testing phase**:
+
 - Supervisor successfully completes complex task following all stages
 - Zero regressions introduced (all tests pass)
 - Scope drift detected and handled appropriately
@@ -157,17 +163,20 @@ Stage 4: Completion
 ## Experiment Plan
 
 **Phase 1: Design & Implementation** (CURRENT)
+
 - Create SUPERVISOR.md based on research and user requirements
 - Document in experiment log
 - Commit and track in #127
 
 **Phase 2: Initial Testing** (NEXT)
+
 - User invokes supervisor on real complex task
 - Monitor adherence to stages
 - Track scope drift, thrashing, quality gate violations
 - Measure: task completion, test pass rate, commits quality
 
 **Phase 3: Iteration** (FUTURE)
+
 - Refine based on real-world usage
 - Extract stages to separate docs if bloat becomes issue
 - Add validation hooks if violations occur repeatedly
@@ -176,49 +185,46 @@ Stage 4: Completion
 ## Evaluation Metrics
 
 **Reliability**:
+
 - Test pass rate at completion (target: 100%)
 - Regressions introduced (target: 0)
 - Success criteria verification rate (target: 100%)
 
 **Quality**:
+
 - Code review pass rate (target: 100%)
 - Commits following fail-fast principles (target: 100%)
 - Atomic commits (one micro-task per commit)
 
 **Process Adherence**:
+
 - Planning phase completion before execution (target: 100%)
 - Test-first followed (target: 100%)
 - Independent review performed (target: 100%)
 - Plan reconciliation at each iteration (target: 100%)
 
 **Self-Monitoring**:
+
 - Scope drift detections vs actual drifts
 - Thrashing detections vs actual thrashing
 - Infrastructure gaps logged
 - 0-token failures handled appropriately
 
 **Efficiency**:
+
 - Overhead of multi-stage process vs value delivered
 - Time to complete vs quality improvement
 - User intervention required (target: minimal)
 
 ## Risks & Mitigations
 
-**Risk**: Supervisor too complex, becomes unwieldy in practice
-**Mitigation**: Monitor usage, extract stages to referenced docs if needed
-**Status**: To be evaluated in Phase 2
+**Risk**: Supervisor too complex, becomes unwieldy in practice **Mitigation**: Monitor usage, extract stages to referenced docs if needed **Status**: To be evaluated in Phase 2
 
-**Risk**: Orchestration overhead slows down simple tasks
-**Mitigation**: Document when to use Supervisor (complex tasks) vs direct agent
-**Status**: Documented in Purpose & Authority section
+**Risk**: Orchestration overhead slows down simple tasks **Mitigation**: Document when to use Supervisor (complex tasks) vs direct agent **Status**: Documented in Purpose & Authority section
 
-**Risk**: Supervisor itself violates anti-bloat at 424 lines
-**Mitigation**: References existing docs, hard cap at 500 lines, can extract later
-**Status**: Within limits, monitor for actual bloat in practice
+**Risk**: Supervisor itself violates anti-bloat at 424 lines **Mitigation**: References existing docs, hard cap at 500 lines, can extract later **Status**: Within limits, monitor for actual bloat in practice
 
-**Risk**: Multi-agent coordination fails on API timeouts
-**Mitigation**: 0-token recovery protocol (retry, switch, fail explicitly)
-**Status**: Protocol documented, to be tested
+**Risk**: Multi-agent coordination fails on API timeouts **Mitigation**: 0-token recovery protocol (retry, switch, fail explicitly) **Status**: Protocol documented, to be tested
 
 ## Related Experiments
 
@@ -238,6 +244,7 @@ Stage 4: Completion
 ## Notes
 
 **Design Decisions**:
+
 - Success checklist REQUIRED FIRST to prevent retroactive rationalization
 - Micro-tasks keep changes small and testable
 - Independent review at each stage prevents accumulation of technical debt
@@ -245,6 +252,7 @@ Stage 4: Completion
 - Self-monitoring makes supervisor responsible for framework health
 
 **Alignment with academicOps Philosophy**:
+
 - Test-driven development mandatory
 - Fail-fast (stop on scope drift, thrashing, infrastructure gaps)
 - Self-documenting (each commit atomic and clear)
@@ -252,6 +260,7 @@ Stage 4: Completion
 - Long-term focused (atomic commits, proper tests, quality gates)
 
 **Lessons from Previous Experiments**:
+
 - NO EXCUSES critical - supervisor tried to claim success without verification (#2025-10-19)
 - Success checklist prevents rationalization
 - 0-token failures need explicit handling

@@ -1,6 +1,7 @@
 # Canonical Settings.json with Symlink Architecture
 
 ## Metadata
+
 - Date: 2025-10-26
 - Issue: #162
 - Commit: c2bbb2e
@@ -9,6 +10,7 @@
 ## Hypothesis
 
 Storing canonical settings.json in academicOps repo and symlinking from ~/.claude/ will:
+
 - Eliminate configuration drift between framework and user installations
 - Enable automatic propagation of hook improvements via git pull
 - Provide version control for all hook configuration changes
@@ -44,6 +46,7 @@ Storing canonical settings.json in academicOps repo and symlinking from ~/.claud
 **Implementation**: Complete
 
 **Enforcement Hierarchy Applied**:
+
 - Q1 (Scripts): YES - setup_academicops.sh creates symlink
 - Q2 (Hooks): N/A
 - Q3 (Config): N/A
@@ -56,12 +59,14 @@ Storing canonical settings.json in academicOps repo and symlinking from ~/.claud
 **Success** - Architectural solution implemented cleanly
 
 **Key learnings**:
+
 - Setup script already had symlink pattern in place
 - Just needed to make settings.json version-controlled
 - Following enforcement hierarchy prevented instruction bloat
 - Documentation in ARCHITECTURE.md provides clear migration path
 
 **Next validation**:
+
 - User runs setup script on their machine
 - Monitor that git pull updates propagate correctly
 - Verify no configuration drift over time

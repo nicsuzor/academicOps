@@ -1,20 +1,20 @@
 # AUTOMATIC INFORMATION EXTRACTION GUIDE
 
 ## CORE PRINCIPLE
+
 Extract and save actionable information IMMEDIATELY without waiting for user prompts.
 
 ## WHAT TO EXTRACT
 
 ### Tasks
-**Trigger Words**: "need to", "should", "must", "will", "todo", "task", "reminder", "next month", "by [date]", "prepare for", "abstract for", "peer review", "evaluation", "due today"
-**Contextual Triggers**: 
+
+**Trigger Words**: "need to", "should", "must", "will", "todo", "task", "reminder", "next month", "by [date]", "prepare for", "abstract for", "peer review", "evaluation", "due today" **Contextual Triggers**:
+
 - Upcoming events mentioned (keynotes, conferences, meetings)
 - Deadlines discussed even without explicit task language
 - "Next actions" sections in project discussions
-- Service obligations (reviews, evaluations, committee work)
-**Action**: Create SEPARATE task file in `${ACADEMICOPS_PERSONAL}/data/tasks/inbox/`
-**CRITICAL**: Tasks are NOT project updates - create dedicated files
-**Format**:
+- Service obligations (reviews, evaluations, committee work) **Action**: Create SEPARATE task file in `${ACADEMICOPS_PERSONAL}/data/tasks/inbox/` **CRITICAL**: Tasks are NOT project updates - create dedicated files **Format**:
+
 ```markdown
 ---
 created: YYYY-MM-DD
@@ -22,15 +22,16 @@ project: [project-name if mentioned]
 priority: [if mentioned]
 deadline: [if mentioned]
 ---
+
 # [Task title]
 
 [Task description]
 ```
 
 ### Project Information
-**Trigger**: Discussion about ongoing work, collaborations, deliverables, project assessments
-**Action**: Update `${ACADEMICOPS_PERSONAL}/data/projects/[project-name].md`
-**Information to Capture**:
+
+**Trigger**: Discussion about ongoing work, collaborations, deliverables, project assessments **Action**: Update `${ACADEMICOPS_PERSONAL}/data/projects/[project-name].md` **Information to Capture**:
+
 - Collaborator names and contact info
 - Deadlines and milestones
 - Key decisions or changes
@@ -42,27 +43,30 @@ deadline: [if mentioned]
 - **Emotional/energy assessments** ("stressed about", "excited by")
 
 ### Goals and Strategy
-**Trigger**: Discussion about objectives, vision, priorities
-**Action**: Update `${ACADEMICOPS_PERSONAL}/data/goals/[goal-name].md`
-**Information to Capture**:
+
+**Trigger**: Discussion about objectives, vision, priorities **Action**: Update `${ACADEMICOPS_PERSONAL}/data/goals/[goal-name].md` **Information to Capture**:
+
 - Theory of change
 - Success metrics
 - Supporting projects
 - Strategic priorities
 
 ### Contacts
-**Trigger**: Names, email addresses, organizational affiliations
-**Action**: Add to relevant project files under "## Contacts" section
-**Format**:
+
+**Trigger**: Names, email addresses, organizational affiliations **Action**: Add to relevant project files under "## Contacts" section **Format**:
+
 ```markdown
 ## Contacts
+
 - **[Name]** ([Organization]): [email] - [context/role]
 ```
 
 ## EXTRACTION RULES
 
 ### 1. Extract During Conversation (ADHD-OPTIMIZED)
+
 Don't wait until the end. As information appears:
+
 1. Identify the category (task/project/goal/contact)
 2. Extract the relevant details
 3. Save to appropriate file
@@ -71,14 +75,18 @@ Don't wait until the end. As information appears:
 6. **Inference is better than missing data** - make reasonable assumptions from context
 
 ### 2. Be Comprehensive
+
 Extract ALL actionable information, including:
+
 - Explicit tasks ("I need to do X")
 - Implicit tasks ("X is overdue")
 - Contextual information (deadlines, people, resources)
 - Strategic insights (priorities, concerns, opportunities)
 
 ### 3. Maintain Context
+
 When extracting:
+
 - Link tasks to projects
 - Link projects to goals
 - Preserve relationships between items
@@ -87,12 +95,14 @@ When extracting:
 ### 4. Project Classification
 
 Use the task_add.py script with appropriate project parameter:
+
 ```bash
 $ACADEMIC_OPS_SCRIPTS/task_add.py "Task description" "project-name"
 ```
 
 If uncertain about project classification, list available projects and ask user:
-```bash
+
+````bash
 ls $ACADEMIC_OPS_DATA/projects/
 # Show user the list and ask which project fits
 
@@ -106,9 +116,10 @@ for email in emails:
     extract_deadlines()    # Add to tasks/projects
     extract_project_updates()  # Update project files
     save_all_extracted_info()
-```
+````
 
 ### Strategy Mode
+
 ```python
 while in_strategy_discussion:
     if new_project_mentioned:
@@ -122,6 +133,7 @@ while in_strategy_discussion:
 ```
 
 ### Meeting/Conversation Mode
+
 ```python
 during_conversation:
     listen_for_actionable_items()
@@ -133,17 +145,21 @@ during_conversation:
 ## FILE OPERATIONS
 
 ### Creating New Task
+
 Use the task_add.sh script:
+
 ```bash
 $ACADEMIC_OPS_SCRIPTS/task_add.sh "Task description" "project-name"
 ```
 
 ### Updating Project File
+
 Use direct file editing with the Edit tool to append information to project files.
 
 ## VALIDATION CHECKLIST
 
 After any conversation/email/meeting:
+
 - [ ] Did I extract all mentioned tasks?
 - [ ] Did I update relevant project files?
 - [ ] Did I capture new contacts?
@@ -154,24 +170,28 @@ After any conversation/email/meeting:
 ## COMMON PATTERNS TO RECOGNIZE
 
 ### Academic Collaboration Pattern
+
 ```
 "I've discussed with [Name] about [Topic]..."
 → Extract: Contact info, project details, next steps
 ```
 
 ### Deadline Pattern
+
 ```
 "This needs to be done by [Date]..."
 → Extract: Task with deadline, add to project timeline
 ```
 
 ### Strategic Priority Pattern
+
 ```
 "The most important thing is..."
 → Extract: Update goal priority, reorder project priorities
 ```
 
 ### Feedback Pattern
+
 ```
 "[Person] suggested that we..."
 → Extract: Feedback as project note, potential task
@@ -180,6 +200,7 @@ After any conversation/email/meeting:
 ## PATH USAGE
 
 ### Use Environment Variables
+
 ```bash
 # Use configured paths
 $ACADEMIC_OPS_DATA/tasks/...
@@ -188,6 +209,7 @@ $ACADEMIC_OPS_SCRIPTS/...
 ```
 
 ### Always Commit After Extraction
+
 ```bash
 cd /home/nic/src/writing
 git add -A
@@ -195,7 +217,9 @@ git commit -m "Auto-extracted information from [source]"
 ```
 
 ### Always Verify Extraction
+
 After saving, confirm:
+
 1. File was created/updated
 2. Information is complete
 3. Links are correct
@@ -204,6 +228,7 @@ After saving, confirm:
 ## REPORTING
 
 At the end of any session, report:
+
 ```
 Extracted and saved:
 - X new tasks created

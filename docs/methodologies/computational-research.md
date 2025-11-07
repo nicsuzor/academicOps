@@ -7,12 +7,14 @@ The **academicOps** approach applies DevOps practices to computational research 
 ### What This Means
 
 Traditional empirical research often involves:
+
 - Ad-hoc data transformations in spreadsheets
 - Undocumented analysis scripts
 - Manual validation steps
 - Irreproducible workflows
 
 **academicOps instead applies:**
+
 - Version-controlled data pipelines
 - Documented transformations
 - Automated testing and validation
@@ -23,6 +25,7 @@ Traditional empirical research often involves:
 ### 1. Data Pipeline (dbt)
 
 Use **dbt (data build tool)** to define data transformations as code:
+
 - SQL models define how raw data becomes analysis-ready
 - Tests validate data quality at every step
 - Documentation lives alongside the code
@@ -33,6 +36,7 @@ See [dbt-practices.md](./dbt-practices.md) for detailed best practices.
 ### 2. Analysis Artifacts (Streamlit/Jupyter)
 
 Create interactive analysis tools:
+
 - **Streamlit**: Dashboards for exploration and validation
 - **Jupyter**: Detailed analysis notebooks for publication
 
@@ -41,6 +45,7 @@ Create interactive analysis tools:
 ### 3. Version Control (Git)
 
 Everything is version controlled:
+
 - Data transformation code (dbt models)
 - Analysis scripts (Streamlit, Jupyter)
 - Documentation
@@ -139,17 +144,20 @@ Computational methods deserve the same rigor as statistical methods. This approa
 academicOps projects generate empirical components of academic articles:
 
 **In the paper:**
+
 - "Data was processed using dbt pipeline version X.Y"
 - "See models/marts/fct_case_decisions.sql for decision outcome logic"
 - "Interactive validation dashboard available at [URL]"
 
 **In supplementary materials:**
+
 - Full dbt project (all models and tests)
 - Streamlit dashboard code
 - Jupyter notebooks with detailed analysis
 - Instructions to reproduce
 
 **Benefits:**
+
 - Reviewers can verify empirical claims
 - Other researchers can extend the work
 - Methods are fully transparent
@@ -170,17 +178,20 @@ See your personal `docs/workflows/empirical-research-workflow.md` for project-sp
 ## Tools & Technologies
 
 **Core:**
+
 - **dbt** (data transformation and testing)
 - **DuckDB** (analytical database, lightweight)
 - **Git** (version control)
 
 **Analysis:**
+
 - **Streamlit** (interactive dashboards)
 - **Jupyter** (detailed notebooks)
 - **pandas/polars** (data manipulation)
 - **plotly/altair** (visualization)
 
 **Optional:**
+
 - **Great Expectations** (advanced data validation)
 - **Evidence** (BI dashboards from SQL)
 - **Quarto** (reproducible documents)

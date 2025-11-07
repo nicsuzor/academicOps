@@ -43,7 +43,7 @@ Claude Code exclusively uses **JSON format** for configuration files. YAML and T
   "model": "claude-sonnet-4-20250514",
   "maxTokens": 4096,
   "autoUpdates": true,
-  
+
   "permissions": {
     "allowedTools": [
       "Read",
@@ -60,7 +60,7 @@ Claude Code exclusively uses **JSON format** for configuration files. YAML and T
       "Bash(sudo *)"
     ]
   },
-  
+
   "hooks": {
     "SessionStart": [{
       "matcher": "startup|resume|clear",
@@ -78,17 +78,17 @@ Claude Code exclusively uses **JSON format** for configuration files. YAML and T
       }]
     }]
   },
-  
+
   "env": {
     "ANTHROPIC_MODEL": "claude-sonnet-4-20250514",
     "BASH_DEFAULT_TIMEOUT_MS": "30000",
     "DISABLE_TELEMETRY": "1"
   },
-  
+
   "enabledPlugins": {
     "formatter@company-tools": true
   },
-  
+
   "apiKeyHelper": "/path/to/key-helper-script.sh",
   "parallelTasksCount": 3
 }
@@ -294,6 +294,7 @@ This configuration in your user-level settings will run for every project withou
 ```
 
 **In ~/.claude/settings.json (global approach):**
+
 ```json
 {
   "hooks": {
@@ -308,6 +309,7 @@ This configuration in your user-level settings will run for every project withou
 ```
 
 **Or in each project's .claude/settings.json:**
+
 ```json
 {
   "hooks": {
@@ -329,15 +331,15 @@ Gemini CLI **does not currently have a SessionStart hook system**. This is a fun
 
 **Configuration comparison:**
 
-| Aspect | Claude Code CLI | Gemini CLI |
-|--------|-----------------|------------|
-| **Hooks system** | 8 lifecycle events implemented | Not implemented (requested) |
-| **SessionStart** | Fully functional | Not available |
-| **Configuration file** | `~/.claude/settings.json` | `~/.gemini/settings.json` |
-| **Context/memory** | `CLAUDE.md` | `GEMINI.md` |
-| **MCP servers** | Separate `.mcp.json` (git-friendly) | In main settings.json |
+| Aspect                   | Claude Code CLI                                      | Gemini CLI                            |
+| ------------------------ | ---------------------------------------------------- | ------------------------------------- |
+| **Hooks system**         | 8 lifecycle events implemented                       | Not implemented (requested)           |
+| **SessionStart**         | Fully functional                                     | Not available                         |
+| **Configuration file**   | `~/.claude/settings.json`                            | `~/.gemini/settings.json`             |
+| **Context/memory**       | `CLAUDE.md`                                          | `GEMINI.md`                           |
+| **MCP servers**          | Separate `.mcp.json` (git-friendly)                  | In main settings.json                 |
 | **Discovery precedence** | Enterprise → Project local → Project → User → Legacy | System → User → Project → Environment |
-| **Philosophy** | Hybrid deterministic + probabilistic | Purely probabilistic context-driven |
+| **Philosophy**           | Hybrid deterministic + probabilistic                 | Purely probabilistic context-driven   |
 
 Gemini CLI relies entirely on **probabilistic AI following instructions** in GEMINI.md files rather than guaranteed deterministic hook execution. This makes it suitable for exploratory work and individual development but less reliable for production automation requiring guaranteed actions like formatting, linting, or quality gates.
 
@@ -366,6 +368,7 @@ Gemini CLI relies entirely on **probabilistic AI following instructions** in GEM
 ## Best practices and recommendations
 
 **For hook configuration:**
+
 - Always use absolute paths in hook commands: `/absolute/path/script.sh` or `~/relative-to-home.sh`
 - Leverage `$CLAUDE_PROJECT_DIR` for project-relative scripts: `"$CLAUDE_PROJECT_DIR/.claude/hooks/script.sh"`
 - Quote paths that might contain spaces: `"\"$CLAUDE_PROJECT_DIR\"/script.sh"`
@@ -374,6 +377,7 @@ Gemini CLI relies entirely on **probabilistic AI following instructions** in GEM
 - Set appropriate timeouts: `"timeout": 30` in hook configuration
 
 **For multi-project setups:**
+
 - Store personal standards in `~/.claude/settings.json` as global hooks
 - Commit `.claude/settings.json` to version control for team-shared configurations
 - Use `.claude/settings.local.json` (git-ignored) for personal project overrides
@@ -382,18 +386,21 @@ Gemini CLI relies entirely on **probabilistic AI following instructions** in GEM
 - Use `--add-dir` for cross-repository context when needed
 
 **For security:**
+
 - Define `permissions.deny` patterns for sensitive paths like `.env` files and `/etc/**`
 - Review hook commands before adding (they execute with your credentials)
 - Use the `/hooks` interactive menu to review externally modified hooks before activation
 - Be aware hooks can access files outside project directory via absolute paths
 
 **For Windows users:**
+
 - Test SessionStart hooks thoroughly; they have known reliability issues
 - Use WSL if encountering persistent path resolution problems
 - Double-quote all paths containing spaces
 - Avoid `Program Files` paths in hook commands when possible
 
 **For polyrepo workflows:**
+
 - Maintain a centralized hooks repository in `~/shared-hooks/` or similar
 - Reference it from global settings for personal use: `~/shared-hooks/session_start.sh`
 - Or reference from project settings for team use: `/team/shared/hooks/session_start.sh`
@@ -423,6 +430,7 @@ All hooks receive JSON on stdin with these common fields:
 ### PreToolUse Hook
 
 **Input** (in addition to common fields):
+
 ```json
 {
   "tool_name": "Bash" | "Read" | "Write" | "Edit" | "Grep" | "Glob" | ...,
@@ -438,6 +446,7 @@ All hooks receive JSON on stdin with these common fields:
 ```
 
 **Output** (required structure):
+
 ```json
 {
   "hookSpecificOutput": {
@@ -452,6 +461,7 @@ All hooks receive JSON on stdin with these common fields:
 ```
 
 **Exit codes**:
+
 - `0` - Allow execution (hook succeeded)
 - `1` - Warn but allow (show systemMessage)
 - `2` - Block execution (show permissionDecisionReason)
@@ -459,6 +469,7 @@ All hooks receive JSON on stdin with these common fields:
 ### PostToolUse Hook
 
 **Input** (in addition to common fields):
+
 ```json
 {
   "tool_name": "Bash" | "Read" | "Write" | ...,
@@ -476,6 +487,7 @@ All hooks receive JSON on stdin with these common fields:
 ```
 
 **Output**:
+
 ```json
 {
   "hookSpecificOutput": {
@@ -493,6 +505,7 @@ All hooks receive JSON on stdin with these common fields:
 ### UserPromptSubmit Hook
 
 **Input** (in addition to common fields):
+
 ```json
 {
   "prompt": "The user's input text"
@@ -500,6 +513,7 @@ All hooks receive JSON on stdin with these common fields:
 ```
 
 **Output**:
+
 ```json
 {
   "hookSpecificOutput": {
@@ -516,6 +530,7 @@ All hooks receive JSON on stdin with these common fields:
 ### SessionStart Hook
 
 **Input** (in addition to common fields):
+
 ```json
 {
   // No additional fields beyond common structure
@@ -523,6 +538,7 @@ All hooks receive JSON on stdin with these common fields:
 ```
 
 **Output**:
+
 ```json
 {
   "hookSpecificOutput": {
@@ -539,6 +555,7 @@ All hooks receive JSON on stdin with these common fields:
 ### Stop and SubagentStop Hooks
 
 **Input** (in addition to common fields):
+
 ```json
 {
   // No additional fields beyond common structure
@@ -546,6 +563,7 @@ All hooks receive JSON on stdin with these common fields:
 ```
 
 **Output**:
+
 ```json
 {
   "decision": "block" | null,
@@ -555,6 +573,7 @@ All hooks receive JSON on stdin with these common fields:
 ```
 
 **Exit codes**:
+
 - `0` - Allow stop
 - `1` - Warn but allow
 - `2` - Block stop
@@ -619,11 +638,13 @@ safe_log_to_debug_file("PreToolUse", input_data, output_data)
 ```
 
 Run Claude Code with debug flag to see hook execution:
+
 ```bash
 claude --debug
 ```
 
 Check logs in `/tmp/`:
+
 ```bash
 ls -lt /tmp/claude_* | head
 cat /tmp/claude_pretooluse_TIMESTAMP.json

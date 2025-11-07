@@ -7,6 +7,7 @@
 The authoritative table for all pipeline execution traces. Every stage (source, judge, scorer) creates a row here.
 
 **Key Columns:**
+
 - `call_id` (VARCHAR): Unique identifier for this execution
 - `parent_call_id` (VARCHAR): Links to parent stage (judges link to sources, scorers link to judges)
 - `agent_role` (VARCHAR): Stage type - 'SOURCE', 'JUDGES', 'SCORERS'
@@ -18,6 +19,7 @@ The authoritative table for all pipeline execution traces. Every stage (source, 
 **JSON Output Structure by Role:**
 
 **SOURCE:**
+
 ```json
 {
   "headline": "Article title",
@@ -31,6 +33,7 @@ The authoritative table for all pipeline execution traces. Every stage (source, 
 ```
 
 **JUDGES:**
+
 ```json
 {
   "violates": true,
@@ -41,6 +44,7 @@ The authoritative table for all pipeline execution traces. Every stage (source, 
 ```
 
 **SCORERS (QualScore format - Nov 2025 onwards):**
+
 ```json
 {
   "confidence": "high",
@@ -70,6 +74,7 @@ The authoritative table for all pipeline execution traces. Every stage (source, 
 Denormalized view joining judges with their source articles and scorer evaluations.
 
 **Key Columns:**
+
 - `call_id`: Judge call_id
 - `agent_model`: Judge model
 - `judge_criteria`: Guideline evaluated
@@ -86,6 +91,7 @@ Denormalized view joining judges with their source articles and scorer evaluatio
 Aggregated metrics for scorer performance across different criteria.
 
 **Key Columns:**
+
 - `agent_role`: Usually 'SCORERS'
 - `agent_model`: Scorer model
 - `criteria`: Guideline being scored

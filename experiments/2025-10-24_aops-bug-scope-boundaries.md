@@ -13,6 +13,7 @@
 Adding explicit scope boundaries to the aops-bug skill and /log-failure command will prevent the skill from attempting fixes when invoked for documentation-only purposes.
 
 **Expected Behavior**:
+
 - When invoked via `/log-failure`: Analyze, categorize, document in GitHub, STOP
 - Agent will NOT fix user's original request
 - Agent will NOT implement solutions
@@ -21,6 +22,7 @@ Adding explicit scope boundaries to the aops-bug skill and /log-failure command 
 ## Problem Context
 
 **Issue Instance**: 2025-10-24 conversation
+
 - User: `/log-failure task skills in personal repo has no idea how to use task tools`
 - Agent (aops-bug skill):
   1. ✅ Correctly identified violation (didn't read tool docs)
@@ -38,10 +40,12 @@ Adding explicit scope boundaries to the aops-bug skill and /log-failure command 
 Added "Scope Boundaries" section after "When to Use This Skill":
 
 **Mode 1: Documentation-Only (via `/log-failure`)**:
+
 - ✅ DO: Analyze, search, document, report
 - ❌ DO NOT: Fix original request, implement solutions, investigate deeply
 
 **Mode 2: Full Intervention (direct invocation)**:
+
 - Full scope including investigation, experiments, solutions
 
 **Example provided** showing correct vs wrong behavior.
@@ -49,6 +53,7 @@ Added "Scope Boundaries" section after "When to Use This Skill":
 ### 2. `.claude/commands/log-failure.md` (~13 lines added)
 
 Added "CRITICAL - Documentation-Only Mode" section:
+
 - Explicit DO/DO NOT list
 - Rationale for single data point logging
 - Reinforces scope limitation at invocation point
@@ -56,17 +61,20 @@ Added "CRITICAL - Documentation-Only Mode" section:
 ## Success Criteria
 
 **Primary Metric**: Next `/log-failure` invocation should:
+
 1. ✅ Document violation in GitHub
 2. ✅ STOP after documentation
 3. ✅ NOT fix user's original request
 4. ✅ NOT implement solutions
 
 **Secondary Metrics**:
+
 - No user reports of aops-bug overstepping scope
 - Issues properly categorized and linked
 - Clear separation between logging and fixing
 
 **Test Scenarios**:
+
 1. `/log-failure` with simple violation → Should document only
 2. `/log-failure` with infrastructure bug discovered → Should note but not fix
 3. Direct aops-bug invocation → Should proceed with full intervention
@@ -74,12 +82,14 @@ Added "CRITICAL - Documentation-Only Mode" section:
 ## Implementation Notes
 
 **Enforcement Hierarchy Assessment**:
+
 - Q1 (Scripts): NO - Behavior depends on invocation context
 - Q2 (Hooks): POTENTIALLY - Could detect aops-bug via /log-failure and warn on Write/Edit tools, but fragile
 - Q3 (Config): NO - Too dynamic
 - Q4 (Instructions): YES - Context-dependent behavior, instruction-only territory
 
 **Anti-Bloat Protocol**:
+
 - [ ] Hierarchy Check: ✅ Verified scripts/hooks/config won't work
 - [ ] Bloat Estimate: ~72 lines total (~1800 tokens)
 - [ ] Modularity: ✅ Separate modes clearly defined in single location
@@ -88,6 +98,7 @@ Added "CRITICAL - Documentation-Only Mode" section:
 - [ ] Justification: Critical behavioral boundary, prevents scope creep
 
 **Bloat Justification**:
+
 - Prevents entire class of violations (fixing on single data points)
 - Establishes clear operational modes for skill
 - Small token cost for major behavioral clarity
@@ -101,6 +112,7 @@ Added "CRITICAL - Documentation-Only Mode" section:
 **Test 2**: [Date] - [Scenario] - [Outcome]
 
 **Metrics**:
+
 - Documentation-only adherence rate: [X/Y]
 - User satisfaction: [Feedback]
 - False positives (stopped when should have proceeded): [Count]
@@ -112,6 +124,7 @@ Added "CRITICAL - Documentation-Only Mode" section:
 **Status**: PENDING VALIDATION
 
 **Next Steps**:
+
 1. Commit changes
 2. Monitor next 5-10 `/log-failure` invocations
 3. Update this log with results

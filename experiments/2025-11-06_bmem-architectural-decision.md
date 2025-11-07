@@ -1,6 +1,7 @@
 # Architectural Decision: Adopt bmem (basic-memory) as Core Knowledge System
 
 ## Metadata
+
 - Date: 2025-11-06
 - Issue: #193
 - Commit: [to be added]
@@ -10,12 +11,14 @@
 ## Context
 
 **Problem**: Documentation fragmentation and inefficient context loading
+
 - Documentation scattered across chunks/, docs/, references/, skills/
 - SessionStart loads entire instruction trees (high token cost)
 - Limited cross-repository context visibility
 - No learning loops (static documentation)
 
 **Previous State**:
+
 - Phases 1-2 complete in writing repo (infrastructure + task conversion)
 - 280 tasks migrated to markdown with YAML frontmatter
 - bmem MCP server installed and functional
@@ -26,6 +29,7 @@
 **Adopt `basic-memory` (internal ref: `bmem`) as the core knowledge organization system for academicOps framework and $ACADEMICOPS_PERSONAL repositories.**
 
 **Naming Convention**:
+
 - Package: `basic-memory`
 - Internal reference: `bmem` (avoids confusion with 'buttermilk')
 - MCP server: `basic-memory`
@@ -41,6 +45,7 @@
 5. **Task Management**: Markdown-first workflow with semantic search
 
 **Evidence from Phases 1-2**:
+
 - ✅ Search working: <1s response time, relevant results
 - ✅ Task conversion: 280 tasks → markdown preserving all metadata
 - ✅ MCP integration: write_note, search_notes functional
@@ -51,6 +56,7 @@
 ### 1. Documentation Updates
 
 **chunks/INFRASTRUCTURE.md**:
+
 - Added "Knowledge Organization (bmem)" section
 - Documented MCP server tools
 - Specified project names (aops, ns)
@@ -58,6 +64,7 @@
 - Referenced Issue #193 for integration status
 
 **README.md**:
+
 - Added "6. Knowledge Organization (bmem)" to Core Principles
 - Explained vector search + relational mapping
 - Documented integration architecture
@@ -67,6 +74,7 @@
 ### 2. GitHub Issue Documentation
 
 **Issue #193 Comment**:
+
 - Formal architectural decision statement
 - Complete rationale with problems solved
 - Integration architecture (repos, directory structure, MCP tools)
@@ -79,12 +87,14 @@
 ## Success Criteria
 
 **Documentation**:
+
 - [x] INFRASTRUCTURE.md includes bmem section
 - [x] README.md includes bmem in Core Principles
 - [x] Issue #193 updated with formal decision
 - [ ] ARCHITECTURE.md updated (future: when implementation progresses)
 
 **Implementation** (deferred to Phases 3-7):
+
 - [ ] Task management scripts using bmem
 - [ ] Concept graph extraction
 - [ ] Skills rewrite with bmem integration
@@ -94,6 +104,7 @@
 ## Results
 
 **Documentation Changes**:
+
 - ✅ chunks/INFRASTRUCTURE.md: Added 19 lines (bmem section + integration note)
 - ✅ README.md: Added 26 lines (Core Principle #6)
 - ✅ Issue #193: Comprehensive architectural decision documented
@@ -101,6 +112,7 @@
 **No Code Changes**: This experiment documents the decision; implementation follows in subsequent experiments.
 
 **Review Points**:
+
 1. Is bmem terminology clear (vs "basic-memory")?
 2. Is the integration architecture well-documented?
 3. Are success criteria appropriate?
@@ -111,6 +123,7 @@
 **Success (Documentation)** - Architectural decision formally adopted and documented.
 
 **Next Steps**:
+
 1. User review and approval
 2. Proceed with Phase 3 (task management scripts)
 3. Continue through Phases 4-7 as separate experiments

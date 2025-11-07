@@ -1,4 +1,5 @@
 <!-- AUTO-GENERATED TEST SPECIFICATIONS -->
+
 # Agent Context Awareness Tests
 
 **Purpose**: Validate that agents starting in the parent repo (`${ACADEMICOPS_PERSONAL}/`) immediately understand their context and know where to find required information.
@@ -241,9 +242,7 @@ Create: `bot/tests/results/context_awareness_YYYY-MM-DD.md`
 ```markdown
 # Agent Context Awareness Test Results
 
-**Date**: YYYY-MM-DD
-**Evaluator**: [Agent Name/Human]
-**Test Suite Version**: v1.0
+**Date**: YYYY-MM-DD **Evaluator**: [Agent Name/Human] **Test Suite Version**: v1.0
 
 ## Summary
 
@@ -253,6 +252,7 @@ Create: `bot/tests/results/context_awareness_YYYY-MM-DD.md`
 ## Detailed Results
 
 ### Test 1: Documentation Location
+
 - **Claude Code**: PASS/FAIL - [justification]
 - **Gemini CLI**: PASS/FAIL - [justification]
 

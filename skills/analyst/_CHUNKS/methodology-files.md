@@ -56,7 +56,9 @@ Every research project MUST have a `METHODOLOGY.md` file at project root with th
 [How you operationalize your theoretical constructs]
 
 ### Example:
+
 If studying "content moderation effectiveness":
+
 - **Construct**: Effectiveness
 - **Operationalization**: Time to resolution, accuracy of decisions, appeal rates
 - **Measurement**: See `methods/effectiveness_scoring.md` for technical details
@@ -66,6 +68,7 @@ If studying "content moderation effectiveness":
 [Statistical methods, qualitative analysis, computational approaches]
 
 ### Example:
+
 - Descriptive statistics for overview
 - Regression analysis for relationships
 - Time series analysis for trends
@@ -74,15 +77,19 @@ If studying "content moderation effectiveness":
 ## Validity and Limitations
 
 ### Internal Validity
+
 [Can you draw causal inferences? What threatens this?]
 
 ### External Validity
+
 [Can findings generalize? To what populations?]
 
 ### Construct Validity
+
 [Do your measures actually capture what you claim?]
 
 ### Limitations
+
 [Be honest about constraints, biases, and weaknesses]
 
 ## Alternative Approaches Considered
@@ -98,19 +105,11 @@ If studying "content moderation effectiveness":
 
 Update METHODOLOGY.md when:
 
-✅ **Research question changes or refines**
-✅ **Research design changes** (e.g., switching from experimental to observational)
-✅ **Variables added or redefined**
-✅ **Unit of analysis changes**
-✅ **Major analytical approach shifts**
-✅ **New limitations discovered**
+✅ **Research question changes or refines** ✅ **Research design changes** (e.g., switching from experimental to observational) ✅ **Variables added or redefined** ✅ **Unit of analysis changes** ✅ **Major analytical approach shifts** ✅ **New limitations discovered**
 
 Do NOT update METHODOLOGY.md for:
 
-❌ Technical implementation details (those go in `methods/`)
-❌ Code changes (those go in code comments and git commits)
-❌ Data source specifics (those go in `data/README.md`)
-❌ Experimental results (those go in `experiments/`)
+❌ Technical implementation details (those go in `methods/`) ❌ Code changes (those go in code comments and git commits) ❌ Data source specifics (those go in `data/README.md`) ❌ Experimental results (those go in `experiments/`)
 
 ## Examples: What Goes in METHODOLOGY.md
 
@@ -123,9 +122,11 @@ Do NOT update METHODOLOGY.md for:
 ### ❌ INCORRECT - Does NOT belong in METHODOLOGY.md
 
 > We implement the difference-in-differences estimator using the `did` package in Python. The model specification is:
+>
 > ```python
 > model = PanelOLS(Y, X, entity_effects=True, time_effects=True)
 > ```
+>
 > We use robust standard errors clustered at the case level.
 
 **Why it doesn't belong**: This is technical implementation. Goes in `methods/diff_in_diff.md` instead.
@@ -135,6 +136,7 @@ Do NOT update METHODOLOGY.md for:
 **See `_CHUNKS/methods-vs-methodology.md` for detailed distinction.**
 
 **Quick rule of thumb:**
+
 - **METHODOLOGY.md**: "We will measure X by looking at Y because Z theoretical reason"
 - **methods/**: "Here's the exact code and algorithm that measures Y"
 
@@ -145,6 +147,7 @@ Do NOT update METHODOLOGY.md for:
 **METHODOLOGY.md must always reflect your CURRENT research design.**
 
 If you discover during analysis that:
+
 - Your research question has evolved
 - Your measurement strategy has changed
 - Your data sources have shifted
@@ -168,6 +171,7 @@ theoretical construct of interest."
 ### Review Frequency
 
 Review METHODOLOGY.md:
+
 - ✅ **Before starting major analysis** - Confirm design is still correct
 - ✅ **After discovering unexpected patterns** - Update limitations
 - ✅ **When research question evolves** - Document the evolution
@@ -181,6 +185,7 @@ METHODOLOGY.md should reference (not duplicate):
 ## Data Sources
 
 We use three primary data sources (see `data/README.md` for details):
+
 1. Administrative case records
 2. Public decisions database
 3. Appeal records
@@ -188,6 +193,7 @@ We use three primary data sources (see `data/README.md` for details):
 ## Analysis Approach
 
 We employ three main analytical methods:
+
 1. Descriptive statistics (see `methods/descriptive_analysis.md`)
 2. Difference-in-differences estimation (see `methods/diff_in_diff.md`)
 3. Qualitative coding of decisions (see `methods/qualitative_coding.md`)
@@ -197,30 +203,25 @@ We employ three main analytical methods:
 
 ### Mistake 1: Methodology is aspirational, not actual
 
-❌ **WRONG**: "We will conduct interviews with stakeholders..."
-✅ **CORRECT**: "We conducted interviews..." OR "We plan to conduct..."
+❌ **WRONG**: "We will conduct interviews with stakeholders..." ✅ **CORRECT**: "We conducted interviews..." OR "We plan to conduct..."
 
 Keep methodology file in sync with reality. If plans change, update the file.
 
 ### Mistake 2: Too much technical detail
 
-❌ **WRONG**: Including SQL queries, Python code, specific package versions
-✅ **CORRECT**: Describing analytical approach conceptually, referencing methods/ for implementation
+❌ **WRONG**: Including SQL queries, Python code, specific package versions ✅ **CORRECT**: Describing analytical approach conceptually, referencing methods/ for implementation
 
 ### Mistake 3: Duplicating information from other files
 
-❌ **WRONG**: Copying entire data schema from data/README.md
-✅ **CORRECT**: Brief overview with reference: "See data/README.md for schema details"
+❌ **WRONG**: Copying entire data schema from data/README.md ✅ **CORRECT**: Brief overview with reference: "See data/README.md for schema details"
 
 ### Mistake 4: Not updating when design changes
 
-❌ **WRONG**: Leaving old research question in file when focus has shifted
-✅ **CORRECT**: Updating immediately when research design evolves
+❌ **WRONG**: Leaving old research question in file when focus has shifted ✅ **CORRECT**: Updating immediately when research design evolves
 
 ### Mistake 5: Confusing methods with methodology
 
-❌ **WRONG**: "We use Python 3.11 with pandas for data analysis"
-✅ **CORRECT**: "We use descriptive statistics and regression analysis" (implementation details go in methods/)
+❌ **WRONG**: "We use Python 3.11 with pandas for data analysis" ✅ **CORRECT**: "We use descriptive statistics and regression analysis" (implementation details go in methods/)
 
 ## METHODOLOGY.md Quality Checklist
 

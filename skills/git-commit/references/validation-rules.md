@@ -15,11 +15,13 @@ Common validation patterns for code quality gates.
 ### Test Files (`test_*.py`, `tests/**/*.py`)
 
 **Required Patterns**:
+
 - ✅ MUST use `real_bm` or `real_conf` fixtures from conftest
 - ✅ MUST use `@pytest.mark.anyio` for async tests
 - ✅ MUST test against real data and live configured objects
 
 **Forbidden Patterns**:
+
 - ❌ MUST NOT use `initialize_config_dir()`
 - ❌ MUST NOT use `compose()` directly
 - ❌ MUST NOT use `GlobalHydra`
@@ -27,6 +29,7 @@ Common validation patterns for code quality gates.
 - ❌ MUST NOT mock internal code (only external APIs)
 
 **Detection**:
+
 ```python
 # Search test files for these forbidden patterns:
 grep -n "initialize_config_dir" tests/**/*.py
@@ -35,6 +38,7 @@ grep -n "GlobalHydra" tests/**/*.py
 ```
 
 **Example Violation**:
+
 ```python
 # ❌ WRONG
 def test_config():
@@ -50,11 +54,13 @@ def test_config(real_bm):
 ### Configuration Files (`config/**/*.yaml`, `conf/**/*.yaml`)
 
 **Required Patterns**:
+
 - ✅ MUST use composable YAML structure (Hydra patterns)
 - ✅ MUST define all required fields explicitly
 - ✅ MUST NOT include sensitive data
 
 **Forbidden Patterns**:
+
 - ❌ MUST NOT reference environment variables directly in YAML
 - ❌ MUST NOT include default values for critical settings
 - ❌ MUST NOT commit API keys, passwords, or secrets
@@ -62,18 +68,21 @@ def test_config(real_bm):
 ### Python Source Files (`**/*.py` excluding tests)
 
 **Required Patterns**:
+
 - ✅ MUST access configuration through config objects, not env vars
 - ✅ MUST fail immediately if required config missing (`config["key"]`)
 - ✅ MUST use type hints for function signatures
 - ✅ MUST include docstrings for public functions/classes
 
 **Forbidden Patterns**:
+
 - ❌ MUST NOT use `os.getenv()` or `os.environ`
 - ❌ MUST NOT use `.get(key, default)` for required config
 - ❌ MUST NOT use bare `except:` clauses
 - ❌ MUST NOT have hardcoded file paths (use config or Path)
 
 **Example Violation**:
+
 ```python
 # ❌ WRONG - uses default fallback
 api_key = config.get("api_key", "default_key")
@@ -102,12 +111,14 @@ api_key = config["api_key"]  # Raises KeyError if not configured
 ## Project-Wide Conventions
 
 **Required**:
+
 - ✅ All new functionality must have tests
 - ✅ Public APIs must have docstrings
 - ✅ Breaking changes must update documentation
 - ✅ Commit messages follow conventional commits format
 
 **Forbidden**:
+
 - ❌ No commented-out code (delete it, git remembers)
 - ❌ No TODO comments without issue references
 - ❌ No print() statements (use logging)
@@ -116,6 +127,7 @@ api_key = config["api_key"]  # Raises KeyError if not configured
 ## Security Requirements
 
 **Secrets Detection**:
+
 ```bash
 # Files that should NEVER be committed:
 - .env
@@ -129,6 +141,7 @@ api_key = config["api_key"]  # Raises KeyError if not configured
 ```
 
 **Required Checks**:
+
 - ✅ No API keys in source code
 - ✅ No passwords in configuration files
 - ✅ No AWS credentials in code
@@ -136,6 +149,7 @@ api_key = config["api_key"]  # Raises KeyError if not configured
 - ✅ `.gitignore` includes all secret file patterns
 
 **Detection Patterns**:
+
 ```bash
 # Search for common secret patterns:
 grep -rn "api[_-]key\s*=\s*['\"]" src/
@@ -147,6 +161,7 @@ grep -rn "token\s*=\s*['\"]" src/
 ## Testing Requirements
 
 **Test Coverage**:
+
 - ✅ All new features must have tests
 - ✅ Bug fixes must have regression tests
 - ✅ Tests must pass before commit
@@ -154,12 +169,14 @@ grep -rn "token\s*=\s*['\"]" src/
 - ✅ Unit tests for business logic
 
 **Test Quality**:
+
 - ✅ Tests use descriptive names (`test_user_can_login_with_valid_credentials`)
 - ✅ Tests have clear arrange-act-assert structure
 - ✅ Tests are independent (can run in any order)
 - ✅ Tests clean up after themselves
 
 **Forbidden in Tests**:
+
 - ❌ No time.sleep() (use proper async waits)
 - ❌ No random data without seeds
 - ❌ No network calls to external services (mock at boundary)
@@ -168,6 +185,7 @@ grep -rn "token\s*=\s*['\"]" src/
 ## Documentation Requirements
 
 **Code Documentation**:
+
 ```python
 def process_data(data: Dict[str, Any], config: Config) -> Result:
     """Process input data according to configuration.
@@ -186,6 +204,7 @@ def process_data(data: Dict[str, Any], config: Config) -> Result:
 ```
 
 **Project Documentation**:
+
 - ✅ README explains purpose and setup
 - ✅ API changes update relevant docs
 - ✅ Breaking changes documented in commit message
@@ -219,6 +238,7 @@ Load and apply these in addition to core rules.
 **Detection**: `grep -n "initialize_config_dir" test_*.py`
 
 **Fix**:
+
 ```python
 # Before
 def test_config():
@@ -235,6 +255,7 @@ def test_config(real_bm):
 **Detection**: `grep -n "\.get(" **/*.py | grep "config"`
 
 **Fix**:
+
 ```python
 # Before
 api_key = config.get("api_key", "default")
@@ -248,6 +269,7 @@ api_key = config["api_key"]  # Will raise KeyError if missing - that's GOOD
 **Detection**: `grep -n "'/home/" **/*.py`
 
 **Fix**:
+
 ```python
 # Before
 data_path = "/home/user/data/file.csv"
@@ -262,6 +284,7 @@ data_path = Path(config["data_dir"]) / "file.csv"
 **Detection**: `grep -n "os.getenv\|os.environ" **/*.py`
 
 **Fix**:
+
 ```python
 # Before
 api_url = os.getenv("API_URL", "https://default.com")

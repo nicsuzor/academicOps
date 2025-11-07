@@ -35,6 +35,7 @@ mcp__outlook__messages_index()
 ```
 
 This returns:
+
 - Total message counts per folder
 - Unread counts
 - Available folders
@@ -51,6 +52,7 @@ mcp__outlook__messages_list_recent(
 ```
 
 Returns list of emails with:
+
 - `entry_id` - Unique identifier for retrieving full content
 - `subject` - Email subject line
 - `from` - Sender information
@@ -70,6 +72,7 @@ mcp__outlook__messages_get(
 ```
 
 Returns:
+
 - Full email body (plain text or HTML)
 - All metadata (subject, from, to, cc, date)
 - Attachment information
@@ -87,6 +90,7 @@ mcp__outlook__messages_query(
 ```
 
 **Query syntax examples**:
+
 - `subject:conference` - Search in subject
 - `from:alice@example.com` - Search by sender
 - `received>2025-10-01` - Date filtering
@@ -99,18 +103,21 @@ mcp__outlook__messages_query(
 When processing emails, use these signals to assess importance:
 
 **From/Sender signals**:
+
 - From supervisor → likely high priority
 - From collaborator → medium priority (check deadline)
 - From admin → usually low priority unless time-sensitive
 - Conference/journal → check deadlines
 
 **Subject signals**:
+
 - "Urgent" or "ASAP" → high priority
 - "Reminder" → check deadline date
 - "RE:" or "FW:" → check thread context
 - Conference/deadline keywords → extract dates
 
 **Content signals** (after reading):
+
 - Explicit deadlines ("by Friday", "due Nov 15")
 - Meeting requests ("can we meet")
 - Review requests ("please review")
@@ -162,11 +169,13 @@ When checking email (e.g., via `/email` command):
 ## Integration with Other Skills
 
 **Tasks skill**:
+
 - Email skill handles FETCHING emails
 - Tasks skill handles CREATING tasks from email content
 - Agents should use both: email to fetch → tasks to extract
 
 **Typical workflow**:
+
 1. Agent uses email skill to fetch recent messages
 2. Agent reads relevant email content
 3. Agent uses tasks skill to create tasks for actionable items
@@ -177,6 +186,7 @@ When checking email (e.g., via `/email` command):
 **CRITICAL**: Outlook email bodies include ENTIRE THREAD HISTORY (quoted messages).
 
 When processing emails:
+
 - Content BEFORE `On [date]...wrote:` or `>` quote markers = CURRENT message
 - Everything after = old quoted history
 - Use `received` field for dating (NOT dates found in quoted text)
@@ -185,6 +195,7 @@ When processing emails:
 ## Email Processing Constraints
 
 **DO**:
+
 - Fetch and read emails
 - Filter/prioritize based on signals
 - Present summaries to user
@@ -193,6 +204,7 @@ When processing emails:
 - Use metadata (received date) not body content for dating
 
 **DO NOT**:
+
 - Archive or delete emails (user controls this)
 - Reply to emails (user controls this)
 - Move emails between folders (user controls this)
@@ -250,6 +262,7 @@ supervisor_emails = mcp__outlook__messages_query(
 ## Best Practices
 
 **DO**:
+
 - Fetch reasonable batch sizes (20-50, not 1000)
 - Filter before reading full content (save API calls)
 - Use signal detection to prioritize
@@ -257,6 +270,7 @@ supervisor_emails = mcp__outlook__messages_query(
 - Check unread messages first
 
 **DON'T**:
+
 - Process entire mailbox (invasive, slow)
 - Read every email's full content (expensive)
 - Make assumptions about email actions (let user decide)
@@ -288,11 +302,13 @@ for msg in actionable:
 ## Error Handling
 
 **Common issues**:
+
 - MCP server not configured → Check `config/mcp.json` for `outlook` entry
 - Authentication failures → MCP server may need restart
 - Rate limiting → Reduce batch sizes, add delays
 
 **Graceful degradation**:
+
 - If MCP unavailable, inform user (don't fail silently)
 - If specific email unreadable, skip and continue
 - If search fails, try simpler query

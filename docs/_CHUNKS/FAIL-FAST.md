@@ -19,26 +19,21 @@
 ## What We DON'T Do
 
 ### No Defensive Programming
-❌ Check if script exists before running
-❌ Verify script is executable
-❌ Test if tool is available
-❌ Handle errors gracefully
+
+❌ Check if script exists before running ❌ Verify script is executable ❌ Test if tool is available ❌ Handle errors gracefully
 
 ### No Error Recovery
-❌ Retry on failure
-❌ Try alternative approaches
-❌ Debug problems
-❌ Implement workarounds
+
+❌ Retry on failure ❌ Try alternative approaches ❌ Debug problems ❌ Implement workarounds
 
 ## What We DO Instead
 
 ### Build Reliable Infrastructure
-✅ All scripts executable in git
-✅ All tools exist and work
-✅ All paths resolve correctly
-✅ All workflows execute perfectly
+
+✅ All scripts executable in git ✅ All tools exist and work ✅ All paths resolve correctly ✅ All workflows execute perfectly
 
 ### Fix Root Causes
+
 - Script not executable → Make it executable in repository
 - Tool missing → Add the tool to system
 - Path not found → Fix path resolution
@@ -55,6 +50,7 @@
 ## Example
 
 ### ❌ Wrong (Defensive)
+
 ```bash
 if [ -f "$SCRIPT" ] && [ -x "$SCRIPT" ]; then
     $SCRIPT
@@ -64,6 +60,7 @@ fi
 ```
 
 ### ✅ Correct (Fail-Fast)
+
 ```bash
 $ACADEMIC_OPS_SCRIPTS/script.sh
 ```

@@ -9,15 +9,14 @@ permalink: aops/skills/skill-creator/skill
 
 ## Framework Context
 
-@resources/SKILL-PRIMER.md
-@resources/AXIOMS.md
-@resources/INFRASTRUCTURE.md
+@resources/SKILL-PRIMER.md @resources/AXIOMS.md @resources/INFRASTRUCTURE.md
 
 ## Overview
 
 Skills are modular packages extending agent capabilities with specialized workflows, tools, and domain knowledge.
 
 **Read First** (mandatory references):
+
 - `@$ACADEMICOPS/docs/bots/BEST-PRACTICES.md` - Evidence-based component design
 - `@$ACADEMICOPS/docs/bots/skill-invocation-guide.md` - How skills are invoked
 - `@resources/AXIOMS.md` - Universal principles (fail-fast, DRY, standard tools)
@@ -27,6 +26,7 @@ Skills are modular packages extending agent capabilities with specialized workfl
 ### 1. Understanding with Examples
 
 Identify concrete use cases:
+
 - "What functionality should this skill support?"
 - "Give examples of how this skill would be used"
 - "What would trigger this skill?"
@@ -38,11 +38,13 @@ Skip only when usage patterns are crystal clear.
 Analyze examples to identify bundled resources:
 
 **Structure**:
+
 - `scripts/` - Executable code (Python/Bash) for deterministic/repeated tasks
 - `references/` - Documentation loaded as needed (schemas, APIs, policies)
 - `assets/` - Output files (templates, boilerplate, icons)
 
 **Examples**:
+
 - PDF rotation → Repeated code → `scripts/rotate_pdf.py`
 - Frontend webapp → Boilerplate → `assets/hello-world/` template
 - BigQuery → Schema discovery → `references/schema.md`
@@ -67,11 +69,11 @@ ln -s ../../../chunks/INFRASTRUCTURE.md INFRASTRUCTURE.md  # Framework-touching 
 ```
 
 Add to SKILL.md header:
+
 ```markdown
 ## Framework Context
-@resources/SKILL-PRIMER.md
-@resources/AXIOMS.md
-@resources/INFRASTRUCTURE.md  # If framework-touching
+
+@resources/SKILL-PRIMER.md @resources/AXIOMS.md @resources/INFRASTRUCTURE.md # If framework-touching
 ```
 
 **Framework-Touching** = reads/writes framework files (agents/, skills/, commands/, core/) or needs $ACADEMICOPS paths. Examples: aops-trainer, skill-creator, claude-hooks.
@@ -83,12 +85,14 @@ Add to SKILL.md header:
 **Writing Style**: Imperative/infinitive form (verb-first), not second person. Objective: "To accomplish X, do Y" not "you do X."
 
 **Content**:
+
 1. Purpose (2-3 sentences)
 2. Trigger conditions
 3. Workflow with bundled resources
 4. 1-2 concrete examples
 
 **Anti-Bloat Checklist** (before adding >5 lines):
+
 - [ ] No existing content to reference? (DRY check)
 - [ ] Not repeating chunks/ or BEST-PRACTICES.md?
 - [ ] Bullet points, not prose?
@@ -114,24 +118,28 @@ Test on real tasks → Notice inefficiencies → Update → Test again. Follow a
 ## Cross-Repo Structure
 
 **Repositories**:
+
 - **academicOps** (`$ACADEMICOPS`): Framework (PUBLIC), used as submodule
 - **Personal Repo**: User's repo with aOps submodule (e.g., `./aops/`)
 
 **Three-Tier Loading**: SessionStart loads framework → personal → project instructions.
 
 **Symlinks**:
+
 - Development (aops/skills/): `ln -s ../../../chunks/FILE.md`
 - Installed (~/.claude/skills/): `ln -s $ACADEMICOPS/chunks/FILE.md`
 
 ## Skill Maintenance
 
 **Update This Skill When**:
+
 - New patterns discovered
 - Creation failures observed
 - Framework changes
 - Anti-bloat violations
 
 **How to Update**:
+
 1. Document in GitHub issue
 2. Create experiment log (`experiments/YYYY-MM-DD_name.md`)
 3. Single change (<10 lines)
@@ -140,6 +148,7 @@ Test on real tasks → Notice inefficiencies → Update → Test again. Follow a
 6. Keep/revert/iterate
 
 **Success Metrics**:
+
 - Pass validation first try
 - Follow anti-bloat checklist
 - Use resources/ symlinks correctly
@@ -149,6 +158,7 @@ Test on real tasks → Notice inefficiencies → Update → Test again. Follow a
 ## Quick Reference
 
 **Mandatory Steps**:
+
 1. `scripts/init_skill.py <name> --path <dir>`
 2. Create `resources/` + symlinks
 3. Reference framework context at top
@@ -157,6 +167,7 @@ Test on real tasks → Notice inefficiencies → Update → Test again. Follow a
 6. `scripts/package_skill.py <folder>`
 
 **Key References**:
+
 - `@$ACADEMICOPS/docs/bots/BEST-PRACTICES.md`
 - `@$ACADEMICOPS/docs/bots/skill-invocation-guide.md`
 - `@resources/AXIOMS.md`, `@resources/INFRASTRUCTURE.md`

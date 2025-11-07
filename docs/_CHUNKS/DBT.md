@@ -1,4 +1,3 @@
-
 ## Computational Research Projects (dbt/Empirical Work)
 
 When working on computational research projects (identified by presence of `dbt/` directory, Streamlit apps, or empirical data pipelines), you MUST also read:

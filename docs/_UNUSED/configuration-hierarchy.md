@@ -79,20 +79,23 @@ To add agent configuration to a new project:
 2. Create INSTRUCTIONS.md with this template:
    ```markdown
    # Agent Instructions for [Project Name]
-   
+
    ## Configuration Hierarchy
+
    This is the project-specific configuration for [Project].
-   
+
    1. **Project-Specific** (this file) - Overrides all other configurations
    2. **Global** (`/writing/docs/agents/INSTRUCTIONS.md`) - Repository-wide preferences
    3. **Base** ${ACADEMICOPS}/agents/*.md`) - Core agent definitions
-   
+
    ## [Project]-Specific Instructions
-   
+
    [Your project-specific instructions here]
-   
+
    ## Agent Overrides
+
    When using base agents from ${ACADEMICOPS}/agents/`:
+
    - Use [agent] with these modifications: [...]
    ```
 

@@ -27,6 +27,7 @@ Use aops-bug when:
 5. **Pattern analysis needed** - Understanding recurring agent behaviors
 
 **Concrete trigger examples**:
+
 - "Agent created _new file instead of editing (defensive behavior)"
 - "Hook validate_tool.py failed with KeyError"
 - "Document experiment results for new pre-commit check"
@@ -34,6 +35,7 @@ Use aops-bug when:
 - "ARCHITECTURE.md missing new skills system description"
 
 **NOT for**:
+
 - General GitHub issue management → Use `github-issue` skill directly
 - Project-specific bugs → Use project's issue tracker
 - User questions about academicOps → Answer directly, don't track
@@ -47,12 +49,14 @@ This skill operates in **two distinct modes** depending on invocation context:
 **When invoked via `/log-failure`**, your scope is strictly LIMITED to:
 
 ✅ **DO**:
+
 - Analyze the violation/bug pattern
 - Search for existing GitHub issues
 - Document findings in GitHub (update existing or create new issue)
 - Report analysis to user
 
 ❌ **DO NOT**:
+
 - Fix the user's original request that triggered the failure
 - Implement solutions or code changes
 - Investigate deeply beyond initial categorization
@@ -61,6 +65,7 @@ This skill operates in **two distinct modes** depending on invocation context:
 **Rationale**: `/log-failure` is for rapid documentation based on single data points. Fixes require experiment-driven validation with multiple data points.
 
 **Example**:
+
 ```
 User: "/log-failure agent didn't archive task correctly"
 
@@ -120,6 +125,7 @@ Extract from the problem report:
 4. **Evidence**: Quote relevant agent output or behavior
 
 **Example**:
+
 ```
 What happened: Agent created config_new.yaml instead of editing config.yaml
 What should have: Edited config.yaml directly
@@ -132,6 +138,7 @@ Evidence: Agent output "Creating config_new.yaml to avoid overwriting"
 Use `references/behavioral-patterns.md` to identify the underlying pattern:
 
 **Common patterns**:
+
 - Defensive Behavior (Axiom #7, #8 violations)
 - Scope Creep (Axiom #1, #2 violations)
 - DRY Violations (Axiom #10 violations)
@@ -154,6 +161,7 @@ Use github-issue skill to search nicsuzor/academicOps with:
 ```
 
 **Decision point**:
+
 - Found matching issue → Update it (Step 1.4A)
 - No match after 3+ searches → Create new (Step 1.4B)
 
@@ -170,9 +178,10 @@ Add new instance to existing issue via `github-issue` skill:
 
 **Evidence**:
 ```
-[Quoted agent output]
-```
 
+[Quoted agent output]
+
+```
 **Pattern Confirmation**: [How this matches existing issue]
 
 **Related**: [Links to experiments, commits if any]
@@ -185,14 +194,11 @@ Only after exhaustive search, create new issue via `github-issue` skill:
 **Title format**: `[Component]: Brief violation description`
 
 **Body structure**:
+
 ```markdown
 ## Violation Summary
 
-**Agent**: [Which agent violated]
-**Axiom/Rule**: _CORE.md Axiom #[number] [name]
-**Behavioral Pattern**: [From behavioral-patterns.md]
-**Date**: [When observed]
-**Repository**: [Where occurred]
+**Agent**: [Which agent violated] **Axiom/Rule**: _CORE.md Axiom #[number] [name] **Behavioral Pattern**: [From behavioral-patterns.md] **Date**: [When observed] **Repository**: [Where occurred]
 
 ## What Happened
 
@@ -203,11 +209,11 @@ Only after exhaustive search, create new issue via `github-issue` skill:
 [Expected behavior per axioms/instructions]
 
 ## Evidence
-
 ```
+
 [Quoted agent output, file diffs, conversation excerpts]
-```
 
+```
 ## Root Cause Analysis
 
 [Why this happened - one level deep]
@@ -257,6 +263,7 @@ Per trainer.md enforcement hierarchy:
 For significant violations requiring framework changes:
 
 **Check if in academicOps repo**:
+
 ```bash
 pwd  # Should contain /academicOps or /bot
 ```
@@ -266,13 +273,11 @@ pwd  # Should contain /academicOps or /bot
 **File**: `experiments/YYYY-MM-DD_[descriptive-name].md`
 
 **Content**:
+
 ```markdown
 # Experiment: [Name]
 
-**Date**: YYYY-MM-DD
-**Commit**: [pending]
-**Issue**: #[NUMBER]
-**Agent**: [which agent violated]
+**Date**: YYYY-MM-DD **Commit**: [pending] **Issue**: #[NUMBER] **Agent**: [which agent violated]
 
 ## Hypothesis
 
@@ -338,17 +343,13 @@ Categorize the error:
 Gather complete error information:
 
 ```markdown
-**Error Message**: [Full error text]
-**Stack Trace**: [If available]
-**Component**: [Which script/hook/tool]
-**File Path**: [Exact location with line number]
-**Environment**: [Repository, Python version, OS]
-**Reproduction Steps**: [How to trigger error]
+**Error Message**: [Full error text] **Stack Trace**: [If available] **Component**: [Which script/hook/tool] **File Path**: [Exact location with line number] **Environment**: [Repository, Python version, OS] **Reproduction Steps**: [How to trigger error]
 ```
 
 ### Step 2.3: Search for Existing Issues
 
 Use `github-issue` skill to search:
+
 - Error message (exact phrase)
 - Component name (script/hook filename)
 - Symptom keywords
@@ -361,19 +362,18 @@ Use `github-issue` skill to search:
 **Title**: `[Component]: Error description`
 
 **Body**:
+
 ```markdown
 ## Error Summary
 
-**Component**: [Script/Hook/Tool]
-**File**: [Path and line number]
-**Date**: [When encountered]
+**Component**: [Script/Hook/Tool] **File**: [Path and line number] **Date**: [When encountered]
 
 ## Error Details
-
 ```
+
 [Full error message and stack trace]
-```
 
+```
 ## Reproduction Steps
 
 1. [Step 1]
@@ -412,8 +412,7 @@ Use `github-issue` skill to search:
 
 Experiments live in `experiments/YYYY-MM-DD_name.md`.
 
-**If experiment log exists**: Update it
-**If new experiment**: Create it (use template from Workflow 1 Step 1.5)
+**If experiment log exists**: Update it **If new experiment**: Create it (use template from Workflow 1 Step 1.5)
 
 ### Step 3.2: Document Results
 
@@ -422,14 +421,15 @@ Update experiment log's Results and Outcome sections:
 ```markdown
 ## Results
 
-**Test Runs**: [Number of tests performed]
-**Success Rate**: [X/Y successful]
+**Test Runs**: [Number of tests performed] **Success Rate**: [X/Y successful]
 
 **Metrics**:
+
 - [Metric 1]: [Before] → [After]
 - [Metric 2]: [Before] → [After]
 
 **Observations**:
+
 - [What happened during testing]
 - [Unexpected behaviors]
 - [Edge cases discovered]
@@ -452,10 +452,10 @@ Link experiment results to related issue via `github-issue` skill:
 ```markdown
 ## Experiment Results
 
-**Experiment Log**: `experiments/[DATE]_[name].md`
-**Outcome**: [SUCCESS/FAILED/PARTIAL]
+**Experiment Log**: `experiments/[DATE]_[name].md` **Outcome**: [SUCCESS/FAILED/PARTIAL]
 
 **Key Findings**:
+
 - [Finding 1]
 - [Finding 2]
 
@@ -463,9 +463,7 @@ Link experiment results to related issue via `github-issue` skill:
 
 **Decision**: [Keep/Revert/Iterate]
 
-[If SUCCESS]: Closing as resolved.
-[If FAILED]: Documented failure, reverting changes.
-[If PARTIAL]: Continuing investigation with refinements.
+[If SUCCESS]: Closing as resolved. [If FAILED]: Documented failure, reverting changes. [If PARTIAL]: Continuing investigation with refinements.
 ```
 
 **If resolved**, close issue via `github-issue` skill with resolution details.
@@ -481,6 +479,7 @@ Move completed experiments from "Active" to "Closed" in `experiments/INDEX.md`.
 ### Step 4.1: Detect Drift
 
 Compare ARCHITECTURE.md against reality:
+
 - New components added (skills, agents, scripts, hooks)
 - Workflows changed
 - Directory structure evolved
@@ -510,21 +509,25 @@ cat .claude/settings.json | grep -A 20 hooks
 Edit sections to match reality:
 
 **When adding NEW component**:
+
 - Add to relevant section (Agents, Skills, Scripts, Hooks)
 - Document purpose and usage
 - Include examples
 
 **When design decision made**:
+
 - Move from "Open Questions" to implementation section
 - Document rationale
 - Include references to issues/experiments
 
 **When workflow changed**:
+
 - Update workflow description
 - Add/remove steps
 - Update examples
 
 **Writing style**: Descriptive voice (not imperative)
+
 - ✅ "The system loads instructions from..."
 - ❌ "load instructions from..."
 
@@ -535,6 +538,7 @@ If ARCHITECTURE.md significantly out of date, create issue via `github-issue` sk
 **Title**: `docs: ARCHITECTURE.md drift from reality`
 
 **Body**:
+
 ```markdown
 ## Drift Summary
 
@@ -576,18 +580,22 @@ User asks: "What's the status on [issue/area]?"
 [Current state in 1-2 sentences]
 
 **Blockers**:
+
 - [Blocker 1]
 - [Blocker 2]
 
 **Outstanding Work**:
+
 - [ ] Item 1
 - [ ] Item 2
 
 **Recent Progress**:
+
 - [Update 1]
 - [Update 2]
 
 **Decision Points**:
+
 - [Question needing decision]
 ```
 
@@ -598,11 +606,13 @@ User asks: "What's the status on [issue/area]?"
 ### Data Boundary Rules
 
 **When working in academicOps repository**:
+
 - ✅ Can write to local files (experiments/, ARCHITECTURE.md)
 - ✅ Can write to GitHub issues
 - ✅ Can reference all framework files
 
 **When working in third-party repositories**:
+
 - ❌ NEVER modify local files
 - ✅ CAN write to nicsuzor/academicOps GitHub issues ONLY
 - ❌ NEVER include sensitive data in GitHub
@@ -620,11 +630,14 @@ Before posting to GitHub from non-academicOps repos:
 **Tool**: Use `scripts/sanitize_github.py` (DataFog-based) if needed.
 
 **Example**:
+
 ```markdown
 # ❌ BAD - includes sensitive data
+
 Error in /home/nic/client-acme/api_key.py: Invalid key sk_live_abc123
 
 # ✅ GOOD - sanitized
+
 Error in [project]/config.py: Invalid API key format
 ```
 
@@ -635,6 +648,7 @@ Check CLAUDE.md for repository information. For academicOps work, use `nicsuzor/
 ## Quality Standards
 
 Every issue should have:
+
 - [ ] Clear, specific title with component name
 - [ ] Complete technical details
 - [ ] Evidence (quotes, stack traces, file refs)
@@ -645,6 +659,7 @@ Every issue should have:
 - [ ] Proposed solution direction
 
 Every experiment log should have:
+
 - [ ] Date, issue link, commit ref
 - [ ] Clear hypothesis
 - [ ] Documented changes
@@ -654,6 +669,7 @@ Every experiment log should have:
 - [ ] Updated in INDEX.md
 
 ARCHITECTURE.md updates should:
+
 - [ ] Describe current state (not aspirational)
 - [ ] Use descriptive voice (not imperative)
 - [ ] Include concrete examples
@@ -663,26 +679,32 @@ ARCHITECTURE.md updates should:
 ## Anti-Patterns
 
 **Don't create duplicate issues**:
+
 - ❌ Three issues for "agent doesn't follow DRY"
 - ✅ One issue tracking DRY violations with multiple examples
 
 **Don't leak sensitive data**:
+
 - ❌ Including API keys, private paths, client names in GitHub
 - ✅ Sanitizing all examples before posting
 
 **Don't modify third-party projects**:
+
 - ❌ Creating experiment logs in client repos
 - ✅ Only documenting to academicOps GitHub
 
 **Don't speculate**:
+
 - ❌ "This probably happens because..."
 - ✅ "This happened when X, error message shows Y"
 
 **Don't ignore existing work**:
+
 - ❌ Creating issue without searching first
 - ✅ Exhaustive search via github-issue skill, then create or update
 
 **Don't bypass enforcement hierarchy**:
+
 - ❌ Adding instructions when script could prevent
 - ✅ Apply decision tree, use strongest enforcement
 
@@ -691,6 +713,7 @@ ARCHITECTURE.md updates should:
 This skill **calls** the `github-issue` skill for all GitHub operations:
 
 **When to invoke github-issue**:
+
 - Searching for existing issues
 - Creating new issues
 - Adding comments to issues
@@ -698,6 +721,7 @@ This skill **calls** the `github-issue` skill for all GitHub operations:
 - Verifying repository
 
 **What aops-bug adds**:
+
 - Framework-specific context (axioms, patterns, architecture)
 - Behavioral pattern categorization
 - Enforcement hierarchy analysis
@@ -706,6 +730,7 @@ This skill **calls** the `github-issue` skill for all GitHub operations:
 - Privacy/sanitization rules
 
 **Example workflow**:
+
 ```
 User: "Agent violated fail-fast by using .get()"
 
@@ -790,6 +815,7 @@ This skill includes comprehensive reference documentation:
 ### references/behavioral-patterns.md
 
 Detailed categorization guide for agent violations:
+
 - Core behavioral patterns (Defensive, Scope Creep, DRY, Authority, etc.)
 - Specific axiom violations
 - Error categorization
@@ -799,6 +825,7 @@ Detailed categorization guide for agent violations:
 ### references/framework-architecture.md
 
 Framework-specific knowledge:
+
 - Repository structure
 - Core framework files (_CORE.md, trainer.md, ARCHITECTURE.md)
 - Enforcement hierarchy details

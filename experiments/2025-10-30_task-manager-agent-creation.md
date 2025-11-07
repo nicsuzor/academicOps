@@ -1,6 +1,7 @@
 # Task Manager Agent Creation - Phase 1
 
 ## Metadata
+
 - Date: 2025-10-30
 - Updated: 2025-10-31
 - Issue: #170 (https://github.com/nicsuzor/academicOps/issues/170)
@@ -24,6 +25,7 @@ Creating a dedicated task-manager agent (Option B) will resolve the email proces
 Scribe skill has three operational modes (Background Capture, Display, Context Guide), but when explicitly invoked for email processing, it produces conversational summaries instead of operating silently. This violates the core principle: "If the user says 'can you save that?', you've already failed."
 
 **Observed failure pattern:**
+
 - User provides emails for processing
 - Scribe invoked explicitly
 - Scribe produces summary: "I've processed X emails and created Y tasks"
@@ -34,6 +36,7 @@ Scribe skill has three operational modes (Background Capture, Display, Context G
 **Option A (Refactor scribe)**: Would require significant changes to scribe skill's mode detection logic and potentially break existing workflows.
 
 **Option B (Create agent)**: Create focused task-manager agent that:
+
 - References scribe skill for knowledge
 - Has explicit identity: "You are NOT conversational"
 - Specializes in email-to-task extraction
@@ -46,6 +49,7 @@ Scribe skill has three operational modes (Background Capture, Display, Context G
 ### Phase 1: Agent Creation (COMPLETE)
 
 #### 1.1 Agent File Creation
+
 - [x] Created `/home/nic/src/bot/agents/task-manager.md`
 - [x] Size: ~550 lines (within target range for comprehensive agent)
 - [x] Core identity: "You are NOT conversational. You are a background processor."
@@ -55,6 +59,7 @@ Scribe skill has three operational modes (Background Capture, Display, Context G
 #### 1.2 Agent Capabilities
 
 **Included:**
+
 - Email processing workflow (MCP integration)
 - Task extraction patterns (from scribe)
 - Priority assessment framework (references scribe)
@@ -63,6 +68,7 @@ Scribe skill has three operational modes (Background Capture, Display, Context G
 - Accomplishment updates for completed work
 
 **Key behavioral constraints:**
+
 - NO summaries of actions taken
 - NO "I've processed X emails" messages
 - NO explanations unless explicitly asked
@@ -71,6 +77,7 @@ Scribe skill has three operational modes (Background Capture, Display, Context G
 #### 1.3 Testing
 
 **Manual workflow test:**
+
 ```bash
 # Verified task creation workflow
 uv run python ~/.claude/skills/scribe/scripts/task_add.py \
@@ -86,6 +93,7 @@ uv run python ~/.claude/skills/scribe/scripts/task_add.py \
 ```
 
 **Test results:**
+
 - ✅ Task file created in inbox
 - ✅ Correct structure and fields
 - ✅ Scripts work as documented
@@ -94,6 +102,7 @@ uv run python ~/.claude/skills/scribe/scripts/task_add.py \
 ### Phase 2: Real-World Testing (PENDING)
 
 **Next steps:**
+
 1. Test with actual email processing scenario
 2. Verify silent operation
 3. Check for duplicate task detection
@@ -115,6 +124,7 @@ uv run python ~/.claude/skills/scribe/scripts/task_add.py \
 ### Phase 2 (Real-World Testing) - PENDING
 
 **Test scenario:** Process 3-5 emails, verify:
+
 - [ ] Tasks created for each actionable item
 - [ ] No conversational summaries produced
 - [ ] Task files appear in data/tasks/inbox/
@@ -123,6 +133,7 @@ uv run python ~/.claude/skills/scribe/scripts/task_add.py \
 - [ ] Strategic alignment checked
 
 **Quantitative metrics:**
+
 - Tasks created: Should match actionable items in emails
 - Conversational outputs: Should be ZERO (unless user asks)
 - Duplicate tasks: Should be ZERO
@@ -140,18 +151,21 @@ uv run python ~/.claude/skills/scribe/scripts/task_add.py \
 ### Phase 1: Agent Creation - SUCCESS
 
 **Agent specifications:**
+
 - Location: `/home/nic/src/bot/agents/task-manager.md`
 - Size: ~550 lines (comprehensive reference documentation)
 - Core identity: Explicit non-conversational processor
 - References: Scribe skill for knowledge (DRY principle maintained)
 
 **Manual testing:**
+
 - Task creation workflow: ✅ Verified working
 - File structure: ✅ Correct
 - Script paths: ✅ All valid
 - Silent operation: ✅ Specified in agent constraints
 
 **Key features implemented:**
+
 1. Email processing workflow with MCP integration
 2. Task extraction patterns from scribe
 3. Priority assessment framework (references scribe)
@@ -163,6 +177,7 @@ uv run python ~/.claude/skills/scribe/scripts/task_add.py \
 ### Phase 2: Real-World Testing - NEXT
 
 **Waiting for:** Actual email processing scenario to validate:
+
 - Silent operation in practice
 - Task file creation
 - Duplicate detection
@@ -229,16 +244,19 @@ uv run python ~/.claude/skills/scribe/scripts/task_add.py \
 ## Next Experiments
 
 ### If Phase 2 succeeds:
+
 1. **Production integration:** Add task-manager to email processing workflow
 2. **Automation:** Trigger task-manager automatically on incoming emails
 3. **Scribe refactor:** Consider consolidating modes if task-manager proves pattern
 
 ### If Phase 2 fails:
+
 1. **Identify failure mode:** Is it silent operation? Duplicate detection? Priority assessment?
 2. **Iterate agent instructions:** Strengthen constraints or add examples
 3. **Consider Option A:** If agent approach doesn't work, refactor scribe skill
 
 ### Related experiments to consider:
+
 1. **Email triage agent:** Separate agent for email prioritization before task extraction
 2. **Strategic alignment validator:** Standalone agent for checking goal linkages
 3. **Task deduplication service:** Separate service/agent for detecting duplicates
@@ -279,11 +297,13 @@ uv run python ~/.claude/skills/scribe/scripts/task_add.py \
 **Phantom skills discovered**: User reported seeing both task-manager and scribe, plus non-existent python-dev.
 
 **Root causes**:
+
 - task-manager is agent (not skill), appears in agent list
 - python-dev never existed, was template placeholder in agent-initialization
 - dev is agent, not skill
 
 **Resolution**:
+
 - task-manager: Kept as experiment, description clarified
 - python-dev: All references removed or corrected to "dev agent"
 - Documentation now accurately reflects installed skills vs available agents

@@ -40,5 +40,6 @@ relations:
 - **Error Handling**: Stop immediately, report exactly, wait for instruction
 
 ## No documentation files
+
 - Do not generate any .md files, including changelogs, summaries, or plans, or documentation content under any circumstances.
 - Generating a planning, documentation, or changelog markdown files wastes tokens and is prohibited.

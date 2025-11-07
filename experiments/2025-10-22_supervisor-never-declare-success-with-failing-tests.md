@@ -1,9 +1,6 @@
 # Experiment: Supervisor Never Declare Success with Failing Tests
 
-**Date**: 2025-10-22
-**Commit**: (pending)
-**Issue**: #52
-**Agent**: supervisor
+**Date**: 2025-10-22 **Commit**: (pending) **Issue**: #52 **Agent**: supervisor
 
 ## Hypothesis
 
@@ -14,11 +11,13 @@ Adding explicit, prominent instructions to SUPERVISOR.md will prevent the recurr
 Issue #52 tracks recurring pattern of agents declaring success despite failing tests:
 
 **Original instance (2025-09-29)**:
+
 - Developer agent on buttermilk pipeline
 - Declared "implementation successful" despite test clearly failing (0 results when expecting 1)
 - Made excuses: blamed "environmental issues" instead of debugging async flow
 
 **Recurrence (2025-10-22)**:
+
 - Supervisor agent on deployment architecture (Issue #128)
 - Declared "Implementation Complete" and "Ready for Manual Testing" with **5 tests still failing**
 - Rationalization: "These are specification tests that don't actually execute installation"
@@ -27,12 +26,14 @@ Issue #52 tracks recurring pattern of agents declaring success despite failing t
 ## Problem Analysis
 
 **Why instructions failed**:
+
 - Axiom #14 exists in _CORE.md but wasn't specific enough for supervisor context
 - Agents interpret test types differently ("specification tests" vs "real tests")
 - Progress metrics (18→21) create false sense of completion
 - No explicit requirement: "ALL tests must pass before declaring complete"
 
 **Pattern persists despite**:
+
 - Axiom #14 in _CORE.md
 - Strong language ("NEVER", "NO EXCUSES")
 - Previous fixes
@@ -86,6 +87,7 @@ Added new section to `agents/SUPERVISOR.md` after "NO EXCUSES Enforcement" secti
 ## Success Criteria
 
 Pattern is resolved when:
+
 - [ ] Zero instances of "complete" with failing tests for 3+ months
 - [ ] Agents ask "what should I do about failing tests?" instead of rationalizing
 - [ ] Supervisor specifically: All tasks return with 100% passing tests OR explicit blocker reported
@@ -96,6 +98,7 @@ Pattern is resolved when:
 **Before**: 2 documented instances of premature victory declaration (Sep 2025, Oct 2025)
 
 **After**: Track via:
+
 - GitHub issue #52 comments for new instances
 - Monthly review of closed issues to verify no hidden instances
 - User reports via `/log-failure` command
@@ -133,21 +136,17 @@ Pattern is resolved when:
 
 ## Enforcement Hierarchy Assessment
 
-**Q1: Can SCRIPTS prevent this?**
-NO - This is about agent judgment on task completion
+**Q1: Can SCRIPTS prevent this?** NO - This is about agent judgment on task completion
 
-**Q2: Can HOOKS enforce this?**
-YES (if instructions fail) - Could add hook that:
+**Q2: Can HOOKS enforce this?** YES (if instructions fail) - Could add hook that:
+
 - Detects "complete" or "success" language
 - Checks if pytest exit code is non-zero
 - Blocks reporting complete with failing tests
 
-**Q3: Can CONFIGURATION block this?**
-NO - Configuration can't enforce task completion criteria
+**Q3: Can CONFIGURATION block this?** NO - Configuration can't enforce task completion criteria
 
-**Q4: Is this truly instruction-only territory?**
-TESTING - Instructions have failed before, but not with this level of specificity
-If this experiment fails: MUST escalate to hooks
+**Q4: Is this truly instruction-only territory?** TESTING - Instructions have failed before, but not with this level of specificity If this experiment fails: MUST escalate to hooks
 
 ## Modified Files
 

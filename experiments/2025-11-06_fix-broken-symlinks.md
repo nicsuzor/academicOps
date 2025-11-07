@@ -1,6 +1,7 @@
 # Fix Broken Symlinks in Skills
 
 ## Metadata
+
 - Date: 2025-11-06
 - Issue: #194
 - Commit: [to be added]
@@ -25,6 +26,7 @@ Replacing absolute symlink paths with relative paths will fix broken symlinks in
    - Files: FAIL-FAST.md, GIT-WORKFLOW.md, TESTS.md
 
 **Path calculation**:
+
 - From `skills/[skill-name]/resources/`, need `../../../` to reach project root
 - From `skills/[skill-name]/references/`, need `../../../` to reach project root
 - Then navigate to `chunks/` or `docs/_CHUNKS/`
@@ -40,12 +42,10 @@ Replacing absolute symlink paths with relative paths will fix broken symlinks in
 
 **All success criteria met**:
 
-✓ Broken symlink count: 0 (was 6)
-✓ skills/aops-trainer/resources/ readable: AXIOMS.md, INFRASTRUCTURE.md, SKILL-PRIMER.md
-✓ skills/git-commit/references/ readable: FAIL-FAST.md, GIT-WORKFLOW.md, TESTS.md
-✓ All symlinks now use relative paths (e.g., `../../../chunks/AXIOMS.md`)
+✓ Broken symlink count: 0 (was 6) ✓ skills/aops-trainer/resources/ readable: AXIOMS.md, INFRASTRUCTURE.md, SKILL-PRIMER.md ✓ skills/git-commit/references/ readable: FAIL-FAST.md, GIT-WORKFLOW.md, TESTS.md ✓ All symlinks now use relative paths (e.g., `../../../chunks/AXIOMS.md`)
 
 **Validation commands**:
+
 ```bash
 # Before fix: 6 broken symlinks
 # After fix: 0 broken symlinks

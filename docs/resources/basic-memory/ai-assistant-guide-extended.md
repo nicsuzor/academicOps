@@ -30,18 +30,21 @@
 ### Key Principles
 
 **Local-First Architecture**
+
 - All knowledge stored as plain text markdown files on user's computer
 - SQLite database indexes files for fast search and navigation
 - Files are the source of truth, database is derived state
 - User maintains complete control over their data
 
 **Semantic Knowledge Graph**
+
 - Entities: Individual markdown files representing concepts
 - Observations: Categorized facts with optional tags
 - Relations: Directional links between entities
 - Graph traversal enables context building and exploration
 
 **Persistent Context**
+
 - Knowledge persists across conversations
 - AI can reference previous discussions
 - Context builds over time through accumulated knowledge
@@ -50,6 +53,7 @@
 ### AI as Knowledge Collaborator
 
 Basic Memory's semantic knowledge graph - observations, relations, context building - is designed to help you (the AI assistant) provide better help to humans. You use the graph structure to:
+
 - Build relevant context from past conversations
 - Navigate connections between ideas
 - Understand relationships and dependencies
@@ -72,6 +76,7 @@ SQLite Database (Index)
 ```
 
 **Data Flow**:
+
 1. User creates/edits markdown files
 2. Sync process detects changes
 3. Files are parsed and indexed in SQLite
@@ -81,16 +86,19 @@ SQLite Database (Index)
 ### Version 0.15.0 Changes
 
 **Breaking Change: Stateless Architecture**
+
 - All MCP tools now require explicit `project` parameter
 - No implicit project context carried between calls
 - Exception: `default_project_mode` config option enables fallback
 
 **Three-Tier Project Resolution**:
+
 1. CLI constraint: `--project name` flag (highest priority)
 2. Explicit parameter: `project="name"` in tool calls
 3. Default mode: `default_project_mode=true` in config (fallback)
 
 **Why This Matters**:
+
 - More predictable behavior across sessions
 - Explicit project selection prevents errors
 - Multi-project workflows more reliable
@@ -130,6 +138,7 @@ projects = await list_memory_projects()
 ```
 
 **When to discover projects**:
+
 - Start of conversation when project unknown
 - User asks about available projects
 - Before any operation requiring project selection
@@ -198,6 +207,7 @@ activity = await recent_activity(timeframe="7d", project="main")
 ```
 
 **Tools supporting cross-project mode**:
+
 - `recent_activity()` - aggregate activity across projects
 - `list_memory_projects()` - always returns all projects
 - `sync_status()` - can show all projects or specific
@@ -223,6 +233,7 @@ await create_memory_project(
 ```
 
 **Use cases**:
+
 - User requests new knowledge base
 - Separating work/personal notes
 - Project-specific documentation
@@ -258,6 +269,7 @@ if status["sync_in_progress"]:
 ### Entities
 
 **What is an Entity?**
+
 - Any concept, document, or idea represented as a markdown file
 - Has a unique title and permalink
 - Contains frontmatter metadata
@@ -278,16 +290,20 @@ updated: 2025-01-15T09:15:00Z
 # Authentication System
 
 ## Context
+
 Brief description of the entity
 
 ## Observations
+
 - [category] Facts about this entity
 
 ## Relations
+
 - relation_type [[Other Entity]]
 ```
 
 **Entity Types**:
+
 - `note`: General knowledge (default)
 - `person`: People and contacts
 - `project`: Projects and initiatives
@@ -302,6 +318,7 @@ Brief description of the entity
 **Syntax**: `- [category] content #tag1 #tag2`
 
 **Common Categories**:
+
 - `[fact]`: Objective information
 - `[idea]`: Thoughts and concepts
 - `[decision]`: Choices made
@@ -316,6 +333,7 @@ Brief description of the entity
 
 ```markdown
 ## Observations
+
 - [decision] Use JWT tokens for authentication #security
 - [technique] Hash passwords with bcrypt before storage #best-practice
 - [requirement] Support OAuth 2.0 providers (Google, GitHub) #auth
@@ -326,6 +344,7 @@ Brief description of the entity
 ```
 
 **Why Categorize?**:
+
 - Enables semantic search by observation type
 - Helps AI understand context and intent
 - Makes knowledge more queryable
@@ -338,6 +357,7 @@ Brief description of the entity
 **Syntax**: `- relation_type [[Target Entity]]`
 
 **Common Relation Types**:
+
 - `relates_to`: General connection
 - `implements`: Implementation of spec/design
 - `requires`: Dependency relationship
@@ -352,6 +372,7 @@ Brief description of the entity
 
 ```markdown
 ## Relations
+
 - implements [[Authentication Spec v2]]
 - requires [[User Database Schema]]
 - extends [[Base Security Model]]
@@ -364,15 +385,20 @@ Brief description of the entity
 
 ```markdown
 # In "Login Flow" note
+
 ## Relations
+
 - part_of [[Authentication System]]
 
 # In "Authentication System" note
+
 ## Relations
+
 - includes [[Login Flow]]
 ```
 
 **Why explicit relation types matter**:
+
 - Enables semantic graph traversal
 - AI can understand relationship meaning
 - Supports sophisticated context building
@@ -416,12 +442,14 @@ await write_note(
 ```
 
 **How it works**:
+
 1. Forward reference creates placeholder in knowledge graph
 2. When target entity is created, relation is automatically resolved
 3. Graph traversal works in both directions
 4. No manual linking required
 
 **Use cases**:
+
 - Planning features before implementation
 - Creating outlines with linked topics
 - Bottom-up knowledge building
@@ -478,6 +506,7 @@ Documenting our database architecture choices for the authentication system.
 ### Effective Observation Writing
 
 **Good observations are**:
+
 - **Specific**: Avoid vague statements
 - **Categorized**: Use appropriate category
 - **Tagged**: Add relevant tags
@@ -487,6 +516,7 @@ Documenting our database architecture choices for the authentication system.
 **Examples**:
 
 **❌ Poor observations**:
+
 ```markdown
 - [fact] We use a database
 - [idea] Security is important
@@ -494,6 +524,7 @@ Documenting our database architecture choices for the authentication system.
 ```
 
 **✓ Good observations**:
+
 ```markdown
 - [fact] PostgreSQL 14 database runs on AWS RDS with 16GB RAM #infrastructure
 - [decision] Implemented rate limiting at 100 requests/minute per user #security
@@ -503,6 +534,7 @@ Documenting our database architecture choices for the authentication system.
 ### Writing Effective Relations
 
 **Relations should be**:
+
 - **Directional**: Clear source and target
 - **Typed**: Use meaningful relation type
 - **Accurate**: Use exact entity titles
@@ -512,25 +544,31 @@ Documenting our database architecture choices for the authentication system.
 
 ```markdown
 # Implementation relationship
+
 - implements [[Feature Specification]]
 
 # Dependency relationship
+
 - requires [[User Authentication]]
 - depends_on [[Database Connection]]
 
 # Hierarchical relationship
+
 - part_of [[Payment System]]
 - includes [[Payment Validation]]
 
 # Contrast relationship
+
 - contrasts_with [[Alternative Approach]]
 - alternative_to [[Previous Design]]
 
 # Temporal relationship
+
 - leads_to [[Next Phase]]
 - follows [[Initial Setup]]
 
 # Causal relationship
+
 - caused_by [[Performance Issue]]
 - results_in [[Optimization]]
 ```
@@ -620,7 +658,7 @@ await write_note(
 
 **Technical Specification**:
 
-```python
+````python
 await write_note(
     title="User Authentication Spec",
     content="""# User Authentication Spec
@@ -655,21 +693,16 @@ Specification for user authentication system using JWT tokens.
   "exp": 1234567890,
   "iat": 1234567890
 }
-```
+````
 
 ## Relations
+
 - implemented_by [[Authentication Service]]
 - requires [[User Database Schema]]
 - part_of [[Security Architecture]]
-- extends [[OAuth 2.0 Spec]]
-""",
-    folder="specs",
-    tags=["spec", "auth", "security"],
-    entity_type="spec",
-    project="main"
-)
-```
+- extends [[OAuth 2.0 Spec]] """, folder="specs", tags=["spec", "auth", "security"], entity_type="spec", project="main" )
 
+````
 ### Tags Strategy
 
 **Effective tagging**:
@@ -689,7 +722,7 @@ Specification for user authentication system using JWT tokens.
 
 # Category tags
 #bug #feature #refactor #docs #test
-```
+````
 
 **Example with strategic tags**:
 
@@ -881,6 +914,7 @@ data = await read_content(
 ```
 
 **Difference from read_note**:
+
 - `read_note`: Parses markdown, extracts knowledge graph
 - `read_content`: Returns raw file content
 - Use `read_note` for knowledge graph navigation
@@ -904,6 +938,7 @@ artifact = await view_note(
 ```
 
 **When to use view_note**:
+
 - Showing content to user
 - Presenting documentation
 - Displaying specifications
@@ -1435,6 +1470,7 @@ AI: [Saves to Basic Memory]
 ```
 
 **Be transparent**:
+
 - Ask permission before saving
 - Confirm after saving
 - Explain what was saved
@@ -1447,6 +1483,7 @@ AI: [Saves to Basic Memory]
 **Good candidates for recording**:
 
 1. **Decisions and Rationales**
+
 ```python
 await write_note(
     title="Decision: GraphQL vs REST",
@@ -1474,6 +1511,7 @@ Chose GraphQL for new features, maintain REST for legacy.
 ```
 
 2. **Important Discoveries**
+
 ```python
 await write_note(
     title="Discovery: Database Performance Issue",
@@ -1502,6 +1540,7 @@ Created index on email column, query time improved 20x.
 ```
 
 3. **Action Items and Plans**
+
 ```python
 await write_note(
     title="Plan: API v2 Migration",
@@ -1534,6 +1573,7 @@ Discussed migration strategy from REST v1 to GraphQL v2.
 ```
 
 4. **Connected Topics**
+
 ```python
 await write_note(
     title="Conversation: Security Best Practices",
@@ -1708,6 +1748,7 @@ await write_note(
 ### Edit Operations
 
 **Available operations**:
+
 - `append`: Add to end of note
 - `prepend`: Add to beginning
 - `find_replace`: Replace specific text
@@ -1735,6 +1776,7 @@ Additional information discovered.
 ```
 
 **Use cases**:
+
 - Adding new observations
 - Appending related topics
 - Adding follow-up information
@@ -1760,6 +1802,7 @@ Important development since meeting.
 ```
 
 **Use cases**:
+
 - Adding urgent updates
 - Inserting warnings
 - Adding important context
@@ -1798,6 +1841,7 @@ await edit_note(
 ```
 
 **Use cases**:
+
 - Updating URLs
 - Correcting terminology
 - Fixing typos
@@ -1840,6 +1884,7 @@ See [[OAuth Implementation]] for details.
 ```
 
 **Use cases**:
+
 - Updating status sections
 - Replacing outdated information
 - Modifying specific topics
@@ -2707,6 +2752,7 @@ await write_note(
 ### Content Management
 
 **write_note(title, content, folder, tags, entity_type, project)**
+
 - Create or update markdown notes
 - Parameters:
   - `title` (required): Note title
@@ -2717,6 +2763,7 @@ await write_note(
   - `project` (required unless default_project_mode): Target project
 - Returns: Created/updated entity with permalink
 - Example:
+
 ```python
 await write_note(
     title="API Design",
@@ -2729,6 +2776,7 @@ await write_note(
 ```
 
 **read_note(identifier, page, page_size, project)**
+
 - Read notes with knowledge graph context
 - Parameters:
   - `identifier` (required): Title, permalink, or memory:// URL
@@ -2737,6 +2785,7 @@ await write_note(
   - `project` (required unless default_project_mode): Target project
 - Returns: Entity with content, observations, relations
 - Example:
+
 ```python
 note = await read_note(
     identifier="memory://specs/api-design",
@@ -2745,6 +2794,7 @@ note = await read_note(
 ```
 
 **edit_note(identifier, operation, content, find_text, section, expected_replacements, project)**
+
 - Edit notes incrementally
 - Parameters:
   - `identifier` (required): Note identifier
@@ -2756,6 +2806,7 @@ note = await read_note(
   - `project` (required unless default_project_mode): Target project
 - Returns: Updated entity
 - Example:
+
 ```python
 await edit_note(
     identifier="API Design",
@@ -2766,6 +2817,7 @@ await edit_note(
 ```
 
 **move_note(identifier, destination_path, project)**
+
 - Move notes to new locations
 - Parameters:
   - `identifier` (required): Note identifier
@@ -2773,6 +2825,7 @@ await edit_note(
   - `project` (required unless default_project_mode): Target project
 - Returns: Updated entity with new path
 - Example:
+
 ```python
 await move_note(
     identifier="API Design",
@@ -2782,12 +2835,14 @@ await move_note(
 ```
 
 **delete_note(identifier, project)**
+
 - Delete notes from knowledge base
 - Parameters:
   - `identifier` (required): Note identifier
   - `project` (required unless default_project_mode): Target project
 - Returns: Deletion confirmation
 - Example:
+
 ```python
 await delete_note(
     identifier="outdated-note",
@@ -2796,12 +2851,14 @@ await delete_note(
 ```
 
 **read_content(path, project)**
+
 - Read raw file content
 - Parameters:
   - `path` (required): File path
   - `project` (required unless default_project_mode): Target project
 - Returns: Raw file content (text or base64 for binary)
 - Example:
+
 ```python
 content = await read_content(
     path="config/settings.json",
@@ -2810,10 +2867,12 @@ content = await read_content(
 ```
 
 **view_note(identifier, page, page_size, project)**
+
 - View notes as formatted artifacts
 - Parameters: Same as read_note
 - Returns: Formatted markdown for display
 - Example:
+
 ```python
 artifact = await view_note(
     identifier="API Design",
@@ -2824,6 +2883,7 @@ artifact = await view_note(
 ### Knowledge Graph Navigation
 
 **build_context(url, depth, timeframe, max_related, page, page_size, project)**
+
 - Navigate knowledge graph
 - Parameters:
   - `url` (required): memory:// URL
@@ -2835,6 +2895,7 @@ artifact = await view_note(
   - `project` (required unless default_project_mode): Target project
 - Returns: Root entity, related entities, paths
 - Example:
+
 ```python
 context = await build_context(
     url="memory://api-design",
@@ -2845,6 +2906,7 @@ context = await build_context(
 ```
 
 **recent_activity(type, depth, timeframe, project)**
+
 - Get recent changes
 - Parameters:
   - `type` (optional): Activity type filter
@@ -2853,6 +2915,7 @@ context = await build_context(
   - `project` (optional): Target project (omit for all projects)
 - Returns: List of recently updated entities
 - Example:
+
 ```python
 activity = await recent_activity(
     timeframe="7d",
@@ -2861,6 +2924,7 @@ activity = await recent_activity(
 ```
 
 **list_directory(dir_name, depth, file_name_glob, project)**
+
 - Browse directory contents
 - Parameters:
   - `dir_name` (optional): Directory path (default: "/")
@@ -2869,6 +2933,7 @@ activity = await recent_activity(
   - `project` (required unless default_project_mode): Target project
 - Returns: Files and subdirectories
 - Example:
+
 ```python
 contents = await list_directory(
     dir_name="specs",
@@ -2881,6 +2946,7 @@ contents = await list_directory(
 ### Search & Discovery
 
 **search_notes(query, page, page_size, search_type, types, entity_types, after_date, project)**
+
 - Search across knowledge base
 - Parameters:
   - `query` (required): Search query
@@ -2893,6 +2959,7 @@ contents = await list_directory(
   - `project` (required unless default_project_mode): Target project
 - Returns: Matching entities with scores
 - Example:
+
 ```python
 results = await search_notes(
     query="authentication",
@@ -2905,15 +2972,18 @@ results = await search_notes(
 ### Project Management
 
 **list_memory_projects()**
+
 - List all available projects
 - Parameters: None
 - Returns: List of projects with metadata
 - Example:
+
 ```python
 projects = await list_memory_projects()
 ```
 
 **create_memory_project(project_name, project_path, set_default)**
+
 - Create new project
 - Parameters:
   - `project_name` (required): Project name
@@ -2921,6 +2991,7 @@ projects = await list_memory_projects()
   - `set_default` (optional): Set as default (default: False)
 - Returns: Created project details
 - Example:
+
 ```python
 await create_memory_project(
     project_name="research",
@@ -2930,21 +3001,25 @@ await create_memory_project(
 ```
 
 **delete_project(project_name)**
+
 - Delete project from configuration
 - Parameters:
   - `project_name` (required): Project to delete
 - Returns: Deletion confirmation
 - Example:
+
 ```python
 await delete_project(project_name="old-project")
 ```
 
 **sync_status(project)**
+
 - Check synchronization status
 - Parameters:
   - `project` (optional): Target project
 - Returns: Sync progress and status
 - Example:
+
 ```python
 status = await sync_status(project="main")
 ```
@@ -2952,6 +3027,7 @@ status = await sync_status(project="main")
 ### Visualization
 
 **canvas(nodes, edges, title, folder, project)**
+
 - Create Obsidian canvas
 - Parameters:
   - `nodes` (required): List of node objects
@@ -2961,6 +3037,7 @@ status = await sync_status(project="main")
   - `project` (required unless default_project_mode): Target project
 - Returns: Created canvas file
 - Example:
+
 ```python
 await canvas(
     nodes=[{"id": "1", "type": "file", "file": "note.md", "x": 0, "y": 0}],
@@ -2980,16 +3057,19 @@ await canvas(
 ### 1. Project Setup
 
 **Single-project users**:
+
 - Enable `default_project_mode=true` in config
 - Simplifies tool calls
 - Less explicit project parameters
 
 **Multi-project users**:
+
 - Keep `default_project_mode=false`
 - Always specify project explicitly
 - Prevents cross-project errors
 
 **Always start with discovery**:
+
 ```python
 # First action in conversation
 projects = await list_memory_projects()
@@ -3002,6 +3082,7 @@ projects = await list_memory_projects()
 ### 2. Knowledge Structure
 
 **Every note should have**:
+
 - Clear, descriptive title
 - 3-5 observations minimum
 - 2-3 relations minimum
@@ -3009,6 +3090,7 @@ projects = await list_memory_projects()
 - Proper frontmatter
 
 **Good structure example**:
+
 ```markdown
 ---
 title: Clear Descriptive Title
@@ -3019,14 +3101,17 @@ type: note
 # Title
 
 ## Context
+
 Brief background
 
 ## Observations
+
 - [category] Specific fact #tag1 #tag2
 - [category] Another fact #tag3
 - [category] Third fact #tag4
 
 ## Relations
+
 - relation_type [[Related Entity 1]]
 - relation_type [[Related Entity 2]]
 ```
@@ -3034,6 +3119,7 @@ Brief background
 ### 3. Search Before Creating
 
 **Always search first**:
+
 ```python
 # Before writing new note
 existing = await search_notes(
@@ -3057,13 +3143,16 @@ else:
 ### 4. Use Exact Entity Titles in Relations
 
 **Wrong**:
+
 ```markdown
 ## Relations
-- relates_to [[auth system]]  # Won't match "Authentication System"
-- implements [[api spec]]      # Won't match "API Specification"
+
+- relates_to [[auth system]] # Won't match "Authentication System"
+- implements [[api spec]] # Won't match "API Specification"
 ```
 
 **Right**:
+
 ```python
 # Search for exact title
 results = await search_notes(query="Authentication System", project="main")
@@ -3076,6 +3165,7 @@ content = f"## Relations\n- relates_to [[{exact_title}]]"
 ### 5. Meaningful Categories
 
 **Use semantic categories**:
+
 - `[decision]` for choices made
 - `[fact]` for objective information
 - `[technique]` for methods
@@ -3086,12 +3176,14 @@ content = f"## Relations\n- relates_to [[{exact_title}]]"
 - `[action]` for tasks
 
 **Not generic categories**:
+
 - Avoid `[note]`, `[info]`, `[misc]`
 - Be specific and intentional
 
 ### 6. Descriptive Relation Types
 
 **Use meaningful relation types**:
+
 - `implements` for implementation
 - `requires` for dependencies
 - `part_of` for hierarchy
@@ -3099,12 +3191,14 @@ content = f"## Relations\n- relates_to [[{exact_title}]]"
 - `contrasts_with` for alternatives
 
 **Not generic**:
+
 - Avoid overusing `relates_to`
 - Be specific about relationship
 
 ### 7. Progressive Elaboration
 
 **Build knowledge over time**:
+
 ```python
 # Session 1: Create foundation
 await write_note(
@@ -3134,6 +3228,7 @@ await edit_note(
 ### 8. Consistent Naming
 
 **Folder structure**:
+
 - specs/ - Specifications
 - decisions/ - Decision records
 - meetings/ - Meeting notes
@@ -3142,6 +3237,7 @@ await edit_note(
 - docs/ - Documentation
 
 **File naming**:
+
 - Use descriptive titles
 - Consistent format
 - Avoid special characters
@@ -3149,6 +3245,7 @@ await edit_note(
 ### 9. Regular Validation
 
 **Check knowledge graph health**:
+
 ```python
 # Find unresolved references
 # Check for orphaned notes
@@ -3159,12 +3256,14 @@ await edit_note(
 ### 10. Permission and Transparency
 
 **With users**:
+
 - Always ask before recording
 - Confirm after saving
 - Explain what was saved
 - Describe how it helps
 
 **Recording pattern**:
+
 ```
 AI: "Would you like me to save our discussion about {topic}?"
 User: "Yes"
@@ -3175,6 +3274,7 @@ AI: [Saves to Basic Memory]
 ### 11. Context Building Strategy
 
 **For new conversations**:
+
 ```python
 # 1. Search for topic
 results = await search_notes(query="topic", project="main")
@@ -3195,6 +3295,7 @@ context = await build_context(
 ### 12. Error Recovery
 
 **Graceful degradation**:
+
 ```python
 try:
     # Attempt operation
@@ -3208,6 +3309,7 @@ except:
 ### 13. Incremental Updates
 
 **Prefer editing over rewriting**:
+
 ```python
 # Good: Incremental update
 await edit_note(
@@ -3224,6 +3326,7 @@ await edit_note(
 ### 14. Tagging Strategy
 
 **Use tags strategically**:
+
 - Technology: #python #fastapi
 - Domain: #auth #security
 - Status: #wip #completed
@@ -3231,6 +3334,7 @@ await edit_note(
 - Category: #bug #feature
 
 **Not too many**:
+
 - 3-5 tags per observation
 - Focus on most relevant
 - Avoid tag proliferation
@@ -3238,6 +3342,7 @@ await edit_note(
 ### 15. Documentation as Code
 
 **Treat knowledge like code**:
+
 - Version control friendly (markdown)
 - Review and refine regularly
 - Keep it DRY (Don't Repeat Yourself)

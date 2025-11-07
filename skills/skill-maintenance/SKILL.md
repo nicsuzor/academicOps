@@ -39,16 +39,19 @@ Invoke skill-maintenance when:
 Detect outdated patterns, missing features, and validation issues across skills.
 
 **Single skill audit**:
+
 ```bash
 python scripts/audit_skills.py skill-name
 ```
 
 **Full ecosystem audit**:
+
 ```bash
 python scripts/audit_skills.py --all
 ```
 
 Output includes:
+
 - Outdated pattern detection (pre-skills-first references)
 - Missing framework features (@references, CLAUDE.md patterns)
 - Validation issues (broken scripts, missing references)
@@ -59,39 +62,44 @@ Output includes:
 Apply framework evolution updates to skills systematically.
 
 **Update single skill**:
+
 ```bash
 python scripts/update_skill.py skill-name
 ```
 
 **Update all skills**:
+
 ```bash
 python scripts/update_skill.py --all
 ```
 
 Updates include:
+
 - SKILL.md pattern modernization
 - Script validation and fixes
 - Reference document updates
 - Cross-reference corrections
 
-**Interactive mode** (default): Review each proposed change before applying.
-**Auto mode** (--auto flag): Apply all safe updates automatically.
+**Interactive mode** (default): Review each proposed change before applying. **Auto mode** (--auto flag): Apply all safe updates automatically.
 
 ### Validate Skills
 
 Comprehensive validation of skill completeness and functionality.
 
 **Validate single skill**:
+
 ```bash
 python scripts/validate_skill.py skill-name
 ```
 
 **Validate ecosystem**:
+
 ```bash
 python scripts/validate_skill.py --all
 ```
 
 Validation checks:
+
 - SKILL.md frontmatter correctness
 - Script executability and syntax
 - Reference file existence
@@ -104,20 +112,23 @@ Validation checks:
 Generate distribution packages from source skills.
 
 **Package single skill**:
+
 ```bash
 python scripts/package_skills.py skill-name
 ```
 
 **Package all skills**:
+
 ```bash
 python scripts/package_skills.py --all
 ```
 
 Creates fresh .zip files in `$ACADEMICOPS/dist/skills/` with:
+
 - Validated skill contents
 - Proper directory structure
 - Executable scripts preserved
-- Clean packaging (no __pycache__, .pyc, etc.)
+- Clean packaging (no **pycache**, .pyc, etc.)
 
 ### Sync Deployment
 
@@ -128,6 +139,7 @@ python scripts/sync_deployment.py
 ```
 
 Operations:
+
 - Detect non-symlink skills in ~/.claude/skills/
 - Report divergence from source
 - Fix symlinks (with --fix flag)
@@ -150,7 +162,7 @@ See workflow sections above for common patterns and batch operations.
 When maintenance operations fail:
 
 1. **Check backups** in `scripts/backups/` (created before updates)
-2. **Review logs** in `scripts/logs/` for detailed errors  
+2. **Review logs** in `scripts/logs/` for detailed errors
 3. **Manual intervention** for complex issues
 4. **Report bugs** in framework-evolution tracking
 

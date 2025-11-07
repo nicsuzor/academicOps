@@ -1,6 +1,7 @@
 # Experiment: Load Instructions Fail-Fast Validation
 
 ## Metadata
+
 - Date: 2025-11-05
 - Issue: #192
 - Commit: [pending]
@@ -15,6 +16,7 @@ Adding fail-fast validation for project tier in `load_instructions.py` will catc
 **Issue #191 root cause:** Writing repo had `docs/bots/INSTRUCTIONS.md` but SessionStart hook looked for `docs/bots/_CORE.md`. Hook silently succeeded with framework+personal only, causing agent to lack project context for entire session.
 
 **Fail-fast violation:** Script treated project tier as optional, couldn't distinguish between:
+
 1. Intentionally empty (new project, no docs yet)
 2. Wrong filename (file exists with different name)
 3. Structural inconsistency (has docs/bots/ but missing file)
@@ -28,12 +30,14 @@ User's observation: "but it didn't fail fast. why not?"
 **Change 1: Check if docs/bots/ exists (lines 76-81)**
 
 Before:
+
 ```python
 # Project tier (OPTIONAL)
 paths["project"] = Path.cwd() / "docs" / "bots" / filename
 ```
 
 After:
+
 ```python
 # Project tier (REQUIRED if docs/bots/ exists)
 project_dir = Path.cwd() / "docs" / "bots"
@@ -46,6 +50,7 @@ else:
 **Change 2: Validate project file exists if directory exists (lines 293-303)**
 
 Added after framework validation:
+
 ```python
 # Project tier is REQUIRED if docs/bots/ exists
 if paths["project"] is not None and "project" not in contents:
@@ -77,6 +82,7 @@ if paths["project"] is not None and "project" not in contents:
 ## Test Results
 
 ### Test 1: New project (no docs/)
+
 ```bash
 cd /tmp/test-new-project
 mkdir test-repo && cd test-repo
@@ -87,6 +93,7 @@ uv run python ~/.claude/hooks/load_instructions.py
 ```
 
 ### Test 2: Project with correct _CORE.md
+
 ```bash
 cd /home/nic/src/writing
 uv run python ~/.claude/hooks/load_instructions.py
@@ -95,6 +102,7 @@ uv run python ~/.claude/hooks/load_instructions.py
 ```
 
 ### Test 3: Wrong filename (Issue #191 scenario)
+
 ```bash
 cd /home/nic/src/writing/docs/bots
 mv _CORE.md INSTRUCTIONS.md  # Simulate wrong name
@@ -105,6 +113,7 @@ uv run python ~/.claude/hooks/load_instructions.py
 ```
 
 ### Test 4: Empty docs/bots/
+
 ```bash
 cd /tmp/test-empty-docs
 mkdir -p test-repo/docs/bots && cd test-repo
@@ -129,6 +138,7 @@ uv run python ~/.claude/hooks/load_instructions.py
 ## Rollback Plan
 
 If experiment fails or causes unexpected issues:
+
 ```bash
 cd ~/.claude/hooks
 git checkout HEAD -- load_instructions.py

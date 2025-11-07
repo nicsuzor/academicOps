@@ -7,7 +7,7 @@ This document explains the 3-tier hierarchy for organizing CLAUDE.md content and
 The academicOps framework uses a 3-tier hierarchy to organize instructions and configuration:
 
 1. **Framework Tier** - Shared across all projects
-2. **User Tier** - Personal preferences across projects  
+2. **User Tier** - Personal preferences across projects
 3. **Project Tier** - Specific to individual projects
 
 Each tier has a specific purpose and location, allowing for maximum reusability while maintaining project-specific customization.
@@ -19,6 +19,7 @@ Each tier has a specific purpose and location, allowing for maximum reusability 
 **Purpose**: Reusable instructions that apply to all projects using academicOps.
 
 **Content Types**:
+
 - Generic Python best practices
 - Standard Git workflows
 - Docker configuration patterns
@@ -27,13 +28,14 @@ Each tier has a specific purpose and location, allowing for maximum reusability 
 - General development workflows
 
 **Examples**:
+
 ```markdown
 @$ACADEMICOPS/bots/prompts/python_typing.md
-@$ACADEMICOPS/bots/prompts/git_commit_standards.md
-@$ACADEMICOPS/bots/prompts/docker_best_practices.md
+@$ACADEMICOPS/bots/prompts/git_commit_standards.md @$ACADEMICOPS/bots/prompts/docker_best_practices.md
 ```
 
 **When to Use**:
+
 - Instructions that would benefit any project
 - Industry best practices
 - Tool-specific guidance (pytest, mypy, ruff)
@@ -46,6 +48,7 @@ Each tier has a specific purpose and location, allowing for maximum reusability 
 **Purpose**: Personal preferences and workflows that apply across a user's projects.
 
 **Content Types**:
+
 - Personal coding style preferences
 - Custom workflows
 - User-specific tool configurations
@@ -53,13 +56,14 @@ Each tier has a specific purpose and location, allowing for maximum reusability 
 - Preferred libraries and frameworks
 
 **Examples**:
+
 ```markdown
 @$ACADEMICOPS_PERSONAL/prompts/my_git_workflow.md
-@$ACADEMICOPS_PERSONAL/prompts/preferred_testing_style.md
-@$ACADEMICOPS_PERSONAL/prompts/personal_code_conventions.md
+@$ACADEMICOPS_PERSONAL/prompts/preferred_testing_style.md @$ACADEMICOPS_PERSONAL/prompts/personal_code_conventions.md
 ```
 
 **When to Use**:
+
 - Personal preferences that differ from defaults
 - Custom workflows you use across projects
 - User-specific optimizations
@@ -72,6 +76,7 @@ Each tier has a specific purpose and location, allowing for maximum reusability 
 **Purpose**: Project-specific instructions and domain knowledge.
 
 **Content Types**:
+
 - Business logic and rules
 - Domain-specific patterns
 - Project architecture decisions
@@ -80,13 +85,13 @@ Each tier has a specific purpose and location, allowing for maximum reusability 
 - Local development setup
 
 **Examples**:
+
 ```markdown
-@bots/prompts/PROJECT_api_schema.md
-@bots/prompts/PROJECT_business_rules.md
-@bots/prompts/PROJECT_deployment_process.md
+@bots/prompts/PROJECT_api_schema.md @bots/prompts/PROJECT_business_rules.md @bots/prompts/PROJECT_deployment_process.md
 ```
 
 **When to Use**:
+
 - Instructions specific to this project only
 - Domain knowledge unique to the project
 - Custom business logic
@@ -114,18 +119,21 @@ Ask these questions in order:
 ### Content Examples by Tier
 
 **Framework Tier Examples**:
+
 - "Always use type hints for Python functions"
 - "Follow conventional commit format"
 - "Use pathlib instead of os.path"
 - "Write tests before implementation (TDD)"
 
 **User Tier Examples**:
+
 - "Prefer 2-space indentation for YAML"
 - "Use my custom git aliases"
 - "Follow my personal naming conventions"
 - "Use my preferred test organization pattern"
 
 **Project Tier Examples**:
+
 - "Use the company's internal authentication API"
 - "Follow the project's specific database schema"
 - "Apply domain-specific validation rules"
@@ -134,6 +142,7 @@ Ask these questions in order:
 ## File Naming Conventions
 
 ### Framework Tier
+
 - Generic, descriptive names
 - No project prefixes
 - Examples:
@@ -142,6 +151,7 @@ Ask these questions in order:
   - `testing_practices.md`
 
 ### User Tier
+
 - Optionally prefixed with "my_" or "personal_"
 - Clear about being user-specific
 - Examples:
@@ -150,6 +160,7 @@ Ask these questions in order:
   - `preferred_tools.md`
 
 ### Project Tier
+
 - Prefixed with "PROJECT_" for clarity
 - Project-specific terminology
 - Examples:
@@ -232,6 +243,7 @@ Add to your shell profile (`~/.bashrc` or `~/.zshrc`) for persistence.
 ### Reference Not Found
 
 Check tier locations:
+
 ```bash
 # Framework
 ls $ACADEMICOPS/bots/prompts/
@@ -246,11 +258,13 @@ ls bots/prompts/
 ### Wrong Tier Symptoms
 
 **Too High** (Framework when should be Project):
+
 - Other projects can't use it
 - Contains project-specific names/APIs
 - Requires project context to understand
 
 **Too Low** (Project when should be Framework):
+
 - Duplicated across multiple projects
 - Generic best practice
 - No project-specific content

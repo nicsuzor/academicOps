@@ -33,6 +33,7 @@ Location: `bots/agents/_CORE.md` or `agents/_CORE.md`
 **Contains**: 18 core axioms that ALL agents must follow.
 
 **Key axioms**:
+
 1. DO ONE THING - Complete task requested, then STOP
 2. ANSWER DIRECT QUESTIONS DIRECTLY
 3. Namespace Separation (agents/ vs docs/)
@@ -61,6 +62,7 @@ Location: `bots/agents/trainer.md` or `agents/trainer.md`
 **Purpose**: Maintains and optimizes all agent instructions, configurations, enforcement mechanisms.
 
 **Key sections**:
+
 - Enforcement Hierarchy: Scripts > Hooks > Config > Instructions
 - Anti-Bloat Protocol: Skills should stay <500 lines
 - GitHub Issue Management protocol
@@ -75,6 +77,7 @@ Location: `ARCHITECTURE.md` (repo root)
 **Purpose**: Describes current system state (not aspirational).
 
 **Contains**:
+
 - Component descriptions (agents, skills, scripts, hooks)
 - Design decisions and rationale
 - Workflow patterns
@@ -91,27 +94,30 @@ Location: `experiments/` directory
 **Purpose**: Document experiments testing framework changes.
 
 **Structure**:
+
 ```markdown
 # Experiment: [Name]
 
-**Date**: YYYY-MM-DD
-**Commit**: [SHA]
-**Issue**: #[number]
-**Agent**: [which agent tested]
+**Date**: YYYY-MM-DD **Commit**: [SHA] **Issue**: #[number] **Agent**: [which agent tested]
 
 ## Hypothesis
+
 [What we expect to change]
 
 ## Implementation
+
 [What was changed]
 
 ## Results
+
 [What actually happened]
 
 ## Outcome
+
 [SUCCESS / FAILED / PARTIAL]
 
 ## Decision
+
 [Keep / Revert / Iterate]
 ```
 
@@ -128,11 +134,13 @@ Per trainer.md, enforcement goes from strongest to weakest:
 **Purpose**: Automated validation that prevents bad behavior.
 
 **Examples**:
+
 - `check_solved_problems.py` - Detects reinvented wheels
 - `check_fail_fast.py` - Detects defensive patterns
 - `load_instructions.py` - Loads agent instructions
 
 **Characteristics**:
+
 - Runs before or during agent execution
 - Can block operations
 - Zero token cost
@@ -145,12 +153,14 @@ Per trainer.md, enforcement goes from strongest to weakest:
 **Location**: `.claude/settings.json` hooks configuration
 
 **Types**:
+
 - `SessionStart` - Loads instructions when session begins
 - `PreToolUse` - Validates tool usage before execution
 - `SubagentStop` - Validates subagent completion
 - `Stop` - Validates session end
 
 **Example**:
+
 ```json
 "PreToolUse": [
   {
@@ -166,6 +176,7 @@ Per trainer.md, enforcement goes from strongest to weakest:
 ```
 
 **Characteristics**:
+
 - Runs at specific lifecycle points
 - Can block or warn
 - Immediate feedback
@@ -178,6 +189,7 @@ Per trainer.md, enforcement goes from strongest to weakest:
 **Location**: `.claude/settings.json` permissions
 
 **Example**:
+
 ```json
 "permissions": {
   "allow": [
@@ -192,6 +204,7 @@ Per trainer.md, enforcement goes from strongest to weakest:
 ```
 
 **Characteristics**:
+
 - Declarative restrictions
 - Tool-level granularity
 - No custom logic
@@ -204,6 +217,7 @@ Per trainer.md, enforcement goes from strongest to weakest:
 **Location**: Agent `.md` files, skill `SKILL.md` files
 
 **Characteristics**:
+
 - Text-based guidance
 - Agents can forget in long conversations
 - Requires agent understanding
@@ -224,6 +238,7 @@ Per trainer.md, enforcement goes from strongest to weakest:
 **Format**: Markdown with YAML frontmatter
 
 **Examples**:
+
 - `_CORE.md` - Core axioms for all agents
 - `trainer.md` - Meta-agent for framework maintenance
 - `DEVELOPER.md` - Development workflow
@@ -239,6 +254,7 @@ Per trainer.md, enforcement goes from strongest to weakest:
 **Format**: Markdown with YAML frontmatter, optional resources
 
 **Examples**:
+
 - `github-issue` - Universal GitHub issue management
 - `python-dev` - Python development standards
 - `git-commit` - Git commit workflow
@@ -246,6 +262,7 @@ Per trainer.md, enforcement goes from strongest to weakest:
 **Invocation**: Via `Skill` tool or from other agents/skills
 
 **Constraints**:
+
 - Should be <500 lines (complexity budget)
 - Must work universally (not repo-specific)
 - Atomic (does ONE thing)
@@ -259,6 +276,7 @@ Per trainer.md, enforcement goes from strongest to weakest:
 **Format**: Markdown that expands to prompt
 
 **Examples**:
+
 - `/trainer` - Loads trainer.md + invokes trainer skill
 - `/dev` - Loads DEVELOPER.md agent instructions
 - `/ops` - Shows academicOps help
@@ -272,6 +290,7 @@ Per trainer.md, enforcement goes from strongest to weakest:
 **Purpose**: Automated validation and utility operations.
 
 **Examples**:
+
 - `check_solved_problems.py` - Pre-commit linter
 - `load_instructions.py` - Instruction loader for agents
 
@@ -282,6 +301,7 @@ Per trainer.md, enforcement goes from strongest to weakest:
 ### Public vs Private
 
 **PUBLIC (bot/ repository)**:
+
 - Generic agent instructions
 - Skills (universal workflows)
 - Scripts (validation tools)
@@ -289,6 +309,7 @@ Per trainer.md, enforcement goes from strongest to weakest:
 - Experiments (framework testing)
 
 **PRIVATE (parent repository, projects)**:
+
 - User-specific contexts
 - Client/project data
 - API keys, credentials
@@ -299,11 +320,13 @@ Per trainer.md, enforcement goes from strongest to weakest:
 ### Cross-Repository Posting
 
 **When working in academicOps repo**:
+
 - ✅ Can write to local files (experiments/, ARCHITECTURE.md)
 - ✅ Can write to GitHub issues in nicsuzor/academicOps
 - ✅ Can reference all framework files
 
 **When working in third-party repos**:
+
 - ❌ NEVER modify local files
 - ✅ CAN write to nicsuzor/academicOps GitHub issues ONLY
 - ❌ NEVER include sensitive data in GitHub
@@ -327,12 +350,14 @@ Before posting to public GitHub from private repos:
 **Purpose**: Public repository for academicOps framework.
 
 **Verification Protocol**: ALWAYS verify before posting:
+
 ```bash
 gh repo view nicsuzor/academicOps --json owner -q '.owner.login'
 # Output should be: nicsuzor
 ```
 
 **Issue Labels**:
+
 - `prompts` - Agent instruction issues
 - `infrastructure` - Scripts, hooks, config
 - `bug` - Something broken
@@ -375,6 +400,7 @@ gh repo view nicsuzor/academicOps --json owner -q '.owner.login'
 ## Success Metrics
 
 **Framework health indicators**:
+
 - Decreasing agent violations over time
 - Fewer duplicate GitHub issues
 - Faster resolution of framework bugs
@@ -382,6 +408,7 @@ gh repo view nicsuzor/academicOps --json owner -q '.owner.login'
 - More enforcement at script/hook layer, less in instructions
 
 **Red flags**:
+
 - Same violation recurring (enforcement failed)
 - Growing instruction files (bloat, move to scripts)
 - Unclear agent boundaries (authority violations)

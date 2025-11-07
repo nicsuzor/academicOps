@@ -15,14 +15,14 @@ Experiments are **work-in-progress** that may or may not make it into final anal
 
 ## Experiments vs. Production Analysis
 
-| Aspect | Experiments | Production Analysis |
-|--------|-------------|---------------------|
-| **Location** | `experiments/YYYYMMDD-description/` | `dbt/models/`, `streamlit/`, `methods/` |
-| **Purpose** | Exploration, testing, validation | Final analysis for publication |
-| **Quality** | Can be messy, incomplete | Must be production-quality |
-| **Documentation** | Inline notes, README in experiment dir | Full documentation in METHODOLOGY.md, methods/ |
-| **Git tracking** | May or may not be committed | Always committed and reviewed |
-| **Reproducibility** | Best effort | Mandatory |
+| Aspect              | Experiments                            | Production Analysis                            |
+| ------------------- | -------------------------------------- | ---------------------------------------------- |
+| **Location**        | `experiments/YYYYMMDD-description/`    | `dbt/models/`, `streamlit/`, `methods/`        |
+| **Purpose**         | Exploration, testing, validation       | Final analysis for publication                 |
+| **Quality**         | Can be messy, incomplete               | Must be production-quality                     |
+| **Documentation**   | Inline notes, README in experiment dir | Full documentation in METHODOLOGY.md, methods/ |
+| **Git tracking**    | May or may not be committed            | Always committed and reviewed                  |
+| **Reproducibility** | Best effort                            | Mandatory                                      |
 
 ## Mandatory Experiment Directory Structure
 
@@ -53,6 +53,7 @@ experiments/
 **Format**: `YYYYMMDD-short-description`
 
 **Rules**:
+
 - ✅ **Date first** - Always start with ISO date (YYYYMMDD)
 - ✅ **Lowercase** - All lowercase letters
 - ✅ **Hyphens** - Separate words with hyphens
@@ -60,6 +61,7 @@ experiments/
 - ✅ **Specific** - "test-did-specification" not "analysis"
 
 **Examples**:
+
 - ✅ `20241105-test-diff-in-diff`
 - ✅ `20241108-validate-scorer-coverage`
 - ✅ `20241110-explore-appeal-patterns`
@@ -81,9 +83,7 @@ Every experiment directory MUST contain a README.md with:
 ```markdown
 # Experiment: [Short Description]
 
-**Date**: YYYY-MM-DD
-**Status**: [In Progress / Completed / Abandoned]
-**Related Issue**: [Link to GitHub issue if applicable]
+**Date**: YYYY-MM-DD **Status**: [In Progress / Completed / Abandoned] **Related Issue**: [Link to GitHub issue if applicable]
 
 ## Purpose
 
@@ -100,6 +100,7 @@ Every experiment directory MUST contain a README.md with:
 ## Outcome
 
 [What happened as a result of this experiment?]
+
 - [ ] Integrated into production analysis (location: ___)
 - [ ] Abandoned (reason: ___)
 - [ ] Needs further work
@@ -114,12 +115,14 @@ Every experiment directory MUST contain a README.md with:
 ### Why README.md Is Mandatory
 
 Without README.md:
+
 - ❌ Future you won't remember what the experiment was for
 - ❌ Collaborators can't understand your work
 - ❌ Can't trace how production analysis was developed
 - ❌ Waste time re-running dead-end approaches
 
 With README.md:
+
 - ✅ Clear record of what was tested and why
 - ✅ Documents findings even if experiment fails
 - ✅ Enables picking up where you left off
@@ -151,6 +154,7 @@ EOF
 ```
 
 **Start Jupyter notebook or script**:
+
 ```bash
 cd experiments/$(date +%Y%m%d)-test-new-method
 jupyter notebook notebook.ipynb
@@ -227,12 +231,14 @@ Experiments don't need production-quality code, but they MUST have:
 - ✅ **Outcome** - What happened as a result?
 
 Experiments CAN be:
+
 - Messy code
 - Incomplete analyses
 - Dead ends
 - Failed approaches
 
 But they CANNOT be:
+
 - Undocumented
 - Purpose unknown
 - Findings unrecorded
@@ -242,11 +248,13 @@ But they CANNOT be:
 ### Committing Experiments
 
 **When to commit:**
+
 - ✅ When experiment reaches milestone (findings documented)
 - ✅ When integrating results into production
 - ✅ When abandoning (document failure for others)
 
 **When NOT to commit:**
+
 - ❌ Every single exploratory step
 - ❌ Partial notebooks with no findings
 - ❌ Before README.md is filled in
@@ -268,36 +276,31 @@ Issue: #123"
 
 ### Mistake 1: No date in directory name
 
-❌ `experiments/test-scoring/`
-✅ `experiments/20241105-test-scoring/`
+❌ `experiments/test-scoring/` ✅ `experiments/20241105-test-scoring/`
 
 **Fix**: Always use date-first naming.
 
 ### Mistake 2: Missing README.md
 
-❌ Experiment directory with only notebooks and no explanation
-✅ Every experiment has README.md explaining purpose and findings
+❌ Experiment directory with only notebooks and no explanation ✅ Every experiment has README.md explaining purpose and findings
 
 **Fix**: Create README.md immediately when starting experiment.
 
 ### Mistake 3: Not documenting failed experiments
 
-❌ Deleting experiment directory because approach didn't work
-✅ Documenting why approach failed in README.md
+❌ Deleting experiment directory because approach didn't work ✅ Documenting why approach failed in README.md
 
 **Why**: Prevent others (and future you) from trying same failed approach.
 
 ### Mistake 4: Keeping production code in experiments/
 
-❌ Running production analysis from `experiments/20241105-*/notebook.ipynb`
-✅ Moving successful methods to `methods/`, `dbt/models/`, or `streamlit/`
+❌ Running production analysis from `experiments/20241105-*/notebook.ipynb` ✅ Moving successful methods to `methods/`, `dbt/models/`, or `streamlit/`
 
 **Fix**: Promote successful experiments to production locations.
 
 ### Mistake 5: Experiments folder becomes junk drawer
 
-❌ 50 undocumented experiment directories with unclear purpose
-✅ Each experiment documented, outdated ones archived
+❌ 50 undocumented experiment directories with unclear purpose ✅ Each experiment documented, outdated ones archived
 
 **Fix**: Regular cleanup, enforce README.md requirement.
 
@@ -313,6 +316,7 @@ find experiments/ -maxdepth 1 -type d -mtime +90
 ```
 
 For each old experiment:
+
 1. **Has findings?** → Commit if not already committed
 2. **Integrated to production?** → Update README.md with location
 3. **Abandoned?** → Document why, commit, consider archiving

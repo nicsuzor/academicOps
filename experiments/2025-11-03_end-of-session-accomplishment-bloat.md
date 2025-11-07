@@ -1,6 +1,7 @@
 # Experiment: Fix end-of-session Agent Accomplishment Bloat
 
 ## Metadata
+
 - **Date**: 2025-11-03
 - **Issue**: #186 (end-of-session: Searches past sessions and captures too much detail)
 - **Related Issues**: #152 (accomplishments.md bloat)
@@ -10,6 +11,7 @@
 ## Hypothesis
 
 Removing scribe skill invocation from end-of-session agent and replacing it with direct accomplishment evaluation will:
+
 1. Eliminate searching past sessions (performance issue)
 2. Apply "standup level" filter to only capture completed work
 3. Write one-line entries instead of detailed summaries
@@ -19,11 +21,13 @@ Removing scribe skill invocation from end-of-session agent and replacing it with
 **User feedback**: "the end of session agent / skill isn't meant to go looking for stuff that other agents did in OTHER sessions. It's just meant as a reminder to 'save anything important (from what you just did!) that we need to remember nextime we're planning.' the stuff it's saving (a) takes too long to go find and isn't relevant; (b) is way too detailed (it's not an 'accomplishment' to send an email to josh)"
 
 **Root causes**:
+
 1. end-of-session invokes scribe skill (lines 59-68)
 2. scribe has "continuous capture" instructions (searches past work)
 3. No "accomplishment" filter applied (writes operational work)
 
 **Impact**:
+
 - Slow session end (searches past conversations)
 - accomplishments.md polluted with operational work
 - Violates DRY (duplicates information from current session)
@@ -67,16 +71,19 @@ Removing scribe skill invocation from end-of-session agent and replacing it with
 ## Design Decisions
 
 **Why remove scribe invocation?**
+
 - Scribe instructions say "continuously capture" (searches history)
 - end-of-session receives work description from calling agent
 - Direct evaluation is faster and more accurate
 
 **Why one-line format?**
+
 - User feedback: "way too detailed"
 - accomplishments.md is for morale/motivation, not documentation
 - "Standup level" - what you'd mention in 30-second update
 
 **Why "completed work that creates value"?**
+
 - From Issue #152 analysis
 - Filters out operational tasks (email, task creation)
 - Focuses on deliverables and achievements
@@ -84,10 +91,12 @@ Removing scribe skill invocation from end-of-session agent and replacing it with
 ## Success Criteria
 
 **Performance**:
+
 - [✅] Completes within 30 seconds (no session searching)
 - [✅] No tool calls except git operations and scribe Mode 4
 
 **Filtering**:
+
 - [✅] Email processing → NO entry in accomplishments.md
 - [✅] Task creation → NO entry in accomplishments.md
 - [✅] Strategic planning → NO entry in accomplishments.md
@@ -95,11 +104,13 @@ Removing scribe skill invocation from end-of-session agent and replacing it with
 - [✅] Paper submitted → ONE LINE in accomplishments.md
 
 **Format**:
+
 - [✅] Entries are one line only
 - [✅] Follow format: "## YYYY-MM-DD - [title]\n- [sentence]"
 - [✅] No detailed summaries or bullet lists
 
 **Architecture** (added after DRY violation discovery):
+
 - [✅] Zero duplication of accomplishment criteria
 - [✅] Scribe owns ALL data capture logic
 - [✅] end-of-session receives fast evaluation without searching
@@ -124,16 +135,19 @@ Removing scribe skill invocation from end-of-session agent and replacing it with
 ### Initial Fix (Commit 80ef8b1)
 
 **Changes made**:
+
 - Removed scribe skill invocation from end-of-session.md
 - Added direct accomplishment evaluation (lines 61-84)
 - Updated examples to show direct evaluation
 
 **Success**:
+
 - ✅ Eliminated session searching (performance fixed)
 - ✅ Applied "standup level" filter correctly
 - ✅ One-line entries enforced
 
 **Problem discovered**:
+
 - ❌ **DRY VIOLATION**: Duplicated ~35 lines of accomplishment criteria from scribe skill
 - ❌ **Single Responsibility**: end-of-session now owns data capture logic
 - ❌ **Maintenance burden**: Accomplishment criteria must be updated in TWO places
@@ -156,6 +170,7 @@ Removing scribe skill invocation from end-of-session agent and replacing it with
    - Good vs bad accomplishment entries
 
 **Why this is bad**:
+
 - Violates DRY principle (Don't Repeat Yourself)
 - Scribe skill should own ALL data capture logic
 - Changes to accomplishment criteria must be made in both places
@@ -166,6 +181,7 @@ Removing scribe skill invocation from end-of-session agent and replacing it with
 **Solution**: Add targeted "end-of-session" mode to scribe skill
 
 **Implementation**:
+
 1. Add Mode 4 to scribe SKILL.md (after line 95)
    - Parameters: work_description, state
    - Behavior: Apply accomplishment criteria WITHOUT searching
@@ -177,6 +193,7 @@ Removing scribe skill invocation from end-of-session agent and replacing it with
    - Single source of truth maintained
 
 **Benefits**:
+
 - ✅ Zero duplication (accomplishment criteria only in scribe)
 - ✅ Single responsibility (scribe owns data capture)
 - ✅ Fast evaluation (Mode 4 skips session searching)
@@ -187,6 +204,7 @@ Removing scribe skill invocation from end-of-session agent and replacing it with
 **SUCCESS** - DRY violation eliminated while maintaining performance fix.
 
 **Architecture**:
+
 ```
 Before refactor:
   end-of-session.md [owns accomplishment criteria] ← DRY VIOLATION
@@ -209,6 +227,7 @@ After refactor:
 ## Rollback Plan
 
 If fix causes issues:
+
 1. Edit `bot/agents/end-of-session.md`
 2. Restore scribe skill invocation (lines 59-68 from previous version)
 3. Commit rollback

@@ -25,9 +25,9 @@ def process_users(
 
 **BEFORE starting any investigation that goes beyond the immediate problem:**
 
-   1. **Recognize scope creep**: Am I about to read multiple files/search extensively beyond what the user explicitly asked for?
-   2. **Check with user**: "This is expanding beyond [original request]. Should I [describe expanded scope] or focus only on [immediate issue]?"
-   3. **Follow GitHub workflow**: If it's becoming substantial work, create an issue first (as already required)
+1. **Recognize scope creep**: Am I about to read multiple files/search extensively beyond what the user explicitly asked for?
+2. **Check with user**: "This is expanding beyond [original request]. Should I [describe expanded scope] or focus only on [immediate issue]?"
+3. **Follow GitHub workflow**: If it's becoming substantial work, create an issue first (as already required)
 
 **Trigger for escalation check**:
 
@@ -106,10 +106,10 @@ When debugging an issue through active conversation with the user (user provides
 
 - **Symptom**: Changing code to match error messages without verifying codebase-wide impact, leading to cascading breakage.
 - **Prevention**:
-    - Run INTERFACE MISMATCH CHECKPOINT for all naming conflicts
-    - Use grep with count to determine majority convention
-    - Fix at root (protocol/interface definition) not call sites
-    - Trust codebase evidence over error messages
+  - Run INTERFACE MISMATCH CHECKPOINT for all naming conflicts
+  - Use grep with count to determine majority convention
+  - Fix at root (protocol/interface definition) not call sites
+  - Trust codebase evidence over error messages
 - **Example**: Changing `processor_stage` to `pipeline_stage` would break 38 references. The correct fix was updating the protocol definition to use `processor_stage`.
 - **See**: Issue #88
 
@@ -216,17 +216,16 @@ When debugging ANY issue, you MUST follow this systematic investigation process.
 - ❌ Ignoring provided evidence in favor of assumptions
 - ❌ Changing code to match error messages without verifying codebase-wide impact
 
-
-    **🛑 ALWAYS USE TESTS FOR VERIFICATION**:
-    - Verification MUST use pytest tests, not ad-hoc commands
-    - ✅ `pytest tests/test_specific_functionality.py`
-    - ❌ Complex bash pipelines with jq/grep/sed
-    - ❌ One-off verification scripts
-    - ❌ Manual Docker commands to recreate test scenarios
+  **🛑 ALWAYS USE TESTS FOR VERIFICATION**:
+  - Verification MUST use pytest tests, not ad-hoc commands
+  - ✅ `pytest tests/test_specific_functionality.py`
+  - ❌ Complex bash pipelines with jq/grep/sed
+  - ❌ One-off verification scripts
+  - ❌ Manual Docker commands to recreate test scenarios
 
 ## 🛑 CRITICAL: Documentation Philosophy
 
-**FORBIDDEN: DO  NOT CREATE new documentation files anywhere**
+**FORBIDDEN: DO NOT CREATE new documentation files anywhere**
 
 This prohibition applies to ALL directories, including:
 
@@ -240,7 +239,6 @@ Documentation should be self-contained in:
 - **Code comments**: Explain design decisions and intent
 - **Commit messages**: Thorough explanations of changes
 - **GitHub issues**: Track problems and solutions
-
 
 ## 🛑 INTERFACE MISMATCH CHECKPOINT
 
@@ -275,6 +273,7 @@ Documentation should be self-contained in:
 **Real-world failure**: Changing `processor_stage` to `pipeline_stage` would have broken 38 references across 9 files. The protocol definition was wrong, not the call sites.
 
 **See**: Issue #88 for complete analysis of this failure pattern
+
 ## Immutability
 
 Prefer immutable data structures:
@@ -342,7 +341,6 @@ def test_register_calls_validate_email():
         register_user("user@example.com", "pass123")
         assert mock.called
 ```
-
 
 ## What Not to Do
 

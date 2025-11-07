@@ -20,11 +20,10 @@ Like a scribe who continuously records important information, this skill operate
 
 ### Mode 1: Background Capture (PRIMARY - Always Active)
 
-**When**: CONSTANTLY throughout EVERY conversation
-**Purpose**: Silent, automatic extraction of tasks, context, and strategic information
-**Output**: NO user-visible output - updates happen silently
+**When**: CONSTANTLY throughout EVERY conversation **Purpose**: Silent, automatic extraction of tasks, context, and strategic information **Output**: NO user-visible output - updates happen silently
 
 **Invoke automatically when**:
+
 - Tasks or action items mentioned (explicit or implicit)
 - Projects or goals discussed
 - Deadlines or priorities mentioned
@@ -34,6 +33,7 @@ Like a scribe who continuously records important information, this skill operate
 - At END of conversations (capture remaining context)
 
 **Core behaviors**:
+
 - Extract IMMEDIATELY as information mentioned
 - NEVER interrupt user flow
 - Capture fragments even if incomplete
@@ -42,12 +42,14 @@ Like a scribe who continuously records important information, this skill operate
 - Flag strategic misalignments
 
 **What to capture**:
+
 - **Tasks**: Explicit todos, implicit future actions, commitments, follow-ups
 - **Projects**: Updates, new ideas, milestones, deliverables
 - **Goals & Strategy**: Objectives, assessments, priorities, theories of change
 - **Context**: People, dates, resources, risks, decisions, ruled-out options
 
 **Deep mining, not keyword matching**:
+
 - "I'll need to prepare for the keynote next month" → task
 - "That process is too bureaucratic" → strategic context
 - "I'm not sure if we're eligible" → risk/dependency
@@ -56,11 +58,10 @@ Like a scribe who continuously records important information, this skill operate
 
 ### Mode 2: Display (Explicit Invocation)
 
-**When**: User explicitly asks for task list or priorities
-**Purpose**: Show formatted task output directly to user
-**Output**: DIRECT presentation of script output (no summarizing)
+**When**: User explicitly asks for task list or priorities **Purpose**: Show formatted task output directly to user **Output**: DIRECT presentation of script output (no summarizing)
 
 **User requests**:
+
 - "What are my current tasks?"
 - "Show me my priorities for this week"
 - "What do I need to do?"
@@ -68,6 +69,7 @@ Like a scribe who continuously records important information, this skill operate
 **CRITICAL**: Present the ACTUAL OUTPUT of task view scripts DIRECTLY to the user without summarizing, reformatting, or interpreting. The scripts are designed for human readability with color coding and formatting.
 
 **Commands**:
+
 ```bash
 # Compact overview
 uv run python ~/.claude/skills/scribe/scripts/task_index.py
@@ -80,17 +82,17 @@ uv run python ~/.claude/skills/scribe/scripts/task_view.py --per-page=10
 
 ### Mode 3: Context Guide (Explicit Invocation)
 
-**When**: User asks about connections, context, or relevance
-**Purpose**: Reveal and explain relationships between tasks, projects, and goals
-**Output**: Strategic analysis and context explanation
+**When**: User asks about connections, context, or relevance **Purpose**: Reveal and explain relationships between tasks, projects, and goals **Output**: Strategic analysis and context explanation
 
 **User requests**:
+
 - "What projects relate to [goal]?"
 - "Why is [task] important?"
 - "What's the context for [project]?"
 - "Show me deadlines for [timeframe]"
 
 **Behaviors**:
+
 - Load relevant context from `data/goals/`, `data/projects/`, `data/context/`
 - Explain task-to-project linkages
 - Highlight strategic alignment (or misalignment)
@@ -100,20 +102,21 @@ uv run python ~/.claude/skills/scribe/scripts/task_view.py --per-page=10
 
 ### Mode 4: End-of-Session (Targeted Capture)
 
-**When**: end-of-session agent invokes with work description
-**Purpose**: Fast accomplishment evaluation without searching sessions
-**Output**: SILENT write to accomplishments.md if criteria met
+**When**: end-of-session agent invokes with work description **Purpose**: Fast accomplishment evaluation without searching sessions **Output**: SILENT write to accomplishments.md if criteria met
 
 **Invocation pattern**:
+
 ```
 Skill(command='scribe', mode='end-of-session', work_description='[what was done]', state='completed|in-progress|blocked|aborted|planned|failed')
 ```
 
 **Parameters**:
+
 - `work_description`: Brief description of work done (from calling agent)
 - `state`: Work status (completed, in-progress, blocked, aborted, planned, failed)
 
 **Behavior**:
+
 1. Receive work description directly (NO session searching)
 2. Apply accomplishment criteria (lines 251-349 below)
 3. If qualified: Write ONE LINE to accomplishments.md
@@ -121,6 +124,7 @@ Skill(command='scribe', mode='end-of-session', work_description='[what was done]
 5. Complete silently (no output)
 
 **What this mode does NOT do**:
+
 - Search past conversations or sessions
 - Invoke task scripts
 - Update project files
@@ -128,6 +132,7 @@ Skill(command='scribe', mode='end-of-session', work_description='[what was done]
 - Ask user questions
 
 **Why Mode 4 exists**:
+
 - end-of-session agent needs fast evaluation
 - Work description already provided by calling agent
 - Maintains single source of truth for accomplishment criteria
@@ -150,12 +155,14 @@ Default mode: Mode 1 (always capturing)
 ### Task Operations
 
 **Check for duplicates FIRST**:
+
 ```bash
 uv run python ~/.claude/skills/scribe/scripts/task_view.py --per-page=50
 # Review data/views/current_view.json for existing tasks
 ```
 
 **Create task**:
+
 ```bash
 uv run python ~/.claude/skills/scribe/scripts/task_add.py \
   --title "Prepare keynote slides" \
@@ -166,6 +173,7 @@ uv run python ~/.claude/skills/scribe/scripts/task_add.py \
 ```
 
 **Fields**:
+
 - `--title` (required): Action-oriented, clear
 - `--priority` (1-3): See prioritization framework below
 - `--project`: Slug matching project filename
@@ -174,6 +182,7 @@ uv run python ~/.claude/skills/scribe/scripts/task_add.py \
 - `--type`: Default "todo", can be "meeting", "deadline", etc.
 
 **Update task**:
+
 ```bash
 uv run python ~/.claude/skills/scribe/scripts/task_process.py modify <task_id> \
   --priority 1 \
@@ -181,6 +190,7 @@ uv run python ~/.claude/skills/scribe/scripts/task_process.py modify <task_id> \
 ```
 
 **Archive task** (when user mentions completion):
+
 ```bash
 uv run python ~/.claude/skills/scribe/scripts/task_process.py modify <task_id> --archive
 ```
@@ -188,23 +198,27 @@ uv run python ~/.claude/skills/scribe/scripts/task_process.py modify <task_id> -
 ### Prioritization Framework
 
 **P1 (Today/Tomorrow)** - Immediate action required:
+
 - Action window closing NOW
 - Meeting prep due within 24 hours
 - Immediate blocker for others
 - Time-sensitive response needed
 
 **P2 (This Week)** - Important, soon:
+
 - Deadline within 7 days
 - Significant strategic value
 - Preparation needed soon
 - Collaborative work where others waiting
 
 **P3 (Within 2 Weeks)** - Lower urgency:
+
 - Longer timeline
 - Lower strategic alignment
 - No immediate action window
 
 **Key factors**:
+
 1. **Temporal constraints**: Due date, action window, meeting dates
 2. **Strategic alignment**: Check `data/goals/*.md` for linkage
 3. **Dependencies & roles**: Who's waiting? What's your role? Who has agency?
@@ -263,27 +277,32 @@ $ACADEMICOPS_PERSONAL/data/
 ### What to Save Where
 
 **`data/context/accomplishments.md`**:
+
 - Completed tasks (and auto-archive the task)
 - Delivered milestones
 - Progress updates
 
 **`data/context/current-priorities.md`**:
+
 - Currently important work
 - Resource allocations
 - Focus areas
 
 **`data/context/future-planning.md`**:
+
 - Upcoming commitments
 - Future milestones
 - Planned activities
 
 **`data/projects/*.md`**:
+
 - Project updates, specs, requirements
 - Decisions, ruled-out ideas
 - People, roles, connections
 - Save notes AS YOU GO
 
 **`data/goals/*.md`**:
+
 - Strategic objectives
 - Theories of change
 - Progress toward goals
@@ -294,6 +313,7 @@ $ACADEMICOPS_PERSONAL/data/
 Different file types serve different purposes and need different detail levels:
 
 **Accomplishments (Concise - "Weekly Standup Level")**:
+
 - One line per item unless truly significant strategic decision
 - Result + brief impact, NO implementation details
 - "What got done" that you'd mention in 30-second verbal update
@@ -301,6 +321,7 @@ Different file types serve different purposes and need different detail levels:
 - ❌ TOO MUCH: "Fixed test_batch_cli.py: Reduced from 132 lines to 52 lines (60% reduction), eliminated ALL mocking..."
 
 **Project Files (Moderate - "Resumption Context Level")**:
+
 - Enough detail to resume work after interruption without searching
 - Key decisions made and WHY
 - Next steps or open questions
@@ -310,18 +331,21 @@ Different file types serve different purposes and need different detail levels:
 - ❌ TOO LITTLE: "TJA scorer validation - STRONG SUCCESS"
 
 **Goals Files (Strategic - "Theory of Change Level")**:
+
 - High-level objectives and why they matter
 - Progress indicators and assessments
 - Resource allocations
 - Strategic pivots or realignments
 
 **Balance Principle**:
+
 - Accomplishments grows DAILY → must be scannable at a glance
 - Project files grow PER-PROJECT → can afford moderate detail for resumption
 - Goals files are STRATEGIC → focus on why and direction, not implementation
 - NONE should duplicate git commit messages (technical implementation details belong in git log)
 
 **Two tests before writing**:
+
 1. Accomplishments: "Would I say this in 30-second standup?" → Keep it that brief
 2. Project files: "Can I resume work from this in 2 weeks?" → Add that much context
 
@@ -336,12 +360,14 @@ Different file types serve different purposes and need different detail levels:
 ❌ TOO MUCH: "As the invited keynote speaker for the conference on Nov 15, which aligns with your Academic Profile goal and was mentioned in your current priorities, you need to prepare slides..."
 
 **Include**:
+
 - What needs to be done
 - Minimal context (why it matters, briefly)
 - When it's due
 - Where to find materials (include direct links so user doesn't need to search emails)
 
 **Don't include**:
+
 - Strategic analysis of priority choices
 - Explanations of relationships user already knows
 - Role definitions or org hierarchy
@@ -373,6 +399,7 @@ Different file types serve different purposes and need different detail levels:
    - Keep it scannable - just enough to spot misalignment
 
 **Detail level - "Weekly standup report"**:
+
 - Write what you'd say in a 30-second verbal update to your manager
 - "Completed X, working on Y, blocked on Z" - that's the level
 - One line per item unless truly significant strategic decision
@@ -380,6 +407,7 @@ Different file types serve different purposes and need different detail levels:
 - Git commits already document the technical work
 
 **DO NOT capture**:
+
 - Infrastructure changes (documented in git log)
 - Bug fixes (documented in git log)
 - Code refactoring (documented in git log)
@@ -390,10 +418,12 @@ Different file types serve different purposes and need different detail levels:
 - Minor task updates (task system tracks these)
 
 **Two tests before capturing**:
+
 1. Would this appear in weekly report to supervisor? If NO → omit
 2. Would I mention this in a 30-second standup? If NO → omit
 
 **Writing location**:
+
 - ALWAYS write to `$ACADEMICOPS_PERSONAL/data/context/accomplishments.md` (personal repo: @nicsuzor/writing)
 - NEVER write to project repos (buttermilk/data/, bot/data/, etc.)
 - Personal strategic database is authoritative regardless of which project user is working on
@@ -420,6 +450,7 @@ Different file types serve different purposes and need different detail levels:
 5. **Update knowledge base**
 
 **Do NOT**:
+
 - Archive/delete/reply to emails (other agents handle that)
 - Process entire mailbox (only emails presented)
 - Duplicate tasks (check existing first)
@@ -429,21 +460,20 @@ Different file types serve different purposes and need different detail levels:
 **CRITICAL**: Projects/tasks MUST link to goals in `data/goals/*.md`.
 
 **When priority work lacks goal linkage**:
+
 1. Read relevant project file
 2. Check claimed goal linkage
 3. Read goal file
 4. Verify project listed in goal
 
-**If misaligned, FLAG TO USER**:
-"I notice this project claims to support [Goal X], but it's not listed in that goal's file. Should we:
-a) Add it to the goal (confirm strategic importance)
-b) Deprioritize it (not strategically aligned)
+**If misaligned, FLAG TO USER**: "I notice this project claims to support [Goal X], but it's not listed in that goal's file. Should we: a) Add it to the goal (confirm strategic importance) b) Deprioritize it (not strategically aligned)
 
 Your goals are the source of truth for focus."
 
 ## Critical Rules
 
 **NEVER**:
+
 - Interrupt user flow to ask for clarification
 - Wait until conversation end to capture information
 - Create duplicate tasks (always check first)
@@ -455,6 +485,7 @@ Your goals are the source of truth for focus."
 - Write bare one-liners to project files (add "resumption context")
 
 **ALWAYS**:
+
 - Load context SILENTLY at conversation start
 - Extract information IMMEDIATELY as mentioned
 - Link tasks to projects and goals
@@ -470,6 +501,7 @@ Your goals are the source of truth for focus."
 ## Quick Reference
 
 **Task lifecycle**:
+
 ```bash
 # Create
 uv run python ~/.claude/skills/scribe/scripts/task_add.py --title "..." --priority N --project "..." --due "YYYY-MM-DD"
@@ -488,12 +520,14 @@ uv run python ~/.claude/skills/scribe/scripts/task_process.py modify <task_id> -
 ```
 
 **Script paths**:
+
 - `~/.claude/skills/scribe/scripts/task_add.py`
 - `~/.claude/skills/scribe/scripts/task_view.py`
 - `~/.claude/skills/scribe/scripts/task_index.py`
 - `~/.claude/skills/scribe/scripts/task_process.py`
 
 **Data paths**:
+
 ```
 $ACADEMICOPS_PERSONAL/data/tasks/{inbox,queue,archived}/*.json
 $ACADEMICOPS_PERSONAL/data/projects/*.md
@@ -508,10 +542,12 @@ $ACADEMICOPS_PERSONAL/data/views/current_view.json
 **Background**: Every session automatically logged to daily JSON files in `$ACADEMICOPS_PERSONAL/data/sessions/YYYY-MM-DD.json`.
 
 **Two-phase logging**:
+
 1. **Planning phase** (PreToolUse hook on TodoWrite): Captures session objectives
 2. **Completion phase** (Stop hook): Captures what was accomplished
 
 **How it works**:
+
 - TodoWrite triggers PreToolUse hook → logs objectives
 - Session end triggers Stop hook → analyzes transcript
 - Concise summaries saved with tool usage, file modifications, commands
@@ -519,6 +555,7 @@ $ACADEMICOPS_PERSONAL/data/views/current_view.json
 - File locking prevents race conditions
 
 **Manual logging** (optional):
+
 ```bash
 uv run python ~/.claude/skills/scribe/scripts/session_log.py \
   --session-id "session-123" \
@@ -537,11 +574,13 @@ uv run python ~/.claude/skills/scribe/scripts/session_log.py \
 **At the end of EVERY scribe session**:
 
 1. **Check for uncommitted changes**:
+
 ```bash
 cd $ACADEMICOPS_PERSONAL && git status
 ```
 
 2. **If changes exist, commit them**:
+
 ```bash
 cd $ACADEMICOPS_PERSONAL && git add data/ && git commit -m "update(scribe): [brief summary of what was captured]
 
@@ -556,11 +595,13 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 ```
 
 3. **Push to remote**:
+
 ```bash
 cd $ACADEMICOPS_PERSONAL && git push
 ```
 
 **Verification**:
+
 - [ ] Git status shows clean working directory
 - [ ] Commit created with descriptive message
 - [ ] Changes pushed to remote repository

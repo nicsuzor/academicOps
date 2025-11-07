@@ -50,13 +50,15 @@ relations:
 8. Everything is **self-documenting**: documentation-as-code first; never make separate documentation files.
 9. **DRY**, modular, and **EXPLICIT**: one golden path, no defaults, no guessing, no backwards compatibility.
 10. **Use Standard Tools**: ONE GOLDEN PATH - use the best industry-standard tool for each job
-   - Package management: `uv` (not pip, poetry, or custom solutions)
-   - Testing: `pytest` (not unittest or custom frameworks)
-   - Git hooks: `pre-commit` (not custom bash scripts)
-   - Type checking: `mypy` (not custom validators)
-   - Linting: `ruff` (not flake8, pylint, or custom)
-   - **Rationale**: Reduces maintenance burden, leverages community knowledge, prevents reinventing wheels
-   - **Fail-fast**: Installation fails immediately if required tool missing (no fallbacks)
+
+- Package management: `uv` (not pip, poetry, or custom solutions)
+- Testing: `pytest` (not unittest or custom frameworks)
+- Git hooks: `pre-commit` (not custom bash scripts)
+- Type checking: `mypy` (not custom validators)
+- Linting: `ruff` (not flake8, pylint, or custom)
+- **Rationale**: Reduces maintenance burden, leverages community knowledge, prevents reinventing wheels
+- **Fail-fast**: Installation fails immediately if required tool missing (no fallbacks)
+
 11. **Always dogfooding**: The tools we are building are tested, proven, documented, and versioned. We use our own research projects as development guides, test cases, tutorials, and ongoing measures of reliability. We're aiming to make it easy for HASS scholars to use AI tools in a way that is understandable, traceable, and reproducible. Our live, validated, rigorous academic projects are also tutorials and guides; everything is replicable so we work on live code and data; never create fake examples for tests or documentation.
 
 ## Behavioral Rules
@@ -64,8 +66,10 @@ relations:
 12. **NO WORKAROUNDS**. We're building a toolkit. If your tooling or instructions don't work PRECISELY, then CONGRATULATIONS! You've discovered a bug for us! Don't work around it; log the failure and HALT ALL WORK until the user decides what to do.
 13. **VERIFY FIRST** - Check actual state, never assume.
 14. **NO EXCUSES** - Never close issues or claim success without confirmation. No error is somebody else's problem. If you can't verify and replicate, it doesn't work.
-   - If asked to "run X to verify Y", success = X runs successfully, not "X would work if..."
-   - Never rationalize away requirements. If a test fails, fix it or ask for help - don't explain why it's okay that it failed.
+
+- If asked to "run X to verify Y", success = X runs successfully, not "X would work if..."
+- Never rationalize away requirements. If a test fails, fix it or ask for help - don't explain why it's okay that it failed.
+
 15. **WRITE FOR THE LONG TERM** for replication: NEVER create single use scripts or tests or use ad-hoc analysis. We build the infrastructure that guarantees replicability and integrity for the long term.
 16. **DON'T MAKE SHIT UP**. If you don't know, say so. No guesses.
 17. **ALWAYS CITE SOURCES**. No plagiarism. Ever.
@@ -79,18 +83,21 @@ When a tool/script fails with an error:
 3. **STOP after 2nd failure** - Report the problem, don't continue exploring
 
 **After 2nd failure, STOP and report**:
+
 - What you tried (both attempts)
 - The exact error message
 - Your hypothesis about the bug (if clear)
 - Ask user how to proceed
 
 **NEVER**:
+
 - Try 3+ variations to "figure it out"
 - Explore filesystem/code to understand tool internals
 - Invent workarounds for broken tools
 - Keep trying different formats/approaches
 
 **Example - CORRECT Fail-Fast Response**:
+
 ```
 Attempt 1: task_process.py modify 20250929-004918-nicwin-7ce2c06b --archive
 Error: "Invalid task ID format: expected YYYYMMDD-XXXXXXXX"

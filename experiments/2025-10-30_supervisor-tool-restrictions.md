@@ -1,6 +1,7 @@
 # Supervisor Tool Restrictions Experiment
 
 ## Metadata
+
 - Date: 2025-10-30
 - Issue: #127
 - Commit: 38debe1
@@ -13,6 +14,7 @@ Restricting supervisor agent's tool access via configuration will force it to de
 ## Problem Background
 
 **Observed behavior:** Supervisor agent completed paths.toml reorganization task but:
+
 - Made 11 Edit calls directly (modified files itself)
 - Made 0 Task calls (no delegation to dev subagent)
 - Violated its own instructions (SUPERVISOR.md:112-116: "Invoke dev subagent")
@@ -20,6 +22,7 @@ Restricting supervisor agent's tool access via configuration will force it to de
 **Root cause:** No configuration restrictions on supervisor's tool access. Instructions said "delegate" but configuration allowed direct implementation.
 
 **Evidence:** Execution log analysis (`agent-3242aeb7.jsonl`) showed:
+
 - 80 total tool calls
 - 11 Edit calls (direct implementation)
 - 0 Task calls to dev subagent
@@ -64,6 +67,7 @@ Added subagent-specific permissions to `config/settings.json` (lines 17-37):
 5. **Log evidence:** Execution logs show Task calls to dev, no Edit calls from supervisor
 
 **Measurement approach:**
+
 - Assign supervisor a multi-file editing task
 - Analyze execution log for tool call patterns
 - Verify delegation to dev subagent occurred
@@ -74,11 +78,13 @@ Added subagent-specific permissions to `config/settings.json` (lines 17-37):
 [To be filled after testing]
 
 **Test scenario:**
+
 - Task description: [describe test task]
 - Expected: Supervisor delegates to dev subagent
 - Actual: [observed behavior]
 
 **Log analysis:**
+
 - Supervisor tool calls: [summary]
 - Dev subagent invoked: [yes/no]
 - Edit calls from supervisor: [count]
@@ -89,6 +95,7 @@ Added subagent-specific permissions to `config/settings.json` (lines 17-37):
 [Success/Failure/Partial - to be filled after testing]
 
 **Findings:**
+
 - [What we learned about enforcement hierarchy]
 - [Whether config restrictions work as expected]
 - [Any unintended side effects]
@@ -102,5 +109,6 @@ Added subagent-specific permissions to `config/settings.json` (lines 17-37):
 This experiment tests Enforcement Hierarchy principle: Configuration (Q3) should enforce architectural constraints that instructions (Q4) cannot reliably enforce.
 
 Related experiments:
+
 - Supervisor commit enforcement (#127 comment)
 - Developer agent permission system (#93)

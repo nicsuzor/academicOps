@@ -24,6 +24,7 @@ Use git-commit when:
 4. **Any repository change** - This is the ONLY way to commit code
 
 **Concrete trigger examples**:
+
 - "Commit these changes with message 'Add user authentication'"
 - "I've finished the feature, ready to commit"
 - "Commit the test file I just created"
@@ -94,6 +95,7 @@ Follow this 6-step validation and commit workflow.
 4. **If ALL core files missing**: BLOCK commit with error
 
 **Generalization Note**: The exact paths above are examples from one repository structure. In any repository:
+
 - Look for validation rules in `references/`, `docs/agents/`, or similar documentation directories
 - Adapt paths to the repository's structure
 - Fail-fast if NO validation rules found anywhere
@@ -106,31 +108,37 @@ Follow this 6-step validation and commit workflow.
 
 ```markdown
 ## File-Specific Rules
+
 - [ ] test_*.py files use real_bm or real_conf fixtures
 - [ ] test files do not use initialize_config_dir()
 - [ ] ...
 
 ## Language-Specific Standards
+
 - [ ] Python files follow PEP 8
 - [ ] No bare except clauses
 - [ ] ...
 
 ## Project-Wide Conventions
+
 - [ ] No hardcoded paths
 - [ ] No environment variable access in code
 - [ ] ...
 
 ## Security Requirements
+
 - [ ] No secrets in code (.env files not committed)
 - [ ] No API keys in source
 - [ ] ...
 
 ## Testing Requirements
+
 - [ ] Tests exist for new functionality
 - [ ] All tests passing
 - [ ] ...
 
 ## Documentation Requirements
+
 - [ ] Public functions have docstrings
 - [ ] README updated if API changed
 - [ ] ...
@@ -177,6 +185,7 @@ Follow this 6-step validation and commit workflow.
 ### test_auth.py
 
 File-Specific Rules:
+
 - ❌ FAIL: Uses initialize_config_dir()
   - Line 15: `initialize_config_dir(config_path="conf")`
   - Violation: Test files MUST use real_bm or real_conf fixtures
@@ -186,6 +195,7 @@ File-Specific Rules:
 - ✅ PASS: Uses real fixture pattern correctly in test_login()
 
 Testing Requirements:
+
 - ✅ PASS: Test file exists for new auth functionality
 ```
 
@@ -199,6 +209,7 @@ Testing Requirements:
 ## PRE-COMMIT VALIDATION REPORT
 
 ### Summary
+
 - Files Reviewed: 3
 - Rules Checked: 24
 - Status: [APPROVED | BLOCKED]
@@ -206,19 +217,21 @@ Testing Requirements:
 ### Validation Results
 
 #### test_auth.py
+
 - Rules Applied: 8
 - Passed: 7
 - Failed: 1
 - Warnings: 0
 
-**BLOCKING ISSUE**:
-❌ File-Specific Rule: real_bm fixture required
-  - Line 15: `initialize_config_dir(config_path="conf")`
-  - Violation: Test files MUST use real_bm or real_conf fixtures
-  - Fix: Replace with `def test_auth(real_bm)` and use real_bm fixture
-  - Source: references/TESTS.md line 17
+**BLOCKING ISSUE**: ❌ File-Specific Rule: real_bm fixture required
+
+- Line 15: `initialize_config_dir(config_path="conf")`
+- Violation: Test files MUST use real_bm or real_conf fixtures
+- Fix: Replace with `def test_auth(real_bm)` and use real_bm fixture
+- Source: references/TESTS.md line 17
 
 #### auth.py
+
 - Rules Applied: 12
 - Passed: 12
 - Failed: 0
@@ -227,6 +240,7 @@ Testing Requirements:
 ✅ All rules passed
 
 #### README.md
+
 - Rules Applied: 4
 - Passed: 4
 - Failed: 0
@@ -239,9 +253,11 @@ Testing Requirements:
 [BLOCKED] This commit violates critical validation rules and MUST NOT proceed:
 
 **Blocking Issues** (must fix before commit):
+
 1. test_auth.py:15 - Uses initialize_config_dir() instead of real_bm fixture
 
 **Required Actions**:
+
 - Update test_auth.py to use real_bm fixture
 - Remove initialize_config_dir() call
 - Re-run validation after fixes
@@ -249,6 +265,7 @@ Testing Requirements:
 ---
 
 [APPROVED] This commit meets all required standards and may proceed.
+
 - All 24 validation rules passed
 - Ready to commit
 ```
@@ -298,10 +315,7 @@ Testing Requirements:
    Co-Authored-By: Claude <noreply@anthropic.com>
    ```
 
-   **Types**: fix, feat, docs, refactor, test, chore
-   **Scopes**: Vary by repository (e.g., prompts, infrastructure, docs for bot/ repo)
-   **Subject**: 1-line summary (why, not what)
-   **Body**: 1-2 sentences of detail
+   **Types**: fix, feat, docs, refactor, test, chore **Scopes**: Vary by repository (e.g., prompts, infrastructure, docs for bot/ repo) **Subject**: 1-line summary (why, not what) **Body**: 1-2 sentences of detail
 
 2. **Stage all changed files**:
    ```bash
@@ -383,6 +397,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>
 ```
 
 **Types**:
+
 - `fix` - Bug fixes
 - `feat` - New features
 - `docs` - Documentation only
@@ -391,6 +406,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>
 - `chore` - Maintenance, tooling, configs
 
 **Scopes** (repository-specific examples):
+
 - For bot/ repo: `prompts`, `infrastructure`, `docs`
 - For projects: `api`, `models`, `ui`, `tests`
 - Adapt to your repository structure
@@ -400,6 +416,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>
 See `references/validation-rules.md` for comprehensive list of common validation patterns.
 
 **Core Principles**:
+
 - **Fail-fast**: No defaults, no fallbacks, no workarounds
 - **Explicit configuration**: All config in YAML, not code or env vars
 - **Real fixtures**: Tests use real_bm/real_conf, never mock internal code
@@ -409,6 +426,7 @@ See `references/validation-rules.md` for comprehensive list of common validation
 ## Critical Rules
 
 **NEVER**:
+
 - Allow commit if ANY validation rule violated
 - Fix problems automatically (report only, don't fix)
 - Make assumptions about rule interpretation (strict and literal)
@@ -417,6 +435,7 @@ See `references/validation-rules.md` for comprehensive list of common validation
 - Use imprecise feedback ("something's wrong" → specific file:line)
 
 **ALWAYS**:
+
 - Stage files with `git add` before committing (MANDATORY)
 - Provide specific, actionable feedback with line numbers
 - Reference exact file locations for violations
@@ -427,30 +446,36 @@ See `references/validation-rules.md` for comprehensive list of common validation
 ## Edge Cases
 
 **No validation files found**:
+
 - Check all three locations (core, project, user)
 - BLOCK commit and report which locations checked
 - Error message: "No validation files found in <locations>. Cannot validate commit."
 
 **Empty changes** (git status shows nothing):
+
 - Report: "No changes to commit"
 - Log attempt for audit
 - Don't create empty commit
 
 **Partial file changes** (only some lines modified):
+
 - Validate ENTIRE file, not just changed lines
 - Rationale: Ensures overall file quality
 - Exception: If validation rule explicitly scopes to changed lines only
 
 **Generated code** (e.g., from code generators):
+
 - Apply same standards unless validation rules explicitly exempt
 - Check for exemption patterns in validation files
 
 **Emergency commits**:
+
 - NO exceptions
 - All commits must pass validation
 - If truly urgent, fix the blocking issues (they're usually quick)
 
 **Pre-commit hook modifications**:
+
 - If pre-commit hooks modify files after commit
 - Check commit authorship: `git log -1 --format='%an %ae'`
 - Check not pushed: `git status` shows "Your branch is ahead"

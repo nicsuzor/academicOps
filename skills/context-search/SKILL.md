@@ -9,8 +9,7 @@ permalink: aops/skills/context-search/skill
 
 ## Framework Context
 
-@resources/SKILL-PRIMER.md
-@resources/AXIOMS.md
+@resources/SKILL-PRIMER.md @resources/AXIOMS.md
 
 ## Overview
 
@@ -29,6 +28,7 @@ Invoke context-search when you need to:
 - **Check project/goal linkages** for alignment
 
 **Do NOT use for**:
+
 - Writing files (use markdown-ops)
 - Task operations (use task-management)
 - Direct file operations (use Read/Write/Edit)
@@ -161,16 +161,19 @@ All searches return structured data for consumption by other skills:
 ## Integration with Other Skills
 
 **task-management** uses context-search to:
+
 - Find duplicates before creation
 - Discover related tasks
 - Check project alignment
 
 **scribe** (subagent) uses context-search to:
+
 - Load strategic context
 - Find existing entities
 - Verify relationships
 
 **markdown-ops** may use context-search to:
+
 - Find forward references
 - Validate entity titles
 - Check relation targets
@@ -190,18 +193,21 @@ See `~/.config/Claude/mcp_settings.json` for complete BM MCP tool list.
 ## Best Practices
 
 **Search Strategy**:
+
 1. Try semantic search first (`search_type="text"`)
 2. Fall back to exact match if needed
 3. Use type filters to narrow results
 4. Combine tags and content queries
 
 **Performance**:
+
 - Limit results with `page_size` parameter
 - Use `timeframe` to scope recent activity
 - Set appropriate `depth` for relation traversal
 - Cache results when repeating queries
 
 **Result Handling**:
+
 - Always check for empty results
 - Present matches to calling skill
 - Let calling skill decide on actions
@@ -210,12 +216,14 @@ See `~/.config/Claude/mcp_settings.json` for complete BM MCP tool list.
 ## Critical Rules
 
 **NEVER**:
+
 - Write or modify files directly
 - Make decisions about task operations
 - Create tasks (delegate to task-management)
 - Bypass BM MCP (don't use Glob/Grep for BM data)
 
 **ALWAYS**:
+
 - Use BM MCP tools for search
 - Return structured results
 - Let calling skill interpret results
@@ -224,21 +232,25 @@ See `~/.config/Claude/mcp_settings.json` for complete BM MCP tool list.
 ## Quick Reference
 
 **Find existing tasks**:
+
 ```bash
 mcp__bm__search_notes(query="keywords", types=["task"])
 ```
 
 **Check duplicates**:
+
 ```bash
 mcp__bm__search_notes(query="title text", types=["task"], search_type="text")
 ```
 
 **Get project context**:
+
 ```bash
 mcp__bm__build_context(url="memory://projects/name", depth=1)
 ```
 
 **Find by relation**:
+
 ```bash
 mcp__bm__search_notes(query="part_of [[Project]]", types=["task"])
 ```

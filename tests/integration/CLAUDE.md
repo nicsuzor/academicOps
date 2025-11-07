@@ -1,7 +1,6 @@
 # Integration Test Guidelines
 
-@../../docs/TESTING.md
-@../../docs/_CHUNKS/TESTS.md
+@../../docs/TESTING.md @../../docs/_CHUNKS/TESTS.md
 
 ## Critical Rules
 
@@ -13,14 +12,10 @@
 
 ## What to Test
 
-✅ Hook output → Claude Code → tool execution
-✅ Agent type detection → hook receives correct metadata
-✅ Permission decision → Claude response behavior
+✅ Hook output → Claude Code → tool execution ✅ Agent type detection → hook receives correct metadata ✅ Permission decision → Claude response behavior
 
 ## What NOT to Test
 
-❌ Business logic (covered by unit tests)
-❌ LLM intelligence (we test machinery, not reasoning)
-❌ Multiple scenarios of same pattern (one test per pattern)
+❌ Business logic (covered by unit tests) ❌ LLM intelligence (we test machinery, not reasoning) ❌ Multiple scenarios of same pattern (one test per pattern)
 
 See TESTING.md for detailed philosophy and examples.

@@ -1,6 +1,7 @@
 # Experiment: Scribe Detail Level Balance
 
 ## Metadata
+
 - Date: 2025-10-30
 - Issue: #152
 - Commit: c2042b5
@@ -9,10 +10,12 @@
 ## Hypothesis
 
 Adding explicit "Detail Level Guidelines" to scribe skill will prevent:
+
 1. Over-detailed accomplishments entries (already partially fixed in #152)
 2. Under-detailed project file entries (NEW problem identified today)
 
 Expected behavior:
+
 - Accomplishments: One-line "standup level" summaries
 - Project files: "Resumption context level" with decisions, next steps, references
 
@@ -35,12 +38,14 @@ Modified `/home/nic/.claude/skills/scribe/SKILL.md`:
 ## Success Criteria
 
 **Accomplishments.md**:
+
 - ✅ One line per item (unless significant strategic decision)
 - ✅ Result + brief impact only
 - ✅ NO implementation details (line counts, technical specifics)
 - Test: "Would I say this in 30-second standup?"
 
 **Project files**:
+
 - ✅ Enough detail to resume work after 2-week gap
 - ✅ Key decisions and WHY
 - ✅ Next steps or open questions
@@ -48,10 +53,12 @@ Modified `/home/nic/.claude/skills/scribe/SKILL.md`:
 - Test: "Can I resume work from this in 2 weeks?"
 
 **Negative tests**:
+
 - ❌ Accomplishments should NOT have: "Reduced from 132 lines to 52 lines (60% reduction), eliminated ALL mocking..."
 - ❌ Project files should NOT have: Just "TJA scorer validation - SUCCESS" with no context
 
 **Positive tests**:
+
 - ✅ Accomplishments: "TJA scorer validation - STRONG SUCCESS (88.9% accuracy, 9.7% FN rate, exceeds targets)"
 - ✅ Project file: "Scorer validation experiment (scorer_validation_v1 vs BASELINE) achieved 88.9% accuracy. Validates redesigned QualScore scorer. Ready for production deployment. See tja/docs/SCORER_VALIDATION_EXPERIMENT.md"
 

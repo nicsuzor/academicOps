@@ -1,6 +1,7 @@
 # Experiment: aops-trainer Information Architecture Self-Application
 
 ## Metadata
+
 - Date: 2025-11-07
 - Issue: Information architecture violations in ARCHITECTURE.md
 - Model: claude-sonnet-4-5
@@ -13,6 +14,7 @@ After adding "Information Architecture" section to aops-trainer skill (explainin
 ## Context
 
 ARCHITECTURE.md currently contains content that violates its purpose as "timeless structural specification":
+
 - Testing procedures (should be in TESTING.md or skill)
 - Installation steps (should be in INSTALL.md)
 - Anti-bloat enforcement checklists (process → belongs in aops-trainer skill)
@@ -21,6 +23,7 @@ ARCHITECTURE.md currently contains content that violates its purpose as "timeles
 - Temporal labels "(NEW)", line counts, test status
 
 Additionally, structure is wrong:
+
 - Starts with "Chunks" instead of foundational three-tier repository system
 - Uses problem/solution framing (blog post style) instead of authoritative specification
 
@@ -34,6 +37,7 @@ Added comprehensive "Information Architecture" section with:
 4. **Validation Questions** - 5 questions before modifying any doc
 
 Key addition for ARCHITECTURE.md:
+
 ```
 **ARCHITECTURE.md** - Timeless structural specification:
 - Three-tier repository system (framework/personal/project)
@@ -50,6 +54,7 @@ Key addition for ARCHITECTURE.md:
 Agent using aops-trainer skill should:
 
 **Content removal** (minimum):
+
 - [ ] Remove Testing section
 - [ ] Remove Installation section
 - [ ] Remove Anti-Bloat Enforcement section (process details)
@@ -58,11 +63,13 @@ Agent using aops-trainer skill should:
 - [ ] Remove temporal labels, line counts, metrics
 
 **Structural improvement** (ideal):
+
 - [ ] Restructure to start with Repository Tiers
 - [ ] Follow logical flow: Tiers → Loading System → File Structure → Components
 - [ ] Use authoritative voice, not problem/solution framing
 
 **Bonus points**:
+
 - [ ] Suggest moving removed content to appropriate locations
 - [ ] Create TESTING.md or update skills with process content
 
@@ -82,6 +89,7 @@ Agent using aops-trainer skill should:
 ## Results - Attempt 1
 
 Agent behavior:
+
 - ✅ Loaded Information Architecture section from skill
 - ✅ Applied decision tree correctly
 - ✅ Removed testing procedures (15 lines → 2 lines)
@@ -100,17 +108,20 @@ Information Architecture section worked but agent was too conservative.
 ## Analysis
 
 **What worked**:
+
 - Agent recognized testing/installation as process violations
 - Applied decision tree from skill
 - Correctly identified these don't belong in ARCHITECTURE.md
 
 **What didn't work**:
+
 - Didn't recognize checklists as "process"
 - Didn't recognize "ALL changes require" as "process"
 - Couldn't distinguish PRINCIPLE ("experiment-driven") from PROCESS (the workflow steps)
 - No guidance on canonical ARCHITECTURE.md structure
 
 **What needs improvement in skill**:
+
 1. Add explicit examples of process vs principle distinction
 2. Add specific "ARCHITECTURE.md Specific Guidance" section
 3. List what to remove: checklists, "ALL changes require", workflows
@@ -119,6 +130,7 @@ Information Architecture section worked but agent was too conservative.
 ## Next Steps
 
 Updated skill with:
+
 - Process vs Principle examples with ✅/❌ markers
 - "ARCHITECTURE.md Specific Guidance" section
 - Canonical structure order
@@ -129,6 +141,7 @@ Attempt 2 will test if these improvements enable complete refactoring.
 ## Results - Attempt 2
 
 Agent behavior:
+
 - ✅ Loaded Information Architecture section from skill
 - ✅ Loaded ARCHITECTURE.md Specific Guidance section
 - ✅ Applied Process vs Principle distinction correctly

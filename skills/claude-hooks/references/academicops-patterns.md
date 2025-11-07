@@ -7,6 +7,7 @@ How academicOps uses Claude Code hooks to enforce framework principles and autom
 From `ARCHITECTURE.md`:
 
 **Enforcement Hierarchy** (most → least reliable):
+
 1. **Scripts** - Code that prevents bad behavior
 2. **Hooks** - Automated checks at key moments
 3. **Configuration** - Permissions and restrictions
@@ -17,6 +18,7 @@ From `ARCHITECTURE.md`:
 ## Installation Pattern
 
 **All academicOps repos use `/bots/` structure:**
+
 ```
 repo/
 ├── bots/
@@ -55,6 +57,7 @@ repo/
 ```
 
 **Why this works:**
+
 - `$CLAUDE_PROJECT_DIR` = absolute path to repo root
 - Works from any subdirectory
 - Portable across installations
@@ -71,6 +74,7 @@ repo/
 **Script:** `bots/hooks/load_instructions.py`
 
 **What it does:**
+
 1. Loads `_CORE.md` from framework tier (`$ACADEMICOPS/bots/agents/`)
 2. Loads from personal tier if exists (`$ACADEMICOPS_PERSONAL/bots/agents/`)
 3. Loads from project tier if exists (`$PWD/bots/agents/`)
@@ -78,6 +82,7 @@ repo/
 5. Includes git remote info for context
 
 **Output format:**
+
 ```json
 {
   "hookSpecificOutput": {
@@ -88,6 +93,7 @@ repo/
 ```
 
 **Configuration:**
+
 ```json
 {
   "hooks": {
@@ -109,6 +115,7 @@ repo/
 **Script:** `bots/hooks/validate_tool.py`
 
 **Validation rules:**
+
 - Block inline Python (`python -c`) → Require script files
 - Block pytest without `uv run` → Enforce environment isolation
 - Block python without `uv run` → Enforce package management
@@ -117,6 +124,7 @@ repo/
 - Agent-specific permissions (trainer can edit `.claude/` files)
 
 **Output formats:**
+
 ```json
 // Allow
 {
@@ -143,6 +151,7 @@ repo/
 ```
 
 **Exit codes:**
+
 - `0` = allow
 - `1` = warn (allow with message)
 - `2` = block
@@ -154,12 +163,14 @@ repo/
 **Script:** `bots/hooks/validate_stop.py`
 
 **What it does:**
+
 1. Receives stop event (main agent or subagent)
 2. Logs to debug file for inspection
 3. Can enforce completion requirements (future use)
 4. Currently allows all stops (returns `{}`)
 
 **Configuration:**
+
 ```json
 {
   "hooks": {
@@ -188,6 +199,7 @@ repo/
 **Script:** `bots/hooks/log_posttooluse.py`
 
 **What it does:**
+
 1. Receives tool execution result
 2. Logs input/output to `/tmp/claude_posttooluse_{timestamp}.json`
 3. Returns empty output (no behavior modification)
@@ -203,6 +215,7 @@ repo/
 **Script:** `bots/hooks/log_userpromptsubmit.py`
 
 **What it does:**
+
 1. Receives user prompt before Claude processes
 2. Logs to `/tmp/claude_userpromptsubmit_{timestamp}.json`
 3. Returns empty output (no behavior modification)
@@ -234,16 +247,18 @@ def main():
 **Log location:** `/tmp/claude_{hook_event}_{timestamp}.json`
 
 **Log format:**
+
 ```json
 {
   "hook_event": "PreToolUse",
   "timestamp": "2025-10-22T23:13:51.603727+00:00",
-  "input": { /* full stdin */ },
-  "output": { /* full stdout */ }
+  "input": {/* full stdin */},
+  "output": {/* full stdout */}
 }
 ```
 
 **Benefits:**
+
 - Non-invasive (never crashes hooks)
 - Timestamped for correlation
 - Full input/output capture
@@ -254,6 +269,7 @@ def main():
 **From `references/FAIL-FAST.md`:**
 
 **Agents don't defend against missing hooks:**
+
 ```json
 // ❌ Wrong - defensive
 "command": "if [ -f script.py ]; then python script.py; else echo 'missing'; fi"
@@ -263,6 +279,7 @@ def main():
 ```
 
 **Why:**
+
 - If hook script missing, something is wrong with installation
 - Error message directs user to fix infrastructure
 - No silent failures masking problems
@@ -273,6 +290,7 @@ def main():
 **Hooks work WITH permission system:**
 
 `.claude/settings.json`:
+
 ```json
 {
   "permissions": {
@@ -292,12 +310,14 @@ def main():
 ```
 
 **Execution order:**
+
 1. Claude creates tool parameters
 2. Permission system checks deny/allow rules
 3. PreToolUse hooks execute (if permission granted)
 4. Tool executes (if hook allows)
 
 **Hooks can:**
+
 - Add context-aware validation beyond simple patterns
 - Provide detailed error messages
 - Enforce project-specific rules
@@ -308,6 +328,7 @@ def main():
 **Integration test validates hooks from subdirectories:**
 
 From `tests/integration/test_claude_headless.py`:
+
 ```python
 def test_hook_allow_permits_execution(claude_headless):
     # Test hooks work from subdirectory (validates $CLAUDE_PROJECT_DIR)
@@ -321,6 +342,7 @@ def test_hook_allow_permits_execution(claude_headless):
 ```
 
 **What this validates:**
+
 - Hooks resolve paths correctly from any CWD
 - `$CLAUDE_PROJECT_DIR` works as expected
 - No silent failures when agent changes directories
@@ -328,30 +350,35 @@ def test_hook_allow_permits_execution(claude_headless):
 ## Common Mistakes & Solutions
 
 ### Mistake: Relative paths
+
 ```json
 // ❌ Breaks when agent in subdirectory
 "command": "uv run python bots/hooks/script.py"
 ```
 
 **Solution:** Use `$CLAUDE_PROJECT_DIR`
+
 ```json
 // ✅ Works from anywhere
 "command": "uv run python $CLAUDE_PROJECT_DIR/bots/hooks/script.py"
 ```
 
 ### Mistake: No fallback
+
 ```json
 // ❌ Cryptic error if script missing
 "command": "uv run python $CLAUDE_PROJECT_DIR/bots/hooks/script.py"
 ```
 
 **Solution:** Test and provide informative fallback
+
 ```json
 // ✅ Clear error message
 "command": "test -f $CLAUDE_PROJECT_DIR/bots/hooks/script.py && uv run python $CLAUDE_PROJECT_DIR/bots/hooks/script.py || echo '{\"error\":\"Hook script not found - check installation\"}'"
 ```
 
 ### Mistake: Blocking without reason
+
 ```json
 // ❌ Claude doesn't know why
 {
@@ -362,6 +389,7 @@ def test_hook_allow_permits_execution(claude_headless):
 ```
 
 **Solution:** Always provide reason
+
 ```json
 // ✅ Claude understands and can adapt
 {
@@ -373,12 +401,14 @@ def test_hook_allow_permits_execution(claude_headless):
 ```
 
 ### Mistake: Long-running hooks
+
 ```json
 // ❌ Timeout after 60s
 "command": "complex-operation-that-takes-2-minutes"
 ```
 
 **Solution:** Increase timeout or make async
+
 ```json
 // ✅ Extended timeout
 {
@@ -391,18 +421,21 @@ def test_hook_allow_permits_execution(claude_headless):
 ## When to Create New Hooks
 
 **Consider a hook when:**
+
 1. Agents consistently violate a rule despite instructions
 2. Validation requires runtime context (tool name, file path, etc.)
 3. Behavior must be guaranteed (not probabilistic)
 4. Need to inject dynamic context at session start
 
 **Don't create a hook when:**
+
 1. Permission patterns suffice (use `permissions.deny`)
 2. Agent can follow simple instructions reliably
 3. Validation is static (use pre-commit hooks instead)
 4. Performance sensitive (hooks add latency)
 
 **Process:**
+
 1. Try instructions first
 2. If agents forget → Try permission rules
 3. If too complex for patterns → Consider hook

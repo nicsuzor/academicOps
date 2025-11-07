@@ -22,37 +22,37 @@
 [tier.framework]
 # Framework tier - universal instructions (this repo)
 root = "."
-core = "core"                    # Core instructions (_CORE.md)
-agents = "agents"                # Self-contained agentic workflows (DEVELOPER, ANALYST, SUPERVISOR, trainer)
-commands = "commands"            # User-invoked slash commands
-skills = "skills"                # Claude Code skills (source)
-hooks = "hooks"                  # SessionStart, PostToolUse, Stop hooks
-scripts = "scripts"              # Supporting Python automation
-docs = "docs"                    # Human-readable documentation (not auto-loaded)
-project_docs = "docs/bots"       # Project-specific instructions (auto-loaded at SessionStart)
-dist = "dist"                    # Build artifacts (packaged skill zips)
-tests = "tests"                  # Test suite
-experiments = "experiments"      # Experiment tracking and logs
+core = "core" # Core instructions (_CORE.md)
+agents = "agents" # Self-contained agentic workflows (DEVELOPER, ANALYST, SUPERVISOR, trainer)
+commands = "commands" # User-invoked slash commands
+skills = "skills" # Claude Code skills (source)
+hooks = "hooks" # SessionStart, PostToolUse, Stop hooks
+scripts = "scripts" # Supporting Python automation
+docs = "docs" # Human-readable documentation (not auto-loaded)
+project_docs = "docs/bots" # Project-specific instructions (auto-loaded at SessionStart)
+dist = "dist" # Build artifacts (packaged skill zips)
+tests = "tests" # Test suite
+experiments = "experiments" # Experiment tracking and logs
 
 [tier.personal]
 # Personal tier - user customizations (minimal subset of framework)
-core = "core"                    # User's core instruction overrides
-project_docs = "docs/bots"       # User's project-specific instructions (when working in personal repo)
+core = "core" # User's core instruction overrides
+project_docs = "docs/bots" # User's project-specific instructions (when working in personal repo)
 
 [tier.project]
 # Project tier - project-specific instructions
-project_docs = "docs/bots"       # Project-specific instructions (standard location for ALL repos)
+project_docs = "docs/bots" # Project-specific instructions (standard location for ALL repos)
 
 [install]
 # Installation targets (configurable for future flexibility)
-claude_code = "~/.claude"       # Current: user-level Claude Code install
-gemini_cli = "~/.gemini"        # Future: Gemini CLI support (not yet implemented)
+claude_code = "~/.claude" # Current: user-level Claude Code install
+gemini_cli = "~/.gemini" # Future: Gemini CLI support (not yet implemented)
 # system = "/usr/local/share/academicops"  # Future: system-wide install option
 # project = ".academicops"      # Future: per-project install option
 
 [environment]
 # Python environment management
-python_env = ".venv"            # Virtual environment location (in framework repo)
+python_env = ".venv" # Virtual environment location (in framework repo)
 python_runner = "uv run python" # How to execute Python scripts
 
 # Environment variable names
@@ -62,12 +62,12 @@ var_personal = "ACADEMICOPS_PERSONAL"
 [files]
 # Key files (relative to framework root)
 core_instructions = "core/_CORE.md"
-project_index = "docs/bots/INDEX.md"  # Project-specific index (loaded at SessionStart)
-paths_shell = "paths.sh"              # Generated shell variable export
-paths_config = "paths.toml"           # This file
-instruction_index = "docs/INSTRUCTION-INDEX.md"  # Complete framework instruction registry
+project_index = "docs/bots/INDEX.md" # Project-specific index (loaded at SessionStart)
+paths_shell = "paths.sh" # Generated shell variable export
+paths_config = "paths.toml" # This file
+instruction_index = "docs/INSTRUCTION-INDEX.md" # Complete framework instruction registry
 
 [dist.artifacts]
 # Build artifacts in dist/
-skills = "dist/skills"          # Packaged skill zips
+skills = "dist/skills" # Packaged skill zips
 # bots = "dist/bots"            # Future: packaged bot configurations

@@ -36,12 +36,14 @@ Before closing this issue, the following MUST be documented in comments:
 **Add these as separate comments (not in issue body):**
 
 ### 1. Executive Summary Comment
+
 - What failed (brief)
 - Root causes identified
 - Solution approach
 - Current status
 
 ### 2. Root Cause Analysis Comment
+
 - Layer 1: What specifically failed?
 - Layer 2: Why did instructions not prevent it?
 - Layer 3: What architectural gaps exist?
@@ -49,6 +51,7 @@ Before closing this issue, the following MUST be documented in comments:
 - Layer 5: What external tools could help?
 
 ### 3. Solution Design Comment
+
 - Layer 1: Configuration-based prevention
 - Layer 2: Technical enforcement (hooks, permissions)
 - Layer 3: Documentation/education
@@ -56,11 +59,13 @@ Before closing this issue, the following MUST be documented in comments:
 - Benefits and limitations of each layer
 
 ### 4. External Research Comment
+
 - Tools evaluated (with links)
 - Pros and cons of each
 - Recommendations (with rationale)
 
 ### 5. Implementation Roadmap Comment
+
 - Phase 1: Immediate fixes
 - Phase 2: Structured infrastructure
 - Phase 3: Documentation
@@ -69,6 +74,7 @@ Before closing this issue, the following MUST be documented in comments:
 - Risk assessment
 
 ### 6. Files Modified Comment (After Implementation)
+
 - List all modified files
 - Note renames/moves
 - Brief description of changes

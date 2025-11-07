@@ -3,12 +3,14 @@
 ## Core Technologies
 
 ### Language & Runtime
+
 - **Python 3.10+**
   - Modern async/await support
   - Type hints throughout
   - Rich ecosystem for data science
 
 ### Package Management
+
 - **uv**: Fast, reliable Python package manager
   - Always use: `uv run python ...`
   - Dev dependencies: `uv add --dev <package>`
@@ -17,6 +19,7 @@
 ### Key Dependencies
 
 #### Data Validation & Configuration
+
 - **Pydantic v2**: Data validation and settings
   - Strict type checking
   - Automatic validation
@@ -28,6 +31,7 @@
   - Interpolation support
 
 #### Async & Concurrency
+
 - **anyio**: Core async support
   - All I/O operations async
   - Concurrent agent execution
@@ -37,6 +41,7 @@
   - Agent lifecycle management
 
 #### Web & API
+
 - **FastAPI**: REST API framework
   - Auto-generated OpenAPI docs
   - WebSocket support
@@ -45,6 +50,7 @@
 - **httpx**: Async HTTP client
 
 #### Testing
+
 - **pytest + pytest-asyncio**: Testing framework
   - Async test support
   - Fixtures for common setups
@@ -55,6 +61,7 @@
 ### Agent-Based Architecture
 
 #### Core Components
+
 1. **Agent**: Base class for all processing units.
 2. **Orchestrator**: Manages flow execution and routes messages.
 3. **Contract**: Pydantic models for messages, ensuring type-safe communication.
@@ -80,26 +87,31 @@
 ### Architecture Principles
 
 #### Async-First
+
 - Better resource utilization.
 - Responsive user experience.
 - Natural fit for I/O-heavy workloads.
 
 #### Modularity
+
 - Small, focused components.
 - Clear interfaces.
 - Composition over inheritance.
 
 #### Type Safety
+
 - Pydantic models everywhere.
 - Type hints required.
 - Runtime validation.
 
 #### Configuration-Driven
+
 - Behavior defined in YAML.
 - No hardcoded values.
 - Environment-specific overrides.
 
 #### Error Handling
+
 - Fail fast with clear messages.
 - Validation at boundaries.
 - No defensive programming.

@@ -5,11 +5,9 @@ tags: []
 type: note
 ---
 
-#
+# 
 
 ## Context
-
-
 
 ## Observations
 

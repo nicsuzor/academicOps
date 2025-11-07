@@ -14,9 +14,7 @@ relations:
 
 # Deployment Architecture Specification
 
-**Issue**: #128 - Flat Architecture Implementation
-**Status**: Pre-Release Specification (tests define requirements)
-**Validation**: `uv run pytest tests/test_deployment_architecture.py`
+**Issue**: #128 - Flat Architecture Implementation **Status**: Pre-Release Specification (tests define requirements) **Validation**: `uv run pytest tests/test_deployment_architecture.py`
 
 This document specifies the "flat architecture" deployment model for academicOps. The architecture is validated through executable tests rather than prose specifications.
 
@@ -45,22 +43,23 @@ This document specifies the "flat architecture" deployment model for academicOps
 
 ### Predictable Paths Table
 
-| Path | academicOps | Personal Repo | Project Repo | Description |
-|------|-------------|---------------|--------------|-------------|
-| `/bots/` | ✅ Real (source) | ✅ Real | ✅ Real | Core + project overrides |
-| `/bots/agents/` | ✅ Source files | ✅ Personal agents | ✅ Project agents | Agent instructions |
-| `/bots/hooks/` | ✅ Source files | Symlink → bot | Symlink → bot | Hook scripts |
-| `/.claude/` | ✅ Real | ✅ Real | ✅ Real | Claude Code config |
-| `/.claude/settings.json` | ✅ Real | ✅ Real | ✅ Copied from dist/ | Configuration |
-| `/.claude/agents/` | Symlink → bots/agents | Symlink → bot | Symlink → bot | Agent discovery |
-| `/.claude/commands/` | ✅ Real | Symlink → bot | Symlink → bot | Slash commands |
-| `/.claude/skills/` | ✅ Real | Symlink → bot | Symlink → bot | Skills |
-| `/data/` | N/A | ✅ Real (private) | N/A | Strategic context |
-| `/CLAUDE.md` | ✅ → agents/_CORE.md | ✅ Real | ✅ Real | Entry point |
-| `/tests/CLAUDE.md` | ✅ → TESTING.md | N/A | N/A | Test context |
-| `/scripts/CLAUDE.md` | ✅ → FAIL-FAST.md | N/A | N/A | Script context |
+| Path                     | academicOps           | Personal Repo      | Project Repo         | Description              |
+| ------------------------ | --------------------- | ------------------ | -------------------- | ------------------------ |
+| `/bots/`                 | ✅ Real (source)      | ✅ Real            | ✅ Real              | Core + project overrides |
+| `/bots/agents/`          | ✅ Source files       | ✅ Personal agents | ✅ Project agents    | Agent instructions       |
+| `/bots/hooks/`           | ✅ Source files       | Symlink → bot      | Symlink → bot        | Hook scripts             |
+| `/.claude/`              | ✅ Real               | ✅ Real            | ✅ Real              | Claude Code config       |
+| `/.claude/settings.json` | ✅ Real               | ✅ Real            | ✅ Copied from dist/ | Configuration            |
+| `/.claude/agents/`       | Symlink → bots/agents | Symlink → bot      | Symlink → bot        | Agent discovery          |
+| `/.claude/commands/`     | ✅ Real               | Symlink → bot      | Symlink → bot        | Slash commands           |
+| `/.claude/skills/`       | ✅ Real               | Symlink → bot      | Symlink → bot        | Skills                   |
+| `/data/`                 | N/A                   | ✅ Real (private)  | N/A                  | Strategic context        |
+| `/CLAUDE.md`             | ✅ → agents/_CORE.md  | ✅ Real            | ✅ Real              | Entry point              |
+| `/tests/CLAUDE.md`       | ✅ → TESTING.md       | N/A                | N/A                  | Test context             |
+| `/scripts/CLAUDE.md`     | ✅ → FAIL-FAST.md     | N/A                | N/A                  | Script context           |
 
 **Legend**:
+
 - ✅ Real: Actual directory/file
 - Symlink → X: Symbolic link to X
 - N/A: Not applicable
@@ -68,18 +67,21 @@ This document specifies the "flat architecture" deployment model for academicOps
 ### Repository Types
 
 **${ACADEMICOPS}** (`/home/nic/src/bot`):
+
 - Framework source code
 - /bots/ is REAL (source of truth)
 - /.claude/ contains real skills/commands (development)
 - Also a valid deployment target (dogfooding)
 
 **${ACADEMICOPS_PERSONAL}** (e.g., `/home/nic/src/writing`):
+
 - User's personal repository
 - /bots/ for personal agent overrides
 - /data/ for strategic context (private)
 - /.claude/ with symlinks to framework
 
 **Project Repos** (e.g., `/home/nic/src/buttermilk`):
+
 - Third-party project repositories
 - /bots/ for project-specific overrides
 - /.claude/ with symlinks to framework
@@ -107,11 +109,13 @@ uv run pytest tests/test_deployment_architecture.py::TestPathPredictability -v
 **Test Class**: `TestPathPredictability`
 
 **Validates**:
+
 - ${ACADEMICOPS}/bots/ has standard structure (agents/, hooks/, scripts/)
 - ${ACADEMICOPS}/.claude/ matches project installation structure
 - Project /bots/ mirrors ${ACADEMICOPS}/bots/ structure
 
 **Success Criteria**:
+
 - All `TestPathPredictability` tests pass
 - Developer can predict where files live without documentation
 
@@ -122,12 +126,14 @@ uv run pytest tests/test_deployment_architecture.py::TestPathPredictability -v
 **Test Class**: `TestSymlinkCreation`
 
 **Validates**:
+
 - .claude/agents/ is symlink to framework
 - .claude/commands/ is symlink to framework
 - .claude/skills/ is symlink to framework
 - # Scripts accessed via .academicOps/scripts/ is symlink to framework
 
 **Success Criteria**:
+
 - All `TestSymlinkCreation` tests pass
 - Changes to framework immediately available in all projects
 - No file duplication
@@ -148,11 +154,13 @@ ln -s ${ACADEMICOPS}/.claude/skills <project>/.claude/skills
 **Test Class**: `TestGitignoreCoverage`
 
 **Validates**:
+
 - dist/.gitignore ignores all framework symlinks
 - dist/.gitignore does NOT block custom /bots/ files
 - Projects can add custom agent instructions without git conflicts
 
 **Success Criteria**:
+
 - All `TestGitignoreCoverage` tests pass
 - Project repos safe to share publicly (no framework files leaked)
 - Custom project instructions tracked in git
@@ -181,11 +189,13 @@ ln -s ${ACADEMICOPS}/.claude/skills <project>/.claude/skills
 **Test Class**: `TestModularInstructions`
 
 **Validates**:
+
 - bots/agents/ contains core agent files (_CORE.md, trainer.md, etc.)
 - bots/hooks/ contains validation scripts (executable)
 - Instructions are modular (no duplication)
 
 **Success Criteria**:
+
 - All `TestModularInstructions` tests pass
 - Core instructions centralized in ${ACADEMICOPS}/bots/
 - Projects reference framework instructions, don't duplicate
@@ -197,11 +207,13 @@ ln -s ${ACADEMICOPS}/.claude/skills <project>/.claude/skills
 **Test Class**: `TestProjectOverrides`
 
 **Validates**:
+
 - Projects can create custom agents in bots/agents/
 - Project files don't conflict with framework symlinks
 - Load order: framework → project (both loaded, project second)
 
 **Success Criteria**:
+
 - All `TestProjectOverrides` tests pass
 - Projects can customize without forking framework
 - Changes to framework don't break project customizations
@@ -211,11 +223,10 @@ ln -s ${ACADEMICOPS}/.claude/skills <project>/.claude/skills
 ```markdown
 # DBT Analyst Agent
 
-Load framework agents:
-@_CORE.md
-@ANALYST.md
+Load framework agents: @_CORE.md @ANALYST.md
 
 Project-specific DBT patterns:
+
 - Use buttermilk schema conventions
 - Load from bots/dbt/profiles.yml
 ```
@@ -227,11 +238,13 @@ Project-specific DBT patterns:
 **Test Class**: `TestCLAUDEmdDiscovery`
 
 **Validates**:
+
 - Key directories have CLAUDE.md files
 - CLAUDE.md files contain ONLY @ references (no duplication)
 - Context loads when working in specific directories
 
 **Success Criteria**:
+
 - All `TestCLAUDEmdDiscovery` tests pass
 - Token-efficient (only relevant context loaded)
 - Zero content duplication
@@ -243,11 +256,10 @@ Project-specific DBT patterns:
 ```markdown
 # Python Development Context
 
-@../agents/_CORE.md
-@../docs/_CHUNKS/FAIL-FAST.md
-@../.claude/skills/python-dev/SKILL.md
+@../agents/_CORE.md @../docs/_CHUNKS/FAIL-FAST.md @../.claude/skills/python-dev/SKILL.md
 
 ## Key Principles
+
 - Fail-fast: No defaults
 - Type safety: Use Pydantic
 ```
@@ -259,11 +271,13 @@ Project-specific DBT patterns:
 **Test Class**: `TestScriptInvocation`
 
 **Validates**:
+
 - # Scripts accessed via .academicOps/scripts/ is symlink to framework scripts
 - Scripts are executable via symlink
 - Scripts invokable from project without absolute paths
 
 **Success Criteria**:
+
 - All `TestScriptInvocation` tests pass
 - Projects invoke scripts via `# Scripts accessed via .academicOps/scripts/script.sh`
 - No hardcoded paths to ${ACADEMICOPS}
@@ -275,11 +289,13 @@ Project-specific DBT patterns:
 **Test Class**: `TestPreCommitIntegration`
 
 **Validates**:
+
 - .pre-commit-config.yaml exists
 - No custom git hooks (only pre-commit managed)
 - Hooks installed via `pre-commit install`
 
 **Success Criteria**:
+
 - All `TestPreCommitIntegration` tests pass
 - Standard tool used (not custom scripts)
 - Maintainable by community
@@ -293,6 +309,7 @@ Project-specific DBT patterns:
 **Test Class**: `TestDogfooding` + `TestDogfoodingInstallation`
 
 **Validates**:
+
 - ${ACADEMICOPS}/bots/ is real (not symlink)
 - ${ACADEMICOPS}/.claude/ matches project structure
 - Development files coexist with deployment files
@@ -300,6 +317,7 @@ Project-specific DBT patterns:
 - Hooks execute correctly in ${ACADEMICOPS}
 
 **Success Criteria**:
+
 - All `TestDogfooding*` tests pass
 - Running Claude in ${ACADEMICOPS} identical to running in project
 - No conflicts between source code and deployment structure
@@ -409,6 +427,7 @@ After pre-release, validate architecture doesn't degrade:
 **Cause**: Installation script not creating symlinks
 
 **Fix**:
+
 1. Check installation script exists: `scripts/setup_academicops.sh`
 2. Verify script creates symlinks (not copies)
 3. Check symlink targets are correct
@@ -420,6 +439,7 @@ After pre-release, validate architecture doesn't degrade:
 **Cause**: Hook scripts not marked executable in git
 
 **Fix**:
+
 ```bash
 chmod +x bots/hooks/*.py
 git update-index --chmod=+x bots/hooks/*.py
@@ -441,6 +461,7 @@ git commit -m "fix: Make hooks executable"
 **Cause**: Development files conflicting with deployment structure
 
 **Fix**:
+
 1. Ensure /bots/ in ${ACADEMICOPS} is real (not symlink)
 2. Ensure .claude/ structure doesn't duplicate development files
 3. Update .gitignore to prevent tracking symlinks
@@ -486,6 +507,7 @@ For upgrading old installations to new architecture:
 ## Success Metrics
 
 **Pre-Release Ready When**:
+
 - [ ] All deployment architecture tests pass
 - [ ] All dogfooding tests pass
 - [ ] Manual validation in 3+ project repos successful
@@ -493,6 +515,7 @@ For upgrading old installations to new architecture:
 - [ ] User acceptance confirmed
 
 **Ongoing Health**:
+
 - Deployment tests run in CI
 - Zero test failures for 1+ month
 - Installation script works in all target repos
@@ -511,15 +534,18 @@ For upgrading old installations to new architecture:
 ## References
 
 **Tests**:
+
 - `tests/test_deployment_architecture.py` - Deployment validation
 - `tests/integration/test_dogfooding.py` - Self-installation validation
 
 **Templates**:
+
 - `dist/.claude/settings.json` - Project settings template
 - `dist/.gitignore` - Project gitignore template
 - `dist/INSTRUCTIONS.md` - Project instructions template
 
 **Scripts**:
+
 - `scripts/setup_academicops.sh` - Installation script
 - `scripts/check_instruction_orphans.py` - Validation utility
 
@@ -528,6 +554,7 @@ For upgrading old installations to new architecture:
 Currently, project repos contain only `/bots/agents/` for instruction file overrides. The framework provides commands and skills via `.claude/` symlinks.
 
 **Future possibilities** (not implemented yet):
+
 - `/bots/commands/` - Project-specific custom commands
 - `/bots/skills/` - Project-specific custom skills
 

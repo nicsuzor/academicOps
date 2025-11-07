@@ -33,7 +33,6 @@ academicOps provides infrastructure for AI agent workflows that require:
 
 ---
 
-
 ## Components & Capabilities
 
 Quick reference for what tools to use for what tasks.
@@ -123,6 +122,7 @@ commands/
 Installed to `~/.claude/skills/`. Invoked by agents or directly.
 
 **Framework Skills** (academicOps-specific):
+
 ```
 ├── agent-initialization  # Workspace setup, skill index generation
 ├── aops-bug              # Bug tracking, experiment logs, architecture drift
@@ -134,6 +134,7 @@ Installed to `~/.claude/skills/`. Invoked by agents or directly.
 ```
 
 **Development Skills**:
+
 ```
 ├── git-commit            # Validated commits with quality gates
 ├── github-issue          # Exhaustive issue search, documentation, lifecycle
@@ -142,6 +143,7 @@ Installed to `~/.claude/skills/`. Invoked by agents or directly.
 ```
 
 **Utility Skills**:
+
 ```
 ├── analyst               # Academic research data analysis (dbt + Streamlit)
 ├── archiver              # Archive experiments to Jupyter notebooks with HTML
@@ -188,26 +190,27 @@ docs/
 
 ### Quick Reference: Which Tool When
 
-| Task | Use This |
-|------|----------|
-| Extract tasks from conversation | **scribe** skill (auto-invoke proactively) |
-| Commit code changes | **git-commit** skill |
-| Data analysis (dbt/Streamlit) | **analyst** agent (via `/analyst`) |
-| Write/refactor/debug code | **dev** agent (via `/dev`) |
-| Strategic planning | **STRATEGIST** agent (via `/STRATEGIST`) |
-| Check/process email | **email** skill (via `/email`) |
-| Create/update tasks | **tasks** skill |
-| Generate PDFs | **pdf** skill |
-| Multi-step complex workflows | **supervisor** agent |
-| Track framework bugs | **aops-bug** skill |
-| Optimize agents/skills | **aops-trainer** skill (via `/trainer`) |
-| Convert markdown to PDF | **pdf** skill |
-| Archive experiments | **archiver** skill |
-| Work with GitHub issues | **github-issue** skill |
-| Write tests | **test-writing** skill |
-| Knowledge organization (bmem) | Use bmem MCP tools (search, write, read notes) |
+| Task                            | Use This                                       |
+| ------------------------------- | ---------------------------------------------- |
+| Extract tasks from conversation | **scribe** skill (auto-invoke proactively)     |
+| Commit code changes             | **git-commit** skill                           |
+| Data analysis (dbt/Streamlit)   | **analyst** agent (via `/analyst`)             |
+| Write/refactor/debug code       | **dev** agent (via `/dev`)                     |
+| Strategic planning              | **STRATEGIST** agent (via `/STRATEGIST`)       |
+| Check/process email             | **email** skill (via `/email`)                 |
+| Create/update tasks             | **tasks** skill                                |
+| Generate PDFs                   | **pdf** skill                                  |
+| Multi-step complex workflows    | **supervisor** agent                           |
+| Track framework bugs            | **aops-bug** skill                             |
+| Optimize agents/skills          | **aops-trainer** skill (via `/trainer`)        |
+| Convert markdown to PDF         | **pdf** skill                                  |
+| Archive experiments             | **archiver** skill                             |
+| Work with GitHub issues         | **github-issue** skill                         |
+| Write tests                     | **test-writing** skill                         |
+| Knowledge organization (bmem)   | Use bmem MCP tools (search, write, read notes) |
 
 ---
+
 ---
 
 ## Three-Tier Instruction Loading

@@ -27,6 +27,7 @@ Generic debugging principles and systematic troubleshooting. Project-specific de
 6. **Verify**: Confirm fix works AND doesn't break other things
 
 **Evidence-Based Debugging**:
+
 - ✅ Check logs/traces for actual behavior
 - ✅ Use profilers/debuggers to observe state
 - ✅ Write failing tests that reproduce issue
@@ -38,6 +39,7 @@ Generic debugging principles and systematic troubleshooting. Project-specific de
 ## Profiling
 
 **Import Time Profiling** (Python):
+
 ```bash
 # Identify slow imports
 python -X importtime -c "import mymodule" 2> /tmp/import_profile.txt
@@ -47,6 +49,7 @@ cat /tmp/import_profile.txt | grep "import time" | sort -k2 -rn | head -20
 ```
 
 **Runtime Profiling** (Python):
+
 ```python
 import cProfile
 import pstats
@@ -60,6 +63,7 @@ stats.sort_stats('cumulative').print_stats(20)
 ```
 
 **Memory Profiling** (Python):
+
 ```bash
 # Install memory_profiler
 pip install memory-profiler
@@ -93,12 +97,14 @@ logger.info(f"User {user.id} authenticated via oauth in {elapsed}ms")
 ```
 
 **Log Levels**:
+
 - `ERROR`: Something failed, needs immediate attention
 - `WARNING`: Unexpected but handled, may need investigation
 - `INFO`: Normal operation, significant events
 - `DEBUG`: Detailed diagnostic information
 
 **Filtering Logs**:
+
 ```bash
 # Show only errors and warnings
 grep -E "(ERROR|WARNING)" /path/to/log.jsonl
@@ -113,6 +119,7 @@ tail -f /path/to/log.jsonl
 ## Common Anti-Patterns
 
 **Speculation Without Evidence**:
+
 - ❌ "The hook should have caught it"
 - ❌ "This will probably work"
 - ❌ "I think the issue is..."
@@ -121,6 +128,7 @@ tail -f /path/to/log.jsonl
 - ✅ "Profiling reveals..." (measure)
 
 **Adding Workarounds Instead of Fixing Root Cause**:
+
 - ❌ Adding try/except to silence errors
 - ❌ Adding defaults to mask configuration problems
 - ❌ Adding timeouts to hide race conditions
@@ -129,6 +137,7 @@ tail -f /path/to/log.jsonl
 - ✅ Make errors explicit and actionable
 
 **Print-Driven Debugging**:
+
 - ❌ Adding print statements throughout code
 - ❌ Leaving debug prints in committed code
 - ❌ Using print instead of proper logging
@@ -139,6 +148,7 @@ tail -f /path/to/log.jsonl
 ## Debugging Workflow
 
 **For failing tests**:
+
 1. Read test output carefully - what exactly failed?
 2. Reproduce failure reliably
 3. Add more specific assertions if needed
@@ -148,6 +158,7 @@ tail -f /path/to/log.jsonl
 7. Commit fix
 
 **For production issues**:
+
 1. Check structured logs for errors/warnings
 2. Identify error message and stack trace
 3. Reproduce in development environment
@@ -157,6 +168,7 @@ tail -f /path/to/log.jsonl
 7. Deploy fix
 
 **For performance issues**:
+
 1. Profile to identify bottleneck (don't guess)
 2. Measure baseline performance
 3. Make targeted optimization

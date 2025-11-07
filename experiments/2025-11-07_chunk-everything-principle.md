@@ -1,6 +1,7 @@
 # Experiment: "CHUNK EVERYTHING" Principle Implementation
 
 ## Metadata
+
 - Date: 2025-11-07
 - Issue: #111
 - Commit: [to be added]
@@ -10,6 +11,7 @@
 ## Hypothesis
 
 Implementing universal "CHUNK EVERYTHING" principle will:
+
 1. Reduce token waste (loading 705-line files when 50 lines needed)
 2. Improve maintainability (smaller, focused topic files)
 3. Enforce DRY (clear single responsibility per chunk)
@@ -28,24 +30,28 @@ BEST-PRACTICES.md identified as immediate target: 705 lines covering 7+ distinct
 Extracted 7 separate files from BEST-PRACTICES.md:
 
 **docs/bots/CONTEXT-ENGINEERING.md** (~120 lines):
+
 - Core principles (simplicity, transparency, context as finite resource)
 - Token efficiency strategies (curated context, just-in-time retrieval)
 - Context pollution solutions
 - Quick reference checklist
 
 **docs/bots/SUBAGENT-DESIGN.md** (~60 lines):
+
 - Structure and frontmatter requirements
 - Mandatory skill-first pattern
 - Design principles (single responsibility, tool access, proactive use)
 - Context preservation benefit
 
 **docs/bots/SKILL-DESIGN.md** (~80 lines):
+
 - Skills vs commands decision criteria
 - Structure (skill.md, scripts/, references/)
 - Required components for skill-first architecture
 - Self-contained guidance principles
 
 **docs/bots/COMMAND-DESIGN.md** (~130 lines):
+
 - Structure and frontmatter requirements
 - Mandatory skill-first pattern template
 - Context efficiency, arguments, focus patterns
@@ -53,24 +59,27 @@ Extracted 7 separate files from BEST-PRACTICES.md:
 - Supervisor orchestration pattern
 
 **docs/bots/HOOK-DESIGN.md** (~35 lines):
+
 - Types (SessionStart, PreToolUse, PostToolUse, Stop)
 - Design principles (lightweight, conditional, fail-fast)
 
 **docs/bots/TOOL-DESIGN.md** (~40 lines):
+
 - Natural formats, thinking space, comprehensive documentation
 - Poka-yoke design, token efficiency
 
 **docs/bots/ANTI-PATTERNS.md** (~75 lines):
+
 - 6 common mistakes with examples and sources
 - Unnecessary details, excessive scene-setting, over-engineering
 - Negative instructions, vague instructions, mixing instructions with context
 
 ### 2. Converted BEST-PRACTICES.md to Index
 
-**Before**: 705 lines of inline content
-**After**: 137 lines with @references to topic chunks
+**Before**: 705 lines of inline content **After**: 137 lines with @references to topic chunks
 
 Structure:
+
 - Core Guidance section with @references to all chunks
 - Brief summary of what each chunk contains
 - Quick Reference checklist (preserved from original)
@@ -84,6 +93,7 @@ Structure:
 Added new section to Information Architecture guidance:
 
 **### Universal Chunking Principle** (~50 lines):
+
 - **CHUNK EVERYTHING**: No file >~200 lines
 - Why chunking matters (5 benefits)
 - Chunking strategies (3 patterns with examples)
@@ -120,11 +130,13 @@ Location: After "Validation Questions", before "ARCHITECTURE.md Specific Guidanc
 ## Results
 
 **Line counts**:
+
 - BEST-PRACTICES.md: 705 → 137 lines (81% reduction)
 - Individual chunks: 35-130 lines each (all under 200-line limit)
 - Total content: ~540 lines across 7 topic files (some duplication removed during extraction)
 
 **Chunking distribution**:
+
 ```
 CONTEXT-ENGINEERING.md:  ~120 lines (principles + strategies)
 COMMAND-DESIGN.md:       ~130 lines (most patterns, supervisor orchestration)
@@ -136,6 +148,7 @@ HOOK-DESIGN.md:          ~35 lines  (types + 3 principles)
 ```
 
 **aops-trainer update**: 50 lines added documenting Universal Chunking Principle with:
+
 - Clear "CHUNK EVERYTHING" directive
 - 5 benefits (token efficiency, maintainability, DRY, discoverability, context pollution prevention)
 - 3 chunking strategies (topic-based, reference over duplicate, progressive detail)
@@ -151,6 +164,7 @@ All success criteria met. Documentation chunked while preserving all content. ao
 ## Analysis
 
 **What worked**:
+
 - **Topic-based splitting**: Natural section boundaries in BEST-PRACTICES.md made extraction straightforward
 - **@reference pattern**: Index file with @references maintains navigation while enabling selective loading
 - **Hard limits**: Explicit line count thresholds (200, 300) provide clear enforcement criteria
@@ -159,11 +173,13 @@ All success criteria met. Documentation chunked while preserving all content. ao
 **Key insight**: Files >200 lines almost always contain multiple distinct topics that can be separated. The "CHUNK EVERYTHING" principle prevents documentation from becoming encyclopedic and forces single-responsibility thinking.
 
 **Token efficiency gain**:
+
 - Before: Loading BEST-PRACTICES.md = 705 lines (all topics whether needed or not)
 - After: Loading CONTEXT-ENGINEERING.md = 120 lines (just the relevant topic)
 - Savings: ~83% fewer tokens when loading specific guidance
 
 **Maintainability improvement**:
+
 - Smaller files easier to review, update, and keep current
 - Clear topic boundaries prevent mixing concerns
 - Changes to one topic don't trigger review of unrelated topics

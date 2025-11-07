@@ -11,9 +11,7 @@ You are responsible for empirically testing academicOps framework changes throug
 
 ## Framework Context
 
-@resources/SKILL-PRIMER.md
-@resources/AXIOMS.md
-@resources/INFRASTRUCTURE.md
+@resources/SKILL-PRIMER.md @resources/AXIOMS.md @resources/INFRASTRUCTURE.md
 
 ## Overview
 
@@ -32,6 +30,7 @@ Use experiment-runner when:
 5. **Iterating on failures** - Previous experiment failed, need refinement
 
 **Concrete triggers**:
+
 - "Test if this instruction change improves agent behavior"
 - "Run an experiment to validate the new skill works"
 - "Measure if this refactoring actually helped"
@@ -61,6 +60,7 @@ Use experiment-runner when:
    - If testing multiple changes, run multiple experiments sequentially
 
 **Checklist before proceeding**:
+
 - [ ] Hypothesis is falsifiable (could be proven wrong)
 - [ ] Success criteria are measurable (numbers, specific outcomes)
 - [ ] Baseline documented (what happens now)
@@ -73,10 +73,12 @@ Use experiment-runner when:
 **File location**: `experiments/YYYY-MM-DD_descriptive-name.md`
 
 **Template**:
+
 ```markdown
 # Experiment: [Descriptive Title]
 
 ## Metadata
+
 - Date: YYYY-MM-DD
 - Issue: [GitHub issue number if applicable]
 - Commit: [hash of changes being tested]
@@ -97,12 +99,14 @@ Use experiment-runner when:
 ## Success Criteria
 
 [Measurable outcomes - be specific]
+
 - [ ] Criterion 1
 - [ ] Criterion 2
 
 ## Test Procedure
 
 [Exact steps to reproduce]
+
 1. [Step 1]
 2. [Step 2]
 
@@ -130,14 +134,17 @@ Use experiment-runner when:
 **Common mistakes to avoid**:
 
 ❌ **Vague success criteria**:
+
 - "Agent performs better" → Not measurable
 - ✅ "Agent removes 5/5 violations (100% success rate)"
 
 ❌ **Missing baseline**:
+
 - No "before" state documented
 - ✅ "Current: Agent removes 2/5 violations (40% success)"
 
 ❌ **Multiple variables**:
+
 - Changed instructions AND file structure AND added examples
 - ✅ "Only added ✅/❌ examples, all else unchanged"
 
@@ -163,6 +170,7 @@ cd /path/to/test/repo && claude --headless --prompt "test prompt"
 ```
 
 **Headless execution checklist**:
+
 - [ ] Test repo is in clean state (git status clean)
 - [ ] Working directory is correct ($ACADEMICOPS or test location)
 - [ ] Prompt is exact (copy from experiment log)
@@ -170,6 +178,7 @@ cd /path/to/test/repo && claude --headless --prompt "test prompt"
 - [ ] Timeout set if needed (default: 10 minutes)
 
 **Example headless test**:
+
 ```bash
 # Setup
 cd $ACADEMICOPS
@@ -197,6 +206,7 @@ Use for complex workflows or debugging:
 4. Save session log for analysis
 
 **Interactive testing checklist**:
+
 - [ ] Fresh session (no prior context)
 - [ ] Exact prompt from experiment log
 - [ ] Session log saved
@@ -217,6 +227,7 @@ done
 ```
 
 **When to use multiple runs**:
+
 - Testing instruction clarity (does it work consistently?)
 - Measuring success rate (3/5 runs succeed vs 5/5)
 - Validating non-deterministic behavior
@@ -260,23 +271,28 @@ done
 ## Analysis
 
 **Success criteria assessment**:
+
 - [Criterion 1]: ✅/❌ [Details]
 - [Criterion 2]: ✅/❌ [Details]
 
 **Measurements**:
+
 - Before: [Baseline metric]
 - After: [Result metric]
 - Change: [Delta]
 
 **What worked**:
+
 - [Specific element 1] → [Observed positive effect]
 - [Specific element 2] → [Observed positive effect]
 
 **What didn't work**:
+
 - [Specific element 1] → [Observed negative effect]
 - [Missing element] → [Consequence of absence]
 
 **Key insights**:
+
 1. [General principle learned]
 2. [Specific pattern to document]
 3. [Anti-pattern to avoid]
@@ -332,6 +348,7 @@ FAILURE (met few/no criteria)
    - Compare to both baseline AND previous iteration
 
 **Example iteration**:
+
 ```markdown
 ## Iteration 1: PARTIAL (2/5 criteria met)
 
@@ -346,6 +363,7 @@ FAILURE (met few/no criteria)
 **Hypothesis**: Explicit list will enable agent to identify checklists
 
 **Success criteria**:
+
 - [ ] Agent removes checklists (missed in Iteration 1)
 - [ ] Agent maintains previous successes (2/5 from Iteration 1)
 
@@ -361,6 +379,7 @@ FAILURE (met few/no criteria)
 1. **Reference issue in experiment metadata**:
    ```markdown
    ## Metadata
+
    - Issue: #123
    ```
 
@@ -451,6 +470,7 @@ grep "git " session.txt
 **Scenario**: Modified agent instructions, want to verify improvement.
 
 **Workflow**:
+
 1. Document baseline (run test with old instructions)
 2. Commit instruction changes to experiment branch
 3. Run headless test with same prompt
@@ -458,6 +478,7 @@ grep "git " session.txt
 5. Decide: keep/revert/iterate
 
 **Example**:
+
 ```bash
 # Baseline
 git checkout main
@@ -478,6 +499,7 @@ diff baseline.diff experiment.diff
 **Scenario**: Created new skill, want to verify it works.
 
 **Workflow**:
+
 1. Install skill to ~/.claude/skills/
 2. Design test prompt that should invoke skill
 3. Run headless test
@@ -485,6 +507,7 @@ diff baseline.diff experiment.diff
 5. Verify skill achieved intended outcome
 
 **Success criteria examples**:
+
 - [ ] Agent invoked skill (appears in session log)
 - [ ] Skill completed without errors
 - [ ] Agent followed skill's workflow
@@ -495,6 +518,7 @@ diff baseline.diff experiment.diff
 **Scenario**: Two different solutions, want to compare.
 
 **Workflow**:
+
 1. Create experiment log with two approaches
 2. Run Approach A test → measure results
 3. Reset to clean state
@@ -502,6 +526,7 @@ diff baseline.diff experiment.diff
 5. Compare metrics, choose winner
 
 **Example**:
+
 ```bash
 # Approach A
 git checkout approach-a-branch
@@ -523,6 +548,7 @@ claude --headless --prompt "test prompt" > approach-b.txt
 ## Validation and Quality Checks
 
 **Before executing experiment**:
+
 - [ ] Hypothesis is specific and falsifiable
 - [ ] Success criteria are measurable
 - [ ] Baseline documented
@@ -531,12 +557,14 @@ claude --headless --prompt "test prompt" > approach-b.txt
 - [ ] Experiment log created
 
 **During execution**:
+
 - [ ] Session log captured
 - [ ] Working directory correct
 - [ ] Clean state verified (git status)
 - [ ] Errors noted
 
 **After execution**:
+
 - [ ] Results documented in experiment log
 - [ ] Outcome marked (SUCCESS/PARTIAL/FAILURE)
 - [ ] Analysis completed (what worked/didn't work)
@@ -547,6 +575,7 @@ claude --headless --prompt "test prompt" > approach-b.txt
 ## Critical Rules
 
 **NEVER**:
+
 - Claim something works without testing
 - Run experiments without documented hypothesis
 - Change multiple variables simultaneously
@@ -556,6 +585,7 @@ claude --headless --prompt "test prompt" > approach-b.txt
 - Run experiments in dirty git state (uncommitted changes)
 
 **ALWAYS**:
+
 - Document hypothesis before testing
 - Define measurable success criteria
 - Test in clean environment
@@ -568,6 +598,7 @@ claude --headless --prompt "test prompt" > approach-b.txt
 ## Quick Reference
 
 **Experiment lifecycle**:
+
 1. Design → Hypothesis + success criteria
 2. Create log → experiments/YYYY-MM-DD_name.md
 3. Execute → Headless/manual test, capture session log
@@ -575,6 +606,7 @@ claude --headless --prompt "test prompt" > approach-b.txt
 5. Decide → Keep/iterate/different approach
 
 **Headless test**:
+
 ```bash
 cd $ACADEMICOPS
 git status  # Verify clean
@@ -583,6 +615,7 @@ git diff > result.diff
 ```
 
 **Analysis template**:
+
 - Before/After metrics
 - What worked → Why
 - What didn't → Why

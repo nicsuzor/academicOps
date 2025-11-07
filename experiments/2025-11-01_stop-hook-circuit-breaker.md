@@ -1,6 +1,7 @@
 # Stop Hook Circuit Breaker - Prevent Infinite Loop on Infrastructure Failure
 
 ## Metadata
+
 - Date: 2025-11-01
 - Issue: #171
 - Commit: [pending]
@@ -75,6 +76,7 @@ Modified `/home/nic/src/bot/config/settings.json`:
 **Execution**: Agent sent response, Stop hook triggered
 
 **Observed behavior**:
+
 - Stop hook attempted to run `uv run ... validate_stop.py`
 - `uv` failed (cache directory missing)
 - `|| echo '{"continue":true}'` fallback executed
@@ -82,6 +84,7 @@ Modified `/home/nic/src/bot/config/settings.json`:
 - Agent remained responsive and functional
 
 **Comparison to pre-fix behavior**:
+
 - Before: Infinite loop, session trapped, manual kill required
 - After: Single error, session continues, agent functional
 
@@ -102,6 +105,7 @@ Modified `/home/nic/src/bot/config/settings.json`:
 The core issue is **RESOLVED**. The `|| echo '{"continue":true}'` pattern successfully breaks the infinite loop when infrastructure fails during Stop hook execution.
 
 **Next steps**:
+
 1. Commit this change
 2. Run Test 2 to verify normal validation still works
 3. Monitor hook logs over next few sessions for any false-negatives
@@ -119,17 +123,20 @@ The core issue is **RESOLVED**. The `|| echo '{"continue":true}'` pattern succes
 **Issue**: Original circuit breaker had no user-visible output when hook failed
 
 **Solution**: Added stderr echo to fallback path:
+
 ```bash
 || { echo 'Stop hook validation failed - session continuing despite error' >&2; echo '{"continue":true}'; }
 ```
 
 **Pattern breakdown**:
+
 - `{ ... }` groups commands
 - `echo '...' >&2` sends message to stderr (visible to user)
 - `echo '{...}'` sends JSON to stdout (for Claude Code)
 - Both execute when `uv run` fails
 
 **Applied to**:
+
 - Stop hook (line 33)
 - SubagentStop hook (line 22)
 

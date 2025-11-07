@@ -1,6 +1,7 @@
 # README Cleanup: Minimal User Guide
 
 ## Metadata
+
 - Date: 2025-11-06
 - Issue: N/A (continuation of #195)
 - Commit: [to be added]
@@ -15,6 +16,7 @@ Removing installation/validation/usage/compliance sections from README and keepi
 ### 1. README.md Major Cleanup (-246 lines, -44% reduction)
 
 **Removed sections** (lines 261-562, 302 lines total):
+
 - Architectural Patterns sections 1-4 (resources, skill-first, anti-bloat, experiment-driven)
 - Installation & Setup (detailed instructions)
 - Validation & Testing
@@ -23,10 +25,12 @@ Removing installation/validation/usage/compliance sections from README and keepi
 - Contributing (detailed workflow)
 
 **Kept from Architectural Patterns**:
+
 - Three-Tier Instruction Loading explanation (essential for understanding framework)
 - Simplified to 13 lines with clear diagram
 
 **Added streamlined sections**:
+
 - Key References (8 essential doc links)
 - Quick Start (5 lines - just env var + script + launch)
 - License + footer
@@ -36,6 +40,7 @@ Removing installation/validation/usage/compliance sections from README and keepi
 ### 2. ARCHITECTURE.md Enhancement (+42 lines)
 
 **Added to Design Principles section**:
+
 - Mandatory Skill-First Pattern
 - Anti-Bloat Enforcement (checklist + hard limits)
 - Experiment-Driven Development (workflow steps)
@@ -45,6 +50,7 @@ Removing installation/validation/usage/compliance sections from README and keepi
 ### 3. Path Standardization
 
 **Fixed**: `docs/agents` → `docs/bots` in three-tier loading diagram
+
 - Personal tier: `$ACADEMICOPS_PERSONAL/docs/bots/*.md`
 - Project tier: `$PWD/docs/bots/*.md`
 
@@ -53,6 +59,7 @@ Removing installation/validation/usage/compliance sections from README and keepi
 ## Success Criteria
 
 **README Simplicity**:
+
 - [x] Reduced to essential user-facing content only
 - [x] Removed all technical workflow details
 - [x] Kept three-tier explanation (core concept)
@@ -60,22 +67,26 @@ Removing installation/validation/usage/compliance sections from README and keepi
 - [x] Under 350 lines total
 
 **Technical Content Consolidation**:
+
 - [x] All architectural patterns in ARCHITECTURE.md
 - [x] No duplication between docs
 - [x] Developer workflows in proper location
 
 **Accuracy**:
+
 - [x] Path references corrected (docs/bots not docs/agents)
 - [x] All cross-references valid
 
 ## Results
 
 **README.md** (Before → After):
+
 - Lines: 562 → 316 (-246, -44%)
 - Sections: 14 → 6
 - Focus: Pure user guide (what exists, how to start)
 
 **ARCHITECTURE.md**:
+
 - Lines: 381 → 423 (+42, +11%)
 - Added: 3 design principle subsections
 - Consolidation: All technical patterns now in one place
@@ -83,6 +94,7 @@ Removing installation/validation/usage/compliance sections from README and keepi
 **Net change**: -204 lines total
 
 **Content Distribution**:
+
 - **README**: Components, three-tier loading, quick start, references
 - **ARCHITECTURE**: All specifications, patterns, workflows, requirements
 
@@ -99,11 +111,13 @@ Removing installation/validation/usage/compliance sections from README and keepi
 5. **Maintained essential**: Three-tier loading explanation retained
 
 **User Experience**:
+
 - New user reads: Components tree → Three-tier concept → Quick Start → Done
 - Developer reads: README for overview → ARCHITECTURE for specifications
 - No confusion about where to find what
 
 **Removed Redundancy**:
+
 - Installation details (just reference setup script)
 - Validation instructions (developer concern, in ARCHITECTURE)
 - Usage patterns (covered by component descriptions)
@@ -113,16 +127,19 @@ Removing installation/validation/usage/compliance sections from README and keepi
 ## Technical Notes
 
 **Three-Tier Loading**:
+
 - Kept in README because it's fundamental to understanding how framework works
 - Essential for users to know their customizations layer properly
 - Simplified presentation (13 lines vs previous verbose explanation)
 
 **docs/bots Standardization**:
+
 - Corrects long-standing inconsistency
 - Actual directory: `docs/bots/` (contains BEST-PRACTICES.md, INDEX.md, etc.)
 - References now accurate throughout documentation
 
 **Architecture Consolidation**:
+
 - Mandatory Skill-First: Developer pattern
 - Anti-Bloat Enforcement: Developer checklist
 - Experiment-Driven: Developer workflow

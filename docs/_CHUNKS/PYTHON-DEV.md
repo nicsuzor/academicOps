@@ -15,6 +15,7 @@ Use python-dev when:
 5. **API design** - Creating Python interfaces and libraries
 
 **Concrete trigger examples**:
+
 - "Write a function to process user data"
 - "Refactor this module to use Pydantic"
 - "Add type hints to this code"
@@ -26,6 +27,7 @@ Use python-dev when:
 ### 1. Fail-Fast: No Defaults, No Fallbacks
 
 **FORBIDDEN**:
+
 ```python
 # ❌ Silent defaults
 value = config.get("api_key", "default_key")
@@ -43,6 +45,7 @@ if value is None:
 ```
 
 **REQUIRED**:
+
 ```python
 # ✅ Explicit, fails immediately
 value = config["api_key"]  # KeyError if missing - GOOD
@@ -63,12 +66,14 @@ if "api_key" not in config:
 ### 2. Type Safety: Always Use Type Hints
 
 **Required for ALL**:
+
 - Function signatures (parameters and return types)
 - Class attributes
 - Complex data structures
 - Public APIs
 
 **Type Hint Patterns**:
+
 ```python
 from typing import Optional, List, Dict, Set, Tuple, Union, Any
 from pathlib import Path
@@ -131,12 +136,14 @@ def load_config(source: Union[str, Path, Dict[str, Any]]) -> Config:
 ### 3. Pydantic for Configuration and Validation
 
 **Use Pydantic for**:
+
 - Configuration objects (from YAML/JSON)
 - Data validation at boundaries
 - API request/response models
 - Complex data structures with validation rules
 
 **Pattern**:
+
 ```python
 from pydantic import BaseModel, Field, field_validator
 from pathlib import Path
@@ -181,6 +188,7 @@ config = ProjectConfig(
 ```
 
 **Validation at Boundaries**:
+
 ```python
 # ✅ Validate external data immediately
 def process_api_response(raw_data: Dict[str, Any]) -> ProcessedData:
@@ -200,6 +208,7 @@ def internal_function(data: ProcessedData) -> Result:
 ### 4. Modern Python: pathlib, f-strings, comprehensions
 
 **Use pathlib, not os.path**:
+
 ```python
 from pathlib import Path
 
@@ -222,6 +231,7 @@ if os.path.exists(input_file):
 ```
 
 **Use f-strings for formatting**:
+
 ```python
 # ✅ f-strings
 name = "Alice"
@@ -234,6 +244,7 @@ message = "User {} is {} years old".format(name, age)
 ```
 
 **Use comprehensions for transformations**:
+
 ```python
 # ✅ List comprehensions
 active_users = [u for u in users if u.is_active]
@@ -255,6 +266,7 @@ for u in users:
 ### 5. No Bare Excepts, Specific Error Handling
 
 **FORBIDDEN**:
+
 ```python
 # ❌ Bare except (catches EVERYTHING)
 try:
@@ -270,6 +282,7 @@ except Exception:
 ```
 
 **REQUIRED**:
+
 ```python
 # ✅ Specific exceptions
 try:
@@ -286,11 +299,13 @@ result = api_call()  # If it fails, it fails - FIX THE ROOT CAUSE
 ```
 
 **When to catch exceptions**:
+
 - At system boundaries (logging, then re-raising)
 - When you can meaningfully recover
 - For cleanup (use `finally` or context managers)
 
 **When NOT to catch**:
+
 - To hide errors
 - To provide default values
 - To "make it work" when it should fail
@@ -319,6 +334,7 @@ result = api_call()  # If it fails, it fails - FIX THE ROOT CAUSE
    - Boundary conditions
 
 **Example**:
+
 ```python
 def calculate_statistics(
     data: List[float],
@@ -358,6 +374,7 @@ def calculate_statistics(
 **Use test-writing skill for detailed TDD workflow**.
 
 **Quick reference**:
+
 ```python
 def test_calculate_statistics_basic(real_conf):
     """Test basic statistical calculations."""
@@ -397,6 +414,7 @@ def test_calculate_statistics_invalid_percentiles():
 - [ ] Single responsibility (function does one thing)
 
 **Example**:
+
 ```python
 from pathlib import Path
 from typing import List, Dict
@@ -480,6 +498,7 @@ def process_batch(
    - Verify fix with pytest
 
 **Logging (not print)**:
+
 ```python
 import logging
 
@@ -666,6 +685,7 @@ def process_directory(
 When reviewing Python code, check:
 
 **Fail-Fast**:
+
 - [ ] No `.get(key, default)` for required config
 - [ ] No `try/except` returning defaults
 - [ ] No `if x is None: x = fallback`
@@ -673,18 +693,21 @@ When reviewing Python code, check:
 - [ ] Pydantic fields have no defaults (required)
 
 **Type Safety**:
+
 - [ ] All function parameters have type hints
 - [ ] All return types specified
 - [ ] Optional used for nullable values
 - [ ] Complex types properly hinted (List, Dict, etc.)
 
 **Modern Python**:
+
 - [ ] Uses pathlib for file operations
 - [ ] Uses f-strings for formatting
 - [ ] Uses comprehensions for transformations
 - [ ] No bare `except:` clauses
 
 **Quality**:
+
 - [ ] Docstrings with Args/Returns/Raises
 - [ ] Clear variable names
 - [ ] Single responsibility per function
@@ -692,6 +715,7 @@ When reviewing Python code, check:
 - [ ] Logging instead of print
 
 **Testing**:
+
 - [ ] Tests exist for functionality
 - [ ] Tests use real_bm/real_conf fixtures
 - [ ] Tests cover edge cases
@@ -700,6 +724,7 @@ When reviewing Python code, check:
 ## Critical Rules
 
 **NEVER**:
+
 - Use `.get()` with defaults for required configuration
 - Use bare `except:` or overly broad exception handling
 - Create standalone test/debug/verify scripts
@@ -709,6 +734,7 @@ When reviewing Python code, check:
 - Add defaults to Pydantic required fields
 
 **ALWAYS**:
+
 - Fail immediately on missing required config
 - Use specific exception types
 - Use pytest for all testing
@@ -720,6 +746,7 @@ When reviewing Python code, check:
 ## Quick Reference
 
 **Template for new function**:
+
 ```python
 from typing import List, Dict, Any
 from pathlib import Path
@@ -754,6 +781,7 @@ def function_name(
 ```
 
 **Template for Pydantic config**:
+
 ```python
 from pydantic import BaseModel, Field, field_validator
 from pathlib import Path
@@ -777,6 +805,7 @@ class MyConfig(BaseModel):
 ```
 
 **Command reference**:
+
 ```bash
 # Run specific test
 uv run pytest tests/test_module.py::test_function -xvs

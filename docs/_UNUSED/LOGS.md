@@ -25,6 +25,7 @@ my_log_tool logs -n 50 -l ERROR
 If a dedicated tool is not available, you can use standard command-line tools like `grep` and `jq`.
 
 ### 1. View Recent Structured Log Entries
+
 ```bash
 # View last N lines of JSONL logs
 tail -50 /tmp/project_*.jsonl
@@ -34,6 +35,7 @@ tail -100 /tmp/project_*.jsonl | jq 'select(.level == "ERROR")'
 ```
 
 ### 2. Filter by Log Level (Manual)
+
 ```bash
 # Show only ERROR and CRITICAL messages
 grep '"level":"ERROR"\|"level":"CRITICAL"' /tmp/project_*.jsonl | tail -50
@@ -43,6 +45,7 @@ grep '"level":"WARNING"\|"level":"ERROR"\|"level":"CRITICAL"' /tmp/project_*.jso
 ```
 
 ### 3. Search for Errors and Exceptions
+
 ```bash
 # Find errors, exceptions, and tracebacks in any log file
 grep -iE "error|exception|traceback|failed" /tmp/*.log | tail -50
@@ -54,11 +57,13 @@ grep -A 10 "Traceback (most recent call last)" /tmp/*.log
 ## Building Custom Grep Commands
 
 ### Basic Structure
+
 ```bash
 grep [OPTIONS] "PATTERN" /path/to/logs | tail -N
 ```
 
 ### Useful Options
+
 - `-i`: Case-insensitive search
 - `-E`: Extended regex (use `|` for OR, `()` for grouping)
 - `-A N`: Show N lines after match

@@ -17,6 +17,7 @@ Fixes #123" && git push
 ```
 
 **Why this works:**
+
 - `cd` and git commands chained in ONE bash call
 - Working directory change persists within that call
 - All git operations execute in correct directory
@@ -35,6 +36,7 @@ git -C bot add file.md
 ## Conventional Commits
 
 **Format:**
+
 ```
 <type>(<scope>): <subject>
 
@@ -44,6 +46,7 @@ Fixes #<issue>
 ```
 
 **Types:**
+
 - `fix` - Bug fixes
 - `feat` - New features
 - `docs` - Documentation changes
@@ -52,6 +55,7 @@ Fixes #<issue>
 - `chore` - Maintenance tasks
 
 **Scopes (for bot/ repo):**
+
 - `prompts` - Agent instruction changes
 - `infrastructure` - Scripts, hooks, configs
 - `docs` - Documentation files

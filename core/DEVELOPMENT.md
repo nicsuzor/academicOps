@@ -19,6 +19,7 @@ Generic development principles and TDD workflow. Project-specific enhancements i
 ## Core Principles
 
 **Test-Driven Development (TDD)**:
+
 1. Write test first (red)
 2. Implement minimum code to pass (green)
 3. Refactor if needed
@@ -26,6 +27,7 @@ Generic development principles and TDD workflow. Project-specific enhancements i
 5. Repeat for next feature
 
 **Quality Gates**:
+
 - All tests must pass before commit
 - Code review via git-commit skill validation
 - No defensive coding - fail fast on misconfiguration
@@ -34,6 +36,7 @@ Generic development principles and TDD workflow. Project-specific enhancements i
 **Supervisor Workflow**:
 
 When tasks are complex (multiple steps, coordination needed):
+
 1. Invoke supervisor agent
 2. Supervisor creates success checklist
 3. Supervisor delegates atomic tasks to specialized subagents
@@ -41,6 +44,7 @@ When tasks are complex (multiple steps, coordination needed):
 5. Supervisor verifies completion against checklist
 
 **When NOT to use supervisor**:
+
 - Single-step tasks (use specialized agent directly)
 - Pure exploration (use Explore subagent)
 - Trivial changes
@@ -60,12 +64,14 @@ When tasks are complex (multiple steps, coordination needed):
 ## Fail-Fast Philosophy
 
 **NO defensive coding**:
+
 - ❌ Default values that mask configuration errors
 - ❌ Silent fallbacks that hide problems
 - ❌ Try/except blocks catching legitimate errors
 - ❌ Warnings instead of errors for critical problems
 
 **YES explicit failure**:
+
 - ✅ Raise exceptions when configuration missing
 - ✅ Explicit validation with clear error messages
 - ✅ One golden path - no hidden alternatives
@@ -76,6 +82,7 @@ When tasks are complex (multiple steps, coordination needed):
 ## Shared Infrastructure Impact
 
 **High-risk shared files** (require extra caution):
+
 - Core configuration modules
 - Base classes and utilities
 - Authentication/authorization
@@ -91,11 +98,13 @@ When tasks are complex (multiple steps, coordination needed):
 5. **Document rationale**: Why is this change necessary?
 
 **Red flags**:
+
 - "Let me add a default here to fix my specific case"
 - "I'll add a parameter with a default to avoid breaking others"
 - "This quick fix should work for my use case"
 
 **Correct approach**:
+
 - Understand why shared code behaves as it does
 - Fix root cause in your usage, not shared infrastructure
 - If shared code truly has a bug, fix it properly with tests
@@ -104,6 +113,7 @@ When tasks are complex (multiple steps, coordination needed):
 ## Common Anti-Patterns
 
 **Repository Documentation Pollution**:
+
 - ❌ `*_README.md`, `*_NOTES.md`, `*_STATUS.md` for bug tracking
 - ❌ Progress tracking files in test directories
 - ❌ Implementation status files duplicating GitHub issues
@@ -112,6 +122,7 @@ When tasks are complex (multiple steps, coordination needed):
 - ✅ General docs in `docs/` only if widely applicable
 
 **Rush-to-Code**:
+
 - ❌ Jumping to implementation without understanding problem
 - ❌ Skipping exploration phase
 - ❌ Modifying code before reading related code

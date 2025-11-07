@@ -13,6 +13,7 @@ Follow coding standards in `bot/agents/DEVELOPER.md`
 **Applies to**: All files in `tests/` directories
 
 ### Requirements
+
 - ✅ MUST use `real_bm` or `real_conf` fixtures from conftest.py
 - ❌ MUST NOT use `initialize_config_dir()`
 - ❌ MUST NOT use `compose()`
@@ -20,12 +21,14 @@ Follow coding standards in `bot/agents/DEVELOPER.md`
 - ❌ MUST NOT create fixtures that load Hydra configs
 
 ### Detection Patterns (for code review)
+
 Search test files for these FORBIDDEN patterns:
+
 - `initialize_config_dir`
 - `compose(`
 - `GlobalHydra`
 - `@pytest.fixture` followed by Hydra config loading
 
 ### If Violated
-**BLOCK commit** with message:
-"Test file {filename} loads configs directly. Use real_bm or real_conf fixtures instead. See TEST-CLEANER.md for details."
+
+**BLOCK commit** with message: "Test file {filename} loads configs directly. Use real_bm or real_conf fixtures instead. See TEST-CLEANER.md for details."

@@ -17,9 +17,7 @@ You are responsible for agent performance in the @nicsuzor/academicOps project.
 
 ## Framework Context
 
-@resources/SKILL-PRIMER.md
-@resources/AXIOMS.md
-@resources/INFRASTRUCTURE.md
+@resources/SKILL-PRIMER.md @resources/AXIOMS.md @resources/INFRASTRUCTURE.md
 
 ## Overview
 
@@ -34,6 +32,7 @@ Maintain and optimize agent framework performance through surgical, experiment-d
 ### Document Types & Their Purpose
 
 **ARCHITECTURE.md** - Timeless structural specification:
+
 - Three-tier repository system (framework/personal/project)
 - File structure for each tier
 - Component specifications (what agents/skills/hooks/chunks ARE)
@@ -41,6 +40,7 @@ Maintain and optimize agent framework performance through surgical, experiment-d
 - **NEVER includes**: Testing procedures, installation steps, coding standards, process workflows, metrics, status, progress indicators, temporal labels (NEW), line counts
 
 **chunks/AXIOMS.md** - Universal principles:
+
 - Core axioms (fail-fast, DRY, explicit configuration)
 - Behavioral rules (no workarounds, verify first)
 - Tool failure protocol
@@ -48,6 +48,7 @@ Maintain and optimize agent framework performance through surgical, experiment-d
 - **WHY it belongs here**: Universal across all contexts, loaded by all agents
 
 **docs/bots/BEST-PRACTICES.md** - Evidence-based agent design:
+
 - Context engineering principles
 - Instruction writing guidelines
 - What works/doesn't work (with citations)
@@ -55,6 +56,7 @@ Maintain and optimize agent framework performance through surgical, experiment-d
 - **WHY it belongs here**: Meta-level guidance for building agents
 
 **README.md** - User-facing capabilities guide:
+
 - What tools exist and what they do
 - Quick reference: which tool when
 - Component tree (auto-generated)
@@ -62,19 +64,22 @@ Maintain and optimize agent framework performance through surgical, experiment-d
 - **NEVER includes**: Agent instructions, implementation details, process workflows
 
 **Skills** - Process workflows:
+
 - HOW to execute specific tasks
 - Step-by-step procedures
 - Tool invocation sequences
 - Checklists and validation
 - Example: aops-trainer contains the experiment workflow, not ARCHITECTURE.md
 
-**Core instruction files** (core/_CORE.md, agents/*.md, commands/*.md):
+**Core instruction files** (core/_CORE.md, agents/_.md, commands/_.md):
+
 - Runtime instructions for agents
 - Task-specific orchestration
 - When to invoke which skills
 - **References** universal content, doesn't duplicate it
 
 **Installation/testing docs** (INSTALL.md, TESTING.md):
+
 - Setup procedures
 - Test execution commands
 - Environment configuration
@@ -111,6 +116,7 @@ When creating or editing content, ask:
 ### Common Mistakes to Avoid
 
 ❌ **Putting process in ARCHITECTURE.md**:
+
 - Testing procedures → Belongs in TESTING.md or skill
 - Installation steps → Belongs in INSTALL.md
 - Experiment workflow → Belongs in aops-trainer skill
@@ -120,23 +126,27 @@ When creating or editing content, ask:
 - **Step-by-step procedures** → Process, not structure
 
 **Process vs Principle distinction**:
+
 - ✅ PRINCIPLE: "Enforcement hierarchy: Scripts > Hooks > Config > Instructions" (describes WHAT the pattern is)
 - ❌ PROCESS: "Pre-addition checklist: [ ] Tried scripts first?" (describes HOW to apply it)
 - ✅ PRINCIPLE: "Experiment-driven development" (describes WHAT the approach is)
 - ❌ PROCESS: "ALL changes require: 1. GitHub issue 2. Experiment log..." (describes HOW to do it)
 
 ❌ **Putting coding standards in ARCHITECTURE.md**:
+
 - "No `.get(key, default)`" → Belongs in chunks/AXIOMS.md (universal principle)
 - "Use uv run python" → Belongs in chunks/AXIOMS.md (universal tool)
 - Specific line limits → Belongs in skill that enforces them
 
 ❌ **Putting temporal/metric content in ARCHITECTURE.md**:
+
 - "(NEW)" labels → Remove, architecture is timeless
 - "(97 lines)" counts → Remove, metrics change
 - "All tests passing ✅" → Remove, status changes
 - "down from 113" → Remove, progress doesn't belong in specification
 
 ❌ **Duplicating universal content**:
+
 - If chunks/AXIOMS.md has it → Reference it, don't copy
 - If docs/bots/BEST-PRACTICES.md explains it → Link to it
 - One source, many references (DRY)
@@ -156,6 +166,7 @@ Before modifying any documentation file:
 **CHUNK EVERYTHING**: No documentation file should exceed ~200 lines. When files grow large, modularize into topic-focused chunks.
 
 **Why chunking matters**:
+
 - **Token efficiency**: Agents load only relevant topics via @references
 - **Maintainability**: Smaller files easier to update and keep current
 - **DRY enforcement**: Each chunk has single responsibility, clear purpose
@@ -178,16 +189,19 @@ Before modifying any documentation file:
    - Agents load index, then specific topics as needed
 
 **Hard limits**:
+
 - Documentation files >200 lines → CHUNK IT
 - Reference files (chunks/, docs/bots/) >300 lines → CHUNK IT
 - Any file approaching size limit → Plan chunking strategy BEFORE adding content
 
 **When chunking, preserve**:
+
 - Cross-references between chunks
 - Navigation (index file with all @references)
 - Authoritative source designation (which file is canonical for what)
 
 **Example chunk structure**:
+
 ```
 docs/bots/
 ├── BEST-PRACTICES.md          # Index (137 lines)
@@ -214,6 +228,7 @@ Total content preserved, but modular and loadable on-demand.
 6. **References** - Pointers to other docs
 
 **When refactoring ARCHITECTURE.md**, remove ALL:
+
 - Checklists (especially "Pre-addition checklist", "Before adding >5 lines")
 - "ALL changes require" procedural lists
 - Testing commands and procedures
@@ -222,6 +237,7 @@ Total content preserved, but modular and loadable on-demand.
 - Temporal markers (NEW, line counts, status updates)
 
 **Keep ONLY**:
+
 - Structural specifications (what exists, where it lives)
 - Component requirements (what makes something valid)
 - Pattern names and brief descriptions (not enforcement procedures)
@@ -234,29 +250,34 @@ Total content preserved, but modular and loadable on-demand.
 ### Specificity Over Generality
 
 **What doesn't work**:
+
 - General guidance: "Process content doesn't belong in ARCHITECTURE.md"
 - Abstract principles: "Distinguish between structure and process"
 - Vague directives: "Be concise"
 
 **What works**:
+
 - Concrete examples with ✅/❌ markers
 - Explicit removal lists: "Remove ALL: checklists, 'ALL changes require' lists"
 - File-specific sections: "ARCHITECTURE.md Specific Guidance"
 - Show the distinction: "✅ PRINCIPLE: X vs ❌ PROCESS: Y"
 
 **Experiment evidence**: ARCHITECTURE.md refactoring attempts
+
 - Attempt 1 (general guidance): Removed 2/5 violations (40% success)
 - Attempt 2 (specific examples + explicit lists): Removed 5/5 violations (100% success)
 
 ### Examples Are More Powerful Than Rules
 
 **Principle alone fails**:
+
 ```
 "Distinguish between principles and process implementations"
 → Agent couldn't identify "ALL changes require..." as process
 ```
 
 **Principle + Example succeeds**:
+
 ```
 Process vs Principle distinction:
 - ✅ PRINCIPLE: "Experiment-driven development"
@@ -271,12 +292,14 @@ Process vs Principle distinction:
 When agents might confuse two similar concepts, explicitly contrast them:
 
 **Example from this skill**:
+
 - PRINCIPLE: "Anti-bloat enforcement" (describes WHAT the pattern is)
 - PROCESS: "Pre-addition checklist" (describes HOW to apply it)
 
 Without this distinction shown, agents keep checklists thinking they're part of the principle.
 
 **Checklist for instruction writing**:
+
 1. What will agents confuse with what? (principle vs implementation, structure vs process)
 2. Can you show both side-by-side with ✅/❌ markers?
 3. What specific strings should agents search for? (Give them: "checklists", "ALL...require", "before doing X")
@@ -284,10 +307,12 @@ Without this distinction shown, agents keep checklists thinking they're part of 
 ### Component-Specific Guidance Beats Generic Rules
 
 **Generic guidance** (less effective):
+
 - "Testing procedures don't belong in architecture documents"
 - Agents may interpret differently for different files
 
 **Component-specific guidance** (more effective):
+
 ```
 ### ARCHITECTURE.md Specific Guidance
 
@@ -304,9 +329,11 @@ When refactoring ARCHITECTURE.md, remove ALL:
 Agents respond better to explicit removal lists than inference:
 
 **Inference-based** (requires agent reasoning):
+
 - "Process content doesn't belong" → Agent must figure out what that means
 
 **Explicit list** (direct action):
+
 - "Remove ALL: Checklists, 'ALL changes require', Testing commands, Installation procedures"
 - Agent searches for these patterns and removes them
 
@@ -324,6 +351,7 @@ Agents respond better to explicit removal lists than inference:
 5. **Iterate** until success rate acceptable
 
 **Evidence**: This skill improved via 2-iteration cycle
+
 - Iteration 1: Added Information Architecture (general)
 - Iteration 2: Added Process vs Principle examples + ARCHITECTURE.md section (specific)
 - Result: 40% → 100% success rate
@@ -331,16 +359,19 @@ Agents respond better to explicit removal lists than inference:
 ### What NOT to Do
 
 ❌ **Don't assume agents understand context you have**:
+
 - You know "ALL changes require: 1. 2. 3..." is a process
 - Agent sees "changes" and "require" and might think it's a rule about the system
 - Solution: Show the distinction explicitly
 
 ❌ **Don't rely on agents inferring from principles**:
+
 - Principle: "DRY - don't repeat yourself"
 - Agent may not realize chunks/AXIOMS.md content shouldn't be in ARCHITECTURE.md
 - Solution: Explicit DRY check in validation questions
 
 ❌ **Don't write instructions for yourself**:
+
 - Write for an agent that has ZERO context about your intent
 - What seems obvious to you is not obvious to LLMs
 - Test your assumptions with experiments
@@ -355,18 +386,16 @@ Agents respond better to explicit removal lists than inference:
 **When to use**: [Explicit trigger conditions]
 
 **Canonical structure** (if applicable):
+
 1. [Step 1]
 2. [Step 2]
 
-**Common mistakes**:
-❌ [Mistake pattern] → [Correct alternative]
-❌ [Mistake pattern] → [Correct alternative]
+**Common mistakes**: ❌ [Mistake pattern] → [Correct alternative] ❌ [Mistake pattern] → [Correct alternative]
 
-**Examples**:
-✅ CORRECT: [Concrete example]
-❌ WRONG: [Concrete counter-example]
+**Examples**: ✅ CORRECT: [Concrete example] ❌ WRONG: [Concrete counter-example]
 
 **Explicit removal/addition lists** (if applicable):
+
 - Remove ALL: [Item 1], [Item 2], [Item 3]
 - Keep ONLY: [Item 1], [Item 2]
 
@@ -374,6 +403,7 @@ Agents respond better to explicit removal lists than inference:
 ```
 
 **Why this template works**:
+
 - Purpose prevents scope creep
 - Canonical structure gives clear path
 - Common mistakes show ✅/❌ distinctions
@@ -457,21 +487,25 @@ Use agent-optimization when:
 ### 5. Context Engineering Principles (Anthropic Official)
 
 **Context as Finite Resource**:
+
 - LLMs have "attention budget" that depletes with excessive tokens
 - Target "smallest set of high-signal tokens" for desired outcomes
 - Even with large context windows, context pollution degrades performance
 
 **The Goldilocks Altitude**:
+
 - Too Low: Overly complex, brittle hardcoded logic
 - Too High: Vague guidance assuming shared context
 - Just Right: Specific paired with flexible guidance through strong heuristics
 
 **Examples Over Exhaustive Rules**:
+
 - "Examples are the 'pictures' worth a thousand words"
 - Use 2-3 canonical examples showing expected behavior
 - More effective than exhaustive rule documentation
 
 **What to AVOID** (from official best practices):
+
 - ❌ Unnecessary background history that doesn't affect behavior
 - ❌ FAQ sections answering questions the agent hasn't asked
 - ❌ Excessive scene-setting and motivational preambles
@@ -648,24 +682,30 @@ Use agent-optimization when:
     # bot/experiments/YYYY-MM-DD_name.md
 
     ## Metadata
+
     - Date: YYYY-MM-DD
     - Issue: #NNN
     - Commit: [hash]
     - Model: [claude-sonnet-4-5/gemini-2.0-flash]
 
     ## Hypothesis
+
     [What you expect to happen]
 
     ## Changes Made
+
     [Specific modifications]
 
     ## Success Criteria
+
     [How to measure if this worked]
 
     ## Results
+
     [To be filled after testing]
 
     ## Outcome
+
     [Success/Failure/Partial]
     ```
 
@@ -739,6 +779,7 @@ Use agent-optimization when:
 ### When to Refine Components
 
 Use this workflow when:
+
 - Component (subagent/skill/command/hook) shows signs of bloat (>500 lines)
 - Instructions contain FAQ-style content or excessive examples
 - Background context doesn't directly affect behavior
@@ -754,6 +795,7 @@ Read `@$ACADEMICOPS/docs/bots/BEST-PRACTICES.md` to ensure current understanding
 **2. Audit Component**:
 
 Review component against best practices checklist:
+
 - [ ] Is context minimal and high-signal? (not comprehensive)
 - [ ] Are instructions specific, not vague?
 - [ ] Do I use 2-3 examples vs exhaustive rules?
@@ -765,6 +807,7 @@ Review component against best practices checklist:
 **3. Identify Bloat Categories**:
 
 Classify what to remove/refactor:
+
 - **Background fluff**: History, motivation, philosophical preambles → DELETE or move to reference doc
 - **FAQ content**: Answering questions not asked → DELETE
 - **Excessive examples**: >3 examples → Reduce to 2-3 canonical cases
@@ -776,6 +819,7 @@ Classify what to remove/refactor:
 **4. Refactor Component**:
 
 Apply surgical changes:
+
 - Extract bloat to separate reference document (if useful)
 - Replace vague with specific instructions
 - Consolidate duplicate content with references
@@ -785,6 +829,7 @@ Apply surgical changes:
 **5. Validate Effectiveness**:
 
 Before/after comparison:
+
 - Token count reduction (target: 20-50% reduction for bloated components)
 - Clarity improvement (specific vs vague instruction count)
 - Structure improvement (clear sections vs mixed content)
@@ -792,6 +837,7 @@ Before/after comparison:
 **6. Test Component**:
 
 Create experiment log and test refined component:
+
 - Does it still achieve intended behavior?
 - Is performance improved, maintained, or degraded?
 - Document outcome and iterate if needed
@@ -800,31 +846,33 @@ Create experiment log and test refined component:
 
 ```markdown
 ❌ BEFORE (150 lines, bloated):
+
 # Agent X
 
 ## Background
+
 [50 lines of history and motivation]
 
 ## Instructions
+
 When you do task Y, follow these steps:
+
 1. Step one
-2. Step two
-[30 lines of detailed steps]
+2. Step two [30 lines of detailed steps]
 
 ## FAQ
-Q: What if X happens?
-A: [Answer]
-[40 lines of Q&A]
+
+Q: What if X happens? A: [Answer] [40 lines of Q&A]
 
 ## Examples
+
 [30 lines of 10 different examples]
 
 ✅ AFTER (40 lines, focused):
+
 # Agent X
 
-<background_information>
-Essential context: [5 lines only]
-</background_information>
+<background_information> Essential context: [5 lines only] </background_information>
 
 <instructions>
 Task Y workflow:
@@ -884,6 +932,7 @@ Update README.md instruction tree documentation when:
 - **Unique**: Distinguishable from other components (if similar descriptions → architectural smell)
 
 **Reference**: The `scripts/generate_instruction_tree.py` script automatically extracts descriptions from:
+
 - YAML frontmatter `description:` field (agents, skills, commands)
 - Python module docstring first line (hooks)
 
@@ -925,21 +974,21 @@ Update README.md instruction tree documentation when:
 
 ```markdown
 ❌ OVERLAP DETECTED:
+
 - skill-creator: "Guide for creating effective skills"
 - skill-maintenance: "Ongoing skill maintenance and evolution"
-- aops-trainer: "Reviewing and improving skills"
-→ All three mention "skills" - are responsibilities clear?
+- aops-trainer: "Reviewing and improving skills" → All three mention "skills" - are responsibilities clear?
 
 ❌ FRAGMENTATION DETECTED:
+
 - email-fetch: "Fetches emails from Outlook"
 - email-parse: "Extracts tasks from email content"
-- email-archive: "Archives processed emails"
-→ Three skills for email workflow - should be one?
+- email-archive: "Archives processed emails" → Three skills for email workflow - should be one?
 
 ❌ CONFUSION DETECTED:
+
 - agent-config: "Manages agent configurations"
-- settings-handler: "Handles framework settings"
-→ What's difference between "manage" and "handle"? Between "agent configurations" and "framework settings"?
+- settings-handler: "Handles framework settings" → What's difference between "manage" and "handle"? Between "agent configurations" and "framework settings"?
 ```
 
 ### Maintenance Workflow
@@ -1066,6 +1115,7 @@ This ensures documentation never falls out of sync with code, and architectural 
 ### The Problem
 
 Agents often try to "figure out" instructions on their own by:
+
 - Searching for documentation manually
 - Guessing at workflows
 - Attempting tasks without proper context
@@ -1078,6 +1128,7 @@ This wastes tokens, creates inconsistency, and leads to errors.
 **PRINCIPLE**: All subagents and slash commands MUST invoke their corresponding skill FIRST before attempting any work.
 
 **Benefits**:
+
 1. **Context efficiency**: Skills have built-in context that loads once
 2. **Consistency**: Same workflow every time
 3. **Documentation discovery**: Skills contain references and indices
@@ -1096,11 +1147,13 @@ description: [One-line description]
 **MANDATORY FIRST STEP**: Invoke the `skill-name` skill IMMEDIATELY. The skill provides all context, workflows, and documentation needed for [task type].
 
 **DO NOT**:
+
 - Attempt to figure out instructions on your own
 - Search for documentation manually
 - Start work before loading the skill
 
 The skill-name skill contains:
+
 - [Key capability 1]
 - [Key capability 2]
 - [Key capability 3]
@@ -1143,6 +1196,7 @@ When creating skills to support this pattern, ensure they include:
 1. **Documentation Index**: Clear references to all relevant docs
    ```markdown
    ## References
+
    - Core instructions: `@$ACADEMICOPS/core/_CORE.md`
    - Best practices: `@$ACADEMICOPS/docs/bots/BEST-PRACTICES.md`
    - Detailed guide: `@$ACADEMICOPS/references/specific-guide.md`
@@ -1151,6 +1205,7 @@ When creating skills to support this pattern, ensure they include:
 2. **Workflow Checklist**: Step-by-step process
    ```markdown
    ## Workflow
+
    1. [Step 1 with specifics]
    2. [Step 2 with specifics]
    3. [Step 3 with specifics]
@@ -1159,13 +1214,14 @@ When creating skills to support this pattern, ensure they include:
 3. **Critical Rules**: Key principles and constraints
    ```markdown
    ## Critical Rules
-   **NEVER**: [List of prohibited actions]
-   **ALWAYS**: [List of required actions]
+
+   **NEVER**: [List of prohibited actions] **ALWAYS**: [List of required actions]
    ```
 
 4. **Quick Reference**: Condensed lookup for experienced users
    ```markdown
    ## Quick Reference
+
    - Pattern A: [Brief description]
    - Pattern B: [Brief description]
    ```
@@ -1188,6 +1244,7 @@ When reviewing or creating components, verify:
 ### The Problem
 
 Skills don't receive SessionStart hooks, so they lack:
+
 - Universal principles (axioms, fail-fast, DRY)
 - Framework infrastructure knowledge ($ACADEMICOPS paths, repo structure)
 - Repository-specific context
@@ -1208,13 +1265,16 @@ skills/skill-name/
 ### When to Include Each Chunk
 
 **All skills MUST include**:
+
 - `SKILL-PRIMER.md` - Explains skill execution context
 - `AXIOMS.md` - Universal principles (fail-fast, DRY, standard tools, etc.)
 
 **Framework-touching skills MUST include**:
+
 - `INFRASTRUCTURE.md` - Repository structure, $ACADEMICOPS paths, environment variables
 
 **Framework-touching skills** are those that:
+
 - Read/write framework files (commands/, agents/, skills/, core/)
 - Need to know about $ACADEMICOPS repository structure
 - Work with multi-tier loading system
@@ -1222,12 +1282,14 @@ skills/skill-name/
 Examples: aops-trainer, skill-creator, skill-maintenance, claude-hooks, claude-md-maintenance, agent-initialization
 
 **Non-framework skills** (skip INFRASTRUCTURE.md):
+
 - General-purpose utilities that don't touch framework files
 - Examples: pdf, archiver, strategic-partner, analyst
 
 ### Creating Symlinks
 
 **In development** (bot repo - for skills in bot/skills/):
+
 ```bash
 cd bot/skills/skill-name/
 mkdir -p resources
@@ -1238,6 +1300,7 @@ ln -s ../../../chunks/INFRASTRUCTURE.md INFRASTRUCTURE.md  # If framework-touchi
 ```
 
 **In installed skills** (~/.claude/skills/):
+
 ```bash
 cd ~/.claude/skills/skill-name/
 mkdir -p resources
@@ -1254,14 +1317,13 @@ Add at the top of every SKILL.md (after frontmatter, before first section):
 ```markdown
 ## Framework Context
 
-@resources/SKILL-PRIMER.md
-@resources/AXIOMS.md
-@resources/INFRASTRUCTURE.md  # If framework-touching only
+@resources/SKILL-PRIMER.md @resources/AXIOMS.md @resources/INFRASTRUCTURE.md # If framework-touching only
 ```
 
 ### DRY Compliance
 
 This pattern maintains DRY because:
+
 - ✅ Each principle exists in EXACTLY ONE file (`chunks/*.md`)
 - ✅ Skills access via filesystem symlinks (not duplication)
 - ✅ Updates to chunks/ automatically propagate to all skills
@@ -1270,6 +1332,7 @@ This pattern maintains DRY because:
 ### Packaging and Installation
 
 When packaging skills for distribution:
+
 - Symlinks should be resolved to actual file contents
 - Result: Self-contained skills with embedded context
 - No runtime dependency on bot repo location
@@ -1365,12 +1428,12 @@ jq 'select(.type == "assistant") | .message.content | map(select(.type == "text"
 # Agent Instructions
 
 When you finish a task, you must:
+
 1. Review all changes
 2. Check for errors
 3. Run tests
 4. Commit changes
-5. Push to remote
-[... 85 more lines of detailed steps ...]
+5. Push to remote [... 85 more lines of detailed steps ...]
 ```
 
 **Good**:
@@ -1391,6 +1454,7 @@ After completing tasks, use the `git-commit` skill to validate and commit change
 # Developer Agent
 
 ## Core Rules
+
 - Fail-fast philosophy: no defaults, no fallbacks
 - [85 lines explaining fail-fast]
 - DRY principle: one source of truth
@@ -1403,6 +1467,7 @@ After completing tasks, use the `git-commit` skill to validate and commit change
 # Developer Agent
 
 Follow core axioms in `_CORE.md`:
+
 - Axiom #7: Fail-fast (no defaults)
 - Axiom #10: DRY and explicit
 
@@ -1419,11 +1484,11 @@ Load development workflow via `/dev` command.
 # Agent Instructions
 
 Before committing, you must:
+
 1. Check that all validation rules pass
 2. Verify files are staged
 3. Ensure commit message follows format
-4. Include attribution footer
-[Agent still forgets sometimes]
+4. Include attribution footer [Agent still forgets sometimes]
 ```
 
 **Good**:
@@ -1440,11 +1505,9 @@ fi
 
 ### Anti-Pattern 4: Speculative Changes
 
-**Bad**:
-"I think adding retry logic would help agents handle API failures better. Let me add 50 lines of retry instructions."
+**Bad**: "I think adding retry logic would help agents handle API failures better. Let me add 50 lines of retry instructions."
 
-**Good**:
-"Agent failed on API timeout (Issue #123).
+**Good**: "Agent failed on API timeout (Issue #123).
 
 Hypothesis: Adding hook to catch httpx.TimeoutError would prevent cascade failures.
 
@@ -1584,20 +1647,26 @@ As new learnings emerge from experiments and research:
 
 ```markdown
 # Metadata
+
 Date, Issue, Commit, Model
 
 # Hypothesis
+
 What we expect
 
 # Changes
+
 What we modified
 
 # Success Criteria
+
 How to measure
 
 # Results
+
 What actually happened
 
 # Outcome
+
 Success/Failure/Partial
 ```

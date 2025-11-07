@@ -9,8 +9,7 @@ permalink: aops/skills/task-management/skill
 
 ## Framework Context
 
-@resources/SKILL-PRIMER.md
-@resources/AXIOMS.md
+@resources/SKILL-PRIMER.md @resources/AXIOMS.md
 
 ## Overview
 
@@ -66,6 +65,7 @@ Mentioned → Search duplicates → Create → Prioritize → Work → Complete 
 ```
 
 **Task ID format**: `YYYYMMDD-HHMMSS-hostname-uuid`
+
 ```bash
 # Generate with:
 date -u +%Y%m%d-%H%M%S-$(hostname -s)-$(uuidgen | cut -d'-' -f1)
@@ -76,23 +76,27 @@ date -u +%Y%m%d-%H%M%S-$(hostname -s)-$(uuidgen | cut -d'-' -f1)
 **Prioritization Framework** (P1/P2/P3):
 
 **P1 (Today/Tomorrow)** - Immediate action required:
+
 - Action window closing NOW
 - Meeting prep due within 24 hours
 - Immediate blocker for others
 - Time-sensitive response needed
 
 **P2 (This Week)** - Important, soon:
+
 - Deadline within 7 days
 - Significant strategic value
 - Preparation needed soon
 - Collaborative work where others waiting
 
 **P3 (Within 2 Weeks)** - Lower urgency:
+
 - Longer timeline
 - Lower strategic alignment
 - No immediate action window
 
 **Key factors**:
+
 1. **Temporal constraints**: Due date, action window, meeting dates
 2. **Strategic alignment**: Check project → goal linkage via context-search
 3. **Dependencies & roles**: Who's waiting? What's your role? Who has agency?
@@ -114,6 +118,7 @@ date -u +%Y%m%d-%H%M%S-$(hostname -s)-$(uuidgen | cut -d'-' -f1)
 ```
 
 **Progress notes** (add to Observations section):
+
 ```markdown
 - [progress] Completed literature review #milestone
 - [blocker] Waiting for reviewer feedback #blocked
@@ -136,6 +141,7 @@ date -u +%Y%m%d-%H%M%S-$(hostname -s)-$(uuidgen | cut -d'-' -f1)
 ```
 
 **Accomplishment criteria** (from scribe):
+
 - Task completion (with task ID link)
 - Strategic decisions affecting priorities
 - Non-task work (minimal, one line)
@@ -144,11 +150,13 @@ date -u +%Y%m%d-%H%M%S-$(hostname -s)-$(uuidgen | cut -d'-' -f1)
 ### 5. Archive Task
 
 **When to archive**:
+
 - Task completed
 - Task cancelled/no longer relevant
 - Task superseded by another
 
 **Process**:
+
 ```bash
 # Move to archived directory
 mv data/tasks/inbox/{task-id}.md data/tasks/archived/{task-id}.md
@@ -175,6 +183,7 @@ mv data/tasks/inbox/{task-id}.md data/tasks/archived/{task-id}.md
 ```
 
 **If misaligned, present to user**:
+
 ```
 "Task '{title}' claims to support project '{project}', but that project
 isn't linked to any goal in data/goals/.
@@ -191,6 +200,7 @@ Your goals are the source of truth for focus."
 **Write for USER resumption, not analysis**:
 
 ✅ **GOOD**:
+
 ```
 Review Joel's chapter draft on marginal value of films
 (https://sharepoint.com/...). Focus on storytelling and
@@ -198,6 +208,7 @@ platform realities. Provide feedback before supervision meeting.
 ```
 
 ❌ **TOO MUCH**:
+
 ```
 As the invited keynote speaker for the conference on Nov 15, which
 aligns with your Academic Profile goal and was mentioned in your
@@ -205,12 +216,14 @@ current priorities, you need to prepare slides...
 ```
 
 **Include**:
+
 - What needs to be done
 - Minimal context (why it matters, briefly)
 - When it's due
 - Where to find materials (direct links)
 
 **Don't include**:
+
 - Strategic analysis
 - Explanations of relationships user knows
 - Role definitions
@@ -235,6 +248,7 @@ current priorities, you need to prepare slides...
 ```
 
 **Task metadata from email**:
+
 - `metadata.email_id` - Email identifier
 - `metadata.sender` - Sender email
 - `metadata.sender_name` - Sender display name
@@ -244,18 +258,21 @@ current priorities, you need to prepare slides...
 ## Integration with Other Skills
 
 **context-search** (MANDATORY before operations):
+
 - Find existing tasks (prevent duplicates)
 - Search by project/goal
 - Verify strategic alignment
 - Build context for prioritization
 
 **markdown-ops** (MANDATORY for file operations):
+
 - Create task files in BM format
 - Update task files
 - Validate BM syntax
 - Use templates
 
 **scribe subagent** (orchestrator):
+
 - Invokes task-management when task detected
 - Provides extracted information
 - Handles silent execution
@@ -264,6 +281,7 @@ current priorities, you need to prepare slides...
 ## Critical Rules
 
 **NEVER**:
+
 - Create task without checking duplicates first
 - Create task without project/goal linkage (if strategic)
 - Write files directly (use markdown-ops)
@@ -272,6 +290,7 @@ current priorities, you need to prepare slides...
 - Create tasks for infrastructure work (that's git log)
 
 **ALWAYS**:
+
 - Invoke context-search FIRST for discovery
 - Invoke markdown-ops for file operations
 - Verify strategic alignment (task → project → goal)
@@ -284,6 +303,7 @@ current priorities, you need to prepare slides...
 ## Quick Reference
 
 **Create task workflow**:
+
 ```
 1. context-search: Check duplicates
 2. markdown-ops: Use task-template.md
@@ -293,6 +313,7 @@ current priorities, you need to prepare slides...
 ```
 
 **Update task**:
+
 ```
 1. context-search: Find task
 2. Read current content
@@ -301,6 +322,7 @@ current priorities, you need to prepare slides...
 ```
 
 **Complete task**:
+
 ```
 1. context-search: Find task
 2. Add completion observation
@@ -310,6 +332,7 @@ current priorities, you need to prepare slides...
 ```
 
 **Prioritize**:
+
 ```
 P1: Today/tomorrow (action window closing)
 P2: This week (deadline <7 days, strategic)

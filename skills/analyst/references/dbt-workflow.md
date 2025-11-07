@@ -58,18 +58,21 @@ Analysis (Streamlit, Jupyter)
 **Purpose:** Clean and standardize raw data
 
 **Responsibilities:**
+
 - Type casting (strings to dates, numbers, etc.)
 - Renaming to consistent conventions (snake_case, clear names)
 - Basic filtering (remove test data, invalid records, nulls in key fields)
 - Light transformation (lowercasing, trimming)
 
 **NOT allowed:**
+
 - Business logic
 - Aggregations
 - Joins (except simple lookups)
 - Complex calculations
 
 **Example:**
+
 ```sql
 -- models/staging/stg_cases.sql
 select
@@ -90,6 +93,7 @@ where id is not null  -- Basic filtering only
 **Purpose:** Business logic and transformations
 
 **Responsibilities:**
+
 - Business calculations (processing days, categorizations)
 - Joins between staging models
 - Window functions
@@ -97,6 +101,7 @@ where id is not null  -- Basic filtering only
 - Reusable logic components
 
 **Example:**
+
 ```sql
 -- models/intermediate/int_case_metrics.sql
 select
@@ -115,23 +120,26 @@ from {{ ref('stg_cases') }}
 
 **Materialization:** Usually `ephemeral` (not materialized, used as CTE) or `view`
 
-### Layer 3: Mart Models (fct_*, dim_*)
+### Layer 3: Mart Models (fct__, dim__)
 
 **Purpose:** Analysis-ready datasets
 
 **Fact Tables (`fct_*`):**
+
 - Events, transactions, measurements
 - One row per occurrence
 - Includes metrics and foreign keys to dimensions
 - Optimized for analysis queries
 
 **Dimension Tables (`dim_*`):**
+
 - Entities, classifications, lookup tables
 - One row per entity
 - Descriptive attributes
 - Referenced by fact tables
 
 **Example Fact:**
+
 ```sql
 -- models/marts/fct_case_decisions.sql
 select
@@ -149,6 +157,7 @@ left join {{ ref('int_text_analysis') }} t using (case_id)
 ```
 
 **Example Dimension:**
+
 ```sql
 -- models/marts/dim_jurisdictions.sql
 select
@@ -166,27 +175,29 @@ from {{ ref('stg_jurisdictions') }}
 
 ### Test Type Selection Matrix
 
-| Validation Need | Test Type | Where Defined | Example |
-|-----------------|-----------|---------------|---------|
-| Column never null | Schema test | schema.yml | `- not_null` |
-| Column unique | Schema test | schema.yml | `- unique` |
-| Specific allowed values | Schema test | schema.yml | `- accepted_values: {values: [...]}` |
-| Foreign key valid | Schema test | schema.yml | `- relationships: {to: ref('other'), field: id}` |
-| Multi-column logic | Singular test | tests/*.sql | Date ranges, consistency checks |
-| Common pattern | Package test | schema.yml | Recency, multi-column unique |
-| Quality monitoring | Diagnostic model | models/diagnostics/ | Aggregated quality metrics |
+| Validation Need         | Test Type        | Where Defined       | Example                                          |
+| ----------------------- | ---------------- | ------------------- | ------------------------------------------------ |
+| Column never null       | Schema test      | schema.yml          | `- not_null`                                     |
+| Column unique           | Schema test      | schema.yml          | `- unique`                                       |
+| Specific allowed values | Schema test      | schema.yml          | `- accepted_values: {values: [...]}`             |
+| Foreign key valid       | Schema test      | schema.yml          | `- relationships: {to: ref('other'), field: id}` |
+| Multi-column logic      | Singular test    | tests/*.sql         | Date ranges, consistency checks                  |
+| Common pattern          | Package test     | schema.yml          | Recency, multi-column unique                     |
+| Quality monitoring      | Diagnostic model | models/diagnostics/ | Aggregated quality metrics                       |
 
 ### Schema Tests
 
 Built-in tests defined in `schema.yml` alongside model documentation.
 
 **Available tests:**
+
 - `not_null`: Column has no null values
 - `unique`: Column values are unique
 - `relationships`: Foreign key constraint (references another model/column)
 - `accepted_values`: Column only contains specific values from defined list
 
 **Example:**
+
 ```yaml
 models:
   - name: stg_cases
@@ -202,7 +213,7 @@ models:
         description: Case processing status
         tests:
           - accepted_values:
-              values: ['pending', 'reviewed', 'published', 'rejected']
+              values: ["pending", "reviewed", "published", "rejected"]
 
       - name: jurisdiction_id
         description: Foreign key to jurisdictions
@@ -217,11 +228,13 @@ models:
 Custom SQL queries for complex validation. Create `.sql` files in `tests/` directory.
 
 **How they work:**
+
 - Query returns 0 rows = PASS ✓
 - Query returns >0 rows = FAIL ✗ (shows problematic data)
 - Use for multi-column logic, business rules, data quality checks
 
 **Example:**
+
 ```sql
 -- tests/assert_decision_dates_logical.sql
 -- Fail if any case has decision_date before submission_date
@@ -235,6 +248,7 @@ where decision_date < submission_date
 ```
 
 **Example: Cross-table consistency**
+
 ```sql
 -- tests/assert_all_cases_have_metrics.sql
 -- Fail if any case in fct_case_decisions missing from int_case_metrics
@@ -250,6 +264,7 @@ where m.case_id is null
 Reusable tests from dbt-utils package for common patterns.
 
 **Installation:**
+
 ```yaml
 # packages.yml
 packages:
@@ -265,12 +280,12 @@ tests:
   - dbt_utils.recency:
       datepart: day
       field: created_at
-      interval: 1  # Warn if no data in last 24 hours
+      interval: 1 # Warn if no data in last 24 hours
 
 # Multi-column uniqueness
 tests:
   - dbt_utils.unique_combination_of_columns:
-      combination_of_columns: ['user_id', 'date']
+      combination_of_columns: ["user_id", "date"]
 
 # Expression validation
 tests:
@@ -290,6 +305,7 @@ Create ephemeral views for data quality monitoring.
 **Use for:** Quality metrics you want to inspect manually, not fail builds on.
 
 **Example:**
+
 ```sql
 -- models/diagnostics/data_quality_summary.sql
 {{ config(materialized='view', tags=['diagnostic']) }}
@@ -314,6 +330,7 @@ from {{ ref('stg_cases') }}
 ```
 
 **Usage:**
+
 ```bash
 # Show diagnostic results interactively
 dbt show --select data_quality_summary
@@ -331,14 +348,16 @@ columns:
     description: Field that may be null in some contexts
     tests:
       - not_null:
-          severity: warn  # Don't fail build, just show warning
+          severity: warn # Don't fail build, just show warning
 ```
 
 **Severity levels:**
+
 - `error` (default): Fails the build, stops execution
 - `warn`: Shows warning in output but continues build
 
 **When to use `warn`:**
+
 - Known data quality issues you're tracking but can't fix yet
 - Aspirational standards not yet fully achieved
 - Optional fields with expected nulls in certain contexts
@@ -362,6 +381,7 @@ columns:
 Document all models in `schema.yml` files.
 
 **Minimum documentation:**
+
 ```yaml
 models:
   - name: fct_case_decisions
@@ -376,6 +396,7 @@ models:
 ```
 
 **Why document:**
+
 - Future you remembers what fields mean
 - Agents can understand your data model
 - Collaborators can navigate the project
@@ -410,6 +431,7 @@ from {{ source('raw', 'cases') }}
 ```
 
 **When to use:**
+
 - Tables with millions of rows
 - Data that only grows (events, transactions)
 - Long-running transformations
@@ -424,14 +446,15 @@ sources:
   - name: raw
     database: mydb
     freshness:
-      warn_after: {count: 24, period: hour}
-      error_after: {count: 48, period: hour}
+      warn_after: { count: 24, period: hour }
+      error_after: { count: 48, period: hour }
     tables:
       - name: cases
         description: Raw case data from upstream system
 ```
 
 **Check freshness:**
+
 ```bash
 dbt source freshness
 ```
@@ -459,6 +482,7 @@ select * from {{ source('raw', 'jurisdictions') }}
 ```
 
 **Run snapshots:**
+
 ```bash
 dbt snapshot
 ```

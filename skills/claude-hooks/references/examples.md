@@ -9,6 +9,7 @@ Complete, working examples of hooks from the academicOps implementation.
 **Purpose:** Load agent instructions from framework, personal, and project tiers
 
 **Full implementation pattern:**
+
 ```python
 #!/usr/bin/env python3
 import json
@@ -86,6 +87,7 @@ def main():
 ```
 
 **Configuration:**
+
 ```json
 {
   "hooks": {
@@ -107,6 +109,7 @@ def main():
 **Purpose:** Block `python -c` and require script files
 
 **Validation rule:**
+
 ```python
 class ValidationRule:
     name: str = "block_inline_python"
@@ -128,6 +131,7 @@ class ValidationRule:
 ```
 
 **Output when blocked:**
+
 ```json
 {
   "hookSpecificOutput": {
@@ -138,6 +142,7 @@ class ValidationRule:
 ```
 
 **Configuration:**
+
 ```json
 {
   "hooks": {
@@ -157,6 +162,7 @@ class ValidationRule:
 **Purpose:** Discourage unnecessary documentation files
 
 **Validation rule:**
+
 ```python
 class ValidationRule:
     name: str = "warn_markdown_creation"
@@ -180,6 +186,7 @@ class ValidationRule:
 ```
 
 **Output when warning:**
+
 ```json
 {
   "hookSpecificOutput": {
@@ -198,6 +205,7 @@ class ValidationRule:
 **Purpose:** Log stop events, allow all
 
 **Implementation:**
+
 ```python
 #!/usr/bin/env python3
 import json
@@ -227,6 +235,7 @@ def main():
 ```
 
 **Configuration:**
+
 ```json
 {
   "hooks": {
@@ -255,6 +264,7 @@ def main():
 **Purpose:** Capture data for hook development without modifying behavior
 
 **Implementation:**
+
 ```python
 #!/usr/bin/env python3
 import json
@@ -284,6 +294,7 @@ def main():
 ```
 
 **Inspecting logs:**
+
 ```bash
 # View recent PostToolUse events
 ls -lt /tmp/claude_posttooluse_*.json | head -5
@@ -293,6 +304,7 @@ cat /tmp/claude_posttooluse_20251022_231351.json
 ```
 
 **Log contents:**
+
 ```json
 {
   "hook_event": "PostToolUse",
@@ -319,6 +331,7 @@ cat /tmp/claude_posttooluse_20251022_231351.json
 **Purpose:** Centralized safe logging for all hooks
 
 **Implementation:**
+
 ```python
 #!/usr/bin/env python3
 import datetime
@@ -356,6 +369,7 @@ def safe_log_to_debug_file(
 ```
 
 **Usage in any hook:**
+
 ```python
 from hook_debug import safe_log_to_debug_file
 
@@ -439,6 +453,7 @@ def main():
 ## Testing Hooks
 
 **Integration test pattern:**
+
 ```python
 def test_hook_allow_permits_execution(claude_headless):
     # Test hooks work from subdirectory
@@ -452,6 +467,7 @@ def test_hook_allow_permits_execution(claude_headless):
 ```
 
 **What this validates:**
+
 - `$CLAUDE_PROJECT_DIR` resolves correctly
 - Hooks execute from any CWD
 - No silent path resolution failures
@@ -459,11 +475,13 @@ def test_hook_allow_permits_execution(claude_headless):
 ## Debugging Hooks
 
 **Run Claude with debug flag:**
+
 ```bash
 claude --debug
 ```
 
 **Check logs:**
+
 ```bash
 # List recent logs by hook type
 ls -lt /tmp/claude_sessionstart_*.json | head -3
@@ -477,22 +495,26 @@ jq . /tmp/claude_pretooluse_20251022_231351.json
 **Common issues:**
 
 **Hook not executing:**
+
 - Check settings.json syntax (valid JSON?)
 - Verify script path with `$CLAUDE_PROJECT_DIR`
 - Check script is executable: `chmod +x bots/hooks/script.py`
 - Look for Python import errors in stderr
 
 **Wrong output format:**
+
 - Validate JSON structure matches schema
 - Check exit codes (0=allow, 1=warn, 2=block)
 - Ensure `permissionDecision` field present for PreToolUse
 
 **Timeout:**
+
 - Increase timeout in hook config
 - Profile slow operations
 - Consider async execution for long tasks
 
 **Path resolution:**
+
 - Always use `$CLAUDE_PROJECT_DIR`
 - Test from subdirectories: `cd tests/ && claude`
 - Never use relative paths without environment variable

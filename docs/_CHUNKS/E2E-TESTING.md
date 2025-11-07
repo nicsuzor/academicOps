@@ -13,6 +13,7 @@ End-to-end tests verify the COMPLETE workflow with REAL components:
 - ✅ Real data flowing through the entire pipeline
 
 **NOT end-to-end**:
+
 - ❌ Mocking internal code
 - ❌ Mocking our own APIs/services
 - ❌ Fake data or simulated responses
@@ -27,6 +28,7 @@ End-to-end tests verify the COMPLETE workflow with REAL components:
 - Infrastructure you don't own (but document why)
 
 **Example - What to mock**:
+
 ```python
 # DON'T mock this (it's OUR code):
 # @patch("buttermilk.data.vector.ChromaDBEmbeddings")
@@ -106,16 +108,19 @@ collection_name = f"test_collection_{uuid.uuid4()}"
 ### E2E vs Integration vs Unit
 
 **Unit Test** (isolated component):
+
 - Tests single function/class
 - Mocks all dependencies
 - Fast, focused
 
 **Integration Test** (components working together):
+
 - Tests 2-3 components interacting
 - Real configuration via `real_bm`
 - May mock external APIs
 
 **TRUE End-to-End Test** (complete workflow):
+
 - Tests entire pipeline start to finish
 - REAL everything (APIs, storage, processors)
 - Slower but validates production workflow
@@ -136,6 +141,7 @@ A TRUE E2E test must:
 ### Common E2E Test Patterns
 
 **Pattern 1: Pipeline Test**
+
 ```python
 async def test_full_pipeline(real_bm):
     \"\"\"Test source → process → store workflow.\"\"\"
@@ -153,6 +159,7 @@ async def test_full_pipeline(real_bm):
 ```
 
 **Pattern 2: API Integration Test**
+
 ```python
 async def test_external_api_integration(real_bm):
     \"\"\"Test integration with external service.\"\"\"
@@ -168,6 +175,7 @@ async def test_external_api_integration(real_bm):
 ```
 
 **Pattern 3: Storage Round-Trip Test**
+
 ```python
 async def test_storage_round_trip(real_bm):
     \"\"\"Test data survives storage and retrieval.\"\"\"
@@ -209,6 +217,7 @@ This validates the complete [workflow] from [start] to [end].
 ### Anti-Patterns
 
 **❌ WRONG - Not E2E**:
+
 ```python
 @patch("buttermilk.data.vector.ChromaDBEmbeddings")
 @patch("buttermilk.processors.embeddings.EmbeddingGenerator")
@@ -218,6 +227,7 @@ async def test_pipeline(mock_embeddings, mock_chromadb):
 ```
 
 **✅ CORRECT - TRUE E2E**:
+
 ```python
 async def test_pipeline(real_bm):
     # Real components

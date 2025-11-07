@@ -1,15 +1,18 @@
 # Experiment: Add $ACADEMICOPS_PERSONAL Content Directory Exclusions to .md Hook
 
 ## Metadata
+
 - Date: 2025-11-05
 - Issue: #189
 - Commit: f8a110d
 - Model: claude-sonnet-4-5-20250929
 
 ## Hypothesis
+
 Adding checks for $ACADEMICOPS_PERSONAL content directories (talks/, slides/, data/) to the `_is_allowed_md_path()` function will prevent false positive warnings when creating legitimate content .md files in the writing repository, while maintaining protection against documentation bloat in other repositories.
 
 ## Changes Made
+
 Modified `hooks/validate_tool.py`:
 
 1. Added `import os` to access environment variables

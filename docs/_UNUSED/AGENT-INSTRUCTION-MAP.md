@@ -105,7 +105,6 @@ Every instruction/documentation file with connection analysis.
 - **Purpose**: Entry point for bot submodule
 - **Status**: ✅ Connected (root)
 
-
 ---
 
 ### Primary Instruction Files (3 files)
@@ -159,7 +158,7 @@ Every instruction/documentation file with connection analysis.
 **bot/agents/strategist.md**
 
 - **Loaded by**: Strategist agent
-- **References**: Base agent, bot/docs/scripts.md, data/goals/*.md, data/context/*.md
+- **References**: Base agent, bot/docs/scripts.md, data/goals/_.md, data/context/_.md
 - **Purpose**: Planning and zero-friction information extraction
 - **Status**: ✅ Connected
 

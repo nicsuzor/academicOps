@@ -12,8 +12,10 @@ These are discrete, reusable methodology chunks extracted from _UNCHECKED files.
 ## Usage Pattern
 
 **In agent instructions:**
+
 ```markdown
 Load methodologies:
+
 - @bot/docs/_CHUNKS/FAIL-FAST.md
 - @bot/docs/_CHUNKS/GIT-WORKFLOW.md
 ```
@@ -21,6 +23,7 @@ Load methodologies:
 ## Promotion Process (Phase 3)
 
 Chunks move to `docs/` (canonical) after successful experimental integration:
+
 1. Create experiment issue with success metrics
 2. Link chunk in agent instruction
 3. Track metrics over 2-week evaluation

@@ -13,21 +13,25 @@ The omcp MCP server must be connected. If tools like `mcp__omcp__messages_search
 ### Searching Email
 
 **Search by sender:**
+
 ```
 mcp__omcp__messages_query_from(name="Dennis Redeker", limit=20)
 ```
 
 **Search by subject:**
+
 ```
 mcp__omcp__messages_query_subject_contains(term="DBR", limit=20)
 ```
 
 **Combined search (person AND subject):**
+
 ```
 mcp__omcp__messages_search(person="Dennis", subject="DBR", limit=20)
 ```
 
 **Recent messages:**
+
 ```
 mcp__omcp__messages_list_recent(limit=20)
 ```
@@ -37,6 +41,7 @@ mcp__omcp__messages_list_recent(limit=20)
 For complex queries, use the `messages_query` tool with DASL (DAV Searching and Locating) syntax:
 
 **Search by date range:**
+
 ```
 mcp__omcp__messages_query(
   dasl='@SQL="urn:schemas:httpmail:datereceived" >= \'2025-10-01\' AND "urn:schemas:httpmail:datereceived" <= \'2025-10-09\'',

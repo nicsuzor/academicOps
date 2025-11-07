@@ -1,6 +1,7 @@
 # /dev Command: Invoke Supervisor Agent
 
 ## Metadata
+
 - Date: 2025-10-31
 - Issue: #179
 - Commit: [pending]
@@ -15,15 +16,18 @@ Changing `/dev` command from invoking the `dev` skill to invoking the `superviso
 Modified `commands/dev.md` (line 48):
 
 **Before**:
+
 ```markdown
 Invoke the `dev` skill for systematic development workflow with comprehensive capability guides.
 ```
 
 **After**:
+
 ```markdown
 Invoke the `supervisor` agent to orchestrate development work through structured TDD workflow with proper delegation to specialized subagents (Explore, Plan, dev).
 
 The supervisor will:
+
 - Take full responsibility for the development task
 - Enforce test-driven development discipline
 - Delegate exploration and planning to specialized agents
@@ -34,10 +38,12 @@ The supervisor will:
 ```
 
 **Architectural change**:
+
 - From: Slash command loads skill into current agent (all-in-one pattern)
 - To: Slash command invokes dedicated orchestrator agent (multi-agent pattern)
 
 **Key differences**:
+
 1. **Responsibility**: Supervisor owns entire task vs current agent juggling everything
 2. **Delegation**: Supervisor delegates to Plan, Explore, dev vs current agent doing all
 3. **Workflow enforcement**: Supervisor enforces TDD gates vs current agent following suggestions

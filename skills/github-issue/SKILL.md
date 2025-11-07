@@ -26,6 +26,7 @@ Use github-issue when:
 5. **Managing issue lifecycle** - Close resolved issues, reopen regressions
 
 **Concrete trigger examples**:
+
 - "Search for issues related to database timeout errors"
 - "Create an issue for the authentication bug we just found"
 - "Update issue #42 with the commit that fixed it"
@@ -168,6 +169,7 @@ gh issue view 123 --repo myorg/api --comments
 ```
 
 **Check for**:
+
 - Is this the same problem?
 - Is it still open or was it resolved?
 - Are there workarounds or ongoing discussion?
@@ -178,6 +180,7 @@ gh issue view 123 --repo myorg/api --comments
 **Objective**: Document a problem or feature request with all necessary information for others to understand and act on it.
 
 **ONLY create new issues when**:
+
 - Exhaustive search (3+ strategies) confirms no existing issue covers this
 - The problem is distinct enough to warrant separate tracking
 - You have sufficient information to create a complete, actionable issue
@@ -189,6 +192,7 @@ gh issue view 123 --repo myorg/api --comments
 Gather required information:
 
 **For bugs**:
+
 - Clear problem summary
 - Steps to reproduce
 - Expected vs. actual behavior
@@ -197,6 +201,7 @@ Gather required information:
 - Related file paths or components
 
 **For features**:
+
 - Clear feature description
 - Use case / motivation
 - Proposed approach (if any)
@@ -206,20 +211,18 @@ Gather required information:
 #### 2.2: Choose Title
 
 **Good titles** are:
+
 - Concise (< 80 characters)
 - Specific (not vague)
 - Searchable (include key terms)
 
 **Examples**:
 
-❌ Bad: "Fix the bug"
-✅ Good: "DatabaseClient times out on large queries (>10k rows)"
+❌ Bad: "Fix the bug" ✅ Good: "DatabaseClient times out on large queries (>10k rows)"
 
-❌ Bad: "Add feature"
-✅ Good: "Add support for PostgreSQL connection pooling"
+❌ Bad: "Add feature" ✅ Good: "Add support for PostgreSQL connection pooling"
 
-❌ Bad: "Error in production"
-✅ Good: "AuthService returns 500 when token expired (production only)"
+❌ Bad: "Error in production" ✅ Good: "AuthService returns 500 when token expired (production only)"
 
 #### 2.3: Format Issue Body
 
@@ -245,11 +248,11 @@ Use markdown for clarity. Standard structure:
 [What actually happens]
 
 ## Error Details
-
 ```
+
 [Error message, stack trace - use code blocks]
-```
 
+```
 ## Environment
 
 - OS: [e.g., Ubuntu 22.04]
@@ -272,21 +275,25 @@ Use markdown for clarity. Standard structure:
 Common label patterns (varies by repository):
 
 **Type labels**:
+
 - `bug` - Something broken
 - `enhancement` / `feature` - New functionality
 - `documentation` - Docs issues
 - `question` - Needs clarification
 
 **Priority labels**:
+
 - `critical` / `high-priority` - Urgent, blocking
 - `low-priority` - Nice to have
 
 **Status labels**:
+
 - `needs-investigation` - Requires more info
 - `ready` - Ready to work on
 - `in-progress` - Being worked on
 
 **Component labels** (repo-specific):
+
 - `database`, `api`, `frontend`, `auth`, etc.
 
 #### 2.5: Execute Issue Creation
@@ -305,9 +312,10 @@ Description here.
 2. Step 2
 
 ## Error Details
-
 ```
+
 Error text here
+
 ```
 EOF
 )" \
@@ -336,13 +344,11 @@ Query should complete or use pagination automatically.
 TimeoutError: Connection timed out after 30s
 
 ## Error Details
-
-```
-TimeoutError: Connection timed out
-  at DatabaseClient.execute (src/db/client.ts:45)
-  at QueryHandler.run (src/api/handlers/query.ts:78)
 ```
 
+TimeoutError: Connection timed out at DatabaseClient.execute (src/db/client.ts:45) at QueryHandler.run (src/api/handlers/query.ts:78)
+
+```
 ## Environment
 
 - Version: v2.1.0
@@ -362,6 +368,7 @@ EOF
 ### When to Update (Not Create New)
 
 Update existing issues when:
+
 - New information about the same problem
 - Commit addresses the issue
 - Status change (in progress, blocked, resolved)
@@ -435,6 +442,7 @@ Fixes #42"
 **For pull requests**:
 
 Use GitHub keywords in PR description:
+
 - `Fixes #42` - Closes issue when PR merges
 - `Closes #42` - Same as Fixes
 - `Resolves #42` - Same as Fixes
@@ -452,6 +460,7 @@ gh issue close 42 --repo myorg/api --comment "Resolved by commit a1b2c3d. No tim
 ```
 
 **Do NOT close if**:
+
 - Not verified in production
 - Workaround only (not root cause fix)
 - Uncertain if resolved
@@ -501,6 +510,7 @@ plain text output or errors
 Use markdown formatting for readability:
 
 **Bullet points**:
+
 ```markdown
 - Point 1
 - Point 2
@@ -508,6 +518,7 @@ Use markdown formatting for readability:
 ```
 
 **Numbered lists**:
+
 ```markdown
 1. Step 1
 2. Step 2
@@ -515,8 +526,10 @@ Use markdown formatting for readability:
 ```
 
 **Headers**:
+
 ```markdown
 ## Section Header
+
 ### Subsection Header
 ```
 
@@ -525,27 +538,32 @@ Use markdown formatting for readability:
 **Good examples**:
 
 ✅ Include file paths:
+
 ```
 Error in src/database/client.ts:45
 ```
 
 ✅ Include versions:
+
 ```
 - Node.js: v18.17.0
 - PostgreSQL: 14.2
 ```
 
 ✅ Include exact error messages:
+
 ```
 TimeoutError: Connection timed out after 30000ms
 ```
 
 ❌ Vague descriptions:
+
 ```
 There's an error in the database code
 ```
 
 ❌ No specifics:
+
 ```
 It doesn't work in production
 ```
@@ -553,26 +571,32 @@ It doesn't work in production
 ## Anti-Patterns to Avoid
 
 **Don't create duplicate issues**:
+
 - ❌ Skip search, create immediately
 - ✅ Search with 3+ strategies, verify no match
 
 **Don't create vague issues**:
+
 - ❌ Title: "Fix bug"
 - ✅ Title: "DatabaseClient timeout on queries >10k rows"
 
 **Don't forget verification**:
+
 - ❌ `gh issue create --repo username/project` (assumed username)
 - ✅ Verify owner first, then create
 
 **Don't over-comment**:
+
 - ❌ Add comment for every tiny update
 - ✅ Group related updates into meaningful comments
 
 **Don't close prematurely**:
+
 - ❌ Close issue when code merged (not verified)
 - ✅ Close after production verification
 
 **Don't leave orphan issues**:
+
 - ❌ Create issue, never update status
 - ✅ Update when commits land, when resolved, when blocked
 
@@ -622,16 +646,19 @@ gh issue reopen <number> --repo <owner/repo> --comment "Recurrence details"
 ### Common Workflows
 
 **Bug reported → Document**:
+
 1. Search for existing issue (3+ strategies)
 2. If not found: Create with reproduction steps, error details
 3. Label appropriately (bug, component, priority)
 
 **Commit made → Link to issue**:
+
 1. Find related issue number
 2. Add comment linking commit
 3. Update issue status if resolved
 
 **Issue resolved → Close**:
+
 1. Verify resolution in production
 2. Close with verification details
 3. Reference fixing commit/PR

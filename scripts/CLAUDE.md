@@ -1,7 +1,6 @@
 # Script Development Context
 
-@../agents/_CORE.md
-@../docs/_CHUNKS/FAIL-FAST.md
+@../agents/_CORE.md @../docs/_CHUNKS/FAIL-FAST.md
 
 ## Key Principles
 
@@ -12,14 +11,8 @@
 
 ## What NOT to Do
 
-❌ Check if script exists before running
-❌ Verify permissions before executing
-❌ Try/except with fallback values
-❌ Retry on failure
+❌ Check if script exists before running ❌ Verify permissions before executing ❌ Try/except with fallback values ❌ Retry on failure
 
 ## What to Do Instead
 
-✅ Make scripts reliable in repository
-✅ Fail immediately if configuration missing
-✅ Report errors and stop
-✅ Let trainer fix infrastructure issues
+✅ Make scripts reliable in repository ✅ Fail immediately if configuration missing ✅ Report errors and stop ✅ Let trainer fix infrastructure issues

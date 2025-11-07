@@ -14,6 +14,7 @@ Guide to discovering and reading project context before beginning analysis work.
 - Tools and technologies in use
 
 **Without context discovery, you risk:**
+
 - Creating duplicate work
 - Violating project conventions
 - Misunderstanding research questions
@@ -25,6 +26,7 @@ Guide to discovering and reading project context before beginning analysis work.
 ### 1. Project README Files
 
 **What to read:**
+
 - `README.md` in current working directory
 - `README.md` in all parent directories up to project root
 - Project root is typically: `papers/[project]/`, `projects/[project]/`, or repository root
@@ -32,6 +34,7 @@ Guide to discovering and reading project context before beginning analysis work.
 **Example discovery path:**
 
 If working in `papers/automod/analysis/`, read:
+
 ```
 papers/automod/analysis/README.md       (if exists)
 papers/automod/README.md                (project root - REQUIRED)
@@ -40,6 +43,7 @@ README.md                               (repository root)
 ```
 
 **What to extract:**
+
 - **Research questions**: What is this project investigating?
 - **Methodology**: Experimental design, data collection approach
 - **Conventions**: Naming patterns, file organization, coding standards
@@ -47,6 +51,7 @@ README.md                               (repository root)
 - **Project status**: Active development, data collection phase, analysis phase
 
 **Commands:**
+
 ```bash
 # Find README files in current path
 find . -name "README.md" -maxdepth 1
@@ -61,10 +66,12 @@ cat README.md
 ### 2. Data README
 
 **What to read:**
+
 - `data/README.md` in the project directory
 - May also exist in subdirectories: `data/raw/README.md`, `data/processed/README.md`
 
 **What to extract:**
+
 - **Data sources**: Where does data come from? (BigQuery, API, files, manual collection)
 - **Schema**: What tables/files exist? What fields do they contain?
 - **Access patterns**: How to access data? (Through dbt models, direct queries, file reads)
@@ -73,6 +80,7 @@ cat README.md
 - **Update frequency**: How often is data refreshed?
 
 **Commands:**
+
 ```bash
 # Find data README
 ls -la data/README.md
@@ -88,10 +96,12 @@ ls -lh data/raw/
 ### 3. Project Overview
 
 **What to read:**
+
 - `data/projects/[project-name].md` corresponding to current project
 - Example: If in `papers/automod/`, read `data/projects/automod.md` or `data/projects/automod-demo.md`
 
 **What to extract:**
+
 - **Strategic context**: Why does this project exist? What's the big picture?
 - **Goals and objectives**: What outcomes are expected?
 - **Status**: What stage is project in? What's completed? What's in progress?
@@ -100,6 +110,7 @@ ls -lh data/raw/
 - **Timeline**: Deadlines, milestones
 
 **Commands:**
+
 ```bash
 # Find project overview files
 ls -1 data/projects/*.md
@@ -114,10 +125,12 @@ cat data/projects/project-name.md
 ### 4. Existing dbt Models
 
 **What to read:**
+
 - List all existing models in `dbt/models/`
 - Understand staging, intermediate, and mart layers
 
 **What to extract:**
+
 - **Existing models**: What data is already available in dbt?
 - **Model purposes**: What does each model do? (Read `dbt/schema.yml`)
 - **Data lineage**: How do models depend on each other?
@@ -125,6 +138,7 @@ cat data/projects/project-name.md
 - **Reusable components**: Can existing models be extended instead of creating new ones?
 
 **Commands:**
+
 ```bash
 # List all dbt models
 ls -1 dbt/models/staging/*.sql
@@ -147,16 +161,19 @@ dbt docs serve  # Opens documentation in browser
 ### 5. Streamlit Apps
 
 **What to read:**
+
 - List existing Streamlit apps in `streamlit/` directory
 - Understand what visualizations already exist
 
 **What to extract:**
+
 - **Existing visualizations**: What charts/dashboards exist?
 - **Data models used**: Which dbt models do they query?
 - **Interaction patterns**: What filters, controls, layouts are used?
 - **Conventions**: Code style, organization patterns
 
 **Commands:**
+
 ```bash
 # List Streamlit apps
 ls -1 streamlit/*.py
@@ -215,6 +232,7 @@ After gathering files, read them carefully and extract:
 After context discovery, provide a concise summary:
 
 **Template:**
+
 ```
 I've reviewed the project context:
 
@@ -236,6 +254,7 @@ What would you like me to help with?
 ```
 
 **Example:**
+
 ```
 I've reviewed the project context:
 
@@ -262,11 +281,13 @@ What would you like me to help with?
 ### Pattern 1: New Project (No Existing Infrastructure)
 
 **Indicators:**
+
 - No `dbt/` directory
 - No `README.md` in current directory
 - Empty or minimal `data/` directory
 
 **Action:**
+
 1. Ask user: "This appears to be a new project. Should I help set up the dbt infrastructure?"
 2. If yes, create basic structure:
    - `dbt/models/staging/`
@@ -278,12 +299,14 @@ What would you like me to help with?
 ### Pattern 2: Established Project (Mature Infrastructure)
 
 **Indicators:**
+
 - Many dbt models exist
 - Comprehensive `README.md`
 - Multiple Streamlit apps
 - Extensive tests
 
 **Action:**
+
 1. Thoroughly review existing models to avoid duplication
 2. Understand established conventions
 3. Extend existing work rather than creating new
@@ -292,11 +315,13 @@ What would you like me to help with?
 ### Pattern 3: In-Transition Project (Partially Migrated)
 
 **Indicators:**
+
 - Mix of old scripts and new dbt models
 - Some data access through dbt, some direct queries
 - Documentation incomplete
 
 **Action:**
+
 1. Identify which patterns are "old" vs "new"
 2. Ask user: "I see both old and new patterns. Should I follow the newer dbt-based approach?"
 3. Help migrate old patterns to new infrastructure if requested
@@ -305,6 +330,7 @@ What would you like me to help with?
 ## Context Discovery Anti-Patterns
 
 **❌ Don't:**
+
 - Skip context discovery and jump straight to analysis
 - Assume project structure without checking
 - Create new models without checking for duplicates
@@ -312,6 +338,7 @@ What would you like me to help with?
 - Query upstream data sources without checking dbt models first
 
 **✅ Do:**
+
 - Always start with context discovery
 - Read all required context files
 - Check for existing work before creating new

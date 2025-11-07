@@ -24,6 +24,7 @@ Principles for designing effective tools for AI agents.
 ### 1. Natural Formats
 
 Ensure tool inputs/outputs are natural to LLMs:
+
 - Avoid unnecessary escaping
 - Use clear, readable structures
 - Prefer JSON or plain text over complex formats
@@ -35,6 +36,7 @@ Provide sufficient tokens for reasoning before execution in tool descriptions.
 ### 3. Comprehensive Documentation
 
 Include in tool definitions:
+
 - Examples of typical use
 - Edge cases and boundaries
 - Clear error handling guidance
@@ -42,6 +44,7 @@ Include in tool definitions:
 ### 4. Poka-Yoke Design
 
 Design tool arguments to prevent mistakes:
+
 - Use enums for constrained choices
 - Validate inputs clearly
 - Provide helpful error messages
@@ -49,6 +52,7 @@ Design tool arguments to prevent mistakes:
 ### 5. Token Efficiency
 
 Tools should:
+
 - Return concise, high-signal information
 - Avoid bloated outputs
 - Minimize functionality overlap (clear single purpose per tool)

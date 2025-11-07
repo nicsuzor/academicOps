@@ -1,6 +1,7 @@
 # Supervisor Tight Orchestration Experiment
 
 ## Metadata
+
 - Date: 2025-10-30
 - Issue: Related to #149 (test-writing not invoked), #126 (code-review not invoked), #52 (premature victory)
 - Commit: 83087da
@@ -9,6 +10,7 @@
 ## Hypothesis
 
 Adding explicit tight orchestration instructions to SUPERVISOR.md will enable the supervisor to:
+
 1. Maintain strict TDD discipline through complete development sessions
 2. Delegate atomic tasks to dev subagent with mandatory skill usage
 3. Enforce quality gates at every step (plan review, test creation, code review)
@@ -19,11 +21,13 @@ Adding explicit tight orchestration instructions to SUPERVISOR.md will enable th
 ## Problem Evidence
 
 User scenario: Supervisor orchestrating feature development
+
 - Unit tests: 5/5 passed (but used mocks - violation)
 - Integration tests: 2/4 failed (real system)
 - Supervisor asked user what to do instead of continuing TDD cycles
 
 **Failures**:
+
 1. Supervisor didn't REQUIRE dev subagent to use test-writing skill
 2. Supervisor didn't ENFORCE TDD methodology (one thing at a time)
 3. Supervisor didn't know how to handle test failures systematically
@@ -41,24 +45,28 @@ User scenario: Supervisor orchestrating feature development
 ### SUPERVISOR.md Changes
 
 **1. New mandatory TDD workflow at top** (replaces existing scattered guidance):
+
 - Checklist format for each step
 - Explicit enforcement language ("REQUIRE", "ENFORCE", "MANDATE")
 - Clear iteration protocol when tests fail
 - Atomic task delegation pattern
 
 **2. Tight control emphasis**:
+
 - "You TIGHTLY CONTROL what developer does"
 - "Give developer ONE STEP at a time"
 - "REQUIRE developer to use appropriate skill"
 - "Developer reports back after each step"
 
 **3. Quality gates restructured**:
+
 - Mandatory planning step
 - Mandatory plan review step (second pass)
 - Mandatory quality check after implementation
 - Commit step with fix iteration if quality check fails
 
 **4. Test failure handling**:
+
 - Explicit iteration protocol
 - "NEVER ask user what to do - YOU decide and iterate"
 - Specific instructions for invoking dev with fix requirements
@@ -66,6 +74,7 @@ User scenario: Supervisor orchestrating feature development
 ### DEVELOPER.md Changes
 
 **5. Added supervisor reporting protocol**:
+
 - When working under supervisor, report back after completing each atomic task
 - Include what was done, results, and wait for next instruction
 
@@ -74,6 +83,7 @@ User scenario: Supervisor orchestrating feature development
 **Scenario**: Ask supervisor to implement a feature using TDD
 
 **Must observe**:
+
 - [ ] Supervisor creates initial plan
 - [ ] Supervisor invokes second planning review
 - [ ] Supervisor instructs dev: "Use test-writing skill to create ONE failing test for [specific behavior]"
@@ -89,6 +99,7 @@ User scenario: Supervisor orchestrating feature development
 - [ ] Cycle repeats for next feature increment
 
 **Must NOT observe**:
+
 - [ ] Dev creating tests without test-writing skill
 - [ ] Mocked internal code in tests
 - [ ] Supervisor asking user "should I fix or are failures acceptable?"
@@ -98,14 +109,17 @@ User scenario: Supervisor orchestrating feature development
 ## Test Plan
 
 **Test 1: Simple feature addition**
+
 - Request: "Add [small feature] using TDD"
 - Verify: Full cycle observed with tight supervision
 
 **Test 2: Implementation with failing tests**
+
 - Request: "Implement [feature that will have test failures]"
 - Verify: Supervisor iterates with dev, doesn't ask user
 
 **Test 3: Multi-step feature**
+
 - Request: "Build [feature requiring 3+ TDD cycles]"
 - Verify: Supervisor maintains discipline through all cycles, commits atomically
 
@@ -114,6 +128,7 @@ User scenario: Supervisor orchestrating feature development
 [To be filled after testing]
 
 **Metrics to track**:
+
 - Times supervisor delegated vs did work itself: [X delegated / Y self]
 - Times test-writing skill invoked for tests: [X of X test creations]
 - Times supervisor asked user vs decided: [X asked / Y decided]

@@ -3,6 +3,7 @@
 ## PROJECT STRUCTURE - CRITICAL UNDERSTANDING
 
 ### Repository Layout
+
 ```
 ${OUTER}/                      # User's parent repository (PRIVATE)
 ├── data/                      # Personal task/project database
@@ -30,19 +31,14 @@ ${OUTER}/                      # User's parent repository (PRIVATE)
 3. **bot/ CONTENTS**: Generic framework, tools, workflows - usable by ANY user
 4. **PRIVATE CONTENTS**: Personal data, projects, emails, tasks - specific to one user
 
-**Examples of CORRECT behavior**:
-✅ "See ../docs/STYLE.md for writing guidelines" (reference, not copy)
-✅ Creating generic workflow in .academicOps/scripts/ that reads from $ACADEMIC_OPS_DATA
-✅ Documenting a pattern without including personal examples
+**Examples of CORRECT behavior**: ✅ "See ../docs/STYLE.md for writing guidelines" (reference, not copy) ✅ Creating generic workflow in .academicOps/scripts/ that reads from $ACADEMIC_OPS_DATA ✅ Documenting a pattern without including personal examples
 
-**Examples of VIOLATIONS**:
-❌ Copying personal writing style into bot/docs/
-❌ Including actual project names in bot/ documentation
-❌ Embedding personal task content in bot/ workflows
+**Examples of VIOLATIONS**: ❌ Copying personal writing style into bot/docs/ ❌ Including actual project names in bot/ documentation ❌ Embedding personal task content in bot/ workflows
 
 ## WORKFLOW MODE ENFORCEMENT
 
 ### Error Handling - FAIL FAST PHILOSOPHY
+
 When ANY error occurs during workflow execution:
 
 1. **STOP IMMEDIATELY** - No recovery attempts
@@ -50,18 +46,18 @@ When ANY error occurs during workflow execution:
 3. **WAIT FOR INSTRUCTION** - Do not proceed without user direction
 
 **NEVER**:
+
 - Attempt to fix the error
 - Try workarounds or alternatives
 - Debug or investigate causes
 - Continue with partial completion
 
 ### Common Violations to AVOID
-❌ "I'll fix this by..."
-❌ "Let me try a different approach..."
-❌ "I'll investigate and resolve..."
-❌ "Retrying with adjusted parameters..."
+
+❌ "I'll fix this by..." ❌ "Let me try a different approach..." ❌ "I'll investigate and resolve..." ❌ "Retrying with adjusted parameters..."
 
 ### Correct Behavior
+
 ✅ "Step 3 failed: [exact error]. Waiting for your instruction on how to proceed."
 
 ## AUTOMATIC INFORMATION EXTRACTION
@@ -69,12 +65,14 @@ When ANY error occurs during workflow execution:
 **See [AUTO-EXTRACTION](AUTO-EXTRACTION.md) for comprehensive ADHD-optimized extraction guide**
 
 ### Core Principles
+
 1. **EXTRACT IMMEDIATELY** - During conversation, not after
 2. **INFER WHEN UNCLEAR** - Better to capture with assumptions than miss
 3. **MAINTAIN FLOW** - Never interrupt to ask for clarification
 4. **SAVE EVERYTHING** - Tasks, projects, goals, deadlines, contacts
 
 ### Quick Reference
+
 - Tasks with trigger words → `$ACADEMIC_OPS_DATA/tasks/inbox/`
 - Project information → `$ACADEMIC_OPS_DATA/projects/*.md`
 - Strategic goals → `$ACADEMIC_OPS_DATA/goals/*.md`
@@ -82,17 +80,20 @@ When ANY error occurs during workflow execution:
 - Commit immediately after extraction
 
 ### CRITICAL DISTINCTION: Projects vs Tasks
+
 - **Project files** (`projects/*.md`): Strategic descriptions, goals, stakeholders
 - **Task files** (`tasks/*.md`): Specific actionable items with deadlines
 - **NEVER** embed tasks in project descriptions - create separate task files
 - When user mentions action items, CREATE TASK FILES, don't update project files
 
 ### Mode-Specific Behaviors
+
 - **Email Processing**: Extract sender info, tasks, deadlines, updates
 - **Strategy Mode**: Update projects, create goals, link tasks
 - **Meeting Mode**: Capture action items without interrupting flow
 
 ### Conversation Thread Management
+
 - **TRACK INCOMPLETE ITEMS**: Before switching topics, note unresolved questions
 - **RETURN TO THREADS**: After handling interruptions, check for dropped items
 - **EXPLICIT CONFIRMATION**: When user provides clarification, update ALL affected files
@@ -110,6 +111,7 @@ When ANY error occurs during workflow execution:
 - **You CANNOT mix files from both repos in a single git commit**
 
 ### Common Failure Pattern (DO NOT DO THIS)
+
 ```bash
 # ❌ FAILS - Cannot add files from both repos together:
 git add docs/strategy.md bot/agents/strategist.md && git commit -m "..."
@@ -121,6 +123,7 @@ git add docs/strategy.md bot/agents/strategist.md && git commit -m "..."
 **When changes span both repositories, commit separately:**
 
 **Step 1: Commit in bot submodule FIRST**
+
 ```bash
 cd ${ACADEMICOPS}/ && \
 git add agents/file.md && \
@@ -129,6 +132,7 @@ git push
 ```
 
 **Step 2: Commit in parent repo SECOND**
+
 ```bash
 cd /home/nic/src/writing && \
 git add docs/file.md && \
@@ -139,7 +143,9 @@ git push
 **CRITICAL**: Use `cd` with `&&` chaining in a single bash command (working directory resets between separate tool calls).
 
 ### Using auto_sync.sh
+
 For simple commits in the current repository:
+
 ```bash
 $ACADEMIC_OPS_SCRIPTS/auto_sync.sh
 ```
@@ -149,7 +155,9 @@ If it fails, report the exact error and wait for instruction.
 ## PATH RESOLUTION
 
 ### Use Environment Variables
+
 All scripts use configured paths via environment variables:
+
 - `$ACADEMIC_OPS_DATA` - Data directory
 - `$ACADEMIC_OPS_SCRIPTS` - Scripts directory
 - `$ACADEMIC_OPS_DOCS` - Documentation directory
@@ -157,26 +165,30 @@ All scripts use configured paths via environment variables:
 See [PATH-RESOLUTION](PATH-RESOLUTION.md) for details.
 
 ### Tool Access Matrix
-| Tool Location | Accessible From | Solution |
-|--------------|-----------------|----------|
-| .academicOps/scripts/ | Any directory | Use: `$ACADEMIC_OPS_SCRIPTS/` |
-| data/ folder | Any directory | Use: `$ACADEMIC_OPS_DATA/` |
-| docs/ folder | Any directory | Use: `$ACADEMIC_OPS_DOCS/` |
+
+| Tool Location         | Accessible From | Solution                      |
+| --------------------- | --------------- | ----------------------------- |
+| .academicOps/scripts/ | Any directory   | Use: `$ACADEMIC_OPS_SCRIPTS/` |
+| data/ folder          | Any directory   | Use: `$ACADEMIC_OPS_DATA/`    |
+| docs/ folder          | Any directory   | Use: `$ACADEMIC_OPS_DOCS/`    |
 
 ## MODE-SPECIFIC BEHAVIORS
 
 ### WORKFLOW MODE (Default)
+
 - Follow documented workflows EXACTLY
 - STOP on ANY error
 - NO improvisation
 - NO fixing errors
 
 ### SUPERVISED MODE
+
 - Execute ONLY explicit requests
 - Clarify ambiguous instructions
 - Report all actions before taking them
 
 ### DEVELOPMENT MODE
+
 - ONLY for creating/fixing system components
 - ALWAYS check GitHub issues first
 - Document all changes
@@ -185,7 +197,9 @@ See [PATH-RESOLUTION](PATH-RESOLUTION.md) for details.
 ## SCRIPT EXECUTION
 
 ### Running Scripts
+
 Execute scripts directly using their configured paths:
+
 ```bash
 $ACADEMIC_OPS_SCRIPTS/script_name.sh
 ```
@@ -197,18 +211,21 @@ If a script fails, report the error and stop. Do not attempt to fix permissions 
 **CRITICAL: Always use `uv run python` for Python execution.**
 
 **Prohibited:**
+
 - ❌ `python script.py` (use `uv run python` instead)
 - ❌ `python3 script.py` (use `uv run python` instead)
 - ❌ `python -c "code"` (no ad-hoc scripts)
 - ❌ `uv run python -c "code"` (no ad-hoc scripts)
 
 **Required:**
+
 - ✅ `uv run python script.py`
 - ✅ `uv run pytest`
 - ✅ `uv sync` (NOT `pip install`)
 - ✅ `uv pip install` for direct installs (NOT `pip install`)
 
 **Rationale:**
+
 - Ensures consistent dependency management via uv
 - Prevents environment-related bugs
 - Enforces reproducible script execution
@@ -219,6 +236,7 @@ If a script fails, report the error and stop. Do not attempt to fix permissions 
 ## VERIFICATION CHECKLIST
 
 Before ANY operation:
+
 - [ ] Am I in the correct mode?
 - [ ] Do I have explicit permission for this action?
 - [ ] Am I using absolute paths?
@@ -226,11 +244,12 @@ Before ANY operation:
 - [ ] Have I extracted all actionable information?
 - [ ] Have I saved updates to appropriate files?
 
-
 ## WRITING STYLE REFERENCES
 
 ### Author Voice Guidelines
+
 When drafting content in the author's voice, consult:
+
 - **Quick reference**: `../docs/STYLE-QUICK.md` (for most tasks)
 - **Comprehensive guide**: `../docs/STYLE.md` (for deep writing tasks)
 

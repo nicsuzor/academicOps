@@ -1,6 +1,7 @@
 # Experiment: Auto-commit Task Database Changes via PostToolUse Hook
 
 ## Metadata
+
 - **Date**: 2025-11-03
 - **Issue**: #185 (task-manager: Missing git commit/push enforcement after task operations)
 - **Related Issues**: #27 (Critical: Agents must commit changes immediately)
@@ -24,12 +25,14 @@ task-manager agent doesn't commit/push changes to `$ACADEMICOPS_PERSONAL/data/ta
 **File**: `bot/hooks/autocommit_tasks.py`
 
 **Functionality**:
+
 - Detects Bash tool calls to task scripts (task_add.py, task_process.py, etc.)
 - Checks for uncommitted changes in `data/tasks/`
 - Auto-commits and pushes if changes detected
 - Provides system message to inform user
 
 **Design decisions**:
+
 - Timeout: 35s (allows for network latency on push)
 - Non-blocking: Errors logged but don't stop workflow
 - Specific detection: Only triggers on task script patterns
@@ -49,10 +52,7 @@ chmod +x bot/hooks/autocommit_tasks.py
 
 ## Enforcement Hierarchy Justification
 
-**Q1 (Scripts)**: Can automate commits? → YES (PostToolUse hook)
-**Q2 (Hooks)**: Can enforce at key moments? → YES (after task operations)
-**Q3 (Config)**: N/A
-**Q4 (Instructions)**: Currently using → REPLACED with hook
+**Q1 (Scripts)**: Can automate commits? → YES (PostToolUse hook) **Q2 (Hooks)**: Can enforce at key moments? → YES (after task operations) **Q3 (Config)**: N/A **Q4 (Instructions)**: Currently using → REPLACED with hook
 
 **Decision**: PostToolUse hook (automated enforcement) superior to instructions (agent memory).
 
@@ -103,6 +103,7 @@ chmod +x bot/hooks/autocommit_tasks.py
 ## Rollback Plan
 
 If hook causes issues:
+
 1. Edit `.claude/settings.json`
 2. Remove autocommit_tasks.py entry from PostToolUse hooks array
 3. Restart Claude Code

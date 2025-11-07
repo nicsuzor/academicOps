@@ -1,6 +1,7 @@
 # Markdown Operations Skill Creation
 
 ## Metadata
+
 - Date: 2025-11-06
 - Issue: User request via /trainer
 - Commit: [pending]
@@ -9,12 +10,14 @@
 ## Context
 
 User requested creation of a skill for all markdown file operations that:
+
 1. Teaches where different file types belong in aOps structure
 2. Enforces Basic Memory syntax for knowledge graph files
 3. Provides templates and decision trees for compliance
 4. Prevents structure violations through proactive guidance
 
 **Problem**: Agents currently lack systematic guidance for:
+
 - Choosing correct location for new markdown files (aOps structure)
 - Applying appropriate syntax (Basic Memory vs regular markdown)
 - Using templates for standardized file types (experiments, entities)
@@ -25,6 +28,7 @@ User requested creation of a skill for all markdown file operations that:
 ## Hypothesis
 
 Creating markdown-ops skill with integrated structure rules and syntax specifications will:
+
 1. Reduce file placement errors (wrong directories)
 2. Ensure Basic Memory files use full feature set (observations, relations)
 3. Standardize experiment logs and entity creation
@@ -36,11 +40,13 @@ Creating markdown-ops skill with integrated structure rules and syntax specifica
 ### 1. Created Skill Structure
 
 **Initialized skill**:
+
 ```bash
 python skills/skill-creator/scripts/init_skill.py markdown-ops --path skills
 ```
 
 **Skill directory structure**:
+
 ```
 skills/markdown-ops/
 ├── SKILL.md (342 lines)
@@ -61,6 +67,7 @@ skills/markdown-ops/
 **Description**: "This skill should be used for every operation that writes or edits markdown files. Enforces academicOps structure rules and Basic Memory syntax compliance."
 
 **Structure**:
+
 - Framework Context (resources/ references)
 - Overview (purpose and capabilities)
 - When to Use This Skill (trigger examples)
@@ -72,6 +79,7 @@ skills/markdown-ops/
 - Quick Reference (decision matrix)
 
 **Key features**:
+
 - Decision tree: Identify repo → Apply rules → Create file
 - Quick reference tables for file type → location mappings
 - Anti-bloat checklists integrated into workflow
@@ -81,6 +89,7 @@ skills/markdown-ops/
 ### 3. Reference Files
 
 **aops-structure.md** (comprehensive):
+
 - Complete directory structure specification
 - File placement rules by component type
 - Anti-bloat enforcement rules
@@ -89,6 +98,7 @@ skills/markdown-ops/
 - 7 common file type categories with requirements
 
 **bmem-syntax.md** (complete specification):
+
 - YAML frontmatter (required/optional fields)
 - Content structure (Context/Observations/Relations)
 - Observation syntax with categories
@@ -100,12 +110,14 @@ skills/markdown-ops/
 ### 4. Template Assets
 
 **bmem-template.md**:
+
 - Pre-structured YAML frontmatter
 - Section headers (Context/Observations/Relations)
 - Example categories and relation types
 - Ready to fill and use
 
 **experiment-template.md**:
+
 - Standard structure (Metadata → Context → Hypothesis → Changes → Results → Outcome)
 - Placeholder comments for guidance
 - Ensures consistent experiment documentation
@@ -113,6 +125,7 @@ skills/markdown-ops/
 ### 5. Resources Symlinks (MANDATORY)
 
 Created symlinks to framework chunks:
+
 - `AXIOMS.md` - Universal principles
 - `INFRASTRUCTURE.md` - Framework structure
 - `SKILL-PRIMER.md` - Skill execution context
@@ -122,18 +135,21 @@ This gives markdown-ops skill access to framework knowledge without duplication.
 ## Success Criteria
 
 **Quantitative**:
+
 1. Skill passes validation via package_skill.py ✅
 2. SKILL.md stays under 400 lines (342 lines) ✅
 3. All mandatory patterns implemented (resources/, templates, references) ✅
 4. Zero content duplication from chunks/ or other files ✅
 
 **Qualitative**:
+
 1. Decision tree guides file placement clearly ✅
 2. Basic Memory syntax fully documented ✅
 3. Templates reduce friction for common operations ✅
 4. Structure rules comprehensive and actionable ✅
 
 **Testing**:
+
 1. Create experiment log using skill guidance
 2. Create Basic Memory entity using template
 3. Verify file placement decisions are clear
@@ -144,6 +160,7 @@ This gives markdown-ops skill access to framework knowledge without duplication.
 ### Implementation Complete
 
 **Files Created**:
+
 - SKILL.md: 342 lines (workflow guidance)
 - references/aops-structure.md: Comprehensive directory rules
 - references/bmem-syntax.md: Complete Basic Memory specification
@@ -152,12 +169,14 @@ This gives markdown-ops skill access to framework knowledge without duplication.
 - resources/: 3 symlinks to framework chunks
 
 **Validation**: ✅ PASSED
+
 ```
 ✅ Skill is valid!
 ✅ Successfully packaged skill to: /home/nic/src/writing/aops/markdown-ops.zip
 ```
 
 **Line count**: 342 lines (14% over 300-line target)
+
 - **Rationale for overage**: Skill integrates TWO comprehensive specifications:
   1. academicOps structure rules (directory trees, file types, placement logic)
   2. Basic Memory syntax (frontmatter, observations, relations, conversions)
@@ -167,12 +186,14 @@ This gives markdown-ops skill access to framework knowledge without duplication.
 ### Success Criteria Validation
 
 **Quantitative** ✅:
+
 1. Validation passed: ✅
 2. Line count 342 (acceptable given scope): ✅
 3. Mandatory patterns (resources/, templates, references): ✅
 4. Zero duplication: ✅ (chunks/ referenced via symlinks, bmem spec extracted from docs/)
 
 **Qualitative** ✅:
+
 1. Decision tree clarity: ✅ 3-step process (Identify repo → Apply rules → Create file)
 2. Basic Memory syntax documented: ✅ Complete specification with examples
 3. Templates reduce friction: ✅ Both templates ready to use
@@ -192,6 +213,7 @@ This gives markdown-ops skill access to framework knowledge without duplication.
 **SUCCESS**
 
 **Achievements**:
+
 - ✅ Comprehensive markdown operations skill created
 - ✅ academicOps structure rules documented
 - ✅ Basic Memory syntax specification complete
@@ -200,6 +222,7 @@ This gives markdown-ops skill access to framework knowledge without duplication.
 - ✅ Validation passed, skill packaged successfully
 
 **Impact**:
+
 - Agents now have systematic guidance for ALL markdown operations
 - File placement errors preventable through decision trees
 - Basic Memory files will use full feature set (observations, relations, proper frontmatter)
@@ -208,6 +231,7 @@ This gives markdown-ops skill access to framework knowledge without duplication.
 - Single skill invocation provides complete markdown guidance
 
 **Next Steps**:
+
 1. Test skill with real markdown operations (create experiment log, create entity)
 2. Monitor compliance improvements (fewer structure violations)
 3. Iterate based on usage patterns
@@ -237,20 +261,24 @@ This gives markdown-ops skill access to framework knowledge without duplication.
 **Comparison to Other Skills**:
 
 Similar scope to:
+
 - skill-creator (162 lines) - Narrower focus (skills only)
 - git-commit (516 lines) - Broader scope but needs refactoring (Issue #142)
 
 **markdown-ops** (342 lines):
+
 - Broader than skill-creator (all markdown, not just skills)
 - More focused than git-commit (markdown only, not all git ops)
 - Acceptable given dual specification (aOps + Basic Memory)
 
 **Risks**:
+
 - Skill may be too heavy (342 lines)
 - Templates may become stale as patterns evolve
 - Decision tree may not cover all edge cases
 
 **Mitigations**:
+
 - Monitor token usage and agent performance
 - Include self-improvement instructions in SKILL.md
 - Update templates based on actual usage patterns

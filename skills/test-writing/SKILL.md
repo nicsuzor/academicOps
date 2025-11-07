@@ -25,6 +25,7 @@ Use test-writing when:
 4. **Test file review** - Ensure tests meet standards
 
 **Concrete trigger examples**:
+
 - "Write a test for user authentication"
 - "Fix the failing tests in test_llm.py"
 - "Refactor test_orchestrator.py to use real fixtures"
@@ -37,6 +38,7 @@ Use test-writing when:
 ### 1. Integration Tests Over Unit Tests
 
 **Delete brittle unit tests**:
+
 - Tests of `__init__` parameters
 - Tests of individual method signatures
 - Tests that mock our internal code
@@ -44,6 +46,7 @@ Use test-writing when:
 - Tests of implementation details
 
 **Write robust integration tests**:
+
 - Tests that exercise complete workflows
 - Tests that verify business outcomes
 - Tests using real configurations
@@ -53,6 +56,7 @@ Use test-writing when:
 ### 2. NEVER Mock Internal Code
 
 **FORBIDDEN** (delete immediately):
+
 ```python
 # ❌ WRONG - Mocking OUR code
 @patch("buttermilk.core.llm")
@@ -61,6 +65,7 @@ mock_obj = MagicMock(spec=OurClass)
 ```
 
 **REQUIRED** (mock only at system boundaries):
+
 ```python
 # ✅ CORRECT - Mock external APIs only
 @respx.mock
@@ -78,6 +83,7 @@ async def test_llm_call(real_bm):
 **CRITICAL CONFIG RULE**: NEVER load Hydra configs in test files!
 
 **FORBIDDEN PATTERNS** (block commits with these):
+
 ```python
 # ❌ NEVER do this in test files:
 initialize_config_dir(...)
@@ -87,6 +93,7 @@ GlobalHydra
 ```
 
 **REQUIRED PATTERN**:
+
 ```python
 # ✅ ALWAYS use real_bm or real_conf from conftest.py
 def test_with_configured_objects(real_bm):
@@ -104,12 +111,14 @@ def test_with_config_dict(real_conf):
 ### 4. Use REAL Data from JSON Fixtures
 
 **WRONG** (inline fake data):
+
 ```python
 # ❌ Simulated data in code
 records = [{"id": "fake1", "text": "test"}]
 ```
 
 **RIGHT** (real data from JSON):
+
 ```python
 # ✅ Load real data from fixtures
 records = json.loads(Path("tests/fixtures/input_records.json").read_text())
@@ -126,11 +135,13 @@ Follow this TDD workflow for all test tasks.
 ### Step 1: Understand What to Test
 
 **For new features (TDD)**:
+
 1. **Identify the business behavior** - What should this feature DO?
 2. **Define success criteria** - How do you know it works?
 3. **Plan the test** - What inputs, what expected outputs?
 
 **For existing tests (refactoring)**:
+
 1. **Read the test** - Can you understand it in 30 seconds?
 2. **Identify anti-patterns**:
    - Mocks of internal code?
@@ -147,6 +158,7 @@ Follow this TDD workflow for all test tasks.
 - `real_conf` - Provides raw Hydra DictConfig from testing.yaml
 
 **Example usage**:
+
 ```python
 def test_orchestrator_workflow(real_bm):
     \"\"\"Test complete orchestrator workflow with real config.\"\"\"
@@ -164,6 +176,7 @@ def test_orchestrator_workflow(real_bm):
 ```
 
 **DO NOT create new config-loading fixtures!**:
+
 ```python
 # ❌ PROHIBITED - This will be caught in code review
 @pytest.fixture
@@ -188,6 +201,7 @@ tests/fixtures/
 ```
 
 **Pattern**:
+
 ```python
 def load_json_fixture(filepath: str):
     \"\"\"Load JSON fixture file.\"\"\"
@@ -204,6 +218,7 @@ def test_evaluation_workflow():
 ### Step 4: Write the Test (TDD: Test-First!)
 
 **TDD Process**:
+
 1. **Write FAILING test first** - Test should fail because feature doesn't exist yet
 2. **Run test to verify it fails** - `uv run pytest tests/test_file.py::test_name -xvs`
 3. **Implement minimum code** to make test pass
@@ -211,6 +226,7 @@ def test_evaluation_workflow():
 5. **Refactor if needed** - Keep test passing
 
 **Test structure** (Arrange-Act-Assert):
+
 ```python
 @pytest.mark.anyio  # For async tests
 async def test_llm_generates_valid_response(real_bm):
@@ -238,6 +254,7 @@ async def test_llm_generates_valid_response(real_bm):
 ```
 
 **Test naming convention**:
+
 ```python
 # ✅ Descriptive behavior-based names
 def test_user_can_login_with_valid_credentials(real_bm):
@@ -253,6 +270,7 @@ def test_validate_config():
 ### Step 5: Mock Only at System Boundaries
 
 **System Boundaries (OK to mock)**:
+
 - HTTP calls: Use `respx` or `httpx`
 - File system: Use `tmp_path` fixture
 - Time: Use `freezegun`
@@ -261,6 +279,7 @@ def test_validate_config():
 - Cloud services: Mock GCP/AWS SDK clients
 
 **Our Code (NEVER mock)**:
+
 - Anything in `buttermilk.*`
 - Anything in `bot.*`
 - Any project-specific code
@@ -268,6 +287,7 @@ def test_validate_config():
 - Data transformations
 
 **Example - External API mocking**:
+
 ```python
 @respx.mock
 async def test_llm_api_call(real_bm):
@@ -290,6 +310,7 @@ async def test_llm_api_call(real_bm):
 ### Step 6: Run and Verify Tests
 
 **Commands**:
+
 ```bash
 # Run specific test
 uv run pytest tests/test_file.py::test_name -xvs
@@ -302,6 +323,7 @@ uv run pytest tests/ --cov=src --cov-report=term-missing
 ```
 
 **TDD verification**:
+
 1. **Test fails initially** (feature not implemented)
 2. **Implement minimum code**
 3. **Test passes** (feature works)
@@ -310,6 +332,7 @@ uv run pytest tests/ --cov=src --cov-report=term-missing
 ### Step 7: Refactor Ruthlessly
 
 **Delete these immediately**:
+
 ```python
 # ❌ Mocking internal code
 @patch("buttermilk.llm")
@@ -331,6 +354,7 @@ mock.method.return_value.attribute.side_effect = [...]
 ```
 
 **Consolidate 10 unit tests → 1 integration test**:
+
 ```python
 # BEFORE: 10 tests, 300 lines
 def test_init_valid():
@@ -422,11 +446,13 @@ def test_multiple_scenarios(real_conf, fixture_file, expected_file):
 **CRITICAL PRINCIPLE**: When testing interchangeable components (clients, models, formatters, handlers), **ALWAYS prefer extending existing parameterized tests** over creating new standalone test functions.
 
 **Interchangeable components** share:
+
 - Same interface/base class
 - Same test scenarios
 - Different implementations (providers, models, formats)
 
 **WRONG - Creating redundant standalone test**:
+
 ```python
 # ❌ Existing parameterized test
 @pytest.mark.parametrize("client", [OpenAIClient, AnthropicClient])
@@ -442,6 +468,7 @@ async def test_gemini_client():
 ```
 
 **RIGHT - Extending parameterized test**:
+
 ```python
 # ✅ Add to existing list/enum
 LLMClients = [OpenAIClient, AnthropicClient, GeminiClient]
@@ -454,11 +481,13 @@ async def test_client(client):
 ```
 
 **When to create standalone tests**:
+
 - Component has **unique behavior** not shared with others
 - Testing **integration between** multiple components
 - **Error conditions** specific to one implementation
 
 **Before creating new test function, ask**:
+
 1. Does a parameterized test already cover this pattern?
 2. Is this component interchangeable with existing ones?
 3. Could I add this to an existing fixture/enum/list instead?
@@ -484,17 +513,7 @@ def test_file_output(real_bm, tmp_path):
 
 Before committing tests, verify:
 
-✅ **Uses real_bm or real_conf** from conftest.py
-✅ **No config loading** in test files (no initialize_config_dir, compose, GlobalHydra)
-✅ **No mocking internal code** (only external boundaries)
-✅ **Uses real data** from JSON fixtures
-✅ **Tests behavior**, not implementation
-✅ **Extends parameterized tests** for interchangeable components (don't create redundant standalone tests)
-✅ **Descriptive test names** (test_user_can_login_with_valid_credentials)
-✅ **Clear arrange-act-assert** structure
-✅ **Async tests use @pytest.mark.anyio**
-✅ **Tests are independent** (can run in any order)
-✅ **Tests clean up** after themselves
+✅ **Uses real_bm or real_conf** from conftest.py ✅ **No config loading** in test files (no initialize_config_dir, compose, GlobalHydra) ✅ **No mocking internal code** (only external boundaries) ✅ **Uses real data** from JSON fixtures ✅ **Tests behavior**, not implementation ✅ **Extends parameterized tests** for interchangeable components (don't create redundant standalone tests) ✅ **Descriptive test names** (test_user_can_login_with_valid_credentials) ✅ **Clear arrange-act-assert** structure ✅ **Async tests use @pytest.mark.anyio** ✅ **Tests are independent** (can run in any order) ✅ **Tests clean up** after themselves
 
 ## Forbidden Patterns (Auto-Reject in Code Review)
 
@@ -540,7 +559,7 @@ See `references/` for detailed guides:
 A test suite meets standards when:
 
 1. **Zero config loading** in test files (ONLY in conftest.py)
-2. **Zero internal mocks** (buttermilk.*, bot.* never mocked)
+2. **Zero internal mocks** (buttermilk._, bot._ never mocked)
 3. **All data from JSON** fixtures (no inline fake data)
 4. **Tests real behaviors** (not implementation details)
 5. **Uses existing fixtures** (real_bm, real_conf from conftest.py)
@@ -551,6 +570,7 @@ A test suite meets standards when:
 ## Quick Reference
 
 **Test creation workflow**:
+
 ```bash
 # 1. Write failing test (TDD)
 def test_new_feature(real_bm):
@@ -570,6 +590,7 @@ uv run pytest tests/
 ```
 
 **Required imports**:
+
 ```python
 import pytest
 from pathlib import Path
@@ -580,6 +601,7 @@ import httpx  # For HTTP responses
 ```
 
 **Test file template**:
+
 ```python
 \"\"\"Tests for [feature name].
 

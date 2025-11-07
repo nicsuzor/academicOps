@@ -1,6 +1,7 @@
 # Experiment: Fix task_process.py Regex Bug + Add Tool Failure Protocol
 
 ## Metadata
+
 - **Date**: 2025-10-24
 - **Issue**: #155
 - **Commit**: da5e675fcf2a50f359de12b94a8fcf5e6775c944
@@ -18,12 +19,14 @@
 **File**: `.claude/skills/task-management/scripts/task_process.py` line 87
 
 **Broken regex**:
+
 ```python
 task_id_pattern = re.compile(r"^\d{8}-[0-9a-fA-F]{8}$")
 # Expected: YYYYMMDD-XXXXXXXX
 ```
 
 **Actual format** (from `task_add.py` line 52):
+
 ```python
 task_id = f"{timestamp}-{hostname}-{task_uuid}"
 # Example: 20250929-004918-nicwin-7ce2c06b
@@ -39,17 +42,20 @@ task_id = f"{timestamp}-{hostname}-{task_uuid}"
 **File**: `.claude/skills/task-management/scripts/task_process.py`
 
 **Changes**:
+
 1. **Removed redundant regex validation** (lines 87-98 deleted)
 2. **Removed `re` import** (no longer needed)
 3. **Updated docstring** to document actual format: `YYYYMMDD-HHMMSS-hostname-uuid`
 
 **Rationale**:
+
 - `_find_task_by_id()` already searches for matching files (validation by existence)
 - Regex check was redundant and incorrect
 - DRY principle - don't duplicate validation
 - Simpler code, more flexible (handles any ID format automatically)
 
 **Before**:
+
 ```python
 import re
 ...
@@ -66,6 +72,7 @@ if not local_task:
 ```
 
 **After**:
+
 ```python
 # No re import needed
 ...
@@ -85,6 +92,7 @@ if not local_task:
 **Added**: "Tool Failure Protocol" section (~35 lines) after Behavioral Rules
 
 **Content**:
+
 - **1 retry maximum** when tool fails
 - **Stop after 2nd failure** and report
 - **NEVER** try 3+ variations
@@ -102,18 +110,21 @@ if not local_task:
 ## Success Criteria
 
 **Part 1 - Script Fix**:
+
 - [ ] `task_process.py` accepts IDs like `20250929-004918-nicwin-7ce2c06b`
 - [ ] Archive command works with task IDs from `current_view.json`
 - [ ] No false "invalid_task_id" errors
 - [ ] Only get "task_not_found" if file doesn't exist
 
 **Part 2 - Agent Behavior**:
+
 - [ ] Agent stops after 2nd tool failure (not 3rd or 4th)
 - [ ] Agent reports error message and hypothesis
 - [ ] Agent asks user how to proceed
 - [ ] No more defensive "let me explore filesystem" behavior
 
 **Test Scenario**:
+
 1. Give agent a task ID from real `current_view.json` (format: YYYYMMDD-HHMMSS-hostname-uuid)
 2. Request archive
 3. Should succeed (script accepts format)
@@ -124,11 +135,13 @@ if not local_task:
 (To be filled after testing in real usage)
 
 ### Test 1: Script Fix Validation
+
 - Date:
 - Task ID tested:
 - Outcome:
 
 ### Test 2: Agent Behavior (Tool Failure)
+
 - Date:
 - Scenario:
 - Number of attempts before stopping:
@@ -139,6 +152,7 @@ if not local_task:
 (To be marked after validation)
 
 Options:
+
 - **Success**: Script accepts real IDs + Agent stops after 2 failures
 - **Partial**: One part works, other needs iteration
 - **Failure**: Neither fix effective
@@ -148,10 +162,12 @@ Options:
 (To be determined based on outcome)
 
 If script still fails:
+
 - Check if `_find_task_by_id()` has other issues
 - Verify task file search logic
 
 If agent behavior persists:
+
 - Consider adding PostToolUse hook to detect 3+ failures
 - Track in separate issue
 - May need stronger enforcement mechanism

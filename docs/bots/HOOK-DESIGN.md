@@ -33,6 +33,7 @@ Best practices for creating effective Claude Code hooks.
 ### 1. Lightweight and Fast
 
 Hooks run on critical path—keep them minimal:
+
 - Avoid expensive operations in PreToolUse
 - Use PostToolUse for slower tasks (tests, linting)
 - SessionStart should load only essential context

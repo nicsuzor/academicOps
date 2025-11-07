@@ -16,6 +16,7 @@ This skill automatically creates or updates an `AGENT.md` file in the workspace 
 ## When to Use This Skill
 
 This skill should be automatically invoked when:
+
 - An agent initializes in a workspace for the first time
 - A new skill is added to the workspace skill library
 - Skills are updated and the index needs refreshing
@@ -33,6 +34,7 @@ Creates or updates `AGENT.md` in the workspace root (typically `.claude/` or pro
 4. **Maintenance note**: Indication that the file is auto-generated and should be kept current
 
 **Important**: If `AGENT.md` already exists, this skill intelligently updates it by:
+
 - Refreshing the skills index section with current skills
 - Preserving any custom instructions or modifications
 - Maintaining the essential skills-first directives
@@ -42,6 +44,7 @@ Creates or updates `AGENT.md` in the workspace root (typically `.claude/` or pro
 ### Step 1: Scan Available Skills
 
 Discover all skills in the workspace by:
+
 1. Searching for `SKILL.md` files in the skills directory (typically `.claude/skills/`)
 2. Extracting metadata from YAML frontmatter (name, description)
 3. Organizing skills into logical categories based on their descriptions
@@ -81,11 +84,13 @@ Categorization helps agents quickly identify relevant skills for their current t
 ### Step 3: Generate or Update AGENT.md
 
 **If `AGENT.md` does not exist:**
+
 - Use the complete template from `references/AGENT.md` as the base
 - Update the skills index section with discovered skills
 - Write the file to the workspace root
 
 **If `AGENT.md` already exists:**
+
 - Read the existing file
 - Identify the skills index section (typically between "## Available Skills Index" and the next section)
 - Replace only the skills index with updated content
@@ -95,6 +100,7 @@ Categorization helps agents quickly identify relevant skills for their current t
 ### Step 4: Verify and Report
 
 After creating or updating the file:
+
 1. Confirm the file exists and is readable
 2. Verify the skills index is complete and current
 3. Report the action taken (created or updated) and the number of skills indexed

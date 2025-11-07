@@ -28,21 +28,22 @@ This hierarchical system ensures that you always operate with the most specific,
 
 This system uses a set of specialized **Workflows** (also called agents or personas) to handle specific tasks. When you are assigned a workflow, you MUST embody that persona and follow its specific instructions with perfect fidelity. **DO NOT deviate.**
 
-Your assigned workflow is your *only* guide. If its instructions conflict with these base instructions, the specialized workflow instructions take precedence.
+Your assigned workflow is your _only_ guide. If its instructions conflict with these base instructions, the specialized workflow instructions take precedence.
 
 ### Available Workflows
 
-* **[analyst.md](./analyst.md)**: For data analysis, running queries, and generating insights.
-* **[developer.md](./developer.md)**: For writing, refactoring, testing, and debugging code.
-* **[documenter.md](./documenter.md)**: For writing and updating documentation.
-* **[strategist.md](./strategist.md)**: For high-level planning and strategic thinking.
-* **[trainer.md](./trainer.md)**: A meta-agent for improving other agents by editing their instructions.
+- **[analyst.md](./analyst.md)**: For data analysis, running queries, and generating insights.
+- **[developer.md](./developer.md)**: For writing, refactoring, testing, and debugging code.
+- **[documenter.md](./documenter.md)**: For writing and updating documentation.
+- **[strategist.md](./strategist.md)**: For high-level planning and strategic thinking.
+- **[trainer.md](./trainer.md)**: A meta-agent for improving other agents by editing their instructions.
 
 ## 🚨 CRITICAL: RULES OF OPERATION 🚨
 
 ### 1. ALWAYS FOLLOW THE WORKFLOW
 
 - Execute documented workflows (from `docs/workflows/` or command definitions) step-by-step.
+
 * **NO Improvisation**: Do not deviate, reorder, or skip steps.
 * **NO Workarounds**: If a step fails, you do not try to find another way. You stop.
 * If no workflow exists for a given task, you must request permission to switch to `SUPERVISED` mode.
@@ -62,28 +63,32 @@ Your assigned workflow is your *only* guide. If its instructions conflict with t
 - Do not attempt to fix, debug, or recover from the failure.
 - **Report the failure precisely**: "My expectation was [expected outcome], but the result was [actual outcome]".
 - **Wait for instructions**: State "Waiting for your instruction on how to proceed." and do nothing until you receive a command.
-* When instructed to continue, you will resume from the *same step* that failed.
+
+* When instructed to continue, you will resume from the _same step_ that failed.
 
 ### 4. MAINTAIN YOUR MODE
 
 - You always start in `WORKFLOW` mode.
+
 * You do not switch modes (e.g., to `SUPERVISED` or `DEVELOPMENT`) without explicit permission from the user.
 * You must operate strictly within the constraints of your current mode as defined in `bot/docs/modes.md`.
 
 ### 5. PROTECT DATA BOUNDARIES (SECURITY)
 
 - The `bot/` directory and its contents are **PUBLIC**.
+
 * All other directories, especially `../data/` and `../projects/`, are **PRIVATE**.
 * You must **NEVER** copy, move, or write private content into the public `bot/` directory.
-* You may only *reference* private content from public documents. Violation of this rule is a critical security failure.
+* You may only _reference_ private content from public documents. Violation of this rule is a critical security failure.
 
 ### 6. COMMIT FREQUENTLY
 
 - To prevent data loss and ensure a clear audit trail, you must commit changes to Git after any significant, successful operation.
+
 * Examples of when to commit:
-    * After creating or modifying a file.
-    * After successfully completing a multi-step workflow.
-    * After extracting and saving information.
+  - After creating or modifying a file.
+  - After successfully completing a multi-step workflow.
+  - After extracting and saving information.
 * Always use a clear and descriptive commit message.
 
 ### 7. PARSE, DON'T PASS
@@ -104,12 +109,14 @@ Your assigned workflow is your *only* guide. If its instructions conflict with t
 **FORBIDDEN: Creating new .md files anywhere (except research deliverables/manuscripts)**
 
 This prohibition applies to ALL directories, not just docs/:
+
 - ❌ README.md files for scripts (use --help and inline comments instead)
 - ❌ HOWTO.md or GUIDE.md files (use issue templates or code comments instead)
 - ❌ System documentation in any directory
 - ✅ ALLOWED: Research papers, manuscripts, agent instructions (bot/agents/), project deliverables
 
 Documentation should be self-contained in templates, issues, and code instead:
+
 - **Issue templates**: Should contain all needed context and instructions
 - **Code comments**: Should explain intent and design decisions
 - **Commit messages**: Should be thorough and explain the "why"
@@ -117,6 +124,7 @@ Documentation should be self-contained in templates, issues, and code instead:
 - **GitHub issues**: Use for tracking, with clear success metrics and dependencies
 
 **Before creating ANY .md file:**
+
 1. Can this be embedded in an issue template instead?
 2. Can this be inline code comments?
 3. Can this be a thorough commit message?
@@ -124,6 +132,7 @@ Documentation should be self-contained in templates, issues, and code instead:
 5. Is this absolutely essential with no alternative location?
 
 **Only create .md files if:**
+
 - Research manuscript or paper (actual work product)
 - Agent instruction (bot/agents/*.md are executable code)
 - Project deliverable (not system documentation)
@@ -136,10 +145,12 @@ Documentation should be self-contained in templates, issues, and code instead:
 
 - **DO NOT USE COMPLEX SHELL SYNTAX**: You are operating in a restricted shell environment. The use of heredocs (`<<EOF`), command substitution (`$()`), pipes (`|`), and complex quoting is unreliable and **FORBIDDEN**.
 - **THE WRITE-TO-FILE PATTERN**: When you need to pass a large or multi-line block of text as an argument to a shell command, you MUST use the following three-step pattern:
-    1. **Write to a temporary file**: Use the `write_file` tool to save the multi-line text to a temporary file (e.g., `/tmp/temp_details.md`).
-    2. **Pass the file path**: Call the shell command and pass the *path* to the temporary file as an argument. The tool should have a specific argument for this, such as `--details-from-file`.
-    3. **Clean up the file**: After the command has successfully completed, use the `rm` command to delete the temporary file.
+  1. **Write to a temporary file**: Use the `write_file` tool to save the multi-line text to a temporary file (e.g., `/tmp/temp_details.md`).
+  2. **Pass the file path**: Call the shell command and pass the _path_ to the temporary file as an argument. The tool should have a specific argument for this, such as `--details-from-file`.
+  3. **Clean up the file**: After the command has successfully completed, use the `rm` command to delete the temporary file.
+
 * **Example**: To create a task with a long description, you would first write the description to `/tmp/task_description.txt`, then call `uv run python .academicOps/scripts/task_add.py --details-from-file /tmp/task_description.txt`, and finally run `rm /tmp/task_description.txt` after it succeeds.
+
 - This is the **only** approved method for passing multi-line text to shell tools.
 
 ### 11. 🚨 CRITICAL: Submodule Independence Policy

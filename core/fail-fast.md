@@ -24,6 +24,7 @@ The fail-fast principle requires code to stop execution as soon as an error cond
 ## Examples
 
 **Good Example**:
+
 ```python
 if not config_path.exists():
     raise FileNotFoundError(f"Config not found: {config_path}")
@@ -31,6 +32,7 @@ config = load_yaml(config_path)
 ```
 
 **Bad Example**:
+
 ```python
 config = load_config() or {}  # Silent failure!
 value = config.get("key", "default")  # Masks missing data
@@ -47,7 +49,7 @@ value = config.get("key", "default")  # Masks missing data
 ## Related Concepts
 
 - [[no-assumptions]] - Why we fail fast
-- [[standard-tools]] - Tools must exist or fail  
+- [[standard-tools]] - Tools must exist or fail
 - [[explicit-errors]] - How to fail fast effectively
 
 ## Learning Log

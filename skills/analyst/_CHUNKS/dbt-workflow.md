@@ -29,6 +29,7 @@ Need data for analysis?
 ### Prohibited Actions
 
 ❌ **NEVER** do this:
+
 ```python
 # Direct BigQuery query - PROHIBITED
 df = client.query("SELECT * FROM bigquery.raw.cases").to_dataframe()
@@ -41,6 +42,7 @@ response = requests.get("https://api.example.com/data")
 ```
 
 ✅ **ALWAYS** do this:
+
 ```python
 # Query through dbt mart - CORRECT
 import duckdb
@@ -74,6 +76,7 @@ grep -r "keyword" dbt/models/
 ```
 
 Ask yourself:
+
 - Can I extend an existing model instead of creating new one?
 - Does this transformation already exist?
 - Can I reuse intermediate models?
@@ -101,12 +104,14 @@ Ask yourself:
 When creating a dbt model, take ONE step, then stop:
 
 **Step 1: Create the model file**
+
 ```bash
 # Create staging model
 touch dbt/models/staging/stg_source_name.sql
 ```
 
 Write SQL:
+
 ```sql
 -- models/staging/stg_cases.sql
 select
@@ -121,6 +126,7 @@ where id is not null
 **STOP. Show to user. Wait for feedback.**
 
 **Step 2: Add documentation** (only after user approves model)
+
 ```yaml
 # dbt/schema.yml
 models:
@@ -136,6 +142,7 @@ models:
 **STOP. Show to user. Wait for feedback.**
 
 **Step 3: Add tests** (only after user approves documentation)
+
 ```yaml
 columns:
   - name: case_id
@@ -147,6 +154,7 @@ columns:
 **STOP. Show to user. Wait for feedback.**
 
 **Step 4: Run the model** (only after user approves tests)
+
 ```bash
 dbt run --select stg_cases
 dbt test --select stg_cases
@@ -157,6 +165,7 @@ dbt test --select stg_cases
 ## Additional Resources
 
 See `references/dbt-workflow.md` for comprehensive dbt patterns, including:
+
 - Testing strategies (schema, singular, package tests)
 - Documentation practices
 - Common patterns (incremental models, source freshness)

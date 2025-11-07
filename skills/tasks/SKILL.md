@@ -48,9 +48,11 @@ uv run python ~/.claude/skills/scribe/scripts/task_add.py \
 ```
 
 **Required fields**:
+
 - `--title`: Action-oriented, clear, scannable (e.g., "Prepare keynote slides", "Review student thesis Chapter 3")
 
 **Optional fields**:
+
 - `--priority`: 1-3 (see Prioritization Framework below)
 - `--project`: Slug matching filename in `$ACADEMICOPS_PERSONAL/data/projects/*.md`
 - `--due`: ISO format YYYY-MM-DD
@@ -60,16 +62,19 @@ uv run python ~/.claude/skills/scribe/scripts/task_add.py \
 ### 3. View Tasks
 
 **Compact overview**:
+
 ```bash
 uv run python ~/.claude/skills/scribe/scripts/task_index.py
 ```
 
 **Detailed view** (default: top 10 by priority):
+
 ```bash
 uv run python ~/.claude/skills/scribe/scripts/task_view.py --per-page=10
 ```
 
 **Sort options**:
+
 - `--sort=priority` (default)
 - `--sort=date`
 - `--sort=due`
@@ -93,23 +98,27 @@ uv run python ~/.claude/skills/scribe/scripts/task_process.py modify <task_id> -
 ## Prioritization Framework
 
 **P1 (Today/Tomorrow)** - Immediate action required:
+
 - Action window closing NOW (not just deadline approaching)
 - Meeting prep due within 24 hours
 - Immediate blocker for others
 - Time-sensitive response needed
 
 **P2 (This Week)** - Important, soon:
+
 - Deadline within 7 days
 - Significant strategic value
 - Preparation needed soon
 - Collaborative work where others are waiting
 
 **P3 (Within 2 Weeks)** - Lower urgency:
+
 - Longer timeline
 - Lower strategic alignment
 - No immediate action window
 
 **Key prioritization factors** (in order):
+
 1. **Temporal constraints**: Due date, action window, meeting dates
 2. **Strategic alignment**: Check `$ACADEMICOPS_PERSONAL/data/goals/*.md` for linkage to goals
 3. **Dependencies & roles**: Who's waiting? What's your role? Who has agency?
@@ -119,16 +128,19 @@ uv run python ~/.claude/skills/scribe/scripts/task_process.py modify <task_id> -
 ## Task Title Guidelines
 
 **DO**:
+
 - Use action verbs: "Prepare slides", "Review draft", "Respond to inquiry"
 - Be specific and scannable
 - Keep concise (1-8 words)
 
 **DON'T**:
+
 - Write "Email from X about Y" (this is not action-oriented)
 - Include strategic analysis in the title
 - Be vague ("Handle things", "Follow up")
 
 **Examples**:
+
 - ✅ "Confirm keynote for Platform Governance Conference"
 - ✅ "Review student thesis Chapter 3 and schedule meeting"
 - ✅ "Submit talk title for November conference"
@@ -141,12 +153,14 @@ uv run python ~/.claude/skills/scribe/scripts/task_process.py modify <task_id> -
 **Write for the USER, not for strategic analysis**.
 
 **Include**:
+
 - What needs to be done (briefly, title already covers this)
 - Why it matters (1 sentence)
 - When it's due or action window
 - Where to find materials (if relevant)
 
 **Don't include**:
+
 - Strategic analysis of priority choices
 - Explanations of relationships the user already knows
 - Role definitions or organizational hierarchy
@@ -194,11 +208,13 @@ $ACADEMICOPS_PERSONAL/data/
 **CRITICAL**: Priority tasks MUST link to goals in `$ACADEMICOPS_PERSONAL/data/goals/*.md`.
 
 **When creating P1 or P2 tasks**:
+
 1. Specify `--project` parameter linking to a project slug
 2. Verify that project exists in `data/projects/*.md`
 3. Check that project file references a goal in `data/goals/*.md`
 
 **If misaligned**:
+
 - Create the task anyway (don't fail)
 - Flag the misalignment to the user or calling agent
 - Suggest either linking to a goal or lowering priority
@@ -249,12 +265,14 @@ When user mentions completing work:
 ## Integration with Other Skills/Agents
 
 **Agents that should use this skill**:
+
 - `scribe` subagent (background capture)
 - `task-manager` subagent (email task extraction)
 - `strategist` subagent (display, context guide)
 - Any agent/skill extracting or managing tasks
 
 **This skill provides HOW**, agents provide WHEN:
+
 - scribe: Captures tasks silently during conversations
 - task-manager: Extracts tasks from emails
 - strategist: Shows tasks on request, explains strategic context
@@ -262,6 +280,7 @@ When user mentions completing work:
 ## Best Practices
 
 **DO**:
+
 - Check for duplicates BEFORE creating tasks
 - Use action-oriented titles
 - Link P1/P2 tasks to projects and goals
@@ -270,6 +289,7 @@ When user mentions completing work:
 - Load strategic context before prioritizing
 
 **DON'T**:
+
 - Create duplicate tasks (always check first)
 - Write long summaries with strategic analysis
 - Skip strategic alignment checks for P1/P2 tasks

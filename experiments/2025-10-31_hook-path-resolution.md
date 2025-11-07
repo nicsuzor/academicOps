@@ -1,12 +1,14 @@
 # Hook Path Resolution Fix
 
 ## Metadata
+
 - Date: 2025-10-31
 - Issue: #176
 - Commit: 9302bdf
 - Model: claude-sonnet-4-5-20250929
 
 ## Hypothesis
+
 Standardizing environment variable name to `ACADEMICOPS` and fixing hook paths from `/bots/hooks/` to `/hooks/` will enable hooks to execute successfully from any project directory.
 
 ## Changes Made
@@ -34,11 +36,13 @@ Standardizing environment variable name to `ACADEMICOPS` and fixing hook paths f
 **Testing Required**: User must test in new Claude Code session to verify hooks work from different directories.
 
 **Expected behavior**:
+
 - Start Claude Code from `/home/nic/src/writing` (or any non-bot directory)
 - Run any command that triggers PreToolUse hook (e.g., WebFetch)
 - Should see hook validation running, NOT "Hook not found" error
 
 **Technical validation complete**:
+
 - ✅ paths.sh exports ACADEMICOPS=/home/nic/src/bot (verified in new shell)
 - ✅ Hook commands reference correct path (/hooks/ not /bots/hooks/)
 - ✅ Variable name consistent across all files

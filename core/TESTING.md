@@ -19,18 +19,21 @@ Generic testing principles and pytest patterns. Project-specific testing require
 ## Test Types
 
 **Unit Tests**:
+
 - Test single function/class in isolation
 - Mock all dependencies
 - Fast, focused
 - Location: `tests/unit/`
 
 **Integration Tests**:
+
 - Test 2-3 components working together
 - Use real configuration (via `real_*` fixtures if available)
 - May mock external APIs
 - Location: `tests/integration/`
 
 **End-to-End (E2E) Tests**:
+
 - Test complete workflow start to finish
 - REAL everything: APIs, storage, processors
 - Slower but validates production workflow
@@ -40,16 +43,19 @@ Generic testing principles and pytest patterns. Project-specific testing require
 ## When to Mock
 
 **Mock ONLY at system boundaries you don't control**:
+
 - External third-party APIs you can't call in tests
 - Services requiring paid credentials for every run
 - Infrastructure you don't own (document why)
 
 **NEVER mock**:
+
 - Your own code (internal modules, classes, functions)
 - Your own services/APIs
 - Internal processors or utilities
 
 **Example**:
+
 ```python
 # ❌ DON'T mock this (it's OUR code):
 # @patch("myproject.data.Database")
@@ -63,6 +69,7 @@ Generic testing principles and pytest patterns. Project-specific testing require
 ## Pytest Patterns
 
 **✅ CORRECT - Proper pytest structure**:
+
 ```python
 # tests/unit/test_mymodule.py
 import pytest
@@ -85,11 +92,13 @@ def test_myclass_process_valid_input():
 ```
 
 **Test Naming Conventions**:
+
 - Files: `test_*.py` in `tests/` subdirectories
 - Functions: `def test_<component>_<scenario>()`
 - Descriptive docstrings explaining what's being tested
 
 **Fixtures**:
+
 ```python
 @pytest.fixture
 def sample_data():
@@ -105,12 +114,14 @@ def test_with_fixture(sample_data):
 **❌ NEVER create standalone validation**:
 
 **Forbidden file-based**:
+
 - `test_*.py` files OUTSIDE `tests/` directory
 - "Quick test scripts" in project root
 - `verify_*.py`, `check_*.py`, `validate_*.py` anywhere
 - `examples/*.py`, `demo_*.py` scripts
 
 **Forbidden command-based**:
+
 - `uv run python -c "..."` for validation
 - `python -c "..."` for testing
 - Bash heredocs with embedded Python test code
@@ -121,6 +132,7 @@ def test_with_fixture(sample_data):
 ## Red Flag Phrases
 
 **STOP immediately if you think**:
+
 - "Let me create a test to verify..."
 - "I'll write a quick test script..."
 - "Let me check if this works with python -c..."
@@ -128,6 +140,7 @@ def test_with_fixture(sample_data):
 - "Let me create an example to demonstrate..."
 
 **Instead**:
+
 - Create proper pytest test in `tests/`
 - Use existing test infrastructure
 - Extend existing test files
@@ -136,6 +149,7 @@ def test_with_fixture(sample_data):
 ## Test Isolation
 
 **Use temporary resources**:
+
 ```python
 import tempfile
 from pathlib import Path
@@ -149,6 +163,7 @@ def test_with_temp_dir():
 ```
 
 **Unique identifiers for shared resources**:
+
 ```python
 import uuid
 
@@ -162,6 +177,7 @@ def test_with_unique_collection():
 ## Success Criteria
 
 **Tests must**:
+
 1. ✅ Be in `tests/` directory with proper structure
 2. ✅ Follow pytest conventions (`def test_*()`)
 3. ✅ Have descriptive names and docstrings

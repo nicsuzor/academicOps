@@ -15,6 +15,7 @@ Quickly log experiment outcomes, agent failures, or observations to the academic
 ```
 
 **Examples**:
+
 - `/error agent blamed upstream library instead of taking responsibility`
 - `/error experiment failed - agent still writes to accomplishments.md during email processing`
 - `/error success - tool failure protocol working, agent stopped after 2 attempts`
@@ -88,6 +89,7 @@ Quickly log experiment outcomes, agent failures, or observations to the academic
 **User**: `/error agent blamed upstream library`
 
 **You**:
+
 ```bash
 gh issue comment 155 --repo nicsuzor/academicOps --body "## 2025-10-24 Quick Log: Agent defensive behavior
 
@@ -103,6 +105,7 @@ Response to user: "Logged to issue #155"
 **User**: `/error experiment working - accomplishments boundary respected`
 
 **You**:
+
 ```bash
 gh issue comment 152 --repo nicsuzor/academicOps --body "## 2025-10-24 Quick Log: Success
 

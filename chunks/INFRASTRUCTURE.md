@@ -72,6 +72,7 @@ SessionStart hook auto-loads instructions from three tiers:
 - **Access Pattern**: Just-in-time concept loading via vector search
 
 **Directory Conventions**:
+
 ```
 $ACADEMICOPS_PERSONAL/
 ├── concepts/              # Concept nodes (core/patterns/workflows)

@@ -1,6 +1,7 @@
 # Restructure README as User Guide with Annotated Component Tree
 
 ## Metadata
+
 - Date: 2025-11-06
 - Issue: #195
 - Commit: [to be added]
@@ -31,6 +32,7 @@ Restructuring README.md to focus on user-facing "what component for what task" g
    - Examples: "Extract tasks → scribe skill", "Commit code → git-commit skill"
 
 **Key improvements**:
+
 - Every component now has brief inline description
 - User can scan entire capability set in <2 minutes
 - Clear "use X for Y" guidance
@@ -51,6 +53,7 @@ Restructuring README.md to focus on user-facing "what component for what task" g
 ### 3. Component Descriptions Extracted
 
 Used Python script to extract descriptions from YAML frontmatter (agents/skills/commands) and docstrings (hooks):
+
 - 7 agents
 - 8 slash commands
 - 20 skills (categorized: framework, development, utility)
@@ -61,12 +64,14 @@ All descriptions now visible in annotated tree for quick reference.
 ## Success Criteria
 
 **User Experience**:
+
 - [x] Can find "which component for X task" quickly (Quick Reference table)
 - [x] README scannable in <2 minutes (reduced from 615 to 562 lines)
 - [x] All components have descriptions in tree
 - [x] Clear capability overview
 
 **Documentation Quality**:
+
 - [x] No duplication between README and ARCHITECTURE
 - [x] Specifications consolidated in ARCHITECTURE
 - [x] User guide vs developer spec roles clarified
@@ -75,11 +80,13 @@ All descriptions now visible in annotated tree for quick reference.
 ## Results
 
 **Quantitative**:
+
 - README: 615 → 562 lines (-53 lines, -9%)
 - ARCHITECTURE: 293 → 381 lines (+88 lines, +30%)
 - Net change: +35 lines total, but better organized
 
 **Qualitative**:
+
 - README now focuses on "what" and "when to use"
 - ARCHITECTURE focuses on "how" and "requirements"
 - Every component visible with description
@@ -92,6 +99,7 @@ All descriptions now visible in annotated tree for quick reference.
 **Success (Documentation)** - README restructured as user guide with annotated component tree.
 
 **Benefits**:
+
 1. **Discoverability**: Quick Reference table maps tasks to components
 2. **Scannability**: Annotated trees show all capabilities at a glance
 3. **Clarity**: Separated user guide (README) from developer spec (ARCHITECTURE)
@@ -99,6 +107,7 @@ All descriptions now visible in annotated tree for quick reference.
 5. **Reduced duplication**: Specifications in one place (ARCHITECTURE)
 
 **Next Steps**:
+
 - User review and feedback
 - Consider adding examples/tutorials section to README
 - Update AUDIT.md if structural audit pending
@@ -106,11 +115,13 @@ All descriptions now visible in annotated tree for quick reference.
 ## Technical Notes
 
 **Extraction Method**:
+
 - YAML frontmatter: `description:` field from .md files
 - Python docstrings: First line from .py files
 - All 42 components successfully extracted and documented
 
 **Architectural Alignment**:
+
 - Follows anti-bloat protocol (net -53 lines in user-facing doc)
 - Maintains DRY (specifications in one place)
 - Improves documentation discoverability (Issue #111)

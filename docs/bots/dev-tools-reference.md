@@ -9,18 +9,21 @@ This reference documents what tools the dev agent has access to and how the supe
 **What it does**: Reads file contents from disk.
 
 **When dev agent uses it**:
+
 - Understanding existing code before modification
 - Reading test files to understand patterns
 - Reviewing configuration files
 - Reading error logs or output files
 
 **Supervisor instructions**:
+
 ```
 "Read the current implementation in src/auth/oauth.py to understand the token validation logic"
 "Read tests/test_auth.py to see existing test patterns"
 ```
 
 **Constraints**:
+
 - Can read ANY file on system
 - Returns content with line numbers
 - Can specify line ranges for large files
@@ -33,12 +36,14 @@ This reference documents what tools the dev agent has access to and how the supe
 **What it does**: Performs exact string replacements in files.
 
 **When dev agent uses it**:
+
 - Modifying existing code
 - Fixing specific bugs
 - Updating configuration
 - Refactoring code
 
 **Supervisor instructions**:
+
 ```
 "Edit src/auth/oauth.py:
 - Find the validate_token() function
@@ -49,6 +54,7 @@ This reference documents what tools the dev agent has access to and how the supe
 ```
 
 **Constraints**:
+
 - MUST read file first before editing
 - String replacement must be EXACT (including whitespace)
 - If match not unique, edit fails
@@ -62,18 +68,21 @@ This reference documents what tools the dev agent has access to and how the supe
 **What it does**: Creates new files or overwrites existing ones.
 
 **When dev agent uses it**:
+
 - Creating new test files
 - Creating new modules
 - Creating JSON fixture files
 - Creating configuration files
 
 **Supervisor instructions**:
+
 ```
 "Write a new test file tests/test_oauth.py using test-writing skill patterns"
 "Create tests/fixtures/auth/valid_token.json with sample OAuth token data"
 ```
 
 **Constraints**:
+
 - MUST read file first if it exists (to avoid accidental overwrites)
 - AVOID creating new files when editing existing would work
 - Prefer Edit over Write for existing files
@@ -86,6 +95,7 @@ This reference documents what tools the dev agent has access to and how the supe
 **What it does**: Executes shell commands.
 
 **When dev agent uses it**:
+
 - Running tests: `uv run pytest tests/test_auth.py -xvs`
 - Checking git status: `git status`, `git diff`
 - Running builds: `uv run dbt build`
@@ -93,6 +103,7 @@ This reference documents what tools the dev agent has access to and how the supe
 - Checking file structure: `ls`, `tree`
 
 **Supervisor instructions**:
+
 ```
 "Run the test using Bash: uv run pytest tests/test_auth.py::test_user_login -xvs"
 "Check git status to see what files were modified"
@@ -100,6 +111,7 @@ This reference documents what tools the dev agent has access to and how the supe
 ```
 
 **Constraints**:
+
 - For file operations, prefer specialized tools (Read, Edit, Write, Grep, Glob)
 - For terminal operations (git, pytest, build tools), use Bash
 - Can chain commands with && for sequential execution
@@ -112,12 +124,14 @@ This reference documents what tools the dev agent has access to and how the supe
 **What it does**: Searches file contents for patterns (regex).
 
 **When dev agent uses it**:
+
 - Finding where a function is defined
 - Searching for specific error patterns
 - Finding usages of a variable or import
 - Locating test patterns
 
 **Supervisor instructions**:
+
 ```
 "Use Grep to find all usages of validate_token function"
 "Search for any .get() calls with defaults in src/ directory"
@@ -125,6 +139,7 @@ This reference documents what tools the dev agent has access to and how the supe
 ```
 
 **Constraints**:
+
 - Returns file paths or content based on output_mode
 - Supports full regex syntax
 - Can filter by file type (--type python)
@@ -137,18 +152,21 @@ This reference documents what tools the dev agent has access to and how the supe
 **What it does**: Finds files matching patterns.
 
 **When dev agent uses it**:
+
 - Finding test files: `tests/test_*.py`
 - Finding all Python files: `**/*.py`
 - Finding configuration files: `conf/**/*.yaml`
 - Listing files in directory: `src/auth/*.py`
 
 **Supervisor instructions**:
+
 ```
 "Use Glob to find all test files in tests/ directory"
 "List all Python files in src/auth/ module"
 ```
 
 **Constraints**:
+
 - Use for file name patterns, not content search
 - Fast and efficient for file discovery
 - Returns sorted list of matching paths
@@ -160,6 +178,7 @@ This reference documents what tools the dev agent has access to and how the supe
 **What it does**: Launches specialized subagents for complex work.
 
 **When dev agent uses it**:
+
 - RARELY - dev agent should do atomic work, not delegate further
 - Only when supervisor explicitly tells dev to use a subagent
 
@@ -174,17 +193,20 @@ This reference documents what tools the dev agent has access to and how the supe
 **What it does**: Invokes specialized skills (test-writing, git-commit, etc.).
 
 **When dev agent uses it**:
+
 - When supervisor EXPLICITLY requires skill usage
 - "Use test-writing skill to..."
 - "Use git-commit skill to..."
 
 **Supervisor instructions**:
+
 ```
 "Use test-writing skill to create failing test for OAuth login"
 "Use git-commit skill to validate and commit these changes"
 ```
 
 **Constraints**:
+
 - Dev MUST use skill when supervisor requires it
 - Cannot skip or work around required skills
 - Reports back after skill completes
@@ -196,6 +218,7 @@ This reference documents what tools the dev agent has access to and how the supe
 ### Pattern: Create Test (TDD Cycle)
 
 **Supervisor instructions**:
+
 ```
 Use test-writing skill to create ONE failing test:
 
@@ -217,6 +240,7 @@ After test created:
 ```
 
 **Tools dev agent will use**:
+
 - Skill (test-writing)
 - Write (create test file) or Edit (modify existing test file)
 - Write (create JSON fixtures if needed)
@@ -227,6 +251,7 @@ After test created:
 ### Pattern: Implement Minimal Code
 
 **Supervisor instructions**:
+
 ```
 Implement MINIMAL code to make this ONE test pass:
 
@@ -247,6 +272,7 @@ After implementation:
 ```
 
 **Tools dev agent will use**:
+
 - Read (understand current code)
 - Edit (make minimal changes)
 - Bash (run tests)
@@ -256,6 +282,7 @@ After implementation:
 ### Pattern: Fix Test Failure
 
 **Supervisor instructions**:
+
 ```
 Fix this test failure:
 
@@ -276,6 +303,7 @@ After fix:
 ```
 
 **Tools dev agent will use**:
+
 - Read (examine code at error location)
 - Edit (fix the specific issue)
 - Bash (re-run test)
@@ -285,6 +313,7 @@ After fix:
 ### Pattern: Commit with Validation
 
 **Supervisor instructions**:
+
 ```
 Use git-commit skill to validate and commit:
 
@@ -307,6 +336,7 @@ If validation PASSES:
 ```
 
 **Tools dev agent will use**:
+
 - Skill (git-commit) - this skill internally uses Bash for git operations
 
 ---
@@ -314,6 +344,7 @@ If validation PASSES:
 ### Pattern: Search and Understand
 
 **Supervisor instructions**:
+
 ```
 Find all usages of initialize_config_dir() in test files:
 
@@ -324,6 +355,7 @@ Find all usages of initialize_config_dir() in test files:
 ```
 
 **Tools dev agent will use**:
+
 - Grep (find usages)
 - Read (understand example)
 
@@ -331,11 +363,7 @@ Find all usages of initialize_config_dir() in test files:
 
 ## Tools Dev Agent Does NOT Have
 
-❌ **No WebFetch** - Dev agent cannot fetch URLs
-❌ **No WebSearch** - Dev agent cannot search the web
-❌ **No TodoWrite** - Dev agent does not manage its own todos (supervisor does)
-❌ **No BashOutput/KillShell** - Dev agent doesn't manage background shells
-❌ **No NotebookEdit** - Dev agent doesn't edit Jupyter notebooks directly
+❌ **No WebFetch** - Dev agent cannot fetch URLs ❌ **No WebSearch** - Dev agent cannot search the web ❌ **No TodoWrite** - Dev agent does not manage its own todos (supervisor does) ❌ **No BashOutput/KillShell** - Dev agent doesn't manage background shells ❌ **No NotebookEdit** - Dev agent doesn't edit Jupyter notebooks directly
 
 ## Supervisor's Instruction Guidelines
 
@@ -383,35 +411,38 @@ After all edits, run tests: uv run pytest"
 
 ## Tool Availability Summary
 
-| Tool | Purpose | Dev Agent Has? | When Supervisor Mentions |
-|------|---------|----------------|--------------------------|
-| Read | Read files | ✅ YES | "Read [file] to understand..." |
-| Edit | Modify files | ✅ YES | "Edit [file] to fix..." |
-| Write | Create files | ✅ YES | "Create [file] with..." |
-| Bash | Run commands | ✅ YES | "Run test: uv run pytest..." |
-| Grep | Search content | ✅ YES | "Search for [pattern] in..." |
-| Glob | Find files | ✅ YES | "Find all files matching..." |
-| Skill | Use skills | ✅ YES | "Use [skill-name] skill to..." |
-| Task | Launch subagents | ✅ YES (but rarely used) | Usually supervisor orchestrates |
-| TodoWrite | Manage todos | ❌ NO | Supervisor manages todos |
-| WebFetch | Fetch URLs | ❌ NO | N/A |
-| WebSearch | Search web | ❌ NO | N/A |
+| Tool      | Purpose          | Dev Agent Has?           | When Supervisor Mentions        |
+| --------- | ---------------- | ------------------------ | ------------------------------- |
+| Read      | Read files       | ✅ YES                   | "Read [file] to understand..."  |
+| Edit      | Modify files     | ✅ YES                   | "Edit [file] to fix..."         |
+| Write     | Create files     | ✅ YES                   | "Create [file] with..."         |
+| Bash      | Run commands     | ✅ YES                   | "Run test: uv run pytest..."    |
+| Grep      | Search content   | ✅ YES                   | "Search for [pattern] in..."    |
+| Glob      | Find files       | ✅ YES                   | "Find all files matching..."    |
+| Skill     | Use skills       | ✅ YES                   | "Use [skill-name] skill to..."  |
+| Task      | Launch subagents | ✅ YES (but rarely used) | Usually supervisor orchestrates |
+| TodoWrite | Manage todos     | ❌ NO                    | Supervisor manages todos        |
+| WebFetch  | Fetch URLs       | ❌ NO                    | N/A                             |
+| WebSearch | Search web       | ❌ NO                    | N/A                             |
 
 ## Anti-Patterns to Avoid
 
 ### ❌ Letting Dev Agent Self-Orchestrate
 
 **BAD**:
+
 ```
 "Implement OAuth authentication feature"
 ```
 
 This is too broad. Dev agent might:
+
 - Write tests and code together (not TDD)
 - Skip using required skills
 - Do multiple steps without reporting back
 
 **GOOD**:
+
 ```
 Step 1: "Use test-writing skill to create ONE failing test for OAuth login"
 [Wait for report]
@@ -423,6 +454,7 @@ Step 3: "Use git-commit skill to validate and commit"
 ### ❌ Not Specifying Which Tool
 
 **BAD**:
+
 ```
 "Check if there are any defensive programming patterns in the code"
 ```
@@ -430,6 +462,7 @@ Step 3: "Use git-commit skill to validate and commit"
 Dev agent might use wrong approach or miss patterns.
 
 **GOOD**:
+
 ```
 "Use Grep to search src/ for .get(key, default) patterns.
 Report all files and line numbers with defensive .get() usage."
@@ -438,11 +471,13 @@ Report all files and line numbers with defensive .get() usage."
 ### ❌ Allowing Tool Misuse
 
 **BAD** (if you notice):
+
 ```
 Dev agent creates temp.py file for one-time analysis
 ```
 
 **CORRECT** (enforce):
+
 ```
 "Do NOT create temporary files. If you need to analyze data, write it as a proper test or utility in the appropriate location."
 ```

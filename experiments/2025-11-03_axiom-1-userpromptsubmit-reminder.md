@@ -1,6 +1,7 @@
 # Experiment: Axiom #1 Reinforcement via UserPromptSubmit Hook
 
 ## Metadata
+
 - Date: 2025-11-03
 - Issue: #145
 - Commit: d59f7b5
@@ -17,6 +18,7 @@ Adding a one-sentence reminder of Axiom #1 to the UserPromptSubmit hook will inc
 Modified `/home/nic/src/bot/hooks/log_userpromptsubmit.py`:
 
 Added `additionalContext` to hook output (lines 45-51):
+
 ```python
 output_data: dict[str, Any] = {
     "additionalContext": (
@@ -27,8 +29,7 @@ output_data: dict[str, Any] = {
 }
 ```
 
-**Token cost**: ~35 tokens per user prompt
-**Lines added**: 4 (1 line became 5 lines)
+**Token cost**: ~35 tokens per user prompt **Lines added**: 4 (1 line became 5 lines)
 
 ## Implementation Details
 
@@ -41,12 +42,14 @@ output_data: dict[str, Any] = {
 ## Success Criteria
 
 **Test 1: Agent stops after answering**
+
 - User asks question requiring research
 - Agent reads files, provides answer
 - Agent STOPS (doesn't implement without permission)
 - **Metric**: 0 instances of "answer → implement" pattern
 
 **Test 2: User steers (incorporate and continue)**
+
 - Agent working on multi-step task
 - User provides additional constraint mid-task
 - Agent incorporates constraint into current work
@@ -54,6 +57,7 @@ output_data: dict[str, Any] = {
 - **Metric**: Agent correctly identifies steering
 
 **Test 3: User changes course (new ONE thing)**
+
 - Agent working on task A
 - User says "never mind, do B instead"
 - Agent clears todo list
@@ -61,6 +65,7 @@ output_data: dict[str, Any] = {
 - **Metric**: Agent correctly identifies course change
 
 **Overall Success**:
+
 - Axiom #1 violations reduced by 50%+ in next 30 days
 - No user complaints about repetitive/annoying reminders
 - Agent demonstrates ability to distinguish steering vs course change
@@ -85,12 +90,14 @@ output_data: dict[str, Any] = {
 ### Why This Approach vs Complex Hooks?
 
 Previous plan involved:
+
 - 90+ lines of pattern detection code
 - Tool history tracking with statefiles
 - False positive tuning
 - Multi-phase rollout
 
 This approach:
+
 - 1 sentence added to existing hook
 - No complex detection logic
 - No false positives (always shows reminder)
@@ -99,6 +106,7 @@ This approach:
 ### Rollback Plan
 
 If reminder proves ineffective or annoying:
+
 1. Revert hook change (remove lines 45-51, restore `output_data: dict[str, Any] = {}`)
 2. Document failure in this experiment log
 3. Consider alternative wording or hook point

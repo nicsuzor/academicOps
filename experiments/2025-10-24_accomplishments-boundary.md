@@ -1,6 +1,7 @@
 # Experiment: Define Clear Boundaries for accomplishments.md
 
 ## Metadata
+
 - **Date**: 2025-10-24
 - **Issue**: #152
 - **Commit**: 850a5fde953edf80d3c5e68e7d82a56a0235328d
@@ -14,11 +15,13 @@ Adding explicit definition of "accomplishment" with positive/negative examples a
 ## Problem Context
 
 Agent was writing to accomplishments.md:
+
 - Email processed (2,982 unread) - operational work ✗
 - Tasks created (10 tasks added) - operational work ✗
 - Meeting details and deadlines - reference material ✗
 
 Instead of only:
+
 - Meetings attended and completed ✓
 - Deliverables submitted ✓
 - Tasks archived ✓
@@ -51,18 +54,21 @@ Modified `.claude/skills/task-management/SKILL.md` Step 6 (lines 284-350):
 ## Success Criteria
 
 **Negative tests** (should NOT write to accomplishments.md):
+
 - [ ] Agent processes emails → No write to accomplishments.md
 - [ ] Agent creates tasks → No write to accomplishments.md
 - [ ] Agent schedules meeting → No write to accomplishments.md
 - [ ] Agent does planning work → No write to accomplishments.md
 
 **Positive tests** (SHOULD write to accomplishments.md):
+
 - [ ] User says "I delivered the keynote" → Write to accomplishments.md
 - [ ] Agent archives task when user says "I finished X" → Write to accomplishments.md
 - [ ] User reports "meeting went well, we decided Y" → Write to accomplishments.md
 - [ ] User says "I submitted the paper" → Write to accomplishments.md
 
 **Quality metrics**:
+
 - Zero invalid entries in accomplishments.md over 1 week
 - User does NOT complain about "random stuff" in accomplishments.md
 - Valid accomplishments still captured (no false negatives reported)
@@ -72,16 +78,19 @@ Modified `.claude/skills/task-management/SKILL.md` Step 6 (lines 284-350):
 (To be filled after testing in real conversations)
 
 ### Test 1: Email Processing
+
 - Date:
 - Scenario:
 - Outcome:
 
 ### Test 2: Task Creation
+
 - Date:
 - Scenario:
 - Outcome:
 
 ### Test 3: Completed Work
+
 - Date:
 - Scenario:
 - Outcome:
@@ -91,6 +100,7 @@ Modified `.claude/skills/task-management/SKILL.md` Step 6 (lines 284-350):
 (To be marked after 1 week evaluation)
 
 Options:
+
 - **Success**: Zero invalid entries, valid entries still captured
 - **Failure**: Still writes operational work OR misses valid accomplishments
 - **Partial**: Improvement but edge cases remain
@@ -100,11 +110,13 @@ Options:
 (To be determined based on outcome)
 
 If Partial:
+
 - Consider adding "completion verb" list (delivered, shipped, submitted, finished)
 - Add "when in doubt, don't write" fallback
 - Consider building examples pattern matching
 
 If Failure:
+
 - Revert changes
 - Explore hook-based solution (warning before write)
 - Consider separate accomplishments skill

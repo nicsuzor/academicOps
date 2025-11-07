@@ -3,12 +3,14 @@
 ## The Problem
 
 The supervisor agent references four critical files:
+
 - `$ACADEMICOPS/docs/bots/skills-inventory.md` - Catalog of available skills
 - `$ACADEMICOPS/docs/bots/dev-tools-reference.md` - Dev agent tool capabilities
 - `$ACADEMICOPS/docs/bots/challenge-responses.md` - Decision-making frameworks
 - `$ACADEMICOPS/docs/bots/delegation-architecture.md` - Three-level delegation patterns
 
 These can become stale when:
+
 - New skills are added
 - Skills are modified (new features, changed delegation patterns)
 - Tools/capabilities change
@@ -20,6 +22,7 @@ These can become stale when:
 ### 1. Version-Controlled Source of Truth
 
 **Status**: ✅ IMPLEMENTED
+
 - All reference files are in git at `$ACADEMICOPS/docs/bots/`
 - Changes tracked in repository history
 - Can be reviewed in PRs
@@ -29,13 +32,16 @@ These can become stale when:
 **When to update references**:
 
 #### A. Adding New Skill
+
 **Trigger**: New skill created in `skills/[name]/SKILL.md`
 
 **Required updates**:
+
 - `skills-inventory.md`: Add skill entry with delegation patterns
 - Check if new challenge category needed in `challenge-responses.md`
 
 **Process**:
+
 ```
 1. Create new skill
 2. Document in skills-inventory.md:
@@ -48,17 +54,21 @@ These can become stale when:
 ```
 
 #### B. Modifying Existing Skill
+
 **Trigger**: Changes to `skills/[name]/SKILL.md` that affect:
+
 - When to use the skill
 - How to invoke it
 - What constraints apply
 - Expected outputs/reports
 
 **Required updates**:
+
 - `skills-inventory.md`: Update delegation pattern for that skill
 - `challenge-responses.md`: If failure modes changed
 
 **Process**:
+
 ```
 1. Modify skill
 2. Search skills-inventory.md for skill name
@@ -68,12 +78,15 @@ These can become stale when:
 ```
 
 #### C. New Tool Available to Dev Agent
+
 **Trigger**: Dev agent gains new tool capability
 
 **Required updates**:
+
 - `dev-tools-reference.md`: Document new tool
 
 **Process**:
+
 ```
 1. Add tool to dev agent capabilities
 2. Document in dev-tools-reference.md:
@@ -85,12 +98,15 @@ These can become stale when:
 ```
 
 #### D. New Challenge Category Discovered
+
 **Trigger**: Supervisor encounters repeated challenge not covered by existing categories
 
 **Required updates**:
+
 - `challenge-responses.md`: Add new category
 
 **Process**:
+
 ```
 1. Identify recurring challenge through:
    - GitHub issues (multiple instances)
@@ -107,14 +123,17 @@ These can become stale when:
 ```
 
 #### E. Framework Pattern Evolution
+
 **Trigger**: Changes to core framework patterns (axioms, enforcement hierarchy, architectural decisions)
 
 **Required updates**:
+
 - `delegation-architecture.md`: If delegation patterns change
 - `challenge-responses.md`: If decision-making principles change
 - All references: If terminology changes
 
 **Process**:
+
 ```
 1. Document framework change (via experiment log)
 2. Grep all reference files for affected patterns
@@ -187,6 +206,7 @@ def validate_examples():
 ```
 
 **Usage**:
+
 ```bash
 # Run validation
 python scripts/validate_supervisor_references.py
@@ -199,6 +219,7 @@ python scripts/validate_supervisor_references.py --report
 ```
 
 **Integration**:
+
 - Run in pre-commit hook when reference files change
 - Run in CI on PRs
 - Run periodically (monthly audit)
@@ -208,6 +229,7 @@ python scripts/validate_supervisor_references.py --report
 **Enforce**: Reference files are YAML-parseable or have structured sections
 
 **Example - skills-inventory.md structure**:
+
 ```markdown
 ## Core Development Skills
 
@@ -219,11 +241,10 @@ python scripts/validate_supervisor_references.py --report
 
 **Explicit delegation pattern**:
 ```
-Task(subagent_type="dev", prompt="
-[structured pattern]
-")
-```
 
+Task(subagent_type="dev", prompt=" [structured pattern] ")
+
+```
 **Key constraints to enforce**:
 - MUST: [requirement]
 - FORBIDDEN: [anti-pattern]
@@ -233,6 +254,7 @@ Task(subagent_type="dev", prompt="
 ```
 
 This structure allows:
+
 - Automated parsing to check completeness
 - Validation that required sections exist
 - Linting for consistency
@@ -242,22 +264,27 @@ This structure allows:
 Update the skill-maintenance skill to include supervisor reference maintenance:
 
 **Add to skill-maintenance/SKILL.md**:
-```markdown
+
+````markdown
 ### Audit Supervisor References
 
 Check supervisor references for completeness and accuracy.
 
 **Single reference audit**:
+
 ```bash
 python scripts/audit_supervisor_refs.py [ref-name]
 ```
+````
 
 **Full reference audit**:
+
 ```bash
 python scripts/audit_supervisor_refs.py --all
 ```
 
 Checks:
+
 - Skills-inventory matches actual skills in skills/
 - Dev-tools-reference matches actual tools
 - Challenge-responses covers common failure modes
@@ -266,13 +293,14 @@ Checks:
 - No obsolete patterns
 
 **Update workflow**:
+
 1. Framework change identified (new skill, tool, pattern)
 2. Update relevant reference file(s)
 3. Run audit: `python scripts/audit_supervisor_refs.py --all`
 4. Fix any issues
 5. Commit with reference to change trigger (issue/experiment)
-```
 
+````
 ### 6. Change Documentation Pattern
 
 **When updating references, create experiment log**:
@@ -320,18 +348,20 @@ Checks:
 ## Outcome
 
 SUCCESS - References updated and validated
-```
+````
 
 This creates audit trail and searchable history.
 
 ### 7. Periodic Audit Schedule
 
 **Monthly**: Run full validation
+
 ```bash
 python scripts/audit_supervisor_refs.py --all --report > reports/supervisor-refs-$(date +%Y-%m).txt
 ```
 
 **Quarterly**: Human review of references
+
 - Read through each file
 - Check for clarity and completeness
 - Look for emergent patterns not yet documented
@@ -344,6 +374,7 @@ python scripts/audit_supervisor_refs.py --all --report > reports/supervisor-refs
 **Label**: `maintenance:supervisor-refs`
 
 **Issue template**: `.github/ISSUE_TEMPLATE/supervisor-ref-update.md`
+
 ```markdown
 ---
 name: Supervisor Reference Update
@@ -376,6 +407,7 @@ labels: maintenance:supervisor-refs
 ```
 
 **Workflow**:
+
 1. Framework change occurs (new skill, etc.)
 2. Create maintenance issue
 3. Update references
@@ -387,16 +419,13 @@ labels: maintenance:supervisor-refs
 When aops-bug skill is used to log agent violations or infrastructure issues, check if supervisor references need updating.
 
 **Add to aops-bug workflow**:
+
 ```markdown
 ## Step X: Check If Supervisor References Need Update
 
 After logging violation/bug:
 
-Q: Does this reveal gap in supervisor's knowledge?
-├─ New skill needed → Create issue with label `maintenance:supervisor-refs`
-├─ Challenge category missing → Update challenge-responses.md
-├─ Tool capability changed → Update dev-tools-reference.md
-└─ Delegation pattern unclear → Update skills-inventory.md or delegation-architecture.md
+Q: Does this reveal gap in supervisor's knowledge? ├─ New skill needed → Create issue with label `maintenance:supervisor-refs` ├─ Challenge category missing → Update challenge-responses.md ├─ Tool capability changed → Update dev-tools-reference.md └─ Delegation pattern unclear → Update skills-inventory.md or delegation-architecture.md
 
 If yes, create maintenance issue linked to bug issue.
 ```
@@ -404,24 +433,28 @@ If yes, create maintenance issue linked to bug issue.
 ## Summary: Keeping References Current
 
 **Proactive maintenance**:
+
 1. ✅ Update reference files when making changes (new skills, tools, patterns)
 2. ✅ Document updates in experiment logs with clear triggers
 3. ✅ Create GitHub issues with `maintenance:supervisor-refs` label
 4. ✅ Link reference updates to triggering changes (issues, experiments, commits)
 
 **Reactive maintenance**:
+
 1. ⏳ Run validation scripts (TO BE CREATED)
 2. ⏳ Monthly automated audits
 3. ✅ Quarterly human reviews
 4. ✅ Post-mortem updates when supervisor struggles
 
 **Validation**:
+
 1. ⏳ Automated validation script checks completeness (TO BE CREATED)
 2. ⏳ Pre-commit hooks catch missing updates (TO BE CREATED)
 3. ✅ Experiment logs document updates
 4. ✅ Git history tracks evolution
 
 **Status Legend**:
+
 - ✅ Already in place or manual process defined
 - ⏳ Requires tooling to be built (scripts)
 

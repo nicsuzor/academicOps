@@ -13,6 +13,7 @@ permalink: aops/skills/claude-hooks/skill
 Claude Code hooks are shell commands that execute at specific lifecycle events (SessionStart, PreToolUse, PostToolUse, Stop, etc.). They enable deterministic automation, validation, and context injection by running scripts that receive JSON input via stdin and return structured JSON output via stdout.
 
 This skill provides comprehensive knowledge of:
+
 - Hook event types and their input/output schemas
 - academicOps hook patterns and enforcement hierarchy
 - Path resolution using `$CLAUDE_PROJECT_DIR`
@@ -22,6 +23,7 @@ This skill provides comprehensive knowledge of:
 ## When to Use This Skill
 
 Use this skill when:
+
 - Creating a new hook for validation or automation
 - Understanding what data is available in hook input
 - Debugging hooks that aren't executing correctly
@@ -30,6 +32,7 @@ Use this skill when:
 - Deciding whether to use hooks vs permissions vs instructions
 
 **Example triggers:**
+
 - "How do I create a PreToolUse hook to validate tool usage?"
 - "What input data does the SessionStart hook receive?"
 - "Why isn't my hook executing from subdirectories?"
@@ -73,22 +76,25 @@ Hooks are configured in `.claude/settings.json`:
 ### Input/Output Contract
 
 **All hooks receive JSON via stdin:**
+
 ```json
 {
   "session_id": "uuid",
   "transcript_path": "/path/to/transcript.jsonl",
   "cwd": "/working/directory",
-  "hook_event_name": "EventName",
+  "hook_event_name": "EventName"
   // ... event-specific fields
 }
 ```
 
 **Hooks respond via stdout (JSON) and exit codes:**
+
 - Exit `0` = Success/allow
 - Exit `1` = Warning (allow with message)
 - Exit `2` = Block/error
 
 **Common output fields:**
+
 ```json
 {
   "hookSpecificOutput": {
@@ -106,18 +112,23 @@ Hooks are configured in `.claude/settings.json`:
 Match your use case to the appropriate hook event:
 
 **Inject context at session start** → SessionStart
+
 - Example: Load instruction files, set environment
 
 **Validate tool usage before execution** → PreToolUse
+
 - Example: Block dangerous commands, enforce patterns
 
 **Process tool results** → PostToolUse
+
 - Example: Auto-format code, run tests, update state
 
 **Validate prompt input** → UserPromptSubmit
+
 - Example: Block sensitive queries, inject safety context
 
 **Enforce completion requirements** → Stop/SubagentStop
+
 - Example: Ensure tests pass, validate workflow state
 
 ### Step 2: Understand Input Schema
@@ -125,6 +136,7 @@ Match your use case to the appropriate hook event:
 **Read the complete schema** in `references/hook-schemas.md` for your chosen hook type.
 
 Key patterns to note:
+
 - **SessionStart**: No matcher, receives `source` field
 - **PreToolUse**: Receives `tool_name` and `tool_input`
 - **PostToolUse**: Receives `tool_response` with execution results
@@ -140,12 +152,14 @@ Key patterns to note:
 4. **Instructions** - Least reliable
 
 **When to use hooks:**
+
 - Agents consistently violate instructions
 - Validation requires runtime context
 - Need guaranteed (non-probabilistic) behavior
 - Must inject dynamic context
 
 **When NOT to use hooks:**
+
 - Simple pattern matching → Use `permissions.deny` instead
 - Agents follow instructions reliably → Keep as instructions
 - Static validation → Use pre-commit hooks
@@ -205,6 +219,7 @@ if __name__ == "__main__":
 ```
 
 **Key patterns:**
+
 - Always import and use `safe_log_to_debug_file()` for debugging
 - Provide clear `permissionDecisionReason` when blocking
 - Handle JSON parse errors gracefully
@@ -229,11 +244,13 @@ if __name__ == "__main__":
 ```
 
 **Pattern breakdown:**
+
 1. `test -f $CLAUDE_PROJECT_DIR/bots/hooks/script.py` - Check script exists
 2. `&& uv run python $CLAUDE_PROJECT_DIR/bots/hooks/script.py` - Execute if found
 3. `|| echo '{...}'` - Fallback if script missing (don't crash session)
 
 **Why `$CLAUDE_PROJECT_DIR`:**
+
 - Resolves to absolute path of project root
 - Works from any subdirectory (agent can `cd` anywhere)
 - Portable across installations
@@ -244,6 +261,7 @@ if __name__ == "__main__":
 **Critical:** Hooks must work regardless of agent's CWD.
 
 **Test manually:**
+
 ```bash
 cd tests/  # Change to subdirectory
 claude     # Launch Claude Code
@@ -253,6 +271,7 @@ claude     # Launch Claude Code
 ```
 
 **Add integration test:**
+
 ```python
 def test_my_hook_from_subdirectory(claude_headless):
     result = claude_headless(
@@ -267,11 +286,13 @@ def test_my_hook_from_subdirectory(claude_headless):
 ### Step 7: Debug and Iterate
 
 **Enable debug logging:**
+
 ```bash
 claude --debug
 ```
 
 **Inspect hook logs:**
+
 ```bash
 # List recent logs for your hook type
 ls -lt /tmp/claude_pretooluse_*.json | head -5
@@ -281,12 +302,14 @@ cat /tmp/claude_pretooluse_20251022_231351.json | jq .
 ```
 
 **Log contents show:**
+
 - Complete input data Claude sent to hook
 - Complete output data hook returned
 - Timestamp for correlation
 - Any errors or unexpected data
 
 **Common issues:**
+
 - **Hook not executing:** Check settings.json syntax, script path, permissions
 - **Path errors:** Use `$CLAUDE_PROJECT_DIR`, test from subdirectories
 - **Timeout:** Increase timeout value, optimize slow operations
@@ -297,6 +320,7 @@ cat /tmp/claude_pretooluse_20251022_231351.json | jq .
 ### Installation Structure
 
 All academicOps repos use consistent structure:
+
 ```
 repo/
 ├── bots/
@@ -306,17 +330,18 @@ repo/
 │   └── settings.json           # Hook configuration here
 ```
 
-**Hook scripts location:** `bots/hooks/` (via `.academicOps` symlink)
-**Hook configuration:** `.claude/settings.json`
+**Hook scripts location:** `bots/hooks/` (via `.academicOps` symlink) **Hook configuration:** `.claude/settings.json`
 
 ### Active Hooks in academicOps
 
 **SessionStart (`load_instructions.py`):**
+
 - Loads 3-tier instruction hierarchy (framework → personal → project)
 - Injects combined instructions as `additionalContext`
 - Example in `references/examples.md`
 
 **PreToolUse (`validate_tool.py`):**
+
 - Blocks inline Python (`python -c`)
 - Enforces `uv run python` for isolation
 - Warns on `.md` file creation
@@ -324,16 +349,19 @@ repo/
 - Example in `references/examples.md`
 
 **Stop/SubagentStop (`validate_stop.py`):**
+
 - Logs completion events
 - Can enforce workflow requirements
 - Currently allows all (debug logging only)
 
 **PostToolUse (`log_posttooluse.py`):**
+
 - Noop hook for development
 - Captures tool execution data
 - Logs to `/tmp/` for inspection
 
 **UserPromptSubmit (`log_userpromptsubmit.py`):**
+
 - Noop hook for development
 - Captures user input data
 - Logs to `/tmp/` for inspection
@@ -370,6 +398,7 @@ def main():
 ```
 
 **Benefits:**
+
 - Consistent logging across all hooks
 - Timestamped files in `/tmp/`
 - Full input/output capture
@@ -383,12 +412,14 @@ def main():
 **File:** `references/hook-schemas.md`
 
 Contains complete input/output schemas for all 9 hook types:
+
 - SessionStart, PreToolUse, PostToolUse
 - Stop, SubagentStop
 - UserPromptSubmit, SessionEnd
 - PreCompact, Notification
 
 **When to reference:**
+
 - Designing a new hook
 - Understanding what data is available
 - Validating output format
@@ -399,6 +430,7 @@ Contains complete input/output schemas for all 9 hook types:
 **File:** `references/academicops-patterns.md`
 
 Contains academicOps-specific knowledge:
+
 - Enforcement hierarchy
 - Installation structure
 - Path resolution patterns
@@ -407,6 +439,7 @@ Contains academicOps-specific knowledge:
 - Common mistakes and solutions
 
 **When to reference:**
+
 - Working in academicOps repos
 - Understanding existing hooks
 - Following established patterns
@@ -417,6 +450,7 @@ Contains academicOps-specific knowledge:
 **File:** `references/examples.md`
 
 Contains complete, working implementations:
+
 - SessionStart 3-tier loading
 - PreToolUse validation rules
 - Stop logging hooks
@@ -425,6 +459,7 @@ Contains complete, working implementations:
 - Complete settings.json
 
 **When to reference:**
+
 - Starting a new hook (copy pattern)
 - Seeing complete implementations
 - Understanding integration
@@ -500,6 +535,7 @@ sys.exit(0)
 **Symptoms:** No debug logs, hook seems ignored
 
 **Checks:**
+
 1. Validate `.claude/settings.json` syntax (valid JSON?)
 2. Verify hook script exists at expected path
 3. Check script is executable: `chmod +x bots/hooks/script.py`
@@ -513,6 +549,7 @@ sys.exit(0)
 **Symptoms:** "File not found" from subdirectories
 
 **Checks:**
+
 1. Does command use `$CLAUDE_PROJECT_DIR`?
 2. Test from subdirectory: `cd tests/ && claude`
 3. Check debug logs for actual path resolution
@@ -524,6 +561,7 @@ sys.exit(0)
 **Symptoms:** Hook execution interrupted after 60s (or configured timeout)
 
 **Checks:**
+
 1. Profile hook execution time
 2. Check for slow network requests
 3. Look for blocking I/O operations
@@ -535,6 +573,7 @@ sys.exit(0)
 **Symptoms:** Hook returns but behavior incorrect
 
 **Checks:**
+
 1. Validate JSON output matches schema
 2. Check exit code (0/1/2)
 3. Inspect debug logs for actual output
@@ -547,6 +586,7 @@ sys.exit(0)
 **Symptoms:** Valid operations being blocked
 
 **Checks:**
+
 1. Review validation logic
 2. Check for overly broad patterns
 3. Inspect debug logs for input data
@@ -557,6 +597,7 @@ sys.exit(0)
 ## Best Practices
 
 ### DO:
+
 - ✅ Use `$CLAUDE_PROJECT_DIR` for all script paths
 - ✅ Test hooks from subdirectories
 - ✅ Provide clear `permissionDecisionReason` when blocking
@@ -566,6 +607,7 @@ sys.exit(0)
 - ✅ Document hook purpose in comments
 
 ### DON'T:
+
 - ❌ Use relative paths without `$CLAUDE_PROJECT_DIR`
 - ❌ Block without explanation
 - ❌ Crash on invalid input

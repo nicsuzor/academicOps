@@ -36,14 +36,16 @@ Every HTML slide must include proper body dimensions:
 ### Critical Text Rules
 
 **ALL text MUST be inside `<p>`, `<h1>`-`<h6>`, `<ul>`, or `<ol>` tags:**
+
 - ✅ Correct: `<div><p>Text here</p></div>`
 - ❌ Wrong: `<div>Text here</div>` - **Text will NOT appear in PowerPoint**
 - ❌ Wrong: `<span>Text</span>` - **Text will NOT appear in PowerPoint**
 - Text in `<div>` or `<span>` without a text tag will be silently ignored
 
-**NEVER use manual bullet symbols (•, -, *, etc.)** - Use `<ul>` or `<ol>` lists instead
+*_NEVER use manual bullet symbols (•, -, _, etc.)__ - Use `<ul>` or `<ol>` lists instead
 
 **ONLY use web-safe fonts that are universally available:**
+
 - ✅ Web-safe fonts: `Arial`, `Helvetica`, `Times New Roman`, `Georgia`, `Courier New`, `Verdana`, `Tahoma`, `Trebuchet MS`, `Impact`, `Comic Sans MS`
 - ❌ Wrong: `'Segoe UI'`, `'SF Pro'`, `'Roboto'`, custom fonts - **Might cause rendering issues**
 
@@ -185,6 +187,7 @@ h1 { color: #2d3748; font-size: 32pt; }
 ### Dependencies
 
 These libraries have been globally installed and are available to use:
+
 - `pptxgenjs`
 - `playwright`
 - `sharp`
@@ -211,11 +214,13 @@ await pptx.writeFile('output.pptx');
 ### API Reference
 
 #### Function Signature
+
 ```javascript
 await html2pptx(htmlFile, pres, options)
 ```
 
 #### Parameters
+
 - `htmlFile` (string): Path to HTML file (absolute or relative)
 - `pres` (pptxgen): PptxGenJS presentation instance with layout already set
 - `options` (object, optional):
@@ -223,6 +228,7 @@ await html2pptx(htmlFile, pres, options)
   - `slide` (object): Existing slide to reuse (default: creates new slide)
 
 #### Returns
+
 ```javascript
 {
     slide: pptxgenSlide,           // The created/updated slide
@@ -306,6 +312,7 @@ After converting HTML to slides with `html2pptx`, you'll use PptxGenJS to add dy
 ### ⚠️ Critical Rules
 
 #### Colors
+
 - **NEVER use `#` prefix** with hex colors in PptxGenJS - causes file corruption
 - ✅ Correct: `color: "FF0000"`, `fill: { color: "0066CC" }`
 - ❌ Wrong: `color: "#FF0000"` (breaks document)
@@ -368,11 +375,13 @@ slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
 **Required for most charts:** Axis labels using `catAxisTitle` (category) and `valAxisTitle` (value).
 
 **Chart Data Format:**
+
 - Use **single series with all labels** for simple bar/line charts
 - Each series creates a separate legend entry
 - Labels array defines X-axis values
 
 **Time Series Data - Choose Correct Granularity:**
+
 - **< 30 days**: Use daily grouping (e.g., "10-01", "10-02") - avoid monthly aggregation that creates single-point charts
 - **30-365 days**: Use monthly grouping (e.g., "2024-01", "2024-02")
 - **> 365 days**: Use yearly grouping (e.g., "2023", "2024")
@@ -509,6 +518,7 @@ slide.addChart(pptx.charts.LINE, [
 **CRITICAL**: Use hex colors **without** the `#` prefix - including `#` causes file corruption.
 
 **Align chart colors with your chosen design palette**, ensuring sufficient contrast and distinctiveness for data visualization. Adjust colors for:
+
 - Strong contrast between adjacent series
 - Readability against slide backgrounds
 - Accessibility (avoid red-green only combinations)
@@ -614,6 +624,7 @@ slide.addTable(mergedTableData, {
 ### Table Options
 
 Common table options:
+
 - `x, y, w, h` - Position and size
 - `colW` - Array of column widths (in inches)
 - `rowH` - Array of row heights (in inches)

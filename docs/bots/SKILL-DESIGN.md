@@ -23,10 +23,10 @@ Best practices for creating effective Claude Code skills.
 
 ## Skills vs Commands
 
-**Skills**: Richer context, validation scripts, organized reference material
-**Commands**: Simple prompt expansion
+**Skills**: Richer context, validation scripts, organized reference material **Commands**: Simple prompt expansion
 
 Use skills when:
+
 - Complex workflows require structured guidance
 - Scripts or validation logic needed
 - Multiple reference documents required
@@ -63,6 +63,7 @@ Skills should provide complete, actionable instructions without requiring extern
 ### 3. Script-Enhanced Workflows
 
 Use scripts for:
+
 - Validation (checking code quality, test patterns)
 - Automation (running tools, gathering context)
 - Complex logic (parsing, analysis)
@@ -76,31 +77,38 @@ Each skill should represent deep expertise in one domain, not shallow coverage o
 To support the mandatory skill-first pattern, ALL skills must include:
 
 **a) Documentation Index** - Clear references to all relevant docs:
+
 ```markdown
 ## References
+
 - Core instructions: `@$ACADEMICOPS/core/_CORE.md`
 - Best practices: `@$ACADEMICOPS/docs/bots/BEST-PRACTICES.md`
 - Detailed guide: `@$ACADEMICOPS/references/specific-guide.md`
 ```
 
 **b) Workflow Checklist** - Step-by-step process:
+
 ```markdown
 ## Workflow
+
 1. [Step 1 with specifics]
 2. [Step 2 with specifics]
 3. [Step 3 with specifics]
 ```
 
 **c) Critical Rules** - Key principles and constraints:
+
 ```markdown
 ## Critical Rules
-**NEVER**: [List of prohibited actions]
-**ALWAYS**: [List of required actions]
+
+**NEVER**: [List of prohibited actions] **ALWAYS**: [List of required actions]
 ```
 
 **d) Quick Reference** - Condensed lookup for experienced users:
+
 ```markdown
 ## Quick Reference
+
 - Pattern A: [Brief description]
 - Pattern B: [Brief description]
 ```

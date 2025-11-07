@@ -1,9 +1,6 @@
 # Experiment: validate_env.py Flat Architecture Refactor
 
-**Date**: 2025-10-17
-**Commit**: (rolled back, not committed)
-**Issue**: #114 (architecture), #118 (experiment tracking)
-**Agent**: General agent (developer instructions should have been active)
+**Date**: 2025-10-17 **Commit**: (rolled back, not committed) **Issue**: #114 (architecture), #118 (experiment tracking) **Agent**: General agent (developer instructions should have been active)
 
 ## Hypothesis
 
@@ -12,11 +9,13 @@ Updating validate_env.py to support flat architecture (~/src/bot, ~/src/writing,
 ## Implementation
 
 **Changes attempted**:
+
 1. Added `find_sibling_directory()` function to search for `../writing`
 2. Modified `get_repo_root()` to detect flat vs polyrepo architecture
 3. Added fallback logic: try flat architecture, fall back to polyrepo
 
 **Code violation #1: Dual code paths**
+
 ```python
 # Check if we're in flat architecture (bot is sibling to writing)
 if writing_sibling and writing_sibling.is_dir():
@@ -28,6 +27,7 @@ return bot_root.parent
 ```
 
 **Code violation #2: Hardcoded paths**
+
 ```python
 def get_repo_root() -> Path:
     """Returns ~/src/ (parent directory containing bot/, writing/, and project repos)."""
@@ -56,6 +56,7 @@ def get_repo_root() -> Path:
 **FAILED**: Changes rolled back before commit.
 
 **User feedback**:
+
 - "nope, no dual paths. one golden path."
 - "nope, no hardcoded paths."
 - "not in issue 114. this is about agents not following the developer instructions."
@@ -73,11 +74,13 @@ def get_repo_root() -> Path:
 ### For Experiment Tracking
 
 **Gap identified**: TRAINER.md mandates experiment tracking (lines 126-153) but:
+
 - No experiments/ directory existed
 - No index or template provided
 - Trainer didn't reference tracking location when called out
 
 **Fix implemented**:
+
 - Created `bot/experiments/` directory
 - Created `experiments/INDEX.md` master log
 - Logged this failure as first experiment
@@ -88,6 +91,7 @@ def get_repo_root() -> Path:
 **Still needed**: Define discovery mechanism without hardcoded paths or dual logic.
 
 **Options to explore**:
+
 1. Environment variables (WRITING_ROOT, BOT_ROOT)
 2. Sentinel files (.writing-root markers)
 3. Configuration file

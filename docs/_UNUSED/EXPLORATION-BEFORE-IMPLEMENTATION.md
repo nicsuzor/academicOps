@@ -3,6 +3,7 @@
 ## The Critical Failure Mode
 
 **DOCUMENTED PATTERN**: Agents repeatedly jump to implementation without exploring existing solutions, leading to:
+
 - Overengineered custom solutions when simple built-ins exist
 - Wasted time and tokens on complex implementations
 - User frustration from repeated violations of explicit instructions
@@ -11,6 +12,7 @@
 ## Mandatory Exploration Protocol
 
 ### Phase 1: Codebase Exploration (REQUIRED)
+
 **Before writing ANY code, you MUST perform these searches:**
 
 1. **Search for similar functionality**:
@@ -21,8 +23,8 @@
    grep -ir "tool" --include="*.py"
    ```
 
-
 ### Phase 2: Framework Capability Check (REQUIRED)
+
 **Always check if the framework or libraries in use already provide what you need:**
 
 1. **Examine existing base classes** in the project
@@ -31,6 +33,7 @@
 4. **Search public documentation**: use web search if required
 
 ### Phase 3: Implementation Justification (REQUIRED)
+
 **You MUST be able to answer these questions before coding:**
 
 1. **Why can't I reuse existing code?**
@@ -43,6 +46,7 @@
 ## Red Flag Detection
 
 ### Phrases That Indicate Rush-to-Code:
+
 - "Let me implement..."
 - "I'll create a custom..."
 - "I'll build a new..."
@@ -50,22 +54,24 @@
 - "I need to create..."
 
 ### When You Catch These Phrases:
+
 1. **IMMEDIATE STOP**
 2. **Return to exploration phase**
 3. **Complete all required searches**
 4. **Document what you found**
 5. **Justify why new code is needed**
 
-
 ## Success Criteria
 
 ### You Have Successfully Explored When:
+
 1. **You can list 3+ existing solutions** you considered
 2. **You can explain why each won't work** for your specific case
 3. **You have a clear justification** for building something new
 4. **You found the simplest possible approach** to solve the problem
 
 ### Warning Signs You Haven't Explored Enough:
+
 1. **You jump to implementation ideas immediately**
 2. **You can't name any existing similar functionality**
 3. **You haven't looked at framework capabilities**
@@ -78,6 +84,7 @@
 **What Happened**: Immediate jump to custom Tool implementation with manual schema building
 
 **What Should Have Happened**:
+
 1. **Search**: `grep -r "Tool" --include="*.py"`
 2. **Discover**: BaseTool already exists and does exactly this
 3. **Solution**: Simply inherit from BaseTool and pass Pydantic model as args_type
@@ -92,6 +99,7 @@
 **What Happened**: Agent immediately created 170-line `fct_box_office_coverage_analysis.sql` without checking existing models
 
 **What Should Have Happened**:
+
 1. **Search**: `ls -1 dbt/models/**/*.sql | grep -i gross`
 2. **Discover**: `mart_gross_worldwide_analysis.sql` already parses box office data, `dim_titles_by_decade.sql` has coverage stats
 3. **Evaluate**: Could query existing models in Streamlit instead of creating new mart
@@ -102,16 +110,20 @@
 ## Enforcement Mechanisms
 
 ### Before ANY Implementation:
+
 1. **Document your searches** (show the commands you ran)
 2. **List what you found** (even if "nothing relevant")
 3. **Justify your approach** (explain why existing solutions won't work)
 4. **Get explicit confirmation** if building something new
 
 ### Red Flag Auto-Detection:
+
 If you find yourself typing implementation code before completing exploration, **STOP IMMEDIATELY**.
 
 ### Recovery Protocol:
+
 When you catch yourself rushing:
+
 1. **Delete any implementation code you've started**
 2. **Return to exploration phase**
 3. **Complete all required searches**

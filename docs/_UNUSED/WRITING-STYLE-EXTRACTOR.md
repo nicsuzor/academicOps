@@ -4,7 +4,7 @@ Stolen from Dave, who stole it from someone else.
 
 **Instructions for Large Language Models**
 
-*This document provides step-by-step instructions for an LLM to analyze someone's writing samples and create a comprehensive personal writing style guide. Follow each phase sequentially, asking for user input only when specified.*
+_This document provides step-by-step instructions for an LLM to analyze someone's writing samples and create a comprehensive personal writing style guide. Follow each phase sequentially, asking for user input only when specified._
 
 ---
 
@@ -72,7 +72,7 @@ Analyze the writing samples for these specific elements:
 #### **Argument and Information Structure:**
 
 - **Logic development**: Linear, hierarchical, circular, or exploratory
-- **Evidence style**: Data-heavy, example-rich, theoretical, or experiential  
+- **Evidence style**: Data-heavy, example-rich, theoretical, or experiential
 - **Complexity handling**: How do they explain difficult concepts?
 - **Transition patterns**: How do they move between ideas?
 
@@ -134,11 +134,11 @@ Create a comprehensive style guide document with these sections:
 
 ```markdown
 ### 1. [Primary Quality - e.g., "Direct but Thoughtful"]
-**Description**: [How this shows up in their writing]
-**Example**: "[Quote from their writing that demonstrates this]"
-**In practice**: [Specific guidance for applying this quality]
+
+**Description**: [How this shows up in their writing] **Example**: "[Quote from their writing that demonstrates this]" **In practice**: [Specific guidance for applying this quality]
 
 ### 2. [Secondary Quality]
+
 [Same structure]
 ```
 
@@ -146,40 +146,40 @@ Create a comprehensive style guide document with these sections:
 
 ```markdown
 ### Words and Phrases They Use
-**For [specific context]**: "[Their actual phrases]"
-**For [situation type]**: "[Their typical responses]" 
-**Transition words**: "[Their preferred connectors]"
+
+**For [specific context]**: "[Their actual phrases]" **For [situation type]**: "[Their typical responses]" **Transition words**: "[Their preferred connectors]"
 
 ### Words and Phrases They Avoid
-**Never use**: "[Specific phrases absent from their writing]"
-**Instead of** "[common alternatives]" **they use**: "[their authentic versions]"
+
+**Never use**: "[Specific phrases absent from their writing]" **Instead of** "[common alternatives]" **they use**: "[their authentic versions]"
 ```
 
 #### **Structural Preferences**
 
 ```markdown
 ### Content Organization
-**Opening style**: [How they typically begin pieces]
-**Development pattern**: [How they build arguments/present information]  
-**Supporting evidence**: [How they incorporate examples, data, or sources]
-**Conclusion approach**: [How they end pieces]
+
+**Opening style**: [How they typically begin pieces] **Development pattern**: [How they build arguments/present information]\
+**Supporting evidence**: [How they incorporate examples, data, or sources] **Conclusion approach**: [How they end pieces]
 
 ### Formatting Preferences
-**Emphasis techniques**: [Bold, italics, caps, other approaches they use]
-**List usage**: [When they use bullets vs numbers vs prose]
-**Paragraph length**: [Short and frequent vs longer blocks]
+
+**Emphasis techniques**: [Bold, italics, caps, other approaches they use] **List usage**: [When they use bullets vs numbers vs prose] **Paragraph length**: [Short and frequent vs longer blocks]
 ```
 
 #### **Context Adaptations**
 
 ```markdown
 ### Professional vs Personal Writing
+
 [Document specific changes between contexts]
 
-### Platform/Format Adaptations  
+### Platform/Format Adaptations
+
 [Note any differences for social media, email, formal documents, etc.]
 
 ### Audience Considerations
+
 [How they adjust for different readers or expertise levels]
 ```
 
@@ -187,9 +187,8 @@ Create a comprehensive style guide document with these sections:
 
 ```markdown
 ### Avoid These Response Patterns
-**Never start with**: "[Phrases they don't use]"
-**Never use**: "[Language patterns absent from their work]"
-**Avoid**: "[Structural approaches they don't employ]"
+
+**Never start with**: "[Phrases they don't use]" **Never use**: "[Language patterns absent from their work]" **Avoid**: "[Structural approaches they don't employ]"
 ```
 
 ### Step 7: Include Concrete Examples
@@ -200,12 +199,12 @@ Add a section with:
 
 ```markdown
 ### Strong Examples from Their Writing
-**[Context 1]**: "[Direct quote showing their voice in this context]"
-**[Context 2]**: "[Quote from different context showing adaptation]"
 
-### Before/After Transformations  
-**Generic version**: "[Standard/corporate way of saying something]"
-**Their voice**: "[How they would actually phrase it]"
+**[Context 1]**: "[Direct quote showing their voice in this context]" **[Context 2]**: "[Quote from different context showing adaptation]"
+
+### Before/After Transformations
+
+**Generic version**: "[Standard/corporate way of saying something]" **Their voice**: "[How they would actually phrase it]"
 ```
 
 ---
@@ -231,7 +230,7 @@ After presenting the test writing, ask:
 > "How does this sound to you? Please give me specific feedback on:
 >
 > 1. **What sounds authentically like you?** (quote specific phrases or approaches)
-> 2. **What feels off or not quite right?** (again, specific quotes or patterns)  
+> 2. **What feels off or not quite right?** (again, specific quotes or patterns)
 > 3. **What's missing?** (voice elements I didn't capture)
 > 4. **What did I overemphasize?** (patterns I focused on too much)
 > 5. **Are there any words or phrases here you would never actually use?**
@@ -243,7 +242,7 @@ After presenting the test writing, ask:
 Based on their feedback:
 
 1. **Update voice characteristics** that were inaccurate
-2. **Add missing patterns** they identified  
+2. **Add missing patterns** they identified
 3. **Remove or modify** overemphasized elements
 4. **Update language lists** with their corrections
 5. **Add new anti-patterns** they identified
@@ -303,14 +302,14 @@ Include instructions on how to use the guide:
 ### Be Specific and Concrete
 
 - Quote exact phrases from their writing samples
-- Identify specific word choices, not general tendencies  
+- Identify specific word choices, not general tendencies
 - Create actionable guidance, not abstract descriptions
 - Include real examples from their work
 
 ### Focus on What's Unique
 
 - Don't document universal writing advice
-- Identify what makes THEIR voice distinctive  
+- Identify what makes THEIR voice distinctive
 - Look for patterns that differ from standard business/academic writing
 - Note what they consistently do differently from common approaches
 

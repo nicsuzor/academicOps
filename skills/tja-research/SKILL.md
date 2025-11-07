@@ -18,6 +18,7 @@ This skill provides context for the Trans Journalists Association (TJA) research
 **Question:** Can AI models accurately identify when news coverage violates ethical reporting standards for trans issues?
 
 **Approach:**
+
 - 28 hand-coded news articles with ground truth labels
 - AI judges evaluate articles against TJA style guide
 - AI scorers evaluate judge predictions for quality and correctness
@@ -34,17 +35,20 @@ Record (Article) → Judge (Guideline Assessment) → Scorer (Judge Evaluation)
 ```
 
 ### 1. Record Stage
+
 - **Data:** News articles about trans issues from `bmdev.tja_records`
 - **Contains:** article text, metadata, ground truth labels
 - **Table:** `stg_flows` WHERE `agent_role = 'SOURCE'`
 
 ### 2. Judge Stage
+
 - **Task:** Evaluate if article violates TJA style guide guidelines
 - **Output:** Binary prediction (violates/doesn't violate) with reasoning
 - **Table:** `judge_scores`, `stg_flows` WHERE `agent_role = 'JUDGES'`
 - **Links to:** Source via `parent_call_id`
 
 ### 3. Scorer Stage
+
 - **Task:** Evaluate judge's prediction for quality and correctness
 - **Output:** Structured QualScore assessment with error detection
 - **Table:** `stg_flows` WHERE `agent_role = 'SCORERS'`
@@ -55,6 +59,7 @@ Record (Article) → Judge (Guideline Assessment) → Scorer (Judge Evaluation)
 All pipeline stages are linked via `call_id` and `parent_call_id` relationships in the `stg_flows` table.
 
 ### Find a judge's source record:
+
 ```sql
 SELECT judge.*, source.*
 FROM stg_flows judge
@@ -64,6 +69,7 @@ WHERE judge.agent_role = 'JUDGES'
 ```
 
 ### Find scorers for a specific judge:
+
 ```sql
 SELECT scorer.*
 FROM stg_flows scorer
@@ -72,6 +78,7 @@ WHERE scorer.agent_role = 'SCORERS'
 ```
 
 ### Full pipeline trace for an article:
+
 ```sql
 SELECT
   source.call_id as article_id,
@@ -128,6 +135,7 @@ Recent scorers (Nov 2025 onwards) use a structured format in the `outputs` JSON 
 ```
 
 ### Error Types:
+
 - **misinterpreted_fact:** Judge misread source material
 - **hallucinated_fact:** Judge claimed something not in the article
 - **hallucinated_rule:** Judge cited a non-existent guideline
@@ -138,6 +146,7 @@ Recent scorers (Nov 2025 onwards) use a structured format in the `outputs` JSON 
 ## Investigating Issues
 
 ### Find scorers flagging specific error types:
+
 ```sql
 SELECT
   scorer.call_id,
@@ -150,6 +159,7 @@ ORDER BY scorer.timestamp DESC
 ```
 
 ### Compare judge predictions to ground truth:
+
 ```sql
 SELECT
   judge.call_id,
@@ -162,6 +172,7 @@ WHERE judge.agent_role = 'JUDGES'
 ```
 
 ### Find judges with low scorer confidence:
+
 ```sql
 SELECT
   judge.call_id,
@@ -176,6 +187,7 @@ WHERE scorer.outputs->>'confidence' = 'low'
 ## Data Access Rules
 
 **For exploration and analysis, use DuckDB cache:**
+
 ```python
 import duckdb
 db = duckdb.connect("/home/nic/src/automod/tja/data/local_cache.duckdb", read_only=True)
@@ -183,6 +195,7 @@ df = db.sql("SELECT * FROM stg_flows WHERE agent_role = 'SCORERS'").df()
 ```
 
 **Refresh cache before analysis:**
+
 ```bash
 cd /home/nic/src/automod/tja/tjadbt && ./refresh
 ```

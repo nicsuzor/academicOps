@@ -1,9 +1,6 @@
 # Experiment: Trainer Agent Role Violation - Fixed Code Instead of Instructions
 
-**Date**: 2025-10-18
-**Commit**: 1f8beeb61982e8f7d64868a91403e8e891ce9851
-**Issue**: #111
-**Agent**: trainer
+**Date**: 2025-10-18 **Commit**: 1f8beeb61982e8f7d64868a91403e8e891ce9851 **Issue**: #111 **Agent**: trainer
 
 ## Hypothesis
 
@@ -12,6 +9,7 @@ Trainer was invoked to review code containing fallback pattern (`parent.parent.p
 ## Implementation
 
 Trainer actually did:
+
 1. Immediately edited `load_instructions.py` to remove fallback (line fixing)
 2. Added 20-line "Code Review: Fail-Fast Enforcement Checklist" to TRAINER.md
 3. Did not create experiment log to track success of instruction changes
@@ -41,6 +39,7 @@ Trainer actually did:
 ## Outcome
 
 **FAILED** - Multiple violations of trainer's own methodology:
+
 - Fixed symptom (code) not cause (missing instruction)
 - Violated DRY by duplicating fail-fast principles
 - Skipped anti-bloat verification
@@ -55,6 +54,7 @@ Trainer actually did:
 **Gap**: Lines 28-37 say what NOT to do, but don't provide decision tree for "when user reports code violation, do this NOT that"
 
 **Needed**: Add explicit workflow section:
+
 ```
 When user reports code violation:
 1. DO NOT fix the code
@@ -72,6 +72,7 @@ When user reports code violation:
 **Gap**: Checklist is passive ("verify ALL of these"). Need active enforcement.
 
 **Needed**: Convert checklist to decision tree that blocks progress:
+
 ```
 Q1: Does this content exist in _CORE.md, CODE.md, or other canonical docs?
     YES → Reference it, don't duplicate
@@ -87,6 +88,7 @@ Q2: Could this be a separate referenced doc?
 **Gap**: Lines 126-153 say "MUST use TTD" but trainer skipped it.
 
 **Needed**: Add experiment log as MANDATORY step:
+
 ```
 After modifying instruction files:
 1. REQUIRED: Create experiment log in experiments/
@@ -103,11 +105,13 @@ After modifying instruction files:
 ## Modified Files
 
 **Should have been**:
+
 - experiments/2025-10-18_trainer-role-violation.md (created - this file)
 - experiments/INDEX.md (updated with entry)
 - TRAINER.md (workflow clarification only, not content duplication)
 
 **Actually was**:
+
 - scripts/load_instructions.py (edited - WRONG, not trainer's job)
 - agents/TRAINER.md (lines 28-47 added - violated DRY)
 

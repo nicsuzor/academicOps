@@ -30,9 +30,11 @@ relations:
 All guidance has been modularized into focused topic files. Load what you need:
 
 ### Context Engineering
+
 @CONTEXT-ENGINEERING.md
 
 Core principles for effective context management:
+
 - Simplicity first, transparency over opacity
 - Context as finite resource, the Goldilocks altitude
 - Examples over exhaustive rules
@@ -42,18 +44,21 @@ Core principles for effective context management:
 ### Component Design
 
 **Subagents**: @SUBAGENT-DESIGN.md
+
 - Structure and frontmatter
 - Mandatory skill-first pattern
 - Design principles (single responsibility, tool access, proactive use)
 - Context preservation benefit
 
 **Skills**: @SKILL-DESIGN.md
+
 - Skills vs commands decision
 - Structure (skill.md, scripts/, references/)
 - Required components for skill-first architecture
 - Self-contained guidance principles
 
 **Slash Commands**: @COMMAND-DESIGN.md
+
 - Structure and frontmatter
 - Mandatory skill-first pattern
 - Context efficiency, arguments, focus
@@ -61,19 +66,23 @@ Core principles for effective context management:
 - Supervisor orchestration pattern
 
 **Hooks**: @HOOK-DESIGN.md
+
 - Types (SessionStart, PreToolUse, PostToolUse, Stop)
 - Lightweight and fast principles
 - Conditional execution, fail-fast
 
 **Tools**: @TOOL-DESIGN.md
+
 - Natural formats, thinking space
 - Comprehensive documentation
 - Poka-yoke design, token efficiency
 
 ### What to AVOID
+
 @ANTI-PATTERNS.md
 
 Common mistakes that reduce agent effectiveness:
+
 - Unnecessary details and bloat
 - Excessive scene-setting
 - Over-engineering
@@ -102,42 +111,31 @@ Common mistakes that reduce agent effectiveness:
 
 ### Primary Sources (Anthropic Official)
 
-1. **Building Effective AI Agents** (Dec 2024)
-   https://www.anthropic.com/engineering/building-effective-agents
+1. **Building Effective AI Agents** (Dec 2024) https://www.anthropic.com/engineering/building-effective-agents
 
-2. **Effective Context Engineering for AI Agents** (2024)
-   https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents
+2. **Effective Context Engineering for AI Agents** (2024) https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents
 
-3. **Subagents - Claude API**
-   https://docs.claude.com/en/docs/claude-code/sub-agents
+3. **Subagents - Claude API** https://docs.claude.com/en/docs/claude-code/sub-agents
 
-4. **Claude 4 Prompt Engineering Best Practices**
-   https://docs.claude.com/en/docs/build-with-claude/prompt-engineering/claude-4-best-practices
+4. **Claude 4 Prompt Engineering Best Practices** https://docs.claude.com/en/docs/build-with-claude/prompt-engineering/claude-4-best-practices
 
-5. **Slash Commands - Claude Docs**
-   https://docs.claude.com/en/docs/claude-code/slash-commands
+5. **Slash Commands - Claude Docs** https://docs.claude.com/en/docs/claude-code/slash-commands
 
-6. **Claude Code Best Practices** (Anthropic Engineering)
-   https://www.anthropic.com/engineering/claude-code-best-practices
+6. **Claude Code Best Practices** (Anthropic Engineering) https://www.anthropic.com/engineering/claude-code-best-practices
 
 ### Secondary Sources
 
-7. **Best Practices for Claude Code Subagents** (PubNub, 2025)
-   https://www.pubnub.com/blog/best-practices-for-claude-code-sub-agents/
+7. **Best Practices for Claude Code Subagents** (PubNub, 2025) https://www.pubnub.com/blog/best-practices-for-claude-code-sub-agents/
 
-8. **Prompt Engineering Guide**
-   https://www.promptingguide.ai/
+8. **Prompt Engineering Guide** https://www.promptingguide.ai/
 
-9. **ElevenLabs Agents Prompting Guide** (2024)
-   https://elevenlabs.io/docs/agents-platform/best-practices/prompting-guide
+9. **ElevenLabs Agents Prompting Guide** (2024) https://elevenlabs.io/docs/agents-platform/best-practices/prompting-guide
 
-10. **11 Prompt Writing Rules for AI Agents** (Datablist, 2024)
-    https://www.datablist.com/how-to/rules-writing-prompts-ai-agents
+10. **11 Prompt Writing Rules for AI Agents** (Datablist, 2024) https://www.datablist.com/how-to/rules-writing-prompts-ai-agents
 
 ### Anthropic Cookbook
 
-11. **Anthropic Agent Patterns Cookbook**
-    https://github.com/anthropics/anthropic-cookbook/tree/main/patterns/agents
+11. **Anthropic Agent Patterns Cookbook** https://github.com/anthropics/anthropic-cookbook/tree/main/patterns/agents
 
 ---
 
@@ -152,5 +150,4 @@ This document should evolve as we learn more about what makes Claude Code compon
 5. **Use the aops-trainer skill**: Let the trainer refine this document based on experimentation
 6. **Chunk everything**: Keep topic files focused (<200 lines), reference via @notation
 
-**Last major review**: 2025-11-07 (modularized into topic chunks)
-**Next review**: When new Anthropic guidance published or after 50+ agent experiments logged
+**Last major review**: 2025-11-07 (modularized into topic chunks) **Next review**: When new Anthropic guidance published or after 50+ agent experiments logged

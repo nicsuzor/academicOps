@@ -44,7 +44,7 @@ repos:
       - id: check-toml
       # Prevent giant files from being committed
       - id: check-added-large-files
-        args: ['--maxkb=500']
+        args: ["--maxkb=500"]
       # Ensure files end with newline
       - id: end-of-file-fixer
       # Trim trailing whitespace
@@ -56,7 +56,7 @@ repos:
       - id: check-case-conflict
       # Fix mixed line endings (use LF)
       - id: mixed-line-ending
-        args: ['--fix=lf']
+        args: ["--fix=lf"]
 
   # Local custom hooks
   - repo: local

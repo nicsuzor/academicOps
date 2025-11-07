@@ -23,6 +23,7 @@ Common mistakes that reduce agent effectiveness.
 ## 1. Unnecessary Details and Bloat
 
 **Avoid**:
+
 - Extensive background history that doesn't affect behavior
 - FAQ sections answering questions the agent hasn't asked
 - Exhaustive edge case documentation
@@ -35,6 +36,7 @@ Common mistakes that reduce agent effectiveness.
 ## 2. Excessive Scene-Setting
 
 **Avoid**:
+
 - Long contextual narratives
 - Detailed persona descriptions when unnecessary
 - Motivational or philosophical preambles
@@ -48,6 +50,7 @@ Common mistakes that reduce agent effectiveness.
 ## 3. Over-Engineering
 
 **Avoid**:
+
 - Complex frameworks when simple patterns work
 - Multi-agent systems before optimizing single calls
 - Premature abstraction
@@ -61,6 +64,7 @@ Common mistakes that reduce agent effectiveness.
 ## 4. Negative Instructions
 
 **Avoid**:
+
 - "Don't do X" without saying what to do instead
 - Focus on what not to do
 
@@ -73,11 +77,13 @@ Common mistakes that reduce agent effectiveness.
 ## 5. Vague Instructions
 
 **Avoid**:
+
 - "Be concise" (vague)
 - "Handle edge cases" (unspecific)
 - "Use best practices" (assumes shared context)
 
 **Do Instead**:
+
 - "Limit response to 2-3 sentences" (specific)
 - "Check for null values before accessing properties" (specific)
 - "Follow fail-fast principles: no .get() with defaults" (specific)
@@ -91,10 +97,12 @@ Common mistakes that reduce agent effectiveness.
 ## 6. Mixing Instructions with Context
 
 **Avoid**:
+
 - Long prompts where instructions are buried in context
 - Interleaving background information with action items
 
 **Do Instead**:
+
 - Separate instructions from context using XML tags or clear headings
 - Put actionable instructions in dedicated sections
 

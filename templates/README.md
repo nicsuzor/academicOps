@@ -22,12 +22,12 @@ dprint fmt
 
 **Updating config across all repos:**
 
-```bash
-# Preview what would change
-$ACADEMICOPS/scripts/sync_dprint_config.sh --dry-run
+Just re-run the init script - it overwrites dprint.json:
 
-# Apply updates to all known repos
-$ACADEMICOPS/scripts/sync_dprint_config.sh
+```bash
+$ACADEMICOPS/scripts/init_project_standards.sh /home/nic/src/buttermilk
+$ACADEMICOPS/scripts/init_project_standards.sh /home/nic/src/zotmcp
+# ... etc
 ```
 
 ## Using academicOps Pre-commit Hooks
@@ -77,7 +77,7 @@ repos:
 **When you update dprint.json:**
 
 1. Edit `$ACADEMICOPS/templates/dprint.json`
-2. Run `$ACADEMICOPS/scripts/sync_dprint_config.sh` to push to all repos
+2. Re-run `init_project_standards.sh` on each repo (it overwrites)
 3. Commit the changes in each affected repo
 
-This keeps all repos synchronized with a single source of truth.
+The init script is idempotent - safe to run repeatedly.

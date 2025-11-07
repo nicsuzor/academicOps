@@ -125,6 +125,7 @@ def load_data():
 ```
 
 **Key points:**
+
 - Use `@st.cache_data` to avoid reloading on every interaction
 - Use `read_only=True` for safety
 - Query dbt marts, never upstream sources
@@ -397,6 +398,7 @@ st.plotly_chart(fig, use_container_width=True)
 ```
 
 **Plotly advantages:**
+
 - Interactive (zoom, pan, hover)
 - Professional appearance
 - Wide variety of chart types

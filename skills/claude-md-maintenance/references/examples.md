@@ -10,60 +10,28 @@ Real-world examples of CLAUDE.md file transformations from problematic to proper
 # CLAUDE.md
 
 ## Project Overview
-This is the AcademicOps automation framework for research computing...
-[10 lines of project description]
+
+This is the AcademicOps automation framework for research computing... [10 lines of project description]
 
 ## Python Development Standards
 
-Always use type hints for all function parameters and return values.
-Follow PEP 8 style guidelines strictly. Use Black for formatting.
-Use pathlib instead of os.path for file operations.
-Never use bare except clauses - always catch specific exceptions.
-Use Pydantic for data validation at boundaries.
-Prefer f-strings over .format() or % formatting.
-Write comprehensive docstrings with Args, Returns, Raises sections.
-[... 30 more lines of Python guidelines]
+Always use type hints for all function parameters and return values. Follow PEP 8 style guidelines strictly. Use Black for formatting. Use pathlib instead of os.path for file operations. Never use bare except clauses - always catch specific exceptions. Use Pydantic for data validation at boundaries. Prefer f-strings over .format() or % formatting. Write comprehensive docstrings with Args, Returns, Raises sections. [... 30 more lines of Python guidelines]
 
 ## Testing Requirements
 
-Use pytest exclusively for all testing needs.
-Always use the real_bm fixture for integration tests.
-Never mock internal code - only mock external services.
-Write tests before implementation (TDD).
-Each test should test exactly one behavior.
-Use descriptive test names that explain what is being tested.
-Run tests with pytest -xvs for debugging.
-Maintain test coverage above 80%.
-[... 25 more lines of testing guidelines]
+Use pytest exclusively for all testing needs. Always use the real_bm fixture for integration tests. Never mock internal code - only mock external services. Write tests before implementation (TDD). Each test should test exactly one behavior. Use descriptive test names that explain what is being tested. Run tests with pytest -xvs for debugging. Maintain test coverage above 80%. [... 25 more lines of testing guidelines]
 
 ## Git Workflow
 
-Follow conventional commit format for all commits.
-Create feature branches from main.
-Squash commits before merging.
-Always write descriptive commit messages.
-Never commit directly to main.
-Use git rebase to keep history clean.
-Sign commits with GPG when possible.
-[... 20 more lines of Git instructions]
+Follow conventional commit format for all commits. Create feature branches from main. Squash commits before merging. Always write descriptive commit messages. Never commit directly to main. Use git rebase to keep history clean. Sign commits with GPG when possible. [... 20 more lines of Git instructions]
 
 ## Docker Configuration
 
-Use multi-stage builds to minimize image size.
-Always specify exact versions in FROM statements.
-Use .dockerignore to exclude unnecessary files.
-Run containers as non-root user.
-Use health checks for production containers.
-[... 15 more lines of Docker guidelines]
+Use multi-stage builds to minimize image size. Always specify exact versions in FROM statements. Use .dockerignore to exclude unnecessary files. Run containers as non-root user. Use health checks for production containers. [... 15 more lines of Docker guidelines]
 
 ## API Design
 
-Follow RESTful principles for all endpoints.
-Use proper HTTP status codes.
-Version APIs using URL path (/v1/, /v2/).
-Implement pagination for list endpoints.
-Use JSON for request/response bodies.
-[... 20 more lines of API guidelines]
+Follow RESTful principles for all endpoints. Use proper HTTP status codes. Version APIs using URL path (/v1/, /v2/). Implement pagination for list endpoints. Use JSON for request/response bodies. [... 20 more lines of API guidelines]
 ```
 
 ### After (12 lines)
@@ -72,35 +40,37 @@ Use JSON for request/response bodies.
 # CLAUDE.md
 
 ## Project
+
 @bots/prompts/PROJECT_overview.md
 
 ## Development Standards
+
 @$ACADEMICOPS/bots/prompts/python_best_practices.md
-@$ACADEMICOPS/bots/prompts/testing_standards.md
-@$ACADEMICOPS/bots/prompts/git_workflow.md
+@$ACADEMICOPS/bots/prompts/testing_standards.md @$ACADEMICOPS/bots/prompts/git_workflow.md
 
 ## Infrastructure
-@bots/prompts/PROJECT_docker_config.md
-@bots/prompts/PROJECT_api_design.md
+
+@bots/prompts/PROJECT_docker_config.md @bots/prompts/PROJECT_api_design.md
 ```
 
 ### Chunks Created
 
 **bots/prompts/PROJECT_overview.md**:
+
 ```markdown
 # AcademicOps Project Overview
 
-This is the AcademicOps automation framework for research computing...
-[Project-specific description]
+This is the AcademicOps automation framework for research computing... [Project-specific description]
 ```
 
 **$ACADEMICOPS/bots/prompts/python_best_practices.md**:
+
 ```markdown
 # Python Development Standards
 
 ## Type Hints
-Always use type hints for all function parameters and return values...
-[Full Python guidelines, reusable across projects]
+
+Always use type hints for all function parameters and return values... [Full Python guidelines, reusable across projects]
 ```
 
 ## Example 2: Test Instructions in Wrong Location
@@ -111,47 +81,43 @@ Always use type hints for all function parameters and return values...
 # CLAUDE.md
 
 ## General Instructions
+
 Follow Python best practices...
 
 ## Testing
-When writing tests, always use pytest.
-Use the real_bm fixture for all integration tests.
-Test files must be in tests/ directory.
-Mock only external services, never internal code.
-Test names should be descriptive.
-Run with pytest -xvs for debugging.
-Each test should be independent.
-No test should depend on another test.
-Clean up test data after each test.
-Use parametrize for testing multiple inputs.
+
+When writing tests, always use pytest. Use the real_bm fixture for all integration tests. Test files must be in tests/ directory. Mock only external services, never internal code. Test names should be descriptive. Run with pytest -xvs for debugging. Each test should be independent. No test should depend on another test. Clean up test data after each test. Use parametrize for testing multiple inputs.
 ```
 
 ### After
 
 **Root CLAUDE.md**:
+
 ```markdown
 # CLAUDE.md
 
-@bots/prompts/PROJECT_overview.md
-@$ACADEMICOPS/bots/prompts/python_best_practices.md
+@bots/prompts/PROJECT_overview.md @$ACADEMICOPS/bots/prompts/python_best_practices.md
 ```
 
 **tests/CLAUDE.md** (new file):
+
 ```markdown
 # tests/CLAUDE.md
 
-@$ACADEMICOPS/bots/prompts/pytest_standards.md
-@bots/prompts/PROJECT_test_fixtures.md
+@$ACADEMICOPS/bots/prompts/pytest_standards.md @bots/prompts/PROJECT_test_fixtures.md
 ```
 
 **bots/prompts/PROJECT_test_fixtures.md**:
+
 ```markdown
 # Project Test Configuration
 
 ## Required Fixtures
+
 Always use the real_bm fixture for integration tests in this project.
 
 ## Project-Specific Testing Rules
+
 - Mock only external services, never internal code
 - Test data cleanup is handled by fixtures
 ```
@@ -161,60 +127,49 @@ Always use the real_bm fixture for integration tests in this project.
 ### Before
 
 **/CLAUDE.md**:
+
 ```markdown
-Use type hints for all Python functions.
-Follow PEP 8 style guide.
-Use pathlib for file operations.
-Write comprehensive docstrings.
-[Project specific instructions...]
+Use type hints for all Python functions. Follow PEP 8 style guide. Use pathlib for file operations. Write comprehensive docstrings. [Project specific instructions...]
 ```
 
 **/src/CLAUDE.md**:
+
 ```markdown
-Use type hints for all Python functions.
-Follow PEP 8 style guide.
-Use pathlib for file operations.
-Write comprehensive docstrings.
-[Source specific instructions...]
+Use type hints for all Python functions. Follow PEP 8 style guide. Use pathlib for file operations. Write comprehensive docstrings. [Source specific instructions...]
 ```
 
 **/tests/CLAUDE.md**:
+
 ```markdown
-Use type hints for all Python functions.
-Follow PEP 8 style guide.
-Use pathlib for file operations.
-Write comprehensive docstrings.
-[Test specific instructions...]
+Use type hints for all Python functions. Follow PEP 8 style guide. Use pathlib for file operations. Write comprehensive docstrings. [Test specific instructions...]
 ```
 
 ### After
 
 **/CLAUDE.md**:
+
 ```markdown
-@$ACADEMICOPS/bots/prompts/python_standards.md
-@bots/prompts/PROJECT_overview.md
+@$ACADEMICOPS/bots/prompts/python_standards.md @bots/prompts/PROJECT_overview.md
 ```
 
 **/src/CLAUDE.md**:
+
 ```markdown
-@$ACADEMICOPS/bots/prompts/python_standards.md
-@bots/prompts/PROJECT_source_guidelines.md
+@$ACADEMICOPS/bots/prompts/python_standards.md @bots/prompts/PROJECT_source_guidelines.md
 ```
 
 **/tests/CLAUDE.md**:
+
 ```markdown
-@$ACADEMICOPS/bots/prompts/python_standards.md
-@bots/prompts/PROJECT_test_guidelines.md
+@$ACADEMICOPS/bots/prompts/python_standards.md @bots/prompts/PROJECT_test_guidelines.md
 ```
 
 **$ACADEMICOPS/bots/prompts/python_standards.md** (shared):
+
 ```markdown
 # Python Development Standards
 
-Use type hints for all Python functions.
-Follow PEP 8 style guide.
-Use pathlib for file operations.
-Write comprehensive docstrings.
+Use type hints for all Python functions. Follow PEP 8 style guide. Use pathlib for file operations. Write comprehensive docstrings.
 ```
 
 ## Example 4: Informal Notes to Formal Chunks
@@ -224,13 +179,7 @@ Write comprehensive docstrings.
 ```markdown
 # CLAUDE.md
 
-Remember to use real_bm fixture
-Don't forget auth headers in API calls
-TODO: document the deployment process
-NOTE: CI/CD needs AWS credentials
-btw the database migrations are in alembic/
-sometimes tests fail due to race conditions
-make sure to validate email formats
+Remember to use real_bm fixture Don't forget auth headers in API calls TODO: document the deployment process NOTE: CI/CD needs AWS credentials btw the database migrations are in alembic/ sometimes tests fail due to race conditions make sure to validate email formats
 ```
 
 ### After
@@ -238,29 +187,27 @@ make sure to validate email formats
 ```markdown
 # CLAUDE.md
 
-@bots/prompts/PROJECT_test_configuration.md
-@bots/prompts/PROJECT_api_authentication.md
-@bots/prompts/PROJECT_deployment_process.md
-@bots/prompts/PROJECT_database_migrations.md
-@bots/prompts/PROJECT_known_issues.md
-@bots/prompts/PROJECT_data_validation.md
+@bots/prompts/PROJECT_test_configuration.md @bots/prompts/PROJECT_api_authentication.md @bots/prompts/PROJECT_deployment_process.md @bots/prompts/PROJECT_database_migrations.md @bots/prompts/PROJECT_known_issues.md @bots/prompts/PROJECT_data_validation.md
 ```
 
 **bots/prompts/PROJECT_test_configuration.md**:
+
 ```markdown
 # Test Configuration
 
 ## Required Fixtures
+
 All integration tests must use the real_bm fixture to ensure proper database state and configuration loading.
 ```
 
 **bots/prompts/PROJECT_known_issues.md**:
+
 ```markdown
 # Known Issues and Workarounds
 
 ## Test Race Conditions
-Some tests may fail intermittently due to race conditions in async operations.
-Workaround: Use proper async fixtures and await all operations.
+
+Some tests may fail intermittently due to race conditions in async operations. Workaround: Use proper async fixtures and await all operations.
 ```
 
 ## Example 5: Mixed Tiers to Proper Hierarchy
@@ -271,42 +218,46 @@ Workaround: Use proper async fixtures and await all operations.
 # bots/prompts/PROJECT_everything.md
 
 ## Python Standards
-Use type hints everywhere...
-Follow PEP 8...
 
-## Our API Schema  
-Our specific endpoints...
-Our authentication flow...
+Use type hints everywhere... Follow PEP 8...
+
+## Our API Schema
+
+Our specific endpoints... Our authentication flow...
 
 ## My Personal Preferences
-I prefer 2-space indents in YAML...
-I like to organize tests by feature...
+
+I prefer 2-space indents in YAML... I like to organize tests by feature...
 ```
 
 ### After (properly separated)
 
 **Framework Tier** (`$ACADEMICOPS/bots/prompts/python_standards.md`):
+
 ```markdown
 # Python Standards
-Use type hints everywhere...
-Follow PEP 8...
+
+Use type hints everywhere... Follow PEP 8...
 ```
 
 **Project Tier** (`bots/prompts/PROJECT_api.md`):
+
 ```markdown
 # Project API Schema
-Our specific endpoints...
-Our authentication flow...
+
+Our specific endpoints... Our authentication flow...
 ```
 
 **User Tier** (`$ACADEMICOPS_PERSONAL/prompts/my_preferences.md`):
+
 ```markdown
 # Personal Development Preferences
-I prefer 2-space indents in YAML...
-I like to organize tests by feature...
+
+I prefer 2-space indents in YAML... I like to organize tests by feature...
 ```
 
 **Updated CLAUDE.md**:
+
 ```markdown
 @$ACADEMICOPS/bots/prompts/python_standards.md
 @bots/prompts/PROJECT_api.md
@@ -386,16 +337,14 @@ scripts/audit_claude_files.py .
 ```markdown
 # CLAUDE.md
 
-@bots/prompts/PROJECT_overview.md
-@$ACADEMICOPS/bots/prompts/development_standards.md
-@$ACADEMICOPS/bots/prompts/code_quality.md
-@$ACADEMICOPS_PERSONAL/prompts/my_workflow.md
-@bots/prompts/PROJECT_getting_started.md
+@bots/prompts/PROJECT_overview.md @$ACADEMICOPS/bots/prompts/development_standards.md
+@$ACADEMICOPS/bots/prompts/code_quality.md @$ACADEMICOPS_PERSONAL/prompts/my_workflow.md @bots/prompts/PROJECT_getting_started.md
 ```
 
 ## Measurement of Success
 
 ### Before Metrics
+
 - Total lines in CLAUDE.md files: 500+
 - Files over 50 lines: 5
 - Duplicate content blocks: 12
@@ -403,6 +352,7 @@ scripts/audit_claude_files.py .
 - Invalid references: N/A
 
 ### After Metrics
+
 - Total lines in CLAUDE.md files: 45
 - Files over 50 lines: 0
 - Duplicate content blocks: 0
@@ -410,6 +360,7 @@ scripts/audit_claude_files.py .
 - Invalid references: 0
 
 ### Benefits Achieved
+
 - 91% reduction in CLAUDE.md line count
 - 100% elimination of duplication
 - Clear separation of concerns

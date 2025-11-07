@@ -5,6 +5,7 @@ This document defines the complete syntax for Basic Memory markdown files.
 ## Overview
 
 Basic Memory uses structured markdown files to build a semantic knowledge graph. Each file represents an **entity** with:
+
 - **YAML frontmatter** (metadata)
 - **Content sections** (Context, Observations, Relations)
 - **Semantic markup** (categories, tags, entity references)
@@ -122,24 +123,25 @@ Provides quick understanding without diving into details.
 ```
 
 **Components**:
-- `- ` (required): Markdown list item
+
+- `-` (required): Markdown list item
 - `[category]` (required): Classification in square brackets
-- ` content` (required): The actual observation text
+- `content` (required): The actual observation text
 - `#tag` (optional): Zero or more tags for filtering
 
 #### Common Categories
 
-| Category | Purpose | Example |
-|----------|---------|---------|
-| `[fact]` | Objective information | `[fact] API uses REST architecture #api` |
-| `[idea]` | Thoughts and concepts | `[idea] Consider GraphQL for complex queries #future` |
-| `[decision]` | Choices made | `[decision] Use JWT tokens for auth #security` |
-| `[technique]` | Methods and approaches | `[technique] Hash passwords with bcrypt #best-practice` |
-| `[requirement]` | Needs and constraints | `[requirement] Support OAuth 2.0 providers #auth` |
-| `[question]` | Open questions | `[question] Should we cache user sessions? #performance` |
-| `[insight]` | Key realizations | `[insight] 2FA adoption increased security by 40% #metrics` |
-| `[problem]` | Issues identified | `[problem] Password reset emails delayed #bug` |
-| `[solution]` | Resolutions | `[solution] Implemented retry queue for emails #fix` |
+| Category        | Purpose                | Example                                                     |
+| --------------- | ---------------------- | ----------------------------------------------------------- |
+| `[fact]`        | Objective information  | `[fact] API uses REST architecture #api`                    |
+| `[idea]`        | Thoughts and concepts  | `[idea] Consider GraphQL for complex queries #future`       |
+| `[decision]`    | Choices made           | `[decision] Use JWT tokens for auth #security`              |
+| `[technique]`   | Methods and approaches | `[technique] Hash passwords with bcrypt #best-practice`     |
+| `[requirement]` | Needs and constraints  | `[requirement] Support OAuth 2.0 providers #auth`           |
+| `[question]`    | Open questions         | `[question] Should we cache user sessions? #performance`    |
+| `[insight]`     | Key realizations       | `[insight] 2FA adoption increased security by 40% #metrics` |
+| `[problem]`     | Issues identified      | `[problem] Password reset emails delayed #bug`              |
+| `[solution]`    | Resolutions            | `[solution] Implemented retry queue for emails #fix`        |
 
 #### Observation Examples
 
@@ -174,26 +176,27 @@ Provides quick understanding without diving into details.
 ```
 
 **Components**:
-- `- ` (required): Markdown list item
+
+- `-` (required): Markdown list item
 - `relation_type` (required): Describes the relationship
-- ` [[Target Entity Title]]` (required): Double-bracketed entity reference
+- `[[Target Entity Title]]` (required): Double-bracketed entity reference
   - Must exactly match target entity's `title` field
   - Case-sensitive
   - Can include spaces and punctuation
 
 #### Common Relation Types
 
-| Relation | Meaning | Example |
-|----------|---------|---------|
-| `relates_to` | General connection | `relates_to [[API Documentation]]` |
-| `implements` | Implementation of spec | `implements [[Authentication Spec v2]]` |
-| `requires` | Dependency | `requires [[User Database Schema]]` |
-| `extends` | Extension/enhancement | `extends [[Base Security Model]]` |
-| `part_of` | Hierarchical membership | `part_of [[API Backend Services]]` |
-| `contrasts_with` | Opposite/alternative | `contrasts_with [[API Key Authentication]]` |
-| `caused_by` | Causal relationship | `caused_by [[Security Audit Findings]]` |
-| `leads_to` | Sequential relationship | `leads_to [[Session Management]]` |
-| `similar_to` | Similarity | `similar_to [[OAuth Implementation]]` |
+| Relation         | Meaning                 | Example                                     |
+| ---------------- | ----------------------- | ------------------------------------------- |
+| `relates_to`     | General connection      | `relates_to [[API Documentation]]`          |
+| `implements`     | Implementation of spec  | `implements [[Authentication Spec v2]]`     |
+| `requires`       | Dependency              | `requires [[User Database Schema]]`         |
+| `extends`        | Extension/enhancement   | `extends [[Base Security Model]]`           |
+| `part_of`        | Hierarchical membership | `part_of [[API Backend Services]]`          |
+| `contrasts_with` | Opposite/alternative    | `contrasts_with [[API Key Authentication]]` |
+| `caused_by`      | Causal relationship     | `caused_by [[Security Audit Findings]]`     |
+| `leads_to`       | Sequential relationship | `leads_to [[Session Management]]`           |
+| `similar_to`     | Similarity              | `similar_to [[OAuth Implementation]]`       |
 
 #### Bidirectional Relations
 
@@ -201,11 +204,15 @@ Relations can be bidirectional by creating explicit links in both entities:
 
 ```markdown
 # In "Login Flow" note
+
 ## Relations
+
 - part_of [[Authentication System]]
 
 # In "Authentication System" note
+
 ## Relations
+
 - includes [[Login Flow]]
 ```
 
@@ -215,12 +222,15 @@ Relations can be bidirectional by creating explicit links in both entities:
 
 ```markdown
 # In "API Implementation" note
+
 ## Relations
+
 - implements [[API Specification]]
 - requires [[Database Models]]
 ```
 
 Even if "API Specification" and "Database Models" don't exist yet:
+
 1. Forward reference creates placeholder in knowledge graph
 2. When target entity is created, relation automatically resolves
 3. Graph traversal works in both directions
@@ -289,6 +299,7 @@ JWT-based authentication system for the API backend. Supports OAuth 2.0 provider
 ### Frontmatter Validation
 
 ✅ **Valid**:
+
 ```yaml
 ---
 title: My Note
@@ -298,6 +309,7 @@ type: note
 ```
 
 ❌ **Invalid** (missing required fields):
+
 ```yaml
 ---
 title: My Note
@@ -305,6 +317,7 @@ title: My Note
 ```
 
 ❌ **Invalid** (bad permalink format):
+
 ```yaml
 ---
 title: My Note
@@ -316,16 +329,19 @@ type: note
 ### Observation Validation
 
 ✅ **Valid**:
+
 ```markdown
 - [fact] Content here #tag1 #tag2
 ```
 
 ❌ **Invalid** (missing category):
+
 ```markdown
 - Content without category #tag1
 ```
 
 ❌ **Invalid** (wrong bracket type):
+
 ```markdown
 - (fact) Content with wrong brackets
 ```
@@ -333,16 +349,19 @@ type: note
 ### Relation Validation
 
 ✅ **Valid**:
+
 ```markdown
 - implements [[Target Entity]]
 ```
 
 ❌ **Invalid** (missing double brackets):
+
 ```markdown
 - implements [Target Entity]
 ```
 
 ❌ **Invalid** (no relation type):
+
 ```markdown
 - [[Target Entity]]
 ```
@@ -378,15 +397,15 @@ To convert regular markdown to Basic Memory format:
 ### Conversion Example
 
 **Before** (regular markdown):
+
 ```markdown
 # My Research Notes
 
-I'm working on analyzing social media content moderation.
-The key challenges are scale and context. Platforms use
-automated systems but they often fail.
+I'm working on analyzing social media content moderation. The key challenges are scale and context. Platforms use automated systems but they often fail.
 ```
 
 **After** (Basic Memory):
+
 ```yaml
 ---
 title: Social Media Content Moderation Research

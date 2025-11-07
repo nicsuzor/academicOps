@@ -17,6 +17,7 @@ SKILLS (test-writing, git-commit, etc.)
 ```
 
 **Level 1: Supervisor**
+
 - YOU - the orchestrator
 - Breaks down complex tasks
 - Delegates to sub-agents
@@ -25,6 +26,7 @@ SKILLS (test-writing, git-commit, etc.)
 - Does NOT directly use tools or write code
 
 **Level 2: Sub-agents**
+
 - Specialized workers (dev, Plan, Explore, analyst)
 - Each does ONE SPECIFIC THING
 - Uses tools (Read, Write, Bash) to accomplish work
@@ -32,6 +34,7 @@ SKILLS (test-writing, git-commit, etc.)
 - Reports back to supervisor after completing atomic task
 
 **Level 3: Tools & Skills**
+
 - Tools: Built-in capabilities (Read, Write, Bash, Grep, Glob)
 - Skills: Packaged workflows (test-writing, git-commit, aops-bug)
 - Sub-agents use these to do their work
@@ -71,6 +74,7 @@ Supervisor:
 ```
 
 **In this pattern**:
+
 - Supervisor: Delegates AND tells which tools (Read, Skill, Bash)
 - Supervisor: Specifies goal and constraints (NOT exact code)
 - Dev sub-agent: Uses specified tools, figures out exact implementation
@@ -78,6 +82,7 @@ Supervisor:
 - Supervisor: Receives report, makes next decision
 
 **Balance achieved**:
+
 - Not too vague: Dev knows which tools and what to accomplish
 - Not too detailed: Dev figures out exact implementation
 - Clear success criteria: Dev knows what "done" looks like
@@ -142,6 +147,7 @@ Supervisor orchestrates:
 ```
 
 **Key differences**:
+
 - Each Task() is ONE atomic operation
 - Supervisor waits for report after each
 - Supervisor makes decision about next step
@@ -213,6 +219,7 @@ Task 7: "Use git-commit skill to validate and commit"
 ## When Dev Sub-agent Uses Tools vs Skills
 
 ### Dev Sub-agent Uses TOOLS for:
+
 - Reading files: `Read src/file.py`
 - Writing files: `Write tests/test.py`
 - Editing files: `Edit src/file.py`
@@ -220,12 +227,14 @@ Task 7: "Use git-commit skill to validate and commit"
 - Searching: `Grep pattern`, `Glob *.py`
 
 ### Dev Sub-agent Invokes SKILLS for:
+
 - Creating/modifying tests: `Skill(command: "test-writing")`
 - Committing code: `Skill(command: "git-commit")`
 - Logging bugs: `Skill(command: "aops-bug")`
 - Managing issues: `Skill(command: "github-issue")`
 
 **Supervisor's instruction pattern**:
+
 ```
 Task(subagent_type="dev", prompt="
   [Instructions that tell dev which tools to use]
@@ -314,8 +323,7 @@ Task(subagent_type="dev", prompt="
 ")
 ```
 
-**Pros**: Very clear, low risk of mistakes
-**Cons**: Requires supervisor to know exact implementation details
+**Pros**: Very clear, low risk of mistakes **Cons**: Requires supervisor to know exact implementation details
 
 ### Near-Term Evolution (Goal + Constraints)
 
@@ -336,8 +344,7 @@ Task(subagent_type="dev", prompt="
 ")
 ```
 
-**Pros**: More autonomous, dev figures out exact implementation
-**Cons**: Still fairly prescribed
+**Pros**: More autonomous, dev figures out exact implementation **Cons**: Still fairly prescribed
 
 ### Long-Term Vision (High-Level Goal)
 
@@ -358,8 +365,7 @@ Task(subagent_type="dev", prompt="
 ")
 ```
 
-**Pros**: Highly autonomous, dev agent reasons about solution
-**Cons**: Requires more sophisticated dev agent, risk of over-engineering
+**Pros**: Highly autonomous, dev agent reasons about solution **Cons**: Requires more sophisticated dev agent, risk of over-engineering
 
 **Recommendation**: Start with **Near-Term Evolution** level. As dev agent demonstrates consistent good judgment, gradually increase autonomy.
 
@@ -423,8 +429,8 @@ Q1: Is error message clear enough to know the fix?
 The current system has several sub-agent types. Here's when to use each:
 
 ### Plan Sub-agent
-**Purpose**: Create detailed plans, break down complex tasks
-**When**: Before starting implementation, need to understand scope and steps
+
+**Purpose**: Create detailed plans, break down complex tasks **When**: Before starting implementation, need to understand scope and steps
 
 ```
 Task(subagent_type="Plan", prompt="
@@ -436,8 +442,8 @@ Task(subagent_type="Plan", prompt="
 ```
 
 ### Explore Sub-agent
-**Purpose**: Understand codebase, find patterns, research
-**When**: Need to understand how something works before modifying
+
+**Purpose**: Understand codebase, find patterns, research **When**: Need to understand how something works before modifying
 
 ```
 Task(subagent_type="Explore", prompt="
@@ -448,8 +454,8 @@ Task(subagent_type="Explore", prompt="
 ```
 
 ### Dev Sub-agent
-**Purpose**: Write, modify, test code
-**When**: Implementing features, fixing bugs, running tests
+
+**Purpose**: Write, modify, test code **When**: Implementing features, fixing bugs, running tests
 
 ```
 Task(subagent_type="dev", prompt="
@@ -467,6 +473,7 @@ Task(subagent_type="dev", prompt="
 The supervisor is the **decision-maker and orchestrator**, not the executor.
 
 **Supervisor DOES**:
+
 - ✅ Break tasks into atomic sub-agent calls
 - ✅ Delegate to appropriate sub-agent type
 - ✅ Wait for each report before next instruction
@@ -476,6 +483,7 @@ The supervisor is the **decision-maker and orchestrator**, not the executor.
 - ✅ Require specific skills when needed
 
 **Supervisor DOES NOT**:
+
 - ❌ Use tools directly (Read, Write, Bash, etc.)
 - ❌ Write code or tests itself
 - ❌ Run commands itself
@@ -484,6 +492,7 @@ The supervisor is the **decision-maker and orchestrator**, not the executor.
 - ❌ Ask user about routine decisions
 
 **Sub-agents DO**:
+
 - ✅ Execute one atomic task
 - ✅ Use tools (Read, Write, Bash, Grep, Glob)
 - ✅ Invoke skills when supervisor requires
@@ -491,6 +500,7 @@ The supervisor is the **decision-maker and orchestrator**, not the executor.
 - ✅ Stop and wait for next instruction
 
 **Pattern**:
+
 ```
 Supervisor: Analyze, Decide, Delegate
 Sub-agent: Execute, Report

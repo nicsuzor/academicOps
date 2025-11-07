@@ -16,7 +16,6 @@ This directory contains agent instructions for working **ON the academicOps fram
 
 ## When This Loads
 
-Files in `bot/docs/agents/` are for agents working on academicOps framework development. They contain context about open issues, development
-principles, and framework architecture.
+Files in `bot/docs/agents/` are for agents working on academicOps framework development. They contain context about open issues, development principles, and framework architecture.
 
 For most users, these files are NOT loaded automatically - they're only relevant when explicitly working on the framework itself.
