@@ -16,13 +16,56 @@ academicOps provides infrastructure for AI agent workflows that require:
 - **Experiment-driven development** - All changes tested and measured
 - **Three-tier loading** - Framework → personal → project instruction hierarchy
 
-**Technical details**: See `ARCHITECTURE.md` for system design, `chunks/AXIOMS.md` for core principles, and `docs/AUDIT.md` for current compliance status.
-
 ---
+
+## File Structure
+
+### Framework Repository ($ACADEMICOPS)
+
+```
+$ACADEMICOPS/
+├── chunks/                # Shared context modules (DRY single sources)
+├── core/
+│   └── _CORE.md          # References chunks/ via @notation
+├── agents/                # Framework subagent definitions
+├── commands/              # Framework slash command definitions
+├── hooks/                 # SessionStart, PreToolUse, Stop hooks
+├── scripts/               # Automation tools
+├── skills/                # Skill sources (packaged to ~/.claude/skills/)
+│   └── */resources/        # Symlinks to chunks/
+├── docs/
+│   ├── bots/             # Framework agent development instructions
+│   └── *.md              # Human documentation (ARCHITECTURE.md, etc.)
+└── tests/                 # Integration tests
+```
+
+### Personal Repository ($ACADEMICOPS_PERSONAL)
+
+```
+$ACADEMICOPS_PERSONAL/
+├── core/
+│   └── _CORE.md          # Personal overrides/additions to core axioms
+├── docs/
+│   └── bots/             # Personal agent development instructions
+├── agents/                # Personal custom agents (optional)
+├── commands/              # Personal slash commands (optional)
+└── skills/                # Personal skill sources (optional)
+```
+
+### Project Repository ($PWD)
+
+```
+$PWD/
+├── core/
+│   └── _CORE.md          # Project-specific instructions (optional)
+├── docs/
+│   └── bots/             # Project-specific agent instructions (optional)
+└── [project files]        # Actual project code, data, notebooks, etc.
+```
 
 ## Components & Capabilities
 
-Quick reference for what tools to use for what tasks. See ARCHITECTURE.md for technical specifications.
+Quick reference for what tools to use for what tasks.
 
 ### Core Instructions (Auto-loaded)
 

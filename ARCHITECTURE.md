@@ -120,53 +120,6 @@ skills/aops-trainer/
 
 ---
 
-## File Structure
-
-### Framework Repository ($ACADEMICOPS)
-
-```
-$ACADEMICOPS/
-├── chunks/                # Shared context modules (DRY single sources)
-├── core/
-│   └── _CORE.md          # References chunks/ via @notation
-├── agents/                # Framework subagent definitions
-├── commands/              # Framework slash command definitions
-├── hooks/                 # SessionStart, PreToolUse, Stop hooks
-├── scripts/               # Automation tools
-├── skills/                # Skill sources (packaged to ~/.claude/skills/)
-│   └── */resources/      # Symlinks to chunks/
-├── docs/
-│   ├── bots/             # Framework agent development instructions
-│   └── *.md              # Human documentation (ARCHITECTURE.md, etc.)
-└── tests/                 # Integration tests
-```
-
-### Personal Repository ($ACADEMICOPS_PERSONAL)
-
-```
-$ACADEMICOPS_PERSONAL/
-├── core/
-│   └── _CORE.md          # Personal overrides/additions to core axioms
-├── docs/
-│   └── bots/             # Personal agent development instructions
-├── agents/                # Personal custom agents (optional)
-├── commands/              # Personal slash commands (optional)
-└── skills/                # Personal skill sources (optional)
-```
-
-### Project Repository ($PWD)
-
-```
-$PWD/
-├── core/
-│   └── _CORE.md          # Project-specific instructions (optional)
-├── docs/
-│   └── bots/             # Project-specific agent instructions (optional)
-└── [project files]        # Actual project code, data, notebooks, etc.
-```
-
----
-
 ## Component Specifications
 
 ### Agents
@@ -388,13 +341,3 @@ Process details in aops-trainer skill.
 Changes to framework tested empirically with experiment logs (`experiments/YYYY-MM-DD_name.md`) rather than speculated. Test, measure, decide.
 
 Workflow details in aops-trainer skill.
-
----
-
-## See Also
-
-- `README.md` - Quick start guide
-- `INSTALL.md` - Detailed installation
-- `docs/bots/BEST-PRACTICES.md` - Evidence-based component design
-- `core/_CORE.md` - Core axioms (auto-loaded)
-- `tests/test_chunks_loading.py` - Infrastructure verification
