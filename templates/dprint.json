@@ -1,0 +1,39 @@
+{
+  "$schema": "https://dprint.dev/schemas/v0.json",
+  "incremental": true,
+  "excludes": [
+    "**/node_modules",
+    "**/.venv",
+    "**/venv",
+    "**/.git",
+    "**/dist",
+    "**/build",
+    "**/.next",
+    "**/target",
+    "**/__pycache__",
+    "**/data/tasks_previous",
+    "**/data/projects_original",
+    "**/data/views",
+    "**/projects/dev",
+    "**/aops/tests/results"
+  ],
+  "plugins": [
+    "https://plugins.dprint.dev/markdown-0.17.8.wasm",
+    "https://plugins.dprint.dev/json-0.19.3.wasm",
+    "https://plugins.dprint.dev/toml-0.6.3.wasm",
+    "https://plugins.dprint.dev/g-plane/pretty_yaml-v0.5.1.wasm"
+  ],
+  "markdown": {
+    "lineWidth": 120,
+    "textWrap": "never"
+  },
+  "json": {
+    "indentWidth": 2
+  },
+  "toml": {
+    "indentWidth": 2
+  },
+  "yaml": {
+    "indentWidth": 2
+  }
+}

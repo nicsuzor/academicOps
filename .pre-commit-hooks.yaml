@@ -1,0 +1,39 @@
+# Pre-commit hooks provided by academicOps framework
+# Other repos can use these hooks by referencing this repository
+
+# dprint - Fast Rust-based code formatter
+- id: dprint
+  name: Format with dprint (markdown, json, toml, yaml)
+  entry: dprint fmt --config dprint.json
+  language: system
+  types_or: [markdown, json, toml, yaml]
+  pass_filenames: false
+  require_serial: true
+  description: |
+    Fast Rust-based formatter for markdown, json, toml, and yaml files.
+    Requires dprint installed globally: npm i -g dprint
+    Config file dprint.json should be in repo root.
+
+# Custom academicOps enforcement hooks
+- id: no-config-defaults
+  name: Prevent configuration defaults (.get with defaults)
+  entry: scripts/check_config_defaults.py
+  language: script
+  types: [python]
+  pass_filenames: true
+  description: |
+    Enforces NO DEFAULTS fail-fast philosophy by detecting dict.get()
+    calls with default values on configuration objects.
+    See: https://github.com/nicsuzor/academicOps/issues/100
+
+- id: check-instruction-bloat
+  name: Prevent instruction file bloat (>25 lines OR >20% growth)
+  entry: scripts/check_instruction_bloat.py
+  language: script
+  types: [markdown]
+  pass_filenames: false
+  description: |
+    Enforces Anti-Bloat Protocol by blocking commits that grow instruction
+    files beyond thresholds (25 lines OR 20% growth). Architectural solutions
+    (scripts, hooks, config) should be used instead of adding instructions.
+    See: https://github.com/nicsuzor/academicOps/issues/116
