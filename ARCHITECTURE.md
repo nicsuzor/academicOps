@@ -18,7 +18,66 @@ relations:
 
 System design and implementation for the academicOps agent framework.
 
----
+## File Structure
+
+### Framework Repository ($ACADEMICOPS)
+
+```
+$ACADEMICOPS/
+├── chunks/                # Shared context modules (DRY single sources)
+├── core/
+│   └── _CORE.md          # References chunks/ via @notation
+├── agents/                # Framework subagent definitions
+├── commands/              # Framework slash command definitions
+├── hooks/                 # SessionStart, PreToolUse, Stop hooks
+├── scripts/               # Automation tools
+├── skills/                # Skill sources (packaged to ~/.claude/skills/)
+│   └── */resources/        # Symlinks to chunks/
+├── docs/
+│   ├── bots/             # Framework agent development instructions
+│   └── *.md              # Human documentation (ARCHITECTURE.md, etc.)
+└── tests/                 # Integration tests
+```
+
+### Personal Repository ($ACADEMICOPS_PERSONAL)
+
+```
+$ACADEMICOPS_PERSONAL/
+├── core/
+│   └── _CORE.md          # Personal overrides/additions to core axioms
+├── docs/
+│   └── bots/             # Personal agent development instructions
+├── agents/                # Personal custom agents (optional)
+├── commands/              # Personal slash commands (optional)
+└── skills/                # Personal skill sources (optional)
+```
+
+### Project Repository ($PWD)
+
+```
+$PWD/
+├── core/
+│   └── _CORE.md          # Project-specific instructions (optional)
+├── docs/
+│   └── bots/             # Project-specific agent instructions (optional)
+└── [project files]        # Actual project code, data, notebooks, etc.
+```
+
+### Installation Directory (~/.claude/)
+
+```
+~/.claude/
+├── skills/                # Installed skills (packaged from framework/personal repos)
+│   └── skill-name/
+│       ├── SKILL.md       # Skill instructions
+│       ├── resources/     # Symlinks to chunks/ (resolved during packaging)
+│       ├── scripts/       # Skill-specific automation (optional)
+│       └── assets/        # Skill resources (optional)
+├── settings.json          # User configuration (hooks, permissions, model preferences)
+└── projects/              # Session logs and project state
+    └── [project-hash]/
+        └── *.jsonl        # Conversation logs for analysis
+```
 
 ## Core Concepts
 
