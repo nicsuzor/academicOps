@@ -115,6 +115,15 @@ When creating or editing content, ask:
 - Installation steps → Belongs in INSTALL.md
 - Experiment workflow → Belongs in aops-trainer skill
 - Anti-bloat checklist → Belongs in aops-trainer skill (it's a process)
+- **Checklists with "before doing X"** → Process, not structure
+- **"ALL changes require" workflows** → Process, not structure
+- **Step-by-step procedures** → Process, not structure
+
+**Process vs Principle distinction**:
+- ✅ PRINCIPLE: "Enforcement hierarchy: Scripts > Hooks > Config > Instructions" (describes WHAT the pattern is)
+- ❌ PROCESS: "Pre-addition checklist: [ ] Tried scripts first?" (describes HOW to apply it)
+- ✅ PRINCIPLE: "Experiment-driven development" (describes WHAT the approach is)
+- ❌ PROCESS: "ALL changes require: 1. GitHub issue 2. Experiment log..." (describes HOW to do it)
 
 ❌ **Putting coding standards in ARCHITECTURE.md**:
 - "No `.get(key, default)`" → Belongs in chunks/AXIOMS.md (universal principle)
@@ -141,6 +150,31 @@ Before modifying any documentation file:
 3. Am I describing structure or process? (Structure → ARCHITECTURE, Process → Skill)
 4. Would this make sense to a user in 2 years? (If no → remove temporal aspects)
 5. Is this the authoritative source for this concept? (If no → reference instead)
+
+### ARCHITECTURE.md Specific Guidance
+
+**Canonical structure** (in order):
+
+1. **Core Concepts** - Foundational ideas (chunks system, environment variables, namespace separation)
+2. **Instruction Loading System** - How three tiers compose (SessionStart loading, skill resources)
+3. **File Structure** - What exists where (three trees: framework/personal/project)
+4. **Component Specifications** - Technical requirements for each component type
+5. **Design Principles** - High-level patterns (DRY, enforcement hierarchy, skill-first) - BRIEF, no checklists
+6. **References** - Pointers to other docs
+
+**When refactoring ARCHITECTURE.md**, remove ALL:
+- Checklists (especially "Pre-addition checklist", "Before adding >5 lines")
+- "ALL changes require" procedural lists
+- Testing commands and procedures
+- Installation procedures
+- Detailed "how to" workflows (those belong in skills)
+- Temporal markers (NEW, line counts, status updates)
+
+**Keep ONLY**:
+- Structural specifications (what exists, where it lives)
+- Component requirements (what makes something valid)
+- Pattern names and brief descriptions (not enforcement procedures)
+- References to where process details live
 
 ## When to Use This Skill
 

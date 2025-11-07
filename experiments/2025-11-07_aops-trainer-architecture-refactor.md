@@ -79,18 +79,49 @@ Agent using aops-trainer skill should:
 - Agent may not restructure without explicit instruction
 - Skill has principles but not explicit "refactor ARCHITECTURE.md" workflow
 
-## Results
+## Results - Attempt 1
 
-[To be filled after test]
+Agent behavior:
+- ✅ Loaded Information Architecture section from skill
+- ✅ Applied decision tree correctly
+- ✅ Removed testing procedures (15 lines → 2 lines)
+- ✅ Removed installation procedures (9 lines → 1 line)
+- ❌ Did NOT remove "Anti-Bloat Enforcement" checklist (process)
+- ❌ Did NOT remove "Experiment-Driven Development" workflow (process)
+- ❌ Did NOT restructure to start with Repository Tiers
+- ❌ Did NOT read our experiment file (created its own instead)
 
-## Outcome
+## Outcome - Attempt 1
 
-[Success/Failure/Partial]
+**PARTIAL SUCCESS**
+
+Information Architecture section worked but agent was too conservative.
 
 ## Analysis
 
-[What worked, what didn't, what needs improvement in skill]
+**What worked**:
+- Agent recognized testing/installation as process violations
+- Applied decision tree from skill
+- Correctly identified these don't belong in ARCHITECTURE.md
+
+**What didn't work**:
+- Didn't recognize checklists as "process"
+- Didn't recognize "ALL changes require" as "process"
+- Couldn't distinguish PRINCIPLE ("experiment-driven") from PROCESS (the workflow steps)
+- No guidance on canonical ARCHITECTURE.md structure
+
+**What needs improvement in skill**:
+1. Add explicit examples of process vs principle distinction
+2. Add specific "ARCHITECTURE.md Specific Guidance" section
+3. List what to remove: checklists, "ALL changes require", workflows
+4. Define canonical structure order
 
 ## Next Steps
 
-[Based on outcome]
+Updated skill with:
+- Process vs Principle examples with ✅/❌ markers
+- "ARCHITECTURE.md Specific Guidance" section
+- Canonical structure order
+- Explicit list of what to remove vs keep
+
+Attempt 2 will test if these improvements enable complete refactoring.
