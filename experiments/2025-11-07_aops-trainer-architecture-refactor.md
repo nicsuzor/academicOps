@@ -125,3 +125,91 @@ Updated skill with:
 - Explicit list of what to remove vs keep
 
 Attempt 2 will test if these improvements enable complete refactoring.
+
+## Results - Attempt 2
+
+Agent behavior:
+- ✅ Loaded Information Architecture section from skill
+- ✅ Loaded ARCHITECTURE.md Specific Guidance section
+- ✅ Applied Process vs Principle distinction correctly
+- ✅ Removed temporal indicator ("Verified: Live integration tests...")
+- ✅ Removed Anti-Bloat Enforcement checklist (9 lines)
+- ✅ Removed Experiment-Driven Development workflow (7 lines)
+- ✅ Removed Testing section entirely (15 lines)
+- ✅ Removed Installation section entirely (9 lines)
+- ✅ Added references to where process lives ("Process details in aops-trainer skill")
+- ✅ Kept principles, removed process implementations
+- ✅ No checklists remain
+- ✅ No "ALL...require" patterns remain
+
+Line reduction: 429 → 402 lines (27 lines removed, 6% reduction)
+
+## Outcome - Attempt 2
+
+**SUCCESS** ✅
+
+Agent autonomously refactored ARCHITECTURE.md to be timeless structural specification.
+
+## Analysis - What Made the Difference
+
+Between Attempt 1 and Attempt 2, added to skill:
+
+1. **Process vs Principle examples**:
+   ```
+   - ✅ PRINCIPLE: "Enforcement hierarchy: Scripts > Hooks > Config > Instructions"
+   - ❌ PROCESS: "Pre-addition checklist: [ ] Tried scripts first?"
+   - ✅ PRINCIPLE: "Experiment-driven development"
+   - ❌ PROCESS: "ALL changes require: 1. GitHub issue 2. Experiment log..."
+   ```
+   This taught pattern recognition: agents could SEE the distinction
+
+2. **ARCHITECTURE.md Specific Guidance** section:
+   - Canonical structure order
+   - Explicit "remove ALL" list
+   - Explicit "keep ONLY" list
+   - File-specific, not generic
+
+3. **Additional process markers**:
+   - "Checklists with 'before doing X'" → Process
+   - "'ALL changes require' workflows" → Process
+   - "Step-by-step procedures" → Process
+
+**Key insight**: Examples teach pattern recognition better than principles. Showing ✅/❌ enabled the agent to correctly identify which content was process vs principle.
+
+## Meta-Learning: Writing Effective Agent Instructions
+
+Successful patterns from this experiment:
+
+1. **Specificity over generality**:
+   - ❌ "Process content doesn't belong"
+   - ✅ "Remove ALL: Checklists, 'ALL changes require', Testing commands"
+
+2. **Examples over rules**:
+   - ❌ "Distinguish structure from process"
+   - ✅ Show ✅ PRINCIPLE vs ❌ PROCESS side-by-side
+
+3. **File-specific guidance beats generic**:
+   - Generic: "Architecture docs should be timeless"
+   - Specific: "ARCHITECTURE.md Specific Guidance" section
+
+4. **Explicit lists enable action**:
+   - Inference: Agent must reason what counts as process
+   - Explicit: "Remove ALL: [item 1], [item 2], [item 3]"
+
+5. **Anticipate confusions**:
+   - "Experiment-driven development" sounds like it could include workflow
+   - Show the distinction: principle name vs process steps
+
+## Outcome
+
+**Experiment validated**: Information Architecture section in aops-trainer skill enables autonomous documentation refactoring when given minimal instruction ("use the aops-trainer skill to update ARCHITECTURE.md").
+
+**Success criteria met**: 5/5 violations removed (100% success rate)
+
+**Skill updated** with "Writing Effective Agent Instructions" section capturing these learnings for future agent optimization work.
+
+## Next Actions
+
+- Apply these patterns when writing/refining other skills
+- Use template from "Writing Effective Agent Instructions" for new components
+- Continue experiment-driven approach: test → analyze failure → add targeted guidance → re-test

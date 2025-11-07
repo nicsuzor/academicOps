@@ -176,6 +176,160 @@ Before modifying any documentation file:
 - Pattern names and brief descriptions (not enforcement procedures)
 - References to where process details live
 
+## Writing Effective Agent Instructions
+
+**Meta-learnings from empirical testing of this skill's effectiveness**
+
+### Specificity Over Generality
+
+**What doesn't work**:
+- General guidance: "Process content doesn't belong in ARCHITECTURE.md"
+- Abstract principles: "Distinguish between structure and process"
+- Vague directives: "Be concise"
+
+**What works**:
+- Concrete examples with ✅/❌ markers
+- Explicit removal lists: "Remove ALL: checklists, 'ALL changes require' lists"
+- File-specific sections: "ARCHITECTURE.md Specific Guidance"
+- Show the distinction: "✅ PRINCIPLE: X vs ❌ PROCESS: Y"
+
+**Experiment evidence**: ARCHITECTURE.md refactoring attempts
+- Attempt 1 (general guidance): Removed 2/5 violations (40% success)
+- Attempt 2 (specific examples + explicit lists): Removed 5/5 violations (100% success)
+
+### Examples Are More Powerful Than Rules
+
+**Principle alone fails**:
+```
+"Distinguish between principles and process implementations"
+→ Agent couldn't identify "ALL changes require..." as process
+```
+
+**Principle + Example succeeds**:
+```
+Process vs Principle distinction:
+- ✅ PRINCIPLE: "Experiment-driven development"
+- ❌ PROCESS: "ALL changes require: 1. GitHub issue 2. Experiment log..."
+→ Agent correctly removed process, kept principle
+```
+
+**Pattern**: Show 2-3 canonical examples rather than explaining exhaustively. Examples teach pattern recognition better than rules.
+
+### Anticipate Common Confusions
+
+When agents might confuse two similar concepts, explicitly contrast them:
+
+**Example from this skill**:
+- PRINCIPLE: "Anti-bloat enforcement" (describes WHAT the pattern is)
+- PROCESS: "Pre-addition checklist" (describes HOW to apply it)
+
+Without this distinction shown, agents keep checklists thinking they're part of the principle.
+
+**Checklist for instruction writing**:
+1. What will agents confuse with what? (principle vs implementation, structure vs process)
+2. Can you show both side-by-side with ✅/❌ markers?
+3. What specific strings should agents search for? (Give them: "checklists", "ALL...require", "before doing X")
+
+### Component-Specific Guidance Beats Generic Rules
+
+**Generic guidance** (less effective):
+- "Testing procedures don't belong in architecture documents"
+- Agents may interpret differently for different files
+
+**Component-specific guidance** (more effective):
+```
+### ARCHITECTURE.md Specific Guidance
+
+When refactoring ARCHITECTURE.md, remove ALL:
+- Checklists (especially "Pre-addition checklist")
+- "ALL changes require" procedural lists
+- Testing commands
+```
+
+**Pattern**: If multiple files follow similar patterns but have file-specific nuances, create a section per file type.
+
+### Explicit "Remove ALL" Lists Work
+
+Agents respond better to explicit removal lists than inference:
+
+**Inference-based** (requires agent reasoning):
+- "Process content doesn't belong" → Agent must figure out what that means
+
+**Explicit list** (direct action):
+- "Remove ALL: Checklists, 'ALL changes require', Testing commands, Installation procedures"
+- Agent searches for these patterns and removes them
+
+### Progressive Refinement Based on Failure Analysis
+
+**Workflow for improving agent instructions**:
+
+1. **Test with minimal instruction** → Agent fails
+2. **Analyze failure**: What specific confusion occurred?
+3. **Add targeted guidance**:
+   - If confusion about concept X vs Y → Add ✅/❌ examples
+   - If missed specific patterns → Add explicit removal list
+   - If file-specific → Add component-specific section
+4. **Re-test** → Measure improvement
+5. **Iterate** until success rate acceptable
+
+**Evidence**: This skill improved via 2-iteration cycle
+- Iteration 1: Added Information Architecture (general)
+- Iteration 2: Added Process vs Principle examples + ARCHITECTURE.md section (specific)
+- Result: 40% → 100% success rate
+
+### What NOT to Do
+
+❌ **Don't assume agents understand context you have**:
+- You know "ALL changes require: 1. 2. 3..." is a process
+- Agent sees "changes" and "require" and might think it's a rule about the system
+- Solution: Show the distinction explicitly
+
+❌ **Don't rely on agents inferring from principles**:
+- Principle: "DRY - don't repeat yourself"
+- Agent may not realize chunks/AXIOMS.md content shouldn't be in ARCHITECTURE.md
+- Solution: Explicit DRY check in validation questions
+
+❌ **Don't write instructions for yourself**:
+- Write for an agent that has ZERO context about your intent
+- What seems obvious to you is not obvious to LLMs
+- Test your assumptions with experiments
+
+### Template for High-Impact Instructions
+
+```markdown
+## [Task Name]
+
+**Purpose**: [One sentence - what this achieves]
+
+**When to use**: [Explicit trigger conditions]
+
+**Canonical structure** (if applicable):
+1. [Step 1]
+2. [Step 2]
+
+**Common mistakes**:
+❌ [Mistake pattern] → [Correct alternative]
+❌ [Mistake pattern] → [Correct alternative]
+
+**Examples**:
+✅ CORRECT: [Concrete example]
+❌ WRONG: [Concrete counter-example]
+
+**Explicit removal/addition lists** (if applicable):
+- Remove ALL: [Item 1], [Item 2], [Item 3]
+- Keep ONLY: [Item 1], [Item 2]
+
+**Validation**: [How to verify task completed correctly]
+```
+
+**Why this template works**:
+- Purpose prevents scope creep
+- Canonical structure gives clear path
+- Common mistakes show ✅/❌ distinctions
+- Examples enable pattern recognition
+- Explicit lists enable direct action
+- Validation enables self-checking
+
 ## When to Use This Skill
 
 Use agent-optimization when:

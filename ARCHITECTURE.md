@@ -45,8 +45,6 @@ skills/*/resources/            # Symlinks to chunks/ for skills
 3. **DRY**: Each principle exists in EXACTLY ONE chunk file
 4. **Selective loading**: Framework skills get INFRASTRUCTURE.md, others don't
 
-**Verified**: Live integration tests (`tests/test_chunks_loading.py`) prove infrastructure works.
-
 ### Agent Instructions vs Documentation
 
 **`core/` and `docs/bots/` = Agent Instructions** (executable rules for AI)
@@ -378,59 +376,20 @@ Every concept documented exactly once, referenced everywhere else.
 
 ### Anti-Bloat Enforcement
 
-**Pre-addition checklist** (before adding >5 lines):
-- [ ] Tried scripts/hooks/config first?
-- [ ] Checked existing content to reference?
-- [ ] Verified not repeating chunks/ or _CORE.md?
-- [ ] Using bullet points, not prose?
-- [ ] Instructions specific, not vague?
-- [ ] File stays under limits?
+Enforcement hierarchy (most → least reliable): Scripts > Hooks > Configuration > Instructions.
 
-**Hard limits**:
+Component size limits enforce architecture boundaries:
 - Skills: <300 lines
 - Agents: <500 lines
-- Adding >10 lines: GitHub issue + approval required
+- Changes >10 lines: Require GitHub issue approval
+
+Process details in aops-trainer skill.
 
 ### Experiment-Driven Development
 
-**ALL changes require**:
-1. GitHub issue (search first - 3+ searches)
-2. Experiment log: `experiments/YYYY-MM-DD_name.md`
-3. Hypothesis, success criteria, changes
-4. Testing with real scenarios
-5. Results documentation
-6. Decision: Keep/Revert/Iterate
+Changes to framework tested empirically with experiment logs (`experiments/YYYY-MM-DD_name.md`) rather than speculated. Test, measure, decide.
 
-**No speculation**. Test, measure, decide.
-
----
-
-## Testing
-
-```bash
-# Run all tests
-uv run pytest
-
-# Test chunks infrastructure (verifies symlinks, @references, env vars)
-uv run pytest tests/test_chunks_loading.py -v
-```
-
-**Integration tests** (`tests/test_chunks_loading.py`):
-- Run Claude Code in headless mode (real API calls, no mocks)
-- Verify chunks content appears in agent memory
-- Test SessionStart loading, skill symlinks, environment variables
-
----
-
-## Installation
-
-See `INSTALL.md` for detailed setup.
-
-**Quick setup**:
-```bash
-export ACADEMICOPS=/path/to/academicOps
-$ACADEMICOPS/scripts/setup_academicops.sh
-```
+Workflow details in aops-trainer skill.
 
 ---
 
