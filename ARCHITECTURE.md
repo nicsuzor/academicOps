@@ -39,8 +39,7 @@ We provide framework context through a modular `chunks/` directory with DRY syml
 chunks/                        # Single source of truth
 ├── AXIOMS.md                  # Universal principles (fail-fast, DRY, etc.)
 ├── INFRASTRUCTURE.md          # Framework paths, $ACADEMICOPS, repo structure
-├── AGENT-BEHAVIOR.md          # Conversational/agent-specific rules
-└── SKILL-PRIMER.md            # Skill execution context
+└── AGENT-BEHAVIOR.md          # Conversational/agent-specific rules
 
 core/_CORE.md                  # @references chunks/ for agents
 skills/*/resources/            # Symlinks to chunks/ for skills
@@ -92,8 +91,7 @@ skills/aops-trainer/
 ├── SKILL.md
 └── resources/
     ├── AXIOMS.md → ../../chunks/AXIOMS.md
-    ├── INFRASTRUCTURE.md → ../../chunks/INFRASTRUCTURE.md
-    └── SKILL-PRIMER.md → ../../chunks/SKILL-PRIMER.md
+    └── INFRASTRUCTURE.md → ../../chunks/INFRASTRUCTURE.md
 ```
 
 **In SKILL.md**:
@@ -101,7 +99,7 @@ skills/aops-trainer/
 ```markdown
 ## Framework Context
 
-@resources/SKILL-PRIMER.md @resources/AXIOMS.md @resources/INFRASTRUCTURE.md # Framework skills only
+@resources/AXIOMS.md @resources/INFRASTRUCTURE.md # Framework skills only
 ```
 
 **Framework-touching skills**: aops-trainer, skill-creator, skill-maintenance, claude-hooks, claude-md-maintenance
@@ -135,7 +133,7 @@ skills/aops-trainer/
 - YAML frontmatter: `name`, `description`, `license`, `permalink`
 - SKILL.md <300 lines
 - **MANDATORY**: `resources/` directory with symlinks:
-  - ALL skills: SKILL-PRIMER.md, AXIOMS.md
+  - ALL skills: AXIOMS.md
   - Framework-touching: + INFRASTRUCTURE.md
 - Framework Context section at top (references @resources/)
 - Optional: `scripts/`, `references/`, `assets/`
@@ -195,7 +193,6 @@ skills/aops-trainer/
 
 - `AXIOMS.md` - Universal principles
 - `INFRASTRUCTURE.md` - Framework structure
-- `SKILL-PRIMER.md` - Skill context
 - `AGENT-BEHAVIOR.md` - Conversational rules
 
 **Requirements**:

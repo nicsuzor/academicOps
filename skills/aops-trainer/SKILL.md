@@ -17,7 +17,7 @@ You are responsible for agent performance in the @nicsuzor/academicOps project.
 
 ## Framework Context
 
-@resources/SKILL-PRIMER.md @resources/AXIOMS.md @resources/INFRASTRUCTURE.md
+@resources/AXIOMS.md @resources/INFRASTRUCTURE.md
 
 ## Overview
 
@@ -1257,7 +1257,6 @@ Skills don't receive SessionStart hooks, so they lack:
 skills/skill-name/
 ├── SKILL.md
 └── resources/                    # NEW - Required for all skills
-    ├── SKILL-PRIMER.md → ../../chunks/SKILL-PRIMER.md (symlink)
     ├── AXIOMS.md → ../../chunks/AXIOMS.md (symlink)
     └── INFRASTRUCTURE.md → ../../chunks/INFRASTRUCTURE.md (symlink - framework skills only)
 ```
@@ -1266,7 +1265,6 @@ skills/skill-name/
 
 **All skills MUST include**:
 
-- `SKILL-PRIMER.md` - Explains skill execution context
 - `AXIOMS.md` - Universal principles (fail-fast, DRY, standard tools, etc.)
 
 **Framework-touching skills MUST include**:
@@ -1294,7 +1292,6 @@ Examples: aops-trainer, skill-creator, skill-maintenance, claude-hooks, claude-m
 cd bot/skills/skill-name/
 mkdir -p resources
 cd resources
-ln -s ../../../chunks/SKILL-PRIMER.md SKILL-PRIMER.md
 ln -s ../../../chunks/AXIOMS.md AXIOMS.md
 ln -s ../../../chunks/INFRASTRUCTURE.md INFRASTRUCTURE.md  # If framework-touching
 ```
@@ -1305,7 +1302,6 @@ ln -s ../../../chunks/INFRASTRUCTURE.md INFRASTRUCTURE.md  # If framework-touchi
 cd ~/.claude/skills/skill-name/
 mkdir -p resources
 cd resources
-ln -s /home/nic/src/bot/chunks/SKILL-PRIMER.md SKILL-PRIMER.md
 ln -s /home/nic/src/bot/chunks/AXIOMS.md AXIOMS.md
 ln -s /home/nic/src/bot/chunks/INFRASTRUCTURE.md INFRASTRUCTURE.md  # If framework-touching
 ```
@@ -1317,7 +1313,7 @@ Add at the top of every SKILL.md (after frontmatter, before first section):
 ```markdown
 ## Framework Context
 
-@resources/SKILL-PRIMER.md @resources/AXIOMS.md @resources/INFRASTRUCTURE.md # If framework-touching only
+@resources/AXIOMS.md @resources/INFRASTRUCTURE.md # If framework-touching only
 ```
 
 ### DRY Compliance

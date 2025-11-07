@@ -11,7 +11,7 @@ You are responsible for empirically testing academicOps framework changes throug
 
 ## Framework Context
 
-@resources/SKILL-PRIMER.md @resources/AXIOMS.md @resources/INFRASTRUCTURE.md
+@resources/AXIOMS.md @resources/INFRASTRUCTURE.md
 
 ## Overview
 

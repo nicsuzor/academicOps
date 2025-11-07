@@ -9,7 +9,7 @@ permalink: aops/skills/context-search/skill
 
 ## Framework Context
 
-@resources/SKILL-PRIMER.md @resources/AXIOMS.md
+@resources/AXIOMS.md
 
 ## Overview
 
@@ -29,8 +29,8 @@ Invoke context-search when you need to:
 
 **Do NOT use for**:
 
-- Writing files (use markdown-ops)
-- Task operations (use task-management)
+- Writing files (use bmem-ops)
+- Task operations (use tasks)
 - Direct file operations (use Read/Write/Edit)
 
 ## Core Operations
@@ -160,7 +160,7 @@ All searches return structured data for consumption by other skills:
 
 ## Integration with Other Skills
 
-**task-management** uses context-search to:
+**tasks** uses context-search to:
 
 - Find duplicates before creation
 - Discover related tasks
@@ -172,7 +172,7 @@ All searches return structured data for consumption by other skills:
 - Find existing entities
 - Verify relationships
 
-**markdown-ops** may use context-search to:
+**bmem-ops** may use context-search to:
 
 - Find forward references
 - Validate entity titles
@@ -219,7 +219,7 @@ See `~/.config/Claude/mcp_settings.json` for complete BM MCP tool list.
 
 - Write or modify files directly
 - Make decisions about task operations
-- Create tasks (delegate to task-management)
+- Create tasks (delegate to tasks)
 - Bypass BM MCP (don't use Glob/Grep for BM data)
 
 **ALWAYS**:

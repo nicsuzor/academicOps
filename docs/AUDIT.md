@@ -27,7 +27,7 @@ relations:
 - **Skills**: 20 total (19 shown in instruction tree)
 - **Slash Commands**: 8 total
 - **Hooks**: 17 total (16 shown in instruction tree)
-- **Chunks**: 4 core files (AXIOMS, INFRASTRUCTURE, SKILL-PRIMER, AGENT-BEHAVIOR)
+- **Chunks**: 3 core files (AXIOMS, INFRASTRUCTURE, AGENT-BEHAVIOR)
 
 ### File Sizes (Lines)
 
@@ -229,7 +229,7 @@ relations:
 
 **Implemented**:
 
--  skill-creator/resources/ (AXIOMS, INFRASTRUCTURE, SKILL-PRIMER)
+-  skill-creator/resources/ (AXIOMS, INFRASTRUCTURE)
 -  aops-trainer/resources/ (assumed from skill invocation)
 
 **Needs Implementation**:

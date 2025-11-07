@@ -9,7 +9,7 @@ permalink: aops/skills/skill-creator/skill
 
 ## Framework Context
 
-@resources/SKILL-PRIMER.md @resources/AXIOMS.md @resources/INFRASTRUCTURE.md
+@resources/AXIOMS.md @resources/INFRASTRUCTURE.md
 
 ## Overview
 
@@ -63,7 +63,6 @@ Create `resources/` directory with framework symlinks:
 
 ```bash
 cd <skill-dir>/resources
-ln -s ../../../chunks/SKILL-PRIMER.md SKILL-PRIMER.md
 ln -s ../../../chunks/AXIOMS.md AXIOMS.md
 ln -s ../../../chunks/INFRASTRUCTURE.md INFRASTRUCTURE.md  # Framework-touching only
 ```
@@ -73,7 +72,7 @@ Add to SKILL.md header:
 ```markdown
 ## Framework Context
 
-@resources/SKILL-PRIMER.md @resources/AXIOMS.md @resources/INFRASTRUCTURE.md # If framework-touching
+@resources/AXIOMS.md @resources/INFRASTRUCTURE.md # If framework-touching
 ```
 
 **Framework-Touching** = reads/writes framework files (agents/, skills/, commands/, core/) or needs $ACADEMICOPS paths. Examples: aops-trainer, skill-creator, claude-hooks.

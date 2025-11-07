@@ -75,15 +75,11 @@ chunks/                   # Shared context modules (symlinked to skills/*/resour
 │   ├── Path Conventions - Where framework files live
 │   ├── Three-Tier Loading - Framework → Personal → Project
 │   └── Knowledge Organization (bmem) - Vector search, Basic Memory integration
-├── AGENT-BEHAVIOR.md     # Agent conversational rules
-│   ├── Stopping Rules - DO ONE THING, then STOP
-│   ├── Direct Interaction - Answer questions directly
-│   ├── Session Management - STOP when interrupted, document progress
-│   └── Error Handling - Stop immediately, report exactly
-└── SKILL-PRIMER.md       # Skill execution context
-    ├── Isolated context - No SessionStart hooks in skills
-    ├── Framework access - Via @resources/ symlinks only
-    └── Single purpose - Focus on specific skill function
+└── AGENT-BEHAVIOR.md     # Agent conversational rules
+    ├── Stopping Rules - DO ONE THING, then STOP
+    ├── Direct Interaction - Answer questions directly
+    ├── Session Management - STOP when interrupted, document progress
+    └── Error Handling - Stop immediately, report exactly
 ```
 
 ### Agents (Specialized Workflows)
@@ -147,12 +143,12 @@ Installed to `~/.claude/skills/`. Invoked by agents or directly.
 ```
 ├── analyst               # Academic research data analysis (dbt + Streamlit)
 ├── archiver              # Archive experiments to Jupyter notebooks with HTML
+├── bmem-ops              # Enforce Basic Memory syntax across knowledge base
 ├── email                 # Outlook MCP integration, triage, signal detection
-├── markdown-ops          # Enforce academicOps + bmem markdown structure
 ├── pdf                   # Convert markdown → professional PDFs
 ├── scribe                # Silent knowledge base maintenance
 ├── strategic-partner     # Strategic facilitation, thinking partnership
-├── tasks                 # Task management operations (create, view, update, archive)
+├── tasks                 # Task lifecycle via BM (semantic search, not scripts)
 └── tja-research          # TJA research methodology tracing
 ```
 
