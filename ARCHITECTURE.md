@@ -1,3 +1,19 @@
+---
+title: "academicOps Architecture"
+type: specification
+description: "Authoritative specification defining file structure, component requirements, loading systems, and design principles for the academicOps agent framework across all repository tiers (framework, personal, project). Timeless reference documentation only - must not include progress indicators, status updates, line counts, test results, temporal labels like NEW, or any metrics that change over time."
+tags:
+  - architecture
+  - specification
+  - framework
+  - reference
+relations:
+  - "[[chunks/AXIOMS]]"
+  - "[[chunks/INFRASTRUCTURE]]"
+  - "[[core/_CORE]]"
+  - "[[docs/bots/BEST-PRACTICES]]"
+---
+
 # academicOps Architecture
 
 System design and implementation for the academicOps agent framework.
@@ -6,7 +22,7 @@ System design and implementation for the academicOps agent framework.
 
 ## Core Concepts
 
-### Modular Chunks Architecture (NEW)
+### Modular Chunks Architecture
 
 **Problem**: Skills don't receive SessionStart hooks, lacking framework context (paths, axioms, env vars).
 
@@ -14,12 +30,12 @@ System design and implementation for the academicOps agent framework.
 
 ```
 chunks/                        # Single source of truth
-├── AXIOMS.md (97 lines)       # Universal principles (fail-fast, DRY, etc.)
-├── INFRASTRUCTURE.md (52)     # Framework paths, $ACADEMICOPS, repo structure
-├── AGENT-BEHAVIOR.md (26)     # Conversational/agent-specific rules
-└── SKILL-PRIMER.md (19)       # Skill execution context
+├── AXIOMS.md                  # Universal principles (fail-fast, DRY, etc.)
+├── INFRASTRUCTURE.md          # Framework paths, $ACADEMICOPS, repo structure
+├── AGENT-BEHAVIOR.md          # Conversational/agent-specific rules
+└── SKILL-PRIMER.md            # Skill execution context
 
-core/_CORE.md (19 lines)       # @references chunks/ for agents
+core/_CORE.md                  # @references chunks/ for agents
 skills/*/resources/            # Symlinks to chunks/ for skills
 ```
 
@@ -47,31 +63,12 @@ skills/*/resources/            # Symlinks to chunks/ for skills
 
 ### Environment Variables
 
-**Recommended deployment** (framework as submodule):
+Required variables:
 
-```bash
-# In ~/.zshrc
-export ACADEMICOPS="$HOME/src/writing/aops"              # Framework (submodule)
-export ACADEMICOPS_PERSONAL="$HOME/src/writing/bots"     # Personal overrides
-```
+- `$ACADEMICOPS` - Path to framework repository (PUBLIC)
+- `$ACADEMICOPS_PERSONAL` - Path to user's personal repository (PRIVATE)
 
-**Alternative deployment** (framework standalone):
-
-```bash
-export ACADEMICOPS=/path/to/academicOps          # Framework repo
-export ACADEMICOPS_PERSONAL=/path/to/personal    # Personal overrides
-```
-
-Available to all agents and skills. Used for:
-- Path resolution (`$ACADEMICOPS/commands/trainer.md`)
-- Three-tier loading (framework → personal → project)
-- Hook invocation
-
-**Submodule benefits**:
-- Single Basic Memory project indexes framework + personal content
-- WikiLinks work across repos: `[[aops/concepts/fail-fast]]`
-- Unified search
-- Framework versioned with personal repo
+Used for path resolution, three-tier loading, and hook invocation.
 
 ---
 
@@ -129,20 +126,47 @@ skills/aops-trainer/
 
 ## File Structure
 
+### Framework Repository ($ACADEMICOPS)
+
 ```
 $ACADEMICOPS/
 ├── chunks/                # Shared context modules (DRY single sources)
 ├── core/
-│   └── _CORE.md          # References chunks/ (19 lines, down from 113)
-├── agents/                # Subagent definitions
-├── commands/              # Slash command definitions
+│   └── _CORE.md          # References chunks/ via @notation
+├── agents/                # Framework subagent definitions
+├── commands/              # Framework slash command definitions
 ├── hooks/                 # SessionStart, PreToolUse, Stop hooks
 ├── scripts/               # Automation tools
-├── skills/                # Packaged skill sources
+├── skills/                # Skill sources (packaged to ~/.claude/skills/)
 │   └── */resources/      # Symlinks to chunks/
-├── docs/                  # Human documentation
-│   └── bots/             # Framework dev context (loaded at SessionStart)
+├── docs/
+│   ├── bots/             # Framework agent development instructions
+│   └── *.md              # Human documentation (ARCHITECTURE.md, etc.)
 └── tests/                 # Integration tests
+```
+
+### Personal Repository ($ACADEMICOPS_PERSONAL)
+
+```
+$ACADEMICOPS_PERSONAL/
+├── core/
+│   └── _CORE.md          # Personal overrides/additions to core axioms
+├── docs/
+│   └── bots/             # Personal agent development instructions
+├── agents/                # Personal custom agents (optional)
+├── commands/              # Personal slash commands (optional)
+└── skills/                # Personal skill sources (optional)
+```
+
+### Project Repository ($PWD)
+
+```
+$PWD/
+├── core/
+│   └── _CORE.md          # Project-specific instructions (optional)
+├── docs/
+│   └── bots/             # Project-specific agent instructions (optional)
+└── [project files]        # Actual project code, data, notebooks, etc.
 ```
 
 ---
@@ -222,10 +246,10 @@ $ACADEMICOPS/
 **Purpose**: DRY single sources for universal concepts
 
 **Files**:
-- `AXIOMS.md` - Universal principles (97 lines)
-- `INFRASTRUCTURE.md` - Framework structure (52 lines)
-- `SKILL-PRIMER.md` - Skill context (19 lines)
-- `AGENT-BEHAVIOR.md` - Conversational rules (26 lines)
+- `AXIOMS.md` - Universal principles
+- `INFRASTRUCTURE.md` - Framework structure
+- `SKILL-PRIMER.md` - Skill context
+- `AGENT-BEHAVIOR.md` - Conversational rules
 
 **Requirements**:
 - Referenced by `core/_CORE.md` (agents get via SessionStart)
@@ -395,7 +419,6 @@ uv run pytest tests/test_chunks_loading.py -v
 - Run Claude Code in headless mode (real API calls, no mocks)
 - Verify chunks content appears in agent memory
 - Test SessionStart loading, skill symlinks, environment variables
-- All 4 tests passing ✅
 
 ---
 

@@ -27,6 +27,121 @@ Maintain and optimize agent framework performance through surgical, experiment-d
 
 **Evidence-Based Foundation**: This skill follows evidence-based best practices documented in `@$ACADEMICOPS/docs/bots/BEST-PRACTICES.md`, incorporating guidance on context engineering, subagent design, and effective AI agents.
 
+## Information Architecture
+
+**CRITICAL**: Understanding where content belongs prevents architectural bloat and maintains DRY principles.
+
+### Document Types & Their Purpose
+
+**ARCHITECTURE.md** - Timeless structural specification:
+- Three-tier repository system (framework/personal/project)
+- File structure for each tier
+- Component specifications (what agents/skills/hooks/chunks ARE)
+- Architectural patterns (enforcement hierarchy, skill-first, DRY via chunks)
+- **NEVER includes**: Testing procedures, installation steps, coding standards, process workflows, metrics, status, progress indicators, temporal labels (NEW), line counts
+
+**chunks/AXIOMS.md** - Universal principles:
+- Core axioms (fail-fast, DRY, explicit configuration)
+- Behavioral rules (no workarounds, verify first)
+- Tool failure protocol
+- Specific coding standards (no `.get(key, default)`)
+- **WHY it belongs here**: Universal across all contexts, loaded by all agents
+
+**docs/bots/BEST-PRACTICES.md** - Evidence-based agent design:
+- Context engineering principles
+- Instruction writing guidelines
+- What works/doesn't work (with citations)
+- Component design patterns
+- **WHY it belongs here**: Meta-level guidance for building agents
+
+**README.md** - User-facing capabilities guide:
+- What tools exist and what they do
+- Quick reference: which tool when
+- Component tree (auto-generated)
+- Brief purpose statement
+- **NEVER includes**: Agent instructions, implementation details, process workflows
+
+**Skills** - Process workflows:
+- HOW to execute specific tasks
+- Step-by-step procedures
+- Tool invocation sequences
+- Checklists and validation
+- Example: aops-trainer contains the experiment workflow, not ARCHITECTURE.md
+
+**Core instruction files** (core/_CORE.md, agents/*.md, commands/*.md):
+- Runtime instructions for agents
+- Task-specific orchestration
+- When to invoke which skills
+- **References** universal content, doesn't duplicate it
+
+**Installation/testing docs** (INSTALL.md, TESTING.md):
+- Setup procedures
+- Test execution commands
+- Environment configuration
+- NOT in ARCHITECTURE.md
+
+### Content Placement Decision Tree
+
+When creating or editing content, ask:
+
+1. **Is this a timeless structural fact?**
+   - YES → ARCHITECTURE.md
+   - NO → Continue
+
+2. **Is this a universal principle applicable everywhere?**
+   - YES → chunks/AXIOMS.md
+   - NO → Continue
+
+3. **Is this guidance on how to design agents/instructions?**
+   - YES → docs/bots/BEST-PRACTICES.md
+   - NO → Continue
+
+4. **Is this a step-by-step process workflow?**
+   - YES → Skill (or script if automatable)
+   - NO → Continue
+
+5. **Is this user-facing "what can I do" information?**
+   - YES → README.md
+   - NO → Continue
+
+6. **Is this setup/installation/testing procedure?**
+   - YES → INSTALL.md or TESTING.md
+   - NO → Consider if it should exist at all
+
+### Common Mistakes to Avoid
+
+❌ **Putting process in ARCHITECTURE.md**:
+- Testing procedures → Belongs in TESTING.md or skill
+- Installation steps → Belongs in INSTALL.md
+- Experiment workflow → Belongs in aops-trainer skill
+- Anti-bloat checklist → Belongs in aops-trainer skill (it's a process)
+
+❌ **Putting coding standards in ARCHITECTURE.md**:
+- "No `.get(key, default)`" → Belongs in chunks/AXIOMS.md (universal principle)
+- "Use uv run python" → Belongs in chunks/AXIOMS.md (universal tool)
+- Specific line limits → Belongs in skill that enforces them
+
+❌ **Putting temporal/metric content in ARCHITECTURE.md**:
+- "(NEW)" labels → Remove, architecture is timeless
+- "(97 lines)" counts → Remove, metrics change
+- "All tests passing ✅" → Remove, status changes
+- "down from 113" → Remove, progress doesn't belong in specification
+
+❌ **Duplicating universal content**:
+- If chunks/AXIOMS.md has it → Reference it, don't copy
+- If docs/bots/BEST-PRACTICES.md explains it → Link to it
+- One source, many references (DRY)
+
+### Validation Questions
+
+Before modifying any documentation file:
+
+1. Does this content already exist elsewhere? (DRY check)
+2. Is this content timeless or will it change? (If changes → wrong file)
+3. Am I describing structure or process? (Structure → ARCHITECTURE, Process → Skill)
+4. Would this make sense to a user in 2 years? (If no → remove temporal aspects)
+5. Is this the authoritative source for this concept? (If no → reference instead)
+
 ## When to Use This Skill
 
 Use agent-optimization when:
