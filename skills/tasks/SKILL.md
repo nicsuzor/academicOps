@@ -101,7 +101,7 @@ project: project-slug
 ---
 ```
 
-**File location**: `$ACADEMICOPS_PERSONAL/data/tasks/inbox/[TASK_ID].md`
+**File location**: `$AO/data/tasks/inbox/[TASK_ID].md`
 
 ### 3. Prioritize Task
 
@@ -309,7 +309,7 @@ When user mentions completing work:
 Tasks stored in Basic Memory format:
 
 ```
-$ACADEMICOPS_PERSONAL/data/
+$AO/data/
   tasks/
     inbox/                  # New tasks
       [TASK_ID].md

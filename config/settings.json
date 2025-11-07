@@ -16,12 +16,12 @@
         "hooks": [
           {
             "type": "command",
-            "command": "if [ -f \"$ACADEMICOPS/hooks/load_instructions.py\" ]; then uv run --directory \"$ACADEMICOPS\" python \"$ACADEMICOPS/hooks/load_instructions.py\"; else echo '{\"hookSpecificOutput\":{\"hookEventName\":\"SessionStart\",\"additionalContext\":\"# WARNING: load_instructions.py not found\"}}'; fi",
+            "command": "if [ -f \"$AOPS/aOps/hooks/load_instructions.py\" ]; then uv run --directory \"$AOPS/aOps\" python \"$AOPS/aOps/hooks/load_instructions.py\"; else echo '{\"hookSpecificOutput\":{\"hookEventName\":\"SessionStart\",\"additionalContext\":\"# WARNING: load_instructions.py not found\"}}'; fi",
             "timeout": 5000
           },
           {
             "type": "command",
-            "command": "if [ -f \"$ACADEMICOPS/hooks/sync_environment.sh\" ]; then \"$ACADEMICOPS/hooks/sync_environment.sh\"; else echo '{\"continue\":true}'; fi",
+            "command": "if [ -f \"$AOPS/aOps/hooks/sync_environment.sh\" ]; then \"$AOPS/aOps/hooks/sync_environment.sh\"; else echo '{\"continue\":true}'; fi",
             "timeout": 5000
           }
         ]
@@ -32,7 +32,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "if [ -f \"$ACADEMICOPS/hooks/validate_tool.py\" ]; then uv run --directory \"$ACADEMICOPS\" python \"$ACADEMICOPS/hooks/validate_tool.py\"; else echo '{\"continue\":true,\"systemMessage\":\"Hook not found: validate_tool.py\"}'; fi",
+            "command": "if [ -f \"$AOPS/aOps/hooks/validate_tool.py\" ]; then uv run --directory \"$AOPS/aOps\" python \"$AOPS/aOps/hooks/validate_tool.py\"; else echo '{\"continue\":true,\"systemMessage\":\"Hook not found: validate_tool.py\"}'; fi",
             "timeout": 3000
           }
         ]
@@ -43,7 +43,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "if [ -f \"$ACADEMICOPS/hooks/request_scribe_stop.py\" ]; then uv run --directory \"$ACADEMICOPS\" python \"$ACADEMICOPS/hooks/request_scribe_stop.py\"; else echo '{}'; fi",
+            "command": "if [ -f \"$AOPS/aOps/hooks/request_scribe_stop.py\" ]; then uv run --directory \"$AOPS/aOps\" python \"$AOPS/aOps/hooks/request_scribe_stop.py\"; else echo '{}'; fi",
             "timeout": 2000
           }
         ]
@@ -54,7 +54,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "if [ -f \"$ACADEMICOPS/hooks/request_scribe_stop.py\" ]; then uv run --directory \"$ACADEMICOPS\" python \"$ACADEMICOPS/hooks/request_scribe_stop.py\"; else echo '{}'; fi",
+            "command": "if [ -f \"$AOPS/aOps/hooks/request_scribe_stop.py\" ]; then uv run --directory \"$AOPS/aOps\" python \"$AOPS/aOps/hooks/request_scribe_stop.py\"; else echo '{}'; fi",
             "timeout": 2000
           }
         ]
@@ -65,12 +65,12 @@
         "hooks": [
           {
             "type": "command",
-            "command": "if [ -f \"$ACADEMICOPS/hooks/log_posttooluse.py\" ]; then uv run --directory \"$ACADEMICOPS\" python \"$ACADEMICOPS/hooks/log_posttooluse.py\"; else echo '{}'; fi",
+            "command": "if [ -f \"$AOPS/aOps/hooks/log_posttooluse.py\" ]; then uv run --directory \"$AOPS/aOps\" python \"$AOPS/aOps/hooks/log_posttooluse.py\"; else echo '{}'; fi",
             "timeout": 2000
           },
           {
             "type": "command",
-            "command": "if [ -f \"$ACADEMICOPS/hooks/autocommit_tasks.py\" ]; then uv run --directory \"$ACADEMICOPS\" python \"$ACADEMICOPS/hooks/autocommit_tasks.py\"; else echo '{}'; fi",
+            "command": "if [ -f \"$AOPS/aOps/hooks/autocommit_tasks.py\" ]; then uv run --directory \"$AOPS/aOps\" python \"$AOPS/aOps/hooks/autocommit_tasks.py\"; else echo '{}'; fi",
             "timeout": 35000
           }
         ]
@@ -81,7 +81,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "if [ -f \"$ACADEMICOPS/hooks/log_userpromptsubmit.py\" ]; then uv run --directory \"$ACADEMICOPS\" python \"$ACADEMICOPS/hooks/log_userpromptsubmit.py\"; else echo '{}'; fi",
+            "command": "if [ -f \"$AOPS/aOps/hooks/log_userpromptsubmit.py\" ]; then uv run --directory \"$AOPS/aOps\" python \"$AOPS/aOps/hooks/log_userpromptsubmit.py\"; else echo '{}'; fi",
             "timeout": 2000
           }
         ]

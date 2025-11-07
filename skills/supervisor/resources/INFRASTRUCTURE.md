@@ -20,14 +20,14 @@ permalink: aops/skills/supervisor/resources/infrastructure
 
 ## Environment Variables
 
-- `$ACADEMICOPS`: Framework repository (typically `/home/nic/src/bot`)
-- `$ACADEMICOPS_PERSONAL`: User customizations (personal tier)
+- `$AOPS/aOps`: Framework repository (typically `/home/nic/src/bot`)
+- `$AO`: User customizations (personal tier)
 - `$PWD`: Current project directory
 
 ## Directory Structure
 
 ```
-$ACADEMICOPS/          # Framework repository
+$AOPS/aOps/          # Framework repository
 ├── agents/                # Subagents (slash commands load these)
 ├── commands/              # Slash command definitions
 ├── skills/                # Skills (Skill tool loads these)
@@ -48,8 +48,8 @@ $ACADEMICOPS/          # Framework repository
 
 SessionStart hook auto-loads instructions from three tiers:
 
-1. **Framework**: `$ACADEMICOPS/core/`
-2. **Personal**: `$ACADEMICOPS_PERSONAL/core/` (user customizations)
+1. **Framework**: `$AOPS/aOps/core/`
+2. **Personal**: `$AO/core/` (user customizations)
 3. **Project**: `$PWD/docs/bots/` (project-specific context)
 
 **NOTE**: Skills do NOT receive SessionStart hooks. Skills access framework context via `@resources/` symlinks only.
@@ -59,6 +59,6 @@ SessionStart hook auto-loads instructions from three tiers:
 **basic-memory** (internal ref: `bmem`) provides vector search and relational mapping:
 
 - **MCP Server**: `mcp__basic-memory__*` tools (read_note, write_note, search_notes, open_entities, create_relation)
-- **Project**: `ns` Personal repository ($ACADEMICOPS_PERSONAL)
+- **Project**: `ns` Personal repository ($AO)
 - **Storage**: Markdown files with YAML frontmatter
 - **Access Pattern**: Just-in-time concept loading via vector search

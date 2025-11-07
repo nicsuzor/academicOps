@@ -8,7 +8,7 @@ creating a detailed history of work done across sessions.
 The hook:
 1. Extracts session ID and transcript path from hook input
 2. Analyzes the transcript to create a concise summary
-3. Logs to daily JSON files in $ACADEMICOPS_PERSONAL/data/sessions/
+3. Logs to daily JSON files in $AO/data/sessions/
 4. Associates with tasks if applicable
 5. Runs silently in the background
 

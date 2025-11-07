@@ -1,6 +1,6 @@
 ---
 name: bmem-ops
-description: Enforce Basic Memory syntax across all markdown files in knowledge base. Converts frontmatter, adds observations, enforces link syntax for aops and $ACADEMICOPS_PERSONAL repositories.
+description: Enforce Basic Memory syntax across all markdown files in knowledge base. Converts frontmatter, adds observations, enforces link syntax for aops and $AO repositories.
 license: Apache 2.0
 permalink: aops/skills/bmem-ops/skill
 ---
@@ -15,7 +15,7 @@ permalink: aops/skills/bmem-ops/skill
 
 Ensure all markdown files in the knowledge base follow Basic Memory syntax. This skill converts regular markdown to Basic Memory format, validates existing files, and maintains semantic structure across the entire knowledge base.
 
-**Scope**: ALL markdown files in `$ACADEMICOPS` and `$ACADEMICOPS_PERSONAL` repositories (excluding specific config files).
+**Scope**: ALL markdown files in `$AOPS/aOps` and `$AO` repositories (excluding specific config files).
 
 ## When to Use This Skill
 

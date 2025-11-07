@@ -23,7 +23,7 @@ You are responsible for agent performance in the @nicsuzor/academicOps project.
 
 Maintain and optimize agent framework performance through surgical, experiment-driven interventions. This skill enforces anti-bloat principles, prioritizes architectural solutions over instructions, and ensures changes are tested rather than speculated.
 
-**Evidence-Based Foundation**: This skill follows evidence-based best practices documented in `@$ACADEMICOPS/docs/bots/BEST-PRACTICES.md`, incorporating guidance on context engineering, subagent design, and effective AI agents.
+**Evidence-Based Foundation**: This skill follows evidence-based best practices documented in `@$AOPS/aOps/docs/bots/BEST-PRACTICES.md`, incorporating guidance on context engineering, subagent design, and effective AI agents.
 
 ## Information Architecture
 
@@ -513,7 +513,7 @@ Use agent-optimization when:
 - ❌ Vague instructions ("be concise" vs "limit to 2-3 sentences")
 - ❌ Mixing instructions with context (use XML tags or headers to separate)
 
-**Source**: See `@$ACADEMICOPS/docs/bots/BEST-PRACTICES.md` for complete evidence-based guidance with citations.
+**Source**: See `@$AOPS/aOps/docs/bots/BEST-PRACTICES.md` for complete evidence-based guidance with citations.
 
 ## Follow Agent Optimization Workflow
 
@@ -790,7 +790,7 @@ Use this workflow when:
 
 **1. Load Best Practices**:
 
-Read `@$ACADEMICOPS/docs/bots/BEST-PRACTICES.md` to ensure current understanding of evidence-based principles.
+Read `@$AOPS/aOps/docs/bots/BEST-PRACTICES.md` to ensure current understanding of evidence-based principles.
 
 **2. Audit Component**:
 
@@ -880,7 +880,7 @@ Task Y workflow:
 2. Apply fail-fast principles (see _CORE.md Axiom #7)
 3. Commit via git-commit skill
 
-See @$ACADEMICOPS/references/task-y-details.md for edge cases.
+See @$AOPS/aOps/references/task-y-details.md for edge cases.
 </instructions>
 
 <examples>
@@ -1197,9 +1197,9 @@ When creating skills to support this pattern, ensure they include:
    ```markdown
    ## References
 
-   - Core instructions: `@$ACADEMICOPS/core/_CORE.md`
-   - Best practices: `@$ACADEMICOPS/docs/bots/BEST-PRACTICES.md`
-   - Detailed guide: `@$ACADEMICOPS/references/specific-guide.md`
+   - Core instructions: `@$AOPS/aOps/core/_CORE.md`
+   - Best practices: `@$AOPS/aOps/docs/bots/BEST-PRACTICES.md`
+   - Detailed guide: `@$AOPS/aOps/references/specific-guide.md`
    ```
 
 2. **Workflow Checklist**: Step-by-step process
@@ -1246,7 +1246,7 @@ When reviewing or creating components, verify:
 Skills don't receive SessionStart hooks, so they lack:
 
 - Universal principles (axioms, fail-fast, DRY)
-- Framework infrastructure knowledge ($ACADEMICOPS paths, repo structure)
+- Framework infrastructure knowledge ($AOPS/aOps paths, repo structure)
 - Repository-specific context
 
 ### The Solution: resources/ with Symlinks
@@ -1269,12 +1269,12 @@ skills/skill-name/
 
 **Framework-touching skills MUST include**:
 
-- `INFRASTRUCTURE.md` - Repository structure, $ACADEMICOPS paths, environment variables
+- `INFRASTRUCTURE.md` - Repository structure, $AOPS/aOps paths, environment variables
 
 **Framework-touching skills** are those that:
 
 - Read/write framework files (commands/, agents/, skills/, core/)
-- Need to know about $ACADEMICOPS repository structure
+- Need to know about $AOPS/aOps repository structure
 - Work with multi-tier loading system
 
 Examples: aops-trainer, skill-creator, skill-maintenance, claude-hooks, claude-md-maintenance, agent-initialization

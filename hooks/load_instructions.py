@@ -19,8 +19,8 @@ Usage:
     load_instructions.py _CORE.md --format=text
 
 Loading Hierarchy (ALWAYS the same, NO legacy fallbacks):
-1. Framework: $ACADEMICOPS/core/<filename>
-2. Personal:  $ACADEMICOPS_PERSONAL/core/<filename> (if exists)
+1. Framework: $AOPS/aOps/core/<filename>
+2. Personal:  $AO/core/<filename> (if exists)
 3. Project:   $PWD/docs/bots/<filename> (if exists)
 
 Output Modes:
@@ -58,7 +58,7 @@ def get_tier_paths(filename: str) -> dict[str, Path | None]:
     paths = {}
 
     # Framework tier (REQUIRED)
-    if bot_path := os.environ.get("ACADEMICOPS"):
+    if bot_path := os.environ.get("AOPS"):
         paths["framework"] = Path(bot_path) / "core" / filename
     else:
         # Fail fast - ACADEMICOPS is required
@@ -69,7 +69,7 @@ def get_tier_paths(filename: str) -> dict[str, Path | None]:
         raise ValueError(msg)
 
     # Personal tier (OPTIONAL)
-    if personal_path := os.environ.get("ACADEMICOPS_PERSONAL"):
+    if personal_path := os.environ.get("AOPS"):
         paths["personal"] = Path(personal_path) / "core" / filename
     else:
         paths["personal"] = None
@@ -198,7 +198,7 @@ def generate_discovery_manifest() -> str:
     Scans framework tier to discover what files are available,
     then creates a lightweight manifest for agents.
     """
-    bot_path = os.environ.get("ACADEMICOPS")
+    bot_path = os.environ.get("AOPS")
     if not bot_path:
         return ""
 

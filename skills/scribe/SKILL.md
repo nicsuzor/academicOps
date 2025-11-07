@@ -1,7 +1,7 @@
 ---
 name: scribe
 description: A scribe automatically and silently captures tasks, priorities, and context
-  throughout conversations, maintaining the user's knowledge base in $ACADEMICOPS_PERSONAL/data.
+  throughout conversations, maintaining the user's knowledge base in $AO/data.
   Invoke proactively and constantly to extract information about tasks, projects,
   goals, and strategic priorities without interrupting flow. Your value is measured
   by how rarely the user needs to explicitly ask you to save something.
@@ -250,7 +250,7 @@ uv run python ~/.claude/skills/scribe/scripts/task_process.py modify <task_id> -
 ## Data Directory Structure
 
 ```
-$ACADEMICOPS_PERSONAL/data/
+$AO/data/
   goals/                    # Strategic objectives
     *.md
   projects/                 # Active work streams
@@ -424,7 +424,7 @@ Different file types serve different purposes and need different detail levels:
 
 **Writing location**:
 
-- ALWAYS write to `$ACADEMICOPS_PERSONAL/data/context/accomplishments.md` (personal repo: @nicsuzor/writing)
+- ALWAYS write to `$AO/data/context/accomplishments.md` (personal repo: @nicsuzor/writing)
 - NEVER write to project repos (buttermilk/data/, bot/data/, etc.)
 - Personal strategic database is authoritative regardless of which project user is working on
 
@@ -496,7 +496,7 @@ Your goals are the source of truth for focus."
 - Prioritize by importance + urgency + alignment
 - Present task view output DIRECTLY to user (Mode 2)
 - Match detail level to file type (see Detail Level Guidelines)
-- Commit and push all changes to $ACADEMICOPS_PERSONAL before completing
+- Commit and push all changes to $AO before completing
 
 ## Quick Reference
 
@@ -529,17 +529,17 @@ uv run python ~/.claude/skills/scribe/scripts/task_process.py modify <task_id> -
 **Data paths**:
 
 ```
-$ACADEMICOPS_PERSONAL/data/tasks/{inbox,queue,archived}/*.json
-$ACADEMICOPS_PERSONAL/data/projects/*.md
-$ACADEMICOPS_PERSONAL/data/goals/*.md
-$ACADEMICOPS_PERSONAL/data/context/*.md
-$ACADEMICOPS_PERSONAL/data/sessions/*.json
-$ACADEMICOPS_PERSONAL/data/views/current_view.json
+$AO/data/tasks/{inbox,queue,archived}/*.json
+$AO/data/projects/*.md
+$AO/data/goals/*.md
+$AO/data/context/*.md
+$AO/data/sessions/*.json
+$AO/data/views/current_view.json
 ```
 
 ## Session Logging (Automatic)
 
-**Background**: Every session automatically logged to daily JSON files in `$ACADEMICOPS_PERSONAL/data/sessions/YYYY-MM-DD.json`.
+**Background**: Every session automatically logged to daily JSON files in `$AO/data/sessions/YYYY-MM-DD.json`.
 
 **Two-phase logging**:
 
@@ -576,13 +576,13 @@ uv run python ~/.claude/skills/scribe/scripts/session_log.py \
 1. **Check for uncommitted changes**:
 
 ```bash
-cd $ACADEMICOPS_PERSONAL && git status
+cd $AO && git status
 ```
 
 2. **If changes exist, commit them**:
 
 ```bash
-cd $ACADEMICOPS_PERSONAL && git add data/ && git commit -m "update(scribe): [brief summary of what was captured]
+cd $AO && git add data/ && git commit -m "update(scribe): [brief summary of what was captured]
 
 Captured: [list what was added/updated]
 - Tasks: [count] added/modified
@@ -597,7 +597,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 3. **Push to remote**:
 
 ```bash
-cd $ACADEMICOPS_PERSONAL && git push
+cd $AO && git push
 ```
 
 **Verification**:

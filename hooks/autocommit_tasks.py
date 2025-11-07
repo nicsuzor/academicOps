@@ -7,7 +7,7 @@ automatically commits/pushes changes to prevent data loss.
 
 Triggers:
 - After Bash tool executes task scripts (task_add.py, task_process.py, etc.)
-- Only commits if changes detected in $ACADEMICOPS_PERSONAL/data/tasks/
+- Only commits if changes detected in $AO/data/tasks/
 
 Exit codes:
     0: Success (continues execution)
@@ -120,7 +120,7 @@ def main():
         sys.exit(0)
 
     # Get personal repository path
-    personal_repo_path = os.environ.get("ACADEMICOPS_PERSONAL")
+    personal_repo_path = os.environ.get("AOPS")
     if not personal_repo_path:
         # Can't determine repo, continue without committing
         print(json.dumps({}))

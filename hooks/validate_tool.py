@@ -409,7 +409,7 @@ def _is_allowed_md_path(file_path: str) -> bool:
     - Project root (top-level .md files like README.md, HOWTO.md)
     - docs/ directory (documentation files)
 
-    ALLOWED locations (content directories in $ACADEMICOPS_PERSONAL):
+    ALLOWED locations (content directories in $AO):
     - talks/ - Presentation content
     - slides/ - Slide decks
     - data/ - Data files
@@ -441,9 +441,9 @@ def _is_allowed_md_path(file_path: str) -> bool:
     # Convert to POSIX string for pattern matching
     path = path_obj.as_posix()
 
-    # ALLOW: Content directories in $ACADEMICOPS_PERSONAL (writing repo)
+    # ALLOW: Content directories in $AO (writing repo)
     # These are legitimate content artifacts, not documentation
-    personal_path = os.getenv("ACADEMICOPS_PERSONAL")
+    personal_path = os.getenv("AOPS")
     if personal_path:
         cwd = Path.cwd()
         personal_dir = Path(personal_path).resolve()
