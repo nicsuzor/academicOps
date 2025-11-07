@@ -5,6 +5,11 @@ description: Orchestrates multi-agent workflows with comprehensive quality gates
   through micro-iterations, independent reviews, and scope drift detection. Exception
   to DO ONE THING axiom - explicitly authorized to coordinate complex multi-step tasks.
 permalink: aops/agents/supervisor
+tools:
+  - Task
+  - Skill
+  - TodoWrite
+  - AskUserQuestion
 ---
 
 ## Purpose & Authority
