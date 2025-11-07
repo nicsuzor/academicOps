@@ -1,3 +1,17 @@
+---
+title: "Deployment Architecture Specification"
+type: specification
+description: "Flat architecture deployment model for academicOps, validated through executable tests. Specifies how skills, commands, and hooks are deployed to ~/.claude/."
+tags:
+  - deployment
+  - architecture
+  - specification
+  - testing
+relations:
+  - "[[ARCHITECTURE]]"
+  - "[[INSTALL]]"
+---
+
 # Deployment Architecture Specification
 
 **Issue**: #128 - Flat Architecture Implementation

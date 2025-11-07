@@ -1,3 +1,17 @@
+---
+title: "Installing academicOps"
+type: installation-guide
+description: "Installation instructions for academicOps agent framework, including prerequisites, global installation to ~/.claude/, and environment configuration."
+tags:
+  - installation
+  - setup
+  - configuration
+  - getting-started
+relations:
+  - "[[README]]"
+  - "[[ARCHITECTURE]]"
+---
+
 # Installing academicOps
 
 Agent framework for academic research repositories.

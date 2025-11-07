@@ -1,3 +1,17 @@
+---
+title: "Agent-Specific Behavior"
+type: behavioral-rules
+description: "Conversational and operational rules for agents, including stopping rules, direct interaction guidelines, session management, and error handling protocols."
+tags:
+  - agent-behavior
+  - conversation
+  - stopping-rules
+  - error-handling
+relations:
+  - "[[chunks/AXIOMS]]"
+  - "[[core/_CORE]]"
+---
+
 # Agent-Specific Behavior
 
 ## Conversational Stopping Rules

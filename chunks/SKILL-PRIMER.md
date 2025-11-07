@@ -1,3 +1,18 @@
+---
+title: "Skill Execution Context"
+type: skill-context
+description: "Context primer for Claude Code skills, explaining isolated execution context, framework access via @resources/ symlinks, and differences from main agent environment."
+tags:
+  - skill
+  - execution-context
+  - resources
+  - framework
+relations:
+  - "[[chunks/AXIOMS]]"
+  - "[[chunks/INFRASTRUCTURE]]"
+  - "[[docs/bots/SKILL-DESIGN]]"
+---
+
 # Skill Execution Context
 
 **You are running as a Claude Code skill.**

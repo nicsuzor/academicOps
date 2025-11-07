@@ -1,3 +1,16 @@
+---
+title: "academicOps Instruction Index"
+type: index
+description: "Complete reference for all instruction files in the academicOps framework, showing which files are SHOWN (directly loaded) vs REFERENCED (@notation). Auto-checked by CI/CD."
+tags:
+  - index
+  - instructions
+  - reference
+relations:
+  - "[[ARCHITECTURE]]"
+  - "[[core/_CORE]]"
+---
+
 # academicOps Instruction Index
 
 **Purpose**: Complete reference for all instruction files in the academicOps framework.

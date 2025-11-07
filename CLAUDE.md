@@ -1,3 +1,17 @@
+---
+title: "Gemini Project Instructions for academicOps"
+type: project-instructions
+description: "Gemini-specific instructions for working in the academicOps framework repository, including directory structure, three-tier loading, and framework development guidelines."
+tags:
+  - gemini
+  - project-instructions
+  - framework-development
+relations:
+  - "[[core/_CORE]]"
+  - "[[docs/bots/INDEX]]"
+  - "[[ARCHITECTURE]]"
+---
+
 Read `./agents/_CORE.md` for core axioms and project instructions.
 
 ## Repository: nicsuzor/academicOps

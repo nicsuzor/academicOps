@@ -1,3 +1,18 @@
+---
+title: "Universal Principles (Axioms)"
+type: axioms
+description: "Core axioms and behavioral rules for the academicOps framework, including fail-fast philosophy, DRY principles, project isolation, standard tools, and tool failure protocols. Loaded by all agents via SessionStart."
+tags:
+  - axioms
+  - principles
+  - fail-fast
+  - DRY
+  - framework
+relations:
+  - "[[core/_CORE]]"
+  - "[[ARCHITECTURE]]"
+---
+
 # Universal Principles
 
 ## Core Axioms (Inviolable Rules)

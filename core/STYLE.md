@@ -1,3 +1,17 @@
+---
+title: "Code Style and Conventions"
+type: conventions
+description: "Generic code formatting and documentation standards for agents. Project-specific style requirements in project-tier STYLE.md files."
+tags:
+  - style
+  - conventions
+  - formatting
+  - code-quality
+relations:
+  - "[[chunks/AXIOMS]]"
+  - "[[core/DEVELOPMENT]]"
+---
+
 # Code Style and Conventions
 
 Generic code formatting and documentation standards. Project-specific style requirements in project-tier STYLE.md files.

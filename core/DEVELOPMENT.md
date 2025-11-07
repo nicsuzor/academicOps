@@ -1,3 +1,17 @@
+---
+title: "Development Methodology"
+type: methodology
+description: "Generic development principles and TDD workflow for agents. Project-specific enhancements in project-tier DEVELOPMENT.md files."
+tags:
+  - development
+  - methodology
+  - TDD
+  - workflow
+relations:
+  - "[[chunks/AXIOMS]]"
+  - "[[core/TESTING]]"
+---
+
 # Development Methodology
 
 Generic development principles and TDD workflow. Project-specific enhancements in project-tier DEVELOPMENT.md files.

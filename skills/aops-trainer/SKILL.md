@@ -151,6 +151,57 @@ Before modifying any documentation file:
 4. Would this make sense to a user in 2 years? (If no → remove temporal aspects)
 5. Is this the authoritative source for this concept? (If no → reference instead)
 
+### Universal Chunking Principle
+
+**CHUNK EVERYTHING**: No documentation file should exceed ~200 lines. When files grow large, modularize into topic-focused chunks.
+
+**Why chunking matters**:
+- **Token efficiency**: Agents load only relevant topics via @references
+- **Maintainability**: Smaller files easier to update and keep current
+- **DRY enforcement**: Each chunk has single responsibility, clear purpose
+- **Discoverability**: Topic-focused files easier to find and navigate
+- **Context pollution prevention**: Avoid loading 700-line files when 50 lines needed
+
+**Chunking strategies**:
+
+1. **Topic-based splitting** - Extract major sections into separate files
+   - Example: BEST-PRACTICES.md (705 lines) → CONTEXT-ENGINEERING.md, SUBAGENT-DESIGN.md, SKILL-DESIGN.md, COMMAND-DESIGN.md, HOOK-DESIGN.md, TOOL-DESIGN.md, ANTI-PATTERNS.md
+   - Original becomes index with @references
+
+2. **Reference over duplicate** - Create topic file, reference from multiple locations
+   - Example: chunks/AXIOMS.md loaded by both agents (via _CORE.md) and skills (via resources/)
+   - One source, many references
+
+3. **Progressive detail** - Index file has summaries, topic files have details
+   - Index: What each topic covers + @reference
+   - Topic files: Complete guidance on specific subject
+   - Agents load index, then specific topics as needed
+
+**Hard limits**:
+- Documentation files >200 lines → CHUNK IT
+- Reference files (chunks/, docs/bots/) >300 lines → CHUNK IT
+- Any file approaching size limit → Plan chunking strategy BEFORE adding content
+
+**When chunking, preserve**:
+- Cross-references between chunks
+- Navigation (index file with all @references)
+- Authoritative source designation (which file is canonical for what)
+
+**Example chunk structure**:
+```
+docs/bots/
+├── BEST-PRACTICES.md          # Index (137 lines)
+├── CONTEXT-ENGINEERING.md     # Topic chunk (~120 lines)
+├── SUBAGENT-DESIGN.md         # Topic chunk (~60 lines)
+├── SKILL-DESIGN.md            # Topic chunk (~80 lines)
+├── COMMAND-DESIGN.md          # Topic chunk (~130 lines)
+├── HOOK-DESIGN.md             # Topic chunk (~35 lines)
+├── TOOL-DESIGN.md             # Topic chunk (~40 lines)
+└── ANTI-PATTERNS.md           # Topic chunk (~75 lines)
+```
+
+Total content preserved, but modular and loadable on-demand.
+
 ### ARCHITECTURE.md Specific Guidance
 
 **Canonical structure** (in order):

@@ -2,11 +2,11 @@
 # Single source of truth for all installation and runtime paths
 #
 # ENVIRONMENT VARIABLES (required):
-#   $ACADEMICOPS_BOT      - Framework repo root (this repository)
+#   $ACADEMICOPS          - Framework repo root (this repository)
 #   $ACADEMICOPS_PERSONAL - User's personal config repo (e.g., ~/src/writing)
 #
 # THREE-TIER LOADING PATTERN:
-#   Framework:  $ACADEMICOPS_BOT/core/*.md       (universal instructions)
+#   Framework:  $ACADEMICOPS/core/*.md           (universal instructions)
 #   Personal:   $ACADEMICOPS_PERSONAL/core/*.md  (user customizations)
 #   Project:    $PWD/docs/bots/*.md              (project-specific)
 #
@@ -56,7 +56,7 @@ python_env = ".venv"            # Virtual environment location (in framework rep
 python_runner = "uv run python" # How to execute Python scripts
 
 # Environment variable names
-var_bot = "ACADEMICOPS_BOT"
+var_bot = "ACADEMICOPS"
 var_personal = "ACADEMICOPS_PERSONAL"
 
 [files]

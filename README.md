@@ -1,3 +1,18 @@
+---
+title: "academicOps Agent Framework"
+type: user-guide
+description: "Modular, hierarchical agent framework for rigorous, context-aware automation in academic research projects. User-facing guide to components, capabilities, and quick reference for tool selection."
+tags:
+  - framework
+  - user-guide
+  - reference
+  - academicops
+relations:
+  - "[[ARCHITECTURE]]"
+  - "[[chunks/AXIOMS]]"
+  - "[[docs/bots/BEST-PRACTICES]]"
+---
+
 # academicOps Agent Framework
 
 **Modular, hierarchical agent framework for rigorous, context-aware automation in academic research projects.**
@@ -18,50 +33,6 @@ academicOps provides infrastructure for AI agent workflows that require:
 
 ---
 
-## File Structure
-
-### Framework Repository ($ACADEMICOPS)
-
-```
-$ACADEMICOPS/
-├── chunks/                # Shared context modules (DRY single sources)
-├── core/
-│   └── _CORE.md          # References chunks/ via @notation
-├── agents/                # Framework subagent definitions
-├── commands/              # Framework slash command definitions
-├── hooks/                 # SessionStart, PreToolUse, Stop hooks
-├── scripts/               # Automation tools
-├── skills/                # Skill sources (packaged to ~/.claude/skills/)
-│   └── */resources/        # Symlinks to chunks/
-├── docs/
-│   ├── bots/             # Framework agent development instructions
-│   └── *.md              # Human documentation (ARCHITECTURE.md, etc.)
-└── tests/                 # Integration tests
-```
-
-### Personal Repository ($ACADEMICOPS_PERSONAL)
-
-```
-$ACADEMICOPS_PERSONAL/
-├── core/
-│   └── _CORE.md          # Personal overrides/additions to core axioms
-├── docs/
-│   └── bots/             # Personal agent development instructions
-├── agents/                # Personal custom agents (optional)
-├── commands/              # Personal slash commands (optional)
-└── skills/                # Personal skill sources (optional)
-```
-
-### Project Repository ($PWD)
-
-```
-$PWD/
-├── core/
-│   └── _CORE.md          # Project-specific instructions (optional)
-├── docs/
-│   └── bots/             # Project-specific agent instructions (optional)
-└── [project files]        # Actual project code, data, notebooks, etc.
-```
 
 ## Components & Capabilities
 

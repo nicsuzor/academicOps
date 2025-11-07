@@ -20,66 +20,13 @@ System design and implementation for the academicOps agent framework.
 
 ## File Structure
 
-### Framework Repository ($ACADEMICOPS)
+See `chunks/INFRASTRUCTURE.md` for directory structure and `paths.toml` for path configuration.
 
-```
-$ACADEMICOPS/
-├── ARCHITECTURE.md        # System design specification (this file)
-├── README.md              # User guide and quick reference
-├── chunks/                # Shared context modules (DRY single sources)
-├── core/
-│   └── _CORE.md          # References chunks/ via @notation
-├── agents/                # Framework subagent definitions
-├── commands/              # Framework slash command definitions
-├── hooks/                 # SessionStart, PreToolUse, Stop hooks
-├── scripts/               # Automation tools
-├── skills/                # Skill sources (packaged to ~/.claude/skills/)
-│   └── */resources/        # Symlinks to chunks/
-├── docs/
-│   ├── bots/             # Framework agent development instructions
-│   └── [other docs]      # Supporting documentation
-└── tests/                 # Integration tests
-```
-
-### Personal Repository ($ACADEMICOPS_PERSONAL)
-
-```
-$ACADEMICOPS_PERSONAL/
-├── core/
-│   └── _CORE.md          # Personal overrides/additions to core axioms
-├── docs/
-│   └── bots/             # Personal agent development instructions
-├── agents/                # Personal custom agents (optional)
-├── commands/              # Personal slash commands (optional)
-└── skills/                # Personal skill sources (optional)
-```
-
-### Project Repository ($PWD)
-
-```
-$PWD/
-├── core/
-│   └── _CORE.md          # Project-specific instructions (optional)
-├── docs/
-│   └── bots/             # Project-specific agent instructions (optional)
-└── [project files]        # Actual project code, data, notebooks, etc.
-```
-
-### Installation Directory (~/.claude/)
-
-```
-~/.claude/
-├── skills/                # Installed skills (packaged from framework/personal repos)
-│   └── skill-name/
-│       ├── SKILL.md       # Skill instructions
-│       ├── resources/     # Symlinks to chunks/ (resolved during packaging)
-│       ├── scripts/       # Skill-specific automation (optional)
-│       └── assets/        # Skill resources (optional)
-├── settings.json          # User configuration (hooks, permissions, model preferences)
-└── projects/              # Session logs and project state
-    └── [project-hash]/
-        └── *.jsonl        # Conversation logs for analysis
-```
+**Repository tiers**:
+- **Framework**: `$ACADEMICOPS/` (agents/, skills/, commands/, hooks/, core/, chunks/, docs/)
+- **Personal**: `$ACADEMICOPS_PERSONAL/` (core/, docs/bots/ for user customizations)
+- **Project**: `$PWD/` (core/, docs/bots/ for project-specific context)
+- **Installation**: `~/.claude/` (installed skills, settings, session logs)
 
 ## Core Concepts
 
@@ -120,39 +67,17 @@ skills/*/resources/            # Symlinks to chunks/ for skills
 
 ### Environment Variables
 
-Required variables:
+See `paths.toml` for authoritative path configuration.
 
-- `$ACADEMICOPS` - Path to framework repository (PUBLIC)
-- `$ACADEMICOPS_PERSONAL` - Path to user's personal repository (PRIVATE)
-
-Used for path resolution, three-tier loading, and hook invocation.
+Required: `$ACADEMICOPS` (framework repository), `$ACADEMICOPS_PERSONAL` (personal repository)
 
 ---
 
 ## Instruction Loading System
 
-### SessionStart: 3-Tier `_CORE.md`
+See `chunks/INFRASTRUCTURE.md` for complete three-tier loading details.
 
-Every session automatically loads:
-
-```
-$ACADEMICOPS/core/_CORE.md              # Framework (required)
-$ACADEMICOPS_PERSONAL/core/_CORE.md     # Personal (optional)
-$PWD/core/_CORE.md                      # Project (optional)
-```
-
-**Loading behavior**:
-- Framework tier REQUIRED (fails if missing)
-- Personal/Project tiers optional (skip if missing)
-- Priority in conflicts: Project > Personal > Framework
-
-**Content via @references**:
-```markdown
-# core/_CORE.md
-@../chunks/AXIOMS.md
-@../chunks/INFRASTRUCTURE.md
-@../chunks/AGENT-BEHAVIOR.md
-```
+**SessionStart hook**: Loads `_CORE.md` from three tiers (framework → personal → project). Framework tier required, personal/project optional. Priority in conflicts: Project > Personal > Framework.
 
 ### Skills: resources/ Symlinks
 

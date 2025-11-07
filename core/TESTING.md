@@ -1,3 +1,17 @@
+---
+title: "Testing Philosophy"
+type: methodology
+description: "Generic testing principles and pytest patterns for agents. Project-specific testing requirements in project-tier TESTING.md files."
+tags:
+  - testing
+  - methodology
+  - pytest
+  - TDD
+relations:
+  - "[[chunks/AXIOMS]]"
+  - "[[core/DEVELOPMENT]]"
+---
+
 # Testing Philosophy
 
 Generic testing principles and pytest patterns. Project-specific testing requirements in project-tier TESTING.md files.

@@ -1,3 +1,19 @@
+---
+title: "academicOps Infrastructure"
+type: infrastructure
+description: "Framework infrastructure details including environment variables, directory structure, path conventions, three-tier loading system, and Basic Memory (bmem) integration."
+tags:
+  - infrastructure
+  - environment
+  - paths
+  - three-tier
+  - framework
+relations:
+  - "[[ARCHITECTURE]]"
+  - "[[chunks/AXIOMS]]"
+  - "[[paths.toml]]"
+---
+
 # academicOps Infrastructure
 
 ## Environment Variables
