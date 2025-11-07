@@ -24,6 +24,8 @@ System design and implementation for the academicOps agent framework.
 
 ```
 $ACADEMICOPS/
+├── ARCHITECTURE.md        # System design specification (this file)
+├── README.md              # User guide and quick reference
 ├── chunks/                # Shared context modules (DRY single sources)
 ├── core/
 │   └── _CORE.md          # References chunks/ via @notation
@@ -35,7 +37,7 @@ $ACADEMICOPS/
 │   └── */resources/        # Symlinks to chunks/
 ├── docs/
 │   ├── bots/             # Framework agent development instructions
-│   └── *.md              # Human documentation (ARCHITECTURE.md, etc.)
+│   └── [other docs]      # Supporting documentation
 └── tests/                 # Integration tests
 ```
 
