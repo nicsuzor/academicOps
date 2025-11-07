@@ -61,19 +61,20 @@ repos:
   # Local custom hooks
   - repo: local
     hooks:
-      # Prevent .md file proliferation
-      - id: prevent-md-proliferation
-        name: Prevent documentation file proliferation
-        entry: bash scripts/git-hooks/pre-commit
-        language: system
-        types: [markdown]
-        pass_filenames: false
-        description: |
-          Enforces documentation philosophy by blocking new .md files except:
-          - Research papers (papers/)
-          - Agent instructions (agents/)
-          - Project manuscripts (projects/*/manuscripts/)
-          Interactive prompt allows override for legitimate use cases.
+      # Prevent .md file proliferation - DISABLED (script removed in 74fb41a)
+      # Philosophy now enforced via instructions, not script
+      # - id: prevent-md-proliferation
+      #   name: Prevent documentation file proliferation
+      #   entry: bash scripts/git-hooks/pre-commit
+      #   language: system
+      #   types: [markdown]
+      #   pass_filenames: false
+      #   description: |
+      #     Enforces documentation philosophy by blocking new .md files except:
+      #     - Research papers (papers/)
+      #     - Agent instructions (agents/)
+      #     - Project manuscripts (projects/*/manuscripts/)
+      #     Interactive prompt allows override for legitimate use cases.
       # Radon - Complexity metrics
       - id: radon-complexity
         name: Check code complexity
