@@ -11,7 +11,8 @@ BOT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 # Users can override this by setting ACADEMIC_OPS_ROOT before sourcing this file
 if [ -z "$ACADEMIC_OPS_ROOT" ]; then
     # Default: parent directory of the bot repository
-    export ACADEMIC_OPS_ROOT="$(cd "$BOT_ROOT/.." && pwd)"
+    ACADEMIC_OPS_ROOT="$(cd "$BOT_ROOT/.." && pwd)"
+    export ACADEMIC_OPS_ROOT
 fi
 
 # Export standardized paths
@@ -24,11 +25,11 @@ export ACADEMICOPS_SCRIPTS="$BOT_ROOT/scripts"
 # Validation function to ensure required directories exist
 validate_paths() {
     local missing_dirs=()
-    
+
     [ ! -d "$ACADEMIC_OPS_ROOT" ] && missing_dirs+=("ACADEMIC_OPS_ROOT: $ACADEMIC_OPS_ROOT")
     [ ! -d "$ACADEMICOPS" ] && missing_dirs+=("ACADEMICOPS: $ACADEMICOPS")
     [ ! -d "$ACADEMICOPS_DATA" ] && missing_dirs+=("ACADEMICOPS_DATA: $ACADEMICOPS_DATA")
-    
+
     if [ ${#missing_dirs[@]} -gt 0 ]; then
         echo "ERROR: Missing required directories:" >&2
         for dir in "${missing_dirs[@]}"; do

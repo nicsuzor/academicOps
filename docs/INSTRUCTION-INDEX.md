@@ -1,686 +1,571 @@
----
-title: "academicOps Instruction Index"
-type: index
-description: "Complete reference for all instruction files in the academicOps framework, showing which files are SHOWN (directly loaded) vs REFERENCED (@notation). Auto-checked by CI/CD."
-tags:
-  - index
-  - instructions
-  - reference
-relations:
-  - "[[ARCHITECTURE]]"
-  - "[[core/_CORE]]"
----
+# Complete Instruction Index - Parent Repository
 
-# academicOps Instruction Index
+**Purpose**: Comprehensive map of ALL instruction files across parent repo and submodules.
 
-**Purpose**: Complete reference for all instruction files in the academicOps framework.
+**Audience**: Internal use (Nic's writing repository).
 
-**Audience**: Third-party users who have adopted academicOps as a standalone repository.
+**Maintenance**: Run `bot/scripts/check_instruction_orphans.py` to check for orphans.
 
-**Maintenance**: Auto-checked by CI/CD. Run `scripts/check_instruction_orphans.py` to verify no orphans.
+**Related**: See `bot/docs/INSTRUCTION-INDEX.md` for the public academicOps index.
 
 ---
 
 ## Quick Reference
 
-- **What do agents automatically know?** → See [What Agents Actually See](#what-agents-actually-see)
-- **What is this file for?** → See [File Registry](#file-registry)
-- **How do agents load instructions?** → See [Loading System](#loading-system)
-- **What files do I need in my repo?** → See [Setup Requirements](#setup-requirements)
-- **What changed recently?** → See [Migration Notes](#migration-notes-2025-10-18)
-
-## TL;DR - What Agents Know vs Don't Know
-
-**Agents AUTOMATICALLY SEE at session start (SHOWN):**
-
-- `agents/_CORE.md` from all 3 tiers (framework/personal/project) - FULL TEXT
-- Git repository info
-- That's it.
-
-**Agents DON'T know unless explicitly told (REFERENCED):**
-
-- This INSTRUCTION-INDEX.md
-- Other agent files (DEVELOPER.md, ANALYST.md, etc.)
-- Documentation files (ARCHITECTURE.md, hooks_guide.md, etc.)
-- What hooks are configured
-- What slash commands exist
-- Directory structure
-
-**How agents discover additional context:**
-
-1. User says "Read docs/INSTRUCTION-INDEX.md"
-2. User invokes slash command like `/trainer` (loads agents/trainer.md)
-3. References in `_CORE.md` suggest reading specific files
+- **What is this file for?** → See registries below
+- **How do agents load in my setup?** → See [Complete Loading Flow](#complete-loading-flow)
+- **Bot (academicOps) files** → See [Bot Submodule Registry](#bot-submodule-academicops)
+- **My parent repo files** → See [Parent Repository Registry](#parent-repository-registry)
+- **Project-specific files** → See [Project-Specific Registries](#project-specific-registries)
 
 ---
 
-## What Agents Actually See
+## Complete Loading Flow
 
-### Critical Distinction: Shown vs Referenced
-
-**SHOWN = Full text injected into agent context (they MUST read it)** **REFERENCED = Mentioned/suggested but NOT loaded (agents MIGHT read it IF they choose)**
-
-This distinction is critical for understanding what agents know vs what they can discover.
-
----
-
-## Loading System
-
-### SessionStart: What Every Agent Gets (SHOWN)
-
-When Claude Code starts, the SessionStart hook (`hooks/load_instructions.py`) AUTOMATICALLY loads and INJECTS full text into every agent's context:
-
-**1. Git Repository Info** (if in a git repo)
-
-- Git remote origin URL
-
-**2. agents/_CORE.md from all 3 tiers** (stacked in priority order)
-
-- `$PROJECT/agents/_CORE.md` (Project-specific, HIGHEST priority)
-- `$ACADEMICOPS_PERSONAL/agents/_CORE.md` (User global preferences)
-- `$ACADEMICOPS/agents/_CORE.md` (Framework defaults, REQUIRED)
-
-**Format in agent context:**
+This shows how agents load instructions in YOUR complete setup (parent repo + bot submodule + projects).
 
 ```
-# Agent Instructions
+Working in parent repo (/writing/):
+    ↓
+Read CLAUDE.md
+    ↓
+Load docs/INSTRUCTIONS.md (parent - YOUR preferences)
+    ├→ References bot/README.md
+    ├→ References bot/docs/AGENT-INSTRUCTIONS.md
+    ├→ Loads docs/modes.md (YOUR modes, shadows bot/docs/modes.md)
+    ├→ Loads docs/STYLE.md, docs/STYLE-QUICK.md (YOUR style)
+    ├→ Loads docs/INDEX.md, docs/error-*.md, etc.
+    └→ Loads docs/projects/INDEX.md (project registry)
+    ↓
+Load agent from bot/agents/{agent_name}.md
+    ├→ Inherits from bot/agents/base.md
+    └→ May reference additional bot/docs/ files
+    ↓
+If specific agent needs:
+    ├→ strategist: Loads data/goals/, data/context/, data/projects/
+    ├→ analyst: Loads project README, data/projects/{project}.md
+    ├→ writer/documenter: Uses docs/STYLE.md
+    └→ developer: References bot/docs/EXPLORATION-BEFORE-IMPLEMENTATION.md
 
-## REPOSITORY
-Git remote origin: git@github.com:...
-
----
-
-## PROJECT: Current Project Context
-[Full text of $PROJECT/agents/_CORE.md]
-
----
-
-## PERSONAL: Your Work Context
-[Full text of $ACADEMICOPS_PERSONAL/agents/_CORE.md]
-
----
-
-## FRAMEWORK: Core Rules
-[Full text of $ACADEMICOPS/agents/_CORE.md]
+Working in project (e.g., /writing/projects/buttermilk/):
+    ↓
+Read projects/buttermilk/CLAUDE.md
+    ↓
+Load projects/buttermilk/docs/agent/INSTRUCTIONS.md (OVERRIDES ALL)
+    ├→ Project-specific rules
+    ├→ References docs/bots/*.md (Buttermilk-specific guides)
+    ├→ References docs/agents/*.md (Buttermilk-specific agents)
+    └→ References back to bot for some shared docs
+    ↓
+Load agent from bot/agents/{agent_name}.md (base behavior)
+    ↓
+Project-specific functionality:
+    ├→ debugger: Uses docs/agents/debugging.md (golden path)
+    └→ tester: Uses docs/TESTING_PHILOSOPHY.md
 ```
 
-**What agents know at session start:**
+---
 
-- Core axioms and behavioral rules
-- Repository they're working in
-- User's global preferences and context
-- Project-specific context and rules
-- **THEY DO NOT KNOW:** What other instruction files exist, what hooks are configured, what the INSTRUCTION-INDEX contains
+## Bot Submodule (academicOps)
 
-### Slash Commands: Additional Context Loading (SHOWN)
+**Location**: `/writing/bot/` (public GitHub: nicsuzor/academicOps)
 
-Slash commands can load additional instruction files using the same 3-tier system:
+**See**: `bot/docs/INSTRUCTION-INDEX.md` for complete public index
 
-**Example:** `/trainer` command loads `agents/trainer.md`
+**Summary**:
 
-1. Command executes: `uv run python ${ACADEMICOPS}/hooks/load_instructions.py trainer.md`
-2. Agent receives FULL TEXT from all available tiers (project → personal → framework)
-3. This supplements (doesn't replace) the `_CORE.md` already loaded at SessionStart
+- 2 entry points (CLAUDE.md, GEMINI.md)
+- 3 primary instructions (INSTRUCTIONS.md, AGENT-INSTRUCTIONS.md, README.md)
+- 8 agent definitions (base, developer, analyst, strategist, academic_writer, documenter, mentor, trainer)
+- 17 supporting docs
+- 12 orphaned files needing attention
 
-**Format:**
+**Key Files**:
 
-```
-# === PROJECT: trainer.md ===
-[Full text if exists]
+- `bot/agents/*.md` - Agent behavior definitions
+- `bot/docs/INSTRUCTIONS.md` - Base framework instructions
+- `bot/docs/AUTO-EXTRACTION.md` - Extraction guide
+- `bot/docs/PATH-RESOLUTION.md` - Path configuration
 
-# === PERSONAL: trainer.md ===
-[Full text if exists]
-
-# === FRAMEWORK: trainer.md ===
-[Full text - REQUIRED]
-```
-
-### What Agents DON'T Automatically Know (REFERENCED)
-
-Unless explicitly loaded via slash command, agents have NO KNOWLEDGE of:
-
-- **This INSTRUCTION-INDEX.md** - They don't know what files exist or where things are documented
-- **docs/hooks_guide.md** - They don't know how hooks work
-- **Other agent files** (DEVELOPER.md, ANALYST.md, etc.) - Until loaded via slash command
-- **Chunked instructions** (docs/_CHUNKS/*) - Unless symlinked into agents/ and loaded
-- **Hook configuration** - They don't see config/settings.json
-- **Available slash commands** - They don't get a command list
-
-**How they discover these:**
-
-1. **Explicit user instruction** - "Read docs/INSTRUCTION-INDEX.md"
-2. **References in _CORE.md** - "See docs/X.md for details"
-3. **Trial and error** - Running commands and seeing if they exist
-
-### Priority Order (When Same File Exists in Multiple Tiers)
-
-**Highest to Lowest:**
-
-1. **Project** (`$PROJECT/agents/`) - Overrides everything
-2. **Personal** (`$ACADEMICOPS_PERSONAL/agents/`) - Overrides framework defaults
-3. **Framework** (`$ACADEMICOPS/agents/`) - Base defaults
-
-All three are shown to agents (stacked). Later tiers can reference or override earlier ones.
-
-### Fail-Fast Behavior
-
-- **Framework tier REQUIRED** - Blocks with exit code 1 if `$ACADEMICOPS/agents/_CORE.md` missing
-- **Other tiers optional** - Silently skipped if missing (no errors)
-- **No fallbacks, no defaults, no guessing**
+**Issues**: #73 (instruction mapping and orphan cleanup)
 
 ---
 
-## File Registry
+## Parent Repository Registry
 
-Complete list of instruction files with visibility metadata.
+Files in `/writing/` (private, Nic-specific).
 
-### Format
+### Entry Point
 
-- **Purpose**: What this file does
-- **Visibility**: 🔴 SHOWN (auto-loaded, full text) | 🔵 REFERENCED (agents must explicitly read) | 🟡 INFRASTRUCTURE (hooks/config)
-- **Loaded by**: What triggers loading this file
-- **References**: What other files it points to
-- **Status**: ✅ Required | ⚠️ Optional | 🔧 Maintenance | ❌ Archived
+**CLAUDE.md**
 
----
-
-## Entry Points (2 files)
-
-### CLAUDE.md
-
-- **Path**: `$ACADEMICOPS/CLAUDE.md`
-- **Purpose**: Initial entry point that Claude Code reads, then defers to SessionStart hook
-- **Visibility**: 🔵 REFERENCED (Claude reads this first, but actual loading happens via SessionStart hook)
-- **Content**: Points to `agents/_CORE.md` and includes repository info
-- **Loaded by**: Claude Code startup (automatic, before SessionStart hook)
-- **References**: `agents/_CORE.md`
+- **Purpose**: Entry point for parent repo agents
+- **References**: docs/INSTRUCTIONS.md, bot/README.md
 - **Status**: ✅ Required
-- **Note**: This is a vestigial mechanism - the real loading happens via SessionStart hook
 
-### GEMINI.md
+**GEMINI.md**
 
-- **Path**: `$ACADEMICOPS/GEMINI.md`
-- **Purpose**: Entry point for Gemini CLI agents
-- **Visibility**: 🔵 REFERENCED
-- **Loaded by**: Gemini CLI on startup (automatic)
-- **References**: `agents/_CORE.md`
-- **Status**: ⚠️ Optional (experimental)
-
----
-
-## Core Instructions (1 file)
-
-### agents/_CORE.md
-
-- **Path**: `$ACADEMICOPS/agents/_CORE.md`
-- **Purpose**: Core axioms and inviolable rules for ALL agents
-- **Visibility**: 🔴 SHOWN (auto-loaded at SessionStart, FULL TEXT injected into every agent)
-- **Loaded by**: SessionStart hook → `hooks/load_instructions.py` (automatic, every session)
-- **Content**:
-  - Core Axioms (fail-fast, DRY, no fallbacks, etc.)
-  - Behavioral Rules (NO WORKAROUNDS, VERIFY FIRST, etc.)
-  - Tool Failure Protocol
-  - Key tools and policies
-- **References**: None (this is the foundation)
-- **Status**: ✅ Required (blocks session start if missing)
-- **Issues**: #119 (modular configuration architecture)
-
-**External Versions** (also SHOWN via same mechanism):
-
-- `$ACADEMICOPS_PERSONAL/agents/_CORE.md` - User global preferences (SHOWN if exists)
-- `$PROJECT/agents/_CORE.md` - Project-specific context (SHOWN if exists)
-
----
-
-## Agent Definitions (5 files)
-
-### agents/trainer.md
-
-- **Path**: `$ACADEMICOPS/agents/trainer.md`
-- **Purpose**: Meta-agent for framework maintenance and optimization
-- **Visibility**: 🔴 SHOWN (when slash command `/trainer` invoked)
-- **Loaded by**: `/trainer` slash command → `hooks/load_instructions.py trainer.md`
-- **Content**:
-  - Agent performance responsibility
-  - Fail-fast enforcement checklist
-  - Design principles & decision framework
-  - Modular documentation architecture
-  - Enforcement hierarchy (scripts > hooks > config > instructions)
-  - GitHub issue management protocol
-  - Instruction index maintenance workflow
-- **References**: LLM client docs (Claude Code, Gemini CLI)
-- **Status**: ✅ Required
-- **Issues**: #111 (modularity), #119 (configuration architecture)
-
-### agents/DEVELOPER.md
-
-- **Path**: `$ACADEMICOPS/agents/DEVELOPER.md`
-- **Purpose**: Software development workflow, debugging, testing
-- **Visibility**: 🔵 REFERENCED (agents must explicitly load via slash command or Read tool)
-- **Loaded by**: Manual - no slash command currently configured
-- **Content**:
-  - TDD methodology
-  - Interface mismatch checkpoint
-  - Debugging workflows
-  - Testing patterns
-- **References**: `_CORE.md` (inherits)
-- **Status**: ✅ Required
-- **Issues**: #88 (localized fix without impact analysis)
-
-### agents/ANALYST.md (symlink)
-
-- **Path**: `$ACADEMICOPS/agents/ANALYST.md` → `docs/_CHUNKS/ANALYST.md`
-- **Purpose**: Data analysis, dbt workflows, SQL optimization
-- **Visibility**: 🔴 SHOWN (when slash command `/analyst` invoked)
-- **Loaded by**: `/analyst` slash command → `hooks/load_instructions.py ANALYST.md`
-- **Content**:
-  - MANDATORY dbt-only data access policy
-  - Computational research methodologies
-  - Data pipeline patterns
-- **References**: `_CORE.md`, DBT.md, TESTING.md
-- **Status**: ✅ Required
-- **Issues**: #78 (computational research), #79 (data access enforcement)
-
-### agents/SUPERVISOR.md
-
-- **Path**: `$ACADEMICOPS/agents/SUPERVISOR.md`
-- **Purpose**: Orchestrate multi-agent workflows with comprehensive quality gates and test-first development
-- **Visibility**: 🔵 REFERENCED (invoked via Task tool with subagent_type: "supervisor")
-- **Loaded by**: Task tool when supervisor orchestration needed
-- **Content**:
-  - Multi-stage quality-gated workflow (Planning → Test-First → Implementation → Iteration Gate)
-  - Success checklist protocol (create first, verify last)
-  - Multi-agent request parsing and coordination
-  - Self-monitoring protocols (missing agents, thrashing, scope drift detection)
-  - NO EXCUSES enforcement (references _CORE.md Axiom #4)
-  - Quality gate checklists at each stage
-  - 0-token failure recovery protocol
-- **References**: `_CORE.md` (NO EXCUSES), `aops-bug` skill, `git-commit` skill, `test-writing` skill
-- **Status**: ✅ Required for complex orchestration tasks
-- **Exception**: Explicit exception to Axiom #1 (DO ONE THING) - authorized to coordinate multi-step workflows
-- **Issues**: #127 (SUPERVISOR agent creation), #126 (agent chaining)
-- **Experiments**: 2025-10-29_supervisor-multi-stage-quality-gates.md
-
-### Other Agent Files (symlinked to docs/_CHUNKS/)
-
-All symlinked to docs/_CHUNKS/ for modular management:
-
-- **DBT.md** - dbt best practices
-- **E2E-TESTING.md** - End-to-end testing workflows
-- **FAIL-FAST.md** - Extended fail-fast philosophy examples
-- **GIT-WORKFLOW.md** - Git commit and PR workflows
-- **HYDRA.md** - Hydra configuration patterns
-- **TESTING.md** - Testing architecture and patterns
-- **TESTS.md** - Test writing guidelines
-
-**Visibility**: 🔵 REFERENCED (must be explicitly loaded) **Status**: ⚠️ Optional (loaded when relevant to task)
-
----
-
-## Framework Documentation (4 files)
-
-### ARCHITECTURE.md
-
-- **Path**: `$ACADEMICOPS/ARCHITECTURE.md`
-- **Purpose**: System overview, design philosophy, loading mechanisms
-- **Visibility**: 🔵 REFERENCED (agents must explicitly read)
-- **Loaded by**: Never auto-loaded
-- **Content**:
-  - Single instruction loading pathway
-  - Agent responsibilities
-  - Validation & enforcement system
-  - Setup process
-  - Migration notes
-- **References**: All major system components
-- **Status**: 🔧 Maintenance
-- **Issues**: #119 (reflects new simplified architecture)
-
-### docs/INSTRUCTION-INDEX.md (this file)
-
-- **Path**: `$ACADEMICOPS/docs/INSTRUCTION-INDEX.md`
-- **Purpose**: Complete file registry with SHOWN vs REFERENCED metadata
-- **Visibility**: 🔵 REFERENCED (agents don't know this exists unless told)
-- **Loaded by**: Never auto-loaded
-- **Content**: What agents see at session start, what files exist, how to discover additional context
-- **References**: All instruction files
-- **Status**: 🔧 Maintenance
-- **Issues**: #119 (updated for new structure)
-
-### docs/hooks_guide.md
-
-- **Path**: `$ACADEMICOPS/docs/hooks_guide.md`
-- **Purpose**: Hook system documentation and usage guide
-- **Visibility**: 🔵 REFERENCED
-- **Loaded by**: Never auto-loaded
-- **Status**: ⚠️ Optional
-
-### README.md
-
-- **Path**: `$ACADEMICOPS/README.md`
-- **Purpose**: Repository overview, quick start, installation
-- **Visibility**: 🔵 REFERENCED
-- **Loaded by**: Never auto-loaded
-- **References**: ARCHITECTURE.md, setup instructions
+- **Purpose**: Entry point for Gemini agents
+- **References**: docs/INSTRUCTIONS.md, bot/README.md
 - **Status**: ✅ Required
 
 ---
 
-## Methodologies (2 files)
+### Primary Instructions
 
-### docs/methodologies/computational-research.md
+**docs/INSTRUCTIONS.md**
 
-- **Path**: `$ACADEMICOPS/docs/methodologies/computational-research.md`
-- **Purpose**: academicOps approach to computational research
-- **Loaded by**: `agents/ANALYST.md` (when working on empirical projects)
-- **References**: `dbt-practices.md`
+- **Purpose**: Complete parent repo instructions (YOUR preferences)
+- **Loaded by**: CLAUDE.md → All parent repo agents
+- **References**: 16 supporting docs
+- **Overrides**: bot/docs/INSTRUCTIONS.md
+- **Status**: ✅ Required
+- **Issues**: -
+
+**docs/INDEX.md**
+
+- **Purpose**: Resource identifiers and tool locations (YOUR tools)
+- **Loaded by**: docs/INSTRUCTIONS.md
+- **References**: workflows, tools, bot docs
+- **Status**: ✅ Required
+- **Issues**: -
+
+---
+
+### Mode & Error Handling
+
+**docs/modes.md**
+
+- **Purpose**: Interaction modes (YOUR custom modes if different from bot)
+- **Loaded by**: docs/INSTRUCTIONS.md
+- **Overrides**: bot/docs/modes.md
+- **Status**: ✅ Required
+- **Issues**: -
+
+**docs/error-quick-reference.md**
+
+- **Purpose**: Quick error responses (YOUR workflow)
+- **Loaded by**: docs/INSTRUCTIONS.md
+- **Overrides**: bot/docs/error-quick-reference.md
+- **Status**: ✅ Required
+- **Issues**: -
+
+**docs/error-handling.md**
+
+- **Purpose**: Comprehensive error strategy (YOUR strategy)
+- **Loaded by**: docs/INSTRUCTIONS.md
+- **Overrides**: bot/docs/error-handling.md
+- **Status**: ✅ Required
+- **Issues**: -
+
+---
+
+### Architecture & Development
+
+**docs/architecture.md**
+
+- **Purpose**: YOUR system architecture (data/, projects/, workflows/)
+- **Loaded by**: docs/INSTRUCTIONS.md
+- **Different from**: bot/docs/architecture.md (which is academicOps architecture)
+- **Status**: ✅ Required
+- **Issues**: -
+
+**docs/DEVELOPMENT.md**
+
+- **Purpose**: Development workflows for YOUR projects
+- **Loaded by**: docs/INSTRUCTIONS.md, docs/INDEX.md
+- **Different from**: bot/docs/DEVELOPMENT.md (academicOps meta-development)
+- **Status**: ✅ Required
+- **Issues**: -
+
+---
+
+### Writing & Style
+
+**docs/STYLE.md**
+
+- **Purpose**: YOUR comprehensive writing style guide
+- **Loaded by**: academic_writer, documenter (via bot/agents/)
+- **Status**: ✅ Required
+- **Issues**: -
+
+**docs/STYLE-QUICK.md**
+
+- **Purpose**: YOUR quick writing style reference
+- **Loaded by**: academic_writer, documenter, docs/INSTRUCTIONS.md
+- **Status**: ✅ Required
+- **Issues**: -
+
+---
+
+### User Preferences
+
+**docs/accommodations.md**
+
+- **Purpose**: YOUR needs, ADHD accommodations, work style
+- **Loaded by**: docs/INSTRUCTIONS.md
+- **Status**: ✅ Required
+- **Issues**: -
+
+---
+
+### Project Management
+
+**docs/CROSS_CUTTING_CONCERNS.md**
+
+- **Purpose**: Cross-project dependency tracking (YOUR 7 projects)
+- **Loaded by**: docs/INSTRUCTIONS.md (when infrastructure changes)
+- **References**: data/projects/_.md, docs/projects/_.md
+- **Status**: ✅ Required
+- **Issues**: #64
+
+**docs/projects/INDEX.md**
+
+- **Purpose**: Registry of YOUR 7 active projects
+- **Loaded by**: docs/INSTRUCTIONS.md (scope detection)
+- **References**: All 7 project context files
+- **Status**: ✅ Required
+- **Issues**: #64
+
+**docs/projects/{project}.md** (7 files)
+
+- **Purpose**: Technical context for each project
+- **Files**: automod.md, buttermilk.md, mediamarkets.md, osbchatmcp.md, tja.md, wikijuris.md, zotmcp.md
+- **Loaded by**: docs/projects/INDEX.md, docs/CROSS_CUTTING_CONCERNS.md
+- **Status**: ✅ Required
+- **Issues**: #64
+
+---
+
+### Strategic Context
+
+**docs/STRATEGY.md**
+
+- **Purpose**: Strategic planning guidance (YOUR strategy workflows)
+- **Loaded by**: docs/INDEX.md
+- **Status**: ✅ Required
+- **Issues**: -
+
+**docs/EMAIL.md**
+
+- **Purpose**: Email processing workflow (YOUR email rules)
+- **Loaded by**: docs/INDEX.md
+- **Status**: ✅ Required
+- **Issues**: -
+
+**docs/EMAIL-TRIAGE-DESIGN.md**
+
+- **Purpose**: Email triage system design
+- **Loaded by**: Not explicitly loaded
+- **Status**: ⚠️ Weakly connected
+- **Issues**: -
+
+**docs/AGENT_HIERARCHY.md**
+
+- **Purpose**: Agent system overview
+- **Loaded by**: Not explicitly loaded
+- **Status**: ⚠️ Weakly connected (overview doc)
+- **Issues**: -
+
+**docs/PROJECT_SETUP.md**
+
+- **Purpose**: Project setup guidelines
+- **Loaded by**: Not explicitly loaded
+- **Status**: ⚠️ Weakly connected
+- **Issues**: -
+
+---
+
+### Workflows
+
+**docs/workflows/INDEX.md**
+
+- **Purpose**: Workflow index
+- **Loaded by**: docs/INDEX.md
+- **Status**: ✅ Required
+- **Issues**: -
+
+**docs/workflows/daily-planning.md** **docs/workflows/idea-capture.md** **docs/workflows/project-creation.md** **docs/workflows/strategy.md** **docs/workflows/weekly-review.md**
+
+- **Purpose**: Specific workflow procedures
+- **Loaded by**: Referenced from docs/workflows/INDEX.md
+- **Status**: ✅ Required
+- **Issues**: -
+
+**docs/workflows/empirical-research-workflow.md**
+
+- **Purpose**: Personal cross-project preferences for computational research (dbt, Streamlit, academicOps)
+- **Loaded by**: analyst.md (when working on empirical projects)
+- **References**: bot/docs/methodologies/computational-research.md, bot/docs/methodologies/dbt-practices.md
 - **Status**: ✅ Required
 - **Issues**: #78 (computational research methodologies)
 
-### docs/methodologies/dbt-practices.md
+---
 
-- **Path**: `$ACADEMICOPS/docs/methodologies/dbt-practices.md`
-- **Purpose**: DBT best practices and MANDATORY data access policy
-- **Loaded by**: `agents/ANALYST.md` (when working on dbt projects)
-- **Content**: No direct upstream queries - dbt models only
-- **Status**: ✅ Required
-- **Issues**: #78 (methodologies), #79 (data access policy enforcement)
+### Data Files
+
+**data/goals/*.md**
+
+- **Purpose**: YOUR strategic goals and theories of change
+- **Loaded by**: strategist agent (session initialization)
+- **Status**: ✅ Required for strategist
+- **Issues**: -
+
+**data/projects/*.md**
+
+- **Purpose**: YOUR active project descriptions
+- **Loaded by**: strategist, analyst agents
+- **Different from**: docs/projects/*.md (technical context vs project descriptions)
+- **Status**: ✅ Required for strategist
+- **Issues**: -
+
+**data/context/*.md**
+
+- **Purpose**: Current priorities, future planning, accomplishments
+- **Loaded by**: strategist agent
+- **Status**: ✅ Required for strategist
+- **Issues**: -
+
+**data/tasks/**
+
+- **Purpose**: Task management files
+- **Loaded by**: strategist agent, task management scripts
+- **Status**: ✅ Required for task system
+- **Issues**: -
+
+**data/views/current_view.json**
+
+- **Purpose**: Aggregated current task view
+- **Loaded by**: strategist agent
+- **Status**: ✅ Required for task system
+- **Issues**: -
 
 ---
 
-## Scripts (Hook Infrastructure)
+## Project-Specific Registries
 
-All scripts are INFRASTRUCTURE - agents never see them, but they control what agents see.
+### Buttermilk (/writing/projects/buttermilk/)
 
-### hooks/load_instructions.py
+**Entry Point**:
 
-- **Path**: `$ACADEMICOPS/hooks/load_instructions.py`
-- **Purpose**: SessionStart hook that loads _CORE.md from 3 tiers and injects into agent context
-- **Visibility**: 🟡 INFRASTRUCTURE (agents never see this, but it determines what they DO see)
-- **Loaded by**: Claude Code SessionStart hook (automatic, every session)
-- **Behavior**: Loads _CORE.md from framework/personal/project tiers, outputs JSON with full text
-- **Exit codes**: 0 (success), 1 (framework tier missing)
-- **Status**: ✅ Required (blocks session start if fails)
-- **Issues**: #119 (simplified to unified 3-tier loading)
+- `CLAUDE.md` → `docs/agent/INSTRUCTIONS.md`
 
-### hooks/validate_tool.py
+**Primary Instructions**:
 
-- **Path**: `$ACADEMICOPS/hooks/validate_tool.py`
-- **Purpose**: PreToolUse hook for enforcing tool restrictions
-- **Visibility**: 🟡 INFRASTRUCTURE (agents only see block/warn messages)
-- **Loaded by**: Claude Code PreToolUse hook (automatic, before every tool use)
-- **Rules Enforced**:
-  - Protected file modifications (config/_, hooks/_)
-  - No new documentation files (prevents bloat)
-  - Python requires `uv run` prefix
-  - Git commits warn for non-code-review agents
-  - `/tmp` files blocked (violates replication axiom)
-- **Exit codes**: 0 (allow), 1 (warn), 2 (block)
-- **Status**: ✅ Required
-- **Issues**: #119 (updated paths after refactoring)
+- **docs/agent/INSTRUCTIONS.md** - Complete Buttermilk rules (OVERRIDES ALL)
+  - Testing protocols, validation rules, debugging workflows
+  - Critical failure modes, prevention systems
+  - References 9 supporting docs
+  - **Issues**: -
 
-### hooks/validate_stop.py
+- **docs/AGENT_INSTRUCTIONS.md** - Alternative/duplicate?
+  - **Status**: ⚠️ May duplicate docs/agent/INSTRUCTIONS.md
+  - **Action needed**: Verify if duplicate and consolidate
 
-- **Path**: `$ACADEMICOPS/hooks/validate_stop.py`
-- **Purpose**: SubagentStop and Stop hooks validation
-- **Visibility**: 🟡 INFRASTRUCTURE
-- **Loaded by**: Claude Code Stop hooks (automatic)
-- **Status**: ✅ Required
+**Functional Agents** (not in bot/agents/):
 
-### hooks/stack_instructions.py
+- **docs/agents/debugger.md** - Debug Pipeline Manager
+  - Live debugging, validation
+  - References docs/agents/debugging.md
+- **docs/agents/tester.md** - Test Fixer Agent
+  - Test maintenance and fixing
+  - References docs/TESTING_PHILOSOPHY.md
+- **docs/agents/debugging.md** - Golden path guide (NOT an agent, GUIDE)
+  - **Status**: ⚠️ Confusing location (in agents/ but not an agent)
 
-- **Path**: `$ACADEMICOPS/hooks/stack_instructions.py`
-- **Purpose**: PostToolUse hook for context-aware instruction loading
-- **Visibility**: 🟡 INFRASTRUCTURE (may inject additional context based on tool use)
-- **Loaded by**: Claude Code PostToolUse hook (automatic, after tool use)
-- **Status**: ⚠️ Optional
+**Supporting Docs**:
 
-### Logging Hooks
+- **docs/TESTING_PHILOSOPHY.md** - Testing philosophy (mock at boundaries)
+- **docs/bots/TEST_FIXER_AGENT.md** - Test fixing protocol
+- **docs/bots/debugging.md** - Debugging workflows (duplicate of agents/debugging.md?)
+- **docs/bots/exploration-before-implementation.md** - Exploration requirements
+  - **Duplicates**: bot/docs/EXPLORATION-BEFORE-IMPLEMENTATION.md
+- **docs/bots/impact-analysis.md** - Impact analysis protocol
+  - **Duplicates**: bot/docs/IMPACT-ANALYSIS.md
+- **docs/bots/INDEX.md** - Buttermilk docs index
+- **docs/bots/config.md** - Configuration guide
+- **docs/bots/data-architecture.md** - Buttermilk data architecture
+- **docs/bots/techstack.md** - Tech stack
 
-- **hooks/log_posttooluse.py** - Logs tool usage
-- **hooks/log_userpromptsubmit.py** - Logs user prompts
-- **hooks/log_sessionend.py** - Logs session end
-- **hooks/log_precompact.py** - Logs context compaction
-- **hooks/log_notification.py** - Logs notifications
+**Reference Docs** (User-facing, not agent):
 
-**Visibility**: 🟡 INFRASTRUCTURE (silent logging, agents never see output) **Status**: ⚠️ Optional (telemetry)
+- docs/reference/concepts.md
+- docs/reference/cloud_infrastructure_setup.md ⚠️ Orphaned
+- docs/reference/llm_agent.md ⚠️ Orphaned
+- docs/reference/tracing.md ⚠️ Orphaned
+- docs/reference/zotero_vectordb_guide.md ⚠️ Orphaned
 
-### Other Supporting Scripts
+**Testing Docs**:
 
-- **scripts/setup_academicops.sh** - Setup script for new projects
-- **scripts/check_instruction_orphans.py** - CI validation for orphaned instruction files
-- **scripts/code_review.py** - Code quality validation
-- **scripts/check_test_architecture.py** - Test architecture validation
+- docs/TEST_FIXING_PATTERNS.md
+- docs/testing/BOUNDARY_MOCKING.md ⚠️ Weakly connected
 
-**Visibility**: 🟡 INFRASTRUCTURE **Status**: 🔧 Maintenance tools
+**Issues**: Duplicates with bot/, confusing agent/guide location
 
 ---
 
-## Configuration (INFRASTRUCTURE)
+### WikiJuris (/writing/projects/wikijuris/)
 
-### config/settings.json
+**Entry Point**:
 
-- **Path**: `$ACADEMICOPS/config/settings.json`
-- **Purpose**: Claude Code settings - defines hooks, permissions, status line
-- **Visibility**: 🟡 INFRASTRUCTURE (agents never see this, but it controls their environment)
-- **Content**:
-  - Environment variables (ACADEMICOPS)
-  - Permissions (allow/deny patterns)
-  - Hook definitions (SessionStart, PreToolUse, PostToolUse, Stop, etc.)
-  - Status line configuration
-- **Loaded by**: Claude Code at startup (automatic)
-- **Status**: ✅ Required
-- **Note**: Hook paths reference `$ACADEMICOPS/hooks/` directly
+- `CLAUDE.md` → `docs/agent/INSTRUCTIONS.md`
+  - **⚠️ BROKEN**: CLAUDE.md references `docs/agents/INSTRUCTIONS.md` (plural) but file is `docs/agent/INSTRUCTIONS.md` (singular)
 
-### Template Files (dist/)
+**Primary Instructions**:
 
-Distribution templates for new project setup:
+- **docs/agent/INSTRUCTIONS.md** - WikiJuris editorial guidelines
+  - Content treatment, legal analysis, tone, formatting
+  - Workflow types (processing contributions, reviewing PRs, issues)
+  - Self-contained, no sub-references
 
-- **dist/.claude/settings.json** - Legacy template (deprecated in favor of root config/)
-- **dist/agents/INSTRUCTIONS.md** - Template for project `_CORE.md`
-- **dist/.gitignore** - academicOps exclusions for project `.gitignore`
-
-**Visibility**: 🟡 INFRASTRUCTURE (templates, not used directly) **Status**: 🔧 Maintenance
+**Issues**: Path mismatch in CLAUDE.md
 
 ---
 
-## Slash Commands
+### Other Projects
 
-Slash commands trigger additional instruction loading or specific workflows.
+**dotfiles** (/writing/dotfiles/):
 
-### Active Commands (7)
+- CLAUDE.md → @docs/README.md
+- docs/README.md, docs/nicwsl.md, docs/memory-investigation-2025-10-02.md
 
-- **commands/trainer.md** - Loads agents/trainer.md, invokes aops-trainer skill
-- **commands/analyst.md** - Loads agents/ANALYST.md for data analysis workflows
-- **commands/dev.md** - Development workflow guidance (TDD, testing, debugging)
-- **commands/ttd.md** - Test-driven development workflow
-- **commands/STRATEGIST.md** - Strategic planning and task extraction
-- **commands/ops.md** - academicOps framework help and guidance
-- **commands/error.md** - Quick experiment outcome logging
-- **commands/log-failure.md** - Log agent performance failures to experiment tracker
-
-**Visibility**: 🔴 SHOWN (when invoked, loads full text of corresponding agent file) **Status**: ✅ Required
-
-**Mechanism**: Slash commands execute `hooks/load_instructions.py <filename>` to load additional context from 3-tier system.
-
-### REMOVED Commands (migrated to project `_CORE.md`)
-
-Project-specific commands removed in Issue #119:
-
-- `/mm` - MediaMarkets → moved to project `_CORE.md`
-- `/bm` - Buttermilk → moved to project `_CORE.md`
-- `/tja` - TJA analysis → moved to project `_CORE.md`
-
-**Rationale**: Project context auto-loads at SessionStart. No separate commands needed.
+**Others**: Some have README files but no agent-specific instructions (use parent defaults)
 
 ---
 
-## Archived Files (32+ files)
+## Shadow & Override Summary
 
-### docs/_UNUSED/
+### Files That Shadow Each Other
 
-- **Path**: `$ACADEMICOPS/docs/_UNUSED/`
-- **Purpose**: Archived obsolete documentation
-- **Status**: ❌ Archived (not referenced in active loading paths)
-- **Issues**: #111 (Phase 2 cleanup)
-- **Contents**:
-- Obsolete architecture docs (superseded by ARCHITECTURE.md)
-- Deprecated agent templates
-- Outdated indexes and references
-- Project-specific content (moved out)
+**docs/modes.md (parent) SHADOWS bot/docs/modes.md**
 
-**Do not reference these files** - they are obsolete.
+- Parent defines YOUR custom modes
+- Bot provides defaults if parent doesn't exist
 
----
+**docs/error-handling.md (parent) SHADOWS bot/docs/error-handling.md**
 
-## External Files (Project/Personal Level)
+- Parent defines YOUR error workflows
+- Bot provides defaults
 
-These files exist in external repositories and are loaded by the same mechanisms.
+**docs/error-quick-reference.md (parent) SHADOWS bot/docs/error-quick-reference.md**
 
-### $ACADEMICOPS_PERSONAL/agents/_CORE.md
+- Parent defines YOUR quick reference
+- Bot provides defaults
 
-- **When referenced**: SessionStart (if `ACADEMICOPS_PERSONAL` set)
-- **Purpose**: User's global preferences across all projects
-- **Overrides**: `$ACADEMICOPS/agents/_CORE.md`
-- **Optional**: Yes (skipped with warning if missing)
+### Files With Same Name But Different Content
 
-### $PROJECT/agents/_CORE.md
+**docs/architecture.md vs bot/docs/architecture.md**
 
-- **When referenced**: SessionStart (always checked)
-- **Purpose**: Project-specific rules and context
-- **Overrides**: Both bot and personal `_CORE.md`
-- **Optional**: Yes (skipped silently if missing)
-- **Created by**: `setup_academicops.sh` (from template)
+- **Parent**: YOUR system architecture (data/, projects/, workflows)
+- **Bot**: academicOps framework architecture
+- **NOT shadows**: Different content, both may be referenced
 
-### $PROJECT/.claude/settings.json
+**docs/DEVELOPMENT.md vs bot/docs/DEVELOPMENT.md vs bot/agents/developer.md**
 
-- **When referenced**: Claude Code startup (automatic)
-- **Purpose**: Project-level Claude Code configuration
-- **Created by**: `setup_academicops.sh` (copied from `dist/.claude/settings.json`)
-- **Status**: ✅ Required for Claude Code projects
+- **Parent docs/DEVELOPMENT.md**: YOUR development workflows
+- **Bot docs/DEVELOPMENT.md**: How to develop academicOps itself
+- **Bot agents/developer.md**: How developer agent should behave
+- **NOT duplicates**: Three different purposes
 
-### $PROJECT/.academicOps/scripts/*.py
+### Project-Specific Duplicates
 
-- **When referenced**: By hooks (SessionStart, PreToolUse, Stop)
-- **Purpose**: Local deployment of validation scripts
-- **Created by**: `setup_academicops.sh` (symlinked from `$ACADEMICOPS/scripts/`)
-- **Contains**: `load_instructions.py`, `validate_tool.py`, `validate_stop.py`, `hook_models.py`
-- **Status**: ✅ Required for hook execution
+**bot/docs/EXPLORATION-BEFORE-IMPLEMENTATION.md vs projects/buttermilk/docs/bots/exploration-before-implementation.md**
 
-### $PROJECT/.claude/commands/*.md
+- **Status**: ⚠️ Likely duplicates
+- **Action needed**: Consolidate or clarify differences
 
-- **When referenced**: When user invokes `/command-name`
-- **Purpose**: Project-specific slash commands (if truly needed)
-- **Optional**: Yes (most projects won't need this)
+**bot/docs/IMPACT-ANALYSIS.md vs projects/buttermilk/docs/bots/impact-analysis.md**
+
+- **Status**: ⚠️ Likely duplicates
+- **Action needed**: Consolidate or clarify differences
 
 ---
 
-## Setup Requirements
+## Maintenance Protocol
 
-### Environment Variables
+### Quarterly Review Checklist
 
-**Required:**
+- [ ] Run `bot/scripts/check_instruction_orphans.py` from parent repo
+- [ ] Review orphaned files list - archive or link
+- [ ] Verify project-specific INSTRUCTIONS still accurate
+- [ ] Check for new duplicate files across parent/bot/projects
+- [ ] Update GitHub issue references in this index
+- [ ] Verify loading flow still matches actual agent behavior
+
+### When Adding New Files
+
+1. Determine location (parent vs bot vs project)
+2. Add to appropriate section in this index
+3. Add references from parent files in loading hierarchy
+4. Run orphan checker to verify not orphaned
+5. Add GitHub issue references if applicable
+6. Commit index + new file together
+
+### When Modifying Instructions
+
+1. Check if file is shadowed (does parent override bot?)
+2. Update correct version (parent override or bot base)
+3. Update this index if purpose changed
+4. Run orphan checker
+5. Commit together
+
+---
+
+## File-to-Issue Mapping
+
+### GitHub Issues Affecting Multiple Files
+
+**#73 - Agent Instruction Map**
+
+- bot/docs/AGENT-INSTRUCTION-MAP.md
+- bot/docs/INSTRUCTION-INDEX.md
+- docs/INSTRUCTION-INDEX.md (this file)
+- bot/scripts/check_instruction_orphans.py
+- All orphaned files listed in orphan section
+
+**#64 - Project Context System**
+
+- docs/CROSS_CUTTING_CONCERNS.md
+- docs/projects/INDEX.md
+- docs/projects/*.md (7 files)
+
+### Automated Issue Tracking
+
+**Current method**: Manual references in this index
+
+**Proposed improvement**: Query GitHub API
 
 ```bash
-export ACADEMICOPS=/path/to/academicOps
+# Find issues mentioning a file
+gh issue list --repo nicsuzor/academicOps --search "filename.md in:body"
 
-Optional:
-export ACADEMICOPS_PERSONAL=/path/to/writing  # User global context
-
-Add to ~/.bashrc, ~/.zshrc, etc.
-
-Installation Steps
-
-1. Set environment variables (see above)
-2. Run setup script:
-cd $PROJECT
-$ACADEMICOPS/scripts/setup_academicops.sh
-3. Customize agents/_CORE.md for your project
-4. Launch Claude Code from project directory
-5. Verify core instructions load at session start
-
-Files Created by Setup
-
-- .claude/settings.json - Claude Code configuration
-- .claude/agents/ - Symlink to academicOps agents
-- agents/_CORE.md - Project context (from template)
-- .academicOps/scripts/ - Symlinked validation scripts
-- .gitignore updates - Excludes academicOps managed files
-
----
-Migration Notes (2025-10-18)
-
-What Changed (Issue #119)
-
-From: Complex multi-tier submodule architecture with project-specific slash commands
-
-To: Simplified 3-tier _CORE.md loading with single instruction pathway
-
-Changes:
-1. ✅ Renamed INSTRUCTIONS.md → _CORE.md at all levels
-2. ✅ Created read_instructions.py for unified 3-tier loading
-3. ✅ Updated load_instructions.py to call read script
-4. ✅ Removed project-specific slash commands (/mm, /bm, /tja)
-5. ✅ Migrated slash command content to project _CORE.md files
-6. ✅ Updated setup_academicops.sh to create _CORE.md template
-7. ✅ Setup script now deploys validation scripts to .academicOps/scripts/ via symlinks
-8. ✅ Hook paths updated to use .academicOps/scripts/ (local deployment)
-9. ✅ Fixed .claude/agents symlink (was circular, now correct)
-
-Migration Path for Existing Projects
-
-If you have /mm, /bm, /tja commands:
-1. Copy command content to $PROJECT/agents/_CORE.md
-2. Delete the slash command files
-3. Verify project context loads at SessionStart
-
-If you have agents/INSTRUCTIONS.md:
-1. Rename to agents/_CORE.md
-2. Content remains the same
-3. Update any references in documentation
-
-To adopt new local script deployment:
-1. Run setup_academicops.sh in your project
-2. Verify .academicOps/scripts/ directory created with symlinks
-3. Update .claude/settings.json hook paths to use .academicOps/scripts/
-
----
-Maintenance Protocol
-
-For Agent Trainers
-
-When modifying instruction files:
-
-1. Update this index with new files or changed purposes
-2. Run orphan checker: python scripts/check_instruction_orphans.py
-3. Link new files: Add references from parent files
-4. Update ARCHITECTURE.md: Reflect structural changes
-5. Document in GitHub: Link to relevant issues
-6. Commit together: Index + instruction changes in same commit
-
-Orphan Detection
-
-Manual check:
-python scripts/check_instruction_orphans.py
-
-CI/CD integration:
-- Runs automatically on PRs modifying instruction files
-- Fails CI if critical files orphaned
-
-File-to-Issue Mapping
-
-Current method: Manual annotation in this index
-
-Future automation: GitHub API queries for file references
-
----
-Success Metrics
-
-System is working when:
-- All projects have agents/_CORE.md (verified by setup script)
-- SessionStart loads 3-tier hierarchy automatically
-- No orphaned instruction files (CI passes)
-- ARCHITECTURE.md accurately reflects system
-- This index is up-to-date with all active files
-- No project-specific slash commands needed (context auto-loads)
-- .academicOps/scripts/ contains validation scripts in all projects
+# Could generate issue mapping automatically
+# See bot/docs/INSTRUCTION-INDEX.md maintenance section for details
 ```
+
+---
+
+## Quick Commands
+
+```bash
+# Check for orphans (from parent repo)
+cd /writing && python bot/scripts/check_instruction_orphans.py
+
+# Check for orphans (from bot submodule)
+cd /writing/bot && python scripts/check_instruction_orphans.py
+
+# Find all references to a file
+grep -r "filename.md" docs/ bot/docs/ projects/*/docs/
+
+# Search issues mentioning file
+gh issue list --search "filename.md"
+
+# Find files never referenced (orphan checker output)
+python bot/scripts/check_instruction_orphans.py | grep "❌"
+```
+
+---
+
+## Version History
+
+- **2025-01-07**: Created comprehensive parent repo index with complete file mappings, shadow relationships, project-specific registries (#73)

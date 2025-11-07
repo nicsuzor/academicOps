@@ -1,14 +1,16 @@
 ---
-title: "Universal Principles (Axioms)"
-type: axioms
-description: "Core axioms and behavioral rules for the academicOps framework, including fail-fast philosophy, DRY principles, project isolation, standard tools, and tool failure protocols. Loaded by all agents via SessionStart."
+title: Universal Principles (Axioms)
+type: reference
+entity_type: note
 tags:
   - axioms
   - principles
-  - framework
+  - core
+  - fail-fast
 relations:
-  - "[[core/_CORE]]"
-  - "[[ARCHITECTURE]]"
+  - "[[INFRASTRUCTURE]]"
+  - "[[AGENT-BEHAVIOR]]"
+permalink: bots/chunks/axioms
 ---
 
 # Universal Principles
@@ -19,14 +21,14 @@ relations:
    - User asks question → Answer it, then stop
    - User requests task → Do it, then stop
    - Find related issues → Report them, don't fix them
-2. **Namespace Separation**: NEVER mix agent instructions with human documentation
-   - `core/*.md` and `docs/bots/*.md` = Agent instructions (rules for AI, imperative voice: "You MUST...")
-   - `docs/*.md` (except docs/bots/) and root `*.md` = Human documentation (explanations for developers/users, descriptive voice: "The system does...")
-   - ❌ PROHIBITED: Agent rules in general `docs/`, human documentation in `core/` or `agents/`
-3. **Data Boundaries**: `bot/` = PUBLIC (GitHub), everything else = PRIVATE
-4. **Project Isolation**: Project-specific content belongs ONLY in the project repository
-5. **Project Independence**: Projects (submodules) must work independently without cross-dependencies
-6. **Fail-Fast Philosophy (Code)**: No defaults, no fallbacks, no workarounds, **no `.get(key, default)`**
+
+2. **Data Boundaries**: `bots/` = PUBLIC (GitHub), everything else = PRIVATE
+
+3. **Project Isolation**: Project-specific content belongs ONLY in the project repository
+
+4. **Project Independence**: Projects must work independently without cross-dependencies
+
+5. **Fail-Fast Philosophy (Code)**: No defaults, no fallbacks, no workarounds, **no `.get(key, default)`**
    - **Means**: Fail immediately when configuration is missing or incorrect
    - ❌ PROHIBITED: `config.get("param", default_value)` - Silent misconfiguration corrupts research data
    - ❌ PROHIBITED: `try/except` returning fallback values - Hides errors
@@ -37,7 +39,8 @@ relations:
    - **Does NOT mean**: Avoid using industry-standard tools as dependencies
    - ✅ CORRECT: Require `pre-commit`, `uv`, `pytest` and fail if missing
    - ✅ CORRECT: Use best standard tool for the job (see Axiom 10)
-7. **Fail-Fast Philosophy (Agents)**: When YOUR instructions or tools fail, STOP immediately
+
+6. **Fail-Fast Philosophy (Agents)**: When YOUR instructions or tools fail, STOP immediately
    - ❌ PROHIBITED: Attempting recovery when slash commands fail
    - ❌ PROHIBITED: Working around broken paths or missing environment variables
    - ❌ PROHIBITED: "Figuring it out" when infrastructure is broken
@@ -45,42 +48,46 @@ relations:
    - ✅ REQUIRED: Report error immediately and stop
    - ✅ REQUIRED: Demand infrastructure be fixed, don't bypass it
    - **Rationale**: Just like code shouldn't silently fail with defaults, agents shouldn't silently work around broken infrastructure. Fail-fast exposes problems so they get fixed, not hidden.
-8. Everything is **self-documenting**: documentation-as-code first; never make separate documentation files.
-9. **DRY**, modular, and **EXPLICIT**: one golden path, no defaults, no guessing, no backwards compatibility.
-10. **Use Standard Tools**: ONE GOLDEN PATH - use the best industry-standard tool for each job
 
-- Package management: `uv` (not pip, poetry, or custom solutions)
-- Testing: `pytest` (not unittest or custom frameworks)
-- Git hooks: `pre-commit` (not custom bash scripts)
-- Type checking: `mypy` (not custom validators)
-- Linting: `ruff` (not flake8, pylint, or custom)
-- **Rationale**: Reduces maintenance burden, leverages community knowledge, prevents reinventing wheels
-- **Fail-fast**: Installation fails immediately if required tool missing (no fallbacks)
+7. Everything is **self-documenting**: documentation-as-code first; never make separate documentation files.
 
-11. **Always dogfooding**: The tools we are building are tested, proven, documented, and versioned. We use our own research projects as development guides, test cases, tutorials, and ongoing measures of reliability. We're aiming to make it easy for HASS scholars to use AI tools in a way that is understandable, traceable, and reproducible. Our live, validated, rigorous academic projects are also tutorials and guides; everything is replicable so we work on live code and data; never create fake examples for tests or documentation.
+8. **DRY**, modular, and **EXPLICIT**: one golden path, no defaults, no guessing, no backwards compatibility.
 
-12. **Trust Version Control**: We work in git repositories - git is the backup system
+9. **Use Standard Tools**: ONE GOLDEN PATH - use the best industry-standard tool for each job
+   - Package management: `uv` (not pip, poetry, or custom solutions)
+   - Testing: `pytest` (not unittest or custom frameworks)
+   - Git hooks: `pre-commit` (not custom bash scripts)
+   - Type checking: `mypy` (not custom validators)
+   - Linting: `ruff` (not flake8, pylint, or custom)
+   - **Rationale**: Reduces maintenance burden, leverages community knowledge, prevents reinventing wheels
+   - **Fail-fast**: Installation fails immediately if required tool missing (no fallbacks)
 
-- ❌ NEVER create backup files: `_new`, `.bak`, `_old`, `_ARCHIVED_*`, `file_2`, `file.backup`
-- ❌ NEVER preserve directories/files "for reference" - git history IS the reference
-- ✅ Edit files directly, rely on git to track changes
-- ✅ Commit AND push after completing logical work units
-- ✅ Use `git diff`, `git log`, `git restore`, `git revert` to review/restore history
-- **Rationale**: Backup files indicate distrust of infrastructure (violates fail-fast philosophy). Git tracks ALL changes - creating backups shows you don't trust the version control system that's specifically designed for this.
-- **Tool usage**: Major changes use git-commit skill; quick fixes use direct `git add . && git commit -m "..." && git push`
+10. **Always dogfooding**: The tools we are building are tested, proven, documented, and versioned. We use our own research projects as development guides, test cases, tutorials, and ongoing measures of reliability. We're aiming to make it easy for HASS scholars to use AI tools in a way that is understandable, traceable, and reproducible. Our live, validated, rigorous academic projects are also tutorials and guides; everything is replicable so we work on live code and data; never create fake examples for tests or documentation.
+
+11. **Trust Version Control**: We work in git repositories - git is the backup system
+    - ❌ NEVER create backup files: `_new`, `.bak`, `_old`, `_ARCHIVED_*`, `file_2`, `file.backup`
+    - ❌ NEVER preserve directories/files "for reference" - git history IS the reference
+    - ✅ Edit files directly, rely on git to track changes
+    - ✅ Commit AND push after completing logical work units
+    - ✅ Use `git diff`, `git log`, `git restore`, `git revert` to review/restore history
+    - **Rationale**: Backup files indicate distrust of infrastructure (violates fail-fast philosophy). Git tracks ALL changes - creating backups shows you don't trust the version control system that's specifically designed for this.
+    - **Tool usage**: Major changes use git-commit skill; quick fixes use direct `git add . && git commit -m "..." && git push`
 
 ## Behavioral Rules
 
-13. **NO WORKAROUNDS**. We're building a toolkit. If your tooling or instructions don't work PRECISELY, then CONGRATULATIONS! You've discovered a bug for us! Don't work around it; log the failure and HALT ALL WORK until the user decides what to do.
-14. **VERIFY FIRST** - Check actual state, never assume.
-15. **NO EXCUSES** - Never close issues or claim success without confirmation. No error is somebody else's problem. If you can't verify and replicate, it doesn't work.
+12. **NO WORKAROUNDS**. We're building a toolkit. If your tooling or instructions don't work PRECISELY, then CONGRATULATIONS! You've discovered a bug for us! Don't work around it; log the failure and HALT ALL WORK until the user decides what to do.
 
-- If asked to "run X to verify Y", success = X runs successfully, not "X would work if..."
-- Never rationalize away requirements. If a test fails, fix it or ask for help - don't explain why it's okay that it failed.
+13. **VERIFY FIRST** - Check actual state, never assume.
 
-16. **WRITE FOR THE LONG TERM** for replication: NEVER create single use scripts or tests or use ad-hoc analysis. We build the infrastructure that guarantees replicability and integrity for the long term.
-17. **DON'T MAKE SHIT UP**. If you don't know, say so. No guesses.
-18. **ALWAYS CITE SOURCES**. No plagiarism. Ever.
+14. **NO EXCUSES** - Never close issues or claim success without confirmation. No error is somebody else's problem. If you can't verify and replicate, it doesn't work.
+    - If asked to "run X to verify Y", success = X runs successfully, not "X would work if..."
+    - Never rationalize away requirements. If a test fails, fix it or ask for help - don't explain why it's okay that it failed.
+
+15. **WRITE FOR THE LONG TERM** for replication: NEVER create single use scripts or tests or use ad-hoc analysis. We build the infrastructure that guarantees replicability and integrity for the long term.
+
+16. **DON'T MAKE SHIT UP**. If you don't know, say so. No guesses.
+
+17. **ALWAYS CITE SOURCES**. No plagiarism. Ever.
 
 ## Tool Failure Protocol
 
@@ -120,7 +127,7 @@ validation bug in task_process.py line 87.
 Should I investigate the script bug or handle this differently?
 ```
 
-**See also**: Rule 13 (NO WORKAROUNDS), Axiom #7 (Fail-Fast for Agents)
+**See also**: Rule 12 (NO WORKAROUNDS), Axiom #6 (Fail-Fast for Agents)
 
 ## Key Tools
 

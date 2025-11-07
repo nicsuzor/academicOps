@@ -1,4 +1,0 @@
-description = "Initiates the structured project creation workflow."
-prompt = """
-Execute the Project Creation Workflow: @docs/workflows/project-creation.md. First, I will ask you for the Project Name and a one-sentence Goal. Then, I will require you to link this project to a 'Key Outcome'. Next, I will guide you through defining the first milestone and the very next concrete action. Finally, I will create the project in the Projects Database and add the associated tasks, ensuring everything is linked correctly.
-"""

@@ -1,7 +1,0 @@
-{
-  "includeDirectories": [
-    "../data",
-    ".."
-  ],
-  "coreTools": ["LSTool", "ReadFileTool", "GrepTool", "GlobTool", "EditTool", "WriteFileTool", "WebFetchTool", "ReadManyFilesTool", "ShellTool", "MemoryTool", "WebSearchTool"]
-}

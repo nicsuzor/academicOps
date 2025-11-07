@@ -49,6 +49,7 @@ def has_task_changes(personal_repo: Path) -> bool:
             capture_output=True,
             text=True,
             timeout=5,
+            check=False,
         )
         return bool(result.stdout.strip())
     except Exception:

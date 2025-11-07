@@ -77,7 +77,7 @@ def parse_iso(ts: str):
     if not ts:
         return None
     try:
-        if isinstance(ts, (int, float)):
+        if isinstance(ts, int | float):
             return datetime.fromtimestamp(float(ts), tz=UTC)
         s = str(ts)
         if s.endswith("Z"):
@@ -137,7 +137,7 @@ def format_text(tasks):
     for t in tasks:
         # Priority
         p = t.get("priority")
-        p_str = f"P{p}" if isinstance(p, int) else "P–"
+        p_str = f"P{p}" if isinstance(p, int) else "P-"
 
         # Task ID
         task_id = t.get("id", "")

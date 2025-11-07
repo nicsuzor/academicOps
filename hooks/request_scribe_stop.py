@@ -36,7 +36,7 @@ def main():
         sys.exit(0)
 
     session_id = input_data.get("session_id", "unknown")
-    state_file = get_state_file(session_id)
+    get_state_file(session_id)
 
     # Disabled per issue #188 - conditional reminder was causing agents to self-answer
     # Keep logging for debugging but don't block

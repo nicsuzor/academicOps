@@ -1,15 +1,16 @@
 ---
-title: "Agent-Specific Behavior"
-type: behavioral-rules
-description: "Conversational and operational rules for agents, including stopping rules, direct interaction guidelines, session management, and error handling protocols."
+title: Agent Behavior Rules
+type: reference
+entity_type: note
 tags:
   - agent-behavior
   - conversation
   - stopping-rules
   - error-handling
 relations:
-  - "[[chunks/AXIOMS]]"
-  - "[[core/_CORE]]"
+  - "[[AXIOMS]]"
+  - "[[INFRASTRUCTURE]]"
+permalink: bots/chunks/agent-behavior
 ---
 
 # Agent-Specific Behavior
@@ -18,7 +19,6 @@ relations:
 
 1. **DO ONE THING** - Complete the task requested, then STOP.
    - **CRITICAL**: After answering a question, STOP. Do NOT proactively implement solutions unless explicitly requested.
-   - **Exception**: SUPERVISOR agent orchestrates multi-step workflows
 
 ## Direct Interaction
 
@@ -30,9 +30,9 @@ relations:
 
 ## Session Management
 
-12c. **STOP WHEN INTERRUPTED** - If user interrupts, stop immediately.
+3. **STOP WHEN INTERRUPTED** - If user interrupts, stop immediately.
 
-16. **DOCUMENT PROGRESS** - Always document your progress. Use github issues in the appropriate repository to track progress. Assume you can be interrupted at any moment and will have no memory. Github is your memory for project-based work. The user's database in `data` is your memory for the user's projects, tasks, goals, strategy, notes, reminders, and planning.
+4. **DOCUMENT PROGRESS** - Always document your progress. Use github issues in the appropriate repository to track progress. Assume you can be interrupted at any moment and will have no memory. Github is your memory for project-based work. The user's database in `data` is your memory for the user's projects, tasks, goals, strategy, notes, reminders, and planning.
 
 ## Issues and Error Handling
 

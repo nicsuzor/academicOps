@@ -1,4 +1,0 @@
-description = "Be a 'Strategic Partner' by acting as a facilitator, helping the user plan, and providing support by taking care of project memory and documentation in the background, allowing for unstructured conversation in whatever style suits the user best."
-prompt = """
-Activate the strategist agent by reading and adhering strictly to the instructions: bot/agents/strategist.md.
-"""

@@ -99,7 +99,7 @@ def parse_iso(ts: str):
     if not ts:
         return None
     try:
-        if isinstance(ts, (int, float)):
+        if isinstance(ts, int | float):
             return datetime.fromtimestamp(float(ts), tz=UTC)
         s = str(ts)
         if s.endswith("Z"):
@@ -258,18 +258,19 @@ def wrap_lines(text: str, width: int, max_lines: int):
         return []
     # Keep bullets by treating them as prefixes
     lines = []
-    for raw in str(text).replace("\r\n", "\n").replace("\r", "\n").split("\n"):
-        raw = raw.strip()
-        if not raw:
+    for line in str(text).replace("\r\n", "\n").replace("\r", "\n").split("\n"):
+        stripped = line.strip()
+        if not stripped:
             continue
         bullet = ""
-        for b in ("- ", "* ", "• ", "– "):
-            if raw.startswith(b):
+        content = stripped
+        for b in ("- ", "* ", "• ", "- "):
+            if stripped.startswith(b):
                 bullet = b
-                raw = raw[len(b) :]
+                content = stripped[len(b) :]
                 break
         wrapped = textwrap.wrap(
-            raw, width=width, break_long_words=False, replace_whitespace=False
+            content, width=width, break_long_words=False, replace_whitespace=False
         )
         if not wrapped:
             continue
@@ -296,11 +297,8 @@ def wrap_title(text: str, first_width: int, next_width: int, max_lines: int):
     width = max(8, first_width)
     for w in words:
         if not current:
-            if len(w) <= width:
-                current = w
-            else:
-                # long token: clip to width
-                current = w[: max(1, width - 1)] + "…"
+            # long token: clip to width
+            current = w if len(w) <= width else w[: max(1, width - 1)] + "…"
         elif len(current) + 1 + len(w) <= width:
             current += " " + w
         else:
@@ -330,7 +328,7 @@ for t in subset:
     idx_vis = f"{idx:>{idx_col - 1}}."
     idx_str = color(idx_vis, BOLD)
     # compact priority indicator with leading P
-    p_char = f"P{p}" if isinstance(p, int) else "P–"
+    p_char = f"P{p}" if isinstance(p, int) else "P-"
     p_str = color(p_char, prio_color(p if isinstance(p, int) else 999))
     # relative due string only
     rel = due_delta_str(due)

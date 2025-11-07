@@ -1,34 +1,53 @@
----
-title: "Core Agent Instructions"
-type: agent-instructions
-description: "Universal agent instructions loaded at SessionStart via three-tier system. References chunks/ for axioms, infrastructure, and behavioral rules."
-tags:
-  - core
-  - agent-instructions
-  - sessionstart
-  - framework
-relations:
-  - "[[chunks/AXIOMS]]"
-  - "[[chunks/INFRASTRUCTURE]]"
-  - "[[chunks/AGENT-BEHAVIOR]]"
----
+## User Context
 
-# Generic Agent Instructions
+- **Nic**: Law professor with ADHD researching tech fairness
+- **Needs**: Zero-friction capture, clean task separation, efficient design, concise communication
+- **Work Style**: Commitment to highest quality, academic rigor, professional standards
+- Name: Nicolas Suzor
+- Email: n.suzor@qut.edu.au, nic@suzor.com, nic@suzor.net, nsuzor@osbmember.com
+- Affiliations:
+  - Professor, Queensland University of Technology (QUT) School of Law and Digital Media Research Centre (DMRC)
+  - Chief Investigator, Australian Research Councile (ARC) Centre of Excellence for Automated Decision-Making + Society (ADM+S)
+  - Member, Oversight Board (OSB)
 
-<!-- This file is read on every session start. Keep it short. -->
+## Repository Information
 
-## Universal Principles
+**Owner**: nicsuzor **Primary Repos**:
 
-@../chunks/AXIOMS.md
+- Parent repo: `/home/nic/src/writing/` (PRIVATE)
+- Agent framework: `nicsuzor/academicOps` (PUBLIC, submodule at `bot/`)
+- GitHub issues tracked centrally in `nicsuzor/academicOps`
 
-## Framework Infrastructure
+## Polyrepo Structure
 
-@../chunks/INFRASTRUCTURE.md
+```
+/home/nic/src/writing/
+├── bot/                    # academicOps (nicsuzor/academicOps)
+├── projects/
+│   ├── buttermilk/        # Core infrastructure (4 dependents)
+│   ├── zotmcp/            # Zotero MCP server
+│   ├── osbchatmcp/        # Oversight Board MCP
+│   ├── automod/tja        # Trans Journalists Association research project
+│   ├── automod/tox        # Toxicity research project
+│   ├── dbr/               # Digital Bills of Rights research project
+│   ├── mediamarkets/      # Research project
+│   └── wikijuris/         # Open textbooks project
+└── data/
+    ├── goals/
+    ├── projects/
+    └── tasks/
+```
 
-## Agent-Specific Behavior
+## Cross-Cutting Concerns
 
-@../chunks/AGENT-BEHAVIOR.md
+**buttermilk**: Shared by 4 projects
 
----
+- Changes require testing ALL dependents
+- Breaking changes require user approval
 
-**Note**: Skills do NOT receive this file via SessionStart hooks. Skills access shared context via `@resources/` symlinks to chunks/.
+## Writing Style
+
+When drafting in author's voice:
+
+- Quick reference: `docs/STYLE-QUICK.md`
+- Comprehensive: `docs/STYLE.md`
