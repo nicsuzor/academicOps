@@ -24,9 +24,7 @@ System design and implementation for the academicOps agent framework.
 
 ### Modular Chunks Architecture
 
-**Problem**: Skills don't receive SessionStart hooks, lacking framework context (paths, axioms, env vars).
-
-**Solution**: Modular `chunks/` directory with DRY symlinks.
+We provide framework context through a modular `chunks/` directory with DRY symlinks.
 
 ```
 chunks/                        # Single source of truth
