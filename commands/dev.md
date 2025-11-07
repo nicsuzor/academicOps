@@ -14,7 +14,7 @@ uv run python ${ACADEMICOPS}/hooks/load_instructions.py DEBUGGING.md
 uv run python ${ACADEMICOPS}/hooks/load_instructions.py STYLE.md
 ```
 
-**STEP 2: Invoke Supervisor Agent - MANDATORY FOR ALL /DEV TASKS**
+**STEP 2: Invoke Supervisor Skill - MANDATORY FOR ALL /DEV TASKS**
 
 ALL tasks initiated via /dev require supervisor orchestration, including:
 
@@ -27,7 +27,13 @@ The ONLY exception: Pure information questions with no implementation intent (e.
 
 If unclear whether task requires implementation, default to invoking supervisor.
 
-Invoke supervisor with complete user request and loaded context.
+Invoke supervisor skill with complete user request and loaded context:
+
+```
+Skill(skill: "supervisor")
+```
+
+Then follow the supervisor workflow with the user's request.
 
 **Supervisor MUST create explicit TodoWrite checklist containing**:
 
