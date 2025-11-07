@@ -33,6 +33,7 @@ $ACADEMICOPS/scripts/init_project_standards.sh /home/nic/src/zotmcp
 ## Pre-commit Configuration
 
 Standard pre-commit setup includes:
+
 - **File hygiene** (trailing whitespace, EOF, line endings)
 - **Syntax checks** (YAML, JSON, TOML)
 - **shellcheck** - Shell script linting

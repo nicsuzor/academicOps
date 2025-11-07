@@ -44,8 +44,8 @@ repos:
       - id: ruff-format
 
   # academicOps framework hooks
-  - repo: https://github.com/nicsuzor/academicOps
-    rev: main
+  - repo: git@github.com:nicsuzor/academicOps
+    rev: v1.0.0
     hooks:
       - id: dprint
       - id: no-config-defaults
