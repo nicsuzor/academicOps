@@ -3,9 +3,9 @@ title: aOps Testing
 type: documentation
 entity_type: note
 tags:
-- testing
-- hooks
-- validation
+  - testing
+  - hooks
+  - validation
 permalink: aops/docs/tests
 ---
 
@@ -18,6 +18,7 @@ Current testing status and methodology for the aOps framework.
 **Status**: Comprehensive test suite exists with 22 test files + end-to-end headless testing.
 
 **What exists**:
+
 - ✅ `tests/` directory with pytest infrastructure
 - ✅ 22 test files covering hooks, scripts, and integration
 - ✅ conftest.py with shared fixtures
@@ -28,6 +29,7 @@ Current testing status and methodology for the aOps framework.
 - ✅ Session log capture from headless runs
 
 **What doesn't exist**:
+
 - CI/CD test pipeline (tests exist but not automated in CI)
 - Coverage reporting configuration
 
@@ -165,6 +167,7 @@ Current testing status and methodology for the aOps framework.
 **Purpose**: Single source of truth for path resolution in tests, loads from paths.toml
 
 **Usage**:
+
 ```python
 from tests.paths import get_aops_root, get_aca_root, get_hook_script
 
@@ -179,6 +182,7 @@ validate_tool = get_hook_script("validate_tool.py")
 ```
 
 **Functions**:
+
 - `get_aops_root()` - Returns `${AOPS}` (framework repo)
 - `get_aca_root()` - Returns `${ACA}` (personal workspace)
 - `get_hooks_dir()` - Returns `${AOPS}/hooks`
@@ -189,7 +193,6 @@ validate_tool = get_hook_script("validate_tool.py")
 - `get_hook_script(name)` - Returns path to hook script
 - `load_paths_config()` - Loads paths.toml as dict
 
-
 ## End-to-End Headless Testing
 
 ### claude_headless Fixture
@@ -199,11 +202,12 @@ validate_tool = get_hook_script("validate_tool.py")
 **Purpose**: Invoke actual Claude Code sessions programmatically with structured output
 
 **Usage**:
+
 ```python
 def test_something(claude_headless):
     result = claude_headless(
         "What is your current working directory?",
-        model="haiku"  # Always use haiku for tests (15x cheaper)
+        model="haiku",  # Always use haiku for tests (15x cheaper)
     )
 
     assert result["success"]
@@ -211,17 +215,20 @@ def test_something(claude_headless):
 ```
 
 **How it works**:
+
 1. Runs `claude -p <prompt> --output-format json`
 2. Captures structured JSON output
 3. Returns parsed results with session info
 
 **Parameters**:
+
 - `prompt`: str - The prompt to send to Claude
 - `model`: str - Model to use ("haiku", "sonnet", "opus")
 - `timeout`: int - Timeout in seconds (default 120)
 - `permission_mode`: str - Permission handling ("acceptEdits", "ask", "deny")
 
 **Returns** dict with:
+
 - `success`: bool - Whether session succeeded
 - `result`: str - Claude's response text
 - `output`: dict - Full JSON output from Claude
@@ -230,6 +237,7 @@ def test_something(claude_headless):
 - `duration_ms`: int - Session duration
 
 **Example session log**:
+
 ```json
 {
   "success": true,
@@ -251,6 +259,7 @@ def test_something(claude_headless):
 **From tests/integration/CLAUDE.md**:
 
 **Critical rules**:
+
 - ✅ **ALWAYS use `model="haiku"`** for tests (15x cheaper than Sonnet)
 - ✅ Test integration points, NOT business logic
 - ✅ Keep tests under 30s timeout
@@ -258,11 +267,13 @@ def test_something(claude_headless):
 - ✅ Maximum ~5-7 tests per integration boundary
 
 **What to test**:
+
 - Hook output → Claude Code → tool execution
 - Agent type detection → hook receives correct metadata
 - Permission decision → Claude response behavior
 
 **What NOT to test**:
+
 - Business logic (unit tests cover this)
 - LLM intelligence (test machinery, not reasoning)
 - Multiple scenarios of same pattern
@@ -270,18 +281,21 @@ def test_something(claude_headless):
 ### Running Headless Tests
 
 **Run all integration tests**:
+
 ```bash
 cd ${AOPS}
 uv run pytest tests/integration/
 ```
 
 **Run specific headless test**:
+
 ```bash
 uv run pytest tests/integration/test_claude_headless.py
 uv run pytest tests/integration/test_headless_simple.py
 ```
 
 **Run with markers**:
+
 ```bash
 # Only slow (integration) tests
 uv run pytest -m slow
@@ -291,6 +305,7 @@ uv run pytest -m "not slow"
 ```
 
 **Note**: Integration tests are marked with:
+
 - `@pytest.mark.slow` - Takes >5s
 - `@pytest.mark.timeout(120)` - 2min timeout
 
@@ -299,6 +314,7 @@ uv run pytest -m "not slow"
 **Location**: `${AOPS}/scripts/`
 
 **Current scripts**:
+
 - setup.sh - Installation
 - task_*.py - Task management utilities
 
@@ -374,6 +390,7 @@ uv run --directory ${AOPS} python ${AOPS}/scripts/task_index.py
 **Hook debug files**: `{HookName}_{timestamp}.json`
 
 **Format**:
+
 ```json
 {
   "hook_name": "SessionStart",
@@ -386,6 +403,7 @@ uv run --directory ${AOPS} python ${AOPS}/scripts/task_index.py
 **Utility**: `hooks/hook_debug.py` provides `safe_log_to_debug_file()`
 
 **When to check**:
+
 - Hook not firing as expected
 - Debugging hook logic
 - Verifying hook input/output
@@ -443,34 +461,40 @@ ${AOPS}/tests/
 ## Test Execution
 
 **Run all tests**:
+
 ```bash
 cd ${AOPS}
 uv run pytest tests/
 ```
 
 **Run specific test file**:
+
 ```bash
 uv run pytest tests/test_hook_start.py
 uv run pytest tests/test_validate_tool.py
 ```
 
 **Run tests matching pattern**:
+
 ```bash
 uv run pytest tests/ -k "hook"
 uv run pytest tests/ -k "task"
 ```
 
 **Run with verbose output**:
+
 ```bash
 uv run pytest tests/ -v
 ```
 
 **Run with coverage**:
+
 ```bash
 uv run pytest --cov=hooks --cov=scripts tests/
 ```
 
 **Run in CI/CD** (not yet implemented):
+
 ```yaml
 # .github/workflows/test.yml
 name: Tests
@@ -526,6 +550,7 @@ jobs:
 8. ❌ Test documentation - individual tests not fully documented
 
 **Priorities**:
+
 - High: Add CI/CD integration (GitHub Actions)
 - High: Configure coverage reporting
 - Medium: Document individual test purposes

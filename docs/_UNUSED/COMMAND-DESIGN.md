@@ -5,13 +5,13 @@ description: Best practices for creating effective Claude Code slash commands, i
   mandatory skill-first pattern, context efficiency, and supervisor orchestration
   patterns.
 tags:
-- command
-- slash-command
-- best-practices
-- skill-first
+  - command
+  - slash-command
+  - best-practices
+  - skill-first
 relations:
-- '[[docs/bots/BEST-PRACTICES]]'
-- '[[docs/bots/SKILL-DESIGN]]'
+  - "[[docs/bots/BEST-PRACTICES]]"
+  - "[[docs/bots/SKILL-DESIGN]]"
 permalink: a-ops/docs/unused/command-design
 ---
 

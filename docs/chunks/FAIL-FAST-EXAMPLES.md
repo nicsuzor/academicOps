@@ -10,22 +10,17 @@ Fail immediately when configuration is missing or incorrect. Silent misconfigura
 
 ### Prohibited Patterns
 
-❌ **PROHIBITED**: `config.get("param", default_value)` - Silent misconfiguration
-❌ **PROHIBITED**: `try/except` returning fallback values - Hides errors
-❌ **PROHIBITED**: Defensive programming (`if x is None: use_fallback`) - Masks problems
+❌ **PROHIBITED**: `config.get("param", default_value)` - Silent misconfiguration ❌ **PROHIBITED**: `try/except` returning fallback values - Hides errors ❌ **PROHIBITED**: Defensive programming (`if x is None: use_fallback`) - Masks problems
 
 ### Required Patterns
 
-✅ **REQUIRED**: `config["param"]` - Raises KeyError immediately if missing
-✅ **REQUIRED**: Pydantic Field() with no default - Raises ValidationError
-✅ **REQUIRED**: Explicit check: `if key not in dict: raise ValueError(...)`
+✅ **REQUIRED**: `config["param"]` - Raises KeyError immediately if missing ✅ **REQUIRED**: Pydantic Field() with no default - Raises ValidationError ✅ **REQUIRED**: Explicit check: `if key not in dict: raise ValueError(...)`
 
 ### What It Does NOT Mean
 
 Fail-fast does NOT mean avoid using industry-standard tools as dependencies.
 
-✅ **CORRECT**: Require `pre-commit`, `uv`, `pytest` and fail if missing
-✅ **CORRECT**: Use best standard tool for the job (see Axiom #9)
+✅ **CORRECT**: Require `pre-commit`, `uv`, `pytest` and fail if missing ✅ **CORRECT**: Use best standard tool for the job (see Axiom #9)
 
 ## Axiom #6: Fail-Fast (Agents)
 
@@ -33,15 +28,11 @@ When YOUR instructions or tools fail, STOP immediately.
 
 ### Prohibited Behaviors
 
-❌ **PROHIBITED**: Attempting recovery when slash commands fail
-❌ **PROHIBITED**: Working around broken paths or missing environment variables
-❌ **PROHIBITED**: "Figuring it out" when infrastructure is broken
-❌ **PROHIBITED**: Continuing with workarounds instead of reporting errors
+❌ **PROHIBITED**: Attempting recovery when slash commands fail ❌ **PROHIBITED**: Working around broken paths or missing environment variables ❌ **PROHIBITED**: "Figuring it out" when infrastructure is broken ❌ **PROHIBITED**: Continuing with workarounds instead of reporting errors
 
 ### Required Behaviors
 
-✅ **REQUIRED**: Report error immediately and stop
-✅ **REQUIRED**: Demand infrastructure be fixed, don't bypass it
+✅ **REQUIRED**: Report error immediately and stop ✅ **REQUIRED**: Demand infrastructure be fixed, don't bypass it
 
 ### Rationale
 

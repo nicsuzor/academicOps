@@ -5,13 +5,13 @@ description: Best practices for creating effective Claude Code subagents, includ
   structure requirements, mandatory skill-first pattern, and design principles for
   context preservation.
 tags:
-- subagent
-- agent-design
-- best-practices
-- skill-first
+  - subagent
+  - agent-design
+  - best-practices
+  - skill-first
 relations:
-- '[[docs/bots/BEST-PRACTICES]]'
-- '[[docs/bots/SKILL-DESIGN]]'
+  - "[[docs/bots/BEST-PRACTICES]]"
+  - "[[docs/bots/SKILL-DESIGN]]"
 permalink: a-ops/docs/unused/subagent-design
 ---
 

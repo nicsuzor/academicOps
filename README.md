@@ -3,9 +3,9 @@ title: aOps - LLM Agent Infrastructure
 type: documentation
 entity_type: note
 tags:
-- llm-agents
-- automation
-- infrastructure
+  - llm-agents
+  - automation
+  - infrastructure
 permalink: aops/readme
 ---
 
@@ -16,6 +16,7 @@ Generic utility scripts and LLM agent instructions for Claude Code automation.
 This repository is a submodule of `${ACA}` at `${AOPS}`.
 
 ## Core Principles
+
 - [[docs/_CORE.md]]
 - [[docs/_AXIOMS.md]]
 

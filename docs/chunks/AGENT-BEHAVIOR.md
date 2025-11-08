@@ -3,13 +3,13 @@ title: Agent Behavior Rules
 type: reference
 entity_type: note
 tags:
-- agent-behavior
-- conversation
-- stopping-rules
-- error-handling
+  - agent-behavior
+  - conversation
+  - stopping-rules
+  - error-handling
 relations:
-- '[[AXIOMS]]'
-- '[[INFRASTRUCTURE]]'
+  - "[[AXIOMS]]"
+  - "[[INFRASTRUCTURE]]"
 permalink: bots/chunks/agent-behavior-1
 ---
 

@@ -126,9 +126,7 @@ class TestDogfoodingRuntime:
             timeout=10,
         )
 
-        assert result.returncode == 0, (
-            f"Hook failed in ${AOPS}:\n{result.stderr}"
-        )
+        assert result.returncode == 0, f"Hook failed in ${AOPS}:\n{result.stderr}"
 
     def test_validate_tool_hook_works(self):
         """PreToolUse hook should work in ${AOPS}."""

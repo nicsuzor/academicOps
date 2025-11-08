@@ -4,12 +4,12 @@ type: methodology
 description: Generic debugging principles and systematic troubleshooting for agents.
   Project-specific debug tools in project-tier DEBUGGING.md files.
 tags:
-- debugging
-- methodology
-- troubleshooting
+  - debugging
+  - methodology
+  - troubleshooting
 relations:
-- '[[chunks/AXIOMS]]'
-- '[[core/DEVELOPMENT]]'
+  - "[[chunks/AXIOMS]]"
+  - "[[core/DEVELOPMENT]]"
 permalink: a-ops/docs/unused/core/debugging
 ---
 

@@ -3,12 +3,12 @@ title: Infrastructure Reference
 type: reference
 entity_type: note
 tags:
-- infrastructure
-- paths
-- environment
+  - infrastructure
+  - paths
+  - environment
 relations:
-- '[[AXIOMS]]'
-- '[[AGENT-BEHAVIOR]]'
+  - "[[AXIOMS]]"
+  - "[[AGENT-BEHAVIOR]]"
 permalink: bots/chunks/infrastructure-2
 ---
 

@@ -518,9 +518,7 @@ class TestDogfooding:
         academicops = Path(os.environ.get("AOPS", "/home/nic/src/bot"))
 
         bots_dir = academicops / "bots"
-        assert bots_dir.exists(), (
-            "${AOPS}/bots/ missing - dogfooding not implemented"
-        )
+        assert bots_dir.exists(), "${AOPS}/bots/ missing - dogfooding not implemented"
 
     def test_academicops_bots_not_symlink(self):
         """/bots/ in ${AOPS} should be REAL, not symlink (source of truth)."""

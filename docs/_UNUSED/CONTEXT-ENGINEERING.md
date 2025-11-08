@@ -5,13 +5,13 @@ description: Evidence-based principles for effective context management in Claud
   Code components, including token efficiency strategies, curated context patterns,
   and context pollution solutions.
 tags:
-- context-engineering
-- best-practices
-- token-efficiency
-- agent-design
+  - context-engineering
+  - best-practices
+  - token-efficiency
+  - agent-design
 relations:
-- '[[docs/bots/BEST-PRACTICES]]'
-- '[[docs/bots/ANTI-PATTERNS]]'
+  - "[[docs/bots/BEST-PRACTICES]]"
+  - "[[docs/bots/ANTI-PATTERNS]]"
 permalink: a-ops/docs/unused/context-engineering
 ---
 

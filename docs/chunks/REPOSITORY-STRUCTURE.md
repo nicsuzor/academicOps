@@ -18,6 +18,7 @@ ${ACA}                      # User's home repo (PRIVATE, nicsuzor/writing)
 ```
 
 Current paths:
+
 - `${ACA}` = `/home/nic/src/writing/`
 - `${AOPS}` = `/home/nic/src/writing/aOps/`
 
@@ -26,8 +27,7 @@ Current paths:
 - `aOps/` = PUBLIC (GitHub, nicsuzor/academicOps)
 - Everything else = PRIVATE (nicsuzor/writing)
 
-**Axiom #2**: Project-specific content belongs ONLY in project repository.
-**Axiom #3**: Projects must work independently without cross-dependencies.
+**Axiom #2**: Project-specific content belongs ONLY in project repository. **Axiom #3**: Projects must work independently without cross-dependencies.
 
 ## Project Dependencies
 

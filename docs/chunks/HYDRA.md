@@ -19,6 +19,7 @@ When working with configuration files, refer to the comprehensive guide:
 📖 **[Hydra Configuration - Complete Guide](@docs/resources/hydra.md)**
 
 This guide covers:
+
 - Core principles (no config in code, fail-fast, composability)
 - Testing with Hydra (pytest patterns, fixtures, golden tests)
 - Interpolation patterns and environment variables
@@ -26,6 +27,7 @@ This guide covers:
 - Best practices for academicOps projects
 
 **Use this guide when:**
+
 - Setting up new Hydra configs
 - Writing tests that use Hydra
 - Debugging composition or override errors

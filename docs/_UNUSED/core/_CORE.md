@@ -4,14 +4,14 @@ type: agent-instructions
 description: Universal agent instructions loaded at SessionStart via three-tier system.
   References chunks/ for axioms, infrastructure, and behavioral rules.
 tags:
-- core
-- agent-instructions
-- sessionstart
-- framework
+  - core
+  - agent-instructions
+  - sessionstart
+  - framework
 relations:
-- '[[chunks/AXIOMS]]'
-- '[[chunks/INFRASTRUCTURE]]'
-- '[[chunks/AGENT-BEHAVIOR]]'
+  - "[[chunks/AXIOMS]]"
+  - "[[chunks/INFRASTRUCTURE]]"
+  - "[[chunks/AGENT-BEHAVIOR]]"
 permalink: a-ops/docs/unused/core/core
 ---
 

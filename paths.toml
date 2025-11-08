@@ -13,39 +13,39 @@
 # Repository structure (relative to ${AOPS})
 
 [paths.aops]
-aops = "${AOPS}"           # Automation framework repo        
-skills = "skills"          # Claude Code skills (source)
-hooks = "hooks"            # Agent hooks
-scripts = "scripts"        # Utility scripts
-config = "config"          # Configuration files
-resources = "resources"    # External references
-tests = "tests"            # Test suite
+aops = "${AOPS}" # Automation framework repo
+skills = "skills" # Claude Code skills (source)
+hooks = "hooks" # Agent hooks
+scripts = "scripts" # Utility scripts
+config = "config" # Configuration files
+resources = "resources" # External references
+tests = "tests" # Test suite
 
-agents = "agents"                # Self-contained agentic workflows (DEVELOPER, ANALYST, SUPERVISOR, trainer)
-commands = "commands"            # User-invoked slash commands
-dist = "dist"                    # Build artifacts (packaged skill zips)
-experiments = "experiments"      # Experiment tracking and logs
+agents = "agents" # Self-contained agentic workflows (DEVELOPER, ANALYST, SUPERVISOR, trainer)
+commands = "commands" # User-invoked slash commands
+dist = "dist" # Build artifacts (packaged skill zips)
+experiments = "experiments" # Experiment tracking and logs
 
 [paths.aops.docs]
-docs = "docs/chunks"            # Instructions, split into atomic reusable chunks
-core = "docs/_CORE.md"          # Core instructions
-axioms = "docs/_AXIOMS.md"      # Foundational principles
-resources = "docs/resources"    # Third party library / api resource references
+docs = "docs/chunks" # Instructions, split into atomic reusable chunks
+core = "docs/_CORE.md" # Core instructions
+axioms = "docs/_AXIOMS.md" # Foundational principles
+resources = "docs/resources" # Third party library / api resource references
 
 [paths.personal]
-data = "data"                    # User data storage
-projects = "data/projects"      # project-specific information
+data = "data" # User data storage
+projects = "data/projects" # project-specific information
 
 [install]
 # Installation targets (configurable for future flexibility)
-claude_code = "~/.claude"       # Current: user-level Claude Code install
-gemini_cli = "~/.gemini"        # Future: Gemini CLI support (not yet implemented)
+claude_code = "~/.claude" # Current: user-level Claude Code install
+gemini_cli = "~/.gemini" # Future: Gemini CLI support (not yet implemented)
 
 [environment]
 # Python environment management
-python_env = "${ACA}/.venv"            # Virtual environment location (in framework repo)
+python_env = "${ACA}/.venv" # Virtual environment location (in framework repo)
 python_runner = "uv run python" # How to execute Python scripts
 
 # Environment variable names
 var_bot = "AOPS"
-var_personal = "ACA"        # User's personal workspace repository
+var_personal = "ACA" # User's personal workspace repository

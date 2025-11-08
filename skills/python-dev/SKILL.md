@@ -19,6 +19,7 @@ Use python-dev when:
 5. **API design** - Creating Python interfaces and libraries
 
 **Trigger examples**:
+
 - "Write a function to process research data"
 - "Refactor this module to use Pydantic"
 - "Add type hints to this code"
@@ -68,6 +69,7 @@ Before writing any code:
 3. **Consider edge cases** - Empty inputs, None values, invalid data
 
 **Example**:
+
 ```python
 def process_records(
     records: List[Dict[str, Any]],
@@ -117,6 +119,7 @@ def test_process_records_empty_raises():
 ### Step 3: Implement with Quality
 
 Code quality checklist:
+
 - [ ] Type hints on all parameters and returns
 - [ ] Docstring with Args/Returns/Raises
 - [ ] No `.get()` with defaults for required config
@@ -144,12 +147,14 @@ uv run ruff check src/
 ```
 
 **DO NOT**:
+
 - Create `test.py`, `debug.py`, `verify.py` scripts
 - Use `python -c "..."` to check things
 - Add try/except to hide errors
 - Guess at fixes
 
 **DO**:
+
 - Fix the root cause
 - Add test for the bug
 - Verify fix with pytest
@@ -158,6 +163,7 @@ uv run ruff check src/
 ## Critical Rules
 
 **NEVER**:
+
 - Use `.get()` with defaults for required configuration
 - Use bare `except:` or overly broad exception handling
 - Create standalone test/debug/verify scripts outside `tests/`
@@ -167,6 +173,7 @@ uv run ruff check src/
 - Add defaults to Pydantic required fields
 
 **ALWAYS**:
+
 - Fail immediately on missing required config
 - Use specific exception types
 - Use pytest for all testing
@@ -178,6 +185,7 @@ uv run ruff check src/
 ## Quick Reference
 
 **Template for new function**:
+
 ```python
 from typing import List, Dict, Any
 from pathlib import Path
@@ -207,6 +215,7 @@ def function_name(
 ```
 
 **Template for Pydantic config**:
+
 ```python
 from pydantic import BaseModel, Field, field_validator
 from pathlib import Path
@@ -231,6 +240,7 @@ class MyConfig(BaseModel):
 ```
 
 **Common commands**:
+
 ```bash
 # Run tests
 uv run pytest tests/test_module.py -xvs

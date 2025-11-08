@@ -18,6 +18,7 @@ Like a scribe who continuously records important information, this skill operate
 **Core principle**: If the user says "can you save that?", you've already failed.
 
 **Key capabilities**:
+
 - Session mining and information extraction
 - Basic Memory file writing and conversion
 - Knowledge graph maintenance
@@ -28,6 +29,7 @@ Like a scribe who continuously records important information, this skill operate
 ## When to Use This Skill
 
 **Invoke automatically when**:
+
 - Creating or editing markdown files in knowledge base
 - Mining session history for information
 - Converting regular markdown to Basic Memory format
@@ -36,6 +38,7 @@ Like a scribe who continuously records important information, this skill operate
 - Building/maintaining knowledge graph connections
 
 **Integration**:
+
 - **tasks skill**: Invoke for task creation, updates, archiving
 - **scribe skill** (this): Focus on bmem files and session mining
 
@@ -83,6 +86,7 @@ type: note
 ```
 
 **Field rules**:
+
 - `title`: Human-readable, used in `[[references]]`
 - `permalink`: URL-friendly slug (lowercase-with-hyphens)
 - `type`: One of: note, person, project, meeting, decision, spec, task, goal
@@ -109,6 +113,7 @@ When file lacks frontmatter:
 **Observations are NEW, categorized facts that ADD information beyond the document body and frontmatter.**
 
 Observations should be:
+
 - **Specific**: Concrete facts, not vague statements
 - **Atomic**: One fact per observation
 - **Additive**: New information not in body/frontmatter
@@ -118,6 +123,7 @@ Observations should be:
 ### What Observations Are NOT
 
 **NEVER create observations that**:
+
 - Repeat the document body (self-referential)
 - Duplicate frontmatter metadata (due dates, types, status)
 - State the obvious ("This is a task")
@@ -174,6 +180,7 @@ Review Rhyle Simcock's PhD thesis lodgement. Do NOT name examiners in comments.
 ### Observation Categories
 
 **Common categories**:
+
 - `[fact]` - Objective information about people, systems, processes
 - `[decision]` - Choices made with reasoning
 - `[technique]` - Methods and approaches used
@@ -199,12 +206,14 @@ project: research         # ← Project here
 ```
 
 **DON'T create observations like**:
+
 - ❌ `[requirement] Due date: 2025-11-15`
 - ❌ `[fact] Priority: 1`
 - ❌ `[fact] Type: task`
 - ❌ `[fact] Status: inbox`
 
 **DO create observations that ADD context**:
+
 - ✅ `[insight] Deadline chosen to align with conference submission #strategic-timing`
 - ✅ `[decision] Prioritized high because blocks other work #dependencies`
 - ✅ `[fact] Research involves 50 participants across 3 universities #scope`
@@ -217,9 +226,11 @@ Replace all informal references with explicit links:
 
 ```markdown
 # Before
+
 See the authentication system documentation for details.
 
 # After
+
 See [[Authentication System]] for details.
 ```
 
@@ -244,6 +255,7 @@ When file has clear relationships, add `## Relations` section:
 **Mine conversations deeply** throughout EVERY session:
 
 **What to extract**:
+
 - **Tasks**: Explicit todos, implicit future actions, commitments, follow-ups → Invoke tasks skill
 - **Projects**: Updates, new ideas, milestones, deliverables → Update project files
 - **Goals**: Objectives, assessments, priorities, theories of change → Update goal files
@@ -251,6 +263,7 @@ When file has clear relationships, add `## Relations` section:
 - **Completed work**: Mentioned completion → Invoke tasks skill to archive + update accomplishments
 
 **Deep mining, not keyword matching**:
+
 - "I'll need to prepare for the keynote next month" → Invoke tasks skill to create task
 - "That process is too bureaucratic" → Strategic context to project file
 - "I'm not sure if we're eligible" → Risk/dependency to project file
@@ -260,6 +273,7 @@ When file has clear relationships, add `## Relations` section:
 ### Extraction Patterns
 
 **From email processing**:
+
 1. Read email using MCP tool (outlook)
 2. Extract action items → Invoke tasks skill
 3. Extract project mentions → Update project files
@@ -268,6 +282,7 @@ When file has clear relationships, add `## Relations` section:
 6. Extract strategic importance → Update context files
 
 **From conversations**:
+
 1. Implicit commitments → tasks skill
 2. Strategic assessments → context files
 3. Project updates → project files
@@ -276,6 +291,7 @@ When file has clear relationships, add `## Relations` section:
 6. Ruled-out ideas → project files (document why not)
 
 **NEVER**:
+
 - Interrupt user flow to ask for clarification
 - Wait until conversation end to capture information
 - Announce that you're capturing information
@@ -286,6 +302,7 @@ When file has clear relationships, add `## Relations` section:
 ### Identifying Connections
 
 **While mining sessions**, actively look for:
+
 - References to existing entities
 - New entities that should be linked
 - Relationships between concepts
@@ -299,12 +316,15 @@ When file has clear relationships, add `## Relations` section:
 
 ```markdown
 # Before mining
+
 Working on the content moderation project.
 
 # After mining
+
 Working on [[Content Moderation Research Project]].
 
 ## Relations
+
 - part_of [[Platform Governance Research]]
 - relates_to [[Automated Moderation Systems]]
 ```
@@ -312,6 +332,7 @@ Working on [[Content Moderation Research Project]].
 ### Maintaining Consistency
 
 **Ensure**:
+
 - Entity titles are consistent across references
 - Forward references created when needed
 - Bidirectional relations added where appropriate
@@ -325,6 +346,7 @@ Working on [[Content Moderation Research Project]].
 ### When to Invoke Tasks Skill
 
 **Invoke tasks skill for**:
+
 - Creating new tasks (with duplicate check)
 - Updating task priority
 - Updating task status
@@ -348,12 +370,14 @@ Invoke tasks skill with:
 ### What Scribe Does NOT Do
 
 **NEVER directly**:
+
 - Create task files (tasks skill does this)
 - Update task files (tasks skill does this)
 - Archive tasks (tasks skill does this)
 - Run task scripts (tasks skill does this)
 
 **Scribe ONLY**:
+
 - Extracts task information from sessions
 - Invokes tasks skill with extracted information
 - Updates non-task files (projects, goals, context)
@@ -363,6 +387,7 @@ Invoke tasks skill with:
 ### When to Capture
 
 **Capture to accomplishments.md when**:
+
 1. Task completion (invoke tasks skill to archive task, then write to accomplishments)
 2. Strategic decisions affecting priorities
 3. Non-task work that's significant enough for weekly standup
@@ -372,16 +397,19 @@ Invoke tasks skill with:
 Write what you'd say in a 30-second verbal update:
 
 **✅ GOOD examples**:
+
 - "Completed TJA scorer validation - strong success (88.9% accuracy, exceeds targets)"
 - "Framework maintenance (scribe skill, hooks) d346cd6 811c407"
 - "Ad-hoc student meeting (thesis revision feedback)"
 
 **❌ TOO MUCH** (implementation details belong in git):
+
 - "Fixed test_batch_cli.py: Reduced from 132 lines to 52 lines (60% reduction), eliminated ALL mocking..."
 
 ### What NOT to Capture
 
 **DO NOT capture** (documented in git log):
+
 - Infrastructure changes
 - Bug fixes
 - Code refactoring
@@ -424,6 +452,7 @@ Write what you'd say in a 30-second verbal update:
 ### File Exclusions
 
 **DO NOT enforce Basic Memory syntax** on:
+
 - `.github/workflows/*.yml`
 - `.claude/settings.json`
 - `.gitignore`, `.gitattributes`
@@ -464,6 +493,7 @@ Write what you'd say in a 30-second verbal update:
 ## Critical Rules
 
 **NEVER**:
+
 - Skip frontmatter validation
 - Create files without `title`/`permalink`/`type`
 - Add observations without categories
@@ -475,6 +505,7 @@ Write what you'd say in a 30-second verbal update:
 - Write implementation details to accomplishments (keep "standup level")
 
 **ALWAYS**:
+
 - Extract information IMMEDIATELY as mentioned
 - Validate frontmatter completeness
 - Use `[[Entity Title]]` syntax for references
@@ -488,6 +519,7 @@ Write what you'd say in a 30-second verbal update:
 ## Success Criteria
 
 This skill succeeds when:
+
 1. **Zero friction** - User never asks "can you save that?"
 2. **Automatic capture** - Information extracted silently as mentioned
 3. **Quality observations** - No self-referential or duplicate observations

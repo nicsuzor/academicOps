@@ -3,13 +3,13 @@ title: Universal Principles (Axioms)
 type: reference
 entity_type: note
 tags:
-- axioms
-- principles
-- core
-- fail-fast
+  - axioms
+  - principles
+  - core
+  - fail-fast
 relations:
-- '[[INFRASTRUCTURE]]'
-- '[[AGENT-BEHAVIOR]]'
+  - "[[INFRASTRUCTURE]]"
+  - "[[AGENT-BEHAVIOR]]"
 permalink: bots/axioms-1
 ---
 

@@ -187,6 +187,7 @@ async def test_async_function():
 **❌ NEVER create standalone validation**:
 
 **Forbidden patterns**:
+
 - `test_*.py` files OUTSIDE `tests/` directory
 - `verify_*.py`, `check_*.py`, `validate_*.py` anywhere
 - `examples/*.py`, `demo_*.py` scripts
@@ -196,6 +197,7 @@ async def test_async_function():
 **✅ ALWAYS use proper pytest tests in `tests/` directory**
 
 **Example of correct approach**:
+
 ```python
 # ❌ DON'T: Create debug_connection.py in project root
 # ✅ DO: Create tests/test_database_connection.py

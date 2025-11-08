@@ -51,10 +51,16 @@ def update_file(file_path: Path) -> tuple[int, list[str]]:
     # Pattern 5: "ACADEMICOPS_PERSONAL" in os.environ checks
     pattern5 = r'"ACADEMICOPS_PERSONAL" in (subprocess\.)?os\.environ'
     if re.search(pattern5, content):
-        changes.append("Replaced ACADEMICOPS_PERSONAL environment check with try/except")
+        changes.append(
+            "Replaced ACADEMICOPS_PERSONAL environment check with try/except"
+        )
 
     # Add import if we made changes and it's not already there
-    if changes and "from paths import" not in content and "from .paths import" not in content:
+    if (
+        changes
+        and "from paths import" not in content
+        and "from .paths import" not in content
+    ):
         # Find first import statement
         import_match = re.search(r"^(import |from )", content, re.MULTILINE)
         if import_match:
@@ -72,7 +78,9 @@ def update_file(file_path: Path) -> tuple[int, list[str]]:
                             j += 1
                         # Insert after imports
                         lines.insert(j, "")
-                        lines.insert(j + 1, "from .paths import get_aops_root, get_aca_root")
+                        lines.insert(
+                            j + 1, "from .paths import get_aops_root, get_aca_root"
+                        )
                         content = "\n".join(lines)
                         changes.append("Added paths import")
                         break
@@ -103,9 +111,9 @@ def main():
             for change in changes:
                 print(f"  - {change}")
 
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"Updated {files_changed} files with {total_changes} changes")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
 
 
 if __name__ == "__main__":

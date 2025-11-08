@@ -22,8 +22,10 @@ def test_session_logging_hook():
     # Get the hook script path
     try:
         import sys
+
         sys.path.insert(0, str(Path(__file__).parent))
         from paths import get_aops_root, get_hook_script
+
         aops_root = get_aops_root()
         hook_script = get_hook_script("log_session_stop.py")
     except ImportError:
@@ -166,8 +168,10 @@ def test_session_log_script():
     # This test requires ACA to be set or auto-detectable
     try:
         import sys
+
         sys.path.insert(0, str(Path(__file__).parent))
         from paths import get_aca_root
+
         get_aca_root()
     except (ImportError, RuntimeError):
         print("SKIPPING: ACA not set and cannot auto-detect")
@@ -224,8 +228,10 @@ def test_todowrite_hook():
 
     try:
         import sys
+
         sys.path.insert(0, str(Path(__file__).parent))
         from paths import get_aops_root, get_hook_script
+
         aops_root = get_aops_root()
         hook_script = get_hook_script("log_todowrite.py")
     except ImportError:
@@ -331,8 +337,10 @@ def test_date_validation():
     # This test requires ACA to be set or auto-detectable
     try:
         import sys
+
         sys.path.insert(0, str(Path(__file__).parent))
         from paths import get_aca_root
+
         get_aca_root()
     except (ImportError, RuntimeError):
         print("SKIPPING: ACA not set and cannot auto-detect")

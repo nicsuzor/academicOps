@@ -5,6 +5,7 @@
 **All function signatures, class attributes, and complex data structures must have type hints.**
 
 Type hints enable:
+
 - Static type checking (mypy, pyright)
 - Better IDE autocomplete
 - Self-documenting code
@@ -175,6 +176,7 @@ users: List[User] = []
 config: Dict[str, Any] = {}
 unique_ids: Set[str] = set()
 coordinates: Tuple[float, float] = (0.0, 0.0)
+
 
 # ✅ In function signatures
 def process_users(users: List[User]) -> Dict[str, int]:
@@ -468,7 +470,7 @@ uv run mypy --strict src/
 python_version = "3.11"
 warn_return_any = true
 warn_unused_configs = true
-disallow_untyped_defs = true  # Require type hints
+disallow_untyped_defs = true # Require type hints
 disallow_any_unimported = true
 no_implicit_optional = true
 warn_redundant_casts = true
@@ -493,12 +495,11 @@ result: ProcessedData = process_data(data)
 
 ```python
 # ❌ Too generic
-def process(data: Any) -> Any:
-    ...
+def process(data: Any) -> Any: ...
+
 
 # ✅ Specific types
-def process(data: List[Dict[str, str]]) -> ProcessedResult:
-    ...
+def process(data: List[Dict[str, str]]) -> ProcessedResult: ...
 ```
 
 ### 3. Don't Mix Optional and Defaults
@@ -508,6 +509,7 @@ def process(data: List[Dict[str, str]]) -> ProcessedResult:
 def fetch(user_id: Optional[str] = None) -> User:
     # Is None valid or should it raise?
     ...
+
 
 # ✅ Clear intent
 def fetch(user_id: str) -> User:

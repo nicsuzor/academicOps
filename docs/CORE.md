@@ -29,7 +29,6 @@ permalink: core-2
 
 **Authoritative source**: `aOps/paths.toml`
 
-
 ## Repository Ownership
 
 - **Parent repo**: `/home/nic/src/writing/` (PRIVATE, nicsuzor/writing)

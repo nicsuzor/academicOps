@@ -1,17 +1,17 @@
 ---
-title: 'Anti-Patterns: What to AVOID'
+title: "Anti-Patterns: What to AVOID"
 type: guidance
 description: Common mistakes that reduce agent effectiveness, including unnecessary
   details, excessive scene-setting, over-engineering, negative instructions, vague
   instructions, and mixing instructions with context.
 tags:
-- anti-patterns
-- best-practices
-- mistakes
-- agent-design
+  - anti-patterns
+  - best-practices
+  - mistakes
+  - agent-design
 relations:
-- '[[docs/bots/BEST-PRACTICES]]'
-- '[[docs/bots/CONTEXT-ENGINEERING]]'
+  - "[[docs/bots/BEST-PRACTICES]]"
+  - "[[docs/bots/CONTEXT-ENGINEERING]]"
 permalink: a-ops/docs/unused/anti-patterns
 ---
 

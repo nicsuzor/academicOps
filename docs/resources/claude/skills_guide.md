@@ -81,11 +81,11 @@ version: 1.0.0
 def init_skill(skill_name, path):
     """Initialize a new skill directory with template SKILL.md."""
     skill_dir = Path(path).resolve() / skill_name
-    
+
     if skill_dir.exists():
         print(f"❌ Error: Skill directory already exists: {skill_dir}")
         return None
-    
+
     try:
         skill_dir.mkdir(parents=True, exist_ok=False)
         print(f"✅ Created skill directory: {skill_dir}")
@@ -102,7 +102,7 @@ def init_skill(skill_name, path):
 
 **Common tool types** cover file operations, execution, and specialized capabilities. File operations include Read (read file contents), Write (create/overwrite files), Edit (modify existing files), Glob (find files by pattern), and Grep (search within files). Execution tools include Bash for shell commands and scoped variants like Bash(command:*) restricting to specific command families. Other capabilities include WebSearch for internet queries, Task for creating subtasks, and Agent for spawning sub-agents, though these require careful justification.
 
-**Permission scoping patterns** balance capability against security risk. Basic file operations use "Read,Write" for skills that only need to read and write files. File operations plus search expand to "Read,Write,Grep,Glob" for skills requiring codebase search or file pattern matching. Scoped Bash commands use "Bash(git:*),Read,Grep" to allow only git operations, or "Bash(npm:*)" for npm commands. Very specific patterns like "Bash(git status:*),Bash(git diff:*),Read" restrict to individual git subcommands. Comprehensive access like "Read,Write,Bash,Glob,Grep,Edit" suits meta-skills like skill-creator that require broad capabilities for their core function.
+**Permission scoping patterns** balance capability against security risk. Basic file operations use "Read,Write" for skills that only need to read and write files. File operations plus search expand to "Read,Write,Grep,Glob" for skills requiring codebase search or file pattern matching. Scoped Bash commands use "Bash(git:_),Read,Grep" to allow only git operations, or "Bash(npm:_)" for npm commands. Very specific patterns like "Bash(git status:_),Bash(git diff:_),Read" restrict to individual git subcommands. Comprehensive access like "Read,Write,Bash,Glob,Grep,Edit" suits meta-skills like skill-creator that require broad capabilities for their core function.
 
 **Security considerations follow the principle of least privilege**. Start with minimal permissions, adding only as required by actual skill functionality. Use wildcards carefully—"Bash(git:*)" scopes to git commands while bare "Bash" grants unrestricted shell access. Validate scripts before giving execution permission, auditing code for security vulnerabilities or unintended side effects. Document rationale for each tool, explaining why the skill needs specific permissions.
 
@@ -126,15 +126,19 @@ def init_skill(skill_name, path):
 
 ```markdown
 ### Step 1: Validate Input
+
 Check that input file exists and matches expected format.
 
 ### Step 2: Extract Data
+
 Parse input according to schema, handling edge cases.
 
 ### Step 3: Transform
+
 Apply business logic transformations to extracted data.
 
 ### Step 4: Write Output
+
 Generate output file with transformed data.
 ```
 
@@ -144,9 +148,13 @@ Generate output file with transformed data.
 ALWAYS use this exact structure:
 
 # [Analysis Title]
+
 ## Executive Summary
+
 [One-paragraph overview]
+
 ## Key Findings
+
 - Finding 1 with supporting data
 - Finding 2 with supporting data
 ```
@@ -159,15 +167,10 @@ For flexible guidance, preface templates with: "Here is a sensible default forma
 
 ```markdown
 ## Workflow Step
+
 Extract form field values from the PDF structure.
 
-Example: Given a form with fields "firstName", "lastName", "email",
-extract each field's value and data type:
-{
-  "firstName": {"value": "John", "type": "text"},
-  "lastName": {"value": "Doe", "type": "text"},
-  "email": {"value": "john@example.com", "type": "text"}
-}
+Example: Given a form with fields "firstName", "lastName", "email", extract each field's value and data type: { "firstName": {"value": "John", "type": "text"}, "lastName": {"value": "Doe", "type": "text"}, "email": {"value": "john@example.com", "type": "text"} }
 ```
 
 **Error handling instructions** prevent Claude from getting stuck on failures. Specify what to do when operations fail:
@@ -176,11 +179,13 @@ extract each field's value and data type:
 ## Error Handling
 
 If PDF has no fillable fields:
+
 - Inform user that form filling isn't possible
 - Offer text extraction as alternative
 - Provide instructions for creating fillable PDF
 
 If PDF is encrypted:
+
 - Request password from user
 - Attempt decryption with provided password
 - Exit gracefully if decryption fails
@@ -204,12 +209,14 @@ If PDF is encrypted:
 # Advanced PDF Processing Reference
 
 ## Contents
+
 1. [Image Manipulation](#image-manipulation)
 2. [pypdfium2 Library](#pypdfium2)
 3. [JavaScript Libraries](#javascript-libraries)
 4. [Custom Rendering](#custom-rendering)
 
 ## Image Manipulation
+
 [Detailed content...]
 ```
 
@@ -223,12 +230,12 @@ If PDF is encrypted:
 ## Examples
 
 ### Example 1: Simple Text Extraction
-Input: Extract text from report.pdf
-Output: All text content from all pages
+
+Input: Extract text from report.pdf Output: All text content from all pages
 
 ### Example 2: Form Filling
-Input: Fill form.pdf with data from data.json
-Output: Completed form saved as output.pdf
+
+Input: Fill form.pdf with data from data.json Output: Completed form saved as output.pdf
 ```
 
 **Avoid time-sensitive information** in skills meant for long-term use. Don't include "as of October 2024" or "the latest version is 3.2.1" in SKILL.md. These details create maintenance burden and become outdated quickly. Instead reference current documentation: "Check the official pandas documentation for current API details" or make version-agnostic statements: "Use the latest stable pandas version."

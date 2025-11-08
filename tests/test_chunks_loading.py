@@ -323,7 +323,9 @@ When asked about axioms, list the core axioms you know from your instructions.
         )
 
         # ACT - Run Claude with AOPS pointing to test framework
-        prompt = "What is the value of the AOPS environment variable? Just state the path."
+        prompt = (
+            "What is the value of the AOPS environment variable? Just state the path."
+        )
 
         env = os.environ.copy()
         env["AOPS"] = str(test_framework)

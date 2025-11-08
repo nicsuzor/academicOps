@@ -63,9 +63,7 @@ class TestContextLoadingHierarchy:
 
         # Set environment to point to personal repo
         monkeypatch.setenv("ACA", str(personal_repo))
-        monkeypatch.setenv(
-            "AOPS", str(Path(__file__).parent.parent)
-        )  # Framework root
+        monkeypatch.setenv("AOPS", str(Path(__file__).parent.parent))  # Framework root
         monkeypatch.chdir(project_repo)
 
         # Run load_instructions.py
@@ -349,9 +347,7 @@ class TestEnvironmentVariableRequirements:
         )
 
         assert result.returncode != 0, "Should fail if AOPS not set"
-        assert "AOPS" in result.stderr, (
-            "Error message should mention missing variable"
-        )
+        assert "AOPS" in result.stderr, "Error message should mention missing variable"
 
     def test_works_without_personal_context(self, tmp_path, monkeypatch):
         """

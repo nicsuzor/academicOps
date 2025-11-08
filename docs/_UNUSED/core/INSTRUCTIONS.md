@@ -4,12 +4,12 @@ type: context
 description: Development context for academicOps framework, explaining modular architecture,
   hierarchical agent system, and framework capabilities.
 tags:
-- context
-- framework
-- development
+  - context
+  - framework
+  - development
 relations:
-- '[[ARCHITECTURE]]'
-- '[[README]]'
+  - "[[ARCHITECTURE]]"
+  - "[[README]]"
 permalink: a-ops/docs/unused/core/instructions
 ---
 

@@ -24,6 +24,7 @@ except Exception:
 if value is None:
     value = fallback  # Should fail instead
 
+
 # ❌ Optional parameters with defaults for config
 def process(data, timeout=30):  # Config should be required!
     ...
@@ -62,9 +63,11 @@ error_threshold = config.get("error_threshold", 0.5)
 # ✅ GOOD: Explicit required field
 error_threshold = config["error_threshold"]  # Raises KeyError immediately
 
+
 # OR with Pydantic
 class Config(BaseModel):
     error_threshold: float  # No default - required
+
 
 # Typo in config file → ValidationError immediately
 # Research stops, problem gets fixed
@@ -200,11 +203,13 @@ config_data = json.loads(content)  # Let JSONDecodeError raise
 ### When to Catch Exceptions
 
 **DO catch when**:
+
 - At system boundaries (logging, then re-raising)
 - When you can meaningfully recover
 - For cleanup (use `finally` or context managers)
 
 **DON'T catch when**:
+
 - To hide errors
 - To provide default values
 - To "make it work" when it should fail

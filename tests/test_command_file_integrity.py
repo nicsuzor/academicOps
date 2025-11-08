@@ -18,8 +18,9 @@ from pathlib import Path
 import pytest
 
 
-
 from .paths import get_aops_root, get_aca_root
+
+
 class TestCommandFileReferences:
     """Test that command files reference valid paths."""
 

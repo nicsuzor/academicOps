@@ -5,14 +5,14 @@ description: Best practices for creating effective Claude Code skills, including
   requirements, required components for skill-first architecture, and script-enhanced
   workflows.
 tags:
-- skill
-- skill-design
-- best-practices
-- skill-first
+  - skill
+  - skill-design
+  - best-practices
+  - skill-first
 relations:
-- '[[docs/bots/BEST-PRACTICES]]'
-- '[[docs/bots/SUBAGENT-DESIGN]]'
-- '[[docs/bots/COMMAND-DESIGN]]'
+  - "[[docs/bots/BEST-PRACTICES]]"
+  - "[[docs/bots/SUBAGENT-DESIGN]]"
+  - "[[docs/bots/COMMAND-DESIGN]]"
 permalink: a-ops/docs/unused/skill-design
 ---
 

@@ -103,7 +103,7 @@ api_client.py
 
 # ❌ Bad module names
 DataProcessor.py  # Use snake_case, not PascalCase
-data-processor.py  # Use underscore, not hyphen
+data - processor.py  # Use underscore, not hyphen
 dp.py  # No abbreviations
 ```
 
@@ -111,20 +111,16 @@ dp.py  # No abbreviations
 
 ```python
 # ✅ Descriptive verb phrases
-def load_user_data(user_id: str) -> UserData:
-    ...
+def load_user_data(user_id: str) -> UserData: ...
 
 
-def calculate_average(values: List[float]) -> float:
-    ...
+def calculate_average(values: List[float]) -> float: ...
 
 
-def is_valid_email(email: str) -> bool:
-    ...
+def is_valid_email(email: str) -> bool: ...
 
 
-def has_permission(user: User, resource: Resource) -> bool:
-    ...
+def has_permission(user: User, resource: Resource) -> bool: ...
 
 
 # ❌ Unclear names
@@ -144,16 +140,13 @@ def check(value):  # Check what?
 
 ```python
 # ✅ Noun phrases in PascalCase
-class UserManager:
-    ...
+class UserManager: ...
 
 
-class DataProcessor:
-    ...
+class DataProcessor: ...
 
 
-class AuthenticationService:
-    ...
+class AuthenticationService: ...
 
 
 # ❌ Poor class names
@@ -448,6 +441,7 @@ def validate_data(records: List[Dict[str, Any]]) -> None:
 content = load_data(file_path)
 records = parse_data(content)
 validate_data(records)
+
 
 # ❌ Multiple responsibilities in one function
 def load_and_process_data(file_path):

@@ -10,6 +10,7 @@ Foundational Python framework for computational research in HASS ("MLOps for HAS
 - **Dependents**: automod, dbr, zotmcp, osbchatmcp
 
 **Architecture**:
+
 - Hydra config, Pydantic contracts, async I/O
 - Data: GCS/BigQuery, tracked in Weights & Biases
 

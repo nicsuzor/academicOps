@@ -61,9 +61,7 @@ data_dir = "/data"
 os.makedirs(data_dir, exist_ok=True)
 
 json_files = [
-    os.path.join(data_dir, f)
-    for f in os.listdir(data_dir)
-    if f.endswith(".json")
+    os.path.join(data_dir, f) for f in os.listdir(data_dir) if f.endswith(".json")
 ]
 ```
 
@@ -137,8 +135,8 @@ print(f"{x=}")  # Prints: x=42
 user = {"name": "Alice", "age": 30}
 message = f"""
 User Information:
-  Name: {user['name']}
-  Age: {user['age']}
+  Name: {user["name"]}
+  Age: {user["age"]}
 """
 ```
 
@@ -283,6 +281,7 @@ def read_large_file(file_path: Path) -> Iterator[str]:
 for line in read_large_file(Path("huge_file.txt")):
     process_line(line)
 
+
 # ❌ Loading entire file
 def read_large_file_bad(file_path: Path) -> list[str]:
     with file_path.open() as f:
@@ -360,6 +359,7 @@ class User:
 user = User(id=1, username="alice", email="alice@example.com")
 print(user)  # User(id=1, username='alice', ...)
 
+
 # ❌ Manual class
 class User:
     def __init__(self, id, username, email, is_active=True, tags=None):
@@ -374,8 +374,7 @@ class User:
 
     def __eq__(self, other):
         return (
-            self.id == other.id
-            and self.username == other.username
+            self.id == other.id and self.username == other.username
             # ... many more fields
         )
 ```

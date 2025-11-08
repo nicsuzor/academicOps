@@ -4,12 +4,12 @@ type: guidance
 description: Best practices for creating effective Claude Code hooks, including SessionStart,
   PreToolUse, PostToolUse, and Stop hooks with lightweight design principles.
 tags:
-- hook
-- hook-design
-- best-practices
-- automation
+  - hook
+  - hook-design
+  - best-practices
+  - automation
 relations:
-- '[[docs/bots/BEST-PRACTICES]]'
+  - "[[docs/bots/BEST-PRACTICES]]"
 permalink: a-ops/docs/unused/hook-design
 ---
 

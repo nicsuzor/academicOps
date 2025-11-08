@@ -3,13 +3,13 @@ title: Reference Hygiene
 type: reference
 entity_type: note
 tags:
-- dry
-- references
-- documentation
-- anti-patterns
+  - dry
+  - references
+  - documentation
+  - anti-patterns
 relations:
-- '[[AXIOMS]]'
-- '[[BEHAVIORAL-PATTERNS]]'
+  - "[[AXIOMS]]"
+  - "[[BEHAVIORAL-PATTERNS]]"
 permalink: aops/chunks/reference-hygiene
 ---
 
@@ -20,12 +20,14 @@ Guidelines for using `@references` correctly to maintain DRY principles and avoi
 ## The @ Reference Mechanism
 
 **How it works**:
+
 - `@filename.md` or `@path/to/file.md` loads the ENTIRE file into context
 - Happens automatically when Claude processes the instruction
 - Content appears in full, not as summary or excerpt
 - Multiple references to same file = same content loaded multiple times
 
 **What this means**:
+
 - Once you write `@docs/AXIOMS.md`, all axioms are in context
 - Don't need to repeat, summarize, or highlight portions
 - Trust the mechanism - it works
@@ -44,6 +46,7 @@ Guidelines for using `@references` correctly to maintain DRY principles and avoi
 @docs/AXIOMS.md
 
 **Key axioms**:
+
 1. DO ONE THING - Complete task, then stop
 2. Fail-Fast - No defaults, no workarounds
 3. DRY - One source of truth
@@ -85,14 +88,17 @@ Guidelines for using `@references` correctly to maintain DRY principles and avoi
 **Problem**: Some content is already loaded by SessionStart hook
 
 **Currently hook-loaded** (via `hooks/load_instructions.py`):
+
 - `${AOPS}/core/_CORE.md` (if exists)
 - Git repository information
 
 **Future hook-loaded** (if we populate core/):
+
 - Any files in `${AOPS}/core/`
 - Project-specific instructions from `docs/bots/` (if in project)
 
 **Detection**:
+
 1. Check what SessionStart hook loads
 2. Don't @reference that same content in skill files
 3. If content is both hook-loaded AND skill-needed, put in hook location only
@@ -100,13 +106,11 @@ Guidelines for using `@references` correctly to maintain DRY principles and avoi
 **Example**:
 
 ```markdown
-❌ WRONG (if axioms are hook-loaded):
-@docs/AXIOMS.md
+❌ WRONG (if axioms are hook-loaded): @docs/AXIOMS.md
 
 **Follow these axioms...**
 
-✅ CORRECT (if axioms are hook-loaded):
-[No reference needed - already in context from hook]
+✅ CORRECT (if axioms are hook-loaded): [No reference needed - already in context from hook]
 
 When agents violate axioms, categorize per @docs/chunks/BEHAVIORAL-PATTERNS.md
 ```
@@ -118,6 +122,7 @@ When agents violate axioms, categorize per @docs/chunks/BEHAVIORAL-PATTERNS.md
 **When**: Content exists in one canonical location
 
 **Do**:
+
 ```markdown
 ✅ CORRECT:
 
@@ -129,6 +134,7 @@ When categorizing violations, use the patterns defined above.
 ```
 
 **Don't**:
+
 ```markdown
 ❌ WRONG:
 
@@ -137,9 +143,9 @@ When categorizing violations, use the patterns defined above.
 @docs/chunks/BEHAVIORAL-PATTERNS.md
 
 The key patterns are:
+
 1. Defensive Behavior - agent works around problems
-2. Scope Creep - agent does more than asked
-[... repeating content from the file ...]
+2. Scope Creep - agent does more than asked [... repeating content from the file ...]
 ```
 
 ### Pattern 2: Provide Context About WHEN, Not WHAT
@@ -147,26 +153,25 @@ The key patterns are:
 **When**: You need to guide when/how to use referenced content
 
 **Do**:
+
 ```markdown
 ✅ CORRECT:
 
 @docs/chunks/BEHAVIORAL-PATTERNS.md
 
-**Step 2**: Categorize the violation using the patterns above.
-Find the pattern that matches the symptom, then follow its
-enforcement recommendation.
+**Step 2**: Categorize the violation using the patterns above. Find the pattern that matches the symptom, then follow its enforcement recommendation.
 ```
 
 This tells WHEN to use the content (step 2), not WHAT the content says.
 
 **Don't**:
+
 ```markdown
 ❌ WRONG:
 
 @docs/chunks/BEHAVIORAL-PATTERNS.md
 
-**Defensive Behavior** is when agents work around problems.
-Use this when you see workarounds, fallbacks, or defensive code.
+**Defensive Behavior** is when agents work around problems. Use this when you see workarounds, fallbacks, or defensive code.
 ```
 
 This repeats WHAT the referenced file already says.
@@ -176,6 +181,7 @@ This repeats WHAT the referenced file already says.
 **When**: Content is reference material to consult as needed
 
 **Do**:
+
 ```markdown
 ✅ CORRECT:
 
@@ -185,14 +191,15 @@ For statistical test selection, see @references/test-selection-guide.md
 Agent loads full file, finds what they need.
 
 **Don't**:
+
 ```markdown
 ❌ WRONG:
 
 Statistical test selection:
+
 - Continuous outcome + normal distribution → t-test
 - Continuous outcome + non-normal → Mann-Whitney U
-- Binary outcome → Chi-square or Fisher's exact
-[... continues excerpting reference content ...]
+- Binary outcome → Chi-square or Fisher's exact [... continues excerpting reference content ...]
 
 For full details: @references/test-selection-guide.md
 ```
@@ -204,27 +211,27 @@ If you're excerpting "highlights", you're duplicating. Just reference the canoni
 **When**: Large file needs selective loading
 
 **Do**:
+
 ```markdown
 ✅ CORRECT:
 
-For context engineering: @docs/chunks/CONTEXT-ENGINEERING.md
-For subagent design: @docs/chunks/SUBAGENT-DESIGN.md
-For skill design: @docs/chunks/SKILL-DESIGN.md
+For context engineering: @docs/chunks/CONTEXT-ENGINEERING.md For subagent design: @docs/chunks/SUBAGENT-DESIGN.md For skill design: @docs/chunks/SKILL-DESIGN.md
 ```
 
 Agent loads only what's needed for current task.
 
 **Don't**:
+
 ```markdown
 ❌ WRONG:
 
 @docs/BEST-PRACTICES.md
 
 **Key practices**:
+
 1. Context engineering - [summary]
 2. Subagent design - [summary]
-3. Skill design - [summary]
-[... continues summarizing the 700-line file ...]
+3. Skill design - [summary] [... continues summarizing the 700-line file ...]
 ```
 
 This loads entire 700-line file, THEN adds summaries. Either chunk the source (preferred) or just reference it.
@@ -254,18 +261,23 @@ When reviewing documentation, check for:
 ## Common Justifications (and Rebuttals)
 
 **"But it helps emphasize what's important"**
+
 - REBUTTAL: Who decides what's important? That's arbitrary selection. Trust agents to read the full content.
 
 **"But it provides quick reference"**
+
 - REBUTTAL: The referenced file IS the quick reference. If it's too long, chunk it into smaller references.
 
 **"But it saves agent time reading"**
+
 - REBUTTAL: @reference loads full content regardless. You're not saving anything, just duplicating.
 
 **"But it helps agents know what to focus on"**
+
 - REBUTTAL: Tell them WHEN to use it, not WHAT it says. Example: "Use BEHAVIORAL-PATTERNS.md in step 2 of workflow" not "Behavioral patterns include..."
 
 **"But this is standard technical writing practice"**
+
 - REBUTTAL: Standard practice for humans reading sequentially. Agents see full referenced content immediately. Different medium, different rules.
 
 ## Enforcement Checklist
@@ -291,6 +303,7 @@ When reviewing any documentation with @references:
 @docs/AXIOMS.md
 
 **Key framework principles**:
+
 1. **MINIMAL** - Actively fight bloat
 2. **Enforcement Hierarchy** - Scripts > Hooks > Config > Instructions
 3. **Experiment-Driven** - Test changes, don't speculate
@@ -299,6 +312,7 @@ When reviewing any documentation with @references:
 ```
 
 **Violations**:
+
 - @reference loads all axioms, list duplicates some
 - "Key" is arbitrary - not axiom-derived selection
 - If hook loads AXIOMS.md, this is triple redundancy
@@ -325,6 +339,7 @@ Or if axioms are hook-loaded, even simpler:
 @docs/chunks/BEHAVIORAL-PATTERNS.md
 
 **Common patterns**:
+
 - Defensive Behavior: Agent works around problems instead of failing fast
 - Scope Creep: Agent does more than requested
 - DRY Violations: Agent duplicates content
@@ -338,8 +353,7 @@ Or if axioms are hook-loaded, even simpler:
 
 @docs/chunks/BEHAVIORAL-PATTERNS.md
 
-**Step 2: Categorize by pattern**
-Identify which behavioral pattern from above matches the violation symptom.
+**Step 2: Categorize by pattern** Identify which behavioral pattern from above matches the violation symptom.
 ```
 
 Context about WHEN to use (step 2), not WHAT the patterns are.
@@ -352,10 +366,10 @@ Context about WHEN to use (step 2), not WHAT the patterns are.
 For statistical analysis, see @references/statistical-analysis.md
 
 **Quick reference**:
+
 - T-test: Continuous, normal distribution, compare means
 - Mann-Whitney: Continuous, non-normal, compare distributions
-- Chi-square: Categorical, test independence
-[... continues with 20 more tests ...]
+- Chi-square: Categorical, test independence [... continues with 20 more tests ...]
 ```
 
 **Violation**: Excerpting reference content.
@@ -371,21 +385,25 @@ Trust the reference. If file is too long, chunk it.
 ## Relationship to Other Principles
 
 **DRY (Axiom 8)**:
+
 - Reference hygiene IS DRY enforcement
 - One canonical source, many references
 - No duplication via summary/excerpt
 
 **Fail-Fast (Axiom 5-6)**:
+
 - Trust infrastructure (hooks, @references)
 - Don't hedge with "just in case" summaries
 - If reference mechanism broken, fix it, don't work around
 
 **Use Standard Tools (Axiom 9)**:
+
 - @reference IS the standard mechanism
 - Don't reinvent with manual summaries
 - Trust the tool
 
 **Arbitrary Selection**:
+
 - Violates Axiom 0: "NO OTHER TRUTHS"
 - Can't decide anything not directly derivable from axioms
 - "Key principles" selection = arbitrary = forbidden
@@ -395,6 +413,7 @@ Trust the reference. If file is too long, chunk it.
 **Core principle**: @reference loads content. Trust it. Don't repeat it.
 
 **When you see @reference**:
+
 - Content is now in full context
 - Don't summarize what's already loaded
 - Don't highlight "key points" arbitrarily

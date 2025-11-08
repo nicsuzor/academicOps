@@ -18,6 +18,7 @@ Manages complete task lifecycle using Python scripts in `$AOPS/scripts/task_*.py
 ## When to Use This Skill
 
 **Invoked for**:
+
 - Creating tasks from extracted information
 - Updating task priority, due dates, status
 - Archiving completed tasks
@@ -26,6 +27,7 @@ Manages complete task lifecycle using Python scripts in `$AOPS/scripts/task_*.py
 - Duplicate prevention
 
 **NOT invoked for**:
+
 - Session mining (scribe does this)
 - Extracting tasks from conversations (scribe does this)
 - Writing non-task bmem files (scribe does this)
@@ -39,6 +41,7 @@ All scripts located in `$AOPS/scripts/`. Use `uv run python <script>` to execute
 **Purpose**: Create new task file in `data/tasks/inbox/`.
 
 **Usage**:
+
 ```bash
 uv run python $AOPS/scripts/task_add.py \
   --title "Prepare keynote slides" \
@@ -49,6 +52,7 @@ uv run python $AOPS/scripts/task_add.py \
 ```
 
 **Parameters**:
+
 - `--title` (required): Action-oriented task title (see guidelines below)
 - `--priority`: Priority level
   - Accepts: 0-3 or P0-P3
@@ -74,6 +78,7 @@ uv run python $AOPS/scripts/task_add.py \
 **Purpose**: Display tasks with pagination, sorting, and filtering.
 
 **Usage**:
+
 ```bash
 # Default: page 1, sort by priority, 10 per page
 uv run python $AOPS/scripts/task_view.py
@@ -89,6 +94,7 @@ uv run python $AOPS/scripts/task_view.py --sort=date
 ```
 
 **Parameters**:
+
 - `[page]`: Page number (positional, default: 1)
 - `--sort=priority|date|due`: Sort field
   - `priority`: By priority number (ascending: P0 first)
@@ -106,6 +112,7 @@ uv run python $AOPS/scripts/task_view.py --sort=date
 **Purpose**: Generate compact task summary.
 
 **Usage**:
+
 ```bash
 uv run python $AOPS/scripts/task_index.py
 ```
@@ -119,6 +126,7 @@ uv run python $AOPS/scripts/task_index.py
 **Purpose**: Update existing tasks (priority, due date) or archive them.
 
 **Usage**:
+
 ```bash
 # Update priority
 uv run python $AOPS/scripts/task_process.py modify <task_id> --priority 1
@@ -131,6 +139,7 @@ uv run python $AOPS/scripts/task_process.py modify <task_id> --archive
 ```
 
 **Parameters**:
+
 - `modify`: Subcommand (required)
 - `<task_id>`: Task ID to modify (required)
 - `--priority`: New priority (0-3 or P0-P3)
@@ -141,11 +150,7 @@ uv run python $AOPS/scripts/task_process.py modify <task_id> --archive
 
 ### Other Task Scripts
 
-**task_search.py**: Search tasks by keyword (if implemented)
-**task_create.py**: Alternative task creation interface (if different from task_add.py)
-**task_modify.py**: Alternative modification interface (if different from task_process.py)
-**task_archive.py**: Direct archiving (may be alias for task_process.py --archive)
-**task_convert.py**: Convert task formats (legacy → current)
+**task_search.py**: Search tasks by keyword (if implemented) **task_create.py**: Alternative task creation interface (if different from task_add.py) **task_modify.py**: Alternative modification interface (if different from task_process.py) **task_archive.py**: Direct archiving (may be alias for task_process.py --archive) **task_convert.py**: Convert task formats (legacy → current)
 
 **Note**: Always check script exists before invoking. Use task_add.py, task_view.py, and task_process.py as primary interfaces.
 
@@ -154,6 +159,7 @@ uv run python $AOPS/scripts/task_process.py modify <task_id> --archive
 ### Priority Levels (P0-P3)
 
 **P0 (Urgent - Today/Tomorrow)**:
+
 - Action window closing NOW (not just deadline approaching)
 - Meeting prep due within 24 hours
 - Immediate blocker for others
@@ -161,6 +167,7 @@ uv run python $AOPS/scripts/task_process.py modify <task_id> --archive
 - Someone waiting on you RIGHT NOW
 
 **P1 (High - This Week)**:
+
 - Deadline within 7 days
 - Significant strategic value
 - Preparation needed soon
@@ -168,12 +175,14 @@ uv run python $AOPS/scripts/task_process.py modify <task_id> --archive
 - Important but not urgent TODAY
 
 **P2 (Medium - Within 2 Weeks)**:
+
 - Deadline within 14 days
 - Moderate strategic alignment
 - Can wait a few days without impact
 - Standard workflow items
 
 **P3 (Low - Longer Timeline)**:
+
 - Longer timeline (>2 weeks)
 - Lower strategic alignment
 - No immediate action window
@@ -205,12 +214,14 @@ uv run python $AOPS/scripts/task_process.py modify <task_id> --archive
 **Formula**: `[Action Verb] + [Specific Object] + [Optional Context]`
 
 **DO**:
+
 - Use action verbs: "Prepare", "Review", "Respond to", "Submit", "Confirm"
 - Be specific and scannable
 - Keep concise (1-8 words)
 - Make it clear what action is needed
 
 **DON'T**:
+
 - Write "Email from X about Y" (not action-oriented)
 - Include strategic analysis in title
 - Be vague ("Handle things", "Follow up")
@@ -219,12 +230,14 @@ uv run python $AOPS/scripts/task_process.py modify <task_id> --archive
 **Examples**:
 
 ✅ **GOOD**:
+
 - "Confirm keynote for Platform Governance Conference"
 - "Review student thesis Chapter 3 and schedule meeting"
 - "Submit talk title for November conference"
 - "Respond to conference invitation from Dr. Smith"
 
 ❌ **BAD**:
+
 - "Email about conference" (what action?)
 - "Student wants to meet" (what's needed?)
 - "Handle administrative stuff" (too vague)
@@ -282,10 +295,12 @@ When creating/prioritizing P0 or P1 tasks:
 ### If Misaligned
 
 **Create task anyway** (don't block user) but:
+
 1. Add observation noting misalignment
 2. Flag to user: "I notice this P1 task claims to support [Goal X], but it's not listed in that goal's file. Should we: a) Add it to the goal (confirm strategic importance) b) Lower priority (not strategically aligned)"
 
 **Strategic context to check**:
+
 - `data/goals/*.md` - Verify strategic goals
 - `data/projects/*.md` - Find related projects
 - `data/context/current-priorities.md` - Current focus
@@ -371,6 +386,7 @@ uv run python $AOPS/scripts/task_process.py modify <task_id> --archive
 ### Division of Responsibilities
 
 **Scribe skill**:
+
 - Extracts task information from sessions
 - Identifies when tasks are mentioned
 - Invokes tasks skill with extracted information
@@ -378,6 +394,7 @@ uv run python $AOPS/scripts/task_process.py modify <task_id> --archive
 - Updates non-task bmem files (projects, goals, context)
 
 **Tasks skill (this)**:
+
 - Runs task scripts
 - Creates task files via task_add.py
 - Updates tasks via task_process.py
@@ -409,6 +426,7 @@ Scribe → writes to accomplishments.md
 ## Critical Rules
 
 **NEVER**:
+
 - Write task files directly (always use scripts)
 - Create tasks without checking duplicates first
 - Skip strategic alignment checks for P0/P1 tasks
@@ -418,6 +436,7 @@ Scribe → writes to accomplishments.md
 - Mark tasks as P0/P1 without goal linkage (flag instead)
 
 **ALWAYS**:
+
 - Use scripts for ALL task operations
 - Check duplicates before creating (task_view.py)
 - Use action-oriented titles
@@ -478,6 +497,7 @@ $AO/data/views/current_view.json  # Generated by task_view.py
 ## Success Criteria
 
 This skill succeeds when:
+
 1. **Script-based operations** - All task operations use scripts, never direct file writes
 2. **No duplicates** - Duplicate check happens before every create
 3. **Strategic alignment** - P0/P1 tasks linked to goals, misalignments flagged

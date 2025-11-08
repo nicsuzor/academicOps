@@ -5,12 +5,12 @@ description: Principles for designing effective tools for AI agents, including n
   formats, thinking space, comprehensive documentation, poka-yoke design, and token
   efficiency.
 tags:
-- tool
-- tool-design
-- best-practices
-- agent-design
+  - tool
+  - tool-design
+  - best-practices
+  - agent-design
 relations:
-- '[[docs/bots/BEST-PRACTICES]]'
+  - "[[docs/bots/BEST-PRACTICES]]"
 permalink: a-ops/docs/unused/tool-design
 ---
 

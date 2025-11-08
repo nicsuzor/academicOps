@@ -42,6 +42,7 @@ Follow all axioms from @docs/AXIOMS.md in all framework work.
 **Critical**: Detect and remove "Reference + Summary" violations where content is @referenced then repeated/summarized. This is a DRY violation that wastes tokens and creates drift.
 
 **Red flags to detect**:
+
 - @reference followed by numbered/bulleted list of same content
 - Words like "key", "important", "main" near @reference (arbitrary selection)
 - Content after @reference that repeats concepts from referenced file
@@ -313,9 +314,7 @@ After (7 focused files):
 ```markdown
 # Experiment: [Name]
 
-**Date**: YYYY-MM-DD
-**Commit**: [hash or pending]
-**Issue**: #[number]
+**Date**: YYYY-MM-DD **Commit**: [hash or pending] **Issue**: #[number]
 
 ## Hypothesis
 
@@ -335,7 +334,7 @@ After (7 focused files):
 
 ## Decision
 
-- [X] Keep change (worked as expected)
+- [x] Keep change (worked as expected)
 - [ ] Revert (didn't work)
 - [ ] Iterate (partial success, needs refinement)
 ```
@@ -347,10 +346,7 @@ After (7 focused files):
 ```markdown
 ## Violation Summary
 
-**Agent**: [Which agent]
-**Axiom/Rule**: [Reference to docs/AXIOMS.md]
-**Pattern**: [From BEHAVIORAL-PATTERNS.md]
-**Date**: [When observed]
+**Agent**: [Which agent] **Axiom/Rule**: [Reference to docs/AXIOMS.md] **Pattern**: [From BEHAVIORAL-PATTERNS.md] **Date**: [When observed]
 
 ## What Happened
 
@@ -367,6 +363,7 @@ After (7 focused files):
 ## Enforcement Recommendation
 
 Per enforcement hierarchy:
+
 - Scripts: [Can prevent? How?]
 - Hooks: [Can enforce? How?]
 - Config: [Can block? How?]

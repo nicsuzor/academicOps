@@ -5,18 +5,18 @@ description: Evidence-based guidance for creating effective Claude Code componen
   (subagents, skills, commands, hooks) that are concise, performant, and maintainable.
   Index file referencing modular topic chunks.
 tags:
-- best-practices
-- agent-design
-- framework
-- index
+  - best-practices
+  - agent-design
+  - framework
+  - index
 relations:
-- '[[docs/bots/CONTEXT-ENGINEERING]]'
-- '[[docs/bots/SUBAGENT-DESIGN]]'
-- '[[docs/bots/SKILL-DESIGN]]'
-- '[[docs/bots/COMMAND-DESIGN]]'
-- '[[docs/bots/HOOK-DESIGN]]'
-- '[[docs/bots/TOOL-DESIGN]]'
-- '[[docs/bots/ANTI-PATTERNS]]'
+  - "[[docs/bots/CONTEXT-ENGINEERING]]"
+  - "[[docs/bots/SUBAGENT-DESIGN]]"
+  - "[[docs/bots/SKILL-DESIGN]]"
+  - "[[docs/bots/COMMAND-DESIGN]]"
+  - "[[docs/bots/HOOK-DESIGN]]"
+  - "[[docs/bots/TOOL-DESIGN]]"
+  - "[[docs/bots/ANTI-PATTERNS]]"
 permalink: a-ops/docs/unused/best-practices
 ---
 
