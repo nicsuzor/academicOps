@@ -1,40 +1,19 @@
 #!/usr/bin/env python3
 """
-Load instruction files from 3-tier hierarchy: framework → personal → project.
+Load instruction files from ${AOPS}.
 
-ONE script, ONE pattern, TWO output modes, OPTIONAL discovery.
+MINIMAL. No three-tier pattern. Simple file loading.
 
 Usage:
-    # SessionStart hook (default: loads _CORE.md, outputs JSON)
+    # SessionStart hook (default: loads _CORE.md if exists, outputs JSON)
     load_instructions.py
 
-    # SessionStart hook with discovery manifest
-    load_instructions.py --discovery
-
-    # Slash commands (custom file, outputs plain text)
+    # Load specific file
     load_instructions.py DEVELOPER.md
-    load_instructions.py _CHUNKS/FAIL-FAST.md
-
-    # Force plain text output
-    load_instructions.py _CORE.md --format=text
-
-Loading Hierarchy (ALWAYS the same, NO legacy fallbacks):
-1. Framework: $AOPS/aOps/core/<filename>
-2. Personal:  $AO/core/<filename> (if exists)
-3. Project:   $PWD/docs/bots/<filename> (if exists)
-
-Output Modes:
-- JSON (default when no filename): For SessionStart hook
-- Text (when filename given): For slash commands
-
-Discovery Mode (--discovery):
-- Scans framework tier for available bot instruction files
-- Includes lightweight manifest in SessionStart output
-- Enables agents to discover what files they can read
 
 Exit codes:
-    0: Success
-    1: Error (missing required env var or file)
+    0: Success (even if no files found - fail gracefully)
+    1: Error (missing required env var)
 """
 
 import argparse
@@ -48,48 +27,20 @@ from typing import Any
 from hook_debug import safe_log_to_debug_file
 
 
-def get_tier_paths(filename: str) -> dict[str, Path | None]:
+def get_file_path(filename: str) -> Path | None:
     """
-    Get paths to instruction file at all three tiers.
+    Get path to instruction file in ${AOPS}/core/.
 
-    Returns dict with keys: framework, personal, project
-    Each value is a Path or None.
+    Returns Path or None if AO not set.
     """
-    paths = {}
-
-    # Framework tier (REQUIRED)
-    if bot_path := os.environ.get("AOPS"):
-        paths["framework"] = Path(bot_path) / "core" / filename
-    else:
-        # Fail fast - ACADEMICOPS is required
-        msg = (
-            "ACADEMICOPS environment variable not set. "
-            "Add to shell: export ACADEMICOPS=/path/to/bot"
-        )
-        raise ValueError(msg)
-
-    # Personal tier (OPTIONAL)
-    if personal_path := os.environ.get("AOPS"):
-        paths["personal"] = Path(personal_path) / "core" / filename
-    else:
-        paths["personal"] = None
-
-    # Project tier (REQUIRED if docs/bots/ exists)
-    project_dir = Path.cwd() / "docs" / "bots"
-    if project_dir.exists():
-        paths["project"] = project_dir / filename
-    else:
-        paths["project"] = None
-
-    return paths
+    if ao_path := os.environ.get("AOPS"):
+        return Path(ao_path) / "aOps" / "core" / filename
+    return None
 
 
-def load_tier_content(path: Path | None) -> str | None:
-    """Load content from a tier path. Returns None if missing."""
-    if path is None:
-        return None
-
-    if not path.exists():
+def load_file_content(path: Path | None) -> str | None:
+    """Load content from a file path. Returns None if missing."""
+    if path is None or not path.exists():
         return None
 
     try:
@@ -116,36 +67,28 @@ def get_git_remote_info() -> str | None:
     return None
 
 
-def output_json(
-    contents: dict[str, str], filename: str, include_discovery: bool = False
-) -> None:
+def output_json(content: str | None, filename: str) -> None:
     """Output in JSON format for SessionStart hook."""
+    if not content:
+        # No content found - output empty hook response
+        output = {
+            "hookSpecificOutput": {
+                "hookEventName": "SessionStart",
+                "additionalContext": "",
+            }
+        }
+        print(json.dumps(output), file=sys.stdout)
+        print(f"ℹ No {filename} found (skipped)", file=sys.stderr)
+        return
+
     # Get git remote info
     git_remote = get_git_remote_info()
     git_section = ""
     if git_remote:
         git_section = f"## REPOSITORY\n\nGit remote origin: {git_remote}\n\n---\n\n"
 
-    # Build context sections in priority order: project → personal → framework
-    sections = []
-
-    if "project" in contents:
-        sections.append(f"## PROJECT: Current Project Context\n\n{contents['project']}")
-
-    if "personal" in contents:
-        sections.append(f"## PERSONAL: Your Work Context\n\n{contents['personal']}")
-
-    if "framework" in contents:
-        sections.append(f"## FRAMEWORK: Core Rules\n\n{contents['framework']}")
-
-    # Add discovery manifest if requested
-    if include_discovery:
-        discovery = generate_discovery_manifest()
-        if discovery:
-            sections.append(f"---\n\n{discovery}")
-
     additional_context = (
-        "# Agent Instructions\n\n" + git_section + "\n\n---\n\n".join(sections)
+        f"# Agent Instructions\n\n{git_section}## FRAMEWORK: Core Rules\n\n{content}"
     )
 
     # Output JSON for Claude Code hook
@@ -157,95 +100,23 @@ def output_json(
     }
 
     print(json.dumps(output), file=sys.stdout)
-
-    # Status to stderr
-    loaded = [tier for tier in ["framework", "personal", "project"] if tier in contents]
-    discovery_note = " (with discovery)" if include_discovery else ""
-    print(
-        f"✓ Loaded {filename} from: {', '.join(loaded)}{discovery_note}",
-        file=sys.stderr,
-    )
+    print(f"✓ Loaded {filename}", file=sys.stderr)
 
 
-def output_text(contents: dict[str, str], filename: str) -> None:
+def output_text(content: str | None, filename: str) -> None:
     """Output in plain text format for slash commands."""
-    # Output in priority order: project → personal → framework
-    for tier in ["project", "personal", "framework"]:
-        if tier in contents:
-            print(f"# === {tier.upper()}: {filename} ===\n", file=sys.stderr)
-            print(contents[tier], file=sys.stderr)
-            print("\n", file=sys.stderr)
+    if not content:
+        print(f"No {filename} found", file=sys.stdout)
+        return
 
-    # Status summary to stdout (visible to user)
-    [tier for tier in ["framework", "personal", "project"] if tier in contents]
-    [tier for tier in ["framework", "personal", "project"] if tier not in contents]
-
-    status_parts = []
-    if "framework" in contents:
-        status_parts.append("✓ framework")
-    if "personal" in contents:
-        status_parts.append("✓ personal")
-    if "project" in contents:
-        status_parts.append("✓ project")
-
-    print(f"Loaded {filename}: {' '.join(status_parts)}", file=sys.stdout)
-
-
-def generate_discovery_manifest() -> str:
-    """
-    Generate a manifest of available bot instruction files.
-
-    Scans framework tier to discover what files are available,
-    then creates a lightweight manifest for agents.
-    """
-    bot_path = os.environ.get("AOPS")
-    if not bot_path:
-        return ""
-
-    agents_dir = Path(bot_path) / "core"
-    if not agents_dir.exists():
-        return ""
-
-    # Find all .md files in core/
-    available_files = []
-    try:
-        for md_file in sorted(agents_dir.glob("*.md")):
-            if md_file.name.startswith("_"):
-                # Skip _CORE.md and other internal files
-                continue
-            available_files.append(md_file.name)
-    except Exception as e:
-        print(f"Warning: Could not scan {agents_dir}: {e}", file=sys.stderr)
-        return ""
-
-    if not available_files:
-        return ""
-
-    # Build manifest
-    manifest = ["## Available Bot Instructions", ""]
-    manifest.append(
-        "The following bot instruction files are available via the 3-tier system:"
-    )
-    manifest.append("(framework → personal → project)")
-    manifest.append("")
-
-    for filename in available_files:
-        # Extract a simple description from the filename
-        name = filename.replace(".md", "").replace("_", " ").title()
-        manifest.append(f"- `/core/{filename}` - {name} mode")
-
-    manifest.append("")
-    manifest.append(
-        "Read these files when relevant to your task. They will be automatically"
-    )
-    manifest.append("stacked from all available tiers (framework/personal/project).")
-
-    return "\n".join(manifest)
+    print(f"# === {filename} ===\n", file=sys.stderr)
+    print(content, file=sys.stderr)
+    print(f"\n✓ Loaded {filename}", file=sys.stdout)
 
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Load instruction files from 3-tier hierarchy"
+        description="Load instruction files from ${AOPS}/core"
     )
     parser.add_argument(
         "filename",
@@ -258,11 +129,6 @@ def main():
         choices=["json", "text"],
         help="Output format (default: json if _CORE.md, text otherwise)",
     )
-    parser.add_argument(
-        "--discovery",
-        action="store_true",
-        help="Include discovery manifest of available bot files",
-    )
 
     args = parser.parse_args()
 
@@ -272,65 +138,40 @@ def main():
         if not sys.stdin.isatty():
             input_data = json.load(sys.stdin)
     except Exception:
-        # If no stdin or parsing fails, continue with empty input
         pass
 
     # Determine output format
     if args.format:
         output_format = args.format
     else:
-        # Default: JSON for _CORE.md (SessionStart), text for others (commands)
+        # Default: JSON for _CORE.md (SessionStart), text for others
         output_format = "json" if args.filename == "_CORE.md" else "text"
 
-    # Get paths for all three tiers
-    try:
-        paths = get_tier_paths(args.filename)
-    except ValueError as e:
-        print(f"ERROR: {e}", file=sys.stderr)
-        sys.exit(1)
+    # Get file path
+    file_path = get_file_path(args.filename)
+    if file_path is None:
+        print("WARNING: AO environment variable not set", file=sys.stderr)
+        print("Expected: export AO=/home/nic/src/writing", file=sys.stderr)
+        # Fail gracefully - output empty response for SessionStart
+        if output_format == "json":
+            output = {
+                "hookSpecificOutput": {
+                    "hookEventName": "SessionStart",
+                    "additionalContext": "",
+                }
+            }
+            print(json.dumps(output), file=sys.stdout)
+        sys.exit(0)
 
-    # Load content from each tier
-    contents = {}
-    for tier, path in paths.items():
-        if content := load_tier_content(path):
-            contents[tier] = content
-
-    # Framework tier is REQUIRED
-    if "framework" not in contents:
-        print(f"ERROR: Framework file not found: {paths['framework']}", file=sys.stderr)
-        print(f"Searched at: {paths['framework']}", file=sys.stderr)
-        print(
-            f"ACADEMICOPS={os.environ.get('ACADEMICOPS', 'NOT SET')}", file=sys.stderr
-        )
-        sys.exit(1)
-
-    # Project tier is REQUIRED if docs/bots/ exists
-    if paths["project"] is not None and "project" not in contents:
-        print(
-            f"ERROR: docs/bots/ directory exists but {args.filename} not found",
-            file=sys.stderr,
-        )
-        print(f"Searched at: {paths['project']}", file=sys.stderr)
-        print("", file=sys.stderr)
-        print("This usually means:", file=sys.stderr)
-        print(
-            f"  1. File has wrong name (e.g., INSTRUCTIONS.md instead of {args.filename})",
-            file=sys.stderr,
-        )
-        print("  2. File needs to be created in docs/bots/", file=sys.stderr)
-        print("", file=sys.stderr)
-        print(
-            f"Fix: Rename existing file or create {args.filename} in docs/bots/",
-            file=sys.stderr,
-        )
-        sys.exit(1)
+    # Load content
+    content = load_file_content(file_path)
 
     # Prepare output data for logging
     output_data: dict[str, Any] = {
         "filename": args.filename,
         "format": output_format,
-        "tiers_loaded": list(contents.keys()),
-        "paths": {k: str(v) for k, v in paths.items() if v is not None},
+        "path": str(file_path) if file_path else None,
+        "loaded": content is not None,
     }
 
     # Debug log hook execution
@@ -338,9 +179,9 @@ def main():
 
     # Output in requested format
     if output_format == "json":
-        output_json(contents, args.filename, include_discovery=args.discovery)
+        output_json(content, args.filename)
     else:
-        output_text(contents, args.filename)
+        output_text(content, args.filename)
 
     sys.exit(0)
 

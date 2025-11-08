@@ -2,50 +2,114 @@
 """Pretty task viewer: paginated, color, minimal fields.
 
 Usage:
-    python3 scripts/task_view.py [page] [--sort=priority|date|due] [--per-page=N]
+    uv run python scripts/task_view.py [page] [--sort=priority|date|due] [--per-page=N] [--compact]
 
 Defaults:
-    page=1, sort=priority (ascending int), per-page=10
+    page=1, sort=priority (ascending int), per-page=10 (or 20 in compact mode)
     --sort=date uses created desc
     --sort=due uses due asc (None last)
+    --compact: One-line-per-task view for quick triage
 """
 
 from __future__ import annotations
 
 import contextlib
 import json
+import os
 import shutil
 import sys
+import yaml
 from datetime import UTC, datetime
 from pathlib import Path
 
-# Base data directory (relative to this repo root): ./data
+# Base data directory: ${ACA}/data or fallback to ./data
+AO = os.environ.get("ACA")
+if AO:
+    DATA_DIR = Path(AO) / "data"
+else:
+    DATA_DIR = Path().cwd() / "data"
 
-ROOT = Path(__file__).resolve().parent  # parent repo root
-DATA_DIR = Path().cwd() / "data"
 print(f"Using data_dir: {DATA_DIR}")
+
 # -------- args --------
 page = 1
 sort = "priority"
-per_page = 10
+per_page = None  # Will set default based on compact mode
+compact = False
+
 for arg in sys.argv[1:]:
     if arg.startswith("--sort="):
         sort = arg.split("=", 1)[1].strip()
     elif arg.startswith("--per-page="):
         with contextlib.suppress(Exception):
             per_page = max(1, int(arg.split("=", 1)[1]))
+    elif arg == "--compact":
+        compact = True
     else:
         with contextlib.suppress(Exception):
             page = max(1, int(arg))
 
+# Set default per_page based on mode
+if per_page is None:
+    per_page = 20 if compact else 10
 
-# -------- rebuild view inline --------
+
+# -------- load markdown tasks with YAML frontmatter --------
 def load_task(path: Path):
+    """Load a task from markdown file with YAML frontmatter."""
     try:
-        with path.open() as f:
-            t = json.load(f)
-            t["_filename"] = path.name
-            return t
+        content = path.read_text(encoding="utf-8")
+
+        # Parse YAML frontmatter
+        if not content.startswith("---"):
+            print(
+                json.dumps({"error": "no_frontmatter", "file": path.name}),
+                file=sys.stderr,
+            )
+            return None
+
+        # Split frontmatter from body
+        parts = content.split("---", 2)
+        if len(parts) < 3:
+            print(
+                json.dumps({"error": "invalid_frontmatter", "file": path.name}),
+                file=sys.stderr,
+            )
+            return None
+
+        try:
+            frontmatter = yaml.safe_load(parts[1])
+        except yaml.YAMLError as e:
+            print(
+                json.dumps(
+                    {"error": "yaml_parse_error", "file": path.name, "detail": str(e)}
+                ),
+                file=sys.stderr,
+            )
+            return None
+
+        if not isinstance(frontmatter, dict):
+            return None
+
+        # Add filename for reference
+        frontmatter["_filename"] = path.name
+
+        # Store body separately (not displayed in compact view)
+        frontmatter["_body"] = parts[2].strip()
+
+        # Extract priority from tags if not in frontmatter
+        if "priority" not in frontmatter or frontmatter["priority"] is None:
+            tags = frontmatter.get("tags", [])
+            if isinstance(tags, list):
+                for tag in tags:
+                    if isinstance(tag, str) and tag.startswith("priority-p"):
+                        try:
+                            frontmatter["priority"] = int(tag.replace("priority-p", ""))
+                            break
+                        except (ValueError, IndexError):
+                            pass
+
+        return frontmatter
     except Exception as e:
         print(
             json.dumps({"error": "load_failed", "file": path.name, "detail": str(e)}),
@@ -71,9 +135,9 @@ def rebuild():
     archived = DATA_DIR / "tasks/archived"
     cand_paths = []
     if inbox.exists():
-        cand_paths.extend(inbox.glob("*.json"))
+        cand_paths.extend(inbox.glob("*.md"))
     if queue.exists():
-        cand_paths.extend(queue.glob("*.json"))
+        cand_paths.extend(queue.glob("*.md"))
     tasks = []
     for p in cand_paths:
         t = load_task(p)
@@ -85,6 +149,9 @@ def rebuild():
         # Also skip anything inside archived folder for safety
         if archived.exists() and p.parent.resolve() == archived.resolve():
             continue
+        # Skip if status is explicitly "archived"
+        if t.get("status") == "archived":
+            continue
         tasks.append(t)
     tasks.sort(key=sort_key)
     return tasks
@@ -92,14 +159,12 @@ def rebuild():
 
 tasks = rebuild()
 
-# index already applied in rebuild
-
 
 def parse_iso(ts: str):
     if not ts:
         return None
     try:
-        if isinstance(ts, int | float):
+        if isinstance(ts, (int, float)):
             return datetime.fromtimestamp(float(ts), tz=UTC)
         s = str(ts)
         if s.endswith("Z"):
@@ -258,19 +323,18 @@ def wrap_lines(text: str, width: int, max_lines: int):
         return []
     # Keep bullets by treating them as prefixes
     lines = []
-    for line in str(text).replace("\r\n", "\n").replace("\r", "\n").split("\n"):
-        stripped = line.strip()
-        if not stripped:
+    for raw in str(text).replace("\r\n", "\n").replace("\r", "\n").split("\n"):
+        raw = raw.strip()
+        if not raw:
             continue
         bullet = ""
-        content = stripped
-        for b in ("- ", "* ", "• ", "- "):
-            if stripped.startswith(b):
+        for b in ("- ", "* ", "• ", "– "):
+            if raw.startswith(b):
                 bullet = b
-                content = stripped[len(b) :]
+                raw = raw[len(b) :]
                 break
         wrapped = textwrap.wrap(
-            content, width=width, break_long_words=False, replace_whitespace=False
+            raw, width=width, break_long_words=False, replace_whitespace=False
         )
         if not wrapped:
             continue
@@ -297,8 +361,11 @@ def wrap_title(text: str, first_width: int, next_width: int, max_lines: int):
     width = max(8, first_width)
     for w in words:
         if not current:
-            # long token: clip to width
-            current = w if len(w) <= width else w[: max(1, width - 1)] + "…"
+            if len(w) <= width:
+                current = w
+            else:
+                # long token: clip to width
+                current = w[: max(1, width - 1)] + "…"
         elif len(current) + 1 + len(w) <= width:
             current += " " + w
         else:
@@ -312,109 +379,184 @@ def wrap_title(text: str, first_width: int, next_width: int, max_lines: int):
     return lines[:max_lines]
 
 
-for t in subset:
-    idx = t.get("index", 0)
-    p = t.get("priority", None)
-    due = t.get("due", None)
-    title = t.get("title", "")
-    project = t.get("project") or ""
-    # Prefer new field names for description; fallbacks for older tasks
-    summary = t.get("description") or t.get("summary") or t.get("preview") or ""
-    classification = t.get("classification") or (t.get("metadata") or {}).get(
-        "classification"
-    )
+if compact:
+    # Compact mode: one line per task
+    for t in subset:
+        idx = t.get("index", 0)
+        p = t.get("priority", None)
+        due = t.get("due", None)
+        title = t.get("title", "")
+        project = t.get("project") or ""
+        filename = t.get("_filename", "")
 
-    # Build columns
-    idx_vis = f"{idx:>{idx_col - 1}}."
-    idx_str = color(idx_vis, BOLD)
-    # compact priority indicator with leading P
-    p_char = f"P{p}" if isinstance(p, int) else "P-"
-    p_str = color(p_char, prio_color(p if isinstance(p, int) else 999))
-    # relative due string only
-    rel = due_delta_str(due)
-    rel_text = f"⏰ {rel}" if rel else ""
-    rel_vis = rel_text.rjust(due_col)
-    # color relative by urgency similar to absolute
-    d_parsed = parse_iso(due)
-    due_color = CYAN
-    if d_parsed:
-        today = datetime.now(UTC).date()
-        if d_parsed.date() < today:
-            due_color = RED
-        elif d_parsed.date() == today:
-            due_color = YELLOW
-    due_str = color(rel_vis, due_color)
+        # Build compact line: [idx] P# due title (filename)
+        idx_str = f"{idx:>3}."
+        p_char = f"P{p}" if isinstance(p, int) else "P–"
+        p_str = color(p_char, prio_color(p if isinstance(p, int) else 999))
 
-    # compute indentation for wrapped lines
-    # space for index + space + prio + space + rel + space # + '—' + space
-    left_pad = " " * (idx_col + 1 + prio_col + 1 + padding)
+        # Due date - compact format
+        rel = due_delta_str(due)
+        if rel:
+            d_parsed = parse_iso(due)
+            due_color = CYAN
+            if d_parsed:
+                today = datetime.now(UTC).date()
+                if d_parsed.date() < today:
+                    due_color = RED
+                elif d_parsed.date() == today:
+                    due_color = YELLOW
+            due_str = color(f"{rel:>5}", due_color)
+        else:
+            due_str = " " * 5
 
-    # Title wrapping varies by urgency
-    lvl = urgency_level(t)
-    max_title_lines = 3 if lvl >= 3 else (2 if lvl == 2 else 1)
-    # Inline category tags before title (classification then project)
-    prefix_bits_plain = []
-    if classification:
-        prefix_bits_plain.append(f"[{classification}]")
-    if project:
-        prefix_bits_plain.append(f"[{project}]")
-    prefix_plain = " ".join(prefix_bits_plain)
-    prefix_len = len(prefix_plain) + (1 if prefix_plain else 0)
-    prefix_colored = (
-        color(prefix_plain + (" " if prefix_plain else ""), DIM) if prefix_plain else ""
-    )
+        # Project tag if present
+        proj_tag = f"[{project}] " if project else ""
 
-    # Wrap title considering reduced first-line width due to prefix
-    first_w = max(8, title_w - prefix_len)
-    title_lines = wrap_title(
-        title, first_width=first_w, next_width=title_w, max_lines=max_title_lines
-    )
-    if not title_lines:
-        title_lines = [""]
-
-    # First line: columns + prefix + first title line
-    print(
-        f"{idx_str} {p_str} {due_str}  —  {prefix_colored}{color(title_lines[0], BOLD)}"
-    )
-
-    # Continuation of wrapped title (aligned under the title start)
-    cont_pad = left_pad + (" " * (prefix_len))
-    for cont in title_lines[1:]:
-        print(cont_pad + color(cont, BOLD))
-
-    # Summary lines, deduplicated against title
-    if summary:
-        # allocate summary height by urgency
-        max_summary = 5 if lvl >= 3 else (4 if lvl == 2 else 3)
-        # width from the divider alignment
-        sum_w = max(
-            10, term_width - (idx_col + 1 + prio_col + 1 + due_col + 3 + padding)
+        # Title - truncated to fit on one line
+        # Calculate available width: terminal - idx(4) - p(3) - due(6) - sep(3) - proj_tag - filename(30)
+        filename_display = (
+            f" ({filename[:27]}...)" if len(filename) > 30 else f" ({filename})"
         )
-        raw_lines = str(summary).replace("\r\n", "\n").replace("\r", "\n").split("\n")
-        # drop lines that duplicate title text
-        title_lc = " ".join(title_lines).lower().strip()
-        cleaned = []
-        for line in raw_lines:
-            s = line.strip()
-            if not s:
-                continue
-            if s.lower() in title_lc:
-                continue
-            cleaned.append(s)
-            if len(cleaned) >= max_summary:
-                break
-        if cleaned:
-            for line in wrap_lines(
-                "\n".join(cleaned), width=sum_w, max_lines=max_summary
-            ):
-                print(left_pad + color(line, DIM))
+        available = (
+            term_width - 4 - 3 - 6 - 3 - len(proj_tag) - len(filename_display) - 2
+        )
+        title_display = (
+            title[:available]
+            if len(title) <= available
+            else title[: available - 1] + "…"
+        )
 
-print(
-    color(
-        f"Showing {start + 1}-{end} of {total}. Use: page N, --per-page=N, --sort=priority|date|due",
-        GREY,
-    )
-)
+        print(
+            f"{idx_str} {p_str} {due_str} {color(proj_tag, DIM)}{title_display}{color(filename_display, GREY)}"
+        )
+else:
+    # Full mode: multi-line with summary
+    for t in subset:
+        idx = t.get("index", 0)
+        p = t.get("priority", None)
+        due = t.get("due", None)
+        title = t.get("title", "")
+        project = t.get("project") or ""
+
+        # For BM format, extract preview from body or use first Context paragraph
+        body = t.get("_body", "")
+        summary = ""
+        if body:
+            # Try to find Context section
+            if "## Context" in body:
+                context_section = body.split("## Context")[1].split("##")[0]
+                summary = context_section.strip()
+            elif "## Description" in body:
+                desc_section = body.split("## Description")[1].split("##")[0]
+                summary = desc_section.strip()
+            else:
+                # Just use first paragraph
+                summary = body.split("\n\n")[0].strip()
+
+        # Get classification from frontmatter or tags
+        classification = t.get("classification")
+        if not classification:
+            # Look for classification in tags
+            tags = t.get("tags", [])
+            if isinstance(tags, list):
+                for tag in tags:
+                    if isinstance(tag, str) and tag.startswith("type:"):
+                        classification = tag.replace("type:", "")
+                        break
+
+        # Build columns
+        idx_vis = f"{idx:>{idx_col - 1}}."
+        idx_str = color(idx_vis, BOLD)
+        # compact priority indicator with leading P
+        p_char = f"P{p}" if isinstance(p, int) else "P–"
+        p_str = color(p_char, prio_color(p if isinstance(p, int) else 999))
+        # relative due string only
+        rel = due_delta_str(due)
+        rel_text = f"⏰ {rel}" if rel else ""
+        rel_vis = rel_text.rjust(due_col)
+        # color relative by urgency similar to absolute
+        d_parsed = parse_iso(due)
+        due_color = CYAN
+        if d_parsed:
+            today = datetime.now(UTC).date()
+            if d_parsed.date() < today:
+                due_color = RED
+            elif d_parsed.date() == today:
+                due_color = YELLOW
+        due_str = color(rel_vis, due_color)
+
+        # compute indentation for wrapped lines
+        # space for index + space + prio + space + rel + space # + '—' + space
+        left_pad = " " * (idx_col + 1 + prio_col + 1 + padding)
+
+        # Title wrapping varies by urgency
+        lvl = urgency_level(t)
+        max_title_lines = 3 if lvl >= 3 else (2 if lvl == 2 else 1)
+        # Inline category tags before title (classification then project)
+        prefix_bits_plain = []
+        if classification:
+            prefix_bits_plain.append(f"[{classification}]")
+        if project:
+            prefix_bits_plain.append(f"[{project}]")
+        prefix_plain = " ".join(prefix_bits_plain)
+        prefix_len = len(prefix_plain) + (1 if prefix_plain else 0)
+        prefix_colored = (
+            color(prefix_plain + (" " if prefix_plain else ""), DIM)
+            if prefix_plain
+            else ""
+        )
+
+        # Wrap title considering reduced first-line width due to prefix
+        first_w = max(8, title_w - prefix_len)
+        title_lines = wrap_title(
+            title, first_width=first_w, next_width=title_w, max_lines=max_title_lines
+        )
+        if not title_lines:
+            title_lines = [""]
+
+        # First line: columns + prefix + first title line
+        print(
+            f"{idx_str} {p_str} {due_str}  —  {prefix_colored}{color(title_lines[0], BOLD)}"
+        )
+
+        # Continuation of wrapped title (aligned under the title start)
+        cont_pad = left_pad + (" " * (prefix_len))
+        for cont in title_lines[1:]:
+            print(cont_pad + color(cont, BOLD))
+
+        # Summary lines, deduplicated against title
+        if summary:
+            # allocate summary height by urgency
+            max_summary = 5 if lvl >= 3 else (4 if lvl == 2 else 3)
+            # width from the divider alignment
+            sum_w = max(
+                10, term_width - (idx_col + 1 + prio_col + 1 + due_col + 3 + padding)
+            )
+            raw_lines = (
+                str(summary).replace("\r\n", "\n").replace("\r", "\n").split("\n")
+            )
+            # drop lines that duplicate title text
+            title_lc = " ".join(title_lines).lower().strip()
+            cleaned = []
+            for line in raw_lines:
+                s = line.strip()
+                if not s:
+                    continue
+                if s.lower() in title_lc:
+                    continue
+                cleaned.append(s)
+                if len(cleaned) >= max_summary:
+                    break
+            if cleaned:
+                for line in wrap_lines(
+                    "\n".join(cleaned), width=sum_w, max_lines=max_summary
+                ):
+                    print(left_pad + color(line, DIM))
+
+footer_msg = f"Showing {start + 1}-{end} of {total}. Use: page N, --per-page=N, --sort=priority|date|due"
+if not compact:
+    footer_msg += ", --compact"
+print(color(footer_msg, GREY))
 
 # Save current_view.json with ONLY the displayed tasks
 view = {

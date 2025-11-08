@@ -1,383 +1,486 @@
 ---
 name: tasks
-description: Task lifecycle operations for Basic Memory tasks. Handles creation, prioritization, progress tracking, completion, and strategic alignment. Uses context-search for discovery and bmem-ops for file operations.
+description: Script-based task lifecycle operations. Handles creation, prioritization, progress tracking, completion, and strategic alignment using task scripts ONLY. Never writes files directly.
 license: Apache 2.0
 permalink: aops/skills/tasks/skill
 ---
 
-# Task Management
-
-## Framework Context
-
-@resources/AXIOMS.md
+# Task Management via Scripts
 
 ## Overview
 
-Manages complete task lifecycle in Basic Memory format. Uses semantic search (context-search) for discovery and bmem-ops for file operations. Enforces strategic alignment and prevents duplicates.
+Manages complete task lifecycle using Python scripts in `$AOPS/scripts/task_*.py`. Uses scripts for ALL operations - never writes task files directly.
 
-**Core principle**: Tasks must link to goals. Silent capture without user interruption.
+**Core principle**: Tasks must link to goals. Scripts are the single interface to task data.
+
+**Integration**: Invoked by scribe skill when session mining identifies tasks.
 
 ## When to Use This Skill
 
-Use tasks skill for:
+**Invoked for**:
+- Creating tasks from extracted information
+- Updating task priority, due dates, status
+- Archiving completed tasks
+- Viewing/displaying task lists
+- Strategic alignment checks
+- Duplicate prevention
 
-- **Creating tasks** from user mentions or emails
-- **Finding tasks** via semantic search (not paging through lists)
-- **Updating tasks** (priority, status, due dates)
-- **Completing tasks** and archiving
-- **Progress tracking** and notes
-- **Strategic alignment** checks
-- **Duplicate prevention**
+**NOT invoked for**:
+- Session mining (scribe does this)
+- Extracting tasks from conversations (scribe does this)
+- Writing non-task bmem files (scribe does this)
 
-Invoked by scribe subagent during background capture.
+## Task Scripts Reference
 
-## Task Lifecycle
+All scripts located in `$AOPS/scripts/`. Use `uv run python <script>` to execute.
 
-```
-Mentioned → Search duplicates → Create → Prioritize → Work → Complete → Archive
-             ↓                    ↓         ↓          ↓       ↓
-           (context-search)   (bmem-ops) (update)  (notes) (bmem-ops)
-```
+### task_add.py - Create New Tasks
 
-## Core Operations
+**Purpose**: Create new task file in `data/tasks/inbox/`.
 
-### 1. Search for Tasks (ALWAYS DO THIS FIRST)
-
-**Use context-search skill for semantic discovery**:
-
-```
-Invoke context-search skill with:
-  query: "task description or keywords"
-  types: ["task"]
-  project: "project-slug" (optional)
+**Usage**:
+```bash
+uv run python $AOPS/scripts/task_add.py \
+  --title "Prepare keynote slides" \
+  --priority 2 \
+  --project "academic-profile" \
+  --due "2025-11-15" \
+  --summary "Create slides for conference X. Focus on accountability frameworks."
 ```
 
-**DO NOT**:
+**Parameters**:
+- `--title` (required): Action-oriented task title (see guidelines below)
+- `--priority`: Priority level
+  - Accepts: 0-3 or P0-P3
+  - P0/0 = Urgent (today/tomorrow)
+  - P1/1 = High (this week)
+  - P2/2 = Medium (within 2 weeks)
+  - P3/3 = Low (longer timeline)
+- `--type`: Task type (default: "todo")
+  - Examples: todo, meeting, deadline, review, writing
+- `--project`: Project slug (must match filename in data/projects/)
+- `--due`: Due date in ISO8601 format (YYYY-MM-DD)
+- `--summary` or `--details`: Detailed task context
+- `--details-from-file`: Path to file containing summary
+- `--preview`: Short preview text (optional)
+- `--metadata`: JSON string for additional metadata (optional)
 
-- Page through task_view.py results
-- Use Glob/Grep to find tasks
-- Randomly search file system
-
-**Why**: Semantic search finds related tasks even with different wording.
-
-### 2. Create Task
-
-**MANDATORY: Check for duplicates FIRST** (use context-search above)
-
-```
-1. Search for similar tasks (context-search)
-2. If similar task exists → Update instead of create
-3. If no duplicate → Proceed with creation
-
-4. Invoke bmem-ops skill for file creation
-5. Use @assets/task-template.md
-6. Fill with BM-compliant structure:
-   - YAML frontmatter (all required fields)
-   - Context section (what needs to be done)
-   - Observations (categorized with tags)
-   - Relations (project link if applicable)
-```
+**Output**: Creates `data/tasks/inbox/[TASK_ID].md` with Basic Memory format.
 
 **Task ID format**: `YYYYMMDD-HHMMSS-hostname-uuid`
 
+### task_view.py - View Tasks
+
+**Purpose**: Display tasks with pagination, sorting, and filtering.
+
+**Usage**:
 ```bash
-# Generate task ID:
-date -u +%Y%m%d-%H%M%S-$(hostname -s)-$(uuidgen | cut -d'-' -f1)
+# Default: page 1, sort by priority, 10 per page
+uv run python $AOPS/scripts/task_view.py
+
+# Page 2, sort by due date, 20 per page
+uv run python $AOPS/scripts/task_view.py 2 --sort=due --per-page=20
+
+# Compact view (one line per task)
+uv run python $AOPS/scripts/task_view.py --compact
+
+# Sort by creation date
+uv run python $AOPS/scripts/task_view.py --sort=date
 ```
 
-**Required frontmatter fields**:
+**Parameters**:
+- `[page]`: Page number (positional, default: 1)
+- `--sort=priority|date|due`: Sort field
+  - `priority`: By priority number (ascending: P0 first)
+  - `date`: By creation date (descending: newest first)
+  - `due`: By due date (ascending: soonest first, None last)
+- `--per-page=N`: Results per page (default: 10, or 20 in compact mode)
+- `--compact`: One-line-per-task view for quick triage
 
-```yaml
----
-title: Action-oriented task title
-permalink: tasks/[TASK_ID]
-type: task
-tags: [task-type, priority-p1, project:project-slug]
-task_id: [TASK_ID]
-priority: 1-3
-status: inbox
-due: "YYYY-MM-DD"
-project: project-slug
----
+**Output**: Formatted task list with color coding. Creates `data/views/current_view.json`.
+
+**CRITICAL for Display Mode**: When user asks to see tasks, present the ACTUAL OUTPUT directly. The script is designed for human readability - don't summarize or reformat.
+
+### task_index.py - Compact Overview
+
+**Purpose**: Generate compact task summary.
+
+**Usage**:
+```bash
+uv run python $AOPS/scripts/task_index.py
 ```
 
-**File location**: `$AO/data/tasks/inbox/[TASK_ID].md`
+**Parameters**: None
 
-### 3. Prioritize Task
+**Output**: High-level task count by priority and status. Fast overview for context loading.
 
-**Prioritization Framework** (P1/P2/P3):
+### task_process.py - Modify Tasks
 
-**P1 (Today/Tomorrow)** - Immediate action required:
+**Purpose**: Update existing tasks (priority, due date) or archive them.
 
+**Usage**:
+```bash
+# Update priority
+uv run python $AOPS/scripts/task_process.py modify <task_id> --priority 1
+
+# Update due date
+uv run python $AOPS/scripts/task_process.py modify <task_id> --due "2025-11-20"
+
+# Archive completed task
+uv run python $AOPS/scripts/task_process.py modify <task_id> --archive
+```
+
+**Parameters**:
+- `modify`: Subcommand (required)
+- `<task_id>`: Task ID to modify (required)
+- `--priority`: New priority (0-3 or P0-P3)
+- `--due`: New due date (YYYY-MM-DD)
+- `--archive`: Archive the task (moves to data/tasks/archived/)
+
+**Output**: Updates task file in place or moves to archived/ directory.
+
+### Other Task Scripts
+
+**task_search.py**: Search tasks by keyword (if implemented)
+**task_create.py**: Alternative task creation interface (if different from task_add.py)
+**task_modify.py**: Alternative modification interface (if different from task_process.py)
+**task_archive.py**: Direct archiving (may be alias for task_process.py --archive)
+**task_convert.py**: Convert task formats (legacy → current)
+
+**Note**: Always check script exists before invoking. Use task_add.py, task_view.py, and task_process.py as primary interfaces.
+
+## Prioritization Framework
+
+### Priority Levels (P0-P3)
+
+**P0 (Urgent - Today/Tomorrow)**:
 - Action window closing NOW (not just deadline approaching)
 - Meeting prep due within 24 hours
 - Immediate blocker for others
 - Time-sensitive response needed
+- Someone waiting on you RIGHT NOW
 
-**P2 (This Week)** - Important, soon:
-
+**P1 (High - This Week)**:
 - Deadline within 7 days
 - Significant strategic value
 - Preparation needed soon
 - Collaborative work where others waiting
+- Important but not urgent TODAY
 
-**P3 (Within 2 Weeks)** - Lower urgency:
+**P2 (Medium - Within 2 Weeks)**:
+- Deadline within 14 days
+- Moderate strategic alignment
+- Can wait a few days without impact
+- Standard workflow items
 
-- Longer timeline
+**P3 (Low - Longer Timeline)**:
+- Longer timeline (>2 weeks)
 - Lower strategic alignment
 - No immediate action window
+- Nice-to-have items
+- Future exploration
 
-**Key prioritization factors** (in order):
+### Key Prioritization Factors
+
+**In order of importance**:
 
 1. **Temporal constraints**: Due date, action window, meeting dates
-2. **Strategic alignment**: Check goals via context-search
+   - **Critical distinction**: Deadline vs action window
+   - Task due Friday may need action TODAY if delay reduces effectiveness
+   - Example: Conference talk due Friday → slides need review by Wednesday → start Monday (P0 on Monday)
+
+2. **Strategic alignment**: Does it link to goals?
+   - Check `data/goals/*.md` for linkage
+   - P0/P1 tasks MUST link to goals
+   - If no goal link → consider lowering priority or creating goal
+
 3. **Dependencies & roles**: Who's waiting? What's your role?
-
-**CRITICAL**: Distinguish deadline vs action window. A task due Friday may need action TODAY if delay reduces effectiveness.
-
-### 4. Update Task
-
-Use bmem-ops skill to modify task file:
-
-```
-1. Invoke context-search to find task
-2. Invoke bmem-ops to edit file
-3. Update frontmatter (priority, status, due date)
-4. Add observation with update note
-5. Update modified timestamp
-```
-
-### 5. Complete and Archive Task
-
-When task is done:
-
-```
-1. Invoke context-search to find task
-2. Invoke bmem-ops to:
-   - Update status to "completed"
-   - Add completion observation
-   - Move to data/tasks/archived/
-3. If standup-worthy, update accomplishments:
-   - File: data/context/accomplishments.md
-   - Format: One line unless significant
-```
+   - Supervisor request → often P0 or P1
+   - Student request → assess urgency + strategic value
+   - Admin request → often P2 or P3 unless time-sensitive
+   - Blocker for others → increase priority
 
 ## Task Title Guidelines
 
-**DO**:
+**Formula**: `[Action Verb] + [Specific Object] + [Optional Context]`
 
-- Use action verbs: "Prepare slides", "Review draft", "Respond to inquiry"
+**DO**:
+- Use action verbs: "Prepare", "Review", "Respond to", "Submit", "Confirm"
 - Be specific and scannable
 - Keep concise (1-8 words)
+- Make it clear what action is needed
 
 **DON'T**:
-
 - Write "Email from X about Y" (not action-oriented)
 - Include strategic analysis in title
 - Be vague ("Handle things", "Follow up")
+- Repeat context that belongs in summary
 
 **Examples**:
 
-- ✅ "Confirm keynote for Platform Governance Conference"
-- ✅ "Review student thesis Chapter 3 and schedule meeting"
-- ✅ "Submit talk title for November conference"
-- ❌ "Email about conference"
-- ❌ "Student wants to meet"
-- ❌ "Handle administrative stuff"
+✅ **GOOD**:
+- "Confirm keynote for Platform Governance Conference"
+- "Review student thesis Chapter 3 and schedule meeting"
+- "Submit talk title for November conference"
+- "Respond to conference invitation from Dr. Smith"
+
+❌ **BAD**:
+- "Email about conference" (what action?)
+- "Student wants to meet" (what's needed?)
+- "Handle administrative stuff" (too vague)
+- "Important deadline approaching" (what is it?)
 
 ## Task Summary Writing
 
-**Write for the USER, not for strategic analysis**.
+**Write for the USER, not for strategic analysis.**
 
-**Include**:
+### What to Include
 
-- What needs to be done (briefly, title already covers this)
+- What needs to be done (briefly - title already covers this)
 - Why it matters (1 sentence)
 - When it's due or action window
-- Where to find materials (if relevant)
+- Where to find materials (direct links so user doesn't need to search emails)
+- Any specific constraints or requirements
 
-**Don't include**:
+### What NOT to Include
 
-- Strategic analysis of priority choices
+- Strategic analysis of priority choices (internal use only)
 - Explanations of relationships user already knows
 - Role definitions or organizational hierarchy
 - Lengthy dependency chains
+- Duplicate information from frontmatter
 
-**Examples**:
+### Good Examples
 
-✅ **GOOD**: "Prepare keynote slides for Nov 15 conference. Focus on accountability frameworks. Review with team by Nov 10."
+✅ "Review Joel's chapter draft on marginal value of films (https://sharepoint.com/...). Focus on storytelling and platform realities. Provide feedback before supervision meeting."
 
-❌ **TOO MUCH**: "As the invited keynote speaker for the conference on Nov 15, which aligns with your Academic Profile goal and was mentioned in your current priorities as a strategic initiative for increasing research visibility in the platform governance space, you need to prepare slides focusing on your recent work on accountability frameworks because this represents a key opportunity to advance Goal 2..."
+✅ "Prepare keynote slides for Nov 15 conference. Focus on accountability frameworks. Review with team by Nov 10."
 
-✅ **GOOD**: "Student requesting feedback on Chapter 3 draft. Schedule meeting this week."
+✅ "Student requesting feedback on Chapter 3 draft. Schedule meeting this week."
 
-❌ **TOO MUCH**: "Meeting request from PhD student (supervision context, Academic Profile goal) regarding Chapter 3 thesis feedback. This represents a P2 priority supervision task that requires review of draft materials and coordination..."
+### Bad Examples
 
-**Detail level**: Write what the user needs to take action, nothing more.
+❌ "As the invited keynote speaker for the conference on Nov 15, which aligns with your Academic Profile goal and was mentioned in your current priorities as a strategic initiative for increasing research visibility in the platform governance space, you need to prepare slides focusing on your recent work on accountability frameworks because this represents a key opportunity to advance Goal 2..."
+
+❌ "Meeting request from PhD student (supervision context, Academic Profile goal) regarding Chapter 3 thesis feedback. This represents a P2 priority supervision task that requires review of draft materials and coordination of schedules to ensure timely progress on thesis milestones..."
+
+**Detail level**: Write what the user needs to take action, nothing more. "Weekly standup level" for context.
 
 ## Strategic Alignment Enforcement
 
-**CRITICAL**: Priority tasks MUST link to goals.
+**CRITICAL**: P0 and P1 tasks MUST link to goals.
 
-**When creating P1 or P2 tasks**:
+### Verification Workflow
 
-```
-1. Invoke context-search to find related project
-2. Verify project exists
-3. Invoke context-search to verify project → goal linkage
-4. If misaligned:
-   - Create task anyway (don't fail)
-   - Add observation noting misalignment
-   - Suggest linking to goal or lowering priority
-```
+When creating/prioritizing P0 or P1 tasks:
 
-**Strategic context to load** (use context-search):
+1. **Check project link**: Does `--project` parameter match a file in `data/projects/`?
+2. **Verify project → goal linkage**: Read project file, check Relations section for goal link
+3. **Validate goal exists**: Read `data/goals/[goal].md`
+4. **Confirm bidirectional link**: Goal file should list project
 
-- `type:project` - Find related projects
-- `type:goal` - Verify strategic goals
+### If Misaligned
+
+**Create task anyway** (don't block user) but:
+1. Add observation noting misalignment
+2. Flag to user: "I notice this P1 task claims to support [Goal X], but it's not listed in that goal's file. Should we: a) Add it to the goal (confirm strategic importance) b) Lower priority (not strategically aligned)"
+
+**Strategic context to check**:
+- `data/goals/*.md` - Verify strategic goals
+- `data/projects/*.md` - Find related projects
 - `data/context/current-priorities.md` - Current focus
 
-**Note**: Strategic alignment validation is a CHECK, not a BLOCKER.
+**Alignment validation is a CHECK, not a BLOCKER**.
 
-## Common Patterns
+## Duplicate Prevention
 
-### Email → Task Extraction
+**ALWAYS check for duplicates BEFORE creating tasks.**
 
-When extracting tasks from emails:
+### Duplicate Check Workflow
 
-1. **Search for duplicates** (context-search, NOT task_view.py)
-2. Create one task per actionable item (don't combine)
-3. Use sender/subject to inform priority:
-   - From supervisor → likely P1 or P2
-   - "Urgent" in subject → P1
-   - Conference/deadline keywords → Check date
-   - Administrative → Often P3 unless time-sensitive
-4. Include email context in summary: "From: [sender]. Deadline: [date]."
+1. **Run task_view.py** to see recent tasks:
+   ```bash
+   uv run python $AOPS/scripts/task_view.py --per-page=50
+   ```
 
-### Conversation → Task Extraction
+2. **Review output** for similar:
+   - Task titles (semantic similarity, not just exact match)
+   - Projects
+   - Due dates
+   - Summaries
 
-When extracting tasks from conversations:
+3. **If similar task exists**:
+   - **Update** existing task instead (change priority, due date)
+   - **Don't create** duplicate
 
-1. **Mine deeply**, not just keywords:
-   - "I'll need to prepare X" → task
-   - "Can you review by Friday?" → task with deadline
-   - "Meeting next Tuesday" → task with due date
-   - "Need your input on Y" → task
-   - Implicit commitments → tasks
+4. **If no duplicate**:
+   - Proceed with task_add.py
 
-2. **Capture immediately** (don't wait for conversation end)
-3. Extract fragments even if incomplete (better than missing)
+**Semantic matching**: "Prepare keynote" and "Create conference slides" may be the same task - use judgment.
 
-### Task Completion → Accomplishments
+## Task Lifecycle Workflows
 
-When user mentions completing work:
+### Creating Task (Full Workflow)
+
+```bash
+# 1. Check for duplicates
+uv run python $AOPS/scripts/task_view.py --per-page=50
+# Review output, verify no duplicate
+
+# 2. Create task
+uv run python $AOPS/scripts/task_add.py \
+  --title "Prepare keynote slides" \
+  --priority 1 \
+  --project "academic-profile" \
+  --due "2025-11-15" \
+  --summary "Create slides for Platform Governance Conference. Focus on accountability frameworks. Materials at https://email.link/..."
+
+# 3. Verify strategic alignment
+# Read data/projects/academic-profile.md
+# Check Relations section for goal link
+# If P0/P1 and no goal link → flag misalignment
+```
+
+### Updating Task
+
+```bash
+# 1. Find task ID from task_view.py output
+uv run python $AOPS/scripts/task_view.py
+
+# 2. Update priority
+uv run python $AOPS/scripts/task_process.py modify 20251108-143022-hostname-abc123 --priority 0
+
+# 3. Update due date
+uv run python $AOPS/scripts/task_process.py modify 20251108-143022-hostname-abc123 --due "2025-11-10"
+```
+
+### Archiving Task (Completion)
+
+```bash
+# When user mentions completion:
+
+# 1. Archive task
+uv run python $AOPS/scripts/task_process.py modify <task_id> --archive
+
+# 2. Invoke scribe skill to update accomplishments
+# (scribe writes to data/context/accomplishments.md)
+```
+
+## Integration with Scribe Skill
+
+### Division of Responsibilities
+
+**Scribe skill**:
+- Extracts task information from sessions
+- Identifies when tasks are mentioned
+- Invokes tasks skill with extracted information
+- Updates accomplishments.md when tasks completed
+- Updates non-task bmem files (projects, goals, context)
+
+**Tasks skill (this)**:
+- Runs task scripts
+- Creates task files via task_add.py
+- Updates tasks via task_process.py
+- Archives tasks via task_process.py --archive
+- Displays tasks via task_view.py
+- Checks strategic alignment
+- Prevents duplicates
+
+### Invocation Pattern
+
+When scribe extracts task information:
 
 ```
-1. Invoke context-search to find completed task
-2. Invoke bmem-ops to archive task
-3. If standup-worthy, update accomplishments:
-   File: data/context/accomplishments.md
-   Format: One line, "Completed [task title]"
+Scribe mines session → identifies task → invokes tasks skill
+                                                ↓
+Tasks skill → checks duplicates → runs task_add.py → validates alignment
 ```
 
-**Accomplishments detail level**: "Weekly standup level" - one line unless truly significant.
-
-## Integration with Skills
-
-**context-search** (MANDATORY for discovery):
-
-- Find existing tasks
-- Check for duplicates
-- Load strategic context
-- Verify project/goal linkage
-
-**bmem-ops** (MANDATORY for file operations):
-
-- Create task files
-- Update task files
-- Move to archived
-- Ensure BM format compliance
-
-**scribe** orchestrates tasks for:
-
-- Silent background capture
-- Automatic duplicate checking
-- Strategic alignment enforcement
-
-## Data Structure
-
-Tasks stored in Basic Memory format:
+When scribe detects completion:
 
 ```
-$AO/data/
-  tasks/
-    inbox/                  # New tasks
-      [TASK_ID].md
-    archived/               # Completed tasks
-      [TASK_ID].md
-  projects/                 # Project files (for task→project linkage)
-    *.md
-  goals/                    # Strategic goals (for project→goal linkage)
-    *.md
-  context/                  # Strategic context
-    current-priorities.md
-    accomplishments.md
+Scribe detects "completed X" → invokes tasks skill to archive
+                                       ↓
+Tasks skill → runs task_process.py --archive
+            ↓
+Scribe → writes to accomplishments.md
 ```
 
 ## Critical Rules
 
 **NEVER**:
-
-- Create tasks without searching for duplicates first
-- Use task_view.py or other Python scripts (use context-search)
-- Write files directly (use bmem-ops)
+- Write task files directly (always use scripts)
+- Create tasks without checking duplicates first
+- Skip strategic alignment checks for P0/P1 tasks
 - Include strategic analysis in user-facing summaries
-- Skip strategic alignment checks for P1/P2 tasks
+- Use context-search or bmem-ops (use scripts instead)
 - Batch task operations (create/archive immediately)
+- Mark tasks as P0/P1 without goal linkage (flag instead)
 
 **ALWAYS**:
-
-- Invoke context-search FIRST for discovery
-- Invoke bmem-ops for file operations
+- Use scripts for ALL task operations
+- Check duplicates before creating (task_view.py)
 - Use action-oriented titles
-- Link P1/P2 tasks to projects and goals
+- Link P0/P1 tasks to projects and goals
 - Keep summaries brief and user-focused
-- Archive completed tasks promptly
-- Load strategic context before prioritizing
+- Archive completed tasks promptly (task_process.py)
+- Verify scripts exist before invoking
+- Present task_view.py output DIRECTLY to user (don't reformat)
 
 ## Quick Reference
 
-**Most common workflow**:
+**Most common operations**:
 
-```
-1. Search for duplicates (context-search skill):
-   query: "[task description]"
-   types: ["task"]
+```bash
+# Create task
+uv run python $AOPS/scripts/task_add.py --title "..." --priority N --project "..." --due "YYYY-MM-DD" --summary "..."
 
-2. Create task if no duplicate (bmem-ops skill):
-   Use @assets/task-template.md
-   Fill: title, priority, project, due, summary
-   Location: data/tasks/inbox/[TASK_ID].md
+# View tasks
+uv run python $AOPS/scripts/task_view.py --per-page=20
 
-3. Archive when complete (bmem-ops skill):
-   Update status to "completed"
-   Move to data/tasks/archived/
-   Update accomplishments if standup-worthy
+# Compact overview
+uv run python $AOPS/scripts/task_index.py
+
+# Update priority
+uv run python $AOPS/scripts/task_process.py modify <task_id> --priority N
+
+# Archive task
+uv run python $AOPS/scripts/task_process.py modify <task_id> --archive
 ```
 
 **Priority decision tree**:
 
 ```
 Q: Action window closing within 24 hours?
-YES → P1
+YES → P0
 
 Q: Deadline within 7 days OR high strategic value?
+YES → P1
+
+Q: Deadline within 14 days OR moderate alignment?
 YES → P2
 
 Q: Longer timeline OR lower alignment?
 YES → P3
 ```
 
-**Title formula**: `[Action Verb] + [Specific Object] + [Optional Context]`
+**Data paths**:
 
-**Summary formula**: `[What] + [Why, 1 sentence] + [When/Where if relevant]`
+```
+$AO/data/tasks/inbox/      # New tasks
+$AO/data/tasks/queue/      # Prioritized (if used)
+$AO/data/tasks/archived/   # Completed
+$AO/data/projects/*.md     # For task→project linkage
+$AO/data/goals/*.md        # For project→goal linkage
+$AO/data/views/current_view.json  # Generated by task_view.py
+```
+
+## Success Criteria
+
+This skill succeeds when:
+1. **Script-based operations** - All task operations use scripts, never direct file writes
+2. **No duplicates** - Duplicate check happens before every create
+3. **Strategic alignment** - P0/P1 tasks linked to goals, misalignments flagged
+4. **Accurate priorities** - P0-P3 reflect true importance + urgency + alignment
+5. **Quality titles/summaries** - Action-oriented, user-focused, scannable
+6. **Immediate operations** - Tasks created/archived as soon as identified (no batching)

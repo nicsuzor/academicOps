@@ -13,21 +13,21 @@ permalink: aops/readme
 
 Generic utility scripts and LLM agent instructions for Claude Code automation.
 
-This repository is a submodule of `${AO}` (currently `/home/nic/src/writing`) at `${AO}/aOps`.
+This repository is a submodule of `${ACA}` at `${AOPS}`.
 
 ## Core Principles
-
-**MINIMAL.** We actively fight bloat. Every file must earn its place.
+- [[docs/_CORE.md]]
+- [[docs/_AXIOMS.md]]
 
 ## Structure
 
 ```
-${AO}/aOps/
+${ACA}                # User's home repo (PRIVATE)
+${AOPS}/              # Automation (PUBLIC)
 ├── skills/           # Reusable workflows
 ├── hooks/            # Claude Code automation hooks
 ├── scripts/          # Utility scripts
 ├── config/           # Configuration files
-├── core/             # Core instructions (currently empty)
 ├── docs/             # Documentation
 └── resources/        # External references
 ```
@@ -56,26 +56,4 @@ Python modules that enforce automation at Claude Code lifecycle events:
 
 ## Installation
 
-Symlink configuration to `~/.claude/`:
-
-```bash
-ln -sf ${AO}/aOps/hooks ~/.claude/hooks
-ln -sf ${AO}/aOps/skills ~/.claude/skills
-ln -sf ${AO}/aOps/config/settings.json ~/.claude/settings.json
-```
-
-This applies infrastructure globally to all Claude Code sessions.
-
-## Configuration
-
-- **config/settings.json**: Claude Code settings
-- **config/mcp.json**: MCP server configuration
-- **paths.toml**: Path configuration for scripts
-- **paths.sh**: Generated shell environment variables
-
-## Observations
-
-- This repo is PRIVATE and specific to @nicsuzor's workflow
-- Uses `uv` for Python environment management
-- All Python commands: `uv run <command>`
-- Hydra-based config (no environment variables in configs)
+- Use `setup.sh` to symlink configuration to `~/.claude/`. This applies infrastructure globally to all of a user's Claude Code sessions.

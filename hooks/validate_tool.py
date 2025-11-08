@@ -443,7 +443,7 @@ def _is_allowed_md_path(file_path: str) -> bool:
 
     # ALLOW: Content directories in $AO (writing repo)
     # These are legitimate content artifacts, not documentation
-    personal_path = os.getenv("AOPS")
+    personal_path = os.getenv("ACA")
     if personal_path:
         cwd = Path.cwd()
         personal_dir = Path(personal_path).resolve()

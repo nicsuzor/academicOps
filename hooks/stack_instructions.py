@@ -3,7 +3,7 @@
 PostToolUse hook: Stack instructions from 3 tiers when reading /core/**/*.md or /docs/bots/**/*.md.
 
 When an agent reads a file matching these patterns, this hook provides stacked content:
-1. Framework tier ($AOPS/aOps/core/... or /docs/bots/...) - REQUIRED
+1. Framework tier ($AOPS/core/... or /docs/bots/...) - REQUIRED
 2. Personal tier ($AO/core/... or /docs/bots/...) - if exists
 3. Project tier ($PWD/docs/bots/...) - if exists
 
@@ -101,8 +101,8 @@ def stack_instructions(tool_name: str, tool_input: dict, tool_response: dict) ->
         return {}
 
     # Get tier paths
-    bot_path = os.getenv("AOPS")
-    personal_path = os.getenv("AOPS")
+    bot_path = os.getenv("ACA")
+    personal_path = os.getenv("ACA")
     project_path = Path.cwd()
 
     # Framework tier (REQUIRED)

@@ -120,7 +120,7 @@ def main():
         sys.exit(0)
 
     # Get personal repository path
-    personal_repo_path = os.environ.get("AOPS")
+    personal_repo_path = os.environ.get("ACA")
     if not personal_repo_path:
         # Can't determine repo, continue without committing
         print(json.dumps({}))

@@ -1,1 +1,0 @@
-/home/nic/src/writing/aops/chunks/SKILL-PRIMER.md

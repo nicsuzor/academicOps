@@ -48,6 +48,14 @@ HOOKS_DEST="$CLAUDE_HOME/hooks"
 ln -s "$HOOKS_SRC" "$HOOKS_DEST"
 echo -e "${GREEN}✓${NC} ~/.claude/hooks/ → $HOOKS_SRC"
 
+# Symlink agents directory
+AGENTS_SRC="$BOTS_DIR/agents"
+AGENTS_DEST="$CLAUDE_HOME/agents"
+
+[ -e "$AGENTS_DEST" ] && rm -rf "$AGENTS_DEST"
+ln -s "$AGENTS_SRC" "$AGENTS_DEST"
+echo -e "${GREEN}✓${NC} ~/.claude/agents/ → $AGENTS_SRC"
+
 # Symlink skills directory
 SKILLS_SRC="$BOTS_DIR/skills"
 SKILLS_DEST="$CLAUDE_HOME/skills"
@@ -55,6 +63,14 @@ SKILLS_DEST="$CLAUDE_HOME/skills"
 [ -e "$SKILLS_DEST" ] && rm -rf "$SKILLS_DEST"
 ln -s "$SKILLS_SRC" "$SKILLS_DEST"
 echo -e "${GREEN}✓${NC} ~/.claude/skills/ → $SKILLS_SRC"
+
+# Symlink commands directory
+COMMANDS_SRC="$BOTS_DIR/commands"
+COMMANDS_DEST="$CLAUDE_HOME/commands"
+
+[ -e "$COMMANDS_DEST" ] && rm -rf "$COMMANDS_DEST"
+ln -s "$COMMANDS_SRC" "$COMMANDS_DEST"
+echo -e "${GREEN}✓${NC} ~/.claude/commands/ → $COMMANDS_SRC"
 
 echo
 echo -e "${GREEN}=== Setup Complete ===${NC}"

@@ -297,17 +297,3 @@ for msg in actionable:
 # 4. Present summary
 # Show: count, important senders, urgent items, action needed
 ```
-
-## Error Handling
-
-**Common issues**:
-
-- MCP server not configured → Check `config/mcp.json` for `outlook` entry
-- Authentication failures → MCP server may need restart
-- Rate limiting → Reduce batch sizes, add delays
-
-**Graceful degradation**:
-
-- If MCP unavailable, inform user (don't fail silently)
-- If specific email unreadable, skip and continue
-- If search fails, try simpler query

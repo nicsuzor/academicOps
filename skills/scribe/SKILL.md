@@ -1,626 +1,497 @@
 ---
 name: scribe
-description: A scribe automatically and silently captures tasks, priorities, and context
-  throughout conversations, maintaining the user's knowledge base in $AO/data.
-  Invoke proactively and constantly to extract information about tasks, projects,
-  goals, and strategic priorities without interrupting flow. Your value is measured
-  by how rarely the user needs to explicitly ask you to save something.
+description: |
+  Silently extracts information from session history, mines it for inclusion into
+  $ACA/data database, uses smarts to select information, finds links with existing
+  context, and intelligently maintains the knowledge graph. Deep understanding of
+  Basic Memory (bmem) concepts and file writing. Invokes tasks skill for task
+  creation/management.
 permalink: aops/skills/scribe/skill
 ---
 
-# Scribe: Automatic Context Capture & Task Management
+# Scribe: Session Mining & Knowledge Graph Maintenance
 
 ## Overview
 
-Like a scribe who continuously records important information, this skill operates silently in the background of EVERY conversation, capturing tasks, projects, strategic context, and decisions. The user should feel their ideas are magically organized without ever having to ask.
+Like a scribe who continuously records important information, this skill operates silently to extract information from conversations, maintain the knowledge graph in Basic Memory format, and ensure semantic structure across all markdown files.
 
 **Core principle**: If the user says "can you save that?", you've already failed.
 
-## Three Operational Modes
+**Key capabilities**:
+- Session mining and information extraction
+- Basic Memory file writing and conversion
+- Knowledge graph maintenance
+- Observation quality enforcement
+- Strategic context capture
+- Invokes tasks skill for task management
 
-### Mode 1: Background Capture (PRIMARY - Always Active)
-
-**When**: CONSTANTLY throughout EVERY conversation **Purpose**: Silent, automatic extraction of tasks, context, and strategic information **Output**: NO user-visible output - updates happen silently
+## When to Use This Skill
 
 **Invoke automatically when**:
+- Creating or editing markdown files in knowledge base
+- Mining session history for information
+- Converting regular markdown to Basic Memory format
+- Extracting strategic context from conversations
+- User mentions completed work (for accomplishments)
+- Building/maintaining knowledge graph connections
 
-- Tasks or action items mentioned (explicit or implicit)
-- Projects or goals discussed
-- Deadlines or priorities mentioned
-- Completed work mentioned (auto-archive tasks)
-- Strategic context emerges
-- At START of planning/strategy conversations
-- At END of conversations (capture remaining context)
+**Integration**:
+- **tasks skill**: Invoke for task creation, updates, archiving
+- **scribe skill** (this): Focus on bmem files and session mining
 
-**Core behaviors**:
+## Basic Memory Syntax
 
-- Extract IMMEDIATELY as information mentioned
-- NEVER interrupt user flow
-- Capture fragments even if incomplete
-- Update files frequently (don't wait for conversation end)
-- Auto-archive completed tasks
-- Flag strategic misalignments
+@references/bmem-syntax.md
 
-**What to capture**:
+Quick reference:
 
-- **Tasks**: Explicit todos, implicit future actions, commitments, follow-ups
-- **Projects**: Updates, new ideas, milestones, deliverables
-- **Goals & Strategy**: Objectives, assessments, priorities, theories of change
-- **Context**: People, dates, resources, risks, decisions, ruled-out options
+```markdown
+---
+title: Entity Title
+permalink: entity-title-slug
+tags: [relevant, tags]
+type: note
+---
+
+# Entity Title
+
+## Context
+
+Brief 1-3 sentence overview.
+
+## Observations
+
+- [category] New information not in body/frontmatter #tags
+
+## Relations
+
+- relation_type [[Entity Title]]
+```
+
+## Frontmatter Enforcement
+
+### Required Fields
+
+ALL knowledge base markdown files MUST have:
+
+```yaml
+---
+title: Entity Title
+permalink: entity-title-slug
+type: note
+---
+```
+
+**Field rules**:
+- `title`: Human-readable, used in `[[references]]`
+- `permalink`: URL-friendly slug (lowercase-with-hyphens)
+- `type`: One of: note, person, project, meeting, decision, spec, task, goal
+
+### Conversion Strategy
+
+When file lacks frontmatter:
+
+1. Extract title from first `# Heading` or filename
+2. Generate permalink from title (lowercase, spaces → hyphens)
+3. Infer type from directory:
+   - `data/tasks/` → task
+   - `data/projects/` → project
+   - `data/goals/` → goal
+   - `docs/` → spec
+   - Default → note
+4. Preserve existing tags if present
+5. Add created timestamp (current time)
+
+## Observation Writing (CRITICAL)
+
+### What Observations ARE
+
+**Observations are NEW, categorized facts that ADD information beyond the document body and frontmatter.**
+
+Observations should be:
+- **Specific**: Concrete facts, not vague statements
+- **Atomic**: One fact per observation
+- **Additive**: New information not in body/frontmatter
+- **Contextual**: Enough detail to understand
+- **Semantic**: Enable knowledge graph queries
+
+### What Observations Are NOT
+
+**NEVER create observations that**:
+- Repeat the document body (self-referential)
+- Duplicate frontmatter metadata (due dates, types, status)
+- State the obvious ("This is a task")
+- Add no new information
+
+### Bad vs Good Observations
+
+**❌ BAD** (self-referential, duplicates metadata):
+
+```markdown
+---
+due: "2025-11-07"
+type: task
+status: inbox
+---
+
+## Context
+
+Review student thesis by Nov 7.
+
+## Observations
+
+- [task] Review student thesis by Nov 7. #status-inbox
+- [requirement] Due date: 2025-11-07 #deadline
+- [fact] Task type: todo #type-todo
+```
+
+**Problems**: First observation repeats context verbatim. Due date already in frontmatter. Type already in frontmatter. "todo" is meaningless.
+
+**✅ GOOD** (adds new information, specific, semantic):
+
+```markdown
+---
+due: "2025-11-07"
+type: task
+status: inbox
+project: phd-supervision
+---
+
+## Context
+
+Review Rhyle Simcock's PhD thesis lodgement. Do NOT name examiners in comments.
+
+## Observations
+
+- [fact] Rhyle Simcock is PhD candidate in platform governance #student-rhyle-simcock
+- [requirement] Cannot name examiners in comments as student will see them #compliance #privacy
+- [insight] This is thesis examination stage requiring supervisor approval #phd-process
+- [decision] Will focus review on methodology and structure #review-strategy
+```
+
+**Why this is good**: Each observation adds NEW information. No duplication of frontmatter. Specific details about people, constraints, process. Semantic tags.
+
+### Observation Categories
+
+**Common categories**:
+- `[fact]` - Objective information about people, systems, processes
+- `[decision]` - Choices made with reasoning
+- `[technique]` - Methods and approaches used
+- `[requirement]` - Constraints and must-haves
+- `[insight]` - Key realizations and understanding
+- `[problem]` - Issues identified
+- `[solution]` - Resolutions and fixes
+- `[question]` - Open questions needing answers
+- `[idea]` - Thoughts and concepts for future
+
+### Don't Repeat Yourself (DRY)
+
+**Metadata ALREADY in frontmatter should NOT appear in observations**:
+
+```yaml
+---
+due: "2025-11-15"         # ← Due date here
+priority: 1               # ← Priority here
+type: task                # ← Type here
+status: inbox             # ← Status here
+project: research         # ← Project here
+---
+```
+
+**DON'T create observations like**:
+- ❌ `[requirement] Due date: 2025-11-15`
+- ❌ `[fact] Priority: 1`
+- ❌ `[fact] Type: task`
+- ❌ `[fact] Status: inbox`
+
+**DO create observations that ADD context**:
+- ✅ `[insight] Deadline chosen to align with conference submission #strategic-timing`
+- ✅ `[decision] Prioritized high because blocks other work #dependencies`
+- ✅ `[fact] Research involves 50 participants across 3 universities #scope`
+
+## Link Syntax Enforcement
+
+### Entity References
+
+Replace all informal references with explicit links:
+
+```markdown
+# Before
+See the authentication system documentation for details.
+
+# After
+See [[Authentication System]] for details.
+```
+
+### Relation Syntax
+
+When file has clear relationships, add `## Relations` section:
+
+```markdown
+## Relations
+
+- relation_type [[Target Entity]]
+```
+
+**Common relations**: relates_to, implements, requires, extends, part_of, caused_by, leads_to
+
+**Forward references are OK**: You can reference entities that don't exist yet. Basic Memory creates placeholders.
+
+## Session Mining Techniques
+
+### Automatic Background Capture
+
+**Mine conversations deeply** throughout EVERY session:
+
+**What to extract**:
+- **Tasks**: Explicit todos, implicit future actions, commitments, follow-ups → Invoke tasks skill
+- **Projects**: Updates, new ideas, milestones, deliverables → Update project files
+- **Goals**: Objectives, assessments, priorities, theories of change → Update goal files
+- **Context**: People, dates, resources, risks, decisions, ruled-out options → Update context files
+- **Completed work**: Mentioned completion → Invoke tasks skill to archive + update accomplishments
 
 **Deep mining, not keyword matching**:
+- "I'll need to prepare for the keynote next month" → Invoke tasks skill to create task
+- "That process is too bureaucratic" → Strategic context to project file
+- "I'm not sure if we're eligible" → Risk/dependency to project file
+- "30% of Sasha's time" → Resource allocation to project file
+- "Need to finish X before Y" → Task dependencies → Invoke tasks skill
 
-- "I'll need to prepare for the keynote next month" → task
-- "That process is too bureaucratic" → strategic context
-- "I'm not sure if we're eligible" → risk/dependency
-- "30% of Sasha's time" → resource allocation
-- "Need to finish X before Y" → task dependencies
+### Extraction Patterns
 
-### Mode 2: Display (Explicit Invocation)
+**From email processing**:
+1. Read email using MCP tool (outlook)
+2. Extract action items → Invoke tasks skill
+3. Extract project mentions → Update project files
+4. Extract people/contacts → Update project files
+5. Extract deadlines → Pass to tasks skill
+6. Extract strategic importance → Update context files
 
-**When**: User explicitly asks for task list or priorities **Purpose**: Show formatted task output directly to user **Output**: DIRECT presentation of script output (no summarizing)
+**From conversations**:
+1. Implicit commitments → tasks skill
+2. Strategic assessments → context files
+3. Project updates → project files
+4. Completed work → tasks skill to archive + accomplishments
+5. Decisions made → project/goal files with observations
+6. Ruled-out ideas → project files (document why not)
 
-**User requests**:
+**NEVER**:
+- Interrupt user flow to ask for clarification
+- Wait until conversation end to capture information
+- Announce that you're capturing information
+- Archive/delete/reply to emails (other skills handle that)
 
-- "What are my current tasks?"
-- "Show me my priorities for this week"
-- "What do I need to do?"
+## Knowledge Graph Maintenance
 
-**CRITICAL**: Present the ACTUAL OUTPUT of task view scripts DIRECTLY to the user without summarizing, reformatting, or interpreting. The scripts are designed for human readability with color coding and formatting.
+### Identifying Connections
 
-**Commands**:
+**While mining sessions**, actively look for:
+- References to existing entities
+- New entities that should be linked
+- Relationships between concepts
+- Project → goal alignment
+- Task → project membership
+- People → project associations
 
-```bash
-# Compact overview
-uv run python ~/.claude/skills/scribe/scripts/task_index.py
+### Creating Links
 
-# Detailed view (default: top 10 by priority)
-uv run python ~/.claude/skills/scribe/scripts/task_view.py --per-page=10
+**Add `[[Entity Title]]` syntax** when references detected:
 
-# Sort options: --sort=priority (default), --sort=date, --sort=due
+```markdown
+# Before mining
+Working on the content moderation project.
+
+# After mining
+Working on [[Content Moderation Research Project]].
+
+## Relations
+- part_of [[Platform Governance Research]]
+- relates_to [[Automated Moderation Systems]]
 ```
 
-### Mode 3: Context Guide (Explicit Invocation)
+### Maintaining Consistency
 
-**When**: User asks about connections, context, or relevance **Purpose**: Reveal and explain relationships between tasks, projects, and goals **Output**: Strategic analysis and context explanation
+**Ensure**:
+- Entity titles are consistent across references
+- Forward references created when needed
+- Bidirectional relations added where appropriate
+- Tags are semantic and discoverable
+- Observations don't duplicate metadata
 
-**User requests**:
+## Integration with Tasks Skill
 
-- "What projects relate to [goal]?"
-- "Why is [task] important?"
-- "What's the context for [project]?"
-- "Show me deadlines for [timeframe]"
+**scribe extracts information, tasks manages tasks**:
 
-**Behaviors**:
+### When to Invoke Tasks Skill
 
-- Load relevant context from `data/goals/`, `data/projects/`, `data/context/`
-- Explain task-to-project linkages
-- Highlight strategic alignment (or misalignment)
-- Surface priorities and deadlines
-- Show resource allocations
-- Explain dependencies
+**Invoke tasks skill for**:
+- Creating new tasks (with duplicate check)
+- Updating task priority
+- Updating task status
+- Archiving completed tasks
+- Checking task strategic alignment
+- Viewing/displaying task lists
 
-### Mode 4: End-of-Session (Targeted Capture)
-
-**When**: end-of-session agent invokes with work description **Purpose**: Fast accomplishment evaluation without searching sessions **Output**: SILENT write to accomplishments.md if criteria met
-
-**Invocation pattern**:
-
-```
-Skill(command='scribe', mode='end-of-session', work_description='[what was done]', state='completed|in-progress|blocked|aborted|planned|failed')
-```
-
-**Parameters**:
-
-- `work_description`: Brief description of work done (from calling agent)
-- `state`: Work status (completed, in-progress, blocked, aborted, planned, failed)
-
-**Behavior**:
-
-1. Receive work description directly (NO session searching)
-2. Apply accomplishment criteria (lines 251-349 below)
-3. If qualified: Write ONE LINE to accomplishments.md
-4. If not qualified: Skip capture silently
-5. Complete silently (no output)
-
-**What this mode does NOT do**:
-
-- Search past conversations or sessions
-- Invoke task scripts
-- Update project files
-- Create detailed summaries
-- Ask user questions
-
-**Why Mode 4 exists**:
-
-- end-of-session agent needs fast evaluation
-- Work description already provided by calling agent
-- Maintains single source of truth for accomplishment criteria
-- Avoids DRY violation
-
-## Mode Decision Flowchart
+**Example invocation pattern**:
 
 ```
-User behavior
-    ├─ Mentions task/project/goal/deadline → Mode 1 (Background Capture)
-    ├─ Asks "what are my tasks?" → Mode 2 (Display)
-    ├─ Asks "why is X important?" → Mode 3 (Context Guide)
-    └─ end-of-session agent invokes → Mode 4 (End-of-Session)
-
-Default mode: Mode 1 (always capturing)
+# When user mentions action item:
+Invoke tasks skill with:
+  operation: create
+  title: "Prepare keynote slides"
+  priority: 2
+  project: "academic-profile"
+  due: "2025-11-15"
+  summary: "Create slides for conference X. Focus on accountability frameworks."
 ```
 
-## Task Management Workflow
+### What Scribe Does NOT Do
 
-### Task Operations
+**NEVER directly**:
+- Create task files (tasks skill does this)
+- Update task files (tasks skill does this)
+- Archive tasks (tasks skill does this)
+- Run task scripts (tasks skill does this)
 
-**Check for duplicates FIRST**:
+**Scribe ONLY**:
+- Extracts task information from sessions
+- Invokes tasks skill with extracted information
+- Updates non-task files (projects, goals, context)
 
-```bash
-uv run python ~/.claude/skills/scribe/scripts/task_view.py --per-page=50
-# Review data/views/current_view.json for existing tasks
-```
+## Accomplishments Writing
 
-**Create task**:
+### When to Capture
 
-```bash
-uv run python ~/.claude/skills/scribe/scripts/task_add.py \
-  --title "Prepare keynote slides" \
-  --priority 2 \
-  --project "academic-profile" \
-  --due "2025-11-15" \
-  --summary "Create slides for conference X. Focus on accountability frameworks."
-```
+**Capture to accomplishments.md when**:
+1. Task completion (invoke tasks skill to archive task, then write to accomplishments)
+2. Strategic decisions affecting priorities
+3. Non-task work that's significant enough for weekly standup
 
-**Fields**:
+### Detail Level: "Weekly Standup Report"
 
-- `--title` (required): Action-oriented, clear
-- `--priority` (1-3): See prioritization framework below
-- `--project`: Slug matching project filename
-- `--due`: ISO format YYYY-MM-DD
-- `--summary`: Context, why it matters, dependencies
-- `--type`: Default "todo", can be "meeting", "deadline", etc.
+Write what you'd say in a 30-second verbal update:
 
-**Update task**:
+**✅ GOOD examples**:
+- "Completed TJA scorer validation - strong success (88.9% accuracy, exceeds targets)"
+- "Framework maintenance (scribe skill, hooks) d346cd6 811c407"
+- "Ad-hoc student meeting (thesis revision feedback)"
 
-```bash
-uv run python ~/.claude/skills/scribe/scripts/task_process.py modify <task_id> \
-  --priority 1 \
-  --due "2025-11-10"
-```
+**❌ TOO MUCH** (implementation details belong in git):
+- "Fixed test_batch_cli.py: Reduced from 132 lines to 52 lines (60% reduction), eliminated ALL mocking..."
 
-**Archive task** (when user mentions completion):
+### What NOT to Capture
 
-```bash
-uv run python ~/.claude/skills/scribe/scripts/task_process.py modify <task_id> --archive
-```
-
-### Prioritization Framework
-
-**P1 (Today/Tomorrow)** - Immediate action required:
-
-- Action window closing NOW
-- Meeting prep due within 24 hours
-- Immediate blocker for others
-- Time-sensitive response needed
-
-**P2 (This Week)** - Important, soon:
-
-- Deadline within 7 days
-- Significant strategic value
-- Preparation needed soon
-- Collaborative work where others waiting
-
-**P3 (Within 2 Weeks)** - Lower urgency:
-
-- Longer timeline
-- Lower strategic alignment
-- No immediate action window
-
-**Key factors**:
-
-1. **Temporal constraints**: Due date, action window, meeting dates
-2. **Strategic alignment**: Check `data/goals/*.md` for linkage
-3. **Dependencies & roles**: Who's waiting? What's your role? Who has agency?
-
-**Distinguish deadline vs action window**: Task due Friday may need action TODAY if delay reduces effectiveness.
-
-### Context Initialization (Silent - Every Conversation)
-
-**Before responding** to planning/strategy conversations, SILENTLY load:
-
-1. **Strategic Layer** (always):
-   - `data/goals/*.md` - strategic priorities
-   - `data/context/current-priorities.md` - active focus
-   - `data/context/future-planning.md` - upcoming commitments
-   - `data/context/accomplishments.md` - recent progress
-
-2. **Project Layer** (when discussing work):
-   - Recently modified `data/projects/*.md`
-   - Projects aligned with mentioned goals
-
-3. **Task Layer** (when relevant):
-   - Run `task_index.py` for compact overview
-   - Run `task_view.py --per-page=10` for detailed tasks
-   - Read `data/views/current_view.json` for current load
-   - ALWAYS check before creating tasks (avoid duplicates)
-
-**This loading is SILENT** - don't announce it.
-
-## Data Directory Structure
-
-```
-$AO/data/
-  goals/                    # Strategic objectives
-    *.md
-  projects/                 # Active work streams
-    *.md
-  tasks/
-    inbox/                  # Newly created
-      *.json
-    queue/                  # Prioritized, ready
-      *.json
-    archived/               # Completed/cancelled
-      *.json
-  context/                  # Strategic context
-    current-priorities.md
-    future-planning.md
-    accomplishments.md
-  sessions/                 # Session logs (automatic)
-    YYYY-MM-DD.json
-  views/                    # Generated views
-    current_view.json
-```
-
-## Context Capture Guidelines
-
-### What to Save Where
-
-**`data/context/accomplishments.md`**:
-
-- Completed tasks (and auto-archive the task)
-- Delivered milestones
-- Progress updates
-
-**`data/context/current-priorities.md`**:
-
-- Currently important work
-- Resource allocations
-- Focus areas
-
-**`data/context/future-planning.md`**:
-
-- Upcoming commitments
-- Future milestones
-- Planned activities
-
-**`data/projects/*.md`**:
-
-- Project updates, specs, requirements
-- Decisions, ruled-out ideas
-- People, roles, connections
-- Save notes AS YOU GO
-
-**`data/goals/*.md`**:
-
-- Strategic objectives
-- Theories of change
-- Progress toward goals
-- Resource allocations
-
-### Detail Level Guidelines
-
-Different file types serve different purposes and need different detail levels:
-
-**Accomplishments (Concise - "Weekly Standup Level")**:
-
-- One line per item unless truly significant strategic decision
-- Result + brief impact, NO implementation details
-- "What got done" that you'd mention in 30-second verbal update
-- ✅ GOOD: "TJA scorer validation - STRONG SUCCESS (88.9% accuracy, 9.7% FN rate, exceeds targets)"
-- ❌ TOO MUCH: "Fixed test_batch_cli.py: Reduced from 132 lines to 52 lines (60% reduction), eliminated ALL mocking..."
-
-**Project Files (Moderate - "Resumption Context Level")**:
-
-- Enough detail to resume work after interruption without searching
-- Key decisions made and WHY
-- Next steps or open questions
-- References to detailed docs/experiments if they exist
-- Current status and blockers
-- ✅ GOOD: "Scorer validation experiment (scorer_validation_v1 vs BASELINE) achieved 88.9% accuracy (vs 60.3% baseline), 9.7% FN rate (vs 52.7% baseline). Validates redesigned QualScore scorer with structured error detection. Ready for production deployment. Dashboard at localhost:8502. See tja/docs/SCORER_VALIDATION_EXPERIMENT.md for full analysis."
-- ❌ TOO LITTLE: "TJA scorer validation - STRONG SUCCESS"
-
-**Goals Files (Strategic - "Theory of Change Level")**:
-
-- High-level objectives and why they matter
-- Progress indicators and assessments
-- Resource allocations
-- Strategic pivots or realignments
-
-**Balance Principle**:
-
-- Accomplishments grows DAILY → must be scannable at a glance
-- Project files grow PER-PROJECT → can afford moderate detail for resumption
-- Goals files are STRATEGIC → focus on why and direction, not implementation
-- NONE should duplicate git commit messages (technical implementation details belong in git log)
-
-**Two tests before writing**:
-
-1. Accomplishments: "Would I say this in 30-second standup?" → Keep it that brief
-2. Project files: "Can I resume work from this in 2 weeks?" → Add that much context
-
-### Task Summary Writing
-
-**Write for the USER, not for analysis**:
-
-✅ GOOD: "Review Joel's chapter draft on marginal value of films (https://sharepoint.com/...). Focus on storytelling and platform realities. Provide feedback before supervision meeting."
-
-✅ GOOD: "Prepare keynote slides for Nov 15 conference. Focus on accountability frameworks. Review with team by Nov 10."
-
-❌ TOO MUCH: "As the invited keynote speaker for the conference on Nov 15, which aligns with your Academic Profile goal and was mentioned in your current priorities, you need to prepare slides..."
-
-**Include**:
-
-- What needs to be done
-- Minimal context (why it matters, briefly)
-- When it's due
-- Where to find materials (include direct links so user doesn't need to search emails)
-
-**Don't include**:
-
-- Strategic analysis of priority choices
-- Explanations of relationships user already knows
-- Role definitions or org hierarchy
-- Dependency chains (keep internal)
-
-### Strategic Capture: What to Record
-
-**Principle**: Git logs record technical changes. Accomplishments record TASK PROGRESS and STRATEGIC DECISIONS.
-
-**ONLY capture in accomplishments**:
-
-1. **Task completion**: When tasks from task system are completed
-   - Format: "Completed [task title]" with task ID link
-   - Progress details go in task notes (not accomplishments)
-   - Archive the task using task_process.py
-
-2. **Strategic decisions**: Big choices affecting priorities or direction
-   - Update `data/goals/*.md` or `data/context/current-priorities.md` directly
-   - Brief note in accomplishments if not part of an existing task
-   - Example: "Decided to deprioritize [project] to focus on [goal]"
-
-3. **Non-task work** (minimal, one line):
-   - Brief mention if work done wasn't aligned with existing tasks
-   - Include specific areas in parentheses: "Framework maintenance (scribe skill, hooks)"
-   - Can add commit hashes on same line for traceability
-   - Example: "Framework maintenance (scribe skill, validate_tool.py) d346cd6 811c407"
-   - Or: "Ad-hoc student meeting (thesis revision feedback)"
-   - Purpose: Evaluate whether doing what we said we would
-   - Keep it scannable - just enough to spot misalignment
-
-**Detail level - "Weekly standup report"**:
-
-- Write what you'd say in a 30-second verbal update to your manager
-- "Completed X, working on Y, blocked on Z" - that's the level
-- One line per item unless truly significant strategic decision
-- If you wouldn't mention it in a weekly standup → don't capture it
-- Git commits already document the technical work
-
-**DO NOT capture**:
-
-- Infrastructure changes (documented in git log)
-- Bug fixes (documented in git log)
-- Code refactoring (documented in git log)
-- Configuration updates (documented in git log)
-- Agent framework improvements (documented in git log)
-- Anything with a commit message (that's the record)
+**DO NOT capture** (documented in git log):
+- Infrastructure changes
+- Bug fixes
+- Code refactoring
+- Configuration updates
+- Framework improvements
 - Routine meetings (unless strategic decision made)
 - Minor task updates (task system tracks these)
 
-**Two tests before capturing**:
+### Two Tests Before Writing
 
 1. Would this appear in weekly report to supervisor? If NO → omit
-2. Would I mention this in a 30-second standup? If NO → omit
+2. Would I mention this in 30-second standup? If NO → omit
 
-**Writing location**:
+### Writing Location
 
-- ALWAYS write to `$AO/data/context/accomplishments.md` (personal repo: @nicsuzor/writing)
-- NEVER write to project repos (buttermilk/data/, bot/data/, etc.)
-- Personal strategic database is authoritative regardless of which project user is working on
+**ALWAYS write to** `$AO/data/context/accomplishments.md` (personal repo: @nicsuzor/writing)
 
-## Email Processing (MCP Integration)
+**NEVER write to** project repos (buttermilk/data/, bot/data/, etc.)
 
-**When processing emails** (using `outlook` or `omcp` MCP tool):
+## File Operations
 
-1. **Read email** using MCP tool
-2. **Extract information**:
-   - Action required? → Create task
-   - Project mention? → Update project file
-   - Strategic importance? → Note in context
-   - Deadline? → Set due date
-   - People? → Add to project contacts
+### Creating New Files
 
-3. **Assess importance**:
-   - From whom? (supervisor, collaborator, admin)
-   - Subject matter? (aligns with goals?)
-   - Urgency indicators? ("urgent", "by Friday")
-   - Action required? (reply, prepare, attend)
+1. **Use template** (`@assets/bmem-template.md`)
+2. **Fill frontmatter**: title, permalink, type, tags
+3. **Add context**: 1-3 sentence summary
+4. **Extract observations**: Categorized facts with tags
+5. **Add relations**: Link to related entities
+6. **Save** in appropriate directory
 
-4. **Create task if needed**
-5. **Update knowledge base**
+### Converting Existing Files
 
-**Do NOT**:
+1. **Read current file** completely
+2. **Check frontmatter**: Missing → Add. Incomplete → Fill. Malformed → Fix.
+3. **Scan for observations**: Extract facts from prose
+4. **Identify entity references**: Convert to `[[Entity Title]]` syntax
+5. **Preserve existing content**: Don't delete, only enhance
+6. **Validate**: Frontmatter, observations, relations syntax
 
-- Archive/delete/reply to emails (other agents handle that)
-- Process entire mailbox (only emails presented)
-- Duplicate tasks (check existing first)
+### File Exclusions
 
-## Strategic Alignment Enforcement
+**DO NOT enforce Basic Memory syntax** on:
+- `.github/workflows/*.yml`
+- `.claude/settings.json`
+- `.gitignore`, `.gitattributes`
+- `package.json`, `pyproject.toml`
+- `LICENSE`, `COPYRIGHT`
+- Files with `<!-- NO_BMEM -->` comment at top
 
-**CRITICAL**: Projects/tasks MUST link to goals in `data/goals/*.md`.
+## Commit and Push (MANDATORY)
 
-**When priority work lacks goal linkage**:
+**Before finishing, MUST commit and push all changes**:
 
-1. Read relevant project file
-2. Check claimed goal linkage
-3. Read goal file
-4. Verify project listed in goal
+1. **Check for uncommitted changes**:
+   ```bash
+   cd $AO && git status
+   ```
 
-**If misaligned, FLAG TO USER**: "I notice this project claims to support [Goal X], but it's not listed in that goal's file. Should we: a) Add it to the goal (confirm strategic importance) b) Deprioritize it (not strategically aligned)
+2. **If changes exist, commit them**:
+   ```bash
+   cd $AO && git add data/ && git commit -m "update(scribe): [brief summary]
 
-Your goals are the source of truth for focus."
+   Captured: [list what was added/updated]
+   - Projects: [which projects updated]
+   - Goals: [which goals updated]
+   - Context: [which context files updated]
+
+   🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+   Co-Authored-By: Claude <noreply@anthropic.com>"
+   ```
+
+3. **Push to remote**:
+   ```bash
+   cd $AO && git push
+   ```
+
+**If commit/push fails**: Report error to user. DO NOT complete silently with uncommitted changes.
 
 ## Critical Rules
 
 **NEVER**:
-
-- Interrupt user flow to ask for clarification
-- Wait until conversation end to capture information
-- Create duplicate tasks (always check first)
-- Save private data to `bot/` directory
-- Announce that you're capturing information
-- Miss completed task mentions (auto-archive them)
-- Summarize or reformat task_view.py output (show it directly)
+- Skip frontmatter validation
+- Create files without `title`/`permalink`/`type`
+- Add observations without categories
+- Add observations that duplicate frontmatter
+- Use single brackets for entity references
+- Modify excluded config files
+- Create/update/archive tasks directly (invoke tasks skill)
+- Miss completed work mentions (invoke tasks skill + update accomplishments)
 - Write implementation details to accomplishments (keep "standup level")
-- Write bare one-liners to project files (add "resumption context")
 
 **ALWAYS**:
-
-- Load context SILENTLY at conversation start
 - Extract information IMMEDIATELY as mentioned
-- Link tasks to projects and goals
-- Flag strategic misalignments
-- Auto-archive when user mentions completion
-- Check for duplicates before creating tasks
-- Use absolute ISO dates (YYYY-MM-DD)
-- Prioritize by importance + urgency + alignment
-- Present task view output DIRECTLY to user (Mode 2)
-- Match detail level to file type (see Detail Level Guidelines)
-- Commit and push all changes to $AO before completing
-
-## Quick Reference
-
-**Task lifecycle**:
-
-```bash
-# Create
-uv run python ~/.claude/skills/scribe/scripts/task_add.py --title "..." --priority N --project "..." --due "YYYY-MM-DD"
-
-# View all
-uv run python ~/.claude/skills/scribe/scripts/task_view.py --per-page=20
-
-# Index (compact)
-uv run python ~/.claude/skills/scribe/scripts/task_index.py
-
-# Update
-uv run python ~/.claude/skills/scribe/scripts/task_process.py modify <task_id> --priority N --due "YYYY-MM-DD"
-
-# Archive
-uv run python ~/.claude/skills/scribe/scripts/task_process.py modify <task_id> --archive
-```
-
-**Script paths**:
-
-- `~/.claude/skills/scribe/scripts/task_add.py`
-- `~/.claude/skills/scribe/scripts/task_view.py`
-- `~/.claude/skills/scribe/scripts/task_index.py`
-- `~/.claude/skills/scribe/scripts/task_process.py`
-
-**Data paths**:
-
-```
-$AO/data/tasks/{inbox,queue,archived}/*.json
-$AO/data/projects/*.md
-$AO/data/goals/*.md
-$AO/data/context/*.md
-$AO/data/sessions/*.json
-$AO/data/views/current_view.json
-```
-
-## Session Logging (Automatic)
-
-**Background**: Every session automatically logged to daily JSON files in `$AO/data/sessions/YYYY-MM-DD.json`.
-
-**Two-phase logging**:
-
-1. **Planning phase** (PreToolUse hook on TodoWrite): Captures session objectives
-2. **Completion phase** (Stop hook): Captures what was accomplished
-
-**How it works**:
-
-- TodoWrite triggers PreToolUse hook → logs objectives
-- Session end triggers Stop hook → analyzes transcript
-- Concise summaries saved with tool usage, file modifications, commands
-- Can associate with task IDs for progress tracking
-- File locking prevents race conditions
-
-**Manual logging** (optional):
-
-```bash
-uv run python ~/.claude/skills/scribe/scripts/session_log.py \
-  --session-id "session-123" \
-  --transcript "/path/to/transcript.jsonl" \
-  --summary "Implemented feature X" \
-  --finished \
-  --next-step "Test and commit" \
-  --task-id "20251024-hostname-abc123" \
-  --progress-note "Completed implementation"
-```
-
-## Commit and Push Changes (MANDATORY Before Completion)
-
-⚠️ **CRITICAL**: Before finishing, you MUST commit and push all changes to the personal repository.
-
-**At the end of EVERY scribe session**:
-
-1. **Check for uncommitted changes**:
-
-```bash
-cd $AO && git status
-```
-
-2. **If changes exist, commit them**:
-
-```bash
-cd $AO && git add data/ && git commit -m "update(scribe): [brief summary of what was captured]
-
-Captured: [list what was added/updated]
-- Tasks: [count] added/modified
-- Projects: [which projects updated]
-- Context: [which context files updated]
-
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
-
-Co-Authored-By: Claude <noreply@anthropic.com>"
-```
-
-3. **Push to remote**:
-
-```bash
-cd $AO && git push
-```
-
-**Verification**:
-
-- [ ] Git status shows clean working directory
-- [ ] Commit created with descriptive message
-- [ ] Changes pushed to remote repository
-- [ ] No uncommitted scribe data remains
-
-**If commit/push fails**: Report error to user. DO NOT complete silently with uncommitted changes.
-
-**Rationale**: Task and context data in personal repository must be safely persisted. Losing this data means losing strategic context, task tracking, and project history.
+- Validate frontmatter completeness
+- Use `[[Entity Title]]` syntax for references
+- Categorize observations with `[category]`
+- Ensure observations ADD new information (not duplicate)
+- Add tags for discoverability
+- Invoke tasks skill for task operations
+- Match detail level to file type (accomplishments = standup, projects = resumption context)
+- Commit and push all changes before completing
 
 ## Success Criteria
 
 This skill succeeds when:
-
 1. **Zero friction** - User never asks "can you save that?"
 2. **Automatic capture** - Information extracted silently as mentioned
-3. **Strategic alignment** - Tasks linked to goals, misalignments flagged
-4. **Accurate priorities** - P1/P2/P3 reflect true importance & urgency
-5. **Current knowledge** - Data always reflects latest state
-6. **Completed work archived** - Auto-archive when user mentions completion
-7. **Email integration** - Tasks extracted from emails automatically
-8. **User feels supported** - "Ideas are magically organized"
-9. **Changes persisted** - All data committed and pushed before completion
+3. **Quality observations** - No self-referential or duplicate observations
+4. **Knowledge graph maintained** - Semantic links kept current
+5. **Tasks delegated** - tasks skill invoked for all task operations
+6. **Changes persisted** - All data committed and pushed
+7. **User feels supported** - "Ideas are magically organized"
