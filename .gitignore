@@ -7,13 +7,13 @@ tmp*
 *.orig
 uv.lock
 
-# academicOps managed files - DO NOT COMMIT
-# These files are symlinked/copied from academicOps framework
+# academicOps managed files
 
-# Claude Code configuration - ALWAYS gitignored
-# Canonical versions in: commands/, skills/, bots/config/settings.json
-# User's ~/.claude/ symlinks to these locations
-.claude/
+# Repository .claude/ is now TRACKED (for remote coding)
+# Contains symlinks to commands/, skills/, hooks/, config/settings.json
+# NOTE: ~/.claude/ is in user's home directory (not in repo, no need to ignore)
+
+# DO NOT COMMIT these:
 logs/
 backups
 obs/
