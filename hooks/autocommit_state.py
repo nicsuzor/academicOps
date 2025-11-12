@@ -172,10 +172,19 @@ def main() -> None:
         print(json.dumps({}))
         sys.exit(0)
 
-    # Get repository path (current working directory)
+    # Get repository path - need to find the git repo containing $ACA_DATA
     try:
-        repo_path = Path.cwd()
-        # Verify we're in a git repository
+        from lib.paths import get_data_root
+        data_root = get_data_root()
+
+        # Find git root containing data directory
+        repo_path = data_root
+        while repo_path != repo_path.parent:
+            if (repo_path / ".git").exists():
+                break
+            repo_path = repo_path.parent
+
+        # Verify we found a git repository
         subprocess.run(
             ["git", "rev-parse", "--git-dir"],
             cwd=repo_path,
@@ -184,7 +193,7 @@ def main() -> None:
             timeout=2,
         )
     except Exception:
-        # Not in a git repo, continue without committing
+        # Can't find git repo or ACA_DATA not set, continue without committing
         print(json.dumps({}))
         sys.exit(0)
 

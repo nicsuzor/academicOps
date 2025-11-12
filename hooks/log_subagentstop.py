@@ -12,12 +12,10 @@ import contextlib
 import json
 import sys
 from datetime import UTC, datetime
-from pathlib import Path
 from typing import Any
 
-# Import shared utilities
-sys.path.insert(0, str(Path(__file__).parent))
-from session_logger import get_log_path
+from lib.paths import get_data_root
+from hooks.session_logger import get_log_path
 
 
 def log_to_session_file(
@@ -32,12 +30,8 @@ def log_to_session_file(
         input_data: Input data from Claude Code (complete data passed through)
     """
     try:
-        # Find project directory
-        project_dir = Path.cwd()
-        while project_dir != project_dir.parent:
-            if (project_dir / ".git").exists():
-                break
-            project_dir = project_dir.parent
+        # Get data directory for session logs
+        project_dir = get_data_root()
 
         # Get log path with -hooks suffix
         log_path = get_log_path(project_dir, session_id, suffix="-hooks")

@@ -32,6 +32,8 @@ import uuid
 from pathlib import Path
 from typing import Any
 
+from lib.paths import get_data_root
+
 try:
     from anthropic import Anthropic
 except ImportError:
@@ -423,8 +425,8 @@ def main() -> int:
     parser.add_argument(
         "--output-dir",
         type=Path,
-        default=Path.cwd() / "data" / "knowledge",
-        help="Output directory for knowledge files (default: ./data/knowledge)",
+        default=get_data_root() / "knowledge",
+        help="Output directory for knowledge files (default: $ACA_DATA/knowledge)",
     )
 
     # LLM options
