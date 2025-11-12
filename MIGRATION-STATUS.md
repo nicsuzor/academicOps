@@ -17,48 +17,35 @@ export ACA_DATA="/home/nic/src/writing/data"
 3. **Path library** - Created `lib/paths.py` with fail-fast resolution
 4. **Test infrastructure** - Updated `tests/paths.py` to delegate to lib.paths
 5. **Task scripts** - Updated task_view.py, task_add.py, task_archive.py
-6. **Hooks (partial)** - Updated log_session_stop.py, log_posttooluse.py
+6. **All hooks updated** - All 8 hooks now use lib.paths
+   - log_session_stop.py, log_posttooluse.py
+   - log_pretooluse.py, log_sessionstart.py
+   - log_subagentstop.py, log_userpromptsubmit.py
+   - autocommit_state.py (finds git repo from $ACA_DATA)
+   - extract_session_knowledge.py
+7. **Test files updated** - tests/integration/conftest.py, tests/test_paths.py
+8. **Environment variables set** - Added to ~/.env
+   - `AOPS=/home/nic/src/academicOps`
+   - `ACA_DATA=/home/nic/src/writing/data`
+9. **Symlinks updated** - ~/.claude/ now points to $AOPS
+10. **Setup script created** - `setup.sh` automates all configuration for new installations
 
 ## In Progress ⚠️
 
-### Remaining Hooks to Update
+### Final Testing
 
-Files that still use `sys.path.insert` and `Path.cwd()`:
-
-- [ ] hooks/log_pretooluse.py
-- [ ] hooks/log_sessionstart.py
-- [ ] hooks/log_subagentstop.py
-- [ ] hooks/log_userpromptsubmit.py
-- [ ] hooks/autocommit_state.py
-- [ ] hooks/extract_session_knowledge.py
-- [ ] hooks/user_prompt_submit.py
-
-**Pattern for each**:
-```python
-# OLD:
-sys.path.insert(0, str(Path(__file__).parent))
-from session_logger import get_log_path
-project_dir = Path.cwd()
-
-# NEW:
-from lib.paths import get_data_root
-from hooks.session_logger import get_log_path
-project_dir = get_data_root()
-```
-
-### Test Files to Update
-
-- [ ] tests/conftest.py
-- [ ] tests/integration/conftest.py
-- [ ] All test files that import from tests.paths
+Need to verify:
+- [ ] Task scripts work from any directory
+- [ ] Claude sessions work from any directory
+- [ ] Hooks execute correctly with new paths
+- [ ] Tests pass with new structure
 
 ## Pending 📋
 
-1. **Update symlinks** - Point `~/.claude/` to `$AOPS`
-2. **Set environment variables** - Add to shell config
-3. **Update documentation** - README.md, CORE.md references
-4. **Integration testing** - Test from multiple directories
-5. **Clean up** - Remove `writing/bots/` after validation
+1. **Integration testing** - Test from multiple directories
+2. **Documentation updates** - Update README.md, CORE.md with new structure
+3. **Clean up** - Remove `writing/bots/` after validation
+4. **Push to GitHub** - Push dev branch for review
 
 ## Testing Checklist
 
