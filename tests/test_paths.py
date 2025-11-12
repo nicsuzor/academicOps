@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from bots.tests.paths import (
+from tests.paths import (
     get_bots_dir,
     get_data_dir,
     get_hook_script,
@@ -52,7 +52,7 @@ class TestGetWritingRoot:
         monkeypatch.delenv("WRITING_ROOT", raising=False)
 
         # Mock __file__ to point to our temporary structure
-        import bots.tests.paths as paths_module
+        import tests.paths as paths_module
 
         fake_paths_file = tests_dir / "paths.py"
         monkeypatch.setattr(paths_module, "__file__", str(fake_paths_file))
@@ -82,7 +82,7 @@ class TestGetWritingRoot:
         monkeypatch.delenv("WRITING_ROOT", raising=False)
 
         # Mock __file__ to point to a location without README.md/bots markers
-        import bots.tests.paths as paths_module
+        import tests.paths as paths_module
 
         fake_paths_file = Path("/tmp/nowhere/paths.py")
         monkeypatch.setattr(paths_module, "__file__", str(fake_paths_file))

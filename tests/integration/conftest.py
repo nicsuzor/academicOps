@@ -14,7 +14,7 @@ from typing import Any
 
 import pytest
 
-from bots.tests.paths import get_writing_root
+from tests.paths import get_writing_root
 
 
 def run_claude_headless(
