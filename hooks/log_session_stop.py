@@ -10,31 +10,19 @@ Exit codes:
 """
 
 import json
-import os
 import sys
 from pathlib import Path
 
-# Import the session logger module
-sys.path.insert(0, str(Path(__file__).parent))
-from session_logger import write_session_log
+from lib.paths import get_data_root
+from hooks.session_logger import write_session_log
 
 
 def get_project_dir() -> Path:
-    """Get the project directory from environment or git root."""
-    # Try environment variable first
-    project_dir = os.environ.get("CLAUDE_PROJECT_DIR")
-    if project_dir:
-        return Path(project_dir)
+    """Get the data directory for session logs.
 
-    # Fall back to git root (find .git directory)
-    current = Path.cwd()
-    while current != current.parent:
-        if (current / ".git").exists():
-            return current
-        current = current.parent
-
-    # Last resort: use current directory
-    return Path.cwd()
+    In the new architecture, sessions are stored in $ACA_DATA regardless of cwd.
+    """
+    return get_data_root()
 
 
 def main() -> int:
