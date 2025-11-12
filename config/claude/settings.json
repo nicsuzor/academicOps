@@ -1,0 +1,114 @@
+{
+  "permissions": {
+    "allow": [
+      "Read"
+    ],
+    "deny": [
+      "Write(/data/tasks/**)",
+      "Write(*/data/tasks/**)",
+      "Edit(/data/tasks/**)",
+      "Edit(*/data/tasks/**)",
+      "Bash(rm */data/tasks/**)",
+      "Bash(mv */data/tasks/**)",
+      "Bash(cp */data/tasks/**)"
+    ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run python $AOPS/bots/hooks/log_sessionstart.py",
+            "timeout": 2000
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run python $AOPS/bots/hooks/log_pretooluse.py",
+            "timeout": 2000
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run python $AOPS/bots/hooks/log_posttooluse.py",
+            "timeout": 2000
+          },
+          {
+            "type": "command",
+            "command": "uv run python $AOPS/bots/hooks/autocommit_state.py",
+            "timeout": 35000
+          }
+        ]
+      },
+      {
+        "matcher": "TodoWrite",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run python $AOPS/bots/hooks/request_scribe.py",
+            "timeout": 2000
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run python $AOPS/bots/hooks/log_userpromptsubmit.py",
+            "timeout": 2000
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run python $AOPS/bots/hooks/log_subagentstop.py",
+            "timeout": 2000
+          },
+          {
+            "type": "command",
+            "command": "uv run python $AOPS/bots/hooks/request_scribe.py",
+            "timeout": 2000
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run python $AOPS/bots/hooks/log_session_stop.py",
+            "timeout": 35000
+          },
+          {
+            "type": "command",
+            "command": "uv run python $AOPS/bots/hooks/request_scribe.py",
+            "timeout": 2000
+          }
+        ]
+      }
+    ]
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "host=$(hostname -s); if git rev-parse --git-dir >/dev/null 2>&1; then repo=$(basename \"$(git --no-optional-locks rev-parse --show-toplevel 2>/dev/null)\"); branch=$(git --no-optional-locks symbolic-ref --short HEAD 2>/dev/null || git --no-optional-locks rev-parse --short HEAD 2>/dev/null); printf '%s | %s | %s' \"$host\" \"$repo\" \"$branch\"; else printf '%s | %s' \"$host\" \"$(pwd)\"; fi"
+  },
+  "alwaysThinkingEnabled": false
+}
