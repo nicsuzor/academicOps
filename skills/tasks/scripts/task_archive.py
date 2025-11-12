@@ -17,14 +17,11 @@ Options:
 from __future__ import annotations
 
 import argparse
-import os
 import sys
 from pathlib import Path
 
-# Add parent directory to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
-
-from bots.skills.tasks import task_ops
+from lib.paths import get_data_root
+from skills.tasks import task_ops
 
 
 def main():
@@ -47,7 +44,7 @@ def main():
     parser.add_argument(
         "--data-dir",
         type=str,
-        help="Data directory path (default: $ACA/data or ./data)",
+        help="Data directory path (default: $ACA_DATA)",
     )
 
     args = parser.parse_args()
@@ -56,8 +53,7 @@ def main():
     if args.data_dir:
         data_dir = Path(args.data_dir)
     else:
-        ACA = os.environ.get("ACA")
-        data_dir = Path(ACA) / "data" if ACA else Path().cwd() / "data"
+        data_dir = get_data_root()
 
     # Process each file
     results = []
