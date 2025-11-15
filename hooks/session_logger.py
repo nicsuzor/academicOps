@@ -2,8 +2,10 @@
 """
 Session logging module for Claude Code.
 
-Writes session logs to ./data/sessions/<date>-<shorthash>.jsonl
+Writes session logs to /tmp/claude-sessions/<date>-<shorthash>.jsonl
 Each log entry contains session metadata, transcript summary, and activity details.
+
+Session logs are ephemeral (stored in /tmp) and not tracked in git.
 """
 
 import datetime
@@ -48,7 +50,7 @@ def get_log_path(
     Get the log file path for a session.
 
     Args:
-        project_dir: Project root directory
+        project_dir: Project root directory (unused, kept for compatibility)
         session_id: Session ID
         date: Optional date string (YYYY-MM-DD). Defaults to today.
         suffix: Optional suffix to append before .jsonl (e.g., "-hooks")
@@ -70,7 +72,8 @@ def get_log_path(
     short_hash = get_session_short_hash(session_id)
     filename = f"{date}-{short_hash}{suffix}.jsonl"
 
-    log_dir = project_dir / "data" / "sessions"
+    # Use /tmp for ephemeral session logs (not tracked in git)
+    log_dir = Path("/tmp/claude-sessions")
     log_dir.mkdir(parents=True, exist_ok=True)
 
     return log_dir / filename
