@@ -115,6 +115,37 @@ create_symlink "commands" "$AOPS_PATH/commands"
 create_symlink "agents" "$AOPS_PATH/agents"
 create_symlink "settings.json" "$AOPS_PATH/config/claude/settings.json"
 
+# Create symlink for MCP configuration in home directory
+echo
+echo "Creating MCP configuration symlink..."
+mcp_link="$HOME/.mcp.json"
+mcp_target="$AOPS_PATH/config/mcp.json"
+
+if [ -L "$mcp_link" ]; then
+    # Exists as symlink
+    current_target="$(readlink "$mcp_link")"
+    if [ "$current_target" = "$mcp_target" ]; then
+        echo "  .mcp.json → $mcp_target (already correct)"
+    else
+        echo -e "${YELLOW}  Updating .mcp.json symlink${NC}"
+        echo "    Old: $current_target"
+        echo "    New: $mcp_target"
+        ln -sf "$mcp_target" "$mcp_link"
+    fi
+elif [ -e "$mcp_link" ]; then
+    # Exists but not a symlink
+    echo -e "${YELLOW}⚠ $mcp_link exists but is not a symlink${NC}"
+    echo "  Backing up to $mcp_link.backup"
+    mv "$mcp_link" "$mcp_link.backup"
+    ln -s "$mcp_target" "$mcp_link"
+    echo -e "${GREEN}✓ Created .mcp.json → $mcp_target${NC}"
+    echo -e "${GREEN}✓ Previous file backed up to ~/.mcp.json.backup${NC}"
+else
+    # Doesn't exist
+    ln -s "$mcp_target" "$mcp_link"
+    echo -e "${GREEN}✓ Created .mcp.json → $mcp_target${NC}"
+fi
+
 echo
 
 # Step 3: Validate setup
@@ -156,6 +187,12 @@ for link in skills commands agents settings.json; do
         VALIDATION_PASSED=false
     fi
 done
+
+# Check MCP symlink
+if [ ! -L "$HOME/.mcp.json" ]; then
+    echo -e "${RED}✗ Symlink missing: $HOME/.mcp.json${NC}"
+    VALIDATION_PASSED=false
+fi
 
 # Test Python path resolution
 echo
