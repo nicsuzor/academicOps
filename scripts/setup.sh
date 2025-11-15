@@ -74,7 +74,7 @@ ln -s "$COMMANDS_SRC" "$COMMANDS_DEST"
 echo -e "${GREEN}✓${NC} ~/.claude/commands/ → $COMMANDS_SRC"
 
 # Symlink CLAUDE.md
-CLAUDE_MD_SRC="$BOTS_DIR/config/CLAUDE.md"
+CLAUDE_MD_SRC="$BOTS_DIR/CLAUDE.md"
 CLAUDE_MD_DEST="$CLAUDE_HOME/CLAUDE.md"
 
 [ -e "$CLAUDE_MD_DEST" ] && rm -rf "$CLAUDE_MD_DEST"
@@ -123,8 +123,8 @@ echo -e "${GREEN}✓${NC} .claude/commands/ → commands/ (relative)"
 # Symlink CLAUDE.md (relative path)
 REPO_CLAUDE_MD_DEST="$REPO_CLAUDE/CLAUDE.md"
 [ -e "$REPO_CLAUDE_MD_DEST" ] && rm -rf "$REPO_CLAUDE_MD_DEST"
-ln -s ../config/CLAUDE.md "$REPO_CLAUDE_MD_DEST"
-echo -e "${GREEN}✓${NC} .claude/CLAUDE.md → config/CLAUDE.md (relative)"
+ln -s ../CLAUDE.md "$REPO_CLAUDE_MD_DEST"
+echo -e "${GREEN}✓${NC} .claude/CLAUDE.md → CLAUDE.md (relative)"
 
 echo
 echo -e "${GREEN}=== Setup Complete ===${NC}"
@@ -141,7 +141,6 @@ echo "   - agents/ (symlinked)"
 echo
 echo "2. $BOTS_DIR/.claude/ (repository, for remote coding)"
 echo "   - All symlinks use relative paths"
-echo "   - CLAUDE.md included"
 echo "   - Checked into git for remote environments"
 echo
 echo "Next:"

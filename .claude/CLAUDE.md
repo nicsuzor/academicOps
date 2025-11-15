@@ -1,1 +1,1 @@
-../config/CLAUDE.md
+../CLAUDE.md
