@@ -1,0 +1,20 @@
+.env
+scripts/tmp
+tmp
+.cache
+__pycache__
+tmp*
+*.orig
+uv.lock
+
+# academicOps managed files
+
+# Repository .claude/ is now TRACKED (for remote coding)
+# Contains symlinks to commands/, skills/, hooks/, config/settings.json
+# NOTE: ~/.claude/ is in user's home directory (not in repo, no need to ignore)
+
+# DO NOT COMMIT these:
+logs/
+backups
+obs/
+dist/

@@ -193,4 +193,44 @@ Experiments must be:
 
 ---
 
-**Last updated**: 2025-11-13 **Authoritative source**: This file (`README.md`)
+## Deployment
+
+### Creating a Release Package
+
+To package the framework for distribution to GitHub releases:
+
+```bash
+# Create deployment package (auto-versioned from git tags or date)
+python3 scripts/package_deployment.py
+
+# Or specify a custom version
+python3 scripts/package_deployment.py --version v1.0.0
+
+# Output will be in dist/aops-VERSION.tar.gz
+```
+
+The packaging script:
+
+- Includes all necessary files (skills, hooks, scripts, config, docs)
+- Excludes development files (tests, experiments, .git, __pycache__)
+- Generates INSTALL.md with installation instructions
+- Creates MANIFEST.json with package metadata
+
+### Publishing to GitHub
+
+```bash
+# Create a new release with the generated archive
+gh release create v1.0.0 dist/aops-v1.0.0.tar.gz \
+  --title "aOps v1.0.0" \
+  --notes "Release notes here"
+
+# Or upload manually through GitHub web interface
+```
+
+### Beta Releases
+
+Pushes to the `dev` branch automatically trigger beta releases via GitHub Actions. Beta versions follow the format: `<latest-tag>-beta.YYYYMMDD.<commit>` and are marked as pre-releases.
+
+---
+
+**Last updated**: 2025-11-16 **Authoritative source**: This file (`README.md`)
