@@ -25,8 +25,7 @@ echo
 # Determine paths
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 AOPS_PATH="$SCRIPT_DIR"
-WRITING_PATH="${WRITING_PATH:-/home/nic/src/writing}"
-ACA_DATA_PATH="$WRITING_PATH/data"
+ACA_DATA_PATH="${ACA_DATA}"
 CLAUDE_DIR="$HOME/.claude"
 
 echo "Framework paths:"
