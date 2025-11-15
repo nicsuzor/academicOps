@@ -1,0 +1,206 @@
+name: Create Beta Release
+
+on:
+  push:
+    branches:
+      - dev
+    paths:
+      - "skills/**"
+      - "hooks/**"
+      - "scripts/**"
+      - "config/**"
+      - "agents/**"
+      - "commands/**"
+      - "docs/**"
+      - "CLAUDE.md"
+      - "README.md"
+      - ".github/workflows/beta-release.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  create-beta-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch all history for proper versioning
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Generate beta version
+        id: version
+        run: |
+          # Get the short commit hash
+          SHORT_SHA=$(git rev-parse --short HEAD)
+
+          # Try to get the latest tag, fall back to v0.0.0 if none exists
+          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+
+          # Create beta version: latest-tag-beta.YYYYMMDD.commit
+          DATE=$(date +%Y%m%d)
+          BETA_VERSION="${LATEST_TAG}-beta.${DATE}.${SHORT_SHA}"
+
+          echo "version=${BETA_VERSION}" >> $GITHUB_OUTPUT
+          echo "Beta version: ${BETA_VERSION}"
+
+      - name: Create deployment package
+        run: |
+          python3 scripts/package_deployment.py --version ${{ steps.version.outputs.version }}
+
+      - name: Verify package was created
+        run: |
+          PACKAGE_FILE="dist/aops-${{ steps.version.outputs.version }}.tar.gz"
+          if [ ! -f "$PACKAGE_FILE" ]; then
+            echo "ERROR: Package file not created: $PACKAGE_FILE"
+            exit 1
+          fi
+          echo "✓ Package created: $PACKAGE_FILE"
+          echo "Package size: $(ls -lh $PACKAGE_FILE | awk '{print $5}')"
+
+      - name: Extract and verify package contents
+        run: |
+          # Extract to temp directory
+          mkdir -p /tmp/verify
+          tar -xzf dist/aops-${{ steps.version.outputs.version }}.tar.gz -C /tmp/verify
+
+          # Verify key files exist
+          EXTRACTED_DIR="/tmp/verify/aops-${{ steps.version.outputs.version }}"
+
+          echo "Verifying package contents..."
+
+          # Check for required files
+          REQUIRED_FILES=(
+            "README.md"
+            "CLAUDE.md"
+            "MANIFEST.json"
+            "INSTALL.md"
+          )
+
+          for file in "${REQUIRED_FILES[@]}"; do
+            if [ ! -f "$EXTRACTED_DIR/$file" ]; then
+              echo "ERROR: Required file missing: $file"
+              exit 1
+            fi
+            echo "✓ $file"
+          done
+
+          # Check for required directories
+          REQUIRED_DIRS=(
+            "skills"
+            "hooks"
+            "scripts"
+            "config"
+          )
+
+          for dir in "${REQUIRED_DIRS[@]}"; do
+            if [ ! -d "$EXTRACTED_DIR/$dir" ]; then
+              echo "ERROR: Required directory missing: $dir"
+              exit 1
+            fi
+            echo "✓ $dir/"
+          done
+
+          # Verify MANIFEST.json is valid JSON
+          if ! python3 -m json.tool "$EXTRACTED_DIR/MANIFEST.json" > /dev/null; then
+            echo "ERROR: MANIFEST.json is not valid JSON"
+            exit 1
+          fi
+          echo "✓ MANIFEST.json is valid JSON"
+
+          # Display manifest contents
+          echo ""
+          echo "MANIFEST.json contents:"
+          python3 -m json.tool "$EXTRACTED_DIR/MANIFEST.json"
+
+          echo ""
+          echo "Package verification complete!"
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          BETA_VERSION="${{ steps.version.outputs.version }}"
+          PACKAGE_FILE="dist/aops-${BETA_VERSION}.tar.gz"
+
+          # Create release notes
+          cat > release-notes.md << 'EOF'
+          ## Beta Release (Development Build)
+
+          ⚠️ **This is an automated beta release from the dev branch.**
+
+          This build is for testing and development purposes. For stable releases, use the latest non-beta version.
+
+          ### Installation
+
+          ```bash
+          # Download and extract
+          curl -L https://github.com/${{ github.repository }}/releases/download/${BETA_VERSION}/aops-${BETA_VERSION}.tar.gz -o aops-${BETA_VERSION}.tar.gz
+          tar -xzf aops-${BETA_VERSION}.tar.gz
+          cd aops-${BETA_VERSION}
+
+          # Install
+          bash scripts/setup.sh
+          ```
+
+          ### What's Included
+
+          - **Skills**: Specialized workflows for various tasks
+          - **Hooks**: Lifecycle automation and validation
+          - **Scripts**: Utility scripts for task management
+          - **Config**: Claude Code settings and configuration
+          - **Docs**: Core axioms and reference documentation
+
+          ### Build Information
+
+          - **Commit**: ${{ github.sha }}
+          - **Branch**: ${{ github.ref_name }}
+          - **Build Date**: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+
+          ### Changes Since Last Stable Release
+
+          See commit history: https://github.com/${{ github.repository }}/compare/$(git describe --tags --abbrev=0 2>/dev/null || echo "main")...${{ github.sha }}
+          EOF
+
+          # Create release
+          gh release create "${BETA_VERSION}" \
+            --title "Beta Release ${BETA_VERSION}" \
+            --notes-file release-notes.md \
+            --prerelease \
+            "${PACKAGE_FILE}"
+
+          echo "✓ Beta release created: ${BETA_VERSION}"
+          echo "Release URL: https://github.com/${{ github.repository }}/releases/tag/${BETA_VERSION}"
+
+      - name: Clean up old beta releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          echo "Cleaning up old beta releases (keeping last 5)..."
+
+          # Get all beta releases, sorted by creation date
+          BETA_RELEASES=$(gh release list --limit 100 --json tagName,isPrerelease,createdAt \
+            --jq '.[] | select(.isPrerelease == true and (.tagName | contains("beta"))) | .tagName' \
+            | sort -r)
+
+          # Count beta releases
+          BETA_COUNT=$(echo "$BETA_RELEASES" | wc -l)
+
+          if [ "$BETA_COUNT" -gt 5 ]; then
+            echo "Found $BETA_COUNT beta releases, removing oldest $(($BETA_COUNT - 5))..."
+
+            # Skip first 5, delete the rest
+            echo "$BETA_RELEASES" | tail -n +6 | while read -r tag; do
+              echo "Deleting old beta release: $tag"
+              gh release delete "$tag" --yes --cleanup-tag || echo "Failed to delete $tag (may not exist)"
+            done
+
+            echo "✓ Cleanup complete"
+          else
+            echo "Only $BETA_COUNT beta releases found, no cleanup needed"
+          fi
