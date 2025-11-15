@@ -52,8 +52,66 @@ def log_to_session_file(
         pass
 
 
+def validate_minimal_documentation(tool_name: str, args: dict[str, Any]) -> dict[str, Any] | None:
+    """
+    Enforce MINIMAL principle for documentation files.
+
+    Blocks creation of:
+    - *-GUIDE.md files (e.g., INSTALLATION-GUIDE.md)
+    - .md files exceeding 200 lines
+
+    Returns:
+        None if validation passes (continue)
+        Dict with {"continue": False, "systemMessage": "..."} if blocked
+    """
+    if tool_name != "Write":
+        return None
+
+    file_path = args.get("file_path", "")
+    content = args.get("content", "")
+
+    # Block *-GUIDE.md files (e.g., INSTALLATION-GUIDE.md, USER-GUIDE.md)
+    if file_path.endswith("-GUIDE.md") or "GUIDE.md" in file_path.upper():
+        return {
+            "continue": False,
+            "systemMessage": (
+                "❌ BLOCKED: *-GUIDE.md files violate MINIMAL principle.\n\n"
+                "User explicitly: 'I hate installation guides. I hate long documents.'\n"
+                "CLAUDE.md: 'the watchword is MINIMAL. We are ACTIVELY FIGHTING bloat.'\n\n"
+                "Instead:\n"
+                "- Add 2 sentences to README.md\n"
+                "- Installation docs belong in package's auto-generated INSTALL.md\n"
+                "- Never create separate guide files\n\n"
+                "See: Issue #202"
+            )
+        }
+
+    # Block .md files exceeding 200 lines
+    if file_path.endswith(".md"):
+        line_count = len(content.split("\n"))
+        if line_count > 200:
+            return {
+                "continue": False,
+                "systemMessage": (
+                    f"❌ BLOCKED: {line_count} lines violates MINIMAL principle.\n\n"
+                    "Documentation limits:\n"
+                    "- Skills: 500 lines max\n"
+                    "- Docs/chunks: 300 lines max\n"
+                    "- General docs: 200 lines max\n\n"
+                    "Consider:\n"
+                    "- Is this documentation necessary?\n"
+                    "- Can it be 2 sentences in README instead?\n"
+                    "- Should it be split into focused chunks in docs/chunks/?\n\n"
+                    "User values: 'efficiency over lengthy explanation'\n\n"
+                    "See: Issue #202"
+                )
+            }
+
+    return None
+
+
 def main():
-    """Main hook entry point - logs and continues."""
+    """Main hook entry point - logs and validates."""
     # Read input from stdin
     input_data: dict[str, Any] = {}
     with contextlib.suppress(Exception):
@@ -61,16 +119,22 @@ def main():
         input_data = json.load(sys.stdin)
 
     session_id = input_data.get("session_id", "unknown")
+    tool_name = input_data.get("tool", "")
+    args = input_data.get("args", {})
 
     # Log to hooks session file
     log_to_session_file(session_id, "PreToolUse", input_data)
 
-    # Noop output - just continue
+    # Validate MINIMAL documentation principle
+    validation_result = validate_minimal_documentation(tool_name, args)
+    if validation_result is not None:
+        # Blocked - return error
+        print(json.dumps(validation_result))
+        sys.exit(0)
+
+    # Validation passed - continue
     output_data: dict[str, Any] = {}
-
-    # Output empty JSON (continue execution)
     print(json.dumps(output_data))
-
     sys.exit(0)
 
 
