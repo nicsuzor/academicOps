@@ -1,6 +1,6 @@
 ---
 description: Make minor adjustments to memory/instructions for future agents
-permalink: bots/commands/learn
+permalink: commands/learn
 ---
 
 **IMMEDIATELY** invoke the `framework` skill. The user wants to update memory/instructions with a minor adjustment.

@@ -13,7 +13,7 @@ import subprocess
 
 import pytest
 
-from bots.tests.paths import get_writing_root
+from tests.paths import get_writing_root
 
 
 @pytest.mark.integration

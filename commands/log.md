@@ -1,6 +1,6 @@
 ---
 description: Log agent performance (successes and failures) to framework learning system
-permalink: bots/commands/log
+permalink: commands/log
 ---
 
 Pause and **IMMEDIATELY** invoke the `framework` skill. The user is reporting agent behavior worth tracking—either a success to reinforce or a failure to address.

@@ -13,8 +13,8 @@ from pathlib import Path
 
 from fastmcp import FastMCP
 
-from bots.skills.tasks import task_ops
-from bots.skills.tasks.models import (
+from skills.tasks import task_ops
+from skills.tasks.models import (
     ArchiveTasksRequest,
     ArchiveTasksResponse,
     CreateTaskRequest,

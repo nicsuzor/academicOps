@@ -9,7 +9,7 @@
 ## Structure
 
 ```
-bots/
+$AOPS/
 ├── CORE.md              # User context, tools, paths (loaded at session start)
 ├── AXIOMS.md            # Universal principles (loaded at session start)
 ├── ACCOMMODATIONS.md    # ADHD work style (loaded at session start)
@@ -89,9 +89,9 @@ Hooks are configured in `hooks/hooks.json` and documented in `hooks/README.md`.
 
 When a user asks "have we built X" or "do we have Y capability":
 
-1. **Check skills first**: `ls bots/skills/*/SKILL.md` and read relevant SKILL.md files
-2. **Check experiment log**: `data/projects/aops/experiments/LOG.md` for recent work
-3. **Check hooks**: `bots/hooks/README.md` for automation capabilities
+1. **Check skills first**: `ls $AOPS/skills/*/SKILL.md` and read relevant SKILL.md files
+2. **Check experiment log**: `$ACA_DATA/projects/aops/experiments/LOG.md` for recent work
+3. **Check hooks**: `$AOPS/hooks/README.md` for automation capabilities
 4. **Only then explore**: If not found in framework docs, explore the codebase
 
 **Pattern**: Framework questions → Framework documentation first, NOT codebase exploration.
@@ -101,26 +101,26 @@ When a user asks "have we built X" or "do we have Y capability":
 **See all skills**:
 
 ```bash
-ls bots/skills/*/SKILL.md
+ls $AOPS/skills/*/SKILL.md
 ```
 
 **Read a skill**:
 
 ```bash
-cat bots/skills/analyst/SKILL.md
+cat $AOPS/skills/analyst/SKILL.md
 ```
 
 **See framework experiments**:
 
 ```bash
-cat data/projects/aops/experiments/LOG.md
+cat $ACA_DATA/projects/aops/experiments/LOG.md
 ```
 
 ---
 
 ## Adding New Components
 
-**PROHIBITED** without integration tests. See `bots/skills/framework/SKILL.md` for complete workflow.
+**PROHIBITED** without integration tests. See `skills/framework/SKILL.md` for complete workflow.
 
 **Quick version**:
 
@@ -139,28 +139,26 @@ All framework work follows [[AXIOMS.md]].
 
 ---
 
-## Migration from academicOps
+## Architecture Evolution
 
-The old `academicOps/` (also called `aOps/`) framework has been replaced by this minimal `bots/` framework.
+The framework has been streamlined for run-from-anywhere operation using environment variables.
 
-**Why**: Bloat. Over-engineering. Complexity.
-
-**What was migrated**:
+**Key changes**:
 
 - Core principles → `AXIOMS.md`, `CORE.md`
 - analyst skill → `skills/analyst/`
 - Session logging → `hooks/session_logger.py`
 - Framework design philosophy → `skills/framework/SKILL.md`
+- Data storage → `$ACA_DATA/` (separate from code)
+- Path resolution → `lib/paths.py` (single source of truth)
 
-**What was NOT migrated**:
+**Not included**:
 
-- Tasks skill (now handled differently via `data/tasks/`)
+- Tasks skill (now handled differently via `$ACA_DATA/tasks/`)
 - Email skill (use Outlook MCP directly)
 - git-commit skill (use Claude Code native git workflow)
 - bmem-ops skill (use bmem MCP directly)
 - Various other specialized skills (re-add only if proven necessary)
-
-The old `academicOps/` directory remains for reference but is no longer active.
 
 ---
 
@@ -170,10 +168,10 @@ All framework changes require passing integration tests:
 
 ```bash
 # Test documentation integrity
-bash bots/skills/framework/tests/test_framework_integrity.sh
+bash $AOPS/skills/framework/tests/test_framework_integrity.sh
 
 # Test specific components
-bash bots/skills/framework/tests/test_*.sh
+bash $AOPS/skills/framework/tests/test_*.sh
 ```
 
 **Rule**: If tests fail, fix or revert. Never commit broken state.
@@ -184,8 +182,8 @@ bash bots/skills/framework/tests/test_*.sh
 
 The framework learns from successes and failures:
 
-- **Experiment log**: `skills/framework/experiments/LOG.md`
-- **Experiment designs**: `skills/framework/experiments/YYYY-MM-DD_*.md`
+- **Experiment log**: `$ACA_DATA/projects/aops/experiments/LOG.md`
+- **Experiment designs**: `$ACA_DATA/projects/aops/experiments/YYYY-MM-DD_*.md`
 
 Experiments must be:
 
@@ -195,4 +193,4 @@ Experiments must be:
 
 ---
 
-**Last updated**: 2025-11-10 **Authoritative source**: This file (`bots/README.md`)
+**Last updated**: 2025-11-13 **Authoritative source**: This file (`README.md`)

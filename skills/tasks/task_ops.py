@@ -15,7 +15,7 @@ from typing import Any
 
 import yaml
 
-from bots.skills.tasks.models import Task
+from skills.tasks.models import Task
 
 
 class TaskDirectoryNotFoundError(Exception):

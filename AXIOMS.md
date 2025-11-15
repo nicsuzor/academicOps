@@ -38,10 +38,10 @@
 
 10. **Always Dogfooding**: Use our own research projects as development guides, test cases, tutorials. Never create fake examples for tests or documentation.
 
-11. **Skills are Read-Only**: Skills in `bots/skills/` MUST NOT contain dynamic data
+11. **Skills are Read-Only**: Skills in `skills/` MUST NOT contain dynamic data
     - Skills are distributed as zip files and installed read-only
     - ❌ NO log files, experiment tracking, or mutable state in skills
-    - ✅ All dynamic data lives in `data/` hierarchy
+    - ✅ All dynamic data lives in `$ACA_DATA/` hierarchy
     - ✅ Skills reference data paths, never write to their own directories
 
 12. **Trust Version Control**: We work in git repositories - git is the backup system

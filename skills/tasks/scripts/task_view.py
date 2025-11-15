@@ -50,6 +50,13 @@ if data_dir_override:
 else:
     DATA_DIR = get_tasks_dir()
 
+# task_ops expects parent of tasks/ directory
+# If DATA_DIR ends with /tasks, use parent
+if DATA_DIR.name == "tasks":
+    BASE_DATA_DIR = DATA_DIR.parent
+else:
+    BASE_DATA_DIR = DATA_DIR
+
 print(f"Using data_dir: {DATA_DIR}")
 
 # Set default per_page based on mode
@@ -76,7 +83,9 @@ def task_to_dict(task):
     }
 
 
-tasks = task_ops.load_tasks(DATA_DIR / "inbox")
+# Load only inbox tasks (not archived)
+# list_tasks already filters to inbox/queue and excludes archived
+tasks = task_ops.list_tasks(BASE_DATA_DIR, include_archived=False)
 tasks_list = [task_to_dict(t) for t in tasks]
 
 # -------- sort logic --------

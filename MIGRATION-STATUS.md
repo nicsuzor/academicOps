@@ -29,23 +29,28 @@ export ACA_DATA="/home/nic/src/writing/data"
    - `ACA_DATA=/home/nic/src/writing/data`
 9. **Symlinks updated** - ~/.claude/ now points to $AOPS
 10. **Setup script created** - `setup.sh` automates all configuration for new installations
+11. **Documentation updated** - Replaced outdated `bots/` path references in markdown files
+12. **Skill script architecture validated** - End-to-end tests confirm skills work from any directory
+    - Created `tests/integration/test_skill_discovery_standalone.py`
+    - Created `tests/integration/test_skill_script_discovery.py` (pytest version)
+    - All tests passing: symlinks, script execution, cross-repo functionality
+13. **Python imports fixed** - Updated all `from bots.` → `from skills.` or `from tests.`
+14. **Script API compatibility** - Fixed task_view.py to use current task_ops API
 
-## In Progress ⚠️
+## Validation ✅
 
-### Final Testing
-
-Need to verify:
-- [ ] Task scripts work from any directory
-- [ ] Claude sessions work from any directory
-- [ ] Hooks execute correctly with new paths
-- [ ] Tests pass with new structure
+### Tested and Working:
+- ✅ Task scripts work from any directory (via `~/.claude/skills/` symlinks)
+- ✅ Scripts accessible from writing repo with `PYTHONPATH=$AOPS`
+- ✅ Symlinks resolve correctly to `$AOPS/skills/`
+- ✅ No need to search for scripts in CWD
+- ✅ Automated tests catch regression
 
 ## Pending 📋
 
 1. **Integration testing** - Test from multiple directories
-2. **Documentation updates** - Update README.md, CORE.md with new structure
-3. **Clean up** - Remove `writing/bots/` after validation
-4. **Push to GitHub** - Push dev branch for review
+2. **Clean up** - Remove `writing/bots/` after validation
+3. **Push to GitHub** - Push dev branch for review
 
 ## Testing Checklist
 

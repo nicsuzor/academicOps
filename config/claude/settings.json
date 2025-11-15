@@ -19,7 +19,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run python $AOPS/bots/hooks/log_sessionstart.py",
+            "command": "PYTHONPATH=$AOPS uv run --no-project python $AOPS/hooks/log_sessionstart.py",
             "timeout": 2000
           }
         ]
@@ -30,7 +30,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run python $AOPS/bots/hooks/log_pretooluse.py",
+            "command": "PYTHONPATH=$AOPS uv run --no-project python $AOPS/hooks/log_pretooluse.py",
             "timeout": 2000
           }
         ]
@@ -41,12 +41,12 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run python $AOPS/bots/hooks/log_posttooluse.py",
+            "command": "PYTHONPATH=$AOPS uv run --no-project python $AOPS/hooks/log_posttooluse.py",
             "timeout": 2000
           },
           {
             "type": "command",
-            "command": "uv run python $AOPS/bots/hooks/autocommit_state.py",
+            "command": "PYTHONPATH=$AOPS uv run --no-project python $AOPS/hooks/autocommit_state.py",
             "timeout": 35000
           }
         ]
@@ -56,7 +56,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run python $AOPS/bots/hooks/request_scribe.py",
+            "command": "PYTHONPATH=$AOPS uv run --no-project python $AOPS/hooks/request_scribe.py",
             "timeout": 2000
           }
         ]
@@ -67,7 +67,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run python $AOPS/bots/hooks/log_userpromptsubmit.py",
+            "command": "PYTHONPATH=$AOPS uv run --no-project python $AOPS/hooks/log_userpromptsubmit.py",
             "timeout": 2000
           }
         ]
@@ -78,12 +78,12 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run python $AOPS/bots/hooks/log_subagentstop.py",
+            "command": "PYTHONPATH=$AOPS uv run --no-project python $AOPS/hooks/log_subagentstop.py",
             "timeout": 2000
           },
           {
             "type": "command",
-            "command": "uv run python $AOPS/bots/hooks/request_scribe.py",
+            "command": "PYTHONPATH=$AOPS uv run --no-project python $AOPS/hooks/request_scribe.py",
             "timeout": 2000
           }
         ]
@@ -94,13 +94,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run python $AOPS/bots/hooks/log_session_stop.py",
+            "command": "PYTHONPATH=$AOPS uv run --no-project python $AOPS/hooks/log_session_stop.py",
             "timeout": 35000
-          },
-          {
-            "type": "command",
-            "command": "uv run python $AOPS/bots/hooks/request_scribe.py",
-            "timeout": 2000
           }
         ]
       }
