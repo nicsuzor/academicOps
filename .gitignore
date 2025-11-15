@@ -17,3 +17,4 @@ uv.lock
 logs/
 backups
 obs/
+dist/
