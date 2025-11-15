@@ -28,6 +28,26 @@ Route development tasks to appropriate skills based on task type:
 - Multi-step development workflow needed
 - User story to implementation cycle
 
+## Test Creation Pre-Check (MANDATORY)
+
+**Before routing to python-dev for test creation, VERIFY:**
+
+1. **NOT creating new test data** - Check if task mentions:
+   - Creating new databases/collections ❌
+   - Running vectorization/indexing pipelines ❌
+   - Creating new configs ❌
+   - Generating fake/mock data ❌
+
+2. **Using existing infrastructure** - Verify task specifies:
+   - Use existing fixtures from conftest.py ✅
+   - Connect to existing live data ✅
+   - Use real production data ✅
+
+**If task violates these rules:**
+- **STOP immediately**
+- **Report violation** to supervisor
+- **Request clarification** on using existing test infrastructure
+
 ## Invocation Pattern
 
 Supervisor provides detailed instruction. Dev agent:

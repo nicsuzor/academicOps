@@ -156,16 +156,20 @@ Behavior to test: [SPECIFIC behavior for this cycle]
 File: tests/test_[name].py
 
 Test requirements (python-dev skill enforces):
-- Use real fixtures (NO fake data)
-- Load test data from JSON fixtures in tests/fixtures/
+- Use EXISTING test infrastructure (check conftest.py for fixtures)
+- Connect to EXISTING live data using project configs
+- Use REAL production data (NO fake data, NO new databases)
+- NEVER create new databases/collections for testing
+- NEVER create new configs - use existing project configs
+- NEVER run vectorization/indexing to create test data
 - NEVER mock internal code (only external APIs)
 - Integration test pattern testing complete workflow
 - Test should fail with: [expected error message]
 
 The python-dev skill will guide you through:
-- Proper fixture usage
-- JSON fixture creation
-- External API mocking patterns
+- Using existing test fixtures from conftest.py
+- Connecting to live data via project configs
+- External API mocking patterns (ONLY for external APIs)
 - Arrange-Act-Assert structure
 
 After python-dev skill completes, STOP and report:
@@ -179,7 +183,9 @@ After python-dev skill completes, STOP and report:
 **Verification**:
 
 - [ ] Dev agent invoked python-dev skill (not just "created test")
-- [ ] Test uses real fixtures (check dev's report)
+- [ ] Test uses EXISTING fixtures from conftest.py (not new ones)
+- [ ] Test connects to EXISTING live data (not new databases)
+- [ ] Test does NOT create new configs or run indexing pipelines
 - [ ] Test location provided with full path
 - [ ] Run command provided
 - [ ] Failure message confirms missing implementation
@@ -546,7 +552,7 @@ Provide user with:
 
 ### Available Skills and Tools
 
-**📖 bots/skills/README.md** - Complete inventory of available skills
+**📖 skills/README.md** - Complete inventory of available skills
 
 - python-dev: Production Python development with fail-fast principles
 - feature-dev: Test-first feature development workflow
@@ -555,7 +561,7 @@ Provide user with:
 - framework: Framework maintenance and issue logging
 - analyst: Research data analysis with dbt and Streamlit
 
-**📖 bots/agents/dev.md** - Dev agent routing logic
+**📖 agents/dev.md** - Dev agent routing logic
 
 - Routes development work to python-dev or feature-dev
 - Single-step execution pattern
@@ -570,8 +576,8 @@ Provide user with:
 
 **Load these references when**:
 
-- Unsure which skill to use → Load bots/skills/README.md
-- Need dev agent behavior → Load bots/agents/dev.md
+- Unsure which skill to use → Load skills/README.md
+- Need dev agent behavior → Load agents/dev.md
 - Framework issues → Use framework skill
 
 **NOTE**: If you notice gaps or outdated information, use framework skill to log issues.

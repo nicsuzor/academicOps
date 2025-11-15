@@ -98,17 +98,34 @@ def process_records(
 
 ### Step 2: Write Test First (TDD)
 
-Write failing test in `tests/` directory:
+**CRITICAL - Test Infrastructure Requirements:**
+
+Before writing ANY test, check:
+
+1. **Use EXISTING test infrastructure** - Check `conftest.py` for fixtures
+2. **Connect to EXISTING live data** - Use project configs to find data locations
+3. **Test against REAL data** - No fake data, no new databases
+4. **Never create new test data** - Don't run pipelines, don't create databases
+
+**Checklist before writing test:**
+
+- [ ] Checked `conftest.py` for existing fixtures?
+- [ ] Identified live data location from project config?
+- [ ] Confirmed test uses real data, not mocks?
+- [ ] Verified NOT creating new databases/configs?
+
+**Example using existing infrastructure:**
 
 ```python
-def test_process_records_basic():
-    """Test basic record processing."""
-    records = [{"id": 1, "value": "test"}]
+def test_process_records_basic(db_session):  # Uses existing fixture
+    """Test basic record processing with real database."""
+    # Connects to existing database via fixture
+    records = db_session.query(Record).limit(10).all()
     output_path = tmp_path / "output.json"
 
     count = process_records(records, output_path)
 
-    assert count == 1
+    assert count == len(records)
     assert output_path.exists()
 
 
