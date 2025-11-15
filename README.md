@@ -193,6 +193,10 @@ Experiments must be:
 
 ---
 
+## Installation
+
+Download the [latest release](https://github.com/nicsuzor/academicOps/releases), extract it, and run `bash scripts/setup.sh`. Done.
+
 ## Deployment
 
 ### Creating a Release Package
