@@ -771,7 +771,7 @@ Research analyzing key challenges in platform governance including scale, contex
 
 ## References
 
-- **Obsidian Format**: bots/resources/obsidian-format-spec.md
+- **Obsidian Format**: skills/bmem/references/obsidian-format-spec.md
 - **Basic Memory**: https://github.com/basicmachines-co/basic-memory
 - **Extended bmem Guide**: academicOps/docs/resources/basic-memory/ai-assistant-guide-extended.md
 
