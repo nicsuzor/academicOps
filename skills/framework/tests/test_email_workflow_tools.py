@@ -23,7 +23,7 @@ def test_email_workflow_has_explicit_tool_examples() -> None:
     This ensures agents can directly invoke tools without guessing API structure.
     """
     workflow_file = Path(
-        "/home/nic/src/writing/bots/skills/tasks/workflows/email-capture.md"
+        "/home/nic/src/academicOps/skills/tasks/workflows/email-capture.md"
     )
     assert workflow_file.exists(), f"Workflow file not found: {workflow_file}"
 
