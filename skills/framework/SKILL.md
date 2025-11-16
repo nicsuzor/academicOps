@@ -12,7 +12,7 @@ permalink: bots/skills/framework/skill
 
 # Framework Maintenance Skill
 
-Maintain the minimal automation framework in `/home/nic/src/writing/bots/`. Enforce strict quality standards: single source of truth, no documentation conflicts, mandatory integration tests, and controlled growth.
+Maintain the minimal automation framework in academicOps (installed via symlinks to `~/.claude/`). Enforce strict quality standards: single source of truth, no documentation conflicts, mandatory integration tests, and controlled growth.
 
 ## Overview
 
@@ -151,10 +151,10 @@ The automation framework is built incrementally using a rigorous test-first appr
 
 **Single source of truth hierarchy**:
 
-1. `/home/nic/src/writing/README.md` - Authoritative directory structure and paths
-2. `/home/nic/src/writing/bots/AXIOMS.md` - Foundational principles
-3. `/home/nic/src/writing/bots/CORE.md` - User context and tools
-4. `/home/nic/src/writing/bots/ACCOMMODATIONS.md` - Work style requirements
+1. `~/.claude/CLAUDE.md` - Authoritative directory structure and paths
+2. `/home/nic/src/academicOps/AXIOMS.md` - Foundational principles
+3. `/home/nic/src/academicOps/CORE.md` - User context and tools
+4. `/home/nic/src/academicOps/ACCOMMODATIONS.md` - Work style requirements
 
 All other documentation must reference these sources, never duplicate their content.
 
@@ -553,7 +553,7 @@ def test_something(fixture: Type) -> None:
 ## File Organization
 
 ```
-/home/nic/src/writing/bots/
+/home/nic/src/academicOps/
 ├── CORE.md              # Authoritative user/tools reference
 ├── AXIOMS.md            # Authoritative principles
 ├── ACCOMMODATIONS.md    # Authoritative work style
