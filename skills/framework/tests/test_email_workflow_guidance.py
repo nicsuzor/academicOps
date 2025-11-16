@@ -28,7 +28,7 @@ def test_core_md_has_explicit_email_workflow_triggers():
     - "review emails for action items"
     """
     # Arrange: Locate CORE.md
-    core_md_path = Path("/home/nic/src/writing/bots/CORE.md")
+    core_md_path = Path("/home/nic/src/academicOps/CORE.md")
     assert core_md_path.exists(), f"CORE.md not found at {core_md_path}"
 
     # Act: Read CORE.md content
@@ -92,7 +92,7 @@ def test_email_workflow_guidance_is_complete():
     3. Description of what the workflow does
     """
     # Arrange: Locate CORE.md
-    core_md_path = Path("/home/nic/src/writing/bots/CORE.md")
+    core_md_path = Path("/home/nic/src/academicOps/CORE.md")
     core_content = core_md_path.read_text()
 
     # Assert: Should reference the workflow documentation
