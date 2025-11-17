@@ -17,7 +17,8 @@ bots/tests/
     ├── conftest.py                  # Integration test fixtures
     ├── test_session_start_content.py # Session start E2E tests
     ├── test_headless_fixture.py     # Headless execution tests
-    └── test_bmem_skill.py           # Bmem skill integration tests
+    ├── test_bmem_skill.py           # Bmem skill integration tests
+    └── test_task_viz.py             # Task visualization dashboard tests
 ```
 
 ## Test Categories
@@ -49,19 +50,21 @@ Run by default. Complete in ~4 seconds with 20 parallel workers.
 
 ### Integration Tests (Require `-m integration`)
 
-**Fast Integration Tests**: 7 tests (no Claude execution)
+**Fast Integration Tests**: 10 tests (no Claude execution)
 
 - Session start file validation
 - Directory structure verification
 - Documentation reference checking
+- Task file parsing and discovery (3 tests)
 
-**Slow Integration Tests**: 10 tests (require Claude Code execution)
+**Slow Integration Tests**: 11 tests (require Claude Code execution)
 
 - Headless execution fixture (8 tests)
 - Session start content loading (2 tests)
 - Bmem skill functionality (4 tests)
+- Task visualization agent workflow (1 test)
 
-**Total**: 17 integration tests
+**Total**: 21 integration tests
 
 ## Running Tests
 
@@ -87,7 +90,7 @@ Adds 7 fast integration tests (~5 seconds total).
 uv run pytest bots/tests/ -m integration
 ```
 
-Runs all 17 integration tests. Slow tests execute Claude Code in headless mode (~60-180 seconds each).
+Runs all 21 integration tests. Slow tests execute Claude Code in headless mode (~60-180 seconds each).
 
 ### Slow Tests Only
 
@@ -95,7 +98,7 @@ Runs all 17 integration tests. Slow tests execute Claude Code in headless mode (
 uv run pytest bots/tests/ -m slow
 ```
 
-Runs only the 10 slow integration tests that require Claude execution.
+Runs only the 11 slow integration tests that require Claude execution.
 
 ### Everything
 
@@ -119,6 +122,12 @@ uv run pytest bots/tests/integration/test_session_start_content.py -m "not slow"
 
 # Bmem skill tests
 uv run pytest bots/tests/integration/test_bmem_skill.py -m integration -v
+
+# Task visualization tests (fast only)
+uv run pytest bots/tests/integration/test_task_viz.py -m "integration and not slow" -v
+
+# Task visualization tests (all including slow)
+uv run pytest bots/tests/integration/test_task_viz.py -m integration -v
 ```
 
 ## Test Configuration
@@ -242,6 +251,13 @@ result = claude_headless(
    - Parameter passing (model, timeout, permission_mode)
    - JSON output parsing
    - Working directory handling
+
+6. **Task Visualization Dashboard**
+   - Task file discovery across multiple repositories
+   - Markdown with YAML frontmatter parsing
+   - Task metadata extraction (title, status, project, priority, blockers)
+   - Agent workflow for reading and analyzing tasks
+   - Excalidraw JSON structure validation
 
 ### What We Don't Test
 
