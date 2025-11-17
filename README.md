@@ -6,82 +6,120 @@
 
 ---
 
-## Structure
+## academicOps Repository Structure
 
 ```
 $AOPS/
-├── CORE.md              # User context, tools, paths (loaded at session start)
-├── AXIOMS.md            # Universal principles (loaded at session start)
-├── ACCOMMODATIONS.md    # ADHD work style (loaded at session start)
-├── STYLE-QUICK.md       # Writing style quick ref (loaded at session start)
-├── STYLE.md             # Full writing style guide (referenced, not loaded)
-├── README.md            # THIS FILE - framework documentation
+├── CORE.md              # User context, tools, paths [SESSION START: loaded first]
+├── AXIOMS.md            # Framework principles and quality standards [SESSION START: loaded second]
+├── ACCOMMODATIONS.md    # Work style requirements (ADHD, cognitive load) [SESSION START: loaded third]
+├── STYLE-QUICK.md       # Writing style reference [SESSION START: loaded fourth]
+├── STYLE.md             # Full writing style guide (referenced, not loaded at start)
+├── README.md            # THIS FILE - framework directory map and installation
 │
-├── skills/              # Agent skills (specialized workflows)
-│   ├── framework/       # Framework maintenance skill
-│   ├── analyst/         # Data analysis (dbt, Streamlit, stats)
-│   ├── python-dev/      # Production Python code
-│   └── feature-dev/     # Feature development workflow
+├── BMEM-FORMAT.md       # bmem markdown format specification
+├── BMEM-CLAUDE-GUIDE.md # Using bmem from Claude Code
+├── BMEM-OBSIDIAN-GUIDE.md # Using bmem with Obsidian
 │
-├── hooks/               # Lifecycle hooks
+├── VISION.md            # End state: fully-automated academic workflow
+├── ROADMAP.md           # Maturity stages 0-5, progression plan
+│
+├── skills/              # Agent skills (specialized workflows - invoke via Skill tool)
+│   ├── framework/       # Framework maintenance, experimentation, strategic partner
+│   │   ├── SKILL.md     # Main skill instructions
+│   │   ├── STATE.md     # Current framework state, mandatory processes, blockers
+│   │   ├── TASK-SPEC-TEMPLATE.md # Template for automation specifications
+│   │   ├── workflows/   # Step-by-step procedures (design, debug, experiment, monitor, review, spec)
+│   │   ├── references/  # Technical references (hooks guide, script design, testing patterns)
+│   │   └── specs/       # Task specifications for planned automations
+│   ├── analyst/         # Data analysis (dbt, Streamlit, statistical methods)
+│   │   └── SKILL.md
+│   ├── python-dev/      # Production Python code (type safety, fail-fast, research standards)
+│   │   └── SKILL.md
+│   ├── tasks/           # Task management system (MCP server)
+│   │   ├── SKILL.md     # Task operations skill
+│   │   ├── README.md    # Task system documentation
+│   │   ├── server.py    # MCP server implementation
+│   │   ├── task_ops.py  # Task operation functions
+│   │   └── models.py    # Task data models
+│   ├── bmem/            # Knowledge base operations (MCP wrapper)
+│   │   └── SKILL.md
+│   └── feature-dev/     # Feature development workflow (future)
+│       └── SKILL.md
+│
+├── hooks/               # Lifecycle automation (Python scripts triggered by Claude Code events)
 │   ├── hooks.json       # Hook configuration
-│   ├── README.md        # Hook documentation
+│   ├── README.md        # Hook documentation (configuration, available hooks, debugging)
 │   ├── session_logger.py         # Session logging module
-│   ├── log_session_stop.py       # Stop hook
-│   ├── extract_session_knowledge.py  # LLM-powered knowledge extraction
-│   └── prompts/         # Markdown prompts for hooks
+│   ├── log_session_stop.py       # Stop hook - logs session activity
+│   ├── extract_session_knowledge.py  # Knowledge extraction from session
+│   └── prompts/         # Markdown prompts loaded by hooks
+│
+├── experiments/         # Framework learning and evolution
+│   ├── LOG.md           # Append-only learning patterns from experiments and observations
+│   └── YYYY-MM-DD_*.md  # Individual experiment logs (hypothesis, design, results, decision)
+│
+├── tests/               # Framework integration tests (pytest)
+│   ├── README.md        # Test documentation (must be kept up-to-date)
+│   ├── conftest.py      # Test fixtures
+│   ├── paths.py         # Path resolution utilities
+│   ├── test_*.py        # Unit tests
+│   └── integration/     # End-to-end workflow tests
+│
+├── scripts/             # Deployment and maintenance scripts
+│   └── package_deployment.py  # Release packaging for GitHub
+│
+├── lib/                 # Shared Python utilities
+│   └── paths.py         # Path resolution (single source of truth for paths)
 │
 ├── commands/            # Slash commands (future)
 ├── agents/              # Agentic workflows (future)
-└── config/              # Configuration files (future)
+└── config/              # Configuration files
 ```
 
 ---
 
-## Session Start
+## User Data Repository Structure
 
-Files loaded at session start (in order):
+academicOps stores user data separately from framework code:
 
-1. `CORE.md` → User context, tools, paths
-2. `AXIOMS.md` → Framework principles
-3. `ACCOMMODATIONS.md` → Work style requirements
-4. `STYLE-QUICK.md` → Writing style reference
-
----
-
-## Skills
-
-Specialized agent workflows for specific domains. See `skills/*/SKILL.md` for instructions.
-
----
-
-## Hooks
-
-Lifecycle automation scripts. See `hooks/README.md` for configuration.
-
----
-
-## Principles
-
-See `AXIOMS.md` for framework principles.
+```
+$ACA_DATA/  (e.g., ~/Documents/AcademicData/)
+├── bmem/                # Knowledge base (markdown files)
+│   ├── entities/        # People, orgs, concepts
+│   ├── work/            # Projects, tasks, documents
+│   └── system/          # Meta information
+│
+├── tasks/               # Task data (markdown files, bmem-compliant)
+│   ├── active/          # Current tasks
+│   ├── completed/       # Finished tasks
+│   └── deferred/        # Postponed tasks
+│
+├── sessions/            # Claude Code session logs
+│   └── YYYY-MM-DD_HH-MM-SS.md
+│
+└── projects/            # Project-specific data
+    └── aops/            # academicOps project data
+        └── experiments/ # Framework experiment logs (symlinked to $AOPS/experiments/)
+```
 
 ---
 
-## Testing
+## Installation in Other Projects
 
-See `skills/framework/SKILL.md` for testing requirements and workflows.
+academicOps installs via symlinks to user's `~/.claude/`:
 
----
+```
+project-repo/           # Any academic project repository
+├── .claude/            # Claude Code configuration directory
+│   ├── CLAUDE.md       # Project-specific instructions
+│   ├── skills/         # Symlink → $AOPS/skills/
+│   ├── hooks/          # Symlink → $AOPS/hooks/
+│   └── commands/       # Symlink → $AOPS/commands/
+├── [project files...]
+```
 
-## Experiments
-
-See `experiments/LOG.md` for learning patterns and `experiments/*.md` for individual experiments
-
----
-
-## Installation & Deployment
-
-See `scripts/package_deployment.py` for release packaging and deployment instructions.
+**Installation**: Download [latest release](https://github.com/nicsuzor/academicOps/releases), extract, run `bash setup.sh`.
 
 ---
 
