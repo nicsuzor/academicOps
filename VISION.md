@@ -1,12 +1,18 @@
 # Automation Framework Vision
 
-**Last updated**: 2025-11-09
+**Last updated**: 2025-11-17
 
 ## The Ambitious End State
 
-A sophisticated automation system where Nic provides expert academic insight and conceptual thinking, and automation handles execution. The system produces publication-quality academic work with minimal friction.
+A sophisticated automation system where Nic provides expert academic insight and conceptual thinking, and automation handles execution. The system produces publication-quality academic work with minimal friction **across all projects and contexts**.
 
 **Core principle**: Nic's time is spent on the high-value work only he can do - expert analysis, conceptual thinking, strategic decisions. Everything else is automated.
+
+**Critical scope**: This framework automates Nic's general academic workflow across ALL projects - not just when working in the academicOps repository. The academicOps repo is both:
+1. **A coordination framework** - The infrastructure that supports all academic work
+2. **An example project** - One of many evolving academic projects
+
+Solutions must work across all repositories, contexts, and projects. Task management, cognitive load reduction, and automation benefits apply everywhere Nic works, not just within academicOps.
 
 ## What Gets Automated
 

@@ -1,5 +1,17 @@
 # Task Management Skill
 
+## Authoritative Domain Knowledge
+
+**Data Format**: Markdown (bmem-compliant) with YAML frontmatter
+**Storage Location**: `data/tasks/*.md` in each repository
+**Required Fields**: title, created, priority (0-3)
+**Optional Fields**: due, project, classification
+**Write Access**: Scripts ONLY (task_add.py, task_view.py, task_archive.py) - agents must not write task files directly
+**Scripts Location**: skills/tasks/scripts/
+**Cross-Repo**: Each repository has independent data/tasks/ directory
+
+---
+
 Manage task lifecycle using scripts in this skill's `scripts/` directory or Tasks MCP server. Never write task files directly - always use the appropriate backend.
 
 ## Script Locations

@@ -71,27 +71,28 @@ The framework lives in `bots/` and follows aggressive minimalism—sophisticated
    - Report: "I need to restart - my initial approach was insufficient"
    - Never present incomplete work as if it were thorough
 
-**Every invocation loads context**:
+**Every invocation loads context** (MANDATORY LOADING ORDER):
 
 ```python
-# Load framework state
-vision = read("bots/VISION.md")
-roadmap = read("bots/ROADMAP.md")
-axioms = read("bots/AXIOMS.md")
+# 1. BINDING USER CONSTRAINTS (load FIRST)
+accommodations = read("bots/ACCOMMODATIONS.md")  # User constraints - as binding as AXIOMS
+core = read("bots/CORE.md")  # User context - as binding as AXIOMS
 
-# Load recent learning patterns (bmem format)
-learning_index = read("data/projects/aops/learning/README.md")
-# Then load specific thematic files as needed:
-# - agent_behavior = read("data/projects/aops/learning/agent-behavior-patterns.md")
-# - technical = read("data/projects/aops/learning/technical-successes.md")
-# - architecture = read("data/projects/aops/learning/architecture-decisions.md")
-# - components = read("data/projects/aops/learning/component-issues.md")
-# - documentation = read("data/projects/aops/learning/documentation-bloat-prevention.md")
+# 2. CURRENT REALITY (ground truth)
+state = read("bots/skills/framework/STATE.md")  # Current stage, mandatory processes, active blockers
 
-# Load technical references as needed for specific work:
+# 3. FRAMEWORK PRINCIPLES AND ASPIRATIONS
+vision = read("bots/VISION.md")  # End state goals
+roadmap = read("bots/ROADMAP.md")  # Maturity progression
+axioms = read("bots/AXIOMS.md")  # Core principles
+log = read("bots/experiments/LOG.md")  # Learning patterns
+
+# 4. TECHNICAL REFERENCES (as needed for specific work)
 # - Hook configuration: read("bots/skills/framework/references/hooks_guide.md")
 # - Other technical docs in references/ directory
 ```
+
+**Critical**: User constraints (ACCOMMODATIONS) come BEFORE framework aspirations. STATE.md establishes current reality before reading vision documents.
 
 **Key queries**:
 

@@ -9,11 +9,13 @@
 
 ### Dual Role: Academic + Framework Developer
 
-- **Primary role**: Full-time academic (research, teaching, writing)
+- **Primary role**: Full-time academic (research, teaching, writing) across multiple projects
 - **Secondary role**: Part-time developer building long-term AI assistant framework
 - **Framework goal**: Evolve incrementally toward sophisticated automation without spiraling into complexity/chaos
+- **Framework scope**: The academicOps framework supports ALL academic work across ALL projects and repositories, not just work within the academicOps repo itself
 - **Key tension**: Need robust tools but can't spend all time building the system
 - **Working together**: User does academic work AND collaborates on framework development - both contexts matter
+- **Critical distinction**: The framework is both a coordination system (infrastructure for all work) and an example project (an evolving thing that gets worked on). Solutions must serve the broader academic workflow, not just framework development.
 
 ### Core Challenges
 
@@ -25,6 +27,7 @@
 - Cross-device workflow: Frequently switches between computers, creating consistency challenges
 - **Hyperfocus:** Can get lost in hyperfocus when programming, making it hard to switch tasks.
 - **Energy Levels:** Can code when tired, but requires high energy for deep work (e.g., writing, conceptual analysis).
+- **Multi-window context loss:** Works across multiple terminals/repositories simultaneously with workflows running 1-120 minutes. Struggles to remember: (1) what's running in each window, (2) what tasks are queued/blocked in each repo, (3) what the next major step is in each project when context switching. **This is a general workflow problem affecting ALL projects, not unique to academicOps framework development.**
 
 ### Required ADHD Accommodations
 
@@ -44,6 +47,7 @@
 - Responds well to direct processing without preliminary validation ("good idea" etc.)
 - Values efficiency and systematic organization over lengthy explanation
 - **Bias for Action**: In a defined workflow, proceed to the next logical step without asking for confirmation. It's better to use your judgment and be corrected later than to ask unnecessary questions.
+- **No timeline estimates**: Never provide development time estimates - we haven't calibrated task duration, making estimates unreliable and unhelpful.
 
 ### Decision Support Preferences: Effective Pattern for Decision Paralysis
 
