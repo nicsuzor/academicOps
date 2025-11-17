@@ -87,7 +87,7 @@ How we move from manual chaos to sophisticated automation, one validated step at
    - Structural template enforcement
    - Success metric: Drafts match style guide on first pass
 
-**Development pattern for each**:
+**Development pattern for each** (MANDATORY - no shortcuts):
 
 1. Create task spec from TASK-SPEC-TEMPLATE.md
 2. Design integration test first (must fail initially)
@@ -95,6 +95,8 @@ How we move from manual chaos to sophisticated automation, one validated step at
 4. Test until passes
 5. Document in experiment log
 6. Deploy and monitor
+
+**Note**: This spec-first approach is NOT optional. Framework /meta skill should confidently recommend specification-first development without offering alternatives.
 
 **Exit criteria**:
 
@@ -257,7 +259,7 @@ How we move from manual chaos to sophisticated automation, one validated step at
 - ⚠️ Integration testing framework: 70% (7 tests, missing E2E agent behavior validation)
 - ❌ Task management reliability: 60% (scripts exist but agents bypass, format inconsistencies)
 
-**Stage 2 Progress**: ⚠️ 70%
+**Stage 2 Progress**: ⚠️ 75%
 
 Target automation #2 (Task Capture and Filing):
 
@@ -272,6 +274,19 @@ Target automation #2 (Task Capture and Filing):
 - ⚠️ Duplicate detection not tested (no duplicate emails in test run)
 - ❌ Task management reliability issues (agents bypass scripts, format mismatches)
 - ❌ MCP infrastructure not built
+
+Target automation #5 (Task Visualization Dashboard):
+
+- ✅ Specification complete (skills/framework/specs/2025-11-17_task-visualization-dashboard.md)
+- ✅ Integration tests created (4 tests: 3 fast, 1 slow E2E)
+- ✅ Excalidraw generation script (simple utility pattern)
+- ✅ /task-viz slash command created
+- ✅ Agent workflow documented (discover → parse → structure → generate)
+- ✅ Cross-repo task discovery validated
+- ✅ Markdown+YAML frontmatter parsing tested
+- ✅ Visual encoding by status (color-coded: active/blocked/queued/completed)
+- Status: Production-ready pending real-world validation
+- Addresses: ACCOMMODATIONS.md cognitive load, VISION.md success criterion #4
 
 **Blockers to Stage 2**:
 
