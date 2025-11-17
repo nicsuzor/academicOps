@@ -6,7 +6,7 @@
 
 1. **Check file sizes**
    ```bash
-   find /home/nic/src/writing/bots -name "*.md" -exec wc -l {} \; | sort -rn
+   find /home/nic/src/academicOps -name "*.md" -exec wc -l {} \; | sort -rn
    ```
 
 2. **Flag approaching limits**

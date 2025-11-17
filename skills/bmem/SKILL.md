@@ -62,67 +62,7 @@ Brief 1-3 sentence overview.
 
 ## Critical Rules: Observation Quality
 
-### What Observations ARE
-
-**Observations ADD new information beyond document body and frontmatter.**
-
-✅ **GOOD observations**:
-
-- Specific, concrete facts
-- Atomic (one fact per observation)
-- Additive (new information not in frontmatter/body)
-- Contextual (enough detail to understand)
-- Semantic (enable knowledge graph queries)
-
-❌ **BAD observations**:
-
-- Repeat document body verbatim
-- Duplicate frontmatter metadata (due dates, status, type)
-- State the obvious ("This is a task")
-- Add no new information
-
-### Examples
-
-**❌ BAD** (duplicates frontmatter):
-
-```markdown
----
-due: 2025-11-07
-type: task
-status: inbox
----
-
-## Context
-
-Review student thesis by Nov 7.
-
-## Observations
-
-- [task] Review student thesis by Nov 7 #inbox
-- [requirement] Due date: 2025-11-07 #deadline
-- [fact] Type: task #type-task
-```
-
-**✅ GOOD** (adds new information):
-
-```markdown
----
-due: 2025-11-07
-type: task
-status: inbox
----
-
-## Context
-
-Review Rhyle Simcock's PhD thesis lodgement. Do NOT name examiners in comments.
-
-## Observations
-
-- [fact] Rhyle Simcock is PhD candidate in platform governance #student-rhyle-simcock
-- [requirement] Cannot name examiners in comments as student will see them #compliance
-- [insight] This is thesis examination stage requiring supervisor approval #phd-process
-- [decision] Will focus review on methodology and structure #review-strategy
-```
+**See [[references/observation-quality-guide.md]] for detailed rules and examples.**
 
 ## Session Mining (Silent Background Capture)
 
@@ -173,85 +113,7 @@ Review Rhyle Simcock's PhD thesis lodgement. Do NOT name examiners in comments.
 
 ### Detail Level: What to Capture Where
 
-**Match detail level to file type and importance:**
-
-#### Task Files (Detailed Documentation)
-
-**When task is completed, document extensively in task file:**
-
-- Technical implementation details
-- Design decisions and rationale
-- Problems encountered and solutions
-- Code/configuration changes made
-- Full context for future resumption
-
-**Example (GOOD for task file)**:
-
-```markdown
-## Observations
-
-- [solution] Fixed async fixture issue by adding @pytest_asyncio.fixture decorator #pytest #async
-- [decision] Chose to use real data instead of mocks for better integration coverage #testing-strategy
-- [problem] Initial approach with sync fixtures caused event loop conflicts #technical-debt
-- [technique] Used conftest.py for shared fixtures across test modules #test-organization
-```
-
-#### Project Files (Strategic Updates Only)
-
-**Location strategy:**
-
-- **High-level metadata**: `data/projects/<project>.md` - Overview, milestones, strategic decisions
-- **Detailed content**: `data/<project-slug>/` - Specifications, detailed notes, multi-file projects
-
-**Keep `data/projects/<project>.md` at "weekly standup" level - what you'd say in 30-second verbal update:**
-
-✅ **GOOD for `data/projects/<project>.md`** (strategic/resumption context):
-
-- "Completed TJA scorer validation - strong success (88.9% accuracy)"
-- "Framework maintenance (scribe skill, hooks)"
-- "Strategic decision: Pivoting from X to Y approach due to Z constraint"
-- "Milestone reached: Database migration complete, ready for testing"
-
-❌ **TOO MUCH for `data/projects/<project>.md`** (belongs in task files, `data/<project-slug>/`, or git):
-
-- "Fixed test_batch_cli.py: Reduced from 132 lines to 52 lines, eliminated ALL mocking..."
-- "Updated config.json lines 45-67 to add new hook timeout values..."
-- "Refactored authentication module to use async/await pattern..."
-
-**Two tests before writing to `data/projects/<project>.md`:**
-
-1. Would this appear in weekly report to supervisor? If NO → omit or put in `data/<project-slug>/` or task file
-2. Would I mention this in 30-second standup? If NO → omit or put in `data/<project-slug>/` or task file
-
-#### What NOT to Capture in `data/projects/<project>.md`
-
-**DO NOT capture in high-level project file** (documented in git log, task files, or `data/<project-slug>/`):
-
-- Infrastructure changes → git log or `data/<project-slug>/infrastructure.md`
-- Bug fixes → git log or task files
-- Code refactoring → git log
-- Configuration updates → git log or `data/<project-slug>/config-notes.md`
-- Framework improvements → git log
-- Routine meetings → omit (unless strategic decision made)
-- Minor task updates → task system tracks these
-- Implementation details → task files or `data/<project-slug>/`
-
-**DO capture in `data/projects/<project>.md`**:
-
-- Major milestones reached
-- Strategic decisions affecting direction
-- Resource allocation changes
-- Risk assessments and mitigations
-- Ruled-out approaches (with reasoning)
-- External dependencies and blockers
-- Resumption context for long-running work
-
-**Use `data/<project-slug>/` when**:
-
-- Need multiple files for project-specific content
-- Detailed specifications, analysis, or documentation
-- Technical details beyond "standup level"
-- Link back to high-level project file: `[[../projects/<project>]]`
+**See [[references/detail-level-guide.md]] for comprehensive guidelines on detail levels for task files, project files, and what to capture where.**
 
 ## File Operations
 
@@ -394,45 +256,7 @@ Invoke task skill with:
 
 ## Obsidian Compatibility
 
-### Tags
-
-**Use hyphens in tags** (Obsidian-compatible):
-
-```yaml
-tags:
-  - academic-writing
-  - research-methods
-  - platform-governance
-```
-
-**Inline tags**:
-
-```markdown
-- [insight] 2FA adoption increased security by 40% #security-metrics
-```
-
-**Allowed characters**: Letters, numbers, hyphens, underscores, forward slash **NOT allowed**: Spaces, periods, starting with numbers
-
-### WikiLinks
-
-Use `[[Entity Title]]` syntax for all entity references:
-
-```markdown
-See [[Platform Governance Research]] for background.
-
-## Relations
-
-- part_of [[Research Program]]
-- supports [[World-Class Academic Profile]]
-```
-
-**Aliases** (in frontmatter):
-
-```yaml
-aliases:
-  - Short Name
-  - Alternative Name
-```
+**See [[references/obsidian-compatibility.md]] for Obsidian-specific formatting rules (tags, WikiLinks, aliases).**
 
 ## Commit and Push
 

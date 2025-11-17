@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-Tests for monorepo path resolution in writing/bots framework.
+Tests for monorepo path resolution in academicOps framework.
 
-Tests the core path resolution functions that locate the writing repository
+Tests the core path resolution functions that locate the academicOps repository
 root and its key subdirectories. These functions are critical for enabling
-the bots framework to work correctly in a monorepo structure.
+the framework to work correctly in a monorepo structure.
 """
 
 from pathlib import Path
@@ -39,7 +39,7 @@ class TestGetWritingRoot:
 
     def test_get_writing_root_without_env(self, tmp_path, monkeypatch):
         """Test get_writing_root() discovering from __file__ location."""
-        # Arrange - Create directory structure: writing/bots/tests/
+        # Arrange - Create directory structure: academicOps/tests/
         writing_root = tmp_path / "writing"
         bots_dir = writing_root / "bots"
         tests_dir = bots_dir / "tests"
