@@ -26,6 +26,8 @@ Pause and **IMMEDIATELY** invoke the `framework` skill. The user is reporting ag
 
 **Rationale**: This command logs single data points for pattern tracking. Solutions require multiple data points and experiment-driven validation.
 
+**LOG.md must remain Obsidian/bmem compliant** - Fix frontmatter permalink (no slashes, use hyphens) and add required sections before appending entries.
+
 **Log Format**:
 
 ```markdown
