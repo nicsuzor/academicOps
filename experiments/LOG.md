@@ -122,3 +122,15 @@ COMPONENT-FOCUS MISSING SYSTEM VIEW
 **Why**: Framework skill doesn't understand the fundamental distinction between authoritative sources (own facts only) and instructional documents (explain how to use). README.md should state "AXIOMS.md exists here" with one-line description, not repeat principles. Should reference deployment docs, not contain them. Should list directory structure with brief inline summaries, not multi-line explanations.
 
 **Lesson**: Authoritative vs instructional distinction must be foundational to framework skill's understanding. Each file is EITHER authoritative (owns facts, states them, stops) OR instructional (explains workflows, provides examples). The visual tree map should be detailed with one-line abstracts, but explanation paragraphs = bloat. "How to use this structure" belongs in separate instructional doc, not in the authoritative structure definition. Framework skill must actively ask: "Does this file OWN this information, or is it explaining how to use information owned elsewhere?"
+
+---
+
+## Meta-Framework: LOG.md Entry Quality - Pattern Transfer vs Optimization
+
+**Date**: 2025-11-17 | **Type**: ✅ Success + Refinement | **Pattern**: #log-quality #knowledge-transfer #optimization
+
+**What**: Tested fresh agent with no conversation history using only LOG.md entry "README.md Purpose Confusion" (2025-11-17). Agent successfully removed all instructional bloat (62% reduction, 241→92 lines) but left suboptimal structure (separate sections duplicating tree content). Required iteration to maximize authoritative density (final: 130 lines, pure structure-as-documentation).
+
+**Why**: LOG.md entry successfully transferred the principle ("authoritative vs instructional separation") but didn't capture the optimization pattern ("maximize density in native structure"). Fresh agent correctly identified "what's wrong" (instructional bloat) but not "what optimal looks like" (tree IS the documentation, inline annotations beat separate sections, multiple trees for different contexts, one level deeper shows file contents).
+
+**Lesson**: LOG.md entries must capture BOTH violation patterns AND optimization patterns. Include positive examples ("installation line 196-198 is PERFECT - concise, practical, actionable") not just negative ("remove X bloat"). For authoritative documents specifically: maximize information density in the structure itself—README.md's directory tree IS the documentation. Use inline annotations (`[SESSION START: loaded first]`) instead of separate sections. Show multiple trees for different contexts (repo structure, user data, installation pattern). Go one level deeper to reveal actual file contents agents need. Fresh agent testing reveals gaps in pattern articulation: if agent succeeds at principle but result isn't optimal, the pattern itself needs refinement.

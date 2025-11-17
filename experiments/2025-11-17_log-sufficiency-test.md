@@ -191,8 +191,73 @@ The agent extracted the core principle and applied it systematically across all 
 
 ## Decision
 
-*[keep/revert/iterate + rationale]*
+**ITERATE** - Fresh agent succeeded at principle application but didn't optimize far enough.
+
+**Rationale**:
+- LOG.md entry was sufficient for pattern transfer (dramatic success at bloat removal)
+- BUT fresh agent left unnecessary subsections that duplicated tree content
+- Pattern needs refinement: not just "separate authoritative from instructional" but "maximize density in authoritative structure"
+
+**Additional fixes applied**:
+1. Removed ALL subsections (Session Start, Skills, Hooks, Principles, Testing, Experiments, Installation)
+2. Integrated session start info into tree with inline annotations: `[SESSION START: loaded first]`
+3. Expanded tree one level deeper to show file contents of each directory
+4. Added two new trees: User Data Repository ($ACA_DATA) and Installation pattern
+5. Result: 130 lines of pure authoritative content, zero instructional bloat
 
 ## Learnings
 
-*[What this reveals about LOG.md quality and knowledge transfer]*
+### What Worked: Pattern Transfer from LOG.md
+
+**DRAMATIC SUCCESS** - Fresh agent with no conversation history correctly:
+- Identified all 10 bloat violations
+- Applied authoritative vs instructional principle systematically
+- Removed 62% of content (241→92 lines)
+- Acted decisively without clarifying questions
+
+**Critical success factor**: LOG.md's "Lesson" section articulated the fundamental question: "Does this file OWN this information or EXPLAIN it?" This was sufficient for complete pattern transfer.
+
+### What Needs Refinement: Maximizing Authoritative Density
+
+**Fresh agent stopped at "remove instructional bloat" but didn't optimize authoritative presentation.**
+
+**The deeper principle**: Authoritative content should maximize information density in its native structure.
+
+For README.md specifically:
+- The tree IS the documentation - inline comments are sufficient
+- Session start sequence belongs IN the tree, not in separate section
+- Skills/hooks/experiments descriptions belong IN the tree, not in separate sections
+- Multiple trees show different views (repo structure, user data, installation pattern)
+- One level deeper reveals what agents actually need to know
+
+**Pattern evolution**:
+- ❌ Version 1: "Remove instructional bloat, keep authoritative content separate"
+- ✅ Version 2: "Maximize density in authoritative structure itself - the structure IS the documentation"
+
+### Implications for LOG.md Quality
+
+**What this reveals**:
+1. **Pattern abstraction works** - Fresh agent extracted principle and applied to 10 different manifestations without needing specific examples
+2. **But patterns need optimization examples** - LOG.md captured "what's wrong" not "what optimal looks like"
+3. **Positive examples matter** - User identified installation line (196-198) as "PERFECT example" - should have been in LOG.md
+4. **Completeness test valuable** - Testing with fresh agent reveals gaps in pattern articulation
+
+### Meta-Learning: Experiment Design
+
+**This experiment format itself is valuable**:
+- Pre-test analysis establishes baseline
+- Fresh agent test reveals transferability
+- Iteration reveals optimization opportunities
+- Captures both success (pattern transfer) and refinement needs (optimization)
+
+**Pattern for future experiments**:
+1. Document current state violations
+2. Test fresh agent with LOG.md alone
+3. Evaluate not just "did it work?" but "is it optimal?"
+4. Refine pattern based on what fresh agent missed
+
+### Recommended LOG.md Update
+
+Add to the 2025-11-17 README.md entry:
+
+**Optimization pattern**: For authoritative structure documents, maximize information density in the structure itself. README.md's directory tree IS the documentation - inline annotations better than separate sections. Show multiple trees for different contexts (repo, user data, installation). Go one level deeper to reveal actual file contents agents need.
