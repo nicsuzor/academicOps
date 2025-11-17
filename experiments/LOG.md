@@ -134,3 +134,57 @@ COMPONENT-FOCUS MISSING SYSTEM VIEW
 **Why**: LOG.md entry successfully transferred the principle ("authoritative vs instructional separation") but didn't capture the optimization pattern ("maximize density in native structure"). Fresh agent correctly identified "what's wrong" (instructional bloat) but not "what optimal looks like" (tree IS the documentation, inline annotations beat separate sections, multiple trees for different contexts, one level deeper shows file contents).
 
 **Lesson**: LOG.md entries must capture BOTH violation patterns AND optimization patterns. Include positive examples ("installation line 196-198 is PERFECT - concise, practical, actionable") not just negative ("remove X bloat"). For authoritative documents specifically: maximize information density in the structure itself—README.md's directory tree IS the documentation. Use inline annotations (`[SESSION START: loaded first]`) instead of separate sections. Show multiple trees for different contexts (repo structure, user data, installation pattern). Go one level deeper to reveal actual file contents agents need. Fresh agent testing reveals gaps in pattern articulation: if agent succeeds at principle but result isn't optimal, the pattern itself needs refinement.
+
+---
+
+## Framework Architecture: LLM-First Design - Scripts as Utilities Not Orchestrators
+
+**Date**: 2025-11-17 | **Type**: ✅ Architecture Clarification | **Pattern**: #script-role #llm-first #orchestration
+
+**What**: Task visualization spec was initially written with Python script handling visualization generation (creative/analytical work). User clarified: framework approach is to have very small helper scripts for repetitive tasks only. Claude Code agents do ALL creative, thinking, and analytical work. Claude Code INVOKES Python scripts to do repetitive tasks, NOT the other way around.
+
+**Why**: This is a fundamental architectural principle that must be consistently applied across all automations. The division is clear:
+- **Agent/LLM work**: Reading, filtering, analyzing, decision-making, reasoning, pattern extraction, visual design, layout decisions, semantic understanding
+- **Script work**: Purely mechanical data transformation (chunking, merging, format conversion), no filtering, no reasoning, no decision-making
+
+Example violation: Script that reads files, filters with regex, extracts patterns, and writes outputs → Should be agent reads files, uses LLM judgment to filter, extracts with semantic understanding, decides what to write.
+
+Example correct: Script that splits a file into N-line chunks (mechanical) → Agent calls it when needed, agent processes each chunk with LLM reasoning, agent orchestrates the workflow.
+
+**Lesson**: When designing any automation, ask: "Is this script duplicating Claude Code's built-in capabilities (Read/Write/Edit/Grep/Glob) or LLM reasoning?" If yes, it's wrong. Scripts are simple tools (like `jq` or `split`) that agents call via Bash. Agent orchestrates everything: decides what to process, invokes script for mechanical transformation, processes results with LLM reasoning, invokes another script to aggregate if needed, analyzes final output. The agent does ALL orchestration, decision-making, and reasoning. For task visualization specifically: agent discovers tasks, agent parses and validates, agent enriches with bmem context, agent designs visual layout (creative work), agent generates Excalidraw JSON directly. Optional helper only if file aggregation proves repetitive, but visualization design is LLM work, not scripted.
+
+---
+
+## Behavioral Pattern: Spec Revision Misinterpreted as Implementation Trigger
+
+**Date**: 2025-11-17 | **Type**: ❌ Failure | **Pattern**: #request-interpretation #do-one-thing
+
+**What**: User requested "revise the task vis spec" with detailed requirements. Agent correctly revised spec, updated slash command, and logged to LOG.md (✅), but then immediately started implementing the visualization ("ok, get to work on it") without waiting for user approval of the spec changes.
+
+**Why**: AXIOM #1 violation: "DO ONE THING - Complete the task requested, then STOP." User's request was to revise the spec, not to implement. Agent should have reported spec changes and stopped, allowing user to review before proceeding to implementation.
+
+**Lesson**: When user says "revise X", the task is revision only. Report changes made, then stop. Wait for explicit implementation trigger ("build it", "implement", "get to work") before proceeding to next phase. Don't assume spec revision implies immediate implementation—user may want to review, refine, or defer.
+
+---
+
+## Meta-Framework: Appropriate Rigor Levels - Framework vs Academic Work
+
+**Date**: 2025-11-17 | **Type**: ✅ Success | **Pattern**: #process-pragmatism #ttd-scope
+
+**What**: Framework meta-development (spec revisions, doc updates) uses lightweight iterate-and-test process, while academic work (research code, data analysis via /ttd) requires rigorous TDD with comprehensive testing.
+
+**Why**: Stakes differ—academic work has real-world consequences (publication quality, reproducibility), while framework development is tool-building where user can verify directly and iteration speed matters (ACCOMMODATIONS: "can't spend all time building the system").
+
+**Lesson**: Keep /ttd rigor for production academic work (high stakes, correctness paramount). Use pragmatic iteration for framework meta-development (spec → review → implement → test → iterate). Don't formalize framework development process unless changes start breaking academic workflows or complexity grows to require it.
+
+---
+
+## Component-Level: bmem MCP Parameter Errors - Missing Authoritative API Spec
+
+**Date**: 2025-11-17 | **Type**: ❌ Failure | **Pattern**: #mcp-parameters #authoritative-knowledge
+
+**What**: Agent invoked bmem search_notes with invalid `entity_types` parameter (`entity_types: ["project"]` and `entity_types: ["goal"]` both failed with "not a valid SearchItemType"), then successfully retried without that parameter.
+
+**Why**: Slash command documentation doesn't specify valid bmem MCP parameters—agents guess based on general knowledge rather than knowing authoritatively what the actual MCP server accepts.
+
+**Lesson**: Document authoritative bmem MCP API specification (valid parameters, types, constraints) in framework references so agents know correct usage without trial-and-error, similar to how email-capture workflow documents validated MCP parameters (ROADMAP line 269).

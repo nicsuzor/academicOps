@@ -1,17 +1,22 @@
 # Task Visualization Dashboard
 
-Generate a visual dashboard of all tasks across repositories.
+Generate a visual mind-map of tasks, projects, and goals across repositories.
 
 ## Workflow
 
-You are tasked with creating a visual task dashboard in Excalidraw format.
+You are tasked with creating a visual task dashboard in Excalidraw format. The goal is to help the user quickly understand: where everything fits, what needs to be done, what we're waiting on, what sequencing/blockers exist, and how things are prioritised and aligned.
 
-### 1. Discover Task Files
+### 1. Discover Task Files and Projects
 
 Use the Glob tool to find all task files:
 - Pattern: `data/tasks/inbox/*.md`
 - Search current repository first
 - If time permits, search `~/src/*/data/tasks/inbox/*.md` for cross-repo view
+
+Use bmem to discover projects and goals:
+- Query for project entities to understand strategic context
+- Map projects to their parent goals
+- Identify projects with no tasks (why not? progress indicator)
 
 ### 2. Read and Parse Tasks
 
@@ -25,49 +30,53 @@ For each task file found:
    - `blockers` (optional list)
 3. Fail-fast if required fields are missing (per AXIOMS #5)
 
-### 3. Group and Structure Data
+### 3. Design Visual Layout
 
-1. Group tasks by `project`
-2. Within each project, sort by:
-   - Priority (0 first, 3 last)
-   - Then by status (active, blocked, queued, completed)
-3. Create structured JSON for the visualization script:
+Based on the data gathered, design a mind-map that shows:
 
-```json
-{
-  "projects": [
-    {
-      "name": "framework",
-      "tasks": [
-        {
-          "id": "task-001",
-          "title": "Active framework task",
-          "status": "active",
-          "priority": 1,
-          "blockers": []
-        }
-      ]
-    }
-  ]
-}
-```
+**Visual Hierarchy**:
+- **Goals** at the top level (strategic context from bmem)
+- **Projects** connected to their goals
+- **Outstanding tasks** (active, blocked, queued) in PROMINENT display
+  - Larger font, bold, positioned prominently
+  - Show blockers clearly for blocked tasks
+- **Completed tasks** in SMALL font attached to projects
+  - Show where we've been, but don't dominate visual space
+- **Projects with no tasks** explicitly indicated
+  - This is an important signal: are we making progress? Why no tasks?
 
-### 4. Generate Visualization
+**Visual Encoding**:
+- Color by status: active (blue), blocked (red), queued (yellow), completed (green/gray)
+- Size by importance: outstanding tasks larger, completed tasks smaller
+- Position: strategic priorities higher/more central
+- Connections: arrows from goals → projects → tasks
+- Blockers: explicit visual indication (icon, color, label)
 
-1. Write the structured JSON to `/tmp/task-viz-data.json`
-2. Use Bash tool to run the generation script:
-   ```bash
-   python ~/.claude/skills/framework/scripts/generate_task_viz.py /tmp/task-viz-data.json ~/current-tasks.excalidraw
-   ```
-3. Verify the output file was created
+### 4. Generate Excalidraw JSON
 
-### 5. Report Results
+Create the Excalidraw JSON structure directly:
+1. Define elements array with:
+   - Rectangles/ellipses for goals, projects, tasks
+   - Text elements for labels
+   - Arrows for relationships (goal→project, project→task, task→blocker)
+2. Apply visual encodings decided in step 3
+3. Layout elements spatially (top-to-bottom hierarchy, grouped by project)
+4. Use Excalidraw element properties:
+   - `type`: "rectangle", "ellipse", "arrow", "text"
+   - `strokeColor`, `backgroundColor`, `fillStyle`
+   - `fontSize`, `fontFamily`
+   - `x`, `y`, `width`, `height`
+   - `startBinding`, `endBinding` for arrows
 
-Provide a summary:
-- Total tasks found
-- Breakdown by status (active, blocked, queued, completed)
-- Breakdown by project
-- Location of generated dashboard: `~/current-tasks.excalidraw`
+### 5. Write and Report
+
+1. Use Write tool to create `~/current-tasks.excalidraw` with the generated JSON
+2. Verify the output file was created
+3. Provide a summary:
+   - Total tasks found (breakdown by status)
+   - Projects discovered (with/without tasks)
+   - Goals mapped
+   - Location of generated dashboard: `~/current-tasks.excalidraw`
 
 ## Error Handling
 

@@ -205,46 +205,56 @@ rm -f /tmp/task-viz-test-data.json /tmp/output.excalidraw
 
 ### High-Level Design
 
-**Pattern**: Agent orchestrates → Simple script generates → Agent validates
+**Pattern**: Agent does ALL creative/analytical work → Helper script (if needed) for repetitive tasks only
+
+**CRITICAL FRAMEWORK PRINCIPLE**: Our framework approach is to have very small helper scripts for purely mechanical, repetitive operations, while ALL creative, thinking, and analytical work is done by Claude Code agents. Claude Code INVOKES Python scripts for mechanical tasks, not the other way around.
 
 **Components**:
 
 1. **Task Discovery** (Agent via Glob)
-   - Find all `data/tasks/*.jsonl` files across repositories
+   - Find all `data/tasks/*.md` files across repositories
    - Support single-repo and multi-repo modes
 
 2. **Task Data Aggregation** (Agent via Read + LLM reasoning)
-   - Read each JSONL file
-   - Parse task objects
+   - Read each Markdown file
+   - Parse YAML frontmatter and content
    - Validate required fields
-   - Enrich with bmem project data if available
-   - Map to strategic priorities from ROADMAP
+   - Enrich with bmem project data (project goals, strategic context)
+   - Map projects to goals from bmem entities
 
-3. **Data Structuring** (Agent reasoning)
-   - Group tasks by project
-   - Sort projects by strategic priority
-   - Sort tasks within project by priority then status
-   - Prepare structured JSON for visualization script
+3. **Visual Mind-Map Design** (Agent reasoning + LLM creativity)
+   - Understand user goals: "quickly understand where everything fits, what needs to be done, what we're waiting on, what sequencing/blockers we need to deal with, and how things are prioritised and aligned"
+   - Design visual layout that shows:
+     - **Goals** at top level (strategic context)
+     - **Projects** linked to goals
+     - **Outstanding tasks** prominently displayed (what needs attention)
+     - **Completed tasks** in small font attached to projects (where we've been)
+     - **Projects with no tasks** explicitly shown (why not? are we making progress?)
+     - **Blockers and sequencing** visually indicated
+   - Determine appropriate visual encodings (size, color, position, connections)
 
-4. **Excalidraw Generation** (Simple Python script)
-   - Input: Structured JSON with task/project data
-   - Output: Valid Excalidraw JSON file
-   - Pure mechanical transformation: data → layout coordinates → Excalidraw elements
+4. **Excalidraw Generation** (Agent directly creates JSON)
+   - Agent generates complete Excalidraw JSON structure
+   - Creates visual elements: boxes for projects/tasks, text labels, arrows for relationships
+   - Applies visual hierarchy: large/prominent for outstanding work, small for completed
+   - Encodes status through color/styling
+   - Groups related elements
+   - **Optional helper script**: If turning task/project files into structured format proves repetitive, may create small helper to aggregate data, but visualization design and generation is LLM work
 
-5. **Output** (Agent via Bash)
+5. **Output** (Agent via Write)
    - Write to `~/current-tasks.excalidraw`
    - Confirm successful generation
-   - Optionally open in Excalidraw (user preference)
+   - Report summary of what's shown
 
 **Data Flow**:
 ```
-Task files (*.jsonl)
+Task files (*.md) + Project entities (bmem) + Goals (bmem)
   → Agent Glob/Read → Parse/validate
-  → Agent reasoning → Enrich with bmem/ROADMAP data
-  → Agent structuring → Group/sort/prioritize
-  → Agent creates structured JSON
-  → Python script → Generate Excalidraw layout
-  → Excalidraw JSON file output
+  → Agent reasoning → Enrich with strategic context
+  → Agent analyzes → Understand what story to tell visually
+  → Agent designs → Layout strategy, visual encodings
+  → Agent creates → Excalidraw JSON directly
+  → Excalidraw file output
 ```
 
 ### Technology Choices
