@@ -72,7 +72,15 @@ $AOPS/
 ├── lib/                 # Shared Python utilities
 │   └── paths.py         # Path resolution (single source of truth for paths)
 │
-├── commands/            # Slash commands (future)
+├── commands/            # Slash commands (workflow triggers)
+│   ├── bmem.md          # Invoke bmem skill
+│   ├── email.md         # Extract tasks from emails
+│   ├── learn.md         # Update memory/instructions
+│   ├── log.md           # Log agent performance
+│   ├── meta.md          # Invoke framework skill for strategic questions
+│   ├── task-viz.md      # Generate visual task dashboard (mind-map)
+│   └── ttd.md           # Test-driven development orchestration
+│
 ├── agents/              # Agentic workflows (future)
 └── config/              # Configuration files
 ```

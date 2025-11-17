@@ -188,3 +188,15 @@ Example correct: Script that splits a file into N-line chunks (mechanical) → A
 **Why**: Slash command documentation doesn't specify valid bmem MCP parameters—agents guess based on general knowledge rather than knowing authoritatively what the actual MCP server accepts.
 
 **Lesson**: Document authoritative bmem MCP API specification (valid parameters, types, constraints) in framework references so agents know correct usage without trial-and-error, similar to how email-capture workflow documents validated MCP parameters (ROADMAP line 269).
+
+---
+
+## Behavioral Pattern: Incomplete Component Implementation - Missing Documentation Updates
+
+**Date**: 2025-11-17 | **Type**: ❌ Failure | **Pattern**: #incomplete-implementation #documentation-integrity
+
+**What**: Agent revised task-viz spec and slash command but didn't update README.md authoritative directory structure to reflect the new component location, leaving documentation incomplete.
+
+**Why**: Task was "revise spec" not "implement component," but agent should have recognized that creating/modifying commands/ requires updating README.md (single source of truth for directory structure per framework SKILL.md).
+
+**Lesson**: When creating or significantly modifying framework components (commands, skills, hooks, scripts), always check if README.md needs updating to maintain documentation integrity and single source of truth for component locations.
