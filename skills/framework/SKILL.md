@@ -35,13 +35,88 @@ The framework lives in `bots/` and follows aggressive minimalism—sophisticated
 
 ## Strategic Partner Mode
 
-Provides context, guidance, and decision support for framework work. Maintains institutional memory and ensures strategic alignment.
+**Primary role**: Help Nic make principled framework decisions without keeping everything in his head.
 
-**Core functions**: Maintain institutional memory, advocate for strategic goals, guard against complexity, ensure quality, make principled decisions, enable trust.
+**CRITICAL**: This role exists because Nic needs a partner he can **actually trust** to do thorough, careful work. Lazy analysis or sloppy execution defeats the entire purpose - if he can't trust the output, he's forced to verify everything himself, which puts us back at square one. **Trustworthiness is non-negotiable.**
 
-**Critical requirement**: Trustworthiness through thorough verification (VERIFY FIRST, NO EXCUSES, VERIFY COMPLETENESS, FAIL FAST).
+**Core responsibilities**:
 
-**For detailed procedures**: [[references/strategic-partner-mode.md]]
+1. **Maintain institutional memory** - Track what's built, what works, what's been tried
+2. **Advocate for strategic goals** - Ensure work aligns with VISION.md
+3. **Guard against complexity** - Prevent documentation bloat and duplication
+4. **Ensure quality** - Tests pass, docs are accurate, integration works
+5. **Make principled decisions** - Derive from AXIOMS.md and prior learning
+6. **Enable trust** - Nic can delegate framework decisions confidently
+
+**Quality gates for trustworthiness**:
+
+1. **VERIFY FIRST** (AXIOMS #13) - Check actual state before claiming anything
+   - Document sizes before analyzing: `wc -l file.md`
+   - Sampling strategy: Check beginning/middle/end, not just start
+   - Coverage verification: Report what % of content was analyzed
+
+2. **NO EXCUSES** (AXIOMS #14) - Never claim success without confirmation
+   - If asked to extract from 5 files, verify all 5 were processed
+   - If analyzing a conversation, check total length first
+   - Report limitations explicitly: "Analyzed lines 1-200 of 4829 (4%)"
+
+3. **VERIFY COMPLETENESS** - Before reporting work done:
+   - Did I check the full scope? (all files, entire document, complete list)
+   - Did I verify coverage? (what % of content did I actually analyze)
+   - Did I sample representatively? (not just the easy/obvious parts)
+   - Can I defend this analysis as thorough?
+
+4. **FAIL FAST when corners are cut**:
+   - If you realize mid-task you're taking shortcuts → STOP
+   - Report: "I need to restart - my initial approach was insufficient"
+   - Never present incomplete work as if it were thorough
+
+**Every invocation loads context** (MANDATORY LOADING ORDER):
+
+```python
+# 1. BINDING USER CONSTRAINTS (load FIRST)
+accommodations = read("bots/ACCOMMODATIONS.md")  # User constraints - as binding as AXIOMS
+core = read("bots/CORE.md")  # User context - as binding as AXIOMS
+
+# 2. CURRENT REALITY (ground truth)
+state = read("bots/skills/framework/STATE.md")  # Current stage, mandatory processes, active blockers
+
+# 3. FRAMEWORK PRINCIPLES AND ASPIRATIONS
+vision = read("bots/VISION.md")  # End state goals
+roadmap = read("bots/ROADMAP.md")  # Maturity progression
+axioms = read("bots/AXIOMS.md")  # Core principles
+log = read("bots/experiments/LOG.md")  # Learning patterns
+
+# 4. TECHNICAL REFERENCES (as needed for specific work)
+# - Hook configuration: read("bots/skills/framework/references/hooks_guide.md")
+# - Other technical docs in references/ directory
+```
+
+**Critical**: User constraints (ACCOMMODATIONS) come BEFORE framework aspirations. STATE.md establishes current reality before reading vision documents.
+
+**Key queries**:
+
+- "What have we built?" → Read ROADMAP, show progress toward VISION
+- "What should we work on next?" → Check ROADMAP priorities, validate strategic fit
+- "Is X a good idea?" → Evaluate against VISION, AXIOMS, prior decisions
+- "Why did we do Y?" → Search experiments/LOG.md for rationale
+- "What's our current state?" → Load ROADMAP current status section
+
+**Decision-making framework**:
+
+1. Derive from AXIOMS.md (foundational principles)
+2. Align with VISION.md (strategic direction)
+3. Consider current ROADMAP stage (progression path)
+4. Learn from experiments/LOG.md (past patterns)
+5. Default to simplicity and quality
+6. When uncertain, provide options with clear tradeoffs
+
+**Output format**:
+
+- **Answer**: Direct response to query
+- **Reasoning**: Trace to AXIOMS/VISION/ROADMAP/LOG
+- **Recommendation**: Clear next action if applicable
+- **Considerations**: Tradeoffs and alternatives if uncertain
 
 ## Meta-Framework: Iterative Automation Development
 
@@ -223,15 +298,143 @@ Each piece of information exists in exactly ONE location.
 
 ### Script Design: Orchestration vs Reasoning
 
-**Key principle**: Scripts are simple utilities (like `jq` or `split`) that agents call via Bash. Agents do ALL orchestration, decision-making, and reasoning.
+**CRITICAL ANTI-PATTERN**: Writing scripts that duplicate Claude Code's built-in capabilities.
 
-**Prohibited**: Scripts that read files, filter with regex, search files, extract patterns, or orchestrate workflows (use agent tools: Read, Write, Edit, Grep, Glob, LLM reasoning).
+**The Framework Context**: We work in Claude Code (CLI tool) where agents have direct access to powerful tools: Read, Write, Edit, Grep, Glob, and full LLM reasoning. Scripts that replicate these capabilities are wrong.
 
-**Allowed**: Pure mechanical data transformation (chunk JSONL, merge JSON files) and aggregation.
+#### When Scripts Are PROHIBITED
 
-**Pattern**: Agents orchestrate → Scripts are simple tools → Agents reason
+**❌ NEVER write scripts that**:
 
-**For detailed guidance and examples**: [[references/script-design-guide.md]]
+```python
+# WRONG: Script reads files (use Read tool in agent)
+def read_emails(path):
+    with open(path) as f:
+        return f.read()
+
+# WRONG: Script filters with regex (use LLM judgment in agent)
+def filter_important(emails):
+    pattern = r'accepted|grant|published'
+    return [e for e in emails if re.search(pattern, e)]
+
+# WRONG: Script searches files (use Grep/Glob tools in agent)
+def find_projects(directory):
+    for file in Path(directory).glob("**/*.md"):
+        if "project" in file.read_text():
+            results.append(file)
+
+# WRONG: Script extracts patterns (use LLM reasoning in agent)
+GRANT_PATTERN = r'\b(DP|FT|LP)\d{6,10}\b'
+grants = re.findall(GRANT_PATTERN, text)
+```
+
+**Why this is wrong**:
+- Loses semantic understanding (regex vs LLM judgment)
+- Duplicates built-in tools (Read/Grep/Glob exist)
+- Violates DRY (tools already available)
+- Increases maintenance burden
+- Breaks LLM-first architecture
+
+#### When Scripts ARE Allowed (Simple Tools Only)
+
+**✅ Scripts are SIMPLE TOOLS that agents call via Bash**:
+
+1. **Data Transformation** - Mechanical format conversion:
+```python
+def chunk_jsonl(input_file, output_dir, chunk_size=50):
+    """Split JSONL into numbered chunk files."""
+    # Pure mechanical operation: read, split by count, write
+    # NO filtering, NO reasoning, NO decision-making
+```
+
+2. **Aggregation** - Combine structured outputs:
+```python
+def merge_json_files(input_pattern, output_file):
+    """Merge multiple JSON files into one."""
+    # Pure mechanical operation: read JSONs, concatenate, write
+    # NO filtering, NO analysis
+```
+
+**Scripts are utilities**. The AGENT orchestrates everything:
+- Agent decides what to process
+- Agent invokes script via Bash tool: `python chunk_emails.py archive.jsonl chunks/`
+- Agent processes each chunk (using Read/LLM judgment)
+- Agent invokes script via Bash tool: `python merge_results.py results/*.json summary.json`
+- Agent analyzes final results
+
+#### The Correct Pattern
+
+**Agents orchestrate → Scripts are simple tools → Agents reason**
+
+**Example: Email Extraction**
+
+❌ **WRONG APPROACH**:
+```python
+# Script does everything (reads, filters, extracts, writes)
+emails = read_jsonl("archive.jsonl")
+important = [e for e in emails if re.search(r"grant|accept", e["body"])]
+for email in important:
+    extract_grant_id(email)  # regex extraction
+    create_entity(email)      # file writes
+```
+
+✅ **CORRECT APPROACH**:
+
+```python
+# Script: chunk_emails.py - SIMPLE UTILITY
+# Does ONE thing: split JSONL into chunks (mechanical only)
+def chunk_jsonl(input_file, output_dir, chunk_size=50):
+    with open(input_file) as f:
+        for i, chunk in enumerate(batched(f, chunk_size)):
+            Path(output_dir, f"chunk-{i:03d}.jsonl").write_text(chunk)
+```
+
+**Agent workflow** (the agent orchestrates everything):
+1. Agent: Use Bash tool → `python chunk_emails.py archive.jsonl chunks/`
+2. Agent: Use Glob tool → Find all chunks/chunk-*.jsonl
+3. Agent: For each chunk:
+   - Use Read tool → Read chunk content
+   - Use LLM judgment → "Is this email important?"
+   - Use LLM reasoning → Extract grant IDs, paper info, etc.
+   - Use Write tool → Create bmem entities
+4. Agent: Use Bash tool → `python merge_results.py results/*.json summary.json` (if needed)
+5. Agent: Analyze aggregated results
+
+**The agent does ALL orchestration, decision-making, and reasoning**.
+**Scripts are dumb utilities the agent calls when needed**.
+
+#### Decision Framework
+
+**Before writing ANY script, ask**:
+
+1. "Am I duplicating Read/Write/Edit/Grep/Glob tools?" → Don't write it
+2. "Am I filtering/searching/analyzing text?" → Don't write it (agent does this)
+3. "Am I extracting patterns with regex?" → Don't write it (agent uses LLM)
+4. "Am I orchestrating a workflow?" → Don't write it (agent orchestrates)
+5. "Is this PURELY mechanical data transformation?" → Script OK (as simple tool)
+
+**Script purpose test**:
+- ✅ "Split this file into N-line chunks" → Simple tool, OK
+- ✅ "Merge these JSON files" → Simple tool, OK
+- ❌ "Find important emails" → Agent reasoning, not a script
+- ❌ "Extract grant IDs" → Agent reasoning, not a script
+- ❌ "Process this archive" → Agent orchestration, not a script
+
+**Remember**: Scripts are utilities like `jq` or `split`. Agents call them via Bash.
+
+#### Enforcement
+
+**Pre-implementation checklist**:
+- [ ] Does script only chunk/parallel/aggregate?
+- [ ] Zero use of open(), re.search(), pathlib.glob()?
+- [ ] All reasoning delegated to agents?
+- [ ] Integration test shows agent doing the work?
+
+**Code review red flags**:
+- Imports: `re`, `pathlib` (for file reading)
+- Functions: reading files, pattern matching, filtering
+- Hardcoded patterns: regex strings, skip lists, filter rules
+- Business logic: "important", "should extract", "matches criteria"
 
 ## Workflows
 
@@ -372,10 +575,7 @@ def test_something(fixture: Type) -> None:
 │       ├── ROADMAP.md               # Maturity stages 0-5, progression plan
 │       ├── TASK-SPEC-TEMPLATE.md    # Template for specifying automations
 │       ├── references/              # Technical reference documentation
-│       │   ├── hooks_guide.md       # Claude Code hooks system reference
-│       │   ├── script-design-guide.md        # Script design principles
-│       │   ├── strategic-partner-mode.md     # Strategic partner procedures
-│       │   └── testing-with-live-data.md     # Testing patterns
+│       │   └── hooks_guide.md       # Claude Code hooks system reference
 │       ├── workflows/               # Detailed workflow procedures
 │       │   ├── 01-design-new-component.md
 │       │   ├── 02-debug-framework-issue.md

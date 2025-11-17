@@ -20,6 +20,12 @@ packages = ["lib", "skills", "tests"]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+[dependency-groups]
+dev = [
+    "pytest>=9.0.1",
+    "pytest-xdist>=3.8.0",
+]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]

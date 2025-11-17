@@ -1,5 +1,20 @@
 # bmem: Obsidian-Compatible Knowledge Graph Maintenance
 
+## Authoritative Domain Knowledge
+
+**Data Format**: Markdown entities with YAML frontmatter (Obsidian-compatible)
+**Storage Location**: `data/` hierarchy in each repository
+**Entity Structure**: `data/{entity-type}/{entity-slug}.md`
+**Entity Types**: note, project, person, event, concept, relation
+**Required Fields**: title, permalink, type
+**Optional Fields**: tags, related, created, modified, status
+**Linking**: WikiLinks `[[entity-slug]]` for cross-references
+**Relations**: Expressed via frontmatter fields (related:, part-of:, etc.) and WikiLinks in content
+**Write Access**: bmem skill ONLY - agents must not write data/ files directly
+**Cross-Repo**: Each repository has independent data/ hierarchy
+
+---
+
 ## Overview
 
 Silently extracts information from sessions and maintains knowledge graph in Obsidian-compatible Basic Memory format. Operates continuously in background without user prompting.

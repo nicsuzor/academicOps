@@ -1,0 +1,503 @@
+# Task: Visual Task Dashboard (Excalidraw)
+
+**Date**: 2025-11-17
+**Stage**: 2 (Scripted Tasks)
+**Priority**: P1 (High impact - solves documented accommodation need)
+
+## Problem Statement
+
+**What manual work are we automating?**
+
+Currently, when working across multiple terminals/repositories with long-running Claude Code workflows (1-120 minutes), there is no way to see at a glance:
+- What tasks exist across all projects
+- Which tasks are active/blocked/queued in each repository
+- How tasks map to strategic priorities
+- What the overall progress state is
+- What blockers are preventing task completion
+
+This forces keeping all context in working memory, leading to:
+- Lost track of tasks across repos
+- Difficulty context switching between projects
+- Inability to answer "what should I work on next?"
+- Mental overhead trying to remember task states
+
+**Why does this matter?**
+
+**Impact**:
+- Reduces cognitive load when context switching (documented in ACCOMMODATIONS.md line 30)
+- Addresses core ADHD accommodation: "Need to understand progress at a glance" (ACCOMMODATIONS.md line 37)
+- Directly supports VISION.md success criterion #4: "Tasks are automatically prioritized, tracked, and surfaced at the right time"
+- Solves acute multi-window cognitive load problem (experiments/2025-11-17_multi-window-cognitive-load-solutions.md)
+
+**Time savings**: Currently spending 5-10 minutes mentally reconstructing task state when context switching. With visual dashboard: <30 seconds to scan and orient.
+
+**Quality improvement**: Reduces task loss rate from current ~20% (tasks forgotten/lost in mental queue) to <5% (visible in dashboard).
+
+**Who benefits?**
+
+Nic - across ALL academic work (not just framework development). This solves a general workflow problem affecting every project and repository.
+
+## Success Criteria
+
+**The automation is successful when**:
+
+1. **Visual completeness**: Dashboard shows all tasks from all repositories with their current state (queued/active/blocked/completed)
+2. **Strategic mapping**: Tasks are correctly grouped by project and labeled with strategic priority (from ROADMAP or bmem project data)
+3. **Blocker visibility**: Blocked tasks clearly show blocking reason
+4. **Generation speed**: Dashboard generates in <10 seconds from command invocation
+5. **Cross-repo coverage**: Automatically discovers and includes tasks from all repositories in known work locations
+
+**Quality threshold**:
+- Fail-fast: If task file is malformed (can't parse), halt with clear error pointing to problematic file
+- Best effort: If project mapping is ambiguous, show task with "Unknown project" label rather than guess
+- Graceful degradation: If strategic priority missing, default to "Medium" rather than fail
+
+## Scope
+
+### In Scope
+
+- Read all task files from `data/tasks/*.jsonl` across multiple repositories
+- Parse task metadata: id, title, status, project, priority, blockers
+- Read bmem project entities to map tasks to strategic context
+- Generate Excalidraw JSON format visualization
+- Support visual encoding: color by status, size by priority, position by strategic value
+- Group tasks by project
+- Show blocker information for blocked tasks
+- Slash command `/task-viz` or `/dashboard` to trigger generation
+- Output to `~/current-tasks.excalidraw` for cross-repo overview
+
+### Out of Scope
+
+- Real-time updates (manual regeneration only for now - Stage 3 concern)
+- Interactive editing of tasks via dashboard (read-only visualization)
+- Historical trend analysis (Stage 4+ concern)
+- Automatic task prioritization/suggestions (Stage 4+ concern)
+- Integration with calendar/deadlines (future enhancement)
+- Custom layout algorithms (use simple top-to-bottom grouping)
+
+**Boundary rationale**: This is a "do one thing" task focused solely on visualization of existing task state. It reads existing data structures (task files, bmem entities) and transforms them into a visual format. Orchestration, editing, and intelligent suggestions are separate concerns for later stages.
+
+## Dependencies
+
+### Required Infrastructure
+
+- Task files must exist in standard JSONL format at `data/tasks/*.jsonl`
+- Each task must have minimum fields: `id`, `title`, `status`
+- Optional task fields: `project`, `priority`, `blockers`
+- Bmem entities for projects (optional - improves strategic mapping)
+- ROADMAP.md for strategic priority reference (optional - improves categorization)
+
+### Data Requirements
+
+**Task file format**: Markdown (bmem-compliant) with YAML frontmatter
+```markdown
+---
+title: Fix bug in parser
+created: 2025-11-17T10:00:00Z
+priority: 1
+status: active
+project: framework
+---
+
+Task description here...
+```
+
+**Note**: Original spec incorrectly assumed JSONL format. Actual format is Markdown as documented in skills/tasks/SKILL.md authoritative domain knowledge.
+
+**What happens if data is missing or malformed?**
+- Missing task file directory: Create empty dashboard with message "No tasks found"
+- Malformed Markdown/YAML: Halt with error pointing to specific file (fail-fast per AXIOMS #5)
+- Missing optional fields: Use defaults (priority=2/"medium", project="uncategorized")
+- Missing bmem entities: Continue without strategic context enrichment
+
+### Cross-Repository Discovery
+
+**Problem**: Tasks exist in multiple repositories (academicOps, writing, privacy-research, etc.)
+
+**Solution**: Scan known work locations:
+- `~/src/*/data/tasks/*.md` (all repos in src directory)
+- Configurable via environment variable `$TASK_REPOS` if needed
+
+**Fallback**: If no global discovery mechanism, start with current repo only and expand later.
+
+## Integration Test Design
+
+**Test must be designed BEFORE implementation**
+
+### Test Setup
+
+Create test environment with multiple mock repositories:
+
+```bash
+# Create test directory structure
+mkdir -p /tmp/task-viz-test/{repo1,repo2,repo3}/data/tasks
+
+# Create test task files
+cat > /tmp/task-viz-test/repo1/data/tasks/tasks.jsonl <<EOF
+{"id":"t1","title":"Active framework task","status":"active","project":"framework","priority":"high","blockers":[]}
+{"id":"t2","title":"Blocked doc task","status":"blocked","project":"framework","priority":"medium","blockers":["waiting-input"]}
+EOF
+
+cat > /tmp/task-viz-test/repo2/data/tasks/tasks.jsonl <<EOF
+{"id":"t3","title":"Privacy paper draft","status":"active","project":"privacy","priority":"high","blockers":[]}
+{"id":"t4","title":"Review literature","status":"queued","project":"privacy","priority":"medium","blockers":[]}
+EOF
+
+cat > /tmp/task-viz-test/repo3/data/tasks/tasks.jsonl <<EOF
+{"id":"t5","title":"Completed task example","status":"completed","project":"teaching","priority":"low","blockers":[]}
+EOF
+```
+
+### Test Execution
+
+```bash
+# Run task-viz skill pointing to test repos
+# Agent workflow:
+# 1. Glob for /tmp/task-viz-test/*/data/tasks/*.jsonl
+# 2. Read each JSONL file
+# 3. Parse and aggregate task data
+# 4. Generate Excalidraw JSON via script
+uv run python scripts/generate_task_viz.py /tmp/task-viz-test-data.json /tmp/output.excalidraw
+```
+
+### Test Validation
+
+```bash
+# Validate generated Excalidraw file
+test -f /tmp/output.excalidraw || exit 1
+
+# Validate it's valid JSON
+jq empty /tmp/output.excalidraw || exit 1
+
+# Validate contains expected task count (5 tasks)
+task_count=$(jq '[.elements[] | select(.type == "rectangle")] | length' /tmp/output.excalidraw)
+[[ "$task_count" -eq 5 ]] || exit 1
+
+# Validate project grouping (3 projects: framework, privacy, teaching)
+# (Implementation detail - verify structure has grouping)
+
+# Validate color coding by status
+# Active tasks should have blue color
+# Blocked tasks should have red color
+# Completed tasks should have green color
+# (Check color properties in Excalidraw JSON)
+```
+
+### Test Cleanup
+
+```bash
+# Remove test directories and output
+rm -rf /tmp/task-viz-test
+rm -f /tmp/task-viz-test-data.json /tmp/output.excalidraw
+```
+
+### Success Conditions
+
+- [x] Test initially fails (no implementation yet)
+- [ ] Test passes after implementation
+- [ ] Test covers happy path (multiple repos, multiple projects, various states)
+- [ ] Test covers error case (malformed JSONL)
+- [ ] Test validates all success criteria (completeness, grouping, color coding)
+- [ ] Test is idempotent (can run repeatedly)
+- [ ] Test cleanup leaves no artifacts
+
+## Implementation Approach
+
+### High-Level Design
+
+**Pattern**: Agent orchestrates → Simple script generates → Agent validates
+
+**Components**:
+
+1. **Task Discovery** (Agent via Glob)
+   - Find all `data/tasks/*.jsonl` files across repositories
+   - Support single-repo and multi-repo modes
+
+2. **Task Data Aggregation** (Agent via Read + LLM reasoning)
+   - Read each JSONL file
+   - Parse task objects
+   - Validate required fields
+   - Enrich with bmem project data if available
+   - Map to strategic priorities from ROADMAP
+
+3. **Data Structuring** (Agent reasoning)
+   - Group tasks by project
+   - Sort projects by strategic priority
+   - Sort tasks within project by priority then status
+   - Prepare structured JSON for visualization script
+
+4. **Excalidraw Generation** (Simple Python script)
+   - Input: Structured JSON with task/project data
+   - Output: Valid Excalidraw JSON file
+   - Pure mechanical transformation: data → layout coordinates → Excalidraw elements
+
+5. **Output** (Agent via Bash)
+   - Write to `~/current-tasks.excalidraw`
+   - Confirm successful generation
+   - Optionally open in Excalidraw (user preference)
+
+**Data Flow**:
+```
+Task files (*.jsonl)
+  → Agent Glob/Read → Parse/validate
+  → Agent reasoning → Enrich with bmem/ROADMAP data
+  → Agent structuring → Group/sort/prioritize
+  → Agent creates structured JSON
+  → Python script → Generate Excalidraw layout
+  → Excalidraw JSON file output
+```
+
+### Technology Choices
+
+**Language/Tools**:
+- Agent orchestration: Claude Code built-in tools (Glob, Read, Write, Bash)
+- Visualization script: Python with `uv` (per AXIOMS #9)
+- Output format: Excalidraw JSON (text-based, version-control friendly)
+
+**Libraries**:
+- Standard library only for generation script (json, dataclasses for type safety)
+- No external dependencies unless absolutely necessary
+- If Excalidraw library exists: Evaluate vs. manual JSON generation
+
+**Rationale**:
+- Python: Type-safe (mypy), standard in framework (AXIOMS #9)
+- Excalidraw: Industry-standard diagramming, git-friendly, visual, editable
+- No complex dependencies: Keeps script simple and maintainable (MINIMAL principle)
+
+**Alternative considered**: SVG generation
+- Rejected: Less editable, not standard in diagram tooling ecosystem
+- Excalidraw provides better workflow integration
+
+### Error Handling Strategy
+
+**Fail-fast cases** (halt immediately, per AXIOMS #5):
+
+- Task file exists but is malformed JSON
+- Task file missing required fields (id, title, status)
+- Invalid status value (not in: queued, active, blocked, completed)
+- Visualization script fails (malformed input data)
+
+**Error messages must include**:
+- Exact file path and line number for JSONL errors
+- Field name for missing required fields
+- Clear remediation steps
+
+**Graceful degradation cases** (best effort):
+
+- Missing optional fields (project, priority, blockers) → Use defaults
+- Missing bmem project data → Continue without enrichment
+- Ambiguous project mapping → Label as "Uncategorized"
+- Missing ROADMAP strategic priority → Default to "Medium"
+
+**Recovery mechanisms**:
+
+- If single task file is malformed: Skip that file, continue with others, report warning
+- If ALL task files malformed: Generate empty dashboard with error summary
+- Failed generation: Preserve any existing dashboard file, report error
+
+## Failure Modes
+
+### What Could Go Wrong?
+
+1. **Failure mode**: Task file has malformed JSONL
+   - **Detection**: JSON parse error when reading file
+   - **Impact**: Cannot visualize tasks from that repository
+   - **Prevention**: Task creation tools must validate JSONL format
+   - **Recovery**: Skip malformed file, report clear error with file:line, continue with valid files
+
+2. **Failure mode**: Multiple repositories have task ID collisions
+   - **Detection**: Duplicate task IDs when aggregating
+   - **Impact**: Tasks overwrite each other in visualization
+   - **Prevention**: Task IDs should include repo prefix (e.g., "aops-t123")
+   - **Recovery**: Detect collision, append repo name to duplicate IDs, warn user
+
+3. **Failure mode**: Excalidraw generation script produces invalid JSON
+   - **Detection**: JSON validation fails on output
+   - **Impact**: Dashboard file cannot be opened in Excalidraw
+   - **Prevention**: Integration test validates JSON structure
+   - **Recovery**: Halt generation, preserve previous dashboard, report error
+
+4. **Failure mode**: Visualization becomes unreadable with 100+ tasks
+   - **Detection**: Manual observation, or layout exceeds reasonable bounds
+   - **Impact**: Dashboard too cluttered to be useful
+   - **Prevention**: Start with simple layout, test with realistic task counts
+   - **Recovery**: Implement filtering/grouping/pagination in future iteration (Stage 3)
+
+5. **Failure mode**: Task discovery finds wrong directories
+   - **Detection**: Tasks from unrelated projects appear
+   - **Impact**: Dashboard shows irrelevant information
+   - **Prevention**: Clear documentation of task discovery pattern, configurable paths
+   - **Recovery**: User configuration override via environment variable
+
+## Monitoring and Validation
+
+### How do we know it's working in production?
+
+**Metrics to track**:
+
+- **Generation success rate**: % of invocations that produce valid dashboard
+- **Task coverage**: % of known tasks that appear in dashboard
+- **Generation time**: Seconds from invocation to output file
+- **Error rate**: % of repositories skipped due to malformed data
+
+**Monitoring approach**:
+
+- Log each generation attempt: timestamp, repo count, task count, duration, success/failure
+- Weekly review: Check if error rate increasing (indicates task file quality issues)
+- User feedback: Note when dashboard is missing expected tasks
+
+**Validation frequency**:
+
+- Automated: Each invocation validates output JSON structure
+- Manual: User verification that dashboard matches mental model of task state
+- Periodic: Weekly check that all active repositories discovered
+
+## Documentation Requirements
+
+### Code Documentation
+
+- [ ] Docstrings for all functions (purpose, inputs, outputs, failure modes)
+- [ ] Type hints for Python (mypy must pass)
+- [ ] Inline comments for Excalidraw layout calculations
+- [ ] Script header docstring explaining agent orchestration pattern
+
+### User Documentation
+
+- [ ] Add `/task-viz` command documentation to commands/README.md
+- [ ] Update CORE.md with trigger phrase for dashboard generation
+- [ ] Document in ROADMAP.md as Stage 2 automation #5
+- [ ] Create experiment log entry when validated
+
+### Maintenance Documentation
+
+- [ ] Known limitations: Single-repo vs multi-repo discovery, task count limits
+- [ ] Future improvements: Real-time updates, interactive editing, historical trends
+- [ ] Dependencies: Task JSONL format specification, Excalidraw JSON structure
+
+## Rollout Plan
+
+### Phase 1: Validation (Experiment)
+
+- Test with current academicOps task files only (single repo)
+- Generate dashboard manually, verify visual accuracy
+- Refine layout based on actual usage
+- Validate generation time <10sec
+- Document in experiment log
+
+**Criteria to proceed**: Dashboard accurately represents all tasks in academicOps, generation reliable (100% success over 10 runs)
+
+### Phase 2: Limited Deployment (Multi-Repo)
+
+- Extend to 2-3 active repositories (e.g., academicOps, writing, privacy-research)
+- Test cross-repo task discovery
+- Validate task ID collision handling
+- Monitor for missing tasks or incorrect grouping
+- Keep manual task list as verification
+
+**Criteria to proceed**: Multi-repo discovery works reliably, no missing tasks, <5% manual corrections needed
+
+### Phase 3: Full Deployment
+
+- Enable for all repositories in `~/src/`
+- Make `/task-viz` default workflow for task overview
+- Reduce manual task tracking
+- Periodic validation: monthly check that dashboard complete
+
+**Rollback plan**: If visualization becomes unreliable or generation fails frequently, revert to manual task lists. Dashboard generation script is read-only and doesn't modify task files, so rollback is safe.
+
+## Risks and Mitigations
+
+**Risk 1**: Excalidraw JSON format changes in future versions
+
+- **Likelihood**: Low (format relatively stable)
+- **Impact**: Medium (dashboards stop rendering correctly)
+- **Mitigation**: Use minimal Excalidraw features (rectangles, text, arrows), test with current version, document format version used
+
+**Risk 2**: Task file format inconsistencies across repositories
+
+- **Likelihood**: High (different repos may evolve independently)
+- **Impact**: Medium (some tasks not visualized correctly)
+- **Mitigation**: Define strict task JSONL schema, validate on creation, fail-fast on invalid format
+
+**Risk 3**: Performance degrades with large task counts (100+)
+
+- **Likelihood**: Medium (depends on project growth)
+- **Impact**: Low (generation time acceptable up to ~200 tasks)
+- **Mitigation**: Test with realistic dataset sizes (50-100 tasks), optimize layout algorithm if needed, consider pagination for >200 tasks
+
+**Risk 4**: Visual layout becomes cluttered/unreadable
+
+- **Likelihood**: Medium (depends on task/project count)
+- **Impact**: High (defeats "at a glance" purpose)
+- **Mitigation**: Start simple, iterate on layout based on real usage, consider filtering options (show active only, etc.)
+
+## Open Questions
+
+1. **Multi-repo discovery strategy**: Should we scan all `~/src/*/data/tasks/` automatically, or require explicit repository configuration?
+   - **Proposed answer**: Start with automatic scan of `~/src/`, allow override via `$TASK_REPOS` environment variable
+
+2. **Strategic priority source**: Should priority come from ROADMAP.md, bmem project entities, or task file itself?
+   - **Proposed answer**: Hierarchy: task.priority (explicit) > bmem project.priority > "medium" default
+
+3. **Blocker visualization**: How to show blocking relationships between tasks (arrows)?
+   - **Proposed answer**: Start without arrows (just show blocker text), add arrows in Phase 2 if needed
+
+4. **Completed task handling**: Should completed tasks appear in dashboard or be filtered?
+   - **Proposed answer**: Include completed tasks in different visual area (bottom), allow user to see recent completions for satisfaction
+
+5. **Update frequency**: Should dashboard auto-update on task changes, or manual regeneration only?
+   - **Proposed answer**: Manual regeneration initially (via `/task-viz`), auto-update is Stage 3 concern
+
+## Notes and Context
+
+**Related documents**:
+- experiments/2025-11-17_multi-window-cognitive-load-solutions.md (Problem statement)
+- ACCOMMODATIONS.md lines 30, 37 (User requirements)
+- VISION.md success criterion #4 (Strategic alignment)
+- ROADMAP.md Stage 2 automation target #2 (Task Capture and Filing)
+
+**Design principles applied**:
+- AXIOM #8 (DRY, Modular): Agent orchestrates, script is simple utility
+- AXIOM #16 (Long-term infrastructure): Reusable across all repos
+- VISION.md scope: Works across ALL projects, not just academicOps
+- ACCOMMODATIONS.md: Visual, glanceable, reduces cognitive load
+
+**Excalidraw choice rationale**:
+- Text-based JSON format (git-friendly)
+- Industry-standard tool (AXIOM #9)
+- Editable after generation (user can adjust layout)
+- Visual and glanceable (ACCOMMODATIONS requirement)
+- Supports color coding and spatial organization
+
+---
+
+## Completion Checklist
+
+Before marking this task as complete:
+
+- [ ] All success criteria met and verified
+- [ ] Integration test passes reliably (>95% success rate)
+- [ ] All failure modes addressed with error handling
+- [ ] Documentation complete (code docstrings, user guide, maintenance notes)
+- [ ] Experiment log entry created with validation results
+- [ ] No documentation conflicts introduced
+- [ ] Code follows AXIOMS.md principles (fail-fast, DRY, explicit, type-safe)
+- [ ] Monitoring/logging in place
+- [ ] Rollout plan executed through Phase 2 minimum
+- [ ] ROADMAP.md updated with completion status
+
+## Post-Implementation Review
+
+[After 2 weeks of production use]
+
+**What worked well**:
+- [TBD after implementation]
+
+**What didn't work**:
+- [TBD after implementation]
+
+**What we learned**:
+- [TBD after implementation]
+
+**Recommended changes**:
+- [TBD after implementation]
