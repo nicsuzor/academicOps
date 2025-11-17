@@ -331,3 +331,4 @@ bots/.academicOps
 # Daily tracking files (ephemeral - not version controlled)
 data/context/workstream-tracking-*.md
 data/views/today-priorities-*.md
+experiments/
