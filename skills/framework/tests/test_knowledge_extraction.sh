@@ -11,7 +11,7 @@ YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
 # Test configuration
-REPO_ROOT="/home/user/writing"
+REPO_ROOT="/home/user/academicOps"
 SCRIPT_PATH="$REPO_ROOT/bots/hooks/extract_session_knowledge.py"
 TEST_DATA_DIR="/tmp/test_knowledge_extraction_$$"
 TEST_SESSION_ID="test-extraction-session-$(date +%s)"
@@ -30,7 +30,7 @@ mkdir -p "$TEST_DATA_DIR/knowledge"
 
 # Create mock session log with substantial content
 cat > "$TEST_DATA_DIR/sessions/${TEST_DATE}-testabcd.jsonl" <<'EOF'
-{"session_id":"test-extraction-session-123","timestamp":"2025-11-09T10:30:00Z","summary":"Extended session; used Read, Edit, Write, Bash; modified 5 file(s)","transcript_summary":{"user_messages":15,"assistant_messages":18,"tools_used":["Read","Edit","Write","Bash","Grep"],"files_modified":["/home/user/writing/bots/hooks/session_logger.py","/home/user/writing/bots/hooks/log_session_stop.py","/home/user/writing/tests/test_session_logging.py"],"errors":[]}}
+{"session_id":"test-extraction-session-123","timestamp":"2025-11-09T10:30:00Z","summary":"Extended session; used Read, Edit, Write, Bash; modified 5 file(s)","transcript_summary":{"user_messages":15,"assistant_messages":18,"tools_used":["Read","Edit","Write","Bash","Grep"],"files_modified":["/home/user/academicOps/hooks/session_logger.py","/home/user/academicOps/hooks/log_session_stop.py","/home/user/academicOps/tests/test_session_logging.py"],"errors":[]}}
 EOF
 
 echo "✓ Test session log created"
@@ -152,7 +152,7 @@ echo "Test 6: Testing batch processing..."
 
 # Create second session log
 cat > "$TEST_DATA_DIR/sessions/2025-11-08-testxyz.jsonl" <<'EOF'
-{"session_id":"test-batch-session-456","timestamp":"2025-11-08T14:20:00Z","summary":"Short session; used Grep, Read; modified 1 file(s)","transcript_summary":{"user_messages":3,"assistant_messages":4,"tools_used":["Grep","Read"],"files_modified":["/home/user/writing/README.md"],"errors":[]}}
+{"session_id":"test-batch-session-456","timestamp":"2025-11-08T14:20:00Z","summary":"Short session; used Grep, Read; modified 1 file(s)","transcript_summary":{"user_messages":3,"assistant_messages":4,"tools_used":["Grep","Read"],"files_modified":["/home/user/academicOps/README.md"],"errors":[]}}
 EOF
 
 if [ -n "${ANTHROPIC_API_KEY:-}" ] && [ "$ANTHROPIC_API_KEY" != "test-key-for-dry-run" ]; then
