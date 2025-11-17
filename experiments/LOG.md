@@ -200,3 +200,15 @@ Example correct: Script that splits a file into N-line chunks (mechanical) → A
 **Why**: Task was "revise spec" not "implement component," but agent should have recognized that creating/modifying commands/ requires updating README.md (single source of truth for directory structure per framework SKILL.md).
 
 **Lesson**: When creating or significantly modifying framework components (commands, skills, hooks, scripts), always check if README.md needs updating to maintain documentation integrity and single source of truth for component locations.
+
+---
+
+## Component-Level: TTD Independent Review Success - Plan Agent Caught Fundamental Design Flaw
+
+**Date**: 2025-11-17 | **Type**: ✅ Success | **Pattern**: #ttd-workflow #independent-review #critical-thinking
+
+**What**: User proposed message-count batching approach ("1000 messages at a time backwards"), TTD supervisor invoked Plan agent to analyze, then Explore agent for independent review—review caught that approach breaks month boundaries, violates API constraints (Outlook COM doesn't support offset/limit), and would be extremely slow.
+
+**Why**: Independent review step (commands/ttd.md Stage 0) worked exactly as designed: Plan agent understood requirements, Explore agent critically evaluated approach against actual implementation constraints, identified superior alternative (date-range splitting), and user accepted better solution.
+
+**Lesson**: TTD's mandatory independent review step successfully prevents implementing flawed approaches by catching architectural mismatches early—this is a core value of the rigorous TDD workflow and justifies the overhead for production academic work (per LOG.md "Appropriate Rigor Levels" entry).

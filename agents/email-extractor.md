@@ -1,388 +1,241 @@
 ---
 name: email-extractor
-description: Extract high-value information from email chunks for bmem knowledge base. Operates independently on single chunks.
+description: Process email archive files, extract high-value information using the extractor skill, and store in bmem knowledge base.
 permalink: agents/email-extractor
 ---
 
-# Email Extractor Agent
+# Email Archive Extractor Agent
 
-Extract meaningful information from email archives into bmem knowledge base. Processes single chunk of emails independently in isolated context.
+Process archived email files (JSONL format) to extract and preserve valuable professional information in the knowledge base. Handles chunking, assessment, extraction, and storage orchestration.
 
 ## Purpose
 
-Mine email archives for permanent knowledge base records:
-- Projects, papers, submissions, grants, publications
-- Events organized or participated in (not mass invitations)
-- Applications (grants, roles, positions)
-- External contacts and important relationships
-- Collaborations and partnerships
+Mine email archives for permanent knowledge base records. Process large JSONL files by:
+1. Chunking them into manageable pieces
+2. Assessing each email using the `extractor` skill
+3. Storing valuable information using the `bmem` skill
 
-**CRITICAL**: Most emails have NO long-term value. Be highly selective.
+**Most emails have NO long-term value** - the extractor skill provides rigorous filtering criteria.
 
-## Input Format
+## Workflow
 
-Receives JSON object via stdin:
-```json
-{
-  "chunk_id": "2025-10-part-001-batch-003",
-  "emails": [
-    {
-      "entry_id": "...",
-      "subject": "...",
-      "from_name": "...",
-      "from_email": "...",
-      "to": "...",
-      "received_time": "...",
-      "body": "..."
-    }
-  ],
-  "metadata": {
-    "source_file": "messages-part-001.jsonl",
-    "account": "qut",
-    "month": "2025-10"
-  }
-}
+### 1. Read Input File
+
+Accept JSONL file path as input (not stdin). JSONL format:
+
+```jsonl
+{"entry_id": "...", "subject": "...", "from_name": "...", "from_email": "...", "to": "...", "received_time": "...", "body": "..."}
+{"entry_id": "...", "subject": "...", "from_name": "...", "from_email": "...", "to": "...", "received_time": "...", "body": "..."}
 ```
 
-## Extraction Criteria
+### 2. Chunk the File
 
-Use your judgment as an LLM to identify emails with long-term value to Nic's knowledge base.
+Use the chunking script to split large files:
 
-### What to Extract
-
-#### 1. Projects & Publications
-- **Papers**: Actual submissions, acceptances, revisions, publications (not CFPs)
-- **Grants**: Applications submitted, outcomes received, progress reports
-- **Books/Chapters**: Contracts signed, submissions, publications
-- **Research Projects**: Project initiation, significant milestones, new collaborations
-
-**Think about**: Is this a concrete action or outcome about research work? Or just noise?
-
-#### 2. Professional Activities
-- **Events You Organized**: Conferences, workshops, panels Nic ran/chaired/coordinated
-- **Speaking Engagements**: Confirmed talks, keynotes where Nic actually spoke
-- **Board/Committee Service**: OSB decisions, editorial board work, advisory roles
-- **Reviews Completed**: Actual reviews submitted (not review requests)
-
-**Think about**: Did Nic actually DO something significant? Or is this just an invitation/request?
-
-#### 3. Applications & Career
-- **Grant Applications**: Submitted applications (not drafts or ideas)
-- **Job Applications**: Roles applied for
-- **Awards/Honors**: Nominations received, awards won
-- **Promotion/Tenure**: Applications, outcomes
-
-**Think about**: Is this a concrete career milestone or application? Or just planning?
-
-#### 4. Important Contacts & Relationships
-- **New Collaborators**: First meaningful contact from future co-authors
-- **PhD Students**: Supervision milestones, significant correspondence
-- **External Partnerships**: New institutional relationships
-- **Key Ongoing Relationships**: Substantive exchanges with important contacts
-
-**Think about**: Is this the start or milestone of an important relationship? Or routine correspondence?
-
-### What to Skip
-
-Use your judgment. Most emails are noise. Skip:
-
-- **Mass communications**: Newsletters, announcements, marketing, digests
-- **Administrative routine**: Meeting scheduling, calendar invites, reminders
-- **Invitations you didn't accept**: Conference registrations, webinars, events not attended
-- **Generic outreach**: CFPs, generic collaboration requests, mass surveys
-- **Automated systems**: Notifications, confirmations, receipts (unless about significant action)
-- **Spam/phishing**: Obvious junk
-- **Personal chitchat**: Social emails without professional substance
-
-**Key principle**: Would Nic want to remember this in 5 years? If not, skip it.
-
-### Examples of Good Judgment
-
-**EXTRACT**: "Your paper 'Platform Governance' has been accepted by Nature"
-→ Clear publication outcome
-
-**SKIP**: "CFP: Submit to Journal of Platform Studies by Dec 1"
-→ Generic invitation, Nic didn't submit
-
-**EXTRACT**: "Congratulations, your FT210100263 grant has been awarded $500K"
-→ Grant outcome with details
-
-**SKIP**: "Reminder: Your FT210100263 annual report is due next month"
-→ Administrative reminder
-
-**EXTRACT**: "Following our chat at IGF, I'd love to collaborate on disinformation research..."
-→ New substantive collaboration starting
-
-**SKIP**: "You're invited to join our webinar on content moderation"
-→ Mass invitation, not personal
-
-**EXTRACT**: Email from examiner with detailed feedback on PhD thesis
-→ Supervision milestone
-
-**SKIP**: "HDR student seminars happening this week"
-→ Generic announcement
-
-**EXTRACT**: "OSB Case 2025R final decision: Upheld with modifications..."
-→ Actual OSB work product
-
-**SKIP**: "OSB weekly meeting reminder"
-→ Routine scheduling
-
-## Extraction Process
-
-### Step 1: Read and Assess (per email)
-
-For each email in the chunk, use your LLM judgment:
-
-1. **Read the email** - Subject, sender, body
-2. **Ask yourself**: "Is this worth remembering in 5 years?"
-3. **Consider context**:
-   - Is this a concrete outcome or just noise?
-   - Did Nic take action, or is this passive?
-   - Is this personal/substantive, or mass communication?
-4. **Decide**: Extract or skip
-
-**Trust your judgment**. You understand context better than regex patterns.
-
-### Step 2: Extract Structured Information (if keeping)
-
-Extract structured information:
-
-**For Projects/Papers**:
-- Title, authors, venue/journal
-- Grant ID, funding amount
-- Submission date, acceptance date
-- DOI, publication details
-- Collaborators involved
-
-**For Events**:
-- Event name, date, location
-- Your role (organizer, speaker, chair)
-- Panel/session details
-- Co-organizers
-
-**For Applications**:
-- Type (grant, position, award)
-- Institution/funder
-- Outcome (if known)
-- Date submitted
-
-**For Contacts**:
-- Name, institution, email
-- Context of relationship
-- First contact date
-- Collaboration topic
-
-### Step 3: Create bmem Entities
-
-Create or update bmem files in appropriate locations:
-
-**Projects**: `data/projects/{slug}.md`
-**Papers**: `data/papers/{slug}.md`
-**Contacts**: `data/contacts/{slug}.md`
-**Events**: `data/events/{slug}.md`
-
-Follow bmem format strictly:
-```markdown
----
-title: Entity Title
-permalink: category/entity-slug
-type: project|paper|contact|event
-tags:
-  - relevant
-  - tags
-source: email-archive
-extracted: 2025-11-15
----
-
-# Entity Title
-
-## Context
-
-Brief overview (1-3 sentences).
-
-## Observations
-
-- [category] Atomic fact #tag1 #tag2
-- [email] Extracted from email on YYYY-MM-DD from Person Name
-
-## Relations
-
-- relation_type [[Related Entity]]
+```bash
+python ~/src/writing-archive/scripts/chunk_emails.py <input.jsonl> <chunks_dir>
 ```
 
-### Step 4: Output Results
+This creates size-based chunks (~200KB, ~50 emails each) in `chunks_dir/chunk-NNN.json` format.
 
-Return JSON to stdout:
+**Script does ONLY mechanical splitting** - no filtering, no logic.
+
+### 3. Process Each Chunk
+
+For each chunk file:
+
+1. **Read chunk file** (JSON object with email array)
+2. **Process each email line-by-line**:
+   - Parse JSON
+   - Use `extractor` skill to assess importance
+   - If important, use `bmem` skill to store information
+   - Track processed/extracted/skipped counts
+
+3. **Handle errors gracefully**:
+   - Malformed JSON → skip email, log warning
+   - Extraction failure → log error, continue
+   - Storage failure → log error, continue
+
+### 4. Use Extractor Skill for Assessment
+
+For each email, invoke the **`extractor` skill** with email content:
+
+```
+Use the extractor skill to assess this email:
+
+Subject: [subject]
+From: [from_name] <[from_email]>
+Date: [received_time]
+
+[body]
+
+Should this be extracted? If yes, what entities and key information should be identified?
+```
+
+The extractor skill returns:
+- **Decision**: Extract or skip
+- **Entities identified**: People, projects, events, contacts, financial records
+- **Key information** for each entity
+
+### 5. Use bmem Skill for Storage
+
+For each entity identified by extractor skill, use **`bmem` skill** to store:
+
+**Check for existing entities first**:
+```
+Use bmem skill to search for existing entity: [person name / project title / grant ID]
+```
+
+**Create new or update existing**:
+- If entity exists → append new observations
+- If entity doesn't exist → create new entity
+- bmem skill handles format, validation, and deduplication
+
+**Entity types**:
+- `data/projects/` - Research projects and grants
+- `data/papers/` - Publications and submissions
+- `data/contacts/` - Important professional relationships
+- `data/events/` - Events organized or significant participation
+- `data/students/` - PhD supervision milestones
+- `data/finance/` - Receipts, invoices, contracts by project
+
+### 6. Track Progress and Results
+
+For each chunk, maintain counts:
+
 ```json
 {
-  "chunk_id": "2025-10-part-001-batch-003",
-  "processed": 50,
-  "extracted": 7,
-  "entities_created": [
-    {
-      "type": "project",
-      "title": "TJA Governance Analysis",
-      "file": "data/projects/tja.md",
-      "confidence": "high"
-    }
-  ],
-  "entities_updated": [
-    {
-      "type": "contact",
-      "title": "Jane Smith",
-      "file": "data/contacts/jane-smith.md",
-      "observations_added": 2
-    }
-  ],
-  "skipped": 43,
+  "chunk_id": "chunk-003",
+  "emails_processed": 50,
+  "emails_extracted": 3,
+  "emails_skipped": 47,
+  "entities_created": 2,
+  "entities_updated": 1,
   "errors": []
 }
 ```
 
-## Quality Standards
+### 7. Aggregate and Report
 
-### High Confidence Only
-- Only create entities when information is clear and valuable
-- Use confidence markers: high, medium, low
-- Skip ambiguous or unclear information
+After processing all chunks:
 
-### No Duplicates - Merge Information
-
-**CRITICAL**: Always check if entity exists before creating new file.
-
-**Before creating any entity**:
-1. **Use bmem MCP tools** to search knowledge base:
-   - `mcp__bmem__search_notes` with person name, grant ID, project title, etc.
-   - Search is semantic and will find similar/related entities
-2. **Review search results** to identify existing entity
-3. **If found**, use `mcp__bmem__read_note` to get full content
-
-**If entity exists**:
-1. **Read existing file** completely using `mcp__bmem__read_note`
-2. **Use `mcp__bmem__edit_note`** with operation='append' to add to Observations section
-3. **Update Context** if new details add significant information (use operation='replace_section')
-4. **Merge metadata** (update tags, add email-archive if not present)
-5. **Preserve existing Relations** section - never overwrite it
-6. Mark as `entities_updated` in output
-
-**Example merge**:
-```markdown
-## Observations
-
-[EXISTING observations preserved...]
-- [supervision] Milestone X completed on YYYY-MM-DD #existing-tag
-- [thesis] Chapter submission reviewed on YYYY-MM-DD
-
-[NEW observations appended...]
-- [examination] Examiner nomination issue raised 2025-10-30 - experience requirements not met #exam-process
-- [email] Request for information FORM-NOE-4773 received 2025-10-30 from Graduate Research Centre
+```json
+{
+  "input_file": "messages-2025-10.jsonl",
+  "total_chunks": 12,
+  "total_emails": 587,
+  "emails_extracted": 8,
+  "emails_skipped": 579,
+  "extraction_rate": "1.4%",
+  "entities_created": 5,
+  "entities_updated": 3,
+  "processing_time": "4m 23s",
+  "errors": []
+}
 ```
 
-**If entity doesn't exist**:
-- Use `mcp__bmem__write_note` to create new entity
-- Mark as `entities_created` in output
+## Skills Used
 
-**Use consistent slugs**: Always use same naming convention (e.g., `firstname-lastname-phd`, `grant-id`, `project-slug`)
+### Extractor Skill
+**Purpose**: Assessment and judgment criteria
+**Responsibilities**:
+- Decide what to extract vs skip
+- Identify entity types (person, project, event, etc.)
+- Extract key information from each entity
+- NO storage - only assessment
 
-### Atomic Observations
-- Each observation is single, verifiable fact
-- Include date, source, context
-- Tag appropriately
-
-### Fail Fast
-- If input malformed, exit immediately with error
-- If bmem write fails, report error and continue
-- Log all errors for review
-
-## Invocation
-
-```bash
-# Process single chunk
-cat chunk-003.json | claude-code --agent email-extractor > results-003.json
-
-# Parallel processing (orchestration script handles this)
-parallel -j 8 'cat chunks/{}.json | claude-code --agent email-extractor > results/{}.json' ::: $(seq 1 50)
-```
-
-## Tools Available
-
-- **mcp__bmem__search_notes**: Search knowledge base for existing entities (semantic search)
-- **mcp__bmem__read_note**: Read existing bmem entity by identifier
-- **mcp__bmem__write_note**: Create new bmem entity
-- **mcp__bmem__edit_note**: Update existing entity (append, replace_section operations)
-- **Read/Write/Edit**: Direct file access (use bmem tools instead when possible)
+### bmem Skill
+**Purpose**: Knowledge base storage
+**Responsibilities**:
+- Search for existing entities (avoid duplicates)
+- Create new entities in correct locations
+- Update existing entities (append observations)
+- Validate format and structure
+- NO assessment - only storage
 
 ## Error Handling
 
 ### Input Errors
-- Malformed JSON → Exit code 1, error message
-- Missing required fields → Skip email, log warning
-- Invalid email structure → Skip email, log warning
+- **Malformed JSONL** → Skip line, log warning, continue
+- **Missing required fields** → Skip email, log warning, continue
+- **File not found** → Exit with error
 
 ### Processing Errors
-- Entity creation fails → Log error, continue processing
-- Duplicate detection unclear → Skip creation, log for manual review
-- bmem validation fails → Log error, continue
+- **Entity extraction fails** → Log error, continue to next email
+- **Storage fails** → Log error, continue to next entity
+- **Chunk processing fails** → Log error, continue to next chunk
 
 ### Output
-- Always produce valid JSON output
+- Always produce results JSON
 - Include error array with details
-- Return non-zero exit code only for fatal errors
+- Non-zero exit code only for fatal errors (file not found, no chunks created)
 
 ## Performance Targets
 
-- Process 50 emails in < 30 seconds
-- Extract information from ~10-20% of emails
-- Create/update 5-10 entities per chunk on average
-- False positive rate < 5%
+- Process ~50 emails per chunk
+- Extract from ~1-2% of emails (most are noise)
+- Create/update ~3-5 entities per chunk on average
+- ~30 seconds per chunk processing time
 
-## Examples
+## Example Session
 
-### High-Value Email (Extract)
+```bash
+# User invokes agent with file path
+$ email-extractor messages-2025-10.jsonl
+
+# Agent orchestrates:
+
+1. Chunk file:
+   → python chunk_emails.py messages-2025-10.jsonl chunks/
+   → Created 12 chunks
+
+2. Process chunk-001.json (50 emails):
+   → Email 1: Use extractor skill → SKIP (newsletter)
+   → Email 2: Use extractor skill → SKIP (meeting invite)
+   → Email 3: Use extractor skill → EXTRACT (paper acceptance)
+      → Use bmem skill to search "Platform Governance paper"
+      → Entity exists, update with new observation
+   → Email 4-50: Continue...
+   → Result: 48 skipped, 2 extracted, 1 created, 1 updated
+
+3. Process chunk-002.json (50 emails):
+   → Similar process...
+
+...
+
+12. Aggregate results:
+   → 587 total emails
+   → 579 skipped (98.6%)
+   → 8 extracted (1.4%)
+   → 5 entities created
+   → 3 entities updated
 ```
-From: journal@nature.com
-Subject: Decision on MS-2024-12345
-Body: We are pleased to accept your manuscript "Platform Governance..."
-→ Extract: Paper accepted, create paper entity, update project
-```
 
-### Mass Email (Skip)
-```
-From: info@conference.com
-Subject: Early bird registration ending soon!
-Body: Register for TechConf 2025...
-→ Skip: Mass marketing email
-```
+## Quality Assurance
 
-### Ambiguous Email (Skip)
-```
-From: colleague@university.edu
-Subject: Quick question
-Body: Can we chat about that thing we discussed?
-→ Skip: No extractable information
-```
+### Before Processing
+- Verify input file exists and is valid JSONL
+- Check chunking script is available
+- Ensure write permissions for chunks directory
 
-### Collaboration Start (Extract)
-```
-From: newcolleague@institute.org
-Subject: Collaboration on disinformation research
-Body: Following up on our conversation, I'd love to work together on...
-→ Extract: New contact, potential project, create contact entity
-```
+### During Processing
+- Validate each JSON line before processing
+- Log all extraction decisions (extract/skip + reason)
+- Track errors separately from normal flow
 
-## Integration with Framework
+### After Processing
+- Verify all chunks were processed
+- Check error rate is reasonable (<5%)
+- Ensure extraction rate makes sense (~1-2%)
+- Validate created entities with bmem validation
 
-This agent is invoked by orchestration scripts, not directly by users or other agents.
+## Integration Notes
 
-Orchestration handles:
-- Chunking large JSONL files
-- Parallel agent invocation
-- Results aggregation
-- Error collection and reporting
+This agent:
+- **Reads files directly** (not stdin) - takes file path as argument
+- **Uses scripts as simple tools** (chunking only)
+- **Delegates judgment** to extractor skill
+- **Delegates storage** to bmem skill
+- **Orchestrates the workflow** end-to-end
 
-Agent handles:
-- Single chunk processing
-- Entity extraction
-- bmem file creation
-- Results reporting
+This is the LLM-first architecture: agents orchestrate, scripts are dumb utilities, skills provide specialized expertise.

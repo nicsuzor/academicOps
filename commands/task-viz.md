@@ -60,7 +60,11 @@ Create the Excalidraw JSON structure directly:
    - Text elements for labels
    - Arrows for relationships (goal→project, project→task, task→blocker)
 2. Apply visual encodings decided in step 3
-3. Layout elements spatially (top-to-bottom hierarchy, grouped by project)
+3. Layout elements spatially:
+   - Use your judgment about layout to show connections between goals, projects, tasks
+   - You can be creative here to generate a view that you think the user might benefit from
+   - Listen to any specific directions, if provided, to present the information that the user wants to focus on
+   - Make it look pretty!
 4. Use Excalidraw element properties:
    - `type`: "rectangle", "ellipse", "arrow", "text"
    - `strokeColor`, `backgroundColor`, `fillStyle`
@@ -70,13 +74,13 @@ Create the Excalidraw JSON structure directly:
 
 ### 5. Write and Report
 
-1. Use Write tool to create `~/current-tasks.excalidraw` with the generated JSON
+1. Use Write tool to create `$ACA/data/views/current-tasks.excalidraw` with the generated JSON
 2. Verify the output file was created
 3. Provide a summary:
    - Total tasks found (breakdown by status)
    - Projects discovered (with/without tasks)
    - Goals mapped
-   - Location of generated dashboard: `~/current-tasks.excalidraw`
+   - Location of generated dashboard: `$ACA/data/views/current-tasks.excalidraw`
 
 ## Error Handling
 
@@ -96,5 +100,5 @@ Create the Excalidraw JSON structure directly:
 User should receive:
 1. Summary of tasks discovered
 2. Confirmation that dashboard was generated
-3. Path to open: `~/current-tasks.excalidraw`
+3. Path to open: `$ACA/data/views/current-tasks.excalidraw`
 4. Any warnings about skipped/malformed tasks
