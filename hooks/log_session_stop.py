@@ -61,6 +61,8 @@ def main() -> int:
         return 0
 
     except Exception as e:
+        # Log error to stderr (appears in Claude Code debug logs) but don't crash
+        print(f"[log_session_stop] Error logging hook event: {e}", file=sys.stderr)
         # Always return success to prevent blocking stop
         print("{}")
         print(f"Warning: Session logging hook error: {e}", file=sys.stderr)
@@ -70,7 +72,9 @@ def main() -> int:
 if __name__ == "__main__":
     try:
         sys.exit(main())
-    except Exception:
+    except Exception as e:
+        # Log error to stderr (appears in Claude Code debug logs) but don't crash
+        print(f"[log_session_stop] Error logging hook event: {e}", file=sys.stderr)
         # Ultimate safeguard - never block stop
         print("{}")
         sys.exit(0)

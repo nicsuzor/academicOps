@@ -47,7 +47,9 @@ def log_to_session_file(
         with log_path.open("a") as f:
             json.dump(log_entry, f, separators=(",", ":"))
             f.write("\n")
-    except Exception:
+    except Exception as e:
+        # Log error to stderr (appears in Claude Code debug logs) but don't crash
+        print(f"[log_pretooluse] Error logging hook event: {e}", file=sys.stderr)
         # Never crash the hook
         pass
 

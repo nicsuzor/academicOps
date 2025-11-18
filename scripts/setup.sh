@@ -34,7 +34,7 @@ echo
 # Symlink settings.json
 echo "Setting up global Claude Code configuration..."
 
-SETTINGS_SRC="$BOTS_DIR/config/settings.json"
+SETTINGS_SRC="$BOTS_DIR/config/claude/settings.json"
 SETTINGS_DEST="$CLAUDE_HOME/settings.json"
 
 [ -e "$SETTINGS_DEST" ] && rm -rf "$SETTINGS_DEST"
@@ -89,8 +89,8 @@ echo -e "${GREEN}✓${NC} $BOTS_DIR/.claude/ created"
 # Symlink settings.json (relative path)
 REPO_SETTINGS_DEST="$REPO_CLAUDE/settings.json"
 [ -e "$REPO_SETTINGS_DEST" ] && rm -rf "$REPO_SETTINGS_DEST"
-ln -s ../config/settings.json "$REPO_SETTINGS_DEST"
-echo -e "${GREEN}✓${NC} .claude/settings.json → config/settings.json (relative)"
+ln -s ../config/claude/settings.json "$REPO_SETTINGS_DEST"
+echo -e "${GREEN}✓${NC} .claude/settings.json → config/claude/settings.json (relative)"
 
 # Symlink hooks directory (relative path)
 REPO_HOOKS_DEST="$REPO_CLAUDE/hooks"

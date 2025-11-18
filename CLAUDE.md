@@ -19,3 +19,4 @@ This is the academicOps framework repository containing generic, reusable automa
 3. Framework principles (generic) are in this repo: `AXIOMS.md`
 
 **For framework development work**: See README.md for structure and $ACA_DATA/projects/aops/STATE.md for current status.
+- Use haiku by default when invoking claude code for testing purposes

@@ -19,12 +19,12 @@
         "hooks": [
           {
             "type": "command",
-            "command": "PYTHONPATH=$AOPS uv run --no-project python $AOPS/hooks/sessionstart_load_axioms.py",
+            "command": "PYTHONPATH=$AOPS AOPS=$AOPS uv run --no-project python $AOPS/hooks/sessionstart_load_axioms.py",
             "timeout": 2000
           },
           {
             "type": "command",
-            "command": "PYTHONPATH=$AOPS uv run --no-project python $AOPS/hooks/log_sessionstart.py",
+            "command": "PYTHONPATH=$AOPS AOPS=$AOPS uv run --no-project python $AOPS/hooks/log_sessionstart.py",
             "timeout": 2000
           }
         ]

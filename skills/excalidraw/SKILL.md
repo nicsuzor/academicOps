@@ -34,6 +34,14 @@ Use the excalidraw skill when:
 
 **Anti-pattern**: Everything the same size/color/weight = visual chaos
 
+### Mind Mapping Design Principles
+
+For mind maps and concept maps, apply four fundamental design principles: **Proximity** (group related elements), **Alignment** (consistent positioning), **Contrast** (hierarchy through visual differences), and **Repetition** (unified patterns).
+
+**Key guidelines**: Use keywords over paragraphs, keep labels concise (1-5 words), visual over textual.
+
+See [[references/mind-mapping-principles.md]] for complete principles and examples.
+
 ### 2. The Two-Phase Design Process
 
 **Phase 1: Structure** (ignore aesthetics)
@@ -70,286 +78,19 @@ Whitespace (negative space) is not "empty"—it's a powerful tool for:
 
 ---
 
-## Color Strategy
+## Technical Elements
 
-### The Open Colors System
+**Colors**: Open Colors system (0-9 levels), stroke darker than fill, accessibility contrast 4.5:1
 
-Excalidraw uses Open Colors: 13 colors × 10 brightness levels (0-9).
+**Typography**: XL (40-48px) titles, L (24-32px) headers, M (16-20px) body, S (12-14px) labels
 
-**Standard usage**:
-- **Level 0-1**: Canvas background (lightest)
-- **Level 6-7**: Element fills (mid-range)
-- **Level 9**: Strokes and outlines (darkest)
+**Shapes**: Rectangles (most versatile), circles (start/end/actors), diamonds (decisions)
 
-### Color Application Rules
+**Arrows**: Thin (1-2px) default, medium (3-4px) emphasis, bind to shapes, click-click-click for multi-point
 
-**Stroke + Fill relationship**:
-- Stroke MUST be darker than fill
-- Never use fills darker than shade 3 with text
-- Light fills (1-3) work with all stroke colors
-- Dark strokes (8-9) provide maximum contrast
+**Layout**: Alignment obsessive, grid snapping, flow directions (L-R, T-B, radial, circular)
 
-**Color for meaning**:
-- **Functional grouping**: Same color family = related concepts
-- **Importance**: Saturated colors = primary, desaturated = secondary
-- **States**: Green = success/active, Red = error/critical, Blue = process/info, Gray = inactive
-- **Layers**: Lower opacity = background context, full opacity = foreground focus
-
-### Accessibility Considerations
-
-**Minimum contrast requirements**:
-- Text on background: 4.5:1 ratio
-- UI elements: 3:1 ratio against adjacent colors
-
-**Don't rely on color alone**:
-- Use shapes to differentiate categories
-- Add icons or symbols
-- Include text labels
-- Vary patterns (hachure vs. solid vs. cross-hatch)
-
-**Safe color pairs**:
-- Red + Blue (always contrast)
-- Dark + Light versions of same color
-- Avoid red-green combinations (colorblind accessibility)
-
-### Custom Colors with Alpha
-
-Use hex codes with alpha for sophisticated effects:
-- `#FF000080` = 50% transparent red
-- `#0000FF40` = 25% transparent blue
-- Type "transparent" for no fill
-
-**Transparency techniques**:
-- Overlay shapes to show quantity/layering
-- Create subtle background frames for grouping
-- Fade supporting elements to emphasize primary content
-- Layer low-opacity shapes behind high-opacity focal points
-
----
-
-## Typography & Text
-
-### Font Size Hierarchy
-
-**Consistent sizing system**:
-- **XL (40-48px)**: Main diagram title only
-- **L (24-32px)**: Section headers, major component labels
-- **M (16-20px)**: Standard body text, most labels
-- **S (12-14px)**: Small object labels, arrow annotations, metadata
-
-**Anti-pattern**: Random font sizes destroy visual coherence
-
-### Text Readability Rules
-
-1. **Backgrounds**: Only use fills ≤ shade 3 behind text
-2. **Contrast**: Dark text on light fills, light text on dark fills (rarely needed)
-3. **Brevity**: Concise labels > verbose explanations
-4. **Alignment**: Center text in shapes, left-align multi-line text
-5. **Consistency**: Same font size for same hierarchy level throughout
-
----
-
-## Shape Selection & Usage
-
-### When to Use Each Shape
-
-**Rectangles/Squares** (most versatile):
-- Processes, steps, components
-- Containers and groupings
-- Text blocks and annotations
-- Default choice for most elements
-
-**Circles/Ellipses**:
-- Start/end points in flows
-- Multiple/plural items
-- Actors or entities
-- Cyclical concepts
-
-**Diamonds**:
-- Decision points (use sparingly)
-- Conditional branches
-- Warning: text positioning is challenging
-
-**Combined shapes**:
-- Create custom forms for specific purposes
-- Group primitive shapes for reusable components
-- Build visual metaphors
-
-### Aspect Ratios & Proportions
-
-**Golden ratio** (1.618:1): Naturally pleasing rectangles
-
-**Common useful ratios**:
-- 2:1 = Wide containers, headers
-- 3:2 = Balanced general-purpose boxes
-- 1:1 = Equal emphasis, icons, symbols
-- 16:9 = Presentation slides, artboards
-
-**Consistency**: Use same proportions for similar element types
-
----
-
-## Arrows & Connectors
-
-### Arrow Styling
-
-**Stroke width**:
-- **Thin (1-2px)**: Default for most arrows, clean and unobtrusive
-- **Medium (3-4px)**: Emphasis on critical paths
-- **Thick (5-6px)**: Rarely—only for major flow emphasis
-
-**Styles**:
-- **Solid**: Standard relationships, data flow
-- **Dotted**: Optional paths, weak relationships, future state
-- **Dashed**: Alternative flows, return paths
-
-**Arrow types**:
-- **Standard arrows**: Directional flow, one-way relationships
-- **Elbow/orthogonal**: Clean 90° angles, professional technical diagrams
-- **Curved**: Show loops, cyclical processes, organic relationships
-  - Avoid extreme curves (disrupts flow)
-  - Strategic curves for specific concepts (spirals, cycles)
-
-### Connector Best Practices
-
-**Multi-point arrows**: Click-click-click (not click-drag)
-- Enables precise control
-- Creates cleaner paths
-- Easier to adjust later
-
-**Binding**: Always bind arrows to shapes
-- Arrows move with connected elements
-- Maintains relationships during rearrangement
-- Hold Ctrl/Cmd to prevent auto-binding when needed
-
-**Labels**: Double-click arrow body to add text
-- Use for intermediate steps
-- Annotate conditions or requirements
-- Keep labels brief (3-5 words max)
-
-**Avoid arrow chaos**:
-- No crossing flows (rearrange elements instead)
-- Consistent arrow directions (left-to-right, top-to-bottom)
-- Group parallel arrows when showing similar relationships
-
----
-
-## Layout & Spatial Organization
-
-### Alignment is Non-Negotiable
-
-**Use alignment tools obsessively**:
-1. Select multiple elements
-2. Right-click → Align options
-3. Choose horizontal/vertical/distribute
-
-**Grid & snapping** (Ctrl/Cmd + '):
-- 20px minor grid (default)
-- 100px major grid
-- Enable object snapping (Alt/Option + S)
-- Snap to anchor points for precision
-
-**Visual balance**:
-- Symmetry creates calm, stability
-- Asymmetry creates energy, movement
-- Choose intentionally based on purpose
-
-### Flow Direction Patterns
-
-**Left-to-right** (Western reading pattern):
-- Sequential processes
-- Timelines
-- Cause-and-effect chains
-
-**Top-to-bottom** (hierarchy/gravity):
-- Organizational structures
-- Decomposition diagrams
-- Waterfall processes
-
-**Radial** (hub-and-spoke):
-- Central concept with related elements
-- Network diagrams
-- Mind maps
-
-**Circular/cyclical** (loops):
-- Iterative processes
-- Feedback loops
-- Life cycles
-
-**Consistency**: Pick one primary direction per diagram
-
-### Grouping & Proximity
-
-**Gestalt proximity principle**: Things close together = related
-
-**Create groups through**:
-- Physical proximity (most important)
-- Background boxes/frames (container concept)
-- Color coding (same family = same group)
-- Visual connectors (lines, brackets)
-
-**Group hierarchy**:
-- Related elements: 20-40px apart
-- Separate groups: 80-120px apart
-- Major sections: 150-200px apart
-
----
-
-## Advanced Techniques
-
-### Layering & Z-Index
-
-**Layer strategy**:
-- Background frames/containers: Send to back
-- Primary content: Middle layers
-- Labels and annotations: Bring to front
-
-**Opacity layering**:
-- Background context: 30-50% opacity, behind
-- Supporting elements: 60-80% opacity, middle
-- Focal points: 100% opacity, front
-
-**Technique**: Create subtle frames at low opacity to show groupings without overwhelming
-
-### Stats for Nerds (Alt + /)
-
-Shows exact pixel dimensions of selected elements.
-
-**Use for**:
-- Maintaining exact proportions
-- Matching sizes across elements
-- Creating pixel-perfect layouts
-- Debugging spacing issues
-
-### Fill Patterns for Visual Interest
-
-**Hachure** (hand-drawn hatching):
-- Default Excalidraw aesthetic
-- Organic, approachable feel
-- Best for most diagrams
-
-**Solid**:
-- Clean, modern look
-- Smallest file size
-- Good for technical diagrams
-
-**Cross-hatch**:
-- Heavier visual weight
-- Emphasis or texture
-- Larger file size (use sparingly)
-
-**Pattern consistency**: Use same pattern family throughout diagram
-
-### Roughness & Sloppiness
-
-**Roughness** (0-2):
-- 0 = Perfectly straight lines (technical)
-- 1 = Default hand-drawn feel (recommended)
-- 2 = Very sketchy (informal, brainstorming)
-
-**Consistency**: Same roughness level throughout maintains coherence
-
-**File size**: Lower roughness = smaller files
+See [[references/technical-details.md]] for complete specifications on colors, typography, shapes, arrows, layout, layering, and fill patterns.
 
 ---
 
@@ -436,7 +177,7 @@ Now make it beautiful:
 - Consistent spacing between steps
 - Numbered steps if sequential
 
-### Concept Map
+### Concept Map / Mind Map
 
 **Structure**:
 - Central concept (large, bold)
@@ -448,6 +189,14 @@ Now make it beautiful:
 - Color = category/type
 - Labeled connections show relationships
 - Strategic use of curves for organic feel
+
+### Graph/Network Visualization (Goal → Project → Task Structure)
+
+**Three-tier radial pattern**: Central goals (largest, saturated) → Projects radially distributed (medium, varied colors) → Tasks around projects (smallest, desaturated). Use visual state indicators for completed/outstanding tasks.
+
+**Key techniques**: Cluster related projects spatially, vary radius for priority, balance visual weight across sectors.
+
+See [[references/graph-layouts.md]] for complete specifications, sizing guidelines, and examples.
 
 ### Comparison Matrix
 
@@ -466,28 +215,13 @@ Now make it beautiful:
 
 ## Component Libraries & Resources
 
-### Excalidraw Libraries
+**Built-in libraries** (`skills/excalidraw/libraries/`): 6 curated libraries available - awesome-icons, data-processing, data-viz, hearts, stick-figures, stick-figures-collaboration.
 
-Access pre-built components at libraries.excalidraw.com:
-- System design components (databases, load balancers, queues)
-- Cloud architecture (AWS, Azure, GCP icons)
-- Network diagrams (routers, switches, firewalls)
-- UI/UX wireframe components
+**Quick start**: Load via Excalidraw library panel → "Load library from file" → Select from `skills/excalidraw/libraries/`
 
-**Installation**: Click "Add to Excalidraw" → available in library panel
+**Usage tips**: Recolor for consistency, use sparingly for emphasis, don't mix too many styles.
 
-### Creating Reusable Components
-
-**Save frequently-used elements**:
-1. Design component (group multiple elements)
-2. Add to library for reuse
-3. Maintain consistent styling across projects
-
-**Design systems approach**:
-- Define standard shapes/sizes for common elements
-- Create color palette presets
-- Document spacing rules
-- Build component library
+See [[references/library-guide.md]] for complete loading instructions, usage guidelines, and online library resources.
 
 ---
 
@@ -562,19 +296,49 @@ Before considering a diagram complete:
 - `A` or `5` → Arrow
 - `L` or `6` → Line
 - `T` or `7` → Text
+- `X` → Freedraw tool
+- `E` → Eraser
 
 **Editing**:
 - `Cmd/Ctrl + D` → Duplicate
 - `Cmd/Ctrl + Arrow` → Duplicate + connect with arrow
 - `Shift + V/H` → Flip vertical/horizontal
 - Arrow keys → Move 1px (Shift+Arrow for 5px)
-- `Alt + /` → Stats for nerds
+- `Alt + /` → Stats for nerds (exact pixel dimensions)
 - `Cmd/Ctrl + '` → Toggle grid
+- `Cmd/Ctrl + G` → Group selection
+- `Cmd/Ctrl + Shift + G` → Ungroup
+- `Cmd/Ctrl + K` → Add link to selected element
 
 **Selection**:
 - Click drag → Select multiple
 - `Cmd/Ctrl + A` → Select all
 - Right-click → Context menu (align, arrange, etc.)
+- `Cmd/Ctrl + Click` → Add to selection
+- Hold `Shift` while resizing → Maintain aspect ratio
+
+**Layers/Z-order**:
+- `Cmd/Ctrl + ]` → Bring forward
+- `Cmd/Ctrl + [` → Send backward
+- `Cmd/Ctrl + Shift + ]` → Bring to front
+- `Cmd/Ctrl + Shift + [` → Send to back
+
+**View**:
+- `Cmd/Ctrl + Wheel` → Zoom in/out
+- `Space + Drag` → Pan canvas
+- `Cmd/Ctrl + 0` → Reset zoom to 100%
+- `Cmd/Ctrl + 1` → Zoom to fit all elements
+
+### Productivity Tips (2025 Best Practices)
+
+**Essential techniques**:
+- Snapping: `Alt/Option + S` for precision alignment
+- Multi-point arrows: Click-click-click (not drag) for clean paths
+- Duplicate + connect: `Cmd/Ctrl + Arrow` for flowcharts
+- Stats for nerds: `Alt + /` for exact pixel dimensions
+- Link elements: `Cmd/Ctrl + K` for clickable diagrams
+
+See [[references/productivity-tips.md]] for complete list of 12 productivity techniques and keyboard shortcuts.
 
 ### Browser Extensions
 
@@ -654,19 +418,35 @@ Look for diagrams that:
 
 **Core Principles**:
 1. **Visual hierarchy** through size, color, position
-2. **Two-phase process**: structure first, aesthetics second
-3. **Whitespace** as a design element, not empty space
-4. **Consistent styling** throughout (colors, sizes, spacing)
-5. **Alignment obsession** for professional polish
+2. **Mind mapping principles**: Proximity, Alignment, Contrast, Repetition
+3. **Two-phase process**: structure first, aesthetics second
+4. **Whitespace** as a design element, not empty space
+5. **Consistent styling** throughout (colors, sizes, spacing)
+6. **Alignment obsession** for professional polish
 
 **Remember**: Boring diagrams fail to communicate, no matter how accurate. Invest in visual design to make your ideas memorable and impactful.
 
 **Quick wins**:
 - Use 2-4 colors max, purposefully
-- Align everything obsessively
+- Load library components for visual interest (6 libraries included in skill)
+- Align everything obsessively (enable snapping: Alt/Option + S)
 - Add way more whitespace than you think you need
 - Vary sizes to create hierarchy
+- Use graph/radial layouts for goal → project → task visualizations
 - Export at 2-3x scale
+
+**For goal/project/task visualizations**:
+- Central goals (largest, saturated colors, XL text)
+- Projects radially distributed (medium size, varied colors, L text)
+- Tasks around projects (smallest, desaturated, M text)
+- Cluster related projects together
+- Use opacity to show completed vs outstanding tasks
+
+**Productivity shortcuts**:
+- `Cmd/Ctrl + Arrow` → Duplicate + connect with arrow
+- `Alt + /` → Stats for nerds (pixel dimensions)
+- `Alt/Option + S` → Toggle snapping
+- Click-click-click for multi-point arrows (not click-drag)
 
 ---
 
