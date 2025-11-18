@@ -85,6 +85,12 @@
 - Status: Structural tests only, need behavioral tests
 - Next: Build test harness for agent execution validation
 
+**P2 - Session Documentation Gap** (monitoring)
+- Issue: Hook session logs removed (not useful enough), creates potential gap
+- Impact: May affect (a) session documentation quality and (b) debugging capability
+- Status: Monitoring bmem prompts and debugging effectiveness
+- Next: Validate bmem captures sufficient context, watch for debugging pain points
+
 **P2 - Format Inconsistencies**
 - Issue: Uncertainty about authoritative data formats
 - Impact: Cascading failures, wrong assumptions in specs
@@ -95,6 +101,8 @@
 
 ## Recent Decisions
 
+**2025-11-18**: Hook session logs removed from repository (cost/benefit too low)
+**2025-11-18**: Session data growth concern resolved (P1 blocker removed)
 **2025-11-17**: Spec-first approach confirmed MANDATORY (updated ROADMAP line 99)
 **2025-11-17**: No timeline estimates policy (updated ACCOMMODATIONS line 50)
 **2025-11-17**: Framework scope clarified - ALL repos not just academicOps (updated VISION, ACCOMMODATIONS)
@@ -113,6 +121,8 @@
 1. Task-viz visual dashboard (spec complete: skills/framework/specs/2025-11-17_task-visualization-dashboard.md)
 2. E2E test harness design
 3. Resolve task management reliability issues
+4. Monitor bmem session documentation quality (post-hook-log removal)
+5. Monitor debugging effectiveness (post-hook-log removal)
 
 **Deferred**:
 1. Tasks MCP server (spec exists)
