@@ -1,7 +1,8 @@
-# bmem: Obsidian-Compatible Knowledge Graph Maintenance
+# bmem: Basic Memory Knowledge Graph Integration
 
 ## Authoritative Domain Knowledge
 
+**System**: Basic Memory 0.16.1 (MCP-enabled semantic knowledge graph)
 **Data Format**: Markdown entities with YAML frontmatter (Obsidian-compatible)
 **Storage Location**: `data/` hierarchy in each repository
 **Entity Structure**: `data/{entity-type}/{entity-slug}.md`
@@ -10,8 +11,29 @@
 **Optional Fields**: tags, related, created, modified, status
 **Linking**: WikiLinks `[[entity-slug]]` for cross-references
 **Relations**: Expressed via frontmatter fields (related:, part-of:, etc.) and WikiLinks in content
-**Write Access**: bmem skill ONLY - agents must not write data/ files directly
+**Write Access**: bmem MCP tools ONLY - agents must not write data/ files directly
 **Cross-Repo**: Each repository has independent data/ hierarchy
+**MCP Integration**: Access via `mcp__bmem__*` tools for all operations
+
+## Technical References (Load Just-in-Time)
+
+**Basic Memory System Documentation**:
+- [[../../framework/references/basic-memory-sync-guide.md]] - Database sync, file management, handling deletions
+- [[../../framework/references/basic-memory-mcp-tools.md]] - Complete MCP tools reference
+- [[../../framework/references/basic-memory-ai-guide.md]] - AI assistant best practices
+
+**bmem Skill-Specific Guides**:
+- [[references/obsidian-format-spec.md]] - Full Obsidian format specification
+- [[references/observation-quality-guide.md]] - Observation quality rules
+- [[references/detail-level-guide.md]] - Detail level guidelines (tasks vs projects)
+- [[references/obsidian-compatibility.md]] - Obsidian-specific formatting
+
+**Load references when needed for**:
+- MCP tool usage questions → basic-memory-mcp-tools.md
+- Sync/database issues → basic-memory-sync-guide.md
+- Best practices/patterns → basic-memory-ai-guide.md
+- Format questions → obsidian-format-spec.md
+- Quality issues → observation-quality-guide.md
 
 ---
 
@@ -31,34 +53,14 @@ Silently extracts information from sessions and maintains knowledge graph in Obs
 
 ## Format Guide
 
-**@bots/BMEM-OBSIDIAN-GUIDE.md**
+**See [[references/obsidian-format-spec.md]] for complete format specification.**
 
-Quick template:
-
-```markdown
----
-title: Entity Title
-permalink: entity-title-slug
-type: note
-tags:
-  - tag1
-  - tag2
----
-
-# Entity Title
-
-## Context
-
-Brief 1-3 sentence overview.
-
-## Observations
-
-- [category] Specific atomic fact #inline-tag1 #inline-tag2
-
-## Relations
-
-- relation_type [[Related Entity Title]]
-```
+**Quick reference**:
+- YAML frontmatter: title, permalink, type, tags
+- H1 heading matches title
+- Context section (1-3 sentences)
+- Observations with categories: `- [category] fact #tag`
+- Relations with types: `- relation_type [[Target]]`
 
 ## When to Use This Skill
 
@@ -73,7 +75,25 @@ Brief 1-3 sentence overview.
 **Integration**:
 
 - **task skill**: Delegate all task operations (create, update, archive)
-- **bmem skill** (this): Focus on bmem files and session mining
+- **bmem skill** (this): Focus on bmem files and session mining via MCP tools
+
+## MCP Tools Usage
+
+**CRITICAL**: All bmem operations use MCP tools (`mcp__bmem__*`). Never write data/ files directly.
+
+**Project management**:
+- Start every session with `mcp__bmem__list_memory_projects()` to discover projects
+- Store user's project choice for entire session
+- Pass `project` parameter explicitly to all tool calls
+
+**Core operations**:
+- `mcp__bmem__write_note()` - Create/update notes
+- `mcp__bmem__edit_note()` - Incremental edits (append, prepend, find_replace)
+- `mcp__bmem__read_note()` - Read with context
+- `mcp__bmem__search_notes()` - Full-text search
+- `mcp__bmem__build_context()` - Navigate knowledge graph
+
+**See [[../../framework/references/basic-memory-mcp-tools.md]] for complete tool reference.**
 
 ## Critical Rules: Observation Quality
 
@@ -273,46 +293,35 @@ Invoke task skill with:
 
 **See [[references/obsidian-compatibility.md]] for Obsidian-specific formatting rules (tags, WikiLinks, aliases).**
 
-## Commit and Push
+## Database Sync
 
-**After creating/editing files, MUST commit and push:**
+**Basic Memory handles sync automatically** via real-time file watching.
 
-1. **Check for uncommitted changes**:
-   ```bash
-   git status
-   ```
+**Check sync status**: `mcp__bmem__sync_status()` - No parameters needed
 
-2. **If changes exist, commit them**:
-   ```bash
-   git add data/ && git commit -m "update(bmem): [brief summary]
-
-   Captured: [what was added/updated]
-   - Projects: [which projects]
-   - Goals: [which goals]
-   - Context: [which context files]
-
-   🤖 Generated with [Claude Code](https://claude.com/claude-code)
-
-   Co-Authored-By: Claude <noreply@anthropic.com>"
-   ```
-
-3. **Push to remote**:
-   ```bash
-   git push
-   ```
-
-**If commit/push fails**: Report error to user. DO NOT complete silently with uncommitted changes.
+**See [[../../framework/references/basic-memory-sync-guide.md]] for**:
+- How sync works
+- Handling deleted files
+- Database reset procedures
+- .gitignore support
 
 ## Quick Reference
 
+**Session start**:
+
+- [ ] Call `mcp__bmem__list_memory_projects()` to discover projects
+- [ ] Ask user which project to use
+- [ ] Store project choice for session
+
 **Before writing**:
 
-- [ ] Search for duplicates
-- [ ] Choose appropriate `data/` subdirectory
-- [ ] Use bmem template structure
+- [ ] Search for duplicates with `mcp__bmem__search_notes()`
+- [ ] Choose appropriate folder
+- [ ] Use bmem template structure (see [[references/obsidian-format-spec.md]])
 
-**While writing**:
+**While writing** (via `mcp__bmem__write_note()`):
 
+- [ ] Required parameters: title, content, folder, project
 - [ ] Required frontmatter: title, permalink, type
 - [ ] H1 heading matches title exactly
 - [ ] Context section (1-3 sentences)
@@ -322,16 +331,15 @@ Invoke task skill with:
 - [ ] Use hyphens in tags (Obsidian-compatible)
 - [ ] Use `[[WikiLinks]]` for entity references
 
-**After writing**:
+**For incremental edits**:
 
-- [ ] Validate no duplication
-- [ ] Verify proper syntax
-- [ ] Commit and push changes
+- [ ] Use `mcp__bmem__edit_note()` with operation: append, prepend, find_replace, or replace_section
+- [ ] More efficient than rewriting entire note
 
 **For task operations**:
 
 - [ ] Always invoke task skill
-- [ ] Never create task files directly
+- [ ] Never use bmem MCP tools for tasks
 - [ ] Extract task info from session, pass to task skill
 
 ## Success Criteria
@@ -340,9 +348,22 @@ This skill succeeds when:
 
 1. **Zero friction** - User never asks "can you save that?"
 2. **Automatic capture** - Information extracted silently as mentioned
-3. **Quality observations** - No self-referential or duplicate observations
-4. **Knowledge graph maintained** - Semantic links kept current
+3. **Quality observations** - No self-referential or duplicate observations (see [[references/observation-quality-guide.md]])
+4. **Knowledge graph maintained** - Semantic links kept current via relations
 5. **Obsidian-compatible** - Files work perfectly in Obsidian
 6. **Tasks delegated** - Task skill invoked for all task operations
-7. **Changes persisted** - All data committed and pushed
+7. **MCP tools used correctly** - All operations via `mcp__bmem__*` tools with explicit project parameter
 8. **User feels supported** - "Ideas are magically organized"
+
+## Best Practices from Basic Memory
+
+**See [[../../framework/references/basic-memory-ai-guide.md]] for complete guide.**
+
+**Key principles**:
+- Always search before creating (avoid duplicates)
+- Ask permission before recording conversations
+- Build rich knowledge graphs (3-5+ observations, 2-3+ relations)
+- Use exact entity titles in relations (search first)
+- Use semantic precision (specific relation types, not generic)
+- Progressive elaboration (build knowledge incrementally)
+- Consistent organization (maintain folder structures)

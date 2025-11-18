@@ -8,21 +8,16 @@
 
 ## academicOps Repository Structure
 
+**Note**: User-specific files (ACCOMMODATIONS, CORE, STYLE, VISION, ROADMAP) live in `$ACA_DATA`, not in this repository. This repo contains only generic framework infrastructure.
+
 ```
 $AOPS/
-├── CORE.md              # User context, tools, paths [SESSION START: loaded first]
-├── AXIOMS.md            # Framework principles and quality standards [SESSION START: loaded second]
-├── ACCOMMODATIONS.md    # Work style requirements (ADHD, cognitive load) [SESSION START: loaded third]
-├── STYLE-QUICK.md       # Writing style reference [SESSION START: loaded fourth]
-├── STYLE.md             # Full writing style guide (referenced, not loaded at start)
+├── AXIOMS.md            # Framework principles and quality standards (generic, loaded by all agents)
 ├── README.md            # THIS FILE - framework directory map and installation
 │
 ├── BMEM-FORMAT.md       # bmem markdown format specification
 ├── BMEM-CLAUDE-GUIDE.md # Using bmem from Claude Code
 ├── BMEM-OBSIDIAN-GUIDE.md # Using bmem with Obsidian
-│
-├── VISION.md            # End state: fully-automated academic workflow
-├── ROADMAP.md           # Maturity stages 0-5, progression plan
 │
 ├── skills/              # Agent skills (specialized workflows - invoke via Skill tool)
 │   ├── framework/       # Framework maintenance, experimentation, strategic partner
@@ -55,16 +50,9 @@ $AOPS/
 │   ├── extract_session_knowledge.py  # Knowledge extraction from session
 │   └── prompts/         # Markdown prompts loaded by hooks
 │
-├── experiments/         # Framework learning and evolution
-│   └── YYYY-MM-DD_*.md  # Individual experiment logs (hypothesis, design, results, decision)
-│                        # NOTE: Learning patterns LOG.md lives at $ACA_DATA/projects/aops/experiments/LOG.md
-│
-├── tests/               # Framework integration tests (pytest)
-│   ├── README.md        # Test documentation (must be kept up-to-date)
-│   ├── conftest.py      # Test fixtures
-│   ├── paths.py         # Path resolution utilities
-│   ├── test_*.py        # Unit tests
-│   └── integration/     # End-to-end workflow tests
+├── experiments/         # Temporary experiment logs (moved to $ACA_DATA/projects/aops/experiments/ when finalized)
+│   └── YYYY-MM-DD_*.md  # Work-in-progress experiments
+│                        # NOTE: Learning patterns LOG.md and completed experiments live at $ACA_DATA/projects/aops/experiments/
 │
 ├── scripts/             # Deployment and maintenance scripts
 │   └── package_deployment.py  # Release packaging for GitHub
@@ -89,14 +77,14 @@ $AOPS/
 
 ## User Data Repository Structure
 
-academicOps stores user data separately from framework code:
+academicOps stores user data separately from framework code. User-specific files live here:
 
 ```
-$ACA_DATA/  (e.g., ~/Documents/AcademicData/)
-├── bmem/                # Knowledge base (markdown files)
-│   ├── entities/        # People, orgs, concepts
-│   ├── work/            # Projects, tasks, documents
-│   └── system/          # Meta information
+$ACA_DATA/  (e.g., ~/src/writing/data/)
+├── ACCOMMODATIONS.md    # Work style requirements (ADHD, cognitive load) [SESSION START: loaded first]
+├── CORE.md              # User context, tools, paths [SESSION START: loaded second]
+├── STYLE-QUICK.md       # Writing style reference [SESSION START: loaded third]
+├── STYLE.md             # Full writing style guide (referenced, not loaded at start)
 │
 ├── tasks/               # Task data (markdown files, bmem-compliant)
 │   ├── active/          # Current tasks
@@ -106,9 +94,15 @@ $ACA_DATA/  (e.g., ~/Documents/AcademicData/)
 ├── sessions/            # Claude Code session logs
 │   └── YYYY-MM-DD_HH-MM-SS.md
 │
-└── projects/            # Project-specific data
-    └── aops/            # academicOps project data
-        └── experiments/ # Framework experiment logs (symlinked to $AOPS/experiments/)
+├── projects/            # Project-specific data
+│   └── aops/            # academicOps project data
+│       ├── VISION.md    # End state: fully-automated academic workflow
+│       ├── ROADMAP.md   # Maturity stages 0-5, progression plan
+│       ├── experiments/ # Framework experiment logs
+│       │   └── LOG.md   # Learning patterns (append-only)
+│       └── tests/       # Framework integration tests (pytest)
+│
+└── [other bmem entities] # People, orgs, concepts, work items, etc.
 ```
 
 ---

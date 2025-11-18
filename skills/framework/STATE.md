@@ -26,6 +26,32 @@
 
 ## Authoritative Facts (Foundational Infrastructure)
 
+### Path Architecture
+
+**Framework Repository** (`$AOPS`):
+- Location: `/home/nic/src/academicOps` (or user's clone location)
+- Contains: Skills, hooks, commands, generic framework infrastructure
+- NO user data (may be public repository)
+- Version controlled, shareable
+
+**User Data Repository** (`$ACA_DATA`):
+- Location: `/home/nic/src/writing/data` (user's private repo)
+- Contains: ACCOMMODATIONS, CORE, STYLE, VISION, ROADMAP, tasks, sessions, bmem entities
+- Always private
+- Accessed via `$ACA_DATA` environment variable from any working directory
+
+**Cross-repo access**:
+- Skills invoked from Project A access same `$ACA_DATA` as skills in Project B
+- No assumptions about current working directory
+- Environment variables required: `$AOPS`, `$ACA_DATA`
+
+**Key file locations**:
+- Framework learning log: `$ACA_DATA/projects/aops/experiments/LOG.md`
+- User context: `$ACA_DATA/CORE.md`, `$ACA_DATA/ACCOMMODATIONS.md`
+- User vision/roadmap: `$ACA_DATA/projects/aops/VISION.md`, `$ACA_DATA/projects/aops/ROADMAP.md`
+- Framework principles (generic): `$AOPS/AXIOMS.md`
+- Integration tests: `$ACA_DATA/projects/aops/tests/`
+
 ### Task Management
 
 **Format**: Markdown (bmem-compliant) with YAML frontmatter
@@ -48,7 +74,7 @@
 ### Framework Logging
 
 **Format**: Append-only monolithic file
-**Location**: experiments/LOG.md
+**Location**: `$ACA_DATA/projects/aops/experiments/LOG.md`
 **Structure**: Chronological entries, all in single file, never delete entries
 **Purpose**: Pattern recognition from successes AND failures over time
 
@@ -63,11 +89,11 @@
 4. Test until passes
 5. Document in experiment log
 
-**No timeline estimates**: ACCOMMODATIONS line 50 prohibits development time estimates (uncalibrated)
+**No timeline estimates**: $ACA_DATA/ACCOMMODATIONS.md line 50 prohibits development time estimates (uncalibrated)
 
-**User context loading**: ACCOMMODATIONS and CORE are as binding as AXIOMS - load before making recommendations
+**User context loading**: $ACA_DATA/ACCOMMODATIONS.md and $ACA_DATA/CORE.md are as binding as AXIOMS - load before making recommendations
 
-**Framework scope**: Supports ALL academic work across ALL repositories, not just academicOps (VISION line 11-15)
+**Framework scope**: Supports ALL academic work across ALL repositories, not just academicOps ($ACA_DATA/projects/aops/VISION.md line 11-15)
 
 ---
 
@@ -103,9 +129,10 @@
 
 **2025-11-18**: Hook session logs removed from repository (cost/benefit too low)
 **2025-11-18**: Session data growth concern resolved (P1 blocker removed)
-**2025-11-17**: Spec-first approach confirmed MANDATORY (updated ROADMAP line 99)
-**2025-11-17**: No timeline estimates policy (updated ACCOMMODATIONS line 50)
-**2025-11-17**: Framework scope clarified - ALL repos not just academicOps (updated VISION, ACCOMMODATIONS)
+**2025-11-18**: User-specific files moved to $ACA_DATA (ACCOMMODATIONS, CORE, STYLE, VISION, ROADMAP, tests)
+**2025-11-17**: Spec-first approach confirmed MANDATORY (updated $ACA_DATA/projects/aops/ROADMAP.md line 99)
+**2025-11-17**: No timeline estimates policy (updated $ACA_DATA/ACCOMMODATIONS.md line 50)
+**2025-11-17**: Framework scope clarified - ALL repos not just academicOps (updated $ACA_DATA/projects/aops/VISION.md, $ACA_DATA/ACCOMMODATIONS.md)
 **2025-11-17**: STATE.md created to solve meta-cognizance problem
 
 ---
