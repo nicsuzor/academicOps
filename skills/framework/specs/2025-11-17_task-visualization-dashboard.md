@@ -87,7 +87,8 @@ Nic - across ALL academic work (not just framework development). This solves a g
 - Historical trends (Stage 4 concern)
 - Automatic prioritization suggestions (Stage 4 concern)
 - Calendar/deadline integration (future)
-- Sophisticated graph layout algorithms (simple hierarchical positioning)
+
+**Layout philosophy**: Don't enforce strict top-down hierarchy - use maps, clusters, organic positioning, and 2D spatial thinking where appropriate. Goals→Projects→Tasks relationship should be clear through connections, not rigid vertical structure. Allow creative/organic layouts that make visual sense.
 
 **Boundary rationale**: Focus on clear visual representation of current state using goal→project→task hierarchy from bmem data. Editing, automation, and advanced features are Stage 3+ concerns.
 
