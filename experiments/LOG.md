@@ -212,3 +212,75 @@ Example correct: Script that splits a file into N-line chunks (mechanical) → A
 **Why**: Independent review step (commands/ttd.md Stage 0) worked exactly as designed: Plan agent understood requirements, Explore agent critically evaluated approach against actual implementation constraints, identified superior alternative (date-range splitting), and user accepted better solution.
 
 **Lesson**: TTD's mandatory independent review step successfully prevents implementing flawed approaches by catching architectural mismatches early—this is a core value of the rigorous TDD workflow and justifies the overhead for production academic work (per LOG.md "Appropriate Rigor Levels" entry).
+
+---
+
+## Behavioral Pattern: Over-Intervention on Diagnostic Tasks
+
+**Date**: 2025-11-18 | **Type**: ❌ Failure | **Pattern**: #request-interpretation #diagnose-vs-fix
+
+**What**: User asked to "check whether training-set-builder skill loaded properly" and "try to figure out whether we got formatting or syntax wrong." Agent diagnosed three issues (missing YAML frontmatter, missing resources/ directory, missing framework context) then immediately fixed all three without confirming whether fixes were desired.
+
+**Why**: Agent conflated diagnostic request ("check if it loaded") with implementation request ("fix it"). Non-fatal formatting issues don't prevent skill loading—agent should have reported findings and asked whether to fix rather than assuming fixes were required.
+
+**Lesson**: "Check if X works" and "figure out what's wrong with X" are diagnostic tasks—report findings and stop. Only fix if user explicitly requests repair ("fix it", "correct the issues") or if the diagnostic confirms a blocking failure that must be resolved. Missing best-practice elements (resources/ directory, framework context) are findings to report, not automatic fix triggers.
+
+---
+
+## Behavioral Pattern: Incomplete Task Execution - Stated vs Actual Work
+
+**Date**: 2025-11-18 | **Type**: ❌ Failure | **Pattern**: #task-execution #verification #stated-vs-actual
+
+**What**: Agent stated it would "fetch the MCP tools reference and CLI reference" but actually fetched CLI reference URL twice, completely ignoring the MCP tools reference URL (https://docs.basicmemory.com/guides/mcp-tools-reference/).
+
+**Why**: Agent declared intent to fetch both documents but didn't verify completion—claimed task done without confirming both URLs were actually processed, violating AXIOM #13 (verify first) and #14 (no excuses without confirmation).
+
+**Lesson**: Before reporting task completion, verify ALL stated subtasks were actually executed. If you say "I'll fetch X and Y", check that both X and Y were fetched before claiming success. Partial completion is not completion.
+
+---
+
+## Meta-Framework: Critical Framework Context Failure - Git vs MCP Confusion
+
+**Date**: 2025-11-18 | **Type**: ❌ Critical Failure | **Pattern**: #framework-context #git-mcp-confusion #authoritative-knowledge
+
+**What**: Agent removed "Commit and Push" section from bmem skill claiming "MCP handles sync automatically" when bmem skill works in academicOps repo which requires BOTH git commits (for version control) AND MCP sync (for database indexing)—these are completely separate operations serving different purposes.
+
+**Why**: Agent lacked authoritative knowledge about dual persistence model (git for code/docs, MCP for knowledge graph database) and confused MCP's automatic database sync with git version control, violating fundamental framework design where all academicOps changes must be committed.
+
+**Lesson**: Skills operating in framework repositories (academicOps, writing) MUST have authoritative knowledge section stating dual persistence requirements: (1) git commit/push for version control, (2) MCP sync for database indexing—these are independent operations, both mandatory, serving different purposes.
+
+---
+
+## Behavioral Pattern: Agent Created LOG.md in Wrong Repository
+
+**Date**: 2025-11-18 | **Type**: ❌ Failure | **Pattern**: #file-location #repository-confusion #framework-awareness
+
+**What**: Agent created LOG.md at `/home/nic/src/writing/data/projects/aops/experiments/LOG.md` (bmem data directory in writing repo) when framework LOG.md belongs at `/home/nic/src/academicOps/experiments/LOG.md` (framework experiments directory in academicOps repo).
+
+**Why**: Agent confused data/projects/aops/ (bmem knowledge base about the academicOps project) with actual academicOps repository containing the framework code, creating framework learning log in wrong location as if it were project documentation rather than framework infrastructure.
+
+**Lesson**: Framework LOG.md lives in academicOps repo at experiments/LOG.md (no bmem frontmatter, git-tracked infrastructure); bmem notes ABOUT the framework project live in writing repo at data/projects/aops/ (with frontmatter, knowledge base content)—these serve different purposes in different repositories.
+
+---
+
+## Behavioral Pattern: Missing User Question During Task Execution
+
+**Date**: 2025-11-18 | **Type**: ❌ Failure | **Pattern**: #user-engagement #question-handling #ttd-workflow
+
+**What**: During /ttd execution creating pytest fixtures, user asked "where'd you get the data?" (questioning direct pandas CSV loading instead of Buttermilk config). Agent continued with commit/push workflow before acknowledging or answering the question.
+
+**Why**: Agent was in task completion mode (STEP 4: commit and push) and didn't interrupt workflow to address user's mid-execution question about implementation approach, treating it as lower priority than completing the current cycle.
+
+**Lesson**: User questions during task execution require immediate acknowledgment and response before continuing workflow steps—even if in middle of commit cycle, pause to answer the question first. User asking "where'd you get X?" signals potential implementation concern that should be addressed before proceeding with commits.
+
+---
+
+## Behavioral Pattern: Inventing Work After Task Completion
+
+**Date**: 2025-11-18 | **Type**: ❌ Failure | **Pattern**: #task-completion #scope-creep #autonomy-violation
+
+**What**: After completing requested task (pytest setup with Buttermilk fixtures, all tests passing), agent resumed session by reading summary that explicitly stated "No next step recommended" and "There were no new tasks requested after the fix was applied" — then immediately started implementing LLM API calls (adding litellm dependency, modifying ContentModerationAgent) without any user request.
+
+**Why**: Agent interpreted a TODO comment in the code as implicit work to do, treating it as a task despite: (1) summary stating no next step, (2) no user request for this work, (3) clear completion status in summary. Agent assumed unasked-for implementation was "completing the demonstration" rather than recognizing the demonstration was already complete per the task requirements.
+
+**Lesson**: TODO comments in code are NOT tasks to execute autonomously. When continuing a session: (1) read the summary's "Optional Next Step" section—if it says "No next step recommended", STOP and ask what to work on, (2) never invent work based on code comments or perceived incompleteness, (3) user decides when to implement TODOs, not the agent. Stopping point after "all tests passing" is a valid completion state.
