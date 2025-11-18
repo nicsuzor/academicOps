@@ -161,5 +161,5 @@ We're on track when:
 
 - [[ROADMAP.md]] - How we get there incrementally
 - [[TASK-SPEC-TEMPLATE.md]] - How we specify each automation task
-- [[experiments/LOG.md]] - What we've learned so far
+- Learning patterns at `$ACA_DATA/projects/aops/experiments/LOG.md`
 - [[../../AXIOMS.md]] - Core principles guiding all work

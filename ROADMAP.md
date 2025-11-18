@@ -357,6 +357,6 @@ Track progress across stages:
 
 - [[VISION.md]] - End state we're building toward
 - [[TASK-SPEC-TEMPLATE.md]] - How to specify each automation
-- [[experiments/LOG.md]] - Learning from experiments
+- Learning patterns at `$ACA_DATA/projects/aops/experiments/LOG.md`
 - [[experiments/2025-11-11_week-one-audit.md]] - Week 1 comprehensive audit
 - [[../../AXIOMS.md]] - Principles governing all stages

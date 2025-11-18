@@ -14,7 +14,7 @@ permalink: commands/learn
 ✅ **DO**:
 
 - **Check if information already exists** - UPDATE rather than duplicate
-- Determine WHERE this lesson belongs (LOG.md for patterns, SKILL.md for workflows, other docs for specific guidance)
+- Determine WHERE this lesson belongs (`$ACA_DATA/projects/aops/experiments/LOG.md` for patterns, SKILL.md for workflows, other docs for specific guidance)
 - Ask: "When would an agent need this information?" - file it there
 - Keep it minimal (3 sentences max)
 - Make it discoverable (tags, location, clear title)
@@ -41,7 +41,7 @@ permalink: commands/learn
 **NEVER add to**:
 
 - `AXIOMS.md` - Principles are too important, require explicit user decision
-- `LOG.md` - Use `/log` command for behavior patterns
+- `$ACA_DATA/projects/aops/experiments/LOG.md` - Use `/log` command for behavior patterns
 - Root `CLAUDE.md` - Only for high-level directives, avoid bloat
 
 **Just-In-Time Principle**:

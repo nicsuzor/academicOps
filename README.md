@@ -56,8 +56,8 @@ $AOPS/
 │   └── prompts/         # Markdown prompts loaded by hooks
 │
 ├── experiments/         # Framework learning and evolution
-│   ├── LOG.md           # Append-only learning patterns from experiments and observations
 │   └── YYYY-MM-DD_*.md  # Individual experiment logs (hypothesis, design, results, decision)
+│                        # NOTE: Learning patterns LOG.md lives at $ACA_DATA/projects/aops/experiments/LOG.md
 │
 ├── tests/               # Framework integration tests (pytest)
 │   ├── README.md        # Test documentation (must be kept up-to-date)
