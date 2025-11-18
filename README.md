@@ -12,8 +12,9 @@
 
 ```
 $AOPS/
-├── AXIOMS.md            # Framework principles and quality standards (generic, loaded by all agents)
-├── README.md            # THIS FILE - framework directory map and installation
+├── AXIOMS.md            # Framework principles (auto-injected via SessionStart hook)
+├── README.md            # THIS FILE - framework directory map
+├── CLAUDE.md            # Framework repo session start instructions
 │
 ├── BMEM-FORMAT.md       # bmem markdown format specification
 ├── BMEM-CLAUDE-GUIDE.md # Using bmem from Claude Code
@@ -22,7 +23,6 @@ $AOPS/
 ├── skills/              # Agent skills (specialized workflows - invoke via Skill tool)
 │   ├── framework/       # Framework maintenance, experimentation, strategic partner
 │   │   ├── SKILL.md     # Main skill instructions
-│   │   ├── STATE.md     # Current framework state, mandatory processes, blockers
 │   │   ├── TASK-SPEC-TEMPLATE.md # Template for automation specifications
 │   │   ├── workflows/   # Step-by-step procedures (design, debug, experiment, monitor, review, spec)
 │   │   ├── references/  # Technical references (hooks guide, script design, testing patterns)
@@ -43,11 +43,12 @@ $AOPS/
 │       └── SKILL.md
 │
 ├── hooks/               # Lifecycle automation (Python scripts triggered by Claude Code events)
-│   ├── hooks.json       # Hook configuration
 │   ├── README.md        # Hook documentation (configuration, available hooks, debugging)
-│   ├── session_logger.py         # Session logging module
-│   ├── log_session_stop.py       # Stop hook - logs session activity
-│   ├── extract_session_knowledge.py  # Knowledge extraction from session
+│   ├── sessionstart_load_axioms.py  # SessionStart hook - injects AXIOMS.md at session start
+│   ├── user_prompt_submit.py        # UserPromptSubmit hook - injects additional context on every prompt
+│   ├── session_logger.py            # Session logging module
+│   ├── log_session_stop.py          # Stop hook - logs session activity
+│   ├── extract_session_knowledge.py # Knowledge extraction from session
 │   └── prompts/         # Markdown prompts loaded by hooks
 │
 ├── experiments/         # Temporary experiment logs (moved to $ACA_DATA/projects/aops/experiments/ when finalized)
@@ -59,6 +60,14 @@ $AOPS/
 │
 ├── lib/                 # Shared Python utilities
 │   └── paths.py         # Path resolution (single source of truth for paths)
+│
+├── tests/               # Framework integration tests (pytest)
+│   ├── conftest.py      # Test fixtures
+│   ├── test_lib_paths.py # Path resolution tests
+│   └── integration/     # E2E tests (slow, require Claude execution)
+│       ├── conftest.py          # Integration test fixtures (headless execution)
+│       ├── test_file_loading_e2e.py # Session start file loading tests
+│       └── test_session_start_content.py # Session start validation tests
 │
 ├── commands/            # Slash commands (workflow triggers)
 │   ├── bmem.md          # Invoke bmem skill
@@ -81,10 +90,10 @@ academicOps stores user data separately from framework code. User-specific files
 
 ```
 $ACA_DATA/  (e.g., ~/src/writing/data/)
-├── ACCOMMODATIONS.md    # Work style requirements (ADHD, cognitive load) [SESSION START: loaded first]
-├── CORE.md              # User context, tools, paths [SESSION START: loaded second]
-├── STYLE-QUICK.md       # Writing style reference [SESSION START: loaded third]
-├── STYLE.md             # Full writing style guide (referenced, not loaded at start)
+├── ACCOMMODATIONS.md    # Work style requirements (loaded via @ in user CLAUDE.md)
+├── CORE.md              # User context, tools, paths (loaded via @ in user CLAUDE.md)
+├── STYLE-QUICK.md       # Writing style reference (loaded via @ in user CLAUDE.md)
+├── STYLE.md             # Full writing style guide (referenced, not @-loaded)
 │
 ├── tasks/               # Task data (markdown files, bmem-compliant)
 │   ├── active/          # Current tasks
@@ -98,9 +107,8 @@ $ACA_DATA/  (e.g., ~/src/writing/data/)
 │   └── aops/            # academicOps project data
 │       ├── VISION.md    # End state: fully-automated academic workflow
 │       ├── ROADMAP.md   # Maturity stages 0-5, progression plan
-│       ├── experiments/ # Framework experiment logs
-│       │   └── LOG.md   # Learning patterns (append-only)
-│       └── tests/       # Framework integration tests (pytest)
+│       └── experiments/ # Framework experiment logs
+│           └── LOG.md   # Learning patterns (append-only)
 │
 └── [other bmem entities] # People, orgs, concepts, work items, etc.
 ```
@@ -114,14 +122,20 @@ academicOps installs via symlinks to user's `~/.claude/`:
 ```
 project-repo/           # Any academic project repository
 ├── .claude/            # Claude Code configuration directory
-│   ├── CLAUDE.md       # Project-specific instructions
+│   ├── CLAUDE.md       # Project-specific instructions (uses @ syntax to auto-load files)
 │   ├── skills/         # Symlink → $AOPS/skills/
 │   ├── hooks/          # Symlink → $AOPS/hooks/
 │   └── commands/       # Symlink → $AOPS/commands/
+├── README.md           # Project structure (loaded via @README.md in project CLAUDE.md)
 ├── [project files...]
 ```
 
 **Installation**: Download [latest release](https://github.com/nicsuzor/academicOps/releases), extract, run `bash setup.sh`.
+
+**Session start context**:
+1. **Automatic hook injection** - SessionStart hook (`hooks/sessionstart_load_axioms.py`) automatically injects AXIOMS.md content at every session start
+2. **CLAUDE.md @ syntax** - Files prefixed with `@` in CLAUDE.md are auto-loaded by Claude Code
+3. **UserPromptSubmit hook** - Additional context injected on every user prompt via `hooks/user_prompt_submit.py`
 
 ---
 

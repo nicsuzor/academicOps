@@ -2,6 +2,36 @@
 
 This directory contains hooks for Claude Code that extend session functionality.
 
+## Session Start: Load Framework Principles
+
+The SessionStart hook automatically injects AXIOMS.md content at the beginning of every session, ensuring framework principles are always available without requiring @ syntax in CLAUDE.md.
+
+### Files
+
+- **sessionstart_load_axioms.py** - SessionStart hook that loads AXIOMS.md
+
+### How It Works
+
+When a Claude Code session starts, the hook:
+
+1. Loads AXIOMS.md from $AOPS/AXIOMS.md
+2. Injects content as additional context
+3. Includes references to other framework documentation (README.md, $ACA_DATA/projects/aops/STATE.md, VISION.md, ROADMAP.md, LOG.md)
+4. Fails fast if AXIOMS.md is missing or empty
+
+### Benefits
+
+- **Framework principles always available** - No need to manually read AXIOMS.md
+- **Consistent context** - Every session starts with core principles
+- **Fail-fast validation** - Session won't start if AXIOMS.md is corrupt
+- **Automatic references** - Agent knows where to find more information
+
+### Error Handling
+
+- If AXIOMS.md missing: Fails with exit code 1 (blocks session start)
+- If AXIOMS.md empty: Fails with exit code 1 (blocks session start)
+- File must exist at $AOPS/AXIOMS.md
+
 ## Auto-Commit State Changes
 
 The auto-commit system automatically commits and pushes changes to `data/` directories to prevent data loss and enable cross-device synchronization.

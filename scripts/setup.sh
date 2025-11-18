@@ -73,13 +73,9 @@ COMMANDS_DEST="$CLAUDE_HOME/commands"
 ln -s "$COMMANDS_SRC" "$COMMANDS_DEST"
 echo -e "${GREEN}✓${NC} ~/.claude/commands/ → $COMMANDS_SRC"
 
-# Symlink CLAUDE.md
-CLAUDE_MD_SRC="$BOTS_DIR/CLAUDE.md"
-CLAUDE_MD_DEST="$CLAUDE_HOME/CLAUDE.md"
-
-[ -e "$CLAUDE_MD_DEST" ] && rm -rf "$CLAUDE_MD_DEST"
-ln -s "$CLAUDE_MD_SRC" "$CLAUDE_MD_DEST"
-echo -e "${GREEN}✓${NC} ~/.claude/CLAUDE.md → $CLAUDE_MD_SRC"
+# NOTE: We do NOT symlink CLAUDE.md to ~/.claude/
+# Each repository should have its own CLAUDE.md with repo-specific instructions
+# Only skills/hooks/commands/agents are shared via ~/.claude/
 
 echo
 echo "=== Setting up repository .claude/ (for remote coding) ==="
@@ -133,11 +129,11 @@ echo "Installed to TWO locations:"
 echo
 echo "1. ~/.claude/ (user global, for local development)"
 echo "   - settings.json (symlinked)"
-echo "   - CLAUDE.md (symlinked)"
 echo "   - hooks/ (symlinked)"
 echo "   - skills/ (symlinked)"
 echo "   - commands/ (symlinked)"
 echo "   - agents/ (symlinked)"
+echo "   - CLAUDE.md NOT symlinked (each repo has its own)"
 echo
 echo "2. $BOTS_DIR/.claude/ (repository, for remote coding)"
 echo "   - All symlinks use relative paths"

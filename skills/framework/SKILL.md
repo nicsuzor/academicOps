@@ -79,7 +79,7 @@ accommodations = read(os.path.join(os.getenv("ACA_DATA"), "ACCOMMODATIONS.md")) 
 core = read(os.path.join(os.getenv("ACA_DATA"), "CORE.md"))  # User context - as binding as AXIOMS
 
 # 2. CURRENT REALITY (ground truth)
-state = read("skills/framework/STATE.md")  # Current stage, mandatory processes, active blockers
+state = read(os.path.join(os.getenv("ACA_DATA"), "projects/aops/STATE.md"))  # Current stage, mandatory processes, active blockers
 
 # 3. FRAMEWORK PRINCIPLES AND ASPIRATIONS
 vision = read(os.path.join(os.getenv("ACA_DATA"), "projects/aops/VISION.md"))  # End state goals
@@ -564,7 +564,6 @@ $AOPS/  (e.g., /home/nic/src/academicOps/)
 ├── skills/              # Agent skills (invoke via Skill tool)
 │   └── framework/
 │       ├── SKILL.md                 # This file - framework maintenance
-│       ├── STATE.md                 # Current framework state
 │       ├── TASK-SPEC-TEMPLATE.md    # Template for specifying automations
 │       ├── references/              # Technical reference documentation
 │       ├── workflows/               # Step-by-step procedures
@@ -589,6 +588,7 @@ $ACA_DATA/  (e.g., /home/nic/src/writing/data/)
 ├── tasks/               # Task data
 ├── sessions/            # Session logs
 └── projects/aops/       # academicOps project data
+    ├── STATE.md         # Current framework state
     ├── VISION.md        # User's vision for framework
     ├── ROADMAP.md       # User's roadmap
     ├── experiments/     # Finalized experiments
