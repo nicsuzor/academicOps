@@ -35,6 +35,7 @@
 - **Avoid over-engineering**: User doesn't want to spend all time building the system - keep solutions simple and functional
 - Zero-friction idea capture: Accept any format (fragments, stream-of-consciousness, voice-to-text dumps) without requesting polish or clarification
 - Visual progress tracking: Enable understanding of project status "at a glance"
+- **Visual layout preference**: Don't enforce strict top-down hierarchies in visualizations - prefer maps, clusters, organic positioning, and 2D spatial thinking. Allow creative/flexible layouts with "randomness dressed up as creativity" over rigid structural constraints.
 - Automation preference: Leverage automated systems while maintaining high-quality output
 - Clean task separation: Needs clear visual/physical boundaries between different work contexts to prevent overwhelm
 - Cross-device consistency: Solutions must work across multiple computers
@@ -48,6 +49,7 @@
 - Values efficiency and systematic organization over lengthy explanation
 - **Bias for Action**: In a defined workflow, proceed to the next logical step without asking for confirmation. It's better to use your judgment and be corrected later than to ask unnecessary questions.
 - **No timeline estimates**: Never provide development time estimates - we haven't calibrated task duration, making estimates unreliable and unhelpful.
+- **Reviewing drafts**: When reviewing incomplete work (especially from students with perfectionist tendencies), focus on substance and strategic direction, not completeness or polish. Don't criticize draft material for being unfinished - the user prefers reviewing work at early stages.
 
 ### Decision Support Preferences: Effective Pattern for Decision Paralysis
 
