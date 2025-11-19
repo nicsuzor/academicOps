@@ -10,18 +10,17 @@ Process archived email files (JSONL format) to extract and preserve valuable pro
 
 ## Purpose
 
-Mine email archives for permanent knowledge base records. Process large JSONL files by:
-1. Chunking them into manageable pieces
-2. Assessing each email using the `extractor` skill
-3. Storing valuable information using the `bmem` skill
+Mine email archives for permanent knowledge base records. Process pre-chunked JSONL files by:
+1. Assessing each email using the `archive` skill criteria
+2. Storing valuable information using the `bmem` skill
 
-**Most emails have NO long-term value** - the extractor skill provides rigorous filtering criteria.
+**Most emails have NO long-term value** - the archive skill provides rigorous filtering criteria.
 
 ## Workflow
 
 ### 1. Accept Chunked Input File
 
-**Input**: Pre-chunked JSONL file (created by `scripts/chunk_archive.sh`), typically 20 emails per chunk.
+**Input**: Pre-chunked JSONL file from `archive/emails/chunks/`, typically 20 emails per chunk.
 
 JSONL format (one email per line):
 ```jsonl
@@ -74,12 +73,12 @@ For each email in the output:
 - Extraction failure → log error, continue
 - Storage failure → log error, continue
 
-### 4. Use Extractor Skill for Assessment
+### 4. Use Archive Skill for Assessment
 
-For each email, invoke the **`extractor` skill** with email content:
+For each email, apply the **`archive` skill** criteria (from `bots/skills/archive/SKILL.md`):
 
 ```
-Use the extractor skill to assess this email:
+Assess this email using archive skill criteria:
 
 Subject: [subject]
 From: [from_name] <[from_email]>
@@ -90,14 +89,14 @@ Date: [received_time]
 Should this be extracted? If yes, what entities and key information should be identified?
 ```
 
-The extractor skill returns:
-- **Decision**: Extract or skip
-- **Entities identified**: People, projects, events, contacts, financial records
+The archive skill criteria determine:
+- **Decision**: Extract (important) or skip (unimportant)
+- **Entities identified**: People, collaborations, events, organizations
 - **Key information** for each entity
 
 ### 5. Use bmem Skill for Storage
 
-For each entity identified by extractor skill, use **`bmem` skill** to store:
+For each entity identified by archive skill assessment, use **`bmem` skill** to store:
 
 **Check for existing entities first**:
 ```
@@ -163,11 +162,11 @@ After processing all chunks:
 
 ## Skills Used
 
-### Extractor Skill
-**Purpose**: Assessment and judgment criteria
+### Archive Skill
+**Purpose**: Assessment and judgment criteria (from `bots/skills/archive/SKILL.md`)
 **Responsibilities**:
-- Decide what to extract vs skip
-- Identify entity types (person, project, event, etc.)
+- Decide what to extract vs skip using importance classification
+- Identify entity types (person, collaboration, event, organization)
 - Extract key information from each entity
 - NO storage - only assessment
 
@@ -207,35 +206,28 @@ After processing all chunks:
 ## Example Session
 
 ```bash
-# User invokes agent with file path
-$ email-extractor messages-2025-10.jsonl
+# User invokes agent with pre-chunked file path
+$ email-extractor archive/emails/chunks/2005/2005-03_messages-part-001_000.jsonl
 
 # Agent orchestrates:
 
-1. Chunk file:
-   → python chunk_emails.py messages-2025-10.jsonl chunks/
-   → Created 12 chunks
+1. Read chunk (20 emails):
+   → Email 1: Apply archive skill criteria → SKIP (newsletter)
+   → Email 2: Apply archive skill criteria → SKIP (meeting invite)
+   → Email 3: Apply archive skill criteria → EXTRACT (conference invitation)
+      → Use bmem skill to search for "Internet Governance Forum 2005"
+      → Entity doesn't exist, create new event
+   → Email 4-20: Continue...
+   → Result: 18 skipped, 2 extracted, 1 entity created, 1 entity updated
 
-2. Process chunk-001.json (50 emails):
-   → Email 1: Use extractor skill → SKIP (newsletter)
-   → Email 2: Use extractor skill → SKIP (meeting invite)
-   → Email 3: Use extractor skill → EXTRACT (paper acceptance)
-      → Use bmem skill to search "Platform Governance paper"
-      → Entity exists, update with new observation
-   → Email 4-50: Continue...
-   → Result: 48 skipped, 2 extracted, 1 created, 1 updated
+2. Delete source chunk after successful processing
 
-3. Process chunk-002.json (50 emails):
-   → Similar process...
-
-...
-
-12. Aggregate results:
-   → 587 total emails
-   → 579 skipped (98.6%)
-   → 8 extracted (1.4%)
-   → 5 entities created
-   → 3 entities updated
+3. Return summary:
+   → 20 total emails processed
+   → 18 skipped (90%)
+   → 2 extracted (10%)
+   → 1 entity created
+   → 1 entity updated
 ```
 
 ## Quality Assurance

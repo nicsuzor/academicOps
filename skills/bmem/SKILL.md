@@ -16,6 +16,24 @@
 **Cross-Repo**: Each repository has independent data/ hierarchy
 **MCP Integration**: Access via `mcp__bmem__*` tools for all operations
 
+### CRITICAL MENTAL MODEL
+
+**bmem memories ARE markdown files. There is ONE thing, not two.**
+
+- ✅ `mcp__bmem__write_note()` **creates a markdown file** with bmem frontmatter in `data/` hierarchy
+- ✅ The markdown file IS the memory - frontmatter makes it searchable
+- ✅ Database is an INDEX (for semantic search), NOT separate storage
+- ✅ Files in `data/` ARE the knowledge base; database indexes them for search
+- ✅ When you create a bmem note, you create ONE markdown file (not "memory" + "file")
+
+**Common misconception**: Thinking bmem creates "memory in database" + "markdown file for humans" (two things). Reality: bmem creates markdown file with frontmatter, database indexes it (one thing).
+
+**Why this matters**:
+- Prevents creating duplicate content ("save to bmem" + "save to markdown")
+- Clarifies that editing markdown files = editing knowledge base directly
+- Explains why MCP tools work without reading files (database index enables search)
+- Ensures agents understand file location = memory location (no separate storage)
+
 ## Technical References (Load Just-in-Time)
 
 **Basic Memory System Documentation**:
