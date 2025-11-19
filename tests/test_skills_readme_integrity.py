@@ -33,12 +33,12 @@ class TestSkillsReadmeIntegrity:
 
     @pytest.fixture
     def repo_root(self):
-        """Get framework root (parent of tests/)."""
-        return Path(__file__).parent.parent
+        """Get repository root (1 level up from tests/)."""
+        return Path(__file__).parents[1]
 
     @pytest.fixture
     def skills_readme_path(self, repo_root):
-        """Get path to skills README."""
+        """Get path to skills README (academicOps root)."""
         return repo_root / "skills" / "README.md"
 
     @pytest.fixture
