@@ -16,6 +16,20 @@
 **Cross-Repo**: Each repository has independent data/ hierarchy
 **MCP Integration**: Access via `mcp__bmem__*` tools for all operations
 
+### ⚠️ CRITICAL: Approved Categories and Relations ONLY
+
+**You MUST use ONLY approved observation categories and relation types.**
+
+**Approved lists**: See [[references/approved-categories-relations.md]] (MANDATORY - READ BEFORE WRITING)
+
+**Common mistakes** (DO NOT do these):
+- ❌ Inventing categories: `[email]`, `[coordinator]`, `[project]`, `[team]`, `[status]`
+- ❌ Inventing relations: `coordinator`, `content_creator`, `proposed_filmmaker`, `led_by`
+- ✅ Use approved categories: `[fact]`, `[decision]`, `[timeline]`, `[event]`, `[collaboration]`
+- ✅ Use approved relations: `relates_to`, `part_of`, `supports`, `requires`
+
+**Pattern**: If you need a specific semantic meaning, use an approved category + tags in frontmatter, NOT a new category.
+
 ### CRITICAL MENTAL MODEL
 
 **bmem memories ARE markdown files. There is ONE thing, not two.**

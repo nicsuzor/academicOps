@@ -153,6 +153,8 @@ Use ONLY these relation types in relations (`- relation_type [[Target]]`):
 
 ## Mapping Common Needs to Approved Values
 
+### General Mappings
+
 If you need to express:
 - **Email-related info**: Use `[fact]` with `#email` tag
 - **Grant information**: Use `[fact]` with `#grant` tag
@@ -162,3 +164,32 @@ If you need to express:
 - **Involvement**: Use `part_of` or `relates_to` relation
 
 **Pattern**: Use approved categories/relations, supplement with tags in frontmatter for specificity.
+
+### Email Extraction Specific Mappings
+
+When extracting from email archives, map invalid categories to approved ones:
+
+| ❌ Invalid Category | ✅ Use Instead |
+|---------------------|----------------|
+| `[email]` | `[fact]` + `#email` tag |
+| `[project]` | `[fact]` + `#project` tag, OR use `type: project` in frontmatter |
+| `[coordinator]` | `[fact]` with role description, OR `[contact]` |
+| `[duration]` | `[timeline]` or `[constraint]` |
+| `[content-focus]` | `[focus]` |
+| `[target-audience]` | `[audience]` |
+| `[team]` | `[collaboration]` or `[fact]` |
+| `[production-approach]` | `[approach]` |
+| `[status]` | `[fact]` + `#status` tag, OR `[outcome]` |
+
+**Relations for people/roles**:
+
+| ❌ Invalid Relation | ✅ Use Instead |
+|---------------------|----------------|
+| `coordinator` | `relates_to` (generic), or use `[contact]` observation |
+| `content_creator` | `relates_to` with `[fact]` describing role |
+| `proposed_filmmaker` | `relates_to` with `[fact]` describing proposed role |
+| `led_by` | `part_of` (person is part of project) |
+| `team_member` | `relates_to` |
+| `collaborator` | `relates_to` with `[collaboration]` observation |
+
+**Pattern for roles**: Use `relates_to [[Person Name]]` relation + `[fact]` or `[contact]` observation describing the person's role, rather than inventing role-specific relation types.

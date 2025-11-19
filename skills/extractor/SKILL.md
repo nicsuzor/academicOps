@@ -180,7 +180,20 @@ Use the **`bmem` skill** to store extracted information in the knowledge base. T
 - Deduplication checking
 - Proper categorization
 
-**Do NOT** create files directly - delegate all storage to the bmem skill.
+**CRITICAL**: When using the bmem skill, you MUST use ONLY approved observation categories and relation types from `skills/bmem/references/approved-categories-relations.md`. The bmem system will reject any unapproved categories or relations.
+
+**Common mappings for email extraction**:
+- Email metadata (sender, date, subject) → Use `[fact]` with `#email` tag
+- Project information → Use `[fact]` with `#project` tag
+- Coordinator/team roles → Use `[fact]` with description, or use `relates_to` relation to person entities
+- Timeline/duration → Use `[timeline]` or `[deadline]` category
+- Status information → Use `[fact]` with `#status` tag
+- Relationships between people → Use `relates_to`, `part_of`, or `supports` relations (NOT custom relations like "coordinator" or "content_creator")
+
+**Do NOT**:
+- Invent new observation categories (like `[email]`, `[coordinator]`, `[project]`, `[team]`)
+- Invent new relation types (like `coordinator`, `content_creator`, `proposed_filmmaker`)
+- Create files directly - delegate all storage to the bmem skill
 
 ## Quality Standards
 
