@@ -308,27 +308,12 @@ logs/
 !.env.test
 settings.local.json
 
-# academicOps managed files - DO NOT COMMIT
-# These files are symlinked/copied from academicOps framework
+# User-specific configuration (not framework code)
 
-# Claude Code configuration
+# Claude Code user settings
 .claude/settings.json
-.claude/agents/
-
-# Agent instructions
-agents/
-
-# Personal settings (if created)
 .claude/settings.local.json
-
-# academicOps framework (symlink to local installation)
-bots/.academicOps
-
-# Claude Code managed symlinks
-.claude/agents
-.claude/commands
 
 # Daily tracking files (ephemeral - not version controlled)
 data/context/workstream-tracking-*.md
 data/views/today-priorities-*.md
-experiments/

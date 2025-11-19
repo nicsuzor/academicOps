@@ -6,6 +6,21 @@ Tests that bots/skills/README.md properly documents all skills with clear
 when to invoke each skill.
 
 Following fail-fast principle: Documentation must be complete and accurate.
+
+Run this test to validate skills README integrity:
+
+    uv run pytest bots/skills/framework/tests/test_skills_readme_integrity.py -xvs
+
+This test ensures:
+- Skills README exists and documents all skills
+- Task skill has clear 'when to use' guidance
+- 'When to use' includes specific triggers (not just operations)
+
+When this test fails:
+1. Update bots/skills/README.md task skill section
+2. Add specific triggers to 'When to use' section
+3. Include: completion mentions, urgent/priority queries, status requests
+4. Match triggers from task SKILL.md workflow section
 """
 
 from pathlib import Path
@@ -29,28 +44,28 @@ class TestSkillsReadmeIntegrity:
     @pytest.fixture
     def skills_readme_content(self, skills_readme_path):
         """Load skills README content."""
-        assert (
-            skills_readme_path.exists()
-        ), f"Skills README not found at {skills_readme_path}"
+        assert skills_readme_path.exists(), (
+            f"Skills README not found at {skills_readme_path}"
+        )
         return skills_readme_path.read_text()
 
     def test_readme_exists(self, skills_readme_path):
         """Verify skills README exists."""
-        assert (
-            skills_readme_path.exists()
-        ), f"Skills README missing at {skills_readme_path}"
+        assert skills_readme_path.exists(), (
+            f"Skills README missing at {skills_readme_path}"
+        )
 
     def test_readme_documents_task_skill(self, skills_readme_content):
         """Verify task skill is documented in README."""
-        assert (
-            "### tasks" in skills_readme_content
-        ), "Task skill section not found in README"
+        assert "### tasks" in skills_readme_content, (
+            "Task skill section not found in README"
+        )
 
         # Should have the basic structure
         assert "**Purpose**:" in skills_readme_content, "README missing Purpose section"
-        assert (
-            "**When to use**:" in skills_readme_content
-        ), "README missing 'When to use' section"
+        assert "**When to use**:" in skills_readme_content, (
+            "README missing 'When to use' section"
+        )
 
     def _extract_section(self, content: str, section_header: str) -> str:
         """
@@ -147,9 +162,9 @@ class TestSkillsReadmeIntegrity:
         task_section = self._extract_section(skills_readme_content, "### tasks")
 
         # Find "When to use" subsection
-        assert (
-            "**When to use**:" in task_section
-        ), "Task skill missing 'When to use' section"
+        assert "**When to use**:" in task_section, (
+            "Task skill missing 'When to use' section"
+        )
 
         when_to_use_text = self._extract_when_to_use(task_section)
 
@@ -163,22 +178,3 @@ class TestSkillsReadmeIntegrity:
             + "Expected: Specific triggers that indicate WHEN to use the skill, "
             + "not just operations (viewing, archiving, creating)."
         )
-
-
-# Test execution notes
-"""
-Run this test to validate skills README integrity:
-
-    uv run pytest bots/skills/framework/tests/test_skills_readme_integrity.py -xvs
-
-This test ensures:
-- Skills README exists and documents all skills
-- Task skill has clear 'when to use' guidance
-- 'When to use' includes specific triggers (not just operations)
-
-When this test fails:
-1. Update bots/skills/README.md task skill section
-2. Add specific triggers to 'When to use' section
-3. Include: completion mentions, urgent/priority queries, status requests
-4. Match triggers from task SKILL.md workflow section
-"""

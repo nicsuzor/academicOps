@@ -34,7 +34,7 @@ echo
 # Symlink settings.json
 echo "Setting up global Claude Code configuration..."
 
-SETTINGS_SRC="$BOTS_DIR/config/settings.json"
+SETTINGS_SRC="$BOTS_DIR/config/claude/settings.json"
 SETTINGS_DEST="$CLAUDE_HOME/settings.json"
 
 [ -e "$SETTINGS_DEST" ] && rm -rf "$SETTINGS_DEST"
@@ -73,13 +73,9 @@ COMMANDS_DEST="$CLAUDE_HOME/commands"
 ln -s "$COMMANDS_SRC" "$COMMANDS_DEST"
 echo -e "${GREEN}✓${NC} ~/.claude/commands/ → $COMMANDS_SRC"
 
-# Symlink CLAUDE.md
-CLAUDE_MD_SRC="$BOTS_DIR/CLAUDE.md"
-CLAUDE_MD_DEST="$CLAUDE_HOME/CLAUDE.md"
-
-[ -e "$CLAUDE_MD_DEST" ] && rm -rf "$CLAUDE_MD_DEST"
-ln -s "$CLAUDE_MD_SRC" "$CLAUDE_MD_DEST"
-echo -e "${GREEN}✓${NC} ~/.claude/CLAUDE.md → $CLAUDE_MD_SRC"
+# NOTE: We do NOT symlink CLAUDE.md to ~/.claude/
+# Each repository should have its own CLAUDE.md with repo-specific instructions
+# Only skills/hooks/commands/agents are shared via ~/.claude/
 
 echo
 echo "=== Setting up repository .claude/ (for remote coding) ==="
@@ -93,8 +89,8 @@ echo -e "${GREEN}✓${NC} $BOTS_DIR/.claude/ created"
 # Symlink settings.json (relative path)
 REPO_SETTINGS_DEST="$REPO_CLAUDE/settings.json"
 [ -e "$REPO_SETTINGS_DEST" ] && rm -rf "$REPO_SETTINGS_DEST"
-ln -s ../config/settings.json "$REPO_SETTINGS_DEST"
-echo -e "${GREEN}✓${NC} .claude/settings.json → config/settings.json (relative)"
+ln -s ../config/claude/settings.json "$REPO_SETTINGS_DEST"
+echo -e "${GREEN}✓${NC} .claude/settings.json → config/claude/settings.json (relative)"
 
 # Symlink hooks directory (relative path)
 REPO_HOOKS_DEST="$REPO_CLAUDE/hooks"
@@ -133,11 +129,11 @@ echo "Installed to TWO locations:"
 echo
 echo "1. ~/.claude/ (user global, for local development)"
 echo "   - settings.json (symlinked)"
-echo "   - CLAUDE.md (symlinked)"
 echo "   - hooks/ (symlinked)"
 echo "   - skills/ (symlinked)"
 echo "   - commands/ (symlinked)"
 echo "   - agents/ (symlinked)"
+echo "   - CLAUDE.md NOT symlinked (each repo has its own)"
 echo
 echo "2. $BOTS_DIR/.claude/ (repository, for remote coding)"
 echo "   - All symlinks use relative paths"

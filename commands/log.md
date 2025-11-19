@@ -3,43 +3,28 @@ description: Log agent performance (successes and failures) to framework learnin
 permalink: commands/log
 ---
 
-Pause and **IMMEDIATELY** invoke the `framework` skill. The user is reporting agent behavior worth tracking—either a success to reinforce or a failure to address.
+**IMMEDIATELY** invoke the `log-agent` with the user's observation description.
 
-**Purpose**: Build institutional knowledge by logging patterns, not just failures. Track what works to avoid overweighting problems.
+**Purpose**: Build institutional knowledge by logging patterns with investigation and knowledge linking.
 
-**CRITICAL - Documentation-Only Mode**: When invoked via this command, the framework skill operates in DOCUMENTATION-ONLY mode. You MUST:
+The log-agent will autonomously:
 
-✅ **DO**:
+1. **Load framework context** (via framework skill) - understand what should be happening
+2. **Investigate failures** (via framework-debug skill) - diagnose root causes when applicable
+3. **Link knowledge** (via bmem skill) - cross-reference related framework concepts
+4. **Categorize** - classify as Meta-Framework, Component-Level, or Behavioral Pattern
+5. **Format** - structure entry per LOG.md specification
+6. **Validate** - ensure LOG.md frontmatter is bmem-compliant
+7. **Append** - add entry to $ACA_DATA/projects/aops/experiments/LOG.md
 
-- Categorize the observation (Meta-Framework, Component-Level, or Behavioral Pattern)
-- Determine if positive (✅ Success) or negative (❌ Failure)
-- Log to `data/projects/aops/experiments/LOG.md`
-- Keep entry brief (3 one-sentence points max)
-- Tag with pattern for cross-reference
+**What the agent does NOT do**:
 
-❌ **DO NOT**:
+- Fix the reported issue (logs only, doesn't implement solutions)
+- Ask for user confirmation (operates autonomously)
+- Create new experiment files (appends to LOG.md only)
 
-- Fix the user's original request that triggered the observation
-- Implement solutions or attempt workarounds
-- Investigate beyond initial pattern identification
-- Write lengthy analysis
+**User provides**: Brief description of observation (success or failure)
 
-**Rationale**: This command logs single data points for pattern tracking. Solutions require multiple data points and experiment-driven validation.
+**Agent delivers**: Structured log entry with investigation context and knowledge graph cross-references
 
-**LOG.md must remain Obsidian/bmem compliant** - Fix frontmatter permalink (no slashes, use hyphens) and add required sections before appending entries.
-
-**Log Format**:
-
-```markdown
-## [Category]: [Brief Title]
-
-**Date**: YYYY-MM-DD | **Type**: ✅/❌ | **Pattern**: #tag
-
-**What**: [One sentence observation] **Why**: [One sentence significance] **Lesson**: [One sentence action]
-```
-
-**Categories**:
-
-- **Meta-Framework**: Framework maintenance process itself
-- **Component-Level**: Specific parts (skills, hooks, scripts, tests)
-- **Behavioral Pattern**: Agent behavior across components
+See agents/log-agent.md for complete workflow specification.

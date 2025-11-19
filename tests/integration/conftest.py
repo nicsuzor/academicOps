@@ -19,7 +19,7 @@ from tests.paths import get_writing_root
 
 def run_claude_headless(
     prompt: str,
-    model: str | None = None,
+    model: str | None = "haiku",
     timeout_seconds: int = 120,
     permission_mode: str | None = None,
     cwd: Path | None = None,
@@ -40,6 +40,8 @@ def run_claude_headless(
         - result (dict): Parsed JSON result
         - error (str, optional): Error message if execution failed
     """
+    import os
+
     # Build command
     cmd = ["claude", "-p", prompt, "--output-format", "json"]
 
@@ -52,6 +54,14 @@ def run_claude_headless(
     # Set working directory
     working_dir = cwd if cwd else get_writing_root()
 
+    # Build environment - inherit current environment and ensure AOPS is set
+    env = os.environ.copy()
+
+    # Get AOPS path - prefer environment variable, fallback to lib.paths
+    if "AOPS" not in env:
+        from lib.paths import get_aops_root
+        env["AOPS"] = str(get_aops_root())
+
     try:
         # Execute command
         result = subprocess.run(
@@ -61,6 +71,7 @@ def run_claude_headless(
             text=True,
             timeout=timeout_seconds,
             check=False,  # Don't raise on non-zero exit
+            env=env,  # Pass environment with AOPS set
         )
 
         # Check for command failure

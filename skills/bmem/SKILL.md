@@ -1,7 +1,8 @@
-# bmem: Obsidian-Compatible Knowledge Graph Maintenance
+# bmem: Basic Memory Knowledge Graph Integration
 
 ## Authoritative Domain Knowledge
 
+**System**: Basic Memory 0.16.1 (MCP-enabled semantic knowledge graph)
 **Data Format**: Markdown entities with YAML frontmatter (Obsidian-compatible)
 **Storage Location**: `data/` hierarchy in each repository
 **Entity Structure**: `data/{entity-type}/{entity-slug}.md`
@@ -10,8 +11,31 @@
 **Optional Fields**: tags, related, created, modified, status
 **Linking**: WikiLinks `[[entity-slug]]` for cross-references
 **Relations**: Expressed via frontmatter fields (related:, part-of:, etc.) and WikiLinks in content
-**Write Access**: bmem skill ONLY - agents must not write data/ files directly
+**Write Access**: bmem MCP tools ONLY - agents must not write data/ files directly
 **Cross-Repo**: Each repository has independent data/ hierarchy
+**MCP Integration**: Access via `mcp__bmem__*` tools for all operations
+
+## Technical References (Load Just-in-Time)
+
+**Basic Memory System Documentation**:
+- [[../../framework/references/basic-memory-sync-guide.md]] - Database sync, file management, handling deletions
+- [[../../framework/references/basic-memory-mcp-tools.md]] - Complete MCP tools reference
+- [[../../framework/references/basic-memory-ai-guide.md]] - AI assistant best practices
+
+**bmem Skill-Specific Guides**:
+- [[references/approved-categories-relations.md]] - **MANDATORY**: Approved categories/relations (MUST use ONLY these)
+- [[references/obsidian-format-spec.md]] - Full Obsidian format specification
+- [[references/observation-quality-guide.md]] - Observation quality rules
+- [[references/detail-level-guide.md]] - Detail level guidelines (tasks vs projects)
+- [[references/obsidian-compatibility.md]] - Obsidian-specific formatting
+
+**Load references when needed for**:
+- Validation errors → approved-categories-relations.md (CHECK THIS FIRST)
+- MCP tool usage questions → basic-memory-mcp-tools.md
+- Sync/database issues → basic-memory-sync-guide.md
+- Best practices/patterns → basic-memory-ai-guide.md
+- Format questions → obsidian-format-spec.md
+- Quality issues → observation-quality-guide.md
 
 ---
 
@@ -29,36 +53,66 @@ Silently extracts information from sessions and maintains knowledge graph in Obs
 - Observation quality enforcement (additive, no duplicates)
 - Integration with task skill for task operations
 
-## Format Guide
+## Format Philosophy
 
-**@bots/BMEM-OBSIDIAN-GUIDE.md**
+**Primary audience: HUMANS (you and the user). Technical compatibility: SECONDARY.**
 
-Quick template:
+bmem format exists to make knowledge USABLE, not to satisfy a schema. The structured format (frontmatter, observations, relations) should serve human understanding, not constrain it.
+
+### When to Use Observations Format
+
+Use structured `[category] statement #tags` observations for:
+
+- **Discrete facts** that benefit from categorization
+- **Decisions, requirements, goals** that need clear tracking
+- **Technical specs** where atomicity helps (commands, configurations, API details)
+- **High-value information** that needs to be highly discoverable
+
+### When to Use Natural Prose
+
+Use natural language paragraphs for:
+
+- **Explanatory context** and narratives
+- **Complex reasoning** that doesn't fit into atomic statements
+- **Meeting notes** and conversation summaries
+- **Process descriptions** where flow matters more than categorization
+- **Anything that reads better as prose**
+
+### Searchability Truth
+
+**CRITICAL**: bmem semantic search indexes **ALL markdown content**, not just observations. You can mix:
 
 ```markdown
----
-title: Entity Title
-permalink: entity-title-slug
-type: note
-tags:
-  - tag1
-  - tag2
----
-
-# Entity Title
-
 ## Context
 
-Brief 1-3 sentence overview.
+This project emerged from discussions with GLAAD about content moderation...
 
 ## Observations
 
-- [category] Specific atomic fact #inline-tag1 #inline-tag2
+- [fact] Dataset contains 28 hand-coded articles #research-scope
+- [decision] Focus on binary classification for MVP #scope #simplicity
 
-## Relations
+## Implementation Notes
 
-- relation_type [[Related Entity Title]]
+The gcloud deployment command is:
+`gcloud secrets versions add --data-file ~/.cache/buttermilk/models/models.json --project=prosocial-443205 dev__llm__connections`
+
+We chose this approach because it integrates with existing CI/CD...
 ```
+
+**Everything is searchable**. Use the format that serves human comprehension.
+
+## Format Guide
+
+**See [[references/obsidian-format-spec.md]] for complete format specification.**
+
+**Quick reference**:
+- YAML frontmatter: title, permalink (simple slug only, no /), type, tags (ALL tags go here)
+- H1 heading matches title EXACTLY (including punctuation)
+- Context section (1-3 sentences)
+- Observations with categories: `- [category] fact` (ONLY approved categories from [[references/approved-categories-relations.md]])
+- Relations with types: `- relation_type [[Target]]` (ONLY approved types, MUST have [[brackets]])
+- Additional prose sections: ALLOWED and ENCOURAGED where appropriate
 
 ## When to Use This Skill
 
@@ -73,7 +127,48 @@ Brief 1-3 sentence overview.
 **Integration**:
 
 - **task skill**: Delegate all task operations (create, update, archive)
-- **bmem skill** (this): Focus on bmem files and session mining
+- **bmem skill** (this): Focus on bmem files and session mining via MCP tools
+
+## MCP Tools Usage
+
+**CRITICAL**: All bmem operations use MCP tools (`mcp__bmem__*`). Never write data/ files directly.
+
+**Project management**:
+- Start every session with `mcp__bmem__list_memory_projects()` to discover projects
+- Store user's project choice for entire session
+- Pass `project` parameter explicitly to all tool calls
+
+**Core operations**:
+- `mcp__bmem__write_note()` - Create/update notes
+- `mcp__bmem__edit_note()` - Incremental edits (append, prepend, find_replace)
+- `mcp__bmem__read_note()` - Read with context
+- `mcp__bmem__search_notes()` - Full-text semantic search
+- `mcp__bmem__build_context()` - Navigate knowledge graph
+
+**See [[../../framework/references/basic-memory-mcp-tools.md]] for complete tool reference.**
+
+### Search Strategy
+
+bmem uses **semantic/vector search**, not keyword matching. Search success depends on semantic meaning, not literal text matching.
+
+**Search strategy**:
+
+✓ **Good searches** (semantic concepts):
+- "upload models configuration GCP" → Finds gcloud commands
+- "buttermilk deployment secrets" → Finds deployment procedures
+- "content moderation hate speech" → Finds relevant projects
+
+✗ **Poor searches** (literal syntax):
+- "gcloud secrets models.json" → May fail (too technical/literal)
+- "dev__llm__connections" → May fail (specific identifiers)
+- Command syntax verbatim → May fail (semantic mismatch)
+
+**Tips for better searches**:
+1. Use semantic concepts, not exact phrases
+2. Include context words (project names, domains)
+3. Try multiple phrasings if first search fails
+4. Technical commands: Add surrounding context ("upload", "deploy", "configure")
+5. Remember: ALL content is indexed (observations AND prose)
 
 ## Critical Rules: Observation Quality
 
@@ -136,9 +231,9 @@ Brief 1-3 sentence overview.
 
 1. **Check for duplicates** first (search by title/permalink)
 2. **Use bmem template** from BMEM-OBSIDIAN-GUIDE.md
-3. **Fill frontmatter**: title, permalink, type, tags
+3. **Fill frontmatter**: title, permalink, type, tags (all tags go in frontmatter)
 4. **Add Context**: 1-3 sentence summary
-5. **Extract observations**: Categorized facts with inline tags
+5. **Extract observations**: Categorized facts (NO inline hashtags)
 6. **Add relations**: Link to related entities (forward references OK)
 7. **Save** in appropriate `data/` subdirectory
 
@@ -273,65 +368,58 @@ Invoke task skill with:
 
 **See [[references/obsidian-compatibility.md]] for Obsidian-specific formatting rules (tags, WikiLinks, aliases).**
 
-## Commit and Push
+## Database Sync
 
-**After creating/editing files, MUST commit and push:**
+**Basic Memory handles sync automatically** via real-time file watching.
 
-1. **Check for uncommitted changes**:
-   ```bash
-   git status
-   ```
+**Check sync status**: `mcp__bmem__sync_status()` - No parameters needed
 
-2. **If changes exist, commit them**:
-   ```bash
-   git add data/ && git commit -m "update(bmem): [brief summary]
-
-   Captured: [what was added/updated]
-   - Projects: [which projects]
-   - Goals: [which goals]
-   - Context: [which context files]
-
-   🤖 Generated with [Claude Code](https://claude.com/claude-code)
-
-   Co-Authored-By: Claude <noreply@anthropic.com>"
-   ```
-
-3. **Push to remote**:
-   ```bash
-   git push
-   ```
-
-**If commit/push fails**: Report error to user. DO NOT complete silently with uncommitted changes.
+**See [[../../framework/references/basic-memory-sync-guide.md]] for**:
+- How sync works
+- Handling deleted files
+- Database reset procedures
+- .gitignore support
 
 ## Quick Reference
 
+**Session start**:
+
+- [ ] Call `mcp__bmem__list_memory_projects()` to discover projects
+- [ ] Ask user which project to use
+- [ ] Store project choice for session
+
 **Before writing**:
 
-- [ ] Search for duplicates
-- [ ] Choose appropriate `data/` subdirectory
-- [ ] Use bmem template structure
+- [ ] Search for duplicates with `mcp__bmem__search_notes()`
+- [ ] Choose appropriate folder
+- [ ] Use bmem template structure (see [[references/obsidian-format-spec.md]])
 
-**While writing**:
+**While writing** (via `mcp__bmem__write_note()`):
 
-- [ ] Required frontmatter: title, permalink, type
+- [ ] Required parameters: title, content, folder, project
+- [ ] Required frontmatter: title, permalink, type, tags
 - [ ] H1 heading matches title exactly
-- [ ] Context section (1-3 sentences)
-- [ ] 3-5+ observations with categories and inline tags
+- [ ] Context section (1-3 sentences, prose is fine)
+- [ ] Use observations format WHERE IT FITS (discrete facts, decisions, specs)
+- [ ] Use natural prose WHERE IT READS BETTER (narratives, explanations, complex reasoning)
+- [ ] 3-5+ observations with categories (when using observations format)
 - [ ] Observations ADD new information (not duplicating frontmatter/body)
+- [ ] All tags go in frontmatter tags field (never inline in observations)
 - [ ] 2-3+ relations with specific types
+- [ ] Additional prose sections: ALLOWED (Implementation Notes, Discussion, etc.)
 - [ ] Use hyphens in tags (Obsidian-compatible)
 - [ ] Use `[[WikiLinks]]` for entity references
+- [ ] Remember: ALL content is searchable (observations AND prose)
 
-**After writing**:
+**For incremental edits**:
 
-- [ ] Validate no duplication
-- [ ] Verify proper syntax
-- [ ] Commit and push changes
+- [ ] Use `mcp__bmem__edit_note()` with operation: append, prepend, find_replace, or replace_section
+- [ ] More efficient than rewriting entire note
 
 **For task operations**:
 
 - [ ] Always invoke task skill
-- [ ] Never create task files directly
+- [ ] Never use bmem MCP tools for tasks
 - [ ] Extract task info from session, pass to task skill
 
 ## Success Criteria
@@ -340,9 +428,22 @@ This skill succeeds when:
 
 1. **Zero friction** - User never asks "can you save that?"
 2. **Automatic capture** - Information extracted silently as mentioned
-3. **Quality observations** - No self-referential or duplicate observations
-4. **Knowledge graph maintained** - Semantic links kept current
+3. **Quality observations** - No self-referential or duplicate observations (see [[references/observation-quality-guide.md]])
+4. **Knowledge graph maintained** - Semantic links kept current via relations
 5. **Obsidian-compatible** - Files work perfectly in Obsidian
 6. **Tasks delegated** - Task skill invoked for all task operations
-7. **Changes persisted** - All data committed and pushed
+7. **MCP tools used correctly** - All operations via `mcp__bmem__*` tools with explicit project parameter
 8. **User feels supported** - "Ideas are magically organized"
+
+## Best Practices from Basic Memory
+
+**See [[../../framework/references/basic-memory-ai-guide.md]] for complete guide.**
+
+**Key principles**:
+- Always search before creating (avoid duplicates)
+- Ask permission before recording conversations
+- Build rich knowledge graphs (3-5+ observations, 2-3+ relations)
+- Use exact entity titles in relations (search first)
+- Use semantic precision (specific relation types, not generic)
+- Progressive elaboration (build knowledge incrementally)
+- Consistent organization (maintain folder structures)

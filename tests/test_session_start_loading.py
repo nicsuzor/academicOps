@@ -5,20 +5,20 @@ references all critical documentation files using @-references.
 """
 
 from pathlib import Path
+from lib.paths import get_aops_root
 
 
 def test_claude_md_includes_skills_readme():
-    """Verify CLAUDE.md includes @bots/skills/README.md in session start sequence.
+    """Verify CLAUDE.md includes @skills/README.md in session start sequence.
 
-    Behavior to test: CLAUDE.md should reference @bots/skills/README.md so that
+    Behavior to test: CLAUDE.md should reference @skills/README.md so that
     agents understand available skills at session start.
 
     This is an integration test validating session start configuration integrity.
     """
-    # Arrange: Find and read CLAUDE.md
-    # Path: tests/ -> bots/ -> repo_root/
-    repo_root = Path(__file__).parent.parent.parent
-    claude_md_path = repo_root / "CLAUDE.md"
+    # Arrange: Find and read CLAUDE.md in $AOPS
+    aops_root = get_aops_root()
+    claude_md_path = aops_root / "CLAUDE.md"
 
     assert claude_md_path.exists(), f"CLAUDE.md not found at {claude_md_path}"
 
@@ -39,8 +39,8 @@ def test_claude_md_includes_skills_readme():
                     ref = word.lstrip("@").rstrip(".,;:")
                     at_references.append(ref)
 
-    # Assert: Verify @bots/skills/README.md is included
-    expected_ref = "bots/skills/README.md"
+    # Assert: Verify @skills/README.md is included
+    expected_ref = "skills/README.md"
 
     assert expected_ref in at_references, (
         f"CLAUDE.md must include @{expected_ref} in session start sequence.\n"

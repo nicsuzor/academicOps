@@ -1,6 +1,6 @@
-# Task: Visual Task Dashboard (Excalidraw)
+# Task: Visual Task Mind Map (Excalidraw)
 
-**Date**: 2025-11-17
+**Date**: 2025-11-17 (Updated: 2025-11-18)
 **Stage**: 2 (Scripted Tasks)
 **Priority**: P1 (High impact - solves documented accommodation need)
 
@@ -8,30 +8,27 @@
 
 **What manual work are we automating?**
 
-Currently, when working across multiple terminals/repositories with long-running Claude Code workflows (1-120 minutes), there is no way to see at a glance:
-- What tasks exist across all projects
-- Which tasks are active/blocked/queued in each repository
-- How tasks map to strategic priorities
-- What the overall progress state is
-- What blockers are preventing task completion
+Need to quickly understand across all repositories:
+- Where everything fits (goals → projects → tasks)
+- What needs to be done (outstanding tasks)
+- What we're waiting on (blockers and sequencing)
+- How things are prioritised and aligned
+- Where we've been (completed tasks as context)
+- Why some projects have no tasks (are we making progress?)
 
-This forces keeping all context in working memory, leading to:
-- Lost track of tasks across repos
-- Difficulty context switching between projects
-- Inability to answer "what should I work on next?"
-- Mental overhead trying to remember task states
+**Current state**: Started manual Excalidraw map (`data/views/current-tasks.excalidraw`) but it's ugly - poor layout, hard to maintain, doesn't scale.
 
 **Why does this matter?**
 
 **Impact**:
-- Reduces cognitive load when context switching (documented in ACCOMMODATIONS.md line 30)
+- Reduces cognitive load when context switching (ACCOMMODATIONS.md line 30)
 - Addresses core ADHD accommodation: "Need to understand progress at a glance" (ACCOMMODATIONS.md line 37)
 - Directly supports VISION.md success criterion #4: "Tasks are automatically prioritized, tracked, and surfaced at the right time"
-- Solves acute multi-window cognitive load problem (experiments/2025-11-17_multi-window-cognitive-load-solutions.md)
+- Solves acute multi-window cognitive load problem
 
-**Time savings**: Currently spending 5-10 minutes mentally reconstructing task state when context switching. With visual dashboard: <30 seconds to scan and orient.
+**Time savings**: From 5-10 minutes mentally reconstructing state → <30 seconds to scan visual map.
 
-**Quality improvement**: Reduces task loss rate from current ~20% (tasks forgotten/lost in mental queue) to <5% (visible in dashboard).
+**Quality improvement**: Reduces task loss rate from ~20% (forgotten in mental queue) to <5% (visible in map).
 
 **Who benefits?**
 
@@ -41,41 +38,59 @@ Nic - across ALL academic work (not just framework development). This solves a g
 
 **The automation is successful when**:
 
-1. **Visual completeness**: Dashboard shows all tasks from all repositories with their current state (queued/active/blocked/completed)
-2. **Strategic mapping**: Tasks are correctly grouped by project and labeled with strategic priority (from ROADMAP or bmem project data)
-3. **Blocker visibility**: Blocked tasks clearly show blocking reason
-4. **Generation speed**: Dashboard generates in <10 seconds from command invocation
-5. **Cross-repo coverage**: Automatically discovers and includes tasks from all repositories in known work locations
+1. **Visual hierarchy**: Mind map clearly shows goals at top → projects linked to goals → tasks under projects
+2. **Outstanding work prominent**: Active/blocked tasks are large and visually prominent (what needs attention NOW)
+3. **Completed work context**: Completed tasks shown in small font attached to projects (where we've been)
+4. **Idle projects visible**: Projects with no outstanding tasks explicitly shown (monitoring progress)
+5. **Blocker/sequencing clarity**: Blockers and task dependencies visually indicated
+6. **Strategic alignment**: Tasks connected to goals they support
+7. **Generation speed**: Map generates in <10 seconds from command invocation
+8. **Cross-repo coverage**: Automatically discovers tasks/projects from all repositories
+
+**Visual design goals** (replacing ugly manual version):
+- Clean layout with proper spacing (not cramped)
+- Logical grouping (goals → projects → tasks hierarchy)
+- Color coding meaningful (status-based, not decorative)
+- Text readable (appropriate font sizes)
+- Connections clear (arrows show relationships)
 
 **Quality threshold**:
-- Fail-fast: If task file is malformed (can't parse), halt with clear error pointing to problematic file
-- Best effort: If project mapping is ambiguous, show task with "Unknown project" label rather than guess
-- Graceful degradation: If strategic priority missing, default to "Medium" rather than fail
+- Fail-fast: If task/project file malformed, halt with clear error
+- Best effort: If project→goal mapping ambiguous, show project without goal connection
+- Graceful degradation: If strategic priority missing, default to "Medium"
 
 ## Scope
 
 ### In Scope
 
-- Read all task files from `data/tasks/*.jsonl` across multiple repositories
-- Parse task metadata: id, title, status, project, priority, blockers
-- Read bmem project entities to map tasks to strategic context
-- Generate Excalidraw JSON format visualization
-- Support visual encoding: color by status, size by priority, position by strategic value
-- Group tasks by project
-- Show blocker information for blocked tasks
-- Slash command `/task-viz` or `/dashboard` to trigger generation
-- Output to `~/current-tasks.excalidraw` for cross-repo overview
+- Read all task files from `data/tasks/*.md` across multiple repositories
+- Read bmem goal entities from `data/goals/` (top-level strategic objectives)
+- Read bmem project entities from `data/projects/` (link to goals)
+- Parse task frontmatter: title, status, project, priority, blockers, due dates
+- Generate Excalidraw JSON mind map with three-tier hierarchy:
+  - **Level 1 (Top)**: Goals - large boxes at top of canvas
+  - **Level 2 (Middle)**: Projects - medium boxes linked to goals
+  - **Level 3 (Bottom)**: Tasks - boxes sized by priority, colored by status
+- Visual encodings:
+  - **Size**: Outstanding tasks large, completed tasks small
+  - **Color**: Active=blue, Blocked=red, Queued=yellow, Completed=green (muted)
+  - **Position**: Hierarchy (goals→projects→tasks), priority left-to-right
+  - **Arrows**: Goal→Project, Project→Task, Task→Blocking Task
+- Show projects with no tasks explicitly (monitoring idle projects)
+- Slash command `/task-map` to trigger generation
+- Output replaces `data/views/current-tasks.excalidraw`
 
 ### Out of Scope
 
-- Real-time updates (manual regeneration only for now - Stage 3 concern)
-- Interactive editing of tasks via dashboard (read-only visualization)
-- Historical trend analysis (Stage 4+ concern)
-- Automatic task prioritization/suggestions (Stage 4+ concern)
-- Integration with calendar/deadlines (future enhancement)
-- Custom layout algorithms (use simple top-to-bottom grouping)
+- Real-time updates (manual regeneration via `/task-map`)
+- Interactive task editing (read-only visualization)
+- Historical trends (Stage 4 concern)
+- Automatic prioritization suggestions (Stage 4 concern)
+- Calendar/deadline integration (future)
 
-**Boundary rationale**: This is a "do one thing" task focused solely on visualization of existing task state. It reads existing data structures (task files, bmem entities) and transforms them into a visual format. Orchestration, editing, and intelligent suggestions are separate concerns for later stages.
+**Layout philosophy**: Don't enforce strict top-down hierarchy - use maps, clusters, organic positioning, and 2D spatial thinking where appropriate. Goals→Projects→Tasks relationship should be clear through connections, not rigid vertical structure. Allow creative/organic layouts that make visual sense.
+
+**Boundary rationale**: Focus on clear visual representation of current state using goal→project→task hierarchy from bmem data. Editing, automation, and advanced features are Stage 3+ concerns.
 
 ## Dependencies
 
@@ -205,46 +220,56 @@ rm -f /tmp/task-viz-test-data.json /tmp/output.excalidraw
 
 ### High-Level Design
 
-**Pattern**: Agent orchestrates → Simple script generates → Agent validates
+**Pattern**: Agent does ALL creative/analytical work → Helper script (if needed) for repetitive tasks only
+
+**CRITICAL FRAMEWORK PRINCIPLE**: Our framework approach is to have very small helper scripts for purely mechanical, repetitive operations, while ALL creative, thinking, and analytical work is done by Claude Code agents. Claude Code INVOKES Python scripts for mechanical tasks, not the other way around.
 
 **Components**:
 
 1. **Task Discovery** (Agent via Glob)
-   - Find all `data/tasks/*.jsonl` files across repositories
+   - Find all `data/tasks/*.md` files across repositories
    - Support single-repo and multi-repo modes
 
 2. **Task Data Aggregation** (Agent via Read + LLM reasoning)
-   - Read each JSONL file
-   - Parse task objects
+   - Read each Markdown file
+   - Parse YAML frontmatter and content
    - Validate required fields
-   - Enrich with bmem project data if available
-   - Map to strategic priorities from ROADMAP
+   - Enrich with bmem project data (project goals, strategic context)
+   - Map projects to goals from bmem entities
 
-3. **Data Structuring** (Agent reasoning)
-   - Group tasks by project
-   - Sort projects by strategic priority
-   - Sort tasks within project by priority then status
-   - Prepare structured JSON for visualization script
+3. **Visual Mind-Map Design** (Agent reasoning + LLM creativity)
+   - Understand user goals: "quickly understand where everything fits, what needs to be done, what we're waiting on, what sequencing/blockers we need to deal with, and how things are prioritised and aligned"
+   - Design visual layout that shows:
+     - **Goals** at top level (strategic context)
+     - **Projects** linked to goals
+     - **Outstanding tasks** prominently displayed (what needs attention)
+     - **Completed tasks** in small font attached to projects (where we've been)
+     - **Projects with no tasks** explicitly shown (why not? are we making progress?)
+     - **Blockers and sequencing** visually indicated
+   - Determine appropriate visual encodings (size, color, position, connections)
 
-4. **Excalidraw Generation** (Simple Python script)
-   - Input: Structured JSON with task/project data
-   - Output: Valid Excalidraw JSON file
-   - Pure mechanical transformation: data → layout coordinates → Excalidraw elements
+4. **Excalidraw Generation** (Agent directly creates JSON)
+   - Agent generates complete Excalidraw JSON structure
+   - Creates visual elements: boxes for projects/tasks, text labels, arrows for relationships
+   - Applies visual hierarchy: large/prominent for outstanding work, small for completed
+   - Encodes status through color/styling
+   - Groups related elements
+   - **Optional helper script**: If turning task/project files into structured format proves repetitive, may create small helper to aggregate data, but visualization design and generation is LLM work
 
-5. **Output** (Agent via Bash)
+5. **Output** (Agent via Write)
    - Write to `~/current-tasks.excalidraw`
    - Confirm successful generation
-   - Optionally open in Excalidraw (user preference)
+   - Report summary of what's shown
 
 **Data Flow**:
 ```
-Task files (*.jsonl)
+Task files (*.md) + Project entities (bmem) + Goals (bmem)
   → Agent Glob/Read → Parse/validate
-  → Agent reasoning → Enrich with bmem/ROADMAP data
-  → Agent structuring → Group/sort/prioritize
-  → Agent creates structured JSON
-  → Python script → Generate Excalidraw layout
-  → Excalidraw JSON file output
+  → Agent reasoning → Enrich with strategic context
+  → Agent analyzes → Understand what story to tell visually
+  → Agent designs → Layout strategy, visual encodings
+  → Agent creates → Excalidraw JSON directly
+  → Excalidraw file output
 ```
 
 ### Technology Choices

@@ -45,42 +45,51 @@ Before reporting work done:
 
 ## Context Loading
 
-**Every invocation loads context**:
+**CRITICAL**: Use bmem MCP tools for ALL knowledge base access. NEVER read markdown files directly.
 
-```python
-# Load framework state
-vision = read("bots/VISION.md")
-roadmap = read("bots/ROADMAP.md")
-axioms = read("bots/AXIOMS.md")
+**Loading order** (MANDATORY):
 
-# Load recent learning patterns (bmem format)
-learning_index = read("data/projects/aops/learning/README.md")
-# Then load specific thematic files as needed:
-# - agent_behavior = read("data/projects/aops/learning/agent-behavior-patterns.md")
-# - technical = read("data/projects/aops/learning/technical-successes.md")
-# - architecture = read("data/projects/aops/learning/architecture-decisions.md")
-# - components = read("data/projects/aops/learning/component-issues.md")
-# - documentation = read("data/projects/aops/learning/documentation-bloat-prevention.md")
+```
+# 1. BINDING USER CONSTRAINTS (search FIRST)
+Use mcp__bmem__search_notes for:
+- "accommodations OR work style" → User constraints (as binding as AXIOMS)
+- "core OR user context" → User context (as binding as AXIOMS)
 
-# Load technical references as needed for specific work:
-# - Hook configuration: read("bots/skills/framework/references/hooks_guide.md")
-# - Other technical docs in references/ directory
+# 2. CURRENT REALITY (ground truth)
+Use mcp__bmem__search_notes for:
+- "state OR current stage" in type:note → Current framework stage, blockers
+
+# 3. FRAMEWORK PRINCIPLES AND ASPIRATIONS
+Use mcp__bmem__search_notes for:
+- "vision OR end state" in type:note → Framework goals
+- "roadmap OR maturity progression" in type:note → Stage progression
+- Read $AOPS/AXIOMS.md directly (framework principles, not user knowledge)
+- "experiment log OR learning patterns" → Past learnings from LOG.md
+
+# 4. TECHNICAL REFERENCES (search as needed for specific work)
+Use mcp__bmem__search_notes for:
+- "hooks guide OR hook configuration"
+- Other technical docs by topic/type
 ```
 
-## Key Queries
+**Critical**: User constraints (ACCOMMODATIONS) come BEFORE framework aspirations. STATE note establishes current reality before reading vision documents.
 
-- "What have we built?" → Read ROADMAP, show progress toward VISION
-- "What should we work on next?" → Check ROADMAP priorities, validate strategic fit
-- "Is X a good idea?" → Evaluate against VISION, AXIOMS, prior decisions
-- "Why did we do Y?" → Search experiments/LOG.md for rationale
-- "What's our current state?" → Load ROADMAP current status section
+**Why bmem**: Knowledge base files are in bmem format with semantic search. Use bmem to find relevant context efficiently rather than reading arbitrary files.
 
-## Decision-Making Framework
+## Key Queries (using bmem)
 
-1. Derive from AXIOMS.md (foundational principles)
-2. Align with VISION.md (strategic direction)
-3. Consider current ROADMAP stage (progression path)
-4. Learn from experiments/LOG.md (past patterns)
+- "What have we built?" → Search for roadmap/state notes, show progress toward vision
+- "What should we work on next?" → Search roadmap priorities, validate strategic fit
+- "Is X a good idea?" → Search vision/goals, evaluate against AXIOMS, search experiment log
+- "Why did we do Y?" → Search experiments log: `mcp__bmem__search_notes(query="[decision topic]")` in LOG.md
+- "What's our current state?" → Search for current state/roadmap status notes
+
+## Decision-Making Framework (using bmem)
+
+1. Derive from AXIOMS.md (foundational principles - read directly from $AOPS)
+2. Align with vision: Search `mcp__bmem__search_notes(query="vision OR strategic direction")`
+3. Consider current stage: Search `mcp__bmem__search_notes(query="roadmap OR current stage")`
+4. Learn from past: Search `mcp__bmem__search_notes(query="[relevant topic] type:experiment-log")`
 5. Default to simplicity and quality
 6. When uncertain, provide options with clear tradeoffs
 

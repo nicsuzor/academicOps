@@ -1,13 +1,13 @@
 ---
 name: framework
-description: Maintain the flattened automation framework in bots/. Design experiments,
+description: Maintain the minimal automation framework in academicOps. Design experiments,
   debug issues, enforce documentation consistency, and prevent bloat. Use when working
   on framework infrastructure, creating new automation components, debugging framework
   issues, or when documentation conflicts are detected. Enforces single source of
   truth, prohibits duplicate content, and requires end-to-end integration tests.
 allowed-tools: Read,Write,Edit,Grep,Glob,Bash
 version: 1.0.0
-permalink: bots/skills/framework/skill
+permalink: skills-framework-skill
 ---
 
 # Framework Maintenance Skill
@@ -22,7 +22,7 @@ This skill operates in two modes:
 
 2. **Maintenance Operator**: Handles design, experimentation, debugging, fault logging, iteration, improvement, and monitoring of the framework.
 
-The framework lives in `bots/` and follows aggressive minimalism—sophisticated where necessary, simple everywhere else.
+The framework lives in `$AOPS` (academicOps repository) and follows aggressive minimalism—sophisticated where necessary, simple everywhere else.
 
 **When to use**:
 
@@ -71,43 +71,51 @@ The framework lives in `bots/` and follows aggressive minimalism—sophisticated
    - Report: "I need to restart - my initial approach was insufficient"
    - Never present incomplete work as if it were thorough
 
-**Every invocation loads context** (MANDATORY LOADING ORDER):
+**Every invocation loads context via bmem** (MANDATORY LOADING ORDER):
 
-```python
-# 1. BINDING USER CONSTRAINTS (load FIRST)
-accommodations = read("bots/ACCOMMODATIONS.md")  # User constraints - as binding as AXIOMS
-core = read("bots/CORE.md")  # User context - as binding as AXIOMS
+```
+CRITICAL: Use bmem MCP tools for ALL knowledge base access. NEVER read markdown files directly.
+
+# 1. BINDING USER CONSTRAINTS (search FIRST)
+Use mcp__bmem__search_notes for:
+- "accommodations OR work style" → User constraints (as binding as AXIOMS)
+- "core OR user context" → User context (as binding as AXIOMS)
 
 # 2. CURRENT REALITY (ground truth)
-state = read("bots/skills/framework/STATE.md")  # Current stage, mandatory processes, active blockers
+Use mcp__bmem__search_notes for:
+- "state OR current stage" in type:note → Current framework stage, blockers
 
 # 3. FRAMEWORK PRINCIPLES AND ASPIRATIONS
-vision = read("bots/VISION.md")  # End state goals
-roadmap = read("bots/ROADMAP.md")  # Maturity progression
-axioms = read("bots/AXIOMS.md")  # Core principles
-log = read("bots/experiments/LOG.md")  # Learning patterns
+Use mcp__bmem__search_notes for:
+- "vision OR end state" in type:note → Framework goals
+- "roadmap OR maturity progression" in type:note → Stage progression
+- Read $AOPS/AXIOMS.md directly (framework principles, not user knowledge)
+- "experiment log OR learning patterns" → Past learnings from LOG.md
 
-# 4. TECHNICAL REFERENCES (as needed for specific work)
-# - Hook configuration: read("bots/skills/framework/references/hooks_guide.md")
-# - Other technical docs in references/ directory
+# 4. TECHNICAL REFERENCES (search as needed for specific work)
+Use mcp__bmem__search_notes for:
+- "hooks guide OR hook configuration"
+- Other technical docs by topic/type
 ```
 
-**Critical**: User constraints (ACCOMMODATIONS) come BEFORE framework aspirations. STATE.md establishes current reality before reading vision documents.
+**Critical**: User constraints (ACCOMMODATIONS) come BEFORE framework aspirations. STATE note establishes current reality before reading vision documents.
 
-**Key queries**:
+**Why bmem**: Knowledge base files are in bmem format with semantic search. Use bmem to find relevant context efficiently rather than reading arbitrary files.
 
-- "What have we built?" → Read ROADMAP, show progress toward VISION
-- "What should we work on next?" → Check ROADMAP priorities, validate strategic fit
-- "Is X a good idea?" → Evaluate against VISION, AXIOMS, prior decisions
-- "Why did we do Y?" → Search experiments/LOG.md for rationale
-- "What's our current state?" → Load ROADMAP current status section
+**Key queries** (using bmem):
 
-**Decision-making framework**:
+- "What have we built?" → Search for roadmap/state notes, show progress toward vision
+- "What should we work on next?" → Search roadmap priorities, validate strategic fit
+- "Is X a good idea?" → Search vision/goals, evaluate against AXIOMS, search experiment log
+- "Why did we do Y?" → Search experiments log: `mcp__bmem__search_notes(query="[decision topic]")` in LOG.md
+- "What's our current state?" → Search for current state/roadmap status notes
 
-1. Derive from AXIOMS.md (foundational principles)
-2. Align with VISION.md (strategic direction)
-3. Consider current ROADMAP stage (progression path)
-4. Learn from experiments/LOG.md (past patterns)
+**Decision-making framework** (using bmem):
+
+1. Derive from AXIOMS.md (foundational principles - read directly from $AOPS)
+2. Align with vision: Search `mcp__bmem__search_notes(query="vision OR strategic direction")`
+3. Consider current stage: Search `mcp__bmem__search_notes(query="roadmap OR current stage")`
+4. Learn from past: Search `mcp__bmem__search_notes(query="[relevant topic] type:experiment-log")`
 5. Default to simplicity and quality
 6. When uncertain, provide options with clear tradeoffs
 
@@ -189,11 +197,11 @@ Each piece of information exists in exactly ONE location.
 
 **Rules**:
 
-- Core principles → `bots/AXIOMS.md`
-- Directory structure → `README.md`
-- User context → `bots/CORE.md`
-- Work style → `bots/ACCOMMODATIONS.md`
-- Writing style → `bots/STYLE.md` or `bots/STYLE-QUICK.md`
+- Core principles → `AXIOMS.md` (in $AOPS - generic framework principles)
+- Directory structure → `README.md` (exists in both $AOPS and $ACA_DATA)
+- User context → `$ACA_DATA/CORE.md`
+- Work style → `$ACA_DATA/ACCOMMODATIONS.md`
+- Writing style → `$ACA_DATA/STYLE.md` or `$ACA_DATA/STYLE-QUICK.md`
 
 **Prohibited**:
 
@@ -247,9 +255,9 @@ Each piece of information exists in exactly ONE location.
 
 **Example (README.md)**:
 
-- ✅ Correct: Lists `@bots/CORE.md` in session start sequence, stops
-- ✅ Acceptable: `@bots/CORE.md → User context, tools, and paths` (brief inline summary on same line)
-- ❌ Wrong: Lists `@bots/CORE.md` then adds multi-line explanation paragraph
+- ✅ Correct: Lists `CORE.md` in session start sequence, stops
+- ✅ Acceptable: `CORE.md → User context, tools, and paths` (brief inline summary on same line)
+- ❌ Wrong: Lists `CORE.md` then adds multi-line explanation paragraph
 - ❌ Wrong: Contains entire section "How to Add Session Start Content"
 
 ### File Creation Prohibition
@@ -280,7 +288,7 @@ Each piece of information exists in exactly ONE location.
 1. **Multi-line summaries after references**: Brief inline summaries (same line) are acceptable, but multi-line explanations = bloat
    - ❌ Bad: "Use the task skill at [[skills/README.md]]. Tasks are stored in data/tasks/. Use task scripts, never write files directly." (multi-line explanation)
    - ✅ Good: "For task management, use the `task` skill." (simple direction)
-   - ✅ Acceptable: `@bots/CORE.md → User context and tools` (brief inline summary)
+   - ✅ Acceptable: `CORE.md → User context and tools` (brief inline summary)
    - Principle: Direct to tool with brief context OK, but don't explain tool. Agent must invoke/read to get full instructions.
 2. **Excessive decorative elements**: Excessive horizontal rules, ASCII art (unless functional like directory tree markers). Emojis are allowed for visual navigation and section marking.
 3. **Historical context**: "What's Gone", "Why we changed", migration notes (git history IS the record)
@@ -459,17 +467,17 @@ Detailed step-by-step workflows for framework operations. Read and follow the ap
 4. No duplication of axioms, principles, or core information
 5. No summaries following references (trust the reference)
 
-**Pattern**: Use grep to find potential conflicts (check against `bots/AXIOMS.md`):
+**Pattern**: Use grep to find potential conflicts (check against `AXIOMS.md`):
 
 ```bash
 # Find files referencing AXIOMS
-grep -r "AXIOMS\|axiom\|principle" bots/
+grep -r "AXIOMS\|axiom\|principle" $AOPS/
 
 # Check for duplication of key concepts from AXIOMS.md
-grep -r "fail-fast\|single source\|DRY" bots/
+grep -r "fail-fast\|single source\|DRY" $AOPS/
 
 # Verify references resolve
-grep -r "\[\[.*\.md\]\]" bots/
+grep -r "\[\[.*\.md\]\]" $AOPS/
 ```
 
 **Action on conflicts**:
@@ -523,9 +531,9 @@ grep -r "\[\[.*\.md\]\]" bots/
    - Output matches expected format
    - Edge cases handled appropriately
 
-**Test location**: `bots/tests/`
+**Test location**: `$ACA_DATA/projects/aops/tests/`
 
-**Test documentation**: `bots/tests/README.md` - Must be kept up-to-date when tests change
+**Test documentation**: `$ACA_DATA/projects/aops/tests/README.md` - Must be kept up-to-date when tests change
 
 **Test format (pytest)**:
 
@@ -549,48 +557,51 @@ def test_something(fixture: Type) -> None:
 - All tests must pass
 - No partial success accepted
 - Fix or revert, never commit broken state
-- Update `bots/tests/README.md` when adding/modifying tests
+- Update `$ACA_DATA/projects/aops/tests/README.md` when adding/modifying tests
 
 ## File Organization
 
+**Framework Repository** ($AOPS):
 ```
-/home/nic/src/academicOps/
-├── CORE.md              # Authoritative user/tools reference
-├── AXIOMS.md            # Authoritative principles
-├── ACCOMMODATIONS.md    # Authoritative work style
-├── STYLE-QUICK.md       # Quick writing reference
-├── STYLE.md             # Full writing reference
-├── tests/               # Framework test suite
-│   ├── README.md        # Test documentation (keep up-to-date)
-│   ├── conftest.py      # Test fixtures
-│   ├── paths.py         # Path resolution utilities
-│   ├── test_*.py        # Unit tests
-│   └── integration/     # Integration tests
-│       ├── conftest.py              # Integration fixtures
-│       └── test_*.py                # Integration test files
-├── skills/
+$AOPS/  (e.g., /home/nic/src/academicOps/)
+├── AXIOMS.md            # Framework principles (generic, not user-specific)
+├── README.md            # Framework documentation
+├── BMEM-FORMAT.md       # bmem markdown format specification
+├── BMEM-CLAUDE-GUIDE.md # Using bmem from Claude Code
+├── BMEM-OBSIDIAN-GUIDE.md # Using bmem with Obsidian
+├── skills/              # Agent skills (invoke via Skill tool)
 │   └── framework/
 │       ├── SKILL.md                 # This file - framework maintenance
-│       ├── VISION.md                # End state: fully-automated workflow
-│       ├── ROADMAP.md               # Maturity stages 0-5, progression plan
 │       ├── TASK-SPEC-TEMPLATE.md    # Template for specifying automations
 │       ├── references/              # Technical reference documentation
-│       │   └── hooks_guide.md       # Claude Code hooks system reference
-│       ├── workflows/               # Detailed workflow procedures
-│       │   ├── 01-design-new-component.md
-│       │   ├── 02-debug-framework-issue.md
-│       │   ├── 03-experiment-design.md
-│       │   ├── 04-monitor-prevent-bloat.md
-│       │   ├── 05-review-pull-request.md
-│       │   └── 06-develop-specification.md
-│       ├── experiments/             # Experiment logs (YYYY-MM-DD_name.md)
-│       │   ├── LOG.md               # Learning patterns from experiments
-│       │   └── TEMPLATE.md          # Experiment log template
+│       ├── workflows/               # Step-by-step procedures
+│       ├── specs/                   # Task specifications
 │       └── scripts/                 # Automation scripts
-├── hooks/               # Lifecycle hooks
+├── hooks/               # Lifecycle automation
 ├── commands/            # Slash commands
-├── agents/              # Agentic workflows (when added)
-└── dist/                # Build artifacts (when added)
+├── experiments/         # Temporary work-in-progress experiments
+├── scripts/             # Deployment scripts
+├── lib/                 # Shared utilities
+├── agents/              # Agentic workflows (future)
+└── config/              # Configuration files
+```
+
+**User Data Repository** ($ACA_DATA):
+```
+$ACA_DATA/  (e.g., /home/nic/src/writing/data/)
+├── ACCOMMODATIONS.md    # User work style [SESSION START]
+├── CORE.md              # User context, tools [SESSION START]
+├── STYLE-QUICK.md       # Writing style [SESSION START]
+├── STYLE.md             # Full writing guide
+├── tasks/               # Task data
+├── sessions/            # Session logs
+└── projects/aops/       # academicOps project data
+    ├── STATE.md         # Current framework state
+    ├── VISION.md        # User's vision for framework
+    ├── ROADMAP.md       # User's roadmap
+    ├── experiments/     # Finalized experiments
+    │   └── LOG.md       # Learning patterns (append-only)
+    └── tests/           # Framework integration tests
 ```
 
 ## Error Handling
