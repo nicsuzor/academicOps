@@ -2,31 +2,15 @@
 
 **Purpose**: Generate a visual mind-map dashboard of tasks, projects, and goals across repositories.
 
-**Goal**: Help user understand at a glance: where everything fits, what needs to be done, what's blocked, sequencing, priorities, and strategic alignment.
+**Goal**: Help user understand at a glance:
+- **Strategic alignment**: Which tasks connect to which projects and goals
+- **Project balance**: Are some projects neglected? Which have momentum?
+- **Goal coverage**: Are goals being actively pursued or ignored?
+- **Orphaned work**: Tasks not aligned to any project/goal (needs attention)
+- **Recent progress**: Last few completed tasks per project (context for what's been done)
+- **Outstanding work**: Active/blocked/queued tasks per project (what needs doing)
 
 **Autonomy**: Fully autonomous - discovers tasks, understands context via bmem, designs visually striking dashboard.
-
----
-
-## Critical Design Rules (READ FIRST)
-
-**DO**:
-- ✅ Link EVERY task to a goal (via project) - no orphans
-- ✅ Show unaligned tasks prominently with ⚠️ warning indicator
-- ✅ Mark deadlines and priorities IN the task's home box (not separate lists)
-- ✅ Use `roughness: 2` and `fontFamily: 1` (Virgil) for hand-drawn aesthetic
-- ✅ Use curved arrows with multiple points
-- ✅ Bind arrows to shapes (`startBinding`, `endBinding`)
-- ✅ Group text with containers (`containerId`, `boundElements`)
-- ✅ Radial/clustered layout - expand in ALL directions like a network
-
-**DON'T**:
-- ❌ Create separate "Key Context", "Legend", or "Summary" text blocks
-- ❌ Duplicate information (no separate "Upcoming Deadlines" section)
-- ❌ Use rigid top-to-bottom or left-to-right layouts
-- ❌ Align everything on vertical/horizontal axes
-- ❌ Use long text labels (keep to 1-5 words per box)
-- ❌ Let arrows pass through unrelated boxes
 
 ## Workflow
 
@@ -56,9 +40,17 @@ For each task file:
    - `status` (required: inbox, active, blocked, queued, completed)
    - `priority` (optional: 0-3 where 0=highest, default=3)
    - `project` (optional, map to bmem project entities)
+   - `goal` (optional, map to bmem goal entities)
    - `blockers` (optional list)
 3. **Fail-fast** if required fields missing (per AXIOMS #5)
 4. **Graceful**: Skip malformed tasks, report count, continue
+
+**Map tasks to projects and goals**:
+- If task has `project` field → Connect to that project
+- If task has `goal` field → Connect to that goal
+- If project is known from bmem → Connect project to its goal(s)
+- **Track orphaned tasks**: Tasks with no project/goal assignment
+- **Show recent completed**: Last 2-3 completed tasks per project for context
 
 **Handle format inconsistencies**: Tasks use inconsistent formats (STATE.md line 76 notes this). Best effort parsing, report issues.
 
@@ -66,79 +58,75 @@ For each task file:
 
 **MANDATORY BEFORE DESIGNING**: Invoke the `excalidraw` skill to load visual design principles.
 
+The excalidraw skill provides:
+- Visual hierarchy through size, color, position
+- Color strategy (2-4 colors max, status-based)
+- Typography scale (XL/L/M/S for hierarchy levels)
+- Layout patterns (radial, clustered, organic positioning)
+- Whitespace and alignment principles
+- Quality standards
+
 **Design approach** (following excalidraw two-phase process):
 
 **Phase 3A: Structure** (ignore aesthetics)
 - Map all discovered elements: goals → projects → tasks
-- **Use ONLY explicit connections** - NO guessing:
-  - Task → Project: ONLY if task has `project:` field in frontmatter
-  - Project → Goal: ONLY if goal file has `supported_by [[Project Name]]` in Relations
-- Tasks without EXPLICIT project field → Unaligned
-- Projects not EXPLICITLY claimed by a goal → Unaligned
-- **NEVER guess** connections based on task title, tags, or content
-- Unaligned items get ⚠️ warning indicator and prominent "UNALIGNED/TRIAGE" zone
+- Identify relationships and connections
+- Don't worry about positioning yet
 
-**Phase 3B: Visual Refinement** (make it organic and hand-drawn)
+**Phase 3B: Visual Refinement** (make it beautiful)
 
-**Aesthetic Requirements** (CRITICAL):
-- `roughness: 2` - maximum sketchiness for hand-drawn feel
-- `fontFamily: 1` - Virgil/xkcd handwritten font
-- `fillStyle: "solid"` - **SOLID fills** (NOT hachure) for text readability
-- **Dark text ALWAYS** - use `#1a1a1a` text, NEVER white text
-- **Curved arrows** with multiple points (3+ points per arrow)
-- **NO rigid alignment** - embrace asymmetry and organic positioning
+**Visual Hierarchy** (CRITICAL - from ACCOMMODATIONS.md line 37):
+- **Outstanding tasks** (active, blocked, queued): LARGE, PROMINENT
+  - Biggest size, boldest colors, central/upper positioning
+  - These need immediate attention - make them impossible to miss
+- **Completed tasks**: SMALL, de-emphasized
+  - Smallest size, muted colors (gray/light green), peripheral
+  - Show progress but don't dominate visual space
+- **Goals**: XL size, central or top positioning
+- **Projects**: L-M size, connecting goals to tasks
 
-**Star/Orbital Layout** (CRITICAL - like solar systems):
-- **Goals** are "SUNS" at center of their own system - HUGE, prominent
-- **Projects** ORBIT their goal (inner ring, 200-300px from goal center)
-- **Tasks** ORBIT their project (outer ring, 100-150px from project center)
-- Each goal is a separate "solar system" spread across the canvas
-- **EVERY element has an arrow** connecting it to its parent
-- Arrows must be ACTUALLY BOUND (`startBinding`/`endBinding` with valid elementIds)
+**Color Strategy** (status-based, 4 colors):
+- **Blue**: Active tasks (in progress, highest energy)
+- **Red**: Blocked tasks (attention needed, problems)
+- **Yellow**: Queued tasks (ready to start, waiting)
+- **Green/Gray**: Completed tasks (done, de-emphasized)
 
-**Visual Hierarchy**:
-- **Goals**: HUGE (XL 48px+), central hub nodes
-- **Projects**: Large (L 28-32px), orbiting their parent goal
-- **Outstanding tasks** (inbox, active, blocked, queued): Medium (M 16-18px)
-  - Include deadline in label: "Review paper (Nov 25)"
-  - Include priority: "P1: Fix scripts"
-- **Completed tasks**: SMALL (S 12-14px), gray, peripheral
+**Layout Strategy** (user preference - ACCOMMODATIONS.md line 38):
+- **Don't enforce rigid top-down hierarchy**
+- **Prefer**: Mind maps, organic clusters, spatial positioning, 2D thinking
+- **Allow**: Creative/asymmetric layouts, "randomness dressed up as creativity"
+- **Avoid**: Strict tree structures, linear flows, perfectly aligned grids, org-chart style
 
-**Color Strategy** (GENTLE MUTED COLORS - see theme-colors.md):
-Use these colors - they are MUTED and professional, NOT harsh:
+**Suggested approach**: Comprehensive relationship map (see excalidraw skill)
 
-| Element | Background | Stroke | Text |
-|---------|------------|--------|------|
-| Goals | `#c9b458` (muted gold) 30% = `#c9b4584d` | `#a89968` | `#1a1a1a` |
-| Projects | `#8fbc8f` (soft green) 25% = `#8fbc8f40` | `#6a9a6a` | `#1a1a1a` |
-| Active tasks | `#8fbc8f` 20% = `#8fbc8f33` | `#8fbc8f` | `#1a1a1a` |
-| Blocked tasks | `#ff6666` 15% = `#ff666626` | `#cc5555` | `#1a1a1a` |
-| Queued/Inbox | `#7a9fbf` (muted blue) 20% = `#7a9fbf33` | `#7a9fbf` | `#1a1a1a` |
-| Completed | `#f1f3f5` (very light gray) | `#ced4da` | `#868e96` |
-| ⚠️ Unaligned | `#ffa500` 15% = `#ffa50026` | `#cc8400` (dashed) | `#1a1a1a` |
+**Hierarchy**: Goals → Projects → Tasks (3-tier structure)
+- **Goals** (top tier): XL size, positioned strategically across canvas
+- **Projects** (mid tier): L size, clustered near their goal(s)
+- **Tasks** (bottom tier): M/S size, distributed around their project
 
-**COLOR WARNINGS** (avoid these mistakes):
-- ❌ NEVER use bright harsh red (`#e03131`, `#ff0000`)
-- ❌ NEVER use harsh orange (`#f59f00`)
-- ❌ NEVER use white text (`#ffffff`) on ANY background
-- ❌ NEVER use hachure/crosshatch fills - they make text unreadable
-- ✅ ALWAYS use dark text `#1a1a1a` on light backgrounds
-- ✅ ALWAYS use SOLID fills with low opacity for subtle colors
+**Spatial distribution** (CRITICAL for avoiding arrow overlap):
+- **Use 360° positioning**: Children can be placed ANYWHERE around parent (not just below)
+- **Arrows are directional**: Direction shows relationship, position prevents overlap
+- **Spread tasks radially**: Around project (top, bottom, left, right, diagonals)
+- **Calculate spacing**: Ensure minimum 100-150px between task nodes to prevent arrow crossings
+- **Cluster intelligently**: Group related tasks on same side, but vary angles (30°, 45°, 60° offsets)
+- **Generous whitespace**: 80-120px between project clusters, 150-200px between goal zones
 
-**Layout Strategy** (MIND MAP, not org chart):
-- **Radial expansion** - goals at center, projects around them, tasks around projects
-- **360° distribution** - children can be above, below, left, right, diagonal
-- **Cluster by concept** - related projects grouped spatially
-- **NO linear flow** - not top-to-bottom, not left-to-right
-- **Route arrows around boxes** - never through unrelated elements
-- **Generous whitespace** - 100-150px between clusters
+**Relationship visualization**:
+- Goal → Project (bold arrows, muted color)
+- Project → Task (standard arrows, status-colored)
+- Show ALL connections (orphaned tasks stand out visually)
+- Use arrow direction to free up positioning (don't force top-down)
 
-**What NOT to include**:
-- ❌ Separate "Key/Legend" box
-- ❌ Separate "Summary" or "Overview" section
-- ❌ Separate "Upcoming Deadlines" list (deadlines go IN task boxes)
-- ❌ Separate "Priority breakdown" (priorities go IN task boxes)
-- ❌ Big text blocks explaining anything
+**Specific design requirements** (from theme [[references/theme-colors.md]]):
+- **Typography**: XL (40-48px goals) > L (24-32px projects) > M (16-20px active tasks) > S (12-14px completed)
+- **Spacing**: 80-120px between project clusters, 150-200px between goal zones
+- **Alignment**: Snap to grid for precision, but embrace creative positioning (not rigid rows)
+- **Contrast**: Ensure 4.5:1 text contrast ratio (theme colors already provide this)
+- **Blockers**: Clear visual indicator (red `#ff6666`, explicit label, warning icon)
+- **Colors**: Theme palette only - muted gold `#c9b458`, soft green `#8fbc8f`, blue `#7a9fbf`, orange `#ffa500`, red `#ff6666`
+- **Icons**: Optional Material Symbols for status (check_circle, pending, block) - see [[references/icon-integration.md]]
+- **Arrows**: Curved, not straight (for organic feel)
 
 ### Phase 4: Generate Excalidraw JSON
 
@@ -154,40 +142,55 @@ Create Excalidraw JSON structure with proper element types:
 - `id`: Unique string (generate with crypto or timestamp)
 - `type`: Element type
 - `x`, `y`: Position coordinates
-- `width`, `height`: Dimensions
-- `strokeColor`, `backgroundColor`: Colors (hex codes)
-- `fillStyle`: `"solid"` (SOLID fills for readability - NOT hachure)
-- `fontFamily`: `1` (Virgil handwritten font - REQUIRED)
+- `width`, `height`: Dimensions (text should auto-size to container width)
+- `strokeColor`, `backgroundColor`: Colors (hex codes from theme)
+- `fillStyle`: "solid" (clean) or "hachure" (hand-drawn)
 - `fontSize`: Size based on hierarchy
-- `roughness`: `2` (maximum sketchiness - REQUIRED)
+- `roughness`: 1 (default hand-drawn feel)
 - `version`, `versionNonce`, `seed`: Required by Excalidraw
 - `startBinding`, `endBinding`: For arrows (binds to shape IDs)
-- `containerId` / `boundElements`: For text-in-box binding
+- `boundElements`: Array of element IDs bound to this element (for containers)
+- `containerId`: ID of container element (for text inside containers)
 
-**Arrows**:
-- MUST bind to shapes: `startBinding: {elementId: "shape-id", focus: 0, gap: 10}`
-- MUST use multiple points for curves: `points: [[0,0], [50,30], [100,60]]`
-- Route around boxes, never through them
+**Text in containers** (REQUIRED):
+- Create container (rectangle/ellipse) with unique ID
+- Create text element with `containerId` pointing to container ID
+- Container must have `boundElements: [{id: "text-id", type: "text"}]`
+- Text `width` should match container width (minus padding)
+- Text `textAlign`: "center" for centered text in container
+- **Group text+container**: Set both elements so they move together
 
-**Text-in-box binding** (REQUIRED):
-- Container: `boundElements: [{id: "text-id", type: "text"}]`
-- Text: `containerId: "container-id"`
-- This ensures text moves with its box
+**Canvas background**: Use `transparent` or `#ffffff` (white) - NOT dark backgrounds
+**Text color**: Use `#1a1a1a` (dark) for high contrast on white canvas
+
+**Arrows must bind to shapes**: Set `startBinding: {elementId: "shape-id", focus: 0, gap: 10}` so arrows move with elements. Arrows connect: Goal→Project, Project→Task.
 
 ### Phase 5: Write and Report
 
-1. **Write file**: Use Write tool → `current-tasks.excalidraw` in writing repo root (NOT in data/)
+1. **Write file**: Use Write tool → `/home/nic/src/writing/current-tasks.excalidraw` (repo root, NOT data/)
+   - **Path**: MUST be repo root (`/home/nic/src/writing/`), NOT `data/` subdirectory
    - **Rule**: Only bmem-compliant markdown belongs in `data/`
-   - **Reason**: Excalidraw files are binary artifacts, not knowledge base content
-2. **Verify**: Confirm file was created
+   - **Reason**: Excalidraw files are binary JSON artifacts, not knowledge base content
+   - **Filename**: `current-tasks.excalidraw` (replaces any previous version)
+2. **Verify**: Confirm file was created at correct path
 
 3. **Report summary**:
-   - Total tasks discovered (breakdown: active, blocked, queued, completed, inbox)
-   - Projects identified from bmem
-   - Goals mapped
-   - Skipped/malformed tasks (count and reason)
-   - File location: `current-tasks.excalidraw` (repo root)
-   - Note: "Dashboard designed following excalidraw visual design principles"
+   - **Total tasks discovered**: Breakdown by status (active, blocked, queued, completed, inbox)
+   - **Projects identified**: From bmem + task metadata
+   - **Goals mapped**: From bmem
+   - **Relationship stats**:
+     - Tasks connected to projects: X/Y
+     - Projects connected to goals: X/Y
+     - Orphaned tasks (no project): List them
+     - Orphaned projects (no goal): List them
+   - **Project health**: For each project, show:
+     - Last 2-3 completed tasks (recent progress indicator)
+     - Outstanding tasks count (active/blocked/queued)
+     - Visual balance: Are projects evenly distributed or clustered?
+   - **Spatial layout**: Confirm arrow overlap minimized via 360° positioning
+   - **Skipped/malformed tasks**: Count and reason
+   - **File location**: `/home/nic/src/writing/current-tasks.excalidraw` (repo root)
+   - **Design notes**: "Comprehensive goal→project→task map on white canvas, 360° positioning to prevent arrow overlap, recent completed tasks shown per project"
 
 ## Error Handling
 
@@ -207,52 +210,53 @@ Create Excalidraw JSON structure with proper element types:
 
 Before completing, verify:
 
-**Goal alignment (NO GUESSING)**:
-- [ ] Task → Project: ONLY from explicit `project:` frontmatter field
-- [ ] Project → Goal: ONLY from explicit `supported_by` in goal's Relations
-- [ ] NO inferred connections from titles, tags, or content
-- [ ] Unaligned tasks shown prominently with ⚠️ warning
-- [ ] Unaligned projects (not claimed by any goal) also shown with ⚠️
-
-**Aesthetic**:
-- [ ] `roughness: 2` on all elements (maximum sketchiness)
-- [ ] `fontFamily: 1` (Virgil) for all text
-- [ ] `fillStyle: "solid"` (NOT hachure - for text readability)
-- [ ] Dark text `#1a1a1a` on ALL elements (never white)
-- [ ] Curved arrows with 3+ points
-- [ ] MUTED colors from theme-colors.md (no harsh red/orange)
-
 **Visual hierarchy**:
-- [ ] Goals HUGE (48px+), central
-- [ ] Projects Large (28-32px), radially distributed
-- [ ] Outstanding tasks Medium (18-20px), deadlines/priorities IN label
-- [ ] Completed tasks SMALL (12-14px), gray, peripheral
+- [ ] Goals (XL: 40-48px) > Projects (L: 24-32px) > Active tasks (M: 16-20px) > Completed (S: 12-14px)
+- [ ] Outstanding tasks are LARGE and PROMINENT (bold colors)
+- [ ] Completed tasks are SMALL and DE-EMPHASIZED (gray, 60% opacity)
+- [ ] Clear 4-level size distinction
 
-**Layout (Star/Orbital)**:
-- [ ] Goals as "suns" - central hubs of their own systems
-- [ ] Projects ORBIT goals (200-300px radius)
-- [ ] Tasks ORBIT projects (100-150px radius)
-- [ ] 360° distribution - children all around parents
-- [ ] Arrows route AROUND boxes, never through
-- [ ] Generous whitespace between goal "solar systems"
+**Relationship mapping**:
+- [ ] ALL tasks connected to a project (or marked as orphaned)
+- [ ] ALL projects connected to a goal (or marked as orphaned)
+- [ ] Arrows show: Goal→Project, Project→Task (directional, bound to shapes)
+- [ ] Recent completed tasks (2-3 per project) visible for context
+- [ ] Orphaned tasks/projects visually distinct (different color or position)
 
-**Bindings**:
-- [ ] All text bound to containers (`containerId`)
-- [ ] All arrows bound to shapes (`startBinding`, `endBinding`)
+**Layout & spacing (CRITICAL)**:
+- [ ] 360° positioning used (tasks distributed around projects, not just below)
+- [ ] Minimum 100-150px between task nodes (prevents arrow crossings)
+- [ ] 80-120px between project clusters
+- [ ] 150-200px between goal zones
+- [ ] Arrows do NOT run through other elements (spatial planning successful)
+- [ ] Curved arrows for organic feel
 
-**What's NOT there**:
-- [ ] NO separate legend/key box
-- [ ] NO separate summary section
-- [ ] NO separate deadlines list
-- [ ] NO big text blocks
+**Text & grouping**:
+- [ ] All text inside containers (using `containerId` property)
+- [ ] Text auto-sizes to container width
+- [ ] Text+container grouped (move together)
+
+**Color & contrast**:
+- [ ] White/transparent canvas background
+- [ ] Dark text (`#1a1a1a`) for contrast
+- [ ] Theme colors for boxes (gold/green/blue/orange/red)
+- [ ] Status-based coloring (blocked=red, active=green, queued=orange)
+
+**Professional polish**:
+- [ ] All arrows bound to shapes
+- [ ] Consistent font sizes by hierarchy
+- [ ] Visually striking and informative
 
 ## Success Criteria
 
 Dashboard is successful when user can answer at a glance:
-1. **What needs my attention?** (prominent outstanding tasks with deadlines IN labels)
-2. **What's blocked?** (red accents, clear blockers visible)
-3. **What's NOT aligned to goals?** (⚠️ warning zone for orphan tasks)
-4. **How does everything connect?** (curved arrows showing goal→project→task)
-5. **What progress have we made?** (small completed tasks visible but peripheral)
+1. **What needs my attention?** (prominent outstanding tasks, clearly visible)
+2. **What's blocked?** (red blocked tasks with clear indicators)
+3. **Strategic alignment?** (EVERY task → project → goal, orphans visible)
+4. **Project balance?** (Can see which projects are neglected vs. active)
+5. **Goal coverage?** (Which goals have active work vs. being ignored?)
+6. **Recent progress?** (Last 2-3 completed tasks per project for context)
+7. **Orphaned work?** (Tasks/projects not connected to strategy)
+8. **Spatial clarity?** (No arrow overlap, easy to trace relationships)
 
-**The dashboard should feel HAND-DRAWN and ORGANIC** - like a whiteboard sketch, not a corporate diagram.
+**The dashboard should be beautiful AND informative** - not one at expense of the other.
