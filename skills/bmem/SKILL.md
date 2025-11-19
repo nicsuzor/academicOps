@@ -23,12 +23,14 @@
 - [[../../framework/references/basic-memory-ai-guide.md]] - AI assistant best practices
 
 **bmem Skill-Specific Guides**:
+- [[references/approved-categories-relations.md]] - **MANDATORY**: Approved categories/relations (MUST use ONLY these)
 - [[references/obsidian-format-spec.md]] - Full Obsidian format specification
 - [[references/observation-quality-guide.md]] - Observation quality rules
 - [[references/detail-level-guide.md]] - Detail level guidelines (tasks vs projects)
 - [[references/obsidian-compatibility.md]] - Obsidian-specific formatting
 
 **Load references when needed for**:
+- Validation errors → approved-categories-relations.md (CHECK THIS FIRST)
 - MCP tool usage questions → basic-memory-mcp-tools.md
 - Sync/database issues → basic-memory-sync-guide.md
 - Best practices/patterns → basic-memory-ai-guide.md
@@ -105,11 +107,11 @@ We chose this approach because it integrates with existing CI/CD...
 **See [[references/obsidian-format-spec.md]] for complete format specification.**
 
 **Quick reference**:
-- YAML frontmatter: title, permalink, type, tags (ALL tags go here)
-- H1 heading matches title
+- YAML frontmatter: title, permalink (simple slug only, no /), type, tags (ALL tags go here)
+- H1 heading matches title EXACTLY (including punctuation)
 - Context section (1-3 sentences)
-- Observations with categories: `- [category] fact` (NO inline hashtags)
-- Relations with types: `- relation_type [[Target]]`
+- Observations with categories: `- [category] fact` (ONLY approved categories from [[references/approved-categories-relations.md]])
+- Relations with types: `- relation_type [[Target]]` (ONLY approved types, MUST have [[brackets]])
 - Additional prose sections: ALLOWED and ENCOURAGED where appropriate
 
 ## When to Use This Skill
