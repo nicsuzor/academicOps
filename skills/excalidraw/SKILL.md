@@ -80,17 +80,21 @@ Whitespace (negative space) is not "empty"—it's a powerful tool for:
 
 ## Technical Elements
 
-**Colors**: Open Colors system (0-9 levels), stroke darker than fill, accessibility contrast 4.5:1
+**Colors**: User's preferred muted terminal theme (see [[references/theme-colors.md]]) - muted gold, soft greens, blues, on **WHITE backgrounds** (NOT dark). Maintain 4.5:1 contrast ratio for accessibility.
 
 **Typography**: XL (40-48px) titles, L (24-32px) headers, M (16-20px) body, S (12-14px) labels
 
-**Shapes**: Rectangles (most versatile), circles (start/end/actors), diamonds (decisions)
+**Shapes**: Rectangles (most versatile), circles (start/end/actors), diamonds (decisions), ellipses (organic feel for mind maps)
 
-**Arrows**: Thin (1-2px) default, medium (3-4px) emphasis, bind to shapes, click-click-click for multi-point
+**Arrows**: Thin (1-2px) default, medium (3-4px) emphasis, **must bind to shapes**, click-click-click for multi-point. Curved arrows for organic/mind-map layouts. **Directional arrows free up positioning** - children can be placed anywhere around parent (not just below) to avoid overlap.
 
-**Layout**: Alignment obsessive, grid snapping, flow directions (L-R, T-B, radial, circular)
+**Icons**: Material Symbols (recommended) or built-in libraries. Recolor to theme, use sparingly. See [[references/icon-integration.md]].
 
-See [[references/technical-details.md]] for complete specifications on colors, typography, shapes, arrows, layout, layering, and fill patterns.
+**Layout**: Prefer organic, spatial, mind-map layouts over rigid hierarchies. **Spread elements to prevent arrow overlap** - arrows are directional, so children can be positioned anywhere around parent (360° freedom). Grid snapping for precision, radial/clustered positioning for mind maps.
+
+**Grouping**: **Always bind text to containers** using `containerId` property (programmatic) or group manually (select both → Cmd/Ctrl+G). Text should auto-size to container width. See [[references/text-container-pattern.md]] for JSON binding pattern.
+
+See [[references/technical-details.md]] for complete specifications on colors, typography, shapes, arrows, layout, layering, and fill patterns. See [[references/theme-colors.md]] for user's preferred color palette. See [[references/text-container-pattern.md]] for text-in-container binding.
 
 ---
 
@@ -142,6 +146,7 @@ Now make it beautiful:
 ### Step 4: Export with Quality
 
 **Export settings**:
+- **Use WHITE background** (default, always preferred)
 - Enable background (unless transparency needed)
 - Use 2x or 3x scale for high resolution
 - Choose "Embed scene" to preserve editability
@@ -177,26 +182,47 @@ Now make it beautiful:
 - Consistent spacing between steps
 - Numbered steps if sequential
 
-### Concept Map / Mind Map
+### Concept Map / Mind Map (PREFERRED LAYOUT STYLE)
 
 **Structure**:
 - Central concept (large, bold)
-- Related concepts radially arranged
-- Hierarchical depth through size/distance
+- Related concepts radially or spatially arranged (not rigidly hierarchical)
+- Clusters and proximity show relationships
+- 2D spatial thinking, not strict trees
 
 **Visual treatment**:
-- Size = importance/hierarchy
-- Color = category/type
+- Size = importance/hierarchy (vary significantly)
+- Color = category/type (theme colors: [[references/theme-colors.md]])
 - Labeled connections show relationships
-- Strategic use of curves for organic feel
+- **Curved arrows** for organic, flowing feel (avoid all straight lines)
+- **Asymmetric positioning** - embrace creative layouts, avoid perfect symmetry
+- **Generous whitespace** - let elements breathe in 2D space
+- **Icons sparingly** - use Material Symbols for emphasis ([[references/icon-integration.md]])
+
+**Anti-pattern**: Rigid top-down tree structures, perfect alignment grids, linear flows. Mind maps should feel spatial and organic, not like org charts.
 
 ### Graph/Network Visualization (Goal → Project → Task Structure)
 
-**Three-tier radial pattern**: Central goals (largest, saturated) → Projects radially distributed (medium, varied colors) → Tasks around projects (smallest, desaturated). Use visual state indicators for completed/outstanding tasks.
+**Three-tier relationship map**: Goals → Projects → Tasks with full connectivity visualization.
 
-**Key techniques**: Cluster related projects spatially, vary radius for priority, balance visual weight across sectors.
+**Spatial strategy** (CRITICAL):
+- **360° positioning**: Tasks distributed AROUND projects (not just below) - top, bottom, left, right, diagonals
+- **Prevent arrow overlap**: Spread elements with minimum 100-150px spacing
+- **Directional arrows**: Arrow direction shows relationship, freeing up positioning
+- **Calculate angles**: Use 30°, 45°, 60° offsets to distribute tasks radially
 
-See [[references/graph-layouts.md]] for complete specifications, sizing guidelines, and examples.
+**Visual hierarchy**:
+- Goals (largest, XL 40-48px text, muted gold)
+- Projects (medium, L 24-32px text, varied theme colors)
+- Active tasks (LARGE, M 16-20px, prominent colors)
+- Completed tasks (SMALL, S 12-14px, gray, de-emphasized)
+
+**Relationship visibility**:
+- Show ALL connections: Goal→Project, Project→Task
+- Recent completed tasks visible per project (context)
+- Orphaned tasks/projects visually distinct
+
+See [[references/graph-layouts.md]] for complete specifications, sizing guidelines, and examples. See [[references/text-container-pattern.md]] for text binding.
 
 ### Comparison Matrix
 
@@ -215,13 +241,19 @@ See [[references/graph-layouts.md]] for complete specifications, sizing guidelin
 
 ## Component Libraries & Resources
 
-**Built-in libraries** (`skills/excalidraw/libraries/`): 6 curated libraries available - awesome-icons, data-processing, data-viz, hearts, stick-figures, stick-figures-collaboration.
+**Built-in libraries** (`~/.claude/skills/excalidraw/libraries/`): 6 curated libraries available - awesome-icons, data-processing, data-viz, hearts, stick-figures, stick-figures-collaboration.
 
-**Quick start**: Load via Excalidraw library panel → "Load library from file" → Select from `skills/excalidraw/libraries/`
+**Material Symbols** (RECOMMENDED for new icons): Professional icon set from Google Fonts. Import SVGs, recolor to theme palette. See [[references/icon-integration.md]] for complete workflow.
 
-**Usage tips**: Recolor for consistency, use sparingly for emphasis, don't mix too many styles.
+**Quick start**: Load via Excalidraw library panel → "Load library from file" → Select from `~/.claude/skills/excalidraw/libraries/`
 
-See [[references/library-guide.md]] for complete loading instructions, usage guidelines, and online library resources.
+**Usage tips**:
+- **Recolor to theme** ([[references/theme-colors.md]]): Gold `#c9b458`, Green `#8fbc8f`, Blue `#7a9fbf`, Orange `#ffa500`, Red `#ff6666`
+- **Use sparingly** for emphasis (1-3 icons per section)
+- **Don't mix too many styles** (pick Material Symbols OR library icons, not both)
+- **Size appropriately** (M size: 20-24px for most use cases)
+
+See [[references/library-guide.md]] for library loading, [[references/icon-integration.md]] for Material Symbols integration, [[references/theme-colors.md]] for color palette.
 
 ---
 
@@ -427,20 +459,27 @@ Look for diagrams that:
 **Remember**: Boring diagrams fail to communicate, no matter how accurate. Invest in visual design to make your ideas memorable and impactful.
 
 **Quick wins**:
-- Use 2-4 colors max, purposefully
-- Load library components for visual interest (6 libraries included in skill)
-- Align everything obsessively (enable snapping: Alt/Option + S)
-- Add way more whitespace than you think you need
-- Vary sizes to create hierarchy
-- Use graph/radial layouts for goal → project → task visualizations
+- **WHITE backgrounds ALWAYS** - muted colors on white, not dark backgrounds
+- **Use theme colors** ([[references/theme-colors.md]]): Muted gold, soft greens, blues - NO bright pure colors
+- Load library components or Material Symbols for visual interest
+- **Prefer organic layouts**: Mind maps, spatial clusters, curved arrows - NOT rigid hierarchies
+- Align elements for professional polish, but embrace asymmetry and creative positioning
+- Add way more whitespace than you think you need (80-120px between clusters)
+- Vary sizes significantly to create hierarchy (XL → L → M → S)
+- Use radial/clustered layouts for goal → project → task visualizations
 - Export at 2-3x scale
+- **Icons sparingly**: 1-3 per section, recolored to theme ([[references/icon-integration.md]])
 
-**For goal/project/task visualizations**:
-- Central goals (largest, saturated colors, XL text)
-- Projects radially distributed (medium size, varied colors, L text)
-- Tasks around projects (smallest, desaturated, M text)
-- Cluster related projects together
-- Use opacity to show completed vs outstanding tasks
+**For goal/project/task visualizations** (mind-map style):
+- Central goals (largest, muted gold `#c9b458`, XL text: 40-48px)
+- Projects spatially distributed around goals (medium, varied theme colors, L text: 24-32px)
+- Tasks clustered near projects (size varies: LARGE for active/blocked, SMALL for completed)
+  - Active tasks: M text (16-20px), soft green `#8fbc8f`, PROMINENT
+  - Completed tasks: S text (12-14px), gray `#888888`, DE-EMPHASIZED
+- **Curved arrows** connecting related elements (organic feel)
+- Cluster related projects spatially (not in rigid rows)
+- Use opacity and color to show status (blocked=red, active=green, queued=orange)
+- Add icons for status indicators (check_circle, pending, block) from Material Symbols
 
 **Productivity shortcuts**:
 - `Cmd/Ctrl + Arrow` → Duplicate + connect with arrow
