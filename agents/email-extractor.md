@@ -19,42 +19,60 @@ Mine email archives for permanent knowledge base records. Process large JSONL fi
 
 ## Workflow
 
-### 1. Read Input File
+### 1. Accept Chunked Input File
 
-Accept JSONL file path as input (not stdin). JSONL format:
+**Input**: Pre-chunked JSONL file (created by `scripts/chunk_archive.sh`), typically 20 emails per chunk.
 
+JSONL format (one email per line):
 ```jsonl
 {"entry_id": "...", "subject": "...", "from_name": "...", "from_email": "...", "to": "...", "received_time": "...", "body": "..."}
 {"entry_id": "...", "subject": "...", "from_name": "...", "from_email": "...", "to": "...", "received_time": "...", "body": "..."}
 ```
 
-### 2. Chunk the File
+### 2. Quick Scan with jq (Envelope Filtering)
 
-Use the chunking script to split large files:
+**First pass - identify SKIP vs READ emails by metadata only**:
 
 ```bash
-python ~/src/writing-archive/scripts/chunk_emails.py <input.jsonl> <chunks_dir>
+jq -r '. | [input_line_number, .subject[0:60], .from_name, .from_email] | @tsv' chunk-001.jsonl
 ```
 
-This creates size-based chunks (~200KB, ~50 emails each) in `chunks_dir/chunk-NNN.json` format.
+This gives you a quick view of all email envelopes without reading bodies.
 
-**Script does ONLY mechanical splitting** - no filtering, no logic.
+**SKIP obvious noise** (don't read these at all):
+- Newsletters (from noreply@, updates@, news@)
+- Automated systems (notification@, system@, donotreply@)
+- Mass distributions (bulk@, listserv@, bounces@)
+- LinkedIn/social media digests
+- Fax/voicemail notifications
+- Spam
 
-### 3. Process Each Chunk
+**READ everything else**
 
-For each chunk file:
+### 3. Selective Deep Read
 
-1. **Read chunk file** (JSON object with email array)
-2. **Process each email line-by-line**:
-   - Parse JSON
-   - Use `extractor` skill to assess importance
-   - If important, use `bmem` skill to store information
-   - Track processed/extracted/skipped counts
+**Read all non-SKIP emails at once**:
 
-3. **Handle errors gracefully**:
-   - Malformed JSON → skip email, log warning
-   - Extraction failure → log error, continue
-   - Storage failure → log error, continue
+After identifying SKIP lines from the envelope scan, read all other lines:
+
+```bash
+# Read lines 1,2,3,5,6,9,10,etc (skipping noise lines 4,7,8)
+sed -n '1p;2p;3p;5p;6p;9p;10p' chunk-001.jsonl
+```
+
+This returns complete email JSON for each line, including `entry_id` (permanent Outlook identifier), subject, from, to, dates, and body.
+
+For each email in the output:
+1. Parse the JSON
+2. Use `extractor` skill to assess importance
+3. If important, use `bmem` skill to store information
+   - Include `entry_id` in observations for traceability
+4. Track processed/extracted/skipped counts
+
+**Handle errors gracefully**:
+- Malformed JSON → skip email, log warning
+- Extraction failure → log error, continue
+- Storage failure → log error, continue
 
 ### 4. Use Extractor Skill for Assessment
 
@@ -91,13 +109,22 @@ Use bmem skill to search for existing entity: [person name / project title / gra
 - If entity doesn't exist → create new entity
 - bmem skill handles format, validation, and deduplication
 
-**Entity types**:
-- `data/projects/` - Research projects and grants
-- `data/papers/` - Publications and submissions
-- `data/contacts/` - Important professional relationships
-- `data/events/` - Events organized or significant participation
-- `data/students/` - PhD supervision milestones
-- `data/finance/` - Receipts, invoices, contracts by project
+**Entity types** (folder names for bmem write_note):
+- `projects/` - Research projects and grants
+- `papers/` - Publications and submissions
+- `contacts/` - Important professional relationships
+- `events/` - Events organized or significant participation
+- `students/` - PhD supervision milestones
+- `finance/` - Receipts, invoices, contracts by project
+- `media/` - Media appearances and interviews
+- `opportunities/` - Research opportunities and grants
+- `organizations/` - Organizational activities
+- `policy/` - Policy work and submissions
+- `teaching/` - Teaching activities
+- `research/` - Research activities
+- `logs/` - Processing and extraction logs
+
+**NOTE**: Do NOT include `data/` prefix - bmem's base path already points to the data directory
 
 ### 6. Track Progress and Results
 
