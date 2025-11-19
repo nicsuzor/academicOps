@@ -15,12 +15,21 @@ Match detail level to file type and importance.
 **Example (GOOD for task file)**:
 
 ```markdown
+---
+tags:
+  - pytest
+  - async
+  - testing-strategy
+  - technical-debt
+  - test-organization
+---
+
 ## Observations
 
-- [solution] Fixed async fixture issue by adding @pytest_asyncio.fixture decorator #pytest #async
-- [decision] Chose to use real data instead of mocks for better integration coverage #testing-strategy
-- [problem] Initial approach with sync fixtures caused event loop conflicts #technical-debt
-- [technique] Used conftest.py for shared fixtures across test modules #test-organization
+- [solution] Fixed async fixture issue by adding @pytest_asyncio.fixture decorator
+- [decision] Chose to use real data instead of mocks for better integration coverage
+- [problem] Initial approach with sync fixtures caused event loop conflicts
+- [technique] Used conftest.py for shared fixtures across test modules
 ```
 
 ## Project Files (Strategic Updates Only)

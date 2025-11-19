@@ -83,13 +83,17 @@ Both formats are equivalent. Choose based on preference and readability.
 
 ## Tags
 
-### Inline Tags
+> **Note**: While Obsidian supports inline tags, our bmem workflow uses ONLY frontmatter tags for clean, exportable prose. See [[obsidian-compatibility.md]] for our tag placement rules.
 
-Tags can appear anywhere in the document body using `#tag` syntax:
+### Inline Tags (Capability)
+
+Tags *can* appear anywhere in the document body using `#tag` syntax:
 
 ```markdown
 This is a note about #research and #academic-writing.
 ```
+
+However, **we use frontmatter tags only** to keep observations clean and copyable.
 
 ### Tag Format Requirements
 

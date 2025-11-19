@@ -56,10 +56,10 @@ Silently extracts information from sessions and maintains knowledge graph in Obs
 **See [[references/obsidian-format-spec.md]] for complete format specification.**
 
 **Quick reference**:
-- YAML frontmatter: title, permalink, type, tags
+- YAML frontmatter: title, permalink, type, tags (ALL tags go here)
 - H1 heading matches title
 - Context section (1-3 sentences)
-- Observations with categories: `- [category] fact #tag`
+- Observations with categories: `- [category] fact` (NO inline hashtags)
 - Relations with types: `- relation_type [[Target]]`
 
 ## When to Use This Skill
@@ -156,9 +156,9 @@ Silently extracts information from sessions and maintains knowledge graph in Obs
 
 1. **Check for duplicates** first (search by title/permalink)
 2. **Use bmem template** from BMEM-OBSIDIAN-GUIDE.md
-3. **Fill frontmatter**: title, permalink, type, tags
+3. **Fill frontmatter**: title, permalink, type, tags (all tags go in frontmatter)
 4. **Add Context**: 1-3 sentence summary
-5. **Extract observations**: Categorized facts with inline tags
+5. **Extract observations**: Categorized facts (NO inline hashtags)
 6. **Add relations**: Link to related entities (forward references OK)
 7. **Save** in appropriate `data/` subdirectory
 
@@ -322,11 +322,12 @@ Invoke task skill with:
 **While writing** (via `mcp__bmem__write_note()`):
 
 - [ ] Required parameters: title, content, folder, project
-- [ ] Required frontmatter: title, permalink, type
+- [ ] Required frontmatter: title, permalink, type, tags
 - [ ] H1 heading matches title exactly
 - [ ] Context section (1-3 sentences)
-- [ ] 3-5+ observations with categories and inline tags
+- [ ] 3-5+ observations with categories (NO inline hashtags)
 - [ ] Observations ADD new information (not duplicating frontmatter/body)
+- [ ] All tags go in frontmatter tags field (never inline in observations)
 - [ ] 2-3+ relations with specific types
 - [ ] Use hyphens in tags (Obsidian-compatible)
 - [ ] Use `[[WikiLinks]]` for entity references
