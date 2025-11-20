@@ -91,7 +91,7 @@ def get_data_root() -> Path:
         raise RuntimeError(
             "ACA_DATA environment variable not set.\n"
             "Add to ~/.bashrc or ~/.zshrc:\n"
-            "  export ACA_DATA='/home/nic/src/writing/data'"
+            "  export ACA_DATA='$HOME/writing/data'"
         )
 
     path = Path(data).resolve()

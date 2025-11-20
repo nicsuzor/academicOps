@@ -24,10 +24,12 @@ This skill operates in two modes:
 
 The framework lives in `$AOPS` (academicOps repository) and follows aggressive minimalism—sophisticated where necessary, simple everywhere else.
 
+**Framework scope**: The automation framework INCLUDES Claude Code as a primary automation tool. Framework maintenance encompasses Claude Code configuration (MCP servers, tool permissions, hooks, skills, commands) alongside other automation infrastructure.
+
 **When to use**:
 
 - Strategic discussions about framework direction
-- Framework infrastructure work
+- Framework infrastructure work (including Claude Code configuration)
 - Creating automation components
 - Debugging framework issues
 - Detecting documentation conflicts

@@ -9,9 +9,9 @@ Test categories:
 - Tests 7-8: Integration tests (slow, require Claude execution)
 
 Running tests:
-- Unit tests only: pytest bots/tests/integration/test_session_start_content.py -m "integration and not slow"
-- All tests (including slow): pytest bots/tests/integration/test_session_start_content.py -m "integration"
-- Slow integration tests only: pytest bots/tests/integration/test_session_start_content.py -m "slow"
+- Unit tests only: pytest tests/integration/test_session_start_content.py -m "integration and not slow"
+- All tests (including slow): pytest tests/integration/test_session_start_content.py -m "integration"
+- Slow integration tests only: pytest tests/integration/test_session_start_content.py -m "slow"
 
 Note: Tests in integration/ directory are auto-marked as 'integration' by conftest.py.
 The default pytest configuration excludes both 'integration' and 'slow' markers.
@@ -101,7 +101,7 @@ def test_readme_contains_directory_structure(writing_root: Path) -> None:
     """Test 3: Verify README.md contains directory structure documentation.
 
     Args:
-        writing_root: Path to repository root (from fixture)
+        writing_root: Path to framework root (from fixture)
 
     Raises:
         AssertionError: If README.md is missing expected directory structure content
@@ -114,8 +114,8 @@ def test_readme_contains_directory_structure(writing_root: Path) -> None:
         "## 📁 Directory Structure" in content or "## Directory Structure" in content
     ), "README.md missing '## Directory Structure' section"
 
-    # Check for key directories
-    required_dirs = ["bots/", "data/", "projects/"]
+    # Check for key framework directories
+    required_dirs = ["skills/", "hooks/", "commands/"]
     missing_dirs = []
     for dir_name in required_dirs:
         if dir_name not in content:
@@ -127,15 +127,15 @@ def test_readme_contains_directory_structure(writing_root: Path) -> None:
 
 
 def test_bots_directory_structure_exists(bots_dir: Path) -> None:
-    """Test 4: Verify bots/ directory structure exists.
+    """Test 4: Verify framework directory structure exists.
 
     Args:
-        bots_dir: Path to bots/ directory (from fixture)
+        bots_dir: Path to framework root (from fixture - legacy alias)
 
     Raises:
-        AssertionError: If expected bots/ subdirectories do not exist
+        AssertionError: If expected framework subdirectories do not exist
     """
-    required_subdirs = ["hooks", "commands", "skills", "config"]
+    required_subdirs = ["hooks", "commands", "skills", "config", "lib"]
     missing_dirs = []
 
     for subdir_name in required_subdirs:
@@ -144,7 +144,7 @@ def test_bots_directory_structure_exists(bots_dir: Path) -> None:
             missing_dirs.append(str(subdir))
 
     if missing_dirs:
-        error_msg = "Missing bots/ subdirectories:\n" + "\n".join(
+        error_msg = "Missing framework subdirectories:\n" + "\n".join(
             f"  - {d}" for d in missing_dirs
         )
         raise AssertionError(error_msg)

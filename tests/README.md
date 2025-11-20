@@ -1,11 +1,11 @@
 # Framework Testing
 
-Comprehensive test suite for the bots automation framework. Tests validate path resolution, documentation integrity, session start loading, and skill functionality.
+Comprehensive test suite for the academicOps (aOps) automation framework. Tests validate path resolution, documentation integrity, session start loading, and skill functionality.
 
 ## Test Organization
 
 ```
-bots/tests/
+tests/
 ├── conftest.py                      # Unit test fixtures (paths)
 ├── paths.py                         # Path resolution utilities
 ├── test_conftest.py                 # Fixture validation tests
@@ -29,8 +29,8 @@ Run by default. Complete in ~4 seconds with 20 parallel workers.
 
 **Path Resolution** (`test_paths.py`): 10 tests
 
-- Writing root discovery (env var + file location)
-- Subdirectory resolution (bots/, data/, hooks/)
+- Framework root discovery (env var + file location)
+- Subdirectory resolution (skills/, hooks/, data/)
 - Hook script resolution
 - Pathlib type enforcement
 - Error handling for missing paths
@@ -71,7 +71,7 @@ Run by default. Complete in ~4 seconds with 20 parallel workers.
 ### Default: Fast Unit Tests Only
 
 ```bash
-uv run pytest bots/tests/
+uv run pytest tests/
 ```
 
 Runs 20 unit tests in ~4 seconds. This is the default configuration in `pyproject.toml`.
@@ -79,7 +79,7 @@ Runs 20 unit tests in ~4 seconds. This is the default configuration in `pyprojec
 ### Fast Integration Tests
 
 ```bash
-uv run pytest bots/tests/ -m "integration and not slow"
+uv run pytest tests/ -m "integration and not slow"
 ```
 
 Adds 7 fast integration tests (~5 seconds total).
@@ -87,7 +87,7 @@ Adds 7 fast integration tests (~5 seconds total).
 ### All Integration Tests (Including Slow)
 
 ```bash
-uv run pytest bots/tests/ -m integration
+uv run pytest tests/ -m integration
 ```
 
 Runs all 21 integration tests. Slow tests execute Claude Code in headless mode (~60-180 seconds each).
@@ -95,7 +95,7 @@ Runs all 21 integration tests. Slow tests execute Claude Code in headless mode (
 ### Slow Tests Only
 
 ```bash
-uv run pytest bots/tests/ -m slow
+uv run pytest tests/ -m slow
 ```
 
 Runs only the 11 slow integration tests that require Claude execution.
@@ -103,7 +103,7 @@ Runs only the 11 slow integration tests that require Claude execution.
 ### Everything
 
 ```bash
-uv run pytest bots/tests/ --deselect-marker=endtoend
+uv run pytest tests/ --deselect-marker=endtoend
 ```
 
 Runs all tests except end-to-end tests that require real API credentials.
@@ -112,22 +112,22 @@ Runs all tests except end-to-end tests that require real API credentials.
 
 ```bash
 # Path resolution tests
-uv run pytest bots/tests/test_paths.py -v
+uv run pytest tests/test_paths.py -v
 
 # Documentation integrity tests
-uv run pytest bots/tests/test_skills_readme_integrity.py -v
+uv run pytest tests/test_skills_readme_integrity.py -v
 
 # Session start tests (fast only)
-uv run pytest bots/tests/integration/test_session_start_content.py -m "not slow" -v
+uv run pytest tests/integration/test_session_start_content.py -m "not slow" -v
 
 # Bmem skill tests
-uv run pytest bots/tests/integration/test_bmem_skill.py -m integration -v
+uv run pytest tests/integration/test_bmem_skill.py -m integration -v
 
 # Task visualization tests (fast only)
-uv run pytest bots/tests/integration/test_task_viz.py -m "integration and not slow" -v
+uv run pytest tests/integration/test_task_viz.py -m "integration and not slow" -v
 
 # Task visualization tests (all including slow)
-uv run pytest bots/tests/integration/test_task_viz.py -m integration -v
+uv run pytest tests/integration/test_task_viz.py -m integration -v
 ```
 
 ## Test Configuration
@@ -160,38 +160,39 @@ addopts = [
 
 ### Fixtures
 
-**Unit Test Fixtures** (`bots/tests/conftest.py`):
+**Unit Test Fixtures** (`tests/conftest.py`):
 
-- `writing_root`: Path to repository root
-- `bots_dir`: Path to bots/ directory
-- `data_dir`: Path to data/ directory
-- `hooks_dir`: Path to bots/hooks/ directory
+- `writing_root`: Path to framework root (AOPS)
+- `bots_dir`: Path to framework root (AOPS) - legacy alias
+- `data_dir`: Path to data directory (ACA_DATA)
+- `hooks_dir`: Path to hooks/ directory
 
-**Integration Test Fixtures** (`bots/tests/integration/conftest.py`):
+**Integration Test Fixtures** (`tests/integration/conftest.py`):
 
 - `claude_headless`: Execute Claude Code in headless mode
 - `run_claude_headless()`: Direct function for headless execution
 - `writing_root`: Repository root path
 - Auto-marking of integration tests
 
-### Path Utilities (`bots/tests/paths.py`)
+### Path Utilities (`tests/paths.py`)
 
-Path resolution functions for monorepo structure:
+Path resolution functions using environment variables:
 
 ```python
-from bots.tests.paths import (
-    get_writing_root,    # Find repository root
-    get_bots_dir,        # Get bots/ directory
-    get_data_dir,        # Get data/ directory
-    get_hooks_dir,       # Get bots/hooks/ directory
+from tests.paths import (
+    get_writing_root,    # Get framework root ($AOPS) - legacy alias
+    get_bots_dir,        # Get framework root ($AOPS) - legacy alias
+    get_data_dir,        # Get data directory ($ACA_DATA)
+    get_hooks_dir,       # Get hooks/ directory
     get_hook_script,     # Get specific hook script
 )
 ```
 
 Resolution order:
 
-1. `WRITING_ROOT` environment variable (if set)
-2. Discover from `__file__` location by traversing up
+1. `AOPS` environment variable (framework root)
+2. `ACA_DATA` environment variable (data root)
+3. Auto-detection from module location as fallback
 
 Fails fast with `RuntimeError` if paths don't exist or can't be determined.
 
@@ -277,19 +278,19 @@ def test_something(bots_dir: Path) -> None:
     """Test description.
 
     Args:
-        bots_dir: Path to bots/ directory (from fixture)
+        bots_dir: Path to framework root (from fixture)
 
     Raises:
         AssertionError: If test condition fails
     """
     # Arrange
-    expected_file = bots_dir / "CORE.md"
+    expected_file = bots_dir / "AXIOMS.md"
 
     # Act
     exists = expected_file.exists()
 
     # Assert
-    assert exists, f"CORE.md not found at {expected_file}"
+    assert exists, f"AXIOMS.md not found at {expected_file}"
 ```
 
 ### Integration Tests (Fast)
@@ -349,32 +350,32 @@ Use markers to categorize tests:
 ### Verbose Output
 
 ```bash
-uv run pytest bots/tests/test_paths.py -v --tb=long
+uv run pytest tests/test_paths.py -v --tb=long
 ```
 
 ### Single Test
 
 ```bash
-uv run pytest bots/tests/test_paths.py::TestGetWritingRoot::test_get_writing_root_from_env -v
+uv run pytest tests/test_paths.py::TestGetWritingRoot::test_get_writing_root_from_env -v
 ```
 
 ### Print Statements
 
 ```bash
-uv run pytest bots/tests/ -s  # Already in default config
+uv run pytest tests/ -s  # Already in default config
 ```
 
 ### Failed Tests Only
 
 ```bash
-uv run pytest bots/tests/ --lf  # Last failed
-uv run pytest bots/tests/ --ff  # Failed first, then others
+uv run pytest tests/ --lf  # Last failed
+uv run pytest tests/ --ff  # Failed first, then others
 ```
 
 ### Coverage Report
 
 ```bash
-uv run pytest bots/tests/ --cov=bots --cov-report=html
+uv run pytest tests/ --cov=lib --cov-report=html
 ```
 
 ## Continuous Integration
@@ -428,5 +429,5 @@ Following `AXIOMS.md`:
 Run tests to validate framework integrity:
 
 ```bash
-uv run pytest bots/tests/ -v
+uv run pytest tests/ -v
 ```

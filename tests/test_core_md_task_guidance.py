@@ -11,16 +11,21 @@ def test_core_md_references_task_skill():
     """Verify CORE.md guides agents to check skills/README.md for task operations.
 
     This test validates that agents receive explicit guidance to:
-    1. Check bots/skills/README.md when handling task operations
+    1. Check skills/README.md when handling task operations
     2. Use the task skill for task management
     3. Not write task files directly
 
     The test will fail if CORE.md lacks this critical guidance.
+
+    Note: CORE.md is in ACA_DATA (user data), not in framework root.
     """
-    # Arrange: Locate CORE.md
-    # Path: tests/ -> bots/ -> CORE.md
-    repo_root = Path(__file__).parent.parent.parent
-    core_md_path = repo_root / "bots" / "CORE.md"
+    # Arrange: Locate CORE.md in ACA_DATA
+    import os
+    aca_data = os.environ.get("ACA_DATA")
+    if not aca_data:
+        raise RuntimeError("ACA_DATA environment variable not set")
+
+    core_md_path = Path(aca_data) / "CORE.md"
     assert core_md_path.exists(), f"CORE.md not found at {core_md_path}"
 
     # Act: Read CORE.md content

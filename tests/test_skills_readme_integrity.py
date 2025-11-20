@@ -1,7 +1,7 @@
 """
 Integration test for skills README documentation integrity.
 
-Tests that bots/skills/README.md properly documents all skills with clear
+Tests that skills/README.md properly documents all skills with clear
 "when to use" guidance including specific triggers that help agents know
 when to invoke each skill.
 
@@ -9,7 +9,7 @@ Following fail-fast principle: Documentation must be complete and accurate.
 
 Run this test to validate skills README integrity:
 
-    uv run pytest bots/skills/framework/tests/test_skills_readme_integrity.py -xvs
+    uv run pytest tests/test_skills_readme_integrity.py -xvs
 
 This test ensures:
 - Skills README exists and documents all skills
@@ -17,7 +17,7 @@ This test ensures:
 - 'When to use' includes specific triggers (not just operations)
 
 When this test fails:
-1. Update bots/skills/README.md task skill section
+1. Update skills/README.md task skill section
 2. Add specific triggers to 'When to use' section
 3. Include: completion mentions, urgent/priority queries, status requests
 4. Match triggers from task SKILL.md workflow section
@@ -33,13 +33,13 @@ class TestSkillsReadmeIntegrity:
 
     @pytest.fixture
     def repo_root(self):
-        """Get repository root (2 levels up from test file)."""
-        return Path(__file__).parents[2]
+        """Get framework root (parent of tests/)."""
+        return Path(__file__).parent.parent
 
     @pytest.fixture
     def skills_readme_path(self, repo_root):
         """Get path to skills README."""
-        return repo_root / "bots" / "skills" / "README.md"
+        return repo_root / "skills" / "README.md"
 
     @pytest.fixture
     def skills_readme_content(self, skills_readme_path):

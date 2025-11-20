@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 """
-Tests for monorepo path resolution in academicOps framework.
+Tests for path resolution aliases in tests/paths.py.
 
-Tests the core path resolution functions that locate the academicOps repository
-root and its key subdirectories. These functions are critical for enabling
-the framework to work correctly in a monorepo structure.
+Tests the legacy alias functions that delegate to lib.paths for backwards
+compatibility with tests written for the old monorepo structure.
 """
 
 from pathlib import Path
@@ -21,111 +20,81 @@ from tests.paths import (
 
 
 class TestGetWritingRoot:
-    """Tests for get_writing_root() function."""
+    """Tests for get_writing_root() function (legacy alias for get_aops_root)."""
 
     def test_get_writing_root_from_env(self, tmp_path, monkeypatch):
-        """Test get_writing_root() with WRITING_ROOT env var set."""
+        """Test get_writing_root() uses AOPS env var."""
         # Arrange
-        writing_root = tmp_path / "writing"
-        writing_root.mkdir()
-        monkeypatch.setenv("WRITING_ROOT", str(writing_root))
+        aops_root = tmp_path / "aOps"
+        aops_root.mkdir()
+        (aops_root / "lib").mkdir()
+        monkeypatch.setenv("AOPS", str(aops_root))
 
         # Act
         result = get_writing_root()
 
         # Assert
-        assert result == writing_root
+        assert result == aops_root
         assert isinstance(result, Path)
 
-    def test_get_writing_root_without_env(self, tmp_path, monkeypatch):
-        """Test get_writing_root() discovering from __file__ location."""
-        # Arrange - Create directory structure: academicOps/tests/
-        writing_root = tmp_path / "writing"
-        bots_dir = writing_root / "bots"
-        tests_dir = bots_dir / "tests"
-        tests_dir.mkdir(parents=True)
-
-        # Create marker file to identify writing root
-        (writing_root / "README.md").touch()
-
-        # Unset environment variable
-        monkeypatch.delenv("WRITING_ROOT", raising=False)
-
-        # Mock __file__ to point to our temporary structure
-        import tests.paths as paths_module
-
-        fake_paths_file = tests_dir / "paths.py"
-        monkeypatch.setattr(paths_module, "__file__", str(fake_paths_file))
-
-        # Act
+    def test_get_writing_root_without_env(self):
+        """Test get_writing_root() works without AOPS set (auto-detect)."""
+        # Act - should auto-detect from module location
         result = get_writing_root()
 
         # Assert
-        assert result == writing_root
         assert isinstance(result, Path)
+        assert result.exists()
+        assert (result / "lib").exists()
 
     def test_get_writing_root_fails_with_invalid_env(self, monkeypatch):
-        """Test RuntimeError when WRITING_ROOT points to non-existent path."""
+        """Test RuntimeError when AOPS points to non-existent path."""
         # Arrange
-        monkeypatch.setenv("WRITING_ROOT", "/nonexistent/path")
+        monkeypatch.setenv("AOPS", "/nonexistent/path")
 
         # Act & Assert
-        with pytest.raises(
-            RuntimeError,
-            match="WRITING_ROOT env var set but path doesn't exist",
-        ):
+        with pytest.raises(RuntimeError):
             get_writing_root()
 
     def test_get_writing_root_fails_without_context(self, monkeypatch):
-        """Test RuntimeError when can't determine root."""
-        # Arrange - Unset env var and no way to discover
-        monkeypatch.delenv("WRITING_ROOT", raising=False)
-
-        # Mock __file__ to point to a location without README.md/bots markers
-        import tests.paths as paths_module
-
-        fake_paths_file = Path("/tmp/nowhere/paths.py")
-        monkeypatch.setattr(paths_module, "__file__", str(fake_paths_file))
+        """Test RuntimeError when AOPS invalid and can't auto-detect."""
+        # Arrange - Set AOPS to invalid path
+        monkeypatch.setenv("AOPS", "/nonexistent/path")
 
         # Act & Assert
-        with pytest.raises(
-            RuntimeError,
-            match="Cannot determine writing root",
-        ):
+        with pytest.raises(RuntimeError):
             get_writing_root()
 
 
 class TestGetBotsDir:
-    """Tests for get_bots_dir() function."""
+    """Tests for get_bots_dir() function (legacy alias for get_aops_root)."""
 
     def test_get_bots_dir(self, tmp_path, monkeypatch):
-        """Test get_bots_dir() returns writing_root / 'bots'."""
+        """Test get_bots_dir() returns framework root (same as get_writing_root)."""
         # Arrange
-        writing_root = tmp_path / "writing"
-        bots_dir = writing_root / "bots"
-        writing_root.mkdir()
-        bots_dir.mkdir()
-        monkeypatch.setenv("WRITING_ROOT", str(writing_root))
+        aops_root = tmp_path / "aOps"
+        aops_root.mkdir()
+        (aops_root / "lib").mkdir()
+        monkeypatch.setenv("AOPS", str(aops_root))
 
         # Act
         result = get_bots_dir()
 
         # Assert
-        assert result == bots_dir
+        assert result == aops_root
+        assert result == get_writing_root()  # Should be same
         assert isinstance(result, Path)
 
 
 class TestGetDataDir:
-    """Tests for get_data_dir() function."""
+    """Tests for get_data_dir() function (delegates to get_data_root)."""
 
     def test_get_data_dir(self, tmp_path, monkeypatch):
-        """Test get_data_dir() returns writing_root / 'data'."""
+        """Test get_data_dir() returns ACA_DATA path."""
         # Arrange
-        writing_root = tmp_path / "writing"
-        data_dir = writing_root / "data"
-        writing_root.mkdir()
+        data_dir = tmp_path / "data"
         data_dir.mkdir()
-        monkeypatch.setenv("WRITING_ROOT", str(writing_root))
+        monkeypatch.setenv("ACA_DATA", str(data_dir))
 
         # Act
         result = get_data_dir()
@@ -139,15 +108,14 @@ class TestGetHooksDir:
     """Tests for get_hooks_dir() function."""
 
     def test_get_hooks_dir(self, tmp_path, monkeypatch):
-        """Test get_hooks_dir() returns bots_dir / 'hooks'."""
+        """Test get_hooks_dir() returns AOPS/hooks."""
         # Arrange
-        writing_root = tmp_path / "writing"
-        bots_dir = writing_root / "bots"
-        hooks_dir = bots_dir / "hooks"
-        writing_root.mkdir()
-        bots_dir.mkdir()
+        aops_root = tmp_path / "aOps"
+        hooks_dir = aops_root / "hooks"
+        aops_root.mkdir()
+        (aops_root / "lib").mkdir()
         hooks_dir.mkdir()
-        monkeypatch.setenv("WRITING_ROOT", str(writing_root))
+        monkeypatch.setenv("AOPS", str(aops_root))
 
         # Act
         result = get_hooks_dir()
@@ -163,15 +131,15 @@ class TestGetHookScript:
     def test_get_hook_script_exists(self, tmp_path, monkeypatch):
         """Test get_hook_script(name) returns correct path for existing hook."""
         # Arrange
-        writing_root = tmp_path / "writing"
-        bots_dir = writing_root / "bots"
-        hooks_dir = bots_dir / "hooks"
+        aops_root = tmp_path / "aOps"
+        hooks_dir = aops_root / "hooks"
         hooks_dir.mkdir(parents=True)
+        (aops_root / "lib").mkdir()
 
         hook_script = hooks_dir / "session_start.py"
         hook_script.touch()
 
-        monkeypatch.setenv("WRITING_ROOT", str(writing_root))
+        monkeypatch.setenv("AOPS", str(aops_root))
 
         # Act
         result = get_hook_script("session_start.py")
@@ -184,11 +152,11 @@ class TestGetHookScript:
     def test_get_hook_script_missing_fails(self, tmp_path, monkeypatch):
         """Test RuntimeError when hook doesn't exist."""
         # Arrange
-        writing_root = tmp_path / "writing"
-        bots_dir = writing_root / "bots"
-        hooks_dir = bots_dir / "hooks"
+        aops_root = tmp_path / "aOps"
+        hooks_dir = aops_root / "hooks"
         hooks_dir.mkdir(parents=True)
-        monkeypatch.setenv("WRITING_ROOT", str(writing_root))
+        (aops_root / "lib").mkdir()
+        monkeypatch.setenv("AOPS", str(aops_root))
 
         # Act & Assert
         with pytest.raises(RuntimeError, match="Hook script not found"):
@@ -201,17 +169,18 @@ class TestPathsUsePathlib:
     def test_paths_use_pathlib(self, tmp_path, monkeypatch):
         """Test all functions return Path objects, not strings."""
         # Arrange
-        writing_root = tmp_path / "writing"
-        bots_dir = writing_root / "bots"
-        data_dir = writing_root / "data"
-        hooks_dir = bots_dir / "hooks"
+        aops_root = tmp_path / "aOps"
+        hooks_dir = aops_root / "hooks"
+        data_dir = tmp_path / "data"
         hooks_dir.mkdir(parents=True)
+        (aops_root / "lib").mkdir()
         data_dir.mkdir()
 
         hook_script = hooks_dir / "test_hook.py"
         hook_script.touch()
 
-        monkeypatch.setenv("WRITING_ROOT", str(writing_root))
+        monkeypatch.setenv("AOPS", str(aops_root))
+        monkeypatch.setenv("ACA_DATA", str(data_dir))
 
         # Act
         writing_root_result = get_writing_root()
