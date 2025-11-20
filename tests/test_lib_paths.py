@@ -15,31 +15,44 @@ from lib import paths
 class TestPathResolution:
     """Test path resolution functions."""
 
-    def test_get_aops_root_requires_env_var(self, monkeypatch):
-        """Test that get_aops_root fails without AOPS env var."""
+    def test_get_aops_root_autodetects_without_env_var(self, monkeypatch):
+        """Test that get_aops_root auto-detects path without AOPS env var."""
         monkeypatch.delenv("AOPS", raising=False)
 
-        with pytest.raises(RuntimeError, match="AOPS environment variable not set"):
-            paths.get_aops_root()
+        # Should auto-detect from module location
+        result = paths.get_aops_root()
 
-    def test_get_aops_root_validates_path_exists(self, monkeypatch, tmp_path):
-        """Test that get_aops_root fails if path doesn't exist."""
-        nonexistent = tmp_path / "nonexistent"
-        monkeypatch.setenv("AOPS", str(nonexistent))
+        assert isinstance(result, Path)
+        assert result.exists()
+        assert (result / "lib").is_dir()
+        # Should also set AOPS for consistency
+        assert os.environ.get("AOPS") == str(result)
 
-        with pytest.raises(RuntimeError, match="AOPS path doesn't exist"):
-            paths.get_aops_root()
-
-    def test_get_aops_root_returns_path(self, monkeypatch, tmp_path):
-        """Test that get_aops_root returns valid Path."""
+    def test_get_aops_root_uses_valid_aops_if_set(self, monkeypatch, tmp_path):
+        """Test that get_aops_root respects valid AOPS env var."""
         test_dir = tmp_path / "aops"
         test_dir.mkdir()
+        (test_dir / "lib").mkdir()
         monkeypatch.setenv("AOPS", str(test_dir))
 
         result = paths.get_aops_root()
 
         assert isinstance(result, Path)
         assert result == test_dir.resolve()
+
+    def test_get_aops_root_fallback_on_invalid_aops(self, monkeypatch, tmp_path):
+        """Test that get_aops_root falls back to detection if AOPS is invalid."""
+        nonexistent = tmp_path / "nonexistent"
+        monkeypatch.setenv("AOPS", str(nonexistent))
+
+        # Should fall back to auto-detection
+        result = paths.get_aops_root()
+
+        assert isinstance(result, Path)
+        assert result.exists()
+        assert (result / "lib").is_dir()
+        # Should update AOPS to correct path
+        assert os.environ.get("AOPS") == str(result)
 
     def test_get_data_root_requires_env_var(self, monkeypatch):
         """Test that get_data_root fails without ACA_DATA env var."""
@@ -71,6 +84,7 @@ class TestPathResolution:
         """Test that get_skills_dir returns AOPS/skills."""
         test_dir = tmp_path / "aops"
         test_dir.mkdir()
+        (test_dir / "lib").mkdir()  # Needed for AOPS validation
         monkeypatch.setenv("AOPS", str(test_dir))
 
         result = paths.get_skills_dir()
@@ -92,6 +106,7 @@ class TestPathResolution:
         aops_dir = tmp_path / "aops"
         data_dir = tmp_path / "data"
         aops_dir.mkdir()
+        (aops_dir / "lib").mkdir()  # Needed for AOPS validation
         data_dir.mkdir()
 
         monkeypatch.setenv("AOPS", str(aops_dir))
@@ -104,12 +119,19 @@ class TestPathResolution:
         assert result["AOPS"] == aops_dir.resolve()
         assert result["ACA_DATA"] == data_dir.resolve()
 
-    def test_validate_environment_fails_without_aops(self, monkeypatch):
-        """Test validate_environment fails without AOPS."""
+    def test_validate_environment_autodetects_aops(self, monkeypatch, tmp_path):
+        """Test validate_environment auto-detects AOPS if not set."""
         monkeypatch.delenv("AOPS", raising=False)
+        data_dir = tmp_path / "data"
+        data_dir.mkdir()
+        monkeypatch.setenv("ACA_DATA", str(data_dir))
 
-        with pytest.raises(RuntimeError):
-            paths.validate_environment()
+        result = paths.validate_environment()
+
+        assert "AOPS" in result
+        assert "ACA_DATA" in result
+        assert result["AOPS"].exists()
+        assert result["ACA_DATA"] == data_dir.resolve()
 
 
 class TestRealEnvironment:

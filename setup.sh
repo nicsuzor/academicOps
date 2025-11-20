@@ -119,7 +119,7 @@ create_symlink "settings.json" "$AOPS_PATH/config/claude/settings.json"
 echo
 echo "Creating MCP configuration symlink..."
 mcp_link="$HOME/.mcp.json"
-mcp_target="$AOPS_PATH/config/mcp.json"
+mcp_target="$AOPS_PATH/config/claude/mcp.json"
 
 if [ -L "$mcp_link" ]; then
     # Exists as symlink
