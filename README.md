@@ -89,7 +89,7 @@ $AOPS/
 academicOps stores user data separately from framework code. User-specific files live here:
 
 ```
-$ACA_DATA/  (e.g., ~/src/writing/data/)
+$ACA_DATA/  (e.g., ~/writing/data/)
 ├── ACCOMMODATIONS.md    # Work style requirements (loaded via @ in user CLAUDE.md)
 ├── CORE.md              # User context, tools, paths (loaded via @ in user CLAUDE.md)
 ├── STYLE-QUICK.md       # Writing style reference (loaded via @ in user CLAUDE.md)
