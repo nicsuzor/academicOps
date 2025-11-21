@@ -37,7 +37,7 @@ def run_claude_headless(
         model: Optional model identifier (e.g., "claude-sonnet-4-5-20250929")
         timeout_seconds: Command timeout in seconds (default: 120)
         permission_mode: Optional permission mode (e.g., "disabled")
-        cwd: Working directory (defaults to writing root)
+        cwd: Working directory (defaults to /tmp/claude-test-XXXXXX)
 
     Returns:
         Dictionary with keys:
@@ -47,6 +47,7 @@ def run_claude_headless(
         - error (str, optional): Error message if execution failed
     """
     import os
+    import tempfile
 
     # Check if claude CLI is available
     if not _claude_cli_available():
@@ -57,8 +58,8 @@ def run_claude_headless(
             "error": "claude CLI not found in PATH - these tests require Claude Code CLI installed",
         }
 
-    # Build command
-    cmd = ["claude", "-p", prompt, "--output-format", "json"]
+    # Build command with --debug flag
+    cmd = ["claude", "-p", prompt, "--output-format", "json", "--debug"]
 
     if model:
         cmd.extend(["--model", model])
@@ -66,15 +67,32 @@ def run_claude_headless(
     if permission_mode:
         cmd.extend(["--permission-mode", permission_mode])
 
-    # Set working directory
-    working_dir = cwd if cwd else get_aops_root()
+    # Set working directory - always use /tmp for tests
+    if cwd:
+        working_dir = cwd
+    else:
+        # Create temporary directory in /tmp for this test run
+        working_dir = Path(tempfile.mkdtemp(prefix="claude-test-", dir="/tmp"))
 
-    # Build environment - inherit current environment and ensure AOPS is set
+    # Build environment - inherit current environment
     env = os.environ.copy()
 
-    # Get AOPS path - prefer environment variable, fallback to lib.paths
+    # FAIL FAST: Required environment variables must be set
     if "AOPS" not in env:
-        env["AOPS"] = str(get_aops_root())
+        return {
+            "success": False,
+            "output": "",
+            "result": {},
+            "error": "AOPS environment variable not set - required for tests",
+        }
+
+    if "ACA_DATA" not in env:
+        return {
+            "success": False,
+            "output": "",
+            "result": {},
+            "error": "ACA_DATA environment variable not set - required for bmem tests",
+        }
 
     try:
         # Execute command
