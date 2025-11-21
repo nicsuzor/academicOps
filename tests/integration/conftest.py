@@ -14,7 +14,7 @@ from typing import Any
 
 import pytest
 
-from tests.paths import get_writing_root
+from lib.paths import get_aops_root
 
 
 def _claude_cli_available() -> bool:
@@ -67,7 +67,7 @@ def run_claude_headless(
         cmd.extend(["--permission-mode", permission_mode])
 
     # Set working directory
-    working_dir = cwd if cwd else get_writing_root()
+    working_dir = cwd if cwd else get_aops_root()
 
     # Build environment - inherit current environment and ensure AOPS is set
     env = os.environ.copy()
@@ -153,13 +153,13 @@ def claude_headless():
 
 
 @pytest.fixture
-def writing_root():
-    """Pytest fixture providing writing repository root path.
+def aops_root():
+    """Pytest fixture providing aOps framework root path.
 
     Returns:
-        Path: Absolute path to writing repository root
+        Path: Absolute path to aOps framework root ($AOPS)
     """
-    return get_writing_root()
+    return get_aops_root()
 
 
 def pytest_configure(config):

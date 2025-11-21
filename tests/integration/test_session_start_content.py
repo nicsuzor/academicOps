@@ -24,16 +24,16 @@ from typing import Any
 import pytest
 
 
-def test_claude_md_exists(writing_root: Path) -> None:
+def test_claude_md_exists(aops_root: Path) -> None:
     """Test 1: Verify CLAUDE.md exists and is readable.
 
     Args:
-        writing_root: Path to repository root (from fixture)
+        aops_root: Path to repository root (from fixture)
 
     Raises:
         AssertionError: If CLAUDE.md does not exist or is not readable
     """
-    claude_md = writing_root / "CLAUDE.md"
+    claude_md = aops_root / "CLAUDE.md"
 
     assert claude_md.exists(), f"CLAUDE.md not found at {claude_md}"
     assert claude_md.is_file(), f"CLAUDE.md is not a file: {claude_md}"
@@ -70,16 +70,16 @@ def _extract_at_references(markdown_content: str) -> list[str]:
 # This test was checking @-reference syntax, not information loading behavior
 
 
-def test_readme_contains_directory_structure(writing_root: Path) -> None:
+def test_readme_contains_directory_structure(aops_root: Path) -> None:
     """Test 3: Verify README.md contains directory structure documentation.
 
     Args:
-        writing_root: Path to framework root (from fixture)
+        aops_root: Path to framework root (from fixture)
 
     Raises:
         AssertionError: If README.md is missing expected directory structure content
     """
-    readme = writing_root / "README.md"
+    readme = aops_root / "README.md"
     content = readme.read_text(encoding="utf-8")
 
     # Check for key framework directories (not heading - tree content matters)
@@ -118,22 +118,22 @@ def test_bots_directory_structure_exists(bots_dir: Path) -> None:
         raise AssertionError(error_msg)
 
 
-def test_no_conflicting_path_references(writing_root: Path, data_dir: Path) -> None:
+def test_no_conflicting_path_references(aops_root: Path, data_dir: Path) -> None:
     """Test 5: Verify session start files have consistent path references.
 
     Checks that session start files don't contain conflicting path references
     that could confuse agents.
 
     Args:
-        writing_root: Path to framework root (from fixture)
+        aops_root: Path to framework root (from fixture)
         data_dir: Path to user data directory (from fixture)
 
     Raises:
         AssertionError: If conflicting path references are found
     """
     session_files = [
-        writing_root / "CLAUDE.md",
-        writing_root / "README.md",
+        aops_root / "CLAUDE.md",
+        aops_root / "README.md",
         data_dir / "CORE.md",
         data_dir / "ACCOMMODATIONS.md",
     ]
@@ -172,24 +172,35 @@ def test_no_conflicting_path_references(writing_root: Path, data_dir: Path) -> N
 
 @pytest.mark.slow
 @pytest.mark.integration
-def test_session_start_content_loaded(claude_headless: Any, writing_root: Path) -> None:
-    """Test 7: Use claude_headless to verify agent knows user info without file reading.
+@pytest.mark.parametrize("test_location", ["aops_repo", "temp_dir"])
+def test_session_start_content_loaded(
+    claude_headless: Any, aops_root: Path, tmp_path: Path, test_location: str
+) -> None:
+    """Test 7: Use claude_headless to verify SessionStart hooks inject AXIOMS.
 
-    This integration test verifies that session start content is properly loaded
-    by asking Claude about user information that should be available from CLAUDE.md
-    and its @-referenced files.
+    This integration test verifies that SessionStart hooks work from any directory
+    by asking Claude about AXIOMS content that should be injected via hooks.
+
+    Tests two scenarios:
+    1. Claude runs from $AOPS (framework repo)
+    2. Claude runs from /tmp (arbitrary directory)
 
     Args:
         claude_headless: Fixture for headless Claude execution
-        writing_root: Path to repository root (from fixture)
+        aops_root: Path to framework root (from fixture)
+        tmp_path: Temporary directory (pytest fixture)
+        test_location: Parametrized test location (aops_repo or temp_dir)
 
     Raises:
-        AssertionError: If Claude doesn't know expected user information
+        AssertionError: If Claude doesn't know AXIOMS content loaded via hooks
     """
+    # Select working directory based on test parameter
+    cwd = aops_root if test_location == "aops_repo" else tmp_path
+
     result = claude_headless(
-        prompt="What is my name and email address? Answer concisely.",
+        prompt="What is AXIOM #1? Answer concisely.",
         timeout_seconds=60,
-        cwd=writing_root,
+        cwd=cwd,
     )
 
     assert result["success"], f"Claude execution failed: {result.get('error')}"
@@ -202,44 +213,39 @@ def test_session_start_content_loaded(claude_headless: Any, writing_root: Path) 
     else:
         response_content = result_data
 
-    # Look for expected user information
-    # Should mention Nic/Nicolas Suzor and at least one email
-    name_found = (
-        "Nic" in response_content
-        or "Nicolas" in response_content
-        or "Suzor" in response_content
-    )
-    email_found = (
-        "n.suzor@qut.edu.au" in response_content
-        or "nic@suzor.net" in response_content
-        or "@qut.edu.au" in response_content
-        or "@suzor.net" in response_content
+    # Look for AXIOM #1 content: "DO ONE THING"
+    axiom_found = (
+        "DO ONE THING" in response_content
+        or "Complete the task requested" in response_content
+        or "then STOP" in response_content
     )
 
-    assert name_found, f"Agent doesn't know user's name. Response: {response_content}"
-    assert email_found, f"Agent doesn't know user's email. Response: {response_content}"
+    assert axiom_found, (
+        f"Agent doesn't know AXIOM #1 content. "
+        f"SessionStart hooks may not be executing from {cwd}. "
+        f"Response: {response_content}"
+    )
 
 
 @pytest.mark.slow
 @pytest.mark.integration
-def test_session_knows_work_style(claude_headless: Any, writing_root: Path) -> None:
-    """Test 8: Use claude_headless to verify agent knows work principles without file reading.
+def test_session_knows_work_style(claude_headless: Any, aops_root: Path) -> None:
+    """Test 8: Use claude_headless to verify agent knows AXIOMS principles.
 
-    This integration test verifies that session start content includes work
-    principles by asking Claude about core axioms that should be loaded from
-    session start files.
+    This integration test verifies that SessionStart hooks inject AXIOMS
+    by asking Claude about core principles.
 
     Args:
         claude_headless: Fixture for headless Claude execution
-        writing_root: Path to repository root (from fixture)
+        aops_root: Path to framework root (from fixture)
 
     Raises:
-        AssertionError: If Claude doesn't know expected work principles
+        AssertionError: If Claude doesn't know AXIOMS principles
     """
     result = claude_headless(
-        prompt="What are my core work principles or axioms? Answer concisely.",
+        prompt="What are the core AXIOMS principles? Answer concisely.",
         timeout_seconds=60,
-        cwd=writing_root,
+        cwd=aops_root,
     )
 
     assert result["success"], f"Claude execution failed: {result.get('error')}"
@@ -252,15 +258,15 @@ def test_session_knows_work_style(claude_headless: Any, writing_root: Path) -> N
     else:
         response_content = result_data
 
-    # Look for expected principles - should mention fail-fast or AXIOMS concepts
+    # Look for expected AXIOMS principles
     principles_found = (
         "fail-fast" in response_content.lower()
         or "fail fast" in response_content.lower()
-        or "axiom" in response_content.lower()
+        or "DO ONE THING" in response_content
         or "no defaults" in response_content.lower()
-        or "explicit" in response_content.lower()
+        or "DRY" in response_content
     )
 
     assert (
         principles_found
-    ), f"Agent doesn't know work principles. Response: {response_content}"
+    ), f"Agent doesn't know AXIOMS principles. Response: {response_content}"
