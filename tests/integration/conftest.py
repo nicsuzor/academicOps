@@ -74,7 +74,6 @@ def run_claude_headless(
 
     # Get AOPS path - prefer environment variable, fallback to lib.paths
     if "AOPS" not in env:
-        from lib.paths import get_aops_root
         env["AOPS"] = str(get_aops_root())
 
     try:
