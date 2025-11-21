@@ -61,13 +61,17 @@ $AOPS/
 ├── lib/                 # Shared Python utilities
 │   └── paths.py         # Path resolution (single source of truth for paths)
 │
-├── tests/               # Framework integration tests (pytest)
-│   ├── conftest.py      # Test fixtures
-│   ├── test_lib_paths.py # Path resolution tests
+├── tests/               # Framework integration tests (pytest) - AUTHORITATIVE test location
+│   ├── README.md        # Test documentation (markers, fixtures, coverage)
+│   ├── conftest.py      # Unit test fixtures (paths)
+│   ├── paths.py         # Path resolution utilities
+│   ├── test_*.py        # Unit tests (paths, fixtures, documentation, skills, tasks)
+│   ├── run_integration_tests.py  # Test runner script
 │   └── integration/     # E2E tests (slow, require Claude execution)
 │       ├── conftest.py          # Integration test fixtures (headless execution)
-│       ├── test_file_loading_e2e.py # Session start file loading tests
-│       └── test_session_start_content.py # Session start validation tests
+│       ├── test_bmem_skill.py   # Bmem skill integration tests
+│       ├── test_session_start_content.py # Session start validation tests
+│       └── test_task_viz.py     # Task visualization dashboard tests
 │
 ├── commands/            # Slash commands (workflow triggers)
 │   ├── bmem.md          # Invoke bmem skill
@@ -100,7 +104,7 @@ $AOPS/
 
 **Result**: Work in any project, knowledge base stays consistent and queryable. No per-project duplication.
 
-See BMEM-FORMAT.md and BMEM-CLAUDE-GUIDE.md for implementation details.
+**CLI**: `uvx basic-memory --help`. See `skills/bmem/SKILL.md` for operations guide.
 
 ---
 

@@ -53,3 +53,22 @@ def hooks_dir() -> Path:
         Path: Absolute path to hooks/ directory ($AOPS/hooks)
     """
     return get_hooks_dir()
+
+
+@pytest.fixture
+def test_data_dir(tmp_path: Path) -> Path:
+    """Create temporary data directory structure for task tests.
+
+    Creates the standard task directory structure in a temp location.
+
+    Args:
+        tmp_path: pytest's temporary directory fixture
+
+    Returns:
+        Path: Path to the temporary data directory
+    """
+    data_dir = tmp_path / "data"
+    (data_dir / "tasks/inbox").mkdir(parents=True)
+    (data_dir / "tasks/queue").mkdir(parents=True)
+    (data_dir / "tasks/archived").mkdir(parents=True)
+    return data_dir

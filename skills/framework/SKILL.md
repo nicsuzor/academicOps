@@ -533,9 +533,9 @@ grep -r "\[\[.*\.md\]\]" $AOPS/
    - Output matches expected format
    - Edge cases handled appropriately
 
-**Test location**: `$ACA_DATA/projects/aops/tests/`
+**Test location**: `$AOPS/tests/` (AUTHORITATIVE location for all framework tests)
 
-**Test documentation**: `$ACA_DATA/projects/aops/tests/README.md` - Must be kept up-to-date when tests change
+**Test documentation**: `$AOPS/tests/README.md` - Must be kept up-to-date when tests change
 
 **Test format (pytest)**:
 
@@ -559,7 +559,7 @@ def test_something(fixture: Type) -> None:
 - All tests must pass
 - No partial success accepted
 - Fix or revert, never commit broken state
-- Update `$ACA_DATA/projects/aops/tests/README.md` when adding/modifying tests
+- Update `$AOPS/tests/README.md` when adding/modifying tests
 
 ## File Organization
 
@@ -584,6 +584,11 @@ $AOPS/  (e.g., /home/nic/src/academicOps/)
 ├── experiments/         # Temporary work-in-progress experiments
 ├── scripts/             # Deployment scripts
 ├── lib/                 # Shared utilities
+├── tests/               # AUTHORITATIVE location for framework tests (pytest)
+│   ├── README.md        # Test documentation (markers, fixtures, coverage)
+│   ├── conftest.py      # Unit test fixtures
+│   ├── test_*.py        # Unit tests
+│   └── integration/     # E2E tests (slow, require Claude execution)
 ├── agents/              # Agentic workflows (future)
 └── config/              # Configuration files
 ```
@@ -601,9 +606,8 @@ $ACA_DATA/  (e.g., /home/nic/src/writing/data/)
     ├── STATE.md         # Current framework state
     ├── VISION.md        # User's vision for framework
     ├── ROADMAP.md       # User's roadmap
-    ├── experiments/     # Finalized experiments
-    │   └── LOG.md       # Learning patterns (append-only)
-    └── tests/           # Framework integration tests
+    └── experiments/     # Finalized experiments
+        └── LOG.md       # Learning patterns (append-only)
 ```
 
 ## Error Handling
