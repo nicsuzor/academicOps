@@ -98,7 +98,7 @@ def test_bmem_skill_creates_valid_file(claude_headless):
 
         # Assert: File was created in writing root directory
         writing_root = get_writing_root()
-        data_files = list(writing_root.rglob("*.md"))
+        data_files = list((writing_root / "data").rglob("*.md"))
 
         # Find newly created file (modified after test start, contains target content)
         created_file = None
@@ -242,7 +242,7 @@ def test_bmem_skill_uses_obsidian_compatible_tags(claude_headless):
 
         # Find created file (modified after test start)
         writing_root = get_writing_root()
-        data_files = list(writing_root.rglob("*.md"))
+        data_files = list((writing_root / "data").rglob("*.md"))
 
         created_file = None
         for file in data_files:
@@ -295,7 +295,7 @@ def test_bmem_validation_passes(claude_headless):
 
         # Find created file (modified after test start)
         writing_root = get_writing_root()
-        data_files = list(writing_root.rglob("*.md"))
+        data_files = list((writing_root / "data").rglob("*.md"))
 
         created_file = None
         for file in data_files:
