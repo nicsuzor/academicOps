@@ -84,6 +84,26 @@ $AOPS/
 
 ---
 
+## Knowledge Base (bmem)
+
+**Single knowledge base per user**: bmem maintains ONE personal knowledge base across all projects.
+
+**Location**: Knowledge base stored at `$ACA_DATA` (environment variable pointing to user's private data repository).
+
+**Key architecture principles**:
+
+1. **Single source of truth** - All notes, entities, and metadata stored in one place, regardless of current working directory
+2. **Write location invariant** - bmem writes to `$ACA_DATA` always, enabling seamless access across projects
+3. **Format** - Markdown files with YAML frontmatter for metadata (tags, types, relationships)
+4. **Indexing** - Automatic background vector search indexing (full-text and semantic search)
+5. **Access** - Claude Code integrates via MCP server and `mcp__bmem__*` function tools
+
+**Result**: Work in any project, knowledge base stays consistent and queryable. No per-project duplication.
+
+See BMEM-FORMAT.md and BMEM-CLAUDE-GUIDE.md for implementation details.
+
+---
+
 ## User Data Repository Structure
 
 academicOps stores user data separately from framework code. User-specific files live here:
