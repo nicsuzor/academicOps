@@ -6,13 +6,27 @@ This module exists for backwards compatibility with tests that import from tests
 All functionality delegates to lib.paths which uses AOPS and ACA_DATA environment variables.
 """
 
+from pathlib import Path
+
 from lib.paths import (
-    get_aops_root as get_writing_root,  # Alias for compatibility
-    get_aops_root as get_bots_dir,      # Framework root IS the old bots dir
+    get_aops_root as get_bots_dir,  # Framework root IS the old bots dir
+    get_data_root,
     get_data_root as get_data_dir,
     get_hooks_dir,
 )
-from pathlib import Path
+
+
+def get_writing_root() -> Path:
+    """
+    Get writing repository root (parent of data directory).
+
+    Returns the parent directory of $ACA_DATA, which is the writing repository root.
+    For example, if $ACA_DATA=/home/nic/writing/data, returns /home/nic/writing.
+
+    Returns:
+        Path: Absolute path to writing repository root
+    """
+    return get_data_root().parent
 
 
 def get_hook_script(name: str) -> Path:
