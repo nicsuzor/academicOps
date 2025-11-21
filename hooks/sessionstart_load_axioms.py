@@ -133,7 +133,12 @@ def main():
 """
 
     # Build output data
-    output_data: dict[str, Any] = {"additionalContext": additional_context}
+    output_data: dict[str, Any] = {
+        "hookSpecificOutput": {
+            "hookEventName": "SessionStart",
+            "additionalContext": additional_context
+        }
+    }
 
     # Output JSON (continue execution)
     print(json.dumps(output_data))
