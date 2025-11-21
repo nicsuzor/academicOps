@@ -20,3 +20,4 @@ This is the academicOps framework repository containing generic, reusable automa
 
 **For framework development work**: See README.md for structure and $ACA_DATA/projects/aops/STATE.md for current status.
 - Use haiku by default when invoking claude code for testing purposes
+- README.md is SSoT for aOps file structure.

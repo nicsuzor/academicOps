@@ -47,7 +47,7 @@ This server exposes task management operations (view, archive, unarchive, create
 
 3. Verify server starts:
    ```bash
-   python3 bots/skills/tasks/server.py
+   python3 $AOPS/skills/tasks/server.py
    ```
 
 ## Task Identification
@@ -493,13 +493,13 @@ pytest tests/test_task_ops.py::test_archive_task -v
 
 ```bash
 # Type checking
-mypy bots/skills/tasks/
+mypy $AOPS/skills/tasks/
 
 # Linting
-ruff check bots/skills/tasks/
+ruff check $AOPS/skills/tasks/
 
 # Format checking
-ruff format --check bots/skills/tasks/
+ruff format --check $AOPS/skills/tasks/
 ```
 
 ### Development Server
@@ -511,7 +511,7 @@ Run server directly for testing:
 export ACA=/home/nic/src/writing
 
 # Run server
-python3 bots/skills/tasks/server.py
+python3 $AOPS/skills/tasks/server.py
 ```
 
 ## Troubleshooting
@@ -598,13 +598,13 @@ The original CLI scripts are still available for direct command-line use:
 
 ```bash
 # View tasks
-uv run python bots/skills/tasks/scripts/task_view.py
+uv run python $AOPS/skills/tasks/scripts/task_view.py
 
 # Archive task
-uv run python bots/skills/tasks/scripts/task_archive.py task.md
+uv run python $AOPS/skills/tasks/scripts/task_archive.py task.md
 
 # Add task
-uv run python bots/skills/tasks/scripts/task_add.py --title "Task title" --priority 1
+uv run python $AOPS/skills/tasks/scripts/task_add.py --title "Task title" --priority 1
 ```
 
 **Note**: MCP tools are now the recommended interface for agent interactions.
@@ -612,8 +612,8 @@ uv run python bots/skills/tasks/scripts/task_add.py --title "Task title" --prior
 ## Related Documentation
 
 - **Specification**: `data/tasks/inbox/fastmcp-task-server-spec.md`
-- **Task skill**: `bots/skills/tasks/SKILL.md`
-- **Framework**: `bots/skills/framework/SKILL.md`
+- **Task skill**: `$AOPS/skills/tasks/SKILL.md`
+- **Framework**: `$AOPS/skills/framework/SKILL.md`
 - **MCP config**: `.mcp.json`
 
 ## Version History

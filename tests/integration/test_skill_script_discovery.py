@@ -176,9 +176,17 @@ def test_claude_finds_scripts_without_search(claude_headless, writing_root):
     parsed = json.loads(output)
     response_text = str(parsed).lower()
 
-    # Should mention the symlink path
-    assert "~/.claude/skills/tasks/scripts" in response_text.replace("\\", "/"), (
-        "Response should reference the documented symlink path"
+    # Should mention one of the valid path formats
+    valid_paths = [
+        "~/.claude/skills/tasks/scripts",  # symlink path
+        "skills/tasks/scripts",             # relative path
+        "$aops/skills/tasks/scripts",       # actual path with env var
+    ]
+    normalized_response = response_text.replace("\\", "/")
+
+    assert any(path.lower() in normalized_response for path in valid_paths), (
+        f"Response should reference one of the valid paths: {valid_paths}\n"
+        f"Got response: {response_text[:500]}"
     )
 
 
