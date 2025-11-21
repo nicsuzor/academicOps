@@ -48,15 +48,17 @@ def test_session_logger_module():
     print("✓ Date validation working correctly")
 
     # Test 3: Log path generation
-    with tempfile.TemporaryDirectory() as tmpdir:
-        project_dir = Path(tmpdir)
-        log_path = get_log_path(project_dir, session_id, "2025-11-09")
-        expected_name = f"2025-11-09-{short_hash}.jsonl"
-        assert log_path.name == expected_name, (
-            f"Expected {expected_name}, got {log_path.name}"
-        )
-        assert log_path.parent == project_dir / "data" / "sessions"
-        print(f"✓ Log path generation: {log_path.name}")
+    # Note: get_log_path uses /tmp/claude-sessions (project_dir kept for compat)
+    project_dir = Path("/unused")  # Not actually used
+    log_path = get_log_path(project_dir, session_id, "2025-11-09")
+    expected_name = f"2025-11-09-{short_hash}.jsonl"
+    assert log_path.name == expected_name, (
+        f"Expected {expected_name}, got {log_path.name}"
+    )
+    assert log_path.parent == Path("/tmp/claude-sessions"), (
+        f"Expected /tmp/claude-sessions, got {log_path.parent}"
+    )
+    print(f"✓ Log path generation: {log_path.name}")
 
     # Test 4: Create session note
     summary = {
@@ -111,9 +113,12 @@ def test_session_logger_module():
 
         assert log_path.exists(), f"Log file not created at {log_path}"
 
-        # Read and verify log content
+        # Read and verify log content (JSONL format - read last line)
         with log_path.open() as f:
-            log_entry = json.loads(f.read())
+            lines = f.readlines()
+            # Get the last non-empty line
+            last_line = next(line for line in reversed(lines) if line.strip())
+            log_entry = json.loads(last_line)
             assert log_entry["session_id"] == session_id
             assert log_entry["summary"] == "Test session"
             assert "timestamp" in log_entry

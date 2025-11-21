@@ -20,46 +20,47 @@ from tests.paths import (
 
 
 class TestGetWritingRoot:
-    """Tests for get_writing_root() function (legacy alias for get_aops_root)."""
+    """Tests for get_writing_root() function - returns parent of ACA_DATA."""
 
-    def test_get_writing_root_from_env(self, tmp_path, monkeypatch):
-        """Test get_writing_root() uses AOPS env var."""
+    def test_get_writing_root_from_aca_data(self, tmp_path, monkeypatch):
+        """Test get_writing_root() uses ACA_DATA env var (returns parent)."""
         # Arrange
-        aops_root = tmp_path / "aOps"
-        aops_root.mkdir()
-        (aops_root / "lib").mkdir()
-        monkeypatch.setenv("AOPS", str(aops_root))
+        writing_root = tmp_path / "writing"
+        data_dir = writing_root / "data"
+        data_dir.mkdir(parents=True)
+        monkeypatch.setenv("ACA_DATA", str(data_dir))
 
         # Act
         result = get_writing_root()
 
         # Assert
-        assert result == aops_root
+        assert result == writing_root
         assert isinstance(result, Path)
 
-    def test_get_writing_root_without_env(self):
-        """Test get_writing_root() works without AOPS set (auto-detect)."""
-        # Act - should auto-detect from module location
+    def test_get_writing_root_uses_real_aca_data(self):
+        """Test get_writing_root() works with real ACA_DATA."""
+        # Act - should use real ACA_DATA env var
         result = get_writing_root()
 
         # Assert
         assert isinstance(result, Path)
         assert result.exists()
-        assert (result / "lib").exists()
+        # Writing root should contain data/ subdirectory
+        assert (result / "data").exists()
 
-    def test_get_writing_root_fails_with_invalid_env(self, monkeypatch):
-        """Test RuntimeError when AOPS points to non-existent path."""
+    def test_get_writing_root_fails_with_invalid_aca_data(self, monkeypatch):
+        """Test RuntimeError when ACA_DATA points to non-existent path."""
         # Arrange
-        monkeypatch.setenv("AOPS", "/nonexistent/path")
+        monkeypatch.setenv("ACA_DATA", "/nonexistent/path")
 
         # Act & Assert
         with pytest.raises(RuntimeError):
             get_writing_root()
 
-    def test_get_writing_root_fails_without_context(self, monkeypatch):
-        """Test RuntimeError when AOPS invalid and can't auto-detect."""
-        # Arrange - Set AOPS to invalid path
-        monkeypatch.setenv("AOPS", "/nonexistent/path")
+    def test_get_writing_root_fails_without_aca_data(self, monkeypatch):
+        """Test RuntimeError when ACA_DATA not set."""
+        # Arrange - Remove ACA_DATA
+        monkeypatch.delenv("ACA_DATA", raising=False)
 
         # Act & Assert
         with pytest.raises(RuntimeError):
@@ -70,7 +71,7 @@ class TestGetBotsDir:
     """Tests for get_bots_dir() function (legacy alias for get_aops_root)."""
 
     def test_get_bots_dir(self, tmp_path, monkeypatch):
-        """Test get_bots_dir() returns framework root (same as get_writing_root)."""
+        """Test get_bots_dir() returns framework root ($AOPS)."""
         # Arrange
         aops_root = tmp_path / "aOps"
         aops_root.mkdir()
@@ -82,8 +83,10 @@ class TestGetBotsDir:
 
         # Assert
         assert result == aops_root
-        assert result == get_writing_root()  # Should be same
         assert isinstance(result, Path)
+        # Note: get_bots_dir() != get_writing_root()
+        # get_bots_dir() returns $AOPS (framework root)
+        # get_writing_root() returns $ACA_DATA/.. (user's writing repo)
 
 
 class TestGetDataDir:
