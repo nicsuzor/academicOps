@@ -8,6 +8,7 @@ These are E2E tests that actually execute git operations in a test repository.
 """
 
 import json
+import os
 import subprocess
 from pathlib import Path
 
@@ -151,12 +152,17 @@ def test_hook_commits_and_pushes_task_changes(
     }
 
     # Act
+    env = os.environ.copy()
+    env["PYTHONPATH"] = os.environ["AOPS"]
+    env["AOPS"] = os.environ["AOPS"]
+    env["ACA_DATA"] = str(test_repo)
     result = subprocess.run(
         ["python", str(hook_script)],
         input=json.dumps(tool_input),
         text=True,
         capture_output=True,
         cwd=test_repo,
+        env=env,
         check=True,
     )
 
@@ -213,12 +219,17 @@ def test_hook_commits_any_data_directory_changes(
     }
 
     # Act
+    env = os.environ.copy()
+    env["PYTHONPATH"] = os.environ["AOPS"]
+    env["AOPS"] = os.environ["AOPS"]
+    env["ACA_DATA"] = str(test_repo)
     result = subprocess.run(
         ["python", str(hook_script)],
         input=json.dumps(tool_input),
         text=True,
         capture_output=True,
         cwd=test_repo,
+        env=env,
         check=True,
     )
 
@@ -252,12 +263,17 @@ def test_hook_handles_no_changes_gracefully(
     }
 
     # Act
+    env = os.environ.copy()
+    env["PYTHONPATH"] = os.environ["AOPS"]
+    env["AOPS"] = os.environ["AOPS"]
+    env["ACA_DATA"] = str(test_repo)
     result = subprocess.run(
         ["python", str(hook_script)],
         input=json.dumps(tool_input),
         text=True,
         capture_output=True,
         cwd=test_repo,
+        env=env,
         check=True,
     )
 
@@ -289,12 +305,17 @@ def test_hook_handles_git_failures_gracefully(
     }
 
     # Act
+    env = os.environ.copy()
+    env["PYTHONPATH"] = os.environ["AOPS"]
+    env["AOPS"] = os.environ["AOPS"]
+    env["ACA_DATA"] = str(test_repo)
     result = subprocess.run(
         ["python", str(hook_script)],
         input=json.dumps(tool_input),
         text=True,
         capture_output=True,
         cwd=test_repo,
+        env=env,
         check=False,
     )
 
