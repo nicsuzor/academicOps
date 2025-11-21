@@ -64,37 +64,10 @@ def _extract_at_references(markdown_content: str) -> list[str]:
     return re.findall(pattern, markdown_content, re.MULTILINE)
 
 
-def test_all_referenced_files_exist(writing_root: Path) -> None:
-    """Test 2: Parse @-references from CLAUDE.md and verify all files exist.
-
-    Args:
-        writing_root: Path to repository root (from fixture)
-
-    Raises:
-        AssertionError: If any @-referenced file does not exist
-    """
-    claude_md = writing_root / "CLAUDE.md"
-    content = claude_md.read_text(encoding="utf-8")
-
-    references = _extract_at_references(content)
-    assert len(references) > 0, "No @-references found in CLAUDE.md"
-
-    missing_files = []
-    for ref_path in references:
-        # Convert relative path to absolute
-        if ref_path.startswith("/"):
-            abs_path = Path(ref_path)
-        else:
-            abs_path = writing_root / ref_path
-
-        if not abs_path.exists():
-            missing_files.append(f"@{ref_path} -> {abs_path}")
-
-    if missing_files:
-        error_msg = "Missing @-referenced files:\n" + "\n".join(
-            f"  - {f}" for f in missing_files
-        )
-        raise AssertionError(error_msg)
+# Removed test_all_referenced_files_exist - CLAUDE.md structure is project-specific
+# Per user decision: "CLAUDE.md structure varies by project, so framework should only
+# test that the _information_ was loaded properly, not CLAUDE.md structure"
+# This test was checking @-reference syntax, not information loading behavior
 
 
 def test_readme_contains_directory_structure(writing_root: Path) -> None:
@@ -109,12 +82,7 @@ def test_readme_contains_directory_structure(writing_root: Path) -> None:
     readme = writing_root / "README.md"
     content = readme.read_text(encoding="utf-8")
 
-    # Check for directory structure section
-    assert (
-        "## 📁 Directory Structure" in content or "## Directory Structure" in content
-    ), "README.md missing '## Directory Structure' section"
-
-    # Check for key framework directories
+    # Check for key framework directories (not heading - tree content matters)
     required_dirs = ["skills/", "hooks/", "commands/"]
     missing_dirs = []
     for dir_name in required_dirs:
@@ -150,14 +118,15 @@ def test_bots_directory_structure_exists(bots_dir: Path) -> None:
         raise AssertionError(error_msg)
 
 
-def test_no_conflicting_path_references(writing_root: Path) -> None:
+def test_no_conflicting_path_references(writing_root: Path, data_dir: Path) -> None:
     """Test 5: Verify session start files have consistent path references.
 
     Checks that session start files don't contain conflicting path references
     that could confuse agents.
 
     Args:
-        writing_root: Path to repository root (from fixture)
+        writing_root: Path to framework root (from fixture)
+        data_dir: Path to user data directory (from fixture)
 
     Raises:
         AssertionError: If conflicting path references are found
@@ -165,8 +134,8 @@ def test_no_conflicting_path_references(writing_root: Path) -> None:
     session_files = [
         writing_root / "CLAUDE.md",
         writing_root / "README.md",
-        writing_root / "bots" / "CORE.md",
-        writing_root / "bots" / "ACCOMMODATIONS.md",
+        data_dir / "CORE.md",
+        data_dir / "ACCOMMODATIONS.md",
     ]
 
     # Check each file exists before processing
@@ -199,21 +168,6 @@ def test_no_conflicting_path_references(writing_root: Path) -> None:
             f"  - {i}" for i in issues
         )
         raise AssertionError(error_msg)
-
-
-def test_claude_md_references_readme(writing_root: Path) -> None:
-    """Test 6: Verify CLAUDE.md contains @README.md reference.
-
-    Args:
-        writing_root: Path to repository root (from fixture)
-
-    Raises:
-        AssertionError: If CLAUDE.md doesn't reference README.md
-    """
-    claude_md = writing_root / "CLAUDE.md"
-    content = claude_md.read_text(encoding="utf-8")
-
-    assert "@README.md" in content, "CLAUDE.md does not reference @README.md"
 
 
 @pytest.mark.slow

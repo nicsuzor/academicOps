@@ -41,11 +41,8 @@ class TestExcalidrawSkill:
             "# Excalidraw: Creating Visually Compelling Diagrams",
             "## When to Use This Skill",
             "## Core Visual Design Principles",
-            "## Color Strategy",
-            "## Typography & Text",
-            "## Shape Selection & Usage",
-            "## Arrows & Connectors",
-            "## Layout & Spatial Organization",
+            "## Technical Elements",  # Contains: colors, typography, shapes, arrows, layout
+            "## Process: Creating a Professional Diagram",
             "## Quality Checklist",
         ]
 

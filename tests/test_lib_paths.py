@@ -40,19 +40,14 @@ class TestPathResolution:
         assert isinstance(result, Path)
         assert result == test_dir.resolve()
 
-    def test_get_aops_root_fallback_on_invalid_aops(self, monkeypatch, tmp_path):
-        """Test that get_aops_root falls back to detection if AOPS is invalid."""
+    def test_get_aops_root_fails_on_invalid_aops(self, monkeypatch, tmp_path):
+        """Test that get_aops_root fails fast if AOPS is explicitly set but invalid (AXIOMS #5)."""
         nonexistent = tmp_path / "nonexistent"
         monkeypatch.setenv("AOPS", str(nonexistent))
 
-        # Should fall back to auto-detection
-        result = paths.get_aops_root()
-
-        assert isinstance(result, Path)
-        assert result.exists()
-        assert (result / "lib").is_dir()
-        # Should update AOPS to correct path
-        assert os.environ.get("AOPS") == str(result)
+        # Should fail fast (not fall back) when AOPS explicitly set to invalid path
+        with pytest.raises(RuntimeError, match="AOPS is set but path doesn't exist"):
+            paths.get_aops_root()
 
     def test_get_data_root_requires_env_var(self, monkeypatch):
         """Test that get_data_root fails without ACA_DATA env var."""

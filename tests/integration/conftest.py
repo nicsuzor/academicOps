@@ -17,6 +17,12 @@ import pytest
 from tests.paths import get_writing_root
 
 
+def _claude_cli_available() -> bool:
+    """Check if claude CLI command is available in PATH."""
+    import shutil
+    return shutil.which("claude") is not None
+
+
 def run_claude_headless(
     prompt: str,
     model: str | None = "haiku",
@@ -41,6 +47,15 @@ def run_claude_headless(
         - error (str, optional): Error message if execution failed
     """
     import os
+
+    # Check if claude CLI is available
+    if not _claude_cli_available():
+        return {
+            "success": False,
+            "output": "",
+            "result": {},
+            "error": "claude CLI not found in PATH - these tests require Claude Code CLI installed",
+        }
 
     # Build command
     cmd = ["claude", "-p", prompt, "--output-format", "json"]
@@ -126,7 +141,14 @@ def claude_headless():
         def test_something(claude_headless):
             result = claude_headless("What is 2+2?")
             assert result["success"]
+
+    Note:
+        Tests using this fixture will be skipped if claude CLI is not in PATH.
     """
+    # Skip test if claude CLI not available
+    if not _claude_cli_available():
+        pytest.skip("claude CLI not found in PATH - requires Claude Code CLI installed")
+
     return run_claude_headless
 
 

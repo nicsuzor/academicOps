@@ -6,10 +6,10 @@ Provides robust path resolution with automatic framework detection:
 - $AOPS: Framework root (preferred if set correctly)
 - $ACA_DATA: Shared memory vault (required for data access)
 
-AOPS Resolution Strategy (failsafe):
-1. Use $AOPS if set and valid
-2. Auto-detect from module location
-3. Check common installation locations
+AOPS Resolution Strategy (fail-fast when explicitly set):
+1. Use $AOPS if set (fail immediately if invalid - AXIOMS #5)
+2. Auto-detect from module location (only if $AOPS not set)
+3. Check common installation locations (only if $AOPS not set)
 4. Auto-set $AOPS when detected
 
 ACA_DATA Resolution (fail-fast):
@@ -24,12 +24,12 @@ from pathlib import Path
 
 def get_aops_root() -> Path:
     """
-    Get framework root directory with failsafe path resolution.
+    Get framework root directory with fail-fast validation.
 
     Resolution strategy:
-    1. Use $AOPS if set and valid
-    2. Detect from this module's location (lib/ -> parent is framework root)
-    3. Check common known locations
+    1. Use $AOPS if set (fail immediately if invalid - AXIOMS #5)
+    2. Detect from this module's location if $AOPS not set (lib/ -> parent)
+    3. Check common known locations if $AOPS not set
     4. Fail with clear error if none found
 
     Once found, sets $AOPS for consistency.
@@ -40,11 +40,20 @@ def get_aops_root() -> Path:
     Raises:
         RuntimeError: If framework directory cannot be found
     """
-    # Try $AOPS if set and valid
+    # Try $AOPS if set (fail-fast if invalid - AXIOMS #5)
     if aops := os.environ.get("AOPS"):
         aops_path = Path(aops).resolve()
-        if aops_path.exists() and (aops_path / "lib").is_dir():
-            return aops_path
+        if not aops_path.exists():
+            raise RuntimeError(
+                f"$AOPS is set but path doesn't exist: {aops_path}\n"
+                f"Fix by setting AOPS to valid path or unsetting it."
+            )
+        if not (aops_path / "lib").is_dir():
+            raise RuntimeError(
+                f"$AOPS is set but doesn't look like aOps framework (missing lib/): {aops_path}\n"
+                f"Fix by setting AOPS to framework root or unsetting it."
+            )
+        return aops_path
 
     # Detect from this module's location (lib/paths.py -> lib/ -> framework root)
     module_path = Path(__file__).parent  # lib/
