@@ -106,7 +106,12 @@ def main():
     additional_context = load_prompt_from_markdown()
     output_data: dict[str, Any] = {}
     if additional_context:
-        output_data["additionalContext"] = additional_context
+        output_data = {
+            "hookSpecificOutput": {
+                "hookEventName": "UserPromptSubmit",
+                "additionalContext": additional_context
+            }
+        }
 
     # Output JSON (continue execution)
     print(json.dumps(output_data))

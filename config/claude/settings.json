@@ -77,6 +77,11 @@
             "type": "command",
             "command": "PYTHONPATH=$AOPS uv run --no-project python $AOPS/hooks/log_userpromptsubmit.py",
             "timeout": 2000
+          },
+          {
+            "type": "command",
+            "command": "PYTHONPATH=$AOPS uv run --no-project python $AOPS/hooks/prompt_router.py",
+            "timeout": 2000
           }
         ]
       }

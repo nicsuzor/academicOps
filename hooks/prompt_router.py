@@ -33,19 +33,20 @@ def main():
     temp_file.write_text(json.dumps({"prompt": prompt}))
 
     # Return instruction to spawn classifier subagent
-    instruction = f"""BEFORE responding to the user's prompt, spawn a Haiku subagent to classify intent:
+    instruction = f"""ROUTER_ACTIVE: Before responding, consider which skill would help most with this prompt.
 
-Use Task tool with:
-- subagent_type: "haiku"
-- model: "haiku"
-- prompt: Read {temp_file} and classify the user's intent. Return JSON with:
-  - intent: one of framework/python/analysis/knowledge/task/other
-  - recommended_skills: list of skill names that would help
-  - reasoning: brief explanation
+Available skills: framework (hook/automation work), python-dev (Python code), analyst (data analysis), bmem (knowledge base).
 
-Then incorporate the skill recommendations into your response approach."""
+Prompt saved to: {temp_file}
 
-    output = {"additionalContext": instruction}
+If this prompt clearly matches a skill domain, mention it in your response."""
+
+    output = {
+        "hookSpecificOutput": {
+            "hookEventName": "UserPromptSubmit",
+            "additionalContext": instruction
+        }
+    }
     print(json.dumps(output))
     sys.exit(0)
 
