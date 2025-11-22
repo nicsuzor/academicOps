@@ -70,9 +70,13 @@ For each task file:
 
 **Phase 3A: Structure** (ignore aesthetics)
 - Map all discovered elements: goals → projects → tasks
-- **Ensure EVERY task connects to a goal** (via project)
-- Tasks without goal alignment get ⚠️ warning indicator and prominent "UNALIGNED" zone
-- Identify relationships and connections
+- **Use ONLY explicit connections** - NO guessing:
+  - Task → Project: ONLY if task has `project:` field in frontmatter
+  - Project → Goal: ONLY if goal file has `supported_by [[Project Name]]` in Relations
+- Tasks without EXPLICIT project field → Unaligned
+- Projects not EXPLICITLY claimed by a goal → Unaligned
+- **NEVER guess** connections based on task title, tags, or content
+- Unaligned items get ⚠️ warning indicator and prominent "UNALIGNED/TRIAGE" zone
 
 **Phase 3B: Visual Refinement** (make it organic and hand-drawn)
 
@@ -203,10 +207,12 @@ Create Excalidraw JSON structure with proper element types:
 
 Before completing, verify:
 
-**Goal alignment**:
-- [ ] EVERY task connects to a goal (via project)
+**Goal alignment (NO GUESSING)**:
+- [ ] Task → Project: ONLY from explicit `project:` frontmatter field
+- [ ] Project → Goal: ONLY from explicit `supported_by` in goal's Relations
+- [ ] NO inferred connections from titles, tags, or content
 - [ ] Unaligned tasks shown prominently with ⚠️ warning
-- [ ] No orphan tasks floating without connections
+- [ ] Unaligned projects (not claimed by any goal) also shown with ⚠️
 
 **Aesthetic**:
 - [ ] `roughness: 2` on all elements (maximum sketchiness)
