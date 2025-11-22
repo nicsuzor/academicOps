@@ -77,26 +77,49 @@ For each task file:
 **Phase 3B: Visual Refinement** (make it organic and hand-drawn)
 
 **Aesthetic Requirements** (CRITICAL):
-- `roughness: 2` - maximum sketchiness
+- `roughness: 2` - maximum sketchiness for hand-drawn feel
 - `fontFamily: 1` - Virgil/xkcd handwritten font
-- `fillStyle: "hachure"` - sketchy hatching
+- `fillStyle: "solid"` - **SOLID fills** (NOT hachure) for text readability
+- **Dark text ALWAYS** - use `#1a1a1a` text, NEVER white text
 - **Curved arrows** with multiple points (3+ points per arrow)
 - **NO rigid alignment** - embrace asymmetry and organic positioning
 
-**Visual Hierarchy**:
-- **Goals**: HUGE (XL 48px+), central hub nodes, muted gold
-- **Projects**: Large (L 28-32px), radially distributed AROUND goals (360°)
-- **Outstanding tasks** (active, blocked, queued, inbox): Medium (M 18-20px), PROMINENT
-  - Include deadline directly in box label if present: "Review paper (Nov 25)"
-  - Include priority indicator: "P0: Fix scripts"
-- **Completed tasks**: SMALL (S 12-14px), gray, de-emphasized
+**Star/Orbital Layout** (CRITICAL - like solar systems):
+- **Goals** are "SUNS" at center of their own system - HUGE, prominent
+- **Projects** ORBIT their goal (inner ring, 200-300px from goal center)
+- **Tasks** ORBIT their project (outer ring, 100-150px from project center)
+- Each goal is a separate "solar system" spread across the canvas
+- **EVERY element has an arrow** connecting it to its parent
+- Arrows must be ACTUALLY BOUND (`startBinding`/`endBinding` with valid elementIds)
 
-**Color Strategy** (status-based, goal-based):
-- **Goal colors**: Each goal gets its own theme color
-- **Red border/accent**: Blocked tasks, urgent deadlines, ⚠️ unaligned tasks
-- **Green**: Active/in-progress
-- **Yellow/Orange**: Queued, approaching deadline
-- **Gray**: Completed (de-emphasized)
+**Visual Hierarchy**:
+- **Goals**: HUGE (XL 48px+), central hub nodes
+- **Projects**: Large (L 28-32px), orbiting their parent goal
+- **Outstanding tasks** (inbox, active, blocked, queued): Medium (M 16-18px)
+  - Include deadline in label: "Review paper (Nov 25)"
+  - Include priority: "P1: Fix scripts"
+- **Completed tasks**: SMALL (S 12-14px), gray, peripheral
+
+**Color Strategy** (GENTLE MUTED COLORS - see theme-colors.md):
+Use these colors - they are MUTED and professional, NOT harsh:
+
+| Element | Background | Stroke | Text |
+|---------|------------|--------|------|
+| Goals | `#c9b458` (muted gold) 30% = `#c9b4584d` | `#a89968` | `#1a1a1a` |
+| Projects | `#8fbc8f` (soft green) 25% = `#8fbc8f40` | `#6a9a6a` | `#1a1a1a` |
+| Active tasks | `#8fbc8f` 20% = `#8fbc8f33` | `#8fbc8f` | `#1a1a1a` |
+| Blocked tasks | `#ff6666` 15% = `#ff666626` | `#cc5555` | `#1a1a1a` |
+| Queued/Inbox | `#7a9fbf` (muted blue) 20% = `#7a9fbf33` | `#7a9fbf` | `#1a1a1a` |
+| Completed | `#f1f3f5` (very light gray) | `#ced4da` | `#868e96` |
+| ⚠️ Unaligned | `#ffa500` 15% = `#ffa50026` | `#cc8400` (dashed) | `#1a1a1a` |
+
+**COLOR WARNINGS** (avoid these mistakes):
+- ❌ NEVER use bright harsh red (`#e03131`, `#ff0000`)
+- ❌ NEVER use harsh orange (`#f59f00`)
+- ❌ NEVER use white text (`#ffffff`) on ANY background
+- ❌ NEVER use hachure/crosshatch fills - they make text unreadable
+- ✅ ALWAYS use dark text `#1a1a1a` on light backgrounds
+- ✅ ALWAYS use SOLID fills with low opacity for subtle colors
 
 **Layout Strategy** (MIND MAP, not org chart):
 - **Radial expansion** - goals at center, projects around them, tasks around projects
@@ -129,7 +152,7 @@ Create Excalidraw JSON structure with proper element types:
 - `x`, `y`: Position coordinates
 - `width`, `height`: Dimensions
 - `strokeColor`, `backgroundColor`: Colors (hex codes)
-- `fillStyle`: `"hachure"` (sketchy hatching - REQUIRED)
+- `fillStyle`: `"solid"` (SOLID fills for readability - NOT hachure)
 - `fontFamily`: `1` (Virgil handwritten font - REQUIRED)
 - `fontSize`: Size based on hierarchy
 - `roughness`: `2` (maximum sketchiness - REQUIRED)
@@ -188,8 +211,10 @@ Before completing, verify:
 **Aesthetic**:
 - [ ] `roughness: 2` on all elements (maximum sketchiness)
 - [ ] `fontFamily: 1` (Virgil) for all text
-- [ ] `fillStyle: "hachure"` (sketchy hatching)
+- [ ] `fillStyle: "solid"` (NOT hachure - for text readability)
+- [ ] Dark text `#1a1a1a` on ALL elements (never white)
 - [ ] Curved arrows with 3+ points
+- [ ] MUTED colors from theme-colors.md (no harsh red/orange)
 
 **Visual hierarchy**:
 - [ ] Goals HUGE (48px+), central
@@ -197,12 +222,13 @@ Before completing, verify:
 - [ ] Outstanding tasks Medium (18-20px), deadlines/priorities IN label
 - [ ] Completed tasks SMALL (12-14px), gray, peripheral
 
-**Layout**:
-- [ ] Radial/clustered (NOT top-to-bottom)
+**Layout (Star/Orbital)**:
+- [ ] Goals as "suns" - central hubs of their own systems
+- [ ] Projects ORBIT goals (200-300px radius)
+- [ ] Tasks ORBIT projects (100-150px radius)
 - [ ] 360° distribution - children all around parents
-- [ ] NO rigid alignment on axes
 - [ ] Arrows route AROUND boxes, never through
-- [ ] Generous whitespace (100-150px between clusters)
+- [ ] Generous whitespace between goal "solar systems"
 
 **Bindings**:
 - [ ] All text bound to containers (`containerId`)
