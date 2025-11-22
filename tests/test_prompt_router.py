@@ -95,3 +95,33 @@ def test_router_continues_on_classifier_failure():
         result = route_prompt(input_data)
         # Should return empty dict, not raise
         assert result == {}
+
+
+@pytest.mark.slow
+@pytest.mark.integration
+def test_router_latency_under_5_seconds():
+    """Test that full router execution completes under 5 seconds.
+
+    This test makes a real API call to verify end-to-end latency.
+    Requires ANTHROPIC_API_KEY environment variable.
+    """
+    import os
+    import time
+
+    from hooks.prompt_router import route_prompt
+
+    # Skip if no API key
+    if not os.environ.get("ANTHROPIC_API_KEY"):
+        pytest.skip("ANTHROPIC_API_KEY not set")
+
+    input_data = {"prompt": "help me debug this Python code"}
+
+    start = time.perf_counter()
+    result = route_prompt(input_data)
+    elapsed = time.perf_counter() - start
+
+    # Should complete in under 5 seconds
+    assert elapsed < 5.0, f"Router took {elapsed:.2f}s, expected <5s"
+
+    # Should return valid result
+    assert isinstance(result, dict)
