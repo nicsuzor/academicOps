@@ -7,7 +7,7 @@ Uses Haiku model to classify user prompts and recommend skills.
 import json
 import os
 
-from anthropic import Anthropic
+from anthropic import Anthropic, APITimeoutError
 
 MODEL = "claude-3-5-haiku-latest"
 TIMEOUT = 5.0
@@ -60,24 +60,32 @@ def classify_prompt(prompt: str, client=None) -> dict:
 
         client = Anthropic(api_key=api_key, timeout=TIMEOUT)
 
-    response = client.messages.create(
-        model=MODEL,
-        max_tokens=256,
-        messages=[
-            {"role": "user", "content": CLASSIFICATION_PROMPT.format(prompt=prompt)}
-        ],
-    )
+    try:
+        response = client.messages.create(
+            model=MODEL,
+            max_tokens=256,
+            messages=[
+                {"role": "user", "content": CLASSIFICATION_PROMPT.format(prompt=prompt)}
+            ],
+        )
 
-    response_text = response.content[0].text
-    result = json.loads(response_text)
+        response_text = response.content[0].text
+        result = json.loads(response_text)
 
-    intent = result.get("intent", "other")
-    confidence = float(result.get("confidence", 0.5))
-    reasoning = result.get("reasoning", "")
+        intent = result.get("intent", "other")
+        confidence = float(result.get("confidence", 0.5))
+        reasoning = result.get("reasoning", "")
 
-    return {
-        "intent": intent,
-        "confidence": confidence,
-        "recommended_skills": INTENT_TO_SKILLS.get(intent, []),
-        "reasoning": reasoning,
-    }
+        return {
+            "intent": intent,
+            "confidence": confidence,
+            "recommended_skills": INTENT_TO_SKILLS.get(intent, []),
+            "reasoning": reasoning,
+        }
+    except APITimeoutError:
+        return {
+            "intent": "other",
+            "confidence": 0.0,
+            "recommended_skills": [],
+            "reasoning": "Classification timeout - returning default",
+        }

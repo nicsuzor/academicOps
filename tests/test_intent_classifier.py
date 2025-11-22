@@ -69,3 +69,58 @@ def test_classify_prompt_returns_structured_result():
     assert result["confidence"] == 0.9
     assert result["recommended_skills"] == ["framework"]
     assert "Hook debugging" in result["reasoning"]
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize(
+    "intent,expected_skills",
+    [
+        ("framework", ["framework"]),
+        ("python", ["python-dev"]),
+        ("analysis", ["analyst"]),
+        ("knowledge", ["bmem"]),
+        ("task", ["tasks"]),
+        ("other", []),
+    ],
+)
+def test_intent_maps_to_correct_skills(intent: str, expected_skills: list):
+    """Test that each intent maps to the correct skill list."""
+    from hooks.intent_classifier import classify_prompt
+
+    mock_response = MagicMock()
+    mock_response.content = [
+        MagicMock(
+            text=json.dumps({
+                "intent": intent,
+                "confidence": 0.85,
+                "reasoning": f"Classified as {intent}"
+            })
+        )
+    ]
+
+    mock_client = MagicMock()
+    mock_client.messages.create.return_value = mock_response
+
+    result = classify_prompt("test prompt", client=mock_client)
+
+    assert result["intent"] == intent
+    assert result["recommended_skills"] == expected_skills
+
+
+@pytest.mark.integration
+def test_classifier_handles_timeout_gracefully():
+    """Test that classifier returns fallback result on timeout."""
+    from anthropic import APITimeoutError
+
+    from hooks.intent_classifier import classify_prompt
+
+    mock_client = MagicMock()
+    mock_client.messages.create.side_effect = APITimeoutError(request=MagicMock())
+
+    result = classify_prompt("test prompt", client=mock_client)
+
+    # Should return fallback result, not raise
+    assert result["intent"] == "other"
+    assert result["confidence"] == 0.0
+    assert result["recommended_skills"] == []
+    assert "timeout" in result["reasoning"].lower()
