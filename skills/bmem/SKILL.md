@@ -133,6 +133,17 @@ We chose this approach because it integrates with existing CI/CD...
 
 **CRITICAL**: All bmem operations use MCP tools (`mcp__bmem__*`). Never write data/ files directly.
 
+### CLI Quick Reference (for debugging/testing)
+
+```bash
+uvx basic-memory --help                                      # List all commands
+uvx basic-memory tool search-notes "query" --project main    # Search
+uvx basic-memory tool read-note "permalink" --project main   # Read
+uvx basic-memory tool recent-activity --project main         # Recent activity
+```
+
+**Known issue**: Multi-term queries (5+ words) may return 0 results. Use simpler queries.
+
 **Project management**:
 - Start every session with `mcp__bmem__list_memory_projects()` to discover projects
 - Store user's project choice for entire session

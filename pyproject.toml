@@ -2,10 +2,12 @@
 name = "academicops"
 version = "0.1.0"
 description = "Academic Operations Framework"
-requires-python = ">=3.12"
+requires-python = ">=3.11"
 dependencies = [
     "pyyaml>=6.0",
     "pydantic>=2.0",
+    "fastmcp>=2.13.1",
+    "pytest-xdist>=3.8.0",
 ]
 
 [project.optional-dependencies]

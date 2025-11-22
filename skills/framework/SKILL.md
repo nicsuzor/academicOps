@@ -138,6 +138,17 @@ The automation framework is built incrementally using a rigorous test-first appr
 
 **Key principle**: Build bit-by-bit with each piece working and tested, while progressing toward sophisticated end state.
 
+### Design Principle: Layered Instructions
+
+Mandatory agent instructions should be **short and contain fundamental truths** - more than a bare link, less than a full guide.
+
+- **Reference SSoT**: Point to detailed authoritative documentation (single source of truth)
+- **Not obligatory upfront**: Agents are NOT required to read referenced docs at session start
+- **Read when relevant**: Agents SHOULD read documentation when it's relevant to their current task
+- **Hooks as fallback**: When agents consistently fail to read critical docs, use hooks to surface the info
+
+This principle guides how we write skills, CLAUDE.md files, and other agent instructions.
+
 ### Using the Meta-Framework
 
 **When starting new automation work**:

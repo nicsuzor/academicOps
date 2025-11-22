@@ -86,6 +86,22 @@ $AOPS/
 └── config/              # Configuration files
 ```
 
+### Claude Code Debug Locations
+
+```
+~/.claude/
+├── debug/               # Human-readable session logs (session-id.txt, [ERROR]/[DEBUG]/[INFO] tagged)
+├── projects/            # JSONL session data per repository
+│   └── -repo-path/      # Path encoded with dashes (e.g., -home-nic-writing/)
+│       ├── *.jsonl      # Main session messages (user/assistant turns)
+│       └── agent-*.jsonl # Agent subprocess logs (tool calls, results, errors with is_error flag)
+├── settings.json        # User settings (hooks, permissions, deny rules)
+└── statsig/             # Feature flags and telemetry
+
+/tmp/claude-sessions/
+└── *-hooks.jsonl        # Hook execution logs (which hooks fired, inputs, hook_results)
+```
+
 ---
 
 ## Knowledge Base (bmem)
