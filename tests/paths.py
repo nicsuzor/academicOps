@@ -10,23 +10,9 @@ from pathlib import Path
 
 from lib.paths import (
     get_aops_root as get_bots_dir,  # Framework root IS the old bots dir
-    get_data_root,
     get_data_root as get_data_dir,
     get_hooks_dir,
 )
-
-
-def get_writing_root() -> Path:
-    """
-    Get writing repository root (parent of data directory).
-
-    Returns the parent directory of $ACA_DATA, which is the writing repository root.
-    For example, if $ACA_DATA=/home/nic/writing/data, returns /home/nic/writing.
-
-    Returns:
-        Path: Absolute path to writing repository root
-    """
-    return get_data_root().parent
 
 
 def get_hook_script(name: str) -> Path:
@@ -49,9 +35,7 @@ def get_hook_script(name: str) -> Path:
     return hook_path
 
 
-# For backwards compatibility, also export the main functions
 __all__ = [
-    "get_writing_root",
     "get_bots_dir",
     "get_data_dir",
     "get_hooks_dir",

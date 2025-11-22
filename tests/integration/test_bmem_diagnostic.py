@@ -14,7 +14,7 @@ from pathlib import Path
 
 import pytest
 
-from tests.paths import get_writing_root
+from tests.paths import get_data_dir
 
 
 @pytest.mark.integration
@@ -57,7 +57,7 @@ def test_bmem_writes_to_aca_data_not_tmp(claude_headless):
     assert result["success"], f"Claude execution failed: {result.get('error')}"
 
     # Assert: File was created in $ACA_DATA, not /tmp
-    aca_data = Path(os.environ.get("ACA_DATA", ""))
+    aca_data = get_data_dir()
     assert aca_data.exists(), f"ACA_DATA not found: {aca_data}"
 
     # Search for created file in $ACA_DATA
@@ -92,12 +92,11 @@ def test_bmem_writes_to_aca_data_not_tmp(claude_headless):
                 )
 
     # Diagnostic output
-    writing_root = get_writing_root()
-    relative_path = created_file_in_aca_data.relative_to(writing_root)
+    relative_path = created_file_in_aca_data.relative_to(aca_data)
     print(f"\nDiagnostic Results:")
     print(f"  Marker: {unique_marker}")
     print(f"  Found in $ACA_DATA: Yes")
-    print(f"  Writing root: {writing_root}")
+    print(f"  ACA_DATA: {aca_data}")
     print(f"  Relative path: {relative_path}")
     print(f"  Absolute path: {created_file_in_aca_data}")
     print(f"  Found in /tmp: No (correct)")

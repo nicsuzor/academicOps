@@ -40,18 +40,6 @@ logger = logging.getLogger(__name__)
 # Initialize FastMCP server
 mcp = FastMCP("task-manager")
 
-# Global data directory (set once at startup)
-DATA_DIR: Path | None = None
-
-
-def get_or_init_data_dir() -> Path:
-    """Get data directory, initializing if needed."""
-    global DATA_DIR
-    if DATA_DIR is None:
-        DATA_DIR = task_ops.get_data_dir()
-        logger.info(f"Using data directory: {DATA_DIR}")
-    return DATA_DIR
-
 
 @mcp.tool()
 def view_tasks(
@@ -84,7 +72,7 @@ def view_tasks(
         TaskDirectoryNotFoundError: If data directory doesn't exist
     """
     try:
-        data_dir = get_or_init_data_dir()
+        data_dir = task_ops.get_data_dir()
 
         # Validate request
         request = ViewTasksRequest(
@@ -219,7 +207,7 @@ def archive_tasks(identifiers: list[str]) -> dict:
         ValidationError: If identifiers list is empty
     """
     try:
-        data_dir = get_or_init_data_dir()
+        data_dir = task_ops.get_data_dir()
 
         # Validate request
         request = ArchiveTasksRequest(identifiers=identifiers)
@@ -295,7 +283,7 @@ def unarchive_tasks(identifiers: list[str]) -> dict:
         ValidationError: If identifiers list is empty
     """
     try:
-        data_dir = get_or_init_data_dir()
+        data_dir = task_ops.get_data_dir()
 
         # Validate request
         request = UnarchiveTasksRequest(identifiers=identifiers)
@@ -372,7 +360,7 @@ def create_task(
         ValidationError: If title is empty or priority out of range
     """
     try:
-        data_dir = get_or_init_data_dir()
+        data_dir = task_ops.get_data_dir()
 
         # Parse due date if provided
         due_datetime = None
@@ -486,7 +474,7 @@ def modify_task(
         )
     """
     try:
-        data_dir = get_or_init_data_dir()
+        data_dir = task_ops.get_data_dir()
 
         # Parse due date if provided
         due_datetime = None

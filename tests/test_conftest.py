@@ -7,31 +7,6 @@ and return consistent paths for the aOps framework structure.
 from pathlib import Path
 
 
-def test_writing_root_fixture(writing_root: Path) -> None:
-    """Test writing_root fixture returns valid Path to framework root.
-
-    Args:
-        writing_root: Fixture providing path to framework root (AOPS)
-
-    Tests:
-        - Fixture returns a Path object
-        - Path exists on filesystem
-        - Path is a directory
-        - Path contains expected marker files (AXIOMS.md, CLAUDE.md)
-    """
-    assert isinstance(writing_root, Path), "writing_root must be a Path object"
-    assert writing_root.exists(), f"writing_root does not exist: {writing_root}"
-    assert writing_root.is_dir(), f"writing_root is not a directory: {writing_root}"
-
-    # Verify this is the actual framework root
-    assert (
-        writing_root / "AXIOMS.md"
-    ).exists(), f"AXIOMS.md not found in writing_root: {writing_root}"
-    assert (
-        writing_root / "CLAUDE.md"
-    ).exists(), f"CLAUDE.md not found in writing_root: {writing_root}"
-
-
 def test_bots_dir_fixture(bots_dir: Path) -> None:
     """Test bots_dir fixture returns valid Path to framework root.
 
@@ -59,7 +34,7 @@ def test_data_dir_fixture(data_dir: Path) -> None:
     """Test data_dir fixture returns valid Path to data/ directory.
 
     Args:
-        data_dir: Fixture providing path to data/ directory
+        data_dir: Fixture providing path to data/ directory ($ACA_DATA)
 
     Tests:
         - Fixture returns a Path object
@@ -100,7 +75,6 @@ def test_hooks_dir_fixture(hooks_dir: Path) -> None:
 
 
 def test_fixture_consistency(
-    writing_root: Path,
     bots_dir: Path,
     data_dir: Path,
     hooks_dir: Path,
@@ -108,27 +82,19 @@ def test_fixture_consistency(
     """Test all fixtures return consistent paths.
 
     Args:
-        writing_root: Fixture providing framework root (AOPS) - legacy alias
-        bots_dir: Fixture providing framework root (AOPS) - legacy alias
+        bots_dir: Fixture providing framework root (AOPS)
         data_dir: Fixture providing data directory (ACA_DATA)
         hooks_dir: Fixture providing hooks/ directory
 
     Tests:
-        - writing_root and bots_dir point to same location (both return AOPS)
+        - bots_dir points to framework root
         - hooks_dir is child of framework root
-        - data_dir is separate (ACA_DATA, not child of AOPS)
         - All paths are absolute
     """
     # All paths should be absolute
-    assert writing_root.is_absolute(), "writing_root must be absolute path"
     assert bots_dir.is_absolute(), "bots_dir must be absolute path"
     assert data_dir.is_absolute(), "data_dir must be absolute path"
     assert hooks_dir.is_absolute(), "hooks_dir must be absolute path"
-
-    # Verify legacy aliases: writing_root and bots_dir both return framework root
-    assert (
-        writing_root == bots_dir
-    ), f"writing_root and bots_dir should be the same (both AOPS): {writing_root} != {bots_dir}"
 
     # Verify hooks_dir is child of framework root
     assert (

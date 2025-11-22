@@ -146,9 +146,8 @@ class TestViewTasks:
         for task in result["tasks"]:
             assert "body" not in task or task["body"] is None
 
-    def test_view_tasks_empty_directory(self, tmp_path: Path):
+    def test_view_tasks_empty_directory(self, tmp_path: Path, monkeypatch):
         """Test viewing tasks when no tasks exist."""
-        from skills.tasks import server
         from skills.tasks.server import view_tasks
 
         empty_dir = tmp_path / "empty_data"
@@ -156,35 +155,29 @@ class TestViewTasks:
         (empty_dir / "tasks/queue").mkdir(parents=True)
         (empty_dir / "tasks/archived").mkdir(parents=True)
 
-        # Set server's global DATA_DIR for this test
-        original_data_dir = server.DATA_DIR
-        server.DATA_DIR = empty_dir
-        try:
-            result = view_tasks.fn()
+        # Set ACA_DATA to empty directory
+        monkeypatch.setenv("ACA_DATA", str(empty_dir))
 
-            assert result["success"] is True
-            assert result["total_tasks"] == 0
-            assert len(result["tasks"]) == 0
-        finally:
-            server.DATA_DIR = original_data_dir
+        result = view_tasks.fn()
 
-    def test_view_tasks_invalid_data_dir(self, tmp_path: Path):
-        """Test viewing tasks with non-existent directory returns empty results."""
-        from skills.tasks import server
+        assert result["success"] is True
+        assert result["total_tasks"] == 0
+        assert len(result["tasks"]) == 0
+
+    def test_view_tasks_invalid_data_dir(self, tmp_path: Path, monkeypatch):
+        """Test viewing tasks with non-existent directory returns error."""
         from skills.tasks.server import view_tasks
 
-        # Set server's global DATA_DIR to new empty path
+        # Set ACA_DATA to non-existent path
         empty_dir = tmp_path / "new_data_dir"
-        original_data_dir = server.DATA_DIR
-        server.DATA_DIR = empty_dir
-        try:
-            result = view_tasks.fn()
+        monkeypatch.setenv("ACA_DATA", str(empty_dir))
 
-            # Should succeed with 0 tasks (gracefully handles missing dirs)
-            assert result["success"] is True
-            assert result["total_tasks"] == 0
-        finally:
-            server.DATA_DIR = original_data_dir
+        result = view_tasks.fn()
+
+        # Should fail with error when data directory doesn't exist
+        assert result["success"] is False
+        assert "message" in result
+        assert "not found" in result["message"].lower()
 
 
 class TestArchiveTasks:

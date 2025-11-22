@@ -18,7 +18,7 @@ import pytest
 
 @pytest.mark.integration
 @pytest.mark.slow
-def test_task_skill_scripts_discoverable(claude_headless, writing_root):
+def test_task_skill_scripts_discoverable(claude_headless, data_dir):
     """Test that task skill scripts are found and executable from writing repo.
 
     Verifies:
@@ -37,7 +37,7 @@ def test_task_skill_scripts_discoverable(claude_headless, writing_root):
 
     result = claude_headless(
         prompt=prompt,
-        cwd=writing_root,
+        cwd=data_dir,
         timeout_seconds=180,
         permission_mode="plan",
     )
@@ -97,7 +97,7 @@ def test_skill_scripts_exist_via_symlink():
 
 @pytest.mark.integration
 @pytest.mark.slow
-def test_task_script_runs_from_writing_repo(writing_root):
+def test_task_script_runs_from_writing_repo(data_dir):
     """Test that task scripts execute correctly from writing repo.
 
     Verifies:
@@ -126,7 +126,7 @@ def test_task_script_runs_from_writing_repo(writing_root):
     # Execute from writing repo
     result = subprocess.run(
         cmd,
-        cwd=writing_root,
+        cwd=data_dir,
         capture_output=True,
         text=True,
         timeout=30,
@@ -147,7 +147,7 @@ def test_task_script_runs_from_writing_repo(writing_root):
 
 @pytest.mark.integration
 @pytest.mark.slow
-def test_claude_finds_scripts_without_search(claude_headless, writing_root):
+def test_claude_finds_scripts_without_search(claude_headless, data_dir):
     """Test that Claude doesn't waste time searching for scripts in CWD.
 
     Verifies:
@@ -164,7 +164,7 @@ def test_claude_finds_scripts_without_search(claude_headless, writing_root):
 
     result = claude_headless(
         prompt=prompt,
-        cwd=writing_root,
+        cwd=data_dir,
         timeout_seconds=120,
         permission_mode="plan",
     )

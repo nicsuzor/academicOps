@@ -66,9 +66,9 @@ def test_script_execution_from_writing():
         print("⚠️  SKIP: ACA_DATA not set, cannot test writing repo")
         return True
 
-    writing_root = Path(aca_data).parent
-    if not writing_root.exists():
-        print(f"⚠️  SKIP: Writing root does not exist: {writing_root}")
+    data_dir = Path(aca_data)
+    if not data_dir.exists():
+        print(f"⚠️  SKIP: Writing root does not exist: {data_dir}")
         return True
 
     # Build command
@@ -84,14 +84,14 @@ def test_script_execution_from_writing():
     env = os.environ.copy()
     env["PYTHONPATH"] = aops
 
-    print(f"  Running from: {writing_root}")
+    print(f"  Running from: {data_dir}")
     print(f"  Command: {' '.join(cmd)}")
 
     # Execute
     try:
         result = subprocess.run(
             cmd,
-            cwd=writing_root,
+            cwd=data_dir,
             capture_output=True,
             text=True,
             timeout=30,

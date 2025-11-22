@@ -19,7 +19,7 @@ from pathlib import Path
 import pytest
 
 
-def test_settings_json_discoverable_by_claude(writing_root: Path) -> None:
+def test_settings_json_discoverable_by_claude(bots_dir: Path) -> None:
     """Test that Claude Code can discover settings.json at expected locations.
 
     Claude Code looks for settings.json at:
@@ -30,14 +30,14 @@ def test_settings_json_discoverable_by_claude(writing_root: Path) -> None:
     with SessionStart hooks defined.
 
     Args:
-        writing_root: Path to repository root (from fixture)
+        bots_dir: Path to framework root $AOPS (from fixture)
 
     Raises:
         AssertionError: If settings.json is not discoverable or invalid
     """
     # Define expected locations where Claude Code looks for settings.json
     user_settings = Path.home() / ".claude" / "settings.json"
-    project_settings = writing_root / ".claude" / "settings.json"
+    project_settings = bots_dir / ".claude" / "settings.json"
 
     # Check if either location exists
     user_exists = user_settings.exists()

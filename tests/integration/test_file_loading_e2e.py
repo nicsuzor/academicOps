@@ -20,10 +20,10 @@ import pytest
     "context_name,get_cwd",
     [
         ("aops_repo", lambda: __import__("lib.paths", fromlist=["get_aops_root"]).get_aops_root()),
-        ("writing_repo", lambda: __import__("tests.paths", fromlist=["get_writing_root"]).get_writing_root()),
+        ("data_dir", lambda: __import__("tests.paths", fromlist=["get_data_dir"]).get_data_dir()),
         ("temp_dir", lambda: Path("/tmp")),
     ],
-    ids=["aops_repo", "writing_repo", "temp_dir"],
+    ids=["aops_repo", "data_dir", "temp_dir"],
 )
 def test_axioms_content_actually_loaded(claude_headless: Any, context_name: str, get_cwd: Any) -> None:
     """Verify AXIOMS.md content is actually loaded, not just referenced.

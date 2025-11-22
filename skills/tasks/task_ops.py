@@ -45,14 +45,15 @@ def get_data_dir(data_dir_override: Path | None = None) -> Path:
     if data_dir_override:
         data_dir = data_dir_override
     else:
-        aca = os.environ.get("ACA")
-        data_dir = Path(aca) / "data" if aca else Path.cwd() / "data"
+        # Use ACA_DATA environment variable
+        aca_data = os.environ.get("ACA_DATA")
+        if not aca_data:
+            msg = "ACA_DATA environment variable not set"
+            raise TaskDirectoryNotFoundError(msg)
+        data_dir = Path(aca_data)
 
     if not data_dir.exists():
-        msg = (
-            f"Data directory not found: {data_dir}. "
-            f"Expected $ACA/data or ./data to exist."
-        )
+        msg = f"Data directory not found: {data_dir}. Set $ACA_DATA to valid path."
         raise TaskDirectoryNotFoundError(msg)
 
     return data_dir

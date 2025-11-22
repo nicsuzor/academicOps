@@ -4,24 +4,11 @@ Provides fixtures for common paths and test setup.
 All paths resolve using AOPS and ACA_DATA environment variables.
 """
 
-import os
 from pathlib import Path
 
 import pytest
 
-from .paths import get_bots_dir, get_data_dir, get_hooks_dir, get_writing_root
-
-
-@pytest.fixture
-def writing_root() -> Path:
-    """Return Path to framework root (AOPS).
-
-    Legacy alias - actually returns framework root, not writing repo.
-
-    Returns:
-        Path: Absolute path to framework root ($AOPS)
-    """
-    return get_writing_root()
+from .paths import get_bots_dir, get_data_dir, get_hooks_dir
 
 
 @pytest.fixture
@@ -61,7 +48,7 @@ def test_data_dir(tmp_path: Path, monkeypatch) -> Path:
     """Create temporary data directory structure for task tests.
 
     Creates the standard task directory structure in a temp location
-    and sets the ACA and ACA_DATA environment variables to point to it.
+    and sets the ACA_DATA environment variable to point to it.
     Also creates sample task files for tests that need them.
 
     Args:
@@ -87,15 +74,8 @@ def test_data_dir(tmp_path: Path, monkeypatch) -> Path:
         inbox_dir, "sample-task-3", "Low Priority Task", 3, "project-a"
     )
 
-    # Set ACA environment variable to parent (tmp_path) so $ACA/data works
-    monkeypatch.setenv("ACA", str(tmp_path))
-    # Also set ACA_DATA for consistency with other parts of the system
+    # Set ACA_DATA - server reads this directly via task_ops.get_data_dir()
     monkeypatch.setenv("ACA_DATA", str(data_dir))
-
-    # Reset server's cached DATA_DIR so it picks up the new ACA_DATA
-    # This is necessary because the server caches DATA_DIR globally
-    from skills.tasks import server
-    server.DATA_DIR = None
 
     return tasks_dir
 

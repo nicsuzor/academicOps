@@ -120,11 +120,11 @@ def test_claude_headless_json_output(claude_headless) -> None:
 
 @pytest.mark.slow
 @pytest.mark.integration
-def test_claude_headless_cwd(claude_headless, writing_root) -> None:  # noqa: ARG001
-    """Test that cwd defaults to writing_root.
+def test_claude_headless_cwd(claude_headless, data_dir) -> None:  # noqa: ARG001
+    """Test that cwd defaults to data_dir.
 
     Verifies:
-    - Working directory is set to writing_root by default
+    - Working directory is set to data_dir by default
     - Commands execute in correct directory context
     """
     # Ask Claude to report the current working directory
@@ -133,14 +133,14 @@ def test_claude_headless_cwd(claude_headless, writing_root) -> None:  # noqa: AR
     assert result["success"] is True, "Directory check should succeed"
     assert "output" in result, "Result should include output"
 
-    # The output should reference the writing_root path
+    # The output should reference the data_dir path
     # Note: This is a weak test since we can't reliably parse the exact cwd
     # from Claude's natural language response, but we verify execution succeeded
 
 
 @pytest.mark.slow
 @pytest.mark.integration
-def test_run_claude_headless_direct(writing_root) -> None:
+def test_run_claude_headless_direct(data_dir) -> None:
     """Test calling run_claude_headless function directly.
 
     Verifies:
@@ -153,7 +153,7 @@ def test_run_claude_headless_direct(writing_root) -> None:
 
     result = run_claude_headless(
         prompt="What is 7+7?",
-        cwd=writing_root,
+        cwd=data_dir,
         timeout_seconds=60,
         permission_mode="plan",
     )

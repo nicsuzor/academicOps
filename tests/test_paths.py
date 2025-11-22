@@ -15,56 +15,7 @@ from tests.paths import (
     get_data_dir,
     get_hook_script,
     get_hooks_dir,
-    get_writing_root,
 )
-
-
-class TestGetWritingRoot:
-    """Tests for get_writing_root() function - returns parent of ACA_DATA."""
-
-    def test_get_writing_root_from_aca_data(self, tmp_path, monkeypatch):
-        """Test get_writing_root() uses ACA_DATA env var (returns parent)."""
-        # Arrange
-        writing_root = tmp_path / "writing"
-        data_dir = writing_root / "data"
-        data_dir.mkdir(parents=True)
-        monkeypatch.setenv("ACA_DATA", str(data_dir))
-
-        # Act
-        result = get_writing_root()
-
-        # Assert
-        assert result == writing_root
-        assert isinstance(result, Path)
-
-    def test_get_writing_root_uses_real_aca_data(self):
-        """Test get_writing_root() works with real ACA_DATA."""
-        # Act - should use real ACA_DATA env var
-        result = get_writing_root()
-
-        # Assert
-        assert isinstance(result, Path)
-        assert result.exists()
-        # Writing root should contain data/ subdirectory
-        assert (result / "data").exists()
-
-    def test_get_writing_root_fails_with_invalid_aca_data(self, monkeypatch):
-        """Test RuntimeError when ACA_DATA points to non-existent path."""
-        # Arrange
-        monkeypatch.setenv("ACA_DATA", "/nonexistent/path")
-
-        # Act & Assert
-        with pytest.raises(RuntimeError):
-            get_writing_root()
-
-    def test_get_writing_root_fails_without_aca_data(self, monkeypatch):
-        """Test RuntimeError when ACA_DATA not set."""
-        # Arrange - Remove ACA_DATA
-        monkeypatch.delenv("ACA_DATA", raising=False)
-
-        # Act & Assert
-        with pytest.raises(RuntimeError):
-            get_writing_root()
 
 
 class TestGetBotsDir:
@@ -84,9 +35,6 @@ class TestGetBotsDir:
         # Assert
         assert result == aops_root
         assert isinstance(result, Path)
-        # Note: get_bots_dir() != get_writing_root()
-        # get_bots_dir() returns $AOPS (framework root)
-        # get_writing_root() returns $ACA_DATA/.. (user's writing repo)
 
 
 class TestGetDataDir:
@@ -186,23 +134,18 @@ class TestPathsUsePathlib:
         monkeypatch.setenv("ACA_DATA", str(data_dir))
 
         # Act
-        writing_root_result = get_writing_root()
         bots_dir_result = get_bots_dir()
         data_dir_result = get_data_dir()
         hooks_dir_result = get_hooks_dir()
         hook_script_result = get_hook_script("test_hook.py")
 
         # Assert
-        assert isinstance(
-            writing_root_result, Path
-        ), "get_writing_root must return Path"
         assert isinstance(bots_dir_result, Path), "get_bots_dir must return Path"
         assert isinstance(data_dir_result, Path), "get_data_dir must return Path"
         assert isinstance(hooks_dir_result, Path), "get_hooks_dir must return Path"
         assert isinstance(hook_script_result, Path), "get_hook_script must return Path"
 
         # Ensure they're not strings
-        assert not isinstance(writing_root_result, str)
         assert not isinstance(bots_dir_result, str)
         assert not isinstance(data_dir_result, str)
         assert not isinstance(hooks_dir_result, str)
