@@ -220,23 +220,29 @@ When copying elements, use slightly different schema:
   "x": 100,
   "y": 100,
   "width": 200,
-  "height": 0,
-  "points": [[0, 0], [200, 0]],
-  "startBinding": {
+  "height": 50,  // Non-zero for curved arrows
+  "points": [[0, 0], [100, 30], [200, 50]],  // Multiple points for curves - REQUIRED for organic feel
+  "startBinding": {  // REQUIRED - anchors arrow to source box
     "elementId": "source-element-id",
     "focus": 0,
     "gap": 10
   },
-  "endBinding": {
+  "endBinding": {  // REQUIRED - anchors arrow to target box
     "elementId": "target-element-id",
     "focus": 0,
     "gap": 10
   },
   "startArrowhead": null,
   "endArrowhead": "arrow"
-  // + all common properties
+  // + all common properties (remember: roughness: 2 for hand-drawn feel)
 }
 ```
+
+**CRITICAL for arrows**:
+- **Always bind to shapes** - never create floating arrows
+- **Use multiple points** for curved paths (minimum 3 points recommended)
+- **Route around boxes** - arrows should never pass through unrelated elements
+- **roughness: 2** for consistent hand-drawn aesthetic
 
 ### Text
 ```json
@@ -248,7 +254,7 @@ When copying elements, use slightly different schema:
   "height": 25,
   "text": "Sample Text",
   "fontSize": 16,
-  "fontFamily": 1,
+  "fontFamily": 1,  // 1=Virgil (hand-drawn, PREFERRED), 2=Helvetica, 3=Cascadia
   "textAlign": "left",
   "verticalAlign": "top",
   "baseline": 18
@@ -277,9 +283,9 @@ When copying elements, use slightly different schema:
 - `"dotted"` = Dotted line
 
 ### Roughness Values
-- 0 = Perfectly straight (architectural)
+- 0 = Perfectly straight (architectural) - **AVOID**
 - 1 = Default hand-drawn feel
-- 2 = Very sketchy
+- 2 = Very sketchy - **PREFERRED** (maximum hand-drawn aesthetic)
 
 ### Roundness Types
 - `{ "type": 1 }` = Legacy round corners

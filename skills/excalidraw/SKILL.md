@@ -1,8 +1,8 @@
 # Excalidraw: Creating Visually Compelling Diagrams
 
-**Purpose**: Create professional, visually appealing diagrams that communicate clearly and look amazing.
+**Purpose**: Create hand-drawn, organic diagrams that communicate clearly and feel human.
 
-**Key principle**: Boring diagrams fail to communicate. Beautiful diagrams capture attention and convey meaning effectively.
+**Key principle**: Rigid, corporate diagrams fail to engage. Sloppy, hand-drawn aesthetics with spatial mind-map layouts capture attention and convey meaning effectively.
 
 ---
 
@@ -15,7 +15,31 @@ Use the excalidraw skill when:
 - Visualizing relationships and hierarchies
 - Any task requiring visual communication
 
-**The user expects**: Diagrams that are visually striking, well-organized, and professionally styled—not generic, boring layouts.
+**The user expects**: Diagrams that feel hand-drawn, organic, and spatially organized like mind maps—not rigid, corporate flowcharts.
+
+---
+
+## Aesthetic Defaults (CRITICAL)
+
+**Always use these settings for the hand-drawn feel**:
+
+| Property | Value | Why |
+|----------|-------|-----|
+| `roughness` | `2` | Maximum sketchiness - embrace the hand-drawn aesthetic |
+| `fontFamily` | `1` (Virgil/xkcd script) | Handwritten font, NOT Helvetica |
+| `strokeStyle` | `"solid"` | But with high roughness looks hand-drawn |
+| `fillStyle` | `"hachure"` | Sketchy hatching, not solid fills |
+
+**Arrow style**:
+- Use **curved arrows** with multiple points (click-click-click, not drag)
+- Arrows must **route around** unrelated boxes, never through them
+- Bind arrows to shapes (`startBinding`, `endBinding`) so they adapt when boxes move
+
+**Layout style**:
+- **NO rigid alignment** - don't align everything on vertical/horizontal axes
+- **Radial/clustered positioning** - mind map in all directions, not top-to-bottom
+- **Embrace asymmetry** - "randomness dressed up as creativity"
+- **Use zoom for hierarchy** - big things BIG (use Excalidraw's unlimited canvas), children progressively smaller
 
 ---
 
@@ -33,6 +57,8 @@ Use the excalidraw skill when:
 - **Weight variation**: Stroke width signals importance
 
 **Anti-pattern**: Everything the same size/color/weight = visual chaos
+
+**Anti-pattern**: Big blocks of text in boxes. Keep labels SHORT (1-5 words). Don't overload the user's view.
 
 ### Mind Mapping Design Principles
 
@@ -92,7 +118,9 @@ Whitespace (negative space) is not "empty"—it's a powerful tool for:
 
 **Layout**: Prefer organic, spatial, mind-map layouts over rigid hierarchies. **Spread elements to prevent arrow overlap** - arrows are directional, so children can be positioned anywhere around parent (360° freedom). Grid snapping for precision, radial/clustered positioning for mind maps.
 
-**Grouping**: **Always bind text to containers** using `containerId` property (programmatic) or group manually (select both → Cmd/Ctrl+G). Text should auto-size to container width. See [[references/text-container-pattern.md]] for JSON binding pattern.
+**Grouping**: **Always bind text to containers** using `containerId` property (programmatic) or group manually (select both → Cmd/Ctrl+G). Text should auto-size to container width. This ensures text moves WITH its box. See [[references/text-container-pattern.md]] for JSON binding pattern.
+
+**CRITICAL - Arrow Binding**: Arrows MUST use `startBinding` and `endBinding` to anchor to boxes. This ensures arrows adapt when boxes are moved. Never create floating arrows.
 
 See [[references/technical-details.md]] for complete specifications on colors, typography, shapes, arrows, layout, layering, and fill patterns. See [[references/theme-colors.md]] for user's preferred color palette. See [[references/text-container-pattern.md]] for text-in-container binding.
 
@@ -185,21 +213,25 @@ Now make it beautiful:
 ### Concept Map / Mind Map (PREFERRED LAYOUT STYLE)
 
 **Structure**:
-- Central concept (large, bold)
-- Related concepts radially or spatially arranged (not rigidly hierarchical)
+- Central concept (LARGE, bold) - use Excalidraw's unlimited zoom
+- Related concepts radially distributed in ALL directions (not just below)
 - Clusters and proximity show relationships
-- 2D spatial thinking, not strict trees
+- 2D spatial thinking, not strict trees - imagine a network/graph, not an org chart
 
 **Visual treatment**:
-- Size = importance/hierarchy (vary significantly)
+- Size = importance/hierarchy (**vary dramatically** - goals 3-4× larger than tasks)
 - Color = category/type (theme colors: [[references/theme-colors.md]])
-- Labeled connections show relationships
+- **NO text legends or key boxes** - color meaning should be obvious from context
+- **NO duplicate summary sections** - information appears ONCE in its home location
 - **Curved arrows** for organic, flowing feel (avoid all straight lines)
 - **Asymmetric positioning** - embrace creative layouts, avoid perfect symmetry
 - **Generous whitespace** - let elements breathe in 2D space
 - **Icons sparingly** - use Material Symbols for emphasis ([[references/icon-integration.md]])
+- `roughness: 2` and `fontFamily: 1` (Virgil) for maximum hand-drawn feel
 
 **Anti-pattern**: Rigid top-down tree structures, perfect alignment grids, linear flows. Mind maps should feel spatial and organic, not like org charts.
+
+**Anti-pattern**: Big text blocks explaining things. Use SHORT labels (1-5 words) and let spatial relationships convey meaning.
 
 ### Graph/Network Visualization (Goal → Project → Task Structure)
 
