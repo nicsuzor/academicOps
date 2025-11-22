@@ -457,6 +457,12 @@ def chunk_jsonl(input_file, output_dir, chunk_size=50):
 - Hardcoded patterns: regex strings, skip lists, filter rules
 - Business logic: "important", "should extract", "matches criteria"
 
+## Technical References
+
+Core technical documentation for framework components:
+
+- **[[references/e2e-test-harness.md]]** - E2E test harness capabilities, gaps, and test writing patterns
+
 ## Workflows
 
 Detailed step-by-step workflows for framework operations. Read and follow the appropriate workflow for each task:
