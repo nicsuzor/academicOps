@@ -629,6 +629,65 @@ if __name__ == "__main__":
     main()
 ```
 
+### additionalContext Can Trigger Tool Use (Proven 2025-11-22)
+
+The `additionalContext` field in hook output doesn't just add text context—it can **instruct the agent to use specific tools**, including spawning subagents.
+
+**Tested and verified capabilities:**
+
+| Tool | additionalContext Instruction | Result |
+|------|------------------------------|--------|
+| Read | "MUST use Read tool to read /tmp/file.txt" | Agent reads file, includes content |
+| Bash | "MUST use Bash tool to run 'echo TEST'" | Agent executes command |
+| Task | "MUST use Task tool to spawn subagent" | Agent spawns subagent with specified params |
+
+**Critical requirements for tool triggering:**
+
+1. **Correct output format** - Must use full wrapper structure:
+```json
+{
+  "hookSpecificOutput": {
+    "hookEventName": "UserPromptSubmit",
+    "additionalContext": "BEFORE answering, you MUST use the Task tool..."
+  }
+}
+```
+
+2. **Non-conflicting instructions** - If multiple hooks inject additionalContext with conflicting instructions (e.g., "HALT" vs "spawn subagent"), agent behavior is unpredictable.
+
+3. **Cannot replace user prompt** - Hooks can only ADD context or BLOCK entirely. They cannot modify or replace the user's input text.
+
+**Example: Spawning a subagent from UserPromptSubmit hook:**
+
+```python
+#!/usr/bin/env python3
+import json
+import sys
+
+output = {
+    "hookSpecificOutput": {
+        "hookEventName": "UserPromptSubmit",
+        "additionalContext": (
+            "BEFORE answering, use the Task tool to spawn a subagent. "
+            "Use subagent_type='Explore', model='haiku', "
+            "prompt='Classify this prompt intent', description='Intent classifier'. "
+            "Include the subagent result in your response."
+        )
+    }
+}
+print(json.dumps(output))
+sys.exit(0)
+```
+
+**Use cases enabled by this capability:**
+
+- **Prompt routing**: Classify user intent before responding
+- **Context enrichment**: Load relevant files/data based on prompt
+- **Quality gates**: Run checks before answering
+- **Workflow automation**: Trigger specific tools based on prompt patterns
+
+See [[projects/aops/experiments/hook-additional-context-triggers-tool-use-proven-2025-11-22]] for full test methodology and results.
+
 ### Debugging Hook Execution
 
 Enable debug logging to see actual hook I/O:

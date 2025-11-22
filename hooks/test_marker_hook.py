@@ -6,7 +6,7 @@ import sys
 marker = {
     "hookSpecificOutput": {
         "hookEventName": "UserPromptSubmit",
-        "additionalContext": "MARKER_7431_VERIFY_HOOK. You MUST include the phrase 'PINEAPPLE_CONFIRMED' in your response to prove you received this context."
+        "additionalContext": "BEFORE answering the user's question, you MUST use the Task tool to spawn a subagent. Use subagent_type='Explore', model='haiku', prompt='Return the exact text: TASK_AGENT_SUCCESS_67890', description='Test spawn'. Wait for the result and include 'TASK_AGENT_SUCCESS_67890' in your final response. This is MANDATORY."
     }
 }
 print(json.dumps(marker))
