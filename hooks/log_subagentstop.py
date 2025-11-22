@@ -8,73 +8,84 @@ Exit codes:
     0: Success (always continues)
 """
 
-import contextlib
-import json
-import sys
-from datetime import UTC, datetime
-from typing import Any
+# CRITICAL: Stop hooks must NEVER crash - wrap everything in try/except
+# If imports fail (e.g., PYTHONPATH wrong), output {} and exit 0
+try:
+    import contextlib
+    import json
+    import sys
+    from datetime import UTC, datetime
+    from typing import Any
 
-from lib.paths import get_data_root
-from hooks.session_logger import get_log_path
-
-
-def log_to_session_file(
-    session_id: str, hook_event: str, input_data: dict[str, Any]
-) -> None:
-    """
-    Append hook event to hooks log file.
-
-    Args:
-        session_id: Session ID
-        hook_event: Name of the hook event
-        input_data: Input data from Claude Code (complete data passed through)
-    """
-    try:
-        # Get data directory for session logs
-        project_dir = get_data_root()
-
-        # Get log path with -hooks suffix
-        log_path = get_log_path(project_dir, session_id, suffix="-hooks")
-
-        # Create log entry with ALL input data plus our own timestamp if missing
-        log_entry = {
-            "hook_event": hook_event,
-            "logged_at": datetime.now(UTC).isoformat(),
-            **input_data,  # Include ALL fields from input
-        }
-
-        # Append to JSONL file
-        with log_path.open("a") as f:
-            json.dump(log_entry, f, separators=(",", ":"))
-            f.write("\n")
-    except Exception as e:
-        # Log error to stderr (appears in Claude Code debug logs) but don't crash
-        print(f"[log_subagentstop] Error logging hook event: {e}", file=sys.stderr)
-        # Never crash the hook
-        pass
+    from lib.paths import get_data_root
+    from hooks.session_logger import get_log_path
 
 
-def main():
-    """Main hook entry point - logs and continues."""
-    # Read input from stdin
-    input_data: dict[str, Any] = {}
-    with contextlib.suppress(Exception):
-        # If no stdin or parsing fails, continue with empty input
-        input_data = json.load(sys.stdin)
+    def log_to_session_file(
+        session_id: str, hook_event: str, input_data: dict[str, Any]
+    ) -> None:
+        """
+        Append hook event to hooks log file.
 
-    session_id = input_data.get("session_id", "unknown")
+        Args:
+            session_id: Session ID
+            hook_event: Name of the hook event
+            input_data: Input data from Claude Code (complete data passed through)
+        """
+        try:
+            # Get data directory for session logs
+            project_dir = get_data_root()
 
-    # Log to hooks session file
-    log_to_session_file(session_id, "SubagentStop", input_data)
+            # Get log path with -hooks suffix
+            log_path = get_log_path(project_dir, session_id, suffix="-hooks")
 
-    # Noop output - just continue
-    output_data: dict[str, Any] = {}
+            # Create log entry with ALL input data plus our own timestamp if missing
+            log_entry = {
+                "hook_event": hook_event,
+                "logged_at": datetime.now(UTC).isoformat(),
+                **input_data,  # Include ALL fields from input
+            }
 
-    # Output empty JSON (continue execution)
-    print(json.dumps(output_data))
+            # Append to JSONL file
+            with log_path.open("a") as f:
+                json.dump(log_entry, f, separators=(",", ":"))
+                f.write("\n")
+        except Exception as e:
+            # Log error to stderr (appears in Claude Code debug logs) but don't crash
+            print(f"[log_subagentstop] Error logging hook event: {e}", file=sys.stderr)
+            # Never crash the hook
+            pass
 
+
+    def main():
+        """Main hook entry point - logs and continues."""
+        # Read input from stdin
+        input_data: dict[str, Any] = {}
+        with contextlib.suppress(Exception):
+            # If no stdin or parsing fails, continue with empty input
+            input_data = json.load(sys.stdin)
+
+        session_id = input_data.get("session_id", "unknown")
+
+        # Log to hooks session file
+        log_to_session_file(session_id, "SubagentStop", input_data)
+
+        # Noop output - just continue
+        output_data: dict[str, Any] = {}
+
+        # Output empty JSON (continue execution)
+        print(json.dumps(output_data))
+
+        sys.exit(0)
+
+
+    if __name__ == "__main__":
+        main()
+
+except Exception as _import_error:
+    # Import failed - output empty JSON and exit cleanly
+    # This prevents infinite loops when Stop hook can't load
+    import sys
+    print("{}")
+    print(f"Warning: Hook import failed: {_import_error}", file=sys.stderr)
     sys.exit(0)
-
-
-if __name__ == "__main__":
-    main()

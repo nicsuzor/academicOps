@@ -16,9 +16,6 @@
       "Edit(**/.claude/**)"
     ]
   },
-  "env": {
-    "PYTHONPATH": "/home/nic/src/aOps"
-  },
   "hooks": {
     "SessionStart": [
       {
