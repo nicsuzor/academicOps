@@ -75,8 +75,13 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 $AOPS/hooks/test_marker_hook.py",
-            "timeout": 1000
+            "command": "PYTHONPATH=$AOPS uv run --no-project python $AOPS/hooks/log_userpromptsubmit.py",
+            "timeout": 2000
+          },
+          {
+            "type": "command",
+            "command": "PYTHONPATH=$AOPS uv run --no-project python $AOPS/hooks/prompt_router.py",
+            "timeout": 2000
           }
         ]
       }
