@@ -15,7 +15,7 @@ Build institutional knowledge by logging patterns with appropriate diagnostic co
 1. **Context**: What should be happening (via framework skill)
 2. **Investigation**: Root cause analysis for failures (via framework-debug skill)
 3. **Knowledge linking**: Cross-references to related concepts (via bmem skill)
-4. **Structured documentation**: Formatted entries in LOG.md
+4. **Structured documentation**: Formatted entries in thematic learning files
 
 ## Workflow
 
@@ -71,28 +71,44 @@ Find: related skills, components, past patterns, principles involved.
 
 Analyze description + context + investigation → classify as:
 
-**Categories**:
-- **Meta-Framework**: Framework maintenance process itself (logging, testing, documentation)
-- **Component-Level**: Specific parts (skills, hooks, scripts, tests, commands)
-- **Behavioral Pattern**: Agent behavior across components (skill invocation, error handling, instruction following)
-
 **Type**:
 - ✅ **Success**: Positive outcome, reinforces good pattern
 - ❌ **Failure**: Negative outcome, identifies problem to address
 
-**Pattern tags**: Assign relevant tags (#skill-invocation, #testing, #git-safety, etc.)
+**Pattern tags**: Assign relevant tags from thematic file mappings:
+- `verification-discipline.md` → #verify-first, #overconfidence, #validation, #incomplete-task
+- `instruction-following.md` → #instruction-following, #scope, #literal, #user-request
+- `git-and-validation.md` → #git-safety, #no-verify, #validation-bypass, #pre-commit
+- `skill-and-tool-usage.md` → #skill-invocation, #tool-usage, #mcp, #bmem-integration
+- `test-and-tdd.md` → #tdd, #testing, #test-contract, #fake-data
+- `technical-wins.md` → #success, #tdd-win, #workflow-success
 
 **Categorization confidence**:
 - If >80% confident → proceed with categorization
 - If <80% confident → mark entry with "(agent-categorized - verify)" and proceed
-- If cannot determine category → HALT and ask user for clarification
+- If cannot determine tags → HALT and ask user for clarification
+
+### 5.5 Select Target File
+
+Based on pattern tags and type, select the appropriate thematic file:
+
+**File Selection Rules**:
+- #verify-first OR #overconfidence OR #validation OR #incomplete-task → `verification-discipline.md`
+- #instruction-following OR #scope OR #literal OR #user-request → `instruction-following.md`
+- #git-safety OR #no-verify OR #validation-bypass OR #pre-commit → `git-and-validation.md`
+- #skill-invocation OR #tool-usage OR #mcp OR #bmem-integration → `skill-and-tool-usage.md`
+- #tdd OR #testing OR #test-contract OR #fake-data → `test-and-tdd.md`
+- Type is ✅ Success → `technical-wins.md`
+- Default (no clear match) → `verification-discipline.md` (most common failure type)
+
+**Target path**: `$ACA_DATA/projects/aops/learning/[selected-file].md`
 
 ### 6. Format Entry
 
-Structure per LOG.md format specification:
+Structure for thematic learning files (file determines category):
 
 ```markdown
-## [Category]: [Brief Title]
+## [Brief Title]
 
 **Date**: YYYY-MM-DD | **Type**: ✅/❌ | **Pattern**: #tag1 #tag2
 
@@ -107,38 +123,43 @@ Structure per LOG.md format specification:
 **Why**: Significance based on framework context and investigation findings
 **Lesson**: Actionable guidance for future (what to do/avoid)
 
-### 7. Validate LOG.md
+### 7. Validate Target File
 
 Before appending, verify:
 
 ```
-1. Read LOG.md frontmatter
-2. Check bmem compliance:
-   - Has 'title' field
-   - Has 'permalink' field (format: projects-aops-experiments-log)
-   - Has 'type: log' field
-   - Has 'tags' array
-3. If invalid → HALT with error message
+1. Check target thematic file exists at $ACA_DATA/projects/aops/learning/[selected-file].md
+2. If file exists:
+   - Read frontmatter
+   - Check bmem compliance:
+     - Has 'title' field
+     - Has 'permalink' field
+     - Has 'type: log' field
+     - Has 'tags' array
+   - If invalid frontmatter → HALT with error message
+3. If file does not exist → HALT with error: "Thematic file not found: [selected-file].md"
 ```
 
 ### 8. Append Entry
 
-Use Edit tool to append formatted entry to $ACA_DATA/projects/aops/experiments/LOG.md:
+Use Edit tool to append formatted entry to the selected thematic file:
 
 ```
-Read LOG.md to get current content
+Read [selected-file].md to get current content
 Append new entry at end
-Edit LOG.md with old_string=<last section> new_string=<last section + new entry>
+Edit [selected-file].md with old_string=<last section> new_string=<last section + new entry>
 ```
+
+**Target**: `$ACA_DATA/projects/aops/learning/[selected-file].md`
 
 ### 9. Report Completion
 
 Confirm to user:
-- Category assigned
-- Pattern tags
+- Target file selected
+- Pattern tags assigned
 - Investigation findings (if applicable)
 - bmem cross-references found
-- Entry appended to LOG.md
+- Entry appended to thematic file
 
 ## Critical Constraints
 
@@ -176,9 +197,9 @@ Partial information is acceptable. No information is not acceptable without tryi
 
 ### Fail-Fast Cases (HALT immediately)
 
-- LOG.md doesn't exist at $ACA_DATA/projects/aops/experiments/LOG.md
-- LOG.md frontmatter invalid (missing title/permalink/type/tags)
-- Cannot determine category after full workflow (<80% confidence AND user unavailable)
+- Thematic file doesn't exist at $ACA_DATA/projects/aops/learning/[selected-file].md
+- Thematic file frontmatter invalid (missing title/permalink/type/tags)
+- Cannot determine pattern tags after full workflow (<80% confidence AND user unavailable)
 - User description too vague to process (no observable facts, just opinion)
 
 ### Graceful Degradation Cases (best effort)
@@ -214,16 +235,19 @@ Partial information is acceptable. No information is not acceptable without tryi
 
 ## Pattern Tag Guidelines
 
-Common tags (use existing tags when applicable):
+Tags map to thematic learning files:
 
-**Meta-Framework**: #spec-first, #testing, #documentation, #validation, #bloat
-**Component-Level**: #skill-creation, #hooks, #scripts, #commands, #agents
-**Behavioral Pattern**: #skill-invocation, #instruction-following, #error-handling, #git-safety, #verify-first
+**verification-discipline.md**: #verify-first, #overconfidence, #validation, #incomplete-task
+**instruction-following.md**: #instruction-following, #scope, #literal, #user-request
+**git-and-validation.md**: #git-safety, #no-verify, #validation-bypass, #pre-commit
+**skill-and-tool-usage.md**: #skill-invocation, #tool-usage, #mcp, #bmem-integration
+**test-and-tdd.md**: #tdd, #testing, #test-contract, #fake-data
+**technical-wins.md**: #success, #tdd-win, #workflow-success
 
 **Tag selection**:
-- Choose 1-3 most relevant tags
-- Prefer existing tags from LOG.md history
-- Create new tag only if no existing tag fits
+- Choose 1-3 most relevant tags from the thematic mappings above
+- Tag determines which file receives the entry
+- If multiple tags from different files apply, use the PRIMARY pattern's file
 - Format: lowercase, hyphenated (#new-pattern-name)
 
 ## Example Invocations
@@ -237,16 +261,17 @@ Agent workflow:
 1. Framework skill → understand task management architecture
 2. Skip investigation (success markers present)
 3. bmem skill → find related concepts (task management, script usage)
-4. Categorize → Behavioral Pattern, ✅ Success, #task-management #script-usage
-5. Format entry:
-   ## Behavioral Pattern: Agent Used Task Scripts Correctly
-   **Date**: 2025-11-18 | **Type**: ✅ Success | **Pattern**: #task-management #script-usage
+4. Categorize → ✅ Success, #workflow-success #tool-usage
+5. Select target file → technical-wins.md (success type)
+6. Format entry:
+   ## Agent Used Task Scripts Correctly
+   **Date**: 2025-11-18 | **Type**: ✅ Success | **Pattern**: #workflow-success #tool-usage
    **What**: Agent invoked task_add.py script instead of writing task markdown directly.
    **Why**: Follows documented task management architecture requiring script-only write access.
    **Lesson**: Reinforce script-based task operations; agents correctly reading and following task management guidance.
-6. Validate LOG.md frontmatter → valid
-7. Append to LOG.md
-8. Report: "Logged as Behavioral Pattern success with #task-management #script-usage tags"
+7. Validate technical-wins.md frontmatter → valid
+8. Append to $ACA_DATA/projects/aops/learning/technical-wins.md
+9. Report: "Logged to technical-wins.md with #workflow-success #tool-usage tags"
 ```
 
 ### Failure Observation Requiring Investigation
@@ -259,16 +284,17 @@ Agent workflow:
 2. Invoke investigation (failure markers present):
    framework-debug skill → check recent test runs, find error in session logs
 3. bmem skill → find related concepts (session start, context loading, file paths)
-4. Categorize → Component-Level, ❌ Failure, #session-start #file-loading
-5. Format entry with investigation context:
-   ## Component-Level: Session Start Failed to Load AXIOMS.md
-   **Date**: 2025-11-18 | **Type**: ❌ Failure | **Pattern**: #session-start #file-loading
+4. Categorize → ❌ Failure, #validation #incomplete-task
+5. Select target file → verification-discipline.md (#validation tag)
+6. Format entry with investigation context:
+   ## Session Start Failed to Load AXIOMS.md
+   **Date**: 2025-11-18 | **Type**: ❌ Failure | **Pattern**: #validation #incomplete-task
    **What**: Test attempted to load AXIOMS.md from $AOPS but file path resolution failed in test environment.
    **Why**: Session start hook uses relative path assumption that breaks in pytest context; investigation found ImportError in hook execution logs.
    **Lesson**: Session start hooks need explicit path validation before file operations; add existence checks with clear error messages.
-6. Validate LOG.md frontmatter → valid
-7. Append to LOG.md
-8. Report: "Logged as Component-Level failure with investigation context from framework-debug skill"
+7. Validate verification-discipline.md frontmatter → valid
+8. Append to $ACA_DATA/projects/aops/learning/verification-discipline.md
+9. Report: "Logged to verification-discipline.md with investigation context from framework-debug skill"
 ```
 
 ## Quality Standards
@@ -334,6 +360,12 @@ Weekly review during first month, then monthly.
 ## Related Documentation
 
 - Specification: skills/framework/specs/2025-11-18_framework-logger-agent.md
-- LOG.md format: $ACA_DATA/projects/aops/experiments/LOG.md (frontmatter + entry structure)
+- Thematic learning files: $ACA_DATA/projects/aops/learning/
+  - verification-discipline.md
+  - instruction-following.md
+  - git-and-validation.md
+  - skill-and-tool-usage.md
+  - test-and-tdd.md
+  - technical-wins.md
 - Framework skill: skills/framework/SKILL.md
 - Framework-debug skill: skills/framework-debug/SKILL.md
