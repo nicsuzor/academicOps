@@ -94,6 +94,8 @@ Use transcripts when:
 - Need to understand full conversation flow
 - Sharing session details for debugging
 
+**Note**: Transcripts don't show hook-injected `<system-reminder>` tags. To verify hook behavior, grep raw JSONL.
+
 **Controlled test environment**:
 - Tests run in `/tmp/claude-test-*` (consistent location)
 - `--debug` flag automatically enabled (full logging)
