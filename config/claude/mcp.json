@@ -10,7 +10,7 @@
     "bmem": { "command": "uvx", "args": ["basic-memory", "mcp"] },
     "zot": {
       "type": "stdio",
-      "command": "docker",
+      "command": "podman",
       "args": [
         "run",
         "--rm",
@@ -22,7 +22,7 @@
     },
     "osb": {
       "type": "stdio",
-      "command": "docker",
+      "command": "podman",
       "args": [
         "run",
         "-v",
