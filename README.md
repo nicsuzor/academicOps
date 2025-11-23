@@ -100,6 +100,9 @@ $AOPS/
 
 /tmp/claude-sessions/
 └── *-hooks.jsonl        # Hook execution logs (which hooks fired, inputs, hook_results)
+
+/tmp/claude-transcripts/
+└── *_transcript.md        # Human-readable session transcripts (on-demand via claude-transcript)
 ```
 
 ---

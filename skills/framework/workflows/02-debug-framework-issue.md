@@ -74,6 +74,26 @@ rg "pattern" ~/.claude/projects/-tmp-claude-test-*/
 rg "type.*tool" ~/.claude/projects/-tmp-claude-test-*/
 ```
 
+**Session transcript generation** (human-readable format):
+```bash
+# List recent sessions for current project
+ls -lt ~/.claude/projects/-home-nic-src-aOps/*.jsonl | head -5
+
+# Generate markdown transcript from JSONL
+mkdir -p /tmp/claude-transcripts
+uv run ~/src/claude-transcript/claude_transcript.py \
+  ~/.claude/projects/{project-path}/{session-id}.jsonl \
+  -o /tmp/claude-transcripts/{session-id}_transcript.md
+
+# Read transcript (much easier than raw JSONL)
+cat /tmp/claude-transcripts/{session-id}_transcript.md
+```
+
+Use transcripts when:
+- Raw JSONL search results are hard to interpret
+- Need to understand full conversation flow
+- Sharing session details for debugging
+
 **Controlled test environment**:
 - Tests run in `/tmp/claude-test-*` (consistent location)
 - `--debug` flag automatically enabled (full logging)
