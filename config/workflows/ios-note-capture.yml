@@ -1,0 +1,126 @@
+name: iOS Note Capture
+
+on:
+  repository_dispatch:
+    types: [capture-note]
+  workflow_dispatch:
+    inputs:
+      title:
+        description: 'Note title'
+        required: true
+        type: string
+      content:
+        description: 'Note content'
+        required: true
+        type: string
+      tags:
+        description: 'Comma-separated tags'
+        required: false
+        default: 'mobile-capture,inbox'
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+  id-token: write
+
+jobs:
+  process-note:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 1
+
+      - name: Cache bmem database
+        uses: actions/cache@v4
+        with:
+          path: |
+            .bmem
+            ~/.local/share/basic-memory
+          key: bmem-${{ hashFiles('data/**/*.md') }}
+          restore-keys: |
+            bmem-
+
+      - name: Extract payload
+        id: payload
+        run: |
+          if [ "${{ github.event_name }}" = "repository_dispatch" ]; then
+            echo "title=${{ github.event.client_payload.title }}" >> $GITHUB_OUTPUT
+            echo "content=${{ github.event.client_payload.content }}" >> $GITHUB_OUTPUT
+            echo "tags=${{ github.event.client_payload.tags }}" >> $GITHUB_OUTPUT
+          else
+            echo "title=${{ inputs.title }}" >> $GITHUB_OUTPUT
+            echo "content=${{ inputs.content }}" >> $GITHUB_OUTPUT
+            echo "tags=${{ inputs.tags }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Process note with Claude Code
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          claude_args: |
+            --allowedTools "Read,Write,Edit,Bash(mkdir:*),Bash(date:*)"
+            --max-turns 5
+          prompt: |
+            Create a bmem-formatted note from this iOS capture.
+
+            INPUT:
+            - Title: ${{ steps.payload.outputs.title }}
+            - Content: ${{ steps.payload.outputs.content }}
+            - Tags: ${{ steps.payload.outputs.tags }}
+
+            TASK:
+            1. Create directory data/notes/mobile-captures/ if it doesn't exist
+            2. Generate a bmem-formatted markdown file with:
+               - YAML frontmatter (title, permalink, type: note, tags including mobile-capture)
+               - Context section noting this was captured from iOS
+               - Observations section with the content as an [idea] observation
+               - Relations section (can be empty initially)
+            3. Save as: data/notes/mobile-captures/YYYY-MM-DD-<slug>.md
+               (use today's date and a URL-safe slug from the title)
+
+            BMEM FORMAT:
+            ```
+            ---
+            title: <title>
+            permalink: <url-safe-slug>
+            type: note
+            tags:
+              - mobile-capture
+              - <other tags>
+            created: <ISO8601 timestamp>
+            ---
+
+            # <title>
+
+            ## Context
+
+            Captured from iOS via voice/text input.
+
+            ## Observations
+
+            - [idea] <content> #mobile-capture
+
+            ## Relations
+
+            None
+            ```
+
+            Output the filepath of the created note when done.
+
+      - name: Commit changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "capture(mobile): ${{ steps.payload.outputs.title }}"
+            git push
+          fi
