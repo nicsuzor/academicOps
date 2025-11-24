@@ -115,49 +115,34 @@ create_symlink "commands" "$AOPS_PATH/commands"
 create_symlink "agents" "$AOPS_PATH/agents"
 create_symlink "settings.json" "$AOPS_PATH/config/claude/settings.json"
 
-# Create symlink for MCP configuration in home directory
+# Step 2b: Sync MCP servers to ~/.claude.json
+# Note: Claude Code reads user-scoped MCP servers from ~/.claude.json mcpServers key,
+# NOT from ~/.mcp.json. We merge our authoritative config into ~/.claude.json.
 echo
-echo "Creating MCP configuration symlink..."
-mcp_link="$HOME/.mcp.json"
-mcp_target="$AOPS_PATH/config/claude/mcp.json"
+echo "Syncing MCP servers to ~/.claude.json..."
+mcp_source="$AOPS_PATH/config/claude/mcp.json"
 
-if [ -L "$mcp_link" ]; then
-    # Exists as symlink
-    current_target="$(readlink "$mcp_link")"
-    if [ "$current_target" = "$mcp_target" ]; then
-        echo "  .mcp.json → $mcp_target (already correct)"
+if [ -f "$mcp_source" ] && command -v jq &> /dev/null; then
+    if [ -f "$HOME/.claude.json" ]; then
+        # Merge mcpServers from our config into ~/.claude.json
+        jq -s '.[0] * {mcpServers: .[1].mcpServers}' "$HOME/.claude.json" "$mcp_source" > "$HOME/.claude.json.tmp" \
+            && mv "$HOME/.claude.json.tmp" "$HOME/.claude.json"
+        echo -e "${GREEN}✓ Synced MCP servers from $mcp_source to ~/.claude.json${NC}"
     else
-        echo -e "${YELLOW}  Updating .mcp.json symlink${NC}"
-        echo "    Old: $current_target"
-        echo "    New: $mcp_target"
-        ln -sf "$mcp_target" "$mcp_link"
+        echo -e "${YELLOW}⚠ ~/.claude.json doesn't exist - will be created on first Claude Code run${NC}"
+        echo "  Re-run this script after using Claude Code once"
     fi
-elif [ -e "$mcp_link" ]; then
-    # Exists but not a symlink
-    echo -e "${YELLOW}⚠ $mcp_link exists but is not a symlink${NC}"
-    echo "  Backing up to $mcp_link.backup"
-    mv "$mcp_link" "$mcp_link.backup"
-    ln -s "$mcp_target" "$mcp_link"
-    echo -e "${GREEN}✓ Created .mcp.json → $mcp_target${NC}"
-    echo -e "${GREEN}✓ Previous file backed up to ~/.mcp.json.backup${NC}"
+elif [ ! -f "$mcp_source" ]; then
+    echo -e "${YELLOW}⚠ MCP source not found: $mcp_source${NC}"
 else
-    # Doesn't exist
-    ln -s "$mcp_target" "$mcp_link"
-    echo -e "${GREEN}✓ Created .mcp.json → $mcp_target${NC}"
+    echo -e "${RED}✗ jq not installed - cannot sync MCP servers${NC}"
+    echo "  Install jq: sudo apt install jq"
 fi
 
-echo
-
-# Step 2b: Clean MCP configs from ~/.claude.json
-echo "Step 2b: Cleaning MCP configs from ~/.claude.json"
-echo "---------------------------------------------------"
-if [ -f "$HOME/.claude.json" ] && command -v jq &> /dev/null; then
-    jq 'del(.mcpServers) | .projects |= (if . then map_values(del(.mcpServers)) else . end)' "$HOME/.claude.json" > "$HOME/.claude.json.tmp" && mv "$HOME/.claude.json.tmp" "$HOME/.claude.json"
-    echo -e "${GREEN}✓ Removed MCP configs from ~/.claude.json (use .mcp.json instead)${NC}"
-elif [ ! -f "$HOME/.claude.json" ]; then
-    echo "  No ~/.claude.json found (OK)"
-else
-    echo -e "${YELLOW}⚠ jq not installed - skipping ~/.claude.json cleanup${NC}"
+# Clean up legacy ~/.mcp.json symlink if it exists (no longer used)
+if [ -L "$HOME/.mcp.json" ]; then
+    rm "$HOME/.mcp.json"
+    echo "  Removed legacy ~/.mcp.json symlink"
 fi
 
 echo
@@ -202,10 +187,14 @@ for link in skills commands agents settings.json; do
     fi
 done
 
-# Check MCP symlink
-if [ ! -L "$HOME/.mcp.json" ]; then
-    echo -e "${RED}✗ Symlink missing: $HOME/.mcp.json${NC}"
-    VALIDATION_PASSED=false
+# Check MCP servers in ~/.claude.json
+if [ -f "$HOME/.claude.json" ] && command -v jq &> /dev/null; then
+    mcp_count=$(jq '.mcpServers | length // 0' "$HOME/.claude.json")
+    if [ "$mcp_count" -gt 0 ]; then
+        echo -e "${GREEN}✓ MCP servers configured: $mcp_count servers in ~/.claude.json${NC}"
+    else
+        echo -e "${YELLOW}⚠ No MCP servers in ~/.claude.json${NC}"
+    fi
 fi
 
 # Test Python path resolution
