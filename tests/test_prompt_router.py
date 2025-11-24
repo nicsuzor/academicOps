@@ -16,18 +16,18 @@ class TestAnalyzePrompt:
     """Tests for analyze_prompt function."""
 
     def test_analyze_prompt_framework_keywords(self) -> None:
-        """Test that framework keywords return framework skill suggestion."""
+        """Test that framework keywords return mandatory framework skill invocation."""
         result = analyze_prompt("help with framework")
 
         assert "framework" in result
-        assert "SKILL SUGGESTION" in result
+        assert "MANDATORY" in result
 
     def test_analyze_prompt_python_keywords(self) -> None:
-        """Test that python keywords return python-dev skill suggestion."""
+        """Test that python keywords return mandatory python-dev skill invocation."""
         result = analyze_prompt("write python code")
 
         assert "python-dev" in result
-        assert "SKILL SUGGESTION" in result
+        assert "MANDATORY" in result
 
     def test_analyze_prompt_no_match(self) -> None:
         """Test that unrecognized input returns empty string."""
@@ -36,12 +36,13 @@ class TestAnalyzePrompt:
         assert result == ""
 
     def test_analyze_prompt_multiple_matches(self) -> None:
-        """Test that multiple keyword matches mention multiple skills."""
+        """Test that multiple keyword matches require skill invocation."""
         result = analyze_prompt("python framework")
 
         assert "python-dev" in result
         assert "framework" in result
-        assert "multiple skills" in result
+        assert "MANDATORY" in result
+        assert "one of these skills" in result
 
     def test_analyze_prompt_empty_input(self) -> None:
         """Test that empty string returns empty string."""

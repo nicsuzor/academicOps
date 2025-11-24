@@ -22,6 +22,7 @@ SKILL_KEYWORDS = {
     "python-dev": {"python", "code", "function", "class", "test", "implement", "debug", "refactor"},
     "analyst": {"data", "analysis", "dbt", "streamlit", "research", "dataset", "query"},
     "bmem": {"knowledge", "bmem", "memory", "note", "document", "context", "archive"},
+    "tasks": {"task", "tasks", "todo", "todos", "action items"},
 }
 
 TEMP_DIR = Path("/tmp/prompt-router")
@@ -83,10 +84,10 @@ def analyze_prompt(prompt: str) -> str:
     # Build keyword suggestion
     if len(matches) == 1:
         skill = matches[0]
-        keyword_suggestion = f"SKILL SUGGESTION: This prompt may benefit from the `{skill}` skill. Acknowledge this suggestion in your response."
+        keyword_suggestion = f"MANDATORY: You MUST invoke the `{skill}` skill using Skill(skill: '{skill}') BEFORE answering. Do NOT use MCP tools or other tools directly - invoke the skill first to load proper guidance."
     else:
         skill_list = ", ".join(f"`{s}`" for s in matches)
-        keyword_suggestion = f"SKILL SUGGESTION: This prompt may relate to multiple skills: {skill_list}. Consider which is most relevant."
+        keyword_suggestion = f"MANDATORY: This prompt requires one of these skills: {skill_list}. You MUST invoke the most relevant skill using Skill(skill: 'X') BEFORE proceeding. Do NOT bypass skill invocation."
 
     # Build classifier spawn instruction
     classifier_instruction = f"""
