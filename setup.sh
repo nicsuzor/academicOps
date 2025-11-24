@@ -148,6 +148,20 @@ fi
 
 echo
 
+# Step 2b: Clean MCP configs from ~/.claude.json
+echo "Step 2b: Cleaning MCP configs from ~/.claude.json"
+echo "---------------------------------------------------"
+if [ -f "$HOME/.claude.json" ] && command -v jq &> /dev/null; then
+    jq 'del(.mcpServers) | .projects |= (if . then map_values(del(.mcpServers)) else . end)' "$HOME/.claude.json" > "$HOME/.claude.json.tmp" && mv "$HOME/.claude.json.tmp" "$HOME/.claude.json"
+    echo -e "${GREEN}✓ Removed MCP configs from ~/.claude.json (use .mcp.json instead)${NC}"
+elif [ ! -f "$HOME/.claude.json" ]; then
+    echo "  No ~/.claude.json found (OK)"
+else
+    echo -e "${YELLOW}⚠ jq not installed - skipping ~/.claude.json cleanup${NC}"
+fi
+
+echo
+
 # Step 3: Validate setup
 echo "Step 3: Validating setup"
 echo "------------------------"

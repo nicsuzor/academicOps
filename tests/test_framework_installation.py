@@ -135,3 +135,38 @@ def test_mcp_json_symlink_exists_and_points_to_aops() -> None:
         f"  Expected: {expected_target}\n"
         f"  Actual:   {actual_target}"
     )
+
+
+def test_claude_json_has_no_mcp_servers() -> None:
+    """Test that ~/.claude.json doesn't contain mcpServers keys.
+
+    MCP configs should live in .mcp.json files, not ~/.claude.json.
+    setup.sh removes these to prevent config drift.
+
+    Raises:
+        AssertionError: If mcpServers found in ~/.claude.json
+    """
+    import json
+
+    claude_json = Path.home() / ".claude.json"
+    if not claude_json.exists():
+        pytest.skip("~/.claude.json doesn't exist")
+
+    data = json.loads(claude_json.read_text())
+
+    # Check root-level mcpServers
+    assert "mcpServers" not in data, (
+        "~/.claude.json contains root-level mcpServers. "
+        "Run setup.sh to clean up (MCP configs should be in .mcp.json)"
+    )
+
+    # Check project-level mcpServers
+    projects_with_mcp = []
+    for project_path, project_data in data.get("projects", {}).items():
+        if isinstance(project_data, dict) and project_data.get("mcpServers"):
+            projects_with_mcp.append(project_path)
+
+    assert not projects_with_mcp, (
+        f"~/.claude.json contains mcpServers in projects: {projects_with_mcp}. "
+        "Run setup.sh to clean up (MCP configs should be in .mcp.json)"
+    )
