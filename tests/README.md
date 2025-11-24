@@ -396,15 +396,17 @@ Following `AXIOMS.md`:
 
 1. **Fail-Fast**: Tests fail immediately with clear error messages. No silent failures or workarounds.
 
-2. **Self-Documenting**: Tests document expected behavior. Test names explain what they validate.
+2. **Pass or Fail, Never Skip**: Tests must produce a definitive result. If infrastructure is missing (session files, fixtures), the test should FAIL, not skip. Skips hide problems.
 
-3. **DRY and Modular**: Fixtures provide reusable test infrastructure. Common utilities in `paths.py`.
+3. **Self-Documenting**: Tests document expected behavior. Test names explain what they validate.
 
-4. **Standard Tools**: Uses pytest, standard test patterns, type hints.
+4. **DRY and Modular**: Fixtures provide reusable test infrastructure. Common utilities in `paths.py`.
 
-5. **No Defaults**: Tests explicitly check for required configuration. No fallback behavior.
+5. **Standard Tools**: Uses pytest, standard test patterns, type hints.
 
-6. **Integration-First**: Integration tests validate real behavior, not just unit-level correctness.
+6. **No Defaults**: Tests explicitly check for required configuration. No fallback behavior.
+
+7. **Integration-First**: Integration tests validate real behavior, not just unit-level correctness.
 
 ## Current Status
 

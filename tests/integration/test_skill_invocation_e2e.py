@@ -34,11 +34,8 @@ def test_tasks_prompt_invokes_skill(claude_headless_tracked, skill_was_invoked) 
         timeout_seconds=60,
     )
 
-    if not result["success"]:
-        pytest.skip(f"Execution failed: {result.get('error')}")
-
-    if not tool_calls:
-        pytest.skip(f"Session file not found for {session_id}")
+    assert result["success"], f"Execution failed: {result.get('error')}"
+    assert tool_calls, f"Session file not found for {session_id}"
 
     # Check if any task-related skill/tool was invoked
     task_invoked = (
@@ -67,11 +64,8 @@ def test_framework_prompt_invokes_skill(claude_headless_tracked, skill_was_invok
         timeout_seconds=90,
     )
 
-    if not result["success"]:
-        pytest.skip(f"Execution failed: {result.get('error')}")
-
-    if not tool_calls:
-        pytest.skip(f"Session file not found for {session_id}")
+    assert result["success"], f"Execution failed: {result.get('error')}"
+    assert tool_calls, f"Session file not found for {session_id}"
 
     framework_invoked = skill_was_invoked(tool_calls, "framework")
 
@@ -93,11 +87,8 @@ def test_bmem_prompt_invokes_skill(claude_headless_tracked, skill_was_invoked) -
         timeout_seconds=90,
     )
 
-    if not result["success"]:
-        pytest.skip(f"Execution failed: {result.get('error')}")
-
-    if not tool_calls:
-        pytest.skip(f"Session file not found for {session_id}")
+    assert result["success"], f"Execution failed: {result.get('error')}"
+    assert tool_calls, f"Session file not found for {session_id}"
 
     # For bmem, check either skill invocation OR direct MCP tool usage
     # (MCP tools are acceptable for read operations)
