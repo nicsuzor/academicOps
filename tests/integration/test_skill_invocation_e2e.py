@@ -84,7 +84,7 @@ def test_bmem_prompt_invokes_skill(claude_headless_tracked, skill_was_invoked) -
     """
     result, session_id, tool_calls = claude_headless_tracked(
         "search my knowledge base for information about prompt routing",
-        timeout_seconds=90,
+        timeout_seconds=120,  # bmem semantic search needs more time than keyword matching
     )
 
     assert result["success"], f"Execution failed: {result.get('error')}"
