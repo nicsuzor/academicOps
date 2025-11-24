@@ -37,18 +37,10 @@ def test_tasks_prompt_invokes_skill(claude_headless_tracked, skill_was_invoked) 
     assert result["success"], f"Execution failed: {result.get('error')}"
     assert tool_calls, f"Session file not found for {session_id}"
 
-    # Check if any task-related skill/tool was invoked
-    # Accept: Skill("task"), mcp__task_manager__*, or Bash with task scripts
-    task_invoked = (
-        skill_was_invoked(tool_calls, "task")
-        or any(c["name"].startswith("mcp__task") for c in tool_calls)
-        or any(
-            c["name"] == "Bash" and "task" in str(c["input"]).lower()
-            for c in tool_calls
-        )
-    )
+    # Require actual Skill invocation - MCP/Bash bypass skill guidance
+    task_skill_invoked = skill_was_invoked(tool_calls, "task")
 
-    assert task_invoked, (
+    assert task_skill_invoked, (
         f"Tasks skill NOT invoked. Tool calls: {[c['name'] for c in tool_calls]}"
     )
 
@@ -92,13 +84,9 @@ def test_bmem_prompt_invokes_skill(claude_headless_tracked, skill_was_invoked) -
     assert result["success"], f"Execution failed: {result.get('error')}"
     assert tool_calls, f"Session file not found for {session_id}"
 
-    # For bmem, check either skill invocation OR direct MCP tool usage
-    # (MCP tools are acceptable for read operations)
-    bmem_used = (
-        skill_was_invoked(tool_calls, "bmem")
-        or any(c["name"].startswith("mcp__bmem__") for c in tool_calls)
-    )
+    # Require actual Skill invocation - MCP tools alone bypass formatting guidance
+    bmem_skill_invoked = skill_was_invoked(tool_calls, "bmem")
 
-    assert bmem_used, (
-        f"bmem skill/tools NOT invoked. Tool calls: {[c['name'] for c in tool_calls]}"
+    assert bmem_skill_invoked, (
+        f"bmem skill NOT invoked. Tool calls: {[c['name'] for c in tool_calls]}"
     )
