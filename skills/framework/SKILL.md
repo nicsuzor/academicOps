@@ -461,6 +461,7 @@ def chunk_jsonl(input_file, output_dir, chunk_size=50):
 
 Core technical documentation for framework components:
 
+- **[[references/claude-code-config.md]]** - Claude Code configuration file locations and MCP server setup
 - **[[references/e2e-test-harness.md]]** - E2E test harness capabilities, gaps, and test writing patterns
 
 ## Workflows
