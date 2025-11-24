@@ -170,3 +170,62 @@ def test_claude_json_has_no_mcp_servers() -> None:
         f"~/.claude.json contains mcpServers in projects: {projects_with_mcp}. "
         "Run setup.sh to clean up (MCP configs should be in .mcp.json)"
     )
+
+
+def test_mcp_cleanup_jq_preserves_other_data() -> None:
+    """Test that the jq command in setup.sh only removes mcpServers.
+
+    Verifies the jq filter preserves all other data at root and project level.
+    """
+    import json
+    import subprocess
+
+    # Sample data mimicking ~/.claude.json structure
+    test_data = {
+        "numStartups": 84,
+        "autoUpdates": True,
+        "mcpServers": {"bmem": {"type": "stdio"}},
+        "projects": {
+            "/home/user/project1": {
+                "allowedTools": ["Read", "Write"],
+                "mcpServers": {"zot": {"type": "stdio"}},
+                "hasTrustDialogAccepted": True,
+                "lastCost": 1.23,
+            },
+            "/home/user/project2": {
+                "allowedTools": [],
+                "hasTrustDialogAccepted": False,
+            },
+        },
+        "oauthAccount": {"emailAddress": "test@example.com"},
+    }
+
+    # Run the same jq command used in setup.sh
+    jq_cmd = 'del(.mcpServers) | .projects |= (if . then map_values(del(.mcpServers)) else . end)'
+    result = subprocess.run(
+        ["jq", jq_cmd],
+        input=json.dumps(test_data),
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    cleaned = json.loads(result.stdout)
+
+    # Verify mcpServers removed
+    assert "mcpServers" not in cleaned
+    assert "mcpServers" not in cleaned["projects"]["/home/user/project1"]
+
+    # Verify everything else preserved
+    assert cleaned["numStartups"] == 84
+    assert cleaned["autoUpdates"] is True
+    assert cleaned["oauthAccount"]["emailAddress"] == "test@example.com"
+
+    # Verify project data preserved (except mcpServers)
+    proj1 = cleaned["projects"]["/home/user/project1"]
+    assert proj1["allowedTools"] == ["Read", "Write"]
+    assert proj1["hasTrustDialogAccepted"] is True
+    assert proj1["lastCost"] == 1.23
+
+    proj2 = cleaned["projects"]["/home/user/project2"]
+    assert proj2["allowedTools"] == []
+    assert proj2["hasTrustDialogAccepted"] is False
