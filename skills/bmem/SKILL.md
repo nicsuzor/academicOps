@@ -7,6 +7,7 @@
 **Storage Location**: `data/` hierarchy in each repository
 **Entity Structure**: `data/{entity-type}/{entity-slug}.md`
 **Entity Types**: note, project, person, event, concept, relation
+**Entity Type Selection**: Match content to appropriate type - framework learnings → link to framework project, not generic `note/`
 **Required Fields**: title, permalink, type
 **Optional Fields**: tags, related, created, modified, status
 **Linking**: WikiLinks `[[entity-slug]]` for cross-references
