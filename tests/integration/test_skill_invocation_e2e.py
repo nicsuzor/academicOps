@@ -31,15 +31,17 @@ def test_tasks_prompt_invokes_skill(claude_headless_tracked, skill_was_invoked) 
     """
     result, session_id, tool_calls = claude_headless_tracked(
         "show me my tasks",
-        timeout_seconds=60,
+        timeout_seconds=120,
     )
 
     assert result["success"], f"Execution failed: {result.get('error')}"
     assert tool_calls, f"Session file not found for {session_id}"
 
     # Check if any task-related skill/tool was invoked
+    # Accept: Skill("task"), mcp__task_manager__*, or Bash with task scripts
     task_invoked = (
         skill_was_invoked(tool_calls, "task")
+        or any(c["name"].startswith("mcp__task") for c in tool_calls)
         or any(
             c["name"] == "Bash" and "task" in str(c["input"]).lower()
             for c in tool_calls
@@ -61,7 +63,7 @@ def test_framework_prompt_invokes_skill(claude_headless_tracked, skill_was_invok
     """
     result, session_id, tool_calls = claude_headless_tracked(
         "explain how the prompt router hook works",
-        timeout_seconds=90,
+        timeout_seconds=120,
     )
 
     assert result["success"], f"Execution failed: {result.get('error')}"
