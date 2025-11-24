@@ -11,6 +11,8 @@ Exit codes:
 import contextlib
 import json
 import sys
+from datetime import datetime
+from pathlib import Path
 from typing import Any
 
 
@@ -21,6 +23,35 @@ SKILL_KEYWORDS = {
     "analyst": {"data", "analysis", "dbt", "streamlit", "research", "dataset", "query"},
     "bmem": {"knowledge", "bmem", "memory", "note", "document", "context", "archive"},
 }
+
+TEMP_DIR = Path("/tmp/prompt-router")
+
+
+def write_prompt_to_temp(prompt: str, keyword_matches: list[str]) -> Path:
+    """Write prompt and matches to temp JSON file.
+
+    Args:
+        prompt: The user's prompt text
+        keyword_matches: List of skills that matched keywords
+
+    Returns:
+        Path to the created temp file
+
+    Raises:
+        OSError: If directory creation or file write fails
+    """
+    TEMP_DIR.mkdir(parents=True, exist_ok=True)
+
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+    filepath = TEMP_DIR / f"{timestamp}.json"
+
+    data = {
+        "prompt": prompt,
+        "keyword_matches": keyword_matches,
+    }
+
+    filepath.write_text(json.dumps(data, indent=2))
+    return filepath
 
 
 def analyze_prompt(prompt: str) -> str:
@@ -46,13 +77,26 @@ def analyze_prompt(prompt: str) -> str:
     if not matches:
         return ""
 
+    # Write prompt to temp file for classifier (fail-fast: let OSError propagate)
+    filepath = write_prompt_to_temp(prompt, matches)
+
+    # Build keyword suggestion
     if len(matches) == 1:
         skill = matches[0]
-        return f"SKILL SUGGESTION: This prompt may benefit from the `{skill}` skill. Acknowledge this suggestion in your response."
+        keyword_suggestion = f"SKILL SUGGESTION: This prompt may benefit from the `{skill}` skill. Acknowledge this suggestion in your response."
+    else:
+        skill_list = ", ".join(f"`{s}`" for s in matches)
+        keyword_suggestion = f"SKILL SUGGESTION: This prompt may relate to multiple skills: {skill_list}. Consider which is most relevant."
 
-    # Multiple matches
-    skill_list = ", ".join(f"`{s}`" for s in matches)
-    return f"SKILL SUGGESTION: This prompt may relate to multiple skills: {skill_list}. Consider which is most relevant."
+    # Build classifier spawn instruction
+    classifier_instruction = f"""
+CLASSIFIER AVAILABLE: For semantic analysis, invoke Task tool with:
+- subagent_type: "general-purpose"
+- model: "haiku"
+- prompt: "Read {filepath} and classify intent. Return JSON with intent, confidence, skills."
+"""
+
+    return f"{keyword_suggestion}\n{classifier_instruction}"
 
 
 def main():
