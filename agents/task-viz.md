@@ -85,13 +85,6 @@ The excalidraw skill provides:
 - **Goals**: XL size, central or top positioning
 - **Projects**: L-M size, connecting goals to tasks
 
-<<<<<<< Updated upstream
-**Color Strategy** (status-based, 4 colors):
-- **Blue**: Active tasks (in progress, highest energy)
-- **Red**: Blocked tasks (attention needed, problems)
-- **Yellow**: Queued tasks (ready to start, waiting)
-- **Green/Gray**: Completed tasks (done, de-emphasized)
-=======
 **Star/Orbital Layout** (CRITICAL - like solar systems):
 - **Goals** are "SUNS" at center of their own system - HUGE, prominent
 - **Projects** ORBIT their goal (inner ring, 300-400px from goal center) - BALANCED SPACING
@@ -100,7 +93,6 @@ The excalidraw skill provides:
 - Each goal is a separate "solar system" spread across the canvas (800-1200px between goal centers)
 - **EVERY element has an arrow** connecting it to its parent
 - **Arrows MUST bind to box edges** using `startBinding`/`endBinding` - NOT center-to-center
->>>>>>> Stashed changes
 
 **Layout Strategy** (user preference - ACCOMMODATIONS.md line 38):
 - **Don't enforce rigid top-down hierarchy**
@@ -123,13 +115,6 @@ The excalidraw skill provides:
 - **Cluster intelligently**: Group related tasks on same side, but vary angles (30°, 45°, 60° offsets)
 - **Generous whitespace**: 80-120px between project clusters, 150-200px between goal zones
 
-<<<<<<< Updated upstream
-**Relationship visualization**:
-- Goal → Project (bold arrows, muted color)
-- Project → Task (standard arrows, status-colored)
-- Show ALL connections (orphaned tasks stand out visually)
-- Use arrow direction to free up positioning (don't force top-down)
-=======
 **Layout Strategy** (MIND MAP, not org chart):
 - **Radial expansion** - goals at center, projects around them, tasks around projects
 - **360° distribution** - children can be above, below, left, right, diagonal
@@ -141,17 +126,49 @@ The excalidraw skill provides:
   - Between projects: 200-300px minimum
   - Between goal systems: 800-1200px minimum
   - Canvas can be 4000-6000px wide/tall - use space efficiently
->>>>>>> Stashed changes
 
-**Specific design requirements** (from theme [[references/theme-colors.md]]):
-- **Typography**: XL (40-48px goals) > L (24-32px projects) > M (16-20px active tasks) > S (12-14px completed)
-- **Spacing**: 80-120px between project clusters, 150-200px between goal zones
-- **Alignment**: Snap to grid for precision, but embrace creative positioning (not rigid rows)
-- **Contrast**: Ensure 4.5:1 text contrast ratio (theme colors already provide this)
-- **Blockers**: Clear visual indicator (red `#ff6666`, explicit label, warning icon)
-- **Colors**: Theme palette only - muted gold `#c9b458`, soft green `#8fbc8f`, blue `#7a9fbf`, orange `#ffa500`, red `#ff6666`
-- **Icons**: Optional Material Symbols for status (check_circle, pending, block) - see [[references/icon-integration.md]]
-- **Arrows**: Curved, not straight (for organic feel)
+**VISUAL IMPACT REQUIREMENTS** (THE DASHBOARD MUST BE STRIKING, NOT BORING):
+
+**THE #1 FAILURE MODE: Creating a boring gray spreadsheet. This MUST be visually impressive!**
+
+**Box Sizes** (MAKE THEM BIG AND READABLE):
+- **Goals**: Width 300-400px, Height 120-150px, Font 60-72px (MASSIVE - these are the sun)
+- **Projects**: Width 220-280px, Height 80-100px, Font 36-42px (LARGE - easily readable)
+- **Active tasks**: Width 160-200px, Height 60-80px, Font 20-24px (MEDIUM - comfortable reading)
+- **Blocked tasks**: Width 180-220px, Height 70-90px, Font 22-26px (ATTENTION-GRABBING)
+- **Completed tasks**: Width 120-140px, Height 40-50px, Font 14-16px (small but visible)
+
+**Colors** (BOLD AND DIFFERENTIATED - NOT ALL GRAY):
+- **Goals**: SATURATED backgrounds (gold #c9b458 at 50-60% opacity, NOT 30%)
+- **Projects by goal**:
+  - Academic Profile projects: Green (#8fbc8f at 40% opacity)
+  - Accountability projects: Blue (#7a9fbf at 40% opacity)
+  - Get Paid projects: Purple (#9b87c9 at 40% opacity)
+  - Unaligned projects: Orange (#ffa500 at 30% opacity with dashed border)
+- **Tasks by status**:
+  - Active: Bright blue (#4a9eff at 30% opacity)
+  - Blocked: BRIGHT RED (#ff6666 at 50% opacity with thick border)
+  - Queued: Orange (#ffa500 at 25% opacity)
+  - Inbox: Yellow (#ffd93d at 20% opacity)
+  - Completed: Light gray (#f1f3f5)
+
+**Layout** (ORGANIC AND SCATTERED - NOT ROWS):
+- **True radial/orbital**: Use trigonometry to position tasks around projects in circles
+- **Random angle variation**: ±15-30° from perfect angles to create organic feel
+- **NO ROWS**: If it looks like a table or aligned grid, it's WRONG
+- **Scattered placement**: Goals should be at varied positions (not all on same horizontal line)
+- **Curved arrows**: Use bezier curves with 3-5 points for natural paths
+
+**Shape Variety**:
+- Goals: Ellipse (organic, sun-like)
+- Projects: Rounded rectangles (borderRadius: 8-12)
+- Tasks: Mix of rectangles and rounded rectangles for variety
+
+**Aesthetic** (HAND-DRAWN BUT POLISHED):
+- `roughness: 2` - maximum sketchiness
+- `fontFamily: 1` (Virgil handwritten font)
+- `fillStyle: "solid"` - solid fills for text readability
+- Stroke width: 2-3px for emphasis on important items
 
 ### Phase 4: Generate Excalidraw JSON
 
@@ -179,9 +196,6 @@ Create Excalidraw JSON structure with proper element types:
 
 **Text in containers** (MANDATORY - FAILURE TO BIND TEXT = UNUSABLE OUTPUT):
 
-<<<<<<< Updated upstream
-**CRITICAL**: Every box MUST have visible text. Text binding is non-negotiable.
-=======
 **Text-in-box binding** (MANDATORY - NO EXCEPTIONS):
 
 **IF TEXT IS NOT VISIBLE, THE DASHBOARD IS UNUSABLE - THIS IS THE #1 FAILURE MODE**
@@ -226,7 +240,6 @@ Every container (rectangle/ellipse) MUST have bound text. Follow this pattern EX
 - ✅ Text font size must match visual hierarchy (goals 48px+, projects 28-32px, tasks 16-18px)
 - ❌ NEVER create containers without bound text
 - ❌ Text MUST NOT have x,y coordinates - position comes from container
->>>>>>> Stashed changes
 
 **Step-by-step text binding**:
 1. Create container element with unique `id`
@@ -283,38 +296,6 @@ Every container (rectangle/ellipse) MUST have bound text. Follow this pattern EX
 1. **Write file**: Use Write tool → `/home/nic/src/writing/current-tasks.excalidraw` (repo root, NOT data/)
    - **Path**: MUST be repo root (`/home/nic/src/writing/`), NOT `data/` subdirectory
    - **Rule**: Only bmem-compliant markdown belongs in `data/`
-<<<<<<< Updated upstream
-   - **Reason**: Excalidraw files are binary JSON artifacts, not knowledge base content
-   - **Filename**: `current-tasks.excalidraw` (replaces any previous version)
-
-2. **CRITICAL VERIFICATION** (DO NOT SKIP):
-   - Read back the generated JSON file
-   - Sample 3-5 random elements to verify text binding:
-     - Find a container element → verify it has `boundElements: [{id: "text-X", type: "text"}]`
-     - Find corresponding text element with id="text-X" → verify `containerId` matches container id
-     - Verify text `x`, `y` are inside container bounds
-     - Verify text `width` < container `width`
-   - If ANY verification fails → HALT and fix the JSON before reporting success
-   - **Do NOT claim success based only on element count** - text binding MUST be verified
-
-3. **Report summary**:
-   - **Total tasks discovered**: Breakdown by status (active, blocked, queued, completed, inbox)
-   - **Projects identified**: From bmem + task metadata
-   - **Goals mapped**: From bmem
-   - **Relationship stats**:
-     - Tasks connected to projects: X/Y
-     - Projects connected to goals: X/Y
-     - Orphaned tasks (no project): List them
-     - Orphaned projects (no goal): List them
-   - **Project health**: For each project, show:
-     - Last 2-3 completed tasks (recent progress indicator)
-     - Outstanding tasks count (active/blocked/queued)
-     - Visual balance: Are projects evenly distributed or clustered?
-   - **Spatial layout**: Confirm arrow overlap minimized via 360° positioning
-   - **Skipped/malformed tasks**: Count and reason
-   - **File location**: `/home/nic/src/writing/current-tasks.excalidraw` (repo root)
-   - **Design notes**: "Comprehensive goal→project→task map on white canvas, 360° positioning to prevent arrow overlap, recent completed tasks shown per project"
-=======
    - **Reason**: Excalidraw files are binary artifacts, not knowledge base content
 
 2. **MANDATORY VERIFICATION** (DO NOT SKIP - TEXT BINDING FAILURE IS THE #1 ISSUE):
@@ -352,7 +333,6 @@ Every container (rectangle/ellipse) MUST have bound text. Follow this pattern EX
    - File location: `current-tasks.excalidraw` (repo root)
    - Verification status: "Text binding verified on 5 sample elements"
    - Note: "Dashboard designed following excalidraw visual design principles"
->>>>>>> Stashed changes
 
 ## Error Handling
 
