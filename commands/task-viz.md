@@ -6,7 +6,7 @@ The agent will:
 1. Use bmem skill to understand current projects, goals, and strategic context
 2. Use excalidraw skill for professional visual design principles (organic mind-map layout, theme colors, icons)
 3. Create a visually striking dashboard showing task hierarchy and status
-4. Save to `/home/nic/src/writing/current-tasks.excalidraw` (repo root)
+4. Save to writing repository root as `current-tasks.excalidraw`
 
 **Key features**:
 - Organic mind-map layout (NOT rigid hierarchies)

@@ -293,8 +293,8 @@ Every container (rectangle/ellipse) MUST have bound text. Follow this pattern EX
 
 ### Phase 5: Write, Verify, and Report
 
-1. **Write file**: Use Write tool → `/home/nic/src/writing/current-tasks.excalidraw` (repo root, NOT data/)
-   - **Path**: MUST be repo root (`/home/nic/src/writing/`), NOT `data/` subdirectory
+1. **Write file**: Use Write tool → `current-tasks.excalidraw` in writing repository root (NOT data/)
+   - **Path**: MUST be writing repository root (parent of $ACA_DATA), NOT `data/` subdirectory
    - **Rule**: Only bmem-compliant markdown belongs in `data/`
    - **Reason**: Excalidraw files are binary artifacts, not knowledge base content
 

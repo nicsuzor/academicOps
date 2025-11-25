@@ -174,9 +174,9 @@ This principle guides how we write skills, CLAUDE.md files, and other agent inst
 **Single source of truth hierarchy**:
 
 1. `~/.claude/CLAUDE.md` - Authoritative directory structure and paths
-2. `/home/nic/src/academicOps/AXIOMS.md` - Foundational principles
-3. `/home/nic/src/academicOps/CORE.md` - User context and tools
-4. `/home/nic/src/academicOps/ACCOMMODATIONS.md` - Work style requirements
+2. `$AOPS/AXIOMS.md` - Foundational principles
+3. `$AOPS/CORE.md` - User context and tools
+4. `$AOPS/ACCOMMODATIONS.md` - Work style requirements
 
 All other documentation must reference these sources, never duplicate their content.
 
@@ -583,7 +583,7 @@ def test_something(fixture: Type) -> None:
 
 **Framework Repository** ($AOPS):
 ```
-$AOPS/  (e.g., /home/nic/src/academicOps/)
+$AOPS/  (set via AOPS environment variable)
 ├── AXIOMS.md            # Framework principles (generic, not user-specific)
 ├── README.md            # Framework documentation
 ├── BMEM-FORMAT.md       # bmem markdown format specification
@@ -613,7 +613,7 @@ $AOPS/  (e.g., /home/nic/src/academicOps/)
 
 **User Data Repository** ($ACA_DATA):
 ```
-$ACA_DATA/  (e.g., /home/nic/src/writing/data/)
+$ACA_DATA/  (set via ACA_DATA environment variable)
 ├── ACCOMMODATIONS.md    # User work style [SESSION START]
 ├── CORE.md              # User context, tools [SESSION START]
 ├── STYLE-QUICK.md       # Writing style [SESSION START]

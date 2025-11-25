@@ -9,7 +9,7 @@ permalink: aops/skills/skill-creator/skill
 
 ## Framework Context
 
-@resources/AXIOMS.md @resources/INFRASTRUCTURE.md
+@resources/AXIOMS.md
 
 ## Overview
 
@@ -63,8 +63,7 @@ Create `resources/` directory with framework symlinks:
 
 ```bash
 cd <skill-dir>/resources
-ln -s ../../../chunks/AXIOMS.md AXIOMS.md
-ln -s ../../../chunks/INFRASTRUCTURE.md INFRASTRUCTURE.md  # Framework-touching only
+ln -s ../../../AXIOMS.md AXIOMS.md
 ```
 
 Add to SKILL.md header:
@@ -72,12 +71,10 @@ Add to SKILL.md header:
 ```markdown
 ## Framework Context
 
-@resources/AXIOMS.md @resources/INFRASTRUCTURE.md # If framework-touching
+@resources/AXIOMS.md
 ```
 
-**Framework-Touching** = reads/writes framework files (agents/, skills/, commands/, core/) or needs $ACADEMICOPS paths. Examples: aops-trainer, skill-creator, claude-hooks.
-
-**Non-Framework** = general utilities. Examples: pdf, archiver, strategic-partner. Skip INFRASTRUCTURE.md.
+**Framework Context**: Skills that work with framework files (agents/, skills/, commands/) should include AXIOMS.md for foundational principles. General utility skills can skip this.
 
 ### 4. Edit SKILL.md
 
@@ -169,4 +166,4 @@ Test on real tasks → Notice inefficiencies → Update → Test again. Follow a
 
 - `@$ACADEMICOPS/docs/bots/BEST-PRACTICES.md`
 - `@$ACADEMICOPS/docs/bots/skill-invocation-guide.md`
-- `@resources/AXIOMS.md`, `@resources/INFRASTRUCTURE.md`
+- `@resources/AXIOMS.md`

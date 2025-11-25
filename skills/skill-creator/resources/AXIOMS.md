@@ -1,1 +1,1 @@
-../../../chunks/AXIOMS.md
+../../../AXIOMS.md
