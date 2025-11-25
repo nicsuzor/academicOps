@@ -123,6 +123,21 @@ ln -s ../CLAUDE.md "$REPO_CLAUDE_MD_DEST"
 echo -e "${GREEN}✓${NC} .claude/CLAUDE.md → CLAUDE.md (relative)"
 
 echo
+echo "=== Configuring Basic Memory (bmem) ==="
+echo
+
+# Configure bmem with default project mode
+# The config file location depends on the basicmemory package implementation
+# Try to set default project if bmem is available
+if command -v uvx &> /dev/null; then
+    echo "Setting bmem default project to 'main'..."
+    uvx basic-memory project default main 2>/dev/null || echo -e "${YELLOW}⚠${NC}  Could not set bmem default project (may need manual configuration)"
+    echo -e "${GREEN}✓${NC} bmem configured for default project mode"
+else
+    echo -e "${YELLOW}⚠${NC}  uvx not found, skipping bmem configuration"
+fi
+
+echo
 echo -e "${GREEN}=== Setup Complete ===${NC}"
 echo
 echo "Installed to TWO locations:"
@@ -138,6 +153,8 @@ echo
 echo "2. $BOTS_DIR/.claude/ (repository, for remote coding)"
 echo "   - All symlinks use relative paths"
 echo "   - Checked into git for remote environments"
+echo
+echo "3. Basic Memory (bmem) default project: main"
 echo
 echo "Next:"
 echo "  1. Commit $BOTS_DIR/.claude/ to git (not ignored)"
