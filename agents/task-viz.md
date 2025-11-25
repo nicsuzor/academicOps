@@ -152,27 +152,77 @@ Create Excalidraw JSON structure with proper element types:
 - `boundElements`: Array of element IDs bound to this element (for containers)
 - `containerId`: ID of container element (for text inside containers)
 
-**Text in containers** (REQUIRED):
-- Create container (rectangle/ellipse) with unique ID
-- Create text element with `containerId` pointing to container ID
-- Container must have `boundElements: [{id: "text-id", type: "text"}]`
-- Text `width` should match container width (minus padding)
-- Text `textAlign`: "center" for centered text in container
-- **Group text+container**: Set both elements so they move together
+**Text in containers** (MANDATORY - FAILURE TO BIND TEXT = UNUSABLE OUTPUT):
+
+**CRITICAL**: Every box MUST have visible text. Text binding is non-negotiable.
+
+**Step-by-step text binding**:
+1. Create container element with unique `id`
+2. Container MUST have: `boundElements: [{id: "text-123", type: "text"}]`
+3. Create text element with:
+   - `containerId`: MUST match container's `id`
+   - `width`: Container width minus 20px padding
+   - `textAlign`: `"center"`
+   - `verticalAlign`: `"middle"`
+   - `x`: Container x + 10 (half padding)
+   - `y`: Container y + (height/2) - (fontSize*0.6)
+
+**Example JSON** (COPY THIS PATTERN):
+```json
+{
+  "id": "box-1",
+  "type": "rectangle",
+  "x": 100, "y": 100,
+  "width": 200, "height": 80,
+  "boundElements": [{"id": "txt-1", "type": "text"}],
+  "strokeColor": "#c9b458",
+  "backgroundColor": "#c9b45830",
+  "fillStyle": "solid"
+}
+{
+  "id": "txt-1",
+  "type": "text",
+  "x": 110,  // 100 + 10 padding
+  "y": 125,  // Vertically centered
+  "width": 180,  // 200 - 20 padding
+  "text": "Goal Name Here",
+  "fontSize": 44,
+  "fontFamily": 1,
+  "textAlign": "center",
+  "verticalAlign": "middle",
+  "containerId": "box-1"
+}
+```
+
+**Common mistakes** (these cause blank boxes):
+- ❌ Missing `containerId` in text → text floats separately
+- ❌ Missing `boundElements` in container → binding broken
+- ❌ Mismatched IDs between container and text
+- ❌ Text positioned outside container bounds
+- ❌ Text width > container width
 
 **Canvas background**: Use `transparent` or `#ffffff` (white) - NOT dark backgrounds
 **Text color**: Use `#1a1a1a` (dark) for high contrast on white canvas
 
 **Arrows must bind to shapes**: Set `startBinding: {elementId: "shape-id", focus: 0, gap: 10}` so arrows move with elements. Arrows connect: Goal→Project, Project→Task.
 
-### Phase 5: Write and Report
+### Phase 5: Write, Verify, and Report
 
 1. **Write file**: Use Write tool → `/home/nic/src/writing/current-tasks.excalidraw` (repo root, NOT data/)
    - **Path**: MUST be repo root (`/home/nic/src/writing/`), NOT `data/` subdirectory
    - **Rule**: Only bmem-compliant markdown belongs in `data/`
    - **Reason**: Excalidraw files are binary JSON artifacts, not knowledge base content
    - **Filename**: `current-tasks.excalidraw` (replaces any previous version)
-2. **Verify**: Confirm file was created at correct path
+
+2. **CRITICAL VERIFICATION** (DO NOT SKIP):
+   - Read back the generated JSON file
+   - Sample 3-5 random elements to verify text binding:
+     - Find a container element → verify it has `boundElements: [{id: "text-X", type: "text"}]`
+     - Find corresponding text element with id="text-X" → verify `containerId` matches container id
+     - Verify text `x`, `y` are inside container bounds
+     - Verify text `width` < container `width`
+   - If ANY verification fails → HALT and fix the JSON before reporting success
+   - **Do NOT claim success based only on element count** - text binding MUST be verified
 
 3. **Report summary**:
    - **Total tasks discovered**: Breakdown by status (active, blocked, queued, completed, inbox)
@@ -199,12 +249,33 @@ Create Excalidraw JSON structure with proper element types:
 - excalidraw skill unavailable or fails
 - Cannot write to repo root
 - Too many malformed tasks (>50% invalid)
+- **Text binding verification fails** - any container missing text or text unbound
+- **Visual check fails** - blank boxes in output (indicates text binding broken)
 
 **Graceful degradation**:
 - No tasks found → Create dashboard with "No tasks" message
 - No bmem projects found → Use "uncategorized" bucket
 - Some tasks malformed → Skip, report count, continue
 - Missing optional task fields → Use defaults (priority=3, project="uncategorized")
+
+**Troubleshooting text binding failures**:
+
+If boxes appear blank (no text visible):
+1. **Check container has boundElements**:
+   ```json
+   "boundElements": [{"id": "text-123", "type": "text"}]
+   ```
+2. **Check text has containerId**:
+   ```json
+   "containerId": "container-456"
+   ```
+3. **Verify IDs match** - container's boundElements[].id MUST equal text's id
+4. **Check text positioning** - text x/y must be INSIDE container bounds
+5. **Check text width** - must be less than container width (typically -20px for padding)
+6. **Verify all required properties** exist on both elements
+
+**Example of correctly bound text-in-container**:
+See Phase 4 example JSON above - copy that pattern exactly.
 
 ## Quality Checklist
 
@@ -231,10 +302,14 @@ Before completing, verify:
 - [ ] Arrows do NOT run through other elements (spatial planning successful)
 - [ ] Curved arrows for organic feel
 
-**Text & grouping**:
-- [ ] All text inside containers (using `containerId` property)
-- [ ] Text auto-sizes to container width
-- [ ] Text+container grouped (move together)
+**Text & grouping** (CRITICAL - CHECK ACTUAL FILE):
+- [ ] EVERY container has `boundElements: [{id: "...", type: "text"}]`
+- [ ] EVERY text has `containerId` matching its container
+- [ ] Text positioned INSIDE containers (x/y within container bounds)
+- [ ] Text width < container width (typically container width - 20px)
+- [ ] IDs match exactly between container.boundElements[].id and text.containerId
+- [ ] **VISUAL CHECK**: Open current-tasks.excalidraw and verify ALL boxes show text
+- [ ] **FAILURE CONDITION**: If any box is blank → HALT and fix text binding
 
 **Color & contrast**:
 - [ ] White/transparent canvas background
