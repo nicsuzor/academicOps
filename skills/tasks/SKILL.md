@@ -40,13 +40,13 @@ Display tasks with filtering and sorting. Shows filenames in output for easy ref
 
 ```bash
 # From any directory - use skill symlink
-PYTHONPATH=$AOPS uv run --no-project python ~/.claude/skills/tasks/scripts/task_view.py
+PYTHONPATH=$AOPS uv run python ~/.claude/skills/tasks/scripts/task_view.py
 
 # With options
-PYTHONPATH=$AOPS uv run --no-project python ~/.claude/skills/tasks/scripts/task_view.py --sort=due --per-page=20 --compact
+PYTHONPATH=$AOPS uv run python ~/.claude/skills/tasks/scripts/task_view.py --sort=due --per-page=20 --compact
 
 # For testing with custom data directory
-PYTHONPATH=$AOPS uv run --no-project python ~/.claude/skills/tasks/scripts/task_view.py --data-dir=/path/to/data
+PYTHONPATH=$AOPS uv run python ~/.claude/skills/tasks/scripts/task_view.py --data-dir=/path/to/data
 ```
 
 **Output**: Formatted task list from `data/tasks/inbox/` with filenames displayed for each task.
@@ -64,16 +64,16 @@ Move completed tasks to archive. **Supports batch operations** - can archive mul
 
 ```bash
 # Archive a single task
-PYTHONPATH=$AOPS uv run --no-project python ~/.claude/skills/tasks/scripts/task_archive.py "task-filename.md"
+PYTHONPATH=$AOPS uv run python ~/.claude/skills/tasks/scripts/task_archive.py "task-filename.md"
 
 # Archive multiple tasks (batch operation)
-PYTHONPATH=$AOPS uv run --no-project python ~/.claude/skills/tasks/scripts/task_archive.py "task1.md" "task2.md" "task3.md"
+PYTHONPATH=$AOPS uv run python ~/.claude/skills/tasks/scripts/task_archive.py "task1.md" "task2.md" "task3.md"
 
 # Unarchive a task
-PYTHONPATH=$AOPS uv run --no-project python ~/.claude/skills/tasks/scripts/task_archive.py "task-filename.md" --unarchive
+PYTHONPATH=$AOPS uv run python ~/.claude/skills/tasks/scripts/task_archive.py "task-filename.md" --unarchive
 
 # For testing with custom data directory
-PYTHONPATH=$AOPS uv run --no-project python ~/.claude/skills/tasks/scripts/task_archive.py "task1.md" --data-dir=/path/to/data
+PYTHONPATH=$AOPS uv run python ~/.claude/skills/tasks/scripts/task_archive.py "task1.md" --data-dir=/path/to/data
 ```
 
 **Parameters**:
@@ -90,13 +90,13 @@ Create new task in inbox with bmem-compliant format.
 
 ```bash
 # Basic task
-PYTHONPATH=$AOPS uv run --no-project python ~/.claude/skills/tasks/scripts/task_add.py \
+PYTHONPATH=$AOPS uv run python ~/.claude/skills/tasks/scripts/task_add.py \
   --title "Task title" \
   --priority 1 \
   --body "Task description with context"
 
 # Full-featured task
-PYTHONPATH=$AOPS uv run --no-project python ~/.claude/skills/tasks/scripts/task_add.py \
+PYTHONPATH=$AOPS uv run python ~/.claude/skills/tasks/scripts/task_add.py \
   --title "Complete important deliverable" \
   --priority 0 \
   --project "project-slug" \
@@ -106,7 +106,7 @@ PYTHONPATH=$AOPS uv run --no-project python ~/.claude/skills/tasks/scripts/task_
   --body "Detailed context about the task"
 
 # For testing with custom data directory
-PYTHONPATH=$AOPS uv run --no-project python ~/.claude/skills/tasks/scripts/task_add.py \
+PYTHONPATH=$AOPS uv run python ~/.claude/skills/tasks/scripts/task_add.py \
   --title "Test task" \
   --data-dir=/path/to/data
 ```
@@ -155,7 +155,7 @@ PYTHONPATH=$AOPS uv run --no-project python ~/.claude/skills/tasks/scripts/task_
 
 - Use scripts for ALL task operations
 - Use `~/.claude/skills/tasks/scripts/` path to access scripts (works from any directory)
-- Include `PYTHONPATH=$AOPS` and `--no-project` in commands
+- Include `PYTHONPATH=$AOPS` in commands
 - Verify script execution succeeded
 
 ## Workflows

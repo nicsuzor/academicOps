@@ -31,7 +31,7 @@ def test_task_skill_scripts_discoverable(claude_headless, data_dir):
     Run the task_view.py script using the path ~/.claude/skills/tasks/scripts/task_view.py
 
     Use this exact command:
-    PYTHONPATH=$AOPS uv run --no-project python ~/.claude/skills/tasks/scripts/task_view.py --compact
+    PYTHONPATH=$AOPS uv run python ~/.claude/skills/tasks/scripts/task_view.py --compact
 
     Tell me if it succeeded and what the output was."""
 
@@ -111,7 +111,6 @@ def test_task_script_runs_from_writing_repo(data_dir):
     cmd = [
         "uv",
         "run",
-        "--no-project",
         "python",
         str(Path.home() / ".claude" / "skills" / "tasks" / "scripts" / "task_view.py"),
         "--compact",

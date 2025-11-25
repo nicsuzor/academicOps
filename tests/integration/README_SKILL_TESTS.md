@@ -69,7 +69,7 @@ Testing symlink resolution...
 
 Testing script execution from writing repo...
   Running from: /home/nic/src/writing
-  Command: uv run --no-project python ~/.claude/skills/tasks/scripts/task_view.py --compact
+  Command: uv run python ~/.claude/skills/tasks/scripts/task_view.py --compact
   ✓ Script executed successfully
   ✓ Found data directory in output
 ✅ PASS: Script runs from writing repo
@@ -103,6 +103,6 @@ $AOPS/skills/tasks/scripts/       # Framework: Scripts live here
     → $AOPS/skills/tasks/scripts/
 
 /any/working/directory/           # Works from anywhere
-    $ PYTHONPATH=$AOPS uv run --no-project python ~/.claude/skills/tasks/scripts/task_view.py
+    $ PYTHONPATH=$AOPS uv run python ~/.claude/skills/tasks/scripts/task_view.py
     ✓ SUCCESS
 ```
