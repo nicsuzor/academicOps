@@ -5,10 +5,6 @@ on:
     types: [capture-note]
   workflow_dispatch:
     inputs:
-      title:
-        description: 'Note title'
-        required: true
-        type: string
       content:
         description: 'Note content'
         required: true
@@ -50,16 +46,23 @@ jobs:
         id: payload
         run: |
           if [ "${{ github.event_name }}" = "repository_dispatch" ]; then
-            echo "title=${{ github.event.client_payload.title }}" >> $GITHUB_OUTPUT
-            echo "content=${{ github.event.client_payload.content }}" >> $GITHUB_OUTPUT
+            {
+              echo "content<<EOF"
+              echo "${{ github.event.client_payload.content }}"
+              echo "EOF"
+            } >> $GITHUB_OUTPUT
             echo "tags=${{ github.event.client_payload.tags }}" >> $GITHUB_OUTPUT
           else
-            echo "title=${{ inputs.title }}" >> $GITHUB_OUTPUT
-            echo "content=${{ inputs.content }}" >> $GITHUB_OUTPUT
+            {
+              echo "content<<EOF"
+              echo "${{ inputs.content }}"
+              echo "EOF"
+            } >> $GITHUB_OUTPUT
             echo "tags=${{ inputs.tags }}" >> $GITHUB_OUTPUT
           fi
 
       - name: Process note with Claude Code
+        id: claude
         uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -70,19 +73,19 @@ jobs:
             Create a bmem-formatted note from this iOS capture.
 
             INPUT:
-            - Title: ${{ steps.payload.outputs.title }}
             - Content: ${{ steps.payload.outputs.content }}
             - Tags: ${{ steps.payload.outputs.tags }}
 
             TASK:
-            1. Create directory data/notes/mobile-captures/ if it doesn't exist
-            2. Generate a bmem-formatted markdown file with:
+            1. Generate a concise, descriptive title from the content (3-7 words)
+            2. Create directory data/notes/mobile-captures/ if it doesn't exist
+            3. Generate a bmem-formatted markdown file with:
                - YAML frontmatter (title, permalink, type: note, tags including mobile-capture)
                - Context section noting this was captured from iOS
                - Observations section with the content as an [idea] observation
                - Relations section (can be empty initially)
-            3. Save as: data/notes/mobile-captures/YYYY-MM-DD-<slug>.md
-               (use today's date and a URL-safe slug from the title)
+            4. Save as: data/notes/mobile-captures/YYYY-MM-DD-<slug>.md
+               (use today's date and a URL-safe slug from the generated title)
 
             BMEM FORMAT:
             ```
@@ -114,13 +117,26 @@ jobs:
             Output the filepath of the created note when done.
 
       - name: Commit changes
+        env:
+          NOTE_CONTENT: ${{ steps.payload.outputs.content }}
+          CREATED_FILE: ${{ steps.claude.outputs.result }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add data/
+
+          # Extract title from the created file if available
+          if [ -n "$CREATED_FILE" ] && [ -f "$CREATED_FILE" ]; then
+            TITLE=$(grep '^title:' "$CREATED_FILE" | sed 's/^title: //')
+            git add "$CREATED_FILE"
+          else
+            # Fallback: add all changes in data/
+            TITLE="iOS capture"
+            git add data/
+          fi
+
           if git diff --staged --quiet; then
             echo "No changes to commit"
           else
-            git commit -m "capture(mobile): ${{ steps.payload.outputs.title }}"
+            git commit -m "capture(mobile): ${TITLE}"
             git push
           fi
