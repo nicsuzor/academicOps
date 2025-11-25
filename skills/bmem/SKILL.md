@@ -15,6 +15,7 @@
 **Write Access**: bmem MCP tools ONLY - agents must not write data/ files directly
 **Cross-Repo**: Each repository has independent data/ hierarchy
 **MCP Integration**: Access via `mcp__bmem__*` tools for all operations
+**Default Project Mode**: When `default_project_mode=true` in ~/.basic-memory/config.json, the project parameter is optional and defaults to 'main'
 
 ### ⚠️ CRITICAL: Approved Categories and Relations ONLY
 
