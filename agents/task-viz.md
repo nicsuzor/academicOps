@@ -85,11 +85,22 @@ The excalidraw skill provides:
 - **Goals**: XL size, central or top positioning
 - **Projects**: L-M size, connecting goals to tasks
 
+<<<<<<< Updated upstream
 **Color Strategy** (status-based, 4 colors):
 - **Blue**: Active tasks (in progress, highest energy)
 - **Red**: Blocked tasks (attention needed, problems)
 - **Yellow**: Queued tasks (ready to start, waiting)
 - **Green/Gray**: Completed tasks (done, de-emphasized)
+=======
+**Star/Orbital Layout** (CRITICAL - like solar systems):
+- **Goals** are "SUNS" at center of their own system - HUGE, prominent
+- **Projects** ORBIT their goal (inner ring, 300-400px from goal center) - BALANCED SPACING
+- **Tasks** ORBIT their project (outer ring, 150-200px from project center) - BALANCED SPACING
+- **Minimum spacing between elements**: 100-150px (prevent crowding but not too sparse)
+- Each goal is a separate "solar system" spread across the canvas (800-1200px between goal centers)
+- **EVERY element has an arrow** connecting it to its parent
+- **Arrows MUST bind to box edges** using `startBinding`/`endBinding` - NOT center-to-center
+>>>>>>> Stashed changes
 
 **Layout Strategy** (user preference - ACCOMMODATIONS.md line 38):
 - **Don't enforce rigid top-down hierarchy**
@@ -112,11 +123,25 @@ The excalidraw skill provides:
 - **Cluster intelligently**: Group related tasks on same side, but vary angles (30°, 45°, 60° offsets)
 - **Generous whitespace**: 80-120px between project clusters, 150-200px between goal zones
 
+<<<<<<< Updated upstream
 **Relationship visualization**:
 - Goal → Project (bold arrows, muted color)
 - Project → Task (standard arrows, status-colored)
 - Show ALL connections (orphaned tasks stand out visually)
 - Use arrow direction to free up positioning (don't force top-down)
+=======
+**Layout Strategy** (MIND MAP, not org chart):
+- **Radial expansion** - goals at center, projects around them, tasks around projects
+- **360° distribution** - children can be above, below, left, right, diagonal
+- **Cluster by concept** - related projects grouped spatially
+- **NO linear flow** - not top-to-bottom, not left-to-right
+- **Route arrows around boxes** - never through unrelated elements
+- **BALANCED whitespace** (CRITICAL - readable but not wasteful):
+  - Between tasks: 100-150px minimum
+  - Between projects: 200-300px minimum
+  - Between goal systems: 800-1200px minimum
+  - Canvas can be 4000-6000px wide/tall - use space efficiently
+>>>>>>> Stashed changes
 
 **Specific design requirements** (from theme [[references/theme-colors.md]]):
 - **Typography**: XL (40-48px goals) > L (24-32px projects) > M (16-20px active tasks) > S (12-14px completed)
@@ -154,7 +179,54 @@ Create Excalidraw JSON structure with proper element types:
 
 **Text in containers** (MANDATORY - FAILURE TO BIND TEXT = UNUSABLE OUTPUT):
 
+<<<<<<< Updated upstream
 **CRITICAL**: Every box MUST have visible text. Text binding is non-negotiable.
+=======
+**Text-in-box binding** (MANDATORY - NO EXCEPTIONS):
+
+**IF TEXT IS NOT VISIBLE, THE DASHBOARD IS UNUSABLE - THIS IS THE #1 FAILURE MODE**
+
+Every container (rectangle/ellipse) MUST have bound text. Follow this pattern EXACTLY:
+
+**Step 1 - Create container with boundElements:**
+```json
+{
+  "id": "container-123",
+  "type": "rectangle",
+  "boundElements": [
+    {"id": "text-123", "type": "text"}
+  ],
+  "width": 200,
+  "height": 80,
+  ...other properties...
+}
+```
+
+**Step 2 - Create text element with containerId:**
+```json
+{
+  "id": "text-123",
+  "type": "text",
+  "containerId": "container-123",
+  "text": "Goal Name Here",
+  "width": 180,
+  "fontSize": 24,
+  "fontFamily": 1,
+  "textAlign": "center",
+  "verticalAlign": "middle",
+  ...other properties...
+}
+```
+
+**CRITICAL REQUIREMENTS:**
+- ✅ Text `id` MUST appear in container's `boundElements` array
+- ✅ Container `id` MUST match text's `containerId`
+- ✅ Text width should be container width minus 20px padding
+- ✅ Text must have `textAlign: "center"` and `verticalAlign: "middle"`
+- ✅ Text font size must match visual hierarchy (goals 48px+, projects 28-32px, tasks 16-18px)
+- ❌ NEVER create containers without bound text
+- ❌ Text MUST NOT have x,y coordinates - position comes from container
+>>>>>>> Stashed changes
 
 **Step-by-step text binding**:
 1. Create container element with unique `id`
@@ -211,6 +283,7 @@ Create Excalidraw JSON structure with proper element types:
 1. **Write file**: Use Write tool → `/home/nic/src/writing/current-tasks.excalidraw` (repo root, NOT data/)
    - **Path**: MUST be repo root (`/home/nic/src/writing/`), NOT `data/` subdirectory
    - **Rule**: Only bmem-compliant markdown belongs in `data/`
+<<<<<<< Updated upstream
    - **Reason**: Excalidraw files are binary JSON artifacts, not knowledge base content
    - **Filename**: `current-tasks.excalidraw` (replaces any previous version)
 
@@ -241,6 +314,45 @@ Create Excalidraw JSON structure with proper element types:
    - **Skipped/malformed tasks**: Count and reason
    - **File location**: `/home/nic/src/writing/current-tasks.excalidraw` (repo root)
    - **Design notes**: "Comprehensive goal→project→task map on white canvas, 360° positioning to prevent arrow overlap, recent completed tasks shown per project"
+=======
+   - **Reason**: Excalidraw files are binary artifacts, not knowledge base content
+
+2. **MANDATORY VERIFICATION** (DO NOT SKIP - TEXT BINDING FAILURE IS THE #1 ISSUE):
+
+   **Read back the generated JSON file and verify text binding on a sample:**
+
+   a. Sample 5 random container elements (goals, projects, tasks)
+   b. For EACH sampled container, verify:
+      - ✅ Container has `boundElements` array with text reference
+      - ✅ Corresponding text element exists with matching `containerId`
+      - ✅ Text element has `textAlign: "center"` and `verticalAlign: "middle"`
+      - ✅ Text element has appropriate `fontSize` for hierarchy
+      - ✅ Text element has `fontFamily: 1` (Virgil)
+      - ✅ Text content is not empty
+
+   c. If ANY verification fails:
+      - ❌ HALT immediately
+      - ❌ Report which binding failed and why
+      - ❌ DO NOT report success to user
+      - ❌ Fix the generation code and regenerate
+
+   d. Sample verification output should look like:
+      ```
+      ✅ Container "goal-1" → text "txt-goal-1" bound correctly
+      ✅ Container "project-3" → text "txt-proj-3" bound correctly
+      ✅ Container "task-15" → text "txt-task-15" bound correctly
+      ✅ All 5 samples verified - text binding working
+      ```
+
+3. **Report summary**:
+   - Total tasks discovered (breakdown: active, blocked, queued, completed, inbox)
+   - Projects identified from bmem
+   - Goals mapped
+   - Skipped/malformed tasks (count and reason)
+   - File location: `current-tasks.excalidraw` (repo root)
+   - Verification status: "Text binding verified on 5 sample elements"
+   - Note: "Dashboard designed following excalidraw visual design principles"
+>>>>>>> Stashed changes
 
 ## Error Handling
 
