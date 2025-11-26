@@ -25,7 +25,7 @@ SKILL_KEYWORDS = {
     "tasks": {"task", "tasks", "todo", "todos", "action items"},
 }
 
-TEMP_DIR = Path("/tmp/prompt-router")
+TEMP_DIR = Path.home() / ".cache" / "aops" / "prompt-router"
 
 
 def write_prompt_to_temp(prompt: str, keyword_matches: list[str]) -> Path:

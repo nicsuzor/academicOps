@@ -1,4 +1,24 @@
-ANY work in this repo MUST be carried out with the `framework` skill. NO EXCUSES, EVER. HALT IF THE SKILL FAILS.
+## Framework Skill Delegation Model
+
+ALL work in this repo flows through the `framework` skill, but the framework skill may delegate implementation:
+
+**Framework skill role**: Strategic context, planning, design decisions, documentation
+
+**Delegation allowed**: Framework skill MAY delegate implementation to specialized skills:
+- `python-dev` for production Python code
+- `analyst` for data analysis
+- Other specialized skills as appropriate
+
+**Token enforcement**: When framework skill delegates, it MUST include the string "FRAMEWORK SKILL CHECKED" in the delegation message. Sub-agents receiving requests WITHOUT this token MUST refuse and fail loudly.
+
+**Pattern**:
+1. User request → Framework skill invoked (or auto-invoked via hook)
+2. Framework skill provides context, makes decisions, creates plan
+3. Framework skill delegates with "FRAMEWORK SKILL CHECKED" token
+4. Specialized skill implements according to framework's plan
+5. Framework skill validates and integrates results
+
+**Prohibited**: Bypassing framework skill entirely - all work must START with framework context.
 
 We are starting again in this aOps repo. This time, the watchword is MINIMAL. We are not just avoiding bloat, we are ACTIVELY FIGHTING it. and I want to win.
 

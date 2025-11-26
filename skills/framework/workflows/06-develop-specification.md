@@ -75,7 +75,7 @@
     - Ensure alignment with [[../../../AXIOMS.md]] principles
 
 12. **Finalize specification**
-    - Move completed spec to appropriate location (e.g., `bots/skills/framework/specs/`)
+    - Move completed spec to `$ACA_DATA/projects/aops/specs/` (AUTHORITATIVE location)
     - Specification is now the contract for implementation
     - Ready to proceed with workflow 01 (Design New Component)
 

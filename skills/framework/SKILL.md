@@ -35,6 +35,41 @@ The framework lives in `$AOPS` (academicOps repository) and follows aggressive m
 - Detecting documentation conflicts
 - Preventing bloat
 
+## Delegation Pattern
+
+**Framework skill orchestrates, specialized skills implement.**
+
+When implementation work is required (coding, data analysis), the framework skill delegates to specialized skills:
+
+**Delegation requirements**:
+1. Framework skill must provide full context and plan
+2. Framework skill MUST include "FRAMEWORK SKILL CHECKED" token in delegation message
+3. Specialized skill receives clear instructions with context
+4. Framework skill validates results and integrates
+
+**Token enforcement**: Sub-agents (python-dev, analyst, etc.) MUST refuse requests without "FRAMEWORK SKILL CHECKED" token and fail loudly.
+
+**Example delegation message**:
+```
+FRAMEWORK SKILL CHECKED
+
+Use python-dev skill to implement MINIMAL code to make these tests pass:
+
+Tests: tests/test_activity_logger.py (4 tests)
+Error: ModuleNotFoundError: No module named 'lib.activity'
+
+Implementation requirements:
+- File to create: lib/activity.py
+- Function needed: log_activity(action: str, session: str = "session") -> None
+- Behavior: Append JSONL entry to $ACA_DATA/logs/activity.jsonl
+[...detailed requirements...]
+```
+
+**Specialized skills available**:
+- `python-dev` - Production Python code following fail-fast philosophy
+- `analyst` - Data analysis using dbt and Streamlit
+- Others as needed
+
 ## Strategic Partner Mode
 
 **Primary role**: Help Nic make principled framework decisions without keeping everything in his head.
@@ -595,7 +630,6 @@ $AOPS/  (set via AOPS environment variable)
 │       ├── TASK-SPEC-TEMPLATE.md    # Template for specifying automations
 │       ├── references/              # Technical reference documentation
 │       ├── workflows/               # Step-by-step procedures
-│       ├── specs/                   # Task specifications
 │       └── scripts/                 # Automation scripts
 ├── hooks/               # Lifecycle automation
 ├── commands/            # Slash commands
@@ -624,6 +658,7 @@ $ACA_DATA/  (set via ACA_DATA environment variable)
     ├── STATE.md         # Current framework state
     ├── VISION.md        # User's vision for framework
     ├── ROADMAP.md       # User's roadmap
+    ├── specs/           # AUTHORITATIVE: Task specifications for planned automations
     └── experiments/     # Finalized experiments
         └── LOG.md       # Learning patterns (append-only)
 ```

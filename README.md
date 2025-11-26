@@ -25,8 +25,7 @@ $AOPS/
 │   │   ├── SKILL.md     # Main skill instructions
 │   │   ├── TASK-SPEC-TEMPLATE.md # Template for automation specifications
 │   │   ├── workflows/   # Step-by-step procedures (design, debug, experiment, monitor, review, spec)
-│   │   ├── references/  # Technical references (hooks guide, script design, testing patterns)
-│   │   └── specs/       # Task specifications for planned automations
+│   │   └── references/  # Technical references (hooks guide, script design, testing patterns)
 │   ├── analyst/         # Data analysis (dbt, Streamlit, statistical methods)
 │   │   └── SKILL.md
 │   ├── python-dev/      # Production Python code (type safety, fail-fast, research standards)
@@ -86,24 +85,50 @@ $AOPS/
 └── config/              # Configuration files
 ```
 
-### Claude Code Debug Locations
+### Runtime and Debug Locations
+
+**Claude Code runtime data** (written by Claude Code itself):
 
 ```
 ~/.claude/
-├── debug/               # Human-readable session logs (session-id.txt, [ERROR]/[DEBUG]/[INFO] tagged)
-├── projects/            # JSONL session data per repository
+├── debug/               # [Claude Code] Human-readable session logs (UUID.txt with [DEBUG]/[INFO]/[ERROR] tags)
+│                        # Contains: Hook execution trace, JSON parsing, tool calls, stream processing
+│                        # Includes: Hook output (additionalContext visible here)
+├── projects/            # [Claude Code] JSONL session data per repository
 │   └── -repo-path/      # Path encoded with dashes (e.g., -home-nic-writing/)
 │       ├── *.jsonl      # Main session messages (user/assistant turns)
 │       └── agent-*.jsonl # Agent subprocess logs (tool calls, results, errors with is_error flag)
-├── settings.json        # User settings (hooks, permissions, deny rules)
-└── statsig/             # Feature flags and telemetry
+├── history.jsonl        # [Claude Code] Command history
+├── settings.json        # [Claude Code] User settings (hooks, permissions, deny rules)
+├── file-history/        # [Claude Code] File version history
+├── session-env/         # [Claude Code] Per-session environment data
+├── shell-snapshots/     # [Claude Code] Shell state snapshots
+├── todos/               # [Claude Code] TodoWrite persistence
+└── statsig/             # [Claude Code] Feature flags and telemetry
+```
 
-/tmp/claude-sessions/
-└── *-hooks.jsonl        # Hook execution logs (which hooks fired, inputs, hook_results)
+**Framework cache data** (written by framework hooks):
+
+```
+~/.cache/aops/
+├── prompt-router/
+│   └── YYYYMMDD_HHMMSS_microseconds.json  # [prompt_router.py] Prompt analysis for classifier
+│                                           # Contains: user prompt text, keyword matches
+│                                           # Purpose: Input data for Haiku classifier agent
+├── sessions/
+│   └── YYYY-MM-DD-<hash>-hooks.jsonl      # [session_logger.py] Hook execution logs
+│                                           # Contains: which hooks fired, inputs, hook_results
+└── session_end_*.flag                      # [log_userpromptsubmit.py, request_scribe.py] Session termination flags
 
 /tmp/claude-transcripts/
-└── *_transcript.md        # Human-readable session transcripts (on-demand via claude-transcript)
+└── *_transcript.md        # [claude-transcript tool] Human-readable session transcripts (on-demand)
 ```
+
+**Debug workflow**: To trace hook behavior:
+1. Hook writes to `~/.cache/aops/prompt-router/*.json` (input data for classifier)
+2. Hook returns JSON with `additionalContext` to Claude Code via stdout
+3. Claude Code logs hook output to `~/.claude/debug/<session-uuid>.txt`
+4. Agent receives `additionalContext` as `<system-reminder>` in conversation
 
 ---
 
@@ -150,6 +175,7 @@ $ACA_DATA/  (e.g., ~/writing/data/)
 │   └── aops/            # academicOps project data
 │       ├── VISION.md    # End state: fully-automated academic workflow
 │       ├── ROADMAP.md   # Maturity stages 0-5, progression plan
+│       ├── specs/       # AUTHORITATIVE: Task specifications for planned automations
 │       └── experiments/ # Framework experiment logs
 │           └── LOG.md   # Learning patterns (append-only)
 │

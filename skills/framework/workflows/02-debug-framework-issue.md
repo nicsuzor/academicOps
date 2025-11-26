@@ -80,13 +80,13 @@ rg "type.*tool" ~/.claude/projects/-tmp-claude-test-*/
 ls -lt ~/.claude/projects/-home-nic-src-aOps/*.jsonl | head -5
 
 # Generate markdown transcript from JSONL
-mkdir -p /tmp/claude-transcripts
+mkdir -p ~/.cache/aops/transcripts
 uv run ~/src/claude-transcript/claude_transcript.py \
   ~/.claude/projects/{project-path}/{session-id}.jsonl \
-  -o /tmp/claude-transcripts/{session-id}_transcript.md
+  -o ~/.cache/aops/transcripts/{session-id}_transcript.md
 
 # Read transcript (much easier than raw JSONL)
-cat /tmp/claude-transcripts/{session-id}_transcript.md
+cat ~/.cache/aops/transcripts/{session-id}_transcript.md
 ```
 
 Use transcripts when:
