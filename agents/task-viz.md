@@ -56,7 +56,11 @@ For each task file:
 
 ### Phase 3: Design Visual Layout (excalidraw skill)
 
-**MANDATORY BEFORE DESIGNING**: Invoke the `excalidraw` skill to load visual design principles.
+**MANDATORY**: Invoke the `excalidraw` skill to:
+1. Load visual design principles BEFORE designing
+2. Generate the actual .excalidraw file (DO NOT manually create JSON)
+
+**The excalidraw skill is the ONLY approved way to create Excalidraw files.** You MUST NOT attempt to manually construct Excalidraw JSON - the skill handles this with proper sizing, text binding, and arrow anchoring.
 
 The excalidraw skill provides:
 - Visual hierarchy through size, color, position
@@ -65,6 +69,9 @@ The excalidraw skill provides:
 - Layout patterns (radial, clustered, organic positioning)
 - Whitespace and alignment principles
 - Quality standards
+- **Proper element sizing** (auto-calculated from text content)
+- **Text-to-container binding** (prevents blank boxes)
+- **Arrow binding with focus/gap** (snap to element borders)
 
 **Design approach** (following excalidraw two-phase process):
 
@@ -170,9 +177,11 @@ The excalidraw skill provides:
 - `fillStyle: "solid"` - solid fills for text readability
 - Stroke width: 2-3px for emphasis on important items
 
-### Phase 4: Generate Excalidraw JSON
+### Phase 4: Design Specification (NOT Manual JSON Creation)
 
-Create Excalidraw JSON structure with proper element types:
+**CRITICAL**: This phase documents the design specification you will provide to the excalidraw skill. You do NOT manually create the JSON - the excalidraw skill generates it.
+
+**Your job**: Prepare the content structure with proper element types and relationships:
 
 **Element types**:
 - `rectangle`: Goals, projects, task nodes
@@ -291,9 +300,12 @@ Every container (rectangle/ellipse) MUST have bound text. Follow this pattern EX
 
 **Arrows must bind to shapes**: Set `startBinding: {elementId: "shape-id", focus: 0, gap: 10}` so arrows move with elements. Arrows connect: Goal→Project, Project→Task.
 
-### Phase 5: Write, Verify, and Report
+### Phase 5: Invoke Excalidraw Skill & Report
 
-1. **Write file**: Use Write tool → `current-tasks.excalidraw` in writing repository root (NOT data/)
+1. **Invoke excalidraw skill**: Pass the design specification from Phase 4 to the excalidraw skill
+   - The skill will generate the properly formatted .excalidraw JSON file
+   - The skill will handle all element sizing, text binding, and arrow anchoring
+   - The skill will write to `current-tasks.excalidraw` in writing repository root
    - **Path**: MUST be writing repository root (parent of $ACA_DATA), NOT `data/` subdirectory
    - **Rule**: Only bmem-compliant markdown belongs in `data/`
    - **Reason**: Excalidraw files are binary artifacts, not knowledge base content
@@ -338,7 +350,8 @@ Every container (rectangle/ellipse) MUST have bound text. Follow this pattern EX
 
 **Fail-fast (halt immediately)**:
 - bmem skill unavailable or fails
-- excalidraw skill unavailable or fails
+- **excalidraw skill unavailable or fails** - MANDATORY for creating .excalidraw files
+- **Attempted manual JSON creation** - MUST use excalidraw skill, not manual Write tool
 - Cannot write to repo root
 - Too many malformed tasks (>50% invalid)
 - **Text binding verification fails** - any container missing text or text unbound
