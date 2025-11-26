@@ -74,23 +74,69 @@ For each file found in step 1:
 
 **Level 1: High-Level Overview**
 
-Show main directory structure but NOT contents of subdirectories:
+Show directory structure with individual skills, commands, hooks, agents listed, but NOT the contents within each skill directory:
 
 ```
 $AOPS/
 ├── AXIOMS.md
 ├── README.md
 ├── CLAUDE.md
-├── skills/              # Agent skills (subdirectories below)
-├── hooks/               # Lifecycle automation (subdirectories below)
-├── commands/            # Slash commands (subdirectories below)
-├── experiments/         # Temporary experiments
-├── scripts/             # Deployment scripts
-├── lib/                 # Shared utilities
-├── tests/               # Integration tests (subdirectories below)
-├── agents/              # Agentic workflows (future)
-└── config/              # Configuration files
+├── BMEM-*.md files
+├── pyproject.toml
+├── uv.lock
+├── setup.sh
+├── update_hooks.py
+├── __init__.py
+├── .gitignore
+│
+├── .github/workflows/
+│   ├── beta-release.yml
+│   ├── claude-code-review.yml
+│   └── ...
+│
+├── skills/
+│   ├── README.md
+│   ├── analyst/
+│   ├── bmem/
+│   ├── docs-update/
+│   ├── excalidraw/
+│   └── ... (list each skill directory)
+│
+├── hooks/
+│   ├── README.md
+│   ├── sessionstart_load_axioms.py
+│   ├── user_prompt_submit.py
+│   └── ... (list each hook file)
+│
+├── commands/
+│   ├── archive-extract.md
+│   ├── bmem.md
+│   └── ... (list each command file)
+│
+├── agents/
+│   ├── dev.md
+│   └── ... (list each agent file)
+│
+├── experiments/
+│   └── ... (list experiment files)
+│
+├── scripts/
+│   └── ... (list script files)
+│
+├── lib/
+│   └── ... (list lib files)
+│
+├── tests/
+│   ├── README.md
+│   ├── test_*.py
+│   ├── integration/
+│   └── tools/
+│
+└── config/
+    └── claude/
 ```
+
+**Key principle**: High-level tree shows WHAT exists (each skill, command, hook, agent) but not the files WITHIN each skill directory. That level of detail is for Level 2.
 
 **Level 2: Detailed Breakdown**
 

@@ -24,17 +24,102 @@ $AOPS/
 ├── pyproject.toml           # Python project configuration
 ├── uv.lock                  # uv dependency lock file
 ├── setup.sh                 # Framework installation script
+├── update_hooks.py          # Hook update utility
+├── __init__.py
+├── .gitignore
 │
-├── .github/workflows/       # GitHub Actions workflows (CI/CD)
-├── skills/                  # Agent skills (detailed breakdown below)
-├── hooks/                   # Lifecycle automation (detailed breakdown below)
-├── commands/                # Slash commands (detailed breakdown below)
-├── agents/                  # Agentic workflows (detailed breakdown below)
-├── experiments/             # Temporary experiment logs (detailed breakdown below)
-├── scripts/                 # Deployment and maintenance scripts (detailed breakdown below)
-├── lib/                     # Shared Python utilities (detailed breakdown below)
-├── tests/                   # Framework tests (detailed breakdown below)
-└── config/                  # Configuration files (detailed breakdown below)
+├── .github/workflows/       # GitHub Actions workflows
+│   ├── beta-release.yml
+│   ├── claude-code-review.yml
+│   ├── claude.yml
+│   ├── ios-note-capture.yml
+│   └── test-setup.yml
+│
+├── skills/                  # Agent skills (invoke via Skill tool)
+│   ├── README.md            # Skills documentation and index
+│   ├── analyst/             # Data analysis (dbt, Streamlit, statistical methods)
+│   ├── bmem/                # Knowledge base operations
+│   ├── docs-update/         # Documentation update and verification
+│   ├── excalidraw/          # Visual diagram generation
+│   ├── extractor/           # Archive extraction
+│   ├── feature-dev/         # Feature development workflow
+│   ├── framework/           # Framework maintenance and strategic partner
+│   ├── framework-debug/     # Framework debugging tools
+│   ├── pdf/                 # PDF generation from markdown
+│   ├── python-dev/          # Production Python development standards
+│   ├── skill-creator/       # Skill creation and packaging
+│   ├── tasks/               # Task management system (MCP server)
+│   └── training-set-builder/ # Training data extraction from documents
+│
+├── hooks/                   # Lifecycle automation (Python scripts)
+│   ├── README.md
+│   ├── sessionstart_load_axioms.py      # SessionStart - inject AXIOMS.md
+│   ├── user_prompt_submit.py            # UserPromptSubmit - inject context
+│   ├── log_session_stop.py              # SessionStop - log session activity
+│   ├── extract_session_knowledge.py     # Knowledge extraction
+│   ├── session_logger.py                # Session logging module
+│   ├── autocommit_state.py
+│   ├── hook_debug.py
+│   ├── hook_logger.py
+│   ├── log_posttooluse.py
+│   ├── log_pretooluse.py
+│   ├── log_sessionstart.py
+│   ├── log_subagentstop.py
+│   ├── log_userpromptsubmit.py
+│   ├── prompt_router.py
+│   ├── request_scribe.py
+│   ├── test_marker_hook.py
+│   └── prompts/             # Markdown prompts loaded by hooks
+│
+├── commands/                # Slash commands (workflow triggers)
+│   ├── archive-extract.md   # Extract archived information
+│   ├── bmem.md              # Invoke bmem skill
+│   ├── email.md             # Extract tasks from emails
+│   ├── learn.md             # Update memory/instructions
+│   ├── log.md               # Log agent performance
+│   ├── meta.md              # Invoke framework skill
+│   ├── parallel-batch.md    # Parallel batch processing
+│   ├── strategy.md          # Strategic planning
+│   ├── task-viz.md          # Generate task visualization
+│   ├── transcript.md        # Generate session transcript
+│   └── ttd.md               # Test-driven development orchestration
+│
+├── agents/                  # Agentic workflows
+│   ├── dev.md               # Development task routing
+│   ├── email-extractor.md   # Email archive processing
+│   ├── log-agent.md         # Agent performance logging
+│   └── task-viz.md          # Task visualization generation
+│
+├── experiments/             # Temporary experiment logs
+│   ├── 2025-11-17_log-sufficiency-test.md
+│   ├── 2025-11-17_multi-window-cognitive-load-solutions.md
+│   ├── 2025-11-21_zotmcp-tdd-session.md
+│   ├── session-bmem-fail.md
+│   └── session-bmem-pass.md
+│
+├── scripts/                 # Deployment and maintenance scripts
+│   ├── migrate_log_entries.py
+│   ├── package_deployment.py
+│   └── setup.sh
+│
+├── lib/                     # Shared Python utilities
+│   ├── __init__.py
+│   └── paths.py             # Path resolution (SSoT for paths)
+│
+├── tests/                   # Framework tests (pytest)
+│   ├── README.md
+│   ├── conftest.py
+│   ├── paths.py
+│   ├── run_integration_tests.py
+│   ├── run_skill_tests.sh
+│   ├── test_*.py            # Unit tests (30+ test files)
+│   ├── integration/         # E2E tests (slow, require Claude execution)
+│   └── tools/               # Test utilities
+│
+└── config/                  # Configuration files
+    └── claude/
+        ├── mcp.json         # MCP server configuration
+        └── settings.json    # Claude Code settings
 ```
 
 ### Detailed File Breakdown
