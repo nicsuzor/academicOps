@@ -14,6 +14,9 @@ from lib.paths import (
     get_hooks_dir,
 )
 
+# Aliases for writing-related paths
+get_writing_root = get_bots_dir  # Writing root points to framework root
+
 
 def get_hook_script(name: str) -> Path:
     """
@@ -40,4 +43,5 @@ __all__ = [
     "get_data_dir",
     "get_hooks_dir",
     "get_hook_script",
+    "get_writing_root",
 ]
