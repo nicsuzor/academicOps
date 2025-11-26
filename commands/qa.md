@@ -48,6 +48,41 @@ Use `mcp__bmem__search_notes` with `project="main"` to find:
 
 ## Verification Workflow
 
+### 0. Test-First Verification Protocol
+
+**BEFORE suggesting ANY verification approach or manual testing commands:**
+
+1. **Search for existing tests FIRST**:
+   - Use Glob tool: `Glob("tests/**/*{keyword}*")`
+   - Or search pattern: `Grep("test.*{keyword}", path="tests/")`
+
+2. **Read test documentation**:
+   - Read `tests/README.md` for test organization and how to run tests
+   - Check test files to understand what they verify
+
+3. **Search bmem for testing patterns**:
+   ```
+   mcp__bmem__search_notes(query="test {component}", project="main")
+   ```
+
+4. **If tests exist**:
+   - ✅ Read the test file to understand what it tests
+   - ✅ Read `tests/README.md` to understand how to run it
+   - ✅ Provide exact pytest command from README.md
+   - ❌ **NEVER invent bash commands when a test exists**
+
+5. **If no tests exist**:
+   - State explicitly: "No existing tests found for {component}"
+   - Evaluate if this is a quality gap (should a test exist?)
+   - Suggest: (a) create test first, OR (b) manual verification with justification
+   - Document why no test exists for this verification
+
+**CRITICAL FAILURE**: Inventing verification commands (grep, manual inspection, etc.) without first searching for existing tests violates AXIOM #13 (VERIFY FIRST, CLAIM NEVER).
+
+**Example - Testing hooks configuration**:
+- ❌ WRONG: Suggest `grep "hook" ~/.claude/debug/*.txt`
+- ✅ CORRECT: Find `tests/integration/test_settings_discovery.py`, read it, then suggest `uv run pytest tests/integration/test_settings_discovery.py -xvs`
+
 ### 1. Understand the Claim
 
 What is being claimed as "complete"? Extract:
