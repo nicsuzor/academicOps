@@ -23,6 +23,8 @@ from typing import Any
 
 import pytest
 
+from .conftest import extract_response_text
+
 
 def test_claude_md_exists(aops_root: Path) -> None:
     """Test 1: Verify CLAUDE.md exists and is readable.
@@ -206,12 +208,7 @@ def test_session_start_content_loaded(
     assert result["success"], f"Claude execution failed: {result.get('error')}"
 
     # Extract response text from result
-    # Claude Code returns nested dict with actual response in result["result"]
-    result_data = result.get("result", {})
-    if isinstance(result_data, dict):
-        response_content = result_data.get("result", "")
-    else:
-        response_content = result_data
+    response_content = extract_response_text(result)
 
     # Look for AXIOM #1 content: "DO ONE THING"
     axiom_found = (
@@ -251,12 +248,7 @@ def test_session_knows_work_style(claude_headless: Any, aops_root: Path) -> None
     assert result["success"], f"Claude execution failed: {result.get('error')}"
 
     # Extract response text
-    # Claude Code returns nested dict with actual response in result["result"]
-    result_data = result.get("result", {})
-    if isinstance(result_data, dict):
-        response_content = result_data.get("result", "")
-    else:
-        response_content = result_data
+    response_content = extract_response_text(result)
 
     # Look for expected AXIOMS principles
     principles_found = (
