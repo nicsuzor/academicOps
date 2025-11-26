@@ -28,12 +28,16 @@
    - **Agent asks**: "Who benefits and how?"
    - Write clear, specific answers
 
-5. **Define Success Criteria (collaborative)**
+5. **Define Acceptance Criteria (collaborative, USER-OWNED)**
+   - **CRITICAL**: These criteria define "done" and are user-owned (AXIOMS.md #21)
    - **Agent asks**: "How will we know this automation succeeded?"
-   - Focus on measurable outcomes (time saved, error reduction, reliability)
+   - Focus on observable, testable outcomes (time saved, error reduction, reliability)
+   - **Agent asks**: "What would indicate this implementation is WRONG?"
    - **Agent asks**: "What quality threshold is acceptable?"
    - Define when it should fail-fast vs. best effort
-   - Write 3-5 concrete success criteria
+   - Write 3-5 concrete acceptance criteria (Success Tests)
+   - Write 2-3 failure modes that indicate wrong implementation
+   - **Agent confirms**: "These criteria will be implemented as tests. Agents cannot modify them."
 
 6. **Scope the work (collaborative)**
    - **Agent proposes**: Initial scope based on problem statement
@@ -49,11 +53,15 @@
    - Document error handling per [[../../../AXIOMS.md]] principles
 
 8. **Design integration test (collaborative, CRITICAL)**
-   - **Agent proposes**: Test approach for success criteria
+   - **CRITICAL**: Tests IMPLEMENT acceptance criteria from step 5, not new criteria
+   - **Agent proposes**: Test approach that validates EACH acceptance criterion
+   - Map each test to specific acceptance criterion: "Test 1 validates criterion #1"
    - Walk through: Setup → Execute → Validate → Cleanup
-   - **Agent asks**: "How do we prove this automation worked?"
+   - **Agent asks**: "How do we prove EACH acceptance criterion is met?"
+   - **Agent asks**: "How do we detect EACH failure mode?"
    - Write concrete test steps before any implementation
    - Test must be designed to fail initially
+   - **Verify**: Every acceptance criterion has corresponding test
 
 9. **Plan implementation approach**
    - **Agent proposes**: High-level technical design
@@ -91,6 +99,13 @@
 **Output**:
 
 - Complete specification document ready for implementation
-- Clear success criteria and test design
+- User-owned acceptance criteria (observable, testable, cannot be modified by agents)
+- Integration tests that implement each acceptance criterion
 - Identified dependencies and risks
 - User confident in scope and approach
+
+**Verification before proceeding**:
+- [ ] Acceptance criteria section complete (Success Tests + Failure Modes)
+- [ ] Each acceptance criterion is observable and testable
+- [ ] Integration test design maps to each criterion
+- [ ] User confirms these criteria define "done"

@@ -71,3 +71,5 @@
 19. Actively maintain the integrity of our relational database with atomic, canonical markdown files that link to each other rather than repeating content.
 
 20. **NOTHING IS SOMEONE ELSE'S RESPONSIBILITY**: If you can't fix it, HALT. You DO NOT IGNORE PROBLEMS HERE.
+
+21. **ACCEPTANCE CRITERIA OWN SUCCESS**: Only user-defined acceptance criteria determine whether work is complete. Agents cannot modify, weaken, or reinterpret acceptance criteria. If criteria cannot be met, HALT and report. Tests implement acceptance criteria; agents do not define what "done" means.

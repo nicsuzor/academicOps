@@ -119,17 +119,49 @@ Follow this workflow for EVERY development task. Each step is MANDATORY and ENFO
 
 ### ✓ STEP 0: PLANNING (Mandatory First)
 
-**0.1 Create Success Checklist**
+**0.0 Load Acceptance Criteria (If Spec Exists)**
+
+If task has a specification file (from TASK-SPEC-TEMPLATE.md):
+
+```
+Task(subagent_type="Explore", prompt="
+Read the task specification at [spec path].
+
+Extract and report:
+1. ALL acceptance criteria from 'Success Tests' section
+2. ALL failure modes from 'Failure Modes' section
+3. Quality threshold
+4. Any constraints or requirements
+
+These criteria are USER-OWNED and define 'done' (AXIOMS.md #21).
+Agents CANNOT modify or reinterpret them.
+")
+```
+
+**Verification**:
+- [ ] Acceptance criteria loaded from spec
+- [ ] Failure modes identified
+- [ ] Success is objectively defined
+
+**If no spec exists**: Work with user to define acceptance criteria BEFORE proceeding.
+
+**0.1 Create Success Checklist from Acceptance Criteria**
+
+Transform spec acceptance criteria into TodoWrite checklist:
 
 ```
 TodoWrite([
-  "Success: [Specific, measurable outcome 1]",
-  "Success: [Specific, measurable outcome 2]",
+  "Success: [Acceptance criterion 1 from spec]",
+  "Success: [Acceptance criterion 2 from spec]",
   "Success: Final working demonstration of [X]",
+  "Failure prevented: [Failure mode 1 does not occur]",
+  "Failure prevented: [Failure mode 2 does not occur]",
   "--- TDD Cycles Below ---",
   ...
 ])
 ```
+
+**CRITICAL**: Success checklist items come FROM acceptance criteria, not agent interpretation.
 
 **0.2 Create Initial Plan**
 
@@ -163,10 +195,13 @@ Update TodoWrite with micro-tasks.
 
 **MANDATORY: Use dev agent which invokes python-dev skill**
 
+**CRITICAL**: Test must implement acceptance criteria from Step 0, not agent-defined criteria.
+
 ```
 Task(subagent_type="dev", prompt="
 Create ONE failing test using python-dev skill.
 
+Acceptance criterion being tested: [SPECIFIC acceptance criterion from Step 0]
 Behavior to test: [SPECIFIC behavior for this cycle]
 File: tests/test_[name].py
 
@@ -210,6 +245,7 @@ After python-dev skill completes, STOP and report:
 Wait for subagent report. Check:
 
 - [ ] Dev agent used python-dev skill? (required)
+- [ ] **Test implements specific acceptance criterion from Step 0?** (not agent-defined)
 - [ ] Uses real fixtures? (no fake data)
 - [ ] No mocked internal code? (only external APIs)
 - [ ] Clear test name and behavior?
@@ -485,21 +521,32 @@ If plan on track, scope stable, no thrashing:
 
 ### ✓ STEP 5: COMPLETION (All Cycles Done)
 
-**5.1 Verify ALL Success Criteria Met**
+**5.1 Verify ALL Acceptance Criteria Met**
+
+**CRITICAL**: Verify against USER-DEFINED acceptance criteria from Step 0, not agent interpretation (AXIOMS.md #21).
 
 Review TodoWrite success checklist from Step 0.1:
 
-- Each criterion verified with evidence
+- Each acceptance criterion verified with evidence (tests passing)
+- Each failure mode prevented (tests detect these conditions)
 - No rationalizing ("should work", "looks correct")
-- See _CORE.md Axiom #14 (NO EXCUSES)
+- See AXIOMS.md #15 (NO EXCUSES) and #21 (ACCEPTANCE CRITERIA OWN SUCCESS)
+
+**If ANY acceptance criterion not met**: Task is NOT complete. Continue implementation.
 
 **5.2 Demonstrate Working Result**
 
-Show actual working result:
+Show actual working result demonstrating EACH acceptance criterion:
 
-- Run the program/test
-- Show the output
-- Prove it works NOW
+- Run all acceptance tests (should all pass)
+- Run the program demonstrating each criterion
+- Show the output proving each criterion met
+- Prove it works NOW (not "should work")
+
+**Evidence required**:
+- Criterion 1: [Test output / demonstration]
+- Criterion 2: [Test output / demonstration]
+- Failure mode 1 prevented: [Test output showing detection]
 
 **5.3 Document Progress via Tasks Skill**
 
