@@ -174,8 +174,8 @@ Process these task files to link them to appropriate projects:
 Files:
 [file list]
 
-MANDATORY: Use bmem MCP tools to:
-1. Search for existing projects: mcp__bmem__search_notes(query="type:project")
+MANDATORY: Use bmem MCP tools with `project="main"`:
+1. Search for existing projects: mcp__bmem__search_notes(query="type:project", project="main")
 2. Read task file to understand context
 3. Edit task frontmatter to add/update `project:` field
 

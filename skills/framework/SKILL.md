@@ -112,25 +112,26 @@ Implementation requirements:
 
 ```
 CRITICAL: Use bmem MCP tools for ALL knowledge base access. NEVER read markdown files directly.
+MANDATORY: ALL `mcp__bmem__*` calls MUST include `project="main"` parameter.
 
 # 1. BINDING USER CONSTRAINTS (search FIRST)
-Use mcp__bmem__search_notes for:
+Use mcp__bmem__search_notes(query="...", project="main") for:
 - "accommodations OR work style" → User constraints (as binding as AXIOMS)
 - "core OR user context" → User context (as binding as AXIOMS)
 
 # 2. CURRENT REALITY (ground truth)
-Use mcp__bmem__search_notes for:
+Use mcp__bmem__search_notes(query="...", project="main") for:
 - "state OR current stage" in type:note → Current framework stage, blockers
 
 # 3. FRAMEWORK PRINCIPLES AND ASPIRATIONS
-Use mcp__bmem__search_notes for:
+Use mcp__bmem__search_notes(query="...", project="main") for:
 - "vision OR end state" in type:note → Framework goals
 - "roadmap OR maturity progression" in type:note → Stage progression
 - Read $AOPS/AXIOMS.md directly (framework principles, not user knowledge)
 - "experiment log OR learning patterns" → Past learnings from LOG.md
 
 # 4. TECHNICAL REFERENCES (search as needed for specific work)
-Use mcp__bmem__search_notes for:
+Use mcp__bmem__search_notes(query="...", project="main") for:
 - "hooks guide OR hook configuration"
 - Other technical docs by topic/type
 ```
@@ -144,15 +145,15 @@ Use mcp__bmem__search_notes for:
 - "What have we built?" → Search for roadmap/state notes, show progress toward vision
 - "What should we work on next?" → Search roadmap priorities, validate strategic fit
 - "Is X a good idea?" → Search vision/goals, evaluate against AXIOMS, search experiment log
-- "Why did we do Y?" → Search experiments log: `mcp__bmem__search_notes(query="[decision topic]")` in LOG.md
+- "Why did we do Y?" → Search experiments log: `mcp__bmem__search_notes(query="[decision topic]", project="main")` in LOG.md
 - "What's our current state?" → Search for current state/roadmap status notes
 
 **Decision-making framework** (using bmem):
 
 1. Derive from AXIOMS.md (foundational principles - read directly from $AOPS)
-2. Align with vision: Search `mcp__bmem__search_notes(query="vision OR strategic direction")`
-3. Consider current stage: Search `mcp__bmem__search_notes(query="roadmap OR current stage")`
-4. Learn from past: Search `mcp__bmem__search_notes(query="[relevant topic] type:experiment-log")`
+2. Align with vision: Search `mcp__bmem__search_notes(query="vision OR strategic direction", project="main")`
+3. Consider current stage: Search `mcp__bmem__search_notes(query="roadmap OR current stage", project="main")`
+4. Learn from past: Search `mcp__bmem__search_notes(query="[relevant topic] type:experiment-log", project="main")`
 5. Default to simplicity and quality
 6. When uncertain, provide options with clear tradeoffs
 
