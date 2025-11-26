@@ -300,7 +300,7 @@ Every container (rectangle/ellipse) MUST have bound text. Follow this pattern EX
 
 **Arrows must bind to shapes**: Set `startBinding: {elementId: "shape-id", focus: 0, gap: 10}` so arrows move with elements. Arrows connect: Goal→Project, Project→Task.
 
-### Phase 5: Invoke Excalidraw Skill & Report
+### Phase 5: Invoke Excalidraw Skill, Open File & Report
 
 1. **Invoke excalidraw skill**: Pass the design specification from Phase 4 to the excalidraw skill
    - The skill will generate the properly formatted .excalidraw JSON file
@@ -309,6 +309,8 @@ Every container (rectangle/ellipse) MUST have bound text. Follow this pattern EX
    - **Path**: MUST be writing repository root (parent of $ACA_DATA), NOT `data/` subdirectory
    - **Rule**: Only bmem-compliant markdown belongs in `data/`
    - **Reason**: Excalidraw files are binary artifacts, not knowledge base content
+
+1a. **Open generated file**: After successful generation, use `xdg-open current-tasks.excalidraw` to open the file for immediate viewing
 
 2. **MANDATORY VERIFICATION** (DO NOT SKIP - TEXT BINDING FAILURE IS THE #1 ISSUE):
 

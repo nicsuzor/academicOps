@@ -7,6 +7,7 @@ The agent will:
 2. Use excalidraw skill for professional visual design principles (organic mind-map layout, theme colors, icons)
 3. Create a visually striking dashboard showing task hierarchy and status
 4. Save to writing repository root as `current-tasks.excalidraw`
+5. Open the generated file with `xdg-open` for immediate viewing
 
 **Key features**:
 - Organic mind-map layout (NOT rigid hierarchies)
