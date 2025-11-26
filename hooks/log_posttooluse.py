@@ -31,7 +31,7 @@ def main():
     output_data: dict[str, Any] = {}
 
     # Log to hooks session file (includes both input and output)
-    log_hook_event(session_id, "PostToolUse", input_data, output_data)
+    log_hook_event(session_id, "PostToolUse", input_data, output_data, exit_code=0)
 
     # Output empty JSON (continue execution)
     print(json.dumps(output_data))

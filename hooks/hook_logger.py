@@ -24,6 +24,7 @@ def log_hook_event(
     hook_event: str,
     input_data: dict[str, Any],
     output_data: dict[str, Any] | None = None,
+    exit_code: int = 0,
 ) -> None:
     """
     Log a hook event to the session hooks log file.
@@ -36,6 +37,7 @@ def log_hook_event(
         hook_event: Name of the hook event (e.g., "UserPromptSubmit", "SessionEnd")
         input_data: Input data from Claude Code (hook parameters)
         output_data: Optional output data from the hook (results/side effects)
+        exit_code: Exit code of the hook (0 = success, non-zero = failure)
 
     Returns:
         None
@@ -50,9 +52,10 @@ def log_hook_event(
         >>> session_id = "abc123def456"
         >>> hook_event = "UserPromptSubmit"
         >>> input_data = {"prompt": "hello", "model": "claude-opus"}
-        >>> output_data = {"additionalContext": "loaded from markdown"}
+        >>> output_data = {"additionalContext": "loaded from markdown", "exitCode": 0}
+        >>> exit_code = 0
         >>>
-        >>> log_hook_event(session_id, hook_event, input_data, output_data)
+        >>> log_hook_event(session_id, hook_event, input_data, output_data, exit_code)
     """
     # Fail-fast: session_id is required
     if not session_id:
@@ -69,6 +72,7 @@ def log_hook_event(
         log_entry: dict[str, Any] = {
             "hook_event": hook_event,
             "logged_at": datetime.now(UTC).isoformat(),
+            "exit_code": exit_code,
             **input_data,  # Include ALL fields from input
         }
 

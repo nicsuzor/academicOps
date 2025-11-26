@@ -32,14 +32,15 @@ try:
 
         # Noop output - just continue
         output_data: dict[str, Any] = {}
+        exit_code = 0
 
         # Log to hooks session file (includes both input and output)
-        log_hook_event(session_id, "SubagentStop", input_data, output_data)
+        log_hook_event(session_id, "SubagentStop", input_data, output_data, exit_code)
 
         # Output empty JSON (continue execution)
         print(json.dumps(output_data))
 
-        sys.exit(0)
+        sys.exit(exit_code)
 
 
     if __name__ == "__main__":

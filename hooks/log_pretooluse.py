@@ -155,7 +155,7 @@ def main():
             output_data = validation_result
 
     # Log to hooks session file (includes both input and output)
-    log_hook_event(session_id, "PreToolUse", input_data, output_data)
+    log_hook_event(session_id, "PreToolUse", input_data, output_data, exit_code=0)
 
     # Output result
     print(json.dumps(output_data))

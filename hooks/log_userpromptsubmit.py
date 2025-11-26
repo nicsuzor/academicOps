@@ -75,7 +75,7 @@ def main():
         }
 
     # Log hook event with both input and output
-    log_hook_event(session_id, "UserPromptSubmit", input_data, output_data)
+    log_hook_event(session_id, "UserPromptSubmit", input_data, output_data, exit_code=0)
 
     # Output JSON (continue execution)
     print(json.dumps(output_data))
