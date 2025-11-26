@@ -36,7 +36,7 @@ Tests include:
 
 These tests catch the bug where:
 - Agent runs in `writing` repo
-- Agent searches for `bots/skills/tasks/scripts/*.py` in CWD
+- Agent searches for `skills/tasks/scripts/*.py` in CWD
 - Search returns 0 files (because scripts are in `$AOPS`, not `writing`)
 - Agent gives up thinking scripts don't exist
 

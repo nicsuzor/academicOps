@@ -58,7 +58,7 @@ def _extract_at_references(markdown_content: str) -> list[str]:
     Returns:
         List of referenced file paths (relative paths as written)
     """
-    # Match lines like "- @README.md" or "- @bots/CORE.md"
+    # Match lines like "- @README.md" or "- @skills/README.md"
     # Pattern: line starts with "- @" followed by non-whitespace characters
     pattern = r"^- @(\S+)"
     return re.findall(pattern, markdown_content, re.MULTILINE)

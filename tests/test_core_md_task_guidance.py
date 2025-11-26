@@ -13,7 +13,7 @@ def test_core_md_references_task_skill():
     """Verify CORE.md guides agents to check skills/README.md for task operations.
 
     This test validates that agents receive explicit guidance to:
-    1. Check bots/skills/README.md when handling task operations
+    1. Check skills/README.md when handling task operations
     2. Use the task skill for task management
     3. Not write task files directly
 

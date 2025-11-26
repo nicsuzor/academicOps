@@ -66,7 +66,7 @@ def test_core_md_has_explicit_email_workflow_triggers():
         + "\n".join(f"  - '{trigger}'" for trigger in missing_triggers)
         + "\n\nThese trigger phrases must be explicitly listed in CORE.md (not just 'or similar')."
         + "\nExpected: A section that lists all trigger phrases from email-capture.md specification."
-        + "\n\nSee: bots/skills/tasks/workflows/email-capture.md lines 402-408"
+        + "\n\nSee: skills/tasks/workflows/email-capture.md lines 402-408"
     )
 
     # Assert: Should NOT use vague "or similar" language
