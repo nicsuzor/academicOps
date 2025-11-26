@@ -14,11 +14,11 @@
       "Read(**/.claude/**)",
       "Write(**/.claude/**)",
       "Edit(**/.claude/**)",
-      "Bash(rm:*/.claude/*)",
-      "Bash(mv:*/.claude/*)",
-      "Bash(cp:*/.claude/*)",
-      "Bash(touch:*/.claude/*)",
-      "Bash(echo:*/.claude/*)"
+      "Bash(rm **/.claude/**)",
+      "Bash(mv **/.claude/**)",
+      "Bash(cp **/.claude/**)",
+      "Bash(touch **/.claude/**)",
+      "Bash(echo **/.claude/**)"
     ]
   },
   "hooks": {
@@ -27,12 +27,12 @@
         "hooks": [
           {
             "type": "command",
-            "command": "PYTHONPATH=$AOPS AOPS=$AOPS uv run python $AOPS/hooks/sessionstart_load_axioms.py",
+            "command": "PYTHONPATH=$AOPS uv run python $AOPS/hooks/sessionstart_load_axioms.py",
             "timeout": 2000
           },
           {
             "type": "command",
-            "command": "PYTHONPATH=$AOPS AOPS=$AOPS uv run python $AOPS/hooks/log_sessionstart.py",
+            "command": "PYTHONPATH=$AOPS uv run python $AOPS/hooks/log_sessionstart.py",
             "timeout": 2000
           }
         ]
