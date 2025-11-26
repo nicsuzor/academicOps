@@ -19,6 +19,22 @@ from lib.paths import get_data_root
 from hooks.session_logger import get_log_path
 
 
+def _json_serializer(obj: Any) -> str:
+    """
+    Convert non-serializable objects to strings for JSON serialization.
+
+    This is used as the default handler for json.dump() to handle objects
+    that don't have a standard JSON representation (datetime, Path, custom classes, etc).
+
+    Args:
+        obj: Any Python object
+
+    Returns:
+        String representation of the object
+    """
+    return str(obj)
+
+
 def log_hook_event(
     session_id: str,
     hook_event: str,
@@ -82,7 +98,7 @@ def log_hook_event(
 
         # Append to JSONL file
         with log_path.open("a") as f:
-            json.dump(log_entry, f, separators=(",", ":"))
+            json.dump(log_entry, f, separators=(",", ":"), default=_json_serializer)
             f.write("\n")
 
     except ValueError:
