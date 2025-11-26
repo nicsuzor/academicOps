@@ -17,6 +17,8 @@ from pathlib import Path
 
 import pytest
 
+from tests.integration.conftest import extract_response_text
+
 
 @pytest.fixture
 def test_repos():
@@ -184,13 +186,8 @@ and parsing workflow first.
     # Assert: Command succeeded
     assert result["success"], f"Agent execution failed: {result.get('error')}"
 
-    # Extract response
-    result_data = result.get("result", {})
-    if isinstance(result_data, dict):
-        response = result_data.get("result", "")
-    else:
-        response = result_data
-
+    # Extract response using helper function
+    response = extract_response_text(result)
     response_lower = response.lower()
 
     # Assert: Agent found all 5 tasks

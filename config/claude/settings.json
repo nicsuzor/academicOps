@@ -107,17 +107,7 @@
         ]
       }
     ],
-    "Stop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "PYTHONPATH=$AOPS uv run python $AOPS/hooks/log_session_stop.py",
-            "timeout": 35000
-          }
-        ]
-      }
-    ]
+    "Stop": []
   },
   "statusLine": {
     "type": "command",
