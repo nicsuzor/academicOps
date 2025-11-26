@@ -218,7 +218,12 @@ st.markdown("## <i class='fa-solid fa-chart-simple fa-icon'></i>Task Summary", u
 st.info("Task summary metrics will be added shortly")
 st.markdown("</div>", unsafe_allow_html=True)
 
-# Auto-refresh
+# Auto-refresh every 30 seconds
 import time
-time.sleep(30)
-st.rerun()
+if "last_refresh" not in st.session_state:
+    st.session_state.last_refresh = time.time()
+
+current_time = time.time()
+if current_time - st.session_state.last_refresh >= 30:
+    st.session_state.last_refresh = current_time
+    st.rerun()
