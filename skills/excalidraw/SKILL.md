@@ -8,6 +8,8 @@
 
 ## When to Use This Skill
 
+You **MUST use this skill to create or edit ANY excalidraw files**.
+
 Use the excalidraw skill when:
 - Creating diagrams, flowcharts, or visual explanations
 - Designing system architecture visualizations

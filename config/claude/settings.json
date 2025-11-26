@@ -14,11 +14,11 @@
       "Read(**/.claude/**)",
       "Write(**/.claude/**)",
       "Edit(**/.claude/**)",
-      "Bash(rm **/.claude/**)",
-      "Bash(mv **/.claude/**)",
-      "Bash(cp * **/.claude/**)",
-      "Bash(touch **/.claude/**)",
-      "Bash(echo * > **/.claude/**)"
+      "Bash(rm:*/.claude/*)",
+      "Bash(mv:*/.claude/*)",
+      "Bash(cp:*/.claude/*)",
+      "Bash(touch:*/.claude/*)",
+      "Bash(echo:*/.claude/*)"
     ]
   },
   "hooks": {

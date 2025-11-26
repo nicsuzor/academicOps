@@ -17,4 +17,4 @@ The agent will:
 - Curved arrows, asymmetric positioning
 - Optional Material Symbols icons for status
 
-Launch with Task tool, subagent_type "general-purpose", reading agents/task-viz.md for complete workflow.
+Launch with Task tool, subagent_type "task-viz".

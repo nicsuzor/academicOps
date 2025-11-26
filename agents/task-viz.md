@@ -1,3 +1,9 @@
+---
+name: task-viz
+title: Task Visualization Agent
+type: agent
+---
+
 # Task Visualization Agent
 
 **Purpose**: Generate a visual mind-map dashboard of tasks, projects, and goals across repositories.
