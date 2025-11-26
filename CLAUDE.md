@@ -1,3 +1,14 @@
+## CRITICAL: Basic Memory (bmem) Project Parameter
+
+**MANDATORY FOR ALL AGENTS**: When using ANY `mcp__bmem__*` tool, you MUST use `project="main"`.
+
+Examples:
+- `mcp__bmem__search_notes(query="...", project="main")`
+- `mcp__bmem__read_note(identifier="...", project="main")`
+- `mcp__bmem__write_note(title="...", content="...", folder="...", project="main")`
+
+**This is non-negotiable.** Do NOT use `project="aops"`, `project="academicOps"`, or any other value. ALWAYS use `project="main"`.
+
 ## Framework Skill Delegation Model
 
 ALL work in this repo flows through the `framework` skill, but the framework skill may delegate implementation:
