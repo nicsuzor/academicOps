@@ -162,25 +162,44 @@ $AOPS/
 │   │   │   └── dbt-workflow.md
 ```
 
-### 5. Validate References
+### 5. Validate All Cross-References
 
-**Objective**: Ensure all wikilink-style references resolve to existing files.
+**Objective**: Ensure all references resolve to existing files. Catch aspirational documentation.
+
+**Check these reference types**:
+
+1. **Wikilinks**: `[[path/to/file.md]]`
+2. **Markdown links**: `[text](path/to/file.md)`
+3. **See Also references**: "See agents/X.md" or "See [[X]]"
+4. **Agent references in commands**: Commands that mention `agents/X.md` or invoke agent types
 
 **Actions**:
 
 ```bash
-# Find all wikilink references in documentation
-grep -r '\[\[.*\.md\]\]' $AOPS --include="*.md" -h | \
-  grep -o '\[\[.*\.md\]\]' | \
-  sort -u
+# Find all wikilink references
+grep -r '\[\[.*\]\]' $AOPS --include="*.md" -h | grep -o '\[\[[^]]*\]\]' | sort -u
+
+# Find markdown links to local files
+grep -r '\]\(\./' $AOPS --include="*.md" -h
+grep -r '\]\([a-zA-Z]' $AOPS --include="*.md" -h | grep -v 'http'
+
+# Check commands for agent references
+grep -r 'agents/' $AOPS/commands --include="*.md"
+grep -r 'See.*\.md' $AOPS --include="*.md"
 ```
 
-For each reference found:
-1. Extract the file path
-2. Check if file exists
-3. Report broken references
+**For each reference found**:
+1. Extract the target path
+2. Resolve relative to source file location
+3. Check if target file exists
+4. If missing: flag as **broken reference** (fail-fast)
 
-**Quality gate**: All references must resolve. Fail-fast if broken references found.
+**Special checks for commands/**:
+- If command references `agents/X.md`, verify file exists
+- If command invokes a subagent, verify agent definition exists
+- Flag any "aspirational" references (documented but not implemented)
+
+**Quality gate**: ALL references must resolve. Broken references = fail immediately.
 
 ### 6. Detect Documentation Conflicts
 
@@ -280,7 +299,8 @@ OR
 - $AOPS environment variable not set
 - README.md doesn't exist or unreadable
 - Unable to write to README.md
-- Broken wikilink references found
+- Broken cross-references found (wikilinks, markdown links, agent refs)
+- Aspirational documentation detected (commands referencing non-existent agents)
 - Documentation conflicts detected
 
 **Report format**:
