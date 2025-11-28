@@ -68,13 +68,15 @@ For each file found in step 1:
 
 **Quality gate**: If discrepancies found, document them clearly before proceeding.
 
-### 4. Generate Two-Level File Tree
+### 4. Generate Concise File Tree with Annotations
 
-**Objective**: Create updated file tree with two levels of detail.
+**Objective**: Create concise file tree showing only files/directories with meaningful annotations.
 
-**Level 1: High-Level Overview**
+**Core Principle**: Only include files that have annotations explaining their purpose. If a file doesn't need an annotation for discoverability, it shouldn't be in the tree.
 
-Show directory structure with individual skills, commands, hooks, agents listed, but NOT the contents within each skill directory:
+**High-Level Overview**
+
+Show directory structure with inline annotations for all entries:
 
 ```
 $AOPS/
@@ -136,40 +138,34 @@ $AOPS/
     └── claude/
 ```
 
-**Key principle**: High-level tree shows WHAT exists (each skill, command, hook, agent) but not the files WITHIN each skill directory. That level of detail is for Level 2.
+**Key principles**:
+1. Every entry must have an inline comment explaining its purpose
+2. Group related items (e.g., `test_*.py` instead of listing each test file)
+3. Only show structure needed for discoverability
+4. Keep total README.md length under 300 lines
 
-**Level 2: Detailed Breakdown**
+**Example - Good (with annotations)**:
+```
+├── skills/                  # Agent skills (invoke via Skill tool)
+│   ├── README.md            # Skills documentation and index
+│   ├── analyst/             # Data analysis (dbt, Streamlit, statistical methods)
+│   └── bmem/                # Knowledge base operations
+```
 
-Show ALL files organized by category:
+**Example - Bad (no annotations)**:
+```
+├── skills/
+│   ├── analyst/
+│   │   ├── SKILL.md
+│   │   ├── _CHUNKS/
+│   │   │   ├── data-investigation.md
+│   │   │   └── dbt-workflow.md
+```
 
-**Skills** (`skills/`):
-- List each skill directory
-- List all files within each skill (SKILL.md, README.md, scripts/, workflows/, etc.)
-- Include files that skills reference (via wikilinks or imports)
-
-**Hooks** (`hooks/`):
-- List each hook file
-- List prompts/ directory contents
-- Include README.md
-
-**Commands** (`commands/`):
-- List each command file (.md files)
-
-**Tests** (`tests/`):
-- List test files
-- List integration/ subdirectory contents
-- Include conftest.py and supporting files
-
-**Root-level files**:
-- All markdown files at root
-- Configuration files
-- Other important files
-
-**Scripts and Lib**:
-- List scripts/ contents
-- List lib/ contents
-
-**Format**: Use consistent tree structure with clear hierarchy. Preserve inline comments from current README.md.
+**Supplementary Information**: Add "Framework State" section with component counts instead of exhaustive file listings:
+- Count of skills, hooks, commands, agents
+- Key information about framework status
+- Reference to high-level overview for file structure
 
 ### 5. Validate References
 
@@ -233,10 +229,10 @@ grep -r '\[\[.*\]\]' $AOPS --include="*.md"
 **Actions**:
 
 1. Create backup of current README.md content
-2. Generate new file tree sections (Level 1 and Level 2)
-3. Use Edit tool to replace old tree with new tree
-4. Preserve all other README.md content (description, contact, etc.)
-5. Preserve human-written inline comments in tree
+2. Generate new concise file tree with annotations
+3. Use Write tool to replace README.md with updated version
+4. Preserve all other README.md content (description, contact, bmem section, etc.)
+5. Ensure total length stays under 300 lines
 
 **Format**:
 
@@ -249,30 +245,23 @@ grep -r '\[\[.*\]\]' $AOPS --include="*.md"
 
 ```
 $AOPS/
-├── [high-level tree from step 4]
+├── [annotated tree from step 4]
 ```
 
-### Detailed File Breakdown
+### Framework State (Authoritative)
 
-#### Skills
+**Current phase**: Production use with active development
 
-```
-skills/
-├── framework/
-│   ├── SKILL.md
-│   ├── workflows/
-│   │   ├── 01-design-new-component.md
-│   │   └── ...
-│   └── ...
-├── analyst/
-│   └── SKILL.md
-└── ...
+**Component counts**:
+- X skills (list names)
+- Y hooks (summary)
+- Z commands (summary)
+...
+
+[Rest of README sections: bmem, installation, contact, etc.]
 ```
 
-[Continue for hooks/, commands/, tests/, etc.]
-```
-
-**Review**: Show diff before applying. Verify all files included, structure correct, comments preserved.
+**Review**: Verify annotations present, total length reasonable, all critical information preserved.
 
 ### 8. Final Validation
 
@@ -280,13 +269,14 @@ skills/
 
 **Checks**:
 
-- [ ] All files from step 1 appear in updated README.md
-- [ ] No extra entries (documented but don't exist)
+- [ ] All critical files/directories have annotations
+- [ ] No unannotated files in the tree
 - [ ] All wikilink references resolve
-- [ ] Human-written comments preserved
-- [ ] Two-level structure present and correct
+- [ ] README.md length under 300 lines
+- [ ] Framework State section includes component counts
 - [ ] No conflicts detected in step 6
 - [ ] Format consistent and readable
+- [ ] All other README sections preserved (bmem, installation, contact)
 
 **Output**: Report of verification status:
 - ✅ All files documented

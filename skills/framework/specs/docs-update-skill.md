@@ -123,17 +123,18 @@ $AOPS/
 # Run integration test
 pytest tests/integration/test_docs_update_skill.py -v
 
-# Run with actual repo (verify mode only, no writes)
-python skills/framework/scripts/docs_update.py --verify
+# Manual skill invocation (verify mode)
+# In Claude Code session:
+# "Invoke the docs-update skill to verify README.md is current"
 ```
 
 ### Test Validation
 
 ```python
 # Validation checks:
-- All files in tmp repo appear in updated README.md
-- No extra entries (documented but don't exist)
-- Two-level tree structure present
+- All critical files/directories have annotations in README.md
+- No unannotated entries in tree
+- README.md length under 300 lines
 - Wikilink references validated
 - Test exits with success code
 ```
@@ -167,17 +168,17 @@ The skill operates as an agent-invoked workflow, NOT a standalone script.
 1. **Filesystem Scanner**: Walk repo, collect all file paths (agent uses Glob/Bash)
 2. **Documentation Parser**: Extract file tree from README.md (agent uses Read tool)
 3. **Comparator**: Identify discrepancies (agent uses LLM reasoning)
-4. **Tree Generator**: Create two-level tree structure (agent uses LLM + template)
+4. **Tree Generator**: Create concise annotated tree (agent uses LLM + template)
 5. **Validator**: Check references resolve (agent uses Read + grep for wikilinks)
-6. **Updater**: Write corrected README.md (agent uses Edit tool)
+6. **Updater**: Write corrected README.md (agent uses Write tool)
 
 **Data Flow**:
 1. Agent scans filesystem → file list
 2. Agent reads README.md → documented tree
 3. Agent compares → discrepancies list
-4. Agent generates new tree → two-level structure
+4. Agent generates new tree → concise annotated structure
 5. Agent validates → reference check
-6. Agent updates README.md → corrected version
+6. Agent updates README.md → corrected version (under 300 lines)
 
 ### Technology Choices
 
