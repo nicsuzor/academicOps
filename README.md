@@ -10,79 +10,115 @@
 
 **Note**: User-specific files (ACCOMMODATIONS, CORE, STYLE, VISION, ROADMAP) live in `$ACA_DATA`, not in this repository. This repo contains only generic framework infrastructure.
 
+### High-Level Overview
+
 ```
 $AOPS/
-├── AXIOMS.md            # Framework principles (auto-injected via SessionStart hook)
-├── README.md            # THIS FILE - framework directory map
-├── CLAUDE.md            # Framework repo session start instructions
+├── AXIOMS.md                # Framework principles (auto-injected via SessionStart hook)
+├── README.md                # THIS FILE - framework directory map
+├── CLAUDE.md                # Framework repo session start instructions
+├── BMEM-ARCHITECTURE.md     # bmem system architecture
+├── BMEM-FORMAT.md           # bmem markdown format specification
+├── BMEM-CLAUDE-GUIDE.md     # Using bmem from Claude Code
+├── BMEM-OBSIDIAN-GUIDE.md   # Using bmem with Obsidian
+├── pyproject.toml           # Python project configuration
+├── setup.sh                 # Framework installation script
+├── update_hooks.py          # Hook update utility
+├── __init__.py
+├── .gitignore
 │
-├── BMEM-FORMAT.md       # bmem markdown format specification
-├── BMEM-CLAUDE-GUIDE.md # Using bmem from Claude Code
-├── BMEM-OBSIDIAN-GUIDE.md # Using bmem with Obsidian
+├── .github/workflows/       # GitHub Actions workflows
+│   ├── beta-release.yml
+│   ├── claude-code-review.yml
+│   ├── claude.yml
+│   ├── ios-note-capture.yml
+│   └── test-setup.yml
 │
-├── skills/              # Agent skills (specialized workflows - invoke via Skill tool)
-│   ├── framework/       # Framework maintenance, experimentation, strategic partner
-│   │   ├── SKILL.md     # Main skill instructions
-│   │   ├── TASK-SPEC-TEMPLATE.md # Template for automation specifications
-│   │   ├── workflows/   # Step-by-step procedures (design, debug, experiment, monitor, review, spec)
-│   │   └── references/  # Technical references (hooks guide, script design, testing patterns)
-│   ├── analyst/         # Data analysis (dbt, Streamlit, statistical methods)
-│   │   └── SKILL.md
-│   ├── python-dev/      # Production Python code (type safety, fail-fast, research standards)
-│   │   └── SKILL.md
-│   ├── tasks/           # Task management system (MCP server)
-│   │   ├── SKILL.md     # Task operations skill
-│   │   ├── README.md    # Task system documentation
-│   │   ├── server.py    # MCP server implementation
-│   │   ├── task_ops.py  # Task operation functions
-│   │   └── models.py    # Task data models
-│   ├── bmem/            # Knowledge base operations (MCP wrapper)
-│   │   └── SKILL.md
-│   └── feature-dev/     # Feature development workflow (future)
-│       └── SKILL.md
+├── skills/                  # Agent skills (invoke via Skill tool)
+│   ├── README.md            # Skills documentation and index
+│   ├── analyst/             # Data analysis (dbt, Streamlit, statistical methods)
+│   ├── bmem/                # Knowledge base operations
+│   ├── docs-update/         # Documentation update and verification
+│   ├── excalidraw/          # Visual diagram generation
+│   ├── extractor/           # Archive extraction
+│   ├── feature-dev/         # Feature development workflow
+│   ├── framework/           # Framework maintenance and strategic partner
+│   ├── framework-debug/     # Framework debugging tools
+│   ├── pdf/                 # PDF generation from markdown
+│   ├── python-dev/          # Production Python development standards
+│   ├── skill-creator/       # Skill creation and packaging
+│   ├── tasks/               # Task management system (MCP server)
+│   └── training-set-builder/ # Training data extraction from documents
 │
-├── hooks/               # Lifecycle automation (Python scripts triggered by Claude Code events)
-│   ├── README.md        # Hook documentation (configuration, available hooks, debugging)
-│   ├── sessionstart_load_axioms.py  # SessionStart hook - injects AXIOMS.md at session start
-│   ├── user_prompt_submit.py        # UserPromptSubmit hook - injects additional context on every prompt
-│   ├── session_logger.py            # Session logging module
-│   ├── log_session_stop.py          # Stop hook - logs session activity
-│   ├── extract_session_knowledge.py # Knowledge extraction from session
-│   └── prompts/         # Markdown prompts loaded by hooks
+├── hooks/                   # Lifecycle automation (Python scripts)
+│   ├── README.md
+│   ├── sessionstart_load_axioms.py      # SessionStart - inject AXIOMS.md
+│   ├── user_prompt_submit.py            # UserPromptSubmit - inject context
+│   ├── log_session_stop.py              # SessionStop - log session activity
+│   ├── extract_session_knowledge.py     # Knowledge extraction
+│   ├── session_logger.py                # Session logging module
+│   ├── autocommit_state.py
+│   ├── hook_debug.py
+│   ├── hook_logger.py
+│   ├── log_posttooluse.py
+│   ├── log_pretooluse.py
+│   ├── log_sessionstart.py
+│   ├── log_subagentstop.py
+│   ├── log_userpromptsubmit.py
+│   ├── prompt_router.py
+│   ├── request_scribe.py
+│   ├── test_marker_hook.py
+│   └── prompts/             # Markdown prompts loaded by hooks
 │
-├── experiments/         # Temporary experiment logs (moved to $ACA_DATA/projects/aops/experiments/ when finalized)
-│   └── YYYY-MM-DD_*.md  # Work-in-progress experiments
-│                        # NOTE: Learning patterns LOG.md and completed experiments live at $ACA_DATA/projects/aops/experiments/
+├── commands/                # Slash commands (workflow triggers)
+│   ├── archive-extract.md   # Extract archived information
+│   ├── bmem.md              # Invoke bmem skill
+│   ├── email.md             # Extract tasks from emails
+│   ├── learn.md             # Update memory/instructions
+│   ├── log.md               # Log agent performance
+│   ├── meta.md              # Invoke framework skill
+│   ├── parallel-batch.md    # Parallel batch processing
+│   ├── strategy.md          # Strategic planning
+│   ├── task-viz.md          # Generate task visualization
+│   ├── transcript.md        # Generate session transcript
+│   └── ttd.md               # Test-driven development orchestration
 │
-├── scripts/             # Deployment and maintenance scripts
-│   └── package_deployment.py  # Release packaging for GitHub
+├── agents/                  # Agentic workflows
+│   ├── dev.md               # Development task routing
+│   ├── email-extractor.md   # Email archive processing
+│   ├── log-agent.md         # Agent performance logging
+│   └── task-viz.md          # Task visualization generation
 │
-├── lib/                 # Shared Python utilities
-│   └── paths.py         # Path resolution (single source of truth for paths)
+├── experiments/             # Temporary experiment logs
+│   ├── 2025-11-17_log-sufficiency-test.md
+│   ├── 2025-11-17_multi-window-cognitive-load-solutions.md
+│   ├── 2025-11-21_zotmcp-tdd-session.md
+│   ├── session-bmem-fail.md
+│   └── session-bmem-pass.md
 │
-├── tests/               # Framework integration tests (pytest) - AUTHORITATIVE test location
-│   ├── README.md        # Test documentation (markers, fixtures, coverage)
-│   ├── conftest.py      # Unit test fixtures (paths)
-│   ├── paths.py         # Path resolution utilities
-│   ├── test_*.py        # Unit tests (paths, fixtures, documentation, skills, tasks)
-│   ├── run_integration_tests.py  # Test runner script
-│   └── integration/     # E2E tests (slow, require Claude execution)
-│       ├── conftest.py          # Integration test fixtures (headless execution)
-│       ├── test_bmem_skill.py   # Bmem skill integration tests
-│       ├── test_session_start_content.py # Session start validation tests
-│       └── test_task_viz.py     # Task visualization dashboard tests
+├── scripts/                 # Deployment and maintenance scripts
+│   ├── migrate_log_entries.py
+│   ├── package_deployment.py
+│   └── setup.sh
 │
-├── commands/            # Slash commands (workflow triggers)
-│   ├── bmem.md          # Invoke bmem skill
-│   ├── email.md         # Extract tasks from emails
-│   ├── learn.md         # Update memory/instructions
-│   ├── log.md           # Log agent performance
-│   ├── meta.md          # Invoke framework skill for strategic questions
-│   ├── task-viz.md      # Generate visual task dashboard (mind-map)
-│   └── ttd.md           # Test-driven development orchestration
+├── lib/                     # Shared Python utilities
+│   ├── __init__.py
+│   └── paths.py             # Path resolution (SSoT for paths)
 │
-├── agents/              # Agentic workflows (future)
-└── config/              # Configuration files
+├── tests/                   # Framework tests (pytest)
+│   ├── README.md
+│   ├── conftest.py
+│   ├── paths.py
+│   ├── run_integration_tests.py
+│   ├── run_skill_tests.sh
+│   ├── test_*.py            # Unit tests (30+ test files)
+│   ├── integration/         # E2E tests (slow, require Claude execution)
+│   └── tools/               # Test utilities
+│
+└── config/                  # Configuration files
+    └── claude/
+        ├── mcp.json         # MCP server configuration
+        └── settings.json    # Claude Code settings
 ```
 
 ### Runtime and Debug Locations

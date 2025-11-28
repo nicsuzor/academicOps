@@ -31,7 +31,7 @@ LLM agent skills for working in this repository. Each skill provides specialized
 - `_CHUNKS/` - research-documentation, methodology-files, methods-vs-methodology, experiment-logging, dbt-workflow, streamlit-workflow
 - `references/` - statistical-analysis, test_selection_guide, assumptions_and_diagnostics, effect_sizes_and_power, bayesian_statistics, reporting_standards, dbt-workflow, streamlit-patterns, context-discovery, matplotlib, seaborn, statsmodels, streamlit
 
-**Location**: `bots/skills/analyst/SKILL.md`
+**Location**: `skills/analyst/SKILL.md`
 
 ---
 
@@ -41,7 +41,7 @@ LLM agent skills for working in this repository. Each skill provides specialized
 
 **When to use**:
 
-- Creating/editing markdown files in `data/` directory
+- Creating/editing markdown files in knowledge base
 - User mentions project updates, decisions, insights
 - Extracting strategic context from conversations
 - Building knowledge graph connections
@@ -56,11 +56,41 @@ LLM agent skills for working in this repository. Each skill provides specialized
 - Knowledge graph maintenance (relations, WikiLinks)
 - Observation quality enforcement (additive, no duplicates)
 - Integration with task skill for task operations
-- Automatic commit and push
+
+**Reference files loaded**:
+
+- `references/` - approved-categories-relations, detail-level-guide, observation-quality-guide, obsidian-compatibility, obsidian-format-spec
+
+**Location**: `skills/bmem/SKILL.md`
+
+---
+
+### docs-update
+
+**Purpose**: Update and verify framework documentation, particularly README.md file tree structure
+
+**When to use**:
+
+- Before committing framework changes
+- After adding new files (skills, hooks, commands, scripts)
+- When documentation drift is suspected
+- To generate updated file tree structure
+- To detect conflicts between documentation files
+
+**Core workflow**: Agent-driven verification and update - scans repository, compares with documented state, generates complete file trees
+
+**Key features**:
+
+- Scans repository to discover all files
+- Generates two-level file tree (overview + detailed breakdown)
+- Detects missing or outdated documentation entries
+- Validates wikilink references resolve correctly
+- Detects documentation conflicts and violations of SSoT
+- Ensures README.md is authoritative and up-to-date
 
 **Reference files loaded**: None (all inline in SKILL.md)
 
-**Location**: `bots/skills/bmem/SKILL.md`
+**Location**: `skills/docs-update/SKILL.md`
 
 ---
 
@@ -95,7 +125,7 @@ LLM agent skills for working in this repository. Each skill provides specialized
 
 **Reference files loaded**: None (all inline in SKILL.md)
 
-**Location**: `bots/skills/feature-dev/SKILL.md`
+**Location**: `skills/feature-dev/SKILL.md`
 
 ---
 
@@ -122,7 +152,7 @@ LLM agent skills for working in this repository. Each skill provides specialized
 - `workflows/` - 01-design-new-component, 02-debug-framework-issue, 03-experiment-design, 04-monitor-prevent-bloat, 05-review-pull-request, 06-develop-specification
 - `references/` - hooks_guide
 
-**Location**: `bots/skills/framework/SKILL.md`
+**Location**: `skills/framework/SKILL.md`
 
 ---
 
@@ -158,7 +188,7 @@ LLM agent skills for working in this repository. Each skill provides specialized
 
 - `references/` - fail-fast, type-safety, testing, modern-python, code-quality, pandas, hydra, fastapi, fastmcp, bigquery
 
-**Location**: `bots/skills/python-dev/SKILL.md`
+**Location**: `skills/python-dev/SKILL.md`
 
 ---
 
@@ -186,7 +216,7 @@ LLM agent skills for working in this repository. Each skill provides specialized
 
 - `workflows/` - email-capture
 
-**Location**: `bots/skills/tasks/SKILL.md`
+**Location**: `skills/tasks/SKILL.md`
 
 ---
 
@@ -219,9 +249,9 @@ All skills follow [[../AXIOMS.md]].
 
 ## Agents vs Skills
 
-**Agents** (in `bots/agents/`): Thin wrappers that route to appropriate skills based on task context. Agents do ONE step and return.
+**Agents** (in `agents/`): Thin wrappers that route to appropriate skills based on task context. Agents do ONE step and return.
 
-**Skills** (in `bots/skills/`): Detailed workflows and instructions for specific work types.
+**Skills** (in `skills/`): Detailed workflows and instructions for specific work types.
 
 **When to create agent**: Need routing logic across multiple skills (e.g., 'dev' agent routes to python-dev or feature-dev based on task).
 
@@ -233,7 +263,7 @@ All skills follow [[../AXIOMS.md]].
 
 **Purpose**: Routes development tasks to appropriate skills (python-dev, feature-dev)
 
-**Location**: `bots/agents/dev.md` (when created)
+**Location**: `agents/dev.md`
 
 **Routing logic**:
 
@@ -245,7 +275,7 @@ All skills follow [[../AXIOMS.md]].
 
 When adding a skill:
 
-1. Create skill directory in `bots/skills/`
+1. Create skill directory in `skills/`
 2. Create `SKILL.md` with frontmatter metadata:
    ```yaml
    ---
@@ -259,18 +289,6 @@ When adding a skill:
 5. Test skill invocation
 6. Document in experiment log if significant
 
-## Migration from aOps
-
-The heavy automation framework (`academicOps/`) has been replaced by this minimal `bots/` structure. Only proven-essential skills have been migrated:
-
-- ✅ **analyst** - Migrated from `academicOps/skills/analyst/`
-- ✅ **python-dev** - Migrated from `academicOps/skills/python-dev/`
-- ✅ **feature-dev** - Created new for test-first development
-- ✅ **framework** - Created new for framework maintenance
-- ✅ **tasks** - Migrated task scripts from `academicOps/scripts/task_*.py`
-
-Other aOps skills (scribe, email) remain in `academicOps/skills/` for reference but are not active.
-
 ---
 
-**Last updated**: 2025-11-10
+**Last updated**: 2025-11-26
