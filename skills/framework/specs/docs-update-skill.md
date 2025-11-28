@@ -48,9 +48,10 @@ Nic and any future framework maintainers - ensures documentation stays trustwort
 - Scan filesystem to discover all files in academicOps repository
 - Parse README.md to extract documented file tree
 - Compare actual vs documented state
-- Generate two-level file tree structure:
-  - Level 1: High-level overview (show directories like `skills/` but not their contents)
-  - Level 2: Detailed breakdown (all files, including those referenced in skill files)
+- Generate concise annotated file tree structure:
+  - Only include files/directories that have inline annotations explaining their purpose
+  - Group similar files (e.g., `test_*.py` instead of listing each)
+  - Keep README.md under 300 lines
 - Detect missing entries in documentation
 - Detect outdated entries (documented files that don't exist)
 - Validate all wikilink references resolve
@@ -293,7 +294,7 @@ The skill operates as an agent-invoked workflow, NOT a standalone script.
 - Check for false positives/negatives
 - Document findings in experiment log
 
-**Criteria to proceed**: Skill correctly identifies all current files and generates accurate two-level tree
+**Criteria to proceed**: Skill correctly identifies critical files and generates accurate annotated tree structure
 
 ### Phase 2: Limited Deployment
 
@@ -367,7 +368,7 @@ Before marking this task as complete:
 - [ ] No documentation conflicts introduced
 - [ ] Code follows AXIOMS.md principles
 - [ ] Skill tested on actual academicOps repo
-- [ ] Two-level tree structure implemented in README.md
+- [ ] Concise annotated tree structure implemented in README.md (under 300 lines)
 
 ## Post-Implementation Review
 

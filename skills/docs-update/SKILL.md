@@ -162,11 +162,6 @@ $AOPS/
 │   │   │   └── dbt-workflow.md
 ```
 
-**Supplementary Information**: Add "Framework State" section with component counts instead of exhaustive file listings:
-- Count of skills, hooks, commands, agents
-- Key information about framework status
-- Reference to high-level overview for file structure
-
 ### 5. Validate References
 
 **Objective**: Ensure all wikilink-style references resolve to existing files.
@@ -248,17 +243,7 @@ $AOPS/
 ├── [annotated tree from step 4]
 ```
 
-### Framework State (Authoritative)
-
-**Current phase**: Production use with active development
-
-**Component counts**:
-- X skills (list names)
-- Y hooks (summary)
-- Z commands (summary)
-...
-
-[Rest of README sections: bmem, installation, contact, etc.]
+[Rest of README sections: Runtime and Debug Locations, bmem, User Data Repository Structure, Installation in Other Projects, Contact, etc.]
 ```
 
 **Review**: Verify annotations present, total length reasonable, all critical information preserved.
@@ -273,10 +258,9 @@ $AOPS/
 - [ ] No unannotated files in the tree
 - [ ] All wikilink references resolve
 - [ ] README.md length under 300 lines
-- [ ] Framework State section includes component counts
 - [ ] No conflicts detected in step 6
 - [ ] Format consistent and readable
-- [ ] All other README sections preserved (bmem, installation, contact)
+- [ ] All other README sections preserved (Runtime and Debug Locations, bmem, User Data Repository Structure, Installation in Other Projects, Contact)
 
 **Output**: Report of verification status:
 - ✅ All files documented
@@ -323,11 +307,11 @@ Required action:
 
 Before completing skill execution:
 
-1. **Completeness**: Every file in repo has tree entry
+1. **Completeness**: All critical files/directories documented with annotations
 2. **Accuracy**: No documented files that don't exist
 3. **References**: All wikilinks resolve
 4. **Conflicts**: No contradictions detected
-5. **Format**: Two-level tree structure present
+5. **Format**: Annotated tree structure present
 6. **Preservation**: Human comments retained
 
 **All gates must pass**. If any fail, report and halt without writing changes.
@@ -350,7 +334,7 @@ Before completing skill execution:
 1. Scans repository → finds 127 files
 2. Reads README.md → extracts documented structure
 3. Compares → finds 3 missing entries (new skill files)
-4. Generates two-level tree
+4. Generates annotated tree with inline descriptions
 5. Validates references → all resolve
 6. Checks conflicts → none found
 7. Updates README.md with new tree
