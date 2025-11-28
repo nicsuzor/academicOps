@@ -17,6 +17,81 @@ import pytest
 from lib.paths import get_aops_root
 
 
+def extract_response_text(result: dict[str, Any]) -> str:
+    """Extract text response from claude_headless result.
+
+    The claude command returns a list of message objects in result["result"].
+    This function extracts the actual text response from the message chain.
+
+    Args:
+        result: Dictionary from claude_headless with "result" key
+
+    Returns:
+        The text response content
+
+    Raises:
+        ValueError: If result structure is unexpected or no response found
+        KeyError: If expected keys are missing
+        TypeError: If result["result"] is not a list
+    """
+    result_data = result.get("result")
+
+    # FAIL FAST: result["result"] must be a list of message objects
+    if not isinstance(result_data, list):
+        raise TypeError(
+            f"Expected result['result'] to be a list, got {type(result_data).__name__}"
+        )
+
+    if not result_data:
+        raise ValueError("result['result'] is an empty list - no response found")
+
+    # Extract text from the last message in the chain
+    # Look for either an assistant message's content or a result message
+    for message in reversed(result_data):
+        if not isinstance(message, dict):
+            raise TypeError(
+                f"Expected message to be dict, got {type(message).__name__}"
+            )
+
+        message_type = message.get("type")
+
+        # Check for result message (final response)
+        if message_type == "result":
+            result_field = message.get("result")
+            if isinstance(result_field, str):
+                return result_field
+            raise TypeError(
+                f"Expected result message's 'result' field to be string, "
+                f"got {type(result_field).__name__}"
+            )
+
+        # Check for assistant message with content
+        if message_type == "assistant":
+            message_obj = message.get("message")
+            if not isinstance(message_obj, dict):
+                continue
+
+            content = message_obj.get("content")
+            if not isinstance(content, list):
+                continue
+
+            # Find text content in the message
+            for content_block in content:
+                if not isinstance(content_block, dict):
+                    continue
+
+                if content_block.get("type") == "text":
+                    text_value = content_block.get("text")
+                    if isinstance(text_value, str):
+                        return text_value
+
+    # FAIL FAST: No response found in message chain
+    raise ValueError(
+        f"Could not extract text response from message chain. "
+        f"Message types: {[m.get('type') for m in result_data if isinstance(m, dict)]}"
+    )
+
+
 def _claude_cli_available() -> bool:
     """Check if claude CLI command is available in PATH."""
     import shutil

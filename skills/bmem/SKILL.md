@@ -179,9 +179,8 @@ uvx basic-memory tool recent-activity --project main         # Recent activity
 **Known issue**: Multi-term queries (5+ words) may return 0 results. Use simpler queries.
 
 **Project management**:
-- Start every session with `mcp__bmem__list_memory_projects()` to discover projects
-- Store user's project choice for entire session
-- Pass `project` parameter explicitly to all tool calls
+- **ALWAYS** use `project="main"` parameter in ALL bmem MCP tool calls
+- This is non-negotiable - every `mcp__bmem__*` call MUST include `project="main"`
 
 **Core operations**:
 - `mcp__bmem__write_note()` - Create/update notes
@@ -429,9 +428,7 @@ Invoke task skill with:
 
 **Session start**:
 
-- [ ] Call `mcp__bmem__list_memory_projects()` to discover projects
-- [ ] Ask user which project to use
-- [ ] Store project choice for session
+- [ ] Remember: ALWAYS use `project="main"` in ALL bmem tool calls
 
 **Before writing**:
 
@@ -477,7 +474,7 @@ This skill succeeds when:
 4. **Knowledge graph maintained** - Semantic links kept current via relations
 5. **Obsidian-compatible** - Files work perfectly in Obsidian
 6. **Tasks delegated** - Task skill invoked for all task operations
-7. **MCP tools used correctly** - All operations via `mcp__bmem__*` tools with explicit project parameter
+7. **MCP tools used correctly** - All operations via `mcp__bmem__*` tools with `project="main"` parameter
 8. **User feels supported** - "Ideas are magically organized"
 
 ## Best Practices from Basic Memory

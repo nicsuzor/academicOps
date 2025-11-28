@@ -13,6 +13,8 @@ from typing import Any
 
 import pytest
 
+from .conftest import extract_response_text
+
 
 @pytest.mark.slow
 @pytest.mark.integration
@@ -55,11 +57,7 @@ def test_axioms_content_actually_loaded(claude_headless: Any, context_name: str,
     assert result["success"], f"Claude execution failed: {result.get('error')}"
 
     # Extract response
-    result_data = result.get("result", {})
-    if isinstance(result_data, dict):
-        response = result_data.get("result", "")
-    else:
-        response = result_data
+    response = extract_response_text(result)
 
     # Check if response contains AXIOM #1 concepts
     # AXIOM #1 is "DO ONE THING - Complete the task requested, then STOP"
@@ -106,11 +104,7 @@ def test_readme_structure_actually_loaded(claude_headless: Any) -> None:
     assert result["success"], f"Claude execution failed: {result.get('error')}"
 
     # Extract response
-    result_data = result.get("result", {})
-    if isinstance(result_data, dict):
-        response = result_data.get("result", "")
-    else:
-        response = result_data
+    response = extract_response_text(result)
 
     # Check for key directories that should be in README
     expected_dirs = ["skills", "hooks", "commands"]
@@ -164,11 +158,7 @@ def test_agent_didnt_use_read_tool(claude_headless: Any) -> None:
     assert result2["success"], f"Second query failed: {result2.get('error')}"
 
     # Extract response
-    result_data = result2.get("result", {})
-    if isinstance(result_data, dict):
-        response = result_data.get("result", "").lower()
-    else:
-        response = result_data.lower()
+    response = extract_response_text(result2).lower()
 
     # Claude should NOT have used Read tool if content was loaded at start
     assert "no" in response or "did not" in response or "didn't" in response, (

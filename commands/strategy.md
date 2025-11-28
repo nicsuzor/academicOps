@@ -47,13 +47,15 @@ As conversation unfolds, **automatically capture** (without interrupting flow):
 **MANDATORY**: Before responding, use bmem to understand user's strategic landscape.
 
 ```
-mcp__bmem__search_notes for:
+mcp__bmem__search_notes(query="...", project="main") for:
 - "#core-goals" → Strategic goals
 - "current priorities" → Current focus
 - "[project name]" → Specific project context
 - "accomplishments" → Recent progress
 - User's relevant work history
 ```
+
+**Remember**: ALWAYS use `project="main"` in ALL bmem tool calls.
 
 **Build on what you learn** - don't ask questions answered by context.
 

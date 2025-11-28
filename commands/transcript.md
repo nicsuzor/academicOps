@@ -17,6 +17,7 @@ Converts Claude Code session logs to markdown transcripts with chronologically w
 3. Generates markdown with conversation turns and hook execution timeline
 4. Shows ALL hooks (even without additionalContext) with exit codes
 5. Outputs to `~/writing/session-{short-id}-transcript.md`
+6. Opens the generated transcript file with `xdg-open` for immediate viewing
 
 **Usage**:
 
@@ -42,4 +43,20 @@ Converts Claude Code session logs to markdown transcripts with chronologically w
 - Tool uses with results
 - Timestamps and durations
 
-**Implementation**: Uses `claude-transcript` tool at `~/src/claude-transcript/`
+**Implementation**:
+
+- Tool location: `~/src/claude-transcript/claude_transcript.py`
+- Session files: `~/.claude/projects/*/[uuid].jsonl`
+- Hook logs: `~/.cache/aops/sessions/*-hooks.jsonl`
+- Invocation: `uv run python ~/src/claude-transcript/claude_transcript.py [session-file] -o ~/writing/session-{id}-transcript.md`
+- Opens result with `xdg-open` after generation
+
+**Finding session files**:
+
+```bash
+# Find most recent session in current project
+ls -lt ~/.claude/projects/$(basename $(pwd) | sed 's/^/-/')/*.jsonl | grep -v agent | head -1
+
+# List all recent sessions
+ls -lt ~/.claude/projects/*/[0-9a-f]*.jsonl | grep -v agent | head -10
+```

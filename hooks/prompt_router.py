@@ -15,6 +15,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from hooks.hook_logger import log_hook_event
+
 
 # Keyword patterns for skill suggestion
 SKILL_KEYWORDS = {
@@ -25,7 +27,7 @@ SKILL_KEYWORDS = {
     "tasks": {"task", "tasks", "todo", "todos", "action items"},
 }
 
-TEMP_DIR = Path("/tmp/prompt-router")
+TEMP_DIR = Path.home() / ".cache" / "aops" / "prompt-router"
 
 
 def write_prompt_to_temp(prompt: str, keyword_matches: list[str]) -> Path:
@@ -106,17 +108,40 @@ def main():
     with contextlib.suppress(Exception):
         input_data = json.load(sys.stdin)
 
+    session_id = input_data.get("session_id", "unknown")
     prompt = input_data.get("prompt", "")
 
     # Analyze and get advisory context
     advisory = analyze_prompt(prompt)
 
-    output = {
-        "hookSpecificOutput": {
-            "hookEventName": "UserPromptSubmit",
-            "additionalContext": advisory
+    # Build output
+    output: dict[str, Any] = {}
+    log_output: dict[str, Any] = {}
+
+    if advisory:
+        output = {
+            "hookSpecificOutput": {
+                "hookEventName": "UserPromptSubmit",
+                "additionalContext": advisory
+            }
         }
-    }
+        # Extract matched skills for logging
+        prompt_lower = prompt.lower()
+        matches = [
+            skill for skill, keywords in SKILL_KEYWORDS.items()
+            if any(kw in prompt_lower for kw in keywords)
+        ]
+        log_output = {
+            "hookSpecificOutput": {
+                "hookEventName": "PromptRouter",
+                "additionalContext": advisory,
+                "skillsMatched": matches
+            }
+        }
+
+    # Log hook event
+    log_hook_event(session_id, "PromptRouter", input_data, log_output, exit_code=0)
+
     print(json.dumps(output))
     sys.exit(0)
 

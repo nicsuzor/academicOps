@@ -35,6 +35,41 @@ The framework lives in `$AOPS` (academicOps repository) and follows aggressive m
 - Detecting documentation conflicts
 - Preventing bloat
 
+## Delegation Pattern
+
+**Framework skill orchestrates, specialized skills implement.**
+
+When implementation work is required (coding, data analysis), the framework skill delegates to specialized skills:
+
+**Delegation requirements**:
+1. Framework skill must provide full context and plan
+2. Framework skill MUST include "FRAMEWORK SKILL CHECKED" token in delegation message
+3. Specialized skill receives clear instructions with context
+4. Framework skill validates results and integrates
+
+**Token enforcement**: Sub-agents (python-dev, analyst, etc.) MUST refuse requests without "FRAMEWORK SKILL CHECKED" token and fail loudly.
+
+**Example delegation message**:
+```
+FRAMEWORK SKILL CHECKED
+
+Use python-dev skill to implement MINIMAL code to make these tests pass:
+
+Tests: tests/test_activity_logger.py (4 tests)
+Error: ModuleNotFoundError: No module named 'lib.activity'
+
+Implementation requirements:
+- File to create: lib/activity.py
+- Function needed: log_activity(action: str, session: str = "session") -> None
+- Behavior: Append JSONL entry to $ACA_DATA/logs/activity.jsonl
+[...detailed requirements...]
+```
+
+**Specialized skills available**:
+- `python-dev` - Production Python code following fail-fast philosophy
+- `analyst` - Data analysis using dbt and Streamlit
+- Others as needed
+
 ## Strategic Partner Mode
 
 **Primary role**: Help Nic make principled framework decisions without keeping everything in his head.
@@ -77,25 +112,26 @@ The framework lives in `$AOPS` (academicOps repository) and follows aggressive m
 
 ```
 CRITICAL: Use bmem MCP tools for ALL knowledge base access. NEVER read markdown files directly.
+MANDATORY: ALL `mcp__bmem__*` calls MUST include `project="main"` parameter.
 
 # 1. BINDING USER CONSTRAINTS (search FIRST)
-Use mcp__bmem__search_notes for:
+Use mcp__bmem__search_notes(query="...", project="main") for:
 - "accommodations OR work style" → User constraints (as binding as AXIOMS)
 - "core OR user context" → User context (as binding as AXIOMS)
 
 # 2. CURRENT REALITY (ground truth)
-Use mcp__bmem__search_notes for:
+Use mcp__bmem__search_notes(query="...", project="main") for:
 - "state OR current stage" in type:note → Current framework stage, blockers
 
 # 3. FRAMEWORK PRINCIPLES AND ASPIRATIONS
-Use mcp__bmem__search_notes for:
+Use mcp__bmem__search_notes(query="...", project="main") for:
 - "vision OR end state" in type:note → Framework goals
 - "roadmap OR maturity progression" in type:note → Stage progression
 - Read $AOPS/AXIOMS.md directly (framework principles, not user knowledge)
 - "experiment log OR learning patterns" → Past learnings from LOG.md
 
 # 4. TECHNICAL REFERENCES (search as needed for specific work)
-Use mcp__bmem__search_notes for:
+Use mcp__bmem__search_notes(query="...", project="main") for:
 - "hooks guide OR hook configuration"
 - Other technical docs by topic/type
 ```
@@ -109,15 +145,15 @@ Use mcp__bmem__search_notes for:
 - "What have we built?" → Search for roadmap/state notes, show progress toward vision
 - "What should we work on next?" → Search roadmap priorities, validate strategic fit
 - "Is X a good idea?" → Search vision/goals, evaluate against AXIOMS, search experiment log
-- "Why did we do Y?" → Search experiments log: `mcp__bmem__search_notes(query="[decision topic]")` in LOG.md
+- "Why did we do Y?" → Search experiments log: `mcp__bmem__search_notes(query="[decision topic]", project="main")` in LOG.md
 - "What's our current state?" → Search for current state/roadmap status notes
 
 **Decision-making framework** (using bmem):
 
 1. Derive from AXIOMS.md (foundational principles - read directly from $AOPS)
-2. Align with vision: Search `mcp__bmem__search_notes(query="vision OR strategic direction")`
-3. Consider current stage: Search `mcp__bmem__search_notes(query="roadmap OR current stage")`
-4. Learn from past: Search `mcp__bmem__search_notes(query="[relevant topic] type:experiment-log")`
+2. Align with vision: Search `mcp__bmem__search_notes(query="vision OR strategic direction", project="main")`
+3. Consider current stage: Search `mcp__bmem__search_notes(query="roadmap OR current stage", project="main")`
+4. Learn from past: Search `mcp__bmem__search_notes(query="[relevant topic] type:experiment-log", project="main")`
 5. Default to simplicity and quality
 6. When uncertain, provide options with clear tradeoffs
 
@@ -595,7 +631,6 @@ $AOPS/  (set via AOPS environment variable)
 │       ├── TASK-SPEC-TEMPLATE.md    # Template for specifying automations
 │       ├── references/              # Technical reference documentation
 │       ├── workflows/               # Step-by-step procedures
-│       ├── specs/                   # Task specifications
 │       └── scripts/                 # Automation scripts
 ├── hooks/               # Lifecycle automation
 ├── commands/            # Slash commands
@@ -624,6 +659,7 @@ $ACA_DATA/  (set via ACA_DATA environment variable)
     ├── STATE.md         # Current framework state
     ├── VISION.md        # User's vision for framework
     ├── ROADMAP.md       # User's roadmap
+    ├── specs/           # AUTHORITATIVE: Task specifications for planned automations
     └── experiments/     # Finalized experiments
         └── LOG.md       # Learning patterns (append-only)
 ```

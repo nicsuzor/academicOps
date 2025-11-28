@@ -24,7 +24,9 @@ from typing import Any
 
 def get_state_file(session_id: str) -> Path:
     """Get path to state file tracking documentation request for this session."""
-    return Path(f"/tmp/claude_end_of_session_requested_{session_id}.flag")
+    cache_dir = Path.home() / ".cache" / "aops"
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    return cache_dir / f"session_end_{session_id}.flag"
 
 
 def main():

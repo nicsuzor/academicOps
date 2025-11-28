@@ -27,6 +27,7 @@ class TestGetWritingRoot:
         # Arrange
         aops_root = tmp_path / "academicOps"
         aops_root.mkdir()
+        (aops_root / "lib").mkdir()
         monkeypatch.setenv("AOPS", str(aops_root))
 
         # Act
@@ -37,16 +38,16 @@ class TestGetWritingRoot:
         assert isinstance(result, Path)
 
     def test_get_writing_root_without_env(self, monkeypatch):
-        """Test RuntimeError when AOPS env var not set (fail-fast)."""
-        # Arrange - Unset environment variable
+        """Test get_writing_root() auto-detects from module location when AOPS not set."""
+        # Arrange - Unset environment variable (but auto-detection still works)
         monkeypatch.delenv("AOPS", raising=False)
 
-        # Act & Assert - New implementation is fail-fast, no discovery
-        with pytest.raises(
-            RuntimeError,
-            match="AOPS environment variable not set",
-        ):
-            get_writing_root()
+        # Act - Auto-detection finds the framework from lib/paths.py module location
+        result = get_writing_root()
+
+        # Assert - Returns a valid Path to the detected framework root
+        assert isinstance(result, Path)
+        assert (result / "lib").is_dir()
 
     def test_get_writing_root_fails_with_invalid_env(self, monkeypatch):
         """Test RuntimeError when AOPS points to non-existent path."""
@@ -56,21 +57,21 @@ class TestGetWritingRoot:
         # Act & Assert
         with pytest.raises(
             RuntimeError,
-            match="AOPS path doesn't exist",
+            match=r"\$AOPS is set but path doesn't exist",
         ):
             get_writing_root()
 
     def test_get_writing_root_fails_without_context(self, monkeypatch):
-        """Test RuntimeError when AOPS env var not set (duplicate test for backwards compat)."""
-        # Arrange - Unset env var (fail-fast, no discovery in new implementation)
+        """Test get_writing_root() auto-detects when AOPS not set (like test_get_writing_root_without_env)."""
+        # Arrange - Unset env var (auto-detection still works from module location)
         monkeypatch.delenv("AOPS", raising=False)
 
-        # Act & Assert
-        with pytest.raises(
-            RuntimeError,
-            match="AOPS environment variable not set",
-        ):
-            get_writing_root()
+        # Act - Auto-detection finds the framework from lib/paths.py module location
+        result = get_writing_root()
+
+        # Assert - Returns a valid Path to the detected framework root
+        assert isinstance(result, Path)
+        assert (result / "lib").is_dir()
 
 
 class TestGetBotsDir:
@@ -81,6 +82,7 @@ class TestGetBotsDir:
         # Arrange - get_bots_dir is now just an alias for get_aops_root()
         aops_root = tmp_path / "academicOps"
         aops_root.mkdir()
+        (aops_root / "lib").mkdir()
         monkeypatch.setenv("AOPS", str(aops_root))
 
         # Act
@@ -118,6 +120,7 @@ class TestGetHooksDir:
         aops_root = tmp_path / "academicOps"
         hooks_dir = aops_root / "hooks"
         aops_root.mkdir()
+        (aops_root / "lib").mkdir()
         hooks_dir.mkdir()
         monkeypatch.setenv("AOPS", str(aops_root))
 
@@ -138,6 +141,7 @@ class TestGetHookScript:
         aops_root = tmp_path / "academicOps"
         hooks_dir = aops_root / "hooks"
         hooks_dir.mkdir(parents=True)
+        (aops_root / "lib").mkdir()
 
         hook_script = hooks_dir / "session_start.py"
         hook_script.touch()
@@ -158,6 +162,7 @@ class TestGetHookScript:
         aops_root = tmp_path / "academicOps"
         hooks_dir = aops_root / "hooks"
         hooks_dir.mkdir(parents=True)
+        (aops_root / "lib").mkdir()
         monkeypatch.setenv("AOPS", str(aops_root))
 
         # Act & Assert
@@ -175,6 +180,7 @@ class TestPathsUsePathlib:
         data_dir = tmp_path / "data"
         hooks_dir = aops_root / "hooks"
         hooks_dir.mkdir(parents=True)
+        (aops_root / "lib").mkdir()
         data_dir.mkdir()
 
         hook_script = hooks_dir / "test_hook.py"

@@ -121,63 +121,50 @@ $AOPS/
         └── settings.json    # Claude Code settings
 ```
 
-### Framework State (Authoritative)
+### Runtime and Debug Locations
 
-**Current phase**: Production use with active development
-
-**Component counts**:
-- 13 skills (analyst, bmem, docs-update, excalidraw, extractor, feature-dev, framework, framework-debug, pdf, python-dev, skill-creator, tasks, training-set-builder)
-- 15 hooks (SessionStart, UserPromptSubmit, SessionStop, logging hooks, etc.)
-- 11 commands (/bmem, /meta, /ttd, /email, /log, etc.)
-- 4 agents (dev, email-extractor, log-agent, task-viz)
-- 5 GitHub Actions workflows
-- 60+ tests (unit and integration)
-
-**File structure**: See "High-Level Overview" section above for directory layout.
-
-### Key Skills
-
-**framework** (`skills/framework/`): Strategic partner for framework development decisions. Consult before adding/modifying framework components.
-
-**Skills Overview (Full List):**
-```
-skills/
-├── README.md                      # Skills documentation and index
-├── analyst/                       # Data analysis (dbt, Streamlit, statistical methods)
-├── bmem/                          # Knowledge base operations
-├── docs-update/                   # Documentation update and verification
-├── excalidraw/                    # Visual diagram generation
-├── extractor/                     # Archive extraction
-├── feature-dev/                   # Feature development workflow
-├── framework/                     # Framework maintenance and strategic partner
-├── framework-debug/               # Framework debugging tools
-├── pdf/                           # PDF generation from markdown
-├── python-dev/                    # Production Python development standards
-├── skill-creator/                 # Skill creation and packaging
-├── tasks/                         # Task management system (MCP server)
-└── training-set-builder/          # Training data extraction from documents
-```
-
----
-
-### Claude Code Debug Locations
+**Claude Code runtime data** (written by Claude Code itself):
 
 ```
 ~/.claude/
-├── debug/               # Human-readable session logs (session-id.txt, [ERROR]/[DEBUG]/[INFO] tagged)
-├── projects/            # JSONL session data per repository
+├── debug/               # [Claude Code] Human-readable session logs (UUID.txt with [DEBUG]/[INFO]/[ERROR] tags)
+│                        # Contains: Hook execution trace, JSON parsing, tool calls, stream processing
+│                        # Includes: Hook output (additionalContext visible here)
+├── projects/            # [Claude Code] JSONL session data per repository
 │   └── -repo-path/      # Path encoded with dashes (e.g., -home-nic-writing/)
 │       ├── *.jsonl      # Main session messages (user/assistant turns)
 │       └── agent-*.jsonl # Agent subprocess logs (tool calls, results, errors with is_error flag)
-├── settings.json        # User settings (hooks, permissions, deny rules)
-└── statsig/             # Feature flags and telemetry
+├── history.jsonl        # [Claude Code] Command history
+├── settings.json        # [Claude Code] User settings (hooks, permissions, deny rules)
+├── file-history/        # [Claude Code] File version history
+├── session-env/         # [Claude Code] Per-session environment data
+├── shell-snapshots/     # [Claude Code] Shell state snapshots
+├── todos/               # [Claude Code] TodoWrite persistence
+└── statsig/             # [Claude Code] Feature flags and telemetry
+```
 
-/tmp/claude-sessions/
-└── *-hooks.jsonl        # Hook execution logs (which hooks fired, inputs, hook_results)
+**Framework cache data** (written by framework hooks):
+
+```
+~/.cache/aops/
+├── prompt-router/
+│   └── YYYYMMDD_HHMMSS_microseconds.json  # [prompt_router.py] Prompt analysis for classifier
+│                                           # Contains: user prompt text, keyword matches
+│                                           # Purpose: Input data for Haiku classifier agent
+├── sessions/
+│   └── YYYY-MM-DD-<hash>-hooks.jsonl      # [session_logger.py] Hook execution logs
+│                                           # Contains: which hooks fired, inputs, hook_results
+└── session_end_*.flag                      # [log_userpromptsubmit.py, request_scribe.py] Session termination flags
 
 /tmp/claude-transcripts/
-└── *_transcript.md        # Human-readable session transcripts (on-demand via claude-transcript)
+└── *_transcript.md        # [claude-transcript tool] Human-readable session transcripts (on-demand)
 ```
+
+**Debug workflow**: To trace hook behavior:
+1. Hook writes to `~/.cache/aops/prompt-router/*.json` (input data for classifier)
+2. Hook returns JSON with `additionalContext` to Claude Code via stdout
+3. Claude Code logs hook output to `~/.claude/debug/<session-uuid>.txt`
+4. Agent receives `additionalContext` as `<system-reminder>` in conversation
 
 ---
 
@@ -224,6 +211,7 @@ $ACA_DATA/  (e.g., ~/writing/data/)
 │   └── aops/            # academicOps project data
 │       ├── VISION.md    # End state: fully-automated academic workflow
 │       ├── ROADMAP.md   # Maturity stages 0-5, progression plan
+│       ├── specs/       # AUTHORITATIVE: Task specifications for planned automations
 │       └── experiments/ # Framework experiment logs
 │           └── LOG.md   # Learning patterns (append-only)
 │

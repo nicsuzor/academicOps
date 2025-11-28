@@ -17,15 +17,11 @@ The system comprises:
 
 ## Essential Workflow
 
-### Project Discovery
+### Project Configuration
 
-Always begin conversations by discovering available projects:
+**For academicOps framework**: ALWAYS use `project="main"` parameter in ALL bmem tool calls.
 
-```python
-projects = await list_memory_projects()
-```
-
-**Critical**: Store the user's project choice for the entire session and pass it explicitly to all tool calls—**no implicit context is maintained between calls**.
+**Critical**: Pass `project="main"` explicitly to all tool calls—**no implicit context is maintained between calls**.
 
 ### Knowledge Graph Structure
 
@@ -177,8 +173,8 @@ Maintain folder structures and descriptive file naming.
 - `recent_activity()` - View recent changes
 
 ### Project Management
-- `list_memory_projects()` - Discover available projects
-- `create_memory_project()` - Initialize new project
+- `list_memory_projects()` - Administrative tool (academicOps: use `project="main"` instead)
+- `create_memory_project()` - Initialize new project (not needed for academicOps)
 
 ### Visualization
 - `canvas()` - Create Obsidian canvas diagrams
@@ -225,22 +221,16 @@ Capture discussions as **decision records** or **conversation summaries** with o
 
 ## Session Management Pattern
 
-**Start of session**:
+**Start of session (academicOps)**:
 ```python
-# 1. Discover projects
-projects = await list_memory_projects()
-
-# 2. Ask user which project
-selected_project = user_selects_project(projects)
-
-# 3. Store for session (mental note, not persisted)
-# 4. Use explicitly in all tool calls
+# For academicOps framework: ALWAYS use project="main"
+# No discovery needed - this is hard-coded requirement
 ```
 
 **During session**:
-- Pass `project=selected_project` to every tool call
-- User can switch: "switch to [project]"
+- Pass `project="main"` to every tool call
 - No implicit context—always explicit
+- This is mandatory for academicOps framework
 
 ## Building Knowledge Over Time
 

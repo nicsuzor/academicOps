@@ -11,11 +11,13 @@ Exit codes:
 """
 
 import json
+import os
 import sys
 from pathlib import Path
 from typing import Any
 
 from hook_debug import safe_log_to_debug_file
+from lib.activity import log_activity
 
 # Paths (absolute, fail-fast if missing)
 HOOK_DIR = Path(__file__).parent
@@ -74,6 +76,23 @@ def main():
         input_data["argv"] = sys.argv
     except Exception:
         # If no stdin or parsing fails, continue with empty input
+        pass
+
+    # Log user prompt to activity log
+    try:
+        user_prompt = input_data.get("userMessage", "")
+        # Get session context from cwd (project name from directory)
+        cwd = os.getcwd()
+        session = Path(cwd).name if cwd else "unknown"
+
+        # Log activity (truncate long prompts to 100 chars)
+        if user_prompt:
+            action = f"User: {user_prompt[:100]}"
+            if len(user_prompt) > 100:
+                action += "..."
+            log_activity(action, session)
+    except Exception:
+        # Don't fail the hook if activity logging fails
         pass
 
     # Load prompt from markdown file (fail-fast if missing)

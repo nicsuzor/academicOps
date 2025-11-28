@@ -22,15 +22,25 @@ Use this template to specify each automation task before implementation. This en
 
 [Usually Nic, but be specific about which aspect of his work]
 
-## Success Criteria
+## Acceptance Criteria (MANDATORY)
 
-**The automation is successful when**:
+**CRITICAL**: These criteria are USER-OWNED and define what "done" means. Agents CANNOT modify, weaken, or reinterpret these criteria (see AXIOMS.md #21).
 
-1. [Measurable criterion 1 - e.g., "95% of captured tasks auto-categorized correctly"]
-2. [Measurable criterion 2 - e.g., "Zero manual filing needed for email-based tasks"]
-3. [Measurable criterion 3 - e.g., "Categorization time reduced from 5min to <10sec per task"]
+### Success Tests (Must ALL pass for "done")
+
+1. [ ] [Specific, observable, testable criterion - e.g., "95% of captured tasks auto-categorized correctly"]
+2. [ ] [Observable outcome - e.g., "Zero manual filing needed for email-based tasks"]
+3. [ ] [Measurable improvement - e.g., "Categorization time reduced from 5min to <10sec per task"]
+
+### Failure Modes (If these occur, implementation is WRONG)
+
+1. [ ] [Specific failure condition - e.g., "Tasks categorized to wrong project"]
+2. [ ] [Error condition - e.g., "Automation crashes on malformed input"]
+3. [ ] [Performance degradation - e.g., "Processing time >1 minute per task"]
 
 **Quality threshold**: [What level of quality is acceptable? When should it fail-fast vs. make best effort?]
+
+**Test implementation**: Acceptance criteria MUST be implemented as automated tests. Success = tests pass. Agents implement the criteria as tests; they do not decide what "done" means.
 
 ## Scope
 
@@ -64,7 +74,11 @@ Use this template to specify each automation task before implementation. This en
 
 ## Integration Test Design
 
+**CRITICAL**: Integration tests IMPLEMENT the acceptance criteria defined above. Tests verify acceptance criteria; they do not define new criteria.
+
 **Test must be designed BEFORE implementation**
+
+Each test should map to specific acceptance criteria from above. Reference which criterion each test validates.
 
 ### Test Setup
 
@@ -108,9 +122,15 @@ Use this template to specify each automation task before implementation. This en
 - [ ] Test passes after implementation
 - [ ] Test covers happy path
 - [ ] Test covers error cases
-- [ ] Test validates all success criteria
+- [ ] **Test validates ALL acceptance criteria from above (not agent-defined criteria)**
+- [ ] **Test detects ALL failure modes from above**
 - [ ] Test is idempotent (can run repeatedly)
 - [ ] Test cleanup leaves no artifacts
+
+**Mapping to acceptance criteria**:
+- Test 1 validates: [Acceptance criterion #1]
+- Test 2 validates: [Acceptance criterion #2]
+- Test 3 detects: [Failure mode #1]
 
 ## Implementation Approach
 

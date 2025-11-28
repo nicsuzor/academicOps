@@ -13,7 +13,12 @@
       "Bash(cp */data/tasks/**)",
       "Read(**/.claude/**)",
       "Write(**/.claude/**)",
-      "Edit(**/.claude/**)"
+      "Edit(**/.claude/**)",
+      "Bash(rm **/.claude/**)",
+      "Bash(mv **/.claude/**)",
+      "Bash(cp **/.claude/**)",
+      "Bash(touch **/.claude/**)",
+      "Bash(echo **/.claude/**)"
     ]
   },
   "hooks": {
@@ -22,12 +27,12 @@
         "hooks": [
           {
             "type": "command",
-            "command": "PYTHONPATH=$AOPS AOPS=$AOPS uv run --no-project python $AOPS/hooks/sessionstart_load_axioms.py",
+            "command": "PYTHONPATH=$AOPS uv run python $AOPS/hooks/sessionstart_load_axioms.py",
             "timeout": 2000
           },
           {
             "type": "command",
-            "command": "PYTHONPATH=$AOPS AOPS=$AOPS uv run --no-project python $AOPS/hooks/log_sessionstart.py",
+            "command": "PYTHONPATH=$AOPS uv run python $AOPS/hooks/log_sessionstart.py",
             "timeout": 2000
           }
         ]
@@ -38,7 +43,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "PYTHONPATH=$AOPS uv run --no-project python $AOPS/hooks/log_pretooluse.py",
+            "command": "PYTHONPATH=$AOPS uv run python $AOPS/hooks/log_pretooluse.py",
             "timeout": 2000
           }
         ]
@@ -49,12 +54,12 @@
         "hooks": [
           {
             "type": "command",
-            "command": "PYTHONPATH=$AOPS uv run --no-project python $AOPS/hooks/log_posttooluse.py",
+            "command": "PYTHONPATH=$AOPS uv run python $AOPS/hooks/log_posttooluse.py",
             "timeout": 2000
           },
           {
             "type": "command",
-            "command": "PYTHONPATH=$AOPS uv run --no-project python $AOPS/hooks/autocommit_state.py",
+            "command": "PYTHONPATH=$AOPS uv run python $AOPS/hooks/autocommit_state.py",
             "timeout": 35000
           }
         ]
@@ -64,7 +69,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "PYTHONPATH=$AOPS uv run --no-project python $AOPS/hooks/request_scribe.py",
+            "command": "PYTHONPATH=$AOPS uv run python $AOPS/hooks/request_scribe.py",
             "timeout": 2000
           }
         ]
@@ -75,12 +80,12 @@
         "hooks": [
           {
             "type": "command",
-            "command": "PYTHONPATH=$AOPS uv run --no-project python $AOPS/hooks/log_userpromptsubmit.py",
+            "command": "PYTHONPATH=$AOPS uv run python $AOPS/hooks/log_userpromptsubmit.py",
             "timeout": 2000
           },
           {
             "type": "command",
-            "command": "PYTHONPATH=$AOPS uv run --no-project python $AOPS/hooks/prompt_router.py",
+            "command": "PYTHONPATH=$AOPS uv run python $AOPS/hooks/prompt_router.py",
             "timeout": 2000
           }
         ]
@@ -91,32 +96,22 @@
         "hooks": [
           {
             "type": "command",
-            "command": "PYTHONPATH=$AOPS uv run --no-project python $AOPS/hooks/log_subagentstop.py",
+            "command": "PYTHONPATH=$AOPS uv run python $AOPS/hooks/log_subagentstop.py",
             "timeout": 2000
           },
           {
             "type": "command",
-            "command": "PYTHONPATH=$AOPS uv run --no-project python $AOPS/hooks/request_scribe.py",
+            "command": "PYTHONPATH=$AOPS uv run python $AOPS/hooks/request_scribe.py",
             "timeout": 2000
           }
         ]
       }
     ],
-    "Stop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "PYTHONPATH=$AOPS uv run --no-project python $AOPS/hooks/log_session_stop.py",
-            "timeout": 35000
-          }
-        ]
-      }
-    ]
+    "Stop": []
   },
   "statusLine": {
     "type": "command",
     "command": "host=$(hostname -s); if git rev-parse --git-dir >/dev/null 2>&1; then repo=$(basename \"$(git --no-optional-locks rev-parse --show-toplevel 2>/dev/null)\"); branch=$(git --no-optional-locks symbolic-ref --short HEAD 2>/dev/null || git --no-optional-locks rev-parse --short HEAD 2>/dev/null); printf '%s | %s | %s' \"$host\" \"$repo\" \"$branch\"; else printf '%s | %s' \"$host\" \"$(pwd)\"; fi"
   },
-  "alwaysThinkingEnabled": true
+  "alwaysThinkingEnabled": false
 }
