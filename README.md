@@ -6,245 +6,219 @@
 
 ---
 
-## academicOps Repository Structure
-
-**Note**: User-specific files (ACCOMMODATIONS, CORE, STYLE, VISION, ROADMAP) live in `$ACA_DATA`, not in this repository. This repo contains only generic framework infrastructure.
-
-### High-Level Overview
+## Framework Repository Structure ($AOPS)
 
 ```
 $AOPS/
-├── AXIOMS.md                # Framework principles (auto-injected via SessionStart hook)
-├── README.md                # THIS FILE - framework directory map
-├── CLAUDE.md                # Framework repo session start instructions
-├── BMEM-ARCHITECTURE.md     # bmem system architecture
-├── BMEM-FORMAT.md           # bmem markdown format specification
-├── BMEM-CLAUDE-GUIDE.md     # Using bmem from Claude Code
-├── BMEM-OBSIDIAN-GUIDE.md   # Using bmem with Obsidian
-├── pyproject.toml           # Python project configuration
-├── setup.sh                 # Framework installation script
-├── update_hooks.py          # Hook update utility
-├── __init__.py
-├── .gitignore
+├── AXIOMS.md                # Framework principles (injected at session start)
+├── README.md                # THIS FILE
+├── CLAUDE.md                # Framework repo instructions (@ syntax auto-loads)
+├── BMEM-*.md                # bmem documentation (architecture, format, guides)
+├── pyproject.toml
+├── setup.sh                 # Creates ~/.claude/ symlinks
+├── update_hooks.py
 │
-├── .github/workflows/       # GitHub Actions workflows
-│   ├── beta-release.yml
-│   ├── claude-code-review.yml
-│   ├── claude.yml
-│   ├── ios-note-capture.yml
-│   └── test-setup.yml
+├── .github/workflows/
 │
 ├── skills/                  # Agent skills (invoke via Skill tool)
-│   ├── README.md            # Skills documentation and index
-│   ├── analyst/             # Data analysis (dbt, Streamlit, statistical methods)
-│   ├── bmem/                # Knowledge base operations
-│   ├── docs-update/         # Documentation update and verification
-│   ├── excalidraw/          # Visual diagram generation
-│   ├── extractor/           # Archive extraction
-│   ├── feature-dev/         # Feature development workflow
-│   ├── framework/           # Framework maintenance and strategic partner
-│   ├── framework-debug/     # Framework debugging tools
-│   ├── pdf/                 # PDF generation from markdown
-│   ├── python-dev/          # Production Python development standards
-│   ├── skill-creator/       # Skill creation and packaging
-│   ├── tasks/               # Task management system (MCP server)
-│   └── training-set-builder/ # Training data extraction from documents
-│
-├── hooks/                   # Lifecycle automation (Python scripts)
 │   ├── README.md
-│   ├── sessionstart_load_axioms.py      # SessionStart - inject AXIOMS.md
-│   ├── user_prompt_submit.py            # UserPromptSubmit - inject context
-│   ├── log_session_stop.py              # SessionStop - log session activity
-│   ├── extract_session_knowledge.py     # Knowledge extraction
-│   ├── session_logger.py                # Session logging module
-│   ├── autocommit_state.py
-│   ├── hook_debug.py
-│   ├── hook_logger.py
-│   ├── log_posttooluse.py
-│   ├── log_pretooluse.py
+│   ├── analyst/             # Data analysis (dbt, Streamlit, statistics)
+│   ├── bmem/                # Knowledge base ops (project="main")
+│   ├── dashboard/           # Live task dashboard (Streamlit, auto-refresh, mobile)
+│   ├── docs-update/         # Documentation validation
+│   ├── excalidraw/          # Visual diagram generation
+│   ├── extractor/           # Archive extraction → bmem
+│   ├── feature-dev/         # Feature development workflow
+│   ├── framework/           # Framework maintenance (strategic partner)
+│   ├── framework-debug/     # Framework debugging
+│   ├── pdf/                 # Markdown → PDF
+│   ├── python-dev/          # Production Python standards
+│   ├── skill-creator/       # Skill packaging
+│   ├── tasks/               # Task management (MCP server)
+│   └── training-set-builder/
+│
+├── hooks/                   # Lifecycle automation (Python)
+│   ├── README.md
+│   │
+│   │   # Active hooks (configured in settings.json)
+│   ├── sessionstart_load_axioms.py  # Injects AXIOMS.md at session start
+│   ├── user_prompt_submit.py        # Injects context on every prompt
+│   ├── prompt_router.py             # Keyword analysis → skill suggestions
+│   ├── autocommit_state.py          # Auto-commit data/ after state changes
+│   ├── log_session_stop.py          # Session activity logging
+│   │
+│   │   # Shared modules
+│   ├── session_logger.py            # Log file path management
+│   ├── hook_logger.py               # Centralized event logging
+│   ├── hook_debug.py                # Debug utilities
+│   │
+│   │   # Event loggers (→ ~/.cache/aops/sessions/)
 │   ├── log_sessionstart.py
-│   ├── log_subagentstop.py
 │   ├── log_userpromptsubmit.py
-│   ├── prompt_router.py
-│   ├── request_scribe.py
-│   ├── test_marker_hook.py
-│   └── prompts/             # Markdown prompts loaded by hooks
+│   ├── log_pretooluse.py
+│   ├── log_posttooluse.py
+│   ├── log_subagentstop.py
+│   │
+│   │   # Experimental
+│   ├── extract_session_knowledge.py
+│   ├── request_scribe.py            # Session documentation requests
+│   ├── test_marker_hook.py          # CI test hook
+│   │
+│   └── prompts/                     # Markdown loaded by hooks
 │
-├── commands/                # Slash commands (workflow triggers)
-│   ├── archive-extract.md   # Extract archived information
-│   ├── bmem.md              # Invoke bmem skill
-│   ├── email.md             # Extract tasks from emails
-│   ├── learn.md             # Update memory/instructions
-│   ├── log.md               # Log agent performance
+├── commands/                # Slash commands
+│   ├── archive-extract.md
+│   ├── bmem.md
+│   ├── docs-update.md
+│   ├── email.md
+│   ├── learn.md
+│   ├── log.md
 │   ├── meta.md              # Invoke framework skill
-│   ├── parallel-batch.md    # Parallel batch processing
-│   ├── strategy.md          # Strategic planning
-│   ├── task-viz.md          # Generate task visualization
-│   ├── transcript.md        # Generate session transcript
-│   └── ttd.md               # Test-driven development orchestration
+│   ├── parallel-batch.md
+│   ├── qa.md
+│   ├── strategy.md
+│   ├── task-viz.md
+│   ├── transcript.md
+│   └── ttd.md               # TDD orchestration
 │
-├── agents/                  # Agentic workflows
-│   ├── dev.md               # Development task routing
-│   ├── email-extractor.md   # Email archive processing
-│   ├── log-agent.md         # Agent performance logging
-│   └── task-viz.md          # Task visualization generation
+├── agents/                  # Agentic workflows (thin routing wrappers)
+│   ├── dev.md
+│   ├── email-extractor.md
+│   ├── log-agent.md
+│   └── task-viz.md
 │
 ├── experiments/             # Temporary experiment logs
-│   ├── 2025-11-17_log-sufficiency-test.md
-│   ├── 2025-11-17_multi-window-cognitive-load-solutions.md
-│   ├── 2025-11-21_zotmcp-tdd-session.md
-│   ├── session-bmem-fail.md
-│   └── session-bmem-pass.md
 │
-├── scripts/                 # Deployment and maintenance scripts
-│   ├── migrate_log_entries.py
-│   ├── package_deployment.py
-│   └── setup.sh
+├── scripts/                 # Deployment scripts
 │
-├── lib/                     # Shared Python utilities
-│   ├── __init__.py
-│   └── paths.py             # Path resolution (SSoT for paths)
+├── lib/                     # Shared Python
+│   ├── activity.py
+│   └── paths.py             # Path resolution (SSoT)
 │
-├── tests/                   # Framework tests (pytest)
+├── tests/                   # pytest suite
 │   ├── README.md
 │   ├── conftest.py
-│   ├── paths.py
-│   ├── run_integration_tests.py
-│   ├── run_skill_tests.sh
-│   ├── test_*.py            # Unit tests (30+ test files)
-│   ├── integration/         # E2E tests (slow, require Claude execution)
-│   └── tools/               # Test utilities
+│   ├── test_*.py
+│   ├── integration/         # E2E tests (slow)
+│   └── tools/
 │
-└── config/                  # Configuration files
-    └── claude/
-        ├── mcp.json         # MCP server configuration
-        └── settings.json    # Claude Code settings
+└── config/claude/           # Reference config (copied during install)
+    ├── mcp.json
+    └── settings.json
 ```
 
-### Runtime and Debug Locations
+---
 
-**Claude Code runtime data** (written by Claude Code itself):
+## Installed Structure (~/.claude/)
+
+After `setup.sh`, symlinks connect framework components:
 
 ```
 ~/.claude/
-├── debug/               # [Claude Code] Human-readable session logs (UUID.txt with [DEBUG]/[INFO]/[ERROR] tags)
-│                        # Contains: Hook execution trace, JSON parsing, tool calls, stream processing
-│                        # Includes: Hook output (additionalContext visible here)
-├── projects/            # [Claude Code] JSONL session data per repository
-│   └── -repo-path/      # Path encoded with dashes (e.g., -home-nic-writing/)
-│       ├── *.jsonl      # Main session messages (user/assistant turns)
-│       └── agent-*.jsonl # Agent subprocess logs (tool calls, results, errors with is_error flag)
-├── history.jsonl        # [Claude Code] Command history
-├── settings.json        # [Claude Code] User settings (hooks, permissions, deny rules)
-├── file-history/        # [Claude Code] File version history
-├── session-env/         # [Claude Code] Per-session environment data
-├── shell-snapshots/     # [Claude Code] Shell state snapshots
-├── todos/               # [Claude Code] TodoWrite persistence
-└── statsig/             # [Claude Code] Feature flags and telemetry
+│   # Symlinks to $AOPS (created by setup.sh)
+├── skills/      → $AOPS/skills/
+├── hooks/       → $AOPS/hooks/
+├── commands/    → $AOPS/commands/
+├── agents/      → $AOPS/agents/
+│
+│   # Claude Code runtime
+├── settings.json            # User settings (hooks, permissions)
+├── debug/                   # Session logs (hook output visible here)
+├── projects/                # JSONL session data per repository
+│   └── -repo-path/          # Path encoded with dashes
+│       ├── *.jsonl          # User/assistant turns
+│       └── agent-*.jsonl    # Subagent logs
+├── history.jsonl
+├── file-history/
+├── session-env/
+├── shell-snapshots/
+├── todos/                   # TodoWrite persistence
+└── statsig/
 ```
 
-**Framework cache data** (written by framework hooks):
+---
+
+## User Data Repository ($ACA_DATA)
+
+User-specific data lives separately from framework. Also the bmem knowledge base (project="main"):
+
+```
+$ACA_DATA/  (e.g., ~/writing/data/)
+│
+│   # Session start (@ syntax in CLAUDE.md auto-loads)
+├── ACCOMMODATIONS.md        # Work style requirements
+├── CORE.md                  # User context, tools, paths
+├── STYLE-QUICK.md           # Writing style reference
+├── STYLE.md                 # Full guide (not @-loaded)
+│
+├── tasks/                   # Task data (bmem markdown)
+│   ├── active/
+│   ├── completed/
+│   └── deferred/
+│
+├── sessions/                # Session logs
+│   └── YYYY-MM-DD_HH-MM-SS.md
+│
+├── projects/
+│   └── aops/                # academicOps project
+│       ├── VISION.md        # End state vision
+│       ├── ROADMAP.md       # Maturity stages 0-5
+│       ├── STATE.md         # Current state
+│       ├── specs/           # Task specifications
+│       └── experiments/
+│           └── LOG.md       # Learning patterns (append-only)
+│
+└── [bmem entities]          # People, orgs, concepts, etc.
+```
+
+---
+
+## Framework Cache (~/.cache/aops/)
+
+Hook-generated data:
 
 ```
 ~/.cache/aops/
-├── prompt-router/
-│   └── YYYYMMDD_HHMMSS_microseconds.json  # [prompt_router.py] Prompt analysis for classifier
-│                                           # Contains: user prompt text, keyword matches
-│                                           # Purpose: Input data for Haiku classifier agent
-├── sessions/
-│   └── YYYY-MM-DD-<hash>-hooks.jsonl      # [session_logger.py] Hook execution logs
-│                                           # Contains: which hooks fired, inputs, hook_results
-└── session_end_*.flag                      # [log_userpromptsubmit.py, request_scribe.py] Session termination flags
+├── prompt-router/           # Prompt analysis for classifier
+│   └── YYYYMMDD_HHMMSS_*.json
+├── sessions/                # Hook execution logs
+│   └── YYYY-MM-DD-<hash>-hooks.jsonl
+└── session_end_*.flag       # Session termination markers
 
-/tmp/claude-transcripts/
-└── *_transcript.md        # [claude-transcript tool] Human-readable session transcripts (on-demand)
+/tmp/claude-transcripts/     # On-demand transcripts
+└── *_transcript.md
 ```
-
-**Debug workflow**: To trace hook behavior:
-1. Hook writes to `~/.cache/aops/prompt-router/*.json` (input data for classifier)
-2. Hook returns JSON with `additionalContext` to Claude Code via stdout
-3. Claude Code logs hook output to `~/.claude/debug/<session-uuid>.txt`
-4. Agent receives `additionalContext` as `<system-reminder>` in conversation
 
 ---
 
 ## Knowledge Base (bmem)
 
-**Single knowledge base per user**: bmem maintains ONE personal knowledge base across all projects.
+**Project**: Always use `project="main"` with all `mcp__bmem__*` tools.
 
-**Location**: Knowledge base stored at `$ACA_DATA` (environment variable pointing to user's private data repository).
+**Location**: `$ACA_DATA` (single knowledge base per user, shared across projects).
 
-**Key architecture principles**:
+**Key principles**:
+1. Single source of truth - all notes in one place
+2. Write location invariant - bmem writes to `$ACA_DATA` regardless of cwd
+3. Format - Markdown with YAML frontmatter
+4. Access - MCP server + `mcp__bmem__*` function tools
 
-1. **Single source of truth** - All notes, entities, and metadata stored in one place, regardless of current working directory
-2. **Write location invariant** - bmem writes to `$ACA_DATA` always, enabling seamless access across projects
-3. **Format** - Markdown files with YAML frontmatter for metadata (tags, types, relationships)
-4. **Indexing** - Automatic background vector search indexing (full-text and semantic search)
-5. **Access** - Claude Code integrates via MCP server and `mcp__bmem__*` function tools
-
-**Result**: Work in any project, knowledge base stays consistent and queryable. No per-project duplication.
-
-**CLI**: `uvx basic-memory --help`. See `skills/bmem/SKILL.md` for operations guide.
+**CLI**: `uvx basic-memory --help`. See `skills/bmem/SKILL.md` for operations.
 
 ---
 
-## User Data Repository Structure
+## Installation
 
-academicOps stores user data separately from framework code. User-specific files live here:
+Run `bash setup.sh` to create symlinks in `~/.claude/` pointing to `$AOPS`.
 
-```
-$ACA_DATA/  (e.g., ~/writing/data/)
-├── ACCOMMODATIONS.md    # Work style requirements (loaded via @ in user CLAUDE.md)
-├── CORE.md              # User context, tools, paths (loaded via @ in user CLAUDE.md)
-├── STYLE-QUICK.md       # Writing style reference (loaded via @ in user CLAUDE.md)
-├── STYLE.md             # Full writing style guide (referenced, not @-loaded)
-│
-├── tasks/               # Task data (markdown files, bmem-compliant)
-│   ├── active/          # Current tasks
-│   ├── completed/       # Finished tasks
-│   └── deferred/        # Postponed tasks
-│
-├── sessions/            # Claude Code session logs
-│   └── YYYY-MM-DD_HH-MM-SS.md
-│
-├── projects/            # Project-specific data
-│   └── aops/            # academicOps project data
-│       ├── VISION.md    # End state: fully-automated academic workflow
-│       ├── ROADMAP.md   # Maturity stages 0-5, progression plan
-│       ├── specs/       # AUTHORITATIVE: Task specifications for planned automations
-│       └── experiments/ # Framework experiment logs
-│           └── LOG.md   # Learning patterns (append-only)
-│
-└── [other bmem entities] # People, orgs, concepts, work items, etc.
-```
-
----
-
-## Installation in Other Projects
-
-academicOps installs via symlinks to user's `~/.claude/`:
+Each project gets `.claude/CLAUDE.md` with `@` references:
 
 ```
-project-repo/           # Any academic project repository
-├── .claude/            # Claude Code configuration directory
-│   ├── CLAUDE.md       # Project-specific instructions (uses @ syntax to auto-load files)
-│   ├── skills/         # Symlink → $AOPS/skills/
-│   ├── hooks/          # Symlink → $AOPS/hooks/
-│   └── commands/       # Symlink → $AOPS/commands/
-├── README.md           # Project structure (loaded via @README.md in project CLAUDE.md)
-├── [project files...]
+project-repo/
+├── .claude/
+│   ├── CLAUDE.md            # @ syntax loads ACCOMMODATIONS, CORE, etc.
+│   ├── skills/   → symlink
+│   ├── hooks/    → symlink
+│   └── commands/ → symlink
+└── ...
 ```
-
-**Installation**: Download [latest release](https://github.com/nicsuzor/academicOps/releases), extract, run `bash setup.sh`.
-
-**Session start context**:
-1. **Automatic hook injection** - SessionStart hook (`hooks/sessionstart_load_axioms.py`) automatically injects AXIOMS.md content at every session start
-2. **CLAUDE.md @ syntax** - Files prefixed with `@` in CLAUDE.md are auto-loaded by Claude Code
-3. **UserPromptSubmit hook** - Additional context injected on every user prompt via `hooks/user_prompt_submit.py`
-
----
-
-## Contact
-
-- **Repository**: https://github.com/nicsuzor/academicOps
-- **Releases**: https://github.com/nicsuzor/academicOps/releases

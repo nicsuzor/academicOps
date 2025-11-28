@@ -21,7 +21,6 @@
       "Bash(echo **/.claude/**)"
     ]
   },
-  "model": "opus",
   "hooks": {
     "SessionStart": [
       {

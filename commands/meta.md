@@ -72,4 +72,4 @@ The command invokes the supervisor-meta subagent (Opus model) with your request.
 - For work: Orchestrates full TDD workflow with delegation
 - Reports back with verified results and documentation
 
-See agents/supervisor-meta.md for complete capability documentation.
+See `skills/framework/SKILL.md` for framework skill documentation.
