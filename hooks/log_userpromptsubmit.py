@@ -66,18 +66,28 @@ def main():
     # Load additional context
     additional_context = load_prompt_from_markdown()
     output_data: dict[str, Any] = {}
+    log_output: dict[str, Any] = {}
     if additional_context:
+        # Output sent to Claude (no file metadata)
         output_data = {
             "hookSpecificOutput": {
                 "hookEventName": "UserPromptSubmit",
                 "additionalContext": additional_context
             }
         }
+        # Log output includes file metadata
+        log_output = {
+            "hookSpecificOutput": {
+                "hookEventName": "UserPromptSubmit",
+                "additionalContext": additional_context,
+                "filesLoaded": [str(PROMPT_FILE)]
+            }
+        }
 
-    # Log hook event with both input and output
-    log_hook_event(session_id, "UserPromptSubmit", input_data, output_data, exit_code=0)
+    # Log hook event with both input and output (includes file metadata)
+    log_hook_event(session_id, "UserPromptSubmit", input_data, log_output, exit_code=0)
 
-    # Output JSON (continue execution)
+    # Output JSON (continue execution) - without file metadata
     print(json.dumps(output_data))
 
     sys.exit(0)

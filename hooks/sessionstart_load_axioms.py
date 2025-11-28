@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Any
 
 from lib.paths import get_aops_root, get_data_root
+from hooks.hook_logger import log_hook_event
 
 
 def load_axioms() -> str:
@@ -132,7 +133,11 @@ def main():
 - Learning patterns: See $ACA_DATA/projects/aops/experiments/LOG.md
 """
 
-    # Build output data
+    # Get paths for logging
+    axioms_path = get_aops_root() / "AXIOMS.md"
+    core_path = get_data_root() / "CORE.md"
+
+    # Build output data (sent to Claude)
     output_data: dict[str, Any] = {
         "hookSpecificOutput": {
             "hookEventName": "SessionStart",
@@ -140,12 +145,23 @@ def main():
         }
     }
 
-    # Output JSON (continue execution)
+    # Build log data with file metadata (for hook logs only)
+    log_output: dict[str, Any] = {
+        "hookSpecificOutput": {
+            "hookEventName": "SessionStart",
+            "additionalContext": additional_context,
+            "filesLoaded": [str(axioms_path), str(core_path)]
+        }
+    }
+
+    # Log to hook logger
+    session_id = input_data.get("session_id", "unknown")
+    log_hook_event(session_id, "SessionStart", input_data, log_output, exit_code=0)
+
+    # Output JSON (continue execution) - without filesLoaded metadata
     print(json.dumps(output_data))
 
-    # Status to stderr (get paths for logging)
-    axioms_path = get_aops_root() / "AXIOMS.md"
-    core_path = get_data_root() / "CORE.md"
+    # Status to stderr
     print(f"✓ Loaded AXIOMS.md from {axioms_path}", file=sys.stderr)
     print(f"✓ Loaded CORE.md from {core_path}", file=sys.stderr)
 

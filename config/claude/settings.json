@@ -29,11 +29,6 @@
             "type": "command",
             "command": "PYTHONPATH=$AOPS uv run python $AOPS/hooks/sessionstart_load_axioms.py",
             "timeout": 2000
-          },
-          {
-            "type": "command",
-            "command": "PYTHONPATH=$AOPS uv run python $AOPS/hooks/log_sessionstart.py",
-            "timeout": 2000
           }
         ]
       }
@@ -63,16 +58,6 @@
             "timeout": 35000
           }
         ]
-      },
-      {
-        "matcher": "TodoWrite",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "PYTHONPATH=$AOPS uv run python $AOPS/hooks/request_scribe.py",
-            "timeout": 2000
-          }
-        ]
       }
     ],
     "UserPromptSubmit": [
@@ -98,11 +83,6 @@
             "type": "command",
             "command": "PYTHONPATH=$AOPS uv run python $AOPS/hooks/log_subagentstop.py",
             "timeout": 2000
-          },
-          {
-            "type": "command",
-            "command": "PYTHONPATH=$AOPS uv run python $AOPS/hooks/request_scribe.py",
-            "timeout": 2000
           }
         ]
       }
@@ -113,5 +93,6 @@
     "type": "command",
     "command": "host=$(hostname -s); if git rev-parse --git-dir >/dev/null 2>&1; then repo=$(basename \"$(git --no-optional-locks rev-parse --show-toplevel 2>/dev/null)\"); branch=$(git --no-optional-locks symbolic-ref --short HEAD 2>/dev/null || git --no-optional-locks rev-parse --short HEAD 2>/dev/null); printf '%s | %s | %s' \"$host\" \"$repo\" \"$branch\"; else printf '%s | %s' \"$host\" \"$(pwd)\"; fi"
   },
-  "alwaysThinkingEnabled": false
+  "alwaysThinkingEnabled": false,
+  "model": "opus"
 }
