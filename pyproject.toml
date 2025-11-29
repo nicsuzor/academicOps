@@ -38,4 +38,5 @@ addopts = "-n 4"
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
     "integration: marks tests as integration tests",
+    "metrics: observability tests that report metrics (run with '-m metrics')",
 ]

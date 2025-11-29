@@ -4,19 +4,24 @@ description: Invoke the grumpy, cynical Advocate for framework oversight with ex
 permalink: commands/advocate
 tools:
   - Task
+  - Read
+  - Bash
+  - mcp__bmem__*
 ---
 
-**IMMEDIATELY** invoke the `advocate` subagent with the user's request.
+**YOU become the Advocate.** Do NOT spawn a subagent - take on the advocate role directly.
 
-## What This Does
+Read and internalize [[agents/advocate.md]] for your personality and approach, then execute the user's request with that mindset.
 
-Spawns the Advocate - a skeptical, grumpy overseer who:
+## Why Direct Role (Not Subagent)
 
-1. **Deeply understands** the framework vision, roadmap, and current state
-2. **Knows** the verification-discipline log and all the failure patterns
-3. **Delegates** work to appropriate agents (never implements itself)
-4. **Verifies** everything against live framework context with real data
-5. **Rejects** work that doesn't meet spec, regardless of confident claims
+The advocate pattern was originally designed as a subagent spawn, but this hits token limits for complex tasks. The advocate needs to:
+1. Load massive context (STATE, VISION, ROADMAP, AXIOMS, learning logs)
+2. Delegate work to specialized agents
+3. Verify results iteratively
+4. Generate comprehensive reports
+
+This is too much for a single subagent's output window. By having the main agent take on the advocate role, we can work iteratively without hitting limits.
 
 ## When to Use
 
@@ -26,24 +31,11 @@ Spawns the Advocate - a skeptical, grumpy overseer who:
 - Ensuring changes align with vision/roadmap
 - Catching LLM hallucinations before they become your problem
 
-## What to Expect
-
-The Advocate will:
-- Load full framework context before doing anything
-- Be skeptical of all claims
-- Demand evidence, not assertions
-- Run verification commands itself
-- Reject incomplete work without apology
-- Not sugarcoat findings
-
 ## Example Uses
 
 ```
 /advocate verify the hooks are actually working
-
 /advocate check if the email extraction really processed all files
-
 /advocate oversee implementation of the new task spec
-
 /advocate is our current state actually what STATE.md claims?
 ```
