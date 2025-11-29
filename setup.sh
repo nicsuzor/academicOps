@@ -25,6 +25,15 @@ echo
 # Determine paths
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 AOPS_PATH="$SCRIPT_DIR"
+
+# Validate ACA_DATA is set
+if [ -z "${ACA_DATA:-}" ]; then
+    echo -e "${RED}ERROR: ACA_DATA environment variable not set${NC}"
+    echo "Please set ACA_DATA to your data directory path and try again"
+    echo "Example: export ACA_DATA=~/aca-data"
+    exit 1
+fi
+
 ACA_DATA_PATH="${ACA_DATA}"
 CLAUDE_DIR="$HOME/.claude"
 
@@ -116,39 +125,36 @@ create_symlink "agents" "$AOPS_PATH/agents"
 create_symlink "settings.json" "$AOPS_PATH/config/claude/settings.json"
 
 # Step 2a: Create settings.local.json with machine-specific env vars
-# This file sets environment variables that Claude Code will load before hooks run.
-# Critical: This solves the chicken-and-egg problem where hooks need $AOPS set
-# but shell RC files aren't sourced in Claude Code sessions.
 echo
 echo "Creating settings.local.json for environment variables..."
 
 LOCAL_SETTINGS="$CLAUDE_DIR/settings.local.json"
+
+# Check if jq is available (required for safe JSON generation)
+if ! command -v jq &> /dev/null; then
+    echo -e "${RED}✗ jq not installed - required for settings.local.json${NC}"
+    echo "  Install jq: sudo apt install jq"
+    exit 1
+fi
+
+# Generate JSON content safely with jq
 LOCAL_SETTINGS_CONTENT=$(jq -n --indent 2 \
     --arg aops "$AOPS_PATH" \
     --arg aca_data "$ACA_DATA_PATH" \
     '{ "env": { "AOPS": $aops, "ACA_DATA": $aca_data } }')
 
+# Update or create settings.local.json
 if [ -f "$LOCAL_SETTINGS" ]; then
-    # Check if it has the right values
-    if command -v jq &> /dev/null; then
-        existing_aops=$(jq -r '.env.AOPS // ""' "$LOCAL_SETTINGS" 2>/dev/null || echo "")
-        existing_aca=$(jq -r '.env.ACA_DATA // ""' "$LOCAL_SETTINGS" 2>/dev/null || echo "")
-        if [ "$existing_aops" = "$AOPS_PATH" ] && [ "$existing_aca" = "$ACA_DATA_PATH" ]; then
-            echo -e "${GREEN}✓ settings.local.json already correct${NC}"
-        else
-            echo -e "${YELLOW}Updating settings.local.json with new paths${NC}"
-            echo "  Old AOPS: $existing_aops"
-            echo "  New AOPS: $AOPS_PATH"
-            echo "$LOCAL_SETTINGS_CONTENT" > "$LOCAL_SETTINGS"
-            echo -e "${GREEN}✓ Updated settings.local.json${NC}"
-        fi
+    existing_aops=$(jq -r '.env.AOPS // ""' "$LOCAL_SETTINGS")
+    if [ "$existing_aops" = "$AOPS_PATH" ]; then
+        echo -e "${GREEN}✓ settings.local.json already correct${NC}"
     else
-        echo -e "${YELLOW}⚠ jq not installed - cannot verify settings.local.json${NC}"
-        echo "  Please manually verify AOPS and ACA_DATA in $LOCAL_SETTINGS"
+        echo "$LOCAL_SETTINGS_CONTENT" > "$LOCAL_SETTINGS"
+        echo -e "${GREEN}✓ Updated settings.local.json${NC}"
     fi
 else
     echo "$LOCAL_SETTINGS_CONTENT" > "$LOCAL_SETTINGS"
-    echo -e "${GREEN}✓ Created $LOCAL_SETTINGS${NC}"
+    echo -e "${GREEN}✓ Created settings.local.json${NC}"
 fi
 
 # Step 2b: Sync MCP servers to ~/.claude.json
