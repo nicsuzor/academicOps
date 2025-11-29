@@ -41,7 +41,7 @@ else
     # Write to CLAUDE_ENV_FILE if available (persists for the session)
     if [ -n "${CLAUDE_ENV_FILE:-}" ]; then
         echo "export AOPS=\"$AOPS\"" >> "$CLAUDE_ENV_FILE"
-        echo "export PYTHONPATH=\"$AOPS:\${PYTHONPATH:-}\"" >> "$CLAUDE_ENV_FILE"
+        echo "export PYTHONPATH=\"$AOPS\\\${PYTHONPATH:+:}\\\$PYTHONPATH\"" >> "$CLAUDE_ENV_FILE"
         echo "Environment variables written to CLAUDE_ENV_FILE" >&2
     fi
 
