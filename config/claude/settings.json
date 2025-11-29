@@ -27,6 +27,11 @@
         "hooks": [
           {
             "type": "command",
+            "command": "${AOPS:-$CLAUDE_PROJECT_DIR}/hooks/session_env_setup.sh",
+            "timeout": 5000
+          },
+          {
+            "type": "command",
             "command": "PYTHONPATH=$AOPS uv run python $AOPS/hooks/sessionstart_load_axioms.py",
             "timeout": 2000
           }

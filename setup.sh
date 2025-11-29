@@ -115,6 +115,44 @@ create_symlink "commands" "$AOPS_PATH/commands"
 create_symlink "agents" "$AOPS_PATH/agents"
 create_symlink "settings.json" "$AOPS_PATH/config/claude/settings.json"
 
+# Step 2a: Create settings.local.json with machine-specific env vars
+# This file sets environment variables that Claude Code will load before hooks run.
+# Critical: This solves the chicken-and-egg problem where hooks need $AOPS set
+# but shell RC files aren't sourced in Claude Code sessions.
+echo
+echo "Creating settings.local.json for environment variables..."
+
+LOCAL_SETTINGS="$CLAUDE_DIR/settings.local.json"
+LOCAL_SETTINGS_CONTENT='{
+  "env": {
+    "AOPS": "'"$AOPS_PATH"'",
+    "ACA_DATA": "'"$ACA_DATA_PATH"'"
+  }
+}'
+
+if [ -f "$LOCAL_SETTINGS" ]; then
+    # Check if it has the right values
+    if command -v jq &> /dev/null; then
+        existing_aops=$(jq -r '.env.AOPS // ""' "$LOCAL_SETTINGS" 2>/dev/null || echo "")
+        existing_aca=$(jq -r '.env.ACA_DATA // ""' "$LOCAL_SETTINGS" 2>/dev/null || echo "")
+        if [ "$existing_aops" = "$AOPS_PATH" ] && [ "$existing_aca" = "$ACA_DATA_PATH" ]; then
+            echo -e "${GREEN}✓ settings.local.json already correct${NC}"
+        else
+            echo -e "${YELLOW}Updating settings.local.json with new paths${NC}"
+            echo "  Old AOPS: $existing_aops"
+            echo "  New AOPS: $AOPS_PATH"
+            echo "$LOCAL_SETTINGS_CONTENT" > "$LOCAL_SETTINGS"
+            echo -e "${GREEN}✓ Updated settings.local.json${NC}"
+        fi
+    else
+        echo -e "${YELLOW}⚠ jq not installed - cannot verify settings.local.json${NC}"
+        echo "  Please manually verify AOPS and ACA_DATA in $LOCAL_SETTINGS"
+    fi
+else
+    echo "$LOCAL_SETTINGS_CONTENT" > "$LOCAL_SETTINGS"
+    echo -e "${GREEN}✓ Created $LOCAL_SETTINGS${NC}"
+fi
+
 # Step 2b: Sync MCP servers to ~/.claude.json
 # Note: Claude Code reads user-scoped MCP servers from ~/.claude.json mcpServers key,
 # NOT from ~/.mcp.json. We merge our authoritative config into ~/.claude.json.
@@ -186,6 +224,19 @@ for link in skills commands agents settings.json; do
         VALIDATION_PASSED=false
     fi
 done
+
+# Check settings.local.json
+if [ -f "$CLAUDE_DIR/settings.local.json" ]; then
+    echo -e "${GREEN}✓ settings.local.json exists${NC}"
+    if command -v jq &> /dev/null; then
+        local_aops=$(jq -r '.env.AOPS // ""' "$CLAUDE_DIR/settings.local.json" 2>/dev/null || echo "")
+        if [ -n "$local_aops" ]; then
+            echo "  AOPS=$local_aops"
+        fi
+    fi
+else
+    echo -e "${YELLOW}⚠ settings.local.json not found - Claude Code may not have AOPS set${NC}"
+fi
 
 # Check MCP servers in ~/.claude.json
 if [ -f "$HOME/.claude.json" ] && command -v jq &> /dev/null; then
