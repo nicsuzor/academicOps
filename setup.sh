@@ -123,12 +123,10 @@ echo
 echo "Creating settings.local.json for environment variables..."
 
 LOCAL_SETTINGS="$CLAUDE_DIR/settings.local.json"
-LOCAL_SETTINGS_CONTENT='{
-  "env": {
-    "AOPS": "'"$AOPS_PATH"'",
-    "ACA_DATA": "'"$ACA_DATA_PATH"'"
-  }
-}'
+LOCAL_SETTINGS_CONTENT=$(jq -n --indent 2 \
+    --arg aops "$AOPS_PATH" \
+    --arg aca_data "$ACA_DATA_PATH" \
+    '{ "env": { "AOPS": $aops, "ACA_DATA": $aca_data } }')
 
 if [ -f "$LOCAL_SETTINGS" ]; then
     # Check if it has the right values
