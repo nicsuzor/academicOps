@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Prompt Intent Router hook for Claude Code.
 
-Analyzes prompt text for keywords and returns advisory context
-suggesting relevant skills.
+Writes prompt to temp file and instructs main agent to spawn a Haiku
+classifier subagent for semantic skill recommendation.
 
 Exit codes:
     0: Success (always continues)
@@ -18,30 +18,26 @@ from typing import Any
 from hooks.hook_logger import log_hook_event
 
 
-# Keyword patterns for skill suggestion
-SKILL_KEYWORDS = {
-    "framework": {"hook", "automation", "framework", "skill", "settings", "axioms", "claude.md"},
-    "python-dev": {"python", "code", "function", "class", "test", "implement", "debug", "refactor"},
-    "analyst": {"data", "analysis", "dbt", "streamlit", "research", "dataset", "query"},
-    "bmem": {"knowledge", "bmem", "memory", "note", "document", "context", "archive"},
-    "tasks": {"task", "tasks", "todo", "todos", "action items"},
+# All available skills with descriptions
+SKILLS = {
+    "framework": "Maintain automation framework, design experiments, work on hooks/skills/commands infrastructure",
+    "python-dev": "Write production-quality Python code with fail-fast philosophy, type safety, TDD",
+    "analyst": "Academic research data analysis using dbt, Streamlit, statistical analysis",
+    "bmem": "Knowledge base management, search notes, create documentation, session mining",
+    "tasks": "Task management - view, archive, create tasks using task scripts",
 }
 
 TEMP_DIR = Path.home() / ".cache" / "aops" / "prompt-router"
 
 
-def write_prompt_to_temp(prompt: str, keyword_matches: list[str]) -> Path:
-    """Write prompt and matches to temp JSON file.
+def write_prompt_context(prompt: str) -> Path:
+    """Write prompt and skill context to temp file for classifier.
 
     Args:
         prompt: The user's prompt text
-        keyword_matches: List of skills that matched keywords
 
     Returns:
-        Path to the created temp file
-
-    Raises:
-        OSError: If directory creation or file write fails
+        Path to the context file
     """
     TEMP_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -49,8 +45,9 @@ def write_prompt_to_temp(prompt: str, keyword_matches: list[str]) -> Path:
     filepath = TEMP_DIR / f"{timestamp}.json"
 
     data = {
+        "timestamp": timestamp,
         "prompt": prompt,
-        "keyword_matches": keyword_matches,
+        "available_skills": SKILLS,
     }
 
     filepath.write_text(json.dumps(data, indent=2))
@@ -58,48 +55,41 @@ def write_prompt_to_temp(prompt: str, keyword_matches: list[str]) -> Path:
 
 
 def analyze_prompt(prompt: str) -> str:
-    """Analyze prompt text and return skill suggestion.
+    """Analyze prompt and return skill suggestion only when clearly needed.
+
+    Conservative approach: only suggest skills for prompts that clearly
+    benefit from specialized workflows. Most prompts need no routing.
 
     Args:
         prompt: The user's prompt text
 
     Returns:
-        Advisory context string, or empty string if no keywords match
+        Soft suggestion string, or empty string (most cases)
     """
-    if not prompt:
+    if not prompt or len(prompt) < 20:
         return ""
 
     prompt_lower = prompt.lower()
-    matches = []
 
-    # Check each skill's keywords
-    for skill, keywords in SKILL_KEYWORDS.items():
-        if any(keyword in prompt_lower for keyword in keywords):
-            matches.append(skill)
+    # Only trigger for explicit skill-domain keywords
+    # These are prompts that CLEARLY benefit from skill invocation
+    triggers = {
+        "framework": ["hook", "skill", "axioms", "claude.md", "settings.json"],
+        "tasks": ["archive task", "view task", "create task", "task list"],
+        "bmem": ["bmem", "knowledge base", "write note", "search notes"],
+    }
 
-    if not matches:
-        return ""
+    matched_skill = None
+    for skill, keywords in triggers.items():
+        if any(kw in prompt_lower for kw in keywords):
+            matched_skill = skill
+            break
 
-    # Write prompt to temp file for classifier (fail-fast: let OSError propagate)
-    filepath = write_prompt_to_temp(prompt, matches)
+    if not matched_skill:
+        return ""  # Most prompts - no suggestion
 
-    # Build keyword suggestion
-    if len(matches) == 1:
-        skill = matches[0]
-        keyword_suggestion = f"MANDATORY: You MUST invoke the `{skill}` skill using Skill(skill: '{skill}') BEFORE answering. Do NOT use MCP tools or other tools directly - invoke the skill first to load proper guidance."
-    else:
-        skill_list = ", ".join(f"`{s}`" for s in matches)
-        keyword_suggestion = f"MANDATORY: This prompt requires one of these skills: {skill_list}. You MUST invoke the most relevant skill using Skill(skill: 'X') BEFORE proceeding. Do NOT bypass skill invocation."
-
-    # Build classifier spawn instruction
-    classifier_instruction = f"""
-CLASSIFIER AVAILABLE: For semantic analysis, invoke Task tool with:
-- subagent_type: "general-purpose"
-- model: "haiku"
-- prompt: "Read {filepath} and classify intent. Return JSON with intent, confidence, skills."
-"""
-
-    return f"{keyword_suggestion}\n{classifier_instruction}"
+    # Soft suggestion, not demand
+    return f"Consider: The `{matched_skill}` skill may help with this request."
 
 
 def main():
@@ -111,12 +101,11 @@ def main():
     session_id = input_data.get("session_id", "unknown")
     prompt = input_data.get("prompt", "")
 
-    # Analyze and get advisory context
+    # Get classifier spawn instruction
     advisory = analyze_prompt(prompt)
 
     # Build output
     output: dict[str, Any] = {}
-    log_output: dict[str, Any] = {}
 
     if advisory:
         output = {
@@ -125,22 +114,9 @@ def main():
                 "additionalContext": advisory
             }
         }
-        # Extract matched skills for logging
-        prompt_lower = prompt.lower()
-        matches = [
-            skill for skill, keywords in SKILL_KEYWORDS.items()
-            if any(kw in prompt_lower for kw in keywords)
-        ]
-        log_output = {
-            "hookSpecificOutput": {
-                "hookEventName": "PromptRouter",
-                "additionalContext": advisory,
-                "skillsMatched": matches
-            }
-        }
 
     # Log hook event
-    log_hook_event(session_id, "PromptRouter", input_data, log_output, exit_code=0)
+    log_hook_event(session_id, "PromptRouter", input_data, output, exit_code=0)
 
     print(json.dumps(output))
     sys.exit(0)
