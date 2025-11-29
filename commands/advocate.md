@@ -6,6 +6,7 @@ tools:
   - Task
   - Read
   - Bash
+  - AskUserQuestion
   - mcp__bmem__*
 ---
 
