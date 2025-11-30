@@ -157,7 +157,8 @@ $ACA_DATA/  (e.g., ~/writing/data/)
 │   └── deferred/
 │
 ├── sessions/                # Session logs
-│   └── YYYY-MM-DD_HH-MM-SS.md
+│   └── claude/              # Claude Code transcripts
+│       └── YYYYMMDD-<slug>.md
 │
 ├── projects/
 │   └── aops/                # academicOps project
