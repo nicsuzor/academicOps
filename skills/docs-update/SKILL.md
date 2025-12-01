@@ -139,10 +139,13 @@ $AOPS/
 ```
 
 **Key principles**:
-1. Every entry must have an inline comment explaining its purpose
-2. Group related items (e.g., `test_*.py` instead of listing each test file)
-3. Only show structure needed for discoverability
-4. Keep total README.md length under 300 lines
+1. **MANDATORY**: Every entry must have an inline comment explaining its purpose - NO EXCEPTIONS
+2. **Nested README files**: Must explain what additional documentation they contain (e.g., `README.md  # Skill catalog with usage details`)
+3. Group related items (e.g., `test_*.py` instead of listing each test file)
+4. Only show structure needed for discoverability
+5. Keep total README.md length under 300 lines
+
+**AXIOM #22 enforcement**: Information must be DISCOVERABLE, not just exist. An unannotated entry fails this test - agents won't know to read it when needed.
 
 **Example - Good (with annotations)**:
 ```

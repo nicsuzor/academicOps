@@ -13,15 +13,20 @@ $AOPS/
 ├── AXIOMS.md                # Framework principles (injected at session start)
 ├── README.md                # THIS FILE
 ├── CLAUDE.md                # Framework repo instructions (@ syntax auto-loads)
-├── BMEM-*.md                # bmem documentation (architecture, format, guides)
+├── BMEM-ARCHITECTURE.md     # bmem system architecture
+├── BMEM-FORMAT.md           # bmem markdown format specification
+├── BMEM-CLAUDE-GUIDE.md     # Using bmem from Claude Code
+├── BMEM-OBSIDIAN-GUIDE.md   # Using bmem with Obsidian
 ├── pyproject.toml
+├── uv.lock
 ├── setup.sh                 # Creates ~/.claude/ symlinks
-├── update_hooks.py
+├── .gitignore
+├── __init__.py
 │
-├── .github/workflows/
+├── .github/workflows/       # CI/CD (beta-release, code-review, tests)
 │
 ├── skills/                  # Agent skills (invoke via Skill tool)
-│   ├── README.md
+│   ├── README.md            # Skill catalog and usage
 │   ├── analyst/             # Data analysis (dbt, Streamlit, statistics)
 │   ├── bmem/                # Knowledge base ops (project="main")
 │   ├── dashboard/           # Live task dashboard (Streamlit, auto-refresh, mobile)
@@ -35,17 +40,16 @@ $AOPS/
 │   ├── python-dev/          # Production Python standards
 │   ├── skill-creator/       # Skill packaging
 │   ├── tasks/               # Task management (MCP server)
-│   └── training-set-builder/
+│   └── training-set-builder/# Training data extraction
 │
 ├── hooks/                   # Lifecycle automation (Python)
-│   ├── README.md
+│   ├── README.md            # Hook documentation
 │   │
 │   │   # Active hooks (configured in settings.json)
 │   ├── sessionstart_load_axioms.py  # Injects AXIOMS.md at session start
 │   ├── user_prompt_submit.py        # Injects context on every prompt
 │   ├── prompt_router.py             # Keyword analysis → skill suggestions
 │   ├── autocommit_state.py          # Auto-commit data/ after state changes
-│   ├── log_session_stop.py          # Session activity logging
 │   │
 │   │   # Shared modules
 │   ├── session_logger.py            # Log file path management
@@ -60,51 +64,59 @@ $AOPS/
 │   ├── log_subagentstop.py
 │   │
 │   │   # Experimental
-│   ├── extract_session_knowledge.py
+│   ├── extract_session_knowledge.py # Knowledge extraction from sessions
 │   ├── request_scribe.py            # Session documentation requests
+│   ├── session_env_setup.sh         # Environment setup script
 │   ├── test_marker_hook.py          # CI test hook
 │   │
 │   └── prompts/                     # Markdown loaded by hooks
 │
-├── commands/                # Slash commands
-│   ├── archive-extract.md
-│   ├── bmem.md
-│   ├── docs-update.md
-│   ├── email.md
-│   ├── learn.md
-│   ├── log.md
+├── commands/                # Slash commands (main agent executes directly)
+│   ├── advocate.md          # Framework oversight with epistemic standards
+│   ├── archive-extract.md   # Extract archived info to bmem
+│   ├── bmem.md              # Capture session info to knowledge base
+│   ├── docs-update.md       # Update README.md structure
+│   ├── email.md             # Email → task extraction
+│   ├── learn.md             # Minor instruction adjustments
+│   ├── log.md               # Log agent performance patterns
 │   ├── meta.md              # Invoke framework skill
-│   ├── parallel-batch.md
-│   ├── qa.md
-│   ├── strategy.md
-│   ├── task-viz.md
-│   ├── transcript.md
+│   ├── parallel-batch.md    # Parallel file processing
+│   ├── qa.md                # Quality assurance verification
+│   ├── strategy.md          # Strategic planning
+│   ├── task-viz.md          # Task visualization
+│   ├── transcript.md        # Session transcript generation
 │   └── ttd.md               # TDD orchestration
 │
-├── agents/                  # Agentic workflows (thin routing wrappers)
-│   ├── dev.md
-│   ├── email-extractor.md
-│   ├── log-agent.md
-│   └── task-viz.md
+├── agents/                  # Spawnable subagents (Task tool with subagent_type)
+│   ├── bmem-validator.md    # Fix bmem validation errors
+│   ├── dev.md               # Development task routing
+│   ├── email-extractor.md   # Email archive processing
+│   ├── log-agent.md         # Performance pattern logging
+│   └── task-viz.md          # Task graph visualization
 │
 ├── experiments/             # Temporary experiment logs
 │
-├── scripts/                 # Deployment scripts
+├── scripts/                 # Deployment and utility scripts
+│   ├── setup.sh             # Project setup script
+│   ├── package_deployment.py# Skill packaging
+│   ├── measure_router_compliance.py # Prompt router analysis
+│   └── migrate_log_entries.py       # Log migration utility
 │
 ├── lib/                     # Shared Python
-│   ├── activity.py
+│   ├── __init__.py
+│   ├── activity.py          # Activity logging
 │   └── paths.py             # Path resolution (SSoT)
 │
 ├── tests/                   # pytest suite
-│   ├── README.md
-│   ├── conftest.py
-│   ├── test_*.py
+│   ├── README.md            # Test documentation
+│   ├── conftest.py          # Fixtures
+│   ├── test_*.py            # Unit tests
 │   ├── integration/         # E2E tests (slow)
-│   └── tools/
+│   └── tools/               # Tool-specific tests
 │
 └── config/claude/           # Reference config (copied during install)
-    ├── mcp.json
-    └── settings.json
+    ├── mcp.json             # MCP server configuration
+    └── settings.json        # Claude Code settings
 ```
 
 ---

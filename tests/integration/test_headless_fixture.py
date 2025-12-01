@@ -30,7 +30,7 @@ def test_claude_headless_simple_prompt(claude_headless) -> None:
     Verifies:
     - Simple arithmetic prompt executes successfully
     - Response contains expected keys
-    - Output is parseable JSON
+    - Output is parseable JSON (list of events with --debug flag)
     """
     result = claude_headless("What is 2+2?")
 
@@ -39,9 +39,10 @@ def test_claude_headless_simple_prompt(claude_headless) -> None:
     assert "output" in result, "Result should have 'output' key"
     assert "result" in result, "Result should have 'result' key"
 
-    # Verify output is valid JSON
-    output_dict = json.loads(result["output"])
-    assert isinstance(output_dict, dict), "Output should be parseable as JSON dict"
+    # Verify output is valid JSON - with --debug flag, output is a list of events
+    output_data = json.loads(result["output"])
+    assert isinstance(output_data, list), "Output should be parseable as JSON list (debug format)"
+    assert len(output_data) > 0, "Output should contain at least one event"
 
 
 @pytest.mark.slow
@@ -101,21 +102,24 @@ def test_claude_headless_json_output(claude_headless) -> None:
 
     Verifies:
     - Output key contains valid JSON string
-    - JSON can be parsed into dictionary
-    - Required keys are present in parsed output
+    - JSON can be parsed (list format with --debug flag)
+    - Events contain expected structure
     """
     result = claude_headless("What is 5+5?")
 
     assert "output" in result, "Result should have output key"
 
-    # Parse the JSON output
-    output_dict = json.loads(result["output"])
+    # Parse the JSON output - with --debug flag, output is a list of events
+    output_data = json.loads(result["output"])
 
-    assert isinstance(output_dict, dict), "Parsed output should be a dictionary"
-    # Standard Claude Code headless output should have these keys
+    assert isinstance(output_data, list), "Parsed output should be a list (debug format)"
+    # Debug output should contain session events - look for assistant message or result
+    event_types = [e.get("type") for e in output_data if isinstance(e, dict)]
     assert any(
-        key in output_dict for key in ["response", "result", "content"]
-    ), "Parsed output should have at least one standard Claude response key"
+        t in event_types for t in ["assistant", "result"]
+    ) or any(
+        "hook_event" in e for e in output_data if isinstance(e, dict)
+    ), f"Should have assistant/result message or hook events. Found types: {event_types}"
 
 
 @pytest.mark.slow

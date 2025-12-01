@@ -123,18 +123,22 @@ def discover_goals(repo_path: Path) -> tuple[list[dict], dict[str, str]]:
     return goals, title_to_id
 
 
-def discover_projects(repo_path: Path, goal_title_to_id: dict[str, str]) -> dict[str, dict]:
+def discover_projects(repo_path: Path, goal_title_to_id: dict[str, str]) -> tuple[dict[str, dict], dict[str, str]]:
     """Find projects and their goal mappings from project files.
 
     Reads goal relationships from the ## Relations section of project files,
-    looking for 'supports [[Goal Title]]' links.
+    looking for 'supports [[Goal Title]]' links. Also builds alias mapping.
 
     Args:
         repo_path: Path to repository root
         goal_title_to_id: Mapping from goal title to goal id/permalink
+
+    Returns:
+        Tuple of (projects dict, alias_to_permalink mapping)
     """
     projects_dir = repo_path / "data" / "projects"
     projects = {}
+    alias_to_permalink = {}
 
     if projects_dir.exists():
         for f in projects_dir.glob("*.md"):
@@ -156,6 +160,12 @@ def discover_projects(repo_path: Path, goal_title_to_id: dict[str, str]) -> dict
             slug = fm.get("permalink", f.stem)
             title = fm.get("title", slug)
 
+            # Build alias mapping
+            aliases = fm.get("aliases", [])
+            if aliases:
+                for alias in aliases:
+                    alias_to_permalink[alias] = slug
+
             # Parse Relations section for goal links
             goal_id = None
             relations_match = re.search(r'## Relations\s*\n(.*?)(?=\n## |\Z)', content, re.DOTALL)
@@ -175,7 +185,7 @@ def discover_projects(repo_path: Path, goal_title_to_id: dict[str, str]) -> dict
                 "goal": goal_id,
             }
 
-    return projects
+    return projects, alias_to_permalink
 
 
 def build_graph(goals: list, projects: list, tasks: list) -> nx.Graph:
@@ -195,7 +205,7 @@ def build_graph(goals: list, projects: list, tasks: list) -> nx.Graph:
                    priority=task.get("priority", 2))
         proj_id = task.get("project", "uncategorized")
         if proj_id and G.has_node(proj_id):
-            G.add_edge(task["id"], proj_id, weight=1.0)
+            G.add_edge(task["id"], proj_id, weight=6.0)  # Strong attraction to project
 
     return G
 
@@ -205,7 +215,8 @@ def compute_layout(G: nx.Graph) -> dict[str, tuple[float, float]]:
     if len(G.nodes()) == 0:
         return {}
 
-    pos = nx.spring_layout(G, k=3.0, iterations=150, scale=2500, seed=42)
+    # k=1.8 balanced spacing, high weight pulls tasks to projects
+    pos = nx.spring_layout(G, k=1.8, iterations=300, scale=3500, seed=42, weight='weight')
 
     # Normalize to positive coords
     if pos:
@@ -217,16 +228,16 @@ def compute_layout(G: nx.Graph) -> dict[str, tuple[float, float]]:
 
 
 def node_size(node_type: str, title: str) -> tuple[int, int]:
-    """Get node dimensions."""
+    """Get node dimensions - large gradation between types."""
     if node_type == "goal":
-        font = 36
-        min_w, h = 250, 100
+        font = 48
+        min_w, h = 350, 140  # Much larger for goals
     elif node_type == "project":
         font = 24
         min_w, h = 180, 70
-    else:
-        font = 16
-        min_w, h = 140, 50
+    else:  # task
+        font = 14
+        min_w, h = 120, 40  # Smaller for tasks
 
     text_w = len(title) * font * 0.5
     return max(min_w, int(text_w) + 30), h
@@ -304,7 +315,7 @@ def make_text_element(
         "version": 1,
         "versionNonce": seed,
         "isDeleted": False,
-        "boundElements": None,
+        "boundElements": [],
         "updated": int(time.time() * 1000),
         "link": None,
         "locked": False,
@@ -317,6 +328,7 @@ def make_text_element(
         "containerId": container_id,
         "originalText": text,
         "lineHeight": 1.25,
+        "autoResize": True,
     }
 
 
@@ -381,7 +393,14 @@ def main() -> int:
     print(f"  Found {len(goals)} goals")
 
     # Get projects with goal mappings (reads from Relations section)
-    known_projects = discover_projects(repo_path, goal_title_to_id)
+    known_projects, alias_to_permalink = discover_projects(repo_path, goal_title_to_id)
+    print(f"  Found {len(alias_to_permalink)} project aliases")
+
+    # Normalize task project references using aliases
+    for task in tasks:
+        proj_slug = task.get("project", "uncategorized")
+        if proj_slug in alias_to_permalink:
+            task["project"] = alias_to_permalink[proj_slug]
 
     # Extract unique projects from tasks, merge with known
     project_ids = set(t.get("project", "uncategorized") for t in tasks)
@@ -402,7 +421,7 @@ def main() -> int:
     if unmapped_projects:
         print(f"  ⚠️  {len(unmapped_projects)} projects missing goal link: {unmapped_projects[:5]}")
     if unknown_projects:
-        print(f"  ⚠️  {len(unknown_projects)} unknown project slugs: {unknown_projects[:5]}")
+        print(f"  ⚠️  {len(unknown_projects)} unknown project slugs: {unknown_projects}")
 
     # Build and layout graph
     print("Computing layout...")
@@ -468,14 +487,23 @@ def main() -> int:
         else:
             colors = {"bg": "#e9ecef", "stroke": "#495057"}
 
-        # Font size by type
-        font_size = {"goal": 36, "project": 24, "task": 16}.get(node["type"], 16)
+        # Font size by type (match node_size function)
+        font_size = {"goal": 48, "project": 24, "task": 14}.get(node["type"], 14)
 
-        # Add box and text
-        elements.append(make_excalidraw_element(
+        # Collect arrow bindings for this node
+        arrow_bindings = []
+        for source, target in G.edges():
+            if source == node_id or target == node_id:
+                arrow_id = f"arrow-{source}-{target}"
+                arrow_bindings.append({"id": arrow_id, "type": "arrow"})
+
+        # Add box with text AND arrow bindings
+        box = make_excalidraw_element(
             node_id, node["type"], x, y, w, h,
             colors["bg"], colors["stroke"]
-        ))
+        )
+        box["boundElements"] = [{"id": f"text-{node_id}", "type": "text"}] + arrow_bindings
+        elements.append(box)
         elements.append(make_text_element(
             node_id, node["title"], x, y, w, h, font_size
         ))
@@ -491,7 +519,12 @@ def main() -> int:
         "version": 2,
         "source": "https://excalidraw.com",
         "elements": elements,
-        "appState": {"gridSize": None, "viewBackgroundColor": "#ffffff"},
+        "appState": {
+            "gridSize": 20,
+            "gridStep": 5,
+            "gridModeEnabled": False,
+            "viewBackgroundColor": "#ffffff",
+        },
         "files": {},
     }
 

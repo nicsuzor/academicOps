@@ -55,41 +55,42 @@ def write_prompt_context(prompt: str) -> Path:
 
 
 def analyze_prompt(prompt: str) -> str:
-    """Analyze prompt and return skill suggestion only when clearly needed.
-
-    Conservative approach: only suggest skills for prompts that clearly
-    benefit from specialized workflows. Most prompts need no routing.
+    """Analyze prompt and return skill invocation instruction when keywords match.
 
     Args:
         prompt: The user's prompt text
 
     Returns:
-        Soft suggestion string, or empty string (most cases)
+        Skill invocation instruction string, or empty string if no match
     """
-    if not prompt or len(prompt) < 20:
+    if not prompt:
         return ""
 
     prompt_lower = prompt.lower()
 
-    # Only trigger for explicit skill-domain keywords
-    # These are prompts that CLEARLY benefit from skill invocation
+    # Keyword triggers for each skill
     triggers = {
-        "framework": ["hook", "skill", "axioms", "claude.md", "settings.json"],
-        "tasks": ["archive task", "view task", "create task", "task list"],
+        "framework": ["framework", "hook", "skill", "axioms", "claude.md", "settings.json"],
+        "python-dev": ["python", "pytest", "uv run", "type hint", "mypy"],
+        "tasks": ["archive task", "view task", "create task", "task list", "tasks"],
         "bmem": ["bmem", "knowledge base", "write note", "search notes"],
     }
 
-    matched_skill = None
+    matched_skills = []
     for skill, keywords in triggers.items():
         if any(kw in prompt_lower for kw in keywords):
-            matched_skill = skill
-            break
+            matched_skills.append(skill)
 
-    if not matched_skill:
-        return ""  # Most prompts - no suggestion
+    if not matched_skills:
+        return ""
 
-    # Soft suggestion, not demand
-    return f"Consider: The `{matched_skill}` skill may help with this request."
+    # Build response based on number of matches
+    if len(matched_skills) == 1:
+        skill = matched_skills[0]
+        return f"MANDATORY: Invoke the `{skill}` skill before proceeding with this request."
+    else:
+        skills_list = ", ".join(f"`{s}`" for s in matched_skills)
+        return f"MANDATORY: Invoke one of these skills before proceeding: {skills_list}"
 
 
 def main():

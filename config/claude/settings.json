@@ -11,6 +11,8 @@
       "Bash(rm */data/tasks/**)",
       "Bash(mv */data/tasks/**)",
       "Bash(cp */data/tasks/**)",
+      "Bash(git mv */data/tasks/**)",
+      "Bash(git rm */data/tasks/**)",
       "Read(**/.claude/**)",
       "Write(**/.claude/**)",
       "Edit(**/.claude/**)",

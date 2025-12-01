@@ -6,7 +6,7 @@
 **Storage Location**: `data/tasks/*.md` in each repository
 **Required Fields**: title, created, priority (0-3)
 **Optional Fields**: due, project, classification
-**Write Access**: Scripts ONLY (task_add.py, task_view.py, task_archive.py) - agents must not write task files directly
+**Write Access**: Scripts (task_add.py, task_view.py, task_archive.py) OR bmem MCP tools (mcp__bmem__edit_note) - agents must not write task files directly via Edit/Write tools
 **Scripts Location**: skills/tasks/scripts/
 **Cross-Repo**: Each repository has independent data/tasks/ directory
 
@@ -19,6 +19,7 @@ Manage task lifecycle using scripts in this skill's `scripts/` directory or Task
 Task scripts are located in this skill's directory at `scripts/`:
 - `scripts/task_view.py` - View tasks
 - `scripts/task_add.py` - Create tasks
+- `scripts/task_update.py` - Update existing tasks
 - `scripts/task_archive.py` - Archive/unarchive tasks
 
 Access them via the skill symlink at `~/.claude/skills/tasks/scripts/`.
@@ -123,6 +124,35 @@ PYTHONPATH=$AOPS uv run python ~/.claude/skills/tasks/scripts/task_add.py \
 
 **Output**: Creates task file in `data/tasks/inbox/` with bmem-compliant format
 
+### task_update.py - Update Existing Tasks
+
+Modify fields on existing tasks (priority, title, project, tags, etc.).
+
+```bash
+# Update priority
+PYTHONPATH=$AOPS uv run python ~/.claude/skills/tasks/scripts/task_update.py "task-filename.md" --priority 0
+
+# Update multiple fields
+PYTHONPATH=$AOPS uv run python ~/.claude/skills/tasks/scripts/task_update.py "task.md" --priority P1 --project "new-project"
+
+# Manage tags
+PYTHONPATH=$AOPS uv run python ~/.claude/skills/tasks/scripts/task_update.py "task.md" --add-tags "urgent,review" --remove-tags "low-priority"
+```
+
+**Parameters**:
+- `filename`: Task filename (required, first positional argument)
+- `--priority`: New priority (0-3 or P0-P3)
+- `--title`: New title
+- `--project`: New project slug
+- `--classification`: New classification
+- `--due`: New deadline (ISO8601 format)
+- `--status`: New status
+- `--add-tags`: Comma-separated tags to add
+- `--remove-tags`: Comma-separated tags to remove
+- `--data-dir`: Custom data directory (for testing)
+
+**Output**: Confirmation of modified fields
+
 ## Priority Levels
 
 - **P0/0**: Urgent (today/tomorrow) - action window closing NOW
@@ -143,6 +173,24 @@ PYTHONPATH=$AOPS uv run python ~/.claude/skills/tasks/scripts/task_add.py \
 1. Run: `task_view.py` to see inbox
 2. Present output directly to user (includes filenames for easy reference)
 
+## Before Creating Tasks
+
+**MANDATORY**: Always check for existing related tasks before creating new ones.
+
+```bash
+# Search for existing tasks by keyword
+grep -li "keyword" data/tasks/inbox/*.md
+
+# Or use task_view and grep
+PYTHONPATH=$AOPS uv run python ~/.claude/skills/tasks/scripts/task_view.py --compact | grep -i "keyword"
+```
+
+If a related task exists:
+- **Use task_update.py** to modify priority, add context, or update fields
+- **Do NOT create a duplicate** - this wastes user time on triage
+
+This prevents the documented failure pattern where agents create duplicate tasks for the same work item.
+
 ## Critical Rules
 
 **NEVER**:
@@ -150,6 +198,7 @@ PYTHONPATH=$AOPS uv run python ~/.claude/skills/tasks/scripts/task_add.py \
 - Write task markdown files directly
 - Move files manually - use scripts
 - Skip using scripts "because it's faster"
+- Create a new task without first checking for existing related tasks
 
 **ALWAYS**:
 
@@ -157,6 +206,8 @@ PYTHONPATH=$AOPS uv run python ~/.claude/skills/tasks/scripts/task_add.py \
 - Use `~/.claude/skills/tasks/scripts/` path to access scripts (works from any directory)
 - Include `PYTHONPATH=$AOPS` in commands
 - Verify script execution succeeded
+- Search existing tasks before creating new ones (grep for keywords in title)
+- Use task_update.py to modify existing tasks instead of creating duplicates
 
 ## Workflows
 
