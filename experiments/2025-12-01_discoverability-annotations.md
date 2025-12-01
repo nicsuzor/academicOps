@@ -58,7 +58,7 @@ Use the docs-update skill to update README.md. Focus especially on ensuring ever
 
 ## Results
 
-**SUCCESS** - Experiment validated the hypothesis.
+**PARTIAL SUCCESS** - Initial hypothesis validated, but follow-up revealed deeper issues.
 
 **Process observations:**
 1. Agent invoked docs-update skill correctly (read SKILL.md first)
@@ -89,3 +89,23 @@ When agents fail to do something, check if the instruction is:
 - Connection to axioms
 
 ...causes agents to follow through.
+
+## Follow-up: Additional Failures Found (same day)
+
+The initial experiment was marked success too early. Manual review revealed:
+
+1. **Scripts hidden**: Skills shown at directory level only. `task_viz_layout.py` was in wrong location (`framework/scripts/` instead of `excalidraw/scripts/`) and this was INVISIBLE in README
+2. **Useless annotations**: "Task visualization" vs "Task graph visualization" don't distinguish `commands/task-viz.md` from `agents/task-viz.md`
+
+**Additional fixes applied to docs-update skill**:
+- Principle #3: SHOW ALL SCRIPTS (expanded with annotations)
+- Principle #4: SHOW ALL REFERENCES (expanded with annotations)
+- "Distinction test" for annotations
+- Line limit increased 300 → 400
+
+**Deeper lesson**: Discoverability has layers:
+- Layer 1: Annotation presence ✓ (this experiment)
+- Layer 2: Internal structure visible ✗ (missed)
+- Layer 3: Annotations distinguish similar files ✗ (missed)
+
+See: [[projects/aops/learning/readme-discoverability-failure-hidden-scripts]]
