@@ -20,10 +20,10 @@ $AOPS/
 ├── pyproject.toml           # Python project config
 ├── uv.lock                  # Dependency lockfile
 ├── setup.sh                 # Creates ~/.claude/ symlinks
-├── .gitignore
-├── __init__.py
+├── .gitignore               # Git ignore patterns
+├── __init__.py              # Python package marker
 │
-├── .github/workflows/       # CI/CD
+├── .github/workflows/       # CI/CD automation
 │   ├── beta-release.yml     # Beta release automation
 │   ├── claude-code-review.yml # Claude-powered code review
 │   ├── claude.yml           # General Claude integration
@@ -31,177 +31,101 @@ $AOPS/
 │   └── test-setup.yml       # Test environment setup
 │
 ├── skills/                  # Agent skills (invoke via Skill tool)
-│   ├── README.md            # Skill catalog with descriptions
 │   ├── analyst/             # Data analysis (dbt, Streamlit, stats)
-│   │   ├── SKILL.md
-│   │   ├── _CHUNKS/         # Skill documentation chunks
-│   │   ├── references/      # Statistical analysis guides
-│   │   │   ├── assumptions_and_diagnostics.md  # Test assumptions
-│   │   │   ├── bayesian_statistics.md          # Bayesian methods
-│   │   │   ├── context-discovery.md            # Finding analysis context
-│   │   │   ├── dbt-workflow.md                 # dbt transformation patterns
-│   │   │   ├── effect_sizes_and_power.md       # Power analysis
-│   │   │   ├── matplotlib.md                   # Matplotlib viz patterns
-│   │   │   ├── reporting_standards.md          # Statistical reporting
-│   │   │   ├── seaborn.md                      # Seaborn viz patterns
-│   │   │   ├── statistical-analysis.md         # Core stat methods
-│   │   │   ├── statsmodels.md                  # Statsmodels usage
-│   │   │   ├── streamlit.md                    # Streamlit basics
-│   │   │   ├── streamlit-patterns.md           # Dashboard design patterns
-│   │   │   └── test_selection_guide.md         # Choosing stat tests
+│   │   ├── _CHUNKS/         # Skill documentation chunks (exploratory analysis, dbt, streamlit)
+│   │   ├── references/      # 13 statistical guides (test selection, assumptions, power, reporting)
 │   │   └── scripts/
 │   │       └── assumption_checks.py  # Statistical assumption validation
 │   │
 │   ├── bmem/                # Knowledge base ops (project="main")
-│   │   ├── SKILL.md
-│   │   └── references/      # bmem writing guides
-│   │       ├── approved-categories-relations.md  # Valid entity categories
-│   │       ├── detail-level-guide.md             # Detail vs summary
-│   │       ├── observation-quality-guide.md      # Quality standards
-│   │       ├── obsidian-compatibility.md         # Obsidian integration
-│   │       └── obsidian-format-spec.md           # Format specification
+│   │   └── references/      # Writing guides (quality, detail levels, Obsidian compat)
 │   │
 │   ├── dashboard/           # Live task dashboard (Streamlit, auto-refresh)
-│   │   ├── SKILL.md
 │   │   └── dashboard.py     # Task dashboard implementation
 │   │
 │   ├── docs-update/         # Documentation validation and updates
-│   │   └── SKILL.md
 │   │
 │   ├── excalidraw/          # Visual diagram generation
-│   │   ├── SKILL.md
-│   │   ├── libraries/       # Excalidraw icon libraries
-│   │   ├── references/      # Excalidraw documentation
-│   │   │   ├── graph-layouts.md           # Graph layout algorithms
-│   │   │   ├── icon-integration.md        # Using icon libraries
-│   │   │   ├── json-format.md             # Excalidraw JSON spec
-│   │   │   ├── library-guide.md           # Library usage guide
-│   │   │   ├── mcp-server-setup.md        # MCP server config
-│   │   │   ├── mind-mapping-principles.md # Mind map design
-│   │   │   ├── productivity-tips.md       # Productivity patterns
-│   │   │   ├── technical-details.md       # Technical implementation
-│   │   │   ├── text-container-pattern.md  # Text container design
-│   │   │   └── theme-colors.md            # Color scheme guide
-│   │   └── scripts/         # Task visualization scripts (moved from framework/)
+│   │   ├── libraries/       # 6 icon libraries (stick-figures, data-viz, hearts, etc.)
+│   │   ├── references/      # 10 guides (JSON format, graph layouts, mind mapping)
+│   │   └── scripts/
 │   │       ├── generate_task_viz.py  # JSON → Excalidraw format
-│   │       ├── layout_task_graph.py  # DEPRECATED - use task_viz_layout.py
-│   │       └── task_viz_layout.py    # Force-directed graph layout (networkx)
+│   │       ├── task_viz_layout.py    # Force-directed graph layout (networkx)
+│   │       └── layout_task_graph.py  # DEPRECATED - use task_viz_layout.py
 │   │
 │   ├── extractor/           # Archive extraction → bmem
-│   │   ├── SKILL.md
-│   │   ├── README.md
 │   │   └── tests/
+│   │       └── test_archive_integration.sh  # Integration tests
 │   │
 │   ├── feature-dev/         # Feature development workflow
-│   │   ├── SKILL.md
-│   │   └── templates/       # Development templates
+│   │   └── templates/       # 4 templates (dev plan, user story, test spec, experiment)
 │   │
 │   ├── framework/           # Framework maintenance (strategic partner)
-│   │   ├── SKILL.md
-│   │   ├── TASK-SPEC-TEMPLATE.md
-│   │   ├── references/      # Framework development guides
-│   │   │   ├── basic-memory-ai-guide.md    # bmem AI usage patterns
-│   │   │   ├── basic-memory-mcp-tools.md   # bmem MCP tool reference
-│   │   │   ├── basic-memory-sync-guide.md  # bmem sync patterns
-│   │   │   ├── claude-code-config.md       # Claude Code configuration
-│   │   │   ├── e2e-test-harness.md         # End-to-end testing
-│   │   │   ├── hooks_guide.md              # Hook development guide
-│   │   │   ├── script-design-guide.md      # Python script design
-│   │   │   ├── strategic-partner-mode.md   # Framework skill mode
-│   │   │   └── testing-with-live-data.md   # Live data testing
+│   │   ├── TASK-SPEC-TEMPLATE.md  # Task specification template
+│   │   ├── references/      # 9 guides (hooks, testing, MCP tools, strategic mode)
 │   │   ├── scripts/
 │   │   │   └── validate_docs.py  # Documentation validation
-│   │   ├── specs/           # Task specifications
-│   │   ├── tests/           # Framework integration tests
-│   │   └── workflows/       # Framework workflow guides
-│   │       ├── 01-design-new-component.md
-│   │       ├── 02-debug-framework-issue.md
-│   │       ├── 03-experiment-design.md
-│   │       ├── 04-monitor-prevent-bloat.md
-│   │       ├── 05-review-pull-request.md
-│   │       └── 06-develop-specification.md
+│   │   ├── specs/
+│   │   │   └── docs-update-skill.md  # Docs update spec
+│   │   ├── tests/           # 10 integration tests (skill discovery, email workflow, etc.)
+│   │   └── workflows/       # 6 workflows (design, debug, experiment, bloat prevention)
 │   │
 │   ├── framework-debug/     # Framework debugging
-│   │   ├── SKILL.md
 │   │   └── scripts/
 │   │       └── errors.jq    # JQ script for error extraction
 │   │
 │   ├── pdf/                 # Markdown → PDF conversion
-│   │   ├── SKILL.md
-│   │   ├── assets/          # PDF styling and fonts
+│   │   ├── assets/
+│   │   │   ├── academic-style.css  # Academic document styles
+│   │   │   ├── letter-style.css    # Letter format styles
+│   │   │   └── fonts/              # 9 Roboto fonts (regular, bold, italic, mono)
 │   │   └── scripts/
 │   │       └── generate_pdf.py  # PDF generation script
 │   │
 │   ├── python-dev/          # Production Python standards
-│   │   ├── SKILL.md
-│   │   └── references/      # Python development guides
-│   │       ├── bigquery.md      # BigQuery best practices
-│   │       ├── code-quality.md  # Code quality standards
-│   │       ├── fail-fast.md     # Fail-fast principles
-│   │       ├── fastapi.md       # FastAPI patterns
-│   │       ├── fastmcp.md       # FastMCP server development
-│   │       ├── hydra.md         # Hydra configuration
-│   │       ├── modern-python.md # Modern Python patterns
-│   │       ├── pandas.md        # Pandas best practices
-│   │       ├── testing.md       # Testing standards
-│   │       └── type-safety.md   # Type safety enforcement
+│   │   └── references/      # 10 guides (fail-fast, type safety, testing, pandas, FastAPI)
 │   │
 │   ├── skill-creator/       # Skill packaging
-│   │   ├── SKILL.md
-│   │   ├── LICENSE.txt
-│   │   └── scripts/
-│   │       ├── init_skill.py      # Initialize new skill
-│   │       ├── package_skill.py   # Package skill for distribution
-│   │       └── quick_validate.py  # Quick skill validation
+│   │   ├── LICENSE.txt      # Skill license template
+│   │   └── scripts/         # 3 scripts (init, package, validate)
 │   │
 │   ├── tasks/               # Task management (MCP server)
-│   │   ├── SKILL.md
-│   │   ├── README.md
-│   │   ├── __init__.py
+│   │   ├── __init__.py      # Python package marker
 │   │   ├── models.py        # Task data models
 │   │   ├── server.py        # MCP server implementation
 │   │   ├── task_loader.py   # Task loading logic
 │   │   ├── task_ops.py      # Task operations
-│   │   ├── scripts/
-│   │   │   ├── task_add.py     # Add new task
-│   │   │   ├── task_archive.py # Archive completed tasks
-│   │   │   ├── task_update.py  # Update task status/metadata
-│   │   │   └── task_view.py    # View task details
+│   │   ├── scripts/         # 4 CLI utilities (add, update, archive, view)
 │   │   ├── tests/
-│   │   └── workflows/       # Task workflow guides
+│   │   │   └── test_task_scripts.sh  # Task script tests
+│   │   └── workflows/
+│   │       └── email-capture.md  # Email → task workflow
 │   │
 │   └── training-set-builder/  # Training data extraction
-│       └── SKILL.md
 │
 ├── hooks/                   # Lifecycle automation (Python)
-│   ├── README.md            # Hook documentation
-│   │
-│   │   # Active hooks (configured in settings.json)
 │   ├── sessionstart_load_axioms.py  # Injects AXIOMS.md at session start
 │   ├── user_prompt_submit.py        # Injects context on every prompt
 │   ├── prompt_router.py             # Keyword analysis → skill suggestions
 │   ├── autocommit_state.py          # Auto-commit data/ after state changes
 │   │
-│   │   # Shared modules
 │   ├── session_logger.py            # Log file path management
 │   ├── hook_logger.py               # Centralized event logging
 │   ├── hook_debug.py                # Debug utilities
 │   │
-│   │   # Event loggers (→ ~/.cache/aops/sessions/)
-│   ├── log_sessionstart.py
-│   ├── log_userpromptsubmit.py
-│   ├── log_pretooluse.py
-│   ├── log_posttooluse.py
-│   ├── log_subagentstop.py
+│   ├── log_sessionstart.py          # Log session start events
+│   ├── log_userpromptsubmit.py      # Log user prompt submissions
+│   ├── log_pretooluse.py            # Log before tool execution
+│   ├── log_posttooluse.py           # Log after tool execution
+│   ├── log_subagentstop.py          # Log subagent termination
 │   │
-│   │   # Experimental
 │   ├── extract_session_knowledge.py # Knowledge extraction from sessions
 │   ├── request_scribe.py            # Session documentation requests
 │   ├── session_env_setup.sh         # Environment setup script
 │   ├── test_marker_hook.py          # CI test hook
 │   │
-│   └── prompts/                     # Markdown loaded by hooks
-│       └── user-prompt-submit.md
+│   └── prompts/
+│       └── user-prompt-submit.md    # User prompt context injection
 │
 ├── commands/                # Slash commands (main agent executes directly)
 │   ├── advocate.md          # Framework oversight with epistemic standards
@@ -228,12 +152,12 @@ $AOPS/
 │   └── task-viz.md          # Task graph visualization (bmem → excalidraw)
 │
 ├── experiments/             # Temporary experiment logs
-│   ├── 2025-11-17_log-sufficiency-test.md
-│   ├── 2025-11-17_multi-window-cognitive-load-solutions.md
-│   ├── 2025-11-21_zotmcp-tdd-session.md
-│   ├── 2025-12-01_discoverability-annotations.md
-│   ├── session-bmem-fail.md
-│   └── session-bmem-pass.md
+│   ├── 2025-11-17_log-sufficiency-test.md  # Log completeness test
+│   ├── 2025-11-17_multi-window-cognitive-load-solutions.md  # UI research
+│   ├── 2025-11-21_zotmcp-tdd-session.md    # TDD session log
+│   ├── 2025-12-01_discoverability-annotations.md  # Annotation experiment
+│   ├── session-bmem-fail.md # Failed bmem session
+│   └── session-bmem-pass.md # Successful bmem session
 │
 ├── scripts/                 # Deployment and utility scripts
 │   ├── setup.sh             # Project setup script
@@ -242,19 +166,31 @@ $AOPS/
 │   └── migrate_log_entries.py       # Log migration utility
 │
 ├── lib/                     # Shared Python
-│   ├── __init__.py
+│   ├── __init__.py          # Python package marker
 │   ├── activity.py          # Activity logging
 │   └── paths.py             # Path resolution (SSoT)
 │
 ├── tests/                   # pytest suite
-│   ├── README.md            # Test documentation
-│   ├── HOOK_TEST_PROTOCOL.md
+│   ├── HOOK_TEST_PROTOCOL.md  # Hook testing protocol
+│   ├── __init__.py          # Python package marker
 │   ├── conftest.py          # Fixtures
-│   ├── test_*.py            # Unit tests
+│   ├── paths.py             # Test path utilities
+│   ├── run_integration_tests.py  # Integration test runner
+│   ├── run_skill_tests.sh   # Skill test runner
+│   ├── manual_test_skill_discovery.md  # Manual test protocol
+│   │
+│   ├── test_*.py            # 31 unit tests (activity logger, bmem, hooks, paths, etc.)
+│   │
 │   ├── integration/         # E2E tests (slow)
-│   │   ├── README_SKILL_TESTS.md
-│   │   └── test_*.py
+│   │   ├── README_SKILL_TESTS.md  # Skill test documentation
+│   │   ├── __init__.py      # Python package marker
+│   │   ├── conftest.py      # Integration test fixtures
+│   │   └── test_*.py        # 19 integration tests (bmem, skills, tasks, sessions)
+│   │
 │   └── tools/               # Tool-specific tests
+│       ├── __init__.py      # Python package marker
+│       ├── conftest.py      # Tool test fixtures
+│       └── test_bmem_retrieve.py  # bmem retrieval tests
 │
 └── config/claude/           # Reference config (copied during install)
     ├── mcp.json             # MCP server configuration
@@ -306,13 +242,13 @@ $ACA_DATA/  (e.g., ~/writing/data/)
 ├── STYLE.md                 # Full guide (not @-loaded)
 │
 ├── tasks/                   # Task data (bmem markdown)
-│   ├── active/
-│   ├── completed/
-│   └── deferred/
+│   ├── active/              # Active tasks
+│   ├── completed/           # Completed tasks
+│   └── deferred/            # Deferred tasks
 │
 ├── sessions/                # Session logs
 │   └── claude/              # Claude Code transcripts
-│       └── YYYYMMDD-<slug>.md
+│       └── YYYYMMDD-<slug>.md  # Daily session transcripts
 │
 ├── projects/
 │   └── aops/                # academicOps project
@@ -320,7 +256,7 @@ $ACA_DATA/  (e.g., ~/writing/data/)
 │       ├── ROADMAP.md       # Maturity stages 0-5
 │       ├── STATE.md         # Current state
 │       ├── specs/           # Task specifications
-│       └── experiments/
+│       └── experiments/     # Experiment logs
 │           └── LOG.md       # Learning patterns (append-only)
 │
 └── [bmem entities]          # People, orgs, concepts, etc.
@@ -335,13 +271,13 @@ Hook-generated data:
 ```
 ~/.cache/aops/
 ├── prompt-router/           # Prompt analysis for classifier
-│   └── YYYYMMDD_HHMMSS_*.json
+│   └── YYYYMMDD_HHMMSS_*.json  # Timestamped prompt logs
 ├── sessions/                # Hook execution logs
-│   └── YYYY-MM-DD-<hash>-hooks.jsonl
+│   └── YYYY-MM-DD-<hash>-hooks.jsonl  # Per-session hook logs
 └── session_end_*.flag       # Session termination markers
 
 /tmp/claude-transcripts/     # On-demand transcripts
-└── *_transcript.md
+└── *_transcript.md          # Generated session transcripts
 ```
 
 ---
@@ -372,8 +308,16 @@ Each project gets `.claude/CLAUDE.md` with `@` references:
 project-repo/
 ├── .claude/
 │   ├── CLAUDE.md            # @ syntax loads ACCOMMODATIONS, CORE, etc.
-│   ├── skills/   → symlink
-│   ├── hooks/    → symlink
-│   └── commands/ → symlink
-└── ...
+│   ├── skills/   → symlink  # Symlink to $AOPS/skills/
+│   ├── hooks/    → symlink  # Symlink to $AOPS/hooks/
+│   └── commands/ → symlink  # Symlink to $AOPS/commands/
+└── ...                      # Project files
 ```
+
+---
+
+## Contact
+
+**Author**: Nic Suzor
+**Email**: nic@suzor.com
+**Repository**: github.com/yourusername/academicOps (update this)

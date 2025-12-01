@@ -147,43 +147,42 @@ $AOPS/
 ```
 
 **Key principles**:
-1. **MANDATORY**: Every entry must have an inline comment explaining its purpose - NO EXCEPTIONS
-2. **Nested README files**: Must explain what additional documentation they contain (e.g., `README.md  # Skill catalog with usage details`)
-3. **SHOW ALL SCRIPTS**: Every `scripts/` directory inside skills MUST be expanded to show individual files with annotations. This catches misplaced files (e.g., task_viz scripts in framework/ instead of tasks/)
-4. **SHOW ALL REFERENCES**: Every `references/` directory MUST be expanded - these are critical context documents
-5. Group test files (e.g., `test_*.py`) but NOT scripts or references
-6. Keep total README.md length under 400 lines (increased to accommodate script visibility)
+1. **MANDATORY**: Every entry shown MUST have an inline comment - NO EXCEPTIONS
+2. **OMIT OBVIOUS FILES**: Don't show files that exist in every skill (SKILL.md, README.md in skills/) - their presence is assumed. Only show files that need discovery.
+3. **SHOW SCRIPTS with purpose**: Expand scripts/ to show individual files. Each annotation must say WHAT THE SCRIPT DOES, not "script for X".
+4. **SHOW REFERENCES by topic**: Expand references/ to show files. Group by topic if many files.
+5. **NO GENERIC ANNOTATIONS**: If you'd write "Main skill instructions" or "Skill documentation" - DON'T SHOW THE FILE. These annotations are useless.
+6. **Keep under 350 lines**: If you can't fit meaningful annotations in 350 lines, you're showing too much.
 
 **AXIOM #22 enforcement**: Information must be DISCOVERABLE, not just exist. An unannotated entry fails this test - agents won't know to read it when needed.
 
 **Annotations must DISTINGUISH, not just describe**. The test: could someone confuse this with another file? If yes, the annotation is useless.
 
-**Example - Good (annotations that distinguish)**:
+**Example - Good (meaningful, selective)**:
 ```
-├── commands/
-│   ├── task-viz.md          # Launches task-viz agent (just a wrapper)
-│   └── meta.md              # Invokes framework skill for strategic decisions
-│
-├── agents/
-│   └── task-viz.md          # Full task visualization logic (bmem → excalidraw)
-│
-├── skills/excalidraw/
-│   ├── SKILL.md
-│   └── scripts/
-│       ├── task_viz_layout.py   # Force-directed graph layout (networkx)
-│       └── generate_task_viz.py # JSON → Excalidraw format conversion
+├── skills/
+│   ├── analyst/             # Data analysis (dbt, Streamlit, statistical methods)
+│   │   ├── references/      # 13 guides: stat tests, viz, reporting standards
+│   │   └── scripts/
+│   │       └── assumption_checks.py  # Validates statistical test assumptions
+│   │
+│   ├── excalidraw/          # Visual diagrams (Excalidraw JSON generation)
+│   │   ├── libraries/       # Icon libraries (material-symbols, etc.)
+│   │   └── scripts/
+│   │       ├── task_viz_layout.py    # Force-directed layout (networkx)
+│   │       └── generate_task_viz.py  # Structured data → Excalidraw JSON
+```
+Note: No SKILL.md shown - every skill has one, showing it adds noise.
+
+**Example - Bad (generic annotations)**:
+```
+├── skills/analyst/
+│   ├── SKILL.md             # Main skill instructions   <-- USELESS: every skill has this
+│   ├── references/          # Reference documents       <-- USELESS: says nothing about content
+│   └── scripts/             # Python scripts            <-- USELESS: obvious from directory name
 ```
 
-**Example - Bad (useless annotations)**:
-```
-├── commands/
-│   ├── task-viz.md          # Task visualization        <-- USELESS: says what, not how/why
-│
-├── agents/
-│   └── task-viz.md          # Task graph visualization  <-- USELESS: same as above, no distinction
-```
-
-**The distinction test**: Reading only the annotations, can you tell which file to look at for what purpose? If "task visualization" and "task graph visualization" both appear, your annotations have failed.
+**VALIDATION**: Run `wc -l README.md` - must be under 350 lines. If over, you're showing too much.
 
 ### 5. Validate All Cross-References
 
