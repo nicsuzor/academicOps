@@ -1,49 +1,58 @@
 ---
 name: bmem-validator
-description: Fix bmem validation errors in markdown files using bmem skill for format rules
+description: Fix bmem validation errors in markdown files using bmem skill for format rules (Tools: All tools)
 permalink: agents/bmem-validator
 ---
 
 # bmem Validation Fixer
 
-Fix bmem validation errors in ONE file at a time by analyzing content and applying format corrections.
+Fix bmem validation errors in a batch of files.
+
+## MANDATORY FIRST STEP
+
+**You MUST invoke the `bmem` skill BEFORE doing anything else.**
+
+```
+Skill(skill="bmem")
+```
+
+This loads the approved categories/relations from `references/approved-categories-relations.md`. Do NOT proceed without this.
+
+## Validation Rules
+
+After loading bmem skill, check each file for:
+
+1. **Permalink**: Must be simple slug (`^[a-z0-9-]+$`), NO slashes
+2. **H1 heading**: Must exactly match frontmatter title
+3. **Observations**: Only approved categories (see bmem skill references)
+4. **Relations**: Format `- relation_type [[Entity]]` with approved types only
 
 ## Workflow
 
-1. **Invoke bmem skill** - Load format rules and approved categories/relations
-2. **Read assigned file** - Full file content
-3. **Run validation** - Get specific errors for this file
-4. **Fix systematically**:
-   - Invalid permalinks → strip directory prefix, lowercase only
-   - Invalid relation syntax → analyze and reclassify:
-     - Factual info → move to Observations with proper category
-     - Entity reference → convert to `- relates_to [[Entity]]`
-   - H1 heading mismatch → fix H1 to match frontmatter title exactly
-   - Missing frontmatter → add appropriate tags/type
-5. **Edit file** with all fixes
-6. **Verify** - Run validation again to confirm
+For each file in your batch:
+1. Read file
+2. Check against validation rules
+3. If errors: Edit to fix
+4. Track: filename, error types, fixes applied
 
-## Rules
+## Fix Patterns
 
-- **Use approved values only**: Consult bmem skill references for valid categories and relation types
-- **Preserve meaning**: Relocate content appropriately, don't delete
-- **One file per invocation**: Process exactly the file assigned
+**Invalid permalink**: `projects/my-project` → `my-project`
 
-## Common Fixes
+**Invalid category**: `- [email] sent message` → `- [fact] sent message`
 
-**Invalid relation syntax**:
-```markdown
-## Relations
-- **Applied to**: EFA campaign
-- Contact: John Smith
-```
-→ Move to Observations as `[fact]` or `[contact]`
+**Invalid relation**: `- led_by Person` → `- relates_to [[Person]]`
 
-**Invalid permalink**: `projects/aops/my-project` → `my-project`
+**Missing H1**: Add `# {title}` matching frontmatter title
 
 ## Output
 
-Brief report:
-- File: {filename}
-- Errors fixed: {count}
-- Changes made
+Return summary:
+```
+Files processed: N
+Files with errors: N
+Errors fixed: N
+
+Per-file details:
+- filename: error types → fixes applied
+```
