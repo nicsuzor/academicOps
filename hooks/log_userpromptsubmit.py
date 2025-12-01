@@ -11,12 +11,14 @@ Exit codes:
 
 import contextlib
 import json
+import os
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 from lib.paths import get_hooks_dir
+from lib.activity import log_activity
 from hooks.hook_logger import log_hook_event
 
 # Paths
@@ -57,6 +59,23 @@ def main():
         input_data = json.load(sys.stdin)
 
     session_id = input_data.get("session_id", "unknown")
+
+    # Log to activity.jsonl for dashboard visibility
+    try:
+        user_message = input_data.get("userMessage", "")
+        # Session name from cwd
+        cwd = os.getcwd()
+        session_name = Path(cwd).name if cwd else "unknown"
+
+        if user_message:
+            # Truncate long messages
+            action = user_message[:100]
+            if len(user_message) > 100:
+                action += "..."
+            log_activity(action, session_name)
+    except Exception:
+        # Don't fail hook if activity logging fails
+        pass
 
     # Clear end-of-session documentation request flag for new turn
     state_file = Path.home() / ".cache" / "aops" / f"session_end_{session_id}.flag"
