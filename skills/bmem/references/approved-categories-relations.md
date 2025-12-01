@@ -2,7 +2,7 @@
 
 **CRITICAL**: bmem files MUST use only these approved values. Using unapproved categories or relations will cause validation failures.
 
-**Source of truth**: `/home/nic/src/writing-archive/bmem_tools.py` (VALID_CATEGORIES and VALID_RELATIONS)
+**Source of truth**: `~/writing/scripts/bmem_tools.py` (VALID_CATEGORIES and VALID_RELATIONS)
 
 ## Approved Observation Categories
 

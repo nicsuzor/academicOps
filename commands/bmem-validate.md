@@ -22,7 +22,7 @@ Orchestrate parallel validation of bmem files using 8 concurrent haiku agents.
 ### 1. Run Validation Script
 
 ```bash
-cd ~/writing && uv run python bmem_tools.py validate 2>&1
+cd ~/writing && uv run python scripts/bmem_tools.py validate 2>&1
 ```
 
 This outputs errors like:
@@ -35,7 +35,7 @@ ERROR: data/goals/file.md: Missing required frontmatter field: title
 
 Parse output to get unique files with errors/warnings:
 ```bash
-cd ~/writing && uv run python bmem_tools.py validate 2>&1 | grep -oP '(?<=: )data/[^:]+' | sort -u
+cd ~/writing && uv run python scripts/bmem_tools.py validate 2>&1 | grep -oP '(?<=: )data/[^:]+' | sort -u
 ```
 
 ### 3. Create Batches
