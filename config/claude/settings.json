@@ -15,15 +15,19 @@
       "Bash(git rm */data/tasks/**)",
       "Read(~/.claude/settings.json)",
       "Read(~/.claude/settings.local.json)",
-      "Write(~/.claude/settings.json)",
-      "Write(~/.claude/settings.local.json)",
-      "Edit(~/.claude/settings.json)",
-      "Edit(~/.claude/settings.local.json)",
-      "Bash(rm ~/.claude/settings*)",
-      "Bash(mv ~/.claude/settings*)",
-      "Bash(cp ~/.claude/settings*)",
-      "Bash(touch ~/.claude/settings*)",
-      "Bash(echo ~/.claude/settings*)"
+      "Read(~/.claude/mcp.json)",
+      "Read(~/.claude/.credentials.json)",
+      "Read(~/.claude/hooks/**)",
+      "Read(~/.claude/skills/**)",
+      "Read(~/.claude/commands/**)",
+      "Read(~/.claude/agents/**)",
+      "Write(~/.claude/**)",
+      "Edit(~/.claude/**)",
+      "Bash(rm ~/.claude/**)",
+      "Bash(mv ~/.claude/**)",
+      "Bash(cp ~/.claude/**)",
+      "Bash(touch ~/.claude/**)",
+      "Bash(echo > ~/.claude/**)"
     ]
   },
   "hooks": {
