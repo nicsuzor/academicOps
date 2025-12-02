@@ -101,7 +101,17 @@
         ]
       }
     ],
-    "Stop": []
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "PYTHONPATH=$AOPS uv run python $AOPS/hooks/verify_conclusions.py",
+            "timeout": 30000
+          }
+        ]
+      }
+    ]
   },
   "statusLine": {
     "type": "command",
