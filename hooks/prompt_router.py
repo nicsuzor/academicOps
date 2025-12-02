@@ -70,10 +70,22 @@ def analyze_prompt(prompt: str) -> str:
 
     # Keyword triggers for each skill
     triggers = {
-        "framework": ["framework", "hook", "skill", "axioms", "claude.md", "settings.json"],
+        "framework": [
+            "framework", "hook", "skill", "axioms", "claude.md", "settings.json",
+            "readme.md", "aops", "academicops",
+        ],
         "python-dev": ["python", "pytest", "uv run", "type hint", "mypy"],
-        "tasks": ["archive task", "view task", "create task", "task list", "tasks"],
-        "bmem": ["bmem", "knowledge base", "write note", "search notes"],
+        "tasks": [
+            "archive task", "view task", "create task", "task list", "tasks",
+            "what's urgent", "show my tasks", "to-do", "todo", "priorities",
+            "what needs doing", "what should i work on",
+        ],
+        "bmem": [
+            "bmem", "knowledge base", "write note", "search notes",
+            "remember this", "save this", "what do we know about",
+            "context about", "background on", "prior work on",
+            "have we done", "did we already",
+        ],
     }
 
     matched_skills = []
@@ -85,12 +97,22 @@ def analyze_prompt(prompt: str) -> str:
         return ""
 
     # Build response based on number of matches
+    # Strong instruction because agents bypass skills and use raw MCP tools directly
     if len(matched_skills) == 1:
         skill = matched_skills[0]
-        return f"MANDATORY: Invoke the `{skill}` skill before proceeding with this request."
+        desc = SKILLS.get(skill, "")
+        return (
+            f"MANDATORY: Invoke the `{skill}` skill before proceeding with this request.\n"
+            f"Skill purpose: {desc}\n"
+            f"DO NOT use raw MCP tools (mcp__bmem__*, mcp__task_manager__*) directly. "
+            f"The skill provides context and quality control that raw tools lack."
+        )
     else:
         skills_list = ", ".join(f"`{s}`" for s in matched_skills)
-        return f"MANDATORY: Invoke one of these skills before proceeding: {skills_list}"
+        return (
+            f"MANDATORY: Invoke one of these skills before proceeding: {skills_list}\n"
+            f"DO NOT use raw MCP tools directly - skills provide context and quality control."
+        )
 
 
 def main():
