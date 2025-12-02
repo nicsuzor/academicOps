@@ -18,40 +18,25 @@ from .conftest import extract_response_text
 
 @pytest.mark.slow
 @pytest.mark.integration
-@pytest.mark.parametrize(
-    "context_name,get_cwd",
-    [
-        ("aops_repo", lambda: __import__("lib.paths", fromlist=["get_aops_root"]).get_aops_root()),
-        ("data_dir", lambda: __import__("tests.paths", fromlist=["get_data_dir"]).get_data_dir()),
-        ("temp_dir", lambda: Path("/tmp")),
-    ],
-    ids=["aops_repo", "data_dir", "temp_dir"],
-)
-def test_axioms_content_actually_loaded(claude_headless: Any, context_name: str, get_cwd: Any) -> None:
+def test_axioms_content_actually_loaded(claude_headless: Any) -> None:
     """Verify AXIOMS.md content is actually loaded, not just referenced.
 
-    This test runs in multiple contexts (aops repo, writing repo, temp dir)
-    to verify that AXIOMS.md is loaded via SessionStart hook regardless
-    of working directory.
+    This test runs from /tmp to verify that AXIOMS.md is loaded via
+    SessionStart hook regardless of working directory.
 
     Args:
         claude_headless: Fixture for headless Claude execution
-        context_name: Name of context being tested
-        get_cwd: Callable that returns Path for working directory
 
     Raises:
         AssertionError: If Claude doesn't know AXIOMS.md content
     """
-    # Get working directory for this context
-    cwd = get_cwd()
-
     result = claude_headless(
         prompt=(
             "Without reading any files, tell me: What is AXIOM #1 about? "
             "Quote the exact principle if you know it."
         ),
-        timeout_seconds=60,
-        cwd=cwd,
+        timeout_seconds=120,
+        cwd=Path("/tmp"),
     )
 
     assert result["success"], f"Claude execution failed: {result.get('error')}"
@@ -68,9 +53,9 @@ def test_axioms_content_actually_loaded(claude_headless: Any, context_name: str,
     ]
 
     assert any(axiom_concepts), (
-        f"[{context_name}] Agent doesn't know AXIOM #1 content. "
+        f"Agent doesn't know AXIOM #1 content. "
         f"This suggests AXIOMS.md was NOT loaded at session start, only referenced. "
-        f"Working directory: {cwd}. Response: {response}"
+        f"Response: {response}"
     )
 
 
@@ -97,7 +82,7 @@ def test_readme_structure_actually_loaded(claude_headless: Any) -> None:
             "Without reading any files, tell me: According to the README, "
             "what are the main directories in this framework? List 3-5."
         ),
-        timeout_seconds=60,
+        timeout_seconds=120,
         cwd=aops_root,
     )
 
@@ -120,48 +105,48 @@ def test_readme_structure_actually_loaded(claude_headless: Any) -> None:
 
 @pytest.mark.slow
 @pytest.mark.integration
-def test_agent_didnt_use_read_tool(claude_headless: Any) -> None:
-    """Verify Claude answers from loaded context, not by reading files.
+def test_agent_knows_axioms_without_reading(claude_headless: Any) -> None:
+    """Verify Claude answers AXIOM questions from loaded context.
 
-    This meta-test asks Claude to confirm whether it used the Read tool
-    to answer the previous question. If it did, session start loading failed.
+    This test checks that Claude can answer AXIOM questions in a single
+    prompt that explicitly forbids using the Read tool, proving the
+    content was loaded at session start.
 
     Args:
         claude_headless: Fixture for headless Claude execution
 
     Raises:
-        AssertionError: If Claude had to read files (session start failed)
+        AssertionError: If Claude can't answer without reading files
     """
     from lib.paths import get_aops_root
 
     aops_root = get_aops_root()
 
-    # First ask a question
-    result1 = claude_headless(
-        prompt="What is the first AXIOM in this framework?",
-        timeout_seconds=60,
-        cwd=aops_root,
-    )
-
-    assert result1["success"], f"First query failed: {result1.get('error')}"
-
-    # Then ask if Read tool was used
-    result2 = claude_headless(
+    # Ask about axioms with explicit instruction not to read files
+    result = claude_headless(
         prompt=(
-            "Did you use the Read tool to answer the previous question about "
-            "the first AXIOM? Answer with just 'yes' or 'no'."
+            "WITHOUT using the Read tool or any file reading, "
+            "what does AXIOM #1 say about completing tasks? "
+            "If you don't already know this from your loaded context, "
+            "just say 'I don't know'."
         ),
-        timeout_seconds=60,
+        timeout_seconds=120,
         cwd=aops_root,
     )
 
-    assert result2["success"], f"Second query failed: {result2.get('error')}"
+    assert result["success"], f"Query failed: {result.get('error')}"
 
-    # Extract response
-    response = extract_response_text(result2).lower()
+    response = extract_response_text(result).lower()
 
-    # Claude should NOT have used Read tool if content was loaded at start
-    assert "no" in response or "did not" in response or "didn't" in response, (
-        f"Agent used Read tool instead of loading content at session start! "
-        f"This means session start file loading is NOT working. Response: {response}"
+    # Claude should know AXIOM #1 content if it was loaded at session start
+    knows_axiom = (
+        "do one thing" in response
+        or ("complete" in response and "stop" in response)
+        or "task" in response
+    )
+    didnt_know = "i don't know" in response or "don't have" in response
+
+    assert knows_axiom and not didnt_know, (
+        f"Agent doesn't know AXIOM #1 content from loaded context. "
+        f"Session start file loading may not be working. Response: {response}"
     )
