@@ -13,14 +13,14 @@
       "Bash(cp */data/tasks/**)",
       "Bash(git mv */data/tasks/**)",
       "Bash(git rm */data/tasks/**)",
-      "Read(**/.claude/**)",
-      "Write(**/.claude/**)",
-      "Edit(**/.claude/**)",
-      "Bash(rm **/.claude/**)",
-      "Bash(mv **/.claude/**)",
-      "Bash(cp **/.claude/**)",
-      "Bash(touch **/.claude/**)",
-      "Bash(echo **/.claude/**)"
+      "Read(~/.claude/**)",
+      "Write(~/.claude/**)",
+      "Edit(~/.claude/**)",
+      "Bash(rm ~/.claude/**)",
+      "Bash(mv ~/.claude/**)",
+      "Bash(cp ~/.claude/**)",
+      "Bash(touch ~/.claude/**)",
+      "Bash(echo ~/.claude/**)"
     ]
   },
   "hooks": {

@@ -16,17 +16,13 @@ import pytest
 pytestmark = [pytest.mark.integration]
 
 
-@pytest.mark.xfail(
-    reason="Claude Code deny rules are broken upstream. See: "
-    "https://github.com/anthropics/claude-code/issues/6699"
-)
 def test_deny_rules_block_claude_dir_read(claude_headless):
     """Verify deny rules prevent reading from .claude directories.
 
     The framework settings at $AOPS/config/claude/settings.json contain:
-    - Read(**/.claude/**)
-    - Write(**/.claude/**)
-    - Edit(**/.claude/**)
+    - Read(~/.claude/**)
+    - Write(~/.claude/**)
+    - Edit(~/.claude/**)
 
     These rules should block access to ~/.claude/ forcing use of $AOPS paths.
     """
