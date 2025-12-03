@@ -16,13 +16,18 @@ Manage task lifecycle using scripts in this skill's `scripts/` directory or Task
 
 ## Script Locations
 
-Task scripts are located in this skill's directory at `scripts/`:
-- `scripts/task_view.py` - View tasks
-- `scripts/task_add.py` - Create tasks
-- `scripts/task_update.py` - Update existing tasks
-- `scripts/task_archive.py` - Archive/unarchive tasks
+Task scripts are located at `$AOPS/skills/tasks/scripts/`:
+- `task_view.py` - View tasks
+- `task_add.py` - Create tasks
+- `task_update.py` - Update existing tasks
+- `task_archive.py` - Archive/unarchive tasks
 
-Access them via the skill symlink at `~/.claude/skills/tasks/scripts/`.
+**IMPORTANT**: Always run scripts using `uv run` from the `$AOPS` directory:
+```bash
+cd $AOPS && uv run python skills/tasks/scripts/task_view.py
+```
+
+This ensures Python can find dependencies (yaml, etc.) from the project's virtual environment.
 
 ## When to Use
 
@@ -40,14 +45,14 @@ Use this skill for:
 Display tasks with filtering and sorting. Shows filenames in output for easy reference when archiving.
 
 ```bash
-# From any directory - use skill symlink
-PYTHONPATH=$AOPS uv run python ~/.claude/skills/tasks/scripts/task_view.py
+# Standard invocation (from $AOPS directory)
+cd $AOPS && uv run python skills/tasks/scripts/task_view.py
 
 # With options
-PYTHONPATH=$AOPS uv run python ~/.claude/skills/tasks/scripts/task_view.py --sort=due --per-page=20 --compact
+cd $AOPS && uv run python skills/tasks/scripts/task_view.py --sort=due --per-page=20 --compact
 
 # For testing with custom data directory
-PYTHONPATH=$AOPS uv run python ~/.claude/skills/tasks/scripts/task_view.py --data-dir=/path/to/data
+cd $AOPS && uv run python skills/tasks/scripts/task_view.py --data-dir=/path/to/data
 ```
 
 **Output**: Formatted task list from `data/tasks/inbox/` with filenames displayed for each task.
@@ -65,16 +70,16 @@ Move completed tasks to archive. **Supports batch operations** - can archive mul
 
 ```bash
 # Archive a single task
-PYTHONPATH=$AOPS uv run python ~/.claude/skills/tasks/scripts/task_archive.py "task-filename.md"
+cd $AOPS && uv run python skills/tasks/scripts/task_archive.py "task-filename.md"
 
 # Archive multiple tasks (batch operation)
-PYTHONPATH=$AOPS uv run python ~/.claude/skills/tasks/scripts/task_archive.py "task1.md" "task2.md" "task3.md"
+cd $AOPS && uv run python skills/tasks/scripts/task_archive.py "task1.md" "task2.md" "task3.md"
 
 # Unarchive a task
-PYTHONPATH=$AOPS uv run python ~/.claude/skills/tasks/scripts/task_archive.py "task-filename.md" --unarchive
+cd $AOPS && uv run python skills/tasks/scripts/task_archive.py "task-filename.md" --unarchive
 
 # For testing with custom data directory
-PYTHONPATH=$AOPS uv run python ~/.claude/skills/tasks/scripts/task_archive.py "task1.md" --data-dir=/path/to/data
+cd $AOPS && uv run python skills/tasks/scripts/task_archive.py "task1.md" --data-dir=/path/to/data
 ```
 
 **Parameters**:
@@ -91,13 +96,13 @@ Create new task in inbox with bmem-compliant format.
 
 ```bash
 # Basic task
-PYTHONPATH=$AOPS uv run python ~/.claude/skills/tasks/scripts/task_add.py \
+cd $AOPS && uv run python skills/tasks/scripts/task_add.py \
   --title "Task title" \
   --priority 1 \
   --body "Task description with context"
 
 # Full-featured task
-PYTHONPATH=$AOPS uv run python ~/.claude/skills/tasks/scripts/task_add.py \
+cd $AOPS && uv run python skills/tasks/scripts/task_add.py \
   --title "Complete important deliverable" \
   --priority 0 \
   --project "project-slug" \
@@ -107,7 +112,7 @@ PYTHONPATH=$AOPS uv run python ~/.claude/skills/tasks/scripts/task_add.py \
   --body "Detailed context about the task"
 
 # For testing with custom data directory
-PYTHONPATH=$AOPS uv run python ~/.claude/skills/tasks/scripts/task_add.py \
+cd $AOPS && uv run python skills/tasks/scripts/task_add.py \
   --title "Test task" \
   --data-dir=/path/to/data
 ```
@@ -130,13 +135,13 @@ Modify fields on existing tasks (priority, title, project, tags, etc.).
 
 ```bash
 # Update priority
-PYTHONPATH=$AOPS uv run python ~/.claude/skills/tasks/scripts/task_update.py "task-filename.md" --priority 0
+cd $AOPS && uv run python skills/tasks/scripts/task_update.py "task-filename.md" --priority 0
 
 # Update multiple fields
-PYTHONPATH=$AOPS uv run python ~/.claude/skills/tasks/scripts/task_update.py "task.md" --priority P1 --project "new-project"
+cd $AOPS && uv run python skills/tasks/scripts/task_update.py "task.md" --priority P1 --project "new-project"
 
 # Manage tags
-PYTHONPATH=$AOPS uv run python ~/.claude/skills/tasks/scripts/task_update.py "task.md" --add-tags "urgent,review" --remove-tags "low-priority"
+cd $AOPS && uv run python skills/tasks/scripts/task_update.py "task.md" --add-tags "urgent,review" --remove-tags "low-priority"
 ```
 
 **Parameters**:
@@ -179,10 +184,10 @@ PYTHONPATH=$AOPS uv run python ~/.claude/skills/tasks/scripts/task_update.py "ta
 
 ```bash
 # Search for existing tasks by keyword
-grep -li "keyword" data/tasks/inbox/*.md
+grep -li "keyword" $ACA_DATA/tasks/inbox/*.md
 
 # Or use task_view and grep
-PYTHONPATH=$AOPS uv run python ~/.claude/skills/tasks/scripts/task_view.py --compact | grep -i "keyword"
+cd $AOPS && uv run python skills/tasks/scripts/task_view.py --compact | grep -i "keyword"
 ```
 
 If a related task exists:
@@ -203,8 +208,7 @@ This prevents the documented failure pattern where agents create duplicate tasks
 **ALWAYS**:
 
 - Use scripts for ALL task operations
-- Use `~/.claude/skills/tasks/scripts/` path to access scripts (works from any directory)
-- Include `PYTHONPATH=$AOPS` in commands
+- Run from `$AOPS` directory: `cd $AOPS && uv run python skills/tasks/scripts/...`
 - Verify script execution succeeded
 - Search existing tasks before creating new ones (grep for keywords in title)
 - Use task_update.py to modify existing tasks instead of creating duplicates

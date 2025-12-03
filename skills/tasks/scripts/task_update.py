@@ -2,13 +2,13 @@
 """Update an existing task's fields.
 
 Usage:
-    uv run python scripts/task_update.py <task_identifier> [options]
+    uv run python $AOPS/skills/tasks/scripts/task_update.py <task_identifier> [options]
 
 Examples:
-    uv run python scripts/task_update.py "20251124-016d335c.md" --priority 0
-    uv run python scripts/task_update.py "task.md" --priority P1 --project "new-project"
-    uv run python scripts/task_update.py "3" --title "Updated title" --due 2025-12-15T17:00:00Z
-    uv run python scripts/task_update.py "task.md" --add-tags "urgent,review" --remove-tags "low-priority"
+    uv run python $AOPS/skills/tasks/scripts/task_update.py "20251124-016d335c.md" --priority 0
+    uv run python $AOPS/skills/tasks/scripts/task_update.py "task.md" --priority P1 --project "new-project"
+    uv run python $AOPS/skills/tasks/scripts/task_update.py "3" --title "Updated title" --due 2025-12-15T17:00:00Z
+    uv run python $AOPS/skills/tasks/scripts/task_update.py "task.md" --add-tags "urgent,review" --remove-tags "low-priority"
 
 Options:
     --priority=N          Set priority (0-3 or P0-P3)
@@ -25,9 +25,17 @@ Options:
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 from datetime import datetime
 from pathlib import Path
+
+# Bootstrap: Add AOPS root to path for lib imports (works from any directory)
+_script_path = Path(__file__).resolve()
+_aops_root = _script_path.parents[3]  # scripts/ -> tasks/ -> skills/ -> AOPS
+if str(_aops_root) not in sys.path:
+    sys.path.insert(0, str(_aops_root))
+os.environ.setdefault("AOPS", str(_aops_root))
 
 from lib.paths import get_data_root
 from skills.tasks import task_ops

@@ -2,12 +2,12 @@
 """Archive/unarchive tasks using shared task operations library.
 
 Usage:
-    uv run python bots/skills/tasks/scripts/task_archive.py <task_filename> [task_filename2 ...] [options]
+    uv run python $AOPS/skills/tasks/scripts/task_archive.py <task_filename> [task_filename2 ...] [options]
 
 Examples:
-    uv run python scripts/task_archive.py "20251110-abc123.md"
-    uv run python scripts/task_archive.py task1.md task2.md task3.md
-    uv run python scripts/task_archive.py "20251110-abc123" --unarchive
+    uv run python $AOPS/skills/tasks/scripts/task_archive.py "20251110-abc123.md"
+    uv run python $AOPS/skills/tasks/scripts/task_archive.py task1.md task2.md task3.md
+    uv run python $AOPS/skills/tasks/scripts/task_archive.py "20251110-abc123" --unarchive
 
 Options:
     --unarchive     Move task back to inbox (unarchive)
@@ -17,8 +17,16 @@ Options:
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 from pathlib import Path
+
+# Bootstrap: Add AOPS root to path for lib imports (works from any directory)
+_script_path = Path(__file__).resolve()
+_aops_root = _script_path.parents[3]  # scripts/ -> tasks/ -> skills/ -> AOPS
+if str(_aops_root) not in sys.path:
+    sys.path.insert(0, str(_aops_root))
+os.environ.setdefault("AOPS", str(_aops_root))
 
 from lib.paths import get_data_root
 from skills.tasks import task_ops
