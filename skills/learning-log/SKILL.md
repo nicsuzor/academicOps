@@ -5,17 +5,29 @@ description: Log agent performance patterns to thematic learning files. Categori
 
 # Learning Log Skill
 
-Document agent behavior patterns in thematic learning files. Transform user observations into structured entries with pattern categorization and knowledge linking.
+Document agent behavior patterns in thematic learning files. Analyze sessions or observations, identify patterns, categorize, and store in bmem.
+
+## Input Types
+
+This skill accepts three input types:
+
+1. **Verbal description** - User describes what happened ("agent did X wrong")
+2. **Transcript file(s)** - Path to existing transcript markdown file(s)
+3. **Session JSONL** - Raw session file → first invoke `transcript` skill to generate transcript, then analyze
+
+**If given a raw session JSONL file**: FIRST invoke the `transcript` skill to generate a transcript, THEN analyze that transcript.
 
 ## Quick Start
 
-When invoked with an observation:
+When invoked:
 
-1. **Categorize** - Assign pattern tags based on observation content
-2. **Link** - Search bmem for related patterns
-3. **Route** - Select target thematic file based on tags
-4. **Format** - Create structured entry
-5. **Append** - Add to appropriate thematic file
+1. **Get transcript** - If session JSONL provided, call `transcript` skill first
+2. **Analyze** - Read transcript(s) or verbal description for failure/success patterns
+3. **Categorize** - Assign pattern tags based on content
+4. **Link** - Search bmem for related patterns
+5. **Route** - Select target thematic file based on tags
+6. **Format** - Create structured entry
+7. **Append** - Add to appropriate thematic file
 
 ## Pattern Tags and File Routing
 
@@ -46,12 +58,29 @@ When invoked with an observation:
 
 ## Workflow
 
-### 1. Receive Observation
+### 1. Receive Input
 
-Accept description from /log command. Can be:
-- Success: "Agent correctly used task scripts"
-- Failure: "Test failed with file not found error"
-- Pattern: "Agent asked before using --no-verify"
+Accept one of:
+- **Verbal description**: "Agent correctly used task scripts"
+- **Transcript path(s)**: `/path/to/transcript.md` or multiple paths
+- **Session JSONL**: `~/.claude/projects/.../session.jsonl`
+
+**If session JSONL**: Invoke `transcript` skill first:
+```
+Skill: transcript
+Input: [session.jsonl path]
+```
+Then proceed with the generated transcript.
+
+### 1b. Analyze Transcript (if applicable)
+
+Read transcript(s) looking for:
+- Tool failures and error messages
+- Repeated attempts at same task
+- Claims made without verification
+- Partial completions
+- Workarounds or deviations from instructions
+- Successes and effective patterns
 
 ### 2. Categorize
 
