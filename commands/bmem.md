@@ -4,7 +4,7 @@ description: Invoke bmem skill to capture session information and update knowled
 permalink: commands/bmem
 ---
 
-Invoke the `bmem` skill to extract information from the current session and update the knowledge base in `data/`.
+Use the Skill tool to invoke the `bmem` skill: `Skill(skill="bmem")` - this will load instructions for extracting information from the current session and updating the knowledge base in `data/`.
 
 # Bmem: Knowledge Base Update
 

@@ -64,7 +64,7 @@ def parse_task_file(path: Path) -> dict[str, Any] | None:
 
 def discover_tasks(repo_path: Path) -> list[dict]:
     """Find all tasks in inbox."""
-    inbox = repo_path / "data" / "tasks" / "inbox"
+    inbox = repo_path / "tasks" / "inbox"
     if not inbox.exists():
         raise FileNotFoundError(f"Task inbox not found: {inbox}")
 
@@ -87,7 +87,7 @@ def discover_goals(repo_path: Path) -> tuple[list[dict], dict[str, str]]:
         - goals: List of {"id": permalink, "title": title}
         - title_to_id: Dict mapping goal title to goal id/permalink
     """
-    goals_dir = repo_path / "data" / "goals"
+    goals_dir = repo_path / "goals"
     goals = []
     title_to_id = {}
 
@@ -136,7 +136,7 @@ def discover_projects(repo_path: Path, goal_title_to_id: dict[str, str]) -> tupl
     Returns:
         Tuple of (projects dict, alias_to_permalink mapping)
     """
-    projects_dir = repo_path / "data" / "projects"
+    projects_dir = repo_path / "projects"
     projects = {}
     alias_to_permalink = {}
 

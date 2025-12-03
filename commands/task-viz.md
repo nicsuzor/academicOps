@@ -1,20 +1,38 @@
 # Task Visualization Dashboard
 
-Launch the task-viz agent to generate a visual mind-map of tasks, projects, and goals.
+Generate a visual mind-map of tasks, projects, and goals using the automated layout script.
 
-The agent will:
-1. Use bmem skill to understand current projects, goals, and strategic context
-2. Use excalidraw skill for professional visual design principles (organic mind-map layout, theme colors, icons)
-3. Create a visually striking dashboard showing task hierarchy and status
-4. Save to writing repository root as `current-tasks.excalidraw`
-5. Open the generated file with `xdg-open` for immediate viewing
+**Process**:
+1. Run the task visualization script:
+   ```bash
+   uv run python skills/tasks/scripts/task_viz.py $ACA_DATA current-tasks.excalidraw
+   ```
+2. Open the generated visualization:
+   ```bash
+   xdg-open current-tasks.excalidraw
+   ```
+3. **If manual refinement is needed** after the script runs, invoke the `excalidraw` skill: `Skill(skill="excalidraw")`
 
-**Key features**:
-- Organic mind-map layout (NOT rigid hierarchies)
-- Muted terminal theme colors (gold, greens, blues)
-- Outstanding tasks LARGE and PROMINENT
-- Completed tasks SMALL and de-emphasized
-- Curved arrows, asymmetric positioning
-- Optional Material Symbols icons for status
+**What the script does**:
+- Reads tasks from `$ACA_DATA/data/tasks/inbox/`
+- Reads projects from `$ACA_DATA/data/projects/`
+- Reads goals from `$ACA_DATA/data/goals/`
+- Computes force-directed layout using networkx
+- Generates complete excalidraw JSON file with:
+  - Goals (large ellipses, muted gold)
+  - Projects (medium rectangles, varied colors)
+  - Tasks (small rectangles, priority-based colors)
+  - Arrows showing relationships
 
-Launch with Task tool, subagent_type "task-viz".
+**Visual features**:
+- Force-directed layout prevents overlap
+- Color-coded by goal/priority (muted terminal theme)
+- Size hierarchy: Goals (largest) > Projects > Tasks
+- Curved arrows showing connections
+- Timestamp in corner
+
+**When to use excalidraw skill**:
+- After script runs, if you need to manually adjust layout
+- Add annotations or emphasis
+- Change colors or styling
+- Reorganize specific sections

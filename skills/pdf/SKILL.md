@@ -120,14 +120,30 @@ Dear [Name],             ← Paragraph 5: margin top
 
 [Body paragraphs...]     ← Justified, 1.5 line height
 
-Best,                    ← nth-last 4: closing
+Yours sincerely,         ← Closing
 
-[Space for signature]    ← nth-last 3: 2.5em space
+<img src="/path/to/signature.png" style="height: 50px;" />
 
-[Your Name]              ← nth-last 2: smaller, gray
-[Your Title]             ← nth-last 1: smaller, gray
+[Your Name]              ← smaller, gray
+[Your Title]             ← smaller, gray
 [Your Email]
 ```
+
+### Signature Insertion (Letters)
+
+For letters, insert the user's signature image between the closing and name. Use inline HTML:
+
+```markdown
+Yours sincerely,
+
+<img src="$ACA_DATA/assets/signature.png" style="height: 50px;" />
+
+Nicolas Suzor
+```
+
+**Signature location**: `$ACA_DATA/assets/signature.png` (user's personal data directory)
+
+**Before generating PDF for a letter**: Check if the markdown already contains a signature image. If not, insert one between the closing line (e.g., "Yours sincerely,") and the name block.
 
 ## Using Pandoc Directly
 

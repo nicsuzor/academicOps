@@ -191,7 +191,7 @@ Before approving any work as "complete":
 
 ## Verification Report Format
 
-Use `bmem` skill to save your report with clear findings.
+Use the Skill tool to invoke the `bmem` skill: `Skill(skill="bmem")` - then save your report with clear findings.
 
 ```markdown
 ## QA Verification Report

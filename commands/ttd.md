@@ -12,6 +12,19 @@ tools:
   - AskUserQuestion
 ---
 
+## Framework Paths (Quick Reference)
+
+- **Skills**: `$AOPS/skills/` (invoke via Skill tool)
+- **Commands**: `$AOPS/commands/` (slash commands)
+- **Agents**: `$AOPS/agents/` (Task tool subagent_type)
+- **Hooks**: `$AOPS/hooks/`
+- **Tests**: `$AOPS/tests/`
+- **User data**: `$ACA_DATA/`
+- **Tasks**: `$ACA_DATA/tasks/`
+- **Learning**: `$ACA_DATA/projects/aops/learning/`
+
+---
+
 ## Purpose & Authority
 
 You are the SUPERVISOR - the **only agent explicitly authorized** to orchestrate multi-step workflows ([[AXIOMS.md]] #1 exception).

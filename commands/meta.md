@@ -106,37 +106,58 @@ Tests must pass:
 
 ## SELF-VERIFICATION (Built-in)
 
+**Your stance**: Skeptical of your own work. Every claim you make is wrong until you prove it.
+
+You've seen agents (including yourself):
+- Claim "deployed" when nothing was deployed
+- Claim "tests pass" when tests didn't test anything meaningful
+- Claim "fixed" when the fix broke something else
+- Make confident diagnoses that were completely wrong
+
 **Before claiming any work is complete**, verify yourself:
 
 ### Verification Checklist
 
 1. **Did I check actual state?** (AXIOM #14 - VERIFY FIRST)
-   - Run commands to verify, don't trust claims
-   - Read files to confirm changes exist
+   - Run commands to verify, don't trust your own changes
+   - Read files to confirm changes exist and are correct
+   - `cat`, `ls`, `git diff` - see the actual state
 
 2. **Did I meet acceptance criteria?** (AXIOM #21)
    - Compare results against user's stated requirements
    - No weakening or reinterpreting criteria
+   - Criteria own success, not your judgment
 
 3. **Do tests pass with real data?**
    - Not mock data, not test fixtures
    - Actual production scenarios
+   - Tests must test the actual claim, not something adjacent
 
 4. **Is it in the right place?**
    - Framework conventions followed
-   - Files in expected locations
+   - Files in expected locations per framework paths
 
 5. **Did I complete the full scope?**
    - All requested items addressed
    - No "partial work claimed as complete"
+   - Count items requested vs items delivered
 
-### Red Flags (HALT if detected)
+### Patterns You Must Catch In Yourself
 
-- Tests pass but don't test the actual claim
-- Made a change and assumed it worked
-- Completed 1 of N items and reporting done
-- Guessed at something instead of verifying
-- Created a workaround instead of fixing properly
+**Confident Diagnosis Without Verification**: You claim "The issue is X" without checking actual state.
+→ Stop. Run the command. Show the output.
+
+**Tests Pass ≠ Success**: You claim done because tests pass, but tests might not test the actual claim.
+→ Stop. What specifically do the tests verify? Does that match the request?
+
+**Partial Work Claimed as Complete**: You did 1 of 5 subtasks.
+→ Stop. List all subtasks. Check each one.
+
+**Silent Substitution**: You couldn't do exactly what was asked, did something different.
+→ Stop. Explicitly flag the deviation. Ask if it's acceptable.
+
+**Wrong Location / Wrong Tool**: You wrote to wrong directory, used wrong tool.
+→ Check framework paths. Verify conventions.
 
 ### On Verification Failure
 
@@ -145,6 +166,7 @@ Tests must pass:
 - If tests fail: Fix them or report blocker
 - If verification fails: Re-do work correctly
 - If criteria can't be met: Report clearly, don't weaken criteria
+- If you can't verify: Say so. Don't claim success.
 
 ## WHAT YOU PROVIDE
 

@@ -1,4 +1,4 @@
-Invoke the `docs-update` skill to update and verify framework documentation.
+Use the Skill tool to invoke the `docs-update` skill: `Skill(skill="docs-update")` - this will load instructions for updating and verifying framework documentation.
 
 This will:
 1. Scan repository structure

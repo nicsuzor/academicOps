@@ -4,7 +4,7 @@ description: Extract action items from emails and create tasks automatically wit
 permalink: commands/email
 ---
 
-Invoke the email-task-capture workflow from the tasks skill.
+Use the Skill tool to invoke the `tasks` skill: `Skill(skill="tasks")` - then follow the email-task-capture workflow documented within.
 
 **Workflow**: Extract action items from recent emails, categorize using bmem context, and create properly structured tasks.
 

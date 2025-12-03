@@ -9,6 +9,8 @@ dependencies = [
     "fastmcp>=2.13.1",
     "pytest-xdist>=3.8.0",
     "streamlit>=1.28.0",
+    "networkx>=3.6",
+    "anthropic>=0.75.0",
 ]
 
 [project.optional-dependencies]

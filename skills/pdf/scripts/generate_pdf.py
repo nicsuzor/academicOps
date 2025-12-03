@@ -14,9 +14,13 @@ Requirements:
 """
 
 import argparse
+import os
 import subprocess
 import sys
 from pathlib import Path
+
+# Default signature path (user data, not in skill)
+DEFAULT_SIGNATURE_PATH = Path(os.environ.get("ACA_DATA", "")) / "assets" / "signature.png"
 
 
 def detect_document_type(input_file: Path) -> str:
@@ -160,7 +164,6 @@ def main():
         choices=["letter", "academic"],
         help='Document type: "letter" or "academic" (auto-detected if not specified)',
     )
-
     args = parser.parse_args()
 
     sys.exit(generate_pdf(args.input, args.output, args.title, args.css, args.type))
