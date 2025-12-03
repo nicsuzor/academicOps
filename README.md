@@ -45,13 +45,9 @@ $AOPS/
 │   │
 │   ├── docs-update/         # Documentation validation and updates
 │   │
-│   ├── excalidraw/          # Visual diagram generation
+│   ├── excalidraw/          # Visual diagram generation (manual refinement)
 │   │   ├── libraries/       # 6 icon libraries (stick-figures, data-viz, hearts, etc.)
-│   │   ├── references/      # 10 guides (JSON format, graph layouts, mind mapping)
-│   │   └── scripts/
-│   │       ├── generate_task_viz.py  # JSON → Excalidraw format
-│   │       ├── task_viz_layout.py    # Force-directed graph layout (networkx)
-│   │       └── layout_task_graph.py  # DEPRECATED - use task_viz_layout.py
+│   │   └── references/      # 10 guides (JSON format, graph layouts, mind mapping)
 │   │
 │   ├── extractor/           # Archive extraction → bmem
 │   │   └── tests/
@@ -74,6 +70,8 @@ $AOPS/
 │   │   └── scripts/
 │   │       └── errors.jq    # JQ script for error extraction
 │   │
+│   ├── learning-log/        # Performance pattern logging to thematic files
+│   │
 │   ├── pdf/                 # Markdown → PDF conversion
 │   │   ├── assets/
 │   │   │   ├── academic-style.css  # Academic document styles
@@ -95,13 +93,20 @@ $AOPS/
 │   │   ├── server.py        # MCP server implementation
 │   │   ├── task_loader.py   # Task loading logic
 │   │   ├── task_ops.py      # Task operations
-│   │   ├── scripts/         # 4 CLI utilities (add, update, archive, view)
+│   │   ├── scripts/         # 5 CLI utilities
+│   │   │   ├── task_add.py       # Create new task
+│   │   │   ├── task_update.py    # Modify task
+│   │   │   ├── task_archive.py   # Archive task
+│   │   │   ├── task_view.py      # View task details
+│   │   │   └── task_viz.py       # Force-directed task graph → Excalidraw
 │   │   ├── tests/
 │   │   │   └── test_task_scripts.sh  # Task script tests
 │   │   └── workflows/
 │   │       └── email-capture.md  # Email → task workflow
 │   │
-│   └── training-set-builder/  # Training data extraction
+│   ├── training-set-builder/  # Training data extraction
+│   │
+│   └── transcript/          # Session JSONL → markdown transcripts
 │
 ├── hooks/                   # Lifecycle automation (Python)
 │   ├── sessionstart_load_axioms.py  # Injects AXIOMS.md at session start
@@ -148,7 +153,6 @@ $AOPS/
 │   ├── bmem-validator.md    # Fix bmem validation errors in parallel
 │   ├── dev.md               # Development task routing to python-dev
 │   ├── email-extractor.md   # Email archive processing agent
-│   ├── log-agent.md         # Performance pattern logging agent
 │   └── task-viz.md          # Task graph visualization (bmem → excalidraw)
 │
 ├── experiments/             # Temporary experiment logs
@@ -161,6 +165,7 @@ $AOPS/
 │
 ├── scripts/                 # Deployment and utility scripts
 │   ├── setup.sh             # Project setup script
+│   ├── claude_transcript.py         # Session JSONL → markdown converter
 │   ├── package_deployment.py        # Skill packaging
 │   ├── measure_router_compliance.py # Prompt router analysis
 │   └── migrate_log_entries.py       # Log migration utility
