@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Prompt Intent Router hook for Claude Code.
 
-Writes prompt to temp file and instructs main agent to spawn a Haiku
-classifier subagent for semantic skill recommendation.
+Two-tier routing:
+1. Keyword match → MANDATORY skill invocation instruction
+2. No match → Offers Haiku classifier spawn for semantic analysis
 
 Exit codes:
     0: Success (always continues)
@@ -94,7 +95,16 @@ def analyze_prompt(prompt: str) -> str:
             matched_skills.append(skill)
 
     if not matched_skills:
-        return ""
+        # No keyword match - offer semantic classification via Haiku
+        filepath = write_prompt_context(prompt)
+        return (
+            f"CLASSIFIER AVAILABLE: No keyword match for skills. For semantic analysis, "
+            f"invoke Task tool with:\n"
+            f"- subagent_type: \"general-purpose\"\n"
+            f"- model: \"haiku\"\n"
+            f"- prompt: \"Read {filepath} and classify intent. Return the single best "
+            f"skill from available_skills, or 'none' if no skill applies.\""
+        )
 
     # Build response based on number of matches
     # Strong instruction because agents bypass skills and use raw MCP tools directly
