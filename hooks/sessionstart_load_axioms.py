@@ -19,6 +19,35 @@ from lib.paths import get_aops_root, get_data_root
 from hooks.hook_logger import log_hook_event
 
 
+def load_readme() -> str:
+    """
+    Load README.md content (framework paths and structure).
+
+    Returns:
+        README content as string
+
+    Raises:
+        FileNotFoundError: If README.md doesn't exist (fail-fast)
+    """
+    aops_root = get_aops_root()
+    readme_path = aops_root / "README.md"
+
+    if not readme_path.exists():
+        msg = (
+            f"FATAL: README.md missing at {readme_path}. "
+            "SessionStart hook requires this file for framework paths."
+        )
+        raise FileNotFoundError(msg)
+
+    content = readme_path.read_text().strip()
+
+    if not content:
+        msg = f"FATAL: README.md at {readme_path} is empty."
+        raise ValueError(msg)
+
+    return content
+
+
 def load_axioms() -> str:
     """
     Load AXIOMS.md content.
@@ -97,11 +126,17 @@ def main():
         # If no stdin or parsing fails, continue with empty input
         pass
 
+    # Load README.md (fail-fast if missing)
+    try:
+        readme_content = load_readme()
+    except (FileNotFoundError, ValueError) as e:
+        print(f"ERROR: {e}", file=sys.stderr)
+        sys.exit(1)
+
     # Load AXIOMS.md (fail-fast if missing)
     try:
         axioms_content = load_axioms()
     except (FileNotFoundError, ValueError) as e:
-        # Fail-fast: log error and exit with error code
         print(f"ERROR: {e}", file=sys.stderr)
         sys.exit(1)
 
@@ -109,12 +144,17 @@ def main():
     try:
         core_content = load_core()
     except (FileNotFoundError, ValueError) as e:
-        # Fail-fast: log error and exit with error code
         print(f"ERROR: {e}", file=sys.stderr)
         sys.exit(1)
 
-    # Build context
-    additional_context = f"""# Framework Principles (AXIOMS.md)
+    # Build context - README first (paths), then AXIOMS (principles), then CORE (user)
+    additional_context = f"""# Framework Structure (README.md)
+
+{readme_content}
+
+---
+
+# Framework Principles (AXIOMS.md)
 
 {axioms_content}
 
@@ -123,17 +163,10 @@ def main():
 # User Context (CORE.md)
 
 {core_content}
-
----
-
-**For more information**:
-- Framework structure: See README.md
-- Current state: See $ACA_DATA/projects/aops/STATE.md
-- Vision and roadmap: See $ACA_DATA/projects/aops/VISION.md and ROADMAP.md
-- Learning patterns: See $ACA_DATA/projects/aops/experiments/LOG.md
 """
 
     # Get paths for logging
+    readme_path = get_aops_root() / "README.md"
     axioms_path = get_aops_root() / "AXIOMS.md"
     core_path = get_data_root() / "CORE.md"
 
@@ -150,7 +183,7 @@ def main():
         "hookSpecificOutput": {
             "hookEventName": "SessionStart",
             "additionalContext": additional_context,
-            "filesLoaded": [str(axioms_path), str(core_path)]
+            "filesLoaded": [str(readme_path), str(axioms_path), str(core_path)]
         }
     }
 
@@ -162,6 +195,7 @@ def main():
     print(json.dumps(output_data))
 
     # Status to stderr
+    print(f"✓ Loaded README.md from {readme_path}", file=sys.stderr)
     print(f"✓ Loaded AXIOMS.md from {axioms_path}", file=sys.stderr)
     print(f"✓ Loaded CORE.md from {core_path}", file=sys.stderr)
 
