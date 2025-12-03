@@ -19,30 +19,30 @@ from lib.paths import get_aops_root, get_data_root
 from hooks.hook_logger import log_hook_event
 
 
-def load_readme() -> str:
+def load_framework() -> str:
     """
-    Load README.md content (framework paths and structure).
+    Load FRAMEWORK.md content (paths - DO NOT GUESS).
 
     Returns:
-        README content as string
+        FRAMEWORK content as string
 
     Raises:
-        FileNotFoundError: If README.md doesn't exist (fail-fast)
+        FileNotFoundError: If FRAMEWORK.md doesn't exist (fail-fast)
     """
     aops_root = get_aops_root()
-    readme_path = aops_root / "README.md"
+    framework_path = aops_root / "FRAMEWORK.md"
 
-    if not readme_path.exists():
+    if not framework_path.exists():
         msg = (
-            f"FATAL: README.md missing at {readme_path}. "
+            f"FATAL: FRAMEWORK.md missing at {framework_path}. "
             "SessionStart hook requires this file for framework paths."
         )
         raise FileNotFoundError(msg)
 
-    content = readme_path.read_text().strip()
+    content = framework_path.read_text().strip()
 
     if not content:
-        msg = f"FATAL: README.md at {readme_path} is empty."
+        msg = f"FATAL: FRAMEWORK.md at {framework_path} is empty."
         raise ValueError(msg)
 
     return content
@@ -126,9 +126,9 @@ def main():
         # If no stdin or parsing fails, continue with empty input
         pass
 
-    # Load README.md (fail-fast if missing)
+    # Load FRAMEWORK.md (fail-fast if missing)
     try:
-        readme_content = load_readme()
+        framework_content = load_framework()
     except (FileNotFoundError, ValueError) as e:
         print(f"ERROR: {e}", file=sys.stderr)
         sys.exit(1)
@@ -147,10 +147,10 @@ def main():
         print(f"ERROR: {e}", file=sys.stderr)
         sys.exit(1)
 
-    # Build context - README first (paths), then AXIOMS (principles), then CORE (user)
-    additional_context = f"""# Framework Structure (README.md)
+    # Build context - FRAMEWORK first (paths), then AXIOMS (principles), then CORE (user)
+    additional_context = f"""# Framework Paths (FRAMEWORK.md)
 
-{readme_content}
+{framework_content}
 
 ---
 
@@ -166,7 +166,7 @@ def main():
 """
 
     # Get paths for logging
-    readme_path = get_aops_root() / "README.md"
+    framework_path = get_aops_root() / "FRAMEWORK.md"
     axioms_path = get_aops_root() / "AXIOMS.md"
     core_path = get_data_root() / "CORE.md"
 
@@ -183,7 +183,7 @@ def main():
         "hookSpecificOutput": {
             "hookEventName": "SessionStart",
             "additionalContext": additional_context,
-            "filesLoaded": [str(readme_path), str(axioms_path), str(core_path)]
+            "filesLoaded": [str(framework_path), str(axioms_path), str(core_path)]
         }
     }
 
@@ -195,7 +195,7 @@ def main():
     print(json.dumps(output_data))
 
     # Status to stderr
-    print(f"✓ Loaded README.md from {readme_path}", file=sys.stderr)
+    print(f"✓ Loaded FRAMEWORK.md from {framework_path}", file=sys.stderr)
     print(f"✓ Loaded AXIOMS.md from {axioms_path}", file=sys.stderr)
     print(f"✓ Loaded CORE.md from {core_path}", file=sys.stderr)
 
