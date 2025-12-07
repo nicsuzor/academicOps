@@ -1,19 +1,10 @@
 #!/usr/bin/env python3
 """
-Path resolution module for aOps framework.
+Path resolution for aOps framework (fail-fast, no fallbacks).
 
-Provides robust path resolution with automatic framework detection:
-- $AOPS: Framework root (preferred if set correctly)
-- $ACA_DATA: Shared memory vault (required for data access)
-
-AOPS Resolution Strategy (fail-fast when explicitly set):
-1. Use $AOPS if set (fail immediately if invalid - AXIOMS #5)
-2. Auto-detect from module location (only if $AOPS not set)
-3. Check common installation locations (only if $AOPS not set)
-4. Auto-set $AOPS when detected
-
-ACA_DATA Resolution (fail-fast):
-- Must be explicitly set (no auto-detection for user data)
+Required environment variables:
+- $AOPS: Framework root
+- $ACA_DATA: User data directory
 """
 
 from __future__ import annotations
@@ -24,65 +15,28 @@ from pathlib import Path
 
 def get_aops_root() -> Path:
     """
-    Get framework root directory with fail-fast validation.
-
-    Resolution strategy:
-    1. Use $AOPS if set (fail immediately if invalid - AXIOMS #5)
-    2. Detect from this module's location if $AOPS not set (lib/ -> parent)
-    3. Check common known locations if $AOPS not set
-    4. Fail with clear error if none found
-
-    Once found, sets $AOPS for consistency.
+    Get framework root directory (fail-fast).
 
     Returns:
         Path: Absolute path to aOps framework root
 
     Raises:
-        RuntimeError: If framework directory cannot be found
+        RuntimeError: If $AOPS not set or invalid
     """
-    # Try $AOPS if set (fail-fast if invalid - AXIOMS #5)
-    if aops := os.environ.get("AOPS"):
-        aops_path = Path(aops).resolve()
-        if not aops_path.exists():
-            raise RuntimeError(
-                f"$AOPS is set but path doesn't exist: {aops_path}\n"
-                f"Fix by setting AOPS to valid path or unsetting it."
-            )
-        if not (aops_path / "lib").is_dir():
-            raise RuntimeError(
-                f"$AOPS is set but doesn't look like aOps framework (missing lib/): {aops_path}\n"
-                f"Fix by setting AOPS to framework root or unsetting it."
-            )
-        return aops_path
+    aops = os.environ.get("AOPS")
+    if not aops:
+        raise RuntimeError(
+            "$AOPS environment variable not set.\n"
+            "Run: ./setup.sh  or  export AOPS='/path/to/aOps'"
+        )
 
-    # Detect from this module's location (lib/paths.py -> lib/ -> framework root)
-    module_path = Path(__file__).parent  # lib/
-    framework_root = module_path.parent  # framework root
-    if (framework_root / "lib").is_dir() and (framework_root / "hooks").is_dir():
-        # Set AOPS for consistency with other code
-        os.environ["AOPS"] = str(framework_root.resolve())
-        return framework_root.resolve()
+    aops_path = Path(aops).resolve()
+    if not aops_path.exists():
+        raise RuntimeError(f"$AOPS path doesn't exist: {aops_path}")
+    if not (aops_path / "lib").is_dir():
+        raise RuntimeError(f"$AOPS doesn't look like aOps framework (missing lib/): {aops_path}")
 
-    # Check common known locations
-    for candidate in [
-        Path.home() / "src" / "aOps",
-        Path.home() / "src" / "academicOps",
-    ]:
-        if candidate.is_dir() and (candidate / "lib").is_dir():
-            os.environ["AOPS"] = str(candidate.resolve())
-            return candidate.resolve()
-
-    # Failed to find framework
-    raise RuntimeError(
-        "Cannot locate aOps framework directory.\n"
-        f"  Tried:\n"
-        f"    - $AOPS: {os.environ.get('AOPS', '<not set>')}\n"
-        f"    - Module location: {module_path.parent}\n"
-        f"    - {Path.home() / 'src' / 'aOps'}\n"
-        f"    - {Path.home() / 'src' / 'academicOps'}\n"
-        f"  Fix by setting AOPS:\n"
-        f"    export AOPS='/path/to/aOps'"
-    )
+    return aops_path
 
 
 def get_data_root() -> Path:

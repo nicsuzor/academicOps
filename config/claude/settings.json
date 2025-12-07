@@ -1,4 +1,7 @@
 {
+  "env": {
+    "AOPS": "/Users/suzor/src/aOps"
+  },
   "permissions": {
     "allow": [
       "Read"
@@ -118,5 +121,5 @@
     "type": "command",
     "command": "host=$(hostname -s); if git rev-parse --git-dir >/dev/null 2>&1; then repo=$(basename \"$(git --no-optional-locks rev-parse --show-toplevel 2>/dev/null)\"); branch=$(git --no-optional-locks symbolic-ref --short HEAD 2>/dev/null || git --no-optional-locks rev-parse --short HEAD 2>/dev/null); printf '%s | %s | %s' \"$host\" \"$repo\" \"$branch\"; else printf '%s | %s' \"$host\" \"$(pwd)\"; fi"
   },
-  "alwaysThinkingEnabled": true
+  "alwaysThinkingEnabled": false
 }
