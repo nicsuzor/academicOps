@@ -37,51 +37,46 @@ fi
 ACA_DATA_PATH="${ACA_DATA}"
 CLAUDE_DIR="$HOME/.claude"
 
+# Detect container runtime (docker, podman, orbstack all provide 'docker' CLI)
+detect_container_runtime() {
+    if command -v docker &> /dev/null && docker info &> /dev/null; then
+        echo "docker"
+    elif command -v podman &> /dev/null; then
+        echo "podman"
+    else
+        echo ""
+    fi
+}
+
+CONTAINER_RUNTIME=$(detect_container_runtime)
+
 echo "Framework paths:"
 echo "  AOPS:     $AOPS_PATH"
 echo "  ACA_DATA: $ACA_DATA_PATH"
-echo
-
-# Detect shell
-SHELL_NAME="$(basename "$SHELL")"
-case "$SHELL_NAME" in
-    bash)
-        RC_FILE="$HOME/.bashrc"
-        ;;
-    zsh)
-        RC_FILE="$HOME/.zshrc"
-        ;;
-    *)
-        echo -e "${YELLOW}Warning: Unknown shell '$SHELL_NAME'. Defaulting to ~/.bashrc${NC}"
-        RC_FILE="$HOME/.bashrc"
-        ;;
-esac
-
-echo "Detected shell: $SHELL_NAME"
-echo "RC file: $RC_FILE"
-echo
-
-# Step 1: Add environment variables to RC file
-echo "Step 1: Setting environment variables"
-echo "-------------------------------------"
-
-ENV_BLOCK="# aOps Framework Environment Variables
-export AOPS=\"$AOPS_PATH\"
-export ACA_DATA=\"$ACA_DATA_PATH\""
-
-if grep -q "export AOPS=" "$RC_FILE" 2>/dev/null; then
-    echo -e "${YELLOW}Environment variables already set in $RC_FILE${NC}"
-    echo "Current values:"
-    grep "AOPS\|ACA_DATA" "$RC_FILE" || true
+if [ -n "$CONTAINER_RUNTIME" ]; then
+    echo -e "  Container: ${GREEN}$CONTAINER_RUNTIME${NC}"
 else
-    echo "$ENV_BLOCK" >> "$RC_FILE"
-    echo -e "${GREEN}✓ Added environment variables to $RC_FILE${NC}"
+    echo -e "  Container: ${YELLOW}none detected${NC}"
+fi
+echo
+
+# Step 1: Verify environment variables
+echo "Step 1: Checking environment variables"
+echo "--------------------------------------"
+
+if [ -z "${AOPS:-}" ] || [ -z "${ACA_DATA:-}" ]; then
+    echo -e "${RED}✗ Required environment variables not set${NC}"
+    echo
+    echo "Add to your shell RC file (~/.zshrc or ~/.bashrc):"
+    echo "  export AOPS=\"$AOPS_PATH\""
+    echo "  export ACA_DATA=\"/path/to/your/data\""
+    echo
+    echo "Then: source ~/.zshrc && ./setup.sh"
+    exit 1
 fi
 
-# Export for current session
-export AOPS="$AOPS_PATH"
-export ACA_DATA="$ACA_DATA_PATH"
-
+echo -e "${GREEN}✓ AOPS=$AOPS${NC}"
+echo -e "${GREEN}✓ ACA_DATA=$ACA_DATA${NC}"
 echo
 
 # Step 2: Create symlinks in ~/.claude/
@@ -166,10 +161,29 @@ mcp_source="$AOPS_PATH/config/claude/mcp.json"
 
 if [ -f "$mcp_source" ] && command -v jq &> /dev/null; then
     if [ -f "$HOME/.claude.json" ]; then
-        # Merge mcpServers from our config into ~/.claude.json
-        jq -s '.[0] * {mcpServers: .[1].mcpServers}' "$HOME/.claude.json" "$mcp_source" > "$HOME/.claude.json.tmp" \
+        # Read MCP config, patch container runtime, expand $HOME
+        if [ -n "$CONTAINER_RUNTIME" ]; then
+            mcp_patched=$(jq --arg runtime "$CONTAINER_RUNTIME" --arg home "$HOME" '
+                .mcpServers | to_entries | map(
+                    if .value.command == "podman" or .value.command == "docker" then
+                        .value.command = $runtime
+                    else . end
+                    | .value.args = (.value.args // [] | map(gsub("\\$HOME"; $home)))
+                ) | from_entries | {mcpServers: .}
+            ' "$mcp_source")
+            echo "  Using container runtime: $CONTAINER_RUNTIME"
+        else
+            mcp_patched=$(jq --arg home "$HOME" '
+                .mcpServers | to_entries | map(
+                    .value.args = (.value.args // [] | map(gsub("\\$HOME"; $home)))
+                ) | from_entries | {mcpServers: .}
+            ' "$mcp_source")
+            echo -e "${YELLOW}  No container runtime - container-based MCP servers may not work${NC}"
+        fi
+        # Merge patched mcpServers into ~/.claude.json
+        echo "$mcp_patched" | jq -s '.[0] * .[1]' "$HOME/.claude.json" - > "$HOME/.claude.json.tmp" \
             && mv "$HOME/.claude.json.tmp" "$HOME/.claude.json"
-        echo -e "${GREEN}✓ Synced MCP servers from $mcp_source to ~/.claude.json${NC}"
+        echo -e "${GREEN}✓ Synced MCP servers to ~/.claude.json${NC}"
     else
         echo -e "${YELLOW}⚠ ~/.claude.json doesn't exist - will be created on first Claude Code run${NC}"
         echo "  Re-run this script after using Claude Code once"
@@ -178,13 +192,72 @@ elif [ ! -f "$mcp_source" ]; then
     echo -e "${YELLOW}⚠ MCP source not found: $mcp_source${NC}"
 else
     echo -e "${RED}✗ jq not installed - cannot sync MCP servers${NC}"
-    echo "  Install jq: sudo apt install jq"
+    echo "  Install jq: brew install jq"
 fi
 
 # Clean up legacy ~/.mcp.json symlink if it exists (no longer used)
 if [ -L "$HOME/.mcp.json" ]; then
     rm "$HOME/.mcp.json"
     echo "  Removed legacy ~/.mcp.json symlink"
+fi
+
+# Step 2c: Configure Claude Desktop
+echo
+echo "Configuring Claude Desktop..."
+
+# Detect Claude Desktop config location (cross-platform)
+case "$(uname -s)" in
+    Darwin)
+        CLAUDE_DESKTOP_DIR="$HOME/Library/Application Support/Claude"
+        ;;
+    Linux)
+        CLAUDE_DESKTOP_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/Claude"
+        ;;
+    MINGW*|MSYS*|CYGWIN*)
+        CLAUDE_DESKTOP_DIR="$APPDATA/Claude"
+        ;;
+    *)
+        CLAUDE_DESKTOP_DIR=""
+        ;;
+esac
+
+if [ -n "$CLAUDE_DESKTOP_DIR" ] && [ -d "$CLAUDE_DESKTOP_DIR" ] && command -v jq &> /dev/null; then
+    CLAUDE_DESKTOP_CONFIG="$CLAUDE_DESKTOP_DIR/claude_desktop_config.json"
+
+    # Remove existing config (symlink or file)
+    [ -e "$CLAUDE_DESKTOP_CONFIG" ] && rm -f "$CLAUDE_DESKTOP_CONFIG"
+
+    # Find uvx path
+    UVX_PATH=$(command -v uvx 2>/dev/null || echo "uvx")
+
+    # Build PATH for GUI apps (they don't inherit shell PATH)
+    GUI_PATH="$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
+
+    # Generate config: filter http servers, expand $HOME/$AOPS, set env vars
+    jq --arg uvx "$UVX_PATH" --arg path "$GUI_PATH" --arg runtime "${CONTAINER_RUNTIME:-docker}" \
+       --arg home "$HOME" --arg aops "$AOPS" --arg aca_data "$ACA_DATA" '
+        .mcpServers | to_entries
+        | map(select(.value.type != "http"))  # Filter out http transport (not supported)
+        | map(
+            if .value.command == "uvx" then
+                .value.command = $uvx |
+                .value.env = (.value.env // {}) + {"PATH": $path}
+            elif .value.command == "podman" or .value.command == "docker" then
+                .value.command = $runtime
+            else . end
+            | .value.args = (.value.args // [] | map(gsub("\\$HOME"; $home) | gsub("\\$AOPS"; $aops)))
+            | .value.env = ((.value.env // {}) + {"AOPS": $aops, "ACA_DATA": $aca_data})
+        ) | from_entries | {mcpServers: .}
+    ' "$mcp_source" > "$CLAUDE_DESKTOP_CONFIG"
+
+    echo -e "${GREEN}✓ Created $CLAUDE_DESKTOP_CONFIG${NC}"
+    echo "  uvx path: $UVX_PATH"
+elif [ -z "$CLAUDE_DESKTOP_DIR" ]; then
+    echo -e "${YELLOW}⚠ Unknown platform - skipping Claude Desktop config${NC}"
+elif [ ! -d "$CLAUDE_DESKTOP_DIR" ]; then
+    echo -e "${YELLOW}⚠ Claude Desktop not installed - skipping${NC}"
+else
+    echo -e "${YELLOW}⚠ jq not installed - cannot configure Claude Desktop${NC}"
 fi
 
 echo
@@ -255,22 +328,15 @@ fi
 # Test Python path resolution
 echo
 echo "Testing Python path resolution..."
-if python3 -c "from lib.paths import validate_environment; validate_environment()" 2>/dev/null; then
+if PYTHONPATH="$AOPS" python3 -c "from lib.paths import validate_environment; validate_environment()" 2>/dev/null; then
     echo -e "${GREEN}✓ Python path resolution working${NC}"
 else
-    echo -e "${YELLOW}⚠ Python path resolution test failed (env vars may not be loaded yet)${NC}"
-    echo "  Run 'source $RC_FILE' and try again"
+    echo -e "${YELLOW}⚠ Python path resolution test failed${NC}"
 fi
 
 echo
 if [ "$VALIDATION_PASSED" = true ]; then
     echo -e "${GREEN}✓ Setup completed successfully!${NC}"
-    echo
-    echo "Next steps:"
-    echo "  1. Reload your shell: source $RC_FILE"
-    echo "  2. Verify: python3 -c 'from lib.paths import validate_environment; validate_environment()'"
-    echo "  3. Test from any directory: cd /tmp && uv run python \$AOPS/skills/tasks/scripts/task_view.py"
-    echo
     exit 0
 else
     echo -e "${RED}✗ Setup validation failed${NC}"

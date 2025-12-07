@@ -15,7 +15,7 @@
         "run",
         "--rm",
         "-v",
-        "/home/nic/.config/gcloud:/root/.config/gcloud:ro",
+        "$HOME/.config/gcloud:/root/.config/gcloud:ro",
         "-i",
         "us-central1-docker.pkg.dev/prosocial-443205/reg/zotmcp:latest"
       ]
@@ -26,7 +26,7 @@
       "args": [
         "run",
         "-v",
-        "/home/nic/.config/gcloud:/root/.config/gcloud:ro",
+        "$HOME/.config/gcloud:/root/.config/gcloud:ro",
         "-i",
         "us-central1-docker.pkg.dev/prosocial-443205/reg/osbchatmcp:latest"
       ]
