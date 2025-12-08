@@ -271,6 +271,44 @@ fi
 
 echo
 
+# Step 2d: Create repo-local .claude/ for remote coding
+echo "Setting up repository .claude/ (for remote coding)..."
+
+REPO_CLAUDE="$AOPS_PATH/.claude"
+mkdir -p "$REPO_CLAUDE"
+
+# Create relative symlinks for portability
+create_relative_symlink() {
+    local name=$1
+    local target=$2
+    local link_path="$REPO_CLAUDE/$name"
+
+    [ -e "$link_path" ] && rm -rf "$link_path"
+    ln -s "$target" "$link_path"
+    echo "  $name → $target (relative)"
+}
+
+create_relative_symlink "settings.json" "../config/claude/settings.json"
+create_relative_symlink "agents" "../agents"
+create_relative_symlink "skills" "../skills"
+create_relative_symlink "commands" "../commands"
+create_relative_symlink "CLAUDE.md" "../CLAUDE.md"
+echo -e "${GREEN}✓ Repository .claude/ configured for remote coding${NC}"
+
+# Step 2e: Configure Basic Memory default project
+echo
+echo "Configuring Basic Memory (bmem)..."
+
+if command -v uvx &> /dev/null; then
+    uvx basic-memory project default main 2>/dev/null \
+        && echo -e "${GREEN}✓ bmem default project set to 'main'${NC}" \
+        || echo -e "${YELLOW}⚠ Could not set bmem default project${NC}"
+else
+    echo -e "${YELLOW}⚠ uvx not found, skipping bmem configuration${NC}"
+fi
+
+echo
+
 # Step 3: Validate setup
 echo "Step 3: Validating setup"
 echo "------------------------"
