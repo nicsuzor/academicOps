@@ -37,13 +37,14 @@ def test_deny_rules_block_claude_dir_read(claude_headless):
     # The command should succeed (Claude responded)
     assert result["success"], f"Headless execution failed: {result.get('error')}"
 
-    # Get the response text
+    # Get the response text (extract just the 'result' string, not the full dict)
     output = result.get("result", {})
+    result_text = output.get("result", "") if isinstance(output, dict) else str(output)
 
     # The response should indicate the read was blocked/denied
     # Claude's response when a tool is blocked by deny rules typically includes
     # phrases like "denied", "blocked", "not allowed", "permission", or "cannot access"
-    response_text = str(output).lower()
+    response_text = result_text.lower()
 
     # Check for indicators that the read was blocked
     deny_indicators = [
@@ -61,15 +62,15 @@ def test_deny_rules_block_claude_dir_read(claude_headless):
 
     found_denial = any(indicator in response_text for indicator in deny_indicators)
 
-    # Also check that the response does NOT contain actual settings content
+    # Also check that the response does NOT contain actual settings.json content
     # (which would indicate the read succeeded when it shouldn't have)
+    # These are specific JSON structure patterns from settings.json, not generic words
     settings_content_indicators = [
-        "allowedtools",
-        "denytools",
-        "permissions",
-        '"read"',
-        '"write"',
-        '"edit"',
+        '"allow"',  # JSON key from settings.json
+        '"deny"',  # JSON key from settings.json
+        "sessionstart",  # Hook name from settings.json
+        "pretooluse",  # Hook name from settings.json
+        "posttooluse",  # Hook name from settings.json
     ]
 
     contains_settings_content = any(
@@ -78,7 +79,7 @@ def test_deny_rules_block_claude_dir_read(claude_headless):
 
     assert found_denial or not contains_settings_content, (
         f"Deny rule may not be working. Response should indicate read was blocked "
-        f"or should NOT contain settings file content. Got: {output}"
+        f"or should NOT contain settings file content. Got: {result_text}"
     )
 
 
@@ -99,9 +100,10 @@ def test_deny_rules_block_claude_dir_write(claude_headless):
     # The command should succeed (Claude responded)
     assert result["success"], f"Headless execution failed: {result.get('error')}"
 
-    # Get the response text
+    # Get the response text (extract just the 'result' string, not the full dict)
     output = result.get("result", {})
-    response_text = str(output).lower()
+    result_text = output.get("result", "") if isinstance(output, dict) else str(output)
+    response_text = result_text.lower()
 
     # Check for indicators that the write was blocked
     deny_indicators = [
