@@ -24,6 +24,22 @@ tests/
 
 ## Test Categories
 
+### Metrics Tests (Observability)
+
+Run with `-m metrics`. These tests measure system behavior rather than assert correctness.
+
+```bash
+uv run pytest tests/ -m metrics -v -s -n 0
+```
+
+**Router Compliance** (`test_router_compliance.py`): 3 tests
+
+- Hook log existence check
+- Today's compliance measurement
+- Full historical compliance analysis (slow)
+
+See `HOOK_TEST_PROTOCOL.md` for manual testing procedures.
+
 ### Unit Tests (Fast, Default)
 
 Run by default. Complete in ~4 seconds with 20 parallel workers.

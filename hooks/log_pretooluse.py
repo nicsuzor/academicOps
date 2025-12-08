@@ -15,8 +15,7 @@ import sys
 from datetime import UTC, datetime
 from typing import Any
 
-from lib.paths import get_data_root
-from hooks.session_logger import get_log_path
+from hooks.hook_logger import log_hook_event
 
 
 # Destructive git operations that should be blocked
@@ -27,42 +26,6 @@ DESTRUCTIVE_GIT_PATTERNS = [
     r"git\s+checkout\s+--\s+\.",  # git checkout -- . (discard all changes)
     r"git\s+stash\s+drop",  # git stash drop
 ]
-
-
-def log_to_session_file(
-    session_id: str, hook_event: str, input_data: dict[str, Any]
-) -> None:
-    """
-    Append hook event to hooks log file.
-
-    Args:
-        session_id: Session ID
-        hook_event: Name of the hook event
-        input_data: Input data from Claude Code (complete data passed through)
-    """
-    try:
-        # Get data directory for session logs
-        project_dir = get_data_root()
-
-        # Get log path with -hooks suffix
-        log_path = get_log_path(project_dir, session_id, suffix="-hooks")
-
-        # Create log entry with ALL input data plus our own timestamp if missing
-        log_entry = {
-            "hook_event": hook_event,
-            "logged_at": datetime.now(UTC).isoformat(),
-            **input_data,  # Include ALL fields from input
-        }
-
-        # Append to JSONL file
-        with log_path.open("a") as f:
-            json.dump(log_entry, f, separators=(",", ":"))
-            f.write("\n")
-    except Exception as e:
-        # Log error to stderr (appears in Claude Code debug logs) but don't crash
-        print(f"[log_pretooluse] Error logging hook event: {e}", file=sys.stderr)
-        # Never crash the hook
-        pass
 
 
 def validate_minimal_documentation(tool_name: str, args: dict[str, Any]) -> dict[str, Any] | None:
@@ -178,25 +141,23 @@ def main():
     tool_name = input_data.get("tool", "")
     args = input_data.get("args", {})
 
-    # Log to hooks session file
-    log_to_session_file(session_id, "PreToolUse", input_data)
+    # Determine output based on validation
+    output_data: dict[str, Any] = {}
 
     # Validate MINIMAL documentation principle
     validation_result = validate_minimal_documentation(tool_name, args)
     if validation_result is not None:
-        # Blocked - return error
-        print(json.dumps(validation_result))
-        sys.exit(0)
+        output_data = validation_result
+    else:
+        # Validate safe git usage
+        validation_result = validate_safe_git_usage(tool_name, args)
+        if validation_result is not None:
+            output_data = validation_result
 
-    # Validate safe git usage
-    validation_result = validate_safe_git_usage(tool_name, args)
-    if validation_result is not None:
-        # Blocked - return error
-        print(json.dumps(validation_result))
-        sys.exit(0)
+    # Log to hooks session file (includes both input and output)
+    log_hook_event(session_id, "PreToolUse", input_data, output_data, exit_code=0)
 
-    # Validation passed - continue
-    output_data: dict[str, Any] = {}
+    # Output result
     print(json.dumps(output_data))
     sys.exit(0)
 

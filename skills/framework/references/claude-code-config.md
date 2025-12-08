@@ -2,6 +2,8 @@
 
 Technical reference for Claude Code configuration file locations and behavior.
 
+**Official Documentation**: [Claude Code Documentation](https://code.claude.com/docs/en/claude_code_docs_map.md)
+
 ## Configuration File Locations
 
 ### User-Scoped Configuration
@@ -58,6 +60,70 @@ Technical reference for Claude Code configuration file locations and behavior.
 | Project (shared) | `.claude/settings.json` | `.mcp.json` |
 | Project (local) | `.claude/settings.local.json` | N/A |
 
+## Permissions Configuration
+
+### Syntax Rules
+
+**Tool Permissions** (Read, Write, Edit, etc.):
+- Glob patterns: `Write(**/.claude/**)`, `Edit(/data/tasks/**)`
+- Path patterns work in tool names
+
+**Bash Command Permissions**:
+- ✅ Prefix matching: `Bash(npm run:*)` - allows any command starting with "npm run"
+- ✅ Exact match: `Bash(npm install express)` - allows only that exact command
+- ✅ Global: `Bash` - allows all bash commands
+- ❌ Wildcards in middle: `Bash(cp * **/.claude/**)` - NOT SUPPORTED
+- ❌ Wildcards in middle: `Bash(echo * > **/.claude/**)` - NOT SUPPORTED
+
+**Common Patterns**:
+```json
+{
+  "permissions": {
+    "allow": [
+      "Read",
+      "Bash(uv run python:*)",
+      "Bash(git add:*)"
+    ],
+    "deny": [
+      "Write(/data/tasks/**)",
+      "Edit(**/.claude/**)",
+      "Bash(rm:*/.claude/*)",
+      "Bash(mv:*/.claude/*)",
+      "Bash(cp:*/.claude/*)"
+    ]
+  }
+}
+```
+
+### Hooks Configuration
+
+**For complete hooks documentation**, see [[hooks_guide.md]].
+
+
+### Status Line Configuration
+
+**Custom Status Line**:
+```json
+{
+  "statusLine": {
+    "type": "command",
+    "command": "host=$(hostname -s); repo=$(basename \"$(git rev-parse --show-toplevel 2>/dev/null)\"); branch=$(git symbolic-ref --short HEAD 2>/dev/null); printf '%s | %s | %s' \"$host\" \"$repo\" \"$branch\""
+  }
+}
+```
+
+**Output**: Displays in Claude Code interface (e.g., `myhost | writing | main`)
+
+### Always Thinking Mode
+
+```json
+{
+  "alwaysThinkingEnabled": false
+}
+```
+
+Set to `true` to enable extended thinking mode by default.
+
 ## Verified Behavior (Claude Code v2.0.50)
 
 - `claude mcp add --scope user` → writes to `~/.claude.json` mcpServers
@@ -65,3 +131,6 @@ Technical reference for Claude Code configuration file locations and behavior.
 - `claude mcp list` → reads from `~/.claude.json` + `.mcp.json`
 - Settings symlinks work (`~/.claude/settings.json` → aOps)
 - MCP config symlinks do NOT work (`~/.mcp.json` ignored for user scope)
+- Bash permission wildcards only work with prefix matching (`:*` syntax)
+- Hooks can use environment variables in commands (`$AOPS`, etc.)
+- Hook timeouts in milliseconds (default: 2000ms recommended)

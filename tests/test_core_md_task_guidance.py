@@ -4,26 +4,23 @@ Integration test validating that agent instructions include proper guidance
 for task-related operations to use the task skill.
 """
 
-import os
 from pathlib import Path
+
+from lib.paths import get_data_root
 
 
 def test_core_md_references_task_skill():
     """Verify CORE.md guides agents to check skills/README.md for task operations.
 
     This test validates that agents receive explicit guidance to:
-    1. Check bots/skills/README.md when handling task operations
+    1. Check skills/README.md when handling task operations
     2. Use the task skill for task management
     3. Not write task files directly
 
     The test will fail if CORE.md lacks this critical guidance.
     """
-    # Arrange: Locate CORE.md using AOPS environment variable
-    aops_root = os.environ.get("AOPS")
-    if not aops_root:
-        raise RuntimeError("AOPS environment variable not set")
-
-    core_md_path = Path(aops_root) / "CORE.md"
+    # Arrange: Locate CORE.md in data repository (user-specific, not framework)
+    core_md_path = get_data_root() / "CORE.md"
     assert core_md_path.exists(), f"CORE.md not found at {core_md_path}"
 
     # Act: Read CORE.md content

@@ -244,22 +244,172 @@ When copying elements, use slightly different schema:
 - **Route around boxes** - arrows should never pass through unrelated elements
 - **roughness: 2** for consistent hand-drawn aesthetic
 
+**Arrow binding details**:
+```json
+{
+  "startBinding": {
+    "elementId": "source-box-id",  // Required: ID of element arrow starts from
+    "focus": 0,                      // -1 to 1: Position along edge (-1=left/top, 0=center, 1=right/bottom)
+    "gap": 10                        // Pixels between arrow and element edge
+  },
+  "endBinding": {
+    "elementId": "target-box-id",  // Required: ID of element arrow points to
+    "focus": 0.2,                    // Offset from center for visual clarity
+    "gap": 10
+  }
+}
+```
+
+**Arrow positioning strategy**:
+- `focus: 0` → Arrow connects to center of edge (most common)
+- `focus: -0.5` → Arrow connects to left/top quarter of edge
+- `focus: 0.5` → Arrow connects to right/bottom quarter of edge
+- **Vary focus values** to prevent arrows overlapping when multiple arrows connect to same box
+- `gap: 8-12px` provides visual separation between arrow and box border
+- When position not specified for start/end, Excalidraw computes based on arrow's x/y coordinates
+
 ### Text
 ```json
 {
   "type": "text",
   "x": 100,
   "y": 100,
-  "width": 150,
-  "height": 25,
+  "width": 150,  // Auto-calculated if omitted when using convertToExcalidrawElements API
+  "height": 25,  // Auto-calculated based on text content + fontSize + lineHeight
   "text": "Sample Text",
   "fontSize": 16,
   "fontFamily": 1,  // 1=Virgil (hand-drawn, PREFERRED), 2=Helvetica, 3=Cascadia
   "textAlign": "left",
   "verticalAlign": "top",
-  "baseline": 18
+  "baseline": 18,  // Distance from top to text baseline, scales with fontSize
+  "lineHeight": 1.25,  // Multiplier for line spacing (1.25 = 125% of fontSize)
+  "containerId": null  // ID of container element if text is bound to a shape
   // + all common properties
 }
+```
+
+**Text sizing rules**:
+- **Width calculation**: Approximately `text.length * fontSize * 0.6` for rough estimates (varies by font)
+- **Height calculation**: `fontSize * lineHeight * lineCount` where lineCount depends on text wrapping
+- **Baseline**: Typically `fontSize * 0.7` for Virgil font family
+- **Container padding**: Add ~20px padding when calculating container size around text
+- **Auto-sizing**: When using `convertToExcalidrawElements()` API, omit width/height for automatic calculation
+
+**Bound text elements** (text inside containers):
+```json
+// Text element with containerId
+{
+  "type": "text",
+  "containerId": "container-element-id",  // Links to parent container
+  "text": "Text inside box",
+  // width auto-calculated to fit container with padding
+  // ... other properties
+}
+
+// Container element with bound text
+{
+  "type": "rectangle",
+  "id": "container-element-id",
+  "boundElements": [
+    { "type": "text", "id": "text-element-id" }
+  ],
+  // ... other properties
+}
+```
+
+---
+
+## Element Sizing Best Practices
+
+**Problem**: All elements being the same size creates visual chaos and poor hierarchy.
+
+**Solution**: Vary element dimensions dramatically based on content importance and text length.
+
+### Container Sizing Guidelines
+
+**Calculate based on text content**:
+```javascript
+// Rough formula for container dimensions
+const padding = 20;  // Minimum padding around text
+const fontSize = 16;
+const lineHeight = 1.25;
+
+// Estimate text width (varies by font, this is approximate)
+const textWidth = text.length * fontSize * 0.6;
+
+// Calculate wrapped lines if text is long
+const maxWidth = 300;  // Maximum container width
+const actualWidth = Math.min(textWidth + padding * 2, maxWidth);
+const lineCount = Math.ceil(textWidth / (actualWidth - padding * 2));
+
+// Calculate container dimensions
+const containerWidth = actualWidth;
+const containerHeight = fontSize * lineHeight * lineCount + padding * 2;
+```
+
+**Recommended minimum sizes**:
+- **XL elements** (goals, main concepts): 200-400px wide, 80-150px high
+- **L elements** (projects, sections): 150-250px wide, 60-100px high
+- **M elements** (tasks, details): 120-180px wide, 40-70px high
+- **S elements** (labels, tags): 80-120px wide, 30-50px high
+
+**Dynamic sizing by text length**:
+```javascript
+// Adapt container size to text
+if (text.length < 15) {
+  width = 100; height = 40;  // Small, compact
+} else if (text.length < 30) {
+  width = 150; height = 50;  // Medium
+} else if (text.length < 50) {
+  width = 200; height = 60;  // Large
+} else {
+  width = 250; height = 80;  // Extra large, allow wrapping
+}
+```
+
+**Visual hierarchy through size**:
+- Make important elements **2-3× larger** than supporting elements
+- Outstanding tasks should be **PROMINENT** (160-200px wide)
+- Completed tasks should be **DE-EMPHASIZED** (100-120px wide, small text)
+- Central concepts in mind maps should be **LARGEST** (300-400px wide)
+
+### Text Fitting in Containers
+
+**Common issue**: Text overflows or is tiny inside large boxes.
+
+**Solutions**:
+
+1. **Match text size to container**:
+```javascript
+// Scale fontSize based on container size
+const containerWidth = 200;
+const textLength = text.length;
+const targetFontSize = Math.min(
+  20,  // Maximum font size
+  Math.max(
+    12,  // Minimum font size
+    (containerWidth - 40) / (textLength * 0.6)  // Calculated to fit
+  )
+);
+```
+
+2. **Match container to text** (preferred):
+```javascript
+// Size container to fit text comfortably
+const fontSize = 16;  // Fixed size
+const padding = 20;
+const containerWidth = text.length * fontSize * 0.6 + padding * 2;
+const containerHeight = fontSize * 1.25 + padding * 2;
+```
+
+3. **Use text wrapping**:
+```javascript
+// For longer text, set max width and wrap
+const fontSize = 16;
+const maxWidth = 250;
+const padding = 20;
+const lineCount = Math.ceil(text.length * fontSize * 0.6 / (maxWidth - padding * 2));
+const containerHeight = fontSize * 1.25 * lineCount + padding * 2;
 ```
 
 ---
@@ -339,6 +489,26 @@ Study existing .excalidraw files to understand working patterns.
 
 ---
 
-**Last Updated**: 2025-11-18
+## Sources & References
+
+**Official Documentation**:
+- [JSON Schema | Excalidraw developer docs](https://docs.excalidraw.com/docs/codebase/json-schema)
+- [Creating Elements programmatically](https://docs.excalidraw.com/docs/@excalidraw/excalidraw/api/excalidraw-element-skeleton)
+- [GitHub: JSON Schema Documentation](https://github.com/excalidraw/excalidraw/blob/master/dev-docs/docs/codebase/json-schema.mdx)
+
+**Text Container & Sizing**:
+- [PR #4343: Bind text to shapes](https://github.com/excalidraw/excalidraw/pull/4343) - Text containers implementation
+- [PR #6546: Support creating containers programmatically](https://github.com/excalidraw/excalidraw/pull/6546)
+- [Issue #6514: Create text inside rectangle programmatically](https://github.com/excalidraw/excalidraw/issues/6514)
+- [Issue #3850: Autolayout container to fit text](https://github.com/excalidraw/excalidraw/issues/3850)
+
+**Arrow Binding**:
+- [Issue #157: Attached arrows and lines (glue points)](https://github.com/excalidraw/excalidraw/issues/157)
+- [Issue #4797: Arrows shouldn't bind to any shapes](https://github.com/excalidraw/excalidraw/issues/4797)
+- [DeepWiki: Linear Element Editor](https://deepwiki.com/excalidraw/excalidraw/6.1-linear-element-editor)
+
+---
+
+**Last Updated**: 2025-11-26
 **Maintainer**: excalidraw skill
-**Status**: Reverse-engineered specification (unofficial)
+**Status**: Reverse-engineered specification with official API documentation

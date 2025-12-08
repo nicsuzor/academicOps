@@ -3,69 +3,43 @@ description: Make minor adjustments to memory/instructions for future agents
 permalink: commands/learn
 ---
 
-**IMMEDIATELY** invoke the `framework` skill. The user wants to update memory/instructions with a minor adjustment.
+# CRITICAL: The user is telling you this because you failed
 
-**Purpose**: Update existing documentation or add minimal context so future agents discover needed information just-in-time.
+If the user invokes `/learn`, it means **an agent needed this information and didn't have it**. The user had to intervene. That's a failure.
 
-**NOT FOR BEHAVIOR PATTERNS**: Use `/log` for agent behavior patterns. Use `/learn` for memory/instruction adjustments.
+**Your job is to fix the failure, not rationalize why you don't have to.**
 
-**CRITICAL - Minimal Documentation Mode**: You MUST:
+❌ **WRONG**: "This info exists in file X, no changes needed"
+✅ **RIGHT**: "This info exists but wasn't discoverable when needed. I'll add it where agents will find it."
 
-✅ **DO**:
+**Existence ≠ Discoverability.** If the user had to tell you, the current location failed.
 
-- **Check if information already exists** - UPDATE rather than duplicate
-- Determine WHERE this lesson belongs (thematic learning files at `$ACA_DATA/projects/aops/learning/` for patterns, SKILL.md for workflows, other docs for specific guidance)
-- Ask: "When would an agent need this information?" - file it there
-- Keep it minimal (3 sentences max)
-- Make it discoverable (tags, location, clear title)
-- Focus on WHAT the agent needs to know, not WHY we learned it
+## What to do
 
-❌ **DO NOT**:
+1. **Accept that current documentation failed** - Don't argue
+2. **Figure out WHERE agents need this info** - At what point did you need it?
+3. **Put it there** - Even if it means adding a cross-reference to existing docs
+4. **Keep it minimal** - 1-3 sentences, not essays
 
-- Add duplicate information when you should UPDATE existing content
-- Write lengthy explanations or background
-- Add information "just in case" - only what's needed
-- Create new files without justification
-- Violate single source of truth principle
-- Add to `AXIOMS.md` - principles require explicit user decision
-- Log behavior patterns here - use `/log` for that
-- Add to root `CLAUDE.md`, `CORE.md`, etc. unless absolutely necessary
+## Filing locations
 
-**Filing Decision Tree**:
+- **Workflow step for a skill** → That skill's `SKILL.md`
+- **Project-specific context** → That project's `CLAUDE.md`
+- **Tool/integration info** → Reference doc in relevant skill
+- **General framework** → README or relevant skill docs
 
-1. **Is it a workflow step for specific skill?** → That skill's `SKILL.md` (update if exists, add if new)
-2. **Is it project/directory-specific context?** → That directory's `CLAUDE.md` (if exists, or consider creating)
-3. **Is it context about a specific tool/integration?** → Appropriate reference doc in that skill (update if exists)
-4. **Is it general framework guidance?** → Framework README or skill reference docs (update existing section)
+## Anti-patterns (what you just did wrong)
 
-**NEVER add to**:
+- "Information already exists" → **Then why didn't you find it?** Add a pointer.
+- "This is too minor" → The user is telling you. It's not minor to them.
+- "I'll use /log instead" → Only if it's a behavior pattern. Facts go in docs.
 
-- `AXIOMS.md` - Principles are too important, require explicit user decision
-- Thematic learning files directly - Use `/log` command for behavior patterns
-- Root `CLAUDE.md` - Only for high-level directives, avoid bloat
+## NOT for behavior patterns
 
-**Just-In-Time Principle**:
+If the lesson is about agent behavior (e.g., "agent broke X while fixing Y"), use `/log` instead.
 
-Information should appear when agents need it, not proactively. Ask:
+## Examples
 
-- "When does an agent encounter this situation?"
-- "What's the minimal info needed to handle it correctly?"
-- "Can they discover this via existing docs/logs when needed?"
-
-**Example Good Lessons** (minor instruction updates):
-
-- "Task scripts require `uv run python` from repo root" → tasks/SKILL.md
-- "Outlook MCP reads email threads with full history" → Reference doc in outlook skill
-- "Project X uses custom config format Y" → projects/X/CLAUDE.md
-
-**Example Bad Lessons** (use `/log` instead):
-
-- "Agent deleted log entries during merge conflict" → Use `/log`, this is a behavior pattern
-- "Agent ignored user's explicit tool choice" → Use `/log`, this is a behavior pattern
-- "Never use --no-verify except when requested" → Use `/log`, this is a behavior pattern
-
-**Example Bad Lessons** (too broad, creates bloat):
-
-- "Here's everything about git hooks" → Too much, agents can read docs
-- "User prefers X approach" → Too vague, needs specific context
-- "We tried Y and it failed" → Use `/log` if it's a pattern, otherwise skip
+- "Transcripts are in ~/.claude/projects/" → Add to commands/transcript.md intro OR CLAUDE.md where agents search for transcripts
+- "Use uv run from repo root" → Add to relevant SKILL.md
+- "Project X uses format Y" → Add to projects/X/CLAUDE.md

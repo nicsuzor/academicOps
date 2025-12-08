@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Prompt Intent Router hook for Claude Code.
 
-Analyzes prompt text for keywords and returns advisory context
-suggesting relevant skills.
+Two-tier routing:
+1. Keyword match → MANDATORY skill invocation instruction
+2. No match → Offers Haiku classifier spawn for semantic analysis
 
 Exit codes:
     0: Success (always continues)
@@ -15,31 +16,29 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from hooks.hook_logger import log_hook_event
 
-# Keyword patterns for skill suggestion
-SKILL_KEYWORDS = {
-    "framework": {"hook", "automation", "framework", "skill", "settings", "axioms", "claude.md"},
-    "python-dev": {"python", "code", "function", "class", "test", "implement", "debug", "refactor"},
-    "analyst": {"data", "analysis", "dbt", "streamlit", "research", "dataset", "query"},
-    "bmem": {"knowledge", "bmem", "memory", "note", "document", "context", "archive"},
-    "tasks": {"task", "tasks", "todo", "todos", "action items"},
+
+# All available skills with descriptions
+SKILLS = {
+    "framework": "Maintain automation framework, design experiments, work on hooks/skills/commands infrastructure",
+    "python-dev": "Write production-quality Python code with fail-fast philosophy, type safety, TDD",
+    "analyst": "Academic research data analysis using dbt, Streamlit, statistical analysis",
+    "bmem": "Knowledge base management, search notes, create documentation, session mining",
+    "tasks": "Task management - view, archive, create tasks using task scripts",
 }
 
-TEMP_DIR = Path("/tmp/prompt-router")
+TEMP_DIR = Path.home() / ".cache" / "aops" / "prompt-router"
 
 
-def write_prompt_to_temp(prompt: str, keyword_matches: list[str]) -> Path:
-    """Write prompt and matches to temp JSON file.
+def write_prompt_context(prompt: str) -> Path:
+    """Write prompt and skill context to temp file for classifier.
 
     Args:
         prompt: The user's prompt text
-        keyword_matches: List of skills that matched keywords
 
     Returns:
-        Path to the created temp file
-
-    Raises:
-        OSError: If directory creation or file write fails
+        Path to the context file
     """
     TEMP_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -47,8 +46,9 @@ def write_prompt_to_temp(prompt: str, keyword_matches: list[str]) -> Path:
     filepath = TEMP_DIR / f"{timestamp}.json"
 
     data = {
+        "timestamp": timestamp,
         "prompt": prompt,
-        "keyword_matches": keyword_matches,
+        "available_skills": SKILLS,
     }
 
     filepath.write_text(json.dumps(data, indent=2))
@@ -56,48 +56,73 @@ def write_prompt_to_temp(prompt: str, keyword_matches: list[str]) -> Path:
 
 
 def analyze_prompt(prompt: str) -> str:
-    """Analyze prompt text and return skill suggestion.
+    """Analyze prompt and return skill invocation instruction when keywords match.
 
     Args:
         prompt: The user's prompt text
 
     Returns:
-        Advisory context string, or empty string if no keywords match
+        Skill invocation instruction string, or empty string if no match
     """
     if not prompt:
         return ""
 
     prompt_lower = prompt.lower()
-    matches = []
 
-    # Check each skill's keywords
-    for skill, keywords in SKILL_KEYWORDS.items():
-        if any(keyword in prompt_lower for keyword in keywords):
-            matches.append(skill)
+    # Keyword triggers for each skill
+    triggers = {
+        "framework": [
+            "framework", "hook", "skill", "axioms", "claude.md", "settings.json",
+            "readme.md", "aops", "academicops",
+        ],
+        "python-dev": ["python", "pytest", "uv run", "type hint", "mypy"],
+        "tasks": [
+            "archive task", "view task", "create task", "task list", "tasks",
+            "what's urgent", "show my tasks", "to-do", "todo", "priorities",
+            "what needs doing", "what should i work on",
+        ],
+        "bmem": [
+            "bmem", "knowledge base", "write note", "search notes",
+            "remember this", "save this", "what do we know about",
+            "context about", "background on", "prior work on",
+            "have we done", "did we already",
+        ],
+    }
 
-    if not matches:
-        return ""
+    matched_skills = []
+    for skill, keywords in triggers.items():
+        if any(kw in prompt_lower for kw in keywords):
+            matched_skills.append(skill)
 
-    # Write prompt to temp file for classifier (fail-fast: let OSError propagate)
-    filepath = write_prompt_to_temp(prompt, matches)
+    if not matched_skills:
+        # No keyword match - offer semantic classification via Haiku
+        filepath = write_prompt_context(prompt)
+        return (
+            f"CLASSIFIER AVAILABLE: No keyword match for skills. For semantic analysis, "
+            f"invoke Task tool with:\n"
+            f"- subagent_type: \"general-purpose\"\n"
+            f"- model: \"haiku\"\n"
+            f"- prompt: \"Read {filepath} and classify intent. Return the single best "
+            f"skill from available_skills, or 'none' if no skill applies.\""
+        )
 
-    # Build keyword suggestion
-    if len(matches) == 1:
-        skill = matches[0]
-        keyword_suggestion = f"MANDATORY: You MUST invoke the `{skill}` skill using Skill(skill: '{skill}') BEFORE answering. Do NOT use MCP tools or other tools directly - invoke the skill first to load proper guidance."
+    # Build response based on number of matches
+    # Strong instruction because agents bypass skills and use raw MCP tools directly
+    if len(matched_skills) == 1:
+        skill = matched_skills[0]
+        desc = SKILLS.get(skill, "")
+        return (
+            f"MANDATORY: Invoke the `{skill}` skill before proceeding with this request.\n"
+            f"Skill purpose: {desc}\n"
+            f"DO NOT use raw MCP tools (mcp__bmem__*, mcp__task_manager__*) directly. "
+            f"The skill provides context and quality control that raw tools lack."
+        )
     else:
-        skill_list = ", ".join(f"`{s}`" for s in matches)
-        keyword_suggestion = f"MANDATORY: This prompt requires one of these skills: {skill_list}. You MUST invoke the most relevant skill using Skill(skill: 'X') BEFORE proceeding. Do NOT bypass skill invocation."
-
-    # Build classifier spawn instruction
-    classifier_instruction = f"""
-CLASSIFIER AVAILABLE: For semantic analysis, invoke Task tool with:
-- subagent_type: "general-purpose"
-- model: "haiku"
-- prompt: "Read {filepath} and classify intent. Return JSON with intent, confidence, skills."
-"""
-
-    return f"{keyword_suggestion}\n{classifier_instruction}"
+        skills_list = ", ".join(f"`{s}`" for s in matched_skills)
+        return (
+            f"MANDATORY: Invoke one of these skills before proceeding: {skills_list}\n"
+            f"DO NOT use raw MCP tools directly - skills provide context and quality control."
+        )
 
 
 def main():
@@ -106,17 +131,26 @@ def main():
     with contextlib.suppress(Exception):
         input_data = json.load(sys.stdin)
 
+    session_id = input_data.get("session_id", "unknown")
     prompt = input_data.get("prompt", "")
 
-    # Analyze and get advisory context
+    # Get classifier spawn instruction
     advisory = analyze_prompt(prompt)
 
-    output = {
-        "hookSpecificOutput": {
-            "hookEventName": "UserPromptSubmit",
-            "additionalContext": advisory
+    # Build output
+    output: dict[str, Any] = {}
+
+    if advisory:
+        output = {
+            "hookSpecificOutput": {
+                "hookEventName": "UserPromptSubmit",
+                "additionalContext": advisory
+            }
         }
-    }
+
+    # Log hook event
+    log_hook_event(session_id, "PromptRouter", input_data, output, exit_code=0)
+
     print(json.dumps(output))
     sys.exit(0)
 

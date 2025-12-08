@@ -237,6 +237,4 @@ uv run python bots/skills/archive/scripts/batch_next.py reset
 ## Related Documentation
 
 - [[SKILL.md]] - Full classification criteria and extraction guidelines
-- [[../framework/experiments/2025-11-10_email-archive-automation.md]] - Task specification
 - [[../../BMEM-CLAUDE-GUIDE.md]] - bmem format reference
-- [[../../../data/README.md]] - Data directory structure

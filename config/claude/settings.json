@@ -14,9 +14,23 @@
       "Bash(rm */data/tasks/**)",
       "Bash(mv */data/tasks/**)",
       "Bash(cp */data/tasks/**)",
-      "Read(**/.claude/**)",
-      "Write(**/.claude/**)",
-      "Edit(**/.claude/**)"
+      "Bash(git mv */data/tasks/**)",
+      "Bash(git rm */data/tasks/**)",
+      "Read(~/.claude/settings.json)",
+      "Read(~/.claude/settings.local.json)",
+      "Read(~/.claude/mcp.json)",
+      "Read(~/.claude/.credentials.json)",
+      "Read(~/.claude/hooks/**)",
+      "Read(~/.claude/skills/**)",
+      "Read(~/.claude/commands/**)",
+      "Read(~/.claude/agents/**)",
+      "Write(~/.claude/**)",
+      "Edit(~/.claude/**)",
+      "Bash(rm ~/.claude/**)",
+      "Bash(mv ~/.claude/**)",
+      "Bash(cp ~/.claude/**)",
+      "Bash(touch ~/.claude/**)",
+      "Bash(echo > ~/.claude/**)"
     ]
   },
   "hooks": {
@@ -25,12 +39,12 @@
         "hooks": [
           {
             "type": "command",
-            "command": "PYTHONPATH=$AOPS AOPS=$AOPS uv run --no-project python $AOPS/hooks/sessionstart_load_axioms.py",
-            "timeout": 2000
+            "command": "${AOPS:-$CLAUDE_PROJECT_DIR}/hooks/session_env_setup.sh",
+            "timeout": 5000
           },
           {
             "type": "command",
-            "command": "PYTHONPATH=$AOPS AOPS=$AOPS uv run --no-project python $AOPS/hooks/log_sessionstart.py",
+            "command": "PYTHONPATH=$AOPS uv run python $AOPS/hooks/sessionstart_load_axioms.py",
             "timeout": 2000
           }
         ]
@@ -41,7 +55,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "PYTHONPATH=$AOPS uv run --no-project python $AOPS/hooks/log_pretooluse.py",
+            "command": "PYTHONPATH=$AOPS uv run python $AOPS/hooks/log_pretooluse.py",
             "timeout": 2000
           }
         ]
@@ -52,23 +66,13 @@
         "hooks": [
           {
             "type": "command",
-            "command": "PYTHONPATH=$AOPS uv run --no-project python $AOPS/hooks/log_posttooluse.py",
+            "command": "PYTHONPATH=$AOPS uv run python $AOPS/hooks/log_posttooluse.py",
             "timeout": 2000
           },
           {
             "type": "command",
-            "command": "PYTHONPATH=$AOPS uv run --no-project python $AOPS/hooks/autocommit_state.py",
+            "command": "PYTHONPATH=$AOPS uv run python $AOPS/hooks/autocommit_state.py",
             "timeout": 35000
-          }
-        ]
-      },
-      {
-        "matcher": "TodoWrite",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "PYTHONPATH=$AOPS uv run --no-project python $AOPS/hooks/request_scribe.py",
-            "timeout": 2000
           }
         ]
       }
@@ -78,12 +82,12 @@
         "hooks": [
           {
             "type": "command",
-            "command": "PYTHONPATH=$AOPS uv run --no-project python $AOPS/hooks/log_userpromptsubmit.py",
+            "command": "PYTHONPATH=$AOPS uv run python $AOPS/hooks/log_userpromptsubmit.py",
             "timeout": 2000
           },
           {
             "type": "command",
-            "command": "PYTHONPATH=$AOPS uv run --no-project python $AOPS/hooks/prompt_router.py",
+            "command": "PYTHONPATH=$AOPS uv run python $AOPS/hooks/prompt_router.py",
             "timeout": 2000
           }
         ]
@@ -94,12 +98,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "PYTHONPATH=$AOPS uv run --no-project python $AOPS/hooks/log_subagentstop.py",
-            "timeout": 2000
-          },
-          {
-            "type": "command",
-            "command": "PYTHONPATH=$AOPS uv run --no-project python $AOPS/hooks/request_scribe.py",
+            "command": "PYTHONPATH=$AOPS uv run python $AOPS/hooks/log_subagentstop.py",
             "timeout": 2000
           }
         ]
@@ -110,8 +109,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "PYTHONPATH=$AOPS uv run --no-project python $AOPS/hooks/log_session_stop.py",
-            "timeout": 35000
+            "command": "PYTHONPATH=$AOPS uv run python $AOPS/hooks/verify_conclusions.py",
+            "timeout": 30000
           }
         ]
       }

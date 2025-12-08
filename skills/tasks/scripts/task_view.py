@@ -2,7 +2,7 @@
 """Pretty task viewer: paginated, color, minimal fields.
 
 Usage:
-    uv run python skills/tasks/scripts/task_view.py [page] [--sort=priority|date|due] [--per-page=N] [--compact]
+    uv run python $AOPS/skills/tasks/scripts/task_view.py [options]
 
 Defaults:
     page=1, sort=priority (ascending int), per-page=10 (or 20 in compact mode)
@@ -15,10 +15,18 @@ from __future__ import annotations
 
 import contextlib
 import json
+import os
 import shutil
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
+
+# Bootstrap: Add AOPS root to path for lib imports (works from any directory)
+_script_path = Path(__file__).resolve()
+_aops_root = _script_path.parents[3]  # scripts/ -> tasks/ -> skills/ -> AOPS
+if str(_aops_root) not in sys.path:
+    sys.path.insert(0, str(_aops_root))
+os.environ.setdefault("AOPS", str(_aops_root))
 
 from lib.paths import get_tasks_dir
 from skills.tasks import task_ops

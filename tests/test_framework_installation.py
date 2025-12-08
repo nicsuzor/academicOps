@@ -116,35 +116,33 @@ def test_agents_symlink_exists_and_points_to_aops() -> None:
     )
 
 
-def test_mcp_json_symlink_exists_and_points_to_aops() -> None:
-    """Test that ~/.mcp.json symlink exists and points to $AOPS/config/claude/mcp.json.
+def test_mcp_json_symlink_not_present() -> None:
+    """Test that ~/.mcp.json symlink does NOT exist (legacy cleanup).
+
+    User-scoped MCP servers are configured in ~/.claude.json mcpServers key.
+    The ~/.mcp.json symlink is legacy and setup.sh removes it.
 
     Raises:
-        AssertionError: If .mcp.json symlink doesn't exist or points to wrong target
+        AssertionError: If .mcp.json symlink still exists
     """
-    aops_root = get_aops_root()
     mcp_link = Path.home() / ".mcp.json"
-    expected_target = aops_root / "config" / "claude" / "mcp.json"
 
-    assert mcp_link.exists(), f".mcp.json symlink doesn't exist: {mcp_link}"
-    assert mcp_link.is_symlink(), f".mcp.json exists but is not a symlink: {mcp_link}"
-
-    actual_target = mcp_link.resolve()
-    assert actual_target == expected_target, (
-        f".mcp.json symlink points to wrong target.\n"
-        f"  Expected: {expected_target}\n"
-        f"  Actual:   {actual_target}"
+    assert not mcp_link.exists(), (
+        f"Legacy ~/.mcp.json symlink still exists: {mcp_link}\n"
+        "Run setup.sh to clean up (user MCP config is now in ~/.claude.json)"
     )
 
 
-def test_claude_json_has_no_mcp_servers() -> None:
-    """Test that ~/.claude.json doesn't contain mcpServers keys.
+def test_claude_json_has_user_mcp_servers() -> None:
+    """Test that ~/.claude.json contains user-scoped MCP servers.
 
-    MCP configs should live in .mcp.json files, not ~/.claude.json.
-    setup.sh removes these to prevent config drift.
+    User-scoped MCP servers are stored in ~/.claude.json mcpServers key.
+    setup.sh syncs from $AOPS/config/claude/mcp.json.
+
+    Project-scoped MCP servers should be in .mcp.json files, not ~/.claude.json.
 
     Raises:
-        AssertionError: If mcpServers found in ~/.claude.json
+        AssertionError: If user mcpServers missing or project mcpServers found
     """
     import json
 
@@ -154,78 +152,32 @@ def test_claude_json_has_no_mcp_servers() -> None:
 
     data = json.loads(claude_json.read_text())
 
-    # Check root-level mcpServers
-    assert "mcpServers" not in data, (
-        "~/.claude.json contains root-level mcpServers. "
-        "Run setup.sh to clean up (MCP configs should be in .mcp.json)"
+    # Check root-level mcpServers exist (user-scoped MCP servers)
+    assert "mcpServers" in data, (
+        "~/.claude.json missing root-level mcpServers. "
+        "Run setup.sh to sync from $AOPS/config/claude/mcp.json"
     )
 
-    # Check project-level mcpServers
+    assert isinstance(data["mcpServers"], dict), (
+        "mcpServers should be a dict"
+    )
+
+    assert len(data["mcpServers"]) > 0, (
+        "mcpServers is empty. Run setup.sh to sync from $AOPS/config/claude/mcp.json"
+    )
+
+    # Check project-level mcpServers (should NOT exist - use .mcp.json instead)
     projects_with_mcp = []
     for project_path, project_data in data.get("projects", {}).items():
         if isinstance(project_data, dict) and project_data.get("mcpServers"):
             projects_with_mcp.append(project_path)
 
-    assert not projects_with_mcp, (
-        f"~/.claude.json contains mcpServers in projects: {projects_with_mcp}. "
-        "Run setup.sh to clean up (MCP configs should be in .mcp.json)"
-    )
+    # Note: This is a warning, not a hard failure - project overrides are allowed
+    # but should be rare (for local dev only)
+    if projects_with_mcp:
+        import warnings
 
-
-def test_mcp_cleanup_jq_preserves_other_data() -> None:
-    """Test that the jq command in setup.sh only removes mcpServers.
-
-    Verifies the jq filter preserves all other data at root and project level.
-    """
-    import json
-    import subprocess
-
-    # Sample data mimicking ~/.claude.json structure
-    test_data = {
-        "numStartups": 84,
-        "autoUpdates": True,
-        "mcpServers": {"bmem": {"type": "stdio"}},
-        "projects": {
-            "/home/user/project1": {
-                "allowedTools": ["Read", "Write"],
-                "mcpServers": {"zot": {"type": "stdio"}},
-                "hasTrustDialogAccepted": True,
-                "lastCost": 1.23,
-            },
-            "/home/user/project2": {
-                "allowedTools": [],
-                "hasTrustDialogAccepted": False,
-            },
-        },
-        "oauthAccount": {"emailAddress": "test@example.com"},
-    }
-
-    # Run the same jq command used in setup.sh
-    jq_cmd = 'del(.mcpServers) | .projects |= (if . then map_values(del(.mcpServers)) else . end)'
-    result = subprocess.run(
-        ["jq", jq_cmd],
-        input=json.dumps(test_data),
-        capture_output=True,
-        text=True,
-        check=True,
-    )
-    cleaned = json.loads(result.stdout)
-
-    # Verify mcpServers removed
-    assert "mcpServers" not in cleaned
-    assert "mcpServers" not in cleaned["projects"]["/home/user/project1"]
-
-    # Verify everything else preserved
-    assert cleaned["numStartups"] == 84
-    assert cleaned["autoUpdates"] is True
-    assert cleaned["oauthAccount"]["emailAddress"] == "test@example.com"
-
-    # Verify project data preserved (except mcpServers)
-    proj1 = cleaned["projects"]["/home/user/project1"]
-    assert proj1["allowedTools"] == ["Read", "Write"]
-    assert proj1["hasTrustDialogAccepted"] is True
-    assert proj1["lastCost"] == 1.23
-
-    proj2 = cleaned["projects"]["/home/user/project2"]
-    assert proj2["allowedTools"] == []
-    assert proj2["hasTrustDialogAccepted"] is False
+        warnings.warn(
+            f"~/.claude.json contains mcpServers in projects: {projects_with_mcp}. "
+            "Consider moving to .mcp.json files in those project directories."
+        )

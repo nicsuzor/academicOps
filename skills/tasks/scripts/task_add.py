@@ -2,20 +2,28 @@
 """Create a new task in bmem-compliant markdown format.
 
 Usage:
-    uv run python scripts/task_add.py --title "Task title" [options]
+    uv run python $AOPS/skills/tasks/scripts/task_add.py --title "Task title" [options]
 
 Examples:
-    uv run python scripts/task_add.py --title "Review paper"
-    uv run python scripts/task_add.py --title "Submit grant" --priority P1 --due 2025-11-20T17:00:00Z
-    uv run python scripts/task_add.py --title "Research task" --project grants --classification Research
+    uv run python $AOPS/skills/tasks/scripts/task_add.py --title "Review paper"
+    uv run python $AOPS/skills/tasks/scripts/task_add.py --title "Submit grant" --priority P1 --due 2025-11-20T17:00:00Z
+    uv run python $AOPS/skills/tasks/scripts/task_add.py --title "Research task" --project grants --classification Research
 """
 
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 from datetime import datetime
 from pathlib import Path
+
+# Bootstrap: Add AOPS root to path for lib imports (works from any directory)
+_script_path = Path(__file__).resolve()
+_aops_root = _script_path.parents[3]  # scripts/ -> tasks/ -> skills/ -> AOPS
+if str(_aops_root) not in sys.path:
+    sys.path.insert(0, str(_aops_root))
+os.environ.setdefault("AOPS", str(_aops_root))
 
 from lib.paths import get_data_root
 from skills.tasks import task_ops

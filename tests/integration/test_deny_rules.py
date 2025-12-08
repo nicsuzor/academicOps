@@ -17,14 +17,13 @@ pytestmark = [pytest.mark.integration]
 
 
 def test_deny_rules_block_claude_dir_read(claude_headless):
-    """Verify deny rules prevent reading from .claude directories.
+    """Verify deny rules prevent reading settings.json from .claude directory.
 
     The framework settings at $AOPS/config/claude/settings.json contain:
-    - Read(**/.claude/**)
-    - Write(**/.claude/**)
-    - Edit(**/.claude/**)
+    - Read(~/.claude/settings.json)
+    - Read(~/.claude/settings.local.json)
 
-    These rules should block access to ~/.claude/ forcing use of $AOPS paths.
+    Note: ~/.claude/projects/ is NOT denied (needed for transcript skill).
     """
     # Ask Claude to read from ~/.claude/ - should be denied
     prompt = (

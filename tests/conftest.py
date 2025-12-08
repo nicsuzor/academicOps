@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from .paths import get_bots_dir, get_data_dir, get_hooks_dir
+from .paths import get_bots_dir, get_data_dir, get_hooks_dir, get_writing_root
 
 
 @pytest.fixture
@@ -41,6 +41,16 @@ def hooks_dir() -> Path:
         Path: Absolute path to hooks/ directory ($AOPS/hooks)
     """
     return get_hooks_dir()
+
+
+@pytest.fixture
+def writing_root() -> Path:
+    """Return Path to writing root (framework root).
+
+    Returns:
+        Path: Absolute path to framework root ($AOPS)
+    """
+    return get_writing_root()
 
 
 @pytest.fixture

@@ -97,6 +97,12 @@ Add to SKILL.md header:
 - [ ] No FAQ or excessive background?
 - [ ] Adding >10 lines? STOP → GitHub issue + approval
 
+**Enforcement Checklist** (for critical instructions):
+
+- [ ] Weak language ("should", "must") → MANDATORY + NO EXCEPTIONS
+- [ ] Implicit edge cases → explicit rules with examples
+- [ ] Disconnected from principles → link to specific AXIOM
+
 **DRY Principle**: Reference, don't duplicate. Example: "See AXIOMS.md #7" NOT 85 lines explaining fail-fast.
 
 ### 5. Package Skill

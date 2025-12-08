@@ -6,7 +6,20 @@
 
 ---
 
+## Special Note: Task Visualization
+
+**For task visualization specifically**, use the automated `task_viz.py` script instead of this skill:
+```bash
+uv run python skills/tasks/scripts/task_viz.py $ACA_DATA current-tasks.excalidraw
+```
+
+The script generates a complete force-directed layout of goals, projects, and tasks. Only invoke this excalidraw skill AFTER the script runs if manual refinement or customization is needed.
+
+---
+
 ## When to Use This Skill
+
+You **MUST use this skill to create or edit ANY excalidraw files**.
 
 Use the excalidraw skill when:
 - Creating diagrams, flowcharts, or visual explanations

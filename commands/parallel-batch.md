@@ -88,7 +88,7 @@ Files to process:
 
 TASK: [Detailed operation description]
 
-MANDATORY SKILLS: Use [skill-name] skill for [purpose]. Do NOT skip skill invocation.
+MANDATORY SKILLS: Use the Skill tool to invoke skills: `Skill(skill="[skill-name]")`. Do NOT skip skill invocation - the Skill tool MUST be called explicitly.
 
 For each file:
 1. Read the file
@@ -174,8 +174,8 @@ Process these task files to link them to appropriate projects:
 Files:
 [file list]
 
-MANDATORY: Use bmem MCP tools to:
-1. Search for existing projects: mcp__bmem__search_notes(query="type:project")
+MANDATORY: Use bmem MCP tools with `project="main"`:
+1. Search for existing projects: mcp__bmem__search_notes(query="type:project", project="main")
 2. Read task file to understand context
 3. Edit task frontmatter to add/update `project:` field
 
@@ -195,7 +195,7 @@ Process these files to extract valuable knowledge:
 Files:
 [file list]
 
-MANDATORY: Use `extractor` skill to assess importance, then `bmem` skill to store.
+MANDATORY: Use Skill tool to invoke skills: `Skill(skill="extractor")` to assess importance, then `Skill(skill="bmem")` to store.
 
 For each file:
 1. Read content
@@ -215,7 +215,7 @@ Process these files to add appropriate tags/categories:
 Files:
 [file list]
 
-MANDATORY: Use bmem skill for any knowledge base operations.
+MANDATORY: Use the Skill tool for knowledge base operations: `Skill(skill="bmem")`.
 
 For each file:
 1. Read content

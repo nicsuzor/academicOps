@@ -153,7 +153,7 @@ Browses knowledge base folder structures with optional file pattern filtering an
 ## Project Management Tools
 
 ### list_memory_projects
-Displays all available projects with status and statistics, providing guidance for project selection.
+Displays all available projects with status and statistics.
 
 **Parameters**: None
 
@@ -161,9 +161,8 @@ Displays all available projects with status and statistics, providing guidance f
 - Project names
 - Paths
 - Default project indicator
-- Guidance for project selection
 
-**Usage**: Discover available projects at session start or when switching contexts.
+**Usage**: Administrative tool for viewing configured projects. For academicOps, ALWAYS use `project="main"` instead of calling this tool.
 
 ### create_memory_project
 Initializes new knowledge bases with specified names, paths, and optional default project designation.
@@ -242,10 +241,9 @@ Generates Obsidian canvas visualizations from specified nodes and edges.
 Basic Memory supports three operational modes:
 
 ### Multi-Project Mode (Default)
-- Assistants discover and select projects via explicit parameters
-- Use `list_memory_projects` to discover available projects
-- Specify project in each tool call
-- Enables cross-project workflows
+- Assistants specify project explicitly in each tool call
+- **For academicOps**: ALWAYS use `project="main"` parameter
+- Enables cross-project workflows (when needed)
 
 ### Default Project Mode
 - Automatically uses configured default project unless overridden
@@ -262,10 +260,7 @@ Basic Memory supports three operational modes:
 ## Best Practices
 
 ### Project Selection
-1. Start session with `list_memory_projects` if project unknown
-2. Ask user which project to use
-3. Remember selection for entire session
-4. User can switch with "switch to [project]"
+**For academicOps framework**: ALWAYS use `project="main"` in ALL bmem MCP tool calls. This is mandatory and non-negotiable.
 
 ### Search Strategy
 - Use `search_notes` for keyword searches

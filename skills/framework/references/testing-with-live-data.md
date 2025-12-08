@@ -194,7 +194,7 @@ def test_dbt_manifest_parsing(sample_project):
 
 ## Related
 
-- [[../AXIOMS.md#13]] - Verify first
-- [[../../../bots/commands/ttd.md]] - TDD workflow
+- [[../../../AXIOMS.md#13]] - Verify first
+- [[../../../commands/ttd.md]] - TDD workflow
 - [[../../python-dev/SKILL.md]] - Python development standards
 - [[../../python-dev/references/testing.md]] - Testing philosophy

@@ -2,10 +2,10 @@
 """
 Session logging module for Claude Code.
 
-Writes session logs to /tmp/claude-sessions/<date>-<shorthash>.jsonl
+Writes session logs to ~/.cache/aops/sessions/<date>-<shorthash>.jsonl
 Each log entry contains session metadata, transcript summary, and activity details.
 
-Session logs are ephemeral (stored in /tmp) and not tracked in git.
+Session logs are cached locally and not tracked in git.
 """
 
 import datetime
@@ -72,8 +72,8 @@ def get_log_path(
     short_hash = get_session_short_hash(session_id)
     filename = f"{date}-{short_hash}{suffix}.jsonl"
 
-    # Use /tmp for ephemeral session logs (not tracked in git)
-    log_dir = Path("/tmp/claude-sessions")
+    # Use ~/.cache/aops for session logs (not tracked in git)
+    log_dir = Path.home() / ".cache" / "aops" / "sessions"
     log_dir.mkdir(parents=True, exist_ok=True)
 
     return log_dir / filename

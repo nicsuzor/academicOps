@@ -4,8 +4,9 @@ Integration test validating that CORE.md provides agents with specific
 trigger phrases for the email-task-capture workflow, not vague "or similar".
 """
 
-import os
 from pathlib import Path
+
+from lib.paths import get_data_root
 
 
 def test_core_md_has_explicit_email_workflow_triggers():
@@ -28,12 +29,8 @@ def test_core_md_has_explicit_email_workflow_triggers():
     - "email triage"
     - "review emails for action items"
     """
-    # Arrange: Locate CORE.md using AOPS environment variable
-    aops_root = os.environ.get("AOPS")
-    if not aops_root:
-        raise RuntimeError("AOPS environment variable not set")
-
-    core_md_path = Path(aops_root) / "CORE.md"
+    # Arrange: Locate CORE.md in data repository (user-specific, not framework)
+    core_md_path = get_data_root() / "CORE.md"
     assert core_md_path.exists(), f"CORE.md not found at {core_md_path}"
 
     # Act: Read CORE.md content
@@ -69,7 +66,7 @@ def test_core_md_has_explicit_email_workflow_triggers():
         + "\n".join(f"  - '{trigger}'" for trigger in missing_triggers)
         + "\n\nThese trigger phrases must be explicitly listed in CORE.md (not just 'or similar')."
         + "\nExpected: A section that lists all trigger phrases from email-capture.md specification."
-        + "\n\nSee: bots/skills/tasks/workflows/email-capture.md lines 402-408"
+        + "\n\nSee: skills/tasks/workflows/email-capture.md lines 402-408"
     )
 
     # Assert: Should NOT use vague "or similar" language
@@ -96,12 +93,8 @@ def test_email_workflow_guidance_is_complete():
     2. Reference to the workflow documentation
     3. Description of what the workflow does
     """
-    # Arrange: Locate CORE.md using AOPS environment variable
-    aops_root = os.environ.get("AOPS")
-    if not aops_root:
-        raise RuntimeError("AOPS environment variable not set")
-
-    core_md_path = Path(aops_root) / "CORE.md"
+    # Arrange: Locate CORE.md in data repository (user-specific, not framework)
+    core_md_path = get_data_root() / "CORE.md"
     core_content = core_md_path.read_text()
 
     # Assert: Should reference the workflow documentation

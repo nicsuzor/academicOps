@@ -69,7 +69,7 @@ def test_hook_detects_task_script_execution(hook_script: Path) -> None:
     tool_input = {
         "toolInput": {
             "name": "Bash",
-            "command": "python bots/skills/tasks/scripts/task_add.py --title 'Test task'",
+            "command": "python skills/tasks/scripts/task_add.py --title 'Test task'",
         }
     }
 
@@ -147,7 +147,7 @@ def test_hook_commits_and_pushes_task_changes(
     tool_input = {
         "toolInput": {
             "name": "Bash",
-            "command": "python bots/skills/tasks/scripts/task_add.py --title 'Test'",
+            "command": "python skills/tasks/scripts/task_add.py --title 'Test'",
         }
     }
 
@@ -258,7 +258,7 @@ def test_hook_handles_no_changes_gracefully(
     tool_input = {
         "toolInput": {
             "name": "Bash",
-            "command": "python bots/skills/tasks/scripts/task_view.py",
+            "command": "python skills/tasks/scripts/task_view.py",
         }
     }
 
@@ -300,7 +300,7 @@ def test_hook_handles_git_failures_gracefully(
     tool_input = {
         "toolInput": {
             "name": "Bash",
-            "command": "python bots/skills/tasks/scripts/task_add.py --title 'Test'",
+            "command": "python skills/tasks/scripts/task_add.py --title 'Test'",
         }
     }
 

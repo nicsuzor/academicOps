@@ -25,6 +25,15 @@ echo
 # Determine paths
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 AOPS_PATH="$SCRIPT_DIR"
+
+# Validate ACA_DATA is set
+if [ -z "${ACA_DATA:-}" ]; then
+    echo -e "${RED}ERROR: ACA_DATA environment variable not set${NC}"
+    echo "Please set ACA_DATA to your data directory path and try again"
+    echo "Example: export ACA_DATA=~/aca-data"
+    exit 1
+fi
+
 ACA_DATA_PATH="${ACA_DATA}"
 CLAUDE_DIR="$HOME/.claude"
 
@@ -109,6 +118,39 @@ create_symlink "skills" "$AOPS_PATH/skills"
 create_symlink "commands" "$AOPS_PATH/commands"
 create_symlink "agents" "$AOPS_PATH/agents"
 create_symlink "settings.json" "$AOPS_PATH/config/claude/settings.json"
+
+# Step 2a: Create settings.local.json with machine-specific env vars
+echo
+echo "Creating settings.local.json for environment variables..."
+
+LOCAL_SETTINGS="$CLAUDE_DIR/settings.local.json"
+
+# Check if jq is available (required for safe JSON generation)
+if ! command -v jq &> /dev/null; then
+    echo -e "${RED}✗ jq not installed - required for settings.local.json${NC}"
+    echo "  Install jq: sudo apt install jq"
+    exit 1
+fi
+
+# Generate JSON content safely with jq
+LOCAL_SETTINGS_CONTENT=$(jq -n --indent 2 \
+    --arg aops "$AOPS_PATH" \
+    --arg aca_data "$ACA_DATA_PATH" \
+    '{ "env": { "AOPS": $aops, "ACA_DATA": $aca_data } }')
+
+# Update or create settings.local.json
+if [ -f "$LOCAL_SETTINGS" ]; then
+    existing_aops=$(jq -r '.env.AOPS // ""' "$LOCAL_SETTINGS")
+    if [ "$existing_aops" = "$AOPS_PATH" ]; then
+        echo -e "${GREEN}✓ settings.local.json already correct${NC}"
+    else
+        echo "$LOCAL_SETTINGS_CONTENT" > "$LOCAL_SETTINGS"
+        echo -e "${GREEN}✓ Updated settings.local.json${NC}"
+    fi
+else
+    echo "$LOCAL_SETTINGS_CONTENT" > "$LOCAL_SETTINGS"
+    echo -e "${GREEN}✓ Created settings.local.json${NC}"
+fi
 
 # Step 2b: Sync MCP servers to ~/.claude.json
 # Note: Claude Code reads user-scoped MCP servers from ~/.claude.json mcpServers key,
@@ -268,6 +310,19 @@ for link in skills commands agents settings.json; do
         VALIDATION_PASSED=false
     fi
 done
+
+# Check settings.local.json
+if [ -f "$CLAUDE_DIR/settings.local.json" ]; then
+    echo -e "${GREEN}✓ settings.local.json exists${NC}"
+    if command -v jq &> /dev/null; then
+        local_aops=$(jq -r '.env.AOPS // ""' "$CLAUDE_DIR/settings.local.json" 2>/dev/null || echo "")
+        if [ -n "$local_aops" ]; then
+            echo "  AOPS=$local_aops"
+        fi
+    fi
+else
+    echo -e "${YELLOW}⚠ settings.local.json not found - Claude Code may not have AOPS set${NC}"
+fi
 
 # Check MCP servers in ~/.claude.json
 if [ -f "$HOME/.claude.json" ] && command -v jq &> /dev/null; then

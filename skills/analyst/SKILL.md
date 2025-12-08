@@ -18,6 +18,80 @@ Follows principles from [[../../AXIOMS.md]].
 
 **Core principle:** Take ONE action at a time (generate a chart, update database, create a test), then yield to the user for feedback before proceeding.
 
+## 🚨 CRITICAL: Transformation Boundary Rule
+
+**ALL data transformation happens in dbt. Period.**
+
+This is non-negotiable for academic integrity, reproducibility, and auditability.
+
+| Layer | Allowed | Prohibited |
+|-------|---------|------------|
+| **dbt** | ALL SQL transformations, joins, aggregations, filtering, business logic | - |
+| **Streamlit** | Display, formatting, interactive filtering of PRE-COMPUTED data | SQL that transforms, joins, aggregates, or applies business logic |
+
+### Why This Matters (Academic Integrity)
+
+1. **Reproducibility**: Anyone can re-run `dbt build` and get identical results
+2. **Auditability**: Transformation logic is version-controlled and testable
+3. **Transparency**: Reviewers see exactly how data was processed
+4. **Testing**: dbt tests PROVE transformations work correctly
+
+### The Rule in Practice
+
+**Need a new metric?** → Create a dbt mart with tests
+**Need to filter data?** → Pre-compute filtered views in dbt OR use Streamlit widgets on EXISTING columns (no new calculations)
+**Need to join tables?** → Create a dbt model that joins them
+**Need aggregations?** → Create a dbt mart with the aggregations
+
+### Streamlit: Display Layer ONLY
+
+Streamlit scripts may:
+- ✅ `SELECT * FROM mart_name` (read pre-computed data)
+- ✅ `WHERE column = :user_selection` (filter on existing columns)
+- ✅ Format numbers, dates for display
+- ✅ Create interactive widgets that filter existing data
+- ✅ Render charts from pre-computed metrics
+
+Streamlit scripts must NEVER:
+- ❌ `SELECT SUM(...) GROUP BY ...` (aggregation = transformation)
+- ❌ `SELECT a.*, b.* FROM a JOIN b` (joins = transformation)
+- ❌ `SELECT CASE WHEN ... END` (business logic = transformation)
+- ❌ Calculate derived metrics inline
+- ❌ Apply any formula that changes the meaning of data
+
+### If You're Tempted to Transform in Streamlit
+
+**STOP.** Create a dbt mart instead:
+
+1. Create `marts/mart_name.sql` with the transformation
+2. Add tests in `schema.yml` proving it works
+3. Run `dbt build --select mart_name`
+4. THEN query the mart from Streamlit
+
+This takes more time. That's the point. Transformations deserve scrutiny.
+
+## Framework Repository Enforcement
+
+**When working in the aOps framework repository ($AOPS)**:
+
+This skill MUST only be invoked by the framework skill. All requests must include the "FRAMEWORK SKILL CHECKED" token.
+
+**Enforcement rule**: If working in $AOPS and the request does NOT contain "FRAMEWORK SKILL CHECKED", REFUSE and fail loudly with:
+
+```
+ERROR: Framework repository work must flow through framework skill.
+
+This request lacks "FRAMEWORK SKILL CHECKED" token, indicating it bypassed
+the framework skill's strategic context and planning.
+
+REQUIRED: All aOps work must START with framework skill, which may then
+delegate to analyst with proper context.
+
+HALTING.
+```
+
+**Non-framework repositories**: This enforcement does NOT apply to research projects or other repositories. Use analyst directly for non-framework work.
+
 ## Documentation Index
 
 This skill includes both inline guidance and detailed reference documentation:
@@ -185,6 +259,8 @@ After context discovery, summarize findings to user:
 
 **🚨 CRITICAL RULE: ALL data access MUST go through dbt models. NEVER query upstream sources directly.**
 
+**🚨 REMINDER: If you need to transform data, that transformation MUST be a dbt model with tests. See "Transformation Boundary Rule" above.**
+
 ### Decision Tree
 
 ```
@@ -273,6 +349,8 @@ Create or modify dbt models following academicOps layered architecture.
 
 Create Streamlit visualizations following single-step collaborative pattern.
 
+**🚨 REMINDER: Streamlit is DISPLAY ONLY. No transformations. See "Transformation Boundary Rule" above.**
+
 **For detailed Streamlit workflow including structure, single-step patterns, and examples, see `@reference _CHUNKS/streamlit-workflow.md`**
 
 ### Quick Reference: Workflow Pattern
@@ -282,7 +360,7 @@ Create Streamlit visualizations following single-step collaborative pattern.
 3. Add interactivity → STOP, confirm works
 4. Continue one change at a time
 
-**Key principle:** Always load data through dbt models using DuckDB, cache with `@st.cache_data`
+**Key principle:** Always load data through dbt models using DuckDB, cache with `@st.cache_data`. Streamlit queries should be `SELECT * FROM mart` or simple filters on existing columns - NEVER aggregations, joins, or business logic.
 
 **See:** `_CHUNKS/streamlit-workflow.md` for complete workflow and `references/streamlit-patterns.md` for best practices
 

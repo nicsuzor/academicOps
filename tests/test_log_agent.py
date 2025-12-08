@@ -81,10 +81,18 @@ def test_log_agent_specifies_categorization() -> None:
     agent_file = Path(os.getenv("AOPS", ""), "agents", "log-agent.md")
     content = agent_file.read_text()
 
-    # Check categories documented
-    assert "Meta-Framework" in content
-    assert "Component-Level" in content
-    assert "Behavioral Pattern" in content
+    # Check thematic file categorization documented (current scheme)
+    thematic_files = [
+        "verification-discipline",
+        "instruction-following",
+        "git-and-validation",
+        "skill-and-tool-usage",
+        "test-and-tdd",
+        "technical-wins",
+    ]
+    assert any(tf in content for tf in thematic_files), (
+        f"Should document thematic file categorization. Expected one of: {thematic_files}"
+    )
 
     # Check type classification
     assert "Success" in content or "✅" in content

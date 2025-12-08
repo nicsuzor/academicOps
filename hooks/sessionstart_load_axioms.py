@@ -16,6 +16,36 @@ from pathlib import Path
 from typing import Any
 
 from lib.paths import get_aops_root, get_data_root
+from hooks.hook_logger import log_hook_event
+
+
+def load_framework() -> str:
+    """
+    Load FRAMEWORK.md content (paths - DO NOT GUESS).
+
+    Returns:
+        FRAMEWORK content as string
+
+    Raises:
+        FileNotFoundError: If FRAMEWORK.md doesn't exist (fail-fast)
+    """
+    aops_root = get_aops_root()
+    framework_path = aops_root / "FRAMEWORK.md"
+
+    if not framework_path.exists():
+        msg = (
+            f"FATAL: FRAMEWORK.md missing at {framework_path}. "
+            "SessionStart hook requires this file for framework paths."
+        )
+        raise FileNotFoundError(msg)
+
+    content = framework_path.read_text().strip()
+
+    if not content:
+        msg = f"FATAL: FRAMEWORK.md at {framework_path} is empty."
+        raise ValueError(msg)
+
+    return content
 
 
 def load_axioms() -> str:
@@ -96,11 +126,17 @@ def main():
         # If no stdin or parsing fails, continue with empty input
         pass
 
+    # Load FRAMEWORK.md (fail-fast if missing)
+    try:
+        framework_content = load_framework()
+    except (FileNotFoundError, ValueError) as e:
+        print(f"ERROR: {e}", file=sys.stderr)
+        sys.exit(1)
+
     # Load AXIOMS.md (fail-fast if missing)
     try:
         axioms_content = load_axioms()
     except (FileNotFoundError, ValueError) as e:
-        # Fail-fast: log error and exit with error code
         print(f"ERROR: {e}", file=sys.stderr)
         sys.exit(1)
 
@@ -108,12 +144,17 @@ def main():
     try:
         core_content = load_core()
     except (FileNotFoundError, ValueError) as e:
-        # Fail-fast: log error and exit with error code
         print(f"ERROR: {e}", file=sys.stderr)
         sys.exit(1)
 
-    # Build context
-    additional_context = f"""# Framework Principles (AXIOMS.md)
+    # Build context - FRAMEWORK first (paths), then AXIOMS (principles), then CORE (user)
+    additional_context = f"""# Framework Paths (FRAMEWORK.md)
+
+{framework_content}
+
+---
+
+# Framework Principles (AXIOMS.md)
 
 {axioms_content}
 
@@ -122,17 +163,14 @@ def main():
 # User Context (CORE.md)
 
 {core_content}
-
----
-
-**For more information**:
-- Framework structure: See README.md
-- Current state: See $ACA_DATA/projects/aops/STATE.md
-- Vision and roadmap: See $ACA_DATA/projects/aops/VISION.md and ROADMAP.md
-- Learning patterns: See $ACA_DATA/projects/aops/experiments/LOG.md
 """
 
-    # Build output data
+    # Get paths for logging
+    framework_path = get_aops_root() / "FRAMEWORK.md"
+    axioms_path = get_aops_root() / "AXIOMS.md"
+    core_path = get_data_root() / "CORE.md"
+
+    # Build output data (sent to Claude)
     output_data: dict[str, Any] = {
         "hookSpecificOutput": {
             "hookEventName": "SessionStart",
@@ -140,12 +178,24 @@ def main():
         }
     }
 
-    # Output JSON (continue execution)
+    # Build log data with file metadata (for hook logs only)
+    log_output: dict[str, Any] = {
+        "hookSpecificOutput": {
+            "hookEventName": "SessionStart",
+            "additionalContext": additional_context,
+            "filesLoaded": [str(framework_path), str(axioms_path), str(core_path)]
+        }
+    }
+
+    # Log to hook logger
+    session_id = input_data.get("session_id", "unknown")
+    log_hook_event(session_id, "SessionStart", input_data, log_output, exit_code=0)
+
+    # Output JSON (continue execution) - without filesLoaded metadata
     print(json.dumps(output_data))
 
-    # Status to stderr (get paths for logging)
-    axioms_path = get_aops_root() / "AXIOMS.md"
-    core_path = get_data_root() / "CORE.md"
+    # Status to stderr
+    print(f"✓ Loaded FRAMEWORK.md from {framework_path}", file=sys.stderr)
     print(f"✓ Loaded AXIOMS.md from {axioms_path}", file=sys.stderr)
     print(f"✓ Loaded CORE.md from {core_path}", file=sys.stderr)
 

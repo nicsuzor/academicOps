@@ -23,6 +23,7 @@
    - Follow single source of truth principles
    - Reference existing documentation, don't duplicate
    - Keep scope minimal and bounded
+   - **For hooks**: Add to settings.json and create script, but create no-op stub FIRST if removing (see hook safety below)
 
 5. **Run integration test**
    - Test must pass completely
@@ -52,3 +53,28 @@
    - Verify documentation integrity
    - Confirm single source of truth maintained
    - Validate no bloat introduced
+
+## Hook Safety
+
+**CRITICAL**: Claude Code loads hook configuration at session start and cannot reload mid-session.
+
+**Adding hooks** (safe):
+1. Add hook script to `hooks/`
+2. Add hook entry to `config/claude/settings.json`
+3. Commit and push
+4. Next session loads new hook automatically
+
+**Removing hooks** (requires stub):
+1. ❌ NEVER delete hook script while session is active
+2. ✅ ALWAYS create no-op stub first:
+   ```python
+   #!/usr/bin/env python3
+   import sys
+   print("{}")
+   sys.exit(0)
+   ```
+3. Remove hook from `config/claude/settings.json`
+4. Commit stub + settings change
+5. After session restart, delete stub in separate commit
+
+**Why**: Deleting hook script while session runs causes repeated errors until restart. Settings change won't take effect until new session loads config.
