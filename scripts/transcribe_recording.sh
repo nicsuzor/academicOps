@@ -43,9 +43,10 @@ upload_and_transcribe() {
     gsutil -q cp "$flac_file" "$gcs_path"
     rm -f "$flac_file"
 
-    # Start async recognition
+    # Start async recognition (latest_long = Chirp model for long-form audio)
     local result=$(gcloud ml speech recognize-long-running "$gcs_path" \
         --language-code=en-US \
+        --model=latest_long \
         --async \
         --format=json 2>&1)
 
