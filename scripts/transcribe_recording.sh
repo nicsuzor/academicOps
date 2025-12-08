@@ -27,10 +27,12 @@ mkdir -p "$RECORDINGS_DIR" "$TRANSCRIPTS_DIR"
 
 # --- Helper Functions ---
 
-upload_and_transcribe() {
+upload_transcribe_and_append() {
     local wav_file="$1"
     local session_dir="$2"
+    local transcript_file="$3"
     local tracking_file="${session_dir}/operations.json"
+    local lock_file="${session_dir}/.transcript.lock"
 
     local basename=$(basename "$wav_file" .wav)
     local flac_file="${wav_file%.wav}.flac"
@@ -51,22 +53,35 @@ upload_and_transcribe() {
         --format=json 2>&1)
 
     local op_name=$(echo "$result" | jq -r '.name // empty')
-    if [ -n "$op_name" ]; then
-        # Track operation
-        local entry=$(jq -n --arg wav "$wav_file" --arg op "$op_name" --arg gcs "$gcs_path" \
-            '{wav: $wav, operation: $op, gcs: $gcs, status: "pending"}')
-
-        if [ -f "$tracking_file" ]; then
-            jq --argjson new "$entry" '. += [$new]' "$tracking_file" > "${tracking_file}.tmp"
-            mv "${tracking_file}.tmp" "$tracking_file"
-        else
-            echo "[$entry]" > "$tracking_file"
-        fi
-        echo "[$(basename "$wav_file")] Started transcription: $op_name"
-    else
+    if [ -z "$op_name" ]; then
         echo "[$(basename "$wav_file")] ERROR: Failed to start transcription" >&2
         echo "$result" >&2
+        return 1
     fi
+
+    echo "[$(basename "$wav_file")] Started transcription: $op_name"
+
+    # Wait for result and append immediately
+    local wait_result=$(gcloud ml speech operations wait "$op_name" --format=json 2>/dev/null)
+
+    if echo "$wait_result" | jq -e '.results' > /dev/null 2>&1; then
+        local text=$(echo "$wait_result" | jq -r '.results | map(.alternatives[0].transcript) | join(" ")')
+        if [ -n "$text" ] && [ "$text" != "null" ]; then
+            # Use mkdir for atomic locking (portable)
+            while ! mkdir "$lock_file" 2>/dev/null; do sleep 0.1; done
+            echo "" >> "$transcript_file"
+            echo "$text" >> "$transcript_file"
+            rmdir "$lock_file"
+            echo "[$(basename "$wav_file")] ✓ Transcribed and appended"
+        else
+            echo "[$(basename "$wav_file")] (no speech detected)"
+        fi
+    else
+        echo "[$(basename "$wav_file")] ✗ Transcription failed" >&2
+    fi
+
+    # Cleanup GCS file
+    gsutil -q rm "$gcs_path" 2>/dev/null || true
 }
 
 collect_transcripts() {
@@ -222,19 +237,17 @@ EOF
 
         if [ -f "$CHUNK_FILE" ] && [ -s "$CHUNK_FILE" ]; then
             echo "[Chunk $CHUNK_NUM] Saved: $CHUNK_FILE"
-            upload_and_transcribe "$CHUNK_FILE" "$SESSION_DIR" &
+            upload_transcribe_and_append "$CHUNK_FILE" "$SESSION_DIR" "$TRANSCRIPT_FILE" &
         else
             echo "[Chunk $CHUNK_NUM] No audio captured"
         fi
     done
 
     echo ""
-    echo "Recording stopped. Collecting transcripts..."
+    echo "Recording stopped. Waiting for background transcriptions..."
     wait
 
-    collect_transcripts "$SESSION_DIR" "$TRANSCRIPT_FILE"
-
-    # Cleanup GCS folder
+    # Cleanup GCS folder (individual files cleaned in background jobs, but ensure folder removed)
     gsutil -q rm -r "${GCS_BUCKET}/$(basename "$SESSION_DIR")" 2>/dev/null || true
 
     echo ""
