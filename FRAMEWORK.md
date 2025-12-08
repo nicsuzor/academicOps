@@ -1,10 +1,14 @@
-# Framework Paths (DO NOT GUESS)
+# ⚠️ STOP - READ BEFORE ANY FILE OPERATIONS ⚠️
 
-| Variable | Resolves To | Purpose |
-|----------|-------------|---------|
-| `$AOPS` | `/home/nic/src/aOps` | Framework source (SSoT for all framework files) |
-| `$ACA_DATA` | `/home/nic/writing` | User data (tasks, sessions, knowledge base) |
-| `~/.claude/` | symlinks → `$AOPS` | Runtime directory (DO NOT edit here) |
+**Before using Read, Glob, Grep, or Write tools**: Check this path table FIRST.
+**If you get "Error reading file"**: You guessed wrong. Return here, use correct path.
+**DO NOT fabricate paths** like `~/.config/aops/` - they don't exist.
+
+| Variable | Purpose |
+|----------|---------|
+| `$AOPS` | Framework source (SSoT for all framework files) |
+| `$ACA_DATA` | User data (tasks, sessions, knowledge base) |
+| `~/.claude/` | Runtime directory (symlinks → `$AOPS`, DO NOT edit here) |
 
 **To edit framework files**: Always edit in `$AOPS/`, never in `~/.claude/` symlinks.
 
