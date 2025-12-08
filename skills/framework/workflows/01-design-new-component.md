@@ -35,6 +35,20 @@
    - Update relevant documentation to reference new component
    - Verify no documentation conflicts introduced
 
+   **README.md congruence check** (run after ANY component change):
+   ```bash
+   # Compare README.md claims to actual structure
+   ls -la $AOPS/skills/        # vs README skills list
+   ls -la $AOPS/commands/      # vs README commands list
+   ls -la $AOPS/agents/        # vs README agents list (NOT "future" if populated)
+   ls -la $AOPS/hooks/         # vs README hooks list
+   ```
+
+   **Verify all three match**:
+   - README.md file tree (authoritative structure)
+   - Actual filesystem (ground truth)
+   - STATE.md/ROADMAP.md percentages (if they claim counts)
+
 7. **Commit only if all tests pass**
    - Verify documentation integrity
    - Confirm single source of truth maintained

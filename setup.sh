@@ -180,10 +180,19 @@ if [ -f "$mcp_source" ] && command -v jq &> /dev/null; then
             ' "$mcp_source")
             echo -e "${YELLOW}  No container runtime - container-based MCP servers may not work${NC}"
         fi
-        # Merge patched mcpServers into ~/.claude.json
-        echo "$mcp_patched" | jq -s '.[0] * .[1]' "$HOME/.claude.json" - > "$HOME/.claude.json.tmp" \
+        # Replace mcpServers in ~/.claude.json (authoritative source wins, stale servers removed)
+        echo "$mcp_patched" | jq -s '.[0] + .[1]' "$HOME/.claude.json" - > "$HOME/.claude.json.tmp" \
             && mv "$HOME/.claude.json.tmp" "$HOME/.claude.json"
         echo -e "${GREEN}✓ Synced MCP servers to ~/.claude.json${NC}"
+
+        # Clean up stale project-specific MCP servers (remove servers not in authoritative source)
+        valid_servers=$(jq -r '.mcpServers | keys | @json' "$mcp_source")
+        jq --argjson valid "$valid_servers" '
+            .projects |= (to_entries | map(
+                .value.mcpServers |= (if . then with_entries(select(.key | IN($valid[]))) else . end)
+            ) | from_entries)
+        ' "$HOME/.claude.json" > "$HOME/.claude.json.tmp" && mv "$HOME/.claude.json.tmp" "$HOME/.claude.json"
+        echo "  Cleaned up stale project-specific MCP servers"
     else
         echo -e "${YELLOW}⚠ ~/.claude.json doesn't exist - will be created on first Claude Code run${NC}"
         echo "  Re-run this script after using Claude Code once"
