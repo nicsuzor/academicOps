@@ -5,18 +5,18 @@ Generate a visual mind-map of tasks, projects, and goals using the automated lay
 **Process**:
 1. Run the task visualization script:
    ```bash
-   uv run python skills/tasks/scripts/task_viz.py $ACA_DATA current-tasks.excalidraw
+   uv run python $AOPS/skills/tasks/scripts/task_viz.py $ACA_DATA current-tasks.excalidraw
    ```
 2. Open the generated visualization:
    ```bash
-   xdg-open current-tasks.excalidraw
+   open current-tasks.excalidraw
    ```
 3. **If manual refinement is needed** after the script runs, invoke the `excalidraw` skill: `Skill(skill="excalidraw")`
 
 **What the script does**:
-- Reads tasks from `$ACA_DATA/data/tasks/inbox/`
-- Reads projects from `$ACA_DATA/data/projects/`
-- Reads goals from `$ACA_DATA/data/goals/`
+- Reads tasks from `$ACA_DATA/tasks/inbox/`
+- Reads projects from `$ACA_DATA/projects/`
+- Reads goals from `$ACA_DATA/goals/`
 - Computes force-directed layout using networkx
 - Generates complete excalidraw JSON file with:
   - Goals (large ellipses, muted gold)

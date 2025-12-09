@@ -342,7 +342,7 @@ Template script demonstrating various plot types with best practices. Use this a
 **Usage:**
 
 ```bash
-python scripts/plot_template.py
+uv run python scripts/plot_template.py
 ```
 
 ### `style_configurator.py`
@@ -352,7 +352,7 @@ Interactive utility to configure matplotlib style preferences and generate custo
 **Usage:**
 
 ```bash
-python scripts/style_configurator.py
+uv run python scripts/style_configurator.py
 ```
 
 ## Detailed References

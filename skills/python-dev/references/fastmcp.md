@@ -61,7 +61,7 @@ async def search_web(query: str, limit: int = 10) -> list[dict]:
 fastmcp dev server.py
 
 # Production (as stdio server)
-python server.py
+uv run python server.py
 ```
 
 ## Tools

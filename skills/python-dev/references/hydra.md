@@ -65,8 +65,8 @@ log_level: INFO
 **Run with overrides:**
 
 ```bash
-python main.py db.host=prod-db.example.com app.workers=8
-python main.py db=sqlite  # Switch to conf/db/sqlite.yaml
+uv run python main.py db.host=prod-db.example.com app.workers=8
+uv run python main.py db=sqlite  # Switch to conf/db/sqlite.yaml
 ```
 
 ---
@@ -584,10 +584,10 @@ plain_dict = OmegaConf.to_container(cfg, resolve=True)
 
 ```bash
 # ❌ WRONG (if 'new_key' doesn't exist)
-python main.py new_key=value
+uv run python main.py new_key=value
 
 # ✅ CORRECT
-python main.py +new_key=value
+uv run python main.py +new_key=value
 ```
 
 ---
@@ -598,19 +598,19 @@ python main.py +new_key=value
 
 ```bash
 # Show defaults tree structure
-python main.py --info defaults-tree
+uv run python main.py --info defaults-tree
 
 # Show final composition list
-python main.py --info defaults
+uv run python main.py --info defaults
 
 # Show resulting configuration
-python main.py --cfg job
+uv run python main.py --cfg job
 
 # Show all config sources
-python main.py --info all
+uv run python main.py --info all
 
 # Validate config without running
-python main.py --cfg job > /dev/null
+uv run python main.py --cfg job > /dev/null
 ```
 
 ### Example: `--info defaults-tree`
@@ -777,7 +777,7 @@ defaults:
 
 ```bash
 # Test all combinations
-python main.py -m db=postgres,sqlite cache=redis,memory env=local,prod
+uv run python main.py -m db=postgres,sqlite cache=redis,memory env=local,prod
 
 # Each run gets isolated output directory
 # outputs/2025-10-30/14-23-01/
@@ -825,12 +825,12 @@ ${oc.select:path,default}       # Select with fallback
 ### Command-Line Overrides
 
 ```bash
-python main.py key=value              # Override value
-python main.py group=option           # Switch group selection
-python main.py +new_key=value         # Add new key
-python main.py ~group                 # Remove group from defaults
-python main.py group@pkg=option       # Override with package
-python main.py -m key=v1,v2,v3        # Multi-run sweep
+uv run python main.py key=value              # Override value
+uv run python main.py group=option           # Switch group selection
+uv run python main.py +new_key=value         # Add new key
+uv run python main.py ~group                 # Remove group from defaults
+uv run python main.py group@pkg=option       # Override with package
+uv run python main.py -m key=v1,v2,v3        # Multi-run sweep
 ```
 
 ### Common Keywords
