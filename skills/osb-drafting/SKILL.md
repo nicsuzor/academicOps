@@ -120,19 +120,24 @@ Recommendations must be:
 
 10. **Verify each citation**:
 
-For each cited case:
+For each cited case, **always retrieve full document text**:
 ```
-1. mcp__osb__get_case_summary(record_id)
-2. If quote not found in summary: mcp__osb__get_document(record_id, include_full_text=true)
+mcp__osb__get_document(record_id, include_full_text=true)
 ```
 
-| Check | Criteria |
-|-------|----------|
-| Case ID exists | Must return valid result |
-| Case name matches | Exact or close match |
-| Quoted text accurate | Exact phrase or valid paraphrase |
-| Principle attributed | IRAC/Ratio section supports claim |
-| Recommendation accurate | Matches recommendations section |
+**Why full text is required**: Summaries are AI-generated abstractions that may not contain exact quoted phrases. Only the full decision text can verify:
+- Exact quote accuracy
+- Context of statements
+- Complete recommendation wording
+- Nuanced legal reasoning
+
+| Check | Criteria | Verification Method |
+|-------|----------|---------------------|
+| Case ID exists | Must return valid result | get_document returns content |
+| Case name matches | Exact or close match | Compare to official title |
+| Quoted text accurate | **Exact phrase in full text** | Search full document |
+| Principle attributed | Ratio/reasoning section supports claim | Read legal reasoning |
+| Recommendation accurate | Matches verbatim recommendation text | Check recommendations section |
 
 11. **Generate verification report**:
 
@@ -140,21 +145,20 @@ For each cited case:
 ## Citation Verification Report
 
 ### VERIFIED ✓
-- [Case ID]: [Cited principle] - CONFIRMED in [section]
+- [Case ID]: [Cited principle] - CONFIRMED at [location in full text]
 
 ### NEEDS CORRECTION ✗
 - [Case ID]: [Issue description]
   - Draft says: "[quoted text]"
-  - Actual: "[correct text]"
+  - Actual text: "[exact text from full document]"
   - Fix: [correction]
-
-### UNVERIFIABLE ⚠
-- [Case ID]: [Quote/claim] - Full document needed, rationale: [why]
 ```
 
+**Note**: There should be NO "UNVERIFIABLE" category. All citations must be verified against full document text. If OSB MCP is unavailable, HALT per AXIOMS fail-fast principle.
+
 12. **Quality gate** - Draft NOT complete until:
+    - All citations verified against full document text
     - 0 items in NEEDS CORRECTION
-    - All UNVERIFIABLE items documented with justification
     - Corrections made and re-verified
 
 **Common error types**:
