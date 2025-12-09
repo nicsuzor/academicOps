@@ -29,21 +29,21 @@ Use this skill when:
 For most PDF generation tasks, use the bundled script:
 
 ```bash
-python scripts/generate_pdf.py <input.md> [output.pdf] [--title "Document Title"] [--type letter|academic]
+uv run python scripts/generate_pdf.py <input.md> [output.pdf] [--title "Document Title"] [--type letter|academic]
 ```
 
 **Examples:**
 
 Academic document (auto-detected or explicit):
 ```bash
-python scripts/generate_pdf.py reviews/chapter7.md --title "Chapter 7: Moderating Misogyny"
-python scripts/generate_pdf.py paper.md --type academic
+uv run python scripts/generate_pdf.py reviews/chapter7.md --title "Chapter 7: Moderating Misogyny"
+uv run python scripts/generate_pdf.py paper.md --type academic
 ```
 
 Letter (auto-detected or explicit):
 ```bash
-python scripts/generate_pdf.py reference-letter.md
-python scripts/generate_pdf.py letter.md --type letter
+uv run python scripts/generate_pdf.py reference-letter.md
+uv run python scripts/generate_pdf.py letter.md --type letter
 ```
 
 The script automatically detects document type:
@@ -204,37 +204,37 @@ When a user requests PDF generation:
 
 ### Standard Academic Document
 ```bash
-python scripts/generate_pdf.py thesis-chapter.md --title "Chapter 3: Methodology"
+uv run python scripts/generate_pdf.py thesis-chapter.md --title "Chapter 3: Methodology"
 ```
 
 ### Reference Letter or Formal Letter
 ```bash
 # Auto-detection will use letter style
-python scripts/generate_pdf.py reference-letter.md
+uv run python scripts/generate_pdf.py reference-letter.md
 
 # Or explicit
-python scripts/generate_pdf.py letter.md --type letter
+uv run python scripts/generate_pdf.py letter.md --type letter
 ```
 
 ### Multiple Documents
 ```bash
 for file in reviews/lucinda/*.md; do
-  python scripts/generate_pdf.py "$file"
+  uv run python scripts/generate_pdf.py "$file"
 done
 ```
 
 ### Override Auto-Detection
 ```bash
 # Force academic style even if it looks like a letter
-python scripts/generate_pdf.py document.md --type academic
+uv run python scripts/generate_pdf.py document.md --type academic
 
 # Force letter style even with h1 heading
-python scripts/generate_pdf.py document.md --type letter
+uv run python scripts/generate_pdf.py document.md --type letter
 ```
 
 ### Custom Title Override
 ```bash
-python scripts/generate_pdf.py document.md output.pdf --title "Professional Title"
+uv run python scripts/generate_pdf.py document.md output.pdf --title "Professional Title"
 ```
 
 ## Troubleshooting
