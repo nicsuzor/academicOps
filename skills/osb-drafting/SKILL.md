@@ -135,9 +135,22 @@ mcp__osb__get_document(record_id, include_full_text=true)
 |-------|----------|---------------------|
 | Case ID exists | Must return valid result | get_document returns content |
 | Case name matches | Exact or close match | Compare to official title |
-| Quoted text accurate | **Exact phrase in full text** | Search full document |
+| Quoted text accurate | **Exact phrase in full text** | Search for quoted string in document |
 | Principle attributed | Ratio/reasoning section supports claim | Read legal reasoning |
 | Recommendation accurate | Matches verbatim recommendation text | Check recommendations section |
+| **Quote originates here** | Quote is FROM this case, not cited BY it | Check quote isn't referencing another case |
+
+**CRITICAL - Search for each quoted phrase individually**:
+```
+mcp__osb__search(query="[exact quoted phrase]", n_results=5)
+```
+
+This catches:
+- Quotes that don't exist in any case
+- Quotes misattributed to wrong case (e.g., Case A cites Case B, draft wrongly attributes to A)
+- Paraphrases that distort meaning
+
+**Common misattribution pattern**: Case A quotes or cites Case B. Draft attributes the quote to Case A. Always check if the quote says "The Board found in [other case]..." or similar - the principle originates from the cited case, not the citing case.
 
 11. **Generate verification report**:
 
@@ -166,6 +179,7 @@ mcp__osb__get_document(record_id, include_full_text=true)
 - Quote fabrication (phrase not in case text)
 - Principle misattribution (case doesn't establish cited holding)
 - Recommendation misstatement (wrong implementation status)
+- **Citation chain error** (quote is FROM Case B but draft attributes to Case A which merely cites Case B)
 
 ## Decision Point Checklist
 

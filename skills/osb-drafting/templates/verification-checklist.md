@@ -41,6 +41,9 @@ Complete this checklist after Phase 5 (Recommendations) and before finalizing an
 | Quoted text accurate | **Exact phrase in full document** | Search full text for quoted string |
 | Principle attributed | Legal reasoning section supports claim | Read ratio/reasoning in full text |
 | Recommendation accurate | Verbatim match to recommendations | Check recommendations section |
+| **Quote originates here** | Quote is FROM this case, not cited BY it | Check for "Board found in [other case]" pattern |
+
+**CRITICAL**: For each quoted phrase, run `mcp__osb__search(query="[exact phrase]")` to find where it actually originates. Catches citation chain errors where Case A cites Case B but draft attributes quote to Case A.
 
 ---
 
@@ -69,6 +72,7 @@ Complete this checklist after Phase 5 (Recommendations) and before finalizing an
 - **Quote fabrication**: Phrase not found in full case text
 - **Principle misattribution**: Case doesn't establish the cited holding
 - **Recommendation misstatement**: Wrong implementation status or wording
+- **Citation chain error**: Quote is FROM Case B but draft attributes to Case A (which merely cites Case B). Look for patterns like "The Board found in [other case]..." - the principle originates from the cited case.
 
 ---
 
