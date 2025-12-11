@@ -119,9 +119,10 @@ New files PROHIBITED unless:
 
 ### Adding a Hook
 
-1. Create `hooks/<trigger>/<name>.md`
-2. Triggers: PreToolCall, PostToolCall, Notification, Stop
-3. Keep focused on single purpose
+1. **Read `hooks/CLAUDE.md` first** - contains architecture principles
+2. Create hook in `hooks/` directory
+3. Triggers: PreToolUse, PostToolUse, UserPromptSubmit, SessionStart, Stop
+4. Hooks inject context/instructions - they NEVER call LLM APIs directly
 
 ### Script Design
 
