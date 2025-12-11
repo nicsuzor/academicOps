@@ -62,9 +62,9 @@ def main():
 
     # Log to activity.jsonl for dashboard visibility
     try:
-        user_message = input_data.get("userMessage", "")
+        user_message = input_data.get("prompt", "")
         # Session name from cwd
-        cwd = os.getcwd()
+        cwd = input_data.get("cwd", os.getcwd())
         session_name = Path(cwd).name if cwd else "unknown"
 
         if user_message:
