@@ -152,120 +152,13 @@ Run tests with:
 python3 tests/test_session_logging.py
 ```
 
-## Knowledge Extraction
+## Knowledge Extraction (DEPRECATED)
 
-The knowledge extraction system analyzes session logs using an LLM to extract valuable insights and build a searchable personal knowledge base.
+The previous `extract_session_knowledge.py` script has been deprecated and moved to `scripts/`.
 
-### Files
+**Use these alternatives instead:**
+- `/transcript` - Generate readable markdown from session JSONL
+- `/log` - Extract learning patterns via Claude Code (learning-log skill)
+- `/bmem` - Capture session information to knowledge base
 
-- **extract_session_knowledge.py** - LLM-powered extraction script
-- **bots/skills/framework/tests/test_knowledge_extraction.sh** - Integration tests
-- **data/projects/aops/experiments/2025-11-09_session-knowledge-extraction.md** - Design document
-
-### Usage
-
-Extract knowledge from a single session:
-
-```bash
-# Requires ANTHROPIC_API_KEY environment variable
-python3 bots/hooks/extract_session_knowledge.py \
-    --session-log data/sessions/2025-11-09-abc123.jsonl \
-    --verbose
-```
-
-Batch process all sessions:
-
-```bash
-python3 bots/hooks/extract_session_knowledge.py \
-    --sessions-dir data/sessions \
-    --output-dir data/knowledge \
-    --verbose
-```
-
-Test without API calls (dry-run):
-
-```bash
-python3 bots/hooks/extract_session_knowledge.py \
-    --session-log data/sessions/2025-11-09-abc123.jsonl \
-    --dry-run
-```
-
-### Knowledge Categories
-
-The LLM extracts and categorizes knowledge into:
-
-- **Decisions**: Technical or architectural choices made
-- **Lessons**: What worked well or didn't work
-- **Patterns**: Reusable workflows or approaches
-- **Solutions**: How specific problems were solved
-- **Insights**: Important realizations or discoveries
-- **Documentation Needs**: Gaps or improvements identified
-
-### Output Format
-
-Knowledge is stored in `data/knowledge/` with:
-
-- Category-based subdirectories (decisions/, lessons/, etc.)
-- Markdown files with full provenance (links back to session)
-- JSONL index for searchability (`index.jsonl`)
-
-Example knowledge file:
-
-```markdown
-# Use JSONL for session logs
-
-**Date**: 2025-11-09 **Session**: test-session-123 **Tags**: logging, file-format, jsonl, architecture **Importance**: medium
-
-## Context
-
-While implementing session logging hook for Claude Code.
-
-## Details
-
-Decided to use JSONL format for session logs because it's appendable, line-based for easy streaming, and each entry is self-contained. This enables atomic writes without file locking complexity.
-
-## Provenance
-
-- Session Log: `data/sessions/2025-11-09-abc123.jsonl`
-- Session ID: `test-session-123`
-- Extracted: 2025-11-09T12:34:56Z
-```
-
-### Searching Knowledge
-
-Search the knowledge base using grep:
-
-```bash
-# Search all knowledge
-grep -r "session logging" data/knowledge/
-
-# Search by category
-grep -r "JSONL" data/knowledge/decisions/
-
-# Search index (JSON Lines)
-grep "jsonl" data/knowledge/index.jsonl | jq .
-```
-
-### Integration Tests
-
-Run the full test suite:
-
-```bash
-bash bots/skills/framework/tests/test_knowledge_extraction.sh
-```
-
-Tests verify:
-
-- Script dependencies and API key handling
-- Dry-run mode (no API calls)
-- Full extraction with real API (if ANTHROPIC_API_KEY set)
-- Batch processing
-- Output format and provenance
-
-### Future Enhancements
-
-- Automatic extraction via SessionStop hook
-- Search interface/wrapper script
-- Knowledge consolidation across sessions
-- Vector similarity search
-- Export to PDF, HTML, or wiki formats
+These alternatives use Claude Code to orchestrate LLM work, following the framework principle that hooks and scripts should not call LLM APIs directly (see `hooks/CLAUDE.md`).

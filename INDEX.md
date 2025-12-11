@@ -11,12 +11,10 @@ $AOPS/
 ├── INDEX.md                     # THIS FILE - complete file tree
 ├── CLAUDE.md                    # Repo instructions (@ syntax auto-loads)
 ├── BMEM-*.md                    # bmem documentation (4 files)
-├── setup.sh                     # Creates ~/.claude/ symlinks
 ├── pyproject.toml               # Python project config
 │
 ├── commands/                    # Slash commands (main agent executes)
 │   ├── meta.md                  # Strategic brain + executor → framework, python-dev skills
-│   ├── advocate.md              # Reactive verification (standalone)
 │   ├── log.md                   # → learning-log skill
 │   ├── transcript.md            # → transcript skill
 │   ├── bmem.md                  # → bmem skill
@@ -92,14 +90,16 @@ $AOPS/
 │   └── training-set-builder/    # Training data extraction
 │
 ├── hooks/                       # Session lifecycle (Python)
+│   ├── CLAUDE.md                    # Hook design principles (JIT context)
 │   ├── sessionstart_load_axioms.py  # Injects AXIOMS.md
 │   ├── user_prompt_submit.py        # Context injection per prompt
 │   ├── prompt_router.py             # Keyword → skill suggestions
 │   ├── autocommit_state.py          # Auto-commit data/ changes
-│   ├── verify_conclusions.py        # Conclusion verification
 │   ├── session_logger.py            # Log file path management
 │   ├── hook_logger.py               # Centralized event logging
-│   ├── log_*.py                     # Event logging (5 files)
+│   ├── hook_debug.py                # Hook debugging
+│   ├── request_scribe.py            # Request logging
+│   ├── log_*.py                     # Event logging (6 files)
 │   └── prompts/user-prompt-submit.md
 │
 ├── agents/                      # Spawnable subagents (Task tool)
@@ -110,9 +110,12 @@ $AOPS/
 │
 ├── scripts/                     # Utility scripts
 │   ├── claude_transcript.py     # Session JSONL → markdown
-│   ├── setup.sh                 # Project setup
+│   ├── setup.sh                 # Creates ~/.claude/ symlinks
 │   ├── package_deployment.py    # Skill packaging
-│   └── measure_router_compliance.py
+│   ├── measure_router_compliance.py
+│   ├── migrate_log_entries.py   # Log entry migration
+│   ├── transcribe_recording.sh  # Recording transcription
+│   └── extract_session_knowledge.py  # DEPRECATED (use /log, /bmem)
 │
 ├── lib/                         # Shared Python
 │   ├── paths.py                 # Path resolution (SSoT)

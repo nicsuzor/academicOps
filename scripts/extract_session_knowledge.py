@@ -1,6 +1,22 @@
 #!/usr/bin/env python3
 """
-Session Knowledge Extraction Script
+DEPRECATED: This script calls the Anthropic API directly, violating framework principles.
+
+Use these alternatives instead:
+- /transcript - Generate readable transcript from session JSONL
+- /log - Extract learning patterns via Claude Code (learning-log skill)
+- /bmem - Capture session info to knowledge base
+
+The framework principle (AXIOMS.md #22, hooks/CLAUDE.md) states that all LLM work
+should be orchestrated by Claude Code, not via direct API calls from scripts.
+
+This script is preserved for reference but should not be used.
+
+---
+
+Original docstring:
+
+Session Knowledge Extraction Script (DEPRECATED)
 
 Analyzes session logs using an LLM to extract valuable knowledge:
 - Decisions made during development
@@ -10,16 +26,6 @@ Analyzes session logs using an LLM to extract valuable knowledge:
 - Important insights
 
 Stores extracted knowledge in categorized markdown files with full provenance.
-
-Usage:
-    # Single session
-    python3 extract_session_knowledge.py --session-log data/sessions/2025-11-09-abc123.jsonl
-
-    # Batch process directory
-    python3 extract_session_knowledge.py --sessions-dir data/sessions
-
-    # Dry run (no API calls)
-    python3 extract_session_knowledge.py --session-log <file> --dry-run
 """
 
 import argparse

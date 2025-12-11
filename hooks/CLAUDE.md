@@ -26,8 +26,8 @@ response = client.messages.create(...)  # WRONG
 
 **If you need LLM analysis in a hook's logic**: The hook should inject instructions telling Claude Code to spawn an agent (e.g., Haiku via Task tool) - not call the API itself.
 
-## Current Violations
+## Resolved
 
-These hooks violate the principle and need redesign:
-- `verify_conclusions.py` - calls Anthropic API directly
-- `extract_session_knowledge.py` - calls Anthropic API directly
+Previously violating files have been addressed:
+- `verify_conclusions.py` - REMOVED (verification discipline is in AXIOMS.md)
+- `extract_session_knowledge.py` - MOVED to `scripts/` and deprecated (use /transcript, /log, /bmem instead)
