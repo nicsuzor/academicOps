@@ -118,19 +118,20 @@ def analyze_prompt(prompt: str) -> str:
             f"skill from available_skills, or 'none' if no skill applies.\""
         )
 
-    # Build response based on number of matches
-    # Strong instruction because agents bypass skills and use raw MCP tools directly
+    # Build response with explicit Skill tool syntax
+    # Per learning log 2025-12-01: agents interpret "invoke X skill" as "read skill file"
+    # Explicit Skill(skill="X") syntax is unambiguous
     if len(matched_skills) == 1:
         skill = matched_skills[0]
         desc = SKILLS.get(skill, "")
         return (
-            f"MANDATORY: Invoke the `{skill}` skill before proceeding with this request.\n"
+            f"MANDATORY: Call Skill(skill=\"{skill}\") before proceeding with this request.\n"
             f"Skill purpose: {desc}\n"
             f"DO NOT use raw MCP tools (mcp__bmem__*, mcp__task_manager__*) directly. "
             f"The skill provides context and quality control that raw tools lack."
         )
     else:
-        skills_list = ", ".join(f"`{s}`" for s in matched_skills)
+        skills_list = ", ".join(f"Skill(skill=\"{s}\")" for s in matched_skills)
         return (
             f"MANDATORY: Invoke one of these skills before proceeding: {skills_list}\n"
             f"DO NOT use raw MCP tools directly - skills provide context and quality control."
