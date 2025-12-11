@@ -19,13 +19,20 @@ from typing import Any
 from hooks.hook_logger import log_hook_event
 
 
-# All available skills with descriptions
+# All available skills with descriptions for routing
 SKILLS = {
     "framework": "Maintain automation framework, design experiments, work on hooks/skills/commands infrastructure",
     "python-dev": "Write production-quality Python code with fail-fast philosophy, type safety, TDD",
-    "analyst": "Academic research data analysis using dbt, Streamlit, statistical analysis",
-    "bmem": "Knowledge base management, search notes, create documentation, session mining",
+    "analyst": "Support academic research data analysis using dbt and Streamlit",
+    "bmem": "Knowledge base management, search notes, create documentation",
     "tasks": "Task management - view, archive, create tasks using task scripts",
+    "pdf": "Convert markdown documents to professionally formatted PDFs",
+    "osb-drafting": "Generate draft OSB case decisions with IRAC analysis and precedent support",
+    "learning-log": "Log agent performance patterns to thematic learning files",
+    "transcript": "Generate markdown transcripts from Claude Code session files",
+    "skill-creator": "Create and maintain skills following anti-bloat principles",
+    "training-set-builder": "Extract structured training examples from document sets",
+    "extractor": "Process email archive files, extract high-value information",
 }
 
 TEMP_DIR = Path.home() / ".cache" / "aops" / "prompt-router"
@@ -87,6 +94,11 @@ def analyze_prompt(prompt: str) -> str:
             "context about", "background on", "prior work on",
             "have we done", "did we already",
         ],
+        "pdf": ["pdf", "generate pdf", "create pdf", "markdown to pdf"],
+        "osb-drafting": ["osb", "oversight board", "case decision", "irac"],
+        "learning-log": ["log failure", "log success", "agent pattern", "learning log"],
+        "transcript": ["transcript", "session transcript", "conversation log"],
+        "extractor": ["extract email", "email archive", "process archive"],
     }
 
     matched_skills = []

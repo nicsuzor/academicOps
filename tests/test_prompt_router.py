@@ -30,10 +30,12 @@ class TestAnalyzePrompt:
         assert "MANDATORY" in result
 
     def test_analyze_prompt_no_match(self) -> None:
-        """Test that unrecognized input returns empty string."""
+        """Test that unrecognized input offers Haiku classifier spawn."""
         result = analyze_prompt("hello there")
 
-        assert result == ""
+        # When no keyword match, offer semantic classification via Haiku
+        assert "CLASSIFIER AVAILABLE" in result
+        assert "haiku" in result
 
     def test_analyze_prompt_multiple_matches(self) -> None:
         """Test that multiple keyword matches require skill invocation."""
