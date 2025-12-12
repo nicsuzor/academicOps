@@ -24,7 +24,7 @@ We are starting again in this aOps repo. This time, the watchword is MINIMAL. We
 
 ## Framework Documentation, Paths, and state:
 
-- **Framework state**: See "Framework State (Authoritative)" section in [[README.md]]
+- **Framework state**: See "Framework State (Authoritative)" section in [[aOps/README]]
 - **Paths**: `README.md` (file tree in root of repository)
 
 ### Basic Memory (bmem) Tool Usage

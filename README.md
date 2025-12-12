@@ -8,33 +8,57 @@ Minimal LLM agent automation for Claude Code. Fight bloat aggressively.
 - **Principles**: See `AXIOMS.md` (injected at session start)
 - **Full file tree**: See `INDEX.md`
 
+## Glossary
+
+| Term | Definition |
+|------|------------|
+| **Skill** | Workflow instructions in `skills/*/SKILL.md` that agents read |
+| **Command** | User-invokable `/slash` command in `commands/` |
+| **Hook** | Python script triggered by Claude Code events in `hooks/` |
+| **Agent** | Spawnable subagent via Task tool (`subagent_type`) |
+| **Workflow** | Step-by-step procedure within a skill |
+| **Script** | Executable Python file within a skill |
+| **Spec** | Formal design document in `$ACA_DATA/projects/aops/specs/` |
+
 ## Commands
 
 | Command | Purpose |
 |---------|---------|
 | /meta | Strategic brain + executor. Design, build, verify end-to-end. |
-| /advocate | Reactive verification. "Prove it actually worked." |
-| /log | Log patterns to thematic files via learning-log skill. |
-| /transcript | Generate session transcripts (full + abridged). |
+| /archive-extract | Extract archived info to bmem knowledge base. |
 | /bmem | Capture session info to knowledge base. |
+| /bmem-validate | Parallel bmem file validation. |
+| /docs-update | Update README + INDEX documentation. |
 | /email | Extract action items from emails to tasks. |
 | /learn | Minor instruction adjustments for future agents. |
-| /qa | Quality assurance verification against acceptance criteria. |
-| /ttd | TDD orchestration workflow. |
+| /log | Log patterns to thematic files via learning-log skill. |
 | /parallel-batch | Parallel file processing with subagents. |
+| /qa | Quality assurance verification against acceptance criteria. |
+| /strategy | Strategic planning. |
+| /task-viz | Task graph visualization. |
+| /transcript | Generate session transcripts (full + abridged). |
+| /ttd | TDD orchestration workflow. |
 
 ## Skills
 
 | Skill | Purpose |
 |-------|---------|
-| framework | Convention reference before modifying infrastructure. |
-| python-dev | Production Python (fail-fast, type safety). |
-| learning-log | Pattern logging to thematic bmem files. |
-| transcript | Session JSONL → markdown (full + abridged). |
 | analyst | Data analysis (dbt, Streamlit, stats). |
 | bmem | Knowledge base operations (project="main"). |
+| dashboard | Live task dashboard (Streamlit). |
+| docs-update | README + INDEX maintenance. |
+| excalidraw | Visual diagram generation. |
+| extractor | Archive → bmem extraction. |
+| feature-dev | Feature development templates. |
+| framework | Convention reference before modifying infrastructure. |
+| framework-debug | Framework debugging. |
+| learning-log | Pattern logging to thematic bmem files. |
 | pdf | Markdown → PDF with academic formatting. |
+| python-dev | Production Python (fail-fast, type safety). |
+| skill-creator | Skill packaging and creation. |
 | tasks | Task management via MCP server. |
+| training-set-builder | Training data extraction. |
+| transcript | Session JSONL → markdown (full + abridged). |
 
 ## Hooks
 
@@ -62,5 +86,7 @@ Location: `$ACA_DATA` (single knowledge base, shared across projects).
 
 - **AXIOMS.md** - Framework principles (inviolable rules)
 - **INDEX.md** - Complete file tree with annotations
+- **docs/OBSERVABILITY.md** - Session logging, hooks, dashboard data sources
+- **docs/JIT-INJECTION.md** - How agents receive context (hooks, triggers, files loaded)
 - **$ACA_DATA/projects/aops/VISION.md** - End state vision
 - **$ACA_DATA/projects/aops/ROADMAP.md** - Maturity stages

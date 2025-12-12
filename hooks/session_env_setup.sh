@@ -5,7 +5,12 @@
 # This hook runs at session start to ensure AOPS and related env vars are available.
 # It works for both local and remote (web) Claude Code sessions.
 #
-# For local: Checks if env vars are already set (from settings.local.json)
+# ARCHITECTURE:
+# - Hooks receive env vars from Claude Code's settings "env" section
+# - ~/.claude/settings.local.json (created by setup.sh) provides machine-specific paths
+# - This hook handles web/remote sessions where settings.local.json doesn't exist
+#
+# For local: AOPS and ACA_DATA come from settings.local.json (set by setup.sh)
 # For remote: Derives paths from $CLAUDE_PROJECT_DIR and writes to $CLAUDE_ENV_FILE
 #
 

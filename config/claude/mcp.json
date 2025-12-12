@@ -53,9 +53,9 @@
       "type": "stdio",
       "command": "uvx",
       "args": [
-        "fastmcp",
-        "run",
-        "http://nicwin.stoat-musical.ts.net:8023/mcp"
+        "--from",
+        "git+https://github.com/nicsuzor/omcp",
+        "outlook-mcp"
       ],
       "env": {}
     },

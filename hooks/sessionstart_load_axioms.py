@@ -16,7 +16,6 @@ from pathlib import Path
 from typing import Any
 
 from lib.paths import get_aops_root, get_data_root
-from hooks.hook_logger import log_hook_event
 
 
 def load_framework() -> str:
@@ -116,6 +115,23 @@ def load_core() -> str:
     return content
 
 
+def expand_path_variables(content: str, aops_root: Path, data_root: Path) -> str:
+    """
+    Replace $AOPS and $ACA_DATA variables with resolved absolute paths.
+
+    Args:
+        content: Text content containing path variables
+        aops_root: Resolved AOPS path
+        data_root: Resolved ACA_DATA path
+
+    Returns:
+        Content with variables replaced by absolute paths
+    """
+    result = content.replace("$AOPS", str(aops_root))
+    result = result.replace("$ACA_DATA", str(data_root))
+    return result
+
+
 def main():
     """Main hook entry point - loads AXIOMS and CORE, then continues."""
     # Read input from stdin
@@ -126,9 +142,14 @@ def main():
         # If no stdin or parsing fails, continue with empty input
         pass
 
+    # Get resolved paths early for variable expansion
+    aops_root = get_aops_root()
+    data_root = get_data_root()
+
     # Load FRAMEWORK.md (fail-fast if missing)
     try:
         framework_content = load_framework()
+        framework_content = expand_path_variables(framework_content, aops_root, data_root)
     except (FileNotFoundError, ValueError) as e:
         print(f"ERROR: {e}", file=sys.stderr)
         sys.exit(1)
@@ -165,10 +186,10 @@ def main():
 {core_content}
 """
 
-    # Get paths for logging
-    framework_path = get_aops_root() / "FRAMEWORK.md"
-    axioms_path = get_aops_root() / "AXIOMS.md"
-    core_path = get_data_root() / "CORE.md"
+    # Use already-resolved paths for logging
+    framework_path = aops_root / "FRAMEWORK.md"
+    axioms_path = aops_root / "AXIOMS.md"
+    core_path = data_root / "CORE.md"
 
     # Build output data (sent to Claude)
     output_data: dict[str, Any] = {
@@ -178,20 +199,7 @@ def main():
         }
     }
 
-    # Build log data with file metadata (for hook logs only)
-    log_output: dict[str, Any] = {
-        "hookSpecificOutput": {
-            "hookEventName": "SessionStart",
-            "additionalContext": additional_context,
-            "filesLoaded": [str(framework_path), str(axioms_path), str(core_path)]
-        }
-    }
-
-    # Log to hook logger
-    session_id = input_data.get("session_id", "unknown")
-    log_hook_event(session_id, "SessionStart", input_data, log_output, exit_code=0)
-
-    # Output JSON (continue execution) - without filesLoaded metadata
+    # Output JSON (continue execution)
     print(json.dumps(output_data))
 
     # Status to stderr

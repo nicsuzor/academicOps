@@ -122,7 +122,6 @@ def run_claude_headless(
         - error (str, optional): Error message if execution failed
     """
     import os
-    import tempfile
 
     # Check if claude CLI is available
     if not _claude_cli_available():
@@ -142,12 +141,13 @@ def run_claude_headless(
     if permission_mode:
         cmd.extend(["--permission-mode", permission_mode])
 
-    # Set working directory - always use /tmp for tests
+    # Set working directory - use predictable path for tests
     if cwd:
         working_dir = cwd
     else:
-        # Create temporary directory in /tmp for this test run
-        working_dir = Path(tempfile.mkdtemp(prefix="claude-test-", dir="/tmp"))
+        # Use predictable directory for tests (consistent across runs)
+        working_dir = Path("/tmp/claude-test")
+        working_dir.mkdir(parents=True, exist_ok=True)
 
     # Build environment - inherit current environment
     env = os.environ.copy()
@@ -395,9 +395,13 @@ def claude_headless_tracked():
         env = os.environ.copy()
 
         try:
+            # Use predictable directory for tests (consistent across runs)
+            test_dir = Path("/tmp/claude-test")
+            test_dir.mkdir(parents=True, exist_ok=True)
+
             result = subprocess.run(
                 cmd,
-                cwd=Path("/tmp"),
+                cwd=test_dir,
                 capture_output=True,
                 text=True,
                 timeout=timeout_seconds,

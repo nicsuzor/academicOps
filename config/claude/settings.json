@@ -69,6 +69,11 @@
             "type": "command",
             "command": "PYTHONPATH=$AOPS uv run python $AOPS/hooks/sessionstart_load_axioms.py",
             "timeout": 2000
+          },
+          {
+            "type": "command",
+            "command": "PYTHONPATH=$AOPS uv run python $AOPS/hooks/unified_logger.py",
+            "timeout": 2000
           }
         ]
       }
@@ -78,7 +83,12 @@
         "hooks": [
           {
             "type": "command",
-            "command": "PYTHONPATH=$AOPS uv run python $AOPS/hooks/log_pretooluse.py",
+            "command": "PYTHONPATH=$AOPS uv run python $AOPS/hooks/policy_enforcer.py",
+            "timeout": 2000
+          },
+          {
+            "type": "command",
+            "command": "PYTHONPATH=$AOPS uv run python $AOPS/hooks/unified_logger.py",
             "timeout": 2000
           }
         ]
@@ -89,7 +99,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "PYTHONPATH=$AOPS uv run python $AOPS/hooks/log_posttooluse.py",
+            "command": "PYTHONPATH=$AOPS uv run python $AOPS/hooks/unified_logger.py",
             "timeout": 2000
           },
           {
@@ -105,12 +115,12 @@
         "hooks": [
           {
             "type": "command",
-            "command": "PYTHONPATH=$AOPS uv run python $AOPS/hooks/log_userpromptsubmit.py",
+            "command": "PYTHONPATH=$AOPS uv run python $AOPS/hooks/prompt_router.py",
             "timeout": 2000
           },
           {
             "type": "command",
-            "command": "PYTHONPATH=$AOPS uv run python $AOPS/hooks/prompt_router.py",
+            "command": "PYTHONPATH=$AOPS uv run python $AOPS/hooks/unified_logger.py",
             "timeout": 2000
           }
         ]
@@ -121,13 +131,23 @@
         "hooks": [
           {
             "type": "command",
-            "command": "PYTHONPATH=$AOPS uv run python $AOPS/hooks/log_subagentstop.py",
+            "command": "PYTHONPATH=$AOPS uv run python $AOPS/hooks/unified_logger.py",
             "timeout": 2000
           }
         ]
       }
     ],
-    "Stop": []
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "PYTHONPATH=$AOPS uv run python $AOPS/hooks/unified_logger.py",
+            "timeout": 2000
+          }
+        ]
+      }
+    ]
   },
   "statusLine": {
     "type": "command",

@@ -6,7 +6,7 @@ Provides centralized logging for hook events, consolidating duplicated logging
 logic across multiple hooks. All hooks should use log_hook_event() instead of
 implementing their own logging.
 
-Logs to ~/.cache/aops/sessions/<date>-<shorthash>-hooks.jsonl
+Logs to ~/.claude/projects/<project>/<date>-<shorthash>-hooks.jsonl
 """
 
 import json

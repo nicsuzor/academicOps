@@ -2,7 +2,7 @@
 """
 Session logging module for Claude Code.
 
-Writes session logs to ~/.cache/aops/sessions/<date>-<shorthash>.jsonl
+Writes session logs to ~/.claude/projects/<project>/<date>-<shorthash>.jsonl
 Each log entry contains session metadata, transcript summary, and activity details.
 
 Session logs are cached locally and not tracked in git.
@@ -43,6 +43,20 @@ def validate_date(date: str) -> bool:
     return bool(re.match(r"^\d{4}-\d{2}-\d{2}$", date))
 
 
+def get_claude_project_folder() -> str:
+    """
+    Get Claude Code project folder name from cwd.
+
+    Claude Code uses: /Users/suzor/src/aOps → -Users-suzor-src-aOps
+
+    Returns:
+        Project folder name matching Claude Code's convention
+    """
+    cwd = Path.cwd().resolve()
+    # Replace leading / with -, then all / with -
+    return "-" + str(cwd).replace("/", "-")[1:]
+
+
 def get_log_path(
     project_dir: Path, session_id: str, date: str | None = None, suffix: str = ""
 ) -> Path:
@@ -72,8 +86,9 @@ def get_log_path(
     short_hash = get_session_short_hash(session_id)
     filename = f"{date}-{short_hash}{suffix}.jsonl"
 
-    # Use ~/.cache/aops for session logs (not tracked in git)
-    log_dir = Path.home() / ".cache" / "aops" / "sessions"
+    # Write to same folder as Claude Code transcripts
+    project_folder = get_claude_project_folder()
+    log_dir = Path.home() / ".claude" / "projects" / project_folder
     log_dir.mkdir(parents=True, exist_ok=True)
 
     return log_dir / filename

@@ -5,6 +5,8 @@ Two-tier routing:
 1. Keyword match → MANDATORY skill invocation instruction
 2. No match → Offers Haiku classifier spawn for semantic analysis
 
+Also injects focus reminder on every prompt.
+
 Exit codes:
     0: Success (always continues)
 """
@@ -16,7 +18,9 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from hooks.hook_logger import log_hook_event
+
+# Focus reminder (previously in separate hook)
+FOCUS_REMINDER = "**CRITICAL**: Focus on the user's specific request. Do NOT over-elaborate or add unrequested features. Complete the task, then stop."
 
 
 # All available skills with descriptions for routing
@@ -144,25 +148,22 @@ def main():
     with contextlib.suppress(Exception):
         input_data = json.load(sys.stdin)
 
-    session_id = input_data.get("session_id", "unknown")
     prompt = input_data.get("prompt", "")
 
     # Get classifier spawn instruction
     advisory = analyze_prompt(prompt)
 
-    # Build output
-    output: dict[str, Any] = {}
-
+    # Build output - always include focus reminder, add skill routing if matched
+    context_parts = [FOCUS_REMINDER]
     if advisory:
-        output = {
-            "hookSpecificOutput": {
-                "hookEventName": "UserPromptSubmit",
-                "additionalContext": advisory
-            }
-        }
+        context_parts.append(advisory)
 
-    # Log hook event
-    log_hook_event(session_id, "PromptRouter", input_data, output, exit_code=0)
+    output: dict[str, Any] = {
+        "hookSpecificOutput": {
+            "hookEventName": "UserPromptSubmit",
+            "additionalContext": "\n".join(context_parts)
+        }
+    }
 
     print(json.dumps(output))
     sys.exit(0)
