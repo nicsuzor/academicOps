@@ -1,10 +1,10 @@
 # Cognitive Load Dashboard
 
-Single Streamlit dashboard for task visibility and cognitive load monitoring.
+Single Streamlit dashboard for task visibility and session activity monitoring.
 
 ## Overview
 
-Live web dashboard displaying high-priority tasks and activity status. Designed for desktop monitoring and mobile/tablet access when away from desk.
+Live web dashboard displaying high-priority tasks and Claude Code session activity across all projects. Designed for desktop monitoring and mobile/tablet access when away from desk.
 
 **Target reliability**: 100% (vs task_view.py ~50% failure rate)
 
@@ -21,7 +21,8 @@ Live web dashboard displaying high-priority tasks and activity status. Designed 
 - "Check task priorities"
 - "What's urgent?"
 - "Show me focus tasks"
-- "What happened today?" (Phase 2)
+- "What happened today?"
+- "What sessions are active?"
 
 ## Running
 
@@ -41,30 +42,36 @@ Displays up to 5 highest-priority tasks with:
 - Priority badge (🔴 P0, 🟡 P1, 🔵 P2, ⚪ P3)
 - Task title
 - Project classification
-- Auto-refresh every 30s
+- Auto-refresh every 10s
 
-### Activity Log (Phase 2) 🚧
-Planned: Show recent task state changes, completions, and priority updates.
+### Activity Log ✅
+Shows recent activity from ALL Claude Code sessions:
+- User prompts (with preview)
+- Significant tool operations (Edit, Write, Task, Bash)
+- Session identification and color-coding
+- No time limit - can see activity from any session
 
-### Task Summary 🚧
-Planned: Aggregate metrics (task counts, priority distribution, completion rate).
+### Active Sessions ✅
+Overview of all discovered sessions grouped by project, each showing:
+- First user prompt (what started the session)
+- Most recent user prompt (current state)
+- Most recent bmem documentation write (if any)
+- Time since last activity
 
-## Current Status
+## Architecture
 
-**Phase 1**: Complete
-- Focus Panel implemented and working
-- Connects to task system via task_loader
-- Auto-refresh mechanism active
-- Error handling for failed loads
+Uses unified `lib/session_reader.py` module that reads:
+- Claude session JSONL (`*.jsonl`)
+- Agent transcripts (`agent-*.jsonl`)
+- Hook logs (`*-hooks.jsonl`)
 
-**Phase 2**: Pending
-- Activity log implementation
-- Task summary metrics
-- Enhanced filtering/sorting
+Same parser used by `/transcript` skill for markdown export.
 
 ## Technical Notes
 
-- Uses `skills.tasks.task_loader.load_focus_tasks()` to access task data
-- Streamlit auto-refresh (30s) ensures dashboard stays current
-- Error handling prevents crashes on task load failures
+- Uses `lib.session_reader.SessionProcessor` for parsing all session data
+- Uses `lib.session_reader.find_sessions()` for session discovery
+- Uses `skills.tasks.task_loader.load_focus_tasks()` for task data
+- Auto-refresh every 10 seconds
+- Error handling prevents crashes on parse failures
 - Responsive layout works on mobile devices
