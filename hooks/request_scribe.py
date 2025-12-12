@@ -1,90 +1,77 @@
 #!/usr/bin/env python3
 """
-Stop/SubagentStop/PostToolUse(TodoWrite) hook requesting end-of-session documentation.
+PostToolUse/Stop hook: Remind agent to document work to bmem.
 
-This hook blocks execution on first trigger to request agent invoke session
-documentation workflow, then allows on subsequent triggers to prevent loops.
+Triggers on:
+- PostToolUse (TodoWrite matcher) - after task list updates
+- Stop - at end of session
 
-Triggered on:
-- Stop/SubagentStop events (agent pausing)
-- PostToolUse for TodoWrite (objectives captured, document outcomes)
-
-Uses state flag to track whether documentation was requested this turn.
-Flag is cleared by UserPromptSubmit hook for next turn.
+Reads reminder message from hooks/prompts/bmem-reminder.md.
 
 Exit codes:
-    0: Success (either blocked with request or allowed)
+    0: Success (always continues)
 """
 
+import contextlib
 import json
+import os
 import sys
 from pathlib import Path
 from typing import Any
 
 
-def get_state_file(session_id: str) -> Path:
-    """Get path to state file tracking documentation request for this session."""
-    cache_dir = Path.home() / ".cache" / "aops"
-    cache_dir.mkdir(parents=True, exist_ok=True)
-    return cache_dir / f"session_end_{session_id}.flag"
+def get_reminder_message() -> str:
+    """Load reminder message from template file."""
+    aops_root = Path(os.environ.get("AOPS", ""))
+    template_path = aops_root / "hooks" / "prompts" / "bmem-reminder.md"
+
+    if template_path.exists():
+        return template_path.read_text().strip()
+
+    # Fallback if template not found
+    return (
+        "[AOPS Framework Reminder: If this marks the end of a substantial chunk of work, "
+        "use the bmem skill to document key decisions and outcomes.]"
+    )
 
 
 def main():
     """Main hook entry point."""
-    # Read input from stdin
-    try:
-        input_data: dict[str, Any] = json.load(sys.stdin)
-    except json.JSONDecodeError:
-        # On error, allow execution (fail-safe)
-        print(json.dumps({}))
-        sys.exit(0)
+    input_data: dict[str, Any] = {}
+    with contextlib.suppress(Exception):
+        input_data = json.load(sys.stdin)
 
-    session_id = input_data.get("session_id", "unknown")
-    hook_event = input_data.get("hook_event", "Unknown")
-    state_file = get_state_file(session_id)
+    # Determine hook event type (Claude Code uses snake_case for input)
+    hook_event = input_data.get("hook_event_name", "")
 
-    # Check if we already requested documentation this turn
-    if state_file.exists():
-        # Second+ trigger: Allow execution (documentation already requested)
-        output: dict[str, Any] = {}
+    # Stop hooks use different output format (no hookSpecificOutput)
+    if hook_event == "Stop":
+        message = get_reminder_message()
+        output: dict[str, Any] = {
+            "reason": message,
+            "continue": True
+        }
         print(json.dumps(output))
-        print(
-            f"✓ {hook_event} allowed (documentation already requested)",
-            file=sys.stderr,
-        )
-        sys.exit(0)
+        sys.exit(1)  # 1 = warn but allow
 
-    # First trigger: Block and request documentation
-    # Create state flag to prevent loop
-    state_file.touch()
+    # For PostToolUse, only trigger on TodoWrite
+    if hook_event == "PostToolUse":
+        tool_name = input_data.get("tool_name", "")
+        if tool_name != "TodoWrite":
+            print(json.dumps({}))
+            sys.exit(0)
 
-    # Different messages based on hook event
-    hook_event = input_data.get("hook_event", "Unknown")
+    # Inject reminder message (only for PostToolUse)
+    message = get_reminder_message()
 
-    if hook_event == "PostToolUse" and input_data.get("tool_name") == "TodoWrite":
-        # TodoWrite: Document planned work
-        reason = (
-            "[AOPS Framework Reminder: You just updated the todo list. "
-            "Consider documenting to bmem: (1) what you plan to work on next, "
-            "(2) any decisions made about approach or priorities.]"
-        )
-    else:
-        # Stop/SubagentStop: Document completed work
-        reason = (
-            "[AOPS Framework Reminder: If this marks the end of a substantial chunk of work "
-            "(not during interactive conversation), use the bmem skill to document key decisions and outcomes.]"
-        )
-
-    output = {
-        "decision": "block",
-        "reason": reason,
+    output: dict[str, Any] = {
+        "hookSpecificOutput": {
+            "hookEventName": hook_event,
+            "additionalContext": message
+        }
     }
 
     print(json.dumps(output))
-    print(
-        f"⏸️  {hook_event} blocked: Requesting end-of-session documentation",
-        file=sys.stderr,
-    )
     sys.exit(0)
 
 
