@@ -38,13 +38,20 @@
 
 10. **Always Dogfooding**: Use our own research projects as development guides, test cases, tutorials. Never create fake examples for tests or documentation.
 
-11. **Skills are Read-Only**: Skills in `skills/` MUST NOT contain dynamic data
+11. **Categorical Imperative**: Every action taken on framework or data must be justifiable as a universal rule.
+    - Before acting, state the generalizable rule that justifies the action
+    - If no rule exists, propose one before proceeding
+    - Rules become binding for all future similar situations
+    - Ad-hoc decisions are prohibited - if you can't generalize it, don't do it
+    - This is how dogfooding becomes systematic improvement
+
+12. **Skills are Read-Only**: Skills in `skills/` MUST NOT contain dynamic data
     - Skills are distributed as zip files and installed read-only
     - ❌ NO log files, experiment tracking, or mutable state in skills
     - ✅ All dynamic data lives in `$ACA_DATA/` hierarchy
     - ✅ Skills reference data paths, never write to their own directories
 
-12. **Trust Version Control**: We work in git repositories - git is the backup system
+13. **Trust Version Control**: We work in git repositories - git is the backup system
     - ❌ NEVER create backup files: `_new`, `.bak`, `_old`, `_ARCHIVED_*`, `file_2`, `file.backup`
     - ❌ NEVER preserve directories/files "for reference" - git history IS the reference
     - ✅ Edit files directly, rely on git to track changes
@@ -52,29 +59,29 @@
 
 ## Behavioral Rules
 
-13. **NO WORKAROUNDS**: If your tooling or instructions don't work PRECISELY, log the failure and HALT. Don't work around bugs.
+14. **NO WORKAROUNDS**: If your tooling or instructions don't work PRECISELY, log the failure and HALT. Don't work around bugs.
 
-14. **VERIFY FIRST** - Check actual state, never assume
+15. **VERIFY FIRST** - Check actual state, never assume
 
-15. **NO EXCUSES** - Never close issues or claim success without confirmation. No error is somebody else's problem.
+16. **NO EXCUSES** - Never close issues or claim success without confirmation. No error is somebody else's problem.
     - If asked to "run X to verify Y", success = X runs successfully
     - Never rationalize away requirements. If a test fails, fix it or ask for help
 
-16. **WRITE FOR THE LONG TERM** - NEVER create single-use scripts or tests. Build infrastructure that guarantees replicability.
+17. **WRITE FOR THE LONG TERM** - NEVER create single-use scripts or tests. Build infrastructure that guarantees replicability.
 
-17. **DON'T MAKE SHIT UP** - If you don't know, say so. No guesses.
+18. **DON'T MAKE SHIT UP** - If you don't know, say so. No guesses.
 
-18. **ALWAYS CITE SOURCES** - No plagiarism. Ever.
+19. **ALWAYS CITE SOURCES** - No plagiarism. Ever.
 
 ## Maintenance Note
 
-19. Actively maintain the integrity of our relational database with atomic, canonical markdown files that link to each other rather than repeating content.
+20. Actively maintain the integrity of our relational database with atomic, canonical markdown files that link to each other rather than repeating content.
 
-20. **NOTHING IS SOMEONE ELSE'S RESPONSIBILITY**: If you can't fix it, HALT. You DO NOT IGNORE PROBLEMS HERE.
+21. **NOTHING IS SOMEONE ELSE'S RESPONSIBILITY**: If you can't fix it, HALT. You DO NOT IGNORE PROBLEMS HERE.
 
-21. **ACCEPTANCE CRITERIA OWN SUCCESS**: Only user-defined acceptance criteria determine whether work is complete. Agents cannot modify, weaken, or reinterpret acceptance criteria. If criteria cannot be met, HALT and report.
+22. **ACCEPTANCE CRITERIA OWN SUCCESS**: Only user-defined acceptance criteria determine whether work is complete. Agents cannot modify, weaken, or reinterpret acceptance criteria. If criteria cannot be met, HALT and report.
 
-22. **JUST-IN-TIME CONTEXT**: Information surfaces automatically when relevant - not everything upfront, not relying on agents to search.
+23. **JUST-IN-TIME CONTEXT**: Information surfaces automatically when relevant - not everything upfront, not relying on agents to search.
     - **Global principles** → `AXIOMS.md` (loaded every session via SessionStart)
     - **Component decisions** → `component/CLAUDE.md` (loaded when working on that component)
     - **Past learnings** → bmem (semantic search when relevant)

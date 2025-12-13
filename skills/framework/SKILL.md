@@ -34,13 +34,27 @@ $ACA_DATA/                 # User data repo
 ├── STYLE-QUICK.md         # Writing style
 ├── tasks/                 # Task data
 └── projects/aops/         # Framework project data
-    ├── STATE.md           # Current state
-    ├── VISION.md          # Goals
-    ├── ROADMAP.md         # Progression
-    └── specs/             # Task specifications
+    ├── VISION.md          # Goals (edit in place)
+    ├── ROADMAP.md         # Progression (edit in place)
+    ├── specs/             # Design documents
+    ├── experiments/       # Hypothesis → results
+    ├── learning/          # Patterns from experience
+    ├── decisions/         # Architectural choices
+    ├── bugs/              # Bug investigations (delete when fixed)
+    └── qa/                # Verification reports (delete when resolved)
 ```
 
 ## Core Conventions
+
+### Folder Naming Convention
+
+Each folder should have a markdown file with the same name as the folder. This is the core/index content for that folder.
+
+```
+projects/aops/aops.md      # ✅ Core file for aops/ folder
+skills/bmem/bmem.md        # ✅ Core file for bmem/ folder
+experiments/experiments.md # ✅ Core file for experiments/ folder
+```
 
 ### Single Source of Truth
 
@@ -132,6 +146,42 @@ Scripts are SIMPLE TOOLS that agents call via Bash:
 **Prohibited**: File reading, pattern matching, filtering, reasoning
 
 Agents orchestrate. Scripts are utilities.
+
+## Framework Project Data (`$ACA_DATA/projects/aops/`)
+
+Per AXIOMS.md #11 (Categorical Imperative): Every file must fit a defined category. No ad-hoc files.
+
+### Allowed File Types and Locations
+
+| Type | Location | Rule |
+|------|----------|------|
+| Vision/Strategy | `VISION.md`, `ROADMAP.md` | One file each, edited in place |
+| Specifications | `specs/` | Design docs for features. Status in frontmatter: draft/approved/implemented |
+| Experiments | `experiments/` | Hypothesis → results. Use `TEMPLATE.md`. Date-prefix filenames |
+| Learning | `learning/` | Patterns extracted from experience. Thematic files, append-only |
+| Decisions | `decisions/` | Architectural choices with rationale. Immutable once made |
+| Bugs | `bugs/` | Bug investigations. Delete when fixed |
+| QA | `qa/` | Verification reports. Delete after issues resolved |
+
+### Prohibited
+
+- ❌ Root-level working documents (session notes, plans, summaries)
+- ❌ Files without clear category
+- ❌ Duplicate content across files
+- ❌ "Index" or "Summary" files (use search instead)
+
+### Before Creating a File
+
+1. **Does it fit a category above?** If no → don't create it
+2. **Does similar content exist?** If yes → edit existing file
+3. **Is this session-specific?** If yes → don't persist it (use conversation context)
+
+### Cleanup = Compliance Check
+
+Cleanup is NOT a separate process. It's verifying files comply with these rules:
+- Files outside defined locations → delete or move
+- Duplicate content → consolidate
+- Session detritus → delete (learning already in conversation/bmem)
 
 ## Before You Modify
 
