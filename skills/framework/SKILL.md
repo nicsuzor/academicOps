@@ -1,18 +1,71 @@
 ---
 name: framework
-description: Understand framework conventions before modifying hooks, skills, commands, or agents. Provides paths, patterns, and anti-bloat principles.
-allowed-tools: Read,Grep,Glob
-version: 2.0.0
+description: Categorical framework governance. Treats every change as a universal rule. Delegates user data operations to skills.
+allowed-tools: Read,Grep,Glob,Edit,Write,Skill
+version: 3.0.0
 permalink: skills-framework-skill
 ---
 
 # Framework Conventions Skill
 
-**When to invoke**: Before modifying framework infrastructure (hooks, skills, commands, agents, scripts).
+**When to invoke**: Before modifying framework infrastructure OR when making any change that should become a generalizable pattern.
 
-**What it provides**: Paths, conventions, existing patterns, anti-bloat rules.
+**What it provides**: Categorical analysis, conventions, delegation to appropriate skills.
 
-**What it doesn't do**: Strategic decisions, implementation, debugging. Use `/meta` for that.
+**What it doesn't do**: Ad-hoc one-off changes. Every action must be justifiable as a universal rule.
+
+## Categorical Imperative (MANDATORY)
+
+Per AXIOMS.md #11: Every action must be justifiable as a universal rule. This skill enforces that principle.
+
+### Before ANY Change
+
+1. **State the rule**: What generalizable principle justifies this action?
+2. **Check rule exists**: Is this in AXIOMS, this skill, or documented elsewhere?
+3. **If no rule exists**: Propose the rule. Get user approval. Document it.
+4. **Ad-hoc actions are PROHIBITED**: If you can't generalize it, don't do it.
+
+### File Boundaries (ENFORCED)
+
+| Location | Action | Reason |
+|----------|--------|--------|
+| `$AOPS/*` | Direct modification OK | Public framework files |
+| `$ACA_DATA/*` | **MUST delegate to skill** | User data requires repeatable processes |
+
+**Rationale**: If we need to operate on user data, we build a skill for it. One-off scripts and manual changes are prohibited. This ensures every process is generalizable and repeatable.
+
+### When Operating on User Data
+
+1. **Identify the operation category**: What type of work is this?
+2. **Find existing skill**: Does a skill already handle this? (bmem, tasks, analyst, etc.)
+3. **If skill exists**: Invoke it with `FRAMEWORK SKILL CHECKED` token
+4. **If NO skill exists**: Create one first, THEN invoke it
+
+### Creating Skills for New Operations
+
+When no skill handles a needed user data operation:
+
+1. Create skill in `$AOPS/skills/<name>/SKILL.md`
+2. Follow "Adding a Skill" pattern below
+3. Skill must be generalizable (not one-off)
+4. Then invoke the new skill to do the work
+
+**Example**: Need to clean up non-compliant files?
+- ❌ Wrong: Directly delete files in `$ACA_DATA/`
+- ✅ Right: Create `cleanup` skill that checks compliance, then invoke it
+
+### Delegation Output Format
+
+When delegating to a skill:
+
+```
+FRAMEWORK SKILL CHECKED
+
+Categorical Rule: [the universal rule justifying this action]
+Skill: [skill to invoke]
+Operation: [what the skill should do]
+Scope: [files/directories affected]
+```
 
 ## Framework Paths
 
