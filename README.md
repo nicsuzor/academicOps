@@ -1,92 +1,81 @@
 # academicOps Framework
 
-Minimal LLM agent automation for Claude Code. Fight bloat aggressively.
+Academic support framework for Claude Code. Minimal, fight bloat aggressively.
 
 ## Quick Start
 
-- **Paths**: See `FRAMEWORK.md` (injected at session start)
-- **Principles**: See `AXIOMS.md` (injected at session start)
-- **Full file tree**: See `INDEX.md`
+- **Paths**: `FRAMEWORK.md` (injected at session start)
+- **Principles**: `AXIOMS.md` (injected at session start)
+- **File tree**: `INDEX.md`
 
 ## Glossary
 
 | Term | Definition |
 |------|------------|
-| **Skill** | Workflow instructions in `skills/*/SKILL.md` that agents read |
+| **Skill** | Workflow instructions in `skills/*/SKILL.md` - invoke via `Skill` tool |
 | **Command** | User-invokable `/slash` command in `commands/` |
 | **Hook** | Python script triggered by Claude Code events in `hooks/` |
-| **Agent** | Spawnable subagent via Task tool (`subagent_type`) |
-| **Workflow** | Step-by-step procedure within a skill |
-| **Script** | Executable Python file within a skill |
-| **Spec** | Formal design document in `$ACA_DATA/projects/aops/specs/` |
+| **Agent** | Spawnable subagent via `Task` tool (`subagent_type`) |
 
 ## Commands
 
-| Command | Purpose |
-|---------|---------|
-| /meta | Strategic brain + executor. Design, build, verify end-to-end. |
-| /archive-extract | Extract archived info to bmem knowledge base. |
-| /bmem | Capture session info to knowledge base. |
-| /bmem-validate | Parallel bmem file validation. |
-| /docs-update | Update README + INDEX documentation. |
-| /email | Extract action items from emails to tasks. |
-| /learn | Minor instruction adjustments for future agents. |
-| /log | Log patterns to thematic files via learning-log skill. |
-| /parallel-batch | Parallel file processing with subagents. |
-| /qa | Quality assurance verification against acceptance criteria. |
-| /strategy | Strategic planning. |
-| /task-viz | Task graph visualization. |
-| /transcript | Generate session transcripts (full + abridged). |
-| /ttd | TDD orchestration workflow. |
+| Command | Purpose | Invocation |
+|---------|---------|------------|
+| /meta | Strategic brain + executor | Slash command |
+| /email | Extract action items from emails → tasks | Slash command |
+| /bmem | Capture session info to knowledge base | Slash command |
+| /log | Log patterns to thematic learning files | Slash command |
+| /transcript | Generate session transcripts | Slash command |
+| /task-viz | Task graph visualization (Excalidraw) | Slash command |
+| /qa | Verify against acceptance criteria | Slash command |
+| /ttd | TDD orchestration workflow | Slash command |
+| /parallel-batch | Parallel file processing | Slash command |
 
 ## Skills
 
-| Skill | Purpose |
-|-------|---------|
-| analyst | Data analysis (dbt, Streamlit, stats). |
-| bmem | Knowledge base operations (project="main"). |
-| dashboard | Live task dashboard (Streamlit). |
-| docs-update | README + INDEX maintenance. |
-| excalidraw | Visual diagram generation. |
-| extractor | Archive → bmem extraction. |
-| feature-dev | Feature development templates. |
-| framework | Convention reference before modifying infrastructure. |
-| framework-debug | Framework debugging. |
-| learning-log | Pattern logging to thematic bmem files. |
-| pdf | Markdown → PDF with academic formatting. |
-| python-dev | Production Python (fail-fast, type safety). |
-| skill-creator | Skill packaging and creation. |
-| tasks | Task management via MCP server. |
-| training-set-builder | Training data extraction. |
-| transcript | Session JSONL → markdown (full + abridged). |
+| Skill | Purpose | Invocation |
+|-------|---------|------------|
+| analyst | Research data analysis (dbt, stats) | `Skill(skill="analyst")` |
+| bmem | Knowledge base operations | `Skill(skill="bmem")` or `/bmem` |
+| framework | Convention reference, categorical imperative | `Skill(skill="framework")` |
+| osb-drafting | IRAC analysis, citation verification | `Skill(skill="osb-drafting")` |
+| pdf | Markdown → professional PDF | `Skill(skill="pdf")` |
+| python-dev | Production Python (fail-fast, typed) | `Skill(skill="python-dev")` |
+| tasks | Task management + email extraction | `Skill(skill="tasks")` or `/email` |
+| transcript | Session JSONL → markdown | `Skill(skill="transcript")` |
+| learning-log | Pattern logging to thematic files | `Skill(skill="learning-log")` |
 
 ## Hooks
 
-Session lifecycle automation (Python scripts in `hooks/`):
-- `sessionstart_load_axioms.py` - Injects AXIOMS.md at session start
-- `user_prompt_submit.py` - Context injection on every prompt
-- `prompt_router.py` - Keyword analysis → skill suggestions
-
-See INDEX.md for complete hook list.
+| Hook | Trigger | Purpose |
+|------|---------|---------|
+| `sessionstart_load_axioms.py` | SessionStart | Inject AXIOMS.md, FRAMEWORK.md paths |
+| `user_prompt_submit.py` | UserPromptSubmit | Context injection on every prompt |
+| `prompt_router.py` | UserPromptSubmit | Keyword → skill suggestions |
 
 ## Agents
 
-Spawnable subagents (Task tool with subagent_type):
-- `dev` - Routes to python-dev skill
-- `bmem-validator` - Parallel bmem file validation
-- `email-extractor` - Email archive processing
+| Agent | Purpose | Invocation |
+|-------|---------|------------|
+| dev | Routes to python-dev skill | `Task(subagent_type="dev")` |
+| Explore | Fast codebase exploration | `Task(subagent_type="Explore")` |
+| Plan | Implementation planning | `Task(subagent_type="Plan")` |
 
-## Knowledge Base (bmem)
+## Testing
+
+- **Unit tests**: `tests/` (270 tests, 98% pass)
+- **Integration tests**: `tests/integration/` (require Claude CLI)
+- **Run**: `uv run pytest tests/`
+
+## Knowledge Base
 
 **Always use `project="main"`** with all `mcp__bmem__*` tools.
 
-Location: `$ACA_DATA` (single knowledge base, shared across projects).
-
 ## See Also
 
-- **AXIOMS.md** - Framework principles (inviolable rules)
-- **INDEX.md** - Complete file tree with annotations
-- **docs/OBSERVABILITY.md** - Session logging, hooks, dashboard data sources
-- **docs/JIT-INJECTION.md** - How agents receive context (hooks, triggers, files loaded)
-- **$ACA_DATA/projects/aops/VISION.md** - End state vision
-- **$ACA_DATA/projects/aops/ROADMAP.md** - Maturity stages
+| Document | Purpose |
+|----------|---------|
+| AXIOMS.md | Principles (inviolable rules) |
+| INDEX.md | Complete file tree |
+| $ACA_DATA/projects/aops/VISION.md | What we're building |
+| $ACA_DATA/projects/aops/ROADMAP.md | Current status |

@@ -2,22 +2,25 @@
 
 **These are inviolable rules. Follow without exception.**
 
-## Core Axioms
+0. [[NO OTHER TRUTHS]]: You MUST NOT assume or decide ANYTHING that is not directly derivable from these axioms.
 
-0. **NO OTHER TRUTHS**: You MUST NOT assume or decide ANYTHING that is not directly derivable from these axioms.
+1. [[NICs CATEGORICAL IMPERATIVE]]: Every action taken must be justifiable as a universal rule derived from these AXIOMS and the set of framework instructions. 
+	- Corollary: Make NO changes that are not controlled by a general process explicitly defined in [[skills]].
 
-1. **DO ONE THING** - Complete the task requested, then STOP.
+2. **DON'T MAKE SHIT UP** - If you don't know, say so. No guesses.
+
+3. **ALWAYS CITE SOURCES** - No plagiarism. Ever.
+
+4. **DO ONE THING** - Complete the task requested, then STOP.
    - User asks question → Answer it, then stop
    - User requests task → Do it, then stop
    - Find related issues → Report them, don't fix them
 
-2. **Data Boundaries**: Everything in this repository is PRIVATE unless explicitly marked otherwise
+5. **Data Boundaries**: **NEVER** expose private data in public places. Everything in this repository is PRIVATE unless explicitly marked otherwise.
 
-3. **Project Isolation**: Project-specific content belongs ONLY in the project repository
+6. **Project Independence**: Projects must work independently without cross-dependencies
 
-4. **Project Independence**: Projects must work independently without cross-dependencies
-
-5. **Fail-Fast (Code)**: No defaults, no fallbacks, no workarounds, no silent failures.
+7. **Fail-Fast (Code)**: No defaults, no fallbacks, no workarounds, no silent failures.
    - Fail immediately when configuration is missing or incorrect
    - Demand explicit configuration
 
@@ -27,7 +30,9 @@
 
 7. **Self-Documenting**: Documentation-as-code first; never make separate documentation files
 
-8. **DRY, Modular, Explicit**: One golden path, no defaults, no guessing, no backwards compatibility
+8. **Single-Purpose Files**: Every file has ONE defined audience and ONE defined purpose. No cruft, no mixed concerns.
+
+9. **DRY, Modular, Explicit**: One golden path, no defaults, no guessing, no backwards compatibility
 
 9. **Use Standard Tools**: ONE GOLDEN PATH - use the best industry-standard tool for each job
    - Package management: `uv`
@@ -38,20 +43,14 @@
 
 10. **Always Dogfooding**: Use our own research projects as development guides, test cases, tutorials. Never create fake examples for tests or documentation.
 
-11. **Categorical Imperative**: Every action taken on framework or data must be justifiable as a universal rule.
-    - Before acting, state the generalizable rule that justifies the action
-    - If no rule exists, propose one before proceeding
-    - Rules become binding for all future similar situations
-    - Ad-hoc decisions are prohibited - if you can't generalize it, don't do it
-    - This is how dogfooding becomes systematic improvement
 
-12. **Skills are Read-Only**: Skills in `skills/` MUST NOT contain dynamic data
+11. **Skills are Read-Only**: Skills in `skills/` MUST NOT contain dynamic data
     - Skills are distributed as zip files and installed read-only
     - ❌ NO log files, experiment tracking, or mutable state in skills
     - ✅ All dynamic data lives in `$ACA_DATA/` hierarchy
     - ✅ Skills reference data paths, never write to their own directories
 
-13. **Trust Version Control**: We work in git repositories - git is the backup system
+12. **Trust Version Control**: We work in git repositories - git is the backup system
     - ❌ NEVER create backup files: `_new`, `.bak`, `_old`, `_ARCHIVED_*`, `file_2`, `file.backup`
     - ❌ NEVER preserve directories/files "for reference" - git history IS the reference
     - ✅ Edit files directly, rely on git to track changes
@@ -68,10 +67,6 @@
     - Never rationalize away requirements. If a test fails, fix it or ask for help
 
 17. **WRITE FOR THE LONG TERM** - NEVER create single-use scripts or tests. Build infrastructure that guarantees replicability.
-
-18. **DON'T MAKE SHIT UP** - If you don't know, say so. No guesses.
-
-19. **ALWAYS CITE SOURCES** - No plagiarism. Ever.
 
 ## Maintenance Note
 

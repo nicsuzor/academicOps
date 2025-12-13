@@ -154,6 +154,44 @@ Skills in `skills/` MUST NOT contain dynamic data. All mutable state goes in `$A
 - Edit directly, git tracks changes
 - Commit AND push after completing work
 
+## Documentation Structure (Authoritative)
+
+The framework has exactly these core documents. No others.
+
+### Framework Documentation ($AOPS/)
+
+| Document | Purpose | Contains |
+|----------|---------|----------|
+| README.md | Entry point | Feature inventory (skills, commands, hooks, agents) with how-to-invoke |
+| AXIOMS.md | Principles ONLY | Inviolable rules - NO enforcement details, NO examples, NO implementation |
+| INDEX.md | File tree | Complete directory structure |
+
+**AXIOMS.md rule**: Axioms are pure principles. Enforcement mechanisms, implementation details, and examples belong elsewhere (README.md, VISION.md, or skill docs). This applies to ALL instruction files - keep principles separate from implementation.
+
+### Project Documentation ($ACA_DATA/projects/aops/)
+
+| Document | Purpose | Contains |
+|----------|---------|----------|
+| VISION.md | Goals | What we're building, success criteria, scope boundaries |
+| ROADMAP.md | Status | Done / In Progress / Planned / Known Issues |
+| learning/ | Patterns | Thematic files for failure patterns and lessons |
+
+### Documentation Rules
+
+1. **VISION.md is grounded** - No aspirational "autonomous research". This is an academic support framework.
+2. **ROADMAP.md is simple** - No maturity models. Just lists: Done, In Progress, Planned, Issues.
+3. **README.md has the inventory** - Every skill/command/hook with one-line purpose and how to invoke.
+4. **AXIOMS.md is pure** - Principles only. No enforcement, examples, or implementation details.
+5. **No other core docs** - specs/, experiments/, learning/ handle everything else.
+
+### Feature Inventory Format (README.md)
+
+Each capability listed with:
+- Name
+- Purpose (one line)
+- Invocation (how to use it)
+- Test (how it's verified)
+
 ## Anti-Bloat Rules
 
 ### File Limits
