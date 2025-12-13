@@ -1,8 +1,8 @@
 ---
 name: framework
 description: Categorical framework governance. Treats every change as a universal rule. Delegates user data operations to skills.
-allowed-tools: Read,Grep,Glob,Edit,Write,Skill
-version: 3.0.0
+allowed-tools: Read,Grep,Glob,Edit,Write,Skill,AskUserQuestion
+version: 4.0.0
 permalink: skills-framework-skill
 ---
 
@@ -10,13 +10,56 @@ permalink: skills-framework-skill
 
 **When to invoke**: Before modifying framework infrastructure OR when making any change that should become a generalizable pattern.
 
-**What it provides**: Categorical analysis, conventions, delegation to appropriate skills.
+**What it provides**: Categorical analysis, conventions, delegation to appropriate skills, **compliance assessment**.
 
 **What it doesn't do**: Ad-hoc one-off changes. Every action must be justifiable as a universal rule.
 
+## Logical Derivation System
+
+This framework is a **validated logical system**. Every component must be derivable from axioms and supporting documents.
+
+### Authoritative Source Chain (Read in Order)
+
+| Priority | Document | Contains | Location |
+|----------|----------|----------|----------|
+| 1 | AXIOMS.md | Inviolable principles | `$AOPS/AXIOMS.md` |
+| 2 | VISION.md | What we're building, success criteria | `$ACA_DATA/projects/aops/VISION.md` |
+| 3 | ROADMAP.md | Current status, done/planned/issues | `$ACA_DATA/projects/aops/ROADMAP.md` |
+| 4 | This skill | Conventions derived from above | `$AOPS/skills/framework/SKILL.md` |
+| 5 | README.md | Feature inventory | `$AOPS/README.md` |
+| 6 | INDEX.md | File tree | `$AOPS/INDEX.md` |
+
+**Derivation rule**: Every convention in this skill MUST trace to an axiom or vision statement. If it can't, the convention is invalid.
+
+### Compliance Assessment Protocol
+
+When assessing any component for compliance:
+
+1. **Trace to axiom**: Which axiom(s) justify this component's existence?
+2. **Check placement**: Does INDEX.md define where this belongs?
+3. **Verify uniqueness**: Is this information stated exactly once (DRY)?
+4. **Confirm purpose**: Does VISION.md support this capability?
+
+If ANY check fails → component is non-compliant → refactor or delete.
+
+### HALT Protocol (MANDATORY)
+
+**When you encounter something you cannot derive:**
+
+1. **STOP** - Do not guess, do not work around
+2. **STATE** - "I cannot determine [X] because [Y]"
+3. **ASK** - Use AskUserQuestion to get clarification
+4. **DOCUMENT** - Once resolved, add the rule to appropriate location
+
+**Examples requiring HALT:**
+- File doesn't fit any defined category
+- Two axioms appear to conflict
+- Placement is ambiguous (could go in multiple locations)
+- New pattern with no existing convention
+
 ## Categorical Imperative (MANDATORY)
 
-Per AXIOMS.md #11: Every action must be justifiable as a universal rule. This skill enforces that principle.
+Per AXIOMS.md #1: Every action must be justifiable as a universal rule derived from these AXIOMS.
 
 ### Before ANY Change
 
@@ -104,25 +147,36 @@ $ACA_DATA/                 # User data repo
     └── qa/                # Verification reports (delete when resolved)
 ```
 
-## Core Conventions
+## Core Conventions (with Axiom Derivations)
+
+Each convention traces to its source axiom. If a convention lacks derivation, it's invalid.
 
 ### Folder Naming Convention
 
-Each folder should have a markdown file with the same name as the folder. This is the core/index content for that folder.
+Each folder should have a markdown file with the same name as the folder.
 
 ```
 projects/aops/aops.md      # ✅ Core file for aops/ folder
 skills/bmem/bmem.md        # ✅ Core file for bmem/ folder
-experiments/experiments.md # ✅ Core file for experiments/ folder
 ```
+
+**Derives from**: AXIOMS #8 (Single-Purpose Files) - one defined audience, one purpose per file.
 
 ### Single Source of Truth
 
 Each piece of information exists in exactly ONE location:
-- Principles: `AXIOMS.md`
-- Directory structure: `README.md`
-- User context: `$ACA_DATA/CORE.md`
-- Work style: `$ACA_DATA/ACCOMMODATIONS.md`
+
+| Information | Authoritative Location |
+|-------------|------------------------|
+| Principles | `$AOPS/AXIOMS.md` |
+| File tree | `$AOPS/INDEX.md` |
+| Feature inventory | `$AOPS/README.md` |
+| User context | `$ACA_DATA/CORE.md` |
+| Work style | `$ACA_DATA/ACCOMMODATIONS.md` |
+| Framework vision | `$ACA_DATA/projects/aops/VISION.md` |
+| Framework status | `$ACA_DATA/projects/aops/ROADMAP.md` |
+
+**Derives from**: AXIOMS #9 (DRY, Modular, Explicit) - one golden path, no duplication.
 
 **Pattern**: Reference, don't repeat.
 
@@ -136,6 +190,8 @@ FRAMEWORK SKILL CHECKED
 
 Implementation skills MUST refuse requests without this token.
 
+**Derives from**: AXIOMS #1 (Categorical Imperative) - every action flows through generalizable framework process.
+
 ### Standard Tools
 
 - Package management: `uv`
@@ -144,9 +200,13 @@ Implementation skills MUST refuse requests without this token.
 - Type checking: `mypy`
 - Linting: `ruff`
 
+**Derives from**: AXIOMS #9 (Use Standard Tools) - one golden path per job.
+
 ### Skills are Read-Only
 
 Skills in `skills/` MUST NOT contain dynamic data. All mutable state goes in `$ACA_DATA/`.
+
+**Derives from**: AXIOMS #11 (Skills are Read-Only) - skills distributed read-only, dynamic data in `$ACA_DATA/`.
 
 ### Trust Version Control
 
@@ -154,19 +214,23 @@ Skills in `skills/` MUST NOT contain dynamic data. All mutable state goes in `$A
 - Edit directly, git tracks changes
 - Commit AND push after completing work
 
+**Derives from**: AXIOMS #12 (Trust Version Control) - git is the backup system.
+
 ## Documentation Structure (Authoritative)
 
 The framework has exactly these core documents. No others.
+
+**Derives from**: AXIOMS #8 (Single-Purpose Files) + #9 (DRY) - each document has one purpose, no overlap.
 
 ### Framework Documentation ($AOPS/)
 
 | Document | Purpose | Contains |
 |----------|---------|----------|
 | README.md | Entry point | Feature inventory (skills, commands, hooks, agents) with how-to-invoke |
-| AXIOMS.md | Principles ONLY | Inviolable rules - NO enforcement details, NO examples, NO implementation |
+| AXIOMS.md | Principles ONLY | Inviolable rules - NO enforcement, NO examples, NO implementation |
 | INDEX.md | File tree | Complete directory structure |
 
-**AXIOMS.md rule**: Axioms are pure principles. Enforcement mechanisms, implementation details, and examples belong elsewhere (README.md, VISION.md, or skill docs). This applies to ALL instruction files - keep principles separate from implementation.
+**AXIOMS.md rule**: Axioms are pure principles. Enforcement mechanisms belong in this skill. Implementation details belong in component docs.
 
 ### Project Documentation ($ACA_DATA/projects/aops/)
 
@@ -178,11 +242,13 @@ The framework has exactly these core documents. No others.
 
 ### Documentation Rules
 
-1. **VISION.md is grounded** - No aspirational "autonomous research". This is an academic support framework.
-2. **ROADMAP.md is simple** - No maturity models. Just lists: Done, In Progress, Planned, Issues.
+1. **VISION.md is grounded** - Academic support framework, not autonomous research.
+2. **ROADMAP.md is simple** - Just lists: Done, In Progress, Planned, Issues.
 3. **README.md has the inventory** - Every skill/command/hook with one-line purpose and how to invoke.
-4. **AXIOMS.md is pure** - Principles only. No enforcement, examples, or implementation details.
+4. **AXIOMS.md is pure** - Principles only. No enforcement, examples, or implementation.
 5. **No other core docs** - specs/, experiments/, learning/ handle everything else.
+
+**Derives from**: AXIOMS #7 (Self-Documenting) - documentation-as-code, no separate doc files beyond these.
 
 ### Feature Inventory Format (README.md)
 
@@ -193,6 +259,8 @@ Each capability listed with:
 - Test (how it's verified)
 
 ## Anti-Bloat Rules
+
+**Derives from**: AXIOMS #9 (DRY, Modular, Explicit) + VISION (Minimal maintenance).
 
 ### File Limits
 
@@ -213,6 +281,8 @@ New files PROHIBITED unless:
 1. Clear justification (existing files insufficient)
 2. Integration test validates purpose
 3. Test passes before commit
+
+**Derives from**: AXIOMS #17 (Write for Long Term) - no single-use files.
 
 ## Component Patterns
 
@@ -281,12 +351,51 @@ Cleanup is NOT a separate process. It's verifying files comply with these rules:
 - Duplicate content → consolidate
 - Session detritus → delete (learning already in conversation/bmem)
 
+## Compliance Refactoring Workflow
+
+When bringing components into compliance with this logical system:
+
+### Step 1: Assess Current State
+
+For each component (file, convention, pattern):
+1. Can its existence be derived from AXIOMS + VISION?
+2. Is it in the location defined by INDEX.md?
+3. Is its information unique (not duplicated elsewhere)?
+
+### Step 2: Classify the Issue
+
+| Issue Type | Action |
+|------------|--------|
+| No axiom derivation | Delete or propose new axiom (HALT, ask user) |
+| Wrong location | Move to correct location per INDEX.md |
+| Duplicated content | Consolidate to single authoritative source |
+| Missing from INDEX | Add to INDEX.md or delete if invalid |
+| Ambiguous placement | **HALT** - ask user to clarify |
+
+### Step 3: Incremental Change
+
+- Fix ONE issue at a time
+- Commit after each fix
+- Verify no regressions (run tests)
+- Update ROADMAP.md if significant
+
+### Step 4: Document the Rule
+
+If you discovered a new pattern:
+1. Propose the generalizable rule
+2. Get user approval
+3. Add to this skill with axiom derivation
+4. Never apply ad-hoc fixes without rules
+
+**Derives from**: AXIOMS #1 (Categorical Imperative) - every action must be justifiable as universal rule.
+
 ## Before You Modify
 
 1. **Check existing patterns** - Similar component exists?
 2. **Verify paths** - Right location per conventions?
 3. **Validate scope** - Single responsibility?
 4. **Plan test** - How will you verify it works?
+5. **Trace to axiom** - Which principle justifies this?
 
 ## When Done
 
