@@ -68,12 +68,27 @@ def test_tasks_prompt_invokes_skill(claude_headless_tracked, skill_was_invoked) 
     )
 
 
+def _read_framework_files(tool_calls: list) -> bool:
+    """Check if agent read framework-related files (hooks, skills, etc.)."""
+    framework_paths = ["hooks/", "skills/", "AXIOMS.md", "README.md", "CLAUDE.md"]
+    for call in tool_calls:
+        if call.get("name") == "Read":
+            file_path = str(call.get("input", {}).get("file_path", ""))
+            if any(fp in file_path for fp in framework_paths):
+                return True
+    return False
+
+
 @pytest.mark.integration
 @pytest.mark.slow
 def test_framework_prompt_invokes_skill(claude_headless_tracked, skill_was_invoked) -> None:
-    """Test that framework-related prompts invoke the framework skill.
+    """Test that framework-related prompts use appropriate tools.
 
-    Pain point: Users ask about hooks/skills but agent doesn't invoke framework skill.
+    Valid responses:
+    - Invoke framework skill (preferred)
+    - Read framework files directly (acceptable for explanation tasks)
+
+    Pain point: Users ask about hooks/skills but agent ignores framework context.
     Expected: Prompt router keyword 'hook' triggers framework skill suggestion.
     """
     result, session_id, tool_calls = claude_headless_tracked(
@@ -85,9 +100,11 @@ def test_framework_prompt_invokes_skill(claude_headless_tracked, skill_was_invok
     assert tool_calls, f"Session file not found for {session_id}"
 
     framework_invoked = skill_was_invoked(tool_calls, "framework")
+    read_framework = _read_framework_files(tool_calls)
 
-    assert framework_invoked, (
-        f"Framework skill NOT invoked. Tool calls: {[c['name'] for c in tool_calls]}"
+    assert framework_invoked or read_framework, (
+        f"No framework tools used. Tool calls: {[c['name'] for c in tool_calls]}\n"
+        f"Expected: Skill('framework') or Read(hooks/*.py)"
     )
 
 

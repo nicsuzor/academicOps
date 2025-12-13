@@ -15,18 +15,13 @@ from lib import paths
 class TestPathResolution:
     """Test path resolution functions."""
 
-    def test_get_aops_root_autodetects_without_env_var(self, monkeypatch):
-        """Test that get_aops_root auto-detects path without AOPS env var."""
+    def test_get_aops_root_requires_env_var(self, monkeypatch):
+        """Test that get_aops_root fails without AOPS env var (fail-fast per AXIOMS #7)."""
         monkeypatch.delenv("AOPS", raising=False)
 
-        # Should auto-detect from module location
-        result = paths.get_aops_root()
-
-        assert isinstance(result, Path)
-        assert result.exists()
-        assert (result / "lib").is_dir()
-        # Should also set AOPS for consistency
-        assert os.environ.get("AOPS") == str(result)
+        # Should fail fast - no auto-detection, explicit config required
+        with pytest.raises(RuntimeError, match="AOPS environment variable not set"):
+            paths.get_aops_root()
 
     def test_get_aops_root_uses_valid_aops_if_set(self, monkeypatch, tmp_path):
         """Test that get_aops_root respects valid AOPS env var."""
@@ -114,19 +109,16 @@ class TestPathResolution:
         assert result["AOPS"] == aops_dir.resolve()
         assert result["ACA_DATA"] == data_dir.resolve()
 
-    def test_validate_environment_autodetects_aops(self, monkeypatch, tmp_path):
-        """Test validate_environment auto-detects AOPS if not set."""
+    def test_validate_environment_fails_without_aops(self, monkeypatch, tmp_path):
+        """Test validate_environment fails without AOPS (fail-fast per AXIOMS #7)."""
         monkeypatch.delenv("AOPS", raising=False)
         data_dir = tmp_path / "data"
         data_dir.mkdir()
         monkeypatch.setenv("ACA_DATA", str(data_dir))
 
-        result = paths.validate_environment()
-
-        assert "AOPS" in result
-        assert "ACA_DATA" in result
-        assert result["AOPS"].exists()
-        assert result["ACA_DATA"] == data_dir.resolve()
+        # Should fail fast - no auto-detection
+        with pytest.raises(RuntimeError, match="AOPS environment variable not set"):
+            paths.validate_environment()
 
 
 class TestRealEnvironment:

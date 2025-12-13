@@ -24,14 +24,14 @@ def invoke_hook(tool_name: str, args: dict) -> dict:
         Hook response as dictionary
     """
     # Locate hook script
-    hook_script = Path(__file__).parent.parent.parent / "hooks" / "log_pretooluse.py"
+    hook_script = Path(__file__).parent.parent.parent / "hooks" / "policy_enforcer.py"
     assert hook_script.exists(), f"Hook script not found: {hook_script}"
 
-    # Build hook input
+    # Build hook input - matches Claude Code PreToolUse event format
     hook_input = {
         "session_id": "test-session",
-        "tool": tool_name,
-        "args": args,
+        "tool_name": tool_name,
+        "tool_input": args,
     }
 
     # Invoke hook with JSON input via stdin
