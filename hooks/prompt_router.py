@@ -18,6 +18,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from hooks.hook_logger import log_hook_event
+
 
 # Focus reminder (previously in separate hook)
 FOCUS_REMINDER = "**CRITICAL**: Focus on the user's specific request. Do NOT over-elaborate or add unrequested features. Complete the task, then stop."
@@ -158,12 +160,33 @@ def main():
     if advisory:
         context_parts.append(advisory)
 
-    output: dict[str, Any] = {
-        "hookSpecificOutput": {
-            "hookEventName": "UserPromptSubmit",
-            "additionalContext": "\n".join(context_parts)
-        }
+    # Extract matched skills for logging
+    matched_skills = []
+    if advisory and "MANDATORY:" in advisory:
+        # Extract skill names from MANDATORY instruction
+        import re
+        matched_skills = re.findall(r'Skill\(skill="([^"]+)"\)', advisory)
+
+    hook_specific_output: dict[str, Any] = {
+        "hookEventName": "UserPromptSubmit",
+        "additionalContext": "\n".join(context_parts),
     }
+    if matched_skills:
+        hook_specific_output["skillsMatched"] = matched_skills
+
+    output: dict[str, Any] = {
+        "hookSpecificOutput": hook_specific_output
+    }
+
+    # Log with output data (so transcript can show it)
+    session_id = input_data.get("session_id", "unknown")
+    log_hook_event(
+        session_id=session_id,
+        hook_event="UserPromptSubmit",
+        input_data=input_data,
+        output_data={"hookSpecificOutput": hook_specific_output},
+        exit_code=0,
+    )
 
     print(json.dumps(output))
     sys.exit(0)

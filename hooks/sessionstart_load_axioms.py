@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Any
 
 from lib.paths import get_aops_root, get_data_root
+from hooks.hook_logger import log_hook_event
 
 
 def load_framework() -> str:
@@ -192,12 +193,24 @@ def main():
     core_path = data_root / "CORE.md"
 
     # Build output data (sent to Claude)
-    output_data: dict[str, Any] = {
-        "hookSpecificOutput": {
-            "hookEventName": "SessionStart",
-            "additionalContext": additional_context
-        }
+    hook_specific_output: dict[str, Any] = {
+        "hookEventName": "SessionStart",
+        "additionalContext": additional_context,
+        "filesLoaded": [str(framework_path), str(axioms_path), str(core_path)],
     }
+    output_data: dict[str, Any] = {
+        "hookSpecificOutput": hook_specific_output
+    }
+
+    # Log event with output data (so transcript can show it)
+    session_id = input_data.get("session_id", "unknown")
+    log_hook_event(
+        session_id=session_id,
+        hook_event="SessionStart",
+        input_data=input_data,
+        output_data={"hookSpecificOutput": hook_specific_output},
+        exit_code=0,
+    )
 
     # Output JSON (continue execution)
     print(json.dumps(output_data))
