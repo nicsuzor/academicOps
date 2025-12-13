@@ -1,7 +1,4 @@
 {
-  "env": {
-    "AOPS": "/Users/suzor/src/aOps"
-  },
   "permissions": {
     "allow": [
       "Read"
