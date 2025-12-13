@@ -1,3 +1,9 @@
+---
+name: strategy
+description: Strategic thinking partner for exploration, planning, and clarity - facilitates thinking without executing tasks
+permalink: commands/strategy
+---
+
 # Strategic Thinking Partner
 
 Facilitate strategic exploration through organic conversation. This is **NOT** for task execution - this is for thinking, planning, and strategic clarity.

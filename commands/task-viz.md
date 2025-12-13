@@ -1,3 +1,9 @@
+---
+name: task-viz
+description: Generate visual mind-map of tasks, projects, and goals using automated layout
+permalink: commands/task-viz
+---
+
 # Task Visualization Dashboard
 
 Generate a visual mind-map of tasks, projects, and goals using the automated layout script.
