@@ -45,14 +45,21 @@ Per AXIOMS.md #11: Every action must be justifiable as a universal rule. This sk
 
 When no skill handles a needed user data operation:
 
-1. Create skill in `$AOPS/skills/<name>/SKILL.md`
-2. Follow "Adding a Skill" pattern below
+1. **Use this skill** to create the new skill (skill creation is a framework operation)
+2. Follow "Adding a Skill" pattern in Component Patterns section
 3. Skill must be generalizable (not one-off)
-4. Then invoke the new skill to do the work
+4. Then invoke the new skill to do the actual work
 
-**Example**: Need to clean up non-compliant files?
+**This is recursive**: Creating a skill uses the framework skill. The framework skill provides the patterns. Skill creation happens in `$AOPS/skills/` (framework files = direct modification OK).
+
+**Example**: Need to clean up non-compliant files in `$ACA_DATA/`?
+1. Invoke `framework` skill
+2. Framework skill creates `cleanup` skill in `$AOPS/skills/cleanup/`
+3. Framework skill then invokes `cleanup` skill to do the work
+4. Future cleanup uses the same skill
+
 - ❌ Wrong: Directly delete files in `$ACA_DATA/`
-- ✅ Right: Create `cleanup` skill that checks compliance, then invoke it
+- ✅ Right: Create skill via framework, then invoke it
 
 ### Delegation Output Format
 
