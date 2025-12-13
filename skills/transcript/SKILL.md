@@ -1,6 +1,8 @@
 ---
 name: transcript
-description: Generate markdown transcripts from Claude Code session files. Converts JSONL session logs to readable markdown with timing, tool operations, and hook context.
+description: Generate markdown transcripts from Claude Code session files. Converts
+  JSONL session logs to readable markdown with timing, tool operations, and hook context.
+permalink: academic-ops/skills/transcript/skill
 ---
 
 # Transcript Skill
@@ -10,7 +12,7 @@ Convert Claude Code JSONL session files to readable markdown transcripts.
 ## Quick Start
 
 ```bash
-uv run python $AOPS/scripts/claude_transcript.py <session.jsonl> -o <output-base>
+PYTHONPATH=$AOPS uv run python $AOPS/scripts/claude_transcript.py <session.jsonl> -o <output-base>
 ```
 
 ## Output
@@ -41,14 +43,14 @@ ls -lt ~/.claude/projects/*/[0-9a-f]*.jsonl | grep -v agent | head -10
 
 ```bash
 # Generate both versions with standard naming
-uv run python $AOPS/scripts/claude_transcript.py ~/.claude/projects/-home-nic-src-aOps/abc123.jsonl \
+PYTHONPATH=$AOPS uv run python $AOPS/scripts/claude_transcript.py ~/.claude/projects/-home-nic-src-aOps/abc123.jsonl \
   -o $ACA_DATA/sessions/claude/20251203-aops-restructure
 
 # Full version only
-uv run python $AOPS/scripts/claude_transcript.py session.jsonl --full-only
+PYTHONPATH=$AOPS uv run python $AOPS/scripts/claude_transcript.py session.jsonl --full-only
 
 # Abridged version only
-uv run python $AOPS/scripts/claude_transcript.py session.jsonl --abridged-only
+PYTHONPATH=$AOPS uv run python $AOPS/scripts/claude_transcript.py session.jsonl --abridged-only
 ```
 
 ## Workflow

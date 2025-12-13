@@ -11,7 +11,7 @@ Generate markdown transcripts from Claude Code session files.
 ## Usage
 
 ```
-Bash("uv run python $AOPS/scripts/claude_transcript.py <session.jsonl> -o <output-base>")
+Bash("PYTHONPATH=$AOPS uv run python $AOPS/scripts/claude_transcript.py <session.jsonl> -o <output-base>")
 ```
 
 ## Find session files

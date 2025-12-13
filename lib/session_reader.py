@@ -308,8 +308,9 @@ class SessionProcessor:
 
         # Search locations for hook files
         search_locations = [
+            session_path.parent,  # Same directory as session (production)
             session_path.parent / "hooks",  # Test location
-            Path.home() / ".cache" / "aops" / "sessions",  # Production
+            Path.home() / ".cache" / "aops" / "sessions",  # Legacy location
         ]
 
         for hook_dir in search_locations:
