@@ -42,6 +42,27 @@ Examples:
         print(f"❌ Error: File not found: {jsonl_path}")
         return 1
 
+    # Check if this is a hooks file and find the actual session file
+    if jsonl_path.name.endswith('-hooks.jsonl'):
+        import json
+        with open(jsonl_path, 'r') as f:
+            first_line = f.readline().strip()
+            if first_line:
+                try:
+                    data = json.loads(first_line)
+                    transcript_path = data.get('transcript_path')
+                    if transcript_path:
+                        actual_session = Path(transcript_path)
+                        if actual_session.exists():
+                            print(f"⚠️  Hooks file provided. Using actual session: {actual_session}")
+                            jsonl_path = actual_session
+                        else:
+                            print(f"❌ Error: Hooks file references missing session: {transcript_path}")
+                            return 1
+                except json.JSONDecodeError:
+                    print(f"❌ Error: Could not parse hooks file")
+                    return 1
+
     # Generate output base name
     if args.output:
         base_name = args.output
