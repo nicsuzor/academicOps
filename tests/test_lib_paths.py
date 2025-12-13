@@ -36,12 +36,12 @@ class TestPathResolution:
         assert result == test_dir.resolve()
 
     def test_get_aops_root_fails_on_invalid_aops(self, monkeypatch, tmp_path):
-        """Test that get_aops_root fails fast if AOPS is explicitly set but invalid (AXIOMS #5)."""
+        """Test that get_aops_root fails fast if AOPS is explicitly set but invalid (AXIOMS #7)."""
         nonexistent = tmp_path / "nonexistent"
         monkeypatch.setenv("AOPS", str(nonexistent))
 
         # Should fail fast (not fall back) when AOPS explicitly set to invalid path
-        with pytest.raises(RuntimeError, match="AOPS is set but path doesn't exist"):
+        with pytest.raises(RuntimeError, match="AOPS path doesn't exist"):
             paths.get_aops_root()
 
     def test_get_data_root_requires_env_var(self, monkeypatch):

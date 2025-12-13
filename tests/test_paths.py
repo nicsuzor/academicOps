@@ -37,17 +37,14 @@ class TestGetWritingRoot:
         assert result == aops_root
         assert isinstance(result, Path)
 
-    def test_get_writing_root_without_env(self, monkeypatch):
-        """Test get_writing_root() auto-detects from module location when AOPS not set."""
-        # Arrange - Unset environment variable (but auto-detection still works)
+    def test_get_writing_root_fails_without_env(self, monkeypatch):
+        """Test get_writing_root() fails without AOPS env var (fail-fast per AXIOMS #7)."""
+        # Arrange - Unset environment variable
         monkeypatch.delenv("AOPS", raising=False)
 
-        # Act - Auto-detection finds the framework from lib/paths.py module location
-        result = get_writing_root()
-
-        # Assert - Returns a valid Path to the detected framework root
-        assert isinstance(result, Path)
-        assert (result / "lib").is_dir()
+        # Act & Assert - Should fail fast, no auto-detection
+        with pytest.raises(RuntimeError, match="AOPS environment variable not set"):
+            get_writing_root()
 
     def test_get_writing_root_fails_with_invalid_env(self, monkeypatch):
         """Test RuntimeError when AOPS points to non-existent path."""
@@ -57,21 +54,9 @@ class TestGetWritingRoot:
         # Act & Assert
         with pytest.raises(
             RuntimeError,
-            match=r"\$AOPS is set but path doesn't exist",
+            match=r"AOPS path doesn't exist",
         ):
             get_writing_root()
-
-    def test_get_writing_root_fails_without_context(self, monkeypatch):
-        """Test get_writing_root() auto-detects when AOPS not set (like test_get_writing_root_without_env)."""
-        # Arrange - Unset env var (auto-detection still works from module location)
-        monkeypatch.delenv("AOPS", raising=False)
-
-        # Act - Auto-detection finds the framework from lib/paths.py module location
-        result = get_writing_root()
-
-        # Assert - Returns a valid Path to the detected framework root
-        assert isinstance(result, Path)
-        assert (result / "lib").is_dir()
 
 
 class TestGetBotsDir:
