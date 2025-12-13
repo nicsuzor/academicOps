@@ -57,3 +57,12 @@ uv run python $AOPS/scripts/claude_transcript.py session.jsonl --abridged-only
 2. Determine project name and descriptive slug
 3. Run script with standardized output path
 4. Verify output in `$ACA_DATA/sessions/claude/`
+
+## Architecture
+
+Uses `lib/session_reader.py` which parses and combines:
+- Main session JSONL (`*.jsonl`)
+- Agent transcripts (`agent-*.jsonl`)
+- Hook logs (`*-hooks.jsonl`)
+
+Same module used by the dashboard skill for live activity display.

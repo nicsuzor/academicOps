@@ -119,6 +119,7 @@ $AOPS/
 │
 ├── lib/                         # Shared Python
 │   ├── paths.py                 # Path resolution (SSoT)
+│   ├── session_reader.py        # Unified session parser (JSONL + agents + hooks)
 │   └── activity.py              # Activity logging
 │
 ├── tests/                       # pytest suite

@@ -42,16 +42,12 @@ Read $ACA_DATA/ACCOMMODATIONS.md - Work style requirements
 Read $ACA_DATA/CORE.md - User context, tools
 
 # 2. CURRENT REALITY
-Read $ACA_DATA/projects/aops/STATE.md - Current stage, blockers
+Read $ACA_DATA/projects/aops/ROADMAP.md - Maturity progression: Current stage, blockers
 
-# 3. FRAMEWORK PRINCIPLES
-Read $AOPS/AXIOMS.md - Inviolable rules
-
-# 4. STRATEGIC DIRECTION
+# 3. STRATEGIC DIRECTION
 Read $ACA_DATA/projects/aops/VISION.md - End state
-Read $ACA_DATA/projects/aops/ROADMAP.md - Maturity progression
 
-# 5. PAST LEARNING (search as needed)
+# 4. PAST LEARNING (search BEFORE taking action)
 mcp__bmem__search_notes(query="verification discipline", project="main")
 mcp__bmem__search_notes(query="experiment log", project="main")
 ```

@@ -1,0 +1,1 @@
+[AOPS Framework Reminder: If this marks the end of a substantial chunk of work, use the bmem skill to document key decisions and outcomes. Consider: what did you accomplish, what decisions were made, what should future agents know?]

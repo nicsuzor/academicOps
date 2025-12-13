@@ -108,6 +108,16 @@
             "timeout": 35000
           }
         ]
+      },
+      {
+        "matcher": "TodoWrite",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "PYTHONPATH=$AOPS uv run python $AOPS/hooks/request_scribe.py",
+            "timeout": 2000
+          }
+        ]
       }
     ],
     "UserPromptSubmit": [
@@ -143,6 +153,11 @@
           {
             "type": "command",
             "command": "PYTHONPATH=$AOPS uv run python $AOPS/hooks/unified_logger.py",
+            "timeout": 2000
+          },
+          {
+            "type": "command",
+            "command": "PYTHONPATH=$AOPS uv run python $AOPS/hooks/request_scribe.py",
             "timeout": 2000
           }
         ]

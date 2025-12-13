@@ -21,7 +21,7 @@ Hook Event → Python script → Returns {additionalContext: "..."} or {continue
 | `prompt_router.py` | UserPromptSubmit | Skill routing + focus reminder |
 | `policy_enforcer.py` | PreToolUse | Block destructive operations |
 | `autocommit_state.py` | PostToolUse | Auto-commit STATE.md changes |
-| `unified_logger.py` | ALL events | Log to hook logs (no context) |
+| `unified_logger.py` | ALL events | Log metadata to hook logs |
 
 ## See Also
 

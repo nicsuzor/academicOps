@@ -56,6 +56,28 @@ Auto-commits `data/` changes after state-modifying operations.
 
 ---
 
+## Where to Find Injected Context
+
+All hook injections are logged to `~/.claude/projects/<project>/<date>-<shorthash>-hooks.jsonl`
+
+| Look For | In Field | Event Type |
+|----------|----------|------------|
+| AXIOMS/FRAMEWORK/CORE content | `additionalContext` | SessionStart |
+| Skill routing suggestions | `additionalContext` | UserPromptSubmit |
+| Policy blocks | `systemMessage` | PreToolUse |
+| Full tool output | `tool_response` | PostToolUse |
+| User's exact prompt | `prompt` | UserPromptSubmit |
+| Tool parameters | `tool_input` | PreToolUse, PostToolUse |
+
+**Query example**:
+```bash
+jq 'select(.additionalContext != null)' *-hooks.jsonl
+```
+
+See `docs/OBSERVABILITY.md` for complete hook log schema.
+
+---
+
 ## CLAUDE.md Files (Claude Code Native)
 
 Claude Code loads these at session start (not via aOps hooks).
