@@ -53,6 +53,7 @@ Academic support framework for Claude Code. Minimal, fight bloat aggressively.
 | tasks | Task management + email extraction | `Skill(skill="tasks")` or `/email` |
 | transcript | Session JSONL → markdown | `Skill(skill="transcript")` |
 | learning-log | Pattern logging to thematic files | `Skill(skill="learning-log")` |
+| dashboard | Live task + session activity dashboard | `uv run streamlit run skills/dashboard/dashboard.py` |
 
 ## Hooks
 
