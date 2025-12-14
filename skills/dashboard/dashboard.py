@@ -85,13 +85,15 @@ def get_session_state(session_info, processor: SessionProcessor) -> dict:
         session_summary, entries, agent_entries = processor.parse_jsonl(session_info.path)
         turns = processor.group_entries_into_turns(entries, agent_entries)
 
-        # Find first and last user prompts
+        # Find first and last user prompts (keep both full and truncated)
         first_prompt = None
+        first_prompt_full = None
         last_prompt = None
 
         for turn in turns:
             if isinstance(turn, ConversationTurn) and turn.user_message:
                 if not first_prompt:
+                    first_prompt_full = turn.user_message[:1000]  # Store more for popup
                     first_prompt = turn.user_message[:200]
                     if len(turn.user_message) > 200:
                         first_prompt += "..."
@@ -108,6 +110,7 @@ def get_session_state(session_info, processor: SessionProcessor) -> dict:
 
         return {
             'first_prompt': first_prompt or 'No activity',
+            'first_prompt_full': first_prompt_full or first_prompt or 'No activity',
             'last_prompt': last_prompt or 'No activity',
             'todos': todos,
             'bmem_notes': bmem_notes,
@@ -115,6 +118,7 @@ def get_session_state(session_info, processor: SessionProcessor) -> dict:
     except Exception:
         return {
             'first_prompt': 'Unable to parse session',
+            'first_prompt_full': 'Unable to parse session',
             'last_prompt': 'Unable to parse session',
             'todos': None,
             'bmem_notes': [],
@@ -284,22 +288,85 @@ st.markdown("""
         margin-top: 20px;
     }
 
+    /* Tooltip popup styles */
+    .tooltip-container {
+        position: relative;
+        cursor: pointer;
+    }
+
+    .tooltip-container .tooltip-popup {
+        visibility: hidden;
+        opacity: 0;
+        position: absolute;
+        left: 0;
+        top: 100%;
+        z-index: 100;
+        background: #2a2a2a;
+        border: 1px solid #444;
+        border-radius: 6px;
+        padding: 10px 12px;
+        min-width: 300px;
+        max-width: 500px;
+        max-height: 400px;
+        overflow-y: auto;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+        white-space: pre-wrap;
+        word-wrap: break-word;
+        font-style: normal;
+        color: #e0e0e0;
+        font-size: 0.9em;
+        line-height: 1.4;
+        transition: opacity 0.2s ease, visibility 0.2s ease;
+    }
+
+    .tooltip-container:hover .tooltip-popup {
+        visibility: visible;
+        opacity: 1;
+    }
+
+    /* Todo items in popup */
+    .tooltip-popup .todo-item {
+        padding: 4px 0;
+        border-bottom: 1px solid #333;
+    }
+
+    .tooltip-popup .todo-item:last-child {
+        border-bottom: none;
+    }
+
+    .tooltip-popup .todo-in-progress {
+        color: #4ade80;
+    }
+
+    .tooltip-popup .todo-pending {
+        color: #facc15;
+    }
+
+    .tooltip-popup .todo-completed {
+        color: #22c55e;
+        text-decoration: line-through;
+        opacity: 0.7;
+    }
+
 </style>
 """, unsafe_allow_html=True)
 
-# PRIORITY TASKS - Compact list
+# PRIORITY TASKS - Two columns
 st.markdown("<div class='section-header'>PRIORITY TASKS</div>", unsafe_allow_html=True)
 try:
-    focus_tasks = load_focus_tasks(count=5)
+    focus_tasks = load_focus_tasks(count=12)
     if focus_tasks:
-        for task in focus_tasks:
+        col1, col2 = st.columns(2)
+        for i, task in enumerate(focus_tasks):
             priority_text = f"P{task.priority}" if task.priority is not None else ""
-            st.markdown(f"""
+            task_html = f"""
             <div class='task-item'>
                 <span class='task-priority'>{priority_text}</span>
                 <span class='task-title'>{task.title}</span>
             </div>
-            """, unsafe_allow_html=True)
+            """
+            with col1 if i % 2 == 0 else col2:
+                st.markdown(task_html, unsafe_allow_html=True)
     else:
         st.markdown("<div style='color: #666; padding: 8px;'>No priority tasks</div>", unsafe_allow_html=True)
 except Exception as e:
@@ -328,34 +395,64 @@ try:
         # Build content: CURRENT WORK first (todos), then context
         content_parts = []
 
-        # Show TodoWrite state prominently if present
+        # Helper to escape HTML
+        def esc(text):
+            return str(text).replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;').replace('"', '&quot;')
+
+        # Show TodoWrite state prominently if present (with popup for all todos)
         if state['todos']:
             in_progress = [t for t in state['todos'] if t.get('status') == 'in_progress']
             pending = [t for t in state['todos'] if t.get('status') == 'pending']
             completed = [t for t in state['todos'] if t.get('status') == 'completed']
 
-            if in_progress:
-                for todo in in_progress:
-                    content_parts.append(f"<div class='session-todo in-progress'>🔄 {todo.get('content', '')}</div>")
-            if pending:
-                pending_count = len(pending)
-                content_parts.append(f"<div class='session-todo pending'>⏳ {pending_count} pending</div>")
-            if completed and not in_progress and not pending:
-                # Show what was completed, not just count
-                last_done = completed[-1].get('content', '')
-                content_parts.append(f"<div class='session-todo completed'>✅ {last_done}</div>")
+            # Build popup content with all todos
+            popup_items = []
+            for todo in in_progress:
+                popup_items.append(f"<div class='todo-item todo-in-progress'>🔄 {esc(todo.get('content', ''))}</div>")
+            for todo in pending:
+                popup_items.append(f"<div class='todo-item todo-pending'>⏳ {esc(todo.get('content', ''))}</div>")
+            for todo in completed:
+                popup_items.append(f"<div class='todo-item todo-completed'>✅ {esc(todo.get('content', ''))}</div>")
+            popup_html = '\n'.join(popup_items)
 
-        # Show first prompt as context (what started this session)
+            # Show summary in card, full list in popup
+            if in_progress:
+                summary = f"🔄 {esc(in_progress[0].get('content', ''))}"
+                if len(in_progress) > 1:
+                    summary += f" (+{len(in_progress)-1})"
+            elif pending:
+                summary = f"⏳ {len(pending)} pending"
+            elif completed:
+                summary = f"✅ {esc(completed[-1].get('content', ''))}"
+            else:
+                summary = "No todos"
+
+            total = len(in_progress) + len(pending) + len(completed)
+            content_parts.append(f"""<div class='tooltip-container'>
+                <div class='session-todo in-progress'>{summary} <span style='opacity:0.6;font-size:0.8em;'>({total} total)</span></div>
+                <div class='tooltip-popup'>{popup_html}</div>
+            </div>""")
+
+        # Show first prompt as context (what started this session) - with popup for full text
         goal = (state.get('first_prompt') or '').strip()
+        goal_full = (state.get('first_prompt_full') or goal).strip()
         # Skip empty, placeholder, command-like, hook-injected, or very short prompts
         skip = not goal or len(goal) <= 15 or goal.startswith(('/','<')) or 'Expanded:' in goal
         if not skip and goal not in ('No activity', 'Unable to parse session'):
-            content_parts.append(f"<div class='session-prompt'><b>Goal:</b> \"{goal}\"</div>")
+            content_parts.append(f"""<div class='tooltip-container'>
+                <div class='session-prompt'><b>Goal:</b> \"{esc(goal)}\"</div>
+                <div class='tooltip-popup'><b>Full prompt:</b><br/>{esc(goal_full)}</div>
+            </div>""")
 
-        # Show session-specific bmem notes (outcomes) - just title
+        # Show session-specific bmem notes (outcomes) - with tooltip for folder path
         if state['bmem_notes']:
             for note in state['bmem_notes'][-2:]:  # Show last 2 max
-                content_parts.append(f"<div class='session-bmem'>📝 {note['title']}</div>")
+                title = esc(note['title'])
+                folder = esc(note.get('folder', ''))
+                content_parts.append(f"""<div class='tooltip-container'>
+                    <div class='session-bmem'>📝 {title}</div>
+                    <div class='tooltip-popup'><b>{title}</b><br/>Folder: {folder}</div>
+                </div>""")
 
         # Skip sessions with no meaningful content
         if not content_parts:
