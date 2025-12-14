@@ -134,7 +134,7 @@ If task unclear or blocked:
 
 ## Quality Standards
 
-All work must follow [[../../AXIOMS.md]]:
+All work must follow [[academicOps/AXIOMS]]:
 - Fail-fast (no defaults, no fallbacks)
 - Type safety
 - No mocking internal code

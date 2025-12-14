@@ -20,14 +20,11 @@ $AOPS/
 │   ├── log.md                   # → learning-log skill
 │   ├── transcript.md            # → transcript skill
 │   ├── bmem.md                  # → bmem skill
-│   ├── bmem-validate.md         # Parallel bmem file validation
 │   ├── email.md                 # Email → task extraction
 │   ├── learn.md                 # Minor instruction adjustments
 │   ├── qa.md                    # Quality assurance verification
 │   ├── ttd.md                   # TDD orchestration
 │   ├── parallel-batch.md        # Parallel file processing
-│   ├── archive-extract.md       # Archive → bmem extraction
-│   ├── docs-update.md           # → docs-update skill
 │   ├── strategy.md              # Strategic planning
 │   └── task-viz.md              # Task graph visualization
 │
@@ -75,8 +72,6 @@ $AOPS/
 │   │   ├── references/          # 10 guides (JSON format, layouts)
 │   │   └── libraries/           # Icon libraries
 │   │
-│   ├── docs-update/             # README + INDEX maintenance
-│   │   └── SKILL.md
 │   │
 │   ├── skill-creator/           # Skill packaging
 │   │   ├── SKILL.md
@@ -146,7 +141,6 @@ $AOPS/
 | /log | learning-log |
 | /transcript | transcript |
 | /bmem | bmem |
-| /docs-update | docs-update |
 
 ### Skill → Skill Dependencies
 

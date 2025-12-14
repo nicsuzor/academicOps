@@ -22,8 +22,3 @@ Hook Event → Python script → Returns {additionalContext: "..."} or {continue
 | `policy_enforcer.py` | PreToolUse | Block destructive operations |
 | `autocommit_state.py` | PostToolUse | Auto-commit STATE.md changes |
 | `unified_logger.py` | ALL events | Log metadata to hook logs |
-
-## See Also
-
-- **`docs/JIT-INJECTION.md`** - Complete hook details, injection points, data sources
-- **`docs/OBSERVABILITY.md`** - Session logging, transcript viewing

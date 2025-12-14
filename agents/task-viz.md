@@ -2,6 +2,7 @@
 name: task-viz
 title: Task Visualization Agent
 type: agent
+permalink: academic-ops/agents/task-viz
 ---
 
 # Task Visualization Agent

@@ -77,5 +77,5 @@
 
 **References**:
 
-- [[AXIOMS.md]] - Framework principles
+- [[academicOps/AXIOMS]] - Framework principles
 - [[ACCOMMODATIONS.md]] - Work style requirements

@@ -1,8 +1,9 @@
 ---
 name: meta
-description: Quality assurance agent that verifies concrete outcomes against user goals and acceptance criteria using real-world data
+description: Quality assurance agent that verifies concrete outcomes against user
+  goals and acceptance criteria using real-world data
+permalink: academic-ops/commands/qa
 ---
-
 
 ## Purpose & Authority
 

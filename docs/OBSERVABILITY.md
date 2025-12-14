@@ -87,7 +87,3 @@ All input fields from Claude Code are captured verbatim (`**input_data` spread i
     /transcript    External viewers
 ```
 
-## See Also
-
-- **`docs/JIT-INJECTION.md`** - Hook details and test coverage
-- **`docs/HOOKS.md`** - Hook architecture overview

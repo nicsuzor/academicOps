@@ -1,4 +1,8 @@
 ---
+permalink: academic-ops/agents/bmem-validator
+---
+
+---
 name: bmem-validator
 description: Fix bmem validation errors in markdown files using bmem skill for format rules (Tools: All tools)
 permalink: agents/bmem-validator
