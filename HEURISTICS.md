@@ -123,6 +123,21 @@ These are empirically derived rules that implement AXIOMS in practice. Unlike ax
 
 ---
 
+## H7: Link, Don't Repeat
+
+**Statement**: When referencing information that exists elsewhere, link to it rather than restating it. Brief inline context is OK; multi-line summaries are not.
+
+**Rationale**: Repeated information creates maintenance burden and drift. Links maintain single source of truth and reduce document bloat.
+
+**Evidence**:
+- 2025-12-14: User observation - documentation bloat from restated content
+
+**Confidence**: High
+
+**Implements**: AXIOMS #9 (DRY, Modular, Explicit), #20 (Maintain relational database integrity)
+
+---
+
 ## Revision Protocol
 
 To adjust heuristics based on new evidence:

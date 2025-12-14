@@ -6,7 +6,16 @@ Academic support framework for Claude Code. Minimal, fight bloat aggressively.
 
 - **Paths**: `FRAMEWORK.md` (injected at session start)
 - **Principles**: `AXIOMS.md` (injected at session start)
+- **Heuristics**: `HEURISTICS.md` (injected at session start)
 - **File tree**: `INDEX.md`
+
+## Knowledge Architecture
+
+| Layer | Document | Nature |
+|-------|----------|--------|
+| **Axioms** | `AXIOMS.md` | Inviolable principles. No exceptions. |
+| **Heuristics** | `HEURISTICS.md` | Empirically validated rules. Revisable via `/log adjust-heuristic`. |
+| **Practices** | `skills/framework/SKILL.md` | Conventions derived from axioms. How things get done. |
 
 ## Glossary
 
