@@ -19,10 +19,13 @@ Document agent behavior patterns with appropriate abstraction level routing. Cre
 ### YYYY-MM-DD HH:MM | [session-id-prefix or "manual"]
 
 **Error**: [brief description]
-**Root Cause**: [why it happened - your analysis]
+**Investigation**: [for file errors - see File Error Investigation Protocol; omit for non-file errors]
+**Root Cause**: [why it happened - must cite investigation evidence if available]
 **Abstraction Level**: component | pattern | systemic
 **Related**: [file path if matched, "pending" if creating new]
 ```
+
+**For file-related errors**: Complete the File Error Investigation Protocol (below) BEFORE filling in Root Cause.
 
 ### Phase 2: Match to Active Experiments
 
@@ -66,6 +69,80 @@ For issues needing investigation:
 3. **If no match**: Create `experiments/[date]-[topic].md`
 4. **Consolidation rule**: When creating new, actively look for experiments to merge. Rename/consolidate as understanding improves.
 
+## File Error Investigation Protocol
+
+**When error involves file operations** (wrong path, wrong content, unexpected file creation/modification):
+
+Before completing the **Root Cause** field in Phase 1, **investigate**:
+
+### 1. Identify Affected Files
+
+Get specific path(s) from the error description.
+
+### 2. Check File Modification Time
+
+```bash
+stat -f "%Sm" -t "%Y-%m-%d %H:%M:%S" <file_path>
+# Or for multiple files:
+ls -la <directory>
+```
+
+### 3. Find Sessions Active Around That Time
+
+Use session_reader to find sessions in 30-minute window before file mtime:
+
+```bash
+# List recent sessions for this project
+ls -lt ~/.claude/projects/-Users-suzor-writing/*.jsonl | head -10
+```
+
+Or use Python:
+```python
+from lib.session_reader import find_sessions
+from datetime import datetime, timedelta
+sessions = find_sessions(project="writing", since=file_mtime - timedelta(minutes=30))
+```
+
+### 4. Search Sessions for Write/Edit Operations
+
+Look for tool_use blocks with:
+- `name`: "Write", "Edit", "mcp__bmem__write_note"
+- `input.file_path` or `input.path` matching affected file
+
+```bash
+# Quick grep for path in recent sessions
+grep -l "affected/path" ~/.claude/projects/-Users-suzor-writing/*.jsonl
+```
+
+### Investigation Results Format
+
+Include in LOG.md entry:
+
+```markdown
+**Investigation**:
+- File mtime: [timestamp]
+- Sessions checked: [session-id-prefixes] ([N] sessions in window)
+- Found: session [id] used [Tool]("[path]") at [time]
+```
+
+Or if inconclusive:
+
+```markdown
+**Investigation**:
+- File mtime: [timestamp]
+- Sessions checked: [ids] ([N] sessions)
+- Found: No matching Write/Edit operations in checked sessions
+```
+
+### Critical Rule
+
+**If investigation is inconclusive, state that explicitly.** Do NOT:
+- Speculate about cause ("agent or bmem may have...")
+- Attribute without evidence
+- Skip investigation for file-related errors
+
+---
+
 ## Abstraction Level Judgment
 
 **Key principle**: Match abstraction to likely intervention specificity.
@@ -100,7 +177,8 @@ Examples:
 ### YYYY-MM-DD HH:MM | session-prefix
 
 **Error**: [brief description]
-**Root Cause**: [analysis]
+**Investigation**: [for file errors - results of investigation protocol; omit for non-file errors]
+**Root Cause**: [analysis - must cite evidence from investigation if available]
 **Abstraction Level**: component | pattern | systemic
 **Related**: bugs/component.md | learning/theme.md | experiments/file.md
 ```
