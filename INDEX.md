@@ -6,8 +6,10 @@ Complete file-to-function mapping. For overview, see README.md.
 
 ```
 $AOPS/
-├── AXIOMS.md                    # Framework principles (injected at session start)
-├── README.md                    # Brief overview (~70 lines)
+├── AXIOMS.md                    # Inviolable principles (injected at session start)
+├── HEURISTICS.md                # Empirically validated rules (injected at session start)
+├── FRAMEWORK.md                 # Resolved paths for this session (injected at session start)
+├── README.md                    # Brief overview, feature inventory
 ├── INDEX.md                     # THIS FILE - complete file tree
 ├── CLAUDE.md                    # Repo instructions (@ syntax auto-loads)
 ├── BMEM-*.md                    # bmem documentation (4 files)

@@ -24,33 +24,32 @@
    - Fail immediately when configuration is missing or incorrect
    - Demand explicit configuration
 
-6. **Fail-Fast (Agents)**: When YOUR instructions or tools fail, STOP immediately
+8. **Fail-Fast (Agents)**: When YOUR instructions or tools fail, STOP immediately
    - Report error, demand infrastructure fix
    - No workarounds, no silent failures
 
-7. **Self-Documenting**: Documentation-as-code first; never make separate documentation files
+9. **Self-Documenting**: Documentation-as-code first; never make separate documentation files
 
-8. **Single-Purpose Files**: Every file has ONE defined audience and ONE defined purpose. No cruft, no mixed concerns.
+10. **Single-Purpose Files**: Every file has ONE defined audience and ONE defined purpose. No cruft, no mixed concerns.
 
-9. **DRY, Modular, Explicit**: One golden path, no defaults, no guessing, no backwards compatibility
+11. **DRY, Modular, Explicit**: One golden path, no defaults, no guessing, no backwards compatibility
 
-9. **Use Standard Tools**: ONE GOLDEN PATH - use the best industry-standard tool for each job
+12. **Use Standard Tools**: ONE GOLDEN PATH - use the best industry-standard tool for each job
    - Package management: `uv`
    - Testing: `pytest`
    - Git hooks: `pre-commit`
    - Type checking: `mypy`
    - Linting: `ruff`
 
-10. **Always Dogfooding**: Use our own research projects as development guides, test cases, tutorials. Never create fake examples for tests or documentation.
+13. **Always Dogfooding**: Use our own research projects as development guides, test cases, tutorials. Never create fake examples for tests or documentation.
 
-
-11. **Skills are Read-Only**: Skills in `skills/` MUST NOT contain dynamic data
+14. **Skills are Read-Only**: Skills in `skills/` MUST NOT contain dynamic data
     - Skills are distributed as zip files and installed read-only
     - ❌ NO log files, experiment tracking, or mutable state in skills
     - ✅ All dynamic data lives in `$ACA_DATA/` hierarchy
     - ✅ Skills reference data paths, never write to their own directories
 
-12. **Trust Version Control**: We work in git repositories - git is the backup system
+15. **Trust Version Control**: We work in git repositories - git is the backup system
     - ❌ NEVER create backup files: `_new`, `.bak`, `_old`, `_ARCHIVED_*`, `file_2`, `file.backup`
     - ❌ NEVER preserve directories/files "for reference" - git history IS the reference
     - ✅ Edit files directly, rely on git to track changes
@@ -58,19 +57,17 @@
 
 ## Behavioral Rules
 
-14. **NO WORKAROUNDS**: If your tooling or instructions don't work PRECISELY, log the failure and HALT. Don't work around bugs.
+16. **NO WORKAROUNDS**: If your tooling or instructions don't work PRECISELY, log the failure and HALT. Don't work around bugs.
 
-15. **VERIFY FIRST** - Check actual state, never assume
+17. **VERIFY FIRST** - Check actual state, never assume
 
-16. **NO EXCUSES** - Never close issues or claim success without confirmation. No error is somebody else's problem.
+18. **NO EXCUSES** - Never close issues or claim success without confirmation. No error is somebody else's problem.
     - If asked to "run X to verify Y", success = X runs successfully
     - Never rationalize away requirements. If a test fails, fix it or ask for help
 
-17. **WRITE FOR THE LONG TERM** - NEVER create single-use scripts or tests. Build infrastructure that guarantees replicability.
+19. **WRITE FOR THE LONG TERM** - NEVER create single-use scripts or tests. Build infrastructure that guarantees replicability.
 
-## Maintenance Note
-
-20. Actively maintain the integrity of our relational database with atomic, canonical markdown files that link to each other rather than repeating content.
+20. **Maintain Relational Integrity** - Actively maintain the integrity of our relational database with atomic, canonical markdown files that link to each other rather than repeating content.
 
 21. **NOTHING IS SOMEONE ELSE'S RESPONSIBILITY**: If you can't fix it, HALT. You DO NOT IGNORE PROBLEMS HERE.
 
