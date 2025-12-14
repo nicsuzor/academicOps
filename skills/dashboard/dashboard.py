@@ -92,12 +92,12 @@ def get_session_state(session_info, processor: SessionProcessor) -> dict:
         for turn in turns:
             if isinstance(turn, ConversationTurn) and turn.user_message:
                 if not first_prompt:
-                    first_prompt = turn.user_message[:100]
-                    if len(turn.user_message) > 100:
+                    first_prompt = turn.user_message[:200]
+                    if len(turn.user_message) > 200:
                         first_prompt += "..."
                 # Always update last_prompt to get the most recent
-                last_prompt = turn.user_message[:100]
-                if len(turn.user_message) > 100:
+                last_prompt = turn.user_message[:200]
+                if len(turn.user_message) > 200:
                     last_prompt += "..."
 
         # Get TodoWrite state from THIS session
@@ -336,24 +336,32 @@ try:
 
             if in_progress:
                 for todo in in_progress:
-                    content_parts.append(f"<div class='session-todo in-progress'>🔄 {todo.get('content', '')[:80]}</div>")
+                    content_parts.append(f"<div class='session-todo in-progress'>🔄 {todo.get('content', '')}</div>")
             if pending:
                 pending_count = len(pending)
                 content_parts.append(f"<div class='session-todo pending'>⏳ {pending_count} pending</div>")
             if completed and not in_progress and not pending:
-                content_parts.append(f"<div class='session-todo completed'>✅ {len(completed)} done</div>")
+                # Show what was completed, not just count
+                last_done = completed[-1].get('content', '')
+                content_parts.append(f"<div class='session-todo completed'>✅ {last_done}</div>")
 
         # Show first prompt as context (what started this session)
-        if state['first_prompt'] and state['first_prompt'] != 'No activity':
-            content_parts.append(f"<div class='session-prompt'><b>Goal:</b> \"{state['first_prompt']}\"</div>")
+        goal = (state.get('first_prompt') or '').strip()
+        # Skip empty, placeholder, command-like, hook-injected, or very short prompts
+        skip = not goal or len(goal) <= 15 or goal.startswith(('/','<')) or 'Expanded:' in goal
+        if not skip and goal not in ('No activity', 'Unable to parse session'):
+            content_parts.append(f"<div class='session-prompt'><b>Goal:</b> \"{goal}\"</div>")
 
-        # Show session-specific bmem notes (outcomes)
+        # Show session-specific bmem notes (outcomes) - just title
         if state['bmem_notes']:
             for note in state['bmem_notes'][-2:]:  # Show last 2 max
-                folder = note['folder'].split('/')[-1] if note['folder'] else 'notes'
-                content_parts.append(f"<div class='session-bmem'>📝 {folder}/{note['title']}</div>")
+                content_parts.append(f"<div class='session-bmem'>📝 {note['title']}</div>")
 
-        content_html = '\n'.join(content_parts) if content_parts else "<div class='session-prompt'>No activity</div>"
+        # Skip sessions with no meaningful content
+        if not content_parts:
+            continue
+
+        content_html = '\n'.join(content_parts)
 
         session_cards.append(f"""
         <div class='session-card' style='border-left-color: {color};'>
