@@ -32,44 +32,51 @@ def get_project_color(project: str) -> str:
     return DEFAULT_COLOR
 
 
-def get_session_bmem_summary(project_dir: Path) -> dict | None:
-    """Get most recent bmem write_note call for a session's project directory."""
-    # Find hooks log for this project
-    for hooks_log in project_dir.glob("*-hooks.jsonl"):
-        try:
-            latest_bmem = None
-            with open(hooks_log) as f:
-                for line in f:
-                    if not line.strip():
-                        continue
-                    entry = json.loads(line)
-                    if entry.get("tool_name") == "mcp__bmem__write_note":
-                        tool_input = entry.get("tool_input", {})
-                        content = tool_input.get("content", "")
-                        # Extract meaningful content (skip frontmatter and headers)
-                        preview_lines = []
-                        in_frontmatter = False
-                        for content_line in content.split("\n"):
-                            stripped = content_line.strip()
-                            if stripped == "---":
-                                in_frontmatter = not in_frontmatter
-                                continue
-                            if in_frontmatter or not stripped:
-                                continue
-                            if stripped.startswith("#"):
-                                continue
-                            preview_lines.append(stripped)
-                        preview = " ".join(preview_lines)[:500]
-                        latest_bmem = {
-                            "title": tool_input.get("title", "Untitled"),
-                            "folder": tool_input.get("folder", ""),
-                            "preview": preview,
-                        }
-            if latest_bmem:
-                return latest_bmem
-        except Exception:
-            continue
-    return None
+def get_session_todos(session_path: Path) -> list[dict] | None:
+    """Get current TodoWrite state from session JSONL."""
+    try:
+        latest_todos = None
+        with open(session_path) as f:
+            for line in f:
+                if not line.strip():
+                    continue
+                entry = json.loads(line)
+                # Look for TodoWrite tool calls in assistant messages
+                message = entry.get("message", {})
+                content = message.get("content", [])
+                if isinstance(content, list):
+                    for block in content:
+                        if block.get("type") == "tool_use" and block.get("name") == "TodoWrite":
+                            todos = block.get("input", {}).get("todos", [])
+                            if todos:
+                                latest_todos = todos
+        return latest_todos
+    except Exception:
+        return None
+
+
+def get_session_bmem_notes(session_path: Path) -> list[dict]:
+    """Get bmem write_note calls from THIS session's JSONL."""
+    notes = []
+    try:
+        with open(session_path) as f:
+            for line in f:
+                if not line.strip():
+                    continue
+                entry = json.loads(line)
+                message = entry.get("message", {})
+                content = message.get("content", [])
+                if isinstance(content, list):
+                    for block in content:
+                        if block.get("type") == "tool_use" and block.get("name") == "mcp__bmem__write_note":
+                            tool_input = block.get("input", {})
+                            title = tool_input.get("title", "")
+                            folder = tool_input.get("folder", "")
+                            if title:
+                                notes.append({"title": title, "folder": folder})
+    except Exception:
+        pass
+    return notes[-3:] if notes else []  # Return last 3 notes max
 
 
 def get_session_state(session_info, processor: SessionProcessor) -> dict:
@@ -93,19 +100,24 @@ def get_session_state(session_info, processor: SessionProcessor) -> dict:
                 if len(turn.user_message) > 100:
                     last_prompt += "..."
 
-        # Get session's bmem summary (most recent write_note call)
-        bmem_summary = get_session_bmem_summary(session_info.path.parent)
+        # Get TodoWrite state from THIS session
+        todos = get_session_todos(session_info.path)
+
+        # Get bmem notes from THIS session (not project-wide)
+        bmem_notes = get_session_bmem_notes(session_info.path)
 
         return {
             'first_prompt': first_prompt or 'No activity',
             'last_prompt': last_prompt or 'No activity',
-            'bmem_summary': bmem_summary,
+            'todos': todos,
+            'bmem_notes': bmem_notes,
         }
     except Exception:
         return {
             'first_prompt': 'Unable to parse session',
             'last_prompt': 'Unable to parse session',
-            'bmem_summary': None,
+            'todos': None,
+            'bmem_notes': [],
         }
 
 
@@ -225,6 +237,35 @@ st.markdown("""
         position: relative;
     }
 
+    /* Todo items - prominent current work */
+    .session-todo {
+        font-size: 0.9em;
+        padding: 4px 8px;
+        border-radius: 4px;
+        margin: 3px 0;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .session-todo.in-progress {
+        background: #2d4a3e;
+        color: #4ade80;
+        font-weight: 500;
+    }
+
+    .session-todo.pending {
+        background: #3d3d1a;
+        color: #facc15;
+        font-size: 0.8em;
+    }
+
+    .session-todo.completed {
+        background: #1a3d1a;
+        color: #22c55e;
+        font-size: 0.8em;
+    }
+
     /* Section headers */
     .section-header {
         color: #888;
@@ -284,20 +325,35 @@ try:
         color = get_project_color(proj)
         state = get_session_state(session, processor)
 
-        # Build content: first prompt, last prompt, bmem summary
+        # Build content: CURRENT WORK first (todos), then context
         content_parts = []
-        content_parts.append(f"<div class='session-prompt'><b>Start:</b> \"{state['first_prompt']}\"</div>")
-        if state['first_prompt'] != state['last_prompt']:
-            content_parts.append(f"<div class='session-prompt'><b>Latest:</b> \"{state['last_prompt']}\"</div>")
-        if state['bmem_summary']:
-            folder = state['bmem_summary']['folder'].split('/')[-1] if state['bmem_summary']['folder'] else 'notes'
-            title = state['bmem_summary']['title']
-            preview = state['bmem_summary'].get('preview', '')
-            if preview:
-                content_parts.append(f"<div class='session-bmem'>📝 {folder}/{title}: {preview}</div>")
-            else:
-                content_parts.append(f"<div class='session-bmem'>📝 {folder}/{title}</div>")
-        content_html = '\n'.join(content_parts)
+
+        # Show TodoWrite state prominently if present
+        if state['todos']:
+            in_progress = [t for t in state['todos'] if t.get('status') == 'in_progress']
+            pending = [t for t in state['todos'] if t.get('status') == 'pending']
+            completed = [t for t in state['todos'] if t.get('status') == 'completed']
+
+            if in_progress:
+                for todo in in_progress:
+                    content_parts.append(f"<div class='session-todo in-progress'>🔄 {todo.get('content', '')[:80]}</div>")
+            if pending:
+                pending_count = len(pending)
+                content_parts.append(f"<div class='session-todo pending'>⏳ {pending_count} pending</div>")
+            if completed and not in_progress and not pending:
+                content_parts.append(f"<div class='session-todo completed'>✅ {len(completed)} done</div>")
+
+        # Show first prompt as context (what started this session)
+        if state['first_prompt'] and state['first_prompt'] != 'No activity':
+            content_parts.append(f"<div class='session-prompt'><b>Goal:</b> \"{state['first_prompt']}\"</div>")
+
+        # Show session-specific bmem notes (outcomes)
+        if state['bmem_notes']:
+            for note in state['bmem_notes'][-2:]:  # Show last 2 max
+                folder = note['folder'].split('/')[-1] if note['folder'] else 'notes'
+                content_parts.append(f"<div class='session-bmem'>📝 {folder}/{note['title']}</div>")
+
+        content_html = '\n'.join(content_parts) if content_parts else "<div class='session-prompt'>No activity</div>"
 
         session_cards.append(f"""
         <div class='session-card' style='border-left-color: {color};'>
