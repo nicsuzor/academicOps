@@ -1,46 +1,85 @@
 ---
 name: learning-log
 description: Log agent performance patterns to thematic learning files. Categorizes
-  observations, finds similar patterns via bmem, and appends structured entries.
+  observations, matches to experiments, and routes to appropriate tracking files.
 permalink: academic-ops/skills/learning-log/skill
 ---
 
 # Learning Log Skill
 
-Document agent behavior patterns in thematic learning files. Analyze sessions or observations, identify patterns, categorize, and store in bmem. Also handles heuristic adjustment based on new evidence.
+Document agent behavior patterns with appropriate abstraction level routing. Creates chronological log entries, matches to active experiments, and routes to bugs/patterns/experiments based on issue type.
 
-## Modes
+## Three-Phase Workflow
 
-### Standard Mode (default)
-Log observation to thematic learning file.
+### Phase 1: Append to LOG.md
 
-### Heuristic Adjustment Mode
-When input contains `adjust-heuristic H[n]:`, update the specified heuristic in `$AOPS/HEURISTICS.md`.
+**Always first**: Create append-only entry in `$ACA_DATA/projects/aops/learning/LOG.md`
 
-## Input Types
+```markdown
+### YYYY-MM-DD HH:MM | [session-id-prefix or "manual"]
 
-This skill accepts four input types:
+**Error**: [brief description]
+**Root Cause**: [why it happened - your analysis]
+**Abstraction Level**: component | pattern | systemic
+**Related**: [file path if matched, "pending" if creating new]
+```
 
-1. **Verbal description** - User describes what happened ("agent did X wrong")
-2. **Transcript file(s)** - Path to existing transcript markdown file(s)
-3. **Session JSONL** - Raw session file → first invoke `transcript` skill to generate transcript, then analyze
-4. **Heuristic adjustment** - `adjust-heuristic H[n]: [observation]` → update heuristic evidence
+### Phase 2: Match to Active Experiments
 
-**If given a raw session JSONL file**: FIRST invoke the `transcript` skill to generate a transcript, THEN analyze that transcript.
+Search `$ACA_DATA/projects/aops/experiments/` for experiments that:
+- Are not marked complete/decided (check Decision section)
+- Have hypothesis related to the observed behavior
 
-## Quick Start
+**If match found**:
+1. Append observation to experiment's Results section with date
+2. Update LOG.md entry's "Related" field
 
-When invoked:
+### Phase 3: Route by Abstraction Level
 
-1. **Get transcript** - If session JSONL provided, call `transcript` skill first
-2. **Analyze** - Read transcript(s) or verbal description for failure/success patterns
-3. **Categorize** - Assign pattern tags based on content
-4. **Link** - Search bmem for related patterns
-5. **Route** - Select target thematic file based on tags
-6. **Format** - Create structured entry
-7. **Append** - Add to appropriate thematic file
+Determine the appropriate level and route accordingly:
 
-## Pattern Tags and File Routing
+| Level | Criteria | Action |
+|-------|----------|--------|
+| `component` | Specific, reproducible bug in named script/file | Create/update `bugs/[component].md` |
+| `pattern` | Behavioral pattern across agents/sessions | Append to `learning/[theme].md` |
+| `systemic` | Infrastructure issue needing investigation | Create/update experiment |
+
+#### Component-Level (bugs/)
+
+For specific script errors (e.g., task_view.py fails, hook crashes):
+- Check if `$ACA_DATA/projects/aops/bugs/[component].md` exists
+- If yes: append new observation
+- If no: create with bmem frontmatter
+- **Delete when fixed** (per framework conventions)
+
+#### Pattern-Level (learning/)
+
+For behavioral patterns (e.g., agents ignoring instructions):
+- Route to existing thematic file based on tags
+- Use standard entry format (see below)
+
+#### Systemic-Level (experiments/)
+
+For issues needing investigation:
+1. **Search first**: Look for thematically similar experiments
+2. **If related experiment exists**: Update that experiment, don't create new
+3. **If no match**: Create `experiments/[date]-[topic].md`
+4. **Consolidation rule**: When creating new, actively look for experiments to merge. Rename/consolidate as understanding improves.
+
+## Abstraction Level Judgment
+
+**Key principle**: Match abstraction to likely intervention specificity.
+
+Examples:
+- "task_view.py throws KeyError" → `component` (fix that script)
+- "Two agents both ignored explicit user request" → `pattern` (instruction presentation issue)
+- "Hooks seem to not be loading context" → `systemic` (needs investigation)
+
+**Don't**:
+- Create separate bug files for instances of the same pattern
+- Lump specific script bugs into general categories
+
+## Pattern Tags and Thematic Routing
 
 | Tags | Target File |
 |------|-------------|
@@ -49,13 +88,24 @@ When invoked:
 | #git-safety, #no-verify, #validation-bypass, #pre-commit | `git-and-validation.md` |
 | #skill-invocation, #tool-usage, #mcp, #bmem-integration | `skill-and-tool-usage.md` |
 | #tdd, #testing, #test-contract, #fake-data | `test-and-tdd.md` |
-| #success, #tdd-win, #workflow-success (or Type is Success) | `technical-wins.md` |
+| #success, #tdd-win, #workflow-success | `technical-wins.md` |
 
 **Default**: `verification-discipline.md` if no clear match.
 
-**Target path**: `$ACA_DATA/projects/aops/learning/[file].md`
+## Entry Formats
 
-## Entry Format
+### LOG.md Entry (Phase 1)
+
+```markdown
+### YYYY-MM-DD HH:MM | session-prefix
+
+**Error**: [brief description]
+**Root Cause**: [analysis]
+**Abstraction Level**: component | pattern | systemic
+**Related**: bugs/component.md | learning/theme.md | experiments/file.md
+```
+
+### Learning File Entry (Pattern Level)
 
 ```markdown
 ## [Brief Title]
@@ -67,164 +117,79 @@ When invoked:
 **Lesson**: [One sentence - actionable takeaway]
 ```
 
-## Workflow
+### Bug File Format (Component Level)
 
-### 1. Receive Input
+```markdown
+---
+title: [Component] Errors
+type: bug
+permalink: bugs-[component]
+tags:
+  - bug
+  - [component]
+---
 
-Accept one of:
-- **Verbal description**: "Agent correctly used task scripts"
-- **Transcript path(s)**: `/path/to/transcript.md` or multiple paths
-- **Session JSONL**: `~/.claude/projects/.../session.jsonl`
+# [Component] Errors
 
-**If session JSONL**: Invoke `transcript` skill first:
-```
-Skill: transcript
-Input: [session.jsonl path]
-```
-Then proceed with the generated transcript.
+## Observations
 
-### 1b. Analyze Transcript (if applicable)
-
-Read transcript(s) looking for:
-- Tool failures and error messages
-- Repeated attempts at same task
-- Claims made without verification
-- Partial completions
-- Workarounds or deviations from instructions
-- Successes and effective patterns
-
-### 2. Categorize
-
-Classify as Success or Failure based on markers:
-
-**Success markers**: "worked", "correctly", "successfully", "as expected"
-**Failure markers**: "failed", "error", "bug", "wrong", "didn't work"
-
-If both present, classify as Failure.
-
-### 3. Assign Tags
-
-Choose 1-3 relevant tags from the table above. Primary tag determines file routing.
-
-### 4. Link Knowledge (bmem)
-
-Search for related patterns:
-```
-mcp__bmem__search_notes(query="[key terms from observation]", project="main")
+### YYYY-MM-DD
+- [fact] [error description] #bug
+- [context] [when it occurred]
+- [status] open | investigating | fixed
 ```
 
-Include relevant cross-references in entry if found.
+### Experiment Entry (Systemic Level)
 
-### 5. Format Entry
+Follow `$ACA_DATA/projects/aops/experiments/TEMPLATE.md`
 
-Create entry following the format specification above.
+## Input Types
 
-### 6. Validate Target File
+1. **Verbal description** - User describes what happened
+2. **Transcript file(s)** - Path to transcript markdown
+3. **Session JSONL** - First invoke `transcript` skill, then analyze
+4. **Heuristic adjustment** - `adjust-heuristic H[n]: [observation]`
 
-Before appending:
-1. Verify file exists at `$ACA_DATA/projects/aops/learning/[file].md`
-2. Check frontmatter has: title, permalink, type, tags
-3. If invalid - HALT with error
+## Heuristic Adjustment Mode
 
-### 7. Append Entry
+When input contains `adjust-heuristic H[n]:`:
 
-Use Edit tool to append formatted entry to end of file.
-
-### 8. Report
-
-Confirm:
-- File selected
-- Tags assigned
-- Cross-references found (if any)
-- Entry appended
-
-## Heuristic Adjustment Workflow
-
-When input matches `adjust-heuristic H[n]: [observation]`:
-
-### 1. Parse Input
-
-Extract:
-- Heuristic ID (e.g., H3)
-- Observation text
-- Direction: "confirms", "supports", "strengthens" → positive; "contradicts", "weakens", "fails" → negative
-
-### 2. Read Current Heuristic
-
-Read `$AOPS/HEURISTICS.md` and locate the specified heuristic section.
-
-### 3. Determine Action
-
-| Evidence Direction | Current Confidence | Action |
-|--------------------|-------------------|--------|
-| Positive | Low | Add evidence, consider → Medium |
-| Positive | Medium | Add evidence, consider → High |
-| Positive | High | Add evidence (reinforce) |
-| Negative | High | Add counter-evidence, consider → Medium |
-| Negative | Medium | Add counter-evidence, consider → Low |
-| Negative | Low | Add counter-evidence, consider → Retire |
-
-### 4. Update Heuristic
-
-Add dated observation to Evidence section:
-```
-- YYYY-MM-DD: [observation summary] ([confirms/weakens])
-```
-
-If confidence changes, update the Confidence line.
-
-### 5. Cross-Reference
-
-Also log to appropriate thematic file (verification-discipline.md, etc.) with cross-reference to heuristic.
-
-### 6. Report
-
-Confirm:
-- Heuristic updated
-- Confidence change (if any)
-- Cross-reference logged
+1. Parse heuristic ID and observation
+2. Read `$AOPS/HEURISTICS.md`
+3. Add dated evidence to heuristic
+4. Adjust confidence if warranted
+5. Also log to LOG.md and appropriate thematic file
 
 ## Constraints
 
-**DO ONE THING**: This skill documents observations only. It does NOT:
+**DO ONE THING**: Document observations only. Do NOT:
 - Fix reported issues
 - Implement solutions
-- Debug problems (use framework-debug skill for that)
+- Debug problems
 
-**VERIFY-FIRST**: Before categorizing, review observation carefully. Never categorize on keywords alone.
+**VERIFY-FIRST**: Review observation carefully before categorizing.
 
 ## Example
 
 ```
-User: /log Agent correctly used task scripts instead of writing files directly
+User: /log agent ignored my explicit request to run ALL tests, only ran 3
 
-Workflow:
-1. Categorize: Success (markers: "correctly")
-2. Tags: #workflow-success #tool-usage
-3. bmem search: "task scripts task management"
-4. Target file: technical-wins.md (success type)
-5. Format entry:
-   ## Agent Used Task Scripts Correctly
-   **Date**: 2025-12-03 | **Type**: Success | **Pattern**: #workflow-success #tool-usage
-   **What**: Agent invoked task_add.py script instead of writing task markdown directly.
-   **Why**: Follows documented task management architecture requiring script-only write access.
-   **Lesson**: Script-based task operations working as designed.
-6. Validate technical-wins.md
-7. Append entry
-8. Report: "Logged to technical-wins.md with #workflow-success #tool-usage"
-```
+Phase 1 - LOG.md:
+### 2025-12-14 08:45 | abc123
 
-## Heuristic Adjustment Example
+**Error**: Agent ran only 3 tests when explicitly asked to run ALL
+**Root Cause**: Agent not attending to explicit scope instruction
+**Abstraction Level**: pattern
+**Related**: learning/instruction-following.md
 
-```
-User: /log adjust-heuristic H3: Agent claimed tests passed without running pytest - confirms H3
+Phase 2 - Experiment Match:
+Search experiments/ for "instruction following" → no active experiment
 
-Workflow:
-1. Parse: H3, "Agent claimed tests passed without running pytest", direction=positive (confirms)
-2. Read $AOPS/HEURISTICS.md, locate H3 (Verification Before Assertion)
-3. Current confidence: High → stays High (reinforce)
-4. Update Evidence section:
-   - 2025-12-14: Agent claimed tests passed without running pytest (confirms)
-5. Cross-reference: Log to verification-discipline.md with "See H3"
-6. Report: "H3 updated with confirming evidence. Confidence remains High."
+Phase 3 - Route:
+- Level: pattern (behavioral, not script-specific)
+- Tags: #instruction-following #scope
+- Target: instruction-following.md
+- Append entry
+
+Report: "Logged to instruction-following.md - recurring pattern of agents not attending to explicit scope instructions"
 ```

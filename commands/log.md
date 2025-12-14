@@ -5,12 +5,30 @@ permalink: commands/log
 
 **IMMEDIATELY** invoke the `learning-log` skill with the user's observation description.
 
-**Purpose**: Build institutional knowledge by logging patterns to thematic learning files AND adjusting heuristics based on evidence.
+**Purpose**: Build institutional knowledge by logging patterns at the appropriate abstraction level, matching to active experiments, and routing to bugs/patterns/experiments.
+
+## Three-Phase Workflow
+
+The skill executes:
+
+1. **LOG.md entry** - Append-only chronological record with session ID, error, root cause, abstraction level
+2. **Experiment matching** - Search active experiments, update if related
+3. **Abstraction routing** - Route to bugs/ (component), learning/ (pattern), or experiments/ (systemic)
+
+## Abstraction Levels
+
+| Level | When | Example |
+|-------|------|---------|
+| `component` | Specific script/file bug | "task_view.py throws KeyError" |
+| `pattern` | Behavioral pattern across agents | "Agent ignored explicit ALL instruction" |
+| `systemic` | Infrastructure issue needing investigation | "Hooks not loading context" |
+
+**Key principle**: Don't create separate bug files for instances of the same pattern. Don't lump specific bugs into general categories.
 
 ## Modes
 
 ### Standard Mode (default)
-Log observation to thematic learning file.
+Log observation with abstraction routing.
 
 **User provides**: Brief description of observation (success or failure)
 
@@ -21,34 +39,12 @@ Adjust heuristic confidence based on new evidence.
 
 **Example**: `/log adjust-heuristic H3: Agent claimed success without running tests - confirms H3`
 
-## Workflow
+## Output Files
 
-The skill will:
+- `$ACA_DATA/projects/aops/learning/LOG.md` - Chronological append-only log
+- `$ACA_DATA/projects/aops/learning/*.md` - Thematic pattern files
+- `$ACA_DATA/projects/aops/bugs/*.md` - Component-specific bugs (delete when fixed)
+- `$ACA_DATA/projects/aops/experiments/*.md` - Systemic investigations
+- `$AOPS/HEURISTICS.md` - Heuristic evidence (when adjusting)
 
-1. **Detect mode** - standard logging or heuristic adjustment
-2. **Categorize** - assign pattern tags (#verify-first, #instruction-following, #git-safety, etc.)
-3. **Link knowledge** (via bmem) - cross-reference related framework concepts
-4. **Route** - select target thematic file OR heuristic entry based on pattern tags
-5. **Format** - structure entry per learning file specification
-6. **Validate** - ensure target file exists with valid format
-7. **Append/Update** - add entry to thematic file OR update heuristic evidence in `$AOPS/HEURISTICS.md`
-
-## Thematic Files
-
-- `verification-discipline.md` - verify-first violations, overconfidence
-- `instruction-following.md` - ignoring explicit instructions
-- `git-and-validation.md` - --no-verify usage, validation bypass
-- `skill-and-tool-usage.md` - skill invocation failures
-- `test-and-tdd.md` - TDD violations, test discipline
-- `technical-wins.md` - successful patterns to reinforce
-
-## Heuristic Adjustment
-
-When adjusting heuristics:
-- **Strengthen**: Add dated observation to Evidence, consider raising Confidence
-- **Weaken**: Add dated counter-observation, consider lowering Confidence
-- **Propose new**: If pattern doesn't match existing heuristic, propose new one with Low confidence
-
-See `$AOPS/HEURISTICS.md` for current heuristics and revision protocol.
-
-See skills/learning-log/SKILL.md for complete workflow specification.
+See `skills/learning-log/SKILL.md` for complete workflow specification.
