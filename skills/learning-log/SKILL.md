@@ -1,19 +1,30 @@
 ---
 name: learning-log
-description: Log agent performance patterns to thematic learning files. Categorizes observations, finds similar patterns via bmem, and appends structured entries.
+description: Log agent performance patterns to thematic learning files. Categorizes
+  observations, finds similar patterns via bmem, and appends structured entries.
+permalink: academic-ops/skills/learning-log/skill
 ---
 
 # Learning Log Skill
 
-Document agent behavior patterns in thematic learning files. Analyze sessions or observations, identify patterns, categorize, and store in bmem.
+Document agent behavior patterns in thematic learning files. Analyze sessions or observations, identify patterns, categorize, and store in bmem. Also handles heuristic adjustment based on new evidence.
+
+## Modes
+
+### Standard Mode (default)
+Log observation to thematic learning file.
+
+### Heuristic Adjustment Mode
+When input contains `adjust-heuristic H[n]:`, update the specified heuristic in `$AOPS/HEURISTICS.md`.
 
 ## Input Types
 
-This skill accepts three input types:
+This skill accepts four input types:
 
 1. **Verbal description** - User describes what happened ("agent did X wrong")
 2. **Transcript file(s)** - Path to existing transcript markdown file(s)
 3. **Session JSONL** - Raw session file → first invoke `transcript` skill to generate transcript, then analyze
+4. **Heuristic adjustment** - `adjust-heuristic H[n]: [observation]` → update heuristic evidence
 
 **If given a raw session JSONL file**: FIRST invoke the `transcript` skill to generate a transcript, THEN analyze that transcript.
 
@@ -127,6 +138,52 @@ Confirm:
 - Cross-references found (if any)
 - Entry appended
 
+## Heuristic Adjustment Workflow
+
+When input matches `adjust-heuristic H[n]: [observation]`:
+
+### 1. Parse Input
+
+Extract:
+- Heuristic ID (e.g., H3)
+- Observation text
+- Direction: "confirms", "supports", "strengthens" → positive; "contradicts", "weakens", "fails" → negative
+
+### 2. Read Current Heuristic
+
+Read `$AOPS/HEURISTICS.md` and locate the specified heuristic section.
+
+### 3. Determine Action
+
+| Evidence Direction | Current Confidence | Action |
+|--------------------|-------------------|--------|
+| Positive | Low | Add evidence, consider → Medium |
+| Positive | Medium | Add evidence, consider → High |
+| Positive | High | Add evidence (reinforce) |
+| Negative | High | Add counter-evidence, consider → Medium |
+| Negative | Medium | Add counter-evidence, consider → Low |
+| Negative | Low | Add counter-evidence, consider → Retire |
+
+### 4. Update Heuristic
+
+Add dated observation to Evidence section:
+```
+- YYYY-MM-DD: [observation summary] ([confirms/weakens])
+```
+
+If confidence changes, update the Confidence line.
+
+### 5. Cross-Reference
+
+Also log to appropriate thematic file (verification-discipline.md, etc.) with cross-reference to heuristic.
+
+### 6. Report
+
+Confirm:
+- Heuristic updated
+- Confidence change (if any)
+- Cross-reference logged
+
 ## Constraints
 
 **DO ONE THING**: This skill documents observations only. It does NOT:
@@ -155,4 +212,19 @@ Workflow:
 6. Validate technical-wins.md
 7. Append entry
 8. Report: "Logged to technical-wins.md with #workflow-success #tool-usage"
+```
+
+## Heuristic Adjustment Example
+
+```
+User: /log adjust-heuristic H3: Agent claimed tests passed without running pytest - confirms H3
+
+Workflow:
+1. Parse: H3, "Agent claimed tests passed without running pytest", direction=positive (confirms)
+2. Read $AOPS/HEURISTICS.md, locate H3 (Verification Before Assertion)
+3. Current confidence: High → stays High (reinforce)
+4. Update Evidence section:
+   - 2025-12-14: Agent claimed tests passed without running pytest (confirms)
+5. Cross-reference: Log to verification-discipline.md with "See H3"
+6. Report: "H3 updated with confirming evidence. Confidence remains High."
 ```

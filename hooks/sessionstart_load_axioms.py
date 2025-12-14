@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-SessionStart hook: Load AXIOMS.md and CORE.md and inject as additional context.
+SessionStart hook: Load AXIOMS.md, HEURISTICS.md, and CORE.md as additional context.
 
-Provides framework principles and user context at the start of every session
-without requiring @ syntax in CLAUDE.md or manual file reading.
+Provides framework principles, empirical heuristics, and user context at the
+start of every session without requiring @ syntax in CLAUDE.md or manual file reading.
 
 Exit codes:
     0: Success (always continues)
@@ -82,6 +82,37 @@ def load_axioms() -> str:
     return content
 
 
+def load_heuristics() -> str:
+    """
+    Load HEURISTICS.md content.
+
+    Returns:
+        HEURISTICS content as string
+
+    Raises:
+        FileNotFoundError: If HEURISTICS.md doesn't exist (fail-fast)
+    """
+    aops_root = get_aops_root()
+    heuristics_path = aops_root / "HEURISTICS.md"
+
+    # Fail-fast: HEURISTICS.md is required
+    if not heuristics_path.exists():
+        msg = (
+            f"FATAL: HEURISTICS.md missing at {heuristics_path}. "
+            "SessionStart hook requires this file to exist. "
+            "Framework cannot operate without empirical heuristics."
+        )
+        raise FileNotFoundError(msg)
+
+    content = heuristics_path.read_text().strip()
+
+    if not content:
+        msg = f"FATAL: HEURISTICS.md at {heuristics_path} is empty."
+        raise ValueError(msg)
+
+    return content
+
+
 def load_core() -> str:
     """
     Load CORE.md content from $ACA_DATA.
@@ -134,7 +165,7 @@ def expand_path_variables(content: str, aops_root: Path, data_root: Path) -> str
 
 
 def main():
-    """Main hook entry point - loads AXIOMS and CORE, then continues."""
+    """Main hook entry point - loads AXIOMS, HEURISTICS, and CORE, then continues."""
     # Read input from stdin
     input_data: dict[str, Any] = {}
     try:
@@ -162,6 +193,13 @@ def main():
         print(f"ERROR: {e}", file=sys.stderr)
         sys.exit(1)
 
+    # Load HEURISTICS.md (fail-fast if missing)
+    try:
+        heuristics_content = load_heuristics()
+    except (FileNotFoundError, ValueError) as e:
+        print(f"ERROR: {e}", file=sys.stderr)
+        sys.exit(1)
+
     # Load CORE.md (fail-fast if missing)
     try:
         core_content = load_core()
@@ -169,7 +207,7 @@ def main():
         print(f"ERROR: {e}", file=sys.stderr)
         sys.exit(1)
 
-    # Build context - FRAMEWORK first (paths), then AXIOMS (principles), then CORE (user)
+    # Build context - FRAMEWORK (paths), AXIOMS (principles), HEURISTICS (empirical), CORE (user)
     additional_context = f"""# Framework Paths (FRAMEWORK.md)
 
 {framework_content}
@@ -182,6 +220,12 @@ def main():
 
 ---
 
+# Framework Heuristics (HEURISTICS.md)
+
+{heuristics_content}
+
+---
+
 # User Context (CORE.md)
 
 {core_content}
@@ -190,13 +234,19 @@ def main():
     # Use already-resolved paths for logging
     framework_path = aops_root / "FRAMEWORK.md"
     axioms_path = aops_root / "AXIOMS.md"
+    heuristics_path = aops_root / "HEURISTICS.md"
     core_path = data_root / "CORE.md"
 
     # Build output data (sent to Claude)
     hook_specific_output: dict[str, Any] = {
         "hookEventName": "SessionStart",
         "additionalContext": additional_context,
-        "filesLoaded": [str(framework_path), str(axioms_path), str(core_path)],
+        "filesLoaded": [
+            str(framework_path),
+            str(axioms_path),
+            str(heuristics_path),
+            str(core_path),
+        ],
     }
     output_data: dict[str, Any] = {
         "hookSpecificOutput": hook_specific_output
@@ -218,6 +268,7 @@ def main():
     # Status to stderr
     print(f"✓ Loaded FRAMEWORK.md from {framework_path}", file=sys.stderr)
     print(f"✓ Loaded AXIOMS.md from {axioms_path}", file=sys.stderr)
+    print(f"✓ Loaded HEURISTICS.md from {heuristics_path}", file=sys.stderr)
     print(f"✓ Loaded CORE.md from {core_path}", file=sys.stderr)
 
     sys.exit(0)

@@ -23,11 +23,12 @@ This framework is a **validated logical system**. Every component must be deriva
 | Priority | Document | Contains | Location |
 |----------|----------|----------|----------|
 | 1 | AXIOMS.md | Inviolable principles | `$AOPS/AXIOMS.md` |
-| 2 | VISION.md | What we're building, success criteria | `$ACA_DATA/projects/aops/VISION.md` |
-| 3 | ROADMAP.md | Current status, done/planned/issues | `$ACA_DATA/projects/aops/ROADMAP.md` |
-| 4 | This skill | Conventions derived from above | `$AOPS/skills/framework/SKILL.md` |
-| 5 | README.md | Feature inventory | `$AOPS/README.md` |
-| 6 | INDEX.md | File tree | `$AOPS/INDEX.md` |
+| 2 | HEURISTICS.md | Empirically validated guidance (revisable) | `$AOPS/HEURISTICS.md` |
+| 3 | VISION.md | What we're building, success criteria | `$ACA_DATA/projects/aops/VISION.md` |
+| 4 | ROADMAP.md | Current status, done/planned/issues | `$ACA_DATA/projects/aops/ROADMAP.md` |
+| 5 | This skill | Conventions derived from above | `$AOPS/skills/framework/SKILL.md` |
+| 6 | README.md | Feature inventory | `$AOPS/README.md` |
+| 7 | INDEX.md | File tree | `$AOPS/INDEX.md` |
 
 **Derivation rule**: Every convention in this skill MUST trace to an axiom or vision statement. If it can't, the convention is invalid.
 
