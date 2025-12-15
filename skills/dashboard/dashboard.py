@@ -387,6 +387,10 @@ try:
         if age.total_seconds() > 86400 * 7:
             continue
 
+        # Skip test sessions (temp directories - project names use dashes not slashes)
+        if '-tmp' in session.project or '-var-folders' in session.project:
+            continue
+
         proj = session.project_display
         status_emoji, status_text = get_activity_status(session.last_modified)
         color = get_project_color(proj)
@@ -436,8 +440,10 @@ try:
         # Show first prompt as context (what started this session) - with popup for full text
         goal = (state.get('first_prompt') or '').strip()
         goal_full = (state.get('first_prompt_full') or goal).strip()
-        # Skip empty, placeholder, command-like, hook-injected, or very short prompts
-        skip = not goal or len(goal) <= 15 or goal.startswith(('/','<')) or 'Expanded:' in goal
+        # Skip empty, placeholder, hook-injected, or very short prompts
+        # Allow slash commands with arguments (e.g. "/meta fix the bug") but skip bare commands
+        is_bare_command = goal.startswith('/') and ' ' not in goal[:50]
+        skip = not goal or len(goal) <= 15 or goal.startswith('<') or 'Expanded:' in goal or is_bare_command
         if not skip and goal not in ('No activity', 'Unable to parse session'):
             content_parts.append(f"""<div class='tooltip-container'>
                 <div class='session-prompt'><b>Goal:</b> \"{esc(goal)}\"</div>
