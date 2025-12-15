@@ -1,3 +1,10 @@
+---
+title: Experiment Design
+type: workflow
+permalink: workflow-experiment-design
+description: Process for designing, implementing, and evaluating framework experiments
+---
+
 # Workflow 3: Experiment Design
 
 **When**: Testing new framework approach, optimization, or capability.

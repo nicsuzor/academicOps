@@ -1,3 +1,10 @@
+---
+title: Observability
+type: framework-doc
+permalink: docs-observability
+description: Hook logs, session transcripts, and observability data sources for debugging and auditing
+---
+
 # Observability
 
 ## Data Sources
@@ -66,7 +73,7 @@ jq 'select(.additionalContext != null) | {hook_event, additionalContext}' *-hook
 
 ### Implementation
 
-Logged via `hooks/unified_logger.py` → `hooks/hook_logger.py`
+Logged via [[unified_logger.py|hooks/unified_logger.py]] → [[hook_logger.py|hooks/hook_logger.py]]
 
 All input fields from Claude Code are captured verbatim (`**input_data` spread into log entry).
 

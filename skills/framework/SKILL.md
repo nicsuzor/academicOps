@@ -4,7 +4,7 @@ description: Categorical framework governance. Treats every change as a universa
   rule. Delegates user data operations to skills.
 allowed-tools: Read,Grep,Glob,Edit,Write,Skill,AskUserQuestion
 version: 4.1.0
-permalink: skills-framework-skill
+permalink: skills-framework
 ---
 
 # Framework Conventions Skill
@@ -21,15 +21,15 @@ This framework is a **validated logical system**. Every component must be deriva
 
 ### Authoritative Source Chain (Read in Order)
 
-| Priority | Document | Contains | Location |
-|----------|----------|----------|----------|
-| 1 | AXIOMS.md | Inviolable principles | `$AOPS/AXIOMS.md` |
-| 2 | HEURISTICS.md | Empirically validated guidance (revisable) | `$AOPS/HEURISTICS.md` |
-| 3 | VISION.md | What we're building, success criteria | `$ACA_DATA/projects/aops/VISION.md` |
-| 4 | ROADMAP.md | Current status, done/planned/issues | `$ACA_DATA/projects/aops/ROADMAP.md` |
-| 5 | This skill | Conventions derived from above | `$AOPS/skills/framework/SKILL.md` |
-| 6 | README.md | Feature inventory | `$AOPS/README.md` |
-| 7 | INDEX.md | File tree | `$AOPS/INDEX.md` |
+| Priority | Document          | Contains                                   | Location                             |
+| -------- | ----------------- | ------------------------------------------ | ------------------------------------ |
+| 1        | [[AXIOMS.md]]     | Inviolable principles                      | `$AOPS/AXIOMS.md`                    |
+| 2        | [[HEURISTICS.md]] | Empirically validated guidance (revisable) | `$AOPS/HEURISTICS.md`                |
+| 3        | [[VISION.md]]     | What we're building, success criteria      | `$ACA_DATA/projects/aops/VISION.md`  |
+| 4        | [[ROADMAP.md]]    | Current status, done/planned/issues        | `$ACA_DATA/projects/aops/ROADMAP.md` |
+| 5        | This skill        | Conventions derived from above             | `$AOPS/skills/framework/SKILL.md`    |
+| 6        | [[README.md]]     | Feature inventory                          | `$AOPS/README.md`                    |
+| 7        | [[INDEX.md]]      | File tree                                  | `$AOPS/INDEX.md`                     |
 
 **Derivation rule**: Every convention in this skill MUST trace to an axiom or vision statement. If it can't, the convention is invalid.
 
@@ -277,21 +277,21 @@ The framework has exactly these core documents. No others.
 
 ### Framework Documentation ($AOPS/)
 
-| Document | Purpose | Contains |
-|----------|---------|----------|
-| README.md | Entry point | Feature inventory (skills, commands, hooks, agents) with how-to-invoke |
-| AXIOMS.md | Principles ONLY | Inviolable rules - NO enforcement, NO examples, NO implementation |
-| INDEX.md | File tree | Complete directory structure |
+| Document      | Purpose         | Contains                                                               |
+| ------------- | --------------- | ---------------------------------------------------------------------- |
+| [[README.md]] | Entry point     | Feature inventory (skills, commands, hooks, agents) with how-to-invoke |
+| [[AXIOMS.md]] | Principles ONLY | Inviolable rules - NO enforcement, NO examples, NO implementation      |
+| [[INDEX.md]]  | File tree       | Complete directory structure                                           |
 
 **AXIOMS.md rule**: Axioms are pure principles. Enforcement mechanisms belong in this skill. Implementation details belong in component docs.
 
 ### Project Documentation ($ACA_DATA/projects/aops/)
 
-| Document | Purpose | Contains |
-|----------|---------|----------|
-| VISION.md | Goals | What we're building, success criteria, scope boundaries |
-| ROADMAP.md | Status | Done / In Progress / Planned / Known Issues |
-| learning/ | Patterns | Thematic files for failure patterns and lessons |
+| Document       | Purpose  | Contains                                                |
+| -------------- | -------- | ------------------------------------------------------- |
+| [[VISION.md]]  | Goals    | What we're building, success criteria, scope boundaries |
+| [[ROADMAP.md]] | Status   | Done / In Progress / Planned / Known Issues             |
+| learning/      | Patterns | Thematic files for failure patterns and lessons         |
 
 ### Documentation Rules
 
@@ -356,7 +356,7 @@ New files PROHIBITED unless:
 
 ### Adding a Hook
 
-1. **Read `hooks/CLAUDE.md` first** - contains architecture principles
+1. **Read [[hooks_guide]] first** - contains architecture principles
 2. Create hook in `hooks/` directory
 3. Triggers: PreToolUse, PostToolUse, UserPromptSubmit, SessionStart, Stop
 4. Hooks inject context/instructions - they NEVER call LLM APIs directly

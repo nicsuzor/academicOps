@@ -1,8 +1,17 @@
+---
+title: Script Design Guide
+type: reference
+permalink: ref-script-design-guide
+description: Framework principles for script design, distinguishing between simple utilities and agent orchestration
+---
+
 # Script Design: Orchestration vs Reasoning
 
 **CRITICAL ANTI-PATTERN**: Writing scripts that duplicate Claude Code's built-in capabilities.
 
 **The Framework Context**: We work in Claude Code (CLI tool) where agents have direct access to powerful tools: Read, Write, Edit, Grep, Glob, and full LLM reasoning. Scripts that replicate these capabilities are wrong.
+
+**Related guidance**: See [[claude-code-config]], [[e2e-test-harness]], and [[testing-with-live-data]] for complementary patterns.
 
 ## When Scripts Are PROHIBITED
 

@@ -1,18 +1,30 @@
+---
+name: index
+title: Framework Index
+type: reference
+description: Complete file-to-function mapping and directory structure reference.
+permalink: framework-index
+tags:
+  - framework
+  - structure
+  - reference
+---
+
 # Framework Index
 
-Complete file-to-function mapping. For overview, see README.md.
+Complete file-to-function mapping. For overview, see [[README]].
 
 ## File Tree
 
 ```
 $AOPS/
-├── AXIOMS.md                    # Inviolable principles (injected at session start)
-├── HEURISTICS.md                # Empirically validated rules (injected at session start)
-├── FRAMEWORK.md                 # Resolved paths for this session (injected at session start)
-├── README.md                    # Brief overview, feature inventory
-├── INDEX.md                     # THIS FILE - complete file tree
-├── RULES.md                     # Current enforcement rules (auto-generated)
-├── CLAUDE.md                    # Repo instructions (@ syntax auto-loads)
+├── [[AXIOMS.md]]                # Inviolable principles (injected at session start)
+├── [[HEURISTICS.md]]            # Empirically validated rules (injected at session start)
+├── [[FRAMEWORK.md]]             # Resolved paths for this session (injected at session start)
+├── [[README.md]]                # Brief overview, feature inventory
+├── [[INDEX.md]]                 # THIS FILE - complete file tree
+├── [[RULES.md]]                 # Current enforcement rules (auto-generated)
+├── [[CLAUDE.md]]                # Repo instructions (@ syntax auto-loads)
 ├── BMEM-*.md                    # bmem documentation (4 files)
 ├── pyproject.toml               # Python project config
 │

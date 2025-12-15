@@ -1,3 +1,10 @@
+---
+title: Claude Code Configuration Reference
+type: reference
+permalink: ref-claude-code-config
+description: Technical reference for Claude Code configuration file locations, behavior, and best practices
+---
+
 # Claude Code Configuration Reference
 
 Technical reference for Claude Code configuration file locations and behavior.
@@ -97,7 +104,9 @@ Technical reference for Claude Code configuration file locations and behavior.
 
 ### Hooks Configuration
 
-**For complete hooks documentation**, see [[hooks_guide.md]].
+**For complete hooks documentation**, see [[hooks_guide]].
+
+**Related references**: [[testing-with-live-data]], [[script-design-guide]]
 
 
 ### Status Line Configuration

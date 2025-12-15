@@ -1,3 +1,10 @@
+---
+title: Mind Mapping Design Principles
+type: reference
+permalink: excalidraw-mind-mapping
+description: Four fundamental design principles (proximity, alignment, contrast, repetition) adapted from design theory for creating effective mind maps and concept diagrams.
+---
+
 # Mind Mapping Design Principles
 
 Mind maps and concept maps are powerful tools for organizing information hierarchically and showing relationships. Apply these four fundamental design principles (adapted from "The Non-Designer's Design Book"):

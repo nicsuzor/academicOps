@@ -1,10 +1,11 @@
 ---
 name: add
 description: Quick-add a task or checklist item from session context
+allowed-tools: Skill
 permalink: commands/add
 ---
 
-Use the Skill tool to invoke the `tasks` skill: `Skill(skill="tasks")`
+Use the Skill tool to invoke the `[[skills/tasks/SKILL.md|tasks]]` skill: `Skill(skill="tasks")`
 
 **Purpose**: Quickly capture action items from the current conversation.
 

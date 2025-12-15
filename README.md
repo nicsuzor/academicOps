@@ -1,27 +1,36 @@
+---
+name: readme
+title: academicOps Framework
+type: reference
+description: Academic support framework for Claude Code. Entry point and feature inventory.
+permalink: readme
+tags: [framework, overview, features]
+---
+
 # academicOps Framework
 
 Academic support framework for Claude Code. Minimal, fight bloat aggressively.
 
 ## Quick Start
 
-- **Paths**: `FRAMEWORK.md` (injected at session start)
-- **Principles**: `AXIOMS.md` (injected at session start)
-- **Heuristics**: `HEURISTICS.md` (injected at session start)
-- **File tree**: `INDEX.md`
+- **Paths**: [[FRAMEWORK.md]] (injected at session start)
+- **Principles**: [[AXIOMS.md]] (injected at session start)
+- **Heuristics**: [[HEURISTICS.md]] (injected at session start)
+- **File tree**: [[INDEX.md]]
 
 ## Knowledge Architecture
 
 | Layer | Document | Nature |
 |-------|----------|--------|
-| **Axioms** | `AXIOMS.md` | Inviolable principles. No exceptions. |
-| **Heuristics** | `HEURISTICS.md` | Empirically validated rules. Revisable via `/log adjust-heuristic`. |
-| **Practices** | `skills/framework/SKILL.md` | Conventions derived from axioms. How things get done. |
+| **Axioms** | [[AXIOMS.md]] | Inviolable principles. No exceptions. |
+| **Heuristics** | [[HEURISTICS.md]] | Empirically validated rules. Revisable via `/log adjust-heuristic`. |
+| **Practices** | [[skills/framework/SKILL.md]] | Conventions derived from axioms. How things get done. |
 
 ## Glossary
 
 | Term | Definition |
 |------|------------|
-| **Skill** | Workflow instructions in `skills/*/SKILL.md` - invoke via `Skill` tool |
+| **Skill** | Workflow instructions in [[skills]] - invoke via `Skill` tool |
 | **Command** | User-invokable `/slash` command in `commands/` |
 | **Hook** | Python script triggered by Claude Code events in `hooks/` |
 | **Agent** | Spawnable subagent via `Task` tool (`subagent_type`) |
@@ -46,7 +55,7 @@ Academic support framework for Claude Code. Minimal, fight bloat aggressively.
 |-------|---------|------------|
 | analyst | Research data analysis (dbt, stats) | `Skill(skill="analyst")` |
 | bmem | Knowledge base operations | `Skill(skill="bmem")` or `/bmem` |
-| framework | Convention reference, categorical imperative | `Skill(skill="framework")` |
+| framework | Convention reference, categorical imperative | `Skill(skill="framework")` - [[skills/framework/SKILL.md]] |
 | osb-drafting | IRAC analysis, citation verification | `Skill(skill="osb-drafting")` |
 | pdf | Markdown → professional PDF | `Skill(skill="pdf")` |
 | python-dev | Production Python (fail-fast, typed) | `Skill(skill="python-dev")` |
@@ -86,7 +95,7 @@ Academic support framework for Claude Code. Minimal, fight bloat aggressively.
 
 | Document | Purpose |
 |----------|---------|
-| AXIOMS.md | Principles (inviolable rules) |
-| INDEX.md | Complete file tree |
-| $ACA_DATA/projects/aops/VISION.md | What we're building |
-| $ACA_DATA/projects/aops/ROADMAP.md | Current status |
+| [[AXIOMS.md]] | Principles (inviolable rules) |
+| [[INDEX.md]] | Complete file tree |
+| [[$ACA_DATA/projects/aops/VISION.md\|VISION.md]] | What we're building |
+| [[$ACA_DATA/projects/aops/ROADMAP.md\|ROADMAP.md]] | Current status |

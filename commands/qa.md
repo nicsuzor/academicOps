@@ -1,8 +1,8 @@
 ---
-name: meta
-description: Quality assurance agent that verifies concrete outcomes against user
-  goals and acceptance criteria using real-world data
-permalink: academic-ops/commands/qa
+name: qa
+description: Quality assurance agent that verifies concrete outcomes against user goals and acceptance criteria using real-world data
+permalink: commands/qa
+allowed-tools: Task,Bash,Read,Grep,Glob,Edit,mcp__bmem__search_notes,mcp__bmem__read_note
 ---
 
 ## Purpose & Authority
@@ -29,11 +29,11 @@ You ultimately manage the academicOps framework project with complete context an
 
 **BEFORE any verification, load framework context to understand goals and acceptance criteria.**
 
-Use `mcp__bmem__search_notes` with `project="main"` to find:
+Use [[bmem]] with `project="main"` to find:
 
-1. **User's Vision** - Search: `mcp__bmem__search_notes(query="vision OR end state", project="main")` → VISION.md
-2. **Current Roadmap** - Search: `mcp__bmem__search_notes(query="roadmap OR maturity progression", project="main")` → ROADMAP.md
-3. **Framework Principles** - Read: `$AOPS/AXIOMS.md` directly (not in bmem)
+1. **User's Vision** - Search: `mcp__bmem__search_notes(query="vision OR end state", project="main")` → [[VISION.md]]
+2. **Current Roadmap** - Search: `mcp__bmem__search_notes(query="roadmap OR maturity progression", project="main")` → [[ROADMAP.md]]
+3. **Framework Principles** - Read: `$AOPS/AXIOMS.md` directly (not in [[bmem]])
 4. **Project Specifications** - Search: `mcp__bmem__search_notes(query="projects/aops/specs", project="main")`
 
 **VERIFICATION CHECKLIST**:
@@ -61,7 +61,7 @@ Use `mcp__bmem__search_notes` with `project="main"` to find:
    - Read `tests/README.md` for test organization and how to run tests
    - Check test files to understand what they verify
 
-3. **Search bmem for testing patterns**:
+3. **Search [[bmem]] for testing patterns**:
    ```
    mcp__bmem__search_notes(query="test {component}", project="main")
    ```
@@ -138,9 +138,9 @@ cat data/tasks/inbox/new_task.md  # Verify content format
 
 Check completed work against framework context:
 
-- **VISION.md**: Does this advance toward the end state?
-- **ROADMAP.md**: Is this appropriate for current maturity stage?
-- **AXIOMS.md**: Does implementation follow core principles?
+- [[VISION.md]]: Does this advance toward the end state?
+- [[ROADMAP.md]]: Is this appropriate for current maturity stage?
+- [[AXIOMS.md]]: Does implementation follow core principles?
 - **Specifications**: Does output match the spec requirements?
 
 ### 5. Verify User Experience
@@ -192,7 +192,7 @@ Before approving any work as "complete":
 
 ## Verification Report Format
 
-Use the Skill tool to invoke the `bmem` skill: `Skill(skill="bmem")` - then save your report with clear findings.
+Use the Skill tool to invoke the [[bmem]] skill: `Skill(skill="bmem")` - then save your report with clear findings.
 
 ```markdown
 ## QA Verification Report

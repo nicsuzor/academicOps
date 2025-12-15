@@ -1,3 +1,10 @@
+---
+title: Excalidraw Library Usage Guide
+type: reference
+permalink: excalidraw-library-guide
+description: Guidance on using built-in Excalidraw libraries and creating custom component libraries for reuse across diagrams.
+---
+
 # Excalidraw Library Usage Guide
 
 ## Built-in Libraries

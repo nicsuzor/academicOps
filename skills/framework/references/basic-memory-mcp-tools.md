@@ -1,3 +1,15 @@
+---
+title: Basic Memory MCP Tools Reference
+type: reference
+permalink: basic-memory-mcp-tools
+description: Complete reference for Basic Memory MCP tool parameters and usage
+tags:
+  - reference
+  - basic-memory
+  - mcp-tools
+  - api-reference
+---
+
 # Basic Memory MCP Tools Reference
 
 **Source**: https://docs.basicmemory.com/guides/mcp-tools-reference/ (Retrieved 2025-11-18)
@@ -260,7 +272,7 @@ Basic Memory supports three operational modes:
 ## Best Practices
 
 ### Project Selection
-**For academicOps framework**: ALWAYS use `project="main"` in ALL bmem MCP tool calls. This is mandatory and non-negotiable.
+**For academicOps framework**: ALWAYS use `project="main"` in ALL [[basic-memory-ai-guide|bmem]] MCP tool calls. This is mandatory and non-negotiable.
 
 ### Search Strategy
 - Use `search_notes` for keyword searches
@@ -273,8 +285,10 @@ Basic Memory supports three operational modes:
 - Use `move_note` to reorganize while preserving relations
 - Use `edit_note` for incremental changes (more efficient than rewriting)
 - Use `read_content` for raw file access without graph processing
+- See [[basic-memory-sync-guide]] for maintenance operations
 
 ### Sync Management
 - Check `sync_status` regularly for health monitoring
 - Real-time sync is automatic (no manual intervention needed)
 - Database reset (`basic-memory reset`) is nuclear option for stale entries
+- See [[basic-memory-sync-guide]] for detailed sync troubleshooting

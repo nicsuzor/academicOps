@@ -2,8 +2,8 @@
 name: osb-drafting
 description: Generate draft OSB case decisions with IRAC analysis, position variants, and precedent support. Use when preparing case analysis for Oversight Board deliberation.
 allowed-tools: Read,Grep,Glob,mcp__osb__search,mcp__osb__get_case_summary,mcp__osb__get_document,mcp__osb__get_similar_documents,mcp__bmem__search_notes,mcp__bmem__read_note
-version: 1.0.0
-permalink: skills-osb-drafting-skill
+version: 1.1.0
+permalink: skills-osb-drafting
 ---
 
 # OSB Case Drafting Skill

@@ -1,10 +1,11 @@
 ---
 name: email
 description: Extract action items from emails and create tasks automatically with context-aware categorization
+allowed-tools: Skill
 permalink: commands/email
 ---
 
-Use the Skill tool to invoke the `tasks` skill: `Skill(skill="tasks")` - then follow the email-task-capture workflow documented within.
+Use the Skill tool to invoke the `[[skills/tasks/SKILL.md|tasks]]` skill: `Skill(skill="tasks")` - then follow the email-task-capture workflow documented within.
 
 **Workflow**: Extract action items from recent emails, categorize using bmem context, and create properly structured tasks.
 
@@ -12,7 +13,7 @@ Use the Skill tool to invoke the `tasks` skill: `Skill(skill="tasks")` - then fo
 
 1. Fetch recent emails via Outlook MCP (default: 20 emails)
 2. Analyze each for actionable items (deadlines, review requests, decisions needed)
-3. Query bmem for context to categorize actions (projects, tags, priority)
+3. Query [[skills/bmem/SKILL.md|bmem]] for context to categorize actions (projects, tags, priority)
 4. Create tasks via task scripts with full email metadata linking
 5. Present summary of tasks created with confidence scoring
 
@@ -22,8 +23,6 @@ Use the Skill tool to invoke the `tasks` skill: `Skill(skill="tasks")` - then fo
 - "process emails"
 - "any new tasks from email?"
 - "email triage"
-
-**Full documentation**: [[skills/tasks/workflows/email-capture.md]]
 
 **Backend**: Uses task_add.py scripts (gracefully degrades if MCP unavailable)
 

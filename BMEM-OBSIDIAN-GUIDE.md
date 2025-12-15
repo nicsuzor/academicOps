@@ -1,3 +1,14 @@
+---
+title: Obsidian-Compatible BMEM Format Guide
+type: guide
+permalink: obsidian-bmem-guide
+description: Guide for using BMEM format with Obsidian vault features
+tags:
+  - bmem
+  - obsidian
+  - guide
+---
+
 # Obsidian-Compatible Basic Memory Format Guide
 
 ## Overview
@@ -771,9 +782,9 @@ Research analyzing key challenges in platform governance including scale, contex
 
 ## References
 
-- **Obsidian Format**: skills/bmem/references/obsidian-format-spec.md
-- **Basic Memory**: https://github.com/basicmachines-co/basic-memory
-- **Extended bmem Guide**: academicOps/docs/resources/basic-memory/ai-assistant-guide-extended.md
+- **Obsidian Format**: [[obsidian-format-spec.md]]
+- **Basic Memory**: [[https://github.com/basicmachines-co/basic-memory]]
+- **Extended bmem Guide**: [[ai-assistant-guide-extended.md]]
 
 ## Benefits
 

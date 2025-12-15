@@ -1,3 +1,10 @@
+---
+title: Excalidraw Technical Details
+type: reference
+permalink: excalidraw-technical-details
+description: Technical guidance on color systems, typography, shapes, arrows, layouts, and advanced techniques for creating professional Excalidraw diagrams.
+---
+
 # Excalidraw Technical Details
 
 ## Color Strategy

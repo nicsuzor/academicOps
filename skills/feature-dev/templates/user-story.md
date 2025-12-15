@@ -1,3 +1,11 @@
+---
+title: User Story Template
+type: template
+permalink: skills/feature-dev/templates/user-story
+description: Template for capturing user needs, requirements, and success criteria
+tags: [template, feature-dev, requirements, user-story]
+---
+
 # User Story: [Feature Name]
 
 **Date**: YYYY-MM-DD **Status**: [Draft | Requirements Complete | In Development | Testing | Done]
@@ -77,5 +85,9 @@
 
 **References**:
 
-- [[academicOps/AXIOMS]] - Framework principles
+- [[AXIOMS.md]] - Framework principles
 - [[ACCOMMODATIONS.md]] - Work style requirements
+- Feature dev skill: [[../SKILL.md]]
+- Dev plan template: [[dev-plan.md]]
+- Experiment template: [[experiment-plan.md]]
+- Test specification template: [[test-spec.md]]

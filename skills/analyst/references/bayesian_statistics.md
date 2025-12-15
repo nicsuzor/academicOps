@@ -1,3 +1,10 @@
+---
+title: Bayesian Statistical Analysis
+type: reference
+permalink: analyst-ref-bayesian-stats
+description: Guidance on Bayesian inference, prior specification, hypothesis testing, model comparison, and reporting of Bayesian results.
+---
+
 # Bayesian Statistical Analysis
 
 This document provides guidance on conducting and interpreting Bayesian statistical analyses, which offer an alternative framework to frequentist (classical) statistics.

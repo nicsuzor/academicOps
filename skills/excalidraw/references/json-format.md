@@ -1,3 +1,10 @@
+---
+title: Excalidraw JSON File Format Reference
+type: reference
+permalink: excalidraw-json-format
+description: Technical specification for direct manipulation of .excalidraw files, including element properties, styling, and binding patterns.
+---
+
 # Excalidraw JSON File Format Reference
 
 **Purpose**: Technical specification for direct manipulation of .excalidraw files.

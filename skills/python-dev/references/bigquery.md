@@ -1,3 +1,10 @@
+---
+title: Google BigQuery
+type: reference
+permalink: python-dev-bigquery
+description: Python client reference for Google BigQuery data warehouse operations
+---
+
 # Google BigQuery
 
 ## Overview
@@ -163,6 +170,11 @@ job_config = bigquery.QueryJobConfig(dry_run=True)
 query_job = client.query(query, job_config=job_config)
 print(f"This query will process {query_job.total_bytes_processed} bytes")
 ```
+
+## Related References
+
+- [[pandas|pandas]] - Data manipulation and analysis
+- [[hydra|Hydra]] - Configuration management
 
 ## Resources
 

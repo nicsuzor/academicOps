@@ -1,4 +1,12 @@
-# Excalidraw: Creating Visually Compelling Diagrams
+---
+name: excalidraw
+description: Creating visually compelling, hand-drawn diagrams with organic mind-map layouts and accessibility-focused design.
+allowed-tools: Read,Skill
+version: 1.0.0
+permalink: skills-excalidraw-skill
+---
+
+# Excalidraw Diagram Design Skill
 
 **Purpose**: Create hand-drawn, organic diagrams that communicate clearly and feel human.
 
@@ -79,7 +87,7 @@ For mind maps and concept maps, apply four fundamental design principles: **Prox
 
 **Key guidelines**: Use keywords over paragraphs, keep labels concise (1-5 words), visual over textual.
 
-See [[references/mind-mapping-principles.md]] for complete principles and examples.
+See [[excalidraw-mind-mapping]] for complete principles and examples.
 
 ### 2. The Two-Phase Design Process
 
@@ -119,7 +127,7 @@ Whitespace (negative space) is not "empty"—it's a powerful tool for:
 
 ## Technical Elements
 
-**Colors**: User's preferred muted terminal theme (see [[references/theme-colors.md]]) - muted gold, soft greens, blues, on **WHITE backgrounds** (NOT dark). Maintain 4.5:1 contrast ratio for accessibility.
+**Colors**: User's preferred muted terminal theme (see [[excalidraw-theme-colors]]) - muted gold, soft greens, blues, on **WHITE backgrounds** (NOT dark). Maintain 4.5:1 contrast ratio for accessibility.
 
 **Typography**: XL (40-48px) titles, L (24-32px) headers, M (16-20px) body, S (12-14px) labels
 
@@ -127,15 +135,15 @@ Whitespace (negative space) is not "empty"—it's a powerful tool for:
 
 **Arrows**: Thin (1-2px) default, medium (3-4px) emphasis, **must bind to shapes**, click-click-click for multi-point. Curved arrows for organic/mind-map layouts. **Directional arrows free up positioning** - children can be placed anywhere around parent (not just below) to avoid overlap.
 
-**Icons**: Material Symbols (recommended) or built-in libraries. Recolor to theme, use sparingly. See [[references/icon-integration.md]].
+**Icons**: Material Symbols (recommended) or built-in libraries. Recolor to theme, use sparingly. See [[excalidraw-icon-integration]].
 
 **Layout**: Prefer organic, spatial, mind-map layouts over rigid hierarchies. **Spread elements to prevent arrow overlap** - arrows are directional, so children can be positioned anywhere around parent (360° freedom). Grid snapping for precision, radial/clustered positioning for mind maps.
 
-**Grouping**: **Always bind text to containers** using `containerId` property (programmatic) or group manually (select both → Cmd/Ctrl+G). Text should auto-size to container width. This ensures text moves WITH its box. See [[references/text-container-pattern.md]] for JSON binding pattern.
+**Grouping**: **Always bind text to containers** using `containerId` property (programmatic) or group manually (select both → Cmd/Ctrl+G). Text should auto-size to container width. This ensures text moves WITH its box. See [[excalidraw-text-container]] for JSON binding pattern.
 
 **CRITICAL - Arrow Binding**: Arrows MUST use `startBinding` and `endBinding` to anchor to boxes. This ensures arrows adapt when boxes are moved. Never create floating arrows.
 
-See [[references/technical-details.md]] for complete specifications on colors, typography, shapes, arrows, layout, layering, and fill patterns. See [[references/theme-colors.md]] for user's preferred color palette. See [[references/text-container-pattern.md]] for text-in-container binding.
+See [[excalidraw-technical-details]] for complete specifications on colors, typography, shapes, arrows, layout, layering, and fill patterns. See [[excalidraw-theme-colors]] for user's preferred color palette. See [[excalidraw-text-container]] for text-in-container binding.
 
 ---
 
@@ -288,17 +296,17 @@ See [[references/graph-layouts.md]] for complete specifications, sizing guidelin
 
 **Built-in libraries** (`~/.claude/skills/excalidraw/libraries/`): 6 curated libraries available - awesome-icons, data-processing, data-viz, hearts, stick-figures, stick-figures-collaboration.
 
-**Material Symbols** (RECOMMENDED for new icons): Professional icon set from Google Fonts. Import SVGs, recolor to theme palette. See [[references/icon-integration.md]] for complete workflow.
+**Material Symbols** (RECOMMENDED for new icons): Professional icon set from Google Fonts. Import SVGs, recolor to theme palette. See [[excalidraw-icon-integration]] for complete workflow.
 
 **Quick start**: Load via Excalidraw library panel → "Load library from file" → Select from `~/.claude/skills/excalidraw/libraries/`
 
 **Usage tips**:
-- **Recolor to theme** ([[references/theme-colors.md]]): Gold `#c9b458`, Green `#8fbc8f`, Blue `#7a9fbf`, Orange `#ffa500`, Red `#ff6666`
+- **Recolor to theme** ([[excalidraw-theme-colors]]): Gold `#c9b458`, Green `#8fbc8f`, Blue `#7a9fbf`, Orange `#ffa500`, Red `#ff6666`
 - **Use sparingly** for emphasis (1-3 icons per section)
 - **Don't mix too many styles** (pick Material Symbols OR library icons, not both)
 - **Size appropriately** (M size: 20-24px for most use cases)
 
-See [[references/library-guide.md]] for library loading, [[references/icon-integration.md]] for Material Symbols integration, [[references/theme-colors.md]] for color palette.
+See [[excalidraw-library-guide]] for library loading, [[excalidraw-icon-integration]] for Material Symbols integration, [[excalidraw-theme-colors]] for color palette.
 
 ---
 
@@ -436,7 +444,7 @@ See [[references/productivity-tips.md]] for complete list of 12 productivity tec
 
 ### MCP Server (Optional Advanced Feature)
 
-For real-time canvas manipulation, see [[references/mcp-server-setup.md]].
+For real-time canvas manipulation, see [[excalidraw-mcp-server]].
 
 **Use cases**:
 - Programmatic diagram generation
@@ -447,7 +455,7 @@ For real-time canvas manipulation, see [[references/mcp-server-setup.md]].
 
 ### JSON Format (Advanced)
 
-For direct file manipulation or automation, see [[references/json-format.md]].
+For direct file manipulation or automation, see [[excalidraw-json-format]].
 
 **Use cases**:
 - Batch processing diagrams
@@ -505,7 +513,7 @@ Look for diagrams that:
 
 **Quick wins**:
 - **WHITE backgrounds ALWAYS** - muted colors on white, not dark backgrounds
-- **Use theme colors** ([[references/theme-colors.md]]): Muted gold, soft greens, blues - NO bright pure colors
+- **Use theme colors** ([[excalidraw-theme-colors]]): Muted gold, soft greens, blues - NO bright pure colors
 - Load library components or Material Symbols for visual interest
 - **Prefer organic layouts**: Mind maps, spatial clusters, curved arrows - NOT rigid hierarchies
 - Align elements for professional polish, but embrace asymmetry and creative positioning
@@ -513,7 +521,7 @@ Look for diagrams that:
 - Vary sizes significantly to create hierarchy (XL → L → M → S)
 - Use radial/clustered layouts for goal → project → task visualizations
 - Export at 2-3x scale
-- **Icons sparingly**: 1-3 per section, recolored to theme ([[references/icon-integration.md]])
+- **Icons sparingly**: 1-3 per section, recolored to theme ([[excalidraw-icon-integration]])
 
 **For goal/project/task visualizations** (mind-map style):
 - Central goals (largest, muted gold `#c9b458`, XL text: 40-48px)

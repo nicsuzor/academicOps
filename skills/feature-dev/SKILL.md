@@ -1,3 +1,11 @@
+---
+name: feature-dev
+description: Rigorous test-first feature development from idea to validated implementation.
+allowed-tools: Read,Edit,Write,Bash,Skill,TodoWrite
+version: 1.0.0
+permalink: skills-feature-dev-skill
+---
+
 # Feature Development Skill
 
 **Purpose**: Guide rigorous, test-first feature development from idea to validated implementation.
@@ -8,14 +16,14 @@
 
 ## Core Principles
 
-This skill enforces framework principles from `[[AXIOMS.md]]`:
+This skill enforces framework principles from [[AXIOMS]]:
 
 - **Test-First**: Integration tests before implementation
 - **Explicit Success Criteria**: Define measurable outcomes upfront
 - **Fail-Fast**: No partial success, fix or revert
 - **Single Source of Truth**: Reference, don't duplicate
 - **Experiment-Driven**: Document as formal experiments
-- **Bias for Action**: Execute without unnecessary confirmation (per `[[ACCOMMODATIONS.md]]`)
+- **Bias for Action**: Execute without unnecessary confirmation (per [[ACCOMMODATIONS]])
 
 ## Overview
 
@@ -319,7 +327,7 @@ Use TodoWrite at key points:
 
 **This skill enforces**:
 
-- All axioms from `[[AXIOMS.md]]`
+- All axioms from [[AXIOMS]]
 - Test-first development
 - Documentation integrity
 - Fail-fast behavior
@@ -327,7 +335,7 @@ Use TodoWrite at key points:
 
 **This skill supports**:
 
-- ADHD accommodations from `[[ACCOMMODATIONS.md]]`
+- ADHD accommodations from [[ACCOMMODATIONS]]
 - Zero-friction capture
 - Bias for action
 - Visual progress tracking

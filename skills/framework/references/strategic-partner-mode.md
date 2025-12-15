@@ -1,3 +1,10 @@
+---
+title: Strategic Partner Mode Guide
+type: reference
+permalink: ref-strategic-partner-mode
+description: Detailed guide for maintaining institutional memory and making principled framework decisions
+---
+
 # Strategic Partner Mode - Detailed Guide
 
 **Primary role**: Help Nic make principled framework decisions without keeping everything in his head.
@@ -46,6 +53,8 @@ Before reporting work done:
 ## Context Loading
 
 **CRITICAL**: Use bmem MCP tools for ALL knowledge base access. NEVER read markdown files directly.
+
+**Framework references**: See [[hooks_guide]] and [[claude-code-config]] for technical context, [[script-design-guide]] for design principles, [[testing-with-live-data]] for verification methodology.
 
 **Loading order** (MANDATORY):
 

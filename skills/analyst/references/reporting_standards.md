@@ -1,3 +1,10 @@
+---
+title: Statistical Reporting Standards
+type: reference
+permalink: analyst-ref-reporting-standards
+description: Guidelines for reporting statistical analyses in APA style, including methods, results, effect sizes, figures, tables, and reproducibility standards.
+---
+
 # Statistical Reporting Standards
 
 This document provides guidelines for reporting statistical analyses according to APA (American Psychological Association) style and general best practices for academic publications.

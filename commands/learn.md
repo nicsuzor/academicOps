@@ -1,5 +1,7 @@
 ---
+name: learn
 description: Make minor adjustments to memory/instructions for future agents
+allowed-tools: Edit
 permalink: commands/learn
 ---
 

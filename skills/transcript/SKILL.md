@@ -1,8 +1,9 @@
 ---
 name: transcript
-description: Generate markdown transcripts from Claude Code session files. Converts
-  JSONL session logs to readable markdown with timing, tool operations, and hook context.
-permalink: academic-ops/skills/transcript/skill
+description: Generate markdown transcripts from Claude Code session files. Converts JSONL session logs to readable markdown with timing, tool operations, and hook context.
+allowed-tools: Read,Bash
+version: 1.0.0
+permalink: skills-transcript
 ---
 
 # Transcript Skill
@@ -67,4 +68,4 @@ Uses `lib/session_reader.py` which parses and combines:
 - Agent transcripts (`agent-*.jsonl`)
 - Hook logs (`*-hooks.jsonl`)
 
-Same module used by the dashboard skill for live activity display.
+Same module used by the [[dashboard]] skill for live activity display.

@@ -1,10 +1,9 @@
 ---
 name: training-set-builder
-description: Extract structured training examples (source → feedback → revised → context)
-  from document sets to build datasets for teaching LLMs specific tasks or styles.
-  Use when processing review documents, feedback annotations, or revision histories
-  to create pedagogically valuable training data.
-permalink: academic-ops/skills/training-set-builder/skill
+description: Extract structured training examples from document sets to build datasets for teaching LLMs specific tasks or styles. Use when processing review documents, feedback annotations, or revision histories.
+allowed-tools: Read,Grep,Glob,Edit,Write
+version: 1.0.0
+permalink: skills-training-set-builder
 ---
 
 # Training Example Extractor Skill
@@ -13,7 +12,7 @@ Extract structured training examples (source → feedback → revised → contex
 
 ## Framework Context
 
-@resources/AXIOMS.md
+[[AXIOMS.md]]
 
 ## Purpose
 

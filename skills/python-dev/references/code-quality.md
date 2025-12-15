@@ -1,6 +1,13 @@
+---
+title: Python Code Quality
+type: reference
+permalink: python-dev-code-quality
+description: Python-specific code quality standards and conventions
+---
+
 # Python Code Quality
 
-Python-specific code quality standards. See @$AOPS/docs/AXIOMS.md for universal principles.
+Python-specific code quality standards. See [[AXIOMS|AXIOMS]] for universal principles.
 
 ## Docstrings
 
@@ -465,6 +472,12 @@ def load_and_process_data(file_path):
     # Return (what exactly?)
     return transformed
 ```
+
+## Related References
+
+- [[type-safety|Type Safety in Python]] - Type hints and validation
+- [[fail-fast|Fail-Fast Philosophy]] - Error handling and validation
+- [[modern-python|Modern Python Patterns]] - Current best practices
 
 ## Summary
 

@@ -1,3 +1,10 @@
+---
+title: Seaborn Statistical Visualization
+type: reference
+permalink: analyst-ref-seaborn
+description: Guidance on seaborn for creating publication-quality statistical graphics with dataset-oriented plotting, semantic mappings, and statistical estimation.
+---
+
 # Seaborn Statistical Visualization
 
 ## Overview
@@ -703,10 +710,10 @@ sns.kdeplot(data=df, x="x", bw_adjust=2)  # More smooth
 
 This skill includes reference materials for deeper exploration:
 
-### references/
+### References
 
-- `function_reference.md` - Comprehensive listing of all seaborn functions with parameters and examples
-- `objects_interface.md` - Detailed guide to the modern seaborn.objects API
-- `examples.md` - Common use cases and code patterns for different analysis scenarios
+- [[seaborn-functions]] - Comprehensive listing of all seaborn functions with parameters and examples
+- [[seaborn-objects]] - Detailed guide to the modern seaborn.objects API
+- [[seaborn-examples]] - Common use cases and code patterns for different analysis scenarios
 
 Load reference files as needed for detailed function signatures, advanced parameters, or specific examples.

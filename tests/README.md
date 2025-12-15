@@ -1,3 +1,14 @@
+---
+title: Framework Testing
+type: spec
+permalink: framework-testing
+description: Comprehensive test suite for the academicOps framework
+tags:
+  - testing
+  - framework
+  - automation
+---
+
 # Framework Testing
 
 Comprehensive test suite for the academicOps (aOps) automation framework. Tests validate path resolution, documentation integrity, session start loading, and skill functionality.
@@ -10,10 +21,10 @@ tests/
 ├── paths.py                         # Path resolution utilities
 ├── test_conftest.py                 # Fixture validation tests
 ├── test_paths.py                    # Path resolution tests
-├── test_readme_paths.py             # README path accuracy tests
+├── test_readme_paths.py             # [[README]] path accuracy tests
 ├── test_skills_readme_integrity.py  # Skills documentation tests
 ├── test_session_start_loading.py    # Session start file tests
-├── test_core_md_task_guidance.py    # CORE.md guidance tests
+├── test_core_md_task_guidance.py    # [[CORE.md]] guidance tests
 └── integration/
     ├── conftest.py                  # Integration test fixtures
     ├── test_session_start_content.py # Session start E2E tests
@@ -59,10 +70,10 @@ Run by default. Complete in ~4 seconds with 20 parallel workers.
 
 **Documentation Integrity**: 9 tests
 
-- Skills README structure and content (`test_skills_readme_integrity.py`)
+- Skills [[README]] structure and content (`test_skills_readme_integrity.py`)
 - Session start file references (`test_session_start_loading.py`)
-- Task guidance in CORE.md (`test_core_md_task_guidance.py`)
-- README path accuracy and consistency (`test_readme_paths.py` - 4 tests)
+- Task guidance in [[CORE.md]] (`test_core_md_task_guidance.py`)
+- [[README]] path accuracy and consistency (`test_readme_paths.py` - 4 tests)
 
 **Total**: 24 unit tests
 
@@ -92,7 +103,7 @@ Run by default. Complete in ~4 seconds with 20 parallel workers.
 uv run pytest tests/
 ```
 
-Runs 24 unit tests in ~4 seconds. This is the default configuration in `pyproject.toml`.
+Runs 24 unit tests in ~4 seconds. This is the default configuration in [[pyproject.toml]].
 
 ### Fast Integration Tests
 
@@ -192,7 +203,7 @@ addopts = [
 - `writing_root`: Repository root path
 - Auto-marking of integration tests
 
-### Path Utilities (`tests/paths.py`)
+### Path Utilities ([[tests/paths.py]])
 
 Path resolution functions using environment variables:
 
@@ -404,11 +415,11 @@ Tests run automatically on:
 - Pull requests (all non-slow tests)
 - Scheduled runs (all tests including slow)
 
-See `.github/workflows/` for CI configuration.
+See `.github/workflows/` (in [[README]] file tree) for CI configuration.
 
 ## Philosophy
 
-Following `AXIOMS.md`:
+Following [[AXIOMS.md]]:
 
 1. **Fail-Fast**: Tests fail immediately with clear error messages. No silent failures or workarounds.
 
@@ -443,7 +454,7 @@ Following `AXIOMS.md`:
 
 **Fixes Applied** (commit ae388b0):
 
-- Added explicit "data/tasks/" path reference to CORE.md
+- Added explicit "data/tasks/" path reference to [[CORE.md]]
 - Changed 4 instances of permission_mode from "disabled" to "bypassPermissions"
 
 Run tests to validate framework integrity:

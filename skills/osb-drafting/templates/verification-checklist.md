@@ -1,3 +1,11 @@
+---
+title: Citation Verification Checklist
+type: template
+permalink: skills/osb-drafting/templates/verification-checklist
+description: Checklist for verifying case citations and ensuring factual accuracy in OSB decision drafts
+tags: [template, osb-drafting, verification, qa, checklist]
+---
+
 # Citation Verification Checklist
 
 **Case**: [CASE_TITLE]
@@ -106,3 +114,11 @@ Complete this checklist after Phase 5 (Recommendations) and before finalizing an
   - Draft says: "COVID lockdowns Brazil"
   - Actual text: "Claimed COVID cure" (France, hydroxychloroquine)
   - Fix: Update case name throughout draft
+
+---
+
+## Related Documentation
+
+- [[case-analysis.md]] - Case analysis template
+- [[../SKILL.md]] - OSB drafting skill
+- [[AXIOMS.md]] - Framework principles

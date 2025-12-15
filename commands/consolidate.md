@@ -1,9 +1,11 @@
 ---
+name: consolidate
 description: Consolidate LOG.md entries into thematic learning files and archive
+allowed-tools: Skill
 permalink: commands/consolidate
 ---
 
-**IMMEDIATELY** invoke the `learning-log` skill with consolidation mode.
+**IMMEDIATELY** invoke the `[[skills/learning-log/SKILL.md|learning-log]]` skill with consolidation mode.
 
 **Purpose**: Extract patterns from LOG.md, update thematic learning files, and archive processed entries to maintain bounded log growth.
 
@@ -35,5 +37,3 @@ After consolidation, reports:
 - Patterns identified
 - Learning files updated
 - Entries archived
-
-See `skills/learning-log/SKILL.md` for complete consolidation specification.

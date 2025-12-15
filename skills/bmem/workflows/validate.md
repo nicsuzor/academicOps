@@ -1,3 +1,13 @@
+---
+title: Validate Workflow
+type: workflow
+permalink: validate-workflow
+tags:
+  - bmem
+  - workflow
+  - maintenance
+---
+
 # Validate Workflow
 
 Check format compliance and fix issues in `data/` files.
@@ -17,8 +27,8 @@ Check format compliance and fix issues in `data/` files.
 | Frontmatter | title, permalink, type required |
 | Permalink | lowercase, hyphens only, no slashes |
 | H1 heading | Must match title exactly |
-| Observations | Use approved categories only |
-| Relations | Must have `[[wiki-links]]`, use approved types |
+| Observations | Use [[approved-categories-relations|approved categories]] only |
+| Relations | Must have `[[wiki-links]]`, use [[approved-categories-relations|approved types]] |
 
 ### Location Compliance
 

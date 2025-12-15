@@ -1,3 +1,14 @@
+---
+title: Obsidian File Format Specification
+type: reference
+permalink: obsidian-format-spec
+tags:
+  - bmem
+  - reference
+  - obsidian
+  - format
+---
+
 # Obsidian File Format Specification
 
 ## Overview

@@ -42,10 +42,10 @@ Read $ACA_DATA/ACCOMMODATIONS.md - Work style requirements
 Read $ACA_DATA/CORE.md - User context, tools
 
 # 2. CURRENT REALITY
-Read $ACA_DATA/projects/aops/ROADMAP.md - Maturity progression: Current stage, blockers
+Read $ACA_DATA/projects/aops/[[ROADMAP]] - Maturity progression: Current stage, blockers
 
 # 3. STRATEGIC DIRECTION
-Read $ACA_DATA/projects/aops/VISION.md - End state
+Read $ACA_DATA/projects/aops/[[VISION]] - End state
 
 # 4. PAST LEARNING (search BEFORE taking action)
 mcp__bmem__search_notes(query="[SEARCH KEYWORDS]", project="main")
@@ -61,7 +61,7 @@ Skill(skill="framework")
 
 This loads categorical conventions and ensures your actions are generalizable rules, not one-off fixes.
 
-**Why this matters**: Without framework skill context, agents skip steps, treat single examples as isolated fixes instead of categorical patterns, and bypass quality gates. This is the #1 observed failure mode.
+**Why this matters**: Without [[framework]] skill context, agents skip steps, treat single examples as isolated fixes instead of categorical patterns, and bypass quality gates. This is the #1 observed failure mode.
 
 ## MANDATORY: Plan Mode for Framework Changes
 

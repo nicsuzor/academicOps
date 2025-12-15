@@ -1,3 +1,11 @@
+---
+title: Task Management System
+type: readme
+permalink: skills/tasks/readme
+description: FastMCP server providing task management tools with bmem-compliant formatting and integration support
+tags: [skill, tasks, task-management, mcp, bmem]
+---
+
 # Task Management MCP Server
 
 FastMCP server providing task management tools for Claude Code and other MCP clients.
@@ -612,9 +620,11 @@ uv run python $AOPS/skills/tasks/scripts/task_add.py --title "Task title" --prio
 ## Related Documentation
 
 - **Specification**: `data/tasks/inbox/fastmcp-task-server-spec.md`
-- **Task skill**: `$AOPS/skills/tasks/SKILL.md`
-- **Framework**: `$AOPS/skills/framework/SKILL.md`
+- **Task skill**: [[SKILL.md]]
+- **Email capture workflow**: [[workflows/email-capture.md]]
+- **Framework**: [[framework/SKILL.md]]
 - **MCP config**: `.mcp.json`
+- **Bmem format guide**: [[BMEM-CLAUDE-GUIDE.md]]
 
 ## Version History
 

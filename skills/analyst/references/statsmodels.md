@@ -1,3 +1,11 @@
+---
+title: Statsmodels
+type: reference
+permalink: skills-analyst-statsmodels
+description: Guide to statistical modeling with Python's statsmodels library for regression, GLM, time series, and hypothesis testing
+tags: [statsmodels, statistical-modeling, regression, time-series, reference]
+---
+
 # Statsmodels: Statistical Modeling and Econometrics
 
 ## Overview
@@ -195,7 +203,7 @@ Comprehensive suite of linear models for continuous outcomes with various error 
 
 **When to use:** Continuous outcome variable, want inference on coefficients, need diagnostics
 
-**Reference:** See `references/linear_models.md` for detailed guidance on model selection, diagnostics, and best practices.
+**Reference:** See [[linear-models]] for detailed guidance on model selection, diagnostics, and best practices.
 
 ### 2. Generalized Linear Models (GLM)
 
@@ -226,7 +234,7 @@ Flexible framework extending linear models to non-normal distributions.
 
 **When to use:** Non-normal outcomes, need flexible variance and link specifications
 
-**Reference:** See `references/glm.md` for family selection, link functions, interpretation, and diagnostics.
+**Reference:** See [[glm]] for family selection, link functions, interpretation, and diagnostics.
 
 ### 3. Discrete Choice Models
 
@@ -260,7 +268,7 @@ Models for categorical and count outcomes.
 
 **When to use:** Binary, categorical, or count outcomes
 
-**Reference:** See `references/discrete_choice.md` for model selection, interpretation, and evaluation.
+**Reference:** See [[discrete-choice]] for model selection, interpretation, and evaluation.
 
 ### 4. Time Series Analysis
 
@@ -299,7 +307,7 @@ Comprehensive time series modeling and forecasting capabilities.
 
 **When to use:** Time-ordered data, forecasting, understanding temporal dynamics
 
-**Reference:** See `references/time_series.md` for model selection, diagnostics, and forecasting methods.
+**Reference:** See [[time-series]] for model selection, diagnostics, and forecasting methods.
 
 ### 5. Statistical Tests and Diagnostics
 
@@ -348,7 +356,7 @@ Extensive testing and diagnostic capabilities for model validation.
 
 **When to use:** Validating assumptions, detecting problems, ensuring robust inference
 
-**Reference:** See `references/stats_diagnostics.md` for comprehensive testing and diagnostic procedures.
+**Reference:** See [[stats-diagnostics]] for comprehensive testing and diagnostic procedures.
 
 ## Formula API (R-style)
 
@@ -535,7 +543,7 @@ print(f"CV RMSE: {np.mean(cv_scores):.4f} ± {np.std(cv_scores):.4f}")
 
 This skill includes comprehensive reference files for detailed guidance:
 
-### references/linear_models.md
+### [[linear-models]]
 
 Detailed coverage of linear regression models including:
 
@@ -547,7 +555,7 @@ Detailed coverage of linear regression models including:
 - Robust standard errors (HC, HAC, cluster)
 - Hypothesis testing and model comparison
 
-### references/glm.md
+### [[glm]]
 
 Complete guide to generalized linear models:
 
@@ -558,7 +566,7 @@ Complete guide to generalized linear models:
 - Diagnostics and residual analysis
 - Applications (logistic, Poisson, Gamma regression)
 
-### references/discrete_choice.md
+### [[discrete-choice]]
 
 Comprehensive guide to discrete outcome models:
 
@@ -569,7 +577,7 @@ Comprehensive guide to discrete outcome models:
 - Marginal effects and interpretation
 - Model diagnostics and comparison
 
-### references/time_series.md
+### [[time-series]]
 
 In-depth time series analysis guidance:
 
@@ -580,7 +588,7 @@ In-depth time series analysis guidance:
 - Forecasting methods and evaluation
 - Granger causality, IRF, FEVD
 
-### references/stats_diagnostics.md
+### [[stats-diagnostics]]
 
 Comprehensive statistical testing and diagnostics:
 

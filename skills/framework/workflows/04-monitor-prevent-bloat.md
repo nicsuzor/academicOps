@@ -1,3 +1,10 @@
+---
+title: Monitor and Prevent Bloat
+type: workflow
+permalink: workflow-monitor-prevent-bloat
+description: Process for monitoring file sizes and preventing framework bloat
+---
+
 # Workflow 4: Monitor and Prevent Bloat
 
 **When**: Regular maintenance, before major commits, when file sizes growing.

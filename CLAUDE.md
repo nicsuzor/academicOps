@@ -1,6 +1,13 @@
+---
+title: Framework Development Instructions
+type: instructions
+permalink: root-claude-instructions
+description: Framework skill delegation model, repository conventions, and development guidelines for academicOps
+---
+
 ## Framework Skill Delegation Model
 
-ALL work in this repo flows through the `framework` skill, but the framework skill may delegate implementation:
+ALL work in this repo flows through the [[framework skill|skills/framework/SKILL.md]], but the framework skill may delegate implementation:
 
 **Framework skill role**: Strategic context, planning, design decisions, documentation
 
@@ -24,8 +31,8 @@ We are starting again in this aOps repo. This time, the watchword is MINIMAL. We
 
 ## Framework Documentation, Paths, and state:
 
-- **Framework state**: See "Framework State (Authoritative)" section in [[aOps/README]]
-- **Paths**: `README.md` (file tree in root of repository)
+- **Framework state**: See "Framework State (Authoritative)" section in [[README]]
+- **Paths**: [[README]] (file tree in root of repository)
 
 ### Basic Memory (bmem) Tool Usage
 
@@ -56,12 +63,12 @@ This is the academicOps framework repository containing generic, reusable automa
 
 ## Agent Protocol: framework development
 
-**For framework development work**: See README.md for structure and $ACA_DATA/projects/aops/STATE.md for current status.
+**For framework development work**: See [[README]] for structure and $ACA_DATA/projects/aops/STATE.md for current status.
 
 **MANDATORY before proposing any new framework component (hook, skill, script, command, workflow):**
 
-- Invoke `framework` skill for strategic context
-- Use the `framework` skill for ALL questions or decisions about the documentation or tools in this project.
+- Invoke [[framework skill|skills/framework/SKILL.md]] for strategic context
+- Use the [[framework skill|skills/framework/SKILL.md]] for ALL questions or decisions about the documentation or tools in this project.
 - Use haiku by default when invoking claude code for testing purposes
 - **Always use `model: "opus"` when invoking the Plan agent**
 - README.md is SSoT for aOps file structure.

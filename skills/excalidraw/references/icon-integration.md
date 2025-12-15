@@ -1,3 +1,10 @@
+---
+title: Icon Integration Guide
+type: reference
+permalink: excalidraw-icon-integration
+description: Add professional iconography to Excalidraw diagrams using Material Symbols and existing libraries.
+---
+
 # Icon Integration Guide
 
 **Purpose**: Add professional iconography to Excalidraw diagrams using Material Symbols and existing libraries.
@@ -352,5 +359,5 @@ For task-viz agent or manual diagramming:
 ---
 
 **Last Updated**: 2025-11-19
-**Related**: [[theme-colors.md]], [[library-guide.md]]
+**Related**: [[theme-colors]], [[library-guide]]
 **Icon Sources**: Material Symbols (Google), awesome-icons library (built-in)

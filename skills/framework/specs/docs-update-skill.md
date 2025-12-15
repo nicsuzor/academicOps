@@ -1,3 +1,15 @@
+---
+title: Documentation Update Skill Specification
+type: spec
+permalink: docs-update-skill-spec
+description: Specification for automation skill that maintains README.md and INDEX.md documentation, detecting and correcting drift
+tags:
+  - spec
+  - documentation
+  - automation
+  - skill-design
+---
+
 # Task: Documentation Update Skill
 
 **Date**: 2025-11-26 (updated 2025-12-15)
@@ -25,7 +37,7 @@ State files (README.md, INDEX.md, RULES.md) are authoritative sources of truth. 
 - Documentation conflicts go undetected
 - SSoT principle is violated
 - Trust in documentation erodes
-- **Agents proceed with outdated enforcement understanding** (per H9)
+- **Agents proceed with outdated enforcement understanding** (per [[HEURISTICS.md]] H9)
 
 **Who benefits?**
 
@@ -56,9 +68,9 @@ Nic and any future framework maintainers - ensures documentation stays trustwort
 - Validate all wikilink references resolve
 
 **RULES.md** (enforcement state):
-- Extract deny rules from `$AOPS/config/claude/settings.json` → `permissions.deny`
-- Extract PreToolUse blocks from `$AOPS/hooks/policy_enforcer.py`
-- Extract pre-commit hooks from `.pre-commit-config.yaml`
+- Extract deny rules from [[settings.json]] → `permissions.deny`
+- Extract PreToolUse blocks from [[policy_enforcer.py]]
+- Extract pre-commit hooks from [[.pre-commit-config.yaml]]
 - Regenerate RULES.md with current state
 - Update timestamp
 
@@ -169,12 +181,12 @@ The skill operates as an agent-invoked workflow, NOT a standalone script.
 
 **Components**:
 
-1. **Filesystem Scanner**: Walk repo, collect all file paths (agent uses Glob/Bash)
-2. **Documentation Parser**: Extract file tree from README.md (agent uses Read tool)
+1. **Filesystem Scanner**: Walk repo, collect all file paths (agent uses [[Glob]] / [[Bash]])
+2. **Documentation Parser**: Extract file tree from README.md (agent uses [[Read]] tool)
 3. **Comparator**: Identify discrepancies (agent uses LLM reasoning)
 4. **Tree Generator**: Create concise annotated tree (agent uses LLM + template)
-5. **Validator**: Check references resolve (agent uses Read + grep for wikilinks)
-6. **Updater**: Write corrected README.md (agent uses Write tool)
+5. **Validator**: Check references resolve (agent uses [[Read]] + [[Grep]] for wikilinks)
+6. **Updater**: Write corrected README.md (agent uses [[Write]] tool)
 
 **Data Flow**:
 1. Agent scans filesystem → file list
@@ -197,7 +209,7 @@ The skill operates as an agent-invoked workflow, NOT a standalone script.
 
 **Libraries**: None (uses Claude Code built-in tools)
 
-**Rationale**: This is orchestration and reasoning work, perfect for agents. Writing a script would violate the "don't duplicate Claude capabilities" principle.
+**Rationale**: This is orchestration and reasoning work, perfect for agents. Writing a script would violate the "don't duplicate Claude capabilities" principle from [[AXIOMS.md]].
 
 ### Error Handling Strategy
 
@@ -355,7 +367,7 @@ The skill operates as an agent-invoked workflow, NOT a standalone script.
 
 This skill supports the broader goal of making README.md the authoritative source of truth. By automating verification and updates, we ensure documentation drift is caught early and fixed quickly.
 
-Related to framework principle: "No incomplete, contradictory, or conflicted documentation in any commit."
+Related to framework principle from [[AXIOMS.md]]: "No incomplete, contradictory, or conflicted documentation in any commit."
 
 ---
 

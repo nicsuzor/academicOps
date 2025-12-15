@@ -1,3 +1,10 @@
+---
+title: E2E Test Harness Reference
+type: reference
+permalink: ref-e2e-test-harness
+description: Guide to the framework's end-to-end testing infrastructure for validating agent behavior
+---
+
 # E2E Test Harness Reference
 
 Guide to the framework's end-to-end testing infrastructure for validating agent behavior.
@@ -100,4 +107,6 @@ def test_agent_behavior(claude_headless) -> None:
 ## Related
 
 - `tests/README.md` - Full test documentation
-- [[hooks_guide.md]] - Hook system reference
+- [[hooks_guide]] - Hook system reference
+- [[testing-with-live-data]] - Testing methodology
+- [[script-design-guide]] - Script and utility design

@@ -1,6 +1,13 @@
+---
+title: Fail-Fast Philosophy
+type: reference
+permalink: python-dev-fail-fast
+description: Error handling philosophy and patterns for Python applications
+---
+
 # Fail-Fast Philosophy
 
-From [[../../../AXIOMS.md]].
+Core principle from [[AXIOMS|AXIOMS]].
 
 ## Core Principle
 
@@ -396,6 +403,12 @@ def fetch_user_or_anonymous(user_id: Optional[str]) -> User:
         return AnonymousUser()
     return fetch_user(user_id)
 ```
+
+## Related References
+
+- [[type-safety|Type Safety in Python]] - Pydantic models and validation
+- [[code-quality|Python Code Quality]] - Error messages and assertions
+- [[hydra|Hydra Configuration]] - Configuration management patterns
 
 ## Summary
 

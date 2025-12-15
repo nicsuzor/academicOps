@@ -1,3 +1,10 @@
+---
+title: Modern Python Patterns
+type: reference
+permalink: python-dev-modern-python
+description: Contemporary Python best practices and idioms
+---
+
 # Modern Python Patterns
 
 ## Use pathlib, Not os.path
@@ -419,6 +426,12 @@ if current_status == Status.COMPLETED:
 print(current_status.name)  # "PROCESSING"
 print(current_status.value)  # 2
 ```
+
+## Related References
+
+- [[type-safety|Type Safety in Python]] - Dataclasses and type hints
+- [[code-quality|Python Code Quality]] - Code organization and conventions
+- [[fail-fast|Fail-Fast Philosophy]] - Error handling patterns
 
 ## Summary
 

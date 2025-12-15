@@ -1,3 +1,10 @@
+---
+title: Graph/Network Visualization Layouts
+type: reference
+permalink: excalidraw-graph-layouts
+description: Three-tier radial pattern for visualizing strategic goals, projects, and tasks in a network layout that emphasizes relationships and hierarchy.
+---
+
 # Graph/Network Visualization Layouts
 
 ## Three-Tier Radial Pattern (Goal → Project → Task)

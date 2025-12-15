@@ -1,3 +1,14 @@
+---
+title: Hook Testing Protocol
+type: test
+permalink: hook-test-protocol
+description: Manual test protocol for verifying Claude Code hook effectiveness
+tags:
+  - testing
+  - hooks
+  - verification
+---
+
 # Hook Testing Protocol
 
 Manual test protocol for verifying Claude Code hook effectiveness. Use this protocol to create reproducible evidence of hook behavior.
@@ -10,7 +21,7 @@ Manual test protocol for verifying Claude Code hook effectiveness. Use this prot
 
 ## Currently Configured Hooks
 
-From `~/.claude/settings.json`:
+From `[[.claude/settings.json]]`:
 
 | Event | Hook | Purpose |
 |-------|------|---------|
@@ -59,7 +70,7 @@ cat "$SESSION_LOG" | jq -r '.hook_event' | sort | uniq -c | sort -rn
 
 ### TC1: SessionStart Hook
 
-**Purpose**: Verify AXIOMS.md and CORE.md are loaded at session start.
+**Purpose**: Verify [[AXIOMS.md]] and [[CORE.md]] are loaded at session start.
 
 **Steps**:
 1. Start a new Claude Code session

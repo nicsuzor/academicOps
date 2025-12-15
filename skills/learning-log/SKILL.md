@@ -1,8 +1,9 @@
 ---
 name: learning-log
-description: Log agent performance patterns to thematic learning files. Categorizes
-  observations, matches to experiments, and routes to appropriate tracking files.
-permalink: academic-ops/skills/learning-log/skill
+description: Log agent performance patterns to thematic learning files. Categorizes observations, matches to experiments, and routes to appropriate tracking files.
+allowed-tools: Read,Grep,Glob,Edit,Write,Bash
+version: 2.0.0
+permalink: skills-learning-log
 ---
 
 # Learning Log Skill

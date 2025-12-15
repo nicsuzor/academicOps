@@ -1,3 +1,10 @@
+---
+title: Design New Component
+type: workflow
+permalink: workflow-design-new-component
+description: Process for adding new framework capability (hook, skill, script, command)
+---
+
 # Workflow 1: Design New Component
 
 **When**: Adding new framework capability (hook, skill, script, command).
@@ -17,7 +24,7 @@
 3. **Document in experiment log**
    - Create `data/projects/aops/experiments/YYYY-MM-DD_component-name.md`
    - Include hypothesis, design, expected outcomes
-   - Reference relevant axioms and principles
+   - Reference relevant [[AXIOMS.md]] and principles
 
 4. **Implement component**
    - Follow single source of truth principles
@@ -31,7 +38,7 @@
    - Document actual vs expected behavior
 
 6. **Update authoritative sources**
-   - Update README.md if directory structure changes
+   - Update [[README.md]] if directory structure changes
    - Update relevant documentation to reference new component
    - Verify no documentation conflicts introduced
 
@@ -45,10 +52,10 @@
    ```
 
    **Verify all match**:
-   - INDEX.md file tree (detailed authoritative structure)
-   - README.md overview (brief summary, consistent with INDEX.md)
+   - [[INDEX.md]] file tree (detailed authoritative structure)
+   - [[README.md]] overview (brief summary, consistent with INDEX.md)
    - Actual filesystem (ground truth)
-   - STATE.md/ROADMAP.md (if they claim counts or completion percentages)
+   - [[ROADMAP.md]] (if they claim counts or completion percentages)
 
 7. **Commit only if all tests pass**
    - Verify documentation integrity

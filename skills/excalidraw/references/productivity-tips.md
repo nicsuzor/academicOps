@@ -1,3 +1,10 @@
+---
+title: Excalidraw Productivity Tips
+type: reference
+permalink: excalidraw-productivity-tips
+description: Essential keyboard shortcuts, techniques, and workflows for efficient diagram creation and manipulation in Excalidraw.
+---
+
 # Excalidraw Productivity Tips (2025 Best Practices)
 
 ## Essential Shortcuts & Techniques

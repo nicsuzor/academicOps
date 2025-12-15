@@ -33,7 +33,7 @@ bmem memories ARE markdown files. The database is an index for search, not separ
 
 ### Approved Categories Only
 
-All observations must use approved categories from [[references/approved-categories-relations.md]]. Inventing categories breaks the knowledge graph.
+All observations must use approved categories from [[approved-categories-relations]]. Inventing categories breaks the knowledge graph.
 
 ### Write Access via MCP
 
@@ -43,9 +43,9 @@ Never write `data/` files directly. Always use `mcp__bmem__write_note()` or `mcp
 
 | Workflow | Purpose | Trigger |
 |----------|---------|---------|
-| [[workflows/capture.md]] | Session mining, note creation | Default / "save this" |
-| [[workflows/validate.md]] | Format + location compliance | "fix bmem" / "validate" |
-| [[workflows/prune.md]] | Value-based cleanup | "clean up" / "declutter" |
+| [[capture]] | Session mining, note creation | Default / "save this" |
+| [[validate]] | Format + location compliance | "fix bmem" / "validate" |
+| [[prune]] | Value-based cleanup | "clean up" / "declutter" |
 
 ## Relations
 

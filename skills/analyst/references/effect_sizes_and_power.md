@@ -1,3 +1,10 @@
+---
+title: Effect Sizes and Power Analysis
+type: reference
+permalink: analyst-ref-effect-sizes-power
+description: Guidance on calculating, interpreting, and reporting effect sizes for various analyses, plus power analysis for study planning and sensitivity analysis.
+---
+
 # Effect Sizes and Power Analysis
 
 This document provides guidance on calculating, interpreting, and reporting effect sizes, as well as conducting power analyses for study planning.

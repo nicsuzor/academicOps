@@ -1,3 +1,11 @@
+---
+name: dashboard
+description: Cognitive Load Dashboard - Live Streamlit dashboard for task visibility and session activity monitoring.
+allowed-tools: Read,Bash,Skill
+version: 1.0.0
+permalink: skills-dashboard-skill
+---
+
 # Cognitive Load Dashboard
 
 Single Streamlit dashboard for task visibility and session activity monitoring.

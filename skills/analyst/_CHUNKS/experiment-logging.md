@@ -1,3 +1,10 @@
+---
+title: Experiment Logging Structure
+type: chunk
+permalink: analyst-chunk-experiment-logging
+description: Standards for organizing, documenting, and managing experimental work in research projects
+---
+
 # Experiment Logging Structure
 
 ## What Are Experiments?
@@ -20,7 +27,7 @@ Experiments are **work-in-progress** that may or may not make it into final anal
 | **Location**        | `experiments/YYYYMMDD-description/`    | `dbt/models/`, `streamlit/`, `methods/`        |
 | **Purpose**         | Exploration, testing, validation       | Final analysis for publication                 |
 | **Quality**         | Can be messy, incomplete               | Must be production-quality                     |
-| **Documentation**   | Inline notes, README in experiment dir | Full documentation in METHODOLOGY.md, methods/ |
+| **Documentation**   | Inline notes, README in experiment dir | Full documentation in [[methodology-files]], [[methods-vs-methodology]] |
 | **Git tracking**    | May or may not be committed            | Always committed and reviewed                  |
 | **Reproducibility** | Best effort                            | Mandatory                                      |
 
@@ -182,7 +189,7 @@ jupyter notebook notebook.ipynb
 **If experiment was successful:**
 
 1. **Extract production code** to appropriate location:
-   - New analytical method → `methods/method_name.md`
+   - New analytical method → `methods/method_name.md` (see [[methods-vs-methodology]])
    - New dbt model → `dbt/models/*/model_name.sql`
    - New visualization → `streamlit/dashboard.py`
 
@@ -217,7 +224,7 @@ jupyter notebook notebook.ipynb
 
 - dbt models (go in `dbt/models/`)
 - Production dashboards (go in `streamlit/`)
-- Documented methods (go in `methods/`)
+- Documented methods (see [[methods-vs-methodology]])
 - Reusable analysis scripts (go in `scripts/` or `analyses/`)
 
 **Rule of thumb**: If it works and you'll use it again, move it out of experiments.

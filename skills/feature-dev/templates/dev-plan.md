@@ -1,3 +1,11 @@
+---
+title: Development Plan Template
+type: template
+permalink: skills/feature-dev/templates/dev-plan
+description: Template for detailed development planning with step-by-step implementation guidance
+tags: [template, feature-dev, development, planning]
+---
+
 # Development Plan: [Feature Name]
 
 **Date**: YYYY-MM-DD **Status**: [Planning | In Progress | Complete] **Complexity**: [Low | Medium | High]
@@ -211,5 +219,6 @@ Step 6 (depends on Steps 4 & 5)
 - User story: `user-story.md`
 - Experiment plan: `experiment-plan.md`
 - Test specification: `test-spec.md`
-- Framework principles: `[[AXIOMS.md]]`
-- Work style: `[[ACCOMMODATIONS.md]]`
+- Framework principles: [[AXIOMS.md]]
+- Work style: [[ACCOMMODATIONS.md]]
+- Feature dev skill: [[../SKILL.md]]

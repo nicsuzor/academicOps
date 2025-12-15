@@ -1,3 +1,13 @@
+---
+title: Approved bmem Categories and Relations
+type: reference
+permalink: approved-categories-relations
+tags:
+  - bmem
+  - reference
+  - validation
+---
+
 # Approved bmem Categories and Relations
 
 **CRITICAL**: bmem files MUST use only these approved values. Using unapproved categories or relations will cause validation failures.

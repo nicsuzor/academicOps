@@ -1,3 +1,10 @@
+---
+title: METHODS vs. METHODOLOGY - Critical Distinction
+type: chunk
+permalink: analyst-chunk-methods-vs-methodology
+description: Clear separation between research design (methodology) and technical implementation (methods)
+---
+
 # METHODS vs. METHODOLOGY: Critical Distinction
 
 ## The Fundamental Difference

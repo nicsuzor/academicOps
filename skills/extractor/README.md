@@ -1,3 +1,11 @@
+---
+title: Email Archive Knowledge Extraction
+type: readme
+permalink: skills/extractor/readme
+description: Automated system for extracting important professional knowledge from archived emails and converting them to bmem-formatted knowledge base entries.
+tags: [skill, extractor, email, knowledge-extraction, bmem]
+---
+
 # Email Archive Knowledge Extraction
 
 Automated system for extracting important professional knowledge from archived emails and converting them to bmem-formatted knowledge base entries.
@@ -237,4 +245,6 @@ uv run python bots/skills/archive/scripts/batch_next.py reset
 ## Related Documentation
 
 - [[SKILL.md]] - Full classification criteria and extraction guidelines
-- [[../../BMEM-CLAUDE-GUIDE.md]] - bmem format reference
+- [[BMEM-CLAUDE-GUIDE.md]] - bmem format reference
+- [[framework/SKILL.md]] - Framework conventions
+- [[tasks/SKILL.md]] - Task management integration

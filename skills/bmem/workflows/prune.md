@@ -1,3 +1,13 @@
+---
+title: Prune Workflow
+type: workflow
+permalink: prune-workflow
+tags:
+  - bmem
+  - workflow
+  - maintenance
+---
+
 # Prune Workflow
 
 Aggressively clean knowledge base by removing low-value files. Extract facts before deletion.

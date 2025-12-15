@@ -1,3 +1,10 @@
+---
+title: Develop Automation Specification
+type: workflow
+permalink: workflow-develop-specification
+description: Process for collaboratively developing task specifications before implementation
+---
+
 # Workflow 6: Develop Automation Specification
 
 **When**: User wants to automate a manual process or you've identified a good automation candidate.
@@ -11,8 +18,8 @@
    - Or: Agent observes repeated manual work and suggests automation
    - Confirm this is actual pain point worth automating
 
-2. **Check ROADMAP alignment**
-   - Read `bots/skills/framework/ROADMAP.md`
+2. **Check [[ROADMAP.md]] alignment**
+   - Read `$ACA_DATA/projects/aops/ROADMAP.md`
    - Verify automation fits current stage (likely Stage 2: Scripted Tasks)
    - Confirm prerequisites/dependencies exist from earlier stages
    - HALT if trying to skip stages
@@ -29,7 +36,7 @@
    - Write clear, specific answers
 
 5. **Define Acceptance Criteria (collaborative, USER-OWNED)**
-   - **CRITICAL**: These criteria define "done" and are user-owned (AXIOMS.md #21)
+   - **CRITICAL**: These criteria define "done" and are user-owned ([[AXIOMS.md]] #21)
    - **Agent asks**: "How will we know this automation succeeded?"
    - Focus on observable, testable outcomes (time saved, error reduction, reliability)
    - **Agent asks**: "What would indicate this implementation is WRONG?"
@@ -42,7 +49,7 @@
 6. **Scope the work (collaborative)**
    - **Agent proposes**: Initial scope based on problem statement
    - **Agent asks**: "What's explicitly out of scope?"
-   - Apply principles from [[../../../AXIOMS.md]] - keep scope minimal and focused
+   - Apply principles from [[AXIOMS.md]] - keep scope minimal and focused
    - Define clear boundaries
    - **Agent asks**: "Does this feel like one focused task?"
 
@@ -50,7 +57,7 @@
    - **Agent checks**: What infrastructure must exist first?
    - **Agent checks**: What data is required?
    - **Agent asks**: "What happens if dependencies are missing?"
-   - Document error handling per [[../../../AXIOMS.md]] principles
+   - Document error handling per [[AXIOMS.md]] principles
 
 8. **Design integration test (collaborative, CRITICAL)**
    - **CRITICAL**: Tests IMPLEMENT acceptance criteria from step 5, not new criteria
@@ -80,14 +87,14 @@
     - **Agent reads back**: Complete specification summary
     - **Agent asks**: "Does this feel right? Anything missing?"
     - Iterate on any unclear or incomplete sections
-    - Ensure alignment with [[../../../AXIOMS.md]] principles
+    - Ensure alignment with [[AXIOMS.md]] principles
 
 12. **Finalize specification**
     - Move completed spec to `$ACA_DATA/projects/aops/specs/` (AUTHORITATIVE location)
     - Specification is now the contract for implementation
     - Ready to proceed with workflow 01 (Design New Component)
 
-**Communication Guidelines** (from [[../../../ACCOMMODATIONS.md]]):
+**Communication Guidelines** (from [[ACCOMMODATIONS.md]]):
 
 - **Match user's preparation level**:
   - If user provides vague idea → Help discover requirements through questions

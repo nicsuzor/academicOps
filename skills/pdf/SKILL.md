@@ -1,11 +1,9 @@
 ---
 name: pdf
-description: This skill should be used when converting markdown documents to professionally
-  formatted PDFs. It provides academic-style typography with Roboto fonts, proper
-  page layouts, and styling suitable for research documents, reviews, reports, and
-  academic writing. Use when users request PDF generation from markdown files or need
-  professional document formatting.
-permalink: academic-ops/skills/pdf/skill
+description: Convert markdown documents to professionally formatted PDFs with academic-style typography, Roboto fonts, proper page layouts, and styling suitable for research documents, reviews, reports, and academic writing.
+allowed-tools: Read,Bash
+version: 2.0.0
+permalink: skills-pdf
 ---
 
 # PDF Generation Skill

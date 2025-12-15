@@ -1,3 +1,11 @@
+---
+title: Data Investigation Workflow
+type: reference
+permalink: skills-analyst-data-investigation
+description: Patterns for creating reusable investigation scripts for data quality, coverage, and root cause analysis
+tags: [data-analysis, investigation, scripting, dbt, reference]
+---
+
 # Data Investigation Workflow
 
 **🚨 CRITICAL: Axiom #15 - WRITE FOR THE LONG TERM**

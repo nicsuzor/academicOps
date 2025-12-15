@@ -1,3 +1,14 @@
+---
+title: Claude Guide - Writing BMEM Format
+type: guide
+permalink: bmem-claude-guide
+description: Practical guide for Claude Code agents creating BMEM format files
+tags:
+  - bmem
+  - guide
+  - documentation
+---
+
 # Claude Guide: Writing bmem Format
 
 ## Overview
@@ -370,4 +381,4 @@ Before committing, verify:
 
 ## Full Specification
 
-See `bots/BMEM-FORMAT.md` for complete specification.
+See [[BMEM-FORMAT.md]] for complete specification.

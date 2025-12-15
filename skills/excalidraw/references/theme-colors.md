@@ -1,3 +1,10 @@
+---
+title: Theme Colors
+type: reference
+permalink: excalidraw-theme-colors
+description: User's preferred color palette for Excalidraw diagrams with retro terminal aesthetic. Includes semantic colors, typography hierarchy, and integration guidelines.
+---
+
 # Theme Colors: User's Preferred Palette
 
 **Source**: `/home/nic/src/automod/tja/dash/utils/theme.py` (Retro Terminal / Cyberpunk aesthetic)

@@ -1,3 +1,13 @@
+---
+title: Observation Quality Guide
+type: reference
+permalink: observation-quality-guide
+tags:
+  - bmem
+  - reference
+  - quality-standards
+---
+
 # Observation Quality Guide
 
 ## Tag Placement Rules

@@ -5,7 +5,9 @@ description: Support academic research data analysis using dbt and Streamlit. Us
   directory, Streamlit apps, or empirical data pipelines). The skill enforces academicOps
   best practices for reproducible, transparent, self-documenting research with collaborative
   single-step workflow.
-permalink: aops/skills/analyst/skill
+allowed-tools: Read,Grep,Glob,Edit,Write,Bash,Skill
+version: 2.0.0
+permalink: skills-analyst-skill
 ---
 
 # Analyst
@@ -14,7 +16,7 @@ permalink: aops/skills/analyst/skill
 
 Support academic research data analysis by working collaboratively with dbt (data build tool) and Streamlit dashboards. This skill enforces academicOps methodology: reproducible data pipelines, automated testing, self-documenting code, and fail-fast validation.
 
-Follows principles from [[../../AXIOMS.md]].
+Follows principles from [[AXIOMS]].
 
 **Core principle:** Take ONE action at a time (generate a chart, update database, create a test), then yield to the user for feedback before proceeding.
 

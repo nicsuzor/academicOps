@@ -1,3 +1,10 @@
+---
+title: JIT Context Injection
+type: framework-doc
+permalink: docs-jit-injection
+description: Architecture for just-in-time context injection through hooks and CLAUDE.md files
+---
+
 # JIT Context Injection
 
 How agents automatically receive the information they need.
@@ -6,10 +13,10 @@ How agents automatically receive the information they need.
 
 | When | What | Source |
 |------|------|--------|
-| Session start | Paths, principles, user context | `sessionstart_load_axioms.py` |
-| Session start | Project instructions | Claude Code native (CLAUDE.md files) |
-| Every prompt | Skill routing + focus | `prompt_router.py` |
-| Before tool | Policy enforcement | `policy_enforcer.py` |
+| Session start | Paths, principles, user context | [[sessionstart_load_axioms.py|hooks/sessionstart_load_axioms.py]] |
+| Session start | Project instructions | Claude Code native ([[CLAUDE.md]] files) |
+| Every prompt | Skill routing + focus | [[prompt_router.py|hooks/prompt_router.py]] |
+| Before tool | Policy enforcement | [[policy_enforcer.py|hooks/policy_enforcer.py]] |
 | On demand | Skill instructions | `Skill(skill="X")` |
 
 **Design principle**: Agents should NOT need to search for context. Missing context = framework bug. (AXIOM 22)
@@ -18,19 +25,19 @@ How agents automatically receive the information they need.
 
 ## Hook Details
 
-### SessionStart: `sessionstart_load_axioms.py`
+### SessionStart: [[sessionstart_load_axioms.py|hooks/sessionstart_load_axioms.py]]
 
 Loads and injects as `additionalContext`:
 
 | File | Path | Content |
 |------|------|---------|
-| FRAMEWORK.md | `$AOPS/FRAMEWORK.md` | Path table |
-| AXIOMS.md | `$AOPS/AXIOMS.md` | Inviolable principles |
+| [[FRAMEWORK.md|FRAMEWORK.md]] | `$AOPS/FRAMEWORK.md` | Path table |
+| [[AXIOMS.md|AXIOMS.md]] | `$AOPS/AXIOMS.md` | Inviolable principles |
 | CORE.md | `$ACA_DATA/CORE.md` | User context |
 
 **Fail-fast**: Exits code 1 if any file missing or empty.
 
-### UserPromptSubmit: `prompt_router.py`
+### UserPromptSubmit: [[prompt_router.py|hooks/prompt_router.py]]
 
 **Always injects:**
 ```
@@ -41,7 +48,7 @@ CRITICAL: Focus on the user's specific request. Do NOT over-elaborate.
 
 **Tier 2 - No match**: Writes prompt to cache file, suggests Haiku classifier.
 
-### PreToolUse: `policy_enforcer.py`
+### PreToolUse: [[policy_enforcer.py|hooks/policy_enforcer.py]]
 
 Blocks:
 - `*-GUIDE.md` files (MINIMAL principle)
@@ -50,7 +57,7 @@ Blocks:
 
 Returns `{continue: false, systemMessage: "..."}` when blocked.
 
-### PostToolUse: `autocommit_state.py`
+### PostToolUse: [[autocommit_state.py|hooks/autocommit_state.py]]
 
 Auto-commits `data/` changes after state-modifying operations.
 
@@ -74,7 +81,7 @@ All hook injections are logged to `~/.claude/projects/<project>/<date>-<shorthas
 jq 'select(.additionalContext != null)' *-hooks.jsonl
 ```
 
-See `docs/OBSERVABILITY.md` for complete hook log schema.
+See [[OBSERVABILITY.md|docs/OBSERVABILITY.md]] for complete hook log schema.
 
 ---
 
@@ -103,9 +110,9 @@ Claude Code loads these at session start (not via aOps hooks).
 
 | Hook | Tests |
 |------|-------|
-| `sessionstart_load_axioms.py` | `test_sessionstart_hook_format.py`, `test_session_start_loading.py`, `integration/test_session_start_content.py` |
-| `prompt_router.py` | `test_prompt_router.py`, `test_router_compliance.py`, `test_userpromptsubmit_contract.py`, `integration/test_prompt_router_haiku_flow.py` |
-| `policy_enforcer.py` | `integration/test_git_safety_hook.py` |
-| `autocommit_state.py` | `integration/test_autocommit_data.py` |
+| [[sessionstart_load_axioms.py|hooks/sessionstart_load_axioms.py]] | `test_sessionstart_hook_format.py`, `test_session_start_loading.py`, `integration/test_session_start_content.py` |
+| [[prompt_router.py|hooks/prompt_router.py]] | `test_prompt_router.py`, `test_router_compliance.py`, `test_userpromptsubmit_contract.py`, `integration/test_prompt_router_haiku_flow.py` |
+| [[policy_enforcer.py|hooks/policy_enforcer.py]] | `integration/test_git_safety_hook.py` |
+| [[autocommit_state.py|hooks/autocommit_state.py]] | `integration/test_autocommit_data.py` |
 | `session_env_setup.sh` | **GAP** |
-| `unified_logger.py` | **GAP** |
+| [[unified_logger.py|hooks/unified_logger.py]] | **GAP** |

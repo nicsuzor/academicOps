@@ -1,3 +1,10 @@
+---
+title: Python Testing Philosophy
+type: reference
+permalink: python-dev-testing
+description: Testing patterns, mocking strategy, and pytest best practices
+---
+
 # Python Testing Philosophy
 
 ## Core Principle: Mock Only at the Boundary
@@ -328,6 +335,14 @@ uv run pytest -m "not slow"
 # Run only e2e tests
 uv run pytest -m "slow"
 ```
+
+## Related References
+
+- [[fail-fast|Fail-Fast Philosophy]] - Error handling in tests
+- [[code-quality|Python Code Quality]] - Naming and documentation
+- [[type-safety|Type Safety in Python]] - Type hints in tests
+- [[fastapi|FastAPI]] - API testing patterns
+- [[fastmcp|FastMCP]] - MCP server testing
 
 ## Summary
 

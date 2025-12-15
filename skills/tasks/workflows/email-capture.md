@@ -756,12 +756,13 @@ TASK_CAPTURE_AUTO_CREATE=false
 
 ## Related Documentation
 
-- **Task Backend**: `bots/skills/tasks/README.md`
-- **Task Scripts**: `bots/skills/tasks/scripts/`
+- **Task Backend**: [[../README.md]]
+- **Task Scripts**: [[../scripts/]]
 - **Tasks MCP**: `.mcp.json` configuration
-- **bmem Integration**: `data/` structure and bmem tools
+- **bmem Integration**: [[bmem search|#step-3-gather-context-from-bmem]]
 - **Outlook MCP**: User email access configuration
-- **Framework**: `bots/skills/framework/` for experiment tracking
+- **Framework**: [[framework/SKILL.md]] for experiment tracking
+- **Task skill**: [[../SKILL.md]]
 
 ---
 

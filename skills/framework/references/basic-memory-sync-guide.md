@@ -1,3 +1,16 @@
+---
+title: Basic Memory Database Sync & Maintenance Guide
+type: reference
+permalink: basic-memory-sync-guide
+description: Guide for Basic Memory synchronization, database maintenance, and troubleshooting
+tags:
+  - reference
+  - basic-memory
+  - database
+  - maintenance
+  - sync
+---
+
 # Basic Memory Database Sync & Maintenance Guide
 
 **Source**: https://docs.basicmemory.com/ (Retrieved 2025-11-18)
@@ -47,7 +60,7 @@ BASIC_MEMORY_SYNC_DELAY=2000 basic-memory mcp
 ```bash
 basic-memory status
 ```
-Shows current synchronization state for all projects.
+Shows current synchronization state for all projects. See [[basic-memory-mcp-tools]] for MCP tool reference.
 
 **Check project details**:
 ```bash
@@ -113,6 +126,7 @@ When synchronization problems occur:
 1. **Check sync status**: `basic-memory status`
 2. **Verify file permissions**: Ensure bmem can read/write files
 3. **Reset database**: `basic-memory reset` if necessary
+4. See [[basic-memory-mcp-tools]] for tool reference and troubleshooting
 
 ## Best Practices
 
@@ -140,6 +154,8 @@ Basic Memory stores configuration in:
 - Global: Platform-dependent user config directory
 
 ## References
+
+See [[basic-memory-ai-guide]] for AI assistant guide and [[basic-memory-mcp-tools]] for tool reference.
 
 - **Main Docs**: https://docs.basicmemory.com/
 - **User Guide**: https://docs.basicmemory.com/user-guide/

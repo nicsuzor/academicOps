@@ -1,3 +1,11 @@
+---
+name: framework-debug
+description: Efficiently investigate Claude Code session logs to diagnose framework issues.
+allowed-tools: Read,Bash,Skill
+version: 1.0.0
+permalink: skills-framework-debug-skill
+---
+
 # Framework Debugging Skill
 
 **Purpose**: Efficiently investigate recent Claude Code session logs to diagnose framework issues (hook failures, agent errors, unexpected behavior).

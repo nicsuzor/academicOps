@@ -1,3 +1,10 @@
+---
+title: DBT Workflow Reference
+type: reference
+permalink: analyst-ref-dbt-workflow
+description: Detailed dbt patterns for data access, model organization (staging/intermediate/mart layers), testing strategies, documentation, and integration with analysis tools.
+---
+
 # DBT Workflow Reference
 
 Detailed dbt patterns for academicOps computational research projects.

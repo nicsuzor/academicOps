@@ -1,3 +1,11 @@
+---
+title: Test Specification Template
+type: template
+permalink: skills/feature-dev/templates/test-spec
+description: Template for comprehensive integration test design and validation planning
+tags: [template, feature-dev, testing, qa]
+---
+
 # Test Specification: [Feature Name]
 
 **Date**: YYYY-MM-DD **Test Location**: `path/to/test/file` **Status**: [Designed | Implemented | Passing | Failing]
@@ -210,4 +218,5 @@ Map each success criterion to test cases that validate it:
 - User story: `user-story.md`
 - Experiment plan: `experiment-plan.md`
 - Development plan: `dev-plan.md`
-- Testing axioms: `[[AXIOMS.md]]` (Fail-Fast, Integration Tests)
+- Testing axioms: [[AXIOMS.md]] (Fail-Fast, Integration Tests)
+- Feature dev skill: [[../SKILL.md]]

@@ -1,3 +1,10 @@
+---
+title: Streamlit Visualization Workflow
+type: chunk
+permalink: analyst-chunk-streamlit-workflow
+description: Single-step collaborative workflow for building Streamlit dashboards and visualizations
+---
+
 # Streamlit Visualization Workflow
 
 Create Streamlit visualizations following single-step collaborative pattern.
@@ -101,7 +108,7 @@ if status_filter:
 
 ## Additional Resources
 
-See `references/streamlit-patterns.md` for comprehensive visualization best practices, including:
+See [[streamlit-patterns]] for comprehensive visualization best practices, including:
 
 - Interactive components (filters, selections)
 - Visualization libraries (Plotly, Altair)

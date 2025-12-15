@@ -1,8 +1,17 @@
+---
+name: heuristics
+title: Heuristics
+type: reference
+description: Empirically validated rules that implement axioms. Subject to revision based on evidence.
+permalink: heuristics
+tags: [framework, principles, empirical]
+---
+
 # Heuristics
 
 **Working hypotheses validated by evidence, subject to revision.**
 
-These are empirically derived rules that implement AXIOMS in practice. Unlike axioms, heuristics can be adjusted as new evidence emerges. Each traces to one or more axioms it helps implement.
+These are empirically derived rules that implement [[AXIOMS]] in practice. Unlike axioms, heuristics can be adjusted as new evidence emerges. Each traces to one or more axioms it helps implement.
 
 **Confidence levels:**
 - **High** - Consistent success across many observations
@@ -22,7 +31,7 @@ These are empirically derived rules that implement AXIOMS in practice. Unlike ax
 
 **Confidence**: Medium
 
-**Implements**: AXIOMS #1 (Categorical Imperative) - ensures actions flow through generalizable skills
+**Implements**: [[AXIOMS]] #1 (Categorical Imperative) - ensures actions flow through generalizable skills
 
 ---
 
@@ -37,7 +46,7 @@ These are empirically derived rules that implement AXIOMS in practice. Unlike ax
 
 **Confidence**: High
 
-**Implements**: AXIOMS #1 (Categorical Imperative), #17 (Write for Long Term)
+**Implements**: [[AXIOMS]] #1 (Categorical Imperative), #17 (Write for Long Term)
 
 ### H2a: Skill Design Enablement (Corollary)
 
@@ -59,7 +68,7 @@ These are empirically derived rules that implement AXIOMS in practice. Unlike ax
 
 **Confidence**: High
 
-**Implements**: AXIOMS #23 (Just-In-Time Context)
+**Implements**: [[AXIOMS]] #23 (Just-In-Time Context)
 
 ---
 
@@ -74,7 +83,7 @@ These are empirically derived rules that implement AXIOMS in practice. Unlike ax
 
 **Confidence**: High
 
-**Implements**: AXIOMS #15 (Verify First), #16 (No Excuses)
+**Implements**: [[AXIOMS]] #15 (Verify First), #16 (No Excuses)
 
 ---
 
@@ -89,7 +98,7 @@ These are empirically derived rules that implement AXIOMS in practice. Unlike ax
 
 **Confidence**: High
 
-**Implements**: AXIOMS #4 (Do One Thing), #22 (Acceptance Criteria Own Success)
+**Implements**: [[AXIOMS]] #4 (Do One Thing), #22 (Acceptance Criteria Own Success)
 
 ---
 
@@ -104,7 +113,7 @@ These are empirically derived rules that implement AXIOMS in practice. Unlike ax
 
 **Confidence**: Medium
 
-**Implements**: AXIOMS #2 (Don't Make Shit Up), #15 (Verify First)
+**Implements**: [[AXIOMS]] #2 (Don't Make Shit Up), #15 (Verify First)
 
 ---
 
@@ -119,7 +128,7 @@ These are empirically derived rules that implement AXIOMS in practice. Unlike ax
 
 **Confidence**: Medium
 
-**Implements**: AXIOMS #1 (Categorical Imperative), #7 (Fail-Fast)
+**Implements**: [[AXIOMS]] #1 (Categorical Imperative), #7 (Fail-Fast)
 
 ---
 
@@ -134,7 +143,7 @@ These are empirically derived rules that implement AXIOMS in practice. Unlike ax
 
 **Confidence**: High
 
-**Implements**: AXIOMS #9 (DRY, Modular, Explicit), #20 (Maintain relational database integrity)
+**Implements**: [[AXIOMS]] #9 (DRY, Modular, Explicit), #20 (Maintain relational database integrity)
 
 ---
 
@@ -149,7 +158,7 @@ These are empirically derived rules that implement AXIOMS in practice. Unlike ax
 
 **Confidence**: Low (single observation, but failure mode is severe)
 
-**Implements**: AXIOMS #7 (Fail-Fast) - namespace collisions cause silent failures instead of explicit errors
+**Implements**: [[AXIOMS]] #7 (Fail-Fast) - namespace collisions cause silent failures instead of explicit errors
 
 ---
 
@@ -164,7 +173,7 @@ These are empirically derived rules that implement AXIOMS in practice. Unlike ax
 
 **Confidence**: High
 
-**Implements**: AXIOMS #14 (Skills are Read-Only), #9 (DRY)
+**Implements**: [[AXIOMS]] #14 (Skills are Read-Only), #9 (DRY)
 
 **Corollary**: When agents need current enforcement state, they must read the actual sources (`settings.json`, `policy_enforcer.py`, `.pre-commit-config.yaml`), not skill documentation about them.
 

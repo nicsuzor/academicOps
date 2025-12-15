@@ -1,3 +1,10 @@
+---
+title: FastAPI
+type: reference
+permalink: python-dev-fastapi
+description: Modern web framework reference for building REST APIs with Python
+---
+
 # FastAPI
 
 ## Overview
@@ -443,6 +450,13 @@ Auto-generated docs available at:
 - `/docs` - Swagger UI (interactive)
 - `/redoc` - ReDoc (alternative)
 - `/openapi.json` - OpenAPI schema
+
+## Related References
+
+- [[type-safety|Type Safety in Python]] - Type hints and validation
+- [[fastmcp|FastMCP]] - Model Context Protocol servers
+- [[testing|Python Testing Philosophy]] - Integration testing patterns
+- [[modern-python|Modern Python Patterns]] - Core Python best practices
 
 ## Key Principles
 

@@ -1,3 +1,15 @@
+---
+title: AI Assistant Guide for Basic Memory
+type: reference
+permalink: basic-memory-ai-guide
+description: Guide for AI assistants using Basic Memory semantic knowledge graph system
+tags:
+  - reference
+  - basic-memory
+  - knowledge-graph
+  - ai-assistant
+---
+
 # AI Assistant Guide for Basic Memory
 
 **Source**: https://docs.basicmemory.com/guides/ai-assistant-guide/ (Retrieved 2025-11-18)
@@ -19,7 +31,7 @@ The system comprises:
 
 ### Project Configuration
 
-**For academicOps framework**: ALWAYS use `project="main"` parameter in ALL bmem tool calls.
+**For academicOps framework**: ALWAYS use `project="main"` parameter in ALL [[basic-memory-mcp-tools|bmem]] tool calls.
 
 **Critical**: Pass `project="main"` explicitly to all tool calls—**no implicit context is maintained between calls**.
 
@@ -158,6 +170,8 @@ Maintain folder structures and descriptive file naming.
 
 ## Core Tools
 
+See [[basic-memory-mcp-tools]] for comprehensive tool reference.
+
 ### Writing
 - `write_note()` - Create or update notes
 - `edit_note()` - Modify existing notes incrementally
@@ -222,10 +236,9 @@ Capture discussions as **decision records** or **conversation summaries** with o
 ## Session Management Pattern
 
 **Start of session (academicOps)**:
-```python
-# For academicOps framework: ALWAYS use project="main"
-# No discovery needed - this is hard-coded requirement
-```
+- For academicOps framework: ALWAYS use `project="main"`
+- No discovery needed - this is hard-coded requirement
+- See [[basic-memory-mcp-tools]] for tool reference
 
 **During session**:
 - Pass `project="main"` to every tool call

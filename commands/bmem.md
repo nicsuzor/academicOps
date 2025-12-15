@@ -1,14 +1,11 @@
 ---
 name: bmem
 description: Invoke bmem skill to capture session information and update knowledge base
+allowed-tools: Skill
 permalink: commands/bmem
 ---
 
-Use the Skill tool to invoke the `bmem` skill: `Skill(skill="bmem")` - this will load instructions for extracting information from the current session and updating the knowledge base in `data/`.
-
-# Bmem: Knowledge Base Update
-
-Use this command to explicitly trigger knowledge base capture and updates.
+Use the Skill tool to invoke the `[[skills/bmem/SKILL.md|bmem]]` skill: `Skill(skill="bmem")` - this will load instructions for extracting information from the current session and updating the knowledge base in `data/`.
 
 **What it does**:
 
@@ -26,5 +23,3 @@ Use this command to explicitly trigger knowledge base capture and updates.
 - "document this decision"
 
 **Note**: The bmem skill runs silently in the background during sessions. Use this command when you want to explicitly trigger capture or ensure information is saved.
-
-**Full documentation**: [[skills/bmem/SKILL.md]]

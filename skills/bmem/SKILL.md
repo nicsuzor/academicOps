@@ -6,21 +6,21 @@ version: 2.0.0
 permalink: skills-bmem-skill
 ---
 
-# bmem: Knowledge Base Skill
+# bmem Knowledge Base Skill
 
 ## When to Invoke
 
 | User wants to... | Workflow |
 |------------------|----------|
-| Save info, mine session, create notes | [[workflows/capture.md]] |
-| Fix format, check compliance, repair links | [[workflows/validate.md]] |
-| Delete low-value files, declutter | [[workflows/prune.md]] |
+| Save info, mine session, create notes | [[bmem-capture]] |
+| Fix format, check compliance, repair links | [[bmem-validate]] |
+| Delete low-value files, declutter | [[bmem-prune]] |
 
 ## Core Rules
 
 1. **MCP tools only**: All bmem operations use `mcp__bmem__*` tools. Never write `data/` files directly.
 2. **Project parameter**: ALWAYS use `project="main"` in all bmem MCP calls.
-3. **Approved categories only**: See [[references/approved-categories-relations.md]] before writing.
+3. **Approved categories only**: See [[bmem-categories-relations]] before writing.
 
 ## Mental Model
 
@@ -54,10 +54,10 @@ permalink: skills-bmem-skill
 
 ## References (Load When Needed)
 
-- [[references/approved-categories-relations.md]] - **MANDATORY before writing**
-- [[references/obsidian-format-spec.md]] - Full format specification
-- [[references/observation-quality-guide.md]] - Quality rules
-- [[references/detail-level-guide.md]] - What to capture where
+- [[bmem-categories-relations]] - **MANDATORY before writing**
+- [[bmem-obsidian-format]] - Full format specification
+- [[bmem-observation-quality]] - Quality rules
+- [[bmem-detail-level]] - What to capture where
 
 ## Workflows
 

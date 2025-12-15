@@ -1,10 +1,17 @@
+---
+title: Research Project Documentation Structure
+type: chunk
+permalink: analyst-chunk-research-documentation
+description: Mandatory documentation structure and maintenance rules for academic research projects
+---
+
 # Research Project Documentation Structure
 
 ## Overview
 
 Academic research projects require rigorous, transparent, and reproducible documentation. This guide defines the mandatory documentation structure for academicOps research projects.
 
-Follows principles from [[../../../AXIOMS.md]].
+Follows principles from [[AXIOMS]].
 
 ## Forbidden: Proliferating Random Markdown Files
 
@@ -73,7 +80,7 @@ project_root/
 
 2. **METHODOLOGY.md** (project root)
    - **Purpose**: Research design and epistemological approach
-   - **Contents**: See `_CHUNKS/methodology-files.md`
+   - **Contents**: See [[methodology-files]]
    - **Length**: 2-10 pages depending on complexity
    - **Audience**: Academic peers, reviewers
    - **Update frequency**: When research design changes
@@ -94,14 +101,14 @@ project_root/
 
 5. **methods/*.md**
    - **Purpose**: Detailed technical implementation of specific methods
-   - **Contents**: See `_CHUNKS/methods-vs-methodology.md`
+   - **Contents**: See [[methods-vs-methodology]]
    - **Length**: One file per method, as detailed as needed
    - **Audience**: Technical implementers, reproducibility auditors
    - **Update frequency**: When implementation changes
 
 6. **experiments/YYYYMMDD-description/**
    - **Purpose**: Organized experimental work and results
-   - **Contents**: See `_CHUNKS/experiment-logging.md`
+   - **Contents**: See [[experiment-logging]]
    - **Length**: One directory per experiment
    - **Audience**: Research team, future reproducibility efforts
    - **Update frequency**: During active experimentation

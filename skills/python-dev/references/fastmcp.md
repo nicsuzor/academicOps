@@ -1,3 +1,10 @@
+---
+title: FastMCP
+type: reference
+permalink: python-dev-fastmcp
+description: Model Context Protocol server framework for extending LLM capabilities
+---
+
 # FastMCP
 
 ## Overview
@@ -457,6 +464,13 @@ async def call_external_api(
 
         return response.json()
 ```
+
+## Related References
+
+- [[fastapi|FastAPI]] - Web framework patterns
+- [[type-safety|Type Safety in Python]] - Type hints and Pydantic
+- [[testing|Python Testing Philosophy]] - Integration testing patterns
+- [[code-quality|Python Code Quality]] - Documentation standards
 
 ## Key Principles
 

@@ -1,3 +1,13 @@
+---
+title: Obsidian Compatibility
+type: reference
+permalink: obsidian-compatibility
+tags:
+  - bmem
+  - reference
+  - obsidian
+---
+
 # Obsidian Compatibility
 
 ## Tags

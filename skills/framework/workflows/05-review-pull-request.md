@@ -1,3 +1,10 @@
+---
+title: Review Pull Request
+type: workflow
+permalink: workflow-review-pull-request
+description: Process for reviewing pull requests against framework principles and axioms
+---
+
 # Workflow 5: Review Pull Request
 
 **When**: PR exists and needs review before merge.
@@ -5,7 +12,7 @@
 **Steps**:
 
 1. **Check roadmap alignment**
-   - Are changes on current stage priorities in [[../ROADMAP.md]]?
+   - Are changes on current stage priorities in [[ROADMAP.md]]?
    - Is there evidence/justification for infrastructure changes?
    - Do experiment logs validate the approach?
    - **HALT if changes aren't on roadmap without clear justification**
@@ -18,7 +25,7 @@
    git checkout -b review-fixes
    ```
 
-3. **Review against AXIOMS**
+3. **Review against [[AXIOMS.md]]**
    - Single source of truth maintained?
    - Documentation conflicts introduced?
    - Fail-fast principles followed?
@@ -28,7 +35,7 @@
 4. **Review external feedback**
    - Get PR review comments (both general and line-specific)
    - Evaluate suggestions against framework principles
-   - Apply suggestions that align with [[../../../AXIOMS.md]]
+   - Apply suggestions that align with [[AXIOMS.md]]
    - Question/reject suggestions that violate principles
    - Document reasoning for rejections
 

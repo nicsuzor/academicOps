@@ -1,8 +1,15 @@
+---
+title: Exploratory Analysis
+type: chunk
+permalink: analyst-chunk-exploratory-analysis
+description: Pattern for collaborative, iterative data exploration that yields to user guidance at each step
+---
+
 # Exploratory Analysis
 
 When exploring data to understand patterns, follow collaborative discovery process.
 
-**NOTE:** If you find yourself running multiple queries to investigate a DATA ISSUE (missing values, unexpected nulls, join problems), switch to the Data Investigation Workflow (`@reference _CHUNKS/data-investigation.md`) and create a reusable script.
+**NOTE:** If you find yourself running multiple queries to investigate a DATA ISSUE (missing values, unexpected nulls, join problems), switch to the Data Investigation Workflow and create a reusable script.
 
 Exploratory analysis is for understanding PATTERNS and RELATIONSHIPS in clean data. Data investigation is for diagnosing DATA QUALITY problems.
 

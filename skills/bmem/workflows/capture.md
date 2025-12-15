@@ -1,3 +1,13 @@
+---
+title: Capture Workflow
+type: workflow
+permalink: capture-workflow
+tags:
+  - bmem
+  - workflow
+  - knowledge-management
+---
+
 # Capture Workflow
 
 Session mining and note creation. Silently extracts information and maintains knowledge graph.
@@ -51,8 +61,8 @@ mcp__bmem__edit_note(
 ### Before Writing
 
 1. **Search first**: Check for duplicates with `mcp__bmem__search_notes()`
-2. **Use approved categories**: See [[../references/approved-categories-relations.md]]
-3. **Choose right location**: See file locations in [[../SKILL.md]]
+2. **Use approved categories**: See [[approved-categories-relations]]
+3. **Choose right location**: See file locations in [[bmem-skill-overview]]
 
 ## Format Quick Reference
 

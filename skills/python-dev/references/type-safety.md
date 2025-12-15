@@ -1,3 +1,10 @@
+---
+title: Type Safety in Python
+type: reference
+permalink: python-dev-type-safety
+description: Type hints, Pydantic models, and static type checking patterns
+---
+
 # Type Safety in Python
 
 ## Core Principle
@@ -523,6 +530,14 @@ def fetch_or_default(user_id: Optional[str]) -> User:
         return DefaultUser()
     return fetch(user_id)
 ```
+
+## Related References
+
+- [[code-quality|Python Code Quality]] - Documentation and naming
+- [[fail-fast|Fail-Fast Philosophy]] - Validation at boundaries
+- [[modern-python|Modern Python Patterns]] - Dataclasses and other structures
+- [[fastapi|FastAPI]] - Type hints in API frameworks
+- [[testing|Python Testing Philosophy]] - Type hints in tests
 
 ## Summary
 

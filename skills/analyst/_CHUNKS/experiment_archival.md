@@ -1,3 +1,11 @@
+---
+title: Experiment Archival
+type: reference
+permalink: skills-analyst-experiment-archival
+description: Patterns for archiving intermediate analyses and experiments when data pipelines change
+tags: [experiments, archival, jupyter, research-methods, reference]
+---
+
 # Draft: Experiment Archival and Research Journaling
 
 Notes on archiving intermediate analysis and experiments before data changes.

@@ -1,3 +1,10 @@
+---
+title: Text in Container Pattern
+type: reference
+permalink: excalidraw-text-container
+description: Pattern for binding text to containers in Excalidraw JSON using containerId and boundElements properties to ensure they move together.
+---
+
 # Text in Container Pattern (Excalidraw JSON)
 
 **Problem**: Text elements floating separately from containers break when containers move.
@@ -442,4 +449,4 @@ When creating text-in-container:
 ---
 
 **Last Updated**: 2025-11-19
-**Related**: [[theme-colors.md]], [[technical-details.md]]
+**Related**: [[theme-colors]], [[technical-details]]

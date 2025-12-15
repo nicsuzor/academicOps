@@ -1,3 +1,10 @@
+---
+title: Hydra Configuration
+type: reference
+permalink: python-dev-hydra
+description: Complete guide to Hydra configuration framework and patterns
+---
+
 # Hydra Configuration - Complete Guide
 
 **Last Updated:** 2025-10-30 **Hydra Version:** 1.3+ (backward compatible with 1.1+)
@@ -950,13 +957,16 @@ def run(cfg: Config):  # Type-checked!
 
 ---
 
+## Related References
+
+- [[fail-fast|Fail-Fast Philosophy]] - Configuration validation patterns
+- [[type-safety|Type Safety in Python]] - Structured configs with dataclasses
+- [[testing|Python Testing Philosophy]] - Testing configuration loading
+- [[code-quality|Python Code Quality]] - Logging and documentation
+
 ## References
 
 - [Official Hydra Documentation](https://hydra.cc/)
 - [Defaults List Guide](https://hydra.cc/docs/advanced/defaults_list/)
 - [Composition Order Changes](https://hydra.cc/docs/upgrades/1.0_to_1.1/default_composition_order/)
 - [OmegaConf Resolvers](https://omegaconf.readthedocs.io/en/latest/custom_resolvers.html)
-
----
-
-**End of Guide**

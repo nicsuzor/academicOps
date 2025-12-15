@@ -1,15 +1,16 @@
 ---
 name: skill-creator
 description: Create and maintain skills following evidence-based anti-bloat principles. Use when creating new skills or updating existing skills.
-license: Complete terms in LICENSE.txt
-permalink: aops/skills/skill-creator/skill
+allowed-tools: Read,Grep,Glob,Edit,Write,Bash
+version: 2.0.0
+permalink: skills-skill-creator
 ---
 
 # Skill Creator
 
 ## Framework Context
 
-@resources/AXIOMS.md
+[[AXIOMS.md]]
 
 ## Overview
 
@@ -17,9 +18,9 @@ Skills are modular packages extending agent capabilities with specialized workfl
 
 **Read First** (mandatory references):
 
-- `@$ACADEMICOPS/docs/bots/BEST-PRACTICES.md` - Evidence-based component design
-- `@$ACADEMICOPS/docs/bots/skill-invocation-guide.md` - How skills are invoked
-- `@resources/AXIOMS.md` - Universal principles (fail-fast, DRY, standard tools)
+- [[BEST-PRACTICES.md]] - Evidence-based component design
+- [[skill-invocation-guide.md]] - How skills are invoked
+- [[AXIOMS.md]] - Universal principles (fail-fast, DRY, standard tools)
 
 ## Skill Creation Workflow
 
@@ -170,6 +171,6 @@ Test on real tasks → Notice inefficiencies → Update → Test again. Follow a
 
 **Key References**:
 
-- `@$ACADEMICOPS/docs/bots/BEST-PRACTICES.md`
-- `@$ACADEMICOPS/docs/bots/skill-invocation-guide.md`
-- `@resources/AXIOMS.md`
+- [[BEST-PRACTICES.md]]
+- [[skill-invocation-guide.md]]
+- [[AXIOMS.md]]

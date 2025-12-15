@@ -1,3 +1,11 @@
+---
+title: Test Selection Guide
+type: reference
+permalink: skills-analyst-test-selection-guide
+description: Decision tree and guidance for selecting appropriate statistical tests based on research design and data type
+tags: [statistics, testing, test-selection, reference]
+---
+
 # Statistical Test Selection Guide
 
 This guide provides a decision tree for selecting appropriate statistical tests based on research questions, data types, and study designs.

@@ -1,7 +1,8 @@
 ---
 name: transcript
-description: Generate markdown transcript of a Claude Code session (user)
+description: Generate markdown transcript of a Claude Code session from JSONL session file
 permalink: commands/transcript
+allowed-tools: Bash,Read
 ---
 
 # Transcript Generator
@@ -10,14 +11,14 @@ Generate markdown transcripts from Claude Code session files.
 
 ## Usage
 
-```
-Bash("PYTHONPATH=$AOPS uv run python $AOPS/scripts/claude_transcript.py <session.jsonl> -o <output-base>")
+```bash
+PYTHONPATH=$AOPS uv run python $AOPS/scripts/claude_transcript.py <session.jsonl> -o <output-base>
 ```
 
 ## Find session files
 
-```
-Bash("ls -lt ~/.claude/projects/-$(basename $(pwd))/*.jsonl | grep -v agent | head -1")
+```bash
+ls -lt ~/.claude/projects/$(basename $(pwd))/*.jsonl | grep -v agent | head -1
 ```
 
 ## Output

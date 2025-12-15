@@ -1,3 +1,10 @@
+---
+title: Claude Code Hooks Configuration Guide
+type: reference
+permalink: ref-hooks-guide
+description: Complete technical reference for Claude Code CLI SessionStart hooks, configuration hierarchy, and multi-project patterns
+---
+
 # Claude Code CLI SessionStart Hook System: Complete Technical Reference
 
 Claude Code CLI **can load SessionStart hooks from paths outside the current working directory**, but the mechanism differs from what many developers expect. Hooks are configured through a hierarchical settings system, not auto-discovered from directories, and commands within those hooks can reference scripts anywhere on the filesystem using absolute paths or the `$CLAUDE_PROJECT_DIR` environment variable.
@@ -690,7 +697,7 @@ sys.exit(0)
 - **Quality gates**: Run checks before answering
 - **Workflow automation**: Trigger specific tools based on prompt patterns
 
-See [[projects/aops/experiments/hook-additional-context-triggers-tool-use-proven-2025-11-22]] for full test methodology and results.
+See [[../../../experiments/hook-additional-context-triggers-tool-use-proven-2025-11-22]] for full test methodology and results.
 
 ### Debugging Hook Execution
 

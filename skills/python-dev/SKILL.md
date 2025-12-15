@@ -1,14 +1,16 @@
 ---
 name: python-dev
 description: Write production-quality Python code following fail-fast philosophy, type safety, and modern best practices. Enforces rigorous standards for academic and research code where correctness and replicability are paramount.
-permalink: aops/skills/python-dev
+allowed-tools: Read,Grep,Glob,Edit,Write,Bash
+version: 3.0.0
+permalink: skills-python-dev
 ---
 
 # Python Development
 
 Production-quality Python development with fail-fast philosophy, type safety, and modern patterns.
 
-Follows principles from [[../../AXIOMS.md]].
+Follows principles from [[AXIOMS.md]].
 
 ## When to Use This Skill
 
@@ -54,31 +56,31 @@ HALTING.
 
 ### 1. Fail-Fast: No Defaults, No Fallbacks
 
-@references/fail-fast.md
+[[fail-fast.md]]
 
 **Critical rule**: Silent defaults corrupt research data. Fail immediately so problems are fixed, not hidden.
 
 ### 2. Type Safety Always
 
-@references/type-safety.md
+[[type-safety.md]]
 
 All function signatures, class attributes, and complex data structures must have type hints.
 
 ### 3. Testing: Mock Only at Boundaries
 
-@references/testing.md
+[[testing.md]]
 
 **Never mock your own code.** Mock only at system boundaries you don't control.
 
 ### 4. Modern Python Patterns
 
-@references/modern-python.md
+[[modern-python.md]]
 
 Use pathlib, f-strings, comprehensions, and modern Python idioms.
 
 ### 5. Code Quality Standards
 
-@references/code-quality.md
+[[code-quality.md]]
 
 Docstrings, clear names, focused functions, organized imports.
 
@@ -297,16 +299,16 @@ uv run ruff check --fix src/
 
 ### Core Python Standards
 
-- @references/fail-fast.md - No defaults, explicit config
-- @references/type-safety.md - Type hints, Pydantic validation
-- @references/testing.md - Testing philosophy and pytest patterns
-- @references/modern-python.md - Modern Python idioms
-- @references/code-quality.md - Docstrings, naming, organization
+- [[fail-fast.md]] - No defaults, explicit config
+- [[type-safety.md]] - Type hints, Pydantic validation
+- [[testing.md]] - Testing philosophy and pytest patterns
+- [[modern-python.md]] - Modern Python idioms
+- [[code-quality.md]] - Docstrings, naming, organization
 
 ### Major Libraries
 
-- @references/pandas.md - Data manipulation and analysis
-- @references/hydra.md - Configuration management
-- @references/fastapi.md - High-performance web APIs
-- @references/fastmcp.md - Model Context Protocol servers
-- @references/bigquery.md - Google BigQuery data warehouse
+- [[pandas.md]] - Data manipulation and analysis
+- [[hydra.md]] - Configuration management
+- [[fastapi.md]] - High-performance web APIs
+- [[fastmcp.md]] - Model Context Protocol servers
+- [[bigquery.md]] - Google BigQuery data warehouse

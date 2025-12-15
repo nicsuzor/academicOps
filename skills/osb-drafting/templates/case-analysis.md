@@ -1,3 +1,11 @@
+---
+title: Case Analysis Template
+type: template
+permalink: skills/osb-drafting/templates/case-analysis
+description: Template for comprehensive legal case analysis with IRAC structure and human rights framework
+tags: [template, osb-drafting, case-analysis, legal]
+---
+
 # [CASE_TITLE] - Draft Analysis
 
 ## Summary
@@ -170,3 +178,11 @@
 
 ### Dissent Potential
 - [Which issues most likely to generate written dissent?]
+
+---
+
+## Related Documentation
+
+- [[verification-checklist.md]] - Citation verification and quality assurance
+- [[../SKILL.md]] - OSB drafting skill
+- [[AXIOMS.md]] - Framework principles

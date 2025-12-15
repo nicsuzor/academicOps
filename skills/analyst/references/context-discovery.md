@@ -1,3 +1,10 @@
+---
+title: Context Discovery Reference
+type: reference
+permalink: analyst-ref-context-discovery
+description: Guide to discovering and reading project context, including README files, data documentation, existing work, and extracting strategic context before analysis.
+---
+
 # Context Discovery Reference
 
 Guide to discovering and reading project context before beginning analysis work.
@@ -378,5 +385,5 @@ chmod +x /tmp/discover_context.sh
 ## References
 
 - academicOps methodology: Focus on reproducible, self-documenting research
-- dbt documentation patterns: See `references/dbt-workflow.md`
+- dbt documentation patterns: See [[dbt-workflow]]
 - Project structure standards: See main project `README.md`

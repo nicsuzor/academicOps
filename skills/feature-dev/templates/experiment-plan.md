@@ -1,3 +1,11 @@
+---
+title: Experiment Plan Template
+type: template
+permalink: skills/feature-dev/templates/experiment-plan
+description: Template for hypothesis-driven feature development with validation and decision criteria
+tags: [template, feature-dev, experiment, validation]
+---
+
 # Experiment: [Feature Name]
 
 **Date**: YYYY-MM-DD **Status**: [Planning | In Progress | Validating | Complete]
@@ -149,4 +157,5 @@ Check against success criteria:
 - User story: `user-story.md`
 - Test specification: `test-spec.md`
 - Development plan: `dev-plan.md`
-- Framework principles: `[[AXIOMS.md]]`
+- Framework principles: [[AXIOMS.md]]
+- Feature dev skill: [[../SKILL.md]]

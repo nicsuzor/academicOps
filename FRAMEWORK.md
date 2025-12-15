@@ -1,4 +1,13 @@
-# ⚠️ STOP - READ BEFORE ANY FILE OPERATIONS ⚠️
+---
+name: framework
+title: Framework Paths and Configuration
+type: reference
+description: Session-resolved paths and environment configuration. Injected at session start.
+permalink: framework-paths
+tags: [framework, paths, configuration]
+---
+
+# Framework Paths and Configuration
 
 **Before using Read, Glob, Grep, or Write tools**: Check this path table FIRST.
 **If you get "Error reading file"**: You guessed wrong. Return here, use correct path.
@@ -21,11 +30,11 @@ These are the **concrete absolute paths** for this session. Use them directly wi
 | Projects | `$ACA_DATA/projects/` |
 
 **Common files you may need:**
-- User accommodations: `$ACA_DATA/ACCOMMODATIONS.md`
-- User context: `$ACA_DATA/CORE.md`
-- Project state: `$ACA_DATA/projects/aops/STATE.md`
-- Vision: `$ACA_DATA/projects/aops/VISION.md`
-- Roadmap: `$ACA_DATA/projects/aops/ROADMAP.md`
+- User accommodations: [[ACCOMMODATIONS.md]] (in $ACA_DATA/)
+- User context: [[CORE.md]] (in $ACA_DATA/)
+- Project state: [[STATE.md]] (in $ACA_DATA/projects/aops/)
+- Vision: [[VISION.md]] (in $ACA_DATA/projects/aops/)
+- Roadmap: [[ROADMAP.md]] (in $ACA_DATA/projects/aops/)
 
 ## Path Reference
 

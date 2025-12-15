@@ -1,3 +1,10 @@
+---
+title: METHODOLOGY.md Files
+type: chunk
+permalink: analyst-chunk-methodology-files
+description: Structure and maintenance rules for research methodology documentation
+---
+
 # METHODOLOGY.md Files
 
 ## What is a Methodology?
@@ -133,7 +140,7 @@ Do NOT update METHODOLOGY.md for:
 
 ## Methodology vs. Methods
 
-**See `_CHUNKS/methods-vs-methodology.md` for detailed distinction.**
+**See [[methods-vs-methodology]] for detailed distinction.**
 
 **Quick rule of thumb:**
 

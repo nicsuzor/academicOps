@@ -104,6 +104,7 @@ Return your results as a structured summary:
 - Questions for user: [list with file, question, and 2-4 options]
 - Errors encountered: [list]
 ")
+
 </parallel-invocation>
 ```
 
@@ -113,7 +114,7 @@ Return your results as a structured summary:
 
 After subagents complete, collect all questions.
 
-If questions exist, use AskUserQuestion with UP TO 4 questions per call:
+If questions exist, use [[AskUserQuestion]] with UP TO 4 questions per call:
 
 ```
 AskUserQuestion(questions=[
@@ -141,7 +142,7 @@ AskUserQuestion(questions=[
 
 ### Phase 4: Completion
 
-1. **Update TodoWrite** - mark all items complete
+1. **Update [[TodoWrite]]** - mark all items complete
 
 2. **Commit changes**:
    ```bash
@@ -150,7 +151,7 @@ AskUserQuestion(questions=[
    ```
    Then commit with descriptive message summarizing what was done.
 
-3. **Log to bmem**:
+3. **Log to [[bmem]]**:
    ```
    mcp__bmem__write_note(
      title="Parallel Batch Session: [Operation Description]",
@@ -174,7 +175,7 @@ Process these task files to link them to appropriate projects:
 Files:
 [file list]
 
-MANDATORY: Use bmem MCP tools with `project="main"`:
+MANDATORY: Use [[bmem]] MCP tools with `project="main"`:
 1. Search for existing projects: mcp__bmem__search_notes(query="type:project", project="main")
 2. Read task file to understand context
 3. Edit task frontmatter to add/update `project:` field
@@ -200,7 +201,7 @@ MANDATORY: Use Skill tool to invoke skills: `Skill(skill="extractor")` to assess
 For each file:
 1. Read content
 2. Apply extractor skill criteria
-3. If valuable → create bmem entity
+3. If valuable → create [[bmem]] entity
 4. If not valuable → skip (no question needed)
 5. If uncertain → add to questions
 
@@ -225,6 +226,12 @@ For each file:
 
 Return: processed files, tags added, questions for ambiguous cases
 ```
+
+## Skills and Related Commands
+
+- [[bmem]] - Knowledge base operations
+- [[framework]] - Framework context and conventions
+- [[tasks]] - Task management
 
 ## Error Handling
 

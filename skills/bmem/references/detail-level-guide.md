@@ -1,3 +1,13 @@
+---
+title: Detail Level Guide: What to Capture Where
+type: reference
+permalink: detail-level-guide
+tags:
+  - bmem
+  - reference
+  - knowledge-management
+---
+
 # Detail Level Guide: What to Capture Where
 
 Match detail level to file type and importance.

@@ -1,9 +1,11 @@
 ---
+name: log
 description: Log agent performance (successes and failures) to framework learning system
+allowed-tools: Skill
 permalink: commands/log
 ---
 
-**IMMEDIATELY** invoke the `learning-log` skill with the user's observation description.
+**IMMEDIATELY** invoke the `[[skills/learning-log/SKILL.md|learning-log]]` skill with the user's observation description.
 
 **Purpose**: Build institutional knowledge by logging patterns at the appropriate abstraction level, matching to active experiments, and routing to bugs/patterns/experiments.
 
@@ -45,6 +47,4 @@ Adjust heuristic confidence based on new evidence.
 - `$ACA_DATA/projects/aops/learning/*.md` - Thematic pattern files
 - `$ACA_DATA/projects/aops/bugs/*.md` - Component-specific bugs (delete when fixed)
 - `$ACA_DATA/projects/aops/experiments/*.md` - Systemic investigations
-- `$AOPS/HEURISTICS.md` - Heuristic evidence (when adjusting)
-
-See `skills/learning-log/SKILL.md` for complete workflow specification.
+- `$AOPS/[[HEURISTICS.md]]` - Heuristic evidence (when adjusting)

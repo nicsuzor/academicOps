@@ -1,3 +1,10 @@
+---
+title: Testing With Live Data
+type: reference
+permalink: ref-testing-with-live-data
+description: Production-quality integration testing methodology using real data from existing systems
+---
+
 # Testing With Live Data
 
 Production-quality integration testing using real data from existing systems.
@@ -192,9 +199,12 @@ def test_dbt_manifest_parsing(sample_project):
     assert len(manifest.nodes) > 0
 ```
 
-## Related
+## Related References
 
 - [[../../../AXIOMS.md#13]] - Verify first
 - [[../../../commands/ttd.md]] - TDD workflow
 - [[../../python-dev/SKILL.md]] - Python development standards
 - [[../../python-dev/references/testing.md]] - Testing philosophy
+- [[e2e-test-harness]] - E2E test harness infrastructure
+- [[script-design-guide]] - Script design principles
+- [[hooks_guide]] - Hook system reference

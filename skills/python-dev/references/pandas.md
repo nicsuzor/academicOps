@@ -1,3 +1,10 @@
+---
+title: Pandas
+type: reference
+permalink: python-dev-pandas
+description: Data manipulation and analysis library reference
+---
+
 # Pandas
 
 ## Overview
@@ -519,6 +526,12 @@ import matplotlib.pyplot as plt
 df.plot()
 plt.show()
 ```
+
+## Related References
+
+- [[bigquery|Google BigQuery]] - Data warehouse integration
+- [[modern-python|Modern Python Patterns]] - Core Python idioms
+- [[type-safety|Type Safety in Python]] - Type hints for dataframes
 
 ## Key Principles
 

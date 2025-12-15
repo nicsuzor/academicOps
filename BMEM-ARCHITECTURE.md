@@ -7,6 +7,7 @@ tags:
   - architecture
   - knowledge-base
   - framework
+description: Architecture design for single unified knowledge base per user
 ---
 
 # BMEM Architecture: Single Knowledge Base Design
@@ -76,7 +77,7 @@ $ACA_DATA/                ← User Data (knowledge base, personal context)
 
 ### Path Resolution Strategy
 
-academicOps provides a central path resolution module (`lib/paths.py`) that implements fail-fast semantics:
+academicOps provides a central path resolution module ([[lib/paths.py]]) that implements fail-fast semantics:
 
 ```python
 from lib.paths import get_aops_root, get_data_root
@@ -101,7 +102,7 @@ data = get_data_root()  # Raises RuntimeError if not set
 
 ### MCP Server Architecture
 
-The bmem MCP server (`skills/bmem/`) wraps the basic-memory knowledge base backend:
+The bmem MCP server ([[skills/bmem]]) wraps the basic-memory knowledge base backend:
 
 ```
 Claude Code Session
@@ -414,8 +415,8 @@ The result is a **portable, auditable, multi-project knowledge base** that gives
 
 ## References
 
-- **BMEM-FORMAT.md** - Complete bmem markdown format specification
-- **BMEM-CLAUDE-GUIDE.md** - Practical guide for creating bmem files
-- **lib/paths.py** - Path resolution implementation (single source of truth)
-- **tests/integration/test_bmem_diagnostic.py** - CWD invariance verification
-- **README.md** - Framework directory structure overview
+- [[BMEM-FORMAT.md]] - Complete bmem markdown format specification
+- [[BMEM-CLAUDE-GUIDE.md]] - Practical guide for creating bmem files
+- [[lib/paths.py]] - Path resolution implementation (single source of truth)
+- [[tests/integration/test_bmem_diagnostic.py]] - CWD invariance verification
+- [[README.md]] - Framework directory structure overview

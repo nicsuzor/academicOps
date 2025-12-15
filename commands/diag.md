@@ -1,7 +1,13 @@
-# /diag - Session State Diagnostic
+---
+name: diag
+description: Quick diagnostic check of what's currently loaded in this session
+allowed-tools: None
+permalink: commands/diag
+---
 
 **Purpose**: Quick diagnostic check of what's currently loaded in this session.
-**NOT a skill**: This is a diagnostic command only - for framework operations, invoke `Skill(skill="framework")`.
+
+**NOT a skill**: This is a diagnostic command only - for framework operations, invoke `[[skills/framework/SKILL.md|framework]]` skill.
 
 **Respond IMMEDIATELY from current state. Do NOT read any files.**
 

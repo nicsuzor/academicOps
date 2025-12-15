@@ -1,3 +1,11 @@
+---
+name: tasks
+description: Manage task lifecycle using scripts and MCP tools. Create, view, archive, and update bmem-compliant task files with structured metadata.
+allowed-tools: Read,Grep,Glob,Edit,Write,Bash
+version: 2.1.0
+permalink: skills-tasks
+---
+
 # Task Management Skill
 
 ## Authoritative Domain Knowledge
@@ -329,6 +337,6 @@ Tasks MCP server provides tool interface:
 
 This skill focuses on task _lifecycle_ (view, archive, create). Other skills handle:
 
-- **Email workflow**: Email → Task extraction (`workflows/email-capture.md`)
+- **Email workflow**: Email → Task extraction ([[email-capture.md]])
 - **Session mining**: Extracting tasks from conversations (future)
 - **Knowledge graph**: Maintaining bmem format and links (via bmem tools)

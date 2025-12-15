@@ -1,8 +1,9 @@
 ---
 name: ground-truth
-description: Establish and refine ground truth labels for evaluation datasets. Use
-  when creating, reviewing, or updating labels for any judgment/reasoning task.
-permalink: academic-ops/skills/ground-truth/skill
+description: Establish and refine ground truth labels for evaluation datasets. Use when creating, reviewing, or updating labels for any judgment/reasoning task.
+allowed-tools: Read,Grep,Glob,Edit,Write
+version: 1.0.0
+permalink: skills-ground-truth
 ---
 
 # Ground Truth Labeling

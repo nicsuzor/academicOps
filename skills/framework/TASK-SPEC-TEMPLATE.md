@@ -1,3 +1,14 @@
+---
+title: Automation Task Specification Template
+type: template
+permalink: task-spec-template
+description: Template for specifying automation tasks with clear scope, acceptance criteria, and integration tests
+tags:
+  - template
+  - task-specification
+  - automation
+---
+
 # Automation Task Specification Template
 
 Use this template to specify each automation task before implementation. This ensures clear scope, testability, and alignment with framework principles.
@@ -24,7 +35,7 @@ Use this template to specify each automation task before implementation. This en
 
 ## Acceptance Criteria (MANDATORY)
 
-**CRITICAL**: These criteria are USER-OWNED and define what "done" means. Agents CANNOT modify, weaken, or reinterpret these criteria (see AXIOMS.md #21).
+**CRITICAL**: These criteria are USER-OWNED and define what "done" means. Agents CANNOT modify, weaken, or reinterpret these criteria (see [[AXIOMS.md]] #21).
 
 ### Success Tests (Must ALL pass for "done")
 
@@ -56,7 +67,7 @@ Use this template to specify each automation task before implementation. This en
 - [Edge cases we'll handle later]
 - [Related but separate problems]
 
-**Boundary rationale**: [Why these boundaries? What makes this a "do one thing" task per [[academicOps/AXIOMS]]?]
+**Boundary rationale**: [Why these boundaries? What makes this a "do one thing" task per [[AXIOMS.md]]?]
 
 ## Dependencies
 
@@ -156,7 +167,7 @@ Each test should map to specific acceptance criteria from above. Reference which
 
 ### Error Handling Strategy
 
-**Fail-fast cases** (halt immediately, per [[academicOps/AXIOMS]]):
+**Fail-fast cases** (halt immediately, per [[AXIOMS.md]]):
 
 - [e.g., "Task file malformed"]
 - [e.g., "Required metadata missing"]
@@ -302,7 +313,7 @@ Before marking this task as complete:
 - [ ] Documentation complete (code, user, maintenance)
 - [ ] Experiment log entry created
 - [ ] No documentation conflicts introduced
-- [ ] Code follows AXIOMS.md principles (fail-fast, DRY, explicit)
+- [ ] Code follows [[AXIOMS.md]] principles (fail-fast, DRY, explicit)
 - [ ] Monitoring in place and working
 - [ ] Rollout plan executed successfully
 - [ ] Framework ROADMAP.md updated with progress

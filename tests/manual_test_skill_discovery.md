@@ -1,10 +1,22 @@
+---
+title: Manual Skill Discovery and Silent Failure Prevention Test
+type: test
+permalink: manual-skill-discovery-test
+description: Manual end-to-end test for skill discovery and fail-fast validation
+tags:
+  - testing
+  - skills
+  - manual
+  - fail-fast
+---
+
 # Manual End-to-End Test: Skill Discovery and Silent Failure Prevention
 
 ## Purpose
 
 Validate that agents correctly discover and use task skill instead of silently working around with direct file reads.
 
-**Original Problem** (LOG.md, 2025-11-10):
+**Original Problem** ([[LOG.md]], 2025-11-10):
 
 - User asked "show my urgent tasks"
 - Agent read `data/tasks/inbox/*.md` files directly
@@ -21,7 +33,7 @@ Validate that agents correctly discover and use task skill instead of silently w
 
 - Solution merged to `main` branch
 - Working from clean `main` checkout
-- Task skill exists at `bots/skills/tasks/`
+- Task skill exists at `[[AOPS]]/skills/tasks/`
 
 ## Test Procedure
 
@@ -119,4 +131,4 @@ cd /home/nic/src/writing/
 
 - This is a MANUAL test requiring human observation of agent behavior
 - Automated testing would require instrumentation of agent decision-making
-- Log any failures to `data/projects/aops/experiments/LOG.md`
+- Log any failures to `[[experiments/LOG.md]]`

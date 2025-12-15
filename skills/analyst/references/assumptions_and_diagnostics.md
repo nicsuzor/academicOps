@@ -1,3 +1,10 @@
+---
+title: Statistical Assumptions and Diagnostic Procedures
+type: reference
+permalink: analyst-ref-assumptions-diagnostics
+description: Guidance on checking and validating statistical assumptions for various analyses across test types and handling violations.
+---
+
 # Statistical Assumptions and Diagnostic Procedures
 
 This document provides comprehensive guidance on checking and validating statistical assumptions for various analyses.

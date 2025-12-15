@@ -1,3 +1,11 @@
+---
+title: Streamlit
+type: reference
+permalink: skills-analyst-streamlit
+description: Best practices and design patterns for building Streamlit dashboards for research data analysis
+tags: [streamlit, dashboard, visualization, reference]
+---
+
 # Streamlit Patterns Reference
 
 Best practices for building Streamlit dashboards in academicOps research projects.

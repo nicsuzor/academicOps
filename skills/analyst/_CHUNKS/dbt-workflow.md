@@ -1,3 +1,11 @@
+---
+title: dbt Workflow
+type: reference
+permalink: skills-analyst-dbt-workflow
+description: Workflow and best practices for creating and modifying dbt data models in layered architecture
+tags: [dbt, data-engineering, workflow, models, reference]
+---
+
 # dbt Model Workflow
 
 Create or modify dbt models following academicOps layered architecture.
@@ -166,7 +174,7 @@ dbt test --select stg_cases
 
 ## Additional Resources
 
-See `references/dbt-workflow.md` for comprehensive dbt patterns, including:
+See [[dbt-patterns]] for comprehensive dbt patterns, including:
 
 - Testing strategies (schema, singular, package tests)
 - Documentation practices

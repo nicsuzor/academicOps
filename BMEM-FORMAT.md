@@ -1,3 +1,14 @@
+---
+title: BMEM Format Specification
+type: spec
+permalink: bmem-format-spec
+description: Complete specification for basic-memory markdown format
+tags:
+  - bmem
+  - specification
+  - format
+---
+
 # Basic Memory (bmem) Format Specification
 
 ## Overview
@@ -282,5 +293,5 @@ When converting existing markdown to bmem:
 
 ## References
 
-- Based on [basic-memory](https://github.com/basicmachines-co/basic-memory) format
-- See `academicOps/docs/resources/basic-memory/ai-assistant-guide-extended.md` for full specification
+- Based on [[basic-memory|https://github.com/basicmachines-co/basic-memory]] format
+- Extended specification in [[ai-assistant-guide-extended.md]]
