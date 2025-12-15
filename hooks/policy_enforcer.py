@@ -6,8 +6,9 @@ Blocks operations that violate framework principles:
 - MINIMAL: *-GUIDE.md files, .md files > 200 lines
 - Git Safety: destructive git commands
 
-Exit codes:
-    0: Success (continue or block with systemMessage)
+Exit codes (per Claude Code docs):
+    0: Allow - JSON output on stdout is processed
+    2: Block - only stderr is read (message shown to Claude)
 """
 
 import contextlib
@@ -94,7 +95,13 @@ def main():
     if result is None:
         result = validate_safe_git_usage(tool_name, args)
 
-    # Output result (empty dict = continue)
+    # If blocking, write message to stderr and exit 2
+    # Per Claude Code docs: exit code 2 = block, only stderr is read
+    if result and result.get("continue") is False:
+        print(result.get("systemMessage", "BLOCKED by policy"), file=sys.stderr)
+        sys.exit(2)
+
+    # Allow: output JSON to stdout, exit 0
     print(json.dumps(result or {}))
     sys.exit(0)
 

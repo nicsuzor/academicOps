@@ -460,11 +460,15 @@ All hooks receive JSON on stdin with these common fields:
 }
 ```
 
-**Exit codes**:
+**Exit codes** (CRITICAL - determines what Claude Code reads):
 
-- `0` - Allow execution (hook succeeded)
-- `1` - Warn but allow (show systemMessage)
-- `2` - Block execution (show permissionDecisionReason)
+| Exit | Action | Message source | Shown to |
+|------|--------|----------------|----------|
+| `0` | Allow | JSON on **stdout** | User (verbose mode) |
+| `1` | Warn, allow | **stderr** | User AND agent |
+| `2` | Block | **stderr** | Agent only |
+
+**Key point**: Exit 2 ignores stdout entirely - only stderr is read. This is why `continue: false` in JSON doesn't block if you exit 2.
 
 ### PostToolUse Hook
 
@@ -595,7 +599,7 @@ All hooks receive JSON on stdin with these common fields:
 5. **Log for debugging** - Use separate log files (e.g., `/tmp/claude_*.json`)
 6. **Set timeouts** - Configure reasonable timeout in settings (default 2-5s)
 7. **Absolute paths** - Use `$CLAUDE_PROJECT_DIR` or absolute paths, not relative
-8. **Exit codes matter** - PreToolUse: 0=allow, 1=warn, 2=block; Others: always 0
+8. **Exit codes matter** - PreToolUse: 0=allow (stdout), 1=warn (stderr), 2=block (stderr only); Others: always 0
 
 ### Example: Minimal Hook Implementation
 

@@ -43,10 +43,20 @@ def invoke_hook(tool_name: str, args: dict) -> dict:
         check=False,
     )
 
-    # Hook should always exit 0 (errors are communicated via JSON response)
-    assert result.returncode == 0, f"Hook failed: {result.stderr}"
+    # Per Claude Code docs:
+    # - Exit 0: Allow, JSON in stdout is processed
+    # - Exit 2: Block, only stderr is read (message to Claude)
+    if result.returncode == 2:
+        # Blocking response - return synthetic response with stderr message
+        return {
+            "continue": False,
+            "systemMessage": result.stderr.strip(),
+            "_exit_code": 2,
+        }
+    elif result.returncode != 0:
+        raise AssertionError(f"Unexpected exit code {result.returncode}: {result.stderr}")
 
-    # Parse hook response
+    # Parse hook response (exit 0)
     if result.stdout.strip():
         return json.loads(result.stdout)
     return {}

@@ -129,6 +129,34 @@ cd $AOPS && uv run python skills/tasks/scripts/task_add.py \
 
 **Output**: Creates task file in `data/tasks/inbox/` with bmem-compliant format
 
+### task_item_add.py - Add Checklist Items
+
+Add Obsidian Tasks-compatible checklist items to existing tasks. Creates a `## Checklist` section if needed.
+
+```bash
+# Add simple item
+cd $AOPS && uv run python skills/tasks/scripts/task_item_add.py "task-filename.md" --item "Review draft"
+
+# Add item with due date
+cd $AOPS && uv run python skills/tasks/scripts/task_item_add.py "20251215-abc123" --item "Send email" --due 2025-01-15
+
+# Add high-priority item
+cd $AOPS && uv run python skills/tasks/scripts/task_item_add.py "#3" --item "Follow up" --priority high
+
+# Mark item as already done
+cd $AOPS && uv run python skills/tasks/scripts/task_item_add.py "task.md" --item "Completed step" --done
+```
+
+**Parameters**:
+- `task_id`: Task identifier (filename, task ID, or #index from current view)
+- `--item`: Item description (required)
+- `--due`: Due date in YYYY-MM-DD format
+- `--priority`: Priority level (high, medium, low)
+- `--done`: Mark item as already completed
+- `--data-dir`: Custom data directory (for testing)
+
+**Output**: Appends checklist item to task's `## Checklist` section
+
 ### task_update.py - Update Existing Tasks
 
 Modify fields on existing tasks (priority, title, project, tags, etc.).
@@ -164,6 +192,44 @@ cd $AOPS && uv run python skills/tasks/scripts/task_update.py "task.md" --add-ta
 - **P1/1**: High (this week) - deadline within 7 days
 - **P2/2**: Medium (within 2 weeks)
 - **P3/3**: Low (longer timeline)
+
+## Checklist Items (Dataview Format)
+
+Tasks can contain checklists for tracking sub-actions. We use [Dataview inline fields](https://publish.obsidian.md/tasks/Reference/Task+Formats/About+Task+Formats) for Obsidian compatibility.
+
+### Checklist Syntax
+
+```markdown
+## Checklist
+
+- [ ] Uncompleted item
+- [x] Completed item [completion:: 2025-01-10]
+- [ ] Item with due date [due:: 2025-01-15]
+- [ ] High priority item [priority:: high]
+- [ ] Full example [priority:: medium] [due:: 2025-01-20]
+- [/] In progress item
+- [-] Cancelled item
+```
+
+### Dataview Fields
+
+| Field | Format | Example |
+|-------|--------|---------|
+| Due date | `[due:: YYYY-MM-DD]` | `[due:: 2025-01-15]` |
+| Completion | `[completion:: YYYY-MM-DD]` | `[completion:: 2025-01-10]` |
+| Priority | `[priority:: VALUE]` | `[priority:: high]` |
+
+### When to Use Checklists
+
+Use checklist items (not separate tasks) when:
+- Sub-actions belong to a single deliverable
+- Items share context/deadline with parent task
+- Tracking granular progress on a larger task
+
+Create separate tasks when:
+- Items have independent deadlines
+- Different projects or contexts
+- Need separate priority/categorization
 
 ## Task Workflow
 
