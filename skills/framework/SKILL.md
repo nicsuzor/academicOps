@@ -4,7 +4,7 @@ description: Categorical framework governance. Treats every change as a universa
   rule. Delegates user data operations to skills.
 allowed-tools: Read,Grep,Glob,Edit,Write,Skill,AskUserQuestion
 version: 4.1.0
-permalink: skills-framework-skill-1
+permalink: skills-framework-skill
 ---
 
 # Framework Conventions Skill
@@ -173,7 +173,7 @@ Scope: [files/directories affected]
 ## Framework Paths
 
 ```
-$AOPS/                     # Framework repo (projects/aops)
+$AOPS/                     # Framework repo (academicOps)
 ├── AXIOMS.md              # Inviolable principles
 ├── skills/                # Agent skills (invoke via Skill tool)
 ├── hooks/                 # Lifecycle automation
