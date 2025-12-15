@@ -11,6 +11,7 @@ $AOPS/
 ├── FRAMEWORK.md                 # Resolved paths for this session (injected at session start)
 ├── README.md                    # Brief overview, feature inventory
 ├── INDEX.md                     # THIS FILE - complete file tree
+├── RULES.md                     # Current enforcement rules (auto-generated)
 ├── CLAUDE.md                    # Repo instructions (@ syntax auto-loads)
 ├── BMEM-*.md                    # bmem documentation (4 files)
 ├── pyproject.toml               # Python project config

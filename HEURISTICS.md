@@ -153,6 +153,23 @@ These are empirically derived rules that implement AXIOMS in practice. Unlike ax
 
 ---
 
+## H9: Skills Contain No Dynamic Content
+
+**Statement**: Skill files must contain only static instructions and patterns. Current state, configuration snapshots, or data that changes must live in `$ACA_DATA/`.
+
+**Rationale**: Skills are distributed as read-only files. Dynamic content in skills (a) violates AXIOMS #14, (b) drifts from actual state, (c) requires manual sync processes. The authoritative source for "what is configured" is the configuration itself, not a skill's description of it.
+
+**Evidence**:
+- 2025-12-15: Skill documentation listed example deny rules that didn't match actual settings.json. Agent proceeded with outdated understanding of what was blocked.
+
+**Confidence**: High
+
+**Implements**: AXIOMS #14 (Skills are Read-Only), #9 (DRY)
+
+**Corollary**: When agents need current enforcement state, they must read the actual sources (`settings.json`, `policy_enforcer.py`, `.pre-commit-config.yaml`), not skill documentation about them.
+
+---
+
 ## Revision Protocol
 
 To adjust heuristics based on new evidence:

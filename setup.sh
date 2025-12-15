@@ -103,10 +103,13 @@ create_symlink() {
             ln -sf "$target" "$link_path"
         fi
     elif [ -e "$link_path" ]; then
-        # Exists but not a symlink
-        echo -e "${RED}✗ $link_path exists but is not a symlink${NC}"
-        echo "  Please backup and remove it manually, then re-run this script"
-        return 1
+        # Exists but not a symlink - backup and replace
+        local backup_path="${link_path}.backup.$(date +%Y%m%d_%H%M%S)"
+        echo -e "${YELLOW}  $name exists but is not a symlink - backing up${NC}"
+        mv "$link_path" "$backup_path"
+        echo "    Backed up to: $backup_path"
+        ln -s "$target" "$link_path"
+        echo -e "${GREEN}✓ Created $name → $target${NC}"
     else
         # Doesn't exist
         ln -s "$target" "$link_path"

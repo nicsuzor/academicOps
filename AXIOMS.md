@@ -61,9 +61,10 @@
 
 17. **VERIFY FIRST** - Check actual state, never assume
 
-18. **NO EXCUSES** - Never close issues or claim success without confirmation. No error is somebody else's problem.
+18. **NO EXCUSES - EVERYTHING MUST WORK** - Never close issues or claim success without confirmation. No error is somebody else's problem.
     - If asked to "run X to verify Y", success = X runs successfully
     - Never rationalize away requirements. If a test fails, fix it or ask for help
+    - **Corollary**: Reporting failure is not completing the task. If infrastructure fails, demand it be fixed and verify it works before moving on. No partial success.
 
 19. **WRITE FOR THE LONG TERM** - NEVER create single-use scripts or tests. Build infrastructure that guarantees replicability.
 

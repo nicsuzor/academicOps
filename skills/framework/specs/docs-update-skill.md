@@ -1,6 +1,6 @@
 # Task: Documentation Update Skill
 
-**Date**: 2025-11-26
+**Date**: 2025-11-26 (updated 2025-12-15)
 **Stage**: 2 (Scripted Tasks)
 **Priority**: P1 (Critical for maintaining framework integrity)
 
@@ -8,22 +8,24 @@
 
 **What manual work are we automating?**
 
-Currently, keeping README.md up to date requires manual verification:
-- Checking if new files are documented in the file tree
+Currently, keeping state files up to date requires manual verification:
+- Checking if new files are documented in README.md/INDEX.md
 - Ensuring the tree structure matches actual filesystem
-- Detecting documentation drift between README.md and reality
+- Detecting documentation drift between state files and reality
 - Identifying conflicts between documentation files
 - Verifying all references resolve correctly
+- **Extracting current enforcement rules** from settings.json, hooks, and pre-commit
 
 This is error-prone and time-consuming, leading to documentation drift.
 
 **Why does this matter?**
 
-README.md is intended to be the authoritative source of truth for framework structure. When it's out of date:
+State files (README.md, INDEX.md, RULES.md) are authoritative sources of truth. When out of date:
 - New developers can't find files
 - Documentation conflicts go undetected
 - SSoT principle is violated
 - Trust in documentation erodes
+- **Agents proceed with outdated enforcement understanding** (per H9)
 
 **Who benefits?**
 
@@ -45,28 +47,29 @@ Nic and any future framework maintainers - ensures documentation stays trustwort
 
 ### In Scope
 
+**README.md / INDEX.md** (file tree state):
 - Scan filesystem to discover all files in academicOps repository
-- Parse README.md to extract documented file tree
+- Parse README.md/INDEX.md to extract documented file tree
 - Compare actual vs documented state
-- Generate concise annotated file tree structure:
-  - Only include files/directories that have inline annotations explaining their purpose
-  - Group similar files (e.g., `test_*.py` instead of listing each)
-  - Keep README.md under 300 lines
-- Detect missing entries in documentation
-- Detect outdated entries (documented files that don't exist)
+- Generate concise annotated file tree structure
+- Detect missing/outdated entries
 - Validate all wikilink references resolve
-- Update README.md with corrected file tree
-- Detect conflicts between authoritative sources (README, AXIOMS, etc.)
+
+**RULES.md** (enforcement state):
+- Extract deny rules from `$AOPS/config/claude/settings.json` → `permissions.deny`
+- Extract PreToolUse blocks from `$AOPS/hooks/policy_enforcer.py`
+- Extract pre-commit hooks from `.pre-commit-config.yaml`
+- Regenerate RULES.md with current state
+- Update timestamp
 
 ### Out of Scope
 
-- Updating other documentation files (only README.md)
-- Checking content quality (only structure and references)
+- Checking content quality (only structure and state)
 - Validating code correctness
 - Performance optimization of large repos (academicOps is small)
 - Auto-generating file descriptions (human-written comments preserved)
 
-**Boundary rationale**: This skill does ONE thing: ensure README.md file tree is complete and accurate. Content quality and other documentation maintenance are separate concerns.
+**Boundary rationale**: This skill maintains state files that reflect reality. It does not validate content quality or code correctness.
 
 ## Dependencies
 
