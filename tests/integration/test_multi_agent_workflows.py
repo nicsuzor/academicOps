@@ -120,28 +120,29 @@ def test_general_purpose_agent_spawns(claude_headless_tracked) -> None:
 
 @pytest.mark.integration
 @pytest.mark.slow
-def test_dev_agent_spawns_for_code_task(claude_headless_tracked) -> None:
-    """Test that dev agent can be spawned for code-related tasks.
+def test_python_dev_skill_invoked_for_code_task(claude_headless_tracked) -> None:
+    """Test that python-dev skill is invoked for code-related tasks.
 
-    The dev agent routes to python-dev or feature-dev skills.
+    For Python development, we use general-purpose subagent with python-dev skill.
     """
     result, session_id, tool_calls = claude_headless_tracked(
-        "Use the Task tool with subagent_type='dev' to analyze the code "
-        "structure of hooks/prompt_router.py",
+        "Use the Task tool with subagent_type='general-purpose' to analyze the code "
+        "structure of hooks/prompt_router.py. The subagent should invoke "
+        "Skill(skill='python-dev') first.",
         timeout_seconds=180,
     )
 
     assert result["success"], f"Execution failed: {result.get('error')}"
     assert tool_calls, f"No tool calls recorded for session {session_id}"
 
-    # Verify Task tool was used (with dev agent)
+    # Verify Task tool was used (with general-purpose agent)
     task_used = _task_tool_used(tool_calls)
 
     if not task_used:
         tool_names = [c["name"] for c in tool_calls]
         pytest.fail(
-            f"Task tool NOT used for dev agent.\n"
-            f"Expected: Task(subagent_type='dev')\n"
+            f"Task tool NOT used for code task.\n"
+            f"Expected: Task(subagent_type='general-purpose')\n"
             f"Actual tool calls: {tool_names}"
         )
 

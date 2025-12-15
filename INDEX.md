@@ -101,7 +101,6 @@ $AOPS/
 │   └── prompts/user-prompt-submit.md
 │
 ├── agents/                      # Spawnable subagents (Task tool)
-│   ├── dev.md                   # → python-dev skill
 │   ├── bmem-validator.md        # Parallel bmem validation
 │   ├── email-extractor.md       # Email archive processing
 │   └── task-viz.md              # Task graph → Excalidraw
@@ -154,8 +153,9 @@ $AOPS/
 
 | Agent | Routes To |
 |-------|-----------|
-| dev | python-dev |
 | bmem-validator | bmem |
+
+**Note**: For Python development, use `general-purpose` subagent and invoke `Skill(skill="python-dev")` directly.
 
 ## User Data ($ACA_DATA)
 

@@ -41,10 +41,10 @@ YOU are the bulwark standing between us and chaos. Other agents can be good, but
 2. Small TDD cycles (test → code → commit+fix → bmem → push)
 3. Done = committed + documented + pushed
 
-**MANDATORY: Development work MUST use appropriate skills:**
-- Python development → `python-dev` skill (via `dev` agent)
-- Feature development → `feature-dev` skill (via `dev` agent)
-- NEVER allow subagents to write code without invoking the proper skill
+**MANDATORY: Development work MUST invoke the python-dev skill:**
+- Python development → `Skill(skill="python-dev")` - ALWAYS invoke before writing code
+- Feature development → `Skill(skill="feature-dev")` for full workflow
+- NEVER allow subagents to write code without invoking the `python-dev` skill first
 
 All steps below enforce this structure. **No exceptions.**
 
@@ -66,25 +66,25 @@ All steps below enforce this structure. **No exceptions.**
 **You TIGHTLY CONTROL what the subagent does:**
 
 - Give COMPLETE, SPECIFIC instructions for each atomic step
-- TELL dev which tools to use: "Use Read to..., then Edit to..., then Bash to run..."
-- REQUIRE skill usage: "Use test-writing skill to..." / "Use git-commit skill to..."
+- TELL subagent which tools to use: "Use Read to..., then Edit to..., then Bash to run..."
+- REQUIRE skill invocation: "First invoke Skill(skill='python-dev'), then..."
 - Wait for subagent to report back after each step
 - Verify results before proceeding to next step
 - NEVER let subagent do multiple steps at once
 
-### Delegation Balance: What to Specify vs What Dev Decides
+### Delegation Balance: What to Specify vs What Subagent Decides
 
 **YOU (Supervisor) specify**:
 
 - ✅ Which file to modify
 - ✅ Which tools to use (Read, Edit, Bash, Grep)
-- ✅ Which skills to invoke (test-writing, git-commit)
+- ✅ Which skill to invoke (`python-dev` for code work)
 - ✅ What behavior/functionality is needed
 - ✅ What constraints apply (minimal change, fail-fast, no defaults)
 - ✅ General location (function name, approximate line number)
 - ✅ Success criteria (what test should pass, what output expected)
 
-**DEV AGENT decides**:
+**SUBAGENT decides**:
 
 - ✅ Exact code implementation
 - ✅ Specific variable names and logic
@@ -93,7 +93,7 @@ All steps below enforce this structure. **No exceptions.**
 
 **Examples**:
 
-❌ **TOO DETAILED** (you're writing code for dev):
+❌ **TOO DETAILED** (you're writing code for subagent):
 
 ```
 "Edit src/auth.py line 45 and add:
@@ -102,16 +102,18 @@ if token is None:
 "
 ```
 
-❌ **TOO VAGUE** (dev doesn't know what to do):
+❌ **TOO VAGUE** (subagent doesn't know what to do):
 
 ```
 "Fix the authentication"
 ```
 
-✅ **CORRECT BALANCE** (clear guidance, dev implements):
+✅ **CORRECT BALANCE** (clear guidance, subagent implements):
 
 ```
 "Fix token validation in src/auth.py around line 45.
+
+First: Invoke Skill(skill='python-dev') to load coding standards.
 
 Problem: token.expiry accessed when token is None
 Fix needed: Add explicit None check before accessing expiry
@@ -122,7 +124,7 @@ Tools: Read src/auth.py to understand context, Edit to add check
 You figure out the exact implementation. Report what you changed."
 ```
 
-**When tests fail**: YOU decide the fix strategy, give subagent specific instructions, iterate until passing. **When code written**: YOU enforce quality check via git-commit skill before allowing next step.
+**When tests fail**: YOU decide the fix strategy, give subagent specific instructions, iterate until passing. **When code written**: YOU enforce quality check before allowing next step.
 
 ## MANDATORY TDD WORKFLOW
 
@@ -206,13 +208,23 @@ Update TodoWrite with micro-tasks.
 
 **1.1 Instruct subagent to Create ONE Failing Test**
 
-**MANDATORY: Use dev agent which invokes python-dev skill**
+**MANDATORY: Subagent must invoke `Skill(skill="python-dev")` FIRST**
 
 **CRITICAL**: Test must implement acceptance criteria from Step 0, not agent-defined criteria.
 
+**Test Creation Pre-Check (MANDATORY)** - Before delegating test creation, verify task does NOT involve:
+- ❌ Creating new databases/collections
+- ❌ Running vectorization/indexing pipelines
+- ❌ Creating new configs
+- ❌ Generating fake/mock data
+
+If task violates these rules: **STOP**, report violation, request clarification on using existing test infrastructure.
+
 ```
-Task(subagent_type="dev", prompt="
-Create ONE failing test using python-dev skill.
+Task(subagent_type="general-purpose", prompt="
+Create ONE failing test.
+
+**FIRST**: Invoke Skill(skill='python-dev') to load coding standards and test patterns.
 
 Acceptance criterion being tested: [SPECIFIC acceptance criterion from Step 0]
 Behavior to test: [SPECIFIC behavior for this cycle]
@@ -235,7 +247,7 @@ The python-dev skill will guide you through:
 - External API mocking patterns (ONLY for external APIs)
 - Arrange-Act-Assert structure
 
-After python-dev skill completes, STOP and report:
+After completing, STOP and report:
 - Test location: tests/test_[name].py::test_[function_name]
 - Run command: uv run pytest [test location] -xvs
 - Actual failure message received
@@ -245,7 +257,7 @@ After python-dev skill completes, STOP and report:
 
 **Verification**:
 
-- [ ] Dev agent invoked python-dev skill (not just "created test")
+- [ ] Subagent invoked `Skill(skill="python-dev")` (not just "created test")
 - [ ] Test uses EXISTING fixtures from conftest.py (not new ones)
 - [ ] Test connects to EXISTING live data (not new databases)
 - [ ] Test does NOT create new configs or run indexing pipelines
@@ -257,7 +269,7 @@ After python-dev skill completes, STOP and report:
 
 Wait for subagent report. Check:
 
-- [ ] Dev agent used python-dev skill? (required)
+- [ ] Subagent invoked `Skill(skill="python-dev")`? (required)
 - [ ] **Test implements specific acceptance criterion from Step 0?** (not agent-defined)
 - [ ] Uses real fixtures? (no fake data)
 - [ ] No mocked internal code? (only external APIs)
@@ -279,11 +291,13 @@ If test setup broken: Instruct subagent to fix setup, re-verify.
 
 **2.1 Instruct subagent to Implement MINIMAL Fix**
 
-**IMPORTANT**: Tell dev which tools to use and what to accomplish, NOT the exact code to write.
+**IMPORTANT**: Tell subagent which tools to use and what to accomplish, NOT the exact code to write.
 
 ```
-Task(subagent_type="dev", prompt="
-Implement MINIMAL code using python-dev skill to make this ONE test pass:
+Task(subagent_type="general-purpose", prompt="
+Implement MINIMAL code to make this ONE test pass.
+
+**FIRST**: Invoke Skill(skill='python-dev') to load coding standards.
 
 Test: tests/test_[name].py::[function]
 Error message: [what test shows is missing]
@@ -322,7 +336,7 @@ After implementation, STOP and report:
 - Specific variable names
 - Implementation details
 
-**Dev agent figures out**:
+**Subagent figures out**:
 
 - Exact code implementation
 - Best approach within constraints
@@ -347,8 +361,10 @@ DO NOT ASK USER. YOU handle this:
 **Instruct subagent with clear guidance (not exact code):**
 
 ```
-Task(subagent_type="dev", prompt="
-Fix this test failure:
+Task(subagent_type="general-purpose", prompt="
+Fix this test failure.
+
+**FIRST**: Invoke Skill(skill='python-dev') to load coding standards.
 
 Test: [test name]
 Error: [exact error message]
@@ -385,17 +401,19 @@ Figure out the exact implementation. Report back with:
 
 **3.1 Instruct subagent to Validate and Commit**
 
-**MANDATORY: Use feature-dev skill's validation workflow**
+**MANDATORY: Validate code quality before committing**
 
 ```
-Task(subagent_type="dev", prompt="
-Use feature-dev skill validation to check code quality and commit this change.
+Task(subagent_type="general-purpose", prompt="
+Validate code quality and commit this change.
+
+**FIRST**: Invoke Skill(skill='python-dev') to load quality standards.
 
 Changes summary: [what was implemented in this TDD cycle]
 Test: [test name that now passes]
 Files modified: [list of files changed]
 
-The feature-dev skill will validate:
+Validation checklist (python-dev skill enforces):
 1. Code quality against fail-fast principles (no .get(key, default), no defaults, no fallbacks)
 2. Test patterns (real fixtures used, no mocked internal code)
 3. Type safety and code structure
@@ -425,18 +443,20 @@ After validation completes, report:
 
 **Verification**:
 
-- [ ] Dev agent reported validation result (not just "committed")
+- [ ] Subagent reported validation result (not just "committed")
 - [ ] If PASS: commit hash provided
 - [ ] If FAIL: violations listed with specific file:line numbers
-- [ ] Dev stopped and waited for instructions (didn't attempt fixes)
+- [ ] Subagent stopped and waited for instructions (didn't attempt fixes)
 
 **3.2 IF Quality Check Fails → Fix Protocol**
 
 Instruct subagent to fix violations:
 
 ```
-Task(subagent_type="dev", prompt="
-Use python-dev skill to fix these code quality violations:
+Task(subagent_type="general-purpose", prompt="
+Fix these code quality violations.
+
+**FIRST**: Invoke Skill(skill='python-dev') to load coding standards.
 
 Violations:
 - [specific violation 1 with file:line]
@@ -468,7 +488,7 @@ Before proceeding to next cycle:
 **If Step 3 validation not yet completed**: DO NOT proceed to 4.2. Return to Step 3.1.
 
 ```
-Task(subagent_type="dev", prompt="
+Task(subagent_type="general-purpose", prompt="
 Push committed changes to remote repository.
 
 Tools to use:
@@ -616,7 +636,7 @@ Provide user with:
 
 1. **NEVER skip steps** - Every step in TDD workflow is mandatory
 2. **ONE atomic task at a time** - subagent does single step, reports back
-3. **REQUIRE skill usage** - Dev agent must invoke python-dev or feature-dev skills as appropriate
+3. **REQUIRE skill invocation** - Subagent must invoke `Skill(skill="python-dev")` before any code work
 4. **Iterate on failures** - Do NOT ask user, YOU decide fix and delegate
 5. **Quality gates enforced** - No commits without passing tests and validation
 6. **Tight control maintained** - subagent never does multiple steps without reporting back
@@ -636,13 +656,7 @@ Provide user with:
 - framework: Framework maintenance and issue logging
 - analyst: Research data analysis with dbt and Streamlit
 
-**📖 agents/dev.md** - Dev agent routing logic
-
-- Routes development work to python-dev or feature-dev
-- Single-step execution pattern
-- Tool usage guidelines
-
-**Available tools for dev agent**:
+**Available tools for subagents**:
 
 - Read, Write, Edit (file operations)
 - Bash (run commands, tests)
@@ -652,7 +666,6 @@ Provide user with:
 **Load these references when**:
 
 - Unsure which skill to use → Load skills/README.md
-- Need dev agent behavior → Load agents/dev.md
 - Framework issues → Use framework skill
 
 **NOTE**: If you notice gaps or outdated information, use framework skill to log issues.
@@ -696,15 +709,15 @@ When subagent returns 0 tokens:
 
 **Implementation**:
 
-- `dev`: Routes to python-dev or feature-dev skills; writes, refactors, debugs code following TDD
+- `general-purpose`: Use for implementation work; MUST invoke `Skill(skill="python-dev")` first
 
 **Documentation & Context**:
 
 - `tasks`: Task management and documentation (use for session context capture)
 
-**Available Skills** (invoked by agents as needed):
+**Available Skills** (invoked by subagents via Skill tool):
 
-- `python-dev`: Production Python development (testing, implementation, refactoring)
+- `python-dev`: Production Python development (testing, implementation, refactoring) - **MANDATORY for code work**
 - `feature-dev`: Full feature development workflow with TDD
 - `tasks`: Task management operations
 - `bmem`: Knowledge base operations
@@ -809,18 +822,20 @@ Stage 0: Planning
   3. Verify both OAuth and password auth work
 
 Stage 1: Test-First (Task 1)
-- Invoking test-writing skill for OAuth login test
+- Invoking subagent with instruction to invoke python-dev skill first
+- Subagent invokes Skill(skill="python-dev"), creates test
 - Test created: test_oauth_login_with_valid_token
 - Running test: FAILS (expected - token validation broken)
 
 Stage 2: Implementation (Task 1)
-- Invoking dev subagent to fix token validation in auth/oauth.py
+- Invoking subagent to fix token validation in auth/oauth.py
+- Subagent invokes Skill(skill="python-dev"), implements fix
 - Minimal change: Updated token decode to handle OAuth provider format
 - Running tests: test_oauth_login_with_valid_token PASSES
 - All other tests: PASS (no regressions)
 
 Stage 3: Quality Check & Commit
-- Using git-commit skill to validate and commit
+- Subagent validates against python-dev standards and commits
 - Quality check: PASSED
 - Commit created: a1b2c3d
 - Pushing to remote: SUCCESS

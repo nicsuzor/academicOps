@@ -67,9 +67,10 @@ Academic support framework for Claude Code. Minimal, fight bloat aggressively.
 
 | Agent | Purpose | Invocation |
 |-------|---------|------------|
-| dev | Routes to python-dev skill | `Task(subagent_type="dev")` |
 | Explore | Fast codebase exploration | `Task(subagent_type="Explore")` |
 | Plan | Implementation planning | `Task(subagent_type="Plan")` |
+
+**Note**: For Python development, use `general-purpose` subagent and invoke `Skill(skill="python-dev")` first.
 
 ## Testing
 
