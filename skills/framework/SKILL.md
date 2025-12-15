@@ -1,9 +1,10 @@
 ---
 name: framework
-description: Categorical framework governance. Treats every change as a universal rule. Delegates user data operations to skills.
+description: Categorical framework governance. Treats every change as a universal
+  rule. Delegates user data operations to skills.
 allowed-tools: Read,Grep,Glob,Edit,Write,Skill,AskUserQuestion
 version: 4.1.0
-permalink: skills-framework-skill
+permalink: skills-framework-skill-1
 ---
 
 # Framework Conventions Skill
@@ -172,7 +173,7 @@ Scope: [files/directories affected]
 ## Framework Paths
 
 ```
-$AOPS/                     # Framework repo (academicOps)
+$AOPS/                     # Framework repo (projects/aops)
 ├── AXIOMS.md              # Inviolable principles
 ├── skills/                # Agent skills (invoke via Skill tool)
 ├── hooks/                 # Lifecycle automation
