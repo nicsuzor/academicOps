@@ -141,7 +141,15 @@ def discover_projects(repo_path: Path, goal_title_to_id: dict[str, str]) -> tupl
     alias_to_permalink = {}
 
     if projects_dir.exists():
-        for f in projects_dir.glob("*.md"):
+        # Find both projects/*.md and projects/<slug>/<slug>.md
+        project_files = list(projects_dir.glob("*.md"))
+        for subdir in projects_dir.iterdir():
+            if subdir.is_dir():
+                slug_file = subdir / f"{subdir.name}.md"
+                if slug_file.exists():
+                    project_files.append(slug_file)
+
+        for f in project_files:
             content = f.read_text()
 
             # Extract YAML frontmatter
