@@ -16,7 +16,7 @@ Document agent behavior patterns with appropriate abstraction level routing. Cre
 **Always first**: Create append-only entry in `$ACA_DATA/projects/aops/learning/LOG.md`
 
 ```markdown
-### YYYY-MM-DD HH:MM | [session-id-prefix or "manual"]
+### YYYY-MM-DD HH:MM | [category] | [descriptive-slug]
 
 **Error**: [brief description]
 **Investigation**: [for file errors - see File Error Investigation Protocol; omit for non-file errors]
@@ -24,6 +24,15 @@ Document agent behavior patterns with appropriate abstraction level routing. Cre
 **Abstraction Level**: component | pattern | systemic
 **Related**: [file path if matched, "pending" if creating new]
 ```
+
+**Entry title format**:
+- **Category**: The failure mode category matching target learning file:
+  - `skill-bypass` → skill-bypass.md
+  - `verification-skip` → verification-skip.md
+  - `instruction-ignore` → instruction-ignore.md
+  - `validation-bypass` → validation-bypass.md
+  - `external` → external issue, not framework
+- **Descriptive slug**: kebab-case description of what happened (e.g., `task-file-direct-write`, `framework-command-namespace-collision`)
 
 **For file-related errors**: Complete the File Error Investigation Protocol (below) BEFORE filling in Root Cause.
 
@@ -141,6 +150,20 @@ Or if inconclusive:
 - Attribute without evidence
 - Skip investigation for file-related errors
 
+## Root Cause Verification Requirement
+
+**For ANY root cause claim**: You must have direct evidence, not inference.
+
+❌ **WRONG**: "Investigation confirmed hook IS working (file not written)" - without actually checking if file exists
+✅ **RIGHT**: Run `ls -la <path>` or equivalent verification before claiming outcome
+
+**Claims requiring verification**:
+- "File was/wasn't written" → Check with `ls -la`
+- "Hook blocked/allowed operation" → Check both hook output AND actual outcome
+- "Error was X not Y" → Reproduce or cite exact error message
+
+**If you cannot verify, say "Unverified" in Root Cause field.**
+
 ---
 
 ## Abstraction Level Judgment
@@ -160,21 +183,21 @@ Examples:
 
 | Tags | Target File |
 |------|-------------|
-| #verify-first, #overconfidence, #validation, #incomplete-task | `verification-discipline.md` |
-| #instruction-following, #scope, #literal, #user-request | `instruction-following.md` |
-| #git-safety, #no-verify, #validation-bypass, #pre-commit | `git-and-validation.md` |
-| #skill-invocation, #tool-usage, #mcp, #bmem-integration | `skill-and-tool-usage.md` |
+| #verify-first, #overconfidence, #validation, #incomplete-task | `verification-skip.md` |
+| #instruction-following, #scope, #literal, #user-request | `instruction-ignore.md` |
+| #git-safety, #no-verify, #validation-bypass, #pre-commit | `validation-bypass.md` |
+| #skill-invocation, #tool-usage, #mcp, #bmem-integration | `skill-bypass.md` |
 | #tdd, #testing, #test-contract, #fake-data | `test-and-tdd.md` |
 | #success, #tdd-win, #workflow-success | `technical-wins.md` |
 
-**Default**: `verification-discipline.md` if no clear match.
+**Default**: `verification-skip.md` if no clear match.
 
 ## Entry Formats
 
 ### LOG.md Entry (Phase 1)
 
 ```markdown
-### YYYY-MM-DD HH:MM | session-prefix
+### YYYY-MM-DD HH:MM | [category] | [descriptive-slug]
 
 **Error**: [brief description]
 **Investigation**: [for file errors - results of investigation protocol; omit for non-file errors]
@@ -182,6 +205,8 @@ Examples:
 **Abstraction Level**: component | pattern | systemic
 **Related**: bugs/component.md | learning/theme.md | experiments/file.md
 ```
+
+Categories: `skill-bypass`, `verification-skip`, `instruction-ignore`, `validation-bypass`, `external`
 
 ### Learning File Entry (Pattern Level)
 
@@ -221,6 +246,72 @@ tags:
 
 Follow `$ACA_DATA/projects/aops/experiments/TEMPLATE.md`
 
+## Log Consolidation Workflow
+
+Periodically consolidate LOG.md entries into thematic learning files and archive processed entries.
+
+### Consolidation Triggers
+
+Any of these should trigger consolidation:
+
+1. **Manual**: User runs `/consolidate` or asks to "consolidate logs"
+2. **Threshold**: LOG.md exceeds 20 entries OR 14 days since last consolidation
+3. **Pattern detection**: Same error type (by Related field) appears 3+ times
+
+### Consolidation Process
+
+1. **Read LOG.md** - Load all entries
+2. **Group by Related field** - Cluster entries pointing to same learning file
+3. **For each cluster with 2+ entries**:
+   - Extract common pattern across entries
+   - Check if pattern already exists in target learning file
+   - If new pattern: append to learning file with consolidated evidence
+   - If existing pattern: add dated observations to Evidence section
+4. **Archive processed entries** - Move to `LOG-ARCHIVE.md` with consolidation date
+5. **Update LOG.md** - Remove archived entries, keep header
+
+### Consolidated Entry Format (for learning files)
+
+```markdown
+## [Pattern Title]
+
+**Date**: [consolidation date] | **Type**: Consolidated | **Pattern**: #tag1 #tag2
+
+**Observations** (N instances):
+- [date]: [brief description]
+- [date]: [brief description]
+
+**Common Factor**: [what these instances share]
+**Lesson**: [actionable takeaway]
+```
+
+### Archive Format (LOG-ARCHIVE.md)
+
+```markdown
+---
+title: Framework Learning Log Archive
+type: log-archive
+---
+
+# Log Archive
+
+## Consolidated [YYYY-MM-DD]
+
+[Entries that were consolidated on this date, preserving original format]
+
+---
+```
+
+### Consolidation Output
+
+After consolidation, report:
+- Entries processed: N
+- Patterns identified: N
+- Learning files updated: [list]
+- Entries archived: N
+
+---
+
 ## Input Types
 
 1. **Verbal description** - User describes what happened
@@ -253,12 +344,12 @@ When input contains `adjust-heuristic H[n]:`:
 User: /log agent ignored my explicit request to run ALL tests, only ran 3
 
 Phase 1 - LOG.md:
-### 2025-12-14 08:45 | abc123
+### 2025-12-14 08:45 | instruction-ignore | partial-test-run-despite-all-request
 
 **Error**: Agent ran only 3 tests when explicitly asked to run ALL
 **Root Cause**: Agent not attending to explicit scope instruction
 **Abstraction Level**: pattern
-**Related**: learning/instruction-following.md
+**Related**: learning/instruction-ignore.md
 
 Phase 2 - Experiment Match:
 Search experiments/ for "instruction following" → no active experiment
@@ -266,8 +357,8 @@ Search experiments/ for "instruction following" → no active experiment
 Phase 3 - Route:
 - Level: pattern (behavioral, not script-specific)
 - Tags: #instruction-following #scope
-- Target: instruction-following.md
+- Target: instruction-ignore.md
 - Append entry
 
-Report: "Logged to instruction-following.md - recurring pattern of agents not attending to explicit scope instructions"
+Report: "Logged to instruction-ignore.md - recurring pattern of agents not attending to explicit scope instructions"
 ```

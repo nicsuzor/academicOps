@@ -2,7 +2,7 @@
 name: framework
 description: Categorical framework governance. Treats every change as a universal rule. Delegates user data operations to skills.
 allowed-tools: Read,Grep,Glob,Edit,Write,Skill,AskUserQuestion
-version: 4.0.0
+version: 4.1.0
 permalink: skills-framework-skill
 ---
 
@@ -57,6 +57,57 @@ If ANY check fails → component is non-compliant → refactor or delete.
 - Two axioms appear to conflict
 - Placement is ambiguous (could go in multiple locations)
 - New pattern with no existing convention
+
+## Framework Introspection (MANDATORY - FIRST STEP)
+
+**Before ANY action**, load the framework structure and verify consistency.
+
+### Step 1: Load Authoritative Documents
+
+Read these files in order (use Read tool):
+
+1. `$AOPS/AXIOMS.md` - Inviolable principles
+2. `$AOPS/HEURISTICS.md` - Empirically validated guidance
+3. `$AOPS/INDEX.md` - Authoritative file tree
+4. `$ACA_DATA/projects/aops/VISION.md` - Goals and scope
+5. `$ACA_DATA/projects/aops/ROADMAP.md` - Current status
+
+**Do NOT proceed until all 5 documents are loaded.** This ensures every action is informed by the complete framework state.
+
+### Step 2: Run Consistency Checks
+
+Before accepting ANY proposed change, verify ALL of:
+
+| Check | Question | Failure = HALT |
+|-------|----------|----------------|
+| Axiom derivation | Which axiom(s) justify this change? | Cannot identify axiom |
+| INDEX placement | Does INDEX.md define where this belongs? | Location not in INDEX |
+| DRY compliance | Is this information stated exactly once? | Duplicate exists elsewhere |
+| VISION alignment | Does VISION.md support this capability? | Outside stated scope |
+| Namespace uniqueness | Does this name conflict with existing skill/command/hook/agent? | Name collision detected |
+
+### Step 3: HALT Protocol on Inconsistency
+
+If ANY check fails:
+
+1. **STOP** - Do not proceed with the change
+2. **REPORT** - State exactly which check failed and why
+3. **ASK** - Use AskUserQuestion: "How should we resolve this inconsistency?"
+4. **WAIT** - Do not attempt workarounds or auto-fixes
+
+**Example HALT output:**
+```
+FRAMEWORK INTROSPECTION FAILED
+
+Check failed: DRY compliance
+Issue: Proposed content duplicates information in $AOPS/README.md lines 45-52
+Options:
+1. Reference existing content instead of duplicating
+2. Move authoritative content to new location
+3. Proceed anyway (requires explicit user approval)
+```
+
+---
 
 ## Categorical Imperative (MANDATORY)
 
@@ -287,12 +338,14 @@ New files PROHIBITED unless:
 
 ## Component Patterns
 
+**Testing requirement**: All framework tests must be **e2e against production code with live data**. No unit tests, no mocks of internal code. See `references/testing-with-live-data.md`.
+
 ### Adding a Skill
 
 1. Create `skills/<name>/SKILL.md`
 2. Follow YAML frontmatter format (see existing skills)
 3. Keep under 500 lines
-4. Add integration test
+4. Add e2e test (NOT unit test - test real behavior with real data)
 
 ### Adding a Command
 

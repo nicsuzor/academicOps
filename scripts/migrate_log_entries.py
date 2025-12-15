@@ -23,42 +23,42 @@ if TYPE_CHECKING:
 
 # Tag to file mapping
 TAG_MAPPINGS: dict[str, str] = {
-    # verification-discipline.md
-    "verify-first": "verification-discipline.md",
-    "overconfidence": "verification-discipline.md",
-    "validation": "verification-discipline.md",
-    "incomplete-task": "verification-discipline.md",
-    "axiom-violation": "verification-discipline.md",
-    "confirmation-bias": "verification-discipline.md",
-    "security-theater": "verification-discipline.md",
-    # instruction-following.md
-    "instruction-following": "instruction-following.md",
-    "scope": "instruction-following.md",
-    "literal": "instruction-following.md",
-    "user-request": "instruction-following.md",
-    "accommodations": "instruction-following.md",
-    "request-interpretation": "instruction-following.md",
-    # git-and-validation.md
-    "git-safety": "git-and-validation.md",
-    "no-verify": "git-and-validation.md",
-    "validation-bypass": "git-and-validation.md",
-    "pre-commit": "git-and-validation.md",
-    "reset-hard": "git-and-validation.md",
-    "pre-commit-hooks": "git-and-validation.md",
-    # skill-and-tool-usage.md
-    "skill-invocation": "skill-and-tool-usage.md",
-    "tool-usage": "skill-and-tool-usage.md",
-    "mcp": "skill-and-tool-usage.md",
-    "bmem-integration": "skill-and-tool-usage.md",
-    "skill-context": "skill-and-tool-usage.md",
-    "skill-creation": "skill-and-tool-usage.md",
-    "skill-discovery": "skill-and-tool-usage.md",
-    "skill-overlap": "skill-and-tool-usage.md",
-    "proactive-enforcement": "skill-and-tool-usage.md",
-    "bmem": "skill-and-tool-usage.md",
-    "bmem-skill": "skill-and-tool-usage.md",
-    "bmem-validation": "skill-and-tool-usage.md",
-    "cross-skill-knowledge": "skill-and-tool-usage.md",
+    # verification-skip.md (agents claiming success without verification)
+    "verify-first": "verification-skip.md",
+    "overconfidence": "verification-skip.md",
+    "validation": "verification-skip.md",
+    "incomplete-task": "verification-skip.md",
+    "axiom-violation": "verification-skip.md",
+    "confirmation-bias": "verification-skip.md",
+    "security-theater": "verification-skip.md",
+    # instruction-ignore.md (agents ignoring explicit instructions)
+    "instruction-following": "instruction-ignore.md",
+    "scope": "instruction-ignore.md",
+    "literal": "instruction-ignore.md",
+    "user-request": "instruction-ignore.md",
+    "accommodations": "instruction-ignore.md",
+    "request-interpretation": "instruction-ignore.md",
+    # validation-bypass.md (git/validation rule violations)
+    "git-safety": "validation-bypass.md",
+    "no-verify": "validation-bypass.md",
+    "validation-bypass": "validation-bypass.md",
+    "pre-commit": "validation-bypass.md",
+    "reset-hard": "validation-bypass.md",
+    "pre-commit-hooks": "validation-bypass.md",
+    # skill-bypass.md (agents bypassing skills, using wrong tools)
+    "skill-invocation": "skill-bypass.md",
+    "tool-usage": "skill-bypass.md",
+    "mcp": "skill-bypass.md",
+    "bmem-integration": "skill-bypass.md",
+    "skill-context": "skill-bypass.md",
+    "skill-creation": "skill-bypass.md",
+    "skill-discovery": "skill-bypass.md",
+    "skill-overlap": "skill-bypass.md",
+    "proactive-enforcement": "skill-bypass.md",
+    "bmem": "skill-bypass.md",
+    "bmem-skill": "skill-bypass.md",
+    "bmem-validation": "skill-bypass.md",
+    "cross-skill-knowledge": "skill-bypass.md",
     # test-and-tdd.md
     "tdd": "test-and-tdd.md",
     "testing": "test-and-tdd.md",
@@ -78,7 +78,7 @@ TAG_MAPPINGS: dict[str, str] = {
 }
 
 # Default file for entries with no clear match
-DEFAULT_FILE = "verification-discipline.md"
+DEFAULT_FILE = "verification-skip.md"
 
 
 @dataclass

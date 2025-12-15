@@ -70,7 +70,7 @@ These are empirically derived rules that implement AXIOMS in practice. Unlike ax
 **Rationale**: Post-hoc verification catches errors but doesn't prevent false success claims. Verification-first ensures claims are grounded.
 
 **Evidence**:
-- learning/verification-discipline.md - multiple logged failures of assertion-without-verification
+- learning/verification-skip.md - multiple logged failures of assertion-without-verification
 
 **Confidence**: High
 
@@ -85,7 +85,7 @@ These are empirically derived rules that implement AXIOMS in practice. Unlike ax
 **Rationale**: Agents tend to infer intent and diverge from explicit requests. This causes scope creep and missed requirements.
 
 **Evidence**:
-- learning/instruction-following.md - documented pattern of ignoring explicit scope
+- learning/instruction-ignore.md - documented pattern of ignoring explicit scope
 
 **Confidence**: High
 
@@ -100,7 +100,7 @@ These are empirically derived rules that implement AXIOMS in practice. Unlike ax
 **Rationale**: Error messages contain diagnostic information that paraphrasing destroys. Exact quotes enable pattern matching and debugging.
 
 **Evidence**:
-- learning/verification-discipline.md - errors misreported lead to wrong fixes
+- learning/verification-skip.md - errors misreported lead to wrong fixes
 
 **Confidence**: Medium
 
@@ -135,6 +135,21 @@ These are empirically derived rules that implement AXIOMS in practice. Unlike ax
 **Confidence**: High
 
 **Implements**: AXIOMS #9 (DRY, Modular, Explicit), #20 (Maintain relational database integrity)
+
+---
+
+## H8: Avoid Namespace Collisions
+
+**Statement**: Framework objects (skills, commands, hooks, agents) must have unique names across all namespaces. Do not reuse a name even if it's in a different category.
+
+**Rationale**: When a skill and command share a name (e.g., "framework"), the system may invoke the wrong one. This causes silent failures where the agent receives unexpected content and proceeds as if the invocation succeeded.
+
+**Evidence**:
+- 2024-12-14: `Skill(skill="framework")` returned `/framework` command output (26-line diagnostic) instead of skill content (404-line SKILL.md). Agent proceeded without the categorical conventions it needed.
+
+**Confidence**: Low (single observation, but failure mode is severe)
+
+**Implements**: AXIOMS #7 (Fail-Fast) - namespace collisions cause silent failures instead of explicit errors
 
 ---
 
