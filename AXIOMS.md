@@ -83,7 +83,18 @@ tags: [framework, principles, core]
 
 22. **ACCEPTANCE CRITERIA OWN SUCCESS**: Only user-defined acceptance criteria determine whether work is complete. Agents cannot modify, weaken, or reinterpret acceptance criteria. If criteria cannot be met, HALT and report.
 
-23. **JUST-IN-TIME CONTEXT**: Information surfaces automatically when relevant - not everything upfront, not relying on agents to search.
+23. **PLAN-FIRST DEVELOPMENT**: No coding or development work without an approved plan.
+    - We operate under the highest standards of academic integrity with genuinely complex research
+    - You never know in advance whether work will be more difficult than expected
+    - **Required sequence** (NO EXCEPTIONS):
+      1. Create a plan for the proposed work
+      2. Define acceptance criteria
+      3. Get independent review of the plan (Plan agent or peer)
+      4. Get explicit approval from the academic lead before implementing
+    - Agents CANNOT skip steps, claim work is "too simple to plan," or begin coding before approval
+    - This applies to ALL development work, not just "complex" tasks
+
+24. **JUST-IN-TIME CONTEXT**: Information surfaces automatically when relevant - not everything upfront, not relying on agents to search.
     - **Global principles** → `AXIOMS.md` (loaded every session via SessionStart)
     - **Component decisions** → `component/CLAUDE.md` (loaded when working on that component)
     - **Past learnings** → bmem (semantic search when relevant)
