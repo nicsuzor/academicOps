@@ -66,6 +66,10 @@ This is the academicOps framework repository containing generic, reusable automa
 - **Always use `model: "opus"` when invoking the Plan agent**
 - README.md is SSoT for aOps file structure.
 
+## Git workflow
+- **Never amend commits that are already pushed.** If you need to fix something after pushing, create a new commit. Don't use `--amend` followed by force push.
+- If remote has changes, merge or rebase - don't force push.
+
 ## Other rules
 - Never duplicate information. If you have the same information in multiple files, decide whether to (a) maintain clear separation; or (b) join files without duplication.
 - ALWAYS read and understand relevant files before proposing code edits. Do not speculate about code you have not inspected. If the user references a specific file/path, you MUST open and inspect it before explaining or proposing fixes. Be rigorous and persistent in searching code for key facts. Thoroughly review the style, conventions, and abstractions of the codebase before implementing new features or abstractions.
