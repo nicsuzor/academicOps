@@ -64,6 +64,12 @@ mcp__bmem__edit_note(
 2. **Use approved categories**: See [[approved-categories-relations]]
 3. **Choose right location**: See file locations in [[bmem-skill-overview]]
 
+### Append vs Create New
+
+- **Recurring topics with sparse content** (meetings, working groups, periodic reviews): Append entries to a single topical note rather than creating per-instance notes
+- **Only split by date** when the file becomes unwieldy
+- **Create new note** when content is substantial enough to stand alone or represents a distinct topic
+
 ## Format Quick Reference
 
 ```markdown

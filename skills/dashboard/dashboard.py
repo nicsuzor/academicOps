@@ -79,6 +79,57 @@ def get_session_bmem_notes(session_path: Path) -> list[dict]:
     return notes[-3:] if notes else []  # Return last 3 notes max
 
 
+def get_project_git_activity(project_path: str) -> list[str]:
+    """Get recent git commits from project directory."""
+    import subprocess
+    # Convert project path format: -Users-suzor-src-buttermilk -> /Users/suzor/src/buttermilk
+    if project_path.startswith('-'):
+        path = '/' + project_path[1:].replace('-', '/')
+    else:
+        path = project_path
+
+    try:
+        result = subprocess.run(
+            ['git', 'log', '--oneline', '-3', '--since=24 hours ago'],
+            cwd=path,
+            capture_output=True,
+            text=True,
+            timeout=2,
+        )
+        if result.returncode == 0 and result.stdout.strip():
+            return result.stdout.strip().split('\n')[:2]  # Max 2 commits
+    except Exception:
+        pass
+    return []
+
+
+def aggregate_active_todos(sessions, processor) -> list[dict]:
+    """Aggregate in-progress todos from all active sessions."""
+    active_todos = []
+    seen = set()
+
+    for session in sessions[:15]:  # Check recent 15 sessions
+        age = datetime.now(timezone.utc) - session.last_modified
+        if age.total_seconds() > 86400:  # Skip sessions older than 24h
+            continue
+        if '-tmp' in session.project or '-var-folders' in session.project:
+            continue
+
+        todos = get_session_todos(session.path)
+        if todos:
+            for todo in todos:
+                if todo.get('status') == 'in_progress':
+                    content = todo.get('content', '')
+                    if content and content not in seen:
+                        seen.add(content)
+                        active_todos.append({
+                            'content': content,
+                            'project': session.project_display,
+                            'activeForm': todo.get('activeForm', content),
+                        })
+    return active_todos[:8]  # Max 8 active items
+
+
 def get_session_state(session_info, processor: SessionProcessor) -> dict:
     """Extract current state from a session for display."""
     try:
@@ -280,6 +331,44 @@ st.markdown("""
         border-bottom: 1px solid #333;
     }
 
+    /* Active Now section */
+    .active-now-item {
+        display: flex;
+        align-items: center;
+        padding: 8px 12px;
+        background: #1a2d1a;
+        border-left: 3px solid #4ade80;
+        margin: 4px 0;
+        border-radius: 0 4px 4px 0;
+    }
+
+    .active-now-status {
+        margin-right: 10px;
+        font-size: 1.1em;
+    }
+
+    .active-now-content {
+        color: #4ade80;
+        font-weight: 500;
+        flex: 1;
+    }
+
+    .active-now-project {
+        color: #888;
+        font-size: 0.8em;
+        margin-left: 10px;
+    }
+
+    /* Git commits */
+    .session-git {
+        color: #f97316;
+        font-size: 0.75em;
+        margin-top: 4px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
     /* Timestamp */
     .timestamp {
         color: #666;
@@ -351,8 +440,36 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# PRIORITY TASKS - Two columns
-st.markdown("<div class='section-header'>PRIORITY TASKS</div>", unsafe_allow_html=True)
+# Helper to escape HTML
+def esc(text):
+    return str(text).replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;').replace('"', '&quot;')
+
+# ACTIVE NOW - Aggregated from all sessions
+st.markdown("<div class='section-header'>ACTIVE NOW</div>", unsafe_allow_html=True)
+try:
+    sessions = find_sessions()
+    processor = SessionProcessor()
+    active_todos = aggregate_active_todos(sessions, processor)
+
+    if active_todos:
+        col1, col2 = st.columns(2)
+        for i, todo in enumerate(active_todos):
+            item_html = f"""
+            <div class='active-now-item'>
+                <span class='active-now-status'>🔄</span>
+                <span class='active-now-content'>{esc(todo['activeForm'])}</span>
+                <span class='active-now-project'>{esc(todo['project'])}</span>
+            </div>
+            """
+            with col1 if i % 2 == 0 else col2:
+                st.markdown(item_html, unsafe_allow_html=True)
+    else:
+        st.markdown("<div style='color: #666; padding: 8px;'>No active work in sessions</div>", unsafe_allow_html=True)
+except Exception as e:
+    st.error(f"Error loading active todos: {e}")
+
+# PRIORITY BACKLOG - Two columns
+st.markdown("<div class='section-header'>PRIORITY BACKLOG</div>", unsafe_allow_html=True)
 try:
     focus_tasks = load_focus_tasks(count=12)
     if focus_tasks:
@@ -398,10 +515,6 @@ try:
 
         # Build content: CURRENT WORK first (todos), then context
         content_parts = []
-
-        # Helper to escape HTML
-        def esc(text):
-            return str(text).replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;').replace('"', '&quot;')
 
         # Show TodoWrite state prominently if present (with popup for all todos)
         if state['todos']:
@@ -459,6 +572,12 @@ try:
                     <div class='session-bmem'>📝 {title}</div>
                     <div class='tooltip-popup'><b>{title}</b><br/>Folder: {folder}</div>
                 </div>""")
+
+        # Show recent git commits for this project
+        git_commits = get_project_git_activity(session.project)
+        if git_commits:
+            commits_display = ' | '.join([c[:40] for c in git_commits[:2]])
+            content_parts.append(f"<div class='session-git'>📦 {esc(commits_display)}</div>")
 
         # Skip sessions with no meaningful content
         if not content_parts:
