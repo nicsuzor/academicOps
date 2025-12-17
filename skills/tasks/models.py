@@ -171,6 +171,7 @@ class CreateTaskRequest(BaseModel):
     due: datetime | None = Field(default=None, description="Due date")
     body: str = Field(default="", description="Task body content")
     tags: list[str] = Field(default_factory=list, description="Task tags")
+    slug: str | None = Field(default=None, description="Optional slug for human-readable task ID")
 
     @field_validator("title")
     @classmethod

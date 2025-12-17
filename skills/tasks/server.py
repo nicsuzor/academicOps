@@ -338,6 +338,7 @@ def create_task(
     due: str | None = None,
     body: str = "",
     tags: list[str] | None = None,
+    slug: str | None = None,
 ) -> dict:
     """Create a new task.
 
@@ -384,6 +385,7 @@ def create_task(
             due=due_datetime,
             body=body,
             tags=tags or [],
+            slug=slug,
         )
 
         # Create task
@@ -396,6 +398,7 @@ def create_task(
             due=request.due,
             body=request.body,
             tags=request.tags,
+            slug=request.slug,
         )
 
         if result["success"]:

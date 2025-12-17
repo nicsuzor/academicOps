@@ -435,3 +435,29 @@ def test_task_add_cli_with_slug(test_data_dir: Path):
     expected_filename = f"{expected_task_id}.md"
     task_file = test_data_dir / "tasks/inbox" / expected_filename
     assert task_file.exists(), f"Expected file not created: {task_file}"
+
+
+def test_mcp_create_task_request_accepts_slug():
+    """Test CreateTaskRequest model accepts optional slug field.
+
+    Verifies that:
+    1. CreateTaskRequest validates with slug parameter
+    2. slug field defaults to None
+    3. slug field is accessible on validated model
+    """
+    from skills.tasks.models import CreateTaskRequest
+
+    # Test with slug provided
+    request_with_slug = CreateTaskRequest(
+        title="Test Task",
+        slug="my-custom-slug",
+    )
+
+    assert request_with_slug.slug == "my-custom-slug"
+
+    # Test without slug (should default to None)
+    request_without_slug = CreateTaskRequest(
+        title="Test Task Without Slug",
+    )
+
+    assert request_without_slug.slug is None
