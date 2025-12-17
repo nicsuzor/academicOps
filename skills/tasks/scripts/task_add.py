@@ -99,6 +99,10 @@ def main():
         "--tags",
         help="Comma-separated list of tags",
     )
+    parser.add_argument(
+        "--slug",
+        help="Optional slug for task ID (will be sanitized)",
+    )
 
     # Body content options
     group = parser.add_mutually_exclusive_group()
@@ -171,6 +175,7 @@ def main():
             due=due_datetime,
             body=body,
             tags=tags,
+            slug=args.slug,
         )
 
         if not result["success"]:

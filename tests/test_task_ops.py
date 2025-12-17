@@ -392,3 +392,46 @@ def test_create_task_with_slug(test_data_dir: Path):
     task_path = test_data_dir / result["path"]
     assert task_path.exists()
     assert task_path.name == expected_filename
+
+
+def test_task_add_cli_with_slug(test_data_dir: Path):
+    """Test task_add.py CLI accepts --slug argument and creates slug-based file.
+
+    Verifies that:
+    1. CLI script accepts --slug argument without error
+    2. Output mentions the slug-based task_id
+    3. File is created with slug-based filename (YYYYMMDD-slug.md)
+    """
+    import subprocess
+
+    script_path = Path(__file__).parent.parent / "skills/tasks/scripts/task_add.py"
+
+    result = subprocess.run(
+        [
+            "uv",
+            "run",
+            "python",
+            str(script_path),
+            "--title",
+            "CLI Test Task",
+            "--slug",
+            "test-slug",
+            "--data-dir",
+            str(test_data_dir),
+        ],
+        capture_output=True,
+        text=True,
+    )
+
+    # Should succeed
+    assert result.returncode == 0, f"CLI failed: {result.stderr}"
+
+    # Output should mention slug-based task_id
+    timestamp_part = datetime.now(UTC).strftime("%Y%m%d")
+    expected_task_id = f"{timestamp_part}-test-slug"
+    assert expected_task_id in result.stdout, f"Expected '{expected_task_id}' in output: {result.stdout}"
+
+    # File should exist with slug-based name
+    expected_filename = f"{expected_task_id}.md"
+    task_file = test_data_dir / "tasks/inbox" / expected_filename
+    assert task_file.exists(), f"Expected file not created: {task_file}"
