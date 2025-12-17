@@ -361,3 +361,34 @@ def test_sanitize_slug_empty_raises():
     """Test that sanitize_slug raises ValueError for strings that become empty."""
     with pytest.raises(ValueError, match="empty"):
         task_ops.sanitize_slug("@#$%")
+
+
+def test_create_task_with_slug(test_data_dir: Path):
+    """Test creating a task with custom slug instead of UUID.
+
+    When slug parameter is provided, filename should be YYYYMMDD-slug.md
+    instead of YYYYMMDD-XXXXXXXX.md (UUID format).
+    """
+    result = task_ops.create_task(
+        title="Task with Custom Slug",
+        data_dir=test_data_dir,
+        slug="my-test-task",
+        priority=1,
+    )
+
+    assert result["success"] is True
+
+    # Verify task_id uses slug instead of UUID
+    task_id = result["task_id"]
+    timestamp_part = datetime.now(UTC).strftime("%Y%m%d")
+    expected_task_id = f"{timestamp_part}-my-test-task"
+    assert task_id == expected_task_id
+
+    # Verify filename matches
+    expected_filename = f"{expected_task_id}.md"
+    assert result["filename"] == expected_filename
+
+    # Verify file actually created with slug-based name
+    task_path = test_data_dir / result["path"]
+    assert task_path.exists()
+    assert task_path.name == expected_filename

@@ -800,6 +800,7 @@ def create_task(
     due: datetime | None = None,
     body: str = "",
     tags: list[str] | None = None,
+    slug: str | None = None,
 ) -> dict[str, Any]:
     """Create a new task.
 
@@ -812,14 +813,19 @@ def create_task(
         due: Due date
         body: Task body content
         tags: Task tags
+        slug: Optional slug for task_id (sanitized if provided)
 
     Returns:
         Result dictionary with task_id, filename, path, and success status
     """
-    # Generate task ID: YYYYMMDD-XXXXXXXX
+    # Generate task ID: YYYYMMDD-slug or YYYYMMDD-XXXXXXXX
     timestamp = datetime.now(UTC).strftime("%Y%m%d")
-    task_uuid = str(uuid.uuid4()).split("-")[0]  # First 8 hex chars
-    task_id = f"{timestamp}-{task_uuid}"
+    if slug:
+        sanitized = sanitize_slug(slug)
+        task_id = f"{timestamp}-{sanitized}"
+    else:
+        task_uuid = str(uuid.uuid4()).split("-")[0]  # First 8 hex chars
+        task_id = f"{timestamp}-{task_uuid}"
     filename = f"{task_id}.md"
 
     # Create task model
