@@ -58,17 +58,27 @@ mcp__bmem__edit_note(
 )
 ```
 
-### Before Writing
+### Where to File (MANDATORY SEQUENCE)
 
-1. **Search first**: Check for duplicates with `mcp__bmem__search_notes()`
-2. **Use approved categories**: See [[approved-categories-relations]]
-3. **Choose right location**: See file locations in [[bmem-skill-overview]]
+1. **Search first**: `mcp__bmem__search_notes(query="topic keywords", project="main")`
+2. **If match found**: AUGMENT existing file (integrate info, don't append dated entry)
+3. **If no match**: Create new TOPICAL file (not session/date file)
+4. **Use approved categories**: See [[approved-categories-relations]]
 
-### Append vs Create New
+### Augment vs Concatenate
 
-- **Recurring topics with sparse content** (meetings, working groups, periodic reviews): Append entries to a single topical note rather than creating per-instance notes
-- **Only split by date** when the file becomes unwieldy
-- **Create new note** when content is substantial enough to stand alone or represents a distinct topic
+- ✅ **Augment**: Integrate new observations into existing structure
+- ❌ **Concatenate**: Add "### 2025-12-17 Session" sections
+
+Files organized by **topic**, not **date**. A project file should read as current state, not a changelog.
+
+### Scale Guide
+
+| Work Size | Action |
+|-----------|--------|
+| Tiny (one decision) | Add bullet to existing project/context file |
+| Small (few outcomes) | Add observations to existing topical file |
+| Large (new topic) | Create new topical file ONLY if nothing matches |
 
 ## Format Quick Reference
 
@@ -104,3 +114,6 @@ tags:
 - Wait until conversation end to capture
 - Announce that you're capturing
 - Create task files directly (use task skill)
+- Create timestamped session files (except transcripts)
+- Append date-headers to existing files
+- Skip the search step
