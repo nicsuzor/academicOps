@@ -25,16 +25,18 @@ from pathlib import Path
 from typing import Any
 
 
-def is_state_modifying_operation(tool_input: dict[str, Any]) -> bool:
+def is_state_modifying_operation(
+    tool_name: str, tool_input: dict[str, Any]
+) -> bool:
     """Check if the tool call modifies data/ state.
 
     Args:
-        tool_input: Tool input from Claude Code
+        tool_name: Name of the tool being invoked
+        tool_input: Parameters passed to the tool
 
     Returns:
         True if operation modifies data/ state, False otherwise
     """
-    tool_name = tool_input.get("name", "")
 
     # Task script patterns (Bash commands)
     if tool_name == "Bash":
@@ -163,11 +165,12 @@ def main() -> None:
         print(json.dumps({}))
         sys.exit(0)
 
-    # Extract tool input
+    # Extract tool name and input
+    tool_name = input_data.get("toolName", "")
     tool_input = input_data.get("toolInput", {})
 
     # Check if this was a state-modifying operation
-    if not is_state_modifying_operation(tool_input):
+    if not is_state_modifying_operation(tool_name, tool_input):
         # Not a state operation, continue normally
         print(json.dumps({}))
         sys.exit(0)

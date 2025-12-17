@@ -67,8 +67,8 @@ def test_hook_detects_task_script_execution(hook_script: Path) -> None:
     """Test that hook correctly identifies task script operations."""
     # Arrange
     tool_input = {
+        "toolName": "Bash",
         "toolInput": {
-            "name": "Bash",
             "command": "python skills/tasks/scripts/task_add.py --title 'Test task'",
         }
     }
@@ -90,8 +90,8 @@ def test_hook_detects_bmem_operations(hook_script: Path) -> None:
     """Test that hook correctly identifies bmem MCP operations."""
     # Arrange
     tool_input = {
+        "toolName": "mcp__bmem__write_note",
         "toolInput": {
-            "name": "mcp__bmem__write_note",
             "title": "Test Note",
             "content": "Test content",
             "folder": "test",
@@ -114,7 +114,7 @@ def test_hook_detects_bmem_operations(hook_script: Path) -> None:
 def test_hook_ignores_non_state_operations(hook_script: Path) -> None:
     """Test that hook ignores operations that don't modify data/."""
     # Arrange
-    tool_input = {"toolInput": {"name": "Read", "file_path": "/some/file.txt"}}
+    tool_input = {"toolName": "Read", "toolInput": {"file_path": "/some/file.txt"}}
 
     # Act
     result = subprocess.run(
@@ -145,8 +145,8 @@ def test_hook_commits_and_pushes_task_changes(
 
     # Simulate tool input that would trigger the hook
     tool_input = {
+        "toolName": "Bash",
         "toolInput": {
-            "name": "Bash",
             "command": "python skills/tasks/scripts/task_add.py --title 'Test'",
         }
     }
@@ -210,8 +210,8 @@ def test_hook_commits_any_data_directory_changes(
 
     # Simulate bmem operation
     tool_input = {
+        "toolName": "mcp__bmem__write_note",
         "toolInput": {
-            "name": "mcp__bmem__write_note",
             "title": "Test",
             "content": "Content",
             "folder": "test",
@@ -256,8 +256,8 @@ def test_hook_handles_no_changes_gracefully(
 
     # No changes to data/
     tool_input = {
+        "toolName": "Bash",
         "toolInput": {
-            "name": "Bash",
             "command": "python skills/tasks/scripts/task_view.py",
         }
     }
@@ -298,8 +298,8 @@ def test_hook_handles_git_failures_gracefully(
     task_file.write_text("# Test\n")
 
     tool_input = {
+        "toolName": "Bash",
         "toolInput": {
-            "name": "Bash",
             "command": "python skills/tasks/scripts/task_add.py --title 'Test'",
         }
     }
@@ -336,3 +336,92 @@ def test_hook_handles_git_failures_gracefully(
             or "push failed" in output["systemMessage"].lower()
             or "warning" in output["systemMessage"].lower()
         )
+
+
+def test_hook_extracts_tool_name_from_correct_location(
+    test_repo: Path, hook_script: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """E2E test: Hook correctly extracts toolName from top-level input structure.
+
+    This test demonstrates the bug where the hook looks for 'name' inside 'toolInput'
+    instead of 'toolName' at the top level of the PostToolUse hook input.
+
+    The correct PostToolUse input structure from Claude Code is:
+    {
+        "toolName": "mcp__bmem__write_note",  # Top level
+        "toolInput": {                         # Parameters
+            "title": "...",
+            "content": "...",
+            "folder": "..."
+        }
+    }
+
+    But the hook incorrectly looks for: toolInput.get("name")
+    Instead of: input_data.get("toolName")
+    """
+    # Arrange
+    monkeypatch.chdir(test_repo)
+
+    # Create a file in data/knowledge/ to simulate bmem output
+    knowledge_dir = test_repo / "data" / "knowledge"
+    knowledge_dir.mkdir(parents=True, exist_ok=True)
+    test_note = knowledge_dir / "test-note.md"
+    test_note.write_text("# Test Note\n\nTest content from bmem write_note.\n")
+
+    # Use CORRECT PostToolUse input structure - toolName at top level
+    hook_input = {
+        "toolName": "mcp__bmem__write_note",  # This is the correct location
+        "toolInput": {
+            "title": "Test Note",
+            "content": "Test content from bmem write_note.",
+            "folder": "knowledge",
+        },
+    }
+
+    # Act
+    env = os.environ.copy()
+    env["PYTHONPATH"] = os.environ["AOPS"]
+    env["AOPS"] = os.environ["AOPS"]
+    env["ACA_DATA"] = str(test_repo)
+    result = subprocess.run(
+        ["python", str(hook_script)],
+        input=json.dumps(hook_input),
+        text=True,
+        capture_output=True,
+        cwd=test_repo,
+        env=env,
+        check=True,
+    )
+
+    # Assert
+    assert result.returncode == 0
+
+    # Verify hook detected this as a state-modifying operation and committed changes
+    log_result = subprocess.run(
+        ["git", "log", "--oneline", "-1"],
+        cwd=test_repo,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    # Should have created a commit for the knowledge base update
+    assert (
+        "update(data)" in log_result.stdout.lower()
+        or "auto-commit" in log_result.stdout.lower()
+    ), (
+        f"Expected auto-commit for bmem operation, but got: {log_result.stdout}\n"
+        f"Hook output: {result.stdout}\n"
+        f"Hook stderr: {result.stderr}"
+    )
+
+    # Verify the knowledge file is committed (not in working tree)
+    status_result = subprocess.run(
+        ["git", "status", "--porcelain", "data/knowledge/"],
+        cwd=test_repo,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    assert (
+        "test-note.md" not in status_result.stdout
+    ), f"File should be committed but is still in working tree: {status_result.stdout}"
