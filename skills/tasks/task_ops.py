@@ -818,25 +818,20 @@ def create_task(
     Returns:
         Result dictionary with task_id, filename, path, and success status
     """
-    # Generate task ID: YYYYMMDD-slug or YYYYMMDD-XXXXXXXX
+    # Generate task ID: YYYYMMDD-slug (use sanitized title if no slug provided)
     timestamp = datetime.now(UTC).strftime("%Y%m%d")
-    if slug:
-        sanitized = sanitize_slug(slug)
-        task_id = f"{timestamp}-{sanitized}"
-    else:
-        task_uuid = str(uuid.uuid4()).split("-")[0]  # First 8 hex chars
-        task_id = f"{timestamp}-{task_uuid}"
+    sanitized = sanitize_slug(slug if slug else title)
+    task_id = f"{timestamp}-{sanitized}"
     filename = f"{task_id}.md"
 
     # Check for duplicate slug
-    if slug:
-        inbox_dir = data_dir / "tasks/inbox"
-        potential_path = inbox_dir / filename
-        if potential_path.exists():
-            return {
-                "success": False,
-                "message": f"Task with slug '{sanitized}' already exists for today: {filename}",
-            }
+    inbox_dir = data_dir / "tasks/inbox"
+    potential_path = inbox_dir / filename
+    if potential_path.exists():
+        return {
+            "success": False,
+            "message": f"Task with slug '{sanitized}' already exists for today: {filename}",
+        }
 
     # Create task model
     task = Task(
