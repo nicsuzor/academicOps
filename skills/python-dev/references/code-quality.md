@@ -7,7 +7,7 @@ description: Python-specific code quality standards and conventions
 
 # Python Code Quality
 
-Python-specific code quality standards. See [[AXIOMS|AXIOMS]] for universal principles.
+Python-specific code quality standards. 
 
 ## Docstrings
 

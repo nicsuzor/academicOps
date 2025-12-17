@@ -90,7 +90,7 @@ START
 
 ### Quick Reference: Choosing the Right Test
 
-Use [[test-selection-guide]] for comprehensive guidance. Quick reference:
+Use [[test_selection_guide.md]] for comprehensive guidance. Quick reference:
 
 **Comparing Two Groups:**
 
@@ -188,7 +188,7 @@ print(result["recommendation"])
 - Transform variables
 - Use non-linear models or GAM
 
-See [[assumptions-and-diagnostics]] for comprehensive guidance.
+See [[assumptions_and_diagnostics.md]] for comprehensive guidance.
 
 ---
 
@@ -346,7 +346,7 @@ az.plot_posterior(trace, var_names=["difference"], ref_val=0)
 
 **Effect sizes quantify magnitude, while p-values only indicate existence of an effect.**
 
-See [[effect-sizes-and-power]] for comprehensive guidance.
+See [[effect_sizes_and_power.md]] for comprehensive guidance.
 
 ### Quick Reference: Common Effect Sizes
 
@@ -436,7 +436,7 @@ print(f"Study could detect d ≥ {detectable_d:.2f}")
 
 **Note**: Post-hoc power analysis (calculating power after study) is generally not recommended. Use sensitivity analysis instead.
 
-See [[effect-sizes-and-power]] for detailed guidance.
+See [[effect_sizes_and_power.md]] for detailed guidance.
 
 ---
 
@@ -444,7 +444,7 @@ See [[effect-sizes-and-power]] for detailed guidance.
 
 ### APA Style Statistical Reporting
 
-Follow guidelines in [[reporting-standards]].
+Follow guidelines in [[reporting_standards.md]].
 
 ### Essential Reporting Elements
 
@@ -518,7 +518,7 @@ Consider Bayesian approaches when:
 - You need to quantify evidence for the null hypothesis
 - The model is complex (hierarchical, missing data)
 
-See [[bayesian-statistics]] for comprehensive guidance on:
+See [[bayesian_statistics.md]] for comprehensive guidance on:
 
 - Bayes' theorem and interpretation
 - Prior specification (informative, weakly informative, non-informative)
@@ -542,11 +542,11 @@ This skill includes comprehensive reference materials:
 
 ### References Directory
 
-- [[test-selection-guide]]: Decision tree for choosing appropriate statistical tests
-- [[assumptions-and-diagnostics]]: Detailed guidance on checking and handling assumption violations
-- [[effect-sizes-and-power]]: Calculating, interpreting, and reporting effect sizes; conducting power analyses
-- [[bayesian-statistics]]: Complete guide to Bayesian analysis methods
-- [[reporting-standards]]: APA-style reporting guidelines with examples
+- [[test_selection_guide.md]]: Decision tree for choosing appropriate statistical tests
+- [[assumptions_and_diagnostics.md]]: Detailed guidance on checking and handling assumption violations
+- [[effect_sizes_and_power.md]]: Calculating, interpreting, and reporting effect sizes; conducting power analyses
+- [[bayesian_statistics.md]]: Complete guide to Bayesian analysis methods
+- [[reporting_standards.md]]: APA-style reporting guidelines with examples
 
 ### Scripts Directory
 

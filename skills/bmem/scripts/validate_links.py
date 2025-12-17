@@ -3,8 +3,8 @@
 Validate and suggest fixes for wiki-links in markdown files.
 
 Usage:
-    python validate_links.py               # Find broken links
-    python validate_links.py --suggest     # Suggest similar targets
+    python validate_links.py [path]            # Find broken links in path (default: .)
+    python validate_links.py --suggest [path]  # Suggest similar targets
 """
 
 import argparse
@@ -124,19 +124,18 @@ def validate_links(data_dir: Path, suggest: bool = False) -> dict:
 def main():
     parser = argparse.ArgumentParser(description="Validate wiki-links in markdown files")
     parser.add_argument("--suggest", action="store_true", help="Suggest similar targets for broken links")
-    parser.add_argument("--repo-root", default=".", help="Repository root")
+    parser.add_argument("path", nargs="?", default=".", help="Directory to scan (default: current directory)")
 
     args = parser.parse_args()
-    repo_root = Path(args.repo_root).resolve()
-    data_dir = repo_root / "data"
+    scan_dir = Path(args.path).resolve()
 
-    if not data_dir.exists():
-        print(f"Error: data/ directory not found at {data_dir}")
+    if not scan_dir.exists():
+        print(f"Error: directory not found at {scan_dir}")
         return
 
-    print("Validating wiki-links...\n")
+    print(f"Validating wiki-links in {scan_dir}...\n")
 
-    results = validate_links(data_dir, suggest=args.suggest)
+    results = validate_links(scan_dir, suggest=args.suggest)
     broken = results["broken"]
     suggestions = results["suggestions"]
     link_sources = results["link_sources"]
@@ -151,7 +150,10 @@ def main():
     for target, sources in sorted(link_sources.items()):
         print(f"[[{target}]] - {len(sources)} reference(s)")
         for source, line_num in sources[:3]:
-            rel_path = source.relative_to(repo_root)
+            try:
+                rel_path = source.relative_to(scan_dir)
+            except ValueError:
+                rel_path = source
             print(f"  - {rel_path}:{line_num}")
         if len(sources) > 3:
             print(f"  ... and {len(sources) - 3} more")

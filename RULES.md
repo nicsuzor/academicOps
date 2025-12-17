@@ -13,7 +13,7 @@ Current state of all enforcement mechanisms. **Auto-generated** — do not edit 
 
 **Last updated**: 2025-12-15 12:15
 
-**To regenerate**: Invoke [[framework skill|skills/framework/SKILL.md]] with "update enforcement state"
+**To regenerate**: Invoke [[academicOps/skills/framework]] with "update enforcement state"
 
 ---
 

@@ -108,11 +108,13 @@ Claude Code loads these at session start (not via aOps hooks).
 
 ## Test Coverage
 
-| Hook | Tests |
-|------|-------|
-| [[sessionstart_load_axioms.py|hooks/sessionstart_load_axioms.py]] | `test_sessionstart_hook_format.py`, `test_session_start_loading.py`, `integration/test_session_start_content.py` |
-| [[prompt_router.py|hooks/prompt_router.py]] | `test_prompt_router.py`, `test_router_compliance.py`, `test_userpromptsubmit_contract.py`, `integration/test_prompt_router_haiku_flow.py` |
-| [[policy_enforcer.py|hooks/policy_enforcer.py]] | `integration/test_git_safety_hook.py` |
-| [[autocommit_state.py|hooks/autocommit_state.py]] | `integration/test_autocommit_data.py` |
-| `session_env_setup.sh` | **GAP** |
-| [[unified_logger.py|hooks/unified_logger.py]] | **GAP** |
+| Hook                            | Tests                                                                                                                                     |
+| ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| [[sessionstart_load_axioms.py]] | `test_sessionstart_hook_format.py`, `test_session_start_loading.py`, `integration/test_session_start_content.py`                          |
+| [[prompt_router.py]]            | `test_prompt_router.py`, `test_router_compliance.py`, `test_userpromptsubmit_contract.py`, `integration/test_prompt_router_haiku_flow.py` |
+| [[policy_enforcer.py]]          | `integration/test_git_safety_hook.py`                                                                                                     |
+| [[autocommit_state.py]]         | `integration/test_autocommit_data.py`                                                                                                     |
+| [[session_env_setup.sh]]        | **GAP**                                                                                                                                   |
+| [[unified_logger.py]]           | **GAP**                                                                                                                                   |
+
+- part_of [[aops]]

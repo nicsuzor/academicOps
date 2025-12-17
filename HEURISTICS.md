@@ -179,6 +179,21 @@ These are empirically derived rules that implement [[AXIOMS]] in practice. Unlik
 
 ---
 
+## H10: Light Instructions via Reference
+
+**Statement**: Framework instructions should be brief and reference authoritative sources rather than duplicating or hardcoding content that lives elsewhere.
+
+**Rationale**: Hardcoded lists (enforcement levels, filing locations, intervention ladders) become stale when the authoritative source changes. Brief instructions that delegate to reference docs stay current automatically.
+
+**Evidence**:
+- 2025-12-16: `/learn` command hardcoded a 4-level intervention ladder that ignored git hooks, deny rules, and other mechanisms defined in ENFORCEMENT.md
+
+**Confidence**: Medium
+
+**Implements**: [[AXIOMS]] #9 (DRY, Modular, Explicit)
+
+---
+
 ## Revision Protocol
 
 To adjust heuristics based on new evidence:

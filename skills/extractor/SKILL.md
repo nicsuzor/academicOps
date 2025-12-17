@@ -8,7 +8,7 @@ permalink: skills-extractor-skill
 
 # Archive Information Extraction Skill
 
-Assess archival documents (emails, correspondence, receipts) to identify information worth preserving in the knowledge base. This skill provides judgment criteria only - actual storage is handled by the [[bmem]] skill.
+Assess archival documents (emails, correspondence, receipts) to identify information worth preserving in the knowledge base. This skill provides judgment criteria only - actual storage is handled by the [[../bmem/SKILL.md]] skill.
 
 ## Purpose
 
@@ -182,13 +182,13 @@ Store identifier inline with extracted information.
 
 ## Storage
 
-Use the **[[bmem]]** skill to store extracted information in the knowledge base. The bmem skill handles:
+Use the **[[../bmem/SKILL.md]]** skill to store extracted information in the knowledge base. The bmem skill handles:
 - Entity creation/updates
 - Format validation
 - Deduplication checking
 - Proper categorization
 
-**CRITICAL**: When using the bmem skill, you MUST use ONLY approved observation categories and relation types from [[bmem-categories-relations]]. The bmem system will reject any unapproved categories or relations.
+**CRITICAL**: When using the bmem skill, you MUST use ONLY approved observation categories and relation types from [[../bmem/references/approved-categories-relations.md]]. The bmem system will reject any unapproved categories or relations.
 
 **Common mappings for email extraction**:
 - Email metadata (sender, date, subject) → Use `[fact]` with `#email` tag

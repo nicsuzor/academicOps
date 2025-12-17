@@ -269,6 +269,23 @@ Skills in `skills/` MUST NOT contain dynamic data. All mutable state goes in `$A
 
 **Derives from**: AXIOMS #12 (Trust Version Control) - git is the backup system.
 
+### Markdown Format Convention
+
+All framework markdown files use bmem+obsidian format with relative wikilinks:
+
+1. **Frontmatter**: Required fields: `title`, `permalink`, `type`, `tags` (see [[BMEM-OBSIDIAN-GUIDE.md]])
+2. **Links**: Use relative wikilinks with paths: `[[folder/file.md]]` or `[[../sibling/file.md]]`
+3. **Graph connectivity**: Links create Obsidian graph edges; consistent linking builds navigable documentation
+
+```markdown
+# In skills/analyst/SKILL.md:
+[[instructions/dbt-workflow.md]]     # ✅ Relative path within skill
+[[../framework/SKILL.md]]            # ✅ Relative to sibling skill
+[[AXIOMS.md]]                        # ✅ Root-level reference
+```
+
+**Derives from**: AXIOMS #9 (DRY) - links reference instead of repeating; AXIOMS #20 (Relational Integrity) - maintain connected knowledge graph.
+
 ## Documentation Structure (Authoritative)
 
 The framework has exactly these core documents. No others.
@@ -356,7 +373,7 @@ New files PROHIBITED unless:
 
 ### Adding a Hook
 
-1. **Read [[hooks_guide]] first** - contains architecture principles
+1. **Read [[references/hooks_guide.md]] first** - contains architecture principles
 2. Create hook in `hooks/` directory
 3. Triggers: PreToolUse, PostToolUse, UserPromptSubmit, SessionStart, Stop
 4. Hooks inject context/instructions - they NEVER call LLM APIs directly

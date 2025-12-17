@@ -27,13 +27,13 @@ The bmem skill manages the personal knowledge base stored in `$ACA_DATA/`. It ha
 
 ## Key Principles
 
-### One Thing, Not Two
+### bmem memories ARE Obsidian-compatible markdown files
 
-bmem memories ARE markdown files. The database is an index for search, not separate storage. When you create a note via MCP, you create one markdown file.
+The database is an index for search, not separate storage. When you create a note via MCP, you create one markdown file.
 
 ### Approved Categories Only
 
-All observations must use approved categories from [[approved-categories-relations]]. Inventing categories breaks the knowledge graph.
+All observations must use approved categories from [[references/approved-categories-relations.md]]. Inventing categories breaks the knowledge graph.
 
 ### Write Access via MCP
 
@@ -43,9 +43,9 @@ Never write `data/` files directly. Always use `mcp__bmem__write_note()` or `mcp
 
 | Workflow | Purpose | Trigger |
 |----------|---------|---------|
-| [[capture]] | Session mining, note creation | Default / "save this" |
-| [[validate]] | Format + location compliance | "fix bmem" / "validate" |
-| [[prune]] | Value-based cleanup | "clean up" / "declutter" |
+| [[workflows/capture.md]] | Session mining, note creation | Default / "save this" |
+| [[workflows/validate.md]] | Format + location compliance | "fix bmem" / "validate" |
+| [[workflows/prune.md]] | Value-based cleanup | "clean up" / "declutter" |
 
 ## Relations
 

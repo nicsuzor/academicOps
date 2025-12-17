@@ -48,7 +48,7 @@ Direct guidance in conversation. Zero setup, not persistent.
 
 ## Level 3: SessionStart Injection
 
-[[sessionstart_load_axioms.py]] injects multiple files as `additionalContext`:
+`sessionstart_load_axioms.py` injects multiple files as `additionalContext`:
 
 - **FRAMEWORK.md** — resolved paths (prevents path guessing)
 - **AXIOMS.md** — inviolable principles
@@ -61,7 +61,7 @@ This ensures critical context loads even if CLAUDE.md is bypassed or skimmed. Mo
 
 ## Level 4: UserPromptSubmit Routing
 
-[[prompt_router.py]] analyzes every user message and injects:
+`../../hooks/prompt_router.py` analyzes every user message and injects:
 
 1. **Focus reminder** — prevents over-elaboration
 2. **Skill routing** — keyword matching → "MANDATORY: Call Skill(skill='X')"
@@ -73,7 +73,7 @@ More timely than CLAUDE.md because it's fresh in context at decision point.
 
 ## Level 5: PreToolUse Hooks
 
-[[policy_enforcer.py]] can warn or block tool execution.
+[[../../hooks/policy_enforcer.py]] can warn or block tool execution.
 
 **Exit code semantics** (per Claude Code docs):
 
@@ -85,7 +85,7 @@ More timely than CLAUDE.md because it's fresh in context at decision point.
 
 **Key insight**: Exit code 1 enables **soft enforcement** — agent sees warning and can self-correct without blocking the operation.
 
-**Authoritative source**: [[policy_enforcer.py]]
+**Authoritative source**: [[../../hooks/policy_enforcer.py]]
 
 **Use cases**:
 - Exit 2 (block): Pattern is dangerous AND detectable before execution
@@ -97,7 +97,7 @@ More timely than CLAUDE.md because it's fresh in context at decision point.
 
 Built-in permission system blocks specific paths.
 
-**Authoritative source**: [[settings.json]] → `permissions.deny`
+**Authoritative source**: [[../../config/settings.json]] → `permissions.deny`
 
 **To view**: `cat ~/.claude/settings.json | jq '.permissions.deny'`
 
@@ -109,7 +109,7 @@ Built-in permission system blocks specific paths.
 
 Final gate before persistence.
 
-**Authoritative source**: [[.pre-commit-config.yaml]]
+**Authoritative source**: [[../../.pre-commit-config.yaml]]
 
 **Use**: Data format must be valid before commit.
 

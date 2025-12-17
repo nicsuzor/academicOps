@@ -141,7 +141,6 @@ bmem-formatted files should be in:
   - `data/projects/` - Project metadata
   - `data/playbooks/` - Reusable workflows
   - `data/tasks/` - Task management
-- `bots/` - Bot instructions (can use bmem format but not required)
 
 ### Exemptions
 
@@ -152,7 +151,6 @@ The following locations do NOT require bmem format:
 - `talks/` - Presentations
 - `templates/` - Document templates
 - `README.md` files
-- Files in `bots/` (optional bmem usage)
 
 ## Entity Types
 
@@ -294,4 +292,3 @@ When converting existing markdown to bmem:
 ## References
 
 - Based on [[basic-memory|https://github.com/basicmachines-co/basic-memory]] format
-- Extended specification in [[ai-assistant-guide-extended.md]]

@@ -12,15 +12,15 @@ permalink: skills-bmem-skill
 
 | User wants to... | Workflow |
 |------------------|----------|
-| Save info, mine session, create notes | [[bmem-capture]] |
-| Fix format, check compliance, repair links | [[bmem-validate]] |
-| Delete low-value files, declutter | [[bmem-prune]] |
+| Save info, mine session, create notes | [[workflows/capture.md]] |
+| Fix format, check compliance, repair links | [[workflows/validate.md]] |
+| Delete low-value files, declutter | [[workflows/prune.md]] |
 
 ## Core Rules
 
 1. **MCP tools only**: All bmem operations use `mcp__bmem__*` tools. Never write `data/` files directly.
 2. **Project parameter**: ALWAYS use `project="main"` in all bmem MCP calls.
-3. **Approved categories only**: See [[bmem-categories-relations]] before writing.
+3. **Approved categories only**: See [[references/approved-categories-relations.md]] before writing.
 
 ## Mental Model
 
@@ -49,15 +49,17 @@ permalink: skills-bmem-skill
 | General notes | `data/context/` |
 | Goals | `data/goals/` |
 | Project metadata | `data/projects/<name>.md` |
-| Project details | `data/<project-slug>/` |
+| Project details | `data/projects/<name>/` |
 | Tasks | Delegate to task skill |
+
+**DO NOT create arbitrary directories** (e.g., `tech/`, `dev/`, `tools/`). Project-related notes go in `projects/<project-name>/`.
 
 ## References (Load When Needed)
 
-- [[bmem-categories-relations]] - **MANDATORY before writing**
-- [[bmem-obsidian-format]] - Full format specification
-- [[bmem-observation-quality]] - Quality rules
-- [[bmem-detail-level]] - What to capture where
+- [[references/approved-categories-relations.md]] - **MANDATORY before writing**
+- [[references/obsidian-format-spec.md]] - Full format specification
+- [[references/observation-quality-guide.md]] - Quality rules
+- [[references/detail-level-guide.md]] - What to capture where
 
 ## Workflows
 

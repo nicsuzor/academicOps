@@ -16,7 +16,7 @@ permalink: skills-analyst-skill
 
 Support academic research data analysis by working collaboratively with dbt (data build tool) and Streamlit dashboards. This skill enforces academicOps methodology: reproducible data pipelines, automated testing, self-documenting code, and fail-fast validation.
 
-Follows principles from [[AXIOMS]].
+Follows principles from [[AXIOMS.md]].
 
 **Core principle:** Take ONE action at a time (generate a chart, update database, create a test), then yield to the user for feedback before proceeding.
 
@@ -107,48 +107,48 @@ This skill includes both inline guidance and detailed reference documentation:
 
 ### Investigation and Exploration Workflows (_CHUNKS/)
 
-- `_CHUNKS/data-investigation.md` - Creating reusable investigation scripts for data quality issues
-- `_CHUNKS/exploratory-analysis.md` - Collaborative pattern exploration and discovery
+- [[instructions/data-investigation.md]] - Creating reusable investigation scripts for data quality issues
+- [[instructions/exploratory-analysis.md]] - Collaborative pattern exploration and discovery
 
 ### Research Documentation Standards (_CHUNKS/)
 
-- `_CHUNKS/research-documentation.md` - **REQUIRED documentation structure and maintenance rules**
-- `_CHUNKS/methodology-files.md` - What goes in METHODOLOGY.md files
-- `_CHUNKS/methods-vs-methodology.md` - Distinguishing METHODS from METHODOLOGY
-- `_CHUNKS/experiment-logging.md` - Experiment directory structure and lifecycle
+- [[instructions/research-documentation.md]] - **REQUIRED documentation structure and maintenance rules**
+- [[instructions/methodology-files.md]] - What goes in METHODOLOGY.md files
+- [[instructions/methods-vs-methodology.md]] - Distinguishing METHODS from METHODOLOGY
+- [[instructions/experiment-logging.md]] - Experiment directory structure and lifecycle
 
 ### Detailed Technical Workflows (_CHUNKS/)
 
-- `_CHUNKS/dbt-workflow.md` - dbt model creation and data access patterns
-- `_CHUNKS/streamlit-workflow.md` - Streamlit visualization workflow
+- [[instructions/dbt-workflow.md]] - dbt model creation and data access patterns
+- [[instructions/streamlit-workflow.md]] - Streamlit visualization workflow
 
 ### Additional Resources (references/)
 
-- `references/dbt-workflow.md` - Comprehensive dbt patterns and testing strategies
-- `references/streamlit-patterns.md` - Visualization best practices and layout patterns
-- `references/context-discovery.md` - Guide to finding and reading project context
+- [[references/dbt-workflow.md]] - Comprehensive dbt patterns and testing strategies
+- [[references/streamlit-patterns.md]] - Visualization best practices and layout patterns
+- [[references/context-discovery.md]] - Guide to finding and reading project context
 
 ### Statistical Analysis (references/)
 
-- `references/statistical-analysis.md` - **Complete guide to hypothesis testing and statistical analysis**
-- `references/test_selection_guide.md` - Choosing the right statistical test
-- `references/assumptions_and_diagnostics.md` - Checking and validating statistical assumptions
-- `references/effect_sizes_and_power.md` - Effect sizes, confidence intervals, and power analysis
-- `references/bayesian_statistics.md` - Bayesian alternatives and Bayes factors
-- `references/reporting_standards.md` - APA-style statistical reporting
+- [[references/statistical-analysis.md]] - **Complete guide to hypothesis testing and statistical analysis**
+- [[references/test_selection_guide.md]] - Choosing the right statistical test
+- [[references/assumptions_and_diagnostics.md]] - Checking and validating statistical assumptions
+- [[references/effect_sizes_and_power.md]] - Effect sizes, confidence intervals, and power analysis
+- [[references/bayesian_statistics.md]] - Bayesian alternatives and Bayes factors
+- [[references/reporting_standards.md]] - APA-style statistical reporting
 
 ### Python and Visualization Libraries
 
 **Core libraries** (references/):
 
-- `matplotlib.md` - Publication-quality plotting and visualization
-- `seaborn.md` - Statistical data visualization
-- `statsmodels.md` - Statistical modeling and econometrics
-- `streamlit.md` - Interactive data applications and dashboards
+- [[references/matplotlib.md]] - Publication-quality plotting and visualization
+- [[references/seaborn.md]] - Statistical data visualization
+- [[references/statsmodels.md]] - Statistical modeling and econometrics
+- [[references/streamlit.md]] - Interactive data applications and dashboards
 
 **Python development standards**: Use the `python-dev` skill for code quality, type safety, and testing.
 
-**Note**: Chunk files are loaded on-demand when detailed technical specifications are needed. Use `@reference _CHUNKS/filename.md` or `@references/filename.md` to load specific documentation.
+**Note**: Chunk files are loaded on-demand when detailed technical specifications are needed. Use `@reference _CHUNKS/filename.md]] or `@references/filename.md]] to load specific documentation.
 
 ## When to Use This Skill
 
@@ -255,7 +255,8 @@ cat data/README.md
 
 After context discovery, summarize findings to user:
 
-"I've reviewed the project context. This is a [research topic] project investigating [questions]. The dbt pipeline has [N] staging models and [M] mart models. I see existing work on [areas]. What would you like me to help with?"
+
+```"I've reviewed the project context. This is a <research topic> project investigating <questions>. The DBT pipeline has <N> staging models and <M> mart models. I see existing work on <areas>. What would you like me to help with?"```
 
 ## Follow Data Access Workflow
 
@@ -322,13 +323,13 @@ def load_data():
 - **Quality**: Data passes through validated transformation pipeline
 - **Consistency**: All analysts use same transformations
 
-**See:** `references/dbt-workflow.md` for detailed dbt patterns
+**See:** [[references/dbt-workflow.md]] for detailed dbt patterns
 
 ## Follow DBT Model Workflow
 
 Create or modify dbt models following academicOps layered architecture.
 
-**For detailed dbt workflow including model layers, single-step workflow, and examples, see `@reference _CHUNKS/dbt-workflow.md`**
+**For detailed dbt workflow including model layers, single-step workflow, and examples, see [[instructions/dbt-workflow.md]]**
 
 ### Quick Reference: Model Layers
 
@@ -345,7 +346,7 @@ Create or modify dbt models following academicOps layered architecture.
 
 **ALWAYS check for duplicate models before creating new ones.**
 
-**See:** `_CHUNKS/dbt-workflow.md` for complete workflow details and `references/dbt-workflow.md` for comprehensive patterns
+**See:** [[instructions/dbt-workflow.md]] for complete workflow details and [[references/dbt-workflow.md]] for comprehensive patterns
 
 ## Follow Visualization Workflow
 
@@ -353,7 +354,7 @@ Create Streamlit visualizations following single-step collaborative pattern.
 
 **🚨 REMINDER: Streamlit is DISPLAY ONLY. No transformations. See "Transformation Boundary Rule" above.**
 
-**For detailed Streamlit workflow including structure, single-step patterns, and examples, see `@reference _CHUNKS/streamlit-workflow.md`**
+**For detailed Streamlit workflow including structure, single-step patterns, and examples, see `@reference _CHUNKS/streamlit-workflow.md]]**
 
 ### Quick Reference: Workflow Pattern
 
@@ -364,7 +365,7 @@ Create Streamlit visualizations following single-step collaborative pattern.
 
 **Key principle:** Always load data through dbt models using DuckDB, cache with `@st.cache_data`. Streamlit queries should be `SELECT * FROM mart` or simple filters on existing columns - NEVER aggregations, joins, or business logic.
 
-**See:** `_CHUNKS/streamlit-workflow.md` for complete workflow and `references/streamlit-patterns.md` for best practices
+**See:** [[instructions/streamlit-workflow.md]] for complete workflow and [[references/streamlit-patterns.md]] for best practices
 
 ## Follow Testing Workflow
 
@@ -453,19 +454,28 @@ tests:
       severity: warn # Don't fail build, just warn
 ```
 
-**See:** `references/dbt-workflow.md` for complete testing patterns
+### Pipeline/Template Validation Tests
+
+When testing LLM pipelines or templated content, validate **substantive content** not just error patterns:
+
+- ✅ Check content length minimums (e.g., criteria block > 100 chars)
+- ✅ Verify required sections exist AND have content
+- ✅ Use position-based length for multiline content (regex `.*?` doesn't cross newlines)
+- ❌ Don't just check for specific error strings - upstream bugs are unpredictable
+
+**See:** [[references/dbt-workflow.md]] for complete testing patterns
 
 ## Follow Data Investigation Workflow
 
 When investigating data quality issues (missing values, unexpected patterns, join coverage), create REUSABLE investigation scripts in `analyses/` directory. Never use throwaway one-liners for data investigation.
 
-**For complete workflow, script templates, and when to create investigation scripts, see `@reference _CHUNKS/data-investigation.md`**
+**For complete workflow, script templates, and when to create investigation scripts, see `@reference _CHUNKS/data-investigation.md]]**
 
 ## Exploratory Analysis
 
 When exploring data patterns and relationships, follow collaborative discovery process. Take one analytical step at a time, yielding to user after each finding.
 
-**For complete exploration workflow and anti-patterns, see `@reference _CHUNKS/exploratory-analysis.md`**
+**For complete exploration workflow and anti-patterns, see `@reference _CHUNKS/exploratory-analysis.md]]**
 
 **NOTE:** For data quality issues (missing values, unexpected nulls), use Data Investigation Workflow instead.
 
@@ -473,18 +483,18 @@ When exploring data patterns and relationships, follow collaborative discovery p
 
 **Self-documenting work**: Do NOT create separate analysis reports or random documentation files.
 
-**🚨 CRITICAL: Research projects must follow STRICT documentation structure. See `@reference _CHUNKS/research-documentation.md` for complete requirements.**
+**🚨 CRITICAL: Research projects must follow STRICT documentation structure. See `@reference _CHUNKS/research-documentation.md]] for complete requirements.**
 
 ### Required Documentation Structure
 
 Research projects MUST maintain:
 
 - **README.md** - Project overview and quick start
-- **METHODOLOGY.md** - Research design and approach (see `@reference _CHUNKS/methodology-files.md`)
-- **methods/*.md** - Technical implementation details (see `@reference _CHUNKS/methods-vs-methodology.md`)
+- **METHODOLOGY.md** - Research design and approach (see `@reference _CHUNKS/methodology-files.md]])
+- **methods/*.md** - Technical implementation details (see `@reference _CHUNKS/methods-vs-methodology.md]])
 - **data/README.md** - Data sources and schema
 - **dbt/schema.yml** - Model and column documentation
-- **experiments/YYYYMMDD-description/** - Experimental work (see `@reference _CHUNKS/experiment-logging.md`)
+- **experiments/YYYYMMDD-description/** - Experimental work (see `@reference _CHUNKS/experiment-logging.md]])
 
 ### Where Analysis Documentation Lives
 
@@ -498,9 +508,9 @@ Research projects MUST maintain:
 
 ### Prohibited
 
-❌ Create `analysis_report.md` or any random markdown files ❌ Create `findings_summary.docx` ❌ Proliferate documentation files without defined structure ❌ Leave documentation stale when code changes
+❌ Create `analysis_report.md]] or any random markdown files ❌ Create `findings_summary.docx` ❌ Proliferate documentation files without defined structure ❌ Leave documentation stale when code changes
 
-✅ Follow strict structure defined in `_CHUNKS/research-documentation.md` ✅ Update documentation in SAME commit as code changes ✅ One source of truth for each piece of information
+✅ Follow strict structure defined in [[instructions/research-documentation.md]] ✅ Update documentation in SAME commit as code changes ✅ One source of truth for each piece of information
 
 ## Collaborative Workflow Principles
 
@@ -555,24 +565,24 @@ This skill includes comprehensive documentation organized in three tiers:
 
 **Load these to understand required project documentation:**
 
-- `_CHUNKS/research-documentation.md` - Required documentation structure and maintenance rules
-- `_CHUNKS/methodology-files.md` - What goes in METHODOLOGY.md files
-- `_CHUNKS/methods-vs-methodology.md` - Distinguishing METHODS from METHODOLOGY
-- `_CHUNKS/experiment-logging.md` - Experiment directory structure and lifecycle
+- [[instructions/research-documentation.md]] - Required documentation structure and maintenance rules
+- [[instructions/methodology-files.md]] - What goes in METHODOLOGY.md files
+- [[instructions/methods-vs-methodology.md]] - Distinguishing METHODS from METHODOLOGY
+- [[instructions/experiment-logging.md]] - Experiment directory structure and lifecycle
 
 ### Technical Workflow Details (_CHUNKS/)
 
 **Load these for detailed technical workflows:**
 
-- `_CHUNKS/dbt-workflow.md` - dbt model creation, data access patterns, and workflow
-- `_CHUNKS/streamlit-workflow.md` - Streamlit visualization workflow and structure
+- [[instructions/dbt-workflow.md]] - dbt model creation, data access patterns, and workflow
+- [[instructions/streamlit-workflow.md]] - Streamlit visualization workflow and structure
 
 ### Comprehensive Reference Documentation (references/)
 
 **Load these for in-depth best practices:**
 
-- `references/dbt-workflow.md` - Complete dbt patterns (testing, documentation, common patterns)
-- `references/streamlit-patterns.md` - Complete Streamlit best practices (layout, components, libraries)
-- `references/context-discovery.md` - Project context discovery guide
+- [[references/dbt-workflow.md]] - Complete dbt patterns (testing, documentation, common patterns)
+- [[references/streamlit-patterns.md]] - Complete Streamlit best practices (layout, components, libraries)
+- [[references/context-discovery.md]] - Project context discovery guide
 
-**Usage**: Reference chunk files using `@reference _CHUNKS/filename.md` to load detailed documentation on-demand.
+**Usage**: Reference chunk files using `@reference _CHUNKS/filename.md]] to load detailed documentation on-demand.

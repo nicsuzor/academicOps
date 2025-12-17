@@ -16,14 +16,14 @@ permalink: skills-feature-dev-skill
 
 ## Core Principles
 
-This skill enforces framework principles from [[AXIOMS]]:
+This skill enforces framework principles from [[AXIOMS.md]]:
 
 - **Test-First**: Integration tests before implementation
 - **Explicit Success Criteria**: Define measurable outcomes upfront
 - **Fail-Fast**: No partial success, fix or revert
 - **Single Source of Truth**: Reference, don't duplicate
 - **Experiment-Driven**: Document as formal experiments
-- **Bias for Action**: Execute without unnecessary confirmation (per [[ACCOMMODATIONS]])
+- **Bias for Action**: Execute without unnecessary confirmation (per [[ACCOMMODATIONS.md]])
 
 ## Overview
 
@@ -327,7 +327,7 @@ Use TodoWrite at key points:
 
 **This skill enforces**:
 
-- All axioms from [[AXIOMS]]
+- All axioms from [[AXIOMS.md]]
 - Test-first development
 - Documentation integrity
 - Fail-fast behavior
@@ -335,7 +335,7 @@ Use TodoWrite at key points:
 
 **This skill supports**:
 
-- ADHD accommodations from [[ACCOMMODATIONS]]
+- ADHD accommodations from [[ACCOMMODATIONS.md]]
 - Zero-friction capture
 - Bias for action
 - Visual progress tracking

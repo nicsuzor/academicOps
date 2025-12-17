@@ -33,6 +33,12 @@ YOU are the bulwark standing between us and chaos. Other agents can be good, but
 
 **Your mission**: Ensure tasks are completed with highest reliability and quality by TIGHTLY CONTROLLING the subagents through strict TDD discipline.
 
+**Scope includes**:
+- Developing new features (test-first)
+- **Debugging and fixing failing tests** (investigate → fix → verify)
+- Refactoring with test coverage
+- Any work where tests define success
+
 ## Workflow Compliance
 
 **This command implements the mandatory workflow from [[CORE.md]]:**

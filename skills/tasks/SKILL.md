@@ -249,6 +249,12 @@ Create separate tasks when:
 2. For multiple completions, use batch operation: `task_archive.py "task1.md" "task2.md" "task3.md"`
 3. Verify task(s) moved to `data/tasks/archived/`
 
+**When archiving a "Decision" task where user accepted work** (review invitation, collaboration request, etc.):
+
+1. Archive the decision task
+2. **Immediately create the follow-up action task** for the actual work (e.g., "Complete SNSF review" after accepting review invitation)
+3. Do NOT ask if user wants the follow-up task - accepting work implies needing to do the work
+
 **When user asks "what's urgent?"**:
 
 1. Run: `task_view.py` to see inbox

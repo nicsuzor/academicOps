@@ -39,7 +39,7 @@ pytest tests/integration/test_skill_script_discovery.py -v
 
 Tests include:
 1. **Symlink architecture** - Verifies skill symlinks exist and resolve correctly
-2. **Script discovery** - Confirms scripts are found without searching [[CWD]]
+2. **Script discovery** - Confirms scripts are found without searching CWD
 3. **Cross-repo execution** - Validates scripts work from non-[[AOPS]] directories
 4. **Claude headless integration** - Tests that [[Claude Code]] can find and use scripts
 
