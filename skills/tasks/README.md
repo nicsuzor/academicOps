@@ -612,7 +612,7 @@ uv run python $AOPS/skills/tasks/scripts/task_view.py
 uv run python $AOPS/skills/tasks/scripts/task_archive.py task.md
 
 # Add task
-uv run python $AOPS/skills/tasks/scripts/task_add.py --title "Task title" --priority 1
+uv run python $AOPS/skills/tasks/scripts/task_add.py --title "Task title" --slug "task-slug" --priority 1
 ```
 
 **Note**: MCP tools are now the recommended interface for agent interactions.

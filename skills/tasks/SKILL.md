@@ -103,15 +103,16 @@ cd $AOPS && uv run python skills/tasks/scripts/task_archive.py "task1.md" --data
 Create new task in inbox with bmem-compliant format.
 
 ```bash
-# Basic task
+# Basic task (filename uses sanitized title as slug)
 cd $AOPS && uv run python skills/tasks/scripts/task_add.py \
   --title "Task title" \
   --priority 1 \
   --body "Task description with context"
 
-# Full-featured task
+# With explicit slug for custom filename
 cd $AOPS && uv run python skills/tasks/scripts/task_add.py \
   --title "Complete important deliverable" \
+  --slug "important-deliverable" \
   --priority 0 \
   --project "project-slug" \
   --classification "Action" \
@@ -127,6 +128,7 @@ cd $AOPS && uv run python skills/tasks/scripts/task_add.py \
 
 **Parameters**:
 - `--title`: Task title (required)
+- `--slug`: Custom slug for filename (default: sanitized title)
 - `--priority`: 0-3 or P0-P3 (P0=urgent, P3=low)
 - `--project`: Project slug for categorization
 - `--classification`: Task type (Action, Review, Research, etc.)
@@ -337,6 +339,6 @@ Tasks MCP server provides tool interface:
 
 This skill focuses on task _lifecycle_ (view, archive, create). Other skills handle:
 
-- **Email workflow**: Email → Task extraction ([[email-capture.md]])
+- **Email workflow**: Email → Task extraction ([[workflows/email-capture.md]])
 - **Session mining**: Extracting tasks from conversations (future)
 - **Knowledge graph**: Maintaining bmem format and links (via bmem tools)

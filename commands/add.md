@@ -25,7 +25,7 @@ Use the Skill tool to invoke the `[[skills/tasks/SKILL.md|tasks]]` skill: `Skill
 
 **Scripts**:
 - Add checklist item: `cd $AOPS && uv run python skills/tasks/scripts/task_item_add.py "task-id.md" --item "Description"`
-- Create new task: `cd $AOPS && uv run python skills/tasks/scripts/task_add.py --title "Title" --priority P2`
+- Create new task: `cd $AOPS && uv run python skills/tasks/scripts/task_add.py --title "Title" --slug "my-task" --priority P2`
 
 **Key rules**:
 - Always check for existing related tasks first (avoid duplicates)
