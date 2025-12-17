@@ -335,3 +335,29 @@ def test_create_task_with_due_date(test_data_dir: Path):
     task_path = test_data_dir / result["path"]
     task = task_ops.load_task_from_file(task_path)
     assert task.due == due_date
+
+
+@pytest.mark.parametrize(
+    "input_str,expected",
+    [
+        ("Hello World", "hello-world"),
+        ("My Cool Task!", "my-cool-task"),
+        ("  --multiple---spaces  ", "multiple-spaces"),
+        ("a" * 100, "a" * 50),
+    ],
+)
+def test_sanitize_slug(input_str: str, expected: str):
+    """Test slug sanitization functionality.
+
+    Args:
+        input_str: Raw input string to sanitize
+        expected: Expected sanitized slug
+    """
+    result = task_ops.sanitize_slug(input_str)
+    assert result == expected
+
+
+def test_sanitize_slug_empty_raises():
+    """Test that sanitize_slug raises ValueError for strings that become empty."""
+    with pytest.raises(ValueError, match="empty"):
+        task_ops.sanitize_slug("@#$%")

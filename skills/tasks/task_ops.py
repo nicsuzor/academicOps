@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path
@@ -28,6 +29,42 @@ class InvalidTaskFormatError(Exception):
 
 class TaskNotFoundError(Exception):
     """Raised when task file doesn't exist."""
+
+
+def sanitize_slug(slug: str, max_length: int = 50) -> str:
+    """Sanitize slug to lowercase alphanumeric-plus-hyphens format.
+
+    Args:
+        slug: Input string to sanitize
+        max_length: Maximum length for result (default: 50)
+
+    Returns:
+        Sanitized slug string
+
+    Raises:
+        ValueError: If result is empty after sanitization
+    """
+    # Convert to lowercase
+    result = slug.lower()
+
+    # Replace non-alphanumeric chars with hyphens
+    result = re.sub(r"[^a-z0-9]+", "-", result)
+
+    # Collapse multiple hyphens to single hyphen
+    result = re.sub(r"-+", "-", result)
+
+    # Strip leading/trailing hyphens
+    result = result.strip("-")
+
+    # Truncate to max_length
+    result = result[:max_length]
+
+    # Fail fast if empty
+    if not result:
+        msg = f"Sanitized slug is empty for input: {slug!r}"
+        raise ValueError(msg)
+
+    return result
 
 
 def get_data_dir(data_dir_override: Path | None = None) -> Path:
