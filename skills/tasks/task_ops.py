@@ -828,6 +828,16 @@ def create_task(
         task_id = f"{timestamp}-{task_uuid}"
     filename = f"{task_id}.md"
 
+    # Check for duplicate slug
+    if slug:
+        inbox_dir = data_dir / "tasks/inbox"
+        potential_path = inbox_dir / filename
+        if potential_path.exists():
+            return {
+                "success": False,
+                "message": f"Task with slug '{sanitized}' already exists for today: {filename}",
+            }
+
     # Create task model
     task = Task(
         title=title,

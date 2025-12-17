@@ -461,3 +461,33 @@ def test_mcp_create_task_request_accepts_slug():
     )
 
     assert request_without_slug.slug is None
+
+
+def test_create_task_duplicate_slug_rejected(test_data_dir: Path):
+    """Test that creating a task with duplicate slug for same date fails.
+
+    When creating a second task with same slug on the same date:
+    - Should return success=False
+    - Should include error message about duplicate slug
+    """
+    # Create first task with slug
+    result1 = task_ops.create_task(
+        title="First task",
+        data_dir=test_data_dir,
+        slug="duplicate-test",
+        priority=1,
+    )
+
+    assert result1["success"] is True
+
+    # Attempt to create second task with same slug
+    result2 = task_ops.create_task(
+        title="Second task",
+        data_dir=test_data_dir,
+        slug="duplicate-test",
+        priority=2,
+    )
+
+    # Should fail
+    assert result2["success"] is False
+    assert "duplicate" in result2["message"].lower() or "already exists" in result2["message"].lower()
