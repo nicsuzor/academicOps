@@ -401,52 +401,21 @@ try:
 except Exception as e:
     st.error(f"Error loading daily note: {e}")
 
-# PRIORITY BACKLOG - Two columns
-st.markdown("<div class='section-header'>PRIORITY BACKLOG</div>", unsafe_allow_html=True)
-try:
-    focus_tasks = load_focus_tasks(count=12)
-    if focus_tasks:
-        col1, col2 = st.columns(2)
-        for i, task in enumerate(focus_tasks):
-            priority_text = f"P{task.priority}" if task.priority is not None else ""
-
-            # Calculate subtask progress
-            progress_html = ""
-            item_class = "task-item"
-            title_class = "task-title"
-
-            if task.subtasks:
-                total = len(task.subtasks)
-                completed = sum(1 for s in task.subtasks if s.completed)
-                all_done = completed == total
-
-                if all_done:
-                    item_class = "task-item all-done"
-                    title_class = "task-title all-done"
-                    progress_html = f"<span class='task-progress complete'>✓ {completed}/{total}</span>"
-                else:
-                    progress_html = f"<span class='task-progress'>{completed}/{total}</span>"
-
-            task_html = f"""
-            <div class='{item_class}'>
-                <span class='task-priority'>{priority_text}</span>
-                <span class='{title_class}'>{esc(task.title)}</span>
-                {progress_html}
-            </div>
-            """
-            with col1 if i % 2 == 0 else col2:
-                st.markdown(task_html, unsafe_allow_html=True)
-    else:
-        st.markdown("<div style='color: #666; padding: 8px;'>No priority tasks</div>", unsafe_allow_html=True)
-except Exception as e:
-    st.error(f"Error loading tasks: {e}")
-
-# ACTIVE PROJECTS - Aggregated by project
+# ACTIVE PROJECTS - Aggregated by project (includes priority tasks)
 st.markdown("<div class='section-header'>ACTIVE PROJECTS</div>", unsafe_allow_html=True)
 
 try:
     sessions = find_sessions()
     analyzer = SessionAnalyzer()
+
+    # Load priority tasks and group by project
+    focus_tasks = load_focus_tasks(count=20)
+    tasks_by_project: dict[str, list] = {}
+    for task in focus_tasks:
+        proj = task.project or 'unassigned'
+        if proj not in tasks_by_project:
+            tasks_by_project[proj] = []
+        tasks_by_project[proj].append(task)
 
     # Group sessions by project
     projects: dict[str, dict] = {}
@@ -521,6 +490,18 @@ try:
             goal = data['goals'][-1][:100]
             content_parts.append(f"<div class='session-prompt'><b>Goal:</b> \"{esc(goal)}\"</div>")
 
+        # Show priority tasks for this project
+        project_tasks = tasks_by_project.get(proj, [])
+        for task in project_tasks[:3]:
+            priority_text = f"P{task.priority}" if task.priority is not None else ""
+            progress = ""
+            if task.subtasks:
+                done = sum(1 for s in task.subtasks if s.completed)
+                progress = f" ({done}/{len(task.subtasks)})"
+            content_parts.append(f"<div class='task-item'><span class='task-priority'>{priority_text}</span> {esc(task.title)}{progress}</div>")
+        if len(project_tasks) > 3:
+            content_parts.append(f"<div class='task-item'>+{len(project_tasks)-3} more tasks</div>")
+
         # Show bmem notes
         for note in data['bmem_notes'][-2:]:
             content_parts.append(f"<div class='session-bmem'>📝 {esc(note['title'])}</div>")
@@ -549,6 +530,33 @@ try:
 
         if len(project_cards) >= 10:
             break
+
+    # Add cards for projects with tasks but no sessions
+    for proj, tasks in tasks_by_project.items():
+        if proj in projects or len(project_cards) >= 10:
+            continue
+        color = get_project_color(proj)
+        content_parts = []
+        for task in tasks[:3]:
+            priority_text = f"P{task.priority}" if task.priority is not None else ""
+            progress = ""
+            if task.subtasks:
+                done = sum(1 for s in task.subtasks if s.completed)
+                progress = f" ({done}/{len(task.subtasks)})"
+            content_parts.append(f"<div class='task-item'><span class='task-priority'>{priority_text}</span> {esc(task.title)}{progress}</div>")
+        if len(tasks) > 3:
+            content_parts.append(f"<div class='task-item'>+{len(tasks)-3} more tasks</div>")
+        if content_parts:
+            content_html = '\n'.join(content_parts)
+            project_cards.append(f"""
+            <div class='session-card' style='border-left-color: {color};'>
+                <div class='session-header'>
+                    <span class='session-project' style='color: {color};'>📋 {proj}</span>
+                    <span class='session-status'>{len(tasks)} tasks</span>
+                </div>
+                {content_html}
+            </div>
+            """)
 
     # Render in two columns
     if project_cards:
