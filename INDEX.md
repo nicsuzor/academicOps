@@ -39,7 +39,8 @@ $AOPS/
 │   ├── ttd.md                   # TDD orchestration
 │   ├── parallel-batch.md        # Parallel file processing
 │   ├── strategy.md              # Strategic planning
-│   └── task-viz.md              # Task graph visualization
+│   ├── task-viz.md              # Task graph visualization
+│   └── analyze-session.md       # → session-analyzer skill
 │
 ├── skills/
 │   ├── framework/               # Convention reference for infrastructure
@@ -53,6 +54,9 @@ $AOPS/
 │   │
 │   ├── transcript/              # Session JSONL → markdown
 │   │   └── SKILL.md             # Wraps scripts/claude_transcript.py
+│   │
+│   ├── session-analyzer/        # Semantic session analysis
+│   │   └── SKILL.md             # LLM-powered accomplishments/decisions/topics
 │   │
 │   ├── python-dev/              # Production Python standards
 │   │   ├── SKILL.md             # Fail-fast, types, TDD
@@ -123,12 +127,12 @@ $AOPS/
 │   ├── package_deployment.py    # Skill packaging
 │   ├── measure_router_compliance.py
 │   ├── migrate_log_entries.py   # Log entry migration
-│   ├── transcribe_recording.sh  # Recording transcription
-│   └── extract_session_knowledge.py  # DEPRECATED (use /log, /bmem)
+│   └── transcribe_recording.sh  # Recording transcription
 │
 ├── lib/                         # Shared Python
 │   ├── paths.py                 # Path resolution (SSoT)
 │   ├── session_reader.py        # Unified session parser (JSONL + agents + hooks)
+│   ├── session_analyzer.py      # Session data extraction for LLM analysis
 │   └── activity.py              # Activity logging
 │
 ├── tests/                       # pytest suite

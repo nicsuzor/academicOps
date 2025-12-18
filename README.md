@@ -44,6 +44,7 @@ Academic support framework for Claude Code. Minimal, fight bloat aggressively.
 | /bmem | Capture session info to knowledge base | Slash command |
 | /log | Log patterns to thematic learning files | Slash command |
 | /transcript | Generate session transcripts | Slash command |
+| /analyze-session | Semantic session analysis | Slash command |
 | /task-viz | Task graph visualization (Excalidraw) | Slash command |
 | /qa | Verify against acceptance criteria | Slash command |
 | /ttd | TDD orchestration workflow | Slash command |
@@ -61,6 +62,7 @@ Academic support framework for Claude Code. Minimal, fight bloat aggressively.
 | python-dev | Production Python (fail-fast, typed) | `Skill(skill="python-dev")` |
 | tasks | Task management + email extraction | `Skill(skill="tasks")` or `/email` |
 | transcript | Session JSONL → markdown | `Skill(skill="transcript")` |
+| session-analyzer | Semantic session analysis | `Skill(skill="session-analyzer")` |
 | learning-log | Pattern logging to thematic files | `Skill(skill="learning-log")` |
 | dashboard | Live task + session activity dashboard | `uv run streamlit run skills/dashboard/dashboard.py` |
 
