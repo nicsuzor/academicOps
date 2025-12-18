@@ -34,12 +34,12 @@ class TestAnalyzePrompt:
         assert matched == ["python-dev"]
 
     def test_analyze_prompt_no_match(self) -> None:
-        """Test that unrecognized input offers Haiku classifier with same framing."""
+        """Test that unrecognized input offers intent-router agent."""
         result, matched = analyze_prompt("hello there")
 
-        # When no keyword match, offer semantic classification via Haiku
+        # When no keyword match, offer semantic classification via intent-router
         assert "academic environment" in result
-        assert "haiku" in result
+        assert "intent-router" in result
         assert matched == []
 
     def test_analyze_prompt_multiple_matches(self) -> None:
@@ -64,14 +64,13 @@ class TestAnalyzePrompt:
         assert FRAMING_VERSION == "v3-academic-rigor"
 
 
-def test_prompt_router_uses_haiku_subagent() -> None:
-    """Verify prompt router provides Haiku subagent spawn instruction.
+def test_prompt_router_uses_intent_router_agent() -> None:
+    """Verify prompt router provides intent-router agent spawn instruction.
 
-    Per spec (memory://specs/prompt-intent-router), when keywords match
-    the router provides an instruction for the main agent to spawn a
-    dedicated Haiku subagent for semantic intent classification.
+    When no keywords match, the router provides an instruction for the
+    main agent to spawn the intent-router agent for semantic classification.
 
-    The implementation writes the prompt to a temp file and returns
+    The implementation writes a full prompt to a temp file and returns
     additionalContext with spawn instructions.
     """
     import inspect
@@ -81,22 +80,10 @@ def test_prompt_router_uses_haiku_subagent() -> None:
     # Get the source code of analyze_prompt
     source = inspect.getsource(analyze_prompt)
 
-    # The implementation should show evidence of subagent invocation
-    # Look for patterns indicating Claude/subprocess/Task usage for classification
-    subagent_patterns = [
-        "subprocess",
-        "claude",
-        "haiku",
-        "Task",
-        "model=",
-        "--model",
-    ]
-
-    has_subagent = any(pattern.lower() in source.lower() for pattern in subagent_patterns)
-
-    assert has_subagent, (
-        "analyze_prompt() uses keyword matching instead of Haiku subagent. "
-        f"Found no subagent patterns in source:\n{source[:500]}..."
+    # The implementation should reference intent-router agent
+    assert "intent-router" in source, (
+        "analyze_prompt() should reference intent-router agent for classification. "
+        f"Source:\n{source[:500]}..."
     )
 
 

@@ -51,29 +51,39 @@ SKILLS: dict[str, str] = {
 }
 
 TEMP_DIR = Path.home() / ".cache" / "aops" / "prompt-router"
+INTENT_ROUTER_PROMPT = Path(__file__).parent / "prompts" / "intent-router.md"
 
 
-def write_prompt_context(prompt: str) -> Path:
-    """Write prompt and skill context to temp file for classifier.
+def write_classifier_prompt(prompt: str) -> Path:
+    """Write full classifier prompt to temp file.
+
+    Loads the intent-router prompt template and fills in skills + user prompt.
 
     Args:
         prompt: The user's prompt text
 
     Returns:
-        Path to the context file
+        Path to the prompt file
     """
     TEMP_DIR.mkdir(parents=True, exist_ok=True)
 
+    # Load template
+    template = INTENT_ROUTER_PROMPT.read_text()
+    # Strip frontmatter
+    if template.startswith("---"):
+        parts = template.split("---", 2)
+        if len(parts) >= 3:
+            template = parts[2].strip()
+
+    # Format skills list
+    skills_list = "\n".join(f"- **{name}**: {desc}" for name, desc in SKILLS.items())
+
+    # Fill template
+    full_prompt = template.format(skills=skills_list, prompt=prompt)
+
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
-    filepath = TEMP_DIR / f"{timestamp}.json"
-
-    data = {
-        "timestamp": timestamp,
-        "prompt": prompt,
-        "available_skills": SKILLS,
-    }
-
-    filepath.write_text(json.dumps(data, indent=2))
+    filepath = TEMP_DIR / f"{timestamp}.md"
+    filepath.write_text(full_prompt)
     return filepath
 
 
@@ -129,12 +139,10 @@ def analyze_prompt(prompt: str) -> tuple[str, list[str]]:
             matched_skills.append(skill)
 
     if not matched_skills:
-        # No keyword match - offer semantic classification via Haiku
-        filepath = write_prompt_context(prompt)
+        # No keyword match - offer semantic classification via intent-router agent
+        filepath = write_classifier_prompt(prompt)
         classifier_instruction = (
-            f"Task(subagent_type=\"general-purpose\", model=\"haiku\", "
-            f"prompt=\"Read {filepath} and classify intent. Return the single best "
-            f"skill from available_skills, or 'none' if no skill applies.\")"
+            f"Task(subagent_type=\"intent-router\", prompt=\"Read {filepath}\")"
         )
         return SKILL_FRAMING.format(skill_instruction=classifier_instruction), []
 
