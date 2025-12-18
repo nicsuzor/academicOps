@@ -57,36 +57,6 @@ def get_project_git_activity(project_path: str) -> list[str]:
     return []
 
 
-def aggregate_active_todos(sessions, analyzer: SessionAnalyzer) -> list[dict]:
-    """Aggregate in-progress todos from all active sessions."""
-    active_todos = []
-    seen = set()
-
-    for session in sessions[:15]:  # Check recent 15 sessions
-        age = datetime.now(timezone.utc) - session.last_modified
-        if age.total_seconds() > 86400:  # Skip sessions older than 24h
-            continue
-        if '-tmp' in session.project or '-var-folders' in session.project:
-            continue
-
-        try:
-            state = analyzer.extract_dashboard_state(session.path)
-            todos = state.get('todos')
-            if todos:
-                for todo in todos:
-                    if todo.get('status') == 'in_progress':
-                        content = todo.get('content', '')
-                        if content and content not in seen:
-                            seen.add(content)
-                            active_todos.append({
-                                'content': content,
-                                'project': session.project_display,
-                                'activeForm': todo.get('activeForm', content),
-                            })
-        except Exception:
-            continue
-    return active_todos[:8]  # Max 8 active items
-
 
 def get_session_state(session_info, analyzer: SessionAnalyzer) -> dict:
     """Extract current state from a session for display."""
@@ -396,30 +366,6 @@ st.markdown("""
 def esc(text):
     return str(text).replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;').replace('"', '&quot;')
 
-# ACTIVE NOW - Aggregated from all sessions
-st.markdown("<div class='section-header'>ACTIVE NOW</div>", unsafe_allow_html=True)
-try:
-    sessions = find_sessions()
-    analyzer = SessionAnalyzer()
-    active_todos = aggregate_active_todos(sessions, analyzer)
-
-    if active_todos:
-        col1, col2 = st.columns(2)
-        for i, todo in enumerate(active_todos):
-            item_html = f"""
-            <div class='active-now-item'>
-                <span class='active-now-status'>🔄</span>
-                <span class='active-now-content'>{esc(todo['activeForm'])}</span>
-                <span class='active-now-project'>{esc(todo['project'])}</span>
-            </div>
-            """
-            with col1 if i % 2 == 0 else col2:
-                st.markdown(item_html, unsafe_allow_html=True)
-    else:
-        st.markdown("<div style='color: #666; padding: 8px;'>No active work in sessions</div>", unsafe_allow_html=True)
-except Exception as e:
-    st.error(f"Error loading active todos: {e}")
-
 # TODAY'S PROGRESS - Daily note summaries
 st.markdown("<div class='section-header'>TODAY'S PROGRESS</div>", unsafe_allow_html=True)
 try:
@@ -495,126 +441,126 @@ try:
 except Exception as e:
     st.error(f"Error loading tasks: {e}")
 
-# ACTIVE SESSIONS - Two columns
-st.markdown("<div class='section-header'>ACTIVE SESSIONS</div>", unsafe_allow_html=True)
+# ACTIVE PROJECTS - Aggregated by project
+st.markdown("<div class='section-header'>ACTIVE PROJECTS</div>", unsafe_allow_html=True)
 
 try:
     sessions = find_sessions()
     analyzer = SessionAnalyzer()
 
-    # Collect session cards - all sessions in reverse date order
-    session_cards = []
+    # Group sessions by project
+    projects: dict[str, dict] = {}
     for session in sessions:
         age = datetime.now(timezone.utc) - session.last_modified
-
         if age.total_seconds() > 86400 * 7:
             continue
-
-        # Skip test sessions (temp directories - project names use dashes not slashes)
         if '-tmp' in session.project or '-var-folders' in session.project:
             continue
 
         proj = session.project_display
-        status_emoji, status_text = get_activity_status(session.last_modified)
-        color = get_project_color(proj)
         state = get_session_state(session, analyzer)
 
-        # Build content: CURRENT WORK first (todos), then context
+        if proj not in projects:
+            projects[proj] = {
+                'last_modified': session.last_modified,
+                'todos': [],
+                'bmem_notes': [],
+                'goals': [],
+                'git_project': session.project,
+                'session_count': 0
+            }
+
+        projects[proj]['session_count'] += 1
+        if session.last_modified > projects[proj]['last_modified']:
+            projects[proj]['last_modified'] = session.last_modified
+
+        # Aggregate todos (dedupe by content)
+        if state['todos']:
+            existing = {t.get('content') for t in projects[proj]['todos']}
+            for todo in state['todos']:
+                if todo.get('content') not in existing:
+                    projects[proj]['todos'].append(todo)
+                    existing.add(todo.get('content'))
+
+        # Aggregate bmem notes (dedupe by title)
+        existing_titles = {n['title'] for n in projects[proj]['bmem_notes']}
+        for note in state.get('bmem_notes', []):
+            if note['title'] not in existing_titles:
+                projects[proj]['bmem_notes'].append(note)
+                existing_titles.add(note['title'])
+
+        # Collect goals
+        goal = (state.get('first_prompt') or '').strip()
+        if goal and len(goal) > 15 and not goal.startswith('<') and 'Expanded:' not in goal:
+            if not (goal.startswith('/') and ' ' not in goal[:50]):
+                if goal not in projects[proj]['goals']:
+                    projects[proj]['goals'].append(goal)
+
+    # Build project cards
+    project_cards = []
+    for proj, data in sorted(projects.items(), key=lambda x: x[1]['last_modified'], reverse=True):
+        status_emoji, status_text = get_activity_status(data['last_modified'])
+        color = get_project_color(proj)
         content_parts = []
 
-        # Show TodoWrite state prominently if present (with popup for all todos)
-        if state['todos']:
-            in_progress = [t for t in state['todos'] if t.get('status') == 'in_progress']
-            pending = [t for t in state['todos'] if t.get('status') == 'pending']
-            completed = [t for t in state['todos'] if t.get('status') == 'completed']
+        # Show aggregated todos
+        todos = data['todos']
+        if todos:
+            in_progress = [t for t in todos if t.get('status') == 'in_progress']
+            pending = [t for t in todos if t.get('status') == 'pending']
 
-            # Build popup content with all todos
-            popup_items = []
-            for todo in in_progress:
-                popup_items.append(f"<div class='todo-item todo-in-progress'>🔄 {esc(todo.get('content', ''))}</div>")
-            for todo in pending:
-                popup_items.append(f"<div class='todo-item todo-pending'>⏳ {esc(todo.get('content', ''))}</div>")
-            for todo in completed:
-                popup_items.append(f"<div class='todo-item todo-completed'>✅ {esc(todo.get('content', ''))}</div>")
-            popup_html = '\n'.join(popup_items)
+            for todo in in_progress[:3]:
+                content_parts.append(f"<div class='session-todo in-progress'>🔄 {esc(todo.get('activeForm', todo.get('content', '')))}</div>")
+            if len(in_progress) > 3:
+                content_parts.append(f"<div class='session-todo'>+{len(in_progress)-3} more</div>")
+            if pending:
+                content_parts.append(f"<div class='session-todo pending'>⏳ {len(pending)} pending</div>")
 
-            # Show summary in card, full list in popup
-            if in_progress:
-                summary = f"🔄 {esc(in_progress[0].get('content', ''))}"
-                if len(in_progress) > 1:
-                    summary += f" (+{len(in_progress)-1})"
-            elif pending:
-                summary = f"⏳ {len(pending)} pending"
-            elif completed:
-                summary = f"✅ {esc(completed[-1].get('content', ''))}"
-            else:
-                summary = "No todos"
+        # Show recent goal if no todos
+        if not content_parts and data['goals']:
+            goal = data['goals'][-1][:100]
+            content_parts.append(f"<div class='session-prompt'><b>Goal:</b> \"{esc(goal)}\"</div>")
 
-            total = len(in_progress) + len(pending) + len(completed)
-            content_parts.append(f"""<div class='tooltip-container'>
-                <div class='session-todo in-progress'>{summary} <span style='opacity:0.6;font-size:0.8em;'>({total} total)</span></div>
-                <div class='tooltip-popup'>{popup_html}</div>
-            </div>""")
+        # Show bmem notes
+        for note in data['bmem_notes'][-2:]:
+            content_parts.append(f"<div class='session-bmem'>📝 {esc(note['title'])}</div>")
 
-        # Show first prompt as context (what started this session) - with popup for full text
-        goal = (state.get('first_prompt') or '').strip()
-        goal_full = (state.get('first_prompt_full') or goal).strip()
-        # Skip empty, placeholder, hook-injected, or very short prompts
-        # Allow slash commands with arguments (e.g. "/meta fix the bug") but skip bare commands
-        is_bare_command = goal.startswith('/') and ' ' not in goal[:50]
-        skip = not goal or len(goal) <= 15 or goal.startswith('<') or 'Expanded:' in goal or is_bare_command
-        if not skip and goal not in ('No activity', 'Unable to parse session'):
-            content_parts.append(f"""<div class='tooltip-container'>
-                <div class='session-prompt'><b>Goal:</b> \"{esc(goal)}\"</div>
-                <div class='tooltip-popup'><b>Full prompt:</b><br/>{esc(goal_full)}</div>
-            </div>""")
-
-        # Show session-specific bmem notes (outcomes) - with tooltip for folder path
-        if state['bmem_notes']:
-            for note in state['bmem_notes'][-2:]:  # Show last 2 max
-                title = esc(note['title'])
-                folder = esc(note.get('folder', ''))
-                content_parts.append(f"""<div class='tooltip-container'>
-                    <div class='session-bmem'>📝 {title}</div>
-                    <div class='tooltip-popup'><b>{title}</b><br/>Folder: {folder}</div>
-                </div>""")
-
-        # Show recent git commits for this project
-        git_commits = get_project_git_activity(session.project)
+        # Show git activity
+        git_commits = get_project_git_activity(data['git_project'])
         if git_commits:
             commits_display = ' | '.join([c[:40] for c in git_commits[:2]])
             content_parts.append(f"<div class='session-git'>📦 {esc(commits_display)}</div>")
 
-        # Skip sessions with no meaningful content
         if not content_parts:
             continue
 
+        sessions_label = f"{data['session_count']} session{'s' if data['session_count'] > 1 else ''}"
         content_html = '\n'.join(content_parts)
 
-        session_cards.append(f"""
+        project_cards.append(f"""
         <div class='session-card' style='border-left-color: {color};'>
             <div class='session-header'>
                 <span class='session-project' style='color: {color};'>{status_emoji} {proj}</span>
-                <span class='session-status'>{status_text}</span>
+                <span class='session-status'>{status_text} · {sessions_label}</span>
             </div>
             {content_html}
         </div>
         """)
 
-        if len(session_cards) >= 10:
+        if len(project_cards) >= 10:
             break
 
     # Render in two columns
-    if session_cards:
+    if project_cards:
         col1, col2 = st.columns(2)
-        for i, card in enumerate(session_cards):
+        for i, card in enumerate(project_cards):
             with col1 if i % 2 == 0 else col2:
                 st.markdown(card, unsafe_allow_html=True)
     else:
-        st.info("No active sessions in last 7 days")
+        st.info("No active projects in last 7 days")
 
 except Exception as e:
-    st.error(f"Error loading sessions: {e}")
+    st.error(f"Error loading projects: {e}")
 
 # Timestamp
 st.markdown(f"<div class='timestamp'>Updated: {datetime.now().strftime('%H:%M:%S')}</div>", unsafe_allow_html=True)
