@@ -42,7 +42,10 @@ class SessionOutcomes:
     files_created: list[str]
     bmem_notes: list[dict[str, str]]  # [{title, folder}]
     todos_final: list[dict[str, Any]] | None
+    todos_completed: list[str]  # Completed todo content strings
     git_commits: list[str]
+    skills_invoked: list[str]  # Skills used in session
+    commands_invoked: list[str]  # Slash commands used
     duration_minutes: float | None
 
 
@@ -187,11 +190,25 @@ class SessionAnalyzer:
         files_created: list[str] = []
         bmem_notes: list[dict[str, str]] = []
         todos_final: list[dict[str, Any]] | None = None
+        todos_completed: list[str] = []
         git_commits: list[str] = []
+        skills_invoked: list[str] = []
+        commands_invoked: list[str] = []
+
+        # Track all todos across session to find completed ones
+        all_todos_seen: dict[str, str] = {}  # content -> last status
 
         for turn in turns:
             if not isinstance(turn, ConversationTurn):
                 continue
+
+            # Track slash commands from user messages
+            if turn.user_message:
+                msg = turn.user_message.strip()
+                if msg.startswith("/") and " " not in msg[:20]:
+                    cmd = msg.split()[0] if msg.split() else msg
+                    if cmd not in commands_invoked:
+                        commands_invoked.append(cmd)
 
             for item in turn.assistant_sequence:
                 if item.get("type") != "tool":
@@ -219,11 +236,22 @@ class SessionAnalyzer:
                     if title:
                         bmem_notes.append({"title": title, "folder": folder})
 
-                # Track TodoWrite (keep latest)
+                # Track skill invocations
+                elif tool_name == "Skill":
+                    skill = tool_input.get("skill", "")
+                    if skill and skill not in skills_invoked:
+                        skills_invoked.append(skill)
+
+                # Track TodoWrite - track all todos to find completed ones
                 elif tool_name == "TodoWrite":
                     todos = tool_input.get("todos", [])
                     if todos:
                         todos_final = todos
+                        for todo in todos:
+                            content = todo.get("content", "")
+                            status = todo.get("status", "")
+                            if content:
+                                all_todos_seen[content] = status
 
                 # Track git commits
                 elif tool_name == "Bash":
@@ -237,6 +265,11 @@ class SessionAnalyzer:
                                 if line.strip().startswith("["):
                                     git_commits.append(line.strip()[:80])
                                     break
+
+        # Extract completed todos
+        for content, status in all_todos_seen.items():
+            if status == "completed" and content not in todos_completed:
+                todos_completed.append(content)
 
         # Calculate duration
         duration = None
@@ -256,7 +289,10 @@ class SessionAnalyzer:
             files_created=files_created,
             bmem_notes=bmem_notes,
             todos_final=todos_final,
+            todos_completed=todos_completed,
             git_commits=git_commits,
+            skills_invoked=skills_invoked,
+            commands_invoked=commands_invoked,
             duration_minutes=duration,
         )
 
@@ -429,9 +465,11 @@ class SessionAnalyzer:
         """
         Format session data as context for LLM analysis.
 
-        Returns markdown summary suitable for in-context analysis.
+        Returns markdown summary optimized for semantic analysis.
+        Leads with ACCOMPLISHED WORK to guide the LLM toward accomplishment extraction.
         """
         lines = []
+        outcomes = session_data.outcomes
 
         # Header
         lines.append(f"# Session: {session_data.session_id[:8]}")
@@ -440,20 +478,95 @@ class SessionAnalyzer:
             lines.append(
                 f"**Started**: {session_data.start_time.strftime('%Y-%m-%d %H:%M')}"
             )
-        if session_data.outcomes.duration_minutes:
-            lines.append(
-                f"**Duration**: {session_data.outcomes.duration_minutes:.0f} minutes"
-            )
+        if outcomes.duration_minutes:
+            lines.append(f"**Duration**: {outcomes.duration_minutes:.0f} minutes")
         lines.append(f"**Turns**: {session_data.turn_count}")
         lines.append("")
 
-        # User prompts
-        lines.append("## User Prompts")
+        # ACCOMPLISHMENTS FIRST - what was completed
+        lines.append("## What Was Accomplished")
+        lines.append("")
+
+        has_accomplishments = False
+
+        # Completed todos (explicit completions)
+        if outcomes.todos_completed:
+            has_accomplishments = True
+            lines.append("**Completed tasks:**")
+            for content in outcomes.todos_completed:
+                lines.append(f"- ✅ {content}")
+            lines.append("")
+
+        # Git commits (concrete deliverables)
+        if outcomes.git_commits:
+            has_accomplishments = True
+            lines.append("**Commits made:**")
+            for commit in outcomes.git_commits[:5]:
+                lines.append(f"- {commit}")
+            lines.append("")
+
+        # Knowledge documented
+        if outcomes.bmem_notes:
+            has_accomplishments = True
+            lines.append("**Knowledge documented:**")
+            for note in outcomes.bmem_notes:
+                lines.append(f"- {note['title']} ({note['folder']})")
+            lines.append("")
+
+        # Files created (new work)
+        if outcomes.files_created:
+            has_accomplishments = True
+            lines.append("**Files created:**")
+            for f in outcomes.files_created[:10]:
+                name = Path(f).name
+                lines.append(f"- {name}")
+            lines.append("")
+
+        if not has_accomplishments:
+            lines.append("*No explicit completions recorded - analyze prompts for implicit accomplishments*")
+            lines.append("")
+
+        # WORK IN PROGRESS - what's still pending
+        if outcomes.todos_final:
+            in_progress = [t for t in outcomes.todos_final if t.get("status") == "in_progress"]
+            pending = [t for t in outcomes.todos_final if t.get("status") == "pending"]
+            if in_progress or pending:
+                lines.append("## Still In Progress")
+                lines.append("")
+                for t in in_progress:
+                    lines.append(f"- 🔄 {t.get('content', '')}")
+                for t in pending:
+                    lines.append(f"- ⏳ {t.get('content', '')}")
+                lines.append("")
+
+        # CONTEXT - skills and commands used
+        if outcomes.skills_invoked or outcomes.commands_invoked:
+            lines.append("## Context")
+            lines.append("")
+            if outcomes.skills_invoked:
+                lines.append(f"**Skills used**: {', '.join(outcomes.skills_invoked)}")
+            if outcomes.commands_invoked:
+                lines.append(f"**Commands**: {', '.join(outcomes.commands_invoked)}")
+            lines.append("")
+
+        # FILES MODIFIED - what was touched
+        if outcomes.files_edited:
+            lines.append("## Files Modified")
+            lines.append("")
+            for f in outcomes.files_edited[:10]:
+                name = Path(f).name
+                lines.append(f"- {name}")
+            lines.append("")
+
+        # USER PROMPTS - the conversation arc
+        lines.append("## User Prompts (Conversation Arc)")
+        lines.append("")
+        lines.append("*Read these to understand what was requested and the flow of work:*")
         lines.append("")
         for i, prompt in enumerate(session_data.prompts, 1):
             # Truncate long prompts for analysis context
-            text = prompt.text[:500]
-            if len(prompt.text) > 500:
+            text = prompt.text[:400]
+            if len(prompt.text) > 400:
                 text += "..."
 
             timestamp = ""
@@ -461,60 +574,19 @@ class SessionAnalyzer:
                 timestamp = f" ({prompt.timestamp.strftime('%H:%M')})"
 
             lines.append(f"{i}. {text}{timestamp}")
-
-            if prompt.tools_triggered:
-                tools_str = ", ".join(prompt.tools_triggered[:5])
-                lines.append(f"   → Tools: {tools_str}")
             lines.append("")
 
-        # Outcomes
-        lines.append("## Outcomes")
+        # ANALYSIS GUIDANCE
+        lines.append("---")
+        lines.append("## Analysis Instructions")
         lines.append("")
-
-        outcomes = session_data.outcomes
-
-        if outcomes.files_edited:
-            lines.append("**Files edited:**")
-            for f in outcomes.files_edited[:10]:
-                # Show just filename for brevity
-                name = Path(f).name
-                lines.append(f"- {name}")
-            lines.append("")
-
-        if outcomes.files_created:
-            lines.append("**Files created:**")
-            for f in outcomes.files_created[:10]:
-                name = Path(f).name
-                lines.append(f"- {name}")
-            lines.append("")
-
-        if outcomes.bmem_notes:
-            lines.append("**Knowledge documented (bmem):**")
-            for note in outcomes.bmem_notes:
-                lines.append(f"- {note['title']} ({note['folder']})")
-            lines.append("")
-
-        if outcomes.git_commits:
-            lines.append("**Git commits:**")
-            for commit in outcomes.git_commits[:5]:
-                lines.append(f"- {commit}")
-            lines.append("")
-
-        if outcomes.todos_final:
-            completed = [t for t in outcomes.todos_final if t.get("status") == "completed"]
-            in_progress = [t for t in outcomes.todos_final if t.get("status") == "in_progress"]
-
-            if completed:
-                lines.append("**Completed todos:**")
-                for t in completed:
-                    lines.append(f"- ✅ {t.get('content', '')}")
-                lines.append("")
-
-            if in_progress:
-                lines.append("**Still in progress:**")
-                for t in in_progress:
-                    lines.append(f"- 🔄 {t.get('content', '')}")
-                lines.append("")
+        lines.append("Based on the above, extract:")
+        lines.append("1. **Accomplishments**: What concrete work was completed? (not just started)")
+        lines.append("2. **Decisions**: What choices or design decisions were made?")
+        lines.append("3. **Topics**: What areas/systems were worked on?")
+        lines.append("4. **Blockers**: What issues remain unresolved?")
+        lines.append("5. **Next steps**: What should happen next?")
+        lines.append("")
 
         return "\n".join(lines)
 
