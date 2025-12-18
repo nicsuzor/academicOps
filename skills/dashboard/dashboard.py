@@ -407,7 +407,6 @@ try:
         if proj not in projects:
             projects[proj] = {
                 'last_modified': session.last_modified,
-                'todos': [],
                 'bmem_notes': [],
                 'git_project': session.project,
                 'session_count': 0
@@ -416,14 +415,6 @@ try:
         projects[proj]['session_count'] += 1
         if session.last_modified > projects[proj]['last_modified']:
             projects[proj]['last_modified'] = session.last_modified
-
-        # Aggregate todos
-        if state['todos']:
-            existing = {t.get('content') for t in projects[proj]['todos']}
-            for todo in state['todos']:
-                if todo.get('content') not in existing:
-                    projects[proj]['todos'].append(todo)
-                    existing.add(todo.get('content'))
 
         # Aggregate bmem notes
         existing_titles = {n['title'] for n in projects[proj]['bmem_notes']}
@@ -449,13 +440,7 @@ try:
         if len(accomplishments) > 4:
             content_parts.append(f"<div style='color: #4ade80; font-size: 0.85em;'>+{len(accomplishments)-4} more done</div>")
 
-        # 2. In-progress todos from sessions
-        todos = data.get('todos', [])
-        in_progress = [t for t in todos if t.get('status') == 'in_progress']
-        for todo in in_progress[:2]:
-            content_parts.append(f"<div class='session-todo in-progress'>🔄 {esc(todo.get('activeForm', todo.get('content', '')))}</div>")
-
-        # 3. Priority tasks
+        # 2. Priority tasks
         project_tasks = tasks_by_project.get(proj, [])
         for task in project_tasks[:3]:
             priority_text = f"P{task.priority}" if task.priority is not None else ""
@@ -467,11 +452,11 @@ try:
         if len(project_tasks) > 3:
             content_parts.append(f"<div class='task-item'>+{len(project_tasks)-3} more tasks</div>")
 
-        # 4. bmem notes
+        # 3. bmem notes
         for note in data.get('bmem_notes', [])[-2:]:
             content_parts.append(f"<div class='session-bmem'>📝 {esc(note['title'])}</div>")
 
-        # 5. Git activity
+        # 4. Git activity
         git_project = data.get('git_project', '')
         if git_project:
             git_commits = get_project_git_activity(git_project)
