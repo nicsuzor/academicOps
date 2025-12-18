@@ -22,74 +22,32 @@ from typing import Any
 from hooks.hook_logger import log_hook_event
 
 
-# Focus reminder - softer framing (v2)
-FOCUS_REMINDER = "REMINDER: The user's request is specific. Addressing exactly what was asked (and stopping there) produces the most useful responses."
+# Focus reminder - concise
+FOCUS_REMINDER = "**CRITICAL**: Focus on the user's specific request. Do NOT over-elaborate or add unrequested features. Complete the task, then stop."
 
 # Framing version for A/B measurement
-FRAMING_VERSION = "v2-motivational"
+FRAMING_VERSION = "v3-academic-rigor"
 
-# Skills with benefit/risk framing for motivational suggestions
-SKILLS: dict[str, dict[str, str]] = {
-    "framework": {
-        "description": "Categorical conventions and framework patterns",
-        "benefit": "You'll have access to exact patterns and conventions, ensuring changes fit existing architecture",
-        "risk": "You may propose changes that violate conventions or conflict with existing patterns",
-    },
-    "python-dev": {
-        "description": "Production Python: fail-fast, type safety, TDD",
-        "benefit": "You'll write code matching strict standards on first try, avoiding rejection patterns",
-        "risk": "Your code may use defaults or untyped patterns that violate fail-fast principles",
-    },
-    "analyst": {
-        "description": "Research data analysis: dbt, Streamlit, statistics",
-        "benefit": "You'll follow established patterns for data pipelines and statistical analysis",
-        "risk": "You may use patterns that don't integrate with the existing dbt/Streamlit setup",
-    },
-    "bmem": {
-        "description": "Knowledge base operations and format requirements",
-        "benefit": "You'll write notes in exact format required, with correct categories and locations",
-        "risk": "You may create files in wrong directories or break knowledge graph integrity",
-    },
-    "tasks": {
-        "description": "Task scripts and workflow patterns",
-        "benefit": "You'll use correct scripts and avoid creating duplicate tasks",
-        "risk": "You may write task files directly (forbidden) or create duplicates",
-    },
-    "pdf": {
-        "description": "Markdown to professional PDF conversion",
-        "benefit": "You'll know exact style parameters and formatting requirements",
-        "risk": "You may generate PDFs that don't match academic formatting standards",
-    },
-    "osb-drafting": {
-        "description": "IRAC analysis and precedent citation for Oversight Board",
-        "benefit": "You'll use correct legal analysis framework and citation format",
-        "risk": "Your analysis may miss required IRAC sections or cite precedents incorrectly",
-    },
-    "learning-log": {
-        "description": "Thematic pattern logging to learning files",
-        "benefit": "You'll log to the correct thematic file with proper format",
-        "risk": "Patterns may be logged incorrectly or to wrong files",
-    },
-    "transcript": {
-        "description": "Session JSONL to markdown conversion",
-        "benefit": "You'll generate transcripts in expected format with correct metadata",
-        "risk": "Transcripts may be malformed or missing key session context",
-    },
-    "skill-creator": {
-        "description": "Skill packaging following anti-bloat principles",
-        "benefit": "You'll create skills that fit framework conventions and pass validation",
-        "risk": "Your skill may violate size limits or structural requirements",
-    },
-    "training-set-builder": {
-        "description": "Training data extraction from document sets",
-        "benefit": "You'll extract examples in correct format for downstream training",
-        "risk": "Training examples may be malformed or miss important patterns",
-    },
-    "extractor": {
-        "description": "Email archive processing and extraction",
-        "benefit": "You'll extract actionable information in correct format",
-        "risk": "Important information may be missed or formatted incorrectly",
-    },
+# Generic skill suggestion framing - high-level, appeals to agent's desire for quality
+SKILL_FRAMING = (
+    "You are operating in a sensitive academic environment that requires rigor. "
+    "Before proceeding, invoke {skill_instruction} to load context that may not be immediately apparent."
+)
+
+# Skills - just names for keyword matching, descriptions for classifier
+SKILLS: dict[str, str] = {
+    "framework": "Categorical conventions and framework patterns",
+    "python-dev": "Production Python: fail-fast, type safety, TDD",
+    "analyst": "Research data analysis: dbt, Streamlit, statistics",
+    "bmem": "Knowledge base operations and format requirements",
+    "tasks": "Task scripts and workflow patterns",
+    "pdf": "Markdown to professional PDF conversion",
+    "osb-drafting": "IRAC analysis and precedent citation for Oversight Board",
+    "learning-log": "Thematic pattern logging to learning files",
+    "transcript": "Session JSONL to markdown conversion",
+    "skill-creator": "Skill packaging following anti-bloat principles",
+    "training-set-builder": "Training data extraction from document sets",
+    "extractor": "Email archive processing and extraction",
 }
 
 TEMP_DIR = Path.home() / ".cache" / "aops" / "prompt-router"
@@ -109,12 +67,10 @@ def write_prompt_context(prompt: str) -> Path:
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
     filepath = TEMP_DIR / f"{timestamp}.json"
 
-    # Flatten skills to just descriptions for classifier
-    skills_summary = {name: info["description"] for name, info in SKILLS.items()}
     data = {
         "timestamp": timestamp,
         "prompt": prompt,
-        "available_skills": skills_summary,
+        "available_skills": SKILLS,
     }
 
     filepath.write_text(json.dumps(data, indent=2))
@@ -175,39 +131,21 @@ def analyze_prompt(prompt: str) -> tuple[str, list[str]]:
     if not matched_skills:
         # No keyword match - offer semantic classification via Haiku
         filepath = write_prompt_context(prompt)
-        skill_list = "\n".join(
-            f"   - {name}: {info['description']}"
-            for name, info in SKILLS.items()
+        classifier_instruction = (
+            f"Task(subagent_type=\"general-purpose\", model=\"haiku\", "
+            f"prompt=\"Read {filepath} and classify intent. Return the single best "
+            f"skill from available_skills, or 'none' if no skill applies.\")"
         )
-        return (
-            f"CLASSIFIER AVAILABLE: No keyword match for skills. For semantic analysis, "
-            f"invoke Task tool with:\n"
-            f"- subagent_type: \"general-purpose\"\n"
-            f"- model: \"haiku\"\n"
-            f"- prompt: \"Read {filepath} and classify intent. Return the single best "
-            f"skill from available_skills, or 'none' if no skill applies.\""
-        ), []
+        return SKILL_FRAMING.format(skill_instruction=classifier_instruction), []
 
-    # Build motivational response (v2 framing)
+    # Build suggestion using generic academic rigor framing (v3)
     if len(matched_skills) == 1:
-        skill = matched_skills[0]
-        info = SKILLS[skill]
-        return (
-            f"CONTEXT AVAILABLE: {skill} skill\n\n"
-            f"WHY THIS HELPS:\n{info['benefit']}\n\n"
-            f"WITHOUT THIS CONTEXT:\n{info['risk']}\n\n"
-            f"TO LOAD: Skill(skill=\"{skill}\")"
-        ), matched_skills
+        skill_instruction = f"Skill(skill=\"{matched_skills[0]}\")"
     else:
-        skill_list = "\n".join(
-            f"- {s}: {SKILLS[s]['benefit']}" for s in matched_skills
-        )
-        return (
-            f"CONTEXT AVAILABLE: Multiple relevant skills\n\n"
-            f"{skill_list}\n\n"
-            f"RECOMMENDATION: Load the most relevant skill first.\n"
-            f"TO LOAD: Skill(skill=\"[chosen-skill]\")"
-        ), matched_skills
+        options = " or ".join(f"Skill(skill=\"{s}\")" for s in matched_skills)
+        skill_instruction = f"one of: {options}"
+
+    return SKILL_FRAMING.format(skill_instruction=skill_instruction), matched_skills
 
 
 def main():

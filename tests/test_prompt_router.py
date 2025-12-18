@@ -1,7 +1,7 @@
 """Tests for prompt router hook.
 
 Tests the analyze_prompt() function that matches keywords to skill suggestions.
-Uses motivational framing (v2) rather than imperative commands.
+Uses academic rigor framing (v3) - concise, high-level appeal.
 """
 
 import json
@@ -17,38 +17,38 @@ class TestAnalyzePrompt:
     """Tests for analyze_prompt function."""
 
     def test_analyze_prompt_framework_keywords(self) -> None:
-        """Test that framework keywords return motivational framework skill suggestion."""
+        """Test that framework keywords return academic rigor skill suggestion."""
         result, matched = analyze_prompt("help with framework")
 
         assert "framework" in result
-        assert "CONTEXT AVAILABLE" in result
-        assert "WHY THIS HELPS" in result
+        assert "academic environment" in result
+        assert "rigor" in result
         assert matched == ["framework"]
 
     def test_analyze_prompt_python_keywords(self) -> None:
-        """Test that python keywords return motivational python-dev skill suggestion."""
+        """Test that python keywords return academic rigor skill suggestion."""
         result, matched = analyze_prompt("write python code")
 
         assert "python-dev" in result
-        assert "CONTEXT AVAILABLE" in result
+        assert "academic environment" in result
         assert matched == ["python-dev"]
 
     def test_analyze_prompt_no_match(self) -> None:
-        """Test that unrecognized input offers Haiku classifier spawn."""
+        """Test that unrecognized input offers Haiku classifier with same framing."""
         result, matched = analyze_prompt("hello there")
 
         # When no keyword match, offer semantic classification via Haiku
-        assert "CLASSIFIER AVAILABLE" in result
+        assert "academic environment" in result
         assert "haiku" in result
         assert matched == []
 
     def test_analyze_prompt_multiple_matches(self) -> None:
-        """Test that multiple keyword matches list all relevant skills."""
+        """Test that multiple keyword matches list options."""
         result, matched = analyze_prompt("python framework")
 
         assert "python-dev" in result
         assert "framework" in result
-        assert "Multiple relevant skills" in result
+        assert "one of:" in result
         assert "python-dev" in matched
         assert "framework" in matched
 
@@ -59,9 +59,9 @@ class TestAnalyzePrompt:
         assert result == ""
         assert matched == []
 
-    def test_framing_version_is_v2(self) -> None:
-        """Test that framing version is v2-motivational for A/B tracking."""
-        assert FRAMING_VERSION == "v2-motivational"
+    def test_framing_version_is_v3(self) -> None:
+        """Test that framing version is v3-academic-rigor for A/B tracking."""
+        assert FRAMING_VERSION == "v3-academic-rigor"
 
 
 def test_prompt_router_uses_haiku_subagent() -> None:
@@ -127,7 +127,7 @@ def test_hook_script_execution_with_framework_prompt(hooks_dir) -> None:
     assert "additionalContext" in hook_output
     assert "framework" in hook_output["additionalContext"]
     assert "framingVersion" in hook_output
-    assert hook_output["framingVersion"] == "v2-motivational"
+    assert hook_output["framingVersion"] == "v3-academic-rigor"
     assert hook_output.get("skillsMatched") == ["framework"]
 
 
