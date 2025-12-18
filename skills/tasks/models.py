@@ -53,6 +53,13 @@ class ViewTasksRequest(BaseModel):
     filters: TaskFilter | None = Field(default=None, description="Filter criteria")
 
 
+class Subtask(BaseModel):
+    """Subtask checkbox item within a task."""
+
+    text: str = Field(description="Subtask text")
+    completed: bool = Field(default=False, description="Whether subtask is checked off")
+
+
 class Task(BaseModel):
     """Task data model."""
 
@@ -68,6 +75,7 @@ class Task(BaseModel):
     tags: list[str] = Field(default_factory=list, description="Tags")
     filename: str | None = Field(default=None, description="Source filename")
     body: str | None = Field(default=None, description="Task body content")
+    subtasks: list[Subtask] = Field(default_factory=list, description="Subtask checklist")
 
 
 class ViewTasksResponse(BaseModel):

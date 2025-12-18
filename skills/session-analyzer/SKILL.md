@@ -97,18 +97,47 @@ When analyzing session data:
 4. **Note decisions** - what choices were made and why?
 5. **Find blockers** - what didn't get resolved?
 
-## Integration with bmem
+## Daily Note Output
 
-After analysis, consider documenting significant findings:
+Session analysis is saved to a daily note at `$ACA_DATA/sessions/YYYYMMDD-daily.md`.
 
-```python
-# If session contained important decisions or patterns
-mcp__bmem__write_note(
-    title="Session Analysis: <topic>",
-    folder="sessions",
-    content="...",
-    project="main"
-)
+**Format**: `20251218-daily.md` (strict naming)
+
+The daily note accumulates all session analyses for that day, enabling:
+- End-of-day review of accomplishments
+- Dashboard integration for progress tracking
+- Historical record of work patterns
+
+### Daily Note Structure
+
+```markdown
+---
+title: Daily Session Summary - YYYY-MM-DD
+type: session_log
+permalink: sessions-YYYYMMDD-daily
+tags:
+  - daily
+  - sessions
+created: YYYY-MM-DDTHH:MM:SSZ
+updated: YYYY-MM-DDTHH:MM:SSZ
+---
+
+## Sessions
+
+### Session: <id> (<project>, <duration>)
+
+**Accomplishments:**
+- Item 1
+- Item 2
+
+**Decisions:**
+- Decision 1
+
+**Topics:** topic1, topic2
+
+**Blockers:** (if any)
+
+---
 ```
 
 ## Architecture

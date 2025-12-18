@@ -56,8 +56,7 @@
         "--from",
         "git+https://github.com/nicsuzor/omcp",
         "outlook-mcp"
-      ],
-      "env": {}
+      ]
     },
     "task_manager": {
       "type": "stdio",

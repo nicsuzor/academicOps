@@ -94,7 +94,15 @@ tags: [framework, principles, core]
     - Agents CANNOT skip steps, claim work is "too simple to plan," or begin coding before approval
     - This applies to ALL development work, not just "complex" tasks
 
-24. **JUST-IN-TIME CONTEXT**: Information surfaces automatically when relevant - not everything upfront, not relying on agents to search.
+24. **RESEARCH DATA IS IMMUTABLE**: Source datasets, ground truth labels, experimental records, research configurations, and any files serving as evidence for research claims are SACRED and NEVER to be modified, converted, reformatted, or "fixed" by agents.
+    - **Research configurations** include: model lists, pipeline settings, experimental parameters, flow configs, and any settings that define how experiments run
+    - When infrastructure doesn't support a data format, FIX THE INFRASTRUCTURE - never the data
+    - This applies even when the modification seems "lossless" or "equivalent"
+    - Violations are scholarly misconduct. No exceptions. No workarounds.
+    - If you encounter data in an unsupported format: HALT and report the infrastructure gap
+    - **For configs that appear broken**: Report the problem, propose a fix, WAIT for explicit user approval before modifying
+
+25. **JUST-IN-TIME CONTEXT**: Information surfaces automatically when relevant - not everything upfront, not relying on agents to search.
     - **Global principles** → `AXIOMS.md` (loaded every session via SessionStart)
     - **Component decisions** → `component/CLAUDE.md` (loaded when working on that component)
     - **Past learnings** → bmem (semantic search when relevant)

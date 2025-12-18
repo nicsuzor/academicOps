@@ -13,6 +13,7 @@ sys.path.insert(0, str(aops_root))
 
 from skills.tasks.task_loader import load_focus_tasks
 from lib.session_reader import find_sessions, SessionProcessor, ConversationTurn
+from lib.session_analyzer import SessionAnalyzer
 
 # Project color scheme (matching Peacock)
 PROJECT_COLORS = {
@@ -30,53 +31,6 @@ def get_project_color(project: str) -> str:
         if key in project_lower:
             return color
     return DEFAULT_COLOR
-
-
-def get_session_todos(session_path: Path) -> list[dict] | None:
-    """Get current TodoWrite state from session JSONL."""
-    try:
-        latest_todos = None
-        with open(session_path) as f:
-            for line in f:
-                if not line.strip():
-                    continue
-                entry = json.loads(line)
-                # Look for TodoWrite tool calls in assistant messages
-                message = entry.get("message", {})
-                content = message.get("content", [])
-                if isinstance(content, list):
-                    for block in content:
-                        if block.get("type") == "tool_use" and block.get("name") == "TodoWrite":
-                            todos = block.get("input", {}).get("todos", [])
-                            if todos:
-                                latest_todos = todos
-        return latest_todos
-    except Exception:
-        return None
-
-
-def get_session_bmem_notes(session_path: Path) -> list[dict]:
-    """Get bmem write_note calls from THIS session's JSONL."""
-    notes = []
-    try:
-        with open(session_path) as f:
-            for line in f:
-                if not line.strip():
-                    continue
-                entry = json.loads(line)
-                message = entry.get("message", {})
-                content = message.get("content", [])
-                if isinstance(content, list):
-                    for block in content:
-                        if block.get("type") == "tool_use" and block.get("name") == "mcp__bmem__write_note":
-                            tool_input = block.get("input", {})
-                            title = tool_input.get("title", "")
-                            folder = tool_input.get("folder", "")
-                            if title:
-                                notes.append({"title": title, "folder": folder})
-    except Exception:
-        pass
-    return notes[-3:] if notes else []  # Return last 3 notes max
 
 
 def get_project_git_activity(project_path: str) -> list[str]:
@@ -103,7 +57,7 @@ def get_project_git_activity(project_path: str) -> list[str]:
     return []
 
 
-def aggregate_active_todos(sessions, processor) -> list[dict]:
+def aggregate_active_todos(sessions, analyzer: SessionAnalyzer) -> list[dict]:
     """Aggregate in-progress todos from all active sessions."""
     active_todos = []
     seen = set()
@@ -115,57 +69,33 @@ def aggregate_active_todos(sessions, processor) -> list[dict]:
         if '-tmp' in session.project or '-var-folders' in session.project:
             continue
 
-        todos = get_session_todos(session.path)
-        if todos:
-            for todo in todos:
-                if todo.get('status') == 'in_progress':
-                    content = todo.get('content', '')
-                    if content and content not in seen:
-                        seen.add(content)
-                        active_todos.append({
-                            'content': content,
-                            'project': session.project_display,
-                            'activeForm': todo.get('activeForm', content),
-                        })
+        try:
+            state = analyzer.extract_dashboard_state(session.path)
+            todos = state.get('todos')
+            if todos:
+                for todo in todos:
+                    if todo.get('status') == 'in_progress':
+                        content = todo.get('content', '')
+                        if content and content not in seen:
+                            seen.add(content)
+                            active_todos.append({
+                                'content': content,
+                                'project': session.project_display,
+                                'activeForm': todo.get('activeForm', content),
+                            })
+        except Exception:
+            continue
     return active_todos[:8]  # Max 8 active items
 
 
-def get_session_state(session_info, processor: SessionProcessor) -> dict:
+def get_session_state(session_info, analyzer: SessionAnalyzer) -> dict:
     """Extract current state from a session for display."""
     try:
-        session_summary, entries, agent_entries = processor.parse_jsonl(session_info.path)
-        turns = processor.group_entries_into_turns(entries, agent_entries)
-
-        # Find first and last user prompts (keep both full and truncated)
-        first_prompt = None
-        first_prompt_full = None
-        last_prompt = None
-
-        for turn in turns:
-            if isinstance(turn, ConversationTurn) and turn.user_message:
-                if not first_prompt:
-                    first_prompt_full = turn.user_message[:1000]  # Store more for popup
-                    first_prompt = turn.user_message[:200]
-                    if len(turn.user_message) > 200:
-                        first_prompt += "..."
-                # Always update last_prompt to get the most recent
-                last_prompt = turn.user_message[:200]
-                if len(turn.user_message) > 200:
-                    last_prompt += "..."
-
-        # Get TodoWrite state from THIS session
-        todos = get_session_todos(session_info.path)
-
-        # Get bmem notes from THIS session (not project-wide)
-        bmem_notes = get_session_bmem_notes(session_info.path)
-
-        return {
-            'first_prompt': first_prompt or 'No activity',
-            'first_prompt_full': first_prompt_full or first_prompt or 'No activity',
-            'last_prompt': last_prompt or 'No activity',
-            'todos': todos,
-            'bmem_notes': bmem_notes,
-        }
+        state = analyzer.extract_dashboard_state(session_info.path)
+        # Return last 3 bmem notes max (matching old behavior)
+        if state.get('bmem_notes'):
+            state['bmem_notes'] = state['bmem_notes'][-3:]
+        return state
     except Exception:
         return {
             'first_prompt': 'Unable to parse session',
@@ -218,6 +148,11 @@ st.markdown("""
         background: #1a1a1a;
     }
 
+    .task-item.all-done {
+        border-left-color: #22c55e;
+        opacity: 0.6;
+    }
+
     .task-priority {
         background: #ff6b6b;
         color: #000;
@@ -233,6 +168,23 @@ st.markdown("""
     .task-title {
         color: #e0e0e0;
         font-size: 0.95em;
+        flex: 1;
+    }
+
+    .task-title.all-done {
+        text-decoration: line-through;
+        color: #888;
+    }
+
+    .task-progress {
+        font-size: 0.75em;
+        color: #4ade80;
+        margin-left: 8px;
+        white-space: nowrap;
+    }
+
+    .task-progress.complete {
+        color: #22c55e;
     }
 
     /* Session card - compact */
@@ -448,8 +400,8 @@ def esc(text):
 st.markdown("<div class='section-header'>ACTIVE NOW</div>", unsafe_allow_html=True)
 try:
     sessions = find_sessions()
-    processor = SessionProcessor()
-    active_todos = aggregate_active_todos(sessions, processor)
+    analyzer = SessionAnalyzer()
+    active_todos = aggregate_active_todos(sessions, analyzer)
 
     if active_todos:
         col1, col2 = st.columns(2)
@@ -476,10 +428,29 @@ try:
         col1, col2 = st.columns(2)
         for i, task in enumerate(focus_tasks):
             priority_text = f"P{task.priority}" if task.priority is not None else ""
+
+            # Calculate subtask progress
+            progress_html = ""
+            item_class = "task-item"
+            title_class = "task-title"
+
+            if task.subtasks:
+                total = len(task.subtasks)
+                completed = sum(1 for s in task.subtasks if s.completed)
+                all_done = completed == total
+
+                if all_done:
+                    item_class = "task-item all-done"
+                    title_class = "task-title all-done"
+                    progress_html = f"<span class='task-progress complete'>✓ {completed}/{total}</span>"
+                else:
+                    progress_html = f"<span class='task-progress'>{completed}/{total}</span>"
+
             task_html = f"""
-            <div class='task-item'>
+            <div class='{item_class}'>
                 <span class='task-priority'>{priority_text}</span>
-                <span class='task-title'>{task.title}</span>
+                <span class='{title_class}'>{esc(task.title)}</span>
+                {progress_html}
             </div>
             """
             with col1 if i % 2 == 0 else col2:
@@ -494,7 +465,7 @@ st.markdown("<div class='section-header'>ACTIVE SESSIONS</div>", unsafe_allow_ht
 
 try:
     sessions = find_sessions()
-    processor = SessionProcessor()
+    analyzer = SessionAnalyzer()
 
     # Collect session cards - all sessions in reverse date order
     session_cards = []
@@ -511,7 +482,7 @@ try:
         proj = session.project_display
         status_emoji, status_text = get_activity_status(session.last_modified)
         color = get_project_color(proj)
-        state = get_session_state(session, processor)
+        state = get_session_state(session, analyzer)
 
         # Build content: CURRENT WORK first (todos), then context
         content_parts = []

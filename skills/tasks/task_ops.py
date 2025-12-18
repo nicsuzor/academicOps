@@ -16,7 +16,7 @@ from typing import Any
 
 import yaml
 
-from skills.tasks.models import Task
+from skills.tasks.models import Subtask, Task
 
 
 class TaskDirectoryNotFoundError(Exception):
@@ -156,6 +156,30 @@ def _extract_context_section(raw_body: str) -> str:
     return "\n".join(context_lines).strip()
 
 
+def _parse_subtasks(raw_body: str) -> list[Subtask]:
+    """Parse checkbox subtasks from task body.
+
+    Matches markdown checkbox format: - [ ] text or - [x] text
+
+    Args:
+        raw_body: Full body content after frontmatter
+
+    Returns:
+        List of Subtask objects
+    """
+    subtasks = []
+    # Match: - [ ] text  or  - [x] text  (case insensitive x)
+    pattern = re.compile(r"^-\s*\[([ xX])\]\s+(.+)$", re.MULTILINE)
+
+    for match in pattern.finditer(raw_body):
+        checkbox = match.group(1)
+        text = match.group(2).strip()
+        completed = checkbox.lower() == "x"
+        subtasks.append(Subtask(text=text, completed=completed))
+
+    return subtasks
+
+
 def _parse_iso_timestamp(ts: str | datetime | None) -> datetime | None:
     """Parse ISO timestamp string to datetime.
 
@@ -237,6 +261,9 @@ def load_task_from_file(file_path: Path) -> Task:
     if priority is None:
         priority = _extract_priority_from_tags(frontmatter.get("tags", []))
 
+    # Parse subtasks from body
+    subtasks = _parse_subtasks(raw_body)
+
     # Build Task model
     return Task(
         title=frontmatter.get("title", "Untitled"),
@@ -251,6 +278,7 @@ def load_task_from_file(file_path: Path) -> Task:
         tags=frontmatter.get("tags", []),
         filename=file_path.name,
         body=body,
+        subtasks=subtasks,
     )
 
 

@@ -44,7 +44,15 @@
       "Bash(mv ~/.claude/hooks)",
       "Bash(mv ~/.claude/skills)",
       "Bash(mv ~/.claude/commands)",
-      "Bash(mv ~/.claude/agents)"
+      "Bash(mv ~/.claude/agents)",
+      "Write(**/tja/records/**)",
+      "Edit(**/tja/records/**)",
+      "Write(**/tox/records/**)",
+      "Edit(**/tox/records/**)",
+      "Bash(rm **/tja/records/**)",
+      "Bash(rm **/tox/records/**)",
+      "Bash(mv **/tja/records/**)",
+      "Bash(mv **/tox/records/**)"
     ]
   },
   "hooks": {

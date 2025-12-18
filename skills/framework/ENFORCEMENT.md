@@ -97,7 +97,7 @@ More timely than CLAUDE.md because it's fresh in context at decision point.
 
 Built-in permission system blocks specific paths.
 
-**Authoritative source**: [[../../config/settings.json]] → `permissions.deny`
+**Authoritative source**: [[../../config/claude/settings.json]] → `permissions.deny`
 
 **To view**: `cat ~/.claude/settings.json | jq '.permissions.deny'`
 
