@@ -9,8 +9,10 @@ Uses lib/session_reader.py for JSONL parsing.
 
 from __future__ import annotations
 
+import os
+import re
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -257,6 +259,124 @@ class SessionAnalyzer:
             git_commits=git_commits,
             duration_minutes=duration,
         )
+
+    def read_daily_note(self, date_str: str | None = None) -> dict[str, Any] | None:
+        """
+        Read and parse a daily note file.
+
+        Daily notes are stored at $ACA_DATA/sessions/{YYYYMMDD}-daily.md
+        Format is markdown with YAML frontmatter and session summaries.
+
+        Args:
+            date_str: Date string in YYYYMMDD format. If None, uses today's date.
+
+        Returns:
+            Dict with keys:
+                - date: Date of the daily note
+                - title: Title from frontmatter
+                - sessions: List of session dicts with:
+                    - session_id: Short session ID
+                    - project: Project name
+                    - duration: Duration string (optional)
+                    - accomplishments: List of accomplishment strings
+                    - decisions: List of decision strings
+                    - topics: Topics string
+                    - blockers: Blockers string
+            Returns None if file doesn't exist or ACA_DATA not set.
+
+        Raises:
+            ValueError: If ACA_DATA environment variable not set
+        """
+        # Get ACA_DATA directory (fail-fast)
+        aca_data = os.environ.get("ACA_DATA")
+        if not aca_data:
+            raise ValueError("ACA_DATA environment variable not set")
+
+        data_path = Path(aca_data)
+        if not data_path.exists():
+            return None
+
+        # Use today's date if not specified
+        if date_str is None:
+            date_str = date.today().strftime("%Y%m%d")
+
+        # Find the daily note file
+        daily_note_path = data_path / "sessions" / f"{date_str}-daily.md"
+        if not daily_note_path.exists():
+            return None
+
+        # Read file content
+        content = daily_note_path.read_text()
+
+        # Parse frontmatter
+        frontmatter_match = re.match(r"^---\n(.*?)\n---\n", content, re.DOTALL)
+        title = ""
+        if frontmatter_match:
+            frontmatter = frontmatter_match.group(1)
+            title_match = re.search(r"^title:\s*(.+)$", frontmatter, re.MULTILINE)
+            if title_match:
+                title = title_match.group(1).strip()
+
+        # Extract sessions
+        sessions = []
+        # Match: ### Session: {id} ({project}, {duration})
+        session_pattern = r"###\s+Session:\s+(\w+)\s+\(([^,]+)(?:,\s*([^)]+))?\)"
+        session_matches = list(re.finditer(session_pattern, content))
+
+        for i, match in enumerate(session_matches):
+            session_id = match.group(1)
+            project = match.group(2).strip()
+            duration = match.group(3).strip() if match.group(3) else None
+
+            # Extract content between this session and the next
+            start_pos = match.end()
+            end_pos = session_matches[i + 1].start() if i + 1 < len(session_matches) else len(content)
+            section = content[start_pos:end_pos]
+
+            # Parse accomplishments
+            accomplishments = []
+            acc_match = re.search(r"\*\*Accomplishments:\*\*\n((?:- .+\n?)+)", section)
+            if acc_match:
+                acc_lines = acc_match.group(1).strip().split("\n")
+                accomplishments = [line.strip("- ").strip() for line in acc_lines if line.strip().startswith("-")]
+
+            # Parse decisions
+            decisions = []
+            dec_match = re.search(r"\*\*Decisions:\*\*\n((?:- .+\n?)+)", section)
+            if dec_match:
+                dec_lines = dec_match.group(1).strip().split("\n")
+                decisions = [line.strip("- ").strip() for line in dec_lines if line.strip().startswith("-")]
+
+            # Parse topics
+            topics = ""
+            topics_match = re.search(r"\*\*Topics:\*\*\s+(.+?)(?:\n\n|\*\*|$)", section, re.DOTALL)
+            if topics_match:
+                topics = topics_match.group(1).strip()
+
+            # Parse blockers
+            blockers = ""
+            blockers_match = re.search(r"\*\*Blockers:\*\*\s+(.+?)(?:\n\n|---|$)", section, re.DOTALL)
+            if blockers_match:
+                blockers = blockers_match.group(1).strip()
+
+            session_dict = {
+                "session_id": session_id,
+                "project": project,
+                "accomplishments": accomplishments,
+                "decisions": decisions,
+                "topics": topics,
+                "blockers": blockers,
+            }
+            if duration:
+                session_dict["duration"] = duration
+
+            sessions.append(session_dict)
+
+        return {
+            "date": date_str,
+            "title": title,
+            "sessions": sessions,
+        }
 
     def extract_dashboard_state(self, session_path: Path) -> dict[str, Any]:
         """

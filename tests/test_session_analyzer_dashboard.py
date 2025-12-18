@@ -5,6 +5,8 @@ Tests for extract_dashboard_state() method which provides data for live dashboar
 Uses real session data from ~/.claude/projects/ to validate extraction logic.
 """
 
+import os
+from datetime import date
 from pathlib import Path
 
 import pytest
@@ -64,3 +66,65 @@ class TestDashboardStateExtraction:
         assert isinstance(result["in_progress_count"], int)
         # todos can be None or list
         assert result["todos"] is None or isinstance(result["todos"], list)
+
+
+class TestReadDailyNote:
+    """Test reading and parsing daily note files."""
+
+    def test_read_daily_note_returns_structured_data(self) -> None:
+        """Test that read_daily_note() parses today's daily note file.
+
+        Daily notes are stored at $ACA_DATA/sessions/YYYYMMDD-daily.md
+        Format is markdown with frontmatter (title, type, date) and session summaries.
+
+        This test uses a REAL daily note file that exists in the data directory.
+        The function does NOT exist yet, so this test WILL FAIL.
+
+        Expected structure:
+        - date: Date of the daily note
+        - title: Title from frontmatter
+        - sessions: List of session summaries
+        - Each session has: session_id, project, duration, accomplishments, decisions, topics, blockers
+        """
+        # Get data directory from environment (fail-fast if not set)
+        aca_data = os.environ.get("ACA_DATA")
+        if not aca_data:
+            pytest.skip("ACA_DATA environment variable not set")
+
+        data_path = Path(aca_data)
+        if not data_path.exists():
+            pytest.skip(f"ACA_DATA directory does not exist: {data_path}")
+
+        # Check for today's daily note
+        today_str = date.today().strftime("%Y%m%d")
+        daily_note_path = data_path / "sessions" / f"{today_str}-daily.md"
+
+        if not daily_note_path.exists():
+            pytest.skip(f"Today's daily note does not exist: {daily_note_path}")
+
+        # Initialize analyzer
+        analyzer = SessionAnalyzer()
+
+        # Call read_daily_note() - should fail with AttributeError
+        result = analyzer.read_daily_note()
+
+        # Verify return type is not None (found the file)
+        assert result is not None, "read_daily_note() should return data for today's note"
+
+        # Verify has required attributes/keys
+        assert hasattr(result, "date") or "date" in result, "Missing 'date' field"
+        assert hasattr(result, "title") or "title" in result, "Missing 'title' field"
+        assert hasattr(result, "sessions") or "sessions" in result, "Missing 'sessions' field"
+
+        # Verify sessions is a list
+        sessions = result.sessions if hasattr(result, "sessions") else result["sessions"]
+        assert isinstance(sessions, list), "sessions should be a list"
+        assert len(sessions) > 0, "Expected at least one session in today's daily note"
+
+        # Verify first session has expected structure
+        first_session = sessions[0]
+        expected_fields = ["session_id", "project", "accomplishments", "decisions", "topics", "blockers"]
+        for field in expected_fields:
+            assert (
+                hasattr(first_session, field) or field in first_session
+            ), f"Session missing expected field: {field}"
