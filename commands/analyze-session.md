@@ -1,116 +1,128 @@
 ---
 name: analyze-session
-description: Analyze a Claude Code session to extract accomplishments, decisions, and topics
-allowed-tools: Read,Bash,Skill,Write,Edit,mcp__bmem__write_note,mcp__bmem__edit_note
+description: Analyze Claude Code sessions and produce curated daily summary grouped by project
+allowed-tools: Read,Bash,Skill,Write,Edit,mcp__bmem__write_note,mcp__bmem__edit_note,mcp__bmem__search_notes
 ---
 
 # /analyze-session
 
-Analyze a Claude Code session using the session-analyzer skill.
+Analyze Claude Code sessions and produce a **curated daily summary** grouped by project.
 
 ## Arguments
 
-- `$ARGUMENTS` - Optional session ID (partial match) or "today" for all today's sessions
+- `$ARGUMENTS` - Optional: session ID, date (YYYYMMDD), or "today"
 
 ## Process
 
-1. Invoke the session-analyzer skill
-2. Load and format session data
-3. Provide semantic analysis of what happened
-4. **Save analysis to daily note** at `$ACA_DATA/sessions/YYYYMMDD-daily.md`
+1. Invoke session-analyzer skill for guidance
+2. Load session data for the target date
+3. **Curate**: Focus on significant items, not everything
+4. **Group by project**: Combine sessions working on same project
+5. **Add rich links**: Search bmem to link tasks, decisions, contacts
+6. **Save to daily note**
 
 ```
 Skill(skill="session-analyzer")
 ```
 
-Then run:
+Then load session data:
 
 ```bash
 cd $AOPS && uv run python -c "
-from lib.session_analyzer import SessionAnalyzer, get_recent_sessions
+from lib.session_reader import find_sessions
+from lib.session_analyzer import SessionAnalyzer
+from datetime import datetime, timezone, timedelta
 
+# Parse arguments for date
+args = '$ARGUMENTS'.strip()
+if args.isdigit() and len(args) == 8:
+    # Date format YYYYMMDD
+    target = datetime(int(args[:4]), int(args[4:6]), int(args[6:8]), tzinfo=timezone.utc)
+    next_day = target + timedelta(days=1)
+else:
+    # Default to today
+    target = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+    next_day = target + timedelta(days=1)
+
+sessions = find_sessions()
 analyzer = SessionAnalyzer()
 
-# Check for arguments
-args = '$ARGUMENTS'.strip()
+# Group by project
+projects = {}
+for s in sessions:
+    if target <= s.last_modified < next_day:
+        proj = s.project_display
+        if proj not in projects:
+            projects[proj] = []
+        projects[proj].append(s)
 
-if args == 'today':
-    # Analyze today's sessions
-    sessions = get_recent_sessions(hours=24)
-    for data in sessions[:5]:
-        print(analyzer.format_for_analysis(data))
-        print('---')
-elif args:
-    # Find specific session
-    path = analyzer.find_session(session_id=args)
-    if path:
-        data = analyzer.extract_session_data(path)
-        print(analyzer.format_for_analysis(data))
-    else:
-        print(f'Session not found: {args}')
-else:
-    # Most recent session
-    path = analyzer.find_session()
-    if path:
-        data = analyzer.extract_session_data(path)
-        print(analyzer.format_for_analysis(data))
-    else:
-        print('No sessions found')
+# Analyze most substantive session per project
+for proj, sess_list in sorted(projects.items()):
+    most_recent = sess_list[0]
+    data = analyzer.extract_session_data(most_recent.path)
+    print(analyzer.format_for_analysis(data))
+    print('---')
 "
 ```
 
-After viewing the session data, analyze it semantically and provide:
+## Analysis Guidelines
 
-1. **Accomplishments** - What got done?
-2. **Decisions** - What choices were made?
-3. **Topics** - What areas were worked on?
-4. **Blockers** - What's stuck?
-5. **Next steps** - What should happen next?
+**Curate, don't list.** Ask: "Would the user care about this in a week?"
 
-## Save to Daily Note (MANDATORY)
+- **Include**: Significant accomplishments, important decisions, blockers, incomplete work
+- **Omit**: Routine commits, trivial edits, mechanical operations
+- **Group**: Combine all sessions for same project into one section
 
-After completing analysis, save results to the daily note:
+## Rich Linking (MANDATORY)
 
-**File**: `$ACA_DATA/sessions/YYYYMMDD-daily.md` (e.g., `20251218-daily.md`)
+Before writing daily note, search bmem for link targets:
 
-### If file doesn't exist, create it:
+```python
+# Find related tasks
+mcp__bmem__search_notes(query="wikijuris video", project="main")
 
-```markdown
----
-title: Daily Session Summary - YYYY-MM-DD
-type: session_log
-permalink: sessions-YYYYMMDD-daily
-tags:
-  - daily
-  - sessions
-created: YYYY-MM-DDTHH:MM:SSZ
-updated: YYYY-MM-DDTHH:MM:SSZ
----
-
-## Sessions
-
-[session analysis here]
+# Find project notes
+mcp__bmem__search_notes(query="projects/omcp", project="main")
 ```
 
-### If file exists, append the session analysis
+Use wikilinks: `[[tasks/inbox/FILENAME]]`, `[[projects/NAME]]`, `[[contacts/NAME]]`
 
-Use Edit tool to append after `## Sessions` section, or use `mcp__bmem__edit_note` with operation `append`.
+## Daily Note Format
 
-### Session Entry Format
+**File**: `$ACA_DATA/sessions/YYYYMMDD-daily.md`
 
 ```markdown
-### Session: <id> (<project>, <duration>min)
+---
+title: Daily Summary - YYYY-MM-DD
+type: session_log
+permalink: sessions-YYYYMMDD-daily
+tags: [daily, sessions]
+created: YYYY-MM-DDTHH:MM:SSZ
+---
 
-**Accomplishments:**
-- Item 1
-- Item 2
+## Summary
+
+2-3 sentences: What was the focus today? Major outcomes?
+
+## By Project
+
+### [[projects/project-name]]
+
+**Accomplished:**
+- Significant item ([[link-to-task]] if exists)
+- Another significant item
 
 **Decisions:**
-- Decision 1
+- Choice made and why
 
-**Topics:** topic1, topic2
+**Left undone:**
+- What's pending ([[link-to-task]])
 
-**Blockers:** (if any)
+### [[projects/another-project]]
 
----
+...
+
+## Blockers
+
+Cross-project issues requiring attention.
 ```

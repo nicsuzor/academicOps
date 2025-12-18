@@ -103,41 +103,65 @@ Session analysis is saved to a daily note at `$ACA_DATA/sessions/YYYYMMDD-daily.
 
 **Format**: `20251218-daily.md` (strict naming)
 
-The daily note accumulates all session analyses for that day, enabling:
-- End-of-day review of accomplishments
-- Dashboard integration for progress tracking
-- Historical record of work patterns
+### Daily Note Philosophy
+
+**Curate, don't list.** The daily note is for things worth remembering - not an undifferentiated log. Use discretion:
+
+- **Include**: Significant accomplishments, important decisions, blockers, things left undone
+- **Omit**: Routine commits, trivial file edits, mechanical operations
+- **Focus on**: What would the user need to know if looking back in a week/month?
+
+### Organization: By Project, Not Session
+
+Group work by **project**, combining multiple sessions. Don't list each session separately.
+
+### Rich Linking (MANDATORY)
+
+Use bmem wikilinks to connect to the knowledge graph:
+
+- **Tasks**: `[[tasks/inbox/FILENAME]]` or task title if known
+- **Projects**: `[[projects/PROJECT-NAME]]`
+- **Decisions**: `[[projects/aops/decisions/TITLE]]`
+- **Contacts**: `[[contacts/NAME]]` when people are mentioned
+
+Search bmem to find correct link targets: `mcp__bmem__search_notes(query="...", project="main")`
 
 ### Daily Note Structure
 
 ```markdown
 ---
-title: Daily Session Summary - YYYY-MM-DD
+title: Daily Summary - YYYY-MM-DD
 type: session_log
 permalink: sessions-YYYYMMDD-daily
-tags:
-  - daily
-  - sessions
+tags: [daily, sessions]
 created: YYYY-MM-DDTHH:MM:SSZ
-updated: YYYY-MM-DDTHH:MM:SSZ
 ---
 
-## Sessions
+## Summary
 
-### Session: <id> (<project>, <duration>)
+Brief 2-3 sentence overview of the day's work.
 
-**Accomplishments:**
-- Item 1
-- Item 2
+## By Project
+
+### [[projects/PROJECT-NAME]]
+
+**Accomplished:**
+- Significant item (link to [[related-task]] if exists)
+- Another significant item
 
 **Decisions:**
-- Decision 1
+- Choice made and brief rationale
 
-**Topics:** topic1, topic2
+**Left undone:**
+- What's still pending (link to [[task]] if exists)
 
-**Blockers:** (if any)
+### [[projects/ANOTHER-PROJECT]]
 
----
+...
+
+## Blockers
+
+Items requiring attention across all projects.
 ```
 
 ## Architecture
