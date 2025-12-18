@@ -366,49 +366,24 @@ st.markdown("""
 def esc(text):
     return str(text).replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;').replace('"', '&quot;')
 
-# TODAY'S PROGRESS - Daily note summaries
-st.markdown("<div class='section-header'>TODAY'S PROGRESS</div>", unsafe_allow_html=True)
-try:
-    analyzer = SessionAnalyzer()
-    daily_note = analyzer.read_daily_note()
-    if daily_note and daily_note.get('sessions'):
-        col1, col2 = st.columns(2)
-        for i, session in enumerate(daily_note['sessions']):
-            project = session.get('project', 'Unknown')
-            color = get_project_color(project)
-            accomplishments = session.get('accomplishments', [])
-
-            # Build accomplishments list
-            acc_items = []
-            for acc in accomplishments[:5]:  # Max 5 accomplishments per session
-                acc_items.append(f"<div style='color: #4ade80; font-size: 0.85em; padding: 2px 0;'>✓ {esc(acc)}</div>")
-
-            acc_html = '\n'.join(acc_items) if acc_items else "<div style='color: #666; font-size: 0.85em;'>No accomplishments recorded</div>"
-
-            session_html = f"""
-            <div class='session-card' style='border-left-color: {color};'>
-                <div class='session-header'>
-                    <span class='session-project' style='color: {color};'>{esc(project)}</span>
-                    <span class='session-status'>{session.get('duration', '')}</span>
-                </div>
-                {acc_html}
-            </div>
-            """
-            with col1 if i % 2 == 0 else col2:
-                st.markdown(session_html, unsafe_allow_html=True)
-    else:
-        st.markdown("<div style='color: #666; padding: 8px;'>No daily note for today. Run /analyze-session to create one.</div>", unsafe_allow_html=True)
-except Exception as e:
-    st.error(f"Error loading daily note: {e}")
-
-# ACTIVE PROJECTS - Aggregated by project (includes priority tasks)
-st.markdown("<div class='section-header'>ACTIVE PROJECTS</div>", unsafe_allow_html=True)
+# PROJECTS - Unified view with all info per project
+st.markdown("<div class='section-header'>PROJECTS</div>", unsafe_allow_html=True)
 
 try:
     sessions = find_sessions()
     analyzer = SessionAnalyzer()
 
-    # Load priority tasks and group by project
+    # Load daily note accomplishments
+    daily_note = analyzer.read_daily_note()
+    accomplishments_by_project: dict[str, list] = {}
+    if daily_note and daily_note.get('sessions'):
+        for session in daily_note['sessions']:
+            proj = session.get('project', 'Unknown')
+            if proj not in accomplishments_by_project:
+                accomplishments_by_project[proj] = []
+            accomplishments_by_project[proj].extend(session.get('accomplishments', []))
+
+    # Load priority tasks
     focus_tasks = load_focus_tasks(count=20)
     tasks_by_project: dict[str, list] = {}
     for task in focus_tasks:
@@ -434,7 +409,6 @@ try:
                 'last_modified': session.last_modified,
                 'todos': [],
                 'bmem_notes': [],
-                'goals': [],
                 'git_project': session.project,
                 'session_count': 0
             }
@@ -443,7 +417,7 @@ try:
         if session.last_modified > projects[proj]['last_modified']:
             projects[proj]['last_modified'] = session.last_modified
 
-        # Aggregate todos (dedupe by content)
+        # Aggregate todos
         if state['todos']:
             existing = {t.get('content') for t in projects[proj]['todos']}
             for todo in state['todos']:
@@ -451,46 +425,37 @@ try:
                     projects[proj]['todos'].append(todo)
                     existing.add(todo.get('content'))
 
-        # Aggregate bmem notes (dedupe by title)
+        # Aggregate bmem notes
         existing_titles = {n['title'] for n in projects[proj]['bmem_notes']}
         for note in state.get('bmem_notes', []):
             if note['title'] not in existing_titles:
                 projects[proj]['bmem_notes'].append(note)
                 existing_titles.add(note['title'])
 
-        # Collect goals
-        goal = (state.get('first_prompt') or '').strip()
-        if goal and len(goal) > 15 and not goal.startswith('<') and 'Expanded:' not in goal:
-            if not (goal.startswith('/') and ' ' not in goal[:50]):
-                if goal not in projects[proj]['goals']:
-                    projects[proj]['goals'].append(goal)
+    # Ensure all projects with tasks or accomplishments are included
+    all_projects = set(projects.keys()) | set(tasks_by_project.keys()) | set(accomplishments_by_project.keys())
 
     # Build project cards
     project_cards = []
-    for proj, data in sorted(projects.items(), key=lambda x: x[1]['last_modified'], reverse=True):
-        status_emoji, status_text = get_activity_status(data['last_modified'])
+    for proj in sorted(all_projects, key=lambda p: projects.get(p, {}).get('last_modified', datetime.min.replace(tzinfo=timezone.utc)), reverse=True):
+        data = projects.get(proj, {})
         color = get_project_color(proj)
         content_parts = []
 
-        # Show aggregated todos
-        todos = data['todos']
-        if todos:
-            in_progress = [t for t in todos if t.get('status') == 'in_progress']
-            pending = [t for t in todos if t.get('status') == 'pending']
+        # 1. Accomplishments from daily note (green checkmarks)
+        accomplishments = accomplishments_by_project.get(proj, [])
+        for acc in accomplishments[:4]:
+            content_parts.append(f"<div style='color: #4ade80; font-size: 0.85em;'>✓ {esc(acc)}</div>")
+        if len(accomplishments) > 4:
+            content_parts.append(f"<div style='color: #4ade80; font-size: 0.85em;'>+{len(accomplishments)-4} more done</div>")
 
-            for todo in in_progress[:3]:
-                content_parts.append(f"<div class='session-todo in-progress'>🔄 {esc(todo.get('activeForm', todo.get('content', '')))}</div>")
-            if len(in_progress) > 3:
-                content_parts.append(f"<div class='session-todo'>+{len(in_progress)-3} more</div>")
-            if pending:
-                content_parts.append(f"<div class='session-todo pending'>⏳ {len(pending)} pending</div>")
+        # 2. In-progress todos from sessions
+        todos = data.get('todos', [])
+        in_progress = [t for t in todos if t.get('status') == 'in_progress']
+        for todo in in_progress[:2]:
+            content_parts.append(f"<div class='session-todo in-progress'>🔄 {esc(todo.get('activeForm', todo.get('content', '')))}</div>")
 
-        # Show recent goal if no todos
-        if not content_parts and data['goals']:
-            goal = data['goals'][-1][:100]
-            content_parts.append(f"<div class='session-prompt'><b>Goal:</b> \"{esc(goal)}\"</div>")
-
-        # Show priority tasks for this project
+        # 3. Priority tasks
         project_tasks = tasks_by_project.get(proj, [])
         for task in project_tasks[:3]:
             priority_text = f"P{task.priority}" if task.priority is not None else ""
@@ -502,61 +467,47 @@ try:
         if len(project_tasks) > 3:
             content_parts.append(f"<div class='task-item'>+{len(project_tasks)-3} more tasks</div>")
 
-        # Show bmem notes
-        for note in data['bmem_notes'][-2:]:
+        # 4. bmem notes
+        for note in data.get('bmem_notes', [])[-2:]:
             content_parts.append(f"<div class='session-bmem'>📝 {esc(note['title'])}</div>")
 
-        # Show git activity
-        git_commits = get_project_git_activity(data['git_project'])
-        if git_commits:
-            commits_display = ' | '.join([c[:40] for c in git_commits[:2]])
-            content_parts.append(f"<div class='session-git'>📦 {esc(commits_display)}</div>")
+        # 5. Git activity
+        git_project = data.get('git_project', '')
+        if git_project:
+            git_commits = get_project_git_activity(git_project)
+            if git_commits:
+                commits_display = ' | '.join([c[:40] for c in git_commits[:2]])
+                content_parts.append(f"<div class='session-git'>📦 {esc(commits_display)}</div>")
 
         if not content_parts:
             continue
 
-        sessions_label = f"{data['session_count']} session{'s' if data['session_count'] > 1 else ''}"
+        # Build status line
+        session_count = data.get('session_count', 0)
+        status_parts = []
+        if session_count:
+            status_emoji, status_text = get_activity_status(data['last_modified'])
+            status_parts.append(f"{status_text}")
+            status_parts.append(f"{session_count} session{'s' if session_count > 1 else ''}")
+        if project_tasks:
+            status_parts.append(f"{len(project_tasks)} tasks")
+
+        status_line = ' · '.join(status_parts) if status_parts else ''
+        emoji = status_emoji if session_count else '📋'
         content_html = '\n'.join(content_parts)
 
         project_cards.append(f"""
         <div class='session-card' style='border-left-color: {color};'>
             <div class='session-header'>
-                <span class='session-project' style='color: {color};'>{status_emoji} {proj}</span>
-                <span class='session-status'>{status_text} · {sessions_label}</span>
+                <span class='session-project' style='color: {color};'>{emoji} {proj}</span>
+                <span class='session-status'>{status_line}</span>
             </div>
             {content_html}
         </div>
         """)
 
-        if len(project_cards) >= 10:
+        if len(project_cards) >= 12:
             break
-
-    # Add cards for projects with tasks but no sessions
-    for proj, tasks in tasks_by_project.items():
-        if proj in projects or len(project_cards) >= 10:
-            continue
-        color = get_project_color(proj)
-        content_parts = []
-        for task in tasks[:3]:
-            priority_text = f"P{task.priority}" if task.priority is not None else ""
-            progress = ""
-            if task.subtasks:
-                done = sum(1 for s in task.subtasks if s.completed)
-                progress = f" ({done}/{len(task.subtasks)})"
-            content_parts.append(f"<div class='task-item'><span class='task-priority'>{priority_text}</span> {esc(task.title)}{progress}</div>")
-        if len(tasks) > 3:
-            content_parts.append(f"<div class='task-item'>+{len(tasks)-3} more tasks</div>")
-        if content_parts:
-            content_html = '\n'.join(content_parts)
-            project_cards.append(f"""
-            <div class='session-card' style='border-left-color: {color};'>
-                <div class='session-header'>
-                    <span class='session-project' style='color: {color};'>📋 {proj}</span>
-                    <span class='session-status'>{len(tasks)} tasks</span>
-                </div>
-                {content_html}
-            </div>
-            """)
 
     # Render in two columns
     if project_cards:
@@ -565,7 +516,7 @@ try:
             with col1 if i % 2 == 0 else col2:
                 st.markdown(card, unsafe_allow_html=True)
     else:
-        st.info("No active projects in last 7 days")
+        st.info("No active projects")
 
 except Exception as e:
     st.error(f"Error loading projects: {e}")
