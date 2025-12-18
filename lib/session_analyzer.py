@@ -258,6 +258,53 @@ class SessionAnalyzer:
             duration_minutes=duration,
         )
 
+    def extract_dashboard_state(self, session_path: Path) -> dict[str, Any]:
+        """
+        Extract dashboard state from a session file.
+
+        Args:
+            session_path: Path to session JSONL file
+
+        Returns:
+            Dict with keys:
+                - first_prompt: Truncated first user message (200 chars)
+                - first_prompt_full: Complete first user message
+                - last_prompt: Most recent user message
+                - todos: Current TODO list state (or None)
+                - bmem_notes: List of created knowledge base notes
+                - in_progress_count: Count of in-progress todos
+        """
+        summary, entries, agent_entries = self.processor.parse_jsonl(session_path)
+        turns = self.processor.group_entries_into_turns(entries, agent_entries)
+
+        # Extract prompts and outcomes
+        prompts = self._extract_prompts(turns)
+        outcomes = self._extract_outcomes(session_path, turns)
+
+        # Get first and last prompts
+        first_prompt_full = prompts[0].text if prompts else ""
+        first_prompt = first_prompt_full[:200]
+        if len(first_prompt_full) > 200:
+            first_prompt += "..."
+
+        last_prompt = prompts[-1].text if prompts else ""
+
+        # Count in-progress todos
+        in_progress_count = 0
+        if outcomes.todos_final:
+            in_progress_count = sum(
+                1 for t in outcomes.todos_final if t.get("status") == "in_progress"
+            )
+
+        return {
+            "first_prompt": first_prompt,
+            "first_prompt_full": first_prompt_full,
+            "last_prompt": last_prompt,
+            "todos": outcomes.todos_final,
+            "bmem_notes": outcomes.bmem_notes,
+            "in_progress_count": in_progress_count,
+        }
+
     def format_for_analysis(self, session_data: SessionData) -> str:
         """
         Format session data as context for LLM analysis.
