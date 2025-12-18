@@ -2,10 +2,11 @@
 """Prompt Intent Router hook for Claude Code.
 
 Two-tier routing:
-1. Keyword match → MANDATORY skill invocation instruction
+1. Keyword match → Motivational skill suggestion (v2 framing)
 2. No match → Offers Haiku classifier spawn for semantic analysis
 
-Also injects focus reminder on every prompt.
+Uses benefit-focused framing rather than imperative commands.
+Tracks framingVersion for compliance measurement.
 
 Exit codes:
     0: Success (always continues)
@@ -21,24 +22,74 @@ from typing import Any
 from hooks.hook_logger import log_hook_event
 
 
-# Focus reminder (previously in separate hook)
-FOCUS_REMINDER = "**CRITICAL**: Focus on the user's specific request. Do NOT over-elaborate or add unrequested features. Complete the task, then stop."
+# Focus reminder - softer framing (v2)
+FOCUS_REMINDER = "REMINDER: The user's request is specific. Addressing exactly what was asked (and stopping there) produces the most useful responses."
 
+# Framing version for A/B measurement
+FRAMING_VERSION = "v2-motivational"
 
-# All available skills with descriptions for routing
-SKILLS = {
-    "framework": "Maintain automation framework, design experiments, work on hooks/skills/commands infrastructure",
-    "python-dev": "Write production-quality Python code with fail-fast philosophy, type safety, TDD",
-    "analyst": "Support academic research data analysis using dbt and Streamlit",
-    "bmem": "Knowledge base management, search notes, create documentation",
-    "tasks": "Task management - view, archive, create tasks using task scripts",
-    "pdf": "Convert markdown documents to professionally formatted PDFs",
-    "osb-drafting": "Generate draft OSB case decisions with IRAC analysis and precedent support",
-    "learning-log": "Log agent performance patterns to thematic learning files",
-    "transcript": "Generate markdown transcripts from Claude Code session files",
-    "skill-creator": "Create and maintain skills following anti-bloat principles",
-    "training-set-builder": "Extract structured training examples from document sets",
-    "extractor": "Process email archive files, extract high-value information",
+# Skills with benefit/risk framing for motivational suggestions
+SKILLS: dict[str, dict[str, str]] = {
+    "framework": {
+        "description": "Categorical conventions and framework patterns",
+        "benefit": "You'll have access to exact patterns and conventions, ensuring changes fit existing architecture",
+        "risk": "You may propose changes that violate conventions or conflict with existing patterns",
+    },
+    "python-dev": {
+        "description": "Production Python: fail-fast, type safety, TDD",
+        "benefit": "You'll write code matching strict standards on first try, avoiding rejection patterns",
+        "risk": "Your code may use defaults or untyped patterns that violate fail-fast principles",
+    },
+    "analyst": {
+        "description": "Research data analysis: dbt, Streamlit, statistics",
+        "benefit": "You'll follow established patterns for data pipelines and statistical analysis",
+        "risk": "You may use patterns that don't integrate with the existing dbt/Streamlit setup",
+    },
+    "bmem": {
+        "description": "Knowledge base operations and format requirements",
+        "benefit": "You'll write notes in exact format required, with correct categories and locations",
+        "risk": "You may create files in wrong directories or break knowledge graph integrity",
+    },
+    "tasks": {
+        "description": "Task scripts and workflow patterns",
+        "benefit": "You'll use correct scripts and avoid creating duplicate tasks",
+        "risk": "You may write task files directly (forbidden) or create duplicates",
+    },
+    "pdf": {
+        "description": "Markdown to professional PDF conversion",
+        "benefit": "You'll know exact style parameters and formatting requirements",
+        "risk": "You may generate PDFs that don't match academic formatting standards",
+    },
+    "osb-drafting": {
+        "description": "IRAC analysis and precedent citation for Oversight Board",
+        "benefit": "You'll use correct legal analysis framework and citation format",
+        "risk": "Your analysis may miss required IRAC sections or cite precedents incorrectly",
+    },
+    "learning-log": {
+        "description": "Thematic pattern logging to learning files",
+        "benefit": "You'll log to the correct thematic file with proper format",
+        "risk": "Patterns may be logged incorrectly or to wrong files",
+    },
+    "transcript": {
+        "description": "Session JSONL to markdown conversion",
+        "benefit": "You'll generate transcripts in expected format with correct metadata",
+        "risk": "Transcripts may be malformed or missing key session context",
+    },
+    "skill-creator": {
+        "description": "Skill packaging following anti-bloat principles",
+        "benefit": "You'll create skills that fit framework conventions and pass validation",
+        "risk": "Your skill may violate size limits or structural requirements",
+    },
+    "training-set-builder": {
+        "description": "Training data extraction from document sets",
+        "benefit": "You'll extract examples in correct format for downstream training",
+        "risk": "Training examples may be malformed or miss important patterns",
+    },
+    "extractor": {
+        "description": "Email archive processing and extraction",
+        "benefit": "You'll extract actionable information in correct format",
+        "risk": "Important information may be missed or formatted incorrectly",
+    },
 }
 
 TEMP_DIR = Path.home() / ".cache" / "aops" / "prompt-router"
@@ -58,53 +109,62 @@ def write_prompt_context(prompt: str) -> Path:
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
     filepath = TEMP_DIR / f"{timestamp}.json"
 
+    # Flatten skills to just descriptions for classifier
+    skills_summary = {name: info["description"] for name, info in SKILLS.items()}
     data = {
         "timestamp": timestamp,
         "prompt": prompt,
-        "available_skills": SKILLS,
+        "available_skills": skills_summary,
     }
 
     filepath.write_text(json.dumps(data, indent=2))
     return filepath
 
 
-def analyze_prompt(prompt: str) -> str:
-    """Analyze prompt and return skill invocation instruction when keywords match.
+def analyze_prompt(prompt: str) -> tuple[str, list[str]]:
+    """Analyze prompt and return motivational skill suggestion.
+
+    Uses benefit-focused framing rather than imperative commands.
 
     Args:
         prompt: The user's prompt text
 
     Returns:
-        Skill invocation instruction string, or empty string if no match
+        Tuple of (suggestion text, list of matched skill names)
     """
     if not prompt:
-        return ""
+        return "", []
 
     prompt_lower = prompt.lower()
 
-    # Keyword triggers for each skill
+    # Keyword triggers for each skill (expanded coverage)
     triggers = {
         "framework": [
             "framework", "hook", "skill", "axioms", "claude.md", "settings.json",
-            "readme.md", "aops", "academicops",
+            "readme.md", "aops", "academicops", "convention", "pattern",
+            "infrastructure", "how do we", "what's the rule",
         ],
-        "python-dev": ["python", "pytest", "uv run", "type hint", "mypy"],
+        "python-dev": [
+            "python", "pytest", "uv run", "type hint", "mypy", ".py",
+            "function", "class", "import", "async", "typing",
+        ],
         "tasks": [
             "archive task", "view task", "create task", "task list", "tasks",
             "what's urgent", "show my tasks", "to-do", "todo", "priorities",
-            "what needs doing", "what should i work on",
+            "what needs doing", "what should i work on", "email", "inbox",
         ],
         "bmem": [
             "bmem", "knowledge base", "write note", "search notes",
             "remember this", "save this", "what do we know about",
             "context about", "background on", "prior work on",
-            "have we done", "did we already",
+            "have we done", "did we already", "memory", "capture",
         ],
-        "pdf": ["pdf", "generate pdf", "create pdf", "markdown to pdf"],
-        "osb-drafting": ["osb", "oversight board", "case decision", "irac"],
-        "learning-log": ["log failure", "log success", "agent pattern", "learning log"],
-        "transcript": ["transcript", "session transcript", "conversation log"],
-        "extractor": ["extract email", "email archive", "process archive"],
+        "pdf": ["pdf", "generate pdf", "create pdf", "markdown to pdf", "document"],
+        "osb-drafting": ["osb", "oversight board", "case decision", "irac", "precedent"],
+        "learning-log": ["log failure", "log success", "agent pattern", "learning log", "lesson"],
+        "transcript": ["transcript", "session transcript", "conversation log", "session history"],
+        "extractor": ["extract email", "email archive", "process archive", "mbox"],
+        "analyst": ["analysis", "statistics", "dbt", "streamlit", "data", "model", "regression"],
     }
 
     matched_skills = []
@@ -115,6 +175,10 @@ def analyze_prompt(prompt: str) -> str:
     if not matched_skills:
         # No keyword match - offer semantic classification via Haiku
         filepath = write_prompt_context(prompt)
+        skill_list = "\n".join(
+            f"   - {name}: {info['description']}"
+            for name, info in SKILLS.items()
+        )
         return (
             f"CLASSIFIER AVAILABLE: No keyword match for skills. For semantic analysis, "
             f"invoke Task tool with:\n"
@@ -122,26 +186,28 @@ def analyze_prompt(prompt: str) -> str:
             f"- model: \"haiku\"\n"
             f"- prompt: \"Read {filepath} and classify intent. Return the single best "
             f"skill from available_skills, or 'none' if no skill applies.\""
-        )
+        ), []
 
-    # Build response with explicit Skill tool syntax
-    # Per learning log 2025-12-01: agents interpret "invoke X skill" as "read skill file"
-    # Explicit Skill(skill="X") syntax is unambiguous
+    # Build motivational response (v2 framing)
     if len(matched_skills) == 1:
         skill = matched_skills[0]
-        desc = SKILLS.get(skill, "")
+        info = SKILLS[skill]
         return (
-            f"MANDATORY: Call Skill(skill=\"{skill}\") before proceeding with this request.\n"
-            f"Skill purpose: {desc}\n"
-            f"DO NOT use raw MCP tools (mcp__bmem__*, mcp__task_manager__*) directly. "
-            f"The skill provides context and quality control that raw tools lack."
-        )
+            f"CONTEXT AVAILABLE: {skill} skill\n\n"
+            f"WHY THIS HELPS:\n{info['benefit']}\n\n"
+            f"WITHOUT THIS CONTEXT:\n{info['risk']}\n\n"
+            f"TO LOAD: Skill(skill=\"{skill}\")"
+        ), matched_skills
     else:
-        skills_list = ", ".join(f"Skill(skill=\"{s}\")" for s in matched_skills)
-        return (
-            f"MANDATORY: Invoke one of these skills before proceeding: {skills_list}\n"
-            f"DO NOT use raw MCP tools directly - skills provide context and quality control."
+        skill_list = "\n".join(
+            f"- {s}: {SKILLS[s]['benefit']}" for s in matched_skills
         )
+        return (
+            f"CONTEXT AVAILABLE: Multiple relevant skills\n\n"
+            f"{skill_list}\n\n"
+            f"RECOMMENDATION: Load the most relevant skill first.\n"
+            f"TO LOAD: Skill(skill=\"[chosen-skill]\")"
+        ), matched_skills
 
 
 def main():
@@ -152,24 +218,18 @@ def main():
 
     prompt = input_data.get("prompt", "")
 
-    # Get classifier spawn instruction
-    advisory = analyze_prompt(prompt)
+    # Get motivational skill suggestion (v2 framing)
+    advisory, matched_skills = analyze_prompt(prompt)
 
     # Build output - always include focus reminder, add skill routing if matched
     context_parts = [FOCUS_REMINDER]
     if advisory:
         context_parts.append(advisory)
 
-    # Extract matched skills for logging
-    matched_skills = []
-    if advisory and "MANDATORY:" in advisory:
-        # Extract skill names from MANDATORY instruction
-        import re
-        matched_skills = re.findall(r'Skill\(skill="([^"]+)"\)', advisory)
-
     hook_specific_output: dict[str, Any] = {
         "hookEventName": "UserPromptSubmit",
         "additionalContext": "\n".join(context_parts),
+        "framingVersion": FRAMING_VERSION,  # For A/B measurement
     }
     if matched_skills:
         hook_specific_output["skillsMatched"] = matched_skills

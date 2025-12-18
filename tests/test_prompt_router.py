@@ -1,6 +1,7 @@
 """Tests for prompt router hook.
 
 Tests the analyze_prompt() function that matches keywords to skill suggestions.
+Uses motivational framing (v2) rather than imperative commands.
 """
 
 import json
@@ -9,48 +10,58 @@ import sys
 
 import pytest
 
-from hooks.prompt_router import analyze_prompt
+from hooks.prompt_router import FRAMING_VERSION, analyze_prompt
 
 
 class TestAnalyzePrompt:
     """Tests for analyze_prompt function."""
 
     def test_analyze_prompt_framework_keywords(self) -> None:
-        """Test that framework keywords return mandatory framework skill invocation."""
-        result = analyze_prompt("help with framework")
+        """Test that framework keywords return motivational framework skill suggestion."""
+        result, matched = analyze_prompt("help with framework")
 
         assert "framework" in result
-        assert "MANDATORY" in result
+        assert "CONTEXT AVAILABLE" in result
+        assert "WHY THIS HELPS" in result
+        assert matched == ["framework"]
 
     def test_analyze_prompt_python_keywords(self) -> None:
-        """Test that python keywords return mandatory python-dev skill invocation."""
-        result = analyze_prompt("write python code")
+        """Test that python keywords return motivational python-dev skill suggestion."""
+        result, matched = analyze_prompt("write python code")
 
         assert "python-dev" in result
-        assert "MANDATORY" in result
+        assert "CONTEXT AVAILABLE" in result
+        assert matched == ["python-dev"]
 
     def test_analyze_prompt_no_match(self) -> None:
         """Test that unrecognized input offers Haiku classifier spawn."""
-        result = analyze_prompt("hello there")
+        result, matched = analyze_prompt("hello there")
 
         # When no keyword match, offer semantic classification via Haiku
         assert "CLASSIFIER AVAILABLE" in result
         assert "haiku" in result
+        assert matched == []
 
     def test_analyze_prompt_multiple_matches(self) -> None:
-        """Test that multiple keyword matches require skill invocation."""
-        result = analyze_prompt("python framework")
+        """Test that multiple keyword matches list all relevant skills."""
+        result, matched = analyze_prompt("python framework")
 
         assert "python-dev" in result
         assert "framework" in result
-        assert "MANDATORY" in result
-        assert "one of these skills" in result
+        assert "Multiple relevant skills" in result
+        assert "python-dev" in matched
+        assert "framework" in matched
 
     def test_analyze_prompt_empty_input(self) -> None:
-        """Test that empty string returns empty string."""
-        result = analyze_prompt("")
+        """Test that empty string returns empty tuple."""
+        result, matched = analyze_prompt("")
 
         assert result == ""
+        assert matched == []
+
+    def test_framing_version_is_v2(self) -> None:
+        """Test that framing version is v2-motivational for A/B tracking."""
+        assert FRAMING_VERSION == "v2-motivational"
 
 
 def test_prompt_router_uses_haiku_subagent() -> None:
@@ -96,6 +107,7 @@ def test_hook_script_execution_with_framework_prompt(hooks_dir) -> None:
     - Accepts JSON input via stdin
     - Outputs valid JSON with correct structure
     - Returns framework skill suggestion for matching prompt
+    - Includes framingVersion for A/B measurement
     """
     hook_script = hooks_dir / "prompt_router.py"
     input_data = json.dumps({"prompt": "help with framework"})
@@ -111,7 +123,11 @@ def test_hook_script_execution_with_framework_prompt(hooks_dir) -> None:
     output = json.loads(result.stdout)
 
     assert "hookSpecificOutput" in output
-    assert "additionalContext" in output["hookSpecificOutput"]
-    assert "framework" in output["hookSpecificOutput"]["additionalContext"]
+    hook_output = output["hookSpecificOutput"]
+    assert "additionalContext" in hook_output
+    assert "framework" in hook_output["additionalContext"]
+    assert "framingVersion" in hook_output
+    assert hook_output["framingVersion"] == "v2-motivational"
+    assert hook_output.get("skillsMatched") == ["framework"]
 
 
