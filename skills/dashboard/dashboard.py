@@ -420,6 +420,41 @@ try:
 except Exception as e:
     st.error(f"Error loading active todos: {e}")
 
+# TODAY'S PROGRESS - Daily note summaries
+st.markdown("<div class='section-header'>TODAY'S PROGRESS</div>", unsafe_allow_html=True)
+try:
+    analyzer = SessionAnalyzer()
+    daily_note = analyzer.read_daily_note()
+    if daily_note and daily_note.get('sessions'):
+        col1, col2 = st.columns(2)
+        for i, session in enumerate(daily_note['sessions']):
+            project = session.get('project', 'Unknown')
+            color = get_project_color(project)
+            accomplishments = session.get('accomplishments', [])
+
+            # Build accomplishments list
+            acc_items = []
+            for acc in accomplishments[:5]:  # Max 5 accomplishments per session
+                acc_items.append(f"<div style='color: #4ade80; font-size: 0.85em; padding: 2px 0;'>✓ {esc(acc)}</div>")
+
+            acc_html = '\n'.join(acc_items) if acc_items else "<div style='color: #666; font-size: 0.85em;'>No accomplishments recorded</div>"
+
+            session_html = f"""
+            <div class='session-card' style='border-left-color: {color};'>
+                <div class='session-header'>
+                    <span class='session-project' style='color: {color};'>{esc(project)}</span>
+                    <span class='session-status'>{session.get('duration', '')}</span>
+                </div>
+                {acc_html}
+            </div>
+            """
+            with col1 if i % 2 == 0 else col2:
+                st.markdown(session_html, unsafe_allow_html=True)
+    else:
+        st.markdown("<div style='color: #666; padding: 8px;'>No daily note for today. Run /analyze-session to create one.</div>", unsafe_allow_html=True)
+except Exception as e:
+    st.error(f"Error loading daily note: {e}")
+
 # PRIORITY BACKLOG - Two columns
 st.markdown("<div class='section-header'>PRIORITY BACKLOG</div>", unsafe_allow_html=True)
 try:
