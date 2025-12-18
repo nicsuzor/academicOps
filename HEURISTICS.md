@@ -37,14 +37,17 @@ These are empirically derived rules that implement [[AXIOMS]] in practice. Unlik
 
 ## H2: Skill-First Action Principle
 
-**Statement**: Almost all actions by agents should be undertaken only after invoking a relevant skill that provides repeatability and efficient certainty.
+**Statement**: Almost all actions by agents should be undertaken only after invoking a relevant skill that provides repeatability and efficient certainty. **This includes investigation/research tasks about framework infrastructure, not just implementation tasks.**
 
 **Rationale**: Skills encode tested patterns. Ad-hoc action loses institutional knowledge and introduces variance.
 
 **Evidence**:
 - 2025-12-14: User observation - consistent pattern across framework development
+- 2025-12-18: Agent classified git hook investigation as "research" and skipped framework skill. Had to reinvestigate from scratch instead of using institutional knowledge about autocommit hook and related experiment.
 
 **Confidence**: High
+
+**Clarification**: The distinction between "research" and "implementation" does NOT gate skill invocation. Questions ABOUT framework infrastructure ARE framework work.
 
 **Implements**: [[AXIOMS]] #1 (Categorical Imperative), #17 (Write for Long Term)
 
@@ -191,6 +194,85 @@ These are empirically derived rules that implement [[AXIOMS]] in practice. Unlik
 **Confidence**: Medium
 
 **Implements**: [[AXIOMS]] #9 (DRY, Modular, Explicit)
+
+---
+
+## H11: No Promises Without Instructions
+
+**Statement**: Agents must not promise to "do better" or change future behavior without creating persistent instructions. Intentions without implementation are worthless.
+
+**Rationale**: Agents have no memory between sessions. Promising to improve without encoding the improvement in framework instructions (ACCOMMODATIONS.md, HEURISTICS.md, hooks, etc.) is a false commitment that cannot be kept.
+
+**Evidence**:
+- 2025-11-16: Documented as lesson in experiment file but not promoted to instructions (experiment: minimal-documentation-enforcement)
+- 2025-12-17: Agent said "I just need to do this better" about cognitive load support without creating any instructions
+
+**Confidence**: High
+
+**Implements**: [[AXIOMS]] #2 (Don't Make Shit Up) - promising what you can't deliver is fabrication
+
+---
+
+## H12: Semantic Extraction Over Keyword Matching
+
+**Statement**: When extracting information from user messages (accomplishments, action items, decisions, etc.), use semantic understanding rather than keyword matching. Read each message, identify action verbs and their objects, and extract meaning regardless of phrasing.
+
+**Rationale**: Keyword matching (e.g., grep for "done", "completed", "mark") misses most content. User messages use varied language: "do it", "delete X", "run Y", "update Z" - all indicate completed actions but don't match completion keywords. Semantic extraction requires reading each message and understanding what was requested or accomplished.
+
+**Evidence**:
+- 2025-12-17: Agent extracted 232 user messages but identified only ~10 accomplishments using keyword matching. Re-extraction with semantic analysis found ~43 discrete action items. Missed: "do it and delete bmdev", "update our flow", "pull latest version", etc.
+
+**Confidence**: Medium (strong single observation)
+
+**Implements**: [[AXIOMS]] #15 (Verify First) - actually understand content; [[AXIOMS]] #2 (Don't Make Shit Up) - don't fabricate understanding from keyword presence
+
+**Application**: When asked to summarize, extract, or categorize user messages:
+1. Read each message fully
+2. Identify action verbs: do, delete, update, run, create, fix, add, remove, pull, push, commit, etc.
+3. Extract what the verb applies to
+4. Group by project/context
+5. Don't filter based on keyword presence
+
+---
+
+## H13: Edit Source, Run Setup
+
+**Statement**: Never directly modify runtime/deployed config files (`~/.claude.json`, `~/.config/*`, symlinked files). Always edit the authoritative source in the appropriate repo (academicOps, dotfiles) and run the setup script to deploy.
+
+**Rationale**: Direct edits bypass version control, break reproducibility, and violate the Categorical Imperative (treating config management as a special case instead of following the general rule). Setup scripts exist to transform source configs into deployed configs with proper path expansion, merging, and validation.
+
+**Evidence**:
+- 2025-12-18: Agent edited `~/.claude.json` directly to change MCP server config instead of editing `$AOPS/config/claude/mcp.json` and running `setup.sh`
+
+**Confidence**: Low (first occurrence)
+
+**Implements**: [[AXIOMS]] #1 (Categorical Imperative), #13 (Trust Version Control)
+
+---
+
+## H14: Mandatory Second Opinion
+
+**Statement**: Plans and conclusions must be reviewed by an independent perspective (critic agent) before presenting to user.
+
+**Rationale**: Agents exhibit confirmation bias and overconfidence. A skeptical second pass catches errors that the planning agent misses. The cost of a quick review is lower than the cost of presenting flawed plans.
+
+**Evidence**:
+- 2025-12-18: User observation - agents confidently present flawed plans without self-checking
+
+**Confidence**: Low (new)
+
+**Implements**: [[AXIOMS]] #15 (Verify First), #16 (No Excuses)
+
+**Application**:
+```
+Task(subagent_type="critic", model="haiku", prompt="
+Review this plan/conclusion for errors and hidden assumptions:
+[SUMMARY]
+Check for: logical errors, unstated assumptions, missing verification, overconfident claims.
+")
+```
+
+If critic returns REVISE or HALT, address issues before proceeding.
 
 ---
 

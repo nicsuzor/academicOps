@@ -195,12 +195,25 @@ Invoke Plan subagent:
 
 **0.3 MANDATORY Plan Review (Second Pass)**
 
-Invoke second Plan or Explore subagent to review:
+Invoke critic agent for independent review:
 
-- Are steps realistic?
-- Is scope reasonable?
+```
+Task(subagent_type="critic", model="haiku", prompt="
+Review this TDD plan for errors and hidden assumptions:
+
+[PLAN SUMMARY FROM STEP 0.2]
+
+Check for:
+- Are steps realistic and achievable?
+- Is scope reasonable or scope creep?
 - Are tests comprehensive?
-- Missing anything?
+- Missing edge cases or failure modes?
+- Unstated assumptions about codebase or infrastructure?
+- Overconfident claims without verification?
+")
+```
+
+**If critic returns REVISE or HALT**: Address issues before proceeding to Step 0.4.
 
 **0.4 Break Into Micro-Tasks**
 

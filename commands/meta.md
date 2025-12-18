@@ -75,6 +75,22 @@ This forces explicit planning, user review, and prevents "just do it" shortcuts 
 
 **Skip Plan mode ONLY for**: Documentation-only changes, typo fixes, or when user explicitly says "just do it."
 
+## MANDATORY: Critic Review Before Presenting Plans
+
+After completing a plan or reaching a conclusion, **BEFORE presenting to user**:
+
+```
+Task(subagent_type="critic", model="haiku", prompt="
+Review this plan/conclusion for errors and hidden assumptions:
+
+[PLAN OR CONCLUSION SUMMARY]
+
+Check for: logical errors, unstated assumptions, missing verification, overconfident claims.
+")
+```
+
+If critic returns **REVISE** or **HALT**, address issues before proceeding.
+
 ## Categorical Imperative Check
 
 When user gives a single example (e.g., "fix this file"), ALWAYS ask:

@@ -117,6 +117,7 @@ $AOPS/
 │   └── prompts/user-prompt-submit.md
 │
 ├── agents/                      # Spawnable subagents (Task tool)
+│   ├── critic.md                # Second-opinion review of plans/conclusions
 │   ├── bmem-validator.md        # Parallel bmem validation
 │   ├── email-extractor.md       # Email archive processing
 │   └── task-viz.md              # Task graph → Excalidraw

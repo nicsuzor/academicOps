@@ -245,6 +245,24 @@ Implementation skills MUST refuse requests without this token.
 
 **Derives from**: AXIOMS #1 (Categorical Imperative) - every action flows through generalizable framework process.
 
+### Mandatory Critic Review
+
+Before presenting any plan or conclusion to the user, invoke the critic agent:
+
+```
+Task(subagent_type="critic", model="haiku", prompt="
+Review this plan/conclusion for errors and hidden assumptions:
+
+[PLAN OR CONCLUSION SUMMARY]
+
+Check for: logical errors, unstated assumptions, missing verification, overconfident claims.
+")
+```
+
+If critic returns **REVISE** or **HALT**, address issues before proceeding.
+
+**Derives from**: AXIOMS #15 (Verify First), #16 (No Excuses), HEURISTICS H3 (Verification Before Assertion).
+
 ### Standard Tools
 
 - Package management: `uv`

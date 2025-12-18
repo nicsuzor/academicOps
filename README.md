@@ -80,8 +80,11 @@ Academic support framework for Claude Code. Minimal, fight bloat aggressively.
 |-------|---------|------------|
 | Explore | Fast codebase exploration | `Task(subagent_type="Explore")` |
 | Plan | Implementation planning | `Task(subagent_type="Plan")` |
+| critic | Second-opinion review of plans/conclusions | `Task(subagent_type="critic", model="haiku")` |
 
 **Note**: For Python development, use `general-purpose` subagent and invoke `Skill(skill="python-dev")` first.
+
+**Mandatory**: Use critic agent to review plans before presenting to user.
 
 ## Testing
 
