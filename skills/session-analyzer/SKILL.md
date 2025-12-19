@@ -27,11 +27,32 @@ When invoked via command, accepts optional argument:
 
 ## Process
 
-1. **Load session data** for target date
-2. **Group by project** - combine sessions working on same project
-3. **Curate** - focus on significant items, not everything
-4. **Add rich links** - search bmem to link tasks, decisions, contacts
-5. **Merge into daily note** (non-destructive - never overwrite existing content)
+1. **Carry over incomplete tasks** from yesterday (if starting new day)
+2. **Load session data** for target date
+3. **Group by project** - combine sessions working on same project
+4. **Curate** - focus on significant items, not everything
+5. **Add rich links** - search bmem to link tasks, decisions, contacts
+6. **Merge into daily note** (non-destructive - never overwrite existing content)
+
+### Carrying Over Incomplete Tasks
+
+When creating a new day's daily note:
+
+1. Find yesterday's daily note: `$ACA_DATA/sessions/YYYYMMDD-daily.md`
+2. Extract all `- [ ]` incomplete tasks from each project section
+3. Add them to today's note under the same project headings
+4. Preserve priority order (PRIMARY tasks stay PRIMARY, etc.)
+
+```bash
+# Find yesterday's file
+yesterday=$(date -v-1d +%Y%m%d)
+cat "$ACA_DATA/sessions/${yesterday}-daily.md" | grep -E "^- \[ \]"
+```
+
+**Do NOT carry over:**
+- Completed tasks (`- [x]`)
+- Plain bullets (notes, observations)
+- Tasks explicitly marked as dropped or deferred to a specific date
 
 ## Loading Session Data
 
