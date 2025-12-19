@@ -236,6 +236,47 @@ update_daily_note_dashboard()  # Uses today's date
 
 This parses each priority section and inserts a progress bar showing completed/total tasks for that section only.
 
+## Task Completion Confirmation (Optional)
+
+After updating the daily note, offer to archive matching tasks from the task inbox.
+
+### Flow
+
+1. **Extract completed items** from today's daily note (`- [x]` items)
+2. **Search for matching open tasks** using semantic search:
+   ```python
+   mcp__bmem__search_notes(query="completed item text", types=["task"], project="main")
+   ```
+3. **Present matches to user** via `AskUserQuestion` with `multiSelect: true`
+4. **Archive confirmed tasks** using `task_archive.py`
+
+### Example Confirmation
+
+```python
+AskUserQuestion(questions=[{
+    "question": "Archive these completed tasks?",
+    "header": "Task cleanup",
+    "multiSelect": True,
+    "options": [
+        {"label": "ExecutionTrace schema cleanup", "description": "20251218-abc123.md"},
+        {"label": "Data quality explorer", "description": "20251217-def456.md"}
+    ]
+}])
+```
+
+### Rules
+
+- **Only show high-confidence matches** - if semantic search returns low relevance, skip
+- **Show task filename** in description so user can verify
+- **User confirms each archival** - no auto-archive
+- **Skip if no matches found** - don't prompt unnecessarily
+
+### After Confirmation
+
+```bash
+cd $AOPS && uv run python skills/tasks/scripts/task_archive.py "matched-task.md" "another-task.md"
+```
+
 ## Architecture
 
 - **Data layer**: `lib/session_analyzer.py` (extraction, no LLM)
