@@ -98,6 +98,10 @@ $AOPS/
 │   │   ├── SKILL.md
 │   │   └── dashboard.py
 │   │
+│   ├── reference-map/           # Framework reference graph extraction
+│   │   ├── SKILL.md
+│   │   └── scripts/build_reference_map.py
+│   │
 │   ├── extractor/               # Archive → bmem extraction
 │   ├── feature-dev/             # Feature development templates
 │   ├── framework-debug/         # Framework debugging

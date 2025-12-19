@@ -316,3 +316,6 @@ settings.local.json
 # Daily tracking files (ephemeral - not version controlled)
 data/context/workstream-tracking-*.md
 data/views/today-priorities-*.md
+
+# Generated state files
+reference-graph.json

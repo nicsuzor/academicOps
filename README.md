@@ -65,6 +65,7 @@ Academic support framework for Claude Code. Minimal, fight bloat aggressively.
 | session-analyzer | Semantic session analysis | `Skill(skill="session-analyzer")` |
 | learning-log | Pattern logging to thematic files | `Skill(skill="learning-log")` |
 | dashboard | Live task + session activity dashboard | `uv run streamlit run skills/dashboard/dashboard.py` |
+| reference-map | Extract framework file references → JSON graph | `Skill(skill="reference-map")` |
 
 ## Hooks
 
