@@ -2,7 +2,7 @@
 name: session-analyzer
 description: Analyze Claude Code session logs to extract semantic meaning - accomplishments, decisions, topics, blockers.
 allowed-tools: Read,Bash,Write,Edit,mcp__bmem__write_note,mcp__bmem__edit_note,mcp__bmem__search_notes
-version: 1.2.0
+version: 2.0.0
 permalink: skills-session-analyzer
 ---
 
@@ -16,7 +16,7 @@ Analyze Claude Code session logs to extract semantic meaning using LLM understan
 - "Summarize this session"
 - "What decisions were made?"
 - "What's been happening in my sessions?"
-- `/session-analyzer` command
+- `/analyze-sessions` command
 
 ## Arguments
 
@@ -31,7 +31,7 @@ When invoked via command, accepts optional argument:
 2. **Group by project** - combine sessions working on same project
 3. **Curate** - focus on significant items, not everything
 4. **Add rich links** - search bmem to link tasks, decisions, contacts
-5. **Save to daily note**
+5. **Merge into daily note** (non-destructive - never overwrite existing content)
 
 ## Loading Session Data
 
@@ -85,54 +85,65 @@ When analyzing session data:
 
 Session analysis is saved to a daily note at `$ACA_DATA/sessions/YYYYMMDD-daily.md`.
 
-**Format**: `20251218-daily.md` (strict naming)
+**Format**: `20251219-daily.md` (strict naming)
 
-### CRITICAL: Never Lose Todo Items
+### Core Format: Task Lists by Project
 
-**You MAY reorganize, enrich, and deduplicate the daily note. You MUST NOT lose any todo items.**
+The daily note is **task lists grouped by project**. That's it.
 
-When updating an existing daily note:
+Each project section:
+- `## PROJECT-NAME → [[projects/link]]` heading
+- Progress bar (auto-generated)
+- Task list: `- [x]` completed, `- [ ]` incomplete
+- Notes/observations as plain bullets (no checkbox)
 
-1. **Read the file first** - understand what's already there
-2. **Preserve ALL todo items** - every `- [ ]` and `- [x]` must appear in output
-3. **Enrich freely**:
-   - Add wikilinks to projects, tasks, contacts
-   - Mark items complete when session data shows they're done
-   - Move items to appropriate sections (e.g., TJA work under PRIMARY)
-   - Remove duplication (if same item appears twice, keep one)
-   - Add `[outcome]`, `[decision]`, `[blocker]` annotations
-4. **Integrate session outcomes** - merge today's accomplishments into Focus Areas where they belong
-5. **Keep Project Details section** - for detailed session-specific info (commits, technical notes)
+### Session Analyzer's Job
 
-### Daily Note Philosophy
+When updating the daily note, the session analyzer:
 
-**Curate, don't list.** The daily note is for things worth remembering - not an undifferentiated log. Use discretion:
+1. **Reads existing content** - preserves ALL tasks and notes
+2. **Adds new accomplishments** - from session data, as `- [x]` items
+3. **Adds new blockers/issues** - as `- [ ]` items
+4. **Cleans up formatting** - converts messy input to clean task format
+5. **Deduplicates** - same task mentioned twice → keep one
+6. **Never loses information** - if in doubt, keep it
 
-- **Include**: Significant accomplishments, important decisions, blockers, things left undone
-- **Omit**: Routine commits, trivial file edits, mechanical operations
-- **Focus on**: What would the user need to know if looking back in a week/month?
+### Formatting Rules
 
-### Organization: By Project
+**Convert user notes to task format:**
+- `- some task I did` → `- [x] some task I did`
+- `- TODO: something` → `- [ ] something`
+- `- [outcome] thing` → `- [x] thing`
+- `- [blocker] issue` → `- [ ] issue (BLOCKING)`
 
-Group work by **project** using `## project-name` headings. Combine multiple sessions working on the same project. Don't list each session separately.
+**Keep as plain bullets (no checkbox):**
+- Observations, decisions, notes that aren't tasks
+- Reference information (like schema observations)
+
+### Non-Destructive Merge (Cross-Machine Safety)
+
+When merging session data from different machines:
+1. Parse existing project sections
+2. For each new item, check if similar content exists (fuzzy match)
+3. If exists: skip or update
+4. If new: append to appropriate project section
+5. **Never delete** - only add or enrich
+
+This ensures remote sessions don't overwrite local session data.
 
 ### Rich Linking (MANDATORY)
 
-Before writing daily note, search bmem for link targets:
+Before writing, search bmem for link targets:
 
 ```python
-# Find related tasks
 mcp__bmem__search_notes(query="task topic", project="main")
-
-# Find project notes
 mcp__bmem__search_notes(query="projects/name", project="main")
 ```
 
-Use wikilinks to connect to the knowledge graph:
-- **Tasks**: `[[tasks/inbox/FILENAME]]`
+Use wikilinks:
 - **Projects**: `[[projects/PROJECT-NAME]]`
 - **Decisions**: `[[projects/aops/decisions/TITLE]]`
-- **Contacts**: `[[contacts/NAME]]`
+- **Tasks**: `[[tasks/inbox/FILENAME]]`
 
 ### Daily Note Structure
 
@@ -146,67 +157,54 @@ tags: [daily, sessions]
 
 # Daily Summary - YYYY-MM-DD
 
-## Focus Areas
-<!-- USER ZONE - preserve this section -->
+## 🎯 PRIMARY: TJA Paper → [[projects/tja]]
+████░░░░░░░░░░░░░░░░ 3/10
 
-### PRIMARY: Main Priority → [[projects/PROJECT]]
+- [x] ExecutionTrace schema cleanup (Phases 1-4)
+- [x] Data quality explorer page
+- [x] Verify BigQuery serializability
+- [ ] Fix buttermilk hash/save recursion (BLOCKING)
+- [ ] Test trans workflow end-to-end
+- [ ] Run full reliability batch
+- [ ] Draft methods section
+- [ ] Phase 5: Config URI reference
+- [ ] Phase 6: Schema validation tests
 
-**Blockers:**
-- [ ] Blocking issue
+**Notes:**
+- Schema observation: move `bm` config to `session_info`
+- Schema observation: delete `agent_info.config` entirely
 
-**Today's subtasks:**
-- [ ] Specific task
-- [x] Completed task → brief note on what was done
+## SECONDARY: Framework → [[projects/aops]]
+██████░░░░░░░░░░░░░░ 7/22
 
-**Progress today:**
-- [outcome] What was accomplished
-- [blocker] What's stuck
+- [x] reference-map skill
+- [x] link-audit skill
+- [x] Session analyzer v2.0
+- [x] GEMINI.md
+- [x] Merged analyze-session into session-analyzer
+- [x] CSV export for Cosmograph
+- [x] Markdown dashboard generator
+- [ ] Live session dashboard
+- [ ] Convince Gemini to read Claude skills
+- [ ] teach claude about obsidian links
+- [ ] get evidence out of heuristic document
+- [ ] transcript improvements
 
-**Remaining after today:**
-- [ ] Next steps
+## FILLER: Admin
 
-### SECONDARY: Other Work → [[projects/OTHER]]
-- [ ] Task items
-- [x] Completed items
-
-### FILLER: Admin (in gaps)
-- Misc items
-
----
-
-## Project Details
-<!-- AUTO ZONE - session analyzer updates below this line -->
-
-### project-name
-- [outcome] What was completed
-- [decision] Choice made and why
-- [blocker] What's stuck
-
-Commits:
-- `abc1234` - commit message
-
----
-
-## Session Log
-<!-- Reserved for machine-readable data -->
+- Email triage
+- OSB items (secure device)
 ```
 
-### Item Format
+**Key points:**
+- Tasks are `- [x]` or `- [ ]`
+- Notes/observations go under `**Notes:**` as plain bullets
+- Every checkbox item counts toward progress bar
+- No separate "Session Details" section needed
 
-Use bmem observation categories for bullet points:
-- `[outcome]` - What was completed
-- `[decision]` - Choice made and rationale
-- `[blocker]` - What's stuck
-- `[insight]` - Key realization
-- `[problem]` - Issue identified
+## Regenerating Progress Bars
 
-Use task checkbox format for tasks:
-- `- [ ] Incomplete task`
-- `- [x] Completed task`
-
-## Regenerating the Dashboard
-
-After updating the daily note, regenerate the visual dashboard zone:
+After updating the daily note, regenerate per-section progress bars:
 
 ```bash
 cd $AOPS && uv run python -c "
@@ -215,18 +213,12 @@ update_daily_note_dashboard()  # Uses today's date
 "
 ```
 
-This parses Focus Areas and generates an ASCII dashboard at the top of the daily note showing:
-- 🎯 NOW: Primary focus + next action from Today's subtasks
-- Progress bar (completed/total tasks)
-- ⚠️ BLOCKERS: Items tagged with `[blocker]` or under **Blockers:** sections
-- ✅ DONE: Completed `[x]` items and `[outcome]` annotations
-
-The dashboard zone is auto-generated; user content in Focus Areas and below is preserved.
+This parses each priority section and inserts a progress bar showing completed/total tasks for that section only.
 
 ## Architecture
 
 - **Data layer**: `lib/session_analyzer.py` (extraction, no LLM)
 - **Parsing**: `lib/session_reader.py` (JSONL → structured turns)
-- **Dashboard**: `lib/session_analyzer.py` (`update_daily_note_dashboard()`)
+- **Progress bars**: `lib/session_analyzer.py` (`update_daily_note_dashboard()`)
 - **Analysis**: This skill (LLM-powered semantic understanding)
 - **Storage**: bmem (optional, for significant findings)

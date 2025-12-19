@@ -727,77 +727,83 @@ def progress_bar(completed: int, total: int, width: int = 20) -> str:
     return f"{bar} {completed}/{total}"
 
 
-def generate_dashboard_zone(parsed: dict[str, Any]) -> str:
+@dataclass
+class SectionProgress:
+    """Progress data for a single priority section."""
+
+    heading: str  # Full heading line (e.g., "## 🎯 PRIMARY: TJA Paper → [[projects/tja]]")
+    completed: int
+    total: int
+    start_pos: int  # Position in file where heading starts
+    end_pos: int  # Position where next section starts
+
+
+def parse_priority_sections(content: str) -> list[SectionProgress]:
     """
-    Generate ASCII dashboard from parsed daily log data.
+    Parse priority sections from daily note content.
+
+    Finds all ## headings above ## Session Details that contain task lists.
+    Returns progress data for each section.
 
     Args:
-        parsed: Dict from parse_daily_log() containing:
-            - primary_title, primary_link
-            - next_action
-            - progress (completed, total)
-            - blockers, outcomes, completed
+        content: Full daily note content
 
     Returns:
-        Markdown string for dashboard zone
+        List of SectionProgress for each priority section
     """
-    lines = []
+    sections: list[SectionProgress] = []
 
-    # NOW section - primary focus and next action
-    primary = parsed.get("primary_title") or "No primary focus set"
-    lines.append(f"## 🎯 NOW: {primary}")
+    # Find where Session Details starts (boundary of user zone)
+    session_details_match = re.search(r"^## Session Details", content, re.MULTILINE)
+    user_zone_end = session_details_match.start() if session_details_match else len(content)
 
-    next_action = parsed.get("next_action")
-    if next_action:
-        lines.append(f"→ {next_action}")
+    # Find all ## headings in user zone
+    heading_pattern = re.compile(r"^(## .+)$", re.MULTILINE)
+    headings = list(heading_pattern.finditer(content[:user_zone_end]))
 
-    lines.append("")
+    for i, match in enumerate(headings):
+        heading = match.group(1)
+        start_pos = match.start()
 
-    # Progress bar
-    done, total = parsed.get("progress", (0, 0))
-    lines.append(progress_bar(done, total))
+        # Section ends at next heading or user zone end
+        if i + 1 < len(headings):
+            end_pos = headings[i + 1].start()
+        else:
+            end_pos = user_zone_end
 
-    lines.append("")
+        section_content = content[start_pos:end_pos]
 
-    # Blockers section (only if there are blockers)
-    blockers = parsed.get("blockers", [])
-    if blockers:
-        lines.append("## ⚠️ BLOCKERS")
-        for blocker in blockers[:5]:  # Limit to 5
-            lines.append(f"• {blocker}")
-        lines.append("")
+        # Count tasks in this section
+        completed = len(re.findall(r"^-\s*\[x\]", section_content, re.MULTILINE | re.IGNORECASE))
+        incomplete = len(re.findall(r"^-\s*\[ \]", section_content, re.MULTILINE))
+        total = completed + incomplete
 
-    # Done section
-    completed = parsed.get("completed", [])
-    outcomes = parsed.get("outcomes", [])
-    done_items = completed + outcomes
+        sections.append(SectionProgress(
+            heading=heading,
+            completed=completed,
+            total=total,
+            start_pos=start_pos,
+            end_pos=end_pos,
+        ))
 
-    if done_items:
-        lines.append(f"## ✅ DONE ({len(done_items)})")
-        for item in done_items[:8]:  # Limit to 8 items
-            # Truncate long items
-            display = item[:60] + "..." if len(item) > 60 else item
-            lines.append(f"✓ {display}")
-        lines.append("")
-
-    return "\n".join(lines)
+    return sections
 
 
 def update_daily_note_dashboard(date_str: str | None = None) -> bool:
     """
-    Update the dashboard zone of a daily note.
+    Update progress bars in each priority section of a daily note.
 
-    Reads the daily note, parses Focus Areas to extract data,
-    generates a new dashboard zone, and writes back preserving
-    all user content.
+    For each ## section above ## Session Details, inserts or updates
+    a progress bar on the line immediately after the heading.
 
     Args:
         date_str: Date string in YYYYMMDD format. If None, uses today.
 
     Returns:
-        True if successful, False if file doesn't exist or parse failed.
+        True if successful, False if file doesn't exist.
 
-    Safety: Never loses user data. On parse failure, preserves original.
+    Safety: Never modifies content below ## Session Details.
+            Only touches progress bar lines (identified by █░ characters).
     """
     aca_data = os.environ.get("ACA_DATA")
     if not aca_data:
@@ -810,50 +816,38 @@ def update_daily_note_dashboard(date_str: str | None = None) -> bool:
     if not daily_path.exists():
         return False
 
-    # Read original content (for safety - preserve on failure)
-    original_content = daily_path.read_text()
+    content = daily_path.read_text()
 
-    # Parse to extract dashboard data
-    analyzer = SessionAnalyzer()
-    parsed = analyzer.parse_daily_log(date_str)
-    if not parsed:
+    # Parse sections to get progress data
+    sections = parse_priority_sections(content)
+    if not sections:
         return False
 
-    # Generate new dashboard zone
-    dashboard = generate_dashboard_zone(parsed)
+    # Process sections in reverse order (so positions remain valid)
+    for section in reversed(sections):
+        # Skip sections with no tasks (like FILLER which might just have bullets)
+        if section.total == 0:
+            continue
 
-    # Split content: frontmatter, title, focus areas
-    # Structure: ---\nfrontmatter\n---\n# Title\n[dashboard]\n## Focus Areas\n...
+        # Find the end of the heading line
+        heading_end = section.start_pos + len(section.heading)
 
-    # Extract frontmatter
-    frontmatter_match = re.match(r"^(---\n.*?\n---\n)", original_content, re.DOTALL)
-    if not frontmatter_match:
-        return False
+        # Check if there's already a progress bar on the next line
+        after_heading = content[heading_end:]
+        existing_bar_match = re.match(r"\n([█░]+ \d+/\d+)\n", after_heading)
 
-    frontmatter = frontmatter_match.group(1)
-    after_frontmatter = original_content[frontmatter_match.end():]
+        new_bar = progress_bar(section.completed, section.total)
 
-    # Find title line and Focus Areas (allow leading whitespace)
-    title_match = re.match(r"(\s*#[^\n]+\n+)", after_frontmatter)
-    if not title_match:
-        return False
+        if existing_bar_match:
+            # Replace existing progress bar
+            bar_start = heading_end + 1  # +1 for newline
+            bar_end = bar_start + len(existing_bar_match.group(1))
+            content = content[:bar_start] + new_bar + content[bar_end:]
+        else:
+            # Insert new progress bar after heading
+            content = content[:heading_end] + "\n" + new_bar + content[heading_end:]
 
-    title_line = title_match.group(1)
-    after_title = after_frontmatter[title_match.end():]
-
-    # Find ## Focus Areas heading
-    focus_match = re.search(r"(## Focus Areas.*)", after_title, re.DOTALL)
-    if focus_match:
-        focus_content = focus_match.group(1)
-    else:
-        # No Focus Areas found - preserve all content after title
-        focus_content = "## Focus Areas\n\n" + after_title
-
-    # Reassemble: frontmatter + title + dashboard + focus areas
-    new_content = frontmatter + title_line + dashboard + "\n" + focus_content
-
-    # Write back
-    daily_path.write_text(new_content)
+    daily_path.write_text(content)
     return True
 
 
