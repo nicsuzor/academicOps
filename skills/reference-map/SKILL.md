@@ -8,7 +8,7 @@ permalink: skills-reference-map
 
 # Reference Map Skill
 
-Extract ALL file references from the framework and output a standard node-link JSON graph.
+Extract ALL file references from the framework and output graph formats for visualization.
 
 ## Quick Start
 
@@ -16,7 +16,9 @@ Extract ALL file references from the framework and output a standard node-link J
 PYTHONPATH=$AOPS uv run python $AOPS/skills/reference-map/scripts/build_reference_map.py
 ```
 
-Output: `$AOPS/reference-graph.json`
+Outputs:
+- `$AOPS/reference-graph.json` - Full graph with metadata (D3, NetworkX, Gephi)
+- `$AOPS/reference-graph.csv` - Edge list (Cosmograph, spreadsheets)
 
 ## What It Captures
 

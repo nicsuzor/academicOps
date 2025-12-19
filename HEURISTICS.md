@@ -206,6 +206,7 @@ These are empirically derived rules that implement [[AXIOMS]] in practice. Unlik
 **Evidence**:
 - 2025-11-16: Documented as lesson in experiment file but not promoted to instructions (experiment: minimal-documentation-enforcement)
 - 2025-12-17: Agent said "I just need to do this better" about cognitive load support without creating any instructions
+- 2025-12-19: Agent said "Will be more careful to verify file naming conventions" after creating file with wrong name - empty promise, no persistent instruction created
 
 **Confidence**: High
 
@@ -213,25 +214,33 @@ These are empirically derived rules that implement [[AXIOMS]] in practice. Unlik
 
 ---
 
-## H12: Semantic Extraction Over Keyword Matching
+## H12: Semantic Search Over Keyword Matching
 
-**Statement**: When extracting information from user messages (accomplishments, action items, decisions, etc.), use semantic understanding rather than keyword matching. Read each message, identify action verbs and their objects, and extract meaning regardless of phrasing.
+**Statement**: Vector/semantic search is ALWAYS superior to keyword matching for knowledge base content. Never use grep for markdown files in `$ACA_DATA/` - use bmem semantic search instead.
 
-**Rationale**: Keyword matching (e.g., grep for "done", "completed", "mark") misses most content. User messages use varied language: "do it", "delete X", "run Y", "update Z" - all indicate completed actions but don't match completion keywords. Semantic extraction requires reading each message and understanding what was requested or accomplished.
+**Rationale**: Keyword matching (grep) requires exact string matches and misses synonyms, paraphrases, and related concepts. Semantic search understands meaning: searching "task duplicates" finds content about "duplicate prevention", "already exists", "re-created tasks" even without those exact words. The knowledge base is designed for semantic retrieval.
 
 **Evidence**:
-- 2025-12-17: Agent extracted 232 user messages but identified only ~10 accomplishments using keyword matching. Re-extraction with semantic analysis found ~43 discrete action items. Missed: "do it and delete bmdev", "update our flow", "pull latest version", etc.
+- 2025-12-17: Agent extracted 232 user messages but identified only ~10 accomplishments using keyword matching. Re-extraction with semantic analysis found ~43 discrete action items.
+- 2025-12-18: Email workflow created duplicate tasks because it used grep instead of bmem to check for existing tasks. Semantic search would have caught "SNSF review" matching existing "Complete SNSF review" task.
 
-**Confidence**: Medium (strong single observation)
+**Confidence**: High
 
 **Implements**: [[AXIOMS]] #15 (Verify First) - actually understand content; [[AXIOMS]] #2 (Don't Make Shit Up) - don't fabricate understanding from keyword presence
 
-**Application**: When asked to summarize, extract, or categorize user messages:
-1. Read each message fully
-2. Identify action verbs: do, delete, update, run, create, fix, add, remove, pull, push, commit, etc.
-3. Extract what the verb applies to
-4. Group by project/context
-5. Don't filter based on keyword presence
+**Application**:
+
+| Task | Wrong | Right |
+|------|-------|-------|
+| Find existing tasks | `grep -li "keyword" $ACA_DATA/tasks/*.md` | `mcp__bmem__search_notes(query="keyword", types=["task"])` |
+| Check for duplicates | `grep -l "subject line" tasks/inbox/` | `mcp__bmem__search_notes(query="subject concepts")` |
+| Find related notes | `grep -r "term" $ACA_DATA/` | `mcp__bmem__search_notes(query="term and context")` |
+| Extract from messages | Pattern match for "done", "completed" | Read and understand action verbs semantically |
+
+**Corollary**: grep is still appropriate for:
+- Framework code files (`$AOPS/`) - not in bmem
+- Exact technical strings (error messages, function names)
+- Files outside the knowledge base
 
 ---
 
@@ -273,6 +282,51 @@ Check for: logical errors, unstated assumptions, missing verification, overconfi
 ```
 
 If critic returns REVISE or HALT, address issues before proceeding.
+
+---
+
+## H15: Streamlit Hot Reloads
+
+**Statement**: Don't restart Streamlit processes after code changes. Streamlit automatically detects file changes and hot-reloads.
+
+**Rationale**: Killing and restarting Streamlit wastes time and interrupts the user's browser connection. The framework's dashboard uses Streamlit which has built-in file watching.
+
+**Evidence**:
+- 2025-12-18: User correction - agent repeatedly killed/restarted Streamlit after each edit
+
+**Confidence**: Low (first occurrence)
+
+**Implements**: [[AXIOMS]] #4 (Do One Thing) - don't add unnecessary restart steps
+
+---
+
+## H16: Use AskUserQuestion for Multiple Questions
+
+**Statement**: When you have multiple questions for the user (clarifications, prioritization, choices), use the AskUserQuestion tool rather than listing questions in prose.
+
+**Rationale**: The tool provides structured input, reduces friction, and signals that responses are expected. Prose questions can be missed or feel burdensome.
+
+**Evidence**:
+- 2025-12-19: User correction - presented prioritization questions as prose list instead of using tool
+
+**Confidence**: Low (first occurrence)
+
+**Implements**: [[AXIOMS]] #4 (Do One Thing) - complete the interaction cleanly
+
+---
+
+## H17: Check Skill Conventions Before File Creation
+
+**Statement**: Before creating files in domain-specific locations (sessions/, tasks/, etc.), check the relevant skill for naming and format conventions. Do not rely on tool defaults.
+
+**Rationale**: Tools like bmem generate filenames from titles automatically. Domain skills often specify strict naming conventions (e.g., `YYYYMMDD-daily.md` for session logs). Relying on tool defaults ignores domain-specific requirements.
+
+**Evidence**:
+- 2025-12-19: Agent created daily note with human-readable filename instead of `20251219-daily.md` format documented in session-analyzer/SKILL.md:100-104
+
+**Confidence**: Low (first occurrence)
+
+**Implements**: [[AXIOMS]] #1 (Categorical Imperative) - naming conventions are universal rules; H2 (Skill-First) - check skills before acting
 
 ---
 

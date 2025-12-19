@@ -2,14 +2,16 @@
 """
 Build reference graph from framework files.
 
-Extracts ALL file references and outputs standard node-link JSON.
+Extracts ALL file references and outputs standard node-link JSON and CSV.
 Pure state capture - no analysis or computed metrics.
 """
 
 from __future__ import annotations
 
 import argparse
+import csv
 import json
+import os
 import re
 import sys
 from collections import defaultdict
@@ -31,6 +33,12 @@ SKIP_DIRS = {
     "venv",
     ".mypy_cache",
     ".ruff_cache",
+}
+
+# Files to skip (output files that would create self-references)
+SKIP_FILES = {
+    "reference-graph.json",
+    "reference-graph.csv",
 }
 
 # File extensions to scan
@@ -123,15 +131,47 @@ def classify_path(ref_text: str) -> str:
     return "relative"
 
 
+def expand_env_path(ref_text: str) -> str | None:
+    """
+    Expand environment variable paths like $AOPS/file or ${ACA_DATA}/file.
+
+    Returns expanded path string, or None if env var is not set.
+    """
+    # Match $VAR/path or ${VAR}/path
+    match = re.match(r"\$\{?([A-Z_]+)\}?(/.*)?", ref_text)
+    if not match:
+        return None
+
+    var_name = match.group(1)
+    suffix = match.group(2) or ""
+
+    var_value = os.environ.get(var_name)
+    if not var_value:
+        return None
+
+    return var_value + suffix
+
+
 def resolve_target(source_path: Path, ref_text: str, root: Path) -> str:
     """
     Attempt to resolve a reference to a canonical path relative to root.
 
     Returns the resolved path if possible, otherwise returns the raw reference.
     """
-    # Handle env vars - keep as-is, can't resolve without env
+    # Handle env vars - try to expand and resolve
     if ref_text.startswith("$") or "${" in ref_text:
-        return ref_text
+        expanded = expand_env_path(ref_text)
+        if expanded:
+            expanded_path = Path(expanded)
+            if expanded_path.exists():
+                try:
+                    return str(expanded_path.resolve().relative_to(root))
+                except ValueError:
+                    # Outside root - return expanded absolute path
+                    return str(expanded_path.resolve())
+        # Can't expand - strip env var prefix for cleaner node name
+        clean = re.sub(r"\$\{?[A-Z_]+\}?/?", "", ref_text)
+        return clean if clean else ref_text
 
     # Handle Python modules - convert to path
     if classify_path(ref_text) == "module":
@@ -228,6 +268,9 @@ def iter_files(root: Path) -> Iterator[Path]:
         # Skip directories in SKIP_DIRS
         if any(skip in path.parts for skip in SKIP_DIRS):
             continue
+        # Skip output files
+        if path.name in SKIP_FILES:
+            continue
         # Only include files with matching extensions
         if path.is_file() and path.suffix in SCAN_EXTENSIONS:
             yield path
@@ -305,8 +348,6 @@ def main() -> int:
     args = parser.parse_args()
 
     # Determine root
-    import os
-
     if args.root:
         root = args.root.resolve()
     elif "AOPS" in os.environ:
@@ -318,8 +359,13 @@ def main() -> int:
         print(f"Error: Root directory does not exist: {root}", file=sys.stderr)
         return 1
 
-    # Determine output path
-    output = args.output if args.output else root / "reference-graph.json"
+    # Determine output paths
+    if args.output:
+        json_output = args.output
+        csv_output = args.output.with_suffix(".csv")
+    else:
+        json_output = root / "reference-graph.json"
+        csv_output = root / "reference-graph.csv"
 
     # Build graph
     print(f"Scanning {root}...", file=sys.stderr)
@@ -329,9 +375,19 @@ def main() -> int:
         file=sys.stderr,
     )
 
-    # Write output
-    output.write_text(json.dumps(graph, indent=2))
-    print(f"Wrote {output}", file=sys.stderr)
+    # Write JSON output
+    json_output.write_text(json.dumps(graph, indent=2))
+    print(f"Wrote {json_output}", file=sys.stderr)
+
+    # Write CSV output (edge list for Cosmograph etc.)
+    with csv_output.open("w", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow(["source", "target", "weight", "ref_type"])
+        for link in graph["links"]:
+            writer.writerow(
+                [link["source"], link["target"], link["weight"], link["ref_type"]]
+            )
+    print(f"Wrote {csv_output}", file=sys.stderr)
 
     return 0
 

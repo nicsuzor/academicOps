@@ -124,6 +124,7 @@ class ConversationTurn:
     end_time: datetime | None = None
     hook_context: dict[str, Any] = field(default_factory=dict)
     inline_hooks: list[dict[str, Any]] = field(default_factory=list)
+    is_meta: bool = False  # True if this is system-injected context, not actual user input
 
 
 @dataclass
@@ -377,9 +378,16 @@ class SessionProcessor:
     def group_entries_into_turns(
         self,
         entries: list[Entry],
-        agent_entries: dict[str, list[Entry]] | None = None
+        agent_entries: dict[str, list[Entry]] | None = None,
+        full_mode: bool = False
     ) -> list[ConversationTurn | dict]:
-        """Group JSONL entries into conversational turns."""
+        """Group JSONL entries into conversational turns.
+
+        Args:
+            entries: List of session entries
+            agent_entries: Optional dict of agent ID -> entries for subagent transcripts
+            full_mode: If True, include full expanded content instead of condensing
+        """
         main_entries = [e for e in entries if not e.is_sidechain]
         sidechain_entries = [e for e in entries if e.is_sidechain]
 
@@ -391,7 +399,7 @@ class SessionProcessor:
 
         for entry in main_entries:
             if entry.type == 'user':
-                user_content = self._extract_user_content(entry)
+                user_content = self._extract_user_content(entry, full_mode=full_mode)
                 if not user_content.strip() or 'tool_use_id' in str(entry.message):
                     continue
 
@@ -403,6 +411,7 @@ class SessionProcessor:
 
                 current_turn = {
                     'user_message': user_content,
+                    'is_meta': entry.is_meta,  # Track if this is injected context
                     'assistant_sequence': [],
                     'start_time': entry.timestamp,
                     'end_time': entry.timestamp,
@@ -544,7 +553,8 @@ class SessionProcessor:
                     start_time=turn.get('start_time'),
                     end_time=turn.get('end_time'),
                     hook_context=turn.get('hook_context', {}),
-                    inline_hooks=turn.get('inline_hooks', [])
+                    inline_hooks=turn.get('inline_hooks', []),
+                    is_meta=turn.get('is_meta', False)
                 ))
 
         return conversation_turns
@@ -568,7 +578,9 @@ class SessionProcessor:
                 break
         date_str = first_timestamp.strftime('%Y-%m-%d') if first_timestamp else 'unknown'
 
-        turns = self.group_entries_into_turns(entries, agent_entries)
+        # Full mode shows complete expanded content
+        full_mode = (variant == "full")
+        turns = self.group_entries_into_turns(entries, agent_entries, full_mode=full_mode)
 
         skipped_hooks: dict[str, int] = {}
         markdown = ""
@@ -603,7 +615,11 @@ class SessionProcessor:
                     for f in files_loaded:
                         markdown += f"  - Loaded `{f}` (content injected)\n"
                 elif content:
-                    markdown += f"  - {content[:200]}\n"
+                    # In full mode, show complete hook content
+                    if full_mode:
+                        markdown += f"  - {content}\n"
+                    else:
+                        markdown += f"  - {content[:200]}\n"
                 markdown += "\n"
                 continue
 
@@ -611,7 +627,7 @@ class SessionProcessor:
                 content = turn.get('content', '').strip()
                 if content:
                     if not context_summary_started:
-                        markdown += f"## Context Summary\n\n"
+                        markdown += f"**Context Summary**\n\n"
                         context_summary_started = True
                     markdown += f"- {content}\n"
                 continue
@@ -636,8 +652,13 @@ class SessionProcessor:
                     timing_str = f" ({', '.join(parts)})"
 
             user_message = turn.user_message if isinstance(turn, ConversationTurn) else turn.get('user_message')
+            is_meta = turn.is_meta if isinstance(turn, ConversationTurn) else turn.get('is_meta', False)
             if user_message:
-                markdown += f"## User (Turn {turn_number}{timing_str})\n\n{user_message}\n\n"
+                # Use different label for injected context vs actual user input
+                if is_meta:
+                    markdown += f"### 📥 Context Injected (Turn {turn_number}{timing_str})\n\n{user_message}\n\n"
+                else:
+                    markdown += f"### User (Turn {turn_number}{timing_str})\n\n{user_message}\n\n"
 
                 inline_hooks = turn.inline_hooks if isinstance(turn, ConversationTurn) else turn.get('inline_hooks', [])
                 if inline_hooks:
@@ -650,33 +671,33 @@ class SessionProcessor:
 
                         has_useful_content = content or skills_matched or files_loaded
                         is_error = exit_code is not None and exit_code != 0
+
+                        # Skip hooks without useful content (frontmatter has counts)
                         if not has_useful_content and not is_error:
                             tool_name = hook.get('tool_name')
                             key = f"{event_name} ({tool_name})" if tool_name else event_name
                             skipped_hooks[key] = skipped_hooks.get(key, 0) + 1
                             continue
 
-                        checkmark = " ✓" if exit_code == 0 else f" ✗ (exit {exit_code})"
-
+                        # Build hook display - emit header once, then details
                         tool_name = hook.get('tool_name')
-                        agent_id = hook.get('agent_id')
-                        if tool_name:
-                            hook_label = f"{event_name}, {tool_name}"
-                        elif agent_id:
-                            hook_label = f"{event_name}, {agent_id}"
-                        else:
-                            hook_label = event_name
+                        checkmark = "" if exit_code is None else (" ✓" if exit_code == 0 else f" ✗ (exit {exit_code})")
+                        hook_label = f"{event_name}" + (f", {tool_name}" if tool_name else "")
 
                         markdown += f"- Hook({hook_label}){checkmark}\n"
-
                         if skills_matched:
                             skills_str = ", ".join(f"`{s}`" for s in skills_matched)
                             markdown += f"  - Skills matched: {skills_str}\n"
                         if files_loaded:
-                            for f in files_loaded:
-                                markdown += f"  - Loaded `{f}` (content injected)\n"
-                        elif content:
-                            markdown += f"  - {content[:200]}\n"
+                            files_str = ", ".join(f"`{f.split('/')[-1]}`" for f in files_loaded)
+                            markdown += f"  - Loaded {files_str} (content injected)\n"
+                        if content:
+                            # Truncate long content in abridged mode
+                            if not full_mode and len(content) > 200:
+                                display_content = content[:200] + "..."
+                            else:
+                                display_content = content
+                            markdown += f"  - {display_content}\n"
                         markdown += "\n"
 
             assistant_sequence = turn.assistant_sequence if isinstance(turn, ConversationTurn) else turn.get('assistant_sequence', [])
@@ -697,9 +718,9 @@ class SessionProcessor:
 
                         if not agent_header_emitted:
                             if subagent_id:
-                                agent_header = f"## Agent ({subagent_id})"
+                                agent_header = f"**Agent ({subagent_id})**"
                             else:
-                                agent_header = f"## Agent (Turn {turn_number})"
+                                agent_header = f"**Agent (Turn {turn_number})**"
                             markdown += f"{agent_header}\n\n"
                             agent_header_emitted = True
 
@@ -722,7 +743,7 @@ class SessionProcessor:
                                 result_text = self._maybe_pretty_print_json(result_text)
                                 code_lang = "json" if result_text.strip().startswith(('{', '[')) else ""
                                 tool_call = content.strip().lstrip('- ').rstrip('\n')
-                                markdown += f"### Tool result: {tool_call}\n\n```{code_lang}\n{result_text}\n```\n\n"
+                                markdown += f"- **Tool:** {tool_call}\n```{code_lang}\n{result_text}\n```\n\n"
                             else:
                                 markdown += content
 
@@ -927,8 +948,13 @@ session_id: {session_uuid}
                             return result_content[:500]
         return None
 
-    def _extract_user_content(self, entry: Entry) -> str:
-        """Extract clean user content from entry."""
+    def _extract_user_content(self, entry: Entry, full_mode: bool = False) -> str:
+        """Extract clean user content from entry.
+
+        Args:
+            entry: The entry to extract content from
+            full_mode: If True, show full expanded content instead of condensing
+        """
         message = entry.message or {}
         content = message.get('content', '')
 
@@ -948,12 +974,19 @@ session_id: {session_uuid}
             return ""
 
         if entry.is_meta and content:
-            return self._condense_skill_expansion(content)
+            return self._condense_skill_expansion(content, full_mode=full_mode)
 
         return content
 
-    def _condense_skill_expansion(self, content: str) -> str:
-        """Condense skill/command expansions."""
+    def _condense_skill_expansion(self, content: str, full_mode: bool = False) -> str:
+        """Condense skill/command expansions.
+
+        In full_mode, returns the full content instead of condensing.
+        """
+        if full_mode:
+            # In full mode, return the complete content
+            return content
+
         if content.startswith('Base directory for this skill:'):
             first_line = content.split('\n')[0]
             if '/skills/' in first_line:
@@ -1064,6 +1097,16 @@ session_id: {session_uuid}
 
         if tool_name == 'TodoWrite':
             return self._format_todowrite_operation(tool_input)
+
+        # Make Skill invocations prominent
+        if tool_name == 'Skill':
+            skill_name = tool_input.get('skill', 'unknown')
+            return f"- **🔧 Skill invoked: `{skill_name}`**\n"
+
+        # Make SlashCommand invocations prominent
+        if tool_name == 'SlashCommand':
+            command = tool_input.get('command', 'unknown')
+            return f"- **📋 Command: `{command}`**\n"
 
         description = tool_input.get('description', '')
 

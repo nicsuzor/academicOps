@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 import json
 import sys
+from urllib.parse import quote
 
 # Add aOps root to path for imports
 aops_root = Path(__file__).parent.parent.parent
@@ -31,6 +32,14 @@ def get_project_color(project: str) -> str:
         if key in project_lower:
             return color
     return DEFAULT_COLOR
+
+
+def make_obsidian_url(title: str, folder: str) -> str:
+    """Create obsidian:// URL for a bmem note."""
+    # Obsidian uses actual title as filename, URL-encoded
+    # quote() with safe='' encodes everything including slashes
+    file_path = f"data/{folder}/{title}"
+    return f"obsidian://open?vault=writing&file={quote(file_path, safe='')}"
 
 
 def get_project_git_activity(project_path: str) -> list[str]:
@@ -202,16 +211,13 @@ st.markdown("""
         margin-top: 4px;
         cursor: pointer;
         transition: all 0.2s ease;
+        text-decoration: none;
+        display: block;
     }
 
     .session-bmem:hover {
-        white-space: normal;
-        overflow: visible;
-        background: #1a1a1a;
-        padding: 4px;
-        border-radius: 4px;
-        z-index: 10;
-        position: relative;
+        color: #7eeee6;
+        text-decoration: underline;
     }
 
     /* Todo items - prominent current work */
@@ -452,9 +458,10 @@ try:
         if len(project_tasks) > 3:
             content_parts.append(f"<div class='task-item'>+{len(project_tasks)-3} more tasks</div>")
 
-        # 3. bmem notes
+        # 3. bmem notes (clickable to open in Obsidian)
         for note in data.get('bmem_notes', [])[-2:]:
-            content_parts.append(f"<div class='session-bmem'>📝 {esc(note['title'])}</div>")
+            obsidian_url = make_obsidian_url(note['title'], note.get('folder', ''))
+            content_parts.append(f"<a href='{obsidian_url}' class='session-bmem' target='_blank'>📝 {esc(note['title'])}</a>")
 
         # 4. Git activity
         git_project = data.get('git_project', '')
