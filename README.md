@@ -24,7 +24,7 @@ Academic support framework for Claude Code. Minimal, fight bloat aggressively.
 |-------|----------|--------|
 | **Axioms** | [[AXIOMS.md]] | Inviolable principles. No exceptions. |
 | **Heuristics** | [[HEURISTICS.md]] | Empirically validated rules. Revisable via `/log adjust-heuristic`. |
-| **Practices** | [[skills/framework/SKILL.md]] | Conventions derived from axioms. How things get done. |
+| **Practices** | `Skill(skill="framework")` | Conventions derived from axioms. How things get done. |
 
 ## Glossary
 
@@ -56,7 +56,7 @@ Academic support framework for Claude Code. Minimal, fight bloat aggressively.
 |-------|---------|------------|
 | analyst | Research data analysis (dbt, stats) | `Skill(skill="analyst")` |
 | bmem | Knowledge base operations | `Skill(skill="bmem")` or `/bmem` |
-| framework | Convention reference, categorical imperative | `Skill(skill="framework")` - [[skills/framework/SKILL.md]] |
+| framework | Convention reference, categorical imperative | `Skill(skill="framework")` |
 | osb-drafting | IRAC analysis, citation verification | `Skill(skill="osb-drafting")` |
 | pdf | Markdown → professional PDF | `Skill(skill="pdf")` |
 | python-dev | Production Python (fail-fast, typed) | `Skill(skill="python-dev")` |
@@ -66,6 +66,7 @@ Academic support framework for Claude Code. Minimal, fight bloat aggressively.
 | learning-log | Pattern logging to thematic files | `Skill(skill="learning-log")` |
 | dashboard | Live task + session activity dashboard | `uv run streamlit run skills/dashboard/dashboard.py` |
 | reference-map | Extract framework file references → JSON graph | `Skill(skill="reference-map")` |
+| link-audit | Analyze and clean up framework file references | `Skill(skill="link-audit")` |
 
 ## Hooks
 
@@ -74,6 +75,8 @@ Academic support framework for Claude Code. Minimal, fight bloat aggressively.
 | `sessionstart_load_axioms.py` | SessionStart | Inject AXIOMS.md, FRAMEWORK.md paths |
 | `user_prompt_submit.py` | UserPromptSubmit | Context injection on every prompt |
 | `prompt_router.py` | UserPromptSubmit | Keyword → skill suggestions |
+
+See [[docs/HOOKS.md]] for hook architecture, [[docs/OBSERVABILITY.md]] for logging/debugging.
 
 ## Agents
 
@@ -105,3 +108,5 @@ Academic support framework for Claude Code. Minimal, fight bloat aggressively.
 | [[INDEX.md]] | Complete file tree |
 | [[$ACA_DATA/projects/aops/VISION.md\|VISION.md]] | What we're building |
 | [[$ACA_DATA/projects/aops/ROADMAP.md\|ROADMAP.md]] | Current status |
+| [[BMEM-ARCHITECTURE.md]] | Knowledge base architecture |
+| [[docs/JIT-INJECTION.md]] | Context injection patterns |

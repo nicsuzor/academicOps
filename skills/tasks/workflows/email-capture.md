@@ -782,8 +782,7 @@ TASK_CAPTURE_AUTO_CREATE=false
 - **Tasks MCP**: `.mcp.json` configuration
 - **bmem Integration**: [[bmem search|#step-3-gather-context-from-bmem]]
 - **Outlook MCP**: User email access configuration
-- **Framework**: [[framework/SKILL.md]] for experiment tracking
-- **Task skill**: [[../SKILL.md]]
+- **Framework**: `Skill(skill="framework")` for experiment tracking
 
 ---
 

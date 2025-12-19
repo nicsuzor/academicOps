@@ -87,7 +87,6 @@ tags: [template, feature-dev, requirements, user-story]
 
 - [[AXIOMS.md]] - Framework principles
 - [[ACCOMMODATIONS.md]] - Work style requirements
-- Feature dev skill: [[../SKILL.md]]
 - Dev plan template: [[dev-plan.md]]
 - Experiment template: [[experiment-plan.md]]
 - Test specification template: [[test-spec.md]]

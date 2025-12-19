@@ -299,16 +299,16 @@ uv run ruff check --fix src/
 
 ### Core Python Standards
 
-- [[fail-fast.md]] - No defaults, explicit config
-- [[type-safety.md]] - Type hints, Pydantic validation
-- [[testing.md]] - Testing philosophy and pytest patterns
-- [[modern-python.md]] - Modern Python idioms
-- [[code-quality.md]] - Docstrings, naming, organization
+- [[references/fail-fast.md]] - No defaults, explicit config
+- [[references/type-safety.md]] - Type hints, Pydantic validation
+- [[references/testing.md]] - Testing philosophy and pytest patterns
+- [[references/modern-python.md]] - Modern Python idioms
+- [[references/code-quality.md]] - Docstrings, naming, organization
 
 ### Major Libraries
 
-- [[pandas.md]] - Data manipulation and analysis
-- [[hydra.md]] - Configuration management
-- [[fastapi.md]] - High-performance web APIs
-- [[fastmcp.md]] - Model Context Protocol servers
-- [[bigquery.md]] - Google BigQuery data warehouse
+- [[references/pandas.md]] - Data manipulation and analysis
+- [[references/hydra.md]] - Configuration management
+- [[references/fastapi.md]] - High-performance web APIs
+- [[references/fastmcp.md]] - Model Context Protocol servers
+- [[references/bigquery.md]] - Google BigQuery data warehouse

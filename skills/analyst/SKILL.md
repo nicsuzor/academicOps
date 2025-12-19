@@ -569,6 +569,7 @@ This skill includes comprehensive documentation organized in three tiers:
 - [[instructions/methodology-files.md]] - What goes in METHODOLOGY.md files
 - [[instructions/methods-vs-methodology.md]] - Distinguishing METHODS from METHODOLOGY
 - [[instructions/experiment-logging.md]] - Experiment directory structure and lifecycle
+- [[instructions/experiment_archival.md]] - Archiving completed experiments
 
 ### Technical Workflow Details (_CHUNKS/)
 
@@ -586,3 +587,7 @@ This skill includes comprehensive documentation organized in three tiers:
 - [[references/context-discovery.md]] - Project context discovery guide
 
 **Usage**: Reference chunk files using `@reference _CHUNKS/filename.md]] to load detailed documentation on-demand.
+
+### Scripts
+
+- [[scripts/assumption_checks.py]] - Statistical assumption validation utilities

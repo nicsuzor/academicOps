@@ -244,7 +244,6 @@ uv run python bots/skills/archive/scripts/batch_next.py reset
 
 ## Related Documentation
 
-- [[SKILL.md]] - Full classification criteria and extraction guidelines
 - [[BMEM-CLAUDE-GUIDE.md]] - bmem format reference
-- [[framework/SKILL.md]] - Framework conventions
-- [[tasks/SKILL.md]] - Task management integration
+- `Skill(skill="framework")` - Framework conventions
+- `Skill(skill="tasks")` - Task management integration

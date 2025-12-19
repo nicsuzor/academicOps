@@ -221,4 +221,3 @@ Step 6 (depends on Steps 4 & 5)
 - Test specification: `test-spec.md`
 - Framework principles: [[AXIOMS.md]]
 - Work style: [[ACCOMMODATIONS.md]]
-- Feature dev skill: [[../SKILL.md]]

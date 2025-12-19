@@ -405,6 +405,17 @@ Scripts are SIMPLE TOOLS that agents call via Bash:
 
 Agents orchestrate. Scripts are utilities.
 
+### Workflows
+
+Step-by-step guides for common framework operations:
+
+- [[workflows/01-design-new-component.md]] - Adding hooks, skills, scripts, commands
+- [[workflows/02-debug-framework-issue.md]] - Investigating framework problems
+- [[workflows/03-experiment-design.md]] - Creating framework experiments
+- [[workflows/04-monitor-prevent-bloat.md]] - Keeping framework lean
+- [[workflows/05-review-pull-request.md]] - PR review process
+- [[workflows/06-develop-specification.md]] - Writing specs for new features
+
 ## Framework Project Data (`$ACA_DATA/projects/aops/`)
 
 Per AXIOMS.md #11 (Categorical Imperative): Every file must fit a defined category. No ad-hoc files.
@@ -478,6 +489,20 @@ If you discovered a new pattern:
 4. Never apply ad-hoc fixes without rules
 
 **Derives from**: AXIOMS #1 (Categorical Imperative) - every action must be justifiable as universal rule.
+
+## Reference Documentation
+
+Detailed guides for specific framework topics:
+
+- [[references/hooks_guide.md]] - Hook system architecture and patterns
+- [[references/testing-with-live-data.md]] - E2E testing philosophy
+- [[references/script-design-guide.md]] - Script design principles
+- [[references/e2e-test-harness.md]] - Test harness infrastructure
+- [[references/claude-code-config.md]] - Claude Code configuration
+- [[references/strategic-partner-mode.md]] - Strategic collaboration mode
+- [[references/basic-memory-ai-guide.md]] - Basic Memory for AI agents
+- [[references/basic-memory-mcp-tools.md]] - bmem MCP tool reference
+- [[references/basic-memory-sync-guide.md]] - bmem sync workflow
 
 ## Before You Modify
 

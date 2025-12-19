@@ -203,7 +203,7 @@ def test_dbt_manifest_parsing(sample_project):
 
 - [[../../../AXIOMS.md#13]] - Verify first
 - [[../../../commands/ttd.md]] - TDD workflow
-- [[../../python-dev/SKILL.md]] - Python development standards
+- `Skill(skill="python-dev")` - Python development standards
 - [[../../python-dev/references/testing.md]] - Testing philosophy
 - [[e2e-test-harness]] - E2E test harness infrastructure
 - [[script-design-guide]] - Script design principles

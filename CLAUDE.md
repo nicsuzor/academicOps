@@ -7,7 +7,7 @@ description: Framework skill delegation model, repository conventions, and devel
 
 ## Framework Skill Delegation Model
 
-ALL work in this repo flows through the [[framework skill|skills/framework/SKILL.md]], but the framework skill may delegate implementation:
+ALL work in this repo flows through `Skill(skill="framework")`, but the framework skill may delegate implementation:
 
 **Framework skill role**: Strategic context, planning, design decisions, documentation
 
@@ -67,8 +67,8 @@ This is the academicOps framework repository containing generic, reusable automa
 
 **MANDATORY before proposing any new framework component (hook, skill, script, command, workflow):**
 
-- Invoke [[framework skill|skills/framework/SKILL.md]] for strategic context
-- Use the [[framework skill|skills/framework/SKILL.md]] for ALL questions or decisions about the documentation or tools in this project.
+- Invoke `Skill(skill="framework")` for strategic context
+- Use `Skill(skill="framework")` for ALL questions or decisions about the documentation or tools in this project.
 - Use haiku by default when invoking claude code for testing purposes
 - **Always use `model: "opus"` when invoking the Plan agent**
 - README.md is SSoT for aOps file structure.

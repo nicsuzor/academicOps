@@ -278,7 +278,7 @@ def iter_files(root: Path) -> Iterator[Path]:
 
 def build_graph(root: Path) -> dict:
     """Build the complete reference graph."""
-    nodes: set[str] = set()
+    real_nodes: set[str] = set()  # Files that actually exist
     edges: dict[EdgeKey, Edge] = {}
 
     for file_path in iter_files(root):
@@ -288,15 +288,12 @@ def build_graph(root: Path) -> dict:
             continue
 
         source = str(file_path.relative_to(root))
-        nodes.add(source)
+        real_nodes.add(source)
 
         refs = extract_references(file_path, content)
         for ref in refs:
             target = resolve_target(file_path, ref.target, root)
             path_category = classify_path(ref.target)
-
-            # Add target to nodes
-            nodes.add(target)
 
             # Create or update edge
             key = EdgeKey(source=source, target=target, ref_type=ref.ref_type)
@@ -309,11 +306,14 @@ def build_graph(root: Path) -> dict:
                 )
             edges[key].refs.append({"line": ref.line, "raw": ref.raw})
 
+    # Filter edges: only keep edges where target exists as a real file
+    valid_edges = [e for e in edges.values() if e.target in real_nodes]
+
     # Build output structure
     return {
         "generated": datetime.now(timezone.utc).isoformat(),
         "framework_root": str(root.resolve()),
-        "nodes": [{"id": node} for node in sorted(nodes)],
+        "nodes": [{"id": node} for node in sorted(real_nodes)],
         "links": [
             {
                 "source": edge.source,
@@ -323,7 +323,7 @@ def build_graph(root: Path) -> dict:
                 "path_category": edge.path_category,
                 "refs": edge.refs,
             }
-            for edge in sorted(edges.values(), key=lambda e: (e.source, e.target))
+            for edge in sorted(valid_edges, key=lambda e: (e.source, e.target))
         ],
     }
 

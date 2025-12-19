@@ -184,5 +184,4 @@ tags: [template, osb-drafting, case-analysis, legal]
 ## Related Documentation
 
 - [[verification-checklist.md]] - Citation verification and quality assurance
-- [[../SKILL.md]] - OSB drafting skill
 - [[AXIOMS.md]] - Framework principles

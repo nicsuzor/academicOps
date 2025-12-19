@@ -8,7 +8,7 @@ permalink: skills-extractor-skill
 
 # Archive Information Extraction Skill
 
-Assess archival documents (emails, correspondence, receipts) to identify information worth preserving in the knowledge base. This skill provides judgment criteria only - actual storage is handled by the [[../bmem/SKILL.md]] skill.
+Assess archival documents (emails, correspondence, receipts) to identify information worth preserving in the knowledge base. This skill provides judgment criteria only - actual storage is handled by `Skill(skill="bmem")`.
 
 ## Purpose
 
@@ -182,7 +182,7 @@ Store identifier inline with extracted information.
 
 ## Storage
 
-Use the **[[../bmem/SKILL.md]]** skill to store extracted information in the knowledge base. The bmem skill handles:
+Use `Skill(skill="bmem")` to store extracted information in the knowledge base. The bmem skill handles:
 - Entity creation/updates
 - Format validation
 - Deduplication checking

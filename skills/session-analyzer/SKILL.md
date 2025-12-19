@@ -1,14 +1,14 @@
 ---
 name: session-analyzer
 description: Analyze Claude Code session logs to extract semantic meaning - accomplishments, decisions, topics, blockers.
-allowed-tools: Read,Bash
-version: 1.0.0
+allowed-tools: Read,Bash,Write,Edit,mcp__bmem__write_note,mcp__bmem__edit_note,mcp__bmem__search_notes
+version: 1.2.0
 permalink: skills-session-analyzer
 ---
 
 # Session Analyzer Skill
 
-Analyze Claude Code session logs to extract semantic meaning using LLM understanding (not keyword matching).
+Analyze Claude Code session logs to extract semantic meaning using LLM understanding (not keyword matching). Produces curated daily summaries grouped by project.
 
 ## When to Use
 
@@ -16,75 +16,59 @@ Analyze Claude Code session logs to extract semantic meaning using LLM understan
 - "Summarize this session"
 - "What decisions were made?"
 - "What's been happening in my sessions?"
+- `/session-analyzer` command
+
+## Arguments
+
+When invoked via command, accepts optional argument:
+- Session ID (8+ hex chars)
+- Date (`YYYYMMDD`)
+- `today` (default)
 
 ## Process
 
-1. **Load session data** using `lib/session_analyzer.py`
-2. **Review prompts and outcomes** presented in context
-3. **Extract semantic meaning**:
-   - Accomplishments (what got done)
-   - Decisions (choices made)
-   - Topics (what areas were worked on)
-   - Blockers (what's stuck)
-   - Next steps (what's pending)
+1. **Load session data** for target date
+2. **Group by project** - combine sessions working on same project
+3. **Curate** - focus on significant items, not everything
+4. **Add rich links** - search bmem to link tasks, decisions, contacts
+5. **Save to daily note**
 
-## Usage
+## Loading Session Data
 
 ```bash
-# Load session data for analysis
 cd $AOPS && uv run python -c "
-from lib.session_analyzer import SessionAnalyzer, get_recent_sessions
+from lib.session_reader import find_sessions
+from lib.session_analyzer import SessionAnalyzer
+from datetime import datetime, timezone, timedelta
 
-# Most recent session
+# Parse arguments for date (replace \$ARGUMENTS with actual value)
+args = '\$ARGUMENTS'.strip()
+if args.isdigit() and len(args) == 8:
+    target = datetime(int(args[:4]), int(args[4:6]), int(args[6:8]), tzinfo=timezone.utc)
+    next_day = target + timedelta(days=1)
+else:
+    target = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+    next_day = target + timedelta(days=1)
+
+sessions = find_sessions()
 analyzer = SessionAnalyzer()
-path = analyzer.find_session()
-if path:
-    data = analyzer.extract_session_data(path)
+
+# Group by project
+projects = {}
+for s in sessions:
+    if target <= s.last_modified < next_day:
+        proj = s.project_display
+        if proj not in projects:
+            projects[proj] = []
+        projects[proj].append(s)
+
+# Analyze most substantive session per project
+for proj, sess_list in sorted(projects.items()):
+    most_recent = sess_list[0]
+    data = analyzer.extract_session_data(most_recent.path)
     print(analyzer.format_for_analysis(data))
+    print('---')
 "
-```
-
-## Output Format
-
-After analyzing the session context, provide structured output:
-
-```yaml
-session: <id>
-project: <name>
-duration: <minutes>
-
-accomplishments:
-  - "Description of what was completed"
-  - "Another completed item"
-
-decisions:
-  - "Choice that was made and why"
-
-topics:
-  - topic1
-  - topic2
-
-blockers:
-  - "What's stuck or needs attention"
-
-next_steps:
-  - "What should happen next"
-```
-
-## Finding Sessions
-
-```bash
-# List recent sessions
-cd $AOPS && uv run python -c "
-from lib.session_reader import find_sessions
-for s in find_sessions()[:5]:
-    print(f'{s.session_id[:8]} - {s.project_display} - {s.last_modified}')"
-
-# Specific project
-cd $AOPS && uv run python -c "
-from lib.session_reader import find_sessions
-for s in find_sessions(project='writing')[:5]:
-    print(f'{s.session_id[:8]}')"
 ```
 
 ## Analysis Guidelines
@@ -111,20 +95,27 @@ Session analysis is saved to a daily note at `$ACA_DATA/sessions/YYYYMMDD-daily.
 - **Omit**: Routine commits, trivial file edits, mechanical operations
 - **Focus on**: What would the user need to know if looking back in a week/month?
 
-### Organization: By Project, Not Session
+### Organization: By Project
 
-Group work by **project**, combining multiple sessions. Don't list each session separately.
+Group work by **project** using `## project-name` headings. Combine multiple sessions working on the same project. Don't list each session separately.
 
 ### Rich Linking (MANDATORY)
 
-Use bmem wikilinks to connect to the knowledge graph:
+Before writing daily note, search bmem for link targets:
 
-- **Tasks**: `[[tasks/inbox/FILENAME]]` or task title if known
+```python
+# Find related tasks
+mcp__bmem__search_notes(query="task topic", project="main")
+
+# Find project notes
+mcp__bmem__search_notes(query="projects/name", project="main")
+```
+
+Use wikilinks to connect to the knowledge graph:
+- **Tasks**: `[[tasks/inbox/FILENAME]]`
 - **Projects**: `[[projects/PROJECT-NAME]]`
 - **Decisions**: `[[projects/aops/decisions/TITLE]]`
-- **Contacts**: `[[contacts/NAME]]` when people are mentioned
-
-Search bmem to find correct link targets: `mcp__bmem__search_notes(query="...", project="main")`
+- **Contacts**: `[[contacts/NAME]]`
 
 ### Daily Note Structure
 
@@ -134,35 +125,43 @@ title: Daily Summary - YYYY-MM-DD
 type: session_log
 permalink: sessions-YYYYMMDD-daily
 tags: [daily, sessions]
-created: YYYY-MM-DDTHH:MM:SSZ
 ---
 
-## Summary
+## In Progress
+<!-- Active work - supports "what's happening / resume specific task" -->
+- **[[projects/PROJECT]]**: Current focus → next: immediate next step
 
-Brief 2-3 sentence overview of the day's work.
+## Ready to Start
+<!-- Priority queue - supports "what should I pick up" -->
+1. Next priority item
+2. Second priority
 
-## By Project
+---
 
-### [[projects/PROJECT-NAME]]
+## project-name
+- [outcome] What was completed
+- [decision] Choice made and why
+- [blocker] What's stuck
+- [ ] Incomplete task
+- [x] Completed task
 
-**Accomplished:**
-- Significant item (link to [[related-task]] if exists)
-- Another significant item
-
-**Decisions:**
-- Choice made and brief rationale
-
-**Left undone:**
-- What's still pending (link to [[task]] if exists)
-
-### [[projects/ANOTHER-PROJECT]]
-
-...
-
-## Blockers
-
-Items requiring attention across all projects.
+---
+## Session Log
+<!-- Reserved for future machine-readable data -->
 ```
+
+### Item Format
+
+Use bmem observation categories for bullet points:
+- `[outcome]` - What was completed
+- `[decision]` - Choice made and rationale
+- `[blocker]` - What's stuck
+- `[insight]` - Key realization
+- `[problem]` - Issue identified
+
+Use task checkbox format for tasks:
+- `- [ ] Incomplete task`
+- `- [x] Completed task`
 
 ## Architecture
 

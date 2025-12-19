@@ -219,4 +219,3 @@ Map each success criterion to test cases that validate it:
 - Experiment plan: `experiment-plan.md`
 - Development plan: `dev-plan.md`
 - Testing axioms: [[AXIOMS.md]] (Fail-Fast, Integration Tests)
-- Feature dev skill: [[../SKILL.md]]

@@ -620,9 +620,8 @@ uv run python $AOPS/skills/tasks/scripts/task_add.py --title "Task title" --slug
 ## Related Documentation
 
 - **Specification**: `data/tasks/inbox/fastmcp-task-server-spec.md`
-- **Task skill**: [[SKILL.md]]
 - **Email capture workflow**: [[workflows/email-capture.md]]
-- **Framework**: [[framework/SKILL.md]]
+- **Framework**: `Skill(skill="framework")`
 - **MCP config**: `.mcp.json`
 - **Bmem format guide**: [[BMEM-CLAUDE-GUIDE.md]]
 

@@ -158,4 +158,3 @@ Check against success criteria:
 - Test specification: `test-spec.md`
 - Development plan: `dev-plan.md`
 - Framework principles: [[AXIOMS.md]]
-- Feature dev skill: [[../SKILL.md]]

@@ -68,4 +68,4 @@ Uses `lib/session_reader.py` which parses and combines:
 - Agent transcripts (`agent-*.jsonl`)
 - Hook logs (`*-hooks.jsonl`)
 
-Same module used by the [[../dashboard/SKILL.md]] skill for live activity display.
+Same module used by `Skill(skill="dashboard")` for live activity display.

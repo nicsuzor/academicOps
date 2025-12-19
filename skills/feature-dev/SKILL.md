@@ -262,10 +262,10 @@ Feature development follows seven phases:
 
 All templates in `templates/` subdirectory:
 
-- `user-story.md` - Capture feature request
-- `experiment-plan.md` - Formalize as experiment
-- `test-spec.md` - Design integration tests
-- `dev-plan.md` - Plan implementation steps
+- [[templates/user-story.md]] - Capture feature request
+- [[templates/experiment-plan.md]] - Formalize as experiment
+- [[templates/test-spec.md]] - Design integration tests
+- [[templates/dev-plan.md]] - Plan implementation steps
 
 Templates follow single-source-of-truth principle by referencing framework docs rather than duplicating them.
 
