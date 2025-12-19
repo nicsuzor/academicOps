@@ -87,6 +87,23 @@ Session analysis is saved to a daily note at `$ACA_DATA/sessions/YYYYMMDD-daily.
 
 **Format**: `20251218-daily.md` (strict naming)
 
+### CRITICAL: Never Lose Todo Items
+
+**You MAY reorganize, enrich, and deduplicate the daily note. You MUST NOT lose any todo items.**
+
+When updating an existing daily note:
+
+1. **Read the file first** - understand what's already there
+2. **Preserve ALL todo items** - every `- [ ]` and `- [x]` must appear in output
+3. **Enrich freely**:
+   - Add wikilinks to projects, tasks, contacts
+   - Mark items complete when session data shows they're done
+   - Move items to appropriate sections (e.g., TJA work under PRIMARY)
+   - Remove duplication (if same item appears twice, keep one)
+   - Add `[outcome]`, `[decision]`, `[blocker]` annotations
+4. **Integrate session outcomes** - merge today's accomplishments into Focus Areas where they belong
+5. **Keep Project Details section** - for detailed session-specific info (commits, technical notes)
+
 ### Daily Note Philosophy
 
 **Curate, don't list.** The daily note is for things worth remembering - not an undifferentiated log. Use discretion:
@@ -127,27 +144,51 @@ permalink: sessions-YYYYMMDD-daily
 tags: [daily, sessions]
 ---
 
-## In Progress
-<!-- Active work - supports "what's happening / resume specific task" -->
-- **[[projects/PROJECT]]**: Current focus → next: immediate next step
+# Daily Summary - YYYY-MM-DD
 
-## Ready to Start
-<!-- Priority queue - supports "what should I pick up" -->
-1. Next priority item
-2. Second priority
+## Focus Areas
+<!-- USER ZONE - preserve this section -->
+
+### PRIMARY: Main Priority → [[projects/PROJECT]]
+
+**Blockers:**
+- [ ] Blocking issue
+
+**Today's subtasks:**
+- [ ] Specific task
+- [x] Completed task → brief note on what was done
+
+**Progress today:**
+- [outcome] What was accomplished
+- [blocker] What's stuck
+
+**Remaining after today:**
+- [ ] Next steps
+
+### SECONDARY: Other Work → [[projects/OTHER]]
+- [ ] Task items
+- [x] Completed items
+
+### FILLER: Admin (in gaps)
+- Misc items
 
 ---
 
-## project-name
+## Project Details
+<!-- AUTO ZONE - session analyzer updates below this line -->
+
+### project-name
 - [outcome] What was completed
 - [decision] Choice made and why
 - [blocker] What's stuck
-- [ ] Incomplete task
-- [x] Completed task
+
+Commits:
+- `abc1234` - commit message
 
 ---
+
 ## Session Log
-<!-- Reserved for future machine-readable data -->
+<!-- Reserved for machine-readable data -->
 ```
 
 ### Item Format
@@ -163,9 +204,29 @@ Use task checkbox format for tasks:
 - `- [ ] Incomplete task`
 - `- [x] Completed task`
 
+## Regenerating the Dashboard
+
+After updating the daily note, regenerate the visual dashboard zone:
+
+```bash
+cd $AOPS && uv run python -c "
+from lib.session_analyzer import update_daily_note_dashboard
+update_daily_note_dashboard()  # Uses today's date
+"
+```
+
+This parses Focus Areas and generates an ASCII dashboard at the top of the daily note showing:
+- 🎯 NOW: Primary focus + next action from Today's subtasks
+- Progress bar (completed/total tasks)
+- ⚠️ BLOCKERS: Items tagged with `[blocker]` or under **Blockers:** sections
+- ✅ DONE: Completed `[x]` items and `[outcome]` annotations
+
+The dashboard zone is auto-generated; user content in Focus Areas and below is preserved.
+
 ## Architecture
 
 - **Data layer**: `lib/session_analyzer.py` (extraction, no LLM)
 - **Parsing**: `lib/session_reader.py` (JSONL → structured turns)
+- **Dashboard**: `lib/session_analyzer.py` (`update_daily_note_dashboard()`)
 - **Analysis**: This skill (LLM-powered semantic understanding)
 - **Storage**: bmem (optional, for significant findings)

@@ -414,6 +414,123 @@ class SessionAnalyzer:
             "sessions": sessions,
         }
 
+    def parse_daily_log(self, date_str: str | None = None) -> dict[str, Any] | None:
+        """
+        Parse daily log for dashboard display (new markdown format).
+
+        Extracts:
+        - Primary focus and first incomplete task
+        - All blockers
+        - Completed items and outcomes
+        - Progress counts
+
+        Args:
+            date_str: Date string in YYYYMMDD format. If None, uses today's date.
+
+        Returns:
+            Dict with keys:
+                - primary_title: Title of PRIMARY section (e.g., "TJA Paper")
+                - primary_link: Wikilink if present (e.g., "[[projects/tja]]")
+                - next_action: First incomplete task under PRIMARY
+                - incomplete: List of all incomplete tasks
+                - completed: List of all completed tasks
+                - blockers: List of blocker items
+                - outcomes: List of outcome items
+                - progress: Tuple of (completed_count, total_count)
+            Returns None if file doesn't exist.
+        """
+        aca_data = os.environ.get("ACA_DATA")
+        if not aca_data:
+            return None
+
+        if date_str is None:
+            date_str = date.today().strftime("%Y%m%d")
+
+        daily_path = Path(aca_data) / "sessions" / f"{date_str}-daily.md"
+        if not daily_path.exists():
+            return None
+
+        content = daily_path.read_text()
+
+        result: dict[str, Any] = {
+            "primary_title": None,
+            "primary_link": None,
+            "next_action": None,
+            "incomplete": [],
+            "completed": [],
+            "blockers": [],
+            "outcomes": [],
+            "progress": (0, 0),
+        }
+
+        # Find PRIMARY section title and link
+        primary_match = re.search(
+            r"###\s+PRIMARY:\s*([^→\n]+?)(?:\s*→\s*(\[\[[^\]]+\]\]))?\s*\n",
+            content
+        )
+        if primary_match:
+            result["primary_title"] = primary_match.group(1).strip()
+            result["primary_link"] = primary_match.group(2) if primary_match.group(2) else None
+
+        # Find all incomplete tasks: - [ ]
+        incomplete_pattern = re.compile(r"^-\s*\[ \]\s*(.+)$", re.MULTILINE)
+        result["incomplete"] = [m.group(1).strip() for m in incomplete_pattern.finditer(content)]
+
+        # Find all completed tasks: - [x]
+        completed_pattern = re.compile(r"^-\s*\[x\]\s*(.+)$", re.MULTILINE | re.IGNORECASE)
+        result["completed"] = [m.group(1).strip() for m in completed_pattern.finditer(content)]
+
+        # Find blockers: lines containing [blocker]
+        blocker_pattern = re.compile(r"^-\s*\[blocker\]\s*(.+)$", re.MULTILINE | re.IGNORECASE)
+        result["blockers"] = [m.group(1).strip() for m in blocker_pattern.finditer(content)]
+
+        # Also check for **Blockers:** section items
+        blockers_section = re.search(r"\*\*Blockers?:\*\*\n((?:-\s*\[[ x]?\]\s*.+\n?)+)", content)
+        if blockers_section:
+            for line in blockers_section.group(1).strip().split("\n"):
+                line = line.strip()
+                if line.startswith("- [ ]"):
+                    item = line[5:].strip()
+                    if item not in result["blockers"]:
+                        result["blockers"].append(item)
+
+        # Find outcomes: lines containing [outcome]
+        outcome_pattern = re.compile(r"^-\s*\[outcome\]\s*(.+)$", re.MULTILINE | re.IGNORECASE)
+        result["outcomes"] = [m.group(1).strip() for m in outcome_pattern.finditer(content)]
+
+        # First incomplete task under PRIMARY becomes next_action
+        # Prefer tasks from "Today's subtasks:" section, fall back to any incomplete
+        if primary_match:
+            primary_start = primary_match.end()
+            # Find next ### or ## or end
+            next_section = re.search(r"\n##", content[primary_start:])
+            primary_end = primary_start + next_section.start() if next_section else len(content)
+            primary_section = content[primary_start:primary_end]
+
+            # First look in Today's subtasks section
+            subtasks_match = re.search(
+                r"\*\*Today's subtasks:\*\*\n((?:-\s*\[[ x]?\].+\n?)+)",
+                primary_section
+            )
+            if subtasks_match:
+                subtasks_text = subtasks_match.group(1)
+                first_subtask = re.search(r"^-\s*\[ \]\s*(.+)$", subtasks_text, re.MULTILINE)
+                if first_subtask:
+                    result["next_action"] = first_subtask.group(1).strip()
+
+            # Fall back to first incomplete in section if no subtask found
+            if not result["next_action"]:
+                first_incomplete = re.search(r"^-\s*\[ \]\s*(.+)$", primary_section, re.MULTILINE)
+                if first_incomplete:
+                    result["next_action"] = first_incomplete.group(1).strip()
+
+        # Calculate progress
+        total = len(result["incomplete"]) + len(result["completed"])
+        done = len(result["completed"])
+        result["progress"] = (done, total)
+
+        return result
+
     def extract_dashboard_state(self, session_path: Path) -> dict[str, Any]:
         """
         Extract dashboard state from a session file.
@@ -589,6 +706,155 @@ class SessionAnalyzer:
         lines.append("")
 
         return "\n".join(lines)
+
+
+def progress_bar(completed: int, total: int, width: int = 20) -> str:
+    """
+    Generate ASCII progress bar.
+
+    Args:
+        completed: Number of completed items
+        total: Total number of items
+        width: Width of bar in characters (default 20)
+
+    Returns:
+        String like "████████░░░░░░░░░░░░ 6/29"
+    """
+    if total == 0:
+        return "░" * width + " 0/0"
+    filled = int(width * completed / total)
+    bar = "█" * filled + "░" * (width - filled)
+    return f"{bar} {completed}/{total}"
+
+
+def generate_dashboard_zone(parsed: dict[str, Any]) -> str:
+    """
+    Generate ASCII dashboard from parsed daily log data.
+
+    Args:
+        parsed: Dict from parse_daily_log() containing:
+            - primary_title, primary_link
+            - next_action
+            - progress (completed, total)
+            - blockers, outcomes, completed
+
+    Returns:
+        Markdown string for dashboard zone
+    """
+    lines = []
+
+    # NOW section - primary focus and next action
+    primary = parsed.get("primary_title") or "No primary focus set"
+    lines.append(f"## 🎯 NOW: {primary}")
+
+    next_action = parsed.get("next_action")
+    if next_action:
+        lines.append(f"→ {next_action}")
+
+    lines.append("")
+
+    # Progress bar
+    done, total = parsed.get("progress", (0, 0))
+    lines.append(progress_bar(done, total))
+
+    lines.append("")
+
+    # Blockers section (only if there are blockers)
+    blockers = parsed.get("blockers", [])
+    if blockers:
+        lines.append("## ⚠️ BLOCKERS")
+        for blocker in blockers[:5]:  # Limit to 5
+            lines.append(f"• {blocker}")
+        lines.append("")
+
+    # Done section
+    completed = parsed.get("completed", [])
+    outcomes = parsed.get("outcomes", [])
+    done_items = completed + outcomes
+
+    if done_items:
+        lines.append(f"## ✅ DONE ({len(done_items)})")
+        for item in done_items[:8]:  # Limit to 8 items
+            # Truncate long items
+            display = item[:60] + "..." if len(item) > 60 else item
+            lines.append(f"✓ {display}")
+        lines.append("")
+
+    return "\n".join(lines)
+
+
+def update_daily_note_dashboard(date_str: str | None = None) -> bool:
+    """
+    Update the dashboard zone of a daily note.
+
+    Reads the daily note, parses Focus Areas to extract data,
+    generates a new dashboard zone, and writes back preserving
+    all user content.
+
+    Args:
+        date_str: Date string in YYYYMMDD format. If None, uses today.
+
+    Returns:
+        True if successful, False if file doesn't exist or parse failed.
+
+    Safety: Never loses user data. On parse failure, preserves original.
+    """
+    aca_data = os.environ.get("ACA_DATA")
+    if not aca_data:
+        return False
+
+    if date_str is None:
+        date_str = date.today().strftime("%Y%m%d")
+
+    daily_path = Path(aca_data) / "sessions" / f"{date_str}-daily.md"
+    if not daily_path.exists():
+        return False
+
+    # Read original content (for safety - preserve on failure)
+    original_content = daily_path.read_text()
+
+    # Parse to extract dashboard data
+    analyzer = SessionAnalyzer()
+    parsed = analyzer.parse_daily_log(date_str)
+    if not parsed:
+        return False
+
+    # Generate new dashboard zone
+    dashboard = generate_dashboard_zone(parsed)
+
+    # Split content: frontmatter, title, focus areas
+    # Structure: ---\nfrontmatter\n---\n# Title\n[dashboard]\n## Focus Areas\n...
+
+    # Extract frontmatter
+    frontmatter_match = re.match(r"^(---\n.*?\n---\n)", original_content, re.DOTALL)
+    if not frontmatter_match:
+        return False
+
+    frontmatter = frontmatter_match.group(1)
+    after_frontmatter = original_content[frontmatter_match.end():]
+
+    # Find title line and Focus Areas (allow leading whitespace)
+    title_match = re.match(r"(\s*#[^\n]+\n+)", after_frontmatter)
+    if not title_match:
+        return False
+
+    title_line = title_match.group(1)
+    after_title = after_frontmatter[title_match.end():]
+
+    # Find ## Focus Areas heading
+    focus_match = re.search(r"(## Focus Areas.*)", after_title, re.DOTALL)
+    if focus_match:
+        focus_content = focus_match.group(1)
+    else:
+        # No Focus Areas found - preserve all content after title
+        focus_content = "## Focus Areas\n\n" + after_title
+
+    # Reassemble: frontmatter + title + dashboard + focus areas
+    new_content = frontmatter + title_line + dashboard + "\n" + focus_content
+
+    # Write back
+    daily_path.write_text(new_content)
+    return True
 
 
 def get_recent_sessions(
