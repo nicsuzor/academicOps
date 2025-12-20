@@ -47,7 +47,51 @@ Find sessions via `lib.session_reader.find_sessions()` filtered by date.
 
 Update `$ACA_DATA/sessions/YYYYMMDD-daily.md` with accomplishments.
 
-**Load sessions**:
+### Daily Note Format
+
+**Structure**: Projects only, ordered by priority. No frontmatter summary sections.
+
+```markdown
+# Daily Summary - YYYY-MM-DD
+
+## 🎯 NOW: [Current Focus]
+→ [Single next action]
+
+## PRIMARY: [Project Name] → [[projects/name]]
+████░░░░░░░░░░░░░░░░ N/M
+
+- [ ] Incomplete task from yesterday
+- [ ] Another incomplete task
+- [x] Completed today
+- [x] Also completed today
+
+## SECONDARY: [Project Name] → [[projects/name]]
+░░░░░░░░░░░░░░░░░░░░ 0/N
+
+- [ ] Task
+- [x] Done task
+
+## TERTIARY: [Project Name]
+...
+
+---
+
+## Session Log
+<!-- Machine-readable session tracking -->
+```
+
+### Format Rules
+
+1. **No frontmatter summary** - No BLOCKERS/DONE sections at top (duplicates project lists)
+2. **Projects in priority order** - PRIMARY, SECONDARY, TERTIARY, FILLER
+3. **Burndown immediately after header** - Progress bar on line after `## PROJECT`
+4. **One header per project** - Max one `##` per project
+5. **Carryover incomplete tasks only** - Don't carry observations or schema notes
+6. **Completed items under their project** - No separate "completed" section at bottom
+7. **Rich linking** - Use wikilinks `[[projects/NAME]]` for project references
+
+### Load Sessions
+
 ```bash
 cd $AOPS && uv run python -c "
 from lib.session_reader import find_sessions
@@ -57,13 +101,12 @@ from datetime import datetime, timezone, timedelta
 "
 ```
 
-**Carry over**: Yesterday's `- [ ]` tasks to today's note.
+### Update Rules
 
-**Update rules**: Add new `- [x]` accomplishments, `- [ ]` blockers. Deduplicate. Never delete.
-
-**Rich linking**: Search bmem, use wikilinks `[[projects/NAME]]`.
-
-**Progress bars**: Run `update_daily_note_dashboard()` after updating.
+- **Carry over**: Yesterday's `- [ ]` incomplete tasks only (not observations)
+- **Add**: New `- [x]` accomplishments under their project section
+- **Deduplicate**: Never duplicate tasks across sections
+- **Progress bars**: Run `update_daily_note_dashboard()` after updating
 
 See `lib/session_analyzer.py` for implementation details.
 
