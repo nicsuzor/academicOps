@@ -718,10 +718,9 @@ class SessionProcessor:
 
                         if not agent_header_emitted:
                             if subagent_id:
-                                agent_header = f"**Agent ({subagent_id})**"
+                                markdown += f"### Agent ({subagent_id})\n\n"
                             else:
-                                agent_header = f"**Agent (Turn {turn_number})**"
-                            markdown += f"{agent_header}\n\n"
+                                markdown += f"### Agent (Turn {turn_number})\n\n"
                             agent_header_emitted = True
 
                         markdown += f"{content}\n\n"
@@ -748,10 +747,19 @@ class SessionProcessor:
                                 markdown += content
 
                         if item.get('sidechain_summary'):
-                            markdown += f"\n**Agent Conversation:**\n\n"
-                            indented_lines = [f"  {line}" if line.strip() else ""
-                                            for line in item['sidechain_summary'].split('\n')]
-                            markdown += '\n'.join(indented_lines) + '\n'
+                            # Extract agent info from tool input
+                            tool_input = item.get('tool_input', {})
+                            agent_type = tool_input.get('subagent_type', 'unknown')
+                            agent_desc = tool_input.get('description', '')
+                            # Format: #### Subagent: type (description)
+                            if agent_desc:
+                                markdown += f"\n#### Subagent: {agent_type} ({agent_desc})\n\n"
+                            else:
+                                markdown += f"\n#### Subagent: {agent_type}\n\n"
+                            # Condense whitespace - join non-empty lines with single newlines
+                            lines = item['sidechain_summary'].split('\n')
+                            condensed = '\n'.join(line for line in lines if line.strip())
+                            markdown += condensed + '\n\n'
 
         edited_files = details.get('edited_files', session.edited_files)
         files_list = edited_files if edited_files and isinstance(edited_files, list) else []
@@ -981,27 +989,32 @@ session_id: {session_uuid}
     def _condense_skill_expansion(self, content: str, full_mode: bool = False) -> str:
         """Condense skill/command expansions.
 
-        In full_mode, returns the full content instead of condensing.
+        In full_mode, fences the full content so markdown isn't rendered.
+        In abridged mode, shows just the file reference.
         """
-        if full_mode:
-            # In full mode, return the complete content
-            return content
+        # Extract file reference for both modes
+        file_ref = None
+        line_count = len(content.split('\n'))
 
         if content.startswith('Base directory for this skill:'):
             first_line = content.split('\n')[0]
             if '/skills/' in first_line:
                 skill_path = first_line.split(':', 1)[1].strip()
-                skill_file = f"{skill_path}/SKILL.md"
-                line_count = len(content.split('\n'))
-                return f"<Expanded: {skill_file} ({line_count} lines)>"
-
-        if content.startswith('##'):
+                file_ref = f"{skill_path}/SKILL.md"
+        elif content.startswith('##'):
             lines = content.split('\n')
             title = lines[0].strip('# ').strip()
-            line_count = len(lines)
-            return f"<Expanded: /{title.lower().replace(' ', '-')} command ({line_count} lines)>"
+            file_ref = f"/{title.lower().replace(' ', '-')} command"
 
-        line_count = len(content.split('\n'))
+        if full_mode:
+            # Full mode: fence the content so markdown isn't rendered as markdown
+            header = f"**Injected: {file_ref or 'context'}** ({line_count} lines)\n" if file_ref else f"**Injected context** ({line_count} lines)\n"
+            return f"{header}\n```markdown\n{content}\n```"
+
+        # Abridged mode: just show the reference
+        if file_ref:
+            return f"<Expanded: {file_ref} ({line_count} lines)>"
+
         preview = content[:80].replace('\n', ' ')
         return f"<Expanded: {preview}... ({line_count} lines)>"
 
