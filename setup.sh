@@ -302,10 +302,46 @@ echo -e "${GREEN}✓ Repository .claude/ configured for remote coding${NC}"
 echo
 echo "Configuring Basic Memory (bmem)..."
 
+BMEM_CONFIG="$HOME/.basic-memory/config.json"
+
 if command -v uvx &> /dev/null; then
-    uvx basic-memory project default main 2>/dev/null \
-        && echo -e "${GREEN}✓ bmem default project set to 'main'${NC}" \
-        || echo -e "${YELLOW}⚠ Could not set bmem default project${NC}"
+    # Check if 'main' project already configured in config.json (fast, no subprocess)
+    if [ -f "$BMEM_CONFIG" ] && command -v jq &> /dev/null; then
+        existing_main=$(jq -r '.projects.main // ""' "$BMEM_CONFIG" 2>/dev/null || echo "")
+        existing_default=$(jq -r '.default_project // ""' "$BMEM_CONFIG" 2>/dev/null || echo "")
+        if [ -n "$existing_main" ] && [ "$existing_default" = "main" ]; then
+            echo -e "${GREEN}✓ bmem project 'main' already configured at: $existing_main${NC}"
+        elif [ -n "$existing_main" ]; then
+            echo "  Project 'main' exists but is not default"
+            # Set as default via config.json directly (no subprocess)
+            jq '.default_project = "main" | .default_project_mode = true' "$BMEM_CONFIG" > "$BMEM_CONFIG.tmp" \
+                && mv "$BMEM_CONFIG.tmp" "$BMEM_CONFIG" \
+                && echo -e "${GREEN}✓ bmem default project set to 'main'${NC}" \
+                || echo -e "${YELLOW}⚠ Could not update bmem config${NC}"
+        else
+            # Project doesn't exist - add it via jq (no subprocess)
+            jq --arg path "$ACA_DATA_PATH" '.projects.main = $path | .default_project = "main" | .default_project_mode = true' "$BMEM_CONFIG" > "$BMEM_CONFIG.tmp" \
+                && mv "$BMEM_CONFIG.tmp" "$BMEM_CONFIG" \
+                && echo -e "${GREEN}✓ bmem project 'main' added at $ACA_DATA_PATH${NC}" \
+                || echo -e "${YELLOW}⚠ Could not update bmem config${NC}"
+        fi
+    elif [ -f "$BMEM_CONFIG" ]; then
+        echo -e "${YELLOW}⚠ jq not installed - cannot configure bmem${NC}"
+        echo "  Install jq: brew install jq"
+    else
+        # No config.json exists - create it
+        mkdir -p "$HOME/.basic-memory"
+        cat > "$BMEM_CONFIG" << EOF
+{
+  "projects": {
+    "main": "$ACA_DATA_PATH"
+  },
+  "default_project": "main",
+  "default_project_mode": true
+}
+EOF
+        echo -e "${GREEN}✓ bmem config created with project 'main' at $ACA_DATA_PATH${NC}"
+    fi
 else
     echo -e "${YELLOW}⚠ uvx not found, skipping bmem configuration${NC}"
 fi
