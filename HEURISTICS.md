@@ -331,6 +331,27 @@ If critic returns REVISE or HALT, address issues before proceeding.
 
 ---
 
+## H18: Distinguish Script Processing from LLM Reading
+
+**Statement**: When documenting workflows, explicitly distinguish between data processed by local scripts (mechanical transformation) and data read by LLMs (semantic understanding).
+
+**Rationale**: Workflows often chain scripts and LLMs. Without clear distinction, it's unclear what's deterministic vs what requires reasoning. This affects debugging, cost estimation, and understanding data flow.
+
+**Evidence**:
+- 2025-12-20: User asked about session-insights workflow; initial explanation conflated script output with LLM input. Clarification required explicit table showing script vs LLM roles.
+
+**Confidence**: Low (first occurrence)
+
+**Implements**: [[AXIOMS]] #9 (Explicit) - no ambiguity about what does what
+
+**Application**: When documenting multi-step workflows, use format:
+
+| Step | Script (local) | LLM reads |
+|------|----------------|-----------|
+| ... | what script does | what LLM receives |
+
+---
+
 ## Revision Protocol
 
 To adjust heuristics based on new evidence:
