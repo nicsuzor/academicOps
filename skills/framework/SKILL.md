@@ -213,8 +213,6 @@ projects/aops/aops.md      # ✅ Core file for aops/ folder
 skills/bmem/bmem.md        # ✅ Core file for bmem/ folder
 ```
 
-**Derives from**: AXIOMS #8 (Single-Purpose Files) - one defined audience, one purpose per file.
-
 ### Single Source of Truth
 
 Each piece of information exists in exactly ONE location:
@@ -229,8 +227,6 @@ Each piece of information exists in exactly ONE location:
 | Framework vision | `$ACA_DATA/projects/aops/VISION.md` |
 | Framework status | `$ACA_DATA/projects/aops/ROADMAP.md` |
 
-**Derives from**: AXIOMS #9 (DRY, Modular, Explicit) - one golden path, no duplication.
-
 **Pattern**: Reference, don't repeat.
 
 ### Delegation Token
@@ -242,8 +238,6 @@ FRAMEWORK SKILL CHECKED
 ```
 
 Implementation skills MUST refuse requests without this token.
-
-**Derives from**: AXIOMS #1 (Categorical Imperative) - every action flows through generalizable framework process.
 
 ### Mandatory Critic Review
 
@@ -261,8 +255,6 @@ Check for: logical errors, unstated assumptions, missing verification, overconfi
 
 If critic returns **REVISE** or **HALT**, address issues before proceeding.
 
-**Derives from**: AXIOMS #15 (Verify First), #16 (No Excuses), HEURISTICS H3 (Verification Before Assertion).
-
 ### Standard Tools
 
 - Package management: `uv`
@@ -271,21 +263,15 @@ If critic returns **REVISE** or **HALT**, address issues before proceeding.
 - Type checking: `mypy`
 - Linting: `ruff`
 
-**Derives from**: AXIOMS #9 (Use Standard Tools) - one golden path per job.
-
 ### Skills are Read-Only
 
 Skills in `skills/` MUST NOT contain dynamic data. All mutable state goes in `$ACA_DATA/`.
-
-**Derives from**: AXIOMS #11 (Skills are Read-Only) - skills distributed read-only, dynamic data in `$ACA_DATA/`.
 
 ### Trust Version Control
 
 - Never create backup files (`.bak`, `_old`, etc.)
 - Edit directly, git tracks changes
 - Commit AND push after completing work
-
-**Derives from**: AXIOMS #12 (Trust Version Control) - git is the backup system.
 
 ### Markdown Format Convention
 
@@ -302,13 +288,9 @@ All framework markdown files use bmem+obsidian format with relative wikilinks:
 [[AXIOMS.md]]                        # ✅ Root-level reference
 ```
 
-**Derives from**: AXIOMS #9 (DRY) - links reference instead of repeating; AXIOMS #20 (Relational Integrity) - maintain connected knowledge graph.
-
 ## Documentation Structure (Authoritative)
 
 The framework has exactly these core documents. No others.
-
-**Derives from**: AXIOMS #8 (Single-Purpose Files) + #9 (DRY) - each document has one purpose, no overlap.
 
 ### Framework Documentation ($AOPS/)
 
@@ -336,8 +318,6 @@ The framework has exactly these core documents. No others.
 4. **AXIOMS.md is pure** - Principles only. No enforcement, examples, or implementation.
 5. **No other core docs** - specs/, experiments/, learning/ handle everything else.
 
-**Derives from**: AXIOMS #7 (Self-Documenting) - documentation-as-code, no separate doc files beyond these.
-
 ### Feature Inventory Format (README.md)
 
 Each capability listed with:
@@ -347,8 +327,6 @@ Each capability listed with:
 - Test (how it's verified)
 
 ## Anti-Bloat Rules
-
-**Derives from**: AXIOMS #9 (DRY, Modular, Explicit) + VISION (Minimal maintenance).
 
 ### File Limits
 
@@ -370,8 +348,6 @@ New files PROHIBITED unless:
 2. Integration test validates purpose
 3. Test passes before commit
 
-**Derives from**: AXIOMS #17 (Write for Long Term) - no single-use files.
-
 ## Component Patterns
 
 **Testing requirement**: All framework tests must be **e2e against production code with live data**. No unit tests, no mocks of internal code. See `references/testing-with-live-data.md`.
@@ -388,6 +364,7 @@ New files PROHIBITED unless:
 1. Create `commands/<name>.md`
 2. Define YAML frontmatter (name, description, tools)
 3. Commands are slash-invoked: `/name`
+4. **Name must not match any skill name** - Claude Code treats same-named commands as model-only (user gets "can only be invoked by Claude" error)
 
 ### Adding a Hook
 
@@ -487,8 +464,6 @@ If you discovered a new pattern:
 2. Get user approval
 3. Add to this skill with axiom derivation
 4. Never apply ad-hoc fixes without rules
-
-**Derives from**: AXIOMS #1 (Categorical Imperative) - every action must be justifiable as universal rule.
 
 ## Reference Documentation
 

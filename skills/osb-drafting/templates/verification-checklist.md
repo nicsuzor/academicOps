@@ -120,4 +120,3 @@ Complete this checklist after Phase 5 (Recommendations) and before finalizing an
 ## Related Documentation
 
 - [[case-analysis.md]] - Case analysis template
-- [[AXIOMS.md]] - Framework principles

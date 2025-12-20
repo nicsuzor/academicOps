@@ -24,7 +24,6 @@ description: Process for adding new framework capability (hook, skill, script, c
 3. **Document in experiment log**
    - Create `data/projects/aops/experiments/YYYY-MM-DD_component-name.md`
    - Include hypothesis, design, expected outcomes
-   - Reference relevant [[AXIOMS.md]] and principles
 
 4. **Implement component**
    - Follow single source of truth principles

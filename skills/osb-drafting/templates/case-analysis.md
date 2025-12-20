@@ -184,4 +184,3 @@ tags: [template, osb-drafting, case-analysis, legal]
 ## Related Documentation
 
 - [[verification-checklist.md]] - Citation verification and quality assurance
-- [[AXIOMS.md]] - Framework principles

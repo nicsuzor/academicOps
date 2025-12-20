@@ -130,7 +130,7 @@ Step 6 (depends on Steps 4 & 5)
 
 **Code quality**:
 
-- Follow framework standard tools per `[[AXIOMS.md]]` #9
+- Follow framework standard tools (uv, pytest, pre-commit, mypy, ruff)
 - Reference docs, don't duplicate
 - No placeholders or TODOs in committed code
 - Security review for user input, API calls, data handling
@@ -219,5 +219,4 @@ Step 6 (depends on Steps 4 & 5)
 - User story: `user-story.md`
 - Experiment plan: `experiment-plan.md`
 - Test specification: `test-spec.md`
-- Framework principles: [[AXIOMS.md]]
 - Work style: [[ACCOMMODATIONS.md]]

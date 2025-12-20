@@ -218,4 +218,3 @@ Map each success criterion to test cases that validate it:
 - User story: `user-story.md`
 - Experiment plan: `experiment-plan.md`
 - Development plan: `dev-plan.md`
-- Testing axioms: [[AXIOMS.md]] (Fail-Fast, Integration Tests)

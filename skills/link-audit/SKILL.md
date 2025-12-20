@@ -84,6 +84,18 @@ Index/overview files should be named after their parent directory, not `README.m
 
 **Rationale**: Reduces ambiguity when multiple README.md files exist. Directory name is more descriptive.
 
+### R7: Don't Reference Auto-Injected Files
+
+Files injected by SessionStart (AXIOMS.md, FRAMEWORK.md, HEURISTICS.md, etc.) should NOT be referenced via wikilinks from child files. These files are automatically loaded at session start - explicit references are redundant.
+
+| Anti-pattern | Correct |
+|--------------|---------|
+| `**Derives from**: AXIOMS #8` | Remove the citation |
+| `- [[AXIOMS.md]] - Framework principles` | Remove the link |
+| `References: [[AXIOMS.md]]` | Remove from References section |
+
+**Rationale**: Auto-injected files are always available. References to them from templates, workflows, and skill internals create upward links that add noise without value. The exception is index/overview files (README.md, INDEX.md) that document what gets injected.
+
 ## Workflow
 
 ### 1. Generate Reference Graph

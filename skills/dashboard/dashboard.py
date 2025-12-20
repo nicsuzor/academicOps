@@ -305,6 +305,111 @@ st.markdown("""
         margin-top: 20px;
     }
 
+    /* NOW panel */
+    .now-panel {
+        background: linear-gradient(135deg, #1a2d1a 0%, #0a1a0a 100%);
+        border: 2px solid #4ade80;
+        border-radius: 8px;
+        padding: 16px 20px;
+        margin-bottom: 16px;
+    }
+
+    .now-title {
+        color: #4ade80;
+        font-size: 1.1em;
+        font-weight: bold;
+        margin-bottom: 8px;
+    }
+
+    .now-action {
+        color: #e0e0e0;
+        font-size: 1.2em;
+        padding-left: 20px;
+    }
+
+    .now-action::before {
+        content: "→ ";
+        color: #4ade80;
+    }
+
+    .progress-bar {
+        margin-top: 12px;
+        height: 8px;
+        background: #333;
+        border-radius: 4px;
+        overflow: hidden;
+    }
+
+    .progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #4ade80, #22c55e);
+        border-radius: 4px;
+        transition: width 0.3s ease;
+    }
+
+    .progress-text {
+        color: #888;
+        font-size: 0.85em;
+        margin-top: 4px;
+        text-align: right;
+    }
+
+    /* Blockers panel */
+    .blockers-panel {
+        background: linear-gradient(135deg, #2d1a1a 0%, #1a0a0a 100%);
+        border: 2px solid #ef4444;
+        border-radius: 8px;
+        padding: 12px 16px;
+        margin-bottom: 16px;
+    }
+
+    .blockers-title {
+        color: #ef4444;
+        font-size: 0.95em;
+        font-weight: bold;
+        margin-bottom: 8px;
+    }
+
+    .blocker-item {
+        color: #fca5a5;
+        font-size: 0.9em;
+        padding: 4px 0;
+        padding-left: 16px;
+    }
+
+    .blocker-item::before {
+        content: "• ";
+        color: #ef4444;
+    }
+
+    /* Done panel */
+    .done-panel {
+        background: #0a1a0a;
+        border: 1px solid #22c55e;
+        border-radius: 8px;
+        padding: 12px 16px;
+        margin-bottom: 16px;
+    }
+
+    .done-title {
+        color: #22c55e;
+        font-size: 0.95em;
+        font-weight: bold;
+        margin-bottom: 8px;
+    }
+
+    .done-item {
+        color: #86efac;
+        font-size: 0.85em;
+        padding: 2px 0;
+        padding-left: 16px;
+    }
+
+    .done-item::before {
+        content: "✓ ";
+        color: #22c55e;
+    }
+
     /* Tooltip popup styles */
     .tooltip-container {
         position: relative;
@@ -372,12 +477,67 @@ st.markdown("""
 def esc(text):
     return str(text).replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;').replace('"', '&quot;')
 
+# Initialize analyzer for daily log
+analyzer = SessionAnalyzer()
+
+# === NOW PANEL ===
+daily_log = analyzer.parse_daily_log()
+if daily_log and daily_log.get('primary_title'):
+    done, total = daily_log['progress']
+    pct = (done / total * 100) if total > 0 else 0
+
+    now_html = f"""
+    <div class='now-panel'>
+        <div class='now-title'>🎯 NOW: {esc(daily_log['primary_title'])}</div>
+    """
+    if daily_log.get('next_action'):
+        now_html += f"<div class='now-action'>{esc(daily_log['next_action'])}</div>"
+
+    if total > 0:
+        now_html += f"""
+        <div class='progress-bar'><div class='progress-fill' style='width: {pct}%;'></div></div>
+        <div class='progress-text'>Progress: {done}/{total}</div>
+        """
+    now_html += "</div>"
+    st.markdown(now_html, unsafe_allow_html=True)
+
+# === BLOCKERS PANEL ===
+if daily_log and daily_log.get('blockers'):
+    blockers_html = f"""
+    <div class='blockers-panel'>
+        <div class='blockers-title'>⚠️ BLOCKERS ({len(daily_log['blockers'])})</div>
+    """
+    for blocker in daily_log['blockers'][:5]:
+        blockers_html += f"<div class='blocker-item'>{esc(blocker[:80])}</div>"
+    if len(daily_log['blockers']) > 5:
+        blockers_html += f"<div class='blocker-item'>+{len(daily_log['blockers'])-5} more</div>"
+    blockers_html += "</div>"
+    st.markdown(blockers_html, unsafe_allow_html=True)
+
+# === DONE TODAY PANEL ===
+if daily_log:
+    # Combine completed tasks and outcomes
+    done_items = daily_log.get('completed', []) + daily_log.get('outcomes', [])
+    if done_items:
+        done_html = f"""
+        <div class='done-panel'>
+            <div class='done-title'>✅ DONE TODAY ({len(done_items)})</div>
+        """
+        for item in done_items[:6]:
+            # Truncate long items
+            display = item[:60] + '...' if len(item) > 60 else item
+            done_html += f"<div class='done-item'>{esc(display)}</div>"
+        if len(done_items) > 6:
+            done_html += f"<div class='done-item' style='color: #888;'>+{len(done_items)-6} more</div>"
+        done_html += "</div>"
+        st.markdown(done_html, unsafe_allow_html=True)
+
 # PROJECTS - Unified view with all info per project
 st.markdown("<div class='section-header'>PROJECTS</div>", unsafe_allow_html=True)
 
 try:
     sessions = find_sessions()
-    analyzer = SessionAnalyzer()
+    # analyzer already initialized above for daily log
 
     # Load daily note accomplishments
     daily_note = analyzer.read_daily_note()

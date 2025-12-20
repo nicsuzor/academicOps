@@ -31,7 +31,6 @@ description: Process for diagnosing and fixing framework component failures and 
    - Look for: Did agent read the right files? Follow instructions? Use correct tools?
 
 3. **Form hypothesis about root cause**
-   - Check against [[AXIOMS.md]] principles
    - Verify component follows single source of truth
    - Look for duplication or conflicts
    - **Agent behavior analysis**: Did agent receive correct context? Interpret instructions correctly?

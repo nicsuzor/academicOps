@@ -11,6 +11,8 @@ dependencies = [
     "streamlit>=1.28.0",
     "networkx>=3.6",
     "anthropic>=0.75.0",
+    "mypy>=1.19.1",
+    "ruff>=0.14.10",
 ]
 
 [project.optional-dependencies]

@@ -36,7 +36,7 @@ description: Process for collaboratively developing task specifications before i
    - Write clear, specific answers
 
 5. **Define Acceptance Criteria (collaborative, USER-OWNED)**
-   - **CRITICAL**: These criteria define "done" and are user-owned ([[AXIOMS.md]] #21)
+   - **CRITICAL**: These criteria define "done" and are user-owned (agents cannot modify them)
    - **Agent asks**: "How will we know this automation succeeded?"
    - Focus on observable, testable outcomes (time saved, error reduction, reliability)
    - **Agent asks**: "What would indicate this implementation is WRONG?"
@@ -49,7 +49,7 @@ description: Process for collaboratively developing task specifications before i
 6. **Scope the work (collaborative)**
    - **Agent proposes**: Initial scope based on problem statement
    - **Agent asks**: "What's explicitly out of scope?"
-   - Apply principles from [[AXIOMS.md]] - keep scope minimal and focused
+   - Keep scope minimal and focused
    - Define clear boundaries
    - **Agent asks**: "Does this feel like one focused task?"
 
@@ -57,7 +57,7 @@ description: Process for collaboratively developing task specifications before i
    - **Agent checks**: What infrastructure must exist first?
    - **Agent checks**: What data is required?
    - **Agent asks**: "What happens if dependencies are missing?"
-   - Document error handling per [[AXIOMS.md]] principles
+   - Document error handling (fail-fast, no silent failures)
 
 8. **Design integration test (collaborative, CRITICAL)**
    - **CRITICAL**: Tests IMPLEMENT acceptance criteria from step 5, not new criteria
@@ -87,7 +87,6 @@ description: Process for collaboratively developing task specifications before i
     - **Agent reads back**: Complete specification summary
     - **Agent asks**: "Does this feel right? Anything missing?"
     - Iterate on any unclear or incomplete sections
-    - Ensure alignment with [[AXIOMS.md]] principles
 
 12. **Finalize specification**
     - Move completed spec to `$ACA_DATA/projects/aops/specs/` (AUTHORITATIVE location)

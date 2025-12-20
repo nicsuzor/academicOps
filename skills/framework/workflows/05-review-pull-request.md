@@ -25,7 +25,7 @@ description: Process for reviewing pull requests against framework principles an
    git checkout -b review-fixes
    ```
 
-3. **Review against [[AXIOMS.md]]**
+3. **Review against framework principles**
    - Single source of truth maintained?
    - Documentation conflicts introduced?
    - Fail-fast principles followed?
@@ -35,7 +35,7 @@ description: Process for reviewing pull requests against framework principles an
 4. **Review external feedback**
    - Get PR review comments (both general and line-specific)
    - Evaluate suggestions against framework principles
-   - Apply suggestions that align with [[AXIOMS.md]]
+   - Apply suggestions that align with principles
    - Question/reject suggestions that violate principles
    - Document reasoning for rejections
 

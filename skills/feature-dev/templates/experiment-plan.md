@@ -157,4 +157,3 @@ Check against success criteria:
 - User story: `user-story.md`
 - Test specification: `test-spec.md`
 - Development plan: `dev-plan.md`
-- Framework principles: [[AXIOMS.md]]
