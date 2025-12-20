@@ -1,3 +1,10 @@
+---
+name: review-training-cmd
+description: Process one matched review/source pair to extract training data
+allowed-tools: Task
+permalink: commands/review-training-cmd
+---
+
 # Review Training Data Extraction
 
 Process one matched review/source pair to extract training data for teaching LLMs to perform peer review.

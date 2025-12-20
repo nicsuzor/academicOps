@@ -1,8 +1,8 @@
 ---
-name: bmem
+name: bmem-save
 description: Invoke bmem skill to capture session information and update knowledge base
 allowed-tools: Skill
-permalink: commands/bmem
+permalink: commands/bmem-save
 ---
 
 Use the Skill tool to invoke the `[[skills/bmem/SKILL.md|bmem]]` skill: `Skill(skill="bmem")` - this will load instructions for extracting information from the current session and updating the knowledge base in `data/`.

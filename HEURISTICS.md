@@ -158,8 +158,9 @@ These are empirically derived rules that implement [[AXIOMS]] in practice. Unlik
 
 **Evidence**:
 - 2024-12-14: `Skill(skill="framework")` returned `/framework` command output (26-line diagnostic) instead of skill content (404-line SKILL.md). Agent proceeded without the categorical conventions it needed.
+- 2025-12-20: User explicitly reported collision issue. Audit found 4 collisions: `bmem`, `session-analyzer`, `transcript`, `review-training` (each exists as both skill and command).
 
-**Confidence**: Low (single observation, but failure mode is severe)
+**Confidence**: Medium (recurrence confirmed, multiple examples)
 
 **Implements**: [[AXIOMS]] #7 (Fail-Fast) - namespace collisions cause silent failures instead of explicit errors
 
