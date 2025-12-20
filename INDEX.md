@@ -39,8 +39,7 @@ $AOPS/
 │   ├── ttd.md                   # TDD orchestration
 │   ├── parallel-batch.md        # Parallel file processing
 │   ├── strategy.md              # Strategic planning
-│   ├── task-viz.md              # Task graph visualization
-│   └── analyze-session.md       # → session-analyzer skill
+│   └── task-viz.md              # Task graph visualization
 │
 ├── skills/
 │   ├── framework/               # Convention reference for infrastructure
@@ -55,11 +54,8 @@ $AOPS/
 │   ├── transcript/              # Session JSONL → markdown
 │   │   └── SKILL.md             # Wraps scripts/claude_transcript.py
 │   │
-│   ├── session-analyzer/        # Semantic session analysis
-│   │   └── SKILL.md             # LLM-powered accomplishments/decisions/topics
-│   │
-│   ├── session-insights/        # Batch transcripts + learning extraction
-│   │   ├── SKILL.md             # Orchestrates transcript, analyzer, Gemini mining
+│   ├── session-insights/        # Accomplishments + learning extraction
+│   │   ├── SKILL.md             # Orchestrates transcripts, daily summary, Gemini mining
 │   │   └── mining-prompt.md     # Gemini extraction prompt template
 │   │
 │   ├── python-dev/              # Production Python standards
@@ -173,7 +169,7 @@ $AOPS/
 |-------|------------|
 | learning-log | transcript (when given session JSONL) |
 | transcript | (none - wraps script) |
-| session-insights | transcript, session-analyzer, learning-log |
+| session-insights | transcript, learning-log |
 
 ### Agent → Skill Routing
 

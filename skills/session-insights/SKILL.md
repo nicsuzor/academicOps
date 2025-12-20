@@ -1,114 +1,108 @@
 ---
 name: session-insights
-description: Orchestrate transcript generation, daily summaries, and data mining to extract framework learnings from Claude Code sessions.
-allowed-tools: Read,Bash,Glob,Grep,Edit,Write,mcp__gemini__ask-gemini,mcp__bmem__search_notes,mcp__bmem__write_note
-version: 1.0.0
+description: Extract accomplishments and learnings from Claude Code sessions. Updates daily summary and mines for framework patterns.
+allowed-tools: Read,Bash,Glob,Grep,Edit,Write,Skill,mcp__gemini__ask-gemini,mcp__bmem__search_notes,mcp__bmem__write_note,mcp__bmem__edit_note
+version: 2.0.0
 permalink: skills-session-insights
 ---
 
 # Session Insights Skill
 
-Orchestrate the full session review workflow: batch transcripts → daily summary → data mining → experiment evaluation.
-
-## When to Use
-
-- End of day session review
-- "What happened in my sessions today?"
-- "Extract learnings from recent sessions"
+Extract accomplishments and learnings from Claude Code sessions. Idempotent - safe to run anytime.
 
 ## Arguments
 
 - `today` (default) - process today's sessions
 - `YYYYMMDD` - process specific date
 
-## Workflow Overview
+## Workflow
 
 ```
 /session-insights [date|today]
     ↓
-1. BATCH TRANSCRIPTS (cross-machine safe)
+1. BATCH TRANSCRIPTS (generate missing, skip up-to-date)
     ↓
-2. DAILY SUMMARY (session-analyzer skill)
+2. DAILY SUMMARY (accomplishments → daily note)
     ↓
-3. DATA MINING (Gemini per-session)
+3. DATA MINING (Gemini → patterns, problems)
     ↓
-4. EXPERIMENT EVALUATION
+4. EXPERIMENT EVALUATION (report status)
 ```
 
 ---
 
 ## Step 1: Batch Transcripts
 
-Generate/update transcripts for sessions on target date.
+Find sessions via `lib.session_reader.find_sessions()` filtered by date.
 
-**Find sessions**: Use `lib.session_reader.find_sessions()` filtered by date.
+**Freshness check**: Generate if transcript missing OR session mtime > transcript mtime.
 
-**Freshness check** (cross-machine safe):
-- Find matching `*-abridged.md` transcript in `$ACA_DATA/sessions/claude/`
-- Generate if: transcript missing OR session mtime > transcript mtime
-- Skip if transcript is up-to-date
+**Generate**: `Skill(skill="transcript")` for each needing update.
 
-**Generate**: `Skill(skill="transcript")` for each session needing update.
-
-**Output**: `$ACA_DATA/sessions/claude/YYYYMMDD-<project>-<slug>-{full,abridged}.md`
+**Output**: `$ACA_DATA/sessions/claude/YYYYMMDD-<project>-<slug>-abridged.md`
 
 ---
 
 ## Step 2: Daily Summary
 
-Invoke: `Skill(skill="session-analyzer", args="$DATE")`
+Update `$ACA_DATA/sessions/YYYYMMDD-daily.md` with accomplishments.
 
-This handles accomplishment extraction and daily note updates.
+**Load sessions**:
+```bash
+cd $AOPS && uv run python -c "
+from lib.session_reader import find_sessions
+from lib.session_analyzer import SessionAnalyzer
+from datetime import datetime, timezone, timedelta
+# ... extract and print session data
+"
+```
+
+**Carry over**: Yesterday's `- [ ]` tasks to today's note.
+
+**Update rules**: Add new `- [x]` accomplishments, `- [ ]` blockers. Deduplicate. Never delete.
+
+**Rich linking**: Search bmem, use wikilinks `[[projects/NAME]]`.
+
+**Progress bars**: Run `update_daily_note_dashboard()` after updating.
+
+See `lib/session_analyzer.py` for implementation details.
 
 ---
 
 ## Step 3: Data Mining (Gemini)
 
-For each transcript, extract learnings via Gemini.
+Load active experiments and learning themes, then extract via Gemini:
+- Problems: user corrections, failures, verification skips
+- Successes: patterns that worked
+- Experiment evidence: hypothesis matches
 
-**Load context first**:
-- Active experiments from `experiments/*.md` (not resolved)
-- Learning themes from `learning/*.md`
-
-**Gemini extraction** (see [[mining-prompt.md]]):
-- Problems: user corrections, navigation failures, verification skips
-- Successes: especially ordinary ones that are experiment evidence
-- Experiment evidence: matches to active hypotheses
-
-**Route results**:
-- Known patterns → `learning/[theme].md`
-- Novel problems → `LOG.md`
-- Experiment evidence → `experiments/[file].md`
+**Route**: Known patterns → `learning/*.md`, novel → `LOG.md`, evidence → `experiments/*.md`
 
 ---
 
 ## Step 4: Experiment Evaluation
 
-After mining, report experiment status:
-- Which experiments got new evidence?
-- Any ready for decision?
-- Any hypotheses validated/invalidated?
+Report: Which experiments got evidence? Any ready for decision?
 
 ---
 
-## Output Summary
+## Output
 
 ```
 ## Session Insights - YYYY-MM-DD
 
 ### Transcripts
-- Generated: N | Updated: N | Skipped: N
+- Generated: N | Skipped: N
 
 ### Daily Summary
 - Updated: sessions/YYYYMMDD-daily.md
 
 ### Learnings
-- Problems: N | Successes: N | Experiment evidence: N
+- Problems: N | Successes: N | Evidence: N
 ```
-
----
 
 ## Constraints
 
-- **DO NOT** auto-apply learnings. Extract and route only.
-- **DO NOT** modify HEURISTICS.md directly. Route to learning files.
+- **Idempotent** - run multiple times safely
+- **DO NOT** auto-apply learnings - route only
+- **DO NOT** modify HEURISTICS.md directly
