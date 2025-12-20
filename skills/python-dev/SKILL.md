@@ -207,6 +207,7 @@ uv run ruff check src/
 
 **NEVER**:
 
+- **Modify research configurations, flows, or pipelines substantively** - This is a CRITICAL violation of academic integrity (AXIOM #24). Report problems, propose fixes, WAIT for explicit approval.
 - Use `.get()` with defaults for required configuration
 - Use bare `except:` or overly broad exception handling
 - Create standalone test/debug/verify scripts outside `tests/`

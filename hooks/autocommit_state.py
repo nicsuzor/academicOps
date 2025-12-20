@@ -195,10 +195,10 @@ def main() -> None:
             check=True,
             timeout=2,
         )
-    except Exception:
-        # Can't find git repo or ACA_DATA not set, continue without committing
-        print(json.dumps({}))
-        sys.exit(0)
+    except Exception as e:
+        # Fail-fast: report to agent so they know data wasn't committed
+        print(f"autocommit_state: {e}. Data changes NOT auto-committed.", file=sys.stderr)
+        sys.exit(2)
 
     # Check for data/ changes
     if not has_data_changes(repo_path):

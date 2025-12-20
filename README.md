@@ -67,6 +67,7 @@ Academic support framework for Claude Code. Minimal, fight bloat aggressively.
 | dashboard | Live task + session activity dashboard | `uv run streamlit run skills/dashboard/dashboard.py` |
 | reference-map | Extract framework file references → JSON graph | `Skill(skill="reference-map")` |
 | link-audit | Analyze and clean up framework file references | `Skill(skill="link-audit")` |
+| session-insights | Batch transcripts + mining for framework learnings | `Skill(skill="session-insights")` |
 
 ## Hooks
 

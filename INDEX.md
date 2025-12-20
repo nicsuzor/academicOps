@@ -58,6 +58,10 @@ $AOPS/
 │   ├── session-analyzer/        # Semantic session analysis
 │   │   └── SKILL.md             # LLM-powered accomplishments/decisions/topics
 │   │
+│   ├── session-insights/        # Batch transcripts + learning extraction
+│   │   ├── SKILL.md             # Orchestrates transcript, analyzer, Gemini mining
+│   │   └── mining-prompt.md     # Gemini extraction prompt template
+│   │
 │   ├── python-dev/              # Production Python standards
 │   │   ├── SKILL.md             # Fail-fast, types, TDD
 │   │   └── references/          # 10 guides (pandas, FastAPI, testing)
@@ -169,6 +173,7 @@ $AOPS/
 |-------|------------|
 | learning-log | transcript (when given session JSONL) |
 | transcript | (none - wraps script) |
+| session-insights | transcript, session-analyzer, learning-log |
 
 ### Agent → Skill Routing
 
