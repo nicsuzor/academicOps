@@ -29,7 +29,7 @@ tests/
     ├── conftest.py                  # Integration test fixtures
     ├── test_session_start_content.py # Session start E2E tests
     ├── test_headless_fixture.py     # Headless execution tests
-    ├── test_bmem_skill.py           # Bmem skill integration tests
+    ├── test_memory_skill.py          # Memory skill integration tests
     └── test_task_viz.py             # Task visualization dashboard tests
 ```
 
@@ -90,7 +90,7 @@ Run by default. Complete in ~4 seconds with 20 parallel workers.
 
 - Headless execution fixture (8 tests)
 - Session start content loading (2 tests)
-- Bmem skill functionality (4 tests)
+- Memory skill functionality (4 tests)
 - Task visualization agent workflow (1 test)
 
 **Total**: 21 integration tests
@@ -149,8 +149,8 @@ uv run pytest tests/test_skills_readme_integrity.py -v
 # Session start tests (fast only)
 uv run pytest tests/integration/test_session_start_content.py -m "not slow" -v
 
-# Bmem skill tests
-uv run pytest tests/integration/test_bmem_skill.py -m integration -v
+# Memory skill tests
+uv run pytest tests/integration/test_memory_skill.py -m integration -v
 
 # Task visualization tests (fast only)
 uv run pytest tests/integration/test_task_viz.py -m "integration and not slow" -v
@@ -269,12 +269,12 @@ result = claude_headless(
    - Content loads correctly in Claude sessions
    - Agent knows user info and work principles
 
-4. **Bmem Skill Functionality**
-   - Creates valid Obsidian-compatible files
-   - Proper frontmatter structure
+4. **Memory Skill Functionality**
+   - Creates valid memories in the memory server
+   - Proper metadata structure
    - Observations add new information
-   - Relations use WikiLink syntax
-   - Files pass bmem validation
+   - Queries retrieve relevant memories
+   - Memories pass validation
 
 5. **Headless Execution Fixture**
    - Basic execution
@@ -443,19 +443,18 @@ Following [[AXIOMS.md]]:
 
 - Fixed: test_no_conflicting_path_references (CORE.md now includes data/tasks/ path)
 - Fixed: Invalid permission_mode (changed "disabled" to "bypassPermissions")
-- Remaining failures: 3 bmem validation tests (pre-existing data format issues in data/goals/)
+- Remaining failures: 3 memory validation tests (pre-existing data format issues in data/goals/)
 
 **Slow Integration Tests**: 8/11 passing (73%)
 
-- Passing: test_bmem_skill_creates_valid_file (permission_mode fix verified)
+- Passing: test_memory_skill_creates_valid_file (permission_mode fix verified)
 - Passing: All 7 headless fixture tests
 - Failing: 2 session start tests (timeout issues - need 120s not 60s)
-- Failing: 1 bmem test (test design issue, unrelated to permission_mode)
+- Failing: 1 memory test (test design issue, unrelated to permission_mode)
 
-**Fixes Applied** (commit ae388b0):
+**Status Note**:
 
-- Added explicit "data/tasks/" path reference to [[CORE.md]]
-- Changed 4 instances of permission_mode from "disabled" to "bypassPermissions"
+Tests have been migrated from bmem to memory server. The memory skill now uses the remote memory server over Tailscale for persistence.
 
 Run tests to validate framework integrity:
 

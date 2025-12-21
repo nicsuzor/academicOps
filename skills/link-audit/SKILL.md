@@ -26,7 +26,7 @@ When directing an agent to use a skill, use Claude's invocation syntax, NOT a fi
 | Anti-pattern | Correct |
 |--------------|---------|
 | `[[skills/framework/SKILL.md]]` | `Skill(skill="framework")` |
-| `[[../bmem/SKILL.md]]` | `Skill(skill="bmem")` |
+| `[[../remember/SKILL.md]]` | `Skill(skill="remember")` |
 
 **Rationale**: Skills are invoked at runtime via the Skill tool, not read as files.
 
@@ -171,7 +171,7 @@ Update `$ACA_DATA/projects/aops/links.md` with:
 | References listed with backticks | Convert to wikilinks |
 | `[[foo.md]]` not resolving | Add subdirectory: `[[references/foo.md]]` |
 | Orphaned workflows/references/templates | Add section in parent SKILL.md linking them |
-| Cross-skill refs like `[[../bmem/SKILL.md]]` | Convert to `Skill(skill="bmem")` |
+| Cross-skill refs like `[[../remember/SKILL.md]]` | Convert to `Skill(skill="remember")` |
 | Backward links in "Related" sections | Remove the parent link |
 | `README.md` in subdirectory | Rename to match directory: `tasks/README.md` → `tasks/tasks.md` |
 

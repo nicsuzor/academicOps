@@ -1,7 +1,7 @@
 #!/bin/bash
 #
 # Records audio in chunks using SoX, transcribing via Google Cloud Speech-to-Text async API.
-# Transcripts are appended to a single markdown file with bmem-compliant frontmatter.
+# Transcripts are appended to a single markdown file with proper YAML frontmatter.
 #
 # Usage:
 #   transcribe_recording.sh [session_name]     # Start new recording session

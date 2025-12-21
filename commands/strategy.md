@@ -2,7 +2,7 @@
 name: strategy
 description: Strategic thinking partner for exploration, planning, and clarity - facilitates thinking without executing tasks
 permalink: commands/strategy
-allowed-tools: mcp__bmem__search_notes,mcp__bmem__write_note,mcp__bmem__read_note,AskUserQuestion
+allowed-tools: mcp__memory__retrieve_memory,Skill,AskUserQuestion
 ---
 
 # Strategic Thinking Partner
@@ -31,7 +31,7 @@ Facilitate strategic exploration through organic conversation. This is **NOT** f
 
 ## Automatic Documentation
 
-**Capture strategic thinking silently using [[bmem]]**:
+**Capture strategic thinking silently using [[remember]] skill**:
 
 As conversation unfolds, **automatically capture** (without interrupting flow):
 - Key decisions and reasoning
@@ -41,7 +41,7 @@ As conversation unfolds, **automatically capture** (without interrupting flow):
 - Questions surfaced
 - Evolving understanding
 
-**Use [[bmem]] tools to**:
+**Use [[remember]] skill to**:
 - Create/update notes about strategic context
 - Link related concepts
 - Build knowledge graph connections
@@ -51,18 +51,16 @@ As conversation unfolds, **automatically capture** (without interrupting flow):
 
 ## Load Context FIRST
 
-**MANDATORY**: Before responding, use [[bmem]] to understand user's strategic landscape.
+**MANDATORY**: Before responding, use memory server to understand user's strategic landscape.
 
 ```
-mcp__bmem__search_notes(query="...", project="main") for:
+mcp__memory__retrieve_memory(query="...") for:
 - "#core-goals" → Strategic goals
 - "current priorities" → Current focus
 - "[project name]" → Specific project context
 - "accomplishments" → Recent progress
 - User's relevant work history
 ```
-
-**Remember**: ALWAYS use `project="main"` in ALL [[bmem]] tool calls.
 
 **Build on what you learn** - don't ask questions answered by context.
 
@@ -172,7 +170,7 @@ Strategy work succeeds when:
 4. **Insights surface** - New connections appear
 5. **Alignment achieved** - Work connects to goals
 6. **User owns it** - Solutions come from them
-7. **Context preserved** - Strategic thinking captured in bmem
+7. **Context preserved** - Strategic thinking captured in memory server
 
 ## Anti-Patterns to Avoid
 

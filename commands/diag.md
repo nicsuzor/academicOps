@@ -23,7 +23,7 @@ List all commands from the SlashCommand tool's Available Commands section.
 List all subagent_type values from the Task tool description.
 
 ## 4. MCP Tools
-List MCP server prefixes you have access to (e.g., mcp__bmem__, mcp__gh__).
+List MCP server prefixes you have access to (e.g., mcp__memory__, mcp__gh__).
 
 ## 5. Files Referenced This Session
 List any files that were:

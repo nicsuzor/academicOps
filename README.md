@@ -41,7 +41,6 @@ Academic support framework for Claude Code. Minimal, fight bloat aggressively.
 |---------|---------|------------|
 | /meta | Strategic brain + executor | Slash command |
 | /email | Extract action items from emails → tasks | Slash command |
-| /bmem | Capture session info to knowledge base | Slash command |
 | /log | Log patterns to thematic learning files | Slash command |
 | /transcript | Generate session transcripts | Slash command |
 | /analyze-session | Semantic session analysis | Slash command |
@@ -55,7 +54,7 @@ Academic support framework for Claude Code. Minimal, fight bloat aggressively.
 | Skill | Purpose | Invocation |
 |-------|---------|------------|
 | analyst | Research data analysis (dbt, stats) | `Skill(skill="analyst")` |
-| bmem | Knowledge base operations | `Skill(skill="bmem")` or `/bmem` |
+| remember | Store and retrieve memories via memory server | `Skill(skill="remember")` |
 | framework | Convention reference, categorical imperative | `Skill(skill="framework")` |
 | osb-drafting | IRAC analysis, citation verification | `Skill(skill="osb-drafting")` |
 | pdf | Markdown → professional PDF | `Skill(skill="pdf")` |
@@ -97,9 +96,9 @@ See [[docs/HOOKS.md]] for hook architecture, [[docs/OBSERVABILITY.md]] for loggi
 - **Integration tests**: `tests/integration/` (require Claude CLI)
 - **Run**: `uv run pytest tests/`
 
-## Knowledge Base
+## Memory Server
 
-**Always use `project="main"`** with all `mcp__bmem__*` tools.
+Use `mcp__memory__*` tools to store and retrieve memories. Memory server is accessed via remote connection over Tailscale.
 
 ## See Also
 
@@ -109,5 +108,4 @@ See [[docs/HOOKS.md]] for hook architecture, [[docs/OBSERVABILITY.md]] for loggi
 | [[INDEX.md]] | Complete file tree |
 | [[$ACA_DATA/projects/aops/VISION.md\|VISION.md]] | What we're building |
 | [[$ACA_DATA/projects/aops/ROADMAP.md\|ROADMAP.md]] | Current status |
-| [[BMEM-ARCHITECTURE.md]] | Knowledge base architecture |
 | [[docs/JIT-INJECTION.md]] | Context injection patterns |

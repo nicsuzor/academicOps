@@ -1,7 +1,7 @@
 ---
 name: session-insights
 description: Extract accomplishments and learnings from Claude Code sessions. Updates daily summary and mines for framework patterns.
-allowed-tools: Read,Bash,Glob,Grep,Edit,Write,Skill,mcp__gemini__ask-gemini,mcp__bmem__search_notes,mcp__bmem__write_note,mcp__bmem__edit_note
+allowed-tools: Read,Bash,Glob,Grep,Edit,Write,Skill,mcp__gemini__ask-gemini,mcp__memory__retrieve_memory,Skill(skill="remember"),mcp__memory__update_memory_metadata
 version: 2.0.0
 permalink: skills-session-insights
 ---

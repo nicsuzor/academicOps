@@ -30,7 +30,7 @@ This repository is strictly governed by Standard Operating Procedures called "Sk
 | **Framework & Architecture** | Changing repo structure, adding skills, defining rules | `skills/framework/SKILL.md` |
 | **Python Development** | Writing code, tests, scripts (Must be fail-fast & typed) | `skills/python-dev/SKILL.md` |
 | **Data Analysis** | `dbt`, `streamlit`, statistics, research data | `skills/analyst/SKILL.md` |
-| **Knowledge Base (bmem)** | Saving notes, searching memory, Obsidian integration | `skills/bmem/SKILL.md` |
+| **Knowledge Base (Memory)** | Saving notes, searching memory, Obsidian integration | `skills/remember/SKILL.md` |
 | **Task Management** | Checking tasks, reading email, prioritization | `skills/tasks/SKILL.md` |
 | **PDF Generation** | Converting Markdown to professional PDF | `skills/pdf/SKILL.md` |
 | **Drafting (OSB)** | IRAC analysis, case decisions, citations | `skills/osb-drafting/SKILL.md` |
@@ -52,10 +52,10 @@ The skill files were written for Claude. When you see these tool names, use your
 | `Edit` / `Write` | `replace` / `write_file` |
 | `Bash` / `Run` | `run_shell_command` |
 
-### Basic Memory (bmem)
-*   **Project Context:** Always use `project="main"` for `mcp__bmem__*` tools.
-    *   Example: `mcp__bmem__search_notes(query="foo", project="main")`
-*   **Validation:** Content must be Obsidian-compliant (Markdown only).
+### Memory Server
+*   **Memory Retrieval:** Use `mcp__memory__retrieve_memory(query="...")` for searching the memory server.
+*   **Memory Storage:** Use `Skill(skill="remember")` to save content to the memory server.
+*   **Validation:** Content must be properly formatted markdown.
 
 ### Development
 *   **Planning:** For complex requests, use `codebase_investigator` to map the system before acting.

@@ -25,14 +25,14 @@ $AOPS/
 ├── [[INDEX.md]]                 # THIS FILE - complete file tree
 ├── [[RULES.md]]                 # Current enforcement rules (auto-generated)
 ├── [[CLAUDE.md]]                # Repo instructions (@ syntax auto-loads)
-├── BMEM-*.md                    # bmem documentation (4 files)
+├── MEMORY-*.md                  # memory server documentation (4 files)
 ├── pyproject.toml               # Python project config
 │
 ├── commands/                    # Slash commands (main agent executes)
 │   ├── meta.md                  # Strategic brain + executor → framework, python-dev skills
 │   ├── log.md                   # → learning-log skill
 │   ├── transcript.md            # → transcript skill
-│   ├── bmem.md                  # → bmem skill
+│   ├── remember.md              # → remember skill
 │   ├── email.md                 # Email → task extraction
 │   ├── learn.md                 # Minor instruction adjustments
 │   ├── qa.md                    # Quality assurance verification
@@ -68,9 +68,9 @@ $AOPS/
 │   │   ├── references/          # 12 statistical guides
 │   │   └── scripts/assumption_checks.py
 │   │
-│   ├── bmem/                    # Knowledge base operations
-│   │   ├── SKILL.md             # Always project="main"
-│   │   └── references/          # 5 guides (format, quality, Obsidian)
+│   ├── remember/                # Memory server operations
+│   │   ├── SKILL.md             # Write & retrieve from memory server
+│   │   └── references/          # 5 guides (format, quality, best practices)
 │   │
 │   ├── tasks/                   # Task management (MCP server)
 │   │   ├── SKILL.md
@@ -102,7 +102,7 @@ $AOPS/
 │   │   ├── SKILL.md
 │   │   └── scripts/build_reference_map.py
 │   │
-│   ├── extractor/               # Archive → bmem extraction
+│   ├── extractor/               # Archive → memory extraction
 │   ├── feature-dev/             # Feature development templates
 │   ├── framework-debug/         # Framework debugging
 │   └── training-set-builder/    # Training data extraction
@@ -122,7 +122,7 @@ $AOPS/
 │
 ├── agents/                      # Spawnable subagents (Task tool)
 │   ├── critic.md                # Second-opinion review of plans/conclusions
-│   ├── bmem-validator.md        # Parallel bmem validation
+│   ├── memory-validator.md      # Parallel memory validation
 │   ├── email-extractor.md       # Email archive processing
 │   └── task-viz.md              # Task graph → Excalidraw
 │
@@ -161,7 +161,7 @@ $AOPS/
 | /meta | framework, python-dev |
 | /log | learning-log |
 | /transcript | transcript |
-| /bmem | bmem |
+| /remember | remember |
 
 ### Skill → Skill Dependencies
 
@@ -175,7 +175,7 @@ $AOPS/
 
 | Agent | Routes To |
 |-------|-----------|
-| bmem-validator | bmem |
+| memory-validator | remember |
 
 **Note**: For Python development, use `general-purpose` subagent and invoke `Skill(skill="python-dev")` directly.
 

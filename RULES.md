@@ -112,5 +112,5 @@ Commit-time validation via `.pre-commit-config.yaml`:
 
 ### Local Hooks
 - `dprint` — markdown/json/toml/yaml formatting
-- `bmem-validate` — frontmatter validation for `data/*.md`
+- `memory-validate` — frontmatter validation for `data/*.md`
 - `data-markdown-only` — blocks non-.md files in `data/` (except `data/assets/`)

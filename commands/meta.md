@@ -10,7 +10,7 @@ tools:
   - Grep
   - Edit
   - Write
-  - mcp__bmem__*
+  - mcp__memory__*
 ---
 
 # /meta - Framework Strategic Brain + Executor
@@ -48,7 +48,7 @@ Read $ACA_DATA/projects/aops/[[ROADMAP]] - Maturity progression: Current stage, 
 Read $ACA_DATA/projects/aops/[[VISION]] - End state
 
 # 4. PAST LEARNING (search BEFORE taking action)
-mcp__bmem__search_notes(query="[SEARCH KEYWORDS]", project="main")
+mcp__memory__retrieve_memory(query="[SEARCH KEYWORDS]")
 ```
 
 ## MANDATORY: Framework Skill First

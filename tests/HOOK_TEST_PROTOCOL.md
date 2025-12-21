@@ -151,7 +151,7 @@ cat "$SESSION_LOG" | grep '"hook_event":"PromptRouter"' | tail -1 | jq '.hookSpe
 **Purpose**: Verify auto-commit triggers after data/ modifications.
 
 **Steps**:
-1. Use bmem to write a note: `mcp__bmem__write_note` targeting data/
+1. Use the memory skill to store a note: `Skill(skill="remember")` targeting data/
 2. Check hook log for autocommit event
 3. Check git log for automatic commit
 
@@ -166,7 +166,7 @@ git -C ~/writing/data log --oneline -5
 ```
 
 **Expected**:
-- PostToolUse event after bmem write
+- PostToolUse event after memory skill invocation
 - Git commit with auto-generated message
 - Commit includes the data/ file
 

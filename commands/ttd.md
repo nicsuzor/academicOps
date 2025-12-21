@@ -43,8 +43,8 @@ YOU are the bulwark standing between us and chaos. Other agents can be good, but
 
 **This command implements the mandatory workflow from [[CORE.md]]:**
 
-1. Plan (invoke Plan agent, get review, bmem the plan)
-2. Small TDD cycles (test → code → commit+fix → bmem → push)
+1. Plan (invoke Plan agent, get review, document the plan)
+2. Small TDD cycles (test → code → commit+fix → document → push)
 3. Done = committed + documented + pushed
 
 **MANDATORY: Development work MUST invoke the [[python-dev]] skill:**
@@ -627,7 +627,7 @@ Task information to extract:
 5. Dependencies or related tasks
 
 The tasks skill will:
-- Update knowledge base with session context (using bmem if needed)
+- Update knowledge base with session context (using memory server if needed)
 - Extract and store any pending tasks
 - Link commits to task outcomes
 - Preserve context for future sessions
@@ -673,7 +673,7 @@ Provide user with:
 - python-dev: Production Python development with fail-fast principles
 - feature-dev: Test-first feature development workflow
 - tasks: Task management operations
-- bmem: Knowledge base operations
+- remember: Knowledge base operations
 - framework: Framework maintenance and issue logging
 - analyst: Research data analysis with dbt and Streamlit
 
@@ -741,7 +741,7 @@ When subagent returns 0 tokens:
 - [[python-dev]]: Production Python development (testing, implementation, refactoring) - **MANDATORY for code work**
 - [[feature-dev]]: Full feature development workflow with TDD
 - [[tasks]]: Task management operations
-- [[bmem]]: Knowledge base operations
+- [[remember]]: Knowledge base operations
 - [[framework]]: Framework maintenance and issue logging
 
 ### Multi-Agent Request Parsing

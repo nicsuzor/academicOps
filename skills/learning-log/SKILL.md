@@ -62,7 +62,7 @@ Determine the appropriate level and route accordingly:
 For specific script errors (e.g., task_view.py fails, hook crashes):
 - Check if `$ACA_DATA/projects/aops/bugs/[component].md` exists
 - If yes: append new observation
-- If no: create with bmem frontmatter
+- If no: create with standard frontmatter
 - **Delete when fixed** (per framework conventions)
 
 #### Pattern-Level (learning/)
@@ -116,7 +116,7 @@ sessions = find_sessions(project="writing", since=file_mtime - timedelta(minutes
 ### 4. Search Sessions for Write/Edit Operations
 
 Look for tool_use blocks with:
-- `name`: "Write", "Edit", "mcp__bmem__write_note"
+- `name`: "Write", "Edit", "mcp__memory__store_memory"
 - `input.file_path` or `input.path` matching affected file
 
 ```bash
@@ -147,7 +147,7 @@ Or if inconclusive:
 ### Critical Rule
 
 **If investigation is inconclusive, state that explicitly.** Do NOT:
-- Speculate about cause ("agent or bmem may have...")
+- Speculate about cause ("agent or memory server may have...")
 - Attribute without evidence
 - Skip investigation for file-related errors
 
@@ -187,7 +187,7 @@ Examples:
 | #verify-first, #overconfidence, #validation, #incomplete-task | `verification-skip.md` |
 | #instruction-following, #scope, #literal, #user-request | `instruction-ignore.md` |
 | #git-safety, #no-verify, #validation-bypass, #pre-commit | `validation-bypass.md` |
-| #skill-invocation, #tool-usage, #mcp, #bmem-integration | `skill-bypass.md` |
+| #skill-invocation, #tool-usage, #mcp, #memory-integration | `skill-bypass.md` |
 | #tdd, #testing, #test-contract, #fake-data | `test-and-tdd.md` |
 | #success, #tdd-win, #workflow-success | `technical-wins.md` |
 
