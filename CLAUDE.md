@@ -29,21 +29,36 @@ ALL work in this repo flows through `Skill(skill="framework")`, but the framewor
 
 We are starting again in this aOps repo. This time, the watchword is MINIMAL. We are not just avoiding bloat, we are ACTIVELY FIGHTING it. and I want to win.
 
+## Framework State: VISION.md and ROADMAP.md
+
+**These two files ARE the framework's memory.** Without them being current, agents cannot understand what the framework is, what's working, or what needs attention.
+
+Why this matters: Agents have no persistent memory. Every session starts from zero. VISION.md and ROADMAP.md are the ONLY reliable source of truth about the framework's current state. If they're stale, agents will waste time rediscovering what's already known, repeat completed work, or miss critical context.
+
+**VISION.md** (`$ACA_DATA/projects/aops/VISION.md`):
+- Purpose: End state. What we're building and why.
+- Update: When fundamental direction changes (rare).
+- Keep out: Implementation details, current status.
+
+**ROADMAP.md** (`$ACA_DATA/projects/aops/ROADMAP.md`):
+- Purpose: Current status. What's done, in progress, blocked.
+- Update: After completing significant work.
+- Keep out: Detailed how-to, specs, future speculation.
+
+**After any framework session**: Check if VISION or ROADMAP need updates based on what was accomplished or decided. This is not optional housekeeping - it's preserving institutional memory for the next session.
+
 ## Framework Documentation, Paths, and state:
 
 - **Framework state**: See "Framework State (Authoritative)" section in [[README]]
 - **Paths**: [[README]] (file tree in root of repository)
 
-### Basic Memory (bmem) Tool Usage
+### Memory System
 
-**When using ANY `mcp__bmem__*` tool, you MUST use `project="main"`.**
+**To persist knowledge**: Use `Skill(skill="remember")` - do NOT write markdown directly.
 
-Examples:
-- `mcp__bmem__search_notes(query="...", project="main")`
-- `mcp__bmem__read_note(identifier="...", project="main")`
-- `mcp__bmem__write_note(title="...", content="...", folder="...", project="main")`
+The framework uses an mcp-memory server. The `remember` skill handles writing markdown AND syncing to the memory server. If you skip the skill, the content won't be searchable.
 
-Do NOT use `project="aops"` or any other value. Always use `project="main"`.
+**To search knowledge**: Use `mcp__memory__retrieve_memory(query="...")` or `mcp__memory__retrieve_with_quality_boost(query="...")`.
 
 ## Framework Repository Instructions
 

@@ -39,7 +39,7 @@ SKILLS: dict[str, str] = {
     "framework": "Categorical conventions and framework patterns",
     "python-dev": "Production Python: fail-fast, type safety, TDD",
     "analyst": "Research data analysis: dbt, Streamlit, statistics",
-    "bmem": "Knowledge base operations and format requirements",
+    "remember": "Knowledge persistence and memory server sync",
     "tasks": "Task scripts and workflow patterns",
     "pdf": "Markdown to professional PDF conversion",
     "osb-drafting": "IRAC analysis and precedent citation for Oversight Board",
@@ -119,8 +119,8 @@ def analyze_prompt(prompt: str) -> tuple[str, list[str]]:
             "what's urgent", "show my tasks", "to-do", "todo", "priorities",
             "what needs doing", "what should i work on", "email", "inbox",
         ],
-        "bmem": [
-            "bmem", "knowledge base", "write note", "search notes",
+        "remember": [
+            "knowledge base", "write note", "search notes",
             "remember this", "save this", "what do we know about",
             "context about", "background on", "prior work on",
             "have we done", "did we already", "memory", "capture",

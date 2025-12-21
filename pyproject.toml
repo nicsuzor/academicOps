@@ -13,11 +13,9 @@ dependencies = [
     "anthropic>=0.75.0",
     "mypy>=1.19.1",
     "ruff>=0.14.10",
-]
-
-[project.optional-dependencies]
-dev = [
     "pytest>=8.0.0",
+    "pytest-xdist>=3.8.0",
+    "mcp-memory-service>=8.52.2",
 ]
 
 [tool.hatch.build.targets.wheel]
@@ -26,12 +24,6 @@ packages = ["lib", "skills", "tests"]
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
-
-[dependency-groups]
-dev = [
-    "pytest>=9.0.1",
-    "pytest-xdist>=3.8.0",
-]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

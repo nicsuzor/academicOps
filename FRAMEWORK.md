@@ -46,9 +46,9 @@ These are the **concrete absolute paths** for this session. Use them directly wi
 
 **To edit framework files**: Always edit in `$AOPS/`, never in `~/.claude/` symlinks.
 
-## bmem
+## Memory System
 
-**Always use `project="main"`** with all `mcp__bmem__*` tools.
+**To persist knowledge**: Use `Skill(skill="remember")`. **To search**: Use `mcp__memory__retrieve_memory(query="...")`.
 
 ## Environment Variable Architecture
 

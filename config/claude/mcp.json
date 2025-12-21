@@ -9,13 +9,13 @@
     },
     "memory": {
       "type": "stdio",
-      "command": "uvx",
-      "args": [
-        "fastmcp",
-        "run",
-        "http://dev3.stoat-musical.ts.net:8000/mcp"
-      ],
-      "env": {}
+      "command": "uv",
+      "args":["--directory", "/home/debian/mcp-memory-service", "run", "memory"],
+      "env": {
+        "MCP_MEMORY_STORAGE_BACKEND": "sqlite_vec",
+        "MCP_MEMORY_SQLITE_PRAGMAS": "busy_timeout=15000,cache_size=20000",
+        "LOG_LEVEL": "INFO"
+      }
     },
     "zot": {
       "type": "stdio",

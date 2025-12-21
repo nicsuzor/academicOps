@@ -217,13 +217,13 @@ These are empirically derived rules that implement [[AXIOMS]] in practice. Unlik
 
 ## H12: Semantic Search Over Keyword Matching
 
-**Statement**: Vector/semantic search is ALWAYS superior to keyword matching for knowledge base content. Never use grep for markdown files in `$ACA_DATA/` - use bmem semantic search instead.
+**Statement**: Vector/semantic search is ALWAYS superior to keyword matching for knowledge base content. Never use grep for markdown files in `$ACA_DATA/` - use memory server semantic search instead.
 
 **Rationale**: Keyword matching (grep) requires exact string matches and misses synonyms, paraphrases, and related concepts. Semantic search understands meaning: searching "task duplicates" finds content about "duplicate prevention", "already exists", "re-created tasks" even without those exact words. The knowledge base is designed for semantic retrieval.
 
 **Evidence**:
 - 2025-12-17: Agent extracted 232 user messages but identified only ~10 accomplishments using keyword matching. Re-extraction with semantic analysis found ~43 discrete action items.
-- 2025-12-18: Email workflow created duplicate tasks because it used grep instead of bmem to check for existing tasks. Semantic search would have caught "SNSF review" matching existing "Complete SNSF review" task.
+- 2025-12-18: Email workflow created duplicate tasks because it used grep instead of semantic search to check for existing tasks. Semantic search would have caught "SNSF review" matching existing "Complete SNSF review" task.
 
 **Confidence**: High
 
@@ -233,13 +233,13 @@ These are empirically derived rules that implement [[AXIOMS]] in practice. Unlik
 
 | Task | Wrong | Right |
 |------|-------|-------|
-| Find existing tasks | `grep -li "keyword" $ACA_DATA/tasks/*.md` | `mcp__bmem__search_notes(query="keyword", types=["task"])` |
-| Check for duplicates | `grep -l "subject line" tasks/inbox/` | `mcp__bmem__search_notes(query="subject concepts")` |
-| Find related notes | `grep -r "term" $ACA_DATA/` | `mcp__bmem__search_notes(query="term and context")` |
+| Find existing tasks | `grep -li "keyword" $ACA_DATA/tasks/*.md` | `mcp__memory__retrieve_memory(query="keyword")` |
+| Check for duplicates | `grep -l "subject line" tasks/inbox/` | `mcp__memory__retrieve_memory(query="subject concepts")` |
+| Find related notes | `grep -r "term" $ACA_DATA/` | `mcp__memory__retrieve_memory(query="term and context")` |
 | Extract from messages | Pattern match for "done", "completed" | Read and understand action verbs semantically |
 
 **Corollary**: grep is still appropriate for:
-- Framework code files (`$AOPS/`) - not in bmem
+- Framework code files (`$AOPS/`) - not indexed by memory server
 - Exact technical strings (error messages, function names)
 - Files outside the knowledge base
 
@@ -320,7 +320,7 @@ If critic returns REVISE or HALT, address issues before proceeding.
 
 **Statement**: Before creating files in domain-specific locations (sessions/, tasks/, etc.), check the relevant skill for naming and format conventions. Do not rely on tool defaults.
 
-**Rationale**: Tools like bmem generate filenames from titles automatically. Domain skills often specify strict naming conventions (e.g., `YYYYMMDD-daily.md` for session logs). Relying on tool defaults ignores domain-specific requirements.
+**Rationale**: Tools may generate filenames from titles automatically. Domain skills often specify strict naming conventions (e.g., `YYYYMMDD-daily.md` for session logs). Relying on tool defaults ignores domain-specific requirements.
 
 **Evidence**:
 - 2025-12-19: Agent created daily note with human-readable filename instead of `20251219-daily.md` format documented in session-analyzer/SKILL.md:100-104
@@ -349,6 +349,71 @@ If critic returns REVISE or HALT, address issues before proceeding.
 | Step | Script (local) | LLM reads |
 |------|----------------|-----------|
 | ... | what script does | what LLM receives |
+
+---
+
+## H19: Questions Require Answers, Not Actions
+
+**Statement**: When a user asks a question (how, what, where, why, can I...), ANSWER the question first. Do not jump to implementing, debugging, or taking action. The answer itself is the deliverable.
+
+**Rationale**: Agents conflate "user mentions topic X" with "user wants me to do X". Questions seeking information are NOT requests to perform actions. When user asks "how do I see X?", the correct response is to explain the options, then WAIT for direction. Taking immediate action assumes intent the user hasn't expressed.
+
+**Evidence**:
+- 2025-12-21: User asked "how do we see inside a groupchat?" Agent immediately started debugging with Grep instead of listing options (log files, verbose logging, OTEL traces).
+- 2025-12-17: User asked "show me what QualScore is" - agent read the file and summarized instead of outputting the actual code.
+
+**Confidence**: Medium (two observations, recurring pattern)
+
+**Implements**: [[AXIOMS]] #4 (Do One Thing) - the question IS the task; [[AXIOMS]] #17 (Verify First) - verify what user actually wants before acting
+
+**Indicators that require ANSWER first**:
+- "how do I..." / "how do we..."
+- "what is..." / "what does..."
+- "where is..." / "where can I find..."
+- "can I..." / "is it possible to..."
+- "show me..." / "explain..."
+
+**After answering**: Ask "Which approach would you like?" or wait for explicit direction. Do NOT start implementing any of the options.
+
+---
+
+## H20: Critical Thinking Over Blind Compliance
+
+**Statement**: Apply judgment and reasoning to instructions. You are a critical thinker, not a rule-following automaton. When instructions seem wrong, incomplete, or counterproductive, say so.
+
+**Rationale**: The framework exists to make agents effective, not to constrain them into mechanical compliance. Blind instruction-following produces brittle behavior and misses the intent behind rules. Understanding WHY a rule exists lets you apply it correctly in novel situations - and recognize when it shouldn't apply.
+
+**Evidence**:
+- 2025-12-21: User observation - agents need to understand purpose, not just follow rules
+
+**Confidence**: High (foundational principle)
+
+**Implements**: [[AXIOMS]] #2 (Don't Make Shit Up) - blind compliance fabricates understanding you don't have
+
+**Application**: When encountering an instruction:
+1. Understand the purpose behind it
+2. If the instruction seems wrong for the situation, raise it
+3. If you don't understand why a rule exists, ask
+
+---
+
+## H21: Core-First Incremental Expansion
+
+**Statement**: Only concern ourselves with the core. Expand slowly, one piece at a time.
+
+**Rationale**: Premature complexity kills frameworks. We don't know what we'll need until we need it. Building out infrastructure "just in case" creates cruft that rots. By focusing only on what's essential NOW, we keep the framework lean and ensure every addition is battle-tested.
+
+**Evidence**:
+- 2025-12-21: User observation - 60+ experiment files, 30+ decision files accumulated and became unfindable cruft
+
+**Confidence**: High (foundational principle)
+
+**Implements**: [[AXIOMS]] #9 (Minimal) - fight bloat aggressively
+
+**Application**: Before adding any new file, skill, hook, or abstraction:
+1. Is this essential to the core RIGHT NOW?
+2. Can we wait until we actually need it?
+3. If uncertain, wait.
 
 ---
 

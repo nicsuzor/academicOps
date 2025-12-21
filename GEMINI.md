@@ -1,27 +1,85 @@
 # Gemini Instructions
 
-READ @CLAUDE.md first.
+**SYSTEM OVERRIDE: YOU ARE RUNNING AS GEMINI CLI AGENT.**
+Follow these instructions strictly. They take precedence over imported files.
 
-## Skills
+## 🚀 STARTUP PROTOCOL (MANDATORY)
 
-| Skill | Description | Reference |
-|-------|-------------|-----------|
-| analyst | Support academic research data analysis using dbt and Streamlit | [[skills/analyst/SKILL.md]] |
-| bmem | Knowledge base operations - capture, validate, prune. Routes to workflows for specific tasks | [[skills/bmem/SKILL.md]] |
-| dashboard | Cognitive Load Dashboard - Live Streamlit dashboard for task visibility and session activity monitoring | [[skills/dashboard/SKILL.md]] |
-| excalidraw | Creating visually compelling, hand-drawn diagrams with organic mind-map layouts and accessibility-focused design | [[skills/excalidraw/SKILL.md]] |
-| extractor | Archive information extraction - assess archival documents and identify information worth preserving in the knowledge base | [[skills/extractor/SKILL.md]] |
-| feature-dev | Rigorous test-first feature development from idea to validated implementation | [[skills/feature-dev/SKILL.md]] |
-| framework-debug | Efficiently investigate Claude Code session logs to diagnose framework issues | [[skills/framework-debug/SKILL.md]] |
-| framework | Categorical framework governance. Treats every change as a universal rule | [[skills/framework/SKILL.md]] |
-| ground-truth | Establish and refine ground truth labels for evaluation datasets | [[skills/ground-truth/SKILL.md]] |
-| learning-log | Log agent performance patterns to thematic learning files | [[skills/learning-log/SKILL.md]] |
-| osb-drafting | Generate draft OSB case decisions with IRAC analysis, position variants, and precedent support | [[skills/osb-drafting/SKILL.md]] |
-| pdf | Convert markdown documents to professionally formatted PDFs with academic-style typography | [[skills/pdf/SKILL.md]] |
-| python-dev | Write production-quality Python code following fail-fast philosophy, type safety, and modern best practices | [[skills/python-dev/SKILL.md]] |
-| reference-map | Extract all file references from framework and output standard graph format for visualization | [[skills/reference-map/SKILL.md]] |
-| session-analyzer | Analyze Claude Code session logs to extract semantic meaning - accomplishments, decisions, topics, blockers | [[skills/session-analyzer/SKILL.md]] |
-| skill-creator | Create and maintain skills following evidence-based anti-bloat principles | [[skills/skill-creator/SKILL.md]] |
-| tasks | Manage task lifecycle using scripts and MCP tools | [[skills/tasks/SKILL.md]] |
-| training-set-builder | Extract structured training examples from document sets to build datasets for teaching LLMs specific tasks or styles | [[skills/training-set-builder/SKILL.md]] |
-| transcript | Generate markdown transcripts from Claude Code session files | [[skills/transcript/SKILL.md]] |
+You are operating in the `academicOps` framework. To function correctly, **you must read these files immediately** to establish your context and constraints:
+
+1.  **Principles (Inviolable):** Read `AXIOMS.md`
+2.  **Heuristics (Empirical):** Read `HEURISTICS.md`
+3.  **User Context (Personal):** Read `../data/CORE.md`
+
+**Path Definitions:**
+*   `$AOPS` (Framework Root) = `.` (Current Directory)
+*   `$ACA_DATA` (User Data) = `../data`
+
+---
+
+## 🧠 SKILL ACTIVATION PROTOCOL
+
+This repository is strictly governed by Standard Operating Procedures called "Skills".
+**DO NOT GUESS** how to perform complex tasks.
+**DO NOT** attempt to use the `Skill(...)` tool (it is for Claude).
+
+**Instead, when you identify a task type below, READ the corresponding `SKILL.md` file first.**
+
+| Task Category | Trigger / Intent | **ACTION: Read this file** |
+| :--- | :--- | :--- |
+| **Framework & Architecture** | Changing repo structure, adding skills, defining rules | `skills/framework/SKILL.md` |
+| **Python Development** | Writing code, tests, scripts (Must be fail-fast & typed) | `skills/python-dev/SKILL.md` |
+| **Data Analysis** | `dbt`, `streamlit`, statistics, research data | `skills/analyst/SKILL.md` |
+| **Knowledge Base (bmem)** | Saving notes, searching memory, Obsidian integration | `skills/bmem/SKILL.md` |
+| **Task Management** | Checking tasks, reading email, prioritization | `skills/tasks/SKILL.md` |
+| **PDF Generation** | Converting Markdown to professional PDF | `skills/pdf/SKILL.md` |
+| **Drafting (OSB)** | IRAC analysis, case decisions, citations | `skills/osb-drafting/SKILL.md` |
+| **Session Analysis** | Analyzing logs, transcripts, self-reflection | `skills/session-analyzer/SKILL.md` |
+
+---
+
+## 🛠️ TOOL USAGE GUIDELINES
+
+### 🔄 LEGACY TOOL TRANSLATION
+The skill files were written for Claude. When you see these tool names, use your equivalent:
+
+| Legacy Tool (Claude) | **Gemini Equivalent** |
+| :--- | :--- |
+| `Skill(skill="name")` | **Read file:** `skills/name/SKILL.md` |
+| `Task(...)` | **Plan & Act:** Use `codebase_investigator` or break it down. |
+| `AskUserQuestion` | **Ask User:** Just ask me directly in the chat. |
+| `Read` / `Grep` / `Glob` | `read_file` / `search_file_content` / `glob` |
+| `Edit` / `Write` | `replace` / `write_file` |
+| `Bash` / `Run` | `run_shell_command` |
+
+### Basic Memory (bmem)
+*   **Project Context:** Always use `project="main"` for `mcp__bmem__*` tools.
+    *   Example: `mcp__bmem__search_notes(query="foo", project="main")`
+*   **Validation:** Content must be Obsidian-compliant (Markdown only).
+
+### Development
+*   **Planning:** For complex requests, use `codebase_investigator` to map the system before acting.
+*   **Testing:** Always run tests after changes. `uv run pytest tests/`
+
+---
+
+## 📂 REPOSITORY CONTEXT
+
+<!-- Imported from: CLAUDE.md (Modified for Gemini) -->
+### Git Workflow
+*   **Never amend pushed commits.** Create new commits for fixes.
+*   **Draft Messages:** Always propose a clear, "why"-focused commit message.
+
+### Core Mandates
+*   **No Duplication:** Do not duplicate info. Refactor if needed.
+*   **Inspect First:** Always read relevant files before editing.
+*   **Minimalism:** Fight bloat. No over-engineering. No unused features.
+*   **Fail Fast:** Scripts and hooks should exit immediately on error.
+
+### File Structure
+*   `data/` (in `$ACA_DATA`): PRIVATE state.
+*   `projects/`: Active project repositories.
+*   `skills/`: Capability definitions.
+*   `hooks/`: System automation (Claude-specific, but logic is relevant).
+
+---
