@@ -1,6 +1,6 @@
 ---
 name: tasks
-description: Manage task lifecycle using scripts and MCP tools. Create, view, archive, and update bmem-compliant task files with structured metadata.
+description: Manage task lifecycle using scripts and MCP tools. Create, view, archive, and update properly formatted task files with structured metadata.
 allowed-tools: Read,Grep,Glob,Edit,Write,Bash
 version: 2.1.0
 permalink: skills-tasks
@@ -10,11 +10,11 @@ permalink: skills-tasks
 
 ## Authoritative Domain Knowledge
 
-**Data Format**: Markdown (bmem-compliant) with YAML frontmatter
+**Data Format**: Markdown (properly formatted) with YAML frontmatter
 **Storage Location**: `data/tasks/*.md` in each repository
 **Required Fields**: title, created, priority (0-3)
 **Optional Fields**: due, project, classification
-**Write Access**: Scripts (task_add.py, task_view.py, task_archive.py) OR bmem MCP tools (mcp__bmem__edit_note) - agents must not write task files directly via Edit/Write tools
+**Write Access**: Scripts (task_add.py, task_view.py, task_archive.py) OR memory server via remember skill - agents must not write task files directly via Edit/Write tools
 **Scripts Location**: skills/tasks/scripts/
 **Cross-Repo**: Each repository has independent data/tasks/ directory
 
@@ -100,7 +100,7 @@ cd $AOPS && uv run python skills/tasks/scripts/task_archive.py "task1.md" --data
 
 ### task_add.py - Create New Tasks
 
-Create new task in inbox with bmem-compliant format.
+Create new task in inbox with properly formatted markdown.
 
 ```bash
 # Basic task (filename uses sanitized title as slug)
@@ -137,7 +137,7 @@ cd $AOPS && uv run python skills/tasks/scripts/task_add.py \
 - `--body`: Task description/context (or use `--body-from-file`)
 - `--data-dir`: Custom data directory (for testing)
 
-**Output**: Creates task file in `data/tasks/inbox/` with bmem-compliant format
+**Output**: Creates task file in `data/tasks/inbox/` with properly formatted markdown
 
 ### task_item_add.py - Add Checklist Items
 
@@ -308,14 +308,14 @@ Comprehensive workflows that integrate task management with other systems:
 **What it does**:
 1. Fetches recent emails via Outlook MCP
 2. Analyzes content for action items
-3. Queries bmem for context-aware categorization
+3. Queries memory server for context-aware categorization
 4. Creates tasks automatically with proper project/priority/tags
 5. Links tasks to source emails
 
 **Backend**: Uses task_add.py script (or Tasks MCP when available)
 
 **Key features**:
-- Context-aware categorization using bmem
+- Context-aware categorization using memory server
 - Confidence scoring (high/medium/low)
 - Priority inference from email signals
 - Duplicate detection
@@ -329,14 +329,14 @@ See `workflows/email-capture.md` for complete documentation.
 
 Scripts in `~/.claude/skills/tasks/scripts/` provide CLI interface:
 - **Availability**: Always (no dependencies)
-- **Format**: bmem-compliant markdown
+- **Format**: properly formatted markdown
 - **Use**: Development, testing, fallback
 
 ### MCP Backend (Optional)
 
 Tasks MCP server provides tool interface:
 - **Availability**: When `.mcp.json` configured and server running
-- **Format**: Same bmem-compliant markdown
+- **Format**: Same properly formatted markdown
 - **Use**: Production workflows, agent integration
 
 **Backend selection**: Workflows check MCP availability and fall back to scripts automatically.
@@ -347,4 +347,4 @@ This skill focuses on task _lifecycle_ (view, archive, create). Other skills han
 
 - **Email workflow**: Email → Task extraction ([[workflows/email-capture.md]])
 - **Session mining**: Extracting tasks from conversations (future)
-- **Knowledge graph**: Maintaining bmem format and links (via bmem tools)
+- **Knowledge persistence**: Maintaining format and links (via [[remember]] skill)

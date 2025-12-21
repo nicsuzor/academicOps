@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Create a new task in bmem-compliant markdown format.
+"""Create a new task in properly formatted markdown.
 
 Usage:
     uv run python $AOPS/skills/tasks/scripts/task_add.py --title "Task title" [options]
@@ -69,7 +69,7 @@ def parse_priority(value: str) -> int:
 def main():
     """CLI entry point."""
     parser = argparse.ArgumentParser(
-        description="Create a new task in bmem-compliant markdown format",
+        description="Create a new task in properly formatted markdown",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
 
@@ -170,7 +170,7 @@ def main():
             title=args.title,
             data_dir=data_dir,
             priority=args.priority,
-            task_type="task",  # Always "task" for bmem compliance
+            task_type="task",  # Always "task" for consistency
             project=args.project,
             due=due_datetime,
             body=body,

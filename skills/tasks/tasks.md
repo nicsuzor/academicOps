@@ -2,8 +2,8 @@
 title: Task Management System
 type: readme
 permalink: skills/tasks/readme
-description: FastMCP server providing task management tools with bmem-compliant formatting and integration support
-tags: [skill, tasks, task-management, mcp, bmem]
+description: FastMCP server providing task management tools with properly formatted markdown and integration support
+tags: [skill, tasks, task-management, mcp, memory]
 ---
 
 # Task Management MCP Server
@@ -363,9 +363,9 @@ create_task(
 
 ## Task File Format
 
-Tasks are stored in **bmem-compliant** markdown format with structured YAML frontmatter and body sections.
+Tasks are stored in **properly formatted** markdown with structured YAML frontmatter and body sections.
 
-### Bmem Format Structure
+### Format Structure
 
 ```markdown
 ---
@@ -403,8 +403,8 @@ Task description and context goes here. Can include multiple paragraphs and mark
 **Required frontmatter:**
 
 - `title`: Task title
-- `permalink`: Unique bmem permalink (taskid-1 format)
-- `type`: Always "task" for bmem compliance
+- `permalink`: Unique permalink (taskid-1 format)
+- `type`: Always "task" for consistency
 - `task_id`: Task identifier (YYYYMMDD-xxxxxxxx)
 - `created`: ISO 8601 timestamp
 - `modified`: ISO 8601 timestamp (auto-updated)
@@ -428,15 +428,15 @@ Task description and context goes here. Can include multiple paragraphs and mark
 - `## Observations`: Categorized facts with #tags (auto-generated, don't duplicate metadata)
 - `## Relations`: Links to related entities (optional)
 
-### Bmem Compliance
+### Format Compliance
 
 This format ensures compatibility with:
 
 - **Obsidian**: Full vault integration and linking
-- **bmem tools**: Knowledge base management
-- **Basic-memory MCP**: Memory persistence
+- **Memory server**: Knowledge persistence via remember skill
+- **MCP tools**: Task management operations
 
-Per CLAUDE.md: "All markdown in data/ must use bmem format"
+Per CLAUDE.md: "All markdown in data/ must use consistent formatting"
 
 ## Error Handling
 
@@ -629,7 +629,7 @@ uv run python $AOPS/skills/tasks/scripts/task_add.py --title "Task title" --slug
 
 **1.2.0** (2025-11-10)
 
-- **Bmem-compliant task format** - All tasks now use proper bmem structure
+- **Properly formatted task files** - All tasks now use consistent structure
 - **modify_task tool** - Sophisticated editing without archive/recreate
 - Proper frontmatter (permalink, task_id, aliases, modified timestamp)
 - Structured body (# Title, ## Context, ## Observations, ## Relations)
@@ -637,7 +637,7 @@ uv run python $AOPS/skills/tasks/scripts/task_add.py --title "Task title" --slug
 - No duplication of metadata in Observations
 - Partial updates (only change specified fields)
 - Tag add/remove operations
-- Obsidian and bmem tools compatibility
+- Obsidian and memory server compatibility
 
 **1.1.0** (2025-11-10)
 

@@ -109,7 +109,7 @@ def chunk_jsonl(input_file, output_dir, chunk_size=50):
    - Use Read tool → Read chunk content
    - Use LLM judgment → "Is this email important?"
    - Use LLM reasoning → Extract grant IDs, paper info, etc.
-   - Use Write tool → Create bmem entities
+   - Use Skill(skill="remember") → Persist knowledge to memory server
 4. Agent: Use Bash tool → `python merge_results.py results/*.json summary.json` (if needed)
 5. Agent: Analyze aggregated results
 

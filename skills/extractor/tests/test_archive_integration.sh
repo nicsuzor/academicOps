@@ -4,7 +4,7 @@
 # This test verifies the complete workflow:
 # 1. Batch script pops files from incoming
 # 2. Archive skill evaluates importance and extracts knowledge
-# 3. Important items converted to bmem format
+# 3. Important items converted to properly formatted markdown
 # 4. Source files deleted after confirmation
 # 5. Processing logged
 
@@ -138,7 +138,7 @@ fi
 # The wrapper should:
 # 1. Call batch_next.py to get next file
 # 2. Evaluate importance using archive skill
-# 3. Extract entities and generate bmem files
+# 3. Extract entities and generate properly formatted files
 # 4. Confirm processing (triggers deletion)
 
 echo -e "${YELLOW}Checking for archive skill wrapper...${NC}"
@@ -240,17 +240,19 @@ fi
 
 echo -e "${GREEN}PASSED: data/archive directory exists${NC}"
 
-# Test 4: Verify bmem validation tool exists
-echo -e "\n${YELLOW}Test 4: Verify bmem validation tool${NC}"
+# Test 4: Verify validation tool exists
+echo -e "\n${YELLOW}Test 4: Verify validation tool${NC}"
 
-if [ ! -f "bmem_tools.py" ]; then
-    echo -e "${RED}FAILED: bmem_tools.py not found${NC}"
+# Note: validation now happens through memory server
+# Check for remember skill instead
+if [ ! -f "skills/remember/SKILL.md" ]; then
+    echo -e "${RED}FAILED: remember skill not found${NC}"
     rm -rf "$FIXTURE_DIR"
     rm -f "$TEST_BATCH_SCRIPT"
     exit 1
 fi
 
-echo -e "${GREEN}PASSED: bmem validation tool exists${NC}"
+echo -e "${GREEN}PASSED: remember skill exists${NC}"
 
 # Test 5: Verify slash command exists and has correct structure
 echo -e "\n${YELLOW}Test 5: Verify /archive slash command${NC}"
@@ -263,7 +265,7 @@ if [ ! -f "bots/commands/archive.md" ]; then
 fi
 
 # Check that it references the skill
-if ! grep -q "skills/archive/SKILL.md" "bots/commands/archive.md"; then
+if ! grep -q "skills/extractor/SKILL.md" "bots/commands/archive.md"; then
     echo -e "${RED}FAILED: /archive command does not reference skill${NC}"
     rm -rf "$FIXTURE_DIR"
     rm -f "$TEST_BATCH_SCRIPT"
@@ -273,52 +275,52 @@ fi
 echo -e "${GREEN}PASSED: /archive slash command properly configured${NC}"
 
 # Test 6: Verify skill documentation exists
-echo -e "\n${YELLOW}Test 6: Verify archive skill documentation${NC}"
+echo -e "\n${YELLOW}Test 6: Verify extractor skill documentation${NC}"
 
-if [ ! -f "bots/skills/archive/SKILL.md" ]; then
-    echo -e "${RED}FAILED: Archive skill documentation not found${NC}"
+if [ ! -f "skills/extractor/SKILL.md" ]; then
+    echo -e "${RED}FAILED: Extractor skill documentation not found${NC}"
     rm -rf "$FIXTURE_DIR"
     rm -f "$TEST_BATCH_SCRIPT"
     exit 1
 fi
 
 # Check for importance criteria
-if ! grep -q "Important (Extract and Preserve)" "bots/skills/archive/SKILL.md"; then
+if ! grep -q "Important (Extract and Preserve)" "skills/extractor/SKILL.md"; then
     echo -e "${RED}FAILED: Skill missing importance criteria${NC}"
     rm -rf "$FIXTURE_DIR"
     rm -f "$TEST_BATCH_SCRIPT"
     exit 1
 fi
 
-echo -e "${GREEN}PASSED: Archive skill documentation complete${NC}"
+echo -e "${GREEN}PASSED: Extractor skill documentation complete${NC}"
 
-# Test 7: Verify batch-extractor agent
-echo -e "\n${YELLOW}Test 7: Verify batch-extractor agent${NC}"
+# Test 7: Verify extractor workflow
+echo -e "\n${YELLOW}Test 7: Verify extractor workflow${NC}"
 
-if [ ! -f "bots/agents/batch-extractor/AGENT.md" ]; then
-    echo -e "${RED}FAILED: batch-extractor agent not found${NC}"
+if [ ! -f "skills/extractor/SKILL.md" ]; then
+    echo -e "${RED}FAILED: extractor skill not found${NC}"
     rm -rf "$FIXTURE_DIR"
     rm -f "$TEST_BATCH_SCRIPT"
     exit 1
 fi
 
-# Check that archive command references the agent
-if ! grep -q "batch-extractor" "bots/commands/archive.md"; then
-    echo -e "${RED}FAILED: /archive command does not reference agent${NC}"
+# Check that extractor skill exists
+if [ ! -f "skills/extractor/SKILL.md" ]; then
+    echo -e "${RED}FAILED: extractor skill not properly configured${NC}"
     rm -rf "$FIXTURE_DIR"
     rm -f "$TEST_BATCH_SCRIPT"
     exit 1
 fi
 
-# Check that agent has both task types
-if ! grep -q "archive" "bots/agents/batch-extractor/AGENT.md"; then
-    echo -e "${RED}FAILED: Agent missing archive task configuration${NC}"
+# Check that skill has archive task configuration
+if ! grep -q "archive\|extract" "skills/extractor/SKILL.md"; then
+    echo -e "${RED}FAILED: Skill missing extraction configuration${NC}"
     rm -rf "$FIXTURE_DIR"
     rm -f "$TEST_BATCH_SCRIPT"
     exit 1
 fi
 
-echo -e "${GREEN}PASSED: batch-extractor agent configured${NC}"
+echo -e "${GREEN}PASSED: extractor workflow configured${NC}"
 
 # Summary
 echo -e "\n${GREEN}========================================${NC}"
@@ -326,15 +328,15 @@ echo -e "${GREEN}Integration Test Summary${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo -e "${GREEN}✓ Batch script can retrieve files${NC}"
 echo -e "${GREEN}✓ Directory structure correct${NC}"
-echo -e "${GREEN}✓ bmem validation tool available${NC}"
+echo -e "${GREEN}✓ Remember skill available${NC}"
 echo -e "${GREEN}✓ /archive slash command configured${NC}"
-echo -e "${GREEN}✓ Archive skill documentation complete${NC}"
-echo -e "${GREEN}✓ batch-extractor agent configured${NC}"
+echo -e "${GREEN}✓ Extractor skill documentation complete${NC}"
+echo -e "${GREEN}✓ Extractor workflow configured${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo -e ""
 echo -e "${YELLOW}NOTE: End-to-end workflow testing (actual LLM-powered${NC}"
 echo -e "${YELLOW}classification and extraction) should be done manually${NC}"
-echo -e "${YELLOW}by running: /archive${NC}"
+echo -e "${YELLOW}by running the extractor skill${NC}"
 
 # Clean up
 echo -e "\n${YELLOW}Cleaning up test artifacts...${NC}"

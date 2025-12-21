@@ -42,15 +42,15 @@ result = claude_headless(
 - Skill invocation produces expected output
 - Scripts discoverable via symlinks
 
-### 4. Bmem Skill Tests
-- Creates valid Obsidian files
-- Writes to $ACA_DATA
-- Handles YAML escaping
+### 4. Remember Skill Tests
+- Delegates to memory server MCP tools
+- Persists knowledge via Skill(skill="remember")
+- Retrieves via mcp__memory__retrieve_memory
 
 ## What E2E Tests Cannot Do (Gaps)
 
 1. **Hook behavior** - No tests for PreToolUse/PostToolUse execution
-2. **MCP server integration** - No tests for bmem MCP tool calls
+2. **MCP server integration** - No tests for memory server MCP tool calls
 3. **Multi-turn conversations** - All tests are single-prompt
 4. **Error recovery** - No tests for agent behavior when tools fail
 5. **Prompt Intent Router** - New spec, no tests yet
@@ -66,7 +66,7 @@ tests/
     ├── test_headless_fixture.py   # Fixture validation (7 tests)
     ├── test_session_start_content.py
     ├── test_file_loading_e2e.py
-    ├── test_bmem_*.py             # Bmem tests
+    ├── test_remember_*.py         # Remember skill tests
     ├── test_skill_script_discovery.py
     ├── test_subagent_skill_invocation.py
     └── test_task_viz.py

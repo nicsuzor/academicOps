@@ -2,7 +2,7 @@
 name: email-task-capture
 description: Extract action items from emails and create tasks automatically with context-aware categorization
 permalink: skills/tasks/workflows/email-capture
-tags: [workflow, email, task-capture, automation, bmem]
+tags: [workflow, email, task-capture, automation, memory]
 version: 1.0.0
 phase: 2
 backend: scripts
@@ -22,12 +22,12 @@ backend: scripts
 
 **Before fetching emails**, check existing tasks to prevent duplicates. Emails persist in inbox and get re-read by this workflow.
 
-**Use bmem semantic search** (preferred over grep):
+**Use memory server semantic search** (preferred over grep):
 ```
-mcp__bmem__search_notes(query="email subject keywords", types=["task"])
+mcp__memory__retrieve_memory(query="email subject keywords")
 ```
 
-**Fallback to file search if bmem unavailable**:
+**Fallback to file search if memory server unavailable**:
 ```bash
 # Search inbox tasks
 grep -li "SEARCH_TERM" $ACA_DATA/tasks/inbox/*.md
@@ -108,11 +108,11 @@ For each email, extract potential action items by identifying:
 }
 ```
 
-### Step 3: Gather Context from bmem
+### Step 3: Gather Context from Memory Server
 
-For each extracted action, query **bmem MCP** for relevant context.
+For each extracted action, query **memory server** for relevant context.
 
-**Tool**: `mcp__bmem__search_notes`
+**Tool**: `mcp__memory__retrieve_memory`
 
 **Parameters**:
 
@@ -126,7 +126,7 @@ For each extracted action, query **bmem MCP** for relevant context.
 
 ```json
 {
-  "tool": "mcp__bmem__search_notes",
+  "tool": "mcp__memory__retrieve_memory",
   "parameters": {
     "query": "OSB vote content removal oversight board"
   }
@@ -139,7 +139,7 @@ For each extracted action, query **bmem MCP** for relevant context.
 - Sender name/email
 - Key terms from action description
 
-**Extract from bmem**:
+**Extract from memory**:
 
 - **Projects**: Active projects matching email content
 - **Goals**: Related strategic goals
@@ -150,7 +150,7 @@ For each extracted action, query **bmem MCP** for relevant context.
 
 ```
 Email subject: "OSB Cycle 38 Vote - Content removal case #2024-123"
-bmem query: "OSB vote content removal oversight board"
+Memory query: "OSB vote content removal oversight board"
 Returns: project: oversight-board, tags: [osb, vote, content-moderation]
 ```
 
@@ -160,7 +160,7 @@ Match actions to projects/tags with confidence scores:
 
 **High confidence (>80%)**: Auto-apply categorization
 
-- Strong project keyword match in bmem
+- Strong project keyword match in memory
 - Known sender-project association
 - Clear deadline signals priority
 
@@ -173,7 +173,7 @@ Match actions to projects/tags with confidence scores:
 **Low confidence (<50%)**: Create in inbox, needs manual categorization
 
 - Ambiguous content
-- No bmem matches
+- No memory matches
 - Add tag: `#needs-categorization`
 
 **Categorization criteria**:
@@ -229,7 +229,7 @@ Determine priority (P0-P3) from email signals:
 
 2. Scripts backend (Phase 1-2, always available):
    - Use: task_add.py script via Bash tool
-   - Format: Same bmem-compliant markdown as MCP
+   - Format: Same properly formatted markdown as MCP
 
 3. Format is backend-agnostic - both create identical task files
 ```
@@ -244,7 +244,7 @@ Required:
 
 Optional:
 - --priority: P0, P1, P2, or P3 (inferred from signals)
-- --project: Project slug (from bmem match)
+- --project: Project slug (from memory match)
 - --classification: "Action", "Review", "Admin", etc.
 - --due: Deadline in ISO8601 format (e.g., 2025-11-15T17:00:00Z)
 - --tags: Comma-separated tags (no spaces)
@@ -386,7 +386,7 @@ What would you like to do?
 
 **Continue with reduced functionality**:
 
-1. **bmem MCP unavailable**
+1. **Memory server unavailable**
    - Impact: No context for categorization
    - Fallback: Create all tasks with #needs-categorization
    - Continue: Yes, task capture still valuable
@@ -493,10 +493,10 @@ Log: Record failures to data/logs/task-capture-errors.jsonl
 ```
 For each action item:
 
-1. Query bmem with subject + sender + keywords
+1. Query memory with subject + sender + keywords
 2. Calculate match score:
    - Strong project keyword match: +40 points
-   - Sender-project association in bmem: +30 points
+   - Sender-project association in memory: +30 points
    - Clear deadline signals priority: +20 points
    - Explicit action verbs: +10 points
 
@@ -532,7 +532,7 @@ Thank you,
 OSB Secretariat
 ```
 
-**bmem query result**:
+**Memory query result**:
 
 ```
 Project: oversight-board
@@ -600,7 +600,7 @@ Best,
 Jane
 ```
 
-**bmem query result**:
+**Memory query result**:
 
 ```
 Project: Uncertain - could be "ai-governance" or "research-collaboration"
@@ -669,7 +669,7 @@ This week's highlights:
 [... newsletter content ...]
 ```
 
-**bmem query result**:
+**Memory query result**:
 
 ```
 Project: None matched
@@ -698,9 +698,9 @@ Rationale: Informational content from automated sender
 
 **Issue**: "All tasks created with #needs-categorization"
 
-- **Cause**: bmem MCP not responding or context insufficient
-- **Fix**: Verify bmem MCP connection, enrich bmem context with more project data
-- **Check**: Query bmem manually to verify it returns project matches
+- **Cause**: Memory server not responding or context insufficient
+- **Fix**: Verify memory server connection, enrich memory with more project data
+- **Check**: Query memory manually to verify it returns project matches
 
 **Issue**: "Duplicate tasks created"
 
@@ -710,14 +710,14 @@ Rationale: Informational content from automated sender
 
 **Issue**: "Wrong project assignments"
 
-- **Cause**: bmem context doesn't match email patterns well
-- **Fix**: Review categorization patterns, update bmem project descriptions
+- **Cause**: Memory context doesn't match email patterns well
+- **Fix**: Review categorization patterns, update memory with better project descriptions
 - **Check**: Review data/logs/task-capture.jsonl for categorization accuracy
 
 **Issue**: "Tasks created but workflow slow (>30 seconds)"
 
-- **Cause**: Too many bmem queries or email processing
-- **Fix**: Batch bmem queries, limit email count per check
+- **Cause**: Too many memory queries or email processing
+- **Fix**: Batch memory queries, limit email count per check
 - **Check**: Monitor timing in logs, optimize sequential vs parallel calls
 
 ## Configuration
@@ -780,7 +780,7 @@ TASK_CAPTURE_AUTO_CREATE=false
 - **Task Backend**: [[../README.md]]
 - **Task Scripts**: [[../scripts/]]
 - **Tasks MCP**: `.mcp.json` configuration
-- **bmem Integration**: [[bmem search|#step-3-gather-context-from-bmem]]
+- **Memory Integration**: [[remember|#step-3-gather-context-from-memory-server]]
 - **Outlook MCP**: User email access configuration
 - **Framework**: `Skill(skill="framework")` for experiment tracking
 

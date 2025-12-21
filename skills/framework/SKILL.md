@@ -133,7 +133,7 @@ Per AXIOMS.md #1: Every action must be justifiable as a universal rule derived f
 ### When Operating on User Data
 
 1. **Identify the operation category**: What type of work is this?
-2. **Find existing skill**: Does a skill already handle this? (bmem, tasks, analyst, etc.)
+2. **Find existing skill**: Does a skill already handle this? (remember, tasks, analyst, etc.)
 3. **If skill exists**: Invoke it with `FRAMEWORK SKILL CHECKED` token
 4. **If NO skill exists**: Create one first, THEN invoke it
 
@@ -148,11 +148,10 @@ When no skill handles a needed user data operation:
 
 **This is recursive**: Creating a skill uses the framework skill. The framework skill provides the patterns. Skill creation happens in `$AOPS/skills/` (framework files = direct modification OK).
 
-**Example**: Need to clean up non-compliant files in `$ACA_DATA/`?
+**Example**: Need to persist framework learning?
 1. Invoke `framework` skill
-2. Framework skill creates `cleanup` skill in `$AOPS/skills/cleanup/`
-3. Framework skill then invokes `cleanup` skill to do the work
-4. Future cleanup uses the same skill
+2. Framework skill delegates to `remember` skill for knowledge persistence
+3. Future retrieval uses memory server for semantic search
 
 - ❌ Wrong: Directly delete files in `$ACA_DATA/`
 - ✅ Right: Create skill via framework, then invoke it
@@ -210,7 +209,7 @@ Each folder should have a markdown file with the same name as the folder.
 
 ```
 projects/aops/aops.md      # ✅ Core file for aops/ folder
-skills/bmem/bmem.md        # ✅ Core file for bmem/ folder
+skills/remember/SKILL.md   # ✅ Core file for remember/ folder
 ```
 
 ### Single Source of Truth
@@ -275,7 +274,7 @@ Skills in `skills/` MUST NOT contain dynamic data. All mutable state goes in `$A
 
 ### Markdown Format Convention
 
-All framework markdown files use bmem+obsidian format with relative wikilinks:
+All framework markdown files use properly formatted markdown with relative wikilinks:
 
 1. **Frontmatter**: Required fields: `title`, `permalink`, `type`, `tags` (see [[BMEM-OBSIDIAN-GUIDE.md]])
 2. **Links**: Use relative wikilinks with paths: `[[folder/file.md]]` or `[[../sibling/file.md]]`
@@ -427,7 +426,7 @@ Per AXIOMS.md #11 (Categorical Imperative): Every file must fit a defined catego
 Cleanup is NOT a separate process. It's verifying files comply with these rules:
 - Files outside defined locations → delete or move
 - Duplicate content → consolidate
-- Session detritus → delete (learning already in conversation/bmem)
+- Session detritus → delete (learning already in conversation/memory server)
 
 ## Compliance Refactoring Workflow
 
@@ -475,9 +474,6 @@ Detailed guides for specific framework topics:
 - [[references/e2e-test-harness.md]] - Test harness infrastructure
 - [[references/claude-code-config.md]] - Claude Code configuration
 - [[references/strategic-partner-mode.md]] - Strategic collaboration mode
-- [[references/basic-memory-ai-guide.md]] - Basic Memory for AI agents
-- [[references/basic-memory-mcp-tools.md]] - bmem MCP tool reference
-- [[references/basic-memory-sync-guide.md]] - bmem sync workflow
 
 ## Before You Modify
 

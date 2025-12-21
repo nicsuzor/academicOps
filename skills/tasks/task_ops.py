@@ -132,7 +132,7 @@ def _parse_frontmatter(content: str, filename: str) -> dict[str, Any]:
 
 
 def _extract_context_section(raw_body: str) -> str:
-    """Extract Context section from bmem-formatted body.
+    """Extract Context section from properly formatted body.
 
     Args:
         raw_body: Full body content after frontmatter
@@ -283,9 +283,9 @@ def load_task_from_file(file_path: Path) -> Task:
 
 
 def save_task_to_file(task: Task, file_path: Path) -> None:
-    """Save task to markdown file with bmem-compliant YAML frontmatter.
+    """Save task to markdown file with properly formatted YAML frontmatter.
 
-    Generates bmem format with:
+    Generates format with:
     - Proper frontmatter (permalink, task_id, aliases, etc.)
     - Structured body (# Title, ## Context, ## Observations, ## Relations)
 
@@ -299,11 +299,11 @@ def save_task_to_file(task: Task, file_path: Path) -> None:
     # Extract task ID from filename (YYYYMMDD-xxxxxxxx)
     task_id = file_path.stem  # filename without .md
 
-    # Build bmem-compliant frontmatter
+    # Build properly formatted frontmatter
     frontmatter: dict[str, Any] = {
         "title": task.title,
-        "permalink": f"{task_id}-1",  # bmem permalink format
-        "type": "task",  # bmem uses 'task' not 'todo'
+        "permalink": f"{task_id}-1",  # permalink format
+        "type": "task",  # consistent type
         "tags": task.tags,
         "created": task.created.isoformat(),
         "modified": datetime.now(UTC).isoformat(),
@@ -333,7 +333,7 @@ def save_task_to_file(task: Task, file_path: Path) -> None:
     # Serialize to YAML
     yaml_str = yaml.dump(frontmatter, default_flow_style=False, allow_unicode=True)
 
-    # Build bmem-compliant body structure
+    # Build properly formatted body structure
     # Extract context from body if it exists, otherwise use title
     body_content = task.body or ""
 

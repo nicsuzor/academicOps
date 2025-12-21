@@ -32,15 +32,10 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 1
 
-      - name: Cache bmem database
-        uses: actions/cache@v4
-        with:
-          path: |
-            .bmem
-            ~/.local/share/basic-memory
-          key: bmem-${{ hashFiles('data/**/*.md') }}
-          restore-keys: |
-            bmem-
+      - name: Setup memory server access
+        run: |
+          echo "Memory server access via remote MCP over Tailscale"
+          # No caching needed - memory server is remote
 
       - name: Extract payload
         id: payload
@@ -70,73 +65,32 @@ jobs:
             --allowedTools "Read,Write,Edit,Bash(mkdir:*),Bash(date:*)"
             --max-turns 5
           prompt: |
-            Create a bmem-formatted note from this iOS capture.
+            Store this iOS capture to the memory server.
 
             INPUT:
             - Content: ${{ steps.payload.outputs.content }}
             - Tags: ${{ steps.payload.outputs.tags }}
 
             TASK:
-            1. Generate a concise, descriptive title from the content (3-7 words)
-            2. Create directory data/notes/mobile-captures/ if it doesn't exist
-            3. Generate a bmem-formatted markdown file with:
-               - YAML frontmatter (title, permalink, type: note, tags including mobile-capture)
-               - Context section noting this was captured from iOS
-               - Observations section with the content as an [idea] observation
-               - Relations section (can be empty initially)
-            4. Save as: data/notes/mobile-captures/YYYY-MM-DD-<slug>.md
-               (use today's date and a URL-safe slug from the generated title)
+            1. Use the [[remember]] skill to store this content to the memory server
+            2. Include metadata:
+               - Tags: mobile-capture, plus any from input
+               - Type: note
+               - Source: iOS capture via voice/text input
 
-            BMEM FORMAT:
-            ```
-            ---
-            title: <title>
-            permalink: <url-safe-slug>
-            type: note
-            tags:
-              - mobile-capture
-              - <other tags>
-            created: <ISO8601 timestamp>
-            ---
+            Example call:
+            Use mcp__memory__store_memory with:
+            - content: The iOS capture content
+            - metadata: { "tags": "mobile-capture,inbox,...", "type": "note" }
 
-            # <title>
+            Report success when the memory has been stored.
 
-            ## Context
-
-            Captured from iOS via voice/text input.
-
-            ## Observations
-
-            - [idea] <content> #mobile-capture
-
-            ## Relations
-
-            None
-            ```
-
-            Output the filepath of the created note when done.
-
-      - name: Commit changes
+      - name: Log capture
         env:
           NOTE_CONTENT: ${{ steps.payload.outputs.content }}
-          CREATED_FILE: ${{ steps.claude.outputs.result }}
+          CLAUDE_RESULT: ${{ steps.claude.outputs.result }}
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-
-          # Extract title from the created file if available
-          if [ -n "$CREATED_FILE" ] && [ -f "$CREATED_FILE" ]; then
-            TITLE=$(grep '^title:' "$CREATED_FILE" | sed 's/^title: //')
-            git add "$CREATED_FILE"
-          else
-            # Fallback: add all changes in data/
-            TITLE="iOS capture"
-            git add data/
-          fi
-
-          if git diff --staged --quiet; then
-            echo "No changes to commit"
-          else
-            git commit -m "capture(mobile): ${TITLE}"
-            git push
-          fi
+          echo "iOS capture stored to memory server"
+          echo "Content: ${NOTE_CONTENT:0:100}..."
+          echo "Result: $CLAUDE_RESULT"
+          # No git commit needed - memory is stored remotely

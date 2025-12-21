@@ -35,7 +35,7 @@ def get_project_color(project: str) -> str:
 
 
 def make_obsidian_url(title: str, folder: str) -> str:
-    """Create obsidian:// URL for a bmem note."""
+    """Create obsidian:// URL for a memory note."""
     # Obsidian uses actual title as filename, URL-encoded
     # quote() with safe='' encodes everything including slashes
     file_path = f"data/{folder}/{title}"
@@ -71,9 +71,9 @@ def get_session_state(session_info, analyzer: SessionAnalyzer) -> dict:
     """Extract current state from a session for display."""
     try:
         state = analyzer.extract_dashboard_state(session_info.path)
-        # Return last 3 bmem notes max (matching old behavior)
-        if state.get('bmem_notes'):
-            state['bmem_notes'] = state['bmem_notes'][-3:]
+        # Return last 3 memory notes max (matching old behavior)
+        if state.get('memory_notes'):
+            state['memory_notes'] = state['memory_notes'][-3:]
         return state
     except Exception:
         return {
@@ -81,7 +81,7 @@ def get_session_state(session_info, analyzer: SessionAnalyzer) -> dict:
             'first_prompt_full': 'Unable to parse session',
             'last_prompt': 'Unable to parse session',
             'todos': None,
-            'bmem_notes': [],
+            'memory_notes': [],
         }
 
 
@@ -202,7 +202,7 @@ st.markdown("""
         margin: 2px 0;
     }
 
-    .session-bmem {
+    .session-memory {
         color: #4ecdc4;
         font-size: 0.8em;
         white-space: nowrap;
@@ -215,7 +215,7 @@ st.markdown("""
         display: block;
     }
 
-    .session-bmem:hover {
+    .session-memory:hover {
         color: #7eeee6;
         text-decoration: underline;
     }
@@ -573,7 +573,7 @@ try:
         if proj not in projects:
             projects[proj] = {
                 'last_modified': session.last_modified,
-                'bmem_notes': [],
+                'memory_notes': [],
                 'git_project': session.project,
                 'session_count': 0
             }
@@ -582,11 +582,11 @@ try:
         if session.last_modified > projects[proj]['last_modified']:
             projects[proj]['last_modified'] = session.last_modified
 
-        # Aggregate bmem notes
-        existing_titles = {n['title'] for n in projects[proj]['bmem_notes']}
-        for note in state.get('bmem_notes', []):
+        # Aggregate memory notes
+        existing_titles = {n['title'] for n in projects[proj]['memory_notes']}
+        for note in state.get('memory_notes', []):
             if note['title'] not in existing_titles:
-                projects[proj]['bmem_notes'].append(note)
+                projects[proj]['memory_notes'].append(note)
                 existing_titles.add(note['title'])
 
     # Ensure all projects with tasks or accomplishments are included
@@ -618,10 +618,10 @@ try:
         if len(project_tasks) > 3:
             content_parts.append(f"<div class='task-item'>+{len(project_tasks)-3} more tasks</div>")
 
-        # 3. bmem notes (clickable to open in Obsidian)
-        for note in data.get('bmem_notes', [])[-2:]:
+        # 3. memory notes (clickable to open in Obsidian)
+        for note in data.get('memory_notes', [])[-2:]:
             obsidian_url = make_obsidian_url(note['title'], note.get('folder', ''))
-            content_parts.append(f"<a href='{obsidian_url}' class='session-bmem' target='_blank'>📝 {esc(note['title'])}</a>")
+            content_parts.append(f"<a href='{obsidian_url}' class='session-memory' target='_blank'>📝 {esc(note['title'])}</a>")
 
         # 4. Git activity
         git_project = data.get('git_project', '')

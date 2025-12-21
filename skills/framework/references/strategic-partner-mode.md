@@ -52,7 +52,7 @@ Before reporting work done:
 
 ## Context Loading
 
-**CRITICAL**: Use bmem MCP tools for ALL knowledge base access. NEVER read markdown files directly.
+**CRITICAL**: Use memory server MCP tools for ALL knowledge base access. NEVER read markdown files directly.
 
 **Framework references**: See [[hooks_guide]] and [[claude-code-config]] for technical context, [[script-design-guide]] for design principles, [[testing-with-live-data]] for verification methodology.
 
@@ -60,45 +60,45 @@ Before reporting work done:
 
 ```
 # 1. BINDING USER CONSTRAINTS (search FIRST)
-Use mcp__bmem__search_notes for:
+Use mcp__memory__retrieve_memory for:
 - "accommodations OR work style" → User constraints (as binding as AXIOMS)
 - "core OR user context" → User context (as binding as AXIOMS)
 
 # 2. CURRENT REALITY (ground truth)
-Use mcp__bmem__search_notes for:
-- "state OR current stage" in type:note → Current framework stage, blockers
+Use mcp__memory__retrieve_memory for:
+- "state OR current stage" → Current framework stage, blockers
 
 # 3. FRAMEWORK PRINCIPLES AND ASPIRATIONS
-Use mcp__bmem__search_notes for:
-- "vision OR end state" in type:note → Framework goals
-- "roadmap OR maturity progression" in type:note → Stage progression
+Use mcp__memory__retrieve_memory for:
+- "vision OR end state" → Framework goals
+- "roadmap OR maturity progression" → Stage progression
 - Read $AOPS/AXIOMS.md directly (framework principles, not user knowledge)
-- "experiment log OR learning patterns" → Past learnings from LOG.md
+- "experiment log OR learning patterns" → Past learnings
 
 # 4. TECHNICAL REFERENCES (search as needed for specific work)
-Use mcp__bmem__search_notes for:
+Use mcp__memory__retrieve_memory for:
 - "hooks guide OR hook configuration"
-- Other technical docs by topic/type
+- Other technical docs by topic
 ```
 
-**Critical**: User constraints (ACCOMMODATIONS) come BEFORE framework aspirations. STATE note establishes current reality before reading vision documents.
+**Critical**: User constraints (ACCOMMODATIONS) come BEFORE framework aspirations. Current state establishes reality before reading vision documents.
 
-**Why bmem**: Knowledge base files are in bmem format with semantic search. Use bmem to find relevant context efficiently rather than reading arbitrary files.
+**Why memory server**: Knowledge base uses semantic search. Use memory server to find relevant context efficiently rather than reading arbitrary files.
 
-## Key Queries (using bmem)
+## Key Queries (using memory server)
 
-- "What have we built?" → Search for roadmap/state notes, show progress toward vision
+- "What have we built?" → Search for roadmap/state, show progress toward vision
 - "What should we work on next?" → Search roadmap priorities, validate strategic fit
-- "Is X a good idea?" → Search vision/goals, evaluate against AXIOMS, search experiment log
-- "Why did we do Y?" → Search experiments log: `mcp__bmem__search_notes(query="[decision topic]")` in LOG.md
-- "What's our current state?" → Search for current state/roadmap status notes
+- "Is X a good idea?" → Search vision/goals, evaluate against AXIOMS, search experiments
+- "Why did we do Y?" → Search experiments: `mcp__memory__retrieve_memory(query="[decision topic]")`
+- "What's our current state?" → Search for current state/roadmap status
 
-## Decision-Making Framework (using bmem)
+## Decision-Making Framework (using memory server)
 
 1. Derive from AXIOMS.md (foundational principles - read directly from $AOPS)
-2. Align with vision: Search `mcp__bmem__search_notes(query="vision OR strategic direction")`
-3. Consider current stage: Search `mcp__bmem__search_notes(query="roadmap OR current stage")`
-4. Learn from past: Search `mcp__bmem__search_notes(query="[relevant topic] type:experiment-log")`
+2. Align with vision: Search `mcp__memory__retrieve_memory(query="vision OR strategic direction")`
+3. Consider current stage: Search `mcp__memory__retrieve_memory(query="roadmap OR current stage")`
+4. Learn from past: Search `mcp__memory__retrieve_memory(query="[relevant topic] experiments")`
 5. Default to simplicity and quality
 6. When uncertain, provide options with clear tradeoffs
 
