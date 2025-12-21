@@ -10,15 +10,13 @@ tags:
 
 # Prune Workflow
 
-Aggressively clean knowledge base by removing low-value files. Extract facts before deletion.
+Aggressively clean knowledge base by consolidating related files, removing low-value files, and extracting and organising knowledge.
 
-**Philosophy**: Email archive is the backup. Knowledge base should contain ONLY things worth searching for.
-
-## When to Use
-
-- "clean up", "declutter", "prune"
-- Knowledge base feels bloated
-- Too many low-value files cluttering search
+**Philosophy**: Knowledge base must be tended to regularly. 
+- Information added at different times should be consolidated; knowledge base should be up to date. 
+- Knowledge base should contain ONLY things worth searching for.
+- project files should tell current state without requiring changelog archaeology. 
+- Reduce file count while preserving essential knowledge.
 
 ## Classification Criteria
 
@@ -33,6 +31,53 @@ Files with zero lasting value:
 - Duplicates where content exists elsewhere
 
 **Test**: Would you ever search for this? If "no way" → DELETE
+
+### CONSOLIDATE (Time based logs)
+
+Guidelines for consolidating time-based observations and progress logs into an organized knowledge base. 
+
+#### Single Source of Truth
+
+- [principle] Each project should have ONE main file that captures current state #architecture
+- [principle] Readers should not need to hunt through multiple files to understand a project #usability
+- [principle] Time-based logs exist to feed the main file, not as permanent artifacts #workflow
+- [anti-pattern] Multiple files tracking the same thing from different angles causes confusion #redundancy
+
+#### Analyze Before Acting
+
+- [technique] Spawn parallel agents to analyze different areas simultaneously #efficiency
+- [technique] Create DELETE and KEEP lists with reasons before executing #safety
+- [technique] Read files to understand their actual status, not just their names #accuracy
+- [principle] Be aggressive in recommendations but careful in execution #balance
+
+
+#### What Makes Files Deletable
+
+- [criterion] Session logs where work is complete and observations are in project files #completed-work
+- [criterion] Phase completion reports superseded by consolidated documentation #superseded
+- [criterion] Plans that were executed (keep only outcomes, not the planning) #executed-plans
+- [criterion] Bug fixes that are complete and no longer need tracking #resolved-issues
+- [criterion] Partially implemented ideas that were abandoned and cause confusion #abandoned
+- [criterion] Duplicate versions (abridged/full pairs - keep one) #duplicates
+- [criterion] Empty or stub files with no substantive content #empty
+- [criterion] Historical travel/logistics notes with no ongoing relevance #obsolete
+- [criterion] Code references that belong in code repos, not knowledge bases #wrong-location
+
+#### What to Keep Separate
+
+- [keep] Meeting records, file notes, user written records
+- [keep] Main project file (single source of truth) #core
+- [keep] Active investigations still in progress #active-work
+- [keep] Reference guides actively consulted during work #reference
+- [keep] Learning logs and pattern digests (institutional memory) #learning
+
+#### Consolidation Patterns
+
+- [pattern] Extract key observations from session logs into main file's Observations section #extraction
+- [pattern] Move completed implementation details to "Recent Activity" or "Changelog" #history
+- [pattern] Summarize rather than copy verbatim - compress information #compression
+- [pattern] Archive granular files (like meeting transcripts) but keep summaries accessible #archival
+- [pattern] Rename unclear files to reflect actual content #clarity
 
 ### EXTRACT_DELETE
 
@@ -55,73 +100,54 @@ Files with mostly noise but some facts worth keeping:
 Files with lasting value:
 
 - Substantive prose (notes, reflections, analysis)
+- Contemporaneous notes (file notes, meeting notes, transcripts, etc)
 - Research content (literature notes, findings)
 - Strategic context (why decisions were made)
 - Relationship substance (collaboration history)
 
-**Test**: Is this actual prose or substantive content? → KEEP
+**Test**: Is this actual prose, meeting/file notes, or substantive content? → KEEP
 
-## Workflow
+## Execution Strategy
+
+- Use parallel agents  
+- Commit in logical chunks with descriptive messages
+- Track file count reduction as metric
+
 
 ### Phase 1: Discovery
 
-```bash
-# Count files
-find $ACA_DATA/<target> -name "*.md" -type f | wc -l
+1. Count total files to establish baseline
+2. Identify main directories/projects to analyze
+3. Spawn parallel agents to analyze different areas
+4. Each agent produces DELETE/KEEP recommendations with reasons
 
-# Sample types
-grep -roh "^type: .*" $ACA_DATA/<target> --include="*.md" | sort | uniq -c
-```
-
-### Phase 2: Classification
+### Phase 2: Triage by Category
 
 For each file:
 1. Read completely
 2. Classify: DELETE | EXTRACT_DELETE | KEEP
-3. For EXTRACT_DELETE: identify facts and target
 
-### Phase 3: User Decisions
+**Green Flags (Files Likely to Keep):**
+- [flag] Main project file matching directory name (e.g., `buttermilk/buttermilk.md`) #core
+- [flag] Files with "Architecture", "Specification", "Overview" (reference docs) #reference
+- [flag] Learning logs and digests (institutional memory) #learning
+- [flag] Files from current week (likely active work) #recent
 
-For unclear extractions, ask user:
-- Where should facts go?
-- Create new file or add to existing?
-- Skip extraction and just delete?
-
-### Phase 4: Execute
-
-**DELETE**:
-```bash
-git rm "<file_path>"
-```
-
-**EXTRACT_DELETE**:
-1. Append facts to target file
-2. Delete source: `git rm "<file_path>"`
-
-### Phase 5: Commit
-
-```bash
-git add -A
-git commit -m "cleanup(kb): remove N files, extract M facts
-
-Deleted: [count] files
-Extracted to: [list]
-Kept: [count] files"
-```
-
-## Fact Extraction Format
-
-```markdown
-- [fact] Person's role at Organization #affiliation
-- [collaboration] Worked together on X in 2013 #history
-- [event] Attended conference Y #professional
-- [decision] Chose approach A because B #strategic
-```
+**Consolidate then delete:**
+- Session logs → extract to main file → delete session
+- Phase reports → summarize in main file → delete phases
+- Implementation plans with completed outcomes → note completion → delete plan
 
 **DO NOT extract**:
 - Scheduling logistics
 - Ephemeral coordination
 - Pleasantries
+
+**Review before action:**
+- Files with unclear status
+- Potentially active investigations
+- Files that might be referenced elsewhere
+
 
 ## Decision Tree
 

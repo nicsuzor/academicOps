@@ -35,7 +35,15 @@ Extract accomplishments and learnings from Claude Code sessions. Idempotent - sa
 
 Find sessions via `lib.session_reader.find_sessions()` filtered by date.
 
-**Freshness check**: Generate if transcript missing OR session mtime > transcript mtime.
+**Freshness check**: For EACH session returned by find_sessions():
+
+```python
+# Match by session ID (first 8 chars) - NOT by counting files
+transcript_exists = any(transcript_dir.glob(f"*{session.session_id[:8]}*"))
+needs_update = not transcript_exists or session.last_modified > transcript.mtime
+```
+
+⚠️ **CRITICAL**: Do NOT assume existing files match current sessions. Sessions from different machines have different IDs. Always match explicitly.
 
 **Generate**: `Skill(skill="transcript")` for each needing update.
 
