@@ -23,15 +23,26 @@ The framework uses a memory server that indexes `$ACA_DATA/`. When you write mar
 - Recording something that should persist across sessions
 - Any time you would write to `$ACA_DATA/` for knowledge purposes
 
+## File Locations
+
+| Content | Location |
+|---------|----------|
+| General notes | `$ACA_DATA/context/` |
+| Goals | `$ACA_DATA/goals/` |
+| Project metadata | `$ACA_DATA/projects/<name>.md` |
+| Project details | `$ACA_DATA/projects/<name>/` |
+| Learning/patterns | `$ACA_DATA/projects/aops/learning/` |
+| Session notes | `$ACA_DATA/sessions/` |
+| Tasks | Delegate to [[tasks]] skill |
+
+**DO NOT create arbitrary directories** (e.g., `tech/`, `dev/`, `tools/`). Project-related notes go in `projects/<project-name>/`.
+
 ## Workflow
 
-1. **Determine file location** based on content type:
-   - Learning/pattern: `$ACA_DATA/projects/aops/learning/`
-   - Decision: Update relevant skill or ROADMAP.md (don't create new decision files)
-   - Task: Use tasks skill instead
-   - Session note: `$ACA_DATA/sessions/`
-
-2. **Write markdown file** with proper frontmatter:
+1. **Search first**: `mcp__memory__retrieve_memory(query="topic keywords")`
+2. **If match found**: AUGMENT existing file (don't create new)
+3. **If no match**: Create new TOPICAL file (not session/date file)
+4. **Write markdown file** with proper frontmatter:
 ```markdown
 ---
 title: [Descriptive Title]
@@ -68,6 +79,17 @@ mcp__memory__store_memory(
 Report:
 - File written: `[path]`
 - Memory stored: `[hash or confirmation]`
+
+## Workflows
+
+- [[workflows/capture]] - Session mining and silent extraction
+- [[workflows/validate]] - Check format compliance
+- [[workflows/prune]] - Clean low-value files
+
+## References
+
+- [[references/detail-level-guide]] - What level of detail goes where
+- [[references/obsidian-format-spec]] - Markdown and frontmatter format
 
 ## Open Questions
 
