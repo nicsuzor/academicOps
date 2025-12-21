@@ -13,7 +13,7 @@ def test_email_workflow_has_explicit_tool_examples() -> None:
 
     REQUIRED tool examples:
     - Step 1 (Fetch Emails): mcp__outlook__messages_list_recent OR mcp__outlook__messages_index
-    - Step 3 (Context from bmem): mcp__bmem__search_notes OR mcp__bmem__build_context
+    - Step 3 (Context from memory): mcp__memory__retrieve_memory
     - Step 6 (Create Tasks): Both task_add.py script format AND MCP tool structure
 
     Each tool example must include:
@@ -58,27 +58,27 @@ def test_email_workflow_has_explicit_tool_examples() -> None:
             "Expected: Parameters like 'account' or 'limit' with type information"
         )
 
-    # Step 3: Context from bmem - Must show explicit bmem MCP tool
-    bmem_tools = [
-        "mcp__bmem__search_notes",
-        "mcp__bmem__build_context",
+    # Step 3: Context from memory - Must show explicit memory MCP tool
+    memory_tools = [
+        "mcp__memory__retrieve_memory",
+        "mcp__memory__retrieve_with_quality_boost",
     ]
-    has_bmem_tool = any(tool in content for tool in bmem_tools)
-    assert has_bmem_tool, (
-        "Step 3 (Gather Context from bmem) must include explicit bmem MCP tool name.\n"
-        f"Expected one of: {bmem_tools}\n"
-        "Found: Generic 'query bmem MCP' without tool name"
+    has_memory_tool = any(tool in content for tool in memory_tools)
+    assert has_memory_tool, (
+        "Step 3 (Gather Context) must include explicit memory MCP tool name.\n"
+        f"Expected one of: {memory_tools}\n"
+        "Found: Generic description without tool name"
     )
 
-    # Verify bmem tool has parameter structure
-    if "mcp__bmem__search_notes" in content:
-        bmem_section_start = content.find("### Step 3: Gather Context from bmem")
-        bmem_section_end = content.find("### Step 4:", bmem_section_start)
-        bmem_section = content[bmem_section_start:bmem_section_end]
+    # Verify memory tool has parameter structure
+    if "mcp__memory__retrieve_memory" in content:
+        memory_section_start = content.find("### Step 3:")
+        memory_section_end = content.find("### Step 4:", memory_section_start)
+        memory_section = content[memory_section_start:memory_section_end]
 
-        assert "query" in bmem_section.lower() or "search" in bmem_section.lower(), (
-            "bmem MCP tool example must show parameter structure.\n"
-            "Expected: Parameters like 'query' or 'search_mode' with examples"
+        assert "query" in memory_section.lower(), (
+            "Memory MCP tool example must show parameter structure.\n"
+            "Expected: Parameter 'query' with examples"
         )
 
     # Step 6: Create Tasks - Must show both backend examples with full parameters

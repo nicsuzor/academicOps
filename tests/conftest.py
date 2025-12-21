@@ -93,7 +93,7 @@ def test_data_dir(tmp_path: Path, monkeypatch) -> Path:
 def _create_sample_task(
     directory: Path, task_id: str, title: str, priority: int, project: str
 ) -> None:
-    """Create a sample task file in bmem format.
+    """Create a sample task file in markdown format.
 
     Args:
         directory: Directory to create task file in
@@ -107,7 +107,7 @@ def _create_sample_task(
     filename = f"{task_id}.md"
     filepath = directory / filename
 
-    # Generate bmem-formatted content
+    # Generate properly formatted content
     now = datetime.now(timezone.utc).isoformat()
     created = datetime(2025, 1, 1, tzinfo=timezone.utc).isoformat()
 

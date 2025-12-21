@@ -2,7 +2,7 @@
 """Integration test for iOS Note Capture workflow E2E.
 
 Tests that the iOS Note Capture workflow's Claude Code action creates valid
-bmem-formatted notes from iOS capture payloads.
+properly formatted notes from iOS capture payloads.
 
 The workflow (`.github/workflows/ios-note-capture.yml`) uses Claude Code to
 process note captures. This E2E test verifies that the prompt produces notes
@@ -26,7 +26,7 @@ from tests.paths import get_data_dir
 @pytest.mark.integration
 @pytest.mark.slow
 def test_ios_note_capture_prompt_creates_valid_note(claude_headless, tmp_path):
-    """Test that iOS Note Capture workflow creates valid bmem-formatted note.
+    """Test that iOS Note Capture workflow creates valid properly formatted note.
 
     Simulates the Claude Code action's prompt from the iOS Note Capture
     workflow (lines 72-117 of `.github/workflows/ios-note-capture.yml`).
@@ -35,7 +35,7 @@ def test_ios_note_capture_prompt_creates_valid_note(claude_headless, tmp_path):
     - Note content (iOS input)
     - Tags (from iOS or default)
 
-    It should create a bmem-formatted markdown file with:
+    It should create a properly formatted markdown file with:
     - YAML frontmatter (title, permalink, type: note, tags, created timestamp)
     - Context section mentioning iOS capture
     - Observations section with [idea] observation containing input content
@@ -56,7 +56,7 @@ def test_ios_note_capture_prompt_creates_valid_note(claude_headless, tmp_path):
     start_time = time.time() - 1
 
     # Extract exact prompt from workflow YAML (lines 72-117)
-    prompt = f"""Create a bmem-formatted note from this iOS capture.
+    prompt = f"""Create a properly formatted note from this iOS capture.
 
 INPUT:
 - Content: {content}
@@ -65,7 +65,7 @@ INPUT:
 TASK:
 1. Generate a concise, descriptive title from the content (3-7 words)
 2. Create directory data/notes/mobile-captures/ if it doesn't exist
-3. Generate a bmem-formatted markdown file with:
+3. Generate a properly formatted markdown file with:
    - YAML frontmatter (title, permalink, type: note, tags including mobile-capture)
    - Context section noting this was captured from iOS
    - Observations section with the content as an [idea] observation
@@ -273,7 +273,7 @@ def test_ios_note_capture_commit_message_format(claude_headless, tmp_path):
     tags = "mobile-capture,research,systems"
 
     # Extract exact prompt from workflow YAML (lines 72-117)
-    prompt = f"""Create a bmem-formatted note from this iOS capture.
+    prompt = f"""Create a properly formatted note from this iOS capture.
 
 INPUT:
 - Content: {content}
@@ -282,7 +282,7 @@ INPUT:
 TASK:
 1. Generate a concise, descriptive title from the content (3-7 words)
 2. Create directory data/notes/mobile-captures/ if it doesn't exist
-3. Generate a bmem-formatted markdown file with:
+3. Generate a properly formatted markdown file with:
    - YAML frontmatter (title, permalink, type: note, tags including mobile-capture)
    - Context section noting this was captured from iOS
    - Observations section with the content as an [idea] observation
@@ -426,7 +426,7 @@ def test_ios_note_capture_handles_empty_content(claude_headless, tmp_path):
     tags = "mobile-capture"
 
     # Extract exact prompt from workflow YAML (lines 72-117)
-    prompt = f"""Create a bmem-formatted note from this iOS capture.
+    prompt = f"""Create a properly formatted note from this iOS capture.
 
 INPUT:
 - Content: {content}
@@ -435,7 +435,7 @@ INPUT:
 TASK:
 1. Generate a concise, descriptive title from the content (3-7 words)
 2. Create directory data/notes/mobile-captures/ if it doesn't exist
-3. Generate a bmem-formatted markdown file with:
+3. Generate a properly formatted markdown file with:
    - YAML frontmatter (title, permalink, type: note, tags including mobile-capture)
    - Context section noting this was captured from iOS
    - Observations section with the content as an [idea] observation
