@@ -155,12 +155,58 @@ else
     echo -e "${GREEN}✓ Created settings.local.json${NC}"
 fi
 
-# Step 2b: Sync MCP servers to ~/.claude.json
+# Step 2b: Build and sync MCP servers to ~/.claude.json
 # Note: Claude Code reads user-scoped MCP servers from ~/.claude.json mcpServers key,
 # NOT from ~/.mcp.json. We merge our authoritative config into ~/.claude.json.
 echo
-echo "Syncing MCP servers to ~/.claude.json..."
+echo "Building MCP configuration..."
+
+# Detect platform for outlook config selection
+detect_outlook_mode() {
+    # Allow env override
+    if [ -n "${MCP_OUTLOOK_MODE:-}" ]; then
+        echo "$MCP_OUTLOOK_MODE"
+        return
+    fi
+
+    case "$(uname -s)" in
+        Darwin)
+            echo "macos"
+            ;;
+        MINGW*|MSYS*|CYGWIN*)
+            echo "windows"
+            ;;
+        Linux)
+            # Linux uses proxy (could be dev3 server or WSL client)
+            echo "proxy"
+            ;;
+        *)
+            echo "proxy"
+            ;;
+    esac
+}
+
+OUTLOOK_MODE=$(detect_outlook_mode)
+echo "  Platform outlook mode: $OUTLOOK_MODE"
+
+# Merge base config with outlook fragment
+mcp_base="$AOPS_PATH/config/claude/mcp-base.json"
+mcp_outlook="$AOPS_PATH/config/claude/mcp-outlook-${OUTLOOK_MODE}.json"
 mcp_source="$AOPS_PATH/config/claude/mcp.json"
+
+if [ -f "$mcp_base" ] && [ -f "$mcp_outlook" ] && command -v jq &> /dev/null; then
+    # Deep merge: base + outlook fragment
+    jq -s '.[0] * .[1]' "$mcp_base" "$mcp_outlook" > "$mcp_source"
+    echo -e "${GREEN}✓ Built mcp.json from base + outlook-${OUTLOOK_MODE}${NC}"
+elif [ ! -f "$mcp_base" ]; then
+    echo -e "${RED}✗ Missing $mcp_base${NC}"
+    exit 1
+elif [ ! -f "$mcp_outlook" ]; then
+    echo -e "${RED}✗ Missing $mcp_outlook${NC}"
+    exit 1
+fi
+
+echo "Syncing MCP servers to ~/.claude.json..."
 
 if [ -f "$mcp_source" ] && command -v jq &> /dev/null; then
     if [ -f "$HOME/.claude.json" ]; then

@@ -319,3 +319,6 @@ data/views/today-priorities-*.md
 
 # Generated state files
 reference-graph.json
+
+# Generated MCP config (built from fragments by setup.sh)
+config/claude/mcp.json

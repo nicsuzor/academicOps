@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "outlook": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": ["outlook-mcp"],
+      "env": {}
+    }
+  }
+}
