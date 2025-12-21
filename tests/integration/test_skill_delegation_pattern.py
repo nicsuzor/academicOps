@@ -177,10 +177,10 @@ def test_framework_before_python_for_framework_python(
 
 @pytest.mark.integration
 @pytest.mark.slow
-def test_bmem_skill_invoked_for_knowledge_queries(
+def test_memory_skill_invoked_for_knowledge_queries(
     claude_headless_tracked,
 ) -> None:
-    """Test that knowledge base queries invoke bmem skill.
+    """Test that knowledge base queries invoke memory skill.
 
     Per prompt_router.py keywords: "knowledge base", "search notes", etc.
     """
@@ -192,18 +192,18 @@ def test_bmem_skill_invoked_for_knowledge_queries(
     assert result["success"], f"Execution failed: {result.get('error')}"
     assert tool_calls, f"No tool calls recorded for session {session_id}"
 
-    # bmem skill OR direct MCP tools should be used
-    bmem_invoked = _skill_invoked(tool_calls, "bmem")
-    mcp_bmem_used = any(
-        c["name"].startswith("mcp__bmem__") for c in tool_calls
+    # memory skill OR direct MCP tools should be used
+    memory_invoked = _skill_invoked(tool_calls, "memory")
+    mcp_memory_used = any(
+        c["name"].startswith("mcp__memory__") for c in tool_calls
     )
 
-    if not bmem_invoked and not mcp_bmem_used:
+    if not memory_invoked and not mcp_memory_used:
         tool_names = [c["name"] for c in tool_calls]
         skills_invoked = _skill_order(tool_calls)
         pytest.fail(
-            f"Neither bmem skill nor MCP bmem tools used.\n"
-            f"Expected: Skill('bmem') or mcp__bmem__* tools\n"
+            f"Neither memory skill nor MCP memory tools used.\n"
+            f"Expected: Skill('memory') or mcp__memory__* tools\n"
             f"Skills invoked: {skills_invoked}\n"
             f"All tool calls: {tool_names}"
         )

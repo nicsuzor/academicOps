@@ -8,7 +8,7 @@ enable cross-device sync.
 
 Triggers:
 - After Bash tool executes task scripts (task_add.py, task_archive.py, etc.)
-- After bmem MCP tools modify knowledge base (write_note, edit_note, etc.)
+- After memory MCP tools modify knowledge base (store_memory, update_memory_metadata, etc.)
 - After any Write/Edit operations to data/ directory
 
 Scope: All files under data/ (tasks, projects, sessions, knowledge, etc.)
@@ -51,15 +51,21 @@ def is_state_modifying_operation(
         if any(pattern in command for pattern in task_script_patterns):
             return True
 
-    # bmem MCP tools (knowledge base operations)
-    bmem_write_tools = [
-        "mcp__bmem__write_note",
-        "mcp__bmem__edit_note",
-        "mcp__bmem__delete_note",
-        "mcp__bmem__move_note",
-        "mcp__bmem__canvas",
+    # memory MCP tools (knowledge base operations)
+    memory_write_tools = [
+        "mcp__memory__store_memory",
+        "mcp__memory__update_memory_metadata",
+        "mcp__memory__delete_memory",
+        "mcp__memory__delete_by_tag",
+        "mcp__memory__delete_by_tags",
+        "mcp__memory__delete_by_all_tags",
+        "mcp__memory__delete_by_timeframe",
+        "mcp__memory__delete_before_date",
+        "mcp__memory__ingest_document",
+        "mcp__memory__ingest_directory",
+        "mcp__memory__rate_memory",
     ]
-    if tool_name in bmem_write_tools:
+    if tool_name in memory_write_tools:
         return True
 
     # Write/Edit operations targeting data/

@@ -1,4 +1,4 @@
-"""FastMCP proxy fixture for Basic Memory (bmem) MCP testing."""
+"""FastMCP proxy fixture for Memory MCP testing."""
 
 import pytest
 from fastmcp import FastMCP
@@ -19,21 +19,21 @@ def anyio_backend():
 
 
 @pytest.fixture(scope="session")
-def bmem_server():
-    """FastMCP proxy connecting to Basic Memory stdio server.
+def memory_server():
+    """FastMCP proxy connecting to Memory stdio server.
 
-    Creates a proxy that bridges to the Basic Memory MCP server
+    Creates a proxy that bridges to the Memory MCP server
     running via `uvx basic-memory mcp`.
 
     Returns:
-        FastMCP: Proxy server instance connected to bmem
+        FastMCP: Proxy server instance connected to memory server
     """
     config = {
         "mcpServers": {
-            "bmem": {
+            "memory": {
                 "command": "uvx",
                 "args": ["basic-memory", "mcp"],
             }
         }
     }
-    return FastMCP.as_proxy(config, name="bmem_test_proxy")
+    return FastMCP.as_proxy(config, name="memory_test_proxy")

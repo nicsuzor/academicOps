@@ -115,7 +115,7 @@ def test_ambiguous_prompt_uses_semantic_classification(
 ) -> None:
     """Test that ambiguous prompts are handled appropriately.
 
-    "help me with this" is ambiguous - could be framework, tasks, bmem, etc.
+    "help me with this" is ambiguous - could be framework, tasks, memory server, etc.
     Valid responses include:
     - Haiku classifier spawn (follows prompt router instruction)
     - AskUserQuestion (asks for clarification)

@@ -5,15 +5,15 @@ Tests that when a subagent is instructed to use a skill, it invokes the Skill to
 to load the skill BEFORE calling MCP tools directly.
 
 Background:
-- Observed failure: Subagent told "use your bmem skill" but called mcp__bmem__write_note
-  directly without invoking Skill("bmem") first
+- Observed failure: Subagent told "use your remember skill" but called mcp__memory__store_memory
+  directly without invoking Skill("remember") first
 - This bypassed skill formatting guidance and led to YAML errors
 - Detection is INDIRECT since headless output doesn't show tool traces
 
 Detection approach:
 Since we can't directly observe Skill tool invocation in headless mode, we verify
 INDIRECTLY by checking output format quality:
-- Notes following bmem format = skill was likely loaded
+- Notes following memory format = skill was likely loaded
 - Notes lacking structure = skill was likely bypassed
 """
 
@@ -67,9 +67,9 @@ def retry_flaky_e2e(test_func, max_attempts: int = 3):
 @pytest.mark.integration
 @pytest.mark.slow
 def test_skill_invocation_produces_formatted_output(claude_headless) -> None:
-    """Test that invoking bmem skill produces properly formatted notes.
+    """Test that invoking remember skill produces properly formatted notes.
 
-    INDIRECT verification: If skill was loaded, notes follow bmem format.
+    INDIRECT verification: If skill was loaded, notes follow memory format.
     If skill was bypassed, notes lack structure.
 
     Format markers checked:
@@ -81,12 +81,12 @@ def test_skill_invocation_produces_formatted_output(claude_headless) -> None:
         start_time = time.time() - 1
 
         prompt = '''
-        IMPORTANT: First invoke the bmem skill using Skill("bmem"), then create a note.
+        IMPORTANT: First invoke the remember skill using Skill("remember"), then create a note.
 
         Steps:
-        1. Call Skill("bmem") to load the bmem skill FIRST
-        2. After skill loads, use mcp__bmem__write_note to create a note about "Test Automation Patterns"
-        3. The note MUST follow bmem format with all required sections
+        1. Call Skill("remember") to load the remember skill FIRST
+        2. After skill loads, use mcp__memory__store_memory to create a note about "Test Automation Patterns"
+        3. The note MUST follow memory format with all required sections
 
         This is testing that skill invocation provides formatting guidance.
         '''
@@ -127,7 +127,7 @@ def test_skill_invocation_produces_formatted_output(claude_headless) -> None:
     created_file = retry_flaky_e2e(_test_attempt)
     content = created_file.read_text()
 
-    # Verify bmem format compliance (indicates skill was loaded)
+    # Verify memory format compliance (indicates skill was loaded)
     format_markers = {
         "frontmatter": content.startswith("---"),
         "title_field": "title:" in content,
@@ -140,6 +140,6 @@ def test_skill_invocation_produces_formatted_output(claude_headless) -> None:
     markers_present = sum(format_markers.values())
 
     assert markers_present >= 4, (
-        f"Note lacks bmem format (skill may not have been invoked). "
+        f"Note lacks memory format (skill may not have been invoked). "
         f"Only {markers_present}/5 format markers found: {format_markers}"
     )

@@ -352,16 +352,16 @@ class TestCreateTask:
         assert result["task_id"] is not None
         assert result["filename"] is not None
 
-        # Verify file exists and is bmem-compliant
+        # Verify file exists and is memory-compliant
         task_path = test_data_dir / "inbox" / result["filename"]
         assert task_path.exists()
 
         task = task_ops.load_task_from_file(task_path)
         assert task.title == "New minimal task"
         assert task.status == "inbox"
-        assert task.type == "task"  # bmem requires "task" not "todo"
+        assert task.type == "task"  # memory requires "task" not "todo"
 
-        # Verify bmem structure
+        # Verify memory structure
         content = task_path.read_text()
         assert "permalink:" in content
         assert "task_id:" in content
@@ -547,8 +547,8 @@ class TestModifyTask:
         assert result["success"] is False
         assert "not found" in result["message"].lower()
 
-    def test_modify_task_preserves_bmem_format(self, test_data_dir: Path):
-        """Test that modifications preserve bmem format structure."""
+    def test_modify_task_preserves_memory_format(self, test_data_dir: Path):
+        """Test that modifications preserve memory format structure."""
         from skills.tasks.server import create_task, modify_task
 
         # Create a task to modify
@@ -562,7 +562,7 @@ class TestModifyTask:
             body="Modified body content",
         )
 
-        # Verify bmem structure still intact
+        # Verify memory structure still intact
         task_path = test_data_dir / "inbox" / task_filename
         content = task_path.read_text()
 

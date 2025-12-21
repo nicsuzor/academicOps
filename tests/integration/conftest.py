@@ -166,7 +166,7 @@ def run_claude_headless(
             "success": False,
             "output": "",
             "result": {},
-            "error": "ACA_DATA environment variable not set - required for bmem tests",
+            "error": "ACA_DATA environment variable not set - required for memory server tests",
         }
 
     try:
@@ -314,7 +314,7 @@ def _skill_was_invoked(tool_calls: list[dict], skill_name: str) -> bool:
 
     Args:
         tool_calls: List of parsed tool calls
-        skill_name: Name of skill to check for (e.g., "bmem", "framework")
+        skill_name: Name of skill to check for (e.g., "memory", "framework")
 
     Returns:
         True if Skill tool was called with the specified skill

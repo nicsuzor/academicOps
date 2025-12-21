@@ -2,7 +2,7 @@
 name: task-viz
 description: Generate visual mind-map of tasks, projects, and goals using automated layout via excalidraw
 permalink: commands/task-viz
-allowed-tools: Bash,Glob,Read,Skill,mcp__bmem__search_notes
+allowed-tools: Bash,Glob,Read,Skill,mcp__memory__retrieve_memory
 ---
 
 # Task Visualization Dashboard
@@ -55,21 +55,21 @@ Generate a visual mind-map of tasks, projects, and goals using the automated lay
 - **Recent progress**: Last few completed tasks per project (context for what's been done)
 - **Outstanding work**: Active/blocked/queued tasks per project (what needs doing)
 
-**Autonomy**: Fully autonomous - discovers tasks, understands context via bmem, designs visually striking dashboard.
+**Autonomy**: Fully autonomous - discovers tasks, understands context via memory server, designs visually striking dashboard.
 
 ## Workflow
 
-### Phase 1: Understand Strategic Context (bmem skill)
+### Phase 1: Understand Strategic Context (memory server)
 
-**MANDATORY FIRST STEP**: Invoke the [[bmem]] skill to understand current projects, goals, and strategic landscape.
+**MANDATORY FIRST STEP**: Query the memory server to understand current projects, goals, and strategic landscape.
 
-Query [[bmem]] for:
+Query memory server for:
 1. **Projects**: Search for `type:project` to discover active projects
 2. **Goals**: Identify high-level strategic goals that projects serve
 3. **Relationships**: Map which projects belong to which goals
 4. **Context**: Understand project descriptions, status, priorities
 
-**Why this matters**: The dashboard must reflect actual strategic context, not just task file metadata. [[bmem]] is the authoritative source for project/goal relationships.
+**Why this matters**: The dashboard must reflect actual strategic context, not just task file metadata. The memory server is the authoritative source for project/goal relationships.
 
 ### Phase 2: Discover Tasks
 
@@ -84,8 +84,8 @@ For each task file:
    - `title` (required)
    - `status` (required: inbox, active, blocked, queued, completed)
    - `priority` (optional: 0-3 where 0=highest, default=3)
-   - `project` (optional, map to bmem project entities)
-   - `goal` (optional, map to bmem goal entities)
+   - `project` (optional, map to memory server project entities)
+   - `goal` (optional, map to memory server goal entities)
    - `blockers` (optional list)
 3. **Fail-fast** if required fields missing (per AXIOMS #5)
 4. **Graceful**: Skip malformed tasks, report count, continue
@@ -93,7 +93,7 @@ For each task file:
 **Map tasks to projects and goals**:
 - If task has `project` field → Connect to that project
 - If task has `goal` field → Connect to that goal
-- If project is known from bmem → Connect project to its goal(s)
+- If project is known from memory server → Connect project to its goal(s)
 - **Track orphaned tasks**: Tasks with no project/goal assignment
 - **Show recent completed**: Last 2-3 completed tasks per project for context
 
@@ -106,6 +106,8 @@ For each task file:
 2. Generate the actual .excalidraw file (DO NOT manually create JSON)
 
 **The [[excalidraw]] skill is the ONLY approved way to create Excalidraw files.** You MUST NOT attempt to manually construct Excalidraw JSON - the skill handles this with proper sizing, text binding, and arrow anchoring.
+
+**Strategic Context Source**: The memory server (not manually created context) provides project/goal information for accurate visualization relationships.
 
 The [[excalidraw]] skill provides:
 - Visual hierarchy through size, color, position
@@ -127,7 +129,7 @@ The [[excalidraw]] skill provides:
 
 ### Phase 3B: Visual Layout Principles
 
-**Defer to the [[excalidraw]] skill** for layout decisions. Your job is to provide content and relationships, not pixel coordinates. The skill understands visual design.
+**Defer to the [[excalidraw]] skill** for layout decisions. Your job is to provide content and relationships sourced from the memory server, not pixel coordinates. The skill understands visual design.
 
 **Key constraints to communicate to the skill**:
 
@@ -144,9 +146,9 @@ The [[excalidraw]] skill provides:
 6. **Readability trumps aesthetics** - A boring readable diagram beats a pretty unreadable one. When in doubt, spread things out more.
 
 **What you provide to [[excalidraw]] skill**:
-- List of goals with their titles
-- List of projects, each linked to a goal
-- List of tasks, each linked to a project
+- List of goals with their titles (from memory server)
+- List of projects, each linked to a goal (from memory server)
+- List of tasks, each linked to a project (from task files)
 - Status/priority of each task (for color coding)
 
 **What the [[excalidraw]] skill decides**:
@@ -174,7 +176,7 @@ The skill handles all JSON formatting, text binding, sizing, and layout. Trust i
 
 ## Error Handling
 
-**Fail-fast**: bmem unavailable, excalidraw skill fails, >50% malformed tasks
+**Fail-fast**: memory server unavailable, excalidraw skill fails, >50% malformed tasks
 **Graceful**: No tasks = "No tasks" message, missing fields = use defaults
 
 ## Success Criteria

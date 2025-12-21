@@ -2,13 +2,13 @@
 title: Email Archive Knowledge Extraction
 type: readme
 permalink: skills/extractor/readme
-description: Automated system for extracting important professional knowledge from archived emails and converting them to bmem-formatted knowledge base entries.
-tags: [skill, extractor, email, knowledge-extraction, bmem]
+description: Automated system for extracting important professional knowledge from archived emails and converting them to properly formatted markdown knowledge base entries.
+tags: [skill, extractor, email, knowledge-extraction, memory]
 ---
 
 # Email Archive Knowledge Extraction
 
-Automated system for extracting important professional knowledge from archived emails and converting them to bmem-formatted knowledge base entries.
+Automated system for extracting important professional knowledge from archived emails and converting them to properly formatted markdown knowledge base entries.
 
 ## Quick Start
 
@@ -30,7 +30,7 @@ This will:
 
 1. Get the next file from `archive/incoming/`
 2. Evaluate its importance
-3. Extract and create bmem files in `data/archive/` if important
+3. Extract and create properly formatted markdown files in `data/archive/` if important
 4. Delete the source file
 5. Log the decision
 
@@ -59,7 +59,7 @@ bots/skills/archive/
 bots/commands/
 └── archive.md         # /archive slash command
 
-data/archive/          # Output: bmem-formatted knowledge entries
+data/archive/          # Output: Properly formatted markdown knowledge entries
 ```
 
 ## Components
@@ -110,7 +110,7 @@ Long-lived processing entry point. Each invocation processes ONE file to avoid c
 
 ## Output Format
 
-Generated bmem files follow structured format:
+Generated knowledge base entries follow structured format:
 
 ### Person Entity
 
@@ -184,7 +184,7 @@ All decisions logged to `archive/processing.log`:
 1. **Destructive processing**: Source files deleted only after successful extraction and validation
 2. **State tracking**: Can resume from interruption
 3. **Error handling**: Failed files moved to `archive/failed/`, not deleted
-4. **Validation**: All output validated with `bmem_tools.py` before confirmation
+4. **Validation**: All output validated before confirmation
 5. **Logging**: All decisions logged for review
 
 ## Testing
@@ -230,11 +230,11 @@ uv run python bots/skills/archive/scripts/batch_next.py status
 uv run python bots/skills/archive/scripts/batch_next.py reset
 ```
 
-**Invalid bmem output**:
+**Invalid output**:
 
 - Check `data/archive/` for malformed files
-- Run validation: `uv run python bmem_tools.py validate data/archive/`
-- Review skill examples in `SKILL.md`
+- Review skill examples in `SKILL.md` for proper format
+- Ensure all entries use properly formatted markdown
 
 **File failed to process**:
 
@@ -244,6 +244,6 @@ uv run python bots/skills/archive/scripts/batch_next.py reset
 
 ## Related Documentation
 
-- [[BMEM-CLAUDE-GUIDE.md]] - bmem format reference
+- [[remember]] - Memory skill for storing extracted information
 - `Skill(skill="framework")` - Framework conventions
 - `Skill(skill="tasks")` - Task management integration

@@ -63,7 +63,7 @@ Shows recent activity from ALL Claude Code sessions:
 Overview of all discovered sessions grouped by project, each showing:
 - First user prompt (what started the session)
 - Most recent user prompt (current state)
-- Most recent bmem documentation write (if any)
+- Most recent memory server documentation write (if any)
 - Time since last activity
 
 ## Architecture

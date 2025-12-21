@@ -1,4 +1,4 @@
-"""Unit test for request_scribe hook (bmem reminder injection).
+"""Unit test for request_scribe hook (memory reminder injection).
 
 Tests that the hook:
 1. Injects reminder on Stop events
@@ -34,12 +34,12 @@ def run_hook(input_data: dict, expected_exit_code: int = 0) -> dict:
 
 
 def test_stop_event_injects_reminder() -> None:
-    """Stop event should inject bmem reminder via reason field."""
+    """Stop event should inject memory reminder via reason field."""
     output = run_hook({"hook_event_name": "Stop"}, expected_exit_code=1)
 
     # Stop hooks use reason/continue format, not hookSpecificOutput
     assert "reason" in output
-    assert "bmem" in output["reason"].lower()
+    assert "memory" in output["reason"].lower()
     assert output.get("continue") is True
 
 
@@ -70,7 +70,7 @@ def test_other_tool_no_reminder() -> None:
 def test_template_file_exists() -> None:
     """Template file should exist at expected location."""
     aops_root = Path(__file__).parent.parent
-    template = aops_root / "hooks" / "prompts" / "bmem-reminder.md"
+    template = aops_root / "hooks" / "prompts" / "memory-reminder.md"
     assert template.exists(), f"Template not found at {template}"
     content = template.read_text()
     assert len(content) > 0, "Template is empty"

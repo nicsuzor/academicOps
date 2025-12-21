@@ -8,7 +8,7 @@ permalink: skills-extractor-skill
 
 # Archive Information Extraction Skill
 
-Assess archival documents (emails, correspondence, receipts) to identify information worth preserving in the knowledge base. This skill provides judgment criteria only - actual storage is handled by `Skill(skill="bmem")`.
+Assess archival documents (emails, correspondence, receipts) to identify information worth preserving in the knowledge base. This skill provides judgment criteria only - actual storage is handled by `Skill(skill="remember")`.
 
 ## Purpose
 
@@ -182,26 +182,28 @@ Store identifier inline with extracted information.
 
 ## Storage
 
-Use `Skill(skill="bmem")` to store extracted information in the knowledge base. The bmem skill handles:
+Use `Skill(skill="remember")` to store extracted information in the knowledge base. The remember skill handles:
 - Entity creation/updates
 - Format validation
 - Deduplication checking
 - Proper categorization
 
-**CRITICAL**: When using the bmem skill, you MUST use ONLY approved observation categories and relation types from [[../bmem/references/approved-categories-relations.md]]. The bmem system will reject any unapproved categories or relations.
+Store information using the memory server with properly formatted markdown. Tag extracted information appropriately for searchability and future retrieval.
 
-**Common mappings for email extraction**:
-- Email metadata (sender, date, subject) → Use `[fact]` with `#email` tag
-- Project information → Use `[fact]` with `#project` tag
-- Coordinator/team roles → Use `[fact]` with description, or use `relates_to` relation to person entities
-- Timeline/duration → Use `[timeline]` or `[deadline]` category
-- Status information → Use `[fact]` with `#status` tag
-- Relationships between people → Use `relates_to`, `part_of`, or `supports` relations (NOT custom relations like "coordinator" or "content_creator")
+**Common approaches for email extraction**:
+- Email metadata (sender, date, subject) → Use memory tags like `#email`, `#correspondence`
+- Project information → Use memory tags like `#project`
+- Coordinator/team roles → Store with descriptive relationships
+- Timeline/duration → Use memory tags like `#timeline`, `#deadline`
+- Status information → Use memory tags like `#status`
+- Relationships between people → Document relationships clearly with role descriptions
 
-**Do NOT**:
-- Invent new observation categories (like `[email]`, `[coordinator]`, `[project]`, `[team]`)
-- Invent new relation types (like `coordinator`, `content_creator`, `proposed_filmmaker`)
-- Create files directly - delegate all storage to the bmem skill
+**Storage principles**:
+- Use clear, structured memory entries
+- Include all relevant metadata and timestamps
+- Tag appropriately for semantic search
+- Avoid inventing custom categories or types
+- Delegate all storage to the remember skill
 
 ## Quality Standards
 

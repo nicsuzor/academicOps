@@ -28,7 +28,7 @@ class TestDashboardStateExtraction:
         - first_prompt_full: Complete first user message
         - last_prompt: Most recent user message
         - todos: Current TODO list state
-        - bmem_notes: List of created knowledge base notes
+        - memory_notes: List of created knowledge base notes
         - in_progress_count: Count of in-progress todos
         """
         # Find a real session file
@@ -52,7 +52,7 @@ class TestDashboardStateExtraction:
             "first_prompt_full",
             "last_prompt",
             "todos",
-            "bmem_notes",
+            "memory_notes",
             "in_progress_count",
         ]
         for key in required_keys:
@@ -62,7 +62,7 @@ class TestDashboardStateExtraction:
         assert isinstance(result["first_prompt"], str)
         assert isinstance(result["first_prompt_full"], str)
         assert isinstance(result["last_prompt"], str)
-        assert isinstance(result["bmem_notes"], list)
+        assert isinstance(result["memory_notes"], list)
         assert isinstance(result["in_progress_count"], int)
         # todos can be None or list
         assert result["todos"] is None or isinstance(result["todos"], list)

@@ -40,7 +40,7 @@ class SessionOutcomes:
 
     files_edited: list[str]
     files_created: list[str]
-    bmem_notes: list[dict[str, str]]  # [{title, folder}]
+    memory_notes: list[dict[str, str]]  # [{title, folder}]
     todos_final: list[dict[str, Any]] | None
     todos_completed: list[str]  # Completed todo content strings
     git_commits: list[str]
@@ -188,7 +188,7 @@ class SessionAnalyzer:
         """Extract concrete outcomes from a session."""
         files_edited: list[str] = []
         files_created: list[str] = []
-        bmem_notes: list[dict[str, str]] = []
+        memory_notes: list[dict[str, str]] = []
         todos_final: list[dict[str, Any]] | None = None
         todos_completed: list[str] = []
         git_commits: list[str] = []
@@ -229,12 +229,12 @@ class SessionAnalyzer:
                     if file_path and file_path not in files_created:
                         files_created.append(file_path)
 
-                # Track bmem notes
-                elif tool_name == "mcp__bmem__write_note":
+                # Track memory notes
+                elif tool_name == "mcp__memory__store_memory":
                     title = tool_input.get("title", "")
                     folder = tool_input.get("folder", "")
                     if title:
-                        bmem_notes.append({"title": title, "folder": folder})
+                        memory_notes.append({"title": title, "folder": folder})
 
                 # Track skill invocations
                 elif tool_name == "Skill":
@@ -287,7 +287,7 @@ class SessionAnalyzer:
         return SessionOutcomes(
             files_edited=files_edited,
             files_created=files_created,
-            bmem_notes=bmem_notes,
+            memory_notes=memory_notes,
             todos_final=todos_final,
             todos_completed=todos_completed,
             git_commits=git_commits,
@@ -544,7 +544,7 @@ class SessionAnalyzer:
                 - first_prompt_full: Complete first user message
                 - last_prompt: Most recent user message
                 - todos: Current TODO list state (or None)
-                - bmem_notes: List of created knowledge base notes
+                - memory_notes: List of created knowledge base notes
                 - in_progress_count: Count of in-progress todos
         """
         summary, entries, agent_entries = self.processor.parse_jsonl(session_path)
@@ -574,7 +574,7 @@ class SessionAnalyzer:
             "first_prompt_full": first_prompt_full,
             "last_prompt": last_prompt,
             "todos": outcomes.todos_final,
-            "bmem_notes": outcomes.bmem_notes,
+            "memory_notes": outcomes.memory_notes,
             "in_progress_count": in_progress_count,
         }
 
@@ -623,10 +623,10 @@ class SessionAnalyzer:
             lines.append("")
 
         # Knowledge documented
-        if outcomes.bmem_notes:
+        if outcomes.memory_notes:
             has_accomplishments = True
             lines.append("**Knowledge documented:**")
-            for note in outcomes.bmem_notes:
+            for note in outcomes.memory_notes:
                 lines.append(f"- {note['title']} ({note['folder']})")
             lines.append("")
 

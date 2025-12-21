@@ -7,7 +7,7 @@ Uses session ID tracking to parse JSONL tool traces for DIRECT verification.
 Pain points from learning logs:
 1. "show me my tasks" → tasks skill not invoked
 2. Framework file editing → framework skill not invoked
-3. bmem queries → bmem skill bypassed
+3. memory queries → memory skill bypassed
 """
 
 import pytest
@@ -32,14 +32,14 @@ def _used_task_tools(tool_calls: list) -> bool:
     return False
 
 
-def _used_bmem_tools(tool_calls: list) -> bool:
-    """Check if bmem-related tools were used (Skill or MCP)."""
+def _used_memory_tools(tool_calls: list) -> bool:
+    """Check if memory-related tools were used (Skill or MCP)."""
     for call in tool_calls:
         name = call.get("name", "")
-        # Accept either Skill("bmem") or direct MCP bmem tools
-        if name == "Skill" and "bmem" in str(call.get("input", {})).lower():
+        # Accept either Skill("remember") or direct MCP memory tools
+        if name == "Skill" and "remember" in str(call.get("input", {})).lower():
             return True
-        if name.startswith("mcp__bmem__"):
+        if name.startswith("mcp__memory__"):
             return True
     return False
 
@@ -110,23 +110,23 @@ def test_framework_prompt_invokes_skill(claude_headless_tracked, skill_was_invok
 
 @pytest.mark.integration
 @pytest.mark.slow
-def test_bmem_prompt_invokes_skill(claude_headless_tracked, skill_was_invoked) -> None:
-    """Test that bmem-related prompts use bmem tools.
+def test_memory_prompt_invokes_skill(claude_headless_tracked, skill_was_invoked) -> None:
+    """Test that memory-related prompts use memory tools.
 
-    Agent can either invoke the bmem skill OR use MCP bmem tools directly.
+    Agent can either invoke the remember skill OR use MCP memory tools directly.
     Both are valid approaches for knowledge base queries.
     """
     result, session_id, tool_calls = claude_headless_tracked(
         "search my knowledge base for information about prompt routing",
-        timeout_seconds=120,  # bmem semantic search needs more time than keyword matching
+        timeout_seconds=120,  # memory semantic search needs more time than keyword matching
     )
 
     assert result["success"], f"Execution failed: {result.get('error')}"
     assert tool_calls, f"Session file not found for {session_id}"
 
     # Accept Skill invocation OR direct MCP tool usage
-    bmem_tools_used = _used_bmem_tools(tool_calls) or skill_was_invoked(tool_calls, "bmem")
+    memory_tools_used = _used_memory_tools(tool_calls) or skill_was_invoked(tool_calls, "remember")
 
-    assert bmem_tools_used, (
-        f"No bmem tools used. Tool calls: {[c['name'] for c in tool_calls]}"
+    assert memory_tools_used, (
+        f"No memory tools used. Tool calls: {[c['name'] for c in tool_calls]}"
     )

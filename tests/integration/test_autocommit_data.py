@@ -86,15 +86,16 @@ def test_hook_detects_task_script_execution(hook_script: Path) -> None:
     assert result.returncode == 0
 
 
-def test_hook_detects_bmem_operations(hook_script: Path) -> None:
-    """Test that hook correctly identifies bmem MCP operations."""
+def test_hook_detects_memory_operations(hook_script: Path) -> None:
+    """Test that hook correctly identifies memory server MCP operations."""
     # Arrange
     tool_input = {
-        "toolName": "mcp__bmem__write_note",
+        "toolName": "mcp__memory__store_memory",
         "toolInput": {
-            "title": "Test Note",
             "content": "Test content",
-            "folder": "test",
+            "metadata": {
+                "tags": "test",
+            },
         }
     }
 
@@ -208,13 +209,14 @@ def test_hook_commits_any_data_directory_changes(
         '{"test": true}\n'
     )
 
-    # Simulate bmem operation
+    # Simulate memory server operation
     tool_input = {
-        "toolName": "mcp__bmem__write_note",
+        "toolName": "mcp__memory__store_memory",
         "toolInput": {
-            "title": "Test",
             "content": "Content",
-            "folder": "test",
+            "metadata": {
+                "tags": "test",
+            },
         }
     }
 
@@ -348,11 +350,10 @@ def test_hook_extracts_tool_name_from_correct_location(
 
     The correct PostToolUse input structure from Claude Code is:
     {
-        "toolName": "mcp__bmem__write_note",  # Top level
-        "toolInput": {                         # Parameters
-            "title": "...",
+        "toolName": "mcp__memory__store_memory",  # Top level
+        "toolInput": {                             # Parameters
             "content": "...",
-            "folder": "..."
+            "metadata": {...}
         }
     }
 
@@ -362,19 +363,20 @@ def test_hook_extracts_tool_name_from_correct_location(
     # Arrange
     monkeypatch.chdir(test_repo)
 
-    # Create a file in data/knowledge/ to simulate bmem output
+    # Create a file in data/knowledge/ to simulate memory server output
     knowledge_dir = test_repo / "data" / "knowledge"
     knowledge_dir.mkdir(parents=True, exist_ok=True)
     test_note = knowledge_dir / "test-note.md"
-    test_note.write_text("# Test Note\n\nTest content from bmem write_note.\n")
+    test_note.write_text("# Test Note\n\nTest content from memory server store_memory.\n")
 
     # Use CORRECT PostToolUse input structure - toolName at top level
     hook_input = {
-        "toolName": "mcp__bmem__write_note",  # This is the correct location
+        "toolName": "mcp__memory__store_memory",  # This is the correct location
         "toolInput": {
-            "title": "Test Note",
-            "content": "Test content from bmem write_note.",
-            "folder": "knowledge",
+            "content": "Test content from memory server store_memory.",
+            "metadata": {
+                "tags": "knowledge",
+            },
         },
     }
 
@@ -409,7 +411,7 @@ def test_hook_extracts_tool_name_from_correct_location(
         "update(data)" in log_result.stdout.lower()
         or "auto-commit" in log_result.stdout.lower()
     ), (
-        f"Expected auto-commit for bmem operation, but got: {log_result.stdout}\n"
+        f"Expected auto-commit for memory server operation, but got: {log_result.stdout}\n"
         f"Hook output: {result.stdout}\n"
         f"Hook stderr: {result.stderr}"
     )

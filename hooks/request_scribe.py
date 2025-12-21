@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
-PostToolUse/Stop hook: Remind agent to document work to bmem.
+PostToolUse/Stop hook: Remind agent to document work to memory server.
 
 Triggers on:
 - PostToolUse (TodoWrite matcher) - after task list updates
 - Stop - at end of session
 
-Reads reminder message from hooks/prompts/bmem-reminder.md.
+Reads reminder message from hooks/prompts/memory-reminder.md.
 
 Exit codes:
     0: Success (always continues)
@@ -23,7 +23,7 @@ from typing import Any
 def get_reminder_message() -> str:
     """Load reminder message from template file."""
     aops_root = Path(os.environ.get("AOPS", ""))
-    template_path = aops_root / "hooks" / "prompts" / "bmem-reminder.md"
+    template_path = aops_root / "hooks" / "prompts" / "memory-reminder.md"
 
     if template_path.exists():
         return template_path.read_text().strip()
@@ -31,7 +31,7 @@ def get_reminder_message() -> str:
     # Fallback if template not found
     return (
         "[AOPS Framework Reminder: If this marks the end of a substantial chunk of work, "
-        "use the bmem skill to document key decisions and outcomes.]"
+        "use the remember skill to document key decisions and outcomes.]"
     )
 
 

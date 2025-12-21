@@ -11,8 +11,8 @@ tools:
   - Edit
   - Glob
   - Grep
-  - mcp__bmem__write_note
-  - mcp__bmem__search_notes
+  - mcp__memory__retrieve_memory
+  - Skill
 ---
 
 # Parallel Batch Processor
@@ -43,7 +43,7 @@ This should describe:
 1. **Parse the task description** to identify:
    - Target files (directory path, glob pattern)
    - Operation to perform
-   - Skills needed (bmem, tasks, extractor, etc.)
+   - Skills needed (remember, tasks, extractor, etc.)
 
 2. **Discover files** using Bash:
    ```bash
@@ -66,7 +66,7 @@ This should describe:
      "Batch user questions (if any)",
      "Apply user decisions",
      "Commit changes",
-     "Log session to bmem"
+     "Log session to memory server"
    ])
    ```
 
@@ -151,13 +151,13 @@ AskUserQuestion(questions=[
    ```
    Then commit with descriptive message summarizing what was done.
 
-3. **Log to [[bmem]]**:
+3. **Log to memory server**:
    ```
-   mcp__bmem__write_note(
-     title="Parallel Batch Session: [Operation Description]",
-     folder="sessions",
-     content="# Parallel Batch Session\n\n## Task\n[what was requested]\n\n## Results\n- Files processed: N\n- Changes made: N\n- Questions answered: N\n- Errors: N\n\n## Details\n[summary of changes]"
-   )
+   Skill(skill="remember", args='
+   title="Parallel Batch Session: [Operation Description]"
+   tags="sessions,batch-processing"
+   content="# Parallel Batch Session\n\n## Task\n[what was requested]\n\n## Results\n- Files processed: N\n- Changes made: N\n- Questions answered: N\n- Errors: N\n\n## Details\n[summary of changes]"
+   ')
    ```
 
 4. **Report to user**:
@@ -167,7 +167,7 @@ AskUserQuestion(questions=[
 
 ## Subagent Prompt Templates
 
-### For Task Linking (bmem projects)
+### For Task Linking (memory server projects)
 
 ```
 Process these task files to link them to appropriate projects:
@@ -175,8 +175,8 @@ Process these task files to link them to appropriate projects:
 Files:
 [file list]
 
-MANDATORY: Use [[bmem]] MCP tools with `project="main"`:
-1. Search for existing projects: mcp__bmem__search_notes(query="type:project", project="main")
+MANDATORY: Use memory server to find projects:
+1. Search for existing projects: mcp__memory__retrieve_memory(query="type:project")
 2. Read task file to understand context
 3. Edit task frontmatter to add/update `project:` field
 
@@ -196,12 +196,12 @@ Process these files to extract valuable knowledge:
 Files:
 [file list]
 
-MANDATORY: Use Skill tool to invoke skills: `Skill(skill="extractor")` to assess importance, then `Skill(skill="bmem")` to store.
+MANDATORY: Use Skill tool to invoke skills: `Skill(skill="extractor")` to assess importance, then `Skill(skill="remember")` to store.
 
 For each file:
 1. Read content
 2. Apply extractor skill criteria
-3. If valuable → create [[bmem]] entity
+3. If valuable → save with remember skill
 4. If not valuable → skip (no question needed)
 5. If uncertain → add to questions
 
@@ -216,12 +216,12 @@ Process these files to add appropriate tags/categories:
 Files:
 [file list]
 
-MANDATORY: Use the Skill tool for knowledge base operations: `Skill(skill="bmem")`.
+MANDATORY: Use the Skill tool for memory server operations: `Skill(skill="remember")`.
 
 For each file:
 1. Read content
 2. Identify appropriate tags based on [criteria]
-3. If obvious → add tags
+3. If obvious → add tags with remember skill
 4. If multiple valid options → add to questions
 
 Return: processed files, tags added, questions for ambiguous cases
@@ -229,7 +229,7 @@ Return: processed files, tags added, questions for ambiguous cases
 
 ## Skills and Related Commands
 
-- [[bmem]] - Knowledge base operations
+- [[remember]] - Knowledge base operations (memory server)
 - [[framework]] - Framework context and conventions
 - [[tasks]] - Task management
 
@@ -259,7 +259,7 @@ Return: processed files, tags added, questions for ambiguous cases
 
 ```bash
 # Link tasks to projects
-/parallel-batch Link all tasks in data/tasks/inbox/ to appropriate projects using bmem
+/parallel-batch Link all tasks in data/tasks/inbox/ to appropriate projects using memory server
 
 # Extract knowledge from emails
 /parallel-batch Extract valuable knowledge from email chunks in incoming/emails/2013-05/

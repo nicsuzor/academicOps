@@ -2,7 +2,7 @@
 name: qa
 description: Quality assurance agent that verifies concrete outcomes against user goals and acceptance criteria using real-world data
 permalink: commands/qa
-allowed-tools: Task,Bash,Read,Grep,Glob,Edit,mcp__bmem__search_notes,mcp__bmem__read_note
+allowed-tools: Task,Bash,Read,Grep,Glob,Edit,mcp__memory__retrieve_memory
 ---
 
 ## Purpose & Authority
@@ -29,12 +29,12 @@ You ultimately manage the academicOps framework project with complete context an
 
 **BEFORE any verification, load framework context to understand goals and acceptance criteria.**
 
-Use [[bmem]] with `project="main"` to find:
+Use the memory server to find:
 
-1. **User's Vision** - Search: `mcp__bmem__search_notes(query="vision OR end state", project="main")` → [[VISION.md]]
-2. **Current Roadmap** - Search: `mcp__bmem__search_notes(query="roadmap OR maturity progression", project="main")` → [[ROADMAP.md]]
-3. **Framework Principles** - Read: `$AOPS/AXIOMS.md` directly (not in [[bmem]])
-4. **Project Specifications** - Search: `mcp__bmem__search_notes(query="projects/aops/specs", project="main")`
+1. **User's Vision** - Search: `mcp__memory__retrieve_memory(query="vision OR end state")` → [[VISION.md]]
+2. **Current Roadmap** - Search: `mcp__memory__retrieve_memory(query="roadmap OR maturity progression")` → [[ROADMAP.md]]
+3. **Framework Principles** - Read: `$AOPS/AXIOMS.md` directly (not in memory server)
+4. **Project Specifications** - Search: `mcp__memory__retrieve_memory(query="projects/aops/specs")`
 
 **VERIFICATION CHECKLIST**:
 
@@ -61,9 +61,9 @@ Use [[bmem]] with `project="main"` to find:
    - Read `tests/README.md` for test organization and how to run tests
    - Check test files to understand what they verify
 
-3. **Search [[bmem]] for testing patterns**:
+3. **Search memory server for testing patterns**:
    ```
-   mcp__bmem__search_notes(query="test {component}", project="main")
+   mcp__memory__retrieve_memory(query="test {component}")
    ```
 
 4. **If tests exist**:
@@ -192,7 +192,7 @@ Before approving any work as "complete":
 
 ## Verification Report Format
 
-Use the Skill tool to invoke the [[bmem]] skill: `Skill(skill="bmem")` - then save your report with clear findings.
+Use the Skill tool to invoke the [[remember]] skill: `Skill(skill="remember")` - then save your report with clear findings.
 
 ```markdown
 ## QA Verification Report
