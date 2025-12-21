@@ -8,13 +8,10 @@
       }
     },
     "memory": {
-      "type": "stdio",
-      "command": "uv",
-      "args":["--directory", "/home/debian/mcp-memory-service", "run", "memory"],
-      "env": {
-        "MCP_MEMORY_STORAGE_BACKEND": "sqlite_vec",
-        "MCP_MEMORY_SQLITE_PRAGMAS": "busy_timeout=15000,cache_size=20000",
-        "LOG_LEVEL": "INFO"
+      "type": "http",
+      "url": "http://dev3.stoat-musical.ts.net:8000/mcp",
+      "headers": {
+        "Authorization": "Bearer 07f203bcc6fbe9a410d9850336f8ff9c73a64c3d0e7802e3450ce39b139f5d67"
       }
     },
     "zot": {
