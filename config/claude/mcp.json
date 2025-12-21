@@ -7,7 +7,16 @@
         "Authorization": "Bearer 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"
       }
     },
-    "bmem": { "command": "uvx", "args": ["basic-memory", "mcp"] },
+    "memory": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": [
+        "fastmcp",
+        "run",
+        "http://dev3.stoat-musical.ts.net:8000/mcp"
+      ],
+      "env": {}
+    },
     "zot": {
       "type": "stdio",
       "command": "podman",
