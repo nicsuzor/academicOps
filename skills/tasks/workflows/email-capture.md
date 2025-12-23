@@ -78,9 +78,38 @@ Use **Outlook MCP** to retrieve recent emails.
 - Prioritize unread emails in primary inbox
 - Limit to manageable batch (10-20 emails per check)
 
-### Step 2: Analyze Each Email for Actions
+### Step 1.5: Check for Existing Responses
 
-For each email, extract potential action items by identifying:
+For emails that look actionable, check if user has already responded (indicating the matter may be dealt with).
+
+**Tool**: `mcp__outlook__messages_query_subject_contains`
+
+**Process**:
+1. Extract key subject words (strip "Re:", "Fwd:", "FW:" prefixes)
+2. Query: `messages_query_subject_contains(term="[key subject words]", limit=5)`
+3. Filter results where `from_email` contains user's email address (n.suzor@qut.edu.au or nic@suzor.net)
+4. If match found: mark as "already responded"
+
+**Already responded emails**:
+- Skip task creation
+- Still present to user: "Already responded: [subject] - you replied [date]"
+- Include in summary so user sees it was detected
+
+**Limitation**: Won't catch replies with heavily modified subjects or forwarded threads. Good enough for common case.
+
+**Example**:
+```
+Incoming: "[ACTION REQUIRED] OSB Cycle 38 Vote"
+Query: messages_query_subject_contains(term="OSB Cycle 38 Vote")
+Found: "Re: [ACTION REQUIRED] OSB Cycle 38 Vote" from n.suzor@qut.edu.au
+Result: Mark as already responded, skip task creation
+```
+
+### Step 2: Analyze and Classify Each Email
+
+For each email, classify into one of three categories:
+
+#### Category A: Actionable (Create Task)
 
 **High-signal action indicators**:
 
@@ -97,7 +126,51 @@ For each email, extract potential action items by identifying:
 - Body markers: numbered lists, bullet points with tasks
 - Questions directed at recipient
 
-**Extract for each action**:
+#### Category B: Important FYI (Read Body, Extract Info, Present to User)
+
+**Signals for Important FYI** (not actionable, but user needs to see the info):
+
+- Contains: "awarded", "accepted", "approved", "decision", "published", "outcome"
+- From: OSB, ARC, SNSF, or other grant/research bodies
+- Subject: conference acceptance, publication notification, funding outcome
+- Significant deadline changes or policy updates affecting user's work
+
+**For Important FYI emails**:
+1. Read full body: `mcp__outlook__messages_get(entry_id, format="text")`
+2. Extract key information (dates, amounts, outcomes, decisions, links)
+3. Store for presentation before archiving
+
+**Extract for Important FYI**:
+```
+{
+  "category": "important_fyi",
+  "subject": "Original subject",
+  "from": "Sender name",
+  "key_info": "1-3 sentence summary of the important information",
+  "details": "Specific dates, amounts, links, or action items mentioned"
+}
+```
+
+#### Category C: Safe to Ignore (Archive Candidate)
+
+**Signals for safe-to-ignore**:
+
+- From: noreply@, newsletter@, quarantine@, digest
+- Subject: "Weekly digest", "Newsletter", "Update", travel alerts
+- Automated notifications without specific action required
+- Generic mass communications (CFPs to mailing lists, webinar invites)
+
+**Safe to ignore emails**: Add to archive candidates list, present to user with "mark any to KEEP" option.
+
+#### Classification Summary Table
+
+| Category | Signals | Action |
+|----------|---------|--------|
+| **Actionable** | deadline, "please", "review", "vote", direct question | Create task |
+| **Important FYI** | "awarded", "accepted", "decision", from grant bodies | Read body, extract info, present |
+| **Safe to ignore** | noreply@, newsletter, digest, automated | Archive candidate |
+
+**Extract for actionable items**:
 
 ```
 {
@@ -320,45 +393,109 @@ Parameters:
 - Similar email from same sender about same topic (subject/sender match)
 - Task was created manually before workflow ran (title match)
 
-### Step 8: Present Summary
+### Step 8: Present Information and Summary
 
-After processing all emails, show user:
+**MANDATORY**: Before archiving anything, present all important information to user. User must SEE the actual content, not just subject lines.
+
+#### 8a: Present Important FYI Content
+
+For each Important FYI email identified in Step 2, output the extracted information:
+
+```markdown
+## Important Information from Email
+
+### Grant Outcome (from ARC, Dec 20)
+ARC DP2025 awarded $450K for Platform Governance project.
+Funding period: 2026-2028. Start date: January 2026.
+Contact: grants@arc.gov.au
+
+### Conference Acceptance (from AOIR Committee, Dec 19)
+Paper "Platform Accountability Frameworks" accepted for AOIR 2025.
+Presentation scheduled: October 15, 2025, Session 3B.
+Registration deadline: September 1, 2025.
+
+### OSB Decision Published (from OSB Operations, Dec 18)
+Case 2024-089 decision now public.
+Summary: Appeal upheld, content restored.
+Full decision: https://oversightboard.com/decisions/2024-089
+```
+
+**No confirmation needed** - just output the information so user sees it.
+
+#### 8b: Present Already Responded Items
+
+Show emails where user's response was detected:
+
+```markdown
+## Already Responded (No Task Created)
+
+- **OSB Cycle 38 Vote** - you replied Dec 20
+- **PhD meeting confirmation** - you replied Dec 19
+```
+
+#### 8c: Present Tasks Created
+
+```markdown
+## Tasks Created
+
+| Priority | Task | Due | Source |
+|----------|------|-----|--------|
+| P0 | SNSF Review (10.007.645) | Jan 15 | SNSF |
+| P1 | Write Lucinda reference | - | Amanda Kennedy |
+| P1 | ARC FT26 assessments | Jan 21 | ARC |
+```
+
+#### 8d: Archive Candidates (User Choice)
+
+**After presenting all important info**, offer archive for safe-to-ignore emails:
+
+```markdown
+## Archive Candidates
+
+Use AskUserQuestion with multiSelect to let user mark any to KEEP:
+- QUT Newsletter Dec 23
+- Travel Alert: NYC weather
+- Quarantine Digest (7 messages)
+- Edward Elgar book alert
+
+(Default: archive all unmarked)
+```
+
+#### Full Example Output
 
 ```
-📧 Email Task Capture Summary
+## Important Information from Email
 
-Processed 12 emails, found 5 action items:
+### FT210100263 Extension Approved (from ORS, Dec 23)
+Your ARC Future Fellowship project end date has been extended to 30 September 2026.
+Project: "Regulating and countering structural inequality on digital platforms"
+No action required - this is confirmation only.
 
-✅ Created 5 tasks:
+### Milestone Completed (from Pure/Elsevier, Dec 22)
+Research output milestone recorded in Pure system.
+Details: [logged for institutional reporting]
 
-1. [P0] OSB Vote: Content removal case #2024-123
-   Project: oversight-board | Due: Nov 15
-   Source: OSB Secretariat | High confidence
+---
 
-2. [P1] Review PhD thesis - Sasha Ness final submission
-   Project: phd-supervision | Due: Nov 20
-   Source: Sasha Ness | High confidence
+## Already Responded (No Task Created)
 
-3. [P2] Provide feedback on DIGI misinformation event draft
-   Project: needs-categorization | No deadline
-   Source: Unknown sender | Low confidence ⚠️
+- **OSB Cycle 38 Vote** - you replied Dec 20
 
-4. [P1] Confirm attendance: ARC panel meeting Dec 5
-   Project: personal | Due: Nov 30
-   Source: ARC Office | Medium confidence
+---
 
-5. [P3] Book accommodation for Sydney trip
-   Project: travel | Due: Dec 1
-   Source: Booking confirmation | High confidence
+## Tasks Created
 
-⚠️ 1 task needs manual categorization (low confidence)
-📝 Backend used: task_add.py script
-✨ All tasks available in inbox
+| Priority | Task | Due | Source |
+|----------|------|-----|--------|
+| P0 | Acquit corporate card | urgent | Card Program |
+| P1 | ARC COI declaration | - | RMIT |
+| P1 | Lucinda Nelson reference | - | Amanda Kennedy |
 
-What would you like to do?
-- Archive processed emails (not implemented yet)
-- Review low-confidence tasks
-- Continue working
+---
+
+## Archive Candidates
+
+[AskUserQuestion: Mark any to KEEP - default archives all]
 ```
 
 ## Error Handling
@@ -788,4 +925,5 @@ TASK_CAPTURE_AUTO_CREATE=false
 
 **Version History**:
 
+- 1.1.0 (2025-12-23): Added sent folder check, FYI classification, present-before-archive requirement
 - 1.0.0 (2025-11-10): Initial implementation with scripts backend, pluggable design
