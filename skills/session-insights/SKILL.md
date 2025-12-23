@@ -2,7 +2,7 @@
 name: session-insights
 description: Extract accomplishments and learnings from Claude Code sessions. Updates daily summary and mines for framework patterns.
 allowed-tools: Read,Bash,Glob,Grep,Edit,Write,Skill,mcp__gemini__ask-gemini,mcp__memory__retrieve_memory,Skill(skill="remember"),mcp__memory__update_memory_metadata
-version: 2.0.0
+version: 2.4.0
 permalink: skills-session-insights
 ---
 
@@ -35,7 +35,17 @@ Extract accomplishments and learnings from Claude Code sessions. Idempotent - sa
 
 Find sessions via `lib.session_reader.find_sessions()` filtered by date.
 
-**Freshness check**: For EACH session returned by find_sessions():
+```python
+from lib.session_reader import find_sessions
+from datetime import datetime, timezone
+
+target_date = datetime.now(timezone.utc).date()  # or parse YYYYMMDD arg
+
+# SessionInfo has: path, project, session_id, last_modified (NO start_time!)
+sessions = [s for s in find_sessions() if s.last_modified.date() == target_date]
+```
+
+**Freshness check**: For EACH session returned:
 
 ```python
 # Match by session ID (first 8 chars) - NOT by counting files
@@ -47,7 +57,9 @@ needs_update = not transcript_exists or session.last_modified > transcript.mtime
 
 **Generate**: `Skill(skill="transcript")` for each needing update.
 
-**Output**: `$ACA_DATA/sessions/claude/YYYYMMDD-<project>-<slug>-abridged.md`
+**Output**: `$ACA_DATA/sessions/claude/YYYYMMDD-<shortproject>-<sessionid>-<slug>-{full,abridged}.md`
+
+**Both versions generated** - full for deep analysis, abridged for quick review.
 
 ---
 
@@ -55,9 +67,25 @@ needs_update = not transcript_exists or session.last_modified > transcript.mtime
 
 Update `$ACA_DATA/sessions/YYYYMMDD-daily.md` with accomplishments.
 
+### Shared File Model
+
+The daily note is a **shared file** - both user and skill write to it:
+
+| Writer | Content | Examples |
+|--------|---------|----------|
+| User | Manual notes, observations, follow-ups | "Things to follow up on", tables, insights |
+| Skill | Extracted accomplishments from transcripts | `- [x] Fixed transcript skill` |
+
+**Rules**:
+- ❌ NEVER delete user content
+- ✅ Reorganize content to maintain structure
+- ✅ Move orphaned content to appropriate sections
+- ✅ Fix frontmatter if it's template boilerplate
+- ✅ Add missing sections (projects, session log)
+
 ### Daily Note Format
 
-**Structure**: Projects only, ordered by priority. No frontmatter summary sections.
+**Structure**: Projects ordered by priority, user notes preserved in appropriate sections.
 
 ```markdown
 # Daily Summary - YYYY-MM-DD
@@ -81,6 +109,11 @@ Update `$ACA_DATA/sessions/YYYYMMDD-daily.md` with accomplishments.
 
 ## TERTIARY: [Project Name]
 ...
+
+---
+
+## Notes
+<!-- User observations, follow-ups, tables - preserved from manual edits -->
 
 ---
 
@@ -111,23 +144,59 @@ from datetime import datetime, timezone, timedelta
 
 ### Update Rules
 
-- **Carry over**: Yesterday's `- [ ]` incomplete tasks only (not observations)
+- **Preserve user content**: Never delete observations, tables, notes the user wrote
+- **Reorganize if needed**: Move orphaned content to `## Notes` section at bottom
+- **Fix template frontmatter**: Replace "Clear Descriptive Title" with actual date title
+- **Carry over**: Yesterday's `- [ ]` incomplete tasks only
 - **Add**: New `- [x]` accomplishments under their project section
 - **Deduplicate**: Never duplicate tasks across sections
 - **Progress bars**: Run `update_daily_note_dashboard()` after updating
 
-See `lib/session_analyzer.py` for implementation details.
+### Handling Existing Content
+
+If file exists with user content:
+1. Read existing content
+2. Identify user-written sections (observations, tables, follow-ups)
+3. Build proper structure around user content
+4. Place user notes in `## Notes` section if no clear project fit
+5. Never discard anything the user wrote
 
 ---
 
 ## Step 3: Data Mining (Gemini)
 
-Load active experiments and learning themes, then extract via Gemini:
-- Problems: user corrections, failures, verification skips
-- Successes: patterns that worked
-- Experiment evidence: hypothesis matches
+**Mine ALL transcripts in parallel** - even short sessions can have valuable learnings.
 
-**Route**: Known patterns → `learning/*.md`, novel → `LOG.md`, evidence → `experiments/*.md`
+### 3a. Extract findings via Gemini (parallel)
+
+Call `mcp__gemini__ask-gemini` for ALL transcripts simultaneously:
+
+```
+mcp__gemini__ask-gemini(prompt="
+@/path/to/transcript.md
+
+Analyze this Claude Code session transcript. Identify:
+1. FAILURES - mistakes, user corrections, incomplete tasks
+2. SUCCESSES - what worked well
+3. IMPROVEMENTS - signs of learning/adaptation
+4. CONCERNS - patterns that might cause future problems
+
+For each finding, provide: description, evidence quote, trigger, severity, category, actionable.
+Output as JSON.
+")
+```
+
+See `mining-prompt.md` for full prompt with field definitions.
+
+### 3b. Route findings via /log skill
+
+```
+Skill(skill="log", args="session-mining: <gemini_json>")
+```
+
+The log skill parses findings and routes by category to appropriate learning files.
+
+See `specs/session-insights-mining.md` for approach options.
 
 ---
 

@@ -10,10 +10,70 @@ Usage:
 """
 
 import argparse
+import re
 import sys
 from pathlib import Path
 
 from lib.session_reader import SessionProcessor
+
+
+def generate_slug(entries: list, max_words: int = 3) -> str:
+    """Generate a brief slug from the first substantive user message.
+
+    Args:
+        entries: List of Entry dataclass objects from SessionProcessor
+        max_words: Maximum words in slug (default 3)
+
+    Returns:
+        Kebab-case slug like 'session-storage-fix' or 'transcript-update'
+    """
+    # Find first user message that isn't a command or tool result
+    for entry in entries:
+        entry_type = entry.type if hasattr(entry, 'type') else entry.get('type', '')
+        if entry_type == 'user':
+            # Get content from message dict or content dict
+            if hasattr(entry, 'message') and entry.message:
+                content = entry.message.get('content', '')
+                # Handle content that might be a list (tool results)
+                if isinstance(content, list):
+                    continue
+            elif hasattr(entry, 'content'):
+                content = str(entry.content)
+            else:
+                content = entry.get('content', '') if isinstance(entry, dict) else ''
+            # Skip command invocations, tool results, system messages, and empty tags
+            if (content.startswith('<command') or content.startswith('[{') or
+                content.startswith('Caveat:') or content.startswith('<local-command') or
+                content.startswith('<system')):
+                continue
+            # Skip very short messages
+            if len(content) < 10:
+                continue
+
+            # Extract meaningful words (skip common words)
+            stop_words = {'the', 'a', 'an', 'is', 'are', 'was', 'were', 'be', 'been',
+                         'to', 'of', 'and', 'in', 'that', 'have', 'i', 'it', 'for',
+                         'not', 'on', 'with', 'he', 'as', 'you', 'do', 'at', 'this',
+                         'but', 'his', 'by', 'from', 'they', 'we', 'say', 'her', 'she',
+                         'or', 'will', 'my', 'one', 'all', 'would', 'there', 'their',
+                         'what', 'so', 'up', 'out', 'if', 'about', 'who', 'get', 'which',
+                         'go', 'me', 'when', 'make', 'can', 'like', 'time', 'no', 'just',
+                         'him', 'know', 'take', 'people', 'into', 'year', 'your', 'good',
+                         'some', 'could', 'them', 'see', 'other', 'than', 'then', 'now',
+                         'look', 'only', 'come', 'its', 'over', 'think', 'also', 'back',
+                         'after', 'use', 'two', 'how', 'our', 'work', 'first', 'well',
+                         'way', 'even', 'new', 'want', 'because', 'any', 'these', 'give',
+                         'day', 'most', 'us', 'please', 'help', 'let', 'need', 'should'}
+
+            # Clean and tokenize
+            words = re.findall(r'[a-zA-Z]+', content.lower())
+            meaningful = [w for w in words if w not in stop_words and len(w) > 2]
+
+            if meaningful:
+                slug_words = meaningful[:max_words]
+                return '-'.join(slug_words)
+
+    return 'session'
 
 
 def main():
@@ -31,6 +91,7 @@ Examples:
 
     parser.add_argument('jsonl_file', help='Path to Claude Code JSONL session file')
     parser.add_argument('-o', '--output', help='Output base name (generates -full.md and -abridged.md)')
+    parser.add_argument('--slug', help='Brief slug describing session work (auto-generated if not provided)')
     parser.add_argument('--full-only', action='store_true', help='Generate only the full version')
     parser.add_argument('--abridged-only', action='store_true', help='Generate only the abridged version')
 
@@ -63,19 +124,6 @@ Examples:
                     print(f"❌ Error: Could not parse hooks file")
                     return 1
 
-    # Generate output base name
-    if args.output:
-        base_name = args.output
-        # Strip .md suffix if provided
-        if base_name.endswith('.md'):
-            base_name = base_name[:-3]
-        # Strip -full or -abridged suffix if provided
-        if base_name.endswith('-full') or base_name.endswith('-abridged'):
-            base_name = base_name.rsplit('-', 1)[0]
-    else:
-        session_id = jsonl_path.stem[:8]
-        base_name = f"session_{session_id}"
-
     # Determine which versions to generate
     generate_full = not args.abridged_only
     generate_abridged = not args.full_only
@@ -86,6 +134,48 @@ Examples:
     try:
         print(f"📝 Processing session: {jsonl_path}")
         session_summary, entries, agent_entries = processor.parse_jsonl(str(jsonl_path))
+
+        # Generate output base name
+        if args.output:
+            base_name = args.output
+            # Strip .md suffix if provided
+            if base_name.endswith('.md'):
+                base_name = base_name[:-3]
+            # Strip -full or -abridged suffix if provided
+            if base_name.endswith('-full') or base_name.endswith('-abridged'):
+                base_name = base_name.rsplit('-', 1)[0]
+        else:
+            # Auto-generate name: YYYYMMDD-shortproject-sessionid-slug
+            from datetime import datetime
+
+            # Get date from first entry timestamp or file mtime
+            date_str = None
+            for entry in entries:
+                if hasattr(entry, 'message') and entry.message:
+                    ts = entry.message.get('timestamp')
+                    if ts:
+                        try:
+                            date_str = datetime.fromisoformat(ts.replace('Z', '+00:00')).strftime('%Y%m%d')
+                            break
+                        except (ValueError, TypeError):
+                            continue
+            if not date_str:
+                date_str = datetime.fromtimestamp(jsonl_path.stat().st_mtime).strftime('%Y%m%d')
+
+            # Get short project name from parent directory
+            # e.g., -opt-nic-buttermilk -> buttermilk
+            project = jsonl_path.parent.name
+            project_parts = project.strip('-').split('-')
+            short_project = project_parts[-1] if project_parts else 'unknown'
+
+            # Get session ID from filename (first 8 chars of UUID)
+            session_id = jsonl_path.stem[:8]
+
+            # Get or generate slug
+            slug = args.slug if args.slug else generate_slug(entries)
+
+            base_name = f"{date_str}-{short_project}-{session_id}-{slug}"
+            print(f"📛 Generated filename: {base_name}")
 
         print(f"📊 Found {len(entries)} entries")
 
