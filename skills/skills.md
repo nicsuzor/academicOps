@@ -9,7 +9,7 @@ tags: [framework, skills]
 
 ## Overview
 
-23 specialized skills providing domain-specific capabilities and context for academic research, writing, and framework operations.
+24 specialized skills providing domain-specific capabilities and context for academic research, writing, and framework operations.
 
 ## Framework & Meta
 
@@ -37,6 +37,7 @@ tags: [framework, skills]
 - [[extractor/SKILL.md|extractor]] - Archive information extraction - assess documents and identify information worth preserving
 - [[reference-map/SKILL.md|reference-map]] - Extract all file references from framework and output graph format for visualization
 - [[link-audit/SKILL.md|link-audit]] - Analyze and clean up framework file references using reference-map output
+- [[garden/SKILL.md|garden]] - Incremental PKM maintenance - weeding, pruning, linking, consolidating
 
 ## Operations & Tools
 
