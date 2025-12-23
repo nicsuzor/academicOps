@@ -1,116 +1,119 @@
 ---
 name: rules
-title: Enforcement Rules
+title: Enforcement Rules Map
 type: reference
-description: Current state of all enforcement mechanisms (auto-generated). Do not edit manually.
+description: What rules are enforced, where, and how. MoC for enforcement mechanisms.
 permalink: rules
-tags: [framework, enforcement, configuration]
+tags: [framework, enforcement, moc]
 ---
 
 # Enforcement Rules
 
-Current state of all enforcement mechanisms. **Auto-generated** — do not edit manually.
+What's protected, how it's enforced, and where to find the source.
 
-**Last updated**: 2025-12-15 12:15
+For **mechanism details** (how each enforcement level works): [[skills/framework/ENFORCEMENT.md]]
 
-**To regenerate**: Invoke [[academicOps/skills/framework]] with "update enforcement state"
+---
+
+## Quick Reference
+
+| Category | What's Protected | Mechanism | Source |
+|----------|------------------|-----------|--------|
+| Task files | `**/data/tasks/**` | Deny rules | `config/claude/settings.json` |
+| Claude config | `~/.claude/*` | Deny rules | `config/claude/settings.json` |
+| Research records | `**/tja/records/**`, `**/tox/records/**` | Deny rules | `config/claude/settings.json` |
+| Doc bloat | `*-GUIDE.md`, `.md` > 200 lines | PreToolUse block | `hooks/policy_enforcer.py` |
+| Git safety | Destructive commands | PreToolUse block | `hooks/policy_enforcer.py` |
+| Data integrity | Format validation | Pre-commit | `.pre-commit-config.yaml` |
 
 ---
 
 ## Deny Rules (settings.json)
 
-Path-based access control via `~/.claude/settings.json` → `permissions.deny`:
+**Mechanism**: Claude Code's built-in permission system. Glob patterns, hard block.
 
-### Task Protection
-- `Write(/data/tasks/**)`
-- `Write(*/data/tasks/**)`
-- `Edit(/data/tasks/**)`
-- `Edit(*/data/tasks/**)`
-- `Bash(rm */data/tasks/**)`
-- `Bash(mv */data/tasks/**)`
-- `Bash(cp */data/tasks/**)`
-- `Bash(git mv */data/tasks/**)`
-- `Bash(git rm */data/tasks/**)`
+**Source**: `$AOPS/config/claude/settings.json` → `permissions.deny`
 
-### Claude Config Protection (Read)
-- `Read(~/.claude/settings.json)`
-- `Read(~/.claude/settings.local.json)`
-- `Read(~/.claude/mcp.json)`
-- `Read(~/.claude/.credentials.json)`
+### Task Files
 
-Note: Reading `~/.claude/hooks/**`, `skills/**`, `commands/**`, `agents/**` is allowed (needed for skill invocation).
+**Pattern**: `**/data/tasks/**`
+**Blocked tools**: Write, Edit, Bash (rm, mv, cp, git mv, git rm)
+**Why**: Tasks require workflow control via `/tasks` skill
 
-### Claude Config Protection (Write/Edit)
-- `Write(~/.claude/settings.json)`
-- `Write(~/.claude/settings.local.json)`
-- `Write(~/.claude/mcp.json)`
-- `Write(~/.claude/.credentials.json)`
-- `Write(~/.claude/hooks/**)`
-- `Write(~/.claude/skills/**)`
-- `Write(~/.claude/commands/**)`
-- `Write(~/.claude/agents/**)`
-- `Edit(~/.claude/settings.json)`
-- `Edit(~/.claude/settings.local.json)`
-- `Edit(~/.claude/mcp.json)`
-- `Edit(~/.claude/.credentials.json)`
-- `Edit(~/.claude/hooks/**)`
-- `Edit(~/.claude/skills/**)`
-- `Edit(~/.claude/commands/**)`
-- `Edit(~/.claude/agents/**)`
+### Claude Config
 
-### Claude Config Protection (Bash)
-- `Bash(rm ~/.claude/settings*)`
-- `Bash(rm ~/.claude/mcp.json)`
-- `Bash(rm ~/.claude/.credentials.json)`
-- `Bash(rm -rf ~/.claude/hooks)`
-- `Bash(rm -rf ~/.claude/skills)`
-- `Bash(rm -rf ~/.claude/commands)`
-- `Bash(rm -rf ~/.claude/agents)`
-- `Bash(mv ~/.claude/settings*)`
-- `Bash(mv ~/.claude/mcp.json)`
-- `Bash(mv ~/.claude/.credentials.json)`
-- `Bash(mv ~/.claude/hooks)`
-- `Bash(mv ~/.claude/skills)`
-- `Bash(mv ~/.claude/commands)`
-- `Bash(mv ~/.claude/agents)`
+**Pattern**: `~/.claude/*` (settings.json, settings.local.json, mcp.json, .credentials.json, hooks/**, skills/**, commands/**, agents/**)
+**Blocked tools**: Read (sensitive files), Write, Edit, Bash (rm, mv)
+**Why**: Prevents agents from modifying their own constraints
+**Note**: Reading hooks/skills/commands/agents IS allowed (needed for skill invocation)
+
+### Research Records
+
+**Pattern**: `**/tja/records/**`, `**/tox/records/**`
+**Blocked tools**: Write, Edit, Bash (rm, mv)
+**Why**: Research data is immutable (AXIOMS #24)
 
 ---
 
 ## PreToolUse Blocks (policy_enforcer.py)
 
-Pattern-based blocking via `$AOPS/hooks/policy_enforcer.py`:
+**Mechanism**: Hook intercepts tool calls, blocks on pattern match. Exit code 2 = block.
 
-### Documentation Bloat Prevention
-- **Write(*-GUIDE.md)** — blocks files ending in `-GUIDE.md`
-- **Write(*.md > 200 lines)** — blocks markdown files exceeding 200 lines
+**Source**: `$AOPS/hooks/policy_enforcer.py`
+
+### Documentation Bloat
+
+| Pattern | Type | Why |
+|---------|------|-----|
+| `*-GUIDE.md` | Filename suffix | MINIMAL principle - add to README instead |
+| `.md` > 200 lines | Line count | Split into focused chunks |
 
 ### Git Safety
-- `git reset --hard`
-- `git clean -f` or `git clean -d`
-- `git push --force`
-- `git checkout -- .`
-- `git stash drop`
+
+**Pattern type**: Regex on Bash commands
+
+| Blocked | Why |
+|---------|-----|
+| `git reset --hard` | Destroys uncommitted work |
+| `git clean -f` / `-d` | Deletes untracked files |
+| `git push --force` | Rewrites shared history |
+| `git checkout -- .` | Discards all changes |
+| `git stash drop` | Loses stashed work |
 
 ---
 
-## Pre-commit Hooks (.pre-commit-config.yaml)
+## Pre-commit Hooks
 
-Commit-time validation via `.pre-commit-config.yaml`:
+**Mechanism**: Validates files at commit time. Blocks commit on failure.
 
-### Standard Hygiene
-- `trailing-whitespace`
-- `check-yaml`
-- `check-json` (excludes .vscode/, .claude/, .ipynb)
-- `check-toml`
-- `mixed-line-ending` (enforces LF)
+**Source**: `$AOPS/../.pre-commit-config.yaml` (repo root)
+
+### File Hygiene
+
+- Trailing whitespace removal
+- YAML/JSON/TOML syntax validation
+- LF line endings enforced
 
 ### Linting
-- `shellcheck` — shell script linting
-- `eslint` — JS/TS linting
-- `ruff` — Python linting + formatting
-- `ruff-format` — Python formatting
 
-### Local Hooks
-- `dprint` — markdown/json/toml/yaml formatting
-- `memory-validate` — frontmatter validation for `data/*.md`
-- `data-markdown-only` — blocks non-.md files in `data/` (except `data/assets/`)
+- `shellcheck` — shell scripts
+- `eslint` — JS/TS
+- `ruff` — Python (lint + format)
+
+### Data Integrity
+
+| Hook | What | Pattern |
+|------|------|---------|
+| `dprint` | Format markdown, json, toml, yaml | Various extensions |
+| `bmem-validate` | Frontmatter validation | `^data/.*\.md$` |
+| `data-markdown-only` | Block non-.md in data/ | `^data/(?!assets/).*$` exclude `.md` |
+
+---
+
+## Maintenance
+
+This is a **curated MoC**, not auto-generated. When enforcement sources change:
+
+1. Edit the source file (settings.json, policy_enforcer.py, or .pre-commit-config.yaml)
+2. Update this file to reflect the change
+3. Keep categories grouped by purpose, not by source file
