@@ -1,119 +1,85 @@
 ---
 name: rules
-title: Enforcement Rules Map
+title: Enforcement Rules
 type: reference
-description: What rules are enforced, where, and how. MoC for enforcement mechanisms.
+description: What rules are enforced, how, and evidence of effectiveness.
 permalink: rules
 tags: [framework, enforcement, moc]
 ---
 
 # Enforcement Rules
 
-What's protected, how it's enforced, and where to find the source.
-
-For **mechanism details** (how each enforcement level works): [[skills/framework/ENFORCEMENT.md]]
+What's protected, how it's enforced, and whether it's working.
 
 ---
 
-## Quick Reference
+## Enforcement Mechanisms
 
-| Category | What's Protected | Mechanism | Source |
-|----------|------------------|-----------|--------|
-| Task files | `**/data/tasks/**` | Deny rules | `config/claude/settings.json` |
-| Claude config | `~/.claude/*` | Deny rules | `config/claude/settings.json` |
-| Research records | `**/tja/records/**`, `**/tox/records/**` | Deny rules | `config/claude/settings.json` |
-| Doc bloat | `*-GUIDE.md`, `.md` > 200 lines | PreToolUse block | `hooks/policy_enforcer.py` |
-| Git safety | Destructive commands | PreToolUse block | `hooks/policy_enforcer.py` |
-| Data integrity | Format validation | Pre-commit | `.pre-commit-config.yaml` |
+| Level | Mechanism | Strength | How It Works |
+|-------|-----------|----------|--------------|
+| 1 | Ad-hoc prompts | Soft | Direct conversation guidance, not persistent |
+| 2 | CLAUDE.md | Soft | Auto-loads at session start, agents can ignore |
+| 3 | SessionStart hook | Medium | Injects AXIOMS, FRAMEWORK, CORE into context |
+| 4 | UserPromptSubmit hook | Medium | Skill suggestions on every prompt |
+| 5 | PreToolUse hook | Hard | Blocks tool calls matching patterns (exit 2) |
+| 6 | Deny rules | Hard | Claude Code built-in, blocks paths |
+| 7 | Pre-commit | Hard | Final gate before git commit |
 
----
-
-## Deny Rules (settings.json)
-
-**Mechanism**: Claude Code's built-in permission system. Glob patterns, hard block.
-
-**Source**: `$AOPS/config/claude/settings.json` → `permissions.deny`
-
-### Task Files
-
-**Pattern**: `**/data/tasks/**`
-**Blocked tools**: Write, Edit, Bash (rm, mv, cp, git mv, git rm)
-**Why**: Tasks require workflow control via `/tasks` skill
-
-### Claude Config
-
-**Pattern**: `~/.claude/*` (settings.json, settings.local.json, mcp.json, .credentials.json, hooks/**, skills/**, commands/**, agents/**)
-**Blocked tools**: Read (sensitive files), Write, Edit, Bash (rm, mv)
-**Why**: Prevents agents from modifying their own constraints
-**Note**: Reading hooks/skills/commands/agents IS allowed (needed for skill invocation)
-
-### Research Records
-
-**Pattern**: `**/tja/records/**`, `**/tox/records/**`
-**Blocked tools**: Write, Edit, Bash (rm, mv)
-**Why**: Research data is immutable (AXIOMS #24)
+**Decision guide**: Soft = agent should know. Medium = reminder at decision time. Hard = must not happen.
 
 ---
 
-## PreToolUse Blocks (policy_enforcer.py)
+## Active Rules
 
-**Mechanism**: Hook intercepts tool calls, blocks on pattern match. Exit code 2 = block.
+### Path Protection (Deny Rules)
 
-**Source**: `$AOPS/hooks/policy_enforcer.py`
+| Category | Pattern | Blocked Tools | Purpose | Evidence |
+|----------|---------|---------------|---------|----------|
+| Task files | `**/data/tasks/**` | Write, Edit, Bash | Force use of `/tasks` skill for workflow control | Agent redirects to skill |
+| Claude config | `~/.claude/*.json` | Read, Write, Edit, Bash | Protect secrets (credentials, API keys) | No leaks |
+| Claude runtime | `~/.claude/{hooks,skills,commands,agents}/**` | Write, Edit, Bash | Force edits via `$AOPS/` canonical source, not symlinks | Changes go to repo |
+| Research records | `**/tja/records/**`, `**/tox/records/**` | Write, Edit, Bash | Research data immutable (AXIOMS #24) | Data integrity |
 
-### Documentation Bloat
+**Note**: Reading `~/.claude/hooks/**` etc IS allowed (skill invocation needs it).
 
-| Pattern | Type | Why |
-|---------|------|-----|
-| `*-GUIDE.md` | Filename suffix | MINIMAL principle - add to README instead |
-| `.md` > 200 lines | Line count | Split into focused chunks |
+### Pattern Blocking (PreToolUse Hook)
 
-### Git Safety
+| Category | Pattern | Blocked Tools | Purpose | Evidence |
+|----------|---------|---------------|---------|----------|
+| Doc bloat | `*-GUIDE.md` | Write | MINIMAL principle - add to README instead | Blocks in logs |
+| Doc bloat | `.md` > 200 lines | Write | Force chunking into focused files | Splits happen |
+| Git: hard reset | `git reset --hard` | Bash | Preserve uncommitted work | No data loss |
+| Git: clean | `git clean -[fd]` | Bash | Preserve untracked files | No data loss |
+| Git: force push | `git push --force` | Bash | Protect shared history | No rewrites |
+| Git: checkout all | `git checkout -- .` | Bash | Preserve local changes | No data loss |
+| Git: stash drop | `git stash drop` | Bash | Preserve stashed work | No data loss |
 
-**Pattern type**: Regex on Bash commands
+### Commit-Time Validation (Pre-commit)
 
-| Blocked | Why |
-|---------|-----|
-| `git reset --hard` | Destroys uncommitted work |
-| `git clean -f` / `-d` | Deletes untracked files |
-| `git push --force` | Rewrites shared history |
-| `git checkout -- .` | Discards all changes |
-| `git stash drop` | Loses stashed work |
+| Category | Hook | Purpose | Evidence |
+|----------|------|---------|----------|
+| File hygiene | trailing-whitespace, check-yaml/json/toml, mixed-line-ending | Clean commits | Auto-fixed |
+| Code quality | shellcheck, eslint, ruff | Catch errors before commit | Lint errors blocked |
+| Formatting | dprint | Consistent markdown/json/toml/yaml | Auto-formatted |
+| Data integrity | bmem-validate | Valid frontmatter in `data/*.md` | Invalid blocked |
+| Data purity | data-markdown-only | Only `.md` in `data/` (except `assets/`) | Non-md blocked |
 
 ---
 
-## Pre-commit Hooks
+## Source Files
 
-**Mechanism**: Validates files at commit time. Blocks commit on failure.
-
-**Source**: `$AOPS/../.pre-commit-config.yaml` (repo root)
-
-### File Hygiene
-
-- Trailing whitespace removal
-- YAML/JSON/TOML syntax validation
-- LF line endings enforced
-
-### Linting
-
-- `shellcheck` — shell scripts
-- `eslint` — JS/TS
-- `ruff` — Python (lint + format)
-
-### Data Integrity
-
-| Hook | What | Pattern |
-|------|------|---------|
-| `dprint` | Format markdown, json, toml, yaml | Various extensions |
-| `bmem-validate` | Frontmatter validation | `^data/.*\.md$` |
-| `data-markdown-only` | Block non-.md in data/ | `^data/(?!assets/).*$` exclude `.md` |
+| Mechanism | Authoritative Source |
+|-----------|---------------------|
+| Deny rules | `$AOPS/config/claude/settings.json` → `permissions.deny` |
+| PreToolUse | `$AOPS/hooks/policy_enforcer.py` |
+| Pre-commit | `$AOPS/../.pre-commit-config.yaml` (repo root) |
 
 ---
 
 ## Maintenance
 
-This is a **curated MoC**, not auto-generated. When enforcement sources change:
+Curated MoC. When enforcement changes:
 
-1. Edit the source file (settings.json, policy_enforcer.py, or .pre-commit-config.yaml)
-2. Update this file to reflect the change
-3. Keep categories grouped by purpose, not by source file
+1. Edit source file (settings.json, policy_enforcer.py, or .pre-commit-config.yaml)
+2. Update this file
+3. Add evidence observation to Evidence column

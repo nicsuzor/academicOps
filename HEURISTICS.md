@@ -190,7 +190,7 @@ These are empirically derived rules that implement [[AXIOMS]] in practice. Unlik
 **Rationale**: Hardcoded lists (enforcement levels, filing locations, intervention ladders) become stale when the authoritative source changes. Brief instructions that delegate to reference docs stay current automatically.
 
 **Evidence**:
-- 2025-12-16: `/learn` command hardcoded a 4-level intervention ladder that ignored git hooks, deny rules, and other mechanisms defined in ENFORCEMENT.md
+- 2025-12-16: `/learn` command hardcoded a 4-level intervention ladder that ignored git hooks, deny rules, and other mechanisms defined in RULES.md
 
 **Confidence**: Medium
 
@@ -414,6 +414,28 @@ If critic returns REVISE or HALT, address issues before proceeding.
 1. Is this essential to the core RIGHT NOW?
 2. Can we wait until we actually need it?
 3. If uncertain, wait.
+
+---
+
+## H22: Indices Before Exploration
+
+**Statement**: Before using glob/grep to explore a codebase or knowledge base, check index files first: ROADMAP.md, README.md, INDEX.md, or any MoC (Map of Content).
+
+**Rationale**: Index files exist to provide orientation. Jumping straight to search tools wastes time rediscovering structure that's already documented. Indices also reveal what categories exist, preventing agents from proposing new infrastructure when existing structures already cover the need.
+
+**Evidence**:
+- 2025-12-23: Agent proposed "read ALL user stories for semantic matching" when ROADMAP.md already had a user stories table. User asked "don't we have an index file?" - answer was already there.
+- 2025-12-23: Agent proposed new infrastructure when ROADMAP.md would have shown existing patterns to extend.
+
+**Confidence**: Low (first occurrence, needs validation)
+
+**Implements**: [[AXIOMS]] #26 (Minimal Instructions) - don't over-engineer when the map already exists
+
+**Application**:
+1. Before proposing new infrastructure → check ROADMAP.md for existing patterns
+2. Before exploring codebase → check README.md, INDEX.md for structure
+3. Before searching knowledge base → check if an index/MoC exists
+4. Only use glob/grep when indices don't answer the question
 
 ---
 

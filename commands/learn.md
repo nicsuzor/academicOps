@@ -47,7 +47,7 @@ Search HEURISTICS.md for related heuristics.
 
 ### 3. Choose Intervention
 
-The framework skill (via `@skills/framework/ENFORCEMENT.md`) defines available enforcement mechanisms. Consult it to choose the **minimal sufficient** intervention:
+The framework skill (via `@RULES.md`) defines available enforcement mechanisms. Consult it to choose the **minimal sufficient** intervention:
 
 - **First occurrence** → Softest mechanism that addresses the issue
 - **Recurrence** → Consider next-stronger mechanism
@@ -105,7 +105,7 @@ Tell the user:
 ## Example
 
 **First mention of spelling issues**:
-- Consult ENFORCEMENT.md for minimal mechanism
+- Consult RULES.md for minimal mechanism
 - Add brief note to relevant skill or CLAUDE.md
 - Create experiment to track
 - Report: "Added note to [location]. Will escalate if it recurs."

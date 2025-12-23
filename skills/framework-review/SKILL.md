@@ -5,7 +5,7 @@ Analyze session transcripts to identify framework improvement opportunities. Use
 ## Framework Context
 
 @resources/AXIOMS.md
-@resources/ENFORCEMENT.md
+@resources/RULES.md
 
 ## When to Invoke
 
@@ -71,7 +71,7 @@ For each identified problem, determine root cause and appropriate fix level:
 | Need verification | 5 - Post-tool hook |
 | Must never occur | 6 - Deny rule |
 
-Reference: `docs/ENFORCEMENT.md` mechanism ladder.
+Reference: `RULES.md` mechanism ladder.
 
 **Key insight**: If rule exists but is ignored, adding another rule won't help. Escalate enforcement level.
 
@@ -82,7 +82,7 @@ Add findings to "In Progress" section:
 ```markdown
 ### Enforcement Improvements (from YYYY-MM-DD review)
 
-See `docs/ENFORCEMENT.md` for mechanism ladder.
+See `RULES.md` for mechanism ladder.
 
 | Fix | Level | Effort | Root Cause |
 |-----|-------|--------|------------|
@@ -91,7 +91,7 @@ See `docs/ENFORCEMENT.md` for mechanism ladder.
 
 ### 7. Update Evidence Log (Optional)
 
-Add observations to `docs/ENFORCEMENT.md` evidence log:
+Add observations to `RULES.md` Evidence/Metric column:
 
 ```markdown
 | Date | Observation | Mechanism Tried | Worked? |
@@ -120,7 +120,7 @@ Add observations to `docs/ENFORCEMENT.md` evidence log:
 
 ### Updated
 - ROADMAP.md: Added enforcement improvements
-- ENFORCEMENT.md: Added evidence log entries
+- RULES.md: Updated evidence column
 ```
 
 ## Anti-Patterns
@@ -128,4 +128,4 @@ Add observations to `docs/ENFORCEMENT.md` evidence log:
 - ❌ Adding rules when rules already exist but are ignored
 - ❌ Proposing "agents should do X better" without enforcement mechanism
 - ❌ Diagnosing symptoms instead of root causes
-- ❌ Skipping ENFORCEMENT.md level mapping
+- ❌ Skipping RULES.md level mapping
