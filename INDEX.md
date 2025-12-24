@@ -170,17 +170,18 @@ $AOPS/
 
 ### Skill → Skill Dependencies
 
-| Skill | May Invoke |
-|-------|------------|
-| learning-log | transcript (when given session JSONL) |
-| transcript | (none - wraps script) |
-| session-insights | transcript, learning-log |
+| Skill                             | May Invoke                            |
+| --------------------------------- | ------------------------------------- |
+| [[academicOps/commands/log\|log]] | transcript (when given session JSONL) |
+| [[transcript]]                    | (none - wraps script)                 |
+| [[session-insights]]              | transcript, learning-log              |
 
 ### Agent → Skill Routing
 
-| Agent | Routes To |
-|-------|-----------|
-| memory-validator | remember |
+| Agent            | Routes To                       |
+| ---------------- | ------------------------------- |
+| memory-validator | [[academicOps/skills/remember]] |
+|                  |                                 |
 
 **Note**: For Python development, use `general-purpose` subagent and invoke `Skill(skill="python-dev")` directly.
 

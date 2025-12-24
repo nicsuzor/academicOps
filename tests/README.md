@@ -454,7 +454,6 @@ Following [[AXIOMS.md]]:
 
 **Status Note**:
 
-Tests have been migrated from bmem to memory server. The memory skill now uses the remote memory server over Tailscale for persistence.
 
 Run tests to validate framework integrity:
 

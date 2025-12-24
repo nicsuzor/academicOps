@@ -314,6 +314,7 @@ Scripts backend (`task_add.py`):
 ```
 Required:
 - --title: Action description (concise, actionable)
+- --source-email-id: Outlook entry_id (REQUIRED for emails - enables dedup)
 
 Optional:
 - --priority: P0, P1, P2, or P3 (inferred from signals)
@@ -322,20 +323,17 @@ Optional:
 - --due: Deadline in ISO8601 format (e.g., 2025-11-15T17:00:00Z)
 - --tags: Comma-separated tags (no spaces)
 - --body: Full task description including email metadata
-
-Email metadata (embed in --body text):
-- Entry ID from Outlook MCP
-- Email subject
-- Sender name/email
-- Received timestamp
 ```
+
+**Duplicate prevention**: If `--source-email-id` matches any existing task (inbox OR archived), creation is blocked. This is the primary dedup mechanism.
 
 **Scripts backend example**:
 
 ```bash
 # Run from repo root with uv run
-uv run python bots/skills/tasks/scripts/task_add.py \
+uv run python skills/tasks/scripts/task_add.py \
   --title "OSB Vote: Content removal case #2024-123" \
+  --source-email-id "AAMkADQ3ZmY..." \
   --priority P0 \
   --project "oversight-board" \
   --classification "Action" \
@@ -343,7 +341,6 @@ uv run python bots/skills/tasks/scripts/task_add.py \
   --tags "osb,vote,urgent" \
   --body "Email from: OSB Secretariat <secretariat@oversightboard.com>
 Received: 2025-11-10T09:23:00Z
-Entry ID: AAMkADQ3...
 Subject: [ACTION REQUIRED] OSB Cycle 38 Vote
 
 Vote required on content removal case #2024-123 (hate speech appeal).
@@ -374,24 +371,16 @@ Parameters:
 }
 ```
 
-### Step 7: Final Duplicate Check (Per-Task)
+### Step 7: Duplicate Prevention (Automatic)
 
-**This is a secondary check** - Step 0 should have caught most duplicates. This step catches edge cases during task creation.
+**Handled by `task_add.py`**: When `--source-email-id` is provided, the script automatically checks inbox AND archived tasks. If the email ID exists, creation is blocked with an error message.
 
-**For each task about to be created**:
+**No manual grep needed** - the script does this for you.
 
-1. Search by email subject: `grep -li "SUBJECT_KEYWORDS" $ACA_DATA/tasks/inbox/*.md $ACA_DATA/tasks/archived/*.md`
-2. Search by entry_id if available: `grep -l "source_email.*ENTRY_ID" $ACA_DATA/tasks/inbox/*.md`
-
-**If match found**:
-- Skip creation
+**If duplicate detected**:
+- Script exits with error: "Duplicate: Email already processed as task"
+- Shows which existing task matched
 - Add to "Skipped (duplicate)" section in summary
-- Log: which existing task matched, why
-
-**Common duplicate scenarios**:
-- Same email processed multiple times (entry_id match)
-- Similar email from same sender about same topic (subject/sender match)
-- Task was created manually before workflow ran (title match)
 
 ### Step 8: Present Information and Summary
 
@@ -859,7 +848,28 @@ Rationale: Informational content from automated sender
 
 ## Configuration
 
-**Environment variables** (optional):
+### Account-Specific Archive Folders
+
+Different email accounts require different tools for archiving:
+
+| Account | Tool | Parameter | Notes |
+|---------|------|-----------|-------|
+| Gmail (nic@suzor.net) | `messages_archive` | `folder_id="211"` | Gmail requires folder ID (account param doesn't work) |
+| QUT (n.suzor@qut.edu.au) | `messages_move` | `folder_path="Archive"` | Standard Exchange folder path |
+
+**Gmail archive** (uses `messages_archive` with folder ID):
+```
+mcp__outlook__messages_archive(entry_id="...", folder_id="211")
+```
+
+**Exchange/Outlook archive** (uses `messages_move` with folder path):
+```
+mcp__outlook__messages_move(entry_id="...", folder_path="Archive", account="n.suzor@qut.edu.au")
+```
+
+**Why different tools?** Gmail accounts on macOS Outlook don't appear in AppleScript account enumeration, so `messages_move` with `account` parameter fails. Use `messages_list_folders` to discover folder IDs.
+
+### Environment variables (optional)
 
 ```bash
 # Backend preference (if both available)
@@ -925,5 +935,7 @@ TASK_CAPTURE_AUTO_CREATE=false
 
 **Version History**:
 
+- 1.1.2 (2025-12-23): Fixed Gmail archive to use `messages_archive` tool (not `messages_move`)
+- 1.1.1 (2025-12-23): Added account-specific archive folder configuration (Gmail uses folder ID `211`)
 - 1.1.0 (2025-12-23): Added sent folder check, FYI classification, present-before-archive requirement
 - 1.0.0 (2025-11-10): Initial implementation with scripts backend, pluggable design

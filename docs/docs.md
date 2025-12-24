@@ -22,6 +22,6 @@ Reference documentation for framework architecture and patterns.
 
 ## Relations
 
-- parent [[academicOps]]
+- parent [[aops]]
 - implements [[AXIOMS]]
 - supports [[hooks]]

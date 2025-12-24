@@ -132,3 +132,4 @@ cd /home/nic/src/writing/
 - This is a MANUAL test requiring human observation of agent behavior
 - Automated testing would require instrumentation of agent decision-making
 - Log any failures to `[[experiments/LOG.md]]`
+- part of [[Testing Framework Overview]]

@@ -477,27 +477,6 @@ Excalidraw can import Mermaid.js diagrams and convert to hand-drawn style.
 
 ---
 
-## Examples & Inspiration
-
-### Study Great Diagrams
-
-Look for diagrams that:
-- Grab your attention immediately
-- Communicate hierarchy clearly
-- Use color purposefully
-- Have generous whitespace
-- Feel professionally designed
-
-### Iterate and Improve
-
-**First draft**: Focus on content and structure
-**Second draft**: Apply visual principles
-**Third draft**: Polish and refine
-
-**Reality**: Great diagrams are rarely first attempts. Budget time for iteration.
-
----
-
 ## Summary
 
 **The Goal**: Create diagrams that are both accurate AND visually compelling.
@@ -534,15 +513,3 @@ Look for diagrams that:
 - Cluster related projects spatially (not in rigid rows)
 - Use opacity and color to show status (blocked=red, active=green, queued=orange)
 - Add icons for status indicators (check_circle, pending, block) from Material Symbols
-
-**Productivity shortcuts**:
-- `Cmd/Ctrl + Arrow` → Duplicate + connect with arrow
-- `Alt + /` → Stats for nerds (pixel dimensions)
-- `Alt/Option + S` → Toggle snapping
-- Click-click-click for multi-point arrows (not click-drag)
-
----
-
-**Last Updated**: 2025-11-18
-**Skill Type**: Visual Communication Design
-**Complexity**: Moderate (easy to start, deep mastery possible)

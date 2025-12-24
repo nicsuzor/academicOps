@@ -25,6 +25,10 @@ This server exposes task management operations (view, archive, unarchive, create
 - **Fail-fast** validation following AXIOMS.md principles
 - **Structured logging** for monitoring and debugging
 
+Workflows
+* instructions: [[academicOps/skills/tasks/SKILL|SKILL]]
+- [[email-capture]]
+
 ## Installation
 
 ### Prerequisites
@@ -616,41 +620,3 @@ uv run python $AOPS/skills/tasks/scripts/task_add.py --title "Task title" --slug
 ```
 
 **Note**: MCP tools are now the recommended interface for agent interactions.
-
-## Related Documentation
-
-- **Specification**: `data/tasks/inbox/fastmcp-task-server-spec.md`
-- **Email capture workflow**: [[workflows/email-capture.md]]
-- **Framework**: `Skill(skill="framework")`
-- **MCP config**: `.mcp.json`
-- **Bmem format guide**: [[BMEM-CLAUDE-GUIDE.md]]
-
-## Version History
-
-**1.2.0** (2025-11-10)
-
-- **Properly formatted task files** - All tasks now use consistent structure
-- **modify_task tool** - Sophisticated editing without archive/recreate
-- Proper frontmatter (permalink, task_id, aliases, modified timestamp)
-- Structured body (# Title, ## Context, ## Observations, ## Relations)
-- Context section extraction for body content
-- No duplication of metadata in Observations
-- Partial updates (only change specified fields)
-- Tag add/remove operations
-- Obsidian and memory server compatibility
-
-**1.1.0** (2025-11-10)
-
-- **Index-based task resolution** - Archive tasks by index from current view
-- Zero-friction "view then act" workflow
-- Mixed identifier support (index + filename in same call)
-- Enhanced error messages for identifier resolution
-- Updated documentation with identification strategies
-
-**1.0.0** (2025-11-10)
-
-- Initial release
-- Tools: view_tasks, archive_tasks, unarchive_tasks, create_task
-- Pydantic validation
-- Fail-fast error handling
-- Structured logging

@@ -120,6 +120,16 @@ def main():
         type=str,
         help="Data directory path (default: $ACA_DATA)",
     )
+    parser.add_argument(
+        "--source-email-id",
+        type=str,
+        help="Outlook entry_id for duplicate detection. If task with this ID exists, creation is blocked.",
+    )
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Force creation even if duplicate source-email-id found",
+    )
 
     args = parser.parse_args()
 
@@ -129,7 +139,34 @@ def main():
     else:
         data_dir = get_data_root()
 
-    # Read body from file if specified
+    # Check for duplicate source-email-id before creating
+    if args.source_email_id and not args.force:
+        tasks_dir = data_dir / "tasks"
+        duplicate_found = None
+        for subdir in ["inbox", "archived"]:
+            search_dir = tasks_dir / subdir
+            if search_dir.exists():
+                for task_file in search_dir.glob("*.md"):
+                    try:
+                        content = task_file.read_text(encoding="utf-8")
+                        if f"source_email_id: {args.source_email_id}" in content:
+                            duplicate_found = task_file
+                            break
+                    except Exception:
+                        continue
+            if duplicate_found:
+                break
+
+        if duplicate_found:
+            print(
+                f"✗ Duplicate: Email already processed as task",
+                file=sys.stderr,
+            )
+            print(f"  Existing task: {duplicate_found.name}", file=sys.stderr)
+            print(f"  Use --force to create anyway", file=sys.stderr)
+            sys.exit(1)
+
+    # Read body from file or argument
     body = args.body or ""
     if args.body_from_file:
         try:
@@ -143,6 +180,10 @@ def main():
         except Exception as e:
             print(f"Error reading file: {e}", file=sys.stderr)
             sys.exit(1)
+
+    # Prepend source email ID if provided (for future duplicate detection)
+    if args.source_email_id:
+        body = f"source_email_id: {args.source_email_id}\n\n{body}"
 
     # Parse due date if provided
     due_datetime = None
