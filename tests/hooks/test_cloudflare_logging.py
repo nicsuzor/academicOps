@@ -3,7 +3,8 @@
 Tests that log_to_cloudflare():
 1. Constructs correct JSON payload with prompt, hostname, cwd, project, timestamp
 2. Makes HTTP POST to correct endpoint with Authorization header
-3. Does NOT raise exceptions even if request fails (fire-and-forget)
+3. Does NOT raise exceptions even if request fails (warns to stderr)
+4. Completes successfully when token present and request succeeds
 """
 
 import importlib
@@ -51,12 +52,12 @@ def test_log_to_cloudflare_constructs_correct_curl_command() -> None:
     test_cwd = "/opt/nic/writing/academicOps"
     test_project = "academicOps"
 
-    # Mock subprocess.Popen to capture the curl command
-    with patch("subprocess.Popen") as mock_popen:
+    # Mock subprocess.run to capture the curl command
+    with patch("subprocess.run") as mock_run:
         # Configure mock to simulate successful execution
-        mock_process = MagicMock()
-        mock_process.returncode = 0
-        mock_popen.return_value = mock_process
+        mock_result = MagicMock()
+        mock_result.returncode = 0
+        mock_run.return_value = mock_result
 
         # Mock environment variables and paths
         with patch.dict(os.environ, {"PROMPT_LOG_API_KEY": "test-token-12345"}):
@@ -66,11 +67,11 @@ def test_log_to_cloudflare_constructs_correct_curl_command() -> None:
                         # Call the function
                         log_to_cloudflare(test_prompt)
 
-        # Verify Popen was called
-        assert mock_popen.called, "subprocess.Popen should be called"
+        # Verify subprocess.run was called
+        assert mock_run.called, "subprocess.run should be called"
 
-        # Get the command that was passed to Popen
-        call_args = mock_popen.call_args
+        # Get the command that was passed to subprocess.run
+        call_args = mock_run.call_args
         curl_command = call_args[0][0]  # First positional argument
 
         # Verify it's a curl command
@@ -134,16 +135,16 @@ def test_log_to_cloudflare_constructs_correct_curl_command() -> None:
 
 
 def test_log_to_cloudflare_does_not_raise_on_failure() -> None:
-    """Test that log_to_cloudflare does NOT raise exceptions on failure (fire-and-forget)."""
+    """Test that log_to_cloudflare does NOT raise exceptions on failure."""
     # Import the function (will raise ImportError if it doesn't exist)
     log_to_cloudflare = import_log_to_cloudflare()
 
     test_prompt = "Test prompt"
 
-    # Mock subprocess.Popen to raise an exception
-    with patch("subprocess.Popen", side_effect=Exception("Network error")):
+    # Mock subprocess.run to raise an exception
+    with patch("subprocess.run", side_effect=Exception("Network error")):
         with patch.dict(os.environ, {"PROMPT_LOG_API_KEY": "test-token"}):
-            # Should NOT raise - function is fire-and-forget
+            # Should NOT raise - function catches exceptions
             log_to_cloudflare(test_prompt)  # Should complete without exception
 
 
@@ -158,6 +159,38 @@ def test_log_to_cloudflare_handles_missing_token() -> None:
     with patch.dict(os.environ, {}, clear=True):
         # Should NOT raise - function is fire-and-forget
         log_to_cloudflare(test_prompt)  # Should complete without exception
+
+
+def test_log_to_cloudflare_success_path() -> None:
+    """Test that log_to_cloudflare executes successfully when token is present and subprocess succeeds."""
+    # Import the function (will raise ImportError if it doesn't exist)
+    log_to_cloudflare = import_log_to_cloudflare()
+
+    test_prompt = "Test prompt for success path"
+
+    # Mock subprocess.run to verify it was called successfully
+    with patch("subprocess.run") as mock_run:
+        # Configure mock to simulate successful execution (returncode 0)
+        mock_result = MagicMock()
+        mock_result.returncode = 0
+        mock_run.return_value = mock_result
+
+        # Mock environment variables
+        with patch.dict(os.environ, {"PROMPT_LOG_API_KEY": "test-token-12345"}):
+            # Call the function - should return None without raising
+            result = log_to_cloudflare(test_prompt)
+
+        # Verify subprocess.run was called exactly once
+        assert mock_run.call_count == 1, "subprocess.run should be called exactly once"
+
+        # Verify the function returned None (implicit success)
+        assert result is None, "Function should return None"
+
+        # Verify subprocess was spawned with capture_output=True for fire-and-forget
+        call_kwargs = mock_run.call_args.kwargs
+        assert call_kwargs.get("capture_output") is True, "capture_output should be True"
+        assert call_kwargs.get("check") is False, "check should be False (we handle errors manually)"
+        assert call_kwargs.get("timeout") == 5, "timeout should be 5 seconds"
 
 
 if __name__ == "__main__":
