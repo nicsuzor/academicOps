@@ -169,34 +169,46 @@ If file exists with user content:
 
 ### 3a. Extract findings via Gemini (parallel)
 
-Call `mcp__gemini__ask-gemini` for ALL transcripts simultaneously:
+Call `mcp__gemini__ask-gemini` for ALL transcripts simultaneously. See `mining-prompt.md` for full prompt.
+
+Key extraction categories:
+1. **USER CORRECTIONS** (highest priority) - instances where the user corrected agent behavior
+2. **OTHER PROBLEMS** - navigation failures, verification skipped, instructions ignored
+3. **SUCCESSES** - correct tool usage, proper instruction following
+4. **EXPERIMENT EVIDENCE** - behavior matching/contradicting hypotheses
+
+### 3b. Route findings
+
+**User corrections → /learn skill**
+
+Each user correction gets passed to `/learn` with full context:
 
 ```
-mcp__gemini__ask-gemini(prompt="
-@/path/to/transcript.md
+Skill(skill="learn", args="
+User correction detected in session:
 
-Analyze this Claude Code session transcript. Identify:
-1. FAILURES - mistakes, user corrections, incomplete tasks
-2. SUCCESSES - what worked well
-3. IMPROVEMENTS - signs of learning/adaptation
-4. CONCERNS - patterns that might cause future problems
+**Agent action**: [what agent was doing]
+**Target**: [file/component being modified]
+**User feedback**: [the correction]
+**Suggested lesson**: [generalizable principle]
 
-For each finding, provide: description, evidence quote, trigger, severity, category, actionable.
-Output as JSON.
+Evidence:
+[transcript quote]
 ")
 ```
 
-See `mining-prompt.md` for full prompt with field definitions.
+This provides `/learn` with enough context to:
+- Identify the category of issue
+- Check for prior occurrences
+- Choose appropriate intervention level
 
-### 3b. Route findings via /log skill
+**Other findings → /log skill**
 
 ```
-Skill(skill="log", args="session-mining: <gemini_json>")
+Skill(skill="log", args="session-mining: <remaining_findings_json>")
 ```
 
-The log skill parses findings and routes by category to appropriate learning files.
-
-See `specs/session-insights-mining.md` for approach options.
+The log skill routes by category to appropriate learning files.
 
 ---
 
