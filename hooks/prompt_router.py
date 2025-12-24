@@ -139,8 +139,8 @@ def detect_diagnostic_prompt(prompt: str) -> bool:
     return True
 
 
-def write_classifier_prompt(prompt: str) -> Path:
-    """Write full classifier prompt to temp file.
+def build_classifier_prompt(prompt: str) -> str:
+    """Build full classifier prompt content.
 
     Loads the intent-router prompt template and fills in capabilities + user prompt.
 
@@ -148,10 +148,8 @@ def write_classifier_prompt(prompt: str) -> Path:
         prompt: The user's prompt text
 
     Returns:
-        Path to the prompt file
+        Full classifier prompt as string
     """
-    TEMP_DIR.mkdir(parents=True, exist_ok=True)
-
     # Load template
     template = INTENT_ROUTER_PROMPT.read_text()
     # Strip frontmatter
@@ -164,8 +162,23 @@ def write_classifier_prompt(prompt: str) -> Path:
     capabilities_text = load_capabilities_text()
 
     # Fill template
-    full_prompt = template.format(capabilities=capabilities_text, prompt=prompt)
+    return template.format(capabilities=capabilities_text, prompt=prompt)
 
+
+def write_classifier_prompt(prompt: str) -> Path:
+    """Write full classifier prompt to temp file.
+
+    DEPRECATED: This function exists for test compatibility.
+    Use build_classifier_prompt() for inline content.
+
+    Args:
+        prompt: The user's prompt text
+
+    Returns:
+        Path to the prompt file
+    """
+    TEMP_DIR.mkdir(parents=True, exist_ok=True)
+    full_prompt = build_classifier_prompt(prompt)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
     filepath = TEMP_DIR / f"{timestamp}.md"
     filepath.write_text(full_prompt)
@@ -197,9 +210,10 @@ def analyze_prompt(prompt: str) -> tuple[str, list[str]]:
             return SKILL_FRAMING.format(skill_instruction=skill_instruction), [f"/{cmd}"]
 
     # Tier 2: Everything else → LLM classifier with full capabilities
-    filepath = write_classifier_prompt(prompt)
+    # Pass content inline to avoid file access issues in sandboxed subagents
+    classifier_content = build_classifier_prompt(prompt)
     classifier_instruction = (
-        f"Task(subagent_type=\"intent-router\", prompt=\"Read {filepath}\")"
+        f"Task(subagent_type=\"intent-router\", prompt=\"{classifier_content}\")"
     )
     return SKILL_FRAMING.format(skill_instruction=classifier_instruction), []
 

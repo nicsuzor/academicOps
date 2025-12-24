@@ -2,10 +2,10 @@
 """End-to-end tests for intent-router system.
 
 Tests the complete intent classification pipeline:
-1. Cache file creation from write_classifier_prompt()
+1. Inline content creation from build_classifier_prompt()
 2. Intent-router subagent spawning when no keyword match
-3. Cache file existence at spawned path
-4. Intent-router reading cache file
+3. Inline content includes capabilities and user prompt
+4. Intent-router processing inline content (no file access)
 5. Intent-router returning valid classification
 """
 
@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from hooks.prompt_router import write_classifier_prompt
+from hooks.prompt_router import build_classifier_prompt, write_classifier_prompt
 
 # Valid skill names that intent-router can classify to
 VALID_SKILL_NAMES = {
@@ -41,7 +41,45 @@ pytestmark = [
 ]
 
 
-# --- Unit Test: Cache File Creation ---
+# --- Unit Tests: Classifier Prompt Building ---
+
+
+def test_build_classifier_prompt_returns_string():
+    """Test that build_classifier_prompt() returns inline content as string.
+
+    This is a unit test - no Claude CLI required.
+    Tests the new inline approach (not file-based).
+    """
+    test_prompt = "what is the meaning of life?"
+
+    # Call function to build classifier prompt
+    content = build_classifier_prompt(test_prompt)
+
+    # Verify return type is string
+    assert isinstance(content, str), f"Expected str, got {type(content)}"
+
+    # Must contain user prompt
+    assert test_prompt in content, f"User prompt not found in content:\n{content[:500]}..."
+
+    # Must contain template markers
+    assert "Intent Classification" in content, "Missing template header"
+    assert "Available Capabilities" in content, "Missing capabilities section"
+    assert "User Prompt" in content, "Missing user prompt section"
+
+    # Should not contain YAML frontmatter
+    assert not content.startswith("---"), "Content should not contain YAML frontmatter"
+
+
+def test_build_classifier_prompt_contains_skills():
+    """Test that build_classifier_prompt() includes skill names from capabilities."""
+    test_prompt = "test prompt"
+
+    content = build_classifier_prompt(test_prompt)
+
+    # Must contain skill names from capabilities
+    for skill_name in VALID_SKILL_NAMES:
+        if skill_name != "none":  # "none" is a classification, not a skill
+            assert skill_name in content, f"Skill '{skill_name}' not found in content"
 
 
 def test_write_classifier_prompt_creates_file():
@@ -136,21 +174,6 @@ def _task_tool_with_type(tool_calls: list[dict[str, Any]], subagent_type: str) -
     return False
 
 
-def _extract_filepath_from_prompt(task_prompt: str) -> str | None:
-    """Extract file path from Task prompt using regex.
-
-    Looks for pattern: Read /path/to/file.md
-
-    Args:
-        task_prompt: The prompt field from Task tool call
-
-    Returns:
-        Extracted file path or None if not found
-    """
-    match = re.search(r"Read\s+(/[^\s]+\.md)", task_prompt)
-    return match.group(1) if match else None
-
-
 def _find_task_prompt(tool_calls: list[dict[str, Any]]) -> str | None:
     """Find the prompt from the first Task tool call.
 
@@ -201,11 +224,11 @@ def test_intent_router_spawned_for_no_keyword_match(claude_headless_tracked):
         )
 
 
-def test_intent_router_prompt_contains_read_and_path(claude_headless_tracked):
-    """Test that Task prompt contains 'Read' and cache file path.
+def test_intent_router_prompt_contains_inline_content(claude_headless_tracked):
+    """Test that Task prompt contains inline classifier content.
 
-    E2E test: Verifies the Task prompt instructs the intent-router to
-    read the classifier prompt from the cache file.
+    E2E test: Verifies the Task prompt includes the capabilities and user prompt
+    directly (inline), rather than a file path reference.
 
     Note: If agent doesn't spawn Task at all, this test is skipped since
     test_intent_router_spawned_for_no_keyword_match covers that case.
@@ -230,23 +253,33 @@ def test_intent_router_prompt_contains_read_and_path(claude_headless_tracked):
     if task_prompt is None:
         pytest.skip("Intent-router not spawned - see test_intent_router_spawned_for_no_keyword_match")
 
-    # Verify prompt contains "Read" instruction
+    # Verify prompt contains key inline content markers
+    # Should contain "Intent Classification" header from template
     assert (
-        "Read" in task_prompt
-    ), f"Task prompt should contain 'Read' instruction:\n{task_prompt}"
+        "Intent Classification" in task_prompt
+    ), f"Task prompt should contain inline template content:\n{task_prompt[:500]}..."
 
-    # Verify prompt contains "prompt-router" or cache path
+    # Should contain "Available Capabilities" section
     assert (
-        "prompt-router" in task_prompt or ".cache" in task_prompt
-    ), f"Task prompt should reference cache file:\n{task_prompt}"
+        "Available Capabilities" in task_prompt
+    ), f"Task prompt should contain capabilities section:\n{task_prompt[:500]}..."
+
+    # Should contain "User Prompt" section
+    assert (
+        "User Prompt" in task_prompt
+    ), f"Task prompt should contain user prompt section:\n{task_prompt[:500]}..."
+
+    # Should NOT contain file path reference (old approach)
+    assert (
+        "Read /" not in task_prompt and ".cache/aops/prompt-router" not in task_prompt
+    ), f"Task prompt should NOT reference cache file path:\n{task_prompt[:500]}..."
 
 
-def test_cache_file_exists_at_spawned_path(claude_headless_tracked):
-    """Test that cache file exists at path extracted from Task prompt.
+def test_intent_router_prompt_contains_user_prompt(claude_headless_tracked):
+    """Test that Task prompt contains the actual user prompt inline.
 
-    E2E test: Extracts the file path from the Task prompt and verifies
-    the file actually exists on disk. This tests that write_classifier_prompt()
-    is being called correctly by the hook.
+    E2E test: Verifies the user's prompt is embedded directly in the
+    Task prompt content, not referenced via file path.
     """
     prompt = "tell me about artificial intelligence"
 
@@ -257,32 +290,22 @@ def test_cache_file_exists_at_spawned_path(claude_headless_tracked):
 
     assert result["success"], f"Execution failed: {result.get('error')}"
 
-    # Find Task tool call and extract file path
+    # Find Task tool call
     task_prompt = _find_task_prompt(tool_calls)
-    assert task_prompt is not None, "No Task tool call found"
+    if task_prompt is None:
+        pytest.skip("No Task tool call found - agent answered directly")
 
-    filepath_str = _extract_filepath_from_prompt(task_prompt)
+    # Verify prompt contains the actual user prompt text
     assert (
-        filepath_str is not None
-    ), f"Could not extract file path from Task prompt:\n{task_prompt}"
-
-    # Verify file exists
-    filepath = Path(filepath_str)
-    assert filepath.exists(), f"Cache file does not exist at: {filepath}"
-
-    # Verify it's readable
-    assert filepath.is_file(), f"Path is not a file: {filepath}"
-
-    # Verify it has content
-    content = filepath.read_text()
-    assert len(content) > 0, f"Cache file is empty: {filepath}"
+        "artificial intelligence" in task_prompt
+    ), f"Task prompt should contain user's prompt text:\n{task_prompt[:500]}..."
 
 
-def test_intent_router_reads_cache_file(claude_headless_tracked):
-    """Test that intent-router successfully reads the cache file.
+def test_intent_router_no_file_access_errors(claude_headless_tracked):
+    """Test that intent-router doesn't produce file access errors.
 
-    E2E test: Verifies that intent-router subagent can read the cache file
-    and doesn't produce error messages about missing/inaccessible files.
+    E2E test: Verifies that intent-router subagent doesn't produce error
+    messages about missing/inaccessible files (since content is now inline).
     """
     prompt = "what is computational linguistics?"
 
@@ -318,16 +341,16 @@ def test_intent_router_reads_cache_file(claude_headless_tracked):
 
     for indicator in failure_indicators:
         assert indicator.lower() not in response_text.lower(), (
-            f"Intent-router failed to read cache file. "
+            f"Intent-router encountered file access error. "
             f"Response contains '{indicator}':\n{response_text}"
         )
 
 
 def test_intent_router_returns_valid_classification(claude_headless_tracked):
-    """Test that when intent-router is spawned, it returns a valid skill name.
+    """Test that when intent-router is spawned, it receives valid inline content.
 
     E2E test: Verifies that IF intent-router is spawned, its Task prompt
-    references a valid cache file path. Skips if agent doesn't use intent-router.
+    contains inline capabilities and user prompt. Skips if agent doesn't use intent-router.
     """
     prompt = "how do I write a pytest test with fixtures?"
 
@@ -349,7 +372,7 @@ def test_intent_router_returns_valid_classification(claude_headless_tracked):
     if intent_router_call is None:
         pytest.skip("Intent-router not spawned - agent answered directly")
 
-    # Verify the Task prompt contains Read instruction with valid path
+    # Verify the Task prompt contains inline content (not file path)
     task_prompt = intent_router_call["input"].get("prompt", "")
-    assert "Read" in task_prompt, f"Task prompt missing Read: {task_prompt}"
-    assert "prompt-router" in task_prompt, f"Task prompt missing path: {task_prompt}"
+    assert "Intent Classification" in task_prompt, f"Task prompt missing inline template: {task_prompt[:200]}..."
+    assert "pytest" in task_prompt or "fixtures" in task_prompt, f"Task prompt missing user query: {task_prompt[:200]}..."
