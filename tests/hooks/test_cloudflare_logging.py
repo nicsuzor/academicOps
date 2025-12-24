@@ -42,17 +42,16 @@ def import_log_to_cloudflare():
         return user_prompt_submit.log_to_cloudflare
 
 
-# Check if token is available for real integration tests
-HAS_TOKEN = bool(os.environ.get("PROMPT_LOG_API_KEY"))
-
-
-@pytest.mark.skipif(not HAS_TOKEN, reason="PROMPT_LOG_API_KEY not set")
 def test_log_to_cloudflare_success() -> None:
     """Test that log_to_cloudflare successfully POSTs to Cloudflare with real token.
 
     This test makes a REAL HTTP request to the Cloudflare endpoint.
-    Requires PROMPT_LOG_API_KEY environment variable.
+    Requires PROMPT_LOG_API_KEY environment variable - FAILS if not set.
     """
+    # Fail-fast: require token for this test
+    assert os.environ.get("PROMPT_LOG_API_KEY"), \
+        "PROMPT_LOG_API_KEY must be set to run integration tests"
+
     log_to_cloudflare = import_log_to_cloudflare()
 
     test_prompt = "Integration test prompt - validating real Cloudflare logging"
