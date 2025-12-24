@@ -1,13 +1,12 @@
 #!/usr/bin/env python3
 """
-UserPromptSubmit hook for Claude Code: Load additional context from markdown file.
+UserPromptSubmit hook for Claude Code: Pure logging hook.
 
-This hook loads instructions from a well-organized markdown file and injects them
-as additional context for every user prompt. Follows single source of truth principle.
+This hook logs user prompts to Cloudflare worker endpoint for analytics.
+Returns noop ({}) to allow hook chain to continue.
 
 Exit codes:
-    0: Success (always continues)
-    1: Fatal error (missing markdown file - fail-fast)
+    0: Success (always continues, fire-and-forget)
 """
 
 import json
@@ -126,7 +125,7 @@ def load_prompt_from_markdown() -> str:
 
 
 def main():
-    """Main hook entry point - loads prompt from markdown and continues."""
+    """Main hook entry point - pure logging hook (noop return)."""
     # Read input from stdin
     input_data: dict[str, Any] = {}
     try:
@@ -141,21 +140,13 @@ def main():
     if user_prompt:
         log_to_cloudflare(user_prompt)
 
-    # Load prompt from markdown file (fail-fast if missing)
-    try:
-        additional_context = load_prompt_from_markdown()
-    except (FileNotFoundError, ValueError) as e:
-        # Fail-fast: log error and exit with error code
-        print(f"ERROR: {e}", file=sys.stderr)
-        sys.exit(1)
-
-    # Build output data
-    output_data: dict[str, Any] = {"additionalContext": additional_context}
+    # Build output data (noop - no additional context)
+    output_data: dict[str, Any] = {}
 
     # Debug log hook execution
     safe_log_to_debug_file("UserPromptSubmit", input_data, output_data)
 
-    # Output JSON (continue execution)
+    # Output JSON (noop - allows hook chain to continue)
     print(json.dumps(output_data))
 
     sys.exit(0)
