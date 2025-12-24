@@ -21,6 +21,7 @@ Tend the personal knowledge base incrementally. Small regular attention beats ma
 | **Link** | Connect orphans, add missing [[wikilinks]] |
 | **Map** | Create/update MoCs for navigation |
 | **DRY** | Remove restated content, replace with links |
+| **Synthesize** | Strip deliberation artifacts from implemented specs |
 
 ## Modes
 
@@ -47,6 +48,24 @@ Create missing folder/folder.md MoCs, update stale MoCs.
 
 ### dry [area]
 Find restated content that should be links. See DRY Enforcement below.
+
+### synthesize [area]
+Strip deliberation artifacts from implemented specs. See [[HEURISTICS.md#H23]] for rationale.
+
+**Detection patterns**:
+- Specs with `status: Implemented` containing `## Options` or `## Alternatives`
+- Reference docs with "as of YYYY", "TODO:", "considering", "we might"
+- Specs >30 days since implementation with deliberation artifacts
+
+**Workflow**:
+1. Scan specs/ for implemented items with deliberation cruft
+2. For each finding, show the artifact and ask:
+   - "Archive rationale to decisions/? [y/n]"
+   - "Strip from spec? [y/n]"
+3. Update spec, preserving acceptance criteria and current behavior
+4. Commit changes
+
+**Does NOT delete specs** - synthesizes them from deliberation mode to reference mode.
 
 ## DRY Enforcement (Critical)
 
@@ -100,6 +119,7 @@ Default: highest-activity areas (recent modifications).
 | Broken links | 0 |
 | MoC coverage | >90% |
 | DRY violations | 0 |
+| Implemented specs with deliberation cruft | 0 |
 
 ## Anti-Patterns
 

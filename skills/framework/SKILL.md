@@ -3,7 +3,7 @@ name: framework
 description: Categorical framework governance. Treats every change as a universal
   rule. Delegates user data operations to skills.
 allowed-tools: Read,Grep,Glob,Edit,Write,Skill,AskUserQuestion
-version: 4.1.0
+version: 4.2.0
 permalink: skills-framework
 ---
 
@@ -386,7 +386,7 @@ Agents orchestrate. Scripts are utilities.
 Step-by-step guides for common framework operations:
 
 - [[workflows/01-design-new-component.md]] - Adding hooks, skills, scripts, commands
-- [[workflows/02-debug-framework-issue.md]] - Investigating framework problems
+- [[workflows/02-debug-framework-issue.md]] - Investigating framework problems (**includes Deep Root Cause Analysis - MANDATORY for "why didn't X work?" questions**)
 - [[workflows/03-experiment-design.md]] - Creating framework experiments
 - [[workflows/04-monitor-prevent-bloat.md]] - Keeping framework lean
 - [[workflows/05-review-pull-request.md]] - PR review process
@@ -401,12 +401,14 @@ Per AXIOMS.md #11 (Categorical Imperative): Every file must fit a defined catego
 | Type | Location | Rule |
 |------|----------|------|
 | Vision/Strategy | `VISION.md`, `ROADMAP.md` | One file each, edited in place |
-| Specifications | `specs/` | Design docs for features. Status in frontmatter: draft/approved/implemented |
+| Specifications | `specs/` | User stories → design → reference. Status: Requirement/Draft/Approved/Implemented. See [[HEURISTICS.md#H23]] |
 | Experiments | `experiments/` | Hypothesis → results. Use `TEMPLATE.md`. Date-prefix filenames |
 | Learning | `learning/` | Patterns extracted from experience. Thematic files, append-only |
 | Decisions | `decisions/` | Architectural choices with rationale. Immutable once made |
 | Bugs | `bugs/` | Bug investigations. Delete when fixed |
 | QA | `qa/` | Verification reports. Delete after issues resolved |
+
+**Note**: User stories are specs at early lifecycle stage. No separate `user-stories/` folder - all live in `specs/`.
 
 ### Prohibited
 

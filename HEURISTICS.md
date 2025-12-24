@@ -439,6 +439,45 @@ If critic returns REVISE or HALT, address issues before proceeding.
 
 ---
 
+## H23: Synthesize After Resolution
+
+**Statement**: When a design decision is made and implemented, strip deliberation artifacts from the spec. Specs evolve from user story → deliberation → authoritative reference. After implementation, they become timeless documentation of what IS, not what was considered.
+
+**Rationale**: Specs accumulate temporal noise - options considered, migration notes, "as of YYYY-MM" markers. This deliberation history is valuable during design but becomes cruft after implementation. Reference docs should be synthesized: current, ahistorical, immediately usable.
+
+**Evidence**:
+- 2025-12-24: User observation - design docs with unresolved options become stale, unclear what's current vs considered
+
+**Confidence**: Low (first observation)
+
+**Implements**: [[AXIOMS]] #9 (DRY, Modular, Explicit), [[AXIOMS]] #13 (Trust Version Control) - git has the history
+
+**Spec Lifecycle**:
+
+| Stage | Status | Content |
+|-------|--------|---------|
+| User Story | `Requirement` | Problem statement, acceptance criteria |
+| Deliberation | `Draft` | Options, alternatives, research |
+| Decision | `Approved` | Chosen approach, rationale |
+| Reference | `Implemented` | **Synthesized**: acceptance criteria + behavior + rationale only |
+
+**Deliberation artifacts to strip after implementation**:
+- `## Options` / `## Alternatives` sections (archive to decisions/ if valuable)
+- "As of YYYY-MM-DD" markers
+- Migration notes ("previously we did X")
+- Resolved TODO/FIXME items
+- "Considering" / "We might" language
+
+**What specs KEEP permanently**:
+- Acceptance criteria (regression testing gold)
+- Design rationale (why this approach)
+- Current behavior description
+- Integration points
+
+**Application**: Use `/garden synthesize` to detect and clean implemented specs.
+
+---
+
 ## Revision Protocol
 
 To adjust heuristics based on new evidence:
