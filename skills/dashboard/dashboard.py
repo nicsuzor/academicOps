@@ -5,7 +5,9 @@ import streamlit as st
 from datetime import datetime, timezone
 from pathlib import Path
 import json
+import os
 import sys
+import requests
 from urllib.parse import quote
 
 # Add aOps root to path for imports
@@ -101,6 +103,61 @@ def get_activity_status(last_modified: datetime) -> tuple[str, str]:
         return '⚪', f'{int(hours)}h ago'
     else:
         return '⚪', f'{int(days)}d ago'
+
+
+def fetch_cross_machine_prompts() -> list[dict]:
+    """Fetch recent prompts from Cloudflare R2 endpoint."""
+    api_key = os.environ.get('PROMPT_LOG_API_KEY')
+    if not api_key:
+        return []
+
+    try:
+        response = requests.get(
+            'https://prompt-logs.nicsuzor.workers.dev/read',
+            headers={'Authorization': f'Bearer {api_key}'},
+            timeout=5
+        )
+        if response.status_code != 200:
+            return []
+
+        prompts = response.json()
+
+        # Parse JSON content from each prompt
+        parsed = []
+        for p in prompts:
+            try:
+                content = p.get('content', '')
+                if content.startswith('{'):
+                    data = json.loads(content)
+                    data['raw_timestamp'] = p.get('timestamp', '')
+                    parsed.append(data)
+                else:
+                    # Plain text prompt (legacy)
+                    parsed.append({
+                        'prompt': content,
+                        'hostname': 'unknown',
+                        'project': 'unknown',
+                        'raw_timestamp': p.get('timestamp', '')
+                    })
+            except json.JSONDecodeError:
+                pass
+
+        # Sort by timestamp descending (most recent first)
+        parsed.sort(key=lambda x: x.get('raw_timestamp', ''), reverse=True)
+        return parsed[:20]  # Last 20 prompts
+    except Exception:
+        return []
+
+
+def group_prompts_by_machine(prompts: list[dict]) -> dict[str, list[dict]]:
+    """Group prompts by hostname."""
+    grouped: dict[str, list[dict]] = {}
+    for p in prompts:
+        hostname = p.get('hostname', 'unknown')
+        if hostname not in grouped:
+            grouped[hostname] = []
+        grouped[hostname].append(p)
+    return grouped
 
 
 
@@ -470,6 +527,49 @@ st.markdown("""
         opacity: 0.7;
     }
 
+    /* Cross-machine activity panel */
+    .cross-machine-panel {
+        background: linear-gradient(135deg, #1a1a2d 0%, #0a0a1a 100%);
+        border: 1px solid #6366f1;
+        border-radius: 8px;
+        padding: 12px 16px;
+        margin-bottom: 16px;
+    }
+
+    .cross-machine-title {
+        color: #a5b4fc;
+        font-size: 0.95em;
+        font-weight: bold;
+        margin-bottom: 10px;
+    }
+
+    .machine-group {
+        margin-bottom: 12px;
+        padding-left: 8px;
+        border-left: 2px solid #4f46e5;
+    }
+
+    .machine-name {
+        color: #818cf8;
+        font-size: 0.85em;
+        font-weight: bold;
+        margin-bottom: 4px;
+    }
+
+    .machine-prompt {
+        color: #94a3b8;
+        font-size: 0.8em;
+        padding: 2px 0;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .machine-prompt-project {
+        color: #6366f1;
+        font-size: 0.75em;
+    }
+
 </style>
 """, unsafe_allow_html=True)
 
@@ -531,6 +631,35 @@ if daily_log:
             done_html += f"<div class='done-item' style='color: #888;'>+{len(done_items)-6} more</div>"
         done_html += "</div>"
         st.markdown(done_html, unsafe_allow_html=True)
+
+# === CROSS-MACHINE ACTIVITY PANEL ===
+cross_machine_prompts = fetch_cross_machine_prompts()
+if cross_machine_prompts:
+    grouped = group_prompts_by_machine(cross_machine_prompts)
+
+    cross_html = f"""
+    <div class='cross-machine-panel'>
+        <div class='cross-machine-title'>🌐 CROSS-MACHINE ACTIVITY ({len(cross_machine_prompts)} prompts)</div>
+    """
+
+    for hostname, prompts in sorted(grouped.items(), key=lambda x: x[1][0].get('raw_timestamp', ''), reverse=True):
+        cross_html += f"<div class='machine-group'>"
+        cross_html += f"<div class='machine-name'>💻 {esc(hostname)}</div>"
+
+        for p in prompts[:3]:  # Show last 3 per machine
+            prompt_text = p.get('prompt', '')[:60]
+            if len(p.get('prompt', '')) > 60:
+                prompt_text += '...'
+            project = p.get('project', '')
+            cross_html += f"<div class='machine-prompt'><span class='machine-prompt-project'>[{esc(project)}]</span> {esc(prompt_text)}</div>"
+
+        if len(prompts) > 3:
+            cross_html += f"<div class='machine-prompt' style='color: #64748b;'>+{len(prompts)-3} more</div>"
+
+        cross_html += "</div>"
+
+    cross_html += "</div>"
+    st.markdown(cross_html, unsafe_allow_html=True)
 
 # PROJECTS - Unified view with all info per project
 st.markdown("<div class='section-header'>PROJECTS</div>", unsafe_allow_html=True)
