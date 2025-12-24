@@ -111,17 +111,20 @@ $AOPS/
 │   ├── CLAUDE.md                    # Hook design principles (JIT context)
 │   ├── sessionstart_load_axioms.py  # Injects AXIOMS.md
 │   ├── user_prompt_submit.py        # Context injection per prompt
-│   ├── prompt_router.py             # Keyword → skill suggestions
+│   ├── prompt_router.py             # LLM-first intent routing (reads config/capabilities.md)
 │   ├── autocommit_state.py          # Auto-commit data/ changes
 │   ├── session_logger.py            # Log file path management
 │   ├── hook_logger.py               # Centralized event logging
 │   ├── hook_debug.py                # Hook debugging
 │   ├── request_scribe.py            # Request logging
 │   ├── log_*.py                     # Event logging (6 files)
-│   └── prompts/user-prompt-submit.md
+│   └── prompts/
+│       ├── user-prompt-submit.md
+│       └── intent-router.md         # LLM classifier prompt template
 │
 ├── agents/                      # Spawnable subagents (Task tool)
 │   ├── critic.md                # Second-opinion review of plans/conclusions
+│   ├── intent-router.md         # LLM intent classifier (Haiku)
 │   ├── memory-validator.md      # Parallel memory validation
 │   ├── email-extractor.md       # Email archive processing
 │   └── task-viz.md              # Task graph → Excalidraw
@@ -147,9 +150,11 @@ $AOPS/
 │
 ├── experiments/                 # Experiment logs (6 files)
 │
-└── config/claude/               # Reference config
-    ├── mcp.json                 # MCP server configuration
-    └── settings.json            # Claude Code settings
+├── config/
+│   ├── capabilities.md          # Intent router capability index (skills, commands, agents, MCP)
+│   └── claude/                  # Reference config
+│       ├── mcp.json             # MCP server configuration
+│       └── settings.json        # Claude Code settings
 ```
 
 ## Cross-References

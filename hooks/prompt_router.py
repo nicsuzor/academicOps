@@ -2,8 +2,8 @@
 """Prompt Intent Router hook for Claude Code.
 
 Two-tier routing:
-1. Keyword match → Motivational skill suggestion (v2 framing)
-2. No match → Offers Haiku classifier spawn for semantic analysis
+1. Explicit slash command → Direct route to command
+2. Everything else → LLM classifier with full capabilities
 
 Uses benefit-focused framing rather than imperative commands.
 Tracks framingVersion for compliance measurement.
@@ -14,6 +14,7 @@ Exit codes:
 
 import contextlib
 import json
+import re
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -26,7 +27,7 @@ from hooks.hook_logger import log_hook_event
 FOCUS_REMINDER = "**CRITICAL**: Focus on the user's specific request. Do NOT over-elaborate or add unrequested features. Complete the task, then stop."
 
 # Framing version for A/B measurement
-FRAMING_VERSION = "v3-academic-rigor"
+FRAMING_VERSION = "v4-llm-first"
 
 # Generic skill suggestion framing - high-level, appeals to agent's desire for quality
 SKILL_FRAMING = (
@@ -34,30 +35,56 @@ SKILL_FRAMING = (
     "Before proceeding, invoke {skill_instruction} to load context that may not be immediately apparent."
 )
 
-# Skills - just names for keyword matching, descriptions for classifier
-SKILLS: dict[str, str] = {
-    "framework": "Categorical conventions and framework patterns",
-    "python-dev": "Production Python: fail-fast, type safety, TDD",
-    "analyst": "Research data analysis: dbt, Streamlit, statistics",
-    "remember": "Knowledge persistence and memory server sync",
-    "tasks": "Task scripts and workflow patterns",
-    "pdf": "Markdown to professional PDF conversion",
-    "osb-drafting": "IRAC analysis and precedent citation for Oversight Board",
-    "learning-log": "Thematic pattern logging to learning files",
-    "transcript": "Session JSONL to markdown conversion",
-    "skill-creator": "Skill packaging following anti-bloat principles",
-    "training-set-builder": "Training data extraction from document sets",
-    "extractor": "Email archive processing and extraction",
-}
+# Only match explicit slash commands at start of prompt
+SLASH_COMMAND_PATTERN = re.compile(r"^/(\w+)")
 
+# Paths
 TEMP_DIR = Path.home() / ".cache" / "aops" / "prompt-router"
 INTENT_ROUTER_PROMPT = Path(__file__).parent / "prompts" / "intent-router.md"
+CAPABILITIES_FILE = Path(__file__).parent.parent / "config" / "capabilities.md"
+
+# Cache for capabilities content
+_capabilities_cache: str | None = None
+
+
+def load_capabilities_text() -> str:
+    """Load capabilities markdown content (stripped of frontmatter)."""
+    global _capabilities_cache
+    if _capabilities_cache is not None:
+        return _capabilities_cache
+
+    content = CAPABILITIES_FILE.read_text()
+    # Strip frontmatter
+    if content.startswith("---"):
+        parts = content.split("---", 2)
+        if len(parts) >= 3:
+            content = parts[2].strip()
+
+    _capabilities_cache = content
+    return content
+
+
+def get_command_names() -> set[str]:
+    """Extract command names from capabilities file for slash command matching."""
+    content = CAPABILITIES_FILE.read_text()
+    commands = set()
+    in_commands = False
+    for line in content.split("\n"):
+        if line.startswith("## Commands"):
+            in_commands = True
+        elif line.startswith("## ") and in_commands:
+            break
+        elif in_commands and line.startswith("|") and " | " in line:
+            parts = [p.strip() for p in line.split("|")[1:-1]]
+            if parts and parts[0] and parts[0].lower() != "name" and not parts[0].startswith("-"):
+                commands.add(parts[0])
+    return commands
 
 
 def write_classifier_prompt(prompt: str) -> Path:
     """Write full classifier prompt to temp file.
 
-    Loads the intent-router prompt template and fills in skills + user prompt.
+    Loads the intent-router prompt template and fills in capabilities + user prompt.
 
     Args:
         prompt: The user's prompt text
@@ -75,11 +102,11 @@ def write_classifier_prompt(prompt: str) -> Path:
         if len(parts) >= 3:
             template = parts[2].strip()
 
-    # Format skills list
-    skills_list = "\n".join(f"- **{name}**: {desc}" for name, desc in SKILLS.items())
+    # Load capabilities as raw text
+    capabilities_text = load_capabilities_text()
 
     # Fill template
-    full_prompt = template.format(skills=skills_list, prompt=prompt)
+    full_prompt = template.format(capabilities=capabilities_text, prompt=prompt)
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
     filepath = TEMP_DIR / f"{timestamp}.md"
@@ -88,72 +115,35 @@ def write_classifier_prompt(prompt: str) -> Path:
 
 
 def analyze_prompt(prompt: str) -> tuple[str, list[str]]:
-    """Analyze prompt and return motivational skill suggestion.
+    """Analyze prompt and route to appropriate capability.
 
-    Uses benefit-focused framing rather than imperative commands.
+    Two-tier routing:
+    1. Explicit slash command → direct route
+    2. Everything else → LLM classifier
 
     Args:
         prompt: The user's prompt text
 
     Returns:
-        Tuple of (suggestion text, list of matched skill names)
+        Tuple of (suggestion text, list of matched capability names)
     """
     if not prompt:
         return "", []
 
-    prompt_lower = prompt.lower()
+    # Tier 1: Explicit slash command at start of prompt → direct route
+    match = SLASH_COMMAND_PATTERN.match(prompt)
+    if match:
+        cmd = match.group(1)
+        if cmd in get_command_names():
+            skill_instruction = f"Skill(skill=\"{cmd}\")"
+            return SKILL_FRAMING.format(skill_instruction=skill_instruction), [f"/{cmd}"]
 
-    # Keyword triggers for each skill (expanded coverage)
-    triggers = {
-        "framework": [
-            "framework", "hook", "skill", "axioms", "claude.md", "settings.json",
-            "readme.md", "aops", "academicops", "convention", "pattern",
-            "infrastructure", "how do we", "what's the rule",
-        ],
-        "python-dev": [
-            "python", "pytest", "uv run", "type hint", "mypy", ".py",
-            "function", "class", "import", "async", "typing",
-        ],
-        "tasks": [
-            "archive task", "view task", "create task", "task list", "tasks",
-            "what's urgent", "show my tasks", "to-do", "todo", "priorities",
-            "what needs doing", "what should i work on", "email", "inbox",
-        ],
-        "remember": [
-            "knowledge base", "write note", "search notes",
-            "remember this", "save this", "what do we know about",
-            "context about", "background on", "prior work on",
-            "have we done", "did we already", "memory", "capture",
-        ],
-        "pdf": ["pdf", "generate pdf", "create pdf", "markdown to pdf", "document"],
-        "osb-drafting": ["osb", "oversight board", "case decision", "irac", "precedent"],
-        "learning-log": ["log failure", "log success", "agent pattern", "learning log", "lesson"],
-        "transcript": ["transcript", "session transcript", "conversation log", "session history"],
-        "extractor": ["extract email", "email archive", "process archive", "mbox"],
-        "analyst": ["analysis", "statistics", "dbt", "streamlit", "data", "model", "regression"],
-    }
-
-    matched_skills = []
-    for skill, keywords in triggers.items():
-        if any(kw in prompt_lower for kw in keywords):
-            matched_skills.append(skill)
-
-    if not matched_skills:
-        # No keyword match - offer semantic classification via intent-router agent
-        filepath = write_classifier_prompt(prompt)
-        classifier_instruction = (
-            f"Task(subagent_type=\"intent-router\", prompt=\"Read {filepath}\")"
-        )
-        return SKILL_FRAMING.format(skill_instruction=classifier_instruction), []
-
-    # Build suggestion using generic academic rigor framing (v3)
-    if len(matched_skills) == 1:
-        skill_instruction = f"Skill(skill=\"{matched_skills[0]}\")"
-    else:
-        options = " or ".join(f"Skill(skill=\"{s}\")" for s in matched_skills)
-        skill_instruction = f"one of: {options}"
-
-    return SKILL_FRAMING.format(skill_instruction=skill_instruction), matched_skills
+    # Tier 2: Everything else → LLM classifier with full capabilities
+    filepath = write_classifier_prompt(prompt)
+    classifier_instruction = (
+        f"Task(subagent_type=\"intent-router\", prompt=\"Read {filepath}\")"
+    )
+    return SKILL_FRAMING.format(skill_instruction=classifier_instruction), []
 
 
 def main():

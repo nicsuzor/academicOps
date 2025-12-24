@@ -38,6 +38,7 @@ description: Process for adding new framework capability (hook, skill, script, c
 
 6. **Update authoritative sources**
    - Update [[README.md]] if directory structure changes
+   - Update [[config/capabilities.md]] if adding skill, command, or agent
    - Update relevant documentation to reference new component
    - Verify no documentation conflicts introduced
 
@@ -53,6 +54,7 @@ description: Process for adding new framework capability (hook, skill, script, c
    **Verify all match**:
    - [[INDEX.md]] file tree (detailed authoritative structure)
    - [[README.md]] overview (brief summary, consistent with INDEX.md)
+   - [[config/capabilities.md]] (intent router uses this for classification)
    - Actual filesystem (ground truth)
    - [[ROADMAP.md]] (if they claim counts or completion percentages)
 
