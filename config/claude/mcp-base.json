@@ -62,6 +62,17 @@
         "-c",
         "cd $AOPS && PYTHONPATH=$AOPS python3 skills/tasks/server.py"
       ]
+    },
+    "context7": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@upstash/context7-mcp"
+      ],
+      "env": {
+        "CONTEXT7_API_KEY": "${CONTEXT7_API_KEY}"
+      }
     }
   }
 }

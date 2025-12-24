@@ -61,3 +61,4 @@ This file is the source of truth for the intent router. When you add a new skill
 |------|-------------|
 | memory server | Semantic search/storage (mcp__memory__*) |
 | GitHub | GitHub operations (mcp__gh__*) |
+| context7 | Fetches up-to-date, version-specific documentation for ANY library directly into prompts. Use when: proposing fixes (check current tool capabilities), debugging (get accurate API signatures), implementing features (fetch latest patterns). Invocation: add "use context7" to prompt. Eliminates hallucinated APIs and outdated code patterns. |

@@ -77,6 +77,43 @@ Logged via [[unified_logger.py|hooks/unified_logger.py]] → [[hook_logger.py|ho
 
 All input fields from Claude Code are captured verbatim (`**input_data` spread into log entry).
 
+## Component Evaluation Pattern
+
+For components that make decisions (classifiers, routers, validators), use this pattern:
+
+### 1. Ground Truth Dataset
+
+Define expected outputs for representative inputs:
+```python
+GROUND_TRUTH = [
+    (input, [acceptable_outputs], rationale),
+    ...
+]
+```
+
+### 2. Accuracy Tests
+
+Parametrized pytest that runs component and compares to ground truth:
+```bash
+uv run pytest tests/integration/test_<component>_accuracy.py -v
+```
+
+### 3. Interpretation
+
+| Result | Meaning | Action |
+|--------|---------|--------|
+| Pass | Output matches ground truth | None |
+| Fail | Output differs | Review: is ground truth correct? Is component misconfigured? |
+
+### 4. Extending Coverage
+
+Add new cases when:
+- New capability added
+- Misclassification observed in production
+- Edge case discovered
+
+**Principle**: Ground truth is authoritative. If component disagrees, either fix the component or update ground truth with rationale.
+
 ## Architecture
 
 ```

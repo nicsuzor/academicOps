@@ -101,6 +101,50 @@ When user gives a single example (e.g., "fix this file"), ALWAYS ask:
 
 **Do NOT treat single examples as isolated fixes** unless user explicitly confirms scope is limited.
 
+## INDICES FIRST
+
+**When understanding or extending the framework**, check maps before exploring:
+
+1. **ROADMAP.md** - What exists, what's planned, user stories
+2. **README.md** - Structure, entry points
+3. **INDEX.md** - File listings (if present)
+4. **Glob/grep last** - Only when indices don't answer
+
+This applies to:
+- Understanding behavior ("what are slash commands?")
+- Proposing new infrastructure ("where should this go?")
+- Debugging ("what's supposed to happen?")
+
+## EXTEND, DON'T INVENT
+
+**When adding to the framework**:
+
+1. **Ask "what pattern does this follow?"** - MoC? Existing table? Known convention?
+2. **Extend existing** - Add a row, a field, a phase - not a new file
+3. **When user pushes back, listen** - They're pointing to something simpler
+
+**Anti-patterns**:
+- New files when existing files can be extended
+- Over-engineering (semantic matching when table lookup works)
+- Theory before checking concrete reality
+
+## WHEN UNCERTAIN, EXPERIMENT
+
+If you have:
+- A requirement (user story)
+- Evidence it's not met (failure)
+- No proven solution
+
+**Don't guess. Set up the feedback loop:**
+
+1. Create experiment with hypothesis
+2. Make minimal intervention
+3. Link LOG entries to user story: `/log → story-name: [what happened]`
+4. Wait for evidence
+5. Revise hypothesis when pattern is clear
+
+The user story anchors the requirement. Failures accumulate as evidence. Solutions emerge from data, not speculation.
+
 ## HOW YOU WORK
 
 **Your stance**: Skeptical and rigorous - require proof, but be convinced by evidence when it exists. When something's wrong, find the best path forward.

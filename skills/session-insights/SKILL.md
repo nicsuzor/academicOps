@@ -165,10 +165,11 @@ If file exists with user content:
 
 ## Step 3: Data Mining (Gemini)
 
-**Mine ALL transcripts in parallel** - even short sessions can have valuable learnings.
+**Mine ALL transcripts** - even short sessions can have valuable learnings.
 
-### 3a. Extract findings via Gemini (parallel)
+### 3a. Extract findings via Gemini (batched)
 
+<<<<<<< Updated upstream
 Call `mcp__gemini__ask-gemini` for ALL transcripts simultaneously. See `mining-prompt.md` for full prompt.
 
 Key extraction categories:
@@ -182,6 +183,9 @@ Key extraction categories:
 **User corrections → /learn skill**
 
 Each user correction gets passed to `/learn` with full context:
+=======
+Call `mcp__gemini__ask-gemini` in batches of 4 to avoid rate limits:
+>>>>>>> Stashed changes
 
 ```
 Skill(skill="learn", args="

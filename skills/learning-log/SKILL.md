@@ -10,16 +10,23 @@ permalink: skills-learning-log
 
 Document agent behavior patterns with appropriate abstraction level routing. Creates chronological log entries, matches to active experiments, and routes to bugs/patterns/experiments based on issue type.
 
-## Three-Phase Workflow
+## Four-Phase Workflow
+
+### Phase 0: Check User Stories
+
+**First**: Read `$ACA_DATA/projects/aops/ROADMAP.md`, parse "User Stories" table for story names.
+
+If observation relates to a user story, add `**User Story**: [story-name]` to LOG entry. This links evidence to requirements.
 
 ### Phase 1: Append to LOG.md
 
-**Always first**: Create append-only entry in `$ACA_DATA/projects/aops/learning/LOG.md`
+**Always**: Create append-only entry in `$ACA_DATA/projects/aops/learning/LOG.md`
 
 ```markdown
 ### YYYY-MM-DD HH:MM | [category] | [descriptive-slug]
 
 **Error**: [brief description]
+**User Story**: [story-name if linked, omit if none]
 **Investigation**: [for file errors - see File Error Investigation Protocol; omit for non-file errors]
 **Root Cause**: [why it happened - must cite investigation evidence if available]
 **Abstraction Level**: component | pattern | systemic

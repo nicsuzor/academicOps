@@ -8,23 +8,37 @@ permalink: session-insights-mining-prompt
 
 Use with `mcp__gemini__ask-gemini` for per-session learning extraction.
 
-## Prompt Structure
+## Current Approach: Organic Discovery
+
+Simple prompt without framework-specific context. Let Gemini discover patterns naturally.
+
+See `specs/session-insights-mining.md` for rationale and future Option B (guided extraction).
+
+## Prompt
 
 ```
 @$TRANSCRIPT_PATH
 
-Analyze this Claude Code session transcript for framework learnings.
+Analyze this Claude Code session transcript. This is a conversation between a user and an AI coding assistant.
 
-## Context
+Identify:
 
-### Active Experiments
-$EXPERIMENT_SUMMARIES
+1. **FAILURES** - Where did the agent fail, make mistakes, or frustrate the user?
+   - Errors that required user correction
+   - Wrong assumptions or hallucinations
+   - Tasks that weren't completed properly
+   - User had to repeat themselves or redirect
 
-### Known Patterns
-$LEARNING_THEMES
+2. **SUCCESSES** - What worked well?
+   - Tasks completed correctly
+   - Good problem-solving approach
+   - Proper handling of errors or uncertainty
 
-## Extract
+3. **IMPROVEMENTS** - Signs the agent learned or adapted?
+   - Corrected behavior after feedback
+   - Better approach on retry
 
+<<<<<<< Updated upstream
 1. **USER CORRECTIONS** (highest priority)
    Look for: tool rejections, explicit corrections, "no, I meant...", redirections, user doing it themselves after agent failed.
 
@@ -53,8 +67,24 @@ $LEARNING_THEMES
    - Even unremarkable success counts if predicted
 
 ## Output (JSON)
+=======
+4. **CONCERNS** - Patterns that might cause future problems?
+   - Workarounds instead of proper fixes
+   - Skipped verification steps
+   - Assumptions not validated
 
+For each finding, provide RICH CONTEXT:
+- **description**: What happened
+- **evidence**: Direct quote from transcript
+- **trigger**: What prompt/situation triggered this (user request, tool output, etc.)
+- **severity**: low/medium/high/critical
+- **category**: One of: missing_context, undocumented_command, hallucination, verification_skip, user_correction, self_correction, good_practice, axiom_violation, skill_gap, other
+- **actionable**: What could prevent this in future (missing docs, skill update, prompt improvement, etc.)
+>>>>>>> Stashed changes
+
+Output as JSON:
 {
+<<<<<<< Updated upstream
   "user_corrections": [{
     "agent_action": "What the agent was doing/attempting (REQUIRED)",
     "target": "File or component being modified (null if N/A)",
@@ -79,31 +109,37 @@ $LEARNING_THEMES
     "supports_hypothesis": true|false,
     "evidence": "quote"
   }]
+=======
+  "failures": [{"description": "...", "evidence": "...", "trigger": "...", "severity": "...", "category": "...", "actionable": "..."}],
+  "successes": [{"description": "...", "evidence": "...", "trigger": "...", "category": "...", "actionable": "..."}],
+  "improvements": [{"description": "...", "evidence": "...", "trigger": "...", "severity": "...", "category": "...", "actionable": "..."}],
+  "concerns": [{"description": "...", "evidence": "...", "trigger": "...", "severity": "...", "category": "...", "actionable": "..."}]
+>>>>>>> Stashed changes
 }
 ```
 
-## Building Context
+## Post-Processing
 
-### Get Active Experiments
+Pass Gemini's JSON output to the `/log` skill for routing:
 
-```bash
-# Find experiments not marked resolved
-for f in $ACA_DATA/projects/aops/experiments/2025*.md; do
-  if ! grep -q "Decision.*Resolved\|completed\|closed" "$f"; then
-    echo "=== $(basename $f) ==="
-    head -30 "$f" | grep -A5 "Hypothesis"
-  fi
-done
+```
+Skill(skill="log", args="session-mining: {gemini_json}")
 ```
 
-### Get Learning Themes
+The log skill will:
+1. Parse each finding
+2. Route by category to appropriate learning files
+3. Create new files for novel patterns
+4. Update existing thematic files
 
-```bash
-ls $ACA_DATA/projects/aops/learning/*.md | grep -v LOG | grep -v ARCHIVE
-```
+## Future: Option B
 
-## Routing Results
+If organic discovery proves valuable but imprecise, switch to guided extraction with:
+- Category definitions
+- Active experiment hypotheses
+- Explicit routing rules
 
+<<<<<<< Updated upstream
 | Result Type | Destination |
 |-------------|-------------|
 | **User correction** | `/learn` skill with full context |
@@ -141,3 +177,6 @@ If Gemini can't extract all fields:
 - **Missing agent_action or user_feedback**: Skip this correction (can't route without core context)
 - **Missing target**: Set to null, still route to /learn
 - **Missing/weak lesson**: Still route - /learn will synthesize the generalizable principle
+=======
+See spec for details.
+>>>>>>> Stashed changes

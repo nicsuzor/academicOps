@@ -109,7 +109,7 @@
           {
             "type": "command",
             "command": "PYTHONPATH=$AOPS uv run python $AOPS/hooks/autocommit_state.py",
-            "timeout": 35000
+            "timeout": 50000
           }
         ]
       },

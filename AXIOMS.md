@@ -109,3 +109,13 @@ tags: [framework, principles, core]
     - **Routing** → prompt_router and skills direct agents to relevant docs
     - When context is missing, agents HALT and report - missing context is a framework bug
     - Design decisions MUST be documented where they will surface when needed
+
+26. **MINIMAL INSTRUCTIONS**: Framework instructions should be no more detailed than required.
+    - Brevity reduces cognitive load and token cost
+    - If it can be said in fewer words, use fewer words
+    - Don't read files you don't need to read
+
+27. **FEEDBACK LOOPS FOR UNCERTAINTY**: When the solution is unknown, don't guess - set up a feedback loop.
+    - Requirement (user story) + failure evidence + no proven fix = experiment
+    - Make minimal intervention, wait for evidence, revise hypothesis
+    - Solutions emerge from accumulated evidence, not speculation

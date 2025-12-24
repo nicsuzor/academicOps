@@ -427,3 +427,387 @@ def test_hook_extracts_tool_name_from_correct_location(
     assert (
         "test-note.md" not in status_result.stdout
     ), f"File should be committed but is still in working tree: {status_result.stdout}"
+
+
+# ============================================================================
+# Sync-before-commit tests
+# ============================================================================
+
+
+@pytest.fixture
+def test_repo_with_remote(tmp_path: Path) -> tuple[Path, Path]:
+    """Create a test git repository with a bare remote for testing sync."""
+    # Create bare remote
+    remote_dir = tmp_path / "remote.git"
+    remote_dir.mkdir()
+    subprocess.run(["git", "init", "--bare"], cwd=remote_dir, check=True, capture_output=True)
+
+    # Create local repo
+    repo_dir = tmp_path / "local_repo"
+    repo_dir.mkdir()
+    subprocess.run(["git", "init"], cwd=repo_dir, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "config", "user.email", "test@example.com"],
+        cwd=repo_dir,
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "config", "user.name", "Test User"],
+        cwd=repo_dir,
+        check=True,
+        capture_output=True,
+    )
+
+    # Add remote
+    subprocess.run(
+        ["git", "remote", "add", "origin", str(remote_dir)],
+        cwd=repo_dir,
+        check=True,
+        capture_output=True,
+    )
+
+    # Create data/ structure and initial commit
+    (repo_dir / "data").mkdir()
+    (repo_dir / "data" / "tasks").mkdir()
+    (repo_dir / "README.md").write_text("# Test Repo\n")
+    subprocess.run(["git", "add", "."], cwd=repo_dir, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "commit", "-m", "Initial commit"],
+        cwd=repo_dir,
+        check=True,
+        capture_output=True,
+    )
+
+    # Push to remote and set upstream
+    subprocess.run(
+        ["git", "push", "-u", "origin", "main"],
+        cwd=repo_dir,
+        check=True,
+        capture_output=True,
+    )
+
+    return repo_dir, remote_dir
+
+
+def test_can_sync_detects_detached_head(test_repo: Path) -> None:
+    """Test that can_sync returns False for detached HEAD."""
+    from hooks.autocommit_state import can_sync
+
+    # Detach HEAD
+    subprocess.run(
+        ["git", "checkout", "--detach"],
+        cwd=test_repo,
+        check=True,
+        capture_output=True,
+    )
+
+    can, reason = can_sync(test_repo)
+    assert can is False
+    assert "detached" in reason.lower()
+
+
+def test_can_sync_detects_no_tracking_branch(test_repo: Path) -> None:
+    """Test that can_sync returns False when no tracking branch is set."""
+    from hooks.autocommit_state import can_sync
+
+    # No remote, so no tracking branch
+    can, reason = can_sync(test_repo)
+    assert can is False
+    assert "tracking" in reason.lower()
+
+
+def test_can_sync_returns_true_when_syncable(
+    test_repo_with_remote: tuple[Path, Path]
+) -> None:
+    """Test that can_sync returns True for a properly configured repo."""
+    from hooks.autocommit_state import can_sync
+
+    repo_dir, _ = test_repo_with_remote
+    can, reason = can_sync(repo_dir)
+    assert can is True
+    assert reason == ""
+
+
+def test_fetch_and_check_divergence_detects_behind(
+    test_repo_with_remote: tuple[Path, Path], tmp_path: Path
+) -> None:
+    """Test that fetch_and_check_divergence detects when local is behind."""
+    from hooks.autocommit_state import fetch_and_check_divergence
+
+    repo_dir, remote_dir = test_repo_with_remote
+
+    # Clone another copy and push a commit
+    other_repo = tmp_path / "other_repo"
+    subprocess.run(
+        ["git", "clone", str(remote_dir), str(other_repo)],
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "config", "user.email", "other@example.com"],
+        cwd=other_repo,
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "config", "user.name", "Other User"],
+        cwd=other_repo,
+        check=True,
+        capture_output=True,
+    )
+    (other_repo / "other.txt").write_text("Other change\n")
+    subprocess.run(["git", "add", "."], cwd=other_repo, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "commit", "-m", "Other commit"],
+        cwd=other_repo,
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "push"],
+        cwd=other_repo,
+        check=True,
+        capture_output=True,
+    )
+
+    # Now local should be 1 commit behind
+    is_behind, count, error = fetch_and_check_divergence(repo_dir)
+    assert is_behind is True
+    assert count == 1
+    assert error == ""
+
+
+def test_fetch_and_check_divergence_not_behind(
+    test_repo_with_remote: tuple[Path, Path]
+) -> None:
+    """Test that fetch_and_check_divergence returns not behind when up to date."""
+    from hooks.autocommit_state import fetch_and_check_divergence
+
+    repo_dir, _ = test_repo_with_remote
+    is_behind, count, error = fetch_and_check_divergence(repo_dir)
+    assert is_behind is False
+    assert count == 0
+    assert error == ""
+
+
+def test_pull_rebase_if_behind_syncs_changes(
+    test_repo_with_remote: tuple[Path, Path], tmp_path: Path
+) -> None:
+    """Test that pull_rebase_if_behind successfully syncs remote changes."""
+    from hooks.autocommit_state import pull_rebase_if_behind
+
+    repo_dir, remote_dir = test_repo_with_remote
+
+    # Clone another copy and push a commit
+    other_repo = tmp_path / "other_repo"
+    subprocess.run(
+        ["git", "clone", str(remote_dir), str(other_repo)],
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "config", "user.email", "other@example.com"],
+        cwd=other_repo,
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "config", "user.name", "Other User"],
+        cwd=other_repo,
+        check=True,
+        capture_output=True,
+    )
+    (other_repo / "other.txt").write_text("Other change\n")
+    subprocess.run(["git", "add", "."], cwd=other_repo, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "commit", "-m", "Other commit"],
+        cwd=other_repo,
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "push"],
+        cwd=other_repo,
+        check=True,
+        capture_output=True,
+    )
+
+    # Fetch to update remote refs
+    subprocess.run(
+        ["git", "fetch", "origin"],
+        cwd=repo_dir,
+        check=True,
+        capture_output=True,
+    )
+
+    # Now pull rebase
+    success, msg = pull_rebase_if_behind(repo_dir)
+    assert success is True
+    assert "synced" in msg.lower()
+
+    # Verify the file is now present
+    assert (repo_dir / "other.txt").exists()
+
+
+def test_pull_rebase_detects_conflict(
+    test_repo_with_remote: tuple[Path, Path], tmp_path: Path
+) -> None:
+    """Test that pull_rebase_if_behind detects and aborts on conflict."""
+    from hooks.autocommit_state import pull_rebase_if_behind
+
+    repo_dir, remote_dir = test_repo_with_remote
+
+    # Clone another copy, modify README, and push
+    other_repo = tmp_path / "other_repo"
+    subprocess.run(
+        ["git", "clone", str(remote_dir), str(other_repo)],
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "config", "user.email", "other@example.com"],
+        cwd=other_repo,
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "config", "user.name", "Other User"],
+        cwd=other_repo,
+        check=True,
+        capture_output=True,
+    )
+    (other_repo / "README.md").write_text("# Other change\n")
+    subprocess.run(["git", "add", "."], cwd=other_repo, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "commit", "-m", "Other commit"],
+        cwd=other_repo,
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "push"],
+        cwd=other_repo,
+        check=True,
+        capture_output=True,
+    )
+
+    # Make conflicting local change
+    (repo_dir / "README.md").write_text("# Conflicting change\n")
+    subprocess.run(["git", "add", "."], cwd=repo_dir, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "commit", "-m", "Local commit"],
+        cwd=repo_dir,
+        check=True,
+        capture_output=True,
+    )
+
+    # Fetch to update remote refs
+    subprocess.run(
+        ["git", "fetch", "origin"],
+        cwd=repo_dir,
+        check=True,
+        capture_output=True,
+    )
+
+    # Now pull rebase - should detect conflict and abort
+    success, msg = pull_rebase_if_behind(repo_dir)
+    assert success is False
+    assert "conflict" in msg.lower() or "failed" in msg.lower()
+
+    # Verify rebase was aborted (not in rebase state)
+    rebase_dir = repo_dir / ".git" / "rebase-merge"
+    rebase_apply = repo_dir / ".git" / "rebase-apply"
+    assert not rebase_dir.exists()
+    assert not rebase_apply.exists()
+
+
+def test_autocommit_syncs_before_commit(
+    test_repo_with_remote: tuple[Path, Path],
+    tmp_path: Path,
+    hook_script: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """E2E test: autocommit hook syncs with remote before committing."""
+    repo_dir, remote_dir = test_repo_with_remote
+    monkeypatch.chdir(repo_dir)
+
+    # Clone another copy and push a commit
+    other_repo = tmp_path / "other_repo"
+    subprocess.run(
+        ["git", "clone", str(remote_dir), str(other_repo)],
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "config", "user.email", "other@example.com"],
+        cwd=other_repo,
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "config", "user.name", "Other User"],
+        cwd=other_repo,
+        check=True,
+        capture_output=True,
+    )
+    (other_repo / "other.txt").write_text("Other change\n")
+    subprocess.run(["git", "add", "."], cwd=other_repo, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "commit", "-m", "Other commit"],
+        cwd=other_repo,
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "push"],
+        cwd=other_repo,
+        check=True,
+        capture_output=True,
+    )
+
+    # Create local data change
+    task_file = repo_dir / "data" / "tasks" / "test-task.md"
+    task_file.parent.mkdir(parents=True, exist_ok=True)
+    task_file.write_text("# Test Task\n")
+
+    # Run hook
+    tool_input = {
+        "toolName": "Bash",
+        "toolInput": {
+            "command": "python skills/tasks/scripts/task_add.py --title 'Test'",
+        }
+    }
+    env = os.environ.copy()
+    env["PYTHONPATH"] = os.environ["AOPS"]
+    env["AOPS"] = os.environ["AOPS"]
+    env["ACA_DATA"] = str(repo_dir)
+    result = subprocess.run(
+        ["python", str(hook_script)],
+        input=json.dumps(tool_input),
+        text=True,
+        capture_output=True,
+        cwd=repo_dir,
+        env=env,
+        check=True,
+    )
+
+    assert result.returncode == 0
+
+    # Verify synced commits message
+    output = json.loads(result.stdout) if result.stdout.strip() else {}
+    if "systemMessage" in output:
+        assert "synced" in output["systemMessage"].lower() or "committed" in output["systemMessage"].lower()
+
+    # Verify remote commit was pulled (other.txt exists)
+    assert (repo_dir / "other.txt").exists(), "Remote changes should have been synced"
+
+    # Verify local change was committed
+    status_result = subprocess.run(
+        ["git", "status", "--porcelain", "data/"],
+        cwd=repo_dir,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    assert status_result.stdout.strip() == "", "Local changes should be committed"
