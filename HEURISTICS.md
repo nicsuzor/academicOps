@@ -148,6 +148,14 @@ These are empirically derived rules that implement [[AXIOMS]] in practice. Unlik
 
 **Implements**: [[AXIOMS]] #9 (DRY, Modular, Explicit), #20 (Maintain relational database integrity)
 
+### H7a: Wikilinks in Prose Only (Corollary)
+
+**Statement**: Only add [[wikilinks]] in prose text. Never inside code fences, inline code, blockquotes, or table cells that represent literal/technical content.
+
+**Rationale**: Wikilinks are for semantic navigation. Code blocks and tables often contain literal syntax where `[[brackets]]` would break rendering or confuse the meaning. Tables with mechanism names, command examples, or technical references should remain literal.
+
+**Confidence**: Low (first observation)
+
 ---
 
 ## H8: Avoid Namespace Collisions
