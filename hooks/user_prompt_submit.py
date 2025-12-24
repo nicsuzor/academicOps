@@ -20,7 +20,6 @@ from pathlib import Path
 from typing import Any
 
 from hook_debug import safe_log_to_debug_file
-from lib.activity import log_activity
 
 # Paths (absolute, fail-fast if missing)
 HOOK_DIR = Path(__file__).parent
@@ -29,20 +28,20 @@ PROMPT_FILE = HOOK_DIR / "prompts" / "user-prompt-submit.md"
 
 def log_to_cloudflare(prompt: str) -> None:
     """
-    Log prompt to Cloudflare worker endpoint (fire-and-forget).
+    Log prompt to Cloudflare worker endpoint.
+
+    Warns to stderr if API key is missing or request fails.
 
     Args:
         prompt: User prompt to log
-
-    Returns:
-        None (always returns, never raises)
     """
-    try:
-        # Get token from environment (return silently if missing)
-        token = os.environ.get("PROMPT_LOG_API_KEY")
-        if not token:
-            return
+    # Warn if API key missing
+    token = os.environ.get("PROMPT_LOG_API_KEY")
+    if not token:
+        print("WARNING: PROMPT_LOG_API_KEY not set, skipping prompt logging", file=sys.stderr)
+        return
 
+    try:
         # Get system information
         hostname = socket.gethostname()
         cwd = os.getcwd()
@@ -60,6 +59,7 @@ def log_to_cloudflare(prompt: str) -> None:
         # Construct curl command
         curl_command = [
             "curl",
+            "-sf",  # Silent but fail on HTTP errors
             "-X", "POST",
             "-H", f"Authorization: Bearer {token}",
             "-H", "Content-Type: application/json",
@@ -67,15 +67,19 @@ def log_to_cloudflare(prompt: str) -> None:
             "https://prompt-logs.nicsuzor.workers.dev/write",
         ]
 
-        # Fire-and-forget: launch process without waiting
-        subprocess.Popen(
+        # Run and check for errors
+        result = subprocess.run(
             curl_command,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
+            capture_output=True,
+            timeout=5,
+            check=False,  # We handle errors manually below
         )
-    except Exception:
-        # Fire-and-forget: suppress all exceptions
-        pass
+        if result.returncode != 0:
+            print(f"WARNING: Cloudflare logging failed: {result.stderr.decode()}", file=sys.stderr)
+    except subprocess.TimeoutExpired:
+        print("WARNING: Cloudflare logging timed out", file=sys.stderr)
+    except Exception as e:
+        print(f"WARNING: Cloudflare logging error: {e}", file=sys.stderr)
 
 
 def load_prompt_from_markdown() -> str:
@@ -132,25 +136,10 @@ def main():
         # If no stdin or parsing fails, continue with empty input
         pass
 
-    # Log user prompt to activity log and Cloudflare
-    try:
-        user_prompt = input_data.get("userMessage", "")
-        # Get session context from cwd (project name from directory)
-        cwd = os.getcwd()
-        session = Path(cwd).name if cwd else "unknown"
-
-        # Log activity (truncate long prompts to 100 chars)
-        if user_prompt:
-            action = f"User: {user_prompt[:100]}"
-            if len(user_prompt) > 100:
-                action += "..."
-            log_activity(action, session)
-
-            # Log to Cloudflare R2 (fire-and-forget)
-            log_to_cloudflare(user_prompt)
-    except Exception:
-        # Don't fail the hook if activity logging fails
-        pass
+    # Log user prompt to Cloudflare (fire-and-forget)
+    user_prompt = input_data.get("userMessage", "")
+    if user_prompt:
+        log_to_cloudflare(user_prompt)
 
     # Load prompt from markdown file (fail-fast if missing)
     try:

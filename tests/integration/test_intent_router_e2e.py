@@ -17,7 +17,6 @@ import pytest
 from hooks.prompt_router import write_classifier_prompt
 
 # Valid skill names that intent-router can classify to
-# (extracted from capabilities.md, not from prompt_router.py)
 VALID_SKILL_NAMES = {
     "framework",
     "python-dev",
@@ -31,14 +30,6 @@ VALID_SKILL_NAMES = {
     "skill-creator",
     "training-set-builder",
     "extractor",
-    "excalidraw",
-    "ground-truth",
-    "garden",
-    "link-audit",
-    "reference-map",
-    "feature-dev",
-    "session-insights",
-    "dashboard",
     "none",
 }
 
@@ -47,7 +38,6 @@ pytestmark = [
     pytest.mark.integration,
     pytest.mark.slow,
     pytest.mark.xdist_group("intent_router"),
-    pytest.mark.xfail(reason="LLM behavior is non-deterministic - observational test", strict=False),
 ]
 
 
@@ -83,9 +73,8 @@ def test_write_classifier_prompt_creates_file():
             test_prompt in content
         ), f"User prompt not found in cache file:\n{content}"
 
-        # Must contain skill names (check a few key ones)
-        key_skills = ["framework", "python-dev", "analyst", "remember", "tasks"]
-        for skill_name in key_skills:
+        # Must contain all skill names from VALID_SKILL_NAMES
+        for skill_name in VALID_SKILL_NAMES:
             assert (
                 skill_name in content
             ), f"Skill '{skill_name}' not found in cache file"
