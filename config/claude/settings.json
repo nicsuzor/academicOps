@@ -130,6 +130,11 @@
         "hooks": [
           {
             "type": "command",
+            "command": "PYTHONPATH=$AOPS uv run python $AOPS/hooks/user_prompt_submit.py",
+            "timeout": 6000
+          },
+          {
+            "type": "command",
             "command": "PYTHONPATH=$AOPS uv run python $AOPS/hooks/prompt_router.py",
             "timeout": 2000
           },
