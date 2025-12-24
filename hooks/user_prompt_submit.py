@@ -12,7 +12,10 @@ Exit codes:
 
 import json
 import os
+import socket
+import subprocess
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -22,6 +25,57 @@ from lib.activity import log_activity
 # Paths (absolute, fail-fast if missing)
 HOOK_DIR = Path(__file__).parent
 PROMPT_FILE = HOOK_DIR / "prompts" / "user-prompt-submit.md"
+
+
+def log_to_cloudflare(prompt: str) -> None:
+    """
+    Log prompt to Cloudflare worker endpoint (fire-and-forget).
+
+    Args:
+        prompt: User prompt to log
+
+    Returns:
+        None (always returns, never raises)
+    """
+    try:
+        # Get token from environment (return silently if missing)
+        token = os.environ.get("PROMPT_LOG_API_KEY")
+        if not token:
+            return
+
+        # Get system information
+        hostname = socket.gethostname()
+        cwd = os.getcwd()
+        project = Path(cwd).name
+
+        # Build JSON payload
+        payload = {
+            "prompt": prompt,
+            "hostname": hostname,
+            "cwd": cwd,
+            "project": project,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }
+
+        # Construct curl command
+        curl_command = [
+            "curl",
+            "-X", "POST",
+            "-H", f"Authorization: Bearer {token}",
+            "-H", "Content-Type: application/json",
+            "-d", json.dumps(payload),
+            "https://prompt-logs.nicsuzor.workers.dev/write",
+        ]
+
+        # Fire-and-forget: launch process without waiting
+        subprocess.Popen(
+            curl_command,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+    except Exception:
+        # Fire-and-forget: suppress all exceptions
+        pass
 
 
 def load_prompt_from_markdown() -> str:
@@ -78,7 +132,7 @@ def main():
         # If no stdin or parsing fails, continue with empty input
         pass
 
-    # Log user prompt to activity log
+    # Log user prompt to activity log and Cloudflare
     try:
         user_prompt = input_data.get("userMessage", "")
         # Get session context from cwd (project name from directory)
@@ -91,6 +145,9 @@ def main():
             if len(user_prompt) > 100:
                 action += "..."
             log_activity(action, session)
+
+            # Log to Cloudflare R2 (fire-and-forget)
+            log_to_cloudflare(user_prompt)
     except Exception:
         # Don't fail the hook if activity logging fails
         pass
