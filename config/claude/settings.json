@@ -2,7 +2,7 @@
   "permissions": {
     "allow": [
       "Read",
-      "Bash(uv run pytest*)"
+      "Bash(uv run pytest:*)"
     ],
     "deny": [
       "Write(**/data/tasks/**)",
