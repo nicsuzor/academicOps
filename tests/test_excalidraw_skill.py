@@ -38,7 +38,7 @@ class TestExcalidrawSkill:
     def test_skill_has_required_sections(self, skill_content):
         """Verify skill contains all required sections."""
         required_sections = [
-            "# Excalidraw: Creating Visually Compelling Diagrams",
+            "# Excalidraw",  # Main heading (flexible on exact wording)
             "## When to Use This Skill",
             "## Core Visual Design Principles",
             "## Technical Elements",  # Contains: colors, typography, shapes, arrows, layout

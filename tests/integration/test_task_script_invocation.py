@@ -19,9 +19,14 @@ def aops_root() -> Path:
     """Return Path to aOps framework root.
 
     Returns:
-        Path: Absolute path to /home/nic/src/aOps
+        Path: Absolute path to framework root from environment or discovery
     """
-    return Path("/home/nic/src/aOps")
+    # Use environment variable if set
+    if "AOPS" in os.environ:
+        return Path(os.environ["AOPS"])
+
+    # Fall back to discovery from test file location
+    return Path(__file__).parent.parent.parent
 
 
 def test_task_ops_import_with_uv_context(aops_root: Path) -> None:

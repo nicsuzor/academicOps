@@ -20,8 +20,11 @@ from lib.paths import get_aops_root
 def extract_response_text(result: dict[str, Any]) -> str:
     """Extract text response from claude_headless result.
 
-    The claude command returns a list of message objects in result["result"].
-    This function extracts the actual text response from the message chain.
+    Claude CLI returns JSON in two formats:
+    1. Dict with "result" key containing text (current format, --output-format json)
+    2. List of message objects (legacy debug format)
+
+    This function handles both formats.
 
     Args:
         result: Dictionary from claude_headless with "result" key
@@ -31,64 +34,75 @@ def extract_response_text(result: dict[str, Any]) -> str:
 
     Raises:
         ValueError: If result structure is unexpected or no response found
-        KeyError: If expected keys are missing
-        TypeError: If result["result"] is not a list
+        TypeError: If result structure is malformed
     """
     result_data = result.get("result")
 
-    # FAIL FAST: result["result"] must be a list of message objects
-    if not isinstance(result_data, list):
-        raise TypeError(
-            f"Expected result['result'] to be a list, got {type(result_data).__name__}"
+    # Handle current CLI format: dict with "result" string field
+    if isinstance(result_data, dict):
+        # New format: {"type": "result", "result": "response text", ...}
+        if "result" in result_data:
+            text = result_data.get("result")
+            if isinstance(text, str):
+                return text
+            raise TypeError(
+                f"Expected result['result']['result'] to be string, "
+                f"got {type(text).__name__}"
+            )
+        raise ValueError(
+            f"Dict result missing 'result' field. Keys: {list(result_data.keys())}"
         )
 
-    if not result_data:
-        raise ValueError("result['result'] is an empty list - no response found")
+    # Handle string result directly (simplest case)
+    if isinstance(result_data, str):
+        return result_data
 
-    # Extract text from the last message in the chain
-    # Look for either an assistant message's content or a result message
-    for message in reversed(result_data):
-        if not isinstance(message, dict):
-            raise TypeError(
-                f"Expected message to be dict, got {type(message).__name__}"
-            )
+    # Handle legacy format: list of message objects
+    if isinstance(result_data, list):
+        if not result_data:
+            raise ValueError("result['result'] is an empty list - no response found")
 
-        message_type = message.get("type")
-
-        # Check for result message (final response)
-        if message_type == "result":
-            result_field = message.get("result")
-            if isinstance(result_field, str):
-                return result_field
-            raise TypeError(
-                f"Expected result message's 'result' field to be string, "
-                f"got {type(result_field).__name__}"
-            )
-
-        # Check for assistant message with content
-        if message_type == "assistant":
-            message_obj = message.get("message")
-            if not isinstance(message_obj, dict):
+        # Extract text from the last message in the chain
+        for message in reversed(result_data):
+            if not isinstance(message, dict):
                 continue
 
-            content = message_obj.get("content")
-            if not isinstance(content, list):
-                continue
+            message_type = message.get("type")
 
-            # Find text content in the message
-            for content_block in content:
-                if not isinstance(content_block, dict):
+            # Check for result message (final response)
+            if message_type == "result":
+                result_field = message.get("result")
+                if isinstance(result_field, str):
+                    return result_field
+
+            # Check for assistant message with content
+            if message_type == "assistant":
+                message_obj = message.get("message")
+                if not isinstance(message_obj, dict):
                     continue
 
-                if content_block.get("type") == "text":
-                    text_value = content_block.get("text")
-                    if isinstance(text_value, str):
-                        return text_value
+                content = message_obj.get("content")
+                if not isinstance(content, list):
+                    continue
 
-    # FAIL FAST: No response found in message chain
-    raise ValueError(
-        f"Could not extract text response from message chain. "
-        f"Message types: {[m.get('type') for m in result_data if isinstance(m, dict)]}"
+                # Find text content in the message
+                for content_block in content:
+                    if not isinstance(content_block, dict):
+                        continue
+
+                    if content_block.get("type") == "text":
+                        text_value = content_block.get("text")
+                        if isinstance(text_value, str):
+                            return text_value
+
+        raise ValueError(
+            f"Could not extract text from message chain. "
+            f"Message types: {[m.get('type') for m in result_data if isinstance(m, dict)]}"
+        )
+
+    raise TypeError(
+        f"Expected result['result'] to be dict, str, or list, "
+        f"got {type(result_data).__name__}"
     )
 
 

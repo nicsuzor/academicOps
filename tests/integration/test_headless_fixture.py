@@ -30,7 +30,7 @@ def test_claude_headless_simple_prompt(claude_headless) -> None:
     Verifies:
     - Simple arithmetic prompt executes successfully
     - Response contains expected keys
-    - Output is parseable JSON (list of events with --debug flag)
+    - Output is parseable JSON
     """
     result = claude_headless("What is 2+2?")
 
@@ -39,10 +39,14 @@ def test_claude_headless_simple_prompt(claude_headless) -> None:
     assert "output" in result, "Result should have 'output' key"
     assert "result" in result, "Result should have 'result' key"
 
-    # Verify output is valid JSON - with --debug flag, output is a list of events
+    # Verify output is valid JSON (format may be dict or list depending on CLI version)
     output_data = json.loads(result["output"])
-    assert isinstance(output_data, list), "Output should be parseable as JSON list (debug format)"
-    assert len(output_data) > 0, "Output should contain at least one event"
+    assert isinstance(output_data, (dict, list)), "Output should be parseable as JSON"
+    # For dict format, check for result field; for list, check non-empty
+    if isinstance(output_data, dict):
+        assert "result" in output_data or "type" in output_data, "Dict output should have result or type"
+    else:
+        assert len(output_data) > 0, "List output should contain at least one event"
 
 
 @pytest.mark.slow
@@ -102,24 +106,30 @@ def test_claude_headless_json_output(claude_headless) -> None:
 
     Verifies:
     - Output key contains valid JSON string
-    - JSON can be parsed (list format with --debug flag)
-    - Events contain expected structure
+    - JSON can be parsed (dict or list format)
+    - Contains expected structure
     """
     result = claude_headless("What is 5+5?")
 
     assert "output" in result, "Result should have output key"
 
-    # Parse the JSON output - with --debug flag, output is a list of events
+    # Parse the JSON output - format may be dict (current) or list (legacy)
     output_data = json.loads(result["output"])
 
-    assert isinstance(output_data, list), "Parsed output should be a list (debug format)"
-    # Debug output should contain session events - look for assistant message or result
-    event_types = [e.get("type") for e in output_data if isinstance(e, dict)]
-    assert any(
-        t in event_types for t in ["assistant", "result"]
-    ) or any(
-        "hook_event" in e for e in output_data if isinstance(e, dict)
-    ), f"Should have assistant/result message or hook events. Found types: {event_types}"
+    assert isinstance(output_data, (dict, list)), "Parsed output should be dict or list"
+
+    if isinstance(output_data, dict):
+        # Current format: {"type": "result", "result": "...", ...}
+        assert output_data.get("type") == "result", "Dict output should have type=result"
+        assert "result" in output_data, "Dict output should have result field"
+    else:
+        # Legacy format: list of events
+        event_types = [e.get("type") for e in output_data if isinstance(e, dict)]
+        assert any(
+            t in event_types for t in ["assistant", "result"]
+        ) or any(
+            "hook_event" in e for e in output_data if isinstance(e, dict)
+        ), f"Should have assistant/result message or hook events. Found types: {event_types}"
 
 
 @pytest.mark.slow

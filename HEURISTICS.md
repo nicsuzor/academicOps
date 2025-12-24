@@ -447,6 +447,27 @@ If critic returns REVISE or HALT, address issues before proceeding.
 
 ---
 
+## H24: Ship Scripts, Don't Inline Python
+
+**Statement**: When a skill needs to run Python, create a script that ships with the skill. Never ask the LLM agent to write or paste Python code inline.
+
+**Rationale**: Inline Python in skill instructions creates multiple failure modes: agents modify the code, hallucinate syntax, or skip steps. Scripts are version-controlled, testable, and deterministic. The agent's job is to invoke scripts, not write them.
+
+**Evidence**:
+- 2025-12-24: session-insights skill had inline Python blocks that agents had to copy-paste. Replaced with script invocations.
+
+**Confidence**: Low (first observation)
+
+**Implements**: [[AXIOMS]] #19 (Write for Long Term), [[AXIOMS]] #7 (Fail-Fast)
+
+**Application**:
+- ❌ Wrong: Skill contains `uv run python -c "from lib... [50 lines]"`
+- ✅ Right: Skill says `uv run python scripts/find_sessions.py --date today`
+
+**Script location**: `skills/<name>/scripts/` or `$AOPS/scripts/` for shared utilities.
+
+---
+
 ## H23: Synthesize After Resolution
 
 **Statement**: When a design decision is made and implemented, strip deliberation artifacts from the spec. Specs evolve from user story → deliberation → authoritative reference. After implementation, they become timeless documentation of what IS, not what was considered.

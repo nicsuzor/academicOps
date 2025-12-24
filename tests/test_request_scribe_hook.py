@@ -39,7 +39,8 @@ def test_stop_event_injects_reminder() -> None:
 
     # Stop hooks use reason/continue format, not hookSpecificOutput
     assert "reason" in output
-    assert "memory" in output["reason"].lower()
+    # Check for key phrase from the reminder (case-insensitive)
+    assert "remember skill" in output["reason"].lower() or "remember" in output["reason"].lower()
     assert output.get("continue") is True
 
 

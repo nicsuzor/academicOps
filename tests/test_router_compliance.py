@@ -92,12 +92,14 @@ def test_router_compliance_today():
 @pytest.mark.metrics
 def test_hook_logs_exist():
     """Verify hook logging infrastructure is working."""
-    hook_dir = Path.home() / ".cache" / "aops" / "sessions"
+    # Hook logs go to ~/.claude/projects/<project>/*-hooks.jsonl
+    projects_dir = Path.home() / ".claude" / "projects"
 
-    assert hook_dir.exists(), f"Hook log directory missing: {hook_dir}"
+    assert projects_dir.exists(), f"Claude projects directory missing: {projects_dir}"
 
-    hook_logs = list(hook_dir.glob("*-hooks.jsonl"))
+    hook_logs = list(projects_dir.rglob("*-hooks.jsonl"))
     assert len(hook_logs) > 0, "No hook logs found - hooks may not be firing"
 
     print(f"\n✓ Found {len(hook_logs)} hook log files")
-    print(f"  Most recent: {sorted(hook_logs)[-1].name}")
+    print(f"  Most recent: {sorted(hook_logs, key=lambda f: f.stat().st_mtime)[-1]}")
+

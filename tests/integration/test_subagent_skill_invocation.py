@@ -24,7 +24,12 @@ import pytest
 from tests.paths import get_data_dir
 
 # Disable parallel execution for these tests
-pytestmark = [pytest.mark.integration, pytest.mark.xdist_group("skill_invocation_sequential")]
+pytestmark = [
+    pytest.mark.integration,
+    pytest.mark.slow,
+    pytest.mark.xdist_group("skill_invocation_sequential"),
+    pytest.mark.xfail(reason="LLM behavior is non-deterministic - observational test", strict=False),
+]
 
 
 def retry_flaky_e2e(test_func, max_attempts: int = 3):

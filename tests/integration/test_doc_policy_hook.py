@@ -14,7 +14,17 @@ import pytest
 
 
 def invoke_hook(tool_name: str, args: dict) -> dict:
-    """Invoke PreToolUse hook script with JSON input."""
+    """Invoke PreToolUse hook script with JSON input.
+
+    Per Claude Code docs:
+    - Exit 0 = allow, JSON on stdout
+    - Exit 2 = block, message on stderr
+
+    Returns dict with:
+    - "blocked": True if exit code 2
+    - "message": stderr content if blocked
+    - Other fields from stdout JSON if allowed
+    """
     hook_script = Path(__file__).parent.parent.parent / "hooks" / "policy_enforcer.py"
     assert hook_script.exists(), f"Hook script not found: {hook_script}"
 
@@ -32,7 +42,16 @@ def invoke_hook(tool_name: str, args: dict) -> dict:
         check=False,
     )
 
-    assert result.returncode == 0, f"Hook failed: {result.stderr}"
+    # Exit code 2 = blocked (per Claude Code hook docs)
+    if result.returncode == 2:
+        return {
+            "blocked": True,
+            "continue": False,
+            "systemMessage": result.stderr.strip(),
+        }
+
+    # Exit code 0 = allowed
+    assert result.returncode == 0, f"Unexpected exit code {result.returncode}: {result.stderr}"
 
     if result.stdout.strip():
         return json.loads(result.stdout)
