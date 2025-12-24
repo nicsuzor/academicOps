@@ -35,6 +35,21 @@ SKILL_FRAMING = (
     "Before proceeding, invoke {skill_instruction} to load context that may not be immediately apparent."
 )
 
+# Verification checklist reminder - implements Layer 2 of verification-enforcement-gates.md
+VERIFICATION_REMINDER = """
+**VERIFICATION PROTOCOL**: Diagnostic prompt detected.
+
+Start with TodoWrite verification checklist:
+```
+TodoWrite([
+  {content: "Check actual current state", status: "in_progress", activeForm: "Checking current state"},
+  {content: "Verify baseline (has this ever worked?)", status: "pending", activeForm: "Verifying baseline"},
+  {content: "Gather evidence for hypothesis", status: "pending", activeForm: "Gathering evidence"},
+  {content: "State conclusion with evidence reference", status: "pending", activeForm: "Stating conclusion"}
+])
+```
+"""
+
 # Only match explicit slash commands at start of prompt
 SLASH_COMMAND_PATTERN = re.compile(r"^/(\w+)")
 
@@ -79,6 +94,49 @@ def get_command_names() -> set[str]:
             if parts and parts[0] and parts[0].lower() != "name" and not parts[0].startswith("-"):
                 commands.add(parts[0])
     return commands
+
+
+def detect_diagnostic_prompt(prompt: str) -> bool:
+    """Detect diagnostic/verification prompts requiring systematic verification.
+
+    Implements Layer 2 of verification-enforcement-gates.md spec.
+    Triggers on error indicators OR negative investigation patterns.
+
+    Args:
+        prompt: The user's prompt text
+
+    Returns:
+        True if prompt is a diagnostic/debugging request
+    """
+    prompt_lower = prompt.lower()
+
+    # Pattern 1: Explicit error/issue indicators
+    error_indicators = r"(error|fail|broken|bug|issue|problem|wrong|not\s+working)"
+    has_error_indicator = bool(re.search(error_indicators, prompt_lower))
+
+    # Pattern 2: Negative investigation patterns (implies something is wrong)
+    # "why isn't X", "why doesn't X", "why won't X", "why is X not"
+    negative_investigation = r"why.*(isn't|doesn't|won't|is\s+not|does\s+not)"
+    has_negative_investigation = bool(re.search(negative_investigation, prompt_lower))
+
+    # Must have at least one indicator
+    if not has_error_indicator and not has_negative_investigation:
+        return False
+
+    # Explicit debug/fix requests always match
+    if re.search(r"(debug|fix\s+(this|the|my))", prompt_lower):
+        return True
+
+    # "what's wrong" patterns
+    if re.search(r"what'?s\s+wrong", prompt_lower):
+        return True
+
+    # "figure out why" patterns
+    if re.search(r"figure\s+out", prompt_lower):
+        return True
+
+    # Has error indicator or negative investigation - diagnostic
+    return True
 
 
 def write_classifier_prompt(prompt: str) -> Path:
@@ -154,6 +212,9 @@ def main():
 
     prompt = input_data.get("prompt", "")
 
+    # Detect diagnostic prompts (independent of capability routing)
+    is_diagnostic = detect_diagnostic_prompt(prompt)
+
     # Get motivational skill suggestion (v2 framing)
     advisory, matched_skills = analyze_prompt(prompt)
 
@@ -161,11 +222,14 @@ def main():
     context_parts = [FOCUS_REMINDER]
     if advisory:
         context_parts.append(advisory)
+    if is_diagnostic:
+        context_parts.append(VERIFICATION_REMINDER)
 
     hook_specific_output: dict[str, Any] = {
         "hookEventName": "UserPromptSubmit",
         "additionalContext": "\n".join(context_parts),
         "framingVersion": FRAMING_VERSION,  # For A/B measurement
+        "diagnosticDetected": is_diagnostic,  # For verification enforcement measurement
     }
     if matched_skills:
         hook_specific_output["skillsMatched"] = matched_skills

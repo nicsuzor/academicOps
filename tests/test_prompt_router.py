@@ -10,7 +10,13 @@ import sys
 
 import pytest
 
-from hooks.prompt_router import FRAMING_VERSION, analyze_prompt, get_command_names, load_capabilities_text
+from hooks.prompt_router import (
+    FRAMING_VERSION,
+    analyze_prompt,
+    detect_diagnostic_prompt,
+    get_command_names,
+    load_capabilities_text,
+)
 
 
 class TestAnalyzePrompt:
@@ -74,6 +80,57 @@ class TestAnalyzePrompt:
         assert "meta" in commands
         assert "email" in commands
         assert "log" in commands
+
+
+class TestDiagnosticPromptDetection:
+    """Tests for detect_diagnostic_prompt function.
+
+    Implements Layer 2 of verification-enforcement-gates.md spec.
+    """
+
+    @pytest.mark.parametrize(
+        "prompt,expected",
+        [
+            # Positive cases - error indicator + investigation pattern
+            ("why isn't the hook working?", True),
+            ("fix this error please", True),
+            ("debug the failing test", True),
+            ("what's wrong with the output?", True),
+            ("the build is broken, help", True),
+            ("there's a bug in the parser", True),
+            ("the test is not working", True),
+            ("I have an issue with the config", True),
+            ("there's a problem with authentication", True),
+            ("figure out why the error occurs", True),
+            # Negative cases - no error indicator
+            ("check if we should use async", False),
+            ("look into design options", False),
+            ("investigate the architecture", False),
+            ("help me write python code", False),
+            ("convert this to PDF", False),
+            ("remember my preferences", False),
+            ("what is machine learning?", False),
+            ("create a new task", False),
+        ],
+    )
+    def test_detect_diagnostic_prompt(self, prompt: str, expected: bool) -> None:
+        """Test that diagnostic prompts are correctly detected."""
+        result = detect_diagnostic_prompt(prompt)
+        assert result == expected, f"Expected {expected} for: {prompt}"
+
+    def test_error_indicator_required(self) -> None:
+        """Test that prompts without error indicators are not flagged."""
+        # These have investigation words but no error indicator
+        assert not detect_diagnostic_prompt("check if the server is ready")
+        assert not detect_diagnostic_prompt("verify the configuration")
+        assert not detect_diagnostic_prompt("is the service running")
+
+    def test_error_indicator_alone_triggers(self) -> None:
+        """Test that error indicator alone is sufficient."""
+        # Has error indicator, triggers even without specific pattern
+        assert detect_diagnostic_prompt("there's an error in this code")
+        assert detect_diagnostic_prompt("this has a bug somewhere")
+        assert detect_diagnostic_prompt("something is wrong here")
 
 
 def test_prompt_router_uses_intent_router_agent() -> None:
@@ -145,3 +202,55 @@ def test_hook_script_execution_without_slash_command(hooks_dir) -> None:
     assert "intent-router" in hook_output["additionalContext"]
     # No direct match - goes to LLM
     assert hook_output.get("skillsMatched") is None
+
+
+def test_hook_injects_verification_reminder_for_diagnostic_prompt(hooks_dir) -> None:
+    """Test that diagnostic prompts inject VERIFICATION_REMINDER.
+
+    Implements Layer 2 of verification-enforcement-gates.md spec.
+    """
+    hook_script = hooks_dir / "prompt_router.py"
+    input_data = json.dumps({"prompt": "why isn't the hook working? there's an error"})
+
+    result = subprocess.run(
+        [sys.executable, str(hook_script)],
+        input=input_data,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+
+    output = json.loads(result.stdout)
+
+    assert "hookSpecificOutput" in output
+    hook_output = output["hookSpecificOutput"]
+    assert "additionalContext" in hook_output
+
+    context = hook_output["additionalContext"]
+    assert "VERIFICATION PROTOCOL" in context, "Should inject verification reminder"
+    assert "TodoWrite" in context, "Should include TodoWrite template"
+    assert "Check actual current state" in context, "Should include checklist items"
+    assert hook_output.get("diagnosticDetected") is True
+
+
+def test_hook_no_verification_reminder_for_normal_prompt(hooks_dir) -> None:
+    """Test that non-diagnostic prompts do NOT inject VERIFICATION_REMINDER."""
+    hook_script = hooks_dir / "prompt_router.py"
+    input_data = json.dumps({"prompt": "help me write python code"})
+
+    result = subprocess.run(
+        [sys.executable, str(hook_script)],
+        input=input_data,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+
+    output = json.loads(result.stdout)
+
+    assert "hookSpecificOutput" in output
+    hook_output = output["hookSpecificOutput"]
+    context = hook_output["additionalContext"]
+
+    assert "VERIFICATION PROTOCOL" not in context, "Should NOT inject verification reminder"
+    assert hook_output.get("diagnosticDetected") is False
