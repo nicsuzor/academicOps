@@ -149,6 +149,35 @@ def get_primary_focus() -> dict:
     }
 
 
+def get_session_display_info(session_info: "SessionInfo") -> dict:
+    """Extract displayable session identity from SessionInfo.
+
+    Enables users to distinguish between multiple terminal sessions (AC-U1).
+
+    Args:
+        session_info: SessionInfo object from lib/session_reader.py
+
+    Returns:
+        Dict with keys:
+            - session_id_short: First 7 characters of session UUID
+            - project: Project name from the session
+            - last_activity: Timestamp of last session activity (datetime)
+
+    Raises:
+        ValueError: If session_info is None or session_id is None
+    """
+    if session_info is None:
+        raise ValueError("session_info cannot be None")
+    if session_info.session_id is None:
+        raise ValueError("session_info.session_id cannot be None")
+
+    return {
+        "session_id_short": session_info.session_id[:7],
+        "project": session_info.project,
+        "last_activity": session_info.last_modified,
+    }
+
+
 def get_project_color(project: str) -> str:
     """Get color for project, matching Peacock scheme."""
     project_lower = project.lower()
