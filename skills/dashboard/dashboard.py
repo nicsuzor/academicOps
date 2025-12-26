@@ -308,6 +308,57 @@ def get_todays_accomplishments() -> list[dict]:
     return accomplishments
 
 
+def get_dashboard_layout() -> dict:
+    """Get structured dashboard data organized by the three core questions.
+
+    Aggregates data from multiple sources into a layout suitable for
+    dashboard rendering:
+    - What to do: Primary focus and priority tasks
+    - What doing: Currently active sessions
+    - What done: Today's accomplishments
+
+    Returns:
+        Dict with three keys:
+            - what_to_do: dict with 'primary_focus' and 'priority_tasks'
+            - what_doing: dict with 'active_sessions' (list of session display dicts)
+            - what_done: dict with 'accomplishments'
+    """
+    # Gather data from existing functions
+    primary_focus = get_primary_focus()
+    priority_tasks = get_priority_tasks()
+    accomplishments = get_todays_accomplishments()
+
+    # Get active sessions (last 24 hours)
+    sessions = find_sessions()
+    active_sessions: list[dict] = []
+    now = datetime.now(timezone.utc)
+
+    for session in sessions:
+        age = now - session.last_modified
+        # Only include sessions from last 24 hours
+        if age.total_seconds() > 86400:
+            continue
+        # Skip temp directories
+        if '-tmp' in session.project or '-var-folders' in session.project:
+            continue
+
+        session_display = get_session_display_info(session)
+        active_sessions.append(session_display)
+
+    return {
+        "what_to_do": {
+            "primary_focus": primary_focus,
+            "priority_tasks": priority_tasks,
+        },
+        "what_doing": {
+            "active_sessions": active_sessions,
+        },
+        "what_done": {
+            "accomplishments": accomplishments,
+        },
+    }
+
+
 def get_session_state(session_info, analyzer: SessionAnalyzer) -> dict:
     """Extract current state from a session for display."""
     try:
