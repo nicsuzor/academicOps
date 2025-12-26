@@ -156,16 +156,17 @@ These are empirically derived rules that implement [[AXIOMS]] in practice. Unlik
 
 **Confidence**: Low (first observation)
 
-### H7b: Dense Cross-Referencing (Corollary)
+### H7b: Semantic Wikilinks Only (Corollary)
 
-**Statement**: When writing markdown in `$ACA_DATA/` or `$AOPS/`, densely cross-reference concepts with [[wikilinks]] inline. Do NOT add separate "References" sections.
+**Statement**: Use [[wikilinks]] only when a file refers to another as part of its SEMANTIC content. DO NOT add "References", "See Also", "Supported By", "Skills and Related Commands", or similar cross-reference sections. Links belong inline in prose, not in metadata sections.
 
-**Rationale**: Wikilinks create [[Obsidian]] graph edges and enable navigation. Inline links preserve reading flow while building connectivity. Separate reference sections duplicate information and break the reading experience.
+**Rationale**: Wikilinks create [[Obsidian]] graph edges and enable navigation. Inline links preserve reading flow while building connectivity. Separate reference sections duplicate information, break reading flow, and create maintenance burden when links change.
 
 **Evidence**:
 - 2025-12-25: User instruction - ensure dense cross-referencing, no reference sections
+- 2025-12-26: User instruction - recurrence; delete all "Skills and Related Commands" type sections
 
-**Confidence**: Low (first occurrence)
+**Confidence**: Medium (validated by recurrence)
 
 **Implements**: [[AXIOMS]] #20 (Maintain Relational Integrity)
 

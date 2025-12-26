@@ -104,9 +104,3 @@ def test_agent_behavior(claude_headless) -> None:
     # Check response contains expected content
 ```
 
-## Related
-
-- `tests/README.md` - Full test documentation
-- [[hooks_guide]] - Hook system reference
-- [[testing-with-live-data]] - Testing methodology
-- [[script-design-guide]] - Script and utility design

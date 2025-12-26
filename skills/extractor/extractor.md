@@ -242,8 +242,3 @@ uv run python bots/skills/archive/scripts/batch_next.py reset
 - Review `archive/processing.log` for error details
 - Fix issue and manually move file back to `archive/incoming/`
 
-## Related Documentation
-
-- [[remember]] - Memory skill for storing extracted information
-- `Skill(skill="framework")` - Framework conventions
-- `Skill(skill="tasks")` - Task management integration

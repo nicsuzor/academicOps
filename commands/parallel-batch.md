@@ -227,12 +227,6 @@ For each file:
 Return: processed files, tags added, questions for ambiguous cases
 ```
 
-## Skills and Related Commands
-
-- [[remember]] - Knowledge base operations (memory server)
-- [[framework]] - Framework context and conventions
-- [[tasks]] - Task management
-
 ## Error Handling
 
 **File not found**: Log error, continue with remaining files

@@ -62,23 +62,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${AOPS:-$CLAUDE_PROJECT_DIR}/hooks/session_env_setup.sh",
-            "timeout": 5000
-          },
-          {
-            "type": "command",
-            "command": "PYTHONPATH=$AOPS uv run python $AOPS/hooks/terminal_title.py",
-            "timeout": 1000
-          },
-          {
-            "type": "command",
-            "command": "PYTHONPATH=$AOPS uv run python $AOPS/hooks/sessionstart_load_axioms.py",
-            "timeout": 2000
-          },
-          {
-            "type": "command",
-            "command": "PYTHONPATH=$AOPS uv run python $AOPS/hooks/unified_logger.py",
-            "timeout": 2000
+            "command": "PYTHONPATH=$AOPS uv run python $AOPS/hooks/router.py",
+            "timeout": 15000
           }
         ]
       }
@@ -88,13 +73,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "PYTHONPATH=$AOPS uv run python $AOPS/hooks/policy_enforcer.py",
-            "timeout": 2000
-          },
-          {
-            "type": "command",
-            "command": "PYTHONPATH=$AOPS uv run python $AOPS/hooks/unified_logger.py",
-            "timeout": 2000
+            "command": "PYTHONPATH=$AOPS uv run python $AOPS/hooks/router.py",
+            "timeout": 5000
           }
         ]
       }
@@ -104,13 +84,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "PYTHONPATH=$AOPS uv run python $AOPS/hooks/unified_logger.py",
-            "timeout": 2000
-          },
-          {
-            "type": "command",
-            "command": "PYTHONPATH=$AOPS uv run python $AOPS/hooks/autocommit_state.py",
-            "timeout": 50000
+            "command": "PYTHONPATH=$AOPS uv run python $AOPS/hooks/router.py",
+            "timeout": 55000
           }
         ]
       },
@@ -119,8 +94,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "PYTHONPATH=$AOPS uv run python $AOPS/hooks/request_scribe.py",
-            "timeout": 2000
+            "command": "PYTHONPATH=$AOPS uv run python $AOPS/hooks/router.py",
+            "timeout": 5000
           }
         ]
       }
@@ -130,18 +105,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "PYTHONPATH=$AOPS uv run python $AOPS/hooks/user_prompt_submit.py",
-            "timeout": 6000
-          },
-          {
-            "type": "command",
-            "command": "PYTHONPATH=$AOPS uv run python $AOPS/hooks/prompt_router.py",
-            "timeout": 2000
-          },
-          {
-            "type": "command",
-            "command": "PYTHONPATH=$AOPS uv run python $AOPS/hooks/unified_logger.py",
-            "timeout": 2000
+            "command": "PYTHONPATH=$AOPS uv run python $AOPS/hooks/router.py",
+            "timeout": 20000
           }
         ]
       }
@@ -151,8 +116,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "PYTHONPATH=$AOPS uv run python $AOPS/hooks/unified_logger.py",
-            "timeout": 2000
+            "command": "PYTHONPATH=$AOPS uv run python $AOPS/hooks/router.py",
+            "timeout": 5000
           }
         ]
       }
@@ -162,13 +127,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "PYTHONPATH=$AOPS uv run python $AOPS/hooks/unified_logger.py",
-            "timeout": 2000
-          },
-          {
-            "type": "command",
-            "command": "PYTHONPATH=$AOPS uv run python $AOPS/hooks/request_scribe.py",
-            "timeout": 2000
+            "command": "PYTHONPATH=$AOPS uv run python $AOPS/hooks/router.py",
+            "timeout": 5000
           }
         ]
       }

@@ -209,7 +209,3 @@ PYTHONPATH=$AOPS uv run python $AOPS/skills/link-audit/scripts/find_orphans.py
 # Main component: 176 -> 192 nodes
 ```
 
-## Related
-
-- `Skill(skill="reference-map")` - Generates the graph
-- `$ACA_DATA/projects/aops/links.md` - Linking rules and audit history

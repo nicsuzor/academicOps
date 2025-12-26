@@ -116,7 +116,3 @@ Complete this checklist after Phase 5 (Recommendations) and before finalizing an
   - Fix: Update case name throughout draft
 
 ---
-
-## Related Documentation
-
-- [[case-analysis.md]] - Case analysis template

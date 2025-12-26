@@ -61,7 +61,7 @@ Skill(skill="framework")
 
 This loads categorical conventions and ensures your actions are generalizable rules, not one-off fixes.
 
-**Why this matters**: Without [[framework]] skill context, agents skip steps, treat single examples as isolated fixes instead of categorical patterns, and bypass quality gates. This is the #1 observed failure mode.
+**Why this matters**: Without framework skill context, agents skip steps, treat single examples as isolated fixes instead of categorical patterns, and bypass quality gates. This is the #1 observed failure mode.
 
 ## MANDATORY: Plan Mode for Framework Changes
 

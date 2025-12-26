@@ -382,8 +382,3 @@ chmod +x /tmp/discover_context.sh
 /tmp/discover_context.sh
 ```
 
-## References
-
-- academicOps methodology: Focus on reproducible, self-documenting research
-- dbt documentation patterns: See [[academicOps/skills/analyst/references/dbt-workflow]]
-- Project structure standards: See main project `README.md`

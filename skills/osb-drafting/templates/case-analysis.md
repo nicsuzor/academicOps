@@ -180,7 +180,3 @@ tags: [template, osb-drafting, case-analysis, legal]
 - [Which issues most likely to generate written dissent?]
 
 ---
-
-## Related Documentation
-
-- [[verification-checklist.md]] - Citation verification and quality assurance

@@ -1008,10 +1008,3 @@ with tab4:
     # Download buttons, summary statistics
 ```
 
-## References
-
-- [Streamlit Documentation](https://docs.streamlit.io/)
-- [Streamlit Gallery](https://streamlit.io/gallery)
-- [Plotly Express Guide](https://plotly.com/python/plotly-express/)
-- [Altair Documentation](https://altair-viz.github.io/)
-- [Bootstrap Icons](https://icons.getbootstrap.com/)

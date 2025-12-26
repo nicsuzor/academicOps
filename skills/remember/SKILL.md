@@ -86,11 +86,6 @@ Report:
 - [[workflows/validate]] - Check format compliance
 - [[workflows/prune]] - Clean low-value files
 
-## References
-
-- [[references/detail-level-guide]] - What level of detail goes where
-- [[references/obsidian-format-spec]] - Markdown and frontmatter format
-
 ## Open Questions
 
 We don't yet know the full sync mechanism between markdown files and the memory server. This skill will be updated as we learn. For now: write markdown, then store in memory.

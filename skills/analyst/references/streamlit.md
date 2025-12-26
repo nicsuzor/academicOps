@@ -730,9 +730,3 @@ st.title("Overview")
    - Include data source information
    - Document filter logic
 
-## References
-
-- [Streamlit Documentation](https://docs.streamlit.io/)
-- [Streamlit Gallery](https://streamlit.io/gallery)
-- [Plotly Express Guide](https://plotly.com/python/plotly-express/)
-- [Altair Documentation](https://altair-viz.github.io/)

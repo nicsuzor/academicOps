@@ -100,12 +100,3 @@ See [[docs/HOOKS.md]] for hook architecture, [[docs/OBSERVABILITY.md]] for loggi
 
 Use `mcp__memory__*` tools to store and retrieve memories. Memory server is accessed via remote connection over Tailscale.
 
-## See Also
-
-| Document | Purpose |
-|----------|---------|
-| [[AXIOMS.md]] | Principles (inviolable rules) |
-| [[INDEX.md]] | Complete file tree |
-| [[$ACA_DATA/projects/aops/VISION.md\|VISION.md]] | What we're building |
-| [[$ACA_DATA/projects/aops/ROADMAP.md\|ROADMAP.md]] | Current status |
-| [[docs/JIT-INJECTION.md]] | Context injection patterns |

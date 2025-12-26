@@ -332,8 +332,3 @@ Build a comprehensive training dataset that teaches LLMs to:
 3. **Iterate**: Refine extraction approach based on early examples
 4. **Batch process**: Run `/review-training` repeatedly to complete all 16 pairs
 
-## Related Documentation
-
-- [[SKILL.md]] - Full extraction guidelines and examples
-- [[../../archive/STATUS.md]] - Archive project status
-- [[../../../data/review-training/README.md]] - Training data structure (when created)

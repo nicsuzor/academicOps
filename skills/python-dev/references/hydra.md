@@ -956,10 +956,3 @@ def run(cfg: Config):  # Type-checked!
 - Fails fast on typos (`cfg.db.hozt` → error)
 
 ---
-
-## References
-
-- [Official Hydra Documentation](https://hydra.cc/)
-- [Defaults List Guide](https://hydra.cc/docs/advanced/defaults_list/)
-- [Composition Order Changes](https://hydra.cc/docs/upgrades/1.0_to_1.1/default_composition_order/)
-- [OmegaConf Resolvers](https://omegaconf.readthedocs.io/en/latest/custom_resolvers.html)

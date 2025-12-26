@@ -94,6 +94,3 @@ Standard CommonMark plus:
 3. 3-5 tags usually sufficient
 4. Link liberally (forward references are fine)
 
-## References
-
-- https://help.obsidian.md

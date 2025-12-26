@@ -11,10 +11,28 @@ Usage:
 
 import argparse
 import re
+import subprocess
 import sys
 from pathlib import Path
 
 from lib.session_reader import SessionProcessor
+
+
+def format_markdown(file_path: Path) -> bool:
+    """Format markdown file with dprint.
+
+    Returns True if formatting succeeded, False otherwise.
+    """
+    try:
+        result = subprocess.run(
+            ["npx", "dprint", "fmt", str(file_path)],
+            capture_output=True,
+            timeout=30,
+            check=False,
+        )
+        return result.returncode == 0
+    except (subprocess.TimeoutExpired, FileNotFoundError):
+        return False
 
 
 def generate_slug(entries: list, max_words: int = 3) -> str:
@@ -188,6 +206,7 @@ Examples:
             )
             with open(full_path, 'w', encoding='utf-8') as f:
                 f.write(markdown_full)
+            format_markdown(full_path)
             file_size = full_path.stat().st_size
             print(f"✅ Full transcript: {full_path} ({file_size:,} bytes)")
 
@@ -200,6 +219,7 @@ Examples:
             )
             with open(abridged_path, 'w', encoding='utf-8') as f:
                 f.write(markdown_abridged)
+            format_markdown(abridged_path)
             file_size = abridged_path.stat().st_size
             print(f"✅ Abridged transcript: {abridged_path} ({file_size:,} bytes)")
 

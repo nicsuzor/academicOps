@@ -922,15 +922,6 @@ TASK_CAPTURE_AUTO_CREATE=false
 - Batch processing optimization
 - Real-time email monitoring (webhook-based)
 
-## Related Documentation
-
-- **Task Backend**: [[../README.md]]
-- **Task Scripts**: [[../scripts/]]
-- **Tasks MCP**: `.mcp.json` configuration
-- **Memory Integration**: [[remember|#step-3-gather-context-from-memory-server]]
-- **Outlook MCP**: User email access configuration
-- **Framework**: `Skill(skill="framework")` for experiment tracking
-
 ---
 
 **Version History**:

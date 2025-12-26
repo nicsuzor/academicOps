@@ -620,9 +620,3 @@ fig = px.histogram(df, x="processing_days")
 fig.show()
 ```
 
-## References
-
-- [dbt Documentation](https://docs.getdbt.com/)
-- [dbt Testing Guide](https://docs.getdbt.com/docs/build/tests)
-- [dbt Best Practices](https://docs.getdbt.com/guides/best-practices)
-- [dbt-utils Package](https://github.com/dbt-labs/dbt-utils)
