@@ -16,28 +16,13 @@
     },
     "zot": {
       "type": "stdio",
-      "command": "podman",
-      "timeout": 60000,
-      "args": [
-        "run",
-        "--rm",
-        "-v",
-        "$HOME/.config/gcloud:/root/.config/gcloud:ro",
-        "-i",
-        "us-central1-docker.pkg.dev/prosocial-443205/reg/zotmcp:latest"
-      ]
+      "command": "uvx",
+      "args": ["fastmcp", "run", "http://services.stoat-musical.ts.net:8024/mcp"]
     },
     "osb": {
       "type": "stdio",
-      "command": "podman",
-      "timeout": 60000,
-      "args": [
-        "run",
-        "-v",
-        "$HOME/.config/gcloud:/root/.config/gcloud:ro",
-        "-i",
-        "us-central1-docker.pkg.dev/prosocial-443205/reg/osbchatmcp:latest"
-      ]
+      "command": "uvx",
+      "args": ["fastmcp", "run", "http://services.stoat-musical.ts.net:8025/mcp"]
     },
     "gemini": {
       "type": "stdio",
