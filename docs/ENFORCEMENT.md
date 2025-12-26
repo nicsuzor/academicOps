@@ -18,10 +18,7 @@ Agents are intelligent. They don't ignore instructions arbitrarily - they weigh 
 | 1a | Prompt text (mention) | Weakest | Nice-to-have suggestion |
 | 1b | Prompt text (explicit rule) | Weak | Stated rule but no emphasis |
 | 1c | Prompt text (emphasized + reasoned) | Medium-Weak | Rule with WHY it matters |
-| 2a | JIT injection (informational) | Medium-Weak | Agent lacks context to comply |
-| 2b | JIT injection (directive) | Medium | Direct instruction with action |
-| 2c | JIT injection (emphatic + reasoned) | Medium-Strong | Urgent instruction with clear stakes |
-| 2d | Intent router (intelligent steering) | Medium-Strong | Agent needs workflow-aware guidance |
+| 2 | **Intent router** | Medium-Strong | First intelligent intervention point |
 | 3a | Tool restriction (soft deny) | Medium-Strong | Tool available only via specific workflow |
 | 3b | Skill abstraction | Strong | Hide complexity, force workflow |
 | 4 | Pre-tool-use hooks | Stronger | Block before damage occurs |
@@ -29,7 +26,7 @@ Agents are intelligent. They don't ignore instructions arbitrarily - they weigh 
 | 6 | Deny rules (settings.json) | Strongest | Hard block, no exceptions |
 | 7 | Pre-commit hooks | Absolute | Last line of defense |
 
-### Prompt Strength Guidelines (Levels 1-2)
+### Prompt Strength Guidelines (Level 1)
 
 The same information delivered differently has vastly different compliance rates:
 
@@ -42,6 +39,8 @@ The same information delivered differently has vastly different compliance rates
 | Emphatic + Reasoned | "**CRITICAL**: TodoWrite required - without it you'll lose track of the 5 steps needed here" | High |
 
 **Key insight**: Agents respond to *salience* and *relevance*. Generic rules compete with task urgency. Task-specific reasons connect enforcement to immediate goals.
+
+**Limitation**: Even emphatic + reasoned prompts have limited compliance. Level 2 (intent router) provides intelligent, adaptive enforcement.
 
 ## When Each Mechanism Works
 
@@ -70,53 +69,35 @@ The same information delivered differently has vastly different compliance rates
 
 **Lesson**: Rules alone don't work when they fight strong priors. **Reasoned emphasis** works better than bare rules. Connect enforcement to the specific task's success.
 
-### Level 2: JIT Context Injection
-
-**Works when**: Agent would comply IF it had the information AND recognizes relevance.
-
-**Sub-levels**:
-
-| Level | Style | When to Use |
-|-------|-------|-------------|
-| 2a | Informational ("here's context: X") | Agent needs facts to make good decision |
-| 2b | Directive ("do X before proceeding") | Clear action required, moderate stakes |
-| 2c | Emphatic + Reasoned ("**ROUTE FIRST**: X because without it you'll miss Y") | High-stakes action with specific consequences |
-
-**Fails when**:
-- Context arrives too late (after decision made)
-- Context too verbose (buried in noise)
-- Agent doesn't recognize relevance (no connection to current task)
-- Directive without reason (agent deprioritizes against task urgency)
-
-**Evidence**:
-- "Execute don't explore" problem: agents explore because they lack execution context
-- Fix isn't "stop exploring" - fix is inject execution context at the right moment
-- Prompt router 2b instruction ("invoke router") ignored → buried in system-reminders, no task-specific reason given
-- When injection includes WHY (task-specific benefit), compliance increases
-
-**Lesson**: If agents are searching for information, the fix is often to provide it, not prohibit searching. **Injected directives need task-specific reasons** - "do X" is weaker than "do X because it will help you with Y that you're about to do."
-
-### Level 2d: Intent Router (Intelligent Steering)
+### Level 2: Intent Router (Intelligent Steering)
 
 **Works when**: Agent needs workflow-aware guidance that adapts to the specific task.
 
 **How it works**: Haiku subagent classifies prompt against known failure patterns and workflows, returns task-specific guidance. Main agent receives filtered output (not full classification logic).
 
-**Advantages over 2c**:
-- Knows common failure patterns and how to prevent them
+The router IS the Level 2 mechanism. It replaces static JIT injection with intelligent, adaptive intervention:
+
+| Old Approach | Router Advantage |
+|--------------|------------------|
+| Informational injection | Router knows WHICH information is relevant |
+| Directive injection | Router gives task-specific directives |
+| Emphatic + reasoned | Router explains WHY for THIS task |
+
+**Capabilities**:
+- Knows common failure patterns from HEURISTICS.md
 - Provides workflow-specific skill recommendations
-- Can reference recent session failures to reinforce learning
-- Guidance adapts to task type (debug, feature dev, question, etc.)
+- Adapts guidance to task type (debug, feature dev, question, etc.)
+- References H3, H19, H28 etc. to prevent known failures
 
 **Fails when**:
 - Router itself gives bad recommendations
-- Agent ignores router output (need Level 4+ enforcement)
+- Agent ignores router output (need Level 3+ enforcement)
 - Classification misses the task type
 
 **Evidence**:
 - 2025-12-26: Router correctly steered agent to framework skill for enforcement updates
 
-**Lesson**: Router is the first *intelligent* intervention - it understands context, not just patterns.
+**Lesson**: Router is the first *intelligent* intervention - it understands context, not just patterns. All Level 2 enforcement flows through the router.
 
 ### Level 3a: Tool Restriction (Soft Deny)
 
@@ -217,27 +198,25 @@ The same information delivered differently has vastly different compliance rates
 
 | Diagnosis | Wrong Solution | Right Solution |
 |-----------|----------------|----------------|
-| Agent explores when should execute | "Don't explore" rule (1b) | Inject execution context (2a) |
-| Agent ignores rule without emphasis | Add more rules (1b) | Add task-specific reason (1c or 2c) |
-| Agent skips injected directive | Repeat directive louder | Add WHY - connect to current task (2c) |
-| Agent needs workflow-aware guidance | Generic rules (1b) | Intent router with failure patterns (2d) |
+| Agent explores when should execute | "Don't explore" rule (1b) | Intent router injects execution context (2) |
+| Agent ignores rule without emphasis | Add more rules (1b) | Intent router with task-specific reason (2) |
+| Agent needs workflow-aware guidance | Generic rules (1b) | Intent router with failure patterns (2) |
 | Agent uses mocks despite rule | Add another rule (1b) | Enforcement hook (Level 4) or skill wrapper (3b) |
-| Agent skips skill invocation | "MANDATORY" without reason (1b) | Intent router (2d) OR pre-tool block (Level 4) |
+| Agent skips skill invocation | "MANDATORY" without reason (1b) | Intent router (2) OR pre-tool block (Level 4) |
 | Agent uses wrong tool for domain | Deny rule (overkill) | Tool restriction via workflow (3a) |
 | Agent claims success without verification | Add AXIOM (1b) | Post-tool verification hook (Level 5) |
 | Agent creates backup files | Ask nicely (1a) | Deny rule (Level 6) |
 
-### Escalation Path for Prompt Router
+### Escalation Path
 
-**Current state**: Level 2d (intelligent steering) - router has failure pattern knowledge
+**Level 2 (Intent Router)** is the first intelligent intervention. It handles ALL of:
+- **Context insertion** - provides information agent needs
+- **Directives** - tells agent what to do for THIS task
+- **Skill/tool suggestions** - recommends which skills to invoke
+- **Workflow guidance** - steers to Plan Mode, TodoWrite, etc.
+- **Subagent delegation** - recommends Task() for appropriate work
 
-**Router as first intelligent intervention**:
-The intent router is now the primary enforcement point for workflow compliance. It:
-1. Knows common failure patterns from HEURISTICS.md
-2. Returns task-specific guidance (not generic rules)
-3. Steers agents to correct skills/modes before they start wrong
-
-**If router guidance ignored** → escalate to Level 4 (pre-tool hook that blocks until skill invoked)
+**If router guidance ignored** → escalate to Level 3+ (tool restriction, pre-tool hooks)
 
 ## Open Questions
 
