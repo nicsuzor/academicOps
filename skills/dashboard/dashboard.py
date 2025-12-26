@@ -18,6 +18,65 @@ from skills.tasks.task_loader import load_focus_tasks
 from lib.session_reader import find_sessions, SessionProcessor, ConversationTurn
 from lib.session_analyzer import SessionAnalyzer
 
+
+def load_task_index() -> dict | None:
+    """Load task index from index.json if available."""
+    aca_data = os.environ.get('ACA_DATA')
+    if not aca_data:
+        return None
+
+    index_path = Path(aca_data) / 'tasks' / 'index.json'
+    if not index_path.exists():
+        return None
+
+    try:
+        with open(index_path) as f:
+            return json.load(f)
+    except Exception:
+        return None
+
+
+def get_waiting_tasks(task_index: dict | None) -> list[dict]:
+    """Get tasks with waiting status from index."""
+    if not task_index:
+        return []
+
+    return [t for t in task_index.get('tasks', []) if t.get('status') == 'waiting']
+
+
+def get_next_actions(task_index: dict | None) -> list[dict]:
+    """Get P0/P1 tasks with incomplete subtasks - the concrete next actions."""
+    if not task_index:
+        return []
+
+    tasks = task_index.get('tasks', [])
+
+    # Filter to P0/P1 with incomplete work
+    actionable = []
+    for t in tasks:
+        priority = t.get('priority')
+        if priority is None or priority > 1:
+            continue
+        if t.get('status') in ('archived', 'done'):
+            continue
+
+        # Has incomplete subtasks = has next action
+        done = t.get('subtasks_done', 0)
+        total = t.get('subtasks_total', 0)
+        if total > 0 and done < total:
+            actionable.append(t)
+        elif total == 0:
+            # No subtasks = task itself is the action
+            actionable.append(t)
+
+    # Sort by priority, then by completion %
+    actionable.sort(key=lambda t: (
+        t.get('priority', 999),
+        t.get('subtasks_done', 0) / max(t.get('subtasks_total', 1), 1)
+    ))
+
+    return actionable[:5]  # Top 5
+
 # Project color scheme (matching Peacock)
 PROJECT_COLORS = {
     'aops': '#00ff88',      # Green
@@ -570,6 +629,57 @@ st.markdown("""
         font-size: 0.75em;
     }
 
+    /* What Now panel - synthesized status */
+    .what-now-panel {
+        background: linear-gradient(135deg, #1a1a2d 0%, #0d0d1a 100%);
+        border: 2px solid #8b5cf6;
+        border-radius: 8px;
+        padding: 16px 20px;
+        margin-bottom: 16px;
+    }
+
+    .what-now-title {
+        color: #a78bfa;
+        font-size: 1.1em;
+        font-weight: bold;
+        margin-bottom: 12px;
+    }
+
+    .what-now-section {
+        margin-bottom: 12px;
+    }
+
+    .what-now-section-title {
+        color: #7c3aed;
+        font-size: 0.85em;
+        font-weight: bold;
+        margin-bottom: 4px;
+    }
+
+    .what-now-item {
+        color: #c4b5fd;
+        font-size: 0.9em;
+        padding: 4px 0 4px 16px;
+        border-left: 2px solid #6d28d9;
+        margin: 2px 0;
+    }
+
+    .what-now-item.action {
+        color: #a78bfa;
+        border-left-color: #8b5cf6;
+    }
+
+    .what-now-item.waiting {
+        color: #fbbf24;
+        border-left-color: #d97706;
+    }
+
+    .what-now-progress {
+        font-size: 0.75em;
+        color: #6d28d9;
+        margin-left: 8px;
+    }
+
 </style>
 """, unsafe_allow_html=True)
 
@@ -579,6 +689,63 @@ def esc(text):
 
 # Initialize analyzer for daily log
 analyzer = SessionAnalyzer()
+
+# Load task index for synthesis
+task_index = load_task_index()
+
+# === WHAT NOW? SYNTHESIS PANEL ===
+next_actions = get_next_actions(task_index)
+waiting_tasks = get_waiting_tasks(task_index)
+
+if next_actions or waiting_tasks:
+    what_now_html = """
+    <div class='what-now-panel'>
+        <div class='what-now-title'>🧭 WHAT NOW?</div>
+    """
+
+    # What should I be doing? - Next actions
+    if next_actions:
+        what_now_html += """
+        <div class='what-now-section'>
+            <div class='what-now-section-title'>📋 NEXT ACTIONS</div>
+        """
+        for task in next_actions[:4]:
+            title = esc(task.get('title', '')[:50])
+            if len(task.get('title', '')) > 50:
+                title += '...'
+
+            priority = f"P{task.get('priority')}" if task.get('priority') is not None else ""
+            progress = ""
+            done = task.get('subtasks_done', 0)
+            total = task.get('subtasks_total', 0)
+            if total > 0:
+                progress = f"<span class='what-now-progress'>[{done}/{total}]</span>"
+
+            project = task.get('project', '')
+            project_tag = f" <span style='color:#666;'>#{esc(project)}</span>" if project and project != 'uncategorized' else ""
+
+            what_now_html += f"<div class='what-now-item action'><strong>{priority}</strong> {title}{progress}{project_tag}</div>"
+
+        what_now_html += "</div>"
+
+    # What am I waiting on?
+    if waiting_tasks:
+        what_now_html += f"""
+        <div class='what-now-section'>
+            <div class='what-now-section-title'>⏳ WAITING ON ({len(waiting_tasks)})</div>
+        """
+        for task in waiting_tasks[:3]:
+            title = esc(task.get('title', '')[:45])
+            if len(task.get('title', '')) > 45:
+                title += '...'
+            what_now_html += f"<div class='what-now-item waiting'>{title}</div>"
+
+        if len(waiting_tasks) > 3:
+            what_now_html += f"<div class='what-now-item waiting' style='color:#888;'>+{len(waiting_tasks)-3} more</div>"
+        what_now_html += "</div>"
+
+    what_now_html += "</div>"
+    st.markdown(what_now_html, unsafe_allow_html=True)
 
 # === NOW PANEL ===
 daily_log = analyzer.parse_daily_log()
