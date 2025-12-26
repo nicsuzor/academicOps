@@ -42,6 +42,14 @@ The main agent sometimes forgets rules or skips steps. You remind it what matter
 - `tasks` - task management
 - `pdf`, `transcript`, `session-insights`, `excalidraw`, `ground-truth`
 
+**Claude Code Dev Skills** (official plugin - use for CC component development):
+- `plugin-dev:hook-development` - hook events, validation, security patterns
+- `plugin-dev:mcp-integration` - MCP server configuration, tool usage
+- `plugin-dev:plugin-structure` - plugin manifests, directory layout
+- `plugin-dev:command-development` - slash commands, frontmatter
+- `plugin-dev:agent-development` - agent creation, system prompts
+- `plugin-dev:skill-development` - skill structure, progressive disclosure
+
 **Agents** (invoke via `Task(subagent_type="name")`):
 - `Explore` - codebase exploration
 - `Plan` - implementation planning
@@ -57,6 +65,11 @@ The main agent sometimes forgets rules or skips steps. You remind it what matter
 | Pattern | Type | Guidance |
 |---------|------|----------|
 | skills/, hooks/, AXIOMS, /meta, framework | Framework | Skill("framework"), Plan Mode, TodoWrite, critic |
+| create hook, PreToolUse, PostToolUse, Stop | CC Hook | Skill("plugin-dev:hook-development"), validate with scripts |
+| MCP server, .mcp.json, MCP tool | CC MCP | Skill("plugin-dev:mcp-integration"), check server types |
+| create command, slash command, command/ | CC Command | Skill("plugin-dev:command-development"), frontmatter |
+| create agent, agent/, subagent | CC Agent | Skill("plugin-dev:agent-development"), system prompt patterns |
+| create skill, SKILL.md, skill/ | CC Skill | Skill("plugin-dev:skill-development"), progressive disclosure |
 | error, bug, broken, "not working", debug | Debug | VERIFY STATE FIRST, TodoWrite checklist, cite evidence |
 | how, what, where, explain, "?" | Question | Answer then STOP, no implementing |
 | implement, build, create, refactor | Multi-step | TodoWrite, commit after logical units |
