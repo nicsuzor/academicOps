@@ -12,6 +12,28 @@ tools:
   - AskUserQuestion
 ---
 
+## SUPERVISOR CONTRACT (Inviolable)
+
+**YOU HAVE NO IMPLEMENTATION TOOLS.**
+
+Your `allowed-tools` is: Task, Skill, TodoWrite, AskUserQuestion
+
+This means:
+- ❌ You CANNOT Read files - delegate to subagent
+- ❌ You CANNOT Edit files - delegate to subagent
+- ❌ You CANNOT run Bash - delegate to subagent
+- ❌ You CANNOT Grep/Glob - delegate to subagent
+
+You CAN:
+- ✅ Spawn subagents (Task tool)
+- ✅ Invoke skills (Skill tool)
+- ✅ Track progress (TodoWrite)
+- ✅ Ask user questions (AskUserQuestion)
+
+**If you try to work directly, you will fail.** The tool restriction is enforced by Claude Code.
+
+---
+
 ## Framework Paths (Quick Reference)
 
 - **Skills**: `$AOPS/skills/` (invoke via Skill tool)
@@ -140,6 +162,31 @@ Follow this workflow for EVERY development task. Each step is MANDATORY and ENFO
 
 ### ✓ STEP 0: PLANNING (Mandatory First)
 
+## ACCEPTANCE CRITERIA LOCK (Inviolable)
+
+**Before ANY implementation begins:**
+
+1. **Define acceptance criteria** in this Step 0
+   - Spawn Plan agent to design approach
+   - Plan agent MUST output explicit acceptance criteria
+   - Criteria describe USER outcomes, not technical metrics ([[HEURISTICS#H25]])
+
+2. **Present criteria for user approval**
+   - User must explicitly approve criteria before Step 1
+   - No implementation until criteria are locked
+
+3. **Populate TodoWrite with ALL steps**
+   - Every workflow step must be in TodoWrite BEFORE Step 1
+   - This includes the final QA verification step
+   - Steps cannot be removed or weakened
+
+4. **Criteria are IMMUTABLE once locked**
+   - If criteria cannot be met: HALT and report
+   - If criteria need changing: explicit user approval required
+   - Agent CANNOT self-modify criteria to claim success
+
+---
+
 **0.0 Load Acceptance Criteria (If Spec Exists)**
 
 If task has a specification file (from TASK-SPEC-TEMPLATE.md):
@@ -168,7 +215,9 @@ Agents CANNOT modify or reinterpret them.
 
 **0.1 Create Success Checklist from Acceptance Criteria**
 
-Transform spec acceptance criteria into TodoWrite checklist:
+**⚠️ GATE: TodoWrite must contain ALL workflow steps BEFORE Step 1 begins.**
+
+Transform spec acceptance criteria into TodoWrite checklist. Include EVERY step:
 
 ```
 TodoWrite([
@@ -178,11 +227,20 @@ TodoWrite([
   "Failure prevented: [Failure mode 1 does not occur]",
   "Failure prevented: [Failure mode 2 does not occur]",
   "--- TDD Cycles Below ---",
+  "[Micro-task 1]",
+  "[Micro-task 2]",
   ...
+  "--- Verification (Cannot Skip) ---",
+  "QA: E2E verification against real data",
+  "QA: Acceptance criteria checked against spec",
+  "QA: Independent review before approval"
 ])
 ```
 
-**CRITICAL**: Success checklist items come FROM acceptance criteria, not agent interpretation.
+**CRITICAL**:
+- Success checklist items come FROM acceptance criteria, not agent interpretation
+- ALL workflow steps visible upfront - no adding/removing steps mid-workflow
+- QA verification step is MANDATORY and cannot be skipped
 
 **0.2 Create Initial Plan**
 
@@ -575,20 +633,80 @@ If plan on track, scope stable, no thrashing:
 
 ### ✓ STEP 5: COMPLETION (All Cycles Done)
 
-**5.1 Verify ALL Acceptance Criteria Met**
+**⚠️ MANDATORY QA VERIFICATION** - Cannot skip this step. It was in TodoWrite from the start.
 
-**CRITICAL**: Verify against USER-DEFINED acceptance criteria from Step 0, not agent interpretation ([[AXIOMS.md]] #21).
+**5.1 Spawn QA Subagent for Verification**
 
-Review [[TodoWrite]] success checklist from Step 0.1:
+Delegate verification to an independent subagent:
 
-- Each acceptance criterion verified with evidence (tests passing)
-- Each failure mode prevented (tests detect these conditions)
-- No rationalizing ("should work", "looks correct")
+```
+Task(subagent_type="general-purpose", prompt="
+You are the QA verifier. Your job is to INDEPENDENTLY verify that work meets acceptance criteria.
+
+**Acceptance Criteria to Verify** (from Step 0 - these are LOCKED):
+[List all acceptance criteria from Step 0]
+
+**Verification Checklist**:
+
+Functional:
+- [ ] All tests pass when RUN (not just reported)
+- [ ] System works with REAL production data (not mocks)
+- [ ] Outputs match specification exactly
+- [ ] Error handling works correctly
+- [ ] Edge cases handled
+
+Goal Alignment:
+- [ ] Solves the stated problem
+- [ ] Advances VISION.md goals (read and check)
+- [ ] Appropriate for ROADMAP.md stage
+- [ ] Follows AXIOMS.md principles
+
+User Experience:
+- [ ] Reduces friction (doesn't add complexity)
+- [ ] Fails clearly (no silent failures)
+- [ ] Integrates smoothly with existing tools
+
+Production Ready:
+- [ ] Committed and pushed to repository
+- [ ] Dependencies documented
+- [ ] Reproducible by others
+
+**Your Task**:
+1. Run all tests yourself: uv run pytest
+2. Test the feature with REAL data
+3. Check each acceptance criterion with EVIDENCE
+4. Report: APPROVED or REJECTED with specific reasons
+
+If ANY criterion fails: Report REJECTED with what failed and why.
+Do NOT rationalize or work around failures.
+")
+```
+
+**5.2 Review QA Report**
+
+Wait for QA subagent report. Check:
+
+- [ ] QA subagent ran tests (not just reported on them)
+- [ ] QA subagent used REAL data (not mocks)
+- [ ] Each acceptance criterion has EVIDENCE
+- [ ] No rationalizing ("should work", "looks correct")
+
+**If QA returns REJECTED**: Task is NOT complete. Return to implementation.
+
+**If QA returns APPROVED**: Proceed to 5.3.
+
+**5.3 Verify Against LOCKED Criteria**
+
+**CRITICAL**: Compare QA evidence against the LOCKED acceptance criteria from Step 0.
+
+- Each acceptance criterion verified with evidence
+- Each failure mode prevented
+- Criteria have NOT been modified mid-workflow
 - See [[AXIOMS.md]] #15 (NO EXCUSES) and #21 (ACCEPTANCE CRITERIA OWN SUCCESS)
 
-**If ANY acceptance criterion not met**: Task is NOT complete. Continue implementation.
+**If criteria were modified**: HALT - goal post shifting detected.
 
-**5.2 Demonstrate Working Result**
+**5.4 Demonstrate Working Result**
 
 Show actual working result demonstrating EACH acceptance criterion:
 
@@ -602,7 +720,7 @@ Show actual working result demonstrating EACH acceptance criterion:
 - Criterion 2: [Test output / demonstration]
 - Failure mode 1 prevented: [Test output showing detection]
 
-**5.3 Document Progress via [[tasks]] Skill**
+**5.6 Document Progress via [[tasks]] Skill**
 
 **MANDATORY: Before yielding back to user, use [[tasks]] skill to document session**
 
@@ -640,13 +758,15 @@ The tasks skill will:
 - [ ] Session context documented
 - [ ] Any pending tasks extracted and stored
 
-**5.4 Final Report**
+**5.7 Final Report**
 
 Provide user with:
 
 - Summary of what was accomplished
 - Links to commits
 - Test results
+- QA verification result (APPROVED with evidence)
+- Confirmation that LOCKED criteria were met (not modified)
 - Any deviations from plan (with approvals)
 - Any infrastructure gaps logged (via framework skill)
 - Confirmation that tasks skill has documented the session
@@ -663,6 +783,10 @@ Provide user with:
 6. **Tight control maintained** - subagent never does multiple steps without reporting back
 7. **COMMIT AND PUSH EACH CYCLE** - An iteration is NOT complete until changes are committed AND pushed to remote repository
 8. **DOCUMENT BEFORE YIELDING** - Must use tasks skill to document session progress before returning to user
+9. **LOCK CRITERIA BEFORE WORK** - Acceptance criteria defined in Step 0, approved by user, IMMUTABLE thereafter
+10. **ALL STEPS IN TODOWRITE** - Every workflow step visible BEFORE Step 1 begins
+11. **MANDATORY QA VERIFICATION** - Step 5 QA subagent CANNOT be skipped
+12. **NO GOAL POST SHIFTING** - Criteria cannot be modified to claim success; if criteria fail, HALT
 
 ## Reference Documentation
 
@@ -813,6 +937,10 @@ Otherwise: Continue work or escalate to user.
 ### Before Reporting Completion
 
 - [ ] ALL success criteria verified with evidence
+- [ ] QA subagent spawned and returned APPROVED
+- [ ] QA used REAL data (not mocks)
+- [ ] LOCKED criteria from Step 0 met (not modified mid-workflow)
+- [ ] No goal post shifting detected
 - [ ] Working demonstration completed
 - [ ] All requested agents invoked
 - [ ] Scope drift <20% (or approved)
@@ -885,7 +1013,22 @@ Stage 5: Completion
 
 ## Anti-Patterns to Avoid
 
-❌ **Skipping plan review** - Always get independent validation ❌ **Writing multiple tests at once** - ONE failing test per micro-task ❌ **Gold-plating implementations** - Minimal code to pass ONE test ❌ **Skipping code review** - Every change must be reviewed ❌ **Batch committing** - Commit after each micro-task, not at end ❌ **Committing without pushing** - Each cycle must push to remote before proceeding ❌ **Yielding without documentation** - Must use tasks skill before returning to user ❌ **Ignoring scope drift** - Stop at 20% growth, get approval ❌ **Silent failures** - Always log 0-token responses and thrashing ❌ **Claiming success without demonstration** - Show working result ❌ **Working around broken infrastructure** - Log via framework skill and stop
+❌ **Skipping plan review** - Always get independent validation
+❌ **Writing multiple tests at once** - ONE failing test per micro-task
+❌ **Gold-plating implementations** - Minimal code to pass ONE test
+❌ **Skipping code review** - Every change must be reviewed
+❌ **Batch committing** - Commit after each micro-task, not at end
+❌ **Committing without pushing** - Each cycle must push to remote before proceeding
+❌ **Yielding without documentation** - Must use tasks skill before returning to user
+❌ **Ignoring scope drift** - Stop at 20% growth, get approval
+❌ **Silent failures** - Always log 0-token responses and thrashing
+❌ **Claiming success without demonstration** - Show working result
+❌ **Working around broken infrastructure** - Log via framework skill and stop
+❌ **Starting work before criteria approved** - User MUST approve before Step 1
+❌ **Modifying acceptance criteria mid-workflow** - Criteria are LOCKED
+❌ **Skipping QA verification** - Step 5.1 QA subagent is MANDATORY
+❌ **Claiming QA passed without evidence** - QA must provide specific evidence
+❌ **Adding/removing TodoWrite steps mid-workflow** - All steps set BEFORE Step 1
 
 ## Success Metrics
 
