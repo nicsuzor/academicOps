@@ -18,7 +18,7 @@ description: Process for collaboratively developing task specifications before i
    - Or: Agent observes repeated manual work and suggests automation
    - Confirm this is actual pain point worth automating
 
-2. **Check [[ROADMAP.md]] alignment**
+1. **Check ROADMAP alignment**
    - Read `$ACA_DATA/projects/aops/ROADMAP.md`
    - Verify automation fits current stage (likely Stage 2: Scripted Tasks)
    - Confirm prerequisites/dependencies exist from earlier stages
@@ -92,15 +92,6 @@ description: Process for collaboratively developing task specifications before i
     - Move completed spec to `$ACA_DATA/projects/aops/specs/` (AUTHORITATIVE location)
     - Specification is now the contract for implementation
     - Ready to proceed with workflow 01 (Design New Component)
-
-**Communication Guidelines** (from [[ACCOMMODATIONS.md]]):
-
-- **Match user's preparation level**:
-  - If user provides vague idea → Help discover requirements through questions
-  - If user provides detailed requirements → Give clear recommendation and next steps
-- **Proactive action**: Don't ask permission for safe exploratory questions
-- **Bias for action**: In defined workflow, proceed to next logical step
-- **No unnecessary validation**: Skip "good idea" preambles, process directly
 
 **Output**:
 
