@@ -21,7 +21,9 @@ Agents are intelligent. They don't ignore instructions arbitrarily - they weigh 
 | 2a | JIT injection (informational) | Medium-Weak | Agent lacks context to comply |
 | 2b | JIT injection (directive) | Medium | Direct instruction with action |
 | 2c | JIT injection (emphatic + reasoned) | Medium-Strong | Urgent instruction with clear stakes |
-| 3 | Skill abstraction | Strong | Hide complexity, force workflow |
+| 2d | Intent router (intelligent steering) | Medium-Strong | Agent needs workflow-aware guidance |
+| 3a | Tool restriction (soft deny) | Medium-Strong | Tool available only via specific workflow |
+| 3b | Skill abstraction | Strong | Hide complexity, force workflow |
 | 4 | Pre-tool-use hooks | Stronger | Block before damage occurs |
 | 5 | Post-tool-use validation | Strong | Catch violations, demand correction |
 | 6 | Deny rules (settings.json) | Strongest | Hard block, no exceptions |
@@ -94,7 +96,54 @@ The same information delivered differently has vastly different compliance rates
 
 **Lesson**: If agents are searching for information, the fix is often to provide it, not prohibit searching. **Injected directives need task-specific reasons** - "do X" is weaker than "do X because it will help you with Y that you're about to do."
 
-### Level 3: Skill Abstraction
+### Level 2d: Intent Router (Intelligent Steering)
+
+**Works when**: Agent needs workflow-aware guidance that adapts to the specific task.
+
+**How it works**: Haiku subagent classifies prompt against known failure patterns and workflows, returns task-specific guidance. Main agent receives filtered output (not full classification logic).
+
+**Advantages over 2c**:
+- Knows common failure patterns and how to prevent them
+- Provides workflow-specific skill recommendations
+- Can reference recent session failures to reinforce learning
+- Guidance adapts to task type (debug, feature dev, question, etc.)
+
+**Fails when**:
+- Router itself gives bad recommendations
+- Agent ignores router output (need Level 4+ enforcement)
+- Classification misses the task type
+
+**Evidence**:
+- 2025-12-26: Router correctly steered agent to framework skill for enforcement updates
+
+**Lesson**: Router is the first *intelligent* intervention - it understands context, not just patterns.
+
+### Level 3a: Tool Restriction (Soft Deny)
+
+**Works when**: Tool should be available but only through proper workflow.
+
+**How it works**: Tool not in default tool list. Specific agents/workflows grant access via `allowed_tools` in agent definition or skill context.
+
+**Differs from Level 6 (Deny rules)**:
+- Deny rules: Tool NEVER allowed for path/pattern
+- Tool restriction: Tool allowed, but only when invoked through correct channel
+
+**Use cases**:
+- Write to `tasks/` only via `/tasks` skill (ensures proper frontmatter)
+- Database operations only via `/analyst` skill (ensures proper validation)
+- Email sending only via explicit user confirmation workflow
+
+**Fails when**:
+- Too many restrictions create friction
+- Legitimate quick operations become cumbersome
+- Agent finds workarounds (different tool for same effect)
+
+**Evidence**:
+- (New mechanism - tracking effectiveness)
+
+**Lesson**: Softer than deny rules but enforces "right tool for the job" by making wrong tool unavailable.
+
+### Level 3b: Skill Abstraction
 
 **Works when**: Correct behavior requires multiple steps or hidden complexity.
 
@@ -171,25 +220,24 @@ The same information delivered differently has vastly different compliance rates
 | Agent explores when should execute | "Don't explore" rule (1b) | Inject execution context (2a) |
 | Agent ignores rule without emphasis | Add more rules (1b) | Add task-specific reason (1c or 2c) |
 | Agent skips injected directive | Repeat directive louder | Add WHY - connect to current task (2c) |
-| Agent uses mocks despite rule | Add another rule (1b) | Enforcement hook (Level 4) or skill wrapper (Level 3) |
-| Agent skips skill invocation | "MANDATORY" without reason (1b) | Pre-tool block (Level 4) OR emphatic + reasoned (2c) |
+| Agent needs workflow-aware guidance | Generic rules (1b) | Intent router with failure patterns (2d) |
+| Agent uses mocks despite rule | Add another rule (1b) | Enforcement hook (Level 4) or skill wrapper (3b) |
+| Agent skips skill invocation | "MANDATORY" without reason (1b) | Intent router (2d) OR pre-tool block (Level 4) |
+| Agent uses wrong tool for domain | Deny rule (overkill) | Tool restriction via workflow (3a) |
 | Agent claims success without verification | Add AXIOM (1b) | Post-tool verification hook (Level 5) |
 | Agent creates backup files | Ask nicely (1a) | Deny rule (Level 6) |
 
 ### Escalation Path for Prompt Router
 
-Current state: Level 2b (directive injection) - "invoke router before proceeding"
+**Current state**: Level 2d (intelligent steering) - router has failure pattern knowledge
 
-Proposed escalation: Level 2c (emphatic + reasoned):
-```
-**ROUTE FIRST** (saves you time): The intent-router will tell you exactly which
-skills to invoke and rules to follow for THIS task. Without it, you'll likely
-miss required steps and need to redo work. Takes 2 seconds, saves minutes.
+**Router as first intelligent intervention**:
+The intent router is now the primary enforcement point for workflow compliance. It:
+1. Knows common failure patterns from HEURISTICS.md
+2. Returns task-specific guidance (not generic rules)
+3. Steers agents to correct skills/modes before they start wrong
 
-Task(subagent_type="intent-router", ...)
-```
-
-If 2c fails → escalate to Level 4 (pre-tool hook that blocks first tool until router invoked).
+**If router guidance ignored** → escalate to Level 4 (pre-tool hook that blocks until skill invoked)
 
 ## Open Questions
 
