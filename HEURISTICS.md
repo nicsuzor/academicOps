@@ -156,6 +156,19 @@ These are empirically derived rules that implement [[AXIOMS]] in practice. Unlik
 
 **Confidence**: Low (first observation)
 
+### H7b: Dense Cross-Referencing (Corollary)
+
+**Statement**: When writing markdown in `$ACA_DATA/` or `$AOPS/`, densely cross-reference concepts with [[wikilinks]] inline. Do NOT add separate "References" sections.
+
+**Rationale**: Wikilinks create [[Obsidian]] graph edges and enable navigation. Inline links preserve reading flow while building connectivity. Separate reference sections duplicate information and break the reading experience.
+
+**Evidence**:
+- 2025-12-25: User instruction - ensure dense cross-referencing, no reference sections
+
+**Confidence**: Low (first occurrence)
+
+**Implements**: [[AXIOMS]] #20 (Maintain Relational Integrity)
+
 ---
 
 ## H8: Avoid Namespace Collisions
@@ -504,6 +517,104 @@ If critic returns REVISE or HALT, address issues before proceeding.
 - Integration points
 
 **Application**: Use `/garden synthesize` to detect and clean implemented specs.
+
+---
+
+## H26: Semantic vs Episodic Storage
+
+**Statement**: Before creating or placing content, classify it as semantic (current state) or episodic (observation). Semantic → `$ACA_DATA`. Episodic → **GitHub Issues** (nicsuzor/writing repo).
+
+**Rationale**: Per [[AXIOMS]] #28, `$ACA_DATA` is the current state machine. Mixing observations into current state creates confusion. GitHub Issues provide structured storage with timelines, comments, labels, and search - purpose-built for tracking observations over time.
+
+**Classification Guide**:
+
+| Content | Type | Location |
+|---------|------|----------|
+| User preferences, work style | Semantic | `$ACA_DATA/ACCOMMODATIONS.md` |
+| Feature specifications | Semantic | `$ACA_DATA/projects/*/specs/` |
+| Task current state | Semantic | `$ACA_DATA/tasks/` |
+| Framework patterns | Semantic | `$AOPS/HEURISTICS.md` |
+| Bug investigations | Episodic | GitHub Issue (label: `bug`) |
+| Experiment observations | Episodic | GitHub Issue (label: `experiment`) |
+| Development logs | Episodic | GitHub Issue (label: `devlog`) |
+| Code change discussions | Episodic | GitHub Issue or PR comments |
+| Decision rationales | Episodic | GitHub Issue (label: `decision`) |
+| Session transcripts | Archive | `~/writing/sessions/` (raw data, too large for Issues) |
+
+**Synthesis Flow**:
+1. Observation occurs → create/update GitHub Issue
+2. Pattern emerges across multiple Issues
+3. Pattern gets SYNTHESIZED into semantic document (spec, heuristic)
+4. Close Issue with link to synthesized content
+5. Closed Issues remain searchable via GitHub
+
+**Issue Labels** (use consistently):
+- `bug` - Bug investigations
+- `experiment` - Framework experiments
+- `devlog` - Development observations
+- `decision` - Architectural decisions
+- `learning` - Pattern observations
+
+**Trade-offs accepted**:
+- Issues require network access (offline: note locally, create Issue when online)
+- Issues not indexed by memory server (use GitHub search for episodic content)
+
+**Test**: "Is this a timeless truth or an observation at a point in time?" Truth → `$ACA_DATA`. Observation → GitHub Issue.
+
+**Evidence**:
+- 2025-12-25: User clarification - foundational distinction for framework storage
+- 2025-12-26: User decision - strengthen to mandate GitHub Issues for all episodic content
+
+**Confidence**: Medium (foundational principle, validated by user decision)
+
+**Implements**: [[AXIOMS]] #28 (Current State Machine), #9 (DRY), #15 (Trust Version Control)
+
+---
+
+## H25: User-Centric Acceptance Criteria
+
+**Statement**: Acceptance criteria must describe USER outcomes, not technical metrics. Never add performance/speed criteria unless the user explicitly requests them.
+
+**Rationale**: Premature optimization is the root of all evil. A working system that's slow is infinitely better than a fast system that doesn't work. Technical metrics (response time, throughput, memory) are implementation concerns, not success criteria. Users care about "can I do X?" not "can I do X in 2 seconds?"
+
+**Evidence**:
+- 2025-12-25: Agent added "<2s regeneration" and "within 1 minute" to Task State Index spec acceptance criteria without user request. User corrected: "premature optimisation is the root of all evil"
+
+**Confidence**: Low (first occurrence)
+
+**Implements**: [[AXIOMS]] #22 (Acceptance Criteria Own Success) - criteria come from users, not agents
+
+**Examples**:
+
+| Wrong (technical) | Right (user-centric) |
+|-------------------|----------------------|
+| Index regenerates in <2s | Index reflects current task state |
+| API responds in <100ms | Dashboard shows my tasks |
+| Memory usage <500MB | System runs on my laptop |
+| 99.9% uptime | System available when I need it |
+
+**Application**: When writing acceptance criteria, ask: "Is the USER asking for this, or am I inventing technical requirements?"
+
+---
+
+## H27: Debug, Don't Redesign
+
+**Statement**: When debugging, propose fixes within the current design. Do NOT pivot to alternative architectures without explicit user approval.
+
+**Rationale**: Debugging can surface design limitations, but the response should be "here's what's broken and options to fix it" - not silently switching to a different approach. Architecture changes require planning and approval per AXIOMS #23.
+
+**Evidence**:
+- 2025-12-25: While debugging "intent-router can't read temp files," agent started rewriting hook to pass content inline (major architecture change) without discussing with user first.
+
+**Confidence**: Low (first occurrence)
+
+**Implements**: [[AXIOMS]] #23 (Plan-First Development), ACCOMMODATIONS (research approval required)
+
+**Application**: When a fix requires changing more than the immediate bug site:
+1. HALT
+2. State: "This fix would require [architectural change]. Options: [A, B, C]"
+3. Wait for user decision
+4. Only then implement the approved approach
 
 ---
 

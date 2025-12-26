@@ -183,7 +183,7 @@ $AOPS/                     # Framework repo (academicOps)
 ├── scripts/               # Deployment scripts
 └── config/                # Configuration files
 
-$ACA_DATA/                 # User data repo
+$ACA_DATA/                 # User data repo (SEMANTIC ONLY)
 ├── ACCOMMODATIONS.md      # Work style
 ├── CORE.md                # User context
 ├── STYLE-QUICK.md         # Writing style
@@ -191,12 +191,11 @@ $ACA_DATA/                 # User data repo
 └── projects/aops/         # Framework project data
     ├── VISION.md          # Goals (edit in place)
     ├── ROADMAP.md         # Progression (edit in place)
-    ├── specs/             # Design documents
-    ├── experiments/       # Hypothesis → results
-    ├── learning/          # Patterns from experience
-    ├── decisions/         # Architectural choices
-    ├── bugs/              # Bug investigations (delete when fixed)
-    └── qa/                # Verification reports (delete when resolved)
+    └── specs/             # Design documents (timeless)
+
+# Episodic content → GitHub Issues (nicsuzor/writing repo)
+# Labels: bug, experiment, devlog, decision, learning
+# Session transcripts → ~/writing/sessions/ (archive)
 ```
 
 ## Core Conventions (with Axiom Derivations)
@@ -394,41 +393,66 @@ Step-by-step guides for common framework operations:
 
 ## Framework Project Data (`$ACA_DATA/projects/aops/`)
 
-Per AXIOMS.md #11 (Categorical Imperative): Every file must fit a defined category. No ad-hoc files.
+Per [[AXIOMS]] #28 (Current State Machine): `$ACA_DATA` contains ONLY semantic memory (current state). Episodic memory (observations) lives in **GitHub Issues** (nicsuzor/writing repo).
 
-### Allowed File Types and Locations
+### Storage Classification
 
-| Type | Location | Rule |
-|------|----------|------|
-| Vision/Strategy | `VISION.md`, `ROADMAP.md` | One file each, edited in place |
-| Specifications | `specs/` | User stories → design → reference. Status: Requirement/Draft/Approved/Implemented. See [[HEURISTICS.md#H23]] |
-| Experiments | `experiments/` | Hypothesis → results. Use `TEMPLATE.md`. Date-prefix filenames |
-| Learning | `learning/` | Patterns extracted from experience. Thematic files, append-only |
-| Decisions | `decisions/` | Architectural choices with rationale. Immutable once made |
-| Bugs | `bugs/` | Bug investigations. Delete when fixed |
-| QA | `qa/` | Verification reports. Delete after issues resolved |
+| Type | Memory | Location | Rule |
+|------|--------|----------|------|
+| Vision/Strategy | SEMANTIC | `VISION.md`, `ROADMAP.md` | Current state. Edit in place. |
+| Specifications | SEMANTIC | `specs/` | Timeless. One per feature. See [[AXIOMS]] #29 |
+| Bug investigations | EPISODIC | GitHub Issue (label: `bug`) | Synthesize → close when fixed |
+| Experiment observations | EPISODIC | GitHub Issue (label: `experiment`) | Synthesize → close |
+| Development logs | EPISODIC | GitHub Issue (label: `devlog`) | Synthesize patterns → close |
+| Decision rationales | EPISODIC | GitHub Issue (label: `decision`) | Synthesize → close |
+| Session transcripts | ARCHIVE | `~/writing/sessions/` | Raw data (too large for Issues) |
 
-**Note**: User stories are specs at early lifecycle stage. No separate `user-stories/` folder - all live in `specs/`.
+### Creating Episodic Content
 
-### Prohibited
+When you have an observation, investigation, or time-bound record:
 
-- ❌ Root-level working documents (session notes, plans, summaries)
-- ❌ Files without clear category
+1. **Create GitHub Issue** in nicsuzor/writing repo
+2. **Apply label**: `bug`, `experiment`, `devlog`, `decision`, or `learning`
+3. **Add observations** as Issue comments over time
+4. **Synthesize** when patterns emerge → update HEURISTICS.md or specs/
+5. **Close Issue** with link to synthesized content
+
+```bash
+# Example: Create a bug investigation Issue
+gh issue create --repo nicsuzor/writing --title "Bug: [description]" --label "bug" --body "## Investigation\n\n[details]"
+```
+
+### Migration Path (Tech Debt)
+
+Existing episodic content in `$ACA_DATA` folders (`experiments/`, `learning/`, `decisions/`, `bugs/`) should be:
+1. **Synthesized** - patterns extracted to HEURISTICS.md or specs
+2. **Migrated** - move to GitHub Issue if still active
+3. **Deleted** - git has history; closed Issues remain searchable
+
+**Apply principle to NEW content immediately. Migrate existing incrementally.**
+
+### Prohibited in `$ACA_DATA`
+
+- ❌ Time-stamped observations (use GitHub Issues)
+- ❌ Investigation logs (use GitHub Issues)
+- ❌ Decision rationales (use GitHub Issues)
+- ❌ Root-level working documents
 - ❌ Duplicate content across files
-- ❌ "Index" or "Summary" files (use search instead)
 
-### Before Creating a File
+### Before Creating Content
 
-1. **Does it fit a category above?** If no → don't create it
-2. **Does similar content exist?** If yes → edit existing file
-3. **Is this session-specific?** If yes → don't persist it (use conversation context)
+1. **Is this semantic (timeless truth)?** → `$ACA_DATA` (specs/, HEURISTICS.md)
+2. **Is this episodic (observation)?** → GitHub Issue
+3. **Is this raw archive?** → `~/writing/sessions/` or git history
 
-### Cleanup = Compliance Check
+### Synthesis Workflow
 
-Cleanup is NOT a separate process. It's verifying files comply with these rules:
-- Files outside defined locations → delete or move
-- Duplicate content → consolidate
-- Session detritus → delete (learning already in conversation/memory server)
+Episodic → Semantic:
+1. Observations accumulate in GitHub Issue(s)
+2. Pattern emerges across multiple observations
+3. Create/update semantic doc (HEURISTICS.md entry or spec)
+4. Close Issue(s) with link: "Synthesized to HEURISTICS.md H[n]"
+5. Closed Issues remain searchable via GitHub
 
 ## Compliance Refactoring Workflow
 
@@ -471,7 +495,6 @@ If you discovered a new pattern:
 Detailed guides for specific framework topics:
 
 - [[references/hooks_guide.md]] - Hook system architecture and patterns
-- [[references/testing-with-live-data.md]] - E2E testing philosophy
 - [[references/script-design-guide.md]] - Script design principles
 - [[references/e2e-test-harness.md]] - Test harness infrastructure
 - [[references/claude-code-config.md]] - Claude Code configuration

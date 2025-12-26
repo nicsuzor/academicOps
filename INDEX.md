@@ -111,7 +111,7 @@ $AOPS/
 │   ├── CLAUDE.md                    # Hook design principles (JIT context)
 │   ├── sessionstart_load_axioms.py  # Injects AXIOMS.md
 │   ├── user_prompt_submit.py        # Context injection per prompt
-│   ├── prompt_router.py             # LLM-first intent routing (reads config/capabilities.md)
+│   ├── prompt_router.py             # Intent routing (loads hooks/prompts/intent-router.md)
 │   ├── autocommit_state.py          # Auto-commit data/ changes
 │   ├── session_logger.py            # Log file path management
 │   ├── hook_logger.py               # Centralized event logging
@@ -120,7 +120,7 @@ $AOPS/
 │   ├── log_*.py                     # Event logging (6 files)
 │   └── prompts/
 │       ├── user-prompt-submit.md
-│       └── intent-router.md         # LLM classifier prompt template
+│       └── intent-router.md         # Decision flowchart + capabilities (SSoT for routing)
 │
 ├── agents/                      # Spawnable subagents (Task tool)
 │   ├── critic.md                # Second-opinion review of plans/conclusions
@@ -151,7 +151,6 @@ $AOPS/
 ├── experiments/                 # Experiment logs (6 files)
 │
 ├── config/
-│   ├── capabilities.md          # Intent router capability index (skills, commands, agents, MCP)
 │   └── claude/                  # Reference config
 │       ├── mcp.json             # MCP server configuration
 │       └── settings.json        # Claude Code settings
@@ -185,7 +184,7 @@ $AOPS/
 
 **Note**: For Python development, use `general-purpose` subagent and invoke `Skill(skill="python-dev")` directly.
 
-## User Data ($ACA_DATA)
+## User Data ($ACA_DATA) - SEMANTIC ONLY
 
 ```
 $ACA_DATA/
@@ -193,12 +192,16 @@ $ACA_DATA/
 ├── CORE.md                      # User context, tools
 ├── STYLE*.md                    # Writing style
 ├── tasks/                       # Task data (active/, completed/, deferred/)
-├── sessions/claude/             # Session transcripts
 └── projects/aops/
     ├── VISION.md                # End state
-    ├── ROADMAP.md               # Maturity stages
-    ├── STATE.md                 # Current state
-    └── learning/                # Thematic pattern files
+    ├── ROADMAP.md               # Current status
+    └── specs/                   # Design documents (timeless)
+
+# Episodic content → GitHub Issues (nicsuzor/writing repo)
+# Labels: bug, experiment, devlog, decision, learning
+
+# Archive
+~/writing/sessions/              # Session transcripts (raw data)
 ```
 
 ## Runtime (~/.claude/)
