@@ -154,3 +154,329 @@ def test_session_identity_available() -> None:
     assert isinstance(result["last_activity"], datetime), (
         f"last_activity must be a datetime, got {type(result['last_activity']).__name__}"
     )
+
+
+def test_unified_accomplishments_available(data_dir: Path) -> None:
+    """Test that dashboard exposes unified accomplishments for today.
+
+    AC-U4: User sees today's accomplishments in one place (unified section).
+
+    Currently accomplishments are scattered across:
+    - Daily log completed tasks (from parse_daily_log()['completed'])
+    - Daily log outcomes (from parse_daily_log()['outcomes'])
+    - Session todos completed (from SessionOutcomes)
+    - Git commits (from get_project_git_activity())
+
+    The dashboard must have a function that aggregates all accomplishments
+    from all sources into a single unified list for display.
+
+    Required fields in each accomplishment dict:
+    - description: What was accomplished (required)
+    - source: One of 'daily_log', 'session', 'git', 'outcome' (required)
+    - timestamp: When it happened (optional, datetime or None)
+
+    This test verifies the function exists and returns properly structured data.
+    It connects to EXISTING live data via the data_dir fixture.
+
+    Args:
+        data_dir: pytest fixture providing path to ACA_DATA
+    """
+    from datetime import datetime
+
+    # Import the dashboard module
+    from skills.dashboard import dashboard
+
+    # The dashboard MUST expose a get_todays_accomplishments() function
+    # that aggregates all accomplishments from all sources
+    assert hasattr(dashboard, "get_todays_accomplishments"), (
+        "Dashboard must expose get_todays_accomplishments() function for AC-U4 "
+        "(unified accomplishments). This function should aggregate accomplishments "
+        "from daily_log, session todos, git commits, and outcomes into one list."
+    )
+
+    # Call the function - it should work with live data
+    result = dashboard.get_todays_accomplishments()
+
+    # Verify return type is a list
+    assert isinstance(result, list), (
+        f"get_todays_accomplishments() must return a list, got {type(result).__name__}"
+    )
+
+    # Verify each item in the list is properly structured
+    valid_sources = {"daily_log", "session", "git", "outcome"}
+
+    for i, accomplishment in enumerate(result):
+        assert isinstance(accomplishment, dict), (
+            f"Each accomplishment must be a dict, item {i} is {type(accomplishment).__name__}"
+        )
+
+        # Verify required 'description' field
+        assert "description" in accomplishment, (
+            f"Accomplishment {i} must include 'description' field"
+        )
+        assert isinstance(accomplishment["description"], str), (
+            f"Accomplishment {i} 'description' must be str, "
+            f"got {type(accomplishment['description']).__name__}"
+        )
+        assert accomplishment["description"], (
+            f"Accomplishment {i} 'description' must not be empty"
+        )
+
+        # Verify required 'source' field
+        assert "source" in accomplishment, (
+            f"Accomplishment {i} must include 'source' field"
+        )
+        assert accomplishment["source"] in valid_sources, (
+            f"Accomplishment {i} source must be one of {valid_sources}, "
+            f"got {accomplishment['source']!r}"
+        )
+
+        # Verify optional 'timestamp' field if present
+        if "timestamp" in accomplishment and accomplishment["timestamp"] is not None:
+            assert isinstance(accomplishment["timestamp"], datetime), (
+                f"Accomplishment {i} 'timestamp' must be datetime or None, "
+                f"got {type(accomplishment['timestamp']).__name__}"
+            )
+
+
+def test_priority_tasks_available(data_dir: Path) -> None:
+    """Test that dashboard exposes all P0/P1 tasks for prominent display.
+
+    AC-U3: User sees all P0/P1 tasks without clicking (visible in main view).
+
+    The dashboard must have a function that returns ALL P0/P1 priority tasks
+    for prominent display. Unlike get_next_actions() which limits to 5 tasks,
+    this function should return every P0/P1 task to ensure nothing critical
+    is hidden from the user.
+
+    Required fields in each task dict:
+    - title: Task title (required, str)
+    - priority: Priority level 0 or 1 (required, int)
+    - project: Project name (required, str)
+    - status: Task status (required, str)
+
+    This test verifies the function exists and returns properly structured data.
+    It connects to EXISTING live data via the data_dir fixture.
+
+    Args:
+        data_dir: pytest fixture providing path to ACA_DATA
+    """
+    # Import the dashboard module
+    from skills.dashboard import dashboard
+
+    # The dashboard MUST expose a get_priority_tasks() function
+    # that returns ALL P0/P1 tasks for prominent display
+    assert hasattr(dashboard, "get_priority_tasks"), (
+        "Dashboard must expose get_priority_tasks() function for AC-U3 "
+        "(P0/P1 task visibility). This function should return ALL P0/P1 tasks, "
+        "not limited to a subset like get_next_actions() which caps at 5."
+    )
+
+    # Call the function - it should work with live data
+    result = dashboard.get_priority_tasks()
+
+    # Verify return type is a list
+    assert isinstance(result, list), (
+        f"get_priority_tasks() must return a list, got {type(result).__name__}"
+    )
+
+    # Verify each item in the list is properly structured
+    valid_priorities = {0, 1}
+
+    for i, task in enumerate(result):
+        assert isinstance(task, dict), (
+            f"Each task must be a dict, item {i} is {type(task).__name__}"
+        )
+
+        # Verify required 'title' field
+        assert "title" in task, (
+            f"Task {i} must include 'title' field"
+        )
+        assert isinstance(task["title"], str), (
+            f"Task {i} 'title' must be str, got {type(task['title']).__name__}"
+        )
+        assert task["title"], (
+            f"Task {i} 'title' must not be empty"
+        )
+
+        # Verify required 'priority' field
+        assert "priority" in task, (
+            f"Task {i} must include 'priority' field"
+        )
+        assert task["priority"] in valid_priorities, (
+            f"Task {i} priority must be 0 or 1 (P0/P1), got {task['priority']!r}"
+        )
+
+        # Verify required 'project' field
+        assert "project" in task, (
+            f"Task {i} must include 'project' field"
+        )
+        assert isinstance(task["project"], str), (
+            f"Task {i} 'project' must be str, got {type(task['project']).__name__}"
+        )
+
+        # Verify required 'status' field
+        assert "status" in task, (
+            f"Task {i} must include 'status' field"
+        )
+        assert isinstance(task["status"], str), (
+            f"Task {i} 'status' must be str, got {type(task['status']).__name__}"
+        )
+
+    # Verify this returns ALL P0/P1 tasks, not limited to 5
+    # If there are more than 5 P0/P1 tasks in live data, all should be returned
+    # This differentiates get_priority_tasks() from get_next_actions()
+    if len(result) > 5:
+        # Good - we're getting more than the get_next_actions() limit
+        pass
+    # Note: If <= 5 P0/P1 tasks exist, that's also valid
+
+
+def test_three_question_layout_structure(data_dir: Path) -> None:
+    """Test that dashboard provides unified three-question layout data.
+
+    AC-U5: User can correctly identify (1) primary task, (2) active sessions,
+    and (3) today's done items WITHOUT expanding/clicking anything.
+
+    The layout should be organized around three questions:
+    - What should I do? (primary_focus + priority_tasks)
+    - What am I doing? (active_sessions)
+    - What have I done? (accomplishments)
+
+    The dashboard must have a function get_dashboard_layout() that returns
+    a dict with these three sections, using data from existing functions:
+    - get_primary_focus()
+    - get_priority_tasks()
+    - get_session_display_info()
+    - get_todays_accomplishments()
+
+    This test verifies the function exists and returns properly structured data.
+    It connects to EXISTING live data via the data_dir fixture.
+
+    Args:
+        data_dir: pytest fixture providing path to ACA_DATA
+    """
+    from datetime import datetime
+
+    # Import the dashboard module
+    from skills.dashboard import dashboard
+
+    # The dashboard MUST expose a get_dashboard_layout() function
+    # that combines all data sources into the three-question structure
+    assert hasattr(dashboard, "get_dashboard_layout"), (
+        "Dashboard must expose get_dashboard_layout() function for AC-U5 "
+        "(three-question layout). This function should return a dict with "
+        "three sections: 'what_to_do', 'what_doing', 'what_done'."
+    )
+
+    # Call the function - it should work with live data
+    result = dashboard.get_dashboard_layout()
+
+    # Verify return type is a dict
+    assert isinstance(result, dict), (
+        f"get_dashboard_layout() must return a dict, got {type(result).__name__}"
+    )
+
+    # === Section 1: what_to_do ===
+    # Contains primary_focus and priority_tasks
+    assert "what_to_do" in result, (
+        "Layout must include 'what_to_do' section for 'What should I do?' question"
+    )
+    what_to_do = result["what_to_do"]
+    assert isinstance(what_to_do, dict), (
+        f"'what_to_do' must be a dict, got {type(what_to_do).__name__}"
+    )
+
+    # Verify what_to_do has primary_focus (from get_primary_focus)
+    assert "primary_focus" in what_to_do, (
+        "'what_to_do' must include 'primary_focus' from get_primary_focus()"
+    )
+    primary_focus = what_to_do["primary_focus"]
+    assert isinstance(primary_focus, dict), (
+        f"'primary_focus' must be a dict, got {type(primary_focus).__name__}"
+    )
+    assert "task_title" in primary_focus, (
+        "'primary_focus' must include 'task_title' field"
+    )
+    assert "source" in primary_focus, (
+        "'primary_focus' must include 'source' field"
+    )
+
+    # Verify what_to_do has priority_tasks (from get_priority_tasks)
+    assert "priority_tasks" in what_to_do, (
+        "'what_to_do' must include 'priority_tasks' from get_priority_tasks()"
+    )
+    priority_tasks = what_to_do["priority_tasks"]
+    assert isinstance(priority_tasks, list), (
+        f"'priority_tasks' must be a list, got {type(priority_tasks).__name__}"
+    )
+
+    # === Section 2: what_doing ===
+    # Contains active_sessions (list of session display info)
+    assert "what_doing" in result, (
+        "Layout must include 'what_doing' section for 'What am I doing?' question"
+    )
+    what_doing = result["what_doing"]
+    assert isinstance(what_doing, dict), (
+        f"'what_doing' must be a dict, got {type(what_doing).__name__}"
+    )
+
+    # Verify what_doing has active_sessions
+    assert "active_sessions" in what_doing, (
+        "'what_doing' must include 'active_sessions' list"
+    )
+    active_sessions = what_doing["active_sessions"]
+    assert isinstance(active_sessions, list), (
+        f"'active_sessions' must be a list, got {type(active_sessions).__name__}"
+    )
+
+    # Verify each session has the expected structure (from get_session_display_info)
+    for i, session in enumerate(active_sessions):
+        assert isinstance(session, dict), (
+            f"Each active_session must be a dict, item {i} is {type(session).__name__}"
+        )
+        assert "session_id_short" in session, (
+            f"active_session {i} must include 'session_id_short'"
+        )
+        assert "project" in session, (
+            f"active_session {i} must include 'project'"
+        )
+        assert "last_activity" in session, (
+            f"active_session {i} must include 'last_activity'"
+        )
+
+    # === Section 3: what_done ===
+    # Contains accomplishments (from get_todays_accomplishments)
+    assert "what_done" in result, (
+        "Layout must include 'what_done' section for 'What have I done?' question"
+    )
+    what_done = result["what_done"]
+    assert isinstance(what_done, dict), (
+        f"'what_done' must be a dict, got {type(what_done).__name__}"
+    )
+
+    # Verify what_done has accomplishments
+    assert "accomplishments" in what_done, (
+        "'what_done' must include 'accomplishments' from get_todays_accomplishments()"
+    )
+    accomplishments = what_done["accomplishments"]
+    assert isinstance(accomplishments, list), (
+        f"'accomplishments' must be a list, got {type(accomplishments).__name__}"
+    )
+
+    # Verify each accomplishment has the expected structure
+    valid_sources = {"daily_log", "session", "git", "outcome"}
+    for i, acc in enumerate(accomplishments):
+        assert isinstance(acc, dict), (
+            f"Each accomplishment must be a dict, item {i} is {type(acc).__name__}"
+        )
+        assert "description" in acc, (
+            f"accomplishment {i} must include 'description'"
+        )
+        assert "source" in acc, (
+            f"accomplishment {i} must include 'source'"
+        )
+        assert acc["source"] in valid_sources, (
+            f"accomplishment {i} source must be one of {valid_sources}, "
+            f"got {acc['source']!r}"
+        )

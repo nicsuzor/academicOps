@@ -1024,6 +1024,94 @@ st.markdown("""
 def esc(text):
     return str(text).replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;').replace('"', '&quot;')
 
+
+# ============================================================================
+# THREE-QUESTION LAYOUT - Primary dashboard view
+# ============================================================================
+
+def render_three_question_layout() -> None:
+    """Render the three-question layout at the top of the dashboard.
+
+    Displays a structured view answering:
+    - What should I do? (Primary focus + priority tasks)
+    - What am I doing? (Active sessions)
+    - What did I do today? (Accomplishments)
+    """
+    layout_data = get_dashboard_layout()
+
+    # Top row: Two columns side by side
+    col_todo, col_doing = st.columns([1, 1])
+
+    # === WHAT SHOULD I DO? ===
+    with col_todo:
+        st.markdown("### :pushpin: WHAT SHOULD I DO?")
+
+        what_to_do = layout_data["what_to_do"]
+        primary = what_to_do["primary_focus"]
+
+        # Primary focus
+        if primary["task_title"]:
+            source_tag = f"[{primary['source']}]" if primary["source"] != "none" else ""
+            st.markdown(f"**Primary:** {primary['task_title']} {source_tag}")
+        else:
+            st.markdown("*No primary focus set*")
+
+        # Priority tasks
+        priority_tasks = what_to_do["priority_tasks"]
+        if priority_tasks:
+            st.markdown("**Priority tasks:**")
+            for task in priority_tasks[:5]:
+                priority_label = f"P{task['priority']}" if task.get('priority') is not None else ""
+                title = task.get('title', '')[:50]
+                if len(task.get('title', '')) > 50:
+                    title += "..."
+                st.markdown(f"- **{priority_label}:** {title}")
+        else:
+            st.markdown("*No priority tasks*")
+
+    # === WHAT AM I DOING? ===
+    with col_doing:
+        st.markdown("### :arrows_counterclockwise: WHAT AM I DOING?")
+
+        what_doing = layout_data["what_doing"]
+        active_sessions = what_doing["active_sessions"]
+
+        if active_sessions:
+            for session in active_sessions[:6]:
+                session_id = session.get("session_id_short", "???")
+                project = session.get("project", "unknown")
+                # Clean up project name for display
+                if project.startswith("-"):
+                    project = project.replace("-", "/")[1:]  # Convert -Users-name to /Users/name
+                    project = project.split("/")[-1]  # Just show last path component
+                st.markdown(f"- `[{session_id}]` {project}")
+        else:
+            st.markdown("*No active sessions*")
+
+    # Bottom row: Full width for accomplishments
+    st.markdown("---")
+    with st.container():
+        st.markdown("### :white_check_mark: WHAT DID I DO TODAY?")
+
+        what_done = layout_data["what_done"]
+        accomplishments = what_done["accomplishments"]
+
+        if accomplishments:
+            for item in accomplishments[:8]:
+                source = item.get("source", "")
+                desc = item.get("description", "")[:60]
+                if len(item.get("description", "")) > 60:
+                    desc += "..."
+                st.markdown(f"- [{source}] {desc}")
+        else:
+            st.markdown("*No accomplishments logged today*")
+
+    st.markdown("---")
+
+
+# Render the three-question layout first
+render_three_question_layout()
+
 # Initialize analyzer for daily log
 analyzer = SessionAnalyzer()
 
