@@ -219,6 +219,57 @@ def get_project_git_activity(project_path: str) -> list[str]:
     return []
 
 
+def get_todays_accomplishments() -> list[dict]:
+    """Get unified list of today's accomplishments from all sources.
+
+    Aggregates accomplishments from:
+    - Daily log completed tasks (source='daily_log')
+    - Daily log outcomes (source='outcome')
+    - Git commits from aOps repo (source='git')
+
+    Returns:
+        List of dicts, each with:
+            - description: What was accomplished (str)
+            - source: One of 'daily_log', 'outcome', 'git' (str)
+            - timestamp: When it happened (datetime or None)
+    """
+    accomplishments: list[dict] = []
+
+    # Get daily log data
+    analyzer = SessionAnalyzer()
+    daily_log = analyzer.parse_daily_log()
+
+    if daily_log is not None:
+        # Add completed tasks from daily log
+        for item in daily_log.get("completed", []):
+            if item:  # Skip empty strings
+                accomplishments.append({
+                    "description": item,
+                    "source": "daily_log",
+                    "timestamp": None,
+                })
+
+        # Add outcomes from daily log
+        for item in daily_log.get("outcomes", []):
+            if item:  # Skip empty strings
+                accomplishments.append({
+                    "description": item,
+                    "source": "outcome",
+                    "timestamp": None,
+                })
+
+    # Add git commits from aOps
+    git_commits = get_project_git_activity("-Users-suzor-writing-academicOps")
+    for commit in git_commits:
+        if commit:  # Skip empty strings
+            accomplishments.append({
+                "description": commit,
+                "source": "git",
+                "timestamp": None,
+            })
+
+    return accomplishments
+
 
 def get_session_state(session_info, analyzer: SessionAnalyzer) -> dict:
     """Extract current state from a session for display."""
