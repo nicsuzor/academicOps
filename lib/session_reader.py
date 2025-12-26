@@ -15,14 +15,15 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 
 @dataclass
 class Entry:
     """Represents a single JSONL entry from any source."""
+
     type: str
     uuid: str = ""
     parent_uuid: str = ""
@@ -46,47 +47,47 @@ class Entry:
     agent_id: str | None = None
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "Entry":
+    def from_dict(cls, data: dict[str, Any]) -> Entry:
         """Create Entry from JSONL dict."""
         entry = cls(
-            type=data.get('type', 'unknown'),
-            uuid=data.get('uuid', ''),
-            parent_uuid=data.get('parentUuid', ''),
-            message=data.get('message', {}),
-            content=data.get('content', {}),
-            is_sidechain=data.get('isSidechain', False),
-            is_meta=data.get('isMeta', False),
-            tool_use_result=data.get('toolUseResult', {}),
-            hook_context=data.get('hook_context', {}),
-            subagent_id=data.get('subagentId'),
-            summary_text=data.get('summary'),
+            type=data.get("type", "unknown"),
+            uuid=data.get("uuid", ""),
+            parent_uuid=data.get("parentUuid", ""),
+            message=data.get("message", {}),
+            content=data.get("content", {}),
+            is_sidechain=data.get("isSidechain", False),
+            is_meta=data.get("isMeta", False),
+            tool_use_result=data.get("toolUseResult", {}),
+            hook_context=data.get("hook_context", {}),
+            subagent_id=data.get("subagentId"),
+            summary_text=data.get("summary"),
         )
 
         # Extract hook data from system_reminder entries
-        if entry.type == 'system_reminder':
-            hook_output = data.get('hookSpecificOutput', {})
+        if entry.type == "system_reminder":
+            hook_output = data.get("hookSpecificOutput", {})
             if isinstance(hook_output, dict) and hook_output:
-                entry.additional_context = hook_output.get('additionalContext', '')
-                entry.hook_event_name = hook_output.get('hookEventName')
-                entry.hook_exit_code = hook_output.get('exitCode')
-                entry.skills_matched = hook_output.get('skillsMatched')
-                entry.files_loaded = hook_output.get('filesLoaded')
-                entry.tool_name = hook_output.get('toolName')
-                entry.agent_id = hook_output.get('agentId')
+                entry.additional_context = hook_output.get("additionalContext", "")
+                entry.hook_event_name = hook_output.get("hookEventName")
+                entry.hook_exit_code = hook_output.get("exitCode")
+                entry.skills_matched = hook_output.get("skillsMatched")
+                entry.files_loaded = hook_output.get("filesLoaded")
+                entry.tool_name = hook_output.get("toolName")
+                entry.agent_id = hook_output.get("agentId")
             # Fall back to content.additionalContext
             if not entry.additional_context and isinstance(entry.content, dict):
-                entry.additional_context = entry.content.get('additionalContext', '')
+                entry.additional_context = entry.content.get("additionalContext", "")
             if not entry.hook_event_name and isinstance(entry.content, dict):
-                entry.hook_event_name = entry.content.get('hookEventName')
+                entry.hook_event_name = entry.content.get("hookEventName")
             if entry.hook_exit_code is None and isinstance(entry.content, dict):
-                entry.hook_exit_code = entry.content.get('exitCode')
+                entry.hook_exit_code = entry.content.get("exitCode")
 
         # Parse timestamp
-        if 'timestamp' in data:
+        if "timestamp" in data:
             try:
-                timestamp_str = data['timestamp']
-                if timestamp_str.endswith('Z'):
-                    timestamp_str = timestamp_str[:-1] + '+00:00'
+                timestamp_str = data["timestamp"]
+                if timestamp_str.endswith("Z"):
+                    timestamp_str = timestamp_str[:-1] + "+00:00"
                 entry.timestamp = datetime.fromisoformat(timestamp_str)
             except (ValueError, TypeError):
                 pass
@@ -97,6 +98,7 @@ class Entry:
 @dataclass
 class SessionSummary:
     """Summary information about a session."""
+
     uuid: str
     summary: str = "Claude Code Session"
     artifact_type: str = "unknown"
@@ -108,6 +110,7 @@ class SessionSummary:
 @dataclass
 class TimingInfo:
     """Timing information for turns."""
+
     is_first: bool = False
     start_time_local: datetime | None = None
     offset_from_start: str | None = None
@@ -117,6 +120,7 @@ class TimingInfo:
 @dataclass
 class ConversationTurn:
     """A single conversation turn."""
+
     user_message: str | None = None
     assistant_sequence: list[dict[str, Any]] = field(default_factory=list)
     timing_info: TimingInfo | None = None
@@ -124,12 +128,15 @@ class ConversationTurn:
     end_time: datetime | None = None
     hook_context: dict[str, Any] = field(default_factory=dict)
     inline_hooks: list[dict[str, Any]] = field(default_factory=list)
-    is_meta: bool = False  # True if this is system-injected context, not actual user input
+    is_meta: bool = (
+        False  # True if this is system-injected context, not actual user input
+    )
 
 
 @dataclass
 class SessionInfo:
     """Information about a discovered session."""
+
     path: Path
     project: str
     session_id: str
@@ -139,8 +146,8 @@ class SessionInfo:
     def project_display(self) -> str:
         """Human-readable project name."""
         # Convert "-home-nic-src-aOps" to "aOps"
-        if self.project.startswith('-'):
-            parts = self.project.split('-')
+        if self.project.startswith("-"):
+            parts = self.project.split("-")
             return parts[-1] if parts else self.project
         return self.project
 
@@ -187,18 +194,22 @@ def find_sessions(
                 continue
 
             # Get modification time
-            mtime = datetime.fromtimestamp(session_file.stat().st_mtime, tz=timezone.utc)
+            mtime = datetime.fromtimestamp(
+                session_file.stat().st_mtime, tz=UTC
+            )
 
             # Filter by time if specified
             if since and mtime < since:
                 continue
 
-            sessions.append(SessionInfo(
-                path=session_file,
-                project=project_name,
-                session_id=session_file.stem,
-                last_modified=mtime,
-            ))
+            sessions.append(
+                SessionInfo(
+                    path=session_file,
+                    project=project_name,
+                    session_id=session_file.stem,
+                    last_modified=mtime,
+                )
+            )
 
     # Sort by last modified, newest first
     sessions.sort(key=lambda s: s.last_modified, reverse=True)
@@ -208,7 +219,9 @@ def find_sessions(
 class SessionProcessor:
     """Processes JSONL sessions into structured data."""
 
-    def parse_jsonl(self, file_path: str | Path) -> tuple[SessionSummary, list[Entry], dict[str, list[Entry]]]:
+    def parse_jsonl(
+        self, file_path: str | Path
+    ) -> tuple[SessionSummary, list[Entry], dict[str, list[Entry]]]:
         """
         Parse JSONL file into session summary and entries.
 
@@ -222,7 +235,7 @@ class SessionProcessor:
         session_summary = None
         session_uuid = file_path.stem
 
-        with open(file_path, 'r', encoding='utf-8') as f:
+        with open(file_path, encoding="utf-8") as f:
             for line in f:
                 line = line.strip()
                 if not line:
@@ -233,11 +246,12 @@ class SessionProcessor:
                     entries.append(entry)
 
                     # Extract summary if available
-                    if entry.type == 'summary':
-                        summary_text = entry.content.get('summary', 'Claude Code Session')
+                    if entry.type == "summary":
+                        summary_text = entry.content.get(
+                            "summary", "Claude Code Session"
+                        )
                         session_summary = SessionSummary(
-                            uuid=session_uuid,
-                            summary=summary_text
+                            uuid=session_uuid, summary=summary_text
                         )
                 except json.JSONDecodeError:
                     continue
@@ -255,7 +269,11 @@ class SessionProcessor:
             hook_entries = self._load_hook_entries(hook_file)
             entries.extend(hook_entries)
             # Sort by timestamp to maintain chronological order
-            entries.sort(key=lambda e: e.timestamp if e.timestamp else datetime.min.replace(tzinfo=timezone.utc))
+            entries.sort(
+                key=lambda e: e.timestamp
+                if e.timestamp
+                else datetime.min.replace(tzinfo=UTC)
+            )
 
         return session_summary, entries, agent_entries
 
@@ -271,12 +289,12 @@ class SessionProcessor:
 
             # Check if this agent file belongs to the current session
             belongs_to_session = False
-            with open(agent_file, 'r', encoding='utf-8') as f:
+            with open(agent_file, encoding="utf-8") as f:
                 first_line = f.readline().strip()
                 if first_line:
                     try:
                         first_entry_data = json.loads(first_line)
-                        if first_entry_data.get('sessionId') == main_session_uuid:
+                        if first_entry_data.get("sessionId") == main_session_uuid:
                             belongs_to_session = True
                     except json.JSONDecodeError:
                         pass
@@ -286,7 +304,7 @@ class SessionProcessor:
 
             # Load all entries from this agent file
             entries = []
-            with open(agent_file, 'r', encoding='utf-8') as f:
+            with open(agent_file, encoding="utf-8") as f:
                 for line in f:
                     line = line.strip()
                     if not line:
@@ -320,18 +338,20 @@ class SessionProcessor:
 
             for hook_file in hook_dir.glob("*-hooks.jsonl"):
                 try:
-                    with open(hook_file, 'r', encoding='utf-8') as f:
+                    with open(hook_file, encoding="utf-8") as f:
                         for line in f:
                             line = line.strip()
                             if not line:
                                 continue
                             try:
                                 data = json.loads(line)
-                                if data.get('transcript_path') == str(session_file_path):
+                                if data.get("transcript_path") == str(
+                                    session_file_path
+                                ):
                                     return hook_file
                             except json.JSONDecodeError:
                                 continue
-                except (OSError, IOError):
+                except OSError:
                     continue
 
         return None
@@ -340,7 +360,7 @@ class SessionProcessor:
         """Load ALL hook entries from JSONL file."""
         entries = []
 
-        with open(hook_file_path, 'r', encoding='utf-8') as f:
+        with open(hook_file_path, encoding="utf-8") as f:
             for line in f:
                 line = line.strip()
                 if not line:
@@ -351,24 +371,24 @@ class SessionProcessor:
                 except json.JSONDecodeError:
                     continue
 
-                hook_output = data.get('hookSpecificOutput') or {}
+                hook_output = data.get("hookSpecificOutput") or {}
 
-                if not hook_output.get('hookEventName'):
-                    hook_output['hookEventName'] = data.get('hook_event', 'Unknown')
+                if not hook_output.get("hookEventName"):
+                    hook_output["hookEventName"] = data.get("hook_event", "Unknown")
 
-                if 'exit_code' in data and 'exitCode' not in hook_output:
-                    hook_output['exitCode'] = data['exit_code']
+                if "exit_code" in data and "exitCode" not in hook_output:
+                    hook_output["exitCode"] = data["exit_code"]
 
-                if 'tool_name' in data:
-                    hook_output['toolName'] = data['tool_name']
+                if "tool_name" in data:
+                    hook_output["toolName"] = data["tool_name"]
 
-                if 'agent_id' in data:
-                    hook_output['agentId'] = data['agent_id']
+                if "agent_id" in data:
+                    hook_output["agentId"] = data["agent_id"]
 
                 entry_data = {
-                    'type': 'system_reminder',
-                    'timestamp': data.get('logged_at'),
-                    'hookSpecificOutput': hook_output
+                    "type": "system_reminder",
+                    "timestamp": data.get("logged_at"),
+                    "hookSpecificOutput": hook_output,
                 }
 
                 entries.append(Entry.from_dict(entry_data))
@@ -379,7 +399,7 @@ class SessionProcessor:
         self,
         entries: list[Entry],
         agent_entries: dict[str, list[Entry]] | None = None,
-        full_mode: bool = False
+        full_mode: bool = False,
     ) -> list[ConversationTurn | dict]:
         """Group JSONL entries into conversational turns.
 
@@ -398,9 +418,9 @@ class SessionProcessor:
         conversation_start_time = None
 
         for entry in main_entries:
-            if entry.type == 'user':
-                user_content = self._extract_user_content(entry, full_mode=full_mode)
-                if not user_content.strip() or 'tool_use_id' in str(entry.message):
+            if entry.type == "user":
+                user_content = self._extract_user_content(entry)
+                if not user_content.strip() or "tool_use_id" in str(entry.message):
                     continue
 
                 if current_turn:
@@ -410,152 +430,186 @@ class SessionProcessor:
                     conversation_start_time = entry.timestamp
 
                 current_turn = {
-                    'user_message': user_content,
-                    'is_meta': entry.is_meta,  # Track if this is injected context
-                    'assistant_sequence': [],
-                    'start_time': entry.timestamp,
-                    'end_time': entry.timestamp,
-                    'hook_context': entry.hook_context,
-                    'inline_hooks': []
+                    "user_message": user_content,
+                    "is_meta": entry.is_meta,  # Track if this is injected context
+                    "assistant_sequence": [],
+                    "start_time": entry.timestamp,
+                    "end_time": entry.timestamp,
+                    "hook_context": entry.hook_context,
+                    "inline_hooks": [],
                 }
 
-            elif entry.type == 'system_reminder':
+            elif entry.type == "system_reminder":
                 hook_turn = {
-                    'type': 'hook_context',
-                    'hook_event_name': entry.hook_event_name,
-                    'content': entry.additional_context or '',
-                    'exit_code': entry.hook_exit_code,
-                    'skills_matched': entry.skills_matched,
-                    'files_loaded': entry.files_loaded,
-                    'tool_name': entry.tool_name,
-                    'agent_id': entry.agent_id,
-                    'start_time': entry.timestamp,
-                    'end_time': entry.timestamp
+                    "type": "hook_context",
+                    "hook_event_name": entry.hook_event_name,
+                    "content": entry.additional_context or "",
+                    "exit_code": entry.hook_exit_code,
+                    "skills_matched": entry.skills_matched,
+                    "files_loaded": entry.files_loaded,
+                    "tool_name": entry.tool_name,
+                    "agent_id": entry.agent_id,
+                    "start_time": entry.timestamp,
+                    "end_time": entry.timestamp,
                 }
-                if current_turn and current_turn.get('user_message'):
-                    current_turn['inline_hooks'].append(hook_turn)
+                if current_turn and current_turn.get("user_message"):
+                    current_turn["inline_hooks"].append(hook_turn)
                 else:
                     turns.append(hook_turn)
 
-            elif entry.type == 'summary':
-                summary_text = entry.summary_text or ''
+            elif entry.type == "summary":
+                summary_text = entry.summary_text or ""
                 if summary_text:
                     summary_turn = {
-                        'type': 'summary',
-                        'content': summary_text,
-                        'subagent_id': entry.subagent_id,
-                        'start_time': entry.timestamp,
-                        'end_time': entry.timestamp
+                        "type": "summary",
+                        "content": summary_text,
+                        "subagent_id": entry.subagent_id,
+                        "start_time": entry.timestamp,
+                        "end_time": entry.timestamp,
                     }
                     if current_turn:
                         turns.append(current_turn)
                         current_turn = {}
                     turns.append(summary_turn)
 
-            elif entry.type == 'assistant':
+            elif entry.type == "assistant":
                 if not current_turn:
                     continue
 
                 message = entry.message or {}
-                content = message.get('content', [])
+                content = message.get("content", [])
 
                 if not isinstance(content, list):
                     content = [content]
 
                 for block in content:
                     if isinstance(block, dict):
-                        if block.get('type') == 'text':
-                            text_content = block.get('text', '').strip()
+                        if block.get("type") == "text":
+                            text_content = block.get("text", "").strip()
                             if text_content:
-                                current_turn['assistant_sequence'].append({
-                                    'type': 'text',
-                                    'content': text_content,
-                                    'subagent_id': entry.subagent_id
-                                })
-                        elif block.get('type') == 'tool_use':
+                                current_turn["assistant_sequence"].append(
+                                    {
+                                        "type": "text",
+                                        "content": text_content,
+                                        "subagent_id": entry.subagent_id,
+                                    }
+                                )
+                        elif block.get("type") == "tool_use":
                             tool_op = self._format_tool_operation(block)
                             if tool_op:
                                 tool_item = {
-                                    'type': 'tool',
-                                    'content': tool_op,
-                                    'tool_name': block.get('name', ''),
-                                    'tool_input': block.get('input', {})
+                                    "type": "tool",
+                                    "content": tool_op,
+                                    "tool_name": block.get("name", ""),
+                                    "tool_input": block.get("input", {}),
                                 }
 
-                                tool_id = block.get('id')
-                                tool_name = block.get('name', '')
+                                tool_id = block.get("id")
+                                tool_name = block.get("name", "")
 
                                 error_result = self._get_tool_error(tool_id, entries)
                                 if error_result:
-                                    tool_item['error'] = error_result
+                                    tool_item["error"] = error_result
                                 else:
-                                    tool_result = self._get_tool_result(tool_id, entries)
+                                    tool_result = self._get_tool_result(
+                                        tool_id, entries
+                                    )
                                     if tool_result:
-                                        tool_item['result'] = tool_result
+                                        tool_item["result"] = tool_result
 
-                                if tool_name == 'Task' and tool_id:
-                                    agent_id = self._extract_agent_id_from_result(tool_id, entries)
-                                    if agent_id and agent_entries and agent_id in agent_entries:
-                                        tool_item['sidechain_summary'] = self._extract_sidechain(agent_entries[agent_id])
+                                if tool_name == "Task" and tool_id:
+                                    agent_id = self._extract_agent_id_from_result(
+                                        tool_id, entries
+                                    )
+                                    if (
+                                        agent_id
+                                        and agent_entries
+                                        and agent_id in agent_entries
+                                    ):
+                                        tool_item["sidechain_summary"] = (
+                                            self._extract_sidechain(
+                                                agent_entries[agent_id]
+                                            )
+                                        )
                                     else:
-                                        related_sidechain = self._find_related_sidechain(entry, sidechain_groups)
+                                        related_sidechain = (
+                                            self._find_related_sidechain(
+                                                entry, sidechain_groups
+                                            )
+                                        )
                                         if related_sidechain:
-                                            tool_item['sidechain_summary'] = self._summarize_sidechain(related_sidechain)
+                                            tool_item["sidechain_summary"] = (
+                                                self._summarize_sidechain(
+                                                    related_sidechain
+                                                )
+                                            )
 
-                                current_turn['assistant_sequence'].append(tool_item)
+                                current_turn["assistant_sequence"].append(tool_item)
                     else:
                         text_content = str(block).strip()
                         if text_content:
-                            current_turn['assistant_sequence'].append({
-                                'type': 'text',
-                                'content': text_content,
-                                'subagent_id': entry.subagent_id
-                            })
+                            current_turn["assistant_sequence"].append(
+                                {
+                                    "type": "text",
+                                    "content": text_content,
+                                    "subagent_id": entry.subagent_id,
+                                }
+                            )
 
                 if entry.timestamp and current_turn:
-                    current_turn['end_time'] = entry.timestamp
+                    current_turn["end_time"] = entry.timestamp
 
-        if current_turn and (current_turn.get('user_message') or current_turn.get('assistant_sequence')):
+        if current_turn and (
+            current_turn.get("user_message") or current_turn.get("assistant_sequence")
+        ):
             turns.append(current_turn)
 
         # Add timing information
         first_user_turn_found = False
         for turn in turns:
-            if conversation_start_time and turn.get('start_time'):
-                is_user_turn = turn.get('type') not in ('hook_context', 'summary')
+            if conversation_start_time and turn.get("start_time"):
+                is_user_turn = turn.get("type") not in ("hook_context", "summary")
                 if is_user_turn and not first_user_turn_found:
                     first_user_turn_found = True
-                    turn['timing_info'] = TimingInfo(
+                    turn["timing_info"] = TimingInfo(
                         is_first=True,
-                        start_time_local=turn['start_time'],
+                        start_time_local=turn["start_time"],
                         offset_from_start=None,
-                        duration=self._calculate_duration(turn.get('start_time'), turn.get('end_time'))
+                        duration=self._calculate_duration(
+                            turn.get("start_time"), turn.get("end_time")
+                        ),
                     )
                 else:
-                    offset_seconds = (turn['start_time'] - conversation_start_time).total_seconds()
-                    turn['timing_info'] = TimingInfo(
+                    offset_seconds = (
+                        turn["start_time"] - conversation_start_time
+                    ).total_seconds()
+                    turn["timing_info"] = TimingInfo(
                         is_first=False,
                         start_time_local=None,
                         offset_from_start=self._format_time_offset(offset_seconds),
-                        duration=self._calculate_duration(turn.get('start_time'), turn.get('end_time'))
+                        duration=self._calculate_duration(
+                            turn.get("start_time"), turn.get("end_time")
+                        ),
                     )
 
         # Convert to ConversationTurn objects
         conversation_turns: list[ConversationTurn | dict] = []
         for turn in turns:
-            if turn.get('type') in ('hook_context', 'summary'):
+            if turn.get("type") in ("hook_context", "summary"):
                 conversation_turns.append(turn)
-            elif (turn.get('user_message', '').strip() or turn.get('assistant_sequence')):
-                conversation_turns.append(ConversationTurn(
-                    user_message=turn.get('user_message'),
-                    assistant_sequence=turn.get('assistant_sequence', []),
-                    timing_info=turn.get('timing_info'),
-                    start_time=turn.get('start_time'),
-                    end_time=turn.get('end_time'),
-                    hook_context=turn.get('hook_context', {}),
-                    inline_hooks=turn.get('inline_hooks', []),
-                    is_meta=turn.get('is_meta', False)
-                ))
+            elif turn.get("user_message", "").strip() or turn.get("assistant_sequence"):
+                conversation_turns.append(
+                    ConversationTurn(
+                        user_message=turn.get("user_message"),
+                        assistant_sequence=turn.get("assistant_sequence", []),
+                        timing_info=turn.get("timing_info"),
+                        start_time=turn.get("start_time"),
+                        end_time=turn.get("end_time"),
+                        hook_context=turn.get("hook_context", {}),
+                        inline_hooks=turn.get("inline_hooks", []),
+                        is_meta=turn.get("is_meta", False),
+                    )
+                )
 
         return conversation_turns
 
@@ -566,7 +620,7 @@ class SessionProcessor:
         agent_entries: dict[str, list[Entry]] | None = None,
         include_tool_results: bool = True,
         variant: str = "full",
-        source_file: str | Path | None = None
+        source_file: str | Path | None = None,
     ) -> str:
         """Format session entries as readable markdown."""
         session_uuid = session.uuid
@@ -577,23 +631,27 @@ class SessionProcessor:
             if entry.timestamp:
                 first_timestamp = entry.timestamp
                 break
-        date_str = first_timestamp.strftime('%Y-%m-%d') if first_timestamp else 'unknown'
+        date_str = (
+            first_timestamp.strftime("%Y-%m-%d") if first_timestamp else "unknown"
+        )
 
         # Full mode shows complete expanded content
-        full_mode = (variant == "full")
-        turns = self.group_entries_into_turns(entries, agent_entries, full_mode=full_mode)
+        full_mode = variant == "full"
+        turns = self.group_entries_into_turns(
+            entries, agent_entries, full_mode=full_mode
+        )
 
         markdown = ""
         turn_number = 0
         context_summary_started = False
 
         for turn in turns:
-            if isinstance(turn, dict) and turn.get('type') == 'hook_context':
-                event_name = turn.get('hook_event_name')
-                exit_code = turn.get('exit_code')
-                content = turn.get('content', '').strip()
-                skills_matched = turn.get('skills_matched')
-                files_loaded = turn.get('files_loaded')
+            if isinstance(turn, dict) and turn.get("type") == "hook_context":
+                event_name = turn.get("hook_event_name")
+                exit_code = turn.get("exit_code")
+                content = turn.get("content", "").strip()
+                skills_matched = turn.get("skills_matched")
+                files_loaded = turn.get("files_loaded")
 
                 if not content and not skills_matched and not files_loaded:
                     continue
@@ -612,22 +670,23 @@ class SessionProcessor:
                     skills_str = ", ".join(f"`{s}`" for s in skills_matched)
                     markdown += f"  - Skills matched: {skills_str}\n"
                 if files_loaded:
-                    for f in files_loaded:
-                        markdown += f"  - Loaded `{f}` (content injected)\n"
-                elif content:
-                    # In full mode, show complete hook content
+                    files_str = ", ".join(f"`{f.split('/')[-1]}`" for f in files_loaded)
+                    markdown += f"  - Loaded: {files_str}\n"
+                # Show content (regardless of whether files_loaded exists)
+                if content:
                     if full_mode:
-                        markdown += f"  - {content}\n"
+                        markdown += f"```\n{content}\n```\n"
                     else:
-                        markdown += f"  - {content[:200]}\n"
+                        display_content = content[:200] + "..." if len(content) > 200 else content
+                        markdown += f"  - {display_content}\n"
                 markdown += "\n"
                 continue
 
-            if isinstance(turn, dict) and turn.get('type') == 'summary':
-                content = turn.get('content', '').strip()
+            if isinstance(turn, dict) and turn.get("type") == "summary":
+                content = turn.get("content", "").strip()
                 if content:
                     if not context_summary_started:
-                        markdown += f"**Context Summary**\n\n"
+                        markdown += "**Context Summary**\n\n"
                         context_summary_started = True
                     markdown += f"- {content}\n"
                 continue
@@ -637,12 +696,16 @@ class SessionProcessor:
                 context_summary_started = False
 
             turn_number += 1
-            timing_info = turn.timing_info if isinstance(turn, ConversationTurn) else turn.get('timing_info')
+            timing_info = (
+                turn.timing_info
+                if isinstance(turn, ConversationTurn)
+                else turn.get("timing_info")
+            )
             timing_str = ""
             if timing_info:
                 parts = []
                 if timing_info.is_first and timing_info.start_time_local:
-                    local_time = timing_info.start_time_local.strftime('%I:%M %p')
+                    local_time = timing_info.start_time_local.strftime("%I:%M %p")
                     parts.append(local_time)
                 elif timing_info.offset_from_start:
                     parts.append(f"at +{timing_info.offset_from_start}")
@@ -651,23 +714,51 @@ class SessionProcessor:
                 if parts:
                     timing_str = f" ({', '.join(parts)})"
 
-            user_message = turn.user_message if isinstance(turn, ConversationTurn) else turn.get('user_message')
-            is_meta = turn.is_meta if isinstance(turn, ConversationTurn) else turn.get('is_meta', False)
+            user_message = (
+                turn.user_message
+                if isinstance(turn, ConversationTurn)
+                else turn.get("user_message")
+            )
+            is_meta = (
+                turn.is_meta
+                if isinstance(turn, ConversationTurn)
+                else turn.get("is_meta", False)
+            )
             if user_message:
-                # Use different label for injected context vs actual user input
                 if is_meta:
-                    markdown += f"## 📥 Context Injected (Turn {turn_number}{timing_str})\n\n{user_message}\n\n"
+                    # Extract command/skill name from expanded content
+                    command_name = self._extract_command_name(user_message)
+                    markdown += f"## User (Turn {turn_number}{timing_str})\n\n"
+                    markdown += f"**Invoked: {command_name}**\n\n"
+                    # Show full content in full mode, truncate in abridged mode
+                    if full_mode:
+                        markdown += f"```markdown\n{user_message}\n```\n\n"
+                    else:
+                        # Show first 500 chars in abridged mode
+                        if len(user_message) > 500:
+                            display_content = user_message[:500] + "\n... (truncated)"
+                        else:
+                            display_content = user_message
+                        markdown += f"```markdown\n{display_content}\n```\n\n"
                 else:
                     markdown += f"## User (Turn {turn_number}{timing_str})\n\n{user_message}\n\n"
 
-                inline_hooks = turn.inline_hooks if isinstance(turn, ConversationTurn) else turn.get('inline_hooks', [])
+                inline_hooks = (
+                    turn.inline_hooks
+                    if isinstance(turn, ConversationTurn)
+                    else turn.get("inline_hooks", [])
+                )
                 if inline_hooks:
                     for hook in inline_hooks:
-                        event_name = hook.get('hook_event_name') or 'Hook'
-                        exit_code = hook.get('exit_code') if hook.get('exit_code') is not None else 0
-                        content = hook.get('content', '').strip()
-                        skills_matched = hook.get('skills_matched')
-                        files_loaded = hook.get('files_loaded')
+                        event_name = hook.get("hook_event_name") or "Hook"
+                        exit_code = (
+                            hook.get("exit_code")
+                            if hook.get("exit_code") is not None
+                            else 0
+                        )
+                        content = hook.get("content", "").strip()
+                        skills_matched = hook.get("skills_matched")
+                        files_loaded = hook.get("files_loaded")
 
                         has_useful_content = content or skills_matched or files_loaded
                         is_error = exit_code is not None and exit_code != 0
@@ -676,39 +767,50 @@ class SessionProcessor:
                         if not has_useful_content and not is_error:
                             continue
 
-                        # Build hook display - emit header once, then details
-                        tool_name = hook.get('tool_name')
-                        checkmark = "" if exit_code is None else (" ✓" if exit_code == 0 else f" ✗ (exit {exit_code})")
-                        hook_label = f"{event_name}" + (f", {tool_name}" if tool_name else "")
+                        # Build hook display with h3 heading like subagents
+                        tool_name = hook.get("tool_name")
+                        checkmark = (
+                            ""
+                            if exit_code is None
+                            else (" ✓" if exit_code == 0 else f" ✗ (exit {exit_code})")
+                        )
+                        hook_label = f"{event_name}" + (
+                            f": {tool_name}" if tool_name else ""
+                        )
 
-                        markdown += f"- Hook({hook_label}){checkmark}\n"
+                        markdown += f"### Hook: {hook_label}{checkmark}\n\n"
                         if skills_matched:
                             skills_str = ", ".join(f"`{s}`" for s in skills_matched)
-                            markdown += f"  - Skills matched: {skills_str}\n"
+                            markdown += f"Skills matched: {skills_str}\n\n"
                         if files_loaded:
-                            files_str = ", ".join(f"`{f.split('/')[-1]}`" for f in files_loaded)
-                            markdown += f"  - Loaded {files_str} (content injected)\n"
+                            files_str = ", ".join(
+                                f"`{f.split('/')[-1]}`" for f in files_loaded
+                            )
+                            markdown += f"Loaded {files_str} (content injected)\n\n"
                         if content:
                             # Truncate long content in abridged mode
                             if not full_mode and len(content) > 200:
                                 display_content = content[:200] + "..."
                             else:
                                 display_content = content
-                            markdown += f"  - {display_content}\n"
-                        markdown += "\n"
+                            markdown += f"```\n{display_content}\n```\n\n"
 
-            assistant_sequence = turn.assistant_sequence if isinstance(turn, ConversationTurn) else turn.get('assistant_sequence', [])
+            assistant_sequence = (
+                turn.assistant_sequence
+                if isinstance(turn, ConversationTurn)
+                else turn.get("assistant_sequence", [])
+            )
             if assistant_sequence:
                 in_assistant_response = False
                 in_actions_section = False
                 agent_header_emitted = False
 
                 for item in assistant_sequence:
-                    item_type = item.get('type')
-                    content = item.get('content', '')
-                    subagent_id = item.get('subagent_id')
+                    item_type = item.get("type")
+                    content = item.get("content", "")
+                    subagent_id = item.get("subagent_id")
 
-                    if item_type == 'text':
+                    if item_type == "text":
                         if in_actions_section:
                             in_actions_section = False
                             markdown += "\n"
@@ -723,43 +825,52 @@ class SessionProcessor:
                         markdown += f"{content}\n\n"
                         in_assistant_response = True
 
-                    elif item_type == 'tool':
+                    elif item_type == "tool":
                         if in_assistant_response:
                             in_assistant_response = False
 
                         if not in_actions_section:
                             in_actions_section = True
 
-                        if item.get('error'):
-                            content = content.rstrip('\n')
+                        if item.get("error"):
+                            content = content.rstrip("\n")
                             markdown += f"- **❌ ERROR:** {content.lstrip('- ')}: `{item['error']}`\n"
+                        elif include_tool_results and item.get("result"):
+                            result_text = item["result"]
+                            result_text = self._maybe_pretty_print_json(result_text)
+                            code_lang = (
+                                "json"
+                                if result_text.strip().startswith(("{", "["))
+                                else ""
+                            )
+                            tool_call = content.strip().lstrip("- ").rstrip("\n")
+                            markdown += f"- **Tool:** {tool_call}\n```{code_lang}\n{result_text}\n```\n\n"
                         else:
-                            if include_tool_results and item.get('result'):
-                                result_text = item['result']
-                                result_text = self._maybe_pretty_print_json(result_text)
-                                code_lang = "json" if result_text.strip().startswith(('{', '[')) else ""
-                                tool_call = content.strip().lstrip('- ').rstrip('\n')
-                                markdown += f"- **Tool:** {tool_call}\n```{code_lang}\n{result_text}\n```\n\n"
-                            else:
-                                markdown += content
+                            markdown += content
 
-                        if item.get('sidechain_summary'):
+                        if item.get("sidechain_summary"):
                             # Extract agent info from tool input
-                            tool_input = item.get('tool_input', {})
-                            agent_type = tool_input.get('subagent_type', 'unknown')
-                            agent_desc = tool_input.get('description', '')
+                            tool_input = item.get("tool_input", {})
+                            agent_type = tool_input.get("subagent_type", "unknown")
+                            agent_desc = tool_input.get("description", "")
                             # Format: ### Subagent: type (description)
                             if agent_desc:
-                                markdown += f"\n### Subagent: {agent_type} ({agent_desc})\n\n"
+                                markdown += (
+                                    f"\n### Subagent: {agent_type} ({agent_desc})\n\n"
+                                )
                             else:
                                 markdown += f"\n### Subagent: {agent_type}\n\n"
                             # Condense whitespace - join non-empty lines with single newlines
-                            lines = item['sidechain_summary'].split('\n')
-                            condensed = '\n'.join(line for line in lines if line.strip())
-                            markdown += condensed + '\n\n'
+                            lines = item["sidechain_summary"].split("\n")
+                            condensed = "\n".join(
+                                line for line in lines if line.strip()
+                            )
+                            markdown += condensed + "\n\n"
 
-        edited_files = details.get('edited_files', session.edited_files)
-        files_list = edited_files if edited_files and isinstance(edited_files, list) else []
+        edited_files = details.get("edited_files", session.edited_files)
+        files_list = (
+            edited_files if edited_files and isinstance(edited_files, list) else []
+        )
 
         title = session.summary or "Claude Code Session"
         permalink = f"sessions/claude/{session_uuid[:8]}-{variant}"
@@ -770,7 +881,7 @@ class SessionProcessor:
             for f in files_list:
                 files_yaml += f"  - {f}\n"
 
-        source_yaml = f"source_file: \"{source_file}\"\n" if source_file else ""
+        source_yaml = f'source_file: "{source_file}"\n' if source_file else ""
 
         frontmatter = f"""---
 title: "{title} ({variant})"
@@ -791,7 +902,9 @@ session_id: {session_uuid}
         return frontmatter + header + markdown
 
     # Helper methods
-    def _group_sidechain_entries(self, sidechain_entries: list[Entry]) -> dict[datetime, list[Entry]]:
+    def _group_sidechain_entries(
+        self, sidechain_entries: list[Entry]
+    ) -> dict[datetime, list[Entry]]:
         """Group sidechain entries by conversation thread."""
         groups: dict[datetime, list[Entry]] = {}
         for entry in sidechain_entries:
@@ -803,7 +916,9 @@ session_id: {session_uuid}
                 groups[minute_key].append(entry)
         return groups
 
-    def _find_related_sidechain(self, main_entry: Entry, sidechain_groups: dict[datetime, list[Entry]]) -> list[Entry] | None:
+    def _find_related_sidechain(
+        self, main_entry: Entry, sidechain_groups: dict[datetime, list[Entry]]
+    ) -> list[Entry] | None:
         """Find sidechain entries related to a main thread tool use."""
         if not main_entry.timestamp:
             return None
@@ -826,16 +941,16 @@ session_id: {session_uuid}
         file_operations = []
 
         for entry in sidechain_entries:
-            if entry.type == 'assistant' and entry.message:
-                content = entry.message.get('content', [])
+            if entry.type == "assistant" and entry.message:
+                content = entry.message.get("content", [])
                 if isinstance(content, list):
                     for block in content:
-                        if isinstance(block, dict) and block.get('type') == 'tool_use':
+                        if isinstance(block, dict) and block.get("type") == "tool_use":
                             tool_count += 1
-                            tool_name = block.get('name', '')
-                            if tool_name in ['Read', 'Edit', 'Write', 'Grep']:
-                                tool_input = block.get('input', {})
-                                file_path = tool_input.get('file_path', '')
+                            tool_name = block.get("name", "")
+                            if tool_name in ["Read", "Edit", "Write", "Grep"]:
+                                tool_input = block.get("input", {})
+                                file_path = tool_input.get("file_path", "")
                                 if file_path:
                                     file_operations.append(f"{tool_name}: {file_path}")
 
@@ -859,157 +974,180 @@ session_id: {session_uuid}
         output_parts = []
 
         for entry in sidechain_entries:
-            if entry.type == 'assistant' and entry.message:
-                content = entry.message.get('content', [])
+            if entry.type == "assistant" and entry.message:
+                content = entry.message.get("content", [])
                 if isinstance(content, list):
                     for block in content:
                         if isinstance(block, dict):
-                            if block.get('type') == 'text':
-                                text = block.get('text', '').strip()
+                            if block.get("type") == "text":
+                                text = block.get("text", "").strip()
                                 if text:
-                                    output_parts.append(text + '\n')
-                            elif block.get('type') == 'tool_use':
+                                    output_parts.append(text + "\n")
+                            elif block.get("type") == "tool_use":
                                 formatted_tool = self._format_tool_operation(block)
                                 if formatted_tool:
                                     output_parts.append(formatted_tool)
 
-        return '\n'.join(output_parts)
+        return "\n".join(output_parts)
 
-    def _extract_agent_id_from_result(self, tool_id: str, all_entries: list[Entry]) -> str | None:
+    def _extract_agent_id_from_result(
+        self, tool_id: str, all_entries: list[Entry]
+    ) -> str | None:
         """Find the agentId from the tool result."""
         for entry in all_entries:
-            if entry.type != 'user':
+            if entry.type != "user":
                 continue
 
             message = entry.message or {}
-            content = message.get('content', [])
+            content = message.get("content", [])
             if not isinstance(content, list):
                 continue
 
             for block in content:
                 if isinstance(block, dict):
-                    if (block.get('type') == 'tool_result' and
-                        block.get('tool_use_id') == tool_id):
+                    if (
+                        block.get("type") == "tool_result"
+                        and block.get("tool_use_id") == tool_id
+                    ):
                         if isinstance(entry.tool_use_result, dict):
-                            return entry.tool_use_result.get('agentId')
+                            return entry.tool_use_result.get("agentId")
 
         return None
 
     def _get_tool_result(self, tool_id: str, all_entries: list[Entry]) -> str | None:
         """Get successful tool result content."""
         for entry in all_entries:
-            if entry.type != 'user':
+            if entry.type != "user":
                 continue
 
             message = entry.message or {}
-            content = message.get('content', [])
+            content = message.get("content", [])
             if not isinstance(content, list):
                 continue
 
             for block in content:
                 if isinstance(block, dict):
-                    if (block.get('type') == 'tool_result' and
-                        block.get('tool_use_id') == tool_id and
-                        not block.get('is_error')):
-                        result_content = block.get('content', '')
+                    if (
+                        block.get("type") == "tool_result"
+                        and block.get("tool_use_id") == tool_id
+                        and not block.get("is_error")
+                    ):
+                        result_content = block.get("content", "")
                         if isinstance(result_content, list):
                             texts = []
                             for item in result_content:
-                                if isinstance(item, dict) and item.get('type') == 'text':
-                                    texts.append(item.get('text', ''))
-                            return '\n'.join(texts)
-                        elif isinstance(result_content, str):
+                                if (
+                                    isinstance(item, dict)
+                                    and item.get("type") == "text"
+                                ):
+                                    texts.append(item.get("text", ""))
+                            return "\n".join(texts)
+                        if isinstance(result_content, str):
                             return result_content
         return None
 
     def _get_tool_error(self, tool_id: str, all_entries: list[Entry]) -> str | None:
         """Get error message if tool failed."""
         for entry in all_entries:
-            if entry.type != 'user':
+            if entry.type != "user":
                 continue
 
             message = entry.message or {}
-            content = message.get('content', [])
+            content = message.get("content", [])
             if not isinstance(content, list):
                 continue
 
             for block in content:
                 if isinstance(block, dict):
-                    if (block.get('type') == 'tool_result' and
-                        block.get('tool_use_id') == tool_id and
-                        block.get('is_error')):
-                        result_content = block.get('content', '')
+                    if (
+                        block.get("type") == "tool_result"
+                        and block.get("tool_use_id") == tool_id
+                        and block.get("is_error")
+                    ):
+                        result_content = block.get("content", "")
                         if isinstance(result_content, list):
                             texts = []
                             for item in result_content:
-                                if isinstance(item, dict) and item.get('type') == 'text':
-                                    texts.append(item.get('text', ''))
-                            return '\n'.join(texts)[:500]
-                        elif isinstance(result_content, str):
+                                if (
+                                    isinstance(item, dict)
+                                    and item.get("type") == "text"
+                                ):
+                                    texts.append(item.get("text", ""))
+                            return "\n".join(texts)[:500]
+                        if isinstance(result_content, str):
                             return result_content[:500]
         return None
 
-    def _extract_user_content(self, entry: Entry, full_mode: bool = False) -> str:
-        """Extract clean user content from entry.
-
-        Args:
-            entry: The entry to extract content from
-            full_mode: If True, show full expanded content instead of condensing
-        """
+    def _extract_user_content(self, entry: Entry) -> str:
+        """Extract clean user content from entry."""
         message = entry.message or {}
-        content = message.get('content', '')
+        content = message.get("content", "")
 
         if isinstance(content, list):
             text_parts = []
             for item in content:
                 if isinstance(item, dict):
-                    if item.get('type') == 'text':
-                        text_parts.append(item.get('text', ''))
+                    if item.get("type") == "text":
+                        text_parts.append(item.get("text", ""))
                 else:
                     text_parts.append(str(item))
-            content = '\n'.join(text_parts)
+            content = "\n".join(text_parts)
 
         content = content.strip()
 
         if self._is_pseudo_command(content):
             return ""
 
-        if entry.is_meta and content:
-            return self._condense_skill_expansion(content, full_mode=full_mode)
-
+        # Don't condense meta content here - let the main formatting handle it
         return content
 
-    def _condense_skill_expansion(self, content: str, full_mode: bool = False) -> str:
-        """Condense skill/command expansions.
+    def _extract_command_name(self, content: str) -> str:
+        """Extract command or skill name from expanded content."""
+        import re
 
-        In full_mode, fences the full content so markdown isn't rendered.
-        In abridged mode, shows just the file reference.
-        """
-        # Extract file reference for both modes
-        file_ref = None
-        line_count = len(content.split('\n'))
+        # Pattern 1: "Base directory for this skill: /path/to/skills/foo"
+        if content.startswith("Base directory for this skill:"):
+            first_line = content.split("\n")[0]
+            if "/skills/" in first_line:
+                skill_path = first_line.split(":", 1)[1].strip()
+                parts = skill_path.rstrip("/").split("/")
+                for i, part in enumerate(parts):
+                    if part == "skills" and i + 1 < len(parts):
+                        return f"/{parts[i + 1]} (skill)"
 
-        if content.startswith('Base directory for this skill:'):
-            first_line = content.split('\n')[0]
-            if '/skills/' in first_line:
-                skill_path = first_line.split(':', 1)[1].strip()
-                file_ref = f"{skill_path}/SKILL.md"
-        elif content.startswith('##'):
-            lines = content.split('\n')
-            title = lines[0].strip('# ').strip()
-            file_ref = f"/{title.lower().replace(' ', '-')} command"
+        # Pattern 2: Wikilink to skill file [[skills/foo/SKILL.md|...]]
+        skill_match = re.search(r"\[\[skills/([^/]+)/SKILL\.md", content)
+        if skill_match:
+            return f"/{skill_match.group(1)} (skill)"
 
-        if full_mode:
-            # Full mode: fence the content so markdown isn't rendered as markdown
-            header = f"**Injected: {file_ref or 'context'}** ({line_count} lines)\n" if file_ref else f"**Injected context** ({line_count} lines)\n"
-            return f"{header}\n```markdown\n{content}\n```"
+        # Pattern 3: Wikilink to command [[commands/foo.md|...]]
+        cmd_match = re.search(r"\[\[commands/([^/\]]+)\.md", content)
+        if cmd_match:
+            return f"/{cmd_match.group(1)} (command)"
 
-        # Abridged mode: just show the reference
-        if file_ref:
-            return f"<Expanded: {file_ref} ({line_count} lines)>"
+        # Pattern 4: Content starting with markdown heading (command expansion)
+        if content.startswith("##"):
+            lines = content.split("\n")
+            title = lines[0].strip("# ").strip()
+            return f"/{title.lower().replace(' ', '-')} (command)"
 
-        preview = content[:80].replace('\n', ' ')
-        return f"<Expanded: {preview}... ({line_count} lines)>"
+        # Pattern 5: First markdown heading in content
+        heading_match = re.search(r"^#+ (.+)$", content, re.MULTILINE)
+        if heading_match:
+            title = heading_match.group(1).strip()
+            # Truncate long titles
+            if len(title) > 40:
+                title = title[:37] + "..."
+            return f"{title}"
+
+        # Pattern 6: Look for "skill" or "command" mentions in first 200 chars
+        first_chunk = content[:200].lower()
+        if "skill" in first_chunk:
+            return "skill expansion"
+        if "command" in first_chunk:
+            return "command expansion"
+
+        return "context injection"
 
     def _is_pseudo_command(self, content: str) -> bool:
         """Check if content is a pseudo-command recording."""
@@ -1017,8 +1155,14 @@ session_id: {session_uuid}
             return False
 
         pseudo_command_patterns = [
-            '<command-name>', '<command-message>', '<command-args>', '<local-command-stdout>',
-            '</command-name>', '</command-message>', '</command-args>', '</local-command-stdout>'
+            "<command-name>",
+            "<command-message>",
+            "<command-args>",
+            "<local-command-stdout>",
+            "</command-name>",
+            "</command-message>",
+            "</command-args>",
+            "</local-command-stdout>",
         ]
 
         for pattern in pseudo_command_patterns:
@@ -1027,7 +1171,9 @@ session_id: {session_uuid}
 
         return False
 
-    def _calculate_duration(self, start_time: datetime | None, end_time: datetime | None) -> str:
+    def _calculate_duration(
+        self, start_time: datetime | None, end_time: datetime | None
+    ) -> str:
         """Calculate human-friendly duration."""
         if not start_time or not end_time:
             return "Unknown duration"
@@ -1039,107 +1185,109 @@ session_id: {session_uuid}
         """Format duration in human-friendly format."""
         if seconds < 1:
             return "< 1 second"
-        elif seconds < 60:
+        if seconds < 60:
             return f"{int(seconds)} second{'s' if int(seconds) != 1 else ''}"
-        elif seconds < 3600:
+        if seconds < 3600:
             minutes = int(seconds // 60)
             remaining_seconds = int(seconds % 60)
             if remaining_seconds == 0:
                 return f"{minutes} minute{'s' if minutes != 1 else ''}"
-            else:
-                return f"{minutes} minute{'s' if minutes != 1 else ''} {remaining_seconds} second{'s' if remaining_seconds != 1 else ''}"
-        else:
-            hours = int(seconds // 3600)
-            remaining_minutes = int((seconds % 3600) // 60)
-            if remaining_minutes == 0:
-                return f"{hours} hour{'s' if hours != 1 else ''}"
-            else:
-                return f"{hours} hour{'s' if hours != 1 else ''} {remaining_minutes} minute{'s' if remaining_minutes != 1 else ''}"
+            return f"{minutes} minute{'s' if minutes != 1 else ''} {remaining_seconds} second{'s' if remaining_seconds != 1 else ''}"
+        hours = int(seconds // 3600)
+        remaining_minutes = int((seconds % 3600) // 60)
+        if remaining_minutes == 0:
+            return f"{hours} hour{'s' if hours != 1 else ''}"
+        return f"{hours} hour{'s' if hours != 1 else ''} {remaining_minutes} minute{'s' if remaining_minutes != 1 else ''}"
 
     def _format_time_offset(self, seconds: float) -> str:
         """Format time offset from conversation start."""
         return self._format_duration(seconds)
 
-    def _format_compact_args(self, tool_input: dict[str, Any], max_length: int = 60) -> str:
+    def _format_compact_args(
+        self, tool_input: dict[str, Any], max_length: int = 60
+    ) -> str:
         """Format tool arguments as compact Python-like syntax."""
         if not tool_input:
             return ""
 
         args = []
         for key, value in tool_input.items():
-            if key == 'description':
+            if key == "description":
                 continue
-            if key in ('old_string', 'new_string', 'prompt', 'content') and isinstance(value, str) and len(value) > 100:
+            if (
+                key in ("old_string", "new_string", "prompt", "content")
+                and isinstance(value, str)
+                and len(value) > 100
+            ):
                 continue
 
             if isinstance(value, str):
                 if len(value) > max_length:
-                    if '/' in value and key in ('file_path', 'path'):
-                        value = value.split('/')[-1]
+                    if "/" in value and key in ("file_path", "path"):
+                        value = value.split("/")[-1]
                     else:
-                        value = value[:max_length-3] + "..."
-                value = value.replace('"', '\\"').replace('\n', '\\n')
+                        value = value[: max_length - 3] + "..."
+                value = value.replace('"', '\\"').replace("\n", "\\n")
                 args.append(f'{key}="{value}"')
             elif isinstance(value, bool):
-                args.append(f'{key}={str(value)}')
+                args.append(f"{key}={value!s}")
             elif isinstance(value, (int, float)):
-                args.append(f'{key}={value}')
+                args.append(f"{key}={value}")
             elif isinstance(value, list):
                 if len(value) > 3:
-                    args.append(f'{key}=[{len(value)} items]')
+                    args.append(f"{key}=[{len(value)} items]")
                 else:
-                    args.append(f'{key}={value}')
+                    args.append(f"{key}={value}")
             elif isinstance(value, dict):
-                args.append(f'{key}={{...{len(value)} keys}}')
+                args.append(f"{key}={{...{len(value)} keys}}")
             else:
-                args.append(f'{key}=...')
+                args.append(f"{key}=...")
 
         return ", ".join(args)
 
     def _format_tool_operation(self, tool_block: dict[str, Any]) -> str:
         """Format a single tool operation."""
-        tool_name = tool_block.get('name', 'Unknown')
-        tool_input = tool_block.get('input', {})
+        tool_name = tool_block.get("name", "Unknown")
+        tool_input = tool_block.get("input", {})
 
-        if tool_name == 'TodoWrite':
+        if tool_name == "TodoWrite":
             return self._format_todowrite_operation(tool_input)
 
         # Make Skill invocations prominent
-        if tool_name == 'Skill':
-            skill_name = tool_input.get('skill', 'unknown')
+        if tool_name == "Skill":
+            skill_name = tool_input.get("skill", "unknown")
             return f"- **🔧 Skill invoked: `{skill_name}`**\n"
 
         # Make SlashCommand invocations prominent
-        if tool_name == 'SlashCommand':
-            command = tool_input.get('command', 'unknown')
+        if tool_name == "SlashCommand":
+            command = tool_input.get("command", "unknown")
             return f"- **📋 Command: `{command}`**\n"
 
-        description = tool_input.get('description', '')
+        description = tool_input.get("description", "")
 
         args = self._format_compact_args(tool_input, max_length=60)
         tool_call = f"{tool_name}({args})" if args else f"{tool_name}()"
 
         if description:
             return f"- {description}: {tool_call}\n"
-        else:
-            return f"- {tool_call}\n"
+        return f"- {tool_call}\n"
 
     def _format_todowrite_operation(self, tool_input: dict[str, Any]) -> str:
         """Format TodoWrite operations in compact checkbox format."""
-        todos = tool_input.get('todos', [])
+        todos = tool_input.get("todos", [])
 
         result = f"- **TodoWrite** ({len(todos)} items):\n"
 
         for todo in todos:
-            status = todo.get('status', 'pending')
-            content = todo.get('content', 'No description')
+            status = todo.get("status", "pending")
+            content = todo.get("content", "No description")
 
-            if status == 'completed':
-                symbol = '✓'
-            elif status == 'in_progress':
-                symbol = '▶'
+            if status == "completed":
+                symbol = "✓"
+            elif status == "in_progress":
+                symbol = "▶"
             else:
-                symbol = '□'
+                symbol = "□"
 
             content_preview = self._truncate_for_display(content, 80)
 
@@ -1152,7 +1300,7 @@ session_id: {session_uuid}
         text = text.strip()
         if not text:
             return text
-        if not (text.startswith('{') or text.startswith('[')):
+        if not (text.startswith("{") or text.startswith("[")):
             return text
         try:
             parsed = json.loads(text)
@@ -1162,15 +1310,15 @@ session_id: {session_uuid}
 
     def _truncate_for_display(self, text: str, max_length: int) -> str:
         """Truncate text for display."""
-        text = text.replace('\\n', '\n')
+        text = text.replace("\\n", "\n")
 
         if len(text) <= max_length:
             return text
 
         truncated = text[:max_length]
 
-        if len(text) > max_length and text[max_length] != ' ':
-            last_space = truncated.rfind(' ')
+        if len(text) > max_length and text[max_length] != " ":
+            last_space = truncated.rfind(" ")
             if last_space > max_length * 0.7:
                 truncated = truncated[:last_space]
 
