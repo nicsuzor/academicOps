@@ -299,7 +299,7 @@ def main() -> None:
     # Add metadata
     synthesis["generated"] = datetime.now(UTC).isoformat()
     synthesis["data_sources"] = {
-        "daily_log": bool(daily_log["primary_focus"]),
+        "daily_log": bool(daily_log["accomplishments"]) or bool(daily_log["primary_focus"]),
         "task_index": task_index["total_tasks"] > 0,
         "cloudflare": len(cloudflare_prompts) > 0,
     }
