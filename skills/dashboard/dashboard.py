@@ -109,6 +109,46 @@ PROJECT_COLORS = {
 DEFAULT_COLOR = '#ffb000'  # Amber for unknown projects
 
 
+def get_primary_focus() -> dict:
+    """Get the primary focus task for prominent dashboard display.
+
+    Checks daily log first, falls back to synthesis.json if available and fresh.
+
+    Returns:
+        Dict with keys:
+            - task_title: The primary task title (str)
+            - source: One of 'daily_log', 'synthesis', 'none'
+    """
+    from lib.session_analyzer import SessionAnalyzer
+
+    # Try daily log first
+    analyzer = SessionAnalyzer()
+    daily_log = analyzer.parse_daily_log()
+    if daily_log is not None and daily_log["primary_title"] is not None:
+        return {
+            "task_title": daily_log["primary_title"],
+            "source": "daily_log",
+        }
+
+    # Fall back to synthesis.json
+    synthesis = load_synthesis()
+    if synthesis is not None:
+        next_action = synthesis.get("next_action")
+        if next_action is not None:
+            task = next_action.get("task")
+            if task is not None and task != "":
+                return {
+                    "task_title": task,
+                    "source": "synthesis",
+                }
+
+    # No primary focus found
+    return {
+        "task_title": "",
+        "source": "none",
+    }
+
+
 def get_project_color(project: str) -> str:
     """Get color for project, matching Peacock scheme."""
     project_lower = project.lower()
