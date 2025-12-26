@@ -67,6 +67,43 @@ def get_waiting_tasks(task_index: dict | None) -> list[dict]:
     return [t for t in task_index.get('tasks', []) if t.get('status') == 'waiting']
 
 
+def get_priority_tasks() -> list[dict]:
+    """Get P0/P1 active tasks from task index.
+
+    Loads task index from $ACA_DATA/tasks/index.json and filters to
+    priority 0 or 1 tasks with 'active' status.
+
+    Returns:
+        List of task dicts with keys: title, priority, project, status.
+        Returns empty list if task index cannot be loaded.
+    """
+    task_index = load_task_index()
+    if not task_index:
+        return []
+
+    tasks = task_index.get('tasks', [])
+    result = []
+
+    for t in tasks:
+        priority = t.get('priority')
+        status = t.get('status')
+
+        # Filter to P0/P1 and active status
+        if priority is None or priority > 1:
+            continue
+        if status != 'active':
+            continue
+
+        result.append({
+            'title': t.get('title', ''),
+            'priority': priority,
+            'project': t.get('project', ''),
+            'status': status,
+        })
+
+    return result
+
+
 def get_next_actions(task_index: dict | None) -> list[dict]:
     """Get P0/P1 tasks with incomplete subtasks - the concrete next actions."""
     if not task_index:
