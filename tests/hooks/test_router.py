@@ -33,10 +33,11 @@ class TestOutputMerging:
             {"hookSpecificOutput": {"additionalContext": "Context from hook 3"}},
         ]
 
-        result = merge_outputs(outputs)
+        result = merge_outputs(outputs, "SessionStart")
 
         expected_context = "Context from hook 1\n\n---\n\nContext from hook 2\n\n---\n\nContext from hook 3"
         assert result["hookSpecificOutput"]["additionalContext"] == expected_context
+        assert result["hookSpecificOutput"]["hookEventName"] == "SessionStart"
 
     def test_merge_skips_empty_additional_context(self):
         """Empty additionalContext should not add separators."""
@@ -48,10 +49,11 @@ class TestOutputMerging:
             {"hookSpecificOutput": {"additionalContext": "Context 2"}},
         ]
 
-        result = merge_outputs(outputs)
+        result = merge_outputs(outputs, "PostToolUse")
 
         expected_context = "Context 1\n\n---\n\nContext 2"
         assert result["hookSpecificOutput"]["additionalContext"] == expected_context
+        assert result["hookSpecificOutput"]["hookEventName"] == "PostToolUse"
 
     def test_merge_system_message_concatenates_with_newlines(self):
         """systemMessage from multiple hooks should be joined with newlines."""
@@ -62,7 +64,7 @@ class TestOutputMerging:
             {"systemMessage": "Message 2"},
         ]
 
-        result = merge_outputs(outputs)
+        result = merge_outputs(outputs, "PreToolUse")
 
         assert result["systemMessage"] == "Message 1\nMessage 2"
 
@@ -70,7 +72,7 @@ class TestOutputMerging:
         """Empty output list should return minimal valid output."""
         from hooks.router import merge_outputs
 
-        result = merge_outputs([])
+        result = merge_outputs([], "SessionStart")
 
         assert result == {}
 
@@ -80,7 +82,7 @@ class TestOutputMerging:
 
         outputs = [{}, {}, {}]
 
-        result = merge_outputs(outputs)
+        result = merge_outputs(outputs, "Stop")
 
         assert result == {}
 

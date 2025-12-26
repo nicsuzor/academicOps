@@ -466,7 +466,7 @@ def route_hooks(input_data: dict[str, Any]) -> tuple[dict[str, Any], int]:
     outputs, exit_codes = dispatch_hooks(hooks, input_data)
 
     # Merge outputs
-    merged_output = merge_outputs(outputs)
+    merged_output = merge_outputs(outputs, event_name)
 
     # Aggregate exit codes
     final_exit_code = aggregate_exit_codes(exit_codes)
