@@ -17,8 +17,8 @@ import sys
 from datetime import UTC, datetime
 from pathlib import Path
 
-import anthropic
 import httpx
+import subprocess
 
 
 def get_data_dir() -> Path:
@@ -215,24 +215,21 @@ RULES:
 - Output ONLY valid JSON, no other text"""
 
 
-def call_claude_api(prompt: str) -> dict | None:
-    """Call Claude API to generate synthesis."""
-    api_key = os.environ.get("ANTHROPIC_API_KEY")
-    if not api_key:
-        print("ERROR: ANTHROPIC_API_KEY not set", file=sys.stderr)
-        return None
-
-    client = anthropic.Anthropic(api_key=api_key)
-
+def call_claude_headless(prompt: str) -> dict | None:
+    """Call Claude via headless mode (claude -p)."""
     try:
-        response = client.messages.create(
-            model="claude-sonnet-4-20250514",
-            max_tokens=1024,
-            messages=[{"role": "user", "content": prompt}],
+        result = subprocess.run(
+            ["claude", "-p", prompt],
+            capture_output=True,
+            text=True,
+            timeout=120,
         )
 
-        # Extract JSON from response
-        content = response.content[0].text
+        if result.returncode != 0:
+            print(f"ERROR: Claude headless failed: {result.stderr}", file=sys.stderr)
+            return None
+
+        content = result.stdout.strip()
 
         # Try to parse JSON directly
         try:
@@ -245,8 +242,14 @@ def call_claude_api(prompt: str) -> dict | None:
             print(f"WARNING: Could not parse JSON from response: {content[:200]}", file=sys.stderr)
             return None
 
+    except subprocess.TimeoutExpired:
+        print("ERROR: Claude headless timed out", file=sys.stderr)
+        return None
+    except FileNotFoundError:
+        print("ERROR: 'claude' command not found - is Claude Code installed?", file=sys.stderr)
+        return None
     except Exception as e:
-        print(f"ERROR: Claude API call failed: {e}", file=sys.stderr)
+        print(f"ERROR: Claude headless call failed: {e}", file=sys.stderr)
         return None
 
 
@@ -287,7 +290,7 @@ def main() -> None:
     )
 
     print("Calling Claude API for synthesis...")
-    synthesis = call_claude_api(prompt)
+    synthesis = call_claude_headless(prompt)
 
     if not synthesis:
         print("ERROR: Failed to generate synthesis", file=sys.stderr)
