@@ -218,6 +218,16 @@ The router IS the Level 2 mechanism. It replaces static JIT injection with intel
 
 **If router guidance ignored** → escalate to Level 3+ (tool restriction, pre-tool hooks)
 
+### Workflow Development Pattern
+
+**Commands → Router pipeline**:
+
+1. **Prototype with /commands**: Create a `/command` to test a workflow (e.g., `/qa`, `/ttd`)
+2. **Iterate**: Refine the workflow based on real usage
+3. **Graduate to router**: When workflow is proven, add it to the intent router for automatic/general application
+
+This allows testing strict workflows (e.g., supervisor-only mode, mandatory subagent delegation) before making them default behavior. Commands are explicit user invocation; router is automatic steering.
+
 ## Open Questions
 
 - How to enforce skill invocation without blocking legitimate direct operations?
