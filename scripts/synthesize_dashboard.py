@@ -1,0 +1,323 @@
+#!/usr/bin/env python3
+"""Synthesize dashboard data using LLM.
+
+Reads multiple data sources and uses Claude to generate a synthesis
+that helps the user understand what to focus on next.
+
+Usage:
+    uv run python scripts/synthesize_dashboard.py
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import re
+import sys
+from datetime import UTC, datetime
+from pathlib import Path
+
+import anthropic
+import httpx
+
+
+def get_data_dir() -> Path:
+    """Get data directory from ACA_DATA env var."""
+    aca_data = os.environ.get("ACA_DATA")
+    if not aca_data:
+        print("ERROR: ACA_DATA environment variable not set", file=sys.stderr)
+        sys.exit(1)
+    return Path(aca_data)
+
+
+def load_daily_log(data_dir: Path) -> dict:
+    """Load today's daily log and extract key info."""
+    today = datetime.now().strftime("%Y%m%d")
+    daily_path = data_dir / "sessions" / f"{today}-daily.md"
+
+    result = {
+        "primary_focus": None,
+        "accomplishments": [],
+        "blockers": [],
+    }
+
+    if not daily_path.exists():
+        return result
+
+    content = daily_path.read_text(encoding="utf-8")
+
+    # Extract PRIMARY section
+    primary_match = re.search(r"## PRIMARY[:\s]+(.+?)(?=\n##|\Z)", content, re.DOTALL)
+    if primary_match:
+        primary_section = primary_match.group(1).strip()
+        # Get first line as title
+        lines = primary_section.split("\n")
+        if lines:
+            result["primary_focus"] = lines[0].strip().lstrip("#").strip()
+
+    # Extract accomplishments (checked items)
+    accomplishments = re.findall(r"- \[x\] (.+)", content, re.IGNORECASE)
+    result["accomplishments"] = accomplishments[:10]  # Limit to 10
+
+    # Extract blockers
+    blocker_match = re.search(r"## BLOCKERS?\s*\n(.*?)(?=\n##|\Z)", content, re.DOTALL | re.IGNORECASE)
+    if blocker_match:
+        blockers = re.findall(r"- (.+)", blocker_match.group(1))
+        result["blockers"] = blockers[:5]
+
+    return result
+
+
+def load_task_index(data_dir: Path) -> dict:
+    """Load task index and extract priority tasks."""
+    index_path = data_dir / "tasks" / "index.json"
+
+    result = {
+        "p0_tasks": [],
+        "p1_tasks": [],
+        "waiting_tasks": [],
+        "total_tasks": 0,
+    }
+
+    if not index_path.exists():
+        return result
+
+    with open(index_path, encoding="utf-8") as f:
+        index = json.load(f)
+
+    result["total_tasks"] = index.get("total_tasks", 0)
+
+    for task in index.get("tasks", []):
+        # Skip archived tasks
+        if task.get("status") == "archived":
+            continue
+
+        priority = task.get("priority")
+        status = task.get("status")
+
+        task_summary = {
+            "title": task.get("title", "")[:60],
+            "project": task.get("project", "uncategorized"),
+            "subtasks_done": task.get("subtasks_done", 0),
+            "subtasks_total": task.get("subtasks_total", 0),
+        }
+
+        if status == "waiting":
+            result["waiting_tasks"].append(task_summary)
+        elif priority == 0:
+            result["p0_tasks"].append(task_summary)
+        elif priority == 1:
+            result["p1_tasks"].append(task_summary)
+
+    # Limit results
+    result["p0_tasks"] = result["p0_tasks"][:6]
+    result["p1_tasks"] = result["p1_tasks"][:4]
+    result["waiting_tasks"] = result["waiting_tasks"][:4]
+
+    return result
+
+
+def fetch_cloudflare_prompts() -> list[dict]:
+    """Fetch recent prompts from Cloudflare R2."""
+    api_key = os.environ.get("PROMPT_LOG_API_KEY")
+    if not api_key:
+        return []
+
+    try:
+        response = httpx.get(
+            "https://prompt-logs.nicsuzor.workers.dev/read",
+            headers={"Authorization": f"Bearer {api_key}"},
+            timeout=10.0,
+        )
+        response.raise_for_status()
+        prompts = response.json()  # Returns list directly
+
+        # Parse JSON content from each prompt (same as dashboard)
+        result = []
+        for p in prompts[:10]:
+            try:
+                content = p.get("content", "")
+                if content.startswith("{"):
+                    data = json.loads(content)
+                    result.append({
+                        "prompt": data.get("prompt", "")[:100],
+                        "project": data.get("project", ""),
+                        "hostname": data.get("hostname", ""),
+                        "timestamp": p.get("timestamp", ""),
+                    })
+                else:
+                    # Plain text prompt (legacy)
+                    result.append({
+                        "prompt": content[:100],
+                        "project": "",
+                        "hostname": "unknown",
+                        "timestamp": p.get("timestamp", ""),
+                    })
+            except (json.JSONDecodeError, AttributeError):
+                continue
+        return result
+    except Exception as e:
+        print(f"WARNING: Could not fetch Cloudflare prompts: {e}", file=sys.stderr)
+        return []
+
+
+def get_hostname() -> str:
+    """Get current machine hostname."""
+    import socket
+    return socket.gethostname()
+
+
+SYNTHESIS_PROMPT = """You are a focus coach helping someone with ADHD regain context after a break.
+
+INPUT DATA:
+- STATED FOCUS: {primary_focus}
+- ACCOMPLISHMENTS TODAY ({accomplishment_count}): {accomplishments}
+- P0 TASKS (urgent): {p0_tasks}
+- P1 TASKS (high priority): {p1_tasks}
+- WAITING ON: {waiting_tasks}
+- RECENT ACTIVITY (last prompts): {recent_prompts}
+- CURRENT MACHINE: {hostname}
+
+Analyze this data and output a JSON object with these fields:
+
+{{
+  "accomplishments": {{
+    "count": <number of items done>,
+    "summary": "<1-sentence summary of what was accomplished>",
+    "highlight": "<the most significant accomplishment>"
+  }},
+  "alignment": {{
+    "status": "<one of: on_track, drifted, blocked>",
+    "note": "<1-sentence explaining alignment between activity and priorities>"
+  }},
+  "next_action": {{
+    "task": "<specific task title to do next>",
+    "reason": "<why this task - consider cognitive load, momentum, urgency>",
+    "project": "<project slug>"
+  }},
+  "context": {{
+    "last_machine": "<machine name from recent activity>",
+    "last_project": "<project from recent activity>",
+    "recent_threads": ["<topic 1>", "<topic 2>"]
+  }},
+  "waiting_on": [
+    {{"task": "<task title>", "blocker": "<what's blocking it>"}}
+  ],
+  "suggestion": "<optional tactical suggestion, e.g. 'batch related tasks'>"
+}}
+
+RULES:
+- Pick ONE next_action from P0 tasks if any exist, otherwise P1
+- If multiple P0 tasks relate to same project, suggest batching in suggestion field
+- alignment.status: "on_track" if recent activity matches priorities, "drifted" if working on non-priority items, "blocked" if waiting tasks are blocking progress
+- Keep all text fields concise (under 80 chars each)
+- reason should consider: cognitive load (review vs create), momentum (continue vs switch), dependencies
+- Output ONLY valid JSON, no other text"""
+
+
+def call_claude_api(prompt: str) -> dict | None:
+    """Call Claude API to generate synthesis."""
+    api_key = os.environ.get("ANTHROPIC_API_KEY")
+    if not api_key:
+        print("ERROR: ANTHROPIC_API_KEY not set", file=sys.stderr)
+        return None
+
+    client = anthropic.Anthropic(api_key=api_key)
+
+    try:
+        response = client.messages.create(
+            model="claude-sonnet-4-20250514",
+            max_tokens=1024,
+            messages=[{"role": "user", "content": prompt}],
+        )
+
+        # Extract JSON from response
+        content = response.content[0].text
+
+        # Try to parse JSON directly
+        try:
+            return json.loads(content)
+        except json.JSONDecodeError:
+            # Try to extract JSON from markdown code block
+            json_match = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", content, re.DOTALL)
+            if json_match:
+                return json.loads(json_match.group(1))
+            print(f"WARNING: Could not parse JSON from response: {content[:200]}", file=sys.stderr)
+            return None
+
+    except Exception as e:
+        print(f"ERROR: Claude API call failed: {e}", file=sys.stderr)
+        return None
+
+
+def main() -> None:
+    """Main entry point."""
+    data_dir = get_data_dir()
+
+    # Load all data sources
+    print("Loading daily log...")
+    daily_log = load_daily_log(data_dir)
+
+    print("Loading task index...")
+    task_index = load_task_index(data_dir)
+
+    print("Fetching Cloudflare prompts...")
+    cloudflare_prompts = fetch_cloudflare_prompts()
+
+    hostname = get_hostname()
+
+    # Format data for prompt
+    accomplishments_str = "; ".join(daily_log["accomplishments"][:5]) if daily_log["accomplishments"] else "None recorded"
+    p0_str = "; ".join([f"{t['title']} (#{t['project']})" for t in task_index["p0_tasks"]]) if task_index["p0_tasks"] else "None"
+    p1_str = "; ".join([f"{t['title']} (#{t['project']})" for t in task_index["p1_tasks"]]) if task_index["p1_tasks"] else "None"
+    waiting_str = "; ".join([f"{t['title']} (#{t['project']})" for t in task_index["waiting_tasks"]]) if task_index["waiting_tasks"] else "None"
+
+    prompts_str = "; ".join([f"[{p['project']}@{p['hostname']}] {p['prompt']}" for p in cloudflare_prompts[:5]]) if cloudflare_prompts else "No recent activity"
+
+    # Build prompt
+    prompt = SYNTHESIS_PROMPT.format(
+        primary_focus=daily_log["primary_focus"] or "Not set",
+        accomplishment_count=len(daily_log["accomplishments"]),
+        accomplishments=accomplishments_str,
+        p0_tasks=p0_str,
+        p1_tasks=p1_str,
+        waiting_tasks=waiting_str,
+        recent_prompts=prompts_str,
+        hostname=hostname,
+    )
+
+    print("Calling Claude API for synthesis...")
+    synthesis = call_claude_api(prompt)
+
+    if not synthesis:
+        print("ERROR: Failed to generate synthesis", file=sys.stderr)
+        sys.exit(1)
+
+    # Add metadata
+    synthesis["generated"] = datetime.now(UTC).isoformat()
+    synthesis["data_sources"] = {
+        "daily_log": bool(daily_log["primary_focus"]),
+        "task_index": task_index["total_tasks"] > 0,
+        "cloudflare": len(cloudflare_prompts) > 0,
+    }
+
+    # Write output
+    output_dir = data_dir / "dashboard"
+    output_dir.mkdir(exist_ok=True)
+    output_path = output_dir / "synthesis.json"
+
+    with open(output_path, "w", encoding="utf-8") as f:
+        json.dump(synthesis, f, indent=2, ensure_ascii=False)
+
+    print(f"Wrote synthesis to {output_path}")
+
+    # Print summary
+    print("\n=== SYNTHESIS ===")
+    print(f"Accomplishments: {synthesis.get('accomplishments', {}).get('summary', 'N/A')}")
+    print(f"Alignment: {synthesis.get('alignment', {}).get('status', 'N/A')} - {synthesis.get('alignment', {}).get('note', '')}")
+    print(f"Next action: {synthesis.get('next_action', {}).get('task', 'N/A')}")
+    print(f"Reason: {synthesis.get('next_action', {}).get('reason', 'N/A')}")
+
+
+if __name__ == "__main__":
+    main()

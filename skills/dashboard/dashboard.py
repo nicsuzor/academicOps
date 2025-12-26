@@ -36,6 +36,29 @@ def load_task_index() -> dict | None:
         return None
 
 
+def load_synthesis() -> dict | None:
+    """Load LLM synthesis from synthesis.json if fresh (< 10 min old)."""
+    aca_data = os.environ.get('ACA_DATA')
+    if not aca_data:
+        return None
+
+    synthesis_path = Path(aca_data) / 'dashboard' / 'synthesis.json'
+    if not synthesis_path.exists():
+        return None
+
+    try:
+        # Check if file is fresh (< 10 minutes old)
+        mtime = synthesis_path.stat().st_mtime
+        age_minutes = (datetime.now().timestamp() - mtime) / 60
+        if age_minutes > 10:
+            return None  # Stale, don't use
+
+        with open(synthesis_path) as f:
+            return json.load(f)
+    except Exception:
+        return None
+
+
 def get_waiting_tasks(task_index: dict | None) -> list[dict]:
     """Get tasks with waiting status from index."""
     if not task_index:
@@ -680,6 +703,112 @@ st.markdown("""
         margin-left: 8px;
     }
 
+    /* LLM Synthesis panels */
+    .synthesis-panel {
+        background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+        border: 2px solid #6366f1;
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 16px;
+    }
+
+    .synthesis-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 16px;
+    }
+
+    .synthesis-title {
+        color: #a5b4fc;
+        font-size: 1.2em;
+        font-weight: bold;
+    }
+
+    .synthesis-age {
+        color: #64748b;
+        font-size: 0.75em;
+    }
+
+    .synthesis-next {
+        background: linear-gradient(135deg, #312e81 0%, #1e1b4b 100%);
+        border-left: 4px solid #818cf8;
+        padding: 12px 16px;
+        margin-bottom: 12px;
+        border-radius: 0 8px 8px 0;
+    }
+
+    .synthesis-next-label {
+        color: #818cf8;
+        font-size: 0.8em;
+        font-weight: bold;
+        margin-bottom: 4px;
+    }
+
+    .synthesis-next-task {
+        color: #e0e7ff;
+        font-size: 1.1em;
+        font-weight: 600;
+    }
+
+    .synthesis-next-reason {
+        color: #94a3b8;
+        font-size: 0.85em;
+        margin-top: 6px;
+        font-style: italic;
+    }
+
+    .synthesis-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+    }
+
+    .synthesis-card {
+        background: rgba(30, 27, 75, 0.5);
+        border-radius: 8px;
+        padding: 12px;
+    }
+
+    .synthesis-card-title {
+        font-size: 0.75em;
+        font-weight: bold;
+        margin-bottom: 6px;
+    }
+
+    .synthesis-card-content {
+        font-size: 0.85em;
+    }
+
+    .synthesis-card.done .synthesis-card-title { color: #4ade80; }
+    .synthesis-card.done .synthesis-card-content { color: #86efac; }
+
+    .synthesis-card.alignment .synthesis-card-title { color: #fbbf24; }
+    .synthesis-card.alignment .synthesis-card-content { color: #fde68a; }
+    .synthesis-card.alignment.on_track .synthesis-card-title { color: #4ade80; }
+    .synthesis-card.alignment.on_track .synthesis-card-content { color: #86efac; }
+    .synthesis-card.alignment.blocked .synthesis-card-title { color: #f87171; }
+    .synthesis-card.alignment.blocked .synthesis-card-content { color: #fca5a5; }
+
+    .synthesis-card.context .synthesis-card-title { color: #60a5fa; }
+    .synthesis-card.context .synthesis-card-content { color: #93c5fd; }
+
+    .synthesis-card.waiting .synthesis-card-title { color: #f87171; }
+    .synthesis-card.waiting .synthesis-card-content { color: #fca5a5; }
+
+    .synthesis-suggestion {
+        background: rgba(99, 102, 241, 0.2);
+        border-radius: 6px;
+        padding: 10px 12px;
+        margin-top: 12px;
+        color: #a5b4fc;
+        font-size: 0.85em;
+    }
+
+    .synthesis-suggestion::before {
+        content: "💡 ";
+    }
+
 </style>
 """, unsafe_allow_html=True)
 
@@ -690,62 +819,131 @@ def esc(text):
 # Initialize analyzer for daily log
 analyzer = SessionAnalyzer()
 
-# Load task index for synthesis
+# Load task index and synthesis
 task_index = load_task_index()
+synthesis = load_synthesis()
 
-# === WHAT NOW? SYNTHESIS PANEL ===
-next_actions = get_next_actions(task_index)
-waiting_tasks = get_waiting_tasks(task_index)
+# === LLM SYNTHESIS PANEL (if available) ===
+if synthesis:
+    # Calculate age
+    generated = synthesis.get('generated', '')
+    age_str = ""
+    if generated:
+        try:
+            gen_time = datetime.fromisoformat(generated.replace('Z', '+00:00'))
+            age_min = int((datetime.now(timezone.utc) - gen_time).total_seconds() / 60)
+            age_str = f"{age_min}m ago"
+        except Exception:
+            pass
 
-if next_actions or waiting_tasks:
-    what_now_html = """
-    <div class='what-now-panel'>
-        <div class='what-now-title'>🧭 WHAT NOW?</div>
-    """
+    synth_html = "<div class='synthesis-panel'>"
+    synth_html += f"<div class='synthesis-header'><div class='synthesis-title'>🧠 FOCUS SYNTHESIS</div><div class='synthesis-age'>{age_str}</div></div>"
 
-    # What should I be doing? - Next actions
-    if next_actions:
-        what_now_html += """
-        <div class='what-now-section'>
-            <div class='what-now-section-title'>📋 NEXT ACTIONS</div>
-        """
-        for task in next_actions[:4]:
-            title = esc(task.get('title', '')[:50])
-            if len(task.get('title', '')) > 50:
-                title += '...'
+    # Next action - prominent
+    next_action = synthesis.get('next_action', {})
+    if next_action.get('task'):
+        synth_html += "<div class='synthesis-next'>"
+        synth_html += "<div class='synthesis-next-label'>➡️ NEXT ACTION</div>"
+        synth_html += f"<div class='synthesis-next-task'>{esc(next_action.get('task', ''))}</div>"
+        if next_action.get('reason'):
+            synth_html += f"<div class='synthesis-next-reason'>{esc(next_action.get('reason', ''))}</div>"
+        synth_html += "</div>"
 
-            priority = f"P{task.get('priority')}" if task.get('priority') is not None else ""
-            progress = ""
-            done = task.get('subtasks_done', 0)
-            total = task.get('subtasks_total', 0)
-            if total > 0:
-                progress = f"<span class='what-now-progress'>[{done}/{total}]</span>"
+    # Grid of cards
+    synth_html += "<div class='synthesis-grid'>"
 
-            project = task.get('project', '')
-            project_tag = f" <span style='color:#666;'>#{esc(project)}</span>" if project and project != 'uncategorized' else ""
+    # Done card
+    accomplishments = synthesis.get('accomplishments', {})
+    if accomplishments.get('summary'):
+        synth_html += "<div class='synthesis-card done'>"
+        synth_html += f"<div class='synthesis-card-title'>✅ DONE ({accomplishments.get('count', 0)})</div>"
+        synth_html += f"<div class='synthesis-card-content'>{esc(accomplishments.get('summary', ''))}</div>"
+        synth_html += "</div>"
 
-            what_now_html += f"<div class='what-now-item action'><strong>{priority}</strong> {title}{progress}{project_tag}</div>"
+    # Alignment card
+    alignment = synthesis.get('alignment', {})
+    if alignment.get('note'):
+        status = alignment.get('status', 'drifted')
+        status_class = f"alignment {status}"
+        status_icon = "✅" if status == "on_track" else "⚠️" if status == "drifted" else "🚫"
+        synth_html += f"<div class='synthesis-card {status_class}'>"
+        synth_html += f"<div class='synthesis-card-title'>{status_icon} ALIGNMENT</div>"
+        synth_html += f"<div class='synthesis-card-content'>{esc(alignment.get('note', ''))}</div>"
+        synth_html += "</div>"
+
+    # Context card
+    context = synthesis.get('context', {})
+    if context.get('recent_threads'):
+        threads = ", ".join(context.get('recent_threads', [])[:2])
+        synth_html += "<div class='synthesis-card context'>"
+        synth_html += "<div class='synthesis-card-title'>📍 CONTEXT</div>"
+        synth_html += f"<div class='synthesis-card-content'>{esc(threads)}</div>"
+        synth_html += "</div>"
+
+    # Waiting card
+    waiting_on = synthesis.get('waiting_on', [])
+    if waiting_on:
+        first_blocker = waiting_on[0]
+        synth_html += "<div class='synthesis-card waiting'>"
+        synth_html += f"<div class='synthesis-card-title'>⏳ BLOCKED ({len(waiting_on)})</div>"
+        synth_html += f"<div class='synthesis-card-content'>{esc(first_blocker.get('task', ''))}</div>"
+        synth_html += "</div>"
+
+    synth_html += "</div>"  # End grid
+
+    # Suggestion
+    suggestion = synthesis.get('suggestion')
+    if suggestion:
+        synth_html += f"<div class='synthesis-suggestion'>{esc(suggestion)}</div>"
+
+    synth_html += "</div>"  # End panel
+    st.markdown(synth_html, unsafe_allow_html=True)
+
+else:
+    # Fallback: Show basic What Now panel from task index
+    next_actions = get_next_actions(task_index)
+    waiting_tasks = get_waiting_tasks(task_index)
+
+    if next_actions or waiting_tasks:
+        what_now_html = "<div class='what-now-panel'><div class='what-now-title'>🧭 WHAT NOW?</div>"
+
+        # What should I be doing? - Next actions
+        if next_actions:
+            what_now_html += "<div class='what-now-section'><div class='what-now-section-title'>📋 NEXT ACTIONS</div>"
+            for task in next_actions[:4]:
+                title = esc(task.get('title', '')[:50])
+                if len(task.get('title', '')) > 50:
+                    title += '...'
+
+                priority = f"P{task.get('priority')}" if task.get('priority') is not None else ""
+                progress = ""
+                done = task.get('subtasks_done', 0)
+                total = task.get('subtasks_total', 0)
+                if total > 0:
+                    progress = f"<span class='what-now-progress'>[{done}/{total}]</span>"
+
+                project = task.get('project', '')
+                project_tag = f" <span style='color:#666;'>#{esc(project)}</span>" if project and project != 'uncategorized' else ""
+
+                what_now_html += f"<div class='what-now-item action'><strong>{priority}</strong> {title}{progress}{project_tag}</div>"
+
+            what_now_html += "</div>"
+
+        # What am I waiting on?
+        if waiting_tasks:
+            what_now_html += f"<div class='what-now-section'><div class='what-now-section-title'>⏳ WAITING ON ({len(waiting_tasks)})</div>"
+            for task in waiting_tasks[:3]:
+                title = esc(task.get('title', '')[:45])
+                if len(task.get('title', '')) > 45:
+                    title += '...'
+                what_now_html += f"<div class='what-now-item waiting'>{title}</div>"
+
+            if len(waiting_tasks) > 3:
+                what_now_html += f"<div class='what-now-item waiting' style='color:#888;'>+{len(waiting_tasks)-3} more</div>"
+            what_now_html += "</div>"
 
         what_now_html += "</div>"
-
-    # What am I waiting on?
-    if waiting_tasks:
-        what_now_html += f"""
-        <div class='what-now-section'>
-            <div class='what-now-section-title'>⏳ WAITING ON ({len(waiting_tasks)})</div>
-        """
-        for task in waiting_tasks[:3]:
-            title = esc(task.get('title', '')[:45])
-            if len(task.get('title', '')) > 45:
-                title += '...'
-            what_now_html += f"<div class='what-now-item waiting'>{title}</div>"
-
-        if len(waiting_tasks) > 3:
-            what_now_html += f"<div class='what-now-item waiting' style='color:#888;'>+{len(waiting_tasks)-3} more</div>"
-        what_now_html += "</div>"
-
-    what_now_html += "</div>"
-    st.markdown(what_now_html, unsafe_allow_html=True)
+        st.markdown(what_now_html, unsafe_allow_html=True)
 
 # === NOW PANEL ===
 daily_log = analyzer.parse_daily_log()

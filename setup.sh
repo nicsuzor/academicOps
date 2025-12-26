@@ -222,12 +222,14 @@ if [ -f "$mcp_source" ] && command -v jq &> /dev/null; then
             ' "$mcp_source")
             echo "  Using container runtime: $CONTAINER_RUNTIME"
         else
+            # No container runtime - filter out container-based servers entirely
             mcp_patched=$(jq --arg home "$HOME" '
-                .mcpServers | to_entries | map(
-                    .value.args = (.value.args // [] | map(gsub("\\$HOME"; $home)))
-                ) | from_entries | {mcpServers: .}
+                .mcpServers | to_entries
+                | map(select(.value.command != "podman" and .value.command != "docker"))
+                | map(.value.args = (.value.args // [] | map(gsub("\\$HOME"; $home))))
+                | from_entries | {mcpServers: .}
             ' "$mcp_source")
-            echo -e "${YELLOW}  No container runtime - container-based MCP servers may not work${NC}"
+            echo -e "${YELLOW}  No container runtime - excluding container-based MCP servers (zot, osb)${NC}"
         fi
         # Replace mcpServers in ~/.claude.json (authoritative source wins, stale servers removed)
         echo "$mcp_patched" | jq -s '.[0] + .[1]' "$HOME/.claude.json" - > "$HOME/.claude.json.tmp" \
@@ -291,22 +293,40 @@ if [ -n "$CLAUDE_DESKTOP_DIR" ] && [ -d "$CLAUDE_DESKTOP_DIR" ] && command -v jq
     # Build PATH for GUI apps (they don't inherit shell PATH)
     GUI_PATH="$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
 
-    # Generate config: filter http servers, expand $HOME/$AOPS, set env vars
-    jq --arg uvx "$UVX_PATH" --arg path "$GUI_PATH" --arg runtime "${CONTAINER_RUNTIME:-docker}" \
-       --arg home "$HOME" --arg aops "$AOPS" --arg aca_data "$ACA_DATA" '
-        .mcpServers | to_entries
-        | map(select(.value.type != "http"))  # Filter out http transport (not supported)
-        | map(
-            if .value.command == "uvx" then
-                .value.command = $uvx |
-                .value.env = (.value.env // {}) + {"PATH": $path}
-            elif .value.command == "podman" or .value.command == "docker" then
-                .value.command = $runtime
-            else . end
-            | .value.args = (.value.args // [] | map(gsub("\\$HOME"; $home) | gsub("\\$AOPS"; $aops)))
-            | .value.env = ((.value.env // {}) + {"AOPS": $aops, "ACA_DATA": $aca_data})
-        ) | from_entries | {mcpServers: .}
-    ' "$mcp_source" > "$CLAUDE_DESKTOP_CONFIG"
+    # Generate config: filter http servers and container servers (if no runtime), expand $HOME/$AOPS
+    if [ -n "$CONTAINER_RUNTIME" ]; then
+        jq --arg uvx "$UVX_PATH" --arg path "$GUI_PATH" --arg runtime "$CONTAINER_RUNTIME" \
+           --arg home "$HOME" --arg aops "$AOPS" --arg aca_data "$ACA_DATA" '
+            .mcpServers | to_entries
+            | map(select(.value.type != "http"))  # Filter out http transport (not supported)
+            | map(
+                if .value.command == "uvx" then
+                    .value.command = $uvx |
+                    .value.env = (.value.env // {}) + {"PATH": $path}
+                elif .value.command == "podman" or .value.command == "docker" then
+                    .value.command = $runtime
+                else . end
+                | .value.args = (.value.args // [] | map(gsub("\\$HOME"; $home) | gsub("\\$AOPS"; $aops)))
+                | .value.env = ((.value.env // {}) + {"AOPS": $aops, "ACA_DATA": $aca_data})
+            ) | from_entries | {mcpServers: .}
+        ' "$mcp_source" > "$CLAUDE_DESKTOP_CONFIG"
+    else
+        # No container runtime - exclude container-based servers
+        jq --arg uvx "$UVX_PATH" --arg path "$GUI_PATH" \
+           --arg home "$HOME" --arg aops "$AOPS" --arg aca_data "$ACA_DATA" '
+            .mcpServers | to_entries
+            | map(select(.value.type != "http"))  # Filter out http transport (not supported)
+            | map(select(.value.command != "podman" and .value.command != "docker"))  # No container runtime
+            | map(
+                if .value.command == "uvx" then
+                    .value.command = $uvx |
+                    .value.env = (.value.env // {}) + {"PATH": $path}
+                else . end
+                | .value.args = (.value.args // [] | map(gsub("\\$HOME"; $home) | gsub("\\$AOPS"; $aops)))
+                | .value.env = ((.value.env // {}) + {"AOPS": $aops, "ACA_DATA": $aca_data})
+            ) | from_entries | {mcpServers: .}
+        ' "$mcp_source" > "$CLAUDE_DESKTOP_CONFIG"
+    fi
 
     echo -e "${GREEN}✓ Created $CLAUDE_DESKTOP_CONFIG${NC}"
     echo "  uvx path: $UVX_PATH"
