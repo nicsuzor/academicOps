@@ -427,18 +427,3 @@ print(current_status.name)  # "PROCESSING"
 print(current_status.value)  # 2
 ```
 
-## Related References
-
-- [[type-safety|Type Safety in Python]] - Dataclasses and type hints
-- [[code-quality|Python Code Quality]] - Code organization and conventions
-- [[fail-fast|Fail-Fast Philosophy]] - Error handling patterns
-
-## Summary
-
-- **pathlib** - Modern file operations
-- **f-strings** - String formatting
-- **Comprehensions** - Concise transformations
-- **Context managers** - Resource management with `with`
-- **Generators** - Memory-efficient iteration
-- **Dataclasses** - Simple data containers
-- **Enums** - Type-safe constants

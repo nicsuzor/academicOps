@@ -107,11 +107,12 @@ def main():
     temp_path = write_temp_file(context)
 
     # Instruct main agent to invoke router with file path
-    additional_context = f"""**ROUTE FIRST**: Invoke the intent router before proceeding:
+    # Level 2c enforcement: emphatic + reasoned (see docs/ENFORCEMENT.md)
+    additional_context = f"""**ROUTE FIRST** (saves you rework): The intent-router knows which skills and rules apply to THIS specific task. Without routing, you'll likely miss required steps (TodoWrite, Plan Mode, skill invocations) and need to redo work.
 
 Task(subagent_type="intent-router", model="haiku", prompt="Read {temp_path} and return guidance")
 
-Follow the router's output."""
+Follow the router's output - it's task-specific guidance, not generic rules."""
 
     hook_output: dict[str, Any] = {
         "hookEventName": "UserPromptSubmit",

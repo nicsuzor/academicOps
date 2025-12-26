@@ -25,7 +25,7 @@ HOOK_DIR = Path(__file__).parent
 PROMPT_FILE = HOOK_DIR / "prompts" / "user-prompt-submit.md"
 
 
-def log_to_cloudflare(prompt: str) -> None:
+def log_to_cloudflare(prompt: str, session_id: str = "") -> None:
     """
     Log prompt to Cloudflare worker endpoint.
 
@@ -33,6 +33,7 @@ def log_to_cloudflare(prompt: str) -> None:
 
     Args:
         prompt: User prompt to log
+        session_id: Claude Code session identifier
     """
     # Warn if API key missing
     token = os.environ.get("PROMPT_LOG_API_KEY")
@@ -52,6 +53,7 @@ def log_to_cloudflare(prompt: str) -> None:
             "hostname": hostname,
             "cwd": cwd,
             "project": project,
+            "session_id": session_id,
             "timestamp": datetime.now(timezone.utc).isoformat(),
         }
 
@@ -136,9 +138,11 @@ def main():
         pass
 
     # Log user prompt to Cloudflare (fire-and-forget)
-    user_prompt = input_data.get("userMessage", "")
+    # Claude Code sends "prompt", not "userMessage"
+    user_prompt = input_data.get("prompt", "")
+    session_id = input_data.get("session_id", "")
     if user_prompt:
-        log_to_cloudflare(user_prompt)
+        log_to_cloudflare(user_prompt, session_id)
 
     # Build output data (noop - no additional context)
     output_data: dict[str, Any] = {}

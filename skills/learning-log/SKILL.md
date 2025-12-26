@@ -10,7 +10,7 @@ permalink: skills-learning-log
 
 Document agent behavior patterns as GitHub Issues (per AXIOMS #28: episodic content → GitHub Issues).
 
-**Key change (v3.0)**: All observations now go to GitHub Issues in `nicsuzor/writing` repo, NOT local files.
+**Key change (v3.0)**: All observations now go to GitHub Issues in `nicsuzor/academicOps` repo, NOT local files.
 
 ## Workflow
 
@@ -19,7 +19,7 @@ Document agent behavior patterns as GitHub Issues (per AXIOMS #28: episodic cont
 **First**: Search for existing Issue that matches this observation:
 
 ```bash
-gh issue list --repo nicsuzor/writing --label "[category]" --search "[keywords]" --state open
+gh issue list --repo nicsuzor/academicOps --label "[category]" --search "[keywords]" --state open
 ```
 
 Categories/labels:
@@ -33,7 +33,7 @@ Categories/labels:
 **If matching Issue exists**: Add comment with new observation
 
 ```bash
-gh issue comment [ISSUE_NUMBER] --repo nicsuzor/writing --body "## Observation [DATE]
+gh issue comment [ISSUE_NUMBER] --repo nicsuzor/academicOps --body "## Observation [DATE]
 
 **What**: [description]
 **Context**: [when/where]
@@ -43,7 +43,7 @@ gh issue comment [ISSUE_NUMBER] --repo nicsuzor/writing --body "## Observation [
 **If no matching Issue**: Create new Issue
 
 ```bash
-gh issue create --repo nicsuzor/writing \
+gh issue create --repo nicsuzor/academicOps \
   --title "[category]: [descriptive-title]" \
   --label "[category]" \
   --body "## Initial Observation
@@ -279,11 +279,11 @@ When input contains `adjust-heuristic H[n]:`:
 User: /log agent ignored my explicit request to run ALL tests, only ran 3
 
 Phase 1 - Search:
-gh issue list --repo nicsuzor/writing --label "learning" --search "instruction scope" --state open
+gh issue list --repo nicsuzor/academicOps --label "learning" --search "instruction scope" --state open
 → Found: #42 "learning: agents ignoring explicit scope instructions"
 
 Phase 2 - Update existing Issue:
-gh issue comment 42 --repo nicsuzor/writing --body "## Observation 2025-12-14
+gh issue comment 42 --repo nicsuzor/academicOps --body "## Observation 2025-12-14
 
 **What**: Agent ran only 3 tests when explicitly asked to run ALL
 **Context**: During TDD workflow
@@ -298,11 +298,11 @@ Report: "Added observation to Issue #42 - recurring pattern of agents not attend
 User: /log hook crashed with TypeError in prompt_router.py
 
 Phase 1 - Search:
-gh issue list --repo nicsuzor/writing --label "bug" --search "prompt_router TypeError" --state open
+gh issue list --repo nicsuzor/academicOps --label "bug" --search "prompt_router TypeError" --state open
 → No matching issues
 
 Phase 2 - Create new Issue:
-gh issue create --repo nicsuzor/writing \
+gh issue create --repo nicsuzor/academicOps \
   --title "bug: prompt_router.py TypeError on None response" \
   --label "bug" \
   --body "## Initial Observation

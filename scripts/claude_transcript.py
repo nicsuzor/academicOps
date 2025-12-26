@@ -183,7 +183,8 @@ Examples:
         if generate_full:
             full_path = Path(f"{base_name}-full.md")
             markdown_full = processor.format_session_as_markdown(
-                session_summary, entries, agent_entries, include_tool_results=True, variant="full"
+                session_summary, entries, agent_entries,
+                include_tool_results=True, variant="full", source_file=str(jsonl_path.resolve())
             )
             with open(full_path, 'w', encoding='utf-8') as f:
                 f.write(markdown_full)
@@ -194,7 +195,8 @@ Examples:
         if generate_abridged:
             abridged_path = Path(f"{base_name}-abridged.md")
             markdown_abridged = processor.format_session_as_markdown(
-                session_summary, entries, agent_entries, include_tool_results=False, variant="abridged"
+                session_summary, entries, agent_entries,
+                include_tool_results=False, variant="abridged", source_file=str(jsonl_path.resolve())
             )
             with open(abridged_path, 'w', encoding='utf-8') as f:
                 f.write(markdown_abridged)

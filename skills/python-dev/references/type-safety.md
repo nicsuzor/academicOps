@@ -531,19 +531,3 @@ def fetch_or_default(user_id: Optional[str]) -> User:
     return fetch(user_id)
 ```
 
-## Related References
-
-- [[code-quality|Python Code Quality]] - Documentation and naming
-- [[fail-fast|Fail-Fast Philosophy]] - Validation at boundaries
-- [[modern-python|Modern Python Patterns]] - Dataclasses and other structures
-- [[fastapi|FastAPI]] - Type hints in API frameworks
-- [[testing|Python Testing Philosophy]] - Type hints in tests
-
-## Summary
-
-- **Type hints on all function signatures** - Parameters and returns
-- **Use Pydantic for validation** - Runtime type checking
-- **Optional for nullable** - Explicit about None
-- **Specific over Any** - Define structure when known
-- **Run mypy regularly** - Catch type errors early
-- **No `type: ignore`** - Fix types, don't suppress

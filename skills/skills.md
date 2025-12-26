@@ -55,7 +55,3 @@ tags: [framework, skills]
 - [[review-training/SKILL.md|review-training]] - Extract training pairs (review feedback → source evidence) from matched documents
 - [[training-set-builder/SKILL.md|training-set-builder]] - Extract structured training examples from document sets to build LLM datasets
 
-## Relations
-
-- parent: [[../README.md|academicOps]]
-- see also: [[../commands/commands.md|Commands]]

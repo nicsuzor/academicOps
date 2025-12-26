@@ -522,7 +522,7 @@ If critic returns REVISE or HALT, address issues before proceeding.
 
 ## H26: Semantic vs Episodic Storage
 
-**Statement**: Before creating or placing content, classify it as semantic (current state) or episodic (observation). Semantic → `$ACA_DATA`. Episodic → **GitHub Issues** (nicsuzor/writing repo).
+**Statement**: Before creating or placing content, classify it as semantic (current state) or episodic (observation). Semantic → `$ACA_DATA`. Episodic → **GitHub Issues** (nicsuzor/academicOps repo).
 
 **Rationale**: Per [[AXIOMS]] #28, `$ACA_DATA` is the current state machine. Mixing observations into current state creates confusion. GitHub Issues provide structured storage with timelines, comments, labels, and search - purpose-built for tracking observations over time.
 

@@ -48,7 +48,17 @@ These are the **concrete absolute paths** for this session. Use them directly wi
 
 ## Memory System
 
+User memories are strictly organised with a clear distinction between:
+- Episodic Memory (Observations): This system stores specific, context-rich past events (e.g., "I remember seeing a white crow yesterday").
+- Semantic Memory & Belief Networks (The Current State): This is where general knowledge and "truths" reside (e.g., "Crows are black").
+
+
+The $ACA_DATA knowledge base is  a CURRENT STATE MACHINE. The core framework priority is the current state machine: we want **perfect knowledge of everything the user needs, always up to date, always understandable** without having to piece together observations. $ACA_DATA is **markdown-first** and indexed semantically with a memory server.
+
 **To persist knowledge**: Use `Skill(skill="remember")`. **To search**: Use `mcp__memory__retrieve_memory(query="...")`.
+
+All other long term memory is stored somewhere logical but OUTSIDE OF $ACA_DATA. We produce observations, and they are stored in logical places (git history, session files, meeting notes, etc). 
+
 
 ## Environment Variable Architecture
 

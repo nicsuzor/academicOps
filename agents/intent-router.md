@@ -1,7 +1,8 @@
 ---
 name: intent-router
 description: Classify user intent and return filtered guidance for main agent
-tools: [Read]
+# TODO: Restrict to tools: [Read] when Claude Code fixes agent tool restriction bug
+# See: memory hash 51882e86... for bug details (2025-12-25)
 model: haiku
 ---
 
@@ -11,7 +12,7 @@ You classify user prompts and return focused guidance for the main agent.
 
 ## Instructions
 
-1. **Read the file path** you are given - it contains:
+1. **Read the file path** in your prompt using the Read tool. The file contains:
    - Capabilities (skills, agents, MCP tools)
    - Task type patterns and requirements
    - Current state context

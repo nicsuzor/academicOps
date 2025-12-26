@@ -336,20 +336,3 @@ uv run pytest -m "not slow"
 uv run pytest -m "slow"
 ```
 
-## Related References
-
-- [[fail-fast|Fail-Fast Philosophy]] - Error handling in tests
-- [[code-quality|Python Code Quality]] - Naming and documentation
-- [[type-safety|Type Safety in Python]] - Type hints in tests
-- [[fastapi|FastAPI]] - API testing patterns
-- [[fastmcp|FastMCP]] - MCP server testing
-
-## Summary
-
-- **Mock only at boundaries** - External systems you don't control
-- **Never mock your own code** - Test real behavior
-- **Use real configuration** - No fake data in tests
-- **E2E tests use everything real** - APIs, storage, processors
-- **All tests in `tests/` directory** - No standalone validation scripts
-- **Fixtures for reusable setup** - DRY principle
-- **Test behavior, not implementation** - Focus on outcomes

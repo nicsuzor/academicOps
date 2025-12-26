@@ -11,15 +11,35 @@ tags: [framework, enforcement, learning]
 
 ## Mechanism Ladder
 
+Agents are intelligent. They don't ignore instructions arbitrarily - they weigh competing priorities. Stronger emphasis and clearer reasons increase compliance. The ladder reflects both *mechanism type* and *persuasive strength*.
+
 | Level | Mechanism | Strength | Use When |
 |-------|-----------|----------|----------|
-| 1 | Prompt text (rules, heuristics) | Weakest | Behavior is occasional preference |
-| 2 | JIT context injection (hooks) | Medium | Agent needs information to comply |
+| 1a | Prompt text (mention) | Weakest | Nice-to-have suggestion |
+| 1b | Prompt text (explicit rule) | Weak | Stated rule but no emphasis |
+| 1c | Prompt text (emphasized + reasoned) | Medium-Weak | Rule with WHY it matters |
+| 2a | JIT injection (informational) | Medium-Weak | Agent lacks context to comply |
+| 2b | JIT injection (directive) | Medium | Direct instruction with action |
+| 2c | JIT injection (emphatic + reasoned) | Medium-Strong | Urgent instruction with clear stakes |
 | 3 | Skill abstraction | Strong | Hide complexity, force workflow |
 | 4 | Pre-tool-use hooks | Stronger | Block before damage occurs |
 | 5 | Post-tool-use validation | Strong | Catch violations, demand correction |
 | 6 | Deny rules (settings.json) | Strongest | Hard block, no exceptions |
 | 7 | Pre-commit hooks | Absolute | Last line of defense |
+
+### Prompt Strength Guidelines (Levels 1-2)
+
+The same information delivered differently has vastly different compliance rates:
+
+| Approach | Example | Compliance |
+|----------|---------|------------|
+| Mention | "Consider using TodoWrite" | Low |
+| Rule | "Use TodoWrite for multi-step tasks" | Medium-Low |
+| Emphasized | "**MANDATORY**: Use TodoWrite" | Medium |
+| Reasoned | "Use TodoWrite because [specific benefit to this task]" | Medium-High |
+| Emphatic + Reasoned | "**CRITICAL**: TodoWrite required - without it you'll lose track of the 5 steps needed here" | High |
+
+**Key insight**: Agents respond to *salience* and *relevance*. Generic rules compete with task urgency. Task-specific reasons connect enforcement to immediate goals.
 
 ## When Each Mechanism Works
 
@@ -27,31 +47,52 @@ tags: [framework, enforcement, learning]
 
 **Works when**: Agent has all information needed and behavior is about judgment/preference.
 
+**Sub-levels**:
+
+| Level | Style | When to Use |
+|-------|-------|-------------|
+| 1a | Mention ("consider X") | Optional preference, agent can override |
+| 1b | Rule ("always do X") | Expected behavior, no emphasis |
+| 1c | Emphatic + Reasoned ("**CRITICAL**: X because Y") | Must-follow, with task-specific stakes |
+
 **Fails when**:
 - Agent lacks context to comply (can't execute what it doesn't know)
-- Rule competes with stronger patterns (training, other instructions)
+- Rule competes with stronger patterns (training, task urgency)
 - Rule is too abstract to apply
+- Emphasis without reason (agent sees urgency but not relevance)
 
 **Evidence**:
 - "No mocks" rule exists but ignored → agents default to unit test patterns from training
 - "Fail-fast" rule exists but ignored → agents trained to be helpful, work around problems
+- Generic "MANDATORY" ignored → competes with immediate task; no task-specific reason given
 
-**Lesson**: Rules alone don't work when they fight strong priors. Need enforcement.
+**Lesson**: Rules alone don't work when they fight strong priors. **Reasoned emphasis** works better than bare rules. Connect enforcement to the specific task's success.
 
 ### Level 2: JIT Context Injection
 
-**Works when**: Agent would comply IF it had the information.
+**Works when**: Agent would comply IF it had the information AND recognizes relevance.
+
+**Sub-levels**:
+
+| Level | Style | When to Use |
+|-------|-------|-------------|
+| 2a | Informational ("here's context: X") | Agent needs facts to make good decision |
+| 2b | Directive ("do X before proceeding") | Clear action required, moderate stakes |
+| 2c | Emphatic + Reasoned ("**ROUTE FIRST**: X because without it you'll miss Y") | High-stakes action with specific consequences |
 
 **Fails when**:
 - Context arrives too late (after decision made)
 - Context too verbose (buried in noise)
-- Agent doesn't recognize relevance
+- Agent doesn't recognize relevance (no connection to current task)
+- Directive without reason (agent deprioritizes against task urgency)
 
 **Evidence**:
 - "Execute don't explore" problem: agents explore because they lack execution context
 - Fix isn't "stop exploring" - fix is inject execution context at the right moment
+- Prompt router 2b instruction ("invoke router") ignored → buried in system-reminders, no task-specific reason given
+- When injection includes WHY (task-specific benefit), compliance increases
 
-**Lesson**: If agents are searching for information, the fix is often to provide it, not prohibit searching.
+**Lesson**: If agents are searching for information, the fix is often to provide it, not prohibit searching. **Injected directives need task-specific reasons** - "do X" is weaker than "do X because it will help you with Y that you're about to do."
 
 ### Level 3: Skill Abstraction
 
@@ -127,11 +168,28 @@ tags: [framework, enforcement, learning]
 
 | Diagnosis | Wrong Solution | Right Solution |
 |-----------|----------------|----------------|
-| Agent explores when should execute | "Don't explore" rule | Inject execution context (Level 2) |
-| Agent uses mocks despite rule | Add another rule | Enforcement hook (Level 4) or skill wrapper (Level 3) |
-| Agent skips skill invocation | Stronger wording in prompt | Pre-tool block for sensitive paths (Level 4) |
-| Agent claims success without verification | Add AXIOM | Post-tool verification hook (Level 5) |
-| Agent creates backup files | Ask nicely | Deny rule (Level 6) |
+| Agent explores when should execute | "Don't explore" rule (1b) | Inject execution context (2a) |
+| Agent ignores rule without emphasis | Add more rules (1b) | Add task-specific reason (1c or 2c) |
+| Agent skips injected directive | Repeat directive louder | Add WHY - connect to current task (2c) |
+| Agent uses mocks despite rule | Add another rule (1b) | Enforcement hook (Level 4) or skill wrapper (Level 3) |
+| Agent skips skill invocation | "MANDATORY" without reason (1b) | Pre-tool block (Level 4) OR emphatic + reasoned (2c) |
+| Agent claims success without verification | Add AXIOM (1b) | Post-tool verification hook (Level 5) |
+| Agent creates backup files | Ask nicely (1a) | Deny rule (Level 6) |
+
+### Escalation Path for Prompt Router
+
+Current state: Level 2b (directive injection) - "invoke router before proceeding"
+
+Proposed escalation: Level 2c (emphatic + reasoned):
+```
+**ROUTE FIRST** (saves you time): The intent-router will tell you exactly which
+skills to invoke and rules to follow for THIS task. Without it, you'll likely
+miss required steps and need to redo work. Takes 2 seconds, saves minutes.
+
+Task(subagent_type="intent-router", ...)
+```
+
+If 2c fails → escalate to Level 4 (pre-tool hook that blocks first tool until router invoked).
 
 ## Open Questions
 

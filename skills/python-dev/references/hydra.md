@@ -957,13 +957,6 @@ def run(cfg: Config):  # Type-checked!
 
 ---
 
-## Related References
-
-- [[fail-fast|Fail-Fast Philosophy]] - Configuration validation patterns
-- [[type-safety|Type Safety in Python]] - Structured configs with dataclasses
-- [[testing|Python Testing Philosophy]] - Testing configuration loading
-- [[code-quality|Python Code Quality]] - Logging and documentation
-
 ## References
 
 - [Official Hydra Documentation](https://hydra.cc/)

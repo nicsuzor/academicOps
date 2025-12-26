@@ -7,6 +7,7 @@ permalink: skills-tasks
 ---
 
 # Task Management Skill
+Responsible for [[data/tasks/tasks|tasks]]
 
 ## Authoritative Domain Knowledge
 

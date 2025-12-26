@@ -171,11 +171,6 @@ query_job = client.query(query, job_config=job_config)
 print(f"This query will process {query_job.total_bytes_processed} bytes")
 ```
 
-## Related References
-
-- [[pandas|pandas]] - Data manipulation and analysis
-- [[hydra|Hydra]] - Configuration management
-
 ## Resources
 
 - Docs: https://cloud.google.com/bigquery/docs

@@ -193,7 +193,7 @@ $ACA_DATA/                 # User data repo (SEMANTIC ONLY)
     ├── ROADMAP.md         # Progression (edit in place)
     └── specs/             # Design documents (timeless)
 
-# Episodic content → GitHub Issues (nicsuzor/writing repo)
+# Episodic content → GitHub Issues (nicsuzor/academicOps repo)
 # Labels: bug, experiment, devlog, decision, learning
 # Session transcripts → ~/writing/sessions/ (archive)
 ```
@@ -393,7 +393,7 @@ Step-by-step guides for common framework operations:
 
 ## Framework Project Data (`$ACA_DATA/projects/aops/`)
 
-Per [[AXIOMS]] #28 (Current State Machine): `$ACA_DATA` contains ONLY semantic memory (current state). Episodic memory (observations) lives in **GitHub Issues** (nicsuzor/writing repo).
+Per [[AXIOMS]] #28 (Current State Machine): `$ACA_DATA` contains ONLY semantic memory (current state). Episodic memory (observations) lives in **GitHub Issues** (nicsuzor/academicOps repo).
 
 ### Storage Classification
 
@@ -411,7 +411,7 @@ Per [[AXIOMS]] #28 (Current State Machine): `$ACA_DATA` contains ONLY semantic m
 
 When you have an observation, investigation, or time-bound record:
 
-1. **Create GitHub Issue** in nicsuzor/writing repo
+1. **Create GitHub Issue** in nicsuzor/academicOps repo
 2. **Apply label**: `bug`, `experiment`, `devlog`, `decision`, or `learning`
 3. **Add observations** as Issue comments over time
 4. **Synthesize** when patterns emerge → update HEURISTICS.md or specs/
@@ -419,7 +419,7 @@ When you have an observation, investigation, or time-bound record:
 
 ```bash
 # Example: Create a bug investigation Issue
-gh issue create --repo nicsuzor/writing --title "Bug: [description]" --label "bug" --body "## Investigation\n\n[details]"
+gh issue create --repo nicsuzor/academicOps --title "Bug: [description]" --label "bug" --body "## Investigation\n\n[details]"
 ```
 
 ### Migration Path (Tech Debt)

@@ -143,3 +143,17 @@ Set to `true` to enable extended thinking mode by default.
 - Bash permission wildcards only work with prefix matching (`:*` syntax)
 - Hooks can use environment variables in commands (`$AOPS`, etc.)
 - Hook timeouts in milliseconds (default: 2000ms recommended)
+
+## Runtime Behavior
+
+### Subagent Isolation
+
+**Observed 2025-12-25**: Subagents invoked via the Task tool have isolated state.
+
+| State | Shared with Parent? |
+|-------|---------------------|
+| TodoWrite (todo list) | ❌ No - subagent todos don't persist to parent session |
+| File operations | ✅ Yes - verified bidirectional (parent↔subagent reads/writes) |
+| Memory server | ✅ Yes - mcp__memory__* calls persist globally |
+
+**Practical implication**: If you need todos visible in the main session, the main agent must create them directly. Cannot delegate todo creation to subagents.

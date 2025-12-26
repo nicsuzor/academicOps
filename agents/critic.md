@@ -1,6 +1,6 @@
 ---
 name: critic
-description: Lightweight second-opinion review of plans and conclusions
+description: Second-opinion review of plans and conclusions
 permalink: aops/agents/critic
 type: agent
 tags:
@@ -9,6 +9,7 @@ tags:
   - quality
 tools:
   - Read
+model: opus
 ---
 
 # Critic Agent

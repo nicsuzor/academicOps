@@ -50,22 +50,36 @@ Create missing folder/folder.md MoCs, update stale MoCs.
 Find restated content that should be links. See DRY Enforcement below.
 
 ### synthesize [area]
-Strip deliberation artifacts from implemented specs. See [[HEURISTICS.md#H23]] for rationale.
+De-temporalize content: strip deliberation artifacts from specs, and delete/consolidate agent-generated temporal logs. See [[HEURISTICS.md#H23]] and [[AXIOMS.md#13]] (Trust Version Control).
+
+**What's SACRED (never touch)**:
+- User-written meeting notes, file notes, journal entries
+- Research records, annotations, observations
+- Anything the user authored as a primary document
+
+**What can be de-temporalized** (agent-generated cruft):
+- Event logs: "X Cleanup - Month YYYY.md" where git has the commits
+- Decision records after implementation: options/alternatives sections
+- Temporal markers in reference docs: "as of YYYY", "TODO:", "considering"
 
 **Detection patterns**:
+- Files named with dates/months that document completed work
 - Specs with `status: Implemented` containing `## Options` or `## Alternatives`
-- Reference docs with "as of YYYY", "TODO:", "considering", "we might"
-- Specs >30 days since implementation with deliberation artifacts
+- Reference docs with temporal language that implies incompleteness
+- learning/ files that are event records, not reusable patterns
 
-**Workflow**:
-1. Scan specs/ for implemented items with deliberation cruft
-2. For each finding, show the artifact and ask:
-   - "Archive rationale to decisions/? [y/n]"
-   - "Strip from spec? [y/n]"
+**Workflow for specs**:
+1. Scan for implemented items with deliberation cruft
+2. For each: "Archive rationale to decisions/? Strip from spec?"
 3. Update spec, preserving acceptance criteria and current behavior
-4. Commit changes
 
-**Does NOT delete specs** - synthesizes them from deliberation mode to reference mode.
+**Workflow for temporal logs**:
+1. Check: Is this user-written or agent-generated?
+2. If agent-generated event record: Does git have the commits?
+3. Extract any reusable heuristics → promote to HEURISTICS.md
+4. Delete the temporal file (git is the archive)
+
+**Does NOT delete user content** - only agent-generated temporal records whose value is now in version control.
 
 ## DRY Enforcement (Critical)
 
@@ -128,9 +142,68 @@ Default: highest-activity areas (recent modifications).
 - Reorganize folder structures → Use MoCs for navigation
 - Restate core docs → Link or omit entirely
 - Perfectionism → Progress over perfection
+- **`## Relations` boilerplate** → Remove entirely (see below)
 
-## References
+## Relations Section Anti-Pattern
 
-- [[knowledge-management-philosophy]]
-- [[knowledge-base-consolidation]]
-- [[knowledge base]]
+**Problem:** Files with `## Relations` or `## References` sections containing boilerplate like:
+```markdown
+## Relations
+- part_of [[parent]]
+- related [[sibling]]
+```
+
+**Why it's wrong:**
+1. Relationships should emerge organically through in-content wikilinks
+2. `part_of` is redundant - folder structure shows hierarchy
+3. `related` links add no semantic value - everything is "related"
+4. Creates maintenance burden when structure changes
+5. MoCs exist for navigation - individual files don't need relationship metadata
+
+**Detection:**
+```bash
+grep -l "^## Relations$\|^## References$" $ACA_DATA/**/*.md
+grep -l "^- part_of \[\[" $ACA_DATA/**/*.md
+```
+
+**Fix - Link Migration Pattern:**
+
+1. **Check for orphan risk**: If Relations contains the ONLY links in the file, deleting creates orphans
+2. **Migrate meaningful links inline**: Convert first mention of linked entity to a wikilink in the body text
+   - `- colleague [[Brian Fitzgerald]]` → find "Brian Fitzgerald" in body, make it `[[Brian Fitzgerald]]`
+   - `- part_of [[QUT]]` → find "QUT" in body, make it `[[QUT]]`
+3. **Delete pure boilerplate**: `part_of [[contacts]]` adds nothing - just delete
+4. **Clean up merged content**: Files with "Merged from:" sections often have duplicate Relations - consolidate the file first
+
+**Example transformation:**
+```markdown
+# Before
+...worked with Brian Fitzgerald on CC licensing...
+## Relations
+- colleague [[Brian Fitzgerald]]
+- part_of [[contacts]]
+
+# After
+...worked with [[Brian Fitzgerald]] on CC licensing...
+```
+
+## Named Session Logs Anti-Pattern
+
+**Problem:** Individual session files like "Framework Logger Agent - First Production Use.md" or "ZotMCP Implementation Session 2025-11-22.md" duplicating what daily logs capture.
+
+**Why it's wrong:**
+1. Daily logs are the authoritative record of what happened each day
+2. Named session files fragment history across multiple locations
+3. Creates maintenance burden and stale cross-references
+4. Reusable patterns belong in learning/, not session logs
+
+**What to keep:**
+- Daily logs: `YYYYMMDD-daily.md`
+- Raw transcripts: `claude/*.md` (machine-generated, useful for analysis)
+
+**What to delete:**
+- Named session files: "X Implementation Session.md", "Y - First Use.md"
+- Session summaries that restate daily log content
+- Full transcript copies outside claude/ subdirectory
+
+**If valuable patterns exist:** Extract to learning/ as reusable pattern files, then delete the session log.

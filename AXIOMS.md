@@ -122,7 +122,7 @@ tags: [framework, principles, core]
 
 28. **CURRENT STATE MACHINE**: `$ACA_DATA` contains ONLY semantic memory - timeless truths, always up-to-date.
     - **Semantic memory** (current state): What IS true now. Understandable without history. Lives in `$ACA_DATA`.
-    - **Episodic memory** (observations): Time-stamped events. Lives in **GitHub Issues** (nicsuzor/writing repo).
+    - **Episodic memory** (observations): Time-stamped events. Lives in **GitHub Issues** (nicsuzor/academicOps repo).
     - **Episodic content includes**: Bug investigations, experiment observations, development logs, code change discussions, decision rationales, any observation at a point in time
     - **Synthesis flow**: Observations accumulate in Issues → patterns emerge → synthesize to semantic docs (HEURISTICS, specs) → close Issue with link to synthesized content
     - If you must read multiple files or piece together history to understand truth, it's not properly synthesized

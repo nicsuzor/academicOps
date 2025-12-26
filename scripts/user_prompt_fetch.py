@@ -62,6 +62,7 @@ def parse_prompt(entry: dict) -> dict:
             "timestamp": data.get("timestamp", ""),
             "hostname": data.get("hostname", "unknown"),
             "project": data.get("project", "unknown"),
+            "session_id": data.get("session_id", ""),
             "prompt": data.get("prompt", content),
             "cwd": data.get("cwd", ""),
         }
@@ -72,6 +73,7 @@ def parse_prompt(entry: dict) -> dict:
             "timestamp": dt.isoformat(),
             "hostname": "unknown",
             "project": "unknown",
+            "session_id": "",
             "prompt": content,
             "cwd": "",
         }
@@ -114,8 +116,9 @@ def main():
             ts = p["timestamp"][:19] if p["timestamp"] else "N/A"
             host = p["hostname"][:12]
             proj = p["project"][:12]
-            prompt = p["prompt"][:60].replace("\n", " ")
-            print(f"{ts} | {host:12} | {proj:12} | {prompt}...")
+            sess = p["session_id"][:8] if p["session_id"] else "--------"
+            prompt = p["prompt"][:50].replace("\n", " ")
+            print(f"{ts} | {host:12} | {proj:12} | {sess} | {prompt}...")
 
 
 if __name__ == "__main__":

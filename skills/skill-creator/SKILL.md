@@ -96,6 +96,8 @@ Add to SKILL.md header:
 - [ ] Specific instructions, not vague? ("2-3 sentences" not "be concise")
 - [ ] File stays <300 lines?
 - [ ] No FAQ or excessive background?
+- [ ] No "## Related References" wikilinks? (LLM already has references/)
+- [ ] No "## Summary" that repeats content above? (only if adding new actionable content)
 - [ ] Adding >10 lines? STOP → GitHub issue + approval
 
 **Enforcement Checklist** (for critical instructions):

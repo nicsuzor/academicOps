@@ -13,8 +13,12 @@ The SessionStart hook (hooks/sessionstart_load_axioms.py) MUST output:
 """
 
 import json
+import os
 import subprocess
 from pathlib import Path
+
+# AOPS root for PYTHONPATH (hooks use `from hooks.x import` which requires this)
+AOPS_ROOT = Path(__file__).parent.parent
 
 
 def test_sessionstart_hook_outputs_correct_json_format() -> None:
@@ -40,12 +44,14 @@ def test_sessionstart_hook_outputs_correct_json_format() -> None:
     assert hook_script.exists(), f"Hook script not found at {hook_script}"
 
     # Run hook script with empty stdin
+    env = {**os.environ, "PYTHONPATH": str(AOPS_ROOT)}
     result = subprocess.run(
         ["python3", str(hook_script)],
         capture_output=True,
         text=True,
         timeout=10,
         input="{}",  # Provide empty JSON input
+        env=env,
     )
 
     # Validate exit code

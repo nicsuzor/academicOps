@@ -565,7 +565,8 @@ class SessionProcessor:
         entries: list[Entry],
         agent_entries: dict[str, list[Entry]] | None = None,
         include_tool_results: bool = True,
-        variant: str = "full"
+        variant: str = "full",
+        source_file: str | Path | None = None
     ) -> str:
         """Format session entries as readable markdown."""
         session_uuid = session.uuid
@@ -582,7 +583,6 @@ class SessionProcessor:
         full_mode = (variant == "full")
         turns = self.group_entries_into_turns(entries, agent_entries, full_mode=full_mode)
 
-        skipped_hooks: dict[str, int] = {}
         markdown = ""
         turn_number = 0
         context_summary_started = False
@@ -656,9 +656,9 @@ class SessionProcessor:
             if user_message:
                 # Use different label for injected context vs actual user input
                 if is_meta:
-                    markdown += f"### 📥 Context Injected (Turn {turn_number}{timing_str})\n\n{user_message}\n\n"
+                    markdown += f"## 📥 Context Injected (Turn {turn_number}{timing_str})\n\n{user_message}\n\n"
                 else:
-                    markdown += f"### User (Turn {turn_number}{timing_str})\n\n{user_message}\n\n"
+                    markdown += f"## User (Turn {turn_number}{timing_str})\n\n{user_message}\n\n"
 
                 inline_hooks = turn.inline_hooks if isinstance(turn, ConversationTurn) else turn.get('inline_hooks', [])
                 if inline_hooks:
@@ -672,11 +672,8 @@ class SessionProcessor:
                         has_useful_content = content or skills_matched or files_loaded
                         is_error = exit_code is not None and exit_code != 0
 
-                        # Skip hooks without useful content (frontmatter has counts)
+                        # Skip hooks without useful content
                         if not has_useful_content and not is_error:
-                            tool_name = hook.get('tool_name')
-                            key = f"{event_name} ({tool_name})" if tool_name else event_name
-                            skipped_hooks[key] = skipped_hooks.get(key, 0) + 1
                             continue
 
                         # Build hook display - emit header once, then details
@@ -718,9 +715,9 @@ class SessionProcessor:
 
                         if not agent_header_emitted:
                             if subagent_id:
-                                markdown += f"### Agent ({subagent_id})\n\n"
+                                markdown += f"## Agent ({subagent_id})\n\n"
                             else:
-                                markdown += f"### Agent (Turn {turn_number})\n\n"
+                                markdown += f"## Agent (Turn {turn_number})\n\n"
                             agent_header_emitted = True
 
                         markdown += f"{content}\n\n"
@@ -751,11 +748,11 @@ class SessionProcessor:
                             tool_input = item.get('tool_input', {})
                             agent_type = tool_input.get('subagent_type', 'unknown')
                             agent_desc = tool_input.get('description', '')
-                            # Format: #### Subagent: type (description)
+                            # Format: ### Subagent: type (description)
                             if agent_desc:
-                                markdown += f"\n#### Subagent: {agent_type} ({agent_desc})\n\n"
+                                markdown += f"\n### Subagent: {agent_type} ({agent_desc})\n\n"
                             else:
-                                markdown += f"\n#### Subagent: {agent_type}\n\n"
+                                markdown += f"\n### Subagent: {agent_type}\n\n"
                             # Condense whitespace - join non-empty lines with single newlines
                             lines = item['sidechain_summary'].split('\n')
                             condensed = '\n'.join(line for line in lines if line.strip())
@@ -767,17 +764,13 @@ class SessionProcessor:
         title = session.summary or "Claude Code Session"
         permalink = f"sessions/claude/{session_uuid[:8]}-{variant}"
 
-        hooks_yaml = ""
-        if skipped_hooks:
-            hooks_yaml = "hooks_fired:\n"
-            for k, v in sorted(skipped_hooks.items()):
-                hooks_yaml += f"  {k}: {v}\n"
-
         files_yaml = ""
         if files_list:
             files_yaml = "files_modified:\n"
             for f in files_list:
                 files_yaml += f"  - {f}\n"
+
+        source_yaml = f"source_file: \"{source_file}\"\n" if source_file else ""
 
         frontmatter = f"""---
 title: "{title} ({variant})"
@@ -789,7 +782,7 @@ tags:
   - {variant}
 date: {date_str}
 session_id: {session_uuid}
-{hooks_yaml}{files_yaml}---
+{source_yaml}{files_yaml}---
 
 """
 

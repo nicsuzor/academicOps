@@ -7,8 +7,6 @@ description: Error handling philosophy and patterns for Python applications
 
 # Fail-Fast Philosophy
 
-Core principle from [[AXIOMS|AXIOMS]].
-
 ## Core Principle
 
 **Silent failures corrupt research data.** Fail immediately so problems are fixed, not hidden.
@@ -404,17 +402,3 @@ def fetch_user_or_anonymous(user_id: Optional[str]) -> User:
     return fetch_user(user_id)
 ```
 
-## Related References
-
-- [[type-safety|Type Safety in Python]] - Pydantic models and validation
-- [[code-quality|Python Code Quality]] - Error messages and assertions
-- [[hydra|Hydra Configuration]] - Configuration management patterns
-
-## Summary
-
-- **No `.get()` with defaults** for required configuration
-- **Fail immediately** on missing/invalid config
-- **Pydantic for validation** - explicit, type-safe
-- **Specific exceptions** - never bare `except:`
-- **One golden path** - no hidden alternatives
-- **Fix root causes** - don't add defensive workarounds

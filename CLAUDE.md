@@ -5,6 +5,16 @@ permalink: root-claude-instructions
 description: Framework skill delegation model, repository conventions, and development guidelines for academicOps
 ---
 
+## Standard process for framework development
+
+- update the feature specs and roadmap first
+- make a plan, get it reviewed, get approval
+- update indices (README.md, INDEX.md, etc.)
+
+### To test a feature:
+- to get an inventory: run claude code headless and report the '/diag' command
+- test a feature: run claude code headless with an instruction
+
 ## Framework Skill Delegation Model
 
 ALL work in this repo flows through `Skill(skill="framework")`, but the framework skill may delegate implementation:
@@ -85,7 +95,7 @@ This is the academicOps framework repository containing generic, reusable automa
 - Invoke `Skill(skill="framework")` for strategic context
 - Use `Skill(skill="framework")` for ALL questions or decisions about the documentation or tools in this project.
 - Use haiku by default when invoking claude code for testing purposes
-- **Always use `model: "opus"` when invoking the Plan agent**
+- **Always use `model: "opus"` when invoking the Plan or Critic agent**
 - README.md is SSoT for aOps file structure.
 
 ## Git workflow

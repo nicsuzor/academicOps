@@ -465,13 +465,6 @@ async def call_external_api(
         return response.json()
 ```
 
-## Related References
-
-- [[fastapi|FastAPI]] - Web framework patterns
-- [[type-safety|Type Safety in Python]] - Type hints and Pydantic
-- [[testing|Python Testing Philosophy]] - Integration testing patterns
-- [[code-quality|Python Code Quality]] - Documentation standards
-
 ## Key Principles
 
 1. **Clear documentation** - Comprehensive docstrings help LLMs use tools correctly

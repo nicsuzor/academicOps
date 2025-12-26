@@ -473,19 +473,3 @@ def load_and_process_data(file_path):
     return transformed
 ```
 
-## Related References
-
-- [[type-safety|Type Safety in Python]] - Type hints and validation
-- [[fail-fast|Fail-Fast Philosophy]] - Error handling and validation
-- [[modern-python|Modern Python Patterns]] - Current best practices
-
-## Summary
-
-- **Docstrings** - Document all public functions, classes, modules
-- **Naming** - Descriptive names (no abbreviations)
-- **Organization** - Logical import order, focused functions
-- **Comments** - Explain WHY, not WHAT
-- **Error messages** - Specific and actionable
-- **Logging** - Use logger, not print
-- **Constants** - Named constants for magic numbers
-- **Single responsibility** - One function, one purpose

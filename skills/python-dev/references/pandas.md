@@ -527,12 +527,6 @@ df.plot()
 plt.show()
 ```
 
-## Related References
-
-- [[bigquery|Google BigQuery]] - Data warehouse integration
-- [[modern-python|Modern Python Patterns]] - Core Python idioms
-- [[type-safety|Type Safety in Python]] - Type hints for dataframes
-
 ## Key Principles
 
 1. **Use vectorized operations** - Avoid row-by-row iteration
