@@ -619,6 +619,39 @@ If critic returns REVISE or HALT, address issues before proceeding.
 
 ---
 
+## H28: Mandatory Acceptance Testing
+
+**Statement**: Feature development MUST include acceptance testing as a tracked TODO item. When `/qa` is invoked, full e2e verification and independent critical review are MANDATORY before declaring work complete.
+
+**Rationale**: Agents claim success without real-world verification. Acceptance criteria exist in specs but aren't systematically verified. The gap between "tests pass" and "feature works for user" is where failures hide. Making acceptance testing a tracked TODO ensures it can't be skipped.
+
+**Evidence**:
+- 2025-12-26: Dashboard synthesis feature was approved without TodoWrite including acceptance testing step. User had to invoke /qa to trigger real verification.
+
+**Confidence**: Low (first observation)
+
+**Implements**: [[AXIOMS]] #22 (Acceptance Criteria Own Success), #23 (Plan-First Development), #17 (Verify First), #18 (No Excuses)
+
+**Application**:
+
+For ANY feature development, TodoWrite MUST include:
+```
+- [ ] E2E verification against real data
+- [ ] Acceptance criteria checked against spec
+- [ ] Independent review (critic agent or /qa)
+```
+
+When `/qa` is invoked:
+1. TODO list MUST include e2e verification step
+2. MUST run feature against production data (not mocks)
+3. MUST compare outputs to spec acceptance criteria
+4. MUST get independent critical review before approval
+5. Cannot declare "APPROVED" without all 4 steps completed
+
+**QA skill enhancement**: The `/qa` command should ENFORCE this by creating the TODO structure if not present.
+
+---
+
 ## Revision Protocol
 
 To adjust heuristics based on new evidence:
