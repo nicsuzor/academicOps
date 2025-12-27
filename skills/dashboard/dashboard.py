@@ -68,10 +68,11 @@ def get_waiting_tasks(task_index: dict | None) -> list[dict]:
 
 
 def get_priority_tasks() -> list[dict]:
-    """Get P0/P1 active tasks from task index.
+    """Get P0/P1 actionable tasks from task index.
 
     Loads task index from $ACA_DATA/tasks/index.json and filters to
-    priority 0 or 1 tasks with 'active' status.
+    priority 0 or 1 tasks with non-terminal status (excludes archived,
+    done, completed). This includes inbox, pending, active, waiting, etc.
 
     Returns:
         List of task dicts with keys: title, priority, project, status.
@@ -88,10 +89,10 @@ def get_priority_tasks() -> list[dict]:
         priority = t.get('priority')
         status = t.get('status')
 
-        # Filter to P0/P1 and active status
+        # Filter to P0/P1 and non-terminal status
         if priority is None or priority > 1:
             continue
-        if status != 'active':
+        if status in ('archived', 'done', 'completed'):
             continue
 
         result.append({
