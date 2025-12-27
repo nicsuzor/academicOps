@@ -1079,6 +1079,38 @@ def esc(text):
     return str(text).replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;').replace('"', '&quot;')
 
 
+def clean_activity_text(raw_text: str) -> str:
+    """Clean raw session prompt for display.
+
+    Strips markdown formatting to produce a clean summary suitable for dashboard.
+
+    Args:
+        raw_text: Raw prompt text potentially containing markdown headers and formatting.
+
+    Returns:
+        Cleaned text, max 60 characters, with "..." suffix if truncated.
+    """
+    if not raw_text:
+        return "Working..."
+
+    # Remove markdown headers (lines starting with #)
+    lines = [line for line in raw_text.split('\n') if not line.strip().startswith('#')]
+
+    # Join remaining lines and remove markdown formatting
+    text = ' '.join(lines)
+    text = text.replace('**', '').replace('*', '').strip()
+
+    # Collapse multiple spaces
+    while '  ' in text:
+        text = text.replace('  ', ' ')
+
+    # Take first 60 chars
+    if len(text) > 60:
+        text = text[:57] + "..."
+
+    return text if text else "Working..."
+
+
 # ============================================================================
 # THREE-QUESTION LAYOUT - Primary dashboard view
 # ============================================================================
@@ -1203,7 +1235,8 @@ def render_three_question_layout() -> None:
                     activity = ""
                     for s in sessions:
                         if s.get("activity"):
-                            activity = s.get("activity", "")
+                            # Clean raw markdown from activity text
+                            activity = clean_activity_text(s.get("activity", ""))
                             break
                     count_str = f"({count} sessions)" if count > 1 else ""
                     if activity:
