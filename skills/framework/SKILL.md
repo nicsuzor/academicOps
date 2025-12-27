@@ -21,17 +21,19 @@ This framework is a **validated logical system**. Every component must be deriva
 
 ### Authoritative Source Chain (Read in Order)
 
-| Priority | Document          | Contains                                   | Location                             |
-| -------- | ----------------- | ------------------------------------------ | ------------------------------------ |
-| 1        | [[AXIOMS.md]]     | Inviolable principles                      | `$AOPS/AXIOMS.md`                    |
-| 2        | [[HEURISTICS.md]] | Empirically validated guidance (revisable) | `$AOPS/HEURISTICS.md`                |
-| 3        | [[VISION.md]]     | What we're building, success criteria      | `$ACA_DATA/projects/aops/VISION.md`  |
-| 4        | [[ROADMAP.md]]    | Current status, done/planned/issues        | `$ACA_DATA/projects/aops/ROADMAP.md` |
-| 5        | This skill        | Conventions derived from above             | `$AOPS/skills/framework/SKILL.md`    |
-| 6        | [[README.md]]     | Feature inventory                          | `$AOPS/README.md`                    |
-| 7        | [[INDEX.md]]      | File tree                                  | `$AOPS/INDEX.md`                     |
+| Priority | Document          | Contains                                   |
+| -------- | ----------------- | ------------------------------------------ |
+| 1        | [[AXIOMS.md]]     | Inviolable principles                      |
+| 2        | [[HEURISTICS.md]] | Empirically validated guidance (revisable) |
+| 3        | [[VISION.md]]     | What we're building, success criteria      |
+| 4        | [[ROADMAP.md]]    | Current status, done/planned/issues        |
+| 5        | This skill        | Conventions derived from above             |
+| 6        | [[README.md]]     | Feature inventory                          |
+| 7        | [[INDEX.md]]      | File tree                                  |
 
-**Derivation rule**: Every convention in this skill MUST trace to an axiom or vision statement. If it can't, the convention is invalid.
+Paths resolved in [[FRAMEWORK.md]] (injected at session start).
+
+**Derivation rule**: Every convention in the [[academicOps]] framework MUST trace to an axiom or vision statement. If it can't, the convention is invalid.
 
 ### Compliance Assessment Protocol
 
@@ -171,32 +173,7 @@ Scope: [files/directories affected]
 
 ## Framework Paths
 
-```
-$AOPS/                     # Framework repo (academicOps)
-├── AXIOMS.md              # Inviolable principles
-├── skills/                # Agent skills (invoke via Skill tool)
-├── hooks/                 # Lifecycle automation
-├── commands/              # Slash commands
-├── agents/                # Agentic workflows
-├── tests/                 # Framework tests (pytest)
-├── lib/                   # Shared utilities
-├── scripts/               # Deployment scripts
-└── config/                # Configuration files
-
-$ACA_DATA/                 # User data repo (SEMANTIC ONLY)
-├── ACCOMMODATIONS.md      # Work style
-├── CORE.md                # User context
-├── STYLE-QUICK.md         # Writing style
-├── tasks/                 # Task data
-└── projects/aops/         # Framework project data
-    ├── VISION.md          # Goals (edit in place)
-    ├── ROADMAP.md         # Progression (edit in place)
-    └── specs/             # Design documents (timeless)
-
-# Episodic content → GitHub Issues (nicsuzor/academicOps repo)
-# Labels: bug, experiment, devlog, decision, learning
-# Session transcripts → ~/writing/sessions/ (archive)
-```
+See [[INDEX.md]] for complete file tree. Paths are resolved in [[FRAMEWORK.md]] (injected at session start).
 
 ## Core Conventions (with Axiom Derivations)
 
@@ -286,34 +263,16 @@ All framework markdown files use properly formatted markdown with relative wikil
 [[AXIOMS.md]]                        # ✅ Root-level reference
 ```
 
-## Documentation Structure (Authoritative)
+## Documentation Structure
 
-The framework has exactly these core documents. No others.
-
-### Framework Documentation ($AOPS/)
-
-| Document      | Purpose         | Contains                                                               |
-| ------------- | --------------- | ---------------------------------------------------------------------- |
-| [[README.md]] | Entry point     | Feature inventory (skills, commands, hooks, agents) with how-to-invoke |
-| [[AXIOMS.md]] | Principles ONLY | Inviolable rules - NO enforcement, NO examples, NO implementation      |
-| [[INDEX.md]]  | File tree       | Complete directory structure                                           |
-
-**AXIOMS.md rule**: Axioms are pure principles. Enforcement mechanisms belong in this skill. Implementation details belong in component docs.
-
-### Project Documentation ($ACA_DATA/projects/aops/)
-
-| Document       | Purpose  | Contains                                                |
-| -------------- | -------- | ------------------------------------------------------- |
-| [[VISION.md]]  | Goals    | What we're building, success criteria, scope boundaries |
-| [[ROADMAP.md]] | Status   | Done / In Progress / Planned / Known Issues             |
-| learning/      | Patterns | Thematic files for failure patterns and lessons         |
+See [[INDEX.md]] for complete file tree and document purposes.
 
 ### Documentation Rules
 
-1. **VISION.md is grounded** - Academic support framework, not autonomous research.
-2. **ROADMAP.md is simple** - Just lists: Done, In Progress, Planned, Issues.
-3. **README.md has the inventory** - Every skill/command/hook with one-line purpose and how to invoke.
-4. **AXIOMS.md is pure** - Principles only. No enforcement, examples, or implementation.
+1. **AXIOMS.md is pure** - Principles only. No enforcement, examples, or implementation.
+2. **VISION.md is grounded** - Academic support framework, not autonomous research.
+3. **ROADMAP.md is simple** - Just lists: Done, In Progress, Planned, Issues.
+4. **README.md has the inventory** - Every skill/command/hook with one-line purpose and how to invoke.
 5. **No other core docs** - specs/, experiments/, learning/ handle everything else.
 
 ### Feature Inventory Format (README.md)
@@ -422,14 +381,6 @@ When you have an observation, investigation, or time-bound record:
 gh issue create --repo nicsuzor/academicOps --title "Bug: [description]" --label "bug" --body "## Investigation\n\n[details]"
 ```
 
-### Migration Path (Tech Debt)
-
-Existing episodic content in `$ACA_DATA` folders (`experiments/`, `learning/`, `decisions/`, `bugs/`) should be:
-1. **Synthesized** - patterns extracted to HEURISTICS.md or specs
-2. **Migrated** - move to GitHub Issue if still active
-3. **Deleted** - git has history; closed Issues remain searchable
-
-**Apply principle to NEW content immediately. Migrate existing incrementally.**
 
 ### Prohibited in `$ACA_DATA`
 
