@@ -196,19 +196,24 @@ def get_primary_focus() -> dict:
     }
 
 
-def get_session_display_info(session_info: "SessionInfo") -> dict:
+def get_session_display_info(
+    session_info: "SessionInfo",
+    analyzer: SessionAnalyzer | None = None,
+) -> dict:
     """Extract displayable session identity from SessionInfo.
 
     Enables users to distinguish between multiple terminal sessions (AC-U1).
 
     Args:
         session_info: SessionInfo object from lib/session_reader.py
+        analyzer: Optional SessionAnalyzer to extract activity context
 
     Returns:
         Dict with keys:
             - session_id_short: First 7 characters of session UUID
             - project: Project name from the session
             - last_activity: Timestamp of last session activity (datetime)
+            - activity: Description of session activity (truncated to 50 chars)
 
     Raises:
         ValueError: If session_info is None or session_id is None
@@ -218,10 +223,25 @@ def get_session_display_info(session_info: "SessionInfo") -> dict:
     if session_info.session_id is None:
         raise ValueError("session_info.session_id cannot be None")
 
+    # Extract activity from session if analyzer provided
+    activity = ""
+    if analyzer is not None:
+        try:
+            state = analyzer.extract_dashboard_state(session_info.path)
+            # Use first_prompt as activity description, truncate to 50 chars
+            prompt = state.get("first_prompt", "") or state.get("last_prompt", "")
+            if prompt:
+                activity = prompt[:50]
+                if len(prompt) > 50:
+                    activity += "..."
+        except Exception:
+            activity = ""
+
     return {
         "session_id_short": session_info.session_id[:7],
         "project": session_info.project,
         "last_activity": session_info.last_modified,
+        "activity": activity,
     }
 
 
@@ -324,7 +344,7 @@ def get_dashboard_layout() -> dict:
     Aggregates data from multiple sources into a layout suitable for
     dashboard rendering:
     - What to do: Primary focus and priority tasks
-    - What doing: Currently active sessions
+    - What doing: Currently active sessions (max 10, last 24 hours)
     - What done: Today's accomplishments
 
     Returns:
@@ -338,10 +358,11 @@ def get_dashboard_layout() -> dict:
     priority_tasks = get_priority_tasks()
     accomplishments = get_todays_accomplishments()
 
-    # Get active sessions (last 24 hours)
+    # Get active sessions (last 24 hours, max 10)
     sessions = find_sessions()
     active_sessions: list[dict] = []
     now = datetime.now(timezone.utc)
+    analyzer = SessionAnalyzer()
 
     for session in sessions:
         age = now - session.last_modified
@@ -352,8 +373,12 @@ def get_dashboard_layout() -> dict:
         if '-tmp' in session.project or '-var-folders' in session.project:
             continue
 
-        session_display = get_session_display_info(session)
+        session_display = get_session_display_info(session, analyzer)
         active_sessions.append(session_display)
+
+        # Limit to 10 sessions to avoid overwhelm
+        if len(active_sessions) >= 10:
+            break
 
     return {
         "what_to_do": {
@@ -1083,20 +1108,54 @@ def render_three_question_layout() -> None:
     with col_doing:
         st.markdown("### :arrows_counterclockwise: WHAT AM I DOING?")
 
-        what_doing = layout_data["what_doing"]
-        active_sessions = what_doing["active_sessions"]
+        # Check for fresh synthesis first
+        synthesis = load_synthesis()
+        sessions_data = synthesis.get("sessions") if synthesis else None
 
-        if active_sessions:
-            for session in active_sessions[:6]:
-                session_id = session.get("session_id_short", "???")
-                project = session.get("project", "unknown")
-                # Clean up project name for display
-                if project.startswith("-"):
-                    project = project.replace("-", "/")[1:]  # Convert -Users-name to /Users/name
-                    project = project.split("/")[-1]  # Just show last path component
-                st.markdown(f"- `[{session_id}]` {project}")
+        if sessions_data and sessions_data.get("recent"):
+            # Use synthesized session summaries
+            by_project = sessions_data.get("by_project", {})
+            recent = sessions_data.get("recent", [])
+
+            # Group summaries by project for cleaner display
+            project_summaries: dict[str, list[str]] = {}
+            for item in recent:
+                proj = item.get("project", "unknown")
+                summary = item.get("summary", "")
+                if proj not in project_summaries:
+                    project_summaries[proj] = []
+                if summary and summary not in project_summaries[proj]:
+                    project_summaries[proj].append(summary)
+
+            # Display each project with session count and summaries
+            for proj, summaries in project_summaries.items():
+                count = by_project.get(proj, 0)
+                count_str = f"({count} sessions)" if count > 0 else ""
+                # Join summaries, truncate if too long
+                summary_text = ", ".join(summaries)
+                if len(summary_text) > 80:
+                    summary_text = summary_text[:77] + "..."
+                st.markdown(f"- **{proj}** {count_str}: {summary_text}")
         else:
-            st.markdown("*No active sessions*")
+            # Fall back to raw session data when synthesis is stale
+            what_doing = layout_data["what_doing"]
+            active_sessions = what_doing["active_sessions"]
+
+            if active_sessions:
+                for session in active_sessions[:6]:
+                    project = session.get("project", "unknown")
+                    activity = session.get("activity", "")
+                    # Clean up project name for display
+                    if project.startswith("-"):
+                        project = project.replace("-", "/")[1:]  # Convert -Users-name to /Users/name
+                        project = project.split("/")[-1]  # Just show last path component
+                    # Show activity context if available, otherwise just project
+                    if activity:
+                        st.markdown(f"- **{project}**: {activity}")
+                    else:
+                        st.markdown(f"- **{project}**")
+            else:
+                st.markdown("*No active sessions*")
 
     # Bottom row: Full width for accomplishments
     st.markdown("---")
@@ -1112,7 +1171,16 @@ def render_three_question_layout() -> None:
                 desc = item.get("description", "")[:60]
                 if len(item.get("description", "")) > 60:
                     desc += "..."
-                st.markdown(f"- [{source}] {desc}")
+                # Use icons instead of text tags for cleaner display
+                if source == "daily_log":
+                    icon = "+"  # Checkmark for daily log tasks
+                elif source == "git":
+                    icon = "@"  # Git branch icon
+                elif source == "outcome":
+                    icon = ">"  # Star for outcomes
+                else:
+                    icon = "-"
+                st.markdown(f"- {icon} {desc}")
         else:
             st.markdown("*No accomplishments logged today*")
 

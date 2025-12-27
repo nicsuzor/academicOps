@@ -30,8 +30,12 @@ def get_data_dir() -> Path:
     return Path(aca_data)
 
 
-def load_daily_log(data_dir: Path) -> dict:
-    """Load today's daily log and extract key info."""
+def load_daily_log(data_dir: Path) -> tuple[dict, str]:
+    """Load today's daily log and extract key info.
+
+    Returns:
+        Tuple of (result dict, raw content string for reuse)
+    """
     today = datetime.now().strftime("%Y%m%d")
     daily_path = data_dir / "sessions" / f"{today}-daily.md"
 
@@ -42,7 +46,7 @@ def load_daily_log(data_dir: Path) -> dict:
     }
 
     if not daily_path.exists():
-        return result
+        return result, ""
 
     content = daily_path.read_text(encoding="utf-8")
 
@@ -64,6 +68,61 @@ def load_daily_log(data_dir: Path) -> dict:
     if blocker_match:
         blockers = re.findall(r"- (.+)", blocker_match.group(1))
         result["blockers"] = blockers[:5]
+
+    return result, content
+
+
+def load_session_summaries(daily_content: str) -> dict:
+    """Parse Session Log table from daily.md content.
+
+    Args:
+        daily_content: Raw content of the daily.md file
+
+    Returns:
+        Dict with:
+            - total: count of sessions
+            - by_project: dict of project -> count
+            - summaries: list of {session_id, project, summary}
+    """
+    result: dict = {
+        "total": 0,
+        "by_project": {},
+        "summaries": [],
+    }
+
+    if not daily_content:
+        return result
+
+    # Find the Session Log section and its table
+    session_log_match = re.search(
+        r"## Session Log\s*\n\s*\|.*?\|\s*\n\s*\|[-|\s]+\|\s*\n(.*?)(?=\n##|\Z)",
+        daily_content,
+        re.DOTALL,
+    )
+
+    if not session_log_match:
+        return result
+
+    table_body = session_log_match.group(1)
+
+    # Parse each row: | session_id | project | summary |
+    row_pattern = re.compile(r"\|\s*([a-f0-9]+)\s*\|\s*(\w+)\s*\|\s*(.+?)\s*\|")
+
+    for match in row_pattern.finditer(table_body):
+        session_id = match.group(1)
+        project = match.group(2)
+        summary = match.group(3).strip()
+
+        result["summaries"].append({
+            "session_id": session_id,
+            "project": project,
+            "summary": summary,
+        })
+
+        # Count by project
+        result["by_project"][project] = result["by_project"].get(project, 0) + 1
+
+    result["total"] = len(result["summaries"])
 
     return result
 
@@ -177,6 +236,8 @@ INPUT DATA:
 - WAITING ON: {waiting_tasks}
 - RECENT ACTIVITY (last prompts): {recent_prompts}
 - CURRENT MACHINE: {hostname}
+- SESSION ACTIVITY: {session_count} sessions today across projects: {session_projects}
+- RECENT SESSIONS: {recent_sessions}
 
 Analyze this data and output a JSON object with these fields:
 
@@ -259,7 +320,10 @@ def main() -> None:
 
     # Load all data sources
     print("Loading daily log...")
-    daily_log = load_daily_log(data_dir)
+    daily_log, daily_content = load_daily_log(data_dir)
+
+    print("Loading session summaries...")
+    session_summaries = load_session_summaries(daily_content)
 
     print("Loading task index...")
     task_index = load_task_index(data_dir)
@@ -277,6 +341,10 @@ def main() -> None:
 
     prompts_str = "; ".join([f"[{p['project']}@{p['hostname']}] {p['prompt']}" for p in cloudflare_prompts[:5]]) if cloudflare_prompts else "No recent activity"
 
+    # Format session data for prompt
+    session_projects_str = ", ".join([f"{proj}: {count}" for proj, count in session_summaries["by_project"].items()]) if session_summaries["by_project"] else "None"
+    recent_sessions_str = "; ".join([f"[{s['project']}] {s['summary'][:80]}" for s in session_summaries["summaries"][:5]]) if session_summaries["summaries"] else "No sessions"
+
     # Build prompt
     prompt = SYNTHESIS_PROMPT.format(
         primary_focus=daily_log["primary_focus"] or "Not set",
@@ -287,6 +355,9 @@ def main() -> None:
         waiting_tasks=waiting_str,
         recent_prompts=prompts_str,
         hostname=hostname,
+        session_count=session_summaries["total"],
+        session_projects=session_projects_str,
+        recent_sessions=recent_sessions_str,
     )
 
     print("Calling Claude API for synthesis...")
@@ -302,6 +373,17 @@ def main() -> None:
         "daily_log": bool(daily_log["accomplishments"]) or bool(daily_log["primary_focus"]),
         "task_index": task_index["total_tasks"] > 0,
         "cloudflare": len(cloudflare_prompts) > 0,
+        "session_log": session_summaries["total"] > 0,
+    }
+
+    # Add session data to output
+    synthesis["sessions"] = {
+        "total": session_summaries["total"],
+        "by_project": session_summaries["by_project"],
+        "recent": [
+            {"project": s["project"], "summary": s["summary"]}
+            for s in session_summaries["summaries"][:5]
+        ],
     }
 
     # Write output
