@@ -9,7 +9,7 @@
     },
     "memory": {
       "type": "http",
-      "url": "http://dev3.stoat-musical.ts.net:8000/mcp",
+      "url": "http://services.stoat-musical.ts.net:8026/mcp",
       "headers": {
         "Authorization": "Bearer 07f203bcc6fbe9a410d9850336f8ff9c73a64c3d0e7802e3450ce39b139f5d67"
       }

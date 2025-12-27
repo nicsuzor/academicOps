@@ -211,12 +211,3 @@ Step 6 (depends on Steps 4 & 5)
 **Improvements for next time**:
 
 - [Process or technical insight]
-
----
-
-**References**:
-
-- User story: `user-story.md`
-- Experiment plan: `experiment-plan.md`
-- Test specification: `test-spec.md`
-- Work style: [[ACCOMMODATIONS.md]]
