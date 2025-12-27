@@ -1186,7 +1186,10 @@ def render_three_question_layout() -> None:
         synthesis = load_synthesis()
         sessions_data = synthesis.get("sessions") if synthesis else None
 
-        if sessions_data and sessions_data.get("recent"):
+        if not synthesis or not sessions_data or not sessions_data.get("recent"):
+            # AXIOMS #7: No fallbacks. Fail visibly when synthesis is stale.
+            st.warning("Session synthesis stale. Run: uv run python scripts/synthesize_dashboard.py")
+        else:
             # Use synthesized session summaries
             by_project = sessions_data.get("by_project", {})
             recent = sessions_data.get("recent", [])
@@ -1210,41 +1213,6 @@ def render_three_question_layout() -> None:
                 if len(summary_text) > 120:
                     summary_text = summary_text[:117] + "..."
                 st.markdown(f"- **{proj}** {count_str}: {summary_text}")
-        else:
-            # Fall back to raw session data when synthesis is stale
-            what_doing = layout_data["what_doing"]
-            active_sessions = what_doing["active_sessions"]
-
-            if active_sessions:
-                # Group sessions by project for cleaner display
-                sessions_by_project: dict[str, list[dict]] = {}
-                for session in active_sessions:
-                    project = session.get("project", "unknown")
-                    # Clean up project name for display
-                    if project.startswith("-"):
-                        project = project.replace("-", "/")[1:]  # Convert -Users-name to /Users/name
-                        project = project.split("/")[-1]  # Just show last path component
-                    if project not in sessions_by_project:
-                        sessions_by_project[project] = []
-                    sessions_by_project[project].append(session)
-
-                # Display each project with count and most recent activity
-                for project, sessions in list(sessions_by_project.items())[:6]:
-                    count = len(sessions)
-                    # Find first session with activity
-                    activity = ""
-                    for s in sessions:
-                        if s.get("activity"):
-                            # Clean raw markdown from activity text
-                            activity = clean_activity_text(s.get("activity", ""))
-                            break
-                    count_str = f"({count} sessions)" if count > 1 else ""
-                    if activity:
-                        st.markdown(f"- **{project}** {count_str}: {activity}")
-                    else:
-                        st.markdown(f"- **{project}** {count_str}")
-            else:
-                st.markdown("*No active sessions*")
 
     # Bottom row: Full width for accomplishments
     st.markdown("---")
