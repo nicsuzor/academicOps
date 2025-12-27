@@ -9,14 +9,15 @@ tags: [framework, commands]
 
 ## Overview
 
-14 slash commands providing strategic workflows, task management, and framework operations. Commands are invoked with `/command-name` syntax.
+15 slash commands providing strategic workflows, task management, and framework operations. Commands are invoked with `/command-name` syntax.
 
 ## Strategic & Planning
 
 - [[meta.md|/meta]] - Strategic supervisor for academicOps framework - loads complete context, makes principled decisions, handles work end-to-end with TDD quality gates
+- [[supervise.md|/supervise]] - Generic supervisor loading workflow templates for orchestrated multi-agent tasks (tdd, batch-review, skill-audit)
 - [[academicOps/commands/strategy|/strategy]] - Strategic thinking partner for exploration, planning, and clarity - facilitates thinking without executing tasks
 - [[qa.md|/qa]] - Quality assurance agent that verifies concrete outcomes against user goals and acceptance criteria using real-world data
-- [[ttd.md|/ttd]] - Orchestrates multi-agent workflows with comprehensive quality gates, test-first development, and continuous plan validation
+- [[ttd.md|/ttd]] - Alias for `/supervise tdd` - test-first development workflow
 
 ## Learning & Improvement
 
