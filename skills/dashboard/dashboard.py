@@ -292,12 +292,13 @@ def get_todays_accomplishments() -> list[dict]:
     Aggregates accomplishments from:
     - Daily log completed tasks (source='daily_log')
     - Daily log outcomes (source='outcome')
-    - Git commits from aOps repo (source='git')
+    - Git commits from known project repos (source='git')
 
     Returns:
         List of dicts, each with:
             - description: What was accomplished (str)
             - source: One of 'daily_log', 'outcome', 'git' (str)
+            - project: Project name for grouping (str)
             - timestamp: When it happened (datetime or None)
     """
     accomplishments: list[dict] = []
@@ -313,6 +314,7 @@ def get_todays_accomplishments() -> list[dict]:
                 accomplishments.append({
                     "description": item,
                     "source": "daily_log",
+                    "project": "general",
                     "timestamp": None,
                 })
 
@@ -322,18 +324,27 @@ def get_todays_accomplishments() -> list[dict]:
                 accomplishments.append({
                     "description": item,
                     "source": "outcome",
+                    "project": "general",
                     "timestamp": None,
                 })
 
-    # Add git commits from aOps
-    git_commits = get_project_git_activity("-Users-suzor-writing-academicOps")
-    for commit in git_commits:
-        if commit:  # Skip empty strings
-            accomplishments.append({
-                "description": commit,
-                "source": "git",
-                "timestamp": None,
-            })
+    # Add git commits from known project directories
+    project_paths = [
+        ("-Users-suzor-writing-academicOps", "academicOps"),
+        ("-Users-suzor-writing", "writing"),
+        ("-Users-suzor-src-buttermilk", "buttermilk"),
+    ]
+
+    for path_key, project_name in project_paths:
+        git_commits = get_project_git_activity(path_key)
+        for commit in git_commits:
+            if commit:  # Skip empty strings
+                accomplishments.append({
+                    "description": commit,
+                    "source": "git",
+                    "project": project_name,
+                    "timestamp": None,
+                })
 
     return accomplishments
 
@@ -1091,16 +1102,30 @@ def render_three_question_layout() -> None:
         else:
             st.markdown("*No primary focus set*")
 
-        # Priority tasks
+        # Priority tasks - grouped by priority level
         priority_tasks = what_to_do["priority_tasks"]
         if priority_tasks:
-            st.markdown("**Priority tasks:**")
-            for task in priority_tasks[:5]:
-                priority_label = f"P{task['priority']}" if task.get('priority') is not None else ""
-                title = task.get('title', '')[:50]
-                if len(task.get('title', '')) > 50:
-                    title += "..."
-                st.markdown(f"- **{priority_label}:** {title}")
+            # Separate P0 and P1 tasks
+            p0_tasks = [t for t in priority_tasks if t.get('priority') == 0]
+            p1_tasks = [t for t in priority_tasks if t.get('priority') == 1]
+
+            # Show all P0 tasks first
+            if p0_tasks:
+                st.markdown("**P0 Tasks:**")
+                for task in p0_tasks:
+                    title = task.get('title', '')[:50]
+                    if len(task.get('title', '')) > 50:
+                        title += "..."
+                    st.markdown(f"- {title}")
+
+            # Then show all P1 tasks
+            if p1_tasks:
+                st.markdown("**P1 Tasks:**")
+                for task in p1_tasks:
+                    title = task.get('title', '')[:50]
+                    if len(task.get('title', '')) > 50:
+                        title += "..."
+                    st.markdown(f"- {title}")
         else:
             st.markdown("*No priority tasks*")
 
@@ -1166,21 +1191,32 @@ def render_three_question_layout() -> None:
         accomplishments = what_done["accomplishments"]
 
         if accomplishments:
-            for item in accomplishments[:8]:
-                source = item.get("source", "")
-                desc = item.get("description", "")[:60]
-                if len(item.get("description", "")) > 60:
-                    desc += "..."
-                # Use icons instead of text tags for cleaner display
-                if source == "daily_log":
-                    icon = "+"  # Checkmark for daily log tasks
-                elif source == "git":
-                    icon = "@"  # Git branch icon
-                elif source == "outcome":
-                    icon = ">"  # Star for outcomes
-                else:
-                    icon = "-"
-                st.markdown(f"- {icon} {desc}")
+            # Group accomplishments by project
+            by_project: dict[str, list[dict]] = {}
+            for item in accomplishments:
+                project = item.get("project", "general")
+                if project not in by_project:
+                    by_project[project] = []
+                by_project[project].append(item)
+
+            # Display grouped by project
+            for project, items in by_project.items():
+                st.markdown(f"**{project}**:")
+                for item in items:
+                    source = item.get("source", "")
+                    desc = item.get("description", "")[:60]
+                    if len(item.get("description", "")) > 60:
+                        desc += "..."
+                    # Use icons instead of text tags for cleaner display
+                    if source == "daily_log":
+                        icon = "+"  # Checkmark for daily log tasks
+                    elif source == "git":
+                        icon = "@"  # Git branch icon
+                    elif source == "outcome":
+                        icon = ">"  # Star for outcomes
+                    else:
+                        icon = "-"
+                    st.markdown(f"- {icon} {desc}")
         else:
             st.markdown("*No accomplishments logged today*")
 

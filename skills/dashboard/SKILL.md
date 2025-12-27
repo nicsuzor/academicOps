@@ -86,13 +86,3 @@ Uses `lib/session_reader.py` module that reads:
 - Hook logs (`*-hooks.jsonl`)
 
 Same parser used by `/transcript` skill for markdown export.
-
-## Technical Notes
-
-- Auto-refresh every 10 seconds
-- Error handling prevents crashes on parse failures
-- Responsive layout works on mobile devices
-
-## Spec
-
-See [[Cognitive Load Dashboard Spec]] for acceptance criteria and user story.
