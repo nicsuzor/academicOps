@@ -314,6 +314,69 @@ def call_claude_headless(prompt: str) -> dict | None:
         return None
 
 
+def write_synthesis_to_daily(synthesis: dict, daily_path: Path) -> bool:
+    """Write synthesis section to daily.md for lo-fi dashboard viewing.
+
+    Args:
+        synthesis: Dict with keys: accomplishments, alignment, next_action, suggestion, generated
+        daily_path: Path to daily.md file
+
+    Returns:
+        True if written successfully, False if daily.md doesn't exist or write failed
+    """
+    if not daily_path.exists():
+        return False
+
+    try:
+        content = daily_path.read_text(encoding="utf-8")
+
+        # Remove existing ## Synthesis section (robust regex with flexible whitespace)
+        # Matches from "## Synthesis" to next "##" heading or end of file
+        content = re.sub(
+            r"\n*##\s*Synthesis\s*\n.*?(?=\n##\s|\Z)",
+            "",
+            content,
+            flags=re.DOTALL | re.IGNORECASE,
+        )
+
+        # Build synthesis markdown section
+        acc = synthesis.get("accomplishments", {})
+        align = synthesis.get("alignment", {})
+        next_act = synthesis.get("next_action", {})
+        generated = synthesis.get("generated", datetime.now(UTC).isoformat())
+        suggestion = synthesis.get("suggestion", "")
+
+        synthesis_md = f"""
+
+## Synthesis
+
+**Generated**: {generated}
+
+### Focus
+- **Next Action**: {next_act.get('task', 'Not set')} [{next_act.get('project', 'unknown')}]
+- **Reason**: {next_act.get('reason', 'N/A')}
+
+### Status
+- **Alignment**: {align.get('status', 'unknown')} - {align.get('note', 'N/A')}
+- **Accomplishments** ({acc.get('count', 0)}): {acc.get('summary', 'None recorded')}
+"""
+        if suggestion:
+            synthesis_md += f"""
+### Suggestion
+{suggestion}
+"""
+
+        # Append to content
+        content = content.rstrip() + synthesis_md
+
+        daily_path.write_text(content, encoding="utf-8")
+        return True
+
+    except Exception as e:
+        print(f"WARNING: Could not write synthesis to daily.md: {e}", file=sys.stderr)
+        return False
+
+
 def main() -> None:
     """Main entry point."""
     data_dir = get_data_dir()
@@ -395,6 +458,12 @@ def main() -> None:
         json.dump(synthesis, f, indent=2, ensure_ascii=False)
 
     print(f"Wrote synthesis to {output_path}")
+
+    # Also write to daily.md for lo-fi viewing
+    today = datetime.now().strftime("%Y%m%d")
+    daily_path = data_dir / "sessions" / f"{today}-daily.md"
+    if write_synthesis_to_daily(synthesis, daily_path):
+        print(f"Wrote synthesis to {daily_path}")
 
     # Print summary
     print("\n=== SYNTHESIS ===")
