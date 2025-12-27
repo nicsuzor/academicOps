@@ -163,9 +163,20 @@ $AOPS/
 | Command | Invokes Skill |
 |---------|---------------|
 | /meta | framework, python-dev |
+| /supervise | supervisor (loads workflow from `skills/supervisor/workflows/`) |
+| /ttd | supervisor (alias for `/supervise tdd`) |
 | /log | learning-log |
 | /transcript | transcript |
 | /remember | remember |
+
+### Workflow Templates
+
+| Location | Workflows | Loaded By |
+|----------|-----------|-----------|
+| `skills/supervisor/workflows/` | tdd, batch-review, skill-audit | `/supervise {name}` |
+| `skills/framework/workflows/` | 01-design, 02-debug, 03-experiment, 04-bloat, 06-spec | `Skill("framework")` |
+
+**Decision pending**: Workflow selection criteria - see `$ACA_DATA/projects/aops/specs/workflow-selection.md`
 
 ### Skill → Skill Dependencies
 

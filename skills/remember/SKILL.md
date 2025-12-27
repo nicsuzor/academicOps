@@ -39,9 +39,11 @@ The framework uses a memory server that indexes `$ACA_DATA/`. When you write mar
 
 ## Workflow
 
-1. **Search first**: `mcp__memory__retrieve_memory(query="topic keywords")`
-2. **If match found**: AUGMENT existing file (don't create new)
-3. **If no match**: Create new TOPICAL file (not session/date file)
+1. **Search BOTH sources**:
+   - Memory server: `mcp__memory__retrieve_memory(query="topic keywords")`
+   - Specs directory: `Glob(pattern="$ACA_DATA/projects/*/specs/*.md")` then grep for topic
+2. **If match found in EITHER**: AUGMENT existing file (don't create new)
+3. **If no match in either**: Create new TOPICAL file (not session/date file)
 4. **Write markdown file** with proper frontmatter:
 ```markdown
 ---

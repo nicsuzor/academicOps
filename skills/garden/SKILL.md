@@ -26,7 +26,14 @@ Tend the personal knowledge base incrementally. Small regular attention beats ma
 ## Modes
 
 ### scan [area]
-Health check. Count orphans, broken links, stale content, sparse notes, duplicates.
+Health check. Count orphans, broken links, stale content, sparse notes, duplicates, orphan implementation docs.
+
+**Orphan Implementation Doc Detection**:
+Files in `learning/` or `experiments/` that describe features with existing specs should be synthesized, not left as separate files. Scan identifies these:
+1. List files in `$ACA_DATA/projects/aops/learning/*.md` and `experiments/*.md`
+2. For each, check title/content against `specs/` filenames and content
+3. If match found → report as "orphan implementation doc - synthesize into [spec]"
+4. Output: "Found N implementation docs that should be merged into specs"
 
 ### weed [area]
 Fix broken [[wikilinks]], remove dead references, flag duplicates.
@@ -51,6 +58,13 @@ Find restated content that should be links. See DRY Enforcement below.
 
 ### synthesize [area]
 De-temporalize content: strip deliberation artifacts from specs, and delete/consolidate agent-generated temporal logs. See [[HEURISTICS.md#H23]] and [[AXIOMS.md#13]] (Trust Version Control).
+
+**Spec Index Maintenance**:
+After synthesizing any spec, ensure `specs/specs.md` is updated:
+1. Check if spec is listed in the index
+2. If not listed → add to appropriate category section
+3. If status changed → update the index entry
+4. Commit spec + index together
 
 **What's SACRED (never touch)**:
 - User-written meeting notes, file notes, journal entries

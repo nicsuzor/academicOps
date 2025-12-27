@@ -8,7 +8,7 @@ tools:
 
 # /supervise - Generic Supervisor Command
 
-Invoke the supervisor skill with the specified workflow:
+Invoke the [[academicOps/skills/supervisor/SKILL|Supervisor skill]] with the specified workflow:
 
 ```
 Skill(skill="supervisor", args="$ARGUMENTS")

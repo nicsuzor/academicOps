@@ -17,6 +17,29 @@ Academic support framework for Claude Code. Minimal, fight bloat aggressively.
 - **Principles**: [[AXIOMS.md]] (injected at session start)
 - **Heuristics**: [[HEURISTICS.md]] (injected at session start)
 - **File tree**: [[INDEX.md]]
+- **Workflow selection**: See [[specs/workflow-selection.md]] (DRAFT - decision pending)
+
+## Workflows
+
+Two orchestration approaches exist. Selection criteria are under development.
+
+| Command | Role | When to Use |
+|---------|------|-------------|
+| `/meta` | Strategic brain + executor (full tool access) | Framework problems end-to-end, design AND build |
+| `/supervise {workflow}` | Strict delegator (no implementation tools) | Structured work with quality gates, delegates to subagents |
+
+**Supervisor Workflows** (`/supervise {name}`):
+- `tdd` - Test-first development with pytest
+- `batch-review` - Parallel batch processing with quality gates
+- `skill-audit` - Review skills for content separation
+
+**Framework Workflows** (loaded via `Skill("framework")`):
+- `01-design-new-component` - Adding new hooks, skills, scripts, commands
+- `02-debug-framework-issue` - Diagnosing framework component failures
+- `03-experiment-design` - Testing hypotheses about behavior
+- `06-develop-specification` - Collaborative spec development
+
+**Open question**: How should agents choose between these? See [[specs/workflow-selection.md]].
 
 ## Knowledge Architecture
 
