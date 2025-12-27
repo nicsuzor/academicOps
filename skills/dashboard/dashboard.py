@@ -150,12 +150,15 @@ DEFAULT_COLOR = '#ffb000'  # Amber for unknown projects
 def get_primary_focus() -> dict:
     """Get the primary focus task for prominent dashboard display.
 
-    Checks daily log first, falls back to synthesis.json if available and fresh.
+    Checks in order:
+    1. Daily log primary task
+    2. synthesis.json next_action (if fresh)
+    3. First P0 task from task index
 
     Returns:
         Dict with keys:
             - task_title: The primary task title (str)
-            - source: One of 'daily_log', 'synthesis', 'none'
+            - source: One of 'daily_log', 'synthesis', 'task_index', 'none'
     """
     from lib.session_analyzer import SessionAnalyzer
 
@@ -179,6 +182,12 @@ def get_primary_focus() -> dict:
                     "task_title": task,
                     "source": "synthesis",
                 }
+
+    # Fallback to first P0 task
+    priority_tasks = get_priority_tasks()
+    p0_tasks = [t for t in priority_tasks if t["priority"] == 0]
+    if p0_tasks:
+        return {"task_title": p0_tasks[0]["title"], "source": "task_index"}
 
     # No primary focus found
     return {

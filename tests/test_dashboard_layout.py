@@ -60,7 +60,9 @@ def test_primary_focus_data_available(data_dir: Path) -> None:
     )
 
     # Verify source is a valid value
-    valid_sources = {"daily_log", "synthesis", "none"}
+    # Sources: daily_log (from daily log), synthesis (from synthesis),
+    # task_index (fallback to P0 task), none (no focus available)
+    valid_sources = {"daily_log", "synthesis", "task_index", "none"}
     assert result["source"] in valid_sources, (
         f"source must be one of {valid_sources}, got {result['source']!r}"
     )
