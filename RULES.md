@@ -9,23 +9,7 @@ tags: [framework, enforcement, moc]
 
 # Enforcement Rules
 
-What's protected, how it's enforced, and whether it's working.
-
----
-
-## Enforcement Mechanisms
-
-| Level | Mechanism | Strength | How It Works |
-|-------|-----------|----------|--------------|
-| 1 | Ad-hoc prompts | Soft | Direct conversation guidance, not persistent |
-| 2 | CLAUDE.md | Soft | Auto-loads at session start, agents can ignore |
-| 3 | SessionStart hook | Medium | Injects AXIOMS, FRAMEWORK, CORE into context |
-| 4 | UserPromptSubmit hook | Medium | Skill suggestions on every prompt |
-| 5 | PreToolUse hook | Hard | Blocks tool calls matching patterns (exit 2) |
-| 6 | Deny rules | Hard | Claude Code built-in, blocks paths |
-| 7 | Pre-commit | Hard | Final gate before git commit |
-
-**Decision guide**: Soft = agent should know. Medium = reminder at decision time. Hard = must not happen.
+**Purpose**: Current state of what's protected and how. For mechanism selection guidance, see [[ENFORCEMENT|docs/ENFORCEMENT.md]]. For architectural philosophy, see [[enforcement|specs/enforcement.md]].
 
 ---
 

@@ -7,7 +7,7 @@ tags: [framework, enforcement, learning]
 
 # Enforcement Mechanisms
 
-**Purpose**: Guide for choosing HOW to enforce a behavior, based on evidence of what works.
+**Purpose**: Practical guide for choosing HOW to enforce a behavior. For architectural philosophy, see [[enforcement|specs/enforcement.md]]. For current active rules, see [[RULES]].
 
 ## Mechanism Ladder
 
@@ -233,20 +233,6 @@ This allows testing strict workflows (e.g., supervisor-only mode, mandatory suba
 - How to enforce skill invocation without blocking legitimate direct operations?
 - How to detect "claiming success without verification" mechanically?
 - What's the right balance of hook latency vs enforcement strength?
-
-## Evidence Log
-
-Track observations here to inform mechanism choices:
-
-| Date | Observation | Mechanism Tried | Worked? |
-|------|-------------|-----------------|---------|
-| 2025-12-22 | 8+ skill bypass instances | Prompt text ("MANDATORY") | No |
-| 2025-12-22 | "No mocks" ignored | AXIOM rule | No |
-| 2025-12-22 | File not read before edit | (none) | N/A - needs Level 4 |
-| 2025-12-21 | Backup file creation | Deny rule | Yes |
-| 2025-12-20 | Autocommit format | Post-tool hook | Yes |
-
----
 
 ## Revision Protocol
 
