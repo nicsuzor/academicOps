@@ -27,7 +27,6 @@ VALID_SKILL_NAMES = {
     "osb-drafting",
     "learning-log",
     "transcript",
-    "skill-creator",
     "training-set-builder",
     "extractor",
     "none",

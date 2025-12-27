@@ -43,8 +43,8 @@ GROUND_TRUTH = [
     # Framework questions
     (
         "how do I add a new skill to the framework?",
-        ["framework", "skill-creator"],
-        "Framework modification question - either is acceptable",
+        ["framework"],
+        "Framework modification question",
     ),
     # Ambiguous → none is acceptable
     (
@@ -118,7 +118,7 @@ def _run_intent_classification(prompt: str, timeout: int = 60) -> str | None:
             "analyst", "framework", "remember", "tasks", "python-dev",
             "pdf", "osb-drafting", "transcript", "session-insights",
             "learning-log", "excalidraw", "ground-truth", "training-set-builder",
-            "extractor", "skill-creator", "dashboard", "garden", "link-audit",
+            "extractor", "dashboard", "garden", "link-audit",
             "reference-map", "feature-dev",
             # Commands
             "meta", "email", "log", "qa", "ttd", "pull", "add", "strategy",

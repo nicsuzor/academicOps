@@ -30,6 +30,8 @@ $AOPS/
 │
 ├── commands/                    # Slash commands (main agent executes)
 │   ├── meta.md                  # Strategic brain + executor → framework, python-dev skills
+│   ├── q.md                     # Quick capture → prompt queue (zero-friction)
+│   ├── pull.md                  # Execute next queued prompt or priority task
 │   ├── log.md                   # → learning-log skill
 │   ├── transcript.md            # → transcript skill
 │   ├── remember.md              # → remember skill
@@ -90,10 +92,6 @@ $AOPS/
 │   │   └── libraries/           # Icon libraries
 │   │
 │   │
-│   ├── skill-creator/           # Skill packaging
-│   │   ├── SKILL.md
-│   │   └── scripts/             # init_skill, package_skill, quick_validate
-│   │
 │   ├── dashboard/               # Live task dashboard (Streamlit)
 │   │   ├── SKILL.md
 │   │   └── dashboard.py
@@ -125,6 +123,7 @@ $AOPS/
 ├── agents/                      # Spawnable subagents (Task tool)
 │   ├── critic.md                # Second-opinion review of plans/conclusions
 │   ├── intent-router.md         # LLM intent classifier (Haiku)
+│   ├── prompt-writer.md         # Transform fragments → executable prompts (chained)
 │   ├── memory-validator.md      # Parallel memory validation
 │   ├── email-extractor.md       # Email archive processing
 │   └── task-viz.md              # Task graph → Excalidraw
@@ -203,6 +202,8 @@ $ACA_DATA/
 ├── CORE.md                      # User context, tools
 ├── STYLE*.md                    # Writing style
 ├── tasks/                       # Task data (active/, completed/, deferred/)
+├── queue/                       # Prompt queue (executable prompts, chained)
+│   └── done/                    # Completed prompts (archived)
 └── projects/aops/
     ├── VISION.md                # End state
     ├── ROADMAP.md               # Current status

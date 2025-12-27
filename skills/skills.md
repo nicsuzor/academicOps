@@ -9,7 +9,7 @@ tags: [framework, skills]
 
 ## Overview
 
-25 specialized skills providing domain-specific capabilities and context for academic research, writing, and framework operations.
+24 specialized skills providing domain-specific capabilities and context for academic research, writing, and framework operations.
 
 ## Framework & Meta
 
@@ -17,7 +17,6 @@ tags: [framework, skills]
 - [[supervisor/SKILL.md|supervisor]] - Generic supervisor orchestrating multi-agent workflows with quality gates and workflow templates
 - [[framework-debug/SKILL.md|framework-debug]] - Investigate Claude Code session logs to diagnose framework issues
 - [[framework-review/SKILL.md|framework-review]] - Analyze session transcripts to identify framework improvement opportunities
-- [[skill-creator/SKILL.md|skill-creator]] - Create and maintain skills following evidence-based anti-bloat principles
 - [[session-insights/SKILL.md|session-insights]] - Extract accomplishments and learnings from Claude Code sessions
 - [[transcript/SKILL.md|transcript]] - Generate markdown transcripts from Claude Code session files
 - [[learning-log/SKILL.md|learning-log]] - Log agent performance patterns to thematic learning files
