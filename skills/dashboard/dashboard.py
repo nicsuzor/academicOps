@@ -36,8 +36,16 @@ def load_task_index() -> dict | None:
         return None
 
 
-def load_synthesis() -> dict | None:
-    """Load LLM synthesis from synthesis.json if fresh (< 10 min old)."""
+def load_synthesis(max_age_minutes: int = 60) -> dict | None:
+    """Load LLM synthesis from synthesis.json if fresh.
+
+    Args:
+        max_age_minutes: Maximum age in minutes before synthesis is considered stale.
+            Default is 60 minutes (suitable for dashboard display).
+
+    Returns:
+        Parsed synthesis dict if file exists and is fresh, None otherwise.
+    """
     aca_data = os.environ.get('ACA_DATA')
     if not aca_data:
         return None
@@ -47,10 +55,10 @@ def load_synthesis() -> dict | None:
         return None
 
     try:
-        # Check if file is fresh (< 10 minutes old)
+        # Check if file is fresh
         mtime = synthesis_path.stat().st_mtime
         age_minutes = (datetime.now().timestamp() - mtime) / 60
-        if age_minutes > 10:
+        if age_minutes > max_age_minutes:
             return None  # Stale, don't use
 
         with open(synthesis_path) as f:
@@ -1104,28 +1112,37 @@ def render_three_question_layout() -> None:
 
         # Priority tasks - grouped by priority level
         priority_tasks = what_to_do["priority_tasks"]
+        primary_title = primary["task_title"]  # Filter out primary to avoid duplication
         if priority_tasks:
-            # Separate P0 and P1 tasks
-            p0_tasks = [t for t in priority_tasks if t.get('priority') == 0]
-            p1_tasks = [t for t in priority_tasks if t.get('priority') == 1]
+            # Separate P0 and P1 tasks, excluding the primary task
+            p0_tasks = [t for t in priority_tasks if t.get('priority') == 0 and t.get('title') != primary_title]
+            p1_tasks = [t for t in priority_tasks if t.get('priority') == 1 and t.get('title') != primary_title]
 
-            # Show all P0 tasks first
+            # Show top 3 P0 tasks first
             if p0_tasks:
                 st.markdown("**P0 Tasks:**")
-                for task in p0_tasks:
-                    title = task.get('title', '')[:50]
-                    if len(task.get('title', '')) > 50:
+                for task in p0_tasks[:3]:
+                    title = task.get('title', '')[:70]
+                    if len(task.get('title', '')) > 70:
                         title += "..."
-                    st.markdown(f"- {title}")
+                    project = task.get('project', '')
+                    project_tag = f" [{project}]" if project else ""
+                    st.markdown(f"- {title}{project_tag}")
+                if len(p0_tasks) > 3:
+                    st.markdown(f"*{len(p0_tasks) - 3} more P0 tasks*")
 
-            # Then show all P1 tasks
+            # Then show top 5 P1 tasks
             if p1_tasks:
                 st.markdown("**P1 Tasks:**")
-                for task in p1_tasks:
-                    title = task.get('title', '')[:50]
-                    if len(task.get('title', '')) > 50:
+                for task in p1_tasks[:5]:
+                    title = task.get('title', '')[:70]
+                    if len(task.get('title', '')) > 70:
                         title += "..."
-                    st.markdown(f"- {title}")
+                    project = task.get('project', '')
+                    project_tag = f" [{project}]" if project else ""
+                    st.markdown(f"- {title}{project_tag}")
+                if len(p1_tasks) > 5:
+                    st.markdown(f"*{len(p1_tasks) - 5} more P1 tasks*")
         else:
             st.markdown("*No priority tasks*")
 
@@ -1158,8 +1175,8 @@ def render_three_question_layout() -> None:
                 count_str = f"({count} sessions)" if count > 0 else ""
                 # Join summaries, truncate if too long
                 summary_text = ", ".join(summaries)
-                if len(summary_text) > 80:
-                    summary_text = summary_text[:77] + "..."
+                if len(summary_text) > 120:
+                    summary_text = summary_text[:117] + "..."
                 st.markdown(f"- **{proj}** {count_str}: {summary_text}")
         else:
             # Fall back to raw session data when synthesis is stale
@@ -1167,18 +1184,32 @@ def render_three_question_layout() -> None:
             active_sessions = what_doing["active_sessions"]
 
             if active_sessions:
-                for session in active_sessions[:6]:
+                # Group sessions by project for cleaner display
+                sessions_by_project: dict[str, list[dict]] = {}
+                for session in active_sessions:
                     project = session.get("project", "unknown")
-                    activity = session.get("activity", "")
                     # Clean up project name for display
                     if project.startswith("-"):
                         project = project.replace("-", "/")[1:]  # Convert -Users-name to /Users/name
                         project = project.split("/")[-1]  # Just show last path component
-                    # Show activity context if available, otherwise just project
+                    if project not in sessions_by_project:
+                        sessions_by_project[project] = []
+                    sessions_by_project[project].append(session)
+
+                # Display each project with count and most recent activity
+                for project, sessions in list(sessions_by_project.items())[:6]:
+                    count = len(sessions)
+                    # Find first session with activity
+                    activity = ""
+                    for s in sessions:
+                        if s.get("activity"):
+                            activity = s.get("activity", "")
+                            break
+                    count_str = f"({count} sessions)" if count > 1 else ""
                     if activity:
-                        st.markdown(f"- **{project}**: {activity}")
+                        st.markdown(f"- **{project}** {count_str}: {activity}")
                     else:
-                        st.markdown(f"- **{project}**")
+                        st.markdown(f"- **{project}** {count_str}")
             else:
                 st.markdown("*No active sessions*")
 
@@ -1204,8 +1235,8 @@ def render_three_question_layout() -> None:
                 st.markdown(f"**{project}**:")
                 for item in items:
                     source = item.get("source", "")
-                    desc = item.get("description", "")[:60]
-                    if len(item.get("description", "")) > 60:
+                    desc = item.get("description", "")[:100]
+                    if len(item.get("description", "")) > 100:
                         desc += "..."
                     # Use icons instead of text tags for cleaner display
                     if source == "daily_log":

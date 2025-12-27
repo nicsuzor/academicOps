@@ -22,7 +22,7 @@ This ensures changes are categorical (generalizable rules), not ad-hoc fixes.
 ❌ **WRONG**: User mentions spelling → Create SPELLING AXIOM + spell-check hook + prominent warning
 ✅ **RIGHT**: User mentions spelling → Add brief note in relevant location, create experiment to track
 
-**Start small. Escalate only if it recurs.**
+**Start small. If we need a heavier intervention, we need to update the Specs.**
 
 ## Workflow
 
@@ -45,6 +45,8 @@ Search HEURISTICS.md for related heuristics.
 
 **If found**: This is a recurrence. Consider escalating the intervention level.
 
+**If this is a new issue**: Invoke the `/log` command to track it.
+
 ### 3. Choose Intervention
 
 The framework skill (via `@RULES.md`) defines available enforcement mechanisms. Consult it to choose the **minimal sufficient** intervention:
@@ -57,7 +59,9 @@ The framework skill (via `@RULES.md`) defines available enforcement mechanisms. 
 
 ### 4. Make the Minimal Change
 
-Keep changes brief (1-3 sentences for soft interventions). For heuristics, follow HEURISTICS.md format.
+Keep changes brief (1-3 sentences for soft interventions). 
+
+If you need to make a bigger change, **ABORT** and update/create a Spec instead.
 
 ### 5. Create/Update Experiment
 
@@ -114,7 +118,3 @@ Tell the user:
 - Check existing heuristics/experiments
 - Add evidence or escalate mechanism
 - Update experiment with observation
-
-## NOT for Bug Reports
-
-If reporting a specific bug (script crashed, hook failed), use `/log` instead. `/learn` is for improving agent behavior through instruction/constraint changes.

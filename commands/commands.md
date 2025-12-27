@@ -14,7 +14,7 @@ tags: [framework, commands]
 ## Strategic & Planning
 
 - [[meta.md|/meta]] - Strategic supervisor for academicOps framework - loads complete context, makes principled decisions, handles work end-to-end with TDD quality gates
-- [[strategy.md|/strategy]] - Strategic thinking partner for exploration, planning, and clarity - facilitates thinking without executing tasks
+- [[academicOps/commands/strategy|/strategy]] - Strategic thinking partner for exploration, planning, and clarity - facilitates thinking without executing tasks
 - [[qa.md|/qa]] - Quality assurance agent that verifies concrete outcomes against user goals and acceptance criteria using real-world data
 - [[ttd.md|/ttd]] - Orchestrates multi-agent workflows with comprehensive quality gates, test-first development, and continuous plan validation
 
