@@ -315,7 +315,9 @@ def call_claude_headless(prompt: str) -> dict | None:
 
 
 def write_synthesis_to_daily(synthesis: dict, daily_path: Path) -> bool:
-    """Write synthesis section to daily.md for lo-fi dashboard viewing.
+    """Write Focus section to daily.md for lo-fi dashboard viewing.
+
+    Inserts Focus section immediately after YAML frontmatter for visibility.
 
     Args:
         synthesis: Dict with keys: accomplishments, alignment, next_action, suggestion, generated
@@ -330,8 +332,15 @@ def write_synthesis_to_daily(synthesis: dict, daily_path: Path) -> bool:
     try:
         content = daily_path.read_text(encoding="utf-8")
 
-        # Remove existing ## Synthesis section (robust regex with flexible whitespace)
-        # Matches from "## Synthesis" to next "##" heading or end of file
+        # Remove existing ## Focus (Synthesized) section
+        content = re.sub(
+            r"\n*##\s*Focus\s*\(Synthesized\)\s*\n.*?(?=\n##\s|\Z)",
+            "",
+            content,
+            flags=re.DOTALL | re.IGNORECASE,
+        )
+
+        # Remove legacy ## Synthesis section (backward compat)
         content = re.sub(
             r"\n*##\s*Synthesis\s*\n.*?(?=\n##\s|\Z)",
             "",
@@ -339,35 +348,51 @@ def write_synthesis_to_daily(synthesis: dict, daily_path: Path) -> bool:
             flags=re.DOTALL | re.IGNORECASE,
         )
 
-        # Build synthesis markdown section
+        # Remove standalone ## Accomplishments section (now summarized in Focus)
+        content = re.sub(
+            r"\n*##\s*Accomplishments\s*\n.*?(?=\n##\s|\Z)",
+            "",
+            content,
+            flags=re.DOTALL | re.IGNORECASE,
+        )
+
+        # Build Focus section
         acc = synthesis.get("accomplishments", {})
         align = synthesis.get("alignment", {})
         next_act = synthesis.get("next_action", {})
-        generated = synthesis.get("generated", datetime.now(UTC).isoformat())
         suggestion = synthesis.get("suggestion", "")
 
-        synthesis_md = f"""
+        focus_md = f"""## Focus (Synthesized)
 
-## Synthesis
-
-**Generated**: {generated}
-
-### Focus
-- **Next Action**: {next_act.get('task', 'Not set')} [{next_act.get('project', 'unknown')}]
-- **Reason**: {next_act.get('reason', 'N/A')}
-
-### Status
-- **Alignment**: {align.get('status', 'unknown')} - {align.get('note', 'N/A')}
-- **Accomplishments** ({acc.get('count', 0)}): {acc.get('summary', 'None recorded')}
+**Next Action**: {next_act.get('task', 'Not set')} [{next_act.get('project', 'unknown')}]
+**Why**: {next_act.get('reason', 'N/A')}
+**Alignment**: {align.get('status', 'unknown')} - {align.get('note', 'N/A')}
+**Today** ({acc.get('count', 0)}): {acc.get('summary', 'None recorded')}
 """
         if suggestion:
-            synthesis_md += f"""
-### Suggestion
-{suggestion}
+            focus_md += f"""
+> {suggestion}
 """
 
-        # Append to content
-        content = content.rstrip() + synthesis_md
+        focus_md += """
+---
+"""
+
+        # Find end of YAML frontmatter and insert Focus section after it
+        # YAML frontmatter starts and ends with ---
+        frontmatter_match = re.match(r"^---\n.*?\n---\n?", content, re.DOTALL)
+        if frontmatter_match:
+            frontmatter_end = frontmatter_match.end()
+            # Insert Focus section after frontmatter
+            content = (
+                content[:frontmatter_end].rstrip()
+                + "\n\n"
+                + focus_md
+                + content[frontmatter_end:].lstrip()
+            )
+        else:
+            # No frontmatter - insert at beginning
+            content = focus_md + "\n" + content.lstrip()
 
         daily_path.write_text(content, encoding="utf-8")
         return True
