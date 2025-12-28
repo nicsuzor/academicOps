@@ -1,0 +1,10 @@
+{
+  "$schema": "https://raw.githubusercontent.com/anthropics/claude-code/main/config-schema.json",
+  "$comment": "Web-compatible settings for Claude Code Web environments. No hooks (require $AOPS). Skills, commands, agents work via bundled .claude/ directory.",
+  "permissions": {
+    "allow": [
+      "Read"
+    ],
+    "deny": []
+  }
+}
