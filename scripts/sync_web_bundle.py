@@ -1,0 +1,217 @@
+#!/usr/bin/env python3
+"""
+Sync aOps framework to a project's .claude/ directory for web environments.
+
+This creates a bundled .claude/ directory that works in limited environments
+(like Claude Code Web) where only one repo is available and $AOPS is not set.
+
+Usage:
+    # Sync to another project (copies files)
+    python sync_web_bundle.py /path/to/writing
+
+    # Sync academicOps itself (uses symlinks)
+    python sync_web_bundle.py --self
+
+What gets synced:
+    - skills/ (all skill definitions)
+    - commands/ (slash commands)
+    - agents/ (agent definitions)
+    - settings.json (web-compatible, no hooks)
+    - CLAUDE.md (framework + project-specific if exists)
+"""
+
+import argparse
+import shutil
+import sys
+from pathlib import Path
+
+AOPS_ROOT = Path(__file__).parent.parent.resolve()
+
+
+def sync_to_self() -> int:
+    """Sync .claude/ for academicOps repo itself using relative symlinks."""
+    target = AOPS_ROOT / ".claude"
+    target.mkdir(exist_ok=True)
+
+    # Relative symlinks for self (academicOps IS the framework)
+    links = {
+        "skills": "../skills",
+        "commands": "../commands",
+        "agents": "../agents",
+        "CLAUDE.md": "../CLAUDE.md",
+        "settings.json": "../config/claude/settings.json",  # Full settings for self
+    }
+
+    for name, rel_target in links.items():
+        link_path = target / name
+        if link_path.is_symlink():
+            current = link_path.readlink()
+            if str(current) == rel_target:
+                print(f"  {name} -> {rel_target} (unchanged)")
+                continue
+            link_path.unlink()
+        elif link_path.exists():
+            if link_path.is_dir():
+                shutil.rmtree(link_path)
+            else:
+                link_path.unlink()
+
+        link_path.symlink_to(rel_target)
+        print(f"  {name} -> {rel_target}")
+
+    print(f"\nSynced academicOps .claude/ (symlinks to parent)")
+    return 0
+
+
+def sync_to_project(project_path: Path, force: bool = False) -> int:
+    """Sync .claude/ to another project by copying files."""
+    if not project_path.exists():
+        print(f"Error: Project path does not exist: {project_path}", file=sys.stderr)
+        return 1
+
+    target = project_path / ".claude"
+
+    # Check for existing .claude with non-aops content
+    if target.exists() and not force:
+        marker = target / ".aops-bundle"
+        if not marker.exists():
+            print(f"Error: {target} exists but wasn't created by sync_web_bundle", file=sys.stderr)
+            print("Use --force to overwrite", file=sys.stderr)
+            return 1
+
+    # Clean and recreate
+    if target.exists():
+        shutil.rmtree(target)
+    target.mkdir()
+
+    # Copy directories
+    for dir_name in ["skills", "commands", "agents"]:
+        src = AOPS_ROOT / dir_name
+        dst = target / dir_name
+        if src.exists():
+            shutil.copytree(src, dst, ignore=shutil.ignore_patterns(
+                "__pycache__", "*.pyc", ".pytest_cache", "tests"
+            ))
+            count = sum(1 for _ in dst.rglob("*") if _.is_file())
+            print(f"  {dir_name}/ ({count} files)")
+
+    # Copy web-compatible settings
+    settings_src = AOPS_ROOT / "config" / "claude" / "settings-web.json"
+    settings_dst = target / "settings.json"
+    shutil.copy2(settings_src, settings_dst)
+    print(f"  settings.json (web-compatible, no hooks)")
+
+    # Generate CLAUDE.md
+    claude_md = generate_claude_md(project_path)
+    (target / "CLAUDE.md").write_text(claude_md)
+    print(f"  CLAUDE.md (generated)")
+
+    # Create marker file
+    (target / ".aops-bundle").write_text(
+        f"aOps bundle synced from {AOPS_ROOT}\n"
+        f"This directory is managed by sync_web_bundle.py\n"
+        f"Do not edit manually - changes will be overwritten\n"
+    )
+
+    print(f"\nSynced to {target} (copied files)")
+    print("Commit this .claude/ directory to use aOps on Claude Code Web")
+    return 0
+
+
+def generate_claude_md(project_path: Path) -> str:
+    """Generate CLAUDE.md for a project bundle."""
+    project_name = project_path.name
+
+    # Check for existing project-specific CLAUDE.md
+    existing_claude_md = project_path / "CLAUDE.md"
+    project_specific = ""
+    if existing_claude_md.exists():
+        content = existing_claude_md.read_text()
+        # Check if it's not already an aops-generated one
+        if "aOps Framework Bundle" not in content:
+            project_specific = f"\n## Project-Specific Instructions\n\n{content}"
+
+    return f"""# aOps Framework Bundle
+
+This project uses the academicOps framework for Claude Code.
+
+## Environment
+
+This is a **bundled** installation for limited environments (Claude Code Web).
+
+**Available features:**
+- Skills: Use `Skill(skill="...")` to invoke specialized workflows
+- Commands: Use `/command` for slash commands
+- Agents: Agent definitions for Task tool
+
+**Not available in this environment:**
+- Hooks (require full $AOPS environment)
+- MCP servers (require local setup)
+
+## Key Skills
+
+| Skill | Purpose |
+|-------|---------|
+| framework | Convention reference, categorical imperative |
+| python-dev | Production Python (fail-fast, typed) |
+| analyst | Research data analysis (dbt, stats) |
+| remember | Store and retrieve memories |
+| tasks | Task management |
+| pdf | Markdown to professional PDF |
+
+## Usage
+
+Invoke skills as needed:
+```
+Skill(skill="python-dev")  # For Python development
+Skill(skill="analyst")      # For data analysis
+```
+
+## Updating
+
+To update this bundle, run from the academicOps repo:
+```bash
+python scripts/sync_web_bundle.py {project_path}
+```
+{project_specific}
+"""
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(
+        description="Sync aOps framework to a project's .claude/ directory"
+    )
+    parser.add_argument(
+        "project_path",
+        nargs="?",
+        type=Path,
+        help="Path to target project directory",
+    )
+    parser.add_argument(
+        "--self",
+        action="store_true",
+        dest="sync_self",
+        help="Sync academicOps itself (uses symlinks)",
+    )
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Overwrite existing .claude/ even if not created by sync",
+    )
+
+    args = parser.parse_args()
+
+    print("aOps Web Bundle Sync")
+    print("=" * 40)
+
+    if args.sync_self:
+        return sync_to_self()
+    elif args.project_path:
+        return sync_to_project(args.project_path.resolve(), args.force)
+    else:
+        parser.print_help()
+        return 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())

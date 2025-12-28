@@ -19,6 +19,13 @@ Academic support framework for Claude Code. Minimal, fight bloat aggressively.
 - **File tree**: [[INDEX.md]]
 - **Workflow selection**: See [[specs/workflow-selection.md]] (DRAFT - decision pending)
 
+## Installation
+
+| Environment | Setup | Documentation |
+|-------------|-------|---------------|
+| **Full** (laptop, WSL, VM) | `./setup.sh` | Creates `~/.claude/` symlinks |
+| **Limited** (Claude Code Web) | `python scripts/sync_web_bundle.py /path/to/project` | See [[docs/WEB-BUNDLE.md]] |
+
 ## Workflows
 
 Two orchestration approaches exist. Selection criteria are under development.
