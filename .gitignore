@@ -309,8 +309,7 @@ settings.local.json
 
 # User-specific configuration (not framework code)
 
-# Claude Code user settings
-.claude/settings.json
+# Claude Code user-local settings (machine-specific, not framework)
 .claude/settings.local.json
 
 # Daily tracking files (ephemeral - not version controlled)
