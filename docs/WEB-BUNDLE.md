@@ -25,7 +25,7 @@ cd /path/to/academicOps
 ./setup.sh
 ```
 
-This creates symlinks in `~/.claude/` pointing to the framework. All projects inherit these settings.
+This creates symlinks in `~/.claude/` pointing to the framework. Claude Code automatically loads these settings for all projects on the machine.
 
 ## Limited Environment Setup
 
@@ -75,8 +75,10 @@ Commit this `.claude/` directory to enable aOps on Claude Code Web.
 | Skills | Works | `Skill(skill="...")` loads bundled definitions |
 | Commands | Works | `/command` invokes bundled slash commands |
 | Agents | Works | Agent definitions available for Task tool |
-| Hooks | Not available | Require $AOPS and Python environment |
+| Hooks | Not available | See note below |
 | MCP servers | Not available | Require local setup |
+
+**Why hooks don't work**: Claude Code Web and similar limited environments don't provide shell access to run Python scripts. Hooks require the `$AOPS` environment variable and a Python environment with dependencies. This is expected behavior - the bundled `settings.json` intentionally excludes hook definitions to avoid spurious error messages.
 
 ## Keeping Bundles Fresh
 
@@ -187,17 +189,59 @@ The bundle includes a `.aops-bundle` marker. Re-syncing will overwrite existing 
 
 ## Troubleshooting
 
-**Skills not loading on Claude Code Web**
+### Verifying Your Bundle
 
-Check that `.claude/skills/` exists and contains skill files:
+Check that the bundle is properly installed:
 ```bash
+# Verify marker file exists
+cat .claude/.aops-bundle
+
+# Check bundle version
+cat .claude/.aops-version
+
+# List available skills
 ls .claude/skills/
 ```
 
+### Common Issues
+
+**Skills not loading on Claude Code Web**
+
+1. Verify `.claude/skills/` exists and contains skill files
+2. Check that files are actual copies, not broken symlinks
+3. Re-run sync: `python scripts/sync_web_bundle.py /path/to/project`
+
 **"Hooks failed" messages**
 
-Expected in limited environments. The bundled settings.json for other projects has no hooks. For academicOps itself, hook failures are logged but don't block operation.
+This is **expected behavior** in limited environments. Hooks require:
+- Shell access to run Python scripts
+- The `$AOPS` environment variable set
+- Python with installed dependencies
+
+The bundled `settings.json` for other projects excludes hooks entirely. For academicOps itself on Claude Code Web, hook failures are logged but don't block operation.
 
 **"$AOPS not set" errors**
 
-This happens when full-environment hooks run without proper setup. In limited environments, use the bundled web settings which have no hooks.
+This occurs when full-environment hooks run without proper setup. Solutions:
+1. Run `./setup.sh` to configure the full environment, OR
+2. Use the bundled web settings which have no hooks
+
+**Bundle seems outdated**
+
+Force a fresh sync:
+```bash
+# Remove existing bundle
+rm -rf .claude/
+
+# Re-sync
+python scripts/sync_web_bundle.py /path/to/project
+
+# Verify new version
+cat .claude/.aops-version
+```
+
+**GitHub Actions workflow not triggering**
+
+1. Ensure workflow file is in `.github/workflows/`
+2. Check repository has Actions enabled
+3. Verify the workflow has correct trigger events
