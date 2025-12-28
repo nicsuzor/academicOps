@@ -35,12 +35,10 @@ Two orchestration approaches exist. Selection criteria are under development.
 | Command | Role | When to Use |
 |---------|------|-------------|
 | `/meta` | Strategic brain + executor (full tool access) | Framework problems end-to-end, design AND build |
-| `/supervise {workflow}` | Strict delegator (no implementation tools) | Structured work with quality gates, delegates to subagents |
+| `/supervise` | Strict delegator via hypervisor agent | Structured work with quality gates, delegates to subagents |
 
-**Supervisor Workflows** (`/supervise {name}`):
-- `tdd` - Test-first development with pytest
-- `batch-review` - Parallel batch processing with quality gates
-- `skill-audit` - Review skills for content separation
+**Hypervisor Workflows** (`/supervise {description}`):
+The hypervisor agent orchestrates multi-step work with phases 0-5 (planning → implementation → QA). Workflow templates are planned but not yet implemented - describe the workflow approach in your prompt.
 
 **Framework Workflows** (loaded via `Skill("framework")`):
 - `01-design-new-component` - Adding new hooks, skills, scripts, commands
@@ -92,6 +90,7 @@ Two orchestration approaches exist. Selection criteria are under development.
 | pdf | Markdown → professional PDF | `Skill(skill="pdf")` |
 | python-dev | Production Python (fail-fast, typed) | `Skill(skill="python-dev")` |
 | tasks | Task management + email extraction | `Skill(skill="tasks")` or `/email` |
+| task-expand | Intelligent task breakdown with dependencies | `Skill(skill="task-expand")` |
 | transcript | Session JSONL → markdown | `Skill(skill="transcript")` |
 | session-analyzer | Semantic session analysis | `Skill(skill="session-analyzer")` |
 | learning-log | Pattern logging to thematic files | `Skill(skill="learning-log")` |
@@ -114,9 +113,11 @@ See [docs/HOOKS.md](docs/HOOKS.md) for hook architecture, [docs/OBSERVABILITY.md
 
 | Agent | Purpose | Invocation |
 |-------|---------|------------|
+| hypervisor | Multi-step workflow orchestrator (phases 0-5) | `Task(subagent_type="hypervisor", model="opus")` |
 | Explore | Fast codebase exploration | `Task(subagent_type="Explore")` |
 | Plan | Implementation planning | `Task(subagent_type="Plan")` |
 | critic | Second-opinion review of plans/conclusions | `Task(subagent_type="critic", model="haiku")` |
+| prompt-writer | Transform fragments into executable prompts | `Task(subagent_type="prompt-writer")` |
 
 **Note**: For Python development, use `general-purpose` subagent and invoke `Skill(skill="python-dev")` first.
 

@@ -3,15 +3,15 @@ name: supervise
 description: Generic supervisor loading workflow templates for orchestrated multi-agent tasks
 permalink: aops/commands/supervise
 tools:
-  - Skill
+  - Task
 ---
 
-# /supervise - Generic Supervisor Command
+# /supervise - Hypervisor Orchestration Command
 
-Invoke the [[academicOps/skills/supervisor/SKILL|Supervisor skill]] with the specified workflow:
+Spawn the [[agents/hypervisor|Hypervisor agent]] for multi-step workflow orchestration:
 
 ```
-Skill(skill="supervisor", args="$ARGUMENTS")
+Task(subagent_type="hypervisor", model="opus", prompt="$ARGUMENTS")
 ```
 
 ## Usage
@@ -20,7 +20,9 @@ Skill(skill="supervisor", args="$ARGUMENTS")
 /supervise {workflow} {task description}
 ```
 
-## Available Workflows
+## Workflow Templates (Future)
+
+When workflow loading is implemented, these templates will be available:
 
 | Workflow | Description |
 |----------|-------------|
@@ -28,32 +30,35 @@ Skill(skill="supervisor", args="$ARGUMENTS")
 | `batch-review` | Parallel batch processing with quality gates |
 | `skill-audit` | Review skills for content separation |
 
+For now, describe the workflow approach in your prompt directly.
+
 ## Examples
 
 ```bash
-# Test-driven development
-/supervise tdd Fix the authentication bug in user login
+# Multi-step feature implementation
+/supervise Implement user authentication: plan first, then implement with tests, verify before completing
 
-# Batch processing with quality control
-/supervise batch-review Review all tasks in data/tasks/inbox/ and ensure valid frontmatter
+# Code review with quality gates
+/supervise Review and refactor the dashboard component: check for issues, propose fixes, get approval
 
-# Skill content audit
-/supervise skill-audit Review all skills and ensure SKILL.md contains only actionable instructions
+# Batch processing task
+/supervise Process all markdown files in docs/: validate frontmatter, fix formatting, commit each file
 ```
 
-## What the Supervisor Does
+## What the Hypervisor Does
 
-1. **Loads workflow template** from `skills/supervisor/workflows/{name}.md`
-2. **Enforces supervisor contract** - orchestrates via subagents, no direct implementation
-3. **Applies quality gates** - critic review, acceptance criteria lock, QA verification
-4. **Tracks progress** - TodoWrite integration throughout
-5. **Handles failures** - iterates on errors, detects scope drift and thrashing
+1. **Phase 0: Planning** - Creates plan via Plan agent, gets critic review, defines acceptance criteria
+2. **Enforces supervisor contract** - orchestrates via subagents, no direct implementation (no Read/Edit/Bash)
+3. **Applies quality gates** - acceptance criteria lock, QA verification before completion
+4. **Tracks progress** - TodoWrite integration throughout all phases
+5. **Handles failures** - iterates on errors (max 3 attempts), detects scope drift (>20%) and thrashing
+6. **Phase 5: Completion** - Mandatory QA verification, documents via tasks skill
 
-## Adding New Workflows
+## Workflow Templates (Planned)
 
-Create a new file in `skills/supervisor/workflows/{name}.md` with:
-- YAML frontmatter: `name`, `description`, `required-skills`, `scope`
-- Sections: ITERATION UNIT, QUALITY GATE, workflow-specific steps
-- SUBAGENT PROMPTS for delegation
+Domain-specific workflow loading is planned but not yet implemented. See ROADMAP.md "Hypervisor Workflow Loading".
 
-The supervisor will automatically discover and load new workflows.
+Currently, include workflow-specific instructions directly in your prompt:
+```
+/supervise Implement login feature using TDD: write failing test first, then implement, then verify
+```

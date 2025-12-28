@@ -8,6 +8,7 @@ tools:
   - Glob
   - Grep
   - Write
+  - Skill
   - mcp__memory__retrieve_memory
 ---
 
@@ -46,6 +47,24 @@ What kind of work is this?
 - `/supervise` task (multi-step with quality gates)
 - `/meta` task (framework infrastructure)
 - Research first (need more investigation)
+
+### 3.5 Expand if Multi-Step
+
+If the fragment implies multi-step work (not a single atomic action):
+
+1. Invoke `Skill(skill="task-expand")` to get expansion guidance
+2. Apply the skill's methodology to decompose the goal into subtasks
+3. Each subtask becomes one prompt in a chain
+4. Generate chained prompts with:
+   - Same `end_goal` across all prompts
+   - Sequential `step` numbers (1, 2, 3...)
+   - `total_steps` set to the count
+   - Each prompt's `Next Step Template` describes the following prompt
+
+**Skip expansion when**:
+- Task is clearly atomic ("send email to X")
+- Task is research-only (single investigation prompt)
+- User explicitly said "quick" or "simple"
 
 ### 4. Write the Prompt
 
