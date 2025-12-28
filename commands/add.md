@@ -12,9 +12,13 @@ Use the Skill tool to invoke the `[[skills/tasks/SKILL.md|tasks]]` skill: `Skill
 **Workflow**:
 
 1. Review the current session for context about what needs to be done
-2. Search existing tasks for related items: `grep -li "keyword" $ACA_DATA/tasks/inbox/*.md`
+2. Search existing tasks via semantic search: `mcp__memory__retrieve_memory(query="tasks related to [topic]")`
 3. **If related task exists**: Add a checklist item using `task_item_add.py`
-4. **If no related task**: Create new task using `task_add.py`
+4. **If no related task**:
+   a. Check: is this atomic or multi-step?
+   b. If multi-step, invoke `Skill(skill="task-expand")` for expansion guidance
+   c. Apply expansion methodology to generate subtasks with `[effort::]`, `[automatable::]`, `[depends::]` metadata
+   d. Create task with `## Checklist` section using `task_add.py`
 
 **Checklist item format** (Obsidian Tasks compatible):
 ```

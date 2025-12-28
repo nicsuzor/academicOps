@@ -13,11 +13,20 @@ Academic support framework for Claude Code. Minimal, fight bloat aggressively.
 
 ## Quick Start
 
-- **Paths**: [[FRAMEWORK.md]] (injected at session start)
-- **Principles**: [[AXIOMS.md]] (injected at session start)
-- **Heuristics**: [[HEURISTICS.md]] (injected at session start)
-- **File tree**: [[INDEX.md]]
-- **Workflow selection**: See [[specs/workflow-selection.md]] (DRAFT - decision pending)
+- **Paths**: [FRAMEWORK.md](FRAMEWORK.md) (injected at session start)
+- **Principles**: [AXIOMS.md](AXIOMS.md) (injected at session start)
+- **Heuristics**: [HEURISTICS.md](HEURISTICS.md) (injected at session start)
+- **File tree**: [INDEX.md](INDEX.md)
+- **Workflow selection**: See [specs/workflow-selection.md](specs/workflow-selection.md) (DRAFT - decision pending)
+
+## Installation
+
+| Environment | Setup | Documentation |
+|-------------|-------|---------------|
+| **Full** (laptop, WSL, VM) | `./setup.sh` | Creates `~/.claude/` symlinks |
+| **Limited** (Claude Code Web) | `python scripts/sync_web_bundle.py /path/to/project` | See [WEB-BUNDLE.md](docs/WEB-BUNDLE.md) |
+
+**Auto-sync**: The sync script automatically installs a git hook for auto-updates. See docs/WEB-BUNDLE.md for GitHub Actions workflow.
 
 ## Workflows
 
@@ -39,21 +48,21 @@ Two orchestration approaches exist. Selection criteria are under development.
 - `03-experiment-design` - Testing hypotheses about behavior
 - `06-develop-specification` - Collaborative spec development
 
-**Open question**: How should agents choose between these? See [[specs/workflow-selection.md]].
+**Open question**: How should agents choose between these? See [specs/workflow-selection.md](specs/workflow-selection.md).
 
 ## Knowledge Architecture
 
 | Layer | Document | Nature |
 |-------|----------|--------|
-| **Axioms** | [[AXIOMS.md]] | Inviolable principles. No exceptions. |
-| **Heuristics** | [[HEURISTICS.md]] | Empirically validated rules. Revisable via `/log adjust-heuristic`. |
+| **Axioms** | [AXIOMS.md](AXIOMS.md) | Inviolable principles. No exceptions. |
+| **Heuristics** | [HEURISTICS.md](HEURISTICS.md) | Empirically validated rules. Revisable via `/log adjust-heuristic`. |
 | **Practices** | `Skill(skill="framework")` | Conventions derived from axioms. How things get done. |
 
 ## Glossary
 
 | Term | Definition |
 |------|------------|
-| **Skill** | Workflow instructions in [[skills]] - invoke via `Skill` tool |
+| **Skill** | Workflow instructions in [skills](skills/) - invoke via `Skill` tool |
 | **Command** | User-invokable `/slash` command in `commands/` |
 | **Hook** | Python script triggered by Claude Code events in `hooks/` |
 | **Agent** | Spawnable subagent via `Task` tool (`subagent_type`) |
@@ -83,6 +92,7 @@ Two orchestration approaches exist. Selection criteria are under development.
 | pdf | Markdown → professional PDF | `Skill(skill="pdf")` |
 | python-dev | Production Python (fail-fast, typed) | `Skill(skill="python-dev")` |
 | tasks | Task management + email extraction | `Skill(skill="tasks")` or `/email` |
+| task-expand | Intelligent task breakdown with dependencies | `Skill(skill="task-expand")` |
 | transcript | Session JSONL → markdown | `Skill(skill="transcript")` |
 | session-analyzer | Semantic session analysis | `Skill(skill="session-analyzer")` |
 | learning-log | Pattern logging to thematic files | `Skill(skill="learning-log")` |
@@ -99,7 +109,7 @@ Two orchestration approaches exist. Selection criteria are under development.
 | `user_prompt_submit.py` | UserPromptSubmit | Context injection on every prompt |
 | `prompt_router.py` | UserPromptSubmit | Keyword → skill suggestions |
 
-See [[docs/HOOKS.md]] for hook architecture, [[docs/OBSERVABILITY.md]] for logging/debugging.
+See [docs/HOOKS.md](docs/HOOKS.md) for hook architecture, [docs/OBSERVABILITY.md](docs/OBSERVABILITY.md) for logging/debugging.
 
 ## Agents
 

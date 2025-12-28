@@ -1,7 +1,7 @@
 ---
 name: task-expand
-description: Expand tasks into context-aware subtasks with automation detection and dependency tracking. Asynchronous, intelligent task breakdown.
-allowed-tools: Read,Grep,Glob,mcp__memory__retrieve_memory,mcp__memory__retrieve_with_quality_boost
+description: Expand tasks into context-aware subtasks with automation detection and dependency tracking. Intelligent task breakdown.
+allowed-tools: Read,Glob,mcp__memory__retrieve_memory
 version: 1.0.0
 permalink: skills-task-expand
 ---
@@ -91,9 +91,9 @@ Query memory server:
 3. Dependencies: "[topic] related tasks or blockers"
 ```
 
-Check existing tasks:
-```bash
-grep -li "[keyword]" $ACA_DATA/tasks/inbox/*.md
+Check existing tasks via semantic search:
+```
+mcp__memory__retrieve_memory(query="tasks related to [keyword]")
 ```
 
 ### Step 3: Generate Subtasks
@@ -103,7 +103,7 @@ For each subtask, determine:
 | Field | Description |
 |-------|-------------|
 | **title** | Clear action verb + object |
-| **depends_on** | Which other subtasks must complete first (by index) |
+| **depends** | Which other subtasks must complete first (by index) |
 | **automatable** | Could an agent do this without human decisions? |
 | **effort** | quick (<15min), short (15-60min), medium (1-2hr) |
 
@@ -159,22 +159,23 @@ This enables:
 
 ## Integration with /q Command
 
-When invoked via `/q`:
+The prompt-writer agent should invoke this skill after investigating a fragment:
 
-1. Accept raw task fragment (zero friction capture)
-2. Query memory for context
-3. Decide: expand or keep atomic
-4. If expanding, generate subtasks with metadata
-5. Create task via `task_add.py` with checklist
+1. After investigation, check: is this multi-step work?
+2. If yes, invoke `Skill(skill="task-expand")` for guidance
+3. Apply expansion methodology from this skill
+4. Generate chained prompts (one per subtask) to queue/
+5. Each prompt carries the same `end_goal` but different step numbers
 
 ## Integration with /add Command
 
-When invoked via `/add`:
+The /add command should invoke this skill before task creation:
 
-1. Receive task from session context
-2. Check for related existing tasks (avoid duplicates)
-3. If task warrants expansion, apply this skill
-4. Add as new task or checklist item to existing task
+1. Check: is this task atomic or multi-step?
+2. If multi-step, invoke `Skill(skill="task-expand")` for guidance
+3. Apply expansion methodology to generate subtasks
+4. Create task with `## Checklist` section containing subtasks
+5. Use semantic search to avoid duplicates (see Step 2 above)
 
 ## Anti-Patterns
 
@@ -246,7 +247,7 @@ mcp__memory__retrieve_memory(query="AI tools policy current state")
 ---
 title: Prepare AI tools policy presentation for faculty meeting
 priority: 1
-due: 2025-01-03
+due: [next week - calculated from current date]
 project: qut-governance
 ---
 
