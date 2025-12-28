@@ -34,6 +34,8 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
+import yaml
+
 AOPS_ROOT = Path(__file__).parent.parent.resolve()
 
 
@@ -262,6 +264,54 @@ def sync_to_project(
     return 0
 
 
+def get_skills_for_bundle() -> list[dict]:
+    """Scan skills directory and extract metadata from SKILL.md files.
+
+    Returns:
+        List of dicts with 'name' and 'description' keys for each skill.
+    """
+    skills_dir = AOPS_ROOT / "skills"
+    skills = []
+
+    if not skills_dir.exists():
+        return skills
+
+    for skill_dir in sorted(skills_dir.iterdir()):
+        if not skill_dir.is_dir():
+            continue
+
+        skill_file = skill_dir / "SKILL.md"
+        if not skill_file.exists():
+            continue
+
+        try:
+            content = skill_file.read_text()
+            # Parse YAML frontmatter (between first two ---)
+            if content.startswith("---"):
+                parts = content.split("---", 2)
+                if len(parts) >= 3:
+                    frontmatter = yaml.safe_load(parts[1])
+                    if frontmatter:
+                        # Use 'name' or 'title' field
+                        name = frontmatter.get("name") or frontmatter.get("title")
+                        description = frontmatter.get("description", "")
+
+                        if name:
+                            # Truncate long descriptions
+                            if len(description) > 60:
+                                description = description[:60] + "..."
+
+                            skills.append({
+                                "name": name,
+                                "description": description,
+                            })
+        except (yaml.YAMLError, OSError):
+            # Skip malformed skills gracefully
+            continue
+
+    return skills
+
+
 def generate_claude_md(project_path: Path) -> str:
     """Generate CLAUDE.md for a project bundle."""
     # Check for existing project-specific CLAUDE.md
@@ -272,6 +322,19 @@ def generate_claude_md(project_path: Path) -> str:
         # Check if it's not already an aops-generated one
         if "aOps Framework Bundle" not in content:
             project_specific = f"\n## Project-Specific Instructions\n\n{content}"
+
+    # Generate dynamic skills table
+    skills = get_skills_for_bundle()
+    if skills:
+        # Limit to top 10 skills for readability
+        display_skills = skills[:10]
+        skills_table = "| Skill | Purpose |\n|-------|---------|"
+        for skill in display_skills:
+            skills_table += f"\n| {skill['name']} | {skill['description']} |"
+        if len(skills) > 10:
+            skills_table += f"\n\n*...and {len(skills) - 10} more skills available*"
+    else:
+        skills_table = "*No skills found*"
 
     return f"""# aOps Framework Bundle
 
@@ -292,14 +355,7 @@ This is a **bundled** installation for limited environments (Claude Code Web).
 
 ## Key Skills
 
-| Skill | Purpose |
-|-------|---------|
-| framework | Convention reference, categorical imperative |
-| python-dev | Production Python (fail-fast, typed) |
-| analyst | Research data analysis (dbt, stats) |
-| remember | Store and retrieve memories |
-| tasks | Task management |
-| pdf | Markdown to professional PDF |
+{skills_table}
 
 ## Usage
 
