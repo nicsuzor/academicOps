@@ -80,6 +80,47 @@ Commit this `.claude/` directory to enable aOps on Claude Code Web.
 
 ## Keeping Bundles Fresh
 
+### Automatic Updates (Recommended)
+
+**Option 1: Git Hook (Local Auto-Sync)**
+
+The sync script automatically installs a git post-commit hook that:
+- Runs after each commit in the target project
+- Only activates in full environments (where `$AOPS` is set)
+- Automatically updates `.claude/` and commits changes
+
+This happens automatically when you run:
+```bash
+python scripts/sync_web_bundle.py /path/to/writing
+```
+
+To skip hook installation, use `--no-hook`:
+```bash
+python scripts/sync_web_bundle.py /path/to/writing --no-hook
+```
+
+**Option 2: GitHub Actions (CI/CD Auto-Sync)**
+
+For team projects or when working across multiple machines, add the GitHub Actions workflow:
+
+1. Copy the template workflow to your project:
+   ```bash
+   mkdir -p /path/to/writing/.github/workflows
+   cp templates/github-workflow-sync-aops.yml /path/to/writing/.github/workflows/
+   ```
+
+2. Commit and push the workflow:
+   ```bash
+   cd /path/to/writing
+   git add .github/workflows/github-workflow-sync-aops.yml
+   git commit -m "chore: add aOps bundle auto-sync workflow"
+   git push
+   ```
+
+The workflow runs on every push to main/master and automatically updates the `.claude/` bundle.
+
+### Manual Updates
+
 Re-run sync periodically to update bundled projects:
 
 ```bash

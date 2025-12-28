@@ -12,12 +12,20 @@ Usage:
     # Sync academicOps itself (uses symlinks)
     python sync_web_bundle.py --self
 
+    # Sync without installing git hook
+    python sync_web_bundle.py /path/to/writing --no-hook
+
 What gets synced:
     - skills/ (all skill definitions)
     - commands/ (slash commands)
     - agents/ (agent definitions)
     - settings.json (web-compatible, no hooks)
     - CLAUDE.md (framework + project-specific if exists)
+    - git post-commit hook (optional, for auto-sync)
+
+Auto-sync features:
+    - Git post-commit hook: Automatically syncs .claude/ on commits from full environments
+    - GitHub Actions workflow: Template available in templates/github-workflow-sync-aops.yml
 """
 
 import argparse
@@ -63,7 +71,31 @@ def sync_to_self() -> int:
     return 0
 
 
-def sync_to_project(project_path: Path, force: bool = False) -> int:
+def install_git_hook(project_path: Path) -> bool:
+    """Install git post-commit hook for auto-sync."""
+    git_dir = project_path / ".git"
+    if not git_dir.exists():
+        print("  Skipping git hook (not a git repository)")
+        return False
+
+    hooks_dir = git_dir / "hooks"
+    hooks_dir.mkdir(exist_ok=True)
+
+    hook_src = AOPS_ROOT / "hooks" / "git-post-commit-sync-aops"
+    hook_dst = hooks_dir / "post-commit"
+
+    if not hook_src.exists():
+        print(f"  Warning: Hook source not found: {hook_src}", file=sys.stderr)
+        return False
+
+    # Copy hook and make executable
+    shutil.copy2(hook_src, hook_dst)
+    hook_dst.chmod(0o755)
+    print(f"  git post-commit hook installed (auto-sync on commit)")
+    return True
+
+
+def sync_to_project(project_path: Path, force: bool = False, install_hook: bool = True) -> int:
     """Sync .claude/ to another project by copying files."""
     if not project_path.exists():
         print(f"Error: Project path does not exist: {project_path}", file=sys.stderr)
@@ -75,7 +107,7 @@ def sync_to_project(project_path: Path, force: bool = False) -> int:
     if target.exists() and not force:
         marker = target / ".aops-bundle"
         if not marker.exists():
-            print(f"Error: {target} exists but wasn't created by sync_web_bundle", file=sys.stderr)
+            print(f"Error: {target} exists but wasn't created by sync_web_bundle.py", file=sys.stderr)
             print("Use --force to overwrite", file=sys.stderr)
             return 1
 
@@ -92,7 +124,7 @@ def sync_to_project(project_path: Path, force: bool = False) -> int:
             shutil.copytree(src, dst, ignore=shutil.ignore_patterns(
                 "__pycache__", "*.pyc", ".pytest_cache", "tests"
             ))
-            count = sum(1 for _ in dst.rglob("*") if _.is_file())
+            count = sum(1 for file_path in dst.rglob("*") if file_path.is_file())
             print(f"  {dir_name}/ ({count} files)")
 
     # Copy web-compatible settings
@@ -113,15 +145,19 @@ def sync_to_project(project_path: Path, force: bool = False) -> int:
         f"Do not edit manually - changes will be overwritten\n"
     )
 
+    # Install git hook for auto-sync
+    if install_hook:
+        install_git_hook(project_path)
+
     print(f"\nSynced to {target} (copied files)")
     print("Commit this .claude/ directory to use aOps on Claude Code Web")
+    if install_hook:
+        print("Git hook installed - .claude/ will auto-sync on future commits from full environments")
     return 0
 
 
 def generate_claude_md(project_path: Path) -> str:
     """Generate CLAUDE.md for a project bundle."""
-    project_name = project_path.name
-
     # Check for existing project-specific CLAUDE.md
     existing_claude_md = project_path / "CLAUDE.md"
     project_specific = ""
@@ -171,7 +207,7 @@ Skill(skill="analyst")      # For data analysis
 
 To update this bundle, run from the academicOps repo:
 ```bash
-python scripts/sync_web_bundle.py {project_path}
+python scripts/sync_web_bundle.py /path/to/{project_path.name}
 ```
 {project_specific}
 """
@@ -198,6 +234,11 @@ def main() -> int:
         action="store_true",
         help="Overwrite existing .claude/ even if not created by sync",
     )
+    parser.add_argument(
+        "--no-hook",
+        action="store_true",
+        help="Skip installing git post-commit hook",
+    )
 
     args = parser.parse_args()
 
@@ -207,7 +248,11 @@ def main() -> int:
     if args.sync_self:
         return sync_to_self()
     elif args.project_path:
-        return sync_to_project(args.project_path.resolve(), args.force)
+        return sync_to_project(
+            args.project_path.resolve(),
+            args.force,
+            install_hook=not args.no_hook
+        )
     else:
         parser.print_help()
         return 1

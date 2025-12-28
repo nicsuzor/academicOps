@@ -24,7 +24,9 @@ Academic support framework for Claude Code. Minimal, fight bloat aggressively.
 | Environment | Setup | Documentation |
 |-------------|-------|---------------|
 | **Full** (laptop, WSL, VM) | `./setup.sh` | Creates `~/.claude/` symlinks |
-| **Limited** (Claude Code Web) | `python scripts/sync_web_bundle.py /path/to/project` | See [[docs/WEB-BUNDLE.md]] |
+| **Limited** (Claude Code Web) | `python scripts/sync_web_bundle.py /path/to/project` | See docs/WEB-BUNDLE.md |
+
+**Auto-sync**: The sync script automatically installs a git hook for auto-updates. See docs/WEB-BUNDLE.md for GitHub Actions workflow.
 
 ## Workflows
 
