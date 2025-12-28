@@ -37,10 +37,13 @@ from pathlib import Path
 AOPS_ROOT = Path(__file__).parent.parent.resolve()
 
 
-def sync_to_self() -> int:
+def sync_to_self(dry_run: bool = False) -> int:
     """Sync .claude/ for academicOps repo itself using relative symlinks."""
     target = AOPS_ROOT / ".claude"
-    target.mkdir(exist_ok=True)
+    if dry_run:
+        print(f"[DRY RUN] Would create directory: {target}")
+    else:
+        target.mkdir(exist_ok=True)
 
     # Relative symlinks for self (academicOps IS the framework)
     links = {
@@ -53,6 +56,10 @@ def sync_to_self() -> int:
 
     for name, rel_target in links.items():
         link_path = target / name
+        if dry_run:
+            print(f"[DRY RUN] Would create symlink: {name} -> {rel_target}")
+            continue
+
         if link_path.is_symlink():
             current = link_path.readlink()
             if str(current) == rel_target:
@@ -68,7 +75,10 @@ def sync_to_self() -> int:
         link_path.symlink_to(rel_target)
         print(f"  {name} -> {rel_target}")
 
-    print(f"\nSynced academicOps .claude/ (symlinks to parent)")
+    if dry_run:
+        print(f"\n[DRY RUN] Would sync academicOps .claude/ (symlinks to parent)")
+    else:
+        print(f"\nSynced academicOps .claude/ (symlinks to parent)")
     return 0
 
 
@@ -156,7 +166,12 @@ def _extract_aops_logic(hook_content: str) -> str:
     return '\n'.join(logic_lines)
 
 
-def sync_to_project(project_path: Path, force: bool = False, install_hook: bool = True) -> int:
+def sync_to_project(
+    project_path: Path,
+    force: bool = False,
+    install_hook: bool = True,
+    dry_run: bool = False,
+) -> int:
     """Sync .claude/ to another project by copying files."""
     if not project_path.exists():
         print(f"Error: Project path does not exist: {project_path}", file=sys.stderr)
@@ -177,47 +192,73 @@ def sync_to_project(project_path: Path, force: bool = False, install_hook: bool 
             return 1
 
     # Clean and recreate
-    if target.exists():
-        shutil.rmtree(target)
-    target.mkdir()
+    if dry_run:
+        if target.exists():
+            print(f"[DRY RUN] Would remove existing: {target}")
+        print(f"[DRY RUN] Would create directory: {target}")
+    else:
+        if target.exists():
+            shutil.rmtree(target)
+        target.mkdir()
 
     # Copy directories
     for dir_name in ["skills", "commands", "agents"]:
         src = AOPS_ROOT / dir_name
         dst = target / dir_name
         if src.exists():
-            shutil.copytree(src, dst, ignore=shutil.ignore_patterns(
-                "__pycache__", "*.pyc", ".pytest_cache", "tests"
-            ))
-            count = sum(1 for file_path in dst.rglob("*") if file_path.is_file())
-            print(f"  {dir_name}/ ({count} files)")
+            # Count files in source for reporting
+            count = sum(1 for file_path in src.rglob("*") if file_path.is_file())
+            if dry_run:
+                print(f"[DRY RUN] Would copy {dir_name}/ ({count} files)")
+            else:
+                shutil.copytree(src, dst, ignore=shutil.ignore_patterns(
+                    "__pycache__", "*.pyc", ".pytest_cache", "tests"
+                ))
+                # Recount after copy (may differ due to ignore patterns)
+                count = sum(1 for file_path in dst.rglob("*") if file_path.is_file())
+                print(f"  {dir_name}/ ({count} files)")
 
     # Copy web-compatible settings
     settings_src = AOPS_ROOT / "config" / "claude" / "settings-web.json"
     settings_dst = target / "settings.json"
-    shutil.copy2(settings_src, settings_dst)
-    print(f"  settings.json (web-compatible, no hooks)")
+    if dry_run:
+        print(f"[DRY RUN] Would copy settings.json (web-compatible, no hooks)")
+    else:
+        shutil.copy2(settings_src, settings_dst)
+        print(f"  settings.json (web-compatible, no hooks)")
 
     # Generate CLAUDE.md
     claude_md = generate_claude_md(project_path)
-    (target / "CLAUDE.md").write_text(claude_md)
-    print(f"  CLAUDE.md (generated)")
+    if dry_run:
+        print(f"[DRY RUN] Would generate CLAUDE.md")
+    else:
+        (target / "CLAUDE.md").write_text(claude_md)
+        print(f"  CLAUDE.md (generated)")
 
     # Create marker file
-    (target / ".aops-bundle").write_text(
-        f"aOps bundle synced from {AOPS_ROOT}\n"
-        f"This directory is managed by sync_web_bundle.py\n"
-        f"Do not edit manually - changes will be overwritten\n"
-    )
+    if dry_run:
+        print(f"[DRY RUN] Would create .aops-bundle marker")
+    else:
+        (target / ".aops-bundle").write_text(
+            f"aOps bundle synced from {AOPS_ROOT}\n"
+            f"This directory is managed by sync_web_bundle.py\n"
+            f"Do not edit manually - changes will be overwritten\n"
+        )
 
     # Install git hook for auto-sync
     if install_hook:
-        install_git_hook(project_path)
+        if dry_run:
+            print(f"[DRY RUN] Would install git post-commit hook")
+        else:
+            install_git_hook(project_path)
 
-    print(f"\nSynced to {target} (copied files)")
-    print("Commit this .claude/ directory to use aOps on Claude Code Web")
-    if install_hook:
-        print("Git hook installed - .claude/ will auto-sync on future commits from full environments")
+    if dry_run:
+        print(f"\n[DRY RUN] Would sync to {target} (copied files)")
+    else:
+        print(f"\nSynced to {target} (copied files)")
+        print("Commit this .claude/ directory to use aOps on Claude Code Web")
+        if install_hook:
+            print("Git hook installed - .claude/ will auto-sync on future commits from full environments")
     return 0
 
 
@@ -282,18 +323,22 @@ def main() -> int:
     parser = argparse.ArgumentParser(
         description="Sync aOps framework to a project's .claude/ directory"
     )
-    parser.add_argument(
+
+    # Mutually exclusive: either --self or project_path (one required)
+    target_group = parser.add_mutually_exclusive_group(required=True)
+    target_group.add_argument(
         "project_path",
         nargs="?",
         type=Path,
         help="Path to target project directory",
     )
-    parser.add_argument(
+    target_group.add_argument(
         "--self",
         action="store_true",
         dest="sync_self",
         help="Sync academicOps itself (uses symlinks)",
     )
+
     parser.add_argument(
         "--force",
         action="store_true",
@@ -304,23 +349,28 @@ def main() -> int:
         action="store_true",
         help="Skip installing git post-commit hook",
     )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Show what would be done without making changes",
+    )
 
     args = parser.parse_args()
 
     print("aOps Web Bundle Sync")
     print("=" * 40)
+    if args.dry_run:
+        print("[DRY RUN MODE - no changes will be made]\n")
 
     if args.sync_self:
-        return sync_to_self()
-    elif args.project_path:
+        return sync_to_self(dry_run=args.dry_run)
+    else:
         return sync_to_project(
             args.project_path.resolve(),
-            args.force,
-            install_hook=not args.no_hook
+            force=args.force,
+            install_hook=not args.no_hook,
+            dry_run=args.dry_run,
         )
-    else:
-        parser.print_help()
-        return 1
 
 
 if __name__ == "__main__":
