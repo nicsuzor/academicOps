@@ -80,9 +80,19 @@ Commit this `.claude/` directory to enable aOps on Claude Code Web.
 
 ## Keeping Bundles Fresh
 
-### Automatic Updates (Recommended)
+### Sync Strategies
 
-**Option 1: Git Hook (Local Auto-Sync)**
+Choose the sync strategy that fits your workflow:
+
+| Strategy | When to Use | Sync Trigger | Overhead |
+|----------|-------------|--------------|----------|
+| **Git Hook** | Local development, single machine | Every commit | Low |
+| **Push Workflow** | Teams, CI integration | Every push to main | Medium |
+| **Nightly Workflow** | Minimal overhead, infrequent updates | Nightly at 3am UTC | Very Low |
+
+### Option 1: Git Hook (Local Auto-Sync)
+
+Best for: Individual developers working on a single machine.
 
 The sync script automatically installs a git post-commit hook that:
 - Runs after each commit in the target project
@@ -99,7 +109,9 @@ To skip hook installation, use `--no-hook`:
 python scripts/sync_web_bundle.py /path/to/writing --no-hook
 ```
 
-**Option 2: GitHub Actions (CI/CD Auto-Sync)**
+### Option 2: Push Workflow (CI/CD Auto-Sync)
+
+Best for: Team projects or working across multiple machines.
 
 For team projects or when working across multiple machines, add the GitHub Actions workflow:
 
@@ -118,6 +130,45 @@ For team projects or when working across multiple machines, add the GitHub Actio
    ```
 
 The workflow runs on every push to main/master and automatically updates the `.claude/` bundle.
+
+### Option 3: Nightly Workflow (Less Invasive)
+
+Best for: Projects that don't need immediate updates, reducing CI overhead.
+
+This workflow only syncs when aOps has new commits:
+
+1. Copy the nightly workflow template:
+   ```bash
+   mkdir -p /path/to/writing/.github/workflows
+   cp templates/github-workflow-sync-aops-nightly.yml /path/to/writing/.github/workflows/sync-aops-nightly.yml
+   ```
+
+2. Commit and push:
+   ```bash
+   cd /path/to/writing
+   git add .github/workflows/sync-aops-nightly.yml
+   git commit -m "chore: add nightly aOps bundle sync workflow"
+   git push
+   ```
+
+Features:
+- Runs at 3am UTC daily (configurable via cron)
+- Checks if aOps has updates before syncing
+- Tracks version in `.claude/.aops-version`
+- Uses `[skip ci]` to prevent workflow loops
+- Manual trigger available via workflow_dispatch
+
+### Version Tracking
+
+All sync methods now write the aOps commit SHA to `.claude/.aops-version`. This enables:
+- Nightly workflow to skip sync when already up-to-date
+- Easy verification of which aOps version a project uses
+- Debugging when issues arise
+
+Check your current aOps version:
+```bash
+cat .claude/.aops-version
+```
 
 ### Manual Updates
 

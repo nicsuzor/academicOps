@@ -30,6 +30,7 @@ Auto-sync features:
 
 import argparse
 import shutil
+import subprocess
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -37,6 +38,32 @@ from pathlib import Path
 import yaml
 
 AOPS_ROOT = Path(__file__).parent.parent.resolve()
+
+
+def get_aops_version() -> str:
+    """Get current aOps commit SHA for version tracking."""
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            cwd=AOPS_ROOT,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        return result.stdout.strip()
+    except subprocess.CalledProcessError:
+        return "unknown"
+
+
+def write_version_file(target: Path, dry_run: bool = False) -> None:
+    """Write aOps version to .claude/.aops-version for tracking."""
+    version = get_aops_version()
+    version_file = target / ".aops-version"
+    if dry_run:
+        print(f"[DRY RUN] Would write version file: {version[:12]}...")
+    else:
+        version_file.write_text(version + "\n")
+        print(f"  .aops-version ({version[:12]}...)")
 
 
 def sync_to_self(dry_run: bool = False) -> int:
@@ -246,6 +273,9 @@ def sync_to_project(
             f"This directory is managed by sync_web_bundle.py\n"
             f"Do not edit manually - changes will be overwritten\n"
         )
+
+    # Write version file for tracking
+    write_version_file(target, dry_run=dry_run)
 
     # Install git hook for auto-sync
     if install_hook:
