@@ -10,6 +10,9 @@ on:
 jobs:
   sync-aops:
     runs-on: ubuntu-latest
+    # Prevent infinite loop: skip if this commit was created by the sync workflow itself
+    # Without this check, the workflow would trigger itself after pushing the sync commit
+    if: "!contains(github.event.head_commit.message, 'auto-sync aOps')"
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -44,7 +47,9 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add .claude/
-          git commit -m "chore: auto-sync aOps bundle
+          # [skip ci] prevents GitHub Actions from triggering on this commit
+          # "auto-sync aOps" in message is also checked by job-level condition
+          git commit -m "chore: auto-sync aOps bundle [skip ci]
 
 Updated from academicOps framework
 

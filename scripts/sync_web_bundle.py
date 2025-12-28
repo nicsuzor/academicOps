@@ -31,6 +31,7 @@ Auto-sync features:
 import argparse
 import shutil
 import sys
+from datetime import datetime
 from pathlib import Path
 
 AOPS_ROOT = Path(__file__).parent.parent.resolve()
@@ -72,7 +73,13 @@ def sync_to_self() -> int:
 
 
 def install_git_hook(project_path: Path) -> bool:
-    """Install git post-commit hook for auto-sync."""
+    """Install git post-commit hook for auto-sync.
+
+    Safety behavior:
+    - If existing hook already contains aOps sync, skip (already installed)
+    - If existing hook is NOT aOps, backup to post-commit.backup.{timestamp}
+    - Append our hook content to existing hooks instead of overwriting
+    """
     git_dir = project_path / ".git"
     if not git_dir.exists():
         print("  Skipping git hook (not a git repository)")
@@ -88,17 +95,75 @@ def install_git_hook(project_path: Path) -> bool:
         print(f"  Warning: Hook source not found: {hook_src}", file=sys.stderr)
         return False
 
-    # Copy hook and make executable
-    shutil.copy2(hook_src, hook_dst)
+    aops_hook_content = hook_src.read_text()
+    aops_marker = "# aOps sync hook"  # Marker to identify our hook content
+
+    # Check if hook already exists
+    if hook_dst.exists():
+        existing_content = hook_dst.read_text()
+
+        # Check if aOps hook is already installed
+        if aops_marker in existing_content or "aOps bundle" in existing_content:
+            print("  git post-commit hook (aOps already installed, skipping)")
+            return True
+
+        # Existing hook is not aOps - backup before modifying
+        timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+        backup_path = hooks_dir / f"post-commit.backup.{timestamp}"
+        shutil.copy2(hook_dst, backup_path)
+        print(f"  Backed up existing hook to {backup_path.name}")
+
+        # Append our hook content to existing hook
+        # Add a separator and marker for clarity
+        combined_content = existing_content.rstrip() + "\n\n" + \
+            "# " + "=" * 60 + "\n" + \
+            f"{aops_marker} - installed by sync_web_bundle.py\n" + \
+            "# " + "=" * 60 + "\n\n" + \
+            "# aOps sync logic (runs after existing hook)\n" + \
+            _extract_aops_logic(aops_hook_content)
+
+        hook_dst.write_text(combined_content)
+        hook_dst.chmod(0o755)
+        print("  git post-commit hook updated (aOps sync appended to existing)")
+        return True
+
+    # No existing hook - install fresh with marker
+    marked_content = aops_hook_content.replace(
+        "# Git post-commit hook to auto-sync aOps bundle",
+        f"# Git post-commit hook to auto-sync aOps bundle\n{aops_marker}"
+    )
+    hook_dst.write_text(marked_content)
     hook_dst.chmod(0o755)
-    print(f"  git post-commit hook installed (auto-sync on commit)")
+    print("  git post-commit hook installed (auto-sync on commit)")
     return True
+
+
+def _extract_aops_logic(hook_content: str) -> str:
+    """Extract the logic portion of the aOps hook (skip shebang for appending)."""
+    lines = hook_content.split('\n')
+    # Skip shebang and initial comments when appending to existing hook
+    logic_lines = []
+    in_logic = False
+    for line in lines:
+        if line.startswith('#!'):
+            continue  # Skip shebang
+        if not in_logic and line.startswith('#'):
+            continue  # Skip header comments
+        if not in_logic and line.strip() == '':
+            continue  # Skip initial blank lines
+        in_logic = True
+        logic_lines.append(line)
+    return '\n'.join(logic_lines)
 
 
 def sync_to_project(project_path: Path, force: bool = False, install_hook: bool = True) -> int:
     """Sync .claude/ to another project by copying files."""
     if not project_path.exists():
         print(f"Error: Project path does not exist: {project_path}", file=sys.stderr)
+        return 1
+
+    if not project_path.is_dir():
+        print(f"Error: Project path must be a directory: {project_path}", file=sys.stderr)
         return 1
 
     target = project_path / ".claude"
