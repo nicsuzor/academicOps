@@ -340,29 +340,23 @@ fi
 
 echo
 
-# Step 2d: Create repo-local .claude/ for remote coding
+# Step 2d: Create repo-local .claude/ for remote coding (using sync_web_bundle.py)
 echo "Setting up repository .claude/ (for remote coding)..."
 
-REPO_CLAUDE="$AOPS_PATH/.claude"
-mkdir -p "$REPO_CLAUDE"
-
-# Create relative symlinks for portability
-create_relative_symlink() {
-    local name=$1
-    local target=$2
-    local link_path="$REPO_CLAUDE/$name"
-
-    [ -e "$link_path" ] && rm -rf "$link_path"
-    ln -s "$target" "$link_path"
-    echo "  $name → $target (relative)"
-}
-
-create_relative_symlink "settings.json" "../config/claude/settings.json"
-create_relative_symlink "agents" "../agents"
-create_relative_symlink "skills" "../skills"
-create_relative_symlink "commands" "../commands"
-create_relative_symlink "CLAUDE.md" "../CLAUDE.md"
-echo -e "${GREEN}✓ Repository .claude/ configured for remote coding${NC}"
+if python3 "$AOPS_PATH/scripts/sync_web_bundle.py" --self > /dev/null 2>&1; then
+    echo -e "${GREEN}✓ Repository .claude/ configured via sync_web_bundle.py --self${NC}"
+else
+    echo -e "${YELLOW}⚠ sync_web_bundle.py failed - creating symlinks manually${NC}"
+    REPO_CLAUDE="$AOPS_PATH/.claude"
+    mkdir -p "$REPO_CLAUDE"
+    for item in settings.json:../config/claude/settings.json agents:../agents skills:../skills commands:../commands CLAUDE.md:../CLAUDE.md; do
+        name="${item%%:*}"
+        target="${item#*:}"
+        [ -e "$REPO_CLAUDE/$name" ] && rm -rf "$REPO_CLAUDE/$name"
+        ln -s "$target" "$REPO_CLAUDE/$name"
+    done
+    echo -e "${GREEN}✓ Repository .claude/ configured (manual fallback)${NC}"
+fi
 
 # Step 2e: Configure memory server default project
 echo
