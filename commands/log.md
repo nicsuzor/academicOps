@@ -1,38 +1,37 @@
 ---
 name: log
-description: Log agent performance (successes and failures) to framework learning system
+description: Log agent performance patterns to GitHub Issues (per AXIOMS #28)
 allowed-tools: Skill
 permalink: commands/log
 ---
 
 **IMMEDIATELY** invoke the `[[skills/learning-log/SKILL.md|learning-log]]` skill with the user's observation description.
 
-**Purpose**: Build institutional knowledge by logging patterns at the appropriate abstraction level, matching to active experiments, and routing to bugs/patterns/experiments.
+**Purpose**: Build institutional knowledge by logging observations to GitHub Issues, where patterns can accumulate and later synthesize to HEURISTICS.md.
 
-## Three-Phase Workflow
+## Workflow (GitHub Issues)
 
-The skill executes:
+Per [[AXIOMS]] #28 and [[HEURISTICS]] H26: episodic content → GitHub Issues.
 
-1. **LOG.md entry** - Append-only chronological record with session ID, error, root cause, abstraction level
-2. **Experiment matching** - Search active experiments, update if related
-3. **Abstraction routing** - Route to bugs/ (component), learning/ (pattern), or experiments/ (systemic)
+1. **Search** for existing Issue matching the observation
+2. **Update** existing Issue with comment, OR **create** new Issue
+3. **Synthesize** to HEURISTICS.md when patterns emerge across Issues
 
-## Abstraction Levels
+## Issue Labels
 
-| Level | When | Example |
-|-------|------|---------|
-| `component` | Specific script/file bug | "task_view.py throws KeyError" |
-| `pattern` | Behavioral pattern across agents | "Agent ignored explicit ALL instruction" |
-| `systemic` | Infrastructure issue needing investigation | "Hooks not loading context" |
-
-**Key principle**: Don't create separate bug files for instances of the same pattern. Don't lump specific bugs into general categories.
+| Label | Use For |
+|-------|---------|
+| `bug` | Component-level bugs |
+| `learning` | Agent behavior patterns |
+| `experiment` | Systemic investigations |
+| `devlog` | Development observations |
 
 ## Modes
 
 ### Standard Mode (default)
-Log observation with abstraction routing.
+Log observation to GitHub Issue.
 
-**User provides**: Brief description of observation (success or failure)
+**User provides**: Brief description of observation
 
 ### Heuristic Adjustment Mode
 Adjust heuristic confidence based on new evidence.
@@ -40,11 +39,3 @@ Adjust heuristic confidence based on new evidence.
 **User provides**: `adjust-heuristic H[n]: [observation]`
 
 **Example**: `/log adjust-heuristic H3: Agent claimed success without running tests - confirms H3`
-
-## Output Files
-
-- `$ACA_DATA/projects/aops/learning/LOG.md` - Chronological append-only log
-- `$ACA_DATA/projects/aops/learning/*.md` - Thematic pattern files
-- `$ACA_DATA/projects/aops/bugs/*.md` - Component-specific bugs (delete when fixed)
-- `$ACA_DATA/projects/aops/experiments/*.md` - Systemic investigations
-- `$AOPS/[[HEURISTICS.md]]` - Heuristic evidence (when adjusting)
