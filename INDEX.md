@@ -41,7 +41,8 @@ $AOPS/
 │   ├── ttd.md                   # TDD orchestration
 │   ├── parallel-batch.md        # Parallel file processing
 │   ├── strategy.md              # Strategic planning
-│   └── task-viz.md              # Task graph visualization
+│   ├── task-viz.md              # Task graph visualization
+│   └── docs-update.md           # → docs-update skill (README/INDEX maintenance)
 │
 ├── skills/
 │   ├── framework/               # Convention reference for infrastructure
@@ -99,6 +100,13 @@ $AOPS/
 │   ├── reference-map/           # Framework reference graph extraction
 │   │   ├── SKILL.md
 │   │   └── scripts/build_reference_map.py
+│   │
+│   ├── link-audit/              # Reference graph analysis
+│   │   ├── SKILL.md
+│   │   └── scripts/find_orphans.py
+│   │
+│   ├── docs-update/             # README/INDEX drift detection
+│   │   └── SKILL.md
 │   │
 │   ├── extractor/               # Archive → memory extraction
 │   ├── feature-dev/             # Feature development templates

@@ -88,6 +88,7 @@ The hypervisor agent orchestrates multi-step work with phases 0-5 (planning → 
 | /add | Quick-add a task from session context |
 | /consolidate | Consolidate LOG.md entries into thematic files |
 | /diag | Quick diagnostic of what's loaded in session |
+| /docs-update | Verify and update README.md/INDEX.md vs filesystem |
 | /email | Extract action items from emails → tasks |
 | /learn | Make minimal framework tweaks with tracking |
 | /log | Log agent patterns to thematic learning files |
@@ -108,6 +109,7 @@ The hypervisor agent orchestrates multi-step work with phases 0-5 (planning → 
 |-------|---------|
 | analyst | Research data analysis (dbt, Streamlit, stats) |
 | dashboard | Live Streamlit dashboard for tasks + sessions |
+| docs-update | README.md/INDEX.md drift detection and correction |
 | excalidraw | Hand-drawn diagrams with organic layouts |
 | extractor | Extract knowledge from archive documents |
 | feature-dev | Test-first feature development workflow |

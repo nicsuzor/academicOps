@@ -37,12 +37,11 @@ description: Process for adding new framework capability (hook, skill, script, c
    - Document actual vs expected behavior
 
 6. **Update authoritative sources**
-   - Update [[README.md]] if directory structure changes
+   - Invoke `Skill(skill="docs-update")` to detect and fix documentation drift
    - Update [[hooks/prompts/intent-router.md]] if adding skill, command, or agent
-   - Update relevant documentation to reference new component
    - Verify no documentation conflicts introduced
 
-   **Documentation congruence check** (run after ANY component change):
+   **Or manual congruence check** (if skill unavailable):
    ```bash
    # Compare documentation claims to actual structure
    ls -d $AOPS/skills/*/       # vs INDEX.md skills section
@@ -56,7 +55,6 @@ description: Process for adding new framework capability (hook, skill, script, c
    - [[README.md]] overview (brief summary, consistent with INDEX.md)
    - [[hooks/prompts/intent-router.md]] (intent router flowchart + capabilities)
    - Actual filesystem (ground truth)
-   - [[ROADMAP.md]] (if they claim counts or completion percentages)
 
 7. **Commit only if all tests pass**
    - Verify documentation integrity

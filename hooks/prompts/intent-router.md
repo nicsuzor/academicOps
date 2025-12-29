@@ -40,6 +40,7 @@ The main agent sometimes forgets rules or skips steps. You remind it what matter
 - `analyst` - dbt, Streamlit, research data
 - `python-dev` - TDD, type-safe Python
 - `tasks` - task management
+- `docs-update` - README.md/INDEX.md drift detection and correction
 - `pdf`, `transcript`, `session-insights`, `excalidraw`, `ground-truth`
 
 **Claude Code Dev Skills** (official plugin - use for CC component development):
@@ -76,6 +77,7 @@ The main agent sometimes forgets rules or skips steps. You remind it what matter
 | save, remember, document, persist | Persist | Background Task with Skill("remember"), search memory first |
 | dbt, Streamlit, data, statistics | Analysis | Skill("analyst"), document methodology |
 | pytest, TDD, Python, test | Python | Skill("python-dev"), tests first |
+| README, INDEX, documentation drift, file tree | Docs | Skill("docs-update"), verify vs filesystem |
 | (simple, single action) | Simple | Just do it |
 
 ## Your Output
