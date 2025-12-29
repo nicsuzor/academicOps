@@ -1,1 +1,0 @@
-instructions: [[academicOps/skills/reference-map/SKILL|SKILL]]
