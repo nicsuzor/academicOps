@@ -83,13 +83,3 @@ These serve **different purposes**. Using the wrong one causes process failures.
 **Failure mode**: Agent uses TodoWrite for work requiring approval → proceeds without explicit consent → ships incomplete/broken changes → user discovers later.
 
 **Evidence**: 2025-12-23 buttermilk session storage consolidation - agent used TodoWrite, skipped approval checkpoint, removed working code without verifying replacement covered all use cases.
-
----
-
-## Maintenance
-
-Curated MoC. When enforcement changes:
-
-1. Edit source file (settings.json, policy_enforcer.py, or .pre-commit-config.yaml)
-2. Update this file
-3. Add evidence observation to Evidence column

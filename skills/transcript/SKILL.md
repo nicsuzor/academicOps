@@ -80,10 +80,10 @@ Use `--full-only` or `--abridged-only` to generate single version.
 
 ## Formatting
 
-- `### User (Turn N)` - User prompts
-- `### 📥 Context Injected (Turn N)` - System-injected context
-- `### Agent (Turn N)` - Agent responses
-- `#### Subagent: type (description)` - Task tool spawns
+- `## User (Turn N)` - User prompts (includes full command text like `/log message`)
+- `## User (Turn N)` with `**Invoked: ...**` - System-injected skill/command expansion (the turn after command invocation)
+- `## Agent (Turn N)` - Agent responses
+- `### Subagent: type (description)` - Task tool spawns
 - Hook status: `✓` = exit 0, `✗ (exit N)` = non-zero
 
 ## Architecture

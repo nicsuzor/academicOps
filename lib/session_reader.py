@@ -1080,6 +1080,7 @@ session_id: {session_uuid}
 
     def _extract_user_content(self, entry: Entry) -> str:
         """Extract clean user content from entry."""
+
         message = entry.message or {}
         content = message.get("content", "")
 
@@ -1095,11 +1096,55 @@ session_id: {session_uuid}
 
         content = content.strip()
 
-        if self._is_pseudo_command(content):
+        # Parse command invocations to show the full user input
+        if self._is_command_invocation(content):
+            return self._format_command_invocation(content)
+
+        # Filter out system-only pseudo-commands (like local-command-stdout)
+        if self._is_system_pseudo_command(content):
             return ""
 
         # Don't condense meta content here - let the main formatting handle it
         return content
+
+    def _is_command_invocation(self, content: str) -> bool:
+        """Check if content is a user command invocation (e.g., /meta, /log)."""
+        return "<command-name>" in content and "<command-args>" in content
+
+    def _is_system_pseudo_command(self, content: str) -> bool:
+        """Check if content is a system-only pseudo-command (not user input)."""
+        if not content:
+            return False
+
+        # These are system-generated, not user input
+        system_patterns = [
+            "<local-command-stdout>",
+            "</local-command-stdout>",
+        ]
+
+        # If content ONLY contains system patterns (no command-name/args), filter it
+        for pattern in system_patterns:
+            if pattern in content and "<command-name>" not in content:
+                return True
+
+        return False
+
+    def _format_command_invocation(self, content: str) -> str:
+        """Format a command invocation to show the user's full input."""
+        import re
+
+        # Extract command name: <command-name>/foo</command-name>
+        name_match = re.search(r"<command-name>([^<]+)</command-name>", content)
+        command_name = name_match.group(1).strip() if name_match else "unknown"
+
+        # Extract command args: <command-args>...</command-args>
+        args_match = re.search(r"<command-args>(.*?)</command-args>", content, re.DOTALL)
+        command_args = args_match.group(1).strip() if args_match else ""
+
+        # Format as the user would have typed it
+        if command_args:
+            return f"{command_name} {command_args}"
+        return command_name
 
     def _extract_command_name(self, content: str) -> str:
         """Extract command or skill name from expanded content."""
@@ -1148,28 +1193,6 @@ session_id: {session_uuid}
             return "command expansion"
 
         return "context injection"
-
-    def _is_pseudo_command(self, content: str) -> bool:
-        """Check if content is a pseudo-command recording."""
-        if not content:
-            return False
-
-        pseudo_command_patterns = [
-            "<command-name>",
-            "<command-message>",
-            "<command-args>",
-            "<local-command-stdout>",
-            "</command-name>",
-            "</command-message>",
-            "</command-args>",
-            "</local-command-stdout>",
-        ]
-
-        for pattern in pseudo_command_patterns:
-            if pattern in content:
-                return True
-
-        return False
 
     def _calculate_duration(
         self, start_time: datetime | None, end_time: datetime | None
