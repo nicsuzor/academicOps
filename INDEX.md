@@ -111,6 +111,13 @@ $AOPS/
 │   ├── extractor/               # Archive → memory extraction
 │   ├── feature-dev/             # Feature development templates
 │   ├── framework-debug/         # Framework debugging
+│   ├── framework-review/        # Transcript analysis for improvements
+│   ├── garden/                  # Incremental PKM maintenance
+│   ├── ground-truth/            # Ground truth label management
+│   ├── osb-drafting/            # IRAC analysis for OSB cases
+│   ├── review-training/         # Training data from reviews
+│   ├── supervisor/              # Multi-agent workflow orchestration
+│   ├── task-expand/             # Intelligent task breakdown
 │   └── training-set-builder/    # Training data extraction
 │
 ├── hooks/                       # Session lifecycle (Python)
