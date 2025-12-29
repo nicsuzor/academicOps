@@ -9,6 +9,7 @@ Reads and combines:
 Used by:
 - /transcript skill for markdown export
 - Dashboard for live activity display
+- Intent router context extraction
 """
 
 from __future__ import annotations
@@ -18,6 +19,151 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
+
+
+# Configuration constants for router context extraction
+_MAX_TURNS = 5
+_SKILL_LOOKBACK = 10
+_PROMPT_TRUNCATE = 100
+
+
+def extract_router_context(transcript_path: Path, max_turns: int = _MAX_TURNS) -> str:
+    """Extract compact context for intent router.
+
+    Parses the JSONL transcript and extracts:
+    - Last N user prompts (truncated)
+    - Most recent Skill invocation
+    - TodoWrite task status counts
+
+    Args:
+        transcript_path: Path to session JSONL file
+        max_turns: Maximum number of recent prompts to include
+
+    Returns:
+        Formatted markdown context or empty string on error
+    """
+    try:
+        return _extract_router_context_impl(transcript_path, max_turns)
+    except Exception:
+        # Graceful fallback: return empty string on any error
+        return ""
+
+
+def _extract_router_context_impl(transcript_path: Path, max_turns: int) -> str:
+    """Implementation of router context extraction."""
+    # Parse JSONL entries
+    entries = []
+    with open(transcript_path, encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                entries.append(json.loads(line))
+            except json.JSONDecodeError:
+                continue
+
+    if not entries:
+        return ""
+
+    # Extract user prompts (skip meta/system)
+    user_prompts: list[str] = []
+    for entry in entries:
+        if entry.get("type") != "user":
+            continue
+        if entry.get("isMeta", False):
+            continue
+
+        message = entry.get("message", {})
+        content = message.get("content", [])
+
+        if isinstance(content, list):
+            for block in content:
+                if isinstance(block, dict) and block.get("type") == "text":
+                    text = block.get("text", "").strip()
+                    if text:
+                        user_prompts.append(text)
+                        break
+
+    # Get last N prompts
+    recent_prompts = user_prompts[-max_turns:] if user_prompts else []
+
+    # Find most recent Skill invocation (within SKILL_LOOKBACK turns)
+    recent_skill: str | None = None
+    lookback_count = 0
+    for entry in reversed(entries):
+        if entry.get("type") == "assistant":
+            lookback_count += 1
+            if lookback_count > _SKILL_LOOKBACK:
+                break
+
+            message = entry.get("message", {})
+            content = message.get("content", [])
+            if isinstance(content, list):
+                for block in content:
+                    if isinstance(block, dict) and block.get("type") == "tool_use":
+                        if block.get("name") == "Skill":
+                            tool_input = block.get("input", {})
+                            recent_skill = tool_input.get("skill")
+                            break
+            if recent_skill:
+                break
+
+    # Find most recent TodoWrite call
+    todo_counts: dict[str, int] | None = None
+    in_progress_task: str | None = None
+    for entry in reversed(entries):
+        if entry.get("type") != "assistant":
+            continue
+
+        message = entry.get("message", {})
+        content = message.get("content", [])
+        if not isinstance(content, list):
+            continue
+
+        for block in content:
+            if isinstance(block, dict) and block.get("type") == "tool_use":
+                if block.get("name") == "TodoWrite":
+                    tool_input = block.get("input", {})
+                    todos = tool_input.get("todos", [])
+                    if todos:
+                        todo_counts = {"pending": 0, "in_progress": 0, "completed": 0}
+                        for todo in todos:
+                            status = todo.get("status", "pending")
+                            if status in todo_counts:
+                                todo_counts[status] += 1
+                            if status == "in_progress" and not in_progress_task:
+                                in_progress_task = todo.get("content", "")
+                        break
+        if todo_counts is not None:
+            break
+
+    # Format output
+    if not recent_prompts and not recent_skill and not todo_counts:
+        return ""
+
+    lines = ["## Session Context", ""]
+
+    if recent_prompts:
+        lines.append("Recent prompts:")
+        for i, prompt in enumerate(recent_prompts, 1):
+            # Truncate long prompts
+            truncated = prompt[:_PROMPT_TRUNCATE] + "..." if len(prompt) > _PROMPT_TRUNCATE else prompt
+            lines.append(f'{i}. "{truncated}"')
+        lines.append("")
+
+    if recent_skill:
+        lines.append(f'Active: Skill("{recent_skill}") invoked recently')
+
+    if todo_counts:
+        task_desc = f' ("{in_progress_task}")' if in_progress_task else ""
+        lines.append(
+            f"Tasks: {todo_counts['pending']} pending, "
+            f"{todo_counts['in_progress']} in_progress{task_desc}, "
+            f"{todo_counts['completed']} completed"
+        )
+
+    return "\n".join(lines)
 
 
 @dataclass

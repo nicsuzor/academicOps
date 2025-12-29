@@ -1,0 +1,252 @@
+"""Tests for extract_router_context() function.
+
+Tests that session transcript data can be extracted and formatted for
+the prompt router to make skill/workflow decisions.
+"""
+
+from __future__ import annotations
+
+import json
+import tempfile
+from datetime import UTC, datetime
+from pathlib import Path
+
+import pytest
+
+
+def _make_timestamp(offset_seconds: int = 0) -> str:
+    """Generate ISO timestamp with optional offset from base time."""
+    from datetime import timedelta
+
+    base = datetime(2025, 1, 15, 10, 0, 0, tzinfo=UTC)
+    ts = base + timedelta(seconds=offset_seconds)
+    return ts.isoformat().replace("+00:00", "Z")
+
+
+def _create_user_entry(prompt: str, offset: int = 0) -> dict:
+    """Create a user message entry."""
+    return {
+        "type": "user",
+        "uuid": f"user-{offset}",
+        "timestamp": _make_timestamp(offset),
+        "message": {
+            "content": [{"type": "text", "text": prompt}]
+        },
+    }
+
+
+def _create_assistant_entry(offset: int = 0) -> dict:
+    """Create an assistant response entry."""
+    return {
+        "type": "assistant",
+        "uuid": f"assistant-{offset}",
+        "timestamp": _make_timestamp(offset + 1),
+        "message": {
+            "content": [{"type": "text", "text": "I'll help with that."}]
+        },
+    }
+
+
+def _create_skill_invocation_entry(skill_name: str, offset: int = 0) -> dict:
+    """Create an assistant entry with Skill tool invocation."""
+    return {
+        "type": "assistant",
+        "uuid": f"skill-{offset}",
+        "timestamp": _make_timestamp(offset),
+        "message": {
+            "content": [
+                {
+                    "type": "tool_use",
+                    "id": f"tool-{offset}",
+                    "name": "Skill",
+                    "input": {"skill": skill_name},
+                }
+            ]
+        },
+    }
+
+
+def _create_todowrite_entry(todos: list[dict], offset: int = 0) -> dict:
+    """Create an assistant entry with TodoWrite tool invocation."""
+    return {
+        "type": "assistant",
+        "uuid": f"todo-{offset}",
+        "timestamp": _make_timestamp(offset),
+        "message": {
+            "content": [
+                {
+                    "type": "tool_use",
+                    "id": f"todo-tool-{offset}",
+                    "name": "TodoWrite",
+                    "input": {"todos": todos},
+                }
+            ]
+        },
+    }
+
+
+@pytest.fixture
+def session_jsonl_file(tmp_path: Path) -> Path:
+    """Create a temporary JSONL file with realistic session data.
+
+    Contains:
+    - 5 user prompts
+    - 1 Skill("framework") invocation
+    - 1 TodoWrite with mixed status items (2 completed, 1 in_progress, 1 pending)
+    """
+    session_file = tmp_path / "test-session.jsonl"
+
+    entries = [
+        # User prompt 1
+        _create_user_entry(
+            "Help me understand the project structure and identify key files",
+            offset=0,
+        ),
+        _create_assistant_entry(offset=1),
+        # User prompt 2
+        _create_user_entry(
+            "Now let's focus on the authentication module - review the code",
+            offset=10,
+        ),
+        _create_assistant_entry(offset=11),
+        # User prompt 3
+        _create_user_entry(
+            "Can you explain how the middleware chain works in this framework?",
+            offset=20,
+        ),
+        _create_assistant_entry(offset=21),
+        # Skill invocation
+        _create_skill_invocation_entry("framework", offset=25),
+        # User prompt 4
+        _create_user_entry(
+            "What are the testing patterns used here? I need to add new tests",
+            offset=30,
+        ),
+        _create_assistant_entry(offset=31),
+        # TodoWrite with mixed statuses
+        _create_todowrite_entry(
+            todos=[
+                {"content": "Review existing tests", "status": "completed", "activeForm": "Reviewing tests"},
+                {"content": "Add unit tests for auth", "status": "completed", "activeForm": "Adding tests"},
+                {"content": "Write integration tests", "status": "in_progress", "activeForm": "Writing tests"},
+                {"content": "Update test documentation", "status": "pending", "activeForm": "Updating docs"},
+            ],
+            offset=35,
+        ),
+        # User prompt 5
+        _create_user_entry(
+            "Now implement the test for the login endpoint with mocking",
+            offset=40,
+        ),
+        _create_assistant_entry(offset=41),
+    ]
+
+    with session_file.open("w", encoding="utf-8") as f:
+        for entry in entries:
+            f.write(json.dumps(entry) + "\n")
+
+    return session_file
+
+
+class TestExtractRouterContext:
+    """Tests for extract_router_context() function."""
+
+    def test_extract_router_context_returns_formatted_markdown(
+        self, session_jsonl_file: Path
+    ) -> None:
+        """Test that extract_router_context returns formatted markdown with expected sections.
+
+        Expected failure: ImportError or AttributeError - function doesn't exist yet.
+        """
+        from lib.session_reader import extract_router_context
+
+        result = extract_router_context(session_jsonl_file)
+
+        # Verify result is a string (markdown)
+        assert isinstance(result, str), "Result should be a markdown string"
+
+        # Verify user prompts section exists with recent prompts
+        assert "login endpoint" in result.lower(), (
+            "Should contain most recent user prompt about login endpoint"
+        )
+        assert "testing patterns" in result.lower(), (
+            "Should contain user prompt about testing patterns"
+        )
+
+        # Verify active skill is shown
+        assert "framework" in result.lower(), (
+            "Should show 'framework' as the active/recent skill"
+        )
+
+        # Verify TodoWrite summary shows status counts
+        assert "completed" in result.lower() or "2" in result, (
+            "Should show completed task count or status"
+        )
+        assert "in_progress" in result.lower() or "1" in result, (
+            "Should show in_progress task count or status"
+        )
+        assert "pending" in result.lower() or "1" in result, (
+            "Should show pending task count or status"
+        )
+
+    def test_extract_router_context_truncates_long_prompts(
+        self, tmp_path: Path
+    ) -> None:
+        """Test that long user prompts are truncated to ~100 chars."""
+        from lib.session_reader import extract_router_context
+
+        # Create session with one very long prompt
+        session_file = tmp_path / "long-prompt-session.jsonl"
+        long_prompt = "A" * 500  # 500 character prompt
+
+        entries = [
+            _create_user_entry(long_prompt, offset=0),
+            _create_assistant_entry(offset=1),
+        ]
+
+        with session_file.open("w", encoding="utf-8") as f:
+            for entry in entries:
+                f.write(json.dumps(entry) + "\n")
+
+        result = extract_router_context(session_file)
+
+        # The original 500-char prompt should be truncated
+        # Check that we don't have 500 consecutive 'A's
+        assert "A" * 200 not in result, (
+            "Long prompts should be truncated to ~100 chars"
+        )
+
+    def test_extract_router_context_limits_to_recent_prompts(
+        self, tmp_path: Path
+    ) -> None:
+        """Test that only last 3-5 user prompts are included."""
+        from lib.session_reader import extract_router_context
+
+        # Create session with 10 distinct user prompts
+        session_file = tmp_path / "many-prompts-session.jsonl"
+        entries = []
+
+        for i in range(10):
+            entries.append(
+                _create_user_entry(f"User prompt number {i} with unique content", offset=i * 10)
+            )
+            entries.append(_create_assistant_entry(offset=i * 10 + 1))
+
+        with session_file.open("w", encoding="utf-8") as f:
+            for entry in entries:
+                f.write(json.dumps(entry) + "\n")
+
+        result = extract_router_context(session_file)
+
+        # Should NOT contain early prompts (0, 1, 2)
+        assert "prompt number 0" not in result.lower(), (
+            "Should not contain oldest prompts"
+        )
+        assert "prompt number 1" not in result.lower(), (
+            "Should not contain oldest prompts"
+        )
+
+        # Should contain recent prompts (at least 8 or 9)
+        assert "prompt number 9" in result.lower(), (
+            "Should contain most recent prompt"
+        )
