@@ -16,7 +16,7 @@ sys.path.insert(0, str(aops_root))
 
 from skills.tasks.task_loader import load_focus_tasks
 from lib.session_reader import find_sessions, SessionProcessor, ConversationTurn
-from lib.session_analyzer import SessionAnalyzer
+from lib.session_analyzer import SessionAnalyzer, extract_todowrite_from_session
 
 
 def load_task_index() -> dict | None:
@@ -504,6 +504,134 @@ def group_prompts_by_machine(prompts: list[dict]) -> dict[str, list[dict]]:
     return grouped
 
 
+# Cache for session activity (60s TTL)
+_session_activity_cache: dict = {'data': None, 'timestamp': 0}
+
+
+def fetch_session_activity(hours: int = 2) -> list[dict]:
+    """Fetch active sessions with prompts from R2 and TodoWrite from local JSONL.
+
+    Combines cross-machine prompt data from R2 with local session TodoWrite state.
+    For local sessions, includes the current in_progress task.
+
+    Args:
+        hours: How far back to look for activity (default 2 hours)
+
+    Returns:
+        List of session activity dicts with keys:
+            - session_id: Full session UUID
+            - session_short: First 7 chars for display
+            - hostname: Machine name
+            - project: Project/repo name
+            - last_prompt: Most recent user prompt (truncated)
+            - timestamp: ISO timestamp of last activity
+            - time_ago: Human-readable time since activity
+            - todowrite: TodoWriteState or None for local sessions
+    """
+    import time
+    from datetime import timedelta
+
+    # Check cache (60s TTL)
+    now = time.time()
+    if _session_activity_cache['data'] and (now - _session_activity_cache['timestamp']) < 60:
+        return _session_activity_cache['data']
+
+    # Fetch R2 prompts
+    r2_prompts = fetch_cross_machine_prompts()
+
+    # Build session map from R2 data (most recent prompt per session)
+    sessions: dict[str, dict] = {}
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
+
+    for p in r2_prompts:
+        session_id = p.get('session_id', '')
+        if not session_id:
+            continue
+
+        # Parse timestamp and filter by cutoff
+        try:
+            ts_str = p.get('timestamp') or p.get('raw_timestamp', '')
+            if ts_str:
+                if ts_str.endswith('Z'):
+                    ts_str = ts_str[:-1] + '+00:00'
+                ts = datetime.fromisoformat(ts_str)
+                if ts < cutoff:
+                    continue
+        except (ValueError, TypeError):
+            continue
+
+        # Keep most recent per session
+        if session_id not in sessions:
+            sessions[session_id] = {
+                'session_id': session_id,
+                'session_short': session_id[:7],
+                'hostname': p.get('hostname', 'unknown'),
+                'project': p.get('project', 'unknown'),
+                'last_prompt': p.get('prompt', '')[:100],
+                'timestamp': ts_str,
+                'time_ago': _format_time_ago(ts),
+                'todowrite': None,
+            }
+
+    # Try to find local JSONL for each session and extract TodoWrite
+    claude_projects = Path.home() / '.claude' / 'projects'
+    if claude_projects.exists():
+        for session_id, session_data in sessions.items():
+            # Search for session file
+            for project_dir in claude_projects.iterdir():
+                if not project_dir.is_dir():
+                    continue
+                session_file = project_dir / f'{session_id}.jsonl'
+                if session_file.exists():
+                    todowrite = extract_todowrite_from_session(session_file)
+                    session_data['todowrite'] = todowrite
+                    break
+
+    # Sort by timestamp descending
+    result = sorted(
+        sessions.values(),
+        key=lambda x: x.get('timestamp', ''),
+        reverse=True
+    )
+
+    # Update cache
+    _session_activity_cache['data'] = result
+    _session_activity_cache['timestamp'] = now
+
+    return result
+
+
+def _format_time_ago(dt: datetime) -> str:
+    """Format datetime as human-readable time ago string."""
+    now = datetime.now(timezone.utc)
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+
+    diff = now - dt
+    seconds = diff.total_seconds()
+
+    if seconds < 60:
+        return 'just now'
+    elif seconds < 3600:
+        mins = int(seconds / 60)
+        return f'{mins}m ago'
+    elif seconds < 86400:
+        hours = int(seconds / 3600)
+        return f'{hours}h ago'
+    else:
+        days = int(seconds / 86400)
+        return f'{days}d ago'
+
+
+def group_sessions_by_project(sessions: list[dict]) -> dict[str, list[dict]]:
+    """Group session activity by project for display."""
+    grouped: dict[str, list[dict]] = {}
+    for s in sessions:
+        project = s.get('project', 'unknown')
+        if project not in grouped:
+            grouped[project] = []
+        grouped[project].append(s)
+    return grouped
 
 
 # Page config
@@ -912,6 +1040,75 @@ st.markdown("""
     .machine-prompt-project {
         color: #6366f1;
         font-size: 0.75em;
+    }
+
+    /* Active Sessions panel */
+    .active-sessions-panel {
+        background: linear-gradient(135deg, #1a1a2d 0%, #0a0a1a 100%);
+        border: 1px solid #6366f1;
+        border-radius: 8px;
+        padding: 12px 16px;
+        margin-bottom: 16px;
+    }
+
+    .active-sessions-title {
+        color: #a5b4fc;
+        font-size: 0.95em;
+        font-weight: bold;
+        margin-bottom: 10px;
+    }
+
+    .session-card {
+        margin-bottom: 12px;
+        padding: 8px 12px;
+        background: rgba(99, 102, 241, 0.1);
+        border-left: 3px solid #4f46e5;
+        border-radius: 0 4px 4px 0;
+    }
+
+    .session-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 4px;
+    }
+
+    .session-id {
+        font-family: monospace;
+        color: #818cf8;
+        font-size: 0.8em;
+        background: rgba(99, 102, 241, 0.2);
+        padding: 2px 6px;
+        border-radius: 3px;
+    }
+
+    .session-meta {
+        color: #64748b;
+        font-size: 0.75em;
+    }
+
+    .session-prompt {
+        color: #94a3b8;
+        font-size: 0.85em;
+        padding: 4px 0;
+        font-style: italic;
+    }
+
+    .session-todo {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 0;
+    }
+
+    .session-todo-active {
+        color: #22c55e;
+        font-size: 0.85em;
+    }
+
+    .session-todo-pending {
+        color: #64748b;
+        font-size: 0.8em;
     }
 
     /* What Now panel - synthesized status */
@@ -1439,34 +1636,55 @@ if daily_log:
         done_html += "</div>"
         st.markdown(done_html, unsafe_allow_html=True)
 
-# === CROSS-MACHINE ACTIVITY PANEL ===
-cross_machine_prompts = fetch_cross_machine_prompts()
-if cross_machine_prompts:
-    grouped = group_prompts_by_machine(cross_machine_prompts)
-
-    cross_html = f"""
-    <div class='cross-machine-panel'>
-        <div class='cross-machine-title'>🌐 CROSS-MACHINE ACTIVITY ({len(cross_machine_prompts)} prompts)</div>
+# === ACTIVE SESSIONS PANEL ===
+active_sessions = fetch_session_activity(hours=2)
+if active_sessions:
+    sessions_html = f"""
+    <div class='active-sessions-panel'>
+        <div class='active-sessions-title'>📍 ACTIVE SESSIONS ({len(active_sessions)})</div>
     """
 
-    for hostname, prompts in sorted(grouped.items(), key=lambda x: x[1][0].get('raw_timestamp', ''), reverse=True):
-        cross_html += f"<div class='machine-group'>"
-        cross_html += f"<div class='machine-name'>💻 {esc(hostname)}</div>"
+    for session in active_sessions[:6]:  # Show up to 6 sessions
+        session_id = session.get('session_short', '???')
+        hostname = session.get('hostname', 'unknown')
+        project = session.get('project', 'unknown')
+        time_ago = session.get('time_ago', '')
+        last_prompt = session.get('last_prompt', '')
 
-        for p in prompts[:3]:  # Show last 3 per machine
-            prompt_text = p.get('prompt', '')[:60]
-            if len(p.get('prompt', '')) > 60:
-                prompt_text += '...'
-            project = p.get('project', '')
-            cross_html += f"<div class='machine-prompt'><span class='machine-prompt-project'>[{esc(project)}]</span> {esc(prompt_text)}</div>"
+        # Get project color
+        proj_key = project.lower().split('/')[-1] if '/' in project else project.lower()
+        color = PROJECT_COLORS.get(proj_key, DEFAULT_COLOR)
 
-        if len(prompts) > 3:
-            cross_html += f"<div class='machine-prompt' style='color: #64748b;'>+{len(prompts)-3} more</div>"
+        sessions_html += f"""
+        <div class='session-card' style='border-left-color: {color};'>
+            <div class='session-header'>
+                <span class='session-id'>{esc(session_id)}</span>
+                <span class='session-meta'>@ {esc(hostname)} | {esc(project)} | {esc(time_ago)}</span>
+            </div>
+            <div class='session-prompt'>"{esc(last_prompt)}"</div>
+        """
 
-        cross_html += "</div>"
+        # Show TodoWrite state if available
+        todowrite = session.get('todowrite')
+        if todowrite:
+            in_progress = todowrite.in_progress_task
+            pending_count = todowrite.counts.get('pending', 0)
 
-    cross_html += "</div>"
-    st.markdown(cross_html, unsafe_allow_html=True)
+            if in_progress:
+                # Truncate long task names
+                display_task = in_progress[:50] + '...' if len(in_progress) > 50 else in_progress
+                sessions_html += f"<div class='session-todo'><span class='session-todo-active'>▶ {esc(display_task)}</span></div>"
+
+            if pending_count > 0:
+                sessions_html += f"<div class='session-todo'><span class='session-todo-pending'>□ +{pending_count} pending</span></div>"
+
+        sessions_html += "</div>"
+
+    if len(active_sessions) > 6:
+        sessions_html += f"<div style='color: #64748b; font-size: 0.8em;'>+{len(active_sessions)-6} more sessions</div>"
+
+    sessions_html += "</div>"
+    st.markdown(sessions_html, unsafe_allow_html=True)
 
 # PROJECTS - Unified view with all info per project
 st.markdown("<div class='section-header'>PROJECTS</div>", unsafe_allow_html=True)

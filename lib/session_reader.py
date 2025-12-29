@@ -27,6 +27,69 @@ _SKILL_LOOKBACK = 10
 _PROMPT_TRUNCATE = 100
 
 
+@dataclass
+class TodoWriteState:
+    """Current state of TodoWrite items in a session."""
+
+    todos: list[dict[str, Any]]  # Full list of todo items
+    counts: dict[str, int]  # {pending: n, in_progress: n, completed: n}
+    in_progress_task: str | None  # Content of first in_progress item
+
+
+def parse_todowrite_state(entries: list[Any]) -> TodoWriteState | None:
+    """
+    Parse the most recent TodoWrite state from session entries.
+
+    Scans entries in reverse order to find the most recent TodoWrite call
+    and extracts the full state.
+
+    Args:
+        entries: List of session entries (dicts with type, message, etc.)
+
+    Returns:
+        TodoWriteState with todos list, counts, and in_progress task.
+        Returns None if no TodoWrite found.
+    """
+    for entry in reversed(entries):
+        # Handle both Entry objects and raw dicts
+        if hasattr(entry, "type"):
+            entry_type = entry.type
+            message = entry.message or {}
+        else:
+            entry_type = entry.get("type")
+            message = entry.get("message", {})
+
+        if entry_type != "assistant":
+            continue
+
+        content = message.get("content", [])
+        if not isinstance(content, list):
+            continue
+
+        for block in content:
+            if isinstance(block, dict) and block.get("type") == "tool_use":
+                if block.get("name") == "TodoWrite":
+                    tool_input = block.get("input", {})
+                    todos = tool_input.get("todos", [])
+                    if todos:
+                        counts = {"pending": 0, "in_progress": 0, "completed": 0}
+                        in_progress_task = None
+                        for todo in todos:
+                            status = todo.get("status", "pending")
+                            if status in counts:
+                                counts[status] += 1
+                            if status == "in_progress" and not in_progress_task:
+                                in_progress_task = todo.get("content", "")
+
+                        return TodoWriteState(
+                            todos=todos,
+                            counts=counts,
+                            in_progress_task=in_progress_task,
+                        )
+
+    return None
+
+
 def extract_router_context(transcript_path: Path, max_turns: int = _MAX_TURNS) -> str:
     """Extract compact context for intent router.
 
@@ -109,34 +172,10 @@ def _extract_router_context_impl(transcript_path: Path, max_turns: int) -> str:
             if recent_skill:
                 break
 
-    # Find most recent TodoWrite call
-    todo_counts: dict[str, int] | None = None
-    in_progress_task: str | None = None
-    for entry in reversed(entries):
-        if entry.get("type") != "assistant":
-            continue
-
-        message = entry.get("message", {})
-        content = message.get("content", [])
-        if not isinstance(content, list):
-            continue
-
-        for block in content:
-            if isinstance(block, dict) and block.get("type") == "tool_use":
-                if block.get("name") == "TodoWrite":
-                    tool_input = block.get("input", {})
-                    todos = tool_input.get("todos", [])
-                    if todos:
-                        todo_counts = {"pending": 0, "in_progress": 0, "completed": 0}
-                        for todo in todos:
-                            status = todo.get("status", "pending")
-                            if status in todo_counts:
-                                todo_counts[status] += 1
-                            if status == "in_progress" and not in_progress_task:
-                                in_progress_task = todo.get("content", "")
-                        break
-        if todo_counts is not None:
-            break
+    # Find most recent TodoWrite call using shared helper
+    todowrite_state = parse_todowrite_state(entries)
+    todo_counts = todowrite_state.counts if todowrite_state else None
+    in_progress_task = todowrite_state.in_progress_task if todowrite_state else None
 
     # Format output
     if not recent_prompts and not recent_skill and not todo_counts:

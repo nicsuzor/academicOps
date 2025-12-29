@@ -19,7 +19,9 @@ from typing import Any
 from lib.session_reader import (
     ConversationTurn,
     SessionProcessor,
+    TodoWriteState,
     find_sessions,
+    parse_todowrite_state,
 )
 
 
@@ -885,3 +887,42 @@ def get_recent_sessions(
             continue
 
     return results
+
+
+def extract_todowrite_from_session(session_path: Path) -> TodoWriteState | None:
+    """
+    Extract TodoWrite state from a session JSONL file.
+
+    Convenience function for dashboard to get current TodoWrite state
+    without loading full session analysis.
+
+    Args:
+        session_path: Path to session JSONL file
+
+    Returns:
+        TodoWriteState with todos list, counts, and in_progress task.
+        Returns None if session doesn't exist or has no TodoWrite.
+    """
+    import json
+
+    if not session_path.exists():
+        return None
+
+    entries = []
+    try:
+        with open(session_path, encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    entries.append(json.loads(line))
+                except json.JSONDecodeError:
+                    continue
+    except OSError:
+        return None
+
+    if not entries:
+        return None
+
+    return parse_todowrite_state(entries)
