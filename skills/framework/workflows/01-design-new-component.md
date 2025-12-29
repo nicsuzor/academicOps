@@ -37,7 +37,7 @@ description: Process for adding new framework capability (hook, skill, script, c
    - Document actual vs expected behavior
 
 6. **Update authoritative sources**
-   - Invoke `Skill(skill="docs-update")` to detect and fix documentation drift
+   - Invoke `Skill(skill="audit")` to verify structure, justification, and update index files
    - Update [[hooks/prompts/intent-router.md]] if adding skill, command, or agent
    - Verify no documentation conflicts introduced
 

@@ -42,7 +42,7 @@ $AOPS/
 │   ├── parallel-batch.md        # Parallel file processing
 │   ├── strategy.md              # Strategic planning
 │   ├── task-viz.md              # Task graph visualization
-│   └── docs-update.md           # → docs-update skill (README/INDEX maintenance)
+│   └── audit.md                 # → audit skill (framework governance)
 │
 ├── skills/
 │   ├── framework/               # Convention reference for infrastructure
@@ -105,7 +105,7 @@ $AOPS/
 │   │   ├── SKILL.md
 │   │   └── scripts/find_orphans.py
 │   │
-│   ├── docs-update/             # README/INDEX drift detection
+│   ├── audit/                   # Framework governance audit
 │   │   └── SKILL.md
 │   │
 │   ├── extractor/               # Archive → memory extraction
