@@ -110,6 +110,8 @@ Do NOT implement or modify anything.
 
 Keep it SHORT. The main agent only needs what's relevant for THIS task.
 
+{session_context}
+
 ## User Prompt
 
 {prompt}

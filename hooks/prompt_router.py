@@ -23,6 +23,7 @@ from pathlib import Path
 from typing import Any
 
 from hooks.hook_logger import log_hook_event
+from lib.session_reader import extract_router_context
 
 # Framing version for measurement
 FRAMING_VERSION = "v7-subagent-router"
@@ -51,16 +52,33 @@ def load_router_prompt() -> str:
     return content
 
 
-def build_router_context(user_prompt: str) -> str:
-    """Build context for intent router: prompt template + user's prompt."""
+def build_router_context(user_prompt: str, transcript_path: str | None = None) -> str:
+    """Build context for intent router: prompt template + session context + user's prompt.
+
+    Args:
+        user_prompt: The user's current prompt
+        transcript_path: Optional path to session JSONL for context extraction
+
+    Returns:
+        Combined router context string
+    """
     router_prompt = load_router_prompt()
 
-    # Replace {prompt} placeholder with actual user prompt
-    if "{prompt}" in router_prompt:
-        return router_prompt.replace("{prompt}", user_prompt)
+    # Extract session context if transcript available
+    session_context = ""
+    if transcript_path:
+        session_context = extract_router_context(Path(transcript_path))
 
-    # Fallback: append user prompt
-    return f"{router_prompt}\n\n## User Prompt\n\n{user_prompt}"
+    # Replace placeholders with actual content
+    result = router_prompt
+    if "{session_context}" in result:
+        result = result.replace("{session_context}", session_context)
+    if "{prompt}" in result:
+        result = result.replace("{prompt}", user_prompt)
+        return result
+
+    # Fallback: append user prompt (legacy template without placeholders)
+    return f"{result}\n\n## User Prompt\n\n{user_prompt}"
 
 
 def write_temp_file(content: str) -> str:
@@ -103,7 +121,8 @@ def main():
         sys.exit(0)
 
     # Build context and write to temp file
-    context = build_router_context(prompt)
+    transcript_path = input_data.get("transcript_path")
+    context = build_router_context(prompt, transcript_path)
     temp_path = write_temp_file(context)
 
     # Instruct main agent to invoke router with file path
