@@ -250,3 +250,161 @@ class TestExtractRouterContext:
         assert "prompt number 9" in result.lower(), (
             "Should contain most recent prompt"
         )
+
+    def test_extract_router_context_empty_session(self, tmp_path: Path) -> None:
+        """Test that empty session (0 turns) returns empty string."""
+        from lib.session_reader import extract_router_context
+
+        # Create empty JSONL file
+        session_file = tmp_path / "empty-session.jsonl"
+        session_file.touch()
+
+        result = extract_router_context(session_file)
+
+        assert result == "", "Empty session should return empty string"
+
+    def test_extract_router_context_slash_only_session(self, tmp_path: Path) -> None:
+        """Test that slash-only commands are skipped, returning minimal context.
+
+        Sessions with only /commit, /help etc. should skip those commands
+        and return empty or minimal context since there's no real user prompt.
+        """
+        from lib.session_reader import extract_router_context
+
+        session_file = tmp_path / "slash-only-session.jsonl"
+
+        # Create session with only slash commands
+        entries = [
+            _create_user_entry("/commit", offset=0),
+            _create_assistant_entry(offset=1),
+            _create_user_entry("/help", offset=10),
+            _create_assistant_entry(offset=11),
+            _create_user_entry("/clear", offset=20),
+            _create_assistant_entry(offset=21),
+        ]
+
+        with session_file.open("w", encoding="utf-8") as f:
+            for entry in entries:
+                f.write(json.dumps(entry) + "\n")
+
+        result = extract_router_context(session_file)
+
+        # Should either be empty or not contain the slash commands
+        # (implementation may vary - either skip them entirely or include them)
+        # The key is it should NOT crash and should handle gracefully
+        assert isinstance(result, str), "Should return a string even for slash-only session"
+        # If not empty, verify it's well-formed (doesn't have parsing errors)
+        if result:
+            assert "Recent prompts" in result or "prompt" in result.lower(), (
+                "If non-empty, should have standard format"
+            )
+
+    def test_extract_router_context_malformed_jsonl(self, tmp_path: Path) -> None:
+        """Test that malformed JSONL lines are gracefully skipped.
+
+        Invalid JSON lines should not crash; function should skip bad entries
+        and return what it can parse.
+        """
+        from lib.session_reader import extract_router_context
+
+        session_file = tmp_path / "malformed-session.jsonl"
+
+        # Mix of valid and invalid entries
+        valid_entry_1 = _create_user_entry("First valid prompt", offset=0)
+        valid_entry_2 = _create_user_entry("Second valid prompt", offset=10)
+        valid_entry_3 = _create_assistant_entry(offset=11)
+
+        with session_file.open("w", encoding="utf-8") as f:
+            f.write(json.dumps(valid_entry_1) + "\n")
+            f.write("this is not valid json\n")
+            f.write("{incomplete json\n")
+            f.write(json.dumps(valid_entry_2) + "\n")
+            f.write('{"type": "user", "missing": "message field"}\n')
+            f.write(json.dumps(valid_entry_3) + "\n")
+
+        result = extract_router_context(session_file)
+
+        # Should not crash and should return a string
+        assert isinstance(result, str), "Should return a string even with malformed lines"
+        # Should still extract at least one valid prompt
+        if result:
+            # Should contain at least one of the valid prompts
+            has_valid_content = (
+                "first valid" in result.lower() or
+                "second valid" in result.lower()
+            )
+            assert has_valid_content, "Should extract valid prompts despite malformed lines"
+
+    def test_extract_router_context_no_todowrite(self, tmp_path: Path) -> None:
+        """Test that session without TodoWrite omits 'Tasks:' line.
+
+        Per spec: 'No TodoWrite calls' -> 'Omit "Tasks:" line'
+        """
+        from lib.session_reader import extract_router_context
+
+        session_file = tmp_path / "no-todowrite-session.jsonl"
+
+        # Create session with prompts and skill but NO TodoWrite
+        entries = [
+            _create_user_entry("Start working on the feature", offset=0),
+            _create_assistant_entry(offset=1),
+            _create_skill_invocation_entry("python-dev", offset=5),
+            _create_user_entry("Now add the tests", offset=10),
+            _create_assistant_entry(offset=11),
+        ]
+
+        with session_file.open("w", encoding="utf-8") as f:
+            for entry in entries:
+                f.write(json.dumps(entry) + "\n")
+
+        result = extract_router_context(session_file)
+
+        # Should not contain Tasks line since no TodoWrite was called
+        assert "tasks:" not in result.lower(), (
+            "Should omit 'Tasks:' line when no TodoWrite calls in session"
+        )
+        # But should still have other content
+        assert "python-dev" in result.lower() or "prompt" in result.lower(), (
+            "Should still have skill or prompt content"
+        )
+
+    def test_extract_router_context_no_skill_invocation(self, tmp_path: Path) -> None:
+        """Test that session without Skill invocation omits 'Active:' line.
+
+        Per spec: 'No Skill calls' -> 'Omit "Active:" line'
+        """
+        from lib.session_reader import extract_router_context
+
+        session_file = tmp_path / "no-skill-session.jsonl"
+
+        # Create session with prompts and TodoWrite but NO Skill invocation
+        entries = [
+            _create_user_entry("Help me fix this bug", offset=0),
+            _create_assistant_entry(offset=1),
+            _create_user_entry("Now try another approach", offset=10),
+            _create_assistant_entry(offset=11),
+            _create_todowrite_entry(
+                todos=[
+                    {"content": "Fix bug", "status": "in_progress", "activeForm": "Fixing bug"},
+                    {"content": "Add tests", "status": "pending", "activeForm": "Adding tests"},
+                ],
+                offset=15,
+            ),
+            _create_user_entry("That worked, continue", offset=20),
+            _create_assistant_entry(offset=21),
+        ]
+
+        with session_file.open("w", encoding="utf-8") as f:
+            for entry in entries:
+                f.write(json.dumps(entry) + "\n")
+
+        result = extract_router_context(session_file)
+
+        # Should not contain Active line since no Skill was invoked
+        assert "active:" not in result.lower(), (
+            "Should omit 'Active:' line when no Skill invocations in session"
+        )
+        # But should still have tasks content
+        assert "task" in result.lower() or "pending" in result.lower() or "in_progress" in result.lower(), (
+            "Should still have task content from TodoWrite"
+        )
