@@ -41,7 +41,3 @@ tags: [framework, commands]
 - [[task-viz.md|/task-viz]] - Generate visual mind-map of tasks, projects, and goals using automated layout via excalidraw
 - [[diag.md|/diag]] - Quick diagnostic check of what's currently loaded in this session
 
-## Relations
-
-- parent: [[../README.md|academicOps]]
-- see also: [[../skills/skills.md|Skills]]

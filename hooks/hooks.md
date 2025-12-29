@@ -48,8 +48,3 @@ Python hooks for session lifecycle management, context injection, and policy enf
   - [[prompts/user-prompt-submit.md]] - Context for UserPromptSubmit hook
   - [[prompts/intent-router.md]] - Template for semantic skill classification
 
-## Relations
-
-- parent [[academicOps]]
-- documented_in [[docs/HOOKS]], [[docs/JIT-INJECTION]], [[docs/OBSERVABILITY]]
-- configured_in [[settings.json]]

@@ -58,8 +58,3 @@ Write the executable prompt to $ACA_DATA/queue/ following the format in your ins
 
 `$ACA_DATA/queue/YYYYMMDD-HHMMSS-slug.md`
 
-## See Also
-
-- [[agents/prompt-writer.md]] - Agent that does the formalization
-- [[commands/pull.md]] - Retrieves and executes queued prompts
-- [[specs/prompt-queue.md]] - Full specification

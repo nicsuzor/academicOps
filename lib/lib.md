@@ -17,5 +17,3 @@ Shared Python utilities for hooks and scripts.
 - [[session_reader.py]] - Unified session parser (JSONL, agents, hooks)
 - [[session_analyzer.py]] - Session data extraction for LLM analysis
 
-## Relations
-- parent [[academicOps]]
