@@ -44,6 +44,21 @@ The framework uses a memory server that indexes `$ACA_DATA/`. When you write mar
    - Specs directory: `Glob(pattern="$ACA_DATA/projects/*/specs/*.md")` then grep for topic
 2. **If match found in EITHER**: AUGMENT existing file (don't create new)
 3. **If no match in either**: Create new TOPICAL file (not session/date file)
+
+### Multi-Location Principle
+
+**Don't over-summarize.** Content often belongs in multiple locations at different levels of detail:
+
+| Location | Content Level |
+|----------|---------------|
+| Project index (`project.md`) | Summary observations, current strategic position |
+| Detailed notes (`project/topic.md`) | Full context, reasoning, personal reflections |
+| Memory server | Key facts for semantic retrieval |
+
+**Example**: A plenary reflection belongs BOTH in the project index (strategic summary) AND the meeting notes (full reflection with emotional context, reasoning, history).
+
+When in doubt, save to both. Lost detail is worse than mild redundancy.
+
 4. **Write markdown file** with proper frontmatter:
 ```markdown
 ---
@@ -69,6 +84,35 @@ mcp__memory__store_memory(
   }
 )
 ```
+
+## Background Invocation (Seamless Capture)
+
+For seamless capture that doesn't interrupt workflow, spawn a background agent:
+
+```
+Task(
+  subagent_type="general-purpose",
+  model="haiku",
+  run_in_background=true,
+  description="Remember: [summary]",
+  prompt="
+Invoke Skill(skill='remember') to persist this observation:
+
+Content: [what to remember]
+Type: [note|learning|decision]
+Tags: [relevant tags]
+"
+)
+```
+
+**When to use background invocation**:
+- End of substantial work (Stop event trigger)
+- After completing a task (TodoWrite trigger)
+- Any time capture should not interrupt user flow
+
+**When to use direct `Skill(skill="remember")`**:
+- Need result before proceeding
+- User explicitly asks to remember something
 
 ## Arguments
 

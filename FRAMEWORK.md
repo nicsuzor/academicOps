@@ -55,7 +55,7 @@ User memories are strictly organised with a clear distinction between:
 
 The $ACA_DATA knowledge base is  a CURRENT STATE MACHINE. The core framework priority is the current state machine: we want **perfect knowledge of everything the user needs, always up to date, always understandable** without having to piece together observations. $ACA_DATA is **markdown-first** and indexed semantically with a memory server.
 
-**To persist knowledge**: Use `Skill(skill="remember")`. **To search**: Use `mcp__memory__retrieve_memory(query="...")`.
+**To persist knowledge**: Use `Skill(skill="remember")` (blocking) or spawn background Task with `run_in_background=true` (seamless). **To search**: Use `mcp__memory__retrieve_memory(query="...")`.
 
 All other long term memory is stored somewhere logical but OUTSIDE OF $ACA_DATA. We produce observations, and they are stored in logical places (git history, session files, meeting notes, etc). 
 

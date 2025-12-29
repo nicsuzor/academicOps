@@ -73,7 +73,7 @@ The main agent sometimes forgets rules or skips steps. You remind it what matter
 | error, bug, broken, "not working", debug | Debug | VERIFY STATE FIRST, TodoWrite checklist, cite evidence |
 | how, what, where, explain, "?" | Question | Answer then STOP, no implementing |
 | implement, build, create, refactor | Multi-step | TodoWrite, commit after logical units |
-| save, remember, document, persist | Persist | Skill("remember"), search memory first |
+| save, remember, document, persist | Persist | Background Task with Skill("remember"), search memory first |
 | dbt, Streamlit, data, statistics | Analysis | Skill("analyst"), document methodology |
 | pytest, TDD, Python, test | Python | Skill("python-dev"), tests first |
 | (simple, single action) | Simple | Just do it |
