@@ -31,9 +31,10 @@ The framework uses a memory server that indexes `$ACA_DATA/`. When you write mar
 | Goals | `$ACA_DATA/goals/` |
 | Project metadata | `$ACA_DATA/projects/<name>.md` |
 | Project details | `$ACA_DATA/projects/<name>/` |
-| Learning/patterns | `$ACA_DATA/projects/aops/learning/` |
 | Session notes | `$ACA_DATA/sessions/` |
 | Tasks | Delegate to [[tasks]] skill |
+
+**PROHIBITED**: Creating files in `learning/`, `bugs/`, `experiments/`, or `decisions/`. Per [[AXIOMS]] #28 and [[H26]], these are **episodic content** and MUST go to **GitHub Issues** (nicsuzor/academicOps repo). Use `/log` skill instead.
 
 **DO NOT create arbitrary directories** (e.g., `tech/`, `dev/`, `tools/`). Project-related notes go in `projects/<project-name>/`.
 
