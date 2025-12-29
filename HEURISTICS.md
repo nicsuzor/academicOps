@@ -690,6 +690,31 @@ When `/qa` is invoked:
 
 ---
 
+## H30: Design-First, Not Constraint-First
+
+**Statement**: When designing or implementing features, start from "what do we need?" not "what do we have?" Current state is not a constraint - we control the framework and can make anything available.
+
+**Rationale**: Agents default to working within existing data structures and APIs, treating current state as immutable. This limits solutions to incremental improvements rather than proper designs. The framework is malleable - if the right data isn't available, we can make it available.
+
+**Evidence**:
+- 2025-12-29: Agent proposed "check what R2 data looks like" as first step for dashboard feature, instead of "what data do we need and how do we capture it?" User corrected: "this is a failure of imagination... current state is not a constraint"
+
+**Confidence**: Low (first occurrence)
+
+**Implements**: [[AXIOMS]] #1 (Categorical Imperative) - design proper solutions, don't hack around constraints
+
+**Application**:
+- ❌ Wrong: "Let's see what fields the API returns, then design around that"
+- ✅ Right: "We need X, Y, Z. Does our infrastructure provide it? If not, how do we add it?"
+
+**Design sequence**:
+1. What does the user need?
+2. What data/signals would satisfy that need?
+3. Do we have that data? If yes, use it. If no, how do we capture it?
+4. Implementation follows from requirements, not from current capabilities
+
+---
+
 ## Revision Protocol
 
 To adjust heuristics based on new evidence:
