@@ -80,7 +80,7 @@ This forces explicit planning, user review, and prevents "just do it" shortcuts 
 After completing a plan or reaching a conclusion, **BEFORE presenting to user**:
 
 ```
-Task(subagent_type="critic", model="haiku", prompt="
+Task(subagent_type="critic", model="opus", prompt="
 Review this plan/conclusion for errors and hidden assumptions:
 
 [PLAN OR CONCLUSION SUMMARY]

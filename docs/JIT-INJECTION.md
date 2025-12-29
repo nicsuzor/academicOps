@@ -11,17 +11,15 @@ How agents automatically receive the information they need.
 
 ## Summary
 
-| When | What | Source |
-|------|------|--------|
-| Session start | Paths, principles, user context | [[sessionstart_load_axioms.py|hooks/sessionstart_load_axioms.py]] |
-| Session start | Project instructions | Claude Code native ([[CLAUDE.md]] files) |
-| Every prompt | Skill routing + focus | [[prompt_router.py|hooks/prompt_router.py]] |
-| Before tool | Policy enforcement | [[policy_enforcer.py|hooks/policy_enforcer.py]] |
-| On demand | Skill instructions | `Skill(skill="X")` |
+| When | What | Source                                             |
+| ------------- | ------------------------------- | -------------------------------------------------- | ----------------------------------- |
+| Session start | Paths, principles, user context | [[sessionstart_load_axioms.py                      |hooks/sessionstart_load_axioms.py]] |
+| Session start | Project instructions | Claude Code native (CLAUDE.md and AGENTS.md files) |
+| Every prompt | Skill routing + focus | [[prompt_router.py                                 |hooks/prompt_router.py]] |
+| Before tool | Policy enforcement | [[policy_enforcer.py                               |hooks/policy_enforcer.py]] |
+| On demand | Skill instructions | `Skill(skill="X")`                                 |
 
 **Design principle**: Agents should NOT need to search for context. Missing context = framework bug. (AXIOM 22)
-
----
 
 ## Hook Details
 
@@ -116,5 +114,3 @@ Claude Code loads these at session start (not via aOps hooks).
 | [[autocommit_state.py]]         | `integration/test_autocommit_data.py`                                                                                                     |
 | [[session_env_setup.sh]]        | **GAP**                                                                                                                                   |
 | [[unified_logger.py]]           | **GAP**                                                                                                                                   |
-
-- part_of [[aops]]

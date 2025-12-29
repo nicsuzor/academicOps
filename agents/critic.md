@@ -84,7 +84,7 @@ You are FAST and FOCUSED on the immediate content provided.
 ## Example Invocation
 
 ```
-Task(subagent_type="critic", model="haiku", prompt="
+Task(subagent_type="critic", model="opus", prompt="
 Review this plan:
 
 [PLAN CONTENT]

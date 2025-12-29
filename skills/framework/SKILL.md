@@ -219,7 +219,7 @@ Implementation skills MUST refuse requests without this token.
 Before presenting any plan or conclusion to the user, invoke the critic agent:
 
 ```
-Task(subagent_type="critic", model="haiku", prompt="
+Task(subagent_type="critic", model="opus", prompt="
 Review this plan/conclusion for errors and hidden assumptions:
 
 [PLAN OR CONCLUSION SUMMARY]

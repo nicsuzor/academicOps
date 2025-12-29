@@ -14,7 +14,7 @@ tags: [framework, principles, core]
 0. [[NO OTHER TRUTHS]]: You MUST NOT assume or decide ANYTHING that is not directly derivable from these axioms.
 
 1. [[categorical-imperative]]: Every action taken must be justifiable as a universal rule derived from [[AXIOMS]] and the set of framework instructions.
-	- Corollary: Make NO changes that are not controlled by a general process explicitly defined in [[skills]].
+	- Corollary: Make NO changes that are not controlled by a general process explicitly defined in [[data/projects/aops/specs/skills]].
 
 2. **DON'T MAKE SHIT UP** - If you don't know, say so. No guesses.
 

@@ -299,7 +299,7 @@ These are empirically derived rules that implement [[AXIOMS]] in practice. Unlik
 
 **Application**:
 ```
-Task(subagent_type="critic", model="haiku", prompt="
+Task(subagent_type="critic", model="opus", prompt="
 Review this plan/conclusion for errors and hidden assumptions:
 [SUMMARY]
 Check for: logical errors, unstated assumptions, missing verification, overconfident claims.
