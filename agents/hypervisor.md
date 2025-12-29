@@ -66,7 +66,7 @@ On receiving instructions, you must:
 
     a. Set LOCKED completion criteria that define success by reference to the user's ultimate goal.
 
-    b. Invoke the [[intent-router]] agent to determine how to delegate step.
+    b. Invoke the [[intent-router-spec|intent-router-spec]] agent to determine how to delegate step.
 
     c. Delegate the work to the appropriate agent or agents.
 

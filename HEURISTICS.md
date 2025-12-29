@@ -654,6 +654,27 @@ When `/qa` is invoked:
 
 ---
 
+## H29: TodoWrite vs Persistent Tasks
+
+**Statement**: Use TodoWrite ONLY for tracking implementation steps on already-approved work. Work requiring user approval, acceptance criteria, or that could fail and need rollback MUST use the `/tasks` skill to create persistent task files.
+
+**Rationale**: TodoWrite is session-scoped - it disappears when the session ends. Work that needs approval checkpoints cannot use a transient scratchpad because there's no persistent record for the user to review. Agents using TodoWrite for approval-required work skip consent and ship incomplete changes.
+
+**Evidence**:
+- 2025-12-23: buttermilk session storage consolidation - agent used TodoWrite, skipped approval checkpoint, removed working code without verifying replacement covered all use cases
+
+**Confidence**: Low (first observation)
+
+**Implements**: [[AXIOMS]] #22 (Acceptance Criteria Own Success), #23 (Plan-First Development)
+
+**Decision guide**:
+- Will this work need user approval before starting? → `/tasks`
+- Are there acceptance criteria to verify? → `/tasks`
+- Just tracking my own progress on approved work? → TodoWrite
+- Multi-step work that could fail and need rollback? → `/tasks`
+
+---
+
 ## Revision Protocol
 
 To adjust heuristics based on new evidence:

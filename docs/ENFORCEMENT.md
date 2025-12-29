@@ -228,6 +228,52 @@ The router IS the Level 2 mechanism. It replaces static JIT injection with intel
 
 This allows testing strict workflows (e.g., supervisor-only mode, mandatory subagent delegation) before making them default behavior. Commands are explicit user invocation; router is automatic steering.
 
+## Claude Code Native Permission Model
+
+Understanding what's achievable natively vs requiring custom enforcement.
+
+### What settings.json Can Do
+
+| Capability | Supported | Notes |
+|------------|-----------|-------|
+| Path-based allow/deny | ✅ | `Write(data/tasks/**)` |
+| Tool-based allow/deny | ✅ | `Bash(rm:*)` |
+| Agent-scoped permissions | ❌ | Rules are global |
+| Skill-scoped permissions | ❌ | Skills don't create permission boundaries |
+
+### Permission Precedence
+
+```
+Deny (highest) → Ask → Allow (lowest)
+```
+
+**Implication**: Can't "deny for main agent, allow for subagent" - deny wins globally.
+
+### Subagent `tools:` Field
+
+Agent frontmatter can restrict tools:
+```yaml
+tools: [Read, Grep]  # Only these tools available
+```
+
+**Key limitation**: This only **restricts** - it can't **grant** permissions beyond settings.json. A subagent with `tools: [Write]` follows the same allow/deny rules as everyone else.
+
+### What's NOT Achievable Natively
+
+| Goal | Why Not | Alternative |
+|------|---------|-------------|
+| "Only /tasks skill can write to tasks/" | Skills don't create permission scope | PreToolUse hook (Level 4) |
+| "Subagent gets more permission than main" | Deny rules are global | Not possible without hooks |
+| "Different paths for different agents" | Allow/deny is global | Hook-based gating |
+
+### Achievable Patterns
+
+1. **Restricted subagents** - Subagent has fewer tools than main agent
+2. **Path-based protection** - All agents follow same path rules
+3. **Hook-gated access** - PreToolUse hook checks context before allowing
+
+**Lesson**: For agent/skill-scoped permissions, must use Level 4 (PreToolUse hooks) with context detection (transcript parsing or state tracking).
+
 ## Open Questions
 
 - How to enforce skill invocation without blocking legitimate direct operations?

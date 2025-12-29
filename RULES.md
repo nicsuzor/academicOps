@@ -58,28 +58,3 @@ tags: [framework, enforcement, moc]
 | PreToolUse | `$AOPS/hooks/policy_enforcer.py` |
 | Pre-commit | `$AOPS/../.pre-commit-config.yaml` (repo root) |
 
----
-
-## Tool Usage Guidelines
-
-### TodoWrite vs Tasks Skill
-
-These serve **different purposes**. Using the wrong one causes process failures.
-
-| Aspect | TodoWrite | Tasks Skill (`/tasks`) |
-|--------|-----------|------------------------|
-| **Scope** | Session-scoped scratchpad | Persistent task with file |
-| **Survives session** | ❌ No | ✅ Yes |
-| **Acceptance criteria** | ❌ No | ✅ Yes |
-| **User approval required** | ❌ No | ✅ Yes |
-| **When to use** | Tracking implementation steps AFTER approval | Creating work that needs user sign-off |
-
-**Decision guide**:
-- Will this work need user approval before starting? → `/tasks` skill
-- Are there acceptance criteria to verify? → `/tasks` skill
-- Just tracking my own progress on approved work? → TodoWrite
-- Multi-step work that could fail and need rollback? → `/tasks` skill
-
-**Failure mode**: Agent uses TodoWrite for work requiring approval → proceeds without explicit consent → ships incomplete/broken changes → user discovers later.
-
-**Evidence**: 2025-12-23 buttermilk session storage consolidation - agent used TodoWrite, skipped approval checkpoint, removed working code without verifying replacement covered all use cases.
