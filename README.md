@@ -114,6 +114,7 @@ See [docs/HOOKS.md](docs/HOOKS.md) for hook architecture, [docs/OBSERVABILITY.md
 | Agent | Purpose | Invocation |
 |-------|---------|------------|
 | hypervisor | Multi-step workflow orchestrator (phases 0-5) | `Task(subagent_type="hypervisor", model="opus")` |
+| planner | Effectual planning - plans as hypotheses, knowledge-building | `Task(subagent_type="planner", model="opus")` |
 | Explore | Fast codebase exploration | `Task(subagent_type="Explore")` |
 | Plan | Implementation planning | `Task(subagent_type="Plan")` |
 | critic | Second-opinion review of plans/conclusions | `Task(subagent_type="critic", model="opus")` |

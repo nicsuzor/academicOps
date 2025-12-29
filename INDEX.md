@@ -123,6 +123,7 @@ $AOPS/
 ├── agents/                      # Spawnable subagents (Task tool)
 │   ├── critic.md                # Second-opinion review of plans/conclusions
 │   ├── intent-router.md         # LLM intent classifier (Haiku)
+│   ├── planner.md               # Effectual planning (Sarasvathy) - plans as hypotheses
 │   ├── prompt-writer.md         # Transform fragments → executable prompts (chained)
 │   ├── memory-validator.md      # Parallel memory validation
 │   ├── email-extractor.md       # Email archive processing
