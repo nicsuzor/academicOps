@@ -11,8 +11,6 @@ description: Mandatory documentation structure and maintenance rules for academi
 
 Academic research projects require rigorous, transparent, and reproducible documentation. This guide defines the mandatory documentation structure for academicOps research projects.
 
-Follows principles from [[AXIOMS]].
-
 ## Forbidden: Proliferating Random Markdown Files
 
 **🚨 CRITICAL RULE: NO random markdown files. We have a strict structure. Follow it.**
