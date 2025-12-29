@@ -21,9 +21,21 @@ Compare filesystem to documentation:
 3. **Check cross-references**: Verify `→` references point to existing files
 4. **Find broken wikilinks**: Grep for `[[...]]` patterns, validate targets exist
 
-### Phase 2: Justification Audit
+### Phase 2: Skill Content Audit
 
-For each significant file in `$AOPS/`:
+For each skill in `$AOPS/skills/*/SKILL.md`:
+
+1. **Size check**: Must be <500 lines
+2. **Actionability test**: Each section must tell agents WHAT TO DO
+3. **Content separation violations**:
+   - ❌ Multi-paragraph "why" explanations → move to spec
+   - ❌ Historical context → delete (git has history)
+   - ❌ Reference material >20 lines → move to `references/`
+   - ❌ Tutorial content → convert to terse workflow steps
+
+### Phase 3: Justification Audit
+
+For each significant file in `$AOPS/` (skip skills internals):
 
 1. **Search specs**: Grep `$ACA_DATA/projects/aops/specs/` for references to this file
 2. **Check core docs**: Is it mentioned in JIT-INJECTION.md, README.md, INDEX.md?
@@ -37,11 +49,12 @@ For each significant file in `$AOPS/`:
 - Individual files within skills (specs cover skill, not each file inside)
 - Test files, assets, fonts
 
-### Phase 3: Updates
+### Phase 4: Updates
 
 1. **Fix INDEX.md**: Add missing entries, remove stale entries
 2. **Fix README.md**: Update skill/command/hook tables
 3. **Report orphans**: Flag for human review (do NOT auto-delete)
+4. **Report skill violations**: List content separation issues with file:line refs
 
 ## Report Format
 
@@ -50,10 +63,13 @@ Output a structured report:
 ```
 ## Audit Report
 
-### Structure Issues Found
+### Structure Issues
 - Missing from INDEX.md: skills/foo/
-- Extra in INDEX.md: skills/deleted/ (no longer exists)
 - Broken wikilinks: [[nonexistent.md]] in X.md
+
+### Skill Content Violations
+- skills/foo/SKILL.md:45-67 - explanatory content (move to spec)
+- skills/bar/SKILL.md - 623 lines (>500 limit)
 
 ### Justification Status
 
@@ -125,4 +141,6 @@ $AOPS/
 - INDEX.md has every directory
 - All `→` references resolve
 - No broken `[[wikilinks]]`
+- All SKILL.md files < 500 lines
+- No explanatory content in SKILL.md files
 - Orphan count reported (0 ideal)
