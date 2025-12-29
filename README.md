@@ -65,64 +65,100 @@ The hypervisor agent orchestrates multi-step work with phases 0-5 (planning → 
 | **Hook** | Python script triggered by Claude Code events in `hooks/` |
 | **Agent** | Spawnable subagent via `Task` tool (`subagent_type`) |
 
+## Common Tasks
+
+| I want to... | Use |
+|--------------|-----|
+| See what's available | `/aops` |
+| Capture a quick idea | `/q your idea here` |
+| Work on next priority task | `/pull` |
+| Add a task | `/add task description` |
+| Extract tasks from email | `/email` |
+| Get framework help | `/meta your question` |
+| Run TDD workflow | `/ttd` |
+| Visualize my tasks | `/task-viz` |
+| Log a framework pattern | `/log category: observation` |
+| Verify work is complete | `/qa` |
+
 ## Commands
 
-| Command | Purpose | Invocation |
-|---------|---------|------------|
-| /meta | Strategic brain + executor | Slash command |
-| /email | Extract action items from emails → tasks | Slash command |
-| /log | Log patterns to thematic learning files | Slash command |
-| /transcript | Generate session transcripts | Slash command |
-| /analyze-session | Semantic session analysis | Slash command |
-| /task-viz | Task graph visualization (Excalidraw) | Slash command |
-| /qa | Verify against acceptance criteria | Slash command |
-| /ttd | TDD orchestration workflow | Slash command |
-| /parallel-batch | Parallel file processing | Slash command |
+| Command | Purpose |
+|---------|---------|
+| /aops | Show framework capabilities (this README) |
+| /add | Quick-add a task from session context |
+| /consolidate | Consolidate LOG.md entries into thematic files |
+| /diag | Quick diagnostic of what's loaded in session |
+| /email | Extract action items from emails → tasks |
+| /learn | Make minimal framework tweaks with tracking |
+| /log | Log agent patterns to thematic learning files |
+| /meta | Strategic brain + executor for framework work |
+| /parallel-batch | Parallel file processing with skill delegation |
+| /pull | Process next high-priority task |
+| /q | Quick capture idea → prompt queue |
+| /qa | Verify outcomes against acceptance criteria |
+| /review-training-cmd | Process review/source pair for training data |
+| /strategy | Strategic thinking partner (no execution) |
+| /supervise | Orchestrate multi-agent workflow with quality gates |
+| /task-viz | Task graph visualization (Excalidraw) |
+| /ttd | TDD workflow (alias for `/supervise tdd`) |
 
 ## Skills
 
-| Skill | Purpose | Invocation |
-|-------|---------|------------|
-| analyst | Research data analysis (dbt, stats) | `Skill(skill="analyst")` |
-| remember | Store and retrieve memories via memory server | `Skill(skill="remember")` |
-| framework | Convention reference, categorical imperative | `Skill(skill="framework")` |
-| osb-drafting | IRAC analysis, citation verification | `Skill(skill="osb-drafting")` |
-| pdf | Markdown → professional PDF | `Skill(skill="pdf")` |
-| python-dev | Production Python (fail-fast, typed) | `Skill(skill="python-dev")` |
-| tasks | Task management + email extraction | `Skill(skill="tasks")` or `/email` |
-| task-expand | Intelligent task breakdown with dependencies | `Skill(skill="task-expand")` |
-| transcript | Session JSONL → markdown | `Skill(skill="transcript")` |
-| session-analyzer | Semantic session analysis | `Skill(skill="session-analyzer")` |
-| learning-log | Pattern logging to thematic files | `Skill(skill="learning-log")` |
-| dashboard | Live task + session activity dashboard | `uv run streamlit run skills/dashboard/dashboard.py` |
-| reference-map | Extract framework file references → JSON graph | `Skill(skill="reference-map")` |
-| link-audit | Analyze and clean up framework file references | `Skill(skill="link-audit")` |
-| session-insights | Batch transcripts + mining for framework learnings | `Skill(skill="session-insights")` |
+| Skill | Purpose |
+|-------|---------|
+| analyst | Research data analysis (dbt, Streamlit, stats) |
+| dashboard | Live Streamlit dashboard for tasks + sessions |
+| excalidraw | Hand-drawn diagrams with organic layouts |
+| extractor | Extract knowledge from archive documents |
+| feature-dev | Test-first feature development workflow |
+| framework | Convention reference, categorical imperative |
+| framework-debug | Investigate session logs for framework issues |
+| framework-review | Analyze transcripts for improvement opportunities |
+| garden | Incremental PKM maintenance (weeding, linking) |
+| ground-truth | Establish ground truth labels for evaluation |
+| learning-log | Log patterns to thematic learning files |
+| link-audit | Clean up framework file references |
+| osb-drafting | IRAC analysis for Oversight Board cases |
+| pdf | Markdown → professional PDF |
+| python-dev | Production Python (fail-fast, typed, TDD) |
+| reference-map | Extract framework references → graph |
+| remember | Persist knowledge to markdown + memory server |
+| review-training | Extract training pairs from matched documents |
+| session-insights | Extract accomplishments + learnings from sessions |
+| supervisor | Generic multi-agent workflow orchestrator |
+| task-expand | Intelligent task breakdown with dependencies |
+| tasks | Task lifecycle management |
+| training-set-builder | Build LLM training datasets from documents |
+| transcript | Session JSONL → markdown |
+
+**Invoke**: `Skill(skill="name")` or via commands that wrap them.
 
 ## Hooks
 
 | Hook | Trigger | Purpose |
 |------|---------|---------|
 | `sessionstart_load_axioms.py` | SessionStart | Inject AXIOMS.md, FRAMEWORK.md paths |
-| `user_prompt_submit.py` | UserPromptSubmit | Context injection on every prompt |
-| `prompt_router.py` | UserPromptSubmit | Keyword → skill suggestions |
+| `user_prompt_submit.py` | UserPromptSubmit | Context injection per prompt |
+| `prompt_router.py` | UserPromptSubmit | Intent routing + skill suggestions |
 
-See [docs/HOOKS.md](docs/HOOKS.md) for hook architecture, [docs/OBSERVABILITY.md](docs/OBSERVABILITY.md) for logging/debugging.
+See [docs/HOOKS.md](docs/HOOKS.md) for hook architecture.
 
 ## Agents
 
-| Agent | Purpose | Invocation |
-|-------|---------|------------|
-| hypervisor | Multi-step workflow orchestrator (phases 0-5) | `Task(subagent_type="hypervisor", model="opus")` |
-| planner | Effectual planning - plans as hypotheses, knowledge-building | `Task(subagent_type="planner", model="opus")` |
-| Explore | Fast codebase exploration | `Task(subagent_type="Explore")` |
-| Plan | Implementation planning | `Task(subagent_type="Plan")` |
-| critic | Second-opinion review of plans/conclusions | `Task(subagent_type="critic", model="opus")` |
-| prompt-writer | Transform fragments into executable prompts | `Task(subagent_type="prompt-writer")` |
+Custom agents spawned via `Task(subagent_type="name")`:
 
-**Note**: For Python development, use `general-purpose` subagent and invoke `Skill(skill="python-dev")` first.
+| Agent | Purpose |
+|-------|---------|
+| critic | Second-opinion review of plans/conclusions |
+| hypervisor | Multi-step workflow orchestrator (phases 0-5) |
+| intent-router | LLM intent classifier (Haiku) |
+| planner | Effectual planning - plans as hypotheses |
+| prompt-writer | Transform fragments into executable prompts |
 
-**Mandatory**: Use critic agent to review plans before presenting to user.
+Built-in Claude Code agents (also available):
+- `Explore` - Fast codebase exploration
+- `Plan` - Implementation planning
+- `general-purpose` - General tasks (use with `Skill("python-dev")` for Python work)
 
 ## Testing
 
