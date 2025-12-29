@@ -267,6 +267,21 @@ These are empirically derived rules that implement [[AXIOMS]] in practice. Unlik
 - Exact technical strings (error messages, function names)
 - Files outside the knowledge base
 
+### H12a: Context Over Algorithms (Corollary)
+
+**Statement**: When agents need to match or classify content, the solution is ALWAYS to give the agent enough context to make the decision. Never use algorithmic matching (fuzzy string, keyword, regex patterns).
+
+**Rationale**: Agents understand meaning. Algorithms match syntax. "Implemented session sync" and "Add session-end sync feature" are the same work - an agent knows this, an algorithm doesn't. The framework's job is to surface relevant context (task files, project info, prior work), not to build matching algorithms.
+
+**Evidence**:
+- 2025-12-29: User observation - "our heuristic is NEVER use keyword matching... make sure an agent has enough information to make the decision"
+
+**Confidence**: High (foundational principle)
+
+**Application**:
+- ❌ Wrong: "fuzzy match transcript text to checklist items"
+- ✅ Right: "give agent the transcript AND the task file, let it identify which items were completed"
+
 ---
 
 ## H13: Edit Source, Run Setup
