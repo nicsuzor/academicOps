@@ -154,7 +154,7 @@ Custom agents spawned via `Task(subagent_type="name")`:
 | critic | Second-opinion review of plans/conclusions |
 | hypervisor | Multi-step workflow orchestrator (phases 0-5) |
 | intent-router | LLM intent classifier (Haiku) |
-| planner | Effectual planning - plans as hypotheses |
+| effectual-planner | Strategic planning under uncertainty (NOT implementation) |
 | prompt-writer | Transform fragments into executable prompts |
 
 Built-in Claude Code agents (also available):

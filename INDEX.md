@@ -25,30 +25,40 @@ $AOPS/
 ├── [[INDEX.md]]                 # THIS FILE - complete file tree
 ├── [[RULES.md]]                 # Current enforcement rules (auto-generated)
 ├── [[CLAUDE.md]]                # Repo instructions (@ syntax auto-loads)
-├── MEMORY-*.md                  # memory server documentation (4 files)
+├── [[AGENTS.md]]                # Agent context (shared by all agents)
+├── [[GEMINI.md]]                # Gemini MCP integration guide
 ├── pyproject.toml               # Python project config
+├── setup.sh                     # Main installation script
+├── install.sh                   # Alternative installer
+├── reference-graph.json         # Framework reference graph (generated)
 │
 ├── commands/                    # Slash commands (main agent executes)
-│   ├── meta.md                  # Strategic brain + executor → framework, python-dev skills
-│   ├── q.md                     # Quick capture → prompt queue (zero-friction)
-│   ├── pull.md                  # Execute next queued prompt or priority task
-│   ├── log.md                   # → learning-log skill
-│   ├── transcript.md            # → transcript skill
-│   ├── remember.md              # → remember skill
+│   ├── add.md                   # Quick-add task from context
+│   ├── aops.md                  # Show framework capabilities
+│   ├── audit.md                 # → audit skill (framework governance)
+│   ├── consolidate.md           # Consolidate learning-log entries
+│   ├── diag.md                  # Quick diagnostic of session state
 │   ├── email.md                 # Email → task extraction
 │   ├── learn.md                 # Minor instruction adjustments
-│   ├── qa.md                    # Quality assurance verification
-│   ├── ttd.md                   # TDD orchestration
+│   ├── log.md                   # → learning-log skill
+│   ├── meta.md                  # Strategic brain + executor
 │   ├── parallel-batch.md        # Parallel file processing
-│   ├── strategy.md              # Strategic planning
+│   ├── pull.md                  # Execute next priority task
+│   ├── q.md                     # Quick capture → prompt queue
+│   ├── qa.md                    # Quality assurance verification
+│   ├── review-training-cmd.md   # Process review/source pairs
+│   ├── strategy.md              # Strategic thinking partner
+│   ├── supervise.md             # → hypervisor agent
 │   ├── task-viz.md              # Task graph visualization
-│   └── audit.md                 # → audit skill (framework governance)
+│   └── ttd.md                   # TDD orchestration
 │
 ├── skills/
 │   ├── framework/               # Convention reference for infrastructure
 │   │   ├── SKILL.md             # Paths, patterns, anti-bloat rules
-│   │   ├── references/          # 9 guides (hooks, testing, MCP, etc.)
-│   │   ├── workflows/           # 6 workflows (design, debug, experiment)
+│   │   ├── references/          # 5 guides (hooks, config, testing, scripts, strategic)
+│   │   ├── workflows/           # 5 workflows (design, debug, experiment, bloat, spec)
+│   │   ├── tests/               # Framework-specific tests
+│   │   ├── TASK-SPEC-TEMPLATE.md
 │   │   └── scripts/validate_docs.py
 │   │
 │   ├── learning-log/            # Pattern logging to thematic files
@@ -59,7 +69,8 @@ $AOPS/
 │   │
 │   ├── session-insights/        # Accomplishments + learning extraction
 │   │   ├── SKILL.md             # Orchestrates transcripts, daily summary, Gemini mining
-│   │   └── mining-prompt.md     # Gemini extraction prompt template
+│   │   ├── mining-prompt.md     # Gemini extraction prompt template
+│   │   └── scripts/find_sessions.py  # Session file discovery
 │   │
 │   ├── python-dev/              # Production Python standards
 │   │   ├── SKILL.md             # Fail-fast, types, TDD
@@ -67,13 +78,14 @@ $AOPS/
 │   │
 │   ├── analyst/                 # Data analysis (dbt, Streamlit, stats)
 │   │   ├── SKILL.md
-│   │   ├── _CHUNKS/             # 9 workflow chunks
+│   │   ├── instructions/        # 9 workflow instructions
 │   │   ├── references/          # 12 statistical guides
 │   │   └── scripts/assumption_checks.py
 │   │
 │   ├── remember/                # Memory server operations
 │   │   ├── SKILL.md             # Write & retrieve from memory server
-│   │   └── references/          # 5 guides (format, quality, best practices)
+│   │   ├── references/          # Format specs, quality guides
+│   │   └── workflows/           # capture, validate, prune
 │   │
 │   ├── tasks/                   # Task management (MCP server)
 │   │   ├── SKILL.md
@@ -122,53 +134,76 @@ $AOPS/
 │
 ├── hooks/                       # Session lifecycle (Python)
 │   ├── CLAUDE.md                    # Hook design principles (JIT context)
-│   ├── sessionstart_load_axioms.py  # Injects AXIOMS.md
+│   ├── hooks.md                     # Hook inventory and descriptions
+│   ├── sessionstart_load_axioms.py  # Injects AXIOMS.md, FRAMEWORK.md, HEURISTICS.md
 │   ├── user_prompt_submit.py        # Context injection per prompt
 │   ├── prompt_router.py             # Intent routing (loads hooks/prompts/intent-router.md)
+│   ├── router.py                    # Central hook dispatcher
 │   ├── autocommit_state.py          # Auto-commit data/ changes
+│   ├── policy_enforcer.py           # Block destructive operations (PreToolUse)
 │   ├── session_logger.py            # Log file path management
 │   ├── hook_logger.py               # Centralized event logging
+│   ├── unified_logger.py            # Universal event logger
 │   ├── hook_debug.py                # Hook debugging
-│   ├── request_scribe.py            # Request logging
-│   ├── log_*.py                     # Event logging (6 files)
+│   ├── request_scribe.py            # Memory reminder (PostToolUse)
+│   ├── terminal_title.py            # Set terminal title
+│   ├── marker_hook.py               # Test hook for verification
+│   ├── verify_conclusions.py        # Disabled stub
 │   └── prompts/
 │       ├── user-prompt-submit.md
+│       ├── memory-reminder.md       # PostToolUse memory prompt
 │       └── intent-router.md         # Decision flowchart + capabilities (SSoT for routing)
 │
 ├── agents/                      # Spawnable subagents (Task tool)
 │   ├── critic.md                # Second-opinion review of plans/conclusions
+│   ├── effectual-planner.md     # Effectual planning (Sarasvathy) - plans as hypotheses
+│   ├── hypervisor.md            # Multi-step workflow orchestrator (phases 0-5)
 │   ├── intent-router.md         # LLM intent classifier (Haiku)
-│   ├── effectual-planner.md     # Strategic planning (Sarasvathy) - goals/projects, NOT implementation
-│   ├── prompt-writer.md         # Transform fragments → executable prompts (chained)
-│   ├── memory-validator.md      # Parallel memory validation
-│   ├── email-extractor.md       # Email archive processing
-│   └── task-viz.md              # Task graph → Excalidraw
+│   └── prompt-writer.md         # Transform fragments → executable prompts (chained)
 │
 ├── scripts/                     # Utility scripts
+│   ├── scripts.md               # Script inventory and documentation
 │   ├── claude_transcript.py     # Session JSONL → markdown
-│   ├── setup.sh                 # Creates ~/.claude/ symlinks
 │   ├── package_deployment.py    # Skill packaging
-│   ├── measure_router_compliance.py
+│   ├── measure_router_compliance.py  # Router performance metrics
 │   ├── migrate_log_entries.py   # Log entry migration
-│   └── transcribe_recording.sh  # Recording transcription
+│   ├── regenerate_task_index.py # Task index regeneration
+│   ├── remove_relation_sections.py  # Remove relation sections from markdown
+│   ├── sync_web_bundle.py       # Web bundle synchronization
+│   ├── synthesize_dashboard.py  # Dashboard synthesis script
+│   ├── transcribe_recording.sh  # Recording transcription
+│   └── user_prompt_fetch.py     # User prompt fetching
 │
 ├── lib/                         # Shared Python
+│   ├── __init__.py
+│   ├── lib.md                   # Library module documentation
 │   ├── paths.py                 # Path resolution (SSoT)
 │   ├── session_reader.py        # Unified session parser (JSONL + agents + hooks)
-│   ├── session_analyzer.py      # Session data extraction for LLM analysis
-│   └── activity.py              # Activity logging
+│   └── session_analyzer.py      # Session data extraction for LLM analysis
 │
 ├── tests/                       # pytest suite
 │   ├── conftest.py              # Fixtures
 │   ├── integration/             # E2E tests
 │   └── tools/                   # Tool-specific tests
 │
-├── experiments/                 # Experiment logs (6 files)
+├── docs/                        # Extended documentation
+│   ├── ENFORCEMENT.md           # Enforcement mechanism selection guide
+│   ├── execution-flow.md        # Execution flow diagrams
+│   ├── HOOKS.md                 # Hook architecture overview
+│   ├── JIT-INJECTION.md         # Just-in-time context injection
+│   ├── OBSERVABILITY.md         # Observability and logging schema
+│   └── WEB-BUNDLE.md            # Web bundle sync documentation
+│
+├── templates/                   # GitHub workflow templates
+│   └── github-workflow-*.yml    # Auto-sync workflow templates
 │
 ├── config/
 │   └── claude/                  # Reference config
-│       ├── mcp.json             # MCP server configuration
-│       └── settings.json        # Claude Code settings
+│       ├── mcp.json             # MCP server configuration (main)
+│       ├── mcp-base.json        # Base MCP config
+│       ├── mcp-outlook-*.json   # Platform-specific Outlook configs
+│       ├── settings.json        # Claude Code settings
+│       └── settings-web.json    # Web environment settings
 ```
 
 ## Cross-References
@@ -203,10 +238,10 @@ $AOPS/
 
 ### Agent → Skill Routing
 
-| Agent            | Routes To                       |
-| ---------------- | ------------------------------- |
-| memory-validator | [[academicOps/skills/remember]] |
-|                  |                                 |
+| Agent | Routes To |
+|-------|-----------|
+| hypervisor | supervisor, framework workflows |
+| effectual-planner | tasks skill |
 
 **Note**: For Python development, use `general-purpose` subagent and invoke `Skill(skill="python-dev")` directly.
 
