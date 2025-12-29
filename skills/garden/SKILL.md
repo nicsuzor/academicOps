@@ -29,11 +29,13 @@ Tend the personal knowledge base incrementally. Small regular attention beats ma
 Health check. Count orphans, broken links, stale content, sparse notes, duplicates, orphan implementation docs.
 
 **Orphan Implementation Doc Detection**:
-Files in `learning/` or `experiments/` that describe features with existing specs should be synthesized, not left as separate files. Scan identifies these:
-1. List files in `$ACA_DATA/projects/aops/learning/*.md` and `experiments/*.md`
+Files in `experiments/` that describe features with existing specs should be synthesized, not left as separate files. Scan identifies these:
+1. List files in `$ACA_DATA/projects/aops/experiments/*.md`
 2. For each, check title/content against `specs/` filenames and content
 3. If match found → report as "orphan implementation doc - synthesize into [spec]"
 4. Output: "Found N implementation docs that should be merged into specs"
+
+Note: Per AXIOM #28, episodic observations go to GitHub Issues, not local files.
 
 ### weed [area]
 Fix broken [[wikilinks]], remove dead references, flag duplicates.
@@ -80,7 +82,7 @@ After synthesizing any spec, ensure `specs/specs.md` is updated:
 - Files named with dates/months that document completed work
 - Specs with `status: Implemented` containing `## Options` or `## Alternatives`
 - Reference docs with temporal language that implies incompleteness
-- learning/ files that are event records, not reusable patterns
+- Episodic content that should be GitHub Issues, not local files
 
 **Workflow for specs**:
 1. Scan for implemented items with deliberation cruft
@@ -209,7 +211,7 @@ grep -l "^- part_of \[\[" $ACA_DATA/**/*.md
 1. Daily logs are the authoritative record of what happened each day
 2. Named session files fragment history across multiple locations
 3. Creates maintenance burden and stale cross-references
-4. Reusable patterns belong in learning/, not session logs
+4. Reusable patterns go to HEURISTICS.md or GitHub Issues, not session logs
 
 **What to keep:**
 - Daily logs: `YYYYMMDD-daily.md`
@@ -220,4 +222,4 @@ grep -l "^- part_of \[\[" $ACA_DATA/**/*.md
 - Session summaries that restate daily log content
 - Full transcript copies outside claude/ subdirectory
 
-**If valuable patterns exist:** Extract to learning/ as reusable pattern files, then delete the session log.
+**If valuable patterns exist:** Extract to HEURISTICS.md or create GitHub Issue, then delete the session log.

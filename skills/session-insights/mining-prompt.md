@@ -43,4 +43,4 @@ Return JSON:
 ## Post-Processing
 
 User corrections → `/learn` skill for intervention selection.
-Other findings → LOG.md for pattern tracking.
+Other findings → `/log` skill → GitHub Issues for pattern tracking.

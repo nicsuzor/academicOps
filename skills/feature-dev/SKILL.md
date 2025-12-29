@@ -263,7 +263,7 @@ Feature development follows eight phases:
 
 **Objective**: Update the authoritative spec; delete implementation artifacts.
 
-**Rationale**: Per [[AXIOMS]] #29, one spec per feature. Implementation docs (learning/, experiments/) are temporal; specs are timeless. After validation, merge implementation knowledge into the spec and delete the artifacts.
+**Rationale**: Per [[AXIOMS]] #29, one spec per feature. Implementation docs (experiments/) are temporal; specs are timeless. After validation, merge implementation knowledge into the spec and delete the artifacts. Episodic observations go to GitHub Issues per AXIOM #28.
 
 **Actions**:
 
@@ -273,7 +273,7 @@ Feature development follows eight phases:
 2. **Merge implementation content**: Design decisions, key functions, UX patterns
 3. **Strip temporal content**: Remove "what was built" narrative, dates, deliberation
 4. **Verify spec is timeless**: Reads as "how it works" not "how it was built"
-5. **Delete orphan artifacts**: Remove learning/*.md or experiments/*.md files about this feature
+5. **Delete orphan artifacts**: Remove experiments/*.md files about this feature
 6. **Update spec index**: Ensure `specs/specs.md` lists the spec with correct status
 7. **Commit together**: Spec update + artifact deletion in one commit
 

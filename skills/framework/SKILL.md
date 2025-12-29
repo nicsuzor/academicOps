@@ -273,7 +273,7 @@ See [[INDEX.md]] for complete file tree and document purposes.
 2. **VISION.md is grounded** - Academic support framework, not autonomous research.
 3. **ROADMAP.md is simple** - Just lists: Done, In Progress, Planned, Issues.
 4. **README.md has the inventory** - Every skill/command/hook with one-line purpose and how to invoke.
-5. **No other core docs** - specs/, experiments/, learning/ handle everything else.
+5. **No other core docs** - specs/ and experiments/ handle implementation details; episodic observations go to GitHub Issues.
 
 ### Feature Inventory Format (README.md)
 

@@ -122,7 +122,7 @@ grep -l "affected/path" ~/.claude/projects/-Users-suzor-writing/*.jsonl
 
 ### Investigation Results Format
 
-Include in LOG.md entry:
+Include in GitHub Issue:
 
 ```markdown
 **Investigation**:
@@ -262,7 +262,7 @@ When input contains `adjust-heuristic H[n]:`:
 2. Read `$AOPS/HEURISTICS.md`
 3. Add dated evidence to heuristic
 4. Adjust confidence if warranted
-5. Also log to LOG.md and appropriate thematic file
+5. Add observation as comment to relevant GitHub Issue
 
 ## Constraints
 

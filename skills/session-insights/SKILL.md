@@ -138,8 +138,7 @@ Collect Gemini outputs.
 | Transcripts (full) | `$ACA_DATA/sessions/claude/YYYYMMDD-{project}-{sessionid}-*-full.md` | Markdown with YAML frontmatter |
 | Transcripts (abridged) | `$ACA_DATA/sessions/claude/YYYYMMDD-{project}-{sessionid}-*-abridged.md` | Markdown with YAML frontmatter |
 | Daily summary | `$ACA_DATA/sessions/YYYYMMDD-daily.md` | Markdown with PRIMARY/SECONDARY sections |
-| Learning log | `$ACA_DATA/projects/aops/learning/LOG.md` | Append-only entries |
-| Thematic learnings | `$ACA_DATA/projects/aops/learning/*.md` | Via `learn` skill routing |
+| Learning observations | GitHub Issues (nicsuzor/academicOps) | Via `/log` skill → Issues |
 
 ## Output Summary
 

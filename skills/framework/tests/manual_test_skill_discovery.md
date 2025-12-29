@@ -16,7 +16,7 @@ tags:
 
 Validate that agents correctly discover and use task skill instead of silently working around with direct file reads.
 
-**Original Problem** (from [[LOG.md]], 2025-11-10):
+**Original Problem** (from historical LOG.md, 2025-11-10):
 
 - User asked "show my urgent tasks"
 - Agent read `data/tasks/inbox/*.md` files directly
@@ -126,4 +126,4 @@ After Test 2, ensure [[skills/tasks/]] is restored
 
 - This is a MANUAL test requiring human observation of agent behavior
 - Automated testing would require instrumentation of agent decision-making
-- Log any failures to [[LOG.md]]
+- Log any failures to GitHub Issues (nicsuzor/academicOps, label: `learning`)
