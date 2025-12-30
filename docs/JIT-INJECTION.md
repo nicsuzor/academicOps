@@ -15,7 +15,7 @@ How agents automatically receive the information they need.
 | ------------- | ------------------------------- | -------------------------------------------------- | ----------------------------------- |
 | Session start | Paths, principles, user context | [[sessionstart_load_axioms.py                      |hooks/sessionstart_load_axioms.py]] |
 | Session start | Project instructions | Claude Code native (CLAUDE.md and AGENTS.md files) |
-| Every prompt | Skill routing + focus | [[prompt_router.py                                 |hooks/prompt_router.py]] |
+| Every prompt | Context enrichment (planned) | [[user_prompt_submit.py|hooks/user_prompt_submit.py]] |
 | Before tool | Policy enforcement | [[policy_enforcer.py                               |hooks/policy_enforcer.py]] |
 | On demand | Skill instructions | `Skill(skill="X")`                                 |
 
@@ -35,16 +35,15 @@ Loads and injects as `additionalContext`:
 
 **Fail-fast**: Exits code 1 if any file missing or empty.
 
-### UserPromptSubmit: [[prompt_router.py|hooks/prompt_router.py]]
+### UserPromptSubmit: [[user_prompt_submit.py|hooks/user_prompt_submit.py]]
 
-**Always injects:**
-```
-CRITICAL: Focus on the user's specific request. Do NOT over-elaborate.
-```
+**Current state**: Returns noop (empty JSON). Prompt Enricher planned but not yet implemented.
 
-**Tier 1 - Keyword match**: Scans prompt for skill triggers (`framework`, `python`, `task`, etc.) → suggests `Skill(skill="X")`.
-
-**Tier 2 - No match**: Writes prompt to cache file, suggests Haiku classifier.
+**Planned** (see `specs/prompt-enricher.md`):
+- Classify task type
+- Gather relevant context via memory search
+- Select applicable guardrails
+- Return enriched context to main agent
 
 ### PreToolUse: [[policy_enforcer.py|hooks/policy_enforcer.py]]
 
@@ -109,7 +108,7 @@ Claude Code loads these at session start (not via aOps hooks).
 | Hook                            | Tests                                                                                                                                     |
 | ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
 | [[sessionstart_load_axioms.py]] | `test_sessionstart_hook_format.py`, `test_session_start_loading.py`, `integration/test_session_start_content.py`                          |
-| [[prompt_router.py]]            | `test_prompt_router.py`, `test_router_compliance.py`, `test_userpromptsubmit_contract.py`, `integration/test_prompt_router_haiku_flow.py` |
+| [[user_prompt_submit.py]]       | `test_userpromptsubmit_contract.py` |
 | [[policy_enforcer.py]]          | `integration/test_git_safety_hook.py`                                                                                                     |
 | [[autocommit_state.py]]         | `integration/test_autocommit_data.py`                                                                                                     |
 | [[session_env_setup.sh]]        | **GAP**                                                                                                                                   |

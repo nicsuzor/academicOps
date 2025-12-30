@@ -21,7 +21,7 @@ Current prompt handling is fragmented across multiple components:
 
 | Component | Purpose | Problem |
 |-----------|---------|---------|
-| `prompt_router.py` hook | Spawns Haiku classifier | Guidance often ignored |
+| UserPromptSubmit hook | Inject context per prompt | Currently noop, no routing |
 | `prompt-writer` agent | Thorough investigation | Separate flow from routing |
 | `/q` command | Queue capture | Creates separate queue files |
 | `/pull` command | Queue retrieval | Disconnected from tasks |
@@ -124,7 +124,7 @@ After intent-router returns:
 
 | Component | Replaced By |
 |-----------|-------------|
-| `hooks/prompt_router.py` | `/do` command |
+| UserPromptSubmit routing approach | `/do` command (explicit invocation) |
 | `agents/prompt-writer.md` | `intent-router` agent |
 | `commands/q.md` | `/do` (captures directly) |
 | `commands/pull.md` | TodoWrite (native tracking) |

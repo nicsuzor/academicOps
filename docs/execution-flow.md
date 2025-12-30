@@ -1,6 +1,313 @@
 # academicOps Execution Flow
 
-This document traces the **temporal execution sequence** when a user interacts with the academicOps framework. Each diagram shows what happens step-by-step, with annotations explaining the purpose of each component.
+This document maps **every intervention point** where the framework injects control during a Claude Code session.
+
+---
+
+## Framework Goals: The Ideal Intervention Pipeline
+
+What we're trying to achieve - independent of current implementation:
+
+```mermaid
+flowchart TB
+    subgraph INPUT["📥 User Input"]
+        U1[/"Simple prompt"/]
+    end
+
+    subgraph CONTEXT["1️⃣ CONTEXT INJECTION"]
+        C1["Make agent stateful"]
+        C2["• Knowledge base (memory server)<br/>• Relevant project files<br/>• Prior decisions/patterns<br/>• User preferences"]
+    end
+
+    subgraph STEER["2️⃣ STEERING"]
+        S1["Guide toward good workflows"]
+        S2["• Match task to workflow pattern<br/>• Surface relevant heuristics<br/>• Warn about failure modes<br/>• Suggest required skills"]
+    end
+
+    subgraph PLAN["3️⃣ PLANNING"]
+        P1["Produce structured prompt flow"]
+        P2["• Decompose into steps<br/>• Define acceptance criteria<br/>• Lock criteria (immutable)<br/>• Identify specialist tasks"]
+    end
+
+    subgraph DELEGATE["4️⃣ SKILL DELEGATION"]
+        D1["Route specialist work"]
+        D2["• Framework changes → framework skill<br/>• Python code → python-dev skill<br/>• Memory → remember skill<br/>• etc."]
+    end
+
+    subgraph EXECUTE["5️⃣ EXECUTION"]
+        E1["Work happens here"]
+        E2["• Follow the plan<br/>• Track via TodoWrite<br/>• Skills provide guardrails"]
+    end
+
+    subgraph POLICY["5️⃣b TOOL POLICY"]
+        PO1["Enforce tool constraints"]
+        PO2["• Block dangerous operations<br/>• Require confirmations<br/>• Restrict tools by context<br/>• Log for audit"]
+    end
+
+    subgraph GATES["6️⃣ QUALITY GATES"]
+        G1["Prevent premature completion"]
+        G2["• Check acceptance criteria<br/>• Verify actual state<br/>• Independent QA review<br/>• Block until criteria met"]
+    end
+
+    subgraph CLEANUP["7️⃣ POST-TASK CLEANUP"]
+        CL1["Persist and document"]
+        CL2["• Git commit + push<br/>• Update memory server<br/>• Document decisions<br/>• Archive task"]
+    end
+
+    subgraph MONITOR["8️⃣ COMPLIANCE MONITORING (Future)"]
+        M1["Detect failure modes in-flight"]
+        M2["• Review hooks during execution<br/>• Intervene on detected patterns<br/>• Log for learning"]
+    end
+
+    U1 --> CONTEXT
+    CONTEXT --> STEER
+    STEER --> PLAN
+    PLAN --> DELEGATE
+    DELEGATE --> EXECUTE
+    POLICY -.->|guards each tool| EXECUTE
+    EXECUTE --> GATES
+    GATES -->|criteria not met| EXECUTE
+    GATES -->|criteria met| CLEANUP
+    MONITOR -.->|observes| EXECUTE
+    MONITOR -.->|can halt| GATES
+
+    style U1 fill:#2196f3,color:#fff
+    style C1 fill:#4caf50,color:#fff
+    style C2 fill:#c8e6c9,color:#000
+    style S1 fill:#ff9800,color:#fff
+    style S2 fill:#ffe0b2,color:#000
+    style P1 fill:#9c27b0,color:#fff
+    style P2 fill:#e1bee7,color:#000
+    style D1 fill:#00bcd4,color:#fff
+    style D2 fill:#b2ebf2,color:#000
+    style E1 fill:#607d8b,color:#fff
+    style E2 fill:#cfd8dc,color:#000
+    style PO1 fill:#f44336,color:#fff
+    style PO2 fill:#ffcdd2,color:#000
+    style G1 fill:#ff5722,color:#fff
+    style G2 fill:#ffccbc,color:#000
+    style CL1 fill:#795548,color:#fff
+    style CL2 fill:#d7ccc8,color:#000
+    style M1 fill:#e0e0e0,color:#666,stroke-dasharray: 5 5
+    style M2 fill:#f5f5f5,color:#666,stroke-dasharray: 5 5
+```
+
+### Goal Summary
+
+| Stage | Purpose | Key Question |
+|-------|---------|--------------|
+| **1. Context** | Make agent stateful | What does the agent need to know? |
+| **2. Steering** | Prevent failure modes | What patterns apply? What to avoid? |
+| **3. Planning** | Structure the work | What are the steps? What's "done"? |
+| **4. Delegation** | Use specialists | Which skills handle which parts? |
+| **5. Execution** | Do the work | (Skills provide internal guardrails) |
+| **5b. Tool Policy** | Enforce constraints | Is this tool use allowed? Safe? |
+| **6. Gates** | Ensure quality | Are acceptance criteria actually met? |
+| **7. Cleanup** | Persist state | Committed? Documented? Remembered? |
+| **8. Monitor** | Learn and intervene | (Future: detect failures in-flight) |
+
+### Design Decisions
+
+1. **Single golden path** - All work goes through the full pipeline. No shortcuts.
+2. **`/do` is the single orchestrator** - Kills `/supervise`. One command to rule them all.
+3. **`/do` orchestrates, doesn't execute** - Like a supervisor, it coordinates but doesn't directly do work.
+4. **Quality gates are baked into the plan** - Not a separate stage. Planning skills add QA checkpoints as todo items.
+5. **Control the plan = control the work** - Agent must follow TodoWrite. Good plans = good work.
+
+### The `/do` Architecture
+
+```mermaid
+flowchart LR
+    subgraph INVOKE["/do [prompt]"]
+        U1[/"User prompt"/]
+    end
+
+    subgraph ORCHESTRATE["Orchestrator (doesn't do work)"]
+        O1["1. Gather context"]
+        O2["2. Classify task"]
+        O3["3. Select planning skill"]
+    end
+
+    subgraph PLAN["Planning Skill"]
+        P1["Brings domain context"]
+        P2["Applies domain rules"]
+        P3["Creates TodoWrite with:<br/>• Work steps<br/>• QA checkpoints<br/>• Acceptance criteria"]
+    end
+
+    subgraph EXECUTE["Agent Executes"]
+        E1["Follows todo items"]
+        E2["Invokes specialist skills"]
+        E3["QA items force verification"]
+    end
+
+    subgraph CLEANUP["Cleanup"]
+        C1["Commit + push"]
+        C2["Update memory"]
+        C3["Archive task"]
+    end
+
+    U1 --> O1 --> O2 --> O3
+    O3 --> P1 --> P2 --> P3
+    P3 --> E1 --> E2 --> E3
+    E3 --> C1 --> C2 --> C3
+
+    style U1 fill:#2196f3,color:#fff
+    style O1 fill:#ff9800,color:#fff
+    style O2 fill:#ff9800,color:#fff
+    style O3 fill:#ff9800,color:#fff
+    style P1 fill:#9c27b0,color:#fff
+    style P2 fill:#9c27b0,color:#fff
+    style P3 fill:#9c27b0,color:#fff
+    style E1 fill:#607d8b,color:#fff
+    style E2 fill:#4caf50,color:#fff
+    style E3 fill:#f44336,color:#fff
+    style C1 fill:#795548,color:#fff
+    style C2 fill:#795548,color:#fff
+    style C3 fill:#795548,color:#fff
+```
+
+### How Quality Gates Work
+
+Instead of a separate QA stage, **planning skills bake QA into the todo list**:
+
+```
+Example TodoWrite from planning skill:
+
+1. [ ] Reproduce the issue
+2. [ ] Identify root cause
+3. [ ] Implement fix
+4. [ ] **CHECKPOINT: Verify fix works** ← QA baked in
+5. [ ] Run test suite
+6. [ ] **CHECKPOINT: All tests pass** ← QA baked in
+7. [ ] Commit with descriptive message
+8. [ ] **CHECKPOINT: Verify commit pushed** ← QA baked in
+```
+
+The agent can't skip checkpoints because they're todo items. Control the plan, control the work.
+
+### Planning Skills (Swappable)
+
+Different task types can use different planning skills:
+
+| Task Type | Planning Skill | Brings |
+|-----------|----------------|--------|
+| Framework changes | `framework` | Categorical imperative, skill-first rules |
+| Python code | `python-dev` | TDD workflow, type safety rules |
+| Debug | `debug` (future) | Verify-first, quote-errors-exactly |
+| Feature dev | `feature-dev` | Acceptance criteria, plan-first |
+
+For now, keep it simple: one planning skill that handles common cases. Specialize later.
+
+### What Dies
+
+- `/supervise` - redundant, `/do` does this
+- Separate QA stage - baked into plan
+- `hypervisor` agent - `/do` orchestrator replaces it
+
+---
+
+## Current Implementation Map
+
+Every point where we can inject guidance, from session start to session end:
+
+```mermaid
+flowchart TB
+    subgraph SESSION["SESSION LIFECYCLE"]
+        direction TB
+
+        subgraph START["🟢 Session Start"]
+            SS[["SessionStart Hook<br/>HIGH CONTROL"]]
+            SS_DO["Inject: AXIOMS, HEURISTICS,<br/>FRAMEWORK, CORE"]
+        end
+
+        subgraph LOOP["🔄 Prompt Loop (repeats)"]
+            direction TB
+
+            subgraph PROMPT["Each Prompt"]
+                UP[["UserPromptSubmit Hook<br/>LOW (noop)"]]
+                UP_FUTURE["Future: Prompt Enricher"]
+            end
+
+            subgraph ROUTE["Claude Code Routes"]
+                R{{"Starts with /"}}
+            end
+
+            subgraph PATHS["Intervention Paths"]
+                CMD[["Load command/*.md<br/>HIGH CONTROL"]]
+                SKILL[["Skill() invoked<br/>HIGH CONTROL"]]
+                FREE["Freeform prompt<br/>NO ACTIVE CONTROL"]
+            end
+
+            subgraph TOOLS["Tool Execution"]
+                PRE[["PreToolUse Hook<br/>MED (logging, can block)"]]
+                TOOL["Tool runs"]
+                POST[["PostToolUse Hook<br/>MED (logging, autocommit)"]]
+            end
+
+            subgraph SUB["Subagent Work"]
+                SUBRUN["Subagent executes"]
+                SUBSTOP[["SubagentStop Hook<br/>LOW (logging)"]]
+            end
+        end
+
+        subgraph END["🔴 Session End"]
+            STOP[["Stop Hook<br/>LOW (reminder)"]]
+            STOP_DO["request_scribe.py"]
+        end
+    end
+
+    SS --> SS_DO --> LOOP
+    UP -.->|future| UP_FUTURE
+    UP --> R
+    R -->|Yes| CMD
+    R -->|No| FREE
+    CMD -.->|may invoke| SKILL
+    FREE -.->|may invoke| SKILL
+    CMD --> TOOLS
+    SKILL --> TOOLS
+    FREE --> TOOLS
+    PRE --> TOOL --> POST
+    TOOL -.->|spawns| SUBRUN
+    SUBRUN --> SUBSTOP
+    LOOP --> END
+    STOP --> STOP_DO
+
+    style SS fill:#4caf50,color:#fff
+    style SS_DO fill:#c8e6c9,color:#000
+    style UP fill:#ffcdd2,color:#000
+    style UP_FUTURE fill:#e0e0e0,color:#666,stroke-dasharray: 5 5
+    style R fill:#9c27b0,color:#fff
+    style CMD fill:#4caf50,color:#fff
+    style SKILL fill:#4caf50,color:#fff
+    style FREE fill:#ffcdd2,color:#000
+    style PRE fill:#fff3e0,color:#000
+    style TOOL fill:#2196f3,color:#fff
+    style POST fill:#fff3e0,color:#000
+    style SUBRUN fill:#ff9800,color:#fff
+    style SUBSTOP fill:#ffcdd2,color:#000
+    style STOP fill:#ffcdd2,color:#000
+    style STOP_DO fill:#ffe0b2,color:#000
+```
+
+### Intervention Point Summary
+
+| Event | Hook/Mechanism | What We Do | Control |
+|-------|----------------|------------|---------|
+| **Session start** | `SessionStart` hook | Inject AXIOMS, HEURISTICS, FRAMEWORK, CORE | 🟢 HIGH |
+| **Every prompt** | `UserPromptSubmit` hook | Currently noop | 🔴 LOW |
+| **`/command` typed** | Claude Code routing → `commands/*.md` | Our command file loads with instructions | 🟢 HIGH |
+| **`Skill()` invoked** | Claude Code → `skills/*/SKILL.md` | Our skill content loads | 🟢 HIGH |
+| **Freeform prompt** | (none) | Only baseline context from SessionStart | 🔴 NONE |
+| **Before tool** | `PreToolUse` hook | Logging; could block dangerous tools | 🟡 MED |
+| **After tool** | `PostToolUse` hook | Logging + autocommit `data/` changes | 🟡 MED |
+| **Subagent done** | `SubagentStop` hook | Logging only | 🔴 LOW |
+| **Session end** | `Stop` hook | `request_scribe.py` reminder | 🔴 LOW |
+
+### Key Insight: The Control Gap
+
+Our **high-control** points require explicit user action (`/command`) or agent action (`Skill()`).
+
+For **freeform prompts**, we have no active intervention - only passive baseline context. The planned **Prompt Enricher** (`specs/prompt-enricher.md`) would close this gap by analyzing each prompt and injecting relevant skill suggestions.
 
 ---
 
@@ -8,201 +315,190 @@ This document traces the **temporal execution sequence** when a user interacts w
 
 | Color | Meaning |
 |-------|---------|
-| Blue (#2196f3) | User actions |
-| Purple (#9c27b0) | Hook events and scripts |
-| Orange (#ff9800) | Agents (subagents) |
-| Green (#4caf50) | Skills |
-| Gray (#9e9e9e) | Data stores |
-| Diamond shapes | Decision points |
+| Green | High control - our content loads |
+| Yellow/Orange | Medium control - can intervene |
+| Red/Pink | Low/no control - logging or noop |
+| Purple | Claude Code routing (not ours) |
+| Blue | User/tool actions |
+| Dashed gray | Planned/future |
 
 ---
 
-## Diagram 1: Standard Prompt Flow
+## Detailed Flows
 
-When a user submits a regular prompt (e.g., "help me understand this code"):
+The following diagrams show specific intervention paths in detail.
+
+### Session Initialization
+
+The framework lifecycle starts when Claude Code launches, NOT when the user submits a prompt.
 
 ```mermaid
-flowchart TD
-    subgraph USER["User Action"]
-        U1[/"User submits prompt"/]
+flowchart LR
+    subgraph LAUNCH["1. Launch"]
+        L1[/"User opens<br/>Claude Code"/]
     end
 
-    subgraph SESSION_START["SessionStart Hook (if new session)"]
-        S1["router.py dispatches to:"]
-        S2["session_env_setup.sh<br/>Sets AOPS, PYTHONPATH"]
-        S3["terminal_title.py<br/>Updates terminal title"]
-        S4["sessionstart_load_axioms.py<br/>Loads FRAMEWORK, AXIOMS,<br/>HEURISTICS, CORE"]
-        S5["unified_logger.py<br/>Logs event metadata"]
-        S1 --> S2
-        S1 --> S3
-        S1 --> S4
-        S1 --> S5
+    subgraph SESSION_START["2. SessionStart Hook"]
+        S1["settings.json →<br/>router.py →<br/>sessionstart_load_axioms.py"]
     end
 
-    subgraph PROMPT_HOOK["UserPromptSubmit Hook"]
-        P1["router.py receives prompt"]
-        P2["prompt_router.py (ASYNC)<br/>Writes context to temp file<br/>Instructs agent to spawn<br/>intent-router subagent"]
-        P3["user_prompt_submit.py<br/>Logs to Cloudflare analytics"]
-        P4["unified_logger.py<br/>Logs event metadata"]
-        P1 --> P2
-        P1 --> P3
-        P1 --> P4
-        P5["Merge outputs:<br/>additionalContext concatenated<br/>Worst exit code wins"]
-        P2 --> P5
-        P3 --> P5
-        P4 --> P5
+    subgraph INJECTION["3. Baseline Injected"]
+        I1["• FRAMEWORK.md (paths)<br/>• AXIOMS.md (principles)<br/>• HEURISTICS.md (patterns)<br/>• CORE.md (identity)"]
     end
 
-    subgraph AGENT_RECEIVES["Agent Processing"]
-        A1["Agent receives:<br/>- Original prompt<br/>- Hook context (skill suggestions)<br/>- ROUTE FIRST instruction"]
-        A2{"Agent decides:<br/>invoke skill?"}
-        A3["Invoke Skill tool<br/>e.g., Skill(skill='python-dev')"]
-        A4["Work directly<br/>(Read, Edit, Bash)"]
-        A5["Spawn subagent<br/>Task tool"]
-        A2 -->|skill needed| A3
-        A2 -->|simple task| A4
-        A2 -->|complex task| A5
+    subgraph READY["4. Ready"]
+        R1[/"Agent waiting<br/>for input"/]
     end
 
-    subgraph INTENT_ROUTER["Intent Router (Async Background)"]
-        IR1{{"intent-router agent<br/>(Haiku model)"}}
-        IR2["Reads temp file with<br/>router prompt + user prompt"]
-        IR3["Returns focused guidance:<br/>- Which skills apply<br/>- Required steps<br/>- Framework rules"]
-        IR1 --> IR2 --> IR3
-    end
+    L1 --> S1 --> I1 --> R1
 
-    subgraph TOOL_EXECUTION["Tool Execution"]
-        T1["PreToolUse hook fires"]
-        T2["policy_enforcer.py<br/>Checks if tool allowed"]
-        T3{"Tool<br/>allowed?"}
-        T4["BLOCKED<br/>Exit code 2<br/>stderr to agent"]
-        T5["Tool executes<br/>(Read, Edit, Bash, etc.)"]
-        T6["PostToolUse hook fires"]
-        T7["unified_logger.py<br/>Logs operation"]
-        T8["autocommit_state.py<br/>Auto-commits if data/ changed"]
-        T1 --> T2 --> T3
-        T3 -->|No| T4
-        T3 -->|Yes| T5
-        T5 --> T6
-        T6 --> T7
-        T6 --> T8
-    end
-
-    subgraph TODO_HOOK["If TodoWrite Used"]
-        TD1["PostToolUse:TodoWrite matcher"]
-        TD2["request_scribe.py<br/>Reminds about memory<br/>documentation"]
-    end
-
-    subgraph STOP_HOOK["Stop Hook (Session End)"]
-        ST1["Stop event fires"]
-        ST2["unified_logger.py<br/>Final logging"]
-        ST3["request_scribe.py<br/>Final reminder to document<br/>work to memory server"]
-        ST1 --> ST2
-        ST1 --> ST3
-    end
-
-    subgraph DATA["Data Stores"]
-        D1[("$ACA_DATA/<br/>tasks, projects,<br/>sessions, knowledge")]
-        D2[("Memory Server<br/>mcp__memory__")]
-        D3[("Git<br/>autocommit")]
-    end
-
-    %% Flow connections
-    U1 --> SESSION_START
-    SESSION_START --> PROMPT_HOOK
-    PROMPT_HOOK --> A1
-    A1 --> A2
-    A1 -.->|async| IR1
-    IR3 -.->|guidance returned| A1
-    A3 --> T1
-    A4 --> T1
-    A5 --> T1
-    T8 -.-> D1
-    T8 -.-> D3
-    TD2 -.-> D2
-    ST3 -.-> D2
-
-    %% Styling
-    style U1 fill:#2196f3,color:#fff
+    style L1 fill:#2196f3,color:#fff
     style S1 fill:#9c27b0,color:#fff
-    style S2 fill:#ce93d8,color:#000
-    style S3 fill:#ce93d8,color:#000
-    style S4 fill:#ce93d8,color:#000
-    style S5 fill:#ce93d8,color:#000
-    style P1 fill:#9c27b0,color:#fff
-    style P2 fill:#ce93d8,color:#000
-    style P3 fill:#ce93d8,color:#000
-    style P4 fill:#ce93d8,color:#000
-    style P5 fill:#9c27b0,color:#fff
-    style A1 fill:#fff3e0,color:#000
-    style A2 fill:#fff3e0,color:#000
-    style A3 fill:#4caf50,color:#fff
-    style A4 fill:#fff3e0,color:#000
-    style A5 fill:#ff9800,color:#fff
-    style IR1 fill:#ff9800,color:#fff
-    style IR2 fill:#ffb74d,color:#000
-    style IR3 fill:#ffb74d,color:#000
-    style T1 fill:#9c27b0,color:#fff
-    style T2 fill:#ce93d8,color:#000
-    style T3 fill:#e1bee7,color:#000
-    style T4 fill:#f44336,color:#fff
-    style T5 fill:#fff3e0,color:#000
-    style T6 fill:#9c27b0,color:#fff
-    style T7 fill:#ce93d8,color:#000
-    style T8 fill:#ce93d8,color:#000
-    style TD1 fill:#9c27b0,color:#fff
-    style TD2 fill:#ce93d8,color:#000
-    style ST1 fill:#9c27b0,color:#fff
-    style ST2 fill:#ce93d8,color:#000
-    style ST3 fill:#ce93d8,color:#000
-    style D1 fill:#9e9e9e,color:#fff
-    style D2 fill:#9e9e9e,color:#fff
-    style D3 fill:#9e9e9e,color:#fff
+    style I1 fill:#fff3e0,color:#000
+    style R1 fill:#2196f3,color:#fff
 ```
 
-### Annotations: Standard Prompt Flow
+### SessionStart Hook: Implementation Details
 
-| Step | Component | Purpose |
-|------|-----------|---------|
-| 1 | User submits prompt | Entry point - user types in Claude Code |
-| 2 | SessionStart hook | Only fires on NEW session; loads framework context |
-| 3 | sessionstart_load_axioms.py | Injects FRAMEWORK.md, AXIOMS.md, HEURISTICS.md, CORE.md |
-| 4 | UserPromptSubmit hook | Fires on EVERY prompt |
-| 5 | prompt_router.py (async) | Writes context to temp file, tells agent to spawn intent-router |
-| 6 | intent-router agent | Haiku model analyzes prompt, returns task-specific guidance |
-| 7 | Agent decides | Based on guidance: skill, direct work, or spawn subagent |
-| 8 | PreToolUse hook | policy_enforcer.py blocks dangerous operations |
-| 9 | Tool executes | Read, Edit, Bash, Grep, Glob, etc. |
-| 10 | PostToolUse hook | Logs operation, auto-commits data/ changes |
-| 11 | TodoWrite hook | If todo list updated, reminds about memory documentation |
-| 12 | Stop hook | Final reminder to persist learnings to memory server |
+| Component | Value |
+|-----------|-------|
+| **Trigger** | `settings.json` → `hooks` → `SessionStart` |
+| **Entry point** | `hooks/router.py` |
+| **Dispatches to** | `hooks/sessionstart_load_axioms.py` |
+| **Input (stdin)** | `{"hook_event_name": "SessionStart", "session_id": "...", "cwd": "..."}` |
+| **Output (stdout)** | `{"hookSpecificOutput": {"additionalContext": "...", "filesLoaded": [...]}}` |
+| **Exit code** | `0` = success, `1` = fatal (missing files) |
+
+### Files Loaded at SessionStart
+
+| File | Source | Purpose |
+|------|--------|---------|
+| `FRAMEWORK.md` | `$AOPS/FRAMEWORK.md` | Resolved paths (WHERE) |
+| `AXIOMS.md` | `$AOPS/AXIOMS.md` | Inviolable principles (WHAT) |
+| `HEURISTICS.md` | `$AOPS/HEURISTICS.md` | Empirical patterns (HOW) |
+| `CORE.md` | `$ACA_DATA/CORE.md` | User identity (WHO) |
+
+**Spec**: `specs/session-start-injection.md`
 
 ---
 
-## Diagram 2: Supervised Workflow Flow
+### /do Command Flow
+
+The `/do` command provides intelligent context enrichment and guardrailed execution.
+
+```mermaid
+flowchart LR
+    subgraph INPUT["1. /do Command"]
+        U1[/"/do fix the dashboard"/]
+    end
+
+    subgraph SPAWN["2. Spawn Agent"]
+        SP1["Task(intent-router,<br/>model=sonnet)"]
+    end
+
+    subgraph ROUTER["3. intent-router Agent"]
+        R1["1. Memory + codebase search<br/>2. Read relevant files<br/>3. Classify task type<br/>4. Select workflow<br/>5. Select guardrails<br/>6. Decompose into steps"]
+    end
+
+    subgraph OUTPUT["4. YAML Output"]
+        O1["task_type, workflow,<br/>guardrails, context,<br/>todo_items, warnings"]
+    end
+
+    subgraph APPLY["5. Apply Guardrails"]
+        A1{{"Check<br/>flags"}}
+        A2["plan_mode → Plan Mode"]
+        A3["answer_only → Answer, STOP"]
+        A4["require_skill → Skill(X)"]
+        A5["default → Execute todos"]
+    end
+
+    U1 --> SP1 --> R1 --> O1 --> A1
+    A1 --> A2
+    A1 --> A3
+    A1 --> A4
+    A1 --> A5
+
+    style U1 fill:#2196f3,color:#fff
+    style SP1 fill:#ff9800,color:#fff
+    style R1 fill:#ffb74d,color:#000
+    style O1 fill:#fff3e0,color:#000
+    style A1 fill:#e1bee7,color:#000
+    style A2 fill:#ce93d8,color:#000
+    style A3 fill:#ce93d8,color:#000
+    style A4 fill:#4caf50,color:#fff
+    style A5 fill:#fff3e0,color:#000
+```
+
+### /do Command: Implementation Details
+
+| Component | Value |
+|-----------|-------|
+| **Command file** | `commands/do.md` |
+| **Spawns** | `intent-router` agent via Task tool |
+| **Model** | Sonnet (or configurable) |
+| **Router location** | `agents/intent-router.md` |
+| **Guardrails source** | `hooks/guardrails.md` |
+
+### Intent Router: Input/Output
+
+**Input** (Task tool prompt):
+```
+User fragment: [whatever user typed after /do]
+```
+
+**Output** (structured YAML):
+```yaml
+task_type: [debug|feature|question|framework|...]
+workflow: [verify-first|tdd|direct|...]
+skills_to_invoke: [skill names]
+guardrails:
+  plan_mode: true/false
+  verify_before_complete: true/false
+  answer_only: true/false
+  require_acceptance_test: true/false
+  quote_errors_exactly: true/false
+  fix_within_design: true/false
+  require_skill: [skill name or null]
+enriched_context: |
+  [Summary of memory search + codebase search results]
+todo_items:
+  - "[Step 1]"
+  - "[Step 2]"
+warnings:
+  - "[Potential issues]"
+original_fragment: |
+  [User's exact words]
+```
+
+### Guardrails Applied by /do
+
+| Guardrail | When True |
+|-----------|-----------|
+| `plan_mode` | Enter Plan Mode before implementation |
+| `answer_only` | Answer the question, then STOP |
+| `require_skill` | Invoke the specified skill first |
+| `verify_before_complete` | Must verify actual state before claiming done |
+| `require_acceptance_test` | Todo list must include verification step |
+| `quote_errors_exactly` | Quote error messages verbatim |
+| `fix_within_design` | Fix bugs within current architecture |
+
+**Spec**: `commands/do.md`, `agents/intent-router.md`
+
+---
+
+### /supervise Workflow Flow
 
 When a user invokes `/supervise` for multi-step orchestrated work:
 
 ```mermaid
 flowchart TD
-    subgraph USER["User Action"]
+    subgraph ENTRY["Entry"]
         U1[/"User types:<br/>/supervise tdd fix the bug"/]
-    end
-
-    subgraph PROMPT_HOOK["UserPromptSubmit Hook"]
-        PH1["Hook fires (same as standard)"]
-        PH2["But slash command detected<br/>prompt_router.py skips routing"]
-    end
-
-    subgraph COMMAND_EXPAND["Command Expansion"]
-        C1["/supervise command expands"]
-        C2["Invokes Skill(skill='supervisor')"]
-        C3["Skill loads supervisor.md"]
-    end
-
-    subgraph HYPERVISOR["Hypervisor Agent (Opus)"]
-        H1{{"hypervisor agent<br/>spawned via Task"}}
-        H2["Reads workflow template<br/>(e.g., tdd.md if specified)"]
+        PH1["Hook fires → slash command<br/>detected → skips routing"]
+        C1["/supervise → Skill(supervisor)<br/>→ loads supervisor.md"]
+        H1{{"hypervisor agent<br/>(Opus) spawned"}}
+        H2["Reads workflow template"]
+        U1 --> PH1 --> C1 --> H1 --> H2
     end
 
     subgraph PHASE0["Phase 0: Planning"]
@@ -267,11 +563,6 @@ flowchart TD
     end
 
     %% Flow connections
-    U1 --> PH1
-    PH1 --> PH2
-    PH2 --> C1
-    C1 --> C2 --> C3
-    C3 --> H1 --> H2
     H2 --> PHASE0
     P0G --> PHASE1
     I8 --> PHASE4
@@ -279,23 +570,16 @@ flowchart TD
     G7 -->|all tasks done| Q1
     Q8 --> ST1
 
-    %% Styling - User
+    %% Styling - Entry
     style U1 fill:#2196f3,color:#fff
-
-    %% Styling - Hooks
     style PH1 fill:#9c27b0,color:#fff
-    style PH2 fill:#ce93d8,color:#000
-    style ST1 fill:#9c27b0,color:#fff
-    style ST2 fill:#ce93d8,color:#000
-
-    %% Styling - Command/Skill
-    style C1 fill:#2196f3,color:#fff
-    style C2 fill:#4caf50,color:#fff
-    style C3 fill:#4caf50,color:#fff
-
-    %% Styling - Agents
+    style C1 fill:#4caf50,color:#fff
     style H1 fill:#ff9800,color:#fff
     style H2 fill:#ffb74d,color:#000
+
+    %% Styling - Stop
+    style ST1 fill:#9c27b0,color:#fff
+    style ST2 fill:#ce93d8,color:#000
 
     %% Styling - Phase 0
     style P0A fill:#fff3e0,color:#000
@@ -361,7 +645,7 @@ flowchart TD
 
 ---
 
-## Diagram 3: Quick Capture Flow (/q)
+### /q Quick Capture Flow
 
 When a user captures an idea fragment for later execution:
 
@@ -374,7 +658,7 @@ flowchart TD
 
     subgraph PROMPT_HOOK["UserPromptSubmit Hook"]
         PH1["Hook fires"]
-        PH2["Slash command detected<br/>prompt_router.py skips routing"]
+        PH2["Slash command detected<br/>hook skips routing"]
     end
 
     subgraph COMMAND["Command Expansion"]
@@ -465,38 +749,21 @@ flowchart TD
 
 ---
 
-## Hook Timing Summary
+## Hook Implementation Details
+
+The master map above shows intervention control levels. This section details the actual hook implementations.
+
+### Hook Sequence
 
 ```mermaid
 flowchart LR
-    subgraph LIFECYCLE["Session Lifecycle"]
-        direction TB
-        SS["SessionStart"]
-        UPS["UserPromptSubmit"]
-        PTU["PreToolUse"]
-        POTU["PostToolUse"]
-        STOP["Stop"]
-    end
+    SS["SessionStart<br/>(once)"] --> UPS["UserPromptSubmit<br/>(every prompt)"] --> PTU["PreToolUse<br/>(before tool)"] --> POTU["PostToolUse<br/>(after tool)"] --> STOP["Stop<br/>(session end)"]
 
-    subgraph TIMING["When They Fire"]
-        SS_T["Once per session start"]
-        UPS_T["Every user prompt"]
-        PTU_T["Before each tool call"]
-        POTU_T["After each tool call"]
-        STOP_T["Session end"]
-    end
-
-    SS --> SS_T
-    UPS --> UPS_T
-    PTU --> PTU_T
-    POTU --> POTU_T
-    STOP --> STOP_T
-
-    style SS fill:#9c27b0,color:#fff
-    style UPS fill:#9c27b0,color:#fff
-    style PTU fill:#9c27b0,color:#fff
-    style POTU fill:#9c27b0,color:#fff
-    style STOP fill:#9c27b0,color:#fff
+    style SS fill:#4caf50,color:#fff
+    style UPS fill:#ffcdd2,color:#000
+    style PTU fill:#fff3e0,color:#000
+    style POTU fill:#fff3e0,color:#000
+    style STOP fill:#ffcdd2,color:#000
 ```
 
 ### Hook Registry (from router.py)
@@ -504,10 +771,11 @@ flowchart LR
 | Event | Scripts | Purpose |
 |-------|---------|---------|
 | SessionStart | session_env_setup.sh, terminal_title.py, sessionstart_load_axioms.py, unified_logger.py | Initialize environment, load framework context |
-| UserPromptSubmit | prompt_router.py (async), user_prompt_submit.py, unified_logger.py | Route intent, log prompt, inject guidance |
+| UserPromptSubmit | user_prompt_submit.py, unified_logger.py | Log prompt, inject context from prompts/user-prompt-submit.md |
 | PreToolUse | policy_enforcer.py, unified_logger.py | Block dangerous ops, log |
 | PostToolUse | unified_logger.py, autocommit_state.py | Log, auto-commit data/ changes |
 | PostToolUse:TodoWrite | request_scribe.py | Remind about memory documentation |
+| SubagentStop | unified_logger.py | Log subagent completion |
 | Stop | unified_logger.py, request_scribe.py | Final logging, documentation reminder |
 
 ---

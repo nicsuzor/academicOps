@@ -1,17 +1,22 @@
 ---
 title: Intent Router Session Context
 type: spec
-status: approved
+status: superseded
+superseded_by: do-command.md, prompt-enricher.md
 permalink: intent-router-context
 tags:
 - framework
-- hooks
+- agents
 - intent-router
 ---
 
 # Intent Router Session Context
 
-**Status**: Approved (ready for implementation)
+**Status**: Superseded - session context now handled by `/do` command and intent-router agent
+
+The concepts here remain valid but implementation approach changed. See:
+- `commands/do.md` - `/do` command spawns intent-router with context
+- `agents/intent-router.md` - agent has access to conversation history
 
 ## Problem
 
@@ -75,17 +80,17 @@ def extract_router_context(transcript_path: Path, max_turns: int = 5) -> str:
     """
 ```
 
-### Hook Update
+### Hook Update (Superseded)
 
-Update [[hooks/prompt_router.py]] `build_router_context()`:
+**Note**: This hook approach was replaced by the `/do` command. The intent-router agent now has access to conversation history via Claude Code's native context passing.
 
+Original design:
 ```python
+# This was never implemented - see commands/do.md for current approach
 def build_router_context(user_prompt: str, transcript_path: str | None) -> str:
     session_context = ""
     if transcript_path:
         session_context = extract_router_context(Path(transcript_path))
-
-    # Inject into template with {session_context} placeholder
 ```
 
 ### Prompt Template Update

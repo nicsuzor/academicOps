@@ -68,8 +68,8 @@ These are empirically derived rules that implement [[AXIOMS]] in practice. Unlik
 **Rationale**: Upfront context is forgotten; reactive reminders arrive too late. JIT reminders balance cognitive load with compliance.
 
 **Evidence**:
-- prompt_router hook implementation - suggests skills on every prompt
-- UserPromptSubmit hook - injects skill invocation reminders
+- Prompt Enricher (planned) - will suggest skills on every prompt via UserPromptSubmit
+- UserPromptSubmit hook - intended injection point for skill invocation reminders
 
 **Confidence**: High
 

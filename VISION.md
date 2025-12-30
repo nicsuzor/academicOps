@@ -43,7 +43,7 @@ An academic support framework for Claude Code. It provides:
 | What's Enforced | How |
 |-----------------|-----|
 | Principles loaded | [[sessionstart_load_axioms.py\|sessionstart_load_axioms]] hook |
-| Skill suggestions | [[prompt_router\|prompt_router.py]] hook on every prompt |
+| Skill suggestions | Prompt Enricher (planned) via UserPromptSubmit hook |
 | Framework delegation | `FRAMEWORK SKILL CHECKED` token |
 | [[bmem]] compliance | [[pre-commit]] hooks |
 | File boundaries | [[framework]] skill file boundary rules |
@@ -65,7 +65,7 @@ Capture → bmem (semantic search) → JIT injection via hooks → Agent action
 ```
 
 - **Session start**: [[AXIOMS]], [[FRAMEWORK]] paths, user context loaded
-- **Every prompt**: [[prompt_router]] suggests relevant [[data/projects/aops/specs/skills]]
+- **Every prompt**: Prompt Enricher (planned) suggests relevant skills
 - **On demand**: [[bmem]] search for related knowledge
 
 ## Success Criteria

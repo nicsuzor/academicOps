@@ -1,27 +1,34 @@
 ---
 title: Intent Router
 type: spec
-status: implemented
+status: superseded
+superseded_by: do-command.md, prompt-enricher.md
 permalink: intent-router-spec
 tags:
   - framework
-  - hooks
-  - agent-behavior
-  - skill-activation
+  - agents
+  - intent-routing
 ---
 
 # Intent Router
 
-**Status**: Implemented
-**Owns**: [[intent-router-spec]] agent
+**Status**: Superseded by `/do` command and Prompt Enricher specs
 
-## Workflow
+The hook-based approach described below was replaced by:
+- **`/do` command** (`specs/do-command.md`) - explicit invocation for prompt enrichment
+- **Prompt Enricher** (`specs/prompt-enricher.md`) - planned automatic enrichment via UserPromptSubmit
+
+The intent-router AGENT (`agents/intent-router.md`) still exists and is spawned by `/do`.
+
+---
+
+## Original Design (Historical Reference)
 
 ```mermaid
 graph TD
     A[User Prompt] --> B{Slash Command?}
     B -->|Yes| C[Skip - Claude Code Handles]
-    B -->|No| D[prompt_router.py Hook]
+    B -->|No| D[UserPromptSubmit Hook]
     D --> E[Inject Router Instruction]
     E --> F[Main Agent]
     F --> G[Task: intent-router subagent]
@@ -64,12 +71,15 @@ A Haiku subagent classifies each prompt against:
 
 Main agent stays clean - classification context doesn't clog it.
 
-## Architecture
+## Architecture (Superseded)
 
+**Current implementation**: See `commands/do.md` and `agents/intent-router.md`
+
+Original hook-based flow (not implemented):
 ```
 User prompt
     ↓
-prompt_router.py hook (UserPromptSubmit)
+UserPromptSubmit hook (user_prompt_submit.py)
     ↓
 ├─ /slash? → Skip (Claude Code handles)
 │
@@ -90,9 +100,9 @@ Main agent receives ONLY filtered output
 
 | File | Purpose |
 |------|---------|
-| `hooks/prompt_router.py` | Minimal hook - injects "invoke router" instruction |
-| `hooks/prompts/intent-router.md` | Full Haiku prompt (capabilities, task types, rules) |
-| `agents/intent-router.md` | Agent definition - references the prompt |
+| `commands/do.md` | `/do` command - explicit invocation entry point |
+| `agents/intent-router.md` | Agent definition - spawned by `/do` |
+| `specs/prompt-enricher.md` | Planned automatic enrichment via UserPromptSubmit |
 
 ## What Gets Injected
 

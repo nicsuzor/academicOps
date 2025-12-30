@@ -106,7 +106,7 @@ tags: [framework, principles, core]
     - **Global principles** → `AXIOMS.md` (loaded every session via SessionStart)
     - **Component decisions** → `component/CLAUDE.md` (loaded when working on that component)
     - **Past learnings** → memory server (semantic search when relevant)
-    - **Routing** → prompt_router and skills direct agents to relevant docs
+    - **Routing** → Prompt Enricher (planned) and skills direct agents to relevant docs
     - When context is missing, agents HALT and report - missing context is a framework bug
     - Design decisions MUST be documented where they will surface when needed
 

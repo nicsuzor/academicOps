@@ -30,7 +30,7 @@ From `[[.claude/settings.json]]`:
 | PostToolUse | `log_posttooluse.py` | Log tool results |
 | PostToolUse | `autocommit_state.py` | Auto-commit data/ changes |
 | UserPromptSubmit | `log_userpromptsubmit.py` | Log user prompts |
-| UserPromptSubmit | `prompt_router.py` | Route prompts to skills |
+| UserPromptSubmit | `user_prompt_submit.py` | Context injection (currently noop) |
 | SubagentStop | `log_subagentstop.py` | Log subagent completion |
 
 ## Test Protocol

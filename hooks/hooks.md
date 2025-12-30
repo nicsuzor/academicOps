@@ -19,7 +19,6 @@ Python hooks for session lifecycle management, context injection, and policy enf
 ## Request Handling
 
 - [[user_prompt_submit]] - Load context from prompts/user-prompt-submit.md
-- [[prompt_router]] - Two-tier routing: keyword match to skills or semantic classification via Haiku
 
 ## Policy Enforcement
 
@@ -46,5 +45,5 @@ Python hooks for session lifecycle management, context injection, and policy enf
 
 - [[prompts]] - Prompt templates directory
   - [[prompts/user-prompt-submit.md]] - Context for UserPromptSubmit hook
-  - [[prompts/intent-router.md]] - Template for semantic skill classification
+  - [[prompts/memory-reminder.md]] - Template for memory documentation reminders
 

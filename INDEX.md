@@ -38,13 +38,12 @@ $AOPS/
 │   ├── audit.md                 # → audit skill (framework governance)
 │   ├── consolidate.md           # Consolidate learning-log entries
 │   ├── diag.md                  # Quick diagnostic of session state
+│   ├── do.md                    # Execute with context enrichment + guardrails
 │   ├── email.md                 # Email → task extraction
 │   ├── learn.md                 # Minor instruction adjustments
 │   ├── log.md                   # → learning-log skill
 │   ├── meta.md                  # Strategic brain + executor
 │   ├── parallel-batch.md        # Parallel file processing
-│   ├── pull.md                  # Execute next priority task
-│   ├── q.md                     # Quick capture → prompt queue
 │   ├── qa.md                    # Quality assurance verification
 │   ├── review-training-cmd.md   # Process review/source pairs
 │   ├── strategy.md              # Strategic thinking partner
@@ -149,16 +148,15 @@ $AOPS/
 │   ├── marker_hook.py               # Test hook for verification
 │   ├── verify_conclusions.py        # Disabled stub
 │   └── prompts/
-│       ├── user-prompt-submit.md
-│       ├── memory-reminder.md       # PostToolUse memory prompt
-│       └── intent-router.md         # Decision flowchart + capabilities (SSoT for routing)
+│       ├── user-prompt-submit.md    # Context for UserPromptSubmit hook
+│       └── memory-reminder.md       # PostToolUse memory prompt
 │
 ├── agents/                      # Spawnable subagents (Task tool)
 │   ├── critic.md                # Second-opinion review of plans/conclusions
 │   ├── effectual-planner.md     # Effectual planning (Sarasvathy) - plans as hypotheses
 │   ├── hypervisor.md            # Multi-step workflow orchestrator (phases 0-5)
 │   ├── intent-router.md         # LLM intent classifier (Haiku)
-│   └── prompt-writer.md         # Transform fragments → executable prompts (chained)
+│   └── planner.md               # Implementation planning with memory + critic review
 │
 ├── scripts/                     # Utility scripts
 │   ├── scripts.md               # Script inventory and documentation

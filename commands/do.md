@@ -140,7 +140,7 @@ Then execution begins, following the todo list with guardrails enforced.
 |-----|-----|
 | `/q` (queue capture) | `/do` enriches and executes immediately |
 | `/pull` (queue retrieval) | Not needed - work tracked via TodoWrite |
-| `prompt_router.py` hook | `/do` handles routing |
+| UserPromptSubmit routing | `/do` handles routing (explicit invocation) |
 | `prompt-writer` agent | `intent-router` agent |
 
 ## When NOT to Use /do
