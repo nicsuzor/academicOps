@@ -48,6 +48,33 @@ The hypervisor agent orchestrates multi-step work with phases 0-5 (planning → 
 
 **Open question**: How should agents choose between these? See [specs/workflow-selection.md](specs/workflow-selection.md).
 
+## /do Command (Primary Entry Point)
+
+The `/do` command is the single funnel for all work. It enriches your fragment with context, applies guardrails, and executes:
+
+```
+/do [your task fragment]
+    ↓
+intent-router agent (parallel):
+  - Memory search for related context
+  - Codebase search for relevant files
+  - Task classification (framework/debug/feature/question/etc)
+  - Guardrail selection from HEURISTICS.md
+  - Step decomposition
+    ↓
+Returns: task_type, workflow, guardrails, todo_items
+    ↓
+/do creates TodoWrite, applies guardrails, executes
+```
+
+**Guardrails applied automatically:**
+- Framework work → Plan Mode, critic review
+- Debug work → Verify state first, quote errors exactly
+- Feature work → Acceptance testing required
+- Questions → Answer only, no implementation
+
+Full spec: `$ACA_DATA/projects/aops/specs/do-command.md`
+
 ## Knowledge Architecture
 
 | Layer | Document | Nature |
@@ -70,8 +97,7 @@ The hypervisor agent orchestrates multi-step work with phases 0-5 (planning → 
 | I want to... | Use |
 |--------------|-----|
 | See what's available | `/aops` |
-| Capture a quick idea | `/q your idea here` |
-| Work on next priority task | `/pull` |
+| Do something (with full context) | `/do your task here` |
 | Add a task | `/add task description` |
 | Extract tasks from email | `/email` |
 | Get framework help | `/meta your question` |
@@ -88,14 +114,13 @@ The hypervisor agent orchestrates multi-step work with phases 0-5 (planning → 
 | /add | Quick-add a task from session context |
 | /consolidate | Consolidate LOG.md entries into thematic files |
 | /diag | Quick diagnostic of what's loaded in session |
+| /do | Execute work with full context enrichment and guardrails |
 | /audit | Comprehensive framework governance audit |
 | /email | Extract action items from emails → tasks |
 | /learn | Make minimal framework tweaks with tracking |
 | /log | Log agent patterns to thematic learning files |
 | /meta | Strategic brain + executor for framework work |
 | /parallel-batch | Parallel file processing with skill delegation |
-| /pull | Process next high-priority task |
-| /q | Quick capture idea → prompt queue |
 | /qa | Verify outcomes against acceptance criteria |
 | /review-training-cmd | Process review/source pair for training data |
 | /strategy | Strategic thinking partner (no execution) |
