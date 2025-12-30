@@ -109,61 +109,56 @@ flowchart TB
 ### Design Decisions
 
 1. **Single golden path** - All work goes through the full pipeline. No shortcuts.
-2. **`/do` is the single orchestrator** - Kills `/supervise`. One command to rule them all.
-3. **`/do` orchestrates, doesn't execute** - Like a supervisor, it coordinates but doesn't directly do work.
-4. **Quality gates are baked into the plan** - Not a separate stage. Planning skills add QA checkpoints as todo items.
-5. **Control the plan = control the work** - Agent must follow TodoWrite. Good plans = good work.
+2. **`/do` is a thin wrapper** - Just spawns the hypervisor. Kills `/supervise`.
+3. **Hypervisor is the brain** - All orchestration logic lives in the hypervisor agent.
+4. **Hypervisor orchestrates, doesn't execute** - Coordinates via subagents/skills, no direct work.
+5. **Quality gates are baked into the plan** - Planning skills add QA checkpoints as todo items.
+6. **Control the plan = control the work** - Agent must follow TodoWrite. Good plans = good work.
 
 ### The `/do` Architecture
 
 ```mermaid
 flowchart LR
-    subgraph INVOKE["/do [prompt]"]
-        U1[/"User prompt"/]
+    subgraph COMMAND["/do command"]
+        U1[/"User: /do [prompt]"/]
+        C1["Spawn hypervisor"]
     end
 
-    subgraph ORCHESTRATE["Orchestrator (doesn't do work)"]
+    subgraph HYPERVISOR["Hypervisor Agent (the brain)"]
         O1["1. Gather context"]
         O2["2. Classify task"]
-        O3["3. Select planning skill"]
+        O3["3. Invoke planning skill"]
+        O4["4. Orchestrate execution"]
+        O5["5. Verify completion"]
+        O6["6. Cleanup"]
     end
 
     subgraph PLAN["Planning Skill"]
-        P1["Brings domain context"]
-        P2["Applies domain rules"]
-        P3["Creates TodoWrite with:<br/>• Work steps<br/>• QA checkpoints<br/>• Acceptance criteria"]
+        P1["Domain context + rules"]
+        P2["Creates TodoWrite:<br/>• Work steps<br/>• QA checkpoints"]
     end
 
-    subgraph EXECUTE["Agent Executes"]
-        E1["Follows todo items"]
-        E2["Invokes specialist skills"]
-        E3["QA items force verification"]
+    subgraph EXECUTE["Execution Skills"]
+        E1["Specialist work"]
+        E2["Follow todo items"]
     end
 
-    subgraph CLEANUP["Cleanup"]
-        C1["Commit + push"]
-        C2["Update memory"]
-        C3["Archive task"]
-    end
-
-    U1 --> O1 --> O2 --> O3
-    O3 --> P1 --> P2 --> P3
-    P3 --> E1 --> E2 --> E3
-    E3 --> C1 --> C2 --> C3
+    U1 --> C1 --> HYPERVISOR
+    O3 --> P1 --> P2 --> O4
+    O4 --> E1 --> E2 --> O5 --> O6
 
     style U1 fill:#2196f3,color:#fff
+    style C1 fill:#2196f3,color:#fff
     style O1 fill:#ff9800,color:#fff
     style O2 fill:#ff9800,color:#fff
     style O3 fill:#ff9800,color:#fff
+    style O4 fill:#ff9800,color:#fff
+    style O5 fill:#ff9800,color:#fff
+    style O6 fill:#ff9800,color:#fff
     style P1 fill:#9c27b0,color:#fff
     style P2 fill:#9c27b0,color:#fff
-    style P3 fill:#9c27b0,color:#fff
-    style E1 fill:#607d8b,color:#fff
+    style E1 fill:#4caf50,color:#fff
     style E2 fill:#4caf50,color:#fff
-    style E3 fill:#f44336,color:#fff
-    style C1 fill:#795548,color:#fff
-    style C2 fill:#795548,color:#fff
-    style C3 fill:#795548,color:#fff
 ```
 
 ### How Quality Gates Work
@@ -200,9 +195,17 @@ For now, keep it simple: one planning skill that handles common cases. Specializ
 
 ### What Dies
 
-- `/supervise` - redundant, `/do` does this
+- `/supervise` - redundant, `/do` invokes hypervisor
 - Separate QA stage - baked into plan
-- `hypervisor` agent - `/do` orchestrator replaces it
+
+### Component Roles
+
+| Component | Role |
+|-----------|------|
+| `/do` command | **Thin wrapper** - just spawns hypervisor with user prompt |
+| `hypervisor` agent | **The brain** - all orchestration logic lives here |
+| Planning skills | **Domain experts** - create TodoWrite with checkpoints |
+| Execution skills | **Specialists** - do the actual work |
 
 ---
 
