@@ -31,19 +31,17 @@ Spawn the prompt-writer agent in the background:
 
 ```
 Task(
-  subagent_type="general-purpose",
+  subagent_type="prompt-writer",
   model="sonnet",
   run_in_background=true,
   description="Queue: [first 3 words]",
   prompt="
-You are the prompt-writer agent. Read your instructions at $AOPS/agents/prompt-writer.md
+Format: full-prompt
 
 User fragment to process:
 > [USER'S FRAGMENT HERE]
 
 Session context: [CURRENT PROJECT IF KNOWN]
-
-Write the executable prompt to $ACA_DATA/queue/ following the format in your instructions.
 "
 )
 ```

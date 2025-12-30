@@ -26,7 +26,7 @@ from typing import Any
 from hooks.hook_logger import log_hook_event
 
 # Framing version for measurement
-FRAMING_VERSION = "v9-tempfile-router"
+FRAMING_VERSION = "v10-prompt-writer"
 
 # Slash command pattern
 SLASH_COMMAND_PATTERN = re.compile(r"^/(\w+)")
@@ -34,25 +34,80 @@ SLASH_COMMAND_PATTERN = re.compile(r"^/(\w+)")
 # Paths
 AOPS = Path(os.environ.get("AOPS", Path(__file__).parent.parent))
 ACA_DATA = Path(os.environ.get("ACA_DATA", Path.home() / ".claude"))
-INTENT_ROUTER_TEMPLATE = AOPS / "hooks" / "prompts" / "intent-router.md"
+PROMPT_WRITER_AGENT = AOPS / "agents" / "prompt-writer.md"
 SESSION_GUIDANCE_FILE = ACA_DATA / ".router-config.md"
 TEMP_DIR = Path(tempfile.gettempdir()) / "claude-router"
 
 
-def load_router_template() -> str:
-    """Load intent router prompt template, stripped of frontmatter."""
-    if not INTENT_ROUTER_TEMPLATE.exists():
-        return "# Intent Router\n\n{session_context}\n\n## User Prompt\n\n{prompt}"
+GUIDANCE_INSTRUCTIONS = """# Prompt Enrichment (Guidance Format)
 
-    content = INTENT_ROUTER_TEMPLATE.read_text()
+Classify the task and return 2-5 lines of guidance. Do NOT investigate, ask questions, or write files.
 
-    # Strip frontmatter
-    if content.startswith("---"):
-        parts = content.split("---", 2)
-        if len(parts) >= 3:
-            content = parts[2].strip()
+## Classification Table
 
-    return content
+| Pattern | Type | Guidance |
+|---------|------|----------|
+| skills/, hooks/, AXIOMS, HEURISTICS, framework | Framework | Skill("framework"), Plan Mode, TodoWrite |
+| error, bug, broken, debug | Debug | VERIFY STATE FIRST, TodoWrite, cite evidence |
+| how, what, where, explain, "?" | Question | Answer then STOP, no implementing |
+| implement, build, create, refactor | Multi-step | TodoWrite, commit after logical units |
+| pytest, TDD, Python, test | Python | Skill("python-dev"), tests first |
+| (simple, single action) | Simple | Just do it |
+
+## Output Format
+
+Return ONLY 2-5 lines like:
+```
+[Skill to invoke if any]
+[Structural requirements: TodoWrite, Plan Mode, etc.]
+[Key reminder for this task type]
+DO NOT: [failure mode to avoid]
+```
+
+Example for "debug this error":
+```
+VERIFY STATE FIRST. Check actual state before hypothesizing.
+Use TodoWrite verification checklist.
+Cite evidence for any conclusions.
+DO NOT: Guess at causes without checking logs/state.
+```
+"""
+
+
+def build_enrichment_request(
+    prompt: str,
+    session_guidance: str = "",
+    per_prompt_context: str = "",
+) -> str:
+    """Build enrichment request for prompt-writer agent.
+
+    Args:
+        prompt: User's prompt text
+        session_guidance: Persistent session-level config
+        per_prompt_context: Per-prompt context from other sources
+
+    Returns:
+        Formatted request string for prompt-writer agent
+    """
+    parts = [GUIDANCE_INSTRUCTIONS, ""]
+
+    if session_guidance:
+        parts.append("## Session Guidance")
+        parts.append("")
+        parts.append(session_guidance)
+        parts.append("")
+
+    if per_prompt_context:
+        parts.append("## Additional Context")
+        parts.append("")
+        parts.append(per_prompt_context)
+        parts.append("")
+
+    parts.append("## User Prompt")
+    parts.append("")
+    parts.append(prompt)
+
+    return "\n".join(parts)
 
 
 def load_session_guidance() -> str:
@@ -62,33 +117,6 @@ def load_session_guidance() -> str:
     return ""
 
 
-def build_router_context(
-    prompt: str,
-    session_guidance: str = "",
-    per_prompt_context: str = "",
-) -> str:
-    """Build complete context for intent router.
-
-    Args:
-        prompt: User's prompt text
-        session_guidance: Persistent session-level config
-        per_prompt_context: Per-prompt context from other sources
-
-    Returns:
-        Complete context string with template filled in
-    """
-    template = load_router_template()
-
-    # Build session context section
-    session_context_parts = []
-    if session_guidance:
-        session_context_parts.append(f"## Session Guidance\n\n{session_guidance}")
-    if per_prompt_context:
-        session_context_parts.append(f"## Additional Context\n\n{per_prompt_context}")
-
-    session_context = "\n\n".join(session_context_parts)
-
-    return template.format(session_context=session_context, prompt=prompt)
 
 
 def write_temp_file(content: str) -> Path:
@@ -124,20 +152,20 @@ def main():
     session_guidance = load_session_guidance()
     per_prompt_context = input_data.get("additional_context", "")
 
-    # Build complete router context and write to temp file
-    context = build_router_context(
+    # Build enrichment request and write to temp file
+    request = build_enrichment_request(
         prompt=prompt,
         session_guidance=session_guidance,
         per_prompt_context=per_prompt_context,
     )
-    temp_path = write_temp_file(context)
+    temp_path = write_temp_file(request)
 
-    # Instruct main agent to invoke router with file path
-    additional_context = f"""**ROUTE FIRST**: Spawn the intent-router to get structured guidance for this task.
+    # Instruct main agent to invoke a classifier for guidance
+    additional_context = f"""**ENRICH FIRST**: Spawn classifier to get structured guidance for this task.
 
-Task(subagent_type="intent-router", model="haiku", prompt="Read {temp_path} and return guidance")
+Task(subagent_type="general-purpose", model="haiku", prompt="Read {temp_path} and follow the instructions to return guidance. Output ONLY 2-5 lines of guidance, no other text.")
 
-Follow the router's structured output - it provides tailored steps, skill to invoke, and DO NOTs."""
+Follow the guidance output - it provides skill to invoke, structural requirements, and DO NOTs."""
 
     hook_output: dict[str, Any] = {
         "hookEventName": "UserPromptSubmit",
