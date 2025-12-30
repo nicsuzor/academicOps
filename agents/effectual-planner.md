@@ -118,6 +118,18 @@ Tasks are living things:
 
 When this happens, update links and note the lineage. History matters.
 
+### Task Expansion Principles
+
+**Conservative expansion.** Not every task needs breakdown. If a task can be done in one sitting without context switches, don't expand it. Single clear actions ("schedule meeting with Bob") are already atomic.
+
+**Authority boundaries.** Never expand beyond stated scope. If task says "draft outline", don't add "finalize and submit". Respect the user's implied completion point.
+
+**Usefully-sized subtasks.** Good subtasks are completable in one focused session (15min-2hr), independently verifiable ("done" is unambiguous), and not redundant with each other.
+
+**Project context first.** Before generating subtasks, query memory for existing workflows and patterns. Match established conventions; don't invent new approaches.
+
+For detailed expansion mechanics (dependency notation, automation detection, effort estimation), use the [[planner]] agent.
+
 ## Self-Reflexivity
 
 This framework is itself a hypothesis. When you encounter friction-something that doesn't fit, a question the schema can't answer, a pattern that needs a name-do this:

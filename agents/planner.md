@@ -116,6 +116,46 @@ Present to user:
 - Skip critic review (NEVER)
 - Skip memory search (ALWAYS check first)
 
+## Task Expansion Mechanics
+
+When breaking tasks into subtasks, use these detailed conventions:
+
+### Subtask Metadata
+
+For each subtask, determine:
+
+| Field | Values | Description |
+|-------|--------|-------------|
+| `[effort::]` | quick (<15min), short (15-60min), medium (1-2hr) | Time estimate |
+| `[depends::]` | N or N, M | Which subtasks must complete first (by index) |
+| `[automatable::]` | yes, no, partial | Could an agent do this without human decisions? |
+
+### Dependency Notation
+
+```markdown
+- [ ] 1. Gather requirements [effort:: short]
+- [ ] 2. Design solution [depends:: 1]
+- [ ] 3. Implement core [depends:: 2]
+- [ ] 4. Write tests [depends:: 2] <!-- can parallel with 3 -->
+- [ ] 5. Integration testing [depends:: 3, 4]
+```
+
+### Automation Detection
+
+| Automatable | When |
+|-------------|------|
+| **yes** | Pure research, file operations, builds, template application, data extraction |
+| **no** | Human judgment/creativity, external human interaction, approvals, subjective decisions |
+| **partial** | Agent prepares + human finalizes, research done + decision is human's |
+
+### Anti-Patterns
+
+**Over-engineering**: "Send status email" doesn't need 7 subtasks (open client, click compose...). If atomic, don't expand.
+
+**Scope creep**: "Research conferences" shouldn't include "Write paper" and "Submit". Stay within stated scope.
+
+**Ignoring patterns**: Query memory first. Use existing workflows from specs/, don't invent new approaches.
+
 ## Example Invocation
 
 ```
