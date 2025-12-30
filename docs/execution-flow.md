@@ -489,18 +489,18 @@ original_fragment: |
 
 ---
 
-### /supervise Workflow Flow
+### Hypervisor Workflow (via /do)
 
-When a user invokes `/supervise` for multi-step orchestrated work:
+When `/do` spawns the hypervisor, this is the full workflow:
 
 ```mermaid
 flowchart TD
     subgraph ENTRY["Entry"]
-        U1[/"User types:<br/>/supervise tdd fix the bug"/]
+        U1[/"User types:<br/>/do fix the bug"/]
         PH1["Hook fires → slash command<br/>detected → skips routing"]
-        C1["/supervise → Skill(supervisor)<br/>→ loads supervisor.md"]
+        C1["/do spawns hypervisor"]
         H1{{"hypervisor agent<br/>(Opus) spawned"}}
-        H2["Reads workflow template"]
+        H2["Gathers context,<br/>selects planning skill"]
         U1 --> PH1 --> C1 --> H1 --> H2
     end
 
@@ -623,11 +623,11 @@ flowchart TD
     style Q8 fill:#2196f3,color:#fff
 ```
 
-### Annotations: Supervised Workflow Flow
+### Annotations: Hypervisor Workflow
 
 | Phase | Step | Purpose |
 |-------|------|---------|
-| Entry | /supervise command | Triggers supervisor skill, spawns hypervisor agent |
+| Entry | /do command | Spawns hypervisor agent |
 | Phase 0 | Planning | Create plan, get critic review, LOCK acceptance criteria |
 | Phase 0 | TodoWrite | ALL workflow steps must be in todo list BEFORE Phase 1 |
 | Phase 1-3 | Iteration | One atomic task at a time; subagent implements, hypervisor verifies |
@@ -648,107 +648,39 @@ flowchart TD
 
 ---
 
-### /q Quick Capture Flow
+### /q Quick Capture Flow (Delayed /do)
 
-When a user captures an idea fragment for later execution:
+`/q` is a simple capture mechanism - it saves a task for later execution via `/do`.
 
 ```mermaid
-flowchart TD
-    subgraph USER["User Action"]
-        U1[/"User types:<br/>/q implement dark mode"/]
-        U2["User continues working<br/>(not blocked)"]
+flowchart LR
+    subgraph CAPTURE["/q capture"]
+        U1[/"User: /q implement dark mode"/]
+        C1["Create task file"]
+        T1[("$ACA_DATA/tasks/inbox/")]
     end
 
-    subgraph PROMPT_HOOK["UserPromptSubmit Hook"]
-        PH1["Hook fires"]
-        PH2["Slash command detected<br/>hook skips routing"]
+    subgraph LATER["Later"]
+        L1[/"User: /do implement dark mode"/]
+        L2["Hypervisor executes"]
     end
 
-    subgraph COMMAND["Command Expansion"]
-        C1["/q command expands"]
-        C2["Spawns prompt-writer agent<br/>with run_in_background=true"]
-    end
+    U1 --> C1 --> T1
+    T1 -.->|when ready| L1 --> L2
 
-    subgraph ASYNC["Async Background Processing"]
-        A1{{"prompt-writer agent<br/>(Sonnet model)"}}
-        A2["Reads context from:<br/>- Current project<br/>- Memory server<br/>- Codebase search"]
-        A3["Decomposes fragment:<br/>What does user mean?<br/>What files involved?<br/>What workflow needed?"]
-        A4["Determines if multi-step:<br/>Invoke task-expand skill?"]
-        A5["Writes executable prompt<br/>to $ACA_DATA/queue/"]
-    end
-
-    subgraph QUEUE["Queue Storage"]
-        Q1[("$ACA_DATA/queue/<br/>YYYYMMDD-HHMMSS-slug.md")]
-        Q2["Prompt file contains:<br/>- Context<br/>- Goal<br/>- Approach<br/>- Relevant files<br/>- Original fragment"]
-    end
-
-    subgraph LATER["Later: /pull"]
-        L1[/"User types /pull"/]
-        L2["Retrieves prompt from queue"]
-        L3["Executes with fresh agent"]
-    end
-
-    %% Main flow
-    U1 --> PH1
-    PH1 --> PH2 --> C1
-    C1 --> C2
-    C2 -.->|async| A1
-    U1 --> U2
-    A1 --> A2 --> A3 --> A4 --> A5
-    A5 --> Q1
-    Q1 --> Q2
-
-    %% Later flow
-    L1 --> L2
-    L2 --> Q1
-    L2 --> L3
-
-    %% Styling - User
     style U1 fill:#2196f3,color:#fff
-    style U2 fill:#2196f3,color:#fff
+    style C1 fill:#4caf50,color:#fff
+    style T1 fill:#9e9e9e,color:#fff
     style L1 fill:#2196f3,color:#fff
-    style L2 fill:#fff3e0,color:#000
-    style L3 fill:#ff9800,color:#fff
-
-    %% Styling - Hooks
-    style PH1 fill:#9c27b0,color:#fff
-    style PH2 fill:#ce93d8,color:#000
-
-    %% Styling - Command
-    style C1 fill:#2196f3,color:#fff
-    style C2 fill:#ff9800,color:#fff
-
-    %% Styling - Async Agent
-    style A1 fill:#ff9800,color:#fff
-    style A2 fill:#ffb74d,color:#000
-    style A3 fill:#ffb74d,color:#000
-    style A4 fill:#ffb74d,color:#000
-    style A5 fill:#ffb74d,color:#000
-
-    %% Styling - Data
-    style Q1 fill:#9e9e9e,color:#fff
-    style Q2 fill:#bdbdbd,color:#000
+    style L2 fill:#ff9800,color:#fff
 ```
 
-### Annotations: Quick Capture Flow
+| Command | Behavior |
+|---------|----------|
+| `/q [task]` | Save to task inbox, don't execute |
+| `/do [task]` | Execute immediately via hypervisor |
 
-| Step | Component | Purpose |
-|------|-----------|---------|
-| 1 | User types /q | Zero-friction idea capture |
-| 2 | Command expansion | Spawns prompt-writer in background |
-| 3 | User continues | NOT blocked - can alt-tab away immediately |
-| 4 | prompt-writer investigates | Searches memory, codebase for context |
-| 5 | Decrypts shorthand | Interprets what user actually meant |
-| 6 | Determines workflow | Direct edit? /supervise? /meta? Research first? |
-| 7 | Writes to queue | Self-contained executable prompt |
-| 8 | Later: /pull | Retrieves and executes queued prompts |
-
-### Key Design Decisions
-
-1. **Async Execution**: User doesn't wait; agent works in background
-2. **Context Preservation**: Agent investigates NOW while context is fresh
-3. **Self-Contained Output**: Prompt file executable by fresh Claude instance
-4. **Chain-Aware**: Multi-step tasks decomposed into chained prompts
+**Design**: Keep `/q` simple. All the context-gathering and planning happens when `/do` runs, not at capture time.
 
 ---
 

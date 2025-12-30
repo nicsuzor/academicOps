@@ -30,7 +30,7 @@ $AOPS/
 ├── pyproject.toml               # Python project config
 ├── setup.sh                     # Main installation script
 ├── install.sh                   # Alternative installer
-├── reference-graph.json         # Framework reference graph (generated)
+├── reference-graph.csv          # Framework reference graph (generated)
 │
 ├── commands/                    # Slash commands (main agent executes)
 │   ├── add.md                   # Quick-add task from context
@@ -44,10 +44,10 @@ $AOPS/
 │   ├── log.md                   # → learning-log skill
 │   ├── meta.md                  # Strategic brain + executor
 │   ├── parallel-batch.md        # Parallel file processing
+│   ├── q.md                     # Queue task for later (delayed /do)
 │   ├── qa.md                    # Quality assurance verification
 │   ├── review-training-cmd.md   # Process review/source pairs
 │   ├── strategy.md              # Strategic thinking partner
-│   ├── supervise.md             # → hypervisor agent
 │   ├── task-viz.md              # Task graph visualization
 │   └── ttd.md                   # TDD orchestration
 │
@@ -108,27 +108,20 @@ $AOPS/
 │   │   ├── SKILL.md
 │   │   └── dashboard.py
 │   │
-│   ├── reference-map/           # Framework reference graph extraction
-│   │   ├── SKILL.md
-│   │   └── scripts/build_reference_map.py
-│   │
-│   ├── link-audit/              # Reference graph analysis
-│   │   ├── SKILL.md
-│   │   └── scripts/find_orphans.py
-│   │
 │   ├── audit/                   # Framework governance audit
-│   │   └── SKILL.md
+│   │   ├── SKILL.md
+│   │   └── scripts/
+│   │       ├── build_reference_map.py  # Reference graph extraction
+│   │       └── find_orphans.py         # Orphan file detection
 │   │
 │   ├── extractor/               # Archive → memory extraction
 │   ├── feature-dev/             # Feature development templates
-│   ├── framework-debug/         # Framework debugging
-│   ├── framework-review/        # Transcript analysis for improvements
 │   ├── garden/                  # Incremental PKM maintenance
 │   ├── ground-truth/            # Ground truth label management
 │   ├── osb-drafting/            # IRAC analysis for OSB cases
 │   ├── review-training/         # Training data from reviews
+│   ├── session-insights/        # Accomplishments + learning extraction
 │   ├── supervisor/              # Multi-agent workflow orchestration
-│   ├── task-expand/             # Intelligent task breakdown
 │   └── training-set-builder/    # Training data extraction
 │
 ├── hooks/                       # Session lifecycle (Python)
@@ -205,25 +198,24 @@ $AOPS/
 
 ## Cross-References
 
-### Command → Skill Invocations
+### Command → Skill/Agent Invocations
 
-| Command | Invokes Skill |
-|---------|---------------|
-| /meta | framework, python-dev |
-| /supervise | supervisor (loads workflow from `skills/supervisor/workflows/`) |
-| /ttd | supervisor (alias for `/supervise tdd`) |
-| /log | learning-log |
-| /transcript | transcript |
-| /remember | remember |
+| Command | Invokes |
+|---------|---------|
+| /do | hypervisor agent (full pipeline) |
+| /q | tasks skill (delayed /do) |
+| /meta | framework, python-dev skills |
+| /ttd | supervisor (TDD workflow) |
+| /log | learning-log skill |
+| /transcript | transcript skill |
+| /remember | remember skill |
 
 ### Workflow Templates
 
 | Location | Workflows | Loaded By |
 |----------|-----------|-----------|
-| `skills/supervisor/workflows/` | tdd, batch-review, skill-audit | `/supervise {name}` |
+| `skills/supervisor/workflows/` | tdd, batch-review | `/ttd`, hypervisor |
 | `skills/framework/workflows/` | 01-design, 02-debug, 03-experiment, 04-bloat, 06-spec | `Skill("framework")` |
-
-**Decision pending**: Workflow selection criteria - see `$AOPS/specs/workflow-selection.md`
 
 ### Skill → Skill Dependencies
 
@@ -237,8 +229,9 @@ $AOPS/
 
 | Agent | Routes To |
 |-------|-----------|
-| hypervisor | supervisor, framework workflows |
+| hypervisor | Planning skills, execution skills, QA (full 6-phase pipeline) |
 | effectual-planner | tasks skill |
+| planner | memory search, critic review |
 
 **Note**: For Python development, use `general-purpose` subagent and invoke `Skill(skill="python-dev")` directly.
 

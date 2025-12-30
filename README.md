@@ -30,15 +30,21 @@ Academic support framework for Claude Code. Minimal, fight bloat aggressively.
 
 ## Workflows
 
-Two orchestration approaches exist. Selection criteria are under development.
+**Single entry point**: All work goes through `/do`, which spawns the hypervisor agent.
 
 | Command | Role | When to Use |
 |---------|------|-------------|
-| `/meta` | Strategic brain + executor (full tool access) | Framework problems end-to-end, design AND build |
-| `/supervise` | Strict delegator via hypervisor agent | Structured work with quality gates, delegates to subagents |
+| `/do` | Full pipeline via hypervisor | All work - context, planning, execution, QA |
+| `/meta` | Strategic brain + executor | Framework problems, design AND build |
+| `/q` | Queue for later | Capture task without executing |
 
-**Hypervisor Workflows** (`/supervise {description}`):
-The hypervisor agent orchestrates multi-step work with phases 0-5 (planning → implementation → QA). Workflow templates are planned but not yet implemented - describe the workflow approach in your prompt.
+**Hypervisor Pipeline** (via `/do`):
+1. Context gathering (memory search, file discovery)
+2. Task classification and planning skill selection
+3. TodoWrite with CHECKPOINT items (QA gates)
+4. Delegated execution to specialist skills
+5. Verification against acceptance criteria
+6. Cleanup (commit, push, memory)
 
 **Framework Workflows** (loaded via `Skill("framework")`):
 - `01-design-new-component` - Adding new hooks, skills, scripts, commands
@@ -46,32 +52,23 @@ The hypervisor agent orchestrates multi-step work with phases 0-5 (planning → 
 - `03-experiment-design` - Testing hypotheses about behavior
 - `06-develop-specification` - Collaborative spec development
 
-**Open question**: How should agents choose between these? See [specs/workflow-selection.md](specs/workflow-selection.md).
-
 ## /do Command (Primary Entry Point)
 
-The `/do` command is the single funnel for all work. It enriches your fragment with context, applies guardrails, and executes:
+The `/do` command is the single funnel for all work. It spawns the hypervisor agent which orchestrates the full pipeline:
 
 ```
-/do [your task fragment]
+/do [your task]
     ↓
-intent-router agent (parallel):
-  - Memory search for related context
-  - Codebase search for relevant files
-  - Task classification (framework/debug/feature/question/etc)
-  - Guardrail selection from HEURISTICS.md
-  - Step decomposition
-    ↓
-Returns: task_type, workflow, guardrails, todo_items
-    ↓
-/do creates TodoWrite, applies guardrails, executes
+Hypervisor agent (6 phases):
+  1. CONTEXT - Memory search, file discovery
+  2. CLASSIFY - Task type, select planning skill
+  3. PLAN - TodoWrite with CHECKPOINT items
+  4. EXECUTE - Delegate to specialist skills
+  5. VERIFY - Check against acceptance criteria
+  6. CLEANUP - Commit, push, update memory
 ```
 
-**Guardrails applied automatically:**
-- Framework work → Plan Mode, critic review
-- Debug work → Verify state first, quote errors exactly
-- Feature work → Acceptance testing required
-- Questions → Answer only, no implementation
+**Key insight**: Control the plan = control the work. Planning skills create TodoWrite with QA checkpoints baked in. Agents can't skip them because they're todo items.
 
 Full spec: `$AOPS/specs/do-command.md`
 
@@ -121,39 +118,34 @@ Full spec: `$AOPS/specs/do-command.md`
 | /log | Log agent patterns to thematic learning files |
 | /meta | Strategic brain + executor for framework work |
 | /parallel-batch | Parallel file processing with skill delegation |
+| /q | Queue task for later execution (delayed /do) |
 | /qa | Verify outcomes against acceptance criteria |
 | /review-training-cmd | Process review/source pair for training data |
 | /strategy | Strategic thinking partner (no execution) |
-| /supervise | Orchestrate multi-agent workflow with quality gates |
 | /task-viz | Task graph visualization (Excalidraw) |
-| /ttd | TDD workflow (alias for `/supervise tdd`) |
+| /ttd | TDD workflow |
 
 ## Skills
 
 | Skill | Purpose |
 |-------|---------|
 | analyst | Research data analysis (dbt, Streamlit, stats) |
-| dashboard | Live Streamlit dashboard for tasks + sessions |
 | audit | Comprehensive framework governance (structure, justification, index updates) |
+| dashboard | Live Streamlit dashboard for tasks + sessions |
 | excalidraw | Hand-drawn diagrams with organic layouts |
 | extractor | Extract knowledge from archive documents |
 | feature-dev | Test-first feature development workflow |
 | framework | Convention reference, categorical imperative |
-| framework-debug | Investigate session logs for framework issues |
-| framework-review | Analyze transcripts for improvement opportunities |
 | garden | Incremental PKM maintenance (weeding, linking) |
 | ground-truth | Establish ground truth labels for evaluation |
 | learning-log | Log patterns to thematic learning files |
-| link-audit | Clean up framework file references |
 | osb-drafting | IRAC analysis for Oversight Board cases |
 | pdf | Markdown → professional PDF |
 | python-dev | Production Python (fail-fast, typed, TDD) |
-| reference-map | Extract framework references → graph |
 | remember | Persist knowledge to markdown + memory server |
 | review-training | Extract training pairs from matched documents |
 | session-insights | Extract accomplishments + learnings from sessions |
 | supervisor | Generic multi-agent workflow orchestrator |
-| task-expand | Intelligent task breakdown with dependencies |
 | tasks | Task lifecycle management |
 | training-set-builder | Build LLM training datasets from documents |
 | transcript | Session JSONL → markdown |
@@ -175,8 +167,8 @@ Custom agents spawned via `Task(subagent_type="name")`:
 
 | Agent | Purpose |
 |-------|---------|
+| hypervisor | Full 6-phase pipeline (context → classify → plan → execute → verify → cleanup) |
 | critic | Second-opinion review of plans/conclusions |
-| hypervisor | Multi-step workflow orchestrator (phases 0-5) |
 | intent-router | Context gathering, prompt hydration, workflow + guardrail selection |
 | effectual-planner | Strategic planning under uncertainty (NOT implementation) |
 | planner | Implementation planning with memory context + critic review |

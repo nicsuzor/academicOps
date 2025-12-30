@@ -9,7 +9,7 @@ tags:
 
 # Framework Status
 
-**Last updated**: 2025-12-29
+**Last updated**: 2025-12-30
 
 ## Done
 
@@ -18,7 +18,7 @@ tags:
 - ✅ **Prompt router v4** - LLM-first routing; only slash commands get direct routing, everything else → Haiku classifier with full capability index
 - ✅ **Framework v3.0** - Categorical imperative, file boundary enforcement, skill delegation
 - ✅ **Hook architecture** - Hooks inject context, never call LLM APIs directly
-- ✅ **Hypervisor agent** - Multi-step workflow orchestrator with phases 0-5, acceptance criteria lock, scope drift detection
+- ✅ **Hypervisor agent** - Full 6-phase pipeline (context → classify → plan → execute → verify → cleanup), QA checkpoints baked into TodoWrite
 - ✅ **Effectual Planning agent** - Strategic planning under uncertainty; receives fragments, surfaces assumptions, proposes high-value next steps. See `specs/effectual-planning-agent.md`
 - ✅ **Learning system** - 22+ thematic log files, /log command captures patterns
 - ✅ **E2E testing** - 270 tests, 98% pass rate, multi-agent spawn validation
@@ -184,17 +184,16 @@ Show progress/status directly in terminal. Lightweight UX for seeing what's happ
 
 **Acceptance criteria**: TBD - needs spec (extends existing `specs/Terminal UX Spec.md`)
 
-### P3: Hypervisor Workflow Loading
+### P3: Domain-Specific Planning Skills
 
-Hypervisor agent currently has generic phases 0-5 but lacks domain-specific workflow loading. The supervisor skill had workflow templates (`skills/supervisor/workflows/{name}.md`) that parameterize behavior for different domains (TDD, batch-review, skill-audit).
+Hypervisor currently uses generic planning. Domain-specific planning skills would create specialized TodoWrite with domain-appropriate checkpoints.
 
-**Gap**: Hypervisor needs mechanism to:
-1. Parse workflow name from `/supervise` arguments
-2. Load workflow template
-3. Extract: required-skills, scope, iteration-unit, quality-gate, subagent-prompts
-4. Apply template to generic phases
+**Gap**: Planning skills for specific domains:
+1. `framework` planning - includes introspection, critic review, INDEX updates
+2. `python-dev` planning - includes TDD cycle, type checking, test verification
+3. `feature-dev` planning - includes acceptance criteria, e2e testing
 
-**Current workaround**: Hypervisor uses generic behavior; domain-specific workflows require manual instruction in prompts.
+**Current workaround**: Hypervisor uses generic planning; domain-specific requirements manually added to prompts or via existing skills.
 
 ---
 

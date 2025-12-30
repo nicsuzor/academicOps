@@ -10,7 +10,7 @@ tags:
 
 # academicOps Vision
 
-**Last updated**: 2025-12-13
+**Last updated**: 2025-12-30
 
 ## What This Is
 
@@ -19,7 +19,7 @@ An academic support framework for Claude Code. It provides:
 1. **Consistent agent behavior** - Principles ([[AXIOMS]]) loaded every session
 2. **Specialized workflows** - [[data/projects/aops/specs/skills]] for research, writing, task management
 3. **Quality enforcement** - [[hooks]] that inject context and verify compliance
-4. **Knowledge persistence** - [[bmem]] integration for institutional memory
+4. **Knowledge persistence** - Memory server + [[remember]] skill for institutional memory
 
 **Scope**: Supports academic work across ALL repositories.
 
@@ -34,7 +34,7 @@ An academic support framework for Claude Code. It provides:
 | Task capture from email    | [[tasks]] skill + [[email\|/email]] | Slash command        |
 | Task visualization         | [[excalidraw]] skill     | [[task-viz\|/task-viz]]          |
 | Writing style enforcement  | [[STYLE]] guides         | Agents follow guides |
-| Knowledge capture          | [[bmem]] skill           | Skill tool           |
+| Knowledge capture          | [[remember]] skill       | Skill tool           |
 | Session transcripts        | [[transcript]] skill     | /transcript          |
 | Markdown to PDF generation | [[pdf]] skill            | Skill tool           |
 
@@ -45,7 +45,7 @@ An academic support framework for Claude Code. It provides:
 | Principles loaded | [[sessionstart_load_axioms.py\|sessionstart_load_axioms]] hook |
 | Skill suggestions | Prompt Enricher (planned) via UserPromptSubmit hook |
 | Framework delegation | `FRAMEWORK SKILL CHECKED` token |
-| [[bmem]] compliance | [[pre-commit]] hooks |
+| Memory format compliance | [[pre-commit]] hooks |
 | File boundaries | [[framework]] skill file boundary rules |
 
 ## Knowledge Architecture
@@ -61,12 +61,12 @@ An academic support framework for Claude Code. It provides:
 ### Information Flow
 
 ```
-Capture → bmem (semantic search) → JIT injection via hooks → Agent action
+Capture → memory server (semantic search) → JIT injection via hooks → Agent action
 ```
 
 - **Session start**: [[AXIOMS]], [[FRAMEWORK]] paths, user context loaded
 - **Every prompt**: Prompt Enricher (planned) suggests relevant skills
-- **On demand**: [[bmem]] search for related knowledge
+- **On demand**: Memory server search for related knowledge
 
 ## Success Criteria
 
