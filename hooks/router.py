@@ -9,7 +9,7 @@ event type, merges outputs, and returns worst exit code.
 Architecture:
 - Single router.py in settings.json per hook event
 - Router dispatches to registered scripts in HOOK_REGISTRY
-- Async hooks (like prompt_router) dispatched first, collected last
+- Async hooks dispatched first, collected last
 - Outputs merged per consolidation rules
 
 Exit codes:
@@ -50,7 +50,6 @@ HOOK_REGISTRY: dict[str, list[dict[str, Any]]] = {
         {"script": "request_scribe.py"},
     ],
     "UserPromptSubmit": [
-        {"script": "prompt_router.py", "async": True},  # Start async first
         {"script": "user_prompt_submit.py"},
         {"script": "unified_logger.py"},
     ],

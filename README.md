@@ -141,7 +141,6 @@ The hypervisor agent orchestrates multi-step work with phases 0-5 (planning → 
 |------|---------|---------|
 | `sessionstart_load_axioms.py` | SessionStart | Inject AXIOMS.md, FRAMEWORK.md paths |
 | `user_prompt_submit.py` | UserPromptSubmit | Context injection per prompt |
-| `prompt_router.py` | UserPromptSubmit | Intent routing + skill suggestions |
 
 See [docs/HOOKS.md](docs/HOOKS.md) for hook architecture.
 
@@ -153,9 +152,9 @@ Custom agents spawned via `Task(subagent_type="name")`:
 |-------|---------|
 | critic | Second-opinion review of plans/conclusions |
 | hypervisor | Multi-step workflow orchestrator (phases 0-5) |
-| intent-router | LLM intent classifier (Haiku) |
+| intent-router | Context gathering, prompt hydration, workflow + guardrail selection |
 | effectual-planner | Strategic planning under uncertainty (NOT implementation) |
-| prompt-writer | Transform fragments into executable prompts |
+| planner | Implementation planning with memory context + critic review |
 
 Built-in Claude Code agents (also available):
 - `Explore` - Fast codebase exploration

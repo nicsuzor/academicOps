@@ -137,7 +137,6 @@ $AOPS/
 │   ├── hooks.md                     # Hook inventory and descriptions
 │   ├── sessionstart_load_axioms.py  # Injects AXIOMS.md, FRAMEWORK.md, HEURISTICS.md
 │   ├── user_prompt_submit.py        # Context injection per prompt
-│   ├── prompt_router.py             # Intent routing (loads hooks/prompts/intent-router.md)
 │   ├── router.py                    # Central hook dispatcher
 │   ├── autocommit_state.py          # Auto-commit data/ changes
 │   ├── policy_enforcer.py           # Block destructive operations (PreToolUse)

@@ -286,16 +286,6 @@ class TestHookRegistry:
         assert "UserPromptSubmit" in HOOK_REGISTRY
         assert len(HOOK_REGISTRY["UserPromptSubmit"]) > 0
 
-    def test_user_prompt_submit_has_async_hook(self):
-        """UserPromptSubmit should have prompt_router as async."""
-        from hooks.router import HOOK_REGISTRY
-
-        hooks = HOOK_REGISTRY["UserPromptSubmit"]
-        async_hooks = [h for h in hooks if h.get("async", False)]
-
-        assert len(async_hooks) >= 1
-        assert any("prompt_router" in h["script"] for h in async_hooks)
-
     def test_unknown_event_returns_empty(self):
         """Unknown hook event should return empty list."""
         from hooks.router import get_hooks_for_event
