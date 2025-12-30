@@ -72,8 +72,8 @@ Read these files in order (use Read tool):
 1. `$AOPS/AXIOMS.md` - Inviolable principles
 2. `$AOPS/HEURISTICS.md` - Empirically validated guidance
 3. `$AOPS/INDEX.md` - Authoritative file tree
-4. `$ACA_DATA/projects/aops/VISION.md` - Goals and scope
-5. `$ACA_DATA/projects/aops/ROADMAP.md` - Current status
+4. `$AOPS/VISION.md` - Goals and scope
+5. `$AOPS/ROADMAP.md` - Current status
 
 **Do NOT proceed until all 5 documents are loaded.** This ensures every action is informed by the complete framework state.
 
@@ -199,8 +199,8 @@ Each piece of information exists in exactly ONE location:
 | Feature inventory | `$AOPS/README.md` |
 | User context | `$ACA_DATA/CORE.md` |
 | Work style | `$ACA_DATA/ACCOMMODATIONS.md` |
-| Framework vision | `$ACA_DATA/projects/aops/VISION.md` |
-| Framework status | `$ACA_DATA/projects/aops/ROADMAP.md` |
+| Framework vision | `$AOPS/VISION.md` |
+| Framework status | `$AOPS/ROADMAP.md` |
 
 **Pattern**: Reference, don't repeat.
 
@@ -350,7 +350,7 @@ Step-by-step guides for common framework operations:
 - [[workflows/05-review-pull-request.md]] - PR review process
 - [[workflows/06-develop-specification.md]] - Writing specs for new features
 
-## Framework Project Data (`$ACA_DATA/projects/aops/`)
+## Framework Project Data (`$AOPS/`)
 
 Per [[AXIOMS]] #28 (Current State Machine): `$ACA_DATA` contains ONLY semantic memory (current state). Episodic memory (observations) lives in **GitHub Issues** (nicsuzor/academicOps repo).
 

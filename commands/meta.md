@@ -24,7 +24,7 @@ tools:
 - **Tests**: `$AOPS/tests/`
 - **User data**: `$ACA_DATA/`
 - **Tasks**: `$ACA_DATA/tasks/`
-- **Learning**: `$ACA_DATA/projects/aops/learning/`
+- **Learning**: `$AOPS/learning/`
 
 ---
 
@@ -42,10 +42,10 @@ Read $ACA_DATA/ACCOMMODATIONS.md - Work style requirements
 Read $ACA_DATA/CORE.md - User context, tools
 
 # 2. CURRENT REALITY
-Read $ACA_DATA/projects/aops/[[ROADMAP]] - Maturity progression: Current stage, blockers
+Read $AOPS/[[ROADMAP]] - Maturity progression: Current stage, blockers
 
 # 3. STRATEGIC DIRECTION
-Read $ACA_DATA/projects/aops/[[VISION]] - End state
+Read $AOPS/[[VISION]] - End state
 
 # 4. PAST LEARNING (search BEFORE taking action)
 mcp__memory__retrieve_memory(query="[SEARCH KEYWORDS]")

@@ -97,29 +97,25 @@ Based on task type:
 
 ### Step 5: Select Guardrails
 
-**Match guardrails to prevent known failure patterns from [[HEURISTICS.md]]:**
+**Guardrails are defined in [[hooks/guardrails.md]]** - the authoritative source for all guardrail definitions.
 
-| Heuristic | Trigger | Guardrail |
-|-----------|---------|-----------|
-| H2 (Skill-First) | Framework/domain work | `require_skill: [skill name]` |
-| H3 (Verify Before Assert) | Any completion claim | `verify_before_complete: true` |
-| H4 (Explicit Instructions) | User gave specific requirements | `follow_literally: true` |
-| H5 (Error Messages Primary) | Debug task | `quote_errors_exactly: true` |
-| H19 (Questions Need Answers) | Question detected | `answer_only: true` |
-| H20 (Critical Thinking) | Complex/ambiguous | `challenge_assumptions: true` |
-| H27 (Debug Don't Redesign) | Debug task | `fix_within_design: true` |
-| H28 (Acceptance Testing) | Feature/implementation | `require_acceptance_test: true` |
-| H29 (TodoWrite vs Tasks) | Multi-step work | `use_todowrite: true` |
+Apply guardrails based on the Task Type → Guardrail Mapping table:
 
-**Always include:**
-- `verify_before_complete: true` (H3)
-- `use_todowrite: true` for anything multi-step
+| Task Type | Guardrails |
+|-----------|------------|
+| `framework` | verify_before_complete, require_skill:framework, plan_mode, critic_review, use_todowrite |
+| `cc_hook` | verify_before_complete, require_skill:plugin-dev:hook-development, plan_mode, use_todowrite |
+| `cc_mcp` | verify_before_complete, require_skill:plugin-dev:mcp-integration, plan_mode, use_todowrite |
+| `debug` | verify_before_complete, quote_errors_exactly, fix_within_design, use_todowrite |
+| `feature` | verify_before_complete, require_acceptance_test, use_todowrite |
+| `python` | verify_before_complete, require_skill:python-dev, require_acceptance_test, use_todowrite |
+| `question` | answer_only |
+| `persist` | require_skill:remember |
+| `analysis` | require_skill:analyst, use_todowrite |
+| `review` | verify_before_complete, use_todowrite |
+| `simple` | verify_before_complete |
 
-**Contextual guardrails:**
-- Debug work → `quote_errors_exactly`, `fix_within_design`
-- Framework work → `require_skill: framework`, `plan_mode: true`
-- Questions → `answer_only: true`
-- Feature work → `require_acceptance_test: true`
+**Always include** `verify_before_complete: true` unless task is a pure question.
 
 ### Step 6: Decompose into Steps
 

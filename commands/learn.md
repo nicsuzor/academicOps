@@ -33,12 +33,13 @@ What happened? Categorize:
 - **Ignored instruction** - Instruction exists but wasn't followed
 - **Poor behavior** - Agent did something wrong (spelling, verbosity, etc.)
 - **Missing capability** - No skill/hook handles this
+- **Guardrail failure** - Known failure pattern not prevented (see [[hooks/guardrails.md]])
 
 ### 2. Check for Prior Occurrences
 
-Search `$ACA_DATA/projects/aops/experiments/` for related experiments:
+Search `$AOPS/experiments/` for related experiments:
 ```bash
-grep -r "[keywords]" $ACA_DATA/projects/aops/experiments/
+grep -r "[keywords]" $AOPS/experiments/
 ```
 
 Search HEURISTICS.md for related heuristics.
@@ -57,6 +58,24 @@ The framework skill (via `@RULES.md`) defines available enforcement mechanisms. 
 
 **Principle**: Start soft, escalate only with evidence.
 
+#### Guardrail-Specific Interventions
+
+For guardrail failures, consult [[hooks/guardrails.md]] and choose:
+
+| Issue | Intervention | File to Edit |
+|-------|--------------|--------------|
+| Guardrail not applied to task type | Add to Task Type → Guardrail Mapping | `hooks/guardrails.md` |
+| Guardrail instruction unclear | Strengthen the Instruction text | `hooks/guardrails.md` |
+| New failure pattern needs guardrail | Add to Guardrail Registry | `hooks/guardrails.md` |
+| Guardrail triggers incorrectly | Adjust "When to apply" conditions | `hooks/guardrails.md` |
+| Need new heuristic first | Create heuristic via `/log` | `HEURISTICS.md` |
+
+**Guardrail escalation path:**
+1. Adjust instruction text (clearer wording)
+2. Add to more task types (broader application)
+3. Propose PreToolUse enforcement (hook blocks until condition met)
+4. Propose PostToolUse verification (hook checks after action)
+
 ### 4. Make the Minimal Change
 
 Keep changes brief (1-3 sentences for soft interventions). 
@@ -65,7 +84,7 @@ If you need to make a bigger change, **ABORT** and update/create a Spec instead.
 
 ### 5. Create/Update Experiment
 
-**Always** create or update an experiment in `$ACA_DATA/projects/aops/experiments/`:
+**Always** create or update an experiment in `$AOPS/experiments/`:
 
 ```markdown
 ---

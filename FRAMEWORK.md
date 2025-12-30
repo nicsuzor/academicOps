@@ -33,8 +33,8 @@ These are the **concrete absolute paths** for this session. Use them directly wi
 - User accommodations: [[ACCOMMODATIONS.md]] (in $ACA_DATA/)
 - User context: [[CORE.md]] (in $ACA_DATA/)
 - Project state: [[STATE.md]] (in $ACA_DATA/projects/aops/)
-- Vision: [[VISION.md]] (in $ACA_DATA/projects/aops/)
-- Roadmap: [[ROADMAP.md]] (in $ACA_DATA/projects/aops/)
+- Vision: [[VISION.md]] (in $AOPS/)
+- Roadmap: [[ROADMAP.md]] (in $AOPS/)
 
 ## Path Reference
 

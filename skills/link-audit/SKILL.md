@@ -157,7 +157,7 @@ After edits, re-run reference-map and find_orphans until violations are resolved
 
 ### 7. Document
 
-Update `$ACA_DATA/projects/aops/links.md` with:
+Update `$AOPS/links.md` with:
 - Rules established
 - Observations from audit
 - Deferred items

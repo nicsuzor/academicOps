@@ -4,7 +4,7 @@ Tests for session-insights skill outputs.
 Verifies the skill writes outputs to correct locations per SKILL.md specification:
 - Transcripts: $ACA_DATA/sessions/claude/YYYYMMDD-*-(full|abridged).md
 - Daily summaries: $ACA_DATA/sessions/YYYYMMDD-daily.md
-- Learning insights: $ACA_DATA/projects/aops/learning/LOG.md + thematic files
+- Learning insights: $AOPS/learning/LOG.md + thematic files
 """
 
 import os

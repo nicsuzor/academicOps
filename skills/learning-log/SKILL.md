@@ -60,7 +60,7 @@ gh issue create --repo nicsuzor/academicOps \
 
 ### Phase 3: Link to User Stories (if applicable)
 
-Read `$ACA_DATA/projects/aops/ROADMAP.md` for User Stories table.
+Read `$AOPS/ROADMAP.md` for User Stories table.
 
 If observation relates to a user story, add to Issue body:
 ```

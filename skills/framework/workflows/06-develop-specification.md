@@ -19,7 +19,7 @@ description: Process for collaboratively developing task specifications before i
    - Confirm this is actual pain point worth automating
 
 1. **Check ROADMAP alignment**
-   - Read `$ACA_DATA/projects/aops/ROADMAP.md`
+   - Read `$AOPS/ROADMAP.md`
    - Verify automation fits current stage (likely Stage 2: Scripted Tasks)
    - Confirm prerequisites/dependencies exist from earlier stages
    - HALT if trying to skip stages
@@ -89,7 +89,7 @@ description: Process for collaboratively developing task specifications before i
     - Iterate on any unclear or incomplete sections
 
 12. **Finalize specification**
-    - Move completed spec to `$ACA_DATA/projects/aops/specs/` (AUTHORITATIVE location)
+    - Move completed spec to `$AOPS/specs/` (AUTHORITATIVE location)
     - Specification is now the contract for implementation
     - Ready to proceed with workflow 01 (Design New Component)
 

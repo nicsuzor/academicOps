@@ -37,7 +37,7 @@ For each skill in `$AOPS/skills/*/SKILL.md`:
 
 For each significant file in `$AOPS/` (skip skills internals):
 
-1. **Search specs**: Grep `$ACA_DATA/projects/aops/specs/` for references to this file
+1. **Search specs**: Grep `$AOPS/specs/` for references to this file
 2. **Check core docs**: Is it mentioned in JIT-INJECTION.md, README.md, INDEX.md?
 3. **Classify**:
    - **Justified**: Spec explicitly mandates this file

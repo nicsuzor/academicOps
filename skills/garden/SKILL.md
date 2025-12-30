@@ -30,7 +30,7 @@ Health check. Count orphans, broken links, stale content, sparse notes, duplicat
 
 **Orphan Implementation Doc Detection**:
 Files in `experiments/` that describe features with existing specs should be synthesized, not left as separate files. Scan identifies these:
-1. List files in `$ACA_DATA/projects/aops/experiments/*.md`
+1. List files in `$AOPS/experiments/*.md`
 2. For each, check title/content against `specs/` filenames and content
 3. If match found → report as "orphan implementation doc - synthesize into [spec]"
 4. Output: "Found N implementation docs that should be merged into specs"

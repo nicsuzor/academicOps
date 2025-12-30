@@ -267,7 +267,7 @@ Feature development follows eight phases:
 
 **Actions**:
 
-1. **Find or create spec**: Check `$ACA_DATA/projects/aops/specs/` for existing spec
+1. **Find or create spec**: Check `$AOPS/specs/` for existing spec
    - If exists: will update it
    - If not: create from user story (Phase 1) + implementation decisions
 2. **Merge implementation content**: Design decisions, key functions, UX patterns

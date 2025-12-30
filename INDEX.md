@@ -225,7 +225,7 @@ $AOPS/
 | `skills/supervisor/workflows/` | tdd, batch-review, skill-audit | `/supervise {name}` |
 | `skills/framework/workflows/` | 01-design, 02-debug, 03-experiment, 04-bloat, 06-spec | `Skill("framework")` |
 
-**Decision pending**: Workflow selection criteria - see `$ACA_DATA/projects/aops/specs/workflow-selection.md`
+**Decision pending**: Workflow selection criteria - see `$AOPS/specs/workflow-selection.md`
 
 ### Skill → Skill Dependencies
 

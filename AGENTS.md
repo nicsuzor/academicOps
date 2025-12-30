@@ -45,12 +45,12 @@ We are starting again in this aOps repo. This time, the watchword is MINIMAL. We
 
 Why this matters: Agents have no persistent memory. Every session starts from zero. VISION.md and ROADMAP.md are the ONLY reliable source of truth about the framework's current state. If they're stale, agents will waste time rediscovering what's already known, repeat completed work, or miss critical context.
 
-**VISION.md** (`$ACA_DATA/projects/aops/VISION.md`):
+**VISION.md** (`$AOPS/VISION.md`):
 - Purpose: End state. What we're building and why.
 - Update: When fundamental direction changes (rare).
 - Keep out: Implementation details, current status.
 
-**ROADMAP.md** (`$ACA_DATA/projects/aops/ROADMAP.md`):
+**ROADMAP.md** (`$AOPS/ROADMAP.md`):
 - Purpose: Current status. What's done, in progress, blocked.
 - Update: After completing significant work.
 - Keep out: Detailed how-to, specs, future speculation.
@@ -80,7 +80,7 @@ This is the academicOps framework repository containing generic, reusable automa
    - ACCOMMODATIONS.md (work style)
    - CORE.md (user context, tools)
    - STYLE.md, STYLE-QUICK.md (writing style)
-   - projects/aops/VISION.md, ROADMAP.md (your vision/roadmap)
+   - $AOPS/VISION.md, ROADMAP.md (framework vision/roadmap)
 
 2. Each project gets its own `CLAUDE.md` with project-specific instructions
 

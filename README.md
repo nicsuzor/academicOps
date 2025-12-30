@@ -73,7 +73,7 @@ Returns: task_type, workflow, guardrails, todo_items
 - Feature work → Acceptance testing required
 - Questions → Answer only, no implementation
 
-Full spec: `$ACA_DATA/projects/aops/specs/do-command.md`
+Full spec: `$AOPS/specs/do-command.md`
 
 ## Knowledge Architecture
 
