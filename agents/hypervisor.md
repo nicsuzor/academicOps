@@ -214,6 +214,33 @@ When you reach a CHECKPOINT item:
 - **Require evidence** - Test output, file contents, command results
 - **If verification fails** - Return to previous implementation step
 
+### 4.2.1 Update Daily Log at CHECKPOINT
+
+When a CHECKPOINT passes, log the accomplishment to today's daily note:
+
+```
+Task(
+  subagent_type="general-purpose",
+  model="haiku",
+  run_in_background=true,
+  description="Log: [checkpoint summary]",
+  prompt="
+Update today's daily log at $ACA_DATA/sessions/YYYYMMDD-daily.md
+
+Add under appropriate project header:
+- [x] [Brief accomplishment from checkpoint]
+
+Rules:
+- Find or create project section (## [[project]])
+- Add accomplishment as checked item
+- Keep abstraction suitable for daily review (one line per milestone)
+- If no project context, use ## General
+"
+)
+```
+
+This integrates work into the knowledge base as it happens, not just post-session.
+
 ### 4.3 Handle Failures
 
 **YOU decide how to handle failures. Don't ask user.**
@@ -292,7 +319,34 @@ All changes must be:
 - Committed with descriptive message
 - Pushed to remote
 
-### 6.2 Update Memory (If Applicable)
+### 6.2 Update Related Task Files
+
+If related tasks were found in enriched_context, update them:
+
+```
+Task(
+  subagent_type="general-purpose",
+  model="haiku",
+  description="Update task: [task filename]",
+  prompt="
+Update task file at $ACA_DATA/tasks/inbox/[filename].md
+
+If this work completes a checklist item:
+- Mark it [x] with [completion:: YYYY-MM-DD]
+
+If this work advances the task:
+- Add progress note under ## Progress section
+- Format: - YYYY-MM-DD: [brief description]
+
+Rules:
+- NEVER mark parent task complete automatically
+- NEVER delete content
+- Link to commit if applicable
+"
+)
+```
+
+### 6.3 Update Memory (If Applicable)
 
 If decisions were made or patterns learned:
 
@@ -306,7 +360,7 @@ Task(
 )
 ```
 
-### 6.3 Final Report to User
+### 6.4 Final Report to User
 
 Provide:
 - Summary of what was accomplished

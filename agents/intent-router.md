@@ -39,6 +39,9 @@ Grep(pattern="[key term]", output_mode="files_with_matches", head_limit=10)
 
 # Glob - if fragment implies specific files
 Glob(pattern="**/*[pattern]*")
+
+# Task inbox search - find related existing tasks
+mcp__memory__retrieve_memory(query="tasks [key concepts from fragment]", limit=3)
 ```
 
 **What to search for:**
@@ -46,6 +49,7 @@ Glob(pattern="**/*[pattern]*")
 - File names or paths mentioned
 - Technical terms that might match code
 - Project names
+- **Related tasks** in the inbox (semantic match, not keyword)
 
 ### Step 2: Read Relevant Files
 
@@ -169,7 +173,11 @@ guardrails:
   require_skill: [skill name or null]
 enriched_context: |
   [Summarize what you found from memory and codebase searches.
-   Include relevant file paths, key context, and current state.]
+   Include relevant file paths, key context, and current state.
+
+   Related tasks found:
+   - [filename.md]: [task title] ([project])
+   - (or "No related tasks found")]
 todo_items:
   - "[Step 1]"
   - "[Step 2]"
