@@ -66,38 +66,17 @@ Read(file_path="[most relevant file]")
 
 ### Step 3: Classify Task Type
 
-Match the fragment against these patterns:
+**Read `$AOPS/config/workflows.md`** for task classification.
 
-| Pattern | Type |
-|---------|------|
-| skills/, hooks/, AXIOMS, HEURISTICS, /meta, framework, $AOPS | `framework` |
-| create hook, PreToolUse, PostToolUse, Stop, SessionStart | `cc_hook` |
-| MCP server, .mcp.json, MCP tool | `cc_mcp` |
-| error, bug, broken, "not working", debug, fix | `debug` |
-| how, what, where, why, explain, "?", show me | `question` |
-| implement, build, create, add, refactor, update | `feature` |
-| save, remember, document, persist, note | `persist` |
-| dbt, Streamlit, data, statistics, analysis | `analysis` |
-| pytest, TDD, Python, test | `python` |
-| review, check, audit, validate | `review` |
-| (simple, single action, quick) | `simple` |
+That config file defines task types with prose descriptions of when each applies. Match the user's fragment against those descriptions to classify the task.
 
 ### Step 4: Select Workflow
 
-Based on task type:
+**Use `$AOPS/config/workflows.md`** for workflow selection.
 
-| Type | Workflow |
-|------|----------|
-| `framework` | Plan Mode required, critic review |
-| `cc_hook` | Plan Mode required |
-| `feature` | TDD workflow |
-| `python` | TDD workflow |
-| `debug` | Verify-first checklist |
-| `question` | Answer only (no implementation) |
-| `persist` | Skill("remember") |
-| `analysis` | Skill("analyst") |
-| `review` | Systematic checklist |
-| `simple` | Direct execution |
+The config maps each task type to:
+- **Workflow**: plan-mode, tdd, verify-first, answer-only, direct, checklist
+- **Skill**: which planning skill to invoke (if any)
 
 ### Step 5: Select Guardrails
 

@@ -103,19 +103,16 @@ Assemble what you learned into a context block for planning:
 
 ---
 
-## PHASE 2: CLASSIFY AND SELECT PLANNING SKILL
+## PHASE 2: CLASSIFY AND SELECT WORKFLOW
 
-**Identify task type and select appropriate planning skill.**
+**Read `$AOPS/config/workflows.md` for task classification and workflow selection.**
 
-| Task Type | Indicators | Planning Skill |
-|-----------|------------|----------------|
-| Framework changes | Modifies `$AOPS/`, hooks, skills, agents | `framework` |
-| Python code | `.py` files, tests, typing | `python-dev` |
-| Feature development | New functionality, user-facing | `feature-dev` |
-| Debug/fix | Error messages, "fix", "broken" | (default workflow) |
-| Research/investigation | "investigate", "understand", "explore" | (default workflow) |
+That config file defines:
+- Task types with prose descriptions of when each applies
+- Which workflow to use for each type (plan-mode, tdd, verify-first, etc.)
+- Which planning skill to invoke (framework, python-dev, feature-dev, etc.)
 
-For now, use a general planning approach. Specialist planning skills can be added later.
+Classify the task against the types in config, then apply the corresponding workflow and skill.
 
 ---
 
