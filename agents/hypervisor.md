@@ -105,7 +105,7 @@ Assemble what you learned into a context block for planning:
 
 ## PHASE 2: CLASSIFY AND SELECT WORKFLOW
 
-**Read `$AOPS/config/workflows.md` for task classification and workflow selection.**
+**Read `$AOPS/WORKFLOWS.md` for task classification and workflow selection.**
 
 That config file defines:
 - Task types with prose descriptions of when each applies

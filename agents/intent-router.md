@@ -66,13 +66,13 @@ Read(file_path="[most relevant file]")
 
 ### Step 3: Classify Task Type
 
-**Read `$AOPS/config/workflows.md`** for task classification.
+**Read `$AOPS/WORKFLOWS.md`** for task classification.
 
 That config file defines task types with prose descriptions of when each applies. Match the user's fragment against those descriptions to classify the task.
 
 ### Step 4: Select Workflow
 
-**Use `$AOPS/config/workflows.md`** for workflow selection.
+**Use `$AOPS/WORKFLOWS.md`** for workflow selection.
 
 The config maps each task type to:
 - **Workflow**: plan-mode, tdd, verify-first, answer-only, direct, checklist
