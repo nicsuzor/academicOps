@@ -715,6 +715,28 @@ When `/qa` is invoked:
 
 ---
 
+## H31: No LLM Calls in Hooks
+
+**Statement**: Hooks must never call LLM directly. Spawn a background subagent for any analysis requiring reasoning.
+
+**Rationale**: Hooks run synchronously in the tool execution path. LLM calls add 5-30 seconds of latency per invocation, making the agent feel sluggish. Background subagents decouple analysis from the critical path while still enabling sophisticated reasoning when needed.
+
+**Evidence**:
+- 2025-12-30: User correction during Ultra Vires Custodiet design - "never call llm in hook... spawn a background subagent"
+
+**Confidence**: High (foundational principle)
+
+**Implements**: [[AXIOMS]] #7 (Fail-Fast) - hooks should be fast and deterministic
+
+**Application**:
+- ❌ Wrong: Hook contains `Task(subagent_type="critic", ...)` inline
+- ✅ Right: Hook spawns `Task(..., run_in_background=true)` for analysis
+- ✅ Right: Hook does fast pattern matching, spawns subagent only for complex cases
+
+**Corollary**: Hooks CAN do fast pattern matching (regex, string checks) synchronously. The prohibition is on LLM reasoning, not all computation.
+
+---
+
 ## Revision Protocol
 
 To adjust heuristics based on new evidence:

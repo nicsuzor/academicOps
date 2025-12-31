@@ -45,6 +45,7 @@ HOOK_REGISTRY: dict[str, list[dict[str, Any]]] = {
     "PostToolUse": [
         {"script": "unified_logger.py"},
         {"script": "autocommit_state.py"},
+        {"script": "fail_fast_watchdog.py"},
     ],
     "PostToolUse:TodoWrite": [
         {"script": "request_scribe.py"},

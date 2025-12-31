@@ -34,9 +34,23 @@ The framework uses a memory server that indexes `$ACA_DATA/`. When you write mar
 | Session notes | `$ACA_DATA/sessions/` |
 | Tasks | Delegate to [[tasks]] skill |
 
-**PROHIBITED**: Creating files in `learning/`, `bugs/`, `experiments/`, or `decisions/`. Per [[AXIOMS]] #28 and [[H26]], these are **episodic content** and MUST go to **GitHub Issues** (nicsuzor/academicOps repo). Use `/log` skill instead.
+### PROHIBITED Content
 
-**DO NOT create arbitrary directories** (e.g., `tech/`, `dev/`, `tools/`). Project-related notes go in `projects/<project-name>/`.
+**NEVER create these in $ACA_DATA** - they belong elsewhere:
+
+| Content Type | Where It Belongs | Why |
+|--------------|------------------|-----|
+| Specs/specifications | `$AOPS/specs/` | Framework code, version controlled |
+| Skills | `$AOPS/skills/` | Framework code |
+| Hooks | `$AOPS/hooks/` | Framework code |
+| Episodic content | GitHub Issues | Per [[AXIOMS]] #28, [[H26]] |
+| `learning/`, `bugs/`, `experiments/`, `decisions/` | GitHub Issues | Episodic, not current state |
+
+**When remembering framework decisions** (specs, heuristics, design choices):
+- **DO**: Store to memory server only (for semantic retrieval)
+- **DO NOT**: Create markdown files in $ACA_DATA - the authoritative source is in $AOPS
+
+**DO NOT create arbitrary directories** (e.g., `tech/`, `dev/`, `tools/`, `specs/`). Project-related notes go in `projects/<project-name>/`.
 
 ## Workflow
 
