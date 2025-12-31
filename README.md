@@ -145,7 +145,7 @@ Full spec: `$AOPS/specs/do-command.md`
 | remember | Persist knowledge to markdown + memory server |
 | review-training | Extract training pairs from matched documents |
 | session-insights | Extract accomplishments + learnings from sessions |
-| supervisor | Generic multi-agent workflow orchestrator |
+| hypervisor | Multi-agent workflow orchestrator (brain of academicOps) |
 | tasks | Task lifecycle management |
 | training-set-builder | Build LLM training datasets from documents |
 | transcript | Session JSONL → markdown |

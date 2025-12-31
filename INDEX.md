@@ -121,7 +121,7 @@ $AOPS/
 │   ├── osb-drafting/            # IRAC analysis for OSB cases
 │   ├── review-training/         # Training data from reviews
 │   ├── session-insights/        # Accomplishments + learning extraction
-│   ├── supervisor/              # Multi-agent workflow orchestration
+│   ├── hypervisor/              # Multi-agent workflow orchestration (brain)
 │   └── training-set-builder/    # Training data extraction
 │
 ├── hooks/                       # Session lifecycle (Python)
@@ -205,7 +205,7 @@ $AOPS/
 | /do | hypervisor agent (full pipeline) |
 | /q | tasks skill (delayed /do) |
 | /meta | framework, python-dev skills |
-| /ttd | supervisor (TDD workflow) |
+| /ttd | hypervisor (TDD workflow) |
 | /log | learning-log skill |
 | /transcript | transcript skill |
 | /remember | remember skill |
@@ -214,7 +214,7 @@ $AOPS/
 
 | Location | Workflows | Loaded By |
 |----------|-----------|-----------|
-| `skills/supervisor/workflows/` | tdd, batch-review | `/ttd`, hypervisor |
+| `skills/hypervisor/workflows/` | tdd, batch-review | `/ttd`, hypervisor |
 | `skills/framework/workflows/` | 01-design, 02-debug, 03-experiment, 04-bloat, 06-spec | `Skill("framework")` |
 
 ### Skill → Skill Dependencies
