@@ -67,7 +67,7 @@ When any agent works on framework-related issues (bugs, features, changes), it s
 
 1. **Accuracy**: Agent correctly identifies component type (command vs skill vs hook) when discussing framework issues
 2. **Location**: Agent knows correct paths for each component type
-3. **Relationships**: Agent understands how components connect (e.g., `/do` command enriches prompts via intent-router agent)
+3. **Relationships**: Agent understands how components connect (e.g., `/do` command enriches prompts via prompt hydration)
 4. **No false claims**: Agent doesn't make up relationships or components that don't exist
 
 **Acceptance**:

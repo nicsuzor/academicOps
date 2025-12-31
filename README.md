@@ -167,9 +167,9 @@ Custom agents spawned via `Task(subagent_type="name")`:
 | Agent | Purpose |
 |-------|---------|
 | critic | Second-opinion review of plans/conclusions |
-| intent-router | Context gathering, prompt hydration, workflow + guardrail selection |
 | effectual-planner | Strategic planning under uncertainty (NOT implementation) |
 | planner | Implementation planning with memory context + critic review |
+| prompt-hydrator | Context gathering + workflow selection (invoked on every prompt) |
 
 Built-in Claude Code agents (also available):
 - `Explore` - Fast codebase exploration

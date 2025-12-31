@@ -1,13 +1,13 @@
 ---
 name: email
-description: Extract action items from emails and create tasks automatically with context-aware categorization
+description: Create "ready for action" tasks from emails - with summaries, downloaded documents, and clear response requirements
 allowed-tools: Skill
 permalink: commands/email
 ---
 
 Use the Skill tool to invoke the `[[skills/tasks/SKILL.md|tasks]]` skill: `Skill(skill="tasks")` - then follow the email-task-capture workflow documented within.
 
-**Workflow**: Extract action items from recent emails, present important information, and create properly structured tasks.
+**Workflow**: Extract action items from emails and create fully-prepared tasks ready to work on immediately.
 
 **What you'll do**:
 
@@ -16,28 +16,30 @@ Use the Skill tool to invoke the `[[skills/tasks/SKILL.md|tasks]]` skill: `Skill
 3. Classify emails: Actionable → Task | Important FYI → Extract info | Safe to ignore → Archive candidate
 4. **Read Important FYI email bodies** and extract key information (dates, amounts, outcomes)
 5. Query [[skills/remember/SKILL.md|remember]] for context to categorize actions
-6. Create tasks via task scripts with full email metadata linking
+6. **Create "ready for action" tasks**:
+   - Summarize what you need to respond to (not just raw email)
+   - Download attachments and linked documents (Google Docs, etc.)
+   - Convert documents to markdown for repo storage
+   - Store in appropriate location (reviews → `$ACA_DATA/reviews/{sender}/`)
+   - Create structured task with summary, response needed, document links, original email
 7. **Present all important information to user** (not just subject lines - actual content)
 8. Offer bulk archive for safe-to-ignore emails
 
-**Key behavior: Present before archive**
+**Task output format**:
 
-Before archiving anything, OUTPUT the actual information from Important FYI emails:
-- Grant outcomes (amounts, dates, project details)
-- Conference acceptances (dates, session info)
-- OSB decisions (summaries, links)
-- Significant updates affecting user's work
+Tasks created include:
+- **Context**: Brief who/what/when
+- **Summary: What You Need to Respond To**: Primary question + secondary items
+- **Response Needed**: Concrete action checklist
+- **Associated Documents**: Links to downloaded/converted files
+- **Original Email**: Full text preserved at bottom
 
-User sees this information directly - no confirmation clicks needed.
+**Document handling**:
 
-**Bulk archive safe emails**
-
-After presenting important info, offer to clean up obvious non-actionable emails:
-
-1. Identify safe-to-archive candidates: newsletters, travel alerts, auto-replies, quarantine digests
-2. Present using `AskUserQuestion` with `multiSelect: true`
-3. Frame as "mark any to KEEP" (default = archive)
-4. Archive all unmarked emails via `messages_move` to Archive folder
+| Classification | Storage Location |
+|----------------|------------------|
+| Review/Supervision | `$ACA_DATA/reviews/{sender}/` |
+| Other | `$ACA_DATA/task-documents/{task-id}/` |
 
 **Example triggers**:
 
@@ -48,9 +50,3 @@ After presenting important info, offer to clean up obvious non-actionable emails
 - "clean up my inbox"
 
 **Backend**: Uses task_add.py scripts (gracefully degrades if MCP unavailable)
-
-**Outputs**:
-- Important information extracted from FYI emails (presented to user)
-- Already-responded emails detected (shown but no task created)
-- Tasks created with categorization
-- Archive candidates for user confirmation

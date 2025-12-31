@@ -1,9 +1,9 @@
 ---
 name: email-task-capture
-description: Extract action items from emails and create tasks automatically with context-aware categorization
+description: Extract action items from emails and create "ready for action" tasks with summaries, downloaded documents, and clear response requirements
 permalink: skills/tasks/workflows/email-capture
-tags: [workflow, email, task-capture, automation, memory]
-version: 1.0.0
+tags: [workflow, email, task-capture, automation, memory, documents]
+version: 2.0.0
 phase: 2
 backend: scripts
 ---
@@ -290,7 +290,118 @@ Determine priority (P0-P3) from email signals:
 - Travel confirmations
 - Newsletter follow-ups
 
-### Step 6: Create Tasks via Backend
+### Step 6: Create "Ready for Action" Tasks
+
+Tasks should be ready to work on immediately - not just raw email captures. This step creates fully-prepared tasks with summaries, downloaded documents, and clear action items.
+
+#### 6a. Summarize the Email
+
+Read the full email and generate a structured summary:
+
+1. **What the sender is asking for** (primary question/request)
+2. **Secondary items** to address
+3. **Concrete response actions** needed
+
+This is natural LLM capability - read, understand, summarize.
+
+#### 6b. Detect Resources
+
+Identify documents that should be downloaded:
+
+**Attachments**: Check `has_attachments` field from email response.
+
+**Linked documents**: Scan email body for document URLs:
+- `docs.google.com/document/*`
+- `drive.google.com/*`
+- `dropbox.com/*`
+- `sharepoint.com/*`
+- Direct file links (`.pdf`, `.docx`, `.xlsx`)
+
+**Filter out noise**: Ignore signature links, unsubscribe links, tracking pixels, social media.
+
+#### 6c. Download Resources
+
+Use appropriate tool for each resource type:
+
+**Email attachments**:
+```
+mcp__outlook__messages_download_attachments(
+  entry_id="...",
+  download_dir="$ACA_DATA/reviews/{sender}/"  # or task-documents/{task-id}/
+)
+```
+
+**Google Docs/Drive**: Use rclone, Playwright, or direct download as appropriate.
+
+**Other links**: Agent chooses appropriate method.
+
+#### 6d. Convert to Markdown
+
+After download, convert documents for repo storage:
+
+- `.docx` → `pandoc` to markdown
+- `.pdf` → keep as-is (or extract text if needed)
+- Already markdown → no conversion
+
+```bash
+pandoc "document.docx" -o "document.md" --wrap=none
+```
+
+#### 6e. Organize Storage
+
+Route documents based on task classification:
+
+| Classification | Storage Location | Example |
+|----------------|------------------|---------|
+| Review | `$ACA_DATA/reviews/{sender}/` | `reviews/yara/Dissertation draft.md` |
+| Supervision | `$ACA_DATA/reviews/{student}/` | `reviews/kashyap/Chapter1.md` |
+| Other | `$ACA_DATA/task-documents/{task-id}/` | `task-documents/20251231-contract-review/contract.md` |
+
+Create directories as needed. Use sender name (lowercase, sanitized) for reviews.
+
+#### 6f. Create Task with Structured Body
+
+**Task body template**:
+
+```markdown
+# Task Title
+
+## Context
+
+Brief context: who sent this, what it's about, when received.
+
+**Google Doc:** [link if applicable]
+**Email:** sender@email.com
+
+## Summary: What You Need to Respond To
+
+### Primary Question
+[Main thing they're asking - extracted from email]
+
+### Secondary Items to Address
+1. [Other things mentioned]
+2. [Additional questions]
+
+## Response Needed
+- [ ] First action item
+- [ ] Second action item
+- [ ] Optional: third item
+
+## Associated Documents
+- `reviews/yara/Dissertation draft - Yara.md` - Chapter 1 draft for review
+
+## Original Email
+
+**From:** Sender Name <email@example.com>
+**Subject:** Original subject line
+**Date:** Thursday, 18 December 2025 at 12:28:23
+
+---
+
+[Full email text preserved here]
+```
+
+#### 6g. Backend and Script Usage
 
 **Backend selection logic**:
 
@@ -302,14 +413,10 @@ Determine priority (P0-P3) from email signals:
 
 2. Scripts backend (Phase 1-2, always available):
    - Use: task_add.py script via Bash tool
-   - Format: Same properly formatted markdown as MCP
-
-3. Format is backend-agnostic - both create identical task files
+   - Pass structured body via --body-from-file or --body
 ```
 
-**Task creation parameters**:
-
-Scripts backend (`task_add.py`):
+**Task creation parameters** (scripts backend):
 
 ```
 Required:
@@ -320,56 +427,21 @@ Optional:
 - --priority: P0, P1, P2, or P3 (inferred from signals)
 - --project: Project slug (from memory match)
 - --classification: "Action", "Review", "Admin", etc.
-- --due: Deadline in ISO8601 format (e.g., 2025-11-15T17:00:00Z)
-- --tags: Comma-separated tags (no spaces)
-- --body: Full task description including email metadata
+- --due: Deadline in ISO8601 format
+- --tags: Comma-separated tags
+- --body or --body-from-file: Full structured task body
 ```
 
-**Duplicate prevention**: If `--source-email-id` matches any existing task (inbox OR archived), creation is blocked. This is the primary dedup mechanism.
+**Duplicate prevention**: If `--source-email-id` matches any existing task (inbox OR archived), creation is blocked.
 
-**Scripts backend example**:
+#### Failure Handling
 
-```bash
-# Run from repo root with uv run
-uv run python skills/tasks/scripts/task_add.py \
-  --title "OSB Vote: Content removal case #2024-123" \
-  --source-email-id "AAMkADQ3ZmY..." \
-  --priority P0 \
-  --project "oversight-board" \
-  --classification "Action" \
-  --due "2025-11-15T17:00:00Z" \
-  --tags "osb,vote,urgent" \
-  --body "Email from: OSB Secretariat <secretariat@oversightboard.com>
-Received: 2025-11-10T09:23:00Z
-Subject: [ACTION REQUIRED] OSB Cycle 38 Vote
+**Graceful degradation** - if any step fails:
+- Note the failure in task body: "Could not download: [resource] - [reason]"
+- Continue with available content
+- Never abort the whole task creation
 
-Vote required on content removal case #2024-123 (hate speech appeal).
-Review case materials: https://osb.link/cases/2024-123
-Deadline: Friday Nov 15, 5pm GMT"
-```
-
-**Important syntax notes**:
-
-- Priority: Use `P0`, `P1`, `P2`, `P3` format (not `0`, `1`, `2`, `3`)
-- Body: Single string argument (no heredoc needed for simple content)
-- Tags: Comma-separated without spaces
-- Email metadata: Include in body text (entry_id, subject, from, received)
-
-**Tasks MCP backend example**:
-
-```
-Tool: create_task
-Parameters:
-{
-  "title": "OSB Vote: Content removal case #2024-123",
-  "priority": 0,
-  "project": "oversight-board",
-  "classification": "Action",
-  "due": "2025-11-15T17:00:00Z",
-  "tags": ["osb", "vote", "urgent"],
-  "body": "Email from: OSB Secretariat...\n[same body as above]"
-}
-```
+If document download fails, still create the task with links to the original resources.
 
 ### Step 7: Duplicate Prevention (Automatic)
 
@@ -688,23 +760,40 @@ source_date: 2025-11-10T09:23:00Z
 
 ## Context
 
-Email from OSB Secretariat requesting vote on hate speech content removal appeal.
-
-Case materials available: https://osb.link/cases/2024-123
+OSB Secretariat requesting vote on hate speech content removal appeal.
 Deadline: Friday, November 15, 2025, 5:00 PM GMT
 
-Categorization confidence: HIGH (95/100) - Auto-applied based on:
-- Project keyword match (oversight-board)
-- Known sender relationship (OSB operations)
-- Explicit deadline and urgency markers
+## Summary: What You Need to Respond To
 
-## Source Email
+### Primary Question
+Cast vote on Case #2024-123 (hate speech appeal) - approve or reject content removal.
 
-From: OSB Secretariat <secretariat@oversightboard.com>
-Received: November 10, 2025 at 9:23 AM
-Entry ID: outlook://entry/AAMkADQ3ZmY...
+### Secondary Items
+- Review case materials before voting
 
-[Full email body preserved for reference]
+## Response Needed
+- [ ] Review case materials at https://osb.link/cases/2024-123
+- [ ] Cast vote before deadline
+
+## Associated Documents
+- Case materials: https://osb.link/cases/2024-123
+
+## Original Email
+
+**From:** OSB Secretariat <secretariat@oversightboard.com>
+**Subject:** [ACTION REQUIRED] OSB Cycle 38 Vote - Case #2024-123
+**Date:** November 10, 2025 at 9:23 AM
+
+---
+
+Dear Board Member,
+
+Please cast your vote on Case #2024-123 (hate speech appeal).
+Case materials: https://osb.link/cases/2024-123
+Deadline: Friday, November 15, 2025, 5:00 PM GMT
+
+Thank you,
+OSB Secretariat
 ```
 
 ### Example 2: Medium-Confidence Review Request
@@ -736,6 +825,10 @@ Pattern: Review requests typically P2 unless deadline urgent
 Confidence: 65/100 (MEDIUM)
 ```
 
+**Documents downloaded**:
+- Email attachment → `$ACA_DATA/reviews/jane-smith/draft-paper.pdf`
+- Converted → `$ACA_DATA/reviews/jane-smith/draft-paper.md`
+
 **Task created**:
 
 ```yaml
@@ -756,26 +849,45 @@ source_date: 2025-11-10T14:15:00Z
 
 ## Context
 
-Review request for draft paper on AI governance frameworks, focusing on
-platform accountability section.
-
+Review request from Jane Smith (university.edu) for draft paper on AI governance frameworks.
 Requested deadline: End of November (flexible)
 
-⚠️ Categorization confidence: MEDIUM (65/100) - Please review and adjust:
-- Uncertain project match (could be ai-governance or research-collaboration)
-- Unknown sender but academic context
-- Suggested deadline inferred from "end of month"
+**Email:** j.smith@university.edu
 
-**Action needed**: Verify project categorization and priority
+## Summary: What You Need to Respond To
 
-## Source Email
+### Primary Question
+Provide feedback on draft paper, particularly the section on platform accountability.
 
-From: Jane Smith <j.smith@university.edu>
-Received: November 10, 2025 at 2:15 PM
-Entry ID: outlook://entry/AAMkAGF4ZjY...
-Attachment: draft-paper.pdf
+### Secondary Items
+- General comments on the paper welcome
+- No strict deadline ("no rush")
 
-[Full email body preserved for reference]
+## Response Needed
+- [ ] Read platform accountability section
+- [ ] Provide substantive feedback
+- [ ] Send comments by end of month
+
+## Associated Documents
+- `reviews/jane-smith/draft-paper.md` - Draft paper (converted from PDF)
+- `reviews/jane-smith/draft-paper.pdf` - Original attachment
+
+## Original Email
+
+**From:** Jane Smith <j.smith@university.edu>
+**Subject:** Feedback on draft paper - AI governance
+**Date:** November 10, 2025 at 2:15 PM
+
+---
+
+Hi Nic,
+
+I'm working on a paper about AI governance frameworks and would appreciate
+your feedback on the attached draft, particularly the section on platform
+accountability. No rush - happy to receive comments by end of month.
+
+Best,
+Jane
 ```
 
 ### Example 3: Low-Confidence / Ambiguous
@@ -926,6 +1038,7 @@ TASK_CAPTURE_AUTO_CREATE=false
 
 **Version History**:
 
+- 2.0.0 (2025-12-31): "Ready for Action" tasks - summarize email, download attachments, fetch linked docs, convert to markdown, structured task body
 - 1.1.2 (2025-12-23): Fixed Gmail archive to use `messages_archive` tool (not `messages_move`)
 - 1.1.1 (2025-12-23): Added account-specific archive folder configuration (Gmail uses folder ID `211`)
 - 1.1.0 (2025-12-23): Added sent folder check, FYI classification, present-before-archive requirement

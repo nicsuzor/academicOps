@@ -49,7 +49,7 @@ Multi-layered enforcement - no single mechanism, multiple reinforcement points.
 |----------|------------------|----------|-------|
 | [[critic]] agent | Defines it | N/A | - |
 | [[HEURISTICS]] H14 | Mandatory review | Medium | Heuristics aren't binding |
-| [[intent-router]] | Rule table + examples | High | Covers framework + planning tasks |
+| [[specs/prompt-hydration]] | Task classification + guardrails | High | Covers framework + planning tasks |
 | [[meta\|/meta]] command | MANDATORY section | High | Primary entry for framework work |
 | [[hypervisor]] agent | Phase 0 + example | High | Multi-step orchestration |
 | [[supervise\|/supervise]] command | Phase 0 mention | Medium | Workflow orchestration |
@@ -64,13 +64,13 @@ Multi-layered enforcement - no single mechanism, multiple reinforcement points.
 
 ### Where Critic Is Already Strong
 
-1. **Intent-router** catches planning tasks and injects critic reminder
+1. **Prompt hydration** catches planning tasks and injects critic reminder
 2. **/meta** has mandatory critic section for framework work
 3. **Hypervisor** includes critic in Phase 0 for multi-step work
 
 ### Where Enforcement Could Be Strengthened
 
-1. **Claude Code's Plan agent** - the built-in implementation planner doesn't have framework-specific instructions. When agents enter Plan Mode via `EnterPlanMode()`, critic reminder comes from intent-router, not from Plan Mode itself.
+1. **Claude Code's Plan agent** - the built-in implementation planner doesn't have framework-specific instructions. When agents enter Plan Mode via `EnterPlanMode()`, critic reminder comes from prompt hydration, not from Plan Mode itself.
 
 2. **HEURISTICS H14** - worded as "should", could strengthen to MUST with clearer triggers:
    - Before ExitPlanMode

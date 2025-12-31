@@ -38,7 +38,6 @@ description: Process for adding new framework capability (hook, skill, script, c
 
 6. **Update authoritative sources**
    - Invoke `Skill(skill="audit")` to verify structure, justification, and update index files
-   - Update [[hooks/prompts/intent-router.md]] if adding skill, command, or agent
    - Verify no documentation conflicts introduced
 
    **Or manual congruence check** (if skill unavailable):
@@ -53,7 +52,6 @@ description: Process for adding new framework capability (hook, skill, script, c
    **Verify all match**:
    - [[INDEX.md]] file tree (detailed authoritative structure)
    - [[README.md]] overview (brief summary, consistent with INDEX.md)
-   - [[hooks/prompts/intent-router.md]] (intent router flowchart + capabilities)
    - Actual filesystem (ground truth)
 
 7. **Commit only if all tests pass**

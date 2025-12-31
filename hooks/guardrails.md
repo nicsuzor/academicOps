@@ -2,7 +2,7 @@
 name: guardrails
 title: Guardrail Definitions
 type: reference
-description: Modular guardrail definitions for preventing known failure patterns. Referenced by intent-router, /learn, and future enforcement hooks.
+description: Modular guardrail definitions for preventing known failure patterns. Referenced by prompt-hydration, /learn, and future enforcement hooks.
 permalink: guardrails
 tags: [framework, enforcement, guardrails, heuristics]
 ---
@@ -10,7 +10,7 @@ tags: [framework, enforcement, guardrails, heuristics]
 # Guardrails
 
 **Authoritative source** for all guardrail definitions. Referenced by:
-- `agents/intent-router.md` - applies guardrails based on task classification
+- [[specs/prompt-hydration]] - applies guardrails based on task classification
 - `commands/learn.md` - tweaks guardrails based on observed failures
 - Future enforcement hooks
 
@@ -120,9 +120,9 @@ Use `/learn` to adjust guardrails based on observed failures:
 
 ## Integration Points
 
-### Intent Router (Current)
+### Prompt Hydration (Current)
 
-The intent-router agent reads this file and applies guardrails based on task classification.
+The [[specs/prompt-hydration]] process applies guardrails based on task classification.
 
 ### Future: PreToolUse Hook
 
@@ -138,7 +138,7 @@ Guardrails could be verified via PostToolUse hook:
 
 ## Guardrail Output Format
 
-When intent-router returns guardrails, use this structure:
+When prompt hydration returns guardrails, use this structure:
 
 ```yaml
 guardrails:

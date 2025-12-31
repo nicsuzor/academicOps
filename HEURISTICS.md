@@ -737,6 +737,25 @@ When `/qa` is invoked:
 
 ---
 
+## H32: Delete, Don't Deprecate
+
+**Statement**: When consolidating or replacing specs/files, DELETE the old ones. Don't mark them "superseded" or maintain backwards compatibility references.
+
+**Rationale**: Git is the backup system ([[AXIOMS]] #13). Keeping deprecated files with "superseded by" markers creates cruft, confuses navigation, and violates the current-state-machine principle. The knowledge base should reflect WHAT IS, not what was. If someone needs history, they use git.
+
+**Evidence**:
+- 2025-12-31: User correction during spec consolidation - "don't mark things as superseded... just delete and keep current state only"
+
+**Confidence**: High (aligns with multiple axioms)
+
+**Implements**: [[AXIOMS]] #13 (Trust Version Control), #28 (Current State Machine), #9 (DRY)
+
+**Application**:
+- ❌ Wrong: Add `status: superseded`, `superseded_by: new-file.md` to old spec
+- ✅ Right: Delete old spec, git has the history
+
+---
+
 ## Revision Protocol
 
 To adjust heuristics based on new evidence:

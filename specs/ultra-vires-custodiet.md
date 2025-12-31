@@ -113,7 +113,7 @@ Nic - ensures agents stay within granted authority, enforces [[AXIOMS]] #4 (Do O
 | [[agent-behavior-watchdog]] | Catches mechanical violations (`--no-verify`, backup files) | Complementary - different concern |
 | [[hypervisor]] | Creates authority envelope through planning | Upstream - defines what's authorized |
 | [[/qa]] | Verifies "does it work" | Orthogonal - verifies outcomes not authority |
-| [[intent-router]] | Enriches prompts with context | Upstream - surfaces relevant skills |
+| [[specs/prompt-hydration]] | Enriches prompts with context | Upstream - surfaces relevant skills |
 
 ## Design
 

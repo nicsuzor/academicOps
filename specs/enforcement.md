@@ -71,7 +71,7 @@ How the aops framework influences agent behavior. We cannot force compliance - o
 |-------|------|-----------|---------|
 | 0 | Convention | Documented, no checking | "Skills should be invoked" |
 | 1 | Detection | Logs violations, doesn't prevent | Session transcript analysis |
-| 2 | Soft Gate | Injects warning, agent can proceed | [[intent-router-spec]] suggests skills |
+| 2 | Soft Gate | Injects warning, agent can proceed | [[specs/prompt-hydration]] suggests skills |
 | 3 | Observable Checkpoint | Creates visible artifact | TodoWrite, Plan Mode |
 | 4 | Hard Gate | Blocks action | Pre-commit hooks, required approval |
 
@@ -89,11 +89,11 @@ No single layer is reliable. We combine:
 
 **Limitation**: Agents can read and ignore.
 
-### Layer 2: Intent Router (Soft Gate)
+### Layer 2: Prompt Hydration (Soft Gate)
 
-The [[intent-router-spec]] classifies prompts and suggests skills/workflows.
+The [[specs/prompt-hydration]] process classifies prompts and suggests skills/workflows.
 
-**What it does**: Injects 3-5 lines of task-specific guidance
+**What it does**: Injects context, classification, and task-specific guidance
 **What it can't do**: Force agent to follow guidance
 
 ### Layer 3: Observable Checkpoints

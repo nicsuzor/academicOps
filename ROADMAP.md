@@ -136,7 +136,7 @@ Installed Anthropic's official `plugin-dev` plugin from `claude-plugins-official
 **What was done** (2025-12-26):
 1. Empirically tested skill discovery: nested directories NOT discovered, flat required
 2. Installed `plugin-dev@claude-plugins-official` via settings.json
-3. Updated intent-router prompt to guide agents to use plugin-dev skills
+3. Updated prompt routing to guide agents to use plugin-dev skills
 4. Added task classification patterns for CC component development
 
 **Available skills** (invoke as `plugin-dev:<skill-name>`):
@@ -159,11 +159,11 @@ Installed Anthropic's official `plugin-dev` plugin from `claude-plugins-official
 
 ## Planned
 
-### P0: Prompt Router Enforcement
+### P0: Prompt Hydration Enforcement
 
-Ensure prompt router is working to enforce framework rules. Currently implemented (v7-subagent-router) but needs validation that agents actually follow the router's guidance.
+Ensure prompt hydration is working to enforce framework rules. Spec exists but needs implementation via UserPromptSubmit hook.
 
-**Spec**: `specs/intent-router.md`
+**Spec**: [[specs/prompt-hydration]]
 **Open question**: How do we verify agents follow guidance? See spec for options.
 
 ### P2: Live Progress Tracker

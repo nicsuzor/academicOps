@@ -147,8 +147,8 @@ $AOPS/
 ├── agents/                      # Spawnable subagents (Task tool)
 │   ├── critic.md                # Second-opinion review of plans/conclusions
 │   ├── effectual-planner.md     # Effectual planning (Sarasvathy) - plans as hypotheses
-│   ├── intent-router.md         # LLM intent classifier (Haiku)
-│   └── planner.md               # Implementation planning with memory + critic review
+│   ├── planner.md               # Implementation planning with memory + critic review
+│   └── prompt-hydrator.md       # Context gathering + workflow selection for every prompt
 │
 ├── scripts/                     # Utility scripts
 │   ├── scripts.md               # Script inventory and documentation

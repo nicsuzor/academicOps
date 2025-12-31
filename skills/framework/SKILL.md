@@ -413,3 +413,11 @@ Detailed guides for specific framework topics:
 3. **Validate scope** - Single responsibility?
 4. **Plan test** - How will you verify it works?
 5. **Trace to axiom** - Which principle justifies this?
+
+## After Framework Sessions
+
+**VISION.md and ROADMAP.md ARE the framework's memory.** Without them being current, agents cannot understand what the framework is, what's working, or what needs attention.
+
+After any significant framework work, check if updates are needed:
+- **VISION.md**: End state. Update when direction changes (rare).
+- **ROADMAP.md**: Current status. Update after features added, bugs fixed, or blockers identified.

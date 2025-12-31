@@ -23,7 +23,7 @@ graph TD
     B --> B2[enforcement]
     B --> B3[knowledge-management-philosophy]
 
-    C --> C1[intent-router]
+    C --> C1[prompt-hydration]
     C --> C2[agent-behavior-watchdog]
 
     D --> D1[cognitive-load-dashboard]
@@ -49,12 +49,11 @@ Design documents for the academicOps framework. Per [[AXIOMS]] #29: one spec per
 - [[meta-framework]] - Strategic partner design (implemented)
 - [[knowledge-management-philosophy]] - Everything capture, just-in-time delivery
 - [[enforcement]] - Enforcement layers and mechanisms
-- [[workflow-selection]] - When to use which workflow (DRAFT - decisions pending)
 - [[spec-maintenance]] - Ensure specs remain single source of truth (implemented)
 
 ## Agent Behavior
 
-- [[intent-router-spec]] - Skill suggestion and workflow guidance (implemented)
+- [[specs/prompt-hydration]] - Context gathering, classification, workflow selection (draft)
 - [[agent-behavior-watchdog]] - Detection of bypass patterns (draft)
 - [[conclusion-verification-hook]] - Verify claims have evidence (draft)
 - [[plan-quality-gate]] - Critic review before presenting plans (requirement)
