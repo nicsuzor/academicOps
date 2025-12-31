@@ -158,18 +158,6 @@ When no skill handles a needed user data operation:
 - ❌ Wrong: Directly delete files in `$ACA_DATA/`
 - ✅ Right: Create skill via framework, then invoke it
 
-### Delegation Output Format
-
-When delegating to a skill:
-
-```
-FRAMEWORK SKILL CHECKED
-
-Categorical Rule: [the universal rule justifying this action]
-Skill: [skill to invoke]
-Operation: [what the skill should do]
-Scope: [files/directories affected]
-```
 
 ## Framework Paths
 
@@ -179,14 +167,6 @@ See [[INDEX.md]] for complete file tree. Paths are resolved in [[FRAMEWORK.md]] 
 
 Each convention traces to its source axiom. If a convention lacks derivation, it's invalid.
 
-### Folder Naming Convention
-
-Each folder should have a markdown file with the same name as the folder.
-
-```
-projects/aops/aops.md      # ✅ Core file for aops/ folder
-skills/remember/SKILL.md   # ✅ Core file for remember/ folder
-```
 
 ### Single Source of Truth
 
@@ -201,18 +181,9 @@ Each piece of information exists in exactly ONE location:
 | Work style | `$ACA_DATA/ACCOMMODATIONS.md` |
 | Framework vision | `$AOPS/VISION.md` |
 | Framework status | `$AOPS/ROADMAP.md` |
+| Workflows | `$AOPS/WORKFLOWS.md` |
 
 **Pattern**: Reference, don't repeat.
-
-### Delegation Token
-
-When `/meta` or `framework` skill delegates to implementation skills (python-dev, analyst), the delegation MUST include:
-
-```
-FRAMEWORK SKILL CHECKED
-```
-
-Implementation skills MUST refuse requests without this token.
 
 ### Mandatory Critic Review
 
@@ -229,14 +200,6 @@ Check for: logical errors, unstated assumptions, missing verification, overconfi
 ```
 
 If critic returns **REVISE** or **HALT**, address issues before proceeding.
-
-### Standard Tools
-
-- Package management: `uv`
-- Testing: `pytest`
-- Git hooks: `pre-commit`
-- Type checking: `mypy`
-- Linting: `ruff`
 
 ### Skills are Read-Only
 
@@ -382,14 +345,6 @@ gh issue create --repo nicsuzor/academicOps --title "Bug: [description]" --label
 ```
 
 
-### Prohibited in `$ACA_DATA`
-
-- ❌ Time-stamped observations (use GitHub Issues)
-- ❌ Investigation logs (use GitHub Issues)
-- ❌ Decision rationales (use GitHub Issues)
-- ❌ Root-level working documents
-- ❌ Duplicate content across files
-
 ### Before Creating Content
 
 1. **Is this semantic (timeless truth)?** → `$ACA_DATA` (specs/, HEURISTICS.md)
@@ -458,7 +413,3 @@ Detailed guides for specific framework topics:
 3. **Validate scope** - Single responsibility?
 4. **Plan test** - How will you verify it works?
 5. **Trace to axiom** - Which principle justifies this?
-
-## When Done
-
-Return "FRAMEWORK SKILL CHECKED" to your caller if providing context for delegation.

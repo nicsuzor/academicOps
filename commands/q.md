@@ -62,7 +62,7 @@ $ARGUMENTS
 
 | Command | Behavior |
 |---------|----------|
-| `/do [task]` | Execute immediately via hypervisor |
+| `/do [task]` | Execute immediately with full pipeline |
 | `/q [task]` | Save for later, don't execute |
 
 When ready to execute a queued task:

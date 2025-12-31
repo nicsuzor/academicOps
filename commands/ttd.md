@@ -1,18 +1,12 @@
 ---
 name: ttd
-description: Alias for hypervisor tdd - Test-first development workflow
+description: Alias for /supervise tdd - Test-first development workflow
 permalink: aops/commands/ttd
-tools:
-  - Skill
 ---
 
 # /ttd - Test-First Development (Alias)
 
-Invoke the hypervisor skill with TDD workflow:
-
-```
-Skill(skill="hypervisor", args="tdd $ARGUMENTS")
-```
+Equivalent to `/do` with TDD workflow loaded.
 
 ## Usage
 
@@ -20,12 +14,15 @@ Skill(skill="hypervisor", args="tdd $ARGUMENTS")
 /ttd {task description}
 ```
 
-## What It Does
+## Execution
 
-Orchestrates test-driven development with:
-- Failing test → minimal implementation → verification cycle
-- Mandatory `python-dev` skill invocation
-- Quality gates (critic review, fail-fast compliance, QA verification)
-- Commit and push after each cycle
+Load the TDD workflow template and execute via /do pipeline:
 
-See [[skills/hypervisor/workflows/tdd.md]] for full workflow details.
+1. Read `skills/supervisor/workflows/tdd.md` to get iteration-unit, quality-gate, required-skills
+2. Follow /do phases with TDD-specific constraints:
+   - Failing test → minimal implementation → verification cycle
+   - Mandatory `python-dev` skill invocation
+   - Quality gates (critic review, fail-fast compliance)
+   - Commit and push after each cycle
+
+See [[skills/supervisor/workflows/tdd.md]] for workflow details.

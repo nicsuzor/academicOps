@@ -30,15 +30,15 @@ Academic support framework for Claude Code. Minimal, fight bloat aggressively.
 
 ## Workflows
 
-**Single entry point**: All work goes through `/do`, which spawns the hypervisor agent.
+**Single entry point**: All work goes through `/do`, which transforms the main agent into an orchestration layer.
 
 | Command | Role | When to Use |
 |---------|------|-------------|
-| `/do` | Full pipeline via hypervisor | All work - context, planning, execution, QA |
+| `/do` | Full pipeline (context, plan, execute, verify) | All non-trivial work |
 | `/meta` | Strategic brain + executor | Framework problems, design AND build |
 | `/q` | Queue for later | Capture task without executing |
 
-**Hypervisor Pipeline** (via `/do`):
+**/do Pipeline** (5 phases):
 1. Context gathering (memory search, file discovery)
 2. Task classification and planning skill selection
 3. TodoWrite with CHECKPOINT items (QA gates)
@@ -54,23 +54,22 @@ Academic support framework for Claude Code. Minimal, fight bloat aggressively.
 
 ## /do Command (Primary Entry Point)
 
-The `/do` command is the single funnel for all work. It spawns the hypervisor agent which orchestrates the full pipeline:
+The `/do` command transforms the main agent into an orchestration layer:
 
 ```
 /do [your task]
     ↓
-Hypervisor agent (6 phases):
-  1. CONTEXT - Memory search, file discovery
-  2. CLASSIFY - Task type, select planning skill
-  3. PLAN - TodoWrite with CHECKPOINT items
-  4. EXECUTE - Delegate to specialist skills
-  5. VERIFY - Check against acceptance criteria
-  6. CLEANUP - Commit, push, update memory
+Main agent becomes orchestrator:
+  0. CONTEXT - Memory search, file discovery, classification
+  1. PLAN - TodoWrite with CHECKPOINT items, critic review
+  2. EXECUTE - Delegate to subagents, verify each step
+  3. VERIFY - Check against acceptance criteria
+  4. CLEANUP - Commit, push, update memory
 ```
 
-**Key insight**: Control the plan = control the work. Planning skills create TodoWrite with QA checkpoints baked in. Agents can't skip them because they're todo items.
+**Key insight**: Control the plan = control the work. CHECKPOINT items are QA gates that cannot be skipped.
 
-Full spec: `$AOPS/specs/do-command.md`
+Full instructions: `$AOPS/commands/do.md`
 
 ## Knowledge Architecture
 
@@ -145,7 +144,7 @@ Full spec: `$AOPS/specs/do-command.md`
 | remember | Persist knowledge to markdown + memory server |
 | review-training | Extract training pairs from matched documents |
 | session-insights | Extract accomplishments + learnings from sessions |
-| hypervisor | Multi-agent workflow orchestrator (brain of academicOps) |
+| supervisor | Workflow templates (tdd, batch-review) |
 | tasks | Task lifecycle management |
 | training-set-builder | Build LLM training datasets from documents |
 | transcript | Session JSONL → markdown |
@@ -167,7 +166,6 @@ Custom agents spawned via `Task(subagent_type="name")`:
 
 | Agent | Purpose |
 |-------|---------|
-| hypervisor | Full 6-phase pipeline (context → classify → plan → execute → verify → cleanup) |
 | critic | Second-opinion review of plans/conclusions |
 | intent-router | Context gathering, prompt hydration, workflow + guardrail selection |
 | effectual-planner | Strategic planning under uncertainty (NOT implementation) |

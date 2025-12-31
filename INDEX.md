@@ -121,7 +121,7 @@ $AOPS/
 │   ├── osb-drafting/            # IRAC analysis for OSB cases
 │   ├── review-training/         # Training data from reviews
 │   ├── session-insights/        # Accomplishments + learning extraction
-│   ├── hypervisor/              # Multi-agent workflow orchestration (brain)
+│   ├── supervisor/              # Workflow templates (tdd, batch-review)
 │   └── training-set-builder/    # Training data extraction
 │
 ├── hooks/                       # Session lifecycle (Python)
@@ -147,7 +147,6 @@ $AOPS/
 ├── agents/                      # Spawnable subagents (Task tool)
 │   ├── critic.md                # Second-opinion review of plans/conclusions
 │   ├── effectual-planner.md     # Effectual planning (Sarasvathy) - plans as hypotheses
-│   ├── hypervisor.md            # Multi-step workflow orchestrator (phases 0-5)
 │   ├── intent-router.md         # LLM intent classifier (Haiku)
 │   └── planner.md               # Implementation planning with memory + critic review
 │
@@ -202,10 +201,10 @@ $AOPS/
 
 | Command | Invokes |
 |---------|---------|
-| /do | hypervisor agent (full pipeline) |
+| /do | Full pipeline (context, plan, execute, verify) |
 | /q | tasks skill (delayed /do) |
 | /meta | framework, python-dev skills |
-| /ttd | hypervisor (TDD workflow) |
+| /ttd | TDD workflow (via /do) |
 | /log | learning-log skill |
 | /transcript | transcript skill |
 | /remember | remember skill |
@@ -214,7 +213,7 @@ $AOPS/
 
 | Location | Workflows | Loaded By |
 |----------|-----------|-----------|
-| `skills/hypervisor/workflows/` | tdd, batch-review | `/ttd`, hypervisor |
+| `skills/supervisor/workflows/` | tdd, batch-review | `/ttd`, `/do` |
 | `skills/framework/workflows/` | 01-design, 02-debug, 03-experiment, 04-bloat, 06-spec | `Skill("framework")` |
 
 ### Skill → Skill Dependencies
@@ -229,7 +228,6 @@ $AOPS/
 
 | Agent | Routes To |
 |-------|-----------|
-| hypervisor | Planning skills, execution skills, QA (full 6-phase pipeline) |
 | effectual-planner | tasks skill |
 | planner | memory search, critic review |
 
