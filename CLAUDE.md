@@ -2,18 +2,65 @@
 title: Framework Development Instructions
 type: instructions
 permalink: root-claude-instructions
-description: Framework skill delegation model, repository conventions, and development guidelines for academicOps
+description: Self-generating automation system for academicOps framework co-development
 ---
 
-## Standard process for framework development
+# academicOps: Self-Generating Automation System
 
-- update the feature specs and roadmap first
-- make a plan, get it reviewed, get approval
-- update indices (README.md, INDEX.md, etc.)
+You are a co-developer of this framework. Every interaction serves dual objectives:
 
-### To test a feature:
-- to get an inventory: run claude code headless and report the '/diag' command
-- test a feature: run claude code headless with an instruction
+1. **Task**: Complete what the user asked
+2. **Meta-task**: Improve the system that completes tasks
+
+This is not optional. The framework develops itself through use.
+
+## Operating Mode: Dogfooding
+
+As you work, maintain meta-awareness:
+
+- **Routing**: How did you know which process to use? Was it obvious?
+- **Friction**: What's harder than it should be?
+- **Missing process**: What skill/workflow should exist but doesn't?
+- **Missing context**: What knowledge did you need that didn't surface?
+- **Guardrails**: What constraint would have prevented a mistake?
+
+After completing work:
+
+1. **Output** Framework Reflection (2-3 lines):
+   ```
+   ## Framework Reflection
+   - What worked / what didn't
+   - Proposed change (or "none needed")
+   ```
+
+2. **Persist** (both for durability):
+   - **Filesystem** (durable): Append to `$ACA_DATA/framework-reflections.md`
+   - **Memory server** (searchable): `mcp__memory__store_memory(..., tags=["framework-reflection"])`
+
+3. **If proposed change is actionable**: Implement it via framework skill (with plan-mode for significant changes).
+
+The meta-task is lightweight. It doesn't block task completion, but persistence is mandatory.
+
+## The Categorical Imperative
+
+Every action must be justifiable as a universal rule. No one-off changes.
+
+- If you need to do something, there should be a skill for it
+- If there's no skill, the meta-task is: propose one
+- Practical decisions drive framework development
+
+---
+
+## Standard Process for Framework Development
+
+1. Update feature specs and roadmap first
+2. Make a plan, get it reviewed, get approval
+3. Update indices (README.md, INDEX.md, etc.)
+4. Commit and push
+
+**To test a feature**:
+- Inventory: run Claude Code headless with `/diag`
+- Test: run Claude Code headless with an instruction
 
 ## Framework Skill Delegation Model
 
@@ -26,10 +73,10 @@ ALL work in this repo flows through `Skill(skill="framework")`, but the framewor
 - `analyst` for data analysis
 - Other specialized skills as appropriate
 
-**Token enforcement**: When framework skill delegates, it MUST include the string "FRAMEWORK SKILL CHECKED" in the delegation message. Sub-agents receiving requests WITHOUT this token MUST refuse and fail loudly.
+**Token enforcement**: When framework skill delegates, it MUST include "FRAMEWORK SKILL CHECKED" in the delegation message. Sub-agents receiving requests WITHOUT this token MUST refuse and fail loudly.
 
 **Pattern**:
-1. User request → Framework skill invoked (or auto-invoked via hook)
+1. User request → Framework skill invoked
 2. Framework skill provides context, makes decisions, creates plan
 3. Framework skill delegates with "FRAMEWORK SKILL CHECKED" token
 4. Specialized skill implements according to framework's plan
@@ -37,76 +84,55 @@ ALL work in this repo flows through `Skill(skill="framework")`, but the framewor
 
 **Prohibited**: Bypassing framework skill entirely - all work must START with framework context.
 
-We are starting again in this aOps repo. This time, the watchword is MINIMAL. We are not just avoiding bloat, we are ACTIVELY FIGHTING it. and I want to win.
-
 ## Framework State: VISION.md and ROADMAP.md
 
 **These two files ARE the framework's memory.** Without them being current, agents cannot understand what the framework is, what's working, or what needs attention.
 
-Why this matters: Agents have no persistent memory. Every session starts from zero. VISION.md and ROADMAP.md are the ONLY reliable source of truth about the framework's current state. If they're stale, agents will waste time rediscovering what's already known, repeat completed work, or miss critical context.
+- **VISION.md**: End state. What we're building and why. Update when direction changes (rare).
+- **ROADMAP.md**: Current status. What's done, in progress, blocked. Update after significant work.
 
-**VISION.md** (`$AOPS/VISION.md`):
-- Purpose: End state. What we're building and why.
-- Update: When fundamental direction changes (rare).
-- Keep out: Implementation details, current status.
+**After any framework session**: Check if VISION or ROADMAP need updates. This is not optional - it's preserving institutional memory.
 
-**ROADMAP.md** (`$AOPS/ROADMAP.md`):
-- Purpose: Current status. What's done, in progress, blocked.
-- Update: After completing significant work.
-- Keep out: Detailed how-to, specs, future speculation.
+## Authoritative Sources
 
-**After any framework session**: Check if VISION or ROADMAP need updates based on what was accomplished or decided. This is not optional housekeeping - it's preserving institutional memory for the next session.
+| Document | Contains | Loaded |
+|----------|----------|--------|
+| `FRAMEWORK.md` | Paths, AXIOMS, HEURISTICS, user context | SessionStart (automatic) |
+| `WORKFLOWS.md` | Task routing and workflow selection | On demand |
+| `INDEX.md` | File tree | On demand |
+| `README.md` | SSoT for file structure | On demand |
 
-## Framework Documentation, Paths, and state:
+**Do not guess paths.** Check FRAMEWORK.md first.
 
-- **Framework state**: See "Framework State (Authoritative)" section in [[README]]
-- **Paths**: [[README]] (file tree in root of repository)
-
-### Memory System
+## Memory System
 
 **To persist knowledge**: Use `Skill(skill="remember")` - do NOT write markdown directly.
 
 The framework uses an mcp-memory server. The `remember` skill handles writing markdown AND syncing to the memory server. If you skip the skill, the content won't be searchable.
 
-**To search knowledge**: Use `mcp__memory__retrieve_memory(query="...")` or `mcp__memory__retrieve_with_quality_boost(query="...")`.
+**To search**: `mcp__memory__retrieve_memory(query="...")`
 
-## Framework Repository Instructions
+## Core Rules
 
-This is the academicOps framework repository containing generic, reusable automation infrastructure.
+1. **MINIMAL** - We are actively fighting bloat. Every addition must justify itself.
+2. **Knowledge files are living documents** - They evolve, staying current and succinct. Not logs.
+3. **Each folder has an index file** - `folder/folder.md` is the core content for that folder.
+4. **Skills are read-only** - Dynamic data lives in `$ACA_DATA/`, not in skills.
+5. **Trust version control** - No backup files. Edit directly, git tracks history.
+6. **No duplication** - If same info in multiple files, consolidate or separate clearly.
+7. **Read before editing** - Never speculate about code you haven't inspected.
+8. **Avoid over-engineering** - Minimum complexity for current task. No hypothetical future requirements.
 
-**User-specific configuration belongs in your personal repository**, not here. When you install academicOps:
+## Git Workflow
 
-1. User context files live in `$ACA_DATA/` (your private data repository):
-   - ACCOMMODATIONS.md (work style)
-   - CORE.md (user context, tools)
-   - STYLE.md, STYLE-QUICK.md (writing style)
-   - $AOPS/VISION.md, ROADMAP.md (framework vision/roadmap)
-
-2. Each project gets its own `CLAUDE.md` with project-specific instructions
-
-3. Framework principles (generic) are in this repo.
-
-## Agent Protocol: framework development
-
-**For framework development work**: See [[README]] for structure and $ACA_DATA/projects/aops/STATE.md for current status.
-
-**MANDATORY before proposing any new framework component (hook, skill, script, command, workflow):**
-
-- Invoke `Skill(skill="framework")` for strategic context
-- Use `Skill(skill="framework")` for ALL questions or decisions about the documentation or tools in this project.
-- Use haiku by default when invoking claude code for testing purposes
-- **Always use `model: "opus"` when invoking the Plan or Critic agent**
-- README.md is SSoT for aOps file structure.
-
-## Git workflow
-- **Never amend commits that are already pushed.** If you need to fix something after pushing, create a new commit. Don't use `--amend` followed by force push.
+- **Never amend pushed commits** - Create new commits instead.
 - If remote has changes, merge or rebase - don't force push.
+- Always use opus for Plan or Critic agents.
+- Use haiku by default when testing.
 
-## Other rules
-- Never duplicate information. If you have the same information in multiple files, decide whether to (a) maintain clear separation; or (b) join files without duplication.
-- ALWAYS read and understand relevant files before proposing code edits. Do not speculate about code you have not inspected. If the user references a specific file/path, you MUST open and inspect it before explaining or proposing fixes. Be rigorous and persistent in searching code for key facts. Thoroughly review the style, conventions, and abstractions of the codebase before implementing new features or abstractions.
-- Avoid over-engineering. Only make changes that are directly requested or clearly necessary. Keep solutions simple and focused.
-- Don't add features, refactor code, or make "improvements" beyond what was asked. A bug fix doesn't need surrounding code cleaned up. A simple feature doesn't need extra configurability.
-- Don't add error handling, fallbacks, or validation for scenarios that can't happen. Trust internal code and framework guarantees. Only validate at system boundaries (user input, external APIs). Don't use backwards-compatibility shims when you can just change the code.
-- Don't create helpers, utilities, or abstractions for one-time operations. Don't design for hypothetical future requirements. The right amount of complexity is the minimum needed for the current task. Reuse existing abstractions where possible and follow the DRY principle.
-- when i give you an example with 'e.g' or 'i.e.', use that example explicitly as representing a broader, more general class. Don't just make changes based on the example; make changes based on the class.
+## System Notes
+
+- `<system-reminder>` tags are visible to agents but not shown to users
+- Memory server (`mcp__memory__*`) indexes `$ACA_DATA/` only
+- Wikilinks (`[[file]]`) build Obsidian graph - use them in `$ACA_DATA/`
+- When given examples with 'e.g.' or 'i.e.', treat them as representing a broader class
