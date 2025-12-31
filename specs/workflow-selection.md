@@ -8,9 +8,94 @@ tags: [framework, workflows, orchestration, routing]
 
 # Workflow Selection
 
-**Status**: Draft (decisions pending)
+**Status**: Draft - fundamental model under review
 
-## Decision Tree (Proposed)
+## The Core Question
+
+When a task comes in, the system decides HOW to handle it. What exactly are we deciding?
+
+## What We're Trying to Achieve
+
+1. **Prevent known failure modes** - Agents make predictable mistakes. Inject the right constraints at the right time.
+2. **Load appropriate context** - Different work needs different skill context.
+3. **Set quality gates** - Some work needs more verification than others.
+4. **Match user expectations** - A question should get an answer, not an implementation.
+
+## Current Problem: False Alternatives
+
+Current model treats these as mutually exclusive workflows:
+- plan-mode, tdd, verify-first, answer-only, direct, checklist
+
+But they're NOT alternatives. They're **different dimensions**:
+
+| Thing | What it actually is |
+|-------|---------------------|
+| plan-mode | A **gate** - requires approval before implementation |
+| tdd | An **approach** - structured sequence (test → implement → verify) |
+| verify-first | A **phase** - understand before acting |
+| answer-only | A **constraint** - don't implement anything |
+| direct | Absence of special process |
+| checklist | A **structure** for verification |
+
+These COMPOSE, not compete:
+- Debug task = verify-first phase + direct approach + no gate
+- Framework task = plan-mode gate + tdd approach + checklist verification
+- Question = answer-only constraint (nothing else applies)
+
+## Proposed Model: Composable Dimensions
+
+### Dimension 1: Gates (must pass before implementation)
+
+| Gate | When Required |
+|------|---------------|
+| plan-mode | High-stakes changes (framework, hooks, MCP) |
+| none | Everything else |
+
+### Dimension 2: Approach (how to implement)
+
+| Approach | What It Means |
+|----------|---------------|
+| tdd | Write failing test → implement → verify passes |
+| direct | Just do it |
+| none | No implementation (questions, pure info) |
+
+### Dimension 3: Pre-work (before implementing)
+
+| Pre-work | When To Use |
+|----------|-------------|
+| verify-first | Debug - reproduce and understand before fixing |
+| research-first | Unknown territory - explore before proposing |
+| none | Clear scope, just proceed |
+
+### Where Guardrails Fit
+
+Guardrails are **constraints during execution**, orthogonal to workflow dimensions:
+- `verify_before_complete` - applies to all implementation
+- `quote_errors_exactly` - applies during debug
+- `fix_within_design` - applies during debug
+- `require_acceptance_test` - applies to feature/python work
+
+Workflow dimensions determine the SEQUENCE. Guardrails determine CONSTRAINTS during that sequence.
+
+## Revised WORKFLOWS.md Structure
+
+Not a list of mutually exclusive workflows. Instead, a routing table with explicit dimensions:
+
+| Type | Gate | Pre-work | Approach | Skill | Guardrails |
+|------|------|----------|----------|-------|------------|
+| framework | plan-mode | - | tdd | framework | critic_review |
+| debug | - | verify-first | direct | - | quote_errors, fix_within_design |
+| question | - | - | none | - | answer_only |
+| feature | - | - | tdd | feature-dev | require_acceptance_test |
+| python | - | - | tdd | python-dev | require_acceptance_test |
+| persist | - | - | direct | remember | - |
+| simple | - | - | direct | - | - |
+
+---
+
+## Legacy Analysis (Pre-Dimensional Model)
+
+### Decision Tree (Proposed)
 
 ```mermaid
 graph TD
@@ -19,17 +104,17 @@ graph TD
     B -->|No| D{Question Only?}
     D -->|Yes| E[Answer then STOP]
     D -->|No| F{Framework Files?}
-    F -->|Yes| G[/meta]
+    F -->|Yes| G[meta]
     F -->|No| H{Structured Dev?}
-    H -->|Yes| I[/supervise tdd]
+    H -->|Yes| I[supervise tdd]
     H -->|No| J{Batch Operation?}
-    J -->|Yes| K[/supervise batch-review]
+    J -->|Yes| K[supervise batch-review]
     J -->|No| L{Simple Single Action?}
     L -->|Yes| M[Just Do It]
-    L -->|No| N[/meta - Default]
+    L -->|No| N[meta - Default]
 ```
 
-## Problem Statement
+### Problem Statement
 
 Agents don't know which workflow to use for different task types. This causes:
 - Confusion: "No framework workflow exists. I'll use the generic supervisor process."
