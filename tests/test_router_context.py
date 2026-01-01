@@ -24,13 +24,29 @@ def _make_timestamp(offset_seconds: int = 0) -> str:
 
 
 def _create_user_entry(prompt: str, offset: int = 0) -> dict:
-    """Create a user message entry."""
+    """Create a user message entry with list content format (API format)."""
     return {
         "type": "user",
         "uuid": f"user-{offset}",
         "timestamp": _make_timestamp(offset),
         "message": {
             "content": [{"type": "text", "text": prompt}]
+        },
+    }
+
+
+def _create_user_entry_string_format(prompt: str, offset: int = 0) -> dict:
+    """Create a user message entry with string content format (command format).
+
+    This is the format used by /commands like /do, /commit, etc.
+    The content is a plain string, not a list of blocks.
+    """
+    return {
+        "type": "user",
+        "uuid": f"user-{offset}",
+        "timestamp": _make_timestamp(offset),
+        "message": {
+            "content": prompt  # String, not list!
         },
     }
 
@@ -408,3 +424,87 @@ class TestExtractRouterContext:
         assert "task" in result.lower() or "pending" in result.lower() or "in_progress" in result.lower(), (
             "Should still have task content from TodoWrite"
         )
+
+    def test_extract_router_context_string_content_format(self, tmp_path: Path) -> None:
+        """Test that string content format (used by /commands) is handled.
+
+        Commands like /do, /commit use string format: {"content": "text"}
+        instead of list format: {"content": [{"type": "text", "text": "..."}]}
+
+        This was a bug fixed in 2026-01: extract_router_context only handled
+        list format, silently skipping string format entries.
+        """
+        from lib.session_reader import extract_router_context
+
+        session_file = tmp_path / "string-format-session.jsonl"
+
+        # Mix of string format (commands) and list format (regular prompts)
+        entries = [
+            # Command using string format
+            _create_user_entry_string_format(
+                "<command-name>/do</command-name>\n<command-args>fix the bug</command-args>",
+                offset=0,
+            ),
+            _create_assistant_entry(offset=1),
+            # Regular prompt using list format
+            _create_user_entry("Now test the fix", offset=10),
+            _create_assistant_entry(offset=11),
+            # Another command in string format
+            _create_user_entry_string_format(
+                "save that to the output directory",
+                offset=20,
+            ),
+            _create_assistant_entry(offset=21),
+        ]
+
+        with session_file.open("w", encoding="utf-8") as f:
+            for entry in entries:
+                f.write(json.dumps(entry) + "\n")
+
+        result = extract_router_context(session_file)
+
+        # Should extract prompts from BOTH formats
+        assert "fix the bug" in result.lower() or "/do" in result, (
+            "Should extract string-format command content"
+        )
+        assert "test the fix" in result.lower(), (
+            "Should extract list-format prompt content"
+        )
+        assert "save that" in result.lower() or "output directory" in result.lower(), (
+            "Should extract follow-up string-format prompt"
+        )
+
+    def test_extract_router_context_mixed_format_ordering(self, tmp_path: Path) -> None:
+        """Test that mixed format entries are extracted in correct order.
+
+        Recent prompts should appear in chronological order regardless of
+        whether they use string or list content format.
+        """
+        from lib.session_reader import extract_router_context
+
+        session_file = tmp_path / "mixed-order-session.jsonl"
+
+        entries = [
+            _create_user_entry_string_format("first prompt string format", offset=0),
+            _create_assistant_entry(offset=1),
+            _create_user_entry("second prompt list format", offset=10),
+            _create_assistant_entry(offset=11),
+            _create_user_entry_string_format("third prompt string format", offset=20),
+            _create_assistant_entry(offset=21),
+        ]
+
+        with session_file.open("w", encoding="utf-8") as f:
+            for entry in entries:
+                f.write(json.dumps(entry) + "\n")
+
+        result = extract_router_context(session_file)
+
+        # All three prompts should be present
+        assert "first prompt" in result.lower(), "Should contain first prompt"
+        assert "second prompt" in result.lower(), "Should contain second prompt"
+        assert "third prompt" in result.lower(), "Should contain third prompt"
+
+        # Verify order: first should appear before third in the output
+        first_pos = result.lower().find("first prompt")
+        third_pos = result.lower().find("third prompt")
+        assert first_pos < third_pos, "Prompts should appear in chronological order"
