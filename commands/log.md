@@ -26,6 +26,10 @@ Per [[AXIOMS]] #28 and [[HEURISTICS]] H26: episodic content → GitHub Issues.
 | `experiment` | Systemic investigations |
 | `devlog` | Development observations |
 
+## Future Direction
+
+`/log` may become more concise: simply log a failure + evidence to GitHub Issues. Use `/reflect` for deeper process analysis and workflow compliance checking.
+
 ## Modes
 
 ### Standard Mode (default)

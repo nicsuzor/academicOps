@@ -128,7 +128,7 @@ $AOPS/
 │   ├── CLAUDE.md                    # Hook design principles (JIT context)
 │   ├── hooks.md                     # Hook inventory and descriptions
 │   ├── sessionstart_load_axioms.py  # Injects AXIOMS.md, FRAMEWORK.md, HEURISTICS.md
-│   ├── user_prompt_submit.py        # Context injection per prompt
+│   ├── user_prompt_submit.py        # Writes context to temp file, returns short instruction
 │   ├── router.py                    # Central hook dispatcher
 │   ├── autocommit_state.py          # Auto-commit data/ changes
 │   ├── policy_enforcer.py           # Block destructive operations (PreToolUse)
@@ -140,9 +140,12 @@ $AOPS/
 │   ├── terminal_title.py            # Set terminal title
 │   ├── marker_hook.py               # Test hook for verification
 │   ├── verify_conclusions.py        # Disabled stub
-│   └── prompts/
-│       ├── user-prompt-submit.md    # Context for UserPromptSubmit hook
-│       └── memory-reminder.md       # PostToolUse memory prompt
+│   ├── prompts/
+│   │   ├── user-prompt-submit.md    # Context for UserPromptSubmit hook
+│   │   └── memory-reminder.md       # PostToolUse memory prompt
+│   └── templates/
+│       ├── prompt-hydrator-context.md     # Full context template (written to temp file)
+│       └── prompt-hydration-instruction.md # Short instruction template for main agent
 │
 ├── agents/                      # Spawnable subagents (Task tool)
 │   ├── critic.md                # Second-opinion review of plans/conclusions
@@ -177,7 +180,7 @@ $AOPS/
 │
 ├── docs/                        # Extended documentation
 │   ├── ENFORCEMENT.md           # Enforcement mechanism selection guide
-│   ├── execution-flow.md        # Execution flow diagrams
+│   ├── EXECUTION-FLOW.md        # Execution flow diagrams
 │   ├── HOOKS.md                 # Hook architecture overview
 │   ├── JIT-INJECTION.md         # Just-in-time context injection
 │   ├── OBSERVABILITY.md         # Observability and logging schema

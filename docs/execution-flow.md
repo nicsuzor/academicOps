@@ -2,6 +2,8 @@
 
 Where the framework injects control during a Claude Code session.
 
+**Spec**: [[specs/execution-flow-spec]]
+
 ---
 
 ## Universal Execution Flow
@@ -11,8 +13,13 @@ Every prompt goes through this flow. Framework insertion points branch horizonta
 ```
                     ┌──────────────────┐
                     │  Session Start   │ ──────► SessionStart hook
-                    └────────┬─────────┘         → AXIOMS, HEURISTICS, FRAMEWORK, CORE
+                    └────────┬─────────┘         → hooks/sessionstart_load_axioms.py
                              │
+                             │                   Loads content from:
+                             │                   → FRAMEWORK.md (paths)
+                             │                   → AXIOMS.md (principles)
+                             │                   → HEURISTICS.md (empirical)
+                             │                   → CORE.md (user context)
                              ▼
                     ┌──────────────────┐         ┌─────────────────────────────┐
                     │ 1. User Prompt   │ ──────► │ UserPromptSubmit hook       │
@@ -37,10 +44,11 @@ Every prompt goes through this flow. Framework insertion points branch horizonta
                     └────────┬─────────┘         └─────────────────────────────┘
                              │
                              ▼
-                    ┌──────────────────┐
-                    │ 4. Execute       │ ◄────── See "Workflow Implementations"
-                    │    Workflow      │
-                    └────────┬─────────┘
+                    ┌──────────────────┐         ┌─────────────────────────────┐
+                    │ 4. Execute       │ ──────► │ Workflow implementations:   │
+                    │    Workflow      │         │ → See table below           │
+                    └────────┬─────────┘         │ → [[commands/do]] (full)    │
+                             │                   └─────────────────────────────┘
                              │
           ┌──────────────────┼──────────────────┐
           ▼                  ▼                  ▼
@@ -49,13 +57,26 @@ Every prompt goes through this flow. Framework insertion points branch horizonta
     │ Use hook │       │ executes │       │ Use hook │
     └──────────┘       └──────────┘       └──────────┘
           │                                     │
-          └──► policy_enforcer.py               └──► autocommit, logging
+          │                                     │
+          ▼                                     ▼
+    ┌──────────────┐                     ┌──────────────┐
+    │ policy_      │                     │ autocommit,  │
+    │ enforcer.py  │                     │ logging,     │
+    │              │                     │ scribe       │
+    │ Template:    │                     │              │
+    │ (none - uses │                     │ Templates:   │
+    │ settings.json│                     │ → scribe     │
+    │ deny rules)  │                     │   reminder.md│
+    └──────────────┘                     └──────────────┘
                              │
                              ▼
                     ┌──────────────────┐         ┌─────────────────────────────┐
-                    │ 5. Cleanup       │ ──────► │ Stop hook                   │
-                    │                  │         │ → memory reminder           │
-                    └──────────────────┘         └─────────────────────────────┘
+                    │ 5. Session End   │ ──────► │ Stop hook                   │
+                    │                  │         │ → hooks/request_scribe.py   │
+                    └──────────────────┘         │                             │
+                                                 │ Template:                   │
+                                                 │ → (inline reminder)         │
+                                                 └─────────────────────────────┘
 ```
 
 ---
@@ -64,14 +85,14 @@ Every prompt goes through this flow. Framework insertion points branch horizonta
 
 Box 4 is pluggable. The workflow selected in Box 3 determines what happens:
 
-| Workflow | What Happens | When Selected |
-|----------|--------------|---------------|
-| answer-only | Answer, then STOP | Questions, explanations |
-| direct | Main agent executes directly | Simple tasks, clear scope |
-| verify-first | Reproduce → understand → fix | Bug reports, errors |
-| tdd | Test first → implement → verify | New features, refactors |
-| plan-mode | Get approval → full orchestration | Framework changes, complex work |
-| checklist | Systematic verification steps | Reviews, audits |
+| Workflow | What Happens | When Selected | Spec |
+|----------|--------------|---------------|------|
+| answer-only | Answer, then STOP | Questions, explanations | [[hooks/guardrails]] |
+| direct | Main agent executes directly | Simple tasks, clear scope | — |
+| verify-first | Reproduce → understand → fix | Bug reports, errors | [[hooks/guardrails]] |
+| tdd | Test first → implement → verify | New features, refactors | [[specs/feature-dev-skill]] |
+| plan-mode | Get approval → full orchestration | Framework changes, complex work | [[commands/do]] |
+| checklist | Systematic verification steps | Reviews, audits | — |
 
 **Full routing table**: [[WORKFLOWS]]
 
@@ -79,7 +100,10 @@ Box 4 is pluggable. The workflow selected in Box 3 determines what happens:
 
 ## Full Orchestration Workflow
 
-When `plan-mode` is selected OR `/do` is invoked explicitly, the agent becomes a **hypervisor** that orchestrates work through the complete pipeline:
+When `plan-mode` is selected OR `/do` is invoked explicitly, the agent becomes a **hypervisor**.
+
+**Command**: [[commands/do]]
+**Spec**: [[specs/hypervisor-workflow]] (if exists) or inline below
 
 ```mermaid
 flowchart TD
@@ -161,67 +185,41 @@ flowchart TD
 4. **Commit each cycle** - Changes pushed before next iteration
 5. **Guardrails halt on problems** - Scope drift or thrashing → ask user
 
-**Command**: [[commands/do]] transforms agent into hypervisor
-
----
-
-## Guardrails
-
-Guardrails prevent known failure patterns. Applied based on workflow selection.
-
-| Guardrail | Purpose |
-|-----------|---------|
-| verify_before_complete | Always verify actual state before claiming done |
-| answer_only | Don't implement when asked a question |
-| require_skill | Invoke domain skill before acting |
-| plan_mode | Get user approval before implementation |
-| require_acceptance_test | TodoWrite must include e2e verification |
-| quote_errors_exactly | No paraphrasing error messages |
-| fix_within_design | Don't redesign during debugging |
-| critic_review | Get second opinion on plans |
-
-**Full definitions**: [[hooks/guardrails]]
-
 ---
 
 ## Hook Trigger Mechanism
 
-When Claude Code fires a hook event, the hook script:
-1. Receives JSON input (prompt, transcript path, tool info, etc.)
-2. Processes and returns JSON output with `additionalContext`
-3. Claude Code injects `additionalContext` into the agent's context
-
-**Example: UserPromptSubmit**
+When Claude Code fires a hook event:
 
 ```
-User types prompt
+Event fires (e.g., UserPromptSubmit)
     ↓
-Claude Code fires UserPromptSubmit event
+Hook script receives JSON input:
+  • prompt, transcript_path, tool info, etc.
     ↓
-hooks/user_prompt_submit.py runs:
-  • Loads template from templates/prompt-hydration-instruction.md
-  • Substitutes {prompt_preview}, {escaped_prompt}, {session_context}
-  • Returns JSON with additionalContext
+Hook loads template (if applicable):
+  • templates/*.md files contain "soft tissue"
+  • Python substitutes placeholders
+    ↓
+Hook returns JSON with additionalContext
     ↓
 Claude Code injects additionalContext into agent
-    ↓
-Main agent sees: original prompt + hydration instruction
 ```
 
-**Template file**: [[hooks/templates/prompt-hydration-instruction.md]] - edit this to change what the agent sees.
+**Pattern**: Separate mechanics (Python) from content (templates).
 
 ---
 
 ## Hook Registry
 
-| Event | Scripts | Purpose |
-|-------|---------|---------|
-| SessionStart | sessionstart_load_axioms.py, session_env_setup.sh | Load framework context |
-| UserPromptSubmit | user_prompt_submit.py | Inject prompt hydration |
-| PreToolUse | policy_enforcer.py | Block dangerous operations |
-| PostToolUse | autocommit_state.py, unified_logger.py | Autocommit, logging |
-| PostToolUse:TodoWrite | request_scribe.py | Memory documentation reminder |
-| Stop | request_scribe.py | Final memory reminder |
+| Event | Script | Template/Content | Purpose |
+|-------|--------|------------------|---------|
+| SessionStart | sessionstart_load_axioms.py | AXIOMS.md, HEURISTICS.md, FRAMEWORK.md, CORE.md | Load framework context |
+| UserPromptSubmit | user_prompt_submit.py | templates/prompt-hydration-instruction.md | Inject prompt hydration |
+| PreToolUse | policy_enforcer.py | settings.json (deny rules) | Block dangerous operations |
+| PostToolUse | autocommit_state.py, unified_logger.py | — | Autocommit, logging |
+| PostToolUse:TodoWrite | request_scribe.py | (inline) | Memory documentation reminder |
+| Stop | request_scribe.py | (inline) | Final memory reminder |
 
 **Exit codes**: PreToolUse `0`=allow, `1`=warn, `2`=block. PostToolUse `0`=success, `2`=report to agent.
 
@@ -232,6 +230,8 @@ Main agent sees: original prompt + hydration instruction
 ## Quick Capture
 
 `/q` saves a task for later; `/do` executes it.
+
+**Commands**: [[commands/q]], [[commands/do]]
 
 ```mermaid
 flowchart LR

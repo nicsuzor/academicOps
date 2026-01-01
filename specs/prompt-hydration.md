@@ -147,35 +147,71 @@ Quality of context gathering matters more than speed. The hydrator should take t
 
 | Failure | Behavior |
 |---------|----------|
+| Temp file write fails | Hook exits non-zero, logs error (fail-fast) |
+| Temp file read fails (subagent) | Subagent returns error, main agent proceeds without hydration |
+| Main agent ignores instruction | Silent failure - hydration doesn't happen (known risk) |
 | Memory search fails | Continue with codebase/session context only |
 | Classification uncertain | Default to `simple` |
 | Timeout | Return partial context, log warning |
 | Complete failure | Return empty context, agent proceeds with baseline |
 
-Graceful degradation - never crash or block.
+Fail-fast on infrastructure errors (temp file). Graceful degradation only for content-gathering failures (memory, classification).
+
+## Architecture
+
+The implementation uses a temp file approach for token efficiency:
+
+```
+UserPromptSubmit hook
+    ↓
+Extracts session context, writes full context to temp file
+    ↓
+Main agent receives SHORT instruction (~100 tokens) with file path
+    ↓
+Main agent spawns prompt-hydrator subagent (Haiku)
+    ↓
+Subagent uses Read tool to load temp file, performs workflow selection
+    ↓
+Main agent follows guidance
+```
+
+**Why temp files:**
+- **Token efficiency**: Main agent sees ~100 tokens (instruction + path) vs ~500+ tokens (full embedded context)
+- **Higher compliance**: Shorter instructions are less likely to be skipped (hypothesis - needs validation)
+- **Subagent gets full context**: File contains complete prompt + session state + template
+- **Debuggable**: Temp files can be inspected for troubleshooting
+
+**Temp file handling:**
+- **Location**: `/tmp/claude-hydrator/` (created with `makedirs` if missing)
+- **Naming**: Uses `tempfile.NamedTemporaryFile` with prefix `hydrate_` to avoid collisions
+- **Cleanup**: Files deleted after 1 hour via cleanup on hook invocation (delete files older than 1hr)
+- **On failure**: If temp write fails, hook returns error and HALTS (no silent fallback per AXIOM #7)
+
+**Subagent file access**: Subagents use the `Read` tool to access files. The instruction must explicitly tell the subagent to read the file path.
 
 ## Implementation
 
-### Option A: Fast Script + Main Agent Decision
+The hook (`hooks/user_prompt_submit.py`) performs these steps:
 
-Hook runs Python script that:
-1. Gathers context (memory search, session state, codebase signals)
-2. Returns structured context to main agent
-3. Main agent makes intelligent workflow selection based on context
+1. **Cleanup old temp files** - Delete files in `/tmp/claude-hydrator/` older than 1 hour
+2. **Extract session context** via `extract_router_context()` from the transcript:
+   - Last N user prompts (truncated)
+   - Most recent Skill invocation
+   - TodoWrite task status counts
+3. **Load hydrator template** from `hooks/templates/prompt-hydrator-context.md`
+4. **Build full context** by combining template + session context + user prompt
+5. **Write to temp file** using `tempfile.NamedTemporaryFile(delete=False)`:
+   - On success: Return instruction with file path
+   - On failure (IOError, disk full): Return error, exit non-zero (fail-fast)
+6. **Return short instruction** via `hookSpecificOutput.additionalContext`:
+   ```
+   Task(subagent_type="prompt-hydrator", model="haiku",
+        prompt="Use the Read tool to read {temp_path}, then return workflow guidance")
+   ```
 
-**Pros**: Fast context gathering, intelligent decisions by capable model
-**Cons**: Uses main agent tokens for decision
+The subagent uses Read to load the temp file, performs workflow selection, and returns structured guidance. The main agent follows the guidance.
 
-### Option B: Background Subagent
-
-Hook spawns Haiku subagent asynchronously:
-1. Subagent gathers context AND makes workflow selection
-2. Returns structured output before main agent responds
-
-**Pros**: Offloads decision to cheaper model
-**Cons**: More latency, may need main agent override for complex cases
-
-**Recommendation**: Start with Option A. The main agent already understands context - just surface relevant information and let it decide.
+**Note**: Subagents don't inherit session context and cannot read files directly - they must use the Read tool. The instruction explicitly tells the subagent to use Read.
 
 ## Relationship to /do
 
@@ -198,18 +234,24 @@ With Prompt Hydration working, `/do` becomes the "extra guardrails" option for c
 ## Acceptance Criteria
 
 1. Hydration runs on every UserPromptSubmit
-2. Context surfaces relevant information for workflow decisions
-3. Latency meets performance requirements
-4. Skills are correctly suggested based on domain signals
-5. Guardrails match `hooks/guardrails.md` definitions
-6. Graceful degradation on errors
-7. Agent behavior measurably improves (fewer skill bypasses)
+2. Context written to temp file, not embedded inline
+3. Main agent instruction is ≤150 tokens (file path only)
+4. Temp files written to `/tmp/claude-hydrator/` with timestamp names
+5. Context surfaces relevant information for workflow decisions
+6. Latency meets performance requirements
+7. Skills are correctly suggested based on domain signals
+8. Guardrails match `hooks/guardrails.md` definitions
+9. Graceful degradation on errors
+10. Agent behavior measurably improves (fewer skill bypasses)
 
 ## Files
 
 | File | Purpose |
 |------|---------|
-| `hooks/user_prompt_submit.py` | Entry point - runs hydration |
-| `hooks/prompt_hydration.py` | Core logic (new) |
-| `hooks/guardrails.md` | Guardrail definitions (existing) |
-| `WORKFLOWS.md` | Generated routing table (existing) |
+| `hooks/user_prompt_submit.py` | Entry point - extracts context, writes temp file, returns short instruction |
+| `hooks/templates/prompt-hydrator-context.md` | Full context template written to temp file (prompt + session + instructions) |
+| `hooks/templates/prompt-hydration-instruction.md` | Short instruction template for main agent (~100 tokens) |
+| `lib/session_reader.py` | `extract_router_context()` - extracts session state from transcript |
+| `agents/prompt-hydrator.md` | Subagent that reads temp file and performs workflow selection |
+| `hooks/guardrails.md` | Guardrail definitions |
+| `WORKFLOWS.md` | Generated routing table |
