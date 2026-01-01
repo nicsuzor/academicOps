@@ -16,14 +16,16 @@ Every prompt goes through this flow. Framework insertion points branch horizonta
                              ▼
                     ┌──────────────────┐         ┌─────────────────────────────┐
                     │ 1. User Prompt   │ ──────► │ UserPromptSubmit hook       │
-                    │    arrives       │         │ → [[specs/prompt-hydration]]│
+                    │    arrives       │         │ triggers prompt-hydrator    │
                     └────────┬─────────┘         └─────────────────────────────┘
                              │
                              ▼
                     ┌──────────────────┐         ┌─────────────────────────────┐
-                    │ 2. Context +     │ ──────► │ prompt-hydrator agent       │
-                    │    Classification│         │ → [[agents/prompt-hydrator]]│
-                    └────────┬─────────┘         │ (memory, codebase, session) │
+                    │ 2. Prompt        │ ──────► │ prompt-hydrator agent runs: │
+                    │    Hydration     │         │ • memory search             │
+                    └────────┬─────────┘         │ • codebase signals          │
+                             │                   │ • session context           │
+                             │                   │ → [[specs/prompt-hydration]]│
                              │                   └─────────────────────────────┘
                              ▼
                     ┌──────────────────┐         ┌─────────────────────────────┐
