@@ -129,6 +129,7 @@ Full instructions: `$AOPS/commands/do.md`
 | Skill | Purpose |
 |-------|---------|
 | analyst | Research data analysis (dbt, Streamlit, stats) |
+| fact-check | Verify factual claims against authoritative sources |
 | audit | Comprehensive framework governance (structure, justification, index updates) |
 | dashboard | Live Streamlit dashboard for tasks + sessions |
 | excalidraw | Hand-drawn diagrams with organic layouts |
