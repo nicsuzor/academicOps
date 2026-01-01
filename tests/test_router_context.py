@@ -7,11 +7,14 @@ the prompt router to make skill/workflow decisions.
 from __future__ import annotations
 
 import json
+import logging
 import tempfile
 from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
+
+log = logging.getLogger(__name__)
 
 
 def _make_timestamp(offset_seconds: int = 0) -> str:
@@ -508,3 +511,383 @@ class TestExtractRouterContext:
         first_pos = result.lower().find("first prompt")
         third_pos = result.lower().find("third prompt")
         assert first_pos < third_pos, "Prompts should appear in chronological order"
+
+
+@pytest.mark.demo
+class TestExtractRouterContextDemo:
+    """Demo tests showing real extract_router_context behavior.
+
+    Run with: uv run pytest tests/test_router_context.py -k demo -v --log-cli-level=INFO
+    """
+
+    def test_demo_extract_from_real_session(self) -> None:
+        """Given a real session transcript, show what context is extracted.
+
+        This demo uses actual session files to reveal:
+        - What prompts are captured
+        - How they're formatted
+        - Token efficiency of the output
+        """
+        from lib.session_reader import extract_router_context
+
+        # Find real session transcripts
+        session_dir = Path.home() / ".claude/projects/-Users-suzor-src-academicOps"
+        if not session_dir.exists():
+            pytest.skip("No session directory found")
+
+        sessions = sorted(
+            [s for s in session_dir.glob("*.jsonl") if not s.name.startswith("agent-")],
+            key=lambda f: f.stat().st_mtime,
+            reverse=True,
+        )
+
+        if not sessions:
+            pytest.skip("No session files found")
+
+        current = sessions[0]
+        log.info("=" * 70)
+        log.info("SESSION: %s", current.name)
+        log.info("SIZE: %d bytes", current.stat().st_size)
+        log.info("=" * 70)
+
+        # Extract context
+        context = extract_router_context(current)
+
+        log.info("EXTRACTED CONTEXT (%d chars):", len(context))
+        log.info("-" * 70)
+        for line in context.split("\n"):
+            log.info("  %s", line)
+        log.info("-" * 70)
+
+        # Analyze token efficiency
+        assert len(context) < 2000, "Context should be compact (<2000 chars)"
+        assert "Session Context" in context or context == "", "Should have header or be empty"
+
+    def test_demo_show_raw_vs_extracted(self, tmp_path: Path) -> None:
+        """Given mixed content formats, show what gets extracted vs filtered.
+
+        Demonstrates:
+        - String format (commands) vs list format (regular prompts)
+        - XML markup in commands
+        - Agent notifications
+        - What's kept vs discarded
+        """
+        from lib.session_reader import extract_router_context
+
+        log.info("=" * 70)
+        log.info("RAW ENTRIES vs EXTRACTED CONTEXT")
+        log.info("=" * 70)
+
+        session_file = tmp_path / "demo-session.jsonl"
+
+        # Create realistic mixed content
+        entries = [
+            # Command with XML markup (string format)
+            {
+                "type": "user",
+                "uuid": "u1",
+                "timestamp": "2026-01-01T10:00:00Z",
+                "message": {
+                    "content": "<command-message>do</command-message>\n<command-name>/do</command-name>\n<command-args>fix the hydrator context bug</command-args>"
+                },
+            },
+            {"type": "assistant", "uuid": "a1", "timestamp": "2026-01-01T10:01:00Z", "message": {"content": [{"type": "text", "text": "I'll fix that."}]}},
+            # Regular prompt (list format)
+            {
+                "type": "user",
+                "uuid": "u2",
+                "timestamp": "2026-01-01T10:02:00Z",
+                "message": {
+                    "content": [{"type": "text", "text": "now run the tests to verify"}]
+                },
+            },
+            {"type": "assistant", "uuid": "a2", "timestamp": "2026-01-01T10:03:00Z", "message": {"content": [{"type": "text", "text": "Running tests..."}]}},
+            # Agent notification (noise)
+            {
+                "type": "user",
+                "uuid": "u3",
+                "timestamp": "2026-01-01T10:04:00Z",
+                "message": {
+                    "content": "<agent-notification>\n<agent-id>aa7d721</agent-id>\n<status>completed</status>\n</agent-notification>"
+                },
+            },
+            # Follow-up prompt
+            {
+                "type": "user",
+                "uuid": "u4",
+                "timestamp": "2026-01-01T10:05:00Z",
+                "message": {
+                    "content": "save that output to the results directory"
+                },
+            },
+        ]
+
+        # Log raw entries
+        log.info("RAW USER ENTRIES:")
+        for i, entry in enumerate(entries):
+            if entry["type"] == "user":
+                content = entry["message"]["content"]
+                if isinstance(content, str):
+                    preview = content[:80].replace("\n", "\\n")
+                else:
+                    preview = content[0]["text"][:80] if content else "(empty)"
+                log.info("  %d. [%s] %s...", i + 1, type(content).__name__, preview)
+
+        with session_file.open("w") as f:
+            for entry in entries:
+                f.write(json.dumps(entry) + "\n")
+
+        # Extract and show
+        context = extract_router_context(session_file)
+
+        log.info("")
+        log.info("EXTRACTED CONTEXT:")
+        log.info("-" * 50)
+        for line in context.split("\n"):
+            log.info("  %s", line)
+        log.info("-" * 50)
+
+        log.info("")
+        log.info("ANALYSIS:")
+        log.info("  - XML markup preserved: %s", "<command" in context)
+        log.info("  - Agent notification included: %s", "agent-notification" in context)
+        log.info("  - Useful prompt text included: %s", "fix" in context.lower() or "test" in context.lower())
+        log.info("  - Total chars: %d", len(context))
+
+        # This test SHOWS behavior, doesn't assert correctness
+        # The output helps us decide what to improve
+        assert context, "Should extract some context"
+
+    def test_demo_token_analysis(self, tmp_path: Path) -> None:
+        """Analyze token efficiency: useful content vs noise ratio.
+
+        Shows breakdown of extracted context to identify waste.
+        """
+        from lib.session_reader import extract_router_context
+
+        log.info("=" * 70)
+        log.info("TOKEN EFFICIENCY ANALYSIS")
+        log.info("=" * 70)
+
+        session_file = tmp_path / "analysis-session.jsonl"
+
+        # Typical session content
+        entries = [
+            # Real command
+            {
+                "type": "user",
+                "uuid": "u1",
+                "timestamp": "2026-01-01T10:00:00Z",
+                "message": {"content": "<command-message>do</command-message>\n<command-name>/do</command-name>\n<command-args>implement the new caching layer for API responses</command-args>"},
+            },
+            {"type": "assistant", "uuid": "a1", "timestamp": "2026-01-01T10:01:00Z", "message": {"content": [{"type": "text", "text": "Done"}]}},
+            # Follow-up
+            {
+                "type": "user",
+                "uuid": "u2",
+                "timestamp": "2026-01-01T10:02:00Z",
+                "message": {"content": [{"type": "text", "text": "add tests for the edge cases we discussed"}]},
+            },
+            {"type": "assistant", "uuid": "a2", "timestamp": "2026-01-01T10:03:00Z", "message": {"content": [{"type": "text", "text": "Done"}]}},
+            # Context-dependent prompt (the case we're trying to help)
+            {
+                "type": "user",
+                "uuid": "u3",
+                "timestamp": "2026-01-01T10:04:00Z",
+                "message": {"content": "now save that to the output folder"},
+            },
+        ]
+
+        with session_file.open("w") as f:
+            for entry in entries:
+                f.write(json.dumps(entry) + "\n")
+
+        context = extract_router_context(session_file)
+
+        # Analyze content breakdown
+        lines = context.split("\n")
+        header_chars = len("## Session Context\n\nRecent prompts:\n")
+        prompt_chars = sum(len(line) for line in lines if line.startswith('1.') or line.startswith('2.') or line.startswith('3.'))
+        other_chars = len(context) - header_chars - prompt_chars
+
+        log.info("CONTENT BREAKDOWN:")
+        log.info("  Header/structure: ~%d chars", header_chars)
+        log.info("  Prompt content: ~%d chars", prompt_chars)
+        log.info("  Other (tasks, skills): ~%d chars", other_chars)
+        log.info("  TOTAL: %d chars", len(context))
+        log.info("")
+
+        # What SHOULD the hydrator see?
+        ideal = """User asked: implement caching layer
+User asked: add edge case tests
+User asked: save that to output folder"""
+        log.info("IDEAL CONTEXT (~%d chars):", len(ideal))
+        for line in ideal.split("\n"):
+            log.info("  %s", line)
+        log.info("")
+
+        log.info("CURRENT CONTEXT:")
+        for line in context.split("\n"):
+            log.info("  %s", line)
+
+        log.info("")
+        log.info("WASTE: XML tags, truncated text, structure overhead")
+
+        assert context, "Should have context"
+
+
+class TestCleanPromptExtraction:
+    """Tests for improved prompt extraction that strips noise."""
+
+    def test_strips_command_xml_markup(self, tmp_path: Path) -> None:
+        """Given a command with XML markup, extract only the args content.
+
+        Commands like /do wrap content in XML:
+        <command-message>do</command-message>
+        <command-name>/do</command-name>
+        <command-args>actual user intent here</command-args>
+
+        We should extract just "actual user intent here".
+        """
+        from lib.session_reader import extract_router_context
+
+        session_file = tmp_path / "command-session.jsonl"
+
+        entries = [
+            {
+                "type": "user",
+                "uuid": "u1",
+                "timestamp": "2026-01-01T10:00:00Z",
+                "message": {
+                    "content": "<command-message>do</command-message>\n<command-name>/do</command-name>\n<command-args>fix the hydrator context bug</command-args>"
+                },
+            },
+            {"type": "assistant", "uuid": "a1", "timestamp": "2026-01-01T10:01:00Z", "message": {"content": [{"type": "text", "text": "Done"}]}},
+        ]
+
+        with session_file.open("w") as f:
+            for entry in entries:
+                f.write(json.dumps(entry) + "\n")
+
+        context = extract_router_context(session_file)
+
+        # Should contain the actual command args, not XML markup
+        assert "fix the hydrator" in context.lower(), "Should extract command args content"
+        # Should NOT contain XML tags
+        assert "<command-message>" not in context, "Should strip <command-message> tag"
+        assert "<command-name>" not in context, "Should strip <command-name> tag"
+        assert "<command-args>" not in context, "Should strip <command-args> tag"
+
+    def test_filters_agent_notifications(self, tmp_path: Path) -> None:
+        """Given agent notifications, filter them out entirely.
+
+        Agent notifications are system messages, not user intent:
+        <agent-notification>
+        <agent-id>aa7d721</agent-id>
+        <status>completed</status>
+        </agent-notification>
+
+        These should be completely excluded from context.
+        """
+        from lib.session_reader import extract_router_context
+
+        session_file = tmp_path / "notification-session.jsonl"
+
+        entries = [
+            # Real user prompt
+            {
+                "type": "user",
+                "uuid": "u1",
+                "timestamp": "2026-01-01T10:00:00Z",
+                "message": {"content": [{"type": "text", "text": "run the tests please"}]},
+            },
+            {"type": "assistant", "uuid": "a1", "timestamp": "2026-01-01T10:01:00Z", "message": {"content": [{"type": "text", "text": "Done"}]}},
+            # Agent notification (should be filtered)
+            {
+                "type": "user",
+                "uuid": "u2",
+                "timestamp": "2026-01-01T10:02:00Z",
+                "message": {
+                    "content": "<agent-notification>\n<agent-id>aa7d721</agent-id>\n<output-file>/tmp/output.txt</output-file>\n<status>completed</status>\n</agent-notification>"
+                },
+            },
+            # Follow-up real prompt
+            {
+                "type": "user",
+                "uuid": "u3",
+                "timestamp": "2026-01-01T10:03:00Z",
+                "message": {"content": "save that to the output folder"},
+            },
+        ]
+
+        with session_file.open("w") as f:
+            for entry in entries:
+                f.write(json.dumps(entry) + "\n")
+
+        context = extract_router_context(session_file)
+
+        # Should contain real prompts
+        assert "run the tests" in context.lower(), "Should include real user prompt"
+        assert "save that" in context.lower(), "Should include follow-up prompt"
+        # Should NOT contain agent notification content
+        assert "agent-notification" not in context, "Should filter out agent notifications"
+        assert "aa7d721" not in context, "Should not include agent IDs"
+
+    def test_combined_cleaning(self, tmp_path: Path) -> None:
+        """Given mixed content, apply all cleaning rules together.
+
+        Verifies the full pipeline:
+        1. Strip command XML
+        2. Filter notifications
+        3. Keep clean prompts
+        """
+        from lib.session_reader import extract_router_context
+
+        session_file = tmp_path / "mixed-session.jsonl"
+
+        entries = [
+            # Command with XML
+            {
+                "type": "user",
+                "uuid": "u1",
+                "timestamp": "2026-01-01T10:00:00Z",
+                "message": {"content": "<command-message>do</command-message>\n<command-name>/do</command-name>\n<command-args>implement caching layer</command-args>"},
+            },
+            {"type": "assistant", "uuid": "a1", "timestamp": "2026-01-01T10:01:00Z", "message": {"content": [{"type": "text", "text": "Done"}]}},
+            # Agent notification (filter out)
+            {
+                "type": "user",
+                "uuid": "u2",
+                "timestamp": "2026-01-01T10:02:00Z",
+                "message": {"content": "<agent-notification>\n<agent-id>xyz123</agent-id>\n<status>completed</status>\n</agent-notification>"},
+            },
+            # Clean prompt
+            {
+                "type": "user",
+                "uuid": "u3",
+                "timestamp": "2026-01-01T10:03:00Z",
+                "message": {"content": [{"type": "text", "text": "add tests for edge cases"}]},
+            },
+            {"type": "assistant", "uuid": "a3", "timestamp": "2026-01-01T10:04:00Z", "message": {"content": [{"type": "text", "text": "Done"}]}},
+            # Context-dependent prompt
+            {
+                "type": "user",
+                "uuid": "u4",
+                "timestamp": "2026-01-01T10:05:00Z",
+                "message": {"content": "save that to output folder"},
+            },
+        ]
+
+        with session_file.open("w") as f:
+            for entry in entries:
+                f.write(json.dumps(entry) + "\n")
+
+        context = extract_router_context(session_file)
+
+        # Verify cleaning worked
+        assert "caching layer" in context.lower(), "Should extract command args"
+        assert "add tests" in context.lower(), "Should keep clean prompts"
+        assert "save that" in context.lower(), "Should keep context-dependent prompts"
+        assert "<command" not in context, "Should strip all XML markup"
+        assert "agent-notification" not in context, "Should filter notifications"
+        assert "xyz123" not in context, "Should not include agent IDs"

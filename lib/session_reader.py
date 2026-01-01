@@ -112,6 +112,32 @@ def extract_router_context(transcript_path: Path, max_turns: int = _MAX_TURNS) -
         return ""
 
 
+def _is_agent_notification(text: str) -> bool:
+    """Check if text is an agent notification (system noise)."""
+    return text.strip().startswith("<agent-notification>")
+
+
+def _clean_prompt_text(text: str) -> str:
+    """Clean prompt text by stripping command XML markup.
+
+    Commands like /do wrap content in XML:
+    <command-message>do</command-message>
+    <command-name>/do</command-name>
+    <command-args>actual user intent here</command-args>
+
+    This extracts just the args content.
+    """
+    import re
+
+    # Check for command XML format
+    args_match = re.search(r"<command-args>(.*?)</command-args>", text, re.DOTALL)
+    if args_match:
+        return args_match.group(1).strip()
+
+    # Not a command, return as-is
+    return text
+
+
 def _extract_router_context_impl(transcript_path: Path, max_turns: int) -> str:
     """Implementation of router context extraction."""
     # Parse JSONL entries
@@ -143,14 +169,18 @@ def _extract_router_context_impl(transcript_path: Path, max_turns: int) -> str:
         # Handle both string content (commands) and list content (API format)
         if isinstance(content, str):
             text = content.strip()
-            if text:
-                user_prompts.append(text)
+            if text and not _is_agent_notification(text):
+                cleaned = _clean_prompt_text(text)
+                if cleaned:
+                    user_prompts.append(cleaned)
         elif isinstance(content, list):
             for block in content:
                 if isinstance(block, dict) and block.get("type") == "text":
                     text = block.get("text", "").strip()
-                    if text:
-                        user_prompts.append(text)
+                    if text and not _is_agent_notification(text):
+                        cleaned = _clean_prompt_text(text)
+                        if cleaned:
+                            user_prompts.append(cleaned)
                         break
 
     # Get last N prompts
