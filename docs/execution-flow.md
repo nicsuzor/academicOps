@@ -16,9 +16,12 @@ Every prompt goes through this flow. Framework insertion points branch horizonta
                              ▼
                     ┌──────────────────┐         ┌─────────────────────────────┐
                     │ 1. User Prompt   │ ──────► │ UserPromptSubmit hook       │
-                    │    arrives       │         │ triggers prompt-hydrator    │
-                    └────────┬─────────┘         └─────────────────────────────┘
-                             │
+                    │    arrives       │         │ → hooks/user_prompt_submit.py
+                    └────────┬─────────┘         │                             │
+                             │                   │ Injects instruction from:   │
+                             │                   │ → templates/prompt-hydration│
+                             │                   │   -instruction.md           │
+                             │                   └─────────────────────────────┘
                              ▼
                     ┌──────────────────┐         ┌─────────────────────────────┐
                     │ 2. Prompt        │ ──────► │ prompt-hydrator agent runs: │
@@ -178,6 +181,34 @@ Guardrails prevent known failure patterns. Applied based on workflow selection.
 | critic_review | Get second opinion on plans |
 
 **Full definitions**: [[hooks/guardrails]]
+
+---
+
+## Hook Trigger Mechanism
+
+When Claude Code fires a hook event, the hook script:
+1. Receives JSON input (prompt, transcript path, tool info, etc.)
+2. Processes and returns JSON output with `additionalContext`
+3. Claude Code injects `additionalContext` into the agent's context
+
+**Example: UserPromptSubmit**
+
+```
+User types prompt
+    ↓
+Claude Code fires UserPromptSubmit event
+    ↓
+hooks/user_prompt_submit.py runs:
+  • Loads template from templates/prompt-hydration-instruction.md
+  • Substitutes {prompt_preview}, {escaped_prompt}, {session_context}
+  • Returns JSON with additionalContext
+    ↓
+Claude Code injects additionalContext into agent
+    ↓
+Main agent sees: original prompt + hydration instruction
+```
+
+**Template file**: [[hooks/templates/prompt-hydration-instruction.md]] - edit this to change what the agent sees.
 
 ---
 
