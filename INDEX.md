@@ -26,7 +26,7 @@ $AOPS/
 ├── [[RULES.md]]                 # Current enforcement rules (auto-generated)
 ├── [[CLAUDE.md]]                # Repo instructions (@ syntax auto-loads)
 ├── [[AGENTS.md]]                # Agent context (shared by all agents)
-├── [[GEMINI.md]]                # Gemini MCP integration guide
+├── [[GEMINI.md]]                # Gemini agent instructions
 ├── pyproject.toml               # Python project config
 ├── setup.sh                     # Main installation script
 ├── install.sh                   # Alternative installer

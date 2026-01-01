@@ -140,7 +140,12 @@ def _extract_router_context_impl(transcript_path: Path, max_turns: int) -> str:
         message = entry.get("message", {})
         content = message.get("content", [])
 
-        if isinstance(content, list):
+        # Handle both string content (commands) and list content (API format)
+        if isinstance(content, str):
+            text = content.strip()
+            if text:
+                user_prompts.append(text)
+        elif isinstance(content, list):
             for block in content:
                 if isinstance(block, dict) and block.get("type") == "text":
                     text = block.get("text", "").strip()

@@ -15,17 +15,19 @@ from pathlib import Path
 from typing import Any
 
 from hook_debug import safe_log_to_debug_file
+from lib.session_reader import extract_router_context
 
 # Paths (absolute, fail-fast if missing)
 HOOK_DIR = Path(__file__).parent
 
 
-def build_hydration_instruction(prompt: str) -> str:
+def build_hydration_instruction(prompt: str, transcript_path: str | None = None) -> str:
     """
     Build instruction for main agent to invoke prompt-hydrator.
 
     Args:
         prompt: The user's original prompt
+        transcript_path: Path to session transcript for context extraction
 
     Returns:
         Instruction string to inject into agent context
@@ -38,12 +40,23 @@ def build_hydration_instruction(prompt: str) -> str:
     # Escape quotes in prompt for embedding
     escaped_prompt = prompt.replace('"', '\\"').replace("\n", "\\n")
 
+    # Extract session context from transcript
+    session_context = ""
+    if transcript_path:
+        try:
+            ctx = extract_router_context(Path(transcript_path))
+            if ctx:
+                # Escape for embedding in prompt string
+                session_context = "\\n\\n" + ctx.replace('"', '\\"').replace("\n", "\\n")
+        except Exception:
+            pass  # Graceful degradation - proceed without context
+
     instruction = f"""**FIRST**: Before responding to this prompt, invoke the prompt-hydrator agent to get workflow guidance:
 
 ```
 Task(subagent_type="prompt-hydrator", model="haiku",
      description="Hydrate: {prompt_preview}",
-     prompt="Analyze and hydrate this user prompt:\\n\\n{escaped_prompt}")
+     prompt="Analyze and hydrate this user prompt:\\n\\n{escaped_prompt}{session_context}")
 ```
 
 Wait for hydrator output, then follow the workflow guidance it returns. The hydrator will tell you:
@@ -68,12 +81,13 @@ def main():
         # If no stdin or parsing fails, continue with empty input
         pass
 
-    # Extract user prompt
+    # Extract user prompt and transcript path
     prompt = input_data.get("prompt", "")
+    transcript_path = input_data.get("transcript_path")
 
-    # Build hydration instruction
+    # Build hydration instruction with session context
     if prompt:
-        hydration_instruction = build_hydration_instruction(prompt)
+        hydration_instruction = build_hydration_instruction(prompt, transcript_path)
     else:
         hydration_instruction = ""
 
