@@ -756,6 +756,38 @@ When `/qa` is invoked:
 
 ---
 
+## H33: Real Data Fixtures Over Fabrication
+
+**Statement**: Test fixtures must use real data captured from production, stored in versioned data files. Never fabricate fixture data that "looks like" what the code processes.
+
+**Rationale**: Fabricated fixtures encode assumptions about input formats that may be wrong or drift over time. Real captured data guarantees tests validate actual behavior. When input formats change, updating a single data file updates all tests - no hunting through inline fixtures.
+
+**Evidence**:
+- 2026-01-01: User feedback on `test_router_context.py` - "I don't have any guarantee that real life input actually looks like that"
+
+**Confidence**: Low (first occurrence, strong principle)
+
+**Implements**: [[AXIOMS]] #19 (Write for Long Term), #17 (Verify First)
+
+**Pattern**:
+```
+tests/
+├── data/                          # Real captured data
+│   ├── session_transcript.jsonl   # Captured from ~/.claude/projects/
+│   ├── command_output.json        # Captured from real invocation
+│   └── README.md                  # Documents how to refresh captures
+└── test_feature.py                # Loads from tests/data/
+```
+
+**Application**:
+- ❌ Wrong: `{"type": "user", "message": {"content": "fake prompt"}}` inline
+- ✅ Right: Load `tests/data/sample_session.jsonl` captured from real session
+- ✅ Right: Document capture command: `cp ~/.claude/projects/.../session.jsonl tests/data/`
+
+**When to update data files**: When the format changes OR tests fail due to format drift. The failure itself signals the need for refresh.
+
+---
+
 ## Revision Protocol
 
 To adjust heuristics based on new evidence:

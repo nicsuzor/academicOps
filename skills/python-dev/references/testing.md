@@ -122,6 +122,62 @@ async def test_complete_pipeline():
 6. ✅ Use realistic test data
 7. ✅ Clean up resources after test
 
+## Demo Tests
+
+**Goal**: Create *executable demonstrations* that show behavior (narrative + observable output) and prove real-world utility.
+
+A good demo test should:
+
+- **Read like documentation** (scenario names, clear setup)
+- **Show behavior** (prints/logs/trace-friendly asserts) when run in "demo mode"
+- **Use real data** (prove *and demonstrate* real-world utility)
+
+### Demo Test Rules
+
+1. **Add demo marker** (required): `@pytest.mark.demo`
+2. **Names explain behavior**: Use "Given / When / Then" naming structure
+3. **Log intermediate state**: Include `log.info(...)` calls showing key steps
+4. **Direct object comparisons**: Prefer dicts/lists/dataclasses for readable diffs
+5. **Human-readable parametrization IDs**: Create a mini "example catalog"
+6. **Asserts that teach**: Compare **dicts**, **lists**, **dataclasses** directly
+
+### Demo Test Example
+
+```python
+import logging
+import pytest
+
+log = logging.getLogger(__name__)
+
+
+@pytest.mark.demo
+@pytest.mark.parametrize(
+    "input_data,expected",
+    [
+        pytest.param({"name": "Alice"}, {"greeting": "Hello, Alice!"}, id="basic_greeting"),
+        pytest.param({"name": ""}, {"greeting": "Hello, stranger!"}, id="empty_name_fallback"),
+    ],
+)
+def test_given_user_when_greeted_then_personalized_message(input_data, expected):
+    """Demo: Greeting service personalizes messages based on user data."""
+    log.info(f"Input: {input_data}")
+
+    result = greeting_service.greet(input_data)
+    log.info(f"Result: {result}")
+
+    assert result == expected  # Direct dict comparison = readable diff
+```
+
+### Running Demo Tests
+
+```bash
+# Run all demo tests with verbose output
+uv run pytest -m demo -xvs --log-cli-level=INFO
+
+# Run demos for specific module
+uv run pytest -m demo tests/test_module.py -xvs --log-cli-level=INFO
+```
+
 ## Pytest Patterns
 
 ### Test Naming Conventions
@@ -151,15 +207,23 @@ def test_function_with_none_returns_none():
 
 ### Fixtures for Reusable Setup
 
+**CRITICAL**: Use real captured data, not fabricated fixtures. See [[HEURISTICS.md#H33]].
+
 ```python
 import pytest
 from pathlib import Path
 
+# Location for real captured test data
+TESTS_DATA = Path(__file__).parent / "data"
+
 
 @pytest.fixture
-def sample_data():
-    """Provide sample data for tests."""
-    return {"key": "value", "count": 42}
+def sample_session() -> Path:
+    """Real session transcript captured from production.
+
+    To refresh: cp ~/.claude/projects/.../session.jsonl tests/data/
+    """
+    return TESTS_DATA / "sample_session.jsonl"
 
 
 @pytest.fixture
@@ -170,11 +234,13 @@ def temp_file(tmp_path):
     return file_path
 
 
-def test_with_fixtures(sample_data, temp_file):
-    """Test using multiple fixtures."""
-    assert sample_data["count"] == 42
-    assert temp_file.read_text() == "test content"
+def test_with_real_data(sample_session: Path):
+    """Test using real captured data."""
+    assert sample_session.exists(), "Run capture command to refresh test data"
+    # Parse and test against real format
 ```
+
+**Why real data?** Fabricated fixtures encode format assumptions. Real data guarantees format accuracy. When formats drift, tests fail - signaling the need to refresh captures.
 
 ### Async Tests
 
