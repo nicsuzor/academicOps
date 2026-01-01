@@ -19,9 +19,9 @@ tags:
 - Before submitting reviews, reports, or assessments with factual claims
 - When reviewing AI-generated content that cites sources
 
-## Core Principle: Guilty Until Proven Innocent
+## Core Principle: Burden of Proof
 
-Every factual claim is assumed **hallucinated** until you can demonstrate otherwise with evidence. This is the opposite of normal reading where we assume good faith.
+Every factual claim carries a **high burden of proof** that must be discharged with evidence. Unlike normal reading where we assume good faith, verification requires demonstrating accuracy—not just absence of obvious error.
 
 **Why?** LLM-generated content confidently produces plausible-sounding details that don't exist: invented statistics, misattributed quotes, fabricated publication dates, non-existent researchers.
 
