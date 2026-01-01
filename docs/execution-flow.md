@@ -4,92 +4,88 @@ Where the framework injects control during a Claude Code session.
 
 ---
 
-## Intervention Points
+## Universal Execution Flow
 
-```mermaid
-flowchart LR
-    subgraph START["Session Start"]
-        SS["SessionStart Hook"]
-        SS_DO["Load AXIOMS, HEURISTICS,<br/>FRAMEWORK, CORE"]
-    end
+Every prompt goes through this flow. Framework insertion points branch horizontally.
 
-    subgraph PROMPT["Each Prompt"]
-        R{{"/ command?"}}
-        CMD["Command loads"]
-        FREE["Freeform<br/>(baseline only)"]
-    end
-
-    subgraph TOOLS["Tool Use"]
-        PRE["PreToolUse"]
-        TOOL["Tool runs"]
-        POST["PostToolUse"]
-    end
-
-    subgraph END["Session End"]
-        STOP["Stop Hook"]
-    end
-
-    SS --> SS_DO --> PROMPT
-    R -->|Yes| CMD
-    R -->|No| FREE
-    CMD --> TOOLS
-    FREE --> TOOLS
-    PRE --> TOOL --> POST
-    TOOLS --> END
-
-    style SS fill:#4caf50,color:#fff
-    style CMD fill:#4caf50,color:#fff
-    style FREE fill:#ffcdd2,color:#000
-    style PRE fill:#fff3e0,color:#000
-    style POST fill:#fff3e0,color:#000
 ```
-
-| Event | Mechanism | Control |
-|-------|-----------|---------|
-| **Session start** | `SessionStart` hook | 🟢 HIGH - loads baseline context |
-| **`/command`** | Claude Code routing → `commands/*.md` | 🟢 HIGH - our instructions load |
-| **`Skill()` invoked** | `skills/*/SKILL.md` | 🟢 HIGH - domain context loads |
-| **Freeform prompt** | `UserPromptSubmit` hook | 🟡 PLANNED - [[specs/prompt-hydration]] |
-| **Tool use** | `PreToolUse` / `PostToolUse` hooks | 🟡 MED - can block, log, autocommit |
-| **Session end** | `Stop` hook | 🔴 LOW - reminder only |
-
-### Prompt Hydration (Planned)
-
-[[specs/prompt-hydration]] specifies automatic context enrichment on every prompt:
-- Context gathering (memory, codebase, session)
-- Task classification
-- Skill matching
-- Guardrail selection
-
-Once implemented, freeform prompts get the same intelligent routing as `/do`, just lighter weight.
+                    ┌──────────────────┐
+                    │  Session Start   │ ──────► SessionStart hook
+                    └────────┬─────────┘         → AXIOMS, HEURISTICS, FRAMEWORK, CORE
+                             │
+                             ▼
+                    ┌──────────────────┐         ┌─────────────────────────────┐
+                    │ 1. User Prompt   │ ──────► │ UserPromptSubmit hook       │
+                    │    arrives       │         │ → [[specs/prompt-hydration]]│
+                    └────────┬─────────┘         └─────────────────────────────┘
+                             │
+                             ▼
+                    ┌──────────────────┐         ┌─────────────────────────────┐
+                    │ 2. Context +     │ ──────► │ prompt-hydrator agent       │
+                    │    Classification│         │ → [[agents/prompt-hydrator]]│
+                    └────────┬─────────┘         │ (memory, codebase, session) │
+                             │                   └─────────────────────────────┘
+                             ▼
+                    ┌──────────────────┐         ┌─────────────────────────────┐
+                    │ 3. Workflow      │ ──────► │ [[WORKFLOWS]] (routing)     │
+                    │    Selection     │         │ [[hooks/guardrails]] (rules)│
+                    └────────┬─────────┘         └─────────────────────────────┘
+                             │
+                             ▼
+                    ┌──────────────────┐
+                    │ 4. Execute       │ ◄────── See "Workflow Implementations"
+                    │    Workflow      │
+                    └────────┬─────────┘
+                             │
+          ┌──────────────────┼──────────────────┐
+          ▼                  ▼                  ▼
+    ┌──────────┐       ┌──────────┐       ┌──────────┐
+    │ PreTool  │       │ Tool     │       │ PostTool │
+    │ Use hook │       │ executes │       │ Use hook │
+    └──────────┘       └──────────┘       └──────────┘
+          │                                     │
+          └──► policy_enforcer.py               └──► autocommit, logging
+                             │
+                             ▼
+                    ┌──────────────────┐         ┌─────────────────────────────┐
+                    │ 5. Cleanup       │ ──────► │ Stop hook                   │
+                    │                  │         │ → memory reminder           │
+                    └──────────────────┘         └─────────────────────────────┘
+```
 
 ---
 
-## Hypervisor Workflow
+## Workflow Implementations
 
-`/do` transforms the agent into a **hypervisor** that orchestrates work through the full pipeline. This is the "golden path" for guardrailed execution.
+Box 4 is pluggable. The workflow selected in Box 3 determines what happens:
+
+| Workflow | What Happens | When Selected |
+|----------|--------------|---------------|
+| answer-only | Answer, then STOP | Questions, explanations |
+| direct | Main agent executes directly | Simple tasks, clear scope |
+| verify-first | Reproduce → understand → fix | Bug reports, errors |
+| tdd | Test first → implement → verify | New features, refactors |
+| plan-mode | Get approval → full orchestration | Framework changes, complex work |
+| checklist | Systematic verification steps | Reviews, audits |
+
+**Full routing table**: [[WORKFLOWS]]
+
+---
+
+## Full Orchestration Workflow
+
+When `plan-mode` is selected OR `/do` is invoked explicitly, the agent becomes a **hypervisor** that orchestrates work through the complete pipeline:
 
 ```mermaid
 flowchart TD
-    subgraph ENTRY["1. Entry"]
-        U1[/"User: /do [task]"/]
-        H1["Agent becomes hypervisor"]
-    end
-
-    subgraph CONTEXT["2. Context + Classification"]
-        C1["Parallel: memory search,<br/>codebase exploration"]
-        C2["Classify task type<br/>(pattern matching)"]
-        C3["Select guardrails"]
-    end
-
-    subgraph PLAN["3. Planning"]
+    subgraph PLAN["1. Planning"]
         P1["Invoke domain skill"]
         P2["Define acceptance criteria<br/>(LOCKED - immutable)"]
         P3["Create TodoWrite<br/>with CHECKPOINTs"]
         P4["Critic review"]
     end
 
-    subgraph EXECUTE["4. Execution Loop"]
+    subgraph EXECUTE["2. Execution Loop"]
         E1["Mark todo in_progress"]
         E2["Delegate to subagent"]
         E3["Subagent works"]
@@ -105,20 +101,19 @@ flowchart TD
         G3["HALT + ask user"]
     end
 
-    subgraph QA["5. QA Verification"]
+    subgraph QA["3. QA Verification"]
         Q1["Verify against<br/>LOCKED criteria"]
         Q2{"Met?"}
-        Q3["REJECTED → back to 4"]
+        Q3["REJECTED → back to 2"]
         Q4["APPROVED"]
     end
 
-    subgraph CLEANUP["6. Cleanup"]
+    subgraph CLEANUP["4. Cleanup"]
         CL1["Final commit + push"]
         CL2["Update memory"]
         CL3["Report to user"]
     end
 
-    U1 --> H1 --> C1 --> C2 --> C3 --> P1
     P1 --> P2 --> P3 --> P4 --> E1
     E1 --> E2 --> E3 --> E4
     E4 -->|No| E5 --> E2
@@ -130,11 +125,6 @@ flowchart TD
     Q2 -->|No| Q3 --> E1
     Q2 -->|Yes| Q4 --> CL1 --> CL2 --> CL3
 
-    style U1 fill:#2196f3,color:#fff
-    style H1 fill:#4caf50,color:#fff
-    style C1 fill:#ff9800,color:#fff
-    style C2 fill:#ff9800,color:#fff
-    style C3 fill:#ff9800,color:#fff
     style P1 fill:#9c27b0,color:#fff
     style P2 fill:#9c27b0,color:#fff
     style P3 fill:#9c27b0,color:#fff
@@ -166,53 +156,47 @@ flowchart TD
 4. **Commit each cycle** - Changes pushed before next iteration
 5. **Guardrails halt on problems** - Scope drift or thrashing → ask user
 
-### Task Classification
-
-See [[WORKFLOWS.md]] for the authoritative task type → workflow mapping.
-
-| Pattern | Type | Workflow | Guardrails |
-|---------|------|----------|------------|
-| skills/, hooks/, AXIOMS, HEURISTICS | framework | plan-mode | critic_review |
-| error, bug, broken, debug | debug | verify-first | quote_errors_exactly |
-| implement, build, create | feature | tdd | acceptance_testing |
-| how, what, where, explain, "?" | question | — | answer_only |
-
-### Component Roles
-
-| Component | Role |
-|-----------|------|
-| `/do` command | Transforms agent into hypervisor |
-| Domain skills | Inject domain rules and patterns |
-| Subagents | Do actual implementation work |
-| `WORKFLOWS.md` | Task type → workflow routing table (generated) |
-| `hooks/guardrails.md` | Constraint definitions |
-
-**Specs**: `commands/do.md`, [[specs/prompt-hydration]]
+**Command**: [[commands/do]] transforms agent into hypervisor
 
 ---
 
-## Other Flows
+## Guardrails
 
-### Session Initialization
+Guardrails prevent known failure patterns. Applied based on workflow selection.
 
-```mermaid
-flowchart LR
-    L1[/"Launch"/] --> S1["SessionStart hook"] --> I1["Load baseline:<br/>AXIOMS, HEURISTICS,<br/>FRAMEWORK, CORE"] --> R1[/"Ready"/]
+| Guardrail | Purpose |
+|-----------|---------|
+| verify_before_complete | Always verify actual state before claiming done |
+| answer_only | Don't implement when asked a question |
+| require_skill | Invoke domain skill before acting |
+| plan_mode | Get user approval before implementation |
+| require_acceptance_test | TodoWrite must include e2e verification |
+| quote_errors_exactly | No paraphrasing error messages |
+| fix_within_design | Don't redesign during debugging |
+| critic_review | Get second opinion on plans |
 
-    style L1 fill:#2196f3,color:#fff
-    style S1 fill:#9c27b0,color:#fff
-    style I1 fill:#fff3e0,color:#000
-    style R1 fill:#2196f3,color:#fff
-```
+**Full definitions**: [[hooks/guardrails]]
 
-| File | Purpose |
-|------|---------|
-| `FRAMEWORK.md` | Resolved paths |
-| `AXIOMS.md` | Inviolable principles |
-| `HEURISTICS.md` | Empirical patterns |
-| `CORE.md` | User identity |
+---
 
-### /q Quick Capture
+## Hook Registry
+
+| Event | Scripts | Purpose |
+|-------|---------|---------|
+| SessionStart | sessionstart_load_axioms.py, session_env_setup.sh | Load framework context |
+| UserPromptSubmit | user_prompt_submit.py | Inject prompt hydration |
+| PreToolUse | policy_enforcer.py | Block dangerous operations |
+| PostToolUse | autocommit_state.py, unified_logger.py | Autocommit, logging |
+| PostToolUse:TodoWrite | request_scribe.py | Memory documentation reminder |
+| Stop | request_scribe.py | Final memory reminder |
+
+**Exit codes**: PreToolUse `0`=allow, `1`=warn, `2`=block. PostToolUse `0`=success, `2`=report to agent.
+
+**Full hook documentation**: [[docs/HOOKS]]
+
+---
+
+## Quick Capture
 
 `/q` saves a task for later; `/do` executes it.
 
@@ -224,26 +208,3 @@ flowchart LR
     style T1 fill:#9e9e9e,color:#fff
     style D1 fill:#ff9800,color:#fff
 ```
-
----
-
-## Hook Details
-
-
-### Hook Registry
-
-| Event | Scripts | Purpose |
-|-------|---------|---------|
-| SessionStart | session_env_setup.sh, terminal_title.py, sessionstart_load_axioms.py, unified_logger.py | Load framework context |
-| UserPromptSubmit | user_prompt_submit.py, unified_logger.py | Log prompt |
-| PreToolUse | policy_enforcer.py, unified_logger.py | Block dangerous ops |
-| PostToolUse | unified_logger.py, autocommit_state.py, fail_fast_watchdog.py | Log, autocommit, detect workarounds |
-| PostToolUse:TodoWrite | request_scribe.py | Memory documentation reminder |
-| SubagentStop | unified_logger.py | Log subagent completion |
-| Stop | unified_logger.py, request_scribe.py | Final logging |
-
-### Exit Codes
-
-**PreToolUse**: `0` = allow, `1` = warn + allow, `2` = block
-
-**PostToolUse**: `0` = success, `1` = non-blocking error, `2` = report to agent

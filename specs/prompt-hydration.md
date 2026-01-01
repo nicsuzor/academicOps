@@ -1,7 +1,7 @@
 ---
 title: Prompt Hydration
 type: spec
-status: draft
+status: implemented
 permalink: prompt-hydration
 tags: [framework, routing, context, skills]
 ---
