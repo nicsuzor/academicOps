@@ -1268,6 +1268,35 @@ st.markdown("""
         content: "💡 ";
     }
 
+    /* Narrative section - day's story */
+    .synthesis-narrative {
+        background: rgba(139, 92, 246, 0.15);
+        border-left: 3px solid #a78bfa;
+        border-radius: 0 8px 8px 0;
+        padding: 12px 16px;
+        margin-bottom: 16px;
+    }
+
+    .synthesis-narrative-title {
+        color: #c4b5fd;
+        font-weight: 600;
+        font-size: 0.9em;
+        margin-bottom: 8px;
+        letter-spacing: 0.5px;
+    }
+
+    .synthesis-narrative-list {
+        margin: 0;
+        padding-left: 20px;
+        color: #e9d5ff;
+        font-size: 0.9em;
+        line-height: 1.6;
+    }
+
+    .synthesis-narrative-list li {
+        margin-bottom: 4px;
+    }
+
 </style>
 """, unsafe_allow_html=True)
 
@@ -1477,6 +1506,16 @@ if synthesis:
 
     synth_html = "<div class='synthesis-panel'>"
     synth_html += f"<div class='synthesis-header'><div class='synthesis-title'>🧠 FOCUS SYNTHESIS</div><div class='synthesis-age'>{age_str}</div></div>"
+
+    # Narrative section - tell the day's story
+    narrative = synthesis.get('narrative', [])
+    if narrative:
+        synth_html += "<div class='synthesis-narrative'>"
+        synth_html += "<div class='synthesis-narrative-title'>📖 TODAY'S STORY</div>"
+        synth_html += "<ul class='synthesis-narrative-list'>"
+        for bullet in narrative:
+            synth_html += f"<li>{esc(bullet)}</li>"
+        synth_html += "</ul></div>"
 
     # Next action - prominent
     next_action = synthesis.get('next_action', {})
