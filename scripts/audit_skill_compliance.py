@@ -80,6 +80,8 @@ def parse_transcript(path: Path) -> list[TurnAnalysis]:
         if match:
             skills_text = match.group(1)
             skills = SKILL_NAME_PATTERN.findall(skills_text)
+            # Filter out commands (start with /) - those are user shortcuts, not agent skills
+            skills = [s for s in skills if not s.startswith("/")]
             current_suggestions.extend(skills)
 
         # Check for skill invocations
