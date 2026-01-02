@@ -49,6 +49,16 @@ If the deviation matters:
 - What should I redo?
 - What output needs to be regenerated using proper sources?
 
+### 5. Persist Observations
+
+After completing the audit, invoke `/log` to record deviations:
+
+```
+Skill(skill="log", args="[deviation summary from Phase 3]")
+```
+
+This ensures process violations are tracked as GitHub Issues (label: `learning`) and can trigger heuristic synthesis when patterns emerge.
+
 ## Example
 
 ```
