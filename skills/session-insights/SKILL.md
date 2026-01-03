@@ -155,21 +155,51 @@ Return JSON:
 )
 ```
 
-### Step 6: Route Findings
+### Step 6: Save Insights & Route Findings
 
-Collect Gemini outputs and route appropriately:
+**Save mining results to JSON for dashboard:**
 
-**Skill Effectiveness & Context Issues:**
-- Aggregate skill_effectiveness data for compliance tracking
-- Context issues with clear `suggested_injection_point` → consider skill/hook improvements
-- Patterns of skill-bypass → strengthen skill framing per H1
+Write aggregated Gemini outputs to `$ACA_DATA/dashboard/insights.json`:
 
-**Corrections & Failures:**
+```json
+{
+  "generated": "ISO timestamp",
+  "date": "YYYYMMDD",
+  "sessions_analyzed": N,
+  "skill_effectiveness": [/* aggregated from all sessions */],
+  "context_issues": [/* aggregated */],
+  "corrections": [/* aggregated */],
+  "failures": [/* aggregated */],
+  "successes": [/* aggregated */],
+  "summary": {
+    "compliance_rate": 0.0-1.0,
+    "skills_suggested": ["framework", "python-dev"],
+    "skills_invoked": ["framework"],
+    "top_context_gaps": ["description1", "description2"]
+  }
+}
+```
+
+**Update daily note with insights section:**
+
+Add to daily note `$ACA_DATA/sessions/YYYYMMDD-daily.md`:
+
+```markdown
+## Session Insights
+
+**Skill Compliance**: X% (N/M turns followed suggestions)
+**Top Skills**: framework (67%), python-dev (100%)
+
+### Context Issues
+- [issue description] → [suggested fix]
+
+### Corrections
+- [action] → [lesson learned]
+```
+
+**Route learnings:**
 - For each correction/failure, invoke `Skill(skill="learning-log", args="...")`
 - Run up to 8 skills in parallel
-
-**Successes:**
-- Note which skills contributed to successes for positive reinforcement patterns
 
 ---
 
@@ -179,7 +209,8 @@ Collect Gemini outputs and route appropriately:
 |----------|----------|--------|
 | Transcripts (full) | `$ACA_DATA/sessions/claude/YYYYMMDD-{project}-{sessionid}-*-full.md` | Markdown with YAML frontmatter |
 | Transcripts (abridged) | `$ACA_DATA/sessions/claude/YYYYMMDD-{project}-{sessionid}-*-abridged.md` | Markdown with YAML frontmatter |
-| Daily summary | `$ACA_DATA/sessions/YYYYMMDD-daily.md` | Markdown with PRIMARY/SECONDARY sections |
+| Daily summary | `$ACA_DATA/sessions/YYYYMMDD-daily.md` | Markdown with insights section |
+| Mining results | `$ACA_DATA/dashboard/insights.json` | JSON for dashboard |
 | Learning observations | GitHub Issues (nicsuzor/academicOps) | Via `/log` skill → Issues |
 
 ## Output Summary

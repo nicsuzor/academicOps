@@ -1255,6 +1255,54 @@ st.markdown("""
     .synthesis-card.waiting .synthesis-card-title { color: #f87171; }
     .synthesis-card.waiting .synthesis-card-content { color: #fca5a5; }
 
+    .synthesis-card.insights .synthesis-card-title { color: #38bdf8; }
+    .synthesis-card.insights .synthesis-card-content { color: #7dd3fc; }
+
+    .insights-panel {
+        background: linear-gradient(135deg, #0c1929 0%, #0f172a 100%);
+        border: 1px solid #0ea5e9;
+        border-radius: 8px;
+        padding: 12px 16px;
+        margin-top: 12px;
+    }
+
+    .insights-title {
+        color: #38bdf8;
+        font-size: 0.9em;
+        font-weight: bold;
+        margin-bottom: 8px;
+    }
+
+    .insights-stat {
+        display: inline-block;
+        background: rgba(14, 165, 233, 0.15);
+        padding: 4px 10px;
+        border-radius: 4px;
+        margin: 2px 4px 2px 0;
+        font-size: 0.8em;
+    }
+
+    .insights-stat-label {
+        color: #7dd3fc;
+    }
+
+    .insights-stat-value {
+        color: #f0f9ff;
+        font-weight: bold;
+    }
+
+    .insights-gap {
+        color: #fbbf24;
+        font-size: 0.8em;
+        padding: 2px 0;
+        padding-left: 12px;
+    }
+
+    .insights-gap::before {
+        content: "⚠ ";
+        color: #f59e0b;
+    }
+
     .synthesis-suggestion {
         background: rgba(99, 102, 241, 0.2);
         border-radius: 6px;
@@ -1568,6 +1616,41 @@ if synthesis:
         synth_html += "</div>"
 
     synth_html += "</div>"  # End grid
+
+    # Session Insights panel (skill compliance, context gaps)
+    skill_insights = synthesis.get('skill_insights', {})
+    if skill_insights:
+        synth_html += "<div class='insights-panel'>"
+        synth_html += "<div class='insights-title'>🔍 SESSION INSIGHTS</div>"
+
+        # Stats row
+        compliance = skill_insights.get('compliance_rate')
+        if compliance is not None:
+            pct = int(compliance * 100)
+            color = '#4ade80' if pct >= 70 else '#fbbf24' if pct >= 40 else '#f87171'
+            synth_html += f"<span class='insights-stat'><span class='insights-stat-label'>Skill Compliance:</span> <span class='insights-stat-value' style='color: {color};'>{pct}%</span></span>"
+
+        corrections = skill_insights.get('corrections_count', 0)
+        if corrections > 0:
+            synth_html += f"<span class='insights-stat'><span class='insights-stat-label'>Corrections:</span> <span class='insights-stat-value'>{corrections}</span></span>"
+
+        failures = skill_insights.get('failures_count', 0)
+        if failures > 0:
+            synth_html += f"<span class='insights-stat'><span class='insights-stat-label'>Failures:</span> <span class='insights-stat-value' style='color: #f87171;'>{failures}</span></span>"
+
+        successes = skill_insights.get('successes_count', 0)
+        if successes > 0:
+            synth_html += f"<span class='insights-stat'><span class='insights-stat-label'>Successes:</span> <span class='insights-stat-value' style='color: #4ade80;'>{successes}</span></span>"
+
+        # Context gaps
+        context_gaps = skill_insights.get('top_context_gaps', [])
+        if context_gaps:
+            synth_html += "<div style='margin-top: 8px;'>"
+            for gap in context_gaps[:3]:
+                synth_html += f"<div class='insights-gap'>{esc(gap)}</div>"
+            synth_html += "</div>"
+
+        synth_html += "</div>"
 
     # Suggestion
     suggestion = synthesis.get('suggestion')
