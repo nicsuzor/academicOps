@@ -27,6 +27,7 @@ class TurnAnalysis:
     skills_suggested: list[str]
     skills_invoked: list[str]
     followed: bool  # Did agent invoke ANY of the suggested skills?
+    commands_suggested: list[str]  # Commands (/) that router incorrectly suggested
 
 
 # Regex patterns based on actual transcript format
@@ -50,13 +51,14 @@ def parse_transcript(path: Path) -> list[TurnAnalysis]:
     turns: list[TurnAnalysis] = []
     current_turn = 0
     current_suggestions: list[str] = []
+    current_commands: list[str] = []  # Track commands separately
     current_invocations: list[str] = []
 
     for i, line in enumerate(lines):
         # Detect turn boundaries (User or Agent turn headers)
         if re.match(r"###\s+(User|Agent)\s+\(Turn\s+\d+", line):
-            # Save previous turn if it had suggestions
-            if current_suggestions:
+            # Save previous turn if it had suggestions or commands
+            if current_suggestions or current_commands:
                 followed = any(
                     skill in current_invocations for skill in current_suggestions
                 )
@@ -66,6 +68,7 @@ def parse_transcript(path: Path) -> list[TurnAnalysis]:
                         skills_suggested=current_suggestions.copy(),
                         skills_invoked=current_invocations.copy(),
                         followed=followed,
+                        commands_suggested=current_commands.copy(),
                     )
                 )
 
@@ -73,16 +76,20 @@ def parse_transcript(path: Path) -> list[TurnAnalysis]:
             turn_match = re.search(r"Turn\s+(\d+)", line)
             current_turn = int(turn_match.group(1)) if turn_match else current_turn + 1
             current_suggestions = []
+            current_commands = []
             current_invocations = []
 
         # Check for skill suggestions
         match = SKILLS_MATCHED_PATTERN.search(line)
         if match:
             skills_text = match.group(1)
-            skills = SKILL_NAME_PATTERN.findall(skills_text)
-            # Filter out commands (start with /) - those are user shortcuts, not agent skills
-            skills = [s for s in skills if not s.startswith("/")]
-            current_suggestions.extend(skills)
+            all_items = SKILL_NAME_PATTERN.findall(skills_text)
+            # Separate commands from skills
+            for item in all_items:
+                if item.startswith("/"):
+                    current_commands.append(item)
+                else:
+                    current_suggestions.append(item)
 
         # Check for skill invocations
         match = SKILL_INVOKED_PATTERN.search(line)
@@ -90,7 +97,7 @@ def parse_transcript(path: Path) -> list[TurnAnalysis]:
             current_invocations.append(match.group(1))
 
     # Don't forget the last turn
-    if current_suggestions:
+    if current_suggestions or current_commands:
         followed = any(skill in current_invocations for skill in current_suggestions)
         turns.append(
             TurnAnalysis(
@@ -98,6 +105,7 @@ def parse_transcript(path: Path) -> list[TurnAnalysis]:
                 skills_suggested=current_suggestions.copy(),
                 skills_invoked=current_invocations.copy(),
                 followed=followed,
+                commands_suggested=current_commands.copy(),
             )
         )
 
@@ -113,21 +121,21 @@ def calculate_compliance(turns: list[TurnAnalysis]) -> dict:
         - compliant_turns: Number of turns where suggestion was followed
         - compliance_rate: Ratio (0.0 to 1.0)
         - by_skill: Per-skill breakdown
+        - command_suggestions: Count of incorrect command recommendations
     """
-    if not turns:
-        return {
-            "total_turns": 0,
-            "compliant_turns": 0,
-            "compliance_rate": 0.0,
-            "by_skill": {},
-        }
+    # Filter to turns with actual skill suggestions (not just commands)
+    skill_turns = [t for t in turns if t.skills_suggested]
 
-    total = len(turns)
-    compliant = sum(1 for t in turns if t.followed)
+    if not skill_turns:
+        total = 0
+        compliant = 0
+    else:
+        total = len(skill_turns)
+        compliant = sum(1 for t in skill_turns if t.followed)
 
     # Per-skill breakdown
     by_skill: dict[str, dict[str, int]] = {}
-    for turn in turns:
+    for turn in skill_turns:
         for skill in turn.skills_suggested:
             if skill not in by_skill:
                 by_skill[skill] = {"total": 0, "compliant": 0}
@@ -135,11 +143,19 @@ def calculate_compliance(turns: list[TurnAnalysis]) -> dict:
             if turn.followed:
                 by_skill[skill]["compliant"] += 1
 
+    # Track command suggestions (router bug)
+    command_counts: dict[str, int] = {}
+    for turn in turns:
+        for cmd in turn.commands_suggested:
+            command_counts[cmd] = command_counts.get(cmd, 0) + 1
+
     return {
         "total_turns": total,
         "compliant_turns": compliant,
         "compliance_rate": compliant / total if total > 0 else 0.0,
         "by_skill": by_skill,
+        "command_suggestions": command_counts,
+        "total_command_suggestions": sum(command_counts.values()),
     }
 
 
@@ -183,6 +199,16 @@ def format_report(
     for skill, stats in sorted(results["by_skill"].items()):
         rate = stats["compliant"] / stats["total"] if stats["total"] > 0 else 0
         lines.append(f"  {skill:15} -> {rate:.0%} compliance ({stats['compliant']}/{stats['total']})")
+
+    # Report command suggestions as router quality issue
+    if results.get("command_suggestions"):
+        lines.extend([
+            "",
+            f"Router Quality Issue: {results['total_command_suggestions']} command suggestions",
+            "(Commands are user shortcuts, not agent-invocable skills)",
+        ])
+        for cmd, count in sorted(results["command_suggestions"].items()):
+            lines.append(f"  {cmd:15} -> {count} times")
 
     if non_compliant_examples:
         lines.extend(["", "Non-compliant examples (first 5):"])

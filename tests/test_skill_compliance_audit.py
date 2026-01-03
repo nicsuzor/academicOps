@@ -93,6 +93,7 @@ class TestComplianceCalculation:
             skills_suggested=["framework"],
             skills_invoked=["framework"],
             followed=True,
+            commands_suggested=[],
         )
         assert turn.followed is True
 
@@ -103,6 +104,7 @@ class TestComplianceCalculation:
             skills_suggested=["framework"],
             skills_invoked=["learning-log"],
             followed=False,
+            commands_suggested=[],
         )
         assert turn.followed is False
 
@@ -113,16 +115,17 @@ class TestComplianceCalculation:
             skills_suggested=["framework"],
             skills_invoked=[],
             followed=False,
+            commands_suggested=[],
         )
         assert turn.followed is False
 
     def test_calculate_compliance_rate(self):
         """Calculate overall compliance percentage."""
         turns = [
-            TurnAnalysis(1, ["framework"], ["framework"], True),
-            TurnAnalysis(2, ["framework"], ["learning-log"], False),
-            TurnAnalysis(3, ["python-dev"], ["python-dev"], True),
-            TurnAnalysis(4, ["framework"], [], False),
+            TurnAnalysis(1, ["framework"], ["framework"], True, []),
+            TurnAnalysis(2, ["framework"], ["learning-log"], False, []),
+            TurnAnalysis(3, ["python-dev"], ["python-dev"], True, []),
+            TurnAnalysis(4, ["framework"], [], False, []),
         ]
         result = calculate_compliance(turns)
 
@@ -133,9 +136,9 @@ class TestComplianceCalculation:
     def test_calculate_compliance_by_skill(self):
         """Calculate compliance rate per suggested skill."""
         turns = [
-            TurnAnalysis(1, ["framework"], ["framework"], True),
-            TurnAnalysis(2, ["framework"], [], False),
-            TurnAnalysis(3, ["python-dev"], ["python-dev"], True),
+            TurnAnalysis(1, ["framework"], ["framework"], True, []),
+            TurnAnalysis(2, ["framework"], [], False, []),
+            TurnAnalysis(3, ["python-dev"], ["python-dev"], True, []),
         ]
         result = calculate_compliance(turns)
 
@@ -143,6 +146,18 @@ class TestComplianceCalculation:
         assert result["by_skill"]["framework"]["compliant"] == 1
         assert result["by_skill"]["python-dev"]["total"] == 1
         assert result["by_skill"]["python-dev"]["compliant"] == 1
+
+    def test_tracks_command_suggestions(self):
+        """Track commands as router quality issues."""
+        turns = [
+            TurnAnalysis(1, ["framework"], [], False, ["/meta", "/log"]),
+            TurnAnalysis(2, ["python-dev"], [], False, ["/meta"]),
+        ]
+        result = calculate_compliance(turns)
+
+        assert result["total_command_suggestions"] == 3
+        assert result["command_suggestions"]["/meta"] == 2
+        assert result["command_suggestions"]["/log"] == 1
 
 
 class TestEndToEnd:
