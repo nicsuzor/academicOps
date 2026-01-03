@@ -137,6 +137,20 @@ def build_hydration_instruction(prompt: str, transcript_path: str | None = None)
     return instruction
 
 
+def is_system_message(prompt: str) -> bool:
+    """Check if prompt is a system-generated message that should skip hydration.
+
+    Returns True for:
+    - Agent completion notifications (<agent-notification>)
+    - Other system injections that aren't user prompts
+    """
+    prompt_stripped = prompt.strip()
+    # Agent completion notifications from background Task agents
+    if prompt_stripped.startswith("<agent-notification>"):
+        return True
+    return False
+
+
 def main():
     """Main hook entry point - writes context to temp file, returns short instruction."""
     # Read input from stdin
@@ -149,6 +163,18 @@ def main():
 
     prompt = input_data.get("prompt", "")
     transcript_path = input_data.get("transcript_path")
+
+    # Skip hydration for system-generated messages (not actual user prompts)
+    if is_system_message(prompt):
+        output_data = {
+            "hookSpecificOutput": {
+                "hookEventName": "UserPromptSubmit",
+                "additionalContext": "",  # No hydration needed
+            }
+        }
+        safe_log_to_debug_file("UserPromptSubmit", input_data, {"skipped": "system_message"})
+        print(json.dumps(output_data))
+        sys.exit(0)
 
     # Build hydration instruction (writes temp file)
     output_data: dict[str, Any] = {}
