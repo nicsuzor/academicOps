@@ -259,6 +259,84 @@ class TestHookIntegration:
         assert isinstance(instruction, str)
 
 
+class TestSystemMessageFiltering:
+    """Tests for skipping hydration on system-generated messages."""
+
+    def test_skips_agent_notification(self) -> None:
+        """Agent completion notifications should be detected as system messages."""
+        from hooks.user_prompt_submit import is_system_message
+
+        notification = """<agent-notification>
+<agent-id>abc123</agent-id>
+<output-file>/tmp/output.txt</output-file>
+<status>completed</status>
+<summary>Agent completed.</summary>
+</agent-notification>"""
+
+        assert is_system_message(notification) is True
+
+    def test_skips_agent_notification_with_whitespace(self) -> None:
+        """Agent notifications with leading whitespace should still be detected."""
+        from hooks.user_prompt_submit import is_system_message
+
+        notification = "  \n<agent-notification>test</agent-notification>"
+        assert is_system_message(notification) is True
+
+    def test_allows_normal_prompts(self) -> None:
+        """Normal user prompts should NOT be detected as system messages."""
+        from hooks.user_prompt_submit import is_system_message
+
+        prompts = [
+            "Help me fix this bug",
+            "can you refactor the authentication module?",
+            "What does this code do?",
+            "/commit",
+            "prove it with pytests",
+        ]
+
+        for prompt in prompts:
+            assert is_system_message(prompt) is False, f"'{prompt}' should not be a system message"
+
+    def test_allows_empty_prompt(self) -> None:
+        """Empty prompts should not be detected as system messages."""
+        from hooks.user_prompt_submit import is_system_message
+
+        assert is_system_message("") is False
+        assert is_system_message("   ") is False
+
+    def test_hook_skips_hydration_for_agent_notification(self) -> None:
+        """Full hook should return empty additionalContext for agent notifications."""
+        from hooks.user_prompt_submit import main
+        import io
+        import sys
+
+        notification = "<agent-notification><status>completed</status></agent-notification>"
+        input_data = {"prompt": notification, "transcript_path": None}
+
+        old_stdin = sys.stdin
+        old_stdout = sys.stdout
+
+        try:
+            sys.stdin = io.StringIO(json.dumps(input_data))
+            sys.stdout = io.StringIO()
+
+            with pytest.raises(SystemExit) as exc_info:
+                main()
+
+            assert exc_info.value.code == 0, "Hook should exit with code 0"
+
+            output = sys.stdout.getvalue()
+            result = json.loads(output)
+
+            # Should have empty additionalContext (no hydration)
+            context = result["hookSpecificOutput"]["additionalContext"]
+            assert context == "", f"Should skip hydration, got: {context[:100]}"
+
+        finally:
+            sys.stdin = old_stdin
+            sys.stdout = old_stdout
+
+
 @pytest.fixture(autouse=True)
 def cleanup_temp_files():
     """Clean up any temp files created during tests."""
