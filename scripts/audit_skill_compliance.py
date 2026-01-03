@@ -31,8 +31,10 @@ class TurnAnalysis:
 
 
 # Regex patterns based on actual transcript format
-# Pattern: "- Skills matched: `framework`, `python-dev`"
+# Old format: "- Skills matched: `framework`, `python-dev`"
 SKILLS_MATCHED_PATTERN = re.compile(r"Skills matched:\s*(.+)")
+# New format (post 2025-12-31): "**Skill(s)**: framework, python-dev"
+SKILLS_NEW_PATTERN = re.compile(r"\*\*Skill\(s\)\*\*:\s*(.+)")
 # Pattern: "- **🔧 Skill invoked: `learning-log`**"
 SKILL_INVOKED_PATTERN = re.compile(r"🔧 Skill invoked:\s*`([^`]+)`")
 # Pattern to extract skill names from backticks
@@ -79,7 +81,7 @@ def parse_transcript(path: Path) -> list[TurnAnalysis]:
             current_commands = []
             current_invocations = []
 
-        # Check for skill suggestions
+        # Check for skill suggestions (old format with backticks)
         match = SKILLS_MATCHED_PATTERN.search(line)
         if match:
             skills_text = match.group(1)
@@ -90,6 +92,21 @@ def parse_transcript(path: Path) -> list[TurnAnalysis]:
                     current_commands.append(item)
                 else:
                     current_suggestions.append(item)
+
+        # Check for skill suggestions (new format without backticks)
+        match = SKILLS_NEW_PATTERN.search(line)
+        if match:
+            skills_text = match.group(1).strip()
+            # New format: comma-separated, no backticks (e.g., "framework, python-dev")
+            # Skip "none" or empty
+            if skills_text.lower() not in ("none", "[skill names or \"none\"]", ""):
+                for item in skills_text.split(","):
+                    item = item.strip()
+                    if item and not item.startswith("["):  # Skip template placeholders
+                        if item.startswith("/"):
+                            current_commands.append(item)
+                        else:
+                            current_suggestions.append(item)
 
         # Check for skill invocations
         match = SKILL_INVOKED_PATTERN.search(line)
