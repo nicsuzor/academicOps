@@ -127,16 +127,29 @@ Call mcp__gemini__ask-gemini with this prompt:
 
 @{transcript_path}
 
-Analyze this Claude Code session. Extract:
-1. USER CORRECTIONS - where user corrected agent behavior
-2. FAILURES - mistakes requiring intervention
-3. SUCCESSES - tasks completed well
+Analyze this Claude Code session transcript. Extract:
+
+1. SKILL EFFECTIVENESS - Look for '**Skill(s)**: X' (suggested) and '🔧 Skill invoked: `Y`' (used)
+   - Were recommended skills invoked? Was the skill useful when invoked?
+   - Did agent struggle without recommended context when skill was skipped?
+
+2. CONTEXT TIMING - Was context injected at the right time?
+   - Did missing/late context cause mistakes?
+   - What context should have been available earlier?
+
+3. USER CORRECTIONS - where user corrected agent behavior
+
+4. FAILURES - mistakes requiring intervention (categories: navigation|verification|instruction|hallucination|skill-bypass|context-gap|other)
+
+5. SUCCESSES - tasks completed well, especially when skills were properly invoked
 
 Return JSON:
 {
+  \"skill_effectiveness\": [{\"skill_suggested\": \"...\", \"skill_invoked\": \"...\", \"followed_suggestion\": true/false, \"was_useful\": true/false/null, \"notes\": \"...\"}],
+  \"context_issues\": [{\"issue\": \"...\", \"consequence\": \"...\", \"missing_context\": \"...\", \"suggested_injection_point\": \"...\"}],
   \"corrections\": [{\"action\": \"...\", \"feedback\": \"...\", \"lesson\": \"...\"}],
   \"failures\": [{\"description\": \"...\", \"category\": \"...\"}],
-  \"successes\": [{\"description\": \"...\"}]
+  \"successes\": [{\"description\": \"...\", \"skill_contributed\": \"...\"}]
 }
 "
 )
@@ -144,9 +157,19 @@ Return JSON:
 
 ### Step 6: Route Findings
 
-Collect Gemini outputs. 
-- For each extracted insight, invoke Skill(skill="learning-log", args="...").
-- Run up to 8 skills in parallel.
+Collect Gemini outputs and route appropriately:
+
+**Skill Effectiveness & Context Issues:**
+- Aggregate skill_effectiveness data for compliance tracking
+- Context issues with clear `suggested_injection_point` → consider skill/hook improvements
+- Patterns of skill-bypass → strengthen skill framing per H1
+
+**Corrections & Failures:**
+- For each correction/failure, invoke `Skill(skill="learning-log", args="...")`
+- Run up to 8 skills in parallel
+
+**Successes:**
+- Note which skills contributed to successes for positive reinforcement patterns
 
 ---
 
