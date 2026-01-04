@@ -29,6 +29,9 @@ graph TD
     D --> D1[cognitive-load-dashboard]
     D --> D2[task-list-overwhelm]
 
+    E --> E1[framework-health]
+    E --> E2[testing-framework-overview]
+
     F --> F1[analyst-skill]
     F --> F2[framework-skill]
     F --> F3[session-insights-skill]
@@ -73,6 +76,7 @@ Design documents for the academicOps framework. Per [[AXIOMS]] #29: one spec per
 
 ## Infrastructure
 
+- [[framework-health]] - Health metrics, pre-commit hooks, CI/CD enforcement (implemented)
 - [[testing-framework-overview]] - Test types and requirements
 - [[multi-terminal-sync]] - Cross-device state sync (requirement)
 - [[informed-improvement-options]] - Context7 + research before fixes (requirement)

@@ -2,7 +2,7 @@
 name: audit
 description: Comprehensive framework governance audit - structure checking, justification checking, and index file updates.
 allowed-tools: Read,Glob,Grep,Edit,Write,Bash
-version: 3.0.0
+version: 4.0.0
 permalink: skills-audit
 ---
 
@@ -10,7 +10,35 @@ permalink: skills-audit
 
 Comprehensive governance audit for the academicOps framework.
 
+## Quick Start
+
+```bash
+# Full health report
+cd $AOPS && uv run python scripts/audit_framework_health.py -m
+
+# Individual checks
+uv run python scripts/check_skill_line_count.py
+uv run python scripts/check_broken_wikilinks.py
+uv run python scripts/check_orphan_files.py
+uv run python scripts/check_index_completeness.py
+```
+
 ## Workflow
+
+### Phase 0: Health Metrics
+
+Run comprehensive health audit first:
+
+```bash
+cd $AOPS && uv run python scripts/audit_framework_health.py \
+  --output /tmp/health-$(date +%Y%m%d).json
+```
+
+This generates:
+- `/tmp/health-YYYYMMDD.json` - Machine-readable metrics
+- `/tmp/health-YYYYMMDD.md` - Human-readable report
+
+**Metrics tracked**: See [[specs/framework-health.md]]
 
 ### Phase 1: Structure Audit
 
@@ -26,11 +54,17 @@ Compare filesystem to documentation:
 Build reference graph and check linking conventions:
 
 ```bash
+cd $AOPS
+
 # Generate graph
-PYTHONPATH=$AOPS uv run python $AOPS/skills/audit/scripts/build_reference_map.py
+uv run python skills/audit/scripts/build_reference_map.py
 
 # Find orphans and violations
-PYTHONPATH=$AOPS uv run python $AOPS/skills/audit/scripts/find_orphans.py
+uv run python skills/audit/scripts/find_orphans.py
+
+# Or use the health script for wikilink/orphan checks
+uv run python scripts/check_broken_wikilinks.py
+uv run python scripts/check_orphan_files.py
 ```
 
 **Linking rules to enforce**:

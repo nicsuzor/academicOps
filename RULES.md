@@ -83,6 +83,7 @@ tags: [framework, enforcement, moc]
 | H#31 | No LLM Calls in Hooks | Convention only | - | Convention |
 | H#32 | Delete, Don't Deprecate | Convention only | - | Convention |
 | H#33 | Real Data Fixtures | Convention only | - | Convention |
+| H#34 | Semantic Link Density | check_orphan_files.py | Pre-commit | Detection |
 
 ## Enforcement Level Summary
 
@@ -91,10 +92,10 @@ tags: [framework, enforcement, moc]
 | Hard Gate | 10 | Blocks action (PreToolUse hooks, deny rules) |
 | Soft Gate | 8 | Injects guidance, agent can proceed |
 | Observable | 2 | Creates visible artifact (TodoWrite) |
-| Detection | 1 | Logs for post-hoc analysis |
-| Convention | 42 | Documented, no automated checking |
+| Detection | 2 | Logs for post-hoc analysis |
+| Convention | 41 | Documented, no automated checking |
 
-**Enforcement gaps**: 42 rules rely on convention only. See GitHub Issues for enforcement design backlog.
+**Enforcement gaps**: 41 rules rely on convention only. See GitHub Issues for enforcement design backlog.
 
 ---
 
@@ -130,12 +131,15 @@ tags: [framework, enforcement, moc]
 | Formatting | dprint | Consistent formatting | A#12 |
 | Data integrity | bmem-validate | Valid frontmatter | A#28 |
 | Data purity | data-markdown-only | Only `.md` in data/ | A#28 |
+| Framework health | check-skill-line-count | SKILL.md < 500 lines | A#10, A#26 |
+| Framework health | check-orphan-files | Detect orphan files | H#34 |
 
 ## CI/CD Validation (GitHub Actions)
 
 | Workflow | Purpose | Axiom |
 |----------|---------|-------|
 | test-setup.yml | Validate symlinks exist and are relative | A#7 |
+| framework-health.yml | Framework health metrics and enforcement | A#20 |
 | claude.yml | Claude Code bot integration | - |
 
 ---

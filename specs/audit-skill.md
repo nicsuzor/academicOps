@@ -106,14 +106,23 @@ The skill operates as an agent-invoked workflow with three phases:
 
 ### Technology Choices
 
-**Language/Tools**: Claude Code skill (agent-driven, not standalone script)
+**Language/Tools**: Claude Code skill + Python health scripts
 
-**Why agent-driven**:
-- Agents have Read/Write/Edit tools built-in
-- LLM can intelligently parse complex tree structures
-- Agents can preserve human-written comments/descriptions
-- Semantic understanding for justification classification
-- Follows "agents orchestrate" principle
+**Components**:
+- Agent-driven audit for semantic analysis and updates
+- Python scripts for fast, deterministic health checks
+
+**Health Scripts** (`$AOPS/scripts/`):
+- `audit_framework_health.py` - Full metrics collector
+- `check_index_completeness.py` - INDEX.md accounting
+- `check_skill_line_count.py` - SKILL.md size limits
+- `check_broken_wikilinks.py` - Wikilink resolution
+- `check_orphan_files.py` - Orphan detection
+
+**Why hybrid approach**:
+- Scripts: Fast, deterministic, CI/CD-compatible
+- Agents: Semantic understanding for justification, intelligent updates
+- Pre-commit/CI: Automated enforcement without agent overhead
 
 ### Error Handling Strategy
 
@@ -179,11 +188,29 @@ Or via command:
 - Orphan: docs/OLD-FILE.md - delete or create spec?
 ```
 
-## Notes
+## Relationships
 
-This skill supports framework governance by automating structure verification, justification checking, and index maintenance. By combining these into a single comprehensive audit, we catch both documentation drift and orphaned files.
+### Depends On
+- [[specs/framework-health.md|framework-health]] - Health metrics and CI/CD enforcement
+- [[INDEX.md]] - File accounting target
+- [[RULES.md]] - Enforcement mapping target
+
+### Used By
+- Pre-commit hooks for local enforcement
+- GitHub Actions for CI enforcement
+- Framework maintainers for manual audits
+
+## Design Rationale
+
+**Why combine structure, justification, and index updates?**
+
+These are interdependent checks. Structure issues (missing files) often indicate justification gaps. Index updates fix the detected issues. Running them together provides a complete governance picture.
+
+**Why hybrid agent + scripts?**
+
+Scripts provide fast, deterministic checks for CI/CD. Agents provide semantic understanding for classification decisions and intelligent updates that preserve human-written content.
 
 Implements:
-- AXIOM #20 (Maintain Relational Integrity)
-- AXIOM #29 (One Spec Per Feature) - by flagging files without specs
-- HEURISTIC H7 (Link, Don't Repeat) - by validating references
+- [[AXIOMS]] #20 (Maintain Relational Integrity)
+- [[AXIOMS]] #29 (One Spec Per Feature) - by flagging files without specs
+- [[HEURISTICS]] H7 (Link, Don't Repeat) - by validating references

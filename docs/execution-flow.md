@@ -216,9 +216,12 @@ Claude Code injects additionalContext into agent
 |-------|--------|------------------|---------|
 | SessionStart | sessionstart_load_axioms.py | AXIOMS.md, HEURISTICS.md, FRAMEWORK.md, CORE.md | Load framework context |
 | UserPromptSubmit | user_prompt_submit.py | templates/prompt-hydration-instruction.md | Inject prompt hydration |
-| PreToolUse | policy_enforcer.py | settings.json (deny rules) | Block dangerous operations |
-| PostToolUse | autocommit_state.py, unified_logger.py | — | Autocommit, logging |
+| PreToolUse | policy_enforcer.py | settings.json (deny rules) | Block destructive git, oversized files |
+| PostToolUse | autocommit_state.py | — | Auto-commit data/ changes |
+| PostToolUse | fail_fast_watchdog.py | — | Detect errors, inject fail-fast reminder |
+| PostToolUse | unified_logger.py | — | Universal event logging |
 | PostToolUse:TodoWrite | request_scribe.py | (inline) | Memory documentation reminder |
+| Stop | session_reflect.py | — | Session-end reflection prompt |
 | Stop | request_scribe.py | (inline) | Final memory reminder |
 
 **Exit codes**: PreToolUse `0`=allow, `1`=warn, `2`=block. PostToolUse `0`=success, `2`=report to agent.
