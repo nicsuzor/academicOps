@@ -52,6 +52,64 @@ The framework uses a memory server that indexes `$ACA_DATA/`. When you write mar
 
 **DO NOT create arbitrary directories** (e.g., `tech/`, `dev/`, `tools/`, `specs/`). Project-related notes go in `projects/<project-name>/`.
 
+## Knowledge Graph Integration (MANDATORY)
+
+**Every note must connect to the graph.** Isolated notes are invisible in Obsidian and useless for navigation.
+
+### Pre-Save Checklist
+
+Before writing ANY file to `$ACA_DATA/`, verify:
+
+| File Type | Required Links (in body, not frontmatter) |
+|-----------|-------------------------------------------|
+| **Project file** (`projects/*.md`) | Opening paragraph MUST wikilink to the [[goal]] it supports |
+| **Project file** | MUST have `## Connections` section with related [[projects]] |
+| **Note** (`context/*.md`) | MUST wikilink to at least one [[project]] or [[goal]] |
+| **Goal file** | MUST list projects that support it |
+
+### Project Template
+
+**Note**: Wikilinks in YAML frontmatter do NOT create Obsidian graph connections without plugins. Links MUST appear in the document body to be visible in the graph.
+
+```markdown
+---
+title: Project Name
+type: project
+tags: [relevant, tags]
+---
+
+# Project Name
+
+[Opening paragraph describing project]. Supports [[Goal Name]] through [how].
+```
+
+The goal link MUST be in the body text, not just frontmatter.
+
+### Connections Section Template
+
+Every project file needs a `## Connections` section:
+
+```markdown
+## Connections
+
+**Goals**: [[Goal Name]] (how this project serves it)
+
+**Related Projects**:
+- [[other-project]] - relationship description
+- [[another-project]] - shared infrastructure/themes
+
+**Themes**: [[concept]], [[another-concept]]
+```
+
+### Finding Links
+
+Before creating a file, search for related content:
+1. `mcp__memory__retrieve_memory(query="[topic]")` - find related notes
+2. Read `$ACA_DATA/goals/goals.md` - which goal does this serve?
+3. Read `$ACA_DATA/projects/projects.md` - what projects relate?
+
+**If you cannot identify at least one goal link**: ASK the user which goal this serves before proceeding.
+
 ## Workflow
 
 1. **Search BOTH sources**:
@@ -59,6 +117,7 @@ The framework uses a memory server that indexes `$ACA_DATA/`. When you write mar
    - Specs directory: `Glob(pattern="$ACA_DATA/projects/*/specs/*.md")` then grep for topic
 2. **If match found in EITHER**: AUGMENT existing file (don't create new)
 3. **If no match in either**: Create new TOPICAL file (not session/date file)
+4. **VERIFY graph integration** per checklist above before saving
 
 ### Multi-Location Principle
 
