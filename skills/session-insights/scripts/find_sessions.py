@@ -48,9 +48,12 @@ def main():
 
     for s in sessions:
         session_id_prefix = s.session_id[:8]
-        existing = glob.glob(f"{transcript_dir}/*{session_id_prefix}*-abridged.md")
+        # Match EXACT session ID prefix - don't assume any matching prefix means THIS session is covered
+        # Pattern: YYYYMMDD-project-{session_id_prefix}-abridged.md
+        existing = glob.glob(f"{transcript_dir}/*-{session_id_prefix}-abridged.md")
 
         # Check if transcript needs (re)generation
+        # Must find EXACTLY this session's transcript, not just any similar prefix
         needs_gen = not existing or s.last_modified.timestamp() > os.path.getmtime(existing[0])
 
         if needs_gen:

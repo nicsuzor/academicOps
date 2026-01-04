@@ -86,6 +86,7 @@ These are empirically derived rules that implement [[AXIOMS]] in practice. Unlik
 
 **Evidence**:
 - learning/verification-skip.md - multiple logged failures of assertion-without-verification
+- 2026-01-04: find_sessions.py assumed "any transcript exists for this date" meant "all sessions transcribed" - missed multi-machine sessions
 
 **Confidence**: High
 
