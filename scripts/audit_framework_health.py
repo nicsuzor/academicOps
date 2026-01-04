@@ -278,9 +278,112 @@ def check_wikilinks(root: Path, metrics: HealthMetrics) -> None:
     # Track incoming references
     incoming_refs: dict[str, int] = {f: 0 for f in all_files}
 
+    # Conceptual terms that are intentionally not files (definitions, concepts)
+    # These are valid wikilinks in Obsidian for creating concept notes later
+    conceptual_terms = {
+        # Framework concepts
+        "NO OTHER TRUTHS", "categorical-imperative", "wikilinks", "brackets",
+        "Obsidian", "meetings", "pre-commit", "experiments", "LOG", "STYLE",
+        "daily", "task", "zotmcp", "academicOps", "memory server", "ADHD",
+        "Just-in-Time", "Semantic Search", "meta-framework", "synthesis.json",
+        "AOPS", "X", "task skill", "testing-with-live-data", "Cognitive Load Dashboard Spec",
+        "hypervisor", "/qa", "goal", "meta", "supervise", "prompts",
+        # Test/docs placeholders
+        "LOG.md", "experiments/LOG.md", "Testing Framework Overview", "^",
+        # Tool names (referenced in commands and tests)
+        "AskUserQuestion", "TodoWrite", "Read", "Glob", "Grep", "Write", "Edit",
+        # Template/example placeholders in skill docs
+        "Goal Name", "Topic", "Other Note", "Parent Project", "nonexistent.md",
+        "0, 2, 4", "folder/file.md", "../sibling/file.md", "../framework/SKILL.md",
+        "projects", "project", "other-project", "another-project",
+        "concept", "another-concept", "...", "templates/daily.md",
+        "skills/tasks.backup/", "skills/README.md",
+        # Extractor entity types
+        "Event", "Institution", "Person",
+        # Workflow placeholders (may be created later)
+        "workflows/capture", "workflows/validate", "workflows/prune",
+        # Planned/conceptual references
+        "matplotlib-plot-types", "matplotlib-styling", "linear-models", "glm",
+        "discrete-choice", "time-series", "stats-diagnostics",
+        "dbt-patterns", "matplotlib-api", "matplotlib-common-issues",
+        "seaborn-functions", "seaborn-objects", "seaborn-examples",
+        # Example/template wikilinks in skill docs
+        "Related Note", "Note Title", "folder/subfolder/Note",
+        "../projects/<project>", "wiki-links", "'A', 'B'",
+        # Test conceptual terms
+        "Claude Code", "CWD", "test_marker_hook",
+    }
+
+    # Hook and script files (these are correctly linked by filename in Obsidian)
+    # Include both full names (with extension) and stems (without extension)
+    hook_files: set[str] = set()
+    if (root / "hooks").exists():
+        for p in (root / "hooks").glob("*.py"):
+            hook_files.add(p.name)
+            hook_files.add(p.stem)  # Without extension
+        for p in (root / "hooks").glob("*.sh"):
+            hook_files.add(p.name)
+            hook_files.add(p.stem)
+
+    script_files: set[str] = set()
+    if (root / "scripts").exists():
+        for p in (root / "scripts").glob("*.py"):
+            script_files.add(p.name)
+            script_files.add(p.stem)
+        for p in (root / "scripts").glob("*.sh"):
+            script_files.add(p.name)
+            script_files.add(p.stem)
+
+    # Lib files (referenced in lib/lib.md)
+    lib_files: set[str] = set()
+    if (root / "lib").exists():
+        for p in (root / "lib").glob("*.py"):
+            lib_files.add(p.name)
+            lib_files.add(p.stem)
+
+    # Prompts files (referenced in hooks/hooks.md)
+    prompt_files: set[str] = set()
+    prompts_dir = root / "hooks" / "prompts"
+    if prompts_dir.exists():
+        for p in prompts_dir.glob("*.md"):
+            prompt_files.add(p.name)
+            prompt_files.add(p.stem)
+            prompt_files.add(f"prompts/{p.name}")  # Allow prompts/file.md
+
+    # Test files
+    test_files: set[str] = set()
+    tests_dir = root / "tests"
+    if tests_dir.exists():
+        for p in tests_dir.glob("*.py"):
+            test_files.add(p.name)
+            test_files.add(p.stem)
+
+    # Build set of all filenames (not just stems) for shortest-path matching
+    all_filenames: set[str] = set()
+    for path in iter_framework_files(root):
+        if path.suffix == ".md":
+            all_filenames.add(path.name)
+
+    # Cross-vault links (files in $ACA_DATA, not $AOPS) - valid in Obsidian
+    cross_vault_prefixes = ("ACCOMMODATIONS", "CORE", "STATE", "data/", "projects/", "tasks/", "sessions/")
+
+    # Internal anchor references (same-document refs like H7, H7b)
+    internal_ref_pattern = re.compile(r"^H\d+[a-z]?$")
+
+    # Build set of skill names (for skill-to-spec resolution)
+    skill_names: set[str] = set()
+    skills_dir = root / "skills"
+    if skills_dir.exists():
+        for skill_path in skills_dir.iterdir():
+            if skill_path.is_dir() and not skill_path.name.startswith("."):
+                skill_names.add(skill_path.name)
+
     # Scan all markdown files for wikilinks
     for path in root.rglob("*.md"):
         if any(skip in path.parts for skip in SKIP_DIRS):
+            continue
+        # Skip files matching exclude prefixes
+        if any(path.name.startswith(prefix) for prefix in EXCLUDE_PREFIXES):
             continue
 
         try:
@@ -293,12 +396,63 @@ def check_wikilinks(root: Path, metrics: HealthMetrics) -> None:
         for match in wikilink_pattern.finditer(content):
             target = match.group(1).strip()
 
+            # Handle escaped brackets (trailing backslash)
+            if target.endswith("\\"):
+                target = target.rstrip("\\")
+
             # Skip URLs
             if target.startswith("http"):
                 continue
 
+            # Skip conceptual terms (not meant to be files)
+            if target in conceptual_terms:
+                continue
+
+            # Skip cross-vault links (files in $ACA_DATA)
+            if any(target.startswith(prefix) for prefix in cross_vault_prefixes):
+                continue
+
+            # Skip internal anchor references
+            if internal_ref_pattern.match(target):
+                continue
+
+            # Skip anchor links (contain #)
+            if "#" in target:
+                continue
+
             # Try to resolve target
             resolved = False
+
+            # Check if it's a skill name → resolve to spec
+            if target in skill_names:
+                spec_path = root / "specs" / f"{target}-skill.md"
+                if spec_path.exists():
+                    resolved = True
+
+            # Check if it's a hook, script, lib, prompt, or test file (linked by filename)
+            if not resolved and target in hook_files:
+                resolved = True
+            if not resolved and target in script_files:
+                resolved = True
+            if not resolved and target in lib_files:
+                resolved = True
+            if not resolved and target in prompt_files:
+                resolved = True
+            if not resolved and target in test_files:
+                resolved = True
+
+            # Check against all filenames (Obsidian shortest-path matching)
+            if not resolved and target in all_filenames:
+                resolved = True
+
+            # Check relative paths (references/*, instructions/*, workflows/*)
+            # These resolve within the same skill directory in Obsidian
+            if not resolved and target.startswith(("references/", "instructions/", "workflows/", "templates/", "scripts/")):
+                # Try to find this file in any skill directory
+                for skill_dir in skills_dir.iterdir() if skills_dir.exists() else []:
+                    if skill_dir.is_dir() and (skill_dir / target).exists():
+                        resolved = True
+                        break
 
             # Check direct match
             if target in all_files or target in file_stems:
@@ -319,6 +473,15 @@ def check_wikilinks(root: Path, metrics: HealthMetrics) -> None:
                 if target_path.exists():
                     resolved = True
                 elif (root / f"{target}.md").exists():
+                    resolved = True
+
+            # Handle full vault paths like academicOps/skills/foo/SKILL
+            if not resolved and target.startswith("academicOps/"):
+                # Strip vault prefix and check if file exists
+                relative_target = target.replace("academicOps/", "", 1)
+                if (root / relative_target).exists():
+                    resolved = True
+                elif (root / f"{relative_target}.md").exists():
                     resolved = True
 
             if not resolved:
