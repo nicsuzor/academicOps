@@ -52,7 +52,13 @@ EXCLUDE_PATTERNS = {
     "pyproject.toml",
     "__init__.py",
     "conftest.py",
+    "git-post-commit-sync-aops",  # Git hook (no extension, listed in INDEX.md)
 }
+
+# Patterns (prefix match) to exclude
+EXCLUDE_PREFIXES = (
+    "health-baseline-",  # Temporary health reports
+)
 
 # Standard spec sections (at least some should be present)
 SPEC_SECTIONS = {
@@ -124,6 +130,9 @@ def iter_framework_files(root: Path) -> Iterator[Path]:
         # Skip excluded files
         if path.name in EXCLUDE_PATTERNS:
             continue
+        # Skip files matching prefix patterns
+        if any(path.name.startswith(prefix) for prefix in EXCLUDE_PREFIXES):
+            continue
         # Only include files
         if path.is_file():
             yield path
@@ -141,7 +150,8 @@ def extract_index_files(index_path: Path) -> set[str]:
     # ├── filename.ext
     # │   ├── subfile.ext
     # Also match [[wikilinks]]
-    tree_pattern = re.compile(r"[├└│─\s]+([a-zA-Z0-9_\-./]+\.[a-z]+)")
+    # Note: Allow spaces in filenames with [a-zA-Z0-9_\-./\s]
+    tree_pattern = re.compile(r"[├└│─\s]+([a-zA-Z0-9_\-./][a-zA-Z0-9_\-./\s]*\.[a-z]+)")
     wikilink_pattern = re.compile(r"\[\[([^\]|]+)\]\]")
 
     for match in tree_pattern.finditer(content):
