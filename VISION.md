@@ -16,10 +16,10 @@ tags:
 
 An academic support framework for Claude Code. It provides:
 
-1. **Consistent agent behavior** - Principles ([[AXIOMS]]) loaded every session
-2. **Specialized workflows** - [[data/projects/aops/specs/skills]] for research, writing, task management
-3. **Quality enforcement** - [[hooks]] that inject context and verify compliance
-4. **Knowledge persistence** - Memory server + [[remember]] skill for institutional memory
+1. **Consistent agent behavior** - Principles ([[AXIOMS.md|AXIOMS]]) loaded every session
+2. **Specialized workflows** - [[specs/specs.md|Skills]] for research, writing, task management
+3. **Quality enforcement** - [[hooks/hooks.md|Hooks]] that inject context and verify compliance
+4. **Knowledge persistence** - Memory server + [[specs/remember-skill.md|remember skill]] for institutional memory
 
 **Scope**: Supports academic work across ALL repositories.
 
@@ -29,24 +29,24 @@ An academic support framework for Claude Code. It provides:
 
 | Capability                 | Implementation           | How Invoked          |
 | -------------------------- | ------------------------ | -------------------- |
-| Research data analysis     | [[analyst]] skill        | Skill tool           |
-| Citation management        | [[zotmcp]] + Zotero      | MCP tools            |
-| Task capture from email    | [[tasks]] skill + [[email\|/email]] | Slash command        |
-| Task visualization         | [[excalidraw]] skill     | [[task-viz\|/task-viz]]          |
-| Writing style enforcement  | [[STYLE]] guides         | Agents follow guides |
-| Knowledge capture          | [[remember]] skill       | Skill tool           |
-| Session transcripts        | [[transcript]] skill     | /transcript          |
-| Markdown to PDF generation | [[pdf]] skill            | Skill tool           |
+| Research data analysis     | [[specs/analyst-skill.md|analyst]] skill | Skill tool           |
+| Citation management        | zotmcp + Zotero          | MCP tools            |
+| Task capture from email    | [[specs/tasks-skill.md|tasks]] skill + /email | Slash command        |
+| Task visualization         | [[skills/excalidraw/SKILL.md|excalidraw]] skill | /task-viz            |
+| Writing style enforcement  | Style guides             | Agents follow guides |
+| Knowledge capture          | [[specs/remember-skill.md|remember]] skill | Skill tool           |
+| Session transcripts        | [[specs/transcript-skill.md|transcript]] skill | /transcript          |
+| Markdown to PDF generation | [[skills/pdf/SKILL.md|pdf]] skill | Skill tool           |
 
 ### Enforcement Mechanisms
 
 | What's Enforced | How |
 |-----------------|-----|
-| Principles loaded | [[sessionstart_load_axioms.py\|sessionstart_load_axioms]] hook |
+| Principles loaded | [[hooks/sessionstart_load_axioms.py|sessionstart_load_axioms]] hook |
 | Skill suggestions | Prompt Enricher (planned) via UserPromptSubmit hook |
 | Framework delegation | `FRAMEWORK SKILL CHECKED` token |
-| Memory format compliance | [[pre-commit]] hooks |
-| File boundaries | [[framework]] skill file boundary rules |
+| Memory format compliance | pre-commit hooks |
+| File boundaries | [[specs/framework-skill.md|framework skill]] file boundary rules |
 
 ## Knowledge Architecture
 
@@ -64,7 +64,7 @@ An academic support framework for Claude Code. It provides:
 Capture → memory server (semantic search) → JIT injection via hooks → Agent action
 ```
 
-- **Session start**: [[AXIOMS]], [[FRAMEWORK]] paths, user context loaded
+- **Session start**: [[AXIOMS.md|AXIOMS]], [[FRAMEWORK.md|FRAMEWORK]] paths, user context loaded
 - **Every prompt**: Prompt Enricher (planned) suggests relevant skills
 - **On demand**: Memory server search for related knowledge
 
@@ -111,9 +111,9 @@ Capture → memory server (semantic search) → JIT injection via hooks → Agen
 
 The framework should become increasingly self-aware and self-improving:
 
-1. **Agent-ready instructions** - Core docs ([[AXIOMS]], [[HEURISTICS]]) contain only actionable rules, no explanations or evidence
+1. **Agent-ready instructions** - Core docs ([[AXIOMS.md|AXIOMS]], [[HEURISTICS.md|HEURISTICS]]) contain only actionable rules, no explanations or evidence
 2. **Evidence-informed changes** - Framework changes are motivated by consolidated diagnostic data, not ad-hoc observations
-3. **Closed-loop learning** - Observations → [[LOG]] → Diagnostics → [[experiments]] → Changes → Validation
-4. **Framework introspection** - The [[framework]] skill understands the whole system and enforces consistency before accepting additions
+3. **Closed-loop learning** - Observations → GitHub Issues → Diagnostics → Changes → Validation
+4. **Framework introspection** - The [[specs/framework-skill.md|framework skill]] understands the whole system and enforces consistency before accepting additions
 5. **Bounded growth** - Logs don't grow forever; they consolidate into actionable diagnostics then archive
 6. **Session-end reflection** - At session end, automatically analyze behavior patterns and suggest heuristic updates. User approves with one click, no manual observation writing. Zero friction for framework improvement.

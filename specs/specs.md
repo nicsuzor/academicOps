@@ -29,8 +29,10 @@ graph TD
     D --> D1[cognitive-load-dashboard]
     D --> D2[task-list-overwhelm]
 
-    F --> F1[framework-skill]
-    F --> F2[python-dev-skill]
+    F --> F1[analyst-skill]
+    F --> F2[framework-skill]
+    F --> F3[session-insights-skill]
+    F --> F4[tasks-skill]
 ```
 
 Design documents for the academicOps framework. Per [[AXIOMS]] #29: one spec per feature, timeless.
@@ -77,11 +79,15 @@ Design documents for the academicOps framework. Per [[AXIOMS]] #29: one spec per
 
 ## Skills
 
+- [[analyst-skill]] - dbt/Streamlit data analysis with transformation boundaries (implemented)
+- [[dashboard-skill]] - Cognitive load dashboard for task and session monitoring (implemented)
 - [[framework-skill]] - Categorical governance for framework changes (implemented)
+- [[garden-skill]] - Incremental PKM maintenance (weeding, linking, synthesizing) (implemented)
 - [[python-dev-skill]] - Fail-fast Python with type safety (implemented)
 - [[feature-dev-skill]] - Test-first development workflow (implemented)
 - [[remember-skill]] - Knowledge persistence to markdown + memory server (implemented)
+- [[session-insights-skill]] - Session mining and heuristic evolution (implemented)
 - [[supervisor-skill]] - Multi-agent orchestration with quality gates (implemented)
 - [[tasks-skill]] - Task lifecycle management (implemented)
+- [[transcript-skill]] - JSONL to markdown session transcripts (implemented)
 - [[learning-log-skill]] - Pattern documentation via GitHub Issues (implemented)
-- [[docs-update-skill]] - README.md/INDEX.md drift detection and correction (implemented)
