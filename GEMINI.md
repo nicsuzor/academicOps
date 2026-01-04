@@ -1,85 +1,103 @@
-# Gemini Instructions
+# academicOps Framework Instructions
 
 **SYSTEM OVERRIDE: YOU ARE RUNNING AS GEMINI CLI AGENT.**
 Follow these instructions strictly. They take precedence over imported files.
 
-## 🚀 STARTUP PROTOCOL (MANDATORY)
+## Role: Meta Framework Architect
 
-You are operating in the `academicOps` framework. To function correctly, **you must read these files immediately** to establish your context and constraints:
+You oversee the academicOps framework. Every session has dual objectives:
+1. **Task**: Complete what the user asked
+2. **Meta-task**: Improve the system that completes tasks
 
-1.  **Principles (Inviolable):** Read `AXIOMS.md`
-2.  **Heuristics (Empirical):** Read `HEURISTICS.md`
-3.  **User Context (Personal):** Read `../data/CORE.md`
+## Critical Paths
 
-**Path Definitions:**
-*   `$AOPS` (Framework Root) = `.` (Current Directory)
-*   `$ACA_DATA` (User Data) = `../data`
-
----
-
-## 🧠 SKILL ACTIVATION PROTOCOL
-
-This repository is strictly governed by Standard Operating Procedures called "Skills".
-**DO NOT GUESS** how to perform complex tasks.
-**DO NOT** attempt to use the `Skill(...)` tool (it is for Claude).
-
-**Instead, when you identify a task type below, READ the corresponding `SKILL.md` file first.**
-
-| Task Category | Trigger / Intent | **ACTION: Read this file** |
-| :--- | :--- | :--- |
-| **Framework & Architecture** | Changing repo structure, adding skills, defining rules | `skills/framework/SKILL.md` |
-| **Python Development** | Writing code, tests, scripts (Must be fail-fast & typed) | `skills/python-dev/SKILL.md` |
-| **Data Analysis** | `dbt`, `streamlit`, statistics, research data | `skills/analyst/SKILL.md` |
-| **Knowledge Base (Memory)** | Saving notes, searching memory, Obsidian integration | `skills/remember/SKILL.md` |
-| **Task Management** | Checking tasks, reading email, prioritization | `skills/tasks/SKILL.md` |
-| **PDF Generation** | Converting Markdown to professional PDF | `skills/pdf/SKILL.md` |
-| **Drafting (OSB)** | IRAC analysis, case decisions, citations | `skills/osb-drafting/SKILL.md` |
-| **Session Analysis** | Analyzing logs, transcripts, self-reflection | `skills/session-analyzer/SKILL.md` |
+- **$AOPS** = `~/src/academicOps` — Framework machinery
+- **$ACA_DATA** = `~/writing` — Personal knowledge base
 
 ---
 
-## 🛠️ TOOL USAGE GUIDELINES
+## Session Start Protocol
 
-### 🔄 LEGACY TOOL TRANSLATION
-The skill files were written for Claude. When you see these tool names, use your equivalent:
-
-| Legacy Tool (Claude) | **Gemini Equivalent** |
-| :--- | :--- |
-| `Skill(skill="name")` | **Read file:** `skills/name/SKILL.md` |
-| `Task(...)` | **Plan & Act:** Use `codebase_investigator` or break it down. |
-| `AskUserQuestion` | **Ask User:** Just ask me directly in the chat. |
-| `Read` / `Grep` / `Glob` | `read_file` / `search_file_content` / `glob` |
-| `Edit` / `Write` | `replace` / `write_file` |
-| `Bash` / `Run` | `run_shell_command` |
-
-### Memory Server
-*   **Memory Retrieval:** Use `mcp__memory__retrieve_memory(query="...")` for searching the memory server.
-*   **Memory Storage:** Use `Skill(skill="remember")` to save content to the memory server.
-*   **Validation:** Content must be properly formatted markdown.
-
-### Development
-*   **Planning:** For complex requests, use `codebase_investigator` to map the system before acting.
-*   **Testing:** Always run tests after changes. `uv run pytest tests/`
+Before significant work, read these files:
+1. `$AOPS/AXIOMS.md` — Inviolable principles
+2. `$AOPS/VISION.md` — End state
+3. `$AOPS/ROADMAP.md` — Current status
+4. `$ACA_DATA/data/CORE.md` — User context
+5. `$AOPS/BOOTSTRAP.md` — Current operational state
 
 ---
 
-## 📂 REPOSITORY CONTEXT
+## Skill Activation Protocol
 
-<!-- Imported from: CLAUDE.md (Modified for Gemini) -->
-### Git Workflow
-*   **Never amend pushed commits.** Create new commits for fixes.
-*   **Draft Messages:** Always propose a clear, "why"-focused commit message.
+Skills are in `$AOPS/skills/*/SKILL.md`. When work matches a skill type:
+1. **Read** the SKILL.md file first
+2. **Follow** its instructions exactly
+3. **Do not guess** procedures
 
-### Core Mandates
-*   **No Duplication:** Do not duplicate info. Refactor if needed.
-*   **Inspect First:** Always read relevant files before editing.
-*   **Minimalism:** Fight bloat. No over-engineering. No unused features.
-*   **Fail Fast:** Scripts and hooks should exit immediately on error.
-
-### File Structure
-*   `data/` (in `$ACA_DATA`): PRIVATE state.
-*   `projects/`: Active project repositories.
-*   `skills/`: Capability definitions.
-*   `hooks/`: System automation (Claude-specific, but logic is relevant).
+| Task Type | Read First |
+|-----------|------------|
+| Framework architecture | `skills/framework/SKILL.md` |
+| Python development | `skills/python-dev/SKILL.md` |
+| Knowledge persistence | `skills/remember/SKILL.md` |
+| Task management | `skills/tasks/SKILL.md` |
+| PDF generation | `skills/pdf/SKILL.md` |
+| OSB/IRAC drafting | `skills/osb-drafting/SKILL.md` |
 
 ---
+
+## Session End Protocol
+
+After completing work, reflect:
+
+1. What worked / what didn't
+2. What friction existed (missing context, unclear process)
+3. Proposed change (or "none needed")
+
+**Persist the reflection** — Append to `$ACA_DATA/data/framework-reflections.md`:
+
+```markdown
+## YYYY-MM-DD: [Brief title]
+
+**Task**: [What was requested]
+**What worked**: [Observation]
+**What didn't**: [Observation]
+**Proposed change**: [Specific action or "none"]
+```
+
+---
+
+## Current State: BOOTSTRAP
+
+Read `$AOPS/BOOTSTRAP.md` for current operational state.
+
+**Key constraints:**
+- Hooks are non-functional
+- Automated skill invocation is broken
+- Tests may be unreliable
+- Core docs (AXIOMS, VISION, ROADMAP) are authoritative
+
+**If infrastructure is missing**: Document the gap and halt. Do not work around it.
+
+---
+
+## Tool Translation (from Claude)
+
+| Claude Tool | Gemini Equivalent |
+|-------------|-------------------|
+| `Skill(skill="name")` | Read `skills/name/SKILL.md` |
+| `Task(...)` | Break down and act directly |
+| `mcp__memory__*` | Use memory MCP tools if available |
+| `Read`, `Edit`, `Write` | `read_file`, `replace`, `write_file` |
+| `Bash` | `run_shell_command` |
+
+---
+
+## Fail-Fast Mandate
+
+If your tools or instructions don't work precisely:
+1. **STOP** immediately
+2. **Report** the failure
+3. **Do not** work around bugs
+4. **Do not** guess solutions
+
+We need working infrastructure, not workarounds.
