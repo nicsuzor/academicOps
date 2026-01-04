@@ -44,7 +44,24 @@ Fix broken [[wikilinks]], remove dead references, flag duplicates.
 Archive stale sessions (>30 days), compress verbose notes, update temporal metadata.
 
 ### link [area]
-Connect orphans (zero backlinks), suggest missing links, ensure every note has ≥1 outgoing link.
+Connect orphans and enforce semantic link density per [[HEURISTICS.md#H34]].
+
+**What to check:**
+1. **Zero-backlink orphans**: Files with no incoming links
+2. **Semantic orphans**: Files in same folder with overlapping topics but no mutual links
+3. **Hub disconnection**: Project hubs that don't link to their key content files
+4. **Missing bidirectional links**: If A references B's topic, both should link
+
+**Detection process:**
+1. List files in target area
+2. For each project folder, check: does hub link to substantive content (not just `[[meetings]]`)?
+3. For files with overlapping tags in same folder, check: do they link to each other?
+4. Use `mcp__memory__retrieve_memory` on file titles - if memory returns "related" files that don't link, flag them
+
+**Fix process:**
+- Add wikilinks IN PROSE where semantic relationships exist (per [[HEURISTICS.md#H7b]] - no "see also" sections)
+- Ensure hub files link to key strategic/analysis documents
+- Ensure related analyses link bidirectionally
 
 ### cultivate [area]
 Add missing frontmatter, expand sparse notes, improve titles for searchability.

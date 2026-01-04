@@ -58,7 +58,7 @@ The framework uses a memory server that indexes `$ACA_DATA/`. When you write mar
 
 ### Pre-Save Checklist
 
-Before writing ANY file to `$ACA_DATA/`, verify:
+Before writing ANY file to `$ACA_DATA/`, verify per [[HEURISTICS.md#H34]]:
 
 | File Type | Required Links (in body, not frontmatter) |
 |-----------|-------------------------------------------|
@@ -66,6 +66,17 @@ Before writing ANY file to `$ACA_DATA/`, verify:
 | **Project file** | MUST have `## Connections` section with related [[projects]] |
 | **Note** (`context/*.md`) | MUST wikilink to at least one [[project]] or [[goal]] |
 | **Goal file** | MUST list projects that support it |
+| **Project content** (`projects/<name>/*.md`) | MUST link to hub AND to related files in same folder |
+
+### Semantic Density Check (MANDATORY)
+
+Before saving any file in a project folder:
+
+1. **Search for related files**: `Glob(pattern="projects/<project-name>/*.md")`
+2. **Check semantic overlap**: Do any existing files cover same event, decision, or timeframe?
+3. **If yes**: Add in-prose wikilinks to related files (NOT "see also" sections)
+4. **Verify hub linkage**: Will the project hub need to link to this new content?
+5. **If significant content**: Edit hub to add prose link after saving this file
 
 ### Project Template
 

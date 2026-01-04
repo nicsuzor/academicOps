@@ -790,6 +790,42 @@ tests/
 
 ---
 
+## H34: Semantic Link Density
+
+**Statement**: Files about the same topic, project, or event MUST link to each other in prose. Project hub files MUST link to their key content files. The test: if you would search for file A when reading file B, they should link.
+
+**Rationale**: Orphaned files break knowledge graph navigation and create invisible content. The Obsidian graph is only useful if related content is connected. "At least one link" is insufficient - semantic relationships require bidirectional discovery.
+
+**Evidence**:
+- 2026-01-04: OSB strategic files ("Existential Crisis" and "Red Lines") covered same crisis/plenary but had zero links to each other. Neither linked from hub. Visible in graph as disconnected nodes despite obvious semantic relationship.
+
+**Confidence**: Low (first observation, strong principle)
+
+**Implements**: [[AXIOMS]] #20 (Maintain Relational Integrity), [[H7]] (Link, Don't Repeat)
+
+**Requirements**:
+
+| File Type | Linking Requirement |
+|-----------|---------------------|
+| Project hub (`project.md`) | MUST link to key strategic/analysis files in that project folder |
+| Analysis/strategic notes | MUST link to related analyses (same event, same decision, same timeframe) |
+| Meeting notes | MUST link to project hub and any decisions/outcomes they reference |
+| Any file in project folder | MUST have at least one link TO hub or FROM hub |
+
+**Detection patterns** (for garden skill "link" mode):
+- Files in same folder with overlapping tags but no mutual links
+- Project folders where hub links to `[[meetings]]` but not to substantive content
+- Files referencing same event/date/decision without linking each other
+- Semantic memory returns files as "related" but they don't link
+
+**Application**:
+- When creating a file, search for related content in same project folder
+- If found, add in-prose links (NOT see-also sections per [[H7b]])
+- After creating, verify hub links to this content if it's significant
+- Garden "link" mode should flag semantic orphans, not just zero-backlink orphans
+
+---
+
 ## Revision Protocol
 
 To adjust heuristics based on new evidence:
