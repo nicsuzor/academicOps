@@ -24,28 +24,43 @@ $AOPS/
 ├── [[README.md]]                # Brief overview, feature inventory
 ├── [[INDEX.md]]                 # THIS FILE - complete file tree
 ├── [[RULES.md]]                 # Current enforcement rules (auto-generated)
+├── [[WORKFLOWS.md]]             # Task routing and workflow selection
+├── [[ROADMAP.md]]               # Current development status
+├── [[VISION.md]]                # End state vision
 ├── [[CLAUDE.md]]                # Repo instructions (@ syntax auto-loads)
 ├── [[AGENTS.md]]                # Agent context (shared by all agents)
 ├── [[GEMINI.md]]                # Gemini agent instructions
 ├── pyproject.toml               # Python project config
 ├── setup.sh                     # Main installation script
 ├── install.sh                   # Alternative installer
+├── .mcp.json                    # MCP server discovery config
 ├── reference-graph.csv          # Framework reference graph (generated)
+├── current-tasks.excalidraw     # Visual task board (orphan - flagged)
+│
+├── .github/workflows/           # CI/CD workflows
+│   ├── beta-release.yml         # Beta release automation
+│   ├── claude-code-review.yml   # Automated code review
+│   ├── claude.yml               # Claude Code bot integration
+│   ├── ios-note-capture.yml     # iOS note capture workflow
+│   └── test-setup.yml           # Setup script validation
 │
 ├── commands/                    # Slash commands (main agent executes)
 │   ├── add.md                   # Quick-add task from context
 │   ├── aops.md                  # Show framework capabilities
 │   ├── audit.md                 # → audit skill (framework governance)
 │   ├── consolidate.md           # Consolidate learning-log entries
+│   ├── convert-to-md.md         # Batch document → markdown conversion
 │   ├── diag.md                  # Quick diagnostic of session state
 │   ├── do.md                    # Execute with context enrichment + guardrails
 │   ├── email.md                 # Email → task extraction
+│   ├── encode.md                # Capture work patterns as workflows/skills
 │   ├── learn.md                 # Minor instruction adjustments
 │   ├── log.md                   # → learning-log skill
 │   ├── meta.md                  # Strategic brain + executor
 │   ├── parallel-batch.md        # Parallel file processing
 │   ├── q.md                     # Queue task for later (delayed /do)
 │   ├── qa.md                    # Quality assurance verification
+│   ├── reflect.md               # Agent self-audit of process compliance
 │   ├── review-training-cmd.md   # Process review/source pairs
 │   ├── strategy.md              # Strategic thinking partner
 │   ├── task-viz.md              # Task graph visualization
@@ -114,24 +129,53 @@ $AOPS/
 │   │       ├── build_reference_map.py  # Reference graph extraction
 │   │       └── find_orphans.py         # Orphan file detection
 │   │
+│   ├── convert-to-md/           # Batch document → markdown conversion
+│   │   └── SKILL.md
+│   │
 │   ├── extractor/               # Archive → memory extraction
+│   │   ├── SKILL.md
+│   │   └── README.md
+│   │
+│   ├── fact-check/              # Verify claims against sources
+│   │   ├── SKILL.md
+│   │   └── templates/verification-report.md
+│   │
 │   ├── feature-dev/             # Feature development templates
+│   │   ├── SKILL.md
+│   │   └── templates/           # user-story, dev-plan, test-spec, experiment-plan
+│   │
 │   ├── garden/                  # Incremental PKM maintenance
+│   │   └── SKILL.md
+│   │
 │   ├── ground-truth/            # Ground truth label management
+│   │   └── SKILL.md
+│   │
 │   ├── osb-drafting/            # IRAC analysis for OSB cases
+│   │   ├── SKILL.md
+│   │   └── templates/case-analysis.md
+│   │
 │   ├── review-training/         # Training data from reviews
-│   ├── session-insights/        # Accomplishments + learning extraction
+│   │   ├── SKILL.md
+│   │   └── README.md
+│   │
 │   ├── supervisor/              # Workflow templates (tdd, batch-review)
+│   │   └── workflows/           # tdd.md, batch-review.md
+│   │
 │   └── training-set-builder/    # Training data extraction
+│       └── SKILL.md
 │
 ├── hooks/                       # Session lifecycle (Python)
 │   ├── CLAUDE.md                    # Hook design principles (JIT context)
 │   ├── hooks.md                     # Hook inventory and descriptions
-│   ├── sessionstart_load_axioms.py  # Injects AXIOMS.md, FRAMEWORK.md, HEURISTICS.md
-│   ├── user_prompt_submit.py        # Writes context to temp file, returns short instruction
+│   ├── guardrails.md                # Guardrail definitions for task types
 │   ├── router.py                    # Central hook dispatcher
+│   ├── sessionstart_load_axioms.py  # Injects AXIOMS.md, FRAMEWORK.md, HEURISTICS.md
+│   ├── session_env_setup.sh         # Environment setup at session start
+│   ├── user_prompt_submit.py        # Writes context to temp file, returns short instruction
 │   ├── autocommit_state.py          # Auto-commit data/ changes
 │   ├── policy_enforcer.py           # Block destructive operations (PreToolUse)
+│   ├── fail_fast_watchdog.py        # Detect errors, inject fail-fast reminder
+│   ├── session_reflect.py           # Session end reflection prompt
 │   ├── session_logger.py            # Log file path management
 │   ├── hook_logger.py               # Centralized event logging
 │   ├── unified_logger.py            # Universal event logger
@@ -140,6 +184,7 @@ $AOPS/
 │   ├── terminal_title.py            # Set terminal title
 │   ├── marker_hook.py               # Test hook for verification
 │   ├── verify_conclusions.py        # Disabled stub
+│   ├── git-post-commit-sync-aops    # Git post-commit hook for sync
 │   ├── prompts/
 │   │   ├── user-prompt-submit.md    # Context for UserPromptSubmit hook
 │   │   └── memory-reminder.md       # PostToolUse memory prompt
@@ -155,10 +200,11 @@ $AOPS/
 │
 ├── scripts/                     # Utility scripts
 │   ├── scripts.md               # Script inventory and documentation
+│   ├── audit_framework_health.py    # Framework health metrics
 │   ├── claude_transcript.py     # Session JSONL → markdown
-│   ├── package_deployment.py    # Skill packaging
 │   ├── measure_router_compliance.py  # Router performance metrics
 │   ├── migrate_log_entries.py   # Log entry migration
+│   ├── package_deployment.py    # Skill packaging
 │   ├── regenerate_task_index.py # Task index regeneration
 │   ├── remove_relation_sections.py  # Remove relation sections from markdown
 │   ├── sync_web_bundle.py       # Web bundle synchronization
@@ -180,7 +226,7 @@ $AOPS/
 │
 ├── docs/                        # Extended documentation
 │   ├── ENFORCEMENT.md           # Enforcement mechanism selection guide
-│   ├── EXECUTION-FLOW.md        # Execution flow diagrams
+│   ├── execution-flow.md        # Execution flow diagrams (Mermaid)
 │   ├── HOOKS.md                 # Hook architecture overview
 │   ├── JIT-INJECTION.md         # Just-in-time context injection
 │   ├── OBSERVABILITY.md         # Observability and logging schema
@@ -188,6 +234,10 @@ $AOPS/
 │
 ├── templates/                   # GitHub workflow templates
 │   └── github-workflow-*.yml    # Auto-sync workflow templates
+│
+├── specs/                       # Design specifications (44 files)
+│   ├── specs.md                 # Spec index
+│   └── *.md                     # Individual specs (see specs/specs.md for list)
 │
 ├── config/
 │   └── claude/                  # Reference config
