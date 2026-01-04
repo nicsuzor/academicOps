@@ -491,9 +491,27 @@ def check_wikilinks(root: Path, metrics: HealthMetrics) -> None:
                 })
 
     # Find orphans (files with no incoming references)
-    # Exclude expected orphans (entry points, commands, etc.)
-    expected_orphan_prefixes = ["commands/", "agents/", "hooks/", "scripts/", "tests/"]
-    expected_orphan_names = ["README.md", "CLAUDE.md", "GEMINI.md", "INDEX.md"]
+    # Exclude expected orphans (entry points, commands, utility files, etc.)
+    expected_orphan_prefixes = [
+        "commands/",  # Commands are invoked, not linked
+        "agents/",    # Agents are invoked, not linked
+        "hooks/",     # Hooks are registered, not linked
+        "scripts/",   # Scripts are run, not linked
+        "tests/",     # Tests are run, not linked
+        "lib/",       # Lib modules are imported, not linked
+        ".claude/",   # Config files
+    ]
+    # Skill subdirectories are linked via relative paths from their SKILL.md
+    # The reference counter doesn't resolve these properly yet (TODO: fix)
+    expected_orphan_skill_subdirs = [
+        "/references/", "/instructions/", "/templates/", "/workflows/", "/scripts/",
+        "/tests/", "/resources/",  # Additional skill internal dirs
+    ]
+    expected_orphan_names = [
+        "README.md", "CLAUDE.md", "GEMINI.md", "INDEX.md",  # Entry points
+        "CLAUDE", "GEMINI", "FRAMEWORK", "AGENTS", "INDEX",  # Root entry points (no extension)
+        "SKILL.md", "SKILL", "README",  # Skill entry points
+    ]
 
     for file_path, ref_count in incoming_refs.items():
         if ref_count == 0:
@@ -505,6 +523,12 @@ def check_wikilinks(root: Path, metrics: HealthMetrics) -> None:
                     break
             if Path(file_path).name in expected_orphan_names:
                 is_expected = True
+            # Check if it's a skill subdirectory file (linked via relative paths)
+            if file_path.startswith("skills/"):
+                for subdir in expected_orphan_skill_subdirs:
+                    if subdir in file_path:
+                        is_expected = True
+                        break
 
             if not is_expected:
                 metrics.orphan_files.append(file_path)
