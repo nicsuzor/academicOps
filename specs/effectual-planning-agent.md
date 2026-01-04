@@ -75,7 +75,7 @@ The agent is successful when:
 - Agent surfaces when new material implies unexamined assumptions
 
 **Self-reflexivity**
-- Relies on [[log-command]] to log things that don't fit the model and insights about planning
+- Relies on `/log` command to log things that don't fit the model and insights about planning
 
 **Agent behaviours**
 - Receives fragments and places them

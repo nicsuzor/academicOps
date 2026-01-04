@@ -33,7 +33,6 @@ graph LR
 ## Summary
 
 New skill that extracts ALL file references from the [[aops]] framework and outputs standard node-link JSON for visualization.
-- Responsible for: [[academicOps/skills/reference-map]]
 
 ## What It Does
 

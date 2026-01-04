@@ -103,7 +103,7 @@ Box 4 is pluggable. The workflow selected in Box 3 determines what happens:
 When `plan-mode` is selected OR `/do` is invoked explicitly, the agent becomes a **hypervisor**.
 
 **Command**: [[commands/do]]
-**Spec**: [[specs/hypervisor-workflow]] (if exists) or inline below
+**Spec**: (inline below)
 
 ```mermaid
 flowchart TD

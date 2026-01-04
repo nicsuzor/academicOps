@@ -215,7 +215,7 @@ Skills in `skills/` MUST NOT contain dynamic data. All mutable state goes in `$A
 
 All framework markdown files use properly formatted markdown with relative wikilinks:
 
-1. **Frontmatter**: Required fields: `title`, `permalink`, `type`, `tags` (see [[BMEM-OBSIDIAN-GUIDE.md]])
+1. **Frontmatter**: Required fields: `title`, `permalink`, `type`, `tags`
 2. **Links**: Use relative wikilinks with paths: `[[folder/file.md]]` or `[[../sibling/file.md]]`
 3. **Graph connectivity**: Links create Obsidian graph edges; consistent linking builds navigable documentation
 
@@ -310,7 +310,6 @@ Step-by-step guides for common framework operations:
 - [[workflows/02-debug-framework-issue.md]] - Investigating framework problems (**includes Deep Root Cause Analysis - MANDATORY for "why didn't X work?" questions**)
 - [[workflows/03-experiment-design.md]] - Creating framework experiments
 - [[workflows/04-monitor-prevent-bloat.md]] - Keeping framework lean
-- [[workflows/05-review-pull-request.md]] - PR review process
 - [[workflows/06-develop-specification.md]] - Writing specs for new features
 
 ## Framework Project Data (`$AOPS/`)

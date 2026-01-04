@@ -239,7 +239,7 @@ Mix strategic/important tasks (P0/P1 papers, major projects) with urgent/deadlin
 
 | Bug | Priority | Task |
 |-----|----------|------|
-| Transcript missing error codes | P2 | [[transcript-improvements-error-codes-and-deduplication]] |
+| Transcript missing error codes | P2 | (planned: transcript error handling) |
 | Duplicate agent conversation in transcripts | P2 | (same task) |
 
 ### Recently Fixed

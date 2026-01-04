@@ -697,8 +697,6 @@ sys.exit(0)
 - **Quality gates**: Run checks before answering
 - **Workflow automation**: Trigger specific tools based on prompt patterns
 
-See [[../../../experiments/hook-additional-context-triggers-tool-use-proven-2025-11-22]] for full test methodology and results.
-
 ### Debugging Hook Execution
 
 Enable debug logging to see actual hook I/O:
