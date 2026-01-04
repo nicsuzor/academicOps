@@ -10,11 +10,10 @@ tags:
   - governance
   - audit
   - skill-design
+priority: P1
 ---
 
 # Task: Framework Audit Skill
-
-**Priority**: P1 (Critical for maintaining framework integrity)
 
 ## Problem Statement
 
@@ -43,8 +42,8 @@ Framework maintainers - ensures documentation stays trustworthy and files are ju
 
 **The automation is successful when**:
 
-1. Every significant file has a corresponding entry in INDEX.md
-2. Every file traces to either a spec (justified) or core doc (implicit)
+1. Every file has a corresponding entry in INDEX.md with a clear and concise justification
+2. Every file traces to a spec
 3. Orphan candidates are flagged for human review
 4. All wikilink-style references resolve to existing files
 5. README.md/INDEX.md reflect actual filesystem state

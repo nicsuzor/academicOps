@@ -9,7 +9,7 @@ tags:
 - streamlit
 ---
 
-# Cognitive Load Dashboard
+# Cognitive Load (Overwhelm) Dashboard
 
 **Status**: Implemented
 Live Streamlit [[academicOps/skills/dashboard/SKILL|Dashboard skill]] for glanceable task and session visibility.

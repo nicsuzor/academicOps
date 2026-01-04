@@ -11,9 +11,15 @@ tags: [framework, enforcement, moc]
 
 **Purpose**: Current state of what's protected and how. For mechanism selection guidance, see [[ENFORCEMENT|docs/ENFORCEMENT.md]]. For architectural philosophy, see [[enforcement|specs/enforcement.md]].
 
----
-
 ## Active Rules
+
+|Reference |Rule |Enforcement |
+|---|---|---|
+| Axiom x | ... | [[AGENTS.md]] |
+| Axiom x | ... | [[AGENTS.md]] |
+| Axiom x | ... | [[AGENTS.md]] |
+| Axiom x | ... | [[AGENTS.md]] |
+| Axiom x | ... | [[AGENTS.md]] |
 
 ### Path Protection (Deny Rules)
 
