@@ -28,6 +28,7 @@ These are the **concrete absolute paths** for this session. Use them directly wi
 | Tests | `$AOPS/tests/` |
 | Tasks | `$ACA_DATA/tasks/` |
 | Projects | `$ACA_DATA/projects/` |
+| Library | `$AOPS/lib/` |
 
 **Common files you may need:**
 - User accommodations: [[ACCOMMODATIONS.md]] (in $ACA_DATA/)
@@ -57,7 +58,7 @@ The $ACA_DATA knowledge base is  a CURRENT STATE MACHINE. The core framework pri
 
 **To persist knowledge**: Use `Skill(skill="remember")` (blocking) or spawn background Task with `run_in_background=true` (seamless). **To search**: Use `mcp__memory__retrieve_memory(query="...")`.
 
-All other long term memory is stored somewhere logical but OUTSIDE OF $ACA_DATA. We produce observations, and they are stored in logical places (git history, session files, meeting notes, etc). 
+All other long term memory is stored somewhere logical but OUTSIDE OF $ACA_DATA. We produce observations, and they are stored in logical places (git history, session files, meeting notes, etc).
 
 
 ## Environment Variable Architecture

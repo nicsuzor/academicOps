@@ -139,7 +139,19 @@ Per AXIOMS.md #1: Every action must be justifiable as a universal rule derived f
 3. **If skill exists**: Invoke it with `FRAMEWORK SKILL CHECKED` token
 4. **If NO skill exists**: Create one first, THEN invoke it
 
-### Creating Skills for New Operations
+### Enforcement Integrity (Derived)
+
+**Rule**: Any change to an enforcement mechanism (validation scripts, hooks, tests) is a **Framework Level Change** and must follow the full RFC/validation process.
+
+**Derivation**:
+1.  **Axiom 1 (Categorical Imperative)**: Attempting to bypass a check implies the check is invalid or the checking agent is above the law. Both are false.
+2.  **Axiom 7 (Fail-Fast)**: Weakening a check to "pass" broken state masks the failure signal.
+3.  **Vision (Self-Curating)**: The framework cannot curate itself if its sensors are dampened.
+
+**Protocol**:
+- NEVER downgrade an ERROR to a WARNING to "unblock" graduation.
+- If a check is "too strict", fix the *code* or *content* to be compliant.
+- If the check itself is flawed, fix the check's logic (e.g. better regex), but verify the *intent* of the check remains strict.
 
 When no skill handles a needed user data operation:
 

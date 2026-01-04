@@ -13,10 +13,17 @@ import re
 import sys
 from pathlib import Path
 
-# Get repo root from script location (bots/skills/framework/scripts/validate_docs.py)
-SCRIPT_DIR = Path(__file__).parent.resolve()
-REPO_ROOT = SCRIPT_DIR.parent.parent.parent.parent
-BOTS_DIR = REPO_ROOT / "bots"
+import os
+
+# Get repo root from AOPS env var (Authoritative)
+if "AOPS" not in os.environ:
+    print("Error: AOPS environment variable not set. Run via 'uv run' in $AOPS.", file=sys.stderr)
+    sys.exit(1)
+
+REPO_ROOT = Path(os.environ["AOPS"])
+# BOTS_DIR logic was legacy - in new layout, root IS the content dir (mostly)
+# Adapting to check files relative to AOPS root
+BOTS_DIR = REPO_ROOT 
 README_PATH = REPO_ROOT / "README.md"
 
 
@@ -53,10 +60,11 @@ def check_links_resolve() -> list[str]:
 def check_no_axiom_duplication() -> list[str]:
     """Check that axioms aren't duplicated across files."""
     errors = []
-    axioms_file = BOTS_DIR / "AXIOMS.md"
-
-    if not axioms_file.exists():
-        return [f"AXIOMS.md not found at {axioms_file}"]
+    axiom_path = REPO_ROOT / "AXIOMS.md"
+    if not axiom_path.exists():
+        return [f"AXIOMS.md not found at {axiom_path}"]
+    
+    axioms_file = axiom_path
 
     axioms_file.read_text()
 
@@ -74,8 +82,8 @@ def check_no_axiom_duplication() -> list[str]:
     ]
 
     # Check other files don't duplicate axiom content
-    for md_file in BOTS_DIR.rglob("*.md"):
-        if md_file == axioms_file:
+    for md_file in REPO_ROOT.rglob("*.md"):
+        if md_file.resolve() == axioms_file.resolve():
             continue
 
         # Skip broken symlinks (pre-existing infrastructure issue)
@@ -107,35 +115,25 @@ def check_no_axiom_duplication() -> list[str]:
 
 
 def check_directory_structure_matches() -> list[str]:
-    """Verify actual directory structure matches README.md."""
+    """Verify actual directory structure matches FRAMEWORK.md path table."""
     errors = []
-
-    if not README_PATH.exists():
-        return [f"README.md not found at {README_PATH}"]
-
-    README_PATH.read_text()
-
-    # Extract expected directories from README
-    expected_dirs = [
-        "bots/",
-        "data/",
-        "projects/",
-        "papers/",
-        "reviews/",
-        "talks/",
-        "templates/",
-        "conf/",
-    ]
-
-    repo_root = REPO_ROOT
-
-    for dir_name in expected_dirs:
-        dir_path = repo_root / dir_name.rstrip("/")
-        if not dir_path.exists():
-            errors.append(
-                f"Directory {dir_name} listed in README.md but not found at {dir_path}"
-            )
-
+    
+    framework_md = REPO_ROOT / "FRAMEWORK.md"
+    if not framework_md.exists():
+        return [f"FRAMEWORK.md not found at {framework_md}"]
+        
+    content = framework_md.read_text()
+    
+    # Extract paths from markdown table: | Name | `$AOPS/path/` |
+    # Regex looks for `$AOPS/` followed by path chars
+    paths = re.findall(r"`\$AOPS/([^`]+)`", content)
+    
+    for path_str in paths:
+        # Resolve path relative to root
+        target = REPO_ROOT / path_str.strip("/")
+        if not target.exists():
+            errors.append(f"Path defined in FRAMEWORK.md missing: {target}")
+            
     return errors
 
 

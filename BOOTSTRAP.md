@@ -22,9 +22,11 @@ The framework is in **bootstrap mode**. Automated integration is non-functional.
 | VISION.md | `$AOPS/VISION.md` | ✅ Authoritative |
 | ROADMAP.md | `$AOPS/ROADMAP.md` | ✅ Authoritative |
 | User context | `$ACA_DATA/data/CORE.md` | ✅ Authoritative |
-| Accommodations | `$ACA_DATA/data/ACCOMMODATIONS.md` | ✅ Authoritative |
+| ACCOMMODATIONS.md | `$ACA_DATA/data/ACCOMMODATIONS.md` | ✅ Authoritative |
 | Skills (manual read) | `$AOPS/skills/*/SKILL.md` | ✅ Read and follow |
 | Reflection log | `$ACA_DATA/data/framework-reflections.md` | ✅ Append-only |
+| Tasks Skill | `$AOPS/skills/tasks/` | ✅ Manual script usage |
+| Remember Skill | `$AOPS/skills/remember/` | ⚠️ Manual file creation (No Sync) |
 
 ---
 
@@ -35,7 +37,7 @@ The framework is in **bootstrap mode**. Automated integration is non-functional.
 | Claude Code hooks | `$AOPS/hooks/` | Not functional in Gemini |
 | Automated skill invocation | N/A | Hook-dependent |
 | Test suite | `$AOPS/tests/` | May be stale |
-| Memory server | MCP tools | Connectivity unknown |
+| Memory server | MCP tools | **FAILED** (Connectivity check) |
 | Symlinks | `~/.claude/` | May not exist |
 
 ---
@@ -43,14 +45,23 @@ The framework is in **bootstrap mode**. Automated integration is non-functional.
 ## Bootstrap Protocol
 
 ### Session Start
-1. Read `GEMINI.md` (instructions — loaded via MEMORY)
-2. Read `BOOTSTRAP.md` (this file — operational state)
-3. Read core docs only when doing significant framework work
+1. Run `commands/bootstrap-session.sh` to dump context (replace SessionStart hook).
+2. Read `GEMINI.md` (instructions — loaded via MEMORY)
+3. Read `BOOTSTRAP.md` (this file — operational state)
+4. Read core docs only when doing significant framework work
 
 ### During Work
-- Read skill files manually before following procedures
-- Document any missing infrastructure encountered
-- Do not assume prior context exists
+- **Skills**: Read `SKILL.md` first. Execute scripts manually via `uv run` in `$AOPS`.
+    - Example: `cd $AOPS && uv run python skills/tasks/scripts/task_view.py`
+- **Memory**: Use file-based persistence (`framework-reflections.md`) instead of Memory MCP.
+- **Context**: Do not assume prior context exists.
+- **Infrastructure**: Document gaps. Halt if blocked.
+
+### Artifact Persistence (CRITICAL)
+- **NO EPHEMERAL ARTIFACTS**: Do not save governance docs, plans, or reports to `.gemini/` or similar scratchpads.
+- **Specs**: Compliance docs, rubrics, and standards go to `$AOPS/specs/`.
+- **Project Data**: Audit reports, plans, and session records go to `$ACA_DATA/projects/<project-name>/`.
+- **Reason**: We trust version control (Axiom 15) and data boundaries (Axiom 5). Ephemeral files violate self-documentation.
 
 ### Session End
 - Append reflection to `$ACA_DATA/data/framework-reflections.md`
@@ -62,9 +73,9 @@ The framework is in **bootstrap mode**. Automated integration is non-functional.
 
 To move beyond bootstrap:
 
-1. [ ] Verify memory server connectivity
-2. [ ] Verify at least one skill works end-to-end
-3. [ ] Verify reflection persistence across sessions
+1. [x] Verify memory server connectivity (FAILED - Use files)
+2. [x] Verify at least one skill works end-to-end (`tasks`)
+3. [x] Verify reflection persistence across sessions (Confirmed)
 4. [ ] Document which skills are verified working
 
 Each component is activated individually after verification.
