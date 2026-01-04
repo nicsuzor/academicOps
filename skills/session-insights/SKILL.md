@@ -12,8 +12,9 @@ Routine command for daily session processing. Runs parallel agents for speed.
 
 ## Arguments
 
-- `today` (default) - process today's sessions
-- `YYYYMMDD` - process specific date
+- `today` (default) - process today's sessions (batch mode)
+- `YYYYMMDD` - process specific date (batch mode)
+- `current` - analyze current session for reflection (real-time mode, see Step 7)
 
 ## Execution (Follow These Steps Exactly)
 
@@ -143,12 +144,19 @@ Analyze this Claude Code session transcript. Extract:
 
 5. SUCCESSES - tasks completed well, especially when skills were properly invoked
 
+6. HEURISTIC MAPPING - For each correction/failure, identify which heuristic from HEURISTICS.md it relates to:
+   - H2 (Skill-First) - skill bypass patterns
+   - H3 (Verification Before Assertion) - claiming success without testing
+   - H4 (Explicit Instructions Override Inference) - doing X when asked for Y
+   - H22 (Indices Before Exploration) - exploring without checking index files first
+   - Other H[n] as appropriate
+
 Return JSON:
 {
   \"skill_effectiveness\": [{\"skill_suggested\": \"...\", \"skill_invoked\": \"...\", \"followed_suggestion\": true/false, \"was_useful\": true/false/null, \"notes\": \"...\"}],
   \"context_issues\": [{\"issue\": \"...\", \"consequence\": \"...\", \"missing_context\": \"...\", \"suggested_injection_point\": \"...\"}],
-  \"corrections\": [{\"action\": \"...\", \"feedback\": \"...\", \"lesson\": \"...\"}],
-  \"failures\": [{\"description\": \"...\", \"category\": \"...\"}],
+  \"corrections\": [{\"action\": \"...\", \"feedback\": \"...\", \"lesson\": \"...\", \"heuristic\": \"H[n] or null\", \"suggested_evidence\": \"YYYY-MM-DD: [observation]\"}],
+  \"failures\": [{\"description\": \"...\", \"category\": \"...\", \"heuristic\": \"H[n] or null\", \"suggested_evidence\": \"YYYY-MM-DD: [observation]\"}],
   \"successes\": [{\"description\": \"...\", \"skill_contributed\": \"...\"}]
 }
 "
@@ -235,3 +243,72 @@ Add to daily note `$ACA_DATA/sessions/YYYYMMDD-daily.md`:
 - **Parallel execution**: Use multiple Bash calls for transcripts; Task agents only for Gemini mining
 - **Idempotent**: Safe to run multiple times; do not delete existing information
 - **No judgment**: Follow steps exactly, don't improvise
+
+---
+
+## Step 7: Session Reflection (for `current` mode only)
+
+When invoked with `current` arg (e.g., via Stop hook or `/reflect`):
+
+### 7a: Skip Steps 1-4
+
+The current session transcript is already available. No need to generate transcripts.
+
+### 7b: Mine Current Session
+
+Read the current session transcript from the environment (provided by hook or read from `~/.claude/projects/*/sessions/*.jsonl`).
+
+Run the Step 5 mining prompt on this single session.
+
+### 7c: Present Suggestions for Approval
+
+For each finding with a non-null `heuristic` field, present to user:
+
+```
+## Session Reflection
+
+### [Category]: [Description]
+**Pattern**: [What happened]
+**Evidence**: [Quote or turn reference]
+**Relates to**: H[n] ([Heuristic name])
+
+**Suggested update**: Add evidence to H[n]
+> "[suggested_evidence text]"
+
+```
+
+Then use AskUserQuestion:
+
+```
+AskUserQuestion(questions=[{
+  "question": "Update HEURISTICS.md with these observations?",
+  "header": "Reflect",
+  "multiSelect": true,
+  "options": [
+    {"label": "Approve all", "description": "Add all suggested evidence entries"},
+    {"label": "Skip", "description": "Dismiss without updating"}
+  ]
+}])
+```
+
+### 7d: Apply Approved Updates
+
+For each approved suggestion:
+
+1. Read `$AOPS/HEURISTICS.md`
+2. Find the relevant H[n] section
+3. Add the `suggested_evidence` text to the **Evidence** section with today's date
+4. Write the updated file
+
+### 7e: Log to GitHub Issue
+
+For significant patterns, invoke `Skill(skill="learning-log")` to create/update a GitHub Issue for tracking.
+
+---
+
+## Triggers for `current` Mode
+
+| Trigger | How Invoked |
+|---------|-------------|
+| Session end | Stop hook injects: `Skill(skill="session-insights", args="current")` |
+| Manual | User runs `/reflect` command |

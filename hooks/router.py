@@ -60,6 +60,7 @@ HOOK_REGISTRY: dict[str, list[dict[str, Any]]] = {
     "Stop": [
         {"script": "unified_logger.py"},
         {"script": "request_scribe.py"},
+        {"script": "session_reflect.py"},
     ],
 }
 

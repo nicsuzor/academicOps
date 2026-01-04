@@ -76,7 +76,7 @@ Full instructions: `$AOPS/commands/do.md`
 | Layer | Document | Nature |
 |-------|----------|--------|
 | **Axioms** | [AXIOMS.md](AXIOMS.md) | Inviolable principles. No exceptions. |
-| **Heuristics** | [HEURISTICS.md](HEURISTICS.md) | Empirically validated rules. Revisable via `/log adjust-heuristic`. |
+| **Heuristics** | [HEURISTICS.md](HEURISTICS.md) | Empirically validated rules. Updated via `/reflect` approval workflow. |
 | **Practices** | `Skill(skill="framework")` | Conventions derived from axioms. How things get done. |
 
 ## Glossary
@@ -119,6 +119,7 @@ Full instructions: `$AOPS/commands/do.md`
 | /parallel-batch | Parallel file processing with skill delegation |
 | /q | Queue task for later execution (delayed /do) |
 | /qa | Verify outcomes against acceptance criteria |
+| /reflect | Self-audit process compliance; see also `/session-insights current` for automated reflection |
 | /review-training-cmd | Process review/source pair for training data |
 | /strategy | Strategic thinking partner (no execution) |
 | /task-viz | Task graph visualization (Excalidraw) |
@@ -144,7 +145,7 @@ Full instructions: `$AOPS/commands/do.md`
 | python-dev | Production Python (fail-fast, typed, TDD) |
 | remember | Persist knowledge to markdown + memory server |
 | review-training | Extract training pairs from matched documents |
-| session-insights | Extract accomplishments + learnings from sessions |
+| session-insights | Extract accomplishments + learnings; session-end reflection with heuristic updates |
 | supervisor | Workflow templates (tdd, batch-review) |
 | tasks | Task lifecycle management |
 | training-set-builder | Build LLM training datasets from documents |

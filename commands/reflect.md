@@ -86,10 +86,25 @@ the Streamlit panels display the synthesized view.
 
 ## Scope
 
-`/reflect` is for **process compliance**, not outcome quality. For outcome verification, use [[/qa]].
+`/reflect` is for **manual process compliance**, not outcome quality. For outcome verification, use [[/qa]].
 
 | Command | Question Answered |
 |---------|-------------------|
-| `/reflect` | Did I follow the rules? |
+| `/reflect` | Did I follow the rules? (manual self-audit) |
+| `/session-insights current` | What patterns occurred? (automated mining + heuristic updates) |
 | `/qa` | Does the output meet acceptance criteria? |
 | `/log` | What observation should we record? |
+
+## Automated Reflection
+
+For automated session mining with heuristic update suggestions, use:
+
+```
+Skill(skill="session-insights", args="current")
+```
+
+This runs automatically at session end via Stop hook. It:
+1. Mines session transcript for patterns
+2. Maps findings to heuristics (H2, H3, etc.)
+3. Presents approve/dismiss options
+4. Updates HEURISTICS.md on approval

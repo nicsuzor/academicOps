@@ -128,6 +128,7 @@ Goal: Framework becomes self-aware enough to curate its own evolution. See VISIO
 | 3 | Log consolidation | Extract patterns from LOG.md → create targeted diagnostic files → inform experiments | Designed (learning-log skill) |
 | 4 | Bounded log growth | LOG.md as inbox; archive after consolidation | Designed (LOG-ARCHIVE.md) |
 | 5 | Better log entry format | Category + descriptive slug instead of session ID | Implemented (learning-log skill) |
+| 6 | Session-end reflection | Auto-analyze session, map to heuristics, present approve/dismiss. Extends session-insights. | Planned (spec: `plans/splendid-plotting-muffin.md`) |
 
 ### Claude Code Dev Skills Integration ✅
 

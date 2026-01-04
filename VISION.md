@@ -116,3 +116,4 @@ The framework should become increasingly self-aware and self-improving:
 3. **Closed-loop learning** - Observations → [[LOG]] → Diagnostics → [[experiments]] → Changes → Validation
 4. **Framework introspection** - The [[framework]] skill understands the whole system and enforces consistency before accepting additions
 5. **Bounded growth** - Logs don't grow forever; they consolidate into actionable diagnostics then archive
+6. **Session-end reflection** - At session end, automatically analyze behavior patterns and suggest heuristic updates. User approves with one click, no manual observation writing. Zero friction for framework improvement.

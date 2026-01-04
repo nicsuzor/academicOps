@@ -26,20 +26,20 @@ Per [[AXIOMS]] #28 and [[HEURISTICS]] H26: episodic content → GitHub Issues.
 | `experiment` | Systemic investigations |
 | `devlog` | Development observations |
 
-## Future Direction
-
-`/log` may become more concise: simply log a failure + evidence to GitHub Issues. Use `/reflect` for deeper process analysis and workflow compliance checking.
-
-## Modes
-
-### Standard Mode (default)
-Log observation to GitHub Issue.
+## Usage
 
 **User provides**: Brief description of observation
 
-### Heuristic Adjustment Mode
-Adjust heuristic confidence based on new evidence.
+**Example**: `/log Agent bypassed python-dev skill for Python edits`
 
-**User provides**: `adjust-heuristic H[n]: [observation]`
+The skill will search for existing Issues, create/update as appropriate.
 
-**Example**: `/log adjust-heuristic H3: Agent claimed success without running tests - confirms H3`
+## Heuristic Updates
+
+For heuristic evidence updates, use automated session reflection instead:
+
+```
+Skill(skill="session-insights", args="current")
+```
+
+This runs automatically at session end. It mines the session for patterns, maps them to heuristics, and presents approve/dismiss options. Much less friction than manual `/log adjust-heuristic` calls.

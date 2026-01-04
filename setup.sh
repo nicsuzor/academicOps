@@ -85,36 +85,27 @@ echo "-------------------------"
 
 mkdir -p "$CLAUDE_DIR"
 
-# Function to create or update symlink
+# Function to create or update symlink (force overwrite - no backups per AXIOMS #15)
 create_symlink() {
     local name=$1
     local target=$2
     local link_path="$CLAUDE_DIR/$name"
 
     if [ -L "$link_path" ]; then
-        # Exists as symlink
         current_target="$(readlink "$link_path")"
         if [ "$current_target" = "$target" ]; then
             echo "  $name → $target (already correct)"
-        else
-            echo -e "${YELLOW}  Updating $name symlink${NC}"
-            echo "    Old: $current_target"
-            echo "    New: $target"
-            ln -sf "$target" "$link_path"
+            return
         fi
+        echo -e "${YELLOW}  Updating $name: $current_target → $target${NC}"
     elif [ -e "$link_path" ]; then
-        # Exists but not a symlink - backup and replace
-        local backup_path="${link_path}.backup.$(date +%Y%m%d_%H%M%S)"
-        echo -e "${YELLOW}  $name exists but is not a symlink - backing up${NC}"
-        mv "$link_path" "$backup_path"
-        echo "    Backed up to: $backup_path"
-        ln -s "$target" "$link_path"
-        echo -e "${GREEN}✓ Created $name → $target${NC}"
-    else
-        # Doesn't exist
-        ln -s "$target" "$link_path"
-        echo -e "${GREEN}✓ Created $name → $target${NC}"
+        echo -e "${YELLOW}  Replacing $name (was not a symlink)${NC}"
     fi
+
+    # Force overwrite whatever exists (git is the backup system)
+    rm -rf "$link_path"
+    ln -s "$target" "$link_path"
+    echo -e "${GREEN}✓ $name → $target${NC}"
 }
 
 create_symlink "skills" "$AOPS_PATH/skills"
