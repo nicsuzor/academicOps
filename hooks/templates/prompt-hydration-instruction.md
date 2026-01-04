@@ -1,19 +1,19 @@
 # Prompt Hydration Instruction Template
 
 Short instruction injected by UserPromptSubmit hook.
-Tells main agent to spawn prompt-hydrator with temp file path.
+Tells main agent to spawn prompt-hydrator with temp file path (hydrator reads the file, not main agent).
 
 Variables:
 - `{prompt_preview}` - First 80 chars of user prompt
 - `{temp_path}` - Path to temp file with full context
 
 ---
-**MANDATORY**: Use the Read tool to read `{temp_path}`, then spawn prompt-hydrator:
+**MANDATORY**: Spawn prompt-hydrator (do NOT read the temp file yourself):
 
 ```
 Task(subagent_type="prompt-hydrator", model="haiku",
      description="Hydrate: {prompt_preview}",
-     prompt="[contents of temp file]")
+     prompt="Read {temp_path} and provide workflow guidance.")
 ```
 
 Follow the hydrator's workflow guidance before proceeding.
