@@ -46,6 +46,7 @@ These are empirically derived rules that implement [[AXIOMS]] in practice. Unlik
 - 2025-12-18: Agent classified git hook investigation as "research" and skipped framework skill. Had to reinvestigate from scratch instead of using institutional knowledge about autocommit hook and related experiment.
 - 2025-12-26: Agent skipped intent-router despite explicit system reminder because task "felt simple"
 - 2025-12-27: Agent bypassed /log skill when logging framework issue, directly edited experiment file. Same pattern: skill invocation not reflexive when task feels straightforward.
+- 2026-01-04: Agent skipped prompt-hydrator despite MANDATORY instruction, rationalizing "I don't need to spawn the hydrator for something this simple." Updated instruction to emphasize costless invocation.
 
 **Confidence**: High
 

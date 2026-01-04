@@ -17,3 +17,5 @@ Task(subagent_type="prompt-hydrator", model="haiku",
 ```
 
 Follow the hydrator's workflow guidance before proceeding.
+
+**Why always invoke?** Hydration is fast (haiku model), costless, and can only improve outcomes. Even "simple" tasks benefit from context enrichment - agents cannot reliably judge task complexity upfront. Never skip.
