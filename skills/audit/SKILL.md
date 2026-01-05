@@ -220,6 +220,22 @@ Academic support framework for Claude Code. Minimal, fight bloat.
 ## Quick Start
 [paths, principles links]
 
+## How Enforcement Works
+
+[Mermaid flowchart showing enforcement layers and when each operates]
+
+The framework influences agent behavior through layered defenses:
+
+| Level | Mechanism | When It Operates | Example |
+|-------|-----------|------------------|---------|
+| 0 | Convention | Never enforced | "Skills should be invoked" |
+| 1 | Detection | Post-hoc analysis | Session transcript review |
+| 2 | Soft Gate | Before task | Intent router suggests skills |
+| 3 | Observable | During task | TodoWrite, Plan Mode |
+| 4 | Hard Gate | Blocks action | Pre-commit hooks |
+
+Link to [[specs/enforcement]] for detailed architecture.
+
 ## Commands
 [table: command | purpose]
 
@@ -232,6 +248,8 @@ Academic support framework for Claude Code. Minimal, fight bloat.
 ## Agents
 [table: agent | purpose]
 ```
+
+**Enforcement flowchart requirement**: README.md MUST include a simplified Mermaid diagram derived from [[specs/enforcement]]. The diagram should show the 6 layers (Prompts → Intent Router → Observable → Detection → Review → User) in a way that helps new users understand when each mechanism operates.
 
 ## INDEX.md Structure Target
 
@@ -254,6 +272,7 @@ $AOPS/
 ## Validation Criteria
 
 - README.md < 200 lines
+- README.md has "How Enforcement Works" section with Mermaid diagram
 - INDEX.md has every directory
 - All `→` references resolve
 - No broken `[[wikilinks]]`

@@ -22,6 +22,39 @@ See [[documentation-architecture]] for document purposes. Agents use [[FRAMEWORK
 - **File tree**: [INDEX.md](INDEX.md)
 - **Workflow selection**: See [specs/workflow-selection.md](specs/workflow-selection.md) (DRAFT - decision pending)
 
+## How Enforcement Works
+
+We can't force agent compliance—only encourage with detection. Layered defenses:
+
+```mermaid
+graph LR
+    subgraph "Before Task"
+        A[AXIOMS.md] --> B[Intent Router]
+        B --> C{Skill suggested?}
+    end
+
+    subgraph "During Task"
+        C --> D[TodoWrite]
+        D --> E[Plan Mode]
+    end
+
+    subgraph "After Task"
+        E --> F[PostToolUse Hooks]
+        F --> G[Critic Review]
+        G --> H[Pre-commit]
+    end
+```
+
+| Level | Mechanism | When | What It Does |
+|-------|-----------|------|--------------|
+| 0 | Convention | — | Documented, not checked |
+| 1 | Detection | Post-hoc | Logs violations |
+| 2 | Soft Gate | Before task | Suggests workflow |
+| 3 | Observable | During task | Creates artifacts (TodoWrite) |
+| 4 | Hard Gate | Blocks action | Pre-commit, required approval |
+
+See [[specs/enforcement]] for detailed architecture.
+
 ## Installation
 
 | Environment | Setup | Documentation |
