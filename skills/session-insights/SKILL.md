@@ -184,6 +184,8 @@ After receiving the JSON response, save it to: $ACA_DATA/dashboard/sessions/{ses
 
 4. **Update daily.md with accomplishments from JSONs** at `$ACA_DATA/sessions/YYYYMMDD-daily.md`:
 
+   **VERIFY DESCRIPTIONS**: Gemini mining may hallucinate. Cross-check accomplishment descriptions against actual changes (git log, file content). Per AXIOMS #2, do not propagate fabricated descriptions.
+
 ```markdown
 # Daily Summary - YYYY-MM-DD
 
