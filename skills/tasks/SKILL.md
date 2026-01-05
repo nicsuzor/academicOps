@@ -242,6 +242,15 @@ Create separate tasks when:
 - Different projects or contexts
 - Need separate priority/categorization
 
+### Checklist Item Descriptions
+
+**Items must be self-explanatory.** A reader should understand what needs to be done without clicking through to linked files.
+
+❌ **Bad**: `P3: excalidraw` (what about it?)
+✅ **Good**: `Write spec for excalidraw skill (diagram generation)`
+
+Include: the action verb + the subject + brief context if not obvious from parent task.
+
 ## Task Workflow
 
 **When user mentions completion**:

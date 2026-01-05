@@ -198,6 +198,25 @@ After receiving the JSON response, save it to: $ACA_DATA/dashboard/sessions/{ses
    mkdir -p $ACA_DATA/dashboard/sessions
    ```
 
+### Step 5b: Verify Mining
+
+**Wait for all mining agents to complete**, then verify:
+
+```bash
+# Count expected (transcripts for date)
+ls $ACA_DATA/sessions/claude/YYYYMMDD*-abridged.md | wc -l
+
+# Count actual (mined JSONs for date)
+ls $ACA_DATA/dashboard/sessions/*.json 2>/dev/null | xargs -I{} grep -l '"date": "YYYY-MM-DD"' {} 2>/dev/null | wc -l
+```
+
+**If mined < expected**:
+1. Identify unmined sessions (transcripts without matching JSONs)
+2. Re-spawn mining agents for failed sessions (repeat Step 5 for those sessions only)
+3. Re-verify until mined >= 80% of expected (some sessions may be too short to mine)
+
+**Only proceed to Step 6 when verification passes.**
+
 ### Step 6: Synthesize (Claude Code Agent)
 
 **AUTHORITATIVE SOURCE**: The daily note (`$ACA_DATA/sessions/YYYYMMDD-daily.md`) is the single source of truth for accomplishments. Session JSONs feed INTO the daily note; synthesis.json is a dashboard-optimized VIEW of the daily note.
