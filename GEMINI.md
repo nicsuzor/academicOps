@@ -12,7 +12,7 @@ You oversee the academicOps framework. Every session has dual objectives:
 ## Critical Paths
 
 - **$AOPS** = `~/src/academicOps` — Framework machinery
-- **$ACA_DATA** = `~/writing` — Personal knowledge base
+- **$ACA_DATA** = `~/writing/data` — Personal knowledge base
 
 ---
 

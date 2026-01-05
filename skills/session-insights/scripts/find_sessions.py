@@ -41,6 +41,8 @@ def main():
         target_date = datetime.now(timezone.utc).date()
 
     # Get transcript directory from environment or default
+
+    # REVIEW NS: Note violation of 'fail fast' principle here. No fallbacks.
     aca_data = os.environ.get("ACA_DATA", os.path.expanduser("~/writing/data"))
     transcript_dir = args.transcript_dir or os.path.join(aca_data, "sessions/claude")
     os.makedirs(transcript_dir, exist_ok=True)
