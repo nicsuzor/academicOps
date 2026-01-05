@@ -2,14 +2,17 @@
 name: readme
 title: academicOps Framework
 type: reference
-description: Academic support framework for Claude Code. Entry point and feature inventory.
+description: Human feature guide - capabilities, workflows, and how things fit together.
 permalink: readme
+audience: humans
 tags: [framework, overview, features]
 ---
 
 # academicOps Framework
 
 Academic support framework for Claude Code. Minimal, fight bloat aggressively.
+
+See [[documentation-architecture]] for document purposes. Agents use [[FRAMEWORK.md]] for paths.
 
 ## Quick Start
 

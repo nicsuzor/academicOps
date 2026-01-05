@@ -2,17 +2,22 @@
 name: index
 title: Framework Index
 type: reference
-description: Complete file-to-function mapping and directory structure reference.
+description: Complete file accounting for audits. NOT injected to agents - use FRAMEWORK.md for paths.
 permalink: framework-index
+audience: maintainers, audit-scripts
 tags:
   - framework
   - structure
-  - reference
+  - audit
 ---
 
 # Framework Index
 
-Complete file-to-function mapping. For overview, see [[README]].
+Complete file accounting for audit processes. See [[documentation-architecture]] for document purposes.
+
+**Audience**: Maintainers and audit scripts only. Agents use [[FRAMEWORK.md]] for paths.
+
+For human-readable overview, see [[README]].
 
 ## File Tree
 

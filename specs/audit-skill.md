@@ -191,6 +191,7 @@ Or via command:
 ## Relationships
 
 ### Depends On
+- [[documentation-architecture]] - Defines purpose of README.md, INDEX.md, FRAMEWORK.md
 - [[specs/framework-health.md|framework-health]] - Health metrics and CI/CD enforcement
 - [[INDEX.md]] - File accounting target
 - [[RULES.md]] - Enforcement mapping target
