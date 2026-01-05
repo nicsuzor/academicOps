@@ -136,7 +136,6 @@ ref.bib
 archive/datatools/
 
 # IDE stuff and misc files that magically appear
-uv.lock
 outputs
 multirun
 .chroma
