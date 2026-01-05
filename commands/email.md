@@ -11,7 +11,7 @@ Use the Skill tool to invoke the `[[skills/tasks/SKILL.md|tasks]]` skill: `Skill
 
 **What you'll do**:
 
-1. Fetch recent emails via Outlook MCP (default: 20 emails)
+1. Fetch recent emails: Call `mcp__outlook__messages_list_recent(limit=20)` - if it works, proceed; if error, HALT and report
 2. **Check Sent folder** for existing responses (skip tasks for emails already dealt with)
 3. Classify emails: Actionable → Task | Important FYI → Extract info | Safe to ignore → Archive candidate
 4. **Read Important FYI email bodies** and extract key information (dates, amounts, outcomes)

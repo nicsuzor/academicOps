@@ -45,7 +45,7 @@ grep -li "SEARCH_TERM" $ACA_DATA/tasks/archived/*.md
 
 ### Step 1: Fetch Recent Emails
 
-Use **Outlook MCP** to retrieve recent emails.
+**CRITICAL**: To check if Outlook MCP is available, CALL THE TOOL. Do NOT investigate config files, check `ListMcpResourcesTool`, or grep for settings. Just invoke the tool - if it works, proceed; if it errors, HALT.
 
 **Tool**: `mcp__outlook__messages_list_recent`
 
@@ -566,9 +566,10 @@ Details: [logged for institutional reporting]
 **Halt immediately and report**:
 
 1. **Outlook MCP unavailable**
-   - Error: Cannot access email
+   - Error: `mcp__outlook__messages_list_recent` returns error
    - Action: Halt workflow, report to user
-   - Message: "Cannot check email - Outlook MCP not responding"
+   - Message: "Cannot check email - Outlook MCP error: [exact error message]"
+   - **DO NOT**: Investigate configs, check ListMcpResourcesTool, or try workarounds
 
 2. **Both task backends unavailable**
    - Error: Cannot create tasks
