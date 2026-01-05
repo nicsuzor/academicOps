@@ -136,16 +136,23 @@ def build_hydration_instruction(prompt: str, transcript_path: str | None = None)
     return instruction
 
 
-def is_system_message(prompt: str) -> bool:
-    """Check if prompt is a system-generated message that should skip hydration.
+def should_skip_hydration(prompt: str) -> bool:
+    """Check if prompt should skip hydration.
 
     Returns True for:
     - Agent completion notifications (<agent-notification>)
-    - Other system injections that aren't user prompts
+    - Skill invocations (prompts starting with '/')
+    - User ignore shortcut (prompts starting with '.')
     """
     prompt_stripped = prompt.strip()
     # Agent completion notifications from background Task agents
     if prompt_stripped.startswith("<agent-notification>"):
+        return True
+    # Skill invocations - already have instructions, don't need routing
+    if prompt_stripped.startswith("/"):
+        return True
+    # User ignore shortcut - user explicitly wants no hydration
+    if prompt_stripped.startswith("."):
         return True
     return False
 
@@ -163,8 +170,8 @@ def main():
     prompt = input_data.get("prompt", "")
     transcript_path = input_data.get("transcript_path")
 
-    # Skip hydration for system-generated messages (not actual user prompts)
-    if is_system_message(prompt):
+    # Skip hydration for system messages, skill invocations, and user ignore shortcut
+    if should_skip_hydration(prompt):
         output_data = {
             "hookSpecificOutput": {
                 "hookEventName": "UserPromptSubmit",

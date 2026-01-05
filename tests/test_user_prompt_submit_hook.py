@@ -272,12 +272,12 @@ class TestHookIntegration:
         assert isinstance(instruction, str)
 
 
-class TestSystemMessageFiltering:
-    """Tests for skipping hydration on system-generated messages."""
+class TestSkipHydration:
+    """Tests for skipping hydration on certain prompts."""
 
     def test_skips_agent_notification(self) -> None:
-        """Agent completion notifications should be detected as system messages."""
-        from hooks.user_prompt_submit import is_system_message
+        """Agent completion notifications should skip hydration."""
+        from hooks.user_prompt_submit import should_skip_hydration
 
         notification = """<agent-notification>
 <agent-id>abc123</agent-id>
@@ -286,38 +286,68 @@ class TestSystemMessageFiltering:
 <summary>Agent completed.</summary>
 </agent-notification>"""
 
-        assert is_system_message(notification) is True
+        assert should_skip_hydration(notification) is True
 
     def test_skips_agent_notification_with_whitespace(self) -> None:
         """Agent notifications with leading whitespace should still be detected."""
-        from hooks.user_prompt_submit import is_system_message
+        from hooks.user_prompt_submit import should_skip_hydration
 
         notification = "  \n<agent-notification>test</agent-notification>"
-        assert is_system_message(notification) is True
+        assert should_skip_hydration(notification) is True
+
+    def test_skips_skill_invocations(self) -> None:
+        """Prompts starting with / should skip hydration (skill invocations)."""
+        from hooks.user_prompt_submit import should_skip_hydration
+
+        skill_prompts = [
+            "/commit",
+            "/do fix this bug",
+            "/aops",
+            "  /meta question",  # with leading whitespace
+        ]
+
+        for prompt in skill_prompts:
+            assert (
+                should_skip_hydration(prompt) is True
+            ), f"'{prompt}' should skip hydration"
+
+    def test_skips_user_ignore_shortcut(self) -> None:
+        """Prompts starting with . should skip hydration (user ignore shortcut)."""
+        from hooks.user_prompt_submit import should_skip_hydration
+
+        ignore_prompts = [
+            ".ignore this",
+            ".",
+            "  .also ignored",  # with leading whitespace
+        ]
+
+        for prompt in ignore_prompts:
+            assert (
+                should_skip_hydration(prompt) is True
+            ), f"'{prompt}' should skip hydration"
 
     def test_allows_normal_prompts(self) -> None:
-        """Normal user prompts should NOT be detected as system messages."""
-        from hooks.user_prompt_submit import is_system_message
+        """Normal user prompts should NOT skip hydration."""
+        from hooks.user_prompt_submit import should_skip_hydration
 
         prompts = [
             "Help me fix this bug",
             "can you refactor the authentication module?",
             "What does this code do?",
-            "/commit",
             "prove it with pytests",
         ]
 
         for prompt in prompts:
             assert (
-                is_system_message(prompt) is False
-            ), f"'{prompt}' should not be a system message"
+                should_skip_hydration(prompt) is False
+            ), f"'{prompt}' should not skip hydration"
 
     def test_allows_empty_prompt(self) -> None:
-        """Empty prompts should not be detected as system messages."""
-        from hooks.user_prompt_submit import is_system_message
+        """Empty prompts should not skip hydration."""
+        from hooks.user_prompt_submit import should_skip_hydration
 
-        assert is_system_message("") is False
-        assert is_system_message("   ") is False
+        assert should_skip_hydration("") is False
+        assert should_skip_hydration("   ") is False
 
     def test_hook_skips_hydration_for_agent_notification(self) -> None:
         """Full hook should return empty additionalContext for agent notifications."""
