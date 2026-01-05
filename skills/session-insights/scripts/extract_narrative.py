@@ -24,7 +24,7 @@ import os
 import re
 import sys
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
 
 # Add parent to path for lib imports
@@ -96,7 +96,9 @@ def extract_first_prompt(entries: list[dict]) -> str:
             text = content.strip()
             # Skip command XML, extract args if present
             if "<command-args>" in text:
-                match = re.search(r"<command-args>(.*?)</command-args>", text, re.DOTALL)
+                match = re.search(
+                    r"<command-args>(.*?)</command-args>", text, re.DOTALL
+                )
                 if match:
                     return match.group(1).strip()[:100]
             elif not text.startswith("<"):
@@ -125,7 +127,9 @@ def extract_session_start_time(entries: list[dict]) -> datetime | None:
     return None
 
 
-def process_session_jsonl(jsonl_path: Path, session_id: str, project: str) -> SessionNarrative | None:
+def process_session_jsonl(
+    jsonl_path: Path, session_id: str, project: str
+) -> SessionNarrative | None:
     """Process a single session JSONL file."""
     entries = []
     try:
@@ -166,7 +170,9 @@ def format_narrative_sections(narratives: list[SessionNarrative]) -> str:
     if sessions_with_intent:
         lines.append("## Session Context")
         lines.append("")
-        for n in sorted(sessions_with_intent, key=lambda x: x.start_time or datetime.min):
+        for n in sorted(
+            sessions_with_intent, key=lambda x: x.start_time or datetime.min
+        ):
             time_str = n.start_time.strftime("%I:%M %p")  # type: ignore
             lines.append(f"- {time_str}: {n.first_prompt}")
         lines.append("")
@@ -187,7 +193,9 @@ def format_narrative_sections(narratives: list[SessionNarrative]) -> str:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Extract narrative signals from sessions")
+    parser = argparse.ArgumentParser(
+        description="Extract narrative signals from sessions"
+    )
     parser.add_argument(
         "--date",
         default=datetime.now().strftime("%Y%m%d"),

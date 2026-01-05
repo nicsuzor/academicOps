@@ -4,7 +4,6 @@ Tests for skill compliance audit script.
 Uses real captured transcripts as test fixtures (per H33: Real Data Fixtures).
 """
 
-import pytest
 from pathlib import Path
 
 from scripts.audit_skill_compliance import (
@@ -53,6 +52,7 @@ Hello
 Hi there!
 """
         import tempfile
+
         with tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False) as f:
             f.write(content)
             temp_path = Path(f.name)
@@ -80,6 +80,7 @@ Hello
 Hi there!
 """
         import tempfile
+
         with tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False) as f:
             f.write(content)
             temp_path = Path(f.name)

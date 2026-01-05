@@ -159,11 +159,11 @@ def main():
 
         if duplicate_found:
             print(
-                f"✗ Duplicate: Email already processed as task",
+                "✗ Duplicate: Email already processed as task",
                 file=sys.stderr,
             )
             print(f"  Existing task: {duplicate_found.name}", file=sys.stderr)
-            print(f"  Use --force to create anyway", file=sys.stderr)
+            print("  Use --force to create anyway", file=sys.stderr)
             sys.exit(1)
 
     # Read body from file or argument

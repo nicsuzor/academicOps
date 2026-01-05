@@ -12,7 +12,6 @@ Exit codes:
 """
 
 import json
-import os
 import sys
 import tempfile
 import time
@@ -172,7 +171,9 @@ def main():
                 "additionalContext": "",  # No hydration needed
             }
         }
-        safe_log_to_debug_file("UserPromptSubmit", input_data, {"skipped": "system_message"})
+        safe_log_to_debug_file(
+            "UserPromptSubmit", input_data, {"skipped": "system_message"}
+        )
         print(json.dumps(output_data))
         sys.exit(0)
 

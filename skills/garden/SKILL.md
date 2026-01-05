@@ -175,7 +175,7 @@ Default: highest-activity areas (recent modifications).
 - Reorganize folder structures → Use MoCs for navigation
 - Restate core docs → Link or omit entirely
 - Perfectionism → Progress over perfection
-- **`## Relations` or 'references' boilerplate** sections → Remove entirely 
+- **`## Relations` or 'references' boilerplate** sections → Remove entirely
 
 ## Named Session Logs Anti-Pattern
 

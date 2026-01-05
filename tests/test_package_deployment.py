@@ -11,10 +11,8 @@ Requirements tested:
 6. Integration: Full packaging workflow creates usable archives
 """
 
-import io
 import json
 import tarfile
-import tempfile
 from datetime import datetime
 from pathlib import Path
 from unittest.mock import Mock, patch

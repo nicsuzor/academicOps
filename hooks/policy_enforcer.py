@@ -18,7 +18,6 @@ import sys
 from typing import Any
 
 
-
 # Destructive git operations that should be blocked
 DESTRUCTIVE_GIT_PATTERNS = [
     r"git\s+reset\s+--hard",
@@ -29,7 +28,9 @@ DESTRUCTIVE_GIT_PATTERNS = [
 ]
 
 
-def validate_minimal_documentation(tool_name: str, args: dict[str, Any]) -> dict[str, Any] | None:
+def validate_minimal_documentation(
+    tool_name: str, args: dict[str, Any]
+) -> dict[str, Any] | None:
     """Block *-GUIDE.md files and .md files > 200 lines."""
     if tool_name != "Write":
         return None
@@ -43,7 +44,7 @@ def validate_minimal_documentation(tool_name: str, args: dict[str, Any]) -> dict
             "systemMessage": (
                 "BLOCKED: *-GUIDE.md files violate MINIMAL principle.\n"
                 "Add 2 sentences to README.md instead."
-            )
+            ),
         }
 
     if file_path.endswith(".md"):
@@ -54,13 +55,15 @@ def validate_minimal_documentation(tool_name: str, args: dict[str, Any]) -> dict
                 "systemMessage": (
                     f"BLOCKED: {line_count} lines exceeds 200 line limit for docs.\n"
                     "Split into focused chunks or reduce content."
-                )
+                ),
             }
 
     return None
 
 
-def validate_safe_git_usage(tool_name: str, args: dict[str, Any]) -> dict[str, Any] | None:
+def validate_safe_git_usage(
+    tool_name: str, args: dict[str, Any]
+) -> dict[str, Any] | None:
     """Block destructive git operations."""
     if tool_name != "Bash":
         return None
@@ -75,7 +78,7 @@ def validate_safe_git_usage(tool_name: str, args: dict[str, Any]) -> dict[str, A
                     f"BLOCKED: Destructive git command.\n"
                     f"Command: {command}\n"
                     f"Use safe alternatives or ask user for explicit confirmation."
-                )
+                ),
             }
 
     return None

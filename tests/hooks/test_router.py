@@ -11,9 +11,7 @@ Tests cover:
 """
 
 import json
-import pytest
 from unittest.mock import patch, MagicMock
-from typing import Any
 
 
 # We'll import the router module once it exists

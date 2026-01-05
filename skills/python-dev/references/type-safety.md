@@ -530,4 +530,3 @@ def fetch_or_default(user_id: Optional[str]) -> User:
         return DefaultUser()
     return fetch(user_id)
 ```
-

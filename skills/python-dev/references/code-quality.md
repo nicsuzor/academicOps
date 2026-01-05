@@ -7,7 +7,7 @@ description: Python-specific code quality standards and conventions
 
 # Python Code Quality
 
-Python-specific code quality standards. 
+Python-specific code quality standards.
 
 ## Docstrings
 
@@ -472,4 +472,3 @@ def load_and_process_data(file_path):
     # Return (what exactly?)
     return transformed
 ```
-

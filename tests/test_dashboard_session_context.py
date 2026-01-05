@@ -5,10 +5,7 @@ Tests TodoWrite state extraction from session files for the Active Sessions pane
 """
 
 import json
-import tempfile
-from pathlib import Path
 
-import pytest
 
 from lib.session_analyzer import extract_todowrite_from_session
 from lib.session_reader import TodoWriteState, parse_todowrite_state
@@ -20,7 +17,10 @@ class TestParseTodowriteState:
     def test_extracts_todowrite_from_entries(self):
         """Should extract TodoWrite state from session entries."""
         entries = [
-            {"type": "user", "message": {"content": [{"type": "text", "text": "hello"}]}},
+            {
+                "type": "user",
+                "message": {"content": [{"type": "text", "text": "hello"}]},
+            },
             {
                 "type": "assistant",
                 "message": {
@@ -30,9 +30,21 @@ class TestParseTodowriteState:
                             "name": "TodoWrite",
                             "input": {
                                 "todos": [
-                                    {"content": "Task 1", "status": "completed", "activeForm": "Doing task 1"},
-                                    {"content": "Task 2", "status": "in_progress", "activeForm": "Doing task 2"},
-                                    {"content": "Task 3", "status": "pending", "activeForm": "Doing task 3"},
+                                    {
+                                        "content": "Task 1",
+                                        "status": "completed",
+                                        "activeForm": "Doing task 1",
+                                    },
+                                    {
+                                        "content": "Task 2",
+                                        "status": "in_progress",
+                                        "activeForm": "Doing task 2",
+                                    },
+                                    {
+                                        "content": "Task 3",
+                                        "status": "pending",
+                                        "activeForm": "Doing task 3",
+                                    },
                                 ]
                             },
                         }
@@ -52,12 +64,13 @@ class TestParseTodowriteState:
     def test_returns_none_for_no_todowrite(self):
         """Should return None when no TodoWrite found."""
         entries = [
-            {"type": "user", "message": {"content": [{"type": "text", "text": "hello"}]}},
+            {
+                "type": "user",
+                "message": {"content": [{"type": "text", "text": "hello"}]},
+            },
             {
                 "type": "assistant",
-                "message": {
-                    "content": [{"type": "text", "text": "response"}]
-                },
+                "message": {"content": [{"type": "text", "text": "response"}]},
             },
         ]
 
@@ -76,7 +89,11 @@ class TestParseTodowriteState:
                             "name": "TodoWrite",
                             "input": {
                                 "todos": [
-                                    {"content": "Old task", "status": "pending", "activeForm": "Old"},
+                                    {
+                                        "content": "Old task",
+                                        "status": "pending",
+                                        "activeForm": "Old",
+                                    },
                                 ]
                             },
                         }
@@ -92,7 +109,11 @@ class TestParseTodowriteState:
                             "name": "TodoWrite",
                             "input": {
                                 "todos": [
-                                    {"content": "New task", "status": "in_progress", "activeForm": "New"},
+                                    {
+                                        "content": "New task",
+                                        "status": "in_progress",
+                                        "activeForm": "New",
+                                    },
                                 ]
                             },
                         }
@@ -138,8 +159,16 @@ class TestParseTodowriteState:
                             "name": "TodoWrite",
                             "input": {
                                 "todos": [
-                                    {"content": "First active", "status": "in_progress", "activeForm": "1"},
-                                    {"content": "Second active", "status": "in_progress", "activeForm": "2"},
+                                    {
+                                        "content": "First active",
+                                        "status": "in_progress",
+                                        "activeForm": "1",
+                                    },
+                                    {
+                                        "content": "Second active",
+                                        "status": "in_progress",
+                                        "activeForm": "2",
+                                    },
                                 ]
                             },
                         }
@@ -162,7 +191,10 @@ class TestExtractTodowriteFromSession:
         """Should extract TodoWrite from a real JSONL session file."""
         session_file = tmp_path / "test-session.jsonl"
         entries = [
-            {"type": "user", "message": {"content": [{"type": "text", "text": "Start work"}]}},
+            {
+                "type": "user",
+                "message": {"content": [{"type": "text", "text": "Start work"}]},
+            },
             {
                 "type": "assistant",
                 "message": {
@@ -172,8 +204,16 @@ class TestExtractTodowriteFromSession:
                             "name": "TodoWrite",
                             "input": {
                                 "todos": [
-                                    {"content": "Implement feature", "status": "in_progress", "activeForm": "Implementing"},
-                                    {"content": "Write tests", "status": "pending", "activeForm": "Writing tests"},
+                                    {
+                                        "content": "Implement feature",
+                                        "status": "in_progress",
+                                        "activeForm": "Implementing",
+                                    },
+                                    {
+                                        "content": "Write tests",
+                                        "status": "pending",
+                                        "activeForm": "Writing tests",
+                                    },
                                 ]
                             },
                         }
@@ -214,22 +254,31 @@ class TestExtractTodowriteFromSession:
 
         with open(session_file, "w") as f:
             f.write("not valid json\n")
-            f.write(json.dumps({
-                "type": "assistant",
-                "message": {
-                    "content": [
-                        {
-                            "type": "tool_use",
-                            "name": "TodoWrite",
-                            "input": {
-                                "todos": [
-                                    {"content": "Valid task", "status": "pending", "activeForm": "Valid"},
-                                ]
-                            },
-                        }
-                    ]
-                },
-            }) + "\n")
+            f.write(
+                json.dumps(
+                    {
+                        "type": "assistant",
+                        "message": {
+                            "content": [
+                                {
+                                    "type": "tool_use",
+                                    "name": "TodoWrite",
+                                    "input": {
+                                        "todos": [
+                                            {
+                                                "content": "Valid task",
+                                                "status": "pending",
+                                                "activeForm": "Valid",
+                                            },
+                                        ]
+                                    },
+                                }
+                            ]
+                        },
+                    }
+                )
+                + "\n"
+            )
             f.write("another bad line\n")
 
         result = extract_todowrite_from_session(session_file)

@@ -181,7 +181,9 @@ def main():
     # Load FRAMEWORK.md (fail-fast if missing)
     try:
         framework_content = load_framework()
-        framework_content = expand_path_variables(framework_content, aops_root, data_root)
+        framework_content = expand_path_variables(
+            framework_content, aops_root, data_root
+        )
     except (FileNotFoundError, ValueError) as e:
         print(f"ERROR: {e}", file=sys.stderr)
         sys.exit(1)
@@ -248,9 +250,7 @@ def main():
             str(core_path),
         ],
     }
-    output_data: dict[str, Any] = {
-        "hookSpecificOutput": hook_specific_output
-    }
+    output_data: dict[str, Any] = {"hookSpecificOutput": hook_specific_output}
 
     # Log event with output data (so transcript can show it)
     session_id = input_data.get("session_id", "unknown")

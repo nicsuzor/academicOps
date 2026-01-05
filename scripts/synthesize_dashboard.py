@@ -14,7 +14,7 @@ import json
 import os
 import re
 import sys
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from pathlib import Path
 
 import httpx
@@ -62,7 +62,9 @@ def load_daily_log(data_dir: Path) -> tuple[dict, str]:
     result["accomplishments"] = accomplishments[:10]
 
     # Extract blockers
-    blocker_match = re.search(r"## BLOCKERS?\s*\n(.*?)(?=\n##|\Z)", content, re.DOTALL | re.IGNORECASE)
+    blocker_match = re.search(
+        r"## BLOCKERS?\s*\n(.*?)(?=\n##|\Z)", content, re.DOTALL | re.IGNORECASE
+    )
     if blocker_match:
         blockers = re.findall(r"- (.+)", blocker_match.group(1))
         result["blockers"] = blockers[:5]
@@ -133,11 +135,13 @@ def load_session_summaries(daily_content: str) -> dict:
         project = match.group(2)
         summary = match.group(3).strip()
 
-        result["summaries"].append({
-            "session_id": session_id,
-            "project": project,
-            "summary": summary,
-        })
+        result["summaries"].append(
+            {
+                "session_id": session_id,
+                "project": project,
+                "summary": summary,
+            }
+        )
         result["by_project"][project] = result["by_project"].get(project, 0) + 1
 
     result["total"] = len(result["summaries"])
@@ -227,19 +231,23 @@ def fetch_cloudflare_prompts() -> list[dict]:
                 content = p.get("content", "")
                 if content.startswith("{"):
                     data = json.loads(content)
-                    result.append({
-                        "prompt": data.get("prompt", "")[:100],
-                        "project": data.get("project", ""),
-                        "hostname": data.get("hostname", ""),
-                        "timestamp": p.get("timestamp", ""),
-                    })
+                    result.append(
+                        {
+                            "prompt": data.get("prompt", "")[:100],
+                            "project": data.get("project", ""),
+                            "hostname": data.get("hostname", ""),
+                            "timestamp": p.get("timestamp", ""),
+                        }
+                    )
                 else:
-                    result.append({
-                        "prompt": content[:100],
-                        "project": "",
-                        "hostname": "unknown",
-                        "timestamp": p.get("timestamp", ""),
-                    })
+                    result.append(
+                        {
+                            "prompt": content[:100],
+                            "project": "",
+                            "hostname": "unknown",
+                            "timestamp": p.get("timestamp", ""),
+                        }
+                    )
             except (json.JSONDecodeError, AttributeError):
                 continue
         return result
@@ -251,6 +259,7 @@ def fetch_cloudflare_prompts() -> list[dict]:
 def get_hostname() -> str:
     """Get current machine hostname."""
     import socket
+
     return socket.gethostname()
 
 
@@ -272,9 +281,13 @@ def build_synthesis(
     if narrative_signals["session_context"]:
         narrative.append(f"Started: {narrative_signals['session_context'][0][:60]}")
     if len(narrative_signals["session_context"]) > 1:
-        narrative.append(f"Also worked on: {narrative_signals['session_context'][1][:50]}")
+        narrative.append(
+            f"Also worked on: {narrative_signals['session_context'][1][:50]}"
+        )
     if narrative_signals["abandoned_todos"]:
-        narrative.append(f"Left unfinished: {narrative_signals['abandoned_todos'][0][:50]}")
+        narrative.append(
+            f"Left unfinished: {narrative_signals['abandoned_todos'][0][:50]}"
+        )
 
     # Accomplishments summary
     acc_count = len(daily_log["accomplishments"])
@@ -306,7 +319,10 @@ def build_synthesis(
     if daily_log["blockers"]:
         alignment = {"status": "blocked", "note": daily_log["blockers"][0][:60]}
     elif not daily_log["accomplishments"] and session_summaries["total"] > 3:
-        alignment = {"status": "drifted", "note": "Many sessions but no recorded accomplishments"}
+        alignment = {
+            "status": "drifted",
+            "note": "Many sessions but no recorded accomplishments",
+        }
 
     # Context from recent activity
     context = {
@@ -342,7 +358,9 @@ def build_synthesis(
         "accomplishments": {
             "count": acc_count,
             "summary": acc_summary or "None recorded",
-            "highlight": daily_log["accomplishments"][0] if daily_log["accomplishments"] else None,
+            "highlight": daily_log["accomplishments"][0]
+            if daily_log["accomplishments"]
+            else None,
         },
         "alignment": alignment,
         "next_action": next_action,
@@ -452,7 +470,8 @@ def main() -> None:
     # Add metadata
     synthesis["generated"] = datetime.now(UTC).isoformat()
     synthesis["data_sources"] = {
-        "daily_log": bool(daily_log["accomplishments"]) or bool(daily_log["primary_focus"]),
+        "daily_log": bool(daily_log["accomplishments"])
+        or bool(daily_log["primary_focus"]),
         "task_index": task_index["total_tasks"] > 0,
         "cloudflare": len(cloudflare_prompts) > 0,
         "session_log": session_summaries["total"] > 0,
@@ -494,14 +513,18 @@ def main() -> None:
         for bullet in narrative:
             print(f"  • {bullet}")
 
-    print(f"\nAccomplishments: {synthesis.get('accomplishments', {}).get('summary', 'N/A')}")
-    print(f"Alignment: {synthesis.get('alignment', {}).get('status', 'N/A')} - {synthesis.get('alignment', {}).get('note', '')}")
+    print(
+        f"\nAccomplishments: {synthesis.get('accomplishments', {}).get('summary', 'N/A')}"
+    )
+    print(
+        f"Alignment: {synthesis.get('alignment', {}).get('status', 'N/A')} - {synthesis.get('alignment', {}).get('note', '')}"
+    )
     print(f"Next action: {synthesis.get('next_action', {}).get('task', 'N/A')}")
 
     # Print skill insights if available
     skill_ins = synthesis.get("skill_insights", {})
     if skill_ins and skill_ins.get("compliance_rate"):
-        print(f"\n📊 SKILL INSIGHTS:")
+        print("\n📊 SKILL INSIGHTS:")
         print(f"  Compliance: {skill_ins['compliance_rate']:.0%}")
         if skill_ins.get("corrections_count"):
             print(f"  Corrections: {skill_ins['corrections_count']}")

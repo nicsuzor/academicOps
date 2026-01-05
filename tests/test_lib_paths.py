@@ -7,6 +7,7 @@ from pathlib import Path
 
 # Add lib to path
 import sys
+
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from lib import paths
@@ -125,8 +126,7 @@ class TestRealEnvironment:
     """Tests using actual environment (skipped if not set up)."""
 
     @pytest.mark.skipif(
-        not os.environ.get("AOPS"),
-        reason="AOPS environment variable not set"
+        not os.environ.get("AOPS"), reason="AOPS environment variable not set"
     )
     def test_real_aops_root(self):
         """Test get_aops_root with real environment."""
@@ -137,8 +137,7 @@ class TestRealEnvironment:
         assert (result / "AXIOMS.md").exists()
 
     @pytest.mark.skipif(
-        not os.environ.get("ACA_DATA"),
-        reason="ACA_DATA environment variable not set"
+        not os.environ.get("ACA_DATA"), reason="ACA_DATA environment variable not set"
     )
     def test_real_data_root(self):
         """Test get_data_root with real environment."""

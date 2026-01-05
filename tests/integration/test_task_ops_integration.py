@@ -59,12 +59,10 @@ class TestTaskOpsCwdIndependence:
                 os.chdir(tmpdir)
 
                 # Verify we're in a completely different directory
-                assert os.getcwd() == tmpdir, (
-                    "Failed to change to temporary directory"
-                )
-                assert os.getcwd() != original_cwd, (
-                    "CWD should be different from original"
-                )
+                assert os.getcwd() == tmpdir, "Failed to change to temporary directory"
+                assert (
+                    os.getcwd() != original_cwd
+                ), "CWD should be different from original"
 
                 # Load tasks from the real data directory
                 # This proves task_ops works correctly with real data
@@ -100,17 +98,15 @@ class TestTaskOpsCwdIndependence:
                 first_task = tasks[0]
 
                 # Real tasks must have these attributes
-                assert hasattr(first_task, "title"), (
-                    "Task missing title attribute"
-                )
-                assert hasattr(first_task, "filename"), (
-                    "Task missing filename attribute"
-                )
+                assert hasattr(first_task, "title"), "Task missing title attribute"
+                assert hasattr(
+                    first_task, "filename"
+                ), "Task missing filename attribute"
                 assert first_task.title, "Task title should not be empty"
                 assert first_task.filename, "Task filename should not be empty"
-                assert first_task.filename.endswith(".md"), (
-                    f"Task filename should end with .md: {first_task.filename}"
-                )
+                assert first_task.filename.endswith(
+                    ".md"
+                ), f"Task filename should end with .md: {first_task.filename}"
 
                 # Verify all loaded tasks have proper structure
                 for task in tasks:
@@ -154,15 +150,14 @@ class TestTaskOpsCwdIndependence:
                 os.chdir(tmpdir)
 
                 # Verify we're in a completely different directory
-                assert os.getcwd() == tmpdir, (
-                    "Failed to change to temporary directory"
-                )
-                assert os.getcwd() != original_cwd, (
-                    "CWD should be different from original"
-                )
+                assert os.getcwd() == tmpdir, "Failed to change to temporary directory"
+                assert (
+                    os.getcwd() != original_cwd
+                ), "CWD should be different from original"
 
                 # Create a unique task title with timestamp to avoid conflicts
                 import time
+
                 timestamp = int(time.time() * 1000)
                 task_title = f"Integration Test Task {timestamp}"
 
@@ -177,9 +172,9 @@ class TestTaskOpsCwdIndependence:
                 )
 
                 # Verify task was created successfully
-                assert create_result["success"], (
-                    f"Failed to create task: {create_result.get('message', 'unknown error')}"
-                )
+                assert create_result[
+                    "success"
+                ], f"Failed to create task: {create_result.get('message', 'unknown error')}"
 
                 # Get the created task's filename
                 filename = create_result["filename"]
@@ -187,55 +182,55 @@ class TestTaskOpsCwdIndependence:
 
                 # Verify the file exists in inbox
                 task_file_in_inbox = inbox_dir / filename
-                assert task_file_in_inbox.exists(), (
-                    f"Task file not found in inbox: {task_file_in_inbox}"
-                )
+                assert (
+                    task_file_in_inbox.exists()
+                ), f"Task file not found in inbox: {task_file_in_inbox}"
 
                 # Verify we can load the created task
                 task = load_task_from_file(task_file_in_inbox)
-                assert task.title == task_title, (
-                    f"Task title mismatch: {task.title} != {task_title}"
-                )
-                assert task.status == "inbox", (
-                    f"Task status should be 'inbox': {task.status}"
-                )
+                assert (
+                    task.title == task_title
+                ), f"Task title mismatch: {task.title} != {task_title}"
+                assert (
+                    task.status == "inbox"
+                ), f"Task status should be 'inbox': {task.status}"
 
                 # Archive the task
                 archive_result = archive_task(filename, data_dir)
 
                 # Verify archive was successful
-                assert archive_result["success"], (
-                    f"Failed to archive task: {archive_result.get('message', 'unknown error')}"
-                )
+                assert archive_result[
+                    "success"
+                ], f"Failed to archive task: {archive_result.get('message', 'unknown error')}"
 
                 # Verify the file no longer exists in inbox
-                assert not task_file_in_inbox.exists(), (
-                    f"Task file still in inbox after archiving: {task_file_in_inbox}"
-                )
+                assert (
+                    not task_file_in_inbox.exists()
+                ), f"Task file still in inbox after archiving: {task_file_in_inbox}"
 
                 # Verify the file exists in archived
                 task_file_archived = archived_dir / filename
-                assert task_file_archived.exists(), (
-                    f"Task file not found in archived: {task_file_archived}"
-                )
+                assert (
+                    task_file_archived.exists()
+                ), f"Task file not found in archived: {task_file_archived}"
 
                 # Verify we can load the archived task
                 archived_task = load_task_from_file(task_file_archived)
-                assert archived_task.title == task_title, (
-                    f"Archived task title mismatch: {archived_task.title} != {task_title}"
-                )
-                assert archived_task.status == "archived", (
-                    f"Archived task status should be 'archived': {archived_task.status}"
-                )
-                assert archived_task.archived_at is not None, (
-                    "Archived task should have archived_at set"
-                )
+                assert (
+                    archived_task.title == task_title
+                ), f"Archived task title mismatch: {archived_task.title} != {task_title}"
+                assert (
+                    archived_task.status == "archived"
+                ), f"Archived task status should be 'archived': {archived_task.status}"
+                assert (
+                    archived_task.archived_at is not None
+                ), "Archived task should have archived_at set"
 
                 # CLEANUP: Delete the test task file to avoid leaving garbage
                 task_file_archived.unlink()
-                assert not task_file_archived.exists(), (
-                    f"Failed to clean up test task file: {task_file_archived}"
-                )
+                assert (
+                    not task_file_archived.exists()
+                ), f"Failed to clean up test task file: {task_file_archived}"
 
         finally:
             # Always restore original CWD, even if test fails

@@ -41,7 +41,9 @@ class TestTranscriptOutputs:
 
     def test_transcript_output_directory_exists(self, transcript_dir: Path) -> None:
         """Test that transcript output directory exists."""
-        assert transcript_dir.exists(), f"Transcript directory missing: {transcript_dir}"
+        assert (
+            transcript_dir.exists()
+        ), f"Transcript directory missing: {transcript_dir}"
         assert transcript_dir.is_dir(), f"Not a directory: {transcript_dir}"
 
     def test_transcript_both_variants_exist(self, transcript_dir: Path) -> None:
@@ -91,8 +93,12 @@ class TestTranscriptOutputs:
         content = most_recent.read_text()
 
         # Should have YAML frontmatter (starts with ---) OR markdown heading
-        starts_valid = content.strip().startswith("---") or content.strip().startswith("#")
-        assert starts_valid, f"{most_recent.name} doesn't start with frontmatter or heading"
+        starts_valid = content.strip().startswith("---") or content.strip().startswith(
+            "#"
+        )
+        assert (
+            starts_valid
+        ), f"{most_recent.name} doesn't start with frontmatter or heading"
 
         # Should contain a markdown heading somewhere
         assert "# " in content, f"{most_recent.name} has no markdown heading"
@@ -110,7 +116,9 @@ class TestTranscriptOutputs:
             body = content
 
         lines = [l for l in body.split("\n") if l.strip()]
-        assert len(lines) > 5, f"{most_recent.name} has too little content after frontmatter"
+        assert (
+            len(lines) > 5
+        ), f"{most_recent.name} has too little content after frontmatter"
 
 
 class TestSessionDiscovery:
@@ -130,7 +138,9 @@ class TestSessionDiscovery:
         assert hasattr(session, "path"), "Session missing 'path' attribute"
         assert hasattr(session, "session_id"), "Session missing 'session_id' attribute"
         assert hasattr(session, "project"), "Session missing 'project' attribute"
-        assert hasattr(session, "last_modified"), "Session missing 'last_modified' attribute"
+        assert hasattr(
+            session, "last_modified"
+        ), "Session missing 'last_modified' attribute"
 
     def test_find_sessions_paths_exist(self) -> None:
         """Test that session paths returned by find_sessions() actually exist."""
@@ -141,7 +151,9 @@ class TestSessionDiscovery:
 
         # Check first few sessions have valid paths
         for session in sessions[:5]:
-            assert Path(session.path).exists(), f"Session path doesn't exist: {session.path}"
+            assert Path(
+                session.path
+            ).exists(), f"Session path doesn't exist: {session.path}"
 
 
 class TestDailySummaryOutputs:
@@ -194,7 +206,9 @@ class TestDailySummaryOutputs:
 
         # Check for PRIMARY or SECONDARY section
         has_section = "## PRIMARY:" in content or "## SECONDARY:" in content
-        assert has_section, f"{most_recent.name} missing PRIMARY/SECONDARY section header"
+        assert (
+            has_section
+        ), f"{most_recent.name} missing PRIMARY/SECONDARY section header"
 
         # Check for checkbox items
         has_checkbox = "- [x]" in content or "- [ ]" in content
@@ -215,7 +229,9 @@ class TestDailySummaryOutputs:
 
         # Session Log table is optional per spec review, so we just note if present
         if not found_table:
-            pytest.skip("Session Log table not found in recent daily notes (optional per spec)")
+            pytest.skip(
+                "Session Log table not found in recent daily notes (optional per spec)"
+            )
 
 
 class TestLearningOutputs:
@@ -260,7 +276,9 @@ class TestLearningOutputs:
 
         assert existing, f"No thematic learning files found in {learning_dir}"
         # At least 2 of the expected files should exist
-        assert len(existing) >= 2, f"Only {len(existing)} thematic files found, expected at least 2"
+        assert (
+            len(existing) >= 2
+        ), f"Only {len(existing)} thematic files found, expected at least 2"
 
 
 class TestTranscriptScriptGeneration:
@@ -270,11 +288,15 @@ class TestTranscriptScriptGeneration:
         """Test claude_transcript.py generates both -full.md and -abridged.md."""
         # Find a real session file
         projects_dir = Path.home() / ".claude" / "projects"
-        assert projects_dir.exists(), f"Claude projects directory missing: {projects_dir}"
+        assert (
+            projects_dir.exists()
+        ), f"Claude projects directory missing: {projects_dir}"
 
         session_files = list(projects_dir.rglob("*.jsonl"))
         # Filter out hooks files
-        session_files = [f for f in session_files if not f.name.endswith("-hooks.jsonl")]
+        session_files = [
+            f for f in session_files if not f.name.endswith("-hooks.jsonl")
+        ]
         assert session_files, f"No session files found in {projects_dir}"
 
         # Use most recent session
@@ -289,7 +311,15 @@ class TestTranscriptScriptGeneration:
         script_path = Path(__file__).parent.parent / "scripts" / "claude_transcript.py"
 
         result = subprocess.run(
-            ["uv", "run", "python", str(script_path), str(session_file), "-o", str(output_base)],
+            [
+                "uv",
+                "run",
+                "python",
+                str(script_path),
+                str(session_file),
+                "-o",
+                str(output_base),
+            ],
             capture_output=True,
             text=True,
             cwd=Path(__file__).parent.parent,
@@ -302,7 +332,9 @@ class TestTranscriptScriptGeneration:
         abridged_file = tmp_path / "test-transcript-abridged.md"
 
         assert full_file.exists(), f"Full transcript not created: {full_file}"
-        assert abridged_file.exists(), f"Abridged transcript not created: {abridged_file}"
+        assert (
+            abridged_file.exists()
+        ), f"Abridged transcript not created: {abridged_file}"
 
         # Verify non-empty
         assert full_file.stat().st_size > 0, "Full transcript is empty"

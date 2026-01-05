@@ -49,8 +49,8 @@ graph TD
 
 ## User Story
 
-**As** Nic (academic relying on task system across multiple agent sessions),  
-**I want** guaranteed task state integrity through exclusive MCP-controlled write access,  
+**As** Nic (academic relying on task system across multiple agent sessions),
+**I want** guaranteed task state integrity through exclusive MCP-controlled write access,
 **So that** agents can't bypass scripts to corrupt task data, all task operations work reliably, and I never lose tasks or encounter format mismatches.
 
 ## Acceptance Criteria

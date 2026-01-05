@@ -51,7 +51,9 @@ def invoke_hook(tool_name: str, args: dict) -> dict:
         }
 
     # Exit code 0 = allowed
-    assert result.returncode == 0, f"Unexpected exit code {result.returncode}: {result.stderr}"
+    assert (
+        result.returncode == 0
+    ), f"Unexpected exit code {result.returncode}: {result.stderr}"
 
     if result.stdout.strip():
         return json.loads(result.stdout)
@@ -89,7 +91,10 @@ def test_blocks_md_over_200_lines() -> None:
 
     assert response.get("continue") is False, "Hook should block .md files > 200 lines"
     assert "BLOCKED" in response.get("systemMessage", "")
-    assert "200" in response.get("systemMessage", "") or "line" in response.get("systemMessage", "").lower()
+    assert (
+        "200" in response.get("systemMessage", "")
+        or "line" in response.get("systemMessage", "").lower()
+    )
 
 
 @pytest.mark.integration
@@ -107,7 +112,9 @@ def test_allows_md_under_200_lines() -> None:
 
     # Empty response or continue=True means allowed
     if response:
-        assert response.get("continue") is not False, "Hook should allow .md files < 200 lines"
+        assert (
+            response.get("continue") is not False
+        ), "Hook should allow .md files < 200 lines"
 
 
 @pytest.mark.integration
@@ -141,7 +148,9 @@ def test_boundary_exactly_200_lines() -> None:
     )
 
     if response:
-        assert response.get("continue") is not False, "Hook should allow exactly 200 lines"
+        assert (
+            response.get("continue") is not False
+        ), "Hook should allow exactly 200 lines"
 
 
 @pytest.mark.integration

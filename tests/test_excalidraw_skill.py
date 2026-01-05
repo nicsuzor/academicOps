@@ -76,25 +76,29 @@ class TestExcalidrawSkill:
         mermaid_count_in_core = core_sections.lower().count("mermaid")
 
         # Should be mentioned minimally in core content
-        assert (
-            mermaid_count_in_core <= 3
-        ), "Mermaid too prominent in core skill content"
+        assert mermaid_count_in_core <= 3, "Mermaid too prominent in core skill content"
 
     def test_skill_has_anti_patterns(self, skill_content):
         """Verify skill includes anti-patterns to avoid."""
         assert (
             "## Anti-Patterns to Avoid" in skill_content
         ), "Missing anti-patterns section"
-        assert "boring diagram" in skill_content.lower(), "Should call out boring diagrams"
+        assert (
+            "boring diagram" in skill_content.lower()
+        ), "Should call out boring diagrams"
 
     def test_references_directory_exists(self, aops_root):
         """Verify references directory exists."""
         references_dir = aops_root / "skills" / "excalidraw" / "references"
-        assert references_dir.exists(), f"References directory missing at {references_dir}"
+        assert (
+            references_dir.exists()
+        ), f"References directory missing at {references_dir}"
 
     def test_mcp_reference_exists(self, aops_root):
         """Verify MCP server setup reference exists."""
-        mcp_ref = aops_root / "skills" / "excalidraw" / "references" / "mcp-server-setup.md"
+        mcp_ref = (
+            aops_root / "skills" / "excalidraw" / "references" / "mcp-server-setup.md"
+        )
         assert mcp_ref.exists(), f"MCP reference missing at {mcp_ref}"
 
     def test_json_reference_exists(self, aops_root):
@@ -112,7 +116,9 @@ class TestExcalidrawSkill:
         ]
 
         found_markers = sum(
-            1 for marker in actionable_markers if marker.lower() in skill_content.lower()
+            1
+            for marker in actionable_markers
+            if marker.lower() in skill_content.lower()
         )
 
         assert (

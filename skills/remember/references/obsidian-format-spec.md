@@ -93,4 +93,3 @@ Standard CommonMark plus:
 2. Use lowercase tags with hyphens
 3. 3-5 tags usually sufficient
 4. Link liberally (forward references are fine)
-

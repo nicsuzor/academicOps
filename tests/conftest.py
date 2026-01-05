@@ -76,13 +76,13 @@ def test_data_dir(tmp_path: Path, monkeypatch) -> Path:
     (tasks_dir / "archived").mkdir(parents=True)
 
     # Create sample task files for tests
-    _create_sample_task(inbox_dir, "sample-task-1", "High Priority Task", 1, "project-a")
+    _create_sample_task(
+        inbox_dir, "sample-task-1", "High Priority Task", 1, "project-a"
+    )
     _create_sample_task(
         inbox_dir, "sample-task-2", "Medium Priority Task", 2, "project-b"
     )
-    _create_sample_task(
-        inbox_dir, "sample-task-3", "Low Priority Task", 3, "project-a"
-    )
+    _create_sample_task(inbox_dir, "sample-task-3", "Low Priority Task", 3, "project-a")
 
     # Set ACA_DATA - server reads this directly via task_ops.get_data_dir()
     monkeypatch.setenv("ACA_DATA", str(data_dir))

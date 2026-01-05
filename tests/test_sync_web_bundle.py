@@ -10,11 +10,10 @@ Tests cover:
 """
 
 import os
-import shutil
 import subprocess
 import sys
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 import pytest
 
@@ -29,7 +28,6 @@ from sync_web_bundle import (
     get_aops_version,
     write_version_file,
     _extract_aops_logic,
-    AOPS_ROOT,
 )
 
 
@@ -51,7 +49,8 @@ def mock_aops_root(tmp_path, monkeypatch):
     # Skill 1: Valid skill with all fields
     skill1 = skills_dir / "analyst"
     skill1.mkdir()
-    (skill1 / "SKILL.md").write_text("""---
+    (skill1 / "SKILL.md").write_text(
+        """---
 name: analyst
 description: Support academic research data analysis using dbt and Streamlit.
 version: 2.0.0
@@ -60,38 +59,45 @@ version: 2.0.0
 # Analyst
 
 Content here.
-""")
+"""
+    )
 
     # Skill 2: Skill with long description (should be truncated)
     skill2 = skills_dir / "pdf"
     skill2.mkdir()
-    (skill2 / "SKILL.md").write_text("""---
+    (skill2 / "SKILL.md").write_text(
+        """---
 name: pdf
 description: Convert markdown documents to professionally formatted PDFs with academic-style typography and proper page layouts.
 ---
 
 # PDF Converter
-""")
+"""
+    )
 
     # Skill 3: Skill using 'title' instead of 'name'
     skill3 = skills_dir / "garden"
     skill3.mkdir()
-    (skill3 / "SKILL.md").write_text("""---
+    (skill3 / "SKILL.md").write_text(
+        """---
 title: garden
 description: Incremental PKM maintenance.
 ---
 
 # Garden
-""")
+"""
+    )
 
     # Skill 4: Malformed YAML (should be skipped gracefully)
     skill4 = skills_dir / "broken"
     skill4.mkdir()
-    (skill4 / "SKILL.md").write_text("""---
+    (skill4 / "SKILL.md").write_text(
+        """---
 name: [invalid yaml
 description: This should fail parsing
 ---
-""")
+"""
+    )
 
     # Skill 5: No SKILL.md file (should be skipped)
     skill5 = skills_dir / "empty"
@@ -119,7 +125,8 @@ description: This should fail parsing
     # Create hooks directory
     hooks_dir = aops / "hooks"
     hooks_dir.mkdir()
-    (hooks_dir / "git-post-commit-sync-aops").write_text("""#!/usr/bin/env bash
+    (hooks_dir / "git-post-commit-sync-aops").write_text(
+        """#!/usr/bin/env bash
 # Git post-commit hook to auto-sync aOps bundle
 # Header comment
 
@@ -128,7 +135,8 @@ if [ -z "$AOPS" ]; then
 fi
 
 echo "Running sync"
-""")
+"""
+    )
 
     # Create CLAUDE.md
     (aops / "CLAUDE.md").write_text("# Framework CLAUDE.md")
@@ -394,7 +402,9 @@ class TestSyncToProject:
     def test_includes_project_specific_content(self, mock_aops_root, target_project):
         """Test that existing CLAUDE.md content is included."""
         # Create project-specific CLAUDE.md
-        (target_project / "CLAUDE.md").write_text("# My Project\n\nCustom instructions.")
+        (target_project / "CLAUDE.md").write_text(
+            "# My Project\n\nCustom instructions."
+        )
 
         sync_to_project(target_project, force=False, install_hook=False)
 
@@ -639,6 +649,7 @@ echo "Running sync"
 
     def test_get_aops_version_handles_error(self, monkeypatch):
         """Test that get_aops_version returns 'unknown' on git error."""
+
         # Mock subprocess.run to raise exception
         def mock_run(*args, **kwargs):
             raise subprocess.CalledProcessError(1, "git")
@@ -655,11 +666,13 @@ echo "Running sync"
         for i in range(15):
             skill_dir = skills_dir / f"skill{i}"
             skill_dir.mkdir()
-            (skill_dir / "SKILL.md").write_text(f"""---
+            (skill_dir / "SKILL.md").write_text(
+                f"""---
 name: skill{i}
 description: Description {i}
 ---
-""")
+"""
+            )
 
         content = generate_claude_md(target_project)
 

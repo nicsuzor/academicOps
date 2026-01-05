@@ -34,10 +34,13 @@ def import_log_to_cloudflare():
     Mocks dependencies that are not relevant to the function being tested.
     """
     # Mock dependencies needed for user_prompt_submit module to import
-    with patch.dict(sys.modules, {
-        "hook_debug": MagicMock(),
-        "lib.activity": MagicMock(),
-    }):
+    with patch.dict(
+        sys.modules,
+        {
+            "hook_debug": MagicMock(),
+            "lib.activity": MagicMock(),
+        },
+    ):
         user_prompt_submit = importlib.import_module("user_prompt_submit")
         return user_prompt_submit.log_to_cloudflare
 
@@ -49,8 +52,9 @@ def test_log_to_cloudflare_success() -> None:
     Requires PROMPT_LOG_API_KEY environment variable - FAILS if not set.
     """
     # Fail-fast: require token for this test
-    assert os.environ.get("PROMPT_LOG_API_KEY"), \
-        "PROMPT_LOG_API_KEY must be set to run integration tests"
+    assert os.environ.get(
+        "PROMPT_LOG_API_KEY"
+    ), "PROMPT_LOG_API_KEY must be set to run integration tests"
 
     log_to_cloudflare = import_log_to_cloudflare()
 
@@ -83,8 +87,9 @@ def test_log_to_cloudflare_missing_token() -> None:
 
     # Verify warning was printed to stderr
     stderr_output = captured_stderr.getvalue()
-    assert "WARNING: PROMPT_LOG_API_KEY not set" in stderr_output, \
-        "Should warn when token is missing"
+    assert (
+        "WARNING: PROMPT_LOG_API_KEY not set" in stderr_output
+    ), "Should warn when token is missing"
 
 
 def test_log_to_cloudflare_invalid_token() -> None:
@@ -108,8 +113,9 @@ def test_log_to_cloudflare_invalid_token() -> None:
     # Verify warning was printed (either about failure or timeout)
     stderr_output = captured_stderr.getvalue()
     # The function should warn about the failure
-    assert "WARNING:" in stderr_output or stderr_output == "", \
-        "Should either warn or silently fail on invalid token"
+    assert (
+        "WARNING:" in stderr_output or stderr_output == ""
+    ), "Should either warn or silently fail on invalid token"
 
 
 if __name__ == "__main__":

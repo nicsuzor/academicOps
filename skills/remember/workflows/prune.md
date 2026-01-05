@@ -12,10 +12,10 @@ tags:
 
 Aggressively clean knowledge base by consolidating related files, removing low-value files, and extracting and organising knowledge.
 
-**Philosophy**: Knowledge base must be tended to regularly. 
-- Information added at different times should be consolidated; knowledge base should be up to date. 
+**Philosophy**: Knowledge base must be tended to regularly.
+- Information added at different times should be consolidated; knowledge base should be up to date.
 - Knowledge base should contain ONLY things worth searching for.
-- project files should tell current state without requiring changelog archaeology. 
+- project files should tell current state without requiring changelog archaeology.
 - Reduce file count while preserving essential knowledge.
 
 ## Classification Criteria
@@ -34,7 +34,7 @@ Files with zero lasting value:
 
 ### CONSOLIDATE (Time based logs)
 
-Guidelines for consolidating time-based observations and progress logs into an organized knowledge base. 
+Guidelines for consolidating time-based observations and progress logs into an organized knowledge base.
 
 #### Single Source of Truth
 
@@ -109,7 +109,7 @@ Files with lasting value:
 
 ## Execution Strategy
 
-- Use parallel agents  
+- Use parallel agents
 - Commit in logical chunks with descriptive messages
 - Track file count reduction as metric
 

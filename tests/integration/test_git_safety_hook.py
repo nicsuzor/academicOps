@@ -54,7 +54,9 @@ def invoke_hook(tool_name: str, args: dict) -> dict:
             "_exit_code": 2,
         }
     elif result.returncode != 0:
-        raise AssertionError(f"Unexpected exit code {result.returncode}: {result.stderr}")
+        raise AssertionError(
+            f"Unexpected exit code {result.returncode}: {result.stderr}"
+        )
 
     # Parse hook response (exit 0)
     if result.stdout.strip():
@@ -85,8 +87,10 @@ def test_hook_blocks_git_reset_hard() -> None:
 
     # Hook should provide explanation
     assert "systemMessage" in response, "Hook should provide system message"
-    assert "git reset --hard" in response["systemMessage"].lower() or "destructive" in response["systemMessage"].lower(), \
-        "Error message should mention the destructive command"
+    assert (
+        "git reset --hard" in response["systemMessage"].lower()
+        or "destructive" in response["systemMessage"].lower()
+    ), "Error message should mention the destructive command"
 
 
 @pytest.mark.integration
@@ -112,8 +116,10 @@ def test_hook_blocks_git_push_force() -> None:
 
     # Hook should provide explanation
     assert "systemMessage" in response, "Hook should provide system message"
-    assert "force" in response["systemMessage"].lower() or "destructive" in response["systemMessage"].lower(), \
-        "Error message should mention force push"
+    assert (
+        "force" in response["systemMessage"].lower()
+        or "destructive" in response["systemMessage"].lower()
+    ), "Error message should mention force push"
 
 
 @pytest.mark.integration
@@ -143,10 +149,13 @@ def test_hook_allows_safe_git_commands() -> None:
 
         # Hook should allow command (empty response or continue=True)
         if "continue" in response:
-            assert response["continue"] is True, f"Hook should allow safe command: {command}"
+            assert (
+                response["continue"] is True
+            ), f"Hook should allow safe command: {command}"
         # Empty response means continue
-        assert "systemMessage" not in response or "BLOCKED" not in response.get("systemMessage", ""), \
-            f"Hook should not block safe command: {command}"
+        assert "systemMessage" not in response or "BLOCKED" not in response.get(
+            "systemMessage", ""
+        ), f"Hook should not block safe command: {command}"
 
 
 @pytest.mark.integration
@@ -167,7 +176,9 @@ def test_hook_blocks_git_reset_hard_mixed_case() -> None:
 
     # Hook should block the command
     assert "continue" in response, "Hook response should include 'continue' key"
-    assert response["continue"] is False, "Hook should block git reset --hard with arguments"
+    assert (
+        response["continue"] is False
+    ), "Hook should block git reset --hard with arguments"
 
 
 @pytest.mark.integration

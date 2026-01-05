@@ -5,10 +5,9 @@ to investigate session logs and extract relevant debugging information.
 """
 
 import json
-import subprocess
 import tempfile
 from pathlib import Path
-from datetime import datetime, timezone
+from datetime import datetime
 
 
 def test_skill_file_exists():
@@ -60,10 +59,26 @@ def test_message_extraction():
 
         # Create test log with various message types
         messages = [
-            {"type": "user", "message": "user message", "timestamp": "2025-11-18T10:00:00Z"},
-            {"type": "assistant", "message": "assistant message", "timestamp": "2025-11-18T10:00:05Z"},
-            {"type": "tool", "message": "Error: test failure", "timestamp": "2025-11-18T10:00:10Z"},
-            {"type": "error", "message": "System error", "timestamp": "2025-11-18T10:00:15Z"},
+            {
+                "type": "user",
+                "message": "user message",
+                "timestamp": "2025-11-18T10:00:00Z",
+            },
+            {
+                "type": "assistant",
+                "message": "assistant message",
+                "timestamp": "2025-11-18T10:00:05Z",
+            },
+            {
+                "type": "tool",
+                "message": "Error: test failure",
+                "timestamp": "2025-11-18T10:00:10Z",
+            },
+            {
+                "type": "error",
+                "message": "System error",
+                "timestamp": "2025-11-18T10:00:15Z",
+            },
         ]
 
         with test_log.open("w") as f:
@@ -76,11 +91,19 @@ def test_message_extraction():
         parsed = [json.loads(line) for line in lines]
 
         # Verify can filter by type
-        errors = [m for m in parsed if m.get("type") in ("error", "tool") and "error" in m.get("message", "").lower()]
+        errors = [
+            m
+            for m in parsed
+            if m.get("type") in ("error", "tool")
+            and "error" in m.get("message", "").lower()
+        ]
         assert len(errors) == 2
 
         # Verify chronological ordering
-        timestamps = [datetime.fromisoformat(m["timestamp"].replace("Z", "+00:00")) for m in parsed]
+        timestamps = [
+            datetime.fromisoformat(m["timestamp"].replace("Z", "+00:00"))
+            for m in parsed
+        ]
         assert timestamps == sorted(timestamps)
 
 
@@ -90,9 +113,21 @@ def test_timeline_correlation():
         # Create main session log
         main_log = Path(tmpdir) / "session.jsonl"
         main_messages = [
-            {"type": "user", "message": "start task", "timestamp": "2025-11-18T10:00:00Z"},
-            {"type": "assistant", "message": "invoking agent", "timestamp": "2025-11-18T10:00:05Z"},
-            {"type": "user", "message": "check result", "timestamp": "2025-11-18T10:01:00Z"},
+            {
+                "type": "user",
+                "message": "start task",
+                "timestamp": "2025-11-18T10:00:00Z",
+            },
+            {
+                "type": "assistant",
+                "message": "invoking agent",
+                "timestamp": "2025-11-18T10:00:05Z",
+            },
+            {
+                "type": "user",
+                "message": "check result",
+                "timestamp": "2025-11-18T10:01:00Z",
+            },
         ]
 
         with main_log.open("w") as f:
@@ -102,9 +137,21 @@ def test_timeline_correlation():
         # Create agent log
         agent_log = Path(tmpdir) / "agent.jsonl"
         agent_messages = [
-            {"type": "agentStart", "message": "agent started", "timestamp": "2025-11-18T10:00:10Z"},
-            {"type": "error", "message": "agent error", "timestamp": "2025-11-18T10:00:15Z"},
-            {"type": "agentEnd", "message": "agent finished", "timestamp": "2025-11-18T10:00:20Z"},
+            {
+                "type": "agentStart",
+                "message": "agent started",
+                "timestamp": "2025-11-18T10:00:10Z",
+            },
+            {
+                "type": "error",
+                "message": "agent error",
+                "timestamp": "2025-11-18T10:00:15Z",
+            },
+            {
+                "type": "agentEnd",
+                "message": "agent finished",
+                "timestamp": "2025-11-18T10:00:20Z",
+            },
         ]
 
         with agent_log.open("w") as f:
@@ -143,18 +190,20 @@ def test_error_extraction():
         messages = []
         # Add 100 normal messages
         for i in range(100):
-            messages.append({
-                "type": "message",
-                "message": f"normal message {i}",
-                "timestamp": f"2025-11-18T10:{i:02d}:00Z"
-            })
+            messages.append(
+                {
+                    "type": "message",
+                    "message": f"normal message {i}",
+                    "timestamp": f"2025-11-18T10:{i:02d}:00Z",
+                }
+            )
 
         # Add 5 error messages scattered throughout
         for i in [10, 25, 50, 75, 90]:
             messages[i] = {
                 "type": "error",
                 "message": f"Error: test error {i}",
-                "timestamp": messages[i]["timestamp"]
+                "timestamp": messages[i]["timestamp"],
             }
 
         with test_log.open("w") as f:
@@ -208,4 +257,5 @@ incomplete json {
 
 if __name__ == "__main__":
     import pytest
+
     pytest.main([__file__, "-v"])

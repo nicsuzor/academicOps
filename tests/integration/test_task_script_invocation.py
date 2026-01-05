@@ -80,5 +80,3 @@ def test_task_ops_import_with_uv_context(aops_root: Path) -> None:
     assert (
         "ModuleNotFoundError" not in result.stderr
     ), f"ModuleNotFoundError found in stderr: {result.stderr}"
-
-

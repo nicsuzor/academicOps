@@ -619,4 +619,3 @@ df = conn.execute("SELECT * FROM fct_case_decisions").df()
 fig = px.histogram(df, x="processing_days")
 fig.show()
 ```
-

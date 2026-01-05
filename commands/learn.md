@@ -78,7 +78,7 @@ For guardrail failures, consult [[hooks/guardrails.md]] and choose:
 
 ### 4. Make the Minimal Change
 
-Keep changes brief (1-3 sentences for soft interventions). 
+Keep changes brief (1-3 sentences for soft interventions).
 
 If you need to make a bigger change, **ABORT** and update/create a Spec instead.
 

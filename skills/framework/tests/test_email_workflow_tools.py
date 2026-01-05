@@ -72,7 +72,9 @@ def test_email_workflow_has_explicit_tool_examples() -> None:
         memory_section_end = content.find("### Step 4:", memory_section_start)
         memory_section = content[memory_section_start:memory_section_end]
 
-        assert "query" in memory_section.lower() or "search" in memory_section.lower(), (
+        assert (
+            "query" in memory_section.lower() or "search" in memory_section.lower()
+        ), (
             "memory MCP tool example must show parameter structure.\n"
             "Expected: Parameters like 'query' or 'n_results' with examples"
         )

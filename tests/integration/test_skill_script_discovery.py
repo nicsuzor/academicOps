@@ -43,7 +43,9 @@ def test_task_skill_scripts_discoverable(claude_headless, data_dir):
     )
 
     # Basic success check
-    assert result["success"], f"Claude execution failed: {result.get('error', 'Unknown error')}"
+    assert result[
+        "success"
+    ], f"Claude execution failed: {result.get('error', 'Unknown error')}"
 
     # Get the full response text
     output = result["output"]
@@ -76,9 +78,9 @@ def test_skill_scripts_exist_via_symlink():
     # Check symlink exists
     skills_path = Path.home() / ".claude" / "skills"
     assert skills_path.exists(), "~/.claude/skills/ should exist"
-    assert skills_path.is_symlink() or skills_path.is_dir(), (
-        "~/.claude/skills/ should be symlink or directory"
-    )
+    assert (
+        skills_path.is_symlink() or skills_path.is_dir()
+    ), "~/.claude/skills/ should be symlink or directory"
 
     # Check task skill exists
     task_skill_path = skills_path / "tasks"
@@ -92,7 +94,9 @@ def test_skill_scripts_exist_via_symlink():
     required_scripts = ["task_view.py", "task_add.py", "task_archive.py"]
     for script_name in required_scripts:
         script_path = scripts_path / script_name
-        assert script_path.exists(), f"Script {script_name} should exist at {script_path}"
+        assert (
+            script_path.exists()
+        ), f"Script {script_name} should exist at {script_path}"
 
 
 @pytest.mark.integration
@@ -168,7 +172,9 @@ def test_claude_finds_scripts_without_search(claude_headless, data_dir):
         permission_mode="plan",
     )
 
-    assert result["success"], f"Claude execution failed: {result.get('error', 'Unknown error')}"
+    assert result[
+        "success"
+    ], f"Claude execution failed: {result.get('error', 'Unknown error')}"
 
     # Parse response
     output = result["output"]
@@ -178,8 +184,8 @@ def test_claude_finds_scripts_without_search(claude_headless, data_dir):
     # Should mention one of the valid path formats
     valid_paths = [
         "~/.claude/skills/tasks/scripts",  # symlink path
-        "skills/tasks/scripts",             # relative path
-        "$aops/skills/tasks/scripts",       # actual path with env var
+        "skills/tasks/scripts",  # relative path
+        "$aops/skills/tasks/scripts",  # actual path with env var
     ]
     normalized_response = response_text.replace("\\", "/")
 

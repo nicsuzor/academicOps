@@ -20,7 +20,9 @@ import sys
 from pathlib import Path
 
 # Default signature path (user data, not in skill)
-DEFAULT_SIGNATURE_PATH = Path(os.environ.get("ACA_DATA", "")) / "assets" / "signature.png"
+DEFAULT_SIGNATURE_PATH = (
+    Path(os.environ.get("ACA_DATA", "")) / "assets" / "signature.png"
+)
 
 
 def detect_document_type(input_file: Path) -> str:
@@ -156,7 +158,9 @@ def main():
         description="Convert markdown to professionally formatted PDF"
     )
     parser.add_argument("input", type=Path, help="Input markdown file")
-    parser.add_argument("output", type=Path, nargs="?", help="Output PDF file (optional)")
+    parser.add_argument(
+        "output", type=Path, nargs="?", help="Output PDF file (optional)"
+    )
     parser.add_argument("--title", "-t", help="Document title for metadata")
     parser.add_argument("--css", type=Path, help="Custom CSS file (optional)")
     parser.add_argument(

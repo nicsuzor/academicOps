@@ -70,7 +70,7 @@ def test_hook_detects_task_script_execution(hook_script: Path) -> None:
         "toolName": "Bash",
         "toolInput": {
             "command": "python skills/tasks/scripts/task_add.py --title 'Test task'",
-        }
+        },
     }
 
     # Act
@@ -96,7 +96,7 @@ def test_hook_detects_memory_operations(hook_script: Path) -> None:
             "metadata": {
                 "tags": "test",
             },
-        }
+        },
     }
 
     # Act
@@ -149,7 +149,7 @@ def test_hook_commits_and_pushes_task_changes(
         "toolName": "Bash",
         "toolInput": {
             "command": "python skills/tasks/scripts/task_add.py --title 'Test'",
-        }
+        },
     }
 
     # Act
@@ -217,7 +217,7 @@ def test_hook_commits_any_data_directory_changes(
             "metadata": {
                 "tags": "test",
             },
-        }
+        },
     }
 
     # Act
@@ -261,7 +261,7 @@ def test_hook_handles_no_changes_gracefully(
         "toolName": "Bash",
         "toolInput": {
             "command": "python skills/tasks/scripts/task_view.py",
-        }
+        },
     }
 
     # Act
@@ -303,7 +303,7 @@ def test_hook_handles_git_failures_gracefully(
         "toolName": "Bash",
         "toolInput": {
             "command": "python skills/tasks/scripts/task_add.py --title 'Test'",
-        }
+        },
     }
 
     # Act
@@ -367,7 +367,9 @@ def test_hook_extracts_tool_name_from_correct_location(
     knowledge_dir = test_repo / "data" / "knowledge"
     knowledge_dir.mkdir(parents=True, exist_ok=True)
     test_note = knowledge_dir / "test-note.md"
-    test_note.write_text("# Test Note\n\nTest content from memory server store_memory.\n")
+    test_note.write_text(
+        "# Test Note\n\nTest content from memory server store_memory.\n"
+    )
 
     # Use CORRECT PostToolUse input structure - toolName at top level
     hook_input = {
@@ -440,7 +442,9 @@ def test_repo_with_remote(tmp_path: Path) -> tuple[Path, Path]:
     # Create bare remote
     remote_dir = tmp_path / "remote.git"
     remote_dir.mkdir()
-    subprocess.run(["git", "init", "--bare"], cwd=remote_dir, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "init", "--bare"], cwd=remote_dir, check=True, capture_output=True
+    )
 
     # Create local repo
     repo_dir = tmp_path / "local_repo"
@@ -518,7 +522,7 @@ def test_can_sync_detects_no_tracking_branch(test_repo: Path) -> None:
 
 
 def test_can_sync_returns_true_when_syncable(
-    test_repo_with_remote: tuple[Path, Path]
+    test_repo_with_remote: tuple[Path, Path],
 ) -> None:
     """Test that can_sync returns True for a properly configured repo."""
     from hooks.autocommit_state import can_sync
@@ -579,7 +583,7 @@ def test_fetch_and_check_divergence_detects_behind(
 
 
 def test_fetch_and_check_divergence_not_behind(
-    test_repo_with_remote: tuple[Path, Path]
+    test_repo_with_remote: tuple[Path, Path],
 ) -> None:
     """Test that fetch_and_check_divergence returns not behind when up to date."""
     from hooks.autocommit_state import fetch_and_check_divergence
@@ -776,7 +780,7 @@ def test_autocommit_syncs_before_commit(
         "toolName": "Bash",
         "toolInput": {
             "command": "python skills/tasks/scripts/task_add.py --title 'Test'",
-        }
+        },
     }
     env = os.environ.copy()
     env["PYTHONPATH"] = os.environ["AOPS"]
@@ -797,7 +801,10 @@ def test_autocommit_syncs_before_commit(
     # Verify synced commits message
     output = json.loads(result.stdout) if result.stdout.strip() else {}
     if "systemMessage" in output:
-        assert "synced" in output["systemMessage"].lower() or "committed" in output["systemMessage"].lower()
+        assert (
+            "synced" in output["systemMessage"].lower()
+            or "committed" in output["systemMessage"].lower()
+        )
 
     # Verify remote commit was pulled (other.txt exists)
     assert (repo_dir / "other.txt").exists(), "Remote changes should have been synced"

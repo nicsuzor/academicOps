@@ -20,4 +20,3 @@ Utility scripts for setup, packaging, and analysis.
 
 ## Analysis
 - [[measure_router_compliance.py]] - Router performance metrics
-

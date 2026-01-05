@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import tempfile
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -429,7 +428,9 @@ def test_task_add_cli_with_slug(test_data_dir: Path):
     # Output should mention slug-based task_id
     timestamp_part = datetime.now(UTC).strftime("%Y%m%d")
     expected_task_id = f"{timestamp_part}-test-slug"
-    assert expected_task_id in result.stdout, f"Expected '{expected_task_id}' in output: {result.stdout}"
+    assert (
+        expected_task_id in result.stdout
+    ), f"Expected '{expected_task_id}' in output: {result.stdout}"
 
     # File should exist with slug-based name
     expected_filename = f"{expected_task_id}.md"
@@ -490,4 +491,7 @@ def test_create_task_duplicate_slug_rejected(test_data_dir: Path):
 
     # Should fail
     assert result2["success"] is False
-    assert "duplicate" in result2["message"].lower() or "already exists" in result2["message"].lower()
+    assert (
+        "duplicate" in result2["message"].lower()
+        or "already exists" in result2["message"].lower()
+    )

@@ -17,7 +17,7 @@ def test_symlink_structure():
 
     skills_path = Path.home() / ".claude" / "skills"
     if not skills_path.exists():
-        print(f"❌ FAIL: ~/.claude/skills/ does not exist")
+        print("❌ FAIL: ~/.claude/skills/ does not exist")
         return False
 
     task_scripts = skills_path / "tasks" / "scripts"
@@ -72,7 +72,9 @@ def test_script_execution_from_writing():
         return True
 
     # Build command
-    script_path = Path.home() / ".claude" / "skills" / "tasks" / "scripts" / "task_view.py"
+    script_path = (
+        Path.home() / ".claude" / "skills" / "tasks" / "scripts" / "task_view.py"
+    )
     if not script_path.exists():
         print(f"❌ FAIL: Script not found: {script_path}")
         return False
@@ -100,18 +102,18 @@ def test_script_execution_from_writing():
         )
 
         if result.returncode != 0:
-            print(f"❌ FAIL: Script execution failed")
+            print("❌ FAIL: Script execution failed")
             print(f"  stdout: {result.stdout}")
             print(f"  stderr: {result.stderr}")
             return False
 
         if "Using data_dir:" not in result.stdout:
-            print(f"❌ FAIL: Unexpected output")
+            print("❌ FAIL: Unexpected output")
             print(f"  stdout: {result.stdout}")
             return False
 
-        print(f"  ✓ Script executed successfully")
-        print(f"  ✓ Found data directory in output")
+        print("  ✓ Script executed successfully")
+        print("  ✓ Found data directory in output")
         print("✅ PASS: Script runs from writing repo")
         return True
 
@@ -148,7 +150,7 @@ def test_symlink_points_to_aops():
     symlink_resolved = symlink_scripts.resolve()
 
     if aops_resolved != symlink_resolved:
-        print(f"❌ FAIL: Paths don't match:")
+        print("❌ FAIL: Paths don't match:")
         print(f"  AOPS:    {aops_resolved}")
         print(f"  Symlink: {symlink_resolved}")
         return False

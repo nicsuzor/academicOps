@@ -49,7 +49,9 @@ def test_bots_dir_fixture(bots_dir: Path) -> None:
     assert bots_dir.is_dir(), f"bots_dir is not a directory: {bots_dir}"
 
     # Verify this is the framework root (bots_dir is now alias for aops_root)
-    assert (bots_dir / "CLAUDE.md").exists(), f"CLAUDE.md not found in bots_dir: {bots_dir}"
+    assert (
+        bots_dir / "CLAUDE.md"
+    ).exists(), f"CLAUDE.md not found in bots_dir: {bots_dir}"
     assert (
         bots_dir / "AXIOMS.md"
     ).exists(), f"AXIOMS.md not found in bots_dir: {bots_dir}"
@@ -140,4 +142,6 @@ def test_fixture_consistency(
 
     # Verify paths resolve correctly to new structure
     assert writing_root == bots_dir, "writing_root should equal bots_dir (alias)"
-    assert writing_root / "hooks" == hooks_dir, "writing_root/hooks should equal hooks_dir"
+    assert (
+        writing_root / "hooks" == hooks_dir
+    ), "writing_root/hooks should equal hooks_dir"

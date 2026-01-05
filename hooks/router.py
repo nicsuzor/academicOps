@@ -18,7 +18,6 @@ Exit codes:
     2: Block (at least one hook blocked - PreToolUse only)
 """
 
-import asyncio
 import json
 import os
 import subprocess
@@ -65,7 +64,9 @@ HOOK_REGISTRY: dict[str, list[dict[str, Any]]] = {
 }
 
 
-def get_hooks_for_event(event_name: str, matcher: str | None = None) -> list[dict[str, Any]]:
+def get_hooks_for_event(
+    event_name: str, matcher: str | None = None
+) -> list[dict[str, Any]]:
     """
     Get registered hooks for an event.
 

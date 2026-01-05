@@ -60,17 +60,21 @@ def extract_router_events(hook_log: Path) -> list[dict]:
                     hook_output = entry.get("hookSpecificOutput", {})
                     skills = hook_output.get("skillsMatched", [])
                     if skills:  # Only count if skills were suggested
-                        events.append({
-                            "timestamp": entry.get("logged_at"),
-                            "prompt": entry.get("prompt", "")[:100],
-                            "skills_suggested": skills,
-                        })
+                        events.append(
+                            {
+                                "timestamp": entry.get("logged_at"),
+                                "prompt": entry.get("prompt", "")[:100],
+                                "skills_suggested": skills,
+                            }
+                        )
     except (json.JSONDecodeError, KeyError):
         pass
     return events
 
 
-def extract_first_tool_after_prompt(transcript: Path, prompt_snippet: str) -> dict | None:
+def extract_first_tool_after_prompt(
+    transcript: Path, prompt_snippet: str
+) -> dict | None:
     """Find the first tool_use after a user prompt in transcript."""
     try:
         with transcript.open() as f:
@@ -92,7 +96,10 @@ def extract_first_tool_after_prompt(transcript: Path, prompt_snippet: str) -> di
                     content = message.get("content", [])
                     if isinstance(content, list):
                         for block in content:
-                            if isinstance(block, dict) and block.get("type") == "tool_use":
+                            if (
+                                isinstance(block, dict)
+                                and block.get("type") == "tool_use"
+                            ):
                                 return {
                                     "tool_name": block.get("name"),
                                     "tool_input": block.get("input", {}),
@@ -156,8 +163,12 @@ def analyze_compliance(router_events: list[dict], transcript: Path | None) -> di
 def main():
     parser = argparse.ArgumentParser(description="Measure prompt router compliance")
     parser.add_argument("--date", help="Date to analyze (YYYY-MM-DD), default: today")
-    parser.add_argument("--verbose", "-v", action="store_true", help="Show per-event details")
-    parser.add_argument("--all", "-a", action="store_true", help="Analyze all available dates")
+    parser.add_argument(
+        "--verbose", "-v", action="store_true", help="Show per-event details"
+    )
+    parser.add_argument(
+        "--all", "-a", action="store_true", help="Analyze all available dates"
+    )
     args = parser.parse_args()
 
     if args.all:
@@ -210,12 +221,22 @@ def main():
         return
 
     compliance_rate = (totals["skill_invoked_first"] / total) * 100
-    accuracy_rate = (totals["correct_skill_invoked"] / totals["skill_invoked_first"] * 100) if totals["skill_invoked_first"] > 0 else 0
+    accuracy_rate = (
+        (totals["correct_skill_invoked"] / totals["skill_invoked_first"] * 100)
+        if totals["skill_invoked_first"] > 0
+        else 0
+    )
 
     print(f"Total router suggestions:     {total}")
-    print(f"Agent invoked Skill first:    {totals['skill_invoked_first']} ({compliance_rate:.1f}%)")
-    print(f"  - Correct skill invoked:    {totals['correct_skill_invoked']} ({accuracy_rate:.1f}% of compliant)")
-    print(f"Agent used other tool first:  {totals['other_tool_first']} ({totals['other_tool_first']/total*100:.1f}%)")
+    print(
+        f"Agent invoked Skill first:    {totals['skill_invoked_first']} ({compliance_rate:.1f}%)"
+    )
+    print(
+        f"  - Correct skill invoked:    {totals['correct_skill_invoked']} ({accuracy_rate:.1f}% of compliant)"
+    )
+    print(
+        f"Agent used other tool first:  {totals['other_tool_first']} ({totals['other_tool_first']/total*100:.1f}%)"
+    )
     print(f"No tool found after prompt:   {totals['no_tool_found']}")
 
     print("\n" + "-" * 60)

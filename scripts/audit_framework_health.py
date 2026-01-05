@@ -101,7 +101,9 @@ class HealthMetrics:
                 "files_missing": len(self.files_in_index_but_missing),
                 "skills_without_specs": len(self.skills_without_specs),
                 "axioms_without_enforcement": len(self.axioms_without_enforcement),
-                "heuristics_without_enforcement": len(self.heuristics_without_enforcement),
+                "heuristics_without_enforcement": len(
+                    self.heuristics_without_enforcement
+                ),
                 "orphan_files": len(self.orphan_files),
                 "broken_wikilinks": len(self.broken_wikilinks),
                 "oversized_skills": len(self.oversized_skills),
@@ -243,7 +245,7 @@ def check_enforcement_mapping(root: Path, metrics: HealthMetrics) -> None:
             patterns = [f"a#{i}", f"axiom #{i}", f"axiom {i}", f"##{i}"]
             if not any(p in rules_content for p in patterns):
                 # Also check for "axiom x" placeholder
-                if f"axiom x" not in rules_content:
+                if "axiom x" not in rules_content:
                     metrics.axioms_without_enforcement.append(f"A#{i}")
 
     # Extract heuristic numbers from HEURISTICS.md
@@ -251,7 +253,9 @@ def check_enforcement_mapping(root: Path, metrics: HealthMetrics) -> None:
         heuristics_content = heuristics_path.read_text()
         # Match patterns like "## H1:" or "## H23:"
         heuristic_pattern = re.compile(r"^##\s+H(\d+):", re.MULTILINE)
-        heuristic_nums = [int(m.group(1)) for m in heuristic_pattern.finditer(heuristics_content)]
+        heuristic_nums = [
+            int(m.group(1)) for m in heuristic_pattern.finditer(heuristics_content)
+        ]
 
         for h in heuristic_nums:
             patterns = [f"h#{h}", f"h{h}", f"heuristic #{h}", f"heuristic {h}"]
@@ -282,36 +286,103 @@ def check_wikilinks(root: Path, metrics: HealthMetrics) -> None:
     # These are valid wikilinks in Obsidian for creating concept notes later
     conceptual_terms = {
         # Framework concepts
-        "NO OTHER TRUTHS", "categorical-imperative", "wikilinks", "brackets",
-        "Obsidian", "meetings", "pre-commit", "experiments", "LOG", "STYLE",
-        "daily", "task", "zotmcp", "academicOps", "memory server", "ADHD",
-        "Just-in-Time", "Semantic Search", "meta-framework", "synthesis.json",
-        "AOPS", "X", "task skill", "testing-with-live-data", "Cognitive Load Dashboard Spec",
-        "hypervisor", "/qa", "goal", "meta", "supervise", "prompts",
+        "NO OTHER TRUTHS",
+        "categorical-imperative",
+        "wikilinks",
+        "brackets",
+        "Obsidian",
+        "meetings",
+        "pre-commit",
+        "experiments",
+        "LOG",
+        "STYLE",
+        "daily",
+        "task",
+        "zotmcp",
+        "academicOps",
+        "memory server",
+        "ADHD",
+        "Just-in-Time",
+        "Semantic Search",
+        "meta-framework",
+        "synthesis.json",
+        "AOPS",
+        "X",
+        "task skill",
+        "testing-with-live-data",
+        "Cognitive Load Dashboard Spec",
+        "hypervisor",
+        "/qa",
+        "goal",
+        "meta",
+        "supervise",
+        "prompts",
         # Test/docs placeholders
-        "LOG.md", "experiments/LOG.md", "Testing Framework Overview", "^",
+        "LOG.md",
+        "experiments/LOG.md",
+        "Testing Framework Overview",
+        "^",
         # Tool names (referenced in commands and tests)
-        "AskUserQuestion", "TodoWrite", "Read", "Glob", "Grep", "Write", "Edit",
+        "AskUserQuestion",
+        "TodoWrite",
+        "Read",
+        "Glob",
+        "Grep",
+        "Write",
+        "Edit",
         # Template/example placeholders in skill docs
-        "Goal Name", "Topic", "Other Note", "Parent Project", "nonexistent.md",
-        "0, 2, 4", "folder/file.md", "../sibling/file.md", "../framework/SKILL.md",
-        "projects", "project", "other-project", "another-project",
-        "concept", "another-concept", "...", "templates/daily.md",
-        "skills/tasks.backup/", "skills/README.md",
+        "Goal Name",
+        "Topic",
+        "Other Note",
+        "Parent Project",
+        "nonexistent.md",
+        "0, 2, 4",
+        "folder/file.md",
+        "../sibling/file.md",
+        "../framework/SKILL.md",
+        "projects",
+        "project",
+        "other-project",
+        "another-project",
+        "concept",
+        "another-concept",
+        "...",
+        "templates/daily.md",
+        "skills/tasks.backup/",
+        "skills/README.md",
         # Extractor entity types
-        "Event", "Institution", "Person",
+        "Event",
+        "Institution",
+        "Person",
         # Workflow placeholders (may be created later)
-        "workflows/capture", "workflows/validate", "workflows/prune",
+        "workflows/capture",
+        "workflows/validate",
+        "workflows/prune",
         # Planned/conceptual references
-        "matplotlib-plot-types", "matplotlib-styling", "linear-models", "glm",
-        "discrete-choice", "time-series", "stats-diagnostics",
-        "dbt-patterns", "matplotlib-api", "matplotlib-common-issues",
-        "seaborn-functions", "seaborn-objects", "seaborn-examples",
+        "matplotlib-plot-types",
+        "matplotlib-styling",
+        "linear-models",
+        "glm",
+        "discrete-choice",
+        "time-series",
+        "stats-diagnostics",
+        "dbt-patterns",
+        "matplotlib-api",
+        "matplotlib-common-issues",
+        "seaborn-functions",
+        "seaborn-objects",
+        "seaborn-examples",
         # Example/template wikilinks in skill docs
-        "Related Note", "Note Title", "folder/subfolder/Note",
-        "../projects/<project>", "wiki-links", "'A', 'B'",
+        "Related Note",
+        "Note Title",
+        "folder/subfolder/Note",
+        "../projects/<project>",
+        "wiki-links",
+        "'A', 'B'",
         # Test conceptual terms
-        "Claude Code", "CWD", "test_marker_hook",
+        "Claude Code",
+        "CWD",
+        "test_marker_hook",
     }
 
     # Hook and script files (these are correctly linked by filename in Obsidian)
@@ -365,7 +436,15 @@ def check_wikilinks(root: Path, metrics: HealthMetrics) -> None:
             all_filenames.add(path.name)
 
     # Cross-vault links (files in $ACA_DATA, not $AOPS) - valid in Obsidian
-    cross_vault_prefixes = ("ACCOMMODATIONS", "CORE", "STATE", "data/", "projects/", "tasks/", "sessions/")
+    cross_vault_prefixes = (
+        "ACCOMMODATIONS",
+        "CORE",
+        "STATE",
+        "data/",
+        "projects/",
+        "tasks/",
+        "sessions/",
+    )
 
     # Internal anchor references (same-document refs like H7, H7b)
     internal_ref_pattern = re.compile(r"^H\d+[a-z]?$")
@@ -447,7 +526,9 @@ def check_wikilinks(root: Path, metrics: HealthMetrics) -> None:
 
             # Check relative paths (references/*, instructions/*, workflows/*)
             # These resolve within the same skill directory in Obsidian
-            if not resolved and target.startswith(("references/", "instructions/", "workflows/", "templates/", "scripts/")):
+            if not resolved and target.startswith(
+                ("references/", "instructions/", "workflows/", "templates/", "scripts/")
+            ):
                 # Try to find this file in any skill directory
                 for skill_dir in skills_dir.iterdir() if skills_dir.exists() else []:
                     if skill_dir.is_dir() and (skill_dir / target).exists():
@@ -485,32 +566,48 @@ def check_wikilinks(root: Path, metrics: HealthMetrics) -> None:
                     resolved = True
 
             if not resolved:
-                metrics.broken_wikilinks.append({
-                    "file": rel_path,
-                    "target": target,
-                })
+                metrics.broken_wikilinks.append(
+                    {
+                        "file": rel_path,
+                        "target": target,
+                    }
+                )
 
     # Find orphans (files with no incoming references)
     # Exclude expected orphans (entry points, commands, utility files, etc.)
     expected_orphan_prefixes = [
         "commands/",  # Commands are invoked, not linked
-        "agents/",    # Agents are invoked, not linked
-        "hooks/",     # Hooks are registered, not linked
-        "scripts/",   # Scripts are run, not linked
-        "tests/",     # Tests are run, not linked
-        "lib/",       # Lib modules are imported, not linked
-        ".claude/",   # Config files
+        "agents/",  # Agents are invoked, not linked
+        "hooks/",  # Hooks are registered, not linked
+        "scripts/",  # Scripts are run, not linked
+        "tests/",  # Tests are run, not linked
+        "lib/",  # Lib modules are imported, not linked
+        ".claude/",  # Config files
     ]
     # Skill subdirectories are linked via relative paths from their SKILL.md
     # The reference counter doesn't resolve these properly yet (TODO: fix)
     expected_orphan_skill_subdirs = [
-        "/references/", "/instructions/", "/templates/", "/workflows/", "/scripts/",
-        "/tests/", "/resources/",  # Additional skill internal dirs
+        "/references/",
+        "/instructions/",
+        "/templates/",
+        "/workflows/",
+        "/scripts/",
+        "/tests/",
+        "/resources/",  # Additional skill internal dirs
     ]
     expected_orphan_names = [
-        "README.md", "CLAUDE.md", "GEMINI.md", "INDEX.md",  # Entry points
-        "CLAUDE", "GEMINI", "FRAMEWORK", "AGENTS", "INDEX",  # Root entry points (no extension)
-        "SKILL.md", "SKILL", "README",  # Skill entry points
+        "README.md",
+        "CLAUDE.md",
+        "GEMINI.md",
+        "INDEX.md",  # Entry points
+        "CLAUDE",
+        "GEMINI",
+        "FRAMEWORK",
+        "AGENTS",
+        "INDEX",  # Root entry points (no extension)
+        "SKILL.md",
+        "SKILL",
+        "README",  # Skill entry points
     ]
 
     for file_path, ref_count in incoming_refs.items():
@@ -549,10 +646,12 @@ def check_skill_sizes(root: Path, metrics: HealthMetrics) -> None:
             try:
                 line_count = len(skill_md.read_text().splitlines())
                 if line_count > 500:
-                    metrics.oversized_skills.append({
-                        "skill": skill_path.name,
-                        "lines": line_count,
-                    })
+                    metrics.oversized_skills.append(
+                        {
+                            "skill": skill_path.name,
+                            "lines": line_count,
+                        }
+                    )
             except (UnicodeDecodeError, PermissionError):
                 continue
 
@@ -577,10 +676,12 @@ def check_spec_sections(root: Path, metrics: HealthMetrics) -> None:
 
         # Only report if missing more than half the sections
         if len(missing) > len(SPEC_SECTIONS) // 2:
-            metrics.specs_missing_sections.append({
-                "spec": spec_path.name,
-                "missing": missing,
-            })
+            metrics.specs_missing_sections.append(
+                {
+                    "spec": spec_path.name,
+                    "missing": missing,
+                }
+            )
 
 
 def generate_markdown_report(metrics: HealthMetrics) -> str:
@@ -606,62 +707,88 @@ def generate_markdown_report(metrics: HealthMetrics) -> str:
             return "⚠️"
         return "❌"
 
-    lines.append(f"| Files not in INDEX.md | {summary['files_not_in_index']} | {status_emoji(summary['files_not_in_index'], 5)} |")
-    lines.append(f"| Skills without specs | {summary['skills_without_specs']} | {status_emoji(summary['skills_without_specs'], 3)} |")
-    lines.append(f"| Axioms without enforcement | {summary['axioms_without_enforcement']} | {status_emoji(summary['axioms_without_enforcement'], 5)} |")
-    lines.append(f"| Heuristics without enforcement | {summary['heuristics_without_enforcement']} | {status_emoji(summary['heuristics_without_enforcement'], 10)} |")
-    lines.append(f"| Orphan files | {summary['orphan_files']} | {status_emoji(summary['orphan_files'], 3)} |")
-    lines.append(f"| Broken wikilinks | {summary['broken_wikilinks']} | {status_emoji(summary['broken_wikilinks'])} |")
-    lines.append(f"| Oversized skills | {summary['oversized_skills']} | {status_emoji(summary['oversized_skills'])} |")
-    lines.append(f"| Specs missing sections | {summary['specs_missing_sections']} | {status_emoji(summary['specs_missing_sections'], 10)} |")
+    lines.append(
+        f"| Files not in INDEX.md | {summary['files_not_in_index']} | {status_emoji(summary['files_not_in_index'], 5)} |"
+    )
+    lines.append(
+        f"| Skills without specs | {summary['skills_without_specs']} | {status_emoji(summary['skills_without_specs'], 3)} |"
+    )
+    lines.append(
+        f"| Axioms without enforcement | {summary['axioms_without_enforcement']} | {status_emoji(summary['axioms_without_enforcement'], 5)} |"
+    )
+    lines.append(
+        f"| Heuristics without enforcement | {summary['heuristics_without_enforcement']} | {status_emoji(summary['heuristics_without_enforcement'], 10)} |"
+    )
+    lines.append(
+        f"| Orphan files | {summary['orphan_files']} | {status_emoji(summary['orphan_files'], 3)} |"
+    )
+    lines.append(
+        f"| Broken wikilinks | {summary['broken_wikilinks']} | {status_emoji(summary['broken_wikilinks'])} |"
+    )
+    lines.append(
+        f"| Oversized skills | {summary['oversized_skills']} | {status_emoji(summary['oversized_skills'])} |"
+    )
+    lines.append(
+        f"| Specs missing sections | {summary['specs_missing_sections']} | {status_emoji(summary['specs_missing_sections'], 10)} |"
+    )
 
     # Add details sections if there are issues
     details = data["details"]
 
     if details["files_not_in_index"]:
-        lines.extend([
-            "",
-            "## Files Not in INDEX.md",
-            "",
-        ])
+        lines.extend(
+            [
+                "",
+                "## Files Not in INDEX.md",
+                "",
+            ]
+        )
         for f in details["files_not_in_index"][:20]:  # Limit to 20
             lines.append(f"- `{f}`")
         if len(details["files_not_in_index"]) > 20:
             lines.append(f"- ... and {len(details['files_not_in_index']) - 20} more")
 
     if details["skills_without_specs"]:
-        lines.extend([
-            "",
-            "## Skills Without Specs",
-            "",
-        ])
+        lines.extend(
+            [
+                "",
+                "## Skills Without Specs",
+                "",
+            ]
+        )
         for s in details["skills_without_specs"]:
             lines.append(f"- {s}")
 
     if details["broken_wikilinks"]:
-        lines.extend([
-            "",
-            "## Broken Wikilinks",
-            "",
-        ])
+        lines.extend(
+            [
+                "",
+                "## Broken Wikilinks",
+                "",
+            ]
+        )
         for link in details["broken_wikilinks"][:20]:
             lines.append(f"- `{link['file']}` → `[[{link['target']}]]`")
 
     if details["orphan_files"]:
-        lines.extend([
-            "",
-            "## Orphan Files",
-            "",
-        ])
+        lines.extend(
+            [
+                "",
+                "## Orphan Files",
+                "",
+            ]
+        )
         for f in details["orphan_files"]:
             lines.append(f"- `{f}`")
 
     if details["oversized_skills"]:
-        lines.extend([
-            "",
-            "## Oversized Skills (> 500 lines)",
-            "",
-        ])
+        lines.extend(
+            [
+                "",
+                "## Oversized Skills (> 500 lines)",
+                "",
+            ]
+        )
         for s in details["oversized_skills"]:
             lines.append(f"- {s['skill']}: {s['lines']} lines")
 
@@ -669,9 +796,7 @@ def generate_markdown_report(metrics: HealthMetrics) -> str:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(
-        description="Audit framework health metrics"
-    )
+    parser = argparse.ArgumentParser(description="Audit framework health metrics")
     parser.add_argument(
         "--root",
         type=Path,

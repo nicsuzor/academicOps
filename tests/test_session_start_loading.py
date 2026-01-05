@@ -6,9 +6,6 @@ CLAUDE.md structure varies by project, so we test that session start WORKS
 TODO: Add unit tests for session start hooks after removing CLAUDE.md-specific tests.
 """
 
-from pathlib import Path
-from lib.paths import get_aops_root
-
 
 # Removed test_claude_md_includes_skills_readme - CLAUDE.md structure is project-specific
 # Instead, test that session start hooks properly load information (not CLAUDE.md content)

@@ -41,7 +41,7 @@ def parse_task_file(path: Path) -> dict[str, Any] | None:
     content = path.read_text()
 
     # Extract YAML frontmatter
-    match = re.match(r'^---\s*\n(.*?)\n---', content, re.DOTALL)
+    match = re.match(r"^---\s*\n(.*?)\n---", content, re.DOTALL)
     if not match:
         return None
 
@@ -94,17 +94,19 @@ def discover_goals(repo_path: Path) -> tuple[list[dict], dict[str, str]]:
     if goals_dir.exists():
         for f in goals_dir.glob("*.md"):
             content = f.read_text()
-            match = re.match(r'^---\s*\n(.*?)\n---', content, re.DOTALL)
+            match = re.match(r"^---\s*\n(.*?)\n---", content, re.DOTALL)
             if match:
                 try:
                     fm = yaml.safe_load(match.group(1))
                     if fm and fm.get("title"):
                         goal_id = fm.get("permalink", f.stem)
                         goal_title = fm["title"]
-                        goals.append({
-                            "id": goal_id,
-                            "title": goal_title,
-                        })
+                        goals.append(
+                            {
+                                "id": goal_id,
+                                "title": goal_title,
+                            }
+                        )
                         title_to_id[goal_title] = goal_id
                 except yaml.YAMLError:
                     pass
@@ -123,7 +125,9 @@ def discover_goals(repo_path: Path) -> tuple[list[dict], dict[str, str]]:
     return goals, title_to_id
 
 
-def discover_projects(repo_path: Path, goal_title_to_id: dict[str, str]) -> tuple[dict[str, dict], dict[str, str]]:
+def discover_projects(
+    repo_path: Path, goal_title_to_id: dict[str, str]
+) -> tuple[dict[str, dict], dict[str, str]]:
     """Find projects and their goal mappings from project files.
 
     Reads goal relationships from the ## Relations section of project files,
@@ -153,7 +157,7 @@ def discover_projects(repo_path: Path, goal_title_to_id: dict[str, str]) -> tupl
             content = f.read_text()
 
             # Extract YAML frontmatter
-            fm_match = re.match(r'^---\s*\n(.*?)\n---', content, re.DOTALL)
+            fm_match = re.match(r"^---\s*\n(.*?)\n---", content, re.DOTALL)
             if not fm_match:
                 continue
 
@@ -176,11 +180,15 @@ def discover_projects(repo_path: Path, goal_title_to_id: dict[str, str]) -> tupl
 
             # Parse Relations section for goal links
             goal_id = None
-            relations_match = re.search(r'## Relations\s*\n(.*?)(?=\n## |\Z)', content, re.DOTALL)
+            relations_match = re.search(
+                r"## Relations\s*\n(.*?)(?=\n## |\Z)", content, re.DOTALL
+            )
             if relations_match:
                 relations_text = relations_match.group(1)
                 # Look for "supports [[Goal Title]]" pattern
-                supports_matches = re.findall(r'-\s*supports\s+\[\[([^\]]+)\]\]', relations_text)
+                supports_matches = re.findall(
+                    r"-\s*supports\s+\[\[([^\]]+)\]\]", relations_text
+                )
                 for goal_title in supports_matches:
                     # Map goal title to goal id
                     if goal_title in goal_title_to_id:
@@ -209,8 +217,12 @@ def build_graph(goals: list, projects: list, tasks: list) -> nx.Graph:
             G.add_edge(proj["id"], proj["goal"], weight=5.0)
 
     for task in tasks:
-        G.add_node(task["id"], type="task", title=task["title"],
-                   priority=task.get("priority", 2))
+        G.add_node(
+            task["id"],
+            type="task",
+            title=task["title"],
+            priority=task.get("priority", 2),
+        )
         proj_id = task.get("project", "uncategorized")
         if proj_id and G.has_node(proj_id):
             G.add_edge(task["id"], proj_id, weight=6.0)  # Strong attraction to project
@@ -224,7 +236,9 @@ def compute_layout(G: nx.Graph) -> dict[str, tuple[float, float]]:
         return {}
 
     # k=1.8 balanced spacing, high weight pulls tasks to projects
-    pos = nx.spring_layout(G, k=1.8, iterations=300, scale=3500, seed=42, weight='weight')
+    pos = nx.spring_layout(
+        G, k=1.8, iterations=300, scale=3500, seed=42, weight="weight"
+    )
 
     # Normalize to positive coords
     if pos:
@@ -414,7 +428,7 @@ def main() -> int:
     project_ids = set(t.get("project", "uncategorized") for t in tasks)
     projects = []
     unmapped_projects = []  # Projects with no goal link
-    unknown_projects = []   # Project slugs not in data/projects/
+    unknown_projects = []  # Project slugs not in data/projects/
     for p in project_ids:
         if p in known_projects:
             proj = known_projects[p]
@@ -427,7 +441,9 @@ def main() -> int:
 
     print(f"  Found {len(projects)} projects")
     if unmapped_projects:
-        print(f"  ⚠️  {len(unmapped_projects)} projects missing goal link: {unmapped_projects[:5]}")
+        print(
+            f"  ⚠️  {len(unmapped_projects)} projects missing goal link: {unmapped_projects[:5]}"
+        )
     if unknown_projects:
         print(f"  ⚠️  {len(unknown_projects)} unknown project slugs: {unknown_projects}")
 
@@ -444,41 +460,43 @@ def main() -> int:
     # Add timestamp
     ts_text = f"Generated: {time.strftime('%Y-%m-%d @ %H:%M')}"
     max_x = max(p[0] for p in positions.values()) if positions else 1000
-    elements.append({
-        "id": "timestamp",
-        "type": "text",
-        "x": int(max_x) + 200,
-        "y": 50,
-        "width": 250,
-        "height": 30,
-        "text": ts_text,
-        "fontSize": 16,
-        "fontFamily": 1,
-        "textAlign": "right",
-        "strokeColor": "#868e96",
-        "backgroundColor": "transparent",
-        "fillStyle": "solid",
-        "strokeWidth": 1,
-        "strokeStyle": "solid",
-        "roughness": 0,
-        "opacity": 100,
-        "angle": 0,
-        "groupIds": [],
-        "roundness": None,
-        "seed": 12345,
-        "version": 1,
-        "versionNonce": 12345,
-        "isDeleted": False,
-        "boundElements": None,
-        "updated": int(time.time() * 1000),
-        "link": None,
-        "locked": False,
-        "containerId": None,
-        "originalText": ts_text,
-        "lineHeight": 1.25,
-        "baseline": 14,
-        "verticalAlign": "top",
-    })
+    elements.append(
+        {
+            "id": "timestamp",
+            "type": "text",
+            "x": int(max_x) + 200,
+            "y": 50,
+            "width": 250,
+            "height": 30,
+            "text": ts_text,
+            "fontSize": 16,
+            "fontFamily": 1,
+            "textAlign": "right",
+            "strokeColor": "#868e96",
+            "backgroundColor": "transparent",
+            "fillStyle": "solid",
+            "strokeWidth": 1,
+            "strokeStyle": "solid",
+            "roughness": 0,
+            "opacity": 100,
+            "angle": 0,
+            "groupIds": [],
+            "roundness": None,
+            "seed": 12345,
+            "version": 1,
+            "versionNonce": 12345,
+            "isDeleted": False,
+            "boundElements": None,
+            "updated": int(time.time() * 1000),
+            "link": None,
+            "locked": False,
+            "containerId": None,
+            "originalText": ts_text,
+            "lineHeight": 1.25,
+            "baseline": 14,
+            "verticalAlign": "top",
+        }
+    )
 
     for node_id in G.nodes():
         node = G.nodes[node_id]
@@ -507,14 +525,15 @@ def main() -> int:
 
         # Add box with text AND arrow bindings
         box = make_excalidraw_element(
-            node_id, node["type"], x, y, w, h,
-            colors["bg"], colors["stroke"]
+            node_id, node["type"], x, y, w, h, colors["bg"], colors["stroke"]
         )
-        box["boundElements"] = [{"id": f"text-{node_id}", "type": "text"}] + arrow_bindings
+        box["boundElements"] = [
+            {"id": f"text-{node_id}", "type": "text"}
+        ] + arrow_bindings
         elements.append(box)
-        elements.append(make_text_element(
-            node_id, node["title"], x, y, w, h, font_size
-        ))
+        elements.append(
+            make_text_element(node_id, node["title"], x, y, w, h, font_size)
+        )
 
     # Add arrows
     for source, target in G.edges():

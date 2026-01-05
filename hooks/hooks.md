@@ -46,4 +46,3 @@ Python hooks for session lifecycle management, context injection, and policy enf
 - [[prompts]] - Prompt templates directory
   - [[prompts/user-prompt-submit.md]] - Context for UserPromptSubmit hook
   - [[prompts/memory-reminder.md]] - Template for memory documentation reminders
-

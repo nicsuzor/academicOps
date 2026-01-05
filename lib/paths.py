@@ -34,7 +34,9 @@ def get_aops_root() -> Path:
     if not aops_path.exists():
         raise RuntimeError(f"$AOPS path doesn't exist: {aops_path}")
     if not (aops_path / "lib").is_dir():
-        raise RuntimeError(f"$AOPS doesn't look like aOps framework (missing lib/): {aops_path}")
+        raise RuntimeError(
+            f"$AOPS doesn't look like aOps framework (missing lib/): {aops_path}"
+        )
 
     return aops_path
 
@@ -66,6 +68,7 @@ def get_data_root() -> Path:
 
 # Framework component directories
 
+
 def get_skills_dir() -> Path:
     """Get skills directory ($AOPS/skills)."""
     return get_aops_root() / "skills"
@@ -92,6 +95,7 @@ def get_config_dir() -> Path:
 
 
 # Data directories
+
 
 def get_tasks_dir() -> Path:
     """Get tasks directory ($ACA_DATA/tasks)."""
@@ -125,6 +129,7 @@ def get_goals_dir() -> Path:
 
 # Task subdirectories
 
+
 def get_tasks_inbox_dir() -> Path:
     """Get tasks inbox directory ($ACA_DATA/tasks/inbox)."""
     return get_tasks_dir() / "inbox"
@@ -141,6 +146,7 @@ def get_tasks_archived_dir() -> Path:
 
 
 # Validation utilities
+
 
 def validate_environment() -> dict[str, Path]:
     """

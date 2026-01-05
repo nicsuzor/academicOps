@@ -16,8 +16,6 @@ Running tests:
 import json
 from pathlib import Path
 
-import pytest
-
 
 def test_settings_json_discoverable_by_claude(bots_dir: Path) -> None:
     """Test that Claude Code can discover settings.json at expected locations.
@@ -86,9 +84,9 @@ def test_settings_json_discoverable_by_claude(bots_dir: Path) -> None:
     )
 
     session_start_hooks = config["hooks"]["SessionStart"]
-    assert isinstance(session_start_hooks, list), (
-        f"SessionStart hooks must be a list, got {type(session_start_hooks).__name__}"
-    )
+    assert isinstance(
+        session_start_hooks, list
+    ), f"SessionStart hooks must be a list, got {type(session_start_hooks).__name__}"
 
     assert len(session_start_hooks) > 0, (
         f"SessionStart hooks list is empty at {settings_path}.\n"

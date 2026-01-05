@@ -401,4 +401,3 @@ def fetch_user_or_anonymous(user_id: Optional[str]) -> User:
         return AnonymousUser()
     return fetch_user(user_id)
 ```
-

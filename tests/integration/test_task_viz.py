@@ -11,7 +11,6 @@ Tests that the task-viz automation can:
 
 import json
 import shutil
-import subprocess
 import tempfile
 from pathlib import Path
 
@@ -195,11 +194,15 @@ and parsing workflow first.
     assert (
         "active framework task" in response_lower
     ), f"Missing task 1 in response: {response}"
-    assert "blocked doc task" in response_lower, f"Missing task 2 in response: {response}"
+    assert (
+        "blocked doc task" in response_lower
+    ), f"Missing task 2 in response: {response}"
     assert (
         "privacy paper draft" in response_lower
     ), f"Missing task 3 in response: {response}"
-    assert "review literature" in response_lower, f"Missing task 4 in response: {response}"
+    assert (
+        "review literature" in response_lower
+    ), f"Missing task 4 in response: {response}"
     assert (
         "completed task example" in response_lower
     ), f"Missing task 5 in response: {response}"

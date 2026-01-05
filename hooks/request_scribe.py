@@ -47,10 +47,7 @@ def main():
     # Stop hooks use different output format (no hookSpecificOutput)
     if hook_event == "Stop":
         message = get_reminder_message()
-        output: dict[str, Any] = {
-            "reason": message,
-            "continue": True
-        }
+        output: dict[str, Any] = {"reason": message, "continue": True}
         print(json.dumps(output))
         sys.exit(1)  # 1 = warn but allow
 
@@ -67,7 +64,7 @@ def main():
     output: dict[str, Any] = {
         "hookSpecificOutput": {
             "hookEventName": hook_event,
-            "additionalContext": message
+            "additionalContext": message,
         }
     }
 

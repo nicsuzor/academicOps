@@ -90,41 +90,41 @@ The agent is successful when:
 
 ### Near-term (validate core model)
 
-**Probe templates**  
+**Probe templates**
 When an assumption is critical and untested, suggest specific lightweight experiments to validate it. "You're assuming X. A cheap test might be: [concrete action]."
 
-**Maturity indicators**  
+**Maturity indicators**
 Beyond status, a way to express confidence/maturity: how validated is this node's content? This affects how much weight to put on it when reasoning about dependencies.
 
-**Periodic review prompts**  
+**Periodic review prompts**
 Time-triggered suggestions to revisit dormant nodes, review accumulated friction, or check whether active projects still make sense.
 
-**Link graph visualisation**  
+**Link graph visualisation**
 Export to a format (Mermaid, Graphviz, or similar) that shows the web structure. Useful for spotting clusters, orphans, and bottlenecks.
 
 ### Medium-term (expand capability)
 
-**Multi-agent handoff**  
+**Multi-agent handoff**
 Integration points where the planning agent can hand off to execution agents (research agents, writing agents, etc.) with appropriate context.
 
-**Resource tracking**  
+**Resource tracking**
 Lightweight affordance tracking: what capacities, relationships, and assets are available? Bird-in-hand thinking operationalised.
 
-**Temporal reasoning**  
+**Temporal reasoning**
 Soft deadlines, windows of opportunity, and time-sensitive dependencies. Not hard scheduling, but awareness of when timing matters.
 
-**Cross-web queries**  
+**Cross-web queries**
 "What assumptions am I making across all active projects?" "What tasks are blocked and why?" "Where do my projects converge?"
 
 ### Long-term (if validated)
 
-**Learning consolidation**  
+**Learning consolidation**
 Periodically synthesise `meta/learnings.md` into updated heuristics or agent behaviours. The system doesn't just log what it learns—it incorporates it.
 
-**Collaborative webs**  
+**Collaborative webs**
 Multiple users contributing to shared planning webs. Requires thinking about attribution, conflict resolution, and divergent views.
 
-**Integration with knowledge base**  
+**Integration with knowledge base**
 Connection to the broader academicOps knowledge management layer—notes, sources, concepts—so planning can reference and link to research materials.
 
 ## Implementation Choices

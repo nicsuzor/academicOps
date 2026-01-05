@@ -88,10 +88,9 @@ def main():
             else:
                 failure_count += 1
         except Exception as e:
-            results.append((identifier, {
-                "success": False,
-                "message": f"Unexpected error: {e}"
-            }))
+            results.append(
+                (identifier, {"success": False, "message": f"Unexpected error: {e}"})
+            )
             failure_count += 1
 
     # Report results

@@ -200,9 +200,7 @@ def pull_rebase_if_behind(repo_path: Path) -> tuple[bool, str]:
         return False, f"error: {e}"
 
 
-def get_modified_repos(
-    tool_name: str, tool_input: dict[str, Any]
-) -> set[str]:
+def get_modified_repos(tool_name: str, tool_input: dict[str, Any]) -> set[str]:
     """Check which repos were modified by this tool call.
 
     Args:
@@ -253,6 +251,7 @@ def get_modified_repos(
             modified.add("aops")
         # Also check AOPS env var path
         import os
+
         aops_path = os.environ.get("AOPS", "")
         if aops_path and file_path.startswith(aops_path):
             modified.add("aops")
@@ -294,6 +293,7 @@ def get_aops_root() -> Path | None:
         Path to AOPS root, or None if not available
     """
     import os
+
     aops_path = os.environ.get("AOPS")
     if aops_path:
         return Path(aops_path)
@@ -301,9 +301,7 @@ def get_aops_root() -> Path | None:
 
 
 def commit_and_push_repo(
-    repo_path: Path,
-    subdir: str | None = None,
-    commit_prefix: str = "update"
+    repo_path: Path, subdir: str | None = None, commit_prefix: str = "update"
 ) -> tuple[bool, str]:
     """Commit and push changes in a repo (optionally scoped to subdir).
 
@@ -422,6 +420,7 @@ def main() -> None:
     if "data" in modified_repos:
         try:
             from lib.paths import get_data_root
+
             data_root = get_data_root()
 
             # Find git root containing data directory
@@ -471,9 +470,7 @@ def main() -> None:
             output = {"systemMessage": f"✓ Auto-committed: {combined}"}
     else:
         # Log error but continue (don't block workflow)
-        output = {
-            "systemMessage": f"⚠ Auto-commit issue: {combined}"
-        }
+        output = {"systemMessage": f"⚠ Auto-commit issue: {combined}"}
 
     print(json.dumps(output))
     sys.exit(0)

@@ -4,9 +4,6 @@
 CORE.md is required for SessionStart hooks to load user context.
 """
 
-from pathlib import Path
-
-import pytest
 
 from lib.paths import get_data_root
 

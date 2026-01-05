@@ -55,7 +55,7 @@ def test_log_hook_event_with_non_serializable_object(
             "timestamp": datetime(2025, 11, 26, 12, 30, 45),
             "file": {
                 "content": "some content",
-            }
+            },
         },
         "model": "claude-opus",
         "tool_name": "read_file",
@@ -77,9 +77,9 @@ def test_log_hook_event_with_non_serializable_object(
     # The critical assertion: a valid log entry SHOULD have been written
     # Currently, serialization failures cause silent data loss
     # This test FAILS because hook_logger cannot handle non-serializable objects
-    assert log_path.exists(), (
-        "Log file should exist - serialization should have succeeded"
-    )
+    assert (
+        log_path.exists()
+    ), "Log file should exist - serialization should have succeeded"
 
     content = log_path.read_text().strip()
     assert content, "Log file should contain valid JSON entry"

@@ -426,4 +426,3 @@ if current_status == Status.COMPLETED:
 print(current_status.name)  # "PROCESSING"
 print(current_status.value)  # 2
 ```
-

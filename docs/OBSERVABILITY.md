@@ -130,4 +130,3 @@ Add new cases when:
                ▼
     /transcript    External viewers
 ```
-

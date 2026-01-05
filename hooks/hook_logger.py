@@ -12,7 +12,6 @@ Logs to ~/.claude/projects/<project>/<date>-<shorthash>-hooks.jsonl
 import json
 import sys
 from datetime import UTC, datetime
-from pathlib import Path
 from typing import Any
 
 from lib.paths import get_data_root

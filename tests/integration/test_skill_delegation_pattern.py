@@ -16,7 +16,9 @@ pytestmark = [
     pytest.mark.integration,
     pytest.mark.slow,
     pytest.mark.xdist_group("skill_delegation"),
-    pytest.mark.xfail(reason="LLM behavior is non-deterministic - observational test", strict=False),
+    pytest.mark.xfail(
+        reason="LLM behavior is non-deterministic - observational test", strict=False
+    ),
 ]
 
 
@@ -150,9 +152,8 @@ def test_framework_before_python_for_framework_python(
 
     # Either framework OR python-dev should be invoked (both are valid)
     # The ideal is framework first, but either is acceptable
-    has_relevant_skill = (
-        _skill_invoked(tool_calls, "framework")
-        or _skill_invoked(tool_calls, "python-dev")
+    has_relevant_skill = _skill_invoked(tool_calls, "framework") or _skill_invoked(
+        tool_calls, "python-dev"
     )
 
     if not has_relevant_skill:
@@ -195,9 +196,7 @@ def test_memory_skill_invoked_for_knowledge_queries(
 
     # memory skill OR direct MCP tools should be used
     memory_invoked = _skill_invoked(tool_calls, "memory")
-    mcp_memory_used = any(
-        c["name"].startswith("mcp__memory__") for c in tool_calls
-    )
+    mcp_memory_used = any(c["name"].startswith("mcp__memory__") for c in tool_calls)
 
     if not memory_invoked and not mcp_memory_used:
         tool_names = [c["name"] for c in tool_calls]

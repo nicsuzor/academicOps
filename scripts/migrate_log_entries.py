@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import os
 import re
-from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -129,7 +128,11 @@ def parse_entries(log_content: str) -> list[LogEntry]:
 
         for i, match in enumerate(entry_starts):
             start = match.start()
-            end = entry_starts[i + 1].start() if i + 1 < len(entry_starts) else len(log_content)
+            end = (
+                entry_starts[i + 1].start()
+                if i + 1 < len(entry_starts)
+                else len(log_content)
+            )
             entry_content = log_content[start:end].strip()
 
             if entry_content:
@@ -289,7 +292,11 @@ def append_to_file(file_path: Path, entries: Sequence[LogEntry]) -> int:
         insert_pos = relations_match.start()
         # Ensure proper spacing
         new_content = (
-            content[:insert_pos].rstrip() + "\n\n" + formatted_entries + "\n" + content[insert_pos:]
+            content[:insert_pos].rstrip()
+            + "\n\n"
+            + formatted_entries
+            + "\n"
+            + content[insert_pos:]
         )
     else:
         # Append at end

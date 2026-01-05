@@ -242,7 +242,9 @@ def generate_index_md(index: dict, output_path: Path) -> None:
         tasks.sort(key=lambda t: (t.get("priority") or 999, t.get("title", "")))
 
         for task in tasks:
-            priority = f"P{task['priority']}" if task.get("priority") is not None else ""
+            priority = (
+                f"P{task['priority']}" if task.get("priority") is not None else ""
+            )
             progress = ""
             if task.get("subtasks_total", 0) > 0:
                 progress = f" [{task['subtasks_done']}/{task['subtasks_total']}]"
@@ -273,8 +275,7 @@ def main() -> None:
 
     # Find all task files (exclude INDEX.md, tasks.md)
     task_files = [
-        f for f in tasks_dir.rglob("*.md")
-        if f.name not in ("INDEX.md", "tasks.md")
+        f for f in tasks_dir.rglob("*.md") if f.name not in ("INDEX.md", "tasks.md")
     ]
 
     print(f"Found {len(task_files)} task files")

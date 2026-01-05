@@ -153,7 +153,10 @@ def main():
     )
 
     if not has_updates:
-        print("Error: No updates specified. Provide at least one update option.", file=sys.stderr)
+        print(
+            "Error: No updates specified. Provide at least one update option.",
+            file=sys.stderr,
+        )
         print("Use --help for available options.", file=sys.stderr)
         return 1
 
@@ -178,7 +181,9 @@ def main():
 
     remove_tags = []
     if args.remove_tags:
-        remove_tags = [tag.strip() for tag in args.remove_tags.split(",") if tag.strip()]
+        remove_tags = [
+            tag.strip() for tag in args.remove_tags.split(",") if tag.strip()
+        ]
 
     # Update task using shared library
     try:

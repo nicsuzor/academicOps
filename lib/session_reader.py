@@ -222,7 +222,11 @@ def _extract_router_context_impl(transcript_path: Path, max_turns: int) -> str:
         lines.append("Recent prompts:")
         for i, prompt in enumerate(recent_prompts, 1):
             # Truncate long prompts
-            truncated = prompt[:_PROMPT_TRUNCATE] + "..." if len(prompt) > _PROMPT_TRUNCATE else prompt
+            truncated = (
+                prompt[:_PROMPT_TRUNCATE] + "..."
+                if len(prompt) > _PROMPT_TRUNCATE
+                else prompt
+            )
             lines.append(f'{i}. "{truncated}"')
         lines.append("")
 
@@ -414,9 +418,7 @@ def find_sessions(
                 continue
 
             # Get modification time
-            mtime = datetime.fromtimestamp(
-                session_file.stat().st_mtime, tz=UTC
-            )
+            mtime = datetime.fromtimestamp(session_file.stat().st_mtime, tz=UTC)
 
             # Filter by time if specified
             if since and mtime < since:
@@ -746,10 +748,10 @@ class SessionProcessor:
                                         and agent_entries
                                         and agent_id in agent_entries
                                     ):
-                                        tool_item["sidechain_summary"] = (
-                                            self._extract_sidechain(
-                                                agent_entries[agent_id]
-                                            )
+                                        tool_item[
+                                            "sidechain_summary"
+                                        ] = self._extract_sidechain(
+                                            agent_entries[agent_id]
                                         )
                                     else:
                                         related_sidechain = (
@@ -758,10 +760,10 @@ class SessionProcessor:
                                             )
                                         )
                                         if related_sidechain:
-                                            tool_item["sidechain_summary"] = (
-                                                self._summarize_sidechain(
-                                                    related_sidechain
-                                                )
+                                            tool_item[
+                                                "sidechain_summary"
+                                            ] = self._summarize_sidechain(
+                                                related_sidechain
                                             )
 
                                 current_turn["assistant_sequence"].append(tool_item)
@@ -897,7 +899,9 @@ class SessionProcessor:
                     if full_mode:
                         markdown += f"```\n{content}\n```\n"
                     else:
-                        display_content = content[:200] + "..." if len(content) > 200 else content
+                        display_content = (
+                            content[:200] + "..." if len(content) > 200 else content
+                        )
                         markdown += f"  - {display_content}\n"
                 markdown += "\n"
                 continue
@@ -1358,7 +1362,9 @@ session_id: {session_uuid}
         command_name = name_match.group(1).strip() if name_match else "unknown"
 
         # Extract command args: <command-args>...</command-args>
-        args_match = re.search(r"<command-args>(.*?)</command-args>", content, re.DOTALL)
+        args_match = re.search(
+            r"<command-args>(.*?)</command-args>", content, re.DOTALL
+        )
         command_args = args_match.group(1).strip() if args_match else ""
 
         # Format as the user would have typed it

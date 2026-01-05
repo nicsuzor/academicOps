@@ -125,7 +125,7 @@ def main():
         output: dict[str, Any] = {
             "hookSpecificOutput": {
                 "hookEventName": hook_event,
-                "additionalContext": FAIL_FAST_REMINDER
+                "additionalContext": FAIL_FAST_REMINDER,
             }
         }
         print(json.dumps(output))

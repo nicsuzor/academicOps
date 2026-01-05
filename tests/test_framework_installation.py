@@ -21,7 +21,9 @@ def test_claude_directory_exists() -> None:
     """
     claude_dir = Path.home() / ".claude"
     assert claude_dir.exists(), f"~/.claude/ directory doesn't exist: {claude_dir}"
-    assert claude_dir.is_dir(), f"~/.claude/ exists but is not a directory: {claude_dir}"
+    assert (
+        claude_dir.is_dir()
+    ), f"~/.claude/ exists but is not a directory: {claude_dir}"
 
 
 def test_settings_json_symlink_exists() -> None:
@@ -32,7 +34,9 @@ def test_settings_json_symlink_exists() -> None:
     """
     settings_link = Path.home() / ".claude" / "settings.json"
     assert settings_link.exists(), f"settings.json doesn't exist: {settings_link}"
-    assert settings_link.is_symlink(), f"settings.json exists but is not a symlink: {settings_link}"
+    assert (
+        settings_link.is_symlink()
+    ), f"settings.json exists but is not a symlink: {settings_link}"
 
 
 def test_settings_json_points_to_correct_target() -> None:
@@ -64,7 +68,9 @@ def test_skills_symlink_exists_and_points_to_aops() -> None:
     expected_target = aops_root / "skills"
 
     assert skills_link.exists(), f"skills symlink doesn't exist: {skills_link}"
-    assert skills_link.is_symlink(), f"skills exists but is not a symlink: {skills_link}"
+    assert (
+        skills_link.is_symlink()
+    ), f"skills exists but is not a symlink: {skills_link}"
 
     actual_target = skills_link.resolve()
     assert actual_target == expected_target, (
@@ -85,7 +91,9 @@ def test_commands_symlink_exists_and_points_to_aops() -> None:
     expected_target = aops_root / "commands"
 
     assert commands_link.exists(), f"commands symlink doesn't exist: {commands_link}"
-    assert commands_link.is_symlink(), f"commands exists but is not a symlink: {commands_link}"
+    assert (
+        commands_link.is_symlink()
+    ), f"commands exists but is not a symlink: {commands_link}"
 
     actual_target = commands_link.resolve()
     assert actual_target == expected_target, (
@@ -106,7 +114,9 @@ def test_agents_symlink_exists_and_points_to_aops() -> None:
     expected_target = aops_root / "agents"
 
     assert agents_link.exists(), f"agents symlink doesn't exist: {agents_link}"
-    assert agents_link.is_symlink(), f"agents exists but is not a symlink: {agents_link}"
+    assert (
+        agents_link.is_symlink()
+    ), f"agents exists but is not a symlink: {agents_link}"
 
     actual_target = agents_link.resolve()
     assert actual_target == expected_target, (
@@ -158,13 +168,11 @@ def test_claude_json_has_user_mcp_servers() -> None:
         "Run setup.sh to sync from $AOPS/config/claude/mcp.json"
     )
 
-    assert isinstance(data["mcpServers"], dict), (
-        "mcpServers should be a dict"
-    )
+    assert isinstance(data["mcpServers"], dict), "mcpServers should be a dict"
 
-    assert len(data["mcpServers"]) > 0, (
-        "mcpServers is empty. Run setup.sh to sync from $AOPS/config/claude/mcp.json"
-    )
+    assert (
+        len(data["mcpServers"]) > 0
+    ), "mcpServers is empty. Run setup.sh to sync from $AOPS/config/claude/mcp.json"
 
     # Check project-level mcpServers (should NOT exist - use .mcp.json instead)
     projects_with_mcp = []

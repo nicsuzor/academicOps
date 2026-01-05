@@ -29,7 +29,9 @@ def run_hook(input_data: dict, expected_exit_code: int = 0) -> dict:
         env={"AOPS": str(aops_root)},
     )
 
-    assert result.returncode == expected_exit_code, f"Hook exit code {result.returncode}, expected {expected_exit_code}: {result.stderr}"
+    assert (
+        result.returncode == expected_exit_code
+    ), f"Hook exit code {result.returncode}, expected {expected_exit_code}: {result.stderr}"
     return json.loads(result.stdout)
 
 
@@ -40,16 +42,16 @@ def test_stop_event_injects_reminder() -> None:
     # Stop hooks use reason/continue format, not hookSpecificOutput
     assert "reason" in output
     # Check for key phrase from the reminder (case-insensitive)
-    assert "remember skill" in output["reason"].lower() or "remember" in output["reason"].lower()
+    assert (
+        "remember skill" in output["reason"].lower()
+        or "remember" in output["reason"].lower()
+    )
     assert output.get("continue") is True
 
 
 def test_todowrite_injects_reminder() -> None:
     """PostToolUse with TodoWrite should inject reminder."""
-    output = run_hook({
-        "hook_event_name": "PostToolUse",
-        "tool_name": "TodoWrite"
-    })
+    output = run_hook({"hook_event_name": "PostToolUse", "tool_name": "TodoWrite"})
 
     assert "hookSpecificOutput" in output
     hook_output = output["hookSpecificOutput"]
@@ -59,13 +61,12 @@ def test_todowrite_injects_reminder() -> None:
 
 def test_other_tool_no_reminder() -> None:
     """PostToolUse with non-TodoWrite tool should NOT inject reminder."""
-    output = run_hook({
-        "hook_event_name": "PostToolUse",
-        "tool_name": "Read"
-    })
+    output = run_hook({"hook_event_name": "PostToolUse", "tool_name": "Read"})
 
     # Should return empty dict (no reminder)
-    assert output == {} or "additionalContext" not in output.get("hookSpecificOutput", {})
+    assert output == {} or "additionalContext" not in output.get(
+        "hookSpecificOutput", {}
+    )
 
 
 def test_template_file_exists() -> None:

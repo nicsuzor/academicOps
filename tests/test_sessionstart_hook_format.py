@@ -70,9 +70,7 @@ def test_sessionstart_hook_outputs_correct_json_format() -> None:
         ) from e
 
     # Validate hookSpecificOutput key exists at root level
-    assert (
-        "hookSpecificOutput" in output
-    ), (
+    assert "hookSpecificOutput" in output, (
         f"Missing required 'hookSpecificOutput' key at root level. "
         f"Got keys: {list(output.keys())}. "
         f"This is a regression to flat format. "
@@ -91,9 +89,7 @@ def test_sessionstart_hook_outputs_correct_json_format() -> None:
         "hookEventName" in hook_output
     ), f"Missing 'hookEventName' in hookSpecificOutput. Keys: {list(hook_output.keys())}"
 
-    assert (
-        hook_output["hookEventName"] == "SessionStart"
-    ), (
+    assert hook_output["hookEventName"] == "SessionStart", (
         f"hookEventName must be 'SessionStart', "
         f"got '{hook_output['hookEventName']}'"
     )
@@ -108,9 +104,7 @@ def test_sessionstart_hook_outputs_correct_json_format() -> None:
         additional_context, str
     ), f"additionalContext must be string, got {type(additional_context)}"
 
-    assert (
-        len(additional_context) > 0
-    ), "additionalContext must be non-empty string"
+    assert len(additional_context) > 0, "additionalContext must be non-empty string"
 
     # Validate additionalContext contains expected content markers
     assert "Framework Principles" in additional_context, (

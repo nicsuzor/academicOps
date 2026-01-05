@@ -6,7 +6,6 @@ for dashboard displays. Uses existing test infrastructure from conftest.py.
 
 from pathlib import Path
 
-import pytest
 
 from skills.tasks.task_loader import load_focus_tasks
 

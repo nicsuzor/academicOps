@@ -28,7 +28,9 @@ pytestmark = [
     pytest.mark.integration,
     pytest.mark.slow,
     pytest.mark.xdist_group("skill_invocation_sequential"),
-    pytest.mark.xfail(reason="LLM behavior is non-deterministic - observational test", strict=False),
+    pytest.mark.xfail(
+        reason="LLM behavior is non-deterministic - observational test", strict=False
+    ),
 ]
 
 
@@ -62,8 +64,7 @@ def retry_flaky_e2e(test_func, max_attempts: int = 3):
             else:
                 # All attempts failed
                 raise AssertionError(
-                    f"Test failed after {max_attempts} attempts. "
-                    f"Last error: {e}"
+                    f"Test failed after {max_attempts} attempts. " f"Last error: {e}"
                 ) from last_error
     # This should never be reached, but satisfies type checker
     raise AssertionError("Retry logic error")
@@ -82,10 +83,11 @@ def test_skill_invocation_produces_formatted_output(claude_headless) -> None:
     - ## Observations section with [category] syntax
     - ## Relations section with [[WikiLinks]]
     """
+
     def _test_attempt():
         start_time = time.time() - 1
 
-        prompt = '''
+        prompt = """
         IMPORTANT: First invoke the remember skill using Skill("remember"), then create a note.
 
         Steps:
@@ -94,7 +96,7 @@ def test_skill_invocation_produces_formatted_output(claude_headless) -> None:
         3. The note MUST follow memory format with all required sections
 
         This is testing that skill invocation provides formatting guidance.
-        '''
+        """
 
         result = claude_headless(
             prompt,
@@ -138,7 +140,8 @@ def test_skill_invocation_produces_formatted_output(claude_headless) -> None:
         "title_field": "title:" in content,
         "permalink_field": "permalink:" in content,
         "type_field": "type:" in content,
-        "context_or_observations": "## Context" in content or "## Observations" in content,
+        "context_or_observations": "## Context" in content
+        or "## Observations" in content,
     }
 
     # At least 4 of 5 markers should be present if skill was properly loaded

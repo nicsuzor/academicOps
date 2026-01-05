@@ -20,7 +20,9 @@ from pathlib import Path
 import pytest
 
 # Path to the measurement script
-MEASURE_SCRIPT = Path(__file__).parent.parent / "scripts" / "measure_router_compliance.py"
+MEASURE_SCRIPT = (
+    Path(__file__).parent.parent / "scripts" / "measure_router_compliance.py"
+)
 
 # Baseline from 2025-11-28 measurement
 BASELINE_COMPLIANCE_RATE = 3.2  # percent
@@ -69,7 +71,9 @@ def test_router_compliance_measurement():
         if compliance_rate < WARN_THRESHOLD:
             print(f"⚠️  WARNING: Compliance below {WARN_THRESHOLD}% threshold")
         elif compliance_rate > BASELINE_COMPLIANCE_RATE:
-            print(f"✓ Improvement over baseline: +{compliance_rate - BASELINE_COMPLIANCE_RATE:.1f}%")
+            print(
+                f"✓ Improvement over baseline: +{compliance_rate - BASELINE_COMPLIANCE_RATE:.1f}%"
+            )
 
 
 @pytest.mark.metrics
@@ -102,4 +106,3 @@ def test_hook_logs_exist():
 
     print(f"\n✓ Found {len(hook_logs)} hook log files")
     print(f"  Most recent: {sorted(hook_logs, key=lambda f: f.stat().st_mtime)[-1]}")
-

@@ -109,6 +109,7 @@ def extract_response_text(result: dict[str, Any]) -> str:
 def _claude_cli_available() -> bool:
     """Check if claude CLI command is available in PATH."""
     import shutil
+
     return shutil.which("claude") is not None
 
 
@@ -314,10 +315,12 @@ def parse_tool_calls(session_file: Path) -> list[dict]:
                     message = entry.get("message", {})
                     for content in message.get("content", []):
                         if content.get("type") == "tool_use":
-                            tool_calls.append({
-                                "name": content.get("name"),
-                                "input": content.get("input", {}),
-                            })
+                            tool_calls.append(
+                                {
+                                    "name": content.get("name"),
+                                    "input": content.get("input", {}),
+                                }
+                            )
             except json.JSONDecodeError:
                 continue
     return tool_calls
@@ -399,11 +402,16 @@ def claude_headless_tracked():
 
         cmd = [
             "claude",
-            "-p", prompt,
-            "--output-format", "json",
-            "--session-id", session_id,
-            "--model", model,
-            "--permission-mode", permission_mode,
+            "-p",
+            prompt,
+            "--output-format",
+            "json",
+            "--session-id",
+            session_id,
+            "--model",
+            model,
+            "--permission-mode",
+            permission_mode,
         ]
 
         env = os.environ.copy()
@@ -424,12 +432,16 @@ def claude_headless_tracked():
             )
 
             if result.returncode != 0:
-                return {
-                    "success": False,
-                    "output": result.stdout,
-                    "result": {},
-                    "error": f"Command failed: {result.stderr}",
-                }, session_id, []
+                return (
+                    {
+                        "success": False,
+                        "output": result.stdout,
+                        "result": {},
+                        "error": f"Command failed: {result.stderr}",
+                    },
+                    session_id,
+                    [],
+                )
 
             try:
                 parsed = json.loads(result.stdout)
@@ -453,12 +465,16 @@ def claude_headless_tracked():
             return response, session_id, tool_calls
 
         except subprocess.TimeoutExpired:
-            return {
-                "success": False,
-                "output": "",
-                "result": {},
-                "error": f"Timeout after {timeout_seconds}s",
-            }, session_id, []
+            return (
+                {
+                    "success": False,
+                    "output": "",
+                    "result": {},
+                    "error": f"Timeout after {timeout_seconds}s",
+                },
+                session_id,
+                [],
+            )
 
     return _run_tracked
 

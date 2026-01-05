@@ -83,7 +83,7 @@ def parse_transcript(path: Path) -> list[TurnAnalysis]:
             skills_text = match.group(1).strip()
             # Comma-separated skills (e.g., "framework, python-dev")
             # Skip "none" or template placeholders
-            if skills_text.lower() not in ("none", "[skill names or \"none\"]", ""):
+            if skills_text.lower() not in ("none", '[skill names or "none"]', ""):
                 for item in skills_text.split(","):
                     item = item.strip()
                     if item and not item.startswith("["):
@@ -199,15 +199,19 @@ def format_report(
 
     for skill, stats in sorted(results["by_skill"].items()):
         rate = stats["compliant"] / stats["total"] if stats["total"] > 0 else 0
-        lines.append(f"  {skill:15} -> {rate:.0%} compliance ({stats['compliant']}/{stats['total']})")
+        lines.append(
+            f"  {skill:15} -> {rate:.0%} compliance ({stats['compliant']}/{stats['total']})"
+        )
 
     # Report command suggestions as router quality issue
     if results.get("command_suggestions"):
-        lines.extend([
-            "",
-            f"Router Quality Issue: {results['total_command_suggestions']} command suggestions",
-            "(Commands are user shortcuts, not agent-invocable skills)",
-        ])
+        lines.extend(
+            [
+                "",
+                f"Router Quality Issue: {results['total_command_suggestions']} command suggestions",
+                "(Commands are user shortcuts, not agent-invocable skills)",
+            ]
+        )
         for cmd, count in sorted(results["command_suggestions"].items()):
             lines.append(f"  {cmd:15} -> {count} times")
 
@@ -216,7 +220,9 @@ def format_report(
         for session_name, turn in non_compliant_examples[:5]:
             lines.append(f"  {session_name}: Turn {turn.turn_number}")
             lines.append(f"    Suggested: {', '.join(turn.skills_suggested)}")
-            invoked = ", ".join(turn.skills_invoked) if turn.skills_invoked else "(none)"
+            invoked = (
+                ", ".join(turn.skills_invoked) if turn.skills_invoked else "(none)"
+            )
             lines.append(f"    Invoked: {invoked}")
 
     return "\n".join(lines)
@@ -288,7 +294,9 @@ def main():
 
         for turn in turns:
             status = "✓" if turn.followed else "✗"
-            invoked = ", ".join(turn.skills_invoked) if turn.skills_invoked else "(none)"
+            invoked = (
+                ", ".join(turn.skills_invoked) if turn.skills_invoked else "(none)"
+            )
             print(
                 f"  Turn {turn.turn_number}: {status} "
                 f"suggested={turn.skills_suggested} invoked={invoked}"

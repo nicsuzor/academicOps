@@ -16,7 +16,12 @@ import sys
 from datetime import datetime, timezone
 
 # Add parent to path for lib imports
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))))
+sys.path.insert(
+    0,
+    os.path.dirname(
+        os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    ),
+)
 
 from lib.session_reader import find_sessions
 
@@ -24,7 +29,9 @@ from lib.session_reader import find_sessions
 def main():
     parser = argparse.ArgumentParser(description="Find sessions needing transcripts")
     parser.add_argument("--date", help="Target date YYYYMMDD (default: today)")
-    parser.add_argument("--transcript-dir", default=None, help="Transcript output directory")
+    parser.add_argument(
+        "--transcript-dir", default=None, help="Transcript output directory"
+    )
     args = parser.parse_args()
 
     # Parse target date
@@ -40,7 +47,8 @@ def main():
 
     # Find sessions matching criteria
     sessions = [
-        s for s in find_sessions()
+        s
+        for s in find_sessions()
         if s.last_modified.date() == target_date
         and "claude-test" not in s.project
         and os.path.getsize(s.path) > 5000
@@ -54,7 +62,9 @@ def main():
 
         # Check if transcript needs (re)generation
         # Must find EXACTLY this session's transcript, not just any similar prefix
-        needs_gen = not existing or s.last_modified.timestamp() > os.path.getmtime(existing[0])
+        needs_gen = not existing or s.last_modified.timestamp() > os.path.getmtime(
+            existing[0]
+        )
 
         if needs_gen:
             shortproject = s.project.split("-")[-1]

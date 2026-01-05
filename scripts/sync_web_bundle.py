@@ -105,9 +105,9 @@ def sync_to_self(dry_run: bool = False) -> int:
         print(f"  {name} -> {rel_target}")
 
     if dry_run:
-        print(f"\n[DRY RUN] Would sync academicOps .claude/ (symlinks to parent)")
+        print("\n[DRY RUN] Would sync academicOps .claude/ (symlinks to parent)")
     else:
-        print(f"\nSynced academicOps .claude/ (symlinks to parent)")
+        print("\nSynced academicOps .claude/ (symlinks to parent)")
     return 0
 
 
@@ -154,12 +154,19 @@ def install_git_hook(project_path: Path) -> bool:
 
         # Append our hook content to existing hook
         # Add a separator and marker for clarity
-        combined_content = existing_content.rstrip() + "\n\n" + \
-            "# " + "=" * 60 + "\n" + \
-            f"{aops_marker} - installed by sync_web_bundle.py\n" + \
-            "# " + "=" * 60 + "\n\n" + \
-            "# aOps sync logic (runs after existing hook)\n" + \
-            _extract_aops_logic(aops_hook_content)
+        combined_content = (
+            existing_content.rstrip()
+            + "\n\n"
+            + "# "
+            + "=" * 60
+            + "\n"
+            + f"{aops_marker} - installed by sync_web_bundle.py\n"
+            + "# "
+            + "=" * 60
+            + "\n\n"
+            + "# aOps sync logic (runs after existing hook)\n"
+            + _extract_aops_logic(aops_hook_content)
+        )
 
         hook_dst.write_text(combined_content)
         hook_dst.chmod(0o755)
@@ -169,7 +176,7 @@ def install_git_hook(project_path: Path) -> bool:
     # No existing hook - install fresh with marker
     marked_content = aops_hook_content.replace(
         "# Git post-commit hook to auto-sync aOps bundle",
-        f"# Git post-commit hook to auto-sync aOps bundle\n{aops_marker}"
+        f"# Git post-commit hook to auto-sync aOps bundle\n{aops_marker}",
     )
     hook_dst.write_text(marked_content)
     hook_dst.chmod(0o755)
@@ -179,20 +186,20 @@ def install_git_hook(project_path: Path) -> bool:
 
 def _extract_aops_logic(hook_content: str) -> str:
     """Extract the logic portion of the aOps hook (skip shebang for appending)."""
-    lines = hook_content.split('\n')
+    lines = hook_content.split("\n")
     # Skip shebang and initial comments when appending to existing hook
     logic_lines = []
     in_logic = False
     for line in lines:
-        if line.startswith('#!'):
+        if line.startswith("#!"):
             continue  # Skip shebang
-        if not in_logic and line.startswith('#'):
+        if not in_logic and line.startswith("#"):
             continue  # Skip header comments
-        if not in_logic and line.strip() == '':
+        if not in_logic and line.strip() == "":
             continue  # Skip initial blank lines
         in_logic = True
         logic_lines.append(line)
-    return '\n'.join(logic_lines)
+    return "\n".join(logic_lines)
 
 
 def sync_to_project(
@@ -207,7 +214,9 @@ def sync_to_project(
         return 1
 
     if not project_path.is_dir():
-        print(f"Error: Project path must be a directory: {project_path}", file=sys.stderr)
+        print(
+            f"Error: Project path must be a directory: {project_path}", file=sys.stderr
+        )
         return 1
 
     target = project_path / ".claude"
@@ -216,7 +225,10 @@ def sync_to_project(
     if target.exists() and not force:
         marker = target / ".aops-bundle"
         if not marker.exists():
-            print(f"Error: {target} exists but wasn't created by sync_web_bundle.py", file=sys.stderr)
+            print(
+                f"Error: {target} exists but wasn't created by sync_web_bundle.py",
+                file=sys.stderr,
+            )
             print("Use --force to overwrite", file=sys.stderr)
             return 1
 
@@ -240,9 +252,13 @@ def sync_to_project(
             if dry_run:
                 print(f"[DRY RUN] Would copy {dir_name}/ ({count} files)")
             else:
-                shutil.copytree(src, dst, ignore=shutil.ignore_patterns(
-                    "__pycache__", "*.pyc", ".pytest_cache", "tests"
-                ))
+                shutil.copytree(
+                    src,
+                    dst,
+                    ignore=shutil.ignore_patterns(
+                        "__pycache__", "*.pyc", ".pytest_cache", "tests"
+                    ),
+                )
                 # Recount after copy (may differ due to ignore patterns)
                 count = sum(1 for file_path in dst.rglob("*") if file_path.is_file())
                 print(f"  {dir_name}/ ({count} files)")
@@ -251,22 +267,22 @@ def sync_to_project(
     settings_src = AOPS_ROOT / "config" / "claude" / "settings-web.json"
     settings_dst = target / "settings.json"
     if dry_run:
-        print(f"[DRY RUN] Would copy settings.json (web-compatible, no hooks)")
+        print("[DRY RUN] Would copy settings.json (web-compatible, no hooks)")
     else:
         shutil.copy2(settings_src, settings_dst)
-        print(f"  settings.json (web-compatible, no hooks)")
+        print("  settings.json (web-compatible, no hooks)")
 
     # Generate CLAUDE.md
     claude_md = generate_claude_md(project_path)
     if dry_run:
-        print(f"[DRY RUN] Would generate CLAUDE.md")
+        print("[DRY RUN] Would generate CLAUDE.md")
     else:
         (target / "CLAUDE.md").write_text(claude_md)
-        print(f"  CLAUDE.md (generated)")
+        print("  CLAUDE.md (generated)")
 
     # Create marker file
     if dry_run:
-        print(f"[DRY RUN] Would create .aops-bundle marker")
+        print("[DRY RUN] Would create .aops-bundle marker")
     else:
         (target / ".aops-bundle").write_text(
             f"aOps bundle synced from {AOPS_ROOT}\n"
@@ -280,7 +296,7 @@ def sync_to_project(
     # Install git hook for auto-sync
     if install_hook:
         if dry_run:
-            print(f"[DRY RUN] Would install git post-commit hook")
+            print("[DRY RUN] Would install git post-commit hook")
         else:
             install_git_hook(project_path)
 
@@ -290,7 +306,9 @@ def sync_to_project(
         print(f"\nSynced to {target} (copied files)")
         print("Commit this .claude/ directory to use aOps on Claude Code Web")
         if install_hook:
-            print("Git hook installed - .claude/ will auto-sync on future commits from full environments")
+            print(
+                "Git hook installed - .claude/ will auto-sync on future commits from full environments"
+            )
     return 0
 
 
@@ -331,10 +349,12 @@ def get_skills_for_bundle() -> list[dict]:
                             if len(description) > 60:
                                 description = description[:60] + "..."
 
-                            skills.append({
-                                "name": name,
-                                "description": description,
-                            })
+                            skills.append(
+                                {
+                                    "name": name,
+                                    "description": description,
+                                }
+                            )
         except (yaml.YAMLError, OSError):
             # Skip malformed skills gracefully
             continue

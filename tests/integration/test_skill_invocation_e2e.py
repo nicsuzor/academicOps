@@ -61,11 +61,13 @@ def test_tasks_prompt_invokes_skill(claude_headless_tracked, skill_was_invoked) 
     assert tool_calls, f"Session file not found for {session_id}"
 
     # Accept Skill invocation OR direct MCP tool usage
-    task_tools_used = _used_task_tools(tool_calls) or skill_was_invoked(tool_calls, "task")
-
-    assert task_tools_used, (
-        f"No task tools used. Tool calls: {[c['name'] for c in tool_calls]}"
+    task_tools_used = _used_task_tools(tool_calls) or skill_was_invoked(
+        tool_calls, "task"
     )
+
+    assert (
+        task_tools_used
+    ), f"No task tools used. Tool calls: {[c['name'] for c in tool_calls]}"
 
 
 def _read_framework_files(tool_calls: list) -> bool:
@@ -81,7 +83,9 @@ def _read_framework_files(tool_calls: list) -> bool:
 
 @pytest.mark.integration
 @pytest.mark.slow
-def test_framework_prompt_invokes_skill(claude_headless_tracked, skill_was_invoked) -> None:
+def test_framework_prompt_invokes_skill(
+    claude_headless_tracked, skill_was_invoked
+) -> None:
     """Test that framework-related prompts use appropriate tools.
 
     Valid responses:
@@ -110,7 +114,9 @@ def test_framework_prompt_invokes_skill(claude_headless_tracked, skill_was_invok
 
 @pytest.mark.integration
 @pytest.mark.slow
-def test_memory_prompt_invokes_skill(claude_headless_tracked, skill_was_invoked) -> None:
+def test_memory_prompt_invokes_skill(
+    claude_headless_tracked, skill_was_invoked
+) -> None:
     """Test that memory-related prompts use memory tools.
 
     Agent can either invoke the remember skill OR use MCP memory tools directly.
@@ -125,8 +131,10 @@ def test_memory_prompt_invokes_skill(claude_headless_tracked, skill_was_invoked)
     assert tool_calls, f"Session file not found for {session_id}"
 
     # Accept Skill invocation OR direct MCP tool usage
-    memory_tools_used = _used_memory_tools(tool_calls) or skill_was_invoked(tool_calls, "remember")
-
-    assert memory_tools_used, (
-        f"No memory tools used. Tool calls: {[c['name'] for c in tool_calls]}"
+    memory_tools_used = _used_memory_tools(tool_calls) or skill_was_invoked(
+        tool_calls, "remember"
     )
+
+    assert (
+        memory_tools_used
+    ), f"No memory tools used. Tool calls: {[c['name'] for c in tool_calls]}"

@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import json
 import logging
-import tempfile
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -32,9 +31,7 @@ def _create_user_entry(prompt: str, offset: int = 0) -> dict:
         "type": "user",
         "uuid": f"user-{offset}",
         "timestamp": _make_timestamp(offset),
-        "message": {
-            "content": [{"type": "text", "text": prompt}]
-        },
+        "message": {"content": [{"type": "text", "text": prompt}]},
     }
 
 
@@ -60,9 +57,7 @@ def _create_assistant_entry(offset: int = 0) -> dict:
         "type": "assistant",
         "uuid": f"assistant-{offset}",
         "timestamp": _make_timestamp(offset + 1),
-        "message": {
-            "content": [{"type": "text", "text": "I'll help with that."}]
-        },
+        "message": {"content": [{"type": "text", "text": "I'll help with that."}]},
     }
 
 
@@ -145,10 +140,26 @@ def session_jsonl_file(tmp_path: Path) -> Path:
         # TodoWrite with mixed statuses
         _create_todowrite_entry(
             todos=[
-                {"content": "Review existing tests", "status": "completed", "activeForm": "Reviewing tests"},
-                {"content": "Add unit tests for auth", "status": "completed", "activeForm": "Adding tests"},
-                {"content": "Write integration tests", "status": "in_progress", "activeForm": "Writing tests"},
-                {"content": "Update test documentation", "status": "pending", "activeForm": "Updating docs"},
+                {
+                    "content": "Review existing tests",
+                    "status": "completed",
+                    "activeForm": "Reviewing tests",
+                },
+                {
+                    "content": "Add unit tests for auth",
+                    "status": "completed",
+                    "activeForm": "Adding tests",
+                },
+                {
+                    "content": "Write integration tests",
+                    "status": "in_progress",
+                    "activeForm": "Writing tests",
+                },
+                {
+                    "content": "Update test documentation",
+                    "status": "pending",
+                    "activeForm": "Updating docs",
+                },
             ],
             offset=35,
         ),
@@ -185,28 +196,28 @@ class TestExtractRouterContext:
         assert isinstance(result, str), "Result should be a markdown string"
 
         # Verify user prompts section exists with recent prompts
-        assert "login endpoint" in result.lower(), (
-            "Should contain most recent user prompt about login endpoint"
-        )
-        assert "testing patterns" in result.lower(), (
-            "Should contain user prompt about testing patterns"
-        )
+        assert (
+            "login endpoint" in result.lower()
+        ), "Should contain most recent user prompt about login endpoint"
+        assert (
+            "testing patterns" in result.lower()
+        ), "Should contain user prompt about testing patterns"
 
         # Verify active skill is shown
-        assert "framework" in result.lower(), (
-            "Should show 'framework' as the active/recent skill"
-        )
+        assert (
+            "framework" in result.lower()
+        ), "Should show 'framework' as the active/recent skill"
 
         # Verify TodoWrite summary shows status counts
-        assert "completed" in result.lower() or "2" in result, (
-            "Should show completed task count or status"
-        )
-        assert "in_progress" in result.lower() or "1" in result, (
-            "Should show in_progress task count or status"
-        )
-        assert "pending" in result.lower() or "1" in result, (
-            "Should show pending task count or status"
-        )
+        assert (
+            "completed" in result.lower() or "2" in result
+        ), "Should show completed task count or status"
+        assert (
+            "in_progress" in result.lower() or "1" in result
+        ), "Should show in_progress task count or status"
+        assert (
+            "pending" in result.lower() or "1" in result
+        ), "Should show pending task count or status"
 
     def test_extract_router_context_truncates_long_prompts(
         self, tmp_path: Path
@@ -231,9 +242,7 @@ class TestExtractRouterContext:
 
         # The original 500-char prompt should be truncated
         # Check that we don't have 500 consecutive 'A's
-        assert "A" * 200 not in result, (
-            "Long prompts should be truncated to ~100 chars"
-        )
+        assert "A" * 200 not in result, "Long prompts should be truncated to ~100 chars"
 
     def test_extract_router_context_limits_to_recent_prompts(
         self, tmp_path: Path
@@ -247,7 +256,9 @@ class TestExtractRouterContext:
 
         for i in range(10):
             entries.append(
-                _create_user_entry(f"User prompt number {i} with unique content", offset=i * 10)
+                _create_user_entry(
+                    f"User prompt number {i} with unique content", offset=i * 10
+                )
             )
             entries.append(_create_assistant_entry(offset=i * 10 + 1))
 
@@ -258,17 +269,15 @@ class TestExtractRouterContext:
         result = extract_router_context(session_file)
 
         # Should NOT contain early prompts (0, 1, 2)
-        assert "prompt number 0" not in result.lower(), (
-            "Should not contain oldest prompts"
-        )
-        assert "prompt number 1" not in result.lower(), (
-            "Should not contain oldest prompts"
-        )
+        assert (
+            "prompt number 0" not in result.lower()
+        ), "Should not contain oldest prompts"
+        assert (
+            "prompt number 1" not in result.lower()
+        ), "Should not contain oldest prompts"
 
         # Should contain recent prompts (at least 8 or 9)
-        assert "prompt number 9" in result.lower(), (
-            "Should contain most recent prompt"
-        )
+        assert "prompt number 9" in result.lower(), "Should contain most recent prompt"
 
     def test_extract_router_context_empty_session(self, tmp_path: Path) -> None:
         """Test that empty session (0 turns) returns empty string."""
@@ -311,12 +320,14 @@ class TestExtractRouterContext:
         # Should either be empty or not contain the slash commands
         # (implementation may vary - either skip them entirely or include them)
         # The key is it should NOT crash and should handle gracefully
-        assert isinstance(result, str), "Should return a string even for slash-only session"
+        assert isinstance(
+            result, str
+        ), "Should return a string even for slash-only session"
         # If not empty, verify it's well-formed (doesn't have parsing errors)
         if result:
-            assert "Recent prompts" in result or "prompt" in result.lower(), (
-                "If non-empty, should have standard format"
-            )
+            assert (
+                "Recent prompts" in result or "prompt" in result.lower()
+            ), "If non-empty, should have standard format"
 
     def test_extract_router_context_malformed_jsonl(self, tmp_path: Path) -> None:
         """Test that malformed JSONL lines are gracefully skipped.
@@ -344,15 +355,18 @@ class TestExtractRouterContext:
         result = extract_router_context(session_file)
 
         # Should not crash and should return a string
-        assert isinstance(result, str), "Should return a string even with malformed lines"
+        assert isinstance(
+            result, str
+        ), "Should return a string even with malformed lines"
         # Should still extract at least one valid prompt
         if result:
             # Should contain at least one of the valid prompts
             has_valid_content = (
-                "first valid" in result.lower() or
-                "second valid" in result.lower()
+                "first valid" in result.lower() or "second valid" in result.lower()
             )
-            assert has_valid_content, "Should extract valid prompts despite malformed lines"
+            assert (
+                has_valid_content
+            ), "Should extract valid prompts despite malformed lines"
 
     def test_extract_router_context_no_todowrite(self, tmp_path: Path) -> None:
         """Test that session without TodoWrite omits 'Tasks:' line.
@@ -379,13 +393,13 @@ class TestExtractRouterContext:
         result = extract_router_context(session_file)
 
         # Should not contain Tasks line since no TodoWrite was called
-        assert "tasks:" not in result.lower(), (
-            "Should omit 'Tasks:' line when no TodoWrite calls in session"
-        )
+        assert (
+            "tasks:" not in result.lower()
+        ), "Should omit 'Tasks:' line when no TodoWrite calls in session"
         # But should still have other content
-        assert "python-dev" in result.lower() or "prompt" in result.lower(), (
-            "Should still have skill or prompt content"
-        )
+        assert (
+            "python-dev" in result.lower() or "prompt" in result.lower()
+        ), "Should still have skill or prompt content"
 
     def test_extract_router_context_no_skill_invocation(self, tmp_path: Path) -> None:
         """Test that session without Skill invocation omits 'Active:' line.
@@ -404,8 +418,16 @@ class TestExtractRouterContext:
             _create_assistant_entry(offset=11),
             _create_todowrite_entry(
                 todos=[
-                    {"content": "Fix bug", "status": "in_progress", "activeForm": "Fixing bug"},
-                    {"content": "Add tests", "status": "pending", "activeForm": "Adding tests"},
+                    {
+                        "content": "Fix bug",
+                        "status": "in_progress",
+                        "activeForm": "Fixing bug",
+                    },
+                    {
+                        "content": "Add tests",
+                        "status": "pending",
+                        "activeForm": "Adding tests",
+                    },
                 ],
                 offset=15,
             ),
@@ -420,13 +442,15 @@ class TestExtractRouterContext:
         result = extract_router_context(session_file)
 
         # Should not contain Active line since no Skill was invoked
-        assert "active:" not in result.lower(), (
-            "Should omit 'Active:' line when no Skill invocations in session"
-        )
+        assert (
+            "active:" not in result.lower()
+        ), "Should omit 'Active:' line when no Skill invocations in session"
         # But should still have tasks content
-        assert "task" in result.lower() or "pending" in result.lower() or "in_progress" in result.lower(), (
-            "Should still have task content from TodoWrite"
-        )
+        assert (
+            "task" in result.lower()
+            or "pending" in result.lower()
+            or "in_progress" in result.lower()
+        ), "Should still have task content from TodoWrite"
 
     def test_extract_router_context_string_content_format(self, tmp_path: Path) -> None:
         """Test that string content format (used by /commands) is handled.
@@ -467,15 +491,15 @@ class TestExtractRouterContext:
         result = extract_router_context(session_file)
 
         # Should extract prompts from BOTH formats
-        assert "fix the bug" in result.lower() or "/do" in result, (
-            "Should extract string-format command content"
-        )
-        assert "test the fix" in result.lower(), (
-            "Should extract list-format prompt content"
-        )
-        assert "save that" in result.lower() or "output directory" in result.lower(), (
-            "Should extract follow-up string-format prompt"
-        )
+        assert (
+            "fix the bug" in result.lower() or "/do" in result
+        ), "Should extract string-format command content"
+        assert (
+            "test the fix" in result.lower()
+        ), "Should extract list-format prompt content"
+        assert (
+            "save that" in result.lower() or "output directory" in result.lower()
+        ), "Should extract follow-up string-format prompt"
 
     def test_extract_router_context_mixed_format_ordering(self, tmp_path: Path) -> None:
         """Test that mixed format entries are extracted in correct order.
@@ -561,7 +585,9 @@ class TestExtractRouterContextDemo:
 
         # Analyze token efficiency
         assert len(context) < 2000, "Context should be compact (<2000 chars)"
-        assert "Session Context" in context or context == "", "Should have header or be empty"
+        assert (
+            "Session Context" in context or context == ""
+        ), "Should have header or be empty"
 
     def test_demo_show_raw_vs_extracted(self, tmp_path: Path) -> None:
         """Given mixed content formats, show what gets extracted vs filtered.
@@ -591,7 +617,12 @@ class TestExtractRouterContextDemo:
                     "content": "<command-message>do</command-message>\n<command-name>/do</command-name>\n<command-args>fix the hydrator context bug</command-args>"
                 },
             },
-            {"type": "assistant", "uuid": "a1", "timestamp": "2026-01-01T10:01:00Z", "message": {"content": [{"type": "text", "text": "I'll fix that."}]}},
+            {
+                "type": "assistant",
+                "uuid": "a1",
+                "timestamp": "2026-01-01T10:01:00Z",
+                "message": {"content": [{"type": "text", "text": "I'll fix that."}]},
+            },
             # Regular prompt (list format)
             {
                 "type": "user",
@@ -601,7 +632,12 @@ class TestExtractRouterContextDemo:
                     "content": [{"type": "text", "text": "now run the tests to verify"}]
                 },
             },
-            {"type": "assistant", "uuid": "a2", "timestamp": "2026-01-01T10:03:00Z", "message": {"content": [{"type": "text", "text": "Running tests..."}]}},
+            {
+                "type": "assistant",
+                "uuid": "a2",
+                "timestamp": "2026-01-01T10:03:00Z",
+                "message": {"content": [{"type": "text", "text": "Running tests..."}]},
+            },
             # Agent notification (noise)
             {
                 "type": "user",
@@ -616,9 +652,7 @@ class TestExtractRouterContextDemo:
                 "type": "user",
                 "uuid": "u4",
                 "timestamp": "2026-01-01T10:05:00Z",
-                "message": {
-                    "content": "save that output to the results directory"
-                },
+                "message": {"content": "save that output to the results directory"},
             },
         ]
 
@@ -651,7 +685,10 @@ class TestExtractRouterContextDemo:
         log.info("ANALYSIS:")
         log.info("  - XML markup preserved: %s", "<command" in context)
         log.info("  - Agent notification included: %s", "agent-notification" in context)
-        log.info("  - Useful prompt text included: %s", "fix" in context.lower() or "test" in context.lower())
+        log.info(
+            "  - Useful prompt text included: %s",
+            "fix" in context.lower() or "test" in context.lower(),
+        )
         log.info("  - Total chars: %d", len(context))
 
         # This test SHOWS behavior, doesn't assert correctness
@@ -678,17 +715,36 @@ class TestExtractRouterContextDemo:
                 "type": "user",
                 "uuid": "u1",
                 "timestamp": "2026-01-01T10:00:00Z",
-                "message": {"content": "<command-message>do</command-message>\n<command-name>/do</command-name>\n<command-args>implement the new caching layer for API responses</command-args>"},
+                "message": {
+                    "content": "<command-message>do</command-message>\n<command-name>/do</command-name>\n<command-args>implement the new caching layer for API responses</command-args>"
+                },
             },
-            {"type": "assistant", "uuid": "a1", "timestamp": "2026-01-01T10:01:00Z", "message": {"content": [{"type": "text", "text": "Done"}]}},
+            {
+                "type": "assistant",
+                "uuid": "a1",
+                "timestamp": "2026-01-01T10:01:00Z",
+                "message": {"content": [{"type": "text", "text": "Done"}]},
+            },
             # Follow-up
             {
                 "type": "user",
                 "uuid": "u2",
                 "timestamp": "2026-01-01T10:02:00Z",
-                "message": {"content": [{"type": "text", "text": "add tests for the edge cases we discussed"}]},
+                "message": {
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": "add tests for the edge cases we discussed",
+                        }
+                    ]
+                },
             },
-            {"type": "assistant", "uuid": "a2", "timestamp": "2026-01-01T10:03:00Z", "message": {"content": [{"type": "text", "text": "Done"}]}},
+            {
+                "type": "assistant",
+                "uuid": "a2",
+                "timestamp": "2026-01-01T10:03:00Z",
+                "message": {"content": [{"type": "text", "text": "Done"}]},
+            },
             # Context-dependent prompt (the case we're trying to help)
             {
                 "type": "user",
@@ -707,7 +763,11 @@ class TestExtractRouterContextDemo:
         # Analyze content breakdown
         lines = context.split("\n")
         header_chars = len("## Session Context\n\nRecent prompts:\n")
-        prompt_chars = sum(len(line) for line in lines if line.startswith('1.') or line.startswith('2.') or line.startswith('3.'))
+        prompt_chars = sum(
+            len(line)
+            for line in lines
+            if line.startswith("1.") or line.startswith("2.") or line.startswith("3.")
+        )
         other_chars = len(context) - header_chars - prompt_chars
 
         log.info("CONTENT BREAKDOWN:")
@@ -762,7 +822,12 @@ class TestCleanPromptExtraction:
                     "content": "<command-message>do</command-message>\n<command-name>/do</command-name>\n<command-args>fix the hydrator context bug</command-args>"
                 },
             },
-            {"type": "assistant", "uuid": "a1", "timestamp": "2026-01-01T10:01:00Z", "message": {"content": [{"type": "text", "text": "Done"}]}},
+            {
+                "type": "assistant",
+                "uuid": "a1",
+                "timestamp": "2026-01-01T10:01:00Z",
+                "message": {"content": [{"type": "text", "text": "Done"}]},
+            },
         ]
 
         with session_file.open("w") as f:
@@ -772,7 +837,9 @@ class TestCleanPromptExtraction:
         context = extract_router_context(session_file)
 
         # Should contain the actual command args, not XML markup
-        assert "fix the hydrator" in context.lower(), "Should extract command args content"
+        assert (
+            "fix the hydrator" in context.lower()
+        ), "Should extract command args content"
         # Should NOT contain XML tags
         assert "<command-message>" not in context, "Should strip <command-message> tag"
         assert "<command-name>" not in context, "Should strip <command-name> tag"
@@ -799,9 +866,16 @@ class TestCleanPromptExtraction:
                 "type": "user",
                 "uuid": "u1",
                 "timestamp": "2026-01-01T10:00:00Z",
-                "message": {"content": [{"type": "text", "text": "run the tests please"}]},
+                "message": {
+                    "content": [{"type": "text", "text": "run the tests please"}]
+                },
             },
-            {"type": "assistant", "uuid": "a1", "timestamp": "2026-01-01T10:01:00Z", "message": {"content": [{"type": "text", "text": "Done"}]}},
+            {
+                "type": "assistant",
+                "uuid": "a1",
+                "timestamp": "2026-01-01T10:01:00Z",
+                "message": {"content": [{"type": "text", "text": "Done"}]},
+            },
             # Agent notification (should be filtered)
             {
                 "type": "user",
@@ -830,7 +904,9 @@ class TestCleanPromptExtraction:
         assert "run the tests" in context.lower(), "Should include real user prompt"
         assert "save that" in context.lower(), "Should include follow-up prompt"
         # Should NOT contain agent notification content
-        assert "agent-notification" not in context, "Should filter out agent notifications"
+        assert (
+            "agent-notification" not in context
+        ), "Should filter out agent notifications"
         assert "aa7d721" not in context, "Should not include agent IDs"
 
     def test_combined_cleaning(self, tmp_path: Path) -> None:
@@ -851,24 +927,40 @@ class TestCleanPromptExtraction:
                 "type": "user",
                 "uuid": "u1",
                 "timestamp": "2026-01-01T10:00:00Z",
-                "message": {"content": "<command-message>do</command-message>\n<command-name>/do</command-name>\n<command-args>implement caching layer</command-args>"},
+                "message": {
+                    "content": "<command-message>do</command-message>\n<command-name>/do</command-name>\n<command-args>implement caching layer</command-args>"
+                },
             },
-            {"type": "assistant", "uuid": "a1", "timestamp": "2026-01-01T10:01:00Z", "message": {"content": [{"type": "text", "text": "Done"}]}},
+            {
+                "type": "assistant",
+                "uuid": "a1",
+                "timestamp": "2026-01-01T10:01:00Z",
+                "message": {"content": [{"type": "text", "text": "Done"}]},
+            },
             # Agent notification (filter out)
             {
                 "type": "user",
                 "uuid": "u2",
                 "timestamp": "2026-01-01T10:02:00Z",
-                "message": {"content": "<agent-notification>\n<agent-id>xyz123</agent-id>\n<status>completed</status>\n</agent-notification>"},
+                "message": {
+                    "content": "<agent-notification>\n<agent-id>xyz123</agent-id>\n<status>completed</status>\n</agent-notification>"
+                },
             },
             # Clean prompt
             {
                 "type": "user",
                 "uuid": "u3",
                 "timestamp": "2026-01-01T10:03:00Z",
-                "message": {"content": [{"type": "text", "text": "add tests for edge cases"}]},
+                "message": {
+                    "content": [{"type": "text", "text": "add tests for edge cases"}]
+                },
             },
-            {"type": "assistant", "uuid": "a3", "timestamp": "2026-01-01T10:04:00Z", "message": {"content": [{"type": "text", "text": "Done"}]}},
+            {
+                "type": "assistant",
+                "uuid": "a3",
+                "timestamp": "2026-01-01T10:04:00Z",
+                "message": {"content": [{"type": "text", "text": "Done"}]},
+            },
             # Context-dependent prompt
             {
                 "type": "user",

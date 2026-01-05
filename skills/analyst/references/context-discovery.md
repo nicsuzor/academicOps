@@ -381,4 +381,3 @@ DISCOVERY_SCRIPT
 chmod +x /tmp/discover_context.sh
 /tmp/discover_context.sh
 ```
-

@@ -103,4 +103,3 @@ def test_agent_behavior(claude_headless) -> None:
     assert result["success"], f"Execution failed: {result.get('error')}"
     # Check response contains expected content
 ```
-

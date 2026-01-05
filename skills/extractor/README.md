@@ -241,4 +241,3 @@ uv run python bots/skills/archive/scripts/batch_next.py reset
 - Check `archive/failed/` directory
 - Review `archive/processing.log` for error details
 - Fix issue and manually move file back to `archive/incoming/`
-

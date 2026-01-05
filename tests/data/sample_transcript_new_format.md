@@ -306,7 +306,7 @@ Prompt-hydrator agent returns:
   - Guardrails: plan_mode, critic_review, require_acceptance_test
     ↓
 Main agent reads guidance
-Main agent says: "This needs formal planning." 
+Main agent says: "This needs formal planning."
 Main agent invokes: /do "Add pre-step with full TDD workflow"
     ↓
 /do launches full hypervisor pipeline with TODOWRITEs and CHECKPOINTs
@@ -520,7 +520,7 @@ Keep these sections largely intact:
 **Box 4 Decision Logic**:
 ```
 If workflow = "answer-only" → Question-Only implementation
-If workflow = "tdd" → TDD implementation  
+If workflow = "tdd" → TDD implementation
 If workflow = "verify-first" → Verify-First implementation
 If workflow = "direct" → Simple/Direct implementation
 If workflow = "plan-mode" OR gate=plan-mode → Full/Hypervisor implementation
@@ -534,7 +534,7 @@ Show how dimensions combine:
 ## Design Decisions
 ### Decision 1: Keep or merge the detailed hypervisor diagram?
 **Choice**: Keep it, but clearly label it as "Box 4 variant: Full Orchestration"
-**Rationale**: 
+**Rationale**:
 - It's valuable detail for understanding the full pipeline
 - Users may explicitly invoke /do and need to understand what happens
 - Separating it makes the universal flow clearer
@@ -558,7 +558,7 @@ Show how dimensions combine:
 - Both paths go through boxes 1-3 (that's the key insight)
 ## Risk Analysis
 ### Risk 1: Over-complicating the mental model
-**Mitigation**: 
+**Mitigation**:
 - Lead with simple explanation: "All prompts get smart routing"
 - Progressive disclosure: simple diagram first, complexity later
 - Use consistent terminology throughout
@@ -967,7 +967,7 @@ Summary:
    - Added Template/Content column to Hook Registry
    - Added Spec column to Workflow Implementations table
    - Generalized Hook Trigger Mechanism section
-   
+
    TodoWrite shows: "Create/update spec for execution-flow document structure" is `in_progress`
 
 9. Optional Next Step:
@@ -977,7 +977,7 @@ Summary:
    - Separate soft tissue (templates) from hard tissue (code)
    - Show trigger mechanisms
    - Reference, don't duplicate
-   
+
    User's exact words: "create a brief spec for the execution flow document, or insert it into an existing spec where it makes sense, so we have framework instructions governing what it should do and look like".
 Please continue the conversation from where we left it off without asking the user any further questions. Continue with the last task that you were asked to work on.
 
@@ -1072,4 +1072,3 @@ i renamed it. add EXECUTION-FLOW.md to the index.md
 ## Agent (Turn 10)
 
 Done. Updated INDEX.md to show `EXECUTION-FLOW.md`.
-

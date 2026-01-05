@@ -5,10 +5,8 @@ Tests for extract_dashboard_state() method which provides data for live dashboar
 """
 
 import os
-from datetime import date
 from pathlib import Path
 
-import pytest
 
 from lib.session_analyzer import SessionAnalyzer
 
@@ -24,7 +22,9 @@ class TestDashboardStateExtraction:
         """
         # Find any session file in projects directory
         projects_dir = Path.home() / ".claude" / "projects"
-        assert projects_dir.exists(), f"Claude projects directory missing: {projects_dir}"
+        assert (
+            projects_dir.exists()
+        ), f"Claude projects directory missing: {projects_dir}"
 
         session_files = list(projects_dir.rglob("*.jsonl"))
         assert session_files, f"No session files found in {projects_dir}"

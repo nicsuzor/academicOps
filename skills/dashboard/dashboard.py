@@ -15,17 +15,17 @@ aops_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(aops_root))
 
 from skills.tasks.task_loader import load_focus_tasks
-from lib.session_reader import find_sessions, SessionProcessor, ConversationTurn
+from lib.session_reader import find_sessions
 from lib.session_analyzer import SessionAnalyzer, extract_todowrite_from_session
 
 
 def load_task_index() -> dict | None:
     """Load task index from index.json if available."""
-    aca_data = os.environ.get('ACA_DATA')
+    aca_data = os.environ.get("ACA_DATA")
     if not aca_data:
         return None
 
-    index_path = Path(aca_data) / 'tasks' / 'index.json'
+    index_path = Path(aca_data) / "tasks" / "index.json"
     if not index_path.exists():
         return None
 
@@ -46,11 +46,11 @@ def load_synthesis(max_age_minutes: int = 60) -> dict | None:
     Returns:
         Parsed synthesis dict if file exists and is fresh, None otherwise.
     """
-    aca_data = os.environ.get('ACA_DATA')
+    aca_data = os.environ.get("ACA_DATA")
     if not aca_data:
         return None
 
-    synthesis_path = Path(aca_data) / 'dashboard' / 'synthesis.json'
+    synthesis_path = Path(aca_data) / "dashboard" / "synthesis.json"
     if not synthesis_path.exists():
         return None
 
@@ -72,7 +72,7 @@ def get_waiting_tasks(task_index: dict | None) -> list[dict]:
     if not task_index:
         return []
 
-    return [t for t in task_index.get('tasks', []) if t.get('status') == 'waiting']
+    return [t for t in task_index.get("tasks", []) if t.get("status") == "waiting"]
 
 
 def get_priority_tasks() -> list[dict]:
@@ -90,25 +90,27 @@ def get_priority_tasks() -> list[dict]:
     if not task_index:
         return []
 
-    tasks = task_index.get('tasks', [])
+    tasks = task_index.get("tasks", [])
     result = []
 
     for t in tasks:
-        priority = t.get('priority')
-        status = t.get('status')
+        priority = t.get("priority")
+        status = t.get("status")
 
         # Filter to P0/P1 and non-terminal status
         if priority is None or priority > 1:
             continue
-        if status in ('archived', 'done', 'completed'):
+        if status in ("archived", "done", "completed"):
             continue
 
-        result.append({
-            'title': t.get('title', ''),
-            'priority': priority,
-            'project': t.get('project', ''),
-            'status': status,
-        })
+        result.append(
+            {
+                "title": t.get("title", ""),
+                "priority": priority,
+                "project": t.get("project", ""),
+                "status": status,
+            }
+        )
 
     return result
 
@@ -118,20 +120,20 @@ def get_next_actions(task_index: dict | None) -> list[dict]:
     if not task_index:
         return []
 
-    tasks = task_index.get('tasks', [])
+    tasks = task_index.get("tasks", [])
 
     # Filter to P0/P1 with incomplete work
     actionable = []
     for t in tasks:
-        priority = t.get('priority')
+        priority = t.get("priority")
         if priority is None or priority > 1:
             continue
-        if t.get('status') in ('archived', 'done'):
+        if t.get("status") in ("archived", "done"):
             continue
 
         # Has incomplete subtasks = has next action
-        done = t.get('subtasks_done', 0)
-        total = t.get('subtasks_total', 0)
+        done = t.get("subtasks_done", 0)
+        total = t.get("subtasks_total", 0)
         if total > 0 and done < total:
             actionable.append(t)
         elif total == 0:
@@ -139,20 +141,23 @@ def get_next_actions(task_index: dict | None) -> list[dict]:
             actionable.append(t)
 
     # Sort by priority, then by completion %
-    actionable.sort(key=lambda t: (
-        t.get('priority', 999),
-        t.get('subtasks_done', 0) / max(t.get('subtasks_total', 1), 1)
-    ))
+    actionable.sort(
+        key=lambda t: (
+            t.get("priority", 999),
+            t.get("subtasks_done", 0) / max(t.get("subtasks_total", 1), 1),
+        )
+    )
 
     return actionable[:5]  # Top 5
 
+
 # Project color scheme (matching Peacock)
 PROJECT_COLORS = {
-    'aops': '#00ff88',      # Green
-    'writing': '#bb86fc',   # Purple
-    'buttermilk': '#f5deb3', # Butter yellow
+    "aops": "#00ff88",  # Green
+    "writing": "#bb86fc",  # Purple
+    "buttermilk": "#f5deb3",  # Butter yellow
 }
-DEFAULT_COLOR = '#ffb000'  # Amber for unknown projects
+DEFAULT_COLOR = "#ffb000"  # Amber for unknown projects
 
 
 def get_primary_focus() -> dict:
@@ -273,22 +278,23 @@ def make_obsidian_url(title: str, folder: str) -> str:
 def get_project_git_activity(project_path: str) -> list[str]:
     """Get recent git commits from project directory."""
     import subprocess
+
     # Convert project path format: -Users-suzor-src-buttermilk -> /Users/suzor/src/buttermilk
-    if project_path.startswith('-'):
-        path = '/' + project_path[1:].replace('-', '/')
+    if project_path.startswith("-"):
+        path = "/" + project_path[1:].replace("-", "/")
     else:
         path = project_path
 
     try:
         result = subprocess.run(
-            ['git', 'log', '--oneline', '-3', '--since=24 hours ago'],
+            ["git", "log", "--oneline", "-3", "--since=24 hours ago"],
             cwd=path,
             capture_output=True,
             text=True,
             timeout=2,
         )
         if result.returncode == 0 and result.stdout.strip():
-            return result.stdout.strip().split('\n')[:2]  # Max 2 commits
+            return result.stdout.strip().split("\n")[:2]  # Max 2 commits
     except Exception:
         pass
     return []
@@ -319,22 +325,26 @@ def get_todays_accomplishments() -> list[dict]:
         # Add completed tasks from daily log
         for item in daily_log.get("completed", []):
             if item:  # Skip empty strings
-                accomplishments.append({
-                    "description": item,
-                    "source": "daily_log",
-                    "project": "general",
-                    "timestamp": None,
-                })
+                accomplishments.append(
+                    {
+                        "description": item,
+                        "source": "daily_log",
+                        "project": "general",
+                        "timestamp": None,
+                    }
+                )
 
         # Add outcomes from daily log
         for item in daily_log.get("outcomes", []):
             if item:  # Skip empty strings
-                accomplishments.append({
-                    "description": item,
-                    "source": "outcome",
-                    "project": "general",
-                    "timestamp": None,
-                })
+                accomplishments.append(
+                    {
+                        "description": item,
+                        "source": "outcome",
+                        "project": "general",
+                        "timestamp": None,
+                    }
+                )
 
     # Add git commits from known project directories
     project_paths = [
@@ -347,12 +357,14 @@ def get_todays_accomplishments() -> list[dict]:
         git_commits = get_project_git_activity(path_key)
         for commit in git_commits:
             if commit:  # Skip empty strings
-                accomplishments.append({
-                    "description": commit,
-                    "source": "git",
-                    "project": project_name,
-                    "timestamp": None,
-                })
+                accomplishments.append(
+                    {
+                        "description": commit,
+                        "source": "git",
+                        "project": project_name,
+                        "timestamp": None,
+                    }
+                )
 
     return accomplishments
 
@@ -389,7 +401,7 @@ def get_dashboard_layout() -> dict:
         if age.total_seconds() > 86400:
             continue
         # Skip temp directories
-        if '-tmp' in session.project or '-var-folders' in session.project:
+        if "-tmp" in session.project or "-var-folders" in session.project:
             continue
 
         session_display = get_session_display_info(session, analyzer)
@@ -418,16 +430,16 @@ def get_session_state(session_info, analyzer: SessionAnalyzer) -> dict:
     try:
         state = analyzer.extract_dashboard_state(session_info.path)
         # Return last 3 memory notes max (matching old behavior)
-        if state.get('memory_notes'):
-            state['memory_notes'] = state['memory_notes'][-3:]
+        if state.get("memory_notes"):
+            state["memory_notes"] = state["memory_notes"][-3:]
         return state
     except Exception:
         return {
-            'first_prompt': 'Unable to parse session',
-            'first_prompt_full': 'Unable to parse session',
-            'last_prompt': 'Unable to parse session',
-            'todos': None,
-            'memory_notes': [],
+            "first_prompt": "Unable to parse session",
+            "first_prompt_full": "Unable to parse session",
+            "last_prompt": "Unable to parse session",
+            "todos": None,
+            "memory_notes": [],
         }
 
 
@@ -440,26 +452,26 @@ def get_activity_status(last_modified: datetime) -> tuple[str, str]:
     days = hours / 24
 
     if minutes < 5:
-        return '🟢', 'Active'
+        return "🟢", "Active"
     elif hours < 2:
-        return '🟡', f'{int(minutes)}m ago'
+        return "🟡", f"{int(minutes)}m ago"
     elif days < 1:
-        return '⚪', f'{int(hours)}h ago'
+        return "⚪", f"{int(hours)}h ago"
     else:
-        return '⚪', f'{int(days)}d ago'
+        return "⚪", f"{int(days)}d ago"
 
 
 def fetch_cross_machine_prompts() -> list[dict]:
     """Fetch recent prompts from Cloudflare R2 endpoint."""
-    api_key = os.environ.get('PROMPT_LOG_API_KEY')
+    api_key = os.environ.get("PROMPT_LOG_API_KEY")
     if not api_key:
         return []
 
     try:
         response = requests.get(
-            'https://prompt-logs.nicsuzor.workers.dev/read',
-            headers={'Authorization': f'Bearer {api_key}'},
-            timeout=5
+            "https://prompt-logs.nicsuzor.workers.dev/read",
+            headers={"Authorization": f"Bearer {api_key}"},
+            timeout=5,
         )
         if response.status_code != 200:
             return []
@@ -470,24 +482,26 @@ def fetch_cross_machine_prompts() -> list[dict]:
         parsed = []
         for p in prompts:
             try:
-                content = p.get('content', '')
-                if content.startswith('{'):
+                content = p.get("content", "")
+                if content.startswith("{"):
                     data = json.loads(content)
-                    data['raw_timestamp'] = p.get('timestamp', '')
+                    data["raw_timestamp"] = p.get("timestamp", "")
                     parsed.append(data)
                 else:
                     # Plain text prompt (legacy)
-                    parsed.append({
-                        'prompt': content,
-                        'hostname': 'unknown',
-                        'project': 'unknown',
-                        'raw_timestamp': p.get('timestamp', '')
-                    })
+                    parsed.append(
+                        {
+                            "prompt": content,
+                            "hostname": "unknown",
+                            "project": "unknown",
+                            "raw_timestamp": p.get("timestamp", ""),
+                        }
+                    )
             except json.JSONDecodeError:
                 pass
 
         # Sort by timestamp descending (most recent first)
-        parsed.sort(key=lambda x: x.get('raw_timestamp', ''), reverse=True)
+        parsed.sort(key=lambda x: x.get("raw_timestamp", ""), reverse=True)
         return parsed[:20]  # Last 20 prompts
     except Exception:
         return []
@@ -497,7 +511,7 @@ def group_prompts_by_machine(prompts: list[dict]) -> dict[str, list[dict]]:
     """Group prompts by hostname."""
     grouped: dict[str, list[dict]] = {}
     for p in prompts:
-        hostname = p.get('hostname', 'unknown')
+        hostname = p.get("hostname", "unknown")
         if hostname not in grouped:
             grouped[hostname] = []
         grouped[hostname].append(p)
@@ -505,7 +519,7 @@ def group_prompts_by_machine(prompts: list[dict]) -> dict[str, list[dict]]:
 
 
 # Cache for session activity (60s TTL)
-_session_activity_cache: dict = {'data': None, 'timestamp': 0}
+_session_activity_cache: dict = {"data": None, "timestamp": 0}
 
 
 def fetch_session_activity(hours: int = 2) -> list[dict]:
@@ -533,8 +547,11 @@ def fetch_session_activity(hours: int = 2) -> list[dict]:
 
     # Check cache (60s TTL)
     now = time.time()
-    if _session_activity_cache['data'] and (now - _session_activity_cache['timestamp']) < 60:
-        return _session_activity_cache['data']
+    if (
+        _session_activity_cache["data"]
+        and (now - _session_activity_cache["timestamp"]) < 60
+    ):
+        return _session_activity_cache["data"]
 
     # Fetch R2 prompts
     r2_prompts = fetch_cross_machine_prompts()
@@ -544,16 +561,16 @@ def fetch_session_activity(hours: int = 2) -> list[dict]:
     cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
 
     for p in r2_prompts:
-        session_id = p.get('session_id', '')
+        session_id = p.get("session_id", "")
         if not session_id:
             continue
 
         # Parse timestamp and filter by cutoff
         try:
-            ts_str = p.get('timestamp') or p.get('raw_timestamp', '')
+            ts_str = p.get("timestamp") or p.get("raw_timestamp", "")
             if ts_str:
-                if ts_str.endswith('Z'):
-                    ts_str = ts_str[:-1] + '+00:00'
+                if ts_str.endswith("Z"):
+                    ts_str = ts_str[:-1] + "+00:00"
                 ts = datetime.fromisoformat(ts_str)
                 if ts < cutoff:
                     continue
@@ -563,40 +580,38 @@ def fetch_session_activity(hours: int = 2) -> list[dict]:
         # Keep most recent per session
         if session_id not in sessions:
             sessions[session_id] = {
-                'session_id': session_id,
-                'session_short': session_id[:7],
-                'hostname': p.get('hostname', 'unknown'),
-                'project': p.get('project', 'unknown'),
-                'last_prompt': p.get('prompt', '')[:100],
-                'timestamp': ts_str,
-                'time_ago': _format_time_ago(ts),
-                'todowrite': None,
+                "session_id": session_id,
+                "session_short": session_id[:7],
+                "hostname": p.get("hostname", "unknown"),
+                "project": p.get("project", "unknown"),
+                "last_prompt": p.get("prompt", "")[:100],
+                "timestamp": ts_str,
+                "time_ago": _format_time_ago(ts),
+                "todowrite": None,
             }
 
     # Try to find local JSONL for each session and extract TodoWrite
-    claude_projects = Path.home() / '.claude' / 'projects'
+    claude_projects = Path.home() / ".claude" / "projects"
     if claude_projects.exists():
         for session_id, session_data in sessions.items():
             # Search for session file
             for project_dir in claude_projects.iterdir():
                 if not project_dir.is_dir():
                     continue
-                session_file = project_dir / f'{session_id}.jsonl'
+                session_file = project_dir / f"{session_id}.jsonl"
                 if session_file.exists():
                     todowrite = extract_todowrite_from_session(session_file)
-                    session_data['todowrite'] = todowrite
+                    session_data["todowrite"] = todowrite
                     break
 
     # Sort by timestamp descending
     result = sorted(
-        sessions.values(),
-        key=lambda x: x.get('timestamp', ''),
-        reverse=True
+        sessions.values(), key=lambda x: x.get("timestamp", ""), reverse=True
     )
 
     # Update cache
-    _session_activity_cache['data'] = result
-    _session_activity_cache['timestamp'] = now
+    _session_activity_cache["data"] = result
+    _session_activity_cache["timestamp"] = now
 
     return result
 
@@ -611,23 +626,23 @@ def _format_time_ago(dt: datetime) -> str:
     seconds = diff.total_seconds()
 
     if seconds < 60:
-        return 'just now'
+        return "just now"
     elif seconds < 3600:
         mins = int(seconds / 60)
-        return f'{mins}m ago'
+        return f"{mins}m ago"
     elif seconds < 86400:
         hours = int(seconds / 3600)
-        return f'{hours}h ago'
+        return f"{hours}h ago"
     else:
         days = int(seconds / 86400)
-        return f'{days}d ago'
+        return f"{days}d ago"
 
 
 def group_sessions_by_project(sessions: list[dict]) -> dict[str, list[dict]]:
     """Group session activity by project for display."""
     grouped: dict[str, list[dict]] = {}
     for s in sessions:
-        project = s.get('project', 'unknown')
+        project = s.get("project", "unknown")
         if project not in grouped:
             grouped[project] = []
         grouped[project].append(s)
@@ -638,7 +653,8 @@ def group_sessions_by_project(sessions: list[dict]) -> dict[str, list[dict]]:
 st.set_page_config(page_title="Cognitive Load Dashboard", layout="wide")
 
 # Custom CSS
-st.markdown("""
+st.markdown(
+    """
 <style>
     /* Dark theme */
     .stApp {
@@ -1346,11 +1362,20 @@ st.markdown("""
     }
 
 </style>
-""", unsafe_allow_html=True)
+""",
+    unsafe_allow_html=True,
+)
+
 
 # Helper to escape HTML
 def esc(text):
-    return str(text).replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;').replace('"', '&quot;')
+    return (
+        str(text)
+        .replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+        .replace('"', "&quot;")
+    )
 
 
 def clean_activity_text(raw_text: str) -> str:
@@ -1368,15 +1393,15 @@ def clean_activity_text(raw_text: str) -> str:
         return "Working..."
 
     # Remove markdown headers (lines starting with #)
-    lines = [line for line in raw_text.split('\n') if not line.strip().startswith('#')]
+    lines = [line for line in raw_text.split("\n") if not line.strip().startswith("#")]
 
     # Join remaining lines and remove markdown formatting
-    text = ' '.join(lines)
-    text = text.replace('**', '').replace('*', '').strip()
+    text = " ".join(lines)
+    text = text.replace("**", "").replace("*", "").strip()
 
     # Collapse multiple spaces
-    while '  ' in text:
-        text = text.replace('  ', ' ')
+    while "  " in text:
+        text = text.replace("  ", " ")
 
     # Take first 60 chars
     if len(text) > 60:
@@ -1388,6 +1413,7 @@ def clean_activity_text(raw_text: str) -> str:
 # ============================================================================
 # THREE-QUESTION LAYOUT - Primary dashboard view
 # ============================================================================
+
 
 def render_three_question_layout() -> None:
     """Render the three-question layout at the top of the dashboard.
@@ -1421,17 +1447,25 @@ def render_three_question_layout() -> None:
         primary_title = primary["task_title"]  # Filter out primary to avoid duplication
         if priority_tasks:
             # Separate P0 and P1 tasks, excluding the primary task
-            p0_tasks = [t for t in priority_tasks if t.get('priority') == 0 and t.get('title') != primary_title]
-            p1_tasks = [t for t in priority_tasks if t.get('priority') == 1 and t.get('title') != primary_title]
+            p0_tasks = [
+                t
+                for t in priority_tasks
+                if t.get("priority") == 0 and t.get("title") != primary_title
+            ]
+            p1_tasks = [
+                t
+                for t in priority_tasks
+                if t.get("priority") == 1 and t.get("title") != primary_title
+            ]
 
             # Show top 3 P0 tasks first
             if p0_tasks:
                 st.markdown("**P0 Tasks:**")
                 for task in p0_tasks[:3]:
-                    title = task.get('title', '')[:70]
-                    if len(task.get('title', '')) > 70:
+                    title = task.get("title", "")[:70]
+                    if len(task.get("title", "")) > 70:
                         title += "..."
-                    project = task.get('project', '')
+                    project = task.get("project", "")
                     project_tag = f" [{project}]" if project else ""
                     st.markdown(f"- {title}{project_tag}")
                 if len(p0_tasks) > 3:
@@ -1441,10 +1475,10 @@ def render_three_question_layout() -> None:
             if p1_tasks:
                 st.markdown("**P1 Tasks:**")
                 for task in p1_tasks[:5]:
-                    title = task.get('title', '')[:70]
-                    if len(task.get('title', '')) > 70:
+                    title = task.get("title", "")[:70]
+                    if len(task.get("title", "")) > 70:
                         title += "..."
-                    project = task.get('project', '')
+                    project = task.get("project", "")
                     project_tag = f" [{project}]" if project else ""
                     st.markdown(f"- {title}{project_tag}")
                 if len(p1_tasks) > 5:
@@ -1462,7 +1496,9 @@ def render_three_question_layout() -> None:
 
         if not synthesis or not sessions_data or not sessions_data.get("recent"):
             # AXIOMS #7: No fallbacks. Fail visibly when synthesis is stale.
-            st.warning("Session synthesis stale. Run: uv run python scripts/synthesize_dashboard.py")
+            st.warning(
+                "Session synthesis stale. Run: uv run python scripts/synthesize_dashboard.py"
+            )
         else:
             # Use synthesized session summaries
             by_project = sessions_data.get("by_project", {})
@@ -1542,11 +1578,11 @@ synthesis = load_synthesis()
 # === LLM SYNTHESIS PANEL (if available) ===
 if synthesis:
     # Calculate age
-    generated = synthesis.get('generated', '')
+    generated = synthesis.get("generated", "")
     age_str = ""
     if generated:
         try:
-            gen_time = datetime.fromisoformat(generated.replace('Z', '+00:00'))
+            gen_time = datetime.fromisoformat(generated.replace("Z", "+00:00"))
             age_min = int((datetime.now(timezone.utc) - gen_time).total_seconds() / 60)
             age_str = f"{age_min}m ago"
         except Exception:
@@ -1556,7 +1592,7 @@ if synthesis:
     synth_html += f"<div class='synthesis-header'><div class='synthesis-title'>🧠 FOCUS SYNTHESIS</div><div class='synthesis-age'>{age_str}</div></div>"
 
     # Narrative section - tell the day's story
-    narrative = synthesis.get('narrative', [])
+    narrative = synthesis.get("narrative", [])
     if narrative:
         synth_html += "<div class='synthesis-narrative'>"
         synth_html += "<div class='synthesis-narrative-title'>📖 TODAY'S STORY</div>"
@@ -1566,12 +1602,14 @@ if synthesis:
         synth_html += "</ul></div>"
 
     # Next action - prominent
-    next_action = synthesis.get('next_action', {})
-    if next_action.get('task'):
+    next_action = synthesis.get("next_action", {})
+    if next_action.get("task"):
         synth_html += "<div class='synthesis-next'>"
         synth_html += "<div class='synthesis-next-label'>➡️ NEXT ACTION</div>"
-        synth_html += f"<div class='synthesis-next-task'>{esc(next_action.get('task', ''))}</div>"
-        if next_action.get('reason'):
+        synth_html += (
+            f"<div class='synthesis-next-task'>{esc(next_action.get('task', ''))}</div>"
+        )
+        if next_action.get("reason"):
             synth_html += f"<div class='synthesis-next-reason'>{esc(next_action.get('reason', ''))}</div>"
         synth_html += "</div>"
 
@@ -1579,71 +1617,75 @@ if synthesis:
     synth_html += "<div class='synthesis-grid'>"
 
     # Done card
-    accomplishments = synthesis.get('accomplishments', {})
-    if accomplishments.get('summary'):
+    accomplishments = synthesis.get("accomplishments", {})
+    if accomplishments.get("summary"):
         synth_html += "<div class='synthesis-card done'>"
         synth_html += f"<div class='synthesis-card-title'>✅ DONE ({accomplishments.get('count', 0)})</div>"
         synth_html += f"<div class='synthesis-card-content'>{esc(accomplishments.get('summary', ''))}</div>"
         synth_html += "</div>"
 
     # Alignment card
-    alignment = synthesis.get('alignment', {})
-    if alignment.get('note'):
-        status = alignment.get('status', 'drifted')
+    alignment = synthesis.get("alignment", {})
+    if alignment.get("note"):
+        status = alignment.get("status", "drifted")
         status_class = f"alignment {status}"
-        status_icon = "✅" if status == "on_track" else "⚠️" if status == "drifted" else "🚫"
+        status_icon = (
+            "✅" if status == "on_track" else "⚠️" if status == "drifted" else "🚫"
+        )
         synth_html += f"<div class='synthesis-card {status_class}'>"
         synth_html += f"<div class='synthesis-card-title'>{status_icon} ALIGNMENT</div>"
         synth_html += f"<div class='synthesis-card-content'>{esc(alignment.get('note', ''))}</div>"
         synth_html += "</div>"
 
     # Context card
-    context = synthesis.get('context', {})
-    if context.get('recent_threads'):
-        threads = ", ".join(context.get('recent_threads', [])[:2])
+    context = synthesis.get("context", {})
+    if context.get("recent_threads"):
+        threads = ", ".join(context.get("recent_threads", [])[:2])
         synth_html += "<div class='synthesis-card context'>"
         synth_html += "<div class='synthesis-card-title'>📍 CONTEXT</div>"
         synth_html += f"<div class='synthesis-card-content'>{esc(threads)}</div>"
         synth_html += "</div>"
 
     # Waiting card
-    waiting_on = synthesis.get('waiting_on', [])
+    waiting_on = synthesis.get("waiting_on", [])
     if waiting_on:
         first_blocker = waiting_on[0]
         synth_html += "<div class='synthesis-card waiting'>"
-        synth_html += f"<div class='synthesis-card-title'>⏳ BLOCKED ({len(waiting_on)})</div>"
+        synth_html += (
+            f"<div class='synthesis-card-title'>⏳ BLOCKED ({len(waiting_on)})</div>"
+        )
         synth_html += f"<div class='synthesis-card-content'>{esc(first_blocker.get('task', ''))}</div>"
         synth_html += "</div>"
 
     synth_html += "</div>"  # End grid
 
     # Session Insights panel (skill compliance, context gaps)
-    skill_insights = synthesis.get('skill_insights', {})
+    skill_insights = synthesis.get("skill_insights", {})
     if skill_insights:
         synth_html += "<div class='insights-panel'>"
         synth_html += "<div class='insights-title'>🔍 SESSION INSIGHTS</div>"
 
         # Stats row
-        compliance = skill_insights.get('compliance_rate')
+        compliance = skill_insights.get("compliance_rate")
         if compliance is not None:
             pct = int(compliance * 100)
-            color = '#4ade80' if pct >= 70 else '#fbbf24' if pct >= 40 else '#f87171'
+            color = "#4ade80" if pct >= 70 else "#fbbf24" if pct >= 40 else "#f87171"
             synth_html += f"<span class='insights-stat'><span class='insights-stat-label'>Skill Compliance:</span> <span class='insights-stat-value' style='color: {color};'>{pct}%</span></span>"
 
-        corrections = skill_insights.get('corrections_count', 0)
+        corrections = skill_insights.get("corrections_count", 0)
         if corrections > 0:
             synth_html += f"<span class='insights-stat'><span class='insights-stat-label'>Corrections:</span> <span class='insights-stat-value'>{corrections}</span></span>"
 
-        failures = skill_insights.get('failures_count', 0)
+        failures = skill_insights.get("failures_count", 0)
         if failures > 0:
             synth_html += f"<span class='insights-stat'><span class='insights-stat-label'>Failures:</span> <span class='insights-stat-value' style='color: #f87171;'>{failures}</span></span>"
 
-        successes = skill_insights.get('successes_count', 0)
+        successes = skill_insights.get("successes_count", 0)
         if successes > 0:
             synth_html += f"<span class='insights-stat'><span class='insights-stat-label'>Successes:</span> <span class='insights-stat-value' style='color: #4ade80;'>{successes}</span></span>"
 
         # Context gaps
-        context_gaps = skill_insights.get('top_context_gaps', [])
+        context_gaps = skill_insights.get("top_context_gaps", [])
         if context_gaps:
             synth_html += "<div style='margin-top: 8px;'>"
             for gap in context_gaps[:3]:
@@ -1653,7 +1695,7 @@ if synthesis:
         synth_html += "</div>"
 
     # Suggestion
-    suggestion = synthesis.get('suggestion')
+    suggestion = synthesis.get("suggestion")
     if suggestion:
         synth_html += f"<div class='synthesis-suggestion'>{esc(suggestion)}</div>"
 
@@ -1666,25 +1708,37 @@ else:
     waiting_tasks = get_waiting_tasks(task_index)
 
     if next_actions or waiting_tasks:
-        what_now_html = "<div class='what-now-panel'><div class='what-now-title'>🧭 WHAT NOW?</div>"
+        what_now_html = (
+            "<div class='what-now-panel'><div class='what-now-title'>🧭 WHAT NOW?</div>"
+        )
 
         # What should I be doing? - Next actions
         if next_actions:
             what_now_html += "<div class='what-now-section'><div class='what-now-section-title'>📋 NEXT ACTIONS</div>"
             for task in next_actions[:4]:
-                title = esc(task.get('title', '')[:50])
-                if len(task.get('title', '')) > 50:
-                    title += '...'
+                title = esc(task.get("title", "")[:50])
+                if len(task.get("title", "")) > 50:
+                    title += "..."
 
-                priority = f"P{task.get('priority')}" if task.get('priority') is not None else ""
+                priority = (
+                    f"P{task.get('priority')}"
+                    if task.get("priority") is not None
+                    else ""
+                )
                 progress = ""
-                done = task.get('subtasks_done', 0)
-                total = task.get('subtasks_total', 0)
+                done = task.get("subtasks_done", 0)
+                total = task.get("subtasks_total", 0)
                 if total > 0:
-                    progress = f"<span class='what-now-progress'>[{done}/{total}]</span>"
+                    progress = (
+                        f"<span class='what-now-progress'>[{done}/{total}]</span>"
+                    )
 
-                project = task.get('project', '')
-                project_tag = f" <span style='color:#666;'>#{esc(project)}</span>" if project and project != 'uncategorized' else ""
+                project = task.get("project", "")
+                project_tag = (
+                    f" <span style='color:#666;'>#{esc(project)}</span>"
+                    if project and project != "uncategorized"
+                    else ""
+                )
 
                 what_now_html += f"<div class='what-now-item action'><strong>{priority}</strong> {title}{progress}{project_tag}</div>"
 
@@ -1694,9 +1748,9 @@ else:
         if waiting_tasks:
             what_now_html += f"<div class='what-now-section'><div class='what-now-section-title'>⏳ WAITING ON ({len(waiting_tasks)})</div>"
             for task in waiting_tasks[:3]:
-                title = esc(task.get('title', '')[:45])
-                if len(task.get('title', '')) > 45:
-                    title += '...'
+                title = esc(task.get("title", "")[:45])
+                if len(task.get("title", "")) > 45:
+                    title += "..."
                 what_now_html += f"<div class='what-now-item waiting'>{title}</div>"
 
             if len(waiting_tasks) > 3:
@@ -1708,15 +1762,15 @@ else:
 
 # === NOW PANEL ===
 daily_log = analyzer.parse_daily_log()
-if daily_log and daily_log.get('primary_title'):
-    done, total = daily_log['progress']
+if daily_log and daily_log.get("primary_title"):
+    done, total = daily_log["progress"]
     pct = (done / total * 100) if total > 0 else 0
 
     now_html = f"""
     <div class='now-panel'>
         <div class='now-title'>🎯 NOW: {esc(daily_log['primary_title'])}</div>
     """
-    if daily_log.get('next_action'):
+    if daily_log.get("next_action"):
         now_html += f"<div class='now-action'>{esc(daily_log['next_action'])}</div>"
 
     if total > 0:
@@ -1728,22 +1782,24 @@ if daily_log and daily_log.get('primary_title'):
     st.markdown(now_html, unsafe_allow_html=True)
 
 # === BLOCKERS PANEL ===
-if daily_log and daily_log.get('blockers'):
+if daily_log and daily_log.get("blockers"):
     blockers_html = f"""
     <div class='blockers-panel'>
         <div class='blockers-title'>⚠️ BLOCKERS ({len(daily_log['blockers'])})</div>
     """
-    for blocker in daily_log['blockers'][:5]:
+    for blocker in daily_log["blockers"][:5]:
         blockers_html += f"<div class='blocker-item'>{esc(blocker[:80])}</div>"
-    if len(daily_log['blockers']) > 5:
-        blockers_html += f"<div class='blocker-item'>+{len(daily_log['blockers'])-5} more</div>"
+    if len(daily_log["blockers"]) > 5:
+        blockers_html += (
+            f"<div class='blocker-item'>+{len(daily_log['blockers'])-5} more</div>"
+        )
     blockers_html += "</div>"
     st.markdown(blockers_html, unsafe_allow_html=True)
 
 # === DONE TODAY PANEL ===
 if daily_log:
     # Combine completed tasks and outcomes
-    done_items = daily_log.get('completed', []) + daily_log.get('outcomes', [])
+    done_items = daily_log.get("completed", []) + daily_log.get("outcomes", [])
     if done_items:
         done_html = f"""
         <div class='done-panel'>
@@ -1751,7 +1807,7 @@ if daily_log:
         """
         for item in done_items[:6]:
             # Truncate long items
-            display = item[:60] + '...' if len(item) > 60 else item
+            display = item[:60] + "..." if len(item) > 60 else item
             done_html += f"<div class='done-item'>{esc(display)}</div>"
         if len(done_items) > 6:
             done_html += f"<div class='done-item' style='color: #888;'>+{len(done_items)-6} more</div>"
@@ -1767,14 +1823,14 @@ if active_sessions:
     """
 
     for session in active_sessions[:6]:  # Show up to 6 sessions
-        session_id = session.get('session_short', '???')
-        hostname = session.get('hostname', 'unknown')
-        project = session.get('project', 'unknown')
-        time_ago = session.get('time_ago', '')
-        last_prompt = session.get('last_prompt', '')
+        session_id = session.get("session_short", "???")
+        hostname = session.get("hostname", "unknown")
+        project = session.get("project", "unknown")
+        time_ago = session.get("time_ago", "")
+        last_prompt = session.get("last_prompt", "")
 
         # Get project color
-        proj_key = project.lower().split('/')[-1] if '/' in project else project.lower()
+        proj_key = project.lower().split("/")[-1] if "/" in project else project.lower()
         color = PROJECT_COLORS.get(proj_key, DEFAULT_COLOR)
 
         sessions_html += f"""
@@ -1787,14 +1843,16 @@ if active_sessions:
         """
 
         # Show TodoWrite state if available
-        todowrite = session.get('todowrite')
+        todowrite = session.get("todowrite")
         if todowrite:
             in_progress = todowrite.in_progress_task
-            pending_count = todowrite.counts.get('pending', 0)
+            pending_count = todowrite.counts.get("pending", 0)
 
             if in_progress:
                 # Truncate long task names
-                display_task = in_progress[:50] + '...' if len(in_progress) > 50 else in_progress
+                display_task = (
+                    in_progress[:50] + "..." if len(in_progress) > 50 else in_progress
+                )
                 sessions_html += f"<div class='session-todo'><span class='session-todo-active'>▶ {esc(display_task)}</span></div>"
 
             if pending_count > 0:
@@ -1818,18 +1876,18 @@ try:
     # Load daily note accomplishments
     daily_note = analyzer.read_daily_note()
     accomplishments_by_project: dict[str, list] = {}
-    if daily_note and daily_note.get('sessions'):
-        for session in daily_note['sessions']:
-            proj = session.get('project', 'Unknown')
+    if daily_note and daily_note.get("sessions"):
+        for session in daily_note["sessions"]:
+            proj = session.get("project", "Unknown")
             if proj not in accomplishments_by_project:
                 accomplishments_by_project[proj] = []
-            accomplishments_by_project[proj].extend(session.get('accomplishments', []))
+            accomplishments_by_project[proj].extend(session.get("accomplishments", []))
 
     # Load priority tasks
     focus_tasks = load_focus_tasks(count=20)
     tasks_by_project: dict[str, list] = {}
     for task in focus_tasks:
-        proj = task.project or 'unassigned'
+        proj = task.project or "unassigned"
         if proj not in tasks_by_project:
             tasks_by_project[proj] = []
         tasks_by_project[proj].append(task)
@@ -1840,7 +1898,7 @@ try:
         age = datetime.now(timezone.utc) - session.last_modified
         if age.total_seconds() > 86400 * 7:
             continue
-        if '-tmp' in session.project or '-var-folders' in session.project:
+        if "-tmp" in session.project or "-var-folders" in session.project:
             continue
 
         proj = session.project_display
@@ -1848,29 +1906,39 @@ try:
 
         if proj not in projects:
             projects[proj] = {
-                'last_modified': session.last_modified,
-                'memory_notes': [],
-                'git_project': session.project,
-                'session_count': 0
+                "last_modified": session.last_modified,
+                "memory_notes": [],
+                "git_project": session.project,
+                "session_count": 0,
             }
 
-        projects[proj]['session_count'] += 1
-        if session.last_modified > projects[proj]['last_modified']:
-            projects[proj]['last_modified'] = session.last_modified
+        projects[proj]["session_count"] += 1
+        if session.last_modified > projects[proj]["last_modified"]:
+            projects[proj]["last_modified"] = session.last_modified
 
         # Aggregate memory notes
-        existing_titles = {n['title'] for n in projects[proj]['memory_notes']}
-        for note in state.get('memory_notes', []):
-            if note['title'] not in existing_titles:
-                projects[proj]['memory_notes'].append(note)
-                existing_titles.add(note['title'])
+        existing_titles = {n["title"] for n in projects[proj]["memory_notes"]}
+        for note in state.get("memory_notes", []):
+            if note["title"] not in existing_titles:
+                projects[proj]["memory_notes"].append(note)
+                existing_titles.add(note["title"])
 
     # Ensure all projects with tasks or accomplishments are included
-    all_projects = set(projects.keys()) | set(tasks_by_project.keys()) | set(accomplishments_by_project.keys())
+    all_projects = (
+        set(projects.keys())
+        | set(tasks_by_project.keys())
+        | set(accomplishments_by_project.keys())
+    )
 
     # Build project cards
     project_cards = []
-    for proj in sorted(all_projects, key=lambda p: projects.get(p, {}).get('last_modified', datetime.min.replace(tzinfo=timezone.utc)), reverse=True):
+    for proj in sorted(
+        all_projects,
+        key=lambda p: projects.get(p, {}).get(
+            "last_modified", datetime.min.replace(tzinfo=timezone.utc)
+        ),
+        reverse=True,
+    ):
         data = projects.get(proj, {})
         color = get_project_color(proj)
         content_parts = []
@@ -1878,9 +1946,13 @@ try:
         # 1. Accomplishments from daily note (green checkmarks)
         accomplishments = accomplishments_by_project.get(proj, [])
         for acc in accomplishments[:4]:
-            content_parts.append(f"<div style='color: #4ade80; font-size: 0.85em;'>✓ {esc(acc)}</div>")
+            content_parts.append(
+                f"<div style='color: #4ade80; font-size: 0.85em;'>✓ {esc(acc)}</div>"
+            )
         if len(accomplishments) > 4:
-            content_parts.append(f"<div style='color: #4ade80; font-size: 0.85em;'>+{len(accomplishments)-4} more done</div>")
+            content_parts.append(
+                f"<div style='color: #4ade80; font-size: 0.85em;'>+{len(accomplishments)-4} more done</div>"
+            )
 
         # 2. Priority tasks
         project_tasks = tasks_by_project.get(proj, [])
@@ -1890,41 +1962,52 @@ try:
             if task.subtasks:
                 done = sum(1 for s in task.subtasks if s.completed)
                 progress = f" ({done}/{len(task.subtasks)})"
-            content_parts.append(f"<div class='task-item'><span class='task-priority'>{priority_text}</span> {esc(task.title)}{progress}</div>")
+            content_parts.append(
+                f"<div class='task-item'><span class='task-priority'>{priority_text}</span> {esc(task.title)}{progress}</div>"
+            )
         if len(project_tasks) > 3:
-            content_parts.append(f"<div class='task-item'>+{len(project_tasks)-3} more tasks</div>")
+            content_parts.append(
+                f"<div class='task-item'>+{len(project_tasks)-3} more tasks</div>"
+            )
 
         # 3. memory notes (clickable to open in Obsidian)
-        for note in data.get('memory_notes', [])[-2:]:
-            obsidian_url = make_obsidian_url(note['title'], note.get('folder', ''))
-            content_parts.append(f"<a href='{obsidian_url}' class='session-memory' target='_blank'>📝 {esc(note['title'])}</a>")
+        for note in data.get("memory_notes", [])[-2:]:
+            obsidian_url = make_obsidian_url(note["title"], note.get("folder", ""))
+            content_parts.append(
+                f"<a href='{obsidian_url}' class='session-memory' target='_blank'>📝 {esc(note['title'])}</a>"
+            )
 
         # 4. Git activity
-        git_project = data.get('git_project', '')
+        git_project = data.get("git_project", "")
         if git_project:
             git_commits = get_project_git_activity(git_project)
             if git_commits:
-                commits_display = ' | '.join([c[:40] for c in git_commits[:2]])
-                content_parts.append(f"<div class='session-git'>📦 {esc(commits_display)}</div>")
+                commits_display = " | ".join([c[:40] for c in git_commits[:2]])
+                content_parts.append(
+                    f"<div class='session-git'>📦 {esc(commits_display)}</div>"
+                )
 
         if not content_parts:
             continue
 
         # Build status line
-        session_count = data.get('session_count', 0)
+        session_count = data.get("session_count", 0)
         status_parts = []
         if session_count:
-            status_emoji, status_text = get_activity_status(data['last_modified'])
+            status_emoji, status_text = get_activity_status(data["last_modified"])
             status_parts.append(f"{status_text}")
-            status_parts.append(f"{session_count} session{'s' if session_count > 1 else ''}")
+            status_parts.append(
+                f"{session_count} session{'s' if session_count > 1 else ''}"
+            )
         if project_tasks:
             status_parts.append(f"{len(project_tasks)} tasks")
 
-        status_line = ' · '.join(status_parts) if status_parts else ''
-        emoji = status_emoji if session_count else '📋'
-        content_html = '\n'.join(content_parts)
+        status_line = " · ".join(status_parts) if status_parts else ""
+        emoji = status_emoji if session_count else "📋"
+        content_html = "\n".join(content_parts)
 
-        project_cards.append(f"""
+        project_cards.append(
+            f"""
         <div class='session-card' style='border-left-color: {color};'>
             <div class='session-header'>
                 <span class='session-project' style='color: {color};'>{emoji} {proj}</span>
@@ -1932,7 +2015,8 @@ try:
             </div>
             {content_html}
         </div>
-        """)
+        """
+        )
 
         if len(project_cards) >= 12:
             break
@@ -1950,10 +2034,14 @@ except Exception as e:
     st.error(f"Error loading projects: {e}")
 
 # Timestamp
-st.markdown(f"<div class='timestamp'>Updated: {datetime.now().strftime('%H:%M:%S')}</div>", unsafe_allow_html=True)
+st.markdown(
+    f"<div class='timestamp'>Updated: {datetime.now().strftime('%H:%M:%S')}</div>",
+    unsafe_allow_html=True,
+)
 
 # Auto-refresh every 10 seconds
 import time
+
 if "last_refresh" not in st.session_state:
     st.session_state.last_refresh = time.time()
 

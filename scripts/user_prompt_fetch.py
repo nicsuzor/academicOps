@@ -33,7 +33,8 @@ def fetch_prompts() -> list[dict]:
     curl_command = [
         "curl",
         "-sf",
-        "-H", f"Authorization: Bearer {token}",
+        "-H",
+        f"Authorization: Bearer {token}",
         "https://prompt-logs.nicsuzor.workers.dev/read",
     ]
 
@@ -81,7 +82,13 @@ def parse_prompt(entry: dict) -> dict:
 
 def main():
     parser = argparse.ArgumentParser(description="Fetch prompts from Cloudflare")
-    parser.add_argument("--limit", "-n", type=int, default=20, help="Number of recent prompts (default: 20)")
+    parser.add_argument(
+        "--limit",
+        "-n",
+        type=int,
+        default=20,
+        help="Number of recent prompts (default: 20)",
+    )
     parser.add_argument("--json", action="store_true", help="Output as JSON")
     parser.add_argument("--hostname", "-H", help="Filter by hostname")
     parser.add_argument("--project", "-p", help="Filter by project")
@@ -105,7 +112,7 @@ def main():
 
     # Limit results (most recent)
     if not args.all:
-        prompts = prompts[-args.limit:]
+        prompts = prompts[-args.limit :]
 
     # Output
     if args.json:

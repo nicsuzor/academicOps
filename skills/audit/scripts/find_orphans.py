@@ -80,7 +80,10 @@ def find_components(nodes: set[str], adj: dict[str, set[str]]) -> list[set[str]]
 def main() -> int:
     graph_path = Path("reference-graph.json")
     if not graph_path.exists():
-        print("Error: reference-graph.json not found. Run reference-map first.", file=sys.stderr)
+        print(
+            "Error: reference-graph.json not found. Run reference-map first.",
+            file=sys.stderr,
+        )
         return 1
 
     with graph_path.open() as f:
@@ -112,7 +115,7 @@ def main() -> int:
     components = find_components(nodes, adj)
 
     # Output
-    print(f"=== GRAPH SUMMARY ===")
+    print("=== GRAPH SUMMARY ===")
     print(f"Total nodes: {len(nodes)}")
     print(f"Total edges: {len(edges)}")
     print(f"Connected components: {len(components)}")

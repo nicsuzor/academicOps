@@ -15,13 +15,12 @@ Excludes:
 
 import argparse
 import json
-import shutil
 import subprocess
 import sys
 import tarfile
 from datetime import datetime
 from pathlib import Path
-from typing import List, Set
+from typing import List
 
 
 def get_version() -> str:
@@ -289,24 +288,25 @@ def create_archive(
 
             # Add manifest
             import io
+
             manifest_data = json.dumps(manifest, indent=2).encode("utf-8")
             manifest_info = tarfile.TarInfo(name=f"aops-{version}/MANIFEST.json")
             manifest_info.size = len(manifest_data)
             tar.addfile(manifest_info, io.BytesIO(manifest_data))
-            print(f"  ✓ MANIFEST.json")
+            print("  ✓ MANIFEST.json")
 
             # Add install guide
             guide_data = install_guide.encode("utf-8")
             guide_info = tarfile.TarInfo(name=f"aops-{version}/INSTALL.md")
             guide_info.size = len(guide_data)
             tar.addfile(guide_info, io.BytesIO(guide_data))
-            print(f"  ✓ INSTALL.md")
+            print("  ✓ INSTALL.md")
     except (OSError, tarfile.TarError) as e:
         print(f"❌ Error creating archive: {e}")
-        print(f"   Possible causes:")
-        print(f"   - Insufficient disk space")
-        print(f"   - Permission denied for output path")
-        print(f"   - File access issues during archiving")
+        print("   Possible causes:")
+        print("   - Insufficient disk space")
+        print("   - Permission denied for output path")
+        print("   - File access issues during archiving")
         raise
 
     print(f"\n✅ Archive created: {output_path}")
@@ -343,7 +343,7 @@ def main() -> int:
     version = args.version or get_version()
     commit = get_git_commit()
 
-    print(f"📋 aOps Deployment Packager")
+    print("📋 aOps Deployment Packager")
     print(f"   Repository: {repo_root}")
     print(f"   Version: {version}")
     print(f"   Commit: {commit}")
@@ -369,13 +369,13 @@ def main() -> int:
     # Create archive
     create_archive(files, repo_root, output_path, version, commit)
 
-    print(f"\n🚀 Ready for deployment!")
-    print(f"\nNext steps:")
-    print(f"  1. Test the archive:")
+    print("\n🚀 Ready for deployment!")
+    print("\nNext steps:")
+    print("  1. Test the archive:")
     print(f"     tar -tzf {output_path} | head -20")
-    print(f"  2. Create GitHub release:")
+    print("  2. Create GitHub release:")
     print(f"     gh release create {version} {output_path}")
-    print(f"  3. Or upload manually to GitHub Releases")
+    print("  3. Or upload manually to GitHub Releases")
 
     return 0
 

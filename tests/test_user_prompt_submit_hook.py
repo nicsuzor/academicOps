@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import json
 import os
-import tempfile
 import time
 from pathlib import Path
 from unittest.mock import patch
@@ -39,7 +38,9 @@ class TestTempFileApproach:
 
         # Create a mock transcript file
         transcript = tmp_path / "session.jsonl"
-        transcript.write_text('{"type": "user", "message": {"content": [{"type": "text", "text": "previous prompt"}]}}\n')
+        transcript.write_text(
+            '{"type": "user", "message": {"content": [{"type": "text", "text": "previous prompt"}]}}\n'
+        )
 
         instruction = build_hydration_instruction(prompt, str(transcript))
 
@@ -48,13 +49,15 @@ class TestTempFileApproach:
         assert "hydrate_" in instruction, "Should use hydrate_ prefix for temp files"
 
         # Instruction should be SHORT (not contain full context)
-        assert len(instruction) < 500, f"Instruction should be short (<500 chars), got {len(instruction)}"
+        assert (
+            len(instruction) < 500
+        ), f"Instruction should be short (<500 chars), got {len(instruction)}"
 
         # The full prompt context (session context, hydrator instructions) should NOT be in instruction
         # Note: The preview in description is OK, but session context should be in temp file
-        assert "previous prompt" not in instruction, (
-            "Session context should be in temp file, not instruction"
-        )
+        assert (
+            "previous prompt" not in instruction
+        ), "Session context should be in temp file, not instruction"
 
     def test_temp_file_contains_full_context(self, tmp_path: Path) -> None:
         """Temp file should contain the full context for subagent to read."""
@@ -63,12 +66,15 @@ class TestTempFileApproach:
         prompt = "Implement the new caching layer for API responses"
 
         transcript = tmp_path / "session.jsonl"
-        transcript.write_text('{"type": "user", "message": {"content": [{"type": "text", "text": "prior context"}]}}\n')
+        transcript.write_text(
+            '{"type": "user", "message": {"content": [{"type": "text", "text": "prior context"}]}}\n'
+        )
 
         instruction = build_hydration_instruction(prompt, str(transcript))
 
         # Extract temp file path from instruction (path ends at backtick, comma, or whitespace)
         import re
+
         match = re.search(r"/tmp/claude-hydrator/hydrate_[a-z0-9_]+\.md", instruction)
         assert match, f"Should find temp file path in instruction: {instruction[:200]}"
 
@@ -78,7 +84,9 @@ class TestTempFileApproach:
         content = temp_path.read_text()
 
         # Temp file should contain the full prompt
-        assert "caching layer" in content.lower(), "Temp file should contain user prompt"
+        assert (
+            "caching layer" in content.lower()
+        ), "Temp file should contain user prompt"
 
         # Temp file should contain session context (if available)
         # This depends on extract_router_context working
@@ -91,9 +99,9 @@ class TestTempFileApproach:
         instruction = build_hydration_instruction(prompt)
 
         # Should mention Read tool since subagents need it
-        assert "Read" in instruction or "read" in instruction.lower(), (
-            "Should tell subagent to read the temp file"
-        )
+        assert (
+            "Read" in instruction or "read" in instruction.lower()
+        ), "Should tell subagent to read the temp file"
 
     def test_temp_file_uses_unique_names(self) -> None:
         """Each invocation should create a uniquely named temp file."""
@@ -103,11 +111,14 @@ class TestTempFileApproach:
         instruction2 = build_hydration_instruction("Second prompt")
 
         import re
+
         path1 = re.search(r"/tmp/claude-hydrator/[^\s\"]+", instruction1)
         path2 = re.search(r"/tmp/claude-hydrator/[^\s\"]+", instruction2)
 
         assert path1 and path2, "Both instructions should have temp file paths"
-        assert path1.group() != path2.group(), "Each call should create unique temp file"
+        assert (
+            path1.group() != path2.group()
+        ), "Each call should create unique temp file"
 
 
 class TestTempFileCleanup:
@@ -173,10 +184,12 @@ class TestInstructionFormat:
 
         instruction = build_hydration_instruction("Test prompt")
 
-        assert "prompt-hydrator" in instruction, "Should reference prompt-hydrator subagent"
-        assert "Task(" in instruction or "subagent" in instruction.lower(), (
-            "Should instruct to spawn subagent"
-        )
+        assert (
+            "prompt-hydrator" in instruction
+        ), "Should reference prompt-hydrator subagent"
+        assert (
+            "Task(" in instruction or "subagent" in instruction.lower()
+        ), "Should instruct to spawn subagent"
 
     def test_instruction_uses_haiku_model(self) -> None:
         """Instruction should specify haiku model for cost efficiency."""
@@ -198,9 +211,9 @@ class TestInstructionFormat:
         # Rough estimate: 4 chars per token
         estimated_tokens = len(instruction) / 4
 
-        assert estimated_tokens < 150, (
-            f"Instruction should be <150 tokens, estimated {estimated_tokens:.0f}"
-        )
+        assert (
+            estimated_tokens < 150
+        ), f"Instruction should be <150 tokens, estimated {estimated_tokens:.0f}"
 
 
 class TestHookIntegration:
@@ -240,9 +253,9 @@ class TestHookIntegration:
             assert "additionalContext" in result["hookSpecificOutput"]
 
             context = result["hookSpecificOutput"]["additionalContext"]
-            assert "/tmp/claude-hydrator/" in context, (
-                "additionalContext should reference temp file"
-            )
+            assert (
+                "/tmp/claude-hydrator/" in context
+            ), "additionalContext should reference temp file"
 
         finally:
             sys.stdin = old_stdin
@@ -295,7 +308,9 @@ class TestSystemMessageFiltering:
         ]
 
         for prompt in prompts:
-            assert is_system_message(prompt) is False, f"'{prompt}' should not be a system message"
+            assert (
+                is_system_message(prompt) is False
+            ), f"'{prompt}' should not be a system message"
 
     def test_allows_empty_prompt(self) -> None:
         """Empty prompts should not be detected as system messages."""
@@ -310,7 +325,9 @@ class TestSystemMessageFiltering:
         import io
         import sys
 
-        notification = "<agent-notification><status>completed</status></agent-notification>"
+        notification = (
+            "<agent-notification><status>completed</status></agent-notification>"
+        )
         input_data = {"prompt": notification, "transcript_path": None}
 
         old_stdin = sys.stdin

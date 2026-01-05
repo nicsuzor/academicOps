@@ -187,4 +187,3 @@ Built-in Claude Code agents (also available):
 ## Memory Server
 
 Use `mcp__memory__*` tools to store and retrieve memories. Memory server is accessed via remote connection over Tailscale.
-

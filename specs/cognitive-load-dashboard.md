@@ -82,7 +82,7 @@ All sections group by project for context orientation.
 
 ### Synthesis-First Architecture
 - Dashboard relies on [[session-insights-mining]] to produce [[daily notes]]
-- UNLCEAR: And then _another_ component -- [[synthesize_dashboard.py]] -- generates [[synthesis.json]] 
+- UNLCEAR: And then _another_ component -- [[synthesize_dashboard.py]] -- generates [[synthesis.json]]
 
 Improvements to session-insights automatically flow to dashboard display. When synthesis is stale (>60 min), dashboard shows explicit error rather than falling back to raw data.
 
@@ -245,4 +245,3 @@ TodoWrite context only appears if agents use TodoWrite. Framework encourages thi
 **Access**: `http://localhost:8501` or `http://<desktop-ip>:8501` from tablet
 
 **Environment**: Requires `PROMPT_LOG_API_KEY` for cross-machine activity panel.
-

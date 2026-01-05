@@ -331,4 +331,3 @@ Build a comprehensive training dataset that teaches LLMs to:
 2. **Review output**: Manually inspect first extraction to ensure quality
 3. **Iterate**: Refine extraction approach based on early examples
 4. **Batch process**: Run `/review-training` repeatedly to complete all 16 pairs
-

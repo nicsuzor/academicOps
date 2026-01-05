@@ -729,4 +729,3 @@ st.title("Overview")
    - Use expanders for detailed methodology
    - Include data source information
    - Document filter logic
-

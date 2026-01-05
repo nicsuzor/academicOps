@@ -66,12 +66,12 @@ def test_gemini_mcp_returns_response(claude_headless_tracked) -> None:
     assert result["success"], f"Execution failed: {result.get('error')}"
 
     # Verify Gemini was called
-    assert _gemini_mcp_was_called(tool_calls), (
-        f"Gemini MCP not invoked. Tools used: {[c['name'] for c in tool_calls]}"
-    )
+    assert _gemini_mcp_was_called(
+        tool_calls
+    ), f"Gemini MCP not invoked. Tools used: {[c['name'] for c in tool_calls]}"
 
     # Check response contains expected answer (gold) in raw output
     output_lower = result.get("output", "").lower()
-    assert "gold" in output_lower or "au" in output_lower, (
-        f"Expected response to mention 'gold' or 'Au'. Output: {result.get('output', '')[:500]}"
-    )
+    assert (
+        "gold" in output_lower or "au" in output_lower
+    ), f"Expected response to mention 'gold' or 'Au'. Output: {result.get('output', '')[:500]}"
