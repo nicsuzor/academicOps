@@ -32,32 +32,46 @@ Read the skill's SKILL.md and check:
 | [prescribed tool/method] | [what I called] | Y/N |
 | [prescribed output format] | [what I produced] | Y/N |
 
-### 3. Report Deviations
+### 3. Report Deviations with Root Cause Analysis
 
-For each non-compliance:
+For each non-compliance, trace to **framework component responsibility** (not just agent behavior):
 
 ```
 DEVIATION: [skill name]
 - Expected: [what spec prescribed]
 - Actual: [what I did instead]
-- Impact: [what was missed or done wrong]
+- Proximate Cause: [what agent did wrong]
+- Root Cause: [which framework component failed which responsibility]
+- Root Cause Category: Clarity | Context | Blocking | Detection | Gap
+- Responsible Component: [e.g., Intent Router, Guardrail, Skill instruction]
 ```
+
+See [[specs/enforcement.md]] "Component Responsibilities" for the full model.
 
 ### 4. Propose Correction
 
-If the deviation matters:
-- What should I redo?
-- What output needs to be regenerated using proper sources?
+**Two levels of correction**:
+
+1. **Immediate**: What output needs to be regenerated?
+2. **Framework**: What component needs strengthening to prevent recurrence?
+
+| Root Cause Category | Framework Fix |
+|---------------------|---------------|
+| Clarity Failure | Strengthen instruction text in skill/guardrail |
+| Context Failure | Improve router classification or context injection |
+| Blocking Failure | Add/fix PreToolUse hook or deny rule |
+| Detection Failure | Add/fix PostToolUse hook |
+| Gap | Create new enforcement mechanism |
 
 ### 5. Persist Observations
 
 After completing the audit, invoke `/log` to record deviations:
 
 ```
-Skill(skill="log", args="[deviation summary from Phase 3]")
+Skill(skill="log", args="[root cause category]: [responsible component] - [deviation summary]")
 ```
 
-This ensures process violations are tracked as GitHub Issues (label: `learning`) and can trigger heuristic synthesis when patterns emerge.
+This ensures framework component failures are tracked as GitHub Issues (label: `learning`) and can trigger heuristic synthesis when patterns emerge.
 
 ## Example
 
@@ -78,10 +92,14 @@ AUDIT: dashboard skill invocation
 DEVIATION: dashboard
 - Expected: Use lib.session_reader.SessionProcessor for session data
 - Actual: Wrote ad-hoc Python to parse JSONL files directly
-- Impact: Bypassed tested infrastructure, duplicated logic, may have missed data
+- Proximate Cause: Agent chose ad-hoc implementation over prescribed workflow
+- Root Cause: Skill instruction didn't emphasize WHY SessionProcessor matters
+- Root Cause Category: Clarity Failure
+- Responsible Component: dashboard skill SKILL.md
 
-CORRECTION: Should re-run using dashboard's actual data sources and let
-the Streamlit panels display the synthesized view.
+CORRECTION:
+1. Immediate: Re-run using dashboard's actual data sources
+2. Framework: Strengthen dashboard skill to explain SessionProcessor benefits
 ```
 
 ## Scope

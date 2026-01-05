@@ -1,6 +1,6 @@
 ---
 name: log
-description: Log agent performance patterns to GitHub Issues (per AXIOMS #28)
+description: Log framework component failures to GitHub Issues (per AXIOMS #28)
 allowed-tools: Skill
 permalink: commands/log
 ---
@@ -9,12 +9,22 @@ permalink: commands/log
 
 **Purpose**: Build institutional knowledge by logging observations to GitHub Issues, where patterns can accumulate and synthesize to HEURISTICS.md.
 
-See [[specs/reflexivity]] for the complete data architecture and synthesis workflow.
+## Key Principle: Root Cause Abstraction
+
+**We don't control agents** - they're probabilistic. Log **framework component failures**, not agent mistakes.
+
+| Wrong (Proximate) | Right (Root Cause) |
+|-------------------|-------------------|
+| "Agent skipped skill" | "Router didn't explain WHY skill needed for THIS task" → Clarity Failure |
+| "Agent didn't verify" | "Guardrail instruction too generic" → Clarity Failure |
+| "Agent used mocks" | "No PreToolUse hook blocks mock imports" → Gap |
+
+See [[specs/enforcement.md]] "Component Responsibilities" for the full model.
 
 ## Usage
 
-**User provides**: Brief description of observation
+**User provides**: Brief description of what went wrong
 
-**Example**: `/log Agent bypassed python-dev skill for Python edits`
+**Example**: `/log Router suggested framework skill but agent ignored it - instruction wasn't task-specific`
 
-The skill will search for existing Issues, create/update as appropriate.
+The skill will trace to root cause category and responsible component.

@@ -147,7 +147,50 @@ Or if inconclusive:
 - Attribute without evidence
 - Skip investigation for file-related errors
 
-## Root Cause Verification Requirement
+## Root Cause Abstraction Level
+
+**Critical principle**: We don't control agents. They're probabilistic. A ROOT CAUSE must be something within framework control.
+
+See [[specs/enforcement.md]] "Component Responsibilities" for the full model.
+
+### Proximate vs Root Cause
+
+| Type | Definition | Example |
+|------|------------|---------|
+| **Proximate** | Agent made a mistake | "Agent skipped skill invocation" |
+| **Root** | Framework component failed its responsibility | "Router didn't explain WHY skill needed for THIS task" |
+
+**When logging observations**: Always trace to ROOT CAUSE (framework responsibility breach), not proximate cause (agent behavior).
+
+### Root Cause Categories
+
+| Category | Definition | Fix Location |
+|----------|------------|--------------|
+| Clarity Failure | Instruction ambiguous or insufficiently emphasized | AXIOMS, skill text, guardrail instruction |
+| Context Failure | Component didn't provide relevant information | Intent router, hydration |
+| Blocking Failure | Should have blocked but didn't | PreToolUse hook, deny rule |
+| Detection Failure | Should have caught but didn't | PostToolUse hook |
+| Gap | No component exists for this case | Create new enforcement |
+
+### Issue Body Format Update
+
+When creating Issues, use:
+
+```markdown
+## Initial Observation
+
+**Date**: YYYY-MM-DD
+**Category**: bug | learning | experiment
+**Proximate Cause**: [what agent did wrong]
+**Root Cause**: [which framework component failed which responsibility]
+**Root Cause Category**: Clarity | Context | Blocking | Detection | Gap
+**Responsible Component**: [e.g., Intent Router, Guardrail, PreToolUse Hook]
+
+## Evidence
+[details]
+```
+
+### Root Cause Verification Requirement
 
 **For ANY root cause claim**: You must have direct evidence, not inference.
 
@@ -165,15 +208,16 @@ Or if inconclusive:
 
 ## Abstraction Level Judgment
 
-**Key principle**: Match abstraction to likely intervention specificity.
+**Key principle**: Match abstraction to framework component responsibility.
 
 Examples:
-- "task_view.py throws KeyError" → `component` (fix that script)
-- "Two agents both ignored explicit user request" → `pattern` (instruction presentation issue)
-- "Hooks seem to not be loading context" → `systemic` (needs investigation)
+- "task_view.py throws KeyError" → `bug` (component-level, fix the script)
+- "Agent ignored skill suggestion" → `learning` (Clarity Failure: router instruction not task-specific)
+- "No hook prevents this action" → `learning` (Gap: need new PreToolUse enforcement)
 
 **Don't**:
-- Create separate bug files for instances of the same pattern
+- Log "agent made mistake" as root cause (that's proximate cause)
+- Create separate issues for instances of the same pattern
 - Lump specific script bugs into general categories
 
 ## Issue Labels (Categories)

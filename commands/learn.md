@@ -28,14 +28,22 @@ This ensures changes are categorical (generalizable rules), not ad-hoc fixes.
 
 ## Workflow
 
-### 1. Understand the Issue
+### 1. Identify Root Cause (Not Proximate Cause)
 
-What happened? Categorize:
-- **Missing fact** - Agent lacked information
-- **Ignored instruction** - Instruction exists but wasn't followed
-- **Poor behavior** - Agent did something wrong
-- **Missing capability** - No skill/hook handles this
-- **Guardrail failure** - Known failure pattern not prevented
+**We don't control agents** - they're probabilistic. Find the **framework component failure**, not the agent mistake.
+
+See [[specs/enforcement.md]] "Component Responsibilities" for the full model.
+
+| Root Cause Category | Definition | Fix Location |
+|---------------------|------------|--------------|
+| Clarity Failure | Instruction ambiguous/weak | AXIOMS, skill text, guardrail |
+| Context Failure | Didn't provide relevant info | Intent router, hydration |
+| Blocking Failure | Should have blocked but didn't | PreToolUse hook, deny rule |
+| Detection Failure | Should have caught but didn't | PostToolUse hook |
+| Gap | No component exists for this | Create new enforcement |
+
+**Wrong**: "Agent ignored instruction" (proximate cause - we can't fix the agent)
+**Right**: "Guardrail instruction too generic for this task type" (root cause - we can fix the guardrail)
 
 ### 2. Check for Prior Occurrences
 
@@ -48,15 +56,19 @@ gh issue list --repo nicsuzor/academicOps --label learning --search "[keywords]"
 
 **If new**: Use `/log` first to document the observation.
 
-### 3. Choose Intervention
+### 3. Choose Intervention Based on Root Cause Category
 
-Consult [[RULES]] for available enforcement mechanisms. Choose **minimal sufficient** intervention:
+Match intervention to root cause category:
 
-- **First occurrence** → Softest mechanism
-- **Recurrence** → Consider next-stronger mechanism
-- **Persistent problem** → Escalate further
+| Root Cause | Intervention |
+|------------|--------------|
+| Clarity Failure | Strengthen instruction text, add task-specific reasoning |
+| Context Failure | Improve router classification, add context source |
+| Blocking Failure | Fix hook pattern, add deny rule |
+| Detection Failure | Improve hook detection logic |
+| Gap | Create new enforcement at appropriate level |
 
-**Principle**: Start soft, escalate only with evidence.
+Consult [[RULES]] for enforcement level ladder. **Start soft, escalate only with evidence.**
 
 ### 4. Make the Minimal Change
 
@@ -67,8 +79,9 @@ If you need a bigger change, **ABORT** and update/create a Spec instead.
 ### 5. Document in GitHub Issue
 
 Track the intervention in the relevant Issue:
+- Root cause category and responsible component
 - What was changed (with file path)
-- What intervention level (1-4)
+- What enforcement level (see [[docs/ENFORCEMENT.md]])
 - What would trigger escalation
 
 Per [[specs/reflexivity]], interventions are tracked as Issue comments, not separate experiment files.
@@ -76,7 +89,8 @@ Per [[specs/reflexivity]], interventions are tracked as Issue comments, not sepa
 ### 6. Report
 
 Tell the user:
-1. What you changed (with file path)
-2. What intervention level
-3. Link to GitHub Issue tracking this
-4. What would trigger escalation
+1. Root cause category and responsible component
+2. What you changed (with file path)
+3. What enforcement level
+4. Link to GitHub Issue tracking this
+5. What would trigger escalation
