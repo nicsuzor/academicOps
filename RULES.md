@@ -17,34 +17,34 @@ tags: [framework, enforcement, moc]
 |-------|------|-------------|-------|-------|
 | A#0 | No Other Truths | AXIOMS.md injection | SessionStart | Prompt |
 | A#1 | Categorical Imperative | prompt-hydrator suggests skills | UserPromptSubmit | Soft Gate |
-| A#2 | Don't Make Shit Up | Convention only | - | Convention |
-| A#3 | Always Cite Sources | Convention only | - | Convention |
+| A#2 | Don't Make Shit Up | AXIOMS.md | SessionStart | Prompt |
+| A#3 | Always Cite Sources | AXIOMS.md | SessionStart | Prompt |
 | A#4 | Do One Thing | TodoWrite visibility | During execution | Observable |
 | A#5 | Data Boundaries | settings.json deny rules | PreToolUse | Hard Gate |
-| A#6 | Project Independence | Convention only | - | Convention |
+| A#6 | Project Independence | AXIOMS.md | SessionStart | Prompt |
 | A#7 | Fail-Fast (Code) | policy_enforcer.py blocks destructive git | PreToolUse | Hard Gate |
 | A#8 | Fail-Fast (Agents) | fail_fast_watchdog.py injects reminder | PostToolUse | Soft Gate |
 | A#9 | Self-Documenting | policy_enforcer.py blocks *-GUIDE.md | PreToolUse | Hard Gate |
 | A#10 | Single-Purpose Files | policy_enforcer.py 200-line limit | PreToolUse | Hard Gate |
-| A#11 | DRY, Modular, Explicit | Convention only | - | Convention |
+| A#11 | DRY, Modular, Explicit | AXIOMS.md | SessionStart | Prompt |
 | A#12 | Use Standard Tools | pyproject.toml, pre-commit | Config | Convention |
-| A#13 | Always Dogfooding | Convention only | - | Convention |
+| A#13 | Always Dogfooding | AXIOMS.md | SessionStart | Prompt |
 | A#14 | Skills are Read-Only | settings.json denies skill writes | PreToolUse | Hard Gate |
 | A#15 | Trust Version Control | policy_enforcer.py blocks backup patterns | PreToolUse | Hard Gate |
 | A#16 | No Workarounds | fail_fast_watchdog.py | PostToolUse | Soft Gate |
 | A#17 | Verify First | TodoWrite checkpoint | During execution | Observable |
-| A#18 | No Excuses | Convention only | - | Convention |
-| A#19 | Write for Long Term | Convention only | - | Convention |
+| A#18 | No Excuses | AXIOMS.md | SessionStart | Prompt |
+| A#19 | Write for Long Term | AXIOMS.md | SessionStart | Prompt |
 | A#20 | Relational Integrity | wikilink conventions | Pre-commit (planned) | Convention |
-| A#21 | Nothing Is Someone Else's | Convention only | - | Convention |
+| A#21 | Nothing Is Someone Else's | AXIOMS.md | SessionStart | Prompt |
 | A#22 | Acceptance Criteria Own Success | /qa skill enforcement | Stop | Soft Gate |
 | A#23 | Plan-First Development | EnterPlanMode tool | Before coding | Hard Gate |
 | A#24 | Research Data Immutable | settings.json denies records/** | PreToolUse | Hard Gate |
 | A#25 | Just-In-Time Context | sessionstart_load_axioms.py | SessionStart | Automatic |
 | A#26 | Minimal Instructions | policy_enforcer.py 200-line limit | PreToolUse | Hard Gate |
-| A#27 | Feedback Loops | Convention only | - | Convention |
-| A#28 | Current State Machine | Convention only | - | Convention |
-| A#29 | One Spec Per Feature | Convention only | - | Convention |
+| A#27 | Feedback Loops | AXIOMS.md | SessionStart | Prompt |
+| A#28 | Current State Machine | AXIOMS.md | SessionStart | Prompt |
+| A#29 | One Spec Per Feature | AXIOMS.md | SessionStart | Prompt |
 
 ## Heuristic → Enforcement Mapping
 
@@ -53,36 +53,36 @@ tags: [framework, enforcement, moc]
 | H#1 | Skill Invocation Framing | prompt-hydrator guidance | UserPromptSubmit | Soft Gate |
 | H#2 | Skill-First Action | prompt-hydrator suggests skills | UserPromptSubmit | Soft Gate |
 | H#3 | Verification Before Assertion | session_reflect.py detection | Stop | Detection |
-| H#4 | Explicit Instructions Override | Convention only | - | Convention |
-| H#5 | Error Messages Primary Evidence | Convention only | - | Convention |
+| H#4 | Explicit Instructions Override | HEURISTICS.md | SessionStart | Prompt |
+| H#5 | Error Messages Primary Evidence | HEURISTICS.md | SessionStart | Prompt |
 | H#6 | Context Uncertainty Favors Skills | prompt-hydrator guidance | UserPromptSubmit | Soft Gate |
-| H#7 | Link, Don't Repeat | Convention only | - | Convention |
-| H#8 | Avoid Namespace Collisions | Convention only | - | Convention |
+| H#7 | Link, Don't Repeat | HEURISTICS.md | SessionStart | Prompt |
+| H#8 | Avoid Namespace Collisions | HEURISTICS.md | SessionStart | Prompt |
 | H#9 | Skills No Dynamic Content | settings.json denies skill writes | PreToolUse | Hard Gate |
-| H#10 | Light Instructions via Reference | Convention only | - | Convention |
-| H#11 | No Promises Without Instructions | Convention only | - | Convention |
-| H#12 | Semantic Search Over Keyword | Convention only | - | Convention |
-| H#13 | Edit Source, Run Setup | Convention only | - | Convention |
+| H#10 | Light Instructions via Reference | HEURISTICS.md | SessionStart | Prompt |
+| H#11 | No Promises Without Instructions | HEURISTICS.md | SessionStart | Prompt |
+| H#12 | Semantic Search Over Keyword | HEURISTICS.md | SessionStart | Prompt |
+| H#13 | Edit Source, Run Setup | HEURISTICS.md | SessionStart | Prompt |
 | H#14 | Mandatory Second Opinion | planner agent invokes critic | Planning | Soft Gate |
-| H#15 | Streamlit Hot Reloads | Convention only | - | Convention |
-| H#16 | Use AskUserQuestion | Convention only | - | Convention |
-| H#17 | Check Skill Conventions | Convention only | - | Convention |
-| H#18 | Distinguish Script vs LLM | Convention only | - | Convention |
-| H#19 | Questions Need Answers First | Convention only | - | Convention |
-| H#20 | Critical Thinking Over Compliance | Convention only | - | Convention |
-| H#21 | Core-First Expansion | Convention only | - | Convention |
-| H#22 | Indices Before Exploration | Convention only | - | Convention |
-| H#23 | Synthesize After Resolution | Convention only | - | Convention |
-| H#24 | Ship Scripts, Don't Inline | Convention only | - | Convention |
-| H#25 | User-Centric Acceptance | Convention only | - | Convention |
-| H#26 | Semantic vs Episodic Storage | Convention only | - | Convention |
-| H#27 | Debug, Don't Redesign | Convention only | - | Convention |
+| H#15 | Streamlit Hot Reloads | HEURISTICS.md | SessionStart | Prompt |
+| H#16 | Use AskUserQuestion | HEURISTICS.md | SessionStart | Prompt |
+| H#17 | Check Skill Conventions | HEURISTICS.md | SessionStart | Prompt |
+| H#18 | Distinguish Script vs LLM | HEURISTICS.md | SessionStart | Prompt |
+| H#19 | Questions Need Answers First | HEURISTICS.md | SessionStart | Prompt |
+| H#20 | Critical Thinking Over Compliance | HEURISTICS.md | SessionStart | Prompt |
+| H#21 | Core-First Expansion | HEURISTICS.md | SessionStart | Prompt |
+| H#22 | Indices Before Exploration | HEURISTICS.md | SessionStart | Prompt |
+| H#23 | Synthesize After Resolution | HEURISTICS.md | SessionStart | Prompt |
+| H#24 | Ship Scripts, Don't Inline | HEURISTICS.md | SessionStart | Prompt |
+| H#25 | User-Centric Acceptance | HEURISTICS.md | SessionStart | Prompt |
+| H#26 | Semantic vs Episodic Storage | HEURISTICS.md | SessionStart | Prompt |
+| H#27 | Debug, Don't Redesign | HEURISTICS.md | SessionStart | Prompt |
 | H#28 | Mandatory Acceptance Testing | /qa skill | Stop | Soft Gate |
-| H#29 | TodoWrite vs Persistent Tasks | Convention only | - | Convention |
-| H#30 | Design-First | Convention only | - | Convention |
-| H#31 | No LLM Calls in Hooks | Convention only | - | Convention |
-| H#32 | Delete, Don't Deprecate | Convention only | - | Convention |
-| H#33 | Real Data Fixtures | Convention only | - | Convention |
+| H#29 | TodoWrite vs Persistent Tasks | HEURISTICS.md | SessionStart | Prompt |
+| H#30 | Design-First | HEURISTICS.md | SessionStart | Prompt |
+| H#31 | No LLM Calls in Hooks | HEURISTICS.md | SessionStart | Prompt |
+| H#32 | Delete, Don't Deprecate | HEURISTICS.md | SessionStart | Prompt |
+| H#33 | Real Data Fixtures | HEURISTICS.md | SessionStart | Prompt |
 | H#34 | Semantic Link Density | check_orphan_files.py | Pre-commit | Detection |
 
 ## Enforcement Level Summary
@@ -91,11 +91,12 @@ tags: [framework, enforcement, moc]
 |-------|-------|-------------|
 | Hard Gate | 10 | Blocks action (PreToolUse hooks, deny rules) |
 | Soft Gate | 8 | Injects guidance, agent can proceed |
+| Prompt | 41 | Instructional (AXIOMS.md or HEURISTICS.md at SessionStart) |
 | Observable | 2 | Creates visible artifact (TodoWrite) |
 | Detection | 2 | Logs for post-hoc analysis |
-| Convention | 41 | Documented, no automated checking |
+| Config | 1 | External tool config (pyproject.toml, pre-commit) |
 
-**Enforcement gaps**: 41 rules rely on convention only. See GitHub Issues for enforcement design backlog.
+**Note**: "Prompt" level rules are injected at session start via `sessionstart_load_axioms.py`. Agents receive them automatically but compliance is not mechanically enforced.
 
 ---
 
