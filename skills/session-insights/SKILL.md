@@ -2,7 +2,7 @@
 name: session-insights
 description: Extract accomplishments and learnings from Claude Code sessions. Updates daily summary and mines for framework patterns.
 allowed-tools: Read,Bash,Task,Edit,Write
-version: 3.1.0
+version: 3.2.0
 permalink: skills-session-insights
 ---
 
@@ -62,58 +62,42 @@ This outputs markdown sections for:
 
 Save this output - you'll incorporate it into the daily note in the next step.
 
-### Step 4: Update Daily Summary
+### Step 4: Initialize Daily Note (Lightweight)
+
+**DO NOT read transcripts here.** Only set up the daily note skeleton with narrative signals from Step 3.
 
 Update daily note at `$ACA_DATA/sessions/YYYYMMDD-daily.md`.
 
 If the note exists:
-- Read() the ENTIRE note
-- incorporate new information into the existing structure
-- you MUST consolidate and synthesise related information - merge minor observations and tasks into meanginful groups
-- BUT DO NOT delete unique user observations or tasks from other machines that have not been synthesised yet
+- Read() the note (small file, ~50 lines)
+- Add Session Context and Abandoned Todos from Step 3 output
+- DO NOT delete existing content
 
 If the note does NOT exist:
-- Create the note from the template in [[templates/daily.md]]
+- Create from template in [[templates/daily.md]]
+- Add Session Context and Abandoned Todos from Step 3 output
 
-Read the generated abridged transcripts and extract accomplishments:
-
-```bash
-ls $ACA_DATA/sessions/claude/YYYYMMDD*-abridged.md
-```
-
-For each transcript, identify completed work items and add to daily note under appropriate project headers.
-
-**Daily note format:**
+**Daily note skeleton** (accomplishments populated in Step 6 from JSONs):
 ```markdown
 # Daily Summary - YYYY-MM-DD
 
 ## Focus (Today's priorities)
 <!-- User generated. Do not edit. -->
 
-- [ ] Priority task 1
-- [ ] Priority task 2
-
 ## Session Context
 - 10:23 AM: Started on prompt hydrator context improvements
 - 11:45 AM: Switched to dashboard investigation
-- 2:30 PM: SNSF review triple-check
-
-
-## [[projects/slug]]
-- [x] Accomplishment from sessions
-- [ ] Outstanding task
 
 ## Abandoned Todos
 - [ ] Task left pending (from session abc123)
-- [ ] In-progress item not completed (from session def456)
 
 ## Session Log
 | Session | Project | Summary |
 |---------|---------|---------|
-| abc123 | writing | Brief description |
+<!-- Populated in Step 6 from Gemini-mined JSONs -->
 ```
 
-**Note**: Accomplishments are recorded under their respective project headers with `[x]` markers. Session Context and Abandoned Todos come from the narrative extraction script.
+**Critical**: Claude does NOT read transcripts. Accomplishments come from Gemini-mined JSONs in Step 6.
 
 ### Step 5: Mine for Learnings (Parallel)
 
@@ -180,23 +164,25 @@ After receiving the JSON response, save it to: $ACA_DATA/dashboard/sessions/{ses
 
 ### Step 6: Synthesize (Claude Code Agent)
 
-**The main agent reads per-session JSONs and synthesizes two outputs:**
+**AUTHORITATIVE SOURCE**: The daily note (`$ACA_DATA/sessions/YYYYMMDD-daily.md`) is the single source of truth for accomplishments. Session JSONs feed INTO the daily note; synthesis.json is a dashboard-optimized VIEW of the daily note.
+
+**Claude reads small JSONs (~20 lines each), NOT transcripts. This is where accomplishments get populated.**
 
 1. **Read all session JSONs for target date**:
    ```bash
    ls $ACA_DATA/dashboard/sessions/*.json
    ```
-   Filter to sessions matching the target date (check `date` field in each JSON).
+   Read each JSON file (they're small, ~500 bytes each). Filter to sessions matching the target date.
 
 2. **Read existing files (if they exist)**:
-   - `$ACA_DATA/sessions/YYYYMMDD-daily.md`
+   - `$ACA_DATA/sessions/YYYYMMDD-daily.md` (skeleton from Step 4)
    - `$ACA_DATA/dashboard/synthesis.json`
 
 3. **Merge sessions** (idempotent by session_id):
    - For each session JSON: if session_id already in existing data → update, else → add
    - This ensures running from multiple machines integrates rather than duplicates
 
-4. **Write updated daily.md** at `$ACA_DATA/sessions/YYYYMMDD-daily.md`:
+4. **Update daily.md with accomplishments from JSONs** at `$ACA_DATA/sessions/YYYYMMDD-daily.md`:
 
 ```markdown
 # Daily Summary - YYYY-MM-DD
@@ -221,6 +207,8 @@ After receiving the JSON response, save it to: $ACA_DATA/dashboard/sessions/{ses
 ```
 
 5. **Write updated synthesis.json** at `$ACA_DATA/dashboard/synthesis.json`:
+
+   synthesis.json is a **dashboard-optimized view** of the daily note - it should reflect ALL accomplishments from the daily note, not just those from mined session JSONs. If daily note has manually-added accomplishments, include them.
 
    Read task index from `$ACA_DATA/tasks/index.json` to populate next_action and waiting_on.
 
