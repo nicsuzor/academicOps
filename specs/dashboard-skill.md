@@ -160,8 +160,8 @@ dashboard.py renders what's there (no LLM calls)
 ```
 
 **Key points**:
-- **Gemini** - cheap/fast batch processing of transcripts, outputs structured per-session data
-- **Claude Code agent** - smart synthesis, integrates Gemini output with other sources
+- **Gemini** - reads transcripts, extracts structured per-session JSON (expensive work, done once)
+- **Claude Code agent** - reads Gemini output ONLY (not transcripts), synthesizes/integrates
 - **Idempotent** - skill can run from multiple machines, integrates rather than appends
 - **Dual output** - same synthesis produces human-readable AND machine-readable formats
 - **Dashboard is pure rendering** - no LLM calls, just displays pre-computed state

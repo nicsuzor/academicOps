@@ -104,14 +104,18 @@ Gemini extracts per-session structured data:
 Output: `$ACA_DATA/dashboard/sessions/{session_id}.json`
 
 **Step 6: Synthesize (Claude Code Agent)**
-The main agent (or subagent) reads Gemini's per-session outputs and idempotently synthesizes:
+The main agent (or subagent) reads **only Gemini's per-session JSONs** (NOT transcripts) and idempotently synthesizes:
 
 ```
-Gemini per-session JSONs
+Gemini per-session JSONs (only input)
         │
         ├──> YYYYMMDD-daily.md (human-readable, integrates new sessions)
         └──> synthesis.json (machine-readable, integrates new sessions)
 ```
+
+**Division of labor**:
+- **Gemini**: Reads transcripts, extracts structured data (expensive work, done once)
+- **Claude Code**: Reads Gemini output only, synthesizes/integrates (no transcript access)
 
 **Idempotent integration**: If session already in daily.md/synthesis.json, update rather than duplicate. Can run from multiple machines.
 
