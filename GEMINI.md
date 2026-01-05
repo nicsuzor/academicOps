@@ -55,16 +55,15 @@ After completing work, reflect:
 2. What friction existed (missing context, unclear process)
 3. Proposed change (or "none needed")
 
-**Persist the reflection** — Append to `$ACA_DATA/data/framework-reflections.md`:
+**Persist the reflection** — Per [[specs/reflexivity]], log observations to GitHub Issues:
 
-```markdown
-## YYYY-MM-DD: [Brief title]
-
-**Task**: [What was requested]
-**What worked**: [Observation]
-**What didn't**: [Observation]
-**Proposed change**: [Specific action or "none"]
+```bash
+# Use gh CLI to create/update Issue
+gh issue list --repo nicsuzor/academicOps --label learning --search "[keywords]"
+# If match: add comment. If no match: create new Issue.
 ```
+
+Or if Claude Code is available: `/log [observation]`
 
 ---
 

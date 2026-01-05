@@ -44,14 +44,17 @@ After completing work, output a brief reflection:
 
 ## Step 4: Persist (Mandatory)
 
-Both for durability:
+Per [[specs/reflexivity]], observations go to GitHub Issues:
 
-1. **Filesystem** (durable): Append to `$ACA_DATA/framework-reflections.md`
-2. **Memory server** (searchable): `mcp__memory__store_memory(..., tags=["framework-reflection"])`
+```
+/log [your observation]
+```
+
+This routes to the learning-log skill which searches for existing Issues and creates/updates as appropriate.
 
 ## Step 5: Act on Actionable Changes
 
-If your proposed change is actionable, implement it via framework skill (with plan-mode for significant changes).
+If your proposed change is actionable, use `/learn` to make a tracked intervention (with plan-mode for significant changes).
 
 ---
 

@@ -9,6 +9,8 @@ permalink: commands/learn
 
 The user is telling you something needs to change. Your job: **minimal intervention** that we can **track and verify**.
 
+See [[specs/reflexivity]] for the complete data architecture.
+
 ## MANDATORY: Invoke Framework Skill First
 
 ```
@@ -20,9 +22,9 @@ This ensures changes are categorical (generalizable rules), not ad-hoc fixes.
 ## Core Principle: Don't Overreact
 
 ❌ **WRONG**: User mentions spelling → Create SPELLING AXIOM + spell-check hook + prominent warning
-✅ **RIGHT**: User mentions spelling → Add brief note in relevant location, create experiment to track
+✅ **RIGHT**: User mentions spelling → Add brief note in relevant location, track in Issue
 
-**Start small. If we need a heavier intervention, we need to update the Specs.**
+**Start small. If we need a heavier intervention, update the Specs.**
 
 ## Workflow
 
@@ -31,109 +33,50 @@ This ensures changes are categorical (generalizable rules), not ad-hoc fixes.
 What happened? Categorize:
 - **Missing fact** - Agent lacked information
 - **Ignored instruction** - Instruction exists but wasn't followed
-- **Poor behavior** - Agent did something wrong (spelling, verbosity, etc.)
+- **Poor behavior** - Agent did something wrong
 - **Missing capability** - No skill/hook handles this
-- **Guardrail failure** - Known failure pattern not prevented (see [[hooks/guardrails.md]])
+- **Guardrail failure** - Known failure pattern not prevented
 
 ### 2. Check for Prior Occurrences
 
-Search `$AOPS/experiments/` for related experiments:
+Search GitHub Issues for related observations:
 ```bash
-grep -r "[keywords]" $AOPS/experiments/
+gh issue list --repo nicsuzor/academicOps --label learning --search "[keywords]"
 ```
 
-Search HEURISTICS.md for related heuristics.
+**If found**: This is a recurrence. Consider escalating intervention level.
 
-**If found**: This is a recurrence. Consider escalating the intervention level.
-
-**If this is a new issue**: Invoke the `/log` command to track it.
+**If new**: Use `/log` first to document the observation.
 
 ### 3. Choose Intervention
 
-The framework skill (via `@RULES.md`) defines available enforcement mechanisms. Consult it to choose the **minimal sufficient** intervention:
+Consult [[RULES]] for available enforcement mechanisms. Choose **minimal sufficient** intervention:
 
-- **First occurrence** → Softest mechanism that addresses the issue
+- **First occurrence** → Softest mechanism
 - **Recurrence** → Consider next-stronger mechanism
 - **Persistent problem** → Escalate further
 
 **Principle**: Start soft, escalate only with evidence.
 
-#### Guardrail-Specific Interventions
-
-For guardrail failures, consult [[hooks/guardrails.md]] and choose:
-
-| Issue | Intervention | File to Edit |
-|-------|--------------|--------------|
-| Guardrail not applied to task type | Add to Task Type → Guardrail Mapping | `hooks/guardrails.md` |
-| Guardrail instruction unclear | Strengthen the Instruction text | `hooks/guardrails.md` |
-| New failure pattern needs guardrail | Add to Guardrail Registry | `hooks/guardrails.md` |
-| Guardrail triggers incorrectly | Adjust "When to apply" conditions | `hooks/guardrails.md` |
-| Need new heuristic first | Create heuristic via `/log` | `HEURISTICS.md` |
-
-**Guardrail escalation path:**
-1. Adjust instruction text (clearer wording)
-2. Add to more task types (broader application)
-3. Propose PreToolUse enforcement (hook blocks until condition met)
-4. Propose PostToolUse verification (hook checks after action)
-
 ### 4. Make the Minimal Change
 
 Keep changes brief (1-3 sentences for soft interventions).
 
-If you need to make a bigger change, **ABORT** and update/create a Spec instead.
+If you need a bigger change, **ABORT** and update/create a Spec instead.
 
-### 5. Create/Update Experiment
+### 5. Document in GitHub Issue
 
-**Always** create or update an experiment in `$AOPS/experiments/`:
+Track the intervention in the relevant Issue:
+- What was changed (with file path)
+- What intervention level (1-4)
+- What would trigger escalation
 
-```markdown
----
-title: [Issue] Intervention Tracking
-type: experiment_log
-permalink: experiment-[slug]
-tags: [learn, intervention, relevant-tags]
----
-
-# [Issue] Intervention Tracking
-
-**Date**: YYYY-MM-DD
-**Hypothesis**: [Minimal intervention] will reduce [problem behavior]
-**Success Criteria**: No user corrections for this issue in next 5 sessions
-
-## Intervention History
-
-| Date | Level | Change Made | File Modified |
-|------|-------|-------------|---------------|
-| YYYY-MM-DD | 1 | [brief description] | [path] |
-
-## Observations
-
-(Add dated observations when issue recurs or is resolved)
-
-## Decision
-
-- [ ] Resolved (no recurrence after N sessions)
-- [ ] Escalate (recurred, increase intervention level)
-- [ ] Revert (intervention caused other problems)
-```
+Per [[specs/reflexivity]], interventions are tracked as Issue comments, not separate experiment files.
 
 ### 6. Report
 
 Tell the user:
 1. What you changed (with file path)
-2. What intervention level (1-4)
-3. What experiment tracks this
+2. What intervention level
+3. Link to GitHub Issue tracking this
 4. What would trigger escalation
-
-## Example
-
-**First mention of spelling issues**:
-- Consult RULES.md for minimal mechanism
-- Add brief note to relevant skill or CLAUDE.md
-- Create experiment to track
-- Report: "Added note to [location]. Will escalate if it recurs."
-
-**Recurring issue**:
-- Check existing heuristics/experiments
-- Add evidence or escalate mechanism
-- Update experiment with observation

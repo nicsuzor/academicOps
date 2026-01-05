@@ -24,7 +24,7 @@ The framework is in **bootstrap mode**. Automated integration is non-functional.
 | User context | `$ACA_DATA/data/CORE.md` | ✅ Authoritative |
 | ACCOMMODATIONS.md | `$ACA_DATA/data/ACCOMMODATIONS.md` | ✅ Authoritative |
 | Skills (manual read) | `$AOPS/skills/*/SKILL.md` | ✅ Read and follow |
-| Reflection log | `$ACA_DATA/data/framework-reflections.md` | ✅ Append-only |
+| Observations | GitHub Issues (nicsuzor/academicOps) | ✅ Via `/log` command (see [[specs/reflexivity]]) |
 | Tasks Skill | `$AOPS/skills/tasks/` | ✅ Manual script usage |
 | Remember Skill | `$AOPS/skills/remember/` | ⚠️ Manual file creation (No Sync) |
 
@@ -53,7 +53,7 @@ The framework is in **bootstrap mode**. Automated integration is non-functional.
 ### During Work
 - **Skills**: Read `SKILL.md` first. Execute scripts manually via `uv run` in `$AOPS`.
     - Example: `cd $AOPS && uv run python skills/tasks/scripts/task_view.py`
-- **Memory**: Use file-based persistence (`framework-reflections.md`) instead of Memory MCP.
+- **Memory**: Use GitHub Issues for observations (per [[specs/reflexivity]]). Memory MCP supplements search.
 - **Context**: Do not assume prior context exists.
 - **Infrastructure**: Document gaps. Halt if blocked.
 
@@ -69,7 +69,7 @@ The framework is in **bootstrap mode**. Automated integration is non-functional.
 - **Reason**: We trust version control (Axiom 15) and data boundaries (Axiom 5). Ephemeral files violate self-documentation.
 
 ### Session End
-- Append reflection to `$ACA_DATA/data/framework-reflections.md`
+- Log observations via `/log [observation]` → GitHub Issues (see [[specs/reflexivity]])
 - Note any infrastructure gaps discovered
 
 ---

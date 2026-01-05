@@ -1,25 +1,27 @@
 ---
-title: Automation Task Specification Template
+title: AcademicOps Specification Template
 type: template
-permalink: task-spec-template
-description: Template for specifying automation tasks with clear scope, acceptance criteria, and integration tests
+permalink: spec-template
+description: Template for specifying academicops tasks with clear scope, acceptance criteria, and integration tests
 tags:
   - template
   - task-specification
   - automation
 ---
 
-# Automation Task Specification Template
+# AcademicOps Feature Specification Template
 
-Use this template to specify each automation task before implementation. This ensures clear scope, testability, and alignment with framework principles.
+Use this template to specify each academicops feature before implementation. This ensures clear scope, testability, and alignment with framework principles.
 
 ---
 
 # Task: [Descriptive Name]
 
-**Date**: YYYY-MM-DD **Stage**: [1-5 from ROADMAP.md] **Priority**: [P1/P2/P3 based on impact and effort]
+**Date**: YYYY-MM-DD 
+**Stage**: [1-5 from ROADMAP.md] 
+**Priority**: [P1/P2/P3 based on impact and effort]
 
-## Problem Statement
+## Problem Statement / User story
 
 **What manual work are we automating?**
 
