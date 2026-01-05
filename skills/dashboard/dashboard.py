@@ -1416,75 +1416,14 @@ def clean_activity_text(raw_text: str) -> str:
 
 
 def render_three_question_layout() -> None:
-    """Render the three-question layout at the top of the dashboard.
+    """Render session activity and accomplishments summary at top.
 
-    Displays a structured view answering:
-    - What should I do? (Primary focus + priority tasks)
-    - What am I doing? (Active sessions)
-    - What did I do today? (Accomplishments)
+    Priority tasks are shown in the Projects section below (grouped by project).
     """
     layout_data = get_dashboard_layout()
 
-    # Top row: Two columns side by side
-    col_todo, col_doing = st.columns([1, 1])
-
-    # === WHAT SHOULD I DO? ===
-    with col_todo:
-        st.markdown("### :pushpin: WHAT SHOULD I DO?")
-
-        what_to_do = layout_data["what_to_do"]
-        primary = what_to_do["primary_focus"]
-
-        # Primary focus
-        if primary["task_title"]:
-            source_tag = f"[{primary['source']}]" if primary["source"] != "none" else ""
-            st.markdown(f"**Primary:** {primary['task_title']} {source_tag}")
-        else:
-            st.markdown("*No primary focus set*")
-
-        # Priority tasks - grouped by priority level
-        priority_tasks = what_to_do["priority_tasks"]
-        primary_title = primary["task_title"]  # Filter out primary to avoid duplication
-        if priority_tasks:
-            # Separate P0 and P1 tasks, excluding the primary task
-            p0_tasks = [
-                t
-                for t in priority_tasks
-                if t.get("priority") == 0 and t.get("title") != primary_title
-            ]
-            p1_tasks = [
-                t
-                for t in priority_tasks
-                if t.get("priority") == 1 and t.get("title") != primary_title
-            ]
-
-            # Show top 3 P0 tasks first
-            if p0_tasks:
-                st.markdown("**P0 Tasks:**")
-                for task in p0_tasks[:3]:
-                    title = task.get("title", "")[:70]
-                    if len(task.get("title", "")) > 70:
-                        title += "..."
-                    project = task.get("project", "")
-                    project_tag = f" [{project}]" if project else ""
-                    st.markdown(f"- {title}{project_tag}")
-                if len(p0_tasks) > 3:
-                    st.markdown(f"*{len(p0_tasks) - 3} more P0 tasks*")
-
-            # Then show top 5 P1 tasks
-            if p1_tasks:
-                st.markdown("**P1 Tasks:**")
-                for task in p1_tasks[:5]:
-                    title = task.get("title", "")[:70]
-                    if len(task.get("title", "")) > 70:
-                        title += "..."
-                    project = task.get("project", "")
-                    project_tag = f" [{project}]" if project else ""
-                    st.markdown(f"- {title}{project_tag}")
-                if len(p1_tasks) > 5:
-                    st.markdown(f"*{len(p1_tasks) - 5} more P1 tasks*")
-        else:
-            st.markdown("*No priority tasks*")
+    # Two columns: sessions and accomplishments
+    col_doing, col_done = st.columns([1, 1])
 
     # === WHAT AM I DOING? ===
     with col_doing:
@@ -1524,10 +1463,9 @@ def render_three_question_layout() -> None:
                     summary_text = summary_text[:117] + "..."
                 st.markdown(f"- **{proj}** {count_str}: {summary_text}")
 
-    # Bottom row: Full width for accomplishments
-    st.markdown("---")
-    with st.container():
-        st.markdown("### :white_check_mark: WHAT DID I DO TODAY?")
+    # === WHAT DID I DO TODAY? ===
+    with col_done:
+        st.markdown("### :white_check_mark: DONE TODAY")
 
         what_done = layout_data["what_done"]
         accomplishments = what_done["accomplishments"]
@@ -1891,13 +1829,13 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# Auto-refresh every 10 seconds
+# Auto-refresh every 5 minutes
 import time
 
 if "last_refresh" not in st.session_state:
     st.session_state.last_refresh = time.time()
 
 current_time = time.time()
-if current_time - st.session_state.last_refresh >= 10:
+if current_time - st.session_state.last_refresh >= 300:
     st.session_state.last_refresh = current_time
     st.rerun()
