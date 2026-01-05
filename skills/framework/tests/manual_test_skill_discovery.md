@@ -58,7 +58,7 @@ Validate that agents correctly discover and use task skill instead of silently w
 - Agent explains it "found another way" to accomplish the task
 - Agent silently works around missing/broken skill
 
-### Test 2: Fail-Fast on Missing Skill
+### Test 2: Fail-Fast on Missing Skill (See [[AXIOMS.md]])
 
 **Goal**: Verify agent halts if skill is broken/missing (not tested in normal workflow)
 
@@ -91,7 +91,7 @@ Validate that agents correctly discover and use task skill instead of silently w
 
 **Expected behavior**:
 
-- Agent references [[skills/README.md]] or [[CORE.md]]
+- Agent references [[../../../README.md]] or [[CORE.md]]
 - Agent mentions [[task skill|skills/tasks/]] exists
 - Agent knows to use skill for task operations
 

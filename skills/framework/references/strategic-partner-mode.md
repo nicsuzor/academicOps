@@ -22,14 +22,14 @@ description: Detailed guide for maintaining institutional memory and making prin
 
 ## Quality Gates for Trustworthiness
 
-### 1. VERIFY FIRST (AXIOMS #13)
+### 1. VERIFY FIRST (AXIOMS #13) (See [[AXIOMS.md]])
 
 Check actual state before claiming anything:
 - Document sizes before analyzing: `wc -l file.md`
 - Sampling strategy: Check beginning/middle/end, not just start
 - Coverage verification: Report what % of content was analyzed
 
-### 2. NO EXCUSES (AXIOMS #14)
+### 2. NO EXCUSES (AXIOMS #14) (See [[AXIOMS.md]])
 
 Never claim success without confirmation:
 - If asked to extract from 5 files, verify all 5 were processed

@@ -217,7 +217,7 @@ If critic returns **REVISE** or **HALT**, address issues before proceeding.
 
 Skills in `skills/` MUST NOT contain dynamic data. All mutable state goes in `$ACA_DATA/`.
 
-### Trust Version Control
+### Trust Version Control (See [[AXIOMS.md]])
 
 - Never create backup files (`.bak`, `_old`, etc.)
 - Edit directly, git tracks changes
@@ -415,7 +415,7 @@ Detailed guides for specific framework topics:
 - [[references/script-design-guide.md]] - Script design principles
 - [[references/e2e-test-harness.md]] - Test harness infrastructure
 - [[references/claude-code-config.md]] - Claude Code configuration
-- [[../../strategic-partner-mode.md]] - Strategic collaboration mode
+- [[references/strategic-partner-mode.md]] - Strategic collaboration mode
 
 ## Before You Modify
 
