@@ -24,8 +24,7 @@ Before significant work, read these files:
 1. `$AOPS/AXIOMS.md` — Inviolable principles
 2. `$AOPS/VISION.md` — End state
 3. `$AOPS/ROADMAP.md` — Current status
-4. `$ACA_DATA/data/CORE.md` — User context
-5. `$AOPS/BOOTSTRAP.md` — Current operational state
+4. `$ACA_DATA/CORE.md` — User context
 
 ---
 
@@ -64,20 +63,6 @@ gh issue list --repo nicsuzor/academicOps --label learning --search "[keywords]"
 ```
 
 Or if Claude Code is available: `/log [observation]`
-
----
-
-## Current State: BOOTSTRAP
-
-Read `$AOPS/BOOTSTRAP.md` for current operational state.
-
-**Key constraints:**
-- Hooks are non-functional
-- Automated skill invocation is broken
-- Tests may be unreliable
-- Core docs (AXIOMS, VISION, ROADMAP) are authoritative
-
-**If infrastructure is missing**: Document the gap and halt. Do not work around it.
 
 ---
 
