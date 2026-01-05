@@ -159,3 +159,64 @@ Agents conflate capability with actual state:
 3. **Accept imperfection** - Influence, not force
 4. **Measure before changing** - Track compliance first
 5. **Least invasive first** - Conventions before gates
+
+## Component Responsibilities
+
+When failures occur, we distinguish:
+
+- **PROXIMATE CAUSE**: Agent made a mistake (non-deterministic, outside our control)
+- **ROOT CAUSE**: Framework component failed its responsibility (deterministic, within our control)
+
+> Root Cause = Component did not provide what it promised, OR did not block what it promised, OR did not detect what it promised.
+
+### Root Cause Categories
+
+| Category | Definition |
+|----------|------------|
+| Clarity Failure | Instruction ambiguous or insufficiently emphasized |
+| Context Failure | Component didn't provide relevant information |
+| Blocking Failure | Component didn't block what it should have |
+| Detection Failure | Component didn't catch violation it should have |
+| Gap | No component exists for this case - need to create one |
+
+**Note**: Multiple categories can apply (defense-in-depth failed at multiple layers).
+
+### Responsibilities by Phase
+
+#### Pre-Execution Phase
+
+| Component | Responsibility | Verification |
+|-----------|----------------|--------------|
+| AXIOMS/HEURISTICS | Rules stated unambiguously with reasoning | Each rule has single interpretation + WHY |
+| Intent Router | Correct classification, relevant context, skill suggestion | Classification matches human judgment |
+| Guardrails | Task-specific emphasis applied | Guardrails in output match task type table |
+
+#### Execution Phase
+
+| Component | Responsibility | Verification |
+|-----------|----------------|--------------|
+| Skill Abstraction | Correct behavior when skill followed | Skill execution produces correct output |
+| PreToolUse Hooks | Block prohibited operations | Hook fires on known bad input |
+| Tool Restriction | Wrong tools unavailable | Tool not in allowed list |
+
+#### Post-Execution Phase
+
+| Component | Responsibility | Verification |
+|-----------|----------------|--------------|
+| PostToolUse Hooks | Detect violations, demand correction | Hook detects violation in output |
+| Deny Rules | Absolute prevention | Operation blocked |
+| Pre-Commit Hooks | Block prohibited commits | pre-commit run catches violation |
+
+### Root Cause Analysis Protocol
+
+When analyzing a failure:
+
+1. **Was there a rule?** Check AXIOMS/HEURISTICS for applicable rule
+2. **Did router suggest correct skill?** Check hydrator output
+3. **Did agent use skill?** If yes, was skill output correct?
+4. **Should PreToolUse have blocked?** Check policy_enforcer rules
+5. **Should PostToolUse have detected?** Check detection hooks
+6. **Should deny rule have blocked?** Check settings.json
+7. **Should pre-commit have caught?** Check .pre-commit-config.yaml
+
+If all components met their responsibilities but failure still occurred: **Gap** - create new enforcement at appropriate level.
