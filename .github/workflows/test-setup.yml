@@ -30,7 +30,10 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Run setup script
+        env:
+          ACA_DATA: ${{ github.workspace }}/test-data
         run: |
+          mkdir -p "$ACA_DATA"
           bash setup.sh
 
       - name: Verify global ~/.claude symlinks
