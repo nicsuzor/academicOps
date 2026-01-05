@@ -197,6 +197,19 @@ Each piece of information exists in exactly ONE location:
 
 **Pattern**: Reference, don't repeat.
 
+### specs/ vs docs/ Distinction
+
+| Directory | `type:` | Contains | Use When |
+|-----------|---------|----------|----------|
+| `specs/` | `spec` | Design architecture, WHY things work | Understanding design decisions |
+| `docs/` | `reference` | Practical guides, HOW to use things | Implementing or operating |
+
+**Example**: Enforcement documentation
+- `specs/enforcement.md` = Architectural philosophy (layer model, design principles)
+- `docs/ENFORCEMENT.md` = **Practical mechanism ladder** (7 levels, when to use each)
+
+When implementing enforcement-related work, **always check `docs/ENFORCEMENT.md` first** for the practical guide.
+
 ### Mandatory Critic Review
 
 Before presenting any plan or conclusion to the user, invoke the critic agent:

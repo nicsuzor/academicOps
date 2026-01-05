@@ -222,19 +222,21 @@ Academic support framework for Claude Code. Minimal, fight bloat.
 
 ## How Enforcement Works
 
-[Mermaid flowchart showing enforcement layers and when each operates]
+[Mermaid flowchart showing 7-level mechanism ladder]
 
 The framework influences agent behavior through layered defenses:
 
-| Level | Mechanism | When It Operates | Example |
-|-------|-----------|------------------|---------|
-| 0 | Convention | Never enforced | "Skills should be invoked" |
-| 1 | Detection | Post-hoc analysis | Session transcript review |
-| 2 | Soft Gate | Before task | Intent router suggests skills |
-| 3 | Observable | During task | TodoWrite, Plan Mode |
-| 4 | Hard Gate | Blocks action | Pre-commit hooks |
+| Level | Mechanism | When | What It Does |
+|-------|-----------|------|--------------|
+| 1a-c | Prompt text | Session start | Mention → Rule → Emphatic+Reasoned |
+| 2 | Intent router | Before task | Intelligent steering, skill suggestions |
+| 3a-b | Tool restriction / Skill abstraction | Tool use | Force correct workflow |
+| 4 | Pre-tool hooks | Before action | Block before damage |
+| 5 | Post-tool validation | After action | Catch violations |
+| 6 | Deny rules | Tool use | Hard block, no exceptions |
+| 7 | Pre-commit | Git commit | Last line of defense |
 
-Link to [[specs/enforcement]] for detailed architecture.
+See [[docs/ENFORCEMENT.md]] for practical guide, [[specs/enforcement.md]] for architecture.
 
 ## Commands
 [table: command | purpose]
@@ -249,7 +251,7 @@ Link to [[specs/enforcement]] for detailed architecture.
 [table: agent | purpose]
 ```
 
-**Enforcement flowchart requirement**: README.md MUST include a simplified Mermaid diagram derived from [[specs/enforcement]]. The diagram should show the 6 layers (Prompts → Intent Router → Observable → Detection → Review → User) in a way that helps new users understand when each mechanism operates.
+**Enforcement flowchart requirement**: README.md MUST include a simplified Mermaid diagram derived from [[docs/ENFORCEMENT.md]] (the practical 7-level mechanism ladder). The diagram should show the enforcement levels (1a-7) in a way that helps new users understand when each mechanism operates. Note: `specs/enforcement.md` is architectural philosophy; `docs/ENFORCEMENT.md` is the practical guide.
 
 ## INDEX.md Structure Target
 
