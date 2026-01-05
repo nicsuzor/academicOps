@@ -1332,6 +1332,73 @@ st.markdown(
         content: "💡 ";
     }
 
+    /* Project cards - integrated with synthesis panel */
+    .project-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+        margin-top: 16px;
+    }
+
+    .project-card {
+        background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+        border: 1px solid #4f46e5;
+        border-radius: 8px;
+        padding: 12px 14px;
+    }
+
+    .project-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+        padding-bottom: 6px;
+        border-bottom: 1px solid rgba(99, 102, 241, 0.3);
+    }
+
+    .project-card-name {
+        font-size: 0.95em;
+        font-weight: bold;
+    }
+
+    .project-card-meta {
+        color: #64748b;
+        font-size: 0.75em;
+    }
+
+    .project-task {
+        display: flex;
+        align-items: flex-start;
+        gap: 8px;
+        padding: 4px 0;
+        font-size: 0.85em;
+        color: #e0e7ff;
+    }
+
+    .project-task-priority {
+        background: #4f46e5;
+        color: #fff;
+        padding: 1px 5px;
+        border-radius: 3px;
+        font-size: 0.75em;
+        font-weight: bold;
+        flex-shrink: 0;
+    }
+
+    .project-task-priority.p0 { background: #ef4444; }
+    .project-task-priority.p1 { background: #f97316; }
+    .project-task-priority.p2 { background: #6366f1; }
+
+    .project-done {
+        color: #4ade80;
+        font-size: 0.8em;
+        padding: 2px 0;
+    }
+
+    .project-done::before {
+        content: "✓ ";
+    }
+
     /* Narrative section - day's story */
     .synthesis-narrative {
         background: rgba(139, 92, 246, 0.15);
@@ -1411,100 +1478,8 @@ def clean_activity_text(raw_text: str) -> str:
 
 
 # ============================================================================
-# THREE-QUESTION LAYOUT - Primary dashboard view
+# UNIFIED FOCUS DASHBOARD - Single glanceable view
 # ============================================================================
-
-
-def render_three_question_layout() -> None:
-    """Render session activity and accomplishments summary at top.
-
-    Priority tasks are shown in the Projects section below (grouped by project).
-    """
-    layout_data = get_dashboard_layout()
-
-    # Two columns: sessions and accomplishments
-    col_doing, col_done = st.columns([1, 1])
-
-    # === WHAT AM I DOING? ===
-    with col_doing:
-        st.markdown("### :arrows_counterclockwise: WHAT AM I DOING?")
-
-        # Check for fresh synthesis first
-        synthesis = load_synthesis()
-        sessions_data = synthesis.get("sessions") if synthesis else None
-
-        if not synthesis or not sessions_data or not sessions_data.get("recent"):
-            # AXIOMS #7: No fallbacks. Fail visibly when synthesis is stale.
-            st.warning(
-                "Session synthesis stale. Run: uv run python scripts/synthesize_dashboard.py"
-            )
-        else:
-            # Use synthesized session summaries
-            by_project = sessions_data.get("by_project", {})
-            recent = sessions_data.get("recent", [])
-
-            # Group summaries by project for cleaner display
-            project_summaries: dict[str, list[str]] = {}
-            for item in recent:
-                proj = item.get("project", "unknown")
-                summary = item.get("summary", "")
-                if proj not in project_summaries:
-                    project_summaries[proj] = []
-                if summary and summary not in project_summaries[proj]:
-                    project_summaries[proj].append(summary)
-
-            # Display each project with session count and summaries
-            for proj, summaries in project_summaries.items():
-                count = by_project.get(proj, 0)
-                count_str = f"({count} sessions)" if count > 0 else ""
-                # Join summaries, truncate if too long
-                summary_text = ", ".join(summaries)
-                if len(summary_text) > 120:
-                    summary_text = summary_text[:117] + "..."
-                st.markdown(f"- **{proj}** {count_str}: {summary_text}")
-
-    # === WHAT DID I DO TODAY? ===
-    with col_done:
-        st.markdown("### :white_check_mark: DONE TODAY")
-
-        what_done = layout_data["what_done"]
-        accomplishments = what_done["accomplishments"]
-
-        if accomplishments:
-            # Group accomplishments by project
-            by_project: dict[str, list[dict]] = {}
-            for item in accomplishments:
-                project = item.get("project", "general")
-                if project not in by_project:
-                    by_project[project] = []
-                by_project[project].append(item)
-
-            # Display grouped by project
-            for project, items in by_project.items():
-                st.markdown(f"**{project}**:")
-                for item in items:
-                    source = item.get("source", "")
-                    desc = item.get("description", "")[:100]
-                    if len(item.get("description", "")) > 100:
-                        desc += "..."
-                    # Use icons instead of text tags for cleaner display
-                    if source == "daily_log":
-                        icon = "+"  # Checkmark for daily log tasks
-                    elif source == "git":
-                        icon = "@"  # Git branch icon
-                    elif source == "outcome":
-                        icon = ">"  # Star for outcomes
-                    else:
-                        icon = "-"
-                    st.markdown(f"- {icon} {desc}")
-        else:
-            st.markdown("*No accomplishments logged today*")
-
-    st.markdown("---")
-
-
-# Render the three-question layout first
-render_three_question_layout()
 
 # Initialize analyzer for daily log
 analyzer = SessionAnalyzer()
@@ -1539,19 +1514,7 @@ if synthesis:
             synth_html += f"<li>{esc(bullet)}</li>"
         synth_html += "</ul></div>"
 
-    # Next action - prominent
-    next_action = synthesis.get("next_action", {})
-    if next_action.get("task"):
-        synth_html += "<div class='synthesis-next'>"
-        synth_html += "<div class='synthesis-next-label'>➡️ NEXT ACTION</div>"
-        synth_html += (
-            f"<div class='synthesis-next-task'>{esc(next_action.get('task', ''))}</div>"
-        )
-        if next_action.get("reason"):
-            synth_html += f"<div class='synthesis-next-reason'>{esc(next_action.get('reason', ''))}</div>"
-        synth_html += "</div>"
-
-    # Grid of cards
+    # Grid of status cards
     synth_html += "<div class='synthesis-grid'>"
 
     # Done card
@@ -1640,24 +1603,11 @@ if synthesis:
     synth_html += "</div>"  # End panel
     st.markdown(synth_html, unsafe_allow_html=True)
 
-# === BLOCKERS PANEL ===
+# Check for blockers from daily log
 daily_log = analyzer.parse_daily_log()
-if daily_log and daily_log.get("blockers"):
-    blockers_html = f"""
-    <div class='blockers-panel'>
-        <div class='blockers-title'>⚠️ BLOCKERS ({len(daily_log['blockers'])})</div>
-    """
-    for blocker in daily_log["blockers"][:5]:
-        blockers_html += f"<div class='blocker-item'>{esc(blocker[:80])}</div>"
-    if len(daily_log["blockers"]) > 5:
-        blockers_html += (
-            f"<div class='blocker-item'>+{len(daily_log['blockers'])-5} more</div>"
-        )
-    blockers_html += "</div>"
-    st.markdown(blockers_html, unsafe_allow_html=True)
+has_blockers = daily_log and daily_log.get("blockers")
 
-# PROJECTS - Unified view with all info per project
-st.markdown("<div class='section-header'>PROJECTS</div>", unsafe_allow_html=True)
+# === PROJECTS (integrated into dashboard) ===
 
 try:
     sessions = find_sessions()
@@ -1720,105 +1670,90 @@ try:
         | set(accomplishments_by_project.keys())
     )
 
-    # Build project cards
+    # Build project cards with synthesis-matching style
     project_cards = []
     for proj in sorted(
         all_projects,
-        key=lambda p: projects.get(p, {}).get(
-            "last_modified", datetime.min.replace(tzinfo=timezone.utc)
+        key=lambda p: (
+            # Sort by: has tasks first, then by last modified
+            -len(tasks_by_project.get(p, [])),
+            projects.get(p, {}).get(
+                "last_modified", datetime.min.replace(tzinfo=timezone.utc)
+            ),
         ),
         reverse=True,
     ):
         data = projects.get(proj, {})
         color = get_project_color(proj)
+        project_tasks = tasks_by_project.get(proj, [])
+        accomplishments = accomplishments_by_project.get(proj, [])
+
+        # Skip projects with no tasks and no accomplishments
+        if not project_tasks and not accomplishments:
+            continue
+
+        # Build card content - tasks first (what to do), then accomplishments (what done)
         content_parts = []
 
-        # 1. Accomplishments from daily note (green checkmarks)
-        accomplishments = accomplishments_by_project.get(proj, [])
-        for acc in accomplishments[:4]:
-            content_parts.append(
-                f"<div style='color: #4ade80; font-size: 0.85em;'>✓ {esc(acc)}</div>"
-            )
-        if len(accomplishments) > 4:
-            content_parts.append(
-                f"<div style='color: #4ade80; font-size: 0.85em;'>+{len(accomplishments)-4} more done</div>"
-            )
-
-        # 2. Priority tasks
-        project_tasks = tasks_by_project.get(proj, [])
-        for task in project_tasks[:3]:
-            priority_text = f"P{task.priority}" if task.priority is not None else ""
+        # Priority tasks - the core focus
+        for task in project_tasks[:4]:
+            priority = task.priority if task.priority is not None else 9
+            priority_class = f"p{priority}" if priority <= 2 else ""
+            priority_text = f"P{priority}" if priority <= 2 else ""
             progress = ""
             if task.subtasks:
                 done = sum(1 for s in task.subtasks if s.completed)
-                progress = f" ({done}/{len(task.subtasks)})"
+                progress = f" <span style='color: #64748b;'>({done}/{len(task.subtasks)})</span>"
             content_parts.append(
-                f"<div class='task-item'><span class='task-priority'>{priority_text}</span> {esc(task.title)}{progress}</div>"
+                f"<div class='project-task'><span class='project-task-priority {priority_class}'>{priority_text}</span>{esc(task.title)}{progress}</div>"
             )
-        if len(project_tasks) > 3:
+        if len(project_tasks) > 4:
             content_parts.append(
-                f"<div class='task-item'>+{len(project_tasks)-3} more tasks</div>"
-            )
-
-        # 3. memory notes (clickable to open in Obsidian)
-        for note in data.get("memory_notes", [])[-2:]:
-            obsidian_url = make_obsidian_url(note["title"], note.get("folder", ""))
-            content_parts.append(
-                f"<a href='{obsidian_url}' class='session-memory' target='_blank'>📝 {esc(note['title'])}</a>"
+                f"<div style='color: #64748b; font-size: 0.8em;'>+{len(project_tasks)-4} more tasks</div>"
             )
 
-        # 4. Git activity
-        git_project = data.get("git_project", "")
-        if git_project:
-            git_commits = get_project_git_activity(git_project)
-            if git_commits:
-                commits_display = " | ".join([c[:40] for c in git_commits[:2]])
+        # Accomplishments - compact at bottom
+        if accomplishments:
+            for acc in accomplishments[:2]:
+                content_parts.append(f"<div class='project-done'>{esc(acc[:60])}</div>")
+            if len(accomplishments) > 2:
                 content_parts.append(
-                    f"<div class='session-git'>📦 {esc(commits_display)}</div>"
+                    f"<div class='project-done'>+{len(accomplishments)-2} more</div>"
                 )
-
-        if not content_parts:
-            continue
 
         # Build status line
         session_count = data.get("session_count", 0)
         status_parts = []
         if session_count:
             status_emoji, status_text = get_activity_status(data["last_modified"])
-            status_parts.append(f"{status_text}")
-            status_parts.append(
-                f"{session_count} session{'s' if session_count > 1 else ''}"
-            )
+            status_parts.append(status_text)
         if project_tasks:
             status_parts.append(f"{len(project_tasks)} tasks")
+        if accomplishments:
+            status_parts.append(f"{len(accomplishments)} done")
 
         status_line = " · ".join(status_parts) if status_parts else ""
-        emoji = status_emoji if session_count else "📋"
         content_html = "\n".join(content_parts)
 
         project_cards.append(
-            f"""
-        <div class='session-card' style='border-left-color: {color};'>
-            <div class='session-header'>
-                <span class='session-project' style='color: {color};'>{emoji} {proj}</span>
-                <span class='session-status'>{status_line}</span>
+            f"""<div class='project-card' style='border-color: {color};'>
+            <div class='project-card-header'>
+                <span class='project-card-name' style='color: {color};'>{proj}</span>
+                <span class='project-card-meta'>{status_line}</span>
             </div>
             {content_html}
-        </div>
-        """
+        </div>"""
         )
 
-        if len(project_cards) >= 12:
+        if len(project_cards) >= 8:
             break
 
-    # Render in two columns
+    # Render as grid (integrated with synthesis panel styling)
     if project_cards:
-        col1, col2 = st.columns(2)
-        for i, card in enumerate(project_cards):
-            with col1 if i % 2 == 0 else col2:
-                st.markdown(card, unsafe_allow_html=True)
+        grid_html = "<div class='project-grid'>" + "\n".join(project_cards) + "</div>"
+        st.markdown(grid_html, unsafe_allow_html=True)
     else:
-        st.info("No active projects")
+        st.info("No active projects with tasks")
 
 except Exception as e:
     st.error(f"Error loading projects: {e}")
