@@ -117,7 +117,18 @@ For each transcript, identify completed work items and add to daily note under a
 
 ### Step 5: Mine for Learnings (Parallel)
 
-For EACH abridged transcript, spawn a Task agent for Gemini analysis (max 8 concurrent):
+**Skip already-mined sessions**: Before mining, check if output JSON already exists.
+
+For EACH abridged transcript:
+
+1. **Check if already mined**:
+   ```bash
+   ls $ACA_DATA/dashboard/sessions/{session_id}.json 2>/dev/null
+   ```
+   - If file exists → SKIP this session (already processed)
+   - If file does not exist → proceed with mining
+
+2. **Spawn Task agent for Gemini analysis** (max 8 concurrent):
 
 ```
 Task(
@@ -125,83 +136,141 @@ Task(
   model="haiku",
   description="Mine: {shortproject}",
   prompt="
-Call mcp__gemini__ask-gemini with this prompt:
+Call mcp__gemini__ask-gemini with this prompt (substitute the metadata values):
 
 @{transcript_path}
 
-Analyze this Claude Code session transcript. Extract:
+Analyze this Claude Code session transcript. Extract the following information.
 
-1. SKILL EFFECTIVENESS - Look for '**Skill(s)**: X' (suggested) and '🔧 Skill invoked: `Y`' (used)
-   - Were recommended skills invoked? Was the skill useful when invoked?
-   - Did agent struggle without recommended context when skill was skipped?
+SESSION METADATA (include these EXACTLY in your response):
+- session_id: {session_id}
+- date: {date}
+- project: {project}
 
-2. CONTEXT TIMING - Was context injected at the right time?
-   - Did missing/late context cause mistakes?
-   - What context should have been available earlier?
+EXTRACTION TASKS:
+1. SUMMARY - One sentence describing what was worked on
+2. ACCOMPLISHMENTS - List of completed items
+3. SKILL EFFECTIVENESS - Look for '**Skill(s)**: X' (suggested) and '🔧 Skill invoked: `Y`' (used)
+4. CONTEXT TIMING - Was context injected at the right time?
+5. USER CORRECTIONS - with heuristic mapping (H2=Skill-First, H3=Verification, H4=Explicit Instructions, H22=Indices First)
+6. FAILURES - mistakes requiring intervention
+7. SUCCESSES - tasks completed well
 
-3. USER CORRECTIONS - where user corrected agent behavior
-
-4. FAILURES - mistakes requiring intervention (categories: navigation|verification|instruction|hallucination|skill-bypass|context-gap|other)
-
-5. SUCCESSES - tasks completed well, especially when skills were properly invoked
-
-6. HEURISTIC MAPPING - For each correction/failure, identify which heuristic from HEURISTICS.md it relates to:
-   - H2 (Skill-First) - skill bypass patterns
-   - H3 (Verification Before Assertion) - claiming success without testing
-   - H4 (Explicit Instructions Override Inference) - doing X when asked for Y
-   - H22 (Indices Before Exploration) - exploring without checking index files first
-   - Other H[n] as appropriate
-
-Return JSON:
+Return JSON with this EXACT structure:
 {
-  \"skill_effectiveness\": [{\"skill_suggested\": \"...\", \"skill_invoked\": \"...\", \"followed_suggestion\": true/false, \"was_useful\": true/false/null, \"notes\": \"...\"}],
-  \"context_issues\": [{\"issue\": \"...\", \"consequence\": \"...\", \"missing_context\": \"...\", \"suggested_injection_point\": \"...\"}],
-  \"corrections\": [{\"action\": \"...\", \"feedback\": \"...\", \"lesson\": \"...\", \"heuristic\": \"H[n] or null\", \"suggested_evidence\": \"YYYY-MM-DD: [observation]\"}],
-  \"failures\": [{\"description\": \"...\", \"category\": \"...\", \"heuristic\": \"H[n] or null\", \"suggested_evidence\": \"YYYY-MM-DD: [observation]\"}],
-  \"successes\": [{\"description\": \"...\", \"skill_contributed\": \"...\"}]
+  \"session_id\": \"{session_id}\",
+  \"date\": \"{date}\",
+  \"project\": \"{project}\",
+  \"summary\": \"one sentence description\",
+  \"accomplishments\": [\"item1\", \"item2\"],
+  \"learning_observations\": [{\"category\": \"...\", \"evidence\": \"...\", \"context\": \"...\", \"heuristic\": \"H[n] or null\", \"suggested_evidence\": \"...\"}],
+  \"skill_compliance\": {\"suggested\": [...], \"invoked\": [...], \"compliance_rate\": 0.0-1.0},
+  \"context_gaps\": [\"gap1\", \"gap2\"]
 }
+
+After receiving the JSON response, save it to: $ACA_DATA/dashboard/sessions/{session_id}.json
 "
 )
 ```
 
-### Step 6: Save Insights & Route Findings
+3. **Create sessions directory if needed**:
+   ```bash
+   mkdir -p $ACA_DATA/dashboard/sessions
+   ```
 
-**Save mining results to JSON for dashboard:**
+### Step 6: Synthesize (Claude Code Agent)
 
-Write aggregated Gemini outputs to `$ACA_DATA/dashboard/insights.json`:
+**The main agent reads per-session JSONs and synthesizes two outputs:**
+
+1. **Read all session JSONs for target date**:
+   ```bash
+   ls $ACA_DATA/dashboard/sessions/*.json
+   ```
+   Filter to sessions matching the target date (check `date` field in each JSON).
+
+2. **Read existing files (if they exist)**:
+   - `$ACA_DATA/sessions/YYYYMMDD-daily.md`
+   - `$ACA_DATA/dashboard/synthesis.json`
+
+3. **Merge sessions** (idempotent by session_id):
+   - For each session JSON: if session_id already in existing data → update, else → add
+   - This ensures running from multiple machines integrates rather than duplicates
+
+4. **Write updated daily.md** at `$ACA_DATA/sessions/YYYYMMDD-daily.md`:
+
+```markdown
+# Daily Summary - YYYY-MM-DD
+
+## Session Log
+| Session | Project | Summary |
+|---------|---------|---------|
+| abc1234 | writing | Brief description of work |
+| def5678 | aops | Another session summary |
+
+## [[projects/aops]]
+- [x] Accomplishment from aops sessions
+- [x] Another accomplishment
+
+## [[projects/writing]]
+- [x] Accomplishment from writing sessions
+
+## Session Insights
+**Skill Compliance**: 75% (3/4 suggestions followed)
+**Sessions Analyzed**: N
+**Top Context Gaps**: gap1, gap2
+```
+
+5. **Write updated synthesis.json** at `$ACA_DATA/dashboard/synthesis.json`:
+
+   Read task index from `$ACA_DATA/tasks/index.json` to populate next_action and waiting_on.
 
 ```json
 {
   "generated": "ISO timestamp",
   "date": "YYYYMMDD",
-  "sessions_analyzed": N,
-  "skill_effectiveness": [/* aggregated from all sessions */],
-  "context_issues": [/* aggregated */],
-  "corrections": [/* aggregated */],
-  "failures": [/* aggregated */],
-  "successes": [/* aggregated */],
-  "summary": {
-    "compliance_rate": 0.0-1.0,
-    "skills_suggested": ["framework", "python-dev"],
-    "skills_invoked": ["framework"],
-    "top_context_gaps": ["description1", "description2"]
+  "sessions": {
+    "total": N,
+    "by_project": {"aops": 2, "writing": 1},
+    "recent": [
+      {"session_id": "abc1234", "project": "writing", "summary": "..."},
+      {"session_id": "def5678", "project": "aops", "summary": "..."}
+    ]
+  },
+  "narrative": ["Started: session summary 1", "Also worked on: session summary 2"],
+  "accomplishments": {
+    "count": N,
+    "summary": "brief text of top accomplishments",
+    "items": [
+      {"project": "aops", "item": "Completed feature X"},
+      {"project": "writing", "item": "Fixed bug Y"}
+    ]
+  },
+  "next_action": {
+    "task": "First P0 task title from task index",
+    "reason": "Highest priority task",
+    "project": "project-name"
+  },
+  "alignment": {
+    "status": "on_track|blocked|drifted",
+    "note": "explanation if blocked or drifted"
+  },
+  "waiting_on": [
+    {"task": "waiting task title", "blocker": "waiting on external"}
+  ],
+  "skill_insights": {
+    "compliance_rate": 0.75,
+    "corrections_count": N,
+    "failures_count": N,
+    "successes_count": N,
+    "top_context_gaps": ["gap1", "gap2"]
   }
 }
 ```
 
-**Update daily note with insights section:**
+### Step 6b: Route Learnings
 
-Add to daily note `$ACA_DATA/sessions/YYYYMMDD-daily.md`:
-
-```markdown
-## Session Insights
-
-**Skill Compliance**: X% (N/M turns followed suggestions)
-**Top Skills**: framework (67%), python-dev (100%)
-```
-
-**Route learnings:**
-- For each correction/failure, invoke `Skill(skill="learning-log", args="...")`
+**For each learning observation with heuristic mapping:**
+- Invoke `Skill(skill="learning-log", args="...")` to create/update GitHub Issues
 - Run up to 8 skills in parallel
 
 ---
@@ -212,8 +281,9 @@ Add to daily note `$ACA_DATA/sessions/YYYYMMDD-daily.md`:
 |----------|----------|--------|
 | Transcripts (full) | `$ACA_DATA/sessions/claude/YYYYMMDD-{project}-{sessionid}-*-full.md` | Markdown with YAML frontmatter |
 | Transcripts (abridged) | `$ACA_DATA/sessions/claude/YYYYMMDD-{project}-{sessionid}-*-abridged.md` | Markdown with YAML frontmatter |
-| Daily summary | `$ACA_DATA/sessions/YYYYMMDD-daily.md` | Markdown with insights section |
-| Mining results | `$ACA_DATA/dashboard/insights.json` | JSON for dashboard |
+| Per-session mining | `$ACA_DATA/dashboard/sessions/{session_id}.json` | JSON (one per session) |
+| Daily summary | `$ACA_DATA/sessions/YYYYMMDD-daily.md` | Markdown with accomplishments by project |
+| Dashboard synthesis | `$ACA_DATA/dashboard/synthesis.json` | JSON for dashboard rendering |
 | Learning observations | GitHub Issues (nicsuzor/academicOps) | Via `/log` skill → Issues |
 
 ## Output Summary
