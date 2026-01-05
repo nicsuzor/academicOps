@@ -2,17 +2,17 @@
 name: dashboard
 description: Cognitive Load Dashboard - Live Streamlit dashboard for task visibility and session activity monitoring.
 allowed-tools: Read,Bash,Skill
-version: 1.2.0
+version: 2.0.0
 permalink: skills-dashboard-skill
 ---
 
 # Cognitive Load Dashboard
 
-Single Streamlit dashboard answering three questions: What to do? What doing? What done?
+Unified Focus Dashboard - glance and know exactly what's going on.
 
 ## Overview
 
-Live web dashboard displaying high-priority tasks and Claude Code session activity across all projects. Designed for desktop monitoring and mobile/tablet access when away from desk.
+Single-page dashboard combining synthesis insights with project tasks. Opens directly to Focus Synthesis panel. No redundant sections - each piece of information appears exactly once.
 
 ## Running
 
@@ -25,34 +25,20 @@ cd $AOPS && uv run streamlit run skills/dashboard/dashboard.py
 - **Desktop**: http://localhost:8501
 - **Tablet/Phone**: http://<desktop-ip>:8501
 
-## Components
+## Layout
 
-Each piece of information appears **exactly once** in the most appropriate location.
+### Focus Synthesis Panel (Top)
+Pre-computed insights from synthesis.json:
+- **Today's Story** - Narrative bullets of the day's work
+- **Status Cards** - Done count, alignment status, blocked items
+- **Session Insights** - Skill compliance, corrections, context gaps
 
-### Three-Question Layout (Primary View)
-Answers the core cognitive questions at a glance:
-- **WHAT SHOULD I DO?** - Primary focus + P0/P1 priority tasks
-- **WHAT AM I DOING?** - Session summaries from synthesis.json
-- **WHAT DID I DO TODAY?** - Accomplishments grouped by project
-
-### Focus Synthesis Panel
-LLM-generated insights from session-insights skill (synthesis.json):
-- **Today's Story** - Narrative of the day's work
-- **Next Action** - Recommended next task with reasoning
-- **Alignment** - On track / blocked / drifted status
-- **Session Insights** - Skill compliance, corrections, failures, context gaps
-
-### Blockers Panel
-Items marked as blockers in daily notes. Red-themed for visibility.
-
-### Project Cards
-Per-project detailed view showing:
-- Accomplishments (from daily notes)
-- Priority tasks (P0/P1)
-- Memory notes (from sessions)
-- Git commits (last 24h)
-
-Color-coded by project (matches Peacock theme).
+### Project Cards (Integrated Grid)
+Per-project cards with unified styling:
+- **Priority Tasks** - P0 (red), P1 (orange), P2 (purple) badges
+- **Accomplishments** - Compact green checkmarks
+- Sorted by task count (projects with work first)
+- Color-coded headers by project (Peacock theme)
 
 ## Architecture
 
