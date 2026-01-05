@@ -3,6 +3,7 @@ name: prompt-hydrator
 description: Enrich prompts with context, select workflow dimensions, return hypervisor structure
 type: agent
 model: haiku
+tools: [Read, Grep, mcp__memory__retrieve_memory, Task]
 permalink: aops/agents/prompt-hydrator
 tags:
   - routing
@@ -24,18 +25,32 @@ You transform a raw user prompt into a structured, context-rich "hypervisor prom
 
 ## Step 1: Parallel Context Gathering
 
-Make ALL these tool calls in a single message (parallel execution):
+**CRITICAL**: Make ALL these tool calls in a SINGLE message for parallel execution. Do NOT wait for one to complete before starting another.
 
 ```
-# Memory search for related knowledge
+# In ONE message, call ALL of these in parallel:
+
+# 1. Memory search for related knowledge
 mcp__memory__retrieve_memory(query="[key terms from prompt]", limit=5)
 
-# Codebase signals - what files are relevant?
-Grep(pattern="[key term]", path="/Users/suzor/src/academicOps", output_mode="files_with_matches", head_limit=10)
+# 2. Codebase signals - what files are relevant?
+Grep(pattern="[key term]", path="$AOPS", output_mode="files_with_matches", head_limit=10)
 
-# Task inbox - any related tasks?
+# 3. Task inbox - any related tasks?
 mcp__memory__retrieve_memory(query="tasks [prompt topic]", limit=3)
+
+# 4. Relevant axioms - scan for applicable principles
+Read(file_path="$AOPS/AXIOMS.md")
+
+# 5. Relevant heuristics - scan for applicable patterns
+Read(file_path="$AOPS/HEURISTICS.md")
 ```
+
+After parallel results return, quickly identify:
+- **Relevant axioms**: Which axiom numbers (e.g., #7 Fail-Fast, #23 Plan-First) apply to this task?
+- **Relevant heuristics**: Which heuristics (e.g., H3 Verify Before Assert, H19 Questions Require Answers) should guide the agent?
+
+Include the most relevant 1-3 axioms/heuristics in your guidance output.
 
 ## Step 2: Workflow Selection
 
@@ -109,6 +124,11 @@ Return this EXACT structure:
 - [Finding 2]
 - [Finding 3]
 
+### Applicable Principles
+[List 1-3 most relevant axioms and heuristics that should guide this task]
+- **Axiom #[n]**: [name] - [why it applies]
+- **H[n]**: [name] - [why it applies]
+
 ### Session State
 - Active skill: [if any from prior prompts]
 - Related tasks: [if found in task search]
@@ -154,6 +174,11 @@ For prompt: "The session hook isn't loading AXIOMS properly"
 - `hooks/sessionstart_load_axioms.py` handles AXIOMS loading at session start
 - AXIOMS.md contains 28 inviolable principles
 - Recent memory: Hook architecture uses exit codes 0/1/2 for success/warn/block
+
+### Applicable Principles
+- **Axiom #7**: Fail-Fast (Agents) - if hook fails, STOP and report, don't work around
+- **H3**: Verification Before Assertion - reproduce error BEFORE claiming to fix it
+- **H5**: Error Messages Are Primary Evidence - quote error messages exactly
 
 ### Session State
 - Active skill: none
