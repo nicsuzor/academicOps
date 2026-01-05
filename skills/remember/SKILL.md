@@ -148,7 +148,7 @@ When in doubt, save to both. Lost detail is worse than mild redundancy.
 ```markdown
 ---
 title: [Descriptive Title]
-type: [note|learning|decision]
+type: note
 tags: [relevant, tags]
 created: YYYY-MM-DD
 ---

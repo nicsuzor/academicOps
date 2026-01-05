@@ -62,7 +62,7 @@ When creating a workflow file:
 ```markdown
 ---
 title: [Pattern Name]
-type: workflow
+type: automation
 description: [When to use - be specific about trigger conditions]
 ---
 

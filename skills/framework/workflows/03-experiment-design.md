@@ -1,6 +1,6 @@
 ---
 title: Experiment Design
-type: workflow
+type: automation
 permalink: workflow-experiment-design
 description: Process for designing, implementing, and evaluating framework experiments
 ---

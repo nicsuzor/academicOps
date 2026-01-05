@@ -1,6 +1,6 @@
 ---
 title: Develop Automation Specification
-type: workflow
+type: automation
 permalink: workflow-develop-specification
 description: Process for collaboratively developing task specifications before implementation
 ---

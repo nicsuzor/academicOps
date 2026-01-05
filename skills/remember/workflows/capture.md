@@ -1,6 +1,6 @@
 ---
 title: Capture Workflow
-type: workflow
+type: automation
 permalink: capture-workflow
 tags:
   - memory

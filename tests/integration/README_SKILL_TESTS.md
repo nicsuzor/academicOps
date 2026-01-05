@@ -1,6 +1,6 @@
 ---
 title: Skill Script Discovery Tests
-type: test
+type: spec
 permalink: skill-script-discovery-tests
 description: End-to-end tests for skill and script discovery from any working directory
 tags:

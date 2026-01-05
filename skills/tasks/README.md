@@ -1,6 +1,6 @@
 ---
 title: Task Management System
-type: readme
+type: note
 permalink: skills/tasks/readme
 description: FastMCP server providing task management tools with properly formatted markdown and integration support
 tags: [skill, tasks, task-management, mcp, memory]

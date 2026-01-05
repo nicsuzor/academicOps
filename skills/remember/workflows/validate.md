@@ -1,6 +1,6 @@
 ---
 title: Validate Workflow
-type: workflow
+type: automation
 permalink: validate-workflow
 tags:
   - memory

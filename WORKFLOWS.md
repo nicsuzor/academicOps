@@ -1,7 +1,7 @@
 ---
 name: workflows
 title: Workflow Routing
-type: generated-index
+type: index
 description: Task classification and workflow selection. Agents read this to determine how to handle work.
 permalink: workflows
 tags: [framework, routing, generated]

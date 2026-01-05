@@ -12,6 +12,8 @@ tags:
 
 **Last updated**: 2025-12-30
 
+> **Why this file matters**: Agents have no persistent memory. VISION.md defines the end state - what we're building and why. Update when fundamental direction changes (rare). Keep out: implementation details, current status.
+
 ## What This Is
 
 An academic support framework for Claude Code. It provides:

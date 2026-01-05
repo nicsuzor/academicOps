@@ -1,6 +1,6 @@
 ---
 title: Email Archive Knowledge Extraction
-type: readme
+type: note
 permalink: skills/extractor/readme
 description: Automated system for extracting important professional knowledge from archived emails and converting them to properly formatted markdown knowledge base entries.
 tags: [skill, extractor, email, knowledge-extraction, memory]
@@ -117,7 +117,7 @@ Generated knowledge base entries follow structured format:
 ```markdown
 ---
 title: [Name] - [Affiliation]
-type: person
+type: contact
 tags: [person, research-area, location, connection-type]
 ---
 

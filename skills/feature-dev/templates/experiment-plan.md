@@ -1,6 +1,6 @@
 ---
 title: Experiment Plan Template
-type: template
+type: spec
 permalink: skills/feature-dev/templates/experiment-plan
 description: Template for hypothesis-driven feature development with validation and decision criteria
 tags: [template, feature-dev, experiment, validation]

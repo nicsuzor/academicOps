@@ -1,6 +1,6 @@
 ---
 title: User Prompt Submit Context
-type: hook-prompt
+type: prompt
 permalink: hooks-prompt-user-submit
 description: User prompt submit hook reminder to focus on specific request and avoid over-elaboration
 ---

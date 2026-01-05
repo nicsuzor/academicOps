@@ -28,10 +28,9 @@ def get_reminder_message() -> str:
     if template_path.exists():
         return template_path.read_text().strip()
 
-    # Fallback if template not found
-    return (
-        "[AOPS Framework Reminder: If this marks the end of a substantial chunk of work, "
-        "use the remember skill to document key decisions and outcomes.]"
+    # Raise if template not found
+    raise FileNotFoundError(
+        "Memory reminder template not found at: " + str(template_path)
     )
 
 

@@ -1,6 +1,6 @@
 ---
 title: AcademicOps Specification Template
-type: template
+type: spec
 permalink: spec-template
 description: Template for specifying academicops tasks with clear scope, acceptance criteria, and integration tests
 tags:

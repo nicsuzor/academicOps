@@ -1,6 +1,6 @@
 ---
 title: Monitor and Prevent Bloat
-type: workflow
+type: automation
 permalink: workflow-monitor-prevent-bloat
 description: Process for monitoring file sizes and preventing framework bloat
 ---

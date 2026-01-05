@@ -1,6 +1,6 @@
 ---
 title: Hook Testing Protocol
-type: test
+type: spec
 permalink: hook-test-protocol
 description: Manual test protocol for verifying Claude Code hook effectiveness
 tags:

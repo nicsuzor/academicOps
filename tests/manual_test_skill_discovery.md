@@ -1,6 +1,6 @@
 ---
 title: Manual Skill Discovery and Silent Failure Prevention Test
-type: test
+type: spec
 permalink: manual-skill-discovery-test
 description: Manual end-to-end test for skill discovery and fail-fast validation
 tags:

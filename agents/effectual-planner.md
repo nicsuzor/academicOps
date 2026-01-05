@@ -61,7 +61,7 @@ The planning web lives in `${ACA_DATA}/`. Everything is a markdown file with YAM
 Frontmatter fields that matter:
 
 ```yaml
-type: goal | project | task
+type: goal
 status: seed | growing | active | blocked | complete | dormant | dead
 created: YYYY-MM-DD
 updated: YYYY-MM-DD

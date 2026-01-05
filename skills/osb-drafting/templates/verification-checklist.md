@@ -1,6 +1,6 @@
 ---
 title: Citation Verification Checklist
-type: template
+type: spec
 permalink: skills/osb-drafting/templates/verification-checklist
 description: Checklist for verifying case citations and ensuring factual accuracy in OSB decision drafts
 tags: [template, osb-drafting, verification, qa, checklist]

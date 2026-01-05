@@ -11,6 +11,8 @@ tags:
 
 **Last updated**: 2025-12-30
 
+> **Why this file matters**: Agents have no persistent memory. ROADMAP.md is the current status - what's done, in progress, blocked. Update after completing significant work. Keep out: detailed how-to, specs, future speculation.
+
 ## Done
 
 ### Core Infrastructure

@@ -1,6 +1,6 @@
 ---
 title: Debug Framework Issue
-type: workflow
+type: automation
 permalink: workflow-debug-framework-issue
 description: Process for diagnosing and fixing framework component failures and integration issues
 ---

@@ -1,6 +1,6 @@
 ---
 title: Design New Component
-type: workflow
+type: automation
 permalink: workflow-design-new-component
 description: Process for adding new framework capability (hook, skill, script, command)
 ---

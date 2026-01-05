@@ -231,7 +231,7 @@ To support this philosophy, bmem entities must have:
 ```yaml
 title: Clear, searchable title
 permalink: Stable identifier
-type: Entity type for structural queries
+type: note
 tags: Semantic tags for filtering
 created: Capture timestamp
 ```

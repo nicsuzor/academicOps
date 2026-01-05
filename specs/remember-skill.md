@@ -92,7 +92,7 @@ Before creating any file:
 ```markdown
 ---
 title: Descriptive Title
-type: note|learning|decision
+type: note
 tags: [relevant, tags]
 created: YYYY-MM-DD
 ---

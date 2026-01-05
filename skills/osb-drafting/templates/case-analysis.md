@@ -1,6 +1,6 @@
 ---
 title: Case Analysis Template
-type: template
+type: spec
 permalink: skills/osb-drafting/templates/case-analysis
 description: Template for comprehensive legal case analysis with IRAC structure and human rights framework
 tags: [template, osb-drafting, case-analysis, legal]

@@ -1,6 +1,6 @@
 ---
 title: Experiment Logging Structure
-type: chunk
+type: note
 permalink: analyst-chunk-experiment-logging
 description: Standards for organizing, documenting, and managing experimental work in research projects
 ---

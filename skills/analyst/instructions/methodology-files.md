@@ -1,6 +1,6 @@
 ---
 title: METHODOLOGY.md Files
-type: chunk
+type: note
 permalink: analyst-chunk-methodology-files
 description: Structure and maintenance rules for research methodology documentation
 ---

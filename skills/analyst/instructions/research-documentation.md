@@ -1,6 +1,6 @@
 ---
 title: Research Project Documentation Structure
-type: chunk
+type: note
 permalink: analyst-chunk-research-documentation
 description: Mandatory documentation structure and maintenance rules for academic research projects
 ---

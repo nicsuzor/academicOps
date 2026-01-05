@@ -206,32 +206,37 @@ def resolve_target(source_path: Path, ref_text: str, root: Path) -> str:
         return ref_text
 
     # Handle bare names (like [[README]] or [[AXIOMS.md]])
-    # First try relative to source file's directory
-    candidate = source_path.parent / ref_text
-    if candidate.exists():
-        try:
-            return str(candidate.relative_to(root))
-        except ValueError:
-            pass
-
-    # Try adding .md extension if not present
-    if not ref_text.endswith(".md"):
-        candidate_md = source_path.parent / f"{ref_text}.md"
-        if candidate_md.exists():
+    # Wrap in try-except for OSError (e.g., path too long)
+    try:
+        # First try relative to source file's directory
+        candidate = source_path.parent / ref_text
+        if candidate.exists():
             try:
-                return str(candidate_md.relative_to(root))
+                return str(candidate.relative_to(root))
             except ValueError:
                 pass
 
-    # Try from root
-    candidate_root = root / ref_text
-    if candidate_root.exists():
-        return str(candidate_root.relative_to(root))
+        # Try adding .md extension if not present
+        if not ref_text.endswith(".md"):
+            candidate_md = source_path.parent / f"{ref_text}.md"
+            if candidate_md.exists():
+                try:
+                    return str(candidate_md.relative_to(root))
+                except ValueError:
+                    pass
 
-    if not ref_text.endswith(".md"):
-        candidate_root_md = root / f"{ref_text}.md"
-        if candidate_root_md.exists():
-            return str(candidate_root_md.relative_to(root))
+        # Try from root
+        candidate_root = root / ref_text
+        if candidate_root.exists():
+            return str(candidate_root.relative_to(root))
+
+        if not ref_text.endswith(".md"):
+            candidate_root_md = root / f"{ref_text}.md"
+            if candidate_root_md.exists():
+                return str(candidate_root_md.relative_to(root))
+    except OSError:
+        # Path too long or other OS error - can't resolve
+        pass
 
     # Can't resolve - return as-is
     return ref_text

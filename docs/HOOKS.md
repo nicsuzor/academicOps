@@ -1,6 +1,6 @@
 ---
 title: Hooks
-type: framework-doc
+type: reference
 permalink: docs-hooks
 description: Claude Code hooks extend session functionality, injecting context and enforcing policies
 ---

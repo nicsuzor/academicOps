@@ -13,8 +13,24 @@ Exit codes:
 """
 
 import json
+import os
 import sys
+from pathlib import Path
 from typing import Any
+
+
+def get_reflection_message() -> str:
+    """Load reflection message from template file."""
+    aops_root = Path(os.environ.get("AOPS", ""))
+    template_path = aops_root / "hooks" / "prompts" / "session-reflect.md"
+
+    if template_path.exists():
+        return template_path.read_text().strip()
+
+    # Raise if template not found
+    raise FileNotFoundError(
+        "Session reflection template not found at: " + str(template_path)
+    )
 
 
 def main():
@@ -35,22 +51,8 @@ def main():
         print(json.dumps({}))
         sys.exit(0)
 
-    # Inject reflection instruction
-    message = """[AOPS: Session Reflection]
-
-Before ending, run session reflection to capture learnings:
-
-```
-Skill(skill="session-insights", args="current")
-```
-
-This will:
-1. Analyze this session for patterns (skill bypass, verification skip, etc.)
-2. Map findings to heuristics (H2, H3, H4, etc.)
-3. Present suggestions for you to approve/dismiss
-
-You can skip by saying "skip reflection" or pressing Ctrl+C.
-"""
+    # Inject reflection instruction from template
+    message = get_reflection_message()
 
     output: dict[str, Any] = {
         "reason": message,

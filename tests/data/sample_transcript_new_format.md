@@ -1,6 +1,6 @@
 ---
 title: "Claude Code Session (abridged)"
-type: session
+type: session-log
 permalink: sessions/claude/df28e52b-abridged
 tags:
   - claude-session

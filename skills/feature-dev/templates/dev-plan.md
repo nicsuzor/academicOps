@@ -1,6 +1,6 @@
 ---
 title: Development Plan Template
-type: template
+type: spec
 permalink: skills/feature-dev/templates/dev-plan
 description: Template for detailed development planning with step-by-step implementation guidance
 tags: [template, feature-dev, development, planning]

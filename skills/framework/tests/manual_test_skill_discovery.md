@@ -1,6 +1,6 @@
 ---
 title: Manual End-to-End Test - Skill Discovery and Silent Failure Prevention
-type: test
+type: spec
 permalink: manual-test-skill-discovery
 description: E2E test procedure to validate agents discover and use task skill instead of silent file workarounds
 tags:

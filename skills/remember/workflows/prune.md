@@ -1,6 +1,6 @@
 ---
 title: Prune Workflow
-type: workflow
+type: automation
 permalink: prune-workflow
 tags:
   - memory
