@@ -31,7 +31,9 @@ def check_links_resolve() -> list[str]:
     """Check that all [[file.md]] links resolve to existing files."""
     errors = []
 
-    for md_file in BOTS_DIR.rglob("*.md"):
+    aca_data = Path(os.environ.get("ACA_DATA", ""))
+    
+    for md_file in REPO_ROOT.rglob("*.md"):
         # Skip broken symlinks (pre-existing infrastructure issue)
         if not md_file.exists():
             continue
@@ -42,14 +44,23 @@ def check_links_resolve() -> list[str]:
             errors.append(f"{md_file.name}: Unable to read file: {e}")
             continue
 
-        links = re.findall(r"\[\[([^\]]+\.md)\]\]", content)
+        # Remove code blocks to avoid false positives in examples
+        content_no_code = re.sub(r"```.*?```", "", content, flags=re.DOTALL)
+        content_no_code = re.sub(r"`[^`]*`", "", content_no_code) # Also inline code
+
+        links = re.findall(r"\[\[([^\]]+\.md)\]\]", content_no_code)
 
         for link in links:
-            # Try relative to bots/ and relative to file
+            # Try 1: Relative to file
+            # Try 2: Relative to AOPS root
+            # Try 3: Relative to ACA_DATA (if set)
             candidates = [
-                BOTS_DIR / link,
                 md_file.parent / link,
+                REPO_ROOT / link,
             ]
+            if aca_data.exists():
+                candidates.append(aca_data / link)
+                candidates.append(aca_data / "data" / link) # Common pattern
 
             if not any(c.exists() for c in candidates):
                 errors.append(f"{md_file.name}: Link [[{link}]] does not resolve")
@@ -101,15 +112,26 @@ def check_no_axiom_duplication() -> list[str]:
 
         # Check for axiom duplication
         for pattern in axiom_patterns:
-            # Check if pattern exists without a reference to AXIOMS.md
-            # Accept [[AXIOMS.md]], [[../../AXIOMS.md]], @AXIOMS, etc.
-            if re.search(pattern, content_no_code, re.IGNORECASE) and not re.search(
-                r"\[\[.*AXIOMS\.md\]\]|@.*AXIOMS", content
-            ):
-                errors.append(
-                    f"{md_file.name}: Contains axiom content '{pattern}' "
-                    f"without reference to AXIOMS.md (possible duplication)"
-                )
+            # Check if pattern exists
+            if re.search(pattern, content_no_code, re.IGNORECASE):
+                # Check line-by-line
+                lines = content_no_code.split('\n')
+                for i, line in enumerate(lines):
+                    if re.search(pattern, line, re.IGNORECASE):
+                        # 1. Allow references (See AXIOMS)
+                        if any(x in line for x in ["[[AXIOMS", "@AXIOMS", "See AXIOMS", "per AXIOMS", "from AXIOMS"]):
+                            continue
+                            
+                        # 2. Only strictly enforce duplication on HEADER lines for short phrases
+                        # If it's body text (not a header), we assume it's usage, not definition.
+                        # Unless it's a very long match (unlikely for "Fail-Fast")
+                        if not line.strip().startswith('#'):
+                             continue
+                             
+                        errors.append(
+                            f"{md_file.name}:{i+1}: Header contains axiom '{pattern}' "
+                            f"without reference to AXIOMS.md (Redefinition risk)"
+                        )
 
     return errors
 

@@ -104,7 +104,7 @@ SessionStart injection provides exactly four categories of information:
 
 ## Implementation Requirements
 
-### Fail-Fast Behavior
+### Fail-Fast Behavior (See [[AXIOMS.md]])
 
 All four files are **mandatory**. If ANY file is:
 - Missing → Exit code 1, session cannot start

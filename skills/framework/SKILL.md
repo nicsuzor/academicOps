@@ -415,7 +415,7 @@ Detailed guides for specific framework topics:
 - [[references/script-design-guide.md]] - Script design principles
 - [[references/e2e-test-harness.md]] - Test harness infrastructure
 - [[references/claude-code-config.md]] - Claude Code configuration
-- [[references/strategic-partner-mode.md]] - Strategic collaboration mode
+- [[../../strategic-partner-mode.md]] - Strategic collaboration mode
 
 ## Before You Modify
 

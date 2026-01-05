@@ -119,18 +119,18 @@ When encountering something that cannot be derived:
 
 ### Reference Documentation
 
-- [[references/hooks_guide.md]] - Hook system architecture
-- [[references/script-design-guide.md]] - Script design principles
-- [[references/e2e-test-harness.md]] - Test harness infrastructure
-- [[references/claude-code-config.md]] - Claude Code configuration
+- [[../skills/framework/references/hooks_guide.md]] - Hook system architecture
+- [[../skills/framework/references/script-design-guide.md]] - Script design principles
+- [[../skills/framework/references/e2e-test-harness.md]] - Test harness infrastructure
+- [[../skills/framework/references/claude-code-config.md]] - Claude Code configuration
 
 ### Workflows
 
-- [[workflows/01-design-new-component.md]] - Adding hooks, skills, scripts
-- [[workflows/02-debug-framework-issue.md]] - Deep Root Cause Analysis
-- [[workflows/03-experiment-design.md]] - Framework experiments
-- [[workflows/04-monitor-prevent-bloat.md]] - Anti-bloat practices
-- [[workflows/06-develop-specification.md]] - Writing specs
+- [[../skills/framework/workflows/01-design-new-component.md]] - Adding hooks, skills, scripts
+- [[../skills/framework/workflows/02-debug-framework-issue.md]] - Deep Root Cause Analysis
+- [[../skills/framework/workflows/03-experiment-design.md]] - Framework experiments
+- [[../skills/framework/workflows/04-monitor-prevent-bloat.md]] - Anti-bloat practices
+- [[../skills/framework/workflows/06-develop-specification.md]] - Writing specs
 
 ## Relationships
 

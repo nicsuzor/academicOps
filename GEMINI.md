@@ -92,7 +92,7 @@ Read `$AOPS/BOOTSTRAP.md` for current operational state.
 
 ---
 
-## Fail-Fast Mandate
+## Fail-Fast Mandate (See [[AXIOMS.md]])
 
 If your tools or instructions don't work precisely:
 1. **STOP** immediately
