@@ -110,8 +110,8 @@ Empirically derived rules implementing [[AXIOMS]]. Evidence lives in GitHub Issu
 **Confidence**: Low | **Implements**: #9
 
 ## H19: Questions Require Answers, Not Actions
-**Statement**: When user asks a question, ANSWER first. Do not jump to implementing or debugging.
-**Confidence**: Medium | **Implements**: #4, #17 | **Evidence**: #215
+**Statement**: When user asks a question, ANSWER first. Do not jump to implementing or debugging. After reflection, STOP - do not proceed to fixing unless explicitly directed.
+**Confidence**: Medium | **Implements**: #4, #17 | **Evidence**: #215, #237
 
 ## H20: Critical Thinking Over Blind Compliance
 **Statement**: Apply judgment to instructions. When instructions seem wrong, say so.
@@ -146,8 +146,8 @@ Empirically derived rules implementing [[AXIOMS]]. Evidence lives in GitHub Issu
 **Confidence**: Low | **Implements**: #23
 
 ## H28: Mandatory Acceptance Testing
-**Statement**: Feature development MUST include acceptance testing as tracked TODO. /qa requires full e2e verification.
-**Confidence**: Low | **Implements**: #22, #23, #17, #18
+**Statement**: Feature development MUST include acceptance testing as tracked TODO. /qa requires full e2e verification. Tests are contracts - fix the code, not the test.
+**Confidence**: Medium | **Implements**: #22, #23, #17, #18 | **Evidence**: #217
 
 ## H29: TodoWrite vs Persistent Tasks
 **Statement**: TodoWrite for tracking approved work steps only. Work requiring approval/rollback uses `/tasks` skill.
