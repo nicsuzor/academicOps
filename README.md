@@ -24,36 +24,38 @@ See [[documentation-architecture]] for document purposes. Agents use [[FRAMEWORK
 
 ## How Enforcement Works
 
-We can't force agent compliance—only encourage with detection. Layered defenses:
+We can't force agent compliance—only encourage with detection. The **7-level mechanism ladder**:
 
 ```mermaid
 graph LR
-    subgraph "Before Task"
-        A[AXIOMS.md] --> B[Intent Router]
-        B --> C{Skill suggested?}
+    subgraph "Prompts (1a-c)"
+        A[AXIOMS] --> B[Skills]
     end
 
-    subgraph "During Task"
-        C --> D[TodoWrite]
-        D --> E[Plan Mode]
+    subgraph "Intelligent (2-3)"
+        B --> C[Intent Router]
+        C --> D[Skill Abstraction]
     end
 
-    subgraph "After Task"
-        E --> F[PostToolUse Hooks]
-        F --> G[Critic Review]
+    subgraph "Hooks (4-7)"
+        D --> E[PreToolUse]
+        E --> F[PostToolUse]
+        F --> G[Deny Rules]
         G --> H[Pre-commit]
     end
 ```
 
-| Level | Mechanism | When | What It Does |
-|-------|-----------|------|--------------|
-| 0 | Convention | — | Documented, not checked |
-| 1 | Detection | Post-hoc | Logs violations |
-| 2 | Soft Gate | Before task | Suggests workflow |
-| 3 | Observable | During task | Creates artifacts (TodoWrite) |
-| 4 | Hard Gate | Blocks action | Pre-commit, required approval |
+| Level | Mechanism | Strength | Use When |
+|-------|-----------|----------|----------|
+| 1a-c | Prompt text | Weak→Medium | Mention → Rule → Emphatic+Reasoned |
+| 2 | Intent router | Medium-Strong | First intelligent intervention |
+| 3a-b | Tool restriction / Skill abstraction | Strong | Force correct workflow |
+| 4 | Pre-tool-use hooks | Stronger | Block before damage |
+| 5 | Post-tool-use validation | Strong | Catch violations |
+| 6 | Deny rules (settings.json) | Strongest | Hard block, no exceptions |
+| 7 | Pre-commit hooks | Absolute | Last line of defense |
 
-See [[specs/enforcement]] for detailed architecture.
+See [[docs/ENFORCEMENT.md]] for practical guide, [[specs/enforcement.md]] for architecture.
 
 ## Installation
 
