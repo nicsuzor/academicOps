@@ -3,7 +3,7 @@ name: Test Setup Script
 on:
   pull_request:
     paths:
-      - "scripts/setup.sh"
+      - "setup.sh"
       - "config/**"
       - "agents/**"
       - "skills/**"
@@ -14,7 +14,7 @@ on:
     branches:
       - main
     paths:
-      - "scripts/setup.sh"
+      - "setup.sh"
       - "config/**"
       - "agents/**"
       - "skills/**"
@@ -31,7 +31,7 @@ jobs:
 
       - name: Run setup script
         run: |
-          bash scripts/setup.sh
+          bash setup.sh
 
       - name: Verify global ~/.claude symlinks
         run: |
