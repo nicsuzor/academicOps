@@ -116,7 +116,9 @@ create_symlink() {
 create_symlink "skills" "$AOPS_PATH/skills"
 create_symlink "commands" "$AOPS_PATH/commands"
 create_symlink "agents" "$AOPS_PATH/agents"
+create_symlink "hooks" "$AOPS_PATH/hooks"
 create_symlink "settings.json" "$AOPS_PATH/config/claude/settings.json"
+create_symlink "CLAUDE.md" "$AOPS_PATH/CLAUDE.md"
 
 # Step 2a: Create settings.local.json with machine-specific env vars
 echo
@@ -540,7 +542,7 @@ if [ ! -d "$ACA_DATA_PATH" ]; then
 fi
 
 # Check symlinks
-for link in skills commands agents settings.json; do
+for link in skills commands agents hooks settings.json CLAUDE.md; do
     if [ ! -L "$CLAUDE_DIR/$link" ]; then
         echo -e "${RED}✗ Symlink missing: $CLAUDE_DIR/$link${NC}"
         VALIDATION_PASSED=false
