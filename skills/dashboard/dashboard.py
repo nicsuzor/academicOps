@@ -36,15 +36,11 @@ def load_task_index() -> dict | None:
         return None
 
 
-def load_synthesis(max_age_minutes: int = 60) -> dict | None:
-    """Load LLM synthesis from synthesis.json if fresh.
-
-    Args:
-        max_age_minutes: Maximum age in minutes before synthesis is considered stale.
-            Default is 60 minutes (suitable for dashboard display).
+def load_synthesis() -> dict | None:
+    """Load LLM synthesis from synthesis.json.
 
     Returns:
-        Parsed synthesis dict if file exists and is fresh, None otherwise.
+        Parsed synthesis dict with added '_age_minutes' field, or None if file doesn't exist.
     """
     aca_data = os.environ.get("ACA_DATA")
     if not aca_data:
@@ -55,14 +51,13 @@ def load_synthesis(max_age_minutes: int = 60) -> dict | None:
         return None
 
     try:
-        # Check if file is fresh
         mtime = synthesis_path.stat().st_mtime
         age_minutes = (datetime.now().timestamp() - mtime) / 60
-        if age_minutes > max_age_minutes:
-            return None  # Stale, don't use
 
         with open(synthesis_path) as f:
-            return json.load(f)
+            data = json.load(f)
+            data["_age_minutes"] = age_minutes
+            return data
     except Exception:
         return None
 
@@ -1490,19 +1485,17 @@ synthesis = load_synthesis()
 
 # === LLM SYNTHESIS PANEL (if available) ===
 if synthesis:
-    # Calculate age
-    generated = synthesis.get("generated", "")
-    age_str = ""
-    if generated:
-        try:
-            gen_time = datetime.fromisoformat(generated.replace("Z", "+00:00"))
-            age_min = int((datetime.now(timezone.utc) - gen_time).total_seconds() / 60)
-            age_str = f"{age_min}m ago"
-        except Exception:
-            pass
+    # Calculate age and staleness
+    age_minutes = synthesis.get("_age_minutes", 0)
+    age_str = f"{int(age_minutes)}m ago"
+    is_stale = age_minutes > 60
+
+    # Stale indicator styling
+    stale_class = "stale" if is_stale else ""
+    stale_badge = " <span style='background: #f59e0b; color: #000; padding: 2px 6px; border-radius: 3px; font-size: 0.7em; margin-left: 8px;'>STALE - re-run /session-insights</span>" if is_stale else ""
 
     synth_html = "<div class='synthesis-panel'>"
-    synth_html += f"<div class='synthesis-header'><div class='synthesis-title'>🧠 FOCUS SYNTHESIS</div><div class='synthesis-age'>{age_str}</div></div>"
+    synth_html += f"<div class='synthesis-header'><div class='synthesis-title'>🧠 FOCUS SYNTHESIS{stale_badge}</div><div class='synthesis-age'>{age_str}</div></div>"
 
     # Narrative section - tell the day's story
     narrative = synthesis.get("narrative", [])

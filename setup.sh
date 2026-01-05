@@ -1,11 +1,16 @@
 #!/usr/bin/env bash
 #
-# Setup script for aOps framework
+# Setup script for aOps framework (Claude Code + Gemini CLI)
 #
 # This script:
-# 1. Sets environment variables in your shell RC file
-# 2. Creates symlinks in ~/.claude/ pointing to framework
-# 3. Validates the setup
+# 1. Creates symlinks in ~/.claude/ pointing to framework
+# 2. Configures MCP servers for Claude Code and Claude Desktop
+# 3. Sets up Gemini CLI (if installed) with hooks and commands
+# 4. Validates the setup
+#
+# Prerequisites:
+#   - AOPS and ACA_DATA environment variables set
+#   - jq installed
 #
 # Usage:
 #   ./setup.sh
@@ -399,8 +404,111 @@ fi
 
 echo
 
-# Step 3: Validate setup
-echo "Step 3: Validating setup"
+# Step 3: Gemini CLI setup
+echo "Step 3: Gemini CLI setup"
+echo "------------------------"
+
+GEMINI_DIR="$HOME/.gemini"
+
+# Check if gemini CLI is installed
+if ! command -v gemini &> /dev/null; then
+    echo -e "${YELLOW}⚠ gemini CLI not found - skipping Gemini setup${NC}"
+    echo "  Install from: https://github.com/google-gemini/gemini-cli"
+    GEMINI_SKIPPED=true
+else
+    GEMINI_SKIPPED=false
+    echo -e "${GREEN}✓ gemini CLI found${NC}"
+
+    # Create ~/.gemini/ directory
+    mkdir -p "$GEMINI_DIR"
+
+    # Create symlinks for Gemini
+    gemini_create_symlink() {
+        local name=$1
+        local target=$2
+        local link_path="$GEMINI_DIR/$name"
+
+        if [ -L "$link_path" ]; then
+            current_target="$(readlink "$link_path")"
+            if [ "$current_target" = "$target" ]; then
+                echo "  $name → $target (already correct)"
+                return
+            fi
+            rm "$link_path"
+        elif [ -e "$link_path" ]; then
+            rm -rf "$link_path"
+        fi
+
+        ln -s "$target" "$link_path"
+        echo -e "${GREEN}  $name → $target${NC}"
+    }
+
+    gemini_create_symlink "hooks" "$AOPS_PATH/gemini/hooks"
+    gemini_create_symlink "commands" "$AOPS_PATH/gemini/commands"
+
+    # GEMINI.md symlink
+    if [ -L "$GEMINI_DIR/GEMINI.md" ]; then
+        current_target="$(readlink "$GEMINI_DIR/GEMINI.md")"
+        if [ "$current_target" != "$AOPS_PATH/GEMINI.md" ]; then
+            rm "$GEMINI_DIR/GEMINI.md"
+            ln -s "$AOPS_PATH/GEMINI.md" "$GEMINI_DIR/GEMINI.md"
+            echo -e "${GREEN}  GEMINI.md → $AOPS_PATH/GEMINI.md${NC}"
+        else
+            echo "  GEMINI.md → $AOPS_PATH/GEMINI.md (already correct)"
+        fi
+    elif [ -e "$GEMINI_DIR/GEMINI.md" ] && [ ! -s "$GEMINI_DIR/GEMINI.md" ]; then
+        rm "$GEMINI_DIR/GEMINI.md"
+        ln -s "$AOPS_PATH/GEMINI.md" "$GEMINI_DIR/GEMINI.md"
+        echo -e "${GREEN}  GEMINI.md → $AOPS_PATH/GEMINI.md (replaced empty file)${NC}"
+    elif [ ! -e "$GEMINI_DIR/GEMINI.md" ]; then
+        ln -s "$AOPS_PATH/GEMINI.md" "$GEMINI_DIR/GEMINI.md"
+        echo -e "${GREEN}  GEMINI.md → $AOPS_PATH/GEMINI.md${NC}"
+    else
+        echo -e "${YELLOW}  GEMINI.md exists with content - skipping${NC}"
+    fi
+
+    # Convert commands to TOML
+    echo
+    echo "Converting commands to TOML..."
+    if python3 "$AOPS_PATH/scripts/convert_commands_to_toml.py" 2>/dev/null; then
+        TOML_COUNT=$(ls -1 "$AOPS_PATH/gemini/commands/"*.toml 2>/dev/null | wc -l)
+        echo -e "${GREEN}✓ Converted $TOML_COUNT commands to TOML${NC}"
+    else
+        echo -e "${YELLOW}⚠ Command conversion failed - Gemini commands may not work${NC}"
+    fi
+
+    # Merge settings
+    echo
+    echo "Merging Gemini settings..."
+    GEMINI_SETTINGS="$GEMINI_DIR/settings.json"
+    MERGE_FILE="$AOPS_PATH/gemini/config/settings-merge.json"
+
+    if [ ! -f "$GEMINI_SETTINGS" ]; then
+        echo "{}" > "$GEMINI_SETTINGS"
+    fi
+
+    if [ -f "$MERGE_FILE" ]; then
+        MERGE_CONTENT=$(cat "$MERGE_FILE" | sed "s|\\\$AOPS|$AOPS_PATH|g")
+        MERGED=$(jq -s '
+            .[0] as $existing |
+            .[1] as $new |
+            $existing * {
+                hooks: (($existing.hooks // {}) * ($new.hooks // {})),
+                mcpServers: (($existing.mcpServers // {}) * ($new.mcpServers // {}))
+            } | del(.["$comment"])
+        ' "$GEMINI_SETTINGS" <(echo "$MERGE_CONTENT"))
+        echo "$MERGED" > "$GEMINI_SETTINGS"
+        echo -e "${GREEN}✓ Merged hooks and MCP servers into Gemini settings.json${NC}"
+    fi
+
+    # Set permissions
+    chmod +x "$AOPS_PATH/gemini/hooks/router.py" 2>/dev/null || true
+fi
+
+echo
+
+# Step 4: Validate setup
+echo "Step 4: Validating setup"
 echo "------------------------"
 
 VALIDATION_PASSED=true
@@ -471,9 +579,43 @@ else
     echo -e "${YELLOW}⚠ Python path resolution test failed${NC}"
 fi
 
+# Validate Gemini setup (if not skipped)
+if [ "${GEMINI_SKIPPED:-true}" = "false" ]; then
+    echo
+    echo "Gemini CLI validation:"
+    for link in hooks commands; do
+        if [ -L "$GEMINI_DIR/$link" ]; then
+            echo -e "${GREEN}✓ Gemini $link symlink OK${NC}"
+        else
+            echo -e "${RED}✗ Gemini $link symlink missing${NC}"
+            VALIDATION_PASSED=false
+        fi
+    done
+
+    if [ -L "$GEMINI_DIR/GEMINI.md" ] || [ -f "$GEMINI_DIR/GEMINI.md" ]; then
+        echo -e "${GREEN}✓ GEMINI.md present${NC}"
+    else
+        echo -e "${YELLOW}⚠ GEMINI.md missing${NC}"
+    fi
+
+    if jq -e '.hooks' "$GEMINI_DIR/settings.json" > /dev/null 2>&1; then
+        echo -e "${GREEN}✓ Gemini settings.json has hooks${NC}"
+    fi
+
+    TOML_COUNT=$(ls -1 "$AOPS_PATH/gemini/commands/"*.toml 2>/dev/null | wc -l)
+    if [ "$TOML_COUNT" -gt 0 ]; then
+        echo -e "${GREEN}✓ $TOML_COUNT Gemini TOML commands${NC}"
+    fi
+fi
+
 echo
 if [ "$VALIDATION_PASSED" = true ]; then
     echo -e "${GREEN}✓ Setup completed successfully!${NC}"
+    if [ "${GEMINI_SKIPPED:-true}" = "false" ]; then
+        echo "  Both Claude Code and Gemini CLI are configured."
+    else
+        echo "  Claude Code configured. Install Gemini CLI and re-run for Gemini support."
+    fi
     exit 0
 else
     echo -e "${RED}✗ Setup validation failed${NC}"

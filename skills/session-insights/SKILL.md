@@ -77,16 +77,47 @@ If the note does NOT exist:
 - Create from template in [[templates/daily.md]]
 - Add Session Context and Abandoned Todos from Step 3 output
 
-**Daily note skeleton** (accomplishments populated in Step 6 from JSONs):
+**Daily note skeleton** (burndown and accomplishments populated in Step 6 from JSONs + task index):
 ```markdown
 # Daily Summary - YYYY-MM-DD
 
-## Focus (Today's priorities)
-<!-- User generated. Do not edit. -->
+## 📊 Focus Dashboard
 
-## Session Context
-- 10:23 AM: Started on prompt hydrator context improvements
-- 11:45 AM: Switched to dashboard investigation
+### Priority Burndown
+```
+P0 ░░░░░░░░░░  0% (0/N)
+P1 ░░░░░░░░░░  0% (0/N)
+P2 ░░░░░░░░░░  0% (0/N)
+```
+
+### 🎯 Active Now
+(populated from task index - status=active)
+
+### ⏳ Blocked
+(populated from task index - status=waiting)
+
+### ✅ Done Today
+(populated from accomplishments)
+
+---
+
+## Today's Priorities
+
+### Pressing (Deadlines)
+- [ ] [[task-with-deadline]]
+
+### P0 Tasks
+- [ ] [[priority-task]]
+
+---
+
+## [[academicOps]] → [[projects/aops]]
+Progress: ░░░░░░░░░░ 0/0
+- [x] Accomplishment from aops sessions
+
+## [[writing]] → [[projects/writing]]
+Progress: ░░░░░░░░░░ 0/0
+- [x] Accomplishment from writing sessions
 
 ## Abandoned Todos
 - [ ] Task left pending (from session abc123)
@@ -94,7 +125,15 @@ If the note does NOT exist:
 ## Session Log
 | Session | Project | Summary |
 |---------|---------|---------|
-<!-- Populated in Step 6 from Gemini-mined JSONs -->
+
+## Session Insights
+```
+Skill Compliance  ░░░░░░░░░░  0%
+Sessions Mined    ░░░░░░░░░░ 0/0
+```
+
+## Session Context
+- 10:23 AM: Started on prompt hydrator context improvements
 ```
 
 **Critical**: Claude does NOT read transcripts. Accomplishments come from Gemini-mined JSONs in Step 6.
@@ -186,8 +225,31 @@ After receiving the JSON response, save it to: $ACA_DATA/dashboard/sessions/{ses
 
    **VERIFY DESCRIPTIONS**: Gemini mining may hallucinate. Cross-check accomplishment descriptions against actual changes (git log, file content). Per AXIOMS #2, do not propagate fabricated descriptions.
 
+   **Read task index** from `$ACA_DATA/tasks/index.json` to populate burndown and priority sections.
+
 ```markdown
 # Daily Summary - YYYY-MM-DD
+
+## 📊 Focus Dashboard
+
+### Priority Burndown
+```
+P0 ████████░░ 80% (4/5)  → [[task-name-1]], [[task-name-2]]
+P1 ██░░░░░░░░ 20% (1/5)  → [[task-name-3]]
+P2 ░░░░░░░░░░  0% (0/3)
+```
+
+### 🎯 Active Now
+→ [[task-currently-in-progress]] (P0)
+
+### ⏳ Blocked
+- [[task-waiting]] - waiting on: external response
+
+### ✅ Done Today (N items)
+- [[task-completed-1]]
+- [[task-completed-2]]
+
+---
 
 ## Session Log
 | Session | Project | Summary |
@@ -195,18 +257,32 @@ After receiving the JSON response, save it to: $ACA_DATA/dashboard/sessions/{ses
 | abc1234 | writing | Brief description of work |
 | def5678 | aops | Another session summary |
 
-## [[projects/aops]]
+## [[academicOps]] → [[projects/aops]]
+Progress: ██████░░░░ 6/10
 - [x] Accomplishment from aops sessions
 - [x] Another accomplishment
 
-## [[projects/writing]]
+## [[writing]] → [[projects/writing]]
+Progress: ████░░░░░░ 4/10
 - [x] Accomplishment from writing sessions
 
 ## Session Insights
-**Skill Compliance**: 75% (3/4 suggestions followed)
-**Sessions Analyzed**: N
+```
+Skill Compliance  ████████░░ 80%
+Sessions Mined    ████████░░ 8/10
+```
 **Top Context Gaps**: gap1, gap2
 ```
+
+   **ASCII Progress Bar Helper** (for 10-char bars):
+   - Calculate: `filled = round(ratio * 10)`
+   - Use: `█` × filled + `░` × (10 - filled)
+   - Example: 75% → `████████░░`
+
+   **Wikilink Rules**:
+   - Tasks: `[[YYYYMMDD-task-slug]]` (matches filename in tasks/)
+   - Projects: `[[projects/project-name]]`
+   - Sessions: plain text (session IDs, not linked)
 
 5. **Write updated synthesis.json** at `$ACA_DATA/dashboard/synthesis.json`:
 
