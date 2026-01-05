@@ -29,7 +29,7 @@ graph LR
 
 Provides Nic with a single place to view priority tasks, progress, make notes, etc during the day.
 
-**Produced by**: [[session-insights-mining]], manual input
+**Produced by**: [[session-insights-skill]], manual input
 
 ### Daily Note Format (`YYYYMMDD-daily.md`)
 
@@ -58,4 +58,4 @@ Key structure: Focus section at top (synthesized), accomplishments under project
 |-----------|--------|-------|
 | Format definition | Defined | See format above |
 | Auto-generation | Partial | Via session-insights |
-| Dashboard integration | Implemented | [[cognitive-load-dashboard]] |
+| Dashboard integration | Implemented | [[dashboard-skill]] |

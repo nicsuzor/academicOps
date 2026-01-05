@@ -70,7 +70,7 @@ Per AXIOMS #29: "ONE SPEC PER FEATURE". Skills need specs to justify existence a
 | Skill | Has Spec? | Priority |
 |-------|-----------|----------|
 | analyst | ❌ | P2 - research support |
-| dashboard | ✅ | `cognitive-load-dashboard.md` |
+| dashboard | ✅ | `dashboard-skill.md` |
 | excalidraw | ❌ | P3 - utility |
 | extractor | ❌ | P2 - email workflow |
 | feature-dev | ✅ | `feature-dev-skill.md` |
@@ -87,7 +87,7 @@ Per AXIOMS #29: "ONE SPEC PER FEATURE". Skills need specs to justify existence a
 | reference-map | ❌ | P3 - visualization |
 | remember | ✅ | `remember-skill.md` |
 | review-training | ❌ | P3 - training data |
-| session-insights | ✅ | `session-insights-mining.md` |
+| session-insights | ✅ | `session-insights-skill.md` |
 | ~~skill-creator~~ | N/A | Replaced by plugin-dev@claude-plugins-official |
 | supervisor | ✅ | `supervisor-skill.md` |
 | tasks | ✅ | `tasks-skill.md` |

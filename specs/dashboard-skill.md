@@ -69,6 +69,16 @@ cd $AOPS && uv run streamlit run skills/dashboard/dashboard.py
 
 Access at http://localhost:8501 (desktop) or http://<ip>:8501 (mobile).
 
+### Three-Question Layout
+
+The dashboard answers three cognitive load questions:
+
+1. **What should I do?** - Primary task + P0/P1 tasks with project tags
+2. **What am I doing?** - LLM-synthesized session summaries grouped by project
+3. **What did I do today?** - Accomplishments grouped by project
+
+All sections group by project for context orientation.
+
 ### Dashboard Panels
 
 **NOW Panel**: Current focus from daily notes (task, next action, progress bar)
@@ -87,6 +97,37 @@ Access at http://localhost:8501 (desktop) or http://<ip>:8501 (mobile).
 - Top context gaps
 
 **Project Cards**: Per-project view with accomplishments, priority tasks, memory notes, git commits
+
+### Session Context Panel
+
+**Problem**: User returns to terminal and can't remember what they were doing.
+
+**Solution**: Active Sessions panel shows per-session context using multiple signals.
+
+**Data Flow**:
+```
+R2 (prompts) ──┬──> fetch_session_activity() ──> Active Sessions Panel
+               │
+Local JSONL ───┘   (combines prompt + TodoWrite state)
+```
+
+**Display Format**:
+```
+📍 ACTIVE SESSIONS (3)
+
+┌─────────────────────────────────────────────────────┐
+│ abc1234 @ macbook | writing | 5m ago                │
+│ "Review implementation plan..."                      │
+│ ▶ Update dashboard session panel                    │
+│ □ +3 pending                                        │
+└─────────────────────────────────────────────────────┘
+```
+
+- **Session ID**: First 7 chars of UUID (monospace)
+- **Meta**: hostname | project | time ago
+- **Last prompt**: Most recent user prompt (truncated to 100 chars)
+- **In-progress**: Current TodoWrite item (green, if available)
+- **Pending**: Count of remaining todos (gray)
 
 ### Data Sources
 
@@ -119,6 +160,50 @@ Access at http://localhost:8501 (desktop) or http://<ip>:8501 (mobile).
 ### Integrates With
 - Cloudflare R2 for cross-machine prompts (requires `PROMPT_LOG_API_KEY`)
 - Peacock theme colors for project card styling
+
+## Design Principles
+
+### Core User Need
+
+**Context recovery during multitasking** - NOT decision support.
+
+The user runs multiple concurrent workstreams (1-120 minute workflows) across terminals and machines. The fundamental problem is:
+
+> "I can't remember what I was doing"
+
+NOT:
+
+> "I can't decide what to pick"
+
+### Key Insight
+
+User WANTS options visible - they can decide. Don't hide options or force single-directive mode. The issue is **amnesia during context switches**, not decision paralysis.
+
+### Dashboard Must Answer
+
+1. **What's running where?** - Multiple terminals, multiple projects, simultaneously
+2. **Where did I leave off in project X?** - Per-project context recovery
+3. **What's the state of Y?** - Quick status check without deep diving
+
+### UX Principles
+
+- **Raw data is not understandable** - Raw session prompts, commit hashes, task IDs mean nothing. LLM synthesis is essential.
+- **Project context matters** - Grouping by project helps users orient quickly.
+- **Limit information density** - Show top 3 P0, top 5 P1 with "X more" indicator rather than overwhelming.
+
+### Anti-Patterns
+
+- GPS/directive mode that hides options
+- Single-focus design that ignores multitasking reality
+- Over-indexing on "recommend ONE thing"
+- Assuming decision paralysis when the problem is memory
+
+## Non-Goals
+
+- Task editing (read-only display)
+- Terminal customization (separate problem)
+- Authentication (local network only)
+- Persistent storage (reads existing files)
 
 ## Success Criteria
 

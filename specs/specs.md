@@ -26,7 +26,7 @@ graph TD
     C --> C1[prompt-hydration]
     C --> C2[agent-behavior-watchdog]
 
-    D --> D1[cognitive-load-dashboard]
+    D --> D1[dashboard-skill]
     D --> D2[task-list-overwhelm]
 
     E --> E1[framework-health]
@@ -66,9 +66,7 @@ Design documents for the academicOps framework. Per [[AXIOMS]] #29: one spec per
 
 ## Features
 
-- [[cognitive-load-dashboard]] - Live Streamlit dashboard (implemented)
 - [[task-list-overwhelm]] - Task state index and synthesis (in progress)
-- [[session-insights-mining]] - Extract learnings from transcripts (draft)
 - [[session-transcript-extractor]] - Generate readable transcripts (implemented as /transcript skill)
 - [[parallel-batch-command]] - Parallel file processing (implemented as /parallel-batch skill)
 - [[email-to-tasks-workflow]] - Email to task extraction (draft)

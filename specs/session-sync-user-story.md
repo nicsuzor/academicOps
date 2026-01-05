@@ -159,11 +159,11 @@ This maintains tasks skill authority for checklist operations while allowing pro
 ## Relationships
 
 ### Extends
-- [[session-insights-mining]] - Adds task sync to existing workflow (Step 3)
+- [[session-insights-skill]] - Adds task sync to existing workflow (Step 3)
 
 ### Uses
 - [[tasks-skill]] - For checklist format conventions
 - Memory server - For semantic task matching
 
 ### Informs
-- [[cognitive-load-dashboard]] - Dashboard shows task progress
+- [[dashboard-skill]] - Dashboard shows task progress

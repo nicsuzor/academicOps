@@ -73,7 +73,7 @@ export PROMPT_LOG_API_KEY=<key>
 | Cloudflare Worker | Implemented | `~/dotfiles/scripts/cloudflare-prompts/` |
 | UserPromptSubmit hook | Implemented | Fire-and-forget pattern |
 | Unit tests | Implemented | 3 tests in `tests/hooks/` |
-| Dashboard integration | Planned | See [[cognitive-load-dashboard]] |
+| Dashboard integration | Planned | See [[dashboard-skill]] |
 
 ## Future Work
 

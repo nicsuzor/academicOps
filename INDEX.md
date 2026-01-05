@@ -38,7 +38,7 @@ $AOPS/
 ├── .gitignore                   # Git ignore patterns
 ├── .gitmodules                  # Git submodules
 ├── __init__.py                  # Package init
-├── reference-graph.csv          # Framework reference graph (generated)
+├── reference-graph.csv          # Framework reference graph (wrong location)
 ├── current-tasks.excalidraw     # Visual task board (orphan - flagged)
 │
 ├── .github/workflows/           # CI/CD workflows
@@ -371,7 +371,7 @@ $AOPS/
 │   ├── analyst-skill.md             # Analyst skill spec
 │   ├── audit-skill.md               # Audit skill spec
 │   ├── cloudflare-prompt-logging.md # Cloudflare logging spec
-│   ├── cognitive-load-dashboard.md  # Dashboard spec
+│   ├── dashboard-skill.md           # Dashboard skill spec (consolidated)
 │   ├── command-discoverability.md   # Command discovery spec
 │   ├── conclusion-verification-hook.md  # Conclusion verification
 │   ├── daily notes.md               # Daily notes spec
@@ -402,8 +402,7 @@ $AOPS/
 │   ├── python-dev-skill.md          # Python dev skill spec
 │   ├── reference-map skill.md       # Reference map skill spec
 │   ├── remember-skill.md            # Remember skill spec
-│   ├── session-insights-mining.md   # Session mining spec
-│   ├── session-insights-skill.md    # Session insights skill spec
+│   ├── session-insights-skill.md    # Session insights skill spec (consolidated)
 │   ├── session-start-injection.md   # Session start injection spec
 │   ├── session-sync-user-story.md   # Session sync spec
 │   ├── session-transcript-extractor.md  # Transcript extractor spec

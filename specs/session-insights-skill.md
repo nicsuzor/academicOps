@@ -118,16 +118,41 @@ Gemini extracts:
 | Mining results | `$ACA_DATA/dashboard/insights.json` |
 | Learning observations | GitHub Issues (via learning-log) |
 
-### Failure Categories
+### Learning Categories
 
-| Category | Description |
-|----------|-------------|
-| navigation | Wrong file/path |
-| verification | Claimed success without testing |
-| instruction | Did X when asked for Y |
-| hallucination | Made up facts |
-| skill-bypass | Skipped recommended skill |
-| context-gap | Missing information caused error |
+| Category | Definition | Example |
+|----------|------------|---------|
+| `user_correction` | User explicitly corrects agent behavior | "no, I meant X not Y" |
+| `implicit_correction` | User redirects without explicit correction | "let's try a different approach" |
+| `verification_skip` | Agent claims success without verification | "Done" without running tests |
+| `instruction_ignore` | Agent ignores explicit instruction | User says "don't X", agent does X |
+| `navigation_failure` | Multiple searches for same thing | Grepping 3+ times for one file |
+| `axiom_violation` | Agent violates numbered AXIOM | Workaround instead of halt (AXIOM #8) |
+| `skill_bypass` | Agent acts without required skill | Direct file edit instead of skill |
+| `success` | Correct behavior worth noting | Proper halt on error |
+| `experiment_evidence` | Behavior matching active hypothesis | Predicted outcome observed |
+
+### Routing Rules
+
+```
+IF category IN [user_correction, implicit_correction, instruction_ignore]:
+    route_to = "GitHub Issue (label: learning)"
+
+IF category IN [verification_skip, navigation_failure]:
+    route_to = "GitHub Issue (label: learning)"
+
+IF category == skill_bypass:
+    route_to = "GitHub Issue (label: learning)"
+
+IF category == axiom_violation:
+    route_to = "GitHub Issue (label: axiom-violation)"
+
+IF category == experiment_evidence:
+    route_to = "GitHub Issue for active experiment"
+
+IF no_match OR category == other:
+    route_to = "GitHub Issue (label: learning)"
+```
 
 ### Heuristic Mapping
 
@@ -158,6 +183,55 @@ Each correction/failure maps to relevant heuristic:
 | Stop hook | Real-time (current) |
 | `/reflect` command | Real-time (current) |
 
+## Mining Approach
+
+### Current: Organic Discovery
+
+Gemini analyzes transcripts without framework-specific context. Discovers patterns naturally.
+
+**Prompt**: Simple request to identify successes, failures, improvements, concerns.
+
+**Pros**:
+- No maintenance of category definitions
+- Discovers patterns we haven't categorized yet
+- Lower prompt complexity
+
+**Cons**:
+- May miss framework-specific patterns (axiom violations)
+- Routing requires post-processing by Claude
+- Output format varies
+
+### Future: Guided Extraction
+
+Gemini receives detailed framework context: category definitions, active experiments, routing rules.
+
+**When to upgrade**: After Organic Discovery proves valuable, if we need more precision.
+
+## Output Format
+
+### For GitHub Issues (learning observations):
+
+```markdown
+**Category**: {category}
+**Evidence**: "{quoted text from transcript}"
+**Context**: {one sentence description}
+**Session**: {date} {session_id[:8]}
+```
+
+### For experiment issues (append observation):
+
+```markdown
+- {date} {session_id[:8]}: {observation}. Supports hypothesis: {yes/no}. Evidence: "{quote}"
+```
+
+## Constraints
+
+- ❌ NEVER auto-update HEURISTICS.md or AXIOMS.md
+- ❌ NEVER delete existing content
+- ✅ Append observations only
+- ✅ Human review required before promotion to heuristics
+- ✅ Deduplicate: check if similar evidence exists (same session_id prefix)
+
 ## Success Criteria
 
 1. **Parallel execution**: Transcripts and mining run concurrently
@@ -165,6 +239,7 @@ Each correction/failure maps to relevant heuristic:
 3. **Structured output**: JSON for dashboard, markdown for daily summary
 4. **Heuristic evolution**: Corrections strengthen HEURISTICS.md
 5. **No Claude API**: Mining via Gemini, not Claude (cost/speed)
+6. **No false routing**: Wrong category assignment in <10% of cases
 
 ## Design Rationale
 
