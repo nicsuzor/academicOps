@@ -57,6 +57,11 @@ The framework is in **bootstrap mode**. Automated integration is non-functional.
 - **Context**: Do not assume prior context exists.
 - **Infrastructure**: Document gaps. Halt if blocked.
 
+### No Ad-Hoc Automation (CRITICAL)
+- **Use Existing Tools Only**: Do not create new scripts (e.g., `verify_foundation.sh`) to test the framework.
+- **Manual Verification**: If a check is needed, run the commands manually in the shell or check the file content directly.
+- **Reason**: Creating ad-hoc scripts introduces unverified code and noise. We verify the foundation by *inspecting* it, not by writing more code on top of it.
+
 ### Artifact Persistence (CRITICAL)
 - **NO EPHEMERAL ARTIFACTS**: Do not save governance docs, plans, or reports to `.gemini/` or similar scratchpads.
 - **Specs**: Compliance docs, rubrics, and standards go to `$AOPS/specs/`.
