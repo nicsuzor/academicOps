@@ -63,3 +63,15 @@ Every action must be justifiable as a universal rule. No one-off changes.
 - If there's no skill, the meta-task is: propose one
 - Practical decisions drive framework development
 - If something doesn't work, FAIL FAST and HALT -- we want WORKING TOOLS NOT WORKAROUNDS
+
+## Fail-Fast Mandate (See [[AXIOMS.md]])
+
+If your tools or instructions don't work precisely:
+1. **STOP** immediately
+2. **Report** the failure
+3. **Do not** work around bugs
+4. **Do not** guess solutions
+
+**If infrastructure is missing**: Document the gap and halt. Do not work around it.
+
+We need working infrastructure, not workarounds.
