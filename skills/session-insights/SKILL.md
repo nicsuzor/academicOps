@@ -96,9 +96,6 @@ P2 ░░░░░░░░░░  0% (0/N)
 ### ⏳ Blocked
 (populated from task index - status=waiting)
 
-### ✅ Done Today
-(populated from accomplishments)
-
 ---
 
 ## Today's Priorities
@@ -244,10 +241,6 @@ P2 ░░░░░░░░░░  0% (0/3)
 
 ### ⏳ Blocked
 - [[task-waiting]] - waiting on: external response
-
-### ✅ Done Today (N items)
-- [[task-completed-1]]
-- [[task-completed-2]]
 
 ---
 

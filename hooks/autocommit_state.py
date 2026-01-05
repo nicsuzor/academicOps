@@ -6,6 +6,8 @@ This hook detects when operations modify the personal knowledge base or task
 database and automatically commits/pushes changes to prevent data loss and
 enable cross-device sync.
 
+Enforces: A#28 (Current State Machine - $ACA_DATA always up-to-date)
+
 Triggers:
 - After Bash tool executes task scripts (task_add.py, task_archive.py, etc.)
 - After memory MCP tools modify knowledge base (store_memory, update_memory_metadata, etc.)

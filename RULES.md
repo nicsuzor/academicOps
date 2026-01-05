@@ -43,7 +43,7 @@ tags: [framework, enforcement, moc]
 | A#25 | Just-In-Time Context | sessionstart_load_axioms.py | SessionStart | Automatic |
 | A#26 | Minimal Instructions | policy_enforcer.py 200-line limit | PreToolUse | Hard Gate |
 | A#27 | Feedback Loops | AXIOMS.md | SessionStart | Prompt |
-| A#28 | Current State Machine | AXIOMS.md | SessionStart | Prompt |
+| A#28 | Current State Machine | autocommit_state.py (auto-commit+push) | PostToolUse | Soft Gate |
 | A#29 | One Spec Per Feature | AXIOMS.md | SessionStart | Prompt |
 
 ## Heuristic → Enforcement Mapping
