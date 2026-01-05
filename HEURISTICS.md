@@ -173,6 +173,10 @@ Empirically derived rules implementing [[AXIOMS]]. Evidence lives in GitHub Issu
 **Statement**: Files about same topic/project/event MUST link to each other in prose. Project hubs link to key content files.
 **Confidence**: Low | **Implements**: #20, H7
 
+## H35: Spec-First File Modification
+**Statement**: When modifying any framework file, agents must: (1) check/update the SPEC governing what the file SHOULD contain, (2) if the file is generated/STATE, modify the skill that generates it instead, (3) check/update any index or documentation referencing the file.
+**Confidence**: Low | **Implements**: #1, #9, #20 | **Evidence**: #262
+
 ---
 
 ## Revision Protocol
