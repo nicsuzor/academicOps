@@ -26,18 +26,17 @@ graph TD
 
     C --> E[Find Sessions Needing Transcripts]
     E --> F[Generate Transcripts in Parallel]
-    F --> G[Extract Narrative Signals]
-    G --> H[Update Daily Summary]
-    H --> I[Mine for Learnings via Gemini]
-    I --> J[Save insights.json]
-    J --> K[Route to Learning-Log]
+    F --> G[Mine via Gemini - per session JSON]
+    G --> H[Claude Agent: Synthesize]
+    H --> I[daily.md + synthesis.json]
+    I --> J[Route Learnings to GitHub Issues]
 
-    D --> L[Read Current Session]
-    L --> M[Mine Single Session]
-    M --> N[Present Suggestions]
-    N --> O{User Approves?}
-    O -->|Yes| P[Update HEURISTICS.md]
-    O -->|No| Q[Skip]
+    D --> K[Read Current Session]
+    K --> L[Mine Single Session]
+    L --> M[Present Suggestions]
+    M --> N{User Approves?}
+    N -->|Yes| O[Update HEURISTICS.md]
+    N -->|No| P[Skip]
 ```
 
 ## Purpose
@@ -93,16 +92,31 @@ Spawn Task agents for each transcript:
 Task(subagent_type="general-purpose", model="haiku", prompt="Call mcp__gemini__ask-gemini...")
 ```
 
-Gemini extracts:
+Gemini extracts per-session structured data:
+- Session summary (what was worked on)
+- Accomplishments (completed items with project tags)
 - Skill effectiveness (suggested vs invoked)
 - Context timing issues
 - User corrections with heuristic mapping
 - Failures by category
 - Successes
 
-**Step 6: Save Insights & Route**
-- Write to `$ACA_DATA/dashboard/insights.json` for dashboard
-- Route learnings to [[learning-log]] skill → GitHub Issues
+Output: `$ACA_DATA/dashboard/sessions/{session_id}.json`
+
+**Step 6: Synthesize (Claude Code Agent)**
+The main agent (or subagent) reads Gemini's per-session outputs and idempotently synthesizes:
+
+```
+Gemini per-session JSONs
+        │
+        ├──> YYYYMMDD-daily.md (human-readable, integrates new sessions)
+        └──> synthesis.json (machine-readable, integrates new sessions)
+```
+
+**Idempotent integration**: If session already in daily.md/synthesis.json, update rather than duplicate. Can run from multiple machines.
+
+**Step 7: Route Learnings**
+- Route learning observations to [[learning-log]] skill → GitHub Issues
 
 ### Real-time Mode (current)
 
@@ -110,13 +124,14 @@ Gemini extracts:
 
 ### Output Locations
 
-| Artifact | Location |
-|----------|----------|
-| Full transcripts | `$ACA_DATA/sessions/claude/YYYYMMDD-*-full.md` |
-| Abridged transcripts | `$ACA_DATA/sessions/claude/YYYYMMDD-*-abridged.md` |
-| Daily summary | `$ACA_DATA/sessions/YYYYMMDD-daily.md` |
-| Mining results | `$ACA_DATA/dashboard/insights.json` |
-| Learning observations | GitHub Issues (via learning-log) |
+| Artifact | Location | Producer |
+|----------|----------|----------|
+| Full transcripts | `$ACA_DATA/sessions/claude/YYYYMMDD-*-full.md` | transcript script |
+| Abridged transcripts | `$ACA_DATA/sessions/claude/YYYYMMDD-*-abridged.md` | transcript script |
+| Per-session mining | `$ACA_DATA/dashboard/sessions/{session_id}.json` | Gemini |
+| Daily summary | `$ACA_DATA/sessions/YYYYMMDD-daily.md` | Claude Code agent |
+| Dashboard synthesis | `$ACA_DATA/dashboard/synthesis.json` | Claude Code agent |
+| Learning observations | GitHub Issues (via learning-log) | Claude Code agent |
 
 ### Learning Categories
 

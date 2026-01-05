@@ -143,45 +143,39 @@ Local JSONL ───┘   (combines prompt + TodoWrite state)
 ### Data Pipeline
 
 ```
-session-insights skill
-        │
-        ├──> YYYYMMDD-daily.md (accomplishments, session log)
-        │
-        └──> insights.json (Gemini mining: compliance, failures, corrections)
-                    │
-                    ▼
-        synthesize_dashboard.py (pure aggregation, NO LLM)
-                    │
-                    ├── reads: daily.md, insights.json, task index, R2 prompts
-                    │
-                    └──> synthesis.json (aggregated dashboard state)
-                                │
-                                ▼
-                        dashboard.py
-                                │
-                        renders synthesis.json + live data
+Session JSONLs ──> Gemini script (batch, per-transcript)
+                        │
+                        └──> per-session structured data
+                                      │
+                                      ▼
+                session-insights skill (Claude Code agent)
+                        │
+                        │  reads Gemini output + task index + R2 prompts
+                        │  idempotently synthesizes:
+                        │
+                        ├──> YYYYMMDD-daily.md (human-readable)
+                        └──> synthesis.json (machine-readable)
+
+dashboard.py renders what's there (no LLM calls)
 ```
 
 **Key points**:
-- **LLM work happens in session-insights** via Gemini (mining transcripts for patterns)
-- **synthesize_dashboard.py** does pure data aggregation (no LLM calls)
-- **dashboard.py** reads and renders (no LLM calls)
+- **Gemini** - cheap/fast batch processing of transcripts, outputs structured per-session data
+- **Claude Code agent** - smart synthesis, integrates Gemini output with other sources
+- **Idempotent** - skill can run from multiple machines, integrates rather than appends
+- **Dual output** - same synthesis produces human-readable AND machine-readable formats
+- **Dashboard is pure rendering** - no LLM calls, just displays pre-computed state
 
-### Synthesis Freshness
+### Gemini Output Requirements
 
-Dashboard checks `synthesis.json` age. If >60 minutes old:
-- Shows explicit warning: "Session synthesis stale. Run: uv run python scripts/synthesize_dashboard.py"
-- Falls back to raw task index data
-- Does NOT show stale synthesized data silently
+Gemini's per-session extraction must include enough for later synthesis:
+- Session summary (what was worked on)
+- Accomplishments (completed items)
+- Learning observations (corrections, failures, successes)
+- Skill compliance signals
+- Context gaps identified
 
-Run synthesis before viewing dashboard:
-```bash
-uv run python scripts/synthesize_dashboard.py && uv run streamlit run skills/dashboard/dashboard.py
-```
-
-### No Claude API Calls
-
-**CRITICAL**: Dashboard does NOT call Claude API. Session Insights come from pre-computed `insights.json` created by [[session-insights-skill]] via Gemini. This keeps the dashboard fast.
+See [[session-insights-skill]] for Gemini prompt and output format.
 
 ## Relationships
 
