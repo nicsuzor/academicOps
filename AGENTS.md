@@ -98,9 +98,14 @@ This is the academicOps framework repository containing generic, reusable automa
 - **Always use `model: "opus"` when invoking the Plan or Critic agent**
 - README.md is SSoT for aOps file structure.
 
-## Git workflow
-- **Never amend commits that are already pushed.** If you need to fix something after pushing, create a new commit. Don't use `--amend` followed by force push.
-- If remote has changes, merge or rebase - don't force push.
+## Git workflow Protocol
+26: 
+27: **Strict adherence to [[AXIOMS.md]] #15 (Trust Version Control) is MANDATORY.**
+28: 
+29: 1.  **Commit Immediately**: Commit AND push after completing logical work units.
+30: 2.  **No Hanging Changes**: NEVER leave uncommitted changes hanging across task boundaries.
+31: 3.  **No Force Push**: If remote has changes, merge or rebase.
+32: 4.  **No Amend/Force on Remote**: Never amend commits that are already pushed.
 
 ## Other rules
 - Never duplicate information. If you have the same information in multiple files, decide whether to (a) maintain clear separation; or (b) join files without duplication.
