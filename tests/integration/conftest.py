@@ -113,6 +113,13 @@ def _claude_cli_available() -> bool:
     return shutil.which("claude") is not None
 
 
+def _gemini_cli_available() -> bool:
+    """Check if gemini CLI command is available in PATH."""
+    import shutil
+
+    return shutil.which("gemini") is not None
+
+
 def run_claude_headless(
     prompt: str,
     model: str | None = "haiku",
@@ -257,6 +264,176 @@ def claude_headless():
         pytest.skip("claude CLI not found in PATH - requires Claude Code CLI installed")
 
     return run_claude_headless
+
+
+def run_gemini_headless(
+    prompt: str,
+    model: str | None = None,
+    timeout_seconds: int = 120,
+    permission_mode: str | None = None,
+    cwd: Path | None = None,
+) -> dict[str, Any]:
+    """Execute Gemini CLI in headless mode.
+
+    Args:
+        prompt: Prompt to send to Gemini
+        model: Optional model identifier (e.g., "gemini-2.0-flash")
+        timeout_seconds: Command timeout in seconds (default: 120)
+        permission_mode: Optional permission mode ("yolo" maps to --yolo)
+        cwd: Working directory (defaults to /tmp/gemini-test)
+
+    Returns:
+        Dictionary with keys:
+        - success (bool): Whether execution succeeded
+        - output (str): Raw JSON output from gemini command
+        - result (dict): Parsed JSON result
+        - error (str, optional): Error message if execution failed
+    """
+    import os
+
+    # Check if gemini CLI is available
+    if not _gemini_cli_available():
+        return {
+            "success": False,
+            "output": "",
+            "result": {},
+            "error": "gemini CLI not found in PATH - these tests require Gemini CLI installed",
+        }
+
+    # Build command - use positional prompt with JSON output
+    cmd = ["gemini", prompt, "-o", "json"]
+
+    if model:
+        cmd.extend(["-m", model])
+
+    # Map permission_mode to Gemini flags
+    if permission_mode in ("bypassPermissions", "yolo"):
+        cmd.append("--yolo")
+    elif permission_mode == "auto_edit":
+        cmd.extend(["--approval-mode", "auto_edit"])
+
+    # Set working directory
+    if cwd:
+        working_dir = cwd
+    else:
+        working_dir = Path("/tmp/gemini-test")
+        working_dir.mkdir(parents=True, exist_ok=True)
+
+    # Build environment - inherit current environment
+    env = os.environ.copy()
+
+    # FAIL FAST: Required environment variables must be set
+    if "AOPS" not in env:
+        return {
+            "success": False,
+            "output": "",
+            "result": {},
+            "error": "AOPS environment variable not set - required for tests",
+        }
+
+    try:
+        # Execute command
+        result = subprocess.run(
+            cmd,
+            cwd=working_dir,
+            capture_output=True,
+            text=True,
+            timeout=timeout_seconds,
+            check=False,
+            env=env,
+        )
+
+        # Check for command failure
+        if result.returncode != 0:
+            return {
+                "success": False,
+                "output": result.stdout,
+                "result": {},
+                "error": f"Command failed with exit code {result.returncode}: {result.stderr}",
+            }
+
+        # Parse JSON output
+        try:
+            parsed_output = json.loads(result.stdout)
+            return {
+                "success": True,
+                "output": result.stdout,
+                "result": parsed_output,
+            }
+        except json.JSONDecodeError as e:
+            return {
+                "success": False,
+                "output": result.stdout,
+                "result": {},
+                "error": f"JSON parse error: {e!s}",
+            }
+
+    except subprocess.TimeoutExpired:
+        return {
+            "success": False,
+            "output": "",
+            "result": {},
+            "error": f"Command timed out after {timeout_seconds} seconds",
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "output": "",
+            "result": {},
+            "error": f"Command execution failed: {e!s}",
+        }
+
+
+@pytest.fixture
+def gemini_headless():
+    """Pytest fixture providing headless Gemini CLI execution.
+
+    Returns:
+        Callable that executes gemini command and returns parsed result.
+
+    Example:
+        def test_something(gemini_headless):
+            result = gemini_headless("What is 2+2?")
+            assert result["success"]
+
+    Note:
+        Tests using this fixture will be skipped if gemini CLI is not in PATH.
+    """
+    # Skip test if gemini CLI not available
+    if not _gemini_cli_available():
+        pytest.skip("gemini CLI not found in PATH - requires Gemini CLI installed")
+
+    return run_gemini_headless
+
+
+# --- Parameterized CLI fixture for cross-platform tests ---
+
+
+@pytest.fixture(params=["claude", "gemini"])
+def cli_headless(request):
+    """Parameterized fixture that yields both Claude and Gemini headless runners.
+
+    Use this for tests that should run on both platforms.
+
+    Example:
+        def test_simple_math(cli_headless):
+            runner, platform = cli_headless
+            result = runner("What is 2+2?")
+            assert result["success"]
+
+    Returns:
+        Tuple of (runner_function, platform_name)
+    """
+    platform = request.param
+
+    if platform == "claude":
+        if not _claude_cli_available():
+            pytest.skip("claude CLI not found in PATH")
+        return run_claude_headless, "claude"
+    else:
+        if not _gemini_cli_available():
+            pytest.skip("gemini CLI not found in PATH")
+        return run_gemini_headless, "gemini"
 
 
 @pytest.fixture
