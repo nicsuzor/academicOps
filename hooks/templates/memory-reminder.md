@@ -1,7 +1,7 @@
 ---
 name: memory-reminder
 title: Memory Reminder
-category: instruction
+category: template
 ---
 
 [AOPS Framework: Document this work to memory server. Use background invocation for seamless capture:

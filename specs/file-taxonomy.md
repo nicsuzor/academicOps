@@ -116,8 +116,6 @@ Every framework file belongs to exactly one category. This classification determ
 - `skills/*/workflows/*.md` - Multi-step workflows
 - `commands/*.md` - Slash commands
 - `agents/*.md` - Agent definitions
-- `hooks/prompts/*.md` - Hook prompt content
-
 **Examples**:
 - `skills/pdf/SKILL.md` - PDF generation workflow
 - `commands/do.md` - /do command
@@ -178,7 +176,6 @@ Every framework file belongs to exactly one category. This classification determ
 | `skills/*/workflows/` | INSTRUCTION | Multi-step procedures |
 | `commands/` | INSTRUCTION | Slash commands |
 | `agents/` | INSTRUCTION | Agent definitions |
-| `hooks/prompts/` | INSTRUCTION | Hook prompt content |
 | `*/templates/` | TEMPLATE | Output patterns |
 | `RULES.md` | STATE | Auto-generated |
 

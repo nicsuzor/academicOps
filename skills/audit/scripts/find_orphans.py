@@ -36,7 +36,7 @@ def is_expected_orphan(path: str) -> bool:
     # Hooks (loaded by hook system)
     if path.startswith("hooks/") and path.endswith(".py"):
         return True
-    if path.startswith("hooks/prompts/"):
+    if path.startswith("hooks/templates/"):
         return True
     # Test files
     if "test" in path.lower() or path.startswith("tests/"):

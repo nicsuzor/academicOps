@@ -6,7 +6,7 @@ Triggers on:
 - PostToolUse (TodoWrite matcher) - after task list updates
 - Stop - at end of session
 
-Reads reminder message from hooks/prompts/memory-reminder.md.
+Reads reminder message from hooks/templates/memory-reminder.md.
 
 Exit codes:
     0: Success (always continues)
@@ -23,7 +23,7 @@ from typing import Any
 def get_reminder_message() -> str:
     """Load reminder message from template file."""
     aops_root = Path(os.environ.get("AOPS", ""))
-    template_path = aops_root / "hooks" / "prompts" / "memory-reminder.md"
+    template_path = aops_root / "hooks" / "templates" / "memory-reminder.md"
 
     if template_path.exists():
         return template_path.read_text().strip()

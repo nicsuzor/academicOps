@@ -42,7 +42,6 @@ CATEGORY_RULES: list[tuple[str, str]] = [
     # INSTRUCTION files
     (r"^commands/.*\.md$", "instruction"),
     (r"^agents/.*\.md$", "instruction"),
-    (r"^hooks/prompts/.*\.md$", "instruction"),
     (r".*/SKILL\.md$", "instruction"),
     (r".*/instructions/.*\.md$", "instruction"),
     (r".*/workflows/.*\.md$", "instruction"),

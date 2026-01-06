@@ -1,7 +1,7 @@
 ---
 name: session-reflect
 title: Session Reflect
-category: instruction
+category: template
 ---
 
 [AOPS: Session Reflection]

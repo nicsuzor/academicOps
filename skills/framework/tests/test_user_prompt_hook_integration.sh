@@ -10,7 +10,7 @@ GREEN='\033[0;32m'
 NC='\033[0m' # No Color
 
 HOOK_PATH="/home/nic/src/academicOps/hooks/user_prompt_submit.py"
-PROMPT_FILE="/home/nic/src/academicOps/hooks/prompts/user-prompt-submit.md"
+PROMPT_FILE="/home/nic/src/academicOps/hooks/templates/user-prompt-submit.md"
 TEST_HOOK_PATH="/tmp/test_user_prompt_submit.py"
 
 echo "=== User Prompt Hook Integration Test ==="
