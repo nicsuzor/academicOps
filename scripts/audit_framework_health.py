@@ -263,23 +263,47 @@ def check_enforcement_mapping(root: Path, metrics: HealthMetrics) -> None:
                 metrics.heuristics_without_enforcement.append(f"H#{h}")
 
 
+def normalize_wikilink_target(target: str, root: Path) -> str | None:
+    """Normalize a wikilink target to canonical form (with .md extension).
+
+    Returns the canonical path if it resolves to a file, None otherwise.
+    """
+    # Already has .md extension
+    if target.endswith(".md"):
+        if (root / target).exists():
+            return target
+        return None
+
+    # Try adding .md extension
+    with_ext = f"{target}.md"
+    if (root / with_ext).exists():
+        return with_ext
+
+    # Check if it exists as-is (might be a directory or non-md file)
+    if (root / target).exists():
+        path = root / target
+        if path.is_file() and path.suffix == ".md":
+            return target
+        return None
+
+    return None
+
+
 def check_wikilinks(root: Path, metrics: HealthMetrics) -> None:
     """Check for broken wikilinks and orphan files."""
     wikilink_pattern = re.compile(r"\[\[([^\]|]+)(?:\|[^\]]+)?\]\]")
 
-    # Build set of all file stems and paths
+    # Build set of all file paths (canonical form only - with .md extension)
     all_files: set[str] = set()
     file_stems: set[str] = set()
 
     for path in iter_framework_files(root):
         if path.suffix == ".md":
             rel = str(path.relative_to(root))
-            all_files.add(rel)
+            all_files.add(rel)  # Only add canonical form (with .md)
             file_stems.add(path.stem)
-            # Also add without extension
-            all_files.add(rel.replace(".md", ""))
 
-    # Track incoming references
+    # Track incoming references (canonical paths only)
     incoming_refs: dict[str, int] = {f: 0 for f in all_files}
 
     # Conceptual terms that are intentionally not files (definitions, concepts)
@@ -535,18 +559,19 @@ def check_wikilinks(root: Path, metrics: HealthMetrics) -> None:
                         resolved = True
                         break
 
-            # Check direct match
-            if target in all_files or target in file_stems:
+            # Check direct match and normalize to canonical form
+            canonical = normalize_wikilink_target(target, root)
+            if canonical:
                 resolved = True
-                if target in incoming_refs:
-                    incoming_refs[target] += 1
-                elif f"{target}.md" in incoming_refs:
+                if canonical in incoming_refs:
+                    incoming_refs[canonical] += 1
+            elif target in all_files or target in file_stems:
+                resolved = True
+                # Normalize: if target matches a stem, find canonical path
+                if f"{target}.md" in incoming_refs:
                     incoming_refs[f"{target}.md"] += 1
-
-            # Check with .md extension
-            if not resolved and f"{target}.md" in all_files:
-                resolved = True
-                incoming_refs[f"{target}.md"] += 1
+                elif target in incoming_refs:
+                    incoming_refs[target] += 1
 
             # Check if it's a path like specs/foo
             if not resolved:
