@@ -225,8 +225,15 @@ def test_hydrator_can_read_temp_file(claude_headless, data_dir) -> None:
         "workflow guidance",
         "Hydrate:",
         "hydration",
+        "Prompt Hydration",  # Section header from hydrator response
     ]
 
-    # At minimum, the session should complete successfully
-    # Full hydration verification would require parsing the event stream
-    assert len(output) > 0, "Should have some output from the session"
+    # MUST verify hydration actually happened - not just that output exists
+    # See Issue #267 - this was previously a Volkswagen test
+    output_str = str(output).lower()
+    has_hydration = any(ind.lower() in output_str for ind in hydrator_indicators)
+    assert has_hydration, (
+        f"Hydration should occur in headless sessions. "
+        f"Expected one of {hydrator_indicators} in output. "
+        f"Got output (first 500 chars): {output[:500]}"
+    )
