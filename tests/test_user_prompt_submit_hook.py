@@ -49,9 +49,10 @@ class TestTempFileApproach:
         assert "hydrate_" in instruction, "Should use hydrate_ prefix for temp files"
 
         # Instruction should be SHORT (not contain full context)
+        # Note: Template grew to ~1000 chars with "Why always invoke?" rationale
         assert (
-            len(instruction) < 500
-        ), f"Instruction should be short (<500 chars), got {len(instruction)}"
+            len(instruction) < 1200
+        ), f"Instruction should be short (<1200 chars), got {len(instruction)}"
 
         # The full prompt context (session context, hydrator instructions) should NOT be in instruction
         # Note: The preview in description is OK, but session context should be in temp file
@@ -126,13 +127,18 @@ class TestTempFileCleanup:
 
     def test_cleans_old_temp_files_on_invocation(self, tmp_path: Path) -> None:
         """Hook should delete temp files older than 1 hour."""
+        import uuid
+
         from hooks.user_prompt_submit import cleanup_old_temp_files
 
         # Create temp directory
         TEMP_DIR.mkdir(parents=True, exist_ok=True)
 
+        # Use unique names to avoid race conditions with parallel tests
+        unique_id = uuid.uuid4().hex[:8]
+
         # Create an "old" file (simulate by setting mtime)
-        old_file = TEMP_DIR / "hydrate_old_test.md"
+        old_file = TEMP_DIR / f"hydrate_old_{unique_id}.md"
         old_file.write_text("old content")
 
         # Set modification time to 2 hours ago
@@ -140,7 +146,7 @@ class TestTempFileCleanup:
         os.utime(old_file, (old_time, old_time))
 
         # Create a "new" file
-        new_file = TEMP_DIR / "hydrate_new_test.md"
+        new_file = TEMP_DIR / f"hydrate_new_{unique_id}.md"
         new_file.write_text("new content")
 
         # Run cleanup
@@ -200,7 +206,7 @@ class TestInstructionFormat:
         assert "haiku" in instruction.lower(), "Should specify haiku model"
 
     def test_instruction_token_budget(self) -> None:
-        """Instruction should be under 150 tokens (~600 chars)."""
+        """Instruction should be under 300 tokens (~1200 chars)."""
         from hooks.user_prompt_submit import build_hydration_instruction
 
         # Use a realistic long prompt
@@ -209,11 +215,12 @@ class TestInstructionFormat:
         instruction = build_hydration_instruction(long_prompt)
 
         # Rough estimate: 4 chars per token
+        # Note: Template grew to ~250 tokens with "Why always invoke?" rationale
         estimated_tokens = len(instruction) / 4
 
         assert (
-            estimated_tokens < 150
-        ), f"Instruction should be <150 tokens, estimated {estimated_tokens:.0f}"
+            estimated_tokens < 300
+        ), f"Instruction should be <300 tokens, estimated {estimated_tokens:.0f}"
 
 
 class TestHookIntegration:

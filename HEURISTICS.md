@@ -98,9 +98,9 @@ Empirically derived rules implementing [[AXIOMS]]. Evidence lives in GitHub Issu
 **Statement**: Don't restart Streamlit after code changes. It hot-reloads automatically.
 **Confidence**: Low | **Implements**: #4
 
-## H16: Use AskUserQuestion for Multiple Questions
-**Statement**: Use AskUserQuestion tool for multiple questions rather than listing in prose.
-**Confidence**: Low | **Implements**: #4
+## H16: Use AskUserQuestion Tool for User Decisions
+**Statement**: When you need user input to proceed (clarification, choice between options, approval), use the AskUserQuestion tool. Questions in prose text get lost in transcripts.
+**Confidence**: Medium | **Implements**: #4 | **Evidence**: #233
 
 ## H17: Check Skill Conventions Before File Creation
 **Statement**: Check relevant skill for naming/format conventions before creating files in domain-specific locations.
@@ -176,7 +176,7 @@ Empirically derived rules implementing [[AXIOMS]]. Evidence lives in GitHub Issu
 
 ## H35: Spec-First File Modification
 **Statement**: When modifying any framework file, agents must: (1) check/update the SPEC governing what the file SHOULD contain, (2) if the file is generated/STATE, modify the skill that generates it instead, (3) check/update any index or documentation referencing the file.
-**Confidence**: Low | **Implements**: #1, #9, #20 | **Evidence**: #262
+**Confidence**: Medium | **Implements**: #1, #9, #20 | **Evidence**: #262 (2 occurrences)
 
 ## H36: File Category Classification
 **Statement**: Every framework file belongs to exactly one category: SPEC (our design), REF (external knowledge), DOCS (implementation guides), SCRIPT (executable code), INSTRUCTION (agent workflows), TEMPLATE (fill-in patterns), or STATE (auto-generated). Category determines editing rules and is declared via `category:` in frontmatter.
