@@ -139,6 +139,8 @@ $AOPS/
 │   ├── marker_hook.py           # Test hook for verification
 │   ├── verify_conclusions.py    # Disabled stub
 │   ├── git-post-commit-sync-aops    # Git post-commit hook for sync
+│   ├── data/
+│   │   └── reminders.txt        # Soft-tissue random reminders (custodiet)
 │   ├── prompts/
 │   │   ├── user-prompt-submit.md    # Context for UserPromptSubmit hook
 │   │   ├── session-reflect.md       # Session reflection prompt template

@@ -20,7 +20,7 @@ tags: [framework, enforcement, moc]
 | A#1 | Categorical Imperative | prompt-hydrator suggests skills | UserPromptSubmit | Soft Gate |
 | A#2 | Don't Make Shit Up | AXIOMS.md | SessionStart | Prompt |
 | A#3 | Always Cite Sources | AXIOMS.md | SessionStart | Prompt |
-| A#4 | Do One Thing | TodoWrite visibility | During execution | Observable |
+| A#4 | Do One Thing | TodoWrite visibility, custodiet drift detection | During execution | Observable, Soft Gate |
 | A#5 | Data Boundaries | settings.json deny rules | PreToolUse | Hard Gate |
 | A#6 | Project Independence | AXIOMS.md | SessionStart | Prompt |
 | A#7 | Fail-Fast (Code) | policy_enforcer.py blocks destructive git | PreToolUse | Hard Gate |
@@ -53,8 +53,8 @@ tags: [framework, enforcement, moc]
 |-----------|------|-------------|-------|-------|
 | H#1 | Skill Invocation Framing | prompt-hydrator guidance | UserPromptSubmit | Soft Gate |
 | H#2 | Skill-First Action | prompt-hydrator suggests skills | UserPromptSubmit | Soft Gate |
-| H#3 | Verification Before Assertion | session_reflect.py detection | Stop | Detection |
-| H#4 | Explicit Instructions Override | HEURISTICS.md | SessionStart | Prompt |
+| H#3 | Verification Before Assertion | session_reflect.py detection, custodiet periodic check | Stop, PostToolUse | Detection, Soft Gate |
+| H#4 | Explicit Instructions Override | HEURISTICS.md, custodiet periodic check | SessionStart, PostToolUse | Prompt, Soft Gate |
 | H#5 | Error Messages Primary Evidence | HEURISTICS.md | SessionStart | Prompt |
 | H#6 | Context Uncertainty Favors Skills | prompt-hydrator guidance | UserPromptSubmit | Soft Gate |
 | H#7 | Link, Don't Repeat | HEURISTICS.md | SessionStart | Prompt |
@@ -69,7 +69,7 @@ tags: [framework, enforcement, moc]
 | H#16 | Use AskUserQuestion | HEURISTICS.md | SessionStart | Prompt |
 | H#17 | Check Skill Conventions | HEURISTICS.md | SessionStart | Prompt |
 | H#18 | Distinguish Script vs LLM | HEURISTICS.md | SessionStart | Prompt |
-| H#19 | Questions Need Answers First | HEURISTICS.md | SessionStart | Prompt |
+| H#19 | Questions Need Answers First | HEURISTICS.md, custodiet periodic check | SessionStart, PostToolUse | Prompt, Soft Gate |
 | H#20 | Critical Thinking Over Compliance | HEURISTICS.md | SessionStart | Prompt |
 | H#21 | Core-First Expansion | HEURISTICS.md | SessionStart | Prompt |
 | H#22 | Indices Before Exploration | HEURISTICS.md | SessionStart | Prompt |
@@ -147,6 +147,37 @@ These guardrails are applied by [[specs/prompt-hydration]] based on task classif
 
 ---
 
+## Periodic Compliance (Custodiet)
+
+The custodiet hook (`hooks/custodiet.py`) provides periodic semantic compliance checking via [[specs/ultra-vires-custodiet]].
+
+### Mechanism
+
+| Parameter | Value | Description |
+|-----------|-------|-------------|
+| `TOOL_CALL_THRESHOLD` | 7 (2 for debug) | Full compliance check every N tool calls |
+| `REMINDER_PROBABILITY` | 0.3 | 30% chance of reminder between checks |
+| Skip tools | Read, Glob, Grep, memory retrieval | Don't count passive reads |
+
+### Compliance Check (Threshold)
+
+At threshold, spawns haiku subagent to review session transcript for:
+- Axiom violations (A#7 Fail-Fast, A#17 Verify First, A#22 Acceptance Criteria)
+- Heuristic violations (H3 Verification, H4 Explicit Instructions, H19 Questions)
+- Drift patterns (scope creep, plan deviation)
+
+Uses `decision: "block"` output format to force agent attention.
+
+### Random Reminders (Between Checks)
+
+Between threshold checks, randomly injects soft reminders from `hooks/data/reminders.txt`.
+
+**Soft-tissue file**: Edit `reminders.txt` to add/modify reminders. One per line, `#` for comments.
+
+Uses passive `additionalContext` format - agent may proceed without addressing.
+
+---
+
 ## Path Protection (Deny Rules)
 
 | Category | Pattern | Blocked Tools | Purpose | Axiom |
@@ -198,7 +229,7 @@ These guardrails are applied by [[specs/prompt-hydration]] based on task classif
 |-----------|---------------------|
 | Deny rules | `$AOPS/config/claude/settings.json` → `permissions.deny` |
 | PreToolUse | `$AOPS/hooks/policy_enforcer.py` |
-| PostToolUse | `$AOPS/hooks/fail_fast_watchdog.py`, `autocommit_state.py` |
+| PostToolUse | `$AOPS/hooks/fail_fast_watchdog.py`, `autocommit_state.py`, `custodiet.py` |
 | UserPromptSubmit | `$AOPS/hooks/user_prompt_submit.py` |
 | SessionStart | `$AOPS/hooks/sessionstart_load_axioms.py` |
 | Stop | `$AOPS/hooks/session_reflect.py` |

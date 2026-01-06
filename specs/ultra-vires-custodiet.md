@@ -181,9 +181,37 @@ No issues detected. Continue current work.
 
 ### Current State
 
-- `hooks/custodiet.py` - PostToolUse hook, triggers every ~7 tool calls
+- `hooks/custodiet.py` - PostToolUse hook, triggers every N tool calls
+- `hooks/data/reminders.txt` - Soft-tissue file with editable reminder lines
 - `agents/custodiet.md` - Haiku agent that reads transcript
 - `hooks/templates/custodiet-*.md` - Context and instruction templates
+
+### Hook Output Formats
+
+**Critical**: PostToolUse hooks have two output modes with different behavior:
+
+| Format | Behavior | Use Case |
+|--------|----------|----------|
+| `{"decision": "block", "reason": "..."}` | **Active** - forces agent to address | Full custodiet check |
+| `{"hookSpecificOutput": {"additionalContext": "..."}}` | **Passive** - agent may ignore | Light reminders |
+
+The custodiet hook uses `decision: "block"` at threshold to ensure the agent spawns the compliance subagent.
+
+### Random Reminder Injection
+
+Between threshold checks, the hook randomly injects soft reminders:
+
+| Parameter | Value | Location |
+|-----------|-------|----------|
+| `TOOL_CALL_THRESHOLD` | 7 | `custodiet.py` |
+| `REMINDER_PROBABILITY` | 0.3 (30%) | `custodiet.py` |
+| Reminder lines | Editable | `hooks/data/reminders.txt` |
+
+**Behavior**:
+- Tool calls 1 to (N-1): Random reminder with 30% probability (passive)
+- Tool call N (threshold): Full custodiet check (blocking)
+
+Edit `hooks/data/reminders.txt` to add/modify reminders. One per line, `#` for comments.
 
 ### Implementation Phases
 
@@ -193,6 +221,8 @@ No issues detected. Continue current work.
 - [x] Spawns haiku subagent at threshold
 - [x] Subagent reads transcript via temp file
 - [x] Checks axioms/heuristics/drift
+- [x] Uses `decision: "block"` output format
+- [x] Random reminder injection between checks
 
 #### Phase 2: Error-Triggered Detection
 
