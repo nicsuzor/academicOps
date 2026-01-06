@@ -198,6 +198,10 @@ Empirically derived rules implementing [[AXIOMS]]. Evidence lives in GitHub Issu
 **Statement**: Compliance verification REQUIRES actual execution. Comparing fields, validating YAML, pattern matching specs - all are Volkswagen tests. The ONLY proof a component works is running it and observing correct behavior.
 **Confidence**: High | **Implements**: #17, #18 | **Evidence**: #214
 
+## H38: Test Failure Requires User Decision
+**Statement**: When a test fails during verification, agents MUST report failure and STOP. Agents cannot modify test assertions, redefine success criteria, or rationalize failures as "edge cases." Only the user decides whether to (a) fix the code, (b) revise acceptance criteria, or (c) investigate further.
+**Confidence**: Low | **Implements**: #22, #4 | **Evidence**: #271
+
 ---
 
 ## Revision Protocol
