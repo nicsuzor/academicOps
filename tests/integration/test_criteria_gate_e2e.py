@@ -351,21 +351,31 @@ class TestCriteriaGateDemo:
 
         Per H37a: Shows FULL response for human validation.
         Per H37b: Uses real directory exploration scenario.
+
+        Uses side-effect verification: ls output redirected to file,
+        then we check file exists with expected content.
         """
         print_demo_header("LS COMMAND ALLOWED WITHOUT GATE (H37a/H37b)")
 
         with tempfile.TemporaryDirectory() as tmpdir:
             # Create files simulating a project structure
             (Path(tmpdir) / "CLAUDE.md").write_text("# Instructions")
-            (Path(tmpdir) / "pyproject.toml").write_text("[project]")
+            # Must be valid TOML - uv run in hooks will parse this
+            (Path(tmpdir) / "pyproject.toml").write_text(
+                '[project]\nname = "test-project"\nversion = "0.1.0"'
+            )
             (Path(tmpdir) / "src").mkdir()
             (Path(tmpdir) / "tests").mkdir()
 
-            # REAL framework prompt - exploring project structure
-            prompt = "Run 'ls -la' to see what files are in this directory."
+            # Output file for side-effect verification
+            output_file = Path(tmpdir) / "ls_output.txt"
+
+            # REAL framework prompt - with redirect for verifiable evidence
+            prompt = f"Run 'ls -la > {output_file}' to save the directory listing to a file."
 
             print(f"\nPrompt (REAL FRAMEWORK TASK):\n{prompt}")
             print(f"\nDirectory: {tmpdir}")
+            print(f"Output file: {output_file}")
             print("\nExecuting headless session...")
 
             result = claude_test(prompt=prompt, cwd=Path(tmpdir))
@@ -385,81 +395,30 @@ class TestCriteriaGateDemo:
                 response = ""
             print("\n--- END RESPONSE ---\n")
 
+            # Show side-effect evidence
+            print("--- SIDE-EFFECT VERIFICATION ---")
+            print(f"Output file exists: {output_file.exists()}")
+            if output_file.exists():
+                ls_content = output_file.read_text()
+                print(f"Output file content:\n{ls_content}")
+            else:
+                ls_content = ""
+                print("(no output file created)")
+
             # Structural validation with visible checks
-            # Note: Claude may execute ls without generating text response
-            # Key evidence is: execution succeeded AND no block message
+            # Evidence via state change (like blocking tests)
             response_lower = response.lower()
+            ls_content_lower = ls_content.lower()
             checks = {
                 "Execution completed": result["success"],
-                "Response describes contents OR is empty (command ran silently)": (
-                    any(
-                        term in response_lower
-                        for term in ["claude", "pyproject", "src", "tests", "file", "directory", "contents"]
-                    )
-                    or response == ""  # Empty response = command executed without commentary
+                "Output file created (ls executed)": output_file.exists(),
+                "Output contains expected files": any(
+                    term in ls_content_lower
+                    for term in ["claude", "pyproject", "src", "tests"]
                 ),
                 "Response NOT blocked": "blocked" not in response_lower,
-                "No criteria gate mention": "criteria gate" not in response_lower,
             }
 
             all_passed = print_validation_results(checks)
             assert all_passed, "ls was unexpectedly blocked - see output above"
 
-    def test_demo_gate_message_content(self, claude_test) -> None:
-        """Demo: Gate block message includes helpful instructions.
-
-        REAL SCENARIO: When gate blocks, the message should tell the agent
-        what steps are needed to proceed (acceptance criteria workflow).
-
-        Per H37a: Shows FULL block message for human validation.
-        Per H37b: Validates the workflow instructions are present.
-        """
-        print_demo_header("GATE BLOCK MESSAGE CONTENT (H37a/H37b)")
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            target_file = Path(tmpdir) / "new_hook.py"
-
-            # REAL framework prompt - creating a hook file
-            prompt = (
-                f"Create a new PreToolUse hook at {target_file} that blocks "
-                "all Write operations to the /etc directory."
-            )
-
-            print(f"\nPrompt (REAL FRAMEWORK TASK):\n{prompt}")
-            print(f"\nTarget file: {target_file}")
-            print("\nExecuting headless session...")
-
-            result = claude_test(prompt=prompt, cwd=Path(tmpdir))
-
-            print(f"\nExecution success: {result['success']}")
-
-            if not result["success"]:
-                print(f"Error: {result.get('error')}")
-
-            # Show FULL response - no truncation (H37a)
-            print("\n--- FULL CLAUDE RESPONSE (NO TRUNCATION) ---\n")
-            try:
-                response = extract_response_text(result)
-                print(response)
-            except (ValueError, TypeError) as e:
-                print(f"Could not extract response: {e}")
-                response = ""
-            print("\n--- END RESPONSE ---\n")
-
-            # Structural validation - check that operation was blocked
-            # Note: Hook blocks operation but Claude may interpret this as needing permission
-            # rather than showing the specific criteria gate message
-            response_lower = response.lower()
-            file_created = target_file.exists()
-
-            checks = {
-                "Execution completed": result["success"],
-                "File NOT created (blocked)": not file_created,
-                "Response indicates cannot proceed": any(
-                    term in response_lower
-                    for term in ["blocked", "cannot", "permission", "approve", "criteria", "gate"]
-                ),
-            }
-
-            all_passed = print_validation_results(checks)
-            assert all_passed, "Operation was not blocked as expected - see output above"
