@@ -92,81 +92,7 @@ If the note does NOT exist:
 - Create from template in [[templates/daily.md]]
 - Add Session Context and Abandoned Todos from Step 3 output
 
-**Daily note skeleton** (burndown and accomplishments populated in Step 6 from JSONs + task index):
-
-```markdown
-title: Daily Summary - YYYY-MM-DD
-type: daily
-generated_by: session-insights
-tags: [daily, sessions]
-
-# Daily Summary - YYYY-MM-DD
-
-## Today's Story
-
-(populated in Step 6 - 2-3 sentence narrative synthesized from session summaries)
-
-## 📊 Focus Dashboard
-
-### Priority Burndown
-```
-
-P0 ░░░░░░░░░░ 0% (0/N)
-P1 ░░░░░░░░░░ 0% (0/N)
-P2 ░░░░░░░░░░ 0% (0/N)
-
-```
-### 🎯 Active Now
-(populated from task index - status=active)
-
-### ⏳ Blocked
-(populated from task index - status=waiting)
-
-
-
-## Today's Priorities
-
-### Pressing (Deadlines)
-- [ ] [[task-with-deadline]]
-
-### P0 Tasks
-- [ ] [[priority-task]]
-
-
-
-## [[academicOps]] → [[projects/aops]]
-Scheduled: n/a | Unscheduled: 0 items
-- [x] Accomplishment from aops sessions
-
-## [[writing]] → [[projects/writing]]
-Scheduled: n/a | Unscheduled: 0 items
-- [x] Accomplishment from writing sessions
-
-## Abandoned Todos
-- [ ] Task left pending (from session abc123)
-
-## Session Log
-| Session | Project | Summary |
-|---------|---------|---------|
-
-## Session Timeline
-| Time | Session | Terminal | Project | Activity |
-|------|---------|----------|---------|----------|
-(populated from conversation_flow in Step 6)
-
-### Terminal Overwhelm Analysis
-(populated in Step 6 - analysis of context switches and work patterns)
-
-## Session Insights
-```
-
-Skill Compliance ░░░░░░░░░░ 0%
-Sessions Mined ░░░░░░░░░░ 0/0
-
-```
-## Session Context
-- 10:23 AM: Started on prompt hydrator context improvements
-```
+See [[templates/daily.md]] for daily note structure. Key sections: Today's Story, Focus Dashboard, Priority Burndown, Today's Priorities, Project Accomplishments, Abandoned Todos, Session Log/Timeline.
 
 **Critical**: Claude does NOT read transcripts. Accomplishments come from Gemini-mined JSONs in Step 6.
 
@@ -234,7 +160,7 @@ After receiving the JSON response, save it to: $ACA_DATA/dashboard/sessions/{ses
 )
 ```
 
-3. **Create sessions directory if needed**:
+1. **Create sessions directory if needed**:
    ```bash
    mkdir -p $ACA_DATA/dashboard/sessions
    ```
@@ -376,7 +302,7 @@ Sessions Mined ████████░░ 8/10
 - Quick Wins / ad-hoc items: Link if task file exists, otherwise plain text
 - Sessions: plain text (session IDs, not linked)
 
-5. **Write updated synthesis.json** at `$ACA_DATA/dashboard/synthesis.json`:
+1. **Write updated synthesis.json** at `$ACA_DATA/dashboard/synthesis.json`:
 
    synthesis.json is a **dashboard-optimized view** of the daily note - it should reflect ALL accomplishments from the daily note, not just those from mined session JSONs. If daily note has manually-added accomplishments, include them.
 
@@ -442,30 +368,7 @@ Sessions Mined ████████░░ 8/10
 
 ## Output Locations
 
-| Artifact               | Location                                                                 | Format                                   |
-| ---------------------- | ------------------------------------------------------------------------ | ---------------------------------------- |
-| Transcripts (full)     | `$ACA_DATA/sessions/claude/YYYYMMDD-{project}-{sessionid}-*-full.md`     | Markdown with YAML frontmatter           |
-| Transcripts (abridged) | `$ACA_DATA/sessions/claude/YYYYMMDD-{project}-{sessionid}-*-abridged.md` | Markdown with YAML frontmatter           |
-| Per-session mining     | `$ACA_DATA/dashboard/sessions/{session_id}.json`                         | JSON (one per session)                   |
-| Daily summary          | `$ACA_DATA/sessions/YYYYMMDD-daily.md`                                   | Markdown with accomplishments by project |
-| Dashboard synthesis    | `$ACA_DATA/dashboard/synthesis.json`                                     | JSON for dashboard rendering             |
-| Learning observations  | GitHub Issues (nicsuzor/academicOps)                                     | Via `/log` skill → Issues                |
-
-## Output Summary
-
-```
-## Session Insights - YYYY-MM-DD
-
-### Transcripts
-- Generated: N | Skipped: M
-
-### Daily Summary
-- Updated: sessions/YYYYMMDD-daily.md
-
-### Learnings
-- insight ...
-- insight ...
-```
+See [[references/output-locations.md]] for artifact paths and output summary template.
 
 ## Constraints
 

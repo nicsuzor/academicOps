@@ -480,13 +480,7 @@ If you discovered a new pattern:
 
 ## Reference Documentation
 
-Detailed guides for specific framework topics:
-
-- [[references/hooks_guide.md]] - Hook system architecture and patterns
-- [[references/script-design-guide.md]] - Script design principles
-- [[references/e2e-test-harness.md]] - Test harness infrastructure
-- [[references/claude-code-config.md]] - Claude Code configuration
-- [[references/strategic-partner-mode.md]] - Strategic collaboration mode
+[[references/hooks_guide.md]], [[references/script-design-guide.md]], [[references/e2e-test-harness.md]], [[references/claude-code-config.md]], [[references/strategic-partner-mode.md]]
 
 ## Before You Modify
 

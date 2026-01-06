@@ -93,59 +93,23 @@ HALTING.
 
 ## Documentation Index
 
-This skill includes both inline guidance and detailed reference documentation:
+### Instructions (_CHUNKS/)
 
-### Core Workflow Documentation (Inline)
+- **Investigation**: [[instructions/data-investigation.md]], [[instructions/exploratory-analysis.md]]
+- **Research docs**: [[instructions/research-documentation.md]] (REQUIRED), [[instructions/methodology-files.md]], [[instructions/methods-vs-methodology.md]], [[instructions/experiment-logging.md]]
+- **Technical**: [[instructions/dbt-workflow.md]], [[instructions/streamlit-workflow.md]]
 
-- Context Discovery - How to discover project context
-- Data Access Workflow - Critical rules for accessing data through dbt
-- Testing Workflow - Adding tests to validate data quality
-- Quick Reference Commands
+### References
 
-### Investigation and Exploration Workflows (_CHUNKS/)
-
-- [[instructions/data-investigation.md]] - Creating reusable investigation scripts for data quality issues
-- [[instructions/exploratory-analysis.md]] - Collaborative pattern exploration and discovery
-
-### Research Documentation Standards (_CHUNKS/)
-
-- [[instructions/research-documentation.md]] - **REQUIRED documentation structure and maintenance rules**
-- [[instructions/methodology-files.md]] - What goes in METHODOLOGY.md files
-- [[instructions/methods-vs-methodology.md]] - Distinguishing METHODS from METHODOLOGY
-- [[instructions/experiment-logging.md]] - Experiment directory structure and lifecycle
-
-### Detailed Technical Workflows (_CHUNKS/)
-
-- [[instructions/dbt-workflow.md]] - dbt model creation and data access patterns
-- [[instructions/streamlit-workflow.md]] - Streamlit visualization workflow
-
-### Additional Resources (references/)
-
-- [[references/dbt-workflow.md]] - Comprehensive dbt patterns and testing strategies
-- [[references/streamlit-patterns.md]] - Visualization best practices and layout patterns
-- [[references/context-discovery.md]] - Guide to finding and reading project context
+[[references/dbt-workflow.md]], [[references/streamlit-patterns.md]], [[references/context-discovery.md]]
 
 ### Statistical Analysis (references/)
 
-- [[references/statistical-analysis.md]] - **Complete guide to hypothesis testing and statistical analysis**
-- [[references/test_selection_guide.md]] - Choosing the right statistical test
-- [[references/assumptions_and_diagnostics.md]] - Checking and validating statistical assumptions
-- [[references/effect_sizes_and_power.md]] - Effect sizes, confidence intervals, and power analysis
-- [[references/bayesian_statistics.md]] - Bayesian alternatives and Bayes factors
-- [[references/reporting_standards.md]] - APA-style statistical reporting
+Start with [[references/statistical-analysis.md]] (complete guide). Also: [[references/test_selection_guide.md]], [[references/assumptions_and_diagnostics.md]], [[references/effect_sizes_and_power.md]], [[references/bayesian_statistics.md]], [[references/reporting_standards.md]].
 
-### Python and Visualization Libraries
+### Python Libraries
 
-**Core libraries** (references/):
-
-- [[references/matplotlib.md]] - Publication-quality plotting and visualization
-- [[references/seaborn.md]] - Statistical data visualization
-- [[references/statsmodels.md]] - Statistical modeling and econometrics
-- [[references/streamlit.md]] - Interactive data applications and dashboards
-
-**Python development standards**: Use the `python-dev` skill for code quality, type safety, and testing.
-
-**Note**: Chunk files are loaded on-demand when detailed technical specifications are needed. Use `@reference _CHUNKS/filename.md]] or`@references/filename.md]] to load specific documentation.
+Core libraries: [[references/matplotlib.md]], [[references/seaborn.md]], [[references/statsmodels.md]], [[references/streamlit.md]]. Use `python-dev` skill for code standards.
 
 ## When to Use This Skill
 
@@ -352,7 +316,7 @@ Create Streamlit visualizations following single-step collaborative pattern.
 
 **For detailed Streamlit workflow including structure, single-step patterns, and examples, see `@reference _CHUNKS/streamlit-workflow.md]]**
 
-### Quick Reference: Workflow Pattern
+### Quick Reference: Streamlit Pattern
 
 1. Load data from dbt model → STOP, confirm data
 2. Create single chart → STOP, get feedback
@@ -530,60 +494,6 @@ Research projects MUST maintain:
 - Show intermediate results
 - Yield control back to user frequently
 
-## Quick Reference Commands
+## Quick Reference
 
-```bash
-# List existing dbt models
-ls -1 dbt/models/staging/*.sql dbt/models/intermediate/*.sql dbt/models/marts/*.sql
-
-# Run specific dbt model
-dbt run --select model_name
-
-# Run tests for model
-dbt test --select model_name
-
-# Run Streamlit app
-streamlit run streamlit/dashboard.py
-
-# Check dbt lineage
-dbt docs generate
-dbt docs serve
-
-# Query warehouse (DuckDB)
-duckdb data/warehouse.db -c "SELECT * FROM fct_cases LIMIT 10"
-```
-
-## Resources
-
-This skill includes comprehensive documentation organized in three tiers:
-
-### Research Documentation Standards (_CHUNKS/)
-
-**Load these to understand required project documentation:**
-
-- [[instructions/research-documentation.md]] - Required documentation structure and maintenance rules
-- [[instructions/methodology-files.md]] - What goes in METHODOLOGY.md files
-- [[instructions/methods-vs-methodology.md]] - Distinguishing METHODS from METHODOLOGY
-- [[instructions/experiment-logging.md]] - Experiment directory structure and lifecycle
-- [[instructions/experiment_archival.md]] - Archiving completed experiments
-
-### Technical Workflow Details (_CHUNKS/)
-
-**Load these for detailed technical workflows:**
-
-- [[instructions/dbt-workflow.md]] - dbt model creation, data access patterns, and workflow
-- [[instructions/streamlit-workflow.md]] - Streamlit visualization workflow and structure
-
-### Comprehensive Reference Documentation (references/)
-
-**Load these for in-depth best practices:**
-
-- [[references/dbt-workflow.md]] - Complete dbt patterns (testing, documentation, common patterns)
-- [[references/streamlit-patterns.md]] - Complete Streamlit best practices (layout, components, libraries)
-- [[references/context-discovery.md]] - Project context discovery guide
-
-**Usage**: Reference chunk files using `@reference _CHUNKS/filename.md]] to load detailed documentation on-demand.
-
-### Scripts
-
-- [[scripts/assumption_checks.py]] - Statistical assumption validation utilities
+See [[references/quick-reference-commands.md]] for common dbt, Streamlit, and DuckDB commands.
