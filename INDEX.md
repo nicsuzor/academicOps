@@ -43,19 +43,24 @@ $AOPS/
 ├── .pre-commit-config.yaml      # Pre-commit hooks configuration
 ├── .gitignore                   # Git ignore patterns
 ├── .gitmodules                  # Git submodules
+├── .python-version              # Python version specification
+├── PYTHON_HOOKS_CONVENTIONS.md  # Python hook coding conventions
 ├── __init__.py                  # Package init
 ├── reference-graph.csv          # Framework reference graph (wrong location)
 ├── current-tasks.excalidraw     # Visual task board (orphan - flagged)
 │
-├── .github/workflows/           # CI/CD workflows
-│   ├── beta-release.yml         # Beta release automation
-│   ├── claude-code-review.yml   # Automated code review
-│   ├── claude.yml               # Claude Code bot integration
-│   ├── framework-health.yml     # Framework health enforcement
-│   ├── ios-note-capture.yml     # iOS note capture workflow
-│   └── test-setup.yml           # Setup script validation
+├── .github/
+│   ├── pull_request_template.md # PR template
+│   └── workflows/               # CI/CD workflows
+│       ├── beta-release.yml     # Beta release automation
+│       ├── claude-code-review.yml # Automated code review
+│       ├── claude.yml           # Claude Code bot integration
+│       ├── framework-health.yml # Framework health enforcement
+│       ├── ios-note-capture.yml # iOS note capture workflow
+│       └── test-setup.yml       # Setup script validation
 │
 ├── agents/                      # Spawnable subagents (Task tool)
+│   ├── custodiet.md             # Ultra vires detector - catches authority violations
 │   ├── critic.md                # Second-opinion review of plans/conclusions
 │   ├── effectual-planner.md     # Effectual planning (Sarasvathy) - plans as hypotheses
 │   ├── planner.md               # Implementation planning with memory + critic review
@@ -74,6 +79,7 @@ $AOPS/
 │   ├── learn.md                 # Minor instruction adjustments
 │   ├── log.md                   # → learning-log skill
 │   ├── meta.md                  # Strategic brain + executor
+│   ├── next.md                  # Task recommendations (should/enjoy/quick)
 │   ├── parallel-batch.md        # Parallel file processing
 │   ├── q.md                     # Queue task for later (delayed /do)
 │   ├── qa.md                    # Quality assurance verification
@@ -93,23 +99,34 @@ $AOPS/
 │       ├── settings.json        # Claude Code settings
 │       └── settings-web.json    # Web environment settings
 │
+├── gemini/                      # Gemini CLI integration
+│   ├── README.md                # Gemini integration documentation
+│   ├── commands/                # TOML command conversions
+│   │   └── *.toml               # Converted from commands/*.md
+│   ├── config/
+│   │   └── settings-merge.json  # Settings merge configuration
+│   └── hooks/
+│       └── router.py            # Gemini hook router
+│
 ├── docs/                        # Extended documentation
 │   ├── ENFORCEMENT.md           # Enforcement mechanism selection guide
 │   ├── execution-flow.md        # Execution flow diagrams (Mermaid)
 │   ├── HOOKS.md                 # Hook architecture overview
 │   ├── JIT-INJECTION.md         # Just-in-time context injection
 │   ├── OBSERVABILITY.md         # Observability and logging schema
+│   ├── testing-patterns.md      # Testing patterns and conventions
 │   └── WEB-BUNDLE.md            # Web bundle sync documentation
 │
 ├── hooks/                       # Session lifecycle (Python)
 │   ├── CLAUDE.md                # Hook design principles (JIT context)
 │   ├── hooks.md                 # Hook inventory and descriptions
-│   ├── guardrails.md            # Guardrail definitions for task types
 │   ├── router.py                # Central hook dispatcher
 │   ├── sessionstart_load_axioms.py  # Injects AXIOMS.md, FRAMEWORK.md, HEURISTICS.md
 │   ├── session_env_setup.sh     # Environment setup at session start
 │   ├── user_prompt_submit.py    # Writes context to temp file, returns short instruction
-│   ├── autocommit_state.py      # Auto-commit data/ changes
+│   ├── autocommit_state.py      # Auto-commit data/ changes (Enforces: A#28)
+│   ├── custodiet.py             # Ultra vires check every ~7 tool calls
+│   ├── criteria_gate.py         # Acceptance criteria gate enforcement
 │   ├── policy_enforcer.py       # Block destructive operations (PreToolUse)
 │   ├── fail_fast_watchdog.py    # Detect errors, inject fail-fast reminder
 │   ├── session_reflect.py       # Session end reflection prompt
@@ -124,10 +141,13 @@ $AOPS/
 │   ├── git-post-commit-sync-aops    # Git post-commit hook for sync
 │   ├── prompts/
 │   │   ├── user-prompt-submit.md    # Context for UserPromptSubmit hook
+│   │   ├── session-reflect.md       # Session reflection prompt template
 │   │   └── memory-reminder.md       # PostToolUse memory prompt
 │   └── templates/
-│       ├── prompt-hydrator-context.md     # Full context template (written to temp file)
-│       └── prompt-hydration-instruction.md # Short instruction template for main agent
+│       ├── prompt-hydrator-context.md         # Full context template (written to temp file)
+│       ├── prompt-hydration-instruction.md    # Short instruction template for main agent
+│       ├── custodiet-context.md               # Custodiet context template
+│       └── custodiet-instruction.md           # Custodiet instruction template
 │
 ├── lib/                         # Shared Python
 │   ├── __init__.py              # Package init
@@ -142,11 +162,15 @@ $AOPS/
 │   ├── audit_framework_health.py    # Framework health metrics
 │   ├── audit_skill_compliance.py    # Skill compliance audit
 │   ├── check_broken_wikilinks.py    # Pre-commit: broken wikilink check
+│   ├── check_file_taxonomy.py       # Pre-commit: file taxonomy validation
 │   ├── check_index_completeness.py  # Pre-commit: INDEX.md accounting
 │   ├── check_orphan_files.py        # Pre-commit: orphan file detection
 │   ├── check_skill_line_count.py    # Pre-commit: SKILL.md size limit
 │   ├── claude_transcript.py     # Session JSONL → markdown
+│   ├── convert_commands_to_toml.py  # Convert markdown commands to TOML
+│   ├── convert_mcp_to_gemini.py     # Convert MCP configs for Gemini
 │   ├── measure_router_compliance.py # Router performance metrics
+│   ├── migrate_file_taxonomy.py     # File taxonomy migration
 │   ├── migrate_log_entries.py   # Log entry migration
 │   ├── package_deployment.py    # Skill packaging
 │   ├── regenerate_task_index.py # Task index regeneration
@@ -239,8 +263,12 @@ $AOPS/
 │   │       ├── test-spec.md         # Test specification template
 │   │       └── user-story.md        # User story template
 │   │
+│   ├── flowchart/               # Mermaid flowchart best practices
+│   │   └── SKILL.md             # Main skill file
+│   │
 │   ├── framework/               # Convention reference for infrastructure
 │   │   ├── SKILL.md             # Paths, patterns, anti-bloat rules
+│   │   ├── SPEC-TEMPLATE.md     # Specification template
 │   │   ├── TASK-SPEC-TEMPLATE.md  # Task spec template
 │   │   ├── scripts/
 │   │   │   └── validate_docs.py     # Documentation validator
@@ -276,6 +304,11 @@ $AOPS/
 │   │
 │   ├── learning-log/            # Pattern logging to thematic files
 │   │   └── SKILL.md             # → may invoke transcript skill
+│   │
+│   ├── next/                    # Task recommendations (should/enjoy/quick)
+│   │   ├── SKILL.md             # Main skill file
+│   │   └── scripts/
+│   │       └── select_task.py   # Task selection algorithm
 │   │
 │   ├── osb-drafting/            # IRAC analysis for OSB cases
 │   │   ├── SKILL.md             # Main skill file
@@ -373,7 +406,7 @@ $AOPS/
 │
 ├── specs/                       # Design specifications
 │   ├── specs.md                 # Spec index with Mermaid diagram
-│   ├── agent-behavior-watchdog.md   # Agent behavior monitoring
+│   ├── ultra-vires-custodiet.md     # Ultra vires detection (authority boundaries)
 │   ├── analyst-skill.md             # Analyst skill spec
 │   ├── audit-skill.md               # Audit skill spec
 │   ├── cloudflare-prompt-logging.md # Cloudflare logging spec

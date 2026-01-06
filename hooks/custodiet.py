@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """
-PostToolUse compliance auditor hook.
+PostToolUse custodiet hook (ultra vires detector).
 
 Runs a periodic compliance check every N tool calls by:
 1. Tracking tool call count in state file
 2. When threshold reached, writing context to temp file
-3. Returning instruction to spawn compliance-auditor subagent
+3. Returning instruction to spawn custodiet subagent
 
 Uses same pattern as prompt hydration: temp file + short instruction.
 
@@ -25,8 +25,8 @@ from lib.session_reader import extract_router_context
 
 # Paths
 HOOK_DIR = Path(__file__).parent
-CONTEXT_TEMPLATE_FILE = HOOK_DIR / "templates" / "compliance-auditor-context.md"
-INSTRUCTION_TEMPLATE_FILE = HOOK_DIR / "templates" / "compliance-auditor-instruction.md"
+CONTEXT_TEMPLATE_FILE = HOOK_DIR / "templates" / "custodiet-context.md"
+INSTRUCTION_TEMPLATE_FILE = HOOK_DIR / "templates" / "custodiet-instruction.md"
 TEMP_DIR = Path("/tmp/claude-compliance")
 STATE_FILE = TEMP_DIR / "state.json"
 
@@ -177,7 +177,7 @@ def main():
             output_data = {
                 "hookSpecificOutput": {
                     "hookEventName": "PostToolUse",
-                    "error": f"Compliance audit temp file failed: {e}",
+                    "error": f"Custodiet temp file failed: {e}",
                 }
             }
             print(json.dumps(output_data))

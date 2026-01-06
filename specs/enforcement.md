@@ -111,12 +111,12 @@ This addresses the "steamroller" pattern where agents continue planned work inst
 
 #### Periodic Compliance Check
 
-On `PostToolUse` (every ~7 tool calls), spawns compliance-auditor subagent to check:
+On `PostToolUse` (every ~7 tool calls), spawns custodiet subagent to check:
 - Axiom violations (#7 Fail-Fast, #17 Verify First, #22 Acceptance Criteria)
 - Heuristic violations (H3 Verification, H4 Explicit Instructions, H19 Questions)
 - Plan drift (doing something different from TodoWrite plan)
 
-**Implementation**: `hooks/compliance_auditor.py` tracks tool count in `/tmp/claude-compliance/state.json`, emits audit instruction when threshold reached.
+**Implementation**: `hooks/custodiet.py` tracks tool count in `/tmp/claude-compliance/state.json`, emits audit instruction when threshold reached.
 
 **What it does**: Catches drift and violations mid-execution before user has to intervene
 **What it can't do**: Force agent to follow corrections (still relies on agent compliance)

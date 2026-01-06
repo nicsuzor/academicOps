@@ -43,7 +43,7 @@ The main execution flow runs vertically. Each framework insertion point (hooks, 
 ### 3. Reference, Don't Duplicate
 
 - Link to `WORKFLOWS.md` for routing table (don't duplicate it)
-- Link to `hooks/guardrails.md` for guardrail definitions
+- Link to `RULES.md` for guardrail definitions
 - Link to `agents/*.md` for agent behavior
 - Link to specs for detailed behavior
 
@@ -75,6 +75,6 @@ The Hook Registry table must include a Template/Content column showing what conf
 
 1. Main flow diagram is vertical with horizontal insertion points
 2. Every hook in registry has its template/content source identified
-3. No duplicated content from WORKFLOWS.md or guardrails.md
+3. No duplicated content from WORKFLOWS.md or RULES.md
 4. All implementation files are linked, not described inline
 5. Mermaid diagrams render correctly

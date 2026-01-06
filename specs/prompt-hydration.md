@@ -100,7 +100,7 @@ Based on context and workflow, identify skill(s) to invoke:
 
 ### 4. Guardrail Selection
 
-Based on workflow dimensions, select applicable guardrails from `hooks/guardrails.md`:
+Based on workflow dimensions, select applicable guardrails from [[RULES.md]]:
 
 | Workflow Dimension | Guardrails Applied |
 |--------------------|-------------------|
@@ -229,7 +229,7 @@ With Prompt Hydration working, `/do` becomes the "extra guardrails" option for c
 
 `WORKFLOWS.md` is the **generated index** that reflects this spec's routing table. The `/audit` skill regenerates it from:
 - This spec's workflow dimension definitions
-- `hooks/guardrails.md` definitions
+- [[RULES.md]] guardrail definitions
 - Skill descriptions
 
 ## Acceptance Criteria
@@ -241,7 +241,7 @@ With Prompt Hydration working, `/do` becomes the "extra guardrails" option for c
 5. Context surfaces relevant information for workflow decisions
 6. Latency meets performance requirements
 7. Skills are correctly suggested based on domain signals
-8. Guardrails match `hooks/guardrails.md` definitions
+8. Guardrails match [[RULES.md]] definitions
 9. Graceful degradation on errors
 10. Agent behavior measurably improves (fewer skill bypasses)
 
@@ -254,5 +254,5 @@ With Prompt Hydration working, `/do` becomes the "extra guardrails" option for c
 | `hooks/templates/prompt-hydration-instruction.md` | Short instruction template for main agent (~100 tokens) |
 | `lib/session_reader.py` | `extract_router_context()` - extracts session state from transcript |
 | `agents/prompt-hydrator.md` | Subagent that reads temp file and performs workflow selection |
-| `hooks/guardrails.md` | Guardrail definitions |
+| `RULES.md` | Guardrail definitions (Soft Gate Guardrails section) |
 | `WORKFLOWS.md` | Generated routing table |

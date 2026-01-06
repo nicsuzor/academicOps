@@ -25,7 +25,7 @@ graph TD
     B --> B3[knowledge-management-philosophy]
 
     C --> C1[prompt-hydration]
-    C --> C2[agent-behavior-watchdog]
+    C --> C2[ultra-vires-custodiet]
 
     D --> D1[dashboard-skill]
     D --> D2[task-list-overwhelm]
@@ -60,7 +60,7 @@ Design documents for the academicOps framework. Per [[AXIOMS]] #29: one spec per
 ## Agent Behavior
 
 - [[specs/prompt-hydration]] - Context gathering, classification, workflow selection (draft)
-- [[agent-behavior-watchdog]] - Detection of bypass patterns (draft)
+- [[ultra-vires-custodiet]] - Semantic authority enforcement (draft)
 - [[conclusion-verification-hook]] - Verify claims have evidence (draft)
 - [[plan-quality-gate]] - Critic review before presenting plans (requirement)
 - [[framework-aware-operations]] - Agents know framework architecture (requirement)

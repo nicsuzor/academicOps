@@ -1,23 +1,23 @@
 ---
-name: compliance-auditor-context
-title: Compliance Auditor Context Template
+name: custodiet-context
+title: Custodiet Context Template
 category: template
-description: Template written to temp file by PostToolUse hook for compliance-auditor subagent.
+description: Template written to temp file by PostToolUse hook for custodiet subagent.
 ---
 
-# Compliance Auditor Context Template
+# Custodiet Context Template
 
 This template is written to a temp file by the PostToolUse hook (every ~7 tool calls).
-The compliance-auditor subagent reads this file to check session compliance.
+The custodiet subagent reads this file to check for ultra vires behavior.
 
 Variables:
 - `{session_context}` - Recent prompts, active skill, TodoWrite state
 - `{tool_name}` - Most recent tool that was used
 
 ---
-# Compliance Audit Request
+# Ultra Vires Check Request
 
-Review this session's recent activity and check for principle violations or drift.
+Review this session's recent activity and check if agent is acting beyond granted authority.
 
 ## Recent Tool
 Last tool used: {tool_name}

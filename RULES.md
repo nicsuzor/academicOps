@@ -109,6 +109,44 @@ tags: [framework, enforcement, moc]
 
 ---
 
+## Soft Gate Guardrails (Prompt Hydration)
+
+These guardrails are applied by [[specs/prompt-hydration]] based on task classification. Each maps to a heuristic and defines when/how to apply it.
+
+### Guardrail Registry
+
+| Guardrail | Heuristic | Failure Prevented | Instruction |
+|-----------|-----------|-------------------|-------------|
+| `verify_before_complete` | H3 | Claiming success without checking | "VERIFY actual state before claiming complete" |
+| `answer_only` | H19 | Jumping to implementation when asked a question | "Answer, then STOP" |
+| `require_skill` | H2 | Skipping skill for domain work | "Invoke Skill first" |
+| `plan_mode` | A#23 | Framework changes without approval | "Enter Plan Mode first" |
+| `require_acceptance_test` | H28 | Claiming complete without e2e test | "TodoWrite MUST include verification" |
+| `quote_errors_exactly` | H5 | Paraphrasing errors | "Quote error messages EXACTLY" |
+| `fix_within_design` | H27 | Redesigning during debugging | "Fix within current architecture" |
+| `follow_literally` | H4 | Interpreting user instructions | "Follow instructions LITERALLY" |
+| `critic_review` | H14 | Presenting plans without review | "Invoke critic before presenting" |
+| `use_todowrite` | H29 | Losing track of steps | "Create TodoWrite to track progress" |
+| `criteria_gate` | A#23, H25, H28 | Implementing without acceptance criteria | "Define criteria first (hard gate)" |
+
+### Task Type → Guardrail Mapping
+
+| Task Type | Guardrails Applied |
+|-----------|-------------------|
+| `framework` | verify_before_complete, require_skill:framework, plan_mode, critic_review, criteria_gate, use_todowrite |
+| `cc_hook` | verify_before_complete, require_skill:plugin-dev:hook-development, plan_mode, criteria_gate, use_todowrite |
+| `cc_mcp` | verify_before_complete, require_skill:plugin-dev:mcp-integration, plan_mode, criteria_gate, use_todowrite |
+| `debug` | verify_before_complete, quote_errors_exactly, fix_within_design, criteria_gate, use_todowrite |
+| `feature` | verify_before_complete, require_acceptance_test, criteria_gate, use_todowrite |
+| `python` | verify_before_complete, require_skill:python-dev, require_acceptance_test, criteria_gate, use_todowrite |
+| `question` | answer_only |
+| `persist` | require_skill:remember |
+| `analysis` | require_skill:analyst, criteria_gate, use_todowrite |
+| `review` | verify_before_complete, use_todowrite |
+| `simple` | verify_before_complete, criteria_gate |
+
+---
+
 ## Path Protection (Deny Rules)
 
 | Category | Pattern | Blocked Tools | Purpose | Axiom |
