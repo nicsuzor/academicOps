@@ -107,3 +107,21 @@ def test_agent_behavior(claude_headless) -> None:
     assert result["success"], f"Execution failed: {result.get('error')}"
     # Check response contains expected content
 ```
+
+## E2E Test Failures ARE the Test Working
+
+**CRITICAL**: When an e2e test fails, that IS the test doing its job - finding bugs.
+
+| Wrong Response                           | Right Response                              |
+| ---------------------------------------- | ------------------------------------------- |
+| "Infrastructure issue, not our problem"  | Investigate WHY the fixture failed          |
+| "Test passed but fixture returned error" | Fixture errors = test failures = bugs found |
+| "Skip this, it's flaky"                  | Fix the flakiness or document the bug       |
+
+Per AXIOM #18: "Reporting failure is not completing the task."
+
+E2E tests exist to find infrastructure issues. When `claude_headless` returns `success: False`:
+
+1. **Investigate** - What caused the failure?
+2. **Fix or document** - Either fix the issue or create a GitHub Issue
+3. **Do not dismiss** - "Infrastructure issue" is not an excuse
