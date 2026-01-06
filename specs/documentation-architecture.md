@@ -82,21 +82,23 @@ Framework documentation suffered from overlap and underspecification. Multiple f
 
 ### Three-Document Architecture
 
-| Document | Purpose | Audience | Injected to Agents? |
-|----------|---------|----------|---------------------|
-| **FRAMEWORK.md** | Agent-focused paths and key files | Agents | Yes (SessionStart) |
-| **INDEX.md** | Complete file accounting for audits | Maintainers, audit scripts | No |
-| **README.md** | Human feature guide - capabilities and relationships | Humans | No |
+| Document         | Purpose                                              | Audience                   | Injected to Agents? |
+| ---------------- | ---------------------------------------------------- | -------------------------- | ------------------- |
+| **FRAMEWORK.md** | Agent-focused paths and key files                    | Agents                     | Yes (SessionStart)  |
+| **INDEX.md**     | Complete file accounting for audits                  | Maintainers, audit scripts | No                  |
+| **README.md**    | Human feature guide - capabilities and relationships | Humans                     | No                  |
 
 ### FRAMEWORK.md (Agent-Focused)
 
 **Contains**:
+
 - Resolved path table ($AOPS, $ACA_DATA, key directories)
 - Key file references (AXIOMS, HEURISTICS, CORE, ACCOMMODATIONS)
 - Memory system overview
 - Environment variable architecture
 
 **Does NOT contain**:
+
 - Complete file tree (that's INDEX.md)
 - Feature descriptions (that's README.md)
 - Cross-reference tables
@@ -104,11 +106,13 @@ Framework documentation suffered from overlap and underspecification. Multiple f
 ### INDEX.md (Audit-Only)
 
 **Contains**:
+
 - Complete file tree with one-line descriptions
 - Every file in $AOPS accounted for
 - Frontmatter: `audience: maintainers, audit-scripts`
 
 **Does NOT contain**:
+
 - Feature explanations
 - Cross-reference tables (Command→Skill, etc.)
 - How-to guidance
@@ -118,6 +122,7 @@ Framework documentation suffered from overlap and underspecification. Multiple f
 ### README.md (Human Feature Guide)
 
 **Contains**:
+
 - Quick Start
 - How workflows fit together
 - Command/Skill/Hook/Agent tables with purposes
@@ -126,6 +131,7 @@ Framework documentation suffered from overlap and underspecification. Multiple f
 - Glossary
 
 **Does NOT contain**:
+
 - Complete file listing
 - Path resolution details
 
@@ -147,11 +153,10 @@ Framework documentation suffered from overlap and underspecification. Multiple f
 **Decision rationale**: The three-document split emerged from audit analysis showing overlap between INDEX.md (complete file tree) and README.md (feature inventory). Rather than merge them, we separated by audience: agents need paths (FRAMEWORK.md), auditors need completeness (INDEX.md), humans need understanding (README.md).
 
 **Related**:
+
 - [[audit-skill]] - enforces this architecture (verifies structure, maintains INDEX.md/README.md)
 - [[audit-plan]] Phase 3 (Framework-Wide Structure Review)
 - [[spec-maintenance]] for spec lifecycle
-
----
 
 ## Completion Checklist
 

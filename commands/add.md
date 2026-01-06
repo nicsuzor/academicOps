@@ -22,6 +22,7 @@ Use the Skill tool to invoke the `[[skills/tasks/SKILL.md|tasks]]` skill: `Skill
    d. Create task with `## Checklist` section using `task_add.py`
 
 **Checklist item format** (Obsidian Tasks compatible):
+
 ```
 - [ ] Action item description
 - [ ] Another item 📅 2025-01-15
@@ -29,10 +30,12 @@ Use the Skill tool to invoke the `[[skills/tasks/SKILL.md|tasks]]` skill: `Skill
 ```
 
 **Scripts**:
+
 - Add checklist item: `cd $AOPS && uv run python skills/tasks/scripts/task_item_add.py "task-id.md" --item "Description"`
 - Create new task: `cd $AOPS && uv run python skills/tasks/scripts/task_add.py --title "Title" --slug "my-task" --priority P2`
 
 **Key rules**:
+
 - Always check for existing related tasks first (avoid duplicates)
 - Use checklist items for sub-actions within a larger task
 - Keep task titles concise, put details in body or checklist

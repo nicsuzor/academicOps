@@ -23,15 +23,15 @@ Manual test protocol for verifying Claude Code hook effectiveness. Use this prot
 
 From `[[.claude/settings.json]]`:
 
-| Event | Hook | Purpose |
-|-------|------|---------|
-| SessionStart | `sessionstart_load_axioms.py` | Load AXIOMS.md + CORE.md at session start |
-| PreToolUse | `log_pretooluse.py` | Log tool invocations |
-| PostToolUse | `log_posttooluse.py` | Log tool results |
-| PostToolUse | `autocommit_state.py` | Auto-commit data/ changes |
-| UserPromptSubmit | `log_userpromptsubmit.py` | Log user prompts |
-| UserPromptSubmit | `user_prompt_submit.py` | Context injection (currently noop) |
-| SubagentStop | `log_subagentstop.py` | Log subagent completion |
+| Event            | Hook                          | Purpose                                   |
+| ---------------- | ----------------------------- | ----------------------------------------- |
+| SessionStart     | `sessionstart_load_axioms.py` | Load AXIOMS.md + CORE.md at session start |
+| PreToolUse       | `log_pretooluse.py`           | Log tool invocations                      |
+| PostToolUse      | `log_posttooluse.py`          | Log tool results                          |
+| PostToolUse      | `autocommit_state.py`         | Auto-commit data/ changes                 |
+| UserPromptSubmit | `log_userpromptsubmit.py`     | Log user prompts                          |
+| UserPromptSubmit | `user_prompt_submit.py`       | Context injection (currently noop)        |
+| SubagentStop     | `log_subagentstop.py`         | Log subagent completion                   |
 
 ## Test Protocol
 
@@ -64,8 +64,6 @@ SESSION_LOG=$(ls -t ~/.cache/aops/sessions/*-hooks.jsonl | head -1)
 cat "$SESSION_LOG" | jq -r '.hook_event' | sort | uniq -c | sort -rn
 ```
 
----
-
 ## Test Cases
 
 ### TC1: SessionStart Hook
@@ -73,89 +71,97 @@ cat "$SESSION_LOG" | jq -r '.hook_event' | sort | uniq -c | sort -rn
 **Purpose**: Verify [[AXIOMS.md]] and [[CORE.md]] are loaded at session start.
 
 **Steps**:
+
 1. Start a new Claude Code session
 2. Immediately run: `ls -lt ~/.cache/aops/sessions/*-hooks.jsonl | head -1`
 3. Check the log for SessionStart event
 
 **Verification**:
+
 ```bash
 SESSION_LOG=$(ls -t ~/.cache/aops/sessions/*-hooks.jsonl | head -1)
 cat "$SESSION_LOG" | head -1 | jq '.hook_event, .hookSpecificOutput.filesLoaded'
 ```
 
 **Expected**:
+
 - `hook_event` = "SessionStart"
 - `filesLoaded` includes AXIOMS.md and CORE.md
 - `additionalContext` contains framework principles
 
 **Pass Criteria**:
+
 - [ ] SessionStart is first event in log
 - [ ] AXIOMS.md content appears in additionalContext
 - [ ] CORE.md content appears in additionalContext
 - [ ] Agent demonstrates knowledge of axioms in first response
-
----
 
 ### TC2: UserPromptSubmit Hook (Focus Reminder)
 
 **Purpose**: Verify focus reminder is injected on user prompts.
 
 **Steps**:
+
 1. Send any user message
 2. Check hook log for UserPromptSubmit event
 
 **Verification**:
+
 ```bash
 SESSION_LOG=$(ls -t ~/.cache/aops/sessions/*-hooks.jsonl | head -1)
 cat "$SESSION_LOG" | grep '"hook_event":"UserPromptSubmit"' | tail -1 | jq '.hookSpecificOutput.additionalContext'
 ```
 
 **Expected**:
+
 - Contains "Focus on the user's specific request"
 - Contains "Do NOT over-elaborate"
 
 **Pass Criteria**:
+
 - [ ] UserPromptSubmit event logged
 - [ ] Focus reminder in additionalContext
 - [ ] Agent behavior matches reminder (doesn't over-elaborate)
-
----
 
 ### TC3: PromptRouter Hook (Skill Detection)
 
 **Purpose**: Verify prompt router detects skills and injects skill requirements.
 
 **Steps**:
+
 1. Send a prompt that should trigger a skill (e.g., "write a python function")
 2. Check hook log for PromptRouter event
 
 **Verification**:
+
 ```bash
 SESSION_LOG=$(ls -t ~/.cache/aops/sessions/*-hooks.jsonl | head -1)
 cat "$SESSION_LOG" | grep '"hook_event":"PromptRouter"' | tail -1 | jq '.hookSpecificOutput'
 ```
 
 **Expected**:
+
 - `skillsMatched` array contains relevant skill names
 - `additionalContext` includes "MANDATORY" skill invocation instruction
 
 **Pass Criteria**:
+
 - [ ] PromptRouter event logged
 - [ ] Correct skills detected for prompt type
 - [ ] Skill invocation instruction in additionalContext
-
----
 
 ### TC4: PostToolUse Autocommit Hook
 
 **Purpose**: Verify auto-commit triggers after data/ modifications.
 
 **Steps**:
+
 1. Use the memory skill to store a note: `Skill(skill="remember")` targeting data/
 2. Check hook log for autocommit event
 3. Check git log for automatic commit
 
 **Verification**:
+
 ```bash
 # Check hook log
 SESSION_LOG=$(ls -t ~/.cache/aops/sessions/*-hooks.jsonl | head -1)
@@ -166,68 +172,72 @@ git -C ~/writing/data log --oneline -5
 ```
 
 **Expected**:
+
 - PostToolUse event after memory skill invocation
 - Git commit with auto-generated message
 - Commit includes the data/ file
 
 **Pass Criteria**:
+
 - [ ] PostToolUse logged for state-modifying tool
 - [ ] Git commit created automatically
 - [ ] Commit message describes the change
-
----
 
 ### TC5: Tool Logging (PreToolUse + PostToolUse)
 
 **Purpose**: Verify all tool invocations are logged.
 
 **Steps**:
+
 1. Execute several tools (Read, Bash, Grep)
 2. Check hook log for Pre/PostToolUse events
 
 **Verification**:
+
 ```bash
 SESSION_LOG=$(ls -t ~/.cache/aops/sessions/*-hooks.jsonl | head -1)
 cat "$SESSION_LOG" | jq -r 'select(.hook_event | test("ToolUse")) | "\(.hook_event): \(.tool_name // .tool)"' | tail -20
 ```
 
 **Expected**:
+
 - PreToolUse event BEFORE each tool execution
 - PostToolUse event AFTER each tool execution
 - Tool names captured correctly
 
 **Pass Criteria**:
+
 - [ ] PreToolUse logged before tool runs
 - [ ] PostToolUse logged after tool completes
 - [ ] Tool name captured in log entry
-
----
 
 ### TC6: SubagentStop Hook
 
 **Purpose**: Verify subagent completions are logged.
 
 **Steps**:
+
 1. Invoke a Task subagent (e.g., Explore agent)
 2. Wait for completion
 3. Check hook log for SubagentStop event
 
 **Verification**:
+
 ```bash
 SESSION_LOG=$(ls -t ~/.cache/aops/sessions/*-hooks.jsonl | head -1)
 cat "$SESSION_LOG" | grep '"hook_event":"SubagentStop"' | tail -1 | jq '.'
 ```
 
 **Expected**:
+
 - `agent_id` present
 - `agent_transcript_path` points to valid file
 
 **Pass Criteria**:
+
 - [ ] SubagentStop event logged
 - [ ] Agent ID captured
 - [ ] Transcript path captured
-
----
 
 ## Running the Full Protocol
 
@@ -282,21 +292,17 @@ SESSION_ID=$(basename "$SESSION_LOG" | sed 's/-hooks.jsonl//')
 echo "Evidence saved to ~/writing/hook-test-$SESSION_ID.md"
 ```
 
----
-
 ## Expected Results Summary
 
-| Hook | Expected Behavior | How to Verify |
-|------|-------------------|---------------|
-| SessionStart | AXIOMS+CORE loaded | Check first log entry |
-| UserPromptSubmit | Focus reminder injected | Check additionalContext |
-| PromptRouter | Skills detected | Check skillsMatched array |
-| PostToolUse (autocommit) | data/ changes committed | Check git log |
-| PreToolUse | Tool invocations logged | Check tool_name in log |
-| PostToolUse | Tool results logged | Check log after tool |
-| SubagentStop | Agent completions logged | Check agent_id in log |
-
----
+| Hook                     | Expected Behavior        | How to Verify             |
+| ------------------------ | ------------------------ | ------------------------- |
+| SessionStart             | AXIOMS+CORE loaded       | Check first log entry     |
+| UserPromptSubmit         | Focus reminder injected  | Check additionalContext   |
+| PromptRouter             | Skills detected          | Check skillsMatched array |
+| PostToolUse (autocommit) | data/ changes committed  | Check git log             |
+| PreToolUse               | Tool invocations logged  | Check tool_name in log    |
+| PostToolUse              | Tool results logged      | Check log after tool      |
+| SubagentStop             | Agent completions logged | Check agent_id in log     |
 
 ## AGENT COMPLIANCE ISSUE (2025-11-28)
 
@@ -316,12 +322,12 @@ echo "Evidence saved to ~/writing/hook-test-$SESSION_ID.md"
 
 ### Quantitative Data (2025-11-28)
 
-| Metric | Value |
-|--------|-------|
-| Router suggestions | 60 |
-| Skill tool invocations (all sessions) | 26 |
-| Most common suggestion | `python-dev` (26x) |
-| Second | `framework` (8x) |
+| Metric                                | Value              |
+| ------------------------------------- | ------------------ |
+| Router suggestions                    | 60                 |
+| Skill tool invocations (all sessions) | 26                 |
+| Most common suggestion                | `python-dev` (26x) |
+| Second                                | `framework` (8x)   |
 
 ### Root Causes
 
@@ -348,11 +354,13 @@ grep '"name":"Skill"' ~/.claude/projects/-home-nic-src-aOps/SESSION_ID.jsonl | w
 **Purpose**: Verify agent invokes suggested skill after PromptRouter fires.
 
 **Steps**:
+
 1. Start fresh session (no prior context)
 2. Send prompt that triggers skill (e.g., "help me write a python function")
 3. Check if agent's FIRST tool invocation is Skill
 
 **Verification**:
+
 ```bash
 # Get session transcript
 SESSION_ID=$(ls -t ~/.claude/projects/-home-nic-src-aOps/*.jsonl | head -1)
@@ -362,15 +370,15 @@ grep '"type":"tool_use"' "$SESSION_ID" | head -1 | jq '.name'
 ```
 
 **Expected**:
+
 - First tool invocation is `Skill`
 - Skill invoked matches `skillsMatched` from router
 
 **Pass Criteria**:
+
 - [ ] Agent's first action is Skill invocation
 - [ ] Skill invoked matches router suggestion
 - [ ] Skill content is loaded before other tools used
-
----
 
 ## Troubleshooting
 

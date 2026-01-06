@@ -35,13 +35,13 @@ This ensures changes are categorical (generalizable rules), not ad-hoc fixes.
 
 See [[specs/enforcement.md]] "Component Responsibilities" for the full model.
 
-| Root Cause Category | Definition | Fix Location |
-|---------------------|------------|--------------|
-| Clarity Failure | Instruction ambiguous/weak | AXIOMS, skill text, guardrail |
-| Context Failure | Didn't provide relevant info | Intent router, hydration |
-| Blocking Failure | Should have blocked but didn't | PreToolUse hook, deny rule |
-| Detection Failure | Should have caught but didn't | PostToolUse hook |
-| Gap | No component exists for this | Create new enforcement |
+| Root Cause Category | Definition                     | Fix Location                  |
+| ------------------- | ------------------------------ | ----------------------------- |
+| Clarity Failure     | Instruction ambiguous/weak     | AXIOMS, skill text, guardrail |
+| Context Failure     | Didn't provide relevant info   | Intent router, hydration      |
+| Blocking Failure    | Should have blocked but didn't | PreToolUse hook, deny rule    |
+| Detection Failure   | Should have caught but didn't  | PostToolUse hook              |
+| Gap                 | No component exists for this   | Create new enforcement        |
 
 **Wrong**: "Agent ignored instruction" (proximate cause - we can't fix the agent)
 **Right**: "Guardrail instruction too generic for this task type" (root cause - we can fix the guardrail)
@@ -49,6 +49,7 @@ See [[specs/enforcement.md]] "Component Responsibilities" for the full model.
 ### 2. Check for Prior Occurrences
 
 Search GitHub Issues for related observations:
+
 ```bash
 gh issue list --repo nicsuzor/academicOps --label learning --search "[keywords]"
 ```
@@ -61,13 +62,13 @@ gh issue list --repo nicsuzor/academicOps --label learning --search "[keywords]"
 
 Match intervention to root cause category:
 
-| Root Cause | Intervention |
-|------------|--------------|
-| Clarity Failure | Strengthen instruction text, add task-specific reasoning |
-| Context Failure | Improve router classification, add context source |
-| Blocking Failure | Fix hook pattern, add deny rule |
-| Detection Failure | Improve hook detection logic |
-| Gap | Create new enforcement at appropriate level |
+| Root Cause        | Intervention                                             |
+| ----------------- | -------------------------------------------------------- |
+| Clarity Failure   | Strengthen instruction text, add task-specific reasoning |
+| Context Failure   | Improve router classification, add context source        |
+| Blocking Failure  | Fix hook pattern, add deny rule                          |
+| Detection Failure | Improve hook detection logic                             |
+| Gap               | Create new enforcement at appropriate level              |
 
 Consult [[RULES]] for enforcement level ladder. **Start soft, escalate only with evidence.**
 
@@ -80,6 +81,7 @@ If you need a bigger change, **ABORT** and update/create a Spec instead.
 ### 5. Document in GitHub Issue
 
 Track the intervention in the relevant Issue:
+
 - Root cause category and responsible component
 - What was changed (with file path)
 - What enforcement level (see [[docs/ENFORCEMENT.md]])
@@ -90,6 +92,7 @@ Per [[specs/reflexivity]], interventions are tracked as Issue comments, not sepa
 ### 6. Report
 
 Tell the user:
+
 1. Root cause category and responsible component
 2. What you changed (with file path)
 3. What enforcement level

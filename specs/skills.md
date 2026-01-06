@@ -34,12 +34,12 @@ graph TD
 
 ## Core Skills
 
-| Skill | Purpose | Status |
-|-------|---------|--------|
-| [[framework-skill]] | Categorical governance | Implemented |
-| [[python-dev-skill]] | Fail-fast Python | Implemented |
-| [[feature-dev-skill]] | Test-first development | Implemented |
-| [[remember-skill]] | Knowledge persistence | Implemented |
-| [[supervisor-skill]] | Multi-agent orchestration | Implemented |
-| [[tasks-skill]] | Task lifecycle | Implemented |
-| [[learning-log-skill]] | Pattern documentation | Implemented |
+| Skill                  | Purpose                   | Status      |
+| ---------------------- | ------------------------- | ----------- |
+| [[framework-skill]]    | Categorical governance    | Implemented |
+| [[python-dev-skill]]   | Fail-fast Python          | Implemented |
+| [[feature-dev-skill]]  | Test-first development    | Implemented |
+| [[remember-skill]]     | Knowledge persistence     | Implemented |
+| [[supervisor-skill]]   | Multi-agent orchestration | Implemented |
+| [[tasks-skill]]        | Task lifecycle            | Implemented |
+| [[learning-log-skill]] | Pattern documentation     | Implemented |

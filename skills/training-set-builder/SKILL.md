@@ -137,6 +137,7 @@ For each extractable training example:
 Provide appropriate categorization for the examples:
 
 **Type categories** (adapt to the domain):
+
 - structural (organization, flow, arrangement)
 - substantive (content, claims, arguments)
 - clarity (explanation, coherence, readability)
@@ -145,6 +146,7 @@ Provide appropriate categorization for the examples:
 - technical (accuracy, precision, correctness)
 
 **Action categories**:
+
 - revise (change existing content)
 - add (include missing content)
 - remove (delete or reduce content)
@@ -153,6 +155,7 @@ Provide appropriate categorization for the examples:
 - strengthen (enhance quality or rigor)
 
 **Scope categories**:
+
 - specific (references specific text or element)
 - section (addresses a section or component)
 - document (overall structure or approach)
@@ -182,7 +185,7 @@ data/training-examples/
 
 - Document 1: {description}
 - Document 2: {description}
-...
+  ...
 
 ## Training Focus
 
@@ -231,29 +234,34 @@ One JSON object per line for efficient loading:
 ## Handling Different Document Types
 
 ### PDF Documents
+
 - Extract text preserving structure where possible
 - Note page numbers for references
 - Handle multi-column layouts carefully
 - Flag extraction quality issues
 
 ### Word/DOCX Documents
+
 - Preserve track changes if present
 - Extract comments and annotations
 - Note heading structure
 - Handle embedded tables/figures appropriately
 
 ### Plain Text/Markdown
+
 - Use existing structure markers
 - Infer sections from content
 - Preserve formatting indicators
 
 ### Code Files
+
 - Capture file/function/line references
 - Include surrounding context
 - Note language-specific patterns
 - Preserve diff information if available
 
 ### Annotated/Commented Documents
+
 - Extract comments as feedback
 - Link to their reference points
 - Preserve comment threading if present
@@ -261,21 +269,25 @@ One JSON object per line for efficient loading:
 ## Handling Ambiguity
 
 **If feedback doesn't clearly map to source**:
+
 - Flag with `"quality": "ambiguous"`
 - Include best-effort interpretation
 - Document the ambiguity in `context.teaching_point`
 
 **If multiple interpretations possible**:
+
 - Choose the most specific interpretation
 - Document alternatives in extraction notes
 - Prefer conservative extraction
 
 **If source/revised text is unclear**:
+
 - Note extraction quality in metadata
 - Include available context
 - May still have value for pattern recognition
 
 **If no clear revision available**:
+
 - Set `revised` to `null` or empty
 - Focus on feedback → implied improvement
 - Document in teaching point what the revision should achieve
@@ -440,16 +452,19 @@ comes off a little disjoint as a result.
 ## Error Handling
 
 **Cannot extract text from document**:
+
 - Notify user of extraction issue
 - Request alternative format or clarification
 - Document failed extraction
 
 **Ambiguous structure**:
+
 - Ask user to clarify
 - Make reasonable assumptions and document them
 - Flag uncertain extractions
 
 **No clear training value**:
+
 - Flag as low-quality
 - Include for completeness if requested
 - Note limited pedagogical value

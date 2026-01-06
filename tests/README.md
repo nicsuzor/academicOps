@@ -454,7 +454,6 @@ Following [[AXIOMS.md]]:
 
 **Status Note**:
 
-
 Run tests to validate framework integrity:
 
 ```bash

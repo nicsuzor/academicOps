@@ -47,6 +47,7 @@ Extract accomplishments and learnings from Claude Code sessions. Updates daily s
 ## Problem Statement
 
 Session value extraction gaps:
+
 - Accomplishments lost in terminal history
 - Patterns repeat across sessions without synthesis
 - Framework learnings not captured
@@ -70,16 +71,19 @@ Skill(skill="session-insights", args="current")   # current session
 ### Batch Mode (today/YYYYMMDD)
 
 **Step 1: Find Sessions**
+
 ```bash
 cd $AOPS && uv run python skills/session-insights/scripts/find_sessions.py
 ```
 
 **Step 2: Generate Transcripts (Parallel)**
+
 ```bash
 cd $AOPS && uv run python scripts/claude_transcript.py {session_path} -o ...
 ```
 
 **Step 3: Extract Narrative Signals**
+
 ```bash
 cd $AOPS && uv run python skills/session-insights/scripts/extract_narrative.py --date YYYYMMDD
 ```
@@ -89,11 +93,13 @@ Create/update `$ACA_DATA/sessions/YYYYMMDD-daily.md` with accomplishments per pr
 
 **Step 5: Mine for Learnings (Parallel via Gemini)**
 Spawn Task agents for each transcript:
+
 ```
 Task(subagent_type="general-purpose", model="haiku", prompt="Call mcp__gemini__ask-gemini...")
 ```
 
 Gemini extracts per-session structured data:
+
 - Session summary (what was worked on)
 - Accomplishments (completed items with project tags)
 - Skill effectiveness (suggested vs invoked)
@@ -118,12 +124,14 @@ Gemini per-session JSONs (only input)
 ```
 
 **Division of labor**:
+
 - **Gemini**: Reads transcripts, extracts structured data (expensive work, done once)
 - **Claude Code**: Reads Gemini output only, synthesizes/integrates (no transcript access)
 
 **Idempotent integration**: If session already in daily.md/synthesis.json, update rather than duplicate. Can run from multiple machines.
 
 **Step 7: Route Learnings**
+
 - Route learning observations to [[learning-log]] skill → GitHub Issues
 
 ### Real-time Mode (current)
@@ -132,30 +140,30 @@ Gemini per-session JSONs (only input)
 
 ### Output Locations
 
-| Artifact | Location | Producer |
-|----------|----------|----------|
-| Full transcripts | `$ACA_DATA/sessions/claude/YYYYMMDD-*-full.md` | transcript script |
-| Abridged transcripts | `$ACA_DATA/sessions/claude/YYYYMMDD-*-abridged.md` | transcript script |
-| Per-session mining | `$ACA_DATA/dashboard/sessions/{session_id}.json` | Gemini |
-| Daily summary | `$ACA_DATA/sessions/YYYYMMDD-daily.md` | Claude Code agent |
-| Dashboard synthesis | `$ACA_DATA/dashboard/synthesis.json` | Claude Code agent |
-| Learning observations | GitHub Issues (via learning-log) | Claude Code agent |
+| Artifact              | Location                                           | Producer          |
+| --------------------- | -------------------------------------------------- | ----------------- |
+| Full transcripts      | `$ACA_DATA/sessions/claude/YYYYMMDD-*-full.md`     | transcript script |
+| Abridged transcripts  | `$ACA_DATA/sessions/claude/YYYYMMDD-*-abridged.md` | transcript script |
+| Per-session mining    | `$ACA_DATA/dashboard/sessions/{session_id}.json`   | Gemini            |
+| Daily summary         | `$ACA_DATA/sessions/YYYYMMDD-daily.md`             | Claude Code agent |
+| Dashboard synthesis   | `$ACA_DATA/dashboard/synthesis.json`               | Claude Code agent |
+| Learning observations | GitHub Issues (via learning-log)                   | Claude Code agent |
 
 ### Learning Categories
 
-| Category | Definition | Example |
-|----------|------------|---------|
-| `user_correction` | User explicitly corrects agent behavior | "no, I meant X not Y" |
-| `implicit_correction` | User redirects without explicit correction | "let's try a different approach" |
-| `verification_skip` | Agent claims success without verification | "Done" without running tests |
-| `instruction_ignore` | Agent ignores explicit instruction | User says "don't X", agent does X |
-| `navigation_failure` | Multiple searches for same thing | Grepping 3+ times for one file |
-| `axiom_violation` | Agent violates numbered AXIOM | Workaround instead of halt (AXIOM #8) |
-| `skill_bypass` | Agent acts without required skill | Direct file edit instead of skill |
-| `success` | Correct behavior worth noting | Proper halt on error |
-| `context_gap` | Missing context that caused mistakes | Missing hydration data led to wrong approach |
-| `experiment_evidence` | Behavior matching active hypothesis | Predicted outcome observed |
-| `other` | Mistakes or improvement opportunities not fitting other categories | Suboptimal approach that worked but could be better |
+| Category              | Definition                                                         | Example                                             |
+| --------------------- | ------------------------------------------------------------------ | --------------------------------------------------- |
+| `user_correction`     | User explicitly corrects agent behavior                            | "no, I meant X not Y"                               |
+| `implicit_correction` | User redirects without explicit correction                         | "let's try a different approach"                    |
+| `verification_skip`   | Agent claims success without verification                          | "Done" without running tests                        |
+| `instruction_ignore`  | Agent ignores explicit instruction                                 | User says "don't X", agent does X                   |
+| `navigation_failure`  | Multiple searches for same thing                                   | Grepping 3+ times for one file                      |
+| `axiom_violation`     | Agent violates numbered AXIOM                                      | Workaround instead of halt (AXIOM #8)               |
+| `skill_bypass`        | Agent acts without required skill                                  | Direct file edit instead of skill                   |
+| `success`             | Correct behavior worth noting                                      | Proper halt on error                                |
+| `context_gap`         | Missing context that caused mistakes                               | Missing hydration data led to wrong approach        |
+| `experiment_evidence` | Behavior matching active hypothesis                                | Predicted outcome observed                          |
+| `other`               | Mistakes or improvement opportunities not fitting other categories | Suboptimal approach that worked but could be better |
 
 ### Routing Rules
 
@@ -182,6 +190,7 @@ IF no_match OR category == other:
 ### Heuristic Mapping
 
 Each correction/failure maps to relevant heuristic:
+
 - H2: Skill-First - skill bypass patterns
 - H3: Verification Before Assertion
 - H4: Explicit Instructions Override Inference
@@ -190,22 +199,24 @@ Each correction/failure maps to relevant heuristic:
 ## Relationships
 
 ### Depends On
+
 - [[transcript]] skill for markdown generation
 - `scripts/claude_transcript.py` for JSONL parsing
 - Gemini API for pattern mining
 - [[learning-log]] for GitHub Issue routing
 
 ### Used By
+
 - [[dashboard]] skill consumes `insights.json`
 - Daily review workflow
 - Framework improvement loop
 
 ### Triggers
 
-| Trigger | Mode |
-|---------|------|
-| Daily routine | Batch (today) |
-| Stop hook | Real-time (current) |
+| Trigger            | Mode                |
+| ------------------ | ------------------- |
+| Daily routine      | Batch (today)       |
+| Stop hook          | Real-time (current) |
 | `/reflect` command | Real-time (current) |
 
 ## Mining Approach
@@ -217,11 +228,13 @@ Gemini analyzes transcripts without framework-specific context. Discovers patter
 **Prompt**: Simple request to identify successes, failures, improvements, concerns.
 
 **Pros**:
+
 - No maintenance of category definitions
 - Discovers patterns we haven't categorized yet
 - Lower prompt complexity
 
 **Cons**:
+
 - May miss framework-specific patterns (axiom violations)
 - Routing requires post-processing by Claude
 - Output format varies

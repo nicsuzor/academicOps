@@ -53,6 +53,7 @@ permalink: skills-osb-drafting
    - Document ratio decidendi (binding principles)
 
 **Minimum searches per case**:
+
 - Primary policy name + "violation"
 - Content type + "precedent"
 - Context keyword + "crisis" or "conflict"
@@ -68,12 +69,12 @@ permalink: skills-osb-drafting
 
 6. **Map fault lines** for each decision point:
 
-| Dimension | Position A | Position B |
-|-----------|-----------|------------|
-| Textualist vs Purposivist | Strict policy text | Harm-based/intent reading |
-| Speech-protective vs Harm-preventive | Favor expression | Favor safety |
-| Individual vs Systemic | Case-specific remedy | Policy-level change |
-| Global vs Contextual | Consistent application | Regional sensitivity |
+| Dimension                            | Position A             | Position B                |
+| ------------------------------------ | ---------------------- | ------------------------- |
+| Textualist vs Purposivist            | Strict policy text     | Harm-based/intent reading |
+| Speech-protective vs Harm-preventive | Favor expression       | Favor safety              |
+| Individual vs Systemic               | Case-specific remedy   | Policy-level change       |
+| Global vs Contextual                 | Consistent application | Regional sensitivity      |
 
 ### Phase 4: IRAC Analysis
 
@@ -83,18 +84,21 @@ permalink: skills-osb-drafting
 ### Issue: [Precise legal question]
 
 #### Position A (likely [majority/minority]): [Outcome]
+
 **Rule**: [Applicable policy text + IHRL standard]
 **Analysis**: [Application to facts]
 **Precedent**: [Case citations with relevance]
 **Conclusion**: [Why this position prevails under this reading]
 
 #### Position B (likely [minority/majority]): [Outcome]
+
 **Rule**: [Alternative reading or emphasis]
 **Analysis**: [Application highlighting different facts]
 **Precedent**: [Contrary or distinguishable cases]
 **Conclusion**: [Why this position has merit]
 
 #### What determines the split:
+
 - [Key factual/value difference 1]
 - [Key factual/value difference 2]
 ```
@@ -108,6 +112,7 @@ permalink: skills-osb-drafting
    - **Transparency**: Disclosure requirements
 
 Recommendations must be:
+
 - Actionable (specific enough to implement)
 - Measurable (can verify compliance)
 - Precedent-consistent (cite supporting prior decisions)
@@ -122,31 +127,35 @@ Recommendations must be:
 10. **Verify each citation**:
 
 For each cited case, **always retrieve full document text**:
+
 ```
 mcp__osb__get_document(record_id, include_full_text=true)
 ```
 
 **Why full text is required**: Summaries are AI-generated abstractions that may not contain exact quoted phrases. Only the full decision text can verify:
+
 - Exact quote accuracy
 - Context of statements
 - Complete recommendation wording
 - Nuanced legal reasoning
 
-| Check | Criteria | Verification Method |
-|-------|----------|---------------------|
-| Case ID exists | Must return valid result | get_document returns content |
-| Case name matches | Exact or close match | Compare to official title |
-| Quoted text accurate | **Exact phrase in full text** | Search for quoted string in document |
-| Principle attributed | Ratio/reasoning section supports claim | Read legal reasoning |
-| Recommendation accurate | Matches verbatim recommendation text | Check recommendations section |
+| Check                     | Criteria                                 | Verification Method                        |
+| ------------------------- | ---------------------------------------- | ------------------------------------------ |
+| Case ID exists            | Must return valid result                 | get_document returns content               |
+| Case name matches         | Exact or close match                     | Compare to official title                  |
+| Quoted text accurate      | **Exact phrase in full text**            | Search for quoted string in document       |
+| Principle attributed      | Ratio/reasoning section supports claim   | Read legal reasoning                       |
+| Recommendation accurate   | Matches verbatim recommendation text     | Check recommendations section              |
 | **Quote originates here** | Quote is FROM this case, not cited BY it | Check quote isn't referencing another case |
 
 **CRITICAL - Search for each quoted phrase individually**:
+
 ```
 mcp__osb__search(query="[exact quoted phrase]", n_results=5)
 ```
 
 This catches:
+
 - Quotes that don't exist in any case
 - Quotes misattributed to wrong case (e.g., Case A cites Case B, draft wrongly attributes to A)
 - Paraphrases that distort meaning
@@ -159,9 +168,11 @@ This catches:
 ## Citation Verification Report
 
 ### VERIFIED ✓
+
 - [Case ID]: [Cited principle] - CONFIRMED at [location in full text]
 
 ### NEEDS CORRECTION ✗
+
 - [Case ID]: [Issue description]
   - Draft says: "[quoted text]"
   - Actual text: "[exact text from full document]"
@@ -176,6 +187,7 @@ This catches:
     - Corrections made and re-verified
 
 **Common error types**:
+
 - Case mislabeling (wrong case name for ID)
 - Quote fabrication (phrase not in case text)
 - Principle misattribution (case doesn't establish cited holding)
@@ -212,39 +224,48 @@ Apply international standards consistently:
 # [Case Title] - Draft Analysis
 
 ## Summary
+
 [2-3 sentence overview]
 
 ## Facts
+
 [Key facts from record]
 
 ## Procedural History
+
 [Reports, reviews, appeals, Meta's position]
 
 ## Applicable Policies
+
 - Primary: [Policy name and text]
 - Secondary: [Related policies]
 
 ## Issue 1: [First major question]
+
 [Full IRAC with position variants per Phase 4]
 
 ## Issue 2: [Second major question]
+
 [Full IRAC with position variants]
 
 [Continue for each issue]
 
 ## Recommendations
+
 1. [Recommendation with precedent support]
 2. [Recommendation with precedent support]
 
 ## Precedent Map
+
 | Case | Relevance | Key Principle |
-|------|-----------|---------------|
-| [ID] | [Topic] | [Holding] |
+| ---- | --------- | ------------- |
+| [ID] | [Topic]   | [Holding]     |
 ```
 
 ## Quality Checks
 
 Before finalizing draft:
+
 - [ ] Every legal claim has specific precedent citation
 - [ ] Both sides of each tension articulated fairly
 - [ ] Human rights standards applied consistently
@@ -256,6 +277,7 @@ Before finalizing draft:
 ## Anti-Patterns
 
 **Avoid**:
+
 - Guessing at Board member positions (analyze arguments, not people)
 - Over-reliance on single precedent (triangulate multiple sources)
 - Ignoring contrary precedent (address and distinguish)

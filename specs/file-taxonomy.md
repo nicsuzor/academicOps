@@ -14,15 +14,15 @@ Every framework file belongs to exactly one category. This classification determ
 
 ## Categories
 
-| Category | Purpose | Editing Rule | Frontmatter |
-|----------|---------|--------------|-------------|
-| **SPEC** | OUR framework design (architecture, rationale) | Deliberate; RFC for significant changes | `category: spec` |
-| **REF** | External knowledge (libraries, concepts, tools) | Update when external tools change | `category: ref` |
-| **DOCS** | Implementation guides, how-to content | Update as practices evolve | `category: docs` |
-| **SCRIPT** | Executable code | TDD required; tests must pass | N/A (code files) |
-| **INSTRUCTION** | Workflow/process for agents to follow | Must be generalizable (categorical imperative) | `category: instruction` |
-| **TEMPLATE** | Pattern to fill in with dynamic content | Update when format changes | `category: template` |
-| **STATE** | Auto-generated current system state | DO NOT manually edit | `category: state` |
+| Category        | Purpose                                         | Editing Rule                                   | Frontmatter             |
+| --------------- | ----------------------------------------------- | ---------------------------------------------- | ----------------------- |
+| **SPEC**        | OUR framework design (architecture, rationale)  | Deliberate; RFC for significant changes        | `category: spec`        |
+| **REF**         | External knowledge (libraries, concepts, tools) | Update when external tools change              | `category: ref`         |
+| **DOCS**        | Implementation guides, how-to content           | Update as practices evolve                     | `category: docs`        |
+| **SCRIPT**      | Executable code                                 | TDD required; tests must pass                  | N/A (code files)        |
+| **INSTRUCTION** | Workflow/process for agents to follow           | Must be generalizable (categorical imperative) | `category: instruction` |
+| **TEMPLATE**    | Pattern to fill in with dynamic content         | Update when format changes                     | `category: template`    |
+| **STATE**       | Auto-generated current system state             | DO NOT manually edit                           | `category: state`       |
 
 ## Category Definitions
 
@@ -35,10 +35,12 @@ Every framework file belongs to exactly one category. This classification determ
 **Editing rule**: Changes require deliberation. Significant changes may need RFC process or user approval.
 
 **Location pattern**:
+
 - `specs/*.md` - Primary spec location
 - Root docs: `AXIOMS.md`, `VISION.md`, `HEURISTICS.md`, `README.md`, `INDEX.md`, `ROADMAP.md`
 
 **Examples**:
+
 - `specs/hook-router.md` - Hook router architecture
 - `specs/prompt-hydration.md` - Prompt hydration design
 - `VISION.md` - Framework end state
@@ -54,9 +56,11 @@ Every framework file belongs to exactly one category. This classification determ
 **Editing rule**: Update when external tools change or we learn better patterns.
 
 **Location pattern**:
+
 - `skills/*/references/*.md` - Domain-specific reference material
 
 **Examples**:
+
 - `skills/analyst/references/bayesian_statistics.md` - Statistical methods
 - `skills/analyst/references/matplotlib.md` - Matplotlib usage
 - `skills/python-dev/references/fastapi.md` - FastAPI patterns
@@ -73,9 +77,11 @@ Every framework file belongs to exactly one category. This classification determ
 **Editing rule**: Update as practices evolve. These are learning documents.
 
 **Location pattern**:
+
 - `docs/*.md` - Implementation guides
 
 **Examples**:
+
 - `docs/ENFORCEMENT.md` - How to choose enforcement mechanisms
 - `docs/HOOKS.md` - How to work with hooks
 - `docs/OBSERVABILITY.md` - How to observe framework behavior
@@ -91,6 +97,7 @@ Every framework file belongs to exactly one category. This classification determ
 **Editing rule**: TDD required. Tests must pass before commit. Scripts are simple tools - they transform data, they don't reason.
 
 **Location pattern**:
+
 - `scripts/*.py` - Utility scripts
 - `lib/*.py` - Shared library code
 - `hooks/*.py` - Hook implementations
@@ -98,6 +105,7 @@ Every framework file belongs to exactly one category. This classification determ
 - `tests/*.py` - Test files
 
 **Examples**:
+
 - `scripts/audit_framework_health.py`
 - `hooks/user_prompt_submit.py`
 - `skills/pdf/scripts/generate_pdf.py`
@@ -111,12 +119,13 @@ Every framework file belongs to exactly one category. This classification determ
 **Editing rule**: Must be generalizable per categorical imperative. No ad-hoc instructions.
 
 **Location pattern**:
+
 - `skills/*/SKILL.md` - Main skill entry point
 - `skills/*/instructions/*.md` - Detailed instruction sets
 - `skills/*/workflows/*.md` - Multi-step workflows
 - `commands/*.md` - Slash commands
 - `agents/*.md` - Agent definitions
-**Examples**:
+  **Examples**:
 - `skills/pdf/SKILL.md` - PDF generation workflow
 - `commands/do.md` - /do command
 - `agents/planner.md` - Planning agent
@@ -130,11 +139,13 @@ Every framework file belongs to exactly one category. This classification determ
 **Editing rule**: Update when output format requirements change. Templates define structure, not content.
 
 **Location pattern**:
+
 - `*/templates/*.md` - Template directories
 - `hooks/templates/*.md` - Hook output templates
 - `skills/*/templates/*.md` - Skill output templates
 
 **Examples**:
+
 - `hooks/templates/prompt-hydrator-context.md`
 - `skills/feature-dev/templates/user-story.md`
 - `skills/fact-check/templates/verification-report.md`
@@ -148,36 +159,38 @@ Every framework file belongs to exactly one category. This classification determ
 **Editing rule**: DO NOT manually edit. Regenerate instead.
 
 **Location pattern**:
+
 - Files marked `(auto-generated)` in INDEX.md
 - Generated index files
 - Build artifacts
 
 **Examples**:
+
 - `RULES.md` - Current enforcement rules (auto-generated)
 
 **Note**: Currently most "state-like" files (INDEX.md, README.md feature list) are manually maintained. These are treated as SPEC until automation exists.
 
 ## Directory Mapping
 
-| Directory | Category | Rationale |
-|-----------|----------|-----------|
-| `specs/` | SPEC | Framework design specifications |
-| `AXIOMS.md`, `VISION.md`, `HEURISTICS.md` | SPEC | Core framework design |
-| `README.md`, `INDEX.md`, `ROADMAP.md` | SPEC | Framework documentation |
-| `docs/` | DOCS | Implementation guides |
-| `skills/*/references/` | REF | External domain knowledge |
-| `scripts/` | SCRIPT | Utility scripts |
-| `lib/` | SCRIPT | Shared library code |
-| `hooks/*.py` | SCRIPT | Hook implementations |
-| `skills/*/scripts/` | SCRIPT | Skill automation |
-| `tests/` | SCRIPT | Test code |
-| `skills/*/SKILL.md` | INSTRUCTION | Skill entry points |
-| `skills/*/instructions/` | INSTRUCTION | Detailed workflows |
-| `skills/*/workflows/` | INSTRUCTION | Multi-step procedures |
-| `commands/` | INSTRUCTION | Slash commands |
-| `agents/` | INSTRUCTION | Agent definitions |
-| `*/templates/` | TEMPLATE | Output patterns |
-| `RULES.md` | STATE | Auto-generated |
+| Directory                                 | Category    | Rationale                       |
+| ----------------------------------------- | ----------- | ------------------------------- |
+| `specs/`                                  | SPEC        | Framework design specifications |
+| `AXIOMS.md`, `VISION.md`, `HEURISTICS.md` | SPEC        | Core framework design           |
+| `README.md`, `INDEX.md`, `ROADMAP.md`     | SPEC        | Framework documentation         |
+| `docs/`                                   | DOCS        | Implementation guides           |
+| `skills/*/references/`                    | REF         | External domain knowledge       |
+| `scripts/`                                | SCRIPT      | Utility scripts                 |
+| `lib/`                                    | SCRIPT      | Shared library code             |
+| `hooks/*.py`                              | SCRIPT      | Hook implementations            |
+| `skills/*/scripts/`                       | SCRIPT      | Skill automation                |
+| `tests/`                                  | SCRIPT      | Test code                       |
+| `skills/*/SKILL.md`                       | INSTRUCTION | Skill entry points              |
+| `skills/*/instructions/`                  | INSTRUCTION | Detailed workflows              |
+| `skills/*/workflows/`                     | INSTRUCTION | Multi-step procedures           |
+| `commands/`                               | INSTRUCTION | Slash commands                  |
+| `agents/`                                 | INSTRUCTION | Agent definitions               |
+| `*/templates/`                            | TEMPLATE    | Output patterns                 |
+| `RULES.md`                                | STATE       | Auto-generated                  |
 
 ## Frontmatter Convention
 
@@ -197,15 +210,15 @@ description: ...
 
 ## Agent Behavior by Category
 
-| Category | When Agent Encounters | Expected Behavior |
-|----------|----------------------|-------------------|
-| SPEC | Needs to understand design | Read for context, don't modify without approval |
-| REF | Needs external tool knowledge | Read to learn patterns, update if tool changed |
-| DOCS | Needs how-to guidance | Read and follow, update if practice evolved |
-| SCRIPT | Needs automation | Execute via Bash, modify with TDD |
-| INSTRUCTION | Needs to do task | Follow the workflow, invoke skills |
-| TEMPLATE | Needs structured output | Fill in placeholders, don't modify template itself |
-| STATE | Needs current status | Read only, never modify |
+| Category    | When Agent Encounters         | Expected Behavior                                  |
+| ----------- | ----------------------------- | -------------------------------------------------- |
+| SPEC        | Needs to understand design    | Read for context, don't modify without approval    |
+| REF         | Needs external tool knowledge | Read to learn patterns, update if tool changed     |
+| DOCS        | Needs how-to guidance         | Read and follow, update if practice evolved        |
+| SCRIPT      | Needs automation              | Execute via Bash, modify with TDD                  |
+| INSTRUCTION | Needs to do task              | Follow the workflow, invoke skills                 |
+| TEMPLATE    | Needs structured output       | Fill in placeholders, don't modify template itself |
+| STATE       | Needs current status          | Read only, never modify                            |
 
 ## Validation Rules
 
@@ -217,14 +230,17 @@ description: ...
 ## Edge Cases
 
 ### Borderline: SPEC vs REF
+
 - **SPEC**: "How our hook router dispatches events" (our design)
 - **REF**: "How Claude Code hooks work" (external tool)
 
 ### Borderline: SPEC vs DOCS
+
 - **SPEC**: "Why we chose this architecture" (design rationale)
 - **DOCS**: "How to add a new hook" (practitioner guide)
 
 ### Borderline: REF vs INSTRUCTION
+
 - **REF**: "Pandas DataFrame operations" (external knowledge)
 - **INSTRUCTION**: "Use pandas to load and validate data" (workflow step)
 

@@ -33,8 +33,6 @@ This document provides guidance on conducting and interpreting Bayesian statisti
 
 The Bayesian question is more intuitive and directly addresses what researchers want to know.
 
----
-
 ## Bayes' Theorem
 
 **Formula**:
@@ -57,8 +55,6 @@ Where:
 - **P(D|θ)**: Likelihood (probability of data given θ)
 - **P(θ)**: Prior distribution (belief about θ before seeing data)
 - **P(D)**: Marginal likelihood/evidence (normalizing constant)
-
----
 
 ## Prior Distributions
 
@@ -89,8 +85,6 @@ Where:
 - Must be justified and transparent
 - May be controversial if strong prior conflicts with data
 
----
-
 #### 2. Weakly Informative Priors
 
 **When to use**: Default choice for most applications
@@ -113,8 +107,6 @@ Where:
 - Computationally stable
 - Broadly acceptable
 
----
-
 #### 3. Non-Informative (Flat/Uniform) Priors
 
 **When to use**: When attempting to be "objective"
@@ -129,8 +121,6 @@ Where:
 - Often not recommended in modern Bayesian practice
 
 **Better alternative**: Use weakly informative priors
-
----
 
 ### Prior Sensitivity Analysis
 
@@ -168,8 +158,6 @@ for name, prior in priors:
         trace = pm.sample()
         results[name] = trace
 ```
-
----
 
 ## Bayesian Hypothesis Testing
 
@@ -230,8 +218,6 @@ def bf_from_t(t, n1, n2, r_scale=0.707):
     pass
 ```
 
----
-
 ### Region of Practical Equivalence (ROPE)
 
 **Purpose**: Define range of negligible effect sizes
@@ -258,8 +244,6 @@ in_rope = np.mean((posterior_samples > rope_lower) & (posterior_samples < rope_u
 
 print(f"{in_rope * 100:.1f}% of posterior in ROPE")
 ```
-
----
 
 ## Bayesian Estimation
 
@@ -299,8 +283,6 @@ eti = np.percentile(posterior_samples, [2.5, 97.5])
 hdi = az.hdi(posterior_samples, hdi_prob=0.95)
 ```
 
----
-
 ### Posterior Distributions
 
 **Interpreting posterior distributions**:
@@ -334,8 +316,6 @@ az.plot_trace(trace)
 # Forest plot (multiple parameters)
 az.plot_forest(trace)
 ```
-
----
 
 ## Common Bayesian Analyses
 
@@ -386,8 +366,6 @@ print(f"P(μ₁ > μ₂) = {prob_greater:.3f}")
 az.plot_posterior(trace, var_names=["diff"], ref_val=0)
 ```
 
----
-
 ### Bayesian ANOVA
 
 **Purpose**: Compare three or more groups
@@ -418,8 +396,6 @@ contrast_1_2 = (
     trace.posterior["group_means"][:, :, 0] - trace.posterior["group_means"][:, :, 1]
 )
 ```
-
----
 
 ### Bayesian Correlation
 
@@ -452,8 +428,6 @@ print(az.summary(trace, var_names=["rho"]))
 # Probability that correlation is positive
 prob_positive = np.mean(trace.posterior["rho"].values > 0)
 ```
-
----
 
 ### Bayesian Linear Regression
 
@@ -497,8 +471,6 @@ with regression_model:
     posterior_pred = pm.sample_posterior_predictive(trace)
 ```
 
----
-
 ## Hierarchical (Multilevel) Models
 
 **When to use**:
@@ -531,8 +503,6 @@ with pm.Model() as hierarchical_model:
 
     trace = pm.sample()
 ```
-
----
 
 ## Model Comparison
 
@@ -575,8 +545,6 @@ comparison = az.compare({"model1": trace1, "model2": trace2, "model3": trace3})
 print(comparison)
 ```
 
----
-
 ## Checking Bayesian Models
 
 ### 1. Convergence Diagnostics
@@ -610,8 +578,6 @@ az.plot_trace(trace)
 az.plot_rank(trace)  # Rank plots
 ```
 
----
-
 ### 2. Posterior Predictive Checks
 
 **Purpose**: Does model generate data similar to observed data?
@@ -637,8 +603,6 @@ pred_means = [np.mean(sample) for sample in ppc.posterior_predictive["y_obs"]]
 p_value = np.mean(pred_means >= obs_mean)  # Bayesian p-value
 ```
 
----
-
 ## Reporting Bayesian Results
 
 ### Example T-Test Report
@@ -648,8 +612,6 @@ p_value = np.mean(pred_means >= obs_mean)  # Bayesian p-value
 ### Example Regression Report
 
 > "A Bayesian linear regression was fitted with weakly informative priors (Normal(0, 10) for coefficients, Half-Cauchy(0, 5) for residual SD). The model explained substantial variance (R² = 0.47, 95% CI [0.38, 0.55]). Study hours (β = 0.52, 95% CI [0.38, 0.66]) and prior GPA (β = 0.31, 95% CI [0.17, 0.45]) were credible predictors (95% CIs excluded zero). Posterior predictive checks showed good model fit. Convergence diagnostics were satisfactory (all R-hat < 1.01, ESS > 1000)."
-
----
 
 ## Advantages and Limitations
 
@@ -670,8 +632,6 @@ p_value = np.mean(pred_means >= obs_mean)  # Bayesian p-value
 4. **Software**: Fewer tools than frequentist methods
 5. **Communication**: May need to educate reviewers/readers
 
----
-
 ## Key Python Packages
 
 - **PyMC**: Full Bayesian modeling framework
@@ -679,8 +639,6 @@ p_value = np.mean(pred_means >= obs_mean)  # Bayesian p-value
 - **Bambi**: High-level interface for regression models
 - **PyStan**: Python interface to Stan
 - **TensorFlow Probability**: Bayesian inference with TensorFlow
-
----
 
 ## When to Use Bayesian Methods
 

@@ -12,8 +12,6 @@ description: Pattern for binding text to containers in Excalidraw JSON using con
 
 **Solution**: Bind text to containers using `containerId` and `boundElements` properties.
 
----
-
 ## Basic Pattern
 
 ### Step 1: Create Container
@@ -36,12 +34,13 @@ description: Pattern for binding text to containers in Excalidraw JSON using con
       "id": "text-456",
       "type": "text"
     }
-  ],
+  ]
   // ... other required Excalidraw properties
 }
 ```
 
 **Key properties**:
+
 - `id`: Unique identifier for this container
 - `boundElements`: Array listing text element(s) inside this container
 - `width`, `height`: Container dimensions
@@ -52,36 +51,36 @@ description: Pattern for binding text to containers in Excalidraw JSON using con
 {
   "id": "text-456",
   "type": "text",
-  "x": 120,  // Container x + padding (e.g., 20px)
-  "y": 125,  // Container y + vertical centering
-  "width": 160,  // Container width minus padding (200 - 40)
-  "height": 25,  // Auto-calculated by Excalidraw based on text
+  "x": 120, // Container x + padding (e.g., 20px)
+  "y": 125, // Container y + vertical centering
+  "width": 160, // Container width minus padding (200 - 40)
+  "height": 25, // Auto-calculated by Excalidraw based on text
   "text": "Project Name",
   "fontSize": 24,
-  "fontFamily": 1,  // 1=Virgil, 2=Helvetica, 3=Cascadia
+  "fontFamily": 1, // 1=Virgil, 2=Helvetica, 3=Cascadia
   "textAlign": "center",
   "verticalAlign": "middle",
   "containerId": "container-123",
   "originalText": "Project Name",
-  "lineHeight": 1.25,
+  "lineHeight": 1.25
   // ... other required Excalidraw properties
 }
 ```
 
 **Key properties**:
+
 - `containerId`: MUST match container's `id`
 - `width`: Should match container width minus padding
 - `textAlign`: "center" for centered text
 - `verticalAlign`: "middle" for vertical centering
 - `x`, `y`: Positioned inside container (accounting for padding)
 
----
-
 ## Auto-Sizing Text to Container
 
 **Goal**: Text should fill container width, wrapping as needed.
 
 **Calculation**:
+
 ```javascript
 const PADDING = 20;  // Horizontal padding (10px each side)
 
@@ -96,22 +95,23 @@ text.y = container.y + (container.height / 2) - (text.height / 2);
 ```
 
 **Example**:
+
 - Container: 200px wide
 - Text width: 180px (200 - 20 padding)
 - Text x-position: 110px (100 + 10 padding)
-
----
 
 ## Multi-Line Text Wrapping
 
 **Excalidraw automatically wraps text** based on `width` property.
 
 **Line breaks**:
+
 - Use `\n` in `text` property for explicit line breaks
 - Excalidraw calculates `height` based on wrapped content
 - `lineHeight`: 1.25 (default, good readability)
 
 **Example**:
+
 ```json
 {
   "text": "Active\nProject\nName",
@@ -120,8 +120,6 @@ text.y = container.y + (container.height / 2) - (text.height / 2);
   // height will be auto-calculated (fontSize * lineHeight * lineCount)
 }
 ```
-
----
 
 ## Grouping (Visual Binding)
 
@@ -136,37 +134,41 @@ While `containerId` creates logical binding, you can also group elements for man
 ```
 
 **When to use**:
+
 - When you want elements to resize together
 - For complex multi-element components
 - Grouping related containers
 
 **Note**: `containerId` is usually sufficient for text-in-container pattern.
 
----
-
 ## Common Mistakes
 
 ❌ **Missing `boundElements` in container**:
+
 ```json
 {
   "id": "container-123",
-  "type": "rectangle",
+  "type": "rectangle"
   // Missing boundElements!
 }
 ```
+
 Result: Text and container not linked.
 
 ❌ **Missing `containerId` in text**:
+
 ```json
 {
   "id": "text-456",
-  "type": "text",
+  "type": "text"
   // Missing containerId!
 }
 ```
+
 Result: Text floats independently.
 
 ❌ **Mismatched IDs**:
+
 ```json
 // Container
 {
@@ -180,9 +182,11 @@ Result: Text floats independently.
   "containerId": "container-123"
 }
 ```
+
 Result: Binding broken, elements desync.
 
 ❌ **Text wider than container**:
+
 ```json
 // Container
 {"width": 100}
@@ -190,9 +194,11 @@ Result: Binding broken, elements desync.
 // Text
 {"width": 200}  // Too wide! Text overflows.
 ```
+
 Result: Text spills outside container.
 
 ✅ **Correct pattern**:
+
 ```json
 // Container
 {
@@ -209,8 +215,6 @@ Result: Text spills outside container.
   "textAlign": "center"
 }
 ```
-
----
 
 ## Example: Task Node with Status
 
@@ -249,9 +253,9 @@ Result: Text spills outside container.
     {
       "id": "task-text-001",
       "type": "text",
-      "x": 510,  // 500 + 10 padding
-      "y": 315,  // Vertically centered
-      "width": 160,  // 180 - 20 padding
+      "x": 510, // 500 + 10 padding
+      "y": 315, // Vertically centered
+      "width": 160, // 180 - 20 padding
       "height": 25,
       "text": "Review Bella's project",
       "fontSize": 16,
@@ -271,8 +275,6 @@ Result: Text spills outside container.
   ]
 }
 ```
-
----
 
 ## Programmatic Generation
 
@@ -339,6 +341,7 @@ def create_text_box(box_id, text_id, x, y, width, height, text_content, font_siz
 ```
 
 **Usage**:
+
 ```python
 box, txt = create_text_box(
     box_id="goal-1",
@@ -354,8 +357,6 @@ box, txt = create_text_box(
 
 elements.extend([box, txt])
 ```
-
----
 
 ## Required Excalidraw Properties (Reference)
 
@@ -390,6 +391,7 @@ Every element needs these properties:
 ```
 
 **For text elements, add**:
+
 ```json
 {
   "text": "Content here",
@@ -404,15 +406,17 @@ Every element needs these properties:
 ```
 
 **For containers with text, add**:
+
 ```json
 {
   "boundElements": [
-    {"id": "text-id", "type": "text"}
+    { "id": "text-id", "type": "text" }
   ]
 }
 ```
 
 **For arrows, add**:
+
 ```json
 {
   "startBinding": {
@@ -425,12 +429,10 @@ Every element needs these properties:
     "focus": 0,
     "gap": 10
   },
-  "points": [[0, 0], [100, 50]],  // Relative path
+  "points": [[0, 0], [100, 50]], // Relative path
   "lastCommittedPoint": null
 }
 ```
-
----
 
 ## Summary Checklist
 
@@ -446,8 +448,6 @@ When creating text-in-container:
 - [ ] Both elements have all required Excalidraw properties
 
 **Result**: Text and container move together, text auto-wraps to fit container width.
-
----
 
 **Last Updated**: 2025-11-19
 **Related**: [[theme-colors]], [[technical-details]]

@@ -8,6 +8,7 @@ permalink: skills-tasks
 ---
 
 # Task Management Skill
+
 Responsible for [[data/tasks/tasks|tasks]]
 
 ## Authoritative Domain Knowledge
@@ -20,19 +21,19 @@ Responsible for [[data/tasks/tasks|tasks]]
 **Scripts Location**: skills/tasks/scripts/
 **Cross-Repo**: Each repository has independent data/tasks/ directory
 
----
-
 Manage task lifecycle using scripts in this skill's `scripts/` directory or Tasks MCP server. Never write task files directly - always use the appropriate backend.
 
 ## Script Locations
 
 Task scripts are located at `$AOPS/skills/tasks/scripts/`:
+
 - `task_view.py` - View tasks
 - `task_add.py` - Create tasks
 - `task_update.py` - Update existing tasks
 - `task_archive.py` - Archive/unarchive tasks
 
 **IMPORTANT**: Always run scripts using `uv run` from the `$AOPS` directory:
+
 ```bash
 cd $AOPS && uv run python skills/tasks/scripts/task_view.py
 ```
@@ -129,6 +130,7 @@ cd $AOPS && uv run python skills/tasks/scripts/task_add.py \
 ```
 
 **Parameters**:
+
 - `--title`: Task title (required)
 - `--slug`: Custom slug for filename (default: sanitized title)
 - `--priority`: 0-3 or P0-P3 (P0=urgent, P3=low)
@@ -160,6 +162,7 @@ cd $AOPS && uv run python skills/tasks/scripts/task_item_add.py "task.md" --item
 ```
 
 **Parameters**:
+
 - `task_id`: Task identifier (filename, task ID, or #index from current view)
 - `--item`: Item description (required)
 - `--due`: Due date in YYYY-MM-DD format
@@ -185,6 +188,7 @@ cd $AOPS && uv run python skills/tasks/scripts/task_update.py "task.md" --add-ta
 ```
 
 **Parameters**:
+
 - `filename`: Task filename (required, first positional argument)
 - `--priority`: New priority (0-3 or P0-P3)
 - `--title`: New title
@@ -225,20 +229,22 @@ Tasks can contain checklists for tracking sub-actions. We use [Dataview inline f
 
 ### Dataview Fields
 
-| Field | Format | Example |
-|-------|--------|---------|
-| Due date | `[due:: YYYY-MM-DD]` | `[due:: 2025-01-15]` |
+| Field      | Format                      | Example                     |
+| ---------- | --------------------------- | --------------------------- |
+| Due date   | `[due:: YYYY-MM-DD]`        | `[due:: 2025-01-15]`        |
 | Completion | `[completion:: YYYY-MM-DD]` | `[completion:: 2025-01-10]` |
-| Priority | `[priority:: VALUE]` | `[priority:: high]` |
+| Priority   | `[priority:: VALUE]`        | `[priority:: high]`         |
 
 ### When to Use Checklists
 
 Use checklist items (not separate tasks) when:
+
 - Sub-actions belong to a single deliverable
 - Items share context/deadline with parent task
 - Tracking granular progress on a larger task
 
 Create separate tasks when:
+
 - Items have independent deadlines
 - Different projects or contexts
 - Need separate priority/categorization
@@ -284,6 +290,7 @@ cd $AOPS && uv run python skills/tasks/scripts/task_view.py --compact | grep -i 
 ```
 
 If a related task exists:
+
 - **Use task_update.py** to modify priority, add context, or update fields
 - **Do NOT create a duplicate** - this wastes user time on triage
 
@@ -317,6 +324,7 @@ Comprehensive workflows that integrate task management with other systems:
 **When to invoke**: User says "check my email for tasks", "process emails", or similar.
 
 **What it does**:
+
 1. Fetches recent emails via Outlook MCP
 2. Analyzes content for action items
 3. Queries memory server for context-aware categorization
@@ -326,6 +334,7 @@ Comprehensive workflows that integrate task management with other systems:
 **Backend**: Uses task_add.py script (or Tasks MCP when available)
 
 **Key features**:
+
 - Context-aware categorization using memory server
 - Confidence scoring (high/medium/low)
 - Priority inference from email signals
@@ -339,6 +348,7 @@ See `workflows/email-capture.md` for complete documentation.
 ### Scripts Backend (Current Default)
 
 Scripts in `~/.claude/skills/tasks/scripts/` provide CLI interface:
+
 - **Availability**: Always (no dependencies)
 - **Format**: properly formatted markdown
 - **Use**: Development, testing, fallback
@@ -346,6 +356,7 @@ Scripts in `~/.claude/skills/tasks/scripts/` provide CLI interface:
 ### MCP Backend (Optional)
 
 Tasks MCP server provides tool interface:
+
 - **Availability**: When `.mcp.json` configured and server running
 - **Format**: Same properly formatted markdown
 - **Use**: Production workflows, agent integration

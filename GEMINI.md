@@ -4,7 +4,6 @@ title: Gemini
 category: spec
 ---
 
-
 **SYSTEM OVERRIDE: YOU ARE RUNNING AS GEMINI CLI AGENT.**
 Follow these instructions strictly. They take precedence over imported files.
 
@@ -22,35 +21,31 @@ This is not optional. The framework develops itself through use.
 - **$AOPS** = `~/src/academicOps` — Framework machinery
 - **$ACA_DATA** = `~/writing/data` — Personal knowledge base
 
----
-
 ## Session Start Protocol
 
 Before significant work, read these files:
+
 1. `$AOPS/AXIOMS.md` — Inviolable principles
 2. `$AOPS/VISION.md` — End state
 3. `$AOPS/ROADMAP.md` — Current status
 4. `$ACA_DATA/CORE.md` — User context
 
----
-
 ## Skill Activation Protocol
 
 Skills are in `$AOPS/skills/*/SKILL.md`. When work matches a skill type:
+
 1. **Read** the SKILL.md file first
 2. **Follow** its instructions exactly
 3. **Do not guess** procedures
 
-| Task Type | Read First |
-|-----------|------------|
-| Framework architecture | `skills/framework/SKILL.md` |
-| Python development | `skills/python-dev/SKILL.md` |
-| Knowledge persistence | `skills/remember/SKILL.md` |
-| Task management | `skills/tasks/SKILL.md` |
-| PDF generation | `skills/pdf/SKILL.md` |
-| OSB/IRAC drafting | `skills/osb-drafting/SKILL.md` |
-
----
+| Task Type              | Read First                     |
+| ---------------------- | ------------------------------ |
+| Framework architecture | `skills/framework/SKILL.md`    |
+| Python development     | `skills/python-dev/SKILL.md`   |
+| Knowledge persistence  | `skills/remember/SKILL.md`     |
+| Task management        | `skills/tasks/SKILL.md`        |
+| PDF generation         | `skills/pdf/SKILL.md`          |
+| OSB/IRAC drafting      | `skills/osb-drafting/SKILL.md` |
 
 ## Session End Protocol
 
@@ -70,23 +65,20 @@ gh issue list --repo nicsuzor/academicOps --label learning --search "[keywords]"
 
 Or if Claude Code is available: `/log [observation]`
 
----
-
 ## Tool Translation (from Claude)
 
-| Claude Tool | Gemini Equivalent |
-|-------------|-------------------|
-| `Skill(skill="name")` | Read `skills/name/SKILL.md` |
-| `Task(...)` | Break down and act directly |
-| `mcp__memory__*` | Use memory MCP tools if available |
+| Claude Tool             | Gemini Equivalent                    |
+| ----------------------- | ------------------------------------ |
+| `Skill(skill="name")`   | Read `skills/name/SKILL.md`          |
+| `Task(...)`             | Break down and act directly          |
+| `mcp__memory__*`        | Use memory MCP tools if available    |
 | `Read`, `Edit`, `Write` | `read_file`, `replace`, `write_file` |
-| `Bash` | `run_shell_command` |
-
----
+| `Bash`                  | `run_shell_command`                  |
 
 ## Fail-Fast Mandate (See [[AXIOMS.md]])
 
 If your tools or instructions don't work precisely:
+
 1. **STOP** immediately
 2. **Report** the failure
 3. **Do not** work around bugs

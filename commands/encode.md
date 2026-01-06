@@ -13,6 +13,7 @@ permalink: commands/encode
 ## Generalization Warning
 
 > **Do not assume the current task is the only invocation mode.** When encoding:
+>
 > - Make workflows **specific about inputs/outputs** (what data flows in/out), OR
 > - Make them **more general** than the immediate task (abstract the pattern)
 > - Document the generalization scope in the associated spec file
@@ -26,10 +27,10 @@ permalink: commands/encode
 
 ## Scenario Detection
 
-| Context | Mode | Behavior |
-|---------|------|----------|
-| User provides task description | **Start** | Execute + track each step in TodoWrite |
-| No task, recent work exists | **Extract** | Analyze session, create/update workflow |
+| Context                        | Mode        | Behavior                                |
+| ------------------------------ | ----------- | --------------------------------------- |
+| User provides task description | **Start**   | Execute + track each step in TodoWrite  |
+| No task, recent work exists    | **Extract** | Analyze session, create/update workflow |
 
 Agent infers mode from context. No flags needed.
 
@@ -76,14 +77,16 @@ description: [When to use - be specific about trigger conditions]
 **Outputs**: [What artifacts are produced]
 
 **Steps**:
+
 1. [First step with verification criteria]
 2. [Second step...]
-...
+   ...
 ```
 
 ### Spec Documentation
 
 For each workflow/skill created, document in `specs/`:
+
 - Design justifications (why this structure)
 - Evidence (what observations led to this pattern)
 - Generalization scope (what use cases beyond immediate task)

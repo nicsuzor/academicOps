@@ -1,10 +1,10 @@
 ---
-name: aops
+name: aops-command
 category: instruction
 description: Show framework capabilities - commands, skills, agents, and how to use them
 ---
 
-# /aops - Framework Discovery
+# /aops - Framework Discovery command
 
 Output the contents of README.md to show the user what the framework can do.
 

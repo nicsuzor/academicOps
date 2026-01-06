@@ -14,24 +14,22 @@ title: Excalidraw Diagram Design Skill
 
 **Key principle**: Rigid, corporate diagrams fail to engage. Sloppy, hand-drawn aesthetics with spatial mind-map layouts capture attention and convey meaning effectively.
 
----
-
 ## Special Note: Task Visualization
 
 **For task visualization specifically**, use the automated `task_viz.py` script instead of this skill:
+
 ```bash
 uv run python skills/tasks/scripts/task_viz.py $ACA_DATA current-tasks.excalidraw
 ```
 
 The script generates a complete force-directed layout of goals, projects, and tasks. Only invoke this excalidraw skill AFTER the script runs if manual refinement or customization is needed.
 
----
-
 ## When to Use This Skill
 
 You **MUST use this skill to create or edit ANY excalidraw files**.
 
 Use the excalidraw skill when:
+
 - Creating diagrams, flowcharts, or visual explanations
 - Designing system architecture visualizations
 - Building concept maps or process flows
@@ -40,31 +38,29 @@ Use the excalidraw skill when:
 
 **The user expects**: Diagrams that feel hand-drawn, organic, and spatially organized like mind maps—not rigid, corporate flowcharts.
 
----
-
 ## Aesthetic Defaults (CRITICAL)
 
 **Always use these settings for the hand-drawn feel**:
 
-| Property | Value | Why |
-|----------|-------|-----|
-| `roughness` | `2` | Maximum sketchiness - embrace the hand-drawn aesthetic |
-| `fontFamily` | `1` (Virgil/xkcd script) | Handwritten font, NOT Helvetica |
-| `strokeStyle` | `"solid"` | But with high roughness looks hand-drawn |
-| `fillStyle` | `"hachure"` | Sketchy hatching, not solid fills |
+| Property      | Value                    | Why                                                    |
+| ------------- | ------------------------ | ------------------------------------------------------ |
+| `roughness`   | `2`                      | Maximum sketchiness - embrace the hand-drawn aesthetic |
+| `fontFamily`  | `1` (Virgil/xkcd script) | Handwritten font, NOT Helvetica                        |
+| `strokeStyle` | `"solid"`                | But with high roughness looks hand-drawn               |
+| `fillStyle`   | `"hachure"`              | Sketchy hatching, not solid fills                      |
 
 **Arrow style**:
+
 - Use **curved arrows** with multiple points (click-click-click, not drag)
 - Arrows must **route around** unrelated boxes, never through them
 - Bind arrows to shapes (`startBinding`, `endBinding`) so they adapt when boxes move
 
 **Layout style**:
+
 - **NO rigid alignment** - don't align everything on vertical/horizontal axes
 - **Radial/clustered positioning** - mind map in all directions, not top-to-bottom
 - **Embrace asymmetry** - "randomness dressed up as creativity"
 - **Use zoom for hierarchy** - big things BIG (use Excalidraw's unlimited canvas), children progressively smaller
-
----
 
 ## Core Visual Design Principles
 
@@ -73,6 +69,7 @@ Use the excalidraw skill when:
 **Identical content looks completely different based on presentation.** Position and style choices are critical.
 
 **Create hierarchy through**:
+
 - **Size contrast**: Titles (XL) > Subtitles (L) > Body (M) > Labels (S)
 - **Color contrast**: Darker = more important, lighter = supporting
 - **Spatial position**: Top/center = primary focus
@@ -94,12 +91,14 @@ See [[references/mind-mapping-principles.md]] for complete principles and exampl
 ### 2. The Two-Phase Design Process
 
 **Phase 1: Structure** (ignore aesthetics)
+
 - Map all components and relationships
 - Focus purely on accuracy and completeness
 - Don't worry about positioning or visual appeal
 - Challenge assumptions about connections and flow
 
 **Phase 2: Visual Refinement** (maintain structure)
+
 - Reposition elements for clarity and flow
 - Apply consistent styling
 - Create visual rhythm and balance
@@ -112,20 +111,20 @@ See [[references/mind-mapping-principles.md]] for complete principles and exampl
 Whitespace (negative space) is not "empty"—it's a powerful tool for:
 
 **Macro whitespace** (between major sections):
+
 - Separates conceptual groups
 - Creates breathing room
 - Guides eye flow through the diagram
 - Establishes rhythm and pacing
 
 **Micro whitespace** (within groups):
+
 - Spacing between text lines
 - Padding around elements
 - Gap between connected items
 - Distance between labels and shapes
 
 **Rule of thumb**: If it feels crowded, it IS crowded. Add more space than you think you need.
-
----
 
 ## Technical Elements
 
@@ -147,13 +146,12 @@ Whitespace (negative space) is not "empty"—it's a powerful tool for:
 
 See [[references/technical-details.md]] for complete specifications on colors, typography, shapes, arrows, layout, layering, and fill patterns. See [[references/theme-colors.md]] for user's preferred color palette. See [[references/text-container-pattern.md]] for text-in-container binding.
 
----
-
 ## Process: Creating a Professional Diagram
 
 ### Step 1: Analyze & Plan
 
 Before opening Excalidraw:
+
 1. What's the purpose? (explain concept, show flow, document architecture)
 2. Who's the audience? (technical experts, stakeholders, general public)
 3. What's the key message? (main takeaway)
@@ -162,6 +160,7 @@ Before opening Excalidraw:
 ### Step 2: Content Structure
 
 In Excalidraw (ignore aesthetics):
+
 1. List all components/concepts
 2. Map all relationships
 3. Identify hierarchy levels
@@ -171,6 +170,7 @@ In Excalidraw (ignore aesthetics):
 ### Step 3: Visual Design
 
 Now make it beautiful:
+
 1. **Establish visual hierarchy**
    - Size elements by importance
    - Choose color scheme (2-4 colors max)
@@ -197,24 +197,25 @@ Now make it beautiful:
 ### Step 4: Export with Quality
 
 **Export settings**:
+
 - **Use WHITE background** (default, always preferred)
 - Enable background (unless transparency needed)
 - Use 2x or 3x scale for high resolution
 - Choose "Embed scene" to preserve editability
 - Export formally (don't screenshot)
 
----
-
 ## Common Patterns & Templates
 
 ### System Architecture Diagram
 
 **Structure**:
+
 - Layers: Frontend (top) → Backend (middle) → Data (bottom)
 - Colors: Same color = same tier/responsibility
 - Arrows: Show data flow, dependencies
 
 **Visual treatment**:
+
 - Larger boxes for complex components
 - Grouped services in same color family
 - Clear directional arrows
@@ -223,11 +224,13 @@ Now make it beautiful:
 ### Process Flow
 
 **Structure**:
+
 - Start (circle) → Steps (rectangles) → End (circle)
 - Decisions (diamonds) with Yes/No paths
 - Left-to-right or top-to-bottom flow
 
 **Visual treatment**:
+
 - Color coding by actor/swim lane
 - Dotted arrows for optional paths
 - Consistent spacing between steps
@@ -236,12 +239,14 @@ Now make it beautiful:
 ### Concept Map / Mind Map (PREFERRED LAYOUT STYLE)
 
 **Structure**:
+
 - Central concept (LARGE, bold) - use Excalidraw's unlimited zoom
 - Related concepts radially distributed in ALL directions (not just below)
 - Clusters and proximity show relationships
 - 2D spatial thinking, not strict trees - imagine a network/graph, not an org chart
 
 **Visual treatment**:
+
 - Size = importance/hierarchy (**vary dramatically** - goals 3-4× larger than tasks)
 - Color = category/type (theme colors: [[references/theme-colors.md]])
 - **NO text legends or key boxes** - color meaning should be obvious from context
@@ -261,18 +266,21 @@ Now make it beautiful:
 **Three-tier relationship map**: Goals → Projects → Tasks with full connectivity visualization.
 
 **Spatial strategy** (CRITICAL):
+
 - **360° positioning**: Tasks distributed AROUND projects (not just below) - top, bottom, left, right, diagonals
 - **Prevent arrow overlap**: Spread elements with minimum 100-150px spacing
 - **Directional arrows**: Arrow direction shows relationship, freeing up positioning
 - **Calculate angles**: Use 30°, 45°, 60° offsets to distribute tasks radially
 
 **Visual hierarchy**:
+
 - Goals (largest, XL 40-48px text, muted gold)
 - Projects (medium, L 24-32px text, varied theme colors)
 - Active tasks (LARGE, M 16-20px, prominent colors)
 - Completed tasks (SMALL, S 12-14px, gray, de-emphasized)
 
 **Relationship visibility**:
+
 - Show ALL connections: Goal→Project, Project→Task
 - Recent completed tasks visible per project (context)
 - Orphaned tasks/projects visually distinct
@@ -282,17 +290,17 @@ See [[references/graph-layouts.md]] for complete specifications, sizing guidelin
 ### Comparison Matrix
 
 **Structure**:
+
 - Items as rows or columns
 - Criteria as opposite axis
 - Visual indicators for ratings
 
 **Visual treatment**:
+
 - Consistent cell sizes
 - Color scale for intensity
 - Icons or symbols for categories
 - Clear headers with contrast
-
----
 
 ## Component Libraries & Resources
 
@@ -303,6 +311,7 @@ See [[references/graph-layouts.md]] for complete specifications, sizing guidelin
 **Quick start**: Load via Excalidraw library panel → "Load library from file" → Select from `~/.claude/skills/excalidraw/libraries/`
 
 **Usage tips**:
+
 - **Recolor to theme** ([[references/theme-colors.md]]): Gold `#c9b458`, Green `#8fbc8f`, Blue `#7a9fbf`, Orange `#ffa500`, Red `#ff6666`
 - **Use sparingly** for emphasis (1-3 icons per section)
 - **Don't mix too many styles** (pick Material Symbols OR library icons, not both)
@@ -310,47 +319,49 @@ See [[references/graph-layouts.md]] for complete specifications, sizing guidelin
 
 See [[references/library-guide.md]] for library loading, [[references/icon-integration.md]] for Material Symbols integration, [[references/theme-colors.md]] for color palette.
 
----
-
 ## Quality Checklist
 
 Before considering a diagram complete:
 
 **Visual hierarchy**:
+
 - [ ] Clear primary focus (largest/darkest/most prominent)
 - [ ] Consistent sizing for same hierarchy level
 - [ ] Typography follows size system (S/M/L/XL)
 
 **Alignment & spacing**:
+
 - [ ] All elements aligned to grid/each other
 - [ ] Consistent spacing within groups
 - [ ] Generous whitespace between sections
 - [ ] No accidental misalignments
 
 **Color & contrast**:
+
 - [ ] Limited color palette (2-4 colors)
 - [ ] Sufficient contrast (4.5:1 for text)
 - [ ] Color used meaningfully, not randomly
 - [ ] Accessible to colorblind users
 
 **Arrows & flow**:
+
 - [ ] No crossing arrows (unless unavoidable)
 - [ ] Consistent arrow directions
 - [ ] All arrows bound to elements
 - [ ] Flow is obvious and unambiguous
 
 **Polish**:
+
 - [ ] Consistent fill patterns
 - [ ] Consistent roughness level
 - [ ] No orphaned elements
 - [ ] Readable at intended viewing size
 - [ ] Professional export (2-3x scale)
 
----
-
 ## Anti-Patterns to Avoid
 
 **Visual sins**:
+
 - ❌ Rainbow explosion (too many colors)
 - ❌ Size chaos (random sizing)
 - ❌ Alignment laziness (nothing lines up)
@@ -360,6 +371,7 @@ Before considering a diagram complete:
 - ❌ Inconsistent styling (different fonts, colors, shapes for same purposes)
 
 **The boring diagram**:
+
 - ❌ All boxes same size
 - ❌ All text same size
 - ❌ Single color throughout
@@ -370,13 +382,12 @@ Before considering a diagram complete:
 
 **Result**: Technically accurate but visually dead. Nobody wants to look at it.
 
----
-
 ## Tools & Shortcuts
 
 ### Essential Keyboard Shortcuts
 
 **Drawing**:
+
 - `R` or `2` → Rectangle
 - `D` or `3` → Diamond
 - `O` or `4` → Ellipse
@@ -387,6 +398,7 @@ Before considering a diagram complete:
 - `E` → Eraser
 
 **Editing**:
+
 - `Cmd/Ctrl + D` → Duplicate
 - `Cmd/Ctrl + Arrow` → Duplicate + connect with arrow
 - `Shift + V/H` → Flip vertical/horizontal
@@ -398,6 +410,7 @@ Before considering a diagram complete:
 - `Cmd/Ctrl + K` → Add link to selected element
 
 **Selection**:
+
 - Click drag → Select multiple
 - `Cmd/Ctrl + A` → Select all
 - Right-click → Context menu (align, arrange, etc.)
@@ -405,12 +418,14 @@ Before considering a diagram complete:
 - Hold `Shift` while resizing → Maintain aspect ratio
 
 **Layers/Z-order**:
+
 - `Cmd/Ctrl + ]` → Bring forward
 - `Cmd/Ctrl + [` → Send backward
 - `Cmd/Ctrl + Shift + ]` → Bring to front
 - `Cmd/Ctrl + Shift + [` → Send to back
 
 **View**:
+
 - `Cmd/Ctrl + Wheel` → Zoom in/out
 - `Space + Drag` → Pan canvas
 - `Cmd/Ctrl + 0` → Reset zoom to 100%
@@ -419,6 +434,7 @@ Before considering a diagram complete:
 ### Productivity Tips (2025 Best Practices)
 
 **Essential techniques**:
+
 - Snapping: `Alt/Option + S` for precision alignment
 - Multi-point arrows: Click-click-click (not drag) for clean paths
 - Duplicate + connect: `Cmd/Ctrl + Arrow` for flowcharts
@@ -435,12 +451,11 @@ See [[references/productivity-tips.md]] for complete list of 12 productivity tec
 ### Visualization from Data
 
 **Paste table → chart**:
+
 - Copy two-column data
 - Paste into Excalidraw
 - Auto-generates bar/line chart
 - Fully editable afterward
-
----
 
 ## Technical Integration
 
@@ -449,6 +464,7 @@ See [[references/productivity-tips.md]] for complete list of 12 productivity tec
 For real-time canvas manipulation, see [[references/mcp-server-setup.md]].
 
 **Use cases**:
+
 - Programmatic diagram generation
 - Live collaborative editing
 - Automation workflows
@@ -460,6 +476,7 @@ For real-time canvas manipulation, see [[references/mcp-server-setup.md]].
 For direct file manipulation or automation, see [[references/json-format.md]].
 
 **Use cases**:
+
 - Batch processing diagrams
 - Custom tooling integration
 - Programmatic generation without MCP server
@@ -476,13 +493,12 @@ Excalidraw can import Mermaid.js diagrams and convert to hand-drawn style.
 
 **Recommendation**: Direct creation in Excalidraw produces better visual results.
 
----
-
 ## Summary
 
 **The Goal**: Create diagrams that are both accurate AND visually compelling.
 
 **Core Principles**:
+
 1. **Visual hierarchy** through size, color, position
 2. **Mind mapping principles**: Proximity, Alignment, Contrast, Repetition
 3. **Two-phase process**: structure first, aesthetics second
@@ -493,6 +509,7 @@ Excalidraw can import Mermaid.js diagrams and convert to hand-drawn style.
 **Remember**: Boring diagrams fail to communicate, no matter how accurate. Invest in visual design to make your ideas memorable and impactful.
 
 **Quick wins**:
+
 - **WHITE backgrounds ALWAYS** - muted colors on white, not dark backgrounds
 - **Use theme colors** ([[references/theme-colors.md]]): Muted gold, soft greens, blues - NO bright pure colors
 - Load library components or Material Symbols for visual interest
@@ -505,6 +522,7 @@ Excalidraw can import Mermaid.js diagrams and convert to hand-drawn style.
 - **Icons sparingly**: 1-3 per section, recolored to theme ([[references/icon-integration.md]])
 
 **For goal/project/task visualizations** (mind-map style):
+
 - Central goals (largest, muted gold `#c9b458`, XL text: 40-48px)
 - Projects spatially distributed around goals (medium, varied theme colors, L text: 24-32px)
 - Tasks clustered near projects (size varies: LARGE for active/blocked, SMALL for completed)

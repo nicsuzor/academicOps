@@ -61,12 +61,13 @@ $ARGUMENTS
 
 ## Relationship to /do
 
-| Command | Behavior |
-|---------|----------|
+| Command      | Behavior                               |
+| ------------ | -------------------------------------- |
 | `/do [task]` | Execute immediately with full pipeline |
-| `/q [task]` | Save for later, don't execute |
+| `/q [task]`  | Save for later, don't execute          |
 
 When ready to execute a queued task:
+
 1. Review tasks in `$ACA_DATA/tasks/inbox/`
 2. Run `/do [task description]` to execute
 

@@ -38,13 +38,13 @@ Agents make confident conclusive statements ("Confirmed: X", "The system does Y"
 
 **"Can it?" ≠ "Does it?"**
 
-| Agent checked | Should have checked |
-|---------------|---------------------|
-| Framework default value | Actual config file |
-| Schema/model definition | Actual table state |
-| Code capability exists | Feature is enabled |
-| Environment variable defined | Variable is set correctly |
-| Tool exists in codebase | Tool is installed/configured |
+| Agent checked                | Should have checked          |
+| ---------------------------- | ---------------------------- |
+| Framework default value      | Actual config file           |
+| Schema/model definition      | Actual table state           |
+| Code capability exists       | Feature is enabled           |
+| Environment variable defined | Variable is set correctly    |
+| Tool exists in codebase      | Tool is installed/configured |
 
 ### Impact
 
@@ -267,18 +267,19 @@ Add to settings.json:
 ### Test Data
 
 Use the actual failure case from today:
+
 - Input: Session 4174881f transcript
 - Expected: Warn on "Confirmed: Records ARE shuffled"
 - Evidence: storage_config.py default checked, ghc.yaml NOT checked
 
 ## Risks and Mitigations
 
-| Risk | Mitigation |
-|------|------------|
-| False positives (flagging grounded conclusions) | Tune prompt, allow user override |
-| Cost (Haiku API calls) | Only runs at session end, short transcript excerpts |
-| Latency at session end | Async/background if needed |
-| Over-reliance on automated check | This is a safety net, not replacement for discipline |
+| Risk                                            | Mitigation                                           |
+| ----------------------------------------------- | ---------------------------------------------------- |
+| False positives (flagging grounded conclusions) | Tune prompt, allow user override                     |
+| Cost (Haiku API calls)                          | Only runs at session end, short transcript excerpts  |
+| Latency at session end                          | Async/background if needed                           |
+| Over-reliance on automated check                | This is a safety net, not replacement for discipline |
 
 ## Success Criteria
 
@@ -296,10 +297,10 @@ Use the actual failure case from today:
 
 ## Implementation Status
 
-| Component | Status | Notes |
-|-----------|--------|-------|
-| Hook script | Not started | `hooks/verify_conclusions.py` |
-| Haiku prompt | Designed | See Verification Prompt section |
-| settings.json config | Not started | Stop hook configuration |
-| Unit tests | Not started | Pattern detection, JSON format |
-| Integration tests | Not started | With real session data |
+| Component            | Status      | Notes                           |
+| -------------------- | ----------- | ------------------------------- |
+| Hook script          | Not started | `hooks/verify_conclusions.py`   |
+| Haiku prompt         | Designed    | See Verification Prompt section |
+| settings.json config | Not started | Stop hook configuration         |
+| Unit tests           | Not started | Pattern detection, JSON format  |
+| Integration tests    | Not started | With real session data          |

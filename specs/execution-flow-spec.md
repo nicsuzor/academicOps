@@ -9,11 +9,13 @@ tags: [framework, documentation, architecture]
 
 # Execution Flow Document Specification
 
-Governs the structure and content of `docs/EXECUTION-FLOW.md`.
+Governs the structure and content of `FLOW.md`.
 
 ## Purpose
 
 The execution flow document shows **where the framework injects control** during a Claude Code session. It is the architectural map for understanding how prompts flow through the system.
+
+See [[specs/gate-agent-architecture]] for the unified gate system design that defines how pre-action and post-action gates coordinate via shared session state.
 
 ## Design Principles
 
@@ -33,9 +35,9 @@ The main execution flow runs vertically. Each framework insertion point (hooks, 
 
 ### 2. Separate Hard Tissue from Soft Tissue
 
-| Type | Contains | Location |
-|------|----------|----------|
-| Hard tissue | Mechanics (Python, trigger logic) | `hooks/*.py` |
+| Type        | Contains                                     | Location               |
+| ----------- | -------------------------------------------- | ---------------------- |
+| Hard tissue | Mechanics (Python, trigger logic)            | `hooks/*.py`           |
 | Soft tissue | Configurable content (prompts, instructions) | `hooks/templates/*.md` |
 
 **Rationale**: Editable content should be in markdown, not buried in code.
@@ -69,7 +71,8 @@ The Hook Registry table must include a Template/Content column showing what conf
 2. **Workflow Implementations** - Table of Box 4 variants with links to specs
 3. **Hook Trigger Mechanism** - How hooks receive input and return context
 4. **Hook Registry** - Table of all hooks with scripts, templates, and purposes
-5. **Quick Capture** - /q and /do relationship
+5. **Session State** - Unified state file (`/tmp/claude-session/state-{hash}.json`) that coordinates gates
+6. **Quick Capture** - /q and /do relationship
 
 ## Acceptance Criteria
 

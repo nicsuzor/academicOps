@@ -65,32 +65,36 @@ The agent is successful when:
 ## Current Feature Set
 
 **Node types**
+
 - Goals: desired future states, can be vague
 - Projects: bounded efforts toward goals
 - Tasks: executable actions with optional subtask lists
 
 **Node lifecycle**
+
 - Status values: `seed` → `growing` → `active` → `complete` (or `blocked`, `dormant`, `dead`)
 - Tasks can contain subtask checklists
 - Tasks can divide (emit children), merge (consolidate), or promote subtasks to full nodes
 
 **Linking**
+
 - Wikilinks for semantic connections
 
 **Assumption tracking**
+
 - Agent surfaces when new material implies unexamined assumptions
 
 **Self-reflexivity**
+
 - Relies on `/log` command to log things that don't fit the model and insights about planning
 
 **Agent behaviours**
+
 - Receives fragments and places them
 - Surfaces hidden dependencies and synergies
 - Identifies load-bearing unknowns
 - Proposes next steps by information value
 - Logs friction when the framework fails
-
----
 
 ## Planned Features
 
@@ -173,8 +177,6 @@ Connection to the broader academicOps knowledge management layer—notes, source
 
 **Conversational interface.** Natural for the fragment-at-a-time input pattern. You talk to it; it updates the web.
 
----
-
 ## Theoretical Foundations
 
 The agent's design draws on:
@@ -194,15 +196,18 @@ The agent's design draws on:
 The Effectual Planning Agent is one component of a broader academicOps toolkit.
 
 **Upstream dependencies:**
+
 - Knowledge base provides context for planning (what do we know about X?)
 - Existing research materials inform project scoping
 
 **Downstream consumers:**
+
 - Writing agents receive project briefs and task context
 - Analysis pipelines get prioritisation signals
 - Coordination tools get dependency information
 
 **Shared principles:**
+
 - Opinionated defaults, progressive complexity (from Buttermilk)
 - Tool-agnostic, human-readable, AI-parseable
 - Markdown + YAML + wikilinks as common substrate

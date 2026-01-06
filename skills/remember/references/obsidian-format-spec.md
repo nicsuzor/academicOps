@@ -29,10 +29,12 @@ type: note
 ```
 
 **Requirements:**
+
 - Position: Absolute top of file (no content before opening `---`)
 - Syntax: Valid YAML with `key: value` pairs (space after colon)
 
 **Multiple values** - either format works:
+
 ```yaml
 tags: [tag1, tag2]        # inline
 tags:                     # multiline
@@ -51,10 +53,10 @@ tags:                     # multiline
 ## Wiki Links
 
 ```markdown
-[[Related Note]]                    # Basic link
-[[Note Title|Display Text]]         # Custom display
-[[folder/subfolder/Note]]           # Path to file
-[[Note#Heading]]                    # Link to heading
+[[Related Note]] # Basic link
+[[Note Title|Display Text]] # Custom display
+[[folder/subfolder/Note]] # Path to file
+[[Note#Heading]] # Link to heading
 ```
 
 ## Standard Format
@@ -83,6 +85,7 @@ Content here.
 ## Markdown Support
 
 Standard CommonMark plus:
+
 - Task lists: `- [ ]` and `- [x]`
 - Tables, footnotes, highlighting (`==text==`)
 - Callouts: `> [!note]`

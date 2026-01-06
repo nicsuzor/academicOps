@@ -40,5 +40,6 @@ As a framework user, I should be able to easily find out what commands to use wi
 ## Maintenance
 
 When adding/removing/changing commands, skills, or agents:
+
 1. Update README.md tables as part of the change
 2. Framework skill workflow should enforce this

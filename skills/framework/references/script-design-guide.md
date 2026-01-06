@@ -41,6 +41,7 @@ grants = re.findall(GRANT_PATTERN, text)
 ```
 
 **Why this is wrong**:
+
 - Loses semantic understanding (regex vs LLM judgment)
 - Duplicates built-in tools (Read/Grep/Glob exist)
 - Violates DRY (tools already available)
@@ -70,6 +71,7 @@ def merge_json_files(input_pattern, output_file):
 ```
 
 **Scripts are utilities**. The AGENT orchestrates everything:
+
 - Agent decides what to process
 - Agent invokes script via Bash tool: `python chunk_emails.py archive.jsonl chunks/`
 - Agent processes each chunk (using Read/LLM judgment)
@@ -83,6 +85,7 @@ def merge_json_files(input_pattern, output_file):
 ### Example: Email Extraction
 
 ❌ **WRONG APPROACH**:
+
 ```python
 # Script does everything (reads, filters, extracts, writes)
 emails = read_jsonl("archive.jsonl")
@@ -104,6 +107,7 @@ def chunk_jsonl(input_file, output_dir, chunk_size=50):
 ```
 
 **Agent workflow** (the agent orchestrates everything):
+
 1. Agent: Use Bash tool → `python chunk_emails.py archive.jsonl chunks/`
 2. Agent: Use Glob tool → Find all chunks/chunk-*.jsonl
 3. Agent: For each chunk:
@@ -128,6 +132,7 @@ def chunk_jsonl(input_file, output_dir, chunk_size=50):
 5. "Is this PURELY mechanical data transformation?" → Script OK (as simple tool)
 
 **Script purpose test**:
+
 - ✅ "Split this file into N-line chunks" → Simple tool, OK
 - ✅ "Merge these JSON files" → Simple tool, OK
 - ❌ "Find important emails" → Agent reasoning, not a script
@@ -139,12 +144,14 @@ def chunk_jsonl(input_file, output_dir, chunk_size=50):
 ## Enforcement
 
 **Pre-implementation checklist**:
+
 - [ ] Does script only chunk/parallel/aggregate?
 - [ ] Zero use of open(), re.search(), pathlib.glob()?
 - [ ] All reasoning delegated to agents?
 - [ ] Integration test shows agent doing the work?
 
 **Code review red flags**:
+
 - Imports: `re`, `pathlib` (for file reading)
 - Functions: reading files, pattern matching, filtering
 - Hardcoded patterns: regex strings, skip lists, filter rules

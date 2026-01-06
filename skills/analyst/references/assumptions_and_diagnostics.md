@@ -38,8 +38,6 @@ This document provides comprehensive guidance on checking and validating statist
 
 **Critical severity**: HIGH - violations can severely inflate Type I error
 
----
-
 ### 2. Normality
 
 **What it means**: Data or residuals follow a normal (Gaussian) distribution.
@@ -96,8 +94,6 @@ stats.probplot(data, dist="norm", plot=plt)
   - Consider bootstrapping
 
 **Critical severity**: MEDIUM - parametric tests are often robust to mild violations with adequate sample size
-
----
 
 ### 3. Homogeneity of Variance (Homoscedasticity)
 
@@ -158,8 +154,6 @@ _, p_value, _, _ = het_breuschpagan(residuals, exog)
 
 **Critical severity**: MEDIUM - tests can be robust with equal sample sizes
 
----
-
 ## Test-Specific Assumptions
 
 ### T-Tests
@@ -190,8 +184,6 @@ pg.ttest(group1, group2, correction=False)  # Welch's
 # Option 2: Non-parametric alternative
 pg.mwu(group1, group2)  # Mann-Whitney U
 ```
-
----
 
 ### ANOVA
 
@@ -227,8 +219,6 @@ pg.homoscedasticity(df, dv="value", group="group")
 - Greenhouse-Geisser correction (ε < 0.75)
 - Huynh-Feldt correction (ε > 0.75)
 - Use multivariate approach (MANOVA)
-
----
 
 ### Linear Regression
 
@@ -309,8 +299,6 @@ vif_data["VIF"] = [
 - **Non-normal residuals**: Transform Y, use robust methods, check for outliers
 - **Multicollinearity**: Remove correlated predictors, use PCA, ridge regression
 
----
-
 ### Logistic Regression
 
 **Assumptions**:
@@ -353,8 +341,6 @@ cooks_d = influence.cooks_distance
 # Classification metrics (accuracy, AUC-ROC)
 ```
 
----
-
 ## Outlier Detection
 
 **Methods**:
@@ -378,8 +364,6 @@ cooks_d = influence.cooks_distance
 3. Report sensitivity analysis (results with and without outliers)
 4. Use robust methods if outliers are legitimate
 
----
-
 ## Sample Size Considerations
 
 ### Minimum Sample Sizes (Rules of Thumb)
@@ -400,8 +384,6 @@ For small samples:
 - Consider non-parametric alternatives
 - Use permutation tests or bootstrap methods
 - Be conservative with interpretation
-
----
 
 ## Reporting Assumption Checks
 

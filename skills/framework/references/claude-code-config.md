@@ -16,22 +16,22 @@ Technical reference for Claude Code configuration file locations and behavior.
 
 ### User-Scoped Configuration
 
-| File | Purpose | Managed By |
-|------|---------|------------|
-| `~/.claude.json` | App state + user MCP servers | Claude Code (auto-managed) |
-| `~/.claude/settings.json` | Permissions, hooks, status line | User (symlinked to aOps) |
-| `~/.claude/skills/` | User skills | User (symlinked to aOps) |
-| `~/.claude/commands/` | User slash commands | User (symlinked to aOps) |
-| `~/.claude/agents/` | User custom agents | User (symlinked to aOps) |
+| File                      | Purpose                         | Managed By                 |
+| ------------------------- | ------------------------------- | -------------------------- |
+| `~/.claude.json`          | App state + user MCP servers    | Claude Code (auto-managed) |
+| `~/.claude/settings.json` | Permissions, hooks, status line | User (symlinked to aOps)   |
+| `~/.claude/skills/`       | User skills                     | User (symlinked to aOps)   |
+| `~/.claude/commands/`     | User slash commands             | User (symlinked to aOps)   |
+| `~/.claude/agents/`       | User custom agents              | User (symlinked to aOps)   |
 
 ### Project-Scoped Configuration
 
-| File | Purpose | Managed By |
-|------|---------|------------|
-| `.mcp.json` | Project MCP servers (team-shared) | Version control |
-| `.claude/settings.json` | Project permissions | Version control |
-| `.claude/settings.local.json` | Local project overrides | User (gitignored) |
-| `CLAUDE.md` | Project context | Version control |
+| File                          | Purpose                           | Managed By        |
+| ----------------------------- | --------------------------------- | ----------------- |
+| `.mcp.json`                   | Project MCP servers (team-shared) | Version control   |
+| `.claude/settings.json`       | Project permissions               | Version control   |
+| `.claude/settings.local.json` | Local project overrides           | User (gitignored) |
+| `CLAUDE.md`                   | Project context                   | Version control   |
 
 ## MCP Server Configuration
 
@@ -52,31 +52,35 @@ Technical reference for Claude Code configuration file locations and behavior.
 ### Common Issues
 
 **"No MCP servers configured" despite config existing**:
+
 - Check `~/.claude.json` has `mcpServers` key (not `~/.mcp.json`)
 - Run `$AOPS/setup.sh` to sync from authoritative source
 - Verify with `claude mcp list`
 
 **Symlinks not working for MCP config**:
+
 - Claude Code doesn't read `~/.mcp.json` for user servers
 - Must merge into `~/.claude.json` directly
 
 ## Settings vs MCP Files
 
-| Scope | Settings | MCP Servers |
-|-------|----------|-------------|
-| User | `~/.claude/settings.json` | `~/.claude.json` mcpServers |
-| Project (shared) | `.claude/settings.json` | `.mcp.json` |
-| Project (local) | `.claude/settings.local.json` | N/A |
+| Scope            | Settings                      | MCP Servers                 |
+| ---------------- | ----------------------------- | --------------------------- |
+| User             | `~/.claude/settings.json`     | `~/.claude.json` mcpServers |
+| Project (shared) | `.claude/settings.json`       | `.mcp.json`                 |
+| Project (local)  | `.claude/settings.local.json` | N/A                         |
 
 ## Permissions Configuration
 
 ### Syntax Rules
 
 **Tool Permissions** (Read, Write, Edit, etc.):
+
 - Glob patterns: `Write(**/.claude/**)`, `Edit(/data/tasks/**)`
 - Path patterns work in tool names
 
 **Bash Command Permissions**:
+
 - ✅ Prefix matching: `Bash(npm run:*)` - allows any command starting with "npm run"
 - ✅ Exact match: `Bash(npm install express)` - allows only that exact command
 - ✅ Global: `Bash` - allows all bash commands
@@ -84,6 +88,7 @@ Technical reference for Claude Code configuration file locations and behavior.
 - ❌ Wildcards in middle: `Bash(echo * > **/.claude/**)` - NOT SUPPORTED
 
 **Common Patterns**:
+
 ```json
 {
   "permissions": {
@@ -109,10 +114,10 @@ Technical reference for Claude Code configuration file locations and behavior.
 
 **Related references**: [[testing-with-live-data]], [[script-design-guide]]
 
-
 ### Status Line Configuration
 
 **Custom Status Line**:
+
 ```json
 {
   "statusLine": {
@@ -151,10 +156,10 @@ Set to `true` to enable extended thinking mode by default.
 
 **Observed 2025-12-25**: Subagents invoked via the Task tool have isolated state.
 
-| State | Shared with Parent? |
-|-------|---------------------|
-| TodoWrite (todo list) | ❌ No - subagent todos don't persist to parent session |
-| File operations | ✅ Yes - verified bidirectional (parent↔subagent reads/writes) |
-| Memory server | ✅ Yes - mcp__memory__* calls persist globally |
+| State                 | Shared with Parent?                                            |
+| --------------------- | -------------------------------------------------------------- |
+| TodoWrite (todo list) | ❌ No - subagent todos don't persist to parent session         |
+| File operations       | ✅ Yes - verified bidirectional (parent↔subagent reads/writes) |
+| Memory server         | ✅ Yes - mcp__memory__* calls persist globally                 |
 
 **Practical implication**: If you need todos visible in the main session, the main agent must create them directly. Cannot delegate todo creation to subagents.

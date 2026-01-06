@@ -53,6 +53,7 @@ Agents create orphan implementation files instead of updating specs. The logged 
 Create standalone skill for spec lifecycle management.
 
 **Against:**
+
 - `/garden synthesize` already does spec synthesis (lines 53-82)
 - `/feature-dev` already manages feature lifecycle
 - Would require agents to remember another skill to invoke
@@ -62,12 +63,12 @@ Create standalone skill for spec lifecycle management.
 
 Wire together existing capabilities:
 
-| Gap | Fix | Location |
-|-----|-----|----------|
-| No post-implementation spec update | Add Phase 8: Spec Synthesis | `/feature-dev` |
-| Orphan implementation docs undetected | Add orphan detection | `/garden scan` |
-| Specs.md index not maintained | Auto-update on spec changes | `/garden` |
-| README feature inventory stale | Check during `/qa` | `/qa` skill |
+| Gap                                   | Fix                         | Location       |
+| ------------------------------------- | --------------------------- | -------------- |
+| No post-implementation spec update    | Add Phase 8: Spec Synthesis | `/feature-dev` |
+| Orphan implementation docs undetected | Add orphan detection        | `/garden scan` |
+| Specs.md index not maintained         | Auto-update on spec changes | `/garden`      |
+| README feature inventory stale        | Check during `/qa`          | `/qa` skill    |
 
 **Rationale:** The pieces exist. The problem is workflow, not tooling.
 
@@ -109,7 +110,8 @@ Add orphan detection to scan mode:
 ### Orphan Implementation Docs
 
 Detect files in learning/ or experiments/ that describe features with existing specs:
-1. List all files in learning/*.md and experiments/*.md
+
+1. List all files in learning/_.md and experiments/_.md
 2. For each, semantic search specs/ for matching feature
 3. If match found with >0.7 similarity → flag as orphan candidate
 4. Report: "Found N implementation docs that should be synthesized into specs"
@@ -139,6 +141,7 @@ Add spec index maintenance:
 Approach approved: extend existing skills rather than create new one.
 
 **Changes made**:
+
 - `/feature-dev` Phase 8 added (Spec Synthesis) - mandatory post-validation step
 - `/garden scan` extended with orphan implementation doc detection
 - `/garden synthesize` extended with spec index maintenance

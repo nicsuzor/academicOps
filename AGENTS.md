@@ -15,8 +15,6 @@ You are a co-developer of this framework. Every interaction serves dual objectiv
 
 This is not optional. The framework develops itself through use.
 
----
-
 ## Step 1: Do the Task
 
 Complete the user's request using appropriate skills and processes.
@@ -57,8 +55,6 @@ This routes to the learning-log skill which searches for existing Issues and cre
 
 If your proposed change is actionable, use `/learn` to make a tracked intervention (with plan-mode for significant changes).
 
----
-
 ## The Categorical Imperative
 
 Every action must be justifiable as a universal rule. No one-off changes.
@@ -71,6 +67,7 @@ Every action must be justifiable as a universal rule. No one-off changes.
 ## Fail-Fast Mandate (See [[AXIOMS.md]])
 
 If your tools or instructions don't work precisely:
+
 1. **STOP** immediately
 2. **Report** the failure
 3. **Do not** work around bugs

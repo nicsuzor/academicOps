@@ -13,42 +13,34 @@ verified_document: [filename]
 ## Summary
 
 Cross-referenced every factual claim in the review against:
+
 1. **[Primary source]** (authoritative source)
 2. **External web searches** (independent verification)
 
----
-
 ## Verified Claims (Accurate)
 
-| Claim in Document | Source Verification |
-|-------------------|---------------------|
-| [claim] | [source with link/page] |
-
----
+| Claim in Document | Source Verification     |
+| ----------------- | ----------------------- |
+| [claim]           | [source with link/page] |
 
 ## Claims Requiring Clarification
 
-| Claim | Issue | Evidence Status |
-|-------|-------|-----------------|
+| Claim   | Issue         | Evidence Status  |
+| ------- | ------------- | ---------------- |
 | [claim] | [discrepancy] | [what was found] |
-
----
 
 ## Reviewer Assessments (Professional Judgment, Not Verifiable Facts)
 
 These are appropriate opinions, not claims requiring verification:
+
 - [assessment 1]
 - [assessment 2]
 
----
-
 ## Unverifiable from External Sources
 
-| Claim | Status |
-|-------|--------|
+| Claim   | Status                                |
+| ------- | ------------------------------------- |
 | [claim] | [what was searched, why unverifiable] |
-
----
 
 ## Conclusion
 
@@ -56,13 +48,13 @@ These are appropriate opinions, not claims requiring verification:
 
 [Summary of verification outcome]
 
----
-
 ## Verification Sources
 
 ### Web Sources Consulted
+
 - [source 1]
 - [source 2]
 
 ### Primary Documents
+
 - [document 1]

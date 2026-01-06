@@ -16,6 +16,7 @@ Establish rigorous, defensible ground truth labels for evaluation datasets. Ensu
 ## When to Use
 
 Invoke when:
+
 - Creating ground truth labels for a new dataset
 - Reviewing records with high scorer/judge disagreement
 - Refining existing labels based on new understanding
@@ -37,6 +38,7 @@ When labeling, the answer must come from the **established criteria themselves**
 ### 1. Load Relevant Guidelines
 
 Before labeling any record, load and review the authoritative criteria:
+
 - What rules apply?
 - What are the explicit conditions for violation/non-violation?
 - What edge cases does the guideline address?
@@ -44,6 +46,7 @@ Before labeling any record, load and review the authoritative criteria:
 ### 2. Analyze the Record
 
 For each record:
+
 1. Identify potential issues (terminology, framing, sources, etc.)
 2. For each issue, find the **specific guideline provision** that applies
 3. Determine if the guideline's conditions for violation are met
@@ -51,6 +54,7 @@ For each record:
 ### 3. Construct the Label
 
 **Label structure:**
+
 ```yaml
 ground_truth:
   violating: true/false
@@ -60,12 +64,14 @@ ground_truth:
 ```
 
 **Reason categories:**
+
 - **Primary**: Scorers should expect judges to identify this
 - **OPTIONAL**: Valid observation that reasonable judges might not mention
 
 ### 4. Document Ambiguity
 
 High disagreement signals:
+
 - Ambiguity in the guidelines themselves
 - Cases where guidelines conflict or don't clearly apply
 - Need to consult authoritative sources
@@ -75,11 +81,13 @@ When encountering genuine ambiguity, document it - don't force a label.
 ## OPTIONAL Reasons
 
 Prefix with "OPTIONAL:" for secondary observations:
+
 - Scorers should **not require** judges to mention these
 - If a judge **does** comment, scorers should expect correctness
 - Captures edge cases or nuanced guideline applications
 
 **Example:**
+
 ```yaml
 reasons:
 - Article provides critical framing and therefore DOES NOT VIOLATE quote attribution rules.
@@ -88,17 +96,18 @@ reasons:
 
 ## Common Labeling Pitfalls
 
-| Pitfall | Correction |
-|---------|------------|
-| Labeling by intuition | Find explicit guideline provision |
-| Assuming guidelines agree | Check each criterion separately |
-| Over-strict interpretation | Guidelines often permit with conditions |
-| Ignoring context | Most guidelines consider framing/purpose |
-| Binary thinking | Use OPTIONAL for nuanced observations |
+| Pitfall                    | Correction                               |
+| -------------------------- | ---------------------------------------- |
+| Labeling by intuition      | Find explicit guideline provision        |
+| Assuming guidelines agree  | Check each criterion separately          |
+| Over-strict interpretation | Guidelines often permit with conditions  |
+| Ignoring context           | Most guidelines consider framing/purpose |
+| Binary thinking            | Use OPTIONAL for nuanced observations    |
 
 ## Consistency Checks
 
 When refining labels:
+
 1. **Same reasoning → same label**: If two records have the same characteristic, they should have the same label
 2. **Document changes**: Log all label changes with rationale
 3. **Test edge cases**: Does this label imply changes to similar records?
@@ -106,6 +115,7 @@ When refining labels:
 ## Output
 
 For each labeling decision, provide:
+
 1. The label (violating: true/false)
 2. Primary reason(s) with guideline references
 3. Any OPTIONAL observations

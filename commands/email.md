@@ -29,6 +29,7 @@ Use the Skill tool to invoke the `[[skills/tasks/SKILL.md|tasks]]` skill: `Skill
 **Task output format**:
 
 Tasks created include:
+
 - **Context**: Brief who/what/when
 - **Summary: What You Need to Respond To**: Primary question + secondary items
 - **Response Needed**: Concrete action checklist
@@ -37,10 +38,10 @@ Tasks created include:
 
 **Document handling**:
 
-| Classification | Storage Location |
-|----------------|------------------|
-| Review/Supervision | `$ACA_DATA/reviews/{sender}/` |
-| Other | `$ACA_DATA/task-documents/{task-id}/` |
+| Classification     | Storage Location                      |
+| ------------------ | ------------------------------------- |
+| Review/Supervision | `$ACA_DATA/reviews/{sender}/`         |
+| Other              | `$ACA_DATA/task-documents/{task-id}/` |
 
 **Example triggers**:
 

@@ -26,6 +26,7 @@ description: Detailed guide for maintaining institutional memory and making prin
 ### 1. VERIFY FIRST (AXIOMS #13) (See [[AXIOMS.md]])
 
 Check actual state before claiming anything:
+
 - Document sizes before analyzing: `wc -l file.md`
 - Sampling strategy: Check beginning/middle/end, not just start
 - Coverage verification: Report what % of content was analyzed
@@ -33,6 +34,7 @@ Check actual state before claiming anything:
 ### 2. NO EXCUSES (AXIOMS #14) (See [[AXIOMS.md]])
 
 Never claim success without confirmation:
+
 - If asked to extract from 5 files, verify all 5 were processed
 - If analyzing a conversation, check total length first
 - Report limitations explicitly: "Analyzed lines 1-200 of 4829 (4%)"
@@ -40,6 +42,7 @@ Never claim success without confirmation:
 ### 3. VERIFY COMPLETENESS
 
 Before reporting work done:
+
 - Did I check the full scope? (all files, entire document, complete list)
 - Did I verify coverage? (what % of content did I actually analyze)
 - Did I sample representatively? (not just the easy/obvious parts)

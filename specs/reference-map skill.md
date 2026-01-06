@@ -51,12 +51,12 @@ New skill that extracts ALL file references from the [[aops]] framework and outp
 
 ## Audit Results (2025-12-19)
 
-| Pattern | Occurrences | Files |
-|---------|-------------|-------|
-| Wikilinks | 610 | 101 |
-| Env vars | 406 | 70 |
-| Python imports | 52 | 39 |
-| @inclusions | 7 | 7 |
+| Pattern        | Occurrences | Files |
+| -------------- | ----------- | ----- |
+| Wikilinks      | 610         | 101   |
+| Env vars       | 406         | 70    |
+| Python imports | 52          | 39    |
+| @inclusions    | 7           | 7     |
 
 ## Usage
 

@@ -24,7 +24,7 @@ Add a `narrative` field to `synthesis.json` containing 3-5 bullet points that te
     "Started the morning reviewing HDR extension request",
     "Got pulled into dashboard debugging around 10am",
     "HDR admin tasks still waiting, plus OSB review from yesterday"
-  ],
+  ]
   // ... existing fields unchanged
 }
 ```
@@ -131,6 +131,7 @@ Update the session-insights skill to extract narrative signal from abridged tran
 ```
 
 **Extraction logic**: The Gemini agent processing transcripts should:
+
 1. Capture first user prompts per session (intent)
 2. Detect project/topic changes (context switches)
 3. Extract unchecked TodoWrite items at session end (abandoned)
@@ -179,10 +180,10 @@ def render_narrative_panel(synthesis: dict) -> None:
 
 ### 3. Files Modified
 
-| File | Change |
-|------|--------|
+| File                              | Change                              |
+| --------------------------------- | ----------------------------------- |
 | `scripts/synthesize_dashboard.py` | Add yesterday loader, modify prompt |
-| `skills/dashboard/dashboard.py` | Add narrative panel render |
+| `skills/dashboard/dashboard.py`   | Add narrative panel render          |
 
 ## Acceptance Criteria
 

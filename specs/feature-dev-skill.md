@@ -41,6 +41,7 @@ Guide rigorous, test-first feature development from idea to validated implementa
 ## Problem Statement
 
 Feature development risks:
+
 - Incomplete requirements leading to wasted work
 - Implementation before testing (bugs discovered late)
 - Partial success shipped (features that mostly work)
@@ -65,20 +66,21 @@ Invoke when adding new features, building significant functionality, or implemen
 
 **1. Eight-Phase Workflow**
 
-| Phase | Purpose |
-|-------|---------|
-| 1. User Story Capture | Zero-friction idea intake (any format) |
-| 2. Requirements Analysis | Transform into testable requirements |
-| 3. Experiment Design | Formalize plan with hypothesis |
-| 4. Test-First Design | Write integration tests FIRST |
-| 5. Development Planning | Break into discrete steps |
-| 6. Execution | Build with continuous validation |
-| 7. Validation | Verify and decide keep/revert/iterate |
-| 8. Spec Synthesis | Update spec, delete implementation artifacts |
+| Phase                    | Purpose                                      |
+| ------------------------ | -------------------------------------------- |
+| 1. User Story Capture    | Zero-friction idea intake (any format)       |
+| 2. Requirements Analysis | Transform into testable requirements         |
+| 3. Experiment Design     | Formalize plan with hypothesis               |
+| 4. Test-First Design     | Write integration tests FIRST                |
+| 5. Development Planning  | Break into discrete steps                    |
+| 6. Execution             | Build with continuous validation             |
+| 7. Validation            | Verify and decide keep/revert/iterate        |
+| 8. Spec Synthesis        | Update spec, delete implementation artifacts |
 
 **2. Test-First Requirement**
 
 Integration tests must be written and committed BEFORE implementation code. Tests must:
+
 - Complete user-facing workflow end-to-end
 - Validate each success criterion
 - Fail before feature exists
@@ -86,17 +88,18 @@ Integration tests must be written and committed BEFORE implementation code. Test
 
 **3. Fail-Fast Decision Matrix**
 
-| Outcome | Action |
-|---------|--------|
-| All criteria met + tests pass | **KEEP** - Commit and document |
+| Outcome                            | Action                                    |
+| ---------------------------------- | ----------------------------------------- |
+| All criteria met + tests pass      | **KEEP** - Commit and document            |
 | Any criteria not met OR tests fail | **REVERT** - Remove feature, document why |
-| Close to success with clear fix | **ITERATE** (max 1 cycle) |
+| Close to success with clear fix    | **ITERATE** (max 1 cycle)                 |
 
 Never commit partial success.
 
 **4. Spec Synthesis (Phase 8)**
 
 Per [[AXIOMS]] #29: Implementation artifacts are temporal, specs are timeless. After validation:
+
 - Merge implementation knowledge into spec
 - Strip temporal content (dates, deliberation)
 - Delete orphan experiment/learning files
@@ -105,6 +108,7 @@ Per [[AXIOMS]] #29: Implementation artifacts are temporal, specs are timeless. A
 ### Progress Tracking
 
 TodoWrite mandatory at each phase:
+
 - Initial setup: High-level phases as items
 - Development phase: Specific implementation steps
 - One item in_progress at a time
@@ -113,16 +117,19 @@ TodoWrite mandatory at each phase:
 ## Relationships
 
 ### Depends On
+
 - [[AXIOMS]] - All axioms enforced
 - [[ACCOMMODATIONS]] - ADHD accommodations (zero-friction capture, bias for action)
 - [[python-dev-skill]] - For Python implementation work
 
 ### Produces
+
 - Experiment logs in `$AOPS/experiments/`
 - Integration tests in appropriate test directories
 - Updated specs in `$AOPS/specs/`
 
 ### Templates (bundled)
+
 - `templates/user-story.md`
 - `templates/experiment-plan.md`
 - `templates/test-spec.md`

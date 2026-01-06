@@ -70,6 +70,7 @@ description: Process for diagnosing and fixing framework component failures and 
 ## Debugging Tools
 
 **Session log analysis**:
+
 ```bash
 # Find test project directories
 ls ~/.claude/projects/-tmp-*
@@ -82,6 +83,7 @@ rg "type.*tool" ~/.claude/projects/-tmp-claude-test-*/
 ```
 
 **Session transcript generation** (human-readable format):
+
 ```bash
 # List recent sessions for current project
 ls -lt ~/.claude/projects/-home-nic-src-aOps/*.jsonl | head -5
@@ -97,6 +99,7 @@ cat ~/.cache/aops/transcripts/{session-id}_transcript.md
 ```
 
 Use transcripts when:
+
 - Raw JSONL search results are hard to interpret
 - Need to understand full conversation flow
 - Sharing session details for debugging
@@ -104,12 +107,14 @@ Use transcripts when:
 **Note**: Transcripts don't show hook-injected `<system-reminder>` tags. To verify hook behavior, grep raw JSONL.
 
 **Controlled test environment**:
+
 - Tests run in `/tmp/claude-test-*` (consistent location)
 - `--debug` flag automatically enabled (full logging)
 - Env vars validated fail-fast (`AOPS`, `ACA_DATA` required)
 - Session logs persist for post-mortem analysis
 
 **Hypothesis testing pattern**:
+
 1. State hypothesis about root cause
 2. Design test that would confirm/refute hypothesis
 3. Run test with `--debug` in `/tmp`
@@ -123,11 +128,11 @@ When investigating why something didn't work as expected, **surface explanations
 
 ### 1. Never Accept Surface Explanations
 
-| Surface answer | Required follow-up |
-|----------------|-------------------|
-| "It wasn't run" | WHY wasn't it run? Was it invoked but failed? |
-| "The file doesn't exist" | WAS it created? Check git history |
-| "The skill didn't work" | Find the EXACT error message in transcripts |
+| Surface answer           | Required follow-up                            |
+| ------------------------ | --------------------------------------------- |
+| "It wasn't run"          | WHY wasn't it run? Was it invoked but failed? |
+| "The file doesn't exist" | WAS it created? Check git history             |
+| "The skill didn't work"  | Find the EXACT error message in transcripts   |
 
 ### 2. Git Forensics (REQUIRED)
 
@@ -184,12 +189,12 @@ uv run python -c "from lib.module import function_name; print('exists')"
 
 Common failure patterns map to axiom violations:
 
-| Symptom | Likely violation |
-|---------|-----------------|
+| Symptom                              | Likely violation                                                   |
+| ------------------------------------ | ------------------------------------------------------------------ |
 | Workflow started but didn't complete | AXIOM #8 (Fail-Fast): Agent worked around error instead of halting |
-| Wrong data written | AXIOM #7 (Fail-Fast): Silent failure, no validation |
-| Skill docs don't match code | H9: Skills contain no dynamic content |
-| Agent promised to improve | H11: No promises without instructions |
+| Wrong data written                   | AXIOM #7 (Fail-Fast): Silent failure, no validation                |
+| Skill docs don't match code          | H9: Skills contain no dynamic content                              |
+| Agent promised to improve            | H11: No promises without instructions                              |
 
 ### Example: Full Investigation
 

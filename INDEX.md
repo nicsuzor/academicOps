@@ -536,37 +536,37 @@ $AOPS/
 
 ### Command → Skill/Agent Invocations
 
-| Command | Invokes |
-|---------|---------|
-| /do | Full pipeline (context, plan, execute, verify) |
-| /q | tasks skill (delayed /do) |
-| /meta | framework, python-dev skills |
-| /ttd | TDD workflow (via /do) |
-| /log | learning-log skill |
-| /transcript | transcript skill |
-| /remember | remember skill |
+| Command     | Invokes                                        |
+| ----------- | ---------------------------------------------- |
+| /do         | Full pipeline (context, plan, execute, verify) |
+| /q          | tasks skill (delayed /do)                      |
+| /meta       | framework, python-dev skills                   |
+| /ttd        | TDD workflow (via /do)                         |
+| /log        | learning-log skill                             |
+| /transcript | transcript skill                               |
+| /remember   | remember skill                                 |
 
 ### Workflow Templates
 
-| Location | Workflows | Loaded By |
-|----------|-----------|-----------|
-| `skills/supervisor/workflows/` | tdd, batch-review | `/ttd`, `/do` |
-| `skills/framework/workflows/` | 01-design, 02-debug, 03-experiment, 04-bloat, 06-spec | `Skill("framework")` |
+| Location                       | Workflows                                             | Loaded By            |
+| ------------------------------ | ----------------------------------------------------- | -------------------- |
+| `skills/supervisor/workflows/` | tdd, batch-review                                     | `/ttd`, `/do`        |
+| `skills/framework/workflows/`  | 01-design, 02-debug, 03-experiment, 04-bloat, 06-spec | `Skill("framework")` |
 
 ### Skill → Skill Dependencies
 
-| Skill | May Invoke |
-|-------|------------|
-| log | transcript (when given session JSONL) |
-| transcript | (none - wraps script) |
-| session-insights | transcript, learning-log |
+| Skill            | May Invoke                            |
+| ---------------- | ------------------------------------- |
+| log              | transcript (when given session JSONL) |
+| transcript       | (none - wraps script)                 |
+| session-insights | transcript, learning-log              |
 
 ### Agent → Skill Routing
 
-| Agent | Routes To |
-|-------|-----------|
-| effectual-planner | tasks skill |
-| planner | memory search, critic review |
+| Agent             | Routes To                    |
+| ----------------- | ---------------------------- |
+| effectual-planner | tasks skill                  |
+| planner           | memory search, critic review |
 
 **Note**: For Python development, use `general-purpose` subagent and invoke `Skill(skill="python-dev")` directly.
 

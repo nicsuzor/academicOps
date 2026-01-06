@@ -470,11 +470,11 @@ All hooks receive JSON on stdin with these common fields:
 
 **Exit codes** (CRITICAL - determines what Claude Code reads):
 
-| Exit | Action | Message source | Shown to |
-|------|--------|----------------|----------|
-| `0` | Allow | JSON on **stdout** | User (verbose mode) |
-| `1` | Warn, allow | **stderr** | User AND agent |
-| `2` | Block | **stderr** | Agent only |
+| Exit | Action      | Message source     | Shown to            |
+| ---- | ----------- | ------------------ | ------------------- |
+| `0`  | Allow       | JSON on **stdout** | User (verbose mode) |
+| `1`  | Warn, allow | **stderr**         | User AND agent      |
+| `2`  | Block       | **stderr**         | Agent only          |
 
 **Key point**: Exit 2 ignores stdout entirely - only stderr is read. This is why `continue: false` in JSON doesn't block if you exit 2.
 
@@ -647,15 +647,16 @@ The `additionalContext` field in hook output doesn't just add text context—it 
 
 **Tested and verified capabilities:**
 
-| Tool | additionalContext Instruction | Result |
-|------|------------------------------|--------|
-| Read | "MUST use Read tool to read /tmp/file.txt" | Agent reads file, includes content |
-| Bash | "MUST use Bash tool to run 'echo TEST'" | Agent executes command |
-| Task | "MUST use Task tool to spawn subagent" | Agent spawns subagent with specified params |
+| Tool | additionalContext Instruction              | Result                                      |
+| ---- | ------------------------------------------ | ------------------------------------------- |
+| Read | "MUST use Read tool to read /tmp/file.txt" | Agent reads file, includes content          |
+| Bash | "MUST use Bash tool to run 'echo TEST'"    | Agent executes command                      |
+| Task | "MUST use Task tool to spawn subagent"     | Agent spawns subagent with specified params |
 
 **Critical requirements for tool triggering:**
 
 1. **Correct output format** - Must use full wrapper structure:
+
 ```json
 {
   "hookSpecificOutput": {
@@ -721,3 +722,137 @@ Check logs in `/tmp/`:
 ls -lt /tmp/claude_* | head
 cat /tmp/claude_pretooluse_TIMESTAMP.json
 ```
+
+## Python Hook Implementation Conventions (academicOps)
+
+This section covers Python-specific conventions for implementing hooks in the academicOps framework.
+
+### File Organization
+
+**Location**: All Python hooks in `$AOPS/hooks/`
+
+**Naming**: `{event}_{purpose}.py` or `{purpose}_{event}.py`
+
+- `sessionstart_load_axioms.py` - SessionStart event, loads axioms
+- `policy_enforcer.py` - PreToolUse event, enforces policies
+- `fail_fast_watchdog.py` - PostToolUse event, enforces fail-fast
+
+**Rules**:
+
+- Snake_case, no `hook_` prefix
+- One purpose per file (router consolidates)
+
+### Required Structure
+
+```python
+#!/usr/bin/env python3
+"""
+{Event} hook for Claude Code.
+
+{One-line description}.
+
+Exit codes:
+    0: Success
+    1: Warning (fail-fast applies)
+    2: Block (PreToolUse only)
+"""
+import contextlib
+import json
+import sys
+from pathlib import Path
+from typing import Any
+
+from lib.paths import get_aops_root, get_data_root  # NEVER hardcode paths
+
+
+def main():
+    """Main hook entry point."""
+    input_data: dict[str, Any] = {}
+    with contextlib.suppress(Exception):
+        input_data = json.load(sys.stdin)
+
+    # Process...
+    output_data = {"hookSpecificOutput": {"hookEventName": "PreToolUse"}}
+
+    print(json.dumps(output_data))
+    sys.exit(0)
+
+
+if __name__ == "__main__":
+    main()
+```
+
+### Type Hints
+
+- Use `dict[str, Any]` (Python 3.9+)
+- Use `Path` for file paths
+- Use `str | None` for optional (Python 3.10+)
+
+### Error Handling Patterns
+
+**Safe Input Parsing** (always):
+
+```python
+input_data: dict[str, Any] = {}
+with contextlib.suppress(Exception):
+    input_data = json.load(sys.stdin)
+tool_name = input_data.get("tool_name", "")  # Use .get() with defaults
+```
+
+**Critical Operations** (fail-fast per AXIOM #7):
+
+```python
+try:
+    config = load_required_config()
+except FileNotFoundError as e:
+    print(f"ERROR: {e}", file=sys.stderr)
+    sys.exit(1)  # Fail-fast, don't continue
+```
+
+**Optional Operations** (graceful degradation):
+
+```python
+try:
+    context = load_optional_context()
+except Exception:
+    context = ""  # Continue without
+```
+
+### Shared Utilities
+
+| Utility              | Purpose                          | Import                                                  |
+| -------------------- | -------------------------------- | ------------------------------------------------------- |
+| `lib.paths`          | Path resolution (NEVER hardcode) | `from lib.paths import get_aops_root, get_data_root`    |
+| `hook_debug.py`      | Safe debug logging               | `from hook_debug import safe_log_to_debug_file`         |
+| `lib.session_reader` | Transcript parsing               | `from lib.session_reader import extract_router_context` |
+
+### Router Integration
+
+Hooks register in `router.py` HOOK_REGISTRY:
+
+```python
+HOOK_REGISTRY: dict[str, list[dict[str, Any]]] = {
+    "SessionStart": [{"script": "sessionstart_load_axioms.py"}],
+    "PreToolUse": [{"script": "policy_enforcer.py"}],
+    "PostToolUse:TodoWrite": [{"script": "request_scribe.py"}],  # Matcher
+}
+```
+
+### Anti-Patterns
+
+❌ **Hardcoded paths**: Use `lib.paths`
+❌ **Silent critical failures**: Exit 1 on config/I/O errors
+❌ **Assume JSON structure**: Always `.get()` with defaults
+❌ **Logging crashes hook**: Use `safe_log_to_debug_file`
+❌ **LLM calls in hooks**: Spawn background subagent instead (H31)
+
+### Checklist: Before Adding a Hook
+
+- [ ] Single focused purpose
+- [ ] Shebang + docstring with exit codes
+- [ ] Safe input parsing with `.get()` defaults
+- [ ] Valid JSON output (test with `jq`)
+- [ ] Critical = fail-fast, optional = graceful
+- [ ] Using `lib.paths` (no hardcoded paths)
+- [ ] Added to `HOOK_REGISTRY` in router.py
+- [ ] Tested with sample input

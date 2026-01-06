@@ -11,10 +11,10 @@ This template is written to a temp file by the UserPromptSubmit hook.
 The prompt-hydrator subagent reads this file to get full context.
 
 Variables:
+
 - `{prompt}` - Full user prompt
 - `{session_context}` - Recent prompts, active skill, TodoWrite state
 
----
 # Prompt Hydration Request
 
 Analyze this user prompt and return workflow guidance for the main agent.
@@ -46,5 +46,6 @@ Return a structured response the main agent can follow:
 **Guardrails**: [list]
 
 ### Guidance
+
 [Specific instructions for the main agent based on workflow selection]
 ```

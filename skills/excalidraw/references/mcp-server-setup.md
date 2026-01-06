@@ -14,8 +14,6 @@ description: Real-time programmatic manipulation of Excalidraw canvas through AI
 
 **Not needed for**: Manual diagram creation (use Excalidraw directly).
 
----
-
 ## Architecture
 
 Two independent components:
@@ -24,8 +22,6 @@ Two independent components:
 2. **MCP Server** - Connects AI assistants via stdio
 
 **Repository**: https://github.com/yctimlin/mcp_excalidraw
-
----
 
 ## Installation
 
@@ -48,8 +44,6 @@ docker pull ghcr.io/yctimlin/mcp_excalidraw-canvas:latest
 docker run -d -p 3000:3000 ghcr.io/yctimlin/mcp_excalidraw-canvas:latest
 ```
 
----
-
 ## MCP Server Configuration
 
 Add to Claude Desktop/Code/Cursor config:
@@ -69,17 +63,17 @@ Add to Claude Desktop/Code/Cursor config:
 }
 ```
 
----
-
 ## Available MCP Tools
 
 ### Element Creation
+
 - **Shapes**: rectangles, ellipses, diamonds
 - **Connectors**: arrows, lines
 - **Text**: labeled content with adjustable font sizes
 - **Batch operations**: Create multiple elements simultaneously
 
 ### Element Management
+
 - Update existing elements by ID
 - Delete elements by ID
 - Query elements with filters
@@ -87,11 +81,10 @@ Add to Claude Desktop/Code/Cursor config:
 - Distribution controls
 - Element locking
 
----
-
 ## Element Creation Examples
 
 ### Rectangle
+
 ```json
 {
   "type": "rectangle",
@@ -105,6 +98,7 @@ Add to Claude Desktop/Code/Cursor config:
 ```
 
 ### Text
+
 ```json
 {
   "type": "text",
@@ -116,6 +110,7 @@ Add to Claude Desktop/Code/Cursor config:
 ```
 
 ### Arrow
+
 ```json
 {
   "type": "arrow",
@@ -127,46 +122,41 @@ Add to Claude Desktop/Code/Cursor config:
 }
 ```
 
----
-
 ## NPM Scripts Reference
 
-| Script | Purpose |
-|--------|---------|
-| `npm start` | Build and start MCP server |
-| `npm run canvas` | Build and start canvas server |
-| `npm run build` | Build both frontend and backend |
-| `npm run dev` | Start TypeScript watch mode + dev server |
-| `npm run type-check` | TypeScript type validation |
-
----
+| Script               | Purpose                                  |
+| -------------------- | ---------------------------------------- |
+| `npm start`          | Build and start MCP server               |
+| `npm run canvas`     | Build and start canvas server            |
+| `npm run build`      | Build both frontend and backend          |
+| `npm run dev`        | Start TypeScript watch mode + dev server |
+| `npm run type-check` | TypeScript type validation               |
 
 ## Troubleshooting
 
 **Canvas server not responding**:
+
 - Check `EXPRESS_SERVER_URL` environment variable
 - Verify server is running (check port 3000)
 - Check firewall settings
 
 **Elements not appearing**:
+
 - Verify WebSocket connection
 - Check element coordinates are on visible canvas
 - Inspect browser console for errors
 
 **Connection issues**:
+
 - Restart both canvas and MCP servers
 - Check network connectivity
 - Verify MCP config paths are correct
-
----
 
 ## Status
 
 - **Canvas Server**: Production ready (local & Docker)
 - **MCP Server**: Production ready (local & Docker)
 - **NPM Publishing**: Development/testing phase
-
----
 
 **Last Updated**: 2025-11-18
 **Maintainer**: excalidraw skill

@@ -17,6 +17,7 @@ tags:
 ## Done
 
 ### Core Infrastructure
+
 - ✅ **Session start loading** - AXIOMS.md, FRAMEWORK.md paths, user context injected
 - ✅ **Prompt router v4** - LLM-first routing; only slash commands get direct routing, everything else → Haiku classifier with full capability index
 - ✅ **Framework v3.0** - Categorical imperative, file boundary enforcement, skill delegation
@@ -28,6 +29,7 @@ tags:
 - ✅ **Documentation consolidation** - VISION grounded, ROADMAP simplified, AXIOMS pure, HEURISTICS added
 
 ### Skills
+
 - ✅ **analyst** - Research data analysis (dbt, Streamlit, stats)
 - ✅ **remember** - Knowledge persistence (markdown + memory server sync)
 - ✅ **framework** - Convention reference, categorical imperative enforcement
@@ -41,6 +43,7 @@ tags:
 - ✅ **reference-map** - Extract framework file references → graph (JSON + CSV) for visualization
 
 ### Automations
+
 - ✅ **Email → Tasks** - `/email` extracts action items, creates tasks
 - ✅ **Task visualization** - `/task-viz` generates Excalidraw strategic overview
 - ✅ **Citation management** - zotmcp + Zotero plugins
@@ -55,95 +58,97 @@ tags:
 
 ## User Stories (Requirements)
 
-| Story | Status | Spec |
-|-------|--------|------|
-| Command Discoverability - users can easily find commands/skills to achieve their goals | Implemented | `specs/command-discoverability.md` |
-| Plan Quality Gate - plans must be critiqued before presenting to user | Implemented | `specs/plan-quality-gate.md` |
-| Framework-Aware Operations - agents have accurate architectural knowledge | Requirement | `specs/framework-aware-operations.md` |
-| Multi-Terminal Sync - transparent version control across terminals/machines | Implementing | `specs/multi-terminal-sync.md` (obsidian-git + PostToolUse hook) |
-| Informed Improvement Options - fixes informed by tool docs + external research | In Progress | `specs/informed-improvement-options.md` |
-| Memory Synthesis - specs synthesized after implementation per H23 | Requirement | `specs/` (convention, not file) |
-| Skill Specifications - every skill needs a spec per AXIOMS #29 | Requirement | See gap list below |
-| Session-End Sync - session insights update tasks/sub-tasks and daily.md with cross-links | Requirement | `specs/session-sync-user-story.md` |
+| Story                                                                                    | Status       | Spec                                                             |
+| ---------------------------------------------------------------------------------------- | ------------ | ---------------------------------------------------------------- |
+| Command Discoverability - users can easily find commands/skills to achieve their goals   | Implemented  | `specs/command-discoverability.md`                               |
+| Plan Quality Gate - plans must be critiqued before presenting to user                    | Implemented  | `specs/plan-quality-gate.md`                                     |
+| Framework-Aware Operations - agents have accurate architectural knowledge                | Requirement  | `specs/framework-aware-operations.md`                            |
+| Multi-Terminal Sync - transparent version control across terminals/machines              | Implementing | `specs/multi-terminal-sync.md` (obsidian-git + PostToolUse hook) |
+| Informed Improvement Options - fixes informed by tool docs + external research           | In Progress  | `specs/informed-improvement-options.md`                          |
+| Memory Synthesis - specs synthesized after implementation per H23                        | Requirement  | `specs/` (convention, not file)                                  |
+| Skill Specifications - every skill needs a spec per AXIOMS #29                           | Requirement  | See gap list below                                               |
+| Session-End Sync - session insights update tasks/sub-tasks and daily.md with cross-links | Requirement  | `specs/session-sync-user-story.md`                               |
 
 ### Skills Without Specs (AXIOMS #29 Gap)
 
 Per AXIOMS #29: "ONE SPEC PER FEATURE". Skills need specs to justify existence and document how they fit together.
 
-| Skill | Has Spec? | Priority |
-|-------|-----------|----------|
-| analyst | ❌ | P2 - research support |
-| dashboard | ✅ | `dashboard-skill.md` |
-| excalidraw | ❌ | P3 - utility |
-| extractor | ❌ | P2 - email workflow |
-| feature-dev | ✅ | `feature-dev-skill.md` |
-| framework | ✅ | `framework-skill.md` |
-| framework-debug | ❌ | P2 - debugging |
-| framework-review | ❌ | P2 - review |
-| garden | ❌ | P2 - maintenance |
-| ground-truth | ❌ | P2 - research |
-| learning-log | ✅ | `learning-log-skill.md` |
-| link-audit | ❌ | P3 - maintenance |
-| osb-drafting | ❌ | P2 - domain-specific |
-| pdf | ❌ | P3 - utility |
-| python-dev | ✅ | `python-dev-skill.md` |
-| reference-map | ❌ | P3 - visualization |
-| remember | ✅ | `remember-skill.md` |
-| review-training | ❌ | P3 - training data |
-| session-insights | ✅ | `session-insights-skill.md` |
-| ~~skill-creator~~ | N/A | Replaced by plugin-dev@claude-plugins-official |
-| supervisor | ✅ | `supervisor-skill.md` |
-| tasks | ✅ | `tasks-skill.md` |
-| training-set-builder | ❌ | P3 - training data |
-| transcript | ✅ | `session-transcript-extractor.md` |
+| Skill                | Has Spec? | Priority                                       |
+| -------------------- | --------- | ---------------------------------------------- |
+| analyst              | ❌        | P2 - research support                          |
+| dashboard            | ✅        | `dashboard-skill.md`                           |
+| excalidraw           | ❌        | P3 - utility                                   |
+| extractor            | ❌        | P2 - email workflow                            |
+| feature-dev          | ✅        | `feature-dev-skill.md`                         |
+| framework            | ✅        | `framework-skill.md`                           |
+| framework-debug      | ❌        | P2 - debugging                                 |
+| framework-review     | ❌        | P2 - review                                    |
+| garden               | ❌        | P2 - maintenance                               |
+| ground-truth         | ❌        | P2 - research                                  |
+| learning-log         | ✅        | `learning-log-skill.md`                        |
+| link-audit           | ❌        | P3 - maintenance                               |
+| osb-drafting         | ❌        | P2 - domain-specific                           |
+| pdf                  | ❌        | P3 - utility                                   |
+| python-dev           | ✅        | `python-dev-skill.md`                          |
+| reference-map        | ❌        | P3 - visualization                             |
+| remember             | ✅        | `remember-skill.md`                            |
+| review-training      | ❌        | P3 - training data                             |
+| session-insights     | ✅        | `session-insights-skill.md`                    |
+| ~~skill-creator~~    | N/A       | Replaced by plugin-dev@claude-plugins-official |
+| supervisor           | ✅        | `supervisor-skill.md`                          |
+| tasks                | ✅        | `tasks-skill.md`                               |
+| training-set-builder | ❌        | P3 - training data                             |
+| transcript           | ✅        | `session-transcript-extractor.md`              |
 
 **P1 skills**: All P1 skills now have specs
 **Total without specs**: 14 of 24
 
 ## In Progress
 
-| Item | Status | Next Step |
-|------|--------|-----------|
-| Verification System | P1 | Design decision needed |
-| Self-Curating Framework | P1 | Working through 5 sub-items below |
-| Plan Quality Gate | ✅ Implemented | `agents/planner.md` - memory search + critic review |
-| Claude Code Dev Skills | ✅ Done | Installed plugin-dev@claude-plugins-official |
+| Item                    | Status         | Next Step                                           |
+| ----------------------- | -------------- | --------------------------------------------------- |
+| Verification System     | P1             | Design decision needed                              |
+| Self-Curating Framework | P1             | Working through 5 sub-items below                   |
+| Plan Quality Gate       | ✅ Implemented | `agents/planner.md` - memory search + critic review |
+| Claude Code Dev Skills  | ✅ Done        | Installed plugin-dev@claude-plugins-official        |
 
 ### Enforcement Improvements (from 2025-12-22 transcript analysis)
 
 See `docs/ENFORCEMENT.md` for mechanism ladder. Choose enforcement level based on root cause.
 
-| Fix | Level | Effort | Root Cause |
-|-----|-------|--------|------------|
-| Pre-Edit auto-read hook | 4 | 1h | Mechanical precondition - hook can enforce |
-| ROADMAP injection at SessionStart | 2 | 2h | Missing context, not rule violation |
-| Project CLAUDE.md entry points | 2 | ongoing | Agents explore because they lack execution context |
-| Skill bypass enforcement | 4 | TBD | Rules don't compete with training priors - need hook |
+| Fix                               | Level | Effort  | Root Cause                                           |
+| --------------------------------- | ----- | ------- | ---------------------------------------------------- |
+| Pre-Edit auto-read hook           | 4     | 1h      | Mechanical precondition - hook can enforce           |
+| ROADMAP injection at SessionStart | 2     | 2h      | Missing context, not rule violation                  |
+| Project CLAUDE.md entry points    | 2     | ongoing | Agents explore because they lack execution context   |
+| Skill bypass enforcement          | 4     | TBD     | Rules don't compete with training priors - need hook |
 
 ### Self-Curating Framework
 
 Goal: Framework becomes self-aware enough to curate its own evolution. See VISION.md "Self-Curating Framework" section.
 
-| # | Item | Goal | Status |
-|---|------|------|--------|
-| 1 | Agent-ready instructions | Strip AXIOMS.md, HEURISTICS.md to bare rules; evidence lives in learning/ | Baseline (current format, manual observation) |
-| 2 | Framework introspection | Framework skill loads full structure, enforces consistency before accepting changes | Implemented (v4.1.0) |
-| 3 | Log consolidation | Extract patterns from LOG.md → create targeted diagnostic files → inform experiments | Designed (learning-log skill) |
-| 4 | Bounded log growth | LOG.md as inbox; archive after consolidation | Designed (LOG-ARCHIVE.md) |
-| 5 | Better log entry format | Category + descriptive slug instead of session ID | Implemented (learning-log skill) |
-| 6 | Session-end reflection | Auto-analyze session, map to heuristics, present approve/dismiss. Extends session-insights. | Planned (spec: `plans/splendid-plotting-muffin.md`) |
+| # | Item                     | Goal                                                                                        | Status                                              |
+| - | ------------------------ | ------------------------------------------------------------------------------------------- | --------------------------------------------------- |
+| 1 | Agent-ready instructions | Strip AXIOMS.md, HEURISTICS.md to bare rules; evidence lives in learning/                   | Baseline (current format, manual observation)       |
+| 2 | Framework introspection  | Framework skill loads full structure, enforces consistency before accepting changes         | Implemented (v4.1.0)                                |
+| 3 | Log consolidation        | Extract patterns from LOG.md → create targeted diagnostic files → inform experiments        | Designed (learning-log skill)                       |
+| 4 | Bounded log growth       | LOG.md as inbox; archive after consolidation                                                | Designed (LOG-ARCHIVE.md)                           |
+| 5 | Better log entry format  | Category + descriptive slug instead of session ID                                           | Implemented (learning-log skill)                    |
+| 6 | Session-end reflection   | Auto-analyze session, map to heuristics, present approve/dismiss. Extends session-insights. | Planned (spec: `plans/splendid-plotting-muffin.md`) |
 
 ### Claude Code Dev Skills Integration ✅
 
 Installed Anthropic's official `plugin-dev` plugin from `claude-plugins-official` marketplace.
 
 **What was done** (2025-12-26):
+
 1. Empirically tested skill discovery: nested directories NOT discovered, flat required
 2. Installed `plugin-dev@claude-plugins-official` via settings.json
 3. Updated prompt routing to guide agents to use plugin-dev skills
 4. Added task classification patterns for CC component development
 
 **Available skills** (invoke as `plugin-dev:<skill-name>`):
+
 - `hook-development` - hook events, validation, security patterns
 - `mcp-integration` - MCP server configuration, tool usage
 - `plugin-structure` - plugin manifests, directory layout
@@ -154,6 +159,7 @@ Installed Anthropic's official `plugin-dev` plugin from `claude-plugins-official
 **Also includes**: 3 agents (agent-creator, plugin-validator, skill-reviewer), 1 command (create-plugin)
 
 **Verification System** (meta-spec: `specs/verification-enforcement-gates.md`):
+
 - [ ] Layer 1: Prompt enhancement - add examples to AXIOMS.md
 - [ ] Layer 2: TodoWrite convention - document in framework skill
 - [ ] Layer 3: Detection hook - `specs/2025-12-02-conclusion-verification-hook.md` (draft)
@@ -193,30 +199,29 @@ Show progress/status directly in terminal. Lightweight UX for seeing what's happ
 Hypervisor currently uses generic planning. Domain-specific planning skills would create specialized TodoWrite with domain-appropriate checkpoints.
 
 **Gap**: Planning skills for specific domains:
+
 1. `framework` planning - includes introspection, critic review, INDEX updates
 2. `python-dev` planning - includes TDD cycle, type checking, test verification
 3. `feature-dev` planning - includes acceptance criteria, e2e testing
 
 **Current workaround**: Hypervisor uses generic planning; domain-specific requirements manually added to prompts or via existing skills.
 
----
-
 ### Framework Observability (spec needed)
 
-| Item | Purpose |
-|------|---------|
+| Item                       | Purpose                                                                |
+| -------------------------- | ---------------------------------------------------------------------- |
 | LOG.md pattern aggregation | Count/categorize recurring failures to identify enforcement priorities |
-| Enforcement metrics | Track hook fires, successful redirects, ignored interventions |
+| Enforcement metrics        | Track hook fires, successful redirects, ignored interventions          |
 
 TODO: Develop full spec for framework observability tooling.
 
 ### Specs complete, not yet implemented:
 
-| Item | Spec Location | Priority |
-|------|---------------|----------|
-| Dashboard: Balanced task view | - | P2 |
-| Tasks MCP Server | `specs/task-management-rebuild.md` | P3 (current approach works) |
-| Terminal UX | `specs/Terminal UX Spec.md` | P3 |
+| Item                          | Spec Location                      | Priority                    |
+| ----------------------------- | ---------------------------------- | --------------------------- |
+| Dashboard: Balanced task view | -                                  | P2                          |
+| Tasks MCP Server              | `specs/task-management-rebuild.md` | P3 (current approach works) |
+| Terminal UX                   | `specs/Terminal UX Spec.md`        | P3                          |
 
 ### Dashboard: Balanced Task View
 
@@ -240,15 +245,15 @@ Mix strategic/important tasks (P0/P1 papers, major projects) with urgent/deadlin
 
 ### Active Bugs
 
-| Bug | Priority | Task |
-|-----|----------|------|
-| Transcript missing error codes | P2 | (planned: transcript error handling) |
-| Duplicate agent conversation in transcripts | P2 | (same task) |
+| Bug                                         | Priority | Task                                 |
+| ------------------------------------------- | -------- | ------------------------------------ |
+| Transcript missing error codes              | P2       | (planned: transcript error handling) |
+| Duplicate agent conversation in transcripts | P2       | (same task)                          |
 
 ### Recently Fixed
 
-| Bug | Fix | Date |
-|-----|-----|------|
+| Bug                                  | Fix                                                                       | Date       |
+| ------------------------------------ | ------------------------------------------------------------------------- | ---------- |
 | Intent-router can't read cache files | Removed `tools:` restriction - Claude Code bug with restricted tool lists | 2025-12-25 |
 
 ### Open Design Questions
@@ -262,6 +267,7 @@ Mix strategic/important tasks (P0/P1 papers, major projects) with urgent/deadlin
 ### Failure Patterns
 
 See `learning/` for detailed patterns. Key failure modes:
+
 - `learning/instruction-ignore.md` - Agents ignoring explicit instructions
 - `learning/verification-skip.md` - Agents claiming success without verification
 - `learning/validation-bypass.md` - Git/validation rule violations

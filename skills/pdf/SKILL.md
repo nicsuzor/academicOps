@@ -21,6 +21,7 @@ The skill automatically detects document type based on content structure.
 ## When to Use This Skill
 
 Use this skill when:
+
 - User requests converting a markdown file to PDF
 - User asks to create a "nice looking PDF" or "professional PDF"
 - User mentions wanting academic-style or professional formatting
@@ -39,18 +40,21 @@ uv run python scripts/generate_pdf.py <input.md> [output.pdf] [--title "Document
 **Examples:**
 
 Academic document (auto-detected or explicit):
+
 ```bash
 uv run python scripts/generate_pdf.py reviews/chapter7.md --title "Chapter 7: Moderating Misogyny"
 uv run python scripts/generate_pdf.py paper.md --type academic
 ```
 
 Letter (auto-detected or explicit):
+
 ```bash
 uv run python scripts/generate_pdf.py reference-letter.md
 uv run python scripts/generate_pdf.py letter.md --type letter
 ```
 
 The script automatically detects document type:
+
 - **Letter**: No h1 heading OR contains "Dear", "Re:", "Sincerely", "Best," in first 10 lines
 - **Academic**: Has h1 heading and formal document structure
 
@@ -61,6 +65,7 @@ You can override auto-detection with `--type letter` or `--type academic`.
 ### Font Stack
 
 The skill bundles professional Roboto fonts:
+
 - **Body text and headings**: Roboto (Regular, Bold, Italic, Light, Medium)
 - **Code blocks**: RobotoMono Nerd Font
 
@@ -73,23 +78,27 @@ Two stylesheets are available:
 #### Academic Style (`assets/academic-style.css`)
 
 **Page Layout:**
+
 - A4 page size
 - 2.5cm top/bottom margins, 2cm left/right margins
 - Justified text with proper hyphenation
 - Orphan/widow control
 
 **Typography:**
+
 - 11pt body text with 1.6 line height
 - Hierarchical heading sizes (24pt → 11pt)
 - Heading borders for h1 and h2
 - Page break control (avoid breaking after headings)
 
 **Code Formatting:**
+
 - 9pt monospaced code in RobotoMono Nerd Font
 - Syntax-highlighted code blocks with left border
 - Shaded background for readability
 
 **Special Elements:**
+
 - Blockquotes with left border and italic styling
 - Professional table formatting with alternating row colors
 - Callout boxes (.note, .warning, .tip, .important)
@@ -99,10 +108,12 @@ Two stylesheets are available:
 #### Letter Style (`assets/letter-style.css`)
 
 **Page Layout:**
+
 - A4 page size with same margins as academic
 - Justified body text with proper hyphenation
 
 **Typography:**
+
 - **Hidden h1 headers** - letters shouldn't show document titles
 - **Condensed header block** - Date, recipient name, title with reduced spacing (0.2em)
 - **Body paragraphs** - 11pt with 1.5 line height, justified
@@ -112,24 +123,25 @@ Two stylesheets are available:
   - Name, title, contact info in smaller font (10pt, gray)
 
 **Letter Structure Assumptions:**
+
 ```markdown
-[Date]                    ← Paragraph 1: reduced spacing, gray
-[Recipient Name]          ← Paragraph 2: reduced spacing
-[Recipient Title]         ← Paragraph 3: reduced spacing
-[Organization]            ← Paragraph 4: reduced spacing
+[Date] ← Paragraph 1: reduced spacing, gray
+[Recipient Name] ← Paragraph 2: reduced spacing
+[Recipient Title] ← Paragraph 3: reduced spacing
+[Organization] ← Paragraph 4: reduced spacing
 
-Dear [Name],             ← Paragraph 5: margin top
+Dear [Name], ← Paragraph 5: margin top
 
-**Re: [Subject]**        ← Bold subject line
+**Re: [Subject]** ← Bold subject line
 
-[Body paragraphs...]     ← Justified, 1.5 line height
+[Body paragraphs...] ← Justified, 1.5 line height
 
-Yours sincerely,         ← Closing
+Yours sincerely, ← Closing
 
 <img src="/path/to/signature.png" style="height: 50px;" />
 
-[Your Name]              ← smaller, gray
-[Your Title]             ← smaller, gray
+[Your Name] ← smaller, gray
+[Your Title] ← smaller, gray
 [Your Email]
 ```
 
@@ -177,6 +189,7 @@ To override or extend the default styling:
 ## Requirements
 
 The skill requires:
+
 - **pandoc**: Markdown processor (usually pre-installed)
 - **weasyprint**: PDF rendering engine
   ```bash
@@ -184,6 +197,7 @@ The skill requires:
   ```
 
 Check if requirements are met:
+
 ```bash
 pandoc --version
 weasyprint --version
@@ -207,11 +221,13 @@ When a user requests PDF generation:
 ## Common Patterns
 
 ### Standard Academic Document
+
 ```bash
 uv run python scripts/generate_pdf.py thesis-chapter.md --title "Chapter 3: Methodology"
 ```
 
 ### Reference Letter or Formal Letter
+
 ```bash
 # Auto-detection will use letter style
 uv run python scripts/generate_pdf.py reference-letter.md
@@ -221,6 +237,7 @@ uv run python scripts/generate_pdf.py letter.md --type letter
 ```
 
 ### Multiple Documents
+
 ```bash
 for file in reviews/lucinda/*.md; do
   uv run python scripts/generate_pdf.py "$file"
@@ -228,6 +245,7 @@ done
 ```
 
 ### Override Auto-Detection
+
 ```bash
 # Force academic style even if it looks like a letter
 uv run python scripts/generate_pdf.py document.md --type academic
@@ -237,6 +255,7 @@ uv run python scripts/generate_pdf.py document.md --type letter
 ```
 
 ### Custom Title Override
+
 ```bash
 uv run python scripts/generate_pdf.py document.md output.pdf --title "Professional Title"
 ```
@@ -244,21 +263,25 @@ uv run python scripts/generate_pdf.py document.md output.pdf --title "Profession
 ## Troubleshooting
 
 **Fonts not rendering:**
+
 - Fonts are bundled in `assets/fonts/` and referenced in CSS
 - Weasyprint automatically loads fonts from CSS `@font-face` rules
 - No system font installation required
 
 **Weasyprint not found:**
+
 ```bash
 uv tool install weasyprint
 ```
 
 **CSS warnings:**
+
 - Weasyprint may show warnings about unsupported CSS properties
 - These are usually safe to ignore (e.g., `overflow-x`, `gap`)
 - The PDF will still render correctly
 
 **Pandoc not found:**
+
 ```bash
 # Ubuntu/Debian
 sudo apt install pandoc
@@ -270,7 +293,9 @@ brew install pandoc
 ## Resources
 
 ### assets/academic-style.css
+
 Professional stylesheet for research documents with:
+
 - Complete `@font-face` declarations for bundled fonts
 - Academic typography optimized for readability
 - Responsive heading hierarchy with visible h1
@@ -280,7 +305,9 @@ Professional stylesheet for research documents with:
 - Print-specific optimizations
 
 ### assets/letter-style.css
+
 Professional stylesheet for formal correspondence with:
+
 - Same font declarations as academic style
 - **Hidden h1 headers** (letters shouldn't show document titles)
 - **Condensed header spacing** for recipient info
@@ -289,13 +316,17 @@ Professional stylesheet for formal correspondence with:
 - Assumes specific letter structure (see Letter Style section)
 
 ### assets/fonts/
+
 Embedded Roboto font family:
+
 - `Roboto-Regular.ttf`, `Roboto-Bold.ttf`, `Roboto-Italic.ttf`, `Roboto-BoldItalic.ttf`
 - `Roboto-Light.ttf`, `Roboto-Medium.ttf`
 - `RobotoMonoNerdFont-Regular.ttf`, `RobotoMonoNerdFont-Bold.ttf`, `RobotoMonoNerdFont-Italic.ttf`
 
 ### scripts/generate_pdf.py
+
 Python script that wraps pandoc with intelligent defaults:
+
 - **Auto-detects document type** (letter vs academic) from content
 - Automatically applies appropriate stylesheet
 - Derives title from filename if not specified

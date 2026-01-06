@@ -48,6 +48,7 @@ graph TD
 **What manual work are we automating?**
 
 Understanding what happened in a Claude Code session currently requires:
+
 1. Finding the right JSONL files in `~/.claude/projects/`
 2. Correlating main thread with agent subprocess logs
 3. Parsing raw JSON to extract meaningful conversation flow
@@ -146,14 +147,17 @@ session-transcript --repo /home/nic/src/academicOps 3aa3c
 I'll invoke the framework skill to analyze this conversation...
 
 **Tool: mcp__bmem__search_notes**
+
 - Query: "framework pain points skill activation"
 - Result: 0 results
 
 **Tool: mcp__bmem__build_context**
+
 - URL: memory://projects/aops/*
 - Result: 7 results
 
 **Tool: Read**
+
 - File: /home/nic/writing/data/projects/aops/STATE.md
 - Result: 192 lines read
 
@@ -167,14 +171,17 @@ I'll invoke the framework skill to analyze this conversation...
 ### Subagent: Explore (agent-abc123)
 
 #### Subagent Tool: Glob
+
 - Pattern: **/*.md
 - Result: 45 files
 
 #### Subagent Tool: Read
+
 - File: ~/.claude/settings.json
 - Result: 23 lines
 
 #### Subagent Return:
+
 Found 3 hook configuration files...
 
 ---
@@ -201,6 +208,7 @@ Based on the subagent findings, I can see that...
 **Location**: `~/.claude/projects/{repo-path-encoded}/{session-id}.jsonl`
 
 **Key fields to extract**:
+
 - `type`: "user", "assistant", "tool", etc.
 - `message.content`: The actual content
 - `timestamp`: When it happened
@@ -213,6 +221,7 @@ Based on the subagent findings, I can see that...
 **Correlation**: Agent logs reference session via embedded metadata; timestamps help correlate spawn points.
 
 **Key fields**:
+
 - Same structure as main session
 - Agent-specific metadata (type, prompt, parent session)
 
@@ -291,10 +300,12 @@ print("All validations passed")
 ### Error Handling
 
 **Fail-fast**:
+
 - Session ID not found → Error with list of recent sessions
 - Log file unreadable → Error with permissions info
 
 **Graceful degradation**:
+
 - Malformed JSONL lines → Skip, note in summary
 - Missing agent logs → Show "[agent log not found]" placeholder
 - Truncated session → Process what exists, note incompleteness

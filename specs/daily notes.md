@@ -4,17 +4,15 @@ title: Daily Notes
 category: spec
 ---
 
-
----
 title: Daily Notes
 type: spec
 status: draft
 permalink: daily-notes
 tags:
+
 - spec
 - productivity
 - daily-workflow
----
 
 # Daily Notes
 
@@ -41,19 +39,24 @@ Provides Nic with a single place to view priority tasks, progress, make notes, e
 
 ```markdown
 ## Focus (user-set)
+
 - Priority items and key context for today
 
 ## Today's story
+
 - Synthesised insights from work completed today
 
 ## project-name
+
 - [x] Completed task (accomplishment)
 - [ ] Pending task
 
 ## another-project
+
 - [x] Another accomplishment
 
 ## Session Log
+
 | Session | Started | Hostname | Project | Activity |
 ...
 ```
@@ -62,8 +65,8 @@ Key structure: Focus section at top (user-set), accomplishments under project he
 
 ## Implementation Status
 
-| Component | Status | Notes |
-|-----------|--------|-------|
-| Format definition | Defined | See format above |
-| Auto-generation | Partial | Via session-insights |
-| Dashboard integration | Implemented | [[dashboard-skill]] |
+| Component             | Status      | Notes                |
+| --------------------- | ----------- | -------------------- |
+| Format definition     | Defined     | See format above     |
+| Auto-generation       | Partial     | Via session-insights |
+| Dashboard integration | Implemented | [[dashboard-skill]]  |

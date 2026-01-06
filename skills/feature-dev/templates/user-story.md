@@ -82,8 +82,6 @@ tags: [template, feature-dev, requirements, user-story]
 
 [Additional context, research findings, related work]
 
----
-
 **References**:
 
 - [[ACCOMMODATIONS.md]] - Work style requirements

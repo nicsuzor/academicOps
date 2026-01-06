@@ -45,6 +45,7 @@ Support academic research data analysis with dbt and Streamlit, enforcing reprod
 ## Problem Statement
 
 Data analysis risks:
+
 - Transformations hidden in Streamlit (not reproducible)
 - Direct queries to upstream sources (bypassing validation)
 - Ad-hoc one-liners instead of reusable investigation scripts
@@ -69,14 +70,15 @@ Invoke when working with dbt pipelines, Streamlit dashboards, or research data a
 
 **1. Transformation Boundary Rule (CRITICAL)**
 
-| Layer | Allowed | Prohibited |
-|-------|---------|------------|
-| dbt | ALL SQL transformations | - |
+| Layer     | Allowed                                         | Prohibited                          |
+| --------- | ----------------------------------------------- | ----------------------------------- |
+| dbt       | ALL SQL transformations                         | -                                   |
 | Streamlit | Display, formatting, filtering existing columns | Aggregations, joins, business logic |
 
 **2. Context Discovery (Mandatory First Step)**
 
 Before any work:
+
 - Read README.md files (current + parents)
 - Read data/README.md
 - List existing dbt models
@@ -85,6 +87,7 @@ Before any work:
 **3. Collaborative Workflow**
 
 One action at a time:
+
 1. Perform ONE action (chart, model, test)
 2. Show results
 3. STOP and wait for feedback
@@ -104,6 +107,7 @@ df = client.query("SELECT * FROM bigquery.raw.cases").to_dataframe()
 ### Documentation
 
 Skill includes extensive reference material:
+
 - Instructions: dbt-workflow, streamlit-workflow, research-documentation
 - References: Statistical analysis guides, visualization libraries
 - Scripts: assumption_checks.py for statistical validation
@@ -111,12 +115,14 @@ Skill includes extensive reference material:
 ## Relationships
 
 ### Depends On
+
 - dbt for data transformation
 - DuckDB/PostgreSQL for storage
 - Streamlit for visualization
 - [[python-dev]] for code quality
 
 ### Used By
+
 - Research projects with dbt/ directory
 - Empirical data analysis workflows
 - Dashboard creation

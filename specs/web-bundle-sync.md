@@ -53,6 +53,7 @@ Claude Code Web and similar limited environments cannot access `~/.claude/` or e
 The `sync_web_bundle.py` script copies (or symlinks for self) framework content into a project's `.claude/` directory. This bundle is committed to the repo, making aOps available when the project is opened on Claude Code Web.
 
 **Key behaviors:**
+
 - **Other projects**: Copies files, generates `CLAUDE.md` with skills table, uses `settings-web.json` (no hooks)
 - **academicOps itself**: Creates symlinks to parent directories, uses full settings
 - **Version tracking**: Writes aOps commit SHA to `.aops-version`
@@ -75,22 +76,22 @@ python scripts/sync_web_bundle.py --self
 
 ## Sync Strategies
 
-| Strategy | Trigger | Use Case | Template |
-|----------|---------|----------|----------|
-| **Git Hook** | Every commit | Local dev, single machine | Auto-installed |
-| **Push Workflow** | Push to main | Teams, CI integration | `github-workflow-sync-aops.yml` |
-| **Nightly Workflow** | 3am UTC daily | Minimal overhead | `github-workflow-sync-aops-nightly.yml` |
+| Strategy             | Trigger       | Use Case                  | Template                                |
+| -------------------- | ------------- | ------------------------- | --------------------------------------- |
+| **Git Hook**         | Every commit  | Local dev, single machine | Auto-installed                          |
+| **Push Workflow**    | Push to main  | Teams, CI integration     | `github-workflow-sync-aops.yml`         |
+| **Nightly Workflow** | 3am UTC daily | Minimal overhead          | `github-workflow-sync-aops-nightly.yml` |
 
 ## Files
 
-| File | Purpose |
-|------|---------|
-| `scripts/sync_web_bundle.py` | Main sync script |
-| `config/claude/settings-web.json` | Hook-free settings for bundles |
-| `hooks/git-post-commit-sync-aops` | Git hook for auto-sync |
-| `templates/github-workflow-sync-aops.yml` | Push-triggered CI workflow |
-| `templates/github-workflow-sync-aops-nightly.yml` | Scheduled nightly workflow |
-| `docs/WEB-BUNDLE.md` | Full tutorial documentation |
+| File                                              | Purpose                        |
+| ------------------------------------------------- | ------------------------------ |
+| `scripts/sync_web_bundle.py`                      | Main sync script               |
+| `config/claude/settings-web.json`                 | Hook-free settings for bundles |
+| `hooks/git-post-commit-sync-aops`                 | Git hook for auto-sync         |
+| `templates/github-workflow-sync-aops.yml`         | Push-triggered CI workflow     |
+| `templates/github-workflow-sync-aops-nightly.yml` | Scheduled nightly workflow     |
+| `docs/WEB-BUNDLE.md`                              | Full tutorial documentation    |
 
 ## Acceptance Criteria
 

@@ -12,8 +12,6 @@ description: Complete guide to Hydra configuration framework and patterns
 
 Complete reference for Hydra configuration in academicOps projects. Covers principles, patterns, testing, and solutions to common errors.
 
----
-
 ## Table of Contents
 
 2. [Quick Start](#quick-start)
@@ -25,8 +23,6 @@ Complete reference for Hydra configuration in academicOps projects. Covers princ
 8. [Common Errors & Solutions](#common-errors--solutions)
 9. [Debugging Tools](#debugging-tools)
 10. [Best Practices](#best-practices)
-
----
 
 ## Quick Start
 
@@ -77,8 +73,6 @@ uv run python main.py db.host=prod-db.example.com app.workers=8
 uv run python main.py db=sqlite  # Switch to conf/db/sqlite.yaml
 ```
 
----
-
 ## Directory Structure
 
 ### Recommended Layout
@@ -107,8 +101,6 @@ conf/
 - **Groups = Nouns** (db, cache, env, dataset) not verbs
 - **Options = Descriptive** (postgres, redis, prod)
 - **One responsibility per file** - avoid mega-configs
-
----
 
 ## Composition & Defaults List
 
@@ -259,8 +251,6 @@ defaults:
 #   port: 5433
 ```
 
----
-
 ## Testing with Hydra
 
 ### Test Setup Pattern
@@ -358,8 +348,6 @@ def test_prod_config_matches_golden():
         assert not resolved["debug"]
 ```
 
----
-
 ## Interpolation Patterns
 
 ### Basic Interpolation
@@ -425,8 +413,6 @@ secret: ${oc.decode:base64,SGVsbG8=}
 # Conditional (ternary)
 log_level: ${oc.select:debug,DEBUG,INFO}
 ```
-
----
 
 ## Secrets & Environment Variables
 
@@ -497,8 +483,6 @@ port: 5432
 user: ${oc.env:DB_USER,?}
 password: ${oc.env:DB_PASSWORD,?}
 ```
-
----
 
 ## Common Errors & Solutions
 
@@ -598,8 +582,6 @@ uv run python main.py new_key=value
 uv run python main.py +new_key=value
 ```
 
----
-
 ## Debugging Tools
 
 ### Command-Line Inspection
@@ -668,8 +650,6 @@ def run(cfg: DictConfig):
     if OmegaConf.select(cfg, "optional.path") is None:
         print("optional.path not set")
 ```
-
----
 
 ## Best Practices
 
@@ -804,8 +784,6 @@ multirun/
 
 But keep `conf/` in version control.
 
----
-
 ## Quick Reference Card
 
 ### Defaults List Syntax
@@ -850,8 +828,6 @@ uv run python main.py -m key=v1,v2,v3        # Multi-run sweep
 | `_group_`  | Use group path as package              |
 | `override` | Replace existing group selection       |
 | `optional` | Don't error if config missing          |
-
----
 
 ## Practical Patterns
 
@@ -955,5 +931,3 @@ def run(cfg: Config):  # Type-checked!
 - Type checking in IDE
 - Automatic validation
 - Fails fast on typos (`cfg.db.hozt` → error)
-
----

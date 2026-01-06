@@ -22,7 +22,7 @@ created: 2025-12-30
 
 Detect when agents act **ultra vires** - beyond the authority granted by the user's request.
 
-The name draws from public law: "ultra vires" (beyond powers) describes acts outside granted authority. The watchdog is the *custodiet* - the guardian that watches.
+The name draws from public law: "ultra vires" (beyond powers) describes acts outside granted authority. The watchdog is the _custodiet_ - the guardian that watches.
 
 **Scope**: This spec covers **semantic authority enforcement** - understanding whether an agent's actions align with the user's intent. Pattern-based mechanical violations (`--no-verify`, backup files, destructive git) are handled by PreToolUse hooks (`policy_enforcer.py`) and are NOT part of custodiet.
 
@@ -33,12 +33,14 @@ The name draws from public law: "ultra vires" (beyond powers) describes acts out
 **Pattern**: Agent encounters obstacle -> immediately tries to fix it without authorization.
 
 **Characteristics**:
+
 - Most common failure mode
 - Happens in real-time, no planning/todos
 - Agent "just trying to be helpful"
 - Unplanned investigation of infrastructure
 
 **Example**:
+
 ```
 User: "try again with outlook?"
 
@@ -58,11 +60,13 @@ The user asked to "try again" - not to investigate config files, diagnose the pr
 **Pattern**: Agent consciously expands plan to include work beyond request.
 
 **Characteristics**:
+
 - Less common but more subtle
 - Happens at planning stage (TodoWrite)
 - Agent decides additional work is "needed" or "would be helpful"
 
 **Example**:
+
 ```
 User: "fix the login bug"
 
@@ -79,6 +83,7 @@ Agent creates todos:
 **What manual work are we automating?**
 
 User must constantly monitor agent behavior for drift:
+
 - Agent asked to "try again" starts debugging infrastructure (Type A)
 - Agent asked to "fix the bug" starts refactoring surrounding code (Type B)
 - Agent makes architectural decisions without consulting user
@@ -97,18 +102,31 @@ Nic - ensures agents stay within granted authority, enforces [[AXIOMS]] #4 (Do O
 
 ## Architecture
 
+See [[specs/gate-agent-architecture]] for the unified gate system design. Custodiet is a **post-action gate** that enforces compliance after tool execution.
+
+### Session State Integration
+
+Custodiet reads and updates the unified session state file (`/tmp/claude-session/state-{hash}.json`):
+
+| Operation  | Fields                                                                 |
+| ---------- | ---------------------------------------------------------------------- |
+| **Reads**  | `declared_workflow`, `active_skill`, `intent_envelope` (from hydrator) |
+| **Writes** | `last_compliance_ts`, `tool_calls_since_compliance` (reset on check)   |
+
+The `intent_envelope` from hydration provides the authority baseline for drift detection.
+
 ### Authority Envelope Model
 
 At session start (or when user makes a request), extract:
 
-| Component | Description | Example |
-|-----------|-------------|---------|
-| **Explicit scope** | What user directly asked for | "fix the login bug" |
-| **Implied scope** | Reasonable necessities | reading login code, running tests |
-| **Specified methods** | How user said to do it | "use the existing auth library" |
-| **Constraints** | What user said NOT to do | "don't touch the database schema" |
+| Component             | Description                  | Example                           |
+| --------------------- | ---------------------------- | --------------------------------- |
+| **Explicit scope**    | What user directly asked for | "fix the login bug"               |
+| **Implied scope**     | Reasonable necessities       | reading login code, running tests |
+| **Specified methods** | How user said to do it       | "use the existing auth library"   |
+| **Constraints**       | What user said NOT to do     | "don't touch the database schema" |
 
-The envelope defines **authorized territory**. Actions outside it are *ultra vires*.
+The envelope defines **authorized territory**. Actions outside it are _ultra vires_.
 
 ### Detection Method: Semantic Analysis
 
@@ -116,36 +134,36 @@ Per [[HEURISTICS#H31]] (No LLM Calls in Hooks), hooks cannot call LLMs directly.
 
 **What the subagent checks**:
 
-| Category | Signal | Example |
-|----------|--------|---------|
-| Axiom violations | #7 Fail-Fast | Working around errors instead of halting |
-| Axiom violations | #17 Verify First | Claims without checking actual state |
-| Axiom violations | #22 Acceptance Criteria | Modifying what "done" means |
-| Heuristic violations | H3 Verification | Claims without preceding Read/Bash |
+| Category             | Signal                   | Example                                     |
+| -------------------- | ------------------------ | ------------------------------------------- |
+| Axiom violations     | #7 Fail-Fast             | Working around errors instead of halting    |
+| Axiom violations     | #17 Verify First         | Claims without checking actual state        |
+| Axiom violations     | #22 Acceptance Criteria  | Modifying what "done" means                 |
+| Heuristic violations | H3 Verification          | Claims without preceding Read/Bash          |
 | Heuristic violations | H4 Explicit Instructions | Interpreting instead of following literally |
-| Heuristic violations | H19 Questions | Implementing when user asked a question |
-| Drift patterns | Plan deviation | TodoWrite shows X, agent doing Y |
-| Drift patterns | Scope creep | Work user didn't request |
+| Heuristic violations | H19 Questions            | Implementing when user asked a question     |
+| Drift patterns       | Plan deviation           | TodoWrite shows X, agent doing Y            |
+| Drift patterns       | Scope creep              | Work user didn't request                    |
 
 ### Invocation Points
 
-| Hook | Trigger | Mode | Purpose |
-|------|---------|------|---------|
-| **PostToolUse** | Tool returns error | Background | Watch for Type A (reactive helpfulness) |
-| **PostToolUse** | Every ~7 tool calls | Background | Periodic compliance check |
-| **PreToolUse:TodoWrite** | Todo list changes | Blocking | Catch Type B (scope expansion) |
-| **SubagentStop** | Subagent completes | Background | Audit delegated work |
+| Hook                     | Trigger             | Mode       | Purpose                                 |
+| ------------------------ | ------------------- | ---------- | --------------------------------------- |
+| **PostToolUse**          | Tool returns error  | Background | Watch for Type A (reactive helpfulness) |
+| **PostToolUse**          | Every ~7 tool calls | Background | Periodic compliance check               |
+| **PreToolUse:TodoWrite** | Todo list changes   | Blocking   | Catch Type B (scope expansion)          |
+| **SubagentStop**         | Subagent completes  | Background | Audit delegated work                    |
 
 ### Enforcement Levels
 
 Per existing framework graduated enforcement:
 
-| Level | Action | When |
-|-------|--------|------|
-| 1. Log | Record observation | Minor drift, first occurrence |
-| 2. Warn | Inject warning to agent | Clear drift from scope |
-| 3. Checkpoint | Block until user confirms | Significant scope change |
-| 4. Block | Halt execution | Obvious ultra vires action |
+| Level         | Action                    | When                          |
+| ------------- | ------------------------- | ----------------------------- |
+| 1. Log        | Record observation        | Minor drift, first occurrence |
+| 2. Warn       | Inject warning to agent   | Clear drift from scope        |
+| 3. Checkpoint | Block until user confirms | Significant scope change      |
+| 4. Block      | Halt execution            | Obvious ultra vires action    |
 
 **Default**: Level 2 (Warn) - loud and forceful intervention on drift.
 
@@ -155,6 +173,7 @@ Per existing framework graduated enforcement:
 
 ```markdown
 ## Compliance Check: OK
+
 No issues detected. Continue current work.
 ```
 
@@ -170,12 +189,12 @@ No issues detected. Continue current work.
 
 ## Relationship to Other Components
 
-| Component | Purpose | Relationship |
-|-----------|---------|--------------|
-| [[policy_enforcer.py]] | Blocks mechanical violations | Complementary - handles pattern matching |
-| [[specs/prompt-hydration]] | Enriches prompts with context | Upstream - surfaces relevant skills |
-| [[/qa]] | Verifies "does it work" | Orthogonal - verifies outcomes not authority |
-| [[RULES.md]] | Documents all enforcement | Registry - custodiet entries there |
+| Component                  | Purpose                       | Relationship                                 |
+| -------------------------- | ----------------------------- | -------------------------------------------- |
+| [[policy_enforcer.py]]     | Blocks mechanical violations  | Complementary - handles pattern matching     |
+| [[specs/prompt-hydration]] | Enriches prompts with context | Upstream - surfaces relevant skills          |
+| [[/qa]]                    | Verifies "does it work"       | Orthogonal - verifies outcomes not authority |
+| [[RULES.md]]               | Documents all enforcement     | Registry - custodiet entries there           |
 
 ## Implementation
 
@@ -184,16 +203,37 @@ No issues detected. Continue current work.
 - `hooks/custodiet.py` - PostToolUse hook, triggers every N tool calls
 - `hooks/data/reminders.txt` - Soft-tissue file with editable reminder lines
 - `agents/custodiet.md` - Haiku agent that reads transcript
-- `hooks/templates/custodiet-*.md` - Context and instruction templates
+- `hooks/templates/custodiet-context.j2` - Jinja2 context template (conditional axiom/heuristic injection)
+- `hooks/templates/custodiet-instruction.md` - Short instruction template
+
+### Template Migration (Jinja2)
+
+The context template migrates to Jinja2 for conditional axiom/heuristic injection:
+
+```jinja2
+{% if task_domain == 'framework' %}
+## Relevant Axioms
+- #1 Categorical Imperative
+- #14 Skills Are Read-Only
+{% endif %}
+
+{% if approach == 'tdd' %}
+## Relevant Heuristics
+- H28 Mandatory Acceptance Testing
+- H33 Real Data Fixtures
+{% endif %}
+```
+
+This reduces token waste from embedding all 29 axioms + 38 heuristics on every check.
 
 ### Hook Output Formats
 
 **Critical**: PostToolUse hooks have two output modes with different behavior:
 
-| Format | Behavior | Use Case |
-|--------|----------|----------|
-| `{"decision": "block", "reason": "..."}` | **Active** - forces agent to address | Full custodiet check |
-| `{"hookSpecificOutput": {"additionalContext": "..."}}` | **Passive** - agent may ignore | Light reminders |
+| Format                                                 | Behavior                             | Use Case             |
+| ------------------------------------------------------ | ------------------------------------ | -------------------- |
+| `{"decision": "block", "reason": "..."}`               | **Active** - forces agent to address | Full custodiet check |
+| `{"hookSpecificOutput": {"additionalContext": "..."}}` | **Passive** - agent may ignore       | Light reminders      |
 
 The custodiet hook uses `decision: "block"` at threshold to ensure the agent spawns the compliance subagent.
 
@@ -201,13 +241,14 @@ The custodiet hook uses `decision: "block"` at threshold to ensure the agent spa
 
 Between threshold checks, the hook randomly injects soft reminders:
 
-| Parameter | Value | Location |
-|-----------|-------|----------|
-| `TOOL_CALL_THRESHOLD` | 7 | `custodiet.py` |
-| `REMINDER_PROBABILITY` | 0.3 (30%) | `custodiet.py` |
-| Reminder lines | Editable | `hooks/data/reminders.txt` |
+| Parameter              | Value     | Location                   |
+| ---------------------- | --------- | -------------------------- |
+| `TOOL_CALL_THRESHOLD`  | 7         | `custodiet.py`             |
+| `REMINDER_PROBABILITY` | 0.3 (30%) | `custodiet.py`             |
+| Reminder lines         | Editable  | `hooks/data/reminders.txt` |
 
 **Behavior**:
+
 - Tool calls 1 to (N-1): Random reminder with 30% probability (passive)
 - Tool call N (threshold): Full custodiet check (blocking)
 

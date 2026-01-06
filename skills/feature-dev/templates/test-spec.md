@@ -72,15 +72,11 @@ tags: [template, feature-dev, testing, qa]
 
 **Expected result**: [What should happen] **Success criteria validated**: [Which criteria this case verifies]
 
----
-
 #### Test Case 2: [Edge Case]
 
 **Scenario**: [Boundary condition or edge case]
 
 [Same structure as Test Case 1]
-
----
 
 #### Test Case 3: [Error Condition]
 
@@ -89,8 +85,6 @@ tags: [template, feature-dev, testing, qa]
 [Same structure as Test Case 1]
 
 **Expected result**: [Appropriate error handling]
-
----
 
 ### Additional Test Cases
 
@@ -211,8 +205,6 @@ Map each success criterion to test cases that validate it:
 
 - [Environment configuration]
 - [Dependencies to install]
-
----
 
 **References**:
 

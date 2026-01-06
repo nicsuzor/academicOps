@@ -842,6 +842,7 @@ st.markdown(f"## {icon('check-circle', 'success')} Completed", unsafe_allow_html
 ```
 
 Common Bootstrap Icons for dashboards:
+
 - `graph-up`, `bar-chart-line` - Metrics/charts
 - `clock-history`, `calendar` - Time-based data
 - `exclamation-triangle`, `x-circle` - Warnings/errors

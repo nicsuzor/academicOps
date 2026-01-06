@@ -4,15 +4,14 @@ title: Detail Level Guide
 category: ref
 ---
 
----
 title: Detail Level Guide: What to Capture Where
 type: reference
 permalink: detail-level-guide
 tags:
-  - memory
-  - reference
-  - knowledge-management
----
+
+- memory
+- reference
+- knowledge-management
 
 # Detail Level Guide: What to Capture Where
 
@@ -31,14 +30,13 @@ Match detail level to file type and importance.
 **Example (GOOD for task file)**:
 
 ```markdown
----
 tags:
-  - pytest
-  - async
-  - testing-strategy
-  - technical-debt
-  - test-organization
----
+
+- pytest
+- async
+- testing-strategy
+- technical-debt
+- test-organization
 
 ## Observations
 

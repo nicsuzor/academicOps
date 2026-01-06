@@ -40,6 +40,7 @@ Document agent behavior patterns as GitHub Issues, enabling pattern recognition 
 ## Problem Statement
 
 Framework learning risks:
+
 - Observations scattered across local files (hard to search)
 - Same pattern logged multiple times without connection
 - Patterns identified but never synthesized into actionable guidance
@@ -86,18 +87,19 @@ Check `ROADMAP.md` User Stories table; link if applicable.
 **Phase 4: Synthesis Check**
 
 When pattern emerges (3+ Issues with same root cause):
+
 1. Draft heuristic for HEURISTICS.md
 2. Close Issues with link to synthesized content
 
 ### Issue Categories (Labels)
 
-| Label | Use For | Level |
-|-------|---------|-------|
-| `bug` | Component-level bugs (script errors) | component |
-| `learning` | Agent behavior patterns | pattern |
-| `experiment` | Systemic investigations | systemic |
-| `devlog` | Development observations | varies |
-| `decision` | Architectural choices | varies |
+| Label        | Use For                              | Level     |
+| ------------ | ------------------------------------ | --------- |
+| `bug`        | Component-level bugs (script errors) | component |
+| `learning`   | Agent behavior patterns              | pattern   |
+| `experiment` | Systemic investigations              | systemic  |
+| `devlog`     | Development observations             | varies    |
+| `decision`   | Architectural choices                | varies    |
 
 Default to `learning` if unclear.
 
@@ -115,6 +117,7 @@ Include investigation results in Issue. If inconclusive, state explicitly.
 ### Root Cause Verification
 
 All claims require direct evidence:
+
 - "File was/wasn't written" → verify with `ls -la`
 - "Hook blocked operation" → check hook output AND outcome
 - "Error was X" → cite exact error message
@@ -139,16 +142,19 @@ Closed Issues remain searchable via GitHub.
 ## Relationships
 
 ### Depends On
+
 - [[AXIOMS]] #28 (Current State Machine - episodic → GitHub Issues)
 - [[HEURISTICS]] - Synthesis destination
 - GitHub CLI (`gh`) for Issue operations
 
 ### Used By
+
 - Any agent observing framework behavior
 - Post-session analysis workflows
 - `/log` command
 
 ### Integrates With
+
 - [[transcript]] skill - Session JSONL → readable transcript for analysis
 - [[ROADMAP]] - User Stories linkage
 

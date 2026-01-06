@@ -26,8 +26,10 @@ This server exposes task management operations (view, archive, unarchive, create
 - **Structured logging** for monitoring and debugging
 
 Workflows
-* instructions: [[academicOps/skills/tasks/SKILL|SKILL]]
-- [[email-capture]]
+
+- instructions: [[academicOps/skills/tasks/SKILL|SKILL]]
+
+* [[email-capture]]
 
 ## Installation
 

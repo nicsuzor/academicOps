@@ -30,6 +30,7 @@ mcp__memory__retrieve_memory(query="[task topic] implementation patterns decisio
 ```
 
 Look for:
+
 - Prior attempts at similar work
 - Relevant architectural decisions
 - Known constraints or gotchas
@@ -72,11 +73,11 @@ Check for: logical errors, unstated assumptions, missing verification, scope dri
 
 ### Step 4: Handle Critic Verdict
 
-| Verdict | Action |
-|---------|--------|
-| PROCEED | Present plan to user |
-| REVISE | Address feedback, re-run critic |
-| HALT | Stop. Present issues to user. Do not proceed. |
+| Verdict | Action                                        |
+| ------- | --------------------------------------------- |
+| PROCEED | Present plan to user                          |
+| REVISE  | Address feedback, re-run critic               |
+| HALT    | Stop. Present issues to user. Do not proceed. |
 
 If critic returns REVISE, you MUST address the feedback and re-invoke critic. Do not present unreviewed revisions.
 
@@ -90,24 +91,30 @@ Present to user:
 **Context from memory**: [What you found, or "No prior relevant work found"]
 
 ### Acceptance Criteria
+
 - [ ] [Criterion 1]
 - [ ] [Criterion 2]
 
 ### Files to Modify
+
 - `path/to/file.md` - [what changes]
 
 ### Implementation Steps
+
 1. [Step]
 2. [Step]
 
 ### Test Approach
+
 [How we verify success]
 
 ### Risks
-- [Risk]: [Mitigation]
+
+-
 
 ---
-*Critic review: [PROCEED/REVISE count if applicable]*
+
+_Critic review: [PROCEED/REVISE count if applicable]_
 ```
 
 ## What You Do NOT Do
@@ -125,29 +132,34 @@ When breaking tasks into subtasks, use these detailed conventions:
 
 For each subtask, determine:
 
-| Field | Values | Description |
-|-------|--------|-------------|
-| `[effort::]` | quick (<15min), short (15-60min), medium (1-2hr) | Time estimate |
-| `[depends::]` | N or N, M | Which subtasks must complete first (by index) |
-| `[automatable::]` | yes, no, partial | Could an agent do this without human decisions? |
+| Field             | Values                                           | Description                                     |
+| ----------------- | ------------------------------------------------ | ----------------------------------------------- |
+| `[effort::]`      | quick (<15min), short (15-60min), medium (1-2hr) | Time estimate                                   |
+| `[depends::]`     | N or N, M                                        | Which subtasks must complete first (by index)   |
+| `[automatable::]` | yes, no, partial                                 | Could an agent do this without human decisions? |
 
 ### Dependency Notation
 
 ```markdown
-- [ ] 1. Gather requirements [effort:: short]
-- [ ] 2. Design solution [depends:: 1]
-- [ ] 3. Implement core [depends:: 2]
-- [ ] 4. Write tests [depends:: 2] <!-- can parallel with 3 -->
-- [ ] 5. Integration testing [depends:: 3, 4]
+-
+  1. [ ] Gather requirements [effort:: short]
+-
+  2. [ ] Design solution [depends:: 1]
+-
+  3. [ ] Implement core [depends:: 2]
+-
+  4. [ ] Write tests [depends:: 2] <!-- can parallel with 3 -->
+-
+  5. [ ] Integration testing [depends:: 3, 4]
 ```
 
 ### Automation Detection
 
-| Automatable | When |
-|-------------|------|
-| **yes** | Pure research, file operations, builds, template application, data extraction |
-| **no** | Human judgment/creativity, external human interaction, approvals, subjective decisions |
-| **partial** | Agent prepares + human finalizes, research done + decision is human's |
+| Automatable | When                                                                                   |
+| ----------- | -------------------------------------------------------------------------------------- |
+| **yes**     | Pure research, file operations, builds, template application, data extraction          |
+| **no**      | Human judgment/creativity, external human interaction, approvals, subjective decisions |
+| **partial** | Agent prepares + human finalizes, research done + decision is human's                  |
 
 ### Anti-Patterns
 

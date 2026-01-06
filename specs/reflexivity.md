@@ -29,10 +29,10 @@ This is mandatory. The framework develops itself through use (per [[AXIOMS]] #13
 
 Per [[AXIOMS]] #28 (Current State Machine), reflexivity data has two types:
 
-| Type | Definition | Storage | Example |
-|------|------------|---------|---------|
-| **Episodic** | Observations at a point in time | GitHub Issues | "Agent bypassed skill X" |
-| **Semantic** | Timeless truths, always current | `$ACA_DATA/` or `$AOPS/` | HEURISTICS.md entry |
+| Type         | Definition                      | Storage                  | Example                  |
+| ------------ | ------------------------------- | ------------------------ | ------------------------ |
+| **Episodic** | Observations at a point in time | GitHub Issues            | "Agent bypassed skill X" |
+| **Semantic** | Timeless truths, always current | `$ACA_DATA/` or `$AOPS/` | HEURISTICS.md entry      |
 
 **Episodic observations → GitHub Issues** (repo: nicsuzor/academicOps)
 
@@ -40,13 +40,13 @@ Per [[AXIOMS]] #28 (Current State Machine), reflexivity data has two types:
 
 ### Issue Labels
 
-| Label | Use For |
-|-------|---------|
-| `learning` | Agent behavior patterns (default) |
-| `bug` | Component-level bugs |
+| Label        | Use For                                    |
+| ------------ | ------------------------------------------ |
+| `learning`   | Agent behavior patterns (default)          |
+| `bug`        | Component-level bugs                       |
 | `experiment` | Systemic investigations with interventions |
-| `devlog` | Development observations |
-| `decision` | Architectural choices |
+| `devlog`     | Development observations                   |
+| `decision`   | Architectural choices                      |
 
 ## Workflows
 
@@ -55,6 +55,7 @@ Per [[AXIOMS]] #28 (Current State Machine), reflexivity data has two types:
 **Entry point**: `/log [observation]` or `Skill(skill="learning-log")`
 
 **Flow**:
+
 1. Search existing Issues for match
 2. If match → add comment; if not → create Issue
 3. Link to ROADMAP.md user stories if applicable
@@ -68,6 +69,7 @@ See [[specs/learning-log-skill]] for full workflow.
 **Entry point**: `/learn [issue]` or framework skill
 
 **Flow**:
+
 1. Understand issue category (missing fact, ignored instruction, poor behavior, etc.)
 2. Search for prior occurrences (GitHub Issues with same pattern)
 3. Choose minimal intervention per [[RULES]]
@@ -83,6 +85,7 @@ See [[specs/learning-log-skill]] for full workflow.
 **Trigger**: 3+ Issues with same root cause
 
 **Flow**:
+
 1. Identify pattern across Issues
 2. Draft heuristic per HEURISTICS.md format
 3. Add to HEURISTICS.md with Issue references
@@ -93,6 +96,7 @@ Closed Issues remain searchable via GitHub.
 ## Session Reflection
 
 During work, notice:
+
 - **Routing**: How did you know which process to use?
 - **Friction**: What's harder than it should be?
 - **Missing process**: What skill/workflow should exist?
@@ -100,20 +104,21 @@ During work, notice:
 - **Guardrails**: What constraint would have prevented a mistake?
 
 At session end:
+
 1. If observations worth logging → `/log [observation]`
 2. If pattern emerged → check synthesis triggers
 3. If actionable change → `/learn [issue]`
 
 ## Integration Points
 
-| Component | Role |
-|-----------|------|
-| `/log` command | Routes observations to GitHub Issues |
-| `/learn` command | Makes tracked interventions |
-| `learning-log` skill | Implements Issue search/create workflow |
-| `framework` skill | Governance for interventions |
-| [[HEURISTICS]] | Synthesis destination |
-| Memory server | Semantic search (supplements GitHub search) |
+| Component            | Role                                        |
+| -------------------- | ------------------------------------------- |
+| `/log` command       | Routes observations to GitHub Issues        |
+| `/learn` command     | Makes tracked interventions                 |
+| `learning-log` skill | Implements Issue search/create workflow     |
+| `framework` skill    | Governance for interventions                |
+| [[HEURISTICS]]       | Synthesis destination                       |
+| Memory server        | Semantic search (supplements GitHub search) |
 
 ## HEURISTICS.md Format
 
@@ -127,12 +132,12 @@ HEURISTICS.md is kept minimal for token efficiency. Each heuristic entry contain
 
 **What lives WHERE:**
 
-| Content | Location |
-|---------|----------|
-| Actionable rule | HEURISTICS.md (Statement) |
-| Rationale/context | GitHub Issue (body) |
-| Dated observations | GitHub Issue (comments) |
-| Application examples | GitHub Issue (body) |
+| Content              | Location                  |
+| -------------------- | ------------------------- |
+| Actionable rule      | HEURISTICS.md (Statement) |
+| Rationale/context    | GitHub Issue (body)       |
+| Dated observations   | GitHub Issue (comments)   |
+| Application examples | GitHub Issue (body)       |
 
 **Token budget**: HEURISTICS.md should stay under 2,000 tokens (~200 lines). If approaching limit, evidence sections move to Issues.
 

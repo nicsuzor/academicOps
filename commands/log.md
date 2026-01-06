@@ -14,11 +14,11 @@ permalink: commands/log
 
 **We don't control agents** - they're probabilistic. Log **framework component failures**, not agent mistakes.
 
-| Wrong (Proximate) | Right (Root Cause) |
-|-------------------|-------------------|
+| Wrong (Proximate)     | Right (Root Cause)                                                       |
+| --------------------- | ------------------------------------------------------------------------ |
 | "Agent skipped skill" | "Router didn't explain WHY skill needed for THIS task" → Clarity Failure |
-| "Agent didn't verify" | "Guardrail instruction too generic" → Clarity Failure |
-| "Agent used mocks" | "No PreToolUse hook blocks mock imports" → Gap |
+| "Agent didn't verify" | "Guardrail instruction too generic" → Clarity Failure                    |
+| "Agent used mocks"    | "No PreToolUse hook blocks mock imports" → Gap                           |
 
 See [[specs/enforcement.md]] "Component Responsibilities" for the full model.
 

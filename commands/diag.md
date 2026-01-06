@@ -15,19 +15,25 @@ permalink: commands/diag
 List what you currently have loaded:
 
 ## 1. Skills Available
+
 List all skills from the Skill tool's Available Commands section.
 
 ## 2. Slash Commands Available
+
 List all commands from the SlashCommand tool's Available Commands section.
 
 ## 3. Task Subagent Types
+
 List all subagent_type values from the Task tool description.
 
 ## 4. MCP Tools
+
 List MCP server prefixes you have access to (e.g., mcp__memory__, mcp__gh__).
 
 ## 5. Files Referenced This Session
+
 List any files that were:
+
 - **[FULL]** - Full content provided in context
 - **[READ]** - You explicitly read with Read tool
 - **[REF]** - Only filename/path mentioned, not read

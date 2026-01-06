@@ -28,10 +28,28 @@ DESTRUCTIVE_GIT_PATTERNS = [
 ]
 
 
+
+def count_prose_lines(content: str) -> int:
+    """Count lines excluding mermaid/code blocks."""
+    lines = content.split("\n")
+    count = 0
+    in_code_block = False
+
+    for line in lines:
+        # Toggle on code fence (``` or ```mermaid, etc.)
+        if line.strip().startswith("```"):
+            in_code_block = not in_code_block
+            continue
+        if not in_code_block:
+            count += 1
+
+    return count
+
+
 def validate_minimal_documentation(
     tool_name: str, args: dict[str, Any]
 ) -> dict[str, Any] | None:
-    """Block *-GUIDE.md files and .md files > 200 lines."""
+    """Block *-GUIDE.md files and .md files > 200 prose lines."""
     if tool_name != "Write":
         return None
 
@@ -48,12 +66,13 @@ def validate_minimal_documentation(
         }
 
     if file_path.endswith(".md"):
-        line_count = len(content.split("\n"))
-        if line_count > 200:
+        prose_lines = count_prose_lines(content)
+        if prose_lines > 200:
             return {
                 "continue": False,
                 "systemMessage": (
-                    f"BLOCKED: {line_count} lines exceeds 200 line limit for docs.\n"
+                    f"BLOCKED: {prose_lines} prose lines exceeds 200 line limit.\n"
+                    "(Code/mermaid blocks excluded from count.)\n"
                     "Split into focused chunks or reduce content."
                 ),
             }

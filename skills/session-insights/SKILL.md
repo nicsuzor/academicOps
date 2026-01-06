@@ -16,10 +16,21 @@ Routine command for daily session processing. Runs parallel agents for speed.
 - `today` (default) - process today's sessions (batch mode)
 - `YYYYMMDD` - process specific date (batch mode)
 - `current` - analyze current session for reflection (real-time mode, see Step 7)
+- `<path1> [path2] ...` - process specific session JSONL files (explicit mode, used by cron)
 
 ## Execution (Follow These Steps Exactly)
 
 ### Step 1: Find Sessions Needing Transcripts
+
+**If args are explicit paths** (contain `/` or end in `.jsonl`):
+
+- Skip the find_sessions.py script
+- Use the provided paths directly
+- Extract session_id from filename (e.g., `/path/to/abc12345.jsonl` → session_id = `abc12345`)
+- Extract project from parent directory name
+- Format as: `{path}|{session_id[:8]}|{project_shortname}`
+
+**Otherwise**, run the discovery script:
 
 ```bash
 cd $AOPS && uv run python skills/session-insights/scripts/find_sessions.py
@@ -58,6 +69,7 @@ cd $AOPS && uv run python skills/session-insights/scripts/extract_narrative.py -
 ```
 
 This outputs markdown sections for:
+
 - **Session Context**: Timestamped first prompts showing what work was started
 - **Abandoned Todos**: Items left pending/in_progress at session end
 
@@ -70,44 +82,47 @@ Save this output - you'll incorporate it into the daily note in the next step.
 Update daily note at `$ACA_DATA/sessions/YYYYMMDD-daily.md`.
 
 If the note exists:
+
 - Read() the note (small file, ~50 lines)
 - Add Session Context and Abandoned Todos from Step 3 output
 - DO NOT delete existing content
 
 If the note does NOT exist:
+
 - Create from template in [[templates/daily.md]]
 - Add Session Context and Abandoned Todos from Step 3 output
 
 **Daily note skeleton** (burndown and accomplishments populated in Step 6 from JSONs + task index):
+
 ```markdown
----
 title: Daily Summary - YYYY-MM-DD
 type: daily
 generated_by: session-insights
 tags: [daily, sessions]
----
 
 # Daily Summary - YYYY-MM-DD
 
 ## Today's Story
+
 (populated in Step 6 - 2-3 sentence narrative synthesized from session summaries)
 
 ## 📊 Focus Dashboard
 
 ### Priority Burndown
 ```
-P0 ░░░░░░░░░░  0% (0/N)
-P1 ░░░░░░░░░░  0% (0/N)
-P2 ░░░░░░░░░░  0% (0/N)
-```
 
+P0 ░░░░░░░░░░ 0% (0/N)
+P1 ░░░░░░░░░░ 0% (0/N)
+P2 ░░░░░░░░░░ 0% (0/N)
+
+```
 ### 🎯 Active Now
 (populated from task index - status=active)
 
 ### ⏳ Blocked
 (populated from task index - status=waiting)
 
----
+
 
 ## Today's Priorities
 
@@ -117,7 +132,7 @@ P2 ░░░░░░░░░░  0% (0/N)
 ### P0 Tasks
 - [ ] [[priority-task]]
 
----
+
 
 ## [[academicOps]] → [[projects/aops]]
 Scheduled: n/a | Unscheduled: 0 items
@@ -144,10 +159,11 @@ Scheduled: n/a | Unscheduled: 0 items
 
 ## Session Insights
 ```
-Skill Compliance  ░░░░░░░░░░  0%
-Sessions Mined    ░░░░░░░░░░ 0/0
-```
 
+Skill Compliance ░░░░░░░░░░ 0%
+Sessions Mined ░░░░░░░░░░ 0/0
+
+```
 ## Session Context
 - 10:23 AM: Started on prompt hydrator context improvements
 ```
@@ -236,6 +252,7 @@ ls $ACA_DATA/dashboard/sessions/*.json 2>/dev/null | xargs -I{} grep -l '"date":
 ```
 
 **If mined < expected**:
+
 1. Identify unmined sessions (transcripts without matching JSONs)
 2. Re-spawn mining agents for failed sessions (repeat Step 5 for those sessions only)
 3. Re-verify until mined >= 80% of expected (some sessions may be too short to mine)
@@ -274,24 +291,26 @@ ls $ACA_DATA/dashboard/sessions/*.json 2>/dev/null | xargs -I{} grep -l '"date":
 # Daily Summary - YYYY-MM-DD
 
 ## Today's Story
+
 Brief narrative of what was accomplished today (2-3 sentences synthesized from session summaries).
 
 ## 📊 Focus Dashboard
 
 ### Priority Burndown
 ```
-P0 ████████░░ 80% (4/5)  → [[task-name-1]], [[task-name-2]]
-P1 ██░░░░░░░░ 20% (1/5)  → [[task-name-3]]
-P2 ░░░░░░░░░░  0% (0/3)
-```
 
+P0 ████████░░ 80% (4/5) → [[task-name-1]], [[task-name-2]]
+P1 ██░░░░░░░░ 20% (1/5) → [[task-name-3]]
+P2 ░░░░░░░░░░ 0% (0/3)
+
+```
 ### 🎯 Active Now
 → [[task-currently-in-progress]] (P0)
 
 ### ⏳ Blocked
 - [[task-waiting]] - waiting on: external response
 
----
+
 
 ## Session Log
 | Session | Project | Summary |
@@ -327,30 +346,35 @@ Scheduled: ████░░░░░░ 4/10 | Unscheduled: 2 items
 
 ## Session Insights
 ```
-Skill Compliance  ████████░░ 80%
-Sessions Mined    ████████░░ 8/10
+
+Skill Compliance ████████░░ 80%
+Sessions Mined ████████░░ 8/10
+
 ```
 **Top Context Gaps**: gap1, gap2
 ```
 
-   **Progress Metrics** (IMPORTANT - distinguish scheduled vs unscheduled):
-   - **Scheduled**: Tasks from `$ACA_DATA/tasks/` with `project:` matching this project and `scheduled:` date = today
-   - **Unscheduled**: Accomplishments from session mining that don't correspond to scheduled tasks
-   - Format: `Scheduled: ██████░░░░ 6/10 | Unscheduled: 3 items`
-   - If NO scheduled tasks exist for project: `Scheduled: n/a | Unscheduled: N items`
-   - Progress bar shows scheduled task completion ONLY (not accomplishment count)
+**Progress Metrics** (IMPORTANT - distinguish scheduled vs unscheduled):
 
-   **ASCII Progress Bar Helper** (for 10-char bars):
-   - Calculate: `filled = round(ratio * 10)`
-   - Use: `█` × filled + `░` × (10 - filled)
-   - Example: 75% → `████████░░`
-   - If no scheduled tasks: show `n/a` instead of bar
+- **Scheduled**: Tasks from `$ACA_DATA/tasks/` with `project:` matching this project and `scheduled:` date = today
+- **Unscheduled**: Accomplishments from session mining that don't correspond to scheduled tasks
+- Format: `Scheduled: ██████░░░░ 6/10 | Unscheduled: 3 items`
+- If NO scheduled tasks exist for project: `Scheduled: n/a | Unscheduled: N items`
+- Progress bar shows scheduled task completion ONLY (not accomplishment count)
 
-   **Wikilink Rules**:
-   - Tasks: `[[YYYYMMDD-task-slug]]` (matches filename in tasks/)
-   - Projects: `[[projects/project-name]]`
-   - Quick Wins / ad-hoc items: Link if task file exists, otherwise plain text
-   - Sessions: plain text (session IDs, not linked)
+**ASCII Progress Bar Helper** (for 10-char bars):
+
+- Calculate: `filled = round(ratio * 10)`
+- Use: `█` × filled + `░` × (10 - filled)
+- Example: 75% → `████████░░`
+- If no scheduled tasks: show `n/a` instead of bar
+
+**Wikilink Rules**:
+
+- Tasks: `[[YYYYMMDD-task-slug]]` (matches filename in tasks/)
+- Projects: `[[projects/project-name]]`
+- Quick Wins / ad-hoc items: Link if task file exists, otherwise plain text
+- Sessions: plain text (session IDs, not linked)
 
 5. **Write updated synthesis.json** at `$ACA_DATA/dashboard/synthesis.json`:
 
@@ -412,21 +436,20 @@ Sessions Mined    ████████░░ 8/10
 ### Step 6b: Route Learnings
 
 **For each learning observation with heuristic mapping:**
+
 - Invoke `Skill(skill="learning-log", args="...")` to create/update GitHub Issues
 - Run up to 8 skills in parallel
 
----
-
 ## Output Locations
 
-| Artifact | Location | Format |
-|----------|----------|--------|
-| Transcripts (full) | `$ACA_DATA/sessions/claude/YYYYMMDD-{project}-{sessionid}-*-full.md` | Markdown with YAML frontmatter |
-| Transcripts (abridged) | `$ACA_DATA/sessions/claude/YYYYMMDD-{project}-{sessionid}-*-abridged.md` | Markdown with YAML frontmatter |
-| Per-session mining | `$ACA_DATA/dashboard/sessions/{session_id}.json` | JSON (one per session) |
-| Daily summary | `$ACA_DATA/sessions/YYYYMMDD-daily.md` | Markdown with accomplishments by project |
-| Dashboard synthesis | `$ACA_DATA/dashboard/synthesis.json` | JSON for dashboard rendering |
-| Learning observations | GitHub Issues (nicsuzor/academicOps) | Via `/log` skill → Issues |
+| Artifact               | Location                                                                 | Format                                   |
+| ---------------------- | ------------------------------------------------------------------------ | ---------------------------------------- |
+| Transcripts (full)     | `$ACA_DATA/sessions/claude/YYYYMMDD-{project}-{sessionid}-*-full.md`     | Markdown with YAML frontmatter           |
+| Transcripts (abridged) | `$ACA_DATA/sessions/claude/YYYYMMDD-{project}-{sessionid}-*-abridged.md` | Markdown with YAML frontmatter           |
+| Per-session mining     | `$ACA_DATA/dashboard/sessions/{session_id}.json`                         | JSON (one per session)                   |
+| Daily summary          | `$ACA_DATA/sessions/YYYYMMDD-daily.md`                                   | Markdown with accomplishments by project |
+| Dashboard synthesis    | `$ACA_DATA/dashboard/synthesis.json`                                     | JSON for dashboard rendering             |
+| Learning observations  | GitHub Issues (nicsuzor/academicOps)                                     | Via `/log` skill → Issues                |
 
 ## Output Summary
 
@@ -442,7 +465,6 @@ Sessions Mined    ████████░░ 8/10
 ### Learnings
 - insight ...
 - insight ...
-
 ```
 
 ## Constraints
@@ -450,8 +472,6 @@ Sessions Mined    ████████░░ 8/10
 - **Parallel execution**: Use multiple Bash calls for transcripts; Task agents only for Gemini mining
 - **Idempotent**: Safe to run multiple times; do not delete existing information
 - **No judgment**: Follow steps exactly, don't improvise
-
----
 
 ## Step 7: Session Reflection (for `current` mode only)
 
@@ -481,7 +501,6 @@ For each finding with a non-null `heuristic` field, present to user:
 
 **Suggested update**: Add evidence to H[n]
 > "[suggested_evidence text]"
-
 ```
 
 Then use AskUserQuestion:
@@ -511,11 +530,9 @@ For each approved suggestion:
 
 For significant patterns, invoke `Skill(skill="learning-log")` to create/update a GitHub Issue for tracking.
 
----
-
 ## Triggers for `current` Mode
 
-| Trigger | How Invoked |
-|---------|-------------|
+| Trigger     | How Invoked                                                          |
+| ----------- | -------------------------------------------------------------------- |
 | Session end | Stop hook injects: `Skill(skill="session-insights", args="current")` |
-| Manual | User runs `/reflect` command |
+| Manual      | User runs `/reflect` command                                         |

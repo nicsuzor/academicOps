@@ -25,19 +25,16 @@ Implements the mandatory workflow from [[CORE.md]]:
 
 **MANDATORY**: Development work MUST invoke the [[python-dev]] skill.
 
----
-
 ## ITERATION UNIT
 
 One TDD cycle = ONE failing test → minimal implementation → passing test → commit + push
 
 Each cycle:
+
 1. Create ONE failing test
 2. Implement MINIMAL code to pass
 3. Validate with python-dev skill
 4. Commit and push before next cycle
-
----
 
 ## QUALITY GATE
 
@@ -49,13 +46,12 @@ Before proceeding to next cycle:
 - [ ] Code reviewed via python-dev skill validation
 - [ ] Commit created and pushed
 
----
-
 ## STEP 1: TEST CREATION
 
 ### Pre-Check (MANDATORY)
 
 Before delegating test creation, verify task does NOT involve:
+
 - ❌ Creating new databases/collections
 - ❌ Running vectorization/indexing pipelines
 - ❌ Creating new configs
@@ -120,8 +116,6 @@ Verify: Fails with expected error (not setup error).
 
 If test setup broken: Instruct subagent to fix setup, re-verify.
 
----
-
 ## STEP 2: IMPLEMENTATION
 
 ### Subagent Prompt: Implement Minimal Fix
@@ -168,6 +162,7 @@ uv run pytest                                       # All tests (no regressions)
 DO NOT ASK USER. Handle this:
 
 **Analyze failure:**
+
 - Read error message carefully
 - Identify specific issue (file:line if available)
 - Determine what behavior is wrong
@@ -205,10 +200,9 @@ Figure out the exact implementation. Report back with:
 **Re-run tests after fix. Iterate until all tests pass.**
 
 Maximum 3 iterations per issue. If still failing:
+
 - Log via framework skill: "Stuck on test failure: [details]"
 - Ask user for help
-
----
 
 ## STEP 3: QUALITY CHECK (Before Commit)
 
@@ -274,8 +268,6 @@ After fixing, validate and commit again.
 
 Iterate until quality check passes and commit succeeds.
 
----
-
 ## STEP 4: PUSH TO REMOTE
 
 ### Subagent Prompt: Push Changes
@@ -307,30 +299,27 @@ After successful push, report:
 
 **If push fails**: DO NOT continue to next cycle. Fix remote sync issues first.
 
----
-
 ## COMPLETION CRITERIA
 
 All TDD cycles complete when:
+
 - All acceptance criteria have corresponding passing tests
 - All tests pass (new and existing)
 - All changes committed and pushed
 - No quality violations remaining
 
----
-
 ## Reference: Available Skills and Subagents
 
 **Skills subagents MUST invoke:**
+
 - [[python-dev]]: Production Python development - **MANDATORY for all code work**
 - [[feature-dev]]: Full feature development workflow with TDD
 
 **Available subagent types:**
+
 - `Plan`: Create detailed plans, break down complex tasks
 - `Explore`: Understand codebase, find files, research patterns
 - `general-purpose`: Implementation work (MUST invoke python-dev first)
-
----
 
 ## Example TDD Cycle
 

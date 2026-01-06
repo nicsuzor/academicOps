@@ -21,10 +21,10 @@ Support academic research data analysis by working collaboratively with dbt (dat
 
 This is non-negotiable for academic integrity, reproducibility, and auditability.
 
-| Layer | Allowed | Prohibited |
-|-------|---------|------------|
-| **dbt** | ALL SQL transformations, joins, aggregations, filtering, business logic | - |
-| **Streamlit** | Display, formatting, interactive filtering of PRE-COMPUTED data | SQL that transforms, joins, aggregates, or applies business logic |
+| Layer         | Allowed                                                                 | Prohibited                                                        |
+| ------------- | ----------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| **dbt**       | ALL SQL transformations, joins, aggregations, filtering, business logic | -                                                                 |
+| **Streamlit** | Display, formatting, interactive filtering of PRE-COMPUTED data         | SQL that transforms, joins, aggregates, or applies business logic |
 
 ### Why This Matters (Academic Integrity)
 
@@ -43,6 +43,7 @@ This is non-negotiable for academic integrity, reproducibility, and auditability
 ### Streamlit: Display Layer ONLY
 
 Streamlit scripts may:
+
 - ✅ `SELECT * FROM mart_name` (read pre-computed data)
 - ✅ `WHERE column = :user_selection` (filter on existing columns)
 - ✅ Format numbers, dates for display
@@ -50,6 +51,7 @@ Streamlit scripts may:
 - ✅ Render charts from pre-computed metrics
 
 Streamlit scripts must NEVER:
+
 - ❌ `SELECT SUM(...) GROUP BY ...` (aggregation = transformation)
 - ❌ `SELECT a.*, b.* FROM a JOIN b` (joins = transformation)
 - ❌ `SELECT CASE WHEN ... END` (business logic = transformation)
@@ -143,7 +145,7 @@ This skill includes both inline guidance and detailed reference documentation:
 
 **Python development standards**: Use the `python-dev` skill for code quality, type safety, and testing.
 
-**Note**: Chunk files are loaded on-demand when detailed technical specifications are needed. Use `@reference _CHUNKS/filename.md]] or `@references/filename.md]] to load specific documentation.
+**Note**: Chunk files are loaded on-demand when detailed technical specifications are needed. Use `@reference _CHUNKS/filename.md]] or`@references/filename.md]] to load specific documentation.
 
 ## When to Use This Skill
 
@@ -250,8 +252,7 @@ cat data/README.md
 
 After context discovery, summarize findings to user:
 
-
-```"I've reviewed the project context. This is a <research topic> project investigating <questions>. The DBT pipeline has <N> staging models and <M> mart models. I see existing work on <areas>. What would you like me to help with?"```
+`"I've reviewed the project context. This is a <research topic> project investigating <questions>. The DBT pipeline has <N> staging models and <M> mart models. I see existing work on <areas>. What would you like me to help with?"`
 
 ## Follow Data Access Workflow
 
@@ -503,7 +504,7 @@ Research projects MUST maintain:
 
 ### Prohibited
 
-❌ Create `analysis_report.md]] or any random markdown files ❌ Create `findings_summary.docx` ❌ Proliferate documentation files without defined structure ❌ Leave documentation stale when code changes
+❌ Create `analysis_report.md]] or any random markdown files ❌ Create`findings_summary.docx` ❌ Proliferate documentation files without defined structure ❌ Leave documentation stale when code changes
 
 ✅ Follow strict structure defined in [[instructions/research-documentation.md]] ✅ Update documentation in SAME commit as code changes ✅ One source of truth for each piece of information
 

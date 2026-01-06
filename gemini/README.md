@@ -19,25 +19,25 @@ Gemini CLI support for academicOps framework. Uses symlinks where possible.
 
 ## What Works
 
-| Feature | Status | Notes |
-|---------|--------|-------|
-| Hooks | Works | Event names mapped via router |
-| Commands | Works | Converted to TOML at setup |
-| MCP servers | Partial | memory + context7 configured |
-| Skills | Manual | Use `Read skills/X/SKILL.md` |
-| GEMINI.md | Works | Symlinked from project root |
+| Feature     | Status | Notes                               |
+| ----------- | ------ | ----------------------------------- |
+| Hooks       | Works  | Event names mapped via router       |
+| Commands    | Works  | Converted to TOML at setup          |
+| MCP servers | Works  | Auto-converted from Claude mcp.json |
+| Skills      | Manual | Use `Read skills/X/SKILL.md`        |
+| GEMINI.md   | Works  | Symlinked from project root         |
 
 ## Known Gaps
 
 ### Critical (Won't Work)
 
-| Feature | Reason | Workaround |
-|---------|--------|------------|
-| `Task()` subagents | Not implemented ([#3132](https://github.com/google-gemini/gemini-cli/issues/3132)) | Manual multi-turn |
-| `Skill()` tool | Claude-specific | Read SKILL.md directly |
-| SubagentStop event | No equivalent | N/A |
-| Per-agent permissions | Not supported | Global permissions only |
-| Persistent permissions | Session-only | Re-approve each session |
+| Feature                | Reason                                                                             | Workaround              |
+| ---------------------- | ---------------------------------------------------------------------------------- | ----------------------- |
+| `Task()` subagents     | Not implemented ([#3132](https://github.com/google-gemini/gemini-cli/issues/3132)) | Manual multi-turn       |
+| `Skill()` tool         | Claude-specific                                                                    | Read SKILL.md directly  |
+| SubagentStop event     | No equivalent                                                                      | N/A                     |
+| Per-agent permissions  | Not supported                                                                      | Global permissions only |
+| Persistent permissions | Session-only                                                                       | Re-approve each session |
 
 ### Commands with Degraded Functionality
 
@@ -50,14 +50,14 @@ These commands work but lose subagent delegation:
 
 ## Event Mapping
 
-| Claude Code | Gemini CLI |
-|-------------|------------|
-| SessionStart | SessionStart |
-| PreToolUse | BeforeTool |
-| PostToolUse | AfterTool |
-| UserPromptSubmit | BeforeAgent |
-| Stop | AfterAgent |
-| SubagentStop | (none) |
+| Claude Code      | Gemini CLI   |
+| ---------------- | ------------ |
+| SessionStart     | SessionStart |
+| PreToolUse       | BeforeTool   |
+| PostToolUse      | AfterTool    |
+| UserPromptSubmit | BeforeAgent  |
+| Stop             | AfterAgent   |
+| SubagentStop     | (none)       |
 
 ## Directory Structure
 
@@ -72,7 +72,22 @@ $AOPS/gemini/
   README.md         # This file
   hooks/router.py   # Event translation wrapper
   commands/         # Generated TOML files
-  config/           # Settings template
+  config/           # Settings template + converted MCP servers
+```
+
+## MCP Server Conversion
+
+MCP servers are automatically converted from Claude's `config/claude/mcp.json` to Gemini format during setup. The conversion script (`scripts/convert_mcp_to_gemini.py`) handles:
+
+- **HTTP servers**: `type: "http"` → `url` field (Gemini infers type)
+- **Stdio servers**: `command` + `args` preserved as-is
+- **Headers**: Preserved for HTTP servers (both formats support this)
+- **Environment variables**: `${VAR}` syntax works in both
+
+Manual conversion (for testing):
+
+```bash
+python3 scripts/convert_mcp_to_gemini.py config/claude/mcp.json
 ```
 
 ## Using Skills in Gemini

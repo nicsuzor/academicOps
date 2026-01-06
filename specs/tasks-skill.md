@@ -46,6 +46,7 @@ Manage task lifecycle (create, view, archive, update) using scripts that enforce
 ## Problem Statement
 
 Task management risks:
+
 - Duplicate tasks created for same work item
 - Inconsistent markdown formatting
 - Direct file manipulation bypassing validation
@@ -72,17 +73,18 @@ Invoke for viewing, creating, archiving, or updating tasks.
 
 All task operations go through scripts in `skills/tasks/scripts/`:
 
-| Script | Purpose |
-|--------|---------|
-| `task_view.py` | Display tasks with filtering/sorting |
-| `task_add.py` | Create new tasks |
-| `task_update.py` | Modify existing tasks |
-| `task_archive.py` | Move to/from archive (batch supported) |
-| `task_item_add.py` | Add checklist items |
+| Script             | Purpose                                |
+| ------------------ | -------------------------------------- |
+| `task_view.py`     | Display tasks with filtering/sorting   |
+| `task_add.py`      | Create new tasks                       |
+| `task_update.py`   | Modify existing tasks                  |
+| `task_archive.py`  | Move to/from archive (batch supported) |
+| `task_item_add.py` | Add checklist items                    |
 
 **2. Search-Before-Create (Mandatory)**
 
 Before creating ANY task:
+
 ```bash
 grep -li "keyword" $ACA_DATA/tasks/inbox/*.md
 ```
@@ -99,16 +101,17 @@ $ACA_DATA/tasks/
 
 **4. Priority Levels**
 
-| Priority | Meaning | Time Window |
-|----------|---------|-------------|
-| P0 | Urgent | Today/tomorrow |
-| P1 | High | This week |
-| P2 | Medium | Within 2 weeks |
-| P3 | Low | Longer timeline |
+| Priority | Meaning | Time Window     |
+| -------- | ------- | --------------- |
+| P0       | Urgent  | Today/tomorrow  |
+| P1       | High    | This week       |
+| P2       | Medium  | Within 2 weeks  |
+| P3       | Low     | Longer timeline |
 
 **5. Checklist Format (Dataview)**
 
 Obsidian-compatible syntax for sub-task tracking:
+
 ```markdown
 ## Checklist
 
@@ -120,11 +123,13 @@ Obsidian-compatible syntax for sub-task tracking:
 ### Critical Rules
 
 **NEVER**:
+
 - Write task files directly via Edit/Write tools
 - Move files manually (use scripts)
 - Create task without searching for duplicates first
 
 **ALWAYS**:
+
 - Run from `$AOPS`: `cd $AOPS && uv run python skills/tasks/scripts/...`
 - Verify script execution succeeded
 - Search existing tasks before creating
@@ -134,19 +139,23 @@ Obsidian-compatible syntax for sub-task tracking:
 The task index is maintained by `scripts/regenerate_task_index.py`:
 
 **Scanning**:
+
 - Scans ALL `*.md` files in `$ACA_DATA` (not just tasks/)
 - Filters for files with `type: task` in YAML frontmatter
 - Excludes session transcripts and known non-task files
 
 **Output**:
+
 - `$ACA_DATA/tasks/index.json` - Machine-readable index with task metadata
 - `$ACA_DATA/tasks/INDEX.md` - Human-readable, organized by project
 
 **Schedule**:
+
 - Runs every 5 minutes via cron (installed by `setup.sh`)
 - Manual: `cd $AOPS && uv run python scripts/regenerate_task_index.py`
 
 **INDEX.md Format**:
+
 ```
 ## project-name (count)
 
@@ -158,15 +167,18 @@ Indicators: `P0-P3` (priority), `due: YYYY-MM-DD`, `* active`/`inbox`/`~ waiting
 ## Relationships
 
 ### Depends On
+
 - Python scripts in `skills/tasks/scripts/`
 - `$ACA_DATA/tasks/` directory structure
 
 ### Used By
+
 - [[email]] command - Email-to-task extraction
 - [[supervisor-skill]] - Documents session outcomes
 - Any workflow creating tasks
 
 ### Workflows (bundled)
+
 - `workflows/email-capture.md` - Email to task extraction
 
 ## Success Criteria

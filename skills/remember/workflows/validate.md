@@ -23,22 +23,22 @@ Check format compliance and fix issues in `data/` files.
 
 ### Format Compliance
 
-| Check | Requirement |
-|-------|-------------|
-| Frontmatter | title, permalink, type required |
-| Permalink | lowercase, hyphens only, no slashes |
-| H1 heading | Must match title exactly |
-| Relations | Must have `[[wiki-links]]` |
+| Check       | Requirement                         |
+| ----------- | ----------------------------------- |
+| Frontmatter | title, permalink, type required     |
+| Permalink   | lowercase, hyphens only, no slashes |
+| H1 heading  | Must match title exactly            |
+| Relations   | Must have `[[wiki-links]]`          |
 
 ### Location Compliance
 
-| Location | Allowed Content |
-|----------|----------------|
-| `data/context/` | General notes, background |
-| `data/goals/` | Objectives and targets |
-| `data/projects/` | Project metadata |
-| `data/<project>/` | Project-specific files |
-| `data/tasks/inbox/` | Active tasks |
+| Location            | Allowed Content           |
+| ------------------- | ------------------------- |
+| `data/context/`     | General notes, background |
+| `data/goals/`       | Objectives and targets    |
+| `data/projects/`    | Project metadata          |
+| `data/<project>/`   | Project-specific files    |
+| `data/tasks/inbox/` | Active tasks              |
 
 ### Prohibited
 
@@ -68,7 +68,7 @@ permalink: my-title
 title: My Document Title
 ---
 
-# My Document Title  ← Must match exactly
+# My Document Title ← Must match exactly
 ```
 
 ## Workflow

@@ -16,30 +16,30 @@ Task classification and workflow selection for agents. See [[specs/generated-ind
 
 ## Task Types and Workflows
 
-| Type | When to Use | Workflow | Skill |
-|------|-------------|----------|-------|
-| framework | Changes to academicOps framework itself - skills, hooks, agents, commands, AXIOMS, HEURISTICS | plan-mode | framework |
-| cc_hook | Creating or modifying Claude Code hooks | plan-mode | plugin-dev:hook-development |
-| cc_mcp | MCP server configuration or integration | plan-mode | plugin-dev:mcp-integration |
-| feature | Building new functionality or extending existing features | tdd | feature-dev |
-| python | Python code that needs testing | tdd | python-dev |
-| debug | Investigating errors, fixing bugs, diagnosing issues | verify-first | - |
-| question | User asking for information or explanation (no implementation needed) | answer-only | - |
-| persist | Saving knowledge, notes, or decisions to the knowledge base | direct | remember |
-| analysis | Research data analysis, statistics, Streamlit dashboards | direct | analyst |
-| review | Auditing, checking, validating existing work | checklist | - |
-| simple | Single-step tasks with clear scope | direct | - |
+| Type      | When to Use                                                                                   | Workflow     | Skill                       |
+| --------- | --------------------------------------------------------------------------------------------- | ------------ | --------------------------- |
+| framework | Changes to academicOps framework itself - skills, hooks, agents, commands, AXIOMS, HEURISTICS | plan-mode    | framework                   |
+| cc_hook   | Creating or modifying Claude Code hooks                                                       | plan-mode    | plugin-dev:hook-development |
+| cc_mcp    | MCP server configuration or integration                                                       | plan-mode    | plugin-dev:mcp-integration  |
+| feature   | Building new functionality or extending existing features                                     | tdd          | feature-dev                 |
+| python    | Python code that needs testing                                                                | tdd          | python-dev                  |
+| debug     | Investigating errors, fixing bugs, diagnosing issues                                          | verify-first | -                           |
+| question  | User asking for information or explanation (no implementation needed)                         | answer-only  | -                           |
+| persist   | Saving knowledge, notes, or decisions to the knowledge base                                   | direct       | remember                    |
+| analysis  | Research data analysis, statistics, Streamlit dashboards                                      | direct       | analyst                     |
+| review    | Auditing, checking, validating existing work                                                  | checklist    | -                           |
+| simple    | Single-step tasks with clear scope                                                            | direct       | -                           |
 
 ## Workflow Descriptions
 
-| Workflow | Description |
-|----------|-------------|
-| plan-mode | Enter Plan Mode, get user approval before implementation |
-| tdd | Write failing test first, implement to pass, verify |
-| verify-first | Reproduce and understand before fixing |
-| answer-only | Answer the question, then STOP (no implementation) |
-| direct | Execute directly with appropriate skill |
-| checklist | Systematic verification steps |
+| Workflow     | Description                                              |
+| ------------ | -------------------------------------------------------- |
+| plan-mode    | Enter Plan Mode, get user approval before implementation |
+| tdd          | Write failing test first, implement to pass, verify      |
+| verify-first | Reproduce and understand before fixing                   |
+| answer-only  | Answer the question, then STOP (no implementation)       |
+| direct       | Execute directly with appropriate skill                  |
+| checklist    | Systematic verification steps                            |
 
 ## Updating This Index
 

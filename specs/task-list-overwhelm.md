@@ -57,6 +57,7 @@ graph TD
 ```
 
 This spec is responsible for the task state index:
+
 - The canonical, always-current source of task state
 - Everything else reads from this
 - Only written to as defined by this spec
@@ -71,6 +72,7 @@ This spec is responsible for the task state index:
 ## The Core Problem
 
 Task state is scattered, stale, and not visible where I need it. Individual task files exist but there's no reliable index that:
+
 - Knows all tasks
 - Tracks current state (priority, project, due, progress)
 - Gets updated by ingest sources
@@ -140,23 +142,24 @@ subtasks:              # optional, list of checklist items
 
 ## Features That Write to Index
 
-| Feature | What it writes | Spec |
-|---------|---------------|------|
-| [[email]] skill | New tasks from emails | (exists) |
-| [[session-insights]] | Activity updates, new tasks from transcripts | (exists) |
-| [[tasks]] skill | Manual task creation/updates | (exists) |
-| [[daily]] file | Priority changes, progress updates | (to define) |
+| Feature              | What it writes                               | Spec        |
+| -------------------- | -------------------------------------------- | ----------- |
+| [[email]] skill      | New tasks from emails                        | (exists)    |
+| [[session-insights]] | Activity updates, new tasks from transcripts | (exists)    |
+| [[tasks]] skill      | Manual task creation/updates                 | (exists)    |
+| [[daily]] file       | Priority changes, progress updates           | (to define) |
 
 ## Features That Read from Index
 
-| Feature | What it reads | Current State |
-|---------|--------------|---------------|
-| [[dashboard]] | Grouped/sorted task list, progress bars | Reads task files directly via `load_focus_tasks()` |
-| [[task-viz]] | Task graph data | Reads task files directly |
-| [[daily]] file | Today's priorities, what to work on | (to define) |
-| `/tasks` command | CLI task list | Reads task files directly |
+| Feature          | What it reads                           | Current State                                      |
+| ---------------- | --------------------------------------- | -------------------------------------------------- |
+| [[dashboard]]    | Grouped/sorted task list, progress bars | Reads task files directly via `load_focus_tasks()` |
+| [[task-viz]]     | Task graph data                         | Reads task files directly                          |
+| [[daily]] file   | Today's priorities, what to work on     | (to define)                                        |
+| `/tasks` command | CLI task list                           | Reads task files directly                          |
 
 **Note**: Consumers currently read task files directly. `index.json` is an optimization that provides:
+
 - Faster queries (no file I/O per request)
 - Pre-computed groupings (by project, priority, due date)
 - Validation layer (catches missing required fields)
@@ -189,6 +192,7 @@ Script: `$AOPS/scripts/regenerate_task_index.py`
 Script: `$AOPS/scripts/synthesize_dashboard.py`
 
 Combines multiple data sources to answer the overwhelm questions:
+
 - **What should I be doing?** → P0/P1 tasks from `index.json`
 - **What did I accomplish?** → Checked items from `daily.md`
 - **What am I waiting on?** → Tasks with `status: waiting`
@@ -198,11 +202,11 @@ Calls Claude API to synthesize into structured JSON:
 
 ```json
 {
-  "accomplishments": {"count": 8, "summary": "...", "highlight": "..."},
-  "alignment": {"status": "on_track|drifted|blocked", "note": "..."},
-  "next_action": {"task": "...", "reason": "...", "project": "..."},
-  "context": {"last_machine": "...", "recent_threads": ["...", "..."]},
-  "waiting_on": [{"task": "...", "blocker": "..."}],
+  "accomplishments": { "count": 8, "summary": "...", "highlight": "..." },
+  "alignment": { "status": "on_track|drifted|blocked", "note": "..." },
+  "next_action": { "task": "...", "reason": "...", "project": "..." },
+  "context": { "last_machine": "...", "recent_threads": ["...", "..."] },
+  "waiting_on": [{ "task": "...", "blocker": "..." }],
   "suggestion": "..."
 }
 ```
@@ -214,6 +218,7 @@ Calls Claude API to synthesize into structured JSON:
 ### Dashboard Rendering
 
 The [[Cognitive Load Dashboard Spec]] renders synthesis.json if fresh (<10 min old):
+
 - **🧠 FOCUS SYNTHESIS** panel with next action prominent
 - Grid of cards: Done, Alignment, Context, Blocked
 - Optional suggestion footer

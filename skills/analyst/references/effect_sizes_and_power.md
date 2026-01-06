@@ -20,8 +20,6 @@ This document provides guidance on calculating, interpreting, and reporting effe
 
 **Golden rule**: ALWAYS report effect sizes alongside p-values.
 
----
-
 ## Effect Sizes by Analysis Type
 
 ### T-Tests and Mean Differences
@@ -73,8 +71,6 @@ from pingouin import compute_effsize_from_t
 d, ci = compute_effsize_from_t(t_statistic, nx=n1, ny=n2, eftype="cohen")
 ```
 
----
-
 #### Hedges' g (Bias-Corrected d)
 
 **Why use it**: Cohen's d has slight upward bias with small samples (n < 20)
@@ -93,8 +89,6 @@ hedges_g = result["hedges"].values[0]
 - Sample sizes are small (n < 20 per group)
 - Conducting meta-analyses (standard in meta-analysis)
 
----
-
 #### Glass's Δ (Delta)
 
 **When to use**: When one group is a control with known variability
@@ -105,8 +99,6 @@ hedges_g = result["hedges"].values[0]
 
 - Clinical trials (use control group SD)
 - When treatment affects variability
-
----
 
 ### ANOVA
 
@@ -138,8 +130,6 @@ aov = pg.anova(dv="value", between="group", data=df, detailed=True)
 eta_squared = aov["np2"][0]  # Note: pingouin reports partial eta-squared
 ```
 
----
-
 #### Partial Eta-squared (η²_p)
 
 **What it measures**: Proportion of variance explained by factor, excluding other factors
@@ -157,8 +147,6 @@ aov = pg.anova(dv="value", between=["factor1", "factor2"], data=df)
 # pingouin reports partial eta-squared by default
 partial_eta_sq = aov["np2"]
 ```
-
----
 
 #### Omega-squared (ω²)
 
@@ -183,8 +171,6 @@ def omega_squared(aov_table):
     return omega_sq
 ```
 
----
-
 #### Cohen's f
 
 **What it measures**: Effect size for ANOVA (analogous to Cohen's d)
@@ -205,8 +191,6 @@ cohens_f = np.sqrt(eta_squared / (1 - eta_squared))
 ```
 
 **Use in power analysis**: Required for ANOVA power calculations
-
----
 
 ### Correlation
 
@@ -238,8 +222,6 @@ ci = [result["CI95%"][0][0], result["CI95%"][0][1]]
 result = pg.corr(x, y, method="spearman")
 rho = result["r"].values[0]
 ```
-
----
 
 ### Regression
 
@@ -274,8 +256,6 @@ adjusted_r_squared = model.rsquared_adj
 r_squared = 1 - (SS_residual / SS_total)
 ```
 
----
-
 #### Adjusted R²
 
 **Why use it**: R² artificially increases when adding predictors; adjusted R² penalizes model complexity
@@ -283,8 +263,6 @@ r_squared = 1 - (SS_residual / SS_total)
 **Formula**: R²_adj = 1 - (1 - R²) × (n - 1) / (n - k - 1)
 
 **When to use**: Always report alongside R² for multiple regression
-
----
 
 #### Standardized Regression Coefficients (β)
 
@@ -308,8 +286,6 @@ y_std = (y - y.mean()) / y.std()
 model = OLS(y_std, X_std).fit()
 beta = model.params
 ```
-
----
 
 #### f² (Cohen's f-squared for Regression)
 
@@ -341,8 +317,6 @@ r2_reduced = model_reduced.rsquared
 f_squared = (r2_full - r2_reduced) / (1 - r2_full)
 ```
 
----
-
 ### Categorical Data Analysis
 
 #### Cramér's V
@@ -372,8 +346,6 @@ cramers_v = association(contingency_table, method="cramer")
 # Phi coefficient (for 2x2)
 phi = association(contingency_table, method="pearson")
 ```
-
----
 
 #### Odds Ratio (OR) and Risk Ratio (RR)
 
@@ -420,8 +392,6 @@ odds_ratios = np.exp(model.params)  # Exponentiate coefficients
 ci = np.exp(model.conf_int())  # Exponentiate CIs
 ```
 
----
-
 ### Bayesian Effect Sizes
 
 #### Bayes Factor (BF)
@@ -458,8 +428,6 @@ result = pg.ttest(group1, group2, correction=False)
 # Or implement using numerical integration
 ```
 
----
-
 ## Power Analysis
 
 ### Concepts
@@ -477,8 +445,6 @@ result = pg.ttest(group1, group2, correction=False)
 2. Effect size (d, f, etc.)
 3. Significance level (α)
 4. Power (1 - β)
-
----
 
 ### A Priori Power Analysis (Planning)
 
@@ -525,8 +491,6 @@ from pingouin import power_corr
 n_required = power_corr(r=0.30, power=0.80, alpha=0.05)
 ```
 
----
-
 ### Post Hoc Power Analysis (After Study)
 
 **⚠️ CAUTION**: Post hoc power is controversial and often not recommended
@@ -550,8 +514,6 @@ n_required = power_corr(r=0.30, power=0.80, alpha=0.05)
 - Conduct sensitivity analysis
 - Report minimum detectable effect size
 
----
-
 ### Sensitivity Analysis
 
 **Purpose**: Determine minimum detectable effect size given study parameters
@@ -573,8 +535,6 @@ detectable_effect = tt_ind_solve_power(
 
 print(f"With n=50 per group, we could detect d ≥ {detectable_effect:.2f}")
 ```
-
----
 
 ## Reporting Effect Sizes
 
@@ -600,8 +560,6 @@ print(f"With n=50 per group, we could detect d ≥ {detectable_effect:.2f}")
 
 > "A Bayesian independent samples t-test provided strong evidence for a difference between groups, BF₁₀ = 23.5, indicating the data are 23.5 times more likely under H₁ than H₀."
 
----
-
 ## Effect Size Pitfalls
 
 1. **Don't only rely on benchmarks**: Context matters; small effects can be meaningful
@@ -611,8 +569,6 @@ print(f"With n=50 per group, we could detect d ≥ {detectable_effect:.2f}")
 5. **Multiple outcomes**: Effect sizes vary across outcomes; report all
 6. **Don't cherry-pick**: Report effects for all planned analyses
 7. **Publication bias**: Published effects are often overestimated
-
----
 
 ## Quick Reference Table
 
@@ -626,8 +582,6 @@ print(f"With n=50 per group, we could detect d ≥ {detectable_effect:.2f}")
 | Regression       | f²          | 0.02  | 0.15   | 0.35  |
 | Chi-square       | Cramér's V  | 0.07  | 0.21   | 0.35  |
 | Chi-square (2×2) | φ           | 0.10  | 0.30   | 0.50  |
-
----
 
 ## Resources
 

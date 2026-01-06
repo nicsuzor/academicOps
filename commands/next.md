@@ -7,6 +7,7 @@ permalink: commands/next
 ---
 
 Invoke the next task skill:
+
 ```
 Skill(skill="next")
 ```

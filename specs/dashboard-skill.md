@@ -50,6 +50,7 @@ Provide live web dashboard for task visibility and session activity monitoring, 
 ## Problem Statement
 
 Task management visibility gaps:
+
 - Tasks buried in terminal history
 - No activity log when away
 - Static Excalidraw dashboards don't auto-update
@@ -91,6 +92,7 @@ All sections group by project for context orientation.
 **Cross-Machine Activity Panel**: Recent prompts from all machines via Cloudflare R2
 
 **Session Insights Panel**: Framework effectiveness metrics from Gemini analysis:
+
 - Skill compliance rate
 - Corrections count
 - Failure categories
@@ -106,6 +108,7 @@ All sections group by project for context orientation.
 **Solution**: Active Sessions panel shows per-session context using multiple signals.
 
 **Data Flow**:
+
 ```
 R2 (prompts) ──┬──> fetch_session_activity() ──> Active Sessions Panel
                │
@@ -113,6 +116,7 @@ Local JSONL ───┘   (combines prompt + TodoWrite state)
 ```
 
 **Display Format**:
+
 ```
 📍 ACTIVE SESSIONS (3)
 
@@ -132,14 +136,14 @@ Local JSONL ───┘   (combines prompt + TodoWrite state)
 
 ### Data Sources
 
-| Source | Implementation |
-|--------|----------------|
-| Task files | `skills.tasks.task_loader.load_focus_tasks()` |
-| Session JSONLs | `lib.session_reader.SessionProcessor` |
-| Daily notes | `lib.session_analyzer.SessionAnalyzer.parse_daily_log()` |
-| Cross-machine prompts | Cloudflare R2 API |
-| Session Insights | `$ACA_DATA/dashboard/insights.json` |
-| Git activity | `get_project_git_activity()` subprocess |
+| Source                | Implementation                                           |
+| --------------------- | -------------------------------------------------------- |
+| Task files            | `skills.tasks.task_loader.load_focus_tasks()`            |
+| Session JSONLs        | `lib.session_reader.SessionProcessor`                    |
+| Daily notes           | `lib.session_analyzer.SessionAnalyzer.parse_daily_log()` |
+| Cross-machine prompts | Cloudflare R2 API                                        |
+| Session Insights      | `$ACA_DATA/dashboard/insights.json`                      |
+| Git activity          | `get_project_git_activity()` subprocess                  |
 
 ### Data Pipeline
 
@@ -161,6 +165,7 @@ dashboard.py renders what's there (no LLM calls)
 ```
 
 **Key points**:
+
 - **Gemini** - reads transcripts, extracts structured per-session JSON (expensive work, done once)
 - **Claude Code agent** - reads Gemini output ONLY (not transcripts), synthesizes/integrates
 - **Idempotent** - skill can run from multiple machines, integrates rather than appends
@@ -170,6 +175,7 @@ dashboard.py renders what's there (no LLM calls)
 ### Gemini Output Requirements
 
 Gemini's per-session extraction must include enough for later synthesis:
+
 - Session summary (what was worked on)
 - Accomplishments (completed items)
 - Learning observations (corrections, failures, successes)
@@ -181,17 +187,20 @@ See [[session-insights-skill]] for Gemini prompt and output format.
 ## Relationships
 
 ### Depends On
+
 - [[tasks]] skill for task data loading
 - [[session-insights]] skill for `insights.json` generation
 - Streamlit for web rendering
 - `lib/session_reader.py` for session parsing
 
 ### Used By
+
 - Daily monitoring workflow
 - Mobile/tablet task review
 - Cross-machine activity tracking
 
 ### Integrates With
+
 - Cloudflare R2 for cross-machine prompts (requires `PROMPT_LOG_API_KEY`)
 - Peacock theme colors for project card styling
 

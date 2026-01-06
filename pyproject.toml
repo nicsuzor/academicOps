@@ -4,18 +4,18 @@ version = "0.1.0"
 description = "Academic Operations Framework"
 requires-python = ">=3.11"
 dependencies = [
-    "pyyaml>=6.0",
-    "pydantic>=2.0",
-    "fastmcp>=2.13.1",
-    "pytest-xdist>=3.8.0",
-    "streamlit>=1.28.0",
-    "networkx>=3.6",
-    "anthropic>=0.75.0",
-    "mypy>=1.19.1",
-    "ruff>=0.14.10",
-    "pytest>=8.0.0",
-    "pytest-xdist>=3.8.0",
-    "mcp-memory-service>=8.52.2",
+  "pyyaml>=6.0",
+  "pydantic>=2.0",
+  "fastmcp>=2.13.1",
+  "pytest-xdist>=3.8.0",
+  "streamlit>=1.28.0",
+  "networkx>=3.6",
+  "anthropic>=0.75.0",
+  "mypy>=1.19.1",
+  "ruff>=0.14.10",
+  "pytest>=8.0.0",
+  "pytest-xdist>=3.8.0",
+  "mcp-memory-service>=8.52.2",
 ]
 
 [tool.hatch.build.targets.wheel]
@@ -27,7 +27,8 @@ build-backend = "hatchling.build"
 
 [dependency-groups]
 dev = [
-    "pytest-timeout>=2.4.0",
+  "pre-commit>=4.5.1",
+  "pytest-timeout>=2.4.0",
 ]
 
 [tool.pytest.ini_options]
@@ -38,9 +39,9 @@ python_classes = ["Test*"]
 python_functions = ["test_*"]
 addopts = "-n 4 -m 'not slow'"
 markers = [
-    "slow: marks tests as slow (run with '-m slow')",
-    "integration: marks tests as integration tests",
-    "metrics: observability tests that report metrics (run with '-m metrics')",
-    "demo: demo tests showing real behavior (run with '-k demo -v -s -n 0')",
-    "endtoend: tests requiring real API credentials (run with '-m endtoend')",
+  "slow: marks tests as slow (run with '-m slow')",
+  "integration: marks tests as integration tests",
+  "metrics: observability tests that report metrics (run with '-m metrics')",
+  "demo: demo tests showing real behavior (run with '-k demo -v -s -n 0')",
+  "endtoend: tests requiring real API credentials (run with '-m endtoend')",
 ]

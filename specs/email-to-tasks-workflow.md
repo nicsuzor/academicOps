@@ -106,16 +106,19 @@ What should happen:
 ## Key Design Decision: Pluggable Backend
 
 **Architecture**: Workflow is backend-agnostic, can use either:
+
 - **Task scripts** (task_add.py) - available NOW for immediate deployment
 - **Tasks MCP** - future replacement when ready
 
 **Why this matters**:
+
 - No dependency on Tasks MCP for initial deployment
 - Can test and refine workflow immediately using working task scripts
 - Side-by-side validation when migrating to MCP
 - Easy rollback if MCP has issues
 
 **Phases**:
+
 1. **Phase 1-2** (11-16h): Email → Tasks workflow using existing task_add.py script - DEPLOYABLE NOW
 2. **Phase 3** (+4-7h): Optional MCP migration when Tasks MCP ready
 3. **Phase 4**: Auto-creation with MCP primary, scripts fallback
@@ -134,6 +137,7 @@ What should happen:
 ### In Scope
 
 **US1: Email to Tasks Automation**
+
 - Agent skill for email → task workflow
 - Bmem integration for context-aware categorization
 - **Pluggable task backend** (switchable between task scripts and Tasks MCP)
@@ -144,6 +148,7 @@ What should happen:
 - Agent training: when to invoke skill, how to orchestrate tools
 
 **US2: Interactive Task Completion**
+
 - `/tasks` slash command
 - Task list reader using task_view.py JSON output
 - Claude-native checkbox UI using AskUserQuestion with multiSelect
@@ -562,5 +567,3 @@ Present summary to user
 **What we learned**: [To be completed after deployment]
 
 **Recommended changes**: [To be completed after deployment]
-
----

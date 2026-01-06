@@ -24,6 +24,7 @@ gh issue list --repo nicsuzor/academicOps --label "[category]" --search "[keywor
 ```
 
 Categories/labels:
+
 - `bug` - Component-level bugs (script errors, hook crashes)
 - `learning` - Pattern-level observations (agent behavior patterns)
 - `experiment` - Systemic investigations (infrastructure issues)
@@ -64,6 +65,7 @@ gh issue create --repo nicsuzor/academicOps \
 Read `$AOPS/ROADMAP.md` for User Stories table.
 
 If observation relates to a user story, add to Issue body:
+
 ```
 **User Story**: [story-name]
 ```
@@ -71,6 +73,7 @@ If observation relates to a user story, add to Issue body:
 ### Phase 4: Synthesis Check
 
 When pattern emerges across multiple Issues:
+
 1. Create/update HEURISTICS.md entry (semantic doc)
 2. Close related Issues with link: "Synthesized to HEURISTICS.md H[n]"
 
@@ -104,6 +107,7 @@ ls -lt ~/.claude/projects/-Users-suzor-writing/*.jsonl | head -10
 ```
 
 Or use Python:
+
 ```python
 from lib.session_reader import find_sessions
 from datetime import datetime, timedelta
@@ -113,6 +117,7 @@ sessions = find_sessions(project="writing", since=file_mtime - timedelta(minutes
 ### 4. Search Sessions for Write/Edit Operations
 
 Look for tool_use blocks with:
+
 - `name`: "Write", "Edit", "mcp__memory__store_memory"
 - `input.file_path` or `input.path` matching affected file
 
@@ -127,6 +132,7 @@ Include in GitHub Issue:
 
 ```markdown
 **Investigation**:
+
 - File mtime: [timestamp]
 - Sessions checked: [session-id-prefixes] ([N] sessions in window)
 - Found: session [id] used [Tool]("[path]") at [time]
@@ -136,6 +142,7 @@ Or if inconclusive:
 
 ```markdown
 **Investigation**:
+
 - File mtime: [timestamp]
 - Sessions checked: [ids] ([N] sessions)
 - Found: No matching Write/Edit operations in checked sessions
@@ -144,6 +151,7 @@ Or if inconclusive:
 ### Critical Rule
 
 **If investigation is inconclusive, state that explicitly.** Do NOT:
+
 - Speculate about cause ("agent or memory server may have...")
 - Attribute without evidence
 - Skip investigation for file-related errors
@@ -156,22 +164,22 @@ See [[specs/enforcement.md]] "Component Responsibilities" for the full model.
 
 ### Proximate vs Root Cause
 
-| Type | Definition | Example |
-|------|------------|---------|
-| **Proximate** | Agent made a mistake | "Agent skipped skill invocation" |
-| **Root** | Framework component failed its responsibility | "Router didn't explain WHY skill needed for THIS task" |
+| Type          | Definition                                    | Example                                                |
+| ------------- | --------------------------------------------- | ------------------------------------------------------ |
+| **Proximate** | Agent made a mistake                          | "Agent skipped skill invocation"                       |
+| **Root**      | Framework component failed its responsibility | "Router didn't explain WHY skill needed for THIS task" |
 
 **When logging observations**: Always trace to ROOT CAUSE (framework responsibility breach), not proximate cause (agent behavior).
 
 ### Root Cause Categories
 
-| Category | Definition | Fix Location |
-|----------|------------|--------------|
-| Clarity Failure | Instruction ambiguous or insufficiently emphasized | AXIOMS, skill text, guardrail instruction |
-| Context Failure | Component didn't provide relevant information | Intent router, hydration |
-| Blocking Failure | Should have blocked but didn't | PreToolUse hook, deny rule |
-| Detection Failure | Should have caught but didn't | PostToolUse hook |
-| Gap | No component exists for this case | Create new enforcement |
+| Category          | Definition                                         | Fix Location                              |
+| ----------------- | -------------------------------------------------- | ----------------------------------------- |
+| Clarity Failure   | Instruction ambiguous or insufficiently emphasized | AXIOMS, skill text, guardrail instruction |
+| Context Failure   | Component didn't provide relevant information      | Intent router, hydration                  |
+| Blocking Failure  | Should have blocked but didn't                     | PreToolUse hook, deny rule                |
+| Detection Failure | Should have caught but didn't                      | PostToolUse hook                          |
+| Gap               | No component exists for this case                  | Create new enforcement                    |
 
 ### Issue Body Format Update
 
@@ -188,6 +196,7 @@ When creating Issues, use:
 **Responsible Component**: [e.g., Intent Router, Guardrail, PreToolUse Hook]
 
 ## Evidence
+
 [details]
 ```
 
@@ -199,37 +208,38 @@ When creating Issues, use:
 ✅ **RIGHT**: Run `ls -la <path>` or equivalent verification before claiming outcome
 
 **Claims requiring verification**:
+
 - "File was/wasn't written" → Check with `ls -la`
 - "Hook blocked/allowed operation" → Check both hook output AND actual outcome
 - "Error was X not Y" → Reproduce or cite exact error message
 
 **If you cannot verify, say "Unverified" in Root Cause field.**
 
----
-
 ## Abstraction Level Judgment
 
 **Key principle**: Match abstraction to framework component responsibility.
 
 Examples:
+
 - "task_view.py throws KeyError" → `bug` (component-level, fix the script)
 - "Agent ignored skill suggestion" → `learning` (Clarity Failure: router instruction not task-specific)
 - "No hook prevents this action" → `learning` (Gap: need new PreToolUse enforcement)
 
 **Don't**:
+
 - Log "agent made mistake" as root cause (that's proximate cause)
 - Create separate issues for instances of the same pattern
 - Lump specific script bugs into general categories
 
 ## Issue Labels (Categories)
 
-| Label | Use For | Example Title |
-|-------|---------|---------------|
-| `bug` | Component-level bugs | `bug: task_view.py KeyError on missing field` |
-| `learning` | Agent behavior patterns | `learning: agents ignoring explicit scope` |
-| `experiment` | Systemic investigations | `experiment: hook context injection timing` |
-| `devlog` | Development observations | `devlog: session-insights workflow` |
-| `decision` | Architectural choices | `decision: GitHub Issues for episodic storage` |
+| Label        | Use For                  | Example Title                                  |
+| ------------ | ------------------------ | ---------------------------------------------- |
+| `bug`        | Component-level bugs     | `bug: task_view.py KeyError on missing field`  |
+| `learning`   | Agent behavior patterns  | `learning: agents ignoring explicit scope`     |
+| `experiment` | Systemic investigations  | `experiment: hook context injection timing`    |
+| `devlog`     | Development observations | `devlog: session-insights workflow`            |
+| `decision`   | Architectural choices    | `decision: GitHub Issues for episodic storage` |
 
 **Default**: `learning` if unclear.
 
@@ -286,11 +296,10 @@ When patterns emerge across Issues, synthesize to semantic docs:
 ### Post-Synthesis
 
 Closed Issues remain searchable. GitHub search finds them by:
+
 - Label (e.g., `label:learning`)
 - Keywords in title/body
 - Date range
-
----
 
 ## Input Types
 
@@ -312,6 +321,7 @@ When input contains `adjust-heuristic H[n]:`:
 ## Constraints
 
 **DO ONE THING**: Document observations only. Do NOT:
+
 - Fix reported issues
 - Implement solutions
 - Debug problems

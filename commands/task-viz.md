@@ -11,6 +11,7 @@ allowed-tools: Bash,Glob,Read,Skill,mcp__memory__retrieve_memory
 Generate a visual mind-map of tasks, projects, and goals using the automated layout script.
 
 **Process**:
+
 1. Run the task visualization script:
    ```bash
    uv run python $AOPS/skills/tasks/scripts/task_viz.py $ACA_DATA current-tasks.excalidraw
@@ -22,6 +23,7 @@ Generate a visual mind-map of tasks, projects, and goals using the automated lay
 3. **If manual refinement is needed** after the script runs, invoke the `excalidraw` skill: `Skill(skill="excalidraw")`
 
 **What the script does**:
+
 - Reads tasks from `$ACA_DATA/tasks/inbox/`
 - Reads projects from `$ACA_DATA/projects/`
 - Reads goals from `$ACA_DATA/goals/`
@@ -33,6 +35,7 @@ Generate a visual mind-map of tasks, projects, and goals using the automated lay
   - Arrows showing relationships
 
 **Visual features**:
+
 - Force-directed layout prevents overlap
 - Color-coded by goal/priority (muted terminal theme)
 - Size hierarchy: Goals (largest) > Projects > Tasks
@@ -40,15 +43,16 @@ Generate a visual mind-map of tasks, projects, and goals using the automated lay
 - Timestamp in corner
 
 **When to use excalidraw skill**:
+
 - After script runs, if you need to manually adjust layout
 - Add annotations or emphasis
 - Change colors or styling
 - Reorganize specific sections
 
-
 **Purpose**: Generate a visual mind-map dashboard of tasks, projects, and goals across repositories.
 
 **Goal**: Help user understand at a glance:
+
 - **Strategic alignment**: Which tasks connect to which projects and goals
 - **Project balance**: Are some projects neglected? Which have momentum?
 - **Goal coverage**: Are goals being actively pursued or ignored?
@@ -65,6 +69,7 @@ Generate a visual mind-map of tasks, projects, and goals using the automated lay
 **MANDATORY FIRST STEP**: Query the memory server to understand current projects, goals, and strategic landscape.
 
 Query memory server for:
+
 1. **Projects**: Search for `type:project` to discover active projects
 2. **Goals**: Identify high-level strategic goals that projects serve
 3. **Relationships**: Map which projects belong to which goals
@@ -75,11 +80,13 @@ Query memory server for:
 ### Phase 2: Discover Tasks
 
 Use Glob tool to find task files:
+
 - Pattern: `data/tasks/inbox/*.md` in current repository
 - Optionally search: `~/src/*/data/tasks/inbox/*.md` for cross-repo view
 - Also check: `data/tasks/*.md` for non-inbox tasks
 
 For each task file:
+
 1. Use Read tool to get content
 2. Parse YAML frontmatter:
    - `title` (required)
@@ -92,6 +99,7 @@ For each task file:
 4. **Graceful**: Skip malformed tasks, report count, continue
 
 **Map tasks to projects and goals**:
+
 - If task has `project` field → Connect to that project
 - If task has `goal` field → Connect to that goal
 - If project is known from memory server → Connect project to its goal(s)
@@ -103,6 +111,7 @@ For each task file:
 ### Phase 3: Design Visual Layout (excalidraw skill)
 
 **MANDATORY**: Invoke the [[excalidraw]] skill to:
+
 1. Load visual design principles BEFORE designing
 2. Generate the actual .excalidraw file (DO NOT manually create JSON)
 
@@ -111,6 +120,7 @@ For each task file:
 **Strategic Context Source**: The memory server (not manually created context) provides project/goal information for accurate visualization relationships.
 
 The [[excalidraw]] skill provides:
+
 - Visual hierarchy through size, color, position
 - Color strategy (2-4 colors max, status-based)
 - Typography scale (XL/L/M/S for hierarchy levels)
@@ -124,6 +134,7 @@ The [[excalidraw]] skill provides:
 **Design approach** (following [[excalidraw]] two-phase process):
 
 **Phase 3A: Structure** (ignore aesthetics)
+
 - Map all discovered elements: goals → projects → tasks
 - Identify relationships and connections
 - Don't worry about positioning yet
@@ -147,12 +158,14 @@ The [[excalidraw]] skill provides:
 6. **Readability trumps aesthetics** - A boring readable diagram beats a pretty unreadable one. When in doubt, spread things out more.
 
 **What you provide to [[excalidraw]] skill**:
+
 - List of goals with their titles (from memory server)
 - List of projects, each linked to a goal (from memory server)
 - List of tasks, each linked to a project (from task files)
 - Status/priority of each task (for color coding)
 
 **What the [[excalidraw]] skill decides**:
+
 - Exact positions
 - Box sizes (must fit text)
 - Spacing between elements
@@ -162,6 +175,7 @@ The [[excalidraw]] skill provides:
 ### Phase 4: Invoke Excalidraw Skill
 
 Invoke the [[excalidraw]] skill with:
+
 1. **Content**: The goals, projects, and tasks you discovered
 2. **Relationships**: Which tasks belong to which projects, which projects belong to which goals
 3. **Constraints**: "78 elements, need large canvas, no overlaps, readable at a glance"
@@ -183,6 +197,7 @@ The skill handles all JSON formatting, text binding, sizing, and layout. Trust i
 ## Success Criteria
 
 The dashboard is successful when you can answer at a glance:
+
 1. What needs attention now?
 2. What's blocked?
 3. Which projects are active vs neglected?

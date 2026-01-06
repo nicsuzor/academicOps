@@ -13,6 +13,7 @@ permalink: commands/reflect
 ## When to Use
 
 User invokes `/reflect` when they suspect you bypassed proper workflow:
+
 - Invoked a skill but didn't use its prescribed data sources
 - Took shortcuts instead of following skill instructions
 - Made ad-hoc decisions that should have followed framework patterns
@@ -27,11 +28,11 @@ Check your recent actions for `Skill(skill="...")` invocations.
 
 Read the skill's SKILL.md and check:
 
-| Spec Says | I Actually Did | Compliant? |
-|-----------|----------------|------------|
-| [prescribed data source] | [what I used] | Y/N |
-| [prescribed tool/method] | [what I called] | Y/N |
-| [prescribed output format] | [what I produced] | Y/N |
+| Spec Says                  | I Actually Did    | Compliant? |
+| -------------------------- | ----------------- | ---------- |
+| [prescribed data source]   | [what I used]     | Y/N        |
+| [prescribed tool/method]   | [what I called]   | Y/N        |
+| [prescribed output format] | [what I produced] | Y/N        |
 
 ### 3. Report Deviations with Root Cause Analysis
 
@@ -56,13 +57,13 @@ See [[specs/enforcement.md]] "Component Responsibilities" for the full model.
 1. **Immediate**: What output needs to be regenerated?
 2. **Framework**: What component needs strengthening to prevent recurrence?
 
-| Root Cause Category | Framework Fix |
-|---------------------|---------------|
-| Clarity Failure | Strengthen instruction text in skill/guardrail |
-| Context Failure | Improve router classification or context injection |
-| Blocking Failure | Add/fix PreToolUse hook or deny rule |
-| Detection Failure | Add/fix PostToolUse hook |
-| Gap | Create new enforcement mechanism |
+| Root Cause Category | Framework Fix                                      |
+| ------------------- | -------------------------------------------------- |
+| Clarity Failure     | Strengthen instruction text in skill/guardrail     |
+| Context Failure     | Improve router classification or context injection |
+| Blocking Failure    | Add/fix PreToolUse hook or deny rule               |
+| Detection Failure   | Add/fix PostToolUse hook                           |
+| Gap                 | Create new enforcement mechanism                   |
 
 ### 5. Persist Observations
 
@@ -81,6 +82,7 @@ This ensures framework component failures are tracked as GitHub Issues (label: `
 ```
 
 **Agent response**:
+
 ```
 AUDIT: dashboard skill invocation
 
@@ -107,12 +109,12 @@ CORRECTION:
 
 `/reflect` is for **manual process compliance**, not outcome quality. For outcome verification, use [[/qa]].
 
-| Command | Question Answered |
-|---------|-------------------|
-| `/reflect` | Did I follow the rules? (manual self-audit) |
+| Command                     | Question Answered                                              |
+| --------------------------- | -------------------------------------------------------------- |
+| `/reflect`                  | Did I follow the rules? (manual self-audit)                    |
 | `/session-insights current` | What patterns occurred? (automated mining + heuristic updates) |
-| `/qa` | Does the output meet acceptance criteria? |
-| `/log` | What observation should we record? |
+| `/qa`                       | Does the output meet acceptance criteria?                      |
+| `/log`                      | What observation should we record?                             |
 
 ## Automated Reflection
 
@@ -123,6 +125,7 @@ Skill(skill="session-insights", args="current")
 ```
 
 This runs automatically at session end via Stop hook. It:
+
 1. Mines session transcript for patterns
 2. Maps findings to heuristics (H2, H3, etc.)
 3. Presents approve/dismiss options

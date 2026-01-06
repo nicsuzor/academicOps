@@ -54,6 +54,7 @@ Categorical framework governance. Ensures every action is justifiable as a unive
 ## Problem Statement
 
 Framework modification risks:
+
 - Ad-hoc changes that don't generalize
 - Violations of DRY (duplicate information)
 - Files placed in wrong locations
@@ -79,6 +80,7 @@ Invoke before modifying framework infrastructure OR when making any change that 
 **1. Mandatory Introspection (First Step)**
 
 Before ANY action, load all authoritative documents:
+
 1. `AXIOMS.md` - Inviolable principles
 2. `HEURISTICS.md` - Empirically validated guidance
 3. `INDEX.md` - Authoritative file tree
@@ -87,17 +89,18 @@ Before ANY action, load all authoritative documents:
 
 **2. Consistency Checks**
 
-| Check | Question | Failure = HALT |
-|-------|----------|----------------|
-| Axiom derivation | Which axiom(s) justify this change? | Cannot identify axiom |
-| INDEX placement | Does INDEX.md define where this belongs? | Location not in INDEX |
-| DRY compliance | Is this information stated exactly once? | Duplicate exists elsewhere |
-| VISION alignment | Does VISION.md support this capability? | Outside stated scope |
-| Namespace uniqueness | Does name conflict with existing component? | Name collision detected |
+| Check                | Question                                    | Failure = HALT             |
+| -------------------- | ------------------------------------------- | -------------------------- |
+| Axiom derivation     | Which axiom(s) justify this change?         | Cannot identify axiom      |
+| INDEX placement      | Does INDEX.md define where this belongs?    | Location not in INDEX      |
+| DRY compliance       | Is this information stated exactly once?    | Duplicate exists elsewhere |
+| VISION alignment     | Does VISION.md support this capability?     | Outside stated scope       |
+| Namespace uniqueness | Does name conflict with existing component? | Name collision detected    |
 
 **3. Categorical Imperative**
 
 Every action must be justifiable as a universal rule:
+
 - State the generalizable principle
 - Check if rule exists in framework docs
 - If no rule exists: propose, get approval, document
@@ -105,14 +108,15 @@ Every action must be justifiable as a universal rule:
 
 **4. File Boundary Enforcement**
 
-| Location | Action | Reason |
-|----------|--------|--------|
-| `$AOPS/*` | Direct modification OK | Framework files |
+| Location      | Action                     | Reason                                  |
+| ------------- | -------------------------- | --------------------------------------- |
+| `$AOPS/*`     | Direct modification OK     | Framework files                         |
 | `$ACA_DATA/*` | **MUST delegate to skill** | User data requires repeatable processes |
 
 ### HALT Protocol
 
 When encountering something that cannot be derived:
+
 1. STOP - Do not guess or work around
 2. STATE - "I cannot determine [X] because [Y]"
 3. ASK - Use AskUserQuestion for clarification
@@ -136,17 +140,20 @@ When encountering something that cannot be derived:
 ## Relationships
 
 ### Depends On
+
 - [[AXIOMS]] for principles
 - [[HEURISTICS]] for validated patterns
 - [[INDEX.md]] for file placement
 - [[VISION.md]] for scope
 
 ### Used By
+
 - Any work modifying framework infrastructure
 - Pattern establishment workflows
 - Skill creation and maintenance
 
 ### Delegates To
+
 - [[remember]] for knowledge persistence
 - [[tasks]] for task management
 - [[analyst]] for data analysis (with "FRAMEWORK SKILL CHECKED" token)

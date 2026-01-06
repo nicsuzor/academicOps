@@ -43,6 +43,7 @@ When reviewing test code, additionally check:
 ## When You Are Invoked
 
 MANDATORY after:
+
 - Completing a plan (before presenting to user)
 - Reaching a conclusion from investigation
 - Diagnosing a problem

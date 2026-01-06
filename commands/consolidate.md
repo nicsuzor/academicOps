@@ -25,15 +25,16 @@ The skill executes:
 
 This command is one of three consolidation triggers:
 
-| Trigger | Condition |
-|---------|-----------|
-| Manual | User runs `/consolidate` |
+| Trigger   | Condition                                                     |
+| --------- | ------------------------------------------------------------- |
+| Manual    | User runs `/consolidate`                                      |
 | Threshold | LOG.md exceeds 20 entries OR 14 days since last consolidation |
-| Pattern | Same error type appears 3+ times |
+| Pattern   | Same error type appears 3+ times                              |
 
 ## Output
 
 After consolidation, reports:
+
 - Entries processed
 - Patterns identified
 - Learning files updated

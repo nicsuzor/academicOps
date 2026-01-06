@@ -43,6 +43,7 @@ Enforce production-quality Python code with fail-fast philosophy, type safety, a
 ## Problem Statement
 
 Research code risks:
+
 - Silent defaults corrupting data without detection
 - Missing type hints obscuring interfaces
 - Mocks hiding real integration failures
@@ -119,15 +120,18 @@ When working in `$AOPS`, requires "FRAMEWORK SKILL CHECKED" token from [[framewo
 ## Relationships
 
 ### Depends On
+
 - [[AXIOMS]] #7 (Fail-Fast Code), #24 (Research Data Immutable)
 - [[framework-skill]] - Delegates from framework for `$AOPS` work
 
 ### Used By
+
 - [[feature-dev]] - Python implementation within feature development
 - [[analyst]] - Python for research data analysis
 - Any agent writing Python code
 
 ### Reference Files (bundled)
+
 - `references/fail-fast.md`
 - `references/type-safety.md`
 - `references/testing.md`

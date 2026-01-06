@@ -116,12 +116,12 @@ def test_hydrator_temp_file_structure(self):
 
 ## Anti-Patterns to Avoid
 
-| Anti-Pattern | Why It's Wrong | Better Approach |
-|--------------|----------------|-----------------|
-| `any(x in text for x in list)` | Matches surface patterns | Parse structured data (tool_calls) |
-| `assert len(output) > 0` | Passes on any output | Verify specific structure/invocations |
-| `print(x[:3000])` | Truncates evidence | Show full output in demo tests |
-| `"What is 2+2?"` prompts | Proves nothing about framework | Use real framework prompts |
+| Anti-Pattern                   | Why It's Wrong                 | Better Approach                       |
+| ------------------------------ | ------------------------------ | ------------------------------------- |
+| `any(x in text for x in list)` | Matches surface patterns       | Parse structured data (tool_calls)    |
+| `assert len(output) > 0`       | Passes on any output           | Verify specific structure/invocations |
+| `print(x[:3000])`              | Truncates evidence             | Show full output in demo tests        |
+| `"What is 2+2?"` prompts       | Proves nothing about framework | Use real framework prompts            |
 
 ## Fixture Reference
 
@@ -153,9 +153,9 @@ assert skill_was_invoked(tool_calls, "framework")
 
 ## When to Use Each Pattern
 
-| Testing For | Pattern |
-|-------------|---------|
-| Tool was invoked | Session tracking (Pattern 1) |
-| Output is semantically correct | Demo test (Pattern 2) |
-| File has correct structure | Structural verification (Pattern 4) |
-| End-to-end workflow | Real prompts (Pattern 3) + Demo test |
+| Testing For                    | Pattern                              |
+| ------------------------------ | ------------------------------------ |
+| Tool was invoked               | Session tracking (Pattern 1)         |
+| Output is semantically correct | Demo test (Pattern 2)                |
+| File has correct structure     | Structural verification (Pattern 4)  |
+| End-to-end workflow            | Real prompts (Pattern 3) + Demo test |

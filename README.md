@@ -31,9 +31,9 @@ See [[docs/ENFORCEMENT.md]] for practical enforcement guide, [[specs/enforcement
 
 ## Installation
 
-| Environment | Setup | Documentation |
-|-------------|-------|---------------|
-| **Full** (laptop, WSL, VM) | `./setup.sh` | Creates `~/.claude/` symlinks |
+| Environment                   | Setup                                                | Documentation                           |
+| ----------------------------- | ---------------------------------------------------- | --------------------------------------- |
+| **Full** (laptop, WSL, VM)    | `./setup.sh`                                         | Creates `~/.claude/` symlinks           |
 | **Limited** (Claude Code Web) | `python scripts/sync_web_bundle.py /path/to/project` | See [WEB-BUNDLE.md](docs/WEB-BUNDLE.md) |
 
 **Auto-sync**: The sync script automatically installs a git hook for auto-updates. See docs/WEB-BUNDLE.md for GitHub Actions workflow.
@@ -42,13 +42,14 @@ See [[docs/ENFORCEMENT.md]] for practical enforcement guide, [[specs/enforcement
 
 **Single entry point**: All work goes through `/do`, which transforms the main agent into an orchestration layer.
 
-| Command | Role | When to Use |
-|---------|------|-------------|
-| `/do` | Full pipeline (context, plan, execute, verify) | All non-trivial work |
-| `/meta` | Strategic brain + executor | Framework problems, design AND build |
-| `/q` | Queue for later | Capture task without executing |
+| Command | Role                                           | When to Use                          |
+| ------- | ---------------------------------------------- | ------------------------------------ |
+| `/do`   | Full pipeline (context, plan, execute, verify) | All non-trivial work                 |
+| `/meta` | Strategic brain + executor                     | Framework problems, design AND build |
+| `/q`    | Queue for later                                | Capture task without executing       |
 
 **/do Pipeline** (5 phases):
+
 1. Context gathering (memory search, file discovery)
 2. Task classification and planning skill selection
 3. TodoWrite with CHECKPOINT items (QA gates)
@@ -57,6 +58,7 @@ See [[docs/ENFORCEMENT.md]] for practical enforcement guide, [[specs/enforcement
 6. Cleanup (commit, push, memory)
 
 **Framework Workflows** (loaded via `Skill("framework")`):
+
 - `01-design-new-component` - Adding new hooks, skills, scripts, commands
 - `02-debug-framework-issue` - Diagnosing framework component failures
 - `03-experiment-design` - Testing hypotheses about behavior
@@ -83,92 +85,92 @@ Full instructions: `$AOPS/commands/do.md`
 
 ## Knowledge Architecture
 
-| Layer | Document | Nature |
-|-------|----------|--------|
-| **Axioms** | [AXIOMS.md](AXIOMS.md) | Inviolable principles. No exceptions. |
+| Layer          | Document                       | Nature                                                                 |
+| -------------- | ------------------------------ | ---------------------------------------------------------------------- |
+| **Axioms**     | [AXIOMS.md](AXIOMS.md)         | Inviolable principles. No exceptions.                                  |
 | **Heuristics** | [HEURISTICS.md](HEURISTICS.md) | Empirically validated rules. Updated via `/reflect` approval workflow. |
-| **Practices** | `Skill(skill="framework")` | Conventions derived from axioms. How things get done. |
+| **Practices**  | `Skill(skill="framework")`     | Conventions derived from axioms. How things get done.                  |
 
 ## Glossary
 
-| Term | Definition |
-|------|------------|
-| **Skill** | Workflow instructions in [skills](skills/) - invoke via `Skill` tool |
-| **Command** | User-invokable `/slash` command in `commands/` |
-| **Hook** | Python script triggered by Claude Code events in `hooks/` |
-| **Agent** | Spawnable subagent via `Task` tool (`subagent_type`) |
+| Term        | Definition                                                           |
+| ----------- | -------------------------------------------------------------------- |
+| **Skill**   | Workflow instructions in [skills](skills/) - invoke via `Skill` tool |
+| **Command** | User-invokable `/slash` command in `commands/`                       |
+| **Hook**    | Python script triggered by Claude Code events in `hooks/`            |
+| **Agent**   | Spawnable subagent via `Task` tool (`subagent_type`)                 |
 
 ## Common Tasks
 
-| I want to... | Use |
-|--------------|-----|
-| See what's available | `/aops` |
-| Do something (with full context) | `/do your task here` |
-| Add a task | `/add task description` |
-| Extract tasks from email | `/email` |
-| Get framework help | `/meta your question` |
-| Run TDD workflow | `/ttd` |
-| Visualize my tasks | `/task-viz` |
-| Log a framework pattern | `/log category: observation` |
-| Verify work is complete | `/qa` |
+| I want to...                     | Use                          |
+| -------------------------------- | ---------------------------- |
+| See what's available             | `/aops`                      |
+| Do something (with full context) | `/do your task here`         |
+| Add a task                       | `/add task description`      |
+| Extract tasks from email         | `/email`                     |
+| Get framework help               | `/meta your question`        |
+| Run TDD workflow                 | `/ttd`                       |
+| Visualize my tasks               | `/task-viz`                  |
+| Log a framework pattern          | `/log category: observation` |
+| Verify work is complete          | `/qa`                        |
 
 ## Commands
 
-| Command | Purpose |
-|---------|---------|
-| /aops | Show framework capabilities (this README) |
-| /add | Quick-add a task from session context |
-| /consolidate | Consolidate LOG.md entries into thematic files |
-| /diag | Quick diagnostic of what's loaded in session |
-| /do | Execute work with full context enrichment and guardrails |
-| /audit | Comprehensive framework governance audit |
-| /email | Extract action items from emails → tasks |
-| /learn | Make minimal framework tweaks with tracking |
-| /log | Log agent patterns to thematic learning files |
-| /meta | Strategic brain + executor for framework work |
-| /parallel-batch | Parallel file processing with skill delegation |
-| /q | Queue task for later execution (delayed /do) |
-| /qa | Verify outcomes against acceptance criteria |
-| /reflect | Self-audit process compliance; see also `/session-insights current` for automated reflection |
-| /review-training-cmd | Process review/source pair for training data |
-| /strategy | Strategic thinking partner (no execution) |
-| /task-viz | Task graph visualization (Excalidraw) |
-| /ttd | TDD workflow |
+| Command              | Purpose                                                                                      |
+| -------------------- | -------------------------------------------------------------------------------------------- |
+| /aops                | Show framework capabilities (this README)                                                    |
+| /add                 | Quick-add a task from session context                                                        |
+| /consolidate         | Consolidate LOG.md entries into thematic files                                               |
+| /diag                | Quick diagnostic of what's loaded in session                                                 |
+| /do                  | Execute work with full context enrichment and guardrails                                     |
+| /audit               | Comprehensive framework governance audit                                                     |
+| /email               | Extract action items from emails → tasks                                                     |
+| /learn               | Make minimal framework tweaks with tracking                                                  |
+| /log                 | Log agent patterns to thematic learning files                                                |
+| /meta                | Strategic brain + executor for framework work                                                |
+| /parallel-batch      | Parallel file processing with skill delegation                                               |
+| /q                   | Queue task for later execution (delayed /do)                                                 |
+| /qa                  | Verify outcomes against acceptance criteria                                                  |
+| /reflect             | Self-audit process compliance; see also `/session-insights current` for automated reflection |
+| /review-training-cmd | Process review/source pair for training data                                                 |
+| /strategy            | Strategic thinking partner (no execution)                                                    |
+| /task-viz            | Task graph visualization (Excalidraw)                                                        |
+| /ttd                 | TDD workflow                                                                                 |
 
 ## Skills
 
-| Skill | Purpose |
-|-------|---------|
-| analyst | Research data analysis (dbt, Streamlit, stats) |
-| fact-check | Verify factual claims against authoritative sources |
-| audit | Comprehensive framework governance (structure, justification, index updates) |
-| dashboard | Live Streamlit dashboard for tasks + sessions |
-| excalidraw | Hand-drawn diagrams with organic layouts |
-| extractor | Extract knowledge from archive documents |
-| feature-dev | Test-first feature development workflow |
-| framework | Convention reference, categorical imperative |
-| garden | Incremental PKM maintenance (weeding, linking) |
-| ground-truth | Establish ground truth labels for evaluation |
-| learning-log | Log patterns to thematic learning files |
-| osb-drafting | IRAC analysis for Oversight Board cases |
-| pdf | Markdown → professional PDF |
-| python-dev | Production Python (fail-fast, typed, TDD) |
-| remember | Persist knowledge to markdown + memory server |
-| review-training | Extract training pairs from matched documents |
-| session-insights | Extract accomplishments + learnings; session-end reflection with heuristic updates |
-| supervisor | Workflow templates (tdd, batch-review) |
-| tasks | Task lifecycle management |
-| training-set-builder | Build LLM training datasets from documents |
-| transcript | Session JSONL → markdown |
+| Skill                | Purpose                                                                            |
+| -------------------- | ---------------------------------------------------------------------------------- |
+| analyst              | Research data analysis (dbt, Streamlit, stats)                                     |
+| fact-check           | Verify factual claims against authoritative sources                                |
+| audit                | Comprehensive framework governance (structure, justification, index updates)       |
+| dashboard            | Live Streamlit dashboard for tasks + sessions                                      |
+| excalidraw           | Hand-drawn diagrams with organic layouts                                           |
+| extractor            | Extract knowledge from archive documents                                           |
+| feature-dev          | Test-first feature development workflow                                            |
+| framework            | Convention reference, categorical imperative                                       |
+| garden               | Incremental PKM maintenance (weeding, linking)                                     |
+| ground-truth         | Establish ground truth labels for evaluation                                       |
+| learning-log         | Log patterns to thematic learning files                                            |
+| osb-drafting         | IRAC analysis for Oversight Board cases                                            |
+| pdf                  | Markdown → professional PDF                                                        |
+| python-dev           | Production Python (fail-fast, typed, TDD)                                          |
+| remember             | Persist knowledge to markdown + memory server                                      |
+| review-training      | Extract training pairs from matched documents                                      |
+| session-insights     | Extract accomplishments + learnings; session-end reflection with heuristic updates |
+| supervisor           | Workflow templates (tdd, batch-review)                                             |
+| tasks                | Task lifecycle management                                                          |
+| training-set-builder | Build LLM training datasets from documents                                         |
+| transcript           | Session JSONL → markdown                                                           |
 
 **Invoke**: `Skill(skill="name")` or via commands that wrap them.
 
 ## Hooks
 
-| Hook | Trigger | Purpose |
-|------|---------|---------|
-| `sessionstart_load_axioms.py` | SessionStart | Inject AXIOMS.md, FRAMEWORK.md paths |
-| `user_prompt_submit.py` | UserPromptSubmit | Context injection per prompt |
+| Hook                          | Trigger          | Purpose                              |
+| ----------------------------- | ---------------- | ------------------------------------ |
+| `sessionstart_load_axioms.py` | SessionStart     | Inject AXIOMS.md, FRAMEWORK.md paths |
+| `user_prompt_submit.py`       | UserPromptSubmit | Context injection per prompt         |
 
 See [docs/HOOKS.md](docs/HOOKS.md) for hook architecture.
 
@@ -176,24 +178,25 @@ See [docs/HOOKS.md](docs/HOOKS.md) for hook architecture.
 
 Custom agents spawned via `Task(subagent_type="name")`:
 
-| Agent | Purpose |
-|-------|---------|
-| critic | Second-opinion review of plans/conclusions |
-| effectual-planner | Strategic planning under uncertainty (NOT implementation) |
-| planner | Implementation planning with memory context + critic review |
-| prompt-hydrator | Context gathering + workflow selection (invoked on every prompt) |
+| Agent             | Purpose                                                          |
+| ----------------- | ---------------------------------------------------------------- |
+| critic            | Second-opinion review of plans/conclusions                       |
+| effectual-planner | Strategic planning under uncertainty (NOT implementation)        |
+| planner           | Implementation planning with memory context + critic review      |
+| prompt-hydrator   | Context gathering + workflow selection (invoked on every prompt) |
 
 Built-in Claude Code agents (also available):
+
 - `Explore` - Fast codebase exploration
 - `Plan` - Implementation planning
 - `general-purpose` - General tasks (use with `Skill("python-dev")` for Python work)
 
 ## Scripts
 
-| Script | Purpose |
-|--------|---------|
+| Script                     | Purpose                                                     |
+| -------------------------- | ----------------------------------------------------------- |
 | `regenerate_task_index.py` | Rebuild task index from all `type: task` files in $ACA_DATA |
-| `sync_web_bundle.py` | Sync framework to project repositories |
+| `sync_web_bundle.py`       | Sync framework to project repositories                      |
 
 **Run**: `cd $AOPS && uv run python scripts/<script>.py`
 

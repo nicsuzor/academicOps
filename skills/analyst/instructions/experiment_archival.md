@@ -11,8 +11,6 @@ tags: [experiments, archival, jupyter, research-methods, reference]
 
 Notes on archiving intermediate analysis and experiments before data changes.
 
----
-
 ## 2025-10-29 - Archiving Analysis Before Data Removal
 
 **Context**: TJA project, scorer template quality improvement experiment
@@ -68,8 +66,6 @@ Process documentation characteristics:
 **PROMOTE TO FORMAL PATTERN:** This pattern worked extremely well. Should be formalized into a reusable skill.
 
 **ACTION TAKEN:** Created "archiver" skill to automate this workflow for future use.
-
----
 
 ## Patterns to Watch For
 

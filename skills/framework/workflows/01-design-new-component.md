@@ -65,12 +65,14 @@ description: Process for adding new framework capability (hook, skill, script, c
 **CRITICAL**: Claude Code loads hook configuration at session start and cannot reload mid-session.
 
 **Adding hooks** (safe):
+
 1. Add hook script to `hooks/`
 2. Add hook entry to `config/claude/settings.json`
 3. Commit and push
 4. Next session loads new hook automatically
 
 **Removing hooks** (requires stub):
+
 1. ❌ NEVER delete hook script while session is active
 2. ✅ ALWAYS create no-op stub first:
    ```python

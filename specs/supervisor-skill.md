@@ -53,6 +53,7 @@ Orchestrate complex multi-step workflows with quality gates, delegating implemen
 ## Problem Statement
 
 Development workflow risks:
+
 - Tests written after implementation (not TDD)
 - Quality checks skipped under time pressure
 - Commits without verification
@@ -68,6 +69,7 @@ Workflow templates that enforce process: TDD cycles with mandatory skill invocat
 ### Invocation
 
 Supervisor workflows are invoked via `/do` or `/ttd` commands:
+
 ```
 /ttd [task description]
 ```
@@ -79,6 +81,7 @@ Implements test-driven development with mandatory [[python-dev]] skill invocatio
 **Iteration Unit**: ONE failing test → minimal implementation → passing test → commit + push
 
 **Quality Gate (Before Each Commit)**:
+
 - [ ] pytest passes for new test
 - [ ] pytest passes for all tests (no regressions)
 - [ ] Fail-fast compliance verified
@@ -86,6 +89,7 @@ Implements test-driven development with mandatory [[python-dev]] skill invocatio
 - [ ] Commit created and pushed
 
 **Step 1: Test Creation**
+
 ```
 Task(subagent_type="general-purpose", prompt="
 Create ONE failing test.
@@ -94,12 +98,14 @@ Create ONE failing test.
 ```
 
 Pre-Check (MANDATORY):
+
 - ❌ No creating new databases
 - ❌ No running vectorization pipelines
 - ❌ No creating new configs
 - ❌ No generating fake data
 
 **Step 2: Implementation**
+
 ```
 Task(subagent_type="general-purpose", prompt="
 Implement MINIMAL code to make this ONE test pass.
@@ -110,6 +116,7 @@ Implement MINIMAL code to make this ONE test pass.
 If tests fail: Iterate up to 3 times per issue. If still failing, HALT and ask user.
 
 **Step 3: Quality Check**
+
 ```
 Task(subagent_type="general-purpose", prompt="
 Validate code quality and commit this change.
@@ -118,6 +125,7 @@ Validate code quality and commit this change.
 ```
 
 Validation checklist:
+
 - No `.get(key, default)` patterns
 - No defaults or fallbacks
 - Real fixtures, no mocked internal code
@@ -131,6 +139,7 @@ Push committed changes. If push fails (diverged branches), HALT - do not force p
 For processing multiple items with consistent skill application.
 
 **Workflow**:
+
 1. Load items to process
 2. For each item, apply appropriate skill
 3. Record result
@@ -139,20 +148,22 @@ For processing multiple items with consistent skill application.
 ## Relationships
 
 ### Depends On
+
 - [[python-dev]] - MANDATORY for all code work
 - [[feature-dev]] - Full feature development workflow
 
 ### Used By
+
 - `/ttd` command
 - `/do` command (routes to TDD for development work)
 - Feature implementation workflows
 
 ### Subagent Types Used
 
-| Type | Purpose |
-|------|---------|
-| Plan | Create detailed plans, break down tasks |
-| Explore | Understand codebase, find files |
+| Type            | Purpose                                       |
+| --------------- | --------------------------------------------- |
+| Plan            | Create detailed plans, break down tasks       |
+| Explore         | Understand codebase, find files               |
 | general-purpose | Implementation (MUST invoke python-dev first) |
 
 ## Success Criteria

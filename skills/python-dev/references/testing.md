@@ -125,13 +125,13 @@ async def test_complete_pipeline():
 
 ## Demo Tests
 
-**Goal**: Create *executable demonstrations* that show behavior (narrative + observable output) and prove real-world utility.
+**Goal**: Create _executable demonstrations_ that show behavior (narrative + observable output) and prove real-world utility.
 
 A good demo test should:
 
 - **Read like documentation** (scenario names, clear setup)
 - **Show behavior** (prints/logs/trace-friendly asserts) when run in "demo mode"
-- **Use real data** (prove *and demonstrate* real-world utility)
+- **Use real data** (prove _and demonstrate_ real-world utility)
 
 ### Demo Test Rules
 

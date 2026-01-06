@@ -37,6 +37,7 @@ Persist knowledge to the framework's dual memory system: markdown files for huma
 ## Problem Statement
 
 Knowledge capture risks:
+
 - Writing markdown but forgetting memory server sync (content not searchable)
 - Creating duplicate files instead of augmenting existing
 - Placing files in wrong locations
@@ -61,6 +62,7 @@ Invoke when capturing decisions, learnings, observations, or any knowledge that 
 **1. Dual-Write Requirement**
 
 Every knowledge capture must:
+
 1. Write markdown file to `$ACA_DATA/` hierarchy
 2. Sync to memory server via `mcp__memory__store_memory`
 
@@ -69,6 +71,7 @@ If only markdown is written, semantic search won't find it.
 **2. Search-Before-Create**
 
 Before creating any file:
+
 1. Search memory server: `mcp__memory__retrieve_memory(query="topic")`
 2. Search specs: `Glob` + grep in `$ACA_DATA/projects/*/specs/`
 3. If match found in EITHER → augment existing file
@@ -76,15 +79,15 @@ Before creating any file:
 
 **3. File Location Enforcement**
 
-| Content Type | Location |
-|--------------|----------|
-| General notes | `$ACA_DATA/context/` |
-| Goals | `$ACA_DATA/goals/` |
-| Project metadata | `$ACA_DATA/projects/<name>.md` |
-| Project details | `$ACA_DATA/projects/<name>/` |
-| Learning patterns | `$AOPS/learning/` |
-| Session notes | `$ACA_DATA/sessions/` |
-| Tasks | Delegate to [[tasks-skill]] |
+| Content Type      | Location                       |
+| ----------------- | ------------------------------ |
+| General notes     | `$ACA_DATA/context/`           |
+| Goals             | `$ACA_DATA/goals/`             |
+| Project metadata  | `$ACA_DATA/projects/<name>.md` |
+| Project details   | `$ACA_DATA/projects/<name>/`   |
+| Learning patterns | `$AOPS/learning/`              |
+| Session notes     | `$ACA_DATA/sessions/`          |
+| Tasks             | Delegate to [[tasks-skill]]    |
 
 **DO NOT** create arbitrary directories (`tech/`, `dev/`, `tools/`).
 
@@ -102,21 +105,25 @@ created: YYYY-MM-DD
 ### Output
 
 Reports both operations:
+
 - File written: `[path]`
 - Memory stored: `[confirmation]`
 
 ## Relationships
 
 ### Depends On
+
 - [[AXIOMS]] #20 (Maintain Relational Integrity), #28 (Current State Machine)
 - Memory server MCP tools
 
 ### Used By
+
 - [[feature-dev-skill]] - Records experiment outcomes
 - [[learning-log]] - Captures framework patterns
 - Any skill that needs to persist knowledge
 
 ### Workflows (bundled)
+
 - `workflows/capture` - Session mining extraction
 - `workflows/validate` - Format compliance checking
 - `workflows/prune` - Low-value file cleanup

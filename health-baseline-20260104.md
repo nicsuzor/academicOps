@@ -4,16 +4,16 @@ Generated: 2026-01-04T08:43:48.121747+00:00
 
 ## Summary
 
-| Metric | Count | Status |
-|--------|-------|--------|
-| Files not in INDEX.md | 179 | ❌ |
-| Skills without specs | 15 | ❌ |
-| Axioms without enforcement | 0 | ✅ |
-| Heuristics without enforcement | 34 | ❌ |
-| Orphan files | 281 | ❌ |
-| Broken wikilinks | 376 | ❌ |
-| Oversized skills | 2 | ⚠️ |
-| Specs missing sections | 31 | ❌ |
+| Metric                         | Count | Status |
+| ------------------------------ | ----- | ------ |
+| Files not in INDEX.md          | 179   | ❌     |
+| Skills without specs           | 15    | ❌     |
+| Axioms without enforcement     | 0     | ✅     |
+| Heuristics without enforcement | 34    | ❌     |
+| Orphan files                   | 281   | ❌     |
+| Broken wikilinks               | 376   | ❌     |
+| Oversized skills               | 2     | ⚠️      |
+| Specs missing sections         | 31    | ❌     |
 
 ## Files Not in INDEX.md
 

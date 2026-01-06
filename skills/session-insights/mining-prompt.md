@@ -11,6 +11,7 @@ Prompt for per-session learning extraction via `mcp__gemini__ask-gemini`.
 ## Required Session Metadata
 
 Before calling Gemini, the agent must provide these values (extracted from session path/context):
+
 - `session_id`: Full UUID from session filename
 - `date`: YYYYMMDD format
 - `project`: Project name from session path
@@ -118,6 +119,7 @@ Return JSON with this EXACT structure:
 ## Output Location
 
 Each session's JSON is saved to:
+
 ```
 $ACA_DATA/dashboard/sessions/{session_id}.json
 ```

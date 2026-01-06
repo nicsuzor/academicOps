@@ -63,6 +63,7 @@ Nic is a full-time academic (research, teaching, writing) who is also building a
 ### What's Needed
 
 A strategic partner that:
+
 1. **Remembers** the vision, current state, and prior decisions
 2. **Guards** against documentation bloat, duplication, and complexity spiral
 3. **Enforces** categorical governance - every change must be a universal rule
@@ -75,16 +76,17 @@ Categorical framework governance via the `/meta` command and `framework` skill. 
 
 ### Entry Points
 
-| Entry | Purpose |
-|-------|---------|
-| `/meta` command | Strategic brain - loads context, makes decisions, delegates work |
-| `framework` skill | Governance layer - consistency checks, HALT protocol |
+| Entry             | Purpose                                                          |
+| ----------------- | ---------------------------------------------------------------- |
+| `/meta` command   | Strategic brain - loads context, makes decisions, delegates work |
+| `framework` skill | Governance layer - consistency checks, HALT protocol             |
 
 ### How It Works
 
 **1. Mandatory Context Loading**
 
 Before any action, load authoritative documents:
+
 1. AXIOMS.md - Inviolable principles
 2. HEURISTICS.md - Empirically validated guidance
 3. INDEX.md - Authoritative file tree
@@ -95,17 +97,18 @@ Before any action, load authoritative documents:
 
 Before accepting any change, verify:
 
-| Check | Question | Failure = HALT |
-|-------|----------|----------------|
-| Axiom derivation | Which axiom(s) justify this? | Cannot identify axiom |
-| INDEX placement | Is location defined? | Location not in INDEX |
-| DRY compliance | Information stated exactly once? | Duplicate exists |
-| VISION alignment | Is this in scope? | Outside stated scope |
-| Namespace uniqueness | Name collision? | Name already used |
+| Check                | Question                         | Failure = HALT        |
+| -------------------- | -------------------------------- | --------------------- |
+| Axiom derivation     | Which axiom(s) justify this?     | Cannot identify axiom |
+| INDEX placement      | Is location defined?             | Location not in INDEX |
+| DRY compliance       | Information stated exactly once? | Duplicate exists      |
+| VISION alignment     | Is this in scope?                | Outside stated scope  |
+| Namespace uniqueness | Name collision?                  | Name already used     |
 
 **3. HALT Protocol**
 
 On any check failure:
+
 1. **STOP** - Do not proceed
 2. **REPORT** - State which check failed
 3. **ASK** - Use AskUserQuestion for clarification
@@ -113,14 +116,15 @@ On any check failure:
 
 **4. File Boundary Enforcement**
 
-| Location | Action |
-|----------|--------|
-| `$AOPS/*` | Direct modification OK |
+| Location      | Action                 |
+| ------------- | ---------------------- |
+| `$AOPS/*`     | Direct modification OK |
 | `$ACA_DATA/*` | MUST delegate to skill |
 
 **5. Delegation Protocol**
 
 When delegating to implementation skills:
+
 ```
 FRAMEWORK SKILL CHECKED
 
@@ -147,6 +151,7 @@ Layer 3: Automation Instructions
 ```
 
 **Key principles**:
+
 - State (layers 1-2) is separate from instructions (layer 3)
 - Authoritative sources are discoverable (top-level)
 - Learning accumulates in HEURISTICS.md and GitHub Issues
@@ -171,11 +176,13 @@ Layer 3: Automation Instructions
 ## Relationships
 
 ### Depends On
+
 - AXIOMS.md - Source of inviolable principles
 - HEURISTICS.md - Empirical guidance
 - INDEX.md - Authoritative structure
 
 ### Delegates To
+
 - python-dev - Python implementation
 - analyst - Data analysis
 - remember - Knowledge persistence

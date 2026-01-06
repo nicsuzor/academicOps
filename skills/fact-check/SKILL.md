@@ -16,6 +16,7 @@ tags:
 **Purpose**: Verify factual claims in documents against authoritative sources. Assume any quotes or references are hallucinated unless demonstrably proven.
 
 **When to invoke**:
+
 - User asks to "triple check", "verify", "fact-check" a document
 - Before submitting reviews, reports, or assessments with factual claims
 - When reviewing AI-generated content that cites sources
@@ -32,15 +33,15 @@ Every factual claim carries a **high burden of proof** that must be discharged w
 
 Read the document and extract ALL factual claims requiring verification:
 
-| Claim Type | Examples |
-|------------|----------|
-| **Names** | Researchers, institutions, organizations |
-| **Numbers** | Sample sizes, percentages, dates, funding amounts |
-| **Publications** | Paper titles, journals, publication years |
-| **Quotes** | Direct quotes attributed to sources |
-| **Credentials** | Degrees, positions, affiliations |
-| **Events** | Presentations, grants, collaborations |
-| **Timelines** | Duration claims ("10-year collaboration") |
+| Claim Type       | Examples                                          |
+| ---------------- | ------------------------------------------------- |
+| **Names**        | Researchers, institutions, organizations          |
+| **Numbers**      | Sample sizes, percentages, dates, funding amounts |
+| **Publications** | Paper titles, journals, publication years         |
+| **Quotes**       | Direct quotes attributed to sources               |
+| **Credentials**  | Degrees, positions, affiliations                  |
+| **Events**       | Presentations, grants, collaborations             |
+| **Timelines**    | Duration claims ("10-year collaboration")         |
 
 Use TodoWrite to track each claim category.
 
@@ -48,14 +49,14 @@ Use TodoWrite to track each claim category.
 
 For each claim, determine what would constitute authoritative verification:
 
-| Claim Type | Authoritative Sources |
-|------------|----------------------|
-| Researcher details | University profiles, Google Scholar, dblp, ORCID |
-| Publications | Publisher websites, DOI links, preprint servers |
-| Institutions | Official websites, LinkedIn (for existence) |
-| Project details | Grant databases, project websites, research plans |
-| Statistics | Primary source documents, methodology sections |
-| Quotes | Original source (book, paper, interview) |
+| Claim Type         | Authoritative Sources                             |
+| ------------------ | ------------------------------------------------- |
+| Researcher details | University profiles, Google Scholar, dblp, ORCID  |
+| Publications       | Publisher websites, DOI links, preprint servers   |
+| Institutions       | Official websites, LinkedIn (for existence)       |
+| Project details    | Grant databases, project websites, research plans |
+| Statistics         | Primary source documents, methodology sections    |
+| Quotes             | Original source (book, paper, interview)          |
 
 **Critical**: If the document references a primary source (e.g., "research plan PDF"), READ THAT FIRST. It's the authoritative source for claims about the project.
 
@@ -70,11 +71,11 @@ For each claim:
 
 ### Phase 4: Classify Results
 
-| Status | Meaning | Format |
-|--------|---------|--------|
-| ✅ **Verified** | Claim matches authoritative source | Cite source with link/page |
-| ⚠️ **Clarification needed** | Source exists but details differ | Note discrepancy |
-| 🔍 **Unverifiable** | No authoritative source accessible | Note what was searched |
+| Status                       | Meaning                               | Format                                 |
+| ---------------------------- | ------------------------------------- | -------------------------------------- |
+| ✅ **Verified**              | Claim matches authoritative source    | Cite source with link/page             |
+| ⚠️ **Clarification needed**   | Source exists but details differ      | Note discrepancy                       |
+| 🔍 **Unverifiable**          | No authoritative source accessible    | Note what was searched                 |
 | 📝 **Professional judgment** | Opinion/assessment, not factual claim | Note this is not a verification target |
 
 ### Phase 5: Compile Report
@@ -84,20 +85,20 @@ Create verification report using template:
 ```markdown
 ## Verified Claims (Accurate)
 
-| Claim | Source |
-|-------|--------|
+| Claim   | Source                  |
+| ------- | ----------------------- |
 | [claim] | [source with link/page] |
 
 ## Claims Requiring Clarification
 
-| Claim | Issue | Evidence |
-|-------|-------|----------|
+| Claim   | Issue         | Evidence         |
+| ------- | ------------- | ---------------- |
 | [claim] | [discrepancy] | [what was found] |
 
 ## Unverifiable Claims
 
-| Claim | Search Attempted |
-|-------|------------------|
+| Claim   | Search Attempted  |
+| ------- | ----------------- |
 | [claim] | [sources checked] |
 
 ## Professional Judgments (Not Verifiable)

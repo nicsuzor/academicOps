@@ -13,6 +13,7 @@ description: Guidance on using built-in Excalidraw libraries and creating custom
 **Available in this skill** (`skills/excalidraw/libraries/`):
 
 6 curated library files ready for immediate use:
+
 - **awesome-icons.excalidrawlib** (105KB) - General-purpose icons for visual interest
 - **data-processing.excalidrawlib** (578KB) - Data pipeline, ETL, processing diagrams
 - **data-viz.excalidrawlib** (921KB) - Charts, graphs, visualization components
@@ -63,6 +64,7 @@ description: Guidance on using built-in Excalidraw libraries and creating custom
 ## Online Libraries
 
 Access additional pre-built components at libraries.excalidraw.com:
+
 - System design components (databases, load balancers, queues)
 - Cloud architecture (AWS, Azure, GCP icons)
 - Network diagrams (routers, switches, firewalls)

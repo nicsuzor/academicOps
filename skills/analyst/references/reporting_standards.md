@@ -18,8 +18,6 @@ This document provides guidelines for reporting statistical analyses according t
 4. **Clarity**: Write for your audience, define technical terms
 5. **Reproducibility**: Provide code, data, or supplements when possible
 
----
-
 ## Pre-Registration and Planning
 
 ### What to Report (Ideally Before Data Collection)
@@ -44,8 +42,6 @@ This document provides guidelines for reporting statistical analyses according t
 - Increases credibility and reproducibility
 
 **Platforms**: OSF, AsPredicted, ClinicalTrials.gov
-
----
 
 ## Methods Section
 
@@ -123,8 +119,6 @@ This document provides guidelines for reporting statistical analyses according t
 
 > "All analyses were conducted using Python 3.10 with scipy 1.11 and statsmodels 0.14. An alpha level of .05 was used for all significance tests. Assumptions of normality and homogeneity of variance were assessed using Shapiro-Wilk and Levene's tests, respectively. Missing data (< 2% for all variables) were handled using listwise deletion. Outliers beyond 3 SD from the mean were winsorized. For the primary ANOVA, partial eta-squared (η²_p) is reported as the effect size measure. Post hoc comparisons used Tukey's HSD to control family-wise error rate."
 
----
-
 ## Results Section
 
 ### Descriptive Statistics
@@ -150,8 +144,6 @@ This document provides guidelines for reporting statistical analyses according t
 - Include M, SD, and n (minimum)
 - Can include range, skewness, kurtosis if relevant
 
----
-
 ### Assumption Checks
 
 **What to report**:
@@ -168,8 +160,6 @@ This document provides guidelines for reporting statistical analyses according t
 **Example (violated)**:
 
 > "Shapiro-Wilk tests indicated significant departure from normality for Group C (W = 0.89, p = .003). Therefore, the non-parametric Mann-Whitney U test was used instead of the independent samples t-test."
-
----
 
 ### Inferential Statistics
 
@@ -202,8 +192,6 @@ This document provides guidelines for reporting statistical analyses according t
 
 > "There was no significant difference between Group A (M = 72.1, SD = 8.3) and Group B (M = 70.5, SD = 8.9), t(98) = 0.91, p = .36, d = 0.18, 95% CI [-0.21, 0.57]."
 
----
-
 #### ANOVA
 
 **What to report**:
@@ -228,8 +216,6 @@ This document provides guidelines for reporting statistical analyses according t
 **Example (repeated measures ANOVA)**:
 
 > "A one-way repeated measures ANOVA revealed a significant effect of time point on anxiety scores, F(2, 98) = 15.67, p < .001, η²_p = .24. Mauchly's test indicated that the assumption of sphericity was violated, χ²(2) = 8.45, p = .01, therefore Greenhouse-Geisser corrected values are reported (ε = 0.87). Pairwise comparisons with Bonferroni correction showed..."
-
----
 
 #### Correlation
 
@@ -256,8 +242,6 @@ This document provides guidelines for reporting statistical analyses according t
 
 > "There was no significant correlation between age and reaction time, r(98) = -.12, p = .23, 95% CI [-.31, .08]."
 
----
-
 #### Regression
 
 **What to report**:
@@ -281,8 +265,6 @@ This document provides guidelines for reporting statistical analyses according t
 **Example (logistic regression)**:
 
 > "Logistic regression was conducted to predict pass/fail status from study hours. The overall model was significant, χ²(1) = 28.7, p < .001, Nagelkerke R² = .31. Each additional study hour increased the odds of passing by 1.35 times (OR = 1.35, 95% CI [1.18, 1.54], p < .001). The model correctly classified 76% of cases (sensitivity = 81%, specificity = 68%)."
-
----
 
 #### Chi-Square Tests
 
@@ -308,8 +290,6 @@ This document provides guidelines for reporting statistical analyses according t
 
 > "Due to expected cell counts below 5, Fisher's exact test was used. The association between treatment and outcome was significant, p = .018 (two-tailed), OR = 3.42, 95% CI [1.21, 9.64]."
 
----
-
 #### Non-Parametric Tests
 
 **Mann-Whitney U**:
@@ -323,8 +303,6 @@ This document provides guidelines for reporting statistical analyses according t
 **Kruskal-Wallis**:
 
 > "A Kruskal-Wallis test revealed significant differences among the three conditions, H(2) = 15.7, p < .001, η² = .09. Follow-up pairwise comparisons with Bonferroni correction showed..."
-
----
 
 #### Bayesian Statistics
 
@@ -343,8 +321,6 @@ This document provides guidelines for reporting statistical analyses according t
 **Example (Bayesian regression)**:
 
 > "A Bayesian linear regression was fitted with weakly informative priors (Normal(0, 10) for coefficients, Half-Cauchy(0, 5) for residual SD). The model showed that study hours credibly predicted exam scores (β = 0.52, 95% CI [0.38, 0.66]; 0 not included in interval). All convergence diagnostics were satisfactory (R-hat < 1.01, ESS > 1000 for all parameters). Posterior predictive checks indicated adequate model fit."
-
----
 
 ## Effect Sizes
 
@@ -370,8 +346,6 @@ This document provides guidelines for reporting statistical analyses according t
 - Always report CIs for effect sizes when possible
 - Shows precision of estimate
 - More informative than point estimate alone
-
----
 
 ## Figures and Tables
 
@@ -438,8 +412,6 @@ This document provides guidelines for reporting statistical analyses according t
 
 _Note_. N = 150. ** p < .01. *** p < .001.
 
----
-
 ## Common Mistakes to Avoid
 
 1. **Reporting p = .000**: Report p < .001 instead
@@ -452,8 +424,6 @@ _Note_. N = 150. ** p < .01. *** p < .001.
 8. **Reporting only one decimal for p-values**: Use two (p = .03, not p = .0)
 9. **Not specifying one- vs. two-tailed**: Always clarify
 10. **Inconsistent rounding**: Be consistent throughout
-
----
 
 ## Null Results
 
@@ -482,8 +452,6 @@ _Note_. N = 150. ** p < .01. *** p < .001.
 
 > "Contrary to our hypothesis, there was no significant difference in creativity scores between the music (M = 72.1, SD = 8.3) and silence (M = 70.5, SD = 8.9) conditions, t(98) = 0.91, p = .36, d = 0.18, 95% CI [-0.21, 0.57]. A post hoc sensitivity analysis revealed that the study had 80% power to detect an effect of d = 0.57 or larger, suggesting the null finding may reflect insufficient power to detect small effects."
 
----
-
 ## Reproducibility
 
 ### Materials to Share
@@ -504,8 +472,6 @@ _Note_. N = 150. ** p < .01. *** p < .001.
 
 > "Data, analysis code, and materials are available at https://osf.io/xxxxx/"
 
----
-
 ## Checklist for Statistical Reporting
 
 - [ ] Sample size and demographics
@@ -524,8 +490,6 @@ _Note_. N = 150. ** p < .01. *** p < .001.
 - [ ] Missing data handling explained
 - [ ] Limitations discussed
 - [ ] Data/code availability statement
-
----
 
 ## Additional Resources
 

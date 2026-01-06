@@ -56,8 +56,6 @@ Feature development follows eight phases:
 
 **ADHD Accommodation**: Zero-friction capture means accepting messy input without requesting polish.
 
----
-
 ### Phase 2: Requirements Analysis
 
 **Objective**: Transform user story into clear, testable requirements.
@@ -80,8 +78,6 @@ Feature development follows eight phases:
 **Output**: User story enhanced with explicit requirements and success criteria.
 
 **Fail-Fast**: If requirements conflict or are unclear after discussion, HALT - don't proceed with ambiguity.
-
----
 
 ### Phase 3: Experiment Design
 
@@ -109,8 +105,6 @@ Feature development follows eight phases:
 - Project-specific functionality (may log in project repo instead)
 
 **Output**: Experiment plan document defining hypothesis, success criteria, and scope.
-
----
 
 ### Phase 4: Test-First Design
 
@@ -142,8 +136,6 @@ Feature development follows eight phases:
 
 **Fail-Fast**: If you can't define how to test success criteria, go back to Phase 2.
 
----
-
 ### Phase 5: Development Planning
 
 **Objective**: Break implementation into discrete, trackable steps.
@@ -167,8 +159,6 @@ Feature development follows eight phases:
 **Output**: Development plan with discrete, ordered steps.
 
 **ADHD Accommodation**: Visual progress tracking via todos provides at-a-glance status.
-
----
 
 ### Phase 6: Execution
 
@@ -207,8 +197,6 @@ Feature development follows eight phases:
 - Documentation conflicts → Stop, resolve
 - Bloat detected → Stop, refactor
 - No partial success - feature works completely or doesn't ship
-
----
 
 ### Phase 7: Validation & Decision
 
@@ -258,8 +246,6 @@ Feature development follows eight phases:
 
 **Fail-Fast**: Never commit partial success. Better to revert and learn than ship broken features.
 
----
-
 ### Phase 8: Spec Synthesis
 
 **Objective**: Update the authoritative spec; delete implementation artifacts.
@@ -289,8 +275,6 @@ Feature development follows eight phases:
 **Output**: Updated timeless spec; no orphan implementation files.
 
 **Fail-Fast**: If spec and implementation doc describe different behaviors, HALT - resolve the discrepancy before proceeding.
-
----
 
 ## Templates
 

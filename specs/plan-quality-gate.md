@@ -46,20 +46,21 @@ Multi-layered enforcement - no single mechanism, multiple reinforcement points.
 
 ### Current Enforcement Points
 
-| Location | Mentions Critic? | Strength | Notes |
-|----------|------------------|----------|-------|
-| [[critic]] agent | Defines it | N/A | - |
-| [[HEURISTICS]] H14 | Mandatory review | Medium | Heuristics aren't binding |
-| [[specs/prompt-hydration]] | Task classification + guardrails | High | Covers framework + planning tasks |
-| [[meta\|/meta]] command | MANDATORY section | High | Primary entry for framework work |
-| [[hypervisor]] agent | Phase 0 + example | High | Multi-step orchestration |
-| [[supervise\|/supervise]] command | Phase 0 mention | Medium | Workflow orchestration |
+| Location                          | Mentions Critic?                 | Strength | Notes                             |
+| --------------------------------- | -------------------------------- | -------- | --------------------------------- |
+| [[critic]] agent                  | Defines it                       | N/A      | -                                 |
+| [[HEURISTICS]] H14                | Mandatory review                 | Medium   | Heuristics aren't binding         |
+| [[specs/prompt-hydration]]        | Task classification + guardrails | High     | Covers framework + planning tasks |
+| [[meta\|/meta]] command           | MANDATORY section                | High     | Primary entry for framework work  |
+| [[hypervisor]] agent              | Phase 0 + example                | High     | Multi-step orchestration          |
+| [[supervise\|/supervise]] command | Phase 0 mention                  | Medium   | Workflow orchestration            |
 
 ### Scope Clarification
 
 **This spec applies to implementation plans** - concrete "how do I build X" plans that will be presented to the user for approval.
 
 **This does NOT apply to**:
+
 - [[effectual-planner]] - strategic/project planning agent for knowledge-building under uncertainty. That agent produces hypotheses and fragments, not implementation plans requiring approval.
 - Simple single-step tasks that don't need formal planning
 
@@ -84,6 +85,7 @@ A PreToolUse hook on ExitPlanMode would be heavy-handed and create friction for 
 ## Verification
 
 To verify enforcement is working:
+
 1. Check session transcripts for plans presented without critic invocation
 2. Track via `/log critic-skip: [observation]` when noticed
 3. Periodic audit of planning sessions

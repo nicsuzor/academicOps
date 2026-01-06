@@ -15,6 +15,7 @@ Mind maps and concept maps are powerful tools for organizing information hierarc
 **What**: Elements that are related should be visually close together
 
 **How**:
+
 - Cluster similar/related ideas using boundaries or frames
 - Apply same color family to related groups
 - Use consistent spacing within groups (20-40px)
@@ -29,6 +30,7 @@ Mind maps and concept maps are powerful tools for organizing information hierarc
 **What**: No element should be placed arbitrarily on the canvas
 
 **How**:
+
 - Align child nodes to parent nodes (centered, or edge-aligned)
 - Maintain consistent radial spacing in circular layouts
 - Use grid snapping for precision (Cmd/Ctrl + ')
@@ -43,6 +45,7 @@ Mind maps and concept maps are powerful tools for organizing information hierarc
 **What**: Visual differences signal importance and hierarchy
 
 **How**:
+
 - Size: Primary nodes 2-3× larger than secondary nodes
 - Color: Saturated = important, desaturated = supporting
 - Stroke weight: Thick (3-4px) for major connections, thin (1-2px) for details
@@ -58,6 +61,7 @@ Mind maps and concept maps are powerful tools for organizing information hierarc
 **What**: Repeated visual elements create coherence and aid understanding
 
 **How**:
+
 - Same color for same category across entire diagram
 - Same shape for same element type (all tasks = rectangles)
 - Same arrow style for same relationship type

@@ -18,20 +18,21 @@ tags: [framework, paths, configuration]
 
 These are the **concrete absolute paths** for this session. Use them directly with Read/Write/Edit tools:
 
-| Path | Value |
-|------|-------|
-| Framework root | `$AOPS` |
-| User data | `$ACA_DATA` |
-| Commands | `$AOPS/commands/` |
-| Skills | `$AOPS/skills/` |
-| Hooks | `$AOPS/hooks/` |
-| Agents | `$AOPS/agents/` |
-| Tests | `$AOPS/tests/` |
-| Tasks | `$ACA_DATA/tasks/` |
-| Projects | `$ACA_DATA/projects/` |
-| Library | `$AOPS/lib/` |
+| Path           | Value                 |
+| -------------- | --------------------- |
+| Framework root | `$AOPS`               |
+| User data      | `$ACA_DATA`           |
+| Commands       | `$AOPS/commands/`     |
+| Skills         | `$AOPS/skills/`       |
+| Hooks          | `$AOPS/hooks/`        |
+| Agents         | `$AOPS/agents/`       |
+| Tests          | `$AOPS/tests/`        |
+| Tasks          | `$ACA_DATA/tasks/`    |
+| Projects       | `$ACA_DATA/projects/` |
+| Library        | `$AOPS/lib/`          |
 
 **Common files you may need:**
+
 - User accommodations: [[ACCOMMODATIONS.md]] (in $ACA_DATA/)
 - User context: [[CORE.md]] (in $ACA_DATA/)
 - Project state: [[STATE.md]] (in $ACA_DATA/projects/aops/)
@@ -40,10 +41,10 @@ These are the **concrete absolute paths** for this session. Use them directly wi
 
 ## Path Reference
 
-| Variable | Purpose |
-|----------|---------|
-| `$AOPS` | Framework source (SSoT for all framework files) |
-| `$ACA_DATA` | User data (tasks, sessions, knowledge base) |
+| Variable     | Purpose                                                  |
+| ------------ | -------------------------------------------------------- |
+| `$AOPS`      | Framework source (SSoT for all framework files)          |
+| `$ACA_DATA`  | User data (tasks, sessions, knowledge base)              |
 | `~/.claude/` | Runtime directory (symlinks → `$AOPS`, DO NOT edit here) |
 
 **To edit framework files**: Always edit in `$AOPS/`, never in `~/.claude/` symlinks.
@@ -51,16 +52,15 @@ These are the **concrete absolute paths** for this session. Use them directly wi
 ## Memory System
 
 User memories are strictly organised with a clear distinction between:
+
 - Episodic Memory (Observations): This system stores specific, context-rich past events (e.g., "I remember seeing a white crow yesterday").
 - Semantic Memory & Belief Networks (The Current State): This is where general knowledge and "truths" reside (e.g., "Crows are black").
-
 
 The $ACA_DATA knowledge base is a CURRENT STATE MACHINE. The core framework priority is the current state machine: we want **perfect knowledge of everything the user needs, always up to date, always understandable** without having to piece together observations. $ACA_DATA is **markdown-first** and indexed semantically with a memory server.
 
 **To persist knowledge**: Use `Skill(skill="remember")` (blocking) or spawn background Task with `run_in_background=true` (seamless). **To search**: Use `mcp__memory__retrieve_memory(query="...")`.
 
 All other long term memory is stored somewhere logical but OUTSIDE OF $ACA_DATA. We produce observations, and they are stored in logical places (git history, session files, meeting notes, etc).
-
 
 ## Environment Variable Architecture
 
@@ -71,6 +71,7 @@ All other long term memory is stored somewhere logical but OUTSIDE OF $ACA_DATA.
 3. Hooks receive AOPS/ACA_DATA automatically - no hardcoding needed
 
 **Key rules:**
+
 - **NEVER hardcode paths** in framework files (settings.json, hooks, scripts)
 - User-specific paths come from `settings.local.json` (created by setup.sh at install time)
 - `~/.env` is for shell environment, NOT for Claude Code hooks

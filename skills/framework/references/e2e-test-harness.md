@@ -34,16 +34,19 @@ result = claude_headless(
 ```
 
 ### 2. Session Start Validation
+
 - Verify content loads into agent context (not via Read tool)
 - Test from multiple directories
 - Verify agent knows user info from ACCOMMODATIONS.md
 
 ### 3. Behavioral Tests
+
 - Agent has info without using Read tool
 - Skill invocation produces expected output
 - Scripts discoverable via symlinks
 
 ### 4. Remember Skill Tests
+
 - Delegates to memory server MCP tools
 - Persists knowledge via Skill(skill="remember")
 - Retrieves via mcp__memory__retrieve_memory

@@ -47,6 +47,7 @@ Convert Claude Code JSONL session files to readable markdown transcripts for ana
 ## Problem Statement
 
 Session analysis challenges:
+
 - Raw JSONL is unreadable by humans
 - Session content mixed with metadata
 - No distinction between essential and verbose content
@@ -70,6 +71,7 @@ Skill(skill="transcript", args="/path/to/session.jsonl")  # specific file
 ### Workflow
 
 **1. Find Sessions**
+
 ```bash
 cd $AOPS && uv run python -c "
 from lib.session_reader import find_sessions
@@ -85,6 +87,7 @@ for s in find_sessions():
 Skip if transcript exists and is newer than session's last_modified.
 
 **3. Generate Transcript**
+
 ```bash
 cd $AOPS && uv run python scripts/claude_transcript.py \
   /path/to/session.jsonl \
@@ -93,16 +96,17 @@ cd $AOPS && uv run python scripts/claude_transcript.py \
 ```
 
 **4. Report**
+
 ```
 Transcripts: Generated N | Skipped M (up-to-date)
 ```
 
 ### Output Versions
 
-| Version | Content | Use Case |
-|---------|---------|----------|
-| `*-abridged.md` | File references only | Quick review, daily summaries |
-| `*-full.md` | Full injected content, tool results | Deep analysis, debugging |
+| Version         | Content                             | Use Case                      |
+| --------------- | ----------------------------------- | ----------------------------- |
+| `*-abridged.md` | File references only                | Quick review, daily summaries |
+| `*-full.md`     | Full injected content, tool results | Deep analysis, debugging      |
 
 Default: Abridged only (reduces token cost).
 
@@ -124,23 +128,26 @@ Default: Abridged only (reduces token cost).
 ## Relationships
 
 ### Depends On
+
 - `scripts/claude_transcript.py` for parsing and formatting
 - `lib/session_reader.py` for JSONL parsing
 - Claude session files in `~/.claude/projects/*/sessions/`
 
 ### Used By
+
 - [[session-insights]] for daily transcript generation
 - [[learning-log]] for session analysis
 - Manual session review
 
 ### Architecture
 
-| Component | Role |
-|-----------|------|
-| `scripts/claude_transcript.py` | CLI entry point |
-| `lib/session_reader.py` | Parses JSONL, formats markdown |
+| Component                      | Role                           |
+| ------------------------------ | ------------------------------ |
+| `scripts/claude_transcript.py` | CLI entry point                |
+| `lib/session_reader.py`        | Parses JSONL, formats markdown |
 
 Session reader combines:
+
 - Main session JSONL
 - Agent transcripts (`agent-*.jsonl`)
 - Hook logs (`*-hooks.jsonl`)

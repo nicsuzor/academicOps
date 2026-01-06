@@ -28,28 +28,29 @@ The framework uses a memory server that indexes `$ACA_DATA/`. When you write mar
 
 ## File Locations
 
-| Content | Location |
-|---------|----------|
-| General notes | `$ACA_DATA/context/` |
-| Goals | `$ACA_DATA/goals/` |
+| Content          | Location                       |
+| ---------------- | ------------------------------ |
+| General notes    | `$ACA_DATA/context/`           |
+| Goals            | `$ACA_DATA/goals/`             |
 | Project metadata | `$ACA_DATA/projects/<name>.md` |
-| Project details | `$ACA_DATA/projects/<name>/` |
-| Session notes | `$ACA_DATA/sessions/` |
-| Tasks | Delegate to [[tasks]] skill |
+| Project details  | `$ACA_DATA/projects/<name>/`   |
+| Session notes    | `$ACA_DATA/sessions/`          |
+| Tasks            | Delegate to [[tasks]] skill    |
 
 ### PROHIBITED Content
 
 **NEVER create these in $ACA_DATA** - they belong elsewhere:
 
-| Content Type | Where It Belongs | Why |
-|--------------|------------------|-----|
-| Specs/specifications | `$AOPS/specs/` | Framework code, version controlled |
-| Skills | `$AOPS/skills/` | Framework code |
-| Hooks | `$AOPS/hooks/` | Framework code |
-| Episodic content | GitHub Issues | Per [[AXIOMS]] #28, [[H26]] |
-| `learning/`, `bugs/`, `experiments/`, `decisions/` | GitHub Issues | Episodic, not current state |
+| Content Type                                       | Where It Belongs | Why                                |
+| -------------------------------------------------- | ---------------- | ---------------------------------- |
+| Specs/specifications                               | `$AOPS/specs/`   | Framework code, version controlled |
+| Skills                                             | `$AOPS/skills/`  | Framework code                     |
+| Hooks                                              | `$AOPS/hooks/`   | Framework code                     |
+| Episodic content                                   | GitHub Issues    | Per [[AXIOMS]] #28, [[H26]]        |
+| `learning/`, `bugs/`, `experiments/`, `decisions/` | GitHub Issues    | Episodic, not current state        |
 
 **When remembering framework decisions** (specs, heuristics, design choices):
+
 - **DO**: Store to memory server only (for semantic retrieval)
 - **DO NOT**: Create markdown files in $ACA_DATA - the authoritative source is in $AOPS
 
@@ -59,19 +60,21 @@ The framework uses a memory server that indexes `$ACA_DATA/`. When you write mar
 
 **The "durable record" requirement can be satisfied WITHOUT creating a new file:**
 
-| Completion Type | Preferred Durability Method |
-|-----------------|----------------------------|
-| Task completed | Mark subtask complete in existing task file, OR archive task via `/tasks` skill |
-| Work session done | Git commit message documents the work |
-| Observation/learning | GitHub Issue comment (per [[AXIOMS]] #28) |
-| Decision made | GitHub Issue comment, then synthesize to HEURISTICS.md when pattern emerges |
+| Completion Type      | Preferred Durability Method                                                     |
+| -------------------- | ------------------------------------------------------------------------------- |
+| Task completed       | Mark subtask complete in existing task file, OR archive task via `/tasks` skill |
+| Work session done    | Git commit message documents the work                                           |
+| Observation/learning | GitHub Issue comment (per [[AXIOMS]] #28)                                       |
+| Decision made        | GitHub Issue comment, then synthesize to HEURISTICS.md when pattern emerges     |
 
 **Only create a new markdown file when:**
+
 1. The knowledge is **semantic** (timeless truth, not time-stamped event)
 2. No existing file covers this topic (check memory server + glob first)
 3. The content is substantial enough to warrant its own file
 
 **PROHIBITED patterns:**
+
 - ❌ `task-completed-2026-01-06.md` - use task archival instead
 - ❌ `bmem-audit-2026-01-06.md` - commit message + issue comment suffices
 - ❌ `framework-refactor-2025-12-30.md` - date-stamped files forbidden
@@ -85,13 +88,13 @@ The framework uses a memory server that indexes `$ACA_DATA/`. When you write mar
 
 Before writing ANY file to `$ACA_DATA/`, verify per [[HEURISTICS.md#H34]]:
 
-| File Type | Required Links (in body, not frontmatter) |
-|-----------|-------------------------------------------|
-| **Project file** (`projects/*.md`) | Opening paragraph MUST wikilink to the [[goal]] it supports |
-| **Project file** | MUST have `## Connections` section with related [[projects]] |
-| **Note** (`context/*.md`) | MUST wikilink to at least one [[project]] or [[goal]] |
-| **Goal file** | MUST list projects that support it |
-| **Project content** (`projects/<name>/*.md`) | MUST link to hub AND to related files in same folder |
+| File Type                                    | Required Links (in body, not frontmatter)                    |
+| -------------------------------------------- | ------------------------------------------------------------ |
+| **Project file** (`projects/*.md`)           | Opening paragraph MUST wikilink to the [[goal]] it supports  |
+| **Project file**                             | MUST have `## Connections` section with related [[projects]] |
+| **Note** (`context/*.md`)                    | MUST wikilink to at least one [[project]] or [[goal]]        |
+| **Goal file**                                | MUST list projects that support it                           |
+| **Project content** (`projects/<name>/*.md`) | MUST link to hub AND to related files in same folder         |
 
 ### Semantic Density Check (MANDATORY)
 
@@ -131,6 +134,7 @@ Every project file needs a `## Connections` section:
 **Goals**: [[Goal Name]] (how this project serves it)
 
 **Related Projects**:
+
 - [[other-project]] - relationship description
 - [[another-project]] - shared infrastructure/themes
 
@@ -140,6 +144,7 @@ Every project file needs a `## Connections` section:
 ### Finding Links
 
 Before creating a file, search for related content:
+
 1. `mcp__memory__retrieve_memory(query="[topic]")` - find related notes
 2. Read `$ACA_DATA/goals/goals.md` - which goal does this serve?
 3. Read `$ACA_DATA/projects/projects.md` - what projects relate?
@@ -159,17 +164,18 @@ Before creating a file, search for related content:
 
 **Don't over-summarize.** Content often belongs in multiple locations at different levels of detail:
 
-| Location | Content Level |
-|----------|---------------|
-| Project index (`project.md`) | Summary observations, current strategic position |
-| Detailed notes (`project/topic.md`) | Full context, reasoning, personal reflections |
-| Memory server | Key facts for semantic retrieval |
+| Location                            | Content Level                                    |
+| ----------------------------------- | ------------------------------------------------ |
+| Project index (`project.md`)        | Summary observations, current strategic position |
+| Detailed notes (`project/topic.md`) | Full context, reasoning, personal reflections    |
+| Memory server                       | Key facts for semantic retrieval                 |
 
 **Example**: A plenary reflection belongs BOTH in the project index (strategic summary) AND the meeting notes (full reflection with emotional context, reasoning, history).
 
 When in doubt, save to both. Lost detail is worse than mild redundancy.
 
 4. **Write markdown file** with proper frontmatter:
+
 ```markdown
 ---
 title: [Descriptive Title]
@@ -184,6 +190,7 @@ Content here.
 ```
 
 3. **Add to memory server**:
+
 ```
 mcp__memory__store_memory(
   content="[Full content or key excerpt]",
@@ -227,11 +234,13 @@ Tags: [relevant tags]
 ```
 
 **When to use background invocation**:
+
 - End of substantial work (Stop event trigger)
 - After completing a task (TodoWrite trigger)
 - Any time capture should not interrupt user flow
 
 **When to use direct `Skill(skill="remember")`**:
+
 - Need result before proceeding
 - User explicitly asks to remember something
 
@@ -244,6 +253,7 @@ Tags: [relevant tags]
 ## Output
 
 Report:
+
 - File written: `[path]`
 - Memory stored: `[hash or confirmation]`
 

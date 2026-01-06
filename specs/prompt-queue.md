@@ -53,13 +53,14 @@ Later: "What did I mean? What files? What was the context?"
 Can't generate good prompt → Work doesn't happen
 ```
 
-**Root cause**: The artifact stored is a task *description*, not a task *prompt*.
+**Root cause**: The artifact stored is a task _description_, not a task _prompt_.
 
 ## Core Insight
 
 **The deliverable is a ready-to-execute prompt, not a task description.**
 
 A prompt preserves:
+
 - What to do
 - Why (context that was obvious at capture time)
 - How to approach it
@@ -83,16 +84,17 @@ Later: /pull → System retrieves next prompt → Executes
 
 ### Key Components
 
-| Component | Purpose |
-|-----------|---------|
-| `/add` or similar | Zero-friction capture entry point |
-| Prompt Writer | Async agent that enriches fragments into prompts |
-| Prompt Queue | Storage for ready-to-execute prompts |
-| `/pull` | Retrieves and executes next queued prompt |
+| Component         | Purpose                                          |
+| ----------------- | ------------------------------------------------ |
+| `/add` or similar | Zero-friction capture entry point                |
+| Prompt Writer     | Async agent that enriches fragments into prompts |
+| Prompt Queue      | Storage for ready-to-execute prompts             |
+| `/pull`           | Retrieves and executes next queued prompt        |
 
 ### Prompt Writer Responsibilities
 
 At capture time (while context is fresh):
+
 1. Read relevant files mentioned or implied
 2. Understand current project state
 3. Formulate a prompt that will make sense to a fresh Claude instance
@@ -101,6 +103,7 @@ At capture time (while context is fresh):
 ### Queue Storage
 
 TBD - options:
+
 - Task files with attached prompts
 - Separate prompt queue files
 - Subtasks of project roadmap items
@@ -156,21 +159,27 @@ total_steps: 3
 # [Clear action title - THIS step only]
 
 ## Context
+
 [What's the current state? Why does this matter?]
 
 ## Goal
+
 [What THIS prompt should accomplish - small, achievable]
 
 ## Approach
+
 [Suggested workflow, relevant skills, key files]
 
 ## End Goal
+
 [The bigger picture - what we're ultimately trying to achieve]
 
 ## Next Step Template
+
 [What prompt should be generated after this one completes]
 
 ## Original Fragment
+
 > [User's exact words preserved]
 ```
 
@@ -192,12 +201,14 @@ Prompt 3: "Test across sessions"
 ```
 
 **Why chaining matters**:
+
 - Small prompts succeed (one clear action)
 - End goal never gets lost (embedded in each prompt)
 - Active continuation (next step auto-generates, not passive "done")
 - Prevents both failure modes: overreach AND underdeliver
 
 **Chain metadata**:
+
 - `end_goal`: Ultimate outcome (persists across all prompts in chain)
 - `step`: Current position in chain (1, 2, 3...)
 - `total_steps`: Estimated chain length (can adjust as we learn)

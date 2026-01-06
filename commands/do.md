@@ -19,8 +19,6 @@ Task(subagent_type="general-purpose", description="[task]", prompt="...")
 
 You CAN use Read/Grep/Glob for context gathering. You SHOULD delegate file edits, bash commands, and complex implementation to subagents.
 
----
-
 ## Phase 0: Context & Classification
 
 ### 0.1 Gather Context (Parallel)
@@ -38,14 +36,14 @@ Task(subagent_type="Explore", model="haiku", description="Context: [topic]",
 
 ### 0.2 Classify Task
 
-| Pattern | Type | Workflow | Guardrails |
-|---------|------|----------|------------|
-| skills/, hooks/, AXIOMS, HEURISTICS, framework | Framework | plan-mode | critic_review |
-| error, bug, broken, debug | Debug | verify-first | — |
-| implement, build, create, refactor | Feature | tdd | acceptance_testing |
-| how, what, where, explain, "?" | Question | — | answer_only |
-| pytest, TDD, Python, test | Python | tdd | acceptance_testing |
-| dbt, Streamlit, data | Analysis | — | skill_analyst |
+| Pattern                                        | Type      | Workflow     | Guardrails         |
+| ---------------------------------------------- | --------- | ------------ | ------------------ |
+| skills/, hooks/, AXIOMS, HEURISTICS, framework | Framework | plan-mode    | critic_review      |
+| error, bug, broken, debug                      | Debug     | verify-first | —                  |
+| implement, build, create, refactor             | Feature   | tdd          | acceptance_testing |
+| how, what, where, explain, "?"                 | Question  | —            | answer_only        |
+| pytest, TDD, Python, test                      | Python    | tdd          | acceptance_testing |
+| dbt, Streamlit, data                           | Analysis  | —            | skill_analyst      |
 
 ### 0.3 Load Workflow (If Applicable)
 
@@ -56,13 +54,12 @@ Task(subagent_type="Explore", model="haiku", description="Load workflow",
      prompt="Read skills/supervisor/workflows/{workflow}.md and extract: iteration-unit, quality-gate, required-skills")
 ```
 
----
-
 ## Phase 1: Planning
 
 ### 1.1 Define Acceptance Criteria
 
 Before ANY implementation:
+
 1. What does "done" look like? (User outcomes, not technical metrics)
 2. How will we verify it works?
 3. What could go wrong?
@@ -108,13 +105,12 @@ Check for: realistic steps, sufficient checkpoints, missing edge cases, unstated
 
 **If critic returns REVISE or HALT**: Address before proceeding.
 
----
-
 ## Phase 2: Execution
 
 ### 2.1 Work Through TodoWrite
 
 For each item:
+
 1. Mark `in_progress`
 2. Delegate to subagent with specific instructions
 3. Verify completion with evidence
@@ -142,6 +138,7 @@ Constraints:
 ### 2.3 CHECKPOINT Handling
 
 At each CHECKPOINT:
+
 - **Actually verify** - don't just mark complete
 - **Require evidence** - test output, file contents, command results
 - **If fails** - return to previous implementation step
@@ -160,16 +157,16 @@ After 3 failures: HALT and report to user.
 ### 2.5 Scope Drift Detection
 
 If plan grows >20% from original:
+
 - STOP
 - `AskUserQuestion`: "Plan grew from X to Y items. Continue or re-scope?"
 
 ### 2.6 Thrashing Detection
 
 If same file modified 3+ times without progress:
+
 - STOP
 - Report: "Thrashing on [file]. Need help."
-
----
 
 ## Phase 3: Verification
 
@@ -200,8 +197,6 @@ Report: APPROVED with evidence, or REJECTED with failures.
 ")
 ```
 
----
-
 ## Phase 4: Cleanup
 
 ### 4.1 Commit and Push
@@ -222,17 +217,15 @@ Task(subagent_type="general-purpose", model="haiku", run_in_background=true,
 - Evidence that criteria met
 - Any deviations (with justification)
 
----
-
 ## Quick Reference
 
-| Phase | Purpose | Key Mechanism |
-|-------|---------|---------------|
-| 0. Context | Gather knowledge | Memory search, Explore agent |
-| 1. Planning | Define success, create plan | TodoWrite with CHECKPOINTs, critic review |
-| 2. Execution | Delegate work | Subagents, one task at a time |
-| 3. Verification | Prove completion | Evidence at each CHECKPOINT |
-| 4. Cleanup | Persist and report | Commit, push, memory |
+| Phase           | Purpose                     | Key Mechanism                             |
+| --------------- | --------------------------- | ----------------------------------------- |
+| 0. Context      | Gather knowledge            | Memory search, Explore agent              |
+| 1. Planning     | Define success, create plan | TodoWrite with CHECKPOINTs, critic review |
+| 2. Execution    | Delegate work               | Subagents, one task at a time             |
+| 3. Verification | Prove completion            | Evidence at each CHECKPOINT               |
+| 4. Cleanup      | Persist and report          | Commit, push, memory                      |
 
 ## Anti-Patterns
 

@@ -19,16 +19,16 @@ Batch convert documents to markdown format, preserving tracked changes, comments
 
 ## Supported Formats
 
-| Format | Method | Notes |
-|--------|--------|-------|
-| DOCX | pandoc `--track-changes=all` | Preserves comments & tracked changes |
-| PDF | PyMuPDF | Text extraction |
-| XLSX | pandas | Converts to markdown tables |
-| TXT | rename | Direct rename to .md |
-| PPTX | pandoc | Slide content to markdown |
-| MSG | extract-msg | Email metadata + body |
-| DOC | textutil | macOS native (fallback) |
-| DOTX | pandoc | Word templates |
+| Format | Method                       | Notes                                |
+| ------ | ---------------------------- | ------------------------------------ |
+| DOCX   | pandoc `--track-changes=all` | Preserves comments & tracked changes |
+| PDF    | PyMuPDF                      | Text extraction                      |
+| XLSX   | pandas                       | Converts to markdown tables          |
+| TXT    | rename                       | Direct rename to .md                 |
+| PPTX   | pandoc                       | Slide content to markdown            |
+| MSG    | extract-msg                  | Email metadata + body                |
+| DOC    | textutil                     | macOS native (fallback)              |
+| DOTX   | pandoc                       | Word templates                       |
 
 ## Process
 

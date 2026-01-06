@@ -12,9 +12,9 @@ Use aOps in limited environments where only one repository is accessible.
 
 ## Environment Types
 
-| Environment | Config Location | Features |
-|-------------|-----------------|----------|
-| **Full** (laptop, WSL, VM) | `~/.claude/` symlinks | All features, hooks, MCP |
+| Environment                   | Config Location           | Features                      |
+| ----------------------------- | ------------------------- | ----------------------------- |
+| **Full** (laptop, WSL, VM)    | `~/.claude/` symlinks     | All features, hooks, MCP      |
 | **Limited** (Claude Code Web) | Project `.claude/` bundle | Skills, commands, agents only |
 
 ## Full Environment Setup
@@ -39,6 +39,7 @@ python scripts/sync_web_bundle.py --self
 ```
 
 Result:
+
 ```
 .claude/
 ├── CLAUDE.md -> ../CLAUDE.md
@@ -57,6 +58,7 @@ python scripts/sync_web_bundle.py /path/to/writing
 ```
 
 This copies (not symlinks) framework content:
+
 ```
 writing/.claude/
 ├── .aops-bundle         # Marker file
@@ -71,13 +73,13 @@ Commit this `.claude/` directory to enable aOps on Claude Code Web.
 
 ## What Works in Limited Environments
 
-| Feature | Status | Notes |
-|---------|--------|-------|
-| Skills | Works | `Skill(skill="...")` loads bundled definitions |
-| Commands | Works | `/command` invokes bundled slash commands |
-| Agents | Works | Agent definitions available for Task tool |
-| Hooks | Not available | See note below |
-| MCP servers | Not available | Require local setup |
+| Feature     | Status        | Notes                                          |
+| ----------- | ------------- | ---------------------------------------------- |
+| Skills      | Works         | `Skill(skill="...")` loads bundled definitions |
+| Commands    | Works         | `/command` invokes bundled slash commands      |
+| Agents      | Works         | Agent definitions available for Task tool      |
+| Hooks       | Not available | See note below                                 |
+| MCP servers | Not available | Require local setup                            |
 
 **Why hooks don't work**: Claude Code Web and similar limited environments don't provide shell access to run Python scripts. Hooks require the `$AOPS` environment variable and a Python environment with dependencies. This is expected behavior - the bundled `settings.json` intentionally excludes hook definitions to avoid spurious error messages.
 
@@ -87,10 +89,10 @@ Commit this `.claude/` directory to enable aOps on Claude Code Web.
 
 Choose the sync strategy that fits your workflow:
 
-| Strategy | When to Use | Sync Trigger | Overhead |
-|----------|-------------|--------------|----------|
-| **Git Hook** | Local development, single machine | Every commit | Low |
-| **Push Workflow** | Teams, CI integration | Every push to main | Medium |
+| Strategy             | When to Use                          | Sync Trigger       | Overhead |
+| -------------------- | ------------------------------------ | ------------------ | -------- |
+| **Git Hook**         | Local development, single machine    | Every commit       | Low      |
+| **Push Workflow**    | Teams, CI integration                | Every push to main | Medium   |
 | **Nightly Workflow** | Minimal overhead, infrequent updates | Nightly at 3am UTC | Very Low |
 
 ### Option 1: Git Hook (Local Auto-Sync)
@@ -98,16 +100,19 @@ Choose the sync strategy that fits your workflow:
 Best for: Individual developers working on a single machine.
 
 The sync script automatically installs a git post-commit hook that:
+
 - Runs after each commit in the target project
 - Only activates in full environments (where `$AOPS` is set)
 - Automatically updates `.claude/` and commits changes
 
 This happens automatically when you run:
+
 ```bash
 python scripts/sync_web_bundle.py /path/to/writing
 ```
 
 To skip hook installation, use `--no-hook`:
+
 ```bash
 python scripts/sync_web_bundle.py /path/to/writing --no-hook
 ```
@@ -155,6 +160,7 @@ This workflow only syncs when aOps has new commits:
    ```
 
 Features:
+
 - Runs at 3am UTC daily (configurable via cron)
 - Checks if aOps has updates before syncing
 - Tracks version in `.claude/.aops-version`
@@ -164,11 +170,13 @@ Features:
 ### Version Tracking
 
 All sync methods now write the aOps commit SHA to `.claude/.aops-version`. This enables:
+
 - Nightly workflow to skip sync when already up-to-date
 - Easy verification of which aOps version a project uses
 - Debugging when issues arise
 
 Check your current aOps version:
+
 ```bash
 cat .claude/.aops-version
 ```
@@ -193,6 +201,7 @@ The bundle includes a `.aops-bundle` marker. Re-syncing will overwrite existing 
 ### Verifying Your Bundle
 
 Check that the bundle is properly installed:
+
 ```bash
 # Verify marker file exists
 cat .claude/.aops-bundle
@@ -215,6 +224,7 @@ ls .claude/skills/
 **"Hooks failed" messages**
 
 This is **expected behavior** in limited environments. Hooks require:
+
 - Shell access to run Python scripts
 - The `$AOPS` environment variable set
 - Python with installed dependencies
@@ -224,12 +234,14 @@ The bundled `settings.json` for other projects excludes hooks entirely. For acad
 **"$AOPS not set" errors**
 
 This occurs when full-environment hooks run without proper setup. Solutions:
+
 1. Run `./setup.sh` to configure the full environment, OR
 2. Use the bundled web settings which have no hooks
 
 **Bundle seems outdated**
 
 Force a fresh sync:
+
 ```bash
 # Remove existing bundle
 rm -rf .claude/

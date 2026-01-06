@@ -53,6 +53,7 @@ graph TD
 **What manual work are we automating?**
 
 Currently, processing multiple files (tasks, emails, documents) requires either:
+
 1. Sequential processing (slow, context-efficient but time-consuming)
 2. Ad-hoc parallel spawning (fast but requires user to manually coordinate agents)
 
@@ -114,6 +115,7 @@ Nic - enables efficient bulk operations (task linking, email extraction, documen
 ```
 
 **Examples**:
+
 ```bash
 /parallel-batch Link all unlinked tasks in data/tasks/inbox/ to appropriate projects
 /parallel-batch Extract knowledge from email chunks in incoming/emails/2013-04/
@@ -189,12 +191,14 @@ User: /parallel-batch <task>
 ### Subagent Design
 
 Each subagent receives:
+
 - List of files to process
 - Operation description
 - Skills to invoke
 - Return format (results + questions)
 
 Subagent template:
+
 ```
 Process these files: [file1, file2, ...]
 
@@ -220,6 +224,7 @@ Return JSON:
 ### Question Batching
 
 When subagents return questions, orchestrator:
+
 1. Collects all questions from all agents
 2. Groups by similarity if possible
 3. Presents via AskUserQuestion with multiple questions (up to 4 per call)
@@ -227,6 +232,7 @@ When subagents return questions, orchestrator:
 5. Continues processing
 
 **Example batched question**:
+
 ```
 Questions collected from task linking:
 
@@ -249,11 +255,13 @@ Q3: Which project for "Fill in Macquarie payment form"?
 ### Error Handling
 
 **Fail-fast cases**:
+
 - File discovery finds 0 files → error with message
 - Subagent returns error → log error, continue with remaining
 - Skill invocation fails → subagent reports error, orchestrator logs
 
 **Graceful continuation**:
+
 - Individual file processing failures don't stop batch
 - Errors collected and reported at end
 - Partial progress committed if substantial
@@ -279,11 +287,11 @@ From LOG.md 2025-11-22 "Overnight Autonomous Processing Failed":
 mkdir -p /tmp/test-parallel-batch/tasks
 for i in {1..10}; do
   cat > /tmp/test-parallel-batch/tasks/task-$i.md << EOF
----
+
 title: Test Task $i
 type: task
 status: inbox
----
+
 # Test Task $i
 Needs project assignment.
 EOF
@@ -339,18 +347,17 @@ print("Parallel batch test: PASS")
 `~/.claude/commands/parallel-batch.md`:
 
 ```markdown
----
 name: parallel-batch
 description: Orchestrate parallel batch processing of files with automatic skill delegation and question batching
 tools:
-  - Task
-  - Bash
-  - TodoWrite
-  - AskUserQuestion
-  - Read
-  - Edit
-  - mcp__bmem__write_note
----
+
+- Task
+- Bash
+- TodoWrite
+- AskUserQuestion
+- Read
+- Edit
+- mcp__bmem__write_note
 
 # Parallel Batch Processor
 
@@ -409,12 +416,14 @@ No external scripts needed - this is pure orchestration.
 ### How do we know it's working?
 
 **Metrics to track**:
+
 - Files processed per minute
 - Subagent success rate
 - Questions per batch (lower is better = more obvious decisions)
 - Context usage (main thread tokens)
 
 **Monitoring approach**:
+
 - TodoWrite provides real-time progress visibility
 - Session log (bmem) captures final statistics
 - Errors logged inline for debugging
@@ -471,16 +480,19 @@ No external scripts needed - this is pure orchestration.
 ## Risks and Mitigations
 
 **Risk 1**: Command prompt too complex for reliable parsing
+
 - **Likelihood**: Medium
 - **Impact**: Medium (wrong files processed)
 - **Mitigation**: Conservative parsing, confirm file list before processing
 
 **Risk 2**: Subagents don't return structured JSON
+
 - **Likelihood**: Low (with clear prompt)
 - **Impact**: Medium (can't aggregate results)
 - **Mitigation**: Strict return format in prompt, validate responses
 
 **Risk 3**: User overwhelmed by question batches
+
 - **Likelihood**: Low
 - **Impact**: Medium (user frustration)
 - **Mitigation**: Smart defaults, "apply same answer to similar" option
@@ -498,8 +510,6 @@ No external scripts needed - this is pure orchestration.
 
 4. Maximum batch size before warning?
    - **Leaning**: 50 files, warn above that
-
----
 
 ## Completion Checklist
 

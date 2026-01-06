@@ -38,6 +38,7 @@ When invoked with a question (e.g., `/introspect what is task/index.json`):
 4. **If UNKNOWN**, check the Known Context Gaps table below and report where the information lives
 
 **Response format:**
+
 ```
 ## Introspection: [question]
 
@@ -57,6 +58,7 @@ When invoked as just `/introspect`:
 3. Suggest specific questions to test
 
 **Response format:**
+
 ```
 ## Framework Self-Knowledge Report
 
@@ -73,20 +75,19 @@ When invoked as just `/introspect`:
 Try: `/introspect what is task/index.json`
 ```
 
----
-
 ## Session-Start Context Reference
 
 The SessionStart hook (`hooks/sessionstart_load_axioms.py`) injects these files:
 
-| File | Content | Path Variables Expanded |
-|------|---------|------------------------|
-| FRAMEWORK.md | Paths, environment vars, memory architecture | Yes |
-| AXIOMS.md | 29 inviolable principles | No |
-| HEURISTICS.md | 36 empirical rules with evidence links | No |
-| CORE.md | User profile, tools, workflow requirements | No |
+| File          | Content                                      | Path Variables Expanded |
+| ------------- | -------------------------------------------- | ----------------------- |
+| FRAMEWORK.md  | Paths, environment vars, memory architecture | Yes                     |
+| AXIOMS.md     | 29 inviolable principles                     | No                      |
+| HEURISTICS.md | 36 empirical rules with evidence links       | No                      |
+| CORE.md       | User profile, tools, workflow requirements   | No                      |
 
 **You CAN answer questions about:**
+
 - Where framework components live (skills, commands, hooks, agents, tests)
 - User preferences and accommodations (by reference)
 - Memory architecture (semantic vs episodic)
@@ -94,31 +95,29 @@ The SessionStart hook (`hooks/sessionstart_load_axioms.py`) injects these files:
 - Heuristics and their confidence levels
 - Path resolution mechanism
 
----
-
 ## Known Context Gaps
 
 Things the framework uses but does NOT inject at session start:
 
-| Gap | What It Is | Where Info Lives | Severity |
-|-----|-----------|-----------------|----------|
-| task/index.json | Pre-computed task index for fast queries | `scripts/regenerate_task_index.py` (creator), `skills/tasks/task_loader.py` (consumer) | Medium |
-| Skill invocation syntax | How to call specific skills | Individual `skills/*/SKILL.md` files | Low |
-| Project-specific state | Current project context | `$ACA_DATA/projects/*/STATE.md` | Low |
-| Style guides | Writing conventions | `$ACA_DATA/STYLE.md`, `$ACA_DATA/STYLE-QUICK.md` | Low |
-| Accommodations detail | Full ADHD accommodations | `$ACA_DATA/ACCOMMODATIONS.md` | Low |
+| Gap                     | What It Is                               | Where Info Lives                                                                       | Severity |
+| ----------------------- | ---------------------------------------- | -------------------------------------------------------------------------------------- | -------- |
+| task/index.json         | Pre-computed task index for fast queries | `scripts/regenerate_task_index.py` (creator), `skills/tasks/task_loader.py` (consumer) | Medium   |
+| Skill invocation syntax | How to call specific skills              | Individual `skills/*/SKILL.md` files                                                   | Low      |
+| Project-specific state  | Current project context                  | `$ACA_DATA/projects/*/STATE.md`                                                        | Low      |
+| Style guides            | Writing conventions                      | `$ACA_DATA/STYLE.md`, `$ACA_DATA/STYLE-QUICK.md`                                       | Low      |
+| Accommodations detail   | Full ADHD accommodations                 | `$ACA_DATA/ACCOMMODATIONS.md`                                                          | Low      |
 
 **When you discover a new gap:**
+
 1. Note it in your response
 2. User can add it to this table via PR
-
----
 
 ## Design Rationale
 
 **Why not inject everything?**
 
 Per Axiom #25, not everything belongs in session start:
+
 - **Session start**: Global principles needed for ALL sessions
 - **Component CLAUDE.md**: Decisions needed when working on that component
 - **Memory server**: Past learnings retrievable on demand

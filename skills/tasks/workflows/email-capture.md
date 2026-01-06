@@ -24,11 +24,13 @@ backend: scripts
 **Before fetching emails**, check existing tasks to prevent duplicates. Emails persist in inbox and get re-read by this workflow.
 
 **Use memory server semantic search** (preferred over grep):
+
 ```
 mcp__memory__retrieve_memory(query="email subject keywords")
 ```
 
 **Fallback to file search if memory server unavailable**:
+
 ```bash
 # Search inbox tasks
 grep -li "SEARCH_TERM" $ACA_DATA/tasks/inbox/*.md
@@ -38,6 +40,7 @@ grep -li "SEARCH_TERM" $ACA_DATA/tasks/archived/*.md
 ```
 
 **When duplicate detected**:
+
 - If task exists in inbox: Skip creating, note in summary
 - If task exists in archive: Already completed, definitely skip
 - Match by: email subject, sender name, or key action phrase
@@ -86,12 +89,14 @@ For emails that look actionable, check if user has already responded (indicating
 **Tool**: `mcp__outlook__messages_query_subject_contains`
 
 **Process**:
+
 1. Extract key subject words (strip "Re:", "Fwd:", "FW:" prefixes)
 2. Query: `messages_query_subject_contains(term="[key subject words]", limit=5)`
 3. Filter results where `from_email` contains user's email address (n.suzor@qut.edu.au or nic@suzor.net)
 4. If match found: mark as "already responded"
 
 **Already responded emails**:
+
 - Skip task creation
 - Still present to user: "Already responded: [subject] - you replied [date]"
 - Include in summary so user sees it was detected
@@ -99,6 +104,7 @@ For emails that look actionable, check if user has already responded (indicating
 **Limitation**: Won't catch replies with heavily modified subjects or forwarded threads. Good enough for common case.
 
 **Example**:
+
 ```
 Incoming: "[ACTION REQUIRED] OSB Cycle 38 Vote"
 Query: messages_query_subject_contains(term="OSB Cycle 38 Vote")
@@ -137,11 +143,13 @@ For each email, classify into one of three categories:
 - Significant deadline changes or policy updates affecting user's work
 
 **For Important FYI emails**:
+
 1. Read full body: `mcp__outlook__messages_get(entry_id, format="text")`
 2. Extract key information (dates, amounts, outcomes, decisions, links)
 3. Store for presentation before archiving
 
 **Extract for Important FYI**:
+
 ```
 {
   "category": "important_fyi",
@@ -165,11 +173,11 @@ For each email, classify into one of three categories:
 
 #### Classification Summary Table
 
-| Category | Signals | Action |
-|----------|---------|--------|
-| **Actionable** | deadline, "please", "review", "vote", direct question | Create task |
-| **Important FYI** | "awarded", "accepted", "decision", from grant bodies | Read body, extract info, present |
-| **Safe to ignore** | noreply@, newsletter, digest, automated | Archive candidate |
+| Category           | Signals                                               | Action                           |
+| ------------------ | ----------------------------------------------------- | -------------------------------- |
+| **Actionable**     | deadline, "please", "review", "vote", direct question | Create task                      |
+| **Important FYI**  | "awarded", "accepted", "decision", from grant bodies  | Read body, extract info, present |
+| **Safe to ignore** | noreply@, newsletter, digest, automated               | Archive candidate                |
 
 **Extract for actionable items**:
 
@@ -312,6 +320,7 @@ Identify documents that should be downloaded:
 **Attachments**: Check `has_attachments` field from email response.
 
 **Linked documents**: Scan email body for document URLs:
+
 - `docs.google.com/document/*`
 - `drive.google.com/*`
 - `dropbox.com/*`
@@ -325,6 +334,7 @@ Identify documents that should be downloaded:
 Use appropriate tool for each resource type:
 
 **Email attachments**:
+
 ```
 mcp__outlook__messages_download_attachments(
   entry_id="...",
@@ -352,11 +362,11 @@ pandoc "document.docx" -o "document.md" --wrap=none
 
 Route documents based on task classification:
 
-| Classification | Storage Location | Example |
-|----------------|------------------|---------|
-| Review | `$ACA_DATA/reviews/{sender}/` | `reviews/yara/Dissertation draft.md` |
-| Supervision | `$ACA_DATA/reviews/{student}/` | `reviews/kashyap/Chapter1.md` |
-| Other | `$ACA_DATA/task-documents/{task-id}/` | `task-documents/20251231-contract-review/contract.md` |
+| Classification | Storage Location                      | Example                                               |
+| -------------- | ------------------------------------- | ----------------------------------------------------- |
+| Review         | `$ACA_DATA/reviews/{sender}/`         | `reviews/yara/Dissertation draft.md`                  |
+| Supervision    | `$ACA_DATA/reviews/{student}/`        | `reviews/kashyap/Chapter1.md`                         |
+| Other          | `$ACA_DATA/task-documents/{task-id}/` | `task-documents/20251231-contract-review/contract.md` |
 
 Create directories as needed. Use sender name (lowercase, sanitized) for reviews.
 
@@ -377,18 +387,22 @@ Brief context: who sent this, what it's about, when received.
 ## Summary: What You Need to Respond To
 
 ### Primary Question
+
 [Main thing they're asking - extracted from email]
 
 ### Secondary Items to Address
+
 1. [Other things mentioned]
 2. [Additional questions]
 
 ## Response Needed
+
 - [ ] First action item
 - [ ] Second action item
 - [ ] Optional: third item
 
 ## Associated Documents
+
 - `reviews/yara/Dissertation draft - Yara.md` - Chapter 1 draft for review
 
 ## Original Email
@@ -396,8 +410,6 @@ Brief context: who sent this, what it's about, when received.
 **From:** Sender Name <email@example.com>
 **Subject:** Original subject line
 **Date:** Thursday, 18 December 2025 at 12:28:23
-
----
 
 [Full email text preserved here]
 ```
@@ -438,6 +450,7 @@ Optional:
 #### Failure Handling
 
 **Graceful degradation** - if any step fails:
+
 - Note the failure in task body: "Could not download: [resource] - [reason]"
 - Continue with available content
 - Never abort the whole task creation
@@ -451,6 +464,7 @@ If document download fails, still create the task with links to the original res
 **No manual grep needed** - the script does this for you.
 
 **If duplicate detected**:
+
 - Script exits with error: "Duplicate: Email already processed as task"
 - Shows which existing task matched
 - Add to "Skipped (duplicate)" section in summary
@@ -467,16 +481,19 @@ For each Important FYI email identified in Step 2, output the extracted informat
 ## Important Information from Email
 
 ### Grant Outcome (from ARC, Dec 20)
+
 ARC DP2025 awarded $450K for Platform Governance project.
 Funding period: 2026-2028. Start date: January 2026.
 Contact: grants@arc.gov.au
 
 ### Conference Acceptance (from AOIR Committee, Dec 19)
+
 Paper "Platform Accountability Frameworks" accepted for AOIR 2025.
 Presentation scheduled: October 15, 2025, Session 3B.
 Registration deadline: September 1, 2025.
 
 ### OSB Decision Published (from OSB Operations, Dec 18)
+
 Case 2024-089 decision now public.
 Summary: Appeal upheld, content restored.
 Full decision: https://oversightboard.com/decisions/2024-089
@@ -500,11 +517,11 @@ Show emails where user's response was detected:
 ```markdown
 ## Tasks Created
 
-| Priority | Task | Due | Source |
-|----------|------|-----|--------|
-| P0 | SNSF Review (10.007.645) | Jan 15 | SNSF |
-| P1 | Write Lucinda reference | - | Amanda Kennedy |
-| P1 | ARC FT26 assessments | Jan 21 | ARC |
+| Priority | Task                     | Due    | Source         |
+| -------- | ------------------------ | ------ | -------------- |
+| P0       | SNSF Review (10.007.645) | Jan 15 | SNSF           |
+| P1       | Write Lucinda reference  | -      | Amanda Kennedy |
+| P1       | ARC FT26 assessments     | Jan 21 | ARC            |
 ```
 
 #### 8d: Archive Candidates (User Choice)
@@ -515,6 +532,7 @@ Show emails where user's response was detected:
 ## Archive Candidates
 
 Use AskUserQuestion with multiSelect to let user mark any to KEEP:
+
 - QUT Newsletter Dec 23
 - Travel Alert: NYC weather
 - Quarantine Digest (7 messages)
@@ -537,13 +555,13 @@ No action required - this is confirmation only.
 Research output milestone recorded in Pure system.
 Details: [logged for institutional reporting]
 
----
+
 
 ## Already Responded (No Task Created)
 
 - **OSB Cycle 38 Vote** - you replied Dec 20
 
----
+
 
 ## Tasks Created
 
@@ -553,7 +571,7 @@ Details: [logged for institutional reporting]
 | P1 | ARC COI declaration | - | RMIT |
 | P1 | Lucinda Nelson reference | - | Amanda Kennedy |
 
----
+
 
 ## Archive Candidates
 
@@ -745,7 +763,6 @@ Confidence: 95/100 (HIGH)
 **Task created**:
 
 ```yaml
----
 title: "OSB Vote: Case #2024-123 - Hate speech appeal"
 priority: 0
 project: oversight-board
@@ -756,7 +773,7 @@ source_email: outlook://entry/AAMkADQ3ZmY...
 source_subject: "[ACTION REQUIRED] OSB Cycle 38 Vote - Case #2024-123"
 source_from: "OSB Secretariat <secretariat@oversightboard.com>"
 source_date: 2025-11-10T09:23:00Z
----
+
 
 # OSB Vote: Case #2024-123 - Hate speech appeal
 
@@ -786,7 +803,7 @@ Cast vote on Case #2024-123 (hate speech appeal) - approve or reject content rem
 **Subject:** [ACTION REQUIRED] OSB Cycle 38 Vote - Case #2024-123
 **Date:** November 10, 2025 at 9:23 AM
 
----
+
 
 Dear Board Member,
 
@@ -828,13 +845,13 @@ Confidence: 65/100 (MEDIUM)
 ```
 
 **Documents downloaded**:
+
 - Email attachment → `$ACA_DATA/reviews/jane-smith/draft-paper.pdf`
 - Converted → `$ACA_DATA/reviews/jane-smith/draft-paper.md`
 
 **Task created**:
 
 ```yaml
----
 title: "Review draft paper - AI governance (Jane Smith)"
 priority: 2
 project: needs-categorization
@@ -845,7 +862,7 @@ source_email: outlook://entry/AAMkAGF4ZjY...
 source_subject: "Feedback on draft paper - AI governance"
 source_from: "Jane Smith <j.smith@university.edu>"
 source_date: 2025-11-10T14:15:00Z
----
+
 
 # Review draft paper - AI governance (Jane Smith)
 
@@ -880,7 +897,7 @@ Provide feedback on draft paper, particularly the section on platform accountabi
 **Subject:** Feedback on draft paper - AI governance
 **Date:** November 10, 2025 at 2:15 PM
 
----
+
 
 Hi Nic,
 
@@ -966,17 +983,19 @@ Rationale: Informational content from automated sender
 
 Different email accounts require different tools for archiving:
 
-| Account | Tool | Parameter | Notes |
-|---------|------|-----------|-------|
-| Gmail (nic@suzor.net) | `messages_archive` | `folder_id="211"` | Gmail requires folder ID (account param doesn't work) |
-| QUT (n.suzor@qut.edu.au) | `messages_move` | `folder_path="Archive"` | Standard Exchange folder path |
+| Account                  | Tool               | Parameter               | Notes                                                 |
+| ------------------------ | ------------------ | ----------------------- | ----------------------------------------------------- |
+| Gmail (nic@suzor.net)    | `messages_archive` | `folder_id="211"`       | Gmail requires folder ID (account param doesn't work) |
+| QUT (n.suzor@qut.edu.au) | `messages_move`    | `folder_path="Archive"` | Standard Exchange folder path                         |
 
 **Gmail archive** (uses `messages_archive` with folder ID):
+
 ```
 mcp__outlook__messages_archive(entry_id="...", folder_id="211")
 ```
 
 **Exchange/Outlook archive** (uses `messages_move` with folder path):
+
 ```
 mcp__outlook__messages_move(entry_id="...", folder_path="Archive", account="n.suzor@qut.edu.au")
 ```
@@ -1035,8 +1054,6 @@ TASK_CAPTURE_AUTO_CREATE=false
 - Smart sender importance learning
 - Batch processing optimization
 - Real-time email monitoring (webhook-based)
-
----
 
 **Version History**:
 

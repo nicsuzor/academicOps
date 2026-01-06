@@ -23,6 +23,7 @@ python3 tests/integration/test_skill_discovery_standalone.py
 ```
 
 This validates:
+
 - ✓ `$AOPS` environment variable is set and valid
 - ✓ `~/.claude/skills/` symlinks exist and point to framework
 - ✓ Task scripts are accessible via `~/.claude/skills/tasks/scripts/`
@@ -38,6 +39,7 @@ pytest tests/integration/test_skill_script_discovery.py -v
 ```
 
 Tests include:
+
 1. **Symlink architecture** - Verifies skill symlinks exist and resolve correctly
 2. **Script discovery** - Confirms scripts are found without searching CWD
 3. **Cross-repo execution** - Validates scripts work from non-[[AOPS]] directories
@@ -46,12 +48,14 @@ Tests include:
 ## What These Tests Prevent
 
 These tests catch the bug where:
+
 - Agent runs in `writing` repo
 - Agent searches for `skills/tasks/scripts/*.py` in [[CWD]]
 - Search returns 0 files (because scripts are in [[AOPS]], not `writing`)
 - Agent gives up thinking scripts don't exist
 
 With proper architecture:
+
 - Scripts live in `[[AOPS]]/skills/tasks/scripts/`
 - Accessible via `~/.claude/skills/tasks/scripts/` symlink
 - Skill documentation tells agents the correct path

@@ -4,7 +4,7 @@ category: instruction
 description: Categorical framework governance. Treats every change as a universal
   rule. Delegates user data operations to skills.
 allowed-tools: Read,Grep,Glob,Edit,Write,Skill,AskUserQuestion
-version: 4.2.0
+version: 4.3.0
 permalink: skills-framework
 ---
 
@@ -48,12 +48,12 @@ When assessing any component for compliance:
 
 **Step 5 is non-negotiable.** Checking fields, comparing patterns, reading specs - these prove nothing. The ONLY valid proof of compliance is successful execution:
 
-| Component Type | E2E Verification |
-|----------------|------------------|
-| Command | Invoke it, confirm skill loads and executes |
-| Skill | Invoke via `Skill()`, run any scripts, verify output |
-| Hook | Trigger the event, confirm hook fires and behaves correctly |
-| Script | Run it with real data, verify correct output |
+| Component Type | E2E Verification                                            |
+| -------------- | ----------------------------------------------------------- |
+| Command        | Invoke it, confirm skill loads and executes                 |
+| Skill          | Invoke via `Skill()`, run any scripts, verify output        |
+| Hook           | Trigger the event, confirm hook fires and behaves correctly |
+| Script         | Run it with real data, verify correct output                |
 
 **Surface-level checks are Volkswagen tests.** Field comparison, YAML validation, pattern matching - all can pass while the component is broken. Execute it or it's not verified.
 
@@ -69,6 +69,7 @@ If ANY check fails → component is non-compliant → refactor or delete.
 4. **DOCUMENT** - Once resolved, add the rule to appropriate location
 
 **Examples requiring HALT:**
+
 - File doesn't fit any defined category
 - Two axioms appear to conflict
 - Placement is ambiguous (could go in multiple locations)
@@ -94,13 +95,13 @@ Read these files in order (use Read tool):
 
 Before accepting ANY proposed change, verify ALL of:
 
-| Check | Question | Failure = HALT |
-|-------|----------|----------------|
-| Axiom derivation | Which axiom(s) justify this change? | Cannot identify axiom |
-| INDEX placement | Does INDEX.md define where this belongs? | Location not in INDEX |
-| DRY compliance | Is this information stated exactly once? | Duplicate exists elsewhere |
-| VISION alignment | Does VISION.md support this capability? | Outside stated scope |
-| Namespace uniqueness | Does this name conflict with existing skill/command/hook/agent? | Name collision detected |
+| Check                | Question                                                        | Failure = HALT             |
+| -------------------- | --------------------------------------------------------------- | -------------------------- |
+| Axiom derivation     | Which axiom(s) justify this change?                             | Cannot identify axiom      |
+| INDEX placement      | Does INDEX.md define where this belongs?                        | Location not in INDEX      |
+| DRY compliance       | Is this information stated exactly once?                        | Duplicate exists elsewhere |
+| VISION alignment     | Does VISION.md support this capability?                         | Outside stated scope       |
+| Namespace uniqueness | Does this name conflict with existing skill/command/hook/agent? | Name collision detected    |
 
 ### Step 3: HALT Protocol on Inconsistency
 
@@ -112,6 +113,7 @@ If ANY check fails:
 4. **WAIT** - Do not attempt workarounds or auto-fixes
 
 **Example HALT output:**
+
 ```
 FRAMEWORK INTROSPECTION FAILED
 
@@ -122,8 +124,6 @@ Options:
 2. Move authoritative content to new location
 3. Proceed anyway (requires explicit user approval)
 ```
-
----
 
 ## Categorical Imperative (MANDATORY)
 
@@ -138,9 +138,9 @@ Per AXIOMS.md #1: Every action must be justifiable as a universal rule derived f
 
 ### File Boundaries (ENFORCED)
 
-| Location | Action | Reason |
-|----------|--------|--------|
-| `$AOPS/*` | Direct modification OK | Public framework files |
+| Location      | Action                     | Reason                                  |
+| ------------- | -------------------------- | --------------------------------------- |
+| `$AOPS/*`     | Direct modification OK     | Public framework files                  |
 | `$ACA_DATA/*` | **MUST delegate to skill** | User data requires repeatable processes |
 
 **Rationale**: If we need to operate on user data, we build a skill for it. One-off scripts and manual changes are prohibited. This ensures every process is generalizable and repeatable.
@@ -157,14 +157,16 @@ Per AXIOMS.md #1: Every action must be justifiable as a universal rule derived f
 **Rule**: Any change to an enforcement mechanism (validation scripts, hooks, tests) is a **Framework Level Change** and must follow the full RFC/validation process.
 
 **Derivation**:
-1.  **Axiom 1 (Categorical Imperative)**: Attempting to bypass a check implies the check is invalid or the checking agent is above the law. Both are false.
-2.  **Axiom 7 (Fail-Fast)**: Weakening a check to "pass" broken state masks the failure signal.
-3.  **Vision (Self-Curating)**: The framework cannot curate itself if its sensors are dampened.
+
+1. **Axiom 1 (Categorical Imperative)**: Attempting to bypass a check implies the check is invalid or the checking agent is above the law. Both are false.
+2. **Axiom 7 (Fail-Fast)**: Weakening a check to "pass" broken state masks the failure signal.
+3. **Vision (Self-Curating)**: The framework cannot curate itself if its sensors are dampened.
 
 **Protocol**:
+
 - NEVER downgrade an ERROR to a WARNING to "unblock" graduation.
-- If a check is "too strict", fix the *code* or *content* to be compliant.
-- If the check itself is flawed, fix the check's logic (e.g. better regex), but verify the *intent* of the check remains strict.
+- If a check is "too strict", fix the _code_ or _content_ to be compliant.
+- If the check itself is flawed, fix the check's logic (e.g. better regex), but verify the _intent_ of the check remains strict.
 
 When no skill handles a needed user data operation:
 
@@ -176,13 +178,13 @@ When no skill handles a needed user data operation:
 **This is recursive**: Creating a skill uses the framework skill. The framework skill provides the patterns. Skill creation happens in `$AOPS/skills/` (framework files = direct modification OK).
 
 **Example**: Need to persist framework learning?
+
 1. Invoke `framework` skill
 2. Framework skill delegates to `remember` skill for knowledge persistence
 3. Future retrieval uses memory server for semantic search
 
 - ❌ Wrong: Directly delete files in `$ACA_DATA/`
 - ✅ Right: Create skill via framework, then invoke it
-
 
 ## Framework Paths
 
@@ -192,21 +194,20 @@ See [[INDEX.md]] for complete file tree. Paths are resolved in [[FRAMEWORK.md]] 
 
 Each convention traces to its source axiom. If a convention lacks derivation, it's invalid.
 
-
 ### Single Source of Truth
 
 Each piece of information exists in exactly ONE location:
 
-| Information | Authoritative Location |
-|-------------|------------------------|
-| Principles | `$AOPS/AXIOMS.md` |
-| File tree | `$AOPS/INDEX.md` |
-| Feature inventory | `$AOPS/README.md` |
-| User context | `$ACA_DATA/CORE.md` |
-| Work style | `$ACA_DATA/ACCOMMODATIONS.md` |
-| Framework vision | `$AOPS/VISION.md` |
-| Framework status | `$AOPS/ROADMAP.md` |
-| Workflows | `$AOPS/WORKFLOWS.md` |
+| Information       | Authoritative Location        |
+| ----------------- | ----------------------------- |
+| Principles        | `$AOPS/AXIOMS.md`             |
+| File tree         | `$AOPS/INDEX.md`              |
+| Feature inventory | `$AOPS/README.md`             |
+| User context      | `$ACA_DATA/CORE.md`           |
+| Work style        | `$ACA_DATA/ACCOMMODATIONS.md` |
+| Framework vision  | `$AOPS/VISION.md`             |
+| Framework status  | `$AOPS/ROADMAP.md`            |
+| Workflows         | `$AOPS/WORKFLOWS.md`          |
 
 **Pattern**: Reference, don't repeat.
 
@@ -214,15 +215,15 @@ Each piece of information exists in exactly ONE location:
 
 Every framework file belongs to exactly one category. Declare via `category:` in frontmatter.
 
-| Category | Purpose | Editing Rule |
-|----------|---------|--------------|
-| **spec** | OUR framework design (architecture, rationale) | Deliberate; RFC for changes |
-| **ref** | External knowledge (libraries, tools) | Update when external sources change |
-| **docs** | Implementation guides, how-to content | Update as practices evolve |
-| **script** | Executable code | TDD required |
-| **instruction** | Workflow/process for agents | Must be generalizable |
-| **template** | Pattern to fill in with dynamic content | Update when format changes |
-| **state** | Auto-generated current status | DO NOT manually edit |
+| Category        | Purpose                                        | Editing Rule                        |
+| --------------- | ---------------------------------------------- | ----------------------------------- |
+| **spec**        | OUR framework design (architecture, rationale) | Deliberate; RFC for changes         |
+| **ref**         | External knowledge (libraries, tools)          | Update when external sources change |
+| **docs**        | Implementation guides, how-to content          | Update as practices evolve          |
+| **script**      | Executable code                                | TDD required                        |
+| **instruction** | Workflow/process for agents                    | Must be generalizable               |
+| **template**    | Pattern to fill in with dynamic content        | Update when format changes          |
+| **state**       | Auto-generated current status                  | DO NOT manually edit                |
 
 **Directory mappings**: `specs/` → spec, `docs/` → docs, `skills/*/references/` → ref, `commands/` → instruction, `agents/` → instruction, `*/templates/` → template, `RULES.md` → state
 
@@ -264,9 +265,10 @@ All framework markdown files use properly formatted markdown with relative wikil
 
 ```markdown
 # In skills/analyst/SKILL.md:
-[[instructions/dbt-workflow.md]]     # ✅ Relative path within skill
-[[../framework/SKILL.md]]            # ✅ Relative to sibling skill
-[[AXIOMS.md]]                        # ✅ Root-level reference
+
+[[instructions/dbt-workflow.md]] # ✅ Relative path within skill
+[[../framework/SKILL.md]] # ✅ Relative to sibling skill
+[[AXIOMS.md]] # ✅ Root-level reference
 ```
 
 ## Documentation Structure
@@ -284,6 +286,7 @@ See [[INDEX.md]] for complete file tree and document purposes.
 ### Feature Inventory Format (README.md)
 
 Each capability listed with:
+
 - Name
 - Purpose (one line)
 - Invocation (how to use it)
@@ -307,6 +310,7 @@ Each capability listed with:
 ### File Creation
 
 New files PROHIBITED unless:
+
 1. Clear justification (existing files insufficient)
 2. Integration test validates purpose
 3. Test passes before commit
@@ -321,6 +325,40 @@ New files PROHIBITED unless:
 2. Follow YAML frontmatter format (see existing skills)
 3. Keep under 500 lines
 4. Add e2e test (NOT unit test - test real behavior with real data)
+5. **If skill needs other skills**: Use TodoWrite skill-chaining pattern (see below)
+
+### TodoWrite Skill-Chaining Pattern
+
+**Problem**: Skills cannot directly invoke other skills. Agents treat skill suggestions as optional.
+
+**Solution**: Skills instruct agents to create TodoWrite items with explicit `Skill()` calls. This makes skill invocation a mandatory step the agent must execute.
+
+**Pattern**:
+
+```
+## Workflow Entry Point
+
+**IMMEDIATELY call TodoWrite** with the following items:
+
+TodoWrite(todos=[
+  {content: "Step 1: Do prerequisite work", status: "pending", activeForm: "Working on step 1"},
+  {content: "Step 2: Invoke Skill(skill='other-skill') for domain guidance", status: "pending", activeForm: "Loading other skill"},
+  {content: "Step 3: Complete work using loaded guidance", status: "pending", activeForm: "Completing work"}
+])
+
+**CRITICAL**: Work through EACH step. When you reach Step 2, INVOKE the skill.
+```
+
+**Why it works**:
+
+1. TodoWrite creates visible, trackable steps
+2. Explicit `Skill(skill='x')` syntax in todo content
+3. Agent executes each step sequentially
+4. Skill guidance loads mid-workflow when needed
+
+**Example**: See `skills/audit/SKILL.md` which chains to `framework` and `flowchart` skills.
+
+**Derivation**: Implements [[H2]] (Skill-First Action) by making skill invocation a tracked workflow step rather than an optional suggestion. Addresses Issue #216 (Skill Bypass Pattern).
 
 ### Adding a Command
 
@@ -361,15 +399,15 @@ Per [[AXIOMS]] #28 (Current State Machine): `$ACA_DATA` contains ONLY semantic m
 
 ### Storage Classification
 
-| Type | Memory | Location | Rule |
-|------|--------|----------|------|
-| Vision/Strategy | SEMANTIC | `VISION.md`, `ROADMAP.md` | Current state. Edit in place. |
-| Specifications | SEMANTIC | `specs/` | Timeless. One per feature. See [[AXIOMS]] #29 |
-| Bug investigations | EPISODIC | GitHub Issue (label: `bug`) | Synthesize → close when fixed |
-| Experiment observations | EPISODIC | GitHub Issue (label: `experiment`) | Synthesize → close |
-| Development logs | EPISODIC | GitHub Issue (label: `devlog`) | Synthesize patterns → close |
-| Decision rationales | EPISODIC | GitHub Issue (label: `decision`) | Synthesize → close |
-| Session transcripts | ARCHIVE | `~/writing/sessions/` | Raw data (too large for Issues) |
+| Type                    | Memory   | Location                           | Rule                                          |
+| ----------------------- | -------- | ---------------------------------- | --------------------------------------------- |
+| Vision/Strategy         | SEMANTIC | `VISION.md`, `ROADMAP.md`          | Current state. Edit in place.                 |
+| Specifications          | SEMANTIC | `specs/`                           | Timeless. One per feature. See [[AXIOMS]] #29 |
+| Bug investigations      | EPISODIC | GitHub Issue (label: `bug`)        | Synthesize → close when fixed                 |
+| Experiment observations | EPISODIC | GitHub Issue (label: `experiment`) | Synthesize → close                            |
+| Development logs        | EPISODIC | GitHub Issue (label: `devlog`)     | Synthesize patterns → close                   |
+| Decision rationales     | EPISODIC | GitHub Issue (label: `decision`)   | Synthesize → close                            |
+| Session transcripts     | ARCHIVE  | `~/writing/sessions/`              | Raw data (too large for Issues)               |
 
 ### Creating Episodic Content
 
@@ -386,7 +424,6 @@ When you have an observation, investigation, or time-bound record:
 gh issue create --repo nicsuzor/academicOps --title "Bug: [description]" --label "bug" --body "## Investigation\n\n[details]"
 ```
 
-
 ### Before Creating Content
 
 1. **Is this semantic (timeless truth)?** → `$ACA_DATA` (specs/, HEURISTICS.md)
@@ -396,6 +433,7 @@ gh issue create --repo nicsuzor/academicOps --title "Bug: [description]" --label
 ### Synthesis Workflow
 
 Episodic → Semantic:
+
 1. Observations accumulate in GitHub Issue(s)
 2. Pattern emerges across multiple observations
 3. Create/update semantic doc (HEURISTICS.md entry or spec)
@@ -409,19 +447,20 @@ When bringing components into compliance with this logical system:
 ### Step 1: Assess Current State
 
 For each component (file, convention, pattern):
+
 1. Can its existence be derived from AXIOMS + VISION?
 2. Is it in the location defined by INDEX.md?
 3. Is its information unique (not duplicated elsewhere)?
 
 ### Step 2: Classify the Issue
 
-| Issue Type | Action |
-|------------|--------|
+| Issue Type          | Action                                       |
+| ------------------- | -------------------------------------------- |
 | No axiom derivation | Delete or propose new axiom (HALT, ask user) |
-| Wrong location | Move to correct location per INDEX.md |
-| Duplicated content | Consolidate to single authoritative source |
-| Missing from INDEX | Add to INDEX.md or delete if invalid |
-| Ambiguous placement | **HALT** - ask user to clarify |
+| Wrong location      | Move to correct location per INDEX.md        |
+| Duplicated content  | Consolidate to single authoritative source   |
+| Missing from INDEX  | Add to INDEX.md or delete if invalid         |
+| Ambiguous placement | **HALT** - ask user to clarify               |
 
 ### Step 3: Incremental Change
 
@@ -433,6 +472,7 @@ For each component (file, convention, pattern):
 ### Step 4: Document the Rule
 
 If you discovered a new pattern:
+
 1. Propose the generalizable rule
 2. Get user approval
 3. Add to this skill with axiom derivation
@@ -461,5 +501,6 @@ Detailed guides for specific framework topics:
 **VISION.md and ROADMAP.md ARE the framework's memory.** Without them being current, agents cannot understand what the framework is, what's working, or what needs attention.
 
 After any significant framework work, check if updates are needed:
+
 - **VISION.md**: End state. Update when direction changes (rare).
 - **ROADMAP.md**: Current status. Update after features added, bugs fixed, or blockers identified.

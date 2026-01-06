@@ -33,6 +33,7 @@ You are a batch processing orchestrator. Your job is to efficiently process mult
 User provides: `$ARGUMENTS`
 
 This should describe:
+
 - What files to process (directory, pattern, or description)
 - What operation to perform on each file
 - Any constraints or preferences
@@ -269,6 +270,7 @@ Return: processed files, tags added, questions for ambiguous cases
 ## Context Window Awareness
 
 This command works within a single session. For very large batches:
+
 - Process what fits in context
 - Commit partial progress
 - User can re-invoke for remaining files

@@ -19,13 +19,13 @@ Session mining and note creation. Silently extracts information and maintains kn
 
 ### From Conversations
 
-| Signal | Action |
-|--------|--------|
-| "I'll need to..." | Create task (invoke task skill) |
-| Project updates | Update `data/projects/<project>.md` |
-| Decisions made | Add observation to relevant file |
-| Completed work | Invoke task skill to archive |
-| Ruled-out ideas | Document why not |
+| Signal            | Action                              |
+| ----------------- | ----------------------------------- |
+| "I'll need to..." | Create task (invoke task skill)     |
+| Project updates   | Update `data/projects/<project>.md` |
+| Decisions made    | Add observation to relevant file    |
+| Completed work    | Invoke task skill to archive        |
+| Ruled-out ideas   | Document why not                    |
 
 ### From Emails
 
@@ -59,11 +59,11 @@ Files organized by **topic**, not **date**. A project file should read as curren
 
 ### Scale Guide
 
-| Work Size | Action |
-|-----------|--------|
-| Tiny (one decision) | Add bullet to existing project/context file |
-| Small (few outcomes) | Add observations to existing topical file |
-| Large (new topic) | Create new topical file ONLY if nothing matches |
+| Work Size            | Action                                          |
+| -------------------- | ----------------------------------------------- |
+| Tiny (one decision)  | Add bullet to existing project/context file     |
+| Small (few outcomes) | Add observations to existing topical file       |
+| Large (new topic)    | Create new topical file ONLY if nothing matches |
 
 ## Format Quick Reference
 

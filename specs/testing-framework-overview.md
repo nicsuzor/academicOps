@@ -41,14 +41,18 @@ graph TD
 The academicOps framework distinguishes between three types of tests:
 
 ### Unit Tests
+
 Verify structural prerequisites exist:
+
 - Files exist at expected paths
 - References resolve correctly
 - Scripts are executable
 - Configuration is valid
 
 ### Integration Tests
+
 Verify component functionality:
+
 - New components perform intended function
 - No regressions in existing components
 - Error handling works correctly
@@ -56,7 +60,9 @@ Verify component functionality:
 **Design Principle**: Design tests BEFORE implementation - fail-fast on known requirements #testing #tdd
 
 ### End-to-End (E2E) Tests
+
 Verify agent behavior in actual workflows:
+
 - Agent READS the files (not just that files exist)
 - Agent FOLLOWS the instructions (not just that instructions exist)
 - Complete workflow executes from user input to final output
@@ -120,6 +126,7 @@ def test_something(fixture: Type) -> None:
 ## Quality Gates
 
 When integration tests fail:
+
 - HALT immediately
 - Do not commit
 - Do not rationalize

@@ -31,6 +31,7 @@ For each document, use LLM judgment to answer:
 ### What to Extract
 
 #### 1. Projects & Publications
+
 - **Papers**: Actual submissions, acceptances, revisions, publications (not CFPs)
 - **Grants**: Applications submitted, outcomes received, progress reports
 - **Books/Chapters**: Contracts signed, submissions, publications
@@ -42,6 +43,7 @@ For each document, use LLM judgment to answer:
 **Think**: Is this a concrete action or outcome? Or just noise?
 
 #### 2. Professional Activities
+
 - **Events Organized**: Conferences, workshops, panels Nic ran/chaired/coordinated
 - **Speaking**: Confirmed talks, keynotes where Nic actually spoke
 - **Service**: OSB decisions, editorial board work, advisory roles
@@ -50,6 +52,7 @@ For each document, use LLM judgment to answer:
 **Think**: Did Nic DO something significant? Or just receive an invitation?
 
 #### 3. Applications & Career
+
 - **Grant Applications**: Submitted applications (not drafts or ideas)
 - **Job Applications**: Roles applied for
 - **Awards/Honors**: Nominations received, awards won
@@ -58,6 +61,7 @@ For each document, use LLM judgment to answer:
 **Think**: Is this a concrete milestone or application? Or just planning?
 
 #### 4. Important Contacts & Relationships
+
 - **Collaborations**: Research collaboration proposals or agreements
 - **Partnerships**: Grant writing partnerships, joint projects
 - **Networks**: Connections made at conferences, international research networks
@@ -67,6 +71,7 @@ For each document, use LLM judgment to answer:
 **Think**: Is this the start/milestone of an important relationship? Or routine correspondence?
 
 #### 5. Financial Records
+
 - **Receipts, invoices, contracts** by project and category
 - Log with: message ID, date, entity, project, description, amount, currency, payment status
 - Essential for grant acquittal and tax purposes
@@ -96,6 +101,7 @@ Most documents are noise. Skip:
 ### Uncertain Cases
 
 When uncertain:
+
 - **Lean toward extraction** in initial pass
 - Tag output with `#review-classification` for manual review
 - Better to extract and discard later than miss important information
@@ -137,35 +143,41 @@ When uncertain:
 When you decide to extract, identify these elements:
 
 ### People
+
 - Full name and affiliations
 - Contact information (if provided)
 - Role/position
 - Relationship to Nic (collaborator, contact, student, etc.)
 
 ### Organizations
+
 - Universities and research institutions
 - Research groups or labs
 - Funding bodies
 - Conferences or professional organizations
 
 ### Events
+
 - Conference/workshop name
 - Speaking engagements
 - Meetings with significance
 - Research visits
 
 ### Projects/Collaborations
+
 - Research topics discussed
 - Grant proposals
 - Joint publications
 - Ongoing or proposed collaborations
 
 ### Dates & Timing
+
 - When correspondence occurred
 - When events happened or will happen
 - Project timelines if mentioned
 
 ### Topics/Tags
+
 - Research areas (platform-governance, content-moderation, AI-ethics, etc.)
 - Geographic locations
 - Types of activity (collaboration, speaking, reviewing)
@@ -184,6 +196,7 @@ Store identifier inline with extracted information.
 ## Storage
 
 Use `Skill(skill="remember")` to store extracted information in the knowledge base. The remember skill handles:
+
 - Entity creation/updates
 - Format validation
 - Deduplication checking
@@ -192,6 +205,7 @@ Use `Skill(skill="remember")` to store extracted information in the knowledge ba
 Store information using the memory server with properly formatted markdown. Tag extracted information appropriately for searchability and future retrieval.
 
 **Common approaches for email extraction**:
+
 - Email metadata (sender, date, subject) → Use memory tags like `#email`, `#correspondence`
 - Project information → Use memory tags like `#project`
 - Coordinator/team roles → Store with descriptive relationships
@@ -200,6 +214,7 @@ Store information using the memory server with properly formatted markdown. Tag 
 - Relationships between people → Document relationships clearly with role descriptions
 
 **Storage principles**:
+
 - Use clear, structured memory entries
 - Include all relevant metadata and timestamps
 - Tag appropriately for semantic search
@@ -209,16 +224,19 @@ Store information using the memory server with properly formatted markdown. Tag 
 ## Quality Standards
 
 ### Confidence Levels
+
 - Only extract when information is clear and valuable
 - Mark uncertain extractions with `#review-classification`
 - Skip ambiguous or unclear information
 
 ### Atomic Information
+
 - Each piece of information should be specific and verifiable
 - Include dates, sources, and context
 - Tag appropriately for searchability
 
 ### Fail Fast
+
 - If document is malformed, skip it and log error
 - If extraction is ambiguous, skip it or tag for review
 - Continue processing other documents

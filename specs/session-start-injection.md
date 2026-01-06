@@ -41,12 +41,14 @@ SessionStart injection provides exactly four categories of information:
 **Purpose**: WHERE things are - resolved paths for this session.
 
 **Contents**:
+
 - `$AOPS/` - Framework source root (absolute path)
 - `$ACA_DATA/` - User data root (absolute path)
 - Standard subdirectories (commands/, skills/, hooks/, agents/, tasks/, etc.)
 - Path table with common files
 
 **Contract**:
+
 - All path variables (`$AOPS`, `$ACA_DATA`) are expanded to absolute paths at injection time
 - Agents MUST NOT guess paths - all needed paths are provided here
 - Missing or incorrect paths = framework misconfiguration = fail
@@ -58,11 +60,13 @@ SessionStart injection provides exactly four categories of information:
 **Purpose**: WHAT agents CAN'T do - inviolable rules with no exceptions.
 
 **Contents**:
+
 - Numbered principles (currently ~30)
 - Each principle is atomic and actionable
 - No evidence, examples, or enforcement details
 
 **Contract**:
+
 - Every principle applies to every session
 - Agents MUST follow these regardless of context
 - Violations are never acceptable (no "usually" or "in most cases")
@@ -74,11 +78,13 @@ SessionStart injection provides exactly four categories of information:
 **Purpose**: HOW agents SHOULD act - empirically validated guidance.
 
 **Contents**:
+
 - Numbered heuristics (H1, H2, etc.) with rule statement only
 - No metadata (confidence, evidence, axiom refs) - that lives in GitHub Issues
 - Revision protocol pointing to `/log` skill
 
 **Contract**:
+
 - Heuristics are default behavior, not inviolable
 - User can override with explicit instruction
 - Agents should follow unless there's specific reason not to
@@ -91,12 +97,14 @@ SessionStart injection provides exactly four categories of information:
 **Purpose**: WHO the agent serves - user context and preferences.
 
 **Contents**:
+
 - User identity and role
 - Communication preferences
 - Tools and environment
 - Workflow requirements
 
 **Contract**:
+
 - This is the authoritative source for user context
 - Preferences here override generic behavior
 - Updates to user context go here (single source of truth)
@@ -108,6 +116,7 @@ SessionStart injection provides exactly four categories of information:
 ### Fail-Fast Behavior (See [[AXIOMS.md]])
 
 All four files are **mandatory**. If ANY file is:
+
 - Missing → Exit code 1, session cannot start
 - Empty → Exit code 1, session cannot start
 - Malformed → Best effort parse, warn on stderr
@@ -141,6 +150,7 @@ Files are concatenated with clear section headers:
 ### Path Variable Expansion
 
 Before injection, replace:
+
 - `$AOPS` → absolute path to framework root
 - `$ACA_DATA` → absolute path to user data root
 
@@ -148,14 +158,14 @@ This happens at runtime so content is session-specific.
 
 ## What's NOT Included (and Why)
 
-| Candidate | Decision | Rationale |
-|-----------|----------|-----------|
-| ROADMAP.md | Excluded | Changes frequently; load on-demand when relevant |
-| VISION.md | Excluded | Strategic context, not operational baseline |
-| README.md | Excluded | Reference doc, not foundational context |
-| Project CLAUDE.md | Excluded | Loaded separately by Claude Code per-repo |
-| Recent history | Excluded | Use memory server queries at prompt-time |
-| Active tasks | Excluded | Stale quickly; better at prompt-time via /do |
+| Candidate         | Decision | Rationale                                        |
+| ----------------- | -------- | ------------------------------------------------ |
+| ROADMAP.md        | Excluded | Changes frequently; load on-demand when relevant |
+| VISION.md         | Excluded | Strategic context, not operational baseline      |
+| README.md         | Excluded | Reference doc, not foundational context          |
+| Project CLAUDE.md | Excluded | Loaded separately by Claude Code per-repo        |
+| Recent history    | Excluded | Use memory server queries at prompt-time         |
+| Active tasks      | Excluded | Stale quickly; better at prompt-time via /do     |
 
 **Design principle**: SessionStart injection is **minimal and complete** - only what EVERY session needs, nothing extra.
 
@@ -187,6 +197,7 @@ test -s $ACA_DATA/CORE.md
 ### Test: Context appears in session
 
 After session start, agent should be able to answer:
+
 - "What is $AOPS?" → Returns absolute path (not variable)
 - "What are the axioms?" → Can list principles
 - "Who is the user?" → Returns user context from CORE.md

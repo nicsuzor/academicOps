@@ -8,6 +8,7 @@ tags: [framework, hooks, lifecycle]
 # Hooks
 
 ## Overview
+
 Python hooks for session lifecycle management, context injection, and policy enforcement. Hooks extend Claude Code functionality through event-driven scripts that inject context, enforce policies, and log activity.
 
 ## Session Initialization

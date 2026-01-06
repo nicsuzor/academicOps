@@ -151,8 +151,6 @@ Check against success criteria:
 
 - [Any insights for improving the feature-dev skill itself]
 
----
-
 **References**:
 
 - User story: `user-story.md`

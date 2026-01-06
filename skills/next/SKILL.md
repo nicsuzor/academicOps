@@ -40,23 +40,30 @@ Format the output as:
 **Today so far**: [N] [project] items, [M] [project] items
 
 ### 1. PROBABLY SHOULD (deadline pressure)
+
 **[Task Title]** - [reason]
+
 - Due: [date] | Project: [project]
 
 ### 2. MIGHT ENJOY (different domain)
+
 **[Task Title]** - [reason]
+
 - Good counterweight to recent [project] work
 - **Next steps** (from next_subtasks if present):
   - [ ] First actionable subtask
   - [ ] Second actionable subtask
 
 ### 3. QUICK WIN (build momentum)
+
 **[Task Title]** - [reason]
+
 - Estimated: 5-15 min
 
 ---
 
 ### 🗑️ Archive candidates (if any)
+
 - **[Stale Task]** - [reason: past event / overdue 60+ days]
 ```
 
@@ -74,11 +81,11 @@ If user picks one, update the daily.md "Active Now" section to reflect what they
 
 ## Selection Logic
 
-| Category | Priority |
-|----------|----------|
-| **Should** | Overdue > Due today > Due this week > P0 tasks |
-| **Enjoy** | Different project from today's dominant work, creative/substantive |
-| **Quick** | Action items, approvals, responses, single-step tasks |
+| Category   | Priority                                                           |
+| ---------- | ------------------------------------------------------------------ |
+| **Should** | Overdue > Due today > Due this week > P0 tasks                     |
+| **Enjoy**  | Different project from today's dominant work, creative/substantive |
+| **Quick**  | Action items, approvals, responses, single-step tasks              |
 
 ## Arguments
 

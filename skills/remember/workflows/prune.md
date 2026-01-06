@@ -14,6 +14,7 @@ tags:
 Aggressively clean knowledge base by consolidating related files, removing low-value files, and extracting and organising knowledge.
 
 **Philosophy**: Knowledge base must be tended to regularly.
+
 - Information added at different times should be consolidated; knowledge base should be up to date.
 - Knowledge base should contain ONLY things worth searching for.
 - project files should tell current state without requiring changelog archaeology.
@@ -50,7 +51,6 @@ Guidelines for consolidating time-based observations and progress logs into an o
 - [technique] Create DELETE and KEEP lists with reasons before executing #safety
 - [technique] Read files to understand their actual status, not just their names #accuracy
 - [principle] Be aggressive in recommendations but careful in execution #balance
-
 
 #### What Makes Files Deletable
 
@@ -89,6 +89,7 @@ Files with mostly noise but some facts worth keeping:
 - Event logistics → extract what happened/who attended
 
 **Process**:
+
 1. Identify target file (existing contact/project)
 2. Extract facts as observations
 3. Append to target file
@@ -114,7 +115,6 @@ Files with lasting value:
 - Commit in logical chunks with descriptive messages
 - Track file count reduction as metric
 
-
 ### Phase 1: Discovery
 
 1. Count total files to establish baseline
@@ -125,30 +125,34 @@ Files with lasting value:
 ### Phase 2: Triage by Category
 
 For each file:
+
 1. Read completely
 2. Classify: DELETE | EXTRACT_DELETE | KEEP
 
 **Green Flags (Files Likely to Keep):**
+
 - [flag] Main project file matching directory name (e.g., `buttermilk/buttermilk.md`) #core
 - [flag] Files with "Architecture", "Specification", "Overview" (reference docs) #reference
 - [flag] Learning logs and digests (institutional memory) #learning
 - [flag] Files from current week (likely active work) #recent
 
 **Consolidate then delete:**
+
 - Session logs → extract to main file → delete session
 - Phase reports → summarize in main file → delete phases
 - Implementation plans with completed outcomes → note completion → delete plan
 
 **DO NOT extract**:
+
 - Scheduling logistics
 - Ephemeral coordination
 - Pleasantries
 
 **Review before action:**
+
 - Files with unclear status
 - Potentially active investigations
 - Files that might be referenced elsewhere
-
 
 ## Decision Tree
 

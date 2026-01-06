@@ -43,12 +43,12 @@ Design documents for the academicOps framework. Per [[AXIOMS]] #29: one spec per
 
 ## Spec Lifecycle
 
-| Status | Meaning |
-|--------|---------|
-| `draft` | In development, not yet approved |
-| `approved` | Approved design, awaiting implementation |
-| `implemented` | Built and working |
-| `requirement` | User story, not yet designed |
+| Status        | Meaning                                  |
+| ------------- | ---------------------------------------- |
+| `draft`       | In development, not yet approved         |
+| `approved`    | Approved design, awaiting implementation |
+| `implemented` | Built and working                        |
+| `requirement` | User story, not yet designed             |
 
 ## Core Architecture
 

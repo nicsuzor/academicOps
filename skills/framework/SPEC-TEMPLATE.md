@@ -13,12 +13,10 @@ tags:
 
 Use this template to specify each academicops feature before implementation. This ensures clear scope, testability, and alignment with framework principles.
 
----
-
 # Task: [Descriptive Name]
 
-**Date**: YYYY-MM-DD 
-**Stage**: [1-5 from ROADMAP.md] 
+**Date**: YYYY-MM-DD
+**Stage**: [1-5 from ROADMAP.md]
 **Priority**: [P1/P2/P3 based on impact and effort]
 
 ## Problem Statement / User story
@@ -141,6 +139,7 @@ Each test should map to specific acceptance criteria from above. Reference which
 - [ ] Test cleanup leaves no artifacts
 
 **Mapping to acceptance criteria**:
+
 - Test 1 validates: [Acceptance criterion #1]
 - Test 2 validates: [Acceptance criterion #2]
 - Test 3 detects: [Failure mode #1]
@@ -302,8 +301,6 @@ Each test should map to specific acceptance criteria from above. Reference which
 [Any additional context, constraints, or considerations]
 
 [Link to related tasks, experiments, or documentation]
-
----
 
 ## Completion Checklist
 

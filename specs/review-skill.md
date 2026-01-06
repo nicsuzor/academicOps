@@ -23,30 +23,32 @@ We need a skill that explicitly acts as a **Research Assistant**, clearing the p
 
 ## Core Axiom: Support vs. Judgment
 
--   **Support (Agent Role)**: "Here is where the author mentions X. Here is the list of speakers at the conference they asked about."
--   **Judgment (User Role)**: "This argument is weak because..."
+- **Support (Agent Role)**: "Here is where the author mentions X. Here is the list of speakers at the conference they asked about."
+- **Judgment (User Role)**: "This argument is weak because..."
 
 ## Scope
 
 ### In Scope
--   **Preparation**: Converting inputs to Markdown, ensuring line-number addressability.
--   **Guidance**: Creating `reading_notes` that map user questions to text locations.
--   **Scribing**: Drafting responses based on user's rough notes/dictation.
--   **Logistics**: Checking external links (conferences, cited papers) for basic facts.
+
+- **Preparation**: Converting inputs to Markdown, ensuring line-number addressability.
+- **Guidance**: Creating `reading_notes` that map user questions to text locations.
+- **Scribing**: Drafting responses based on user's rough notes/dictation.
+- **Logistics**: Checking external links (conferences, cited papers) for basic facts.
 
 ### Out of Scope
--   **Critique**: The agent should not offer qualitative feedback (e.g., "This is well written") unless explicitly asked to simulate a specific persona.
--   **Editing**: No direct edits to the author's draft unless instructed to "fix typos".
+
+- **Critique**: The agent should not offer qualitative feedback (e.g., "This is well written") unless explicitly asked to simulate a specific persona.
+- **Editing**: No direct edits to the author's draft unless instructed to "fix typos".
 
 ## Workflow Structure
 
-1.  **Assemble**: Ensure `${ACA_DATA}/reviews/[author]/` contains search-ready Markdown patterns.
-2.  **Map**: Create `YYYYMMDD_reading_notes.md` mapping the author's anxieties/questions to specific lines.
-3.  **Scribe**: Iterate on the task file `YYYYMMDD_task.md` to draft the response.
-4.  **Finalize**: Append response to task, mark complete, move to review folder.
+1. **Assemble**: Ensure `${ACA_DATA}/reviews/[author]/` contains search-ready Markdown patterns.
+2. **Map**: Create `YYYYMMDD_reading_notes.md` mapping the author's anxieties/questions to specific lines.
+3. **Scribe**: Iterate on the task file `YYYYMMDD_task.md` to draft the response.
+4. **Finalize**: Append response to task, mark complete, move to review folder.
 
 ## Success Criteria
 
--   **User Cognitive Load**: The user does not need to "search" for the relevant section; they are directed straight to it.
--   **Voice Preservation**: The final output sounds exactly like the user (authoritative, specific), not like an LLM (generic, overly polite).
--   **Artifact Hygiene**: Inbox is clear; review history is preserved in the author's folder.
+- **User Cognitive Load**: The user does not need to "search" for the relevant section; they are directed straight to it.
+- **Voice Preservation**: The final output sounds exactly like the user (authoritative, specific), not like an LLM (generic, overly polite).
+- **Artifact Hygiene**: Inbox is clear; review history is preserved in the author's folder.

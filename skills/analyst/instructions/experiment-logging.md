@@ -23,14 +23,14 @@ Experiments are **work-in-progress** that may or may not make it into final anal
 
 ## Experiments vs. Production Analysis
 
-| Aspect              | Experiments                            | Production Analysis                            |
-| ------------------- | -------------------------------------- | ---------------------------------------------- |
-| **Location**        | `experiments/YYYYMMDD-description/`    | `dbt/models/`, `streamlit/`, `methods/`        |
-| **Purpose**         | Exploration, testing, validation       | Final analysis for publication                 |
-| **Quality**         | Can be messy, incomplete               | Must be production-quality                     |
+| Aspect              | Experiments                            | Production Analysis                                                     |
+| ------------------- | -------------------------------------- | ----------------------------------------------------------------------- |
+| **Location**        | `experiments/YYYYMMDD-description/`    | `dbt/models/`, `streamlit/`, `methods/`                                 |
+| **Purpose**         | Exploration, testing, validation       | Final analysis for publication                                          |
+| **Quality**         | Can be messy, incomplete               | Must be production-quality                                              |
 | **Documentation**   | Inline notes, README in experiment dir | Full documentation in [[methodology-files]], [[methods-vs-methodology]] |
-| **Git tracking**    | May or may not be committed            | Always committed and reviewed                  |
-| **Reproducibility** | Best effort                            | Mandatory                                      |
+| **Git tracking**    | May or may not be committed            | Always committed and reviewed                                           |
+| **Reproducibility** | Best effort                            | Mandatory                                                               |
 
 ## Mandatory Experiment Directory Structure
 

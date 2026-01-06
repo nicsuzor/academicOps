@@ -48,6 +48,7 @@ description: Essential keyboard shortcuts, techniques, and workflows for efficie
 ### 6. Frame-Based Organization
 
 Multi-frame workflow for complex projects:
+
 - Use rectangular boxes as frames/artboards
 - Choose aspect ratio for target use case:
   - 16:9 for presentations
@@ -101,22 +102,26 @@ Multi-frame workflow for complex projects:
 ## Additional Keyboard Shortcuts
 
 ### Layers/Z-order
+
 - `Cmd/Ctrl + ]` → Bring forward
 - `Cmd/Ctrl + [` → Send backward
 - `Cmd/Ctrl + Shift + ]` → Bring to front
 - `Cmd/Ctrl + Shift + [` → Send to back
 
 ### View Controls
+
 - `Cmd/Ctrl + Wheel` → Zoom in/out
 - `Space + Drag` → Pan canvas
 - `Cmd/Ctrl + 0` → Reset zoom to 100%
 - `Cmd/Ctrl + 1` → Zoom to fit all elements
 
 ### Selection
+
 - `Cmd/Ctrl + Click` → Add to selection
 - Hold `Shift` while resizing → Maintain aspect ratio
 
 ### Drawing Tools
+
 - `X` → Freedraw tool
 - `E` → Eraser
 - `Cmd/Ctrl + G` → Group selection

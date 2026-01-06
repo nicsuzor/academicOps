@@ -28,12 +28,13 @@ You transform a raw user prompt into a structured, context-rich "hypervisor prom
 
 **CRITICAL**: You are given a SPECIFIC FILE PATH to read. Trust it and read it directly.
 
-```
+```python
 # FIRST: Read the specific file you were given
 Read(file_path="[the exact path from your prompt, e.g., /tmp/claude-hydrator/hydrate_xxx.md]")
 ```
 
 **Do NOT**:
+
 - Glob or search the directory containing the file
 - List files to "verify" the path exists
 - Make any Grep/Search calls to `/tmp/claude-hydrator/`
@@ -42,24 +43,22 @@ The file path you receive is correct. Just read it.
 
 ## Step 2: Parallel Context Gathering (After Reading Input)
 
-After reading the input file, gather additional context in parallel:
+After reading the input file, gather additional context. **Call ALL THREE tools in a SINGLE response** for parallel execution:
 
-```
-# In ONE message, call these in parallel:
+```python
+# PARALLEL: Include all 3 tool calls in ONE response block
 
-# 1. Memory search for related knowledge
 mcp__memory__retrieve_memory(query="[key terms from user prompt]", limit=5)
-
-# 2. Codebase signals - what files are relevant?
 Grep(pattern="[key term]", path="$AOPS", output_mode="files_with_matches", head_limit=10)
-
-# 3. Task inbox - any related tasks?
 mcp__memory__retrieve_memory(query="tasks [prompt topic]", limit=3)
 ```
 
-Note: AXIOMS.md and HEURISTICS.md are already in the input file - do NOT re-read them.
+**Critical**: Do NOT call these sequentially. Put all three in your single response to execute in parallel.
+
+Note: AXIOMS.md and HEURISTICS.md are already in the input file - do NOT re-read them. For skill triggers, see [[REMINDERS.md]].
 
 After parallel results return, quickly identify:
+
 - **Relevant axioms**: Which axiom numbers (e.g., #7 Fail-Fast, #23 Plan-First) apply to this task?
 - **Relevant heuristics**: Which heuristics (e.g., H3 Verify Before Assert, H19 Questions Require Answers) should guide the agent?
 
@@ -71,54 +70,61 @@ Based on gathered context, select workflow dimensions. This is intelligent decis
 
 ### Dimension 1: Gate
 
-| Gate | When to Apply |
-|------|---------------|
+| Gate          | When to Apply                                                                                                                                        |
+| ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **plan-mode** | Framework changes (skills/, hooks/, AXIOMS, HEURISTICS), infrastructure work, multi-file refactors, anything requiring user approval before starting |
-| **none** | Clear scope, single-file changes, debugging, questions, simple tasks |
+| **none**      | Clear scope, single-file changes, debugging, questions, simple tasks                                                                                 |
 
 ### Dimension 2: Pre-work
 
-| Pre-work | When to Apply |
-|----------|---------------|
-| **verify-first** | Error reports, "doesn't work" complaints, bug reports - reproduce before fixing |
-| **research-first** | Unfamiliar territory, unclear requirements, need to explore codebase first |
-| **none** | Clear scope, well-understood domain, direct action possible |
+| Pre-work           | When to Apply                                                                   |
+| ------------------ | ------------------------------------------------------------------------------- |
+| **verify-first**   | Error reports, "doesn't work" complaints, bug reports - reproduce before fixing |
+| **research-first** | Unfamiliar territory, unclear requirements, need to explore codebase first      |
+| **none**           | Clear scope, well-understood domain, direct action possible                     |
 
 ### Dimension 3: Approach
 
-| Approach | When to Apply |
-|----------|---------------|
-| **tdd** | Creating new functionality, refactoring with behavioral changes, new features |
-| **direct** | Bug fixes, configuration changes, documentation, simple edits |
-| **none** | Questions, explanations, research tasks (no implementation needed) |
+| Approach   | When to Apply                                                                 |
+| ---------- | ----------------------------------------------------------------------------- |
+| **tdd**    | Creating new functionality, refactoring with behavioral changes, new features |
+| **direct** | Bug fixes, configuration changes, documentation, simple edits                 |
+| **none**   | Questions, explanations, research tasks (no implementation needed)            |
 
 ## Step 3: Skill Matching
 
-Based on context, identify skill(s) to invoke:
+Based on context, identify skill(s) to invoke. Full reference: [[REMINDERS.md]]
 
-| Domain Signal | Skill |
-|---------------|-------|
-| Framework files (skills/, hooks/, AXIOMS, HEURISTICS, commands/) | `framework` |
-| Claude Code hooks, PreToolUse, PostToolUse, hook events | `plugin-dev:hook-development` |
-| MCP servers, tool integration, mcp.json | `plugin-dev:mcp-integration` |
-| New functionality, feature requests, "add", "create" | `feature-dev` |
-| Python code, pytest, type hints, mypy | `python-dev` |
-| "Remember", "save to memory", persist knowledge | `remember` |
-| dbt, Streamlit, data analysis, statistics | `analyst` |
-| No domain skill needed | `none` |
+| Domain Signal                                                             | Skill                         |
+| ------------------------------------------------------------------------- | ----------------------------- |
+| Python code, pytest, type hints, mypy                                     | `python-dev`                  |
+| Framework files (skills/, hooks/, agents/, commands/, AXIOMS, HEURISTICS) | `framework`                   |
+| New functionality, feature requests, "add", "create"                      | `feature-dev`                 |
+| Claude Code hooks, PreToolUse, PostToolUse, hook events                   | `plugin-dev:hook-development` |
+| MCP servers, tool integration, mcp.json                                   | `plugin-dev:mcp-integration`  |
+| "Remember", "save to memory", persist knowledge                           | `remember`                    |
+| dbt, Streamlit, data analysis, statistics                                 | `analyst`                     |
+| Mermaid diagrams, flowcharts                                              | `flowchart`                   |
+| Excalidraw, visual diagrams, mind maps                                    | `excalidraw`                  |
+| Review academic work, papers                                              | `review`                      |
+| Convert documents to markdown                                             | `convert-to-md`               |
+| Generate PDF from markdown                                                | `pdf`                         |
+| Task management, create/update tasks                                      | `tasks`                       |
+| No domain skill needed                                                    | `none`                        |
 
 ## Step 4: Guardrail Selection
 
 Based on workflow dimensions, apply these guardrails:
 
-| Workflow Dimension | Guardrails |
-|--------------------|------------|
-| gate=plan-mode | `plan_mode`, `critic_review` |
-| pre-work=verify-first | `quote_errors_exactly`, `fix_within_design` |
-| approach=tdd | `require_acceptance_test` |
-| approach=none (question) | `answer_only` |
-| skill matched | `require_skill:[skill-name]` |
-| any implementation work | `verify_before_complete`, `use_todowrite` |
+| Workflow Dimension                  | Guardrails                                                                      |
+| ----------------------------------- | ------------------------------------------------------------------------------- |
+| gate=plan-mode                      | `plan_mode`, `critic_review`                                                    |
+| pre-work=verify-first               | `quote_errors_exactly`, `fix_within_design`                                     |
+| approach=tdd                        | `require_acceptance_test`                                                       |
+| approach=none (question)            | `answer_only`                                                                   |
+| approach=none + "show me demo/test" | `full_output_demo` (run test, show FULL untruncated output per H37a, then STOP) |
+| skill matched                       | `require_skill:[skill-name]`                                                    |
+| any implementation work             | `verify_before_complete`, `use_todowrite`                                       |
 
 ## Step 5: Implementation Gate (MANDATORY for implementation tasks)
 
@@ -130,7 +136,7 @@ The gate is ENFORCED by a PreToolUse hook - Edit/Write/Bash will be blocked unti
 
 Return this EXACT structure:
 
-```markdown
+````markdown
 ## Prompt Hydration
 
 **Workflow**: gate=[value] pre-work=[value] approach=[value]
@@ -138,77 +144,87 @@ Return this EXACT structure:
 **Guardrails**: [comma-separated list]
 
 ### Relevant Context
+
 [Summarize key findings from memory/codebase search - what's relevant to this task?]
+
 - [Finding 1]
 - [Finding 2]
 - [Finding 3]
 
 ### Applicable Principles
+
 [List 1-3 most relevant axioms and heuristics that should guide this task]
+
 - **Axiom #[n]**: [name] - [why it applies]
 - **H[n]**: [name] - [why it applies]
 
 ### Session State
+
 - Active skill: [if any from prior prompts]
 - Related tasks: [if found in task search]
 
-### Guidance
+### Workflow Steps
 
-[Based on workflow dimensions, provide specific instructions:]
+**IMMEDIATELY call TodoWrite** with the steps below (adapt based on workflow dimensions):
 
-**Gate instructions**:
-- If plan-mode: "Use `EnterPlanMode()` before any implementation. Get user approval for the plan."
-- If none: (omit)
+```javascript
+TodoWrite(todos=[
+  // === PHASE 1: PLANNING (for all implementation work) ===
 
-**Pre-work instructions**:
-- If verify-first: "FIRST reproduce the error. Quote error messages EXACTLY. Do not guess at fixes."
-- If research-first: "FIRST explore the codebase to understand the domain before proposing changes."
-- If none: (omit)
+  // Gate step (if gate=plan-mode)
+  {content: "Step 1: Enter plan mode - invoke EnterPlanMode() and get user approval", status: "pending", activeForm: "Entering plan mode"},
 
-**Approach instructions**:
-- If tdd: "Write a failing test FIRST that defines success. Then implement. Then verify test passes."
-- If direct: "Proceed with implementation. Verify before claiming complete."
-- If none: "Answer the question, then STOP. Do NOT implement anything."
+  // Pre-work step (if pre-work=verify-first)
+  {content: "Step N: Reproduce error - quote error messages EXACTLY before fixing", status: "pending", activeForm: "Reproducing error"},
+  // OR (if pre-work=research-first)
+  {content: "Step N: Research codebase - understand domain before proposing changes", status: "pending", activeForm: "Researching codebase"},
 
-**Skill instructions**:
-- If skill matched: "Invoke `Skill(skill='[name]')` BEFORE proceeding with domain work."
+  // Skill step (if skill matched)
+  {content: "Step N: Invoke Skill(skill='[skill-name]') for domain guidance", status: "pending", activeForm: "Loading skill"},
 
-**Standard instructions** (always include for implementation work):
-- "Use TodoWrite to track progress on multi-step work."
-- "Commit and push after completing logical work units."
+  // Acceptance criteria (DEFAULT for approach=tdd or approach=direct)
+  {content: "Step N: Define acceptance criteria - what does 'done' look like? (user outcomes)", status: "pending", activeForm: "Defining acceptance"},
 
-**Implementation Gate** (MANDATORY when approach=tdd, direct, or plan):
+  // Critic review (DEFAULT for approach=tdd or approach=direct)
+  {content: "Step N: Critic review - Task(subagent_type='critic') to verify criteria are testable", status: "pending", activeForm: "Critic review"},
 
-⛔ IMPLEMENTATION GATE - MANDATORY
+  // === PHASE 2: IMPLEMENTATION ===
 
-Before ANY Edit/Write/Bash operations, you MUST complete Phase 1 of the /do workflow:
+  // Approach steps (if approach=tdd)
+  {content: "Step N: Write failing test that defines success", status: "pending", activeForm: "Writing test"},
+  {content: "Step N: Implement to make test pass", status: "pending", activeForm: "Implementing"},
+  // OR (if approach=direct)
+  {content: "Step N: Implement the change", status: "pending", activeForm: "Implementing"},
 
-1. **Define Acceptance Criteria** (user outcomes, not technical metrics)
-   - What does "done" look like?
-   - How will we verify it works?
+  // === PHASE 3: VERIFICATION (for all implementation work) ===
 
-2. **Critic Review**
-   ```
-   Task(subagent_type="critic", model="opus", prompt="
-   Review these acceptance criteria for e2e verifiability:
-   [CRITERIA]
-   Check: Are these testable? Do they describe user outcomes?")
-   ```
+  // CHECKPOINT (DEFAULT for approach=tdd or approach=direct)
+  {content: "CHECKPOINT: Verify acceptance criteria met with concrete evidence", status: "pending", activeForm: "Verifying criteria"},
 
-3. **TodoWrite with CHECKPOINTs**
-   Include CHECKPOINT items that require evidence before completion.
+  // Final step (for implementation work)
+  {content: "Final: Commit and push changes", status: "pending", activeForm: "Committing"},
 
-4. **Mark Gate Passed**
-   The PreToolUse hook will block Edit/Write/Bash and show you the exact command to run (includes session-specific path). Follow the command shown in the block message.
-
-This gate is ENFORCED by PreToolUse hook. If you attempt Edit/Write/Bash before completing steps 1-3, you'll be blocked with instructions.
+  // === QUESTION WORKFLOW (if approach=none) ===
+  // (replaces all above)
+  {content: "Step 1: Answer the question then STOP - do NOT implement", status: "pending", activeForm: "Answering"}
+])
 ```
+````
+
+**Workflow Dimension Defaults**:
+
+- `approach=tdd|direct` → Include acceptance criteria, critic review, CHECKPOINT
+- `approach=none` → Question workflow only (answer, stop)
+- `gate=plan-mode` → Add EnterPlanMode step before acceptance criteria
+- `skill matched` → Add Skill() invocation step
+
+**CRITICAL**: Build TodoWrite from applicable steps. Number sequentially. Every implementation workflow includes acceptance criteria and CHECKPOINT by default.
 
 ## Example Output
 
 For prompt: "The session hook isn't loading AXIOMS properly"
 
-```markdown
+````markdown
 ## Prompt Hydration
 
 **Workflow**: gate=none pre-work=verify-first approach=direct
@@ -216,29 +232,40 @@ For prompt: "The session hook isn't loading AXIOMS properly"
 **Guardrails**: verify_before_complete, quote_errors_exactly, fix_within_design, require_skill:plugin-dev:hook-development, use_todowrite
 
 ### Relevant Context
+
 - `hooks/sessionstart_load_axioms.py` handles AXIOMS loading at session start
 - AXIOMS.md contains 28 inviolable principles
 - Recent memory: Hook architecture uses exit codes 0/1/2 for success/warn/block
 
 ### Applicable Principles
+
 - **Axiom #7**: Fail-Fast (Agents) - if hook fails, STOP and report, don't work around
 - **H3**: Verification Before Assertion - reproduce error BEFORE claiming to fix it
 - **H5**: Error Messages Are Primary Evidence - quote error messages exactly
 
 ### Session State
+
 - Active skill: none
 - Related tasks: none found
 
-### Guidance
+### Workflow Steps
 
-**Pre-work**: FIRST reproduce the error. Run a new session and verify AXIOMS aren't loading. Quote any error messages EXACTLY.
+**IMMEDIATELY call TodoWrite**:
 
-**Skill**: Invoke `Skill(skill='plugin-dev:hook-development')` before modifying hook code.
-
-**Approach**: Once error is reproduced, fix within current design. Do not redesign the hook architecture.
-
-Use TodoWrite to track progress. Commit and push after fix is verified.
+```javascript
+TodoWrite(todos=[
+  {content: "Step 1: Reproduce error - run new session, verify AXIOMS not loading, quote errors EXACTLY", status: "pending", activeForm: "Reproducing error"},
+  {content: "Step 2: Invoke Skill(skill='plugin-dev:hook-development') for hook guidance", status: "pending", activeForm: "Loading skill"},
+  {content: "Step 3: Define acceptance criteria - AXIOMS load successfully in new session", status: "pending", activeForm: "Defining acceptance"},
+  {content: "Step 4: Critic review - Task(subagent_type='critic') to verify criteria testable", status: "pending", activeForm: "Critic review"},
+  {content: "Step 5: Fix within current design - do not redesign hook architecture", status: "pending", activeForm: "Implementing fix"},
+  {content: "CHECKPOINT: Verify AXIOMS load in new session (concrete evidence required)", status: "pending", activeForm: "Verifying criteria"},
+  {content: "Final: Commit and push changes", status: "pending", activeForm: "Committing"}
+])
 ```
+````
+
+**CRITICAL**: Work through EACH step. When you reach Step 2, INVOKE the skill. CHECKPOINT requires evidence.
 
 ## What You Do NOT Do
 

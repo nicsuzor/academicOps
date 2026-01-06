@@ -18,6 +18,7 @@ Enable iterative capture of work patterns as reusable framework artifacts (workf
 ### Problem Statement
 
 Users frequently perform tasks that could become reusable patterns, but:
+
 1. Pattern extraction happens rarely (friction to create artifacts)
 2. Single-pass extraction misses nuances (patterns need refinement)
 3. Created artifacts over-fit to the immediate task (not generalizable)
@@ -25,6 +26,7 @@ Users frequently perform tasks that could become reusable patterns, but:
 ### Solution
 
 A command that:
+
 - **Tracks work in real-time** via TodoWrite (evidence gathering)
 - **Extracts patterns iteratively** (multiple passes to refine)
 - **Creates actual artifacts** (not drafts) with embedded generalization warnings
@@ -50,13 +52,13 @@ A command that:
 
 ### Design Decisions
 
-| Decision | Rationale | Alternatives Considered |
-|----------|-----------|------------------------|
+| Decision                           | Rationale                                                        | Alternatives Considered                                                           |
+| ---------------------------------- | ---------------------------------------------------------------- | --------------------------------------------------------------------------------- |
 | Two-mode detection (start/extract) | Matches natural workflow - either beginning work or reviewing it | Explicit flags (`/encode --start`, `/encode --extract`) - rejected as unnecessary |
-| TodoWrite as evidence | Already tracks steps; reuse rather than new mechanism | Custom trace file - rejected as duplicate infrastructure |
-| Edit actual workflows, not drafts | User feedback: "make the edits to the workflow" | Draft staging area - rejected as extra indirection |
-| Generalization warning embedded | Agents tend to over-fit; explicit reminder helps | Training/prompting alone - insufficient |
-| Spec per artifact | Meta-info lives separately from the artifact itself | Inline comments - too verbose, mixed concerns |
+| TodoWrite as evidence              | Already tracks steps; reuse rather than new mechanism            | Custom trace file - rejected as duplicate infrastructure                          |
+| Edit actual workflows, not drafts  | User feedback: "make the edits to the workflow"                  | Draft staging area - rejected as extra indirection                                |
+| Generalization warning embedded    | Agents tend to over-fit; explicit reminder helps                 | Training/prompting alone - insufficient                                           |
+| Spec per artifact                  | Meta-info lives separately from the artifact itself              | Inline comments - too verbose, mixed concerns                                     |
 
 ## Generalization Scope
 

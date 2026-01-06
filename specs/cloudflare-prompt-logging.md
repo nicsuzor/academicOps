@@ -35,6 +35,7 @@ graph LR
 ## Components
 
 ### 1. Cloudflare Worker
+
 **Location**: `~/dotfiles/scripts/cloudflare-prompts/`
 
 - **Endpoint**: `https://prompt-logs.nicsuzor.workers.dev`
@@ -45,6 +46,7 @@ graph LR
 - **Storage**: R2 bucket `prompt-logs`
 
 ### 2. UserPromptSubmit Hook Integration
+
 **Location**: `$AOPS/hooks/user_prompt_submit.py`
 
 - New function: `log_to_cloudflare(prompt)`
@@ -53,9 +55,11 @@ graph LR
 - **Failure mode**: Silent - hook never breaks if Cloudflare unreachable
 
 ### 3. Tests
+
 **Location**: `$AOPS/tests/hooks/test_cloudflare_logging.py`
 
 3 unit tests covering:
+
 - Curl command construction with correct headers/payload
 - Error handling (fire-and-forget behavior)
 - Missing token graceful handling
@@ -63,18 +67,19 @@ graph LR
 ## Environment Setup
 
 Add to `~/.env`:
+
 ```bash
 export PROMPT_LOG_API_KEY=<key>
 ```
 
 ## Implementation Status
 
-| Component | Status | Notes |
-|-----------|--------|-------|
-| Cloudflare Worker | Implemented | `~/dotfiles/scripts/cloudflare-prompts/` |
-| UserPromptSubmit hook | Implemented | Fire-and-forget pattern |
-| Unit tests | Implemented | 3 tests in `tests/hooks/` |
-| Dashboard integration | Planned | See [[dashboard-skill]] |
+| Component             | Status      | Notes                                    |
+| --------------------- | ----------- | ---------------------------------------- |
+| Cloudflare Worker     | Implemented | `~/dotfiles/scripts/cloudflare-prompts/` |
+| UserPromptSubmit hook | Implemented | Fire-and-forget pattern                  |
+| Unit tests            | Implemented | 3 tests in `tests/hooks/`                |
+| Dashboard integration | Planned     | See [[dashboard-skill]]                  |
 
 ## Future Work
 

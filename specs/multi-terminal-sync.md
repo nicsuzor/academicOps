@@ -59,19 +59,21 @@ graph TD
 
 **Chosen solution**: Layered auto-commit with accepted gaps
 
-| Layer | Tool | Triggers | Coverage |
-|-------|------|----------|----------|
-| 1. Obsidian edits | **obsidian-git plugin** | Configurable (interval, on close) | `~/writing/` when Obsidian open |
-| 2. Claude Code | **PostToolUse hook** (`autocommit_state.py`) | After Write/Edit to `data/`, memory MCP calls, task scripts | Claude Code sessions |
-| 3. Manual | User runs `git commit/push` | Explicit | Everything else |
+| Layer             | Tool                                         | Triggers                                                    | Coverage                        |
+| ----------------- | -------------------------------------------- | ----------------------------------------------------------- | ------------------------------- |
+| 1. Obsidian edits | **obsidian-git plugin**                      | Configurable (interval, on close)                           | `~/writing/` when Obsidian open |
+| 2. Claude Code    | **PostToolUse hook** (`autocommit_state.py`) | After Write/Edit to `data/`, memory MCP calls, task scripts | Claude Code sessions            |
+| 3. Manual         | User runs `git commit/push`                  | Explicit                                                    | Everything else                 |
 
 **Why this approach**:
+
 - obsidian-git handles most knowledge base work (where user spends editing time)
 - PostToolUse hook already works for Claude Code sessions
 - No complex file watchers or daemons to maintain
 - Accepted gap: VS Code edits outside both require manual commit (infrequent)
 
 **Tradeoffs accepted**:
+
 - ❌ Not 100% coverage (VS Code direct edits)
 - ❌ obsidian-git only works when Obsidian is running
 - ✅ Simple, low-maintenance
@@ -79,6 +81,7 @@ graph TD
 - ✅ Covers 90%+ of actual editing
 
 **Setup required**:
+
 - [ ] Install obsidian-git plugin in Obsidian
 - [ ] Configure auto-commit interval (suggest: 5-10 min)
 - [x] PostToolUse hook already configured

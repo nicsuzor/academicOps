@@ -1,0 +1,19 @@
+{
+  "config": {
+    // Ban horizontal line dividers (H39) - our custom rule handles this
+    "MD035": false,
+
+    // Disabled rules - conflict with our conventions or too noisy
+    "MD013": false,
+    "MD025": false,
+    "MD031": false,
+    "MD032": false,
+    "MD033": false,
+    "MD034": false,
+    "MD036": false,
+    "MD040": false,
+    "MD041": false
+  },
+  "customRules": [".markdownlint-rules/no-horizontal-rules.js"],
+  "ignores": ["node_modules/**", ".git/**", ".agent/**", ".aops/**", ".venv/**", ".claude/**"]
+}

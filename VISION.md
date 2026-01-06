@@ -30,36 +30,36 @@ An academic support framework for Claude Code. It provides:
 
 ### Currently Working
 
-| Capability                 | Implementation           | How Invoked          |
-| -------------------------- | ------------------------ | -------------------- |
-| Research data analysis     | [[specs/analyst-skill.md|analyst]] skill | Skill tool           |
-| Citation management        | zotmcp + Zotero          | MCP tools            |
-| Task capture from email    | [[specs/tasks-skill.md|tasks]] skill + /email | Slash command        |
-| Task visualization         | [[skills/excalidraw/SKILL.md|excalidraw]] skill | /task-viz            |
-| Writing style enforcement  | Style guides             | Agents follow guides |
-| Knowledge capture          | [[specs/remember-skill.md|remember]] skill | Skill tool           |
-| Session transcripts        | [[specs/transcript-skill.md|transcript]] skill | /transcript          |
-| Markdown to PDF generation | [[skills/pdf/SKILL.md|pdf]] skill | Skill tool           |
+| Capability                 | Implementation               | How Invoked            |
+| -------------------------- | ---------------------------- | ---------------------- |
+| Research data analysis     | [[specs/analyst-skill.md     | analyst]] skill        |
+| Citation management        | zotmcp + Zotero              | MCP tools              |
+| Task capture from email    | [[specs/tasks-skill.md       | tasks]] skill + /email |
+| Task visualization         | [[skills/excalidraw/SKILL.md | excalidraw]] skill     |
+| Writing style enforcement  | Style guides                 | Agents follow guides   |
+| Knowledge capture          | [[specs/remember-skill.md    | remember]] skill       |
+| Session transcripts        | [[specs/transcript-skill.md  | transcript]] skill     |
+| Markdown to PDF generation | [[skills/pdf/SKILL.md        | pdf]] skill            |
 
 ### Enforcement Mechanisms
 
-| What's Enforced | How |
-|-----------------|-----|
-| Principles loaded | [[hooks/sessionstart_load_axioms.py|sessionstart_load_axioms]] hook |
-| Skill suggestions | Prompt Enricher (planned) via UserPromptSubmit hook |
-| Framework delegation | `FRAMEWORK SKILL CHECKED` token |
-| Memory format compliance | pre-commit hooks |
-| File boundaries | [[specs/framework-skill.md|framework skill]] file boundary rules |
+| What's Enforced          | How                                                 |
+| ------------------------ | --------------------------------------------------- |
+| Principles loaded        | [[hooks/sessionstart_load_axioms.py                 |
+| Skill suggestions        | Prompt Enricher (planned) via UserPromptSubmit hook |
+| Framework delegation     | `FRAMEWORK SKILL CHECKED` token                     |
+| Memory format compliance | pre-commit hooks                                    |
+| File boundaries          | [[specs/framework-skill.md                          |
 
 ## Knowledge Architecture
 
 ### Repository Model
 
-| Repo | Purpose | Sharing |
-|------|---------|---------|
-| `$AOPS/` | Framework machinery | Public (no personal data) |
-| `$ACA_DATA/` | Personal knowledge | Never shared |
-| Project repos | Code + docs | Collaborators only |
+| Repo          | Purpose             | Sharing                   |
+| ------------- | ------------------- | ------------------------- |
+| `$AOPS/`      | Framework machinery | Public (no personal data) |
+| `$ACA_DATA/`  | Personal knowledge  | Never shared              |
+| Project repos | Code + docs         | Collaborators only        |
 
 ### Information Flow
 

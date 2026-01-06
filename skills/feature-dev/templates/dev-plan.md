@@ -46,19 +46,13 @@ tags: [template, feature-dev, development, planning]
 
 **Estimated effort**: [Rough estimate if useful]
 
----
-
 ### Step 2: [Descriptive name]
 
 [Same structure as Step 1]
 
----
-
 ### Step 3: [Descriptive name]
 
 [Same structure as Step 1]
-
----
 
 [Add as many steps as needed - each should be completable in one work session]
 

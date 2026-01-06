@@ -25,8 +25,6 @@ This skill should be used when:
 - Reporting statistical results in APA format
 - Analyzing experimental or observational data for research
 
----
-
 ## Core Capabilities
 
 ### 1. Test Selection and Planning
@@ -60,8 +58,6 @@ This skill should be used when:
 - Create publication-ready figures and tables
 - Provide complete interpretation with all required statistics
 
----
-
 ## Workflow Decision Tree
 
 Use this decision tree to determine your analysis path:
@@ -84,8 +80,6 @@ START
 └─ Need to REPORT results?
    └─ YES → See "Reporting Results"
 ```
-
----
 
 ## Test Selection Guide
 
@@ -120,8 +114,6 @@ Use [[test_selection_guide.md]] for comprehensive guidance. Quick reference:
 - Bayes Factors quantifying evidence
 - Ability to support null hypothesis
 - See `references/bayesian_statistics.md`
-
----
 
 ## Assumption Checking
 
@@ -190,8 +182,6 @@ print(result["recommendation"])
 - Use non-linear models or GAM
 
 See [[assumptions_and_diagnostics.md]] for comprehensive guidance.
-
----
 
 ## Running Statistical Tests
 
@@ -339,8 +329,6 @@ print(f"P(μ₁ > μ₂ | data) = {prob_greater:.3f}")
 az.plot_posterior(trace, var_names=["difference"], ref_val=0)
 ```
 
----
-
 ## Effect Sizes
 
 ### Always Calculate Effect Sizes
@@ -393,8 +381,6 @@ d, ci = compute_effsize_from_t(
 print(f"d = {d:.2f}, 95% CI [{ci[0]:.2f}, {ci[1]:.2f}]")
 ```
 
----
-
 ## Power Analysis
 
 ### A Priori Power Analysis (Study Planning)
@@ -438,8 +424,6 @@ print(f"Study could detect d ≥ {detectable_d:.2f}")
 **Note**: Post-hoc power analysis (calculating power after study) is generally not recommended. Use sensitivity analysis instead.
 
 See [[effect_sizes_and_power.md]] for detailed guidance.
-
----
 
 ## Reporting Results
 
@@ -505,8 +489,6 @@ Group B's mean. Convergence diagnostics were satisfactory (all R̂ < 1.01,
 ESS > 1000).
 ```
 
----
-
 ## Bayesian Statistics
 
 ### When to Use Bayesian Methods
@@ -535,8 +517,6 @@ See [[bayesian_statistics.md]] for comprehensive guidance on:
 3. **Flexible**: No p-hacking concerns; can analyze data as it arrives
 4. **Uncertainty quantification**: Full posterior distribution
 
----
-
 ## Resources
 
 This skill includes comprehensive reference materials:
@@ -558,8 +538,6 @@ This skill includes comprehensive reference materials:
   - `check_linearity()`: Regression linearity checks
   - `detect_outliers()`: IQR and z-score outlier detection
 
----
-
 ## Best Practices
 
 1. **Pre-register analyses** when possible to distinguish confirmatory from exploratory
@@ -573,8 +551,6 @@ This skill includes comprehensive reference materials:
 9. **Share data and code** for reproducibility
 10. **Be transparent** about violations, transformations, and decisions
 
----
-
 ## Common Pitfalls to Avoid
 
 1. **P-hacking**: Don't test multiple ways until something is significant
@@ -587,8 +563,6 @@ This skill includes comprehensive reference materials:
 8. **Multiple comparisons**: Correct for family-wise error when appropriate
 9. **Ignoring missing data**: Understand mechanism (MCAR, MAR, MNAR)
 10. **Overinterpreting non-significant results**: Absence of evidence ≠ evidence of absence
-
----
 
 ## Getting Started Checklist
 
@@ -607,8 +581,6 @@ When beginning a statistical analysis:
 - [ ] Write results following reporting_standards.md
 - [ ] Conduct sensitivity analyses
 - [ ] Share data and code
-
----
 
 ## Support and Further Reading
 

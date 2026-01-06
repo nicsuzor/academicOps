@@ -69,15 +69,15 @@ description: Three-tier radial pattern for visualizing strategic goals, projects
 ## Example Layout (Conceptual)
 
 ```
-                    [Task] [Task]
-                       ↑
-         [Task] ← [Project-A] → [Task]
-              ↖       ↑
-                 [GOAL] ← (center, largest)
-              ↗       ↓
-    [Project-B] → [Task] [Task]
-         ↓
-      [Task]
+                [Task] [Task]
+                   ↑
+     [Task] ← [Project-A] → [Task]
+          ↖       ↑
+             [GOAL] ← (center, largest)
+          ↗       ↓
+[Project-B] → [Task] [Task]
+     ↓
+  [Task]
 ```
 
 ## Anti-Patterns to Avoid
@@ -91,11 +91,13 @@ description: Three-tier radial pattern for visualizing strategic goals, projects
 ## When to Use This Pattern
 
 ✅ **Good for**:
+
 - Portfolio/project overview dashboards
 - Strategic planning visualizations
 - Personal task/goal tracking
 - Research program structure (goals = research themes, projects = papers/grants, tasks = milestones)
 
 ❌ **Not suitable for**:
+
 - Sequential processes (use left-to-right flow instead)
 - Deep hierarchies (5+ levels → use tree diagram)

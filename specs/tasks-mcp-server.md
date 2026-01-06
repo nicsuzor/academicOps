@@ -230,7 +230,6 @@ unset TEST_TASKS_DIR
 Tasks must have bmem-compatible frontmatter:
 
 ```yaml
----
 title: Task title
 permalink: tasks/filename
 type: task
@@ -239,7 +238,6 @@ priority: P0-P3
 status: inbox|completed|archived
 created: ISO8601 timestamp
 modified: ISO8601 timestamp
----
 ```
 
 Markdown body contains task description and context. Fail-fast if frontmatter malformed or required fields missing.
@@ -436,5 +434,3 @@ Markdown body contains task description and context. Fail-fast if frontmatter ma
 **What we learned**: [To be completed after deployment]
 
 **Recommended changes**: [To be completed after deployment]
-
----

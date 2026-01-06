@@ -2,6 +2,22 @@
 # See https://pre-commit.com for more info
 
 repos:
+  # Markdown/JSON/TOML formatting (dprint - fast, configurable)
+  - repo: local
+    hooks:
+      - id: dprint
+        name: dprint formatter
+        entry: /home/nic/.dprint/bin/dprint fmt --diff
+        language: system
+        types_or: [markdown, json, toml]
+        pass_filenames: true
+
+  # Markdown linting (catches issues dprint doesn't fix)
+  - repo: https://github.com/DavidAnson/markdownlint-cli2
+    rev: v0.12.1
+    hooks:
+      - id: markdownlint-cli2
+
   # Standard hooks
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.5.0

@@ -23,20 +23,17 @@ This workflow combines parallel batch processing with supervisor quality gates: 
 4. QA verification (independent verification of outcomes)
 5. Done = all files processed + changes committed + pushed
 
----
-
 ## ITERATION UNIT
 
 One batch cycle = process file subset → collect results → batch questions → apply answers
 
 Each cycle:
+
 1. Spawn parallel agents on file subset (4-8 agents)
 2. Collect results: changes made, questions raised, errors
 3. Batch questions to user (max 4 per AskUserQuestion)
 4. Apply user decisions via new agent spawns
 5. Commit and push before next batch
-
----
 
 ## QUALITY GATE
 
@@ -48,13 +45,12 @@ Before proceeding to next batch:
 - [ ] Changes committed and pushed
 - [ ] No unhandled errors remaining
 
----
-
 ## PHASE 1: DISCOVERY AND PLANNING
 
 ### 1.1 Parse Task Description
 
 Extract from `$ARGUMENTS`:
+
 - Target files (directory path, glob pattern)
 - Operation to perform on each file
 - Skills needed for the operation
@@ -78,6 +74,7 @@ Report:
 ```
 
 **Validation:**
+
 - If 0 files: Error and stop
 - If >50 files: Warn user, proceed unless they stop
 - If >100 files: Suggest splitting across sessions
@@ -103,8 +100,6 @@ Check for:
 ```
 
 **If critic returns REVISE**: Address issues before proceeding.
-
----
 
 ## PHASE 2: PARALLEL PROCESSING
 
@@ -144,8 +139,6 @@ Return your results as structured summary:
 ```
 
 **Repeat** spawning agents until all files processed.
-
----
 
 ## PHASE 3: QUESTION BATCHING
 
@@ -194,8 +187,6 @@ Report what was changed.
 
 **Repeat** if more questions remain (batches of 4).
 
----
-
 ## PHASE 4: COMMIT AND VERIFY
 
 ### Commit Changes
@@ -238,18 +229,15 @@ Report:
 ")
 ```
 
----
-
 ## COMPLETION CRITERIA
 
 Batch review complete when:
+
 - All files in scope processed
 - All user questions answered and decisions applied
 - QA verification passed
 - Changes committed and pushed
 - Summary report provided to user
-
----
 
 ## Subagent Prompt Templates
 
@@ -309,8 +297,6 @@ For each file:
 Return: files reviewed, violations found, questions for ambiguous cases
 ```
 
----
-
 ## Error Handling
 
 - **File not found**: Log error, continue with remaining files
@@ -318,15 +304,11 @@ Return: files reviewed, violations found, questions for ambiguous cases
 - **Skill not invoked**: Agent output is suspect - note in report
 - **Git commit fails**: Report error, user resolves manually
 
----
-
 ## Concurrency Guidelines
 
 - **Default**: 4 parallel agents
 - **Large batches (>30 files)**: 8 parallel agents
 - **Very large (>100 files)**: Warn user, suggest splitting
-
----
 
 ## Example Invocation
 
