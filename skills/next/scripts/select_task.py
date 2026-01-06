@@ -323,31 +323,35 @@ def main():
     todays_work = get_todays_work(synthesis)
     now = datetime.now()
 
+    # Detect stale tasks first (to exclude from recommendations)
+    stale_candidates = detect_stale_tasks(tasks, now)
+    stale_slugs = {s["slug"] for s in stale_candidates}
+
+    # Filter out stale tasks from recommendation pool
+    fresh_tasks = [t for t in tasks if t.get("slug") not in stale_slugs]
+
     # Build recommendations
     recommendations = []
     used_slugs = set()
 
     # 1. SHOULD - deadline pressure
-    should = select_should(tasks, now)
+    should = select_should(fresh_tasks, now)
     if should:
         recommendations.append(format_recommendation(should))
         used_slugs.add(should["task"].get("slug"))
 
     # 2. ENJOY - variety (exclude already recommended)
-    remaining = [t for t in tasks if t.get("slug") not in used_slugs]
+    remaining = [t for t in fresh_tasks if t.get("slug") not in used_slugs]
     enjoy = select_enjoy(remaining, todays_work)
     if enjoy:
         recommendations.append(format_recommendation(enjoy))
         used_slugs.add(enjoy["task"].get("slug"))
 
     # 3. QUICK - momentum (exclude already recommended)
-    remaining = [t for t in tasks if t.get("slug") not in used_slugs]
+    remaining = [t for t in fresh_tasks if t.get("slug") not in used_slugs]
     quick = select_quick(remaining)
     if quick:
         recommendations.append(format_recommendation(quick))
-
-    # Detect stale tasks
-    stale_candidates = detect_stale_tasks(tasks, now)
 
     # Output
     output = {
