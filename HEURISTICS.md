@@ -182,6 +182,18 @@ Empirically derived rules implementing [[AXIOMS]]. Evidence lives in GitHub Issu
 **Statement**: Every framework file belongs to exactly one category: SPEC (our design), REF (external knowledge), DOCS (implementation guides), SCRIPT (executable code), INSTRUCTION (agent workflows), TEMPLATE (fill-in patterns), or STATE (auto-generated). Category determines editing rules and is declared via `category:` in frontmatter.
 **Confidence**: Medium | **Implements**: #9, #10, #11 | **Evidence**: [[specs/file-taxonomy]]
 
+## H37: LLM Semantic Evaluation Over Keyword Matching
+**Statement**: When verifying outcomes, use LLM semantic understanding to evaluate whether the INTENT was satisfied. NEVER use keyword/substring matching (`any(x in text for x in list)`) as this creates Volkswagen tests that pass on surface patterns without verifying actual behavior. A test that can be satisfied by wrong behavior is worse than no test.
+**Confidence**: High | **Implements**: #17, #2, H12a | **Evidence**: #268
+
+### H37a: Full Evidence for Human Validation
+**Statement**: Demo tests and verification output must show FULL untruncated content so humans can visually validate. Truncating evidence defeats the purpose of verification.
+**Confidence**: High | **Implements**: #17
+
+### H37b: Real Fixtures Over Contrived Examples
+**Statement**: E2E tests must use REAL framework prompts (actual skill invocations, actual workflows) not contrived examples ("What is the meaning of life?"). Testing fake scenarios proves nothing about real behavior.
+**Confidence**: High | **Implements**: #13, #17 | **Evidence**: #268
+
 ---
 
 ## Revision Protocol
