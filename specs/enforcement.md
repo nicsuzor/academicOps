@@ -73,6 +73,7 @@ How the aops framework influences agent behavior. We cannot force compliance - o
 | 0 | Convention | Documented, no checking | "Skills should be invoked" |
 | 1 | Detection | Logs violations, doesn't prevent | Session transcript analysis |
 | 2 | Soft Gate | Injects warning, agent can proceed | [[specs/prompt-hydration]] suggests skills |
+| 2.5 | JIT Audit | Haiku compliance check at checkpoints | Periodic drift detection, intervention priority |
 | 3 | Observable Checkpoint | Creates visible artifact | TodoWrite, Plan Mode |
 | 4 | Hard Gate | Blocks action | Pre-commit hooks, required approval |
 
@@ -96,6 +97,29 @@ The [[specs/prompt-hydration]] process classifies prompts and suggests skills/wo
 
 **What it does**: Injects context, classification, and task-specific guidance
 **What it can't do**: Force agent to follow guidance
+
+### Layer 2.5: JIT Compliance Audit
+
+Haiku-based compliance checking at strategic checkpoints. Uses same temp-file pattern as prompt hydration.
+
+#### User Intervention Priority
+
+On every `UserPromptSubmit`, the instruction includes:
+> If this prompt is a correction, suggestion, or redirection from the user while you were working on something else: **HALT your current work immediately**.
+
+This addresses the "steamroller" pattern where agents continue planned work instead of responding to user corrections.
+
+#### Periodic Compliance Check
+
+On `PostToolUse` (every ~7 tool calls), spawns compliance-auditor subagent to check:
+- Axiom violations (#7 Fail-Fast, #17 Verify First, #22 Acceptance Criteria)
+- Heuristic violations (H3 Verification, H4 Explicit Instructions, H19 Questions)
+- Plan drift (doing something different from TodoWrite plan)
+
+**Implementation**: `hooks/compliance_auditor.py` tracks tool count in `/tmp/claude-compliance/state.json`, emits audit instruction when threshold reached.
+
+**What it does**: Catches drift and violations mid-execution before user has to intervene
+**What it can't do**: Force agent to follow corrections (still relies on agent compliance)
 
 ### Layer 3: Observable Checkpoints
 
@@ -191,6 +215,8 @@ When failures occur, we distinguish:
 | AXIOMS/HEURISTICS | Rules stated unambiguously with reasoning | Each rule has single interpretation + WHY |
 | Intent Router | Correct classification, relevant context, skill suggestion | Classification matches human judgment |
 | Guardrails | Task-specific emphasis applied | Guardrails in output match task type table |
+| Intervention Reminder | User corrections take priority over in-progress work | Agent halts current work on user intervention |
+| Compliance Auditor | Detect principle violations mid-execution | Check fires at threshold, returns relevant violations |
 
 #### Execution Phase
 

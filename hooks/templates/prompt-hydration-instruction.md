@@ -24,4 +24,6 @@ Task(subagent_type="prompt-hydrator", model="haiku",
 
 Follow the hydrator's workflow guidance before proceeding.
 
+**CRITICAL - User Intervention Priority**: If this prompt is a correction, suggestion, or redirection from the user while you were working on something else: **HALT your current work immediately**. Do NOT continue your previous plan. Focus EXCLUSIVELY on what the user is now asking. The user's intervention takes absolute priority over any in-progress work.
+
 **Why always invoke?** Hydration is fast (haiku model), costless, and can only improve outcomes. Even "simple" tasks benefit from context enrichment - agents cannot reliably judge task complexity upfront. Never skip.
