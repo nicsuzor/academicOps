@@ -236,11 +236,12 @@ def main():
     if state["tool_count"] >= TOOL_CALL_THRESHOLD:
         try:
             instruction = build_audit_instruction(transcript_path, tool_name)
-            # Use decision/reason format - this forces Claude to address the instruction
-            # (additionalContext alone is passive and gets ignored)
+            # Use hookSpecificOutput.additionalContext - the only format router passes through
             output_data = {
-                "decision": "block",
-                "reason": instruction,
+                "hookSpecificOutput": {
+                    "hookEventName": "PostToolUse",
+                    "additionalContext": f"<system-reminder>\n{instruction}\n</system-reminder>",
+                }
             }
             # Reset counter
             state["tool_count"] = 0
