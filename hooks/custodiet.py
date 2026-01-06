@@ -15,6 +15,7 @@ Exit codes:
 """
 
 import json
+import random
 import sys
 import tempfile
 import time
@@ -27,11 +28,13 @@ from lib.session_reader import extract_router_context
 HOOK_DIR = Path(__file__).parent
 CONTEXT_TEMPLATE_FILE = HOOK_DIR / "templates" / "custodiet-context.md"
 INSTRUCTION_TEMPLATE_FILE = HOOK_DIR / "templates" / "custodiet-instruction.md"
+REMINDERS_FILE = HOOK_DIR / "data" / "reminders.txt"
 TEMP_DIR = Path("/tmp/claude-compliance")
 STATE_FILE = TEMP_DIR / "state.json"
 
 # Configuration
-TOOL_CALL_THRESHOLD = 7  # Check every ~7 tool calls
+TOOL_CALL_THRESHOLD = 2  # Check every ~2 tool calls (lowered for debugging, normally 7)
+REMINDER_PROBABILITY = 0.3  # 30% chance of injecting a reminder on non-threshold calls
 CLEANUP_AGE_SECONDS = 60 * 60  # 1 hour
 
 
@@ -47,6 +50,37 @@ def cleanup_old_temp_files() -> None:
                 f.unlink()
         except OSError:
             pass
+
+
+def load_reminders() -> list[str]:
+    """Load reminder lines from soft-tissue file.
+
+    Returns empty list if file missing or empty (graceful degradation).
+    """
+    if not REMINDERS_FILE.exists():
+        return []
+
+    try:
+        lines = REMINDERS_FILE.read_text().splitlines()
+        # Filter out comments and blank lines
+        return [line.strip() for line in lines if line.strip() and not line.strip().startswith("#")]
+    except OSError:
+        return []
+
+
+def get_random_reminder() -> str | None:
+    """Get a random reminder with probability q.
+
+    Returns None if no reminder should be shown (probability check failed or no reminders).
+    """
+    if random.random() > REMINDER_PROBABILITY:
+        return None
+
+    reminders = load_reminders()
+    if not reminders:
+        return None
+
+    return random.choice(reminders)
 
 
 def load_state(session_id: str) -> dict[str, Any]:
@@ -186,6 +220,16 @@ def main():
             }
             print(json.dumps(output_data))
             sys.exit(1)
+    else:
+        # On non-threshold calls, maybe inject a random reminder (passive, not blocking)
+        reminder = get_random_reminder()
+        if reminder:
+            output_data = {
+                "hookSpecificOutput": {
+                    "hookEventName": "PostToolUse",
+                    "additionalContext": f"<system-reminder>\n{reminder}\n</system-reminder>",
+                }
+            }
 
     # Save state
     save_state(state)
