@@ -20,9 +20,11 @@ The framework uses a memory server that indexes `$ACA_DATA/`. When you write mar
 
 ## When to Use
 
-- Capturing a decision, learning, or observation
+- Capturing **timeless semantic knowledge** (current state truths)
 - Recording something that should persist across sessions
 - Any time you would write to `$ACA_DATA/` for knowledge purposes
+
+**NOT for time-based completion records.** "Task X completed on DATE" does NOT need its own file. See "Alternatives to File Creation" below.
 
 ## File Locations
 
@@ -52,6 +54,28 @@ The framework uses a memory server that indexes `$ACA_DATA/`. When you write mar
 - **DO NOT**: Create markdown files in $ACA_DATA - the authoritative source is in $AOPS
 
 **DO NOT create arbitrary directories** (e.g., `tech/`, `dev/`, `tools/`, `specs/`). Project-related notes go in `projects/<project-name>/`.
+
+## Alternatives to File Creation (PREFER THESE)
+
+**The "durable record" requirement can be satisfied WITHOUT creating a new file:**
+
+| Completion Type | Preferred Durability Method |
+|-----------------|----------------------------|
+| Task completed | Mark subtask complete in existing task file, OR archive task via `/tasks` skill |
+| Work session done | Git commit message documents the work |
+| Observation/learning | GitHub Issue comment (per [[AXIOMS]] #28) |
+| Decision made | GitHub Issue comment, then synthesize to HEURISTICS.md when pattern emerges |
+
+**Only create a new markdown file when:**
+1. The knowledge is **semantic** (timeless truth, not time-stamped event)
+2. No existing file covers this topic (check memory server + glob first)
+3. The content is substantial enough to warrant its own file
+
+**PROHIBITED patterns:**
+- ❌ `task-completed-2026-01-06.md` - use task archival instead
+- ❌ `bmem-audit-2026-01-06.md` - commit message + issue comment suffices
+- ❌ `framework-refactor-2025-12-30.md` - date-stamped files forbidden
+- ❌ Files in `~/.claude/` or other random locations - ONLY `$ACA_DATA/`
 
 ## Knowledge Graph Integration (MANDATORY)
 
@@ -184,15 +208,19 @@ Task(
   prompt="
 Invoke Skill(skill='remember') to persist this observation.
 
-REQUIRED OUTPUTS (skill will fail if missing):
-1. Markdown file to disk (durable storage)
-2. Memory server entry (semantic search)
-3. If repo-specific: update that repo's documentation
+DURABILITY OPTIONS (choose the most appropriate):
+1. Memory server entry (always do this for semantic search)
+2. PLUS ONE of:
+   - Git commit message (if work was just committed)
+   - GitHub Issue comment (for observations/learnings)
+   - Update existing file (augment, don't create new)
+   - New markdown file ONLY if semantic + substantial + no existing file covers topic
+
+DO NOT create date-stamped files. DO NOT create files outside $ACA_DATA.
 
 Content: [what to remember]
-Type: [note|learning|decision]
+Type: [note|observation|decision]
 Tags: [relevant tags]
-Repository: [if applicable, e.g., dotfiles, academicOps]
 "
 )
 ```
