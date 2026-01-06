@@ -59,6 +59,23 @@ EXTRACTION TASKS:
 
 7. **SUCCESSES** - tasks completed correctly, especially when skills were properly invoked
 
+8. **USER MOOD/SATISFACTION** - Subjective assessment of user satisfaction
+   - Interpret holistically based on overall tone, not just word counts
+   - Consider: explicit frustration, praise, patience level, engagement
+   - Return float: -1.0 (very frustrated) to 1.0 (very satisfied)
+   - 0.0 = neutral or insufficient signal
+
+9. **CONVERSATION FLOW** - Edited transcript showing user-agent dialogue
+   - Return list of tuples: [timestamp, role, content]
+   - For user: verbatim prompt text
+   - For agent: summarize what the agent responded/accomplished (NOT intermediate self-talk)
+   - Example agent summaries: "created PR #42", "answered question about X", "displayed 15 task files"
+   - Purpose: understand dialogue progression and work flow over time
+
+10. **VERBATIM USER PROMPTS** - All user prompts exactly as typed
+    - Preserve exact text including typos, formatting
+    - Include timestamp for each
+
 Return JSON with this EXACT structure:
 {
   "session_id": "{session_id}",
@@ -80,7 +97,17 @@ Return JSON with this EXACT structure:
     "invoked": ["skill1"],
     "compliance_rate": 0.5
   },
-  "context_gaps": ["gap description 1", "gap description 2"]
+  "context_gaps": ["gap description 1", "gap description 2"],
+  "user_mood": 0.3,
+  "conversation_flow": [
+    ["2026-01-06T10:15:23Z", "user", "run /session-insights"],
+    ["2026-01-06T10:15:45Z", "agent", "Generated transcripts for 8 sessions"],
+    ["2026-01-06T10:16:02Z", "user", "now mine them"]
+  ],
+  "user_prompts": [
+    {"timestamp": "2026-01-06T10:15:23Z", "text": "run /session-insights"},
+    {"timestamp": "2026-01-06T10:16:02Z", "text": "now mine them"}
+  ]
 }
 ```
 

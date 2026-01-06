@@ -80,6 +80,13 @@ If the note does NOT exist:
 
 **Daily note skeleton** (burndown and accomplishments populated in Step 6 from JSONs + task index):
 ```markdown
+---
+title: Daily Summary - YYYY-MM-DD
+type: daily
+generated_by: session-insights
+tags: [daily, sessions]
+---
+
 # Daily Summary - YYYY-MM-DD
 
 ## Today's Story
@@ -126,6 +133,14 @@ Scheduled: n/a | Unscheduled: 0 items
 ## Session Log
 | Session | Project | Summary |
 |---------|---------|---------|
+
+## Session Timeline
+| Time | Session | Terminal | Project | Activity |
+|------|---------|----------|---------|----------|
+(populated from conversation_flow in Step 6)
+
+### Terminal Overwhelm Analysis
+(populated in Step 6 - analysis of context switches and work patterns)
 
 ## Session Insights
 ```
@@ -179,6 +194,9 @@ EXTRACTION TASKS:
 5. USER CORRECTIONS - with heuristic mapping (H2=Skill-First, H3=Verification, H4=Explicit Instructions, H22=Indices First)
 6. FAILURES - mistakes requiring intervention
 7. SUCCESSES - tasks completed well
+8. USER MOOD/SATISFACTION - Subjective assessment: -1.0 (frustrated) to 1.0 (satisfied), 0.0 neutral
+9. CONVERSATION FLOW - List of [timestamp, role, content] tuples showing dialogue (user prompts verbatim, agent responses summarized)
+10. VERBATIM USER PROMPTS - All user prompts exactly as typed with timestamps
 
 Return JSON with this EXACT structure:
 {
@@ -189,7 +207,10 @@ Return JSON with this EXACT structure:
   \"accomplishments\": [\"item1\", \"item2\"],
   \"learning_observations\": [{\"category\": \"...\", \"evidence\": \"...\", \"context\": \"...\", \"heuristic\": \"H[n] or null\", \"suggested_evidence\": \"...\"}],
   \"skill_compliance\": {\"suggested\": [...], \"invoked\": [...], \"compliance_rate\": 0.0-1.0},
-  \"context_gaps\": [\"gap1\", \"gap2\"]
+  \"context_gaps\": [\"gap1\", \"gap2\"],
+  \"user_mood\": 0.3,
+  \"conversation_flow\": [[\"timestamp\", \"user\", \"prompt text\"], [\"timestamp\", \"agent\", \"response summary\"]],
+  \"user_prompts\": [{\"timestamp\": \"...\", \"text\": \"...\"}]
 }
 
 After receiving the JSON response, save it to: $ACA_DATA/dashboard/sessions/{session_id}.json
@@ -278,6 +299,23 @@ P2 ░░░░░░░░░░  0% (0/3)
 | abc1234 | writing | Brief description of work |
 | def5678 | aops | Another session summary |
 
+## Session Timeline
+| Time | Session | Terminal | Project | Activity |
+|------|---------|----------|---------|----------|
+| 10:15 | abc1234 | writing | aops | Started session-insights work |
+| 10:23 | def5678 | tja | tja | Reviewed paper draft |
+| 10:45 | abc1234 | writing | aops | Got sidetracked to fix bug |
+
+(Extract terminal from session path: `YYYYMMDD-{terminal}-{session_id}`)
+(Build timeline from conversation_flow timestamps across all sessions)
+
+### Terminal Overwhelm Analysis
+(Interpret the timeline to help user understand their work patterns)
+- Which terminals had context switches between projects?
+- Was user working on one thing then pulled to another?
+- Patterns of sidetracking (started A, interrupted by B, returned to A?)
+- Which terminals went idle (long gaps between activity)?
+
 ## [[academicOps]] → [[projects/aops]]
 Scheduled: ██████░░░░ 6/10 | Unscheduled: 3 items
 - [x] Accomplishment from aops sessions
@@ -359,7 +397,15 @@ Sessions Mined    ████████░░ 8/10
     "failures_count": N,
     "successes_count": N,
     "top_context_gaps": ["gap1", "gap2"]
-  }
+  },
+  "user_mood": {
+    "average": 0.3,
+    "by_session": {"abc1234": 0.5, "def5678": 0.1}
+  },
+  "session_timeline": [
+    {"time": "10:15", "session": "abc1234", "terminal": "writing", "project": "aops", "activity": "Started work"},
+    {"time": "10:45", "session": "abc1234", "terminal": "writing", "project": "aops", "activity": "Sidetracked"}
+  ]
 }
 ```
 

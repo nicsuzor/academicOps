@@ -101,6 +101,9 @@ Gemini extracts per-session structured data:
 - User corrections with heuristic mapping
 - Failures by category
 - Successes
+- User mood/satisfaction (-1.0 to 1.0 subjective assessment)
+- Conversation flow (edited transcript as message tuples)
+- Verbatim user prompts (exact text with timestamps)
 
 Output: `$ACA_DATA/dashboard/sessions/{session_id}.json`
 
@@ -150,7 +153,9 @@ Gemini per-session JSONs (only input)
 | `axiom_violation` | Agent violates numbered AXIOM | Workaround instead of halt (AXIOM #8) |
 | `skill_bypass` | Agent acts without required skill | Direct file edit instead of skill |
 | `success` | Correct behavior worth noting | Proper halt on error |
+| `context_gap` | Missing context that caused mistakes | Missing hydration data led to wrong approach |
 | `experiment_evidence` | Behavior matching active hypothesis | Predicted outcome observed |
+| `other` | Mistakes or improvement opportunities not fitting other categories | Suboptimal approach that worked but could be better |
 
 ### Routing Rules
 
