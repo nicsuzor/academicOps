@@ -23,40 +23,11 @@ See [[documentation-architecture]] for document purposes. Agents use [[FRAMEWORK
 - **File tree**: [INDEX.md](INDEX.md)
 - **Workflow selection**: See [specs/workflow-selection.md](specs/workflow-selection.md) (DRAFT - decision pending)
 
-## How Enforcement Works
+## How It Works
 
-We can't force agent compliance—only encourage with detection. The **7-level mechanism ladder**:
+See [[FLOW]] for the complete execution flow diagram.
 
-```mermaid
-graph LR
-    subgraph "Prompts (1a-c)"
-        A[AXIOMS] --> B[Skills]
-    end
-
-    subgraph "Intelligent (2-3)"
-        B --> C[Intent Router]
-        C --> D[Skill Abstraction]
-    end
-
-    subgraph "Hooks (4-7)"
-        D --> E[PreToolUse]
-        E --> F[PostToolUse]
-        F --> G[Deny Rules]
-        G --> H[Pre-commit]
-    end
-```
-
-| Level | Mechanism | Strength | Use When |
-|-------|-----------|----------|----------|
-| 1a-c | Prompt text | Weak→Medium | Mention → Rule → Emphatic+Reasoned |
-| 2 | Intent router | Medium-Strong | First intelligent intervention |
-| 3a-b | Tool restriction / Skill abstraction | Strong | Force correct workflow |
-| 4 | Pre-tool-use hooks | Stronger | Block before damage |
-| 5 | Post-tool-use validation | Strong | Catch violations |
-| 6 | Deny rules (settings.json) | Strongest | Hard block, no exceptions |
-| 7 | Pre-commit hooks | Absolute | Last line of defense |
-
-See [[docs/ENFORCEMENT.md]] for practical guide, [[specs/enforcement.md]] for architecture.
+See [[docs/ENFORCEMENT.md]] for practical enforcement guide, [[specs/enforcement.md]] for architecture.
 
 ## Installation
 

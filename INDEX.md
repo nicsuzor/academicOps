@@ -44,7 +44,6 @@ $AOPS/
 ├── .gitignore                   # Git ignore patterns
 ├── .gitmodules                  # Git submodules
 ├── .python-version              # Python version specification
-├── PYTHON_HOOKS_CONVENTIONS.md  # Python hook coding conventions
 ├── __init__.py                  # Package init
 ├── reference-graph.csv          # Framework reference graph (wrong location)
 ├── current-tasks.excalidraw     # Visual task board (orphan - flagged)

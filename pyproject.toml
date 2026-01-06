@@ -36,10 +36,11 @@ pythonpath = [".", "hooks"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
-addopts = "-n 4"
+addopts = "-n 4 -m 'not slow'"
 markers = [
-    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "slow: marks tests as slow (run with '-m slow')",
     "integration: marks tests as integration tests",
     "metrics: observability tests that report metrics (run with '-m metrics')",
     "demo: demo tests showing real behavior (run with '-k demo -v -s -n 0')",
+    "endtoend: tests requiring real API credentials (run with '-m endtoend')",
 ]

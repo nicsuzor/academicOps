@@ -572,6 +572,35 @@ fi
 
 echo
 
+# Step 3c: Install cron job for session insights
+echo "Step 3c: Session insights cron job"
+echo "----------------------------------"
+
+SESSION_CRON_MARKER="# aOps session insights"
+# Jitter (0-300s) in crontab prevents thundering herd across machines
+SESSION_CRON_CMD="*/30 * * * * sleep \$((RANDOM \% 300)) && cd $AOPS_PATH && ACA_DATA=$ACA_DATA_PATH scripts/cron_session_insights.sh >> /tmp/session-insights.log 2>&1"
+
+if command -v crontab &> /dev/null; then
+    # Refresh existing_crontab (may have been updated by Step 3b)
+    existing_crontab=$(crontab -l 2>/dev/null || true)
+    if echo "$existing_crontab" | grep -q "$SESSION_CRON_MARKER"; then
+        echo -e "${GREEN}✓ Session insights cron job already installed${NC}"
+    else
+        if (echo "$existing_crontab"; echo "$SESSION_CRON_MARKER"; echo "$SESSION_CRON_CMD") | crontab -; then
+            echo -e "${GREEN}✓ Installed session insights cron job (every 30 minutes)${NC}"
+        else
+            echo -e "${YELLOW}⚠ Could not install cron job - install manually:${NC}"
+            echo "  crontab -e"
+            echo "  Add: $SESSION_CRON_CMD"
+        fi
+    fi
+else
+    echo -e "${YELLOW}⚠ crontab not available - session insights cron job not installed${NC}"
+    echo "  Run manually: cd \$AOPS && scripts/cron_session_insights.sh"
+fi
+
+echo
+
 # Step 4: Validate setup
 echo "Step 4: Validating setup"
 echo "------------------------"
