@@ -19,7 +19,6 @@ Exit codes:
     1: Infrastructure failure (fail-fast)
 """
 
-import hashlib
 import json
 import random
 import sys
@@ -35,11 +34,11 @@ HOOK_DIR = Path(__file__).parent
 CONTEXT_TEMPLATE_FILE = HOOK_DIR / "templates" / "custodiet-context.md"
 INSTRUCTION_TEMPLATE_FILE = HOOK_DIR / "templates" / "custodiet-instruction.md"
 REMINDERS_FILE = HOOK_DIR / "data" / "reminders.txt"
+# Use /tmp like hydrator - subagents can reliably access /tmp but not project dirs
 TEMP_DIR = Path("/tmp/claude-compliance")
-# State files are now per-project: state-{hash}.json (see get_state_file())
 
 # Configuration
-TOOL_CALL_THRESHOLD = 2  # Check every ~2 tool calls (lowered for debugging, normally 7)
+TOOL_CALL_THRESHOLD = 5  # Check every ~5 tool calls
 REMINDER_PROBABILITY = 0.3  # 30% chance of injecting a reminder on non-threshold calls
 CLEANUP_AGE_SECONDS = 60 * 60  # 1 hour
 
@@ -89,18 +88,13 @@ def get_random_reminder() -> str | None:
     return random.choice(reminders)
 
 
-def get_project_key(cwd: str) -> str:
-    """Generate a short hash key from the project cwd.
-
-    Uses first 12 chars of SHA256 hash for reasonable uniqueness while keeping
-    state file names readable.
-    """
-    return hashlib.sha256(cwd.encode()).hexdigest()[:12]
-
-
 def get_state_file(cwd: str) -> Path:
-    """Get the state file path for a given project cwd."""
-    project_key = get_project_key(cwd)
+    """Get the state file path for a given project cwd.
+
+    State is per-project (hashed cwd) to track tool counts across sessions.
+    """
+    import hashlib
+    project_key = hashlib.sha256(cwd.encode()).hexdigest()[:12]
     return TEMP_DIR / f"state-{project_key}.json"
 
 
@@ -109,45 +103,47 @@ def load_state(cwd: str) -> dict[str, Any]:
     state_file = get_state_file(cwd)
     try:
         if state_file.exists():
-            state = json.loads(state_file.read_text())
-            # Verify it's for the same cwd (hash collision check)
-            if state.get("cwd") == cwd:
-                return state
+            return json.loads(state_file.read_text())
     except (json.JSONDecodeError, OSError):
         pass
 
     # Fresh state for new project
     return {
-        "cwd": cwd,
         "tool_count": 0,
         "last_check_ts": time.time(),
     }
 
 
-def save_state(state: dict[str, Any]) -> None:
-    """Save state to file (keyed by cwd)."""
+def save_state(cwd: str, state: dict[str, Any]) -> None:
+    """Save state to file."""
     TEMP_DIR.mkdir(parents=True, exist_ok=True)
-    cwd = state.get("cwd", "")
-    if not cwd:
-        return  # Can't save without cwd
     state_file = get_state_file(cwd)
     state_file.write_text(json.dumps(state))
 
 
 def load_template(template_path: Path) -> str:
-    """Load template, extracting content after YAML frontmatter."""
+    """Load template, extracting content after YAML frontmatter.
+
+    Only strips the YAML frontmatter block (first --- to closing ---).
+    Preserves any --- horizontal rules in content.
+    """
     if not template_path.exists():
         raise FileNotFoundError(f"Template not found: {template_path}")
 
     content = template_path.read_text()
     # Handle YAML frontmatter: ---\nmetadata\n---\ncontent
     if content.startswith("---\n"):
-        # Find closing --- and take content after it
-        parts = content.split("\n---\n", 2)  # Split into max 3 parts
-        if len(parts) >= 3:
-            content = parts[2]  # Content after closing frontmatter
-        elif len(parts) == 2:
-            content = parts[1]  # Fallback: content after first ---
+        # Find ONLY the closing frontmatter --- (first occurrence after opening)
+        # Split once to get frontmatter + rest, preserving any --- in content
+        first_newline = content.index("\n")  # Skip opening ---
+        rest = content[first_newline + 1 :]
+        if "\n---\n" in rest:
+            # Take everything after the closing frontmatter delimiter
+            closing_idx = rest.index("\n---\n")
+            content = rest[closing_idx + 5 :]  # Skip \n---\n (5 chars)
+        elif "\n---" in rest and rest.rstrip().endswith("---"):
+            # Edge case: frontmatter only, no content after
+            content = ""
     return content.strip()
 
 
@@ -266,7 +262,7 @@ def main():
             }
 
     # Save state
-    save_state(state)
+    save_state(cwd, state)
 
     print(json.dumps(output_data))
     sys.exit(0)

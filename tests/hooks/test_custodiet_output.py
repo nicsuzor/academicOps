@@ -263,6 +263,63 @@ def test_infrastructure_error_returns_decision_reason_format(temp_state_dir):
             assert "infrastructure error" in output["reason"].lower()
 
 
+def test_load_template_preserves_horizontal_rules():
+    """Test that load_template strips frontmatter but preserves --- horizontal rules in content.
+
+    Regression test: load_template was incorrectly stripping content after any --- divider,
+    not just the YAML frontmatter closing ---.
+    """
+    from hooks.custodiet import load_template
+    import tempfile
+
+    # Template with frontmatter AND horizontal rules in content
+    template_content = """---
+name: test-template
+category: template
+---
+
+# Header Section
+
+First paragraph.
+
+---
+
+# Second Section
+
+After horizontal rule.
+
+---
+
+# Third Section
+
+More content.
+"""
+
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False) as f:
+        f.write(template_content)
+        temp_path = Path(f.name)
+
+    try:
+        result = load_template(temp_path)
+
+        # Should start with the header, not a later section
+        assert result.startswith("# Header Section"), \
+            f"Template should start with '# Header Section', got: {result[:50]}"
+
+        # Should contain ALL horizontal rules and subsequent sections
+        assert "---" in result, "Horizontal rules should be preserved in content"
+        assert "# Second Section" in result, "Content after first horizontal rule should be preserved"
+        assert "# Third Section" in result, "Content after second horizontal rule should be preserved"
+        assert "More content" in result, "All content should be preserved"
+
+        # Should NOT contain frontmatter
+        assert "name: test-template" not in result, "Frontmatter should be stripped"
+        assert "category: template" not in result, "Frontmatter should be stripped"
+
+    finally:
+        temp_path.unlink()
+
+
 def test_random_reminder_uses_hookspecificoutput_format(temp_state_dir, mock_templates):
     """Test that random reminders also use hookSpecificOutput.additionalContext format."""
     from io import StringIO
