@@ -3,16 +3,7 @@ name: custodiet-instruction
 title: Custodiet Instruction
 category: template
 description: Short instruction injected by PostToolUse hook (periodic) for ultra vires detection.
----
-
-# Custodiet Instruction Template
-
-Short instruction injected every ~7 tool calls.
-Tells main agent to spawn custodiet subagent.
-
-Variables:
-- `{temp_path}` - Path to temp file with session context
-
+variables: temp_path (path to audit context file)
 ---
 **Ultra Vires Check**: Spawn custodiet to verify you're staying within granted authority:
 

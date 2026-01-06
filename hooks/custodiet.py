@@ -75,13 +75,19 @@ def save_state(state: dict[str, Any]) -> None:
 
 
 def load_template(template_path: Path) -> str:
-    """Load template, extracting content after --- separator."""
+    """Load template, extracting content after YAML frontmatter."""
     if not template_path.exists():
         raise FileNotFoundError(f"Template not found: {template_path}")
 
     content = template_path.read_text()
-    if "\n---\n" in content:
-        content = content.split("\n---\n", 1)[1]
+    # Handle YAML frontmatter: ---\nmetadata\n---\ncontent
+    if content.startswith("---\n"):
+        # Find closing --- and take content after it
+        parts = content.split("\n---\n", 2)  # Split into max 3 parts
+        if len(parts) >= 3:
+            content = parts[2]  # Content after closing frontmatter
+        elif len(parts) == 2:
+            content = parts[1]  # Fallback: content after first ---
     return content.strip()
 
 
@@ -163,11 +169,11 @@ def main():
     if state["tool_count"] >= TOOL_CALL_THRESHOLD:
         try:
             instruction = build_audit_instruction(transcript_path, tool_name)
+            # Use decision/reason format - this forces Claude to address the instruction
+            # (additionalContext alone is passive and gets ignored)
             output_data = {
-                "hookSpecificOutput": {
-                    "hookEventName": "PostToolUse",
-                    "additionalContext": instruction,
-                }
+                "decision": "block",
+                "reason": instruction,
             }
             # Reset counter
             state["tool_count"] = 0
@@ -175,10 +181,8 @@ def main():
         except (IOError, OSError) as e:
             # Fail-fast on infrastructure errors
             output_data = {
-                "hookSpecificOutput": {
-                    "hookEventName": "PostToolUse",
-                    "error": f"Custodiet temp file failed: {e}",
-                }
+                "decision": "block",
+                "reason": f"Custodiet infrastructure error: {e}. Fix before continuing.",
             }
             print(json.dumps(output_data))
             sys.exit(1)
