@@ -41,4 +41,5 @@ markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
     "integration: marks tests as integration tests",
     "metrics: observability tests that report metrics (run with '-m metrics')",
+    "demo: demo tests showing real behavior (run with '-k demo -v -s -n 0')",
 ]
