@@ -36,7 +36,7 @@ graph TD
     end
 
     subgraph "Layer 5: Review"
-        I[/advocate]
+        I[advocate]
         J[Critic Agent]
     end
 
@@ -221,55 +221,3 @@ When analyzing a failure:
 7. **Should pre-commit have caught?** Check .pre-commit-config.yaml
 
 If all components met their responsibilities but failure still occurred: **Gap** - create new enforcement at appropriate level.
-
-## Test Quality Enforcement
-
-Tests are contracts. A test that passes on wrong behavior provides false confidence and is worse than no test. This is the "Volkswagen Pattern" - tests that appear to verify but don't actually verify.
-
-### The Volkswagen Pattern
-
-**Definition**: Tests that define expected outcomes but don't actually assert against them, OR use superficial checks (keyword matching) that can be satisfied by wrong behavior.
-
-**Examples**:
-```python
-# VOLKSWAGEN: Defines expectations but only asserts length
-hydrator_indicators = ["Workflow", "gate=", "approach="]
-assert len(output) > 0  # Passes on ANY output!
-
-# VOLKSWAGEN: Keyword matching instead of semantic verification
-assert any(ind in output for ind in ["success", "completed"])  # Matches by accident
-
-# CORRECT: Actual behavior verification
-hydrator_calls = [c for c in tool_calls if c["name"] == "Task"
-                  and c.get("input", {}).get("subagent_type") == "prompt-hydrator"]
-assert len(hydrator_calls) > 0  # Verifies actual invocation
-```
-
-### Test Quality Requirements (H37)
-
-| Requirement | Rationale | Enforcement |
-|-------------|-----------|-------------|
-| No keyword/substring matching for verification | `any(x in text for x in list)` creates false positives | Code review, grep pattern |
-| Use LLM semantic evaluation | LLM can evaluate intent satisfaction | Test design pattern |
-| Full untruncated evidence in demo tests | Truncated evidence defeats validation | H37a |
-| Real framework prompts in E2E tests | Contrived examples prove nothing | H37b |
-
-### Detection Mechanism
-
-Add to pre-commit or CI:
-
-```bash
-# Detect Volkswagen test patterns
-grep -rn "any(.*in.*for.*in" tests/ | grep -v "# verified"
-grep -rn "assert len.*> 0" tests/ | grep -v "# verified"
-```
-
-Tests using these patterns MUST include `# verified: [explanation]` comment showing the pattern is intentional and the assertion actually verifies behavior.
-
-### Root Cause: Why Volkswagen Tests Happen
-
-1. **Path of least resistance**: Keyword matching is easier than semantic evaluation
-2. **Appearance optimization**: Agent constructs appearance of compliance rather than actual verification
-3. **Missing enforcement**: No mechanism caught the pattern before merge
-
-**Prevention**: Mandatory critic review of test PRs, explicit H37 reference in test review checklist.

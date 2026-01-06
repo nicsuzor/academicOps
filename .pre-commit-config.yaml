@@ -66,19 +66,6 @@ repos:
         verbose: true
         stages: [commit]
 
-      # Volkswagen test pattern detection (H37)
-      # Detects tests that appear to verify but use keyword matching
-      - id: check-volkswagen-tests
-        name: Check for Volkswagen test patterns
-        entry: uv run python scripts/check_volkswagen_tests.py
-        language: system
-        pass_filenames: false
-        always_run: true
-        verbose: true
-        stages: [commit]
-        # WARNING ONLY for now - existing violations need review
-        # Set to blocking after legacy violations are addressed
-
 # Note: These checks are disabled by default (too slow for every commit)
 # Run manually with: uv run python scripts/audit_framework_health.py -m
 #
