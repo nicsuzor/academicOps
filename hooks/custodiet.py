@@ -3,17 +3,23 @@
 PostToolUse custodiet hook (ultra vires detector).
 
 Runs a periodic compliance check every N tool calls by:
-1. Tracking tool call count in state file
+1. Tracking tool call count in state file (keyed by project cwd, not session_id)
 2. When threshold reached, writing context to temp file
 3. Returning instruction to spawn custodiet subagent
 
 Uses same pattern as prompt hydration: temp file + short instruction.
+
+NOTE: State is keyed by cwd (project directory), NOT session_id, because:
+- Subagents get their own session_id (no parent_session_id available)
+- We want tool calls from main session AND subagents to count together
+- cwd is stable across all agents within the same project
 
 Exit codes:
     0: Success (no check needed or check instruction returned)
     1: Infrastructure failure (fail-fast)
 """
 
+import hashlib
 import json
 import random
 import sys
@@ -30,7 +36,7 @@ CONTEXT_TEMPLATE_FILE = HOOK_DIR / "templates" / "custodiet-context.md"
 INSTRUCTION_TEMPLATE_FILE = HOOK_DIR / "templates" / "custodiet-instruction.md"
 REMINDERS_FILE = HOOK_DIR / "data" / "reminders.txt"
 TEMP_DIR = Path("/tmp/claude-compliance")
-STATE_FILE = TEMP_DIR / "state.json"
+# State files are now per-project: state-{hash}.json (see get_state_file())
 
 # Configuration
 TOOL_CALL_THRESHOLD = 2  # Check every ~2 tool calls (lowered for debugging, normally 7)
@@ -83,29 +89,49 @@ def get_random_reminder() -> str | None:
     return random.choice(reminders)
 
 
-def load_state(session_id: str) -> dict[str, Any]:
-    """Load state for current session, or create fresh state."""
+def get_project_key(cwd: str) -> str:
+    """Generate a short hash key from the project cwd.
+
+    Uses first 12 chars of SHA256 hash for reasonable uniqueness while keeping
+    state file names readable.
+    """
+    return hashlib.sha256(cwd.encode()).hexdigest()[:12]
+
+
+def get_state_file(cwd: str) -> Path:
+    """Get the state file path for a given project cwd."""
+    project_key = get_project_key(cwd)
+    return TEMP_DIR / f"state-{project_key}.json"
+
+
+def load_state(cwd: str) -> dict[str, Any]:
+    """Load state for current project (by cwd), or create fresh state."""
+    state_file = get_state_file(cwd)
     try:
-        if STATE_FILE.exists():
-            state = json.loads(STATE_FILE.read_text())
-            # Check if same session
-            if state.get("session_id") == session_id:
+        if state_file.exists():
+            state = json.loads(state_file.read_text())
+            # Verify it's for the same cwd (hash collision check)
+            if state.get("cwd") == cwd:
                 return state
     except (json.JSONDecodeError, OSError):
         pass
 
-    # Fresh state for new session
+    # Fresh state for new project
     return {
-        "session_id": session_id,
+        "cwd": cwd,
         "tool_count": 0,
         "last_check_ts": time.time(),
     }
 
 
 def save_state(state: dict[str, Any]) -> None:
-    """Save state to file."""
+    """Save state to file (keyed by cwd)."""
     TEMP_DIR.mkdir(parents=True, exist_ok=True)
-    STATE_FILE.write_text(json.dumps(state))
+    cwd = state.get("cwd", "")
+    if not cwd:
+        return  # Can't save without cwd
+    state_file = get_state_file(cwd)
+    state_file.write_text(json.dumps(state))
 
 
 def load_template(template_path: Path) -> str:
@@ -182,8 +208,10 @@ def main():
     except Exception:
         pass
 
-    # Get session ID and tool info
-    session_id = input_data.get("session_id", "unknown")
+    # Get project cwd and tool info
+    # NOTE: We use cwd (not session_id) because subagents get their own session_id
+    # but share the same cwd. This ensures tool counts persist across subagent calls.
+    cwd = input_data.get("cwd", "")
     transcript_path = input_data.get("transcript_path")
     tool_name = input_data.get("tool_name", "unknown")
 
@@ -193,8 +221,13 @@ def main():
         print(json.dumps({}))
         sys.exit(0)
 
+    # Require cwd for state tracking (fail-closed)
+    if not cwd:
+        print(json.dumps({}))
+        sys.exit(0)
+
     # Load and update state
-    state = load_state(session_id)
+    state = load_state(cwd)
     state["tool_count"] += 1
 
     output_data: dict[str, Any] = {}

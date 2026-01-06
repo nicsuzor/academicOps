@@ -10,6 +10,7 @@ Exit codes:
     1: Fatal error (missing required files - fail-fast)
 """
 
+import hashlib
 import json
 import sys
 from pathlib import Path
@@ -174,10 +175,12 @@ def main():
         # If no stdin or parsing fails, continue with empty input
         pass
 
-    # Clean up this session's criteria gate file (fresh start for each session)
-    session_id = input_data.get("session_id", "")
-    if session_id:
-        gate_file = Path(f"/tmp/claude-criteria-gate-{session_id}")
+    # Clean up this project's criteria gate file (fresh start for each session)
+    # Uses cwd (not session_id) because subagents get different session_ids
+    cwd = input_data.get("cwd", "")
+    if cwd:
+        cwd_hash = hashlib.sha256(cwd.encode()).hexdigest()[:12]
+        gate_file = Path(f"/tmp/claude-criteria-gate-{cwd_hash}")
         gate_file.unlink(missing_ok=True)
 
     # Get resolved paths early for variable expansion

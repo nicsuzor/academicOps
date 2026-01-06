@@ -2,11 +2,16 @@
 """
 PreToolUse hook: Block Edit/Write/Bash until criteria gate passed.
 
-Gate file: /tmp/claude-criteria-gate-{session_id}
-- Session-specific (safe for concurrent Claude sessions)
+Gate file: /tmp/claude-criteria-gate-{cwd_hash}
+- Project-specific (uses cwd hash, not session_id)
 - Created by agent after completing /do Phase 1
 - Contains ISO timestamp of when criteria were defined
 - Expires after 30 minutes (stale gate protection)
+
+NOTE: Uses cwd (project directory) instead of session_id because:
+- Subagents get their own session_id (no parent_session_id available)
+- We want the gate to be shared across main session AND subagents
+- cwd is stable across all agents within the same project
 
 Exit codes:
     0: Allow
@@ -15,6 +20,7 @@ Exit codes:
 Failure mode: FAIL-CLOSED (block on any error)
 """
 
+import hashlib
 import json
 import sys
 from datetime import datetime, timedelta
@@ -54,9 +60,15 @@ BASH_ALLOWLIST = [
 ]
 
 
-def get_gate_file(session_id: str) -> Path:
-    """Get session-specific gate file path."""
-    return GATE_DIR / f"{GATE_PREFIX}{session_id}"
+def get_cwd_hash(cwd: str) -> str:
+    """Generate a short hash from cwd for gate file naming."""
+    return hashlib.sha256(cwd.encode()).hexdigest()[:12]
+
+
+def get_gate_file(cwd: str) -> Path:
+    """Get project-specific gate file path (based on cwd hash)."""
+    cwd_hash = get_cwd_hash(cwd)
+    return GATE_DIR / f"{GATE_PREFIX}{cwd_hash}"
 
 
 def is_allowed_bash(command: str) -> bool:
@@ -72,9 +84,9 @@ def is_allowed_bash(command: str) -> bool:
     return any(cmd.startswith(prefix) for prefix in BASH_ALLOWLIST)
 
 
-def is_gate_valid(session_id: str) -> bool:
+def is_gate_valid(cwd: str) -> bool:
     """Check if gate file exists and is not expired."""
-    gate_file = get_gate_file(session_id)
+    gate_file = get_gate_file(cwd)
     if not gate_file.exists():
         return False
 
@@ -98,11 +110,11 @@ def main():
 
     tool_name = input_data.get("tool_name", "")
     tool_input = input_data.get("tool_input", {})
-    session_id = input_data.get("session_id", "")
+    cwd = input_data.get("cwd", "")
 
-    # FAIL-CLOSED: require session_id
-    if not session_id:
-        print("⛔ BLOCKED: No session_id in hook input (fail-closed)", file=sys.stderr)
+    # FAIL-CLOSED: require cwd
+    if not cwd:
+        print("⛔ BLOCKED: No cwd in hook input (fail-closed)", file=sys.stderr)
         sys.exit(2)
 
     # Not a gated tool - allow
@@ -118,18 +130,20 @@ def main():
             sys.exit(0)
 
     # Check gate file (with expiry)
-    if is_gate_valid(session_id):
+    if is_gate_valid(cwd):
         print(json.dumps({}))
         sys.exit(0)
 
     # BLOCK - gate not passed or expired
+    # Provide exact gate file path so agent knows what to create
+    gate_file = get_gate_file(cwd)
     print(
         f"⛔ BLOCKED: Criteria gate not passed.\n\n"
         f"Before using Edit/Write/Bash, you MUST:\n"
         f"1. Define acceptance criteria (user outcomes)\n"
         f"2. Invoke critic to review criteria\n"
         f"3. Create TodoWrite with CHECKPOINT items\n"
-        f"4. Run: echo \"$(date -Iseconds)\" > /tmp/{GATE_PREFIX}{session_id}\n\n"
+        f"4. Run: echo \"$(date -Iseconds)\" > {gate_file}\n\n"
         f"Gate expires after 30 minutes. See /do command Phase 1.",
         file=sys.stderr,
     )
