@@ -72,9 +72,11 @@ EXTRACTION TASKS:
    - Example agent summaries: "created PR #42", "answered question about X", "displayed 15 task files"
    - Purpose: understand dialogue progression and work flow over time
 
-10. **VERBATIM USER PROMPTS** - All user prompts exactly as typed
-    - Preserve exact text including typos, formatting
-    - Include timestamp for each
+10. **VERBATIM USER PROMPTS WITH CONTEXT** - All user prompts with preceding agent message
+    - For each user prompt, include the agent's immediately preceding message (summarized)
+    - Preserve exact user prompt text including typos, formatting
+    - Format: list of tuples [timestamp, "agent", agent_summary], [timestamp, "user", verbatim_prompt]
+    - This provides context since many prompts reference what the agent just said
 
 Return JSON with this EXACT structure:
 {
@@ -105,8 +107,10 @@ Return JSON with this EXACT structure:
     ["2026-01-06T10:16:02Z", "user", "now mine them"]
   ],
   "user_prompts": [
-    {"timestamp": "2026-01-06T10:15:23Z", "text": "run /session-insights"},
-    {"timestamp": "2026-01-06T10:16:02Z", "text": "now mine them"}
+    ["2026-01-06T10:15:00Z", "agent", "Presented task options and asked for direction"],
+    ["2026-01-06T10:15:23Z", "user", "run /session-insights"],
+    ["2026-01-06T10:15:45Z", "agent", "Generated transcripts for 8 sessions"],
+    ["2026-01-06T10:16:02Z", "user", "now mine them"]
   ]
 }
 ```

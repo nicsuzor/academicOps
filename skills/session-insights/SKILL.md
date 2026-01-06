@@ -196,7 +196,7 @@ EXTRACTION TASKS:
 7. SUCCESSES - tasks completed well
 8. USER MOOD/SATISFACTION - Subjective assessment: -1.0 (frustrated) to 1.0 (satisfied), 0.0 neutral
 9. CONVERSATION FLOW - List of [timestamp, role, content] tuples showing dialogue (user prompts verbatim, agent responses summarized)
-10. VERBATIM USER PROMPTS - All user prompts exactly as typed with timestamps
+10. VERBATIM USER PROMPTS WITH CONTEXT - All user prompts with preceding agent message (format: [timestamp, role, content] tuples)
 
 Return JSON with this EXACT structure:
 {
@@ -210,7 +210,7 @@ Return JSON with this EXACT structure:
   \"context_gaps\": [\"gap1\", \"gap2\"],
   \"user_mood\": 0.3,
   \"conversation_flow\": [[\"timestamp\", \"user\", \"prompt text\"], [\"timestamp\", \"agent\", \"response summary\"]],
-  \"user_prompts\": [{\"timestamp\": \"...\", \"text\": \"...\"}]
+  \"user_prompts\": [[\"timestamp\", \"agent\", \"preceding message\"], [\"timestamp\", \"user\", \"verbatim prompt\"]]
 }
 
 After receiving the JSON response, save it to: $ACA_DATA/dashboard/sessions/{session_id}.json
