@@ -268,6 +268,47 @@ def format_recommendation(rec: dict) -> dict:
     return result
 
 
+def detect_stale_tasks(tasks: list[dict], now: datetime) -> list[dict]:
+    """Find tasks that are probably stale and should be archived."""
+    stale = []
+
+    for task in tasks:
+        title = task.get("title", "").lower()
+        tags = task.get("tags", [])
+        due = parse_due_date(task.get("due"))
+        classification = task.get("classification", "").lower()
+
+        reason = None
+
+        # Past events (due date passed + looks like an event)
+        if due:
+            days_overdue = (now.date() - due.date()).days
+
+            # Events more than 7 days past
+            event_keywords = ["attend", "event", "meeting", "conference", "seminar", "workshop", "rsvp"]
+            is_event = (
+                classification in ("event", "decision") or
+                "event" in tags or
+                any(kw in title for kw in event_keywords)
+            )
+            if is_event and days_overdue > 7:
+                reason = f"Past event ({days_overdue} days ago)"
+
+            # Non-events overdue 60+ days with no recent activity
+            elif days_overdue > 60:
+                reason = f"Overdue {days_overdue} days - likely stale"
+
+        if reason:
+            stale.append({
+                "slug": task.get("slug", ""),
+                "title": task.get("title", ""),
+                "reason": reason,
+                "file": task.get("file", "")
+            })
+
+    return stale[:5]  # Limit to 5 suggestions
+
+
 def main():
     # Load data
     index = load_json(TASK_INDEX)
@@ -305,12 +346,16 @@ def main():
     if quick:
         recommendations.append(format_recommendation(quick))
 
+    # Detect stale tasks
+    stale_candidates = detect_stale_tasks(tasks, now)
+
     # Output
     output = {
         "generated": datetime.now().isoformat(),
         "todays_work": dict(todays_work),
         "active_tasks": len(tasks),
-        "recommendations": recommendations
+        "recommendations": recommendations,
+        "stale_candidates": stale_candidates
     }
 
     print(json.dumps(output, indent=2))
