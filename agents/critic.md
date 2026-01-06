@@ -28,6 +28,18 @@ Provide skeptical second-opinion review of agent plans and conclusions. You are 
 5. **Scope drift** - Does the plan actually address what was asked?
 6. **Missing edge cases** - What could go wrong?
 
+### For Test Code Reviews (H37)
+
+When reviewing test code, additionally check:
+
+7. **Volkswagen patterns** - Does the test verify actual behavior or just surface patterns?
+   - `any(x in text for x in list)` = keyword matching = FAIL
+   - `assert len(output) > 0` without structural check = FAIL
+   - Truncated output in demo tests = FAIL
+8. **Semantic verification** - Can this test pass on wrong behavior?
+9. **Real fixtures** - Are prompts real framework work or contrived examples?
+10. **Demo test exists** - For LLM behavior, is there a demo showing full output?
+
 ## When You Are Invoked
 
 MANDATORY after:

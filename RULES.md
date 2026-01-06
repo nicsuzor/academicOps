@@ -85,6 +85,11 @@ tags: [framework, enforcement, moc]
 | H#32 | Delete, Don't Deprecate | HEURISTICS.md | SessionStart | Prompt |
 | H#33 | Real Data Fixtures | HEURISTICS.md | SessionStart | Prompt |
 | H#34 | Semantic Link Density | check_orphan_files.py | Pre-commit | Detection |
+| H#35 | Spec-First File Modification | HEURISTICS.md | SessionStart | Prompt |
+| H#36 | File Category Classification | check_file_taxonomy.py | Pre-commit | Detection |
+| H#37 | LLM Semantic Evaluation | PR template checklist, critic agent | PR Review | Review |
+| H#37a | Full Evidence for Validation | @pytest.mark.demo requirement | Test design | Convention |
+| H#37b | Real Fixtures Over Contrived | docs/testing-patterns.md | Test design | Convention |
 
 ## Enforcement Level Summary
 
@@ -92,9 +97,11 @@ tags: [framework, enforcement, moc]
 |-------|-------|-------------|
 | Hard Gate | 10 | Blocks action (PreToolUse hooks, deny rules) |
 | Soft Gate | 8 | Injects guidance, agent can proceed |
-| Prompt | 41 | Instructional (AXIOMS.md or HEURISTICS.md at SessionStart) |
+| Prompt | 42 | Instructional (AXIOMS.md or HEURISTICS.md at SessionStart) |
 | Observable | 2 | Creates visible artifact (TodoWrite) |
-| Detection | 2 | Logs for post-hoc analysis |
+| Detection | 3 | Logs for post-hoc analysis |
+| Review | 1 | Human/LLM review at PR time |
+| Convention | 3 | Documented pattern, no mechanical check |
 | Config | 1 | External tool config (pyproject.toml, pre-commit) |
 
 **Note**: "Prompt" level rules are injected at session start via `sessionstart_load_axioms.py`. Agents receive them automatically but compliance is not mechanically enforced.
