@@ -32,7 +32,7 @@ This creates symlinks in `~/.claude/` pointing to the framework. Claude Code aut
 
 ### For academicOps itself
 
-The repository's `.claude/` uses symlinks to parent directories:
+The repository's `.claude/` uses symlinks to parent directories and **uses `$CLAUDE_PROJECT_DIR` instead of `$AOPS`** to work in remote automation:
 
 ```bash
 python scripts/sync_web_bundle.py --self
@@ -45,9 +45,18 @@ Result:
 ├── CLAUDE.md -> ../CLAUDE.md
 ├── agents -> ../agents
 ├── commands -> ../commands
-├── settings.json -> ../config/claude/settings.json
+├── hooks -> ../hooks
+├── settings.json -> ../config/claude/settings-self.json  # Uses CLAUDE_PROJECT_DIR!
 └── skills -> ../skills
 ```
+
+**Key difference from local setup**: The repo-local `.claude/` uses `settings-self.json` which references `$CLAUDE_PROJECT_DIR` in hook commands instead of `$AOPS`. This is because:
+
+1. `$CLAUDE_PROJECT_DIR` is always set by Claude Code (local or remote)
+2. `$AOPS` requires prior setup via `setup.sh` or environment configuration
+3. Remote/CI environments don't have `$AOPS` pre-configured
+
+The `session_env_setup.sh` hook derives `$AOPS` from `$CLAUDE_PROJECT_DIR` at session start, making it available for the rest of the session.
 
 ### For other projects
 
@@ -73,15 +82,20 @@ Commit this `.claude/` directory to enable aOps on Claude Code Web.
 
 ## What Works in Limited Environments
 
-| Feature     | Status        | Notes                                          |
-| ----------- | ------------- | ---------------------------------------------- |
-| Skills      | Works         | `Skill(skill="...")` loads bundled definitions |
-| Commands    | Works         | `/command` invokes bundled slash commands      |
-| Agents      | Works         | Agent definitions available for Task tool      |
-| Hooks       | Not available | See note below                                 |
-| MCP servers | Not available | Require local setup                            |
+| Feature     | Status         | Notes                                                |
+| ----------- | -------------- | ---------------------------------------------------- |
+| Skills      | Works          | `Skill(skill="...")` loads bundled definitions       |
+| Commands    | Works          | `/command` invokes bundled slash commands            |
+| Agents      | Works          | Agent definitions available for Task tool            |
+| Hooks       | Works (self)   | academicOps repo has hooks (uses CLAUDE_PROJECT_DIR) |
+| Hooks       | Not available  | External projects (see note below)                   |
+| MCP servers | Not available  | Require local setup                                  |
 
-**Why hooks don't work**: Claude Code Web and similar limited environments don't provide shell access to run Python scripts. Hooks require the `$AOPS` environment variable and a Python environment with dependencies. This is expected behavior - the bundled `settings.json` intentionally excludes hook definitions to avoid spurious error messages.
+**Hooks in academicOps vs external projects**:
+
+- **academicOps itself**: Hooks work because `settings-self.json` uses `$CLAUDE_PROJECT_DIR` (always available). The `session_env_setup.sh` hook derives `$AOPS` from `$CLAUDE_PROJECT_DIR` at session start.
+
+- **External projects**: Hooks don't work because they require a Python environment with dependencies and framework access. The bundled `settings.json` (from `settings-web.json`) intentionally excludes hook definitions to avoid error messages.
 
 ## Keeping Bundles Fresh
 
