@@ -1,6 +1,7 @@
 ---
 title: Command Discoverability
 type: spec
+category: spec
 status: Implemented
 permalink: command-discoverability
 tags:

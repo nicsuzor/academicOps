@@ -1,6 +1,7 @@
 ---
 title: Garden Skill
 type: spec
+category: spec
 status: implemented
 permalink: garden-skill
 tags:

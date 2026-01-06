@@ -1,5 +1,6 @@
 ---
 name: workflows
+category: spec
 title: Workflow Routing
 type: index
 description: Task classification and workflow selection. Agents read this to determine how to handle work.

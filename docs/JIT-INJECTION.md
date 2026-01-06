@@ -1,6 +1,7 @@
 ---
 title: JIT Context Injection
 type: reference
+category: docs
 permalink: docs-jit-injection
 description: Architecture for just-in-time context injection through hooks and CLAUDE.md files
 ---

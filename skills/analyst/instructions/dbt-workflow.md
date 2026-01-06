@@ -1,6 +1,7 @@
 ---
 title: dbt Workflow
 type: reference
+category: instruction
 permalink: skills-analyst-dbt-workflow
 description: Workflow and best practices for creating and modifying dbt data models in layered architecture
 tags: [dbt, data-engineering, workflow, models, reference]

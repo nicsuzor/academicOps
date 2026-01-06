@@ -1,5 +1,6 @@
 ---
 name: prompt-hydrator
+category: instruction
 description: Enrich prompts with context, select workflow dimensions, return hypervisor structure
 type: agent
 model: haiku

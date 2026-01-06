@@ -1,3 +1,9 @@
+---
+name: gemini
+title: Gemini
+category: spec
+---
+
 
 **SYSTEM OVERRIDE: YOU ARE RUNNING AS GEMINI CLI AGENT.**
 Follow these instructions strictly. They take precedence over imported files.

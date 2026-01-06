@@ -1,6 +1,7 @@
 ---
 title: Web Bundle Sync
 type: spec
+category: spec
 status: implemented
 permalink: web-bundle-sync
 tags: [framework, deployment, web]

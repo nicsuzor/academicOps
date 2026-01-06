@@ -1,6 +1,7 @@
 ---
 title: Plan Quality Gate
 type: spec
+category: spec
 status: implemented
 created: 2025-12-23
 updated: 2025-12-29

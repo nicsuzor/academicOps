@@ -32,6 +32,8 @@ EXTRACTION TASKS:
 1. **SUMMARY** - One sentence describing what was worked on in this session
 
 2. **ACCOMPLISHMENTS** - List of completed items (things marked done, features implemented, bugs fixed)
+   - EXCLUDE administrative overhead: "created task", "archived task", "updated status", "logged observation", "generated transcript"
+   - Focus on ACTUAL WORK OUTPUT: code written, bugs fixed, documents drafted, decisions made
 
 3. **SKILL EFFECTIVENESS** - Look for patterns like "**Skill(s)**: X" (suggested) and "🔧 Skill invoked: `Y`" (actually used)
    - Which skills were recommended by prompt hydration?

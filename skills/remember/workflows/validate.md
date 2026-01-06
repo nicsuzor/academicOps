@@ -1,6 +1,7 @@
 ---
 title: Validate Workflow
 type: automation
+category: instruction
 permalink: validate-workflow
 tags:
   - memory

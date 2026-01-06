@@ -1,6 +1,7 @@
 ---
 title: Strategic Partner Mode Guide
 type: reference
+category: ref
 permalink: ref-strategic-partner-mode
 description: Detailed guide for maintaining institutional memory and making principled framework decisions
 ---

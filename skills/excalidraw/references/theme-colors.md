@@ -1,6 +1,7 @@
 ---
 title: Theme Colors
 type: reference
+category: ref
 permalink: excalidraw-theme-colors
 description: User's preferred color palette for Excalidraw diagrams with retro terminal aesthetic. Includes semantic colors, typography hierarchy, and integration guidelines.
 ---

@@ -1,5 +1,6 @@
 ---
 name: framework
+category: instruction
 description: Categorical framework governance. Treats every change as a universal
   rule. Delegates user data operations to skills.
 allowed-tools: Read,Grep,Glob,Edit,Write,Skill,AskUserQuestion
@@ -197,18 +198,23 @@ Each piece of information exists in exactly ONE location:
 
 **Pattern**: Reference, don't repeat.
 
-### specs/ vs docs/ Distinction
+### File Taxonomy (See [[specs/file-taxonomy]] and [[H36]])
 
-| Directory | `type:` | Contains | Use When |
-|-----------|---------|----------|----------|
-| `specs/` | `spec` | Design architecture, WHY things work | Understanding design decisions |
-| `docs/` | `reference` | Practical guides, HOW to use things | Implementing or operating |
+Every framework file belongs to exactly one category. Declare via `category:` in frontmatter.
 
-**Example**: Enforcement documentation
-- `specs/enforcement.md` = Architectural philosophy (layer model, design principles)
-- `docs/ENFORCEMENT.md` = **Practical mechanism ladder** (7 levels, when to use each)
+| Category | Purpose | Editing Rule |
+|----------|---------|--------------|
+| **spec** | OUR framework design (architecture, rationale) | Deliberate; RFC for changes |
+| **ref** | External knowledge (libraries, tools) | Update when external sources change |
+| **docs** | Implementation guides, how-to content | Update as practices evolve |
+| **script** | Executable code | TDD required |
+| **instruction** | Workflow/process for agents | Must be generalizable |
+| **template** | Pattern to fill in with dynamic content | Update when format changes |
+| **state** | Auto-generated current status | DO NOT manually edit |
 
-When implementing enforcement-related work, **always check `docs/ENFORCEMENT.md` first** for the practical guide.
+**Directory mappings**: `specs/` → spec, `docs/` → docs, `skills/*/references/` → ref, `commands/` → instruction, `agents/` → instruction, `*/templates/` → template, `RULES.md` → state
+
+**Validation**: Pre-commit hook `check-file-taxonomy` enforces category matches directory.
 
 ### Mandatory Critic Review
 

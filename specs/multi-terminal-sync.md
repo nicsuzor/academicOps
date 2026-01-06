@@ -1,6 +1,7 @@
 ---
 title: Multi-Terminal Sync
 type: spec
+category: spec
 status: implementing
 created: 2025-12-23
 updated: 2025-12-29

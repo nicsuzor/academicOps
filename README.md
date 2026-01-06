@@ -1,5 +1,6 @@
 ---
 name: readme
+category: spec
 title: academicOps Framework
 type: reference
 description: Human feature guide - capabilities, workflows, and how things fit together.

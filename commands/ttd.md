@@ -1,5 +1,6 @@
 ---
 name: ttd
+category: instruction
 description: Alias for /supervise tdd - Test-first development workflow
 permalink: aops/commands/ttd
 ---

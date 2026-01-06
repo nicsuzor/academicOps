@@ -1,5 +1,6 @@
 ---
 name: diag
+category: instruction
 description: Quick diagnostic check of what's currently loaded in this session
 allowed-tools: None
 permalink: commands/diag

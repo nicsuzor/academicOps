@@ -1,5 +1,6 @@
 ---
 name: batch-review
+category: instruction
 description: Parallel batch processing with quality gates, critic review, and QA verification
 required-skills:
   - framework

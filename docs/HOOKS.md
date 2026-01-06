@@ -1,6 +1,7 @@
 ---
 title: Hooks
 type: reference
+category: docs
 permalink: docs-hooks
 description: Claude Code hooks extend session functionality, injecting context and enforcing policies
 ---

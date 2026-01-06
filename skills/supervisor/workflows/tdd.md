@@ -1,5 +1,6 @@
 ---
 name: tdd
+category: instruction
 description: Test-first development with pytest validation and python-dev skill
 required-skills:
   - python-dev

@@ -1,6 +1,7 @@
 ---
 title: Prompt Hydration
 type: spec
+category: spec
 status: implemented
 permalink: prompt-hydration
 tags: [framework, routing, context, skills]

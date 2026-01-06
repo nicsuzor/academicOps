@@ -1,6 +1,7 @@
 ---
 title: Icon Integration Guide
 type: reference
+category: ref
 permalink: excalidraw-icon-integration
 description: Add professional iconography to Excalidraw diagrams using Material Symbols and existing libraries.
 ---

@@ -1,3 +1,9 @@
+---
+name: skill
+title: Skill
+category: instruction
+---
+
 # Review Training Data Extraction Skill
 
 Extract training pairs (review feedback → source evidence) from matched peer review/source document pairs to build a dataset for teaching LLMs to perform academic peer review in Nic's style.

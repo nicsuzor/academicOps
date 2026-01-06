@@ -1,6 +1,7 @@
 ---
 title: Data Investigation Workflow
 type: reference
+category: instruction
 permalink: skills-analyst-data-investigation
 description: Patterns for creating reusable investigation scripts for data quality, coverage, and root cause analysis
 tags: [data-analysis, investigation, scripting, dbt, reference]

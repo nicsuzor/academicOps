@@ -1,6 +1,7 @@
 ---
 title: Meta-Framework Advisor
 type: spec
+category: spec
 status: implemented
 permalink: meta-framework-advisor
 tags:

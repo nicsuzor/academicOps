@@ -1,6 +1,7 @@
 ---
 title: Feature-Dev Skill
 type: spec
+category: spec
 status: implemented
 permalink: feature-dev-skill
 tags:

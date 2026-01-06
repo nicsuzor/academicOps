@@ -1,6 +1,7 @@
 ---
 title: Supervisor Skill
 type: spec
+category: spec
 status: implemented
 permalink: supervisor-skill
 tags:

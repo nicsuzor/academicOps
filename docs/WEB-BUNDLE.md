@@ -1,6 +1,7 @@
 ---
 title: Web Bundle
 type: reference
+category: docs
 permalink: docs-web-bundle
 description: Using aOps on Claude Code Web and other limited environments
 ---

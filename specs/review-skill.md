@@ -1,6 +1,7 @@
 ---
 title: Review Skill Specification
 type: spec
+category: spec
 permalink: review-skill
 description: Specification for the agentic review skill, distinguishing support from judgment.
 tags:

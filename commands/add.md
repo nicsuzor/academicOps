@@ -1,5 +1,6 @@
 ---
 name: add
+category: instruction
 description: Quick-add a task or checklist item from session context
 allowed-tools: Skill
 permalink: commands/add

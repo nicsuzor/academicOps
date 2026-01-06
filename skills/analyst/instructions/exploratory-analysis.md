@@ -1,6 +1,7 @@
 ---
 title: Exploratory Analysis
 type: note
+category: instruction
 permalink: analyst-chunk-exploratory-analysis
 description: Pattern for collaborative, iterative data exploration that yields to user guidance at each step
 ---

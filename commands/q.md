@@ -1,5 +1,6 @@
 ---
 name: q
+category: instruction
 description: Queue a task for later execution (delayed /do)
 allowed-tools: Task, Skill, mcp__memory__store_memory
 permalink: commands/q

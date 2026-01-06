@@ -1,6 +1,7 @@
 ---
 title: Script Design Guide
 type: reference
+category: ref
 permalink: ref-script-design-guide
 description: Framework principles for script design, distinguishing between simple utilities and agent orchestration
 ---

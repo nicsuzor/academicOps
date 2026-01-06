@@ -1,5 +1,6 @@
 ---
 name: convert-to-md
+category: instruction
 description: Batch convert documents (DOCX, PDF, XLSX, TXT, PPTX, MSG, DOC) to markdown, preserving tracked changes and comments.
 allowed-tools: Bash,Read
 version: 1.0.0

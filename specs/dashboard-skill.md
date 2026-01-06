@@ -1,6 +1,7 @@
 ---
 title: Dashboard Skill
 type: spec
+category: spec
 status: implemented
 permalink: dashboard-skill
 tags:

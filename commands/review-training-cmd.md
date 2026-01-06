@@ -1,5 +1,6 @@
 ---
 name: review-training-cmd
+category: instruction
 description: Process one matched review/source pair to extract training data
 allowed-tools: Task
 permalink: commands/review-training-cmd

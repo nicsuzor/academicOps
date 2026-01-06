@@ -1,5 +1,6 @@
 ---
 name: task-viz
+category: instruction
 description: Generate visual mind-map of tasks, projects, and goals using automated layout via excalidraw
 permalink: commands/task-viz
 allowed-tools: Bash,Glob,Read,Skill,mcp__memory__retrieve_memory

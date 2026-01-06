@@ -1,5 +1,6 @@
 ---
 name: python-dev
+category: instruction
 description: Write production-quality Python code following fail-fast philosophy, type safety, and modern best practices. Enforces rigorous standards for academic and research code where correctness and replicability are paramount.
 allowed-tools: Read,Grep,Glob,Edit,Write,Bash
 version: 3.0.0

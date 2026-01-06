@@ -1,5 +1,6 @@
 ---
 name: excalidraw
+category: instruction
 description: Creating visually compelling, hand-drawn diagrams with organic mind-map layouts and accessibility-focused design.
 allowed-tools: Read,Skill
 version: 1.0.0

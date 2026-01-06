@@ -1,5 +1,6 @@
 ---
 name: log
+category: instruction
 description: Log framework component failures to GitHub Issues (per AXIOMS #28)
 allowed-tools: Skill
 permalink: commands/log

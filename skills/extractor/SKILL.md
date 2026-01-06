@@ -1,5 +1,6 @@
 ---
 name: extractor
+category: instruction
 description: Archive information extraction - assess archival documents and identify information worth preserving in the knowledge base.
 allowed-tools: Read,Skill
 version: 1.0.0

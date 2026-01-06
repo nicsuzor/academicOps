@@ -1,6 +1,7 @@
 ---
 title: FastMCP
 type: reference
+category: ref
 permalink: python-dev-fastmcp
 description: Model Context Protocol server framework for extending LLM capabilities
 ---

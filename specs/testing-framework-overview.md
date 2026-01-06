@@ -1,6 +1,7 @@
 ---
 title: Testing Framework Overview
 type: spec
+category: spec
 status: active
 permalink: testing-framework-overview
 tags:

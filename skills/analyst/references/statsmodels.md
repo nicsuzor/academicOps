@@ -1,6 +1,7 @@
 ---
 title: Statsmodels
 type: reference
+category: ref
 permalink: skills-analyst-statsmodels
 description: Guide to statistical modeling with Python's statsmodels library for regression, GLM, time series, and hypothesis testing
 tags: [statsmodels, statistical-modeling, regression, time-series, reference]

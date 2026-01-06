@@ -1,6 +1,7 @@
 ---
 title: Session-End Sync User Story
 type: spec
+category: spec
 status: requirement
 created: 2025-12-29
 permalink: session-sync-user-story

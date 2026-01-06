@@ -1,6 +1,7 @@
 ---
 title: Mind Mapping Design Principles
 type: reference
+category: ref
 permalink: excalidraw-mind-mapping
 description: Four fundamental design principles (proximity, alignment, contrast, repetition) adapted from design theory for creating effective mind maps and concept diagrams.
 ---

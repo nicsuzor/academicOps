@@ -1,5 +1,6 @@
 ---
 name: framework
+category: spec
 title: Framework Paths and Configuration
 type: reference
 description: Session-resolved paths and environment configuration. Injected at session start.

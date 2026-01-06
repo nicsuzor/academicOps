@@ -1,6 +1,7 @@
 ---
 title: Framework Skill
 type: spec
+category: spec
 status: implemented
 permalink: framework-skill
 tags:

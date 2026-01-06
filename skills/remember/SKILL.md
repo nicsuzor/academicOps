@@ -1,5 +1,6 @@
 ---
 name: remember
+category: instruction
 description: Write knowledge to markdown AND sync to memory server. MUST invoke - do not write markdown directly.
 allowed-tools: Read,Write,Edit,mcp__memory__store_memory
 version: 1.0.0

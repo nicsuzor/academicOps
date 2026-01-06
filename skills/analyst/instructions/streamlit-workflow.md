@@ -1,6 +1,7 @@
 ---
 title: Streamlit Visualization Workflow
 type: note
+category: instruction
 permalink: analyst-chunk-streamlit-workflow
 description: Single-step collaborative workflow for building Streamlit dashboards and visualizations
 ---

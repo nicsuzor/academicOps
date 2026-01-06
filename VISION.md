@@ -1,6 +1,7 @@
 ---
 title: Automation Framework Vision
 type: note
+category: spec
 permalink: aops-vision
 tags:
   - framework

@@ -1,6 +1,7 @@
 ---
 title: Analyst Skill
 type: spec
+category: spec
 status: implemented
 permalink: analyst-skill
 tags:

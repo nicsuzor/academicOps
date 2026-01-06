@@ -1,5 +1,6 @@
 ---
 name: email-task-capture
+category: instruction
 description: Extract action items from emails and create "ready for action" tasks with summaries, downloaded documents, and clear response requirements
 permalink: skills/tasks/workflows/email-capture
 tags: [workflow, email, task-capture, automation, memory, documents]

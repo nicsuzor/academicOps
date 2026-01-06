@@ -1,5 +1,6 @@
 ---
 name: heuristics
+category: spec
 title: Heuristics
 type: reference
 description: Empirically validated rules that implement axioms. Subject to revision based on evidence.
@@ -176,6 +177,10 @@ Empirically derived rules implementing [[AXIOMS]]. Evidence lives in GitHub Issu
 ## H35: Spec-First File Modification
 **Statement**: When modifying any framework file, agents must: (1) check/update the SPEC governing what the file SHOULD contain, (2) if the file is generated/STATE, modify the skill that generates it instead, (3) check/update any index or documentation referencing the file.
 **Confidence**: Low | **Implements**: #1, #9, #20 | **Evidence**: #262
+
+## H36: File Category Classification
+**Statement**: Every framework file belongs to exactly one category: SPEC (our design), REF (external knowledge), DOCS (implementation guides), SCRIPT (executable code), INSTRUCTION (agent workflows), TEMPLATE (fill-in patterns), or STATE (auto-generated). Category determines editing rules and is declared via `category:` in frontmatter.
+**Confidence**: Medium | **Implements**: #9, #10, #11 | **Evidence**: [[specs/file-taxonomy]]
 
 ---
 

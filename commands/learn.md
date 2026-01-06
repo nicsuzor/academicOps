@@ -1,5 +1,6 @@
 ---
 name: learn
+category: instruction
 description: Make minimal, graduated framework tweaks with experiment tracking
 allowed-tools: Read,Edit,Write,Glob,Grep,Skill
 permalink: commands/learn

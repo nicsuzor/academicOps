@@ -2,6 +2,7 @@
 title: Verification Report - [DOCUMENT TITLE]
 project: [PROJECT ID]
 type: note
+category: template
 status: complete
 date: [YYYY-MM-DD]
 verified_document: [filename]

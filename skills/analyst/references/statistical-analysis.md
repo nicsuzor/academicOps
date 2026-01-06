@@ -1,6 +1,7 @@
 ---
 title: Statistical Analysis
 type: reference
+category: ref
 permalink: skills-analyst-statistical-analysis
 description: Comprehensive guide to statistical hypothesis testing, regression, and Bayesian methods for academic research
 tags: [statistics, testing, analysis, reference]

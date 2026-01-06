@@ -1,6 +1,7 @@
 ---
 title: Tasks Skill
 type: spec
+category: spec
 status: implemented
 permalink: tasks-skill
 tags:

@@ -1,6 +1,7 @@
 ---
 title: Reference-Map Skill
 type: spec
+category: spec
 status: implemented
 permalink: reference-map-skill
 tags:

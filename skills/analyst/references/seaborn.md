@@ -1,6 +1,7 @@
 ---
 title: Seaborn Statistical Visualization
 type: reference
+category: ref
 permalink: analyst-ref-seaborn
 description: Guidance on seaborn for creating publication-quality statistical graphics with dataset-oriented plotting, semantic mappings, and statistical estimation.
 ---

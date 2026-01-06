@@ -1,6 +1,7 @@
 ---
 title: E2E Test Harness Reference
 type: reference
+category: ref
 permalink: ref-e2e-test-harness
 description: Guide to the framework's end-to-end testing infrastructure for validating agent behavior
 ---

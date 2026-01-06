@@ -1,5 +1,6 @@
 ---
 name: learning-log
+category: instruction
 description: Log agent performance patterns to GitHub Issues. Categorizes observations and routes to appropriate issue labels.
 allowed-tools: Read,Grep,Glob,Bash,mcp__gh__issue_write,mcp__gh__search_issues,mcp__gh__add_issue_comment
 version: 3.0.0

@@ -1,6 +1,7 @@
 ---
 title: Learning-Log Skill
 type: spec
+category: spec
 status: implemented
 permalink: learning-log-skill
 tags:

@@ -1,6 +1,7 @@
 ---
 title: Obsidian File Format Specification
 type: reference
+category: ref
 permalink: obsidian-format-spec
 tags:
   - memory

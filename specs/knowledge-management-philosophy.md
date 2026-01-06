@@ -2,6 +2,7 @@
 title: Knowledge Management Philosophy
 permalink: knowledge-management-philosophy
 type: spec
+category: spec
 status: active
 tags: [knowledge-management, bmem, design, philosophy, just-in-time]
 created: 2025-11-21

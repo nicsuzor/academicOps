@@ -1,5 +1,6 @@
 ---
 name: parallel-batch
+category: instruction
 description: Orchestrate parallel batch processing of files with automatic skill delegation, question batching, and progress tracking. Processes files concurrently using Task subagents.
 permalink: aops/commands/parallel-batch
 tools:

@@ -1,6 +1,7 @@
 ---
 title: Parallel Batch Processing
 type: spec
+category: spec
 status: implemented
 permalink: parallel-batch-command
 tags:

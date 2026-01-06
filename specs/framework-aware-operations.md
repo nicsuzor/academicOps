@@ -1,6 +1,7 @@
 ---
 title: Framework-Aware Operations
 type: spec
+category: spec
 status: requirement
 created: 2025-12-23
 tags:

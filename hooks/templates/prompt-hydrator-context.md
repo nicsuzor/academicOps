@@ -1,3 +1,10 @@
+---
+name: prompt-hydrator-context
+title: Prompt Hydrator Context Template
+category: template
+description: Template written to temp file by UserPromptSubmit hook for prompt-hydrator subagent.
+---
+
 # Prompt Hydrator Context Template
 
 This template is written to a temp file by the UserPromptSubmit hook.

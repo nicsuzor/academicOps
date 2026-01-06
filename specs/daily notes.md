@@ -1,3 +1,9 @@
+---
+name: daily-notes
+title: Daily Notes
+category: spec
+---
+
 
 ---
 title: Daily Notes

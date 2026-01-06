@@ -1,6 +1,7 @@
 ---
 title: Skills Overview
 type: spec
+category: spec
 status: implemented
 permalink: skills-overview
 tags:

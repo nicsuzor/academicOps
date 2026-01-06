@@ -1,3 +1,9 @@
+---
+name: quality-rubric
+title: Quality Rubric
+category: spec
+---
+
 # Framework Component Rubric (The Gold Standard)
 
 This rubric defines the "Constitutional Requirements" for any component in `academicOps`. Use this to audit existing components and design new ones.

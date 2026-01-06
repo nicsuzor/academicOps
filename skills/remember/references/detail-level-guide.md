@@ -1,4 +1,10 @@
 ---
+name: detail-level-guide
+title: Detail Level Guide
+category: ref
+---
+
+---
 title: Detail Level Guide: What to Capture Where
 type: reference
 permalink: detail-level-guide

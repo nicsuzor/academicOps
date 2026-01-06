@@ -1,6 +1,7 @@
 ---
 title: Generated Indices
 type: spec
+category: spec
 status: draft
 permalink: specs/generated-indices
 tags: [framework, architecture, audit]

@@ -1,6 +1,7 @@
 ---
 title: FastAPI
 type: reference
+category: ref
 permalink: python-dev-fastapi
 description: Modern web framework reference for building REST APIs with Python
 ---

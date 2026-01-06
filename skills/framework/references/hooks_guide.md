@@ -1,6 +1,7 @@
 ---
 title: Claude Code Hooks Configuration Guide
 type: reference
+category: ref
 permalink: ref-hooks-guide
 description: Complete technical reference for Claude Code CLI SessionStart hooks, configuration hierarchy, and multi-project patterns
 ---

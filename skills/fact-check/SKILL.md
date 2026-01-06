@@ -1,5 +1,6 @@
 ---
 name: fact-check
+category: instruction
 description: Verify factual claims in documents against authoritative sources. Catches hallucinations, fabricated quotes, and misattributed claims.
 allowed-tools: Read,Grep,Glob,WebSearch,WebFetch,Write,TodoWrite
 version: 1.0.0

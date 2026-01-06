@@ -1,6 +1,7 @@
 ---
 title: Experiment Archival
 type: reference
+category: instruction
 permalink: skills-analyst-experiment-archival
 description: Patterns for archiving intermediate analyses and experiments when data pipelines change
 tags: [experiments, archival, jupyter, research-methods, reference]

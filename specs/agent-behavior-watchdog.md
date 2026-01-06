@@ -2,6 +2,7 @@
 title: Agent Behavior Watchdog
 permalink: agent-behavior-watchdog
 type: spec
+category: spec
 tags:
   - framework
   - hooks

@@ -1,6 +1,7 @@
 ---
 title: Hydra Configuration
 type: reference
+category: ref
 permalink: python-dev-hydra
 description: Complete guide to Hydra configuration framework and patterns
 ---

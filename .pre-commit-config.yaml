@@ -56,6 +56,16 @@ repos:
         verbose: true
         stages: [commit]
 
+      # File taxonomy check - validates category frontmatter
+      - id: check-file-taxonomy
+        name: Check file taxonomy categories
+        entry: uv run python scripts/check_file_taxonomy.py
+        language: system
+        pass_filenames: false
+        always_run: true
+        verbose: true
+        stages: [commit]
+
 # Note: These checks are disabled by default (too slow for every commit)
 # Run manually with: uv run python scripts/audit_framework_health.py -m
 #

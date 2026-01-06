@@ -1,6 +1,7 @@
 ---
 title: Session Transcript Extractor
 type: spec
+category: spec
 status: implemented
 permalink: session-transcript-extractor
 tags:

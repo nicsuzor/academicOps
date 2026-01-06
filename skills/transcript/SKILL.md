@@ -1,5 +1,6 @@
 ---
 name: transcript
+category: instruction
 description: Generate markdown transcripts from Claude Code session files. Converts JSONL session logs to readable markdown with timing, tool operations, and hook context.
 allowed-tools: Read,Bash
 version: 1.4.0

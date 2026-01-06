@@ -1,5 +1,6 @@
 ---
 name: qa
+category: instruction
 description: Quality assurance agent that verifies concrete outcomes against user goals and acceptance criteria using real-world data
 permalink: commands/qa
 allowed-tools: Task,Bash,Read,Grep,Glob,Edit,mcp__memory__retrieve_memory

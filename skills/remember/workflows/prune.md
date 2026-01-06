@@ -1,6 +1,7 @@
 ---
 title: Prune Workflow
 type: automation
+category: instruction
 permalink: prune-workflow
 tags:
   - memory

@@ -1,5 +1,6 @@
 ---
 name: audit
+category: instruction
 description: Comprehensive framework governance audit - structure, justification, and index updates
 ---
 

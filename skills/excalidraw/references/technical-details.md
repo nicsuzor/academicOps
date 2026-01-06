@@ -1,6 +1,7 @@
 ---
 title: Excalidraw Technical Details
 type: reference
+category: ref
 permalink: excalidraw-technical-details
 description: Technical guidance on color systems, typography, shapes, arrows, layouts, and advanced techniques for creating professional Excalidraw diagrams.
 ---

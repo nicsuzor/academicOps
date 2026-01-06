@@ -1,6 +1,7 @@
 ---
 title: Email to Tasks Workflow
 type: spec
+category: spec
 status: draft
 permalink: email-to-tasks-workflow
 tags:

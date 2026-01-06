@@ -1,6 +1,7 @@
 ---
 title: analyst
 description: Support academic research data analysis using dbt and Streamlit. Use this skill when working with computational research projects (identified by dbt/ directory, Streamlit apps, or empirical data pipelines). The skill enforces academicOps best practices for reproducible, transparent, self-documenting research with collaborative single-step workflow.
+category: instruction
 allowed-tools: Read,Grep,Glob,Edit,Write,Bash,Skill
 version: 2.0.0
 permalink: skills-analyst-skill

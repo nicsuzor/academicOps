@@ -2,6 +2,7 @@
 title: Dashboard Narrative Synthesis
 status: draft
 type: spec
+category: spec
 created: 2026-01-01
 ---
 

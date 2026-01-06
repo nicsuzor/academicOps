@@ -1,6 +1,7 @@
 ---
 title: Streamlit Patterns
 type: reference
+category: ref
 permalink: skills-analyst-streamlit-patterns
 description: Best practices and design patterns for building Streamlit dashboards for research data analysis
 tags: [streamlit, patterns, dashboard, visualization, reference]

@@ -1,6 +1,7 @@
 ---
 title: Framework Reflexivity
 type: spec
+category: spec
 status: implemented
 permalink: reflexivity
 tags:

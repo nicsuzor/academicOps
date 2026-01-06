@@ -1,5 +1,6 @@
 ---
 name: tasks
+category: instruction
 description: Manage task lifecycle using scripts and MCP tools. Create, view, archive, and update properly formatted task files with structured metadata.
 allowed-tools: Read,Grep,Glob,Edit,Write,Bash
 version: 2.1.0

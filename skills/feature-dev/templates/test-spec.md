@@ -1,6 +1,7 @@
 ---
 title: Test Specification Template
 type: spec
+category: template
 permalink: skills/feature-dev/templates/test-spec
 description: Template for comprehensive integration test design and validation planning
 tags: [template, feature-dev, testing, qa]

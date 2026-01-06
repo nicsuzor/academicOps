@@ -1,7 +1,8 @@
 ---
 name: rules
 title: Enforcement Rules
-type: reference
+type: state
+category: state
 description: What rules are enforced, how, and evidence of effectiveness.
 permalink: rules
 tags: [framework, enforcement, moc]
@@ -9,7 +10,7 @@ tags: [framework, enforcement, moc]
 
 # Enforcement Rules
 
-**Purpose**: Current state of what's protected and how. For mechanism selection guidance, see [[ENFORCEMENT|docs/ENFORCEMENT.md]]. For architectural philosophy, see [[enforcement|specs/enforcement.md]].
+**Purpose**: Current state of what's protected and how. For mechanism selection guidance, see [[ENFORCEMENT]]. For architectural philosophy, see [[enforcement]].
 
 ## Axiom → Enforcement Mapping
 

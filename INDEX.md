@@ -1,5 +1,6 @@
 ---
 name: index
+category: spec
 title: Framework Index
 type: reference
 description: Complete file accounting for audits. NOT injected to agents - use FRAMEWORK.md for paths.

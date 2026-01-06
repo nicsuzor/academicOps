@@ -1,6 +1,7 @@
 ---
 name: planner
 description: Implementation planning with memory context and mandatory critic review
+category: instruction
 permalink: aops/agents/planner
 type: agent
 tags:

@@ -1,3 +1,9 @@
+---
+name: effectual-planning-agent
+title: Effectual Planning Agent
+category: spec
+---
+
 # Effectual Planning Agent
 
 The Effectual Planning Agent is a Claude Code agent that serves as a strategic planning assistant for academic research and knowledge work under conditions of genuine uncertainty. It receives fragments of information incrementally, organises them into a semantic web of goals, projects, and tasks, surfaces hidden structure, and proposes high-value next steps.

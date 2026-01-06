@@ -1,6 +1,7 @@
 ---
 title: Pandas
 type: reference
+category: ref
 permalink: python-dev-pandas
 description: Data manipulation and analysis library reference
 ---

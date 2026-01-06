@@ -1,3 +1,9 @@
+---
+name: execution-flow
+title: Execution Flow
+category: docs
+---
+
 # academicOps Execution Flow
 
 Where the framework injects control during a Claude Code session.

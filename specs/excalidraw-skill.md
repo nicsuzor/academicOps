@@ -1,6 +1,7 @@
 ---
 title: Excalidraw Skill
 type: spec
+category: spec
 status: implemented
 permalink: excalidraw-skill
 tags:

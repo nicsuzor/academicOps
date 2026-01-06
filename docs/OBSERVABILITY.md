@@ -1,6 +1,7 @@
 ---
 title: Observability
 type: reference
+category: docs
 permalink: docs-observability
 description: Hook logs, session transcripts, and observability data sources for debugging and auditing
 ---

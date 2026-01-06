@@ -1,6 +1,7 @@
 ---
 title: Cloudflare R2 Prompt Logging
 type: spec
+category: spec
 status: implemented
 tags:
 - infrastructure

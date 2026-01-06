@@ -1,6 +1,7 @@
 ---
 title: Informed Improvement Options
 type: spec
+category: spec
 status: requirement
 created: 2025-12-24
 permalink: informed-improvement-options

@@ -1,5 +1,6 @@
 ---
 name: critic
+category: instruction
 description: Second-opinion review of plans and conclusions
 permalink: aops/agents/critic
 type: agent

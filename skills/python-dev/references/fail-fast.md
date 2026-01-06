@@ -1,6 +1,7 @@
 ---
 title: Fail-Fast Philosophy
 type: reference
+category: ref
 permalink: python-dev-fail-fast
 description: Error handling philosophy and patterns for Python applications
 ---

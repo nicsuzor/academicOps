@@ -1,6 +1,7 @@
 ---
 title: MCP Excalidraw Server Setup
 type: reference
+category: ref
 permalink: excalidraw-mcp-server
 description: Real-time programmatic manipulation of Excalidraw canvas through AI agents using MCP server integration.
 ---

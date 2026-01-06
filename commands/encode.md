@@ -1,5 +1,6 @@
 ---
 name: encode
+category: instruction
 description: Capture work patterns as reusable workflows/skills through iterative refinement
 allowed-tools: Read,Grep,Glob,Task,TodoWrite,Write,Edit,Skill,mcp__memory__*
 permalink: commands/encode

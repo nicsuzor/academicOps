@@ -1,6 +1,7 @@
 ---
 title: Claude Code Configuration Reference
 type: reference
+category: ref
 permalink: ref-claude-code-config
 description: Technical reference for Claude Code configuration file locations, behavior, and best practices
 ---

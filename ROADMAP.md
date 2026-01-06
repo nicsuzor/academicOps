@@ -1,6 +1,7 @@
 ---
 title: Framework Status
 type: note
+category: spec
 permalink: aops-roadmap
 tags:
   - framework

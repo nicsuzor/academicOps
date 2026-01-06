@@ -1,6 +1,7 @@
 ---
 title: Google BigQuery
 type: reference
+category: ref
 permalink: python-dev-bigquery
 description: Python client reference for Google BigQuery data warehouse operations
 ---

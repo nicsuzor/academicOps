@@ -2,6 +2,7 @@
 title: Ultra Vires Custodiet
 permalink: ultra-vires-custodiet
 type: spec
+category: spec
 status: draft
 tags:
   - framework

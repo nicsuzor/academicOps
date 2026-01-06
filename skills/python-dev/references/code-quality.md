@@ -1,6 +1,7 @@
 ---
 title: Python Code Quality
 type: reference
+category: ref
 permalink: python-dev-code-quality
 description: Python-specific code quality standards and conventions
 ---

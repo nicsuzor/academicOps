@@ -1,6 +1,7 @@
 ---
 title: Statistical Reporting Standards
 type: reference
+category: ref
 permalink: analyst-ref-reporting-standards
 description: Guidelines for reporting statistical analyses in APA style, including methods, results, effect sizes, figures, tables, and reproducibility standards.
 ---

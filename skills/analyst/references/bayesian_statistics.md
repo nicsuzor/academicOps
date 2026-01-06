@@ -1,6 +1,7 @@
 ---
 title: Bayesian Statistical Analysis
 type: reference
+category: ref
 permalink: analyst-ref-bayesian-stats
 description: Guidance on Bayesian inference, prior specification, hypothesis testing, model comparison, and reporting of Bayesian results.
 ---

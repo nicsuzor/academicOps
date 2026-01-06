@@ -1,5 +1,6 @@
 ---
 name: effectual-planner
+category: instruction
 description: Strategic planning under uncertainty (goals, projects, knowledge-building). NOT for implementation plans.
 permalink: effectual-planner
 type: agent

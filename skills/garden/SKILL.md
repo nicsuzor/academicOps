@@ -1,5 +1,6 @@
 ---
 name: garden
+category: instruction
 description: Incremental PKM maintenance - weeding, pruning, linking, consolidating. Tends the knowledge base bit by bit.
 allowed-tools: Read,Grep,Glob,Edit,Write,Bash,Task,mcp__memory__*
 version: 1.0.0

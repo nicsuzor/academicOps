@@ -2,6 +2,7 @@
 name: axioms
 title: Universal Principles
 type: reference
+category: spec
 description: Inviolable rules and foundational principles. No exceptions.
 permalink: axioms
 tags: [framework, principles, core]

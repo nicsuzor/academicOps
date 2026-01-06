@@ -1,6 +1,7 @@
 ---
 title: Tasks MCP Server
 type: spec
+category: spec
 status: draft
 permalink: tasks-mcp-server
 tags:

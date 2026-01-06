@@ -1,6 +1,7 @@
 ---
 title: Context Discovery Reference
 type: reference
+category: ref
 permalink: analyst-ref-context-discovery
 description: Guide to discovering and reading project context, including README files, data documentation, existing work, and extracting strategic context before analysis.
 ---

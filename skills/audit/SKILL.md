@@ -1,5 +1,6 @@
 ---
 name: audit
+category: instruction
 description: Comprehensive framework governance audit - structure checking, justification checking, and index file updates.
 allowed-tools: Read,Glob,Grep,Edit,Write,Bash
 version: 4.0.0

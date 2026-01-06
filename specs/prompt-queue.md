@@ -1,6 +1,7 @@
 ---
 title: Prompt Queue
 type: spec
+category: spec
 status: approved
 tags: [spec, workflow, capture, adhd]
 created: 2025-12-27

@@ -1,6 +1,7 @@
 ---
 title: Spec Maintenance
 type: spec
+category: spec
 status: implemented
 permalink: spec-maintenance
 tags: [spec, framework, documentation, synthesis]

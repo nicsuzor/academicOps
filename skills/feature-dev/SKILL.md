@@ -1,5 +1,6 @@
 ---
 name: feature-dev
+category: instruction
 description: Rigorous test-first feature development from idea to validated implementation.
 allowed-tools: Read,Edit,Write,Bash,Skill,TodoWrite
 version: 1.0.0

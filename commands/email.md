@@ -1,5 +1,6 @@
 ---
 name: email
+category: instruction
 description: Create "ready for action" tasks from emails - with summaries, downloaded documents, and clear response requirements
 allowed-tools: Skill
 permalink: commands/email

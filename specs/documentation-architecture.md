@@ -1,6 +1,7 @@
 ---
 title: Documentation Architecture
 type: spec
+category: spec
 status: approved
 permalink: documentation-architecture
 description: Three-document architecture for framework documentation with clear audience separation

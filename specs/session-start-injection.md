@@ -1,6 +1,7 @@
 ---
 title: SessionStart Injection Specification
 type: spec
+category: spec
 status: Draft
 permalink: session-start-injection-spec
 tags: [framework, hooks, architecture, session]

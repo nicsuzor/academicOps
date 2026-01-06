@@ -1,5 +1,6 @@
 ---
 name: reflect
+category: instruction
 description: Agent self-audit of process compliance against skill specifications and framework workflow
 allowed-tools: Read,Grep,Glob
 permalink: commands/reflect

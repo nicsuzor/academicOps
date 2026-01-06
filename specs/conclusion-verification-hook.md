@@ -1,6 +1,7 @@
 ---
 title: Conclusion Verification Hook
 type: spec
+category: spec
 status: draft
 permalink: conclusion-verification-hook
 tags:

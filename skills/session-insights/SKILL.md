@@ -1,5 +1,6 @@
 ---
 name: session-insights
+category: instruction
 description: Extract accomplishments and learnings from Claude Code sessions. Updates daily summary and mines for framework patterns.
 allowed-tools: Read,Bash,Task,Edit,Write
 version: 3.2.0
@@ -81,6 +82,9 @@ If the note does NOT exist:
 ```markdown
 # Daily Summary - YYYY-MM-DD
 
+## Today's Story
+(populated in Step 6 - 2-3 sentence narrative synthesized from session summaries)
+
 ## 📊 Focus Dashboard
 
 ### Priority Burndown
@@ -109,11 +113,11 @@ P2 ░░░░░░░░░░  0% (0/N)
 ---
 
 ## [[academicOps]] → [[projects/aops]]
-Progress: ░░░░░░░░░░ 0/0
+Scheduled: n/a | Unscheduled: 0 items
 - [x] Accomplishment from aops sessions
 
 ## [[writing]] → [[projects/writing]]
-Progress: ░░░░░░░░░░ 0/0
+Scheduled: n/a | Unscheduled: 0 items
 - [x] Accomplishment from writing sessions
 
 ## Abandoned Todos
@@ -241,10 +245,15 @@ ls $ACA_DATA/dashboard/sessions/*.json 2>/dev/null | xargs -I{} grep -l '"date":
 
    **VERIFY DESCRIPTIONS**: Gemini mining may hallucinate. Cross-check accomplishment descriptions against actual changes (git log, file content). Per AXIOMS #2, do not propagate fabricated descriptions.
 
-   **Read task index** from `$ACA_DATA/tasks/index.json` to populate burndown and priority sections.
+   **Task data**: Do NOT read `$ACA_DATA/tasks/index.json` directly (too large). Instead:
+   - Use `grep -l '"scheduled": "YYYY-MM-DD"' $ACA_DATA/tasks/*.md` to find scheduled tasks
+   - Or use `grep -l '"priority": "P0"' $ACA_DATA/tasks/*.md` for priority filtering
 
 ```markdown
 # Daily Summary - YYYY-MM-DD
+
+## Today's Story
+Brief narrative of what was accomplished today (2-3 sentences synthesized from session summaries).
 
 ## 📊 Focus Dashboard
 
@@ -270,12 +279,12 @@ P2 ░░░░░░░░░░  0% (0/3)
 | def5678 | aops | Another session summary |
 
 ## [[academicOps]] → [[projects/aops]]
-Progress: ██████░░░░ 6/10
+Scheduled: ██████░░░░ 6/10 | Unscheduled: 3 items
 - [x] Accomplishment from aops sessions
 - [x] Another accomplishment
 
 ## [[writing]] → [[projects/writing]]
-Progress: ████░░░░░░ 4/10
+Scheduled: ████░░░░░░ 4/10 | Unscheduled: 2 items
 - [x] Accomplishment from writing sessions
 
 ## Session Insights
@@ -286,21 +295,30 @@ Sessions Mined    ████████░░ 8/10
 **Top Context Gaps**: gap1, gap2
 ```
 
+   **Progress Metrics** (IMPORTANT - distinguish scheduled vs unscheduled):
+   - **Scheduled**: Tasks from `$ACA_DATA/tasks/` with `project:` matching this project and `scheduled:` date = today
+   - **Unscheduled**: Accomplishments from session mining that don't correspond to scheduled tasks
+   - Format: `Scheduled: ██████░░░░ 6/10 | Unscheduled: 3 items`
+   - If NO scheduled tasks exist for project: `Scheduled: n/a | Unscheduled: N items`
+   - Progress bar shows scheduled task completion ONLY (not accomplishment count)
+
    **ASCII Progress Bar Helper** (for 10-char bars):
    - Calculate: `filled = round(ratio * 10)`
    - Use: `█` × filled + `░` × (10 - filled)
    - Example: 75% → `████████░░`
+   - If no scheduled tasks: show `n/a` instead of bar
 
    **Wikilink Rules**:
    - Tasks: `[[YYYYMMDD-task-slug]]` (matches filename in tasks/)
    - Projects: `[[projects/project-name]]`
+   - Quick Wins / ad-hoc items: Link if task file exists, otherwise plain text
    - Sessions: plain text (session IDs, not linked)
 
 5. **Write updated synthesis.json** at `$ACA_DATA/dashboard/synthesis.json`:
 
    synthesis.json is a **dashboard-optimized view** of the daily note - it should reflect ALL accomplishments from the daily note, not just those from mined session JSONs. If daily note has manually-added accomplishments, include them.
 
-   Read task index from `$ACA_DATA/tasks/index.json` to populate next_action and waiting_on.
+   Use grep to find P0/waiting tasks (see Task data note above) to populate next_action and waiting_on.
 
 ```json
 {

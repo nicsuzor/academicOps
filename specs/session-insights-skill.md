@@ -1,6 +1,7 @@
 ---
 title: Session-Insights Skill
 type: spec
+category: spec
 status: implemented
 permalink: session-insights-skill
 tags:

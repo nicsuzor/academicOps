@@ -1,6 +1,7 @@
 ---
 title: Python-Dev Skill
 type: spec
+category: spec
 status: implemented
 permalink: python-dev-skill
 tags:

@@ -1,6 +1,7 @@
 ---
 title: Modern Python Patterns
 type: reference
+category: ref
 permalink: python-dev-modern-python
 description: Contemporary Python best practices and idioms
 ---

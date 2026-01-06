@@ -1,6 +1,7 @@
 ---
 title: User Story Template
 type: spec
+category: template
 permalink: skills/feature-dev/templates/user-story
 description: Template for capturing user needs, requirements, and success criteria
 tags: [template, feature-dev, requirements, user-story]

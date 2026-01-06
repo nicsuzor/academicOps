@@ -1,6 +1,7 @@
 ---
 title: Framework Audit Skill Specification
 type: spec
+category: spec
 status: Implemented
 permalink: audit-skill-spec
 description: Comprehensive framework governance audit - structure checking, justification checking, and index file updates

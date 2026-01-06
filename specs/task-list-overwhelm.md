@@ -1,6 +1,7 @@
 ---
 title: Task State Index
 type: spec
+category: spec
 status: in-progress
 permalink: task-state-index
 tags: [spec, tasks, foundation]

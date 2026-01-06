@@ -1,6 +1,7 @@
 ---
 title: Enforcement Mechanisms Guide
 type: reference
+category: docs
 description: Living document on how to effectively enforce agent behaviors
 tags: [framework, enforcement, learning]
 ---

@@ -1,6 +1,7 @@
 ---
 title: Framework Health
 type: spec
+category: spec
 status: implemented
 permalink: framework-health
 tags:

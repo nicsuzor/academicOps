@@ -1,5 +1,6 @@
 ---
 name: dashboard
+category: instruction
 description: Cognitive Load Dashboard - Live Streamlit dashboard for task visibility and session activity monitoring.
 allowed-tools: Read,Bash,Skill
 version: 2.0.0

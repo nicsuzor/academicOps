@@ -1,5 +1,6 @@
 ---
 name: meta
+category: instruction
 description: Strategic supervisor for academicOps framework - loads complete context, makes principled decisions, handles work end-to-end with TDD quality gates
 permalink: commands/meta
 tools:

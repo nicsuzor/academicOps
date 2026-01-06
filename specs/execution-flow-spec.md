@@ -1,6 +1,7 @@
 ---
 title: Execution Flow Document Specification
 type: spec
+category: spec
 status: implemented
 permalink: execution-flow-spec
 tags: [framework, documentation, architecture]

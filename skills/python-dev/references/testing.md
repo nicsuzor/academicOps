@@ -1,6 +1,7 @@
 ---
 title: Python Testing Philosophy
 type: reference
+category: ref
 permalink: python-dev-testing
 description: Testing patterns, mocking strategy, and pytest best practices
 ---

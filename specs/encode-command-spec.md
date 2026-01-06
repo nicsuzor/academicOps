@@ -1,6 +1,7 @@
 ---
 title: Encode Command Specification
 type: spec
+category: spec
 status: implemented
 permalink: specs/encode-command
 tags: [framework, commands, pattern-capture]

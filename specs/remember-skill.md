@@ -1,6 +1,7 @@
 ---
 title: Remember Skill
 type: spec
+category: spec
 status: implemented
 permalink: remember-skill
 tags:

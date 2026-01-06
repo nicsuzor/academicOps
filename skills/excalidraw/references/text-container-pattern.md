@@ -1,6 +1,7 @@
 ---
 title: Text in Container Pattern
 type: reference
+category: ref
 permalink: excalidraw-text-container
 description: Pattern for binding text to containers in Excalidraw JSON using containerId and boundElements properties to ensure they move together.
 ---

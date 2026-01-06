@@ -1,5 +1,6 @@
 ---
 name: ground-truth
+category: instruction
 description: Establish and refine ground truth labels for evaluation datasets. Use when creating, reviewing, or updating labels for any judgment/reasoning task.
 allowed-tools: Read,Grep,Glob,Edit,Write
 version: 1.0.0

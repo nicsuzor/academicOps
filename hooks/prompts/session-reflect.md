@@ -1,3 +1,9 @@
+---
+name: session-reflect
+title: Session Reflect
+category: instruction
+---
+
 [AOPS: Session Reflection]
 
 Before ending, you MUST ensure that you:

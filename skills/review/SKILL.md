@@ -1,5 +1,6 @@
 ---
 name: review
+category: instruction
 description: Assist the user in reviewing academic work (papers, dissertations, drafts). Focuses on preparation, navigation, and synthesis, NOT replacing critical judgment.
 allowed-tools: Read,Write,view_file,view_file_outline,grep_search
 version: 1.0.0

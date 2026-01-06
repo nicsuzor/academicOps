@@ -1,3 +1,9 @@
+---
+name: prompt-hydration-instruction
+title: Prompt Hydration Instruction
+category: template
+---
+
 # Prompt Hydration Instruction Template
 
 Short instruction injected by UserPromptSubmit hook.

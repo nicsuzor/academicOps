@@ -1,5 +1,6 @@
 ---
 name: training-set-builder
+category: instruction
 description: Extract structured training examples from document sets to build datasets for teaching LLMs specific tasks or styles. Use when processing review documents, feedback annotations, or revision histories.
 allowed-tools: Read,Grep,Glob,Edit,Write
 version: 1.0.0

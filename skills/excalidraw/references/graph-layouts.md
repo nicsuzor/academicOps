@@ -1,6 +1,7 @@
 ---
 title: Graph/Network Visualization Layouts
 type: reference
+category: ref
 permalink: excalidraw-graph-layouts
 description: Three-tier radial pattern for visualizing strategic goals, projects, and tasks in a network layout that emphasizes relationships and hierarchy.
 ---

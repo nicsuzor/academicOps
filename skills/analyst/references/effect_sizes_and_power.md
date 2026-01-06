@@ -1,6 +1,7 @@
 ---
 title: Effect Sizes and Power Analysis
 type: reference
+category: ref
 permalink: analyst-ref-effect-sizes-power
 description: Guidance on calculating, interpreting, and reporting effect sizes for various analyses, plus power analysis for study planning and sensitivity analysis.
 ---

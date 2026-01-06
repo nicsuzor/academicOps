@@ -1,5 +1,6 @@
 ---
 name: consolidate
+category: instruction
 description: Consolidate LOG.md entries into thematic learning files and archive
 allowed-tools: Skill
 permalink: commands/consolidate

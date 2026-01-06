@@ -1,6 +1,7 @@
 ---
 title: Enforcement Architecture
 type: spec
+category: spec
 status: implemented
 permalink: enforcement
 tags: [enforcement, compliance, framework-architecture, verification]

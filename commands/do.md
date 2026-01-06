@@ -1,6 +1,7 @@
 ---
 name: do
 description: Execute work with full context enrichment and guardrails via hypervisor
+category: instruction
 permalink: commands/do
 ---
 

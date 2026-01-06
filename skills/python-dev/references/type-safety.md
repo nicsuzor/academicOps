@@ -1,6 +1,7 @@
 ---
 title: Type Safety in Python
 type: reference
+category: ref
 permalink: python-dev-type-safety
 description: Type hints, Pydantic models, and static type checking patterns
 ---

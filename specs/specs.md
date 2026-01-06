@@ -2,6 +2,7 @@
 title: Technical Specifications
 permalink: aops-specs
 type: index
+category: spec
 tags: [aops, specs, architecture, design]
 ---
 
