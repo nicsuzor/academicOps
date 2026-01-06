@@ -4,7 +4,6 @@ category: instruction
 description: Ultra vires detector - catches agents acting beyond granted authority
 type: agent
 model: haiku
-tools: [Read]
 permalink: aops/agents/custodiet
 tags:
   - enforcement
