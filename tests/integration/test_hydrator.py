@@ -154,6 +154,79 @@ def semantic_validate_hydration(hydrator_response: dict, prompt_type: str) -> di
 
 @pytest.mark.slow
 @pytest.mark.integration
+def test_hydrator_does_not_glob_when_given_specific_file(claude_headless_tracked) -> None:
+    """Verify hydrator reads specific file directly without globbing the directory.
+
+    BUG: When given "Read /tmp/claude-hydrator/hydrate_xxx.md", the hydrator
+    was making unnecessary Glob/Search calls to list all files in the directory
+    before reading the specific file.
+
+    This test verifies the fix: hydrator should trust the specific file path
+    and read it directly without searching the directory.
+
+    Per H37c: Execution over inspection - we verify actual tool call behavior.
+    """
+    # Send a normal prompt that triggers hydration via UserPromptSubmit hook
+    # The hook creates a temp file and tells main agent to spawn prompt-hydrator
+    prompt = (
+        "HYDRATOR_GLOB_TEST: Help me understand how the policy_enforcer hook works"
+    )
+
+    result, session_id, tool_calls = claude_headless_tracked(
+        prompt, timeout_seconds=180
+    )
+
+    assert result["success"], f"Execution failed: {result.get('error')}"
+
+    # Check raw output for evidence of unnecessary globbing by the hydrator
+    output = result.get("output", "")
+
+    # The BUG: hydrator globs /tmp/claude-hydrator when it should just read the specific file
+    # Look for patterns that indicate the hydrator searched the temp directory
+    temp_dir = "/tmp/claude-hydrator"
+
+    # These patterns in the output indicate the bug is present
+    # The hydrator should NOT be searching the temp directory - it should trust the path
+    bug_indicators = [
+        # Glob/Search patterns targeting the hydrator temp directory
+        f'path: "{temp_dir}"',
+        f"path: '{temp_dir}'",
+        f'path="{temp_dir}"',
+        f"path='{temp_dir}'",
+        # Pattern matching all files in hydrator directory
+        f"Found 43 files",  # From user's bug report
+        f"Found 4",  # Any "Found N files" in that directory
+    ]
+
+    # Check if output contains evidence of unnecessary globbing
+    for indicator in bug_indicators:
+        if indicator in output:
+            # Verify it's actually the hydrator doing this, not the main agent
+            # The bug shows up as Search/Glob calls within the prompt-hydrator output
+            if "prompt-hydrator" in output and indicator in output:
+                pytest.fail(
+                    f"Hydrator made unnecessary glob/search of temp directory.\n"
+                    f"Found indicator: {indicator}\n"
+                    f"When given a specific file path, the hydrator should read it "
+                    f"directly without searching the directory.\n"
+                    f"Session: {session_id}"
+                )
+
+    # Verify hydration actually happened (positive check)
+    hydrator_calls = [
+        c for c in tool_calls
+        if c["name"] == "Task"
+        and c.get("input", {}).get("subagent_type") == "prompt-hydrator"
+    ]
+
+    assert len(hydrator_calls) > 0, (
+        f"prompt-hydrator should have been spawned for this prompt. "
+        f"Session: {session_id}"
+    )
+
+
+@pytest.mark.slow
+@pytest.mark.integration
 def test_hydrator_temp_file_contains_real_prompt(claude_headless) -> None:
     """Verify UserPromptSubmit hook writes user prompt to temp file.
 
