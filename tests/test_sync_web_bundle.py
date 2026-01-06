@@ -121,6 +121,7 @@ description: This should fail parsing
     config_dir.mkdir(parents=True)
     (config_dir / "settings.json").write_text('{"full": true}')
     (config_dir / "settings-web.json").write_text('{"web": true}')
+    (config_dir / "settings-self.json").write_text('{"self": true, "uses": "CLAUDE_PROJECT_DIR"}')
 
     # Create hooks directory
     hooks_dir = aops / "hooks"
@@ -255,6 +256,18 @@ class TestSyncToSelf:
         # Check symlink targets are relative
         assert str((claude_dir / "skills").readlink()) == "../skills"
         assert str((claude_dir / "commands").readlink()) == "../commands"
+
+    def test_settings_use_self_config(self, mock_aops_root):
+        """Test that sync_to_self uses settings-self.json (not settings.json)."""
+        result = sync_to_self(dry_run=False)
+
+        assert result == 0
+
+        claude_dir = mock_aops_root / ".claude"
+        settings_link = claude_dir / "settings.json"
+
+        # Should link to settings-self.json, not settings.json
+        assert str(settings_link.readlink()) == "../config/claude/settings-self.json"
 
     def test_updates_existing_symlinks(self, mock_aops_root):
         """Test that existing symlinks are updated if target differs."""

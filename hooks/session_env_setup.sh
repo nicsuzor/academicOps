@@ -9,17 +9,18 @@
 # - Hooks receive env vars from Claude Code's settings "env" section
 # - ~/.claude/settings.local.json (created by setup.sh) provides machine-specific paths
 # - This hook handles web/remote sessions where settings.local.json doesn't exist
+# - For repo-local .claude/ (settings-self.json), hooks use CLAUDE_PROJECT_DIR which is always set
 #
-# For local: AOPS and ACA_DATA come from settings.local.json (set by setup.sh)
-# For remote: Derives paths from $CLAUDE_PROJECT_DIR and writes to $CLAUDE_ENV_FILE
+# For local setup.sh: AOPS and ACA_DATA come from settings.local.json
+# For remote/web: Derives AOPS from CLAUDE_PROJECT_DIR and writes to CLAUDE_ENV_FILE
 #
 
 set -euo pipefail
 
 # Determine the AOPS path
 # Priority:
-# 1. Already set in environment (from settings.local.json)
-# 2. Derived from CLAUDE_PROJECT_DIR (for web sessions)
+# 1. Already set in environment (from settings.local.json via setup.sh)
+# 2. Derived from CLAUDE_PROJECT_DIR (for web sessions and remote VMs)
 # 3. Derived from this script's location (fallback)
 
 if [ -n "${AOPS:-}" ] && [ -d "${AOPS}" ]; then
@@ -28,17 +29,20 @@ if [ -n "${AOPS:-}" ] && [ -d "${AOPS}" ]; then
 else
     # Need to derive AOPS path
     if [ -n "${CLAUDE_PROJECT_DIR:-}" ] && [ -d "${CLAUDE_PROJECT_DIR}" ]; then
-        # Use CLAUDE_PROJECT_DIR (set by Claude Code)
+        # Use CLAUDE_PROJECT_DIR (always set by Claude Code)
         AOPS="$CLAUDE_PROJECT_DIR"
+        echo "Derived AOPS from CLAUDE_PROJECT_DIR: $AOPS" >&2
     else
         # Fallback: derive from this script's location
         SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
         AOPS="$(dirname "$SCRIPT_DIR")"
+        echo "Derived AOPS from script location: $AOPS" >&2
     fi
 
     # Validate the derived path has expected structure
     if [ ! -f "$AOPS/AXIOMS.md" ]; then
         echo "WARNING: Cannot validate AOPS path - AXIOMS.md not found at $AOPS" >&2
+        echo "This may indicate the hook is running in an unexpected context" >&2
     fi
 
     export AOPS
@@ -48,12 +52,13 @@ else
         # Only write if not already present to avoid duplicates
         if ! grep -q "export AOPS=" "$CLAUDE_ENV_FILE" 2>/dev/null; then
             echo "export AOPS=\"$AOPS\"" >> "$CLAUDE_ENV_FILE"
-            echo "Environment variables written to CLAUDE_ENV_FILE" >&2
+            echo "Wrote AOPS to CLAUDE_ENV_FILE" >&2
         fi
 
         # Only add to PYTHONPATH if not already present
         if ! grep -q "PYTHONPATH.*$AOPS" "$CLAUDE_ENV_FILE" 2>/dev/null; then
             echo "export PYTHONPATH=\"$AOPS:\${PYTHONPATH:-}\"" >> "$CLAUDE_ENV_FILE"
+            echo "Updated PYTHONPATH in CLAUDE_ENV_FILE" >&2
         fi
     fi
 

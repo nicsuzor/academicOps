@@ -347,7 +347,7 @@ else
     echo -e "${YELLOW}⚠ sync_web_bundle.py failed - creating symlinks manually${NC}"
     REPO_CLAUDE="$AOPS_PATH/.claude"
     mkdir -p "$REPO_CLAUDE"
-    for item in settings.json:../config/claude/settings.json agents:../agents skills:../skills commands:../commands hooks:../hooks CLAUDE.md:../CLAUDE.md; do
+    for item in settings.json:../config/claude/settings-self.json agents:../agents skills:../skills commands:../commands hooks:../hooks CLAUDE.md:../CLAUDE.md; do
         name="${item%%:*}"
         target="${item#*:}"
         [ -e "$REPO_CLAUDE/$name" ] && rm -rf "$REPO_CLAUDE/$name"

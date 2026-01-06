@@ -80,7 +80,7 @@ def sync_to_self(dry_run: bool = False) -> int:
         "commands": "../commands",
         "agents": "../agents",
         "CLAUDE.md": "../CLAUDE.md",
-        "settings.json": "../config/claude/settings.json",  # Full settings for self
+        "settings.json": "../config/claude/settings-self.json",  # Self settings use CLAUDE_PROJECT_DIR
     }
 
     for name, rel_target in links.items():
