@@ -45,11 +45,11 @@ def test_axioms_content_actually_loaded(claude_headless: Any) -> None:
     response = extract_response_text(result)
 
     # Check if response contains AXIOM #1 concepts
-    # AXIOM #1 is "DO ONE THING - Complete the task requested, then STOP"
+    # AXIOM #1 is "categorical-imperative" - universal rule, justifiable
     axiom_concepts = [
-        "do one thing" in response.lower(),
-        "complete" in response.lower() and "stop" in response.lower(),
-        "task" in response.lower() and "then stop" in response.lower(),
+        "categorical" in response.lower(),
+        "universal rule" in response.lower(),
+        "justifiable" in response.lower(),
     ]
 
     assert any(axiom_concepts), (
@@ -126,7 +126,7 @@ def test_agent_knows_axioms_without_reading(claude_headless: Any) -> None:
     result = claude_headless(
         prompt=(
             "WITHOUT using the Read tool or any file reading, "
-            "what does AXIOM #1 say about completing tasks? "
+            "what does AXIOM #1 say? "
             "If you don't already know this from your loaded context, "
             "just say 'I don't know'."
         ),
@@ -139,10 +139,11 @@ def test_agent_knows_axioms_without_reading(claude_headless: Any) -> None:
     response = extract_response_text(result).lower()
 
     # Claude should know AXIOM #1 content if it was loaded at session start
+    # AXIOM #1 is "categorical-imperative" - universal rule, justifiable
     knows_axiom = (
-        "do one thing" in response
-        or ("complete" in response and "stop" in response)
-        or "task" in response
+        "categorical" in response
+        or "universal rule" in response
+        or "justifiable" in response
     )
     didnt_know = "i don't know" in response or "don't have" in response
 

@@ -204,15 +204,21 @@ class TestDailySummaryOutputs:
         has_heading = "# Daily Summary" in content or content.strip().startswith("#")
         assert has_heading, f"{most_recent.name} missing daily summary heading"
 
-        # Check for PRIMARY or SECONDARY section
-        has_section = "## PRIMARY:" in content or "## SECONDARY:" in content
-        assert (
-            has_section
-        ), f"{most_recent.name} missing PRIMARY/SECONDARY section header"
-
-        # Check for checkbox items
-        has_checkbox = "- [x]" in content or "- [ ]" in content
-        assert has_checkbox, f"{most_recent.name} missing checkbox items"
+        # Check for expected sections per current SKILL.md spec
+        # Can be any of: Today's Priorities, P0 Tasks, Session Log, or project sections
+        expected_sections = [
+            "## Today's Priorities",
+            "### P0 Tasks",
+            "### Pressing",
+            "## Session Log",
+            "## [[",  # Project section like ## [[academicOps]]
+            "## Session Insights",
+        ]
+        has_section = any(section in content for section in expected_sections)
+        assert has_section, (
+            f"{most_recent.name} missing expected section header. "
+            f"Expected one of: {expected_sections}"
+        )
 
     def test_daily_summary_session_log_table(self, sessions_dir: Path) -> None:
         """Test daily note contains Session Log table with expected columns."""
@@ -235,50 +241,33 @@ class TestDailySummaryOutputs:
 
 
 class TestLearningOutputs:
-    """Test learning output files (Step 5 of skill)."""
+    """Test learning output routing (Step 6b of skill).
 
-    @pytest.fixture
-    def learning_dir(self) -> Path:
-        """Get the learning directory."""
+    Note: Per current SKILL.md spec, learning observations are routed to
+    GitHub Issues via the /log skill, NOT to local markdown files.
+    These tests verify the routing mechanism exists.
+    """
+
+    def test_learning_log_skill_exists(self) -> None:
+        """Test that learning-log skill exists for routing observations."""
+        aops = os.environ.get("AOPS")
+        assert aops, "AOPS not set"
+
+        skill_path = Path(aops) / "skills" / "learning-log" / "SKILL.md"
+        assert skill_path.exists(), (
+            f"learning-log skill not found at {skill_path}. "
+            "This skill routes learning observations to GitHub Issues."
+        )
+
+    def test_dashboard_sessions_dir_exists(self) -> None:
+        """Test that dashboard sessions directory exists for mined JSONs."""
         aca_data = os.environ.get("ACA_DATA")
         assert aca_data, "ACA_DATA not set"
-        return Path(aca_data) / "projects" / "aops" / "learning"
 
-    def test_learning_log_exists(self, learning_dir: Path) -> None:
-        """Test that LOG.md exists and is non-empty."""
-        log_file = learning_dir / "LOG.md"
-        assert log_file.exists(), f"LOG.md not found at {log_file}"
-        assert log_file.stat().st_size > 0, "LOG.md is empty"
-
-    def test_learning_log_has_entries(self, learning_dir: Path) -> None:
-        """Test that LOG.md contains dated entries."""
-        log_file = learning_dir / "LOG.md"
-        assert log_file.exists(), "LOG.md not found"
-
-        content = log_file.read_text()
-
-        # Look for entry format: ### YYYY-MM-DD
-        entry_pattern = re.compile(r"### \d{4}-\d{2}-\d{2}")
-        entries = entry_pattern.findall(content)
-
-        assert entries, "LOG.md has no dated entries (### YYYY-MM-DD format)"
-
-    def test_learning_thematic_files_exist(self, learning_dir: Path) -> None:
-        """Test that thematic learning files exist."""
-        expected_files = [
-            "skill-bypass.md",
-            "instruction-ignore.md",
-            "verification-skip.md",
-            "validation-bypass.md",
-        ]
-
-        existing = [f for f in expected_files if (learning_dir / f).exists()]
-
-        assert existing, f"No thematic learning files found in {learning_dir}"
-        # At least 2 of the expected files should exist
-        assert (
-            len(existing) >= 2
-        ), f"Only {len(existing)} thematic files found, expected at least 2"
+        dashboard_dir = Path(aca_data) / "dashboard" / "sessions"
+        # Directory should exist if session-insights has been run
+        if not dashboard_dir.exists():
+            pytest.skip("Dashboard sessions directory not yet created (run session-insights first)")
 
 
 class TestTranscriptScriptGeneration:

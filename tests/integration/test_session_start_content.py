@@ -210,11 +210,11 @@ def test_session_start_content_loaded(
     # Extract response text from result
     response_content = extract_response_text(result)
 
-    # Look for AXIOM #1 content: "DO ONE THING"
+    # Look for AXIOM #1 content: "categorical-imperative" - universal rule
     axiom_found = (
-        "DO ONE THING" in response_content
-        or "Complete the task requested" in response_content
-        or "then STOP" in response_content
+        "categorical" in response_content.lower()
+        or "universal rule" in response_content.lower()
+        or "justifiable" in response_content.lower()
     )
 
     assert axiom_found, (

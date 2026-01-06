@@ -103,24 +103,5 @@ def test_email_workflow_has_explicit_tool_examples() -> None:
             f"Required: {required_params}"
         )
 
-    # Tasks MCP backend
-    task_mcp_section_start = content.find("**Tasks MCP backend example**:")
-    assert (
-        task_mcp_section_start > 0
-    ), "Step 6 must include Tasks MCP backend example showing tool structure"
-
-    task_mcp_section_end = content.find("```", task_mcp_section_start + 200)
-    task_mcp_section = content[task_mcp_section_start : task_mcp_section_end + 3]
-
-    # Check for tool name and parameter structure
-    assert (
-        "create_task" in task_mcp_section or "Tool:" in task_mcp_section
-    ), "Tasks MCP example must show tool name (e.g., 'create_task')"
-
-    required_task_fields = ["title", "priority", "project", "body"]
-    missing_fields = [f for f in required_task_fields if f not in task_mcp_section]
-    assert not missing_fields, (
-        f"Tasks MCP example must show all required parameters.\n"
-        f"Missing: {missing_fields}\n"
-        f"Required: {required_task_fields}"
-    )
+    # Note: Tasks MCP backend is not yet implemented.
+    # The Python script backend (task_add.py) is the authoritative task creation method.
