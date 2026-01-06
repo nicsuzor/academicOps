@@ -181,11 +181,17 @@ Task(
   run_in_background=true,
   description="Remember: [summary]",
   prompt="
-Invoke Skill(skill='remember') to persist this observation:
+Invoke Skill(skill='remember') to persist this observation.
+
+REQUIRED OUTPUTS (skill will fail if missing):
+1. Markdown file to disk (durable storage)
+2. Memory server entry (semantic search)
+3. If repo-specific: update that repo's documentation
 
 Content: [what to remember]
 Type: [note|learning|decision]
 Tags: [relevant tags]
+Repository: [if applicable, e.g., dotfiles, academicOps]
 "
 )
 ```
