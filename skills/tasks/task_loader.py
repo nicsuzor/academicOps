@@ -5,10 +5,113 @@ Provides filtered task loading focused on high-priority tasks.
 
 from __future__ import annotations
 
+import json
+import os
+from datetime import datetime
 from pathlib import Path
 
-from skills.tasks.models import Task
+from skills.tasks.models import Subtask, Task
 from skills.tasks.task_ops import get_data_dir, load_all_tasks
+
+
+def load_task_index() -> dict | None:
+    """Load pre-computed task index from index.json.
+
+    Returns:
+        Parsed index dict or None if file doesn't exist.
+    """
+    aca_data = os.environ.get("ACA_DATA")
+    if not aca_data:
+        return None
+
+    index_path = Path(aca_data) / "tasks" / "index.json"
+    if not index_path.exists():
+        return None
+
+    try:
+        with open(index_path) as f:
+            return json.load(f)
+    except Exception:
+        return None
+
+
+def load_focus_tasks_from_index(
+    task_index: dict | None = None, count: int = 20
+) -> list[Task]:
+    """Load high-priority focus tasks from pre-computed index.json.
+
+    This is much faster than load_focus_tasks() as it reads from a single
+    JSON file instead of parsing individual task files from disk.
+
+    Args:
+        task_index: Pre-loaded index dict (loads from disk if None)
+        count: Maximum number of tasks to return
+
+    Returns:
+        List of Task models filtered to P0/P1, sorted by priority and progress.
+    """
+    if task_index is None:
+        task_index = load_task_index()
+
+    if not task_index:
+        return []
+
+    tasks = task_index.get("tasks", [])
+
+    # Filter to P0/P1 non-archived tasks
+    focus_entries = []
+    for t in tasks:
+        priority = t.get("priority")
+        status = t.get("status", "")
+
+        # Skip if no priority or P2+
+        if priority is None or priority > 1:
+            continue
+        # Skip archived/done
+        if status in ("archived", "done", "completed"):
+            continue
+
+        focus_entries.append(t)
+
+    # Sort: incomplete subtasks first, then priority, then completion %
+    def sort_key(t: dict) -> tuple[int, int, int, str]:
+        priority = t.get("priority", 999)
+        total = t.get("subtasks_total", 0)
+        done = t.get("subtasks_done", 0)
+
+        if total == 0:
+            has_incomplete = 0
+            completion_pct = 0
+        else:
+            has_incomplete = 0 if done < total else 1
+            completion_pct = int((done / total) * 100)
+
+        return (has_incomplete, priority, completion_pct, t.get("slug", ""))
+
+    focus_entries.sort(key=sort_key)
+
+    # Convert to Task models for API compatibility
+    result = []
+    for entry in focus_entries[:count]:
+        # Build subtask list from counts (simplified - just for progress display)
+        subtasks = []
+        total = entry.get("subtasks_total", 0)
+        done = entry.get("subtasks_done", 0)
+        for i in range(total):
+            subtasks.append(Subtask(text=f"Subtask {i+1}", completed=i < done))
+
+        task = Task(
+            title=entry.get("title", ""),
+            priority=entry.get("priority"),
+            project=entry.get("project"),
+            status=entry.get("status", "inbox"),
+            created=datetime.now(),  # Not stored in index, use placeholder
+            subtasks=subtasks,
+            filename=entry.get("file"),
+        )
+        result.append(task)
+
+    return result
 
 
 def _subtask_sort_key(task: Task) -> tuple[int, int, int, str]:

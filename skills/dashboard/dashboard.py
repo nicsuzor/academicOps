@@ -14,26 +14,9 @@ from urllib.parse import quote
 aops_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(aops_root))
 
-from skills.tasks.task_loader import load_focus_tasks
+from skills.tasks.task_loader import load_focus_tasks_from_index, load_task_index
 from lib.session_reader import find_sessions
 from lib.session_analyzer import SessionAnalyzer, extract_todowrite_from_session
-
-
-def load_task_index() -> dict | None:
-    """Load task index from index.json if available."""
-    aca_data = os.environ.get("ACA_DATA")
-    if not aca_data:
-        return None
-
-    index_path = Path(aca_data) / "tasks" / "index.json"
-    if not index_path.exists():
-        return None
-
-    try:
-        with open(index_path) as f:
-            return json.load(f)
-    except Exception:
-        return None
 
 
 def load_synthesis() -> dict | None:
@@ -1616,8 +1599,8 @@ try:
                 accomplishments_by_project[proj] = []
             accomplishments_by_project[proj].extend(session.get("accomplishments", []))
 
-    # Load priority tasks
-    focus_tasks = load_focus_tasks(count=20)
+    # Load priority tasks from pre-computed index (faster than parsing files)
+    focus_tasks = load_focus_tasks_from_index(task_index, count=20)
     tasks_by_project: dict[str, list] = {}
     for task in focus_tasks:
         proj = task.project or "unassigned"

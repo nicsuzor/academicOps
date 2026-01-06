@@ -46,11 +46,16 @@ Format the output as:
 ### 2. MIGHT ENJOY (different domain)
 **[Task Title]** - [reason]
 - Good counterweight to recent [project] work
+- **Next steps** (from next_subtasks if present):
+  - [ ] First actionable subtask
+  - [ ] Second actionable subtask
 
 ### 3. QUICK WIN (build momentum)
 **[Task Title]** - [reason]
 - Estimated: 5-15 min
 ```
+
+**Note**: The script extracts up to 3 unchecked subtasks for "enjoy" tasks, making deep work immediately actionable.
 
 ### Step 3: User Decision
 

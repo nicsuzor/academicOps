@@ -82,11 +82,17 @@ Tasks with:
 ### 2. MIGHT ENJOY (variety)
 **[Task Title]** - [reason]
 - Different domain from recent work
+- **Next steps**:
+  - [ ] First unchecked subtask
+  - [ ] Second unchecked subtask
+  - [ ] Third unchecked subtask
 
 ### 3. QUICK WIN (momentum)
 **[Task Title]** - [reason]
 - Estimated: 5-15 min
 ```
+
+**Note**: "Enjoy" recommendations include up to 3 next subtasks from the task file to make deep work actionable.
 
 ## Implementation
 

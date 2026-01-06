@@ -93,7 +93,7 @@ def build_hydration_instruction(prompt: str, transcript_path: str | None = None)
         transcript_path: Path to session transcript for context extraction
 
     Returns:
-        Short instruction string (~100 tokens) with temp file path
+        Short instruction string (<300 tokens) with temp file path
 
     Raises:
         IOError: If temp file write fails (fail-fast per AXIOM #7)

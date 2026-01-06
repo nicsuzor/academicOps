@@ -233,12 +233,24 @@ def select_quick(tasks: list[dict]) -> dict | None:
     return None
 
 
+def get_next_subtasks(task_file: str, limit: int = 3) -> list[str]:
+    """Extract next unchecked subtasks from task file."""
+    file_path = ACA_DATA / task_file.replace("tasks/", "tasks/")
+    if not file_path.exists():
+        return []
+
+    content = file_path.read_text()
+    # Find unchecked items: - [ ] text
+    unchecked = re.findall(r'^- \[ \] (.+)$', content, re.MULTILINE)
+    return unchecked[:limit]
+
+
 def format_recommendation(rec: dict) -> dict:
     """Format recommendation for output."""
     task = rec["task"]
     due = parse_due_date(task.get("due"))
 
-    return {
+    result = {
         "category": rec["category"],
         "title": task.get("title", "Untitled"),
         "reason": rec["reason"],
@@ -247,6 +259,14 @@ def format_recommendation(rec: dict) -> dict:
         "slug": task.get("slug", ""),
         "file": task.get("file", "")
     }
+
+    # For "enjoy" category (deep work), include next subtasks
+    if rec["category"] == "enjoy":
+        subtasks = get_next_subtasks(task.get("file", ""))
+        if subtasks:
+            result["next_subtasks"] = subtasks
+
+    return result
 
 
 def main():
