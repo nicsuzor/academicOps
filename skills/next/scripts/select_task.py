@@ -260,11 +260,10 @@ def format_recommendation(rec: dict) -> dict:
         "file": task.get("file", "")
     }
 
-    # For "enjoy" category (deep work), include next subtasks
-    if rec["category"] == "enjoy":
-        subtasks = get_next_subtasks(task.get("file", ""))
-        if subtasks:
-            result["next_subtasks"] = subtasks
+    # Include next subtasks for any task with multiple steps
+    subtasks = get_next_subtasks(task.get("file", ""))
+    if subtasks:
+        result["next_subtasks"] = subtasks
 
     return result
 
