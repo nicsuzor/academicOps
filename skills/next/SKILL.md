@@ -53,9 +53,14 @@ Format the output as:
 ### 3. QUICK WIN (build momentum)
 **[Task Title]** - [reason]
 - Estimated: 5-15 min
+
+---
+
+### 🗑️ Archive candidates (if any)
+- **[Stale Task]** - [reason: past event / overdue 60+ days]
 ```
 
-**Note**: The script extracts up to 3 unchecked subtasks for "enjoy" tasks, making deep work immediately actionable.
+**Note**: The script extracts up to 3 unchecked subtasks for ANY task with multiple steps, making them immediately actionable. Stale tasks (past events >7 days, overdue >60 days) are excluded from recommendations and shown separately as archive candidates.
 
 ### Step 3: User Decision
 

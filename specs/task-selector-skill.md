@@ -2,14 +2,14 @@
 title: Task Selector Skill
 type: spec
 category: spec
-status: in-progress
+status: implemented
 permalink: task-selector-skill
 tags: [spec, tasks, adhd, focus, automation]
 ---
 
 # Task Selector Skill
 
-**Status**: In Progress
+**Status**: Implemented (2026-01-06)
 **Priority**: P1 (core ADHD accommodation)
 
 ## User Story
@@ -78,6 +78,8 @@ Tasks with:
 ### 1. PROBABLY SHOULD (deadline)
 **[Task Title]** - [reason]
 - Due: [date] | Project: [project]
+- **Next steps** (if task has subtasks):
+  - [ ] First unchecked subtask
 
 ### 2. MIGHT ENJOY (variety)
 **[Task Title]** - [reason]
@@ -85,14 +87,20 @@ Tasks with:
 - **Next steps**:
   - [ ] First unchecked subtask
   - [ ] Second unchecked subtask
-  - [ ] Third unchecked subtask
 
 ### 3. QUICK WIN (momentum)
 **[Task Title]** - [reason]
 - Estimated: 5-15 min
+
+---
+
+### 🗑️ Archive candidates
+- **[Stale Task]** - [reason: past event / overdue 60+ days]
 ```
 
-**Note**: "Enjoy" recommendations include up to 3 next subtasks from the task file to make deep work actionable.
+**Notes**:
+- All recommendations include up to 3 next subtasks from task file (making any multi-step task actionable)
+- Stale tasks (past events >7 days, overdue >60 days) are excluded from recommendations and shown separately
 
 ## Implementation
 
@@ -115,11 +123,11 @@ Or automatically suggested by SessionStart hook after morning email triage.
 
 ## Acceptance Criteria
 
-- [ ] **AC1**: `/next` returns 3 categorized task options
-- [ ] **AC2**: "Should" respects deadline hierarchy (overdue > today > this week > P0)
-- [ ] **AC3**: "Enjoy" favors different project from today's dominant work
-- [ ] **AC4**: "Quick" filters for low-effort actionable items
-- [ ] **AC5**: Output is concise (fits in terminal without scrolling)
+- [x] **AC1**: `/next` returns 3 categorized task options
+- [x] **AC2**: "Should" respects deadline hierarchy (overdue > today > this week > P0)
+- [x] **AC3**: "Enjoy" favors different project from today's dominant work
+- [x] **AC4**: "Quick" filters for low-effort actionable items
+- [x] **AC5**: Output is concise (fits in terminal without scrolling)
 
 ## Future Enhancements
 
