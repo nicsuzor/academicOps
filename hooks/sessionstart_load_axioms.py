@@ -174,6 +174,12 @@ def main():
         # If no stdin or parsing fails, continue with empty input
         pass
 
+    # Clean up this session's criteria gate file (fresh start for each session)
+    session_id = input_data.get("session_id", "")
+    if session_id:
+        gate_file = Path(f"/tmp/claude-criteria-gate-{session_id}")
+        gate_file.unlink(missing_ok=True)
+
     # Get resolved paths early for variable expansion
     aops_root = get_aops_root()
     data_root = get_data_root()

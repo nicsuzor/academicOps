@@ -39,6 +39,7 @@ HOOK_REGISTRY: dict[str, list[dict[str, Any]]] = {
     ],
     "PreToolUse": [
         {"script": "policy_enforcer.py"},
+        {"script": "criteria_gate.py"},
         {"script": "unified_logger.py"},
     ],
     "PostToolUse": [

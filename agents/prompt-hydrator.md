@@ -108,6 +108,12 @@ Based on workflow dimensions, apply these guardrails:
 | skill matched | `require_skill:[skill-name]` |
 | any implementation work | `verify_before_complete`, `use_todowrite` |
 
+## Step 5: Implementation Gate (MANDATORY for implementation tasks)
+
+When `approach` is `tdd`, `direct`, or `plan` (any implementation work), you MUST include the Implementation Gate in your output. This ensures the main agent follows the /do workflow.
+
+The gate is ENFORCED by a PreToolUse hook - Edit/Write/Bash will be blocked until the gate file exists.
+
 ## Output Format
 
 Return this EXACT structure:
@@ -158,6 +164,32 @@ Return this EXACT structure:
 **Standard instructions** (always include for implementation work):
 - "Use TodoWrite to track progress on multi-step work."
 - "Commit and push after completing logical work units."
+
+**Implementation Gate** (MANDATORY when approach=tdd, direct, or plan):
+
+⛔ IMPLEMENTATION GATE - MANDATORY
+
+Before ANY Edit/Write/Bash operations, you MUST complete Phase 1 of the /do workflow:
+
+1. **Define Acceptance Criteria** (user outcomes, not technical metrics)
+   - What does "done" look like?
+   - How will we verify it works?
+
+2. **Critic Review**
+   ```
+   Task(subagent_type="critic", model="opus", prompt="
+   Review these acceptance criteria for e2e verifiability:
+   [CRITERIA]
+   Check: Are these testable? Do they describe user outcomes?")
+   ```
+
+3. **TodoWrite with CHECKPOINTs**
+   Include CHECKPOINT items that require evidence before completion.
+
+4. **Mark Gate Passed**
+   The PreToolUse hook will block Edit/Write/Bash and show you the exact command to run (includes session-specific path). Follow the command shown in the block message.
+
+This gate is ENFORCED by PreToolUse hook. If you attempt Edit/Write/Bash before completing steps 1-3, you'll be blocked with instructions.
 ```
 
 ## Example Output

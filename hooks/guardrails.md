@@ -89,23 +89,31 @@ Each guardrail maps to a heuristic from HEURISTICS.md and defines when/how to ap
 **When to apply**: Any multi-step task
 **Instruction**: "Create TodoWrite to track progress. Mark items complete as you go."
 
+### criteria_gate
+
+**Heuristic**: AXIOMS #23 (Plan-First Development), H25 (User-Centric Acceptance Criteria), H28 (Mandatory Acceptance Testing)
+**Failure prevented**: Jumping to implementation without defining acceptance criteria
+**When to apply**: Any implementation task (approach = tdd, direct, or plan)
+**Enforcement**: PreToolUse hook (`criteria_gate.py`) blocks Edit/Write/Bash until gate file exists
+**Instruction**: "Before ANY implementation: (1) Define acceptance criteria (user outcomes), (2) Invoke critic to review, (3) Create TodoWrite with CHECKPOINTs, (4) Create gate file. Hook will block until steps completed."
+
 ## Task Type → Guardrail Mapping
 
 Default guardrails applied by task type:
 
 | Task Type | Guardrails Applied |
 |-----------|-------------------|
-| `framework` | verify_before_complete, require_skill:framework, plan_mode, critic_review, use_todowrite |
-| `cc_hook` | verify_before_complete, require_skill:plugin-dev:hook-development, plan_mode, use_todowrite |
-| `cc_mcp` | verify_before_complete, require_skill:plugin-dev:mcp-integration, plan_mode, use_todowrite |
-| `debug` | verify_before_complete, quote_errors_exactly, fix_within_design, use_todowrite |
-| `feature` | verify_before_complete, require_acceptance_test, use_todowrite |
-| `python` | verify_before_complete, require_skill:python-dev, require_acceptance_test, use_todowrite |
+| `framework` | verify_before_complete, require_skill:framework, plan_mode, critic_review, criteria_gate, use_todowrite |
+| `cc_hook` | verify_before_complete, require_skill:plugin-dev:hook-development, plan_mode, criteria_gate, use_todowrite |
+| `cc_mcp` | verify_before_complete, require_skill:plugin-dev:mcp-integration, plan_mode, criteria_gate, use_todowrite |
+| `debug` | verify_before_complete, quote_errors_exactly, fix_within_design, criteria_gate, use_todowrite |
+| `feature` | verify_before_complete, require_acceptance_test, criteria_gate, use_todowrite |
+| `python` | verify_before_complete, require_skill:python-dev, require_acceptance_test, criteria_gate, use_todowrite |
 | `question` | answer_only |
 | `persist` | require_skill:remember |
-| `analysis` | require_skill:analyst, use_todowrite |
+| `analysis` | require_skill:analyst, criteria_gate, use_todowrite |
 | `review` | verify_before_complete, use_todowrite |
-| `simple` | verify_before_complete |
+| `simple` | verify_before_complete, criteria_gate |
 
 ## Adding/Modifying Guardrails
 
@@ -124,11 +132,13 @@ Use `/learn` to adjust guardrails based on observed failures:
 
 The [[specs/prompt-hydration]] process applies guardrails based on task classification.
 
-### Future: PreToolUse Hook
+### PreToolUse Hook (Active)
 
-Guardrails could be enforced via PreToolUse hook:
-- Check if required skill was invoked before Edit/Write
-- Block tool use if guardrail condition not met
+The `criteria_gate.py` hook enforces the criteria_gate guardrail:
+- Blocks Edit/Write/Bash until gate file exists (`/tmp/claude-criteria-gate-{session_id}`)
+- Gate file created after completing /do Phase 1 (acceptance criteria → critic → TodoWrite)
+- 30-minute expiry on gate file
+- Read-only Bash commands (ls, cat, git status, etc.) bypass gate
 
 ### Future: PostToolUse Hook
 
@@ -152,4 +162,5 @@ guardrails:
   follow_literally: false
   critic_review: true
   use_todowrite: true
+  criteria_gate: true  # enforced by PreToolUse hook
 ```
