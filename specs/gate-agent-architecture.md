@@ -86,7 +86,7 @@ flowchart TD
             direction TB
             CTX[Context Gather<br/>memory, codebase, session]:::gate
             WF[Workflow Select<br/>gate / pre-work / approach]:::gate
-            INIT_SKILL[Initial Skill Match<br/>domain → skill]:::gate
+            INIT_SKILL[Match skill<br/>via REMINDERS.md]:::gate
             GUARD[Guardrail Select<br/>workflow + skill → constraints]:::gate
         end
 
@@ -103,7 +103,7 @@ flowchart TD
         subgraph PARALLEL["Parallel Checks"]
             direction LR
             POLICY[Policy Enforcer<br/>pattern match<br/>HARD BLOCK]:::error
-            SKILL_MON[Skill Monitor<br/>domain drift?<br/>SOFT INJECT]:::soft
+            SKILL_MON[Skill Monitor<br/>via REMINDERS.md<br/>SOFT INJECT]:::soft
             OVERDUE[Overdue Check<br/>tools ≥ 7?<br/>HARD BLOCK]:::error
         end
 
@@ -121,10 +121,11 @@ flowchart TD
         SPAWN_CUST[Spawn custodiet<br/>Haiku, async]:::gate
 
         subgraph CUSTODIET["Custodiet Checks"]
-            direction LR
+            direction TB
             READ_INT[Read intent<br/>from hydrator state]:::gate
             DRIFT[Check drift]:::gate
             AXIOM[Check axioms]:::gate
+            SKILL_CHECK[Check skill invocation<br/>via REMINDERS.md]:::gate
         end
 
         WRITE_CUST[Write custodiet state<br/>reset counter]:::hook
@@ -168,8 +169,8 @@ flowchart TD
     THRESH -->|Yes| SPAWN_CUST
     SPAWN_CUST --> READ_INT
     READ_INT <-.-> HYD_STATE
-    READ_INT --> DRIFT --> AXIOM
-    AXIOM --> WRITE_CUST
+    READ_INT --> DRIFT --> AXIOM --> SKILL_CHECK
+    SKILL_CHECK --> WRITE_CUST
     WRITE_CUST --> CUST_STATE
     WRITE_CUST --> AGENT
 
