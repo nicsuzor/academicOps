@@ -74,17 +74,17 @@ SessionStart injection provides exactly four categories of information:
 **Purpose**: HOW agents SHOULD act - empirically validated guidance.
 
 **Contents**:
-- Numbered heuristics with confidence levels (High/Medium/Low)
-- Evidence citations for each
-- Axiom derivations (which principle each heuristic implements)
-- Revision protocol
+- Numbered heuristics (H1, H2, etc.) with rule statement only
+- No metadata (confidence, evidence, axiom refs) - that lives in GitHub Issues
+- Revision protocol pointing to `/log` skill
 
 **Contract**:
 - Heuristics are default behavior, not inviolable
 - User can override with explicit instruction
 - Agents should follow unless there's specific reason not to
+- Evidence and traceability live in GitHub Issues (label: `learning`)
 
-**Rationale**: Learned patterns surface proven approaches. Without this, agents re-discover solutions to solved problems.
+**Rationale**: Learned patterns surface proven approaches. Metadata stripped for token efficiency - agents need rules, not provenance.
 
 ### 4. Identity (CORE.md)
 
@@ -204,7 +204,7 @@ mv $AOPS/AXIOMS.md.bak $AOPS/AXIOMS.md
 ## Related Documents
 
 - [[sessionstart_load_axioms.py]] - Implementation
-- [[docs/execution-flow.md]] - Execution flow diagrams
+- [[FLOW]] - Execution flow diagrams
 - [[AXIOMS.md]] - Inviolable principles
 - [[HEURISTICS.md]] - Empirical patterns
 - [[FRAMEWORK.md]] - Path configuration
