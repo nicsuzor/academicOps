@@ -194,6 +194,10 @@ Empirically derived rules implementing [[AXIOMS]]. Evidence lives in GitHub Issu
 **Statement**: E2E tests must use REAL framework prompts (actual skill invocations, actual workflows) not contrived examples ("What is the meaning of life?"). Testing fake scenarios proves nothing about real behavior.
 **Confidence**: High | **Implements**: #13, #17 | **Evidence**: #268
 
+### H37c: Execution Over Inspection
+**Statement**: Compliance verification REQUIRES actual execution. Comparing fields, validating YAML, pattern matching specs - all are Volkswagen tests. The ONLY proof a component works is running it and observing correct behavior.
+**Confidence**: High | **Implements**: #17, #18 | **Evidence**: #214
+
 ---
 
 ## Revision Protocol

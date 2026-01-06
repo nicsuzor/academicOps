@@ -90,6 +90,7 @@ tags: [framework, enforcement, moc]
 | H#37 | LLM Semantic Evaluation | PR template checklist, critic agent | PR Review | Review |
 | H#37a | Full Evidence for Validation | @pytest.mark.demo requirement | Test design | Convention |
 | H#37b | Real Fixtures Over Contrived | docs/testing-patterns.md | Test design | Convention |
+| H#37c | Execution Over Inspection | framework skill compliance protocol | Skill invocation | Prompt |
 
 ## Enforcement Level Summary
 
@@ -97,7 +98,7 @@ tags: [framework, enforcement, moc]
 |-------|-------|-------------|
 | Hard Gate | 10 | Blocks action (PreToolUse hooks, deny rules) |
 | Soft Gate | 8 | Injects guidance, agent can proceed |
-| Prompt | 42 | Instructional (AXIOMS.md or HEURISTICS.md at SessionStart) |
+| Prompt | 43 | Instructional (AXIOMS.md or HEURISTICS.md at SessionStart) |
 | Observable | 2 | Creates visible artifact (TodoWrite) |
 | Detection | 3 | Logs for post-hoc analysis |
 | Review | 1 | Human/LLM review at PR time |

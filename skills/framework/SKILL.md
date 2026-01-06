@@ -44,6 +44,18 @@ When assessing any component for compliance:
 2. **Check placement**: Does INDEX.md define where this belongs?
 3. **Verify uniqueness**: Is this information stated exactly once (DRY)?
 4. **Confirm purpose**: Does VISION.md support this capability?
+5. **E2E PROOF (MANDATORY)**: Execute the component and verify it works
+
+**Step 5 is non-negotiable.** Checking fields, comparing patterns, reading specs - these prove nothing. The ONLY valid proof of compliance is successful execution:
+
+| Component Type | E2E Verification |
+|----------------|------------------|
+| Command | Invoke it, confirm skill loads and executes |
+| Skill | Invoke via `Skill()`, run any scripts, verify output |
+| Hook | Trigger the event, confirm hook fires and behaves correctly |
+| Script | Run it with real data, verify correct output |
+
+**Surface-level checks are Volkswagen tests.** Field comparison, YAML validation, pattern matching - all can pass while the component is broken. Execute it or it's not verified.
 
 If ANY check fails → component is non-compliant → refactor or delete.
 
