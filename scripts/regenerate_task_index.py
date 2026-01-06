@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Regenerate task index from task files.
 
-Builds $ACA_DATA/tasks/index.json from all task markdown files.
+Scans ALL markdown files in $ACA_DATA with `type: task` in frontmatter.
+Builds $ACA_DATA/tasks/index.json and INDEX.md (organized by project).
 Designed to run via cron every 5 minutes.
 
 Usage:
@@ -77,8 +78,44 @@ def get_task_status_folder(file_path: Path) -> str:
         return "inbox"  # Default
 
 
-def parse_task_file(file_path: Path) -> dict | None:
-    """Parse a task file into index entry."""
+def find_task_files(data_dir: Path) -> list[Path]:
+    """Find all markdown files with type: task in frontmatter.
+
+    Scans entire $ACA_DATA recursively, filtering by frontmatter.
+    Excludes INDEX.md and known non-task files.
+    """
+    task_files = []
+    excluded_names = {"INDEX.md", "tasks.md", "index.md"}
+
+    for md_file in data_dir.rglob("*.md"):
+        # Skip excluded files
+        if md_file.name in excluded_names:
+            continue
+
+        # Skip session transcripts (contain quoted task frontmatter)
+        if "/sessions/" in str(md_file):
+            continue
+
+        # Check frontmatter for type: task
+        try:
+            content = md_file.read_text(encoding="utf-8")
+            frontmatter = parse_frontmatter(content)
+            if frontmatter and frontmatter.get("type") == "task":
+                task_files.append(md_file)
+        except Exception:
+            # Skip files we can't read
+            pass
+
+    return task_files
+
+
+def parse_task_file(file_path: Path, data_dir: Path) -> dict | None:
+    """Parse a task file into index entry.
+
+    Args:
+        file_path: Path to the task markdown file.
+        data_dir: Root data directory ($ACA_DATA) for computing relative paths.
+    """
     try:
         content = file_path.read_text(encoding="utf-8")
     except Exception as e:
@@ -118,11 +155,9 @@ def parse_task_file(file_path: Path) -> dict | None:
     except Exception:
         last_activity = None
 
-    # Build relative path from tasks/
-    data_dir = get_data_dir()
-    tasks_dir = data_dir / "tasks"
+    # Build relative path from $ACA_DATA
     try:
-        relative_path = str(file_path.relative_to(tasks_dir))
+        relative_path = str(file_path.relative_to(data_dir))
     except ValueError:
         relative_path = file_path.name
 
@@ -206,13 +241,56 @@ def categorize_by_project(tasks: list[dict]) -> dict[str, list[str]]:
     return by_project
 
 
+def format_task_line(task: dict) -> str:
+    """Format a single task line with indicators.
+
+    Format: - [[file|title]] (P0, due: 2025-01-15, status, [3/5])
+    """
+    # Base link
+    line = f"- [[{task['file']}|{task['title']}]]"
+
+    # Build indicators
+    indicators = []
+
+    # Priority
+    if task.get("priority") is not None:
+        indicators.append(f"P{task['priority']}")
+
+    # Due date
+    if task.get("due"):
+        due_str = task["due"]
+        if isinstance(due_str, str) and "T" in due_str:
+            due_str = due_str.split("T")[0]
+        indicators.append(f"due: {due_str}")
+
+    # Status indicator
+    status = task.get("status", "inbox")
+    status_icons = {
+        "active": "* active",
+        "inbox": "inbox",
+        "waiting": "~ waiting",
+        "archived": "/ archived",
+    }
+    indicators.append(status_icons.get(status, status))
+
+    # Subtask progress
+    if task.get("subtasks_total", 0) > 0:
+        indicators.append(f"[{task['subtasks_done']}/{task['subtasks_total']}]")
+
+    if indicators:
+        line += f" ({', '.join(indicators)})"
+
+    return line
+
+
 def generate_index_md(index: dict, output_path: Path) -> None:
-    """Generate human-readable INDEX.md from JSON index."""
+    """Generate human-readable INDEX.md organized by project."""
     lines = [
         "---",
         "title: Task Index",
         "type: index",
         f"generated: {index['generated']}",
+        "permalink: tasks/index",
         "---",
         "",
         "# Task Index",
@@ -221,43 +299,36 @@ def generate_index_md(index: dict, output_path: Path) -> None:
         "",
     ]
 
-    # Group by status
-    by_status: dict[str, list[dict]] = {}
+    # Group by project
+    by_project: dict[str, list[dict]] = {}
     for task in index["tasks"]:
-        status = task.get("status", "inbox")
-        if status not in by_status:
-            by_status[status] = []
-        by_status[status].append(task)
+        project = task.get("project") or "uncategorized"
+        if project not in by_project:
+            by_project[project] = []
+        by_project[project].append(task)
 
-    status_order = ["active", "inbox", "waiting", "archived"]
-    for status in status_order:
-        tasks = by_status.get(status, [])
-        if not tasks:
-            continue
+    # Sort projects alphabetically (uncategorized last)
+    project_order = sorted(
+        by_project.keys(),
+        key=lambda p: (p == "uncategorized", p.lower()),
+    )
 
-        lines.append(f"## {status.title()} ({len(tasks)})")
+    for project in project_order:
+        tasks = by_project[project]
+        lines.append(f"## {project} ({len(tasks)})")
         lines.append("")
 
-        # Sort by priority then title
-        tasks.sort(key=lambda t: (t.get("priority") or 999, t.get("title", "")))
+        # Sort by priority then due date then title
+        tasks.sort(
+            key=lambda t: (
+                t.get("priority") or 999,
+                t.get("due") or "9999-99-99",
+                t.get("title", ""),
+            )
+        )
 
         for task in tasks:
-            priority = (
-                f"P{task['priority']}" if task.get("priority") is not None else ""
-            )
-            progress = ""
-            if task.get("subtasks_total", 0) > 0:
-                progress = f" [{task['subtasks_done']}/{task['subtasks_total']}]"
-
-            line = f"- [[{task['file']}|{task['title']}]]"
-            if priority:
-                line += f" ({priority})"
-            if progress:
-                line += progress
-            if task.get("project") and task["project"] != "uncategorized":
-                line += f" #{task['project']}"
-
-            lines.append(line)
+            lines.append(format_task_line(task))
 
         lines.append("")
 
@@ -269,23 +340,20 @@ def main() -> None:
     data_dir = get_data_dir()
     tasks_dir = data_dir / "tasks"
 
-    if not tasks_dir.exists():
-        print(f"ERROR: Tasks directory not found: {tasks_dir}", file=sys.stderr)
-        sys.exit(1)
+    # Ensure output directory exists
+    tasks_dir.mkdir(parents=True, exist_ok=True)
 
-    # Find all task files (exclude INDEX.md, tasks.md)
-    task_files = [
-        f for f in tasks_dir.rglob("*.md") if f.name not in ("INDEX.md", "tasks.md")
-    ]
+    # Find all task files across $ACA_DATA (files with type: task)
+    task_files = find_task_files(data_dir)
 
-    print(f"Found {len(task_files)} task files")
+    print(f"Found {len(task_files)} task files with type: task")
 
     # Parse all tasks
     tasks: list[dict] = []
     errors = 0
 
     for file_path in task_files:
-        task = parse_task_file(file_path)
+        task = parse_task_file(file_path, data_dir)
         if task:
             tasks.append(task)
         else:

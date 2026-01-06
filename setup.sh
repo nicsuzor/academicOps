@@ -509,6 +509,36 @@ fi
 
 echo
 
+# Step 3b: Install cron job for task index regeneration
+echo "Step 3b: Task index cron job"
+echo "----------------------------"
+
+CRON_MARKER="# aOps task index"
+CRON_CMD="*/5 * * * * cd $AOPS_PATH && ACA_DATA=$ACA_DATA_PATH uv run python scripts/regenerate_task_index.py >> /tmp/task-index.log 2>&1"
+
+# Check if cron is available
+if command -v crontab &> /dev/null; then
+    # Check if cron job already exists
+    if crontab -l 2>/dev/null | grep -q "$CRON_MARKER"; then
+        echo -e "${GREEN}✓ Task index cron job already installed${NC}"
+    else
+        # Add cron job
+        (crontab -l 2>/dev/null; echo "$CRON_MARKER"; echo "$CRON_CMD") | crontab -
+        if [ $? -eq 0 ]; then
+            echo -e "${GREEN}✓ Installed task index cron job (every 5 minutes)${NC}"
+        else
+            echo -e "${YELLOW}⚠ Could not install cron job - install manually:${NC}"
+            echo "  crontab -e"
+            echo "  Add: $CRON_CMD"
+        fi
+    fi
+else
+    echo -e "${YELLOW}⚠ crontab not available - task index cron job not installed${NC}"
+    echo "  Run manually: cd \$AOPS && uv run python scripts/regenerate_task_index.py"
+fi
+
+echo
+
 # Step 4: Validate setup
 echo "Step 4: Validating setup"
 echo "------------------------"

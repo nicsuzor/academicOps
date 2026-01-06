@@ -129,6 +129,32 @@ Obsidian-compatible syntax for sub-task tracking:
 - Verify script execution succeeded
 - Search existing tasks before creating
 
+## Index Generation
+
+The task index is maintained by `scripts/regenerate_task_index.py`:
+
+**Scanning**:
+- Scans ALL `*.md` files in `$ACA_DATA` (not just tasks/)
+- Filters for files with `type: task` in YAML frontmatter
+- Excludes session transcripts and known non-task files
+
+**Output**:
+- `$ACA_DATA/tasks/index.json` - Machine-readable index with task metadata
+- `$ACA_DATA/tasks/INDEX.md` - Human-readable, organized by project
+
+**Schedule**:
+- Runs every 5 minutes via cron (installed by `setup.sh`)
+- Manual: `cd $AOPS && uv run python scripts/regenerate_task_index.py`
+
+**INDEX.md Format**:
+```
+## project-name (count)
+
+- [[path/to/task.md|Task Title]] (P1, due: 2025-01-15, * active, [3/5])
+```
+
+Indicators: `P0-P3` (priority), `due: YYYY-MM-DD`, `* active`/`inbox`/`~ waiting`/`/ archived`, `[done/total]` (subtasks)
+
 ## Relationships
 
 ### Depends On

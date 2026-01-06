@@ -217,6 +217,15 @@ Built-in Claude Code agents (also available):
 - `Plan` - Implementation planning
 - `general-purpose` - General tasks (use with `Skill("python-dev")` for Python work)
 
+## Scripts
+
+| Script | Purpose |
+|--------|---------|
+| `regenerate_task_index.py` | Rebuild task index from all `type: task` files in $ACA_DATA |
+| `sync_web_bundle.py` | Sync framework to project repositories |
+
+**Run**: `cd $AOPS && uv run python scripts/<script>.py`
+
 ## Testing
 
 - **Unit tests**: `tests/` (270 tests, 98% pass)
