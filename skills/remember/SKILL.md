@@ -206,7 +206,8 @@ Task(
   run_in_background=true,
   description="Remember: [summary]",
   prompt="
-Invoke Skill(skill='remember') to persist this observation.
+Invoke Skill(skill='remember') ONCE to persist this observation.
+Do NOT call the skill multiple times.
 
 DURABILITY OPTIONS (choose the most appropriate):
 1. Memory server entry (always do this for semantic search)
