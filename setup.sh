@@ -479,6 +479,22 @@ else
         echo -e "${YELLOW}⚠ Command conversion failed - Gemini commands may not work${NC}"
     fi
 
+    # Convert MCP servers from Claude format to Gemini format
+    echo
+    echo "Converting MCP servers..."
+    MCP_SOURCE="$AOPS_PATH/config/claude/mcp.json"
+    MCP_CONVERTED="$AOPS_PATH/gemini/config/mcp-servers.json"
+    if [ -f "$MCP_SOURCE" ]; then
+        if python3 "$AOPS_PATH/scripts/convert_mcp_to_gemini.py" "$MCP_SOURCE" "$MCP_CONVERTED" 2>/dev/null; then
+            MCP_COUNT=$(jq '.mcpServers | keys | length' "$MCP_CONVERTED" 2>/dev/null || echo "0")
+            echo -e "${GREEN}✓ Converted $MCP_COUNT MCP servers to Gemini format${NC}"
+        else
+            echo -e "${YELLOW}⚠ MCP conversion failed - using fallback servers${NC}"
+        fi
+    else
+        echo -e "${YELLOW}⚠ Claude mcp.json not found at $MCP_SOURCE${NC}"
+    fi
+
     # Merge settings
     echo
     echo "Merging Gemini settings..."
@@ -491,14 +507,29 @@ else
 
     if [ -f "$MERGE_FILE" ]; then
         MERGE_CONTENT=$(cat "$MERGE_FILE" | sed "s|\\\$AOPS|$AOPS_PATH|g")
-        MERGED=$(jq -s '
-            .[0] as $existing |
-            .[1] as $new |
-            $existing * {
-                hooks: (($existing.hooks // {}) * ($new.hooks // {})),
-                mcpServers: (($existing.mcpServers // {}) * ($new.mcpServers // {}))
-            } | del(.["$comment"])
-        ' "$GEMINI_SETTINGS" <(echo "$MERGE_CONTENT"))
+
+        # Also merge converted MCP servers if available
+        if [ -f "$MCP_CONVERTED" ]; then
+            MCP_CONTENT=$(cat "$MCP_CONVERTED")
+            MERGED=$(jq -s '
+                .[0] as $existing |
+                .[1] as $new |
+                .[2] as $mcp |
+                $existing * {
+                    hooks: (($existing.hooks // {}) * ($new.hooks // {})),
+                    mcpServers: (($existing.mcpServers // {}) * ($new.mcpServers // {}) * ($mcp.mcpServers // {}))
+                } | del(.["$comment"])
+            ' "$GEMINI_SETTINGS" <(echo "$MERGE_CONTENT") <(echo "$MCP_CONTENT"))
+        else
+            MERGED=$(jq -s '
+                .[0] as $existing |
+                .[1] as $new |
+                $existing * {
+                    hooks: (($existing.hooks // {}) * ($new.hooks // {})),
+                    mcpServers: (($existing.mcpServers // {}) * ($new.mcpServers // {}))
+                } | del(.["$comment"])
+            ' "$GEMINI_SETTINGS" <(echo "$MERGE_CONTENT"))
+        fi
         echo "$MERGED" > "$GEMINI_SETTINGS"
         echo -e "${GREEN}✓ Merged hooks and MCP servers into Gemini settings.json${NC}"
     fi
@@ -519,12 +550,14 @@ CRON_CMD="*/5 * * * * cd $AOPS_PATH && ACA_DATA=$ACA_DATA_PATH uv run python scr
 # Check if cron is available
 if command -v crontab &> /dev/null; then
     # Check if cron job already exists
-    if crontab -l 2>/dev/null | grep -q "$CRON_MARKER"; then
+    # Note: grep -q exits 1 if no match, which with pipefail exits the script
+    # Capture existing crontab first to avoid pipefail issues
+    existing_crontab=$(crontab -l 2>/dev/null || true)
+    if echo "$existing_crontab" | grep -q "$CRON_MARKER"; then
         echo -e "${GREEN}✓ Task index cron job already installed${NC}"
     else
-        # Add cron job
-        (crontab -l 2>/dev/null; echo "$CRON_MARKER"; echo "$CRON_CMD") | crontab -
-        if [ $? -eq 0 ]; then
+        # Add cron job (append to existing)
+        if (echo "$existing_crontab"; echo "$CRON_MARKER"; echo "$CRON_CMD") | crontab -; then
             echo -e "${GREEN}✓ Installed task index cron job (every 5 minutes)${NC}"
         else
             echo -e "${YELLOW}⚠ Could not install cron job - install manually:${NC}"

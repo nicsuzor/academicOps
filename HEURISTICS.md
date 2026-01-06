@@ -39,7 +39,7 @@ Empirically derived rules implementing [[AXIOMS]]. Evidence lives in GitHub Issu
 **Confidence**: High | **Implements**: #15, #16 | **Evidence**: #214
 
 ## H4: Explicit Instructions Override Inference
-**Statement**: When a user provides explicit instructions, follow them literally. Do not interpret, soften, or "improve" them.
+**Statement**: When a user provides explicit instructions, follow them literally. Do not interpret, soften, or "improve" them. This includes mid-task input: if user provides a hypothesis or correction during your work, STOP your current approach and test their suggestion FIRST.
 **Confidence**: High | **Implements**: #4, #22 | **Evidence**: #215
 
 ## H5: Error Messages Are Primary Evidence
