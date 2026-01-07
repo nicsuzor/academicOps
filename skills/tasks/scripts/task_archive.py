@@ -28,8 +28,8 @@ if str(_aops_root) not in sys.path:
     sys.path.insert(0, str(_aops_root))
 os.environ.setdefault("AOPS", str(_aops_root))
 
-from lib.paths import get_data_root
-from skills.tasks import task_ops
+from lib.paths import get_data_root  # noqa: E402
+from skills.tasks import task_ops  # noqa: E402
 
 
 def main():
@@ -74,13 +74,9 @@ def main():
             if args.unarchive:
                 result = task_ops.unarchive_task(identifier, data_dir)
             else:
-                # Try to resolve identifier (supports index-based)
-                try:
-                    filename = task_ops.resolve_identifier(identifier, data_dir)
-                    result = task_ops.archive_task(filename, data_dir)
-                except ValueError:
-                    # Not an index, use as-is
-                    result = task_ops.archive_task(identifier, data_dir)
+                # Use complete_task for location-aware completion
+                # (archives inbox tasks, updates status for external files)
+                result = task_ops.complete_task(identifier, data_dir)
 
             results.append((identifier, result))
             if result["success"]:

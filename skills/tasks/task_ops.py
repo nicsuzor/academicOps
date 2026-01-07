@@ -13,7 +13,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-import yaml
+import yaml  # type: ignore[import-untyped]
 
 from skills.tasks.models import Subtask, Task
 
@@ -325,7 +325,7 @@ def save_task_to_file(task: Task, file_path: Path) -> None:
 
     # Add metadata dict if we have project-specific data
     # (for now, just placeholder - can extend later)
-    metadata_dict = {}
+    metadata_dict: dict[str, Any] = {}
     if metadata_dict:
         frontmatter["metadata"] = metadata_dict
 
@@ -566,6 +566,155 @@ def resolve_identifier(identifier: str, data_dir: Path) -> str:
 
     # Otherwise add .md extension
     return clean_id + ".md"
+
+
+def resolve_task_path(identifier: str, data_dir: Path) -> tuple[Path, str] | None:
+    """Resolve a task identifier to a file path and location type.
+
+    Supports multiple identifier formats:
+    - Absolute path: /home/user/data/reviews/file.md
+    - Relative path: reviews/joel-cooper/task.md
+    - Task filename: 20251110-abc123.md
+    - Task ID without extension: 20251110-abc123
+
+    Args:
+        identifier: Task identifier in any supported format
+        data_dir: Data directory path
+
+    Returns:
+        Tuple of (file_path, location_type) where location_type is:
+        - "inbox" for files in tasks/inbox/
+        - "external" for files anywhere else
+        Returns None if file not found.
+    """
+    # 1. Try as absolute path
+    if identifier.startswith("/"):
+        abs_path = Path(identifier)
+        if abs_path.exists() and abs_path.is_file():
+            # Check if it's in inbox
+            inbox_dir = data_dir / "tasks/inbox"
+            try:
+                abs_path.relative_to(inbox_dir)
+                return (abs_path, "inbox")
+            except ValueError:
+                return (abs_path, "external")
+
+    # 2. Try relative to data_dir
+    rel_path = data_dir / identifier
+    if rel_path.exists() and rel_path.is_file():
+        inbox_dir = data_dir / "tasks/inbox"
+        try:
+            rel_path.relative_to(inbox_dir)
+            return (rel_path, "inbox")
+        except ValueError:
+            return (rel_path, "external")
+
+    # 3. Search standard locations (inbox)
+    task_path = find_task_file(identifier, data_dir)
+    if task_path:
+        return (task_path, "inbox")
+
+    return None
+
+
+def update_status_in_place(
+    file_path: Path, new_status: str = "completed"
+) -> dict[str, Any]:
+    """Update the status field in a task file's frontmatter in-place.
+
+    Does not move the file. Used for files outside tasks/inbox/.
+
+    Args:
+        file_path: Path to the task file
+        new_status: New status value (default: "completed")
+
+    Returns:
+        Result dictionary with success status and message
+    """
+    if not file_path.exists():
+        return {"success": False, "message": f"File not found: {file_path}"}
+
+    try:
+        content = file_path.read_text(encoding="utf-8")
+    except Exception as e:
+        return {"success": False, "message": f"Cannot read {file_path}: {e}"}
+
+    # Check for frontmatter
+    if not content.startswith("---"):
+        return {"success": False, "message": f"No frontmatter in {file_path}"}
+
+    parts = content.split("---", 2)
+    if len(parts) < 3:
+        return {"success": False, "message": f"Invalid frontmatter in {file_path}"}
+
+    try:
+        frontmatter = yaml.safe_load(parts[1])
+        if not isinstance(frontmatter, dict):
+            return {"success": False, "message": f"Invalid frontmatter in {file_path}"}
+    except yaml.YAMLError as e:
+        return {"success": False, "message": f"YAML parse error: {e}"}
+
+    # Check current status
+    current_status = frontmatter.get("status")
+    if current_status == new_status:
+        return {
+            "success": True,
+            "message": f"Already {new_status}: {file_path.name}",
+            "action": "no_change",
+        }
+
+    # Update status
+    frontmatter["status"] = new_status
+    frontmatter["modified"] = datetime.now(UTC).isoformat()
+
+    # Rebuild file content
+    yaml_str = yaml.dump(frontmatter, default_flow_style=False, allow_unicode=True)
+    new_content = f"---\n{yaml_str}---{parts[2]}"
+
+    try:
+        file_path.write_text(new_content, encoding="utf-8")
+        return {
+            "success": True,
+            "message": f"Status updated: {file_path.name}",
+            "action": "status_updated",
+            "path": str(file_path),
+            "old_status": current_status,
+            "new_status": new_status,
+        }
+    except Exception as e:
+        return {"success": False, "message": f"Failed to write {file_path}: {e}"}
+
+
+def complete_task(identifier: str, data_dir: Path) -> dict[str, Any]:
+    """Complete a task - archive if in inbox, update status otherwise.
+
+    Location-aware completion:
+    - Files in tasks/inbox/: Move to tasks/archived/
+    - Files elsewhere: Update status to "completed" in-place
+
+    Args:
+        identifier: Task identifier (path, filename, or task ID)
+        data_dir: Data directory path
+
+    Returns:
+        Result dictionary with success status, action taken, and details
+    """
+    # Resolve the identifier to a path
+    result = resolve_task_path(identifier, data_dir)
+    if result is None:
+        return {
+            "success": False,
+            "message": f"Task not found: {identifier}. Searched: inbox, {data_dir}",
+        }
+
+    file_path, location = result
+
+    if location == "inbox":
+        # Use existing archive behavior
+        return archive_task(file_path.name, data_dir)
+    else:
+        # Update status in-place for external files
+        return update_status_in_place(file_path, "completed")
 
 
 def archive_task(filename: str, data_dir: Path) -> dict[str, Any]:
