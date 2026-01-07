@@ -87,10 +87,20 @@ If user picks one, update the daily.md "Active Now" section to reflect what they
 | **Enjoy**  | Different project from today's dominant work, creative/substantive |
 | **Quick**  | Action items, approvals, responses, single-step tasks              |
 
+### Framework Work Warning
+
+**Framework/aops work is meta-work, not real productivity.** When presenting recommendations:
+
+1. If today's work is dominated by `aops`/`academicOps` (3+ items), explicitly note: "Heavy framework day - consider actual tasks"
+2. ENJOY recommendation should prioritize NON-framework tasks when aops is dominant
+3. Never recommend more framework work as "variety" from framework work
+
 ## Arguments
 
 - None (uses current date automatically)
 - `--date YYYYMMDD` - Check recommendations for different date (testing)
+
+**Project filtering**: If user specifies a project (e.g., "aops tasks", "OSB work"), filter script output to only show tasks matching that project before presenting. The script doesn't support `--project` yet (see Issue #294).
 
 ## Output
 
