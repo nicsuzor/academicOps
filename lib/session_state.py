@@ -125,22 +125,35 @@ def save_hydrator_state(cwd: str, state: HydratorState) -> None:
     """Atomically save hydrator state.
 
     Uses write-then-rename pattern for atomic updates.
+    Unique temp file per write to avoid race conditions.
 
     Args:
         cwd: Current working directory
         state: HydratorState to save
     """
+    import tempfile
+
     state_dir = get_state_dir()
     state_dir.mkdir(parents=True, exist_ok=True)
 
     state_path = get_hydrator_state_path(cwd)
-    temp_path = state_path.with_suffix(".tmp")
 
-    # Write to temp file
-    temp_path.write_text(json.dumps(state, indent=2))
+    # Write to unique temp file to avoid race conditions
+    fd, temp_path_str = tempfile.mkstemp(
+        prefix=state_path.stem + "_", suffix=".tmp", dir=state_dir
+    )
+    temp_path = Path(temp_path_str)
 
-    # Atomic rename
-    temp_path.rename(state_path)
+    try:
+        os.write(fd, json.dumps(state, indent=2).encode())
+        os.close(fd)
+        # Atomic rename
+        temp_path.rename(state_path)
+    except Exception:
+        # Clean up temp file on failure
+        os.close(fd) if fd else None
+        temp_path.unlink(missing_ok=True)
+        raise
 
 
 def load_custodiet_state(cwd: str, retries: int = 3) -> CustodietState | None:
@@ -177,19 +190,32 @@ def save_custodiet_state(cwd: str, state: CustodietState) -> None:
     """Atomically save custodiet state.
 
     Uses write-then-rename pattern for atomic updates.
+    Unique temp file per write to avoid race conditions.
 
     Args:
         cwd: Current working directory
         state: CustodietState to save
     """
+    import tempfile
+
     state_dir = get_state_dir()
     state_dir.mkdir(parents=True, exist_ok=True)
 
     state_path = get_custodiet_state_path(cwd)
-    temp_path = state_path.with_suffix(".tmp")
 
-    # Write to temp file
-    temp_path.write_text(json.dumps(state, indent=2))
+    # Write to unique temp file to avoid race conditions
+    fd, temp_path_str = tempfile.mkstemp(
+        prefix=state_path.stem + "_", suffix=".tmp", dir=state_dir
+    )
+    temp_path = Path(temp_path_str)
 
-    # Atomic rename
-    temp_path.rename(state_path)
+    try:
+        os.write(fd, json.dumps(state, indent=2).encode())
+        os.close(fd)
+        # Atomic rename
+        temp_path.rename(state_path)
+    except Exception:
+        # Clean up temp file on failure
+        os.close(fd) if fd else None
+        temp_path.unlink(missing_ok=True)
+        raise
