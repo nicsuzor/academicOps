@@ -4,11 +4,32 @@ Provides fixtures for common paths and test setup.
 All paths resolve using AOPS and ACA_DATA environment variables.
 """
 
+import os
 from pathlib import Path
 
 import pytest
 
 from .paths import get_bots_dir, get_data_dir, get_hooks_dir, get_writing_root
+
+
+def _is_xdist_worker() -> bool:
+    """Check if running in an xdist worker process."""
+    return os.environ.get("PYTEST_XDIST_WORKER") is not None
+
+
+@pytest.fixture(autouse=True)
+def skip_demo_in_xdist(request):
+    """Skip demo tests when running in xdist workers.
+
+    Demo tests need visible print output for human validation (H37a).
+    xdist captures worker output, hiding print statements.
+
+    Run demo tests with: pytest -m demo -n 0
+    """
+    if "demo" in request.keywords and _is_xdist_worker():
+        pytest.skip(
+            "Demo tests require -n 0 for visible output. Run: pytest -m demo -n 0"
+        )
 
 
 @pytest.fixture

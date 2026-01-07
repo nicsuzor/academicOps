@@ -563,6 +563,7 @@ def claude_headless_tracked():
         model: str = "haiku",
         timeout_seconds: int = 120,
         permission_mode: str = "bypassPermissions",
+        cwd: Path | None = None,
     ) -> tuple[dict, str, list[dict]]:
         """Run claude with session tracking.
 
@@ -571,6 +572,7 @@ def claude_headless_tracked():
             model: Model to use (default: haiku)
             timeout_seconds: Command timeout
             permission_mode: Permission mode (default: bypassPermissions)
+            cwd: Working directory (defaults to aops root for hook access)
 
         Returns:
             Tuple of (result dict, session_id, tool_calls list)
@@ -594,9 +596,12 @@ def claude_headless_tracked():
         env = os.environ.copy()
 
         try:
-            # Use predictable directory for tests (consistent across runs)
-            test_dir = Path("/tmp/claude-test")
-            test_dir.mkdir(parents=True, exist_ok=True)
+            # Use aops root by default so hooks are available
+            # Hooks are configured in project .claude/ directory
+            if cwd:
+                test_dir = cwd
+            else:
+                test_dir = get_aops_root()
 
             result = subprocess.run(
                 cmd,
