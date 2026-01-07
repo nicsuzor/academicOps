@@ -123,21 +123,90 @@ async def test_complete_pipeline():
 6. ✅ Use realistic test data
 7. ✅ Clean up resources after test
 
-## Demo Tests
+## Demo Tests vs Slow Tests
 
-**Goal**: Create _executable demonstrations_ that show behavior (narrative + observable output) and prove real-world utility.
+### Demo Test Economics
 
-A good demo test should:
+Demo tests are **expensive** - they require:
 
-- **Read like documentation** (scenario names, clear setup)
-- **Show behavior** (prints/logs/trace-friendly asserts) when run in "demo mode"
-- **Use real data** (prove _and demonstrate_ real-world utility)
+1. **Runtime cost**: Full Claude headless sessions (30-180s each)
+2. **Evaluation cost**: Human must read and validate full output
+3. **Maintenance cost**: Each demo is a contract you maintain
+
+**Golden path principle**: One demo per subsystem tests the complete flow. Variations are unit tests.
+
+**When NOT to use demo**:
+
+- Test just reads existing files (no Claude session) → regular integration test
+- Test verifies same behavior as another demo with slight variation → unit test
+- Test is developer diagnostic, not user showcase → `slow` only
+
+**Consolidation pattern** (12 demos → 4):
+
+| Before                | After                        | Rationale                                     |
+| --------------------- | ---------------------------- | --------------------------------------------- |
+| 3 hydrator demos      | 1 demo + file structure test | One golden path; file reading isn't E2E       |
+| 5 criteria gate demos | 2 demos                      | One "blocks" + one "allows" covers both paths |
+| 2 custodiet demos     | 1 demo + file structure test | Same pattern as hydrator                      |
+
+### Demo Tests (`@pytest.mark.demo`)
+
+**Purpose**: Showcase tests that demonstrate framework capabilities to users. These are the "highlight reel" - only the highest quality, most explanatory e2e tests.
+
+**Criteria for demo marker**:
+
+1. **Showcases framework behavior** - demonstrates a user-facing capability
+2. **Explanatory narrative** - clear headers, step-by-step output, teaches the reader
+3. **Full untruncated output** - uses `print()` for human validation (H37a)
+4. **Real framework scenarios** - not contrived examples (H37b)
+5. **Structural validation** - visible pass/fail checks with explanations
+
+**Demo test structure**:
+
+```python
+@pytest.mark.demo
+@pytest.mark.slow
+class TestFeatureDemo:
+    """Demo tests showing [feature] behavior.
+
+    Run with: uv run pytest tests/path.py -k demo -v -s -n 0
+    """
+
+    def test_demo_scenario_name(self) -> None:
+        print("\n" + "=" * 80)
+        print("FEATURE DEMO - SCENARIO NAME")
+        print("=" * 80)
+        # ... full output, structural validation
+```
+
+### Slow Tests (`@pytest.mark.slow` without `demo`)
+
+**Purpose**: E2E verification tests that prove correctness but aren't showcase-quality. Includes:
+
+- Functional verification (does X work?)
+- Developer diagnostics (debugging internals)
+- Edge case coverage
+- Integration checks
+
+**When to use slow without demo**:
+
+- Test verifies behavior but doesn't teach/explain
+- Output uses `log.info()` rather than narrative `print()`
+- Internal diagnostic rather than user-facing demo
+- Functional correctness without showcase value
+
+### Summary
+
+| Marker          | Purpose                         | Audience             | Output Style           |
+| --------------- | ------------------------------- | -------------------- | ---------------------- |
+| `demo` + `slow` | Showcase framework capabilities | Users, documentation | Narrative with print() |
+| `slow` only     | Verify correctness              | Developers           | Logging or minimal     |
 
 ### Demo Test Rules
 
 1. **Add demo marker** (required): `@pytest.mark.demo`
 2. **Names explain behavior**: Use "Given / When / Then" naming structure
-3. **Log intermediate state**: Include `log.info(...)` calls showing key steps
+3. **Print intermediate state**: Use `print()` for narrative output humans can follow
 4. **Direct object comparisons**: Prefer dicts/lists/dataclasses for readable diffs
 5. **Human-readable parametrization IDs**: Create a mini "example catalog"
 6. **Asserts that teach**: Compare **dicts**, **lists**, **dataclasses** directly
