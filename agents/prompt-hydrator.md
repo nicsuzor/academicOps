@@ -205,7 +205,11 @@ TodoWrite(todos=[
   {content: "Final: Commit and push changes", status: "pending", activeForm: "Committing"},
 
   // === QUESTION WORKFLOW (if approach=none) ===
-  // (replaces all above)
+  // (replaces all above EXCEPT skill step - questions about a domain still need the skill)
+  // If skill matched:
+  {content: "Step 1: Invoke Skill(skill='[skill-name]') for domain context", status: "pending", activeForm: "Loading skill"},
+  {content: "Step 2: Answer the question then STOP - do NOT implement", status: "pending", activeForm: "Answering"}
+  // If no skill matched:
   {content: "Step 1: Answer the question then STOP - do NOT implement", status: "pending", activeForm: "Answering"}
 ])
 ```

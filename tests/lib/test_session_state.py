@@ -340,6 +340,142 @@ class TestConcurrentAccess:
         assert len(errors) == 0, f"Got {len(errors)} JSON errors: {errors[:3]}"
 
 
+class TestErrorFlag:
+    """Test error flag operations for cross-hook coordination."""
+
+    def test_set_error_flag_creates_flag(self, tmp_path: Path, monkeypatch) -> None:
+        """set_error_flag should create error_flag in custodiet state."""
+        from lib.session_state import get_error_flag, set_error_flag
+
+        monkeypatch.setenv("CLAUDE_SESSION_STATE_DIR", str(tmp_path))
+
+        cwd = "/home/user/project"
+        set_error_flag(cwd, "compliance_failure", "Agent violated H2")
+
+        flag = get_error_flag(cwd)
+        assert flag is not None
+        assert flag["error_type"] == "compliance_failure"
+        assert flag["message"] == "Agent violated H2"
+        assert "timestamp" in flag
+        assert isinstance(flag["timestamp"], float)
+
+    def test_get_error_flag_returns_none_when_not_set(
+        self, tmp_path: Path, monkeypatch
+    ) -> None:
+        """get_error_flag should return None when no flag exists."""
+        from lib.session_state import get_error_flag
+
+        monkeypatch.setenv("CLAUDE_SESSION_STATE_DIR", str(tmp_path))
+
+        flag = get_error_flag("/nonexistent/project")
+        assert flag is None
+
+    def test_get_error_flag_returns_none_after_clear(
+        self, tmp_path: Path, monkeypatch
+    ) -> None:
+        """get_error_flag should return None after flag is cleared."""
+        from lib.session_state import clear_error_flag, get_error_flag, set_error_flag
+
+        monkeypatch.setenv("CLAUDE_SESSION_STATE_DIR", str(tmp_path))
+
+        cwd = "/project"
+        set_error_flag(cwd, "intervention_required", "Test message")
+        assert get_error_flag(cwd) is not None
+
+        clear_error_flag(cwd)
+        assert get_error_flag(cwd) is None
+
+    def test_clear_error_flag_preserves_other_state(
+        self, tmp_path: Path, monkeypatch
+    ) -> None:
+        """clear_error_flag should not affect other custodiet state fields."""
+        from lib.session_state import (
+            clear_error_flag,
+            load_custodiet_state,
+            save_custodiet_state,
+            set_error_flag,
+        )
+
+        monkeypatch.setenv("CLAUDE_SESSION_STATE_DIR", str(tmp_path))
+
+        cwd = "/project"
+        # Set up initial state with other fields
+        initial_state = {
+            "last_compliance_ts": 1234567890.0,
+            "tool_calls_since_compliance": 5,
+            "last_drift_warning": "some warning",
+            "error_flag": None,
+        }
+        save_custodiet_state(cwd, initial_state)
+
+        # Set error flag
+        set_error_flag(cwd, "cannot_assess", "Missing context")
+
+        # Clear error flag
+        clear_error_flag(cwd)
+
+        # Other fields should be preserved
+        state = load_custodiet_state(cwd)
+        assert state is not None
+        assert state["last_compliance_ts"] == 1234567890.0
+        assert state["tool_calls_since_compliance"] == 5
+        assert state["last_drift_warning"] == "some warning"
+
+    def test_set_error_flag_on_fresh_state(self, tmp_path: Path, monkeypatch) -> None:
+        """set_error_flag should work when no prior state exists."""
+        from lib.session_state import (
+            get_error_flag,
+            load_custodiet_state,
+            set_error_flag,
+        )
+
+        monkeypatch.setenv("CLAUDE_SESSION_STATE_DIR", str(tmp_path))
+
+        cwd = "/brand/new/project"
+        set_error_flag(cwd, "compliance_failure", "First flag")
+
+        # Flag should be set
+        flag = get_error_flag(cwd)
+        assert flag is not None
+        assert flag["error_type"] == "compliance_failure"
+
+        # State should have been initialized
+        state = load_custodiet_state(cwd)
+        assert state is not None
+
+    def test_error_flag_types(self, tmp_path: Path, monkeypatch) -> None:
+        """Error flag supports documented error types."""
+        from lib.session_state import get_error_flag, set_error_flag
+
+        monkeypatch.setenv("CLAUDE_SESSION_STATE_DIR", str(tmp_path))
+
+        cwd = "/project"
+
+        # Test each documented error type
+        for error_type in [
+            "compliance_failure",
+            "intervention_required",
+            "cannot_assess",
+        ]:
+            set_error_flag(cwd, error_type, f"Test {error_type}")
+            flag = get_error_flag(cwd)
+            assert flag["error_type"] == error_type
+
+    def test_error_flag_overwrites_previous(self, tmp_path: Path, monkeypatch) -> None:
+        """Setting error flag should overwrite any previous flag."""
+        from lib.session_state import get_error_flag, set_error_flag
+
+        monkeypatch.setenv("CLAUDE_SESSION_STATE_DIR", str(tmp_path))
+
+        cwd = "/project"
+        set_error_flag(cwd, "compliance_failure", "First error")
+        set_error_flag(cwd, "intervention_required", "Second error")
+
+        flag = get_error_flag(cwd)
+        assert flag["error_type"] == "intervention_required"
+        assert flag["message"] == "Second error"
+
+
 class TestStateDirectory:
     """Test state directory management."""
 
