@@ -1,9 +1,9 @@
 ---
 name: next
 category: instruction
-description: Get 2-3 task recommendations based on deadlines, variety, and momentum. ADHD-friendly task selection. Maintains daily.md Focus Dashboard.
+description: Get 2-3 task recommendations using LLM reasoning. ADHD-friendly task selection. Maintains daily.md Focus Dashboard.
 allowed-tools: Read,Bash,Grep,Write,Edit
-version: 2.0.0
+version: 3.0.0
 permalink: skills-next
 ---
 
@@ -26,41 +26,87 @@ Check if today's daily note exists at `$ACA_DATA/sessions/YYYYMMDD-daily.md`.
 
 **If missing**: Create from template at `skills/next/templates/daily.md`, replacing YYYY-MM-DD with today's date.
 
-### Step 2: Update Focus Dashboard
+### Step 2: Load Task Data
 
-Read today's daily note and update the Focus Dashboard section:
-
-**Priority Burndown**: Query task data to count P0/P1/P2 tasks and their completion status.
+Run the data preparation script:
 
 ```bash
 cd $AOPS && uv run python skills/next/scripts/select_task.py
 ```
 
-Use the `active_tasks` count and task priority distribution to generate:
+This outputs ALL active tasks with metadata. You will reason about selection.
+
+Output includes:
+
+- `active_task_count`: Total active tasks
+- `todays_work`: Project → count mapping for today's accomplishments
+- `priority_distribution`: P0/P1/P2/P3 counts
+- `stale_candidates`: Tasks to suggest for archiving
+- `active_tasks`: Full task list sorted by priority then due date
+
+### Step 3: Update Focus Dashboard
+
+Use `priority_distribution` from script output to update the Focus Dashboard section in today's daily note:
 
 ```
-P0 ████░░░░░░  2/5 → [[task-1]], [[task-2]]
-P1 ██████░░░░  3/5 → [[task-3]]
-P2 ░░░░░░░░░░  0/3
+P0 ████░░░░░░  4/14 → [[task-1]], [[task-2]]
+P1 ██████░░░░  10/14
+P2 ░░░░░░░░░░  0/14
 ```
 
-**Blocked**: Find tasks with status=waiting in task index and list them.
+### Step 4: Reason About Recommendations
 
-**Today's Journey**: Preserve existing entries (do not overwrite).
+Review the task data and select 3 recommendations using YOUR judgment:
 
-### Step 3: Gather Recommendations
+**SHOULD (deadline/commitment pressure)**:
 
-Run the selection script:
+- Look at `days_until_due` field - negative means overdue
+- Consider priority level (P0 tasks are critical)
+- Prefer: overdue → due today → due this week → P0 without dates
+- If title is unclear, read the task file for context
 
-```bash
-cd $AOPS && uv run python skills/next/scripts/select_task.py
+**ENJOY (variety/energy)**:
+
+- Check `todays_work` - which project dominated today?
+- If one project has 3+ items, recommend a DIFFERENT project
+- Look for substantive work: papers, research, creative tasks
+- Check tags for: writing, research, paper, creative
+- Avoid immediate deadlines (prefer >7 days out)
+
+**QUICK (momentum builder)**:
+
+- Look for `subtasks_total` = 0 or 1 (simple tasks)
+- Title signals: approve, send, confirm, respond, check
+- Tasks with `subtasks_done` close to `subtasks_total`
+- Aim for <15 min tasks
+
+**For any task**: Read `$ACA_DATA/[file]` if you need more context than metadata provides.
+
+### Step 4b: Framework Work Warning
+
+**Framework/aops work is meta-work, not real productivity.**
+
+Check `todays_work` - if `academicOps` or `aops` has 3+ items:
+
+1. Explicitly note: "Heavy framework day - consider actual tasks"
+2. ENJOY recommendation MUST be non-framework work
+3. Never recommend more framework work as "variety" from framework work
+
+### Step 4c: Check for Prioritized Tasks
+
+If `priority_distribution` shows P0=0 AND P1=0, ask the user:
+
+```
+No tasks are prioritized for today. Would you like to:
+1. Pick from these recommendations anyway
+2. Set priorities first (I'll use /tasks to help select focus tasks)
 ```
 
-The script outputs JSON with 3 recommendations.
+Use `AskUserQuestion` tool. If user chooses option 2, invoke `Skill(skill="tasks")`.
 
-### Step 4: Present Options
+### Step 5: Present Options
 
-Format the output as:
+Format your selections as:
 
 ```markdown
 ## Task Recommendations
@@ -69,35 +115,33 @@ Format the output as:
 
 ### 1. PROBABLY SHOULD (deadline pressure)
 
-**[Task Title]** - [reason]
+**[Task Title]** - [YOUR reasoning about why this is urgent]
 
-- Due: [date] | Project: [project]
+- Due: [date] | Priority: P[n] | Project: [project]
 
 ### 2. MIGHT ENJOY (different domain)
 
-**[Task Title]** - [reason]
+**[Task Title]** - [YOUR reasoning about why this provides variety]
 
 - Good counterweight to recent [project] work
-- **Next steps** (from next_subtasks if present):
+- **Next steps** (if next_subtasks present):
   - [ ] First actionable subtask
   - [ ] Second actionable subtask
 
 ### 3. QUICK WIN (build momentum)
 
-**[Task Title]** - [reason]
+**[Task Title]** - [YOUR reasoning about why this is quick]
 
-- Estimated: 5-15 min
+- Should take: 5-15 min
 
 ---
 
-### Archive candidates (if any)
+### Archive candidates (if stale_candidates not empty)
 
-- **[Stale Task]** - [reason: past event / overdue 60+ days]
+- **[Stale Task]** - [reason from stale_candidates]
 ```
 
-**Note**: The script extracts up to 3 unchecked subtasks for ANY task with multiple steps, making them immediately actionable. Stale tasks (past events >7 days, overdue >60 days) are excluded from recommendations and shown separately as archive candidates.
-
-### Step 5: User Decision
+### Step 6: User Decision
 
 After presenting, ask:
 
@@ -105,57 +149,26 @@ After presenting, ask:
 What sounds right?
 ```
 
-### Step 6: Handle Selection
+### Step 7: Handle Selection
 
-When user picks a task:
-
-1. **Read** today's daily note
-2. **Add entry** to Today's Journey table (most recent at top):
-
-```markdown
-| Time  | Task                                     | Status   |
-| ----- | ---------------------------------------- | -------- |
-| HH:MM | [[task-slug]] (P[n]) - brief description | → active |
-```
-
-3. **Update status** of any previously active task to `paused`
-4. **Write** updated daily note
-
-**Status values**: `→ active` (current focus), `✓ done`, `paused`, `blocked`
+When user picks a task, use `Skill(skill="tasks")` to update task status if needed.
 
 ## Focus Dashboard Sections (Owned by /next)
 
-| Section           | Purpose                                  | Data Source                 |
-| ----------------- | ---------------------------------------- | --------------------------- |
-| Priority Burndown | P0/P1/P2 task counts with progress bars  | Task index                  |
-| Today's Journey   | Timestamped log of tasks worked on today | User selections             |
-| Blocked           | Tasks waiting on external dependencies   | Task index (status=waiting) |
+| Section           | Purpose                                 | Data Source                  |
+| ----------------- | --------------------------------------- | ---------------------------- |
+| Priority Burndown | P0/P1/P2 task counts with progress bars | Script priority_distribution |
+| Blocked           | Tasks waiting on external dependencies  | Task index (status=waiting)  |
 
 **Session-insights owns**: Today's Story, Project Accomplishments, Session Log, Session Timeline, Session Insights, Abandoned Todos.
-
-## Selection Logic
-
-| Category   | Priority                                                           |
-| ---------- | ------------------------------------------------------------------ |
-| **Should** | Overdue > Due today > Due this week > P0 tasks                     |
-| **Enjoy**  | Different project from today's dominant work, creative/substantive |
-| **Quick**  | Action items, approvals, responses, single-step tasks              |
-
-### Framework Work Warning
-
-**Framework/aops work is meta-work, not real productivity.** When presenting recommendations:
-
-1. If today's work is dominated by `aops`/`academicOps` (3+ items), explicitly note: "Heavy framework day - consider actual tasks"
-2. ENJOY recommendation should prioritize NON-framework tasks when aops is dominant
-3. Never recommend more framework work as "variety" from framework work
 
 ## Arguments
 
 - None (uses current date automatically)
 - `--date YYYYMMDD` - Check recommendations for different date (testing)
 
-**Project filtering**: If user specifies a project (e.g., "aops tasks", "OSB work"), filter script output to only show tasks matching that project before presenting.
+**Project filtering**: If user specifies a project (e.g., "aops tasks", "OSB work"), filter the active_tasks to only that project before reasoning.
 
 ## Output
 
-Returns recommendations to present to user. Updates daily.md Focus Dashboard on every run.
+Returns recommendations with YOUR reasoning to present to user. Updates daily.md Focus Dashboard on every run.

@@ -10,7 +10,7 @@ tags: [daily, sessions]
 
 ## Today's Story
 
-(Populated by session-insights after sessions are mined)
+- (Populated by session-insights after sessions are mined)
 
 ## Focus Dashboard
 
@@ -22,14 +22,9 @@ P1 ░░░░░░░░░░  0/0
 P2 ░░░░░░░░░░  0/0
 ```
 
-### Today's Journey
-
-| Time | Task | Status |
-| ---- | ---- | ------ |
-
 ### Blocked
 
-(No blocked tasks)
+(No blocked tasks - cleared daily by /next)
 
 ## Project Accomplishments
 

@@ -1,11 +1,9 @@
 #!/usr/bin/env python3
 """
-Task selector for ADHD-friendly recommendations.
+Task data preparation for LLM-driven selection.
 
-Returns 3 task options:
-1. SHOULD - deadline pressure (overdue > today > this week > P0)
-2. ENJOY - variety from recent work (different project, substantive)
-3. QUICK - momentum builder (<15 min, actionable)
+Outputs ALL active tasks with metadata. Agent reasons about selection.
+No algorithmic scoring or keyword matching (H12a compliance).
 """
 
 import json
@@ -18,20 +16,14 @@ from pathlib import Path
 # Resolve paths
 ACA_DATA = Path.home() / "writing" / "data"
 TASK_INDEX = ACA_DATA / "tasks" / "index.json"
-DAILY_DIR = ACA_DATA / "sessions"
 SYNTHESIS = ACA_DATA / "dashboard" / "synthesis.json"
 
 
 def load_json(path: Path) -> dict:
-    """Load JSON file or return empty dict."""
+    """Load JSON file. Fail fast if missing."""
     if not path.exists():
-        return {}
+        raise FileNotFoundError(f"Required file not found: {path}")
     return json.loads(path.read_text())
-
-
-def get_today_str() -> str:
-    """Get today's date as YYYYMMDD."""
-    return datetime.now().strftime("%Y%m%d")
 
 
 def parse_due_date(due_str: str | None) -> datetime | None:
@@ -39,21 +31,16 @@ def parse_due_date(due_str: str | None) -> datetime | None:
     if not due_str:
         return None
 
-    # Try ISO format first
-    for fmt in [
-        "%Y-%m-%dT%H:%M:%S%z",
-        "%Y-%m-%dT%H:%M:%S",
-        "%Y-%m-%d",
-        "%Y-%m-%d %H:%M",
-    ]:
-        try:
-            return datetime.fromisoformat(due_str.replace("Z", "+00:00"))
-        except (ValueError, AttributeError):
-            pass
-        try:
-            return datetime.strptime(due_str.split("T")[0], "%Y-%m-%d")
-        except (ValueError, AttributeError):
-            pass
+    try:
+        return datetime.fromisoformat(due_str.replace("Z", "+00:00"))
+    except (ValueError, AttributeError):
+        pass
+
+    try:
+        return datetime.strptime(due_str.split("T")[0], "%Y-%m-%d")
+    except (ValueError, AttributeError):
+        pass
+
     return None
 
 
@@ -62,7 +49,6 @@ def get_active_tasks(index: dict) -> list[dict]:
     tasks = index.get("tasks", [])
     active = []
     for t in tasks:
-        # Check both status field and file path
         status = t.get("status", "")
         file_path = t.get("file", "")
         if status in ("archived", "done"):
@@ -79,254 +65,44 @@ def get_todays_work(synthesis: dict) -> Counter:
     return Counter(item.get("project", "unknown") for item in items)
 
 
-def score_deadline(task: dict, now: datetime) -> tuple[int, str]:
-    """
-    Score task by deadline urgency AND priority.
-    Returns (score, reason) where higher score = more urgent.
-
-    Priority boosts ensure P0 tasks compete with moderately overdue lower-priority tasks.
-    """
-    due = parse_due_date(task.get("due"))
-    priority = task.get("priority", 3)
-
-    # P0 tasks ALWAYS surface first - they get a massive boost (200)
-    # This ensures P0 beats any overdue P1/P2/P3 task
-    # P1 +20, P2 +10, P3 +0
-    priority_boost = {0: 200, 1: 20, 2: 10, 3: 0}.get(priority, 0)
-
-    if due:
-        days_until = (due.date() - now.date()).days
-        if days_until < 0:
-            base_score = 100 - days_until  # More overdue = higher
-            return (
-                base_score + priority_boost,
-                f"OVERDUE by {-days_until} days (P{priority})",
-            )
-        elif days_until == 0:
-            return (90 + priority_boost, f"Due TODAY (P{priority})")
-        elif days_until == 1:
-            return (80 + priority_boost, f"Due tomorrow (P{priority})")
-        elif days_until <= 7:
-            return (70 + priority_boost, f"Due in {days_until} days (P{priority})")
-        else:
-            return (50 + priority_boost, f"Due {due.strftime('%b %d')} (P{priority})")
-
-    # No due date - use priority alone
-    priority_scores = {0: 60, 1: 40, 2: 20, 3: 10}
-    return (priority_scores.get(priority, 10), f"P{priority} priority")
-
-
-def is_quick_win(task: dict) -> bool:
-    """Detect quick-win tasks."""
-    title = task.get("title", "").lower()
-    quick_keywords = [
-        "respond",
-        "reply",
-        "approve",
-        "confirm",
-        "send",
-        "check",
-        "review",
-    ]
-
-    # Title heuristics
-    if any(kw in title for kw in quick_keywords):
-        return True
-
-    # Subtask heuristics - mostly done or no subtasks
-    total = task.get("subtasks_total", 0)
-    done = task.get("subtasks_done", 0)
-    if total == 0 or (total > 0 and total - done <= 1):
-        return True
-
-    return False
-
-
-def is_deep_work(task: dict) -> bool:
-    """Detect substantive/creative tasks."""
-    title = task.get("title", "").lower()
-    tags = task.get("tags", [])
-
-    deep_keywords = [
-        "write",
-        "paper",
-        "research",
-        "review",
-        "design",
-        "implement",
-        "create",
-    ]
-    deep_tags = ["paper", "writing", "research", "thesis", "phd"]
-
-    if any(kw in title for kw in deep_keywords):
-        return True
-    if any(t in deep_tags for t in tags):
-        return True
-
-    return False
-
-
-def select_should(tasks: list[dict], now: datetime) -> dict | None:
-    """Select most urgent task by deadline."""
-    scored = [(score_deadline(t, now), t) for t in tasks]
-    scored.sort(key=lambda x: x[0][0], reverse=True)
-
-    if scored:
-        (score, reason), task = scored[0]
-        return {"task": task, "reason": reason, "category": "should"}
-    return None
-
-
-def normalize_project(name: str) -> str:
-    """Normalize project names for comparison."""
-    aliases = {
-        "academicops": "aops",
-        "academicOps": "aops",
-        "writing": "writing",
-    }
-    return aliases.get(name, name.lower() if name else "")
-
-
-def select_enjoy(tasks: list[dict], todays_work: Counter) -> dict | None:
-    """Select task from underrepresented project, preferring deep work."""
-    if not tasks:
-        return None
-
-    # Normalize today's work projects
-    normalized_work: Counter[str] = Counter()
-    for proj, count in todays_work.items():
-        normalized_work[normalize_project(proj)] += count
-
-    # Find dominant project today
-    if normalized_work:
-        dominant = normalized_work.most_common(1)[0][0]
-        dominant_count = normalized_work[dominant]
-    else:
-        dominant = None
-        dominant_count = 0
-
-    # Filter to different projects if we've done 3+ in one project
-    candidates = tasks
-    if dominant_count >= 3:
-        other_project = [
-            t for t in tasks if normalize_project(t.get("project", "")) != dominant
-        ]
-        if other_project:
-            candidates = other_project
-
-    # Prefer deep work
-    deep = [t for t in candidates if is_deep_work(t)]
-    if deep:
-        candidates = deep
-
-    # Pick one with no immediate deadline
-    now = datetime.now()
-    relaxed = []
-    for t in candidates:
-        due = parse_due_date(t.get("due"))
-        if due is None or (due.date() - now.date()).days > 7:
-            relaxed.append(t)
-
-    if relaxed:
-        task = relaxed[0]
-    elif candidates:
-        task = candidates[0]
-    else:
-        return None
-
-    reason = "Different domain from recent work"
-    if dominant_count >= 3:
-        reason = f"Counterweight to {dominant_count}+ {dominant} items today"
-    if is_deep_work(task):
-        reason += ", substantive work"
-
-    return {"task": task, "reason": reason, "category": "enjoy"}
-
-
-def select_quick(tasks: list[dict]) -> dict | None:
-    """Select quick-win task."""
-    quick = [t for t in tasks if is_quick_win(t)]
-
-    if quick:
-        task = quick[0]
-        return {
-            "task": task,
-            "reason": "Clear the deck, build momentum",
-            "category": "quick",
-        }
-    return None
-
-
 def get_next_subtasks(task_file: str, limit: int = 3) -> list[str]:
     """Extract next unchecked subtasks from task file."""
-    file_path = ACA_DATA / task_file.replace("tasks/", "tasks/")
+    file_path = ACA_DATA / task_file
     if not file_path.exists():
         return []
 
-    content = file_path.read_text()
-    # Find unchecked items: - [ ] text
-    unchecked = re.findall(r"^- \[ \] (.+)$", content, re.MULTILINE)
-    return unchecked[:limit]
-
-
-def format_recommendation(rec: dict) -> dict:
-    """Format recommendation for output."""
-    task = rec["task"]
-    due = parse_due_date(task.get("due"))
-
-    result = {
-        "category": rec["category"],
-        "title": task.get("title", "Untitled"),
-        "reason": rec["reason"],
-        "project": task.get("project", "uncategorized"),
-        "due": due.strftime("%Y-%m-%d") if due else None,
-        "slug": task.get("slug", ""),
-        "file": task.get("file", ""),
-    }
-
-    # Include next subtasks for any task with multiple steps
-    subtasks = get_next_subtasks(task.get("file", ""))
-    if subtasks:
-        result["next_subtasks"] = subtasks
-
-    return result
+    try:
+        content = file_path.read_text()
+        unchecked = re.findall(r"^- \[ \] (.+)$", content, re.MULTILINE)
+        return unchecked[:limit]
+    except Exception:
+        return []
 
 
 def detect_stale_tasks(tasks: list[dict], now: datetime) -> list[dict]:
-    """Find tasks that are probably stale and should be archived."""
+    """
+    Find tasks that are probably stale and should be archived.
+    Uses deterministic date-based rules only.
+    """
     stale = []
 
     for task in tasks:
-        title = task.get("title", "").lower()
         tags = task.get("tags", [])
         due = parse_due_date(task.get("due"))
         classification = task.get("classification", "").lower()
 
         reason = None
 
-        # Past events (due date passed + looks like an event)
         if due:
             days_overdue = (now.date() - due.date()).days
 
             # Events more than 7 days past
-            event_keywords = [
-                "attend",
-                "event",
-                "meeting",
-                "conference",
-                "seminar",
-                "workshop",
-                "rsvp",
-            ]
-            is_event = (
-                classification in ("event", "decision")
-                or "event" in tags
-                or any(kw in title for kw in event_keywords)
-            )
+            event_indicators = ["event", "decision"]
+            is_event = classification in event_indicators or "event" in tags
             if is_event and days_overdue > 7:
                 reason = f"Past event ({days_overdue} days ago)"
 
-            # Non-events overdue 60+ days with no recent activity
+            # Non-events overdue 60+ days
             elif days_overdue > 60:
                 reason = f"Overdue {days_overdue} days - likely stale"
 
@@ -340,60 +116,89 @@ def detect_stale_tasks(tasks: list[dict], now: datetime) -> list[dict]:
                 }
             )
 
-    return stale[:5]  # Limit to 5 suggestions
+    return stale[:5]
+
+
+def calculate_priority_distribution(tasks: list[dict]) -> dict[str, int]:
+    """Count tasks by priority level."""
+    counts: dict[str, int] = {"P0": 0, "P1": 0, "P2": 0, "P3": 0}
+    for t in tasks:
+        priority = t.get("priority", 3)
+        key = f"P{priority}"
+        if key in counts:
+            counts[key] += 1
+        else:
+            counts["P3"] += 1
+    return counts
+
+
+def enrich_task(task: dict) -> dict:
+    """Add computed fields to task for LLM consumption."""
+    enriched = task.copy()
+
+    # Parse and normalize due date
+    due = parse_due_date(task.get("due"))
+    if due:
+        enriched["due_parsed"] = due.strftime("%Y-%m-%d")
+        days_until = (due.date() - datetime.now().date()).days
+        enriched["days_until_due"] = days_until
+    else:
+        enriched["due_parsed"] = None
+        enriched["days_until_due"] = None
+
+    # Extract next subtasks
+    enriched["next_subtasks"] = get_next_subtasks(task.get("file", ""))
+
+    return enriched
 
 
 def main():
-    # Load data
-    index = load_json(TASK_INDEX)
-    synthesis = load_json(SYNTHESIS)
-
-    if not index:
-        print(json.dumps({"error": "No task index found", "path": str(TASK_INDEX)}))
+    # Load data - fail fast if missing
+    try:
+        index = load_json(TASK_INDEX)
+    except FileNotFoundError as e:
+        print(json.dumps({"error": str(e)}))
         sys.exit(1)
 
-    # Get active tasks and today's work
-    tasks = get_active_tasks(index)
-    todays_work = get_todays_work(synthesis)
+    # Synthesis is optional - empty if missing
+    try:
+        synthesis = load_json(SYNTHESIS)
+    except FileNotFoundError:
+        synthesis = {}
+
     now = datetime.now()
 
-    # Detect stale tasks first (to exclude from recommendations)
+    # Get active tasks
+    tasks = get_active_tasks(index)
+    todays_work = get_todays_work(synthesis)
+
+    # Detect stale tasks (separate from main pool)
     stale_candidates = detect_stale_tasks(tasks, now)
     stale_slugs = {s["slug"] for s in stale_candidates}
 
-    # Filter out stale tasks from recommendation pool
-    fresh_tasks = [t for t in tasks if t.get("slug") not in stale_slugs]
+    # Enrich non-stale tasks with computed fields
+    fresh_tasks = [enrich_task(t) for t in tasks if t.get("slug") not in stale_slugs]
 
-    # Build recommendations
-    recommendations = []
-    used_slugs = set()
+    # Sort by priority (P0 first), then by due date (soonest first)
+    def sort_key(t: dict) -> tuple:
+        priority = t.get("priority")
+        # Default to P3 if no priority set
+        priority = priority if priority is not None else 3
+        days = t.get("days_until_due")
+        # None means no due date - sort to end
+        due_sort = days if days is not None else 9999
+        return (priority, due_sort)
 
-    # 1. SHOULD - deadline pressure
-    should = select_should(fresh_tasks, now)
-    if should:
-        recommendations.append(format_recommendation(should))
-        used_slugs.add(should["task"].get("slug"))
+    fresh_tasks.sort(key=sort_key)
 
-    # 2. ENJOY - variety (exclude already recommended)
-    remaining = [t for t in fresh_tasks if t.get("slug") not in used_slugs]
-    enjoy = select_enjoy(remaining, todays_work)
-    if enjoy:
-        recommendations.append(format_recommendation(enjoy))
-        used_slugs.add(enjoy["task"].get("slug"))
-
-    # 3. QUICK - momentum (exclude already recommended)
-    remaining = [t for t in fresh_tasks if t.get("slug") not in used_slugs]
-    quick = select_quick(remaining)
-    if quick:
-        recommendations.append(format_recommendation(quick))
-
-    # Output
+    # Output everything for LLM reasoning
     output = {
-        "generated": datetime.now().isoformat(),
+        "generated": now.isoformat(),
+        "active_task_count": len(fresh_tasks),
         "todays_work": dict(todays_work),
-        "active_tasks": len(tasks),
-        "recommendations": recommendations,
+        "priority_distribution": calculate_priority_distribution(fresh_tasks),
         "stale_candidates": stale_candidates,
+        "active_tasks": fresh_tasks,
     }
 
     print(json.dumps(output, indent=2))
