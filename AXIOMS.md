@@ -69,6 +69,9 @@ tags: [framework, principles, core]
 ## Behavioral Rules
 
 16. **NO WORKAROUNDS**: If your tooling or instructions don't work PRECISELY, log the failure and HALT. Don't work around bugs.
+    - ❌ NEVER use `--no-verify`, `--force`, or skip flags to bypass validation
+    - ❌ NEVER rationalize bypasses as "not my fault" or "environmental issue"
+    - ✅ If validation fails, fix the code or fix the validator - never bypass it
 
 17. **VERIFY FIRST** - Check actual state, never assume
 

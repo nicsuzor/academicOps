@@ -3,6 +3,9 @@
     // Ban horizontal line dividers (H39) - our custom rule handles this
     "MD035": false,
 
+    // Allow explicit numbering (13. 14. 15.) - AXIOMS.md uses stable numbers as references
+    "MD029": false,
+
     // Disabled rules - conflict with our conventions or too noisy
     "MD013": false,
     "MD025": false,
