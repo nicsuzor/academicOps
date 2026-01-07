@@ -456,66 +456,47 @@ def test_hydrator_task_is_spawned(claude_headless_tracked) -> None:
     )
 
 
+@pytest.mark.slow
+@pytest.mark.integration
+def test_hydration_temp_file_structure() -> None:
+    """Validate hydration temp file structure (non-demo unit test).
+
+    Reads existing temp files to verify structure - no Claude session needed.
+    """
+    temp_dir = Path("/tmp/claude-hydrator")
+
+    if not temp_dir.exists():
+        pytest.skip("No hydration temp directory - run a Claude session first")
+
+    temp_files = sorted(
+        temp_dir.glob("hydrate_*.md"), key=lambda f: f.stat().st_mtime, reverse=True
+    )
+
+    if not temp_files:
+        pytest.skip("No hydration temp files found")
+
+    most_recent = temp_files[0]
+    content = most_recent.read_text()
+
+    # Structural validation
+    assert "## User Prompt" in content, "Missing User Prompt section"
+    assert "## Your Task" in content, "Missing Your Task section"
+    assert "## Return Format" in content, "Missing Return Format section"
+    assert len(content) > 500, "Temp file should contain substantial content"
+
+
 @pytest.mark.demo
+@pytest.mark.slow
+@pytest.mark.integration
 class TestHydratorDemo:
-    """Demo tests showing real hydration behavior.
+    """Demo test showing real hydration behavior.
 
     Run with: uv run pytest tests/integration/test_hydrator.py -k demo -v -s -n 0
 
-    These tests print FULL UNTRUNCATED output for human validation (H37a).
+    Single golden path demo that prints FULL output for human validation (H37a).
     """
 
-    def test_demo_hydration_temp_file_content(self) -> None:
-        """Show FULL temp file content - no truncation.
-
-        Per H37a: Demo output must show FULL untruncated content
-        so humans can visually validate.
-        """
-        temp_dir = Path("/tmp/claude-hydrator")
-
-        if not temp_dir.exists():
-            pytest.skip("No hydration temp directory - run a Claude session first")
-
-        # Get most recent temp file
-        temp_files = sorted(
-            temp_dir.glob("hydrate_*.md"), key=lambda f: f.stat().st_mtime, reverse=True
-        )
-
-        if not temp_files:
-            pytest.skip("No hydration temp files found")
-
-        most_recent = temp_files[0]
-        content = most_recent.read_text()
-
-        print("\n" + "=" * 80)
-        print("HYDRATION TEMP FILE DEMO - FULL CONTENT (H37a)")
-        print("=" * 80)
-        print(f"\nFile: {most_recent}")
-        print(f"Size: {most_recent.stat().st_size} bytes")
-        print("\n--- FULL CONTENT (NO TRUNCATION) ---\n")
-        print(content)  # FULL content, not truncated
-        print("\n--- END CONTENT ---\n")
-
-        # Structural validation
-        checks = {
-            "Has User Prompt section": "## User Prompt" in content,
-            "Has Your Task section": "## Your Task" in content,
-            "Has Return Format section": "## Return Format" in content,
-            "Contains actual user prompt text": len(content) > 500,  # Not empty
-        }
-
-        print("--- STRUCTURAL VALIDATION ---")
-        all_passed = True
-        for check, passed in checks.items():
-            status = "PASS" if passed else "FAIL"
-            print(f"  [{status}] {check}")
-            if not passed:
-                all_passed = False
-
-        print("=" * 80)
-        assert all_passed, "Structural validation failed - see above"
-
-    def test_demo_hydration_with_real_task(self, claude_headless) -> None:
+    def test_demo_hydration_golden_path(self, claude_headless) -> None:
         """Demo hydration with a REAL framework task (H37b).
 
         NOT "What is the meaning of life?" - that tests nothing.
@@ -590,75 +571,4 @@ class TestHydratorDemo:
         # The trace above shows everything needed to verify hydration manually
         if not (hydrator_response and hydrator_response.get("found")):
             print("\n⚠️  NOTE: Hydrator structured response not found in output.")
-            print("    Review the trace above to verify hydration behavior.")
-
-    def test_demo_hydration_full_trace(self, claude_headless_tracked) -> None:
-        """Show complete hydration trace with ALL tool calls.
-
-        Verifies prompt-hydrator Task was actually spawned (not just keywords found).
-        """
-        print("\n" + "=" * 80)
-        print("HYDRATION FULL TRACE DEMO")
-        print("=" * 80)
-
-        # REAL framework prompt
-        prompt = "Show me the current task inbox using the tasks skill"
-        print(f"\nPrompt (REAL): {prompt}")
-        print("\nExecuting tracked headless session...")
-
-        result, session_id, tool_calls = claude_headless_tracked(
-            prompt, timeout_seconds=180
-        )
-
-        print(f"\nSession ID: {session_id}")
-        print(f"Success: {result['success']}")
-        print(f"Total tool calls: {len(tool_calls)}")
-
-        if not result["success"]:
-            print(f"Error: {result.get('error')}")
-
-        # Display ALL tool calls - not truncated
-        print("\n--- ALL TOOL CALLS ---")
-        for i, call in enumerate(tool_calls):
-            print(f"\n[{i + 1}] {call['name']}")
-            task_input = call.get("input", {})
-            if call["name"] == "Task":
-                print(f"    subagent_type: {task_input.get('subagent_type', 'N/A')}")
-                print(f"    description: {task_input.get('description', 'N/A')}")
-                print(f"    prompt: {str(task_input.get('prompt', 'N/A'))[:200]}...")
-            else:
-                # Show full input for other tools
-                print(f"    input: {json.dumps(task_input, indent=6)[:500]}")
-
-        # Find hydrator Task specifically
-        hydrator_calls = [
-            call
-            for call in tool_calls
-            if call["name"] == "Task"
-            and "hydrator" in str(call.get("input", {})).lower()
-        ]
-
-        print("\n--- HYDRATION VERIFICATION ---")
-        print(f"prompt-hydrator Task calls found: {len(hydrator_calls)}")
-
-        if hydrator_calls:
-            print("\nHydrator Task details:")
-            for call in hydrator_calls:
-                print(f"  subagent_type: {call['input'].get('subagent_type')}")
-                print(f"  description: {call['input'].get('description')}")
-        else:
-            print("\nWARNING: No prompt-hydrator Task found in tool calls!")
-            print("This indicates hydration may not be working.")
-
-        # Also show full session trace for complete visibility
-        output = result.get("output", "")
-        print_full_session_trace(output)
-
-        print("=" * 80)
-
-        # Demo test - show output for human validation, don't assert
-        if len(hydrator_calls) == 0:
-            print(
-                f"\n⚠️  NOTE: No prompt-hydrator Task found in {len(tool_calls)} tool calls."
-            )
             print("    Review the trace above to verify hydration behavior.")

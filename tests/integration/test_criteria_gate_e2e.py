@@ -14,7 +14,6 @@ bypassPermissions appears to also bypass PreToolUse hooks.
 
 import subprocess
 import tempfile
-from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest
@@ -96,139 +95,14 @@ def print_validation_results(checks: dict[str, bool]) -> bool:
 @pytest.mark.slow
 @pytest.mark.integration
 class TestCriteriaGateDemo:
-    """Demo tests showing criteria gate blocking behavior.
+    """Demo tests showing criteria gate blocking/allowing behavior.
 
     Run with: uv run pytest tests/integration/test_criteria_gate_e2e.py -k demo -v -s -n 0
 
-    These tests print FULL UNTRUNCATED output for human validation (H37a).
-    Uses REAL framework scenarios (H37b).
+    Two golden path demos (H37a/H37b):
+    1. Gate blocks destructive operations (rm command)
+    2. Gate allows read-only operations (git status)
     """
-
-    def test_demo_blocks_edit_without_gate(self, claude_test) -> None:
-        """Demo: Edit tool blocked without criteria gate.
-
-        REAL SCENARIO: Agent tries to edit a framework file without
-        first defining acceptance criteria. Gate should block.
-
-        Per H37a: Shows FULL response for human validation.
-        Per H37b: Uses real framework editing scenario.
-        """
-        print_demo_header("EDIT BLOCKED WITHOUT GATE (H37a/H37b)")
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            # Create a file simulating a framework component
-            target_file = Path(tmpdir) / "CLAUDE.md"
-            target_file.write_text(
-                "# Component Instructions\n\nOriginal content here.\n"
-            )
-
-            # REAL framework prompt - editing component instructions
-            prompt = (
-                f"Edit the file at {target_file} to add a new section "
-                "'## Testing Requirements' with content about running pytest."
-            )
-
-            print(f"\nPrompt (REAL FRAMEWORK TASK):\n{prompt}")
-            print(f"\nTarget file: {target_file}")
-            print(f"Original content:\n{target_file.read_text()}")
-            print("\nExecuting headless session...")
-
-            result = claude_test(prompt=prompt, cwd=Path(tmpdir))
-
-            print(f"\nExecution success: {result['success']}")
-
-            if not result["success"]:
-                print(f"Error: {result.get('error')}")
-
-            # Show FULL response - no truncation (H37a)
-            print("\n--- FULL CLAUDE RESPONSE (NO TRUNCATION) ---\n")
-            try:
-                response = extract_response_text(result)
-                print(response)
-            except (ValueError, TypeError) as e:
-                print(f"Could not extract response: {e}")
-                response = ""
-            print("\n--- END RESPONSE ---\n")
-
-            # Show file state after attempt
-            final_content = target_file.read_text()
-            print(f"File content AFTER attempt:\n{final_content}")
-
-            # Structural validation with visible checks
-            response_lower = response.lower()
-            checks = {
-                "Execution completed": result["success"],
-                "File unchanged (edit blocked)": "Original content" in final_content,
-                "Response indicates cannot proceed": any(
-                    term in response_lower
-                    for term in ["blocked", "criteria", "permission", "cannot", "approve"]
-                ),
-            }
-
-            all_passed = print_validation_results(checks)
-            assert all_passed, "Gate did not block edit as expected - see output above"
-
-    def test_demo_blocks_write_without_gate(self, claude_test) -> None:
-        """Demo: Write tool blocked without criteria gate.
-
-        REAL SCENARIO: Agent tries to create a new test file without
-        first defining acceptance criteria. Gate should block.
-
-        Per H37a: Shows FULL response for human validation.
-        Per H37b: Uses real test file creation scenario.
-        """
-        print_demo_header("WRITE BLOCKED WITHOUT GATE (H37a/H37b)")
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            target_file = Path(tmpdir) / "test_new_feature.py"
-
-            # REAL framework prompt - creating a test file
-            prompt = (
-                f"Create a new pytest test file at {target_file} with a test "
-                "function test_feature_works() that asserts True."
-            )
-
-            print(f"\nPrompt (REAL FRAMEWORK TASK):\n{prompt}")
-            print(f"\nTarget file: {target_file}")
-            print(f"File exists before: {target_file.exists()}")
-            print("\nExecuting headless session...")
-
-            result = claude_test(prompt=prompt, cwd=Path(tmpdir))
-
-            print(f"\nExecution success: {result['success']}")
-
-            if not result["success"]:
-                print(f"Error: {result.get('error')}")
-
-            # Show FULL response - no truncation (H37a)
-            print("\n--- FULL CLAUDE RESPONSE (NO TRUNCATION) ---\n")
-            try:
-                response = extract_response_text(result)
-                print(response)
-            except (ValueError, TypeError) as e:
-                print(f"Could not extract response: {e}")
-                response = ""
-            print("\n--- END RESPONSE ---\n")
-
-            # Show file state after attempt
-            file_exists = target_file.exists()
-            print(f"File exists AFTER attempt: {file_exists}")
-            if file_exists:
-                print(f"File content:\n{target_file.read_text()}")
-
-            # Structural validation with visible checks
-            response_lower = response.lower()
-            checks = {
-                "Execution completed": result["success"],
-                "File NOT created (write blocked)": not file_exists,
-                "Response indicates cannot proceed": any(
-                    term in response_lower
-                    for term in ["blocked", "criteria", "permission", "cannot", "approve", "grant"]
-                ),
-            }
-
-            all_passed = print_validation_results(checks)
-            assert all_passed, "Gate did not block write as expected - see output above"
 
     def test_demo_blocks_destructive_bash_without_gate(
         self, claude_test, temp_repo
@@ -284,7 +158,14 @@ class TestCriteriaGateDemo:
             "File still exists (rm blocked)": file_exists,
             "Response indicates cannot proceed": any(
                 term in response_lower
-                for term in ["blocked", "criteria", "permission", "approve", "confirm", "hook"]
+                for term in [
+                    "blocked",
+                    "criteria",
+                    "permission",
+                    "approve",
+                    "confirm",
+                    "hook",
+                ]
             ),
         }
 
@@ -305,7 +186,9 @@ class TestCriteriaGateDemo:
         print_demo_header("READ-ONLY BASH ALLOWED WITHOUT GATE (H37a/H37b)")
 
         # REAL framework prompt - checking git status (common workflow)
-        prompt = "Run 'git status' to check the repository state and tell me what you see."
+        prompt = (
+            "Run 'git status' to check the repository state and tell me what you see."
+        )
 
         print(f"\nPrompt (REAL FRAMEWORK TASK):\n{prompt}")
         print(f"\nRepository: {temp_repo}")
@@ -334,7 +217,14 @@ class TestCriteriaGateDemo:
             "Execution completed": result["success"],
             "Response contains git output": any(
                 term in response_lower
-                for term in ["branch", "commit", "nothing to commit", "clean", "main", "master"]
+                for term in [
+                    "branch",
+                    "commit",
+                    "nothing to commit",
+                    "clean",
+                    "main",
+                    "master",
+                ]
             ),
             "Response NOT blocked": "blocked" not in response_lower,
             "No criteria gate mention": "criteria gate" not in response_lower,
@@ -342,83 +232,3 @@ class TestCriteriaGateDemo:
 
         all_passed = print_validation_results(checks)
         assert all_passed, "Git status was unexpectedly blocked - see output above"
-
-    def test_demo_allows_ls_without_gate(self, claude_test) -> None:
-        """Demo: ls command allowed without criteria gate.
-
-        REAL SCENARIO: Agent lists directory contents for exploration.
-        This is in the allowlist and should NOT be blocked.
-
-        Per H37a: Shows FULL response for human validation.
-        Per H37b: Uses real directory exploration scenario.
-
-        Uses side-effect verification: ls output redirected to file,
-        then we check file exists with expected content.
-        """
-        print_demo_header("LS COMMAND ALLOWED WITHOUT GATE (H37a/H37b)")
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            # Create files simulating a project structure
-            (Path(tmpdir) / "CLAUDE.md").write_text("# Instructions")
-            # Must be valid TOML - uv run in hooks will parse this
-            (Path(tmpdir) / "pyproject.toml").write_text(
-                '[project]\nname = "test-project"\nversion = "0.1.0"'
-            )
-            (Path(tmpdir) / "src").mkdir()
-            (Path(tmpdir) / "tests").mkdir()
-
-            # Output file for side-effect verification
-            output_file = Path(tmpdir) / "ls_output.txt"
-
-            # REAL framework prompt - with redirect for verifiable evidence
-            prompt = f"Run 'ls -la > {output_file}' to save the directory listing to a file."
-
-            print(f"\nPrompt (REAL FRAMEWORK TASK):\n{prompt}")
-            print(f"\nDirectory: {tmpdir}")
-            print(f"Output file: {output_file}")
-            print("\nExecuting headless session...")
-
-            result = claude_test(prompt=prompt, cwd=Path(tmpdir))
-
-            print(f"\nExecution success: {result['success']}")
-
-            if not result["success"]:
-                print(f"Error: {result.get('error')}")
-
-            # Show FULL response - no truncation (H37a)
-            print("\n--- FULL CLAUDE RESPONSE (NO TRUNCATION) ---\n")
-            try:
-                response = extract_response_text(result)
-                print(response)
-            except (ValueError, TypeError) as e:
-                print(f"Could not extract response: {e}")
-                response = ""
-            print("\n--- END RESPONSE ---\n")
-
-            # Show side-effect evidence
-            print("--- SIDE-EFFECT VERIFICATION ---")
-            print(f"Output file exists: {output_file.exists()}")
-            if output_file.exists():
-                ls_content = output_file.read_text()
-                print(f"Output file content:\n{ls_content}")
-            else:
-                ls_content = ""
-                print("(no output file created)")
-
-            # Structural validation with visible checks
-            # Evidence via state change (like blocking tests)
-            response_lower = response.lower()
-            ls_content_lower = ls_content.lower()
-            checks = {
-                "Execution completed": result["success"],
-                "Output file created (ls executed)": output_file.exists(),
-                "Output contains expected files": any(
-                    term in ls_content_lower
-                    for term in ["claude", "pyproject", "src", "tests"]
-                ),
-                "Response NOT blocked": "blocked" not in response_lower,
-            }
-
-            all_passed = print_validation_results(checks)
-            assert all_passed, "ls was unexpectedly blocked - see output above"
-

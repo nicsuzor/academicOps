@@ -218,66 +218,48 @@ def test_custodiet_subagent_file_access(claude_headless_tracked) -> None:
         print(f"Session: {session_id}, Output length: {len(output)} chars")
 
 
+@pytest.mark.slow
+@pytest.mark.integration
+def test_custodiet_temp_file_structure() -> None:
+    """Validate custodiet temp file structure (non-demo unit test).
+
+    Reads existing temp files to verify structure - no Claude session needed.
+    """
+    temp_dir = Path("/tmp/claude-compliance")
+
+    if not temp_dir.exists():
+        pytest.skip("No custodiet temp directory - run a Claude session first")
+
+    temp_files = sorted(
+        temp_dir.glob("audit_*.md"), key=lambda f: f.stat().st_mtime, reverse=True
+    )
+
+    if not temp_files:
+        pytest.skip("No custodiet temp files found")
+
+    most_recent = temp_files[0]
+    content = most_recent.read_text()
+
+    # Structural validation
+    assert "## Session Context" in content, "Missing Session Context section"
+    assert "# AXIOMS" in content, "Missing AXIOMS section"
+    assert "# HEURISTICS" in content, "Missing HEURISTICS section"
+    assert "## OUTPUT FORMAT" in content, "Missing OUTPUT FORMAT section"
+    assert len(content) > 2000, "Audit file should contain substantial content"
+
+
 @pytest.mark.demo
+@pytest.mark.slow
+@pytest.mark.integration
 class TestCustodietDemo:
-    """Demo tests showing real custodiet behavior.
+    """Demo test showing real custodiet behavior.
 
     Run with: uv run pytest tests/integration/test_custodiet_e2e.py -k demo -v -s -n 0
 
-    These tests print FULL UNTRUNCATED output for human validation (H37a).
+    Single golden path demo that prints FULL output for human validation (H37a).
     """
 
-    def test_demo_custodiet_temp_file_content(self) -> None:
-        """Show FULL temp file content - no truncation.
-
-        Per H37a: Demo output must show FULL untruncated content
-        so humans can visually validate.
-        """
-        temp_dir = Path("/tmp/claude-compliance")
-
-        if not temp_dir.exists():
-            pytest.skip("No custodiet temp directory - run a Claude session first")
-
-        temp_files = sorted(
-            temp_dir.glob("audit_*.md"), key=lambda f: f.stat().st_mtime, reverse=True
-        )
-
-        if not temp_files:
-            pytest.skip("No custodiet temp files found")
-
-        most_recent = temp_files[0]
-        content = most_recent.read_text()
-
-        print("\n" + "=" * 80)
-        print("CUSTODIET TEMP FILE DEMO - FULL CONTENT (H37a)")
-        print("=" * 80)
-        print(f"\nFile: {most_recent}")
-        print(f"Size: {most_recent.stat().st_size} bytes")
-        print(f"Modified: {time.ctime(most_recent.stat().st_mtime)}")
-        print("\n--- FULL CONTENT (NO TRUNCATION) ---\n")
-        print(content)
-        print("\n--- END CONTENT ---\n")
-
-        checks = {
-            "Has Session Context section": "## Session Context" in content,
-            "Has AXIOMS section": "# AXIOMS" in content,
-            "Has HEURISTICS section": "# HEURISTICS" in content,
-            "Has OUTPUT FORMAT section": "## OUTPUT FORMAT" in content,
-            "Contains substantial content": len(content) > 2000,
-        }
-
-        print("--- STRUCTURAL VALIDATION ---")
-        all_passed = True
-        for check, passed in checks.items():
-            status = "PASS" if passed else "FAIL"
-            print(f"  [{status}] {check}")
-            if not passed:
-                all_passed = False
-
-        print("=" * 80)
-        assert all_passed, "Structural validation failed - see above"
-
-    def test_demo_custodiet_tracked(self, claude_headless_tracked) -> None:
+    def test_demo_custodiet_golden_path(self, claude_headless_tracked) -> None:
         """Demo with session tracking showing ALL tool calls.
 
         Verifies custodiet Task was actually spawned (not just keywords).
