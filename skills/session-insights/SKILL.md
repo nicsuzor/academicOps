@@ -92,7 +92,14 @@ If the note does NOT exist:
 - Create from template in [[templates/daily.md]]
 - Add Session Context and Abandoned Todos from Step 3 output
 
-See [[templates/daily.md]] for daily note structure. Key sections: Today's Story, Focus Dashboard, Priority Burndown, Today's Priorities, Project Accomplishments, Abandoned Todos, Session Log/Timeline.
+See [[skills/next/templates/daily.md]] for daily note structure.
+
+**Section ownership**:
+
+- **/next skill owns**: Focus Dashboard (Priority Burndown, Today's Journey, Blocked)
+- **session-insights owns**: Today's Story, Project Accomplishments, Session Log, Session Timeline, Session Insights, Abandoned Todos
+
+**Do NOT update Focus Dashboard sections** - /next maintains those.
 
 **Critical**: Claude does NOT read transcripts. Accomplishments come from Gemini-mined JSONs in Step 6.
 
@@ -218,56 +225,50 @@ ls $ACA_DATA/dashboard/sessions/*.json 2>/dev/null | xargs -I{} grep -l '"date":
 
 ## Today's Story
 
-Brief narrative of what was accomplished today (2-3 sentences synthesized from session summaries).
+Brief narrative of what was accomplished (2-3 sentences synthesized from session summaries). **If summarizing sessions from a previous day, say so explicitly** (e.g., "Yesterday's sessions focused on..." not "Today we worked on...").
 
-## 📊 Focus Dashboard
+## Focus Dashboard
 
-### Priority Burndown
-```
-
-P0 ████████░░ 80% (4/5) → [[task-name-1]], [[task-name-2]]
-P1 ██░░░░░░░░ 20% (1/5) → [[task-name-3]]
-P2 ░░░░░░░░░░ 0% (0/3)
-
-```
-### 🎯 Active Now
-→ [[task-currently-in-progress]] (P0)
-
-### ⏳ Blocked
-- [[task-waiting]] - waiting on: external response
-
-
+**DO NOT UPDATE** - owned by /next skill. Preserve existing content.
 
 ## Session Log
-| Session | Project | Summary |
-|---------|---------|---------|
+
+| Session | Project | Summary                   |
+| ------- | ------- | ------------------------- |
 | abc1234 | writing | Brief description of work |
-| def5678 | aops | Another session summary |
+| def5678 | aops    | Another session summary   |
 
 ## Session Timeline
-| Time | Session | Terminal | Project | Activity |
-|------|---------|----------|---------|----------|
-| 10:15 | abc1234 | writing | aops | Started session-insights work |
-| 10:23 | def5678 | tja | tja | Reviewed paper draft |
-| 10:45 | abc1234 | writing | aops | Got sidetracked to fix bug |
+
+| Time  | Session | Terminal | Project | Activity                      |
+| ----- | ------- | -------- | ------- | ----------------------------- |
+| 10:15 | abc1234 | writing  | aops    | Started session-insights work |
+| 10:23 | def5678 | tja      | tja     | Reviewed paper draft          |
+| 10:45 | abc1234 | writing  | aops    | Got sidetracked to fix bug    |
 
 (Extract terminal from session path: `YYYYMMDD-{terminal}-{session_id}`)
 (Build timeline from conversation_flow timestamps across all sessions)
 
 ### Terminal Overwhelm Analysis
+
 (Interpret the timeline to help user understand their work patterns)
+
 - Which terminals had context switches between projects?
 - Was user working on one thing then pulled to another?
 - Patterns of sidetracking (started A, interrupted by B, returned to A?)
 - Which terminals went idle (long gaps between activity)?
 
 ## [[academicOps]] → [[projects/aops]]
+
 Scheduled: ██████░░░░ 6/10 | Unscheduled: 3 items
+
 - [x] Accomplishment from aops sessions
 - [x] Another accomplishment
 
 ## [[writing]] → [[projects/writing]]
+
 Scheduled: ████░░░░░░ 4/10 | Unscheduled: 2 items
+
 - [x] Accomplishment from writing sessions
 
 ## Session Insights
