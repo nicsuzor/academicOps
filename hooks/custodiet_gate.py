@@ -28,6 +28,11 @@ from pathlib import Path
 from typing import Any
 
 from lib.session_reader import extract_router_context
+from lib.session_state import (
+    load_custodiet_state,
+    load_hydrator_state,
+    save_custodiet_state,
+)
 
 # Paths
 HOOK_DIR = Path(__file__).parent
@@ -124,6 +129,102 @@ def save_state(cwd: str, state: dict[str, Any]) -> None:
     TEMP_DIR.mkdir(parents=True, exist_ok=True)
     state_file = get_state_file(cwd)
     state_file.write_text(json.dumps(state))
+
+
+# ============================================================================
+# Shared State API Functions (for cross-gate coordination)
+# ============================================================================
+
+
+def increment_tool_count(cwd: str) -> int:
+    """Increment tool_calls_since_compliance counter using shared state.
+
+    Args:
+        cwd: Current working directory for project hash
+
+    Returns:
+        New tool call count after increment
+    """
+    state = load_custodiet_state(cwd)
+    if state is None:
+        state = {
+            "last_compliance_ts": 0.0,
+            "tool_calls_since_compliance": 0,
+            "last_drift_warning": None,
+        }
+
+    state["tool_calls_since_compliance"] += 1
+    save_custodiet_state(cwd, state)
+    return state["tool_calls_since_compliance"]
+
+
+def reset_compliance_state(cwd: str) -> None:
+    """Reset tool counter after compliance check runs.
+
+    Args:
+        cwd: Current working directory for project hash
+    """
+    state = load_custodiet_state(cwd)
+    if state is None:
+        state = {
+            "last_compliance_ts": 0.0,
+            "tool_calls_since_compliance": 0,
+            "last_drift_warning": None,
+        }
+
+    state["tool_calls_since_compliance"] = 0
+    state["last_compliance_ts"] = time.time()
+    state["last_drift_warning"] = None  # Clear drift warning on reset
+    save_custodiet_state(cwd, state)
+
+
+def get_intent_from_hydrator(cwd: str) -> str | None:
+    """Read intent_envelope from hydrator state.
+
+    Args:
+        cwd: Current working directory for project hash
+
+    Returns:
+        Intent envelope string or None if not found
+    """
+    state = load_hydrator_state(cwd)
+    if state is None:
+        return None
+    return state.get("intent_envelope")
+
+
+def get_workflow_from_hydrator(cwd: str) -> dict[str, str] | None:
+    """Read declared_workflow from hydrator state.
+
+    Args:
+        cwd: Current working directory for project hash
+
+    Returns:
+        Workflow dict or None if not found
+    """
+    state = load_hydrator_state(cwd)
+    if state is None:
+        return None
+    return state.get("declared_workflow")
+
+
+def set_drift_warning(cwd: str, warning: str) -> None:
+    """Store drift warning in custodiet state.
+
+    Args:
+        cwd: Current working directory for project hash
+        warning: Drift warning message to store
+    """
+    state = load_custodiet_state(cwd)
+    if state is None:
+        state = {
+            "last_compliance_ts": 0.0,
+            "tool_calls_since_compliance": 0,
+            "last_drift_warning": None,
+        }
+
+    state["last_drift_warning"] = warning
+    save_custodiet_state(cwd, state)
 
 
 def load_template(template_path: Path) -> str:
