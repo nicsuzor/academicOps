@@ -27,6 +27,13 @@ if ! flock -n 200; then
     exit 99
 fi
 
+# Release lock on exit (success or error)
+cleanup() {
+    flock -u 200 2>/dev/null || true
+    rm -f "$LOCKFILE" 2>/dev/null || true
+}
+trap cleanup EXIT
+
 # Source environment from settings.local.json if ACA_DATA not set
 if [[ -z "${ACA_DATA:-}" ]]; then
     if [[ -f "$HOME/.claude/settings.local.json" ]]; then
