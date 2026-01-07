@@ -12,7 +12,7 @@ import json
 import re
 import sys
 from collections import Counter
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 
 # Resolve paths
@@ -81,26 +81,37 @@ def get_todays_work(synthesis: dict) -> Counter:
 
 def score_deadline(task: dict, now: datetime) -> tuple[int, str]:
     """
-    Score task by deadline urgency.
+    Score task by deadline urgency AND priority.
     Returns (score, reason) where higher score = more urgent.
+
+    Priority boosts ensure P0 tasks compete with moderately overdue lower-priority tasks.
     """
     due = parse_due_date(task.get("due"))
     priority = task.get("priority", 3)
 
+    # P0 tasks ALWAYS surface first - they get a massive boost (200)
+    # This ensures P0 beats any overdue P1/P2/P3 task
+    # P1 +20, P2 +10, P3 +0
+    priority_boost = {0: 200, 1: 20, 2: 10, 3: 0}.get(priority, 0)
+
     if due:
         days_until = (due.date() - now.date()).days
         if days_until < 0:
-            return (100 - days_until, f"OVERDUE by {-days_until} days")
+            base_score = 100 - days_until  # More overdue = higher
+            return (
+                base_score + priority_boost,
+                f"OVERDUE by {-days_until} days (P{priority})",
+            )
         elif days_until == 0:
-            return (90, "Due TODAY")
+            return (90 + priority_boost, f"Due TODAY (P{priority})")
         elif days_until == 1:
-            return (80, "Due tomorrow")
+            return (80 + priority_boost, f"Due tomorrow (P{priority})")
         elif days_until <= 7:
-            return (70, f"Due in {days_until} days")
+            return (70 + priority_boost, f"Due in {days_until} days (P{priority})")
         else:
-            return (50, f"Due {due.strftime('%b %d')}")
+            return (50 + priority_boost, f"Due {due.strftime('%b %d')} (P{priority})")
 
-    # No due date - use priority
+    # No due date - use priority alone
     priority_scores = {0: 60, 1: 40, 2: 20, 3: 10}
     return (priority_scores.get(priority, 10), f"P{priority} priority")
 
@@ -108,7 +119,15 @@ def score_deadline(task: dict, now: datetime) -> tuple[int, str]:
 def is_quick_win(task: dict) -> bool:
     """Detect quick-win tasks."""
     title = task.get("title", "").lower()
-    quick_keywords = ["respond", "reply", "approve", "confirm", "send", "check", "review"]
+    quick_keywords = [
+        "respond",
+        "reply",
+        "approve",
+        "confirm",
+        "send",
+        "check",
+        "review",
+    ]
 
     # Title heuristics
     if any(kw in title for kw in quick_keywords):
@@ -128,7 +147,15 @@ def is_deep_work(task: dict) -> bool:
     title = task.get("title", "").lower()
     tags = task.get("tags", [])
 
-    deep_keywords = ["write", "paper", "research", "review", "design", "implement", "create"]
+    deep_keywords = [
+        "write",
+        "paper",
+        "research",
+        "review",
+        "design",
+        "implement",
+        "create",
+    ]
     deep_tags = ["paper", "writing", "research", "thesis", "phd"]
 
     if any(kw in title for kw in deep_keywords):
@@ -146,11 +173,7 @@ def select_should(tasks: list[dict], now: datetime) -> dict | None:
 
     if scored:
         (score, reason), task = scored[0]
-        return {
-            "task": task,
-            "reason": reason,
-            "category": "should"
-        }
+        return {"task": task, "reason": reason, "category": "should"}
     return None
 
 
@@ -170,7 +193,7 @@ def select_enjoy(tasks: list[dict], todays_work: Counter) -> dict | None:
         return None
 
     # Normalize today's work projects
-    normalized_work = Counter()
+    normalized_work: Counter[str] = Counter()
     for proj, count in todays_work.items():
         normalized_work[normalize_project(proj)] += count
 
@@ -185,7 +208,9 @@ def select_enjoy(tasks: list[dict], todays_work: Counter) -> dict | None:
     # Filter to different projects if we've done 3+ in one project
     candidates = tasks
     if dominant_count >= 3:
-        other_project = [t for t in tasks if normalize_project(t.get("project", "")) != dominant]
+        other_project = [
+            t for t in tasks if normalize_project(t.get("project", "")) != dominant
+        ]
         if other_project:
             candidates = other_project
 
@@ -196,8 +221,11 @@ def select_enjoy(tasks: list[dict], todays_work: Counter) -> dict | None:
 
     # Pick one with no immediate deadline
     now = datetime.now()
-    relaxed = [t for t in candidates if not parse_due_date(t.get("due")) or
-               (parse_due_date(t.get("due")).date() - now.date()).days > 7]
+    relaxed = []
+    for t in candidates:
+        due = parse_due_date(t.get("due"))
+        if due is None or (due.date() - now.date()).days > 7:
+            relaxed.append(t)
 
     if relaxed:
         task = relaxed[0]
@@ -212,11 +240,7 @@ def select_enjoy(tasks: list[dict], todays_work: Counter) -> dict | None:
     if is_deep_work(task):
         reason += ", substantive work"
 
-    return {
-        "task": task,
-        "reason": reason,
-        "category": "enjoy"
-    }
+    return {"task": task, "reason": reason, "category": "enjoy"}
 
 
 def select_quick(tasks: list[dict]) -> dict | None:
@@ -228,7 +252,7 @@ def select_quick(tasks: list[dict]) -> dict | None:
         return {
             "task": task,
             "reason": "Clear the deck, build momentum",
-            "category": "quick"
+            "category": "quick",
         }
     return None
 
@@ -241,7 +265,7 @@ def get_next_subtasks(task_file: str, limit: int = 3) -> list[str]:
 
     content = file_path.read_text()
     # Find unchecked items: - [ ] text
-    unchecked = re.findall(r'^- \[ \] (.+)$', content, re.MULTILINE)
+    unchecked = re.findall(r"^- \[ \] (.+)$", content, re.MULTILINE)
     return unchecked[:limit]
 
 
@@ -257,7 +281,7 @@ def format_recommendation(rec: dict) -> dict:
         "project": task.get("project", "uncategorized"),
         "due": due.strftime("%Y-%m-%d") if due else None,
         "slug": task.get("slug", ""),
-        "file": task.get("file", "")
+        "file": task.get("file", ""),
     }
 
     # Include next subtasks for any task with multiple steps
@@ -285,11 +309,19 @@ def detect_stale_tasks(tasks: list[dict], now: datetime) -> list[dict]:
             days_overdue = (now.date() - due.date()).days
 
             # Events more than 7 days past
-            event_keywords = ["attend", "event", "meeting", "conference", "seminar", "workshop", "rsvp"]
+            event_keywords = [
+                "attend",
+                "event",
+                "meeting",
+                "conference",
+                "seminar",
+                "workshop",
+                "rsvp",
+            ]
             is_event = (
-                classification in ("event", "decision") or
-                "event" in tags or
-                any(kw in title for kw in event_keywords)
+                classification in ("event", "decision")
+                or "event" in tags
+                or any(kw in title for kw in event_keywords)
             )
             if is_event and days_overdue > 7:
                 reason = f"Past event ({days_overdue} days ago)"
@@ -299,12 +331,14 @@ def detect_stale_tasks(tasks: list[dict], now: datetime) -> list[dict]:
                 reason = f"Overdue {days_overdue} days - likely stale"
 
         if reason:
-            stale.append({
-                "slug": task.get("slug", ""),
-                "title": task.get("title", ""),
-                "reason": reason,
-                "file": task.get("file", "")
-            })
+            stale.append(
+                {
+                    "slug": task.get("slug", ""),
+                    "title": task.get("title", ""),
+                    "reason": reason,
+                    "file": task.get("file", ""),
+                }
+            )
 
     return stale[:5]  # Limit to 5 suggestions
 
@@ -359,7 +393,7 @@ def main():
         "todays_work": dict(todays_work),
         "active_tasks": len(tasks),
         "recommendations": recommendations,
-        "stale_candidates": stale_candidates
+        "stale_candidates": stale_candidates,
     }
 
     print(json.dumps(output, indent=2))
