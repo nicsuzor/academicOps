@@ -244,6 +244,242 @@ def _extract_router_context_impl(transcript_path: Path, max_turns: int) -> str:
     return "\n".join(lines)
 
 
+def extract_gate_context(
+    transcript_path: Path,
+    include: set[str],
+    max_turns: int = _MAX_TURNS,
+) -> dict[str, Any]:
+    """Extract configurable context for gate agents.
+
+    Provides targeted extraction for gate functions per gate-agent-architecture.md.
+    Each gate requests only the context it needs via the include parameter.
+
+    Args:
+        transcript_path: Path to session JSONL file
+        include: Set of extraction types (prompts, skill, todos, intent, errors, tools)
+        max_turns: Lookback limit for prompts/tools
+
+    Returns:
+        Dict with requested context sections. Empty dict on error.
+
+    Example:
+        >>> result = extract_gate_context(path, include={"prompts", "skill"})
+        >>> result["prompts"]  # List of recent user prompts
+        >>> result["skill"]    # Most recent Skill invocation or None
+    """
+    if not include:
+        return {}
+
+    if not transcript_path.exists():
+        return {}
+
+    try:
+        return _extract_gate_context_impl(transcript_path, include, max_turns)
+    except Exception:
+        return {}
+
+
+def _extract_gate_context_impl(
+    transcript_path: Path,
+    include: set[str],
+    max_turns: int,
+) -> dict[str, Any]:
+    """Implementation of gate context extraction."""
+    # Parse JSONL entries
+    entries = []
+    with open(transcript_path, encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                entries.append(json.loads(line))
+            except json.JSONDecodeError:
+                continue
+
+    if not entries:
+        return {}
+
+    result: dict[str, Any] = {}
+
+    if "prompts" in include:
+        result["prompts"] = _extract_prompts(entries, max_turns)
+
+    if "skill" in include:
+        result["skill"] = _extract_recent_skill(entries)
+
+    if "todos" in include:
+        result["todos"] = _extract_todos(entries)
+
+    if "intent" in include:
+        result["intent"] = _extract_intent(entries)
+
+    if "tools" in include:
+        result["tools"] = _extract_tools(entries, max_turns)
+
+    if "errors" in include:
+        result["errors"] = _extract_errors(entries, max_turns)
+
+    return result
+
+
+def _extract_prompts(entries: list[dict], max_turns: int) -> list[str]:
+    """Extract last N user prompts, skipping meta messages."""
+    prompts: list[str] = []
+
+    for entry in entries:
+        if entry.get("type") != "user":
+            continue
+        if entry.get("isMeta", False):
+            continue
+
+        message = entry.get("message", {})
+        content = message.get("content", [])
+
+        text = _extract_text_from_content(content)
+        if text and not _is_agent_notification(text):
+            cleaned = _clean_prompt_text(text)
+            if cleaned:
+                prompts.append(cleaned)
+
+    return prompts[-max_turns:] if prompts else []
+
+
+def _extract_recent_skill(entries: list[dict]) -> str | None:
+    """Extract most recent Skill invocation."""
+    for entry in reversed(entries):
+        if entry.get("type") != "assistant":
+            continue
+
+        message = entry.get("message", {})
+        content = message.get("content", [])
+        if not isinstance(content, list):
+            continue
+
+        for block in content:
+            if isinstance(block, dict) and block.get("type") == "tool_use":
+                if block.get("name") == "Skill":
+                    return block.get("input", {}).get("skill")
+
+    return None
+
+
+def _extract_todos(entries: list[dict]) -> dict[str, Any] | None:
+    """Extract current TodoWrite state."""
+    state = parse_todowrite_state(entries)
+    if state is None:
+        return None
+
+    return {
+        "counts": state.counts,
+        "in_progress_task": state.in_progress_task,
+    }
+
+
+def _extract_intent(entries: list[dict]) -> str | None:
+    """Extract first non-meta user prompt as original intent."""
+    for entry in entries:
+        if entry.get("type") != "user":
+            continue
+        if entry.get("isMeta", False):
+            continue
+
+        message = entry.get("message", {})
+        content = message.get("content", [])
+
+        text = _extract_text_from_content(content)
+        if text and not _is_agent_notification(text):
+            cleaned = _clean_prompt_text(text)
+            if cleaned:
+                return cleaned
+
+    return None
+
+
+def _extract_tools(entries: list[dict], max_turns: int) -> list[dict[str, Any]]:
+    """Extract recent tool calls."""
+    tools: list[dict[str, Any]] = []
+
+    for entry in entries:
+        if entry.get("type") != "assistant":
+            continue
+
+        message = entry.get("message", {})
+        content = message.get("content", [])
+        if not isinstance(content, list):
+            continue
+
+        for block in content:
+            if isinstance(block, dict) and block.get("type") == "tool_use":
+                tool_name = block.get("name", "")
+                tool_input = block.get("input", {})
+                tools.append(
+                    {
+                        "name": tool_name,
+                        "args": _truncate_args(tool_input),
+                    }
+                )
+
+    return tools[-max_turns:] if tools else []
+
+
+def _extract_errors(entries: list[dict], max_turns: int) -> list[dict[str, Any]]:
+    """Extract recent tool errors."""
+    errors: list[dict[str, Any]] = []
+
+    for entry in entries:
+        if entry.get("type") != "user":
+            continue
+
+        message = entry.get("message", {})
+        content = message.get("content", [])
+        if not isinstance(content, list):
+            continue
+
+        for block in content:
+            if isinstance(block, dict) and block.get("type") == "tool_result":
+                if block.get("is_error"):
+                    error_content = block.get("content", "")
+                    if isinstance(error_content, list):
+                        error_content = " ".join(
+                            item.get("text", "")
+                            for item in error_content
+                            if isinstance(item, dict)
+                        )
+                    errors.append(
+                        {
+                            "tool_use_id": block.get("tool_use_id", ""),
+                            "content": str(error_content)[:500],
+                        }
+                    )
+
+    return errors[-max_turns:] if errors else []
+
+
+def _extract_text_from_content(content: Any) -> str:
+    """Extract text from various content formats."""
+    if isinstance(content, str):
+        return content.strip()
+
+    if isinstance(content, list):
+        for block in content:
+            if isinstance(block, dict) and block.get("type") == "text":
+                return block.get("text", "").strip()
+
+    return ""
+
+
+def _truncate_args(args: dict, max_len: int = 80) -> dict:
+    """Truncate long argument values."""
+    result = {}
+    for key, value in args.items():
+        if isinstance(value, str) and len(value) > max_len:
+            result[key] = value[:max_len] + "..."
+        else:
+            result[key] = value
+    return result
+
+
 @dataclass
 class Entry:
     """Represents a single JSONL entry from any source."""
