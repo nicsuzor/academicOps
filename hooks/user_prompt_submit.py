@@ -12,6 +12,7 @@ Exit codes:
 """
 
 import json
+import os
 import sys
 import tempfile
 import time
@@ -20,6 +21,7 @@ from typing import Any
 
 from hook_debug import safe_log_to_debug_file
 from lib.session_reader import extract_router_context
+from lib.session_state import HydratorState, save_hydrator_state
 
 # Paths
 HOOK_DIR = Path(__file__).parent
@@ -29,6 +31,48 @@ TEMP_DIR = Path("/tmp/claude-hydrator")
 
 # Cleanup threshold: 1 hour in seconds
 CLEANUP_AGE_SECONDS = 60 * 60
+
+# Intent envelope max length
+INTENT_MAX_LENGTH = 500
+
+
+def get_cwd() -> str:
+    """Get current working directory from environment.
+
+    Returns CLAUDE_CWD if set, otherwise os.getcwd().
+    """
+    return os.environ.get("CLAUDE_CWD", os.getcwd())
+
+
+def write_initial_hydrator_state(prompt: str) -> None:
+    """Write initial hydrator state with pending workflow.
+
+    Called after processing prompt to persist intent_envelope for
+    downstream gates (custodiet, skill monitor).
+
+    Args:
+        prompt: User's original prompt (will be truncated for intent)
+    """
+    cwd = get_cwd()
+
+    # Truncate prompt for intent_envelope
+    intent = prompt[:INTENT_MAX_LENGTH]
+    if len(prompt) > INTENT_MAX_LENGTH:
+        intent = intent.rsplit(" ", 1)[0] + "..."  # Break at word boundary
+
+    state: HydratorState = {
+        "last_hydration_ts": time.time(),
+        "declared_workflow": {
+            "gate": "pending",
+            "pre_work": "pending",
+            "approach": "pending",
+        },
+        "active_skill": "",  # To be filled by prompt-hydrator
+        "intent_envelope": intent,
+        "guardrails": [],  # To be filled by prompt-hydrator
+    }
+
+    save_hydrator_state(cwd, state)
 
 
 def cleanup_old_temp_files() -> None:
@@ -120,6 +164,9 @@ def build_hydration_instruction(prompt: str, transcript_path: str | None = None)
 
     # Write to temp file (raises IOError on failure - fail-fast)
     temp_path = write_temp_file(full_context)
+
+    # Write initial hydrator state for downstream gates
+    write_initial_hydrator_state(prompt)
 
     # Truncate prompt for description
     prompt_preview = prompt[:80].replace("\n", " ").strip()
