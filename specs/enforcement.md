@@ -119,7 +119,7 @@ On `PostToolUse` (every ~7 tool calls), spawns custodiet subagent to check:
 - Heuristic violations (H3 Verification, H4 Explicit Instructions, H19 Questions)
 - Plan drift (doing something different from TodoWrite plan)
 
-**Implementation**: `hooks/custodiet.py` tracks tool count in `/tmp/claude-compliance/state.json`, emits audit instruction when threshold reached.
+**Implementation**: `hooks/custodiet_gate.py` tracks tool count in `/tmp/claude-compliance/state.json`, emits audit instruction when threshold reached.
 
 **What it does**: Catches drift and violations mid-execution before user has to intervene
 **What it can't do**: Force agent to follow corrections (still relies on agent compliance)

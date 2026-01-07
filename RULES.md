@@ -147,7 +147,7 @@ These guardrails are applied by [[specs/prompt-hydration]] based on task classif
 
 ## Periodic Compliance (Custodiet)
 
-The custodiet hook (`hooks/custodiet.py`) provides periodic semantic compliance checking via [[specs/ultra-vires-custodiet]].
+The custodiet hook (`hooks/custodiet_gate.py`) provides periodic semantic compliance checking via [[specs/ultra-vires-custodiet]].
 
 ### Mechanism
 
@@ -221,13 +221,13 @@ Uses passive `additionalContext` format - agent may proceed without addressing.
 
 ## Source Files
 
-| Mechanism        | Authoritative Source                                                       |
-| ---------------- | -------------------------------------------------------------------------- |
-| Deny rules       | `$AOPS/config/claude/settings.json` → `permissions.deny`                   |
-| PreToolUse       | `$AOPS/hooks/policy_enforcer.py`                                           |
-| PostToolUse      | `$AOPS/hooks/fail_fast_watchdog.py`, `autocommit_state.py`, `custodiet.py` |
-| UserPromptSubmit | `$AOPS/hooks/user_prompt_submit.py`                                        |
-| SessionStart     | `$AOPS/hooks/sessionstart_load_axioms.py`                                  |
-| Stop             | `$AOPS/hooks/session_reflect.py`                                           |
-| Pre-commit       | `~/writing/.pre-commit-config.yaml`                                        |
-| CI/CD            | `$AOPS/.github/workflows/`                                                 |
+| Mechanism        | Authoritative Source                                                            |
+| ---------------- | ------------------------------------------------------------------------------- |
+| Deny rules       | `$AOPS/config/claude/settings.json` → `permissions.deny`                        |
+| PreToolUse       | `$AOPS/hooks/policy_enforcer.py`                                                |
+| PostToolUse      | `$AOPS/hooks/fail_fast_watchdog.py`, `autocommit_state.py`, `custodiet_gate.py` |
+| UserPromptSubmit | `$AOPS/hooks/user_prompt_submit.py`                                             |
+| SessionStart     | `$AOPS/hooks/sessionstart_load_axioms.py`                                       |
+| Stop             | `$AOPS/hooks/session_reflect.py`                                                |
+| Pre-commit       | `~/writing/.pre-commit-config.yaml`                                             |
+| CI/CD            | `$AOPS/.github/workflows/`                                                      |

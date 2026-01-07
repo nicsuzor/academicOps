@@ -82,6 +82,16 @@ repos:
         verbose: true
         stages: [commit]
 
+      # Namespace collision check - per H8, framework objects must have unique names
+      - id: check-namespace-collision
+        name: Check namespace collisions
+        entry: uv run python scripts/check_namespace_collision.py
+        language: system
+        pass_filenames: false
+        always_run: true
+        verbose: true
+        stages: [commit]
+
 # Note: These checks are disabled by default (too slow for every commit)
 # Run manually with: uv run python scripts/audit_framework_health.py -m
 #

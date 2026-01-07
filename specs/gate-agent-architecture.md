@@ -511,6 +511,6 @@ Task(
 | `lib/session_reader.py`       | Transcript processor (`extract_gate_context()`) |
 | `lib/session_state.py`        | Session state management (new)                  |
 | `hooks/user_prompt_submit.py` | Pre-action gate hook                            |
-| `hooks/custodiet.py`          | Post-action gate hook                           |
+| `hooks/custodiet_gate.py`     | Post-action gate hook                           |
 | `hooks/templates/*.j2`        | Jinja2 templates                                |
 | `hooks/templates/*.md`        | Simple markdown templates                       |

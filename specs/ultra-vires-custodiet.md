@@ -200,7 +200,7 @@ No issues detected. Continue current work.
 
 ### Current State
 
-- `hooks/custodiet.py` - PostToolUse hook, triggers every N tool calls
+- `hooks/custodiet_gate.py` - PostToolUse hook, triggers every N tool calls
 - `hooks/data/reminders.txt` - Soft-tissue file with editable reminder lines
 - `agents/custodiet.md` - Haiku agent that reads transcript
 - `hooks/templates/custodiet-context.j2` - Jinja2 context template (conditional axiom/heuristic injection)
@@ -243,8 +243,8 @@ Between threshold checks, the hook randomly injects soft reminders:
 
 | Parameter              | Value     | Location                   |
 | ---------------------- | --------- | -------------------------- |
-| `TOOL_CALL_THRESHOLD`  | 7         | `custodiet.py`             |
-| `REMINDER_PROBABILITY` | 0.3 (30%) | `custodiet.py`             |
+| `TOOL_CALL_THRESHOLD`  | 7         | `custodiet_gate.py`        |
+| `REMINDER_PROBABILITY` | 0.3 (30%) | `custodiet_gate.py`        |
 | Reminder lines         | Editable  | `hooks/data/reminders.txt` |
 
 **Behavior**:

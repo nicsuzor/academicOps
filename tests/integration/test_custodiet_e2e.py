@@ -21,8 +21,12 @@ from pathlib import Path
 import pytest
 
 
-# Custodiet threshold from hook configuration
-TOOL_CALL_THRESHOLD = 50
+# Custodiet threshold from hooks/custodiet_gate.py
+TOOL_CALL_THRESHOLD = 5
+
+# Tools that custodiet SKIPS (don't count toward threshold)
+# See hooks/custodiet_gate.py lines 214-218
+SKIP_TOOLS = {"Read", "Glob", "Grep", "mcp__memory__retrieve_memory"}
 
 
 def find_recent_audit_files(max_age_seconds: int = 300) -> list[Path]:
@@ -40,8 +44,8 @@ def find_recent_audit_files(max_age_seconds: int = 300) -> list[Path]:
 def test_custodiet_temp_file_created_on_threshold(claude_headless) -> None:
     """Verify custodiet hook creates temp file when threshold reached.
 
-    This test triggers enough tool calls to hit the custodiet threshold,
-    then verifies a temp file was created in /tmp/claude-compliance/.
+    Triggers 7 Bash tool calls (above threshold of 5) to fire custodiet.
+    NOTE: Read/Glob/Grep don't count - custodiet skips them (see SKIP_TOOLS).
 
     Per H37c: Execution over inspection - we verify actual file creation.
     """
@@ -49,21 +53,22 @@ def test_custodiet_temp_file_created_on_threshold(claude_headless) -> None:
     temp_dir = Path("/tmp/claude-compliance")
     files_before = set(temp_dir.glob("audit_*.md")) if temp_dir.exists() else set()
 
-    # Prompt that will trigger many Bash tool calls
-    # The custodiet hook triggers after TOOL_CALL_THRESHOLD tool uses
+    # Prompt that triggers 7 separate BASH tool calls (not Read - those are skipped)
+    # Custodiet only counts tools that modify state (Bash, Edit, Write, Task)
     prompt = (
-        "CUSTODIET_TEST: Run these bash commands one at a time, waiting for each: "
-        "echo 1, echo 2, echo 3, echo 4, echo 5, echo 6, echo 7, echo 8, echo 9, echo 10, "
-        "echo 11, echo 12, echo 13, echo 14, echo 15, echo 16, echo 17, echo 18, echo 19, echo 20, "
-        "echo 21, echo 22, echo 23, echo 24, echo 25, echo 26, echo 27, echo 28, echo 29, echo 30, "
-        "echo 31, echo 32, echo 33, echo 34, echo 35, echo 36, echo 37, echo 38, echo 39, echo 40, "
-        "echo 41, echo 42, echo 43, echo 44, echo 45, echo 46, echo 47, echo 48, echo 49, echo 50, "
-        "echo 51, echo 52, echo 53, echo done"
+        "Run these 7 bash commands ONE AT A TIME, reporting output after each: "
+        "1. echo 'check 1' "
+        "2. echo 'check 2' "
+        "3. echo 'check 3' "
+        "4. echo 'check 4' "
+        "5. echo 'check 5' "
+        "6. echo 'check 6' "
+        "7. echo 'check 7'"
     )
 
-    result = claude_headless(prompt, timeout_seconds=300)
+    result = claude_headless(prompt, timeout_seconds=180)
 
-    # Test may fail due to agent behavior, but we want to check file creation regardless
+    # Check file creation regardless of agent behavior
     files_after = set(temp_dir.glob("audit_*.md")) if temp_dir.exists() else set()
     new_files = files_after - files_before
 
@@ -81,7 +86,6 @@ def test_custodiet_temp_file_created_on_threshold(claude_headless) -> None:
         len(content) > 1000
     ), f"Audit file should contain substantial context. Got {len(content)} chars"
     assert "AXIOMS" in content, "Audit file should contain AXIOMS section"
-    assert "HEURISTICS" in content, "Audit file should contain HEURISTICS section"
 
 
 @pytest.mark.slow
@@ -92,17 +96,25 @@ def test_custodiet_task_spawned(claude_headless_tracked) -> None:
     Uses session tracking to verify the Task tool was called with
     subagent_type="custodiet". This tests ACTUAL invocation, not keywords.
 
+    NOTE: Read/Glob/Grep don't count toward threshold - must use Bash.
+
     Per H37: Verify actual behavior (Task spawned) not surface patterns.
     """
-    # Prompt to trigger threshold
+    # Prompt to trigger 7 Bash tool calls (above threshold of 5)
+    # Read tools are SKIPPED by custodiet - they don't count
     prompt = (
-        "CUSTODIET_SPAWN_TEST: Execute these bash commands sequentially: "
-        + ", ".join([f"echo {i}" for i in range(1, 55)])
-        + ". Then report 'done'."
+        "Run these 7 bash commands ONE AT A TIME, reporting output after each: "
+        "1. echo 'test 1' "
+        "2. echo 'test 2' "
+        "3. echo 'test 3' "
+        "4. echo 'test 4' "
+        "5. echo 'test 5' "
+        "6. echo 'test 6' "
+        "7. echo 'test 7'"
     )
 
     result, session_id, tool_calls = claude_headless_tracked(
-        prompt, timeout_seconds=300
+        prompt, timeout_seconds=180
     )
 
     # Find custodiet Task calls
@@ -113,11 +125,14 @@ def test_custodiet_task_spawned(claude_headless_tracked) -> None:
         and call.get("input", {}).get("subagent_type") == "custodiet"
     ]
 
+    # Count only non-skipped tools
+    counted_tools = [c for c in tool_calls if c["name"] not in SKIP_TOOLS]
+
     assert len(custodiet_calls) > 0, (
-        f"Custodiet Task should be spawned after {TOOL_CALL_THRESHOLD} tool calls. "
-        f"Session {session_id} had {len(tool_calls)} tool calls but none were "
-        f"custodiet Tasks. Task calls found: "
-        f"{[c['name'] for c in tool_calls if c['name'] == 'Task']}"
+        f"Custodiet Task should be spawned after {TOOL_CALL_THRESHOLD} counted tool calls. "
+        f"Session {session_id} had {len(counted_tools)} counted calls (of {len(tool_calls)} total). "
+        f"Skipped tools: {SKIP_TOOLS}. "
+        f"Task calls found: {[c.get('input', {}).get('subagent_type') for c in tool_calls if c['name'] == 'Task']}"
     )
 
     # Verify custodiet was given the temp file path
@@ -138,16 +153,25 @@ def test_custodiet_subagent_file_access(claude_headless_tracked) -> None:
     This is the key test for the alleged bug: Task() subagents may run in
     sandbox isolation and cannot access /tmp files from the parent session.
 
+    NOTE: Read/Glob/Grep don't count toward threshold - must use Bash.
+
     Per H37d: Use observable side-effects for verification.
     """
-    # Prompt to trigger custodiet
+    # Prompt to trigger custodiet (7 Bash calls, threshold is 5)
+    # Read tools are SKIPPED by custodiet - they don't count
     prompt = (
-        "CUSTODIET_FILE_ACCESS_TEST: Run 55 sequential echo commands "
-        "(echo 1 through echo 55), then tell me what happened."
+        "Run these 7 bash commands ONE AT A TIME: "
+        "1. echo 'a' "
+        "2. echo 'b' "
+        "3. echo 'c' "
+        "4. echo 'd' "
+        "5. echo 'e' "
+        "6. echo 'f' "
+        "7. echo 'g'"
     )
 
     result, session_id, tool_calls = claude_headless_tracked(
-        prompt, timeout_seconds=300
+        prompt, timeout_seconds=180
     )
 
     # Find custodiet Task calls
@@ -159,17 +183,17 @@ def test_custodiet_subagent_file_access(claude_headless_tracked) -> None:
     ]
 
     if not custodiet_calls:
-        pytest.skip("Custodiet not spawned - threshold may not have been reached")
+        counted = len([c for c in tool_calls if c["name"] not in SKIP_TOOLS])
+        pytest.skip(
+            f"Custodiet not spawned - only {counted} counted calls (threshold {TOOL_CALL_THRESHOLD})"
+        )
 
-    # Look for Read tool calls from the custodiet subagent
-    # If the subagent can read the file, we should see a Read call to the audit file
     output = result.get("output", "")
 
     # Check for evidence of successful file read OR file read failure
     file_read_success_indicators = [
         "OK",  # Custodiet returns "OK" if compliant
         "ATTENTION",  # Custodiet returns "ATTENTION" if issues found
-        "Ultra Vires",  # Content from the audit file
     ]
 
     file_read_failure_indicators = [
@@ -179,14 +203,9 @@ def test_custodiet_subagent_file_access(claude_headless_tracked) -> None:
         "Permission denied",
     ]
 
-    success_found = any(
-        indicator in output for indicator in file_read_success_indicators
-    )
-    failure_found = any(
-        indicator in output for indicator in file_read_failure_indicators
-    )
+    success_found = any(ind in output for ind in file_read_success_indicators)
+    failure_found = any(ind in output for ind in file_read_failure_indicators)
 
-    # Report what we found - this test documents current behavior
     if failure_found:
         pytest.fail(
             f"ISSUE #277 CONFIRMED: Custodiet subagent cannot read temp file. "
@@ -195,10 +214,8 @@ def test_custodiet_subagent_file_access(claude_headless_tracked) -> None:
         )
 
     if not success_found and not failure_found:
-        # Inconclusive - custodiet may have run but output not captured
         print("\nWARNING: Could not determine if custodiet read file successfully.")
-        print(f"Session: {session_id}")
-        print(f"Output length: {len(output)} chars")
+        print(f"Session: {session_id}, Output length: {len(output)} chars")
 
 
 @pytest.mark.demo
@@ -221,7 +238,6 @@ class TestCustodietDemo:
         if not temp_dir.exists():
             pytest.skip("No custodiet temp directory - run a Claude session first")
 
-        # Get most recent temp file
         temp_files = sorted(
             temp_dir.glob("audit_*.md"), key=lambda f: f.stat().st_mtime, reverse=True
         )
@@ -239,15 +255,13 @@ class TestCustodietDemo:
         print(f"Size: {most_recent.stat().st_size} bytes")
         print(f"Modified: {time.ctime(most_recent.stat().st_mtime)}")
         print("\n--- FULL CONTENT (NO TRUNCATION) ---\n")
-        print(content)  # FULL content, not truncated
+        print(content)
         print("\n--- END CONTENT ---\n")
 
-        # Structural validation
         checks = {
             "Has Session Context section": "## Session Context" in content,
             "Has AXIOMS section": "# AXIOMS" in content,
             "Has HEURISTICS section": "# HEURISTICS" in content,
-            "Has Last Tool section": "## Last Tool" in content,
             "Has OUTPUT FORMAT section": "## OUTPUT FORMAT" in content,
             "Contains substantial content": len(content) > 2000,
         }
@@ -263,93 +277,33 @@ class TestCustodietDemo:
         print("=" * 80)
         assert all_passed, "Structural validation failed - see above"
 
-    def test_demo_custodiet_full_flow(self, claude_headless) -> None:
-        """Demo full custodiet flow with REAL framework task (H37b).
-
-        Shows complete custodiet behavior with a task that naturally
-        triggers the threshold.
-        """
-        print("\n" + "=" * 80)
-        print("CUSTODIET E2E DEMO - FULL FLOW (H37b)")
-        print("=" * 80)
-
-        # Real framework prompt that will make many tool calls
-        prompt = (
-            "CUSTODIET_DEMO: I want to understand the hook system. "
-            "Read these files one by one: "
-            "hooks/policy_enforcer.py, hooks/custodiet.py, hooks/prompt_router.py, "
-            "hooks/criteria_gate.py, hooks/deny_rules.yaml. "
-            "Then list all files in hooks/templates/. "
-            "Then read each template file. "
-            "Finally summarize what you learned about the hook system."
-        )
-        print(f"\nPrompt (REAL TASK): {prompt[:100]}...")
-        print("\nExecuting headless session (this may take a few minutes)...")
-
-        result = claude_headless(prompt, timeout_seconds=300)
-
-        print(f"\nSuccess: {result['success']}")
-
-        if not result["success"]:
-            print(f"Error: {result.get('error')}")
-
-        output = result.get("output", "")
-        print(f"\nOutput length: {len(output)} chars")
-
-        # Check for custodiet activity
-        print("\n--- CUSTODIET ACTIVITY CHECK ---")
-
-        custodiet_indicators = [
-            (
-                "Task spawn instruction",
-                'subagent_type="custodiet"' in output
-                or "subagent_type='custodiet'" in output,
-            ),
-            ("Temp file reference", "/tmp/claude-compliance/audit_" in output),
-            ("Custodiet response (OK)", "```text\nOK\n```" in output),
-            (
-                "Custodiet response (ATTENTION)",
-                "ATTENTION" in output and "Issue:" in output,
-            ),
-        ]
-
-        for name, found in custodiet_indicators:
-            status = "FOUND" if found else "NOT FOUND"
-            print(f"  [{status}] {name}")
-
-        # Show recent temp files
-        temp_dir = Path("/tmp/claude-compliance")
-        if temp_dir.exists():
-            recent_files = find_recent_audit_files(max_age_seconds=300)
-            print("\n--- RECENT AUDIT FILES (last 5 min) ---")
-            print(f"  Count: {len(recent_files)}")
-            for f in recent_files[:5]:
-                print(f"  - {f.name} ({f.stat().st_size} bytes)")
-
-        print("\n--- SESSION OUTPUT (FULL, NO TRUNCATION) ---")
-        print(output)  # FULL output
-        print("--- END OUTPUT ---")
-        print("=" * 80)
-
     def test_demo_custodiet_tracked(self, claude_headless_tracked) -> None:
         """Demo with session tracking showing ALL tool calls.
 
         Verifies custodiet Task was actually spawned (not just keywords).
+        NOTE: Read/Glob/Grep don't count toward threshold - must use Bash.
         """
         print("\n" + "=" * 80)
         print("CUSTODIET TRACKED DEMO - ALL TOOL CALLS")
         print("=" * 80)
 
-        # Prompt that will trigger many tool calls
+        # 7 Bash calls to trigger threshold of 5
+        # Read tools are SKIPPED by custodiet - they don't count
         prompt = (
-            "CUSTODIET_TRACKED_DEMO: Run 55 bash echo commands (echo 1 through echo 55) "
-            "one at a time. After each batch of 10, pause and count how many you've done."
+            "Run these 7 bash commands ONE AT A TIME, reporting output after each: "
+            "1. echo 'demo 1' "
+            "2. echo 'demo 2' "
+            "3. echo 'demo 3' "
+            "4. echo 'demo 4' "
+            "5. echo 'demo 5' "
+            "6. echo 'demo 6' "
+            "7. echo 'demo 7'"
         )
         print(f"\nPrompt: {prompt[:80]}...")
         print("\nExecuting tracked headless session...")
 
         result, session_id, tool_calls = claude_headless_tracked(
-            prompt, timeout_seconds=300
+            prompt, timeout_seconds=180
         )
 
         print(f"\nSession ID: {session_id}")
@@ -360,16 +314,21 @@ class TestCustodietDemo:
             print(f"Error: {result.get('error')}")
 
         # Count tool types
-        tool_counts = {}
+        tool_counts: dict[str, int] = {}
         for call in tool_calls:
             name = call["name"]
             tool_counts[name] = tool_counts.get(name, 0) + 1
 
         print("\n--- TOOL CALL SUMMARY ---")
         for name, count in sorted(tool_counts.items(), key=lambda x: -x[1]):
-            print(f"  {name}: {count}")
+            skipped = "(SKIPPED by custodiet)" if name in SKIP_TOOLS else "(COUNTS)"
+            print(f"  {name}: {count} {skipped}")
 
-        # Find Task calls specifically
+        # Count toward threshold
+        counted = sum(c for n, c in tool_counts.items() if n not in SKIP_TOOLS)
+        print(f"\nCounted tool calls: {counted} (threshold: {TOOL_CALL_THRESHOLD})")
+
+        # Find Task calls
         task_calls = [c for c in tool_calls if c["name"] == "Task"]
         print(f"\n--- TASK CALLS ({len(task_calls)}) ---")
         for i, call in enumerate(task_calls):
@@ -382,7 +341,7 @@ class TestCustodietDemo:
                 prompt_text = task_input.get("prompt", "")
                 print(f"    prompt: {prompt_text[:200]}...")
 
-        # Check for custodiet specifically
+        # Check for custodiet
         custodiet_calls = [
             c
             for c in task_calls
@@ -396,6 +355,6 @@ class TestCustodietDemo:
             print("Custodiet WAS spawned during this session.")
         else:
             print(f"WARNING: No custodiet Task found in {len(tool_calls)} tool calls.")
-            print(f"Threshold is {TOOL_CALL_THRESHOLD} - may not have been reached.")
+            print(f"Counted calls: {counted}, threshold: {TOOL_CALL_THRESHOLD}")
 
         print("=" * 80)

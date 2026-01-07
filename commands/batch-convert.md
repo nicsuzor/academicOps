@@ -1,5 +1,5 @@
 ---
-name: convert-to-md
+name: batch-convert
 category: instruction
 description: Batch convert documents to markdown, preserving tracked changes and comments
 ---

@@ -76,7 +76,7 @@ flowchart TD
         PRE_GATE["criteria_gate.py<br/>Blocks Edit/Write/Bash<br/>until gate file exists"]
         TOOL["Tool executes"]
         POST_HOOK["PostToolUse Hooks"]
-        POST_ACTIONS["autocommit_state.py<br/>fail_fast_watchdog.py<br/>custodiet.py"]
+        POST_ACTIONS["autocommit_state.py<br/>fail_fast_watchdog.py<br/>custodiet_gate.py"]
     end
 
     subgraph VERIFY["3c. Verification"]
@@ -213,7 +213,7 @@ The prompt-hydrator selects workflow based on task signals:
 | --------------------- | ------------------- | -------------------------------------------------------------------------------------- |
 | autocommit_state.py   | Write to data/      | Auto-commit to prevent data loss                                                       |
 | fail_fast_watchdog.py | Error patterns      | Inject fail-fast reminder                                                              |
-| custodiet.py          | Every ~7 tool calls | Spawn custodiet agent for ultra vires detection; random reminders (30%) between checks |
+| custodiet_gate.py     | Every ~7 tool calls | Spawn custodiet agent for ultra vires detection; random reminders (30%) between checks |
 | request_scribe.py     | TodoWrite           | Memory documentation reminder                                                          |
 
 ### Stop Hooks (cleanup)
@@ -261,7 +261,7 @@ Currently these rely on prompt-level guidance + periodic custodiet checks.
 | PostToolUse           | unified_logger.py           | Event logging                                            |
 | PostToolUse           | autocommit_state.py         | Auto-commit data/                                        |
 | PostToolUse           | fail_fast_watchdog.py       | Detect errors                                            |
-| PostToolUse           | custodiet.py                | Ultra vires detection (~7 tool calls) + random reminders |
+| PostToolUse           | custodiet_gate.py           | Ultra vires detection (~7 tool calls) + random reminders |
 | PostToolUse:TodoWrite | request_scribe.py           | Memory documentation reminder                            |
 | SubagentStop          | unified_logger.py           | Event logging                                            |
 | Stop                  | unified_logger.py           | Event logging                                            |

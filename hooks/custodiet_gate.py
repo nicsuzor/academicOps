@@ -68,7 +68,11 @@ def load_reminders() -> list[str]:
     try:
         lines = REMINDERS_FILE.read_text().splitlines()
         # Filter out comments and blank lines
-        return [line.strip() for line in lines if line.strip() and not line.strip().startswith("#")]
+        return [
+            line.strip()
+            for line in lines
+            if line.strip() and not line.strip().startswith("#")
+        ]
     except OSError:
         return []
 
@@ -94,6 +98,7 @@ def get_state_file(cwd: str) -> Path:
     State is per-project (hashed cwd) to track tool counts across sessions.
     """
     import hashlib
+
     project_key = hashlib.sha256(cwd.encode()).hexdigest()[:12]
     return TEMP_DIR / f"state-{project_key}.json"
 

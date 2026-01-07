@@ -656,6 +656,52 @@ def check_wikilinks(root: Path, metrics: HealthMetrics) -> None:
                 metrics.orphan_files.append(file_path)
 
 
+def check_namespace_collisions(root: Path) -> list[tuple[str, str, str]]:
+    """Check for namespace collisions across framework objects.
+
+    Per H8: Framework objects (skills, commands, hooks, agents) must have
+    unique names across all namespaces. Claude Code treats same-named
+    commands as model-only, causing "can only be invoked by Claude" errors.
+
+    Returns:
+        List of (name, namespace1, namespace2) tuples for each collision.
+    """
+    # Collect all names by namespace
+    commands: set[str] = set()
+    commands_dir = root / "commands"
+    if commands_dir.exists():
+        commands = {p.stem for p in commands_dir.glob("*.md")}
+
+    skills: set[str] = set()
+    skills_dir = root / "skills"
+    if skills_dir.exists():
+        skills = {p.name for p in skills_dir.iterdir() if p.is_dir()}
+
+    agents: set[str] = set()
+    agents_dir = root / "agents"
+    if agents_dir.exists():
+        agents = {p.stem for p in agents_dir.glob("*.md")}
+
+    hooks: set[str] = set()
+    hooks_dir = root / "hooks"
+    if hooks_dir.exists():
+        hooks = {p.stem for p in hooks_dir.glob("*.py")}
+
+    namespaces = [
+        ("commands", commands),
+        ("skills", skills),
+        ("agents", agents),
+        ("hooks", hooks),
+    ]
+
+    collisions: list[tuple[str, str, str]] = []
+    for i, (ns1, set1) in enumerate(namespaces):
+        for ns2, set2 in namespaces[i + 1 :]:
+            for name in set1 & set2:
+                collisions.append((name, ns1, ns2))
+    return collisions
+
+
 def check_skill_sizes(root: Path, metrics: HealthMetrics) -> None:
     """Check for oversized SKILL.md files (> 500 lines)."""
     skills_dir = root / "skills"

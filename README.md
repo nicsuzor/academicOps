@@ -123,7 +123,7 @@ Full instructions: `$AOPS/commands/do.md`
 | /consolidate         | Consolidate LOG.md entries into thematic files                                               |
 | /diag                | Quick diagnostic of what's loaded in session                                                 |
 | /do                  | Execute work with full context enrichment and guardrails                                     |
-| /audit               | Comprehensive framework governance audit                                                     |
+| /audit-framework     | Comprehensive framework governance audit                                                     |
 | /email               | Extract action items from emails → tasks                                                     |
 | /learn               | Make minimal framework tweaks with tracking                                                  |
 | /log                 | Log agent patterns to thematic learning files                                                |
