@@ -10,6 +10,9 @@
 
 set -euo pipefail
 
+# Ensure PATH includes uv and claude (cron runs with minimal PATH)
+export PATH="/opt/nic/bin:/opt/nic/nvm/versions/node/v25.2.1/bin:$PATH"
+
 # Change to framework root
 cd "$(dirname "$0")/.."
 FRAMEWORK_ROOT="$(pwd)"
