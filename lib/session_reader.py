@@ -729,15 +729,18 @@ class SessionProcessor:
                                 tool_id = block.get("id")
                                 tool_name = block.get("name", "")
 
-                                error_result = self._get_tool_error(tool_id, entries)
-                                if error_result:
-                                    tool_item["error"] = error_result
-                                else:
-                                    tool_result = self._get_tool_result(
+                                if tool_id:
+                                    error_result = self._get_tool_error(
                                         tool_id, entries
                                     )
-                                    if tool_result:
-                                        tool_item["result"] = tool_result
+                                    if error_result:
+                                        tool_item["error"] = error_result
+                                    else:
+                                        tool_result = self._get_tool_result(
+                                            tool_id, entries
+                                        )
+                                        if tool_result:
+                                            tool_item["result"] = tool_result
 
                                 if tool_name == "Task" and tool_id:
                                     agent_id = self._extract_agent_id_from_result(

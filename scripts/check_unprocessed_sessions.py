@@ -7,10 +7,11 @@ Exit codes:
   2 - Configuration error (ACA_DATA missing or invalid arguments)
 
 Criteria:
-- Session JSONL must be 30 min to 7 days old (based on mtime)
-- Unprocessed means EITHER:
+- Session JSONL must be 5 min to 7 days old (based on mtime, configurable via --min-age)
+- Unprocessed means ANY of:
   a) JSONL exists but no abridged transcript
   b) Transcript exists but no mining JSON
+  c) Session JSONL is newer than transcript (session was updated)
 
 Usage:
   uv run python scripts/check_unprocessed_sessions.py
@@ -31,7 +32,7 @@ from pathlib import Path
 # Add lib to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from lib.session_reader import SessionInfo, find_sessions
+from lib.session_reader import SessionInfo, find_sessions  # noqa: E402
 
 
 def get_env_paths() -> Path:
@@ -52,30 +53,44 @@ def get_env_paths() -> Path:
 def check_session_processed(session: SessionInfo, aca_data: Path) -> bool:
     """Check if session has been fully processed.
 
-    Returns True if processed (has both transcript AND mining JSON).
-    Returns False if unprocessed (missing either).
+    Returns True if processed (has both transcript AND mining JSON, and both are up-to-date).
+    Returns False if:
+      - Missing transcript or mining JSON
+      - Session JSONL is newer than transcript (session was updated, needs re-processing)
     """
     session_id = session.session_id
 
     # Check for transcript
     # Pattern: $ACA_DATA/sessions/claude/YYYYMMDD-{project}-{session_id_prefix}-abridged.md
     transcript_dir = aca_data / "sessions" / "claude"
-    has_transcript = False
+    transcript_path = None
     if transcript_dir.exists():
         # Use first 8 chars of session ID for matching (standard prefix length)
         session_prefix = session_id[:8] if len(session_id) >= 8 else session_id
         # Glob for any matching transcript
         pattern = str(transcript_dir / f"*-*-{session_prefix}*-abridged.md")
         matches = glob.glob(pattern)
-        has_transcript = len(matches) > 0
+        if matches:
+            transcript_path = Path(matches[0])
 
     # Check for mining JSON
     # Pattern: $ACA_DATA/dashboard/sessions/{session_id}.json
     mining_json = aca_data / "dashboard" / "sessions" / f"{session_id}.json"
     has_mining = mining_json.exists()
 
-    # Fully processed = has BOTH transcript AND mining JSON
-    return has_transcript and has_mining
+    # Missing either = needs processing
+    if not transcript_path or not has_mining:
+        return False
+
+    # Check if session was updated after transcript was generated
+    # If JSONL is newer than transcript, needs re-processing
+    session_mtime = session.path.stat().st_mtime
+    transcript_mtime = transcript_path.stat().st_mtime
+    if session_mtime > transcript_mtime:
+        return False  # Session updated, needs re-processing
+
+    # Fully processed and up-to-date
+    return True
 
 
 def matches_project_pattern(session: SessionInfo, patterns: list[str]) -> bool:
@@ -139,6 +154,12 @@ def main() -> None:
         default=20,
         help="Maximum number of sessions to output (default: 20)",
     )
+    parser.add_argument(
+        "--min-age",
+        type=int,
+        default=5,
+        help="Minimum session age in minutes before processing (default: 5)",
+    )
     args = parser.parse_args()
 
     # Parse patterns
@@ -157,9 +178,9 @@ def main() -> None:
 
     # Define age window
     # oldest_allowed = 7 days ago (don't process ancient sessions)
-    # newest_allowed = 30 min ago (let sessions finish before processing)
+    # newest_allowed = min_age ago (let sessions finish before processing)
     now = datetime.now(UTC)
-    newest_allowed = now - timedelta(minutes=30)
+    newest_allowed = now - timedelta(minutes=args.min_age)
     oldest_allowed = now - timedelta(days=7)
 
     # Find sessions modified after oldest_allowed
@@ -167,21 +188,20 @@ def main() -> None:
 
     # Filter to sessions within age window (also check they're old enough)
     eligible_sessions = [
-        s for s in all_sessions
-        if oldest_allowed <= s.last_modified <= newest_allowed
+        s for s in all_sessions if oldest_allowed <= s.last_modified <= newest_allowed
     ]
 
     # Filter by allowed projects if specified
     if allowed_patterns:
         eligible_sessions = [
-            s for s in eligible_sessions
-            if matches_project_pattern(s, allowed_patterns)
+            s for s in eligible_sessions if matches_project_pattern(s, allowed_patterns)
         ]
 
     # Filter out excluded patterns (always applied)
     if exclude_patterns:
         eligible_sessions = [
-            s for s in eligible_sessions
+            s
+            for s in eligible_sessions
             if not matches_exclude_pattern(s, exclude_patterns)
         ]
 
@@ -191,14 +211,13 @@ def main() -> None:
 
     # Check which sessions need processing
     unprocessed = [
-        s for s in eligible_sessions
-        if not check_session_processed(s, aca_data)
+        s for s in eligible_sessions if not check_session_processed(s, aca_data)
     ]
 
     if unprocessed:
         # Output session paths (one per line) for use by caller
         # Limit to args.limit sessions (newest first, already sorted by find_sessions)
-        for s in unprocessed[:args.limit]:
+        for s in unprocessed[: args.limit]:
             print(str(s.path))
         sys.exit(0)  # Work needed
     else:

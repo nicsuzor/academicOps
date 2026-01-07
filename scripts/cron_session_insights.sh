@@ -1,12 +1,14 @@
 #!/bin/bash
 # Cron wrapper: check for unprocessed sessions, pass paths to skill
 #
-# Called by cron every 30 minutes. Only invokes Claude if work is needed.
+# Called by cron every 5 minutes. Only invokes Claude if work is needed.
 # Only processes sessions from the framework's installation project by default.
+# Uses flock to prevent concurrent runs.
 #
 # Exit codes:
 #   0 - Success (either processed sessions or nothing to do)
 #   1 - Error (missing dependencies, check script failed with code 2)
+#   99 - Another instance is running (lock held)
 
 set -euo pipefail
 
@@ -16,6 +18,14 @@ export PATH="/opt/nic/bin:/opt/nic/nvm/versions/node/v25.2.1/bin:$PATH"
 # Change to framework root
 cd "$(dirname "$0")/.."
 FRAMEWORK_ROOT="$(pwd)"
+
+# Prevent concurrent runs using flock
+LOCKFILE="/tmp/cron_session_insights.lock"
+exec 200>"$LOCKFILE"
+if ! flock -n 200; then
+    echo "$(date '+%Y-%m-%d %H:%M:%S') - Another instance is running. Skipping."
+    exit 99
+fi
 
 # Source environment from settings.local.json if ACA_DATA not set
 if [[ -z "${ACA_DATA:-}" ]]; then
