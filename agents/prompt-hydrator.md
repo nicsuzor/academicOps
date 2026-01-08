@@ -4,7 +4,7 @@ category: instruction
 description: Transform terse prompts into complete execution plans with workflow selection, per-step skill assignments, and quality gates
 type: agent
 model: haiku
-tools: [Read, Grep, mcp__memory__retrieve_memory, Task]
+tools: [Read, mcp__memory__retrieve_memory, Task]
 permalink: aops/agents/prompt-hydrator
 tags:
   - routing
