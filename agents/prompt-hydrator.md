@@ -69,6 +69,8 @@ Assign skills and reminders to individual steps based on the step's domain. Refe
 
 Each step can invoke a different skill. Don't assign one skill to the whole task - match each step individually.
 
+**Step sizing**: Keep each TodoWrite step skill-sized - either a simple atomic action (commit, push, read file) or a skill invocation. For skill steps, use the format "Invoke Skill(skill='X') to [purpose]" without detailing how the skill should work.
+
 ## Output Format
 
 Return this EXACT structure:
