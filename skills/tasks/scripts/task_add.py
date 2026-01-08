@@ -25,8 +25,8 @@ if str(_aops_root) not in sys.path:
     sys.path.insert(0, str(_aops_root))
 os.environ.setdefault("AOPS", str(_aops_root))
 
-from lib.paths import get_data_root
-from skills.tasks import task_ops
+from lib.paths import get_data_root  # noqa: E402
+from skills.tasks import task_ops  # noqa: E402
 
 
 def parse_priority(value: str) -> int:
@@ -120,15 +120,26 @@ def main():
         type=str,
         help="Data directory path (default: $ACA_DATA)",
     )
+    # Email metadata arguments (stored in frontmatter for duplicate detection)
     parser.add_argument(
         "--source-email-id",
         type=str,
-        help="Outlook entry_id for duplicate detection. If task with this ID exists, creation is blocked.",
+        help="Outlook entry_id for duplicate detection. Stored in frontmatter.",
     )
     parser.add_argument(
-        "--force",
-        action="store_true",
-        help="Force creation even if duplicate source-email-id found",
+        "--source-subject",
+        type=str,
+        help="Original email subject line",
+    )
+    parser.add_argument(
+        "--source-from",
+        type=str,
+        help="Original email sender (name and address)",
+    )
+    parser.add_argument(
+        "--source-date",
+        type=str,
+        help="Original email received date (ISO format)",
     )
 
     args = parser.parse_args()
@@ -138,33 +149,6 @@ def main():
         data_dir = Path(args.data_dir)
     else:
         data_dir = get_data_root()
-
-    # Check for duplicate source-email-id before creating
-    if args.source_email_id and not args.force:
-        tasks_dir = data_dir / "tasks"
-        duplicate_found = None
-        for subdir in ["inbox", "archived"]:
-            search_dir = tasks_dir / subdir
-            if search_dir.exists():
-                for task_file in search_dir.glob("*.md"):
-                    try:
-                        content = task_file.read_text(encoding="utf-8")
-                        if f"source_email_id: {args.source_email_id}" in content:
-                            duplicate_found = task_file
-                            break
-                    except Exception:
-                        continue
-            if duplicate_found:
-                break
-
-        if duplicate_found:
-            print(
-                "✗ Duplicate: Email already processed as task",
-                file=sys.stderr,
-            )
-            print(f"  Existing task: {duplicate_found.name}", file=sys.stderr)
-            print("  Use --force to create anyway", file=sys.stderr)
-            sys.exit(1)
 
     # Read body from file or argument
     body = args.body or ""
@@ -180,10 +164,6 @@ def main():
         except Exception as e:
             print(f"Error reading file: {e}", file=sys.stderr)
             sys.exit(1)
-
-    # Prepend source email ID if provided (for future duplicate detection)
-    if args.source_email_id:
-        body = f"source_email_id: {args.source_email_id}\n\n{body}"
 
     # Parse due date if provided
     due_datetime = None
@@ -217,6 +197,10 @@ def main():
             body=body,
             tags=tags,
             slug=args.slug,
+            source_email_id=args.source_email_id,
+            source_subject=args.source_subject,
+            source_from=args.source_from,
+            source_date=args.source_date,
         )
 
         if not result["success"]:

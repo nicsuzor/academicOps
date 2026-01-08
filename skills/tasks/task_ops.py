@@ -281,7 +281,11 @@ def load_task_from_file(file_path: Path) -> Task:
     )
 
 
-def save_task_to_file(task: Task, file_path: Path) -> None:
+def save_task_to_file(
+    task: Task,
+    file_path: Path,
+    extra_frontmatter: dict[str, Any] | None = None,
+) -> None:
     """Save task to markdown file with properly formatted YAML frontmatter.
 
     Generates format with:
@@ -291,6 +295,7 @@ def save_task_to_file(task: Task, file_path: Path) -> None:
     Args:
         task: Task model to save
         file_path: Destination file path
+        extra_frontmatter: Additional fields to include in frontmatter (e.g., email metadata)
 
     Raises:
         IOError: If file cannot be written
@@ -328,6 +333,10 @@ def save_task_to_file(task: Task, file_path: Path) -> None:
     metadata_dict: dict[str, Any] = {}
     if metadata_dict:
         frontmatter["metadata"] = metadata_dict
+
+    # Add extra frontmatter fields (e.g., email metadata)
+    if extra_frontmatter:
+        frontmatter.update(extra_frontmatter)
 
     # Serialize to YAML
     yaml_str = yaml.dump(frontmatter, default_flow_style=False, allow_unicode=True)
@@ -717,6 +726,41 @@ def complete_task(identifier: str, data_dir: Path) -> dict[str, Any]:
         return update_status_in_place(file_path, "completed")
 
 
+def _extract_extra_frontmatter(file_path: Path) -> dict[str, Any]:
+    """Extract extra frontmatter fields that aren't part of Task model.
+
+    Preserves fields like source_email_id, source_subject, etc.
+
+    Args:
+        file_path: Path to task file
+
+    Returns:
+        Dictionary of extra frontmatter fields to preserve
+    """
+    extra_fields = {}
+    preserved_keys = [
+        "source_email_id",
+        "source_subject",
+        "source_from",
+        "source_date",
+    ]
+
+    try:
+        content = file_path.read_text(encoding="utf-8")
+        if content.startswith("---"):
+            parts = content.split("---", 2)
+            if len(parts) >= 3:
+                frontmatter = yaml.safe_load(parts[1])
+                if frontmatter:
+                    for key in preserved_keys:
+                        if key in frontmatter:
+                            extra_fields[key] = frontmatter[key]
+    except Exception:
+        pass
+
+    return extra_fields
+
+
 def archive_task(filename: str, data_dir: Path) -> dict[str, Any]:
     """Archive a task by moving it to archived folder.
 
@@ -732,6 +776,9 @@ def archive_task(filename: str, data_dir: Path) -> dict[str, Any]:
     if not task_path:
         return {"success": False, "message": f"Task not found: {filename}"}
 
+    # Extract extra frontmatter before loading (preserves email metadata)
+    extra_frontmatter = _extract_extra_frontmatter(task_path)
+
     # Load and update task
     try:
         task = load_task_from_file(task_path)
@@ -746,7 +793,9 @@ def archive_task(filename: str, data_dir: Path) -> dict[str, Any]:
     archived_path = archived_dir / task_path.name
 
     try:
-        save_task_to_file(task, archived_path)
+        save_task_to_file(
+            task, archived_path, extra_frontmatter=extra_frontmatter or None
+        )
         # Remove original
         task_path.unlink()
 
@@ -967,6 +1016,39 @@ def list_tasks(
     return tasks
 
 
+def find_task_by_email_id(email_id: str, data_dir: Path) -> Path | None:
+    """Find a task file by source_email_id in frontmatter.
+
+    Searches inbox and archived folders for a task with matching source_email_id.
+
+    Args:
+        email_id: The Outlook entry_id to search for
+        data_dir: Data directory path
+
+    Returns:
+        Path to the task file if found, None otherwise
+    """
+    tasks_dir = data_dir / "tasks"
+    for subdir in ["inbox", "archived"]:
+        search_dir = tasks_dir / subdir
+        if not search_dir.exists():
+            continue
+        for task_file in search_dir.glob("*.md"):
+            try:
+                content = task_file.read_text(encoding="utf-8")
+                if not content.startswith("---"):
+                    continue
+                parts = content.split("---", 2)
+                if len(parts) < 3:
+                    continue
+                frontmatter = yaml.safe_load(parts[1])
+                if frontmatter and frontmatter.get("source_email_id") == email_id:
+                    return task_file
+            except Exception:
+                continue
+    return None
+
+
 def create_task(
     title: str,
     data_dir: Path,
@@ -977,6 +1059,10 @@ def create_task(
     body: str = "",
     tags: list[str] | None = None,
     slug: str | None = None,
+    source_email_id: str | None = None,
+    source_subject: str | None = None,
+    source_from: str | None = None,
+    source_date: str | None = None,
 ) -> dict[str, Any]:
     """Create a new task.
 
@@ -990,10 +1076,23 @@ def create_task(
         body: Task body content
         tags: Task tags
         slug: Optional slug for task_id (sanitized if provided)
+        source_email_id: Outlook entry_id for email-derived tasks (stored in frontmatter)
+        source_subject: Original email subject
+        source_from: Original email sender
+        source_date: Original email received date (ISO format string)
 
     Returns:
         Result dictionary with task_id, filename, path, and success status
     """
+    # Check for duplicate email ID before creating
+    if source_email_id:
+        existing = find_task_by_email_id(source_email_id, data_dir)
+        if existing:
+            return {
+                "success": False,
+                "message": f"Duplicate: Email already processed as task: {existing.name}",
+            }
+
     # Generate task ID: YYYYMMDD-slug (use sanitized title if no slug provided)
     timestamp = datetime.now(UTC).strftime("%Y%m%d")
     sanitized = sanitize_slug(slug if slug else title)
@@ -1023,13 +1122,24 @@ def create_task(
         body=body,
     )
 
+    # Build email metadata for frontmatter
+    email_metadata: dict[str, Any] = {}
+    if source_email_id:
+        email_metadata["source_email_id"] = source_email_id
+    if source_subject:
+        email_metadata["source_subject"] = source_subject
+    if source_from:
+        email_metadata["source_from"] = source_from
+    if source_date:
+        email_metadata["source_date"] = source_date
+
     # Save to inbox
     inbox_dir = data_dir / "tasks/inbox"
     inbox_dir.mkdir(parents=True, exist_ok=True)
     task_path = inbox_dir / filename
 
     try:
-        save_task_to_file(task, task_path)
+        save_task_to_file(task, task_path, extra_frontmatter=email_metadata or None)
 
         return {
             "success": True,
