@@ -72,6 +72,19 @@ When executing a task, you are the **Orchestrator**. Do not implement complex lo
 2. **Persist**: Use `Skill(skill="remember")` to save learnings.
 3. **Push**: `git push`.
 
+## 🛡️ Workflow Guardrails
+
+Apply these constraints based on the selected workflow.
+
+| Workflow       | Guardrails                                             |
+| :------------- | :----------------------------------------------------- |
+| **question**   | `answer_only` (No implementation)                      |
+| **minor-edit** | `verify_before_complete`, `fix_within_design`          |
+| **tdd**        | `require_acceptance_test`, `verify_before_complete`    |
+| **batch**      | `per_item_verification`, `aggregate_qa`                |
+| **qa-proof**   | `evidence_required`, `quote_errors_exactly`            |
+| **plan-mode**  | `plan_mode`, `critic_review`, `user_approval_required` |
+
 ## 🔵 Workflow Tracks
 
 Select the specific track based on the user's intent.
@@ -81,74 +94,101 @@ Select the specific track based on the user's intent.
 **Trigger**: "implement", "create", "refactor", "add feature"
 **Mandate**: **Test-First**. No code without a failing test.
 
-1. **Guidance**: Invoke `Skill(skill="feature-dev")`.
-2. **Test**: Write a failing test (pytest) that defines success.
-3. **Verify Failure**: Run test -> RED.
-4. **Implement**: Write minimal code to pass test.
-5. **Verify Success**: Run test -> GREEN.
-6. **Refactor**: Clean up.
-7. **Commit**: `git commit -m "feat: ..."`
+**Execution Template**:
 
-### 2. Debugging
+```javascript
+TodoWrite(todos=[
+  {content: "Step 1: Invoke Skill(skill='feature-dev') for TDD guidance", status: "pending", activeForm: "Loading skill"},
+  {content: "Step 2: Invoke Skill(skill='[domain]') for conventions", status: "pending", activeForm: "Loading skill"},
+  {content: "Step 3: Define acceptance criteria (user outcomes)", status: "pending", activeForm: "Defining acceptance"},
+  {content: "Step 4: Write failing test that defines success", status: "pending", activeForm: "Writing test"},
+  {content: "Step 5: Implement to make test pass", status: "pending", activeForm: "Implementing"},
+  {content: "CHECKPOINT: Run pytest to verify all tests pass", status: "pending", activeForm: "Verifying"},
+  {content: "Step 7: Commit and push", status: "pending", activeForm: "Committing"}
+])
+```
+
+### 2. Debugging (Minor Edit / Fix)
 
 **Trigger**: "fix", "bug", "error", "broken"
 **Mandate**: **Scientific Method**. No "trying things" without hypothesis.
 
-1. **Hypothesis**: State what you think is wrong.
-2. **Reproduction**: Create a minimal reproduction script/test.
-3. **Confirm**: Run repro -> FAIL.
-4. **Fix**: Apply fix.
-5. **Verify**: Run repro -> PASS.
-6. **Regression Check**: Run related tests.
+**Execution Template**:
+
+```javascript
+TodoWrite(todos=[
+  {content: "Step 1: Reproduce error - run build, quote error message EXACTLY", status: "pending", activeForm: "Reproducing error"},
+  {content: "Step 2: Invoke Skill(skill='[domain]') for conventions", status: "pending", activeForm: "Loading skill"},
+  {content: "Step 3: Read file and understand the error state", status: "pending", activeForm: "Understanding"},
+  {content: "Step 4: Implement fix following conventions", status: "pending", activeForm: "Implementing fix"},
+  {content: "CHECKPOINT: Run build/repro to verify fix works", status: "pending", activeForm: "Verifying"},
+  {content: "Step 6: Commit and push", status: "pending", activeForm: "Committing"}
+])
+```
 
 ### 3. Batch Operations
 
 **Trigger**: "all files", "for every", "process dataset"
 **Mandate**: **Resumability**. Never rely on session memory for long-running tasks.
 
-1. **Baseline**: `git status` (clean).
-2. **Tracking**: Create a durable Task file in `$ACA_DATA/tasks/tracking/` with the list of items.
-   - Format: `[ ] item_path (status)`
-3. **Pilot**: Process 1-3 items to validate approach. Verify.
-4. **Execute**:
-   - Read tracking file for "pending" items.
-   - Process batch (can use `commands/parallel-batch` pattern).
-   - Mark items "done" in tracking file.
-   - Commit.
-5. **Resume**: If interrupted, reload tracking file and continue.
+**Execution Template**:
 
-### 4. Framework / Architecture
+```javascript
+TodoWrite(todos=[
+  {content: "Step 1: Identify all items to process: [description]", status: "pending", activeForm: "Identifying items"},
+  {content: "Step 2: Process first subset (items 1-N)", status: "pending", activeForm: "Processing batch 1"},
+  {content: "CHECKPOINT: Verify subset processed correctly", status: "pending", activeForm: "Verifying batch"},
+  // Repeat for each batch...
+  {content: "Step N: Aggregate QA - verify all items processed", status: "pending", activeForm: "Final verification"},
+  {content: "Final: Commit and push", status: "pending", activeForm: "Committing"}
+])
+```
+
+### 4. Framework / Architecture (Plan Mode)
 
 **Trigger**: "plan", "design", "structure", "system change"
 **Mandate**: **Approval First**.
 
-1. **Enter Plan Mode**: Do not change code yet.
-2. **Research**: Gather deep context.
-3. **Proposal**: Write a design doc or detailed plan.
-4. **Critic Review**: Deep architectural review.
-5. **User Approval**: **STOP**. detailed presentation to user. Wait for `y`.
-6. **Execute**: Proceed to TDD or Batch workflow.
+**Execution Template**:
+
+```javascript
+TodoWrite(todos=[
+  {content: "Step 1: Enter plan mode - invoke EnterPlanMode()", status: "pending", activeForm: "Entering plan mode"},
+  {content: "Step 2: Invoke Skill(skill='[domain]') for guidance", status: "pending", activeForm: "Loading skill"},
+  {content: "Step 3: Research and create plan", status: "pending", activeForm: "Planning"},
+  {content: "Step 4: Define acceptance criteria", status: "pending", activeForm: "Defining acceptance"},
+  {content: "Step 5: Submit to critic - Task(subagent_type='critic')", status: "pending", activeForm: "Getting review"},
+  {content: "CHECKPOINT: Get user approval before proceeding", status: "pending", activeForm: "Awaiting approval"},
+  // Implementation steps added after approval
+])
+```
 
 ### 5. Question
 
 **Trigger**: "?", "how", "explain", "what is"
 **Mandate**: **Answer & Halt**.
 
-1. **Context**: Search memory/codebase.
-2. **Answer**: Provide clear, cited answer.
-3. **STOP**: Do not offer to implement.
+**Execution Template**:
 
-## ❌ Anti-Patterns (Immediate Failures)
+```javascript
+TodoWrite(todos=[
+  {content: "Step 1: Invoke Skill(skill='[domain]') for context", status: "pending", activeForm: "Loading skill"},
+  {content: "Step 2: Answer the question then STOP - do NOT implement", status: "pending", activeForm: "Answering"}
+])
+```
 
-- **"I'll just fix this quickly"** -> Violation: Missing Plan/Context.
-- **"Tests passed" (without checking output)** -> Violation: QA failure (False Positive).
-- **Renaming/Moving files without git** -> Violation: Lost history.
-- **Asking user "what do you think?" mid-task** -> Violation: You are the orchestrator. Decide or ask specific blocker questions.
-- **Skipping `remember`** -> Violation: Amnesia.
+### 6. QA / Investigation
 
-**Reference**:
+**Trigger**: "verify", "check", "investigate", "audit"
+**Mandate**: **Evidence-Based**.
 
-- `agents/critic.md`
-- `commands/qa.md`
-- `commands/reflect.md`
-- `skills/remember/SKILL.md`
+**Execution Template**:
+
+```javascript
+TodoWrite(todos=[
+  {content: "Step 1: State hypothesis: [what we're investigating]", status: "pending", activeForm: "Stating hypothesis"},
+  {content: "Step 2: Gather evidence: [specific verification steps]", status: "pending", activeForm: "Gathering evidence"},
+  {content: "CHECKPOINT: Quote evidence EXACTLY - no paraphrasing", status: "pending", activeForm: "Documenting evidence"},
+  {content: "Step 4: Draw conclusion from evidence", status: "pending", activeForm: "Concluding"}
+])
+```

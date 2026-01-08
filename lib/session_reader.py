@@ -770,8 +770,28 @@ def find_sessions(
         for session_file in project_dir.glob("*.jsonl"):
             if session_file.name.startswith("agent-"):
                 continue
+
+            # Determine session_id
+            session_id = session_file.stem
+            # is_gemini = False
+
+            # For hook logs, the filename is a date-hash, not the full session ID.
+            # We need to read the internal session_id to identify Gemini sessions
+            # and to provide the correct ID to consumers.
             if session_file.name.endswith("-hooks.jsonl"):
-                continue
+                try:
+                    with open(session_file, encoding="utf-8") as f:
+                        first_line = f.readline()
+                        if first_line:
+                            data = json.loads(first_line)
+                            internal_id = data.get("session_id", "")
+                            if internal_id:
+                                session_id = internal_id
+                                if internal_id.startswith("gemini-"):
+                                    # is_gemini = True  # noqa: F841
+                                    pass
+                except (OSError, json.JSONDecodeError):
+                    pass
 
             # Get modification time
             mtime = datetime.fromtimestamp(session_file.stat().st_mtime, tz=UTC)
@@ -784,7 +804,7 @@ def find_sessions(
                 SessionInfo(
                     path=session_file,
                     project=project_name,
-                    session_id=session_file.stem,
+                    session_id=session_id,
                     last_modified=mtime,
                 )
             )
@@ -820,6 +840,24 @@ class SessionProcessor:
                     continue
                 try:
                     data = json.loads(line)
+
+                    # Handle hook logs passed as main file
+                    if file_path.name.endswith("-hooks.jsonl"):
+                        # Map hook log format to Entry format
+                        hook_output = data.get("hookSpecificOutput") or {}
+                        if not hook_output.get("hookEventName"):
+                            hook_output["hookEventName"] = data.get(
+                                "hook_event", "Unknown"
+                            )
+                        if "exit_code" in data and "exitCode" not in hook_output:
+                            hook_output["exitCode"] = data["exit_code"]
+
+                        data = {
+                            "type": "system_reminder",
+                            "timestamp": data.get("logged_at"),
+                            "hookSpecificOutput": hook_output,
+                        }
+
                     entry = Entry.from_dict(data)
                     entries.append(entry)
 
