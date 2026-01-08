@@ -101,12 +101,15 @@ Stage 5: COMMIT - Per-batch commits for rollback capability
 | Document exceptions | Not everything needs "fixing" - record justified exceptions               |
 | Question batching   | Collect questions, present via AskUserQuestion (max 4), not one-at-a-time |
 
-**Multi-session batches** (100+ items): Use checkpoint-resume pattern per spec. Each session:
+**Continuous processing with checkpoints**: Keep processing while work remains. Checkpoint for resumability, not as stopping points.
 
-1. Read tracking.jsonl → identify unprocessed items
-2. Process batch of ~25-30 items
-3. Commit checkpoint with descriptive message
-4. Append to tracking.jsonl
+1. Read tracking file → identify unprocessed items
+2. Process batch (~25-30 items)
+3. Update task file with progress, commit and push checkpoint
+4. **If work remains AND context allows → continue to next batch**
+5. Only stop when: all items complete, context exhausted, or blocked
+
+**Key**: Checkpoints enable resumption if interrupted - they are NOT signals to stop.
 
 **Tracking schema**: `{file, batch, status, category, timestamp, notes}` where status = `pending|in_progress|complete|skipped|exception`
 
