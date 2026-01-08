@@ -1,9 +1,9 @@
 ---
 name: session-insights
 category: instruction
-description: Extract accomplishments and learnings from Claude Code sessions. Updates daily summary and mines for framework patterns.
+description: Extract accomplishments and learnings from Claude Code and Gemini CLI sessions. Updates daily summary and mines for framework patterns.
 allowed-tools: Read,Bash,Task,Edit,Write
-version: 3.2.0
+version: 3.3.0
 permalink: skills-session-insights
 ---
 
@@ -17,12 +17,23 @@ Routine command for daily session processing. Runs parallel agents for speed.
 - `YYYYMMDD` - process specific date (batch mode)
 - `current` - analyze current session for reflection (real-time mode, see Step 7)
 - `<path1> [path2] ...` - process specific session JSONL files (explicit mode, used by cron)
+- `<directory>` - process all markdown transcripts in directory (e.g., `$ACA_DATA/sessions/gemini/`)
 
 ## Execution (Follow These Steps Exactly)
 
 ### Step 1: Find Sessions Needing Transcripts
 
-**If args are explicit paths** (contain `/` or end in `.jsonl`):
+**If arg is a directory containing `.md` files** (e.g., `$ACA_DATA/sessions/gemini/`):
+
+- These are **pre-existing transcripts** (Gemini CLI sessions already converted to markdown)
+- List all `*-abridged.md` files in the directory
+- Extract session_id from filename (e.g., `20260108-gemini-02446f-4935a593-session-abridged.md` → session_id = `4935a593`)
+- Extract date from filename prefix (YYYYMMDD)
+- Project = directory name (e.g., `gemini`)
+- **SKIP Step 2** (transcript generation) - transcripts already exist
+- **Go directly to Step 5** (mining)
+
+**If args are explicit JSONL paths** (contain `/` and end in `.jsonl`):
 
 - Skip the find_sessions.py script
 - Use the provided paths directly
