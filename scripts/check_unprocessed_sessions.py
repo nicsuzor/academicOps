@@ -75,8 +75,16 @@ def check_session_processed(session: SessionInfo, aca_data: Path) -> bool:
 
     # Check for mining JSON
     # Pattern: $ACA_DATA/dashboard/sessions/{session_id}.json
-    mining_json = aca_data / "dashboard" / "sessions" / f"{session_id}.json"
+    # Note: session-insights skill often uses 8-char prefix for filenames
+    dashboard_sessions = aca_data / "dashboard" / "sessions"
+    mining_json = dashboard_sessions / f"{session_id}.json"
     has_mining = mining_json.exists()
+
+    if not has_mining and len(session_id) > 8:
+        # Check for truncated ID (standard 8-char prefix)
+        # Handle UUIDs and other long IDs
+        short_id = session_id[:8]
+        has_mining = (dashboard_sessions / f"{short_id}.json").exists()
 
     # Missing either = needs processing
     if not transcript_path or not has_mining:

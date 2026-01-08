@@ -145,11 +145,15 @@ cd $AOPS && uv run python skills/tasks/scripts/task_add.py \
 
 ### task_item_add.py - Add Checklist Items
 
-Add Obsidian Tasks-compatible checklist items to existing tasks. Creates a `## Checklist` section if needed.
+Add Obsidian Tasks-compatible checklist items to existing tasks. Creates a `## Checklist` section if needed. **Supports batch input** - can add multiple items in one call.
 
 ```bash
-# Add simple item
+# Add single item
 cd $AOPS && uv run python skills/tasks/scripts/task_item_add.py "task-filename.md" --item "Review draft"
+
+# Add multiple items (batch - preferred for efficiency)
+cd $AOPS && uv run python skills/tasks/scripts/task_item_add.py "task.md" \
+  --item "First item" --item "Second item" --item "Third item"
 
 # Add item with due date
 cd $AOPS && uv run python skills/tasks/scripts/task_item_add.py "20251215-abc123" --item "Send email" --due 2025-01-15
@@ -164,7 +168,7 @@ cd $AOPS && uv run python skills/tasks/scripts/task_item_add.py "task.md" --item
 **Parameters**:
 
 - `task_id`: Task identifier (filename, task ID, or #index from current view)
-- `--item`: Item description (required)
+- `--item`: Item description (required, can specify multiple times for batch add)
 - `--due`: Due date in YYYY-MM-DD format
 - `--priority`: Priority level (high, medium, low)
 - `--done`: Mark item as already completed

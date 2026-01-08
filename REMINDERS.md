@@ -27,7 +27,7 @@ When you see these domain signals, invoke the corresponding skill BEFORE startin
 | Convert documents to markdown                                             | `convert-to-md`               | Document conversion (DOCX, PDF, etc.)  |
 | Generate PDF from markdown                                                | `pdf`                         | PDF generation with academic styling   |
 | Task management, create/update tasks                                      | `tasks`                       | Task lifecycle management              |
-| Session insights, accomplishments                                         | `session-insights`            | Extract learnings from sessions        |
+| Session insights, accomplishments, daily note, daily summary              | `session-insights`            | Extract learnings from sessions        |
 | Fact-check claims, verify sources                                         | `fact-check`                  | Verify factual claims                  |
 
 ## Operational Reminders

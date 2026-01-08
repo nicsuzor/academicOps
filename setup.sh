@@ -411,6 +411,8 @@ echo "Step 3: Gemini CLI setup"
 echo "------------------------"
 
 GEMINI_DIR="$HOME/.gemini"
+ANTIGRAVITY_DIR="$GEMINI_DIR/antigravity"
+GLOBAL_WORKFLOWS_DIR="$ANTIGRAVITY_DIR/global_workflows"
 
 # Check if gemini CLI is installed
 if ! command -v gemini &> /dev/null; then
@@ -448,25 +450,28 @@ else
     gemini_create_symlink "hooks" "$AOPS_PATH/gemini/hooks"
     gemini_create_symlink "commands" "$AOPS_PATH/gemini/commands"
 
-    # GEMINI.md symlink
-    if [ -L "$GEMINI_DIR/GEMINI.md" ]; then
-        current_target="$(readlink "$GEMINI_DIR/GEMINI.md")"
-        if [ "$current_target" != "$AOPS_PATH/GEMINI.md" ]; then
-            rm "$GEMINI_DIR/GEMINI.md"
-            ln -s "$AOPS_PATH/GEMINI.md" "$GEMINI_DIR/GEMINI.md"
-            echo -e "${GREEN}  GEMINI.md → $AOPS_PATH/GEMINI.md${NC}"
-        else
-            echo "  GEMINI.md → $AOPS_PATH/GEMINI.md (already correct)"
-        fi
-    elif [ -e "$GEMINI_DIR/GEMINI.md" ] && [ ! -s "$GEMINI_DIR/GEMINI.md" ]; then
+    # GEMINI.md generation (injects actual paths)
+    if [ -L "$GEMINI_DIR/GEMINI.md" ] || [ -f "$GEMINI_DIR/GEMINI.md" ]; then
         rm "$GEMINI_DIR/GEMINI.md"
-        ln -s "$AOPS_PATH/GEMINI.md" "$GEMINI_DIR/GEMINI.md"
-        echo -e "${GREEN}  GEMINI.md → $AOPS_PATH/GEMINI.md (replaced empty file)${NC}"
-    elif [ ! -e "$GEMINI_DIR/GEMINI.md" ]; then
-        ln -s "$AOPS_PATH/GEMINI.md" "$GEMINI_DIR/GEMINI.md"
-        echo -e "${GREEN}  GEMINI.md → $AOPS_PATH/GEMINI.md${NC}"
-    else
-        echo -e "${YELLOW}  GEMINI.md exists with content - skipping${NC}"
+    fi
+
+    # Read source and inject paths
+    sed -e "s|~/src/academicOps|$AOPS_PATH|g" \
+        -e "s|~/writing/data|$ACA_DATA_PATH|g" \
+        "$AOPS_PATH/GEMINI.md" > "$GEMINI_DIR/GEMINI.md"
+
+    echo -e "${GREEN}  Generated ~/.gemini/GEMINI.md with paths injected${NC}"
+
+    # Also update the Antigravity global workflow link to point to this generated file
+    # so Antigravity agents also see the correct paths
+    GLOBAL_GEMINI_MD="$GLOBAL_WORKFLOWS_DIR/GEMINI.md"
+    if [ -L "$GLOBAL_GEMINI_MD" ]; then
+        rm "$GLOBAL_GEMINI_MD"
+        ln -s "$GEMINI_DIR/GEMINI.md" "$GLOBAL_GEMINI_MD"
+        echo -e "${GREEN}  Updated Antigravity GEMINI.md link to use generated file${NC}"
+    elif [ ! -e "$GLOBAL_GEMINI_MD" ]; then
+         ln -s "$GEMINI_DIR/GEMINI.md" "$GLOBAL_GEMINI_MD"
+         echo -e "${GREEN}  Linked Antigravity GEMINI.md to generated file${NC}"
     fi
 
     # Convert commands to TOML
@@ -549,27 +554,6 @@ GLOBAL_WORKFLOWS_DIR="$ANTIGRAVITY_DIR/global_workflows"
 
 # Create directories
 mkdir -p "$GLOBAL_WORKFLOWS_DIR"
-
-# Symlink GEMINI.md as a global workflow
-# This ensures Antigravity agents see the framework rules
-target="$AOPS_PATH/GEMINI.md"
-link_path="$GLOBAL_WORKFLOWS_DIR/GEMINI.md"
-
-if [ -L "$link_path" ]; then
-    current_target="$(readlink "$link_path")"
-    if [ "$current_target" != "$target" ]; then
-        rm "$link_path"
-        ln -s "$target" "$link_path"
-        echo -e "${GREEN}✓ Linked GEMINI.md to Antigravity global workflows${NC}"
-    else
-        echo "  Antigravity global workflow already linked"
-    fi
-elif [ -e "$link_path" ]; then
-    echo -e "${YELLOW}⚠ $link_path exists and is not a symlink - skipping${NC}"
-else
-    ln -s "$target" "$link_path"
-    echo -e "${GREEN}✓ Linked GEMINI.md to Antigravity global workflows${NC}"
-fi
 
 # Install core skills as global workflows
 echo "Installing core skills as Antigravity workflows..."

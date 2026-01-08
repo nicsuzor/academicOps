@@ -143,7 +143,7 @@ Task(
   model="haiku",
   description="Mine: {shortproject}",
   prompt="
-Call mcp__gemini__ask-gemini with this prompt (substitute the metadata values):
+Call mcp__gemini__ask-gemini with model="gemini-2.5-flash-preview-05-20" and this prompt (substitute the metadata values):
 
 @{transcript_path}
 

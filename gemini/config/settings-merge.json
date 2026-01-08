@@ -49,7 +49,6 @@
   },
   "mcpServers": {
     "memory": {
-      "type": "http",
       "url": "http://services.stoat-musical.ts.net:8026/mcp"
     },
     "context7": {
