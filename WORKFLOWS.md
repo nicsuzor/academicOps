@@ -79,15 +79,36 @@ Step 7: Commit and push
 
 **Quality gate**: Per-item verification + aggregate QA
 **Guardrails**: `per_item_verification`, `aggregate_qa`
+**Spec**: [[specs/parallel-batch-command]] (orchestration details, subagent design)
 
 ```
-Step 1: Identify all items to process
-Step 2: Process first subset (items 1-N)
-CHECKPOINT: Verify subset processed correctly
-[Repeat for each batch]
-Step N: Aggregate QA - verify all items processed
-Final: Commit and push
+Stage 0: BASELINE - Capture state before any changes
+Stage 1: PLAN - Identify items, define criteria, get critic review
+Stage 2: PILOT - Test on 5-10 diverse items before scaling
+Stage 3: EXECUTE - Process batches with parallel subagents
+Stage 4: VERIFY - Per-batch verification + aggregate QA
+Stage 5: COMMIT - Per-batch commits for rollback capability
 ```
+
+**Critical patterns from experience**:
+
+| Pattern             | Why It Matters                                                            |
+| ------------------- | ------------------------------------------------------------------------- |
+| Baseline first      | Enables before/after metrics; rollback reference                          |
+| Pilot batch         | Validates approach before scale; catches process bugs                     |
+| Critic review       | Plans reviewed before execution (H14)                                     |
+| Tracking file       | `.aops/<task>/tracking.jsonl` enables cross-session resume                |
+| Document exceptions | Not everything needs "fixing" - record justified exceptions               |
+| Question batching   | Collect questions, present via AskUserQuestion (max 4), not one-at-a-time |
+
+**Multi-session batches** (100+ items): Use checkpoint-resume pattern per spec. Each session:
+
+1. Read tracking.jsonl → identify unprocessed items
+2. Process batch of ~25-30 items
+3. Commit checkpoint with descriptive message
+4. Append to tracking.jsonl
+
+**Tracking schema**: `{file, batch, status, category, timestamp, notes}` where status = `pending|in_progress|complete|skipped|exception`
 
 ### qa-proof
 
