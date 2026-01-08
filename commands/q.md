@@ -1,85 +1,32 @@
 ---
 name: q
 category: instruction
-description: Queue a task for later execution (delayed /do)
+description: Queue a task for later execution
 allowed-tools: Task, Skill, mcp__memory__store_memory
 permalink: commands/q
 ---
 
 # /q - Queue for Later
 
-**Capture a task for later execution.** Like `/do`, but saves instead of executing immediately.
+Use the Skill tool to invoke the `[[skills/tasks/SKILL.md|tasks]]` skill: `Skill(skill="tasks")`
 
-## Usage
+**Purpose**: Capture a task for later execution.
 
-```
-/q [task description]
-```
+## Workflow
 
-## What Happens
+1. Review the current session for context about what needs to be done
+2. Search existing tasks via semantic search: `mcp__memory__retrieve_memory(query="tasks related to [topic]")`
+3. **If related task exists**: Add a checklist item using `task_item_add.py`
+4. **If no related task**: Create a new task using `task_add.py`
+5. DO NOT execute. Task will be queued for execution later.
 
-1. Captures the task description
-2. Stores it as a pending task (via tasks skill)
-3. Reports confirmation
-4. Does NOT execute - that happens when you run `/do` on the task later
+### Scripts
 
-## Execution
+- Add checklist item: `cd $AOPS && uv run python skills/tasks/scripts/task_item_add.py "task-id.md" --item "Description"`
+- Create new task: `cd $AOPS && uv run python skills/tasks/scripts/task_add.py --title "Title" --slug "my-task" --priority P2`
 
-```
-Skill(skill="tasks", args="create queue '$ARGUMENTS'")
-```
+### Key rules
 
-Or if the tasks skill isn't available:
-
-```
-Task(
-  subagent_type="general-purpose",
-  model="haiku",
-  description="Queue task",
-  prompt="Create a task file in $ACA_DATA/tasks/queue/ for: $ARGUMENTS
-
-Use this format:
----
-title: [extracted title]
-status: queued
-created: [today's date]
-source: /q command
----
-
-# [title]
-
-$ARGUMENTS
-"
-)
-```
-
-## When to Use
-
-- Capture an idea while working on something else
-- Note a task you'll do later
-- Queue up work for a future session
-
-## Relationship to /do
-
-| Command      | Behavior                               |
-| ------------ | -------------------------------------- |
-| `/do [task]` | Execute immediately with full pipeline |
-| `/q [task]`  | Save for later, don't execute          |
-
-When ready to execute a queued task:
-
-1. Review tasks in `$ACA_DATA/tasks/queue/`
-2. Run `/do [task description]` to execute
-
-## Examples
-
-```bash
-# Capture for later
-/q refactor the session panel to use the new API
-
-# Capture a bug to fix
-/q fix: dashboard crashes when no sessions exist
-
-# Capture a feature idea
-/q add dark mode toggle to settings
-```
+- Always check for existing related tasks first (avoid duplicates)
+- Use checklist items for sub-actions within a larger task
+- Keep task titles concise, put details in body or checklist

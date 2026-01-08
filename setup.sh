@@ -540,6 +540,119 @@ fi
 
 echo
 
+# Step 3a: Antigravity setup
+echo "Step 3a: Antigravity setup"
+echo "------------------------"
+
+ANTIGRAVITY_DIR="$GEMINI_DIR/antigravity"
+GLOBAL_WORKFLOWS_DIR="$ANTIGRAVITY_DIR/global_workflows"
+
+# Create directories
+mkdir -p "$GLOBAL_WORKFLOWS_DIR"
+
+# Symlink GEMINI.md as a global workflow
+# This ensures Antigravity agents see the framework rules
+target="$AOPS_PATH/GEMINI.md"
+link_path="$GLOBAL_WORKFLOWS_DIR/GEMINI.md"
+
+if [ -L "$link_path" ]; then
+    current_target="$(readlink "$link_path")"
+    if [ "$current_target" != "$target" ]; then
+        rm "$link_path"
+        ln -s "$target" "$link_path"
+        echo -e "${GREEN}✓ Linked GEMINI.md to Antigravity global workflows${NC}"
+    else
+        echo "  Antigravity global workflow already linked"
+    fi
+elif [ -e "$link_path" ]; then
+    echo -e "${YELLOW}⚠ $link_path exists and is not a symlink - skipping${NC}"
+else
+    ln -s "$target" "$link_path"
+    echo -e "${GREEN}✓ Linked GEMINI.md to Antigravity global workflows${NC}"
+fi
+
+# Install core skills as global workflows
+echo "Installing core skills as Antigravity workflows..."
+for skill_dir in "$AOPS_PATH/skills"/*; do
+    if [ -d "$skill_dir" ] && [ ! -L "$skill_dir" ]; then
+        skill_name=$(basename "$skill_dir")
+        # Skip __pycache__ and other non-skill dirs
+        if [[ "$skill_name" == __* ]]; then
+            continue
+        fi
+
+        skill_file="$skill_dir/SKILL.md"
+
+        if [ -f "$skill_file" ]; then
+            # Link as ~/.gemini/antigravity/global_workflows/<skill_name>.md
+            # This enables /<skill_name> invocation in Antigravity
+            target="$skill_file"
+            link_path="$GLOBAL_WORKFLOWS_DIR/$skill_name.md"
+
+            if [ -L "$link_path" ]; then
+                current_target="$(readlink "$link_path")"
+                if [ "$current_target" != "$target" ]; then
+                    rm "$link_path"
+                    ln -s "$target" "$link_path"
+                    echo "  Updated $skill_name"
+                else
+                    echo "  $skill_name (already linked)"
+                fi
+            elif [ -e "$link_path" ]; then
+                echo -e "${YELLOW}⚠ $link_path exists and is not a symlink - skipping${NC}"
+            else
+                ln -s "$target" "$link_path"
+                echo "  Linked $skill_name"
+            fi
+        fi
+    fi
+done
+
+# Install core rules for Antigravity (Project Level)
+echo "Installing core rules for Antigravity..."
+PROJECT_RULES_DIR="$AOPS_PATH/.agent/rules"
+mkdir -p "$PROJECT_RULES_DIR"
+
+# Link AXIOMS.md
+target="$AOPS_PATH/AXIOMS.md"
+link_path="$PROJECT_RULES_DIR/axioms.md"
+if [ -L "$link_path" ]; then
+    current_target="$(readlink "$link_path")"
+    if [ "$current_target" != "$target" ]; then
+        rm "$link_path"
+        ln -s "$target" "$link_path"
+        echo "  Updated axioms.md link"
+    fi
+elif [ -e "$link_path" ]; then
+    rm "$link_path" # Replace file with symlink (enforce SSoT)
+    ln -s "$target" "$link_path"
+    echo -e "${GREEN}  Replaced axioms.md file with symlink${NC}"
+else
+    ln -s "$target" "$link_path"
+    echo "  Linked axioms.md"
+fi
+
+# Link HEURISTICS.md
+target="$AOPS_PATH/HEURISTICS.md"
+link_path="$PROJECT_RULES_DIR/heuristics.md"
+if [ -L "$link_path" ]; then
+    current_target="$(readlink "$link_path")"
+    if [ "$current_target" != "$target" ]; then
+        rm "$link_path"
+        ln -s "$target" "$link_path"
+        echo "  Updated heuristics.md link"
+    fi
+elif [ -e "$link_path" ]; then
+    rm "$link_path" # Replace file with symlink (enforce SSoT)
+    ln -s "$target" "$link_path"
+    echo -e "${GREEN}  Replaced heuristics.md file with symlink${NC}"
+else
+    ln -s "$target" "$link_path"
+    echo "  Linked heuristics.md"
+fi
+
+echo
+
 # Step 3b: Install cron job for task index regeneration
 echo "Step 3b: Task index cron job"
 echo "----------------------------"

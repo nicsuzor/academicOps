@@ -85,9 +85,9 @@ echo "$(date '+%Y-%m-%d %H:%M:%S') - Found $SESSION_COUNT unprocessed session(s)
 SESSIONS_INLINE=$(echo "$SESSIONS" | tr '\n' ' ')
 echo "$(date '+%Y-%m-%d %H:%M:%S') - Invoking claude -p with session-insights task"
 
-# Use natural language prompt with required tools enabled
+# Use wrapper script to isolate session logs from interactive sessions
 # --dangerously-skip-permissions allows unattended operation
-claude -p "Invoke the session-insights skill to process these session files: $SESSIONS_INLINE" \
+"$FRAMEWORK_ROOT/scripts/claude-headless.sh" -p "Invoke the session-insights skill to process these session files: $SESSIONS_INLINE" \
     --dangerously-skip-permissions \
     --allowedTools "Bash,Read,Write,Edit,Glob,Grep,Task,Skill,mcp__memory__store_memory"
 

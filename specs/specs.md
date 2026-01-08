@@ -10,6 +10,18 @@ tags: [aops, specs, architecture, design]
 
 **Status**: Index file (always current)
 
+Requirements:
+
+- Specs must prominently point to the files that give them effect in a bulleted list of [[wikilinks]] with brief explanation of what each file does and why it exists
+- Specs must state user stories that the are responsible for
+- ... (TODO NS: add spec definitions)
+
+## User Story
+
+**As** the user,
+**I want** specs automatically updated after implementation,
+**So that** one spec per feature remains the authoritative source (per AXIOMS #29).
+
 ## Spec Organization
 
 ```mermaid

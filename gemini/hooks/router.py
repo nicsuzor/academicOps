@@ -5,6 +5,9 @@ Gemini CLI hook router - thin wrapper around Claude Code hooks.
 Maps Gemini event names to Claude event names and delegates to the
 existing hook infrastructure. This avoids duplicating hook logic.
 
+Also manages Session ID persistence for Gemini sessions, as Gemini CLI
+doesn't natively provide a persistent session ID across hook calls.
+
 Usage (called by Gemini CLI):
     echo '{"tool_name": "write_file", ...}' | python router.py BeforeTool
 
@@ -21,6 +24,8 @@ Event mapping:
 import json
 import subprocess
 import sys
+import uuid
+from datetime import datetime
 from pathlib import Path
 
 # Event name mapping: Gemini -> Claude
@@ -41,6 +46,52 @@ EVENT_MAP = {
 # Claude router location (relative to this file)
 CLAUDE_ROUTER = Path(__file__).parent.parent.parent / "hooks" / "router.py"
 
+# Session ID file location
+SESSION_ID_FILE = Path.home() / ".gemini" / "tmp" / "current_session_id"
+
+
+def get_session_id(event_name: str) -> str:
+    """
+    Get or create a persistent session ID.
+
+    On SessionStart, generates a new ID and saves it.
+    On other events, reads the existing ID.
+    Fallback: Generates a temporary ID if file is missing.
+    """
+    # Create dir if needed
+    if not SESSION_ID_FILE.parent.exists():
+        SESSION_ID_FILE.parent.mkdir(parents=True, exist_ok=True)
+
+    if event_name == "SessionStart":
+        # Generate new session ID: YYYYMMDD-HHMMSS-uuid
+        timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+        short_uuid = str(uuid.uuid4())[:8]
+        session_id = f"gemini-{timestamp}-{short_uuid}"
+
+        try:
+            SESSION_ID_FILE.write_text(session_id)
+        except Exception as e:
+            print(f"WARNING: Failed to write session ID: {e}", file=sys.stderr)
+
+        return session_id
+
+    # Read existing ID
+    if SESSION_ID_FILE.exists():
+        try:
+            return SESSION_ID_FILE.read_text().strip()
+        except Exception:
+            pass
+
+    # Fallback if file missing or unreadable
+    # Generate and persist a new ID so subsequent events in this session use it
+    fallback_id = f"gemini-fallback-{str(uuid.uuid4())[:8]}"
+    try:
+        SESSION_ID_FILE.write_text(fallback_id)
+    except Exception as e:
+        print(f"WARNING: Failed to write fallback session ID: {e}", file=sys.stderr)
+
+    return fallback_id
+
 
 def map_gemini_input(gemini_event: str, gemini_input: dict) -> dict:
     """
@@ -55,6 +106,10 @@ def map_gemini_input(gemini_event: str, gemini_input: dict) -> dict:
 
     claude_input = dict(gemini_input)
     claude_input["hook_event_name"] = claude_event
+
+    # Inject session_id if not present
+    if "session_id" not in claude_input:
+        claude_input["session_id"] = get_session_id(gemini_event)
 
     # Map Gemini field names to Claude field names if needed
     # (Currently they're similar enough to work directly)

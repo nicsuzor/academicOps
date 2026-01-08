@@ -20,7 +20,7 @@ tags:
 An academic support framework for Claude Code. It provides:
 
 1. **Consistent agent behavior** - Principles ([[AXIOMS.md|AXIOMS]]) loaded every session
-2. **Intelligent routing** - Prompts flow through HYDRATE → ROUTE → ORCHESTRATE pipeline
+2. **Intelligent routing** - Prompts hydrated into complete execution plans
 3. **Quality enforcement** - Workflows embed appropriate quality gates for each task type
 4. **Knowledge persistence** - Memory server + [[specs/remember-skill.md|remember skill]] for institutional memory
 

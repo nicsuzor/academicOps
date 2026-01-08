@@ -20,6 +20,7 @@ from pathlib import Path
 from typing import Any
 
 from hook_debug import safe_log_to_debug_file
+from lib.paths import get_aops_root
 from lib.session_reader import extract_router_context
 from lib.session_state import HydratorState, save_hydrator_state
 
@@ -34,6 +35,32 @@ CLEANUP_AGE_SECONDS = 60 * 60
 
 # Intent envelope max length
 INTENT_MAX_LENGTH = 500
+
+
+def load_framework_paths() -> str:
+    """Load the Resolved Paths section from FRAMEWORK.md.
+
+    Returns just the path table, not the full file.
+    """
+    aops_root = get_aops_root()
+    framework_path = aops_root / "FRAMEWORK.md"
+
+    if not framework_path.exists():
+        return "(FRAMEWORK.md not found - use $AOPS/ and $ACA_DATA/ prefixes)"
+
+    content = framework_path.read_text()
+
+    # Extract the "Resolved Paths" section
+    if "## Resolved Paths" in content:
+        start = content.index("## Resolved Paths")
+        # Find next section or end
+        rest = content[start:]
+        if "\n## " in rest[10:]:  # Skip the header we just found
+            end = rest.index("\n## ", 10)
+            return rest[:end].strip()
+        return rest.strip()
+
+    return "(Path table not found in FRAMEWORK.md)"
 
 
 def get_cwd() -> str:
@@ -156,11 +183,15 @@ def build_hydration_instruction(prompt: str, transcript_path: str | None = None)
         except Exception:
             pass  # Graceful degradation for context gathering only
 
+    # Load framework paths from FRAMEWORK.md (DRY - single source of truth)
+    framework_paths = load_framework_paths()
+
     # Build full context for temp file
     context_template = load_template(CONTEXT_TEMPLATE_FILE)
     full_context = context_template.format(
         prompt=prompt,
         session_context=session_context,
+        framework_paths=framework_paths,
     )
 
     # Write to temp file (raises IOError on failure - fail-fast)

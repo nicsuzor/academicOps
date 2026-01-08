@@ -153,10 +153,10 @@ def extract_hydrator_response(output: str) -> dict | None:
     """Extract the prompt-hydrator's structured response from session output.
 
     The hydrator returns a structured response with:
-    - Workflow dimensions (gate, pre-work, approach)
-    - Skill(s) to invoke
-    - Guardrails to apply
-    - Guidance text
+    - Intent envelope (what user wants)
+    - Workflow selection (from catalog)
+    - TodoWrite plan with per-step skill assignments
+    - Guardrails based on workflow + domain
 
     Returns None if no hydrator response found.
     """
@@ -177,35 +177,35 @@ def extract_hydrator_response(output: str) -> dict | None:
                 for block in content:
                     if isinstance(block, dict) and block.get("type") == "text":
                         text = block.get("text", "")
-                        # Hydrator response contains structured workflow section
-                        if "**Workflow**:" in text and "gate=" in text:
-                            return {
-                                "found": True,
-                                "text": text,
-                                "has_gate": "gate=" in text,
-                                "has_prework": "pre-work=" in text,
-                                "has_approach": "approach=" in text,
-                                "has_skill": "**Skill(s)**:" in text,
-                                "has_guardrails": "**Guardrails**:" in text,
-                                "has_guidance": "### Guidance" in text
-                                or "### Relevant Context" in text,
-                            }
+                        # New format: Intent + Workflow + TodoWrite plan
+                        if "**Intent**:" in text or "**Workflow**:" in text:
+                            return _parse_hydrator_text(text)
 
-            # Also check tool_result events
+            # Check tool_result events (standalone)
             if event.get("type") == "tool_result":
                 content = event.get("content", "")
-                if isinstance(content, str) and "**Workflow**:" in content:
-                    return {
-                        "found": True,
-                        "text": content,
-                        "has_gate": "gate=" in content,
-                        "has_prework": "pre-work=" in content,
-                        "has_approach": "approach=" in content,
-                        "has_skill": "**Skill(s)**:" in content,
-                        "has_guardrails": "**Guardrails**:" in content,
-                        "has_guidance": "### Guidance" in content
-                        or "### Relevant Context" in content,
-                    }
+                if isinstance(content, str) and (
+                    "**Intent**:" in content or "**Workflow**:" in content
+                ):
+                    return _parse_hydrator_text(content)
+
+            # Check user events - these contain Task tool results in message.content
+            if event.get("type") == "user":
+                message = event.get("message", {})
+                if isinstance(message, dict):
+                    content = message.get("content", [])
+                    if isinstance(content, list):
+                        for block in content:
+                            if (
+                                isinstance(block, dict)
+                                and block.get("type") == "tool_result"
+                            ):
+                                tool_content = block.get("content", "")
+                                if isinstance(tool_content, str) and (
+                                    "**Intent**:" in tool_content
+                                    or "**Workflow**:" in tool_content
+                                ):
+                                    return _parse_hydrator_text(tool_content)
 
     except (json.JSONDecodeError, TypeError, KeyError):
         pass
@@ -213,11 +213,57 @@ def extract_hydrator_response(output: str) -> dict | None:
     return None
 
 
+def _parse_hydrator_text(text: str) -> dict:
+    """Parse hydrator response text into structured dict.
+
+    Supports both old format (gate=, pre-work=, approach=) and
+    new format (Intent, Workflow name, TodoWrite plan).
+    """
+    # Check for new format markers
+    has_intent = "**Intent**:" in text
+    has_workflow = "**Workflow**:" in text
+    has_todowrite = "TodoWrite(todos=" in text or "TodoWrite Plan" in text
+    has_guardrails = "**Guardrails**:" in text
+    has_context = "### Relevant Context" in text or "### Guidance" in text
+
+    # Check for old format markers (backward compatibility)
+    has_gate = "gate=" in text
+    has_prework = "pre-work=" in text
+    has_approach = "approach=" in text
+
+    # Determine format type
+    is_new_format = has_intent or has_todowrite
+    is_old_format = has_gate and has_prework and has_approach
+
+    return {
+        "found": True,
+        "text": text,
+        # New format fields
+        "has_intent": has_intent,
+        "has_workflow": has_workflow,
+        "has_todowrite": has_todowrite,
+        "has_guardrails": has_guardrails,
+        "has_context": has_context,
+        # Old format fields (for backward compatibility)
+        "has_gate": has_gate,
+        "has_prework": has_prework,
+        "has_approach": has_approach,
+        # Format detection
+        "is_new_format": is_new_format,
+        "is_old_format": is_old_format,
+        # Legacy aliases
+        "has_skill": "Skill(skill=" in text or "**Skill(s)**:" in text,
+        "has_guidance": has_context,
+    }
+
+
 def semantic_validate_hydration(hydrator_response: dict, prompt_type: str) -> dict:
     """Semantically validate that hydration response is APPROPRIATE for the prompt.
 
     This is the key difference from Volkswagen testing - we don't just check
     that keywords exist, we verify the response makes sense for the prompt type.
+
+    Supports both old format (gate/pre-work/approach) and new format (Intent/Workflow/TodoWrite).
 
     Args:
         hydrator_response: Extracted hydrator response dict
@@ -232,14 +278,39 @@ def semantic_validate_hydration(hydrator_response: dict, prompt_type: str) -> di
             "reason": "No hydrator response found in output",
         }
 
-    # Check structural completeness - hydrator MUST return all workflow dimensions
-    required_fields = ["has_gate", "has_prework", "has_approach"]
-    missing = [f for f in required_fields if not hydrator_response.get(f)]
-    if missing:
-        return {
-            "valid": False,
-            "reason": f"Hydrator response missing required fields: {missing}",
-        }
+    # Check structural completeness based on format
+    is_new_format = hydrator_response.get("is_new_format", False)
+    is_old_format = hydrator_response.get("is_old_format", False)
+
+    if is_new_format:
+        # New format: Intent + Workflow + TodoWrite plan
+        if not hydrator_response.get("has_workflow"):
+            return {
+                "valid": False,
+                "reason": "New format response missing **Workflow**: field",
+            }
+        # TodoWrite plan is expected for task requests
+        if prompt_type == "task_request" and not hydrator_response.get("has_todowrite"):
+            return {
+                "valid": False,
+                "reason": "Task request should have TodoWrite plan",
+            }
+    elif is_old_format:
+        # Old format: gate, pre-work, approach dimensions
+        required_fields = ["has_gate", "has_prework", "has_approach"]
+        missing = [f for f in required_fields if not hydrator_response.get(f)]
+        if missing:
+            return {
+                "valid": False,
+                "reason": f"Old format response missing required fields: {missing}",
+            }
+    else:
+        # Neither format detected - check for basic workflow field
+        if not hydrator_response.get("has_workflow"):
+            return {
+                "valid": False,
+                "reason": "Hydrator response missing workflow information",
+            }
 
     # Semantic validation based on prompt type
     if prompt_type == "skill_invocation":
@@ -252,11 +323,6 @@ def semantic_validate_hydration(hydrator_response: dict, prompt_type: str) -> di
 
     elif prompt_type == "task_request":
         # Task requests should have skill suggestions and guardrails
-        if not hydrator_response.get("has_skill"):
-            return {
-                "valid": False,
-                "reason": "Task request should have skill suggestions",
-            }
         if not hydrator_response.get("has_guardrails"):
             return {
                 "valid": False,
@@ -264,7 +330,7 @@ def semantic_validate_hydration(hydrator_response: dict, prompt_type: str) -> di
             }
         return {
             "valid": True,
-            "reason": "Task request properly hydrated with skills and guardrails",
+            "reason": "Task request properly hydrated with workflow and guardrails",
         }
 
     elif prompt_type == "question":
@@ -478,11 +544,28 @@ def test_hydration_temp_file_structure() -> None:
     most_recent = temp_files[0]
     content = most_recent.read_text()
 
-    # Structural validation
+    # Structural validation - core sections
     assert "## User Prompt" in content, "Missing User Prompt section"
     assert "## Your Task" in content, "Missing Your Task section"
     assert "## Return Format" in content, "Missing Return Format section"
     assert len(content) > 500, "Temp file should contain substantial content"
+
+    # New format: workflow catalog should be present
+    assert "## Workflow Catalog" in content, "Missing Workflow Catalog section"
+    # Verify all 6 workflows are present
+    workflows = ["question", "minor-edit", "tdd", "batch", "qa-proof", "plan-mode"]
+    for workflow in workflows:
+        assert f"**{workflow}**" in content, f"Missing workflow: {workflow}"
+
+    # Per-step skill assignment table
+    assert (
+        "## Per-Step Skill Assignment" in content
+    ), "Missing Per-Step Skill Assignment section"
+
+    # Guardrails by workflow
+    assert (
+        "## Guardrails by Workflow" in content
+    ), "Missing Guardrails by Workflow section"
 
 
 @pytest.mark.demo
@@ -506,8 +589,9 @@ class TestHydratorDemo:
         print("HYDRATION E2E DEMO - REAL FRAMEWORK TASK (H37b)")
         print("=" * 80)
 
-        # Simple prompt that won't trigger many tool calls - just enough to see hydration
-        prompt = "What is 2 + 2?"
+        # Real framework prompt that exercises hydrator workflow selection
+        # This should trigger the "question" workflow with answer_only guardrail
+        prompt = "How does the policy_enforcer hook decide which commands to block?"
         print(f"\nPrompt (REAL TASK): {prompt}")
         print("\nExecuting headless session...")
 

@@ -2,7 +2,7 @@
 name: unified-session-summary
 title: Unified Session Summary Architecture
 category: spec
-status: implementing
+status: implemented
 permalink: unified-session-summary
 tags:
   - spec
@@ -13,7 +13,7 @@ tags:
 
 # Unified Session Summary Architecture
 
-**Status**: Implementing (TDD in progress)
+**Status**: Implemented
 
 ## Problem Statement
 

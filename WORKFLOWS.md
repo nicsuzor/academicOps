@@ -72,19 +72,6 @@ When executing a task, you are the **Orchestrator**. Do not implement complex lo
 2. **Persist**: Use `Skill(skill="remember")` to save learnings.
 3. **Push**: `git push`.
 
-## 🛡️ Workflow Guardrails
-
-Apply these constraints based on the selected workflow.
-
-| Workflow       | Guardrails                                             |
-| :------------- | :----------------------------------------------------- |
-| **question**   | `answer_only` (No implementation)                      |
-| **minor-edit** | `verify_before_complete`, `fix_within_design`          |
-| **tdd**        | `require_acceptance_test`, `verify_before_complete`    |
-| **batch**      | `per_item_verification`, `aggregate_qa`                |
-| **qa-proof**   | `evidence_required`, `quote_errors_exactly`            |
-| **plan-mode**  | `plan_mode`, `critic_review`, `user_approval_required` |
-
 ## 🔵 Workflow Tracks
 
 Select the specific track based on the user's intent.
@@ -117,7 +104,7 @@ TodoWrite(todos=[
 
 ```javascript
 TodoWrite(todos=[
-  {content: "Step 1: Reproduce error - run build, quote error message EXACTLY", status: "pending", activeForm: "Reproducing error"},
+  {content: "Step 1: Reproduce error with a DURABLE test - run build, quote error message EXACTLY", status: "pending", activeForm: "Reproducing error"},
   {content: "Step 2: Invoke Skill(skill='[domain]') for conventions", status: "pending", activeForm: "Loading skill"},
   {content: "Step 3: Read file and understand the error state", status: "pending", activeForm: "Understanding"},
   {content: "Step 4: Implement fix following conventions", status: "pending", activeForm: "Implementing fix"},

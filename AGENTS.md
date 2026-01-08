@@ -49,33 +49,9 @@ After completing work, output a structured reflection AND persist it for session
 **Proposed change**: [Specific improvement or "none needed"]
 ```
 
-### 3b: Persist Task Contribution
+### 3b: Session Synthesis
 
-Capture this reflection for session summary. The Stop hook will synthesize task contributions into a session summary at session end.
-
-**How to persist**: Run this Python code (via Bash or background Task):
-
-```python
-from lib.session_summary import append_task_contribution
-import os
-
-session_id = os.environ.get("CLAUDE_SESSION_ID", "unknown")
-
-append_task_contribution(session_id, {
-    "request": "[user request]",
-    "guidance": "[hydrator/custodiet advice]",
-    "followed": "[yes/no/partial]",
-    "outcome": "[success/partial/failure]",
-    "accomplishment": "[what was accomplished]",
-    "project": "[project name]",
-})
-```
-
-### Why persist?
-
-- Session summaries built from real-time task data (not transcript mining)
-- Multiple tasks per session accumulate into session summary
-- Fallback to Gemini mining if task contributions not captured
+The Stop hook automatically synthesizes session summaries at session end. No manual persistence needed - your reflection output above is captured in the transcript.
 
 ## Step 4: Persist (MANDATORY - Always Log)
 

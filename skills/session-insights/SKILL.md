@@ -101,22 +101,28 @@ See [[skills/next/templates/daily.md]] for daily note structure.
 
 **Do NOT update Focus Dashboard sections** - /next maintains those.
 
-**Critical**: Claude does NOT read transcripts. Accomplishments come from Gemini-mined JSONs in Step 6.
+**Critical**: Claude does NOT read transcripts. Accomplishments come from session JSONs in Step 6.
 
 ### Step 5: Mine for Learnings (Parallel)
 
 **MANDATORY: Mine ALL unmined sessions.** Process in batches of 8 concurrent agents. After each batch completes, spawn the next batch. Continue until ALL sessions are mined - do NOT move to Step 6 after just one batch.
 
-**Skip already-mined sessions**: Before mining, check if output JSON already exists.
+**Tiered capture**: Session summaries may already exist from:
+
+1. **Task contributions** - captured during framework reflection (AGENTS.md Step 3b)
+2. **Stop hook synthesis** - synthesized from task contributions at session end
+3. **Gemini mining** - fallback when no task contributions exist
+
+**Skip already-processed sessions**: Before mining, check if session summary already exists.
 
 For EACH abridged transcript:
 
-1. **Check if already mined**:
+1. **Check if already processed**:
    ```bash
    ls $ACA_DATA/dashboard/sessions/{session_id}.json 2>/dev/null
    ```
-   - If file exists → SKIP this session (already processed)
-   - If file does not exist → proceed with mining
+   - If file exists → SKIP this session (already has summary from task contributions or prior mining)
+   - If file does not exist → proceed with Gemini mining (fallback)
 
 2. **Spawn Task agent for Gemini analysis** (max 8 concurrent):
 

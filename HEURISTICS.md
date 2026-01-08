@@ -219,14 +219,13 @@ Long files harm both humans and agents. Invest in keeping things short.
 
 "I apologize for the length of this letter; I didn't have time to make it shorter." — Blaise Pascal
 
-## Revision Protocol
+## H41: No Meta-Content in Instructions
 
-- **Strengthen/Weaken**: Add observation to GitHub Issue (label: `learning`)
-- **Propose new**: Create Issue with `learning` label
-- **Retire**: Move to Retired section with reason
+Instruction files (skills, commands, workflows) MUST NOT include sections irrelevant to the agent at execution time:
 
-Use `/log adjust-heuristic H[n]: [observation]` to update.
+- ❌ "When to invoke this workflow" - agent has ALREADY invoked it
+- ❌ "Version History" - belongs in git log
+- ❌ "Future Enhancements" - belongs in specs or issues
+- ❌ "Background/Rationale" - belongs in specs
 
-## Retired Heuristics
-
-(None yet)
+Invocation guidance belongs in: frontmatter `description:`, README.md inventory, routing logic (hydrator, hooks).
