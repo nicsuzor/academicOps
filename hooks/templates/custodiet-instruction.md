@@ -15,4 +15,4 @@ Task(subagent_type="custodiet", model="haiku",
      run_in_background=true)
 ```
 
-Continue working - custodiet runs asynchronously. If it reports issues via TaskOutput, address them.
+Continue working - custodiet runs asynchronously. When the TaskOutput notification arrives, you MUST verify custodiet completed successfully. If the output file is missing, empty, or contains errors: **HALT and report the infrastructure failure**. Do not assume "no output = no issues."
