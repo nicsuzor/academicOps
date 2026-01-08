@@ -1045,9 +1045,9 @@ class SessionProcessor:
                         "start_time": entry.timestamp,
                         "end_time": entry.timestamp,
                     }
-                    if current_turn:
-                        turns.append(current_turn)
-                        current_turn = {}
+                    # Bug #316 fix: Don't clear current_turn when summary appears.
+                    # Summaries are context metadata - they shouldn't break
+                    # the user->assistant conversation flow.
                     turns.append(summary_turn)
 
             elif entry.type == "assistant":

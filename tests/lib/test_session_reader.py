@@ -117,6 +117,16 @@ def _create_tool_result_entry(
     }
 
 
+def _create_summary_entry(summary_text: str, offset: int = 0) -> dict:
+    """Create a summary entry (memory context)."""
+    return {
+        "type": "summary",
+        "uuid": f"summary-{offset}",
+        "timestamp": _make_timestamp(offset),
+        "summary": summary_text,
+    }
+
+
 def _write_jsonl(path: Path, entries: list[dict]) -> None:
     """Write entries to JSONL file."""
     with open(path, "w") as f:
@@ -435,3 +445,76 @@ class TestExtractGateContextEdgeCases:
 
         # Should still get the valid prompt
         assert len(result.get("prompts", [])) == 1
+
+
+class TestGroupEntriesIntoTurns:
+    """Test conversation turn grouping - Issue #316."""
+
+    def test_assistant_entries_captured_despite_interleaved_summaries(
+        self, tmp_path: Path
+    ) -> None:
+        """Assistant responses must be captured even when summary entries are interleaved.
+
+        Bug #316: Summary entries were clearing current_turn before assistant
+        entries arrived, causing all assistant responses to be lost.
+
+        Session pattern that triggers the bug:
+        - user entry (creates turn)
+        - summary entry (was breaking the turn)
+        - assistant entry (should attach to the turn)
+        """
+        from lib.session_reader import Entry, SessionProcessor
+
+        # Create entries matching the bug pattern from session 138295b6
+        entries_data = [
+            _create_summary_entry("Context summary 1", 0),
+            _create_summary_entry("Context summary 2", 1),
+            _create_user_entry("Fix the crontab issue", 2),
+            _create_summary_entry("More context", 3),  # This was breaking the turn
+            _create_summary_entry("Even more context", 4),
+            _create_assistant_entry(5),  # This should be captured!
+            {
+                "type": "assistant",
+                "uuid": "assistant-tool-6",
+                "timestamp": _make_timestamp(6),
+                "message": {
+                    "content": [
+                        {
+                            "type": "tool_use",
+                            "id": "tool-123",
+                            "name": "Bash",
+                            "input": {"command": "crontab -l"},
+                        }
+                    ]
+                },
+            },
+        ]
+
+        # Convert to Entry objects
+        entries = [Entry.from_dict(e) for e in entries_data]
+
+        processor = SessionProcessor()
+        turns = processor.group_entries_into_turns(entries, None, full_mode=True)
+
+        # Find the conversation turn (not summary turns)
+        conv_turns = [
+            t for t in turns if not isinstance(t, dict) or t.get("type") != "summary"
+        ]
+
+        # Must have at least one conversation turn
+        assert len(conv_turns) >= 1, "No conversation turns found"
+
+        # Get the first actual conversation turn
+        turn = conv_turns[0]
+
+        # The turn must have assistant_sequence with content
+        if hasattr(turn, "assistant_sequence"):
+            assistant_seq = turn.assistant_sequence
+        else:
+            assistant_seq = turn.get("assistant_sequence", [])
+
+        assert len(assistant_seq) > 0, (
+            f"BUG: assistant_sequence is empty! "
+            f"Summary entries broke the turn. "
+            f"Turn: {turn}"
+        )
