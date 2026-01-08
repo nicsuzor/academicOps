@@ -132,6 +132,13 @@ Before writing ANY test, check:
 3. **Test against REAL data** - No fake data, no new databases
 4. **Never create new test data** - Don't run pipelines, don't create databases
 
+**Strict Prohibitions**:
+
+- ❌ Creating new databases/collections
+- ❌ Running vectorization/indexing pipelines
+- ❌ Creating new configs (use existing project configs)
+- ❌ Generating fake/mock data (unless external API)
+
 **Checklist before writing test:**
 
 - [ ] Checked `conftest.py` for existing fixtures?
@@ -203,6 +210,101 @@ uv run ruff check src/
 - Add test for the bug
 - Verify fix with pytest
 - Use logger (not print) for debugging
+
+## Subagent Delegation Patterns
+
+When delegating TDD tasks to subagents, use these specific prompt templates to ensure quality.
+
+### 1. Test Creation Prompt
+
+```python
+Task(subagent_type="general-purpose", prompt="
+Create ONE failing test.
+
+**FIRST**: Invoke Skill(skill='python-dev') to load coding standards and test patterns.
+
+Acceptance criterion being tested: {criterion}
+Behavior to test: {behavior}
+File: tests/test_{name}.py
+
+Test requirements (python-dev skill enforces):
+- Use EXISTING test infrastructure (check conftest.py for fixtures)
+- Connect to EXISTING live data using project configs
+- Use REAL production data (NO fake data, NO new databases)
+- NEVER create new databases/collections for testing
+- NEVER create new configs - use existing project configs
+- NEVER run vectorization/indexing to create test data
+- NEVER mock internal code (only external APIs)
+- Integration test pattern testing complete workflow
+- Test should fail with: {expected_error}
+
+After completing, STOP and report:
+- Test location: tests/test_{name}.py::test_{function_name}
+- Run command: uv run pytest {test_location} -xvs
+- Actual failure message received
+- Confirm failure is due to missing implementation (not test setup error)
+")
+```
+
+### 2. Implementation Prompt
+
+```python
+Task(subagent_type="general-purpose", prompt="
+Implement MINIMAL code to make this ONE test pass.
+
+**FIRST**: Invoke Skill(skill='python-dev') to load coding standards.
+
+Test: tests/test_{name}.py::{function}
+Error message: {error_message}
+
+Implementation requirements:
+- File to modify: {file}
+- Function/method: {location}
+- Behavior needed: {behavior}
+- Constraints: Minimal change, fail-fast principles (no .get(), no defaults)
+
+Tools to use:
+1. Read {file} to understand current implementation
+2. Edit {file} to add functionality
+3. Run test using Bash: uv run pytest {test_path} -xvs to verify
+4. If test passes, run all tests: uv run pytest
+
+After implementation, STOP and report:
+- What you changed (describe the logic you added)
+- Files modified
+- Test results (specific test and full suite)
+")
+```
+
+### 3. Quality Check Prompt (Before Commit)
+
+```python
+Task(subagent_type="general-purpose", prompt="
+Validate code quality and commit this change.
+
+**FIRST**: Invoke Skill(skill='python-dev') to load quality standards.
+
+Changes summary: {what_was_implemented}
+Test: {test_name}
+Files modified: {files}
+
+Validation checklist (python-dev skill enforces):
+1. Code quality against fail-fast principles (no .get(key, default), no defaults, no fallbacks)
+2. Test patterns (real fixtures used, no mocked internal code)
+3. Type safety and code structure
+4. Execute commit ONLY if all validation passes
+
+If validation FAILS:
+- Report ALL violations with file:line numbers
+- STOP and report violations
+- DO NOT commit
+
+If validation PASSES:
+- Create commit automatically
+- Commit message follows conventional commits format
+- Report commit hash
+")
+```
 
 ## Critical Rules
 

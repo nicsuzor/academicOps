@@ -6,8 +6,14 @@ allowed-tools: Skill
 permalink: commands/task-next
 ---
 
-Invoke the next task skill:
+# /task-next
 
-```
+**Purpose**: Intelligent task selection assistant.
+
+## Execution
+
+Invoke the `next` skill to generate recommendations and update the focus dashboard.
+
+```python
 Skill(skill="next")
 ```

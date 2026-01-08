@@ -36,7 +36,7 @@ Check if today's daily note exists at `$ACA_DATA/sessions/YYYYMMDD-daily.md`.
 Run the data preparation script:
 
 ```bash
-cd $AOPS && uv run python skills/next/scripts/select_task.py
+cd $AOPS && uv run python skills/tasks/scripts/select_task.py
 ```
 
 This outputs ALL active tasks with metadata. You will reason about selection.
