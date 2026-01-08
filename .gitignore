@@ -1,6 +1,7 @@
 # Claude code
 .claude/
-academicOps/.claude/
+.gemini/
+.agent/
 
 # ============================================================================
 # Python

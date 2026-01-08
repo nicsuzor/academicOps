@@ -18,160 +18,106 @@ Where the framework injects control during a Claude Code session.
 
 ## Complete Execution Flow
 
-Every prompt goes through this flow. Hook enforcement points shown in red, skills in purple, external storage in cyan.
+Every prompt goes through this flow. The **Main Agent** runs as a continuous vertical spine (left column). **Hooks** and **Subagents** appear alongside when invoked (right columns), with arrows showing interaction points.
 
 ```mermaid
 %%{init: {
   'theme': 'base',
-  'flowchart': { 'nodeSpacing': 40, 'rankSpacing': 50 }
+  'flowchart': { 'nodeSpacing': 30, 'rankSpacing': 40 }
 }}%%
-flowchart TD
-    %% Color definitions (flowchart skill conventions)
-    classDef start fill:#e8f5e9,stroke:#2e7d32,color:#1b5e20
-    classDef user fill:#e3f2fd,stroke:#1565c0,color:#0d47a1
+flowchart TB
+    %% Color definitions
+    classDef main fill:#e3f2fd,stroke:#1565c0,color:#0d47a1
     classDef hook fill:#ffebee,stroke:#c62828,color:#b71c1c
-    classDef skill fill:#f3e5f5,stroke:#7b1fa2,color:#4a148c
+    classDef subagent fill:#f3e5f5,stroke:#7b1fa2,color:#4a148c
     classDef tool fill:#eceff1,stroke:#607d8b,color:#37474f
     classDef storage fill:#e0f7fa,stroke:#00838f,color:#006064
     classDef planned fill:#fff3e0,stroke:#ef6c00,color:#e65100
+    classDef gate fill:#fff9c4,stroke:#f9a825,color:#f57f17
 
-    subgraph INIT["0. Session Start"]
-        S0["Claude Code launches"]
-        SS_HOOK["SessionStart Hook"]
-        SS_INJECT["Injects: AXIOMS.md, HEURISTICS.md,<br/>FRAMEWORK.md, CORE.md"]
+    subgraph MAIN["Main Agent"]
+        direction TB
+        M0([Session Start])
+        M1[Receive context injection]
+        M2[User prompt arrives]
+        M3[Receive hydration instruction]
+        M4[Spawn hydrator subagent]
+        M5[Receive workflow guidance]
+        M6{Plan mode?}
+        M7[Define acceptance criteria]
+        M8[Spawn critic for review]
+        M9[Create TodoWrite + gate]
+        M10[Mark todo in_progress]
+        M11[Call tool]
+        M12[Receive hook feedback]
+        M13{Checkpoint?}
+        M14[Continue work]
+        M15[Commit + push]
+        M16{QA needed?}
+        M17[Final cleanup]
+        M18([Session End])
+
+        M0 --> M1 --> M2 --> M3 --> M4 --> M5 --> M6
+        M6 -->|Yes| M7 --> M8 --> M9 --> M10
+        M6 -->|No| M10
+        M10 --> M11 --> M12 --> M13
+        M13 -->|No| M14 --> M11
+        M13 -->|Yes| M15 --> M16
+        M16 -->|Yes| M17
+        M16 -->|No| M17
+        M17 --> M18
     end
 
-    subgraph PROMPT["1. User Prompt"]
-        P1["User types prompt"]
-        UPS_HOOK["UserPromptSubmit Hook"]
-        UPS_INJECT["Injects: 'Spawn prompt-hydrator'"]
+    subgraph HOOKS["Hooks"]
+        direction TB
+        H1["SessionStart<br/>─────────────<br/>sessionstart_load_axioms.py"]
+        H2["UserPromptSubmit<br/>─────────────<br/>user_prompt_submit.py"]
+        H3["PreToolUse<br/>─────────────<br/>policy_enforcer.py<br/>criteria_gate.py"]
+        H4["PostToolUse<br/>─────────────<br/>autocommit_state.py<br/>fail_fast_watchdog.py<br/>custodiet_gate.py"]
+        H5["Stop<br/>─────────────<br/>request_scribe.py<br/>session_reflect.py"]
+
+        H1 ~~~ H2 ~~~ H3 ~~~ H4 ~~~ H5
     end
 
-    subgraph HYDRATE["2. Prompt Hydration (haiku agent)"]
-        HY_GATHER["Parallel context gathering"]
-        HY_TOOLS["• mcp__memory (semantic search)<br/>• Grep $AOPS (relevant files)<br/>• Read AXIOMS/HEURISTICS"]
-        HY_SELECT["Workflow Selection"]
-        HY_DIMS["gate: plan-mode | none<br/>pre-work: verify-first | none<br/>approach: tdd | direct | answer-only"]
-        HY_MATCH["Match skill from WORKFLOWS.md"]
-        HY_GUARD["Select guardrails"]
-        HY_OUT["Return: workflow + skill + guardrails"]
+    subgraph AGENTS["Subagents"]
+        direction TB
+        A1["prompt-hydrator<br/>(haiku)<br/>─────────────<br/>Workflow selection<br/>Skill matching<br/>Guardrail injection"]
+        A2["critic<br/>─────────────<br/>Plan review<br/>Criteria validation"]
+        A3["custodiet<br/>─────────────<br/>Ultra vires check<br/>Scope drift detection"]
+        A4["remember<br/>(haiku)<br/>─────────────<br/>Memory persistence"]
+
+        A1 ~~~ A2 ~~~ A3 ~~~ A4
     end
 
-    subgraph PLAN["3a. Planning Phase (if plan-mode)"]
-        PL1["Invoke domain Skill()"]
-        PL2["Define acceptance criteria"]
-        PL3["Critic review"]
-        PL4["TodoWrite with CHECKPOINTs"]
-        PL_GATE["Create gate file"]
-    end
+    %% Cross-lane connections: Main ↔ Hooks
+    M0 --> H1
+    H1 -->|"AXIOMS, HEURISTICS,<br/>FRAMEWORK, CORE"| M1
+    M2 --> H2
+    H2 -->|"'Spawn hydrator'"| M3
+    M11 --> H3
+    H3 -->|"allow/block"| M11
+    M11 --> H4
+    H4 -->|"context injection"| M12
+    M17 --> H5
 
-    subgraph EXEC["3b. Execution"]
-        EX1["Mark todo in_progress"]
-        EX2["Use tools..."]
-    end
+    %% Cross-lane connections: Main ↔ Subagents
+    M4 --> A1
+    A1 -->|"workflow + skill + guardrails"| M5
+    M8 --> A2
+    A2 -->|"approved/rejected"| M9
+    H4 -.->|"~7 tools"| A3
+    A3 -.->|"compliance check"| M12
+    H5 --> A4
 
-    subgraph TOOL_LOOP["Tool Execution Loop"]
-        PRE_HOOK["PreToolUse Hooks"]
-        PRE_POLICY["policy_enforcer.py<br/>Blocks: destructive git,<br/>*-GUIDE.md, .md>200 lines"]
-        PRE_GATE["criteria_gate.py<br/>Blocks Edit/Write/Bash<br/>until gate file exists"]
-        TOOL["Tool executes"]
-        POST_HOOK["PostToolUse Hooks"]
-        POST_ACTIONS["autocommit_state.py<br/>fail_fast_watchdog.py<br/>custodiet_gate.py"]
-    end
+    %% Styling
+    class M0,M1,M2,M3,M4,M5,M6,M7,M8,M9,M10,M11,M12,M13,M14,M15,M16,M17,M18 main
+    class H1,H2,H3,H4,H5 hook
+    class A1,A2,A3,A4 subagent
 
-    subgraph VERIFY["3c. Verification"]
-        VER1["CHECKPOINT passed?"]
-        VER_NO["Iterate (max 3)"]
-        VER_YES["Commit + push"]
-        VER_DONE["Mark completed"]
-    end
-
-    subgraph GUARDS["Guardrails (continuous) - PLANNED"]
-        GR1["Scope drift >20%?"]
-        GR2["Thrashing (3+ edits)?"]
-        GR_HALT["HALT + ask user"]
-    end
-
-    subgraph QA["4. QA (if plan-mode)"]
-        QA1["Verify against LOCKED criteria"]
-        QA_FAIL["REJECTED -> back to 3b"]
-        QA_PASS["APPROVED"]
-    end
-
-    subgraph CLEANUP["5. Cleanup"]
-        CL1["Final commit + push"]
-        CL2["Stop Hooks fire"]
-    end
-
-    subgraph MEMORY["Memory Chain"]
-        MEM1["request_scribe.py"]
-        MEM2["Skill: remember"]
-        MEM3["Write .md to $ACA_DATA"]
-        MEM4["mcp__memory__store_memory"]
-    end
-
-    subgraph REFLECT["Reflection Chain"]
-        REF1["session_reflect.py"]
-        REF2["Skill: session-insights"]
-        REF3["Update daily note"]
-        REF4["GitHub Issue if pattern"]
-    end
-
-    %% Main flow
-    S0 --> SS_HOOK --> SS_INJECT --> P1
-    P1 --> UPS_HOOK --> UPS_INJECT --> HY_GATHER
-    HY_GATHER --> HY_TOOLS --> HY_SELECT
-    HY_SELECT --> HY_DIMS --> HY_MATCH --> HY_GUARD --> HY_OUT
-
-    %% Branch on workflow
-    HY_OUT -->|plan-mode| PL1
-    HY_OUT -->|direct/tdd| EX1
-
-    %% Planning flow
-    PL1 --> PL2 --> PL3 --> PL4 --> PL_GATE --> EX1
-
-    %% Execution flow
-    EX1 --> EX2 --> PRE_HOOK
-    PRE_HOOK --> PRE_POLICY
-    PRE_HOOK --> PRE_GATE
-    PRE_HOOK -->|allowed| TOOL --> POST_HOOK
-    POST_HOOK --> POST_ACTIONS
-    POST_HOOK -->|loop| PRE_HOOK
-
-    %% Verification
-    EX2 --> VER1
-    VER1 -->|No| VER_NO --> EX2
-    VER1 -->|Yes| VER_YES --> VER_DONE
-
-    %% Guardrails (PLANNED - dashed lines)
-    EX2 -.->|monitors| GR1
-    EX2 -.->|monitors| GR2
-    GR1 -.->|Yes| GR_HALT
-    GR2 -.->|Yes| GR_HALT
-
-    %% QA (plan-mode only)
-    VER_DONE -->|plan-mode| QA1
-    VER_DONE -->|direct| CL1
-    QA1 -->|fail| QA_FAIL --> EX1
-    QA1 -->|pass| QA_PASS --> CL1
-
-    %% Cleanup
-    CL1 --> CL2
-
-    %% Memory chain
-    CL2 --> MEM1 --> MEM2 --> MEM3 --> MEM4
-
-    %% Reflection chain
-    CL2 --> REF1 --> REF2 --> REF3 -.-> REF4
-
-    %% Apply classes (flowchart skill conventions)
-    class S0,QA_PASS start
-    class P1 user
-    class SS_HOOK,UPS_HOOK,PRE_HOOK,POST_HOOK,PRE_POLICY,PRE_GATE hook
-    class HY_SELECT,PL1,MEM2,REF2 skill
-    class TOOL tool
-    class MEM4,REF4 storage
-    class GR1,GR2,GR_HALT planned
+    %% Subgraph styling
+    style MAIN fill:#e8f5e9,stroke:#2e7d32
+    style HOOKS fill:#ffebee,stroke:#c62828
+    style AGENTS fill:#f3e5f5,stroke:#7b1fa2
 ```
 
 ## Flow Legend

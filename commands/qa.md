@@ -50,6 +50,72 @@ Use the memory server to find:
 
 **If context load fails**: STOP and report what's missing. Cannot verify without understanding goals.
 
+## CYNICAL VERIFICATION MINDSET (MANDATORY)
+
+**DEFAULT ASSUMPTION: IT'S BROKEN.** Your job is to PROVE it works, not confirm it works.
+
+### The Triple-Check Protocol
+
+For EVERY claim of success, you MUST:
+
+1. **READ THE FULL OUTPUT** - Not summaries. Not first lines. THE ENTIRE OUTPUT.
+2. **LOOK FOR EMPTY/PLACEHOLDER DATA** - Empty sections, repeated headers, template variables unfilled
+3. **VERIFY SEMANTIC CONTENT** - Does the data MAKE SENSE? Is it REAL or GARBAGE?
+
+**CRITICAL FAILURE MODE (2026-01-07)**: QA approved custodiet as "working" when audit files contained:
+
+```
+## Session Context
+
+## Session Context
+
+## Session Context
+```
+
+THREE EMPTY HEADERS. The context extraction was completely broken but tests passed because they checked file existence, not content quality.
+
+### Red Flags That MUST Trigger Investigation
+
+**STOP and investigate if you see ANY of:**
+
+- [ ] Repeated section headers (indicates template/variable bug)
+- [ ] Empty sections between headers
+- [ ] Placeholder text like `{variable}` or `TODO`
+- [ ] Suspiciously short output for complex operations
+- [ ] "Success" claims without showing actual output
+- [ ] Tests that check existence but not content
+- [ ] Silent error handling (try/except that swallows errors)
+
+### Content Inspection Protocol
+
+When verifying output files:
+
+```bash
+# WRONG - just checks existence
+ls -la /path/to/output.md
+
+# RIGHT - reads FULL content and inspects
+cat /path/to/output.md | head -100  # Then READ IT YOURSELF
+```
+
+**YOU MUST READ THE OUTPUT.** Not grep for keywords. Not check file size. ACTUALLY READ IT.
+
+Ask yourself:
+
+- Does this content make sense?
+- Is there actual data or just structure?
+- Would this be useful to its intended consumer?
+- Are there any anomalies (duplicates, empty sections, malformed data)?
+
+### Cynicism Checklist (Before ANY Approval)
+
+- [ ] I read the FULL output of every command, not just exit codes
+- [ ] I verified content is SUBSTANTIVE, not just present
+- [ ] I checked for duplicate/repeated elements that indicate bugs
+- [ ] I confirmed no empty sections between headers
+- [ ] I verified the output would actually be USEFUL to its consumer
+- [ ] I am confident this works, not just hoping it does
+
 ## Verification Workflow
 
 ### 0. Test-First Verification Protocol
@@ -257,6 +323,10 @@ Use the Skill tool to invoke the [[remember]] skill: `Skill(skill="remember")` -
 ❌ Violates framework principles (silent failures, defaults)
 ❌ No documentation of learnings
 ❌ Not actually committed/pushed
+❌ **OUTPUT IS EMPTY/GARBAGE** - Files created but content is wrong/missing
+❌ **DUPLICATE HEADERS** - Template bugs causing repeated sections
+❌ **SILENT FAILURES** - try/except swallowing errors, returning empty strings
+❌ **SURFACE-LEVEL VERIFICATION** - Checking file exists instead of reading content
 
 **How to catch these**:
 
@@ -267,6 +337,10 @@ Use the Skill tool to invoke the [[remember]] skill: `Skill(skill="remember")` -
 ✅ Review against AXIOMS checklist
 ✅ Confirm LOG.md updated
 ✅ Check git log for commits
+✅ **READ FULL OUTPUT** - cat the file, read every line
+✅ **COUNT HEADERS** - Duplicate section headers = bug
+✅ **CHECK FOR EMPTY SECTIONS** - Content between headers must exist
+✅ **VERIFY SEMANTIC MEANING** - Does the content make sense?
 
 ## Decision Authority
 

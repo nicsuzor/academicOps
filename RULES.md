@@ -219,11 +219,27 @@ Uses passive `additionalContext` format - agent may proceed without addressing.
 | framework-health.yml | Framework health metrics and enforcement | A#20  |
 | claude.yml           | Claude Code bot integration              | -     |
 
+## Agent Tool Permissions
+
+Main agent has all tools except deny rules. Subagents are restricted:
+
+| Agent             | Tools Granted                                  | Model  | Purpose                 |
+| ----------------- | ---------------------------------------------- | ------ | ----------------------- |
+| Main agent        | All (minus deny rules)                         | varies | Primary task execution  |
+| prompt-hydrator   | Read, Grep, mcp__memory__retrieve_memory, Task | haiku  | Context enrichment      |
+| custodiet         | Read                                           | haiku  | Compliance checking     |
+| critic            | Read                                           | opus   | Plan/conclusion review  |
+| planner           | All (inherits from main)                       | sonnet | Implementation planning |
+| effectual-planner | All (inherits from main)                       | opus   | Strategic planning      |
+
+**Note**: `tools:` in agent frontmatter RESTRICTS available tools - it cannot GRANT access beyond what settings.json allows. Deny rules apply globally.
+
 ## Source Files
 
 | Mechanism        | Authoritative Source                                                            |
 | ---------------- | ------------------------------------------------------------------------------- |
 | Deny rules       | `$AOPS/config/claude/settings.json` → `permissions.deny`                        |
+| Agent tools      | `$AOPS/agents/*.md` → `tools:` frontmatter                                      |
 | PreToolUse       | `$AOPS/hooks/policy_enforcer.py`                                                |
 | PostToolUse      | `$AOPS/hooks/fail_fast_watchdog.py`, `autocommit_state.py`, `custodiet_gate.py` |
 | UserPromptSubmit | `$AOPS/hooks/user_prompt_submit.py`                                             |

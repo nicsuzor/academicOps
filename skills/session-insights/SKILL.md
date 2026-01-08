@@ -105,6 +105,8 @@ See [[skills/next/templates/daily.md]] for daily note structure.
 
 ### Step 5: Mine for Learnings (Parallel)
 
+**MANDATORY: Mine ALL unmined sessions.** Process in batches of 8 concurrent agents. After each batch completes, spawn the next batch. Continue until ALL sessions are mined - do NOT move to Step 6 after just one batch.
+
 **Skip already-mined sessions**: Before mining, check if output JSON already exists.
 
 For EACH abridged transcript:
@@ -194,25 +196,34 @@ ls $ACA_DATA/dashboard/sessions/*.json 2>/dev/null | xargs -I{} grep -l '"date":
 
 ### Step 6: Synthesize (Claude Code Agent)
 
+**CRITICAL**: This step MERGES data. Never overwrite existing accomplishments.
+
 **AUTHORITATIVE SOURCE**: The daily note (`$ACA_DATA/sessions/YYYYMMDD-daily.md`) is the single source of truth for accomplishments. Session JSONs feed INTO the daily note; synthesis.json is a dashboard-optimized VIEW of the daily note.
 
 **Claude reads small JSONs (~20 lines each), NOT transcripts. This is where accomplishments get populated.**
 
-1. **Read all session JSONs for target date**:
+1. **Read existing synthesis.json FIRST** (MANDATORY - do not skip):
+   ```bash
+   cat $ACA_DATA/dashboard/synthesis.json
+   ```
+   This contains accomplishments from prior runs that MUST be preserved.
+
+2. **Read existing daily note** (MANDATORY):
+   - `$ACA_DATA/sessions/YYYYMMDD-daily.md` (skeleton from Step 4)
+
+3. **Read all session JSONs for target date**:
    ```bash
    ls $ACA_DATA/dashboard/sessions/*.json
    ```
    Read each JSON file (they're small, ~500 bytes each). Filter to sessions matching the target date.
 
-2. **Read existing files (if they exist)**:
-   - `$ACA_DATA/sessions/YYYYMMDD-daily.md` (skeleton from Step 4)
-   - `$ACA_DATA/dashboard/synthesis.json`
-
-3. **Merge sessions** (idempotent by session_id):
+4. **Merge sessions** (idempotent by session_id):
    - For each session JSON: if session_id already in existing data → update, else → add
+   - For accomplishments array: **APPEND new items, never replace existing**
    - This ensures running from multiple machines integrates rather than duplicates
+   - Use **Edit tool**, not Write tool, to preserve existing content
 
-4. **Update daily.md with accomplishments from JSONs** at `$ACA_DATA/sessions/YYYYMMDD-daily.md`:
+5. **Update daily.md with accomplishments from JSONs** at `$ACA_DATA/sessions/YYYYMMDD-daily.md`:
 
    **VERIFY DESCRIPTIONS**: Gemini mining may hallucinate. Cross-check accomplishment descriptions against actual changes (git log, file content). Per AXIOMS #2, do not propagate fabricated descriptions.
 
@@ -303,7 +314,7 @@ Sessions Mined ████████░░ 8/10
 - Quick Wins / ad-hoc items: Link if task file exists, otherwise plain text
 - Sessions: plain text (session IDs, not linked)
 
-1. **Write updated synthesis.json** at `$ACA_DATA/dashboard/synthesis.json`:
+6. **Write updated synthesis.json** at `$ACA_DATA/dashboard/synthesis.json`:
 
    synthesis.json is a **dashboard-optimized view** of the daily note - it should reflect ALL accomplishments from the daily note, not just those from mined session JSONs. If daily note has manually-added accomplishments, include them.
 

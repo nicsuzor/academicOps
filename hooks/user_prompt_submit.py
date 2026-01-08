@@ -151,7 +151,8 @@ def build_hydration_instruction(prompt: str, transcript_path: str | None = None)
         try:
             ctx = extract_router_context(Path(transcript_path))
             if ctx:
-                session_context = f"\n\n## Session Context\n\n{ctx}"
+                # ctx already includes "## Session Context" header
+                session_context = f"\n\n{ctx}"
         except Exception:
             pass  # Graceful degradation for context gathering only
 

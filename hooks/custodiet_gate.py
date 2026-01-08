@@ -29,6 +29,7 @@ from typing import Any
 
 from lib.session_reader import extract_router_context
 from lib.session_state import (
+    CustodietState,
     load_custodiet_state,
     load_hydrator_state,
     save_custodiet_state,
@@ -145,13 +146,17 @@ def increment_tool_count(cwd: str) -> int:
     Returns:
         New tool call count after increment
     """
-    state = load_custodiet_state(cwd)
-    if state is None:
-        state = {
+    loaded = load_custodiet_state(cwd)
+    state: CustodietState = (
+        loaded
+        if loaded is not None
+        else {
             "last_compliance_ts": 0.0,
             "tool_calls_since_compliance": 0,
             "last_drift_warning": None,
+            "error_flag": None,
         }
+    )
 
     state["tool_calls_since_compliance"] += 1
     save_custodiet_state(cwd, state)
@@ -164,13 +169,17 @@ def reset_compliance_state(cwd: str) -> None:
     Args:
         cwd: Current working directory for project hash
     """
-    state = load_custodiet_state(cwd)
-    if state is None:
-        state = {
+    loaded = load_custodiet_state(cwd)
+    state: CustodietState = (
+        loaded
+        if loaded is not None
+        else {
             "last_compliance_ts": 0.0,
             "tool_calls_since_compliance": 0,
             "last_drift_warning": None,
+            "error_flag": None,
         }
+    )
 
     state["tool_calls_since_compliance"] = 0
     state["last_compliance_ts"] = time.time()
@@ -215,13 +224,17 @@ def set_drift_warning(cwd: str, warning: str) -> None:
         cwd: Current working directory for project hash
         warning: Drift warning message to store
     """
-    state = load_custodiet_state(cwd)
-    if state is None:
-        state = {
+    loaded = load_custodiet_state(cwd)
+    state: CustodietState = (
+        loaded
+        if loaded is not None
+        else {
             "last_compliance_ts": 0.0,
             "tool_calls_since_compliance": 0,
             "last_drift_warning": None,
+            "error_flag": None,
         }
+    )
 
     state["last_drift_warning"] = warning
     save_custodiet_state(cwd, state)
@@ -275,15 +288,17 @@ def build_audit_instruction(transcript_path: str | None, tool_name: str) -> str:
     """
     cleanup_old_temp_files()
 
-    # Extract session context
+    # Extract session context (FAIL-FAST: no silent failures)
     session_context = ""
     if transcript_path:
-        try:
-            ctx = extract_router_context(Path(transcript_path))
-            if ctx:
-                session_context = f"\n\n## Session Context\n\n{ctx}"
-        except Exception:
-            pass
+        ctx = extract_router_context(Path(transcript_path))
+        if ctx:
+            # extract_router_context already includes "## Session Context" header
+            # Template also has the header, so strip it from ctx to avoid duplication
+            ctx_lines = ctx.split("\n")
+            if ctx_lines and ctx_lines[0].strip() == "## Session Context":
+                ctx = "\n".join(ctx_lines[1:]).lstrip("\n")
+            session_context = ctx
 
     # Build full context
     context_template = load_template(CONTEXT_TEMPLATE_FILE)

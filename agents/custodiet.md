@@ -59,6 +59,18 @@ Principle: [axiom/heuristic number]
 Correction: [what to do instead]
 ```
 
+**If you CANNOT assess** (empty file, missing data, malformed input):
+
+```json
+{
+  "error": true,
+  "error_code": "CANNOT_ASSESS",
+  "reason": "[specific reason: empty_file|missing_context|malformed_input]"
+}
+```
+
+**CRITICAL**: This is a VERIFICATION FAILURE, not "inconclusive". The main agent must treat this as a failed check, not proceed as if verification passed.
+
 ## What You Do NOT Do
 
 - Write lengthy reports when things are OK

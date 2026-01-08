@@ -9,18 +9,19 @@ tags: [framework, routing, context, skills]
 
 # Prompt Hydration
 
-Transform a raw user prompt into a structured, context-rich prompt matched to the appropriate skill(s).
+Transform a raw user prompt into a complete execution plan with workflow selection, per-step skill assignments, and quality gates.
 
 ## Purpose
 
 Users type terse prompts. Agents need:
 
-- **Context** - What's relevant to this task?
-- **Workflow** - What approach fits this work?
-- **Skills** - Which skill(s) should be invoked?
+- **Intent** - What does the user actually want?
+- **Workflow** - Which workflow template applies?
+- **Steps** - What specific actions, in what order?
+- **Skills** - Which skill provides context for each step?
 - **Guardrails** - What constraints apply?
 
-Prompt Hydration bridges this gap automatically on every prompt.
+Prompt Hydration bridges this gap automatically on every prompt, outputting a complete execution plan the agent can follow.
 
 ## When It Runs
 
@@ -33,14 +34,87 @@ UserPromptSubmit hook fires
     ↓
 Prompt Hydration runs
     ↓
-Main agent receives: original prompt + hydrated context
+Main agent receives: complete execution plan with TodoWrite steps
 ```
 
-## What It Does
+## Hydrator Outputs
 
-### 1. Context Gathering
+The hydrator outputs a complete execution plan with four components:
 
-Parallel searches to understand what's relevant:
+### 1. Intent Envelope
+
+What the user actually wants, in clear terms:
+
+```
+Intent: Fix the type error in parser.py that's causing the build to fail
+```
+
+### 2. Selected Workflow
+
+Which workflow from the catalog applies:
+
+```
+Workflow: minor-edit
+Quality gate: Verification step required
+Commit required: Yes
+```
+
+### 3. TodoWrite Plan with Per-Step Skills
+
+The hydrator interprets the workflow for this specific task, breaking it into concrete steps with skill assignments:
+
+```javascript
+TodoWrite(todos=[
+  {content: "Step 1: Invoke Skill(skill='python-dev') to load coding standards", status: "pending", activeForm: "Loading skill"},
+  {content: "Step 2: Read parser.py and understand the type error", status: "pending", activeForm: "Understanding"},
+  {content: "Step 3: Implement the fix following python-dev conventions", status: "pending", activeForm: "Implementing"},
+  {content: "CHECKPOINT: Run pytest to verify fix works", status: "pending", activeForm: "Verifying"},
+  {content: "Step 5: Commit and push", status: "pending", activeForm: "Committing"}
+])
+```
+
+### 4. Guardrails
+
+Constraints that apply based on workflow + domain:
+
+```
+Guardrails: verify_before_complete, fix_within_design
+```
+
+## Workflow Catalog
+
+The hydrator selects from a defined set of workflows. Each workflow specifies trigger signals, quality gates, and iteration units:
+
+| Workflow       | Trigger Signals                       | Quality Gate            | Iteration Unit               |
+| -------------- | ------------------------------------- | ----------------------- | ---------------------------- |
+| **question**   | "?", "how", "what", "explain"         | Answer accuracy         | N/A (answer then stop)       |
+| **minor-edit** | Single file, clear change             | Verification            | Edit → verify → commit       |
+| **tdd**        | "implement", "add feature", "create"  | Tests pass              | Test → code → commit         |
+| **batch**      | Multiple files, "all", "each"         | Per-item + aggregate QA | Subset → apply → verify      |
+| **qa-proof**   | "verify", "check", "investigate"      | Evidence gathered       | Hypothesis → test → evidence |
+| **plan-mode**  | Framework, infrastructure, multi-step | User approval           | Plan → approve → execute     |
+
+**Key insight**: The workflow is NOT mechanical. The hydrator INTERPRETS the workflow template for the specific user request, generating concrete steps with appropriate skill invocations.
+
+## Skill Assignment
+
+The hydrator assigns skills per-step based on domain signals from [[REMINDERS.md]]:
+
+| Step Domain                               | Skill                         |
+| ----------------------------------------- | ----------------------------- |
+| Python code, pytest, types                | `python-dev`                  |
+| Framework files (hooks/, skills/, AXIOMS) | `framework`                   |
+| New functionality                         | `feature-dev`                 |
+| Memory persistence                        | `remember`                    |
+| Data analysis, dbt, Streamlit             | `analyst`                     |
+| Claude Code hooks                         | `plugin-dev:hook-development` |
+| MCP servers                               | `plugin-dev:mcp-integration`  |
+
+Each step in the TodoWrite can include an explicit `Invoke Skill(skill='xxx')` instruction when domain context is needed.
+
+## Context Gathering
+
+The hydrator gathers context to inform workflow selection and step planning:
 
 | Source        | What                                            | Token Budget |
 | ------------- | ----------------------------------------------- | ------------ |
@@ -51,94 +125,47 @@ Parallel searches to understand what's relevant:
 
 **Total budget**: ~500 tokens of context
 
-### 2. Workflow Selection
+## Agent Execution
 
-Select composable workflow dimensions based on gathered context. This is intelligent decision-making, not keyword matching - the agent understands the prompt in context and selects the appropriate workflow.
+The main agent receives the hydrator's output and follows the plan:
 
-#### Dimension 1: Gate
+1. **Create TodoWrite** exactly as specified by hydrator
+2. **For each step**:
+   - Mark `in_progress`
+   - If step says "Invoke Skill(...)", invoke the skill
+   - Execute the step
+   - Mark `completed`
+3. **At CHECKPOINTs**: Verify with evidence before proceeding
+4. **Cleanup**: Commit, push, reflect as directed by workflow
 
-Must pass before implementation begins.
-
-| Gate      | When to Apply                                                                                                  |
-| --------- | -------------------------------------------------------------------------------------------------------------- |
-| plan-mode | Framework changes, infrastructure work, multi-file refactors, anything requiring user approval before starting |
-| none      | Clear scope, single-file changes, debugging, questions                                                         |
-
-#### Dimension 2: Pre-work
-
-What to do before implementing.
-
-| Pre-work       | When to Apply                                                        |
-| -------------- | -------------------------------------------------------------------- |
-| verify-first   | Error reports, "doesn't work" complaints - reproduce before fixing   |
-| research-first | Unfamiliar territory, unclear requirements, need to explore codebase |
-| none           | Clear scope, well-understood domain                                  |
-
-#### Dimension 3: Approach
-
-How to implement.
-
-| Approach | When to Apply                                                      |
-| -------- | ------------------------------------------------------------------ |
-| tdd      | Creating new functionality, refactoring with behavioral changes    |
-| direct   | Bug fixes, configuration changes, documentation, simple edits      |
-| none     | Questions, explanations, research tasks (no implementation needed) |
-
-### 3. Skill Matching
-
-Based on context and workflow, identify skill(s) to invoke:
-
-| Domain Signal                                        | Skill                         |
-| ---------------------------------------------------- | ----------------------------- |
-| Framework files, AXIOMS, HEURISTICS, skills/, hooks/ | `framework`                   |
-| Claude Code hooks, PreToolUse, PostToolUse           | `plugin-dev:hook-development` |
-| MCP servers, tool integration                        | `plugin-dev:mcp-integration`  |
-| New functionality, feature requests                  | `feature-dev`                 |
-| Python code, pytest, type hints                      | `python-dev`                  |
-| "Remember", "save to memory", persist knowledge      | `remember`                    |
-| dbt, Streamlit, data analysis                        | `analyst`                     |
-| No domain skill needed                               | (direct handling)             |
-
-### 4. Guardrail Selection
-
-Based on workflow dimensions, select applicable guardrails from [[RULES.md]]:
-
-| Workflow Dimension       | Guardrails Applied                      |
-| ------------------------ | --------------------------------------- |
-| gate=plan-mode           | plan_mode, critic_review                |
-| pre-work=verify-first    | quote_errors_exactly, fix_within_design |
-| approach=tdd             | require_acceptance_test                 |
-| approach=none (question) | answer_only                             |
-| skill matched            | require_skill:[skill-name]              |
-| any implementation       | verify_before_complete, use_todowrite   |
+The agent doesn't need to make routing or skill decisions — the hydrator already made them.
 
 ## Output Format
 
-Hydration adds structured context to the agent's prompt:
+The hydrator returns structured guidance:
 
-```markdown
+````markdown
 ## Prompt Hydration
 
-**Workflow**: gate=[X] pre-work=[X] approach=[X]
-**Skill(s)**: [skill name(s) or "none"]
+**Intent**: [what user wants]
+**Workflow**: [workflow name] ([quality gate])
 **Guardrails**: [list]
 
 ### Relevant Context
 
-- [context item from memory/codebase/session]
-- [context item]
+- [context from memory/codebase/session]
 
-### Session State
+### TodoWrite Plan
 
-- Recent: "[last prompt]", "[prior prompt]"
-- Active skill: [if any]
-- Todos: [N] pending, [M] in_progress
-
-### Guidance
-
-[Workflow-specific instructions based on dimensions and guardrails]
+```javascript
+TodoWrite(todos=[
+  {content: "Step 1: ...", status: "pending", activeForm: "..."},
+  ...
+])
 ```
+````
 
+```
 ## Performance Requirements
 
 | Metric      | Target       |
@@ -146,7 +173,7 @@ Hydration adds structured context to the agent's prompt:
 | Typical     | 5-10 seconds |
 | Max timeout | 15 seconds   |
 
-Quality of context gathering matters more than speed. The hydrator should take the time needed to gather relevant context and make intelligent workflow decisions.
+Quality of context gathering and plan generation matters more than speed.
 
 ## Failure Modes
 
@@ -156,123 +183,85 @@ Quality of context gathering matters more than speed. The hydrator should take t
 | Temp file read fails (subagent) | Subagent returns error, main agent proceeds without hydration |
 | Main agent ignores instruction  | Silent failure - hydration doesn't happen (known risk)        |
 | Memory search fails             | Continue with codebase/session context only                   |
-| Classification uncertain        | Default to `simple`                                           |
+| Workflow uncertain              | Default to `plan-mode` for safety                             |
 | Timeout                         | Return partial context, log warning                           |
 | Complete failure                | Return empty context, agent proceeds with baseline            |
 
-Fail-fast on infrastructure errors (temp file). Graceful degradation only for content-gathering failures (memory, classification).
+Fail-fast on infrastructure errors (temp file). Graceful degradation only for content-gathering failures.
 
 ## Architecture
 
-The implementation uses a temp file approach for token efficiency. See [[specs/gate-agent-architecture]] for the unified gate system design.
-
+The implementation uses a temp file approach for token efficiency:
 ```
+
 UserPromptSubmit hook
-    ↓
+↓
 Load/update unified session state
-    ↓
+↓
 Extract session context, write full context to temp file
-    ↓
+↓
 Main agent receives SHORT instruction (~100 tokens) with file path
-    ↓
+↓
 Main agent spawns prompt-hydrator subagent (Haiku)
-    ↓
-Subagent uses Read tool to load temp file, performs workflow selection
-    ↓
-Main agent follows guidance
+↓
+Subagent reads temp file, generates complete execution plan
+↓
+Main agent follows the plan
+
 ```
-
-### Session State Integration
-
-The hook reads and updates the unified session state file (`/tmp/claude-session/state-{hash}.json`):
-
-| Operation  | Fields                                                                      |
-| ---------- | --------------------------------------------------------------------------- |
-| **Reads**  | Previous `declared_workflow`, `active_skill` (for context continuity)       |
-| **Writes** | `last_hydration_ts`, `declared_workflow`, `active_skill`, `intent_envelope` |
-
-This enables cross-gate coordination - custodiet can check what workflow was declared and detect drift.
-
 **Why temp files:**
 
 - **Token efficiency**: Main agent sees ~100 tokens (instruction + path) vs ~500+ tokens (full embedded context)
-- **Higher compliance**: Shorter instructions are less likely to be skipped (hypothesis - needs validation)
-- **Subagent gets full context**: File contains complete prompt + session state + template
+- **Subagent gets full context**: File contains complete prompt + session state + workflow catalog
 - **Debuggable**: Temp files can be inspected for troubleshooting
 
 **Temp file handling:**
 
 - **Location**: `/tmp/claude-hydrator/` (created with `makedirs` if missing)
 - **Naming**: Uses `tempfile.NamedTemporaryFile` with prefix `hydrate_` to avoid collisions
-- **Cleanup**: Files deleted after 1 hour via cleanup on hook invocation (delete files older than 1hr)
+- **Cleanup**: Files deleted after 1 hour via cleanup on hook invocation
 - **On failure**: If temp write fails, hook returns error and HALTS (no silent fallback per AXIOM #7)
-
-**Subagent file access**: Subagents use the `Read` tool to access files. The instruction must explicitly tell the subagent to read the file path.
-
-## Implementation
-
-The hook (`hooks/user_prompt_submit.py`) performs these steps:
-
-1. **Cleanup old temp files** - Delete files in `/tmp/claude-hydrator/` older than 1 hour
-2. **Extract session context** via `extract_router_context()` from the transcript:
-   - Last N user prompts (truncated)
-   - Most recent Skill invocation
-   - TodoWrite task status counts
-3. **Load hydrator template** from `hooks/templates/prompt-hydrator-context.md`
-4. **Build full context** by combining template + session context + user prompt
-5. **Write to temp file** using `tempfile.NamedTemporaryFile(delete=False)`:
-   - On success: Return instruction with file path
-   - On failure (IOError, disk full): Return error, exit non-zero (fail-fast)
-6. **Return short instruction** via `hookSpecificOutput.additionalContext`:
-   ```
-   Task(subagent_type="prompt-hydrator", model="haiku",
-        prompt="Use the Read tool to read {temp_path}, then return workflow guidance")
-   ```
-
-The subagent uses Read to load the temp file, performs workflow selection, and returns structured guidance. The main agent follows the guidance.
-
-**Note**: Subagents don't inherit session context and cannot read files directly - they must use the Read tool. The instruction explicitly tells the subagent to use Read.
 
 ## Relationship to /do
 
-| Prompt Hydration              | /do Command                   |
-| ----------------------------- | ----------------------------- |
-| Automatic, every prompt       | Explicit invocation           |
-| Context + classification only | Full orchestration pipeline   |
-| Fast, lightweight             | Comprehensive, heavier        |
-| Suggests skills               | Enforces skills + checkpoints |
+| Prompt Hydration              | /do Command                        |
+| ----------------------------- | ---------------------------------- |
+| Automatic, every prompt       | Explicit invocation                |
+| Outputs complete plan         | Executes plan with extra oversight |
+| Fast, single haiku call       | May involve multiple checkpoints   |
+| Per-step skill assignment     | Same skills, more enforcement      |
 
-With Prompt Hydration working, `/do` becomes the "extra guardrails" option for complex work, not the only way to get intelligent routing.
+With Prompt Hydration outputting complete plans, `/do` becomes simpler — it receives the hydrated plan and executes it with additional oversight for complex work.
 
 ## Relationship to WORKFLOWS.md
 
-`WORKFLOWS.md` is the **generated index** that reflects this spec's routing table. The `/audit` skill regenerates it from:
+`WORKFLOWS.md` is the **workflow catalog** that the hydrator references. It contains:
 
-- This spec's workflow dimension definitions
-- [[RULES.md]] guardrail definitions
-- Skill descriptions
+- Workflow templates with trigger signals
+- Quality gates for each workflow
+- Iteration units (what gets committed atomically)
+
+The hydrator interprets these templates for specific user requests.
 
 ## Acceptance Criteria
 
 1. Hydration runs on every UserPromptSubmit
-2. Context written to temp file, not embedded inline
-3. Main agent instruction is ≤150 tokens (file path only)
-4. Temp files written to `/tmp/claude-hydrator/` with timestamp names
-5. Context surfaces relevant information for workflow decisions
+2. Hydrator outputs complete TodoWrite plan with per-step skill assignments
+3. Each workflow type has defined quality gates (CHECKPOINTs)
+4. Skills are embedded in step content, not inferred later
+5. Main agent can execute plan without making routing decisions
 6. Latency meets performance requirements
-7. Skills are correctly suggested based on domain signals
-8. Guardrails match [[RULES.md]] definitions
-9. Graceful degradation on errors
-10. Agent behavior measurably improves (fewer skill bypasses)
+7. Graceful degradation on errors
 
 ## Files
 
-| File                                              | Purpose                                                                      |
-| ------------------------------------------------- | ---------------------------------------------------------------------------- |
-| `hooks/user_prompt_submit.py`                     | Entry point - extracts context, writes temp file, returns short instruction  |
-| `hooks/templates/prompt-hydrator-context.md`      | Full context template written to temp file (prompt + session + instructions) |
-| `hooks/templates/prompt-hydration-instruction.md` | Short instruction template for main agent (~100 tokens)                      |
-| `lib/session_reader.py`                           | `extract_router_context()` - extracts session state from transcript          |
-| `agents/prompt-hydrator.md`                       | Subagent that reads temp file and performs workflow selection                |
-| `RULES.md`                                        | Guardrail definitions (Soft Gate Guardrails section)                         |
-| `WORKFLOWS.md`                                    | Generated routing table                                                      |
+| File                                              | Purpose                                                                     |
+| ------------------------------------------------- | --------------------------------------------------------------------------- |
+| `hooks/user_prompt_submit.py`                     | Entry point - extracts context, writes temp file, returns short instruction |
+| `hooks/templates/prompt-hydrator-context.md`      | Full context template written to temp file                                  |
+| `hooks/templates/prompt-hydration-instruction.md` | Short instruction template for main agent (~100 tokens)                     |
+| `lib/session_reader.py`                           | `extract_router_context()` - extracts session state from transcript         |
+| `agents/prompt-hydrator.md`                       | Subagent that reads temp file and generates execution plan                  |
+| `WORKFLOWS.md`                                    | Workflow catalog with templates                                             |
+| `REMINDERS.md`                                    | Skill triggers for per-step assignment                                      |
+```

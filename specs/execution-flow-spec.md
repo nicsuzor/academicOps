@@ -19,19 +19,40 @@ See [[specs/gate-agent-architecture]] for the unified gate system design that de
 
 ## Design Principles
 
-### 1. Vertical Main Flow, Horizontal Insertion Points
+### 1. Swimlane Layout: Main Agent with Parallel Subprocesses
 
-The main execution flow runs vertically. Each framework insertion point (hooks, agents, templates) branches horizontally with links to its implementation.
+The diagram uses a three-lane swimlane structure:
 
 ```
-┌─────────────┐         ┌─────────────────────┐
-│ Main Step   │ ──────► │ Framework component │
-└──────┬──────┘         │ → implementation.py │
-       │                │ → template.md       │
-       ▼                └─────────────────────┘
+┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐
+│   MAIN AGENT    │  │     HOOKS       │  │   SUBAGENTS     │
+│   (continuous   │  │   (discrete     │  │   (discrete     │
+│    vertical     │  │    invocations) │  │    invocations) │
+│    spine)       │  │                 │  │                 │
+├─────────────────┤  ├─────────────────┤  ├─────────────────┤
+│ Session Start   │──│ SessionStart    │  │                 │
+│       ↓         │←─│                 │  │                 │
+│ User prompt     │──│ UserPromptSubmit│  │                 │
+│       ↓         │←─│                 │  │                 │
+│ Spawn hydrator  │──│─────────────────│──│ prompt-hydrator │
+│       ↓         │←─│─────────────────│←─│                 │
+│ Call tool       │──│ PreToolUse      │  │                 │
+│       ↓         │←─│                 │  │                 │
+│ Receive result  │──│ PostToolUse     │──│ custodiet       │
+│       ↓         │←─│                 │←─│                 │
+│ Session End     │──│ Stop            │──│ remember        │
+└─────────────────┘  └─────────────────┘  └─────────────────┘
 ```
 
-**Rationale**: Keeps the main flow scannable while showing where intervention happens.
+**Key principles**:
+
+1. **Main Agent is continuous**: A single vertical flow showing the agent's progression through a session
+2. **Hooks appear alongside**: Discrete boxes at the vertical level where they fire, with arrows showing data flow direction
+3. **Subagents appear alongside**: Discrete boxes showing when Task() spawns them, with return arrows for results
+4. **Cross-lane arrows show interaction**: Solid arrows for invocation, return arrows for responses
+5. **Vertical alignment indicates timing**: Components at the same vertical level interact at that point in execution
+
+**Rationale**: This layout shows the main agent's continuous flow while making hook/subagent intervention points visible. Reading down the left column gives the agent's journey; reading across at any row shows what external components are invoked.
 
 ### 2. Separate Hard Tissue from Soft Tissue
 
@@ -76,8 +97,10 @@ The Hook Registry table must include a Template/Content column showing what conf
 
 ## Acceptance Criteria
 
-1. Main flow diagram is vertical with horizontal insertion points
-2. Every hook in registry has its template/content source identified
-3. No duplicated content from WORKFLOWS.md or RULES.md
-4. All implementation files are linked, not described inline
-5. Mermaid diagrams render correctly
+1. Main flow diagram uses swimlane layout: Main Agent (continuous vertical) | Hooks (discrete) | Subagents (discrete)
+2. Cross-lane arrows show invocation and return data flow
+3. Vertical alignment indicates when components interact in the execution timeline
+4. Every hook in registry has its template/content source identified
+5. No duplicated content from WORKFLOWS.md or RULES.md
+6. All implementation files are linked, not described inline
+7. Mermaid diagrams render correctly

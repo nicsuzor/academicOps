@@ -318,6 +318,54 @@ When input contains `adjust-heuristic H[n]:`:
 4. Adjust confidence if warranted
 5. Add observation as comment to relevant GitHub Issue
 
+## Phase 5: Update Metrics (Always)
+
+After creating/updating an Issue, update the metrics file:
+
+**Location**: `$ACA_DATA/metrics/framework-metrics.json`
+
+```bash
+# Create directory if needed
+mkdir -p "$ACA_DATA/metrics"
+```
+
+**Format**:
+
+```json
+{
+  "updated": "2026-01-08T12:00:00Z",
+  "total_logs": 42,
+  "by_category": {
+    "learning": 25,
+    "bug": 10,
+    "experiment": 5,
+    "devlog": 2
+  },
+  "by_outcome": {
+    "success": 30,
+    "partial": 8,
+    "failure": 4
+  },
+  "skills_mentioned": {
+    "framework": 15,
+    "remember": 8,
+    "analyst": 5
+  }
+}
+```
+
+**Update logic**:
+
+1. Read existing file (or create empty structure)
+2. Increment `total_logs`
+3. Increment `by_category[category]`
+4. If reflection includes outcome, increment `by_outcome[outcome]`
+5. If reflection mentions skills, increment `skills_mentioned[skill]`
+6. Update `updated` timestamp
+7. Write file
+
+**Note**: This is lightweight tracking. Deep analysis uses GitHub Issue search.
+
 ## Constraints
 
 **DO ONE THING**: Document observations only. Do NOT:

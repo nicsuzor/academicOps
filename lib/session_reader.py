@@ -25,6 +25,7 @@ from typing import Any
 _MAX_TURNS = 5
 _SKILL_LOOKBACK = 10
 _PROMPT_TRUNCATE = 100
+_MAX_TOOL_CALLS = 10  # Max recent tool calls to include in context
 
 
 @dataclass
@@ -103,13 +104,14 @@ def extract_router_context(transcript_path: Path, max_turns: int = _MAX_TURNS) -
         max_turns: Maximum number of recent prompts to include
 
     Returns:
-        Formatted markdown context or empty string on error
+        Formatted markdown context or empty string if file doesn't exist/is empty
+
+    Raises:
+        Exception: On parsing errors (fail-fast per AXIOM #7)
     """
-    try:
-        return _extract_router_context_impl(transcript_path, max_turns)
-    except Exception:
-        # Graceful fallback: return empty string on any error
+    if not transcript_path.exists():
         return ""
+    return _extract_router_context_impl(transcript_path, max_turns)
 
 
 def _is_agent_notification(text: str) -> bool:
@@ -212,8 +214,67 @@ def _extract_router_context_impl(transcript_path: Path, max_turns: int) -> str:
     todo_counts = todowrite_state.counts if todowrite_state else None
     in_progress_task = todowrite_state.in_progress_task if todowrite_state else None
 
+    # Extract recent tool calls (what the agent has been DOING)
+    recent_tools: list[str] = []
+    for entry in reversed(entries):
+        if len(recent_tools) >= _MAX_TOOL_CALLS:
+            break
+        if entry.get("type") != "assistant":
+            continue
+
+        message = entry.get("message", {})
+        content = message.get("content", [])
+        if not isinstance(content, list):
+            continue
+
+        for block in content:
+            if not isinstance(block, dict) or block.get("type") != "tool_use":
+                continue
+            tool_name = block.get("name", "")
+            tool_input = block.get("input", {})
+
+            # Skip TodoWrite and Skill (already tracked separately)
+            if tool_name in ("TodoWrite", "Skill"):
+                continue
+
+            # Format tool call with key parameters
+            if tool_name in ("Read", "Write", "Edit"):
+                file_path = tool_input.get("file_path", "")
+                if file_path:
+                    # Shorten path for display
+                    short_path = (
+                        file_path.split("/")[-1] if "/" in file_path else file_path
+                    )
+                    recent_tools.append(f"{tool_name}({short_path})")
+                else:
+                    recent_tools.append(tool_name)
+            elif tool_name == "Bash":
+                cmd = tool_input.get("command", "")[:50]
+                recent_tools.append(
+                    f"Bash({cmd}...)"
+                    if len(tool_input.get("command", "")) > 50
+                    else f"Bash({cmd})"
+                )
+            elif tool_name == "Glob":
+                pattern = tool_input.get("pattern", "")
+                recent_tools.append(f"Glob({pattern})")
+            elif tool_name == "Grep":
+                pattern = tool_input.get("pattern", "")[:30]
+                recent_tools.append(f"Grep({pattern})")
+            elif tool_name == "Task":
+                subagent = tool_input.get("subagent_type", "")
+                recent_tools.append(f"Task({subagent})")
+            else:
+                recent_tools.append(tool_name)
+
+            if len(recent_tools) >= _MAX_TOOL_CALLS:
+                break
+
+    # Reverse to chronological order
+    recent_tools = list(reversed(recent_tools))
+
     # Format output
-    if not recent_prompts and not recent_skill and not todo_counts:
+    if not recent_prompts and not recent_skill and not todo_counts and not recent_tools:
         return ""
 
     lines = ["## Session Context", ""]
@@ -228,6 +289,12 @@ def _extract_router_context_impl(transcript_path: Path, max_turns: int) -> str:
                 else prompt
             )
             lines.append(f'{i}. "{truncated}"')
+        lines.append("")
+
+    if recent_tools:
+        lines.append("Recent tools:")
+        for tool in recent_tools:
+            lines.append(f"  - {tool}")
         lines.append("")
 
     if recent_skill:

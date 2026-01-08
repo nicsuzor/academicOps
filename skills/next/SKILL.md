@@ -24,7 +24,12 @@ Get intelligent task recommendations and maintain daily.md Focus Dashboard throu
 
 Check if today's daily note exists at `$ACA_DATA/sessions/YYYYMMDD-daily.md`.
 
-**If missing**: Create from template at `skills/next/templates/daily.md`, replacing YYYY-MM-DD with today's date.
+**If missing**:
+
+1. Create from template at `skills/next/templates/daily.md`, replacing YYYY-MM-DD with today's date
+2. Read yesterday's daily note (`YYYYMMDD-1-daily.md`)
+3. Copy over "Abandoned Todos" as a new "## Carryover from Yesterday" section
+4. Note any overdue items from yesterday's Priority Burndown
 
 ### Step 2: Load Task Data
 
@@ -46,13 +51,21 @@ Output includes:
 
 ### Step 3: Update Focus Dashboard
 
-Use `priority_distribution` from script output to update the Focus Dashboard section in today's daily note:
+Use `priority_distribution` from script output to update the Focus Dashboard section in today's daily note.
+
+**Use reference-style wikilinks** - short labels in body, full links in endnotes section:
 
 ```
-P0 ████░░░░░░  4/14 → [[task-1]], [[task-2]]
-P1 ██████░░░░  10/14
+P0 ████░░░░░░  4/14 → [Lucinda extension], [OSB receipts]
+P1 ██████░░░░  10/14 → [ADMS report] (-8d)
 P2 ░░░░░░░░░░  0/14
+
+[Lucinda extension]: [[20260106-approve-lucinda-nelson-hdr-extension-request]]
+[OSB receipts]: [[Process Oversight Board receipts]]
+[ADMS report]: [[20251223-complete-adms-clever-reporting-for-2025]]
 ```
+
+This keeps the dashboard scannable while preserving Obsidian graph links.
 
 ### Step 4: Reason About Recommendations
 

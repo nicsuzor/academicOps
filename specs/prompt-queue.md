@@ -57,14 +57,16 @@ Can't generate good prompt → Work doesn't happen
 
 ## Core Insight
 
-**The deliverable is a ready-to-execute prompt, not a task description.**
+**Queued prompts ARE tasks** - enriched tasks that preserve execution context.
 
-A prompt preserves:
+A queued prompt is a task file that includes:
 
 - What to do
 - Why (context that was obvious at capture time)
 - How to approach it
 - Relevant files/state investigated at capture time
+
+The difference from a raw task description is enrichment, not category. Both live in the tasks hierarchy.
 
 ## Proposed Solution
 
@@ -102,11 +104,7 @@ At capture time (while context is fresh):
 
 ### Queue Storage
 
-TBD - options:
-
-- Task files with attached prompts
-- Separate prompt queue files
-- Subtasks of project roadmap items
+Queued prompts live in `$ACA_DATA/tasks/queue/` - a subdirectory of tasks, not separate from them.
 
 ## Acceptance Criteria
 
@@ -118,12 +116,12 @@ TBD - options:
 
 ## Design Decisions
 
-### Storage: `$ACA_DATA/queue/`
+### Storage: `$ACA_DATA/tasks/queue/`
 
-Dedicated directory for prompt files. Separate from tasks - prompts are executable work units, not tracking items.
+Queued prompts are tasks, so they live under `tasks/`. The `queue/` subdirectory distinguishes enriched prompts from raw inbox items.
 
 ```
-$ACA_DATA/queue/
+$ACA_DATA/tasks/queue/
 ├── 20251227-143022-merge-enforcement-specs.md
 ├── 20251227-151045-dashboard-session-identity.md
 └── ...
@@ -222,6 +220,5 @@ Prompt 3: "Test across sessions"
 
 ## Non-Goals
 
-- Replacing task system (prompts complement tasks)
 - Real-time capture feedback (async is acceptable)
 - Complex prioritization logic (simple queue first)

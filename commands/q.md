@@ -26,7 +26,7 @@ permalink: commands/q
 ## Execution
 
 ```
-Skill(skill="tasks", args="create inbox '$ARGUMENTS'")
+Skill(skill="tasks", args="create queue '$ARGUMENTS'")
 ```
 
 Or if the tasks skill isn't available:
@@ -36,12 +36,12 @@ Task(
   subagent_type="general-purpose",
   model="haiku",
   description="Queue task",
-  prompt="Create a task file in $ACA_DATA/tasks/inbox/ for: $ARGUMENTS
+  prompt="Create a task file in $ACA_DATA/tasks/queue/ for: $ARGUMENTS
 
 Use this format:
 ---
 title: [extracted title]
-status: pending
+status: queued
 created: [today's date]
 source: /q command
 ---
@@ -68,7 +68,7 @@ $ARGUMENTS
 
 When ready to execute a queued task:
 
-1. Review tasks in `$ACA_DATA/tasks/inbox/`
+1. Review tasks in `$ACA_DATA/tasks/queue/`
 2. Run `/do [task description]` to execute
 
 ## Examples

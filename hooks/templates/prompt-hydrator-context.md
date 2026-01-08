@@ -2,18 +2,10 @@
 name: prompt-hydrator-context
 title: Prompt Hydrator Context Template
 category: template
-description: Template written to temp file by UserPromptSubmit hook for prompt-hydrator subagent.
+description: |
+  Template written to temp file by UserPromptSubmit hook for prompt-hydrator subagent.
+  Variables: {prompt} (user prompt), {session_context} (recent prompts, tools, tasks)
 ---
-
-# Prompt Hydrator Context Template
-
-This template is written to a temp file by the UserPromptSubmit hook.
-The prompt-hydrator subagent reads this file to get full context.
-
-Variables:
-
-- `{prompt}` - Full user prompt
-- `{session_context}` - Recent prompts, active skill, TodoWrite state
 
 # Prompt Hydration Request
 

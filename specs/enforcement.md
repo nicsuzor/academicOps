@@ -67,17 +67,6 @@ How the aops framework influences agent behavior. We cannot force compliance - o
 - No immediate consequence
 - Helpful instinct to appear competent
 
-## Enforcement Levels
-
-| Level | Name                  | Mechanism                             | Example                                         |
-| ----- | --------------------- | ------------------------------------- | ----------------------------------------------- |
-| 0     | Convention            | Documented, no checking               | "Skills should be invoked"                      |
-| 1     | Detection             | Logs violations, doesn't prevent      | Session transcript analysis                     |
-| 2     | Soft Gate             | Injects warning, agent can proceed    | [[specs/prompt-hydration]] suggests skills      |
-| 2.5   | JIT Audit             | Haiku compliance check at checkpoints | Periodic drift detection, intervention priority |
-| 3     | Observable Checkpoint | Creates visible artifact              | TodoWrite, Plan Mode                            |
-| 4     | Hard Gate             | Blocks action                         | Pre-commit hooks, required approval             |
-
 ## Layer Defense Model
 
 No single layer is reliable. We combine:
@@ -150,18 +139,6 @@ PostToolUse hooks can detect patterns:
 ### Layer 6: User Habits
 
 User asking "show me the evidence" is the most effective enforcement.
-
-## Axiom → Enforcement Mapping
-
-For detailed mechanism descriptions and selection guidance, see [[ENFORCEMENT|docs/ENFORCEMENT.md]].
-
-| Axiom                     | Current Level | Mechanism                      |
-| ------------------------- | ------------- | ------------------------------ |
-| #1 Categorical Imperative | 2             | Framework skill, intent router |
-| #7 Fail-Fast (Agents)     | 0             | Convention only                |
-| #15 Verify First          | 2-3           | TodoWrite, /advocate           |
-| #22 Acceptance Criteria   | 2             | Intent router guidance         |
-| #23 Plan-First            | 3             | Plan Mode                      |
 
 ## Verification: The Top Failure Pattern
 

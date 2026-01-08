@@ -983,3 +983,407 @@ class TestCleanPromptExtraction:
         assert "<command" not in context, "Should strip all XML markup"
         assert "agent-notification" not in context, "Should filter notifications"
         assert "xyz123" not in context, "Should not include agent IDs"
+
+
+class TestContextExtractionFailFast:
+    """Tests for fail-fast behavior in context extraction.
+
+    Per AXIOM #7: No defaults, fallbacks, workarounds, silent failures.
+    """
+
+    def test_nonexistent_file_returns_empty(self, tmp_path: Path) -> None:
+        """Given a non-existent file, return empty string (not an error)."""
+        from lib.session_reader import extract_router_context
+
+        missing_file = tmp_path / "does-not-exist.jsonl"
+        result = extract_router_context(missing_file)
+
+        assert result == "", "Non-existent file should return empty string"
+
+    def test_parsing_error_raises_exception(self, tmp_path: Path) -> None:
+        """Given a file that exists but has catastrophic parse error, raise exception.
+
+        Per AXIOM #7: Fail-fast on real errors, don't swallow them.
+        Individual malformed lines are gracefully skipped, but if the entire
+        file processing fails, that should raise.
+        """
+        from lib.session_reader import extract_router_context
+
+        # Create a file that will cause processing to fail
+        bad_file = tmp_path / "unreadable.jsonl"
+        bad_file.write_text("valid start\n")
+        bad_file.chmod(0o000)  # Make unreadable
+
+        try:
+            # Should raise PermissionError, not silently return ""
+            with pytest.raises(PermissionError):
+                extract_router_context(bad_file)
+        finally:
+            bad_file.chmod(0o644)  # Restore for cleanup
+
+
+class TestCustodietContextFormat:
+    """Tests for custodiet audit file context format.
+
+    Verifies that context extraction produces clean output for custodiet.
+    """
+
+    def test_no_duplicate_session_context_headers(self, tmp_path: Path) -> None:
+        """Given valid session, context should have exactly ONE ## Session Context header.
+
+        BUG FIX: Previously the template, wrapper function, and extraction all
+        added their own headers, resulting in TRIPLE duplication.
+        """
+        from lib.session_reader import extract_router_context
+
+        session_file = tmp_path / "session.jsonl"
+        entries = [
+            _create_user_entry("test prompt one", offset=0),
+            _create_assistant_entry(offset=1),
+            _create_user_entry("test prompt two", offset=10),
+            _create_assistant_entry(offset=11),
+        ]
+
+        with session_file.open("w") as f:
+            for entry in entries:
+                f.write(json.dumps(entry) + "\n")
+
+        context = extract_router_context(session_file)
+
+        # Count occurrences of the header
+        header_count = context.count("## Session Context")
+        assert header_count == 1, (
+            f"Should have exactly ONE '## Session Context' header, "
+            f"got {header_count}. Context:\n{context}"
+        )
+
+    def test_context_not_empty_with_valid_session(self, tmp_path: Path) -> None:
+        """Given valid session data, context should NOT be empty.
+
+        This catches the bug where context extraction silently returned ""
+        due to swallowed exceptions.
+        """
+        from lib.session_reader import extract_router_context
+
+        session_file = tmp_path / "session.jsonl"
+        entries = [
+            _create_user_entry("implement the feature", offset=0),
+            _create_assistant_entry(offset=1),
+            _create_todowrite_entry(
+                todos=[
+                    {
+                        "content": "task one",
+                        "status": "in_progress",
+                        "activeForm": "Working",
+                    },
+                ],
+                offset=5,
+            ),
+        ]
+
+        with session_file.open("w") as f:
+            for entry in entries:
+                f.write(json.dumps(entry) + "\n")
+
+        context = extract_router_context(session_file)
+
+        # Context must NOT be empty
+        assert context, "Context should not be empty for valid session"
+        assert "implement the feature" in context.lower(), "Should contain user prompt"
+        assert "task" in context.lower(), "Should contain todo info"
+
+    def test_context_structure_for_custodiet(self, tmp_path: Path) -> None:
+        """Verify context has expected structure for custodiet to parse.
+
+        Custodiet needs:
+        - Session Context section with recent prompts
+        - Tasks line if TodoWrite was used
+        - Clean formatting without duplicate headers
+        """
+        from lib.session_reader import extract_router_context
+
+        session_file = tmp_path / "session.jsonl"
+        entries = [
+            _create_user_entry("fix the authentication bug", offset=0),
+            _create_assistant_entry(offset=1),
+            _create_skill_invocation_entry("python-dev", offset=5),
+            _create_todowrite_entry(
+                todos=[
+                    {
+                        "content": "Debug issue",
+                        "status": "completed",
+                        "activeForm": "Done",
+                    },
+                    {
+                        "content": "Fix code",
+                        "status": "in_progress",
+                        "activeForm": "Fixing",
+                    },
+                    {
+                        "content": "Add tests",
+                        "status": "pending",
+                        "activeForm": "Testing",
+                    },
+                ],
+                offset=10,
+            ),
+            _create_user_entry("now verify the fix works", offset=20),
+            _create_assistant_entry(offset=21),
+        ]
+
+        with session_file.open("w") as f:
+            for entry in entries:
+                f.write(json.dumps(entry) + "\n")
+
+        context = extract_router_context(session_file)
+
+        # Verify structure
+        assert context.startswith("## Session Context"), "Should start with header"
+        assert "Recent prompts:" in context, "Should have prompts section"
+        assert "authentication bug" in context.lower(), "Should contain first prompt"
+        assert "verify the fix" in context.lower(), "Should contain recent prompt"
+        assert "python-dev" in context.lower(), "Should show active skill"
+        assert (
+            "1 completed" in context or "completed" in context.lower()
+        ), "Should show task counts"
+        assert (
+            "1 in_progress" in context or "in_progress" in context
+        ), "Should show in_progress"
+
+        # No duplicate headers
+        assert (
+            context.count("## Session Context") == 1
+        ), "Should have exactly one header"
+
+
+class TestContextIncludesAgentActivity:
+    """Tests that context includes agent activity, not just user prompts.
+
+    CRITICAL: For custodiet/hydrator to work, they need to see what the AGENT
+    has been doing, not just what the user asked. Without agent activity,
+    compliance checking is impossible.
+    """
+
+    def _create_tool_use_entry(
+        self, tool_name: str, tool_input: dict, offset: int = 0
+    ) -> dict:
+        """Create an assistant entry with a tool_use block."""
+        return {
+            "type": "assistant",
+            "uuid": f"assistant-tool-{offset}",
+            "timestamp": _make_timestamp(offset),
+            "message": {
+                "content": [
+                    {
+                        "type": "tool_use",
+                        "id": f"tool-{offset}",
+                        "name": tool_name,
+                        "input": tool_input,
+                    }
+                ]
+            },
+        }
+
+    def _create_tool_result_entry(self, offset: int = 0) -> dict:
+        """Create a user entry with tool_result (response to tool call)."""
+        return {
+            "type": "user",
+            "uuid": f"tool-result-{offset}",
+            "timestamp": _make_timestamp(offset),
+            "message": {
+                "content": [
+                    {
+                        "type": "tool_result",
+                        "tool_use_id": f"tool-{offset}",
+                        "content": "Tool executed successfully",
+                    }
+                ]
+            },
+        }
+
+    def test_context_includes_recent_tool_calls(self, tmp_path: Path) -> None:
+        """Context should show what tools the agent has used recently.
+
+        This is essential for custodiet to detect scope drift - if user asked
+        to "fix a bug" but agent is calling Write on unrelated files, that's
+        ultra vires behavior that should be caught.
+        """
+        from lib.session_reader import extract_router_context
+
+        session_file = tmp_path / "session.jsonl"
+        entries = [
+            _create_user_entry("fix the login bug", offset=0),
+            _create_assistant_entry(offset=1),
+            # Agent reads a file
+            self._create_tool_use_entry(
+                "Read", {"file_path": "/src/auth.py"}, offset=5
+            ),
+            self._create_tool_result_entry(offset=6),
+            # Agent edits a file
+            self._create_tool_use_entry(
+                "Edit",
+                {"file_path": "/src/auth.py", "old_string": "bug", "new_string": "fix"},
+                offset=10,
+            ),
+            self._create_tool_result_entry(offset=11),
+            # Agent runs tests
+            self._create_tool_use_entry(
+                "Bash", {"command": "uv run pytest tests/"}, offset=15
+            ),
+            self._create_tool_result_entry(offset=16),
+        ]
+
+        with session_file.open("w") as f:
+            for entry in entries:
+                f.write(json.dumps(entry) + "\n")
+
+        context = extract_router_context(session_file)
+
+        # Context MUST show recent tool calls
+        assert "Read" in context, "Should show Read tool was called"
+        assert "Edit" in context, "Should show Edit tool was called"
+        assert (
+            "Bash" in context or "pytest" in context
+        ), "Should show Bash/test execution"
+
+    def test_context_shows_files_touched(self, tmp_path: Path) -> None:
+        """Context should indicate which files the agent has interacted with.
+
+        Essential for detecting if agent is working on files unrelated to the task.
+        """
+        from lib.session_reader import extract_router_context
+
+        session_file = tmp_path / "session.jsonl"
+        entries = [
+            _create_user_entry("update the README", offset=0),
+            _create_assistant_entry(offset=1),
+            self._create_tool_use_entry("Read", {"file_path": "README.md"}, offset=5),
+            self._create_tool_result_entry(offset=6),
+            self._create_tool_use_entry(
+                "Edit",
+                {"file_path": "README.md", "old_string": "old", "new_string": "new"},
+                offset=10,
+            ),
+            self._create_tool_result_entry(offset=11),
+        ]
+
+        with session_file.open("w") as f:
+            for entry in entries:
+                f.write(json.dumps(entry) + "\n")
+
+        context = extract_router_context(session_file)
+
+        # Should show file paths that were touched
+        assert "README" in context, "Should show README.md was accessed"
+
+    def test_context_captures_conversation_flow(self, tmp_path: Path) -> None:
+        """Context should capture user-agent dialog, not just user prompts.
+
+        The hydrator and custodiet need to understand what has happened in the
+        conversation, including agent responses and actions.
+        """
+        from lib.session_reader import extract_router_context
+
+        session_file = tmp_path / "session.jsonl"
+        entries = [
+            _create_user_entry("help me debug the error", offset=0),
+            # Agent responds with text
+            {
+                "type": "assistant",
+                "uuid": "a1",
+                "timestamp": _make_timestamp(5),
+                "message": {
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": "I'll investigate the error. Let me check the logs.",
+                        }
+                    ]
+                },
+            },
+            # Agent uses a tool
+            self._create_tool_use_entry(
+                "Bash", {"command": "cat /var/log/error.log"}, offset=10
+            ),
+            self._create_tool_result_entry(offset=11),
+            # User follow-up
+            _create_user_entry("what did you find?", offset=20),
+            # Agent responds
+            {
+                "type": "assistant",
+                "uuid": "a2",
+                "timestamp": _make_timestamp(25),
+                "message": {
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": "Found a NullPointerException in the auth module.",
+                        }
+                    ]
+                },
+            },
+        ]
+
+        with session_file.open("w") as f:
+            for entry in entries:
+                f.write(json.dumps(entry) + "\n")
+
+        context = extract_router_context(session_file)
+
+        # Should show BOTH user prompts
+        assert "debug the error" in context.lower(), "Should show first user prompt"
+        assert "what did you find" in context.lower(), "Should show second user prompt"
+
+        # Should show agent activity (tool calls at minimum)
+        assert (
+            "Bash" in context or "log" in context
+        ), "Should show agent investigated logs"
+
+    def test_context_not_empty_for_active_session(self, tmp_path: Path) -> None:
+        """A session with real activity should produce substantial context.
+
+        Empty context is a FAILURE - it means custodiet/hydrator have nothing
+        to work with.
+        """
+        from lib.session_reader import extract_router_context
+
+        session_file = tmp_path / "session.jsonl"
+        entries = [
+            _create_user_entry("implement the feature", offset=0),
+            _create_assistant_entry(offset=1),
+            self._create_tool_use_entry("Read", {"file_path": "src/main.py"}, offset=5),
+            self._create_tool_result_entry(offset=6),
+            self._create_tool_use_entry("Glob", {"pattern": "**/*.py"}, offset=10),
+            self._create_tool_result_entry(offset=11),
+            self._create_tool_use_entry(
+                "Edit", {"file_path": "src/main.py"}, offset=15
+            ),
+            self._create_tool_result_entry(offset=16),
+            _create_user_entry("now run the tests", offset=20),
+            _create_assistant_entry(offset=21),
+            self._create_tool_use_entry(
+                "Bash", {"command": "uv run pytest"}, offset=25
+            ),
+            self._create_tool_result_entry(offset=26),
+        ]
+
+        with session_file.open("w") as f:
+            for entry in entries:
+                f.write(json.dumps(entry) + "\n")
+
+        context = extract_router_context(session_file)
+
+        # Context should be SUBSTANTIAL for a real session
+        assert len(context) > 100, (
+            f"Context too short ({len(context)} chars) for active session. "
+            f"Got:\n{context}"
+        )
+
+        # Should have multiple types of information
+        assert "Recent prompts:" in context, "Should have user prompts section"
+        # At least one of these should be present to show agent activity
+        has_tool_info = any(
+            x in context
+            for x in ["Read", "Edit", "Bash", "Glob", "Tool", "Recent tools"]
+        )
+        assert has_tool_info, f"Should show agent tool activity. Got:\n{context}"

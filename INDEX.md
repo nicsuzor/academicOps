@@ -577,8 +577,9 @@ $ACA_DATA/
 ├── ACCOMMODATIONS.md            # Work style (binding)
 ├── CORE.md                      # User context, tools
 ├── STYLE*.md                    # Writing style
-├── tasks/                       # Task data (active/, completed/, deferred/)
-├── queue/                       # Prompt queue (executable prompts, chained)
+├── tasks/                       # Task data
+│   ├── inbox/                   # Incoming tasks from email etc
+│   ├── queue/                   # Promt queue (executable prompts, chained)
 │   └── done/                    # Completed prompts (archived)
 └── projects/aops/
     ├── VISION.md                # End state

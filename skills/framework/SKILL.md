@@ -198,16 +198,19 @@ Each convention traces to its source axiom. If a convention lacks derivation, it
 
 Each piece of information exists in exactly ONE location:
 
-| Information       | Authoritative Location        |
-| ----------------- | ----------------------------- |
-| Principles        | `$AOPS/AXIOMS.md`             |
-| File tree         | `$AOPS/INDEX.md`              |
-| Feature inventory | `$AOPS/README.md`             |
-| User context      | `$ACA_DATA/CORE.md`           |
-| Work style        | `$ACA_DATA/ACCOMMODATIONS.md` |
-| Framework vision  | `$AOPS/VISION.md`             |
-| Framework status  | `$AOPS/ROADMAP.md`            |
-| Workflows         | `$AOPS/WORKFLOWS.md`          |
+| Information           | Authoritative Location        |
+| --------------------- | ----------------------------- |
+| Principles            | `$AOPS/AXIOMS.md`             |
+| File tree             | `$AOPS/INDEX.md`              |
+| Feature inventory     | `$AOPS/README.md`             |
+| User context          | `$ACA_DATA/CORE.md`           |
+| Work style            | `$ACA_DATA/ACCOMMODATIONS.md` |
+| Framework vision      | `$AOPS/VISION.md`             |
+| Framework status      | `$AOPS/ROADMAP.md`            |
+| Workflows             | `$AOPS/WORKFLOWS.md`          |
+| Enforcement (current) | `$AOPS/RULES.md`              |
+| Enforcement (HOW)     | `$AOPS/docs/ENFORCEMENT.md`   |
+| Enforcement (WHY)     | `$AOPS/specs/enforcement.md`  |
 
 **Pattern**: Reference, don't repeat.
 
@@ -492,9 +495,6 @@ If you discovered a new pattern:
 
 ## After Framework Sessions
 
-**VISION.md and ROADMAP.md ARE the framework's memory.** Without them being current, agents cannot understand what the framework is, what's working, or what needs attention.
+After significant work, check if updates needed:
 
-After any significant framework work, check if updates are needed:
-
-- **VISION.md**: End state. Update when direction changes (rare).
-- **ROADMAP.md**: Current status. Update after features added, bugs fixed, or blockers identified.
+- **VISION.md**: End state (rare) | **ROADMAP.md**: Current status (features/bugs/blockers)

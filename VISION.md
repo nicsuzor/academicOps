@@ -11,7 +11,7 @@ tags:
 
 # academicOps Vision
 
-**Last updated**: 2025-12-30
+**Last updated**: 2026-01-08
 
 > **Why this file matters**: Agents have no persistent memory. VISION.md defines the end state - what we're building and why. Update when fundamental direction changes (rare). Keep out: implementation details, current status.
 
@@ -20,11 +20,48 @@ tags:
 An academic support framework for Claude Code. It provides:
 
 1. **Consistent agent behavior** - Principles ([[AXIOMS.md|AXIOMS]]) loaded every session
-2. **Specialized workflows** - [[specs/specs.md|Skills]] for research, writing, task management
-3. **Quality enforcement** - [[hooks/hooks.md|Hooks]] that inject context and verify compliance
+2. **Intelligent routing** - Prompts flow through HYDRATE → ROUTE → ORCHESTRATE pipeline
+3. **Quality enforcement** - Workflows embed appropriate quality gates for each task type
 4. **Knowledge persistence** - Memory server + [[specs/remember-skill.md|remember skill]] for institutional memory
 
 **Scope**: Supports academic work across ALL repositories.
+
+## Core Architecture: Prompt Hydration
+
+Every user prompt is hydrated before execution:
+
+```
+PROMPT → HYDRATE → EXECUTE (following plan)
+```
+
+### HYDRATE (prompt-hydrator agent)
+
+**Purpose**: Transform terse prompt into a complete execution plan
+
+The hydrator receives the user prompt along with session history and memory context, then outputs:
+
+1. **Intent**: What the user actually wants
+2. **Workflow**: Which workflow template applies (question, minor-edit, tdd, batch, qa-proof, plan-mode)
+3. **TodoWrite Plan**: Concrete steps with per-step skill assignments
+4. **Guardrails**: Constraints based on workflow + domain
+
+### Workflow Catalog
+
+| Workflow   | Trigger                       | Quality Gate                   |
+| ---------- | ----------------------------- | ------------------------------ |
+| question   | "?", "how", "what"            | Answer accuracy                |
+| minor-edit | Single file, clear change     | Verification                   |
+| tdd        | New feature, "implement"      | Tests pass                     |
+| batch      | Multiple files, "all", "each" | Per-item + aggregate QA        |
+| qa-proof   | "verify", "check"             | Evidence gathered              |
+| plan-mode  | Framework, infrastructure     | User approval before execution |
+
+### Key Principles
+
+1. **Single decision point** — Hydrator makes all routing/skill decisions upfront
+2. **Skills match per-step** — Each step can invoke its own skill
+3. **Workflows define quality** — Each workflow embeds appropriate CHECKPOINTs
+4. **Agent follows plan** — Main agent executes steps without re-deciding
 
 ## What It Does
 
@@ -43,13 +80,14 @@ An academic support framework for Claude Code. It provides:
 
 ### Enforcement Mechanisms
 
-| What's Enforced          | How                                                 |
-| ------------------------ | --------------------------------------------------- |
-| Principles loaded        | [[hooks/sessionstart_load_axioms.py                 |
-| Skill suggestions        | Prompt Enricher (planned) via UserPromptSubmit hook |
-| Framework delegation     | `FRAMEWORK SKILL CHECKED` token                     |
-| Memory format compliance | pre-commit hooks                                    |
-| File boundaries          | [[specs/framework-skill.md                          |
+| What's Enforced     | How                                               |
+| ------------------- | ------------------------------------------------- |
+| Principles loaded   | SessionStart hook injects AXIOMS, HEURISTICS      |
+| Intent understood   | HYDRATE stage (prompt-hydrator agent)             |
+| Workflow selected   | ROUTE stage (workflow selector)                   |
+| Quality gates met   | ORCHESTRATE stage (workflow-embedded checkpoints) |
+| Drift detected      | custodiet agent (PostToolUse)                     |
+| Knowledge persisted | remember skill (session end)                      |
 
 ## Knowledge Architecture
 
@@ -64,12 +102,16 @@ An academic support framework for Claude Code. It provides:
 ### Information Flow
 
 ```
-Capture → memory server (semantic search) → JIT injection via hooks → Agent action
+Session Start → AXIOMS + HEURISTICS + CORE loaded
+Every Prompt  → HYDRATE (context) → ROUTE (workflow) → ORCHESTRATE (steps)
+Each Step     → Skill matched JIT → Execute → Verify
+Session End   → Knowledge extracted → Memory persisted
 ```
 
-- **Session start**: [[AXIOMS.md|AXIOMS]], [[FRAMEWORK.md|FRAMEWORK]] paths, user context loaded
-- **Every prompt**: Prompt Enricher (planned) suggests relevant skills
-- **On demand**: Memory server search for related knowledge
+- **Session start**: Principles and user context loaded via SessionStart hook
+- **Every prompt**: Three-stage pipeline ensures appropriate handling
+- **Each step**: Skills matched just-in-time based on step's domain
+- **Session end**: Decisions and learnings captured to knowledge base
 
 ## Success Criteria
 
