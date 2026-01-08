@@ -94,149 +94,22 @@ Academic work generates massive information flow:
 
 ### Failed Approaches
 
-**Approach A: Selective Capture** (doesn't work)
-
-- Decide what's "important" at capture time
-- **Problem**: Can't predict future relevance
-- **Problem**: Triage decisions drain cognitive energy
-- **Problem**: Information loss is permanent
-
-**Approach B: Folder Hierarchies** (doesn't work)
-
-- Organize into projects/categories
-- **Problem**: Cross-cutting themes don't fit hierarchies
-- **Problem**: Retrieval requires remembering structure
-- **Problem**: Refactoring is expensive
-
-**Approach C: Proactive Summaries** (doesn't work)
-
-- Generate daily digests, status reports, briefings
-- **Problem**: Information overload - too much to read
-- **Problem**: Wrong detail level - either too shallow or too deep
-- **Problem**: Delivered when NOT needed, missing when needed
+| Approach            | Why It Fails                                                             |
+| ------------------- | ------------------------------------------------------------------------ |
+| Selective Capture   | Can't predict future relevance; triage drains energy; loss is permanent  |
+| Folder Hierarchies  | Cross-cutting themes don't fit; retrieval requires remembering structure |
+| Proactive Summaries | Information overload; wrong detail level; delivered when NOT needed      |
 
 ## Design Principles
 
-### 1. Comprehensive Capture (Everything)
-
-**Principle**: The act of capturing information should require ZERO cognitive judgment about importance or relevance.
-
-**Implementation:**
-
-- Email archives → bmem entities (contacts, projects, events)
-- Session logs → automatically extracted insights
-- Reading notes → atomic observations with relations
-- Meeting notes → structured entities with participants/outcomes
-- Even "trivial" information (lunch discussion, hallway conversation)
-
-**Rationale:**
-
-- Importance is unknowable at capture time
-- Judgment fatigue blocks capture entirely
-- Storage is cheap, cognitive load is expensive
-- Semantic search makes "everything" tractable
-
-**Anti-pattern**: "Is this worth saving?" → If you're asking, save it.
-
-### 2. [[Just-in-Time]] Delivery (Never Proactive)
-
-**Principle**: Information surfaces in response to need, not anticipation of need.
-
-**Implementation:**
-
-- Query-driven retrieval: "What do I know about X?"
-- Context-triggered: Working in project Y → relevant history surfaces
-- Abstraction-aware: Answer at the level asked
-  - "Who's John?" → Contact info
-  - "What's my history with John?" → Collaborations, papers, meetings
-  - "What did John say about copyright?" → Specific observations
-- Temporal filtering: Prefer recent by default, historical when explicitly sought
-
-**Rationale:**
-
-- User attention is scarce - every proactive message has cost
-- Relevance depends on current context, which system can't predict
-- Just-in-time = zero cost when not needed, immediate value when needed
-
-**Anti-pattern**: Daily digests, status emails, "you might want to know..." notifications
-
-### 3. [[Semantic Search|Semantic Retrieval]] (Not Structural)
-
-**Principle**: Find by meaning, not by location or filename.
-
-**Implementation:**
-
-- Semantic search via embeddings
-- [[wikilinks|WikiLinks]] for explicit relations
-- Tags for faceted filtering
-- Entity types for structural queries
-- Observations for atomic facts
-
-**Rationale:**
-
-- Humans think in concepts, not file paths
-- Same concept spans multiple projects/years
-- Relationships more important than categories
-
-**Anti-pattern**: "Where did I save that?" → Search should make location irrelevant
-
-### 4. Temporal Context (Recency vs History)
-
-**Principle**: Default to recent, but make historical accessible.
-
-**Implementation:**
-
-- Metadata markers: `status: completed`, `active_period: 2006-2009`, `relevance: current`
-- Temporal tags: `#historical-2006-2009`, `#current-work`
-- Explicit historical queries: "Creative Commons work" returns archived content
-- Current-domain queries: "copyright" returns recent ML work, not CC archives
-
-**Rationale:**
-
-- Most queries are about current work
-- Historical context valuable when explicitly sought
-- Temporal drift: "copyright" meant different things in 2006 vs 2024
-
-**Success criteria**: Archive search protocol (see `archive-search-protocol.md`)
-
-### 5. Incremental Context Building (Depth on Demand)
-
-**Principle**: Start shallow, go deep only when needed.
-
-**Implementation:**
-
-- Level 0: Entity exists (title, permalink)
-- Level 1: Context section (1-2 sentence summary)
-- Level 2: Observations (5-10 atomic facts)
-- Level 3: Relations (how this connects to other entities)
-- Level 4: Full content (detailed notes, full history)
-
-**Rationale:**
-
-- Most queries need surface-level information
-- Deep dives are rare but must be possible
-- Skimmability reduces cognitive load
-
-**Anti-pattern**: Every answer includes full history → Information overload
-
-### 6. Compounding Value Over Time
-
-**Principle**: Knowledge base gets MORE valuable as it grows, not less.
-
-**Implementation:**
-
-- Semantic connections emerge from quantity
-- Patterns visible only with 10+ years of data
-- Cross-pollination: Old insights inform new work
-- Longitudinal analysis: Track evolution of ideas/collaborations
-
-**Rationale:**
-
-- Archive search protocol prevents pollution
-- Quality metadata enables temporal filtering
-- Comprehensive capture creates compound returns
-
-**Success metric**: Can answer "How has my thinking on X evolved?" across decades
+| # | Principle                                                                     | Implementation                                            | Anti-pattern                                 |
+| - | ----------------------------------------------------------------------------- | --------------------------------------------------------- | -------------------------------------------- |
+| 1 | **Comprehensive Capture**: Zero cognitive judgment on importance              | Email/sessions/notes → entities automatically             | "Is this worth saving?" → If asking, save it |
+| 2 | **[[Just-in-Time]] Delivery**: Surfaces in response to need, not anticipation | Query-driven, context-triggered, abstraction-aware        | Daily digests, "you might want to know..."   |
+| 3 | **[[Semantic Search\|Semantic Retrieval]]**: Find by meaning, not location    | Embeddings + WikiLinks + tags + entity types              | "Where did I save that?"                     |
+| 4 | **Temporal Context**: Default recent, historical when explicit                | Status/period metadata, temporal tags                     | Mixing current with 20-year-old archives     |
+| 5 | **Depth on Demand**: Start shallow, go deep only when needed                  | Levels: title → summary → observations → relations → full | Every answer includes full history           |
+| 6 | **Compounding Value**: More valuable as it grows                              | Semantic connections, patterns across years               | Archive pollution (see protocol)             |
 
 ## Architecture Implications
 
@@ -265,7 +138,7 @@ completion_date: YYYY-MM-DD (if completed)
 
 **Semantic structure:**
 
-````markdown
+```markdown
 ## Context
 
 One-paragraph summary - the "Level 1" answer
@@ -308,100 +181,9 @@ One-paragraph summary - the "Level 1" answer
 
 ### Functional Retrieval Tests (MANDATORY)
 
-**These tests MUST pass for retrieval to be considered working. Run via `uv run pytest tests/test_bmem_retrieval.py`**
+**Run via**: `uv run pytest tests/test_bmem_retrieval.py`
 
-#### Test 1: Single-term queries return results
-
-```python
-def test_single_term_returns_results():
-    """Known terms that exist in corpus must return results"""
-    for term in ["workaround", "agent", "framework", "task"]:
-        result = search_notes(term)
-        assert len(result["results"]) > 0, f"'{term}' should return results"
-```
-````
-
-#### Test 2: Two-term queries don't fail catastrophically
-
-```python
-def test_two_term_queries():
-    """Common two-term combinations should return results"""
-    result = search_notes("agent behavior")
-    assert len(result["results"]) > 0
-```
-
-#### Test 3: Multi-term graceful degradation (CRITICAL)
-
-```python
-def test_multi_term_degradation():
-    """Adding terms must NOT cause zero results when subsets match.
-
-    This is the key bug: 'agent subagent behavior lazy workaround bypass'
-    returned 0 results while 'agent behavior' and 'workaround' each
-    returned 10 results. This is unacceptable.
-    """
-    # If individual terms return results...
-    single_results = [
-        search_notes("agent"),
-        search_notes("workaround"),
-        search_notes("bypass")
-    ]
-    any_single_has_results = any(len(r["results"]) > 0 for r in single_results)
-
-    # ...then combining them should NOT return zero
-    combined = search_notes("agent workaround bypass")
-
-    if any_single_has_results:
-        assert len(combined["results"]) > 0, (
-            "Multi-term query returned 0 results but individual terms had matches. "
-            "Search should use OR semantics or fallback to semantic search."
-        )
-```
-
-#### Test 4: Semantic search fallback
-
-```python
-def test_semantic_fallback_for_complex_queries():
-    """When text search fails, semantic search should succeed"""
-    # Complex natural language query
-    text_result = search_notes(
-        "agent subagent behavior lazy workaround bypass",
-        search_type="text"
-    )
-    semantic_result = search_notes(
-        "agent subagent behavior lazy workaround bypass",
-        search_type="semantic"
-    )
-
-    # At least ONE search type must return results for known concepts
-    assert len(text_result["results"]) > 0 or len(semantic_result["results"]) > 0, (
-        "Neither text nor semantic search returned results for known concepts"
-    )
-```
-
-#### Test 5: Search doesn't silently fail
-
-```python
-def test_search_never_silently_fails():
-    """Search must either return results OR raise an error, never silent zero"""
-    # Query with terms that definitely exist in any knowledge base
-    result = search_notes("the")  # Common word
-    # Should either find something or explicitly indicate "no match"
-    # Empty results for common terms indicates broken search
-    assert len(result["results"]) > 0 or "no_results_reason" in result
-```
-
-#### Test 6: Recent activity returns content
-
-```python
-def test_recent_activity_not_empty():
-    """recent_activity should return content if knowledge base has data"""
-    result = recent_activity(timeframe="30d")
-    # If KB has been used in last 30 days, should have results
-    # Empty result when KB is active = broken
-```
-
-**Failure mode documentation**: If any test fails, the search is NOT fit for purpose. Do not rationalize failures - fix the underlying search implementation or escalate to bmem maintainers.
+Tests verify: single-term queries, multi-term graceful degradation, semantic search fallback, and no silent failures. If any test fails, search is NOT fit for purpose - fix the implementation, don't rationalize failures.
 
 ### System Success
 
@@ -418,135 +200,23 @@ def test_recent_activity_not_empty():
 - User trusts that captured information will be findable
 - Cognitive load measurably reduced (fewer "lost task" incidents)
 
-## Evolution Path
+## Key Tensions (Resolved)
 
-### Stage 1: Manual Capture with bmem (Current)
-
-- User creates entities manually
-- Semantic search via MCP
-- WikiLinks for relations
-- **Blocker**: Capture friction too high
-
-### Stage 2: Automated Extraction (In Progress)
-
-- Email archives → bmem entities
-- Session logs → insight extraction
-- Automated observation generation
-- **Goal**: Zero-friction capture
-
-### Stage 3: Context-Aware Retrieval (Future)
-
-- Queries understand working context
-- "Recent" auto-filters by current project dates
-- Proactive archival tagging for aging content
-- **Goal**: Just-in-time precision
-
-### Stage 4: Insight Discovery (Future)
-
-- Pattern detection across years
-- "Your work on X connects to Y in ways you haven't noticed"
-- Longitudinal evolution tracking
-- **Goal**: Compounding value realization
-
-### Stage 5: Proactive Assistance (Far Future)
-
-- System anticipates _specific_ needs (not general summaries)
-- "You're meeting with John - here's your collaboration history"
-- "Writing about copyright - relevant: your 2008 CC work + 2024 ML work"
-- **Constraint**: Still just-in-time, never ambient noise
-
-## Design Tensions and Resolutions
-
-### Tension 1: Everything vs Noise
-
-**Problem**: Comprehensive capture creates massive corpus. How to avoid search result overload?
-
-**Resolution**:
-
-- Archival metadata (temporal context)
-- Semantic ranking (relevance over recency when appropriate)
-- Abstraction-aware responses (shallow by default)
-- Protocol: Archive search pollution testing
-
-### Tension 2: Historical Preservation vs Current Focus
-
-**Problem**: Want archives accessible but not dominant.
-
-**Resolution**:
-
-- Status/temporal metadata
-- Query interpretation: "copyright" ≠ "historical copyright"
-- Explicit filtering: Can request historical when wanted
-- Protocol: See `archive-search-protocol.md`
-
-### Tension 3: Zero-Friction Capture vs Quality Metadata
-
-**Problem**: Comprehensive tagging is work. How to capture without burden?
-
-**Resolution**:
-
-- Automated extraction (email → entities)
-- Inference from content (LLMs extract observations)
-- Progressive enhancement (add tags as patterns emerge)
-- Not perfect metadata, "good enough" metadata
-
-### Tension 4: Just-in-Time vs Proactive Learning
-
-**Problem**: Sometimes you don't know what you don't know.
-
-**Resolution**:
-
-- Just-in-time ≠ no discovery
-- Exploratory queries: "What do I have about X?"
-- Graph traversal: Follow WikiLinks from known → unknown
-- Proactive only for _specific_ triggers (e.g., opening meeting agenda)
-- NEVER ambient "FYI" notifications
+| Tension                           | Resolution                                                                  |
+| --------------------------------- | --------------------------------------------------------------------------- |
+| Everything vs Noise               | Archival metadata + semantic ranking + abstraction-aware responses          |
+| Historical vs Current             | Status/temporal metadata + query interpretation + explicit filtering        |
+| Zero-Friction vs Quality Metadata | Automated extraction + inference + progressive enhancement                  |
+| Just-in-Time vs Discovery         | Exploratory queries + graph traversal; proactive only for specific triggers |
 
 ## Comparison to Other Approaches
 
-### vs. Zettelkasten
-
-**Similarity**: Atomic notes, WikiLinks, emergent structure
-
-**Difference**:
-
-- Zettelkasten: Curated, high-effort, synthesis-focused
-- bmem: Comprehensive, low-effort, retrieval-focused
-- Zettelkasten: "Notes for thinking"
-- bmem: "External memory for everything"
-
-### vs. Second Brain (Forte)
-
-**Similarity**: Comprehensive capture, digital knowledge base
-
-**Difference**:
-
-- Second Brain: PARA folders, manual curation, progressive summarization
-- bmem: Semantic search, automated extraction, just-in-time retrieval
-- Second Brain: "Organize to retrieve"
-- bmem: "Search to retrieve"
-
-### vs. Logseq / Roam
-
-**Similarity**: Daily notes, WikiLinks, graph navigation
-
-**Difference**:
-
-- Logseq: Chronological primary structure, manual linking
-- bmem: Entity-centric structure, semantic search
-- Logseq: "Daily journal with links"
-- bmem: "Semantic knowledge graph"
-
-### vs. Notion / Databases
-
-**Similarity**: Structured data, relations, queries
-
-**Difference**:
-
-- Notion: Manual schema, hierarchical, GUI-driven
-- bmem: Markdown files, flat structure, search-driven
-- Notion: "Structured database"
-- bmem: "Searchable markdown"
+| Approach             | Similarity                 | Key Difference                                                                     |
+| -------------------- | -------------------------- | ---------------------------------------------------------------------------------- |
+| Zettelkasten         | Atomic notes, WikiLinks    | Zettelkasten is curated/synthesis-focused; bmem is comprehensive/retrieval-focused |
+| Second Brain (Forte) | Comprehensive capture      | PARA folders vs semantic search; "organize to retrieve" vs "search to retrieve"    |
+| Logseq/Roam          | Daily notes, WikiLinks     | Chronological vs entity-centric; manual linking vs semantic search                 |
+| Notion               | Structured data, relations | Manual schema/GUI vs flat markdown/search-driven                                   |
 
 ## Key Insights
 
@@ -572,3 +242,4 @@ def test_recent_activity_not_empty():
    - With proper metadata and search
    - Pollution is solvable (see protocol)
    - Longitudinal patterns emerge only with comprehensive history
+```

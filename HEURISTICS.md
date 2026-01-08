@@ -208,6 +208,17 @@ When a test fails during verification, agents MUST report failure and STOP. Agen
 
 Use headings for structure, not horizontal lines (`---`, `***`, `___`). Horizontal lines are visual noise. Enforced by markdownlint at pre-commit.
 
+## H40: Optimize for Conciseness
+
+Long files harm both humans and agents. Invest in keeping things short.
+
+- **Thresholds**: ≤300 lines for instructions, ≤500 lines for references
+- **Rationale**: 300 lines ≈ 12K tokens (fits minimal context budget); 500 allows richer reference content
+- **Actions**: Remove content not useful for target audience; link don't repeat; shorten verbose explanations
+- **Exceptions**: Document in audit log with justification if threshold cannot be met
+
+"I apologize for the length of this letter; I didn't have time to make it shorter." — Blaise Pascal
+
 ## Revision Protocol
 
 - **Strengthen/Weaken**: Add observation to GitHub Issue (label: `learning`)

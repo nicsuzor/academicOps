@@ -278,6 +278,45 @@ From LOG.md 2025-11-22 "Overnight Autonomous Processing Failed":
 
 **Mitigation**: Command reports estimated context usage and warns if batch is large. Does NOT attempt cross-session persistence (that's future infrastructure work).
 
+### Multi-Session Checkpoint Pattern
+
+For large operations (100+ files), use manual checkpointing across sessions:
+
+**Pattern**: Checkpoint-Resume Batch Processing
+
+```
+Session 1: Process batch 1 (files 1-30)
+  - /parallel-batch processes ~30 files with 4-8 subagents
+  - Commit checkpoint: "batch-1: [description]"
+  - Update tracking file (e.g., .aops/batch-audit/tracking.jsonl)
+
+Session 2: Process batch 2 (files 31-60)
+  - Read tracking file, identify unprocessed files
+  - /parallel-batch processes next ~30 files
+  - Commit checkpoint: "batch-2: [description]"
+
+... continue until all files processed ...
+
+Final Session: Aggregate QA
+  - Run /audit skill to verify consistency
+  - Generate metrics from tracking file
+```
+
+**Tracking file schema** (JSONL, one object per line):
+
+```json
+{
+  "file": "path/to/file.md",
+  "batch": 1,
+  "status": "complete",
+  "timestamp": "..."
+}
+```
+
+**Status values**: `pending`, `in_progress`, `complete`, `skipped`, `reverted`, `exception`
+
+This pattern enables large batch operations while respecting single-session limits. The tracking file provides resumability and audit trail.
+
 ## Integration Test Design
 
 ### Test Setup
