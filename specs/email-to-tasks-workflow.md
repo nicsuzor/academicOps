@@ -392,29 +392,6 @@ Present summary to user
 - Phase 3-4: Disable MCP backend (fall back to scripts), or disable entire skill
 - No data loss in any rollback scenario (tasks already created remain)
 
-## Timeline Estimate
-
-**Phase 1-2 (Scripts backend, no MCP dependency)**:
-
-- **Design and specification**: 2 hours (DONE)
-- **Skill documentation**: 2-3 hours
-- **Integration test development**: 2-3 hours
-- **Testing with real data**: 2-3 hours
-- **Refinement based on testing**: 2-3 hours
-- **Documentation**: 1-2 hours
-- **Total Phase 1-2**: 11-16 hours
-
-**Phase 3 (MCP migration, when ready)**:
-
-- **Backend abstraction implementation**: 1-2 hours
-- **Side-by-side testing**: 2-3 hours
-- **Migration validation**: 1-2 hours
-- **Total Phase 3**: 4-7 hours
-
-**Grand Total**: 15-23 hours (but Phase 1-2 deployable independently)
-
-**Confidence level**: High for Phase 1-2 (scripts exist, bmem exists, Outlook MCP exists). Medium for Phase 3 (depends on Tasks MCP completion).
-
 ## Failure Modes
 
 ### What Could Go Wrong?
@@ -494,38 +471,6 @@ Present summary to user
 - [ ] How to improve bmem context for better matching
 - [ ] Future enhancements (calendar integration, email archiving)
 
-## Risks and Mitigations
-
-**Risk 1**: Categorization quality too low (too many manual corrections)
-
-- **Likelihood**: Medium
-- **Impact**: High (defeats purpose if manual work remains)
-- **Mitigation**: Start with conservative thresholds (high-confidence only), expand as we validate; use bmem semantic search rather than keyword matching; collect correction data to improve
-
-**Risk 2**: Email action extraction misses nuanced requests
-
-- **Likelihood**: Medium
-- **Impact**: Medium (tasks not captured)
-- **Mitigation**: Err on side of over-extraction, user can delete easier than recreate; prompt engineering for action detection; use bmem to understand context
-
-**Risk 3**: Workflow too slow (multiple MCP calls per email)
-
-- **Likelihood**: Low
-- **Impact**: Medium (user waits too long)
-- **Mitigation**: Batch operations where possible, parallel MCP calls, acceptable latency is ~5-10 seconds for full email check
-
-**Risk 4**: Task scripts format inconsistency blocks workflow
-
-- **Likelihood**: Low (scripts already migrated to .md format)
-- **Impact**: Medium (would need to fix scripts first)
-- **Mitigation**: Validate task_add.py works with bmem format before starting workflow implementation; abstraction layer handles any format quirks
-
-**Risk 5**: Backend switching adds complexity
-
-- **Likelihood**: Low (abstraction is simple: try MCP, else scripts)
-- **Impact**: Low (minimal code, mostly documentation)
-- **Mitigation**: Start documentation-only (agent tries both), add code wrapper only if needed
-
 ## Open Questions
 
 1. Should skill ask for confirmation before creating tasks, or auto-create and notify?
@@ -555,15 +500,3 @@ Present summary to user
 - [ ] Monitoring in place and working
 - [ ] Rollout plan executed successfully
 - [ ] Framework ROADMAP.md updated with progress
-
-## Post-Implementation Review
-
-[After 2 weeks of production use]
-
-**What worked well**: [To be completed after deployment]
-
-**What didn't work**: [To be completed after deployment]
-
-**What we learned**: [To be completed after deployment]
-
-**Recommended changes**: [To be completed after deployment]

@@ -516,26 +516,6 @@ No external scripts needed - this is pure orchestration.
 
 **Rollback plan**: Remove command file, revert to ad-hoc parallel spawning
 
-## Risks and Mitigations
-
-**Risk 1**: Command prompt too complex for reliable parsing
-
-- **Likelihood**: Medium
-- **Impact**: Medium (wrong files processed)
-- **Mitigation**: Conservative parsing, confirm file list before processing
-
-**Risk 2**: Subagents don't return structured JSON
-
-- **Likelihood**: Low (with clear prompt)
-- **Impact**: Medium (can't aggregate results)
-- **Mitigation**: Strict return format in prompt, validate responses
-
-**Risk 3**: User overwhelmed by question batches
-
-- **Likelihood**: Low
-- **Impact**: Medium (user frustration)
-- **Mitigation**: Smart defaults, "apply same answer to similar" option
-
 ## Open Questions
 
 1. Should concurrency be user-configurable per invocation or fixed?
