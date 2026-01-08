@@ -273,8 +273,17 @@ def _extract_router_context_impl(transcript_path: Path, max_turns: int) -> str:
     # Reverse to chronological order
     recent_tools = list(reversed(recent_tools))
 
+    # Extract recent agent responses for context
+    agent_responses = _extract_agent_responses(entries, max_turns=3)
+
     # Format output
-    if not recent_prompts and not recent_skill and not todo_counts and not recent_tools:
+    if (
+        not recent_prompts
+        and not recent_skill
+        and not todo_counts
+        and not recent_tools
+        and not agent_responses
+    ):
         return ""
 
     lines = ["## Session Context", ""]
@@ -289,6 +298,12 @@ def _extract_router_context_impl(transcript_path: Path, max_turns: int) -> str:
                 else prompt
             )
             lines.append(f'{i}. "{truncated}"')
+        lines.append("")
+
+    if agent_responses:
+        lines.append("Recent agent responses:")
+        for i, response in enumerate(agent_responses, 1):
+            lines.append(f'{i}. "{response}"')
         lines.append("")
 
     if recent_tools:
@@ -488,6 +503,44 @@ def _extract_tools(entries: list[dict], max_turns: int) -> list[dict[str, Any]]:
                 )
 
     return tools[-max_turns:] if tools else []
+
+
+def _extract_agent_responses(entries: list[dict], max_turns: int = 3) -> list[str]:
+    """Extract recent agent text responses (not tool calls).
+
+    Returns agent text blocks in chronological order, truncated for context efficiency.
+    Used by hydrator and custodiet for understanding agent reasoning/behavior.
+    """
+    responses: list[str] = []
+
+    for entry in reversed(entries):
+        if len(responses) >= max_turns:
+            break
+        if entry.get("type") != "assistant":
+            continue
+
+        message = entry.get("message", {})
+        content = message.get("content", [])
+        if not isinstance(content, list):
+            continue
+
+        # Extract text blocks only (skip tool_use blocks)
+        text_parts = []
+        for block in content:
+            if isinstance(block, dict) and block.get("type") == "text":
+                text = block.get("text", "").strip()
+                if text:
+                    text_parts.append(text)
+
+        if text_parts:
+            combined = " ".join(text_parts)
+            # Truncate to 200 chars for context efficiency
+            if len(combined) > 200:
+                combined = combined[:200] + "..."
+            responses.append(combined)
+
+    # Return in chronological order
+    return list(reversed(responses))
 
 
 def _extract_errors(entries: list[dict], max_turns: int) -> list[dict[str, Any]]:
