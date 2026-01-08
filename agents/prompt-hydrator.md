@@ -57,13 +57,11 @@ mcp__memory__retrieve_memory(query="tasks [prompt topic]", limit=3)
 
 Note: AXIOMS.md and HEURISTICS.md and WORKFLOWS.md are already in the input file - do NOT re-read them. For skill triggers, see [[REMINDERS.md]].
 
-## Step 3: Workflow & Guardrail Selection
+## Step 3: Workflow Selection
 
-Refer to **`WORKFLOWS.md`** for the authoritative definitions of:
+Refer to **`WORKFLOWS.md`** and select the track based on semantic intent (TDD, Batch, etc.).
 
-1. **Workflow Tracks**: Select the track based on semantic intent (TDD, Batch, etc.).
-2. **Guardrails**: Apply the mandatory guardrails for the selected workflow.
-3. **Execution Templates**: Use the `TodoWrite` structure defined in the Workflow Track.
+Return a detailed **Execution Plan** that is appropriate for the selected workflow.
 
 ## Step 4: Per-Step Skill Assignment
 
@@ -80,7 +78,6 @@ Return this EXACT structure:
 
 **Intent**: [what user actually wants, in clear terms]
 **Workflow**: [workflow name] ([quality gate])
-**Guardrails**: [comma-separated list from WORKFLOWS.md]
 
 ### Relevant Context
 
@@ -93,9 +90,9 @@ Return this EXACT structure:
 - **Axiom #[n]**: [name] - [why it applies]
 - **H[n]**: [name] - [why it applies]
 
-### TodoWrite Plan
+### Execution Plan
 
-**IMMEDIATELY call TodoWrite** using the **Execution Template** from `WORKFLOWS.md` appropriate for the selected workflow, adapted to the specific task:
+**IMMEDIATELY call TodoWrite** to LOCK IN this REQUIRED Execution Plan:
 
 ```javascript
 TodoWrite(todos=[

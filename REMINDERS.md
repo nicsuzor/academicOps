@@ -8,10 +8,6 @@ permalink: reminders
 tags: [framework, skills, routing]
 ---
 
-# Skill Triggers & Operational Reminders
-
-Operational guidance for agents. Distinct from [[AXIOMS.md]] (inviolable principles) and [[HEURISTICS.md]] (empirical patterns).
-
 ## Skill Invocation Triggers
 
 When you see these domain signals, invoke the corresponding skill BEFORE starting work.
@@ -88,6 +84,6 @@ Before claiming success:
 
 - **Not principles**: Those are in [[AXIOMS.md]]
 - **Not patterns**: Those are in [[HEURISTICS.md]]
-- **Not procedures**: Those are in skill instructions
+- **Not procedures**: Those are in [[WORKFLOWS.md]]
 
 This file is a quick-reference for skill routing and operational habits.
