@@ -199,18 +199,21 @@ def generate_slug(entries: list, max_words: int = 3) -> str:
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Convert Claude Code JSONL sessions to markdown transcripts",
+        description="Convert Claude Code JSONL or Gemini JSON sessions to markdown transcripts",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
   python claude_transcript.py session.jsonl                    # Generates session_XXX-full.md and session_XXX-abridged.md
+  python claude_transcript.py session.json                     # Generates Gemini transcript
   python claude_transcript.py session.jsonl -o transcript      # Generates transcript-full.md and transcript-abridged.md
   python claude_transcript.py session.jsonl --full-only        # Only full version with tool results
   python claude_transcript.py session.jsonl --abridged-only    # Only abridged version without tool results
         """,
     )
 
-    parser.add_argument("jsonl_file", help="Path to Claude Code JSONL session file")
+    parser.add_argument(
+        "session_file", help="Path to Session file (Claude .jsonl or Gemini .json)"
+    )
     parser.add_argument(
         "-o", "--output", help="Output base name (generates -full.md and -abridged.md)"
     )
@@ -230,16 +233,16 @@ Examples:
     args = parser.parse_args()
 
     # Validate input file
-    jsonl_path = Path(args.jsonl_file)
-    if not jsonl_path.exists():
-        print(f"❌ Error: File not found: {jsonl_path}")
+    session_path = Path(args.session_file)
+    if not session_path.exists():
+        print(f"❌ Error: File not found: {session_path}")
         return 1
 
     # Check if this is a hooks file and find the actual session file
-    if jsonl_path.name.endswith("-hooks.jsonl"):
+    if session_path.name.endswith("-hooks.jsonl"):
         import json
 
-        with open(jsonl_path, "r") as f:
+        with open(session_path, "r") as f:
             first_line = f.readline().strip()
             if first_line:
                 try:
@@ -251,7 +254,7 @@ Examples:
                             print(
                                 f"⚠️  Hooks file provided. Using actual session: {actual_session}"
                             )
-                            jsonl_path = actual_session
+                            session_path = actual_session
                         else:
                             print(
                                 f"❌ Error: Hooks file references missing session: {transcript_path}"
@@ -269,8 +272,10 @@ Examples:
     processor = SessionProcessor()
 
     try:
-        print(f"📝 Processing session: {jsonl_path}")
-        session_summary, entries, agent_entries = processor.parse_jsonl(str(jsonl_path))
+        print(f"📝 Processing session: {session_path}")
+        session_summary, entries, agent_entries = processor.parse_session_file(
+            str(session_path)
+        )
 
         # Generate output base name
         if args.output:
@@ -287,30 +292,64 @@ Examples:
 
             # Get date from first entry timestamp or file mtime
             date_str = None
-            for entry in entries:
-                if hasattr(entry, "message") and entry.message:
-                    ts = entry.message.get("timestamp")
-                    if ts:
-                        try:
-                            date_str = datetime.fromisoformat(
-                                ts.replace("Z", "+00:00")
-                            ).strftime("%Y%m%d")
-                            break
-                        except (ValueError, TypeError):
-                            continue
-            if not date_str:
-                date_str = datetime.fromtimestamp(jsonl_path.stat().st_mtime).strftime(
-                    "%Y%m%d"
-                )
+            if session_path.suffix == ".json":
+                # Try to get timestamp from filename for Gemini: session-YYYY-MM-DDTHH-MM...
+                try:
+                    parts = session_path.stem.split("-")
+                    if len(parts) >= 4:
+                        # 2026-01-08T08
+                        date_part = "".join(parts[1:4])
+                        if date_part.isdigit():
+                            date_str = date_part
+                except Exception:
+                    pass
 
-            # Get short project name from parent directory
-            # e.g., -opt-nic-buttermilk -> buttermilk
-            project = jsonl_path.parent.name
-            project_parts = project.strip("-").split("-")
-            short_project = project_parts[-1] if project_parts else "unknown"
+            if not date_str:
+                for entry in entries:
+                    if entry.timestamp:
+                        date_str = entry.timestamp.strftime("%Y%m%d")
+                        break
+
+                    if hasattr(entry, "message") and entry.message:
+                        ts = entry.message.get("timestamp")
+                        if ts:
+                            try:
+                                date_str = datetime.fromisoformat(
+                                    ts.replace("Z", "+00:00")
+                                ).strftime("%Y%m%d")
+                                break
+                            except (ValueError, TypeError):
+                                continue
+            if not date_str:
+                date_str = datetime.fromtimestamp(
+                    session_path.stat().st_mtime
+                ).strftime("%Y%m%d")
+
+            # Get short project name
+            project = session_path.parent.name
+            if session_path.suffix == ".json":
+                # Gemini structure: hash/chats/session.json
+                # Parent is 'chats', grand-parent is hash.
+                if project == "chats":
+                    hash_dir = session_path.parent.parent.name
+                    short_project = f"gemini-{hash_dir[:6]}"
+                else:
+                    short_project = "gemini"
+            else:
+                # e.g., -opt-nic-buttermilk -> buttermilk
+                project_parts = project.strip("-").split("-")
+                short_project = project_parts[-1] if project_parts else "unknown"
 
             # Get session ID from filename (first 8 chars of UUID)
-            session_id = jsonl_path.stem[:8]
+            # Gemini filenames might have uuid at end
+            session_id = session_path.stem
+            if len(session_id) > 8:
+                if session_id.startswith("session-"):
+                    # session-2026-01-08T08-18-a5234d3e -> a5234d3e
+                    parts = session_id.split("-")
+                    session_id = parts[-1]
+                else:
+                    session_id = session_id[:8]
 
             # Get or generate slug
             slug = args.slug if args.slug else generate_slug(entries)
@@ -329,7 +368,7 @@ Examples:
                 agent_entries,
                 include_tool_results=True,
                 variant="full",
-                source_file=str(jsonl_path.resolve()),
+                source_file=str(session_path.resolve()),
             )
             with open(full_path, "w", encoding="utf-8") as f:
                 f.write(markdown_full)
@@ -346,7 +385,7 @@ Examples:
                 agent_entries,
                 include_tool_results=False,
                 variant="abridged",
-                source_file=str(jsonl_path.resolve()),
+                source_file=str(session_path.resolve()),
             )
             with open(abridged_path, "w", encoding="utf-8") as f:
                 f.write(markdown_abridged)

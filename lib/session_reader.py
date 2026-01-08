@@ -817,11 +817,11 @@ def find_sessions(
 class SessionProcessor:
     """Processes JSONL sessions into structured data."""
 
-    def parse_jsonl(
+    def parse_session_file(
         self, file_path: str | Path
     ) -> tuple[SessionSummary, list[Entry], dict[str, list[Entry]]]:
         """
-        Parse JSONL file into session summary and entries.
+        Parse session file (Claude JSONL or Gemini JSON) into structured data.
 
         Also loads related agent files and hook files.
 
@@ -829,6 +829,145 @@ class SessionProcessor:
             (session_summary, entries, agent_entries)
         """
         file_path = Path(file_path)
+        if file_path.suffix.lower() == ".json":
+            return self._parse_gemini_json(file_path)
+        return self._parse_jsonl_file(file_path)
+
+    def parse_jsonl(
+        self, file_path: str | Path
+    ) -> tuple[SessionSummary, list[Entry], dict[str, list[Entry]]]:
+        """Alias for parse_session_file (backward compatibility)."""
+        return self.parse_session_file(file_path)
+
+    def _parse_gemini_json(
+        self, file_path: Path
+    ) -> tuple[SessionSummary, list[Entry], dict[str, list[Entry]]]:
+        """Parse Gemini JSON session file."""
+        entries: list[Entry] = []
+        try:
+            with open(file_path, encoding="utf-8") as f:
+                data = json.load(f)
+        except (json.JSONDecodeError, OSError):
+            return SessionSummary(uuid=file_path.stem), [], {}
+
+        session_id = data.get("sessionId", file_path.stem)
+        start_time_str = data.get("startTime")
+
+        # Create summary
+        session_summary = SessionSummary(
+            uuid=session_id,
+            summary="Gemini CLI Session",
+            created_at=start_time_str or "",
+        )
+
+        messages = data.get("messages", [])
+        for msg in messages:
+            msg_type = msg.get("type", "unknown")
+            timestamp_str = msg.get("timestamp")
+            timestamp = None
+            if timestamp_str:
+                try:
+                    if timestamp_str.endswith("Z"):
+                        timestamp_str = timestamp_str[:-1] + "+00:00"
+                    timestamp = datetime.fromisoformat(timestamp_str)
+                except (ValueError, TypeError):
+                    pass
+
+            # Map Gemini type to Entry type
+            entry_type = "assistant" if msg_type == "gemini" else "user"
+
+            content_text = msg.get("content", "")
+
+            # Handle tool calls (assistant only)
+            content_blocks = []
+            if content_text:
+                content_blocks.append({"type": "text", "text": content_text})
+
+            tool_calls = msg.get("toolCalls", [])
+            tool_results_to_add = []
+
+            if entry_type == "assistant" and tool_calls:
+                for tool_call in tool_calls:
+                    call_id = tool_call.get("id")
+                    name = tool_call.get("name")
+                    args = tool_call.get("args", {})
+
+                    content_blocks.append(
+                        {"type": "tool_use", "id": call_id, "name": name, "input": args}
+                    )
+
+                    # Extract result for subsequent user entry
+                    result_data = tool_call.get("result", [])
+                    # Result is usually a list of objects, often with functionResponse
+                    # We need to format this for tool_result
+
+                    tool_output = ""
+                    is_error = False
+
+                    if result_data and isinstance(result_data, list):
+                        first_res = result_data[0]
+                        if "functionResponse" in first_res:
+                            resp = first_res["functionResponse"].get("response", {})
+                            if "output" in resp:
+                                tool_output = str(resp["output"])
+                            elif "error" in resp:
+                                tool_output = str(resp["error"])
+                                is_error = True
+                            else:
+                                tool_output = json.dumps(resp)
+                        else:
+                            tool_output = json.dumps(result_data)
+                    elif tool_call.get("status") == "error":
+                        is_error = True
+                        tool_output = (
+                            tool_call.get("resultDisplay") or "Error executing tool"
+                        )
+                    elif tool_call.get("resultDisplay"):
+                        tool_output = tool_call.get("resultDisplay")
+
+                    tool_results_to_add.append(
+                        {
+                            "type": "tool_result",
+                            "tool_use_id": call_id,
+                            "content": tool_output,
+                            "is_error": is_error,
+                        }
+                    )
+
+            # Create main entry
+            entry = Entry(
+                type=entry_type,
+                uuid=msg.get("id", ""),
+                timestamp=timestamp,
+                message={"content": content_blocks if content_blocks else content_text},
+                content={
+                    "content": content_blocks if content_blocks else content_text
+                },  # Fallback
+            )
+            entries.append(entry)
+
+            # Create synthetic user entry for tool results if any
+            if tool_results_to_add:
+                # Use slightly later timestamp to maintain order if needed,
+                # but usually same timestamp is fine as list order is preserved.
+                result_entry = Entry(
+                    type="user",
+                    uuid=f"result-{msg.get('id', '')}",
+                    timestamp=timestamp,
+                    message={"content": tool_results_to_add},
+                    content={"content": tool_results_to_add},
+                )
+                entries.append(result_entry)
+
+        # Hook files shouldn't exist for Gemini yet, but logic is generic if we add support later
+        # Agent entries not supported in Gemini yet
+
+        return session_summary, entries, {}
+
+    def _parse_jsonl_file(
+        self, file_path: Path
+    ) -> tuple[SessionSummary, list[Entry], dict[str, list[Entry]]]:
+        """Parse Claude Code JSONL session file."""
         entries = []
         session_summary = None
         session_uuid = file_path.stem
