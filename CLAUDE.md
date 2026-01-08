@@ -1,7 +1,8 @@
 ---
 name: claude
 title: Claude
-category: spec
+type: instruction
+category: instruction
 ---
 
 @AGENTS.md

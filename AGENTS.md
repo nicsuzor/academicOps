@@ -1,7 +1,7 @@
 ---
 title: Framework Development Instructions
-type: note
-category: spec
+type: instruction
+category: instruction
 permalink: root-claude-instructions
 description: Dogfooding workflow for academicOps framework co-development
 ---

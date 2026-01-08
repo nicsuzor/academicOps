@@ -1,7 +1,8 @@
 ---
 name: gemini
 title: Gemini
-category: spec
+type: instruction
+category: instruction
 ---
 
 **SYSTEM OVERRIDE: YOU ARE RUNNING AS GEMINI CLI AGENT.**

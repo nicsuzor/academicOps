@@ -1,8 +1,8 @@
 ---
 name: heuristics
-category: spec
 title: Heuristics
-type: reference
+type: instruction
+category: instruction
 description: Empirically validated rules that implement axioms.
 permalink: heuristics
 tags: [framework, principles, empirical]

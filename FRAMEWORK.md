@@ -1,8 +1,8 @@
 ---
 name: framework
-category: spec
 title: Framework Paths and Configuration
-type: reference
+type: instruction
+category: instruction
 description: Session-resolved paths and environment configuration. Injected at session start.
 permalink: framework-paths
 tags: [framework, paths, configuration]

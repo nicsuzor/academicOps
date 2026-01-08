@@ -1,8 +1,8 @@
 ---
 name: workflows
-category: spec
 title: Workflow Catalog
-type: reference
+type: instruction
+category: instruction
 description: Workflow templates for prompt hydration. The hydrator selects and interprets these for specific tasks.
 permalink: workflows
 tags: [framework, routing, workflows]

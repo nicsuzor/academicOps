@@ -49,19 +49,20 @@ CATEGORY_RULES: list[tuple[str, str]] = [
     (r".*/references/.*\.md$", "ref"),
     # DOCS files (implementation guides)
     (r"^docs/.*\.md$", "docs"),
-    # SPEC files
+    # Root INSTRUCTION files (injected to agents)
+    (r"^AXIOMS\.md$", "instruction"),
+    (r"^HEURISTICS\.md$", "instruction"),
+    (r"^FRAMEWORK\.md$", "instruction"),
+    (r"^WORKFLOWS\.md$", "instruction"),
+    (r"^CLAUDE\.md$", "instruction"),
+    (r"^AGENTS\.md$", "instruction"),
+    (r"^GEMINI\.md$", "instruction"),
+    # SPEC files (design/status for humans)
     (r"^specs/.*\.md$", "spec"),
-    (r"^AXIOMS\.md$", "spec"),
     (r"^VISION\.md$", "spec"),
-    (r"^HEURISTICS\.md$", "spec"),
     (r"^README\.md$", "spec"),
     (r"^INDEX\.md$", "spec"),
     (r"^ROADMAP\.md$", "spec"),
-    (r"^WORKFLOWS\.md$", "spec"),
-    (r"^FRAMEWORK\.md$", "spec"),
-    (r"^CLAUDE\.md$", "spec"),
-    (r"^AGENTS\.md$", "spec"),
-    (r"^GEMINI\.md$", "spec"),
 ]
 
 # Files to skip (not markdown content files)
