@@ -65,27 +65,103 @@ Use this skill when:
 
 ### Color for Meaning, Not Decoration
 
-- Limit to **4-6 color roles** (e.g., Start/Success, Hooks/Blocks, Skills, Tools, Outcomes)
+- Limit to **4-5 color roles** max - fewer is better
 - Use **contrast ≥ 4.5:1** for text on fills
+- **One dominant color** (60%), **one accent** (30%), **one highlight** (10%)
 - Avoid red-green pairs for accessibility
-- Prefer blue/orange/purple combos
 
-### Recommended Palette
+### Recommended Palettes
+
+**Modern Dark (recommended for most uses)**:
 
 ```
-classDef start fill:#e8f5e9,stroke:#2e7d32,color:#1b5e20
-classDef success fill:#c8e6c9,stroke:#388e3c,color:#1b5e20
-classDef hook fill:#ffebee,stroke:#c62828,color:#b71c1c
-classDef skill fill:#e3f2fd,stroke:#1565c0,color:#0d47a1
-classDef tool fill:#fff3e0,stroke:#ef6c00,color:#e65100
-classDef decision fill:#f3e5f5,stroke:#7b1fa2,color:#4a148c
+classDef default fill:#2d3748,stroke:#4a5568,color:#e2e8f0
+classDef start fill:#276749,stroke:#48bb78,color:#f0fff4,stroke-width:2px
+classDef process fill:#2c5282,stroke:#4299e1,color:#ebf8ff
+classDef decision fill:#6b46c1,stroke:#9f7aea,color:#faf5ff,stroke-width:2px
+classDef error fill:#c53030,stroke:#fc8181,color:#fff5f5
+```
+
+**Clean Light** (for formal documents):
+
+```
+classDef default fill:#f7fafc,stroke:#a0aec0,color:#2d3748
+classDef start fill:#c6f6d5,stroke:#38a169,color:#22543d,stroke-width:2px
+classDef process fill:#e2e8f0,stroke:#718096,color:#2d3748
+classDef decision fill:#e9d8fd,stroke:#805ad5,color:#44337a,stroke-width:2px
+classDef error fill:#fed7d7,stroke:#e53e3e,color:#742a2a
+```
+
+**High Contrast** (accessibility-first):
+
+```
+classDef default fill:#ffffff,stroke:#000000,color:#000000,stroke-width:2px
+classDef start fill:#000000,stroke:#000000,color:#ffffff,stroke-width:3px
+classDef process fill:#ffffff,stroke:#000000,color:#000000,stroke-width:2px
+classDef decision fill:#ffff00,stroke:#000000,color:#000000,stroke-width:3px
+classDef error fill:#ff0000,stroke:#000000,color:#ffffff,stroke-width:2px
+```
+
+### Anti-Pattern: Pastel Soup
+
+**Avoid** charts with 8+ similar pastel colors - they create visual noise without hierarchy:
+
+```
+❌ BAD: 10 different light fills (#e3f2fd, #fff3e0, #fce4ec, #e8f5e9...)
+✅ GOOD: 3-4 distinct colors with clear semantic meaning
 ```
 
 ### Typography
 
-- Choose a legible UI font (Inter, Segoe UI, Roboto, system-ui)
-- Font size 13-16px for screens
-- Use consistent casing (Title Case or Sentence case)
+- Font size **14-16px** for readability
+- **Bold labels** for key nodes (entry/exit points)
+- Consistent casing: Sentence case for labels, CAPS for subgraph titles
+
+## Layout Strategy: Horizontal Space First
+
+**Default assumption**: Charts are too tall. Optimize for horizontal spread.
+
+### Choose Direction Based on Content
+
+| Content Type              | Direction                          | Rationale                            |
+| ------------------------- | ---------------------------------- | ------------------------------------ |
+| Linear process (≤8 steps) | `LR`                               | Reads like a sentence                |
+| Branching/decisions       | `TD`                               | Branches spread horizontally         |
+| Parallel workflows        | `LR` with `direction TB` subgraphs | Phases left-to-right, steps top-down |
+| Complex systems           | `LR` + ELK layout                  | Best automatic distribution          |
+
+### Use ELK for Complex Diagrams
+
+For diagrams with many nodes (>15) or cross-links, ELK layout produces dramatically better results:
+
+```yaml
+---
+config:
+  layout: elk
+  elk:
+    mergeEdges: true
+    nodePlacementStrategy: SIMPLE
+---
+```
+
+### Mixed-Direction Subgraphs
+
+Place phases horizontally, let steps flow vertically within:
+
+```mermaid
+flowchart LR
+    subgraph PHASE1["Phase 1"]
+        direction TB
+        A1[Step 1] --> A2[Step 2]
+    end
+    subgraph PHASE2["Phase 2"]
+        direction TB
+        B1[Step 1] --> B2[Step 2]
+    end
+    PHASE1 --> PHASE2
+```
+
+**Critical**: Link between subgraphs, not between internal nodes. Internal-to-external links force direction inheritance.
 
 ## Mermaid-Specific Techniques
 
@@ -95,19 +171,26 @@ classDef decision fill:#f3e5f5,stroke:#7b1fa2,color:#4a148c
 %%{init: {
   'theme': 'base',
   'themeVariables': {
-    'primaryColor': '#e3f2fd',
-    'primaryTextColor': '#0d47a1',
-    'primaryBorderColor': '#1565c0',
-    'lineColor': '#666',
+    'primaryColor': '#1a1a2e',
+    'primaryTextColor': '#eaeaea',
+    'primaryBorderColor': '#4a4a6a',
+    'lineColor': '#888',
     'fontSize': '14px'
   },
   'flowchart': {
-    'nodeSpacing': 40,
-    'rankSpacing': 50,
-    'curve': 'basis'
+    'nodeSpacing': 60,
+    'rankSpacing': 70,
+    'curve': 'basis',
+    'padding': 20
   }
 }}%%
 ```
+
+**Spacing guidelines**:
+
+- `nodeSpacing: 60` (minimum) - prevents cramped horizontal layout
+- `rankSpacing: 70` (minimum) - gives breathing room between ranks
+- For LR layouts, these values affect vertical/horizontal spacing respectively
 
 ### Use classDef + class Over Many style Lines
 
@@ -206,19 +289,26 @@ Before considering a flowchart complete:
 
 ## Anti-Patterns to Avoid
 
+**Layout Sins**:
+
+- **Tall narrow tower**: Using `TD` for everything creates scroll-heavy charts. Use `LR` or mixed directions
+- **Stacked subgraphs**: Placing all subgraphs vertically. Arrange phases horizontally instead
+- **Tight spacing**: Default `nodeSpacing: 30` is cramped. Use 60+ minimum
+- **No breathing room**: Nodes touching edges. Add `padding: 20` to init block
+
 **Visual Sins**:
 
-- Too many colors (rainbow explosion)
-- All nodes same size/color (no hierarchy)
-- Arrow spaghetti (crossing paths everywhere)
-- Text walls in nodes (paragraphs in shapes)
+- **Pastel soup**: 8+ similar light colors with no visual hierarchy
+- **Rainbow explosion**: Every node a different color
+- **No focal point**: All nodes same size/weight (use stroke-width for emphasis)
+- **Text walls**: Paragraphs in shapes (move to notes or split charts)
 
 **Structural Sins**:
 
-- No clear message (what is this chart FOR?)
-- Mixing multiple processes in one chart
-- Backwards arrows crossing the main flow
-- Inconsistent direction (mixing TD and LR logic)
+- **No clear message**: Chart tries to show everything
+- **Spaghetti links**: Internal nodes linking to external nodes (breaks subgraph direction)
+- **Backwards arrows**: Crossing the main flow spine
+- **Mixed logic**: TD subgraphs in LR chart with cross-links (pick one strategy)
 
 **Maintenance Sins**:
 
@@ -226,91 +316,176 @@ Before considering a flowchart complete:
 - Hardcoded colors without semantic meaning
 - IDs with spaces or special characters
 
-## Template: Standard Process Flow
+## Template: Horizontal Process Flow (Recommended)
 
 ```mermaid
 %%{init: {
   'theme': 'base',
-  'flowchart': { 'nodeSpacing': 40, 'rankSpacing': 50 }
+  'themeVariables': {
+    'primaryColor': '#2d3748',
+    'lineColor': '#718096',
+    'fontSize': '14px'
+  },
+  'flowchart': { 'nodeSpacing': 60, 'rankSpacing': 70, 'padding': 20 }
 }}%%
-flowchart TD
-    classDef start fill:#e8f5e9,stroke:#2e7d32,color:#1b5e20
-    classDef process fill:#e3f2fd,stroke:#1565c0,color:#0d47a1
-    classDef decision fill:#f3e5f5,stroke:#7b1fa2,color:#4a148c
-    classDef success fill:#c8e6c9,stroke:#388e3c,color:#1b5e20
-    classDef error fill:#ffebee,stroke:#c62828,color:#b71c1c
+flowchart LR
+    classDef default fill:#2d3748,stroke:#4a5568,color:#e2e8f0
+    classDef start fill:#276749,stroke:#48bb78,color:#f0fff4,stroke-width:2px
+    classDef decision fill:#6b46c1,stroke:#9f7aea,color:#faf5ff,stroke-width:2px
+    classDef error fill:#c53030,stroke:#fc8181,color:#fff5f5
 
     START([Start]):::start
-    STEP1[Step 1: Initialize]:::process
+    INIT[Initialize]
     CHECK{Valid?}:::decision
-    STEP2[Step 2: Process]:::process
-    SUCCESS([Success]):::success
-    ERROR[Handle Error]:::error
+    PROCESS[Process]
+    DONE([Done]):::start
+    ERR[Error]:::error
 
-    START --> STEP1
-    STEP1 --> CHECK
-    CHECK -->|Yes| STEP2
-    CHECK -->|No| ERROR
-    STEP2 --> SUCCESS
-    ERROR -.-> STEP1
-
-    subgraph LEGEND["Legend"]
-        L1[Process]:::process
-        L2{Decision}:::decision
-        L3([Terminal]):::start
-    end
+    START --> INIT --> CHECK
+    CHECK -->|Yes| PROCESS --> DONE
+    CHECK -->|No| ERR -.-> INIT
 ```
 
-## Template: Swimlane Workflow
+## Template: Horizontal Multi-Phase Workflow
+
+For complex workflows, arrange phases horizontally with vertical steps inside:
 
 ```mermaid
-flowchart TD
-    subgraph USER["User Actions"]
-        U1[Submit request]
-        U2[Review result]
+%%{init: {
+  'theme': 'base',
+  'themeVariables': { 'lineColor': '#718096', 'fontSize': '14px' },
+  'flowchart': { 'nodeSpacing': 50, 'rankSpacing': 60, 'padding': 15 }
+}}%%
+flowchart LR
+    classDef phase fill:#1a202c,stroke:#4a5568,color:#e2e8f0
+    classDef step fill:#2d3748,stroke:#4a5568,color:#e2e8f0
+    classDef check fill:#6b46c1,stroke:#9f7aea,color:#faf5ff,stroke-width:2px
+
+    subgraph SETUP["SETUP"]
+        direction TB
+        S1[Load config]:::step
+        S2[Validate]:::step
+        S1 --> S2
     end
 
-    subgraph SYSTEM["System Processing"]
-        S1[Validate input]
-        S2{Valid?}
-        S3[Process request]
-        S4[Generate response]
+    subgraph PROCESS["PROCESS"]
+        direction TB
+        P1[Execute]:::step
+        P2{OK?}:::check
+        P3[Commit]:::step
+        P1 --> P2
+        P2 -->|Yes| P3
     end
 
-    subgraph ERROR["Error Handling"]
-        E1[Log error]
-        E2[Notify user]
+    subgraph CLEANUP["CLEANUP"]
+        direction TB
+        C1[Release]:::step
+        C2[Report]:::step
+        C1 --> C2
     end
 
-    U1 --> S1
-    S1 --> S2
-    S2 -->|Yes| S3
-    S2 -->|No| E1
-    S3 --> S4
-    S4 --> U2
-    E1 --> E2
-    E2 --> U2
+    SETUP --> PROCESS
+    PROCESS --> CLEANUP
+    P2 -->|No| S1
 
-    style USER fill:#e3f2fd,stroke:#1565c0
-    style SYSTEM fill:#fff3e0,stroke:#ef6c00
-    style ERROR fill:#ffebee,stroke:#c62828
+    style SETUP fill:#1a365d,stroke:#2b6cb0
+    style PROCESS fill:#22543d,stroke:#38a169
+    style CLEANUP fill:#744210,stroke:#d69e2e
 ```
 
 ## Summary
 
-**Core Principles**:
+**Layout First**:
 
-1. **One message** per chart - define purpose first
-2. **Hierarchy** through subgraphs and visual grouping
-3. **Distinct shapes** for distinct semantics (diamonds for decisions)
-4. **Color for meaning** - limited palette, accessible contrasts
-5. **Tight labels** - verb-first, 3-9 words
-6. **Maintainable code** - classDef over style, consistent IDs
+1. **Horizontal by default** - Use `LR` for most charts, `TD` only for heavy branching
+2. **Generous spacing** - `nodeSpacing: 60`, `rankSpacing: 70` minimum
+3. **Phases horizontal, steps vertical** - `direction TB` inside subgraphs
+4. **ELK for complexity** - Use `layout: elk` for 15+ nodes
+
+**Visual Clarity**:
+
+1. **3-4 colors max** - One dominant, one accent, one highlight
+2. **Stroke-width for emphasis** - 2px for decisions and terminals
+3. **Avoid pastel soup** - Distinct colors, not 10 similar light fills
 
 **Quick Wins**:
 
-- Start with `%%{init:...}%%` block for consistent theming
-- Use subgraphs for swimlanes and logical grouping
+- Start with `%%{init:...}%%` block with proper spacing
+- Link between subgraphs, not internal nodes (preserves direction)
 - Define `classDef` once, apply with `:::className`
 - Put happy path straight, branch exceptions to the side
-- Add legend subgraph if color meanings aren't obvious
+
+## Example: Complex System Flow (Horizontal)
+
+For multi-phase systems like hook pipelines, use horizontal layout with vertical subgraph internals:
+
+```mermaid
+---
+config:
+  layout: elk
+  elk:
+    mergeEdges: true
+---
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'primaryColor': '#1e293b',
+    'lineColor': '#64748b',
+    'fontSize': '13px'
+  },
+  'flowchart': { 'nodeSpacing': 50, 'rankSpacing': 55, 'padding': 12 }
+}}%%
+flowchart LR
+    classDef default fill:#334155,stroke:#475569,color:#e2e8f0
+    classDef entry fill:#166534,stroke:#22c55e,color:#f0fdf4,stroke-width:2px
+    classDef gate fill:#7c3aed,stroke:#a78bfa,color:#f5f3ff,stroke-width:2px
+    classDef state fill:#0369a1,stroke:#38bdf8,color:#f0f9ff
+
+    IN([Prompt]):::entry
+
+    subgraph PRE["PRE-ACTION"]
+        direction TB
+        H1[Hook fires]
+        H2[Load state]:::state
+        H3[Spawn hydrator]:::gate
+        H1 --> H2 --> H3
+    end
+
+    subgraph EXEC["EXECUTION"]
+        direction TB
+        A1[Agent executes]
+        A2{Gate check}:::gate
+        A3[Tool runs]
+        A1 --> A2
+        A2 -->|Pass| A3
+    end
+
+    subgraph POST["POST-ACTION"]
+        direction TB
+        P1[Increment counter]
+        P2{Threshold?}:::gate
+        P3[Spawn audit]
+        P1 --> P2
+        P2 -->|Yes| P3
+    end
+
+    OUT([Done]):::entry
+
+    IN --> PRE
+    PRE --> EXEC
+    EXEC --> POST
+    POST --> OUT
+    A2 -->|Fail| H3
+
+    style PRE fill:#1e3a5f,stroke:#3b82f6
+    style EXEC fill:#14532d,stroke:#22c55e
+    style POST fill:#581c87,stroke:#a855f7
+```
+
+**Key techniques used**:
+
+- `layout: elk` for automatic optimal positioning
+- `flowchart LR` with `direction TB` subgraphs
+- 4 colors only: default (slate), entry (green), gate (purple), state (blue)
+- Links between subgraphs, not internal nodes
+- Generous spacing (50/55) with padding
