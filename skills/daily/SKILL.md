@@ -111,7 +111,13 @@ mcp__outlook__messages_list_recent(limit=50, folder="inbox")
 
 ### Step 3: Present FYI Emails for Acknowledgment
 
-Use `AskUserQuestion` with `multiSelect: true` to present FYI emails as checkboxes.
+**First**, display FYI emails with enough detail for informed decisions:
+
+- Sender
+- Subject
+- Brief preview (first 1-2 sentences of body)
+
+**Then**, use `AskUserQuestion` with `multiSelect: true` to ask which emails to archive.
 
 Selected items archived via `mcp__outlook__messages_move(entry_id, folder_path="Archive")`.
 
