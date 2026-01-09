@@ -80,6 +80,7 @@ tags: [framework, principles, core]
     - Reasoning is not evidence; observation is evidence
     - If you catch yourself saying "should work" or "probably" → STOP and verify
     - The onus is on YOU to discharge the burden of proof
+    - **Use LLM semantic evaluation**: You have language understanding - use it to evaluate whether command output shows success or failure. "50% success rate" means FAILURE. "warning: parse error" means FAILURE. Don't rationalize failures as "side issues."
 
 18. **NO EXCUSES - EVERYTHING MUST WORK** - Never close issues or claim success without confirmation. No error is somebody else's problem.
     - If asked to "run X to verify Y", success = X runs successfully
