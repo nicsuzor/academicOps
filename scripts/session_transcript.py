@@ -362,6 +362,21 @@ Examples:
 
         print(f"📊 Found {len(entries)} entries")
 
+        # Check for meaningful content (user prompts or assistant responses)
+        meaningful_count = sum(
+            1
+            for e in entries
+            if e.type in ("user", "assistant")
+            and not (
+                hasattr(e, "message")
+                and e.message
+                and e.message.get("subtype") in ("system", "informational")
+            )
+        )
+        if meaningful_count == 0:
+            print("⏭️  Skipping: no meaningful user/assistant content")
+            return 0
+
         # Generate full version
         if generate_full:
             full_path = Path(f"{base_name}-full.md")
