@@ -375,7 +375,7 @@ Examples:
         )
         if meaningful_count == 0:
             print("⏭️  Skipping: no meaningful user/assistant content")
-            return 0
+            return 2  # Exit 2 = skipped (no content), distinct from 0 (success) and 1 (error)
 
         # Generate full version
         if generate_full:

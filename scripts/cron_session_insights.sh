@@ -126,6 +126,9 @@ while IFS= read -r session_path; do
 
     if [[ $TRANSCRIPT_EXIT -eq 0 ]]; then
         GENERATED=$((GENERATED + 1))
+    elif [[ $TRANSCRIPT_EXIT -eq 2 ]]; then
+        # Exit 2 = skipped (no meaningful content) - don't count toward limit
+        SKIPPED=$((SKIPPED + 1))
     else
         echo "$(date '+%Y-%m-%d %H:%M:%S') - Failed to transcribe: $session_path" >&2
         FAILED=$((FAILED + 1))
