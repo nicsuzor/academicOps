@@ -159,8 +159,10 @@ Run `/daily focus` workflow (Step 2-5 from that mode) to get task recommendation
 ## Today's Focus
 
 **SHOULD**: [Task] - [deadline reason]
+**DEEP**: [Task] - [concrete task that moves us towards a bigger longer-term goal]
 **ENJOY**: [Task] - [variety reason]
 **QUICK**: [Task] - [momentum reason]
+**UNBLOCK**: [Task] - [concrete issue that is blocking us or others]
 
 [1-2 sentence rationale for suggested sequencing]
 ```
@@ -202,12 +204,20 @@ P1 ██████░░░░  10/14 → [Task3] (-8d)
 
 ### Step 4: Reason About Recommendations
 
-Select 3 recommendations using judgment:
+Select 5 recommendations using judgment:
 
 **SHOULD (deadline/commitment pressure)**:
 
 - Check `days_until_due` - negative = overdue
 - Priority: overdue → due today → due this week → P0 without dates
+
+**DEEP (long-term goal advancement)**:
+
+- Tasks linked to strategic objectives or major project milestones
+- Look for: research, design, architecture, foundational work
+- Prefer tasks that advance bigger goals, not just maintain status quo
+- Avoid immediate deadlines (prefer >7 days out or no deadline)
+- Should have meaningful impact on long-term outcomes
 
 **ENJOY (variety/energy)**:
 
@@ -221,6 +231,14 @@ Select 3 recommendations using judgment:
 - Title signals: approve, send, confirm, respond, check
 - Aim for <15 min
 
+**UNBLOCK (remove impediments)**:
+
+- Tasks that unblock other work or team members
+- Infrastructure/tooling improvements
+- Dependency resolution, blocked issues
+- Look for: tasks marked with blocker status, tasks other work depends on
+- Consider technical debt that's slowing down current work
+
 **Framework work warning**: If `academicOps`/`aops` has 3+ items in `todays_work`:
 
 1. Note: "Heavy framework day - consider actual tasks"
@@ -233,23 +251,15 @@ Select 3 recommendations using judgment:
 
 **Today so far**: [N] [project] items, [M] [project] items
 
-### 1. PROBABLY SHOULD (deadline pressure)
+### Today's Focus
 
-**[Task Title]** - [reasoning]
+**SHOULD**: [Task] - [deadline reason]
+**DEEP**: [Task] - [concrete task that moves us towards a bigger longer-term goal]
+**ENJOY**: [Task] - [variety reason]
+**QUICK**: [Task] - [momentum reason]
+**UNBLOCK**: [Task] - [concrete issue that is blocking us or others]
 
-- Due: [date] | Priority: P[n] | Project: [project]
-
-### 2. MIGHT ENJOY (different domain)
-
-**[Task Title]** - [reasoning]
-
-- Good counterweight to recent [project] work
-
-### 3. QUICK WIN (build momentum)
-
-**[Task Title]** - [reasoning]
-
-- Should take: 5-15 min
+[1-2 sentence rationale for suggested sequencing]
 
 ### Archive candidates
 
