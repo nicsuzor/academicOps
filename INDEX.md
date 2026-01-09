@@ -306,10 +306,8 @@ $AOPS/
 │   ├── learning-log/            # Pattern logging to thematic files
 │   │   └── SKILL.md             # → may invoke transcript skill
 │   │
-│   ├── next/                    # Task recommendations (should/enjoy/quick)
-│   │   ├── SKILL.md             # Main skill file
-│   │   └── scripts/
-│   │       └── select_task.py   # Task selection algorithm
+│   ├── daily/                   # Daily note lifecycle (morning briefing, task recs, session sync)
+│   │   └── SKILL.md             # SSoT for daily note structure and workflows
 │   │
 │   ├── osb-drafting/            # IRAC analysis for OSB cases
 │   │   ├── SKILL.md             # Main skill file
@@ -367,12 +365,7 @@ $AOPS/
 │   │   └── tests/
 │   │       └── test_integration.sh  # Integration test
 │   │
-│   ├── session-insights/        # Accomplishments + learning extraction
-│   │   ├── SKILL.md             # Orchestrates transcripts, daily summary, Gemini mining
-│   │   ├── mining-prompt.md     # Gemini extraction prompt template
-│   │   └── scripts/
-│   │       ├── extract_narrative.py  # Narrative extraction
-│   │       └── find_sessions.py      # Session file discovery
+│   │   # session-insights/ DELETED - now infrastructure in specs/unified-session-summary.md
 │   │
 │   ├── supervisor/              # Workflow templates (tdd, batch-review)
 │   │   └── workflows/
@@ -414,7 +407,7 @@ $AOPS/
 │   ├── dashboard-skill.md           # Dashboard skill spec (consolidated)
 │   ├── command-discoverability.md   # Command discovery spec
 │   ├── conclusion-verification-hook.md  # Conclusion verification
-│   ├── daily notes.md               # Daily notes spec
+│   │   # daily notes.md DELETED - SSoT moved to skills/daily/SKILL.md
 │   ├── dashboard-narrative.md       # Dashboard narrative spec
 │   ├── dashboard-skill.md           # Dashboard skill spec
 │   ├── effectual-planning-agent.md  # Effectual planning spec
@@ -442,7 +435,7 @@ $AOPS/
 │   ├── python-dev-skill.md          # Python dev skill spec
 │   ├── reference-map skill.md       # Reference map skill spec
 │   ├── remember-skill.md            # Remember skill spec
-│   ├── session-insights-skill.md    # Session insights skill spec (consolidated)
+│   │   # session-insights-skill.md DELETED - see unified-session-summary.md
 │   ├── session-start-injection.md   # Session start injection spec
 │   ├── session-sync-user-story.md   # Session sync spec
 │   ├── session-transcript-extractor.md  # Transcript extractor spec

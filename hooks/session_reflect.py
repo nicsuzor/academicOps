@@ -103,14 +103,12 @@ def main():
     if summary_created:
         message = (
             "Session summary synthesized from task contributions. "
-            "Run `Skill(skill='session-insights', args='current')` "
-            "if you want to analyze patterns and update heuristics."
+            "Cron infrastructure will mine transcripts for accomplishments."
         )
     else:
         message = (
             "No task contributions found for this session. "
-            "Consider running `Skill(skill='session-insights', args='current')` "
-            "to mine the transcript for accomplishments and learnings."
+            "Cron infrastructure will mine transcript for accomplishments."
         )
 
     output: dict[str, Any] = {

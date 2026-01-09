@@ -72,38 +72,46 @@ The same information delivered differently has vastly different compliance rates
 
 **Lesson**: Rules alone don't work when they fight strong priors. **Reasoned emphasis** works better than bare rules. Connect enforcement to the specific task's success.
 
-### Level 2: Intent Router (Intelligent Steering)
+### Level 2: Adaptive Context Injection
 
-**Works when**: Agent needs workflow-aware guidance that adapts to the specific task.
+Level 2 provides task-aware guidance through two mechanisms:
 
-**How it works**: Haiku subagent classifies prompt against known failure patterns and workflows, returns task-specific guidance. Main agent receives filtered output (not full classification logic).
+#### 2a: Intent Router (UserPromptSubmit)
 
-The router IS the Level 2 mechanism. It replaces static JIT injection with intelligent, adaptive intervention:
+**Works when**: Agent needs workflow-aware guidance for user prompts.
 
-| Old Approach            | Router Advantage                           |
-| ----------------------- | ------------------------------------------ |
-| Informational injection | Router knows WHICH information is relevant |
-| Directive injection     | Router gives task-specific directives      |
-| Emphatic + reasoned     | Router explains WHY for THIS task          |
+**How it works**: Haiku subagent classifies prompt against known failure patterns, returns task-specific guidance.
+
+**Limitation**: Router only processes UserPromptSubmit - it does NOT see `/commands`. Commands are injected directly by Claude Code.
 
 **Capabilities**:
 
 - Knows common failure patterns from HEURISTICS.md
 - Provides workflow-specific skill recommendations
 - Adapts guidance to task type (debug, feature dev, question, etc.)
-- References H3, H19, H28 etc. to prevent known failures
 
 **Fails when**:
 
-- Router itself gives bad recommendations
-- Agent ignores router output (need Level 3+ enforcement)
-- Classification misses the task type
+- Router gives bad recommendations
+- Agent ignores router output (need Level 3+)
+- Task invoked via `/command` (bypasses router)
+
+#### 2b: Command Instructions (Automatic)
+
+**Works when**: Behavior needs enforcement within a `/command` workflow.
+
+**How it works**: Claude Code automatically injects command file contents when `/command` is invoked. Strengthening the command's instructions IS Level 2 enforcement.
+
+**Advantage over router**: Command instructions are ALWAYS injected - no classification step, no failure modes.
+
+**When to use**: If a `/command` workflow has a recurring failure pattern, strengthen the command file's instructions with emphatic + reasoned text.
 
 **Evidence**:
 
-- 2025-12-26: Router correctly steered agent to framework skill for enforcement updates
+- 2025-12-26: Router correctly steered agent to framework skill
+- 2026-01-09: `/learn` command strengthened with root-cause escape prevention
 
-**Lesson**: Router is the first _intelligent_ intervention - it understands context, not just patterns. All Level 2 enforcement flows through the router.
+**Lesson**: For `/commands`, edit the command file directly. For user prompts, use the router.
 
 ### Level 3a: Tool Restriction (Soft Deny)
 

@@ -21,10 +21,12 @@ tags: [framework, principles, core]
 
 3. **ALWAYS CITE SOURCES** - No plagiarism. Ever.
 
-4. **DO ONE THING** - Complete the task requested, then STOP.
+4. **DO ONE THING** and **DON'T BE SO FUCKING EAGER**: Complete the task requested, then STOP.
+   - I know you just want to be helpful, but your must abide by PROCESS and GUARDRAILS that are set up to reduce the change of CATASTOPHIC FAILURE.
    - User asks question → Answer it, then stop
    - User requests task → Do it, then stop
    - Find related issues → Report them, don't fix them
+   - "I'll just xyz" → For the love of god, shut up and wait for direction.
 
 5. **Data Boundaries**: **NEVER** expose private data in public places. Everything in this repository is PRIVATE unless explicitly marked otherwise.
 
@@ -74,6 +76,10 @@ tags: [framework, principles, core]
     - ✅ If validation fails, fix the code or fix the validator - never bypass it
 
 17. **VERIFY FIRST** - Check actual state, never assume
+    - Before asserting X, demonstrate evidence for X
+    - Reasoning is not evidence; observation is evidence
+    - If you catch yourself saying "should work" or "probably" → STOP and verify
+    - The onus is on YOU to discharge the burden of proof
 
 18. **NO EXCUSES - EVERYTHING MUST WORK** - Never close issues or claim success without confirmation. No error is somebody else's problem.
     - If asked to "run X to verify Y", success = X runs successfully
@@ -138,3 +144,5 @@ tags: [framework, principles, core]
     - Specs describe HOW IT WORKS, not how it evolved
     - No temporal artifacts (phases, dates, migration notes) in implemented specs
     - One feature = one spec. No splitting across files, no combining multiple features
+
+30. **NO FUCKING KEYWORD MATCHING, YOU'RE A LLM.** Don't be stupid, don't be lazy, and don't use outdated NLP.

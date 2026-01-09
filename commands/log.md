@@ -2,11 +2,20 @@
 name: log
 category: instruction
 description: Log framework component failures to GitHub Issues (per AXIOMS #28)
-allowed-tools: Skill
+allowed-tools: Task
 permalink: commands/log
 ---
 
-**IMMEDIATELY** invoke the `[[skills/learning-log/SKILL.md|learning-log]]` skill with the user's observation description.
+**Run in background** - spawn the learning-log skill asynchronously so the user can continue working:
+
+```
+Task(subagent_type="general-purpose", model="haiku",
+     description="Log observation to GitHub",
+     prompt="Invoke Skill(skill='learning-log') with this observation: [USER'S OBSERVATION]",
+     run_in_background=true)
+```
+
+Report to user: "Logging observation in background. Continue working."
 
 **Purpose**: Build institutional knowledge by logging observations to GitHub Issues, where patterns can accumulate and synthesize to HEURISTICS.md.
 

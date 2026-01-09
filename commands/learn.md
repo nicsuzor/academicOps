@@ -55,46 +55,43 @@ See [[specs/enforcement.md]] "Component Responsibilities" for the full model.
 
 **When you're tempted to say "I just failed to follow instructions"**: That's the proximate cause. Ask: WHY did you fail? What instruction was missing, unclear, or not salient enough? That's the root cause. Fix THAT.
 
-### 2. Check for Prior Occurrences
+### 2. Check for Prior Occurrences and Document in GitHub Issue
 
-Search GitHub Issues for related observations:
+Invoke the logging infrastructure to identify prior occurences and track the intervention:
 
-```bash
-gh issue list --repo nicsuzor/academicOps --label learning --search "[keywords]"
-```
+`Skill(skill='learning-log', args="[root cause summary]")`
 
-**If found**: This is a recurrence. Consider escalating intervention level.
-
-**If new**: Use `/log` first to document the observation.
+The learning-log skill will search GitHub Issues for related observations and return information about what interventions have been tried to date.
 
 ### 3. Choose Intervention Level (Start at Bottom, Escalate with Evidence)
 
 **Enforcement Ladder** (always start at lowest effective level):
 
-| Level | Mechanism                     | When to Use                                    |
-| ----- | ----------------------------- | ---------------------------------------------- |
-| 1a    | Prompt text (mention)         | Nice-to-have suggestion                        |
-| 1b    | Prompt text (explicit rule)   | Stated rule, no emphasis                       |
-| 1c    | Prompt text (emphatic+reason) | Rule with WHY it matters for THIS task         |
-| 2     | Intent router                 | Adaptive guidance based on task classification |
-| 3a    | Tool restriction (soft deny)  | Tool available only via specific workflow      |
-| 3b    | Skill abstraction             | Hide complexity, force workflow                |
-| 4     | Pre-tool-use hooks            | Block before damage occurs                     |
-| 5     | Post-tool-use validation      | Catch violations, demand correction            |
-| 6     | Deny rules (settings.json)    | Hard block, no exceptions                      |
-| 7     | Pre-commit hooks              | Last line of defense                           |
+| Level | Mechanism                     | When to Use                                |
+| ----- | ----------------------------- | ------------------------------------------ |
+| 1a    | Prompt text (mention)         | Nice-to-have suggestion                    |
+| 1b    | Prompt text (explicit rule)   | Stated rule, no emphasis                   |
+| 1c    | Prompt text (emphatic+reason) | Rule with WHY it matters for THIS task     |
+| 2a    | Intent router                 | Adaptive guidance for user prompts         |
+| 2b    | Command instructions          | Strengthen `/command` file (auto-injected) |
+| 3a    | Tool restriction (soft deny)  | Tool available only via specific workflow  |
+| 3b    | Skill abstraction             | Hide complexity, force workflow            |
+| 4     | Pre-tool-use hooks            | Block before damage occurs                 |
+| 5     | Post-tool-use validation      | Catch violations, demand correction        |
+| 6     | Deny rules (settings.json)    | Hard block, no exceptions                  |
+| 7     | Pre-commit hooks              | Last line of defense                       |
 
 **Match root cause to intervention**:
 
-| Root Cause        | Start At                                      |
-| ----------------- | --------------------------------------------- |
-| Clarity Failure   | Level 1c (emphatic+reasoned instruction text) |
-| Context Failure   | Level 2 (intent router classification)        |
-| Blocking Failure  | Level 4 (PreToolUse hook)                     |
-| Detection Failure | Level 5 (PostToolUse hook)                    |
-| Gap               | Lowest level that addresses the gap           |
+| Root Cause        | Start At                                       |
+| ----------------- | ---------------------------------------------- |
+| Clarity Failure   | Level 1c, then 2b if in a /command             |
+| Context Failure   | Level 2a (router) or 2b (command instructions) |
+| Blocking Failure  | Level 4 (PreToolUse hook)                      |
+| Detection Failure | Level 5 (PostToolUse hook)                     |
+| Gap               | Lowest level that addresses the gap            |
 
-**Escalation rule**: Only move up when you have evidence that lower levels failed. See [[docs/ENFORCEMENT.md]] for mechanism details, [[RULES]] for current enforcement state.
+**Escalation rule**: Only move up when you have evidence that lower levels failed. See [[docs/ENFORCEMENT.md]] for mechanism details.
 
 ### 4. Make the Minimal Change
 
@@ -102,20 +99,17 @@ Keep changes brief (1-3 sentences for soft interventions).
 
 If you need a bigger change, **ABORT** and update/create a Spec instead.
 
-### 5. Document in GitHub Issue
-
-Invoke the logging infrastructure to track the intervention:
-
-```
-Skill(skill="learning-log", args="[intervention summary]")
-```
-
 Include in the summary:
 
 - Root cause category and responsible component
 - What was changed (with file path)
 - What enforcement level (see [[docs/ENFORCEMENT.md]])
 - What would trigger escalation
+
+### 5. Update GitHub issue and relevant framework documentation
+
+- Make sure existing documentation is still up-to-date after changes
+- Log work done in comment on GitHub issue and reference commits.
 
 ### 6. Report
 

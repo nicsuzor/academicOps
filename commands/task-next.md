@@ -12,8 +12,8 @@ permalink: commands/task-next
 
 ## Execution
 
-Invoke the `next` skill to generate recommendations and update the focus dashboard.
+Invoke the `daily` skill with focus mode to generate recommendations and update the focus dashboard.
 
 ```python
-Skill(skill="next")
+Skill(skill="daily", args="focus")
 ```

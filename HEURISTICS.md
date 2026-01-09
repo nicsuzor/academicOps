@@ -182,7 +182,9 @@ Every framework file belongs to exactly one category: SPEC (our design), REF (ex
 
 ## H37: LLM Semantic Evaluation Over Keyword Matching
 
-When verifying outcomes, use LLM semantic understanding to evaluate whether the INTENT was satisfied. NEVER use keyword/substring matching (`any(x in text for x in list)`) as this creates Volkswagen tests that pass on surface patterns without verifying actual behavior.
+When verifying outcomes, use LLM semantic understanding to evaluate whether the INTENT was satisfied.
+
+NEVER use keyword/substring matching (`any(x in text for x in list)`) as this creates Volkswagen tests that pass on surface patterns without verifying actual behavior.
 
 ### H37a: Full Evidence for Human Validation
 
