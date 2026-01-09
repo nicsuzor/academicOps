@@ -13,7 +13,7 @@ permalink: commands/learn
 ```
 Task(subagent_type="general-purpose", model="sonnet",
      description="Framework learning: [brief summary]",
-     prompt="Invoke Skill(skill='framework') first, then follow the /learn workflow below to make a minimal intervention for: [USER'S FEEDBACK]\n\n[Include full /learn workflow instructions from this file]",
+     prompt="Invoke Skill(skill='framework') first, then follow the /learn workflow below to make a minimal intervention for: [USER'S FEEDBACK]\n\n**CRITICAL**: If you need to read session JSONL files, invoke Skill(skill='transcript') FIRST to convert to markdown. Raw JSONL wastes 10-70K tokens; transcripts are 90% smaller.\n\n[Include full /learn workflow instructions from this file]",
      run_in_background=true)
 ```
 

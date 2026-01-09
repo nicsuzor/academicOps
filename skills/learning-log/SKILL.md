@@ -305,7 +305,7 @@ Closed Issues remain searchable. GitHub search finds them by:
 
 1. **Verbal description** - User describes what happened
 2. **Transcript file(s)** - Path to transcript markdown
-3. **Session JSONL** - First invoke `transcript` skill, then analyze
+3. **Session JSONL** - **CRITICAL: First invoke `Skill(skill='transcript')` to convert JSONL to markdown, then read the transcript.** Raw JSONL wastes 10-70K tokens; transcripts are 90% smaller.
 4. **Heuristic adjustment** - `adjust-heuristic H[n]: [observation]`
 
 ## Heuristic Adjustment Mode
