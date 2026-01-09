@@ -17,7 +17,7 @@ Utility scripts for setup, packaging, and analysis.
 
 ## Transformation
 
-- [[claude_transcript.py]] - Session JSONL to markdown
+- [[session_transcript.py]] - Session JSONL to markdown
 - [[migrate_log_entries.py]] - Log migration utilities
 - [[transcribe_recording.sh]] - Audio recording transcription
 

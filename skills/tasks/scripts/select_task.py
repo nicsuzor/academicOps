@@ -51,7 +51,7 @@ def get_active_tasks(index: dict) -> list[dict]:
     for t in tasks:
         status = t.get("status", "")
         file_path = t.get("file", "")
-        if status in ("archived", "done"):
+        if status in ("archived", "done", "completed"):
             continue
         if "/archived/" in file_path or file_path.startswith("tasks/archived/"):
             continue

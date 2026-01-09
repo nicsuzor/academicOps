@@ -42,7 +42,7 @@ for s in sessions:
 For each session, run:
 
 ```bash
-cd $AOPS && uv run python scripts/claude_transcript.py \
+cd $AOPS && uv run python scripts/session_transcript.py \
   /path/to/session.jsonl \
   -o $ACA_DATA/sessions/claude/YYYYMMDD-shortproject-sessionid-slug
 ```

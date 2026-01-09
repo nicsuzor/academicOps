@@ -17,6 +17,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
+from enum import Enum, auto
 from pathlib import Path
 from typing import Any
 
@@ -713,6 +714,14 @@ class ConversationTurn:
     )
 
 
+class SessionState(Enum):
+    """Current processing state of a session."""
+
+    PENDING_TRANSCRIPT = auto()  # Needs transcript generation
+    PENDING_MINING = auto()  # Has transcript, needs Gemini mining
+    PROCESSED = auto()  # Fully processed
+
+
 @dataclass
 class SessionInfo:
     """Information about a discovered session."""
@@ -721,6 +730,7 @@ class SessionInfo:
     project: str
     session_id: str
     last_modified: datetime
+    source: str = "claude"  # "claude" or "gemini"
 
     @property
     def project_display(self) -> str:
@@ -736,82 +746,163 @@ def find_sessions(
     project: str | None = None,
     since: datetime | None = None,
     claude_projects_dir: Path | None = None,
+    include_gemini: bool = True,
 ) -> list[SessionInfo]:
     """
-    Find all Claude Code sessions.
+    Find all Claude Code and optionally Gemini sessions.
 
     Args:
         project: Filter to specific project (partial match)
         since: Only sessions modified after this time
         claude_projects_dir: Override default ~/.claude/projects/
+        include_gemini: Whether to include sessions from ~/.gemini/tmp/
 
     Returns:
         List of SessionInfo, sorted by last_modified descending (newest first)
     """
+    sessions = []
+
+    # 1. Find Claude Code sessions
     if claude_projects_dir is None:
         claude_projects_dir = Path.home() / ".claude" / "projects"
 
-    if not claude_projects_dir.exists():
-        return []
-
-    sessions = []
-
-    for project_dir in claude_projects_dir.iterdir():
-        if not project_dir.is_dir():
-            continue
-
-        project_name = project_dir.name
-
-        # Filter by project if specified
-        if project and project.lower() not in project_name.lower():
-            continue
-
-        # Find session files (exclude agent-* files)
-        for session_file in project_dir.glob("*.jsonl"):
-            if session_file.name.startswith("agent-"):
+    if claude_projects_dir.exists():
+        for project_dir in claude_projects_dir.iterdir():
+            if not project_dir.is_dir():
                 continue
 
-            # Determine session_id
-            session_id = session_file.stem
-            # is_gemini = False
+            project_name = project_dir.name
 
-            # For hook logs, the filename is a date-hash, not the full session ID.
-            # We need to read the internal session_id to identify Gemini sessions
-            # and to provide the correct ID to consumers.
-            if session_file.name.endswith("-hooks.jsonl"):
-                try:
-                    with open(session_file, encoding="utf-8") as f:
-                        first_line = f.readline()
-                        if first_line:
-                            data = json.loads(first_line)
-                            internal_id = data.get("session_id", "")
-                            if internal_id:
-                                session_id = internal_id
-                                if internal_id.startswith("gemini-"):
-                                    # is_gemini = True  # noqa: F841
-                                    pass
-                except (OSError, json.JSONDecodeError):
-                    pass
-
-            # Get modification time
-            mtime = datetime.fromtimestamp(session_file.stat().st_mtime, tz=UTC)
-
-            # Filter by time if specified
-            if since and mtime < since:
+            # Filter by project if specified
+            if project and project.lower() not in project_name.lower():
                 continue
 
-            sessions.append(
-                SessionInfo(
-                    path=session_file,
-                    project=project_name,
-                    session_id=session_id,
-                    last_modified=mtime,
+            # Find session files (exclude agent-* files)
+            for session_file in project_dir.glob("*.jsonl"):
+                if session_file.name.startswith("agent-"):
+                    continue
+
+                # Determine session_id
+                session_id = session_file.stem
+
+                # For hook logs, the filename is a date-hash, not the full session ID.
+                if session_file.name.endswith("-hooks.jsonl"):
+                    try:
+                        with open(session_file, encoding="utf-8") as f:
+                            first_line = f.readline()
+                            if first_line:
+                                data = json.loads(first_line)
+                                internal_id = data.get("session_id", "")
+                                if internal_id:
+                                    session_id = internal_id
+                    except (OSError, json.JSONDecodeError):
+                        pass
+
+                # Get modification time
+                mtime = datetime.fromtimestamp(session_file.stat().st_mtime, tz=UTC)
+
+                # Filter by time if specified
+                if since and mtime < since:
+                    continue
+
+                sessions.append(
+                    SessionInfo(
+                        path=session_file,
+                        project=project_name,
+                        session_id=session_id,
+                        last_modified=mtime,
+                        source="claude",
+                    )
                 )
-            )
+
+    # 2. Find Gemini sessions
+    if include_gemini:
+        gemini_tmp_dir = Path.home() / ".gemini" / "tmp"
+        if gemini_tmp_dir.exists():
+            # Gemini structure: ~/.gemini/tmp/{hash}/chats/session-*.json
+            for chat_file in gemini_tmp_dir.glob("**/chats/session-*.json"):
+                # Determine session_id from filename or content
+                # session-2026-01-08T08-18-a5234d3e -> a5234d3e
+                session_id = chat_file.stem
+                if session_id.startswith("session-") and "-" in session_id:
+                    session_id = session_id.split("-")[-1]
+
+                # Get project from parent of chats dir (the hash)
+                hash_dir = chat_file.parent.parent.name
+                project_name = f"gemini-{hash_dir[:8]}"
+
+                # Filter by project if specified
+                if project and project.lower() not in project_name.lower():
+                    continue
+
+                # Get modification time
+                mtime = datetime.fromtimestamp(chat_file.stat().st_mtime, tz=UTC)
+
+                # Filter by time if specified
+                if since and mtime < since:
+                    continue
+
+                sessions.append(
+                    SessionInfo(
+                        path=chat_file,
+                        project=project_name,
+                        session_id=session_id,
+                        last_modified=mtime,
+                        source="gemini",
+                    )
+                )
 
     # Sort by last modified, newest first
     sessions.sort(key=lambda s: s.last_modified, reverse=True)
     return sessions
+
+
+def get_session_state(session: SessionInfo, aca_data: Path) -> SessionState:
+    """Determine the current processing state of a session.
+
+    Authoritative logic for idempotency and re-processing requirements.
+    """
+    import glob
+
+    session_id = session.session_id
+    session_prefix = session_id[:8] if len(session_id) >= 8 else session_id
+
+    # 1. Check for Transcript
+    # Patterns vary by source
+    if session.source == "gemini":
+        transcript_dir = aca_data / "sessions" / "gemini"
+    else:
+        transcript_dir = aca_data / "sessions" / "claude"
+
+    transcript_path = None
+    if transcript_dir.exists():
+        # Match EXACT session ID prefix
+        pattern = str(transcript_dir / f"*-*-{session_prefix}*-abridged.md")
+        matches = glob.glob(pattern)
+        if matches:
+            transcript_path = Path(matches[0])
+
+    # Missing transcript or session updated since last transcript
+    if not transcript_path:
+        return SessionState.PENDING_TRANSCRIPT
+
+    if session.path.stat().st_mtime > transcript_path.stat().st_mtime:
+        return SessionState.PENDING_TRANSCRIPT
+
+    # 2. Check for Mining JSON
+    # Pattern: $ACA_DATA/dashboard/sessions/{session_id}.json
+    dashboard_sessions = aca_data / "dashboard" / "sessions"
+    mining_json = dashboard_sessions / f"{session_id}.json"
+    has_mining = mining_json.exists()
+
+    if not has_mining and len(session_id) > 8:
+        # Check for truncated ID (common in session-insights output)
+        has_mining = (dashboard_sessions / f"{session_prefix}.json").exists()
+
+    if not has_mining:
+        return SessionState.PENDING_MINING
+
+    return SessionState.PROCESSED
 
 
 class SessionProcessor:

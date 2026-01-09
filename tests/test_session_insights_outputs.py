@@ -115,7 +115,7 @@ class TestTranscriptOutputs:
         else:
             body = content
 
-        lines = [l for l in body.split("\n") if l.strip()]
+        lines = [line for line in body.split("\n") if line.strip()]
         assert (
             len(lines) > 5
         ), f"{most_recent.name} has too little content after frontmatter"
@@ -267,14 +267,16 @@ class TestLearningOutputs:
         dashboard_dir = Path(aca_data) / "dashboard" / "sessions"
         # Directory should exist if session-insights has been run
         if not dashboard_dir.exists():
-            pytest.skip("Dashboard sessions directory not yet created (run session-insights first)")
+            pytest.skip(
+                "Dashboard sessions directory not yet created (run session-insights first)"
+            )
 
 
 class TestTranscriptScriptGeneration:
     """Test transcript script generates correct output."""
 
     def test_transcript_script_generates_both_variants(self, tmp_path: Path) -> None:
-        """Test claude_transcript.py generates both -full.md and -abridged.md."""
+        """Test session_transcript.py generates both -full.md and -abridged.md."""
         # Find a real session file
         projects_dir = Path.home() / ".claude" / "projects"
         assert (
@@ -297,7 +299,7 @@ class TestTranscriptScriptGeneration:
 
         # Run transcript script
         output_base = tmp_path / "test-transcript"
-        script_path = Path(__file__).parent.parent / "scripts" / "claude_transcript.py"
+        script_path = Path(__file__).parent.parent / "scripts" / "session_transcript.py"
 
         result = subprocess.run(
             [

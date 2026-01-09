@@ -102,24 +102,49 @@ Fetch recent emails via Outlook MCP:
 mcp__outlook__messages_list_recent(limit=50, folder="inbox")
 ```
 
+**Before flagging as Task**: Check sent mail for replies to avoid flagging already-handled items:
+
+```
+mcp__outlook__messages_list_recent(limit=20, folder="sent")
+```
+
+If inbox email subject matches a sent reply (Re: prefix), classify as **Skip** (already handled).
+
 **Classify each email** (LLM semantic classification, not keyword matching per AXIOM #30):
 
 - **FYI**: Informational, no action needed, but should see before archiving
-- **Task**: Requires action → flag for `/email` processing
-- **Skip**: Automated, bulk, already handled
+- **Task**: Requires action AND no sent reply exists → flag for `/email` processing
+- **Skip**: Automated, bulk, or already handled (sent reply exists)
 - **Uncertain**: Present to user for classification
 
-### Step 3: Present FYI Emails for Acknowledgment
+### Step 3: FYI Content in Daily Note
 
-**First**, display FYI emails with enough detail for informed decisions:
+**Goal**: User reads FYI content in the daily note itself, not by opening emails.
 
-- Sender
-- Subject
-- Brief preview (first 1-2 sentences of body)
+**Thread grouping**: Group emails by conversation thread (same subject minus Re:/Fwd:). Present threads as unified summaries, not individual emails.
 
-**Then**, use `AskUserQuestion` with `multiSelect: true` to ask which emails to archive.
+**For each FYI thread/item**, fetch full content with `mcp__outlook__messages_get` and include:
 
-Selected items archived via `mcp__outlook__messages_move(entry_id, folder_path="Archive")`.
+- Thread participants and who said what (if multiple contributors)
+- **Actual content**: The key information - quote directly for short emails, summarize for long ones
+
+**Format in morning briefing**:
+
+```markdown
+## FYI
+
+### [Thread Topic]
+
+[Participants] discussed [topic]. [Key content/decision/info].
+
+> [Direct quote if short]
+
+### [Single Email Topic]
+
+From [sender]: [Actual content or summary]
+```
+
+**After presenting**: Use `AskUserQuestion` to ask which to archive.
 
 **Empty state**: If no FYI emails, skip this section.
 
@@ -145,9 +170,13 @@ Run `/daily focus` workflow (Step 2-5 from that mode) to get task recommendation
 
 - **[Task]** - [Project] - from: [sender]
 
-### FYI (Acknowledge to Archive)
+## FYI
 
-[AskUserQuestion checkboxes]
+### [Thread/Email Topic]
+
+[Actual content - see Step 3 format]
+
+[After FYI section: AskUserQuestion to select items for archiving]
 
 ## Recent Project Activity
 

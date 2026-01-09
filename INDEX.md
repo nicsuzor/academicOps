@@ -167,7 +167,7 @@ $AOPS/
 │   ├── check_index_completeness.py  # Pre-commit: INDEX.md accounting
 │   ├── check_orphan_files.py        # Pre-commit: orphan file detection
 │   ├── check_skill_line_count.py    # Pre-commit: SKILL.md size limit
-│   ├── claude_transcript.py     # Session JSONL → markdown
+│   ├── session_transcript.py    # Session JSONL → markdown
 │   ├── convert_commands_to_toml.py  # Convert markdown commands to TOML
 │   ├── convert_mcp_to_gemini.py     # Convert MCP configs for Gemini
 │   ├── measure_router_compliance.py # Router performance metrics
@@ -396,7 +396,7 @@ $AOPS/
 │   │   └── SKILL.md             # Main skill file
 │   │
 │   └── transcript/              # Session JSONL → markdown
-│       └── SKILL.md             # Wraps scripts/claude_transcript.py
+│       └── SKILL.md             # Wraps scripts/session_transcript.py
 │
 ├── specs/                       # Design specifications
 │   ├── specs.md                 # Spec index with Mermaid diagram

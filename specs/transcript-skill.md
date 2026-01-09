@@ -34,7 +34,7 @@ graph TD
     H -->|Yes, Up-to-date| I[Skip]
     H -->|No/Stale| G
 
-    G --> J[Run claude_transcript.py]
+    G --> J[Run session_transcript.py]
     J --> K[Output Markdown]
     K --> L[Report Summary]
     I --> L
@@ -56,7 +56,7 @@ Session analysis challenges:
 
 ## Solution
 
-A skill that wraps `scripts/claude_transcript.py` to generate formatted markdown transcripts, with abridged and full versions for different use cases.
+A skill that wraps `scripts/session_transcript.py` to generate formatted markdown transcripts, with abridged and full versions for different use cases.
 
 ## How It Works
 
@@ -68,7 +68,7 @@ Skill(skill="transcript", args="YYYYMMDD")   # specific date
 Skill(skill="transcript", args="/path/to/session.jsonl")  # specific file
 ```
 
-### Workflow
+### Steps
 
 **1. Find Sessions**
 
@@ -89,7 +89,7 @@ Skip if transcript exists and is newer than session's last_modified.
 **3. Generate Transcript**
 
 ```bash
-cd $AOPS && uv run python scripts/claude_transcript.py \
+cd $AOPS && uv run python scripts/session_transcript.py \
   /path/to/session.jsonl \
   --abridged-only \
   -o $ACA_DATA/sessions/claude/YYYYMMDD-shortproject-sessionid-slug
@@ -129,7 +129,7 @@ Default: Abridged only (reduces token cost).
 
 ### Depends On
 
-- `scripts/claude_transcript.py` for parsing and formatting
+- `scripts/session_transcript.py` for parsing and formatting
 - `lib/session_reader.py` for JSONL parsing
 - Claude session files in `~/.claude/projects/*/sessions/`
 
@@ -141,10 +141,10 @@ Default: Abridged only (reduces token cost).
 
 ### Architecture
 
-| Component                      | Role                           |
-| ------------------------------ | ------------------------------ |
-| `scripts/claude_transcript.py` | CLI entry point                |
-| `lib/session_reader.py`        | Parses JSONL, formats markdown |
+| Component                       | Role                           |
+| ------------------------------- | ------------------------------ |
+| `scripts/session_transcript.py` | CLI entry point                |
+| `lib/session_reader.py`         | Parses JSONL, formats markdown |
 
 Session reader combines:
 

@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
-Claude Session Transcript Generator
+Session Transcript Generator
 
-Converts Claude Code JSONL session files to readable markdown transcripts.
+Converts Claude Code JSONL and Gemini JSON session files to readable markdown transcripts.
 
 Usage:
-    uv run python $AOPS/scripts/claude_transcript.py session.jsonl
-    uv run python $AOPS/scripts/claude_transcript.py session.jsonl -o output.md
+    uv run python $AOPS/scripts/session_transcript.py session.jsonl
+    uv run python $AOPS/scripts/session_transcript.py session.jsonl -o output.md
 """
 
 import argparse
@@ -15,7 +15,10 @@ import subprocess
 import sys
 from pathlib import Path
 
-from lib.session_reader import SessionProcessor
+# Add framework root to path for lib imports
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+from lib.session_reader import SessionProcessor  # noqa: E402
 
 
 def format_markdown(file_path: Path) -> bool:
@@ -203,11 +206,11 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  python claude_transcript.py session.jsonl                    # Generates session_XXX-full.md and session_XXX-abridged.md
-  python claude_transcript.py session.json                     # Generates Gemini transcript
-  python claude_transcript.py session.jsonl -o transcript      # Generates transcript-full.md and transcript-abridged.md
-  python claude_transcript.py session.jsonl --full-only        # Only full version with tool results
-  python claude_transcript.py session.jsonl --abridged-only    # Only abridged version without tool results
+  python session_transcript.py session.jsonl                    # Generates session_XXX-full.md and session_XXX-abridged.md
+  python session_transcript.py session.json                     # Generates Gemini transcript
+  python session_transcript.py session.jsonl -o transcript      # Generates transcript-full.md and transcript-abridged.md
+  python session_transcript.py session.jsonl --full-only        # Only full version with tool results
+  python session_transcript.py session.jsonl --abridged-only    # Only abridged version without tool results
         """,
     )
 

@@ -90,7 +90,7 @@ ls -lt ~/.claude/projects/-home-nic-src-aOps/*.jsonl | head -5
 
 # Generate markdown transcript from JSONL
 mkdir -p ~/.cache/aops/transcripts
-uv run ~/src/claude-transcript/claude_transcript.py \
+uv run $AOPS/scripts/session_transcript.py \
   ~/.claude/projects/{project-path}/{session-id}.jsonl \
   -o ~/.cache/aops/transcripts/{session-id}_transcript.md
 

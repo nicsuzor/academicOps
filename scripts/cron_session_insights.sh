@@ -1,19 +1,22 @@
 #!/bin/bash
-# Cron wrapper: check for unprocessed sessions, pass paths to skill
+# Cron wrapper: generate transcripts and mine sessions
 #
-# Called by cron every 5 minutes. Only invokes Claude if work is needed.
-# Only processes sessions from the framework's installation project by default.
-# Uses flock to prevent concurrent runs.
+# Pipeline:
+#   1. session_status.py --mode cron-transcript → list sessions needing transcripts
+#   2. session_transcript.py → generate markdown transcripts
+#   3. (future) gemini mining script → extract summaries from transcripts
+#
+# Called by cron every 5 minutes. Uses flock to prevent concurrent runs.
 #
 # Exit codes:
 #   0 - Success (either processed sessions or nothing to do)
-#   1 - Error (missing dependencies, check script failed with code 2)
+#   1 - Error (missing dependencies, script failure)
 #   99 - Another instance is running (lock held)
 
 set -euo pipefail
 
-# Ensure PATH includes uv and claude (cron runs with minimal PATH)
-export PATH="/opt/nic/bin:/opt/nic/nvm/versions/node/v25.2.1/bin:$PATH"
+# Ensure PATH includes uv (cron runs with minimal PATH)
+export PATH="/opt/nic/bin:$PATH"
 
 # Change to framework root
 cd "$(dirname "$0")/.."
@@ -49,46 +52,90 @@ if [[ -z "${ACA_DATA:-}" ]]; then
 fi
 
 # Derive project pattern from AOPS or framework root
-# /home/nic/src/academicOps -> academicOps
 if [[ -n "${AOPS:-}" ]]; then
     PROJECT_PATTERN=$(basename "$AOPS")
 else
     PROJECT_PATTERN=$(basename "$FRAMEWORK_ROOT")
 fi
 
-echo "$(date '+%Y-%m-%d %H:%M:%S') - Checking for unprocessed sessions (project: $PROJECT_PATTERN)..."
+echo "$(date '+%Y-%m-%d %H:%M:%S') - Checking for sessions needing transcripts (project: $PROJECT_PATTERN)..."
 
-# Run check script, capture output
-# Exit codes: 0 = work needed, 1 = nothing to do, 2 = config error
+# Step 1: Find sessions needing transcripts
 set +e
-SESSIONS=$(uv run python scripts/check_unprocessed_sessions.py --allowed-projects "$PROJECT_PATTERN" 2>&1)
+SESSIONS=$(uv run python scripts/session_status.py --mode cron-transcript --allowed-projects "$PROJECT_PATTERN" 2>&1)
 CHECK_EXIT=$?
 set -e
 
 if [[ $CHECK_EXIT -eq 1 ]]; then
-    echo "$(date '+%Y-%m-%d %H:%M:%S') - No unprocessed sessions in age window. Skipping."
+    echo "$(date '+%Y-%m-%d %H:%M:%S') - No sessions need transcripts. Done."
     exit 0
-elif [[ $CHECK_EXIT -eq 2 ]]; then
-    echo "$(date '+%Y-%m-%d %H:%M:%S') - Configuration error: $SESSIONS" >&2
-    exit 1
 elif [[ $CHECK_EXIT -ne 0 ]]; then
-    echo "$(date '+%Y-%m-%d %H:%M:%S') - Unexpected error (exit $CHECK_EXIT): $SESSIONS" >&2
+    echo "$(date '+%Y-%m-%d %H:%M:%S') - Error checking sessions (exit $CHECK_EXIT): $SESSIONS" >&2
     exit 1
 fi
 
-# Count sessions (one path per line)
+# Count sessions
 SESSION_COUNT=$(echo "$SESSIONS" | wc -l)
-echo "$(date '+%Y-%m-%d %H:%M:%S') - Found $SESSION_COUNT unprocessed session(s)"
+echo "$(date '+%Y-%m-%d %H:%M:%S') - Found $SESSION_COUNT session(s) needing transcripts"
 
-# Pass sessions to Claude via headless mode with natural language
-# Note: Slash commands don't work in -p mode - must use natural language
-SESSIONS_INLINE=$(echo "$SESSIONS" | tr '\n' ' ')
-echo "$(date '+%Y-%m-%d %H:%M:%S') - Invoking claude -p with session-insights task"
+# Step 2: Generate transcripts for each session
+GENERATED=0
+SKIPPED=0
+FAILED=0
 
-# Use wrapper script to isolate session logs from interactive sessions
-# --dangerously-skip-permissions allows unattended operation
-"$FRAMEWORK_ROOT/scripts/claude-headless.sh" -p "Invoke the session-insights skill to process these session files: $SESSIONS_INLINE" \
-    --dangerously-skip-permissions \
-    --allowedTools "Bash,Read,Write,Edit,Glob,Grep,Task,Skill,mcp__memory__store_memory"
+# Minimum session file size to bother transcribing (skip empty/trivial sessions)
+MIN_SESSION_SIZE=1000  # bytes
 
-echo "$(date '+%Y-%m-%d %H:%M:%S') - Session insights processing complete"
+# Maximum transcripts per run (avoid long-running cron jobs)
+MAX_TRANSCRIPTS=5
+
+while IFS= read -r session_path; do
+    [[ -z "$session_path" ]] && continue
+
+    # Stop after max transcripts
+    if [[ $GENERATED -ge $MAX_TRANSCRIPTS ]]; then
+        echo "$(date '+%Y-%m-%d %H:%M:%S') - Reached max transcripts ($MAX_TRANSCRIPTS), stopping"
+        break
+    fi
+
+    # Skip tiny session files (empty or trivial)
+    file_size=$(stat -c%s "$session_path" 2>/dev/null || echo 0)
+    if [[ $file_size -lt $MIN_SESSION_SIZE ]]; then
+        echo "$(date '+%Y-%m-%d %H:%M:%S') - Skipping tiny session ($file_size bytes): $session_path"
+        SKIPPED=$((SKIPPED + 1))
+        continue
+    fi
+
+    echo "$(date '+%Y-%m-%d %H:%M:%S') - Transcribing: $session_path"
+
+    # Determine output directory based on source type
+    if [[ "$session_path" == *".json" ]]; then
+        OUTPUT_DIR="$ACA_DATA/sessions/gemini"
+    else
+        OUTPUT_DIR="$ACA_DATA/sessions/claude"
+    fi
+    mkdir -p "$OUTPUT_DIR"
+
+    # Generate transcript (auto-naming, then move to output dir)
+    set +e
+    cd "$OUTPUT_DIR"
+    uv run python "$FRAMEWORK_ROOT/scripts/session_transcript.py" "$session_path" --abridged-only 2>&1
+    TRANSCRIPT_EXIT=$?
+    cd "$FRAMEWORK_ROOT"
+    set -e
+
+    if [[ $TRANSCRIPT_EXIT -eq 0 ]]; then
+        GENERATED=$((GENERATED + 1))
+    else
+        echo "$(date '+%Y-%m-%d %H:%M:%S') - Failed to transcribe: $session_path" >&2
+        FAILED=$((FAILED + 1))
+    fi
+done <<< "$SESSIONS"
+
+echo "$(date '+%Y-%m-%d %H:%M:%S') - Transcripts complete: $GENERATED generated, $SKIPPED skipped (tiny), $FAILED failed"
+
+# Step 3: TODO - Add Gemini mining for sessions with transcripts but no summaries
+# Only mine transcripts > 1KB (skip empty sessions)
+# This will be: session_status.py --mode cron-mining | while read path; do gemini_mine.py "$path"; done
+
+exit 0
