@@ -340,3 +340,7 @@ class TestCustodietDemo:
             print(f"Counted calls: {counted}, threshold: {TOOL_CALL_THRESHOLD}")
 
         print("=" * 80)
+
+
+# NOTE: TestReflexiveLoopDemo moved to tests/demo/test_reflexive_loop.py
+# Demo tests should be in tests/demo/ directory per convention.
