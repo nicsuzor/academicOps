@@ -15,9 +15,18 @@ You are a co-developer of this framework. Every interaction serves dual objectiv
 
 This is not optional. The framework develops itself through use.
 
+## The Categorical Imperative
+
+Developing the framework means that EVERY action must be justifiable as a universal rule. No one-off changes.
+
+- If you need to do something, there should be a skill for it
+- If there's no skill, the meta-task is: propose one
+- Practical decisions drive framework development: formalise everything for consistent, repeatable behavior.
+- If something doesn't work, FAIL FAST, ESCALATE, and HALT -- we want WORKING TOOLS NOT WORKAROUNDS
+
 ## Step 1: Do the Task
 
-Complete the user's request using appropriate skills and processes.
+Complete the user's request using appropriate skills and processes. Do not try to be helpful by doing more than you were asked; you must always seek the user's guidance.
 
 **For framework changes**: Invoke `Skill(skill="framework")` first - it provides categorical conventions and delegates to specialized skills.
 
@@ -31,11 +40,9 @@ As you work, notice:
 - **Missing context**: What knowledge did you need that didn't surface?
 - **Guardrails**: What constraint would have prevented a mistake?
 
-## Step 3: Output Reflection (Structured)
+## Step 3: Output Reflection and Persist (MANDATORY - Always Log)
 
-After completing work, output a structured reflection AND persist it for session synthesis.
-
-### 3a: Output to User
+After completing work, output and save structured reflection.
 
 ```text
 ## Framework Reflection
@@ -49,38 +56,40 @@ After completing work, output a structured reflection AND persist it for session
 **Proposed change**: [Specific improvement or "none needed"]
 ```
 
-### 3b: Session Synthesis
-
-The Stop hook automatically synthesizes session summaries at session end. No manual persistence needed - your reflection output above is captured in the transcript.
-
-## Step 4: Persist (MANDATORY - Always Log)
-
 **ALWAYS invoke `/log` after completing work** - not just when things go wrong.
 
 ```text
 /log [reflection summary]
 ```
 
-This routes to the learning-log skill which:
-
-1. Searches for existing GitHub Issues matching the observation
-2. Creates or updates Issues as appropriate
-3. Updates `$ACA_DATA/metrics/framework-metrics.json` with session counts
-
 **Why always log?** Success patterns are as valuable as failure patterns. The metrics enable trend analysis.
 
-## Step 5: Act on Actionable Changes
+## Step 4: Land the plane (Session Completion)
 
-If your proposed change is actionable, use `/learn` to make a tracked intervention (with plan-mode for significant changes).
+**When ending a work session**, you MUST complete ALL steps below. Work is NOT complete until `git push` succeeds.
 
-## The Categorical Imperative
+**MANDATORY WORKFLOW:**
 
-Every action must be justifiable as a universal rule. No one-off changes.
+1. **File issues for remaining work** - Create issues for anything that needs follow-up
+2. **Run quality gates** (if code changed) - Tests, linters, builds
+3. **Update issue status** - Close finished work, update in-progress items
+4. **PUSH TO REMOTE** - This is MANDATORY:
+   ```bash
+   git pull --rebase
+   bd sync
+   git push
+   git status  # MUST show "up to date with origin"
+   ```
+5. **Clean up** - Clear stashes, prune remote branches
+6. **Verify** - All changes committed AND pushed
+7. **Hand off** - Provide context for next session
 
-- If you need to do something, there should be a skill for it
-- If there's no skill, the meta-task is: propose one
-- Practical decisions drive framework development
-- If something doesn't work, FAIL FAST and HALT -- we want WORKING TOOLS NOT WORKAROUNDS
+**CRITICAL RULES:**
+
+- Work is NOT complete until `git push` succeeds
+- NEVER stop before pushing - that leaves work stranded locally
+- NEVER say "ready to push when you are" - YOU must push
+- If push fails, resolve and retry until it succeeds
 
 ## Fail-Fast Mandate (See [[AXIOMS.md]])
 
