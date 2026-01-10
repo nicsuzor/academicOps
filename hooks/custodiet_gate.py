@@ -27,7 +27,7 @@ import time
 from pathlib import Path
 from typing import Any
 
-from lib.session_reader import extract_router_context
+from lib.session_reader import extract_gate_context
 from lib.session_state import (
     CustodietState,
     load_custodiet_state,
@@ -281,24 +281,25 @@ def write_temp_file(content: str) -> Path:
         return Path(f.name)
 
 
-def build_audit_instruction(transcript_path: str | None, tool_name: str) -> str:
+def build_audit_instruction(
+    transcript_path: str | None, tool_name: str, cwd: str
+) -> str:
     """Build instruction for compliance audit.
 
     Writes full context to temp file, returns short instruction.
+
+    Context includes:
+    - Original user intent (from hydrator state or first prompt)
+    - Recent prompts (less truncated)
+    - Full TodoWrite plan (not just counts)
+    - Tool errors (for Type A reactive helpfulness detection)
+    - Files modified (for scope assessment)
+    - Recent tools and agent responses
     """
     cleanup_old_temp_files()
 
-    # Extract session context (FAIL-FAST: no silent failures)
-    session_context = ""
-    if transcript_path:
-        ctx = extract_router_context(Path(transcript_path))
-        if ctx:
-            # extract_router_context already includes "## Session Context" header
-            # Template also has the header, so strip it from ctx to avoid duplication
-            ctx_lines = ctx.split("\n")
-            if ctx_lines and ctx_lines[0].strip() == "## Session Context":
-                ctx = "\n".join(ctx_lines[1:]).lstrip("\n")
-            session_context = ctx
+    # Extract rich session context
+    session_context = _build_session_context(transcript_path, cwd)
 
     # Build full context
     context_template = load_template(CONTEXT_TEMPLATE_FILE)
@@ -315,6 +316,131 @@ def build_audit_instruction(transcript_path: str | None, tool_name: str) -> str:
     instruction = instruction_template.format(temp_path=str(temp_path))
 
     return instruction
+
+
+def _build_session_context(transcript_path: str | None, cwd: str) -> str:
+    """Build rich session context for custodiet analysis.
+
+    Extracts all signals needed for compliance checking:
+    - Original intent (critical for drift detection)
+    - Full todo plan (critical for scope checking)
+    - Tool errors (critical for Type A detection)
+    - Files modified (for scope assessment)
+    """
+    lines: list[str] = []
+
+    # 1. Get intent envelope from hydrator state (primary source of authority)
+    hydrator_state = load_hydrator_state(cwd)
+    if hydrator_state:
+        intent = hydrator_state.get("intent_envelope")
+        if intent:
+            lines.append("**Original User Request** (from hydrator):")
+            # Show full intent, not truncated - this is the authority baseline
+            lines.append(f"> {intent}")
+            lines.append("")
+
+        workflow = hydrator_state.get("declared_workflow")
+        if workflow:
+            lines.append(f"**Declared Workflow**: {workflow.get('gate', 'unknown')}")
+            if workflow.get("approach"):
+                lines.append(f"**Approach**: {workflow.get('approach')}")
+            lines.append("")
+
+        guardrails = hydrator_state.get("guardrails")
+        if guardrails:
+            lines.append(f"**Active Guardrails**: {', '.join(guardrails)}")
+            lines.append("")
+
+    # 2. Extract from transcript
+    if transcript_path:
+        ctx = extract_gate_context(
+            Path(transcript_path),
+            include={"intent", "prompts", "todos", "errors", "tools", "files"},
+            max_turns=10,  # More context than default 5
+        )
+
+        # Show original intent from transcript if not from hydrator
+        if not hydrator_state or not hydrator_state.get("intent_envelope"):
+            intent = ctx.get("intent")
+            if intent:
+                lines.append("**Original User Request** (first prompt):")
+                # Full text, not truncated
+                lines.append(f"> {intent}")
+                lines.append("")
+
+        # Recent prompts (for context, less truncated)
+        prompts = ctx.get("prompts", [])
+        if prompts:
+            lines.append("**Recent User Prompts**:")
+            for i, prompt in enumerate(prompts[-5:], 1):
+                # Truncate at 300 chars instead of 100
+                display = prompt[:300] + "..." if len(prompt) > 300 else prompt
+                lines.append(f"{i}. {display}")
+            lines.append("")
+
+        # Full TodoWrite plan (critical for scope checking)
+        todos = ctx.get("todos")
+        if todos:
+            todo_list = todos.get("todos", [])
+            counts = todos.get("counts", {})
+            lines.append(
+                f"**TodoWrite Plan** ({counts.get('pending', 0)} pending, "
+                f"{counts.get('in_progress', 0)} in_progress, "
+                f"{counts.get('completed', 0)} completed):"
+            )
+            for todo in todo_list:
+                status = todo.get("status", "pending")
+                content = todo.get("content", "")
+                symbol = {
+                    "completed": "[x]",
+                    "in_progress": "[>]",
+                    "pending": "[ ]",
+                }.get(status, "[ ]")
+                lines.append(f"  {symbol} {content}")
+            lines.append("")
+
+        # Tool errors (critical for Type A detection)
+        errors = ctx.get("errors", [])
+        if errors:
+            lines.append("**Tool Errors** (watch for reactive helpfulness):")
+            for error in errors[-5:]:
+                error_content = error.get("content", "")[:200]
+                lines.append(f"  - {error_content}")
+            lines.append("")
+
+        # Files modified (for scope assessment)
+        files = ctx.get("files", [])
+        if files:
+            lines.append("**Files Modified**:")
+            for f in files:
+                # Show just filename for readability
+                short = f.split("/")[-1] if "/" in f else f
+                lines.append(f"  - {short}")
+            lines.append("")
+
+        # Recent tools (for activity tracking)
+        tools = ctx.get("tools", [])
+        if tools:
+            lines.append("**Recent Tools**:")
+            for tool in tools[-10:]:
+                name = tool.get("name", "unknown")
+                args = tool.get("args", {})
+                # Compact display
+                if name in ("Read", "Write", "Edit"):
+                    path = args.get("file_path", "")
+                    short = path.split("/")[-1] if "/" in path else path
+                    lines.append(f"  - {name}({short})")
+                elif name == "Bash":
+                    cmd = str(args.get("command", ""))[:50]
+                    lines.append(f"  - Bash({cmd}...)")
+                else:
+                    lines.append(f"  - {name}")
+            lines.append("")
+
+    if not lines:
+        return "(No session context available)"
+
+    return "\n".join(lines)
 
 
 def main():
@@ -352,7 +478,7 @@ def main():
     # Check if threshold reached
     if state["tool_count"] >= TOOL_CALL_THRESHOLD:
         try:
-            instruction = build_audit_instruction(transcript_path, tool_name)
+            instruction = build_audit_instruction(transcript_path, tool_name, cwd)
             # Use hookSpecificOutput.additionalContext - the only format router passes through
             output_data = {
                 "hookSpecificOutput": {

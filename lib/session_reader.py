@@ -159,9 +159,23 @@ def extract_router_context(transcript_path: Path, max_turns: int = _MAX_TURNS) -
     return _extract_router_context_impl(transcript_path, max_turns)
 
 
-def _is_agent_notification(text: str) -> bool:
-    """Check if text is an agent notification (system noise)."""
-    return text.strip().startswith("<agent-notification>")
+def _is_system_injected_context(text: str) -> bool:
+    """Check if text is system-injected context (not actual user input).
+
+    These are automatically added by Claude Code, not typed by user:
+    - <agent-notification> - task completion notifications
+    - <ide_selection> - user's IDE selection
+    - <ide_opened_file> - file user has open in IDE
+    - <system-reminder> - hook-injected reminders
+    """
+    stripped = text.strip()
+    system_prefixes = (
+        "<agent-notification>",
+        "<ide_selection>",
+        "<ide_opened_file>",
+        "<system-reminder>",
+    )
+    return any(stripped.startswith(prefix) for prefix in system_prefixes)
 
 
 def _clean_prompt_text(text: str) -> str:
@@ -216,7 +230,7 @@ def _extract_router_context_impl(transcript_path: Path, max_turns: int) -> str:
         # Handle both string content (commands) and list content (API format)
         if isinstance(content, str):
             text = content.strip()
-            if text and not _is_agent_notification(text):
+            if text and not _is_system_injected_context(text):
                 cleaned = _clean_prompt_text(text)
                 if cleaned:
                     user_prompts.append(cleaned)
@@ -224,7 +238,7 @@ def _extract_router_context_impl(transcript_path: Path, max_turns: int) -> str:
             for block in content:
                 if isinstance(block, dict) and block.get("type") == "text":
                     text = block.get("text", "").strip()
-                    if text and not _is_agent_notification(text):
+                    if text and not _is_system_injected_context(text):
                         cleaned = _clean_prompt_text(text)
                         if cleaned:
                             user_prompts.append(cleaned)
@@ -447,6 +461,9 @@ def _extract_gate_context_impl(
     if "errors" in include:
         result["errors"] = _extract_errors(entries, max_turns)
 
+    if "files" in include:
+        result["files"] = _extract_files_modified(entries)
+
     return result
 
 
@@ -464,7 +481,7 @@ def _extract_prompts(entries: list[dict], max_turns: int) -> list[str]:
         content = message.get("content", [])
 
         text = _extract_text_from_content(content)
-        if text and not _is_agent_notification(text):
+        if text and not _is_system_injected_context(text):
             cleaned = _clean_prompt_text(text)
             if cleaned:
                 prompts.append(cleaned)
@@ -492,7 +509,11 @@ def _extract_recent_skill(entries: list[dict]) -> str | None:
 
 
 def _extract_todos(entries: list[dict]) -> dict[str, Any] | None:
-    """Extract current TodoWrite state."""
+    """Extract current TodoWrite state with full todo list.
+
+    Returns complete todo information for compliance checking,
+    not just counts - custodiet needs to see the full plan.
+    """
     state = parse_todowrite_state(entries)
     if state is None:
         return None
@@ -500,6 +521,7 @@ def _extract_todos(entries: list[dict]) -> dict[str, Any] | None:
     return {
         "counts": state.counts,
         "in_progress_task": state.in_progress_task,
+        "todos": state.todos,  # Full list for drift analysis
     }
 
 
@@ -515,7 +537,7 @@ def _extract_intent(entries: list[dict]) -> str | None:
         content = message.get("content", [])
 
         text = _extract_text_from_content(content)
-        if text and not _is_agent_notification(text):
+        if text and not _is_system_injected_context(text):
             cleaned = _clean_prompt_text(text)
             if cleaned:
                 return cleaned
@@ -619,6 +641,39 @@ def _extract_errors(entries: list[dict], max_turns: int) -> list[dict[str, Any]]
                     )
 
     return errors[-max_turns:] if errors else []
+
+
+def _extract_files_modified(entries: list[dict]) -> list[str]:
+    """Extract unique list of files modified via Edit/Write tools.
+
+    Used by custodiet for scope assessment - are we touching files
+    unrelated to the original request?
+    """
+    files: set[str] = set()
+
+    for entry in entries:
+        if entry.get("type") != "assistant":
+            continue
+
+        message = entry.get("message", {})
+        content = message.get("content", [])
+        if not isinstance(content, list):
+            continue
+
+        for block in content:
+            if not isinstance(block, dict) or block.get("type") != "tool_use":
+                continue
+
+            tool_name = block.get("name", "")
+            tool_input = block.get("input", {})
+
+            # Track Edit and Write operations
+            if tool_name in ("Edit", "Write"):
+                file_path = tool_input.get("file_path", "")
+                if file_path:
+                    files.add(file_path)
+
+    return sorted(files)
 
 
 def _extract_text_from_content(content: Any) -> str:
