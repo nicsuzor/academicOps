@@ -579,7 +579,7 @@ $ACA_DATA/
     ├── ROADMAP.md               # Current status
     └── specs/                   # Design documents (timeless)
 
-# Episodic content → GitHub Issues (nicsuzor/academicOps repo)
+# Episodic content → bd issues (.beads/issues.jsonl, git-tracked)
 # Labels: bug, experiment, devlog, decision, learning
 
 # Archive

@@ -73,7 +73,7 @@ After completing the audit, invoke `/log` to record deviations:
 Skill(skill="log", args="[root cause category]: [responsible component] - [deviation summary]")
 ```
 
-This ensures framework component failures are tracked as GitHub Issues (label: `learning`) and can trigger heuristic synthesis when patterns emerge.
+This ensures framework component failures are tracked as bd issues (label: `learning`) and can trigger heuristic synthesis when patterns emerge.
 
 ## Example
 

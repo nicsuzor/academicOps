@@ -1,7 +1,7 @@
 ---
 name: log
 category: instruction
-description: Log framework component failures to GitHub Issues (per AXIOMS #28)
+description: Log framework component failures to bd issues (per AXIOMS #28)
 allowed-tools: Task
 permalink: commands/log
 ---
@@ -10,14 +10,14 @@ permalink: commands/log
 
 ```
 Task(subagent_type="general-purpose", model="haiku",
-     description="Log observation to GitHub",
+     description="Log observation to bd",
      prompt="Invoke Skill(skill='learning-log') with this observation: [USER'S OBSERVATION]",
      run_in_background=true)
 ```
 
 Report to user: "Logging observation in background. Continue working."
 
-**Purpose**: Build institutional knowledge by logging observations to GitHub Issues, where patterns can accumulate and synthesize to HEURISTICS.md.
+**Purpose**: Build institutional knowledge by logging observations to bd issues, where patterns can accumulate and synthesize to HEURISTICS.md.
 
 ## Key Principle: Root Cause Abstraction
 

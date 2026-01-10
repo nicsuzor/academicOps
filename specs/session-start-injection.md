@@ -80,7 +80,7 @@ SessionStart injection provides exactly four categories of information:
 **Contents**:
 
 - Numbered heuristics (H1, H2, etc.) with rule statement only
-- No metadata (confidence, evidence, axiom refs) - that lives in GitHub Issues
+- No metadata (confidence, evidence, axiom refs) - that lives in bd issues
 - Revision protocol pointing to `/log` skill
 
 **Contract**:
@@ -88,7 +88,7 @@ SessionStart injection provides exactly four categories of information:
 - Heuristics are default behavior, not inviolable
 - User can override with explicit instruction
 - Agents should follow unless there's specific reason not to
-- Evidence and traceability live in GitHub Issues (label: `learning`)
+- Evidence and traceability live in bd issues (label: `learning`)
 
 **Rationale**: Learned patterns surface proven approaches. Metadata stripped for token efficiency - agents need rules, not provenance.
 

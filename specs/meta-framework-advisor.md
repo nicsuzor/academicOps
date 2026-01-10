@@ -144,7 +144,7 @@ Layer 1: Authoritative Framework State (Always Current)
 
 Layer 2: Dynamic Tracking (Session-to-session learning)
   ├── $AOPS/HEURISTICS.md - Empirically validated patterns
-  └── GitHub Issues - Episodic observations and experiments
+  └── bd issues - Episodic observations and experiments
 
 Layer 3: Automation Instructions
   └── $AOPS/skills/framework/SKILL.md - How to maintain framework
@@ -154,7 +154,7 @@ Layer 3: Automation Instructions
 
 - State (layers 1-2) is separate from instructions (layer 3)
 - Authoritative sources are discoverable (top-level)
-- Learning accumulates in HEURISTICS.md and GitHub Issues
+- Learning accumulates in HEURISTICS.md and bd issues
 - Instructions reference state, don't duplicate it
 
 ## Scope

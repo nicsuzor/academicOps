@@ -61,7 +61,7 @@ Invoke the logging infrastructure to identify prior occurences and track the int
 
 `Skill(skill='learning-log', args="[root cause summary]")`
 
-The learning-log skill will search GitHub Issues for related observations and return information about what interventions have been tried to date.
+The learning-log skill will search bd issues for related observations and return information about what interventions have been tried to date.
 
 ### 3. Choose Intervention Level (Start at Bottom, Escalate with Evidence)
 

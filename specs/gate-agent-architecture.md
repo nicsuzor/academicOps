@@ -476,7 +476,7 @@ Per [[skills/remember/SKILL.md]]:
 | User preferences discovered | `$ACA_DATA/context/`         |
 | Project decisions           | `$ACA_DATA/projects/<name>/` |
 | Tool usage patterns         | Memory server only           |
-| Workflow observations       | GitHub Issues (episodic)     |
+| Workflow observations       | bd issues (episodic)         |
 
 ### PKG Extraction Implementation
 

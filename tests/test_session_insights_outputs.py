@@ -244,7 +244,7 @@ class TestLearningOutputs:
     """Test learning output routing (Step 6b of skill).
 
     Note: Per current SKILL.md spec, learning observations are routed to
-    GitHub Issues via the /log skill, NOT to local markdown files.
+    bd issues via the /log skill, NOT to local markdown files.
     These tests verify the routing mechanism exists.
     """
 
@@ -256,7 +256,7 @@ class TestLearningOutputs:
         skill_path = Path(aops) / "skills" / "learning-log" / "SKILL.md"
         assert skill_path.exists(), (
             f"learning-log skill not found at {skill_path}. "
-            "This skill routes learning observations to GitHub Issues."
+            "This skill routes learning observations to bd issues."
         )
 
     def test_dashboard_sessions_dir_exists(self) -> None:

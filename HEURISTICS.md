@@ -10,7 +10,7 @@ tags: [framework, principles, empirical]
 
 # Heuristics
 
-Working hypotheses validated by evidence. Evidence lives in GitHub Issues (label: `learning`).
+Working hypotheses validated by evidence. Evidence lives in bd issues (label: `learning`).
 
 ## H1: Skill Invocation Framing
 
@@ -138,7 +138,7 @@ Acceptance criteria describe USER outcomes, not technical metrics. Never add per
 
 ## H26: Semantic vs Episodic Storage
 
-Classify content before creating: Semantic (current state) → `$ACA_DATA`. Episodic (observations) → GitHub Issues.
+Classify content before creating: Semantic (current state) → `$ACA_DATA`. Episodic (observations) → bd issues.
 
 ## H27: Debug, Don't Redesign
 

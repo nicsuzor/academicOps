@@ -134,12 +134,12 @@ tags: [framework, principles, core]
 
 28. **CURRENT STATE MACHINE**: `$ACA_DATA` contains ONLY semantic memory - timeless truths, always up-to-date.
     - **Semantic memory** (current state): What IS true now. Understandable without history. Lives in `$ACA_DATA`.
-    - **Episodic memory** (observations): Time-stamped events. Lives in **GitHub Issues** (nicsuzor/academicOps repo).
+    - **Episodic memory** (observations): Time-stamped events. Lives in **bd issues** (`.beads/issues.jsonl`, git-tracked).
     - **Episodic content includes**: Bug investigations, experiment observations, development logs, code change discussions, decision rationales, any observation at a point in time
-    - **Synthesis flow**: Observations accumulate in Issues → patterns emerge → synthesize to semantic docs (HEURISTICS, specs) → close Issue with link to synthesized content
+    - **Synthesis flow**: Observations accumulate in bd issues → patterns emerge → synthesize to semantic docs (HEURISTICS, specs) → close issue with link to synthesized content
     - If you must read multiple files or piece together history to understand truth, it's not properly synthesized
     - Git history preserves the record; `$ACA_DATA` reflects only what's current
-    - **Trade-offs accepted**: Issues require network access; Issues not indexed by memory server (use GitHub search)
+    - **Trade-offs accepted**: bd issues not indexed by memory server (use `bd search`)
 
 29. **ONE SPEC PER FEATURE**: Every feature has exactly one spec. Specs are timeless.
     - Specs describe HOW IT WORKS, not how it evolved

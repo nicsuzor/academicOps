@@ -284,7 +284,7 @@ See [[INDEX.md]] for complete file tree and document purposes.
 2. **VISION.md is grounded** - Academic support framework, not autonomous research.
 3. **ROADMAP.md is simple** - Just lists: Done, In Progress, Planned, Issues.
 4. **README.md has the inventory** - Every skill/command/hook with one-line purpose and how to invoke.
-5. **No other core docs** - specs/ and experiments/ handle implementation details; episodic observations go to GitHub Issues.
+5. **No other core docs** - specs/ and experiments/ handle implementation details; episodic observations go to bd issues.
 
 ### Feature Inventory Format (README.md)
 
@@ -398,7 +398,7 @@ Step-by-step guides for common framework operations:
 
 ## Framework Project Data (`$AOPS/`)
 
-Per [[AXIOMS]] #28 (Current State Machine): `$ACA_DATA` contains ONLY semantic memory (current state). Episodic memory (observations) lives in **GitHub Issues** (nicsuzor/academicOps repo).
+Per [[AXIOMS]] #28 (Current State Machine): `$ACA_DATA` contains ONLY semantic memory (current state). Episodic memory (observations) lives in **bd issues** (`.beads/issues.jsonl`, git-tracked).
 
 ### Storage Classification
 

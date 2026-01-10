@@ -46,8 +46,8 @@ The framework uses a memory server that indexes `$ACA_DATA/`. When you write mar
 | Specs/specifications                               | `$AOPS/specs/`   | Framework code, version controlled |
 | Skills                                             | `$AOPS/skills/`  | Framework code                     |
 | Hooks                                              | `$AOPS/hooks/`   | Framework code                     |
-| Episodic content                                   | GitHub Issues    | Per [[AXIOMS]] #28, [[H26]]        |
-| `learning/`, `bugs/`, `experiments/`, `decisions/` | GitHub Issues    | Episodic, not current state        |
+| Episodic content                                   | bd issues        | Per [[AXIOMS]] #28, [[H26]]        |
+| `learning/`, `bugs/`, `experiments/`, `decisions/` | bd issues        | Episodic, not current state        |
 
 **When remembering framework decisions** (specs, heuristics, design choices):
 

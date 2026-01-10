@@ -158,7 +158,7 @@ The framework should become increasingly self-aware and self-improving:
 
 1. **Agent-ready instructions** - Core docs ([[AXIOMS.md|AXIOMS]], [[HEURISTICS.md|HEURISTICS]]) contain only actionable rules, no explanations or evidence
 2. **Evidence-informed changes** - Framework changes are motivated by consolidated diagnostic data, not ad-hoc observations
-3. **Closed-loop learning** - Observations → GitHub Issues → Diagnostics → Changes → Validation
+3. **Closed-loop learning** - Observations → bd issues → Diagnostics → Changes → Validation
 4. **Framework introspection** - The [[specs/framework-skill.md|framework skill]] understands the whole system and enforces consistency before accepting additions
 5. **Bounded growth** - Logs don't grow forever; they consolidate into actionable diagnostics then archive
 6. **Session-end reflection** - At session end, automatically analyze behavior patterns and suggest heuristic updates. User approves with one click, no manual observation writing. Zero friction for framework improvement.

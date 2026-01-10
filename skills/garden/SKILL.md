@@ -38,7 +38,7 @@ Files in `experiments/` that describe features with existing specs should be syn
 3. If match found → report as "orphan implementation doc - synthesize into [spec]"
 4. Output: "Found N implementation docs that should be merged into specs"
 
-Note: Per AXIOM #28, episodic observations go to GitHub Issues, not local files.
+Note: Per AXIOM #28, episodic observations go to bd issues, not local files.
 
 ### weed [area]
 
@@ -117,7 +117,7 @@ After synthesizing any spec, ensure `specs/specs.md` is updated:
 - Files named with dates/months that document completed work
 - Specs with `status: Implemented` containing `## Options` or `## Alternatives`
 - Reference docs with temporal language that implies incompleteness
-- Episodic content that should be GitHub Issues, not local files
+- Episodic content that should be bd issues, not local files
 
 **Workflow for specs**:
 
@@ -209,7 +209,7 @@ Default: highest-activity areas (recent modifications).
 1. Daily logs are the authoritative record of what happened each day
 2. Named session files fragment history across multiple locations
 3. Creates maintenance burden and stale cross-references
-4. Reusable patterns go to HEURISTICS.md or GitHub Issues, not session logs
+4. Reusable patterns go to HEURISTICS.md or bd issues, not session logs
 
 **What to keep:**
 

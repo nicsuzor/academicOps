@@ -35,7 +35,7 @@ graph TD
 
 ## Purpose
 
-Document agent behavior patterns as GitHub Issues, enabling pattern recognition across sessions and synthesis into framework heuristics.
+Document agent behavior patterns as bd issues, enabling pattern recognition across sessions and synthesis into framework heuristics.
 
 ## Problem Statement
 
@@ -49,7 +49,7 @@ Framework learning risks:
 
 ## Solution
 
-A skill that routes all observations to GitHub Issues (per [[AXIOMS]] #28), enforces investigation protocols, and triggers synthesis when patterns emerge.
+A skill that routes all observations to bd issues (per [[AXIOMS]] #28), enforces investigation protocols, and triggers synthesis when patterns emerge.
 
 ## How It Works
 
@@ -137,15 +137,15 @@ If cannot verify, mark "Unverified" in Root Cause.
 3. Add to HEURISTICS.md with evidence references
 4. Close Issues: "Synthesized to HEURISTICS.md H[n]"
 
-Closed Issues remain searchable via GitHub.
+Closed issues remain searchable via `bd list --status closed` and `bd search`.
 
 ## Relationships
 
 ### Depends On
 
-- [[AXIOMS]] #28 (Current State Machine - episodic → GitHub Issues)
+- [[AXIOMS]] #28 (Current State Machine - episodic → bd issues)
 - [[HEURISTICS]] - Synthesis destination
-- GitHub CLI (`gh`) for Issue operations
+- `bd` CLI for issue operations
 
 ### Used By
 
@@ -160,7 +160,7 @@ Closed Issues remain searchable via GitHub.
 
 ## Success Criteria
 
-1. **GitHub Issues only**: No local episodic files in `$ACA_DATA`
+1. **bd issues only**: No local episodic files in `$ACA_DATA`
 2. **Search-before-create**: Duplicate observations added as comments
 3. **Verified claims**: Root causes backed by evidence
 4. **Investigation protocol**: File errors properly traced
@@ -168,9 +168,9 @@ Closed Issues remain searchable via GitHub.
 
 ## Design Rationale
 
-**Why GitHub Issues?**
+**Why bd issues?**
 
-Per [[AXIOMS]] #28: Episodic content (observations at a point in time) goes to GitHub Issues. Issues provide structured storage with timelines, comments, labels, and search. They're purpose-built for tracking observations over time.
+Per [[AXIOMS]] #28: Episodic content (observations at a point in time) goes to bd issues. Issues provide structured storage with timelines, labels, and search. They're git-tracked and local-first, enabling offline work and version control integration.
 
 **Why investigation protocol?**
 

@@ -140,12 +140,13 @@ After completing work, reflect:
 2. What friction existed (missing context, unclear process)
 3. Proposed change (or "none needed")
 
-**Persist the reflection** — Per [[specs/reflexivity]], log observations to GitHub Issues:
+**Persist the reflection** — Per [[specs/reflexivity]], log observations to bd issues:
 
 ```bash
-# Use gh CLI to create/update Issue
-gh issue list --repo nicsuzor/academicOps --label learning --search "[keywords]"
-# If match: add comment. If no match: create new Issue.
+# Use bd CLI to search/create issues
+bd list --label learning --status open
+bd search "[keywords]"
+# If match: update issue. If no match: create new issue with bd create.
 ```
 
 ## Tool Translation (from Claude)

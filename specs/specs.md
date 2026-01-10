@@ -105,4 +105,4 @@ Design documents for the academicOps framework. Per [[AXIOMS]] #29: one spec per
 - [[supervisor-skill]] - Multi-agent orchestration with quality gates (implemented)
 - [[tasks-skill]] - Task lifecycle management (implemented)
 - [[transcript-skill]] - JSONL to markdown session transcripts (implemented)
-- [[learning-log-skill]] - Pattern documentation via GitHub Issues (implemented)
+- [[learning-log-skill]] - Pattern documentation via bd issues (implemented)

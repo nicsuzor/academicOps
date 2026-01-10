@@ -1,26 +1,27 @@
 ---
 name: learning-log
 category: instruction
-description: Log agent performance patterns to GitHub Issues. Categorizes observations and routes to appropriate issue labels.
-allowed-tools: Read,Grep,Glob,Bash,mcp__gh__issue_write,mcp__gh__search_issues,mcp__gh__add_issue_comment
-version: 3.0.0
+description: Log agent performance patterns to bd issues. Categorizes observations and routes to appropriate issue labels.
+allowed-tools: Read,Grep,Glob,Bash
+version: 4.0.0
 permalink: skills-learning-log
 ---
 
 # Learning Log Skill
 
-Document agent behavior patterns as GitHub Issues (per AXIOMS #28: episodic content → GitHub Issues).
+Document agent behavior patterns as bd issues (per AXIOMS #28: episodic content → bd issues).
 
-**Key change (v3.0)**: All observations now go to GitHub Issues in `nicsuzor/academicOps` repo, NOT local files.
+**Key change (v4.0)**: All observations now go to bd issues (`.beads/issues.jsonl`), git-tracked and local-first.
 
 ## Workflow
 
 ### Phase 1: Search for Existing Issue
 
-**First**: Search for existing Issue that matches this observation:
+**First**: Search for existing issue that matches this observation:
 
 ```bash
-gh issue list --repo nicsuzor/academicOps --label "[category]" --search "[keywords]" --state open
+bd list --label "[category]" --status open
+bd search "[keywords]"
 ```
 
 Categories/labels:
@@ -32,23 +33,30 @@ Categories/labels:
 
 ### Phase 2: Create or Update Issue
 
-**If matching Issue exists**: Add comment with new observation
+**If matching issue exists**: Update with new observation (append to description)
 
 ```bash
-gh issue comment [ISSUE_NUMBER] --repo nicsuzor/academicOps --body "## Observation [DATE]
+bd show [ISSUE_ID]  # Get current description
+bd update [ISSUE_ID] --description "$(cat <<'EOF'
+[existing description]
+
+## Observation [DATE]
 
 **What**: [description]
 **Context**: [when/where]
-**Evidence**: [specifics]"
+**Evidence**: [specifics]
+EOF
+)"
 ```
 
-**If no matching Issue**: Create new Issue
+**If no matching issue**: Create new issue
 
 ```bash
-gh issue create --repo nicsuzor/academicOps \
-  --title "[category]: [descriptive-title]" \
+bd create --title "[category]: [descriptive-title]" \
   --label "[category]" \
-  --body "## Initial Observation
+  --type task \
+  --description "$(cat <<'EOF'
+## Initial Observation
 
 **Date**: YYYY-MM-DD
 **Error**: [brief description]
@@ -57,14 +65,16 @@ gh issue create --repo nicsuzor/academicOps \
 
 ## Evidence
 
-[details]"
+[details]
+EOF
+)"
 ```
 
 ### Phase 3: Link to User Stories (if applicable)
 
 Read `$AOPS/ROADMAP.md` for User Stories table.
 
-If observation relates to a user story, add to Issue body:
+If observation relates to a user story, add to issue body:
 
 ```
 **User Story**: [story-name]
@@ -72,12 +82,12 @@ If observation relates to a user story, add to Issue body:
 
 ### Phase 4: Synthesis Check
 
-When pattern emerges across multiple Issues:
+When pattern emerges across multiple issues:
 
 1. Create/update HEURISTICS.md entry (semantic doc)
-2. Close related Issues with link: "Synthesized to HEURISTICS.md H[n]"
+2. Close related issues: `bd close [ID] --reason "Synthesized to HEURISTICS.md H[n]"`
 
-Closed Issues remain searchable via GitHub.
+Closed issues remain searchable via `bd list --status closed` and `bd search`.
 
 ## File Error Investigation Protocol
 
@@ -128,7 +138,7 @@ grep -l "affected/path" ~/.claude/projects/-Users-suzor-writing/*.jsonl
 
 ### Investigation Results Format
 
-Include in GitHub Issue:
+Include in bd issue:
 
 ```markdown
 **Investigation**:
@@ -233,13 +243,13 @@ Examples:
 
 ## Issue Labels (Categories)
 
-| Label        | Use For                  | Example Title                                  |
-| ------------ | ------------------------ | ---------------------------------------------- |
-| `bug`        | Component-level bugs     | `bug: task_view.py KeyError on missing field`  |
-| `learning`   | Agent behavior patterns  | `learning: agents ignoring explicit scope`     |
-| `experiment` | Systemic investigations  | `experiment: hook context injection timing`    |
-| `devlog`     | Development observations | `devlog: session-insights workflow`            |
-| `decision`   | Architectural choices    | `decision: GitHub Issues for episodic storage` |
+| Label        | Use For                  | Example Title                                 |
+| ------------ | ------------------------ | --------------------------------------------- |
+| `bug`        | Component-level bugs     | `bug: task_view.py KeyError on missing field` |
+| `learning`   | Agent behavior patterns  | `learning: agents ignoring explicit scope`    |
+| `experiment` | Systemic investigations  | `experiment: hook context injection timing`   |
+| `devlog`     | Development observations | `devlog: session-insights workflow`           |
+| `decision`   | Architectural choices    | `decision: bd issues for episodic storage`    |
 
 **Default**: `learning` if unclear.
 
@@ -278,28 +288,27 @@ Examples:
 
 ## Synthesis Workflow
 
-When patterns emerge across Issues, synthesize to semantic docs:
+When patterns emerge across issues, synthesize to semantic docs:
 
 ### Synthesis Triggers
 
-- Same root cause appears in 3+ Issues
+- Same root cause appears in 3+ issues
 - Pattern spans multiple sessions/dates
 - Actionable heuristic becomes clear
 
 ### Synthesis Process
 
-1. **Identify pattern** across related Issues
+1. **Identify pattern** across related issues
 2. **Draft heuristic** following HEURISTICS.md format
 3. **Add to HEURISTICS.md** with evidence references
-4. **Close Issues** with comment: "Synthesized to HEURISTICS.md H[n]"
+4. **Close issues**: `bd close [ID] --reason "Synthesized to HEURISTICS.md H[n]"`
 
 ### Post-Synthesis
 
-Closed Issues remain searchable. GitHub search finds them by:
+Closed issues remain searchable via:
 
-- Label (e.g., `label:learning`)
-- Keywords in title/body
-- Date range
+- `bd list --status closed --label learning`
+- `bd search "[keywords]"`
 
 ## Input Types
 
@@ -316,11 +325,11 @@ When input contains `adjust-heuristic H[n]:`:
 2. Read `$AOPS/HEURISTICS.md`
 3. Add dated evidence to heuristic
 4. Adjust confidence if warranted
-5. Add observation as comment to relevant GitHub Issue
+5. Add observation to relevant bd issue
 
 ## Phase 5: Update Metrics (Always)
 
-After creating/updating an Issue, update the metrics file:
+After creating/updating an issue, update the metrics file:
 
 **Location**: `$ACA_DATA/metrics/framework-metrics.json`
 
@@ -364,7 +373,7 @@ mkdir -p "$ACA_DATA/metrics"
 6. Update `updated` timestamp
 7. Write file
 
-**Note**: This is lightweight tracking. Deep analysis uses GitHub Issue search.
+**Note**: This is lightweight tracking. Deep analysis uses `bd search`.
 
 ## Constraints
 
@@ -382,17 +391,15 @@ mkdir -p "$ACA_DATA/metrics"
 User: /log agent ignored my explicit request to run ALL tests, only ran 3
 
 Phase 1 - Search:
-gh issue list --repo nicsuzor/academicOps --label "learning" --search "instruction scope" --state open
-→ Found: #42 "learning: agents ignoring explicit scope instructions"
+bd list --label learning --status open
+bd search "instruction scope"
+→ Found: aops-42 "learning: agents ignoring explicit scope instructions"
 
-Phase 2 - Update existing Issue:
-gh issue comment 42 --repo nicsuzor/academicOps --body "## Observation 2025-12-14
+Phase 2 - Update existing issue:
+bd show aops-42  # Get current description
+bd update aops-42 --description "[existing + new observation]"
 
-**What**: Agent ran only 3 tests when explicitly asked to run ALL
-**Context**: During TDD workflow
-**Evidence**: Transcript shows 'run ALL tests' instruction followed by partial execution"
-
-Report: "Added observation to Issue #42 - recurring pattern of agents not attending to explicit scope instructions"
+Report: "Added observation to aops-42 - recurring pattern of agents not attending to explicit scope instructions"
 ```
 
 ### Example: New Issue
@@ -401,14 +408,13 @@ Report: "Added observation to Issue #42 - recurring pattern of agents not attend
 User: /log hook crashed with TypeError in prompt_router.py
 
 Phase 1 - Search:
-gh issue list --repo nicsuzor/academicOps --label "bug" --search "prompt_router TypeError" --state open
+bd list --label bug --status open
+bd search "prompt_router TypeError"
 → No matching issues
 
-Phase 2 - Create new Issue:
-gh issue create --repo nicsuzor/academicOps \
-  --title "bug: prompt_router.py TypeError on None response" \
-  --label "bug" \
-  --body "## Initial Observation
+Phase 2 - Create new issue:
+bd create --title "bug: prompt_router.py TypeError on None response" \
+  --label bug --type bug --description "## Initial Observation
 
 **Date**: 2025-12-26
 **Category**: bug
@@ -421,5 +427,5 @@ gh issue create --repo nicsuzor/academicOps \
 Stack trace:
 [error details]"
 
-Report: "Created Issue #47 for prompt_router bug investigation"
+Report: "Created aops-47 for prompt_router bug investigation"
 ```

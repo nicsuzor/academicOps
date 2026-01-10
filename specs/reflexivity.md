@@ -31,10 +31,10 @@ Per [[AXIOMS]] #28 (Current State Machine), reflexivity data has two types:
 
 | Type         | Definition                      | Storage                  | Example                  |
 | ------------ | ------------------------------- | ------------------------ | ------------------------ |
-| **Episodic** | Observations at a point in time | GitHub Issues            | "Agent bypassed skill X" |
+| **Episodic** | Observations at a point in time | bd issues                | "Agent bypassed skill X" |
 | **Semantic** | Timeless truths, always current | `$ACA_DATA/` or `$AOPS/` | HEURISTICS.md entry      |
 
-**Episodic observations → GitHub Issues** (repo: nicsuzor/academicOps)
+**Episodic observations → bd issues** (`.beads/issues.jsonl`, git-tracked)
 
 **Synthesized patterns → HEURISTICS.md**
 
@@ -71,7 +71,7 @@ See [[specs/learning-log-skill]] for full workflow.
 **Flow**:
 
 1. Understand issue category (missing fact, ignored instruction, poor behavior, etc.)
-2. Search for prior occurrences (GitHub Issues with same pattern)
+2. Search for prior occurrences (bd issues with same pattern)
 3. Choose minimal intervention per [[RULES]]
 4. Make change, document in Issue
 5. Track success criteria in Issue comments
@@ -111,14 +111,14 @@ At session end:
 
 ## Integration Points
 
-| Component            | Role                                        |
-| -------------------- | ------------------------------------------- |
-| `/log` command       | Routes observations to GitHub Issues        |
-| `/learn` command     | Makes tracked interventions                 |
-| `learning-log` skill | Implements Issue search/create workflow     |
-| `framework` skill    | Governance for interventions                |
-| [[HEURISTICS]]       | Synthesis destination                       |
-| Memory server        | Semantic search (supplements GitHub search) |
+| Component            | Role                                      |
+| -------------------- | ----------------------------------------- |
+| `/log` command       | Routes observations to bd issues          |
+| `/learn` command     | Makes tracked interventions               |
+| `learning-log` skill | Implements Issue search/create workflow   |
+| `framework` skill    | Governance for interventions              |
+| [[HEURISTICS]]       | Synthesis destination                     |
+| Memory server        | Semantic search (supplements `bd search`) |
 
 ## HEURISTICS.md Format
 
@@ -143,7 +143,7 @@ HEURISTICS.md is kept minimal for token efficiency. Each heuristic entry contain
 
 ## Validation Criteria
 
-1. New episodic observations → GitHub Issues (not local files)
+1. New episodic observations → bd issues (not local files)
 2. Search-before-create prevents duplicates
 3. Patterns synthesize to HEURISTICS.md when 3+ Issues share root cause
 4. `/log` and `/learn` both route through this architecture
@@ -151,13 +151,13 @@ HEURISTICS.md is kept minimal for token efficiency. Each heuristic entry contain
 
 ## Design Rationale
 
-**Why GitHub Issues?**
+**Why bd issues?**
 
-Per [[AXIOMS]] #28: Issues provide structured storage with timelines, comments, labels, and search. They're purpose-built for tracking observations over time. Unlike local files, they're searchable across sessions without memory server dependency.
+Per [[AXIOMS]] #28: bd issues provide structured storage with timelines, labels, and search. They're git-tracked and local-first, enabling offline work and version control integration. Searchable via `bd search` and `bd list`.
 
 **Why not local experiment files?**
 
-Experiments are tracked as GitHub Issues (label: `experiment`) with intervention history in comments. This keeps all episodic content in one searchable place and avoids file proliferation.
+Experiments are tracked as bd issues (label: `experiment`) with intervention history in the description. This keeps all episodic content in one searchable place and avoids file proliferation.
 
 **Why synthesize to HEURISTICS.md?**
 
