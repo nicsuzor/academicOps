@@ -15,6 +15,7 @@ Used by:
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from enum import Enum, auto
@@ -36,6 +37,49 @@ class TodoWriteState:
     todos: list[dict[str, Any]]  # Full list of todo items
     counts: dict[str, int]  # {pending: n, in_progress: n, completed: n}
     in_progress_task: str | None  # Content of first in_progress item
+
+
+def _read_task_output_file(output_path: str) -> str | None:
+    """Read content from a task agent output file.
+
+    Args:
+        output_path: Path to .output file (e.g., /tmp/claude/.../tasks/abc123.output)
+
+    Returns:
+        File content as string, or None if file doesn't exist/can't be read
+    """
+    try:
+        path = Path(output_path)
+        if path.exists():
+            return path.read_text(encoding="utf-8")
+    except Exception:
+        pass
+    return None
+
+
+def _extract_task_notifications(text: str) -> list[dict[str, str]]:
+    """Extract task-notification tags from text content.
+
+    Args:
+        text: Text that may contain <task-notification> XML-style tags
+
+    Returns:
+        List of dicts with keys: task_id, output_file, status, summary
+    """
+    notifications = []
+    pattern = r"<task-notification>\s*<task-id>([^<]+)</task-id>\s*<output-file>([^<]+)</output-file>\s*<status>([^<]+)</status>\s*<summary>([^<]+)</summary>\s*</task-notification>"
+
+    for match in re.finditer(pattern, text, re.DOTALL):
+        notifications.append(
+            {
+                "task_id": match.group(1).strip(),
+                "output_file": match.group(2).strip(),
+                "status": match.group(3).strip(),
+                "summary": match.group(4).strip(),
+            }
+        )
+
+    return notifications
 
 
 def parse_todowrite_state(entries: list[Any]) -> TodoWriteState | None:
@@ -1673,7 +1717,22 @@ class SessionProcessor:
                                 markdown += f"## Agent (Turn {turn_number})\n\n"
                             agent_header_emitted = True
 
-                        markdown += f"{content}\n\n"
+                        # Check for task-notification tags and incorporate output files
+                        notifications = _extract_task_notifications(content)
+                        if notifications:
+                            # Render original text first
+                            markdown += f"{content}\n\n"
+                            # Then append task agent outputs
+                            for notif in notifications:
+                                task_output = _read_task_output_file(
+                                    notif["output_file"]
+                                )
+                                if task_output:
+                                    markdown += f"### Task Agent Output ({notif['task_id']})\n\n"
+                                    markdown += f"{task_output}\n\n"
+                        else:
+                            markdown += f"{content}\n\n"
+
                         in_assistant_response = True
 
                     elif item_type == "tool":

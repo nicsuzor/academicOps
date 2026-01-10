@@ -19,6 +19,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from lib.session_reader import SessionProcessor  # noqa: E402
+from lib.paths import get_sessions_dir  # noqa: E402
 
 
 def format_markdown(file_path: Path) -> bool:
@@ -206,11 +207,10 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  python session_transcript.py session.jsonl                    # Generates session_XXX-full.md and session_XXX-abridged.md
+  python session_transcript.py session.jsonl                    # Auto-names in $ACA_DATA/sessions/claude/
   python session_transcript.py session.json                     # Generates Gemini transcript
-  python session_transcript.py session.jsonl -o transcript      # Generates transcript-full.md and transcript-abridged.md
-  python session_transcript.py session.jsonl --full-only        # Only full version with tool results
-  python session_transcript.py session.jsonl --abridged-only    # Only abridged version without tool results
+  python session_transcript.py session.jsonl -o transcript      # Uses $ACA_DATA/sessions/claude/transcript-{full,abridged}.md
+  python session_transcript.py session.jsonl -o /abs/path/name  # Uses absolute path
         """,
     )
 
@@ -223,14 +223,6 @@ Examples:
     parser.add_argument(
         "--slug",
         help="Brief slug describing session work (auto-generated if not provided)",
-    )
-    parser.add_argument(
-        "--full-only", action="store_true", help="Generate only the full version"
-    )
-    parser.add_argument(
-        "--abridged-only",
-        action="store_true",
-        help="Generate only the abridged version",
     )
 
     args = parser.parse_args()
@@ -267,10 +259,6 @@ Examples:
                     print("❌ Error: Could not parse hooks file")
                     return 1
 
-    # Determine which versions to generate
-    generate_full = not args.abridged_only
-    generate_abridged = not args.full_only
-
     # Process the session
     processor = SessionProcessor()
 
@@ -282,13 +270,22 @@ Examples:
 
         # Generate output base name
         if args.output:
-            base_name = args.output
+            output_base = args.output
             # Strip .md suffix if provided
-            if base_name.endswith(".md"):
-                base_name = base_name[:-3]
+            if output_base.endswith(".md"):
+                output_base = output_base[:-3]
             # Strip -full or -abridged suffix if provided
-            if base_name.endswith("-full") or base_name.endswith("-abridged"):
-                base_name = base_name.rsplit("-", 1)[0]
+            if output_base.endswith("-full") or output_base.endswith("-abridged"):
+                output_base = output_base.rsplit("-", 1)[0]
+
+            # If output is just a basename (no directory), place in sessions/claude/
+            output_path = Path(output_base)
+            if not output_path.is_absolute() and output_path.parent == Path("."):
+                sessions_claude = get_sessions_dir() / "claude"
+                sessions_claude.mkdir(parents=True, exist_ok=True)
+                base_name = str(sessions_claude / output_base)
+            else:
+                base_name = output_base
         else:
             # Auto-generate name: YYYYMMDD-shortproject-sessionid-slug
             from datetime import datetime
@@ -357,8 +354,13 @@ Examples:
             # Get or generate slug
             slug = args.slug if args.slug else generate_slug(entries)
 
-            base_name = f"{date_str}-{short_project}-{session_id}-{slug}"
-            print(f"📛 Generated filename: {base_name}")
+            filename = f"{date_str}-{short_project}-{session_id}-{slug}"
+
+            # Place in sessions/claude/ directory
+            sessions_claude = get_sessions_dir() / "claude"
+            sessions_claude.mkdir(parents=True, exist_ok=True)
+            base_name = str(sessions_claude / filename)
+            print(f"📛 Generated filename: {filename}")
 
         print(f"📊 Found {len(entries)} entries")
 
@@ -378,38 +380,36 @@ Examples:
             return 2  # Exit 2 = skipped (no content), distinct from 0 (success) and 1 (error)
 
         # Generate full version
-        if generate_full:
-            full_path = Path(f"{base_name}-full.md")
-            markdown_full = processor.format_session_as_markdown(
-                session_summary,
-                entries,
-                agent_entries,
-                include_tool_results=True,
-                variant="full",
-                source_file=str(session_path.resolve()),
-            )
-            with open(full_path, "w", encoding="utf-8") as f:
-                f.write(markdown_full)
-            format_markdown(full_path)
-            file_size = full_path.stat().st_size
-            print(f"✅ Full transcript: {full_path} ({file_size:,} bytes)")
+        full_path = Path(f"{base_name}-full.md")
+        markdown_full = processor.format_session_as_markdown(
+            session_summary,
+            entries,
+            agent_entries,
+            include_tool_results=True,
+            variant="full",
+            source_file=str(session_path.resolve()),
+        )
+        with open(full_path, "w", encoding="utf-8") as f:
+            f.write(markdown_full)
+        format_markdown(full_path)
+        file_size = full_path.stat().st_size
+        print(f"✅ Full transcript: {full_path} ({file_size:,} bytes)")
 
         # Generate abridged version
-        if generate_abridged:
-            abridged_path = Path(f"{base_name}-abridged.md")
-            markdown_abridged = processor.format_session_as_markdown(
-                session_summary,
-                entries,
-                agent_entries,
-                include_tool_results=False,
-                variant="abridged",
-                source_file=str(session_path.resolve()),
-            )
-            with open(abridged_path, "w", encoding="utf-8") as f:
-                f.write(markdown_abridged)
-            format_markdown(abridged_path)
-            file_size = abridged_path.stat().st_size
-            print(f"✅ Abridged transcript: {abridged_path} ({file_size:,} bytes)")
+        abridged_path = Path(f"{base_name}-abridged.md")
+        markdown_abridged = processor.format_session_as_markdown(
+            session_summary,
+            entries,
+            agent_entries,
+            include_tool_results=False,
+            variant="abridged",
+            source_file=str(session_path.resolve()),
+        )
+        with open(abridged_path, "w", encoding="utf-8") as f:
+            f.write(markdown_abridged)
+        format_markdown(abridged_path)
+        file_size = abridged_path.stat().st_size
+        print(f"✅ Abridged transcript: {abridged_path} ({file_size:,} bytes)")
 
         return 0
 
