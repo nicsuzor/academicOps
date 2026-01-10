@@ -48,7 +48,7 @@ def main():
         message = get_reminder_message()
         output: dict[str, Any] = {"reason": message, "continue": True}
         print(json.dumps(output))
-        sys.exit(1)  # 1 = warn but allow
+        sys.exit(0)  # Advisory message only - don't affect CLI exit code
 
     # For PostToolUse, only trigger on TodoWrite
     if hook_event == "PostToolUse":

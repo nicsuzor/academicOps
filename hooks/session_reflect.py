@@ -55,7 +55,7 @@ def main():
     }
 
     print(json.dumps(output))
-    sys.exit(1)  # 1 = warn but allow (shows message to agent)
+    sys.exit(0)  # Advisory message only - don't affect CLI exit code
 
 
 if __name__ == "__main__":
