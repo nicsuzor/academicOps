@@ -1,4 +1,105 @@
 {
+  "enabledPlugins": {
+    "plugin-dev@claude-plugins-official": true
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "command": "PYTHONPATH=$AOPS uv run python $AOPS/hooks/router.py",
+            "timeout": 55000,
+            "type": "command"
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "command": "PYTHONPATH=$AOPS uv run python $AOPS/hooks/router.py",
+            "timeout": 5000,
+            "type": "command"
+          }
+        ],
+        "matcher": "TodoWrite"
+      }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "command": "bd prime",
+            "type": "command"
+          }
+        ],
+        "matcher": ""
+      }
+    ],
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "command": "PYTHONPATH=$AOPS uv run python $AOPS/hooks/router.py",
+            "timeout": 5000,
+            "type": "command"
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "command": "PYTHONPATH=$AOPS uv run python $AOPS/hooks/router.py",
+            "timeout": 15000,
+            "type": "command"
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "command": "bd prime",
+            "type": "command"
+          }
+        ],
+        "matcher": ""
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "command": "PYTHONPATH=$AOPS uv run python $AOPS/hooks/router.py",
+            "timeout": 5000,
+            "type": "command"
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "command": "PYTHONPATH=$AOPS uv run python $AOPS/hooks/router.py",
+            "timeout": 5000,
+            "type": "command"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "command": "PYTHONPATH=$AOPS uv run python $AOPS/hooks/router.py",
+            "timeout": 20000,
+            "type": "command"
+          }
+        ]
+      }
+    ]
+  },
   "permissions": {
     "allow": [
       "Read",
@@ -56,89 +157,8 @@
       "Bash(mv **/tox/records/**)"
     ]
   },
-  "hooks": {
-    "SessionStart": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "PYTHONPATH=$AOPS uv run python $AOPS/hooks/router.py",
-            "timeout": 15000
-          }
-        ]
-      }
-    ],
-    "PreToolUse": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "PYTHONPATH=$AOPS uv run python $AOPS/hooks/router.py",
-            "timeout": 5000
-          }
-        ]
-      }
-    ],
-    "PostToolUse": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "PYTHONPATH=$AOPS uv run python $AOPS/hooks/router.py",
-            "timeout": 55000
-          }
-        ]
-      },
-      {
-        "matcher": "TodoWrite",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "PYTHONPATH=$AOPS uv run python $AOPS/hooks/router.py",
-            "timeout": 5000
-          }
-        ]
-      }
-    ],
-    "UserPromptSubmit": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "PYTHONPATH=$AOPS uv run python $AOPS/hooks/router.py",
-            "timeout": 20000
-          }
-        ]
-      }
-    ],
-    "SubagentStop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "PYTHONPATH=$AOPS uv run python $AOPS/hooks/router.py",
-            "timeout": 5000
-          }
-        ]
-      }
-    ],
-    "Stop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "PYTHONPATH=$AOPS uv run python $AOPS/hooks/router.py",
-            "timeout": 5000
-          }
-        ]
-      }
-    ]
-  },
   "statusLine": {
-    "type": "command",
-    "command": "host=$(hostname -s); if git rev-parse --git-dir >/dev/null 2>&1; then repo=$(basename \"$(git --no-optional-locks rev-parse --show-toplevel 2>/dev/null)\"); branch=$(git --no-optional-locks symbolic-ref --short HEAD 2>/dev/null || git --no-optional-locks rev-parse --short HEAD 2>/dev/null); printf '%s | %s | %s' \"$host\" \"$repo\" \"$branch\"; else printf '%s | %s' \"$host\" \"$(pwd)\"; fi"
-  },
-  "enabledPlugins": {
-    "plugin-dev@claude-plugins-official": true
+    "command": "host=$(hostname -s); if git rev-parse --git-dir \u003e/dev/null 2\u003e\u00261; then repo=$(basename \"$(git --no-optional-locks rev-parse --show-toplevel 2\u003e/dev/null)\"); branch=$(git --no-optional-locks symbolic-ref --short HEAD 2\u003e/dev/null || git --no-optional-locks rev-parse --short HEAD 2\u003e/dev/null); printf '%s | %s | %s' \"$host\" \"$repo\" \"$branch\"; else printf '%s | %s' \"$host\" \"$(pwd)\"; fi",
+    "type": "command"
   }
 }
