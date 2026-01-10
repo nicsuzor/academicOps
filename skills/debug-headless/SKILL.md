@@ -64,18 +64,22 @@ cd $AOPS && uv run python scripts/session_transcript.py /path/to/session.jsonl
 
 ### 4. Analyze Session
 
-Check for specific behaviors:
+**Use the transcript** - don't grep raw JSONL. The full transcript contains:
 
-```bash
-# Did custodiet fire?
-grep -i "custodiet\|ultra.vires" session.jsonl
+- `### Hook: EventName: ToolName ✓` - Hook execution markers
+- `### Subagent: type (description)` - Inline subagent conversations
+- `## Subagent Transcripts` - Orphan/warmup agents at end
+- Tool outputs in code blocks with proper formatting
 
-# Count tool calls by type
-grep '"name":' session.jsonl | sort | uniq -c
+**What to look for:**
 
-# Find errors
-grep -i "error\|failed" session.jsonl
-```
+| Debug Question        | Look In Transcript                                                 |
+| --------------------- | ------------------------------------------------------------------ |
+| Did custodiet fire?   | `### Hook: PostToolUse` entries + `Task(subagent_type="custodiet"` |
+| What hooks ran?       | All `### Hook:` headings show event + tool                         |
+| Where did it fail?    | Search for `ERROR`, `failed`, `exit [1-9]`                         |
+| What did subagent do? | `### Subagent:` sections show full conversation                    |
+| What was injected?    | SessionStart hook content at beginning                             |
 
 ## Hook Behavior in Headless Mode
 
@@ -89,27 +93,19 @@ grep -i "error\|failed" session.jsonl
 
 ## Hook Verification
 
-Verify hooks are firing correctly:
+**Use the full transcript** to verify hooks:
 
-```bash
-# Check SessionStart loaded context (first entry in session)
-head -1 session.jsonl | jq '.message.content' | head -c 500
+| Hook             | What to Check in Transcript                     |
+| ---------------- | ----------------------------------------------- |
+| SessionStart     | First content block has AXIOMS.md/HEURISTICS.md |
+| UserPromptSubmit | `### Hook: UserPromptSubmit ✓` after user turn  |
+| PostToolUse      | `### Hook: PostToolUse: ToolName ✓` entries     |
+| Stop             | No `✗ (exit N)` markers on hooks                |
 
-# Count hook events by type
-grep '"hook_event"' session.jsonl | jq -r '.hook_event' | sort | uniq -c
+**Hook status indicators:**
 
-# Check for hook errors (non-zero exit codes)
-grep '"exit_code"' session.jsonl | jq 'select(.exit_code != 0)'
-```
-
-**Key hooks to verify:**
-
-| Hook             | What to Check                           |
-| ---------------- | --------------------------------------- |
-| SessionStart     | AXIOMS.md loaded in first message       |
-| UserPromptSubmit | Hydrator guidance injected              |
-| PostToolUse      | Custodiet spawned after ~5 action tools |
-| Stop             | Session ended cleanly (exit 0, not 1)   |
+- `✓` = exit 0 (success)
+- `✗ (exit N)` = non-zero exit (error)
 
 ## Troubleshooting
 
