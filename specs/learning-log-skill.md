@@ -8,7 +8,7 @@ tags:
   - spec
   - skill
   - learning
-  - github-issues
+  - bd-issues
   - episodic
 ---
 
@@ -72,7 +72,8 @@ Invoke when documenting agent failures, success patterns, or framework observati
 **Phase 1: Search Existing Issues**
 
 ```bash
-gh issue list --repo nicsuzor/academicOps --label "[category]" --search "[keywords]" --state open
+bd list --label "[category]" --status open
+bd search "[keywords]"
 ```
 
 **Phase 2: Create or Update**
