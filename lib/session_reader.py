@@ -1174,40 +1174,49 @@ class SessionProcessor:
         session_dir = main_file_path.parent
         main_session_uuid = main_file_path.stem
 
-        for agent_file in session_dir.glob("agent-*.jsonl"):
-            agent_id = agent_file.stem.replace("agent-", "")
+        # Search locations for agent files:
+        # 1. Same directory as session (legacy)
+        # 2. {session_dir}/{session_uuid}/subagents/ (new Claude Code structure)
+        agent_search_patterns = [
+            session_dir.glob("agent-*.jsonl"),
+            (session_dir / main_session_uuid / "subagents").glob("agent-*.jsonl"),
+        ]
 
-            # Check if this agent file belongs to the current session
-            belongs_to_session = False
-            with open(agent_file, encoding="utf-8") as f:
-                first_line = f.readline().strip()
-                if first_line:
-                    try:
-                        first_entry_data = json.loads(first_line)
-                        if first_entry_data.get("sessionId") == main_session_uuid:
-                            belongs_to_session = True
-                    except json.JSONDecodeError:
-                        pass
+        for pattern in agent_search_patterns:
+            for agent_file in pattern:
+                agent_id = agent_file.stem.replace("agent-", "")
 
-            if not belongs_to_session:
-                continue
+                # Check if this agent file belongs to the current session
+                belongs_to_session = False
+                with open(agent_file, encoding="utf-8") as f:
+                    first_line = f.readline().strip()
+                    if first_line:
+                        try:
+                            first_entry_data = json.loads(first_line)
+                            if first_entry_data.get("sessionId") == main_session_uuid:
+                                belongs_to_session = True
+                        except json.JSONDecodeError:
+                            pass
 
-            # Load all entries from this agent file
-            entries = []
-            with open(agent_file, encoding="utf-8") as f:
-                for line in f:
-                    line = line.strip()
-                    if not line:
-                        continue
-                    try:
-                        data = json.loads(line)
-                        entry = Entry.from_dict(data)
-                        entries.append(entry)
-                    except json.JSONDecodeError:
-                        continue
+                if not belongs_to_session:
+                    continue
 
-            if entries:
-                agent_entries[agent_id] = entries
+                # Load all entries from this agent file
+                entries = []
+                with open(agent_file, encoding="utf-8") as f:
+                    for line in f:
+                        line = line.strip()
+                        if not line:
+                            continue
+                        try:
+                            data = json.loads(line)
+                            entry = Entry.from_dict(data)
+                            entries.append(entry)
+                        except json.JSONDecodeError:
+                            continue
+
+                if entries:
+                    agent_entries[agent_id] = entries
 
         return agent_entries
 
@@ -1216,8 +1225,13 @@ class SessionProcessor:
         session_path = Path(session_file_path)
 
         # Search locations for hook files
+        # Hooks are stored in {project_dir}-hooks/ (sibling directory with -hooks suffix)
+        project_dir = session_path.parent
+        hooks_sibling = project_dir.parent / (project_dir.name + "-hooks")
+
         search_locations = [
-            session_path.parent,  # Same directory as session (production)
+            hooks_sibling,  # New Claude Code location: {project}-hooks/
+            session_path.parent,  # Same directory as session (legacy)
             session_path.parent / "hooks",  # Test location
             Path.home() / ".cache" / "aops" / "sessions",  # Legacy location
         ]
@@ -1545,20 +1559,41 @@ class SessionProcessor:
                 content = turn.get("content", "").strip()
                 skills_matched = turn.get("skills_matched")
                 files_loaded = turn.get("files_loaded")
+                tool_name = turn.get("tool_name")
+                agent_id = turn.get("agent_id")
 
-                if not content and not skills_matched and not files_loaded:
+                # In full mode: show ALL hooks for complete visibility
+                # In abridged mode: only show hooks with meaningful content or errors
+                is_error = exit_code is not None and exit_code != 0
+                has_content = content or skills_matched or files_loaded
+                if not full_mode and not has_content and not is_error:
                     continue
 
+                # Build status indicator with full visibility
                 if exit_code is None:
-                    status = ""
+                    status = " (no exit code)"
                 elif exit_code == 0:
-                    status = " ✓"
+                    status = " (exit 0)"
                 else:
                     status = f" ✗ (exit {exit_code})"
 
                 hook_name = event_name or "Hook"
-                markdown += f"- Hook({hook_name}){status}\n"
+                # Include tool name or agent ID for context
+                hook_detail = ""
+                if tool_name:
+                    hook_detail = f": {tool_name}"
+                elif agent_id:
+                    hook_detail = f": agent-{agent_id}"
+                markdown += f"- Hook({hook_name}{hook_detail}){status}\n"
 
+                # In full mode, explicitly note when hook returned no output
+                if (
+                    full_mode
+                    and not content
+                    and not skills_matched
+                    and not files_loaded
+                ):
+                    markdown += "  - (no output)\n"
                 if skills_matched:
                     skills_str = ", ".join(f"`{s}`" for s in skills_matched)
                     markdown += f"  - Skills matched: {skills_str}\n"
@@ -1658,20 +1693,26 @@ class SessionProcessor:
                         has_useful_content = content or skills_matched or files_loaded
                         is_error = exit_code is not None and exit_code != 0
 
-                        # Skip hooks without useful content
-                        if not has_useful_content and not is_error:
+                        # In full mode: show ALL hooks for complete visibility
+                        # In abridged mode: only show hooks with meaningful content or errors
+                        if not full_mode and not has_useful_content and not is_error:
                             continue
 
                         # Build hook display with h3 heading like subagents
                         tool_name = hook.get("tool_name")
+                        agent_id = hook.get("agent_id")
                         checkmark = (
                             ""
                             if exit_code is None
                             else (" ✓" if exit_code == 0 else f" ✗ (exit {exit_code})")
                         )
-                        hook_label = f"{event_name}" + (
-                            f": {tool_name}" if tool_name else ""
-                        )
+                        # Include tool name or agent ID for context
+                        hook_detail = ""
+                        if tool_name:
+                            hook_detail = f": {tool_name}"
+                        elif agent_id:
+                            hook_detail = f": agent-{agent_id}"
+                        hook_label = f"{event_name}{hook_detail}"
 
                         markdown += f"### Hook: {hook_label}{checkmark}\n\n"
                         if skills_matched:
@@ -1776,6 +1817,25 @@ class SessionProcessor:
                                 line for line in lines if line.strip()
                             )
                             markdown += condensed + "\n\n"
+
+        # Render orphan subagent transcripts (not linked to a Task call)
+        # These include warmup agents and other automatically spawned subagents
+        # Note: We render ALL subagent transcripts since we can't easily track
+        # which were already shown via Task calls
+        if agent_entries and full_mode:
+            orphan_agents = {
+                agent_id: entries
+                for agent_id, entries in agent_entries.items()
+                if entries  # Non-empty
+            }
+
+            if orphan_agents:
+                markdown += "\n## Subagent Transcripts\n\n"
+                for agent_id, entries in sorted(orphan_agents.items()):
+                    markdown += f"### Subagent: {agent_id}\n\n"
+                    summary = self._extract_sidechain(entries)
+                    if summary:
+                        markdown += f"{summary}\n\n"
 
         edited_files = details.get("edited_files", session.edited_files)
         files_list = (
