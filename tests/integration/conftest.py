@@ -10,7 +10,7 @@ Provides:
 import json
 import subprocess
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 import pytest
 
@@ -244,17 +244,59 @@ def run_claude_headless(
         }
 
 
+def _make_failing_wrapper(
+    runner: Callable[..., dict[str, Any]],
+) -> Callable[..., dict[str, Any]]:
+    """Create a wrapper that fails tests on session failure.
+
+    This enforces H37: tests must not pass when underlying functionality fails.
+    The wrapper automatically calls pytest.fail() when the session fails,
+    preventing Volkswagen tests that "pass by detecting failure correctly."
+
+    Args:
+        runner: The underlying run function (run_claude_headless, etc.)
+
+    Returns:
+        Wrapped function that fails on session failure by default.
+    """
+
+    def wrapper(
+        prompt: str,
+        fail_on_error: bool = True,
+        **kwargs,
+    ) -> dict[str, Any]:
+        result = runner(prompt, **kwargs)
+
+        if not result["success"] and fail_on_error:
+            error_msg = result.get("error", "Unknown error")
+            pytest.fail(
+                f"Headless session failed (set fail_on_error=False to handle manually): "
+                f"{error_msg}"
+            )
+
+        return result
+
+    return wrapper
+
+
 @pytest.fixture
 def claude_headless():
     """Pytest fixture providing headless Claude Code execution.
 
     Returns:
         Callable that executes claude command and returns parsed result.
+        Automatically fails the test if the session fails (H37 enforcement).
 
     Example:
         def test_something(claude_headless):
             result = claude_headless("What is 2+2?")
-            assert result["success"]
+            # No need to check result["success"] - fixture fails automatically
+
+    Args passed to callable:
+        prompt: The prompt to send
+        fail_on_error: If True (default), pytest.fail() on session failure.
+                       Set to False to handle errors manually.
+        **kwargs: Passed to run_claude_headless (model, timeout_seconds, etc.)
 
     Note:
         Tests using this fixture will be skipped if claude CLI is not in PATH.
@@ -263,7 +305,7 @@ def claude_headless():
     if not _claude_cli_available():
         pytest.skip("claude CLI not found in PATH - requires Claude Code CLI installed")
 
-    return run_claude_headless
+    return _make_failing_wrapper(run_claude_headless)
 
 
 def run_gemini_headless(
@@ -543,12 +585,19 @@ def claude_headless_tracked():
     Returns:
         Callable that executes claude command with session ID tracking.
         Returns tuple of (result dict, session_id, tool_calls list).
+        Automatically fails the test if the session fails (H37 enforcement).
 
     Example:
         def test_something(claude_headless_tracked):
             result, session_id, tool_calls = claude_headless_tracked("What is 2+2?")
-            assert result["success"]
+            # No need to check result["success"] - fixture fails automatically
             assert any(c["name"] == "Bash" for c in tool_calls)
+
+    Args passed to callable:
+        prompt: The prompt to send
+        fail_on_error: If True (default), pytest.fail() on session failure.
+                       Set to False to handle errors manually.
+        **kwargs: model, timeout_seconds, permission_mode, cwd
     """
     import os
     import subprocess
@@ -564,6 +613,7 @@ def claude_headless_tracked():
         timeout_seconds: int = 120,
         permission_mode: str = "bypassPermissions",
         cwd: Path | None = None,
+        fail_on_error: bool = True,
     ) -> tuple[dict, str, list[dict]]:
         """Run claude with session tracking.
 
@@ -573,6 +623,7 @@ def claude_headless_tracked():
             timeout_seconds: Command timeout
             permission_mode: Permission mode (default: bypassPermissions)
             cwd: Working directory (defaults to aops root for hook access)
+            fail_on_error: If True (default), pytest.fail() on session failure
 
         Returns:
             Tuple of (result dict, session_id, tool_calls list)
@@ -614,12 +665,18 @@ def claude_headless_tracked():
             )
 
             if result.returncode != 0:
+                error_msg = f"Command failed: {result.stderr}"
+                if fail_on_error:
+                    pytest.fail(
+                        f"Headless session failed (set fail_on_error=False to handle manually): "
+                        f"{error_msg}"
+                    )
                 return (
                     {
                         "success": False,
                         "output": result.stdout,
                         "result": {},
-                        "error": f"Command failed: {result.stderr}",
+                        "error": error_msg,
                     },
                     session_id,
                     [],
@@ -633,11 +690,17 @@ def claude_headless_tracked():
                     "result": parsed,
                 }
             except json.JSONDecodeError as e:
+                error_msg = f"JSON parse error: {e}"
+                if fail_on_error:
+                    pytest.fail(
+                        f"Headless session failed (set fail_on_error=False to handle manually): "
+                        f"{error_msg}"
+                    )
                 response = {
                     "success": False,
                     "output": result.stdout,
                     "result": {},
-                    "error": f"JSON parse error: {e}",
+                    "error": error_msg,
                 }
 
             # Parse tool calls from session JSONL
@@ -647,12 +710,18 @@ def claude_headless_tracked():
             return response, session_id, tool_calls
 
         except subprocess.TimeoutExpired:
+            error_msg = f"Timeout after {timeout_seconds}s"
+            if fail_on_error:
+                pytest.fail(
+                    f"Headless session failed (set fail_on_error=False to handle manually): "
+                    f"{error_msg}"
+                )
             return (
                 {
                     "success": False,
                     "output": "",
                     "result": {},
-                    "error": f"Timeout after {timeout_seconds}s",
+                    "error": error_msg,
                 },
                 session_id,
                 [],
