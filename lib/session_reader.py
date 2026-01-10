@@ -464,6 +464,9 @@ def _extract_gate_context_impl(
     if "files" in include:
         result["files"] = _extract_files_modified(entries)
 
+    if "conversation" in include:
+        result["conversation"] = _extract_conversation_turns(entries, max_turns)
+
     return result
 
 
@@ -611,9 +614,36 @@ def _extract_agent_responses(entries: list[dict], max_turns: int = 3) -> list[st
 
 
 def _extract_errors(entries: list[dict], max_turns: int) -> list[dict[str, Any]]:
-    """Extract recent tool errors."""
-    errors: list[dict[str, Any]] = []
+    """Extract recent tool errors with tool name and input context.
 
+    Correlates tool_result errors with their corresponding tool_use blocks
+    to provide actionable context for custodiet compliance checking.
+    """
+    # First pass: build map of tool_use_id -> tool info
+    tool_use_map: dict[str, dict[str, Any]] = {}
+    for entry in entries:
+        if entry.get("type") != "assistant":
+            continue
+        message = entry.get("message", {})
+        content = message.get("content", [])
+        if not isinstance(content, list):
+            continue
+        for block in content:
+            if isinstance(block, dict) and block.get("type") == "tool_use":
+                tool_id = block.get("id", "")
+                if tool_id:
+                    tool_input = block.get("input", {})
+                    # Extract key input for context
+                    input_summary = _summarize_tool_input(
+                        block.get("name", ""), tool_input
+                    )
+                    tool_use_map[tool_id] = {
+                        "name": block.get("name", "unknown"),
+                        "input_summary": input_summary,
+                    }
+
+    # Second pass: extract errors and correlate with tool info
+    errors: list[dict[str, Any]] = []
     for entry in entries:
         if entry.get("type") != "user":
             continue
@@ -626,6 +656,7 @@ def _extract_errors(entries: list[dict], max_turns: int) -> list[dict[str, Any]]
         for block in content:
             if isinstance(block, dict) and block.get("type") == "tool_result":
                 if block.get("is_error"):
+                    tool_id = block.get("tool_use_id", "")
                     error_content = block.get("content", "")
                     if isinstance(error_content, list):
                         error_content = " ".join(
@@ -633,14 +664,94 @@ def _extract_errors(entries: list[dict], max_turns: int) -> list[dict[str, Any]]
                             for item in error_content
                             if isinstance(item, dict)
                         )
+
+                    # Get tool info from map
+                    tool_info = tool_use_map.get(tool_id, {})
                     errors.append(
                         {
-                            "tool_use_id": block.get("tool_use_id", ""),
-                            "content": str(error_content)[:500],
+                            "tool_name": tool_info.get("name", "unknown"),
+                            "input_summary": tool_info.get("input_summary", ""),
+                            "error": str(error_content)[:300],
                         }
                     )
 
     return errors[-max_turns:] if errors else []
+
+
+def _summarize_tool_input(tool_name: str, tool_input: dict) -> str:
+    """Create a brief summary of tool input for error context."""
+    if tool_name in ("Read", "Write", "Edit"):
+        path = tool_input.get("file_path", "")
+        if path:
+            # Just show filename
+            return path.split("/")[-1] if "/" in path else path
+    elif tool_name == "Bash":
+        cmd = str(tool_input.get("command", ""))[:60]
+        return cmd + "..." if len(cmd) >= 60 else cmd
+    elif tool_name == "Glob":
+        return tool_input.get("pattern", "")[:40]
+    elif tool_name == "Grep":
+        return tool_input.get("pattern", "")[:40]
+    elif tool_name == "Task":
+        return tool_input.get("description", "")[:40]
+
+    # Generic fallback: first string value
+    for v in tool_input.values():
+        if isinstance(v, str) and v:
+            return v[:40] + "..." if len(v) > 40 else v
+    return ""
+
+
+def _extract_conversation_turns(
+    entries: list[dict], max_turns: int
+) -> list[dict[str, str]]:
+    """Extract recent conversation turns (user + assistant interleaved).
+
+    Returns chronological list of turns showing the dialog flow.
+    Critical for custodiet to understand agent reasoning and decisions.
+    """
+    turns: list[dict[str, str]] = []
+
+    for entry in entries:
+        entry_type = entry.get("type")
+        if entry_type not in ("user", "assistant"):
+            continue
+
+        # Skip meta messages
+        if entry.get("isMeta", False):
+            continue
+
+        message = entry.get("message", {})
+        content = message.get("content", [])
+
+        if entry_type == "user":
+            # Extract user text, skip system-injected context
+            text = _extract_text_from_content(content)
+            if text and not _is_system_injected_context(text):
+                cleaned = _clean_prompt_text(text)
+                if cleaned:
+                    # Truncate for context efficiency
+                    display = cleaned[:400] + "..." if len(cleaned) > 400 else cleaned
+                    turns.append({"role": "user", "content": display})
+
+        elif entry_type == "assistant":
+            # Extract assistant text (not tool calls)
+            if isinstance(content, list):
+                text_parts = []
+                for block in content:
+                    if isinstance(block, dict) and block.get("type") == "text":
+                        text = block.get("text", "").strip()
+                        if text:
+                            text_parts.append(text)
+                if text_parts:
+                    combined = " ".join(text_parts)
+                    display = (
+                        combined[:400] + "..." if len(combined) > 400 else combined
+                    )
+                    turns.append({"role": "assistant", "content": display})
+
+    # Return last N turns
+    return turns[-max_turns:] if turns else []
 
 
 def _extract_files_modified(entries: list[dict]) -> list[str]:

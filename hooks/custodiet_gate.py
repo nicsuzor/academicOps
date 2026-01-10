@@ -355,7 +355,15 @@ def _build_session_context(transcript_path: str | None, cwd: str) -> str:
     if transcript_path:
         ctx = extract_gate_context(
             Path(transcript_path),
-            include={"intent", "prompts", "todos", "errors", "tools", "files"},
+            include={
+                "intent",
+                "prompts",
+                "todos",
+                "errors",
+                "tools",
+                "files",
+                "conversation",
+            },
             max_turns=10,  # More context than default 5
         )
 
@@ -404,8 +412,13 @@ def _build_session_context(transcript_path: str | None, cwd: str) -> str:
         if errors:
             lines.append("**Tool Errors** (watch for reactive helpfulness):")
             for error in errors[-5:]:
-                error_content = error.get("content", "")[:200]
-                lines.append(f"  - {error_content}")
+                tool_name = error.get("tool_name", "unknown")
+                input_summary = error.get("input_summary", "")
+                error_msg = error.get("error", "")[:150]
+                if input_summary:
+                    lines.append(f"  - {tool_name}({input_summary}): {error_msg}")
+                else:
+                    lines.append(f"  - {tool_name}: {error_msg}")
             lines.append("")
 
         # Files modified (for scope assessment)
@@ -435,6 +448,17 @@ def _build_session_context(transcript_path: str | None, cwd: str) -> str:
                     lines.append(f"  - Bash({cmd}...)")
                 else:
                     lines.append(f"  - {name}")
+            lines.append("")
+
+        # Recent conversation (critical for understanding agent reasoning)
+        conversation = ctx.get("conversation", [])
+        if conversation:
+            lines.append("**Recent Conversation** (last 5 turns):")
+            for turn in conversation[-5:]:
+                role = turn.get("role", "unknown")
+                content = turn.get("content", "")
+                prefix = "User" if role == "user" else "Agent"
+                lines.append(f"  [{prefix}]: {content}")
             lines.append("")
 
     if not lines:

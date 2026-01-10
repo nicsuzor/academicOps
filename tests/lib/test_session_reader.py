@@ -351,7 +351,9 @@ class TestExtractGateContextErrors:
 
         assert "errors" in result
         assert len(result["errors"]) == 1
-        assert "FAILED" in result["errors"][0]["content"]
+        # New format includes tool_name, input_summary, and error (not content)
+        assert result["errors"][0]["tool_name"] == "Bash"
+        assert "FAILED" in result["errors"][0]["error"]
 
     def test_extract_errors_empty_if_none(self, tmp_path: Path) -> None:
         """Extract errors returns empty list if no errors."""
