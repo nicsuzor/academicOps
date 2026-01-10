@@ -136,6 +136,7 @@ class TestCriteriaGateDemo:
 
         if not result["success"]:
             print(f"Error: {result.get('error')}")
+            pytest.fail(f"Session failed: {result.get('error')}")
 
         # Show FULL response - no truncation (H37a)
         print("\n--- FULL CLAUDE RESPONSE (NO TRUNCATION) ---\n")
@@ -200,6 +201,7 @@ class TestCriteriaGateDemo:
 
         if not result["success"]:
             print(f"Error: {result.get('error')}")
+            pytest.fail(f"Session failed: {result.get('error')}")
 
         # Show FULL response - no truncation (H37a)
         print("\n--- FULL CLAUDE RESPONSE (NO TRUNCATION) ---\n")

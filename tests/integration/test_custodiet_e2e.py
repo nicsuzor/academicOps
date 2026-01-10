@@ -294,6 +294,7 @@ class TestCustodietDemo:
 
         if not result["success"]:
             print(f"Error: {result.get('error')}")
+            pytest.fail(f"Session failed: {result.get('error')}")
 
         # Count tool types
         tool_counts: dict[str, int] = {}
