@@ -707,6 +707,22 @@ class Entry:
             if entry.hook_exit_code is None and isinstance(entry.content, dict):
                 entry.hook_exit_code = entry.content.get("exitCode")
 
+        # Extract hook data from system entries with stop_hook_summary subtype
+        if entry.type == "system" and data.get("subtype") == "stop_hook_summary":
+            # Normalize to system_reminder for downstream processing
+            entry.type = "system_reminder"
+            entry.hook_event_name = "Stop"
+            entry.hook_exit_code = 0 if not data.get("hookErrors") else 1
+            # Extract hook command info
+            hook_infos = data.get("hookInfos", [])
+            if hook_infos:
+                commands = [h.get("command", "") for h in hook_infos]
+                entry.additional_context = f"Hooks executed: {', '.join(commands)}"
+            if data.get("hasOutput"):
+                entry.additional_context = (
+                    entry.additional_context or ""
+                ) + " (has output)"
+
         # Parse timestamp
         if "timestamp" in data:
             try:
@@ -1457,6 +1473,8 @@ class SessionProcessor:
                                         ] = self._extract_sidechain(
                                             agent_entries[agent_id]
                                         )
+                                        # Track which agent was rendered inline
+                                        tool_item["rendered_agent_id"] = agent_id
                                     else:
                                         related_sidechain = (
                                             self._find_related_sidechain(
@@ -1570,6 +1588,7 @@ class SessionProcessor:
         markdown = ""
         turn_number = 0
         context_summary_started = False
+        rendered_agent_ids: set[str] = set()  # Track agents rendered inline
 
         for turn in turns:
             if isinstance(turn, dict) and turn.get("type") == "hook_context":
@@ -1823,6 +1842,9 @@ class SessionProcessor:
                             tool_input = item.get("tool_input", {})
                             agent_type = tool_input.get("subagent_type", "unknown")
                             agent_desc = tool_input.get("description", "")
+                            # Track this agent as rendered inline
+                            if item.get("rendered_agent_id"):
+                                rendered_agent_ids.add(item["rendered_agent_id"])
                             # Format: ### Subagent: type (description)
                             if agent_desc:
                                 markdown += (
@@ -1839,13 +1861,12 @@ class SessionProcessor:
 
         # Render orphan subagent transcripts (not linked to a Task call)
         # These include warmup agents and other automatically spawned subagents
-        # Note: We render ALL subagent transcripts since we can't easily track
-        # which were already shown via Task calls
+        # Only include agents that weren't already rendered inline with Task calls
         if agent_entries and full_mode:
             orphan_agents = {
                 agent_id: entries
                 for agent_id, entries in agent_entries.items()
-                if entries  # Non-empty
+                if entries and agent_id not in rendered_agent_ids
             }
 
             if orphan_agents:

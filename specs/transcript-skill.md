@@ -115,8 +115,19 @@ Default: Abridged only (reduces token cost).
 - `## User (Turn N)` - User prompts
 - `## User (Turn N)` with `**Invoked: ...**` - Skill/command expansion
 - `## Agent (Turn N)` - Agent responses
-- `### Subagent: type (description)` - Task tool spawns
+- `### Subagent: type (description)` - Task tool spawns (inline at Task call location)
+- `### Hook: EventName: ToolName` - Hook execution with attribution
 - Hook status: `✓` = exit 0, `✗ (exit N)` = non-zero
+
+### Debugging Visibility
+
+Full transcripts support framework debugging with:
+
+1. **Hook Attribution**: Every hook-generated reminder shows source event and tool
+2. **Inline Subagents**: Subagent content appears at Task call location, not duplicated at end
+3. **Orphan Section**: `## Subagent Transcripts` only for warmup/orphan agents not linked to Task calls
+4. **Chronological Order**: All events maintain temporal sequence for tracing
+5. **Proper Escaping**: JSON in tool results doesn't break markdown fences
 
 ### Output Naming
 
