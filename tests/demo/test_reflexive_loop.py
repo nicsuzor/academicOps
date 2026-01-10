@@ -168,7 +168,7 @@ class TestReflexiveLoopDemo:
             print(f"  [{status}] {name}")
 
         print("\n" + "=" * 80)
-        print(f"OVERALL: {'PASS' if all_passed else 'NEEDS REVIEW'}")
+        print(f"OVERALL: {'PASS' if all_passed else 'FAIL'}")
         print("=" * 80)
 
         print("\n--- HUMAN VALIDATION REQUIRED ---")
@@ -178,3 +178,14 @@ class TestReflexiveLoopDemo:
         print("  3. No steps were skipped or glossed over")
         print("  4. The reflexive process was followed (observe -> diagnose -> report)")
         print("=" * 80)
+
+        # H37 FIX (ns-een): Test MUST fail if criteria not met
+        # Previous version printed "NEEDS REVIEW" but passed - a Volkswagen test
+        if not all_passed:
+            failed_criteria = [name for name, passed in criteria if not passed]
+            pytest.fail(
+                f"Reflexive loop validation FAILED. "
+                f"Unmet criteria: {', '.join(failed_criteria)}. "
+                f"Session ID: {session_id}. "
+                f"See full output above for evidence."
+            )
