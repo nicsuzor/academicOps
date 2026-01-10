@@ -135,6 +135,61 @@ Reports both operations:
 3. **Correct placement**: Files in designated locations per table
 4. **Semantic searchable**: All persisted content findable via `mcp__memory__retrieve_memory`
 
+## Capture Architecture
+
+Knowledge capture happens through skill workflows, not automatic hooks.
+
+| Capture Method            | How It Works                               | Examples                                                                                    |
+| ------------------------- | ------------------------------------------ | ------------------------------------------------------------------------------------------- |
+| **Skill-embedded**        | Capture steps built into skill workflow    | `/daily` extracts FYI content into daily note; `/session-insights` extracts accomplishments |
+| **Skill delegation**      | Skill provides judgment, delegates storage | `/extractor` → `/remember`; `/email` → `/tasks`                                             |
+| **Background invocation** | Non-blocking capture pattern               | Any skill can spawn background agent to remember                                            |
+| **Direct invocation**     | User explicitly requests                   | "Remember this for later"                                                                   |
+
+**Hook-triggered skills:**
+
+- Stop hook → `/session-insights` (extracts accomplishments from transcript)
+
+**Not auto-capture:** The remember skill doesn't fire automatically on events. Capture happens when skills invoke it as part of their workflow.
+
+## General Knowledge Base
+
+`$ACA_DATA/knowledge/` stores factual observations NOT about the user - a "squirrel cache" for interesting facts worth preserving.
+
+### Constraints
+
+- **STRICTLY factual** - no personal context, opinions, plans
+- **Maximum 200 words** - enables dense vector embeddings
+- **One fact per file** - atomic for retrieval
+- **Broad topic directories** - e.g., `knowledge/cyberlaw/` (covers copyright, defamation, privacy, AI ethics, platform law)
+- **[[wikilinks]] on proper nouns** - always link people ([[Eugene Volokh]]), companies ([[Google]]), cases, concepts
+
+### Format
+
+```markdown
+---
+title: Wolf River Electric v. Google
+type: knowledge
+topic: cyberlaw
+source: CyberProf mailing list
+date: 2026-01-10
+---
+
+[[AI]] libel case remanded to state court. [[Google]] failed to remove within 30 days of demand letter stating $24.7M damages. Key precedent: settlement letters constitute "other paper" under [[28 USC § 1446(b)(3)]].
+
+[[Eugene Volokh]] notes: Did [[Google]]'s lawyers err by not treating the demand letter as notice of removability?
+```
+
+### Topic Directories
+
+| Directory   | Covers                                                                                     |
+| ----------- | ------------------------------------------------------------------------------------------ |
+| `cyberlaw/` | Copyright, defamation, privacy, AI ethics, platform law, robot law, intermediary liability |
+| `tech/`     | Technical facts, protocols, standards                                                      |
+| `research/` | Methodology, statistics, study findings                                                    |
+
+Create new directories sparingly. Prefer broad categories.
+
 ## Design Rationale
 
 **Why dual-write?**

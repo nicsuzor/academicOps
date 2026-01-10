@@ -3,266 +3,127 @@ name: remember
 category: instruction
 description: Write knowledge to markdown AND sync to memory server. MUST invoke - do not write markdown directly.
 allowed-tools: Read,Write,Edit,mcp__memory__store_memory
-version: 1.0.0
+version: 2.0.0
 ---
 
 # Remember Skill
 
-Persist knowledge to the framework's memory system.
+Persist knowledge to markdown + memory server. **Both writes required** for semantic search.
 
-## Why You MUST Invoke This Skill
+## Decision Tree
 
-You know how to write markdown. But there's a **sync step you cannot do directly**.
+```
+Is this a time-stamped observation? (what agent did, found, tried)
+  → YES: Use `bd create` or `bd update` - NOT this skill
+  → NO: Continue...
 
-The framework uses a memory server that indexes `$ACA_DATA/`. When you write markdown, you must ALSO add it to the memory server for semantic search to work. This skill handles both steps.
-
-**If you skip this skill**: The markdown file exists but isn't searchable. Future agents won't find it via `mcp__memory__retrieve_memory`.
-
-## When to Use
-
-- Capturing **timeless semantic knowledge** (current state truths)
-- Recording something that should persist across sessions
-- Any time you would write to `$ACA_DATA/` for knowledge purposes
-
-**NOT for time-based completion records.** "Task X completed on DATE" does NOT need its own file. See "Alternatives to File Creation" below.
+Is this about the user? (projects, goals, context, tasks)
+  → YES: Use appropriate location below
+  → NO: Use `knowledge/<topic>/` for general facts
+```
 
 ## File Locations
 
-| Content          | Location                       |
-| ---------------- | ------------------------------ |
-| General notes    | `$ACA_DATA/context/`           |
-| Goals            | `$ACA_DATA/goals/`             |
-| Project metadata | `$ACA_DATA/projects/<name>.md` |
-| Project details  | `$ACA_DATA/projects/<name>/`   |
-| Session notes    | `$ACA_DATA/sessions/`          |
-| Tasks            | Delegate to [[tasks]] skill    |
+| Content               | Location              | Notes                |
+| --------------------- | --------------------- | -------------------- |
+| Project metadata      | `projects/<name>.md`  | Hub file             |
+| Project details       | `projects/<name>/`    | Subdirectory         |
+| Goals                 | `goals/`              | Strategic objectives |
+| Context (about user)  | `context/`            | Preferences, history |
+| Sessions/daily        | `sessions/`           | Daily notes only     |
+| Tasks                 | Delegate to [[tasks]] | Use scripts          |
+| **General knowledge** | `knowledge/<topic>/`  | Facts NOT about user |
 
-### PROHIBITED Content
+## PROHIBITED → Use `bd` Instead
 
-**NEVER create these in $ACA_DATA** - they belong elsewhere:
+**NEVER create files for:**
 
-| Content Type                                       | Where It Belongs | Why                                |
-| -------------------------------------------------- | ---------------- | ---------------------------------- |
-| Specs/specifications                               | `$AOPS/specs/`   | Framework code, version controlled |
-| Skills                                             | `$AOPS/skills/`  | Framework code                     |
-| Hooks                                              | `$AOPS/hooks/`   | Framework code                     |
-| Episodic content                                   | bd issues        | Per [[AXIOMS]] #28, [[H26]]        |
-| `learning/`, `bugs/`, `experiments/`, `decisions/` | bd issues        | Episodic, not current state        |
+- What an agent did: "Completed X on DATE" → `bd create --type=task`
+- What an agent found: "Discovered bug in Y" → `bd create --type=bug`
+- Observations: "Noticed pattern Z" → `bd create --type=task --title="Learning: Z"`
+- Experiments: "Tried approach A" → bd issue comment
+- Decisions: "Chose B over C" → bd issue comment, synthesize to HEURISTICS.md later
 
-**When remembering framework decisions** (specs, heuristics, design choices):
-
-- **DO**: Store to memory server only (for semantic retrieval)
-- **DO NOT**: Create markdown files in $ACA_DATA - the authoritative source is in $AOPS
-
-**DO NOT create arbitrary directories** (e.g., `tech/`, `dev/`, `tools/`, `specs/`). Project-related notes go in `projects/<project-name>/`.
-
-## Alternatives to File Creation (PREFER THESE)
-
-**The "durable record" requirement can be satisfied WITHOUT creating a new file:**
-
-| Completion Type      | Preferred Durability Method                                                     |
-| -------------------- | ------------------------------------------------------------------------------- |
-| Task completed       | Mark subtask complete in existing task file, OR archive task via `/tasks` skill |
-| Work session done    | Git commit message documents the work                                           |
-| Observation/learning | GitHub Issue comment (per [[AXIOMS]] #28)                                       |
-| Decision made        | GitHub Issue comment, then synthesize to HEURISTICS.md when pattern emerges     |
-
-**Only create a new markdown file when:**
-
-1. The knowledge is **semantic** (timeless truth, not time-stamped event)
-2. No existing file covers this topic (check memory server + glob first)
-3. The content is substantial enough to warrant its own file
-
-**PROHIBITED patterns:**
-
-- ❌ `task-completed-2026-01-06.md` - use task archival instead
-- ❌ `bmem-audit-2026-01-06.md` - commit message + issue comment suffices
-- ❌ `framework-refactor-2025-12-30.md` - date-stamped files forbidden
-- ❌ Files in `~/.claude/` or other random locations - ONLY `$ACA_DATA/`
-
-## Knowledge Graph Integration (MANDATORY)
-
-**Every note must connect to the graph.** Isolated notes are invisible in Obsidian and useless for navigation.
-
-### Pre-Save Checklist
-
-Before writing ANY file to `$ACA_DATA/`, verify per [[HEURISTICS.md#H34]]:
-
-| File Type                                    | Required Links (in body, not frontmatter)                    |
-| -------------------------------------------- | ------------------------------------------------------------ |
-| **Project file** (`projects/*.md`)           | Opening paragraph MUST wikilink to the [[goal]] it supports  |
-| **Project file**                             | MUST have `## Connections` section with related [[projects]] |
-| **Note** (`context/*.md`)                    | MUST wikilink to at least one [[project]] or [[goal]]        |
-| **Goal file**                                | MUST list projects that support it                           |
-| **Project content** (`projects/<name>/*.md`) | MUST link to hub AND to related files in same folder         |
-
-### Semantic Density Check (MANDATORY)
-
-Before saving any file in a project folder:
-
-1. **Search for related files**: `Glob(pattern="projects/<project-name>/*.md")`
-2. **Check semantic overlap**: Do any existing files cover same event, decision, or timeframe?
-3. **If yes**: Add in-prose wikilinks to related files (NOT "see also" sections)
-4. **Verify hub linkage**: Will the project hub need to link to this new content?
-5. **If significant content**: Edit hub to add prose link after saving this file
-
-### Project Template
-
-**Note**: Wikilinks in YAML frontmatter do NOT create Obsidian graph connections without plugins. Links MUST appear in the document body to be visible in the graph.
-
-```markdown
----
-title: Project Name
-type: project
-tags: [relevant, tags]
----
-
-# Project Name
-
-[Opening paragraph describing project]. Supports [[Goal Name]] through [how].
-```
-
-The goal link MUST be in the body text, not just frontmatter.
-
-### Connections Section Template
-
-Every project file needs a `## Connections` section:
-
-```markdown
-## Connections
-
-**Goals**: [[Goal Name]] (how this project serves it)
-
-**Related Projects**:
-
-- [[other-project]] - relationship description
-- [[another-project]] - shared infrastructure/themes
-
-**Themes**: [[concept]], [[another-concept]]
-```
-
-### Finding Links
-
-Before creating a file, search for related content:
-
-1. `mcp__memory__retrieve_memory(query="[topic]")` - find related notes
-2. Read `$ACA_DATA/goals/goals.md` - which goal does this serve?
-3. Read `$ACA_DATA/projects/projects.md` - what projects relate?
-
-**If you cannot identify at least one goal link**: ASK the user which goal this serves before proceeding.
+**Rule**: If it has a timestamp or describes agent activity, it's episodic → bd.
 
 ## Workflow
 
-1. **Search BOTH sources**:
-   - Memory server: `mcp__memory__retrieve_memory(query="topic keywords")`
-   - Specs directory: `Glob(pattern="$ACA_DATA/projects/*/specs/*.md")` then grep for topic
-2. **If match found in EITHER**: AUGMENT existing file (don't create new)
-3. **If no match in either**: Create new TOPICAL file (not session/date file)
-4. **VERIFY graph integration** per checklist above before saving
-
-### Multi-Location Principle
-
-**Don't over-summarize.** Content often belongs in multiple locations at different levels of detail:
-
-| Location                            | Content Level                                    |
-| ----------------------------------- | ------------------------------------------------ |
-| Project index (`project.md`)        | Summary observations, current strategic position |
-| Detailed notes (`project/topic.md`) | Full context, reasoning, personal reflections    |
-| Memory server                       | Key facts for semantic retrieval                 |
-
-**Example**: A plenary reflection belongs BOTH in the project index (strategic summary) AND the meeting notes (full reflection with emotional context, reasoning, history).
-
-When in doubt, save to both. Lost detail is worse than mild redundancy.
-
-4. **Write markdown file** with proper frontmatter:
+1. **Search first**: `mcp__memory__retrieve_memory(query="topic")` + `Glob`
+2. **If match**: Augment existing file
+3. **If no match**: Create new file with frontmatter:
 
 ```markdown
 ---
-title: [Descriptive Title]
-type: note
+title: Descriptive Title
+type: note|project|knowledge
 tags: [relevant, tags]
 created: YYYY-MM-DD
 ---
 
-# Title
-
-Content here.
+Content with [[wikilinks]] to related concepts.
 ```
 
-3. **Add to memory server**:
+4. **Sync to memory server**:
 
 ```
 mcp__memory__store_memory(
-  content="[Full content or key excerpt]",
-  metadata={
-    "tags": "tag1,tag2",
-    "type": "note",
-    "source": "[file path]"
-  }
+  content="[content]",
+  metadata={"source": "[path]", "type": "[type]"}
 )
 ```
 
-## Background Invocation (Seamless Capture)
+## Graph Integration
 
-For seamless capture that doesn't interrupt workflow, spawn a background agent:
+- Every file MUST [[wikilink]] to at least one related concept
+- Project files link to [[goals]] they serve
+- Knowledge files link proper nouns: [[Google]], [[Eugene Volokh]]
+
+## General Knowledge (Fast Path)
+
+For factual observations NOT about the user. Location: `knowledge/<topic>/`
+
+**Constraints:**
+
+- Max 200 words - enables dense vector embeddings
+- [[wikilinks]] on ALL proper nouns
+- One fact per file
+
+**Topics** (use broadly):
+
+- `cyberlaw/` - copyright, defamation, privacy, AI ethics, platform law
+- `tech/` - protocols, standards, technical facts
+- `research/` - methodology, statistics, findings
+
+**Format:**
+
+```markdown
+---
+title: Fact/Case Name
+type: knowledge
+topic: cyberlaw
+source: Where learned
+date: YYYY-MM-DD
+---
+
+[[Entity]] did X. Key point: Y. [[Person]] observes: "quote".
+```
+
+## Background Capture
+
+For non-blocking capture, spawn background agent:
 
 ```
 Task(
-  subagent_type="general-purpose",
-  model="haiku",
+  subagent_type="general-purpose", model="haiku",
   run_in_background=true,
   description="Remember: [summary]",
-  prompt="
-Invoke Skill(skill='remember') ONCE to persist this observation.
-Do NOT call the skill multiple times.
-
-DURABILITY OPTIONS (choose the most appropriate):
-1. Memory server entry (always do this for semantic search)
-2. PLUS ONE of:
-   - Git commit message (if work was just committed)
-   - GitHub Issue comment (for observations/learnings)
-   - Update existing file (augment, don't create new)
-   - New markdown file ONLY if semantic + substantial + no existing file covers topic
-
-DO NOT create date-stamped files. DO NOT create files outside $ACA_DATA.
-
-Content: [what to remember]
-Type: [note|observation|decision]
-Tags: [relevant tags]
-"
+  prompt="Invoke Skill(skill='remember') to persist: [content]"
 )
 ```
 
-**When to use background invocation**:
-
-- End of substantial work (Stop event trigger)
-- After completing a task (TodoWrite trigger)
-- Any time capture should not interrupt user flow
-
-**When to use direct `Skill(skill="remember")`**:
-
-- Need result before proceeding
-- User explicitly asks to remember something
-
-## Arguments
-
-- `content`: What to remember (required)
-- `type`: note | learning | decision (default: note)
-- `tags`: Comma-separated tags for categorization
-
 ## Output
 
-Report:
+Report both operations:
 
-- File written: `[path]`
-- Memory stored: `[hash or confirmation]`
-
-## Workflows
-
-- [[workflows/capture]] - Session mining and silent extraction
-- [[workflows/validate]] - Check format compliance
-- [[workflows/prune]] - Clean low-value files
-
-## Open Questions
-
-We don't yet know the full sync mechanism between markdown files and the memory server. This skill will be updated as we learn. For now: write markdown, then store in memory.
+- File: `[path]`
+- Memory: `[hash]`

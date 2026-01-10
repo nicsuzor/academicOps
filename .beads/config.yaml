@@ -61,8 +61,13 @@
 # - github.org
 # - github.repo
 
-routing.mode: "explicit"
+issue-prefix: "aops"
+repos:
+    primary: "/home/nic/writing/.beads"  # Primary repo (where this database lives)
+    additional:
+        - "/home/nic/src/academicOps"
+        - "/home/nic/src/buttermilk"
 
-routing.default: "/home/nic/writing/.beads"
-
-repos.additional: "~/src/academicOps"
+routing:
+  mode: "explicit"
+  default: "/home/nic/writing/.beads"
