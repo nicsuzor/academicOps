@@ -18,12 +18,17 @@ Extract accomplishments and learnings from session transcripts via Gemini.
 
 ## Workflow: Current Session
 
+### Step 0: Check existing session file does not exist
+
+DO NOT PROCEED IF A SESSION FILE ALREADY EXISTS.
+
+- Check:`$ACA_DATA/dashboard/sessions/{session_id}.json`
+
 ### Step 1: Generate Transcript
 
 ```bash
 cd $AOPS && uv run python scripts/session_transcript.py \
-  ~/.claude/projects/$(pwd | tr '/' '-' | sed 's/^-//')/$SESSION_ID.jsonl \
-  --abridged-only
+  ~/.claude/projects/$(pwd | tr '/' '-' | sed 's/^-//')/$SESSION_ID.jsonl
 ```
 
 Transcript written to `$ACA_DATA/sessions/claude/`.
@@ -84,17 +89,12 @@ For each transcript path:
 
 Limit to 3-5 per invocation to avoid timeouts.
 
-## Invocation
-
-- **At session end**: Stop hook injects instruction to invoke this skill
-- **Manual**: `/session-insights` or `/session-insights batch`
-
 ## Files
 
 | File                         | Purpose                                    |
 | ---------------------------- | ------------------------------------------ |
-| `insights.md`                | Prompt template for Gemini                 |
-| `scripts/mine_transcript.py` | Metadata extraction and prompt preparation |
+| [insights.md]                | Prompt template for Gemini                 |
+| [scripts/mine_transcript.py] | Metadata extraction and prompt preparation |
 
 ## Output
 
