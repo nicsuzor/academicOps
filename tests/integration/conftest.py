@@ -711,10 +711,13 @@ def claude_headless_tracked():
 
         except subprocess.TimeoutExpired:
             error_msg = f"Timeout after {timeout_seconds}s"
+            # Still parse tool calls from session file - session may have made progress
+            session_file = find_session_jsonl(session_id)
+            tool_calls = parse_tool_calls(session_file) if session_file else []
             if fail_on_error:
                 pytest.fail(
                     f"Headless session failed (set fail_on_error=False to handle manually): "
-                    f"{error_msg}"
+                    f"{error_msg}. Session made {len(tool_calls)} tool calls before timeout."
                 )
             return (
                 {
@@ -724,7 +727,7 @@ def claude_headless_tracked():
                     "error": error_msg,
                 },
                 session_id,
-                [],
+                tool_calls,  # Return actual tool calls, not empty list
             )
 
     return _run_tracked

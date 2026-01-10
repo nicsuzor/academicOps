@@ -71,8 +71,9 @@ class TestReflexiveLoopDemo:
         print("\n--- EXECUTING HEADLESS SESSION ---")
 
         # Use haiku for faster execution (sonnet times out on complex prompts)
+        # 300s timeout - complex meta-prompts need time (session made 19 calls in 180s)
         result, session_id, tool_calls = claude_headless_tracked(
-            prompt, timeout_seconds=180, model="haiku"
+            prompt, timeout_seconds=300, model="haiku"
         )
 
         print(f"\nSession ID: {session_id}")
