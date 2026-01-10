@@ -194,6 +194,9 @@ class TestHydratorStateSkip:
         assert should_skip_hydration("/commit")
         assert should_skip_hydration(".quick note")
         assert should_skip_hydration("<agent-notification>done</agent-notification>")
+        assert should_skip_hydration(
+            "<task-notification>\n<task-id>abc123</task-id>\n</task-notification>"
+        )
 
         # No state should be written (would need to test via main())
         state = load_hydrator_state(cwd)

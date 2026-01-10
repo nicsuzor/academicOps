@@ -219,13 +219,15 @@ def should_skip_hydration(prompt: str) -> bool:
     """Check if prompt should skip hydration.
 
     Returns True for:
-    - Agent completion notifications (<agent-notification>)
+    - Agent/task completion notifications (<agent-notification>, <task-notification>)
     - Skill invocations (prompts starting with '/')
     - User ignore shortcut (prompts starting with '.')
     """
     prompt_stripped = prompt.strip()
-    # Agent completion notifications from background Task agents
+    # Agent/task completion notifications from background Task agents
     if prompt_stripped.startswith("<agent-notification>"):
+        return True
+    if prompt_stripped.startswith("<task-notification>"):
         return True
     # Skill invocations - already have instructions, don't need routing
     if prompt_stripped.startswith("/"):
