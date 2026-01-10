@@ -1321,9 +1321,28 @@ class SessionProcessor:
         current_turn: dict = {}
         conversation_start_time = None
 
-        for entry in main_entries:
+        for i, entry in enumerate(main_entries):
             if entry.type == "user":
-                user_content = self._extract_user_content(entry)
+                # Check if this is a command invocation that might need next entry for args
+                message = entry.message or {}
+                content_raw = message.get("content", "")
+                if isinstance(content_raw, list):
+                    content_raw = "\n".join(
+                        item.get("text", "") if isinstance(item, dict) else str(item)
+                        for item in content_raw
+                    )
+
+                # For command invocations, check next meta entry for ARGUMENTS
+                next_meta_content = ""
+                if self._is_command_invocation(content_raw) and i + 1 < len(
+                    main_entries
+                ):
+                    next_entry = main_entries[i + 1]
+                    if next_entry.type == "user" and next_entry.is_meta:
+                        next_meta_content = self._extract_user_content(next_entry)
+
+                # Now extract user content with access to next meta content
+                user_content = self._extract_user_content(entry, next_meta_content)
                 if not user_content.strip() or "tool_use_id" in str(entry.message):
                     continue
 
@@ -2048,8 +2067,13 @@ session_id: {session_uuid}
                             return result_content[:500]
         return None
 
-    def _extract_user_content(self, entry: Entry) -> str:
-        """Extract clean user content from entry."""
+    def _extract_user_content(self, entry: Entry, next_meta_content: str = "") -> str:
+        """Extract clean user content from entry.
+
+        Args:
+            entry: User entry to extract content from
+            next_meta_content: Optional next meta entry content (for extracting ARGUMENTS:)
+        """
 
         message = entry.message or {}
         content = message.get("content", "")
@@ -2068,7 +2092,7 @@ session_id: {session_uuid}
 
         # Parse command invocations to show the full user input
         if self._is_command_invocation(content):
-            return self._format_command_invocation(content)
+            return self._format_command_invocation(content, next_meta_content)
 
         # Filter out system-only pseudo-commands (like local-command-stdout)
         if self._is_system_pseudo_command(content):
@@ -2079,7 +2103,7 @@ session_id: {session_uuid}
 
     def _is_command_invocation(self, content: str) -> bool:
         """Check if content is a user command invocation (e.g., /meta, /log)."""
-        return "<command-name>" in content and "<command-args>" in content
+        return "<command-name>" in content
 
     def _is_system_pseudo_command(self, content: str) -> bool:
         """Check if content is a system-only pseudo-command (not user input)."""
@@ -2099,19 +2123,39 @@ session_id: {session_uuid}
 
         return False
 
-    def _format_command_invocation(self, content: str) -> str:
-        """Format a command invocation to show the user's full input."""
+    def _format_command_invocation(
+        self, content: str, next_meta_content: str = ""
+    ) -> str:
+        """Format a command invocation to show the user's full input.
+
+        Args:
+            content: First user entry content
+            next_meta_content: Optional next meta entry content (may contain ARGUMENTS:)
+        """
         import re
 
-        # Extract command name: <command-name>/foo</command-name>
+        # Extract command name: <command-name>foo</command-name>
         name_match = re.search(r"<command-name>([^<]+)</command-name>", content)
         command_name = name_match.group(1).strip() if name_match else "unknown"
+
+        # Add slash prefix if not present
+        if not command_name.startswith("/"):
+            command_name = f"/{command_name}"
 
         # Extract command args: <command-args>...</command-args>
         args_match = re.search(
             r"<command-args>(.*?)</command-args>", content, re.DOTALL
         )
         command_args = args_match.group(1).strip() if args_match else ""
+
+        # If no args in first entry, check for ARGUMENTS: in next meta entry
+        if not command_args and next_meta_content:
+            # Look for "ARGUMENTS: <text>" at end of skill expansion
+            args_from_meta = re.search(
+                r"\nARGUMENTS:\s*(.+?)(?:\n|$)", next_meta_content, re.DOTALL
+            )
+            if args_from_meta:
+                command_args = args_from_meta.group(1).strip()
 
         # Format as the user would have typed it
         if command_args:
