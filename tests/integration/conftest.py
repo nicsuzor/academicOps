@@ -665,11 +665,14 @@ def claude_headless_tracked():
             )
 
             if result.returncode != 0:
-                error_msg = f"Command failed: {result.stderr}"
+                # Parse tool calls from session file - session may have made progress
+                session_file = find_session_jsonl(session_id)
+                tool_calls = parse_tool_calls(session_file) if session_file else []
+                error_msg = f"Command failed with exit code {result.returncode}: {result.stderr}"
                 if fail_on_error:
                     pytest.fail(
                         f"Headless session failed (set fail_on_error=False to handle manually): "
-                        f"{error_msg}"
+                        f"{error_msg}. Session made {len(tool_calls)} tool calls."
                     )
                 return (
                     {
@@ -679,7 +682,7 @@ def claude_headless_tracked():
                         "error": error_msg,
                     },
                     session_id,
-                    [],
+                    tool_calls,
                 )
 
             try:
