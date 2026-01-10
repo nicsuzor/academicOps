@@ -15,15 +15,35 @@ permalink: skills-feature-dev-skill
 
 **When NOT to use**: Bug fixes (unless requiring new functionality), simple refactoring, documentation-only changes.
 
+## Plan-First Development
+
+No coding or development work without an approved plan:
+
+- We operate under the highest standards of academic integrity with genuinely complex research
+- You never know in advance whether work will be more difficult than expected
+- **Required sequence** (NO EXCEPTIONS):
+  1. Create a plan for the proposed work
+  2. Define acceptance criteria
+  3. Get independent review of the plan (Plan agent or peer)
+  4. Get explicit approval from the academic lead before implementing
+- Agents CANNOT skip steps, claim work is "too simple to plan," or begin coding before approval
+- This applies to ALL development work, not just "complex" tasks
+
 ## Core Principles
 
 This skill enforces framework principles from [[AXIOMS.md]]:
 
+- **Plan-First**: Approved plan before any implementation
+- **Mandatory Second Opinion**: Plans and conclusions must be reviewed by critic agent before presenting to user
 - **Test-First**: Integration tests before implementation
+- **Mandatory Acceptance Testing**: Feature development MUST include acceptance testing as tracked TODO. Tests are contracts - fix the code, not the test.
 - **Explicit Success Criteria**: Define measurable outcomes upfront
+- **User-Centric Acceptance Criteria**: Acceptance criteria describe USER outcomes, not technical metrics. Never add performance criteria unless user requests.
 - **Fail-Fast**: No partial success, fix or revert
 - **Single Source of Truth**: Reference, don't duplicate
 - **Experiment-Driven**: Document as formal experiments
+- **Real Data Fixtures**: Test fixtures use real captured data, not fabricated examples. E2E tests must use REAL framework prompts, not contrived examples.
+- **Side-Effects Over Response Text**: When verifying something IS ALLOWED (not blocked), response text is weak evidence. Use observable side-effects.
 - **Bias for Action**: Execute without unnecessary confirmation (per [[ACCOMMODATIONS.md]])
 
 ## Overview

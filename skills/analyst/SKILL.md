@@ -15,6 +15,10 @@ Support academic research data analysis by working collaboratively with dbt (dat
 
 **Core principle:** Take ONE action at a time (generate a chart, update database, create a test), then yield to the user for feedback before proceeding.
 
+## 🚨 CRITICAL: Research Data is Immutable
+
+Source datasets, ground truth labels, experimental records, and research configurations are SACRED. NEVER modify, reformat, or "fix" them. If infrastructure doesn't support a format: HALT and report. Violations are scholarly misconduct.
+
 ## 🚨 CRITICAL: Transformation Boundary Rule
 
 **ALL data transformation happens in dbt. Period.**
@@ -318,14 +322,7 @@ Create Streamlit visualizations following single-step collaborative pattern.
 
 ### Quick Reference: Streamlit Pattern
 
-1. Load data from dbt model → STOP, confirm data
-2. Create single chart → STOP, get feedback
-3. Add interactivity → STOP, confirm works
-4. Continue one change at a time
-
-**Key principle:** Always load data through dbt models using DuckDB, cache with `@st.cache_data`. Streamlit queries should be `SELECT * FROM mart` or simple filters on existing columns - NEVER aggregations, joins, or business logic.
-
-**See:** [[instructions/streamlit-workflow.md]] for complete workflow and [[references/streamlit-patterns.md]] for best practices
+Load data → STOP → Create chart → STOP → Add interactivity → STOP. One change at a time. **Hot Reloads**: Don't restart Streamlit; it auto-reloads. See [[instructions/streamlit-workflow.md]].
 
 ## Follow Testing Workflow
 

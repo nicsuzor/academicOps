@@ -24,6 +24,23 @@ Developing the framework means that EVERY action must be justifiable as a univer
 - Practical decisions drive framework development: formalise everything for consistent, repeatable behavior.
 - If something doesn't work, FAIL FAST, ESCALATE, and HALT -- we want WORKING TOOLS NOT WORKAROUNDS
 
+## Always Dogfooding
+
+Use our own research projects as development guides, test cases, and tutorials. Never create fake examples for tests or documentation.
+
+## Skill-First Action
+
+Almost all agent actions should follow skill invocation for repeatability. This includes investigation/research tasks about framework infrastructure.
+
+- **Skill Invocation Framing**: When directing an agent to use a skill, explain it provides needed context and use explicit syntax: `call Skill(name) to...`
+- **Skill Design Enablement**: Well-designed skills should enable all action on user requests. Missing skills are framework bugs.
+- **Just-In-Time Skill Reminders**: Agents should be reminded to invoke relevant skills just-in-time before required.
+- **Context Uncertainty Favors Skills**: When uncertain whether a task requires a skill, invoke it. The cost of unnecessary context is lower than missing it.
+
+## Core-First Incremental Expansion
+
+Only concern ourselves with the core. Expand slowly, one piece at a time.
+
 ## Step 1: Do the Task
 
 Complete the user's request using appropriate skills and processes. Do not try to be helpful by doing more than you were asked; you must always seek the user's guidance.

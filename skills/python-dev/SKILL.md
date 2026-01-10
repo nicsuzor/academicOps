@@ -53,6 +53,16 @@ HALTING.
 
 **Non-framework repositories**: This enforcement does NOT apply to other repositories (user projects, etc.). Use python-dev directly for non-framework work.
 
+## Standard Tools
+
+Use the best industry-standard tool for each job:
+
+- Package management: `uv`
+- Testing: `pytest`
+- Git hooks: `pre-commit`
+- Type checking: `mypy`
+- Linting: `ruff`
+
 ## Core Philosophy
 
 ### 1. Fail-Fast: No Defaults, No Fallbacks

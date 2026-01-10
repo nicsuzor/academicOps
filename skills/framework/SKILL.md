@@ -194,6 +194,18 @@ See [[INDEX.md]] for complete file tree. Paths are resolved in [[FRAMEWORK.md]] 
 
 Each convention traces to its source axiom. If a convention lacks derivation, it's invalid.
 
+### Skills are Read-Only
+
+Skills MUST NOT contain dynamic data. All mutable state lives in `$ACA_DATA/`.
+
+### Just-In-Time Context
+
+Information surfaces when relevant: global → AXIOMS.md, component → CLAUDE.md, past → memory server. Missing context = framework bug.
+
+### One Spec Per Feature
+
+One feature = one spec. Specs are timeless (no phases, dates, migration notes).
+
 ### Single Source of Truth
 
 Each piece of information exists in exactly ONE location:
@@ -248,11 +260,7 @@ Check for: logical errors, unstated assumptions, missing verification, overconfi
 
 If critic returns **REVISE** or **HALT**, address issues before proceeding.
 
-### Skills are Read-Only
-
-Skills in `skills/` MUST NOT contain dynamic data. All mutable state goes in `$ACA_DATA/`.
-
-### Trust Version Control (See [[AXIOMS.md]])
+### Trust Version Control
 
 - Never create backup files (`.bak`, `_old`, etc.)
 - Edit directly, git tracks changes
@@ -332,36 +340,7 @@ New files PROHIBITED unless:
 
 ### TodoWrite Skill-Chaining Pattern
 
-**Problem**: Skills cannot directly invoke other skills. Agents treat skill suggestions as optional.
-
-**Solution**: Skills instruct agents to create TodoWrite items with explicit `Skill()` calls. This makes skill invocation a mandatory step the agent must execute.
-
-**Pattern**:
-
-```
-## Workflow Entry Point
-
-**IMMEDIATELY call TodoWrite** with the following items:
-
-TodoWrite(todos=[
-  {content: "Step 1: Do prerequisite work", status: "pending", activeForm: "Working on step 1"},
-  {content: "Step 2: Invoke Skill(skill='other-skill') for domain guidance", status: "pending", activeForm: "Loading other skill"},
-  {content: "Step 3: Complete work using loaded guidance", status: "pending", activeForm: "Completing work"}
-])
-
-**CRITICAL**: Work through EACH step. When you reach Step 2, INVOKE the skill.
-```
-
-**Why it works**:
-
-1. TodoWrite creates visible, trackable steps
-2. Explicit `Skill(skill='x')` syntax in todo content
-3. Agent executes each step sequentially
-4. Skill guidance loads mid-workflow when needed
-
-**Example**: See `skills/audit/SKILL.md` which chains to `framework` and `flowchart` skills.
-
-**Derivation**: Implements [[H2]] (Skill-First Action) by making skill invocation a tracked workflow step rather than an optional suggestion. Addresses Issue #216 (Skill Bypass Pattern).
+Skills chain to other skills via TodoWrite items with explicit `Skill()` calls. See `skills/audit/SKILL.md` for example.
 
 ### Adding a Command
 
@@ -376,6 +355,7 @@ TodoWrite(todos=[
 2. Create hook in `hooks/` directory
 3. Triggers: PreToolUse, PostToolUse, UserPromptSubmit, SessionStart, Stop
 4. Hooks inject context/instructions - they NEVER call LLM APIs directly
+5. **No LLM Calls in Hooks**: Hooks never call LLM directly. Spawn background subagent for reasoning.
 
 ### Script Design
 

@@ -10,6 +10,17 @@ version: 2.0.0
 
 Persist knowledge to markdown + memory server. **Both writes required** for semantic search.
 
+## Current State Machine
+
+`$ACA_DATA` contains ONLY semantic memory - timeless truths, always up-to-date:
+
+- **Semantic memory** (current state): What IS true now. Understandable without history. Lives in `$ACA_DATA`.
+- **Episodic memory** (observations): Time-stamped events. Lives in **bd issues** (`.beads/issues.jsonl`, git-tracked).
+- **Episodic content includes**: Bug investigations, experiment observations, development logs, code change discussions, decision rationales, any observation at a point in time
+- **Synthesis flow**: Observations accumulate in bd issues → patterns emerge → synthesize to semantic docs (HEURISTICS, specs) → close issue with link to synthesized content
+- If you must read multiple files or piece together history to understand truth, it's not properly synthesized
+- Git history preserves the record; `$ACA_DATA` reflects only what's current
+
 ## Decision Tree
 
 ```
@@ -77,6 +88,16 @@ mcp__memory__store_memory(
 - Every file MUST [[wikilink]] to at least one related concept
 - Project files link to [[goals]] they serve
 - Knowledge files link proper nouns: [[Google]], [[Eugene Volokh]]
+- **Semantic Link Density**: Files about same topic/project/event MUST link to each other in prose. Project hubs link to key content files.
+
+## Wikilink Conventions
+
+- **Wikilinks in Prose Only**: Only add [[wikilinks]] in prose text. Never inside code fences, inline code, or table cells with technical content.
+- **Semantic Wikilinks Only**: Use [[wikilinks]] only for semantic references in prose. NO "See Also" or cross-reference sections.
+
+## Semantic Search
+
+Use memory server semantic search for `$ACA_DATA/` content. Never grep for markdown in the knowledge base. Give agents enough context to make decisions - never use algorithmic matching (fuzzy, keyword, regex).
 
 ## General Knowledge (Fast Path)
 

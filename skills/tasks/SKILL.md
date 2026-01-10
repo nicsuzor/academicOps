@@ -40,6 +40,13 @@ cd $AOPS && uv run python skills/tasks/scripts/task_view.py
 
 This ensures Python can find dependencies (yaml, etc.) from the project's virtual environment.
 
+## TodoWrite vs Persistent Tasks
+
+- **TodoWrite**: For tracking approved work steps within a single session only
+- **This skill (tasks)**: For work requiring persistence, approval, or rollback capability
+
+Use TodoWrite when you have an approved plan and are executing steps. Use this skill when creating work items that need to survive across sessions or require user approval.
+
 ## When to Use
 
 Use this skill for:
