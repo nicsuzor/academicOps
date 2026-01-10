@@ -129,8 +129,9 @@ Full instructions: `$AOPS/commands/do.md`
 | /log                 | Log agent patterns to thematic learning files                                                |
 | /meta                | Strategic brain + executor for framework work                                                |
 | /parallel-batch      | Parallel file processing with skill delegation                                               |
-| /q                   | Queue task for later execution (delayed /do)                                                 |
+| /q                   | Queue user task for later (→ task system)                                                    |
 | /qa                  | Verify outcomes against acceptance criteria                                                  |
+| /remind              | Queue agent work for later (→ bd issues)                                                     |
 | /reflect             | Self-audit process compliance; see also `/session-insights current` for automated reflection |
 | /review-training-cmd | Process review/source pair for training data                                                 |
 | /strategy            | Strategic thinking partner (no execution)                                                    |
