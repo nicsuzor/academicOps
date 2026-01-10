@@ -83,7 +83,10 @@ class TestReflexiveLoopDemo:
             print(f"\nERROR: {result.get('error')}")
             print("\n--- EVALUATION: FAILED ---")
             print("Session did not complete successfully.")
-            return
+            pytest.fail(
+                f"Headless session failed: {result.get('error')}. "
+                f"Session ID: {session_id}. Tool calls: {len(tool_calls)}"
+            )
 
         # --- EVIDENCE COLLECTION ---
         print("\n" + "=" * 80)
