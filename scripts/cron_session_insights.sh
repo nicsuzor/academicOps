@@ -137,8 +137,94 @@ done <<< "$SESSIONS"
 
 echo "$(date '+%Y-%m-%d %H:%M:%S') - Transcripts complete: $GENERATED generated, $SKIPPED skipped (tiny), $FAILED failed"
 
-# Step 3: TODO - Add Gemini mining for sessions with transcripts but no summaries
-# Only mine transcripts > 1KB (skip empty sessions)
-# This will be: session_status.py --mode cron-mining | while read path; do gemini_mine.py "$path"; done
+# Step 3: Mine transcripts with Gemini to extract session summaries
+echo "$(date '+%Y-%m-%d %H:%M:%S') - Checking for sessions needing mining..."
+
+set +e
+MINING_SESSIONS=$(uv run python scripts/session_status.py --mode cron-mining --allowed-projects "$PROJECT_PATTERN" 2>&1)
+MINING_EXIT=$?
+set -e
+
+if [[ $MINING_EXIT -eq 1 ]]; then
+    echo "$(date '+%Y-%m-%d %H:%M:%S') - No sessions need mining. Done."
+    exit 0
+elif [[ $MINING_EXIT -ne 0 ]]; then
+    echo "$(date '+%Y-%m-%d %H:%M:%S') - Error checking mining sessions (exit $MINING_EXIT): $MINING_SESSIONS" >&2
+    exit 1
+fi
+
+MINING_COUNT=$(echo "$MINING_SESSIONS" | wc -l)
+echo "$(date '+%Y-%m-%d %H:%M:%S') - Found $MINING_COUNT session(s) needing mining"
+
+MINED=0
+MINE_FAILED=0
+MAX_MINING=3  # Limit mining per run (Gemini calls are slow)
+
+# Minimum transcript size to bother mining
+MIN_TRANSCRIPT_SIZE=1000  # bytes
+
+while IFS= read -r transcript_path; do
+    [[ -z "$transcript_path" ]] && continue
+
+    # Stop after max mining
+    if [[ $MINED -ge $MAX_MINING ]]; then
+        echo "$(date '+%Y-%m-%d %H:%M:%S') - Reached max mining ($MAX_MINING), stopping"
+        break
+    fi
+
+    # Skip tiny transcripts
+    file_size=$(stat -c%s "$transcript_path" 2>/dev/null || echo 0)
+    if [[ $file_size -lt $MIN_TRANSCRIPT_SIZE ]]; then
+        echo "$(date '+%Y-%m-%d %H:%M:%S') - Skipping tiny transcript ($file_size bytes): $transcript_path"
+        continue
+    fi
+
+    # Extract metadata from filename: YYYYMMDD-{project}-{session_id}-abridged.md
+    filename=$(basename "$transcript_path")
+    date_raw=$(echo "$filename" | cut -c1-8)
+    # Format date as YYYY-MM-DD
+    date_formatted="${date_raw:0:4}-${date_raw:4:2}-${date_raw:6:2}"
+    # Extract project (between first dash and last dash before session_id)
+    project=$(echo "$filename" | sed 's/^[0-9]*-//' | sed 's/-[a-f0-9]*-abridged\.md$//')
+    # Extract session_id (8 hex chars before -abridged.md)
+    session_id=$(echo "$filename" | sed 's/.*-\([a-f0-9]\{8\}\)-abridged\.md$/\1/')
+
+    echo "$(date '+%Y-%m-%d %H:%M:%S') - Mining: $transcript_path (session: $session_id, project: $project)"
+
+    # Ensure output directory exists
+    mkdir -p "$ACA_DATA/dashboard/sessions"
+
+    # Build prompt with substitutions
+    PROMPT=$(cat "$FRAMEWORK_ROOT/templates/insights.md" | \
+        sed "s/{session_id}/$session_id/g" | \
+        sed "s/{date}/$date_formatted/g" | \
+        sed "s/{project}/$project/g")
+
+    # Call Gemini to mine the transcript
+    OUTPUT_FILE="$ACA_DATA/dashboard/sessions/$session_id.json"
+
+    set +e
+    gemini -y -p "$PROMPT" "@$transcript_path" > "$OUTPUT_FILE" 2>&1
+    GEMINI_EXIT=$?
+    set -e
+
+    if [[ $GEMINI_EXIT -eq 0 ]]; then
+        # Validate JSON output
+        if jq empty "$OUTPUT_FILE" 2>/dev/null; then
+            echo "$(date '+%Y-%m-%d %H:%M:%S') - Mined successfully: $session_id"
+            MINED=$((MINED + 1))
+        else
+            echo "$(date '+%Y-%m-%d %H:%M:%S') - Invalid JSON output for: $session_id" >&2
+            rm -f "$OUTPUT_FILE"
+            MINE_FAILED=$((MINE_FAILED + 1))
+        fi
+    else
+        echo "$(date '+%Y-%m-%d %H:%M:%S') - Gemini failed for: $session_id (exit $GEMINI_EXIT)" >&2
+        rm -f "$OUTPUT_FILE"
+        MINE_FAILED=$((MINE_FAILED + 1))
+    fi
+done <<< "$MINING_SESSIONS"
+
+echo "$(date '+%Y-%m-%d %H:%M:%S') - Mining complete: $MINED mined, $MINE_FAILED failed"
 
 exit 0

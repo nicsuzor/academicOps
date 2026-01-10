@@ -119,6 +119,7 @@ def main() -> int:
         "-tmp-claude-test",  # Integration test sessions
         "-tmp-tmp",  # Pytest temp dirs
         "-tmp-task-viz-test",  # Task viz test dirs
+        "/agent-",  # Subagent session files (not main sessions)
     ]
 
     # Filter by age, project, and noise
@@ -172,8 +173,21 @@ def main() -> int:
         targets = results[SessionState.PENDING_MINING][: args.limit]
         if not targets:
             return 1  # Nothing to do
+        # Output transcript paths (not session paths) for mining
+        import glob
+
         for s in targets:
-            print(str(s.path))
+            session_prefix = (
+                s.session_id[:8] if len(s.session_id) >= 8 else s.session_id
+            )
+            if s.source == "gemini":
+                transcript_dir = aca_data / "sessions" / "gemini"
+            else:
+                transcript_dir = aca_data / "sessions" / "claude"
+            pattern = str(transcript_dir / f"*-*-{session_prefix}*-abridged.md")
+            matches = glob.glob(pattern)
+            if matches:
+                print(matches[0])
         return 0
 
     return 0

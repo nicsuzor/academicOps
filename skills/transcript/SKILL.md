@@ -9,7 +9,7 @@ permalink: skills-transcript
 
 # Transcript Skill
 
-Convert Claude Code JSONL session files to readable markdown transcripts.
+Convert Claude Code and Gemini CLI JSONL session files to readable markdown transcripts.
 
 ## Arguments
 
@@ -19,23 +19,26 @@ Convert Claude Code JSONL session files to readable markdown transcripts.
 
 ## Workflow
 
-### 1. Find Today's Sessions
+### 1. Find Sessions Needing Transcripts
+
+Use `session_status.py` to identify unprocessed sessions:
 
 ```bash
-cd $AOPS && uv run python -c "
-from lib.session_reader import find_sessions
-from datetime import datetime, timezone
-target = datetime.now(timezone.utc).date()
-# SessionInfo: path, project, session_id, last_modified (NO start_time!)
-# Sort by last_modified descending - most recent first
-sessions = [s for s in find_sessions() if s.last_modified.date() == target]
-sessions.sort(key=lambda s: s.last_modified, reverse=True)
-for s in sessions:
-    print(f'{s.session_id[:8]} {s.last_modified.strftime(\"%H:%M\")} {s.project} {s.path}')
-"
+# Human-readable report of all session states
+cd $AOPS && uv run python scripts/session_status.py --mode=report
+
+# List paths needing transcripts (for batch processing)
+cd $AOPS && uv run python scripts/session_status.py --mode=cron-transcript
 ```
 
-**To find current session**: The FIRST entry (most recently modified) is usually the current session. Verify by checking the file is still being written to.
+**Options**:
+
+- `--days=N` - How many days back to look (default: 7)
+- `--min-age=N` - Skip sessions modified within N minutes (default: 5, avoids in-progress sessions)
+- `--allowed-projects=foo,bar` - Filter to specific projects
+- `--include-noise` - Include hook logs, test sessions (excluded by default)
+
+**To find current session**: Run with `--min-age=0` and look for the most recent entry. The report mode shows modification times.
 
 ### 2. Generate Transcripts
 

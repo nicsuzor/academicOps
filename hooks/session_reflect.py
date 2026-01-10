@@ -1,70 +1,22 @@
 #!/usr/bin/env python3
 """
-Stop hook: Synthesize session summary and trigger reflection.
+Stop hook: Inject instruction to invoke session-insights skill.
 
-1. Synthesizes task contributions into session summary (no LLM - H31 compliant)
-2. Injects instruction for agent to invoke session-insights if needed
+H31 compliant - no LLM calls in hooks. Just injects instruction for agent.
 
 Exit codes:
-    0: Success (session synthesized, no further action needed)
-    1: Warning with reflection instruction (agent should review/enhance)
+    0: Success (no instruction needed - very short session)
+    1: Warning with skill invocation instruction
 """
 
 import json
-import os
 import sys
-from datetime import date
 from pathlib import Path
 from typing import Any
 
 
-def synthesize_session_summary(session_id: str, project: str) -> bool:
-    """Synthesize task contributions into session summary.
-
-    Args:
-        session_id: Session UUID
-        project: Project name (extracted from cwd)
-
-    Returns:
-        True if summary was created, False if no task contributions exist
-    """
-    # Import here to avoid issues if lib not in path during hook execution
-    try:
-        sys.path.insert(0, os.environ.get("AOPS", ""))
-        from lib.session_summary import (
-            load_task_contributions,
-            synthesize_session,
-            save_session_summary,
-        )
-    except ImportError:
-        # Library not available - skip synthesis
-        return False
-
-    # Check if we have task contributions
-    tasks = load_task_contributions(session_id)
-    if not tasks:
-        return False
-
-    # Synthesize and save
-    today = date.today().strftime("%Y-%m-%d")
-    summary = synthesize_session(
-        session_id,
-        project=project,
-        date=today,
-    )
-    save_session_summary(session_id, summary)
-    return True
-
-
 def get_project_from_cwd(cwd: str) -> str:
-    """Extract project name from cwd path.
-
-    Args:
-        cwd: Current working directory
-
-    Returns:
-        Project shortname (last path component)
-    """
+    """Extract project name from cwd path."""
     if not cwd:
         return "unknown"
     parts = Path(cwd).parts
@@ -82,34 +34,20 @@ def main():
     # Get session info
     session_id = input_data.get("session_id", "")
     transcript_path = input_data.get("transcript_path", "")
-    cwd = input_data.get("cwd", "")
 
     # Skip for very short sessions (no transcript)
     if not transcript_path:
         print(json.dumps({}))
         sys.exit(0)
 
-    # Synthesize task contributions into session summary
-    project = get_project_from_cwd(cwd)
-    summary_created = False
-    if session_id:
-        try:
-            summary_created = synthesize_session_summary(session_id, project)
-        except Exception as e:
-            # Log error but don't fail the hook
-            sys.stderr.write(f"Session synthesis error: {e}\n")
-
-    # Build message for agent
-    if summary_created:
-        message = (
-            "Session summary synthesized from task contributions. "
-            "Cron infrastructure will mine transcripts for accomplishments."
-        )
-    else:
-        message = (
-            "No task contributions found for this session. "
-            "Cron infrastructure will mine transcript for accomplishments."
-        )
+    # Build instruction for agent
+    short_id = session_id[:8] if session_id else "unknown"
+    message = (
+        f"Session ending. To record accomplishments, invoke:\n\n"
+        f'  Skill(skill="session-insights")\n\n'
+        f"This extracts insights from the transcript and saves to dashboard.\n"
+        f"Session ID: {short_id}"
+    )
 
     output: dict[str, Any] = {
         "reason": message,
