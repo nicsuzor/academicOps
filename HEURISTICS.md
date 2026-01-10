@@ -231,3 +231,22 @@ Instruction files (skills, commands, workflows) MUST NOT include sections irrele
 - ❌ "Background/Rationale" - belongs in specs
 
 Invocation guidance belongs in: frontmatter `description:`, README.md inventory, routing logic (hydrator, hooks).
+
+## H42: No Selfish Workarounds
+
+When you need to debug or investigate framework behavior and current tools are inadequate, HALT instead of writing ad-hoc solutions.
+
+**If every agent works around tool gaps, the framework never improves.**
+
+When encountering inadequate tooling:
+
+1. **HALT** - Don't write throwaway bash/jq/grep commands
+2. **IDENTIFY** - What tool/capability is missing?
+3. **PROPOSE** - How should this work for future agents?
+4. **WAIT** - Let user decide whether to build proper tool
+
+**Example violation**: Using `tail -15 session.jsonl | jq -c '...'` to debug session logs instead of recognizing transcript skill is too heavy and proposing lightweight introspection tool.
+
+**Related**: When you DO need to read session logs, use `Skill(skill='transcript')` to convert JSONL to markdown first. Raw JSONL wastes 10-70K tokens.
+
+**Derivation**: AXIOM #1 (Categorical Imperative) - ad-hoc solutions aren't universalizable. Building reusable infrastructure serves all future agents.

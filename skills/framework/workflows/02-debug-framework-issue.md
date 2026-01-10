@@ -12,6 +12,8 @@ description: Process for diagnosing and fixing framework component failures and 
 
 **Key principle**: Use **controlled tests in /tmp** to run experiments and validate hypotheses. Read **Claude session logs** to understand agent behavior.
 
+**CRITICAL**: If you need to read session JSONL files, invoke `Skill(skill='transcript')` FIRST to convert to markdown. Raw JSONL wastes 10-70K tokens; transcripts are 90% smaller and human-readable.
+
 **Steps**:
 
 1. **Reproduce the issue with controlled test**
