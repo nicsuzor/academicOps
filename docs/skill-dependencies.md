@@ -1,3 +1,7 @@
+---
+category: docs
+---
+
 # Skill Dependency Map
 
 Generated: 2026-01-11 for ns-9ka (Prerequisite: Skill Dependency Mapping)
