@@ -2235,23 +2235,11 @@ class SessionProcessor:
                             )
                             markdown += condensed + "\n\n"
 
-        # Render orphan subagent transcripts (not linked to a Task call)
-        # These include warmup agents and other automatically spawned subagents
-        # Only include agents that weren't already rendered inline with Task calls
-        if agent_entries and full_mode:
-            orphan_agents = {
-                agent_id: entries
-                for agent_id, entries in agent_entries.items()
-                if entries and agent_id not in rendered_agent_ids
-            }
-
-            if orphan_agents:
-                markdown += "\n## Subagent Transcripts\n\n"
-                for agent_id, entries in sorted(orphan_agents.items()):
-                    markdown += f"### Subagent: {agent_id}\n\n"
-                    summary = self._extract_sidechain(entries)
-                    if summary:
-                        markdown += f"{summary}\n\n"
+        # NOTE: Orphan subagent transcripts (agents not linked to Task calls) are
+        # intentionally excluded. If the main agent didn't read the subagent output
+        # (via TaskOutput tool or reading the output file), that content wasn't in
+        # the main agent's context and shouldn't appear in the transcript.
+        # Content the main agent DID read is already rendered inline above.
 
         edited_files = details.get("edited_files", session.edited_files)
         files_list = (
