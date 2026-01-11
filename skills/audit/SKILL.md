@@ -23,7 +23,8 @@ TodoWrite(todos=[
   {content: "Phase 1: Structure audit - compare filesystem to INDEX.md", status: "pending", activeForm: "Auditing structure"},
   {content: "Phase 2: Reference graph - invoke Skill(skill='framework') then run link audit scripts", status: "pending", activeForm: "Building reference graph"},
   {content: "Phase 3: Skill content audit - check size and actionability", status: "pending", activeForm: "Auditing skill content"},
-  {content: "Phase 4: Justification audit - check specs for file references", status: "pending", activeForm: "Auditing justifications"},
+  {content: "Phase 4: Justification audit - check specs for file references", status: "pending", activeForm: "Auditing file justifications"},
+  {content: "Phase 4b: Instruction justification - verify every instruction traces to RULES.md", status: "pending", activeForm: "Auditing instruction justifications"},
   {content: "Phase 5: Documentation accuracy - verify FLOW.md vs hooks", status: "pending", activeForm: "Verifying documentation"},
   {content: "Phase 6: Regenerate indices - invoke Skill(skill='flowchart') for FLOW.md", status: "pending", activeForm: "Regenerating indices"},
   {content: "Phase 7: Other updates and final report", status: "pending", activeForm: "Finalizing audit"}
@@ -123,7 +124,7 @@ For each `$AOPS/skills/*/SKILL.md`:
    - ❌ Historical context → delete
    - ❌ Reference material >20 lines → move to `references/`
 
-### Phase 4: Justification Audit
+### Phase 4: Justification Audit (Files)
 
 For each significant file in `$AOPS/`:
 
@@ -132,6 +133,69 @@ For each significant file in `$AOPS/`:
 3. **Classify**: Justified / Implicit / Orphan
 
 **Skip**: `__pycache__/`, `.git/`, individual files within skills, tests, assets
+
+### Phase 4b: Instruction Justification Audit
+
+**Every behavioral instruction injected to agents must trace to RULES.md.**
+
+Unjustified instructions are bloat - they cost tokens and create confusion about what's actually enforced.
+
+**Sources to scan** (files injected at SessionStart or via hooks):
+
+- `FRAMEWORK.md` - core instructions
+- `AXIOMS.md`, `HEURISTICS.md` - principle statements
+- `skills/*/SKILL.md` - skill-specific instructions
+- `commands/*.md` - command instructions
+- `agents/*.md` - agent instructions
+
+**What constitutes a "behavioral instruction":**
+
+- Imperative statements: "always do X", "never do Y", "you MUST", "you SHOULD"
+- Conditional rules: "when X, do Y", "if X then Y"
+- Workflow requirements: "invoke skill X first", "before doing X, check Y"
+
+**Validation process:**
+
+1. Extract behavioral instructions from each source file (look for imperatives, MUSTs, SHOULDs, "always", "never", "before", "first")
+2. For each instruction, search RULES.md for:
+   - Direct reference to the instruction text
+   - Reference to the source file + line number
+   - Mapping to an axiom or heuristic that covers this instruction
+3. Classify each instruction:
+   - **Justified**: Appears in RULES.md with axiom/heuristic mapping
+   - **Implicit**: Derives from a documented axiom/heuristic but not explicitly in RULES.md
+   - **Orphan**: No traceability - FLAG FOR REVIEW
+
+**Example orphan** (discovered in session):
+
+```
+FRAMEWORK.md:35 - "When working with session logs, always invoke Skill(skill='transcript') first"
+→ NOT in RULES.md
+→ No axiom/heuristic reference
+→ ORPHAN - needs justification or removal
+```
+
+**Output format:**
+
+```
+### Instruction Justification Status
+
+**Justified** (N instructions):
+- FRAMEWORK.md:78 "NEVER hardcode paths" → [[axioms/dry-modular-explicit.md]]
+
+**Implicit** (N instructions):
+- skills/python-dev/SKILL.md:42 "use uv run" → derives from [[axioms/use-standard-tools.md]]
+
+**Orphan** (N instructions) - REQUIRES ACTION:
+- FRAMEWORK.md:35 "invoke transcript skill first for session logs" → NO JUSTIFICATION
+- commands/learn.md:56 "..." → NO JUSTIFICATION
+```
+
+**Resolution for orphans:**
+
+1. Create heuristic if rule is valuable
+2. Add to RULES.md with axiom/heuristic mapping
+3. Or DELETE the instruction if it's not worth formalizing
 
 ### Phase 5: Documentation Accuracy
 

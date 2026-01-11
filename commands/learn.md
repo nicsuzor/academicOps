@@ -34,6 +34,17 @@ Report to user: "Processing framework learning in background. Continue working."
 
 ## Workflow
 
+### 0. Agents Are Stateless - You MUST Edit a File
+
+**This is the most important rule of /learn.**
+
+❌ **WRONG**: "I understand now, I'll do better next time" (no file change)
+✅ **RIGHT**: Edit a framework file so future agents get the corrected instruction
+
+Agents are stateless. "Understanding" means nothing without a persistent change. If you complete /learn without using Edit or Write on a framework file, you have failed.
+
+**Common failure mode**: Agent explains what it learned, promises to do better, but makes no file change. This is worthless - the next agent starts fresh with the same flawed instructions.
+
 ### 1. Identify Root Cause (Not Proximate Cause)
 
 **We don't control agents** - they're probabilistic. Find the **framework component failure**, not the agent mistake.
