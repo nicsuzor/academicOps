@@ -209,3 +209,92 @@ Common failure patterns map to axiom violations:
 5. **Verification**: Ran code to confirm `start_time` doesn't exist on `SessionInfo`
 6. **Axiom violation**: Agent worked around error (AXIOM #8 violation) instead of halting
 7. **Root cause**: Skill docs referenced non-existent attribute + agent didn't halt on error
+
+## Debugging Headless/Subagent Sessions
+
+When a test spawns a headless Claude session (via `claude -p` or Task tool) and it fails or times out, use this workflow to investigate what the subagent actually did.
+
+### 1. Find the Subagent Session File
+
+The test output usually includes the session ID. Search for it:
+
+```bash
+# Search by session ID (from test output)
+grep -rl "SESSION_ID_HERE" ~/.claude/projects/
+
+# Search by unique prompt content
+grep -rl "add_numbers\|unique_prompt_text" ~/.claude/projects/ | head -10
+
+# Find test project sessions (tests run from academicOps)
+ls -lt ~/.claude/projects/-home-nic-src-academicOps/*.jsonl | head -10
+```
+
+**Tip**: Tests running headless sessions create JSONL in `~/.claude/projects/-home-nic-src-academicOps/` (the project where pytest runs), not in the test temp directory.
+
+### 2. Generate Readable Transcript
+
+Raw JSONL is unreadable. Always convert first:
+
+```bash
+# Generate transcript (saves to $ACA_DATA/sessions/claude/)
+cd $AOPS && uv run python scripts/session_transcript.py \
+  ~/.claude/projects/-home-nic-src-academicOps/SESSION_ID.jsonl
+
+# Output shows paths to full and abridged versions
+# Abridged is usually sufficient (excludes tool results)
+```
+
+### 3. Analyze the Transcript
+
+Look for these patterns:
+
+| Pattern             | Location in Transcript                     | What It Reveals                    |
+| ------------------- | ------------------------------------------ | ---------------------------------- |
+| **Subagent spawns** | `### Subagent: TYPE (description)`         | What subagents were invoked        |
+| **Tool errors**     | `**❌ ERROR:**`                            | Failed tool calls with exact error |
+| **Turn timing**     | `## User (Turn N (HH:MM, took X seconds))` | Where time was spent               |
+| **Hook injections** | `Hook(SessionStart)` at top                | What context was loaded            |
+| **TodoWrite items** | `▶ □ ✓` markers                            | Planned vs executed work           |
+
+### 4. Common Failure Patterns
+
+| Symptom                          | Likely Cause                      | Fix                                                     |
+| -------------------------------- | --------------------------------- | ------------------------------------------------------- |
+| **Timeout with few tool calls**  | Stuck in subagent/hook loop       | Check if hydrator/custodiet spawning recursively        |
+| **Timeout with many tool calls** | Over-engineered workflow          | Hydrator prescribed overkill; add "trivial task" bypass |
+| **Tool error cascade**           | First error caused confusion      | Fix the first error; later ones are symptoms            |
+| **Custodiet CANNOT_ASSESS**      | Audit file has incomplete context | Expected for short sessions; not a real failure         |
+| **Write "file not read" error**  | Tried to create new file          | Use Bash heredoc or fix Write tool handling             |
+
+### 5. Example: Demo Test Timeout Investigation
+
+**Problem**: `test_core_pipeline.py` timed out after 180s on a trivial "write add_numbers function" task.
+
+**Investigation**:
+
+```bash
+# Find session from test output (session ID: c64de01b-...)
+grep -rl "c64de01b" ~/.claude/projects/
+# Found: ~/.claude/projects/-home-nic-src-academicOps/c64de01b-....jsonl
+
+# Generate transcript
+cd $AOPS && uv run python scripts/session_transcript.py \
+  ~/.claude/projects/-home-nic-src-academicOps/c64de01b-....jsonl
+```
+
+**Transcript revealed**:
+
+1. Turn 1 took **2 minutes 34 seconds** (way too long)
+2. Hydrator made **3 memory retrieval calls** for a one-liner function
+3. Hydrator prescribed full **TDD workflow with 5 todo items**
+4. Custodiet spawned but returned `CANNOT_ASSESS` (incomplete context)
+5. Write tool failed ("file not read"), Bash heredoc also failed ("file exists")
+6. Session timed out before completing
+
+**Root cause**: Framework overhead (hydration + TDD prescription + custodiet) consumed all time on a trivial task.
+
+**Axiom violations identified**:
+
+- Over-hydration: 3 memory queries for "add two numbers"
+- TDD overkill: Full test cycle for trivial utility function
+- Tool friction: Write tool requires pre-read even for new files
