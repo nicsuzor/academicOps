@@ -1,1 +1,0 @@
-/home/nic/src/academicOps/HEURISTICS.md

@@ -116,10 +116,10 @@ while IFS= read -r session_path; do
     fi
     mkdir -p "$OUTPUT_DIR"
 
-    # Generate transcript (auto-naming, then move to output dir)
+    # Generate transcript (auto-naming, output to OUTPUT_DIR)
     set +e
     cd "$OUTPUT_DIR"
-    uv run python "$FRAMEWORK_ROOT/scripts/session_transcript.py" "$session_path" --abridged-only 2>&1
+    uv run python "$FRAMEWORK_ROOT/scripts/session_transcript.py" "$session_path" 2>&1
     TRANSCRIPT_EXIT=$?
     cd "$FRAMEWORK_ROOT"
     set -e
@@ -179,36 +179,54 @@ while IFS= read -r transcript_path; do
         continue
     fi
 
-    # Extract metadata from filename: YYYYMMDD-{project}-{session_id}-abridged.md
+    # Extract metadata from filename: YYYYMMDD-{project}-{session_id}-{slug}-abridged.md
     filename=$(basename "$transcript_path")
-    date_raw=$(echo "$filename" | cut -c1-8)
+    date_raw="${filename:0:8}"
     # Format date as YYYY-MM-DD
     date_formatted="${date_raw:0:4}-${date_raw:4:2}-${date_raw:6:2}"
-    # Extract project (between first dash and last dash before session_id)
-    project=$(echo "$filename" | sed 's/^[0-9]*-//' | sed 's/-[a-f0-9]*-abridged\.md$//')
-    # Extract session_id (8 hex chars before -abridged.md)
-    session_id=$(echo "$filename" | sed 's/.*-\([a-f0-9]\{8\}\)-abridged\.md$/\1/')
+    # Extract session_id (8 hex chars after project name)
+    session_id=$(echo "$filename" | sed 's/.*-\([a-f0-9]\{8\}\)-.*/\1/')
+    # Extract project (between date and session_id)
+    without_date="${filename:9}"
+    project=$(echo "$without_date" | sed "s/-$session_id.*//")
 
     echo "$(date '+%Y-%m-%d %H:%M:%S') - Mining: $transcript_path (session: $session_id, project: $project)"
 
     # Ensure output directory exists
     mkdir -p "$ACA_DATA/dashboard/sessions"
 
-    # Build prompt with substitutions
-    PROMPT=$(cat "$FRAMEWORK_ROOT/templates/insights.md" | \
+    # Build prompt with substitutions (correct path to insights.md)
+    PROMPT=$(cat "$FRAMEWORK_ROOT/skills/session-insights/insights.md" | \
         sed "s/{session_id}/$session_id/g" | \
         sed "s/{date}/$date_formatted/g" | \
         sed "s/{project}/$project/g")
 
     # Call Gemini to mine the transcript
+    # Run from transcript directory so Gemini can access the file
+    # Disable MCP servers for headless execution
     OUTPUT_FILE="$ACA_DATA/dashboard/sessions/$session_id.json"
+    TRANSCRIPT_DIR=$(dirname "$transcript_path")
+    TEMP_OUTPUT=$(mktemp)
 
     set +e
-    gemini -y -p "$PROMPT" "@$transcript_path" > "$OUTPUT_FILE" 2>&1
+    cd "$TRANSCRIPT_DIR"
+    gemini -y --allowed-mcp-server-names "" "$PROMPT
+
+@$(basename "$transcript_path")" > "$TEMP_OUTPUT" 2>&1
     GEMINI_EXIT=$?
+    cd "$FRAMEWORK_ROOT"
     set -e
 
     if [[ $GEMINI_EXIT -eq 0 ]]; then
+        # Extract JSON from markdown code block if present
+        if grep -q '```json' "$TEMP_OUTPUT"; then
+            sed -n '/```json/,/```/p' "$TEMP_OUTPUT" | sed '1d;$d' > "$OUTPUT_FILE"
+        else
+            # Try using output directly
+            cp "$TEMP_OUTPUT" "$OUTPUT_FILE"
+        fi
+        rm -f "$TEMP_OUTPUT"
+
         # Validate JSON output
         if jq empty "$OUTPUT_FILE" 2>/dev/null; then
             echo "$(date '+%Y-%m-%d %H:%M:%S') - Mined successfully: $session_id"
@@ -220,7 +238,8 @@ while IFS= read -r transcript_path; do
         fi
     else
         echo "$(date '+%Y-%m-%d %H:%M:%S') - Gemini failed for: $session_id (exit $GEMINI_EXIT)" >&2
-        rm -f "$OUTPUT_FILE"
+        cat "$TEMP_OUTPUT" >&2
+        rm -f "$TEMP_OUTPUT" "$OUTPUT_FILE"
         MINE_FAILED=$((MINE_FAILED + 1))
     fi
 done <<< "$MINING_SESSIONS"
