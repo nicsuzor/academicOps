@@ -10,7 +10,7 @@ tags:
 
 # Framework Status
 
-**Last updated**: 2025-12-30
+**Last updated**: 2026-01-11
 
 > **Why this file matters**: Agents have no persistent memory. ROADMAP.md is the current status - what's done, in progress, blocked. Update after completing significant work. Keep out: detailed how-to, specs, future speculation.
 
@@ -22,8 +22,9 @@ tags:
 - ✅ **Prompt router v4** - LLM-first routing; only slash commands get direct routing, everything else → Haiku classifier with full capability index
 - ✅ **Framework v3.0** - Categorical imperative, file boundary enforcement, skill delegation
 - ✅ **Hook architecture** - Hooks inject context, never call LLM APIs directly
-- ✅ **Hypervisor agent** - Full 6-phase pipeline (context → classify → plan → execute → verify → cleanup), QA checkpoints baked into TodoWrite
+- ✅ **Prompt hydration** - Full pipeline via prompt-hydrator agent (context → workflow → plan → execute → verify → cleanup)
 - ✅ **Effectual Planning agent** - Strategic planning under uncertainty; receives fragments, surfaces assumptions, proposes high-value next steps. See `specs/effectual-planning-agent.md`
+- ✅ **Custodiet agent** - Ultra vires detection; monitors agent actions for authority violations
 - ✅ **Learning system** - 22+ thematic log files, /log command captures patterns
 - ✅ **E2E testing** - 270 tests, 98% pass rate, multi-agent spawn validation
 - ✅ **Documentation consolidation** - VISION grounded, ROADMAP simplified, AXIOMS pure, HEURISTICS added
@@ -73,35 +74,40 @@ tags:
 
 Per AXIOMS #29: "ONE SPEC PER FEATURE". Skills need specs to justify existence and document how they fit together.
 
-| Skill                | Has Spec? | Priority                                       |
-| -------------------- | --------- | ---------------------------------------------- |
-| analyst              | ❌        | P2 - research support                          |
-| dashboard            | ✅        | `dashboard-skill.md`                           |
-| excalidraw           | ❌        | P3 - utility                                   |
-| extractor            | ❌        | P2 - email workflow                            |
-| feature-dev          | ✅        | `feature-dev-skill.md`                         |
-| framework            | ✅        | `framework-skill.md`                           |
-| framework-debug      | ❌        | P2 - debugging                                 |
-| framework-review     | ❌        | P2 - review                                    |
-| garden               | ❌        | P2 - maintenance                               |
-| ground-truth         | ❌        | P2 - research                                  |
-| learning-log         | ✅        | `learning-log-skill.md`                        |
-| link-audit           | ❌        | P3 - maintenance                               |
-| osb-drafting         | ❌        | P2 - domain-specific                           |
-| pdf                  | ❌        | P3 - utility                                   |
-| python-dev           | ✅        | `python-dev-skill.md`                          |
-| reference-map        | ❌        | P3 - visualization                             |
-| remember             | ✅        | `remember-skill.md`                            |
-| review-training      | ❌        | P3 - training data                             |
-| session-insights     | ✅        | `session-insights-skill.md`                    |
-| ~~skill-creator~~    | N/A       | Replaced by plugin-dev@claude-plugins-official |
-| supervisor           | ✅        | `supervisor-skill.md`                          |
-| tasks                | ✅        | `tasks-skill.md`                               |
-| training-set-builder | ❌        | P3 - training data                             |
-| transcript           | ✅        | `session-transcript-extractor.md`              |
+| Skill                | Has Spec? | Spec File               |
+| -------------------- | --------- | ----------------------- |
+| analyst              | ✅        | `analyst-skill.md`      |
+| annotations          | ❌        | P3 - utility            |
+| audit                | ✅        | `audit-skill.md`        |
+| convert-to-md        | ❌        | P3 - utility            |
+| daily                | ❌        | P2 - daily workflow     |
+| dashboard            | ✅        | `dashboard-skill.md`    |
+| debug-headless       | ❌        | P3 - debugging          |
+| excalidraw           | ✅        | `excalidraw-skill.md`   |
+| extractor            | ❌        | P2 - email workflow     |
+| fact-check           | ❌        | P2 - research           |
+| feature-dev          | ✅        | `feature-dev-skill.md`  |
+| flowchart            | ❌        | P3 - utility            |
+| framework            | ✅        | `framework-skill.md`    |
+| garden               | ✅        | `garden-skill.md`       |
+| ground-truth         | ❌        | P2 - research           |
+| introspect           | ❌        | P3 - utility            |
+| learning-log         | ✅        | `learning-log-skill.md` |
+| osb-drafting         | ❌        | P2 - domain-specific    |
+| pdf                  | ❌        | P3 - utility            |
+| python-dev           | ✅        | `python-dev-skill.md`   |
+| qa-eval              | ❌        | P2 - verification       |
+| remember             | ✅        | `remember-skill.md`     |
+| review               | ✅        | `review-skill.md`       |
+| review-training      | ❌        | P3 - training data      |
+| session-insights     | ❌        | P2 - session management |
+| supervisor           | ✅        | `supervisor-skill.md`   |
+| tasks                | ✅        | `tasks-skill.md`        |
+| training-set-builder | ❌        | P3 - training data      |
+| transcript           | ✅        | `transcript-skill.md`   |
 
-**P1 skills**: All P1 skills now have specs
-**Total without specs**: 14 of 24
+**Skills with specs**: 16 of 29
+**Skills needing specs**: 13 (mostly P3 utilities)
 
 ## In Progress
 
@@ -169,13 +175,6 @@ Installed Anthropic's official `plugin-dev` plugin from `claude-plugins-official
 
 ## Planned
 
-### P0: Prompt Hydration Enforcement
-
-Ensure prompt hydration is working to enforce framework rules. Spec exists but needs implementation via UserPromptSubmit hook.
-
-**Spec**: [[specs/prompt-hydration]]
-**Open question**: How do we verify agents follow guidance? See spec for options.
-
 ### P2: Live Progress Tracker
 
 Real-time visibility into what's happening across terminals/sessions. Pipeline: prompt submit hook → Cloudflare → analysis → tasks & state updates.
@@ -215,7 +214,7 @@ Hypervisor currently uses generic planning. Domain-specific planning skills woul
 
 TODO: Develop full spec for framework observability tooling.
 
-### Specs complete, not yet implemented:
+### Specs Complete, Not Yet Implemented
 
 | Item                          | Spec Location                      | Priority                    |
 | ----------------------------- | ---------------------------------- | --------------------------- |

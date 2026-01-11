@@ -40,18 +40,18 @@ See [[docs/ENFORCEMENT.md]] for practical enforcement guide, [[specs/enforcement
 
 ## Workflows
 
-**Single entry point**: All work goes through `/do`, which transforms the main agent into an orchestration layer.
+**Prompt hydration**: Every prompt is hydrated by the `prompt-hydrator` agent before execution, which selects the appropriate workflow and provides TodoWrite guidance.
 
-| Command | Role                                           | When to Use                          |
-| ------- | ---------------------------------------------- | ------------------------------------ |
-| `/do`   | Full pipeline (context, plan, execute, verify) | All non-trivial work                 |
-| `/meta` | Strategic brain + executor                     | Framework problems, design AND build |
-| `/q`    | Queue for later                                | Capture task without executing       |
+| Command | Role                       | When to Use                          |
+| ------- | -------------------------- | ------------------------------------ |
+| `/meta` | Strategic brain + executor | Framework problems, design AND build |
+| `/q`    | Queue for later            | Capture task without executing       |
+| `/pull` | Execute next queued task   | Work through the queue               |
 
-**/do Pipeline** (5 phases):
+**Workflow Pipeline** (automatic via prompt hydration):
 
 1. Context gathering (memory search, file discovery)
-2. Task classification and planning skill selection
+2. Task classification and workflow selection
 3. TodoWrite with CHECKPOINT items (QA gates)
 4. Delegated execution to specialist skills
 5. Verification against acceptance criteria
@@ -64,24 +64,7 @@ See [[docs/ENFORCEMENT.md]] for practical enforcement guide, [[specs/enforcement
 - `03-experiment-design` - Testing hypotheses about behavior
 - `06-develop-specification` - Collaborative spec development
 
-## /do Command (Primary Entry Point)
-
-The `/do` command transforms the main agent into an orchestration layer:
-
-```
-/do [your task]
-    ↓
-Main agent becomes orchestrator:
-  0. CONTEXT - Memory search, file discovery, classification
-  1. PLAN - TodoWrite with CHECKPOINT items, critic review
-  2. EXECUTE - Delegate to subagents, verify each step
-  3. VERIFY - Check against acceptance criteria
-  4. CLEANUP - Commit, push, update memory
-```
-
-**Key insight**: Control the plan = control the work. CHECKPOINT items are QA gates that cannot be skipped.
-
-Full instructions: `$AOPS/commands/do.md`
+See [[WORKFLOWS.md]] for the complete workflow catalog and agent mandates.
 
 ## Knowledge Architecture
 
@@ -102,64 +85,70 @@ Full instructions: `$AOPS/commands/do.md`
 
 ## Common Tasks
 
-| I want to...                     | Use                          |
-| -------------------------------- | ---------------------------- |
-| See what's available             | `/aops`                      |
-| Do something (with full context) | `/do your task here`         |
-| Add a task                       | `/add task description`      |
-| Extract tasks from email         | `/email`                     |
-| Get framework help               | `/meta your question`        |
-| Run TDD workflow                 | `/ttd`                       |
-| Visualize my tasks               | `/task-viz`                  |
-| Log a framework pattern          | `/log category: observation` |
-| Verify work is complete          | `/qa`                        |
+| I want to...              | Use                          |
+| ------------------------- | ---------------------------- |
+| See what's available      | `/aops`                      |
+| Queue a task for later    | `/q task description`        |
+| Pull next task from queue | `/pull`                      |
+| Extract tasks from email  | `/email`                     |
+| Get framework help        | `/meta your question`        |
+| Run TDD workflow          | `/ttd`                       |
+| Visualize my tasks        | `/task-viz`                  |
+| Log a framework pattern   | `/log category: observation` |
+| Verify work is complete   | `/qa`                        |
+| Get task recommendations  | `/task-next`                 |
 
 ## Commands
 
 | Command              | Purpose                                                                                      |
 | -------------------- | -------------------------------------------------------------------------------------------- |
-| /aops                | Show framework capabilities (this README)                                                    |
-| /add                 | Quick-add a task from session context                                                        |
-| /consolidate         | Consolidate LOG.md entries into thematic files                                               |
-| /diag                | Quick diagnostic of what's loaded in session                                                 |
-| /do                  | Execute work with full context enrichment and guardrails                                     |
+| /aops                | Show framework capabilities                                                                  |
 | /audit-framework     | Comprehensive framework governance audit                                                     |
+| /diag                | Quick diagnostic of what's loaded in session                                                 |
 | /email               | Extract action items from emails → tasks                                                     |
 | /learn               | Make minimal framework tweaks with tracking                                                  |
 | /log                 | Log agent patterns to thematic learning files                                                |
 | /meta                | Strategic brain + executor for framework work                                                |
-| /parallel-batch      | Parallel file processing with skill delegation                                               |
+| /pull                | Get and run a task from the queue                                                            |
 | /q                   | Queue user task for later (→ task system)                                                    |
 | /qa                  | Verify outcomes against acceptance criteria                                                  |
-| /remind              | Queue agent work for later (→ bd issues)                                                     |
 | /reflect             | Self-audit process compliance; see also `/session-insights current` for automated reflection |
+| /remind              | Queue agent work for later (→ bd issues)                                                     |
 | /review-training-cmd | Process review/source pair for training data                                                 |
 | /strategy            | Strategic thinking partner (no execution)                                                    |
+| /task-next           | Get 2-3 task recommendations (should/enjoy/quick)                                            |
 | /task-viz            | Task graph visualization (Excalidraw)                                                        |
-| /ttd                 | TDD workflow                                                                                 |
+| /ttd                 | TDD workflow (alias for /supervise tdd)                                                      |
 
 ## Skills
 
 | Skill                | Purpose                                                                            |
 | -------------------- | ---------------------------------------------------------------------------------- |
 | analyst              | Research data analysis (dbt, Streamlit, stats)                                     |
-| fact-check           | Verify factual claims against authoritative sources                                |
+| annotations          | Scan and process inline HTML comments for human-agent collaboration                |
 | audit                | Comprehensive framework governance (structure, justification, index updates)       |
+| convert-to-md        | Batch convert documents (DOCX, PDF, XLSX, etc.) to markdown                        |
+| daily                | Daily note lifecycle - morning briefing, task recommendations                      |
 | dashboard            | Live Streamlit dashboard for tasks + sessions                                      |
+| debug-headless       | Debug Claude Code or Gemini CLI in headless mode with full output capture          |
 | excalidraw           | Hand-drawn diagrams with organic layouts                                           |
 | extractor            | Extract knowledge from archive documents                                           |
+| fact-check           | Verify factual claims against authoritative sources                                |
 | feature-dev          | Test-first feature development workflow                                            |
+| flowchart            | Create clear, readable Mermaid flowcharts                                          |
 | framework            | Convention reference, categorical imperative                                       |
 | garden               | Incremental PKM maintenance (weeding, linking)                                     |
 | ground-truth         | Establish ground truth labels for evaluation                                       |
+| introspect           | Test framework self-knowledge from session context alone                           |
 | learning-log         | Log patterns to thematic learning files                                            |
 | osb-drafting         | IRAC analysis for Oversight Board cases                                            |
 | pdf                  | Markdown → professional PDF                                                        |
 | python-dev           | Production Python (fail-fast, typed, TDD)                                          |
+| qa-eval              | Black-box quality assurance for verifying work against specifications              |
 | remember             | Persist knowledge to markdown + memory server                                      |
+| review               | Assist in reviewing academic work (papers, dissertations, drafts)                  |
 | review-training      | Extract training pairs from matched documents                                      |
 | session-insights     | Extract accomplishments + learnings; session-end reflection with heuristic updates |
-| supervisor           | Workflow templates (tdd, batch-review)                                             |
 | tasks                | Task lifecycle management                                                          |
 | training-set-builder | Build LLM training datasets from documents                                         |
 | transcript           | Session JSONL → markdown                                                           |
@@ -168,10 +157,14 @@ Full instructions: `$AOPS/commands/do.md`
 
 ## Hooks
 
-| Hook                          | Trigger          | Purpose                              |
-| ----------------------------- | ---------------- | ------------------------------------ |
-| `sessionstart_load_axioms.py` | SessionStart     | Inject AXIOMS.md, FRAMEWORK.md paths |
-| `user_prompt_submit.py`       | UserPromptSubmit | Context injection per prompt         |
+| Hook                          | Trigger          | Purpose                                     |
+| ----------------------------- | ---------------- | ------------------------------------------- |
+| `sessionstart_load_axioms.py` | SessionStart     | Inject AXIOMS.md, FRAMEWORK.md, HEURISTICS  |
+| `user_prompt_submit.py`       | UserPromptSubmit | Prompt hydration + context injection        |
+| `hydration_gate.py`           | UserPromptSubmit | Spawn prompt-hydrator for workflow guidance |
+| `custodiet_gate.py`           | PostToolUse      | Ultra vires detection (authority checking)  |
+| `autocommit_state.py`         | PostToolUse      | Auto-commit state file changes              |
+| `router.py`                   | UserPromptSubmit | Intent routing and skill matching           |
 
 See [docs/HOOKS.md](docs/HOOKS.md) for hook architecture.
 
@@ -182,6 +175,7 @@ Custom agents spawned via `Task(subagent_type="name")`:
 | Agent             | Purpose                                                          |
 | ----------------- | ---------------------------------------------------------------- |
 | critic            | Second-opinion review of plans/conclusions                       |
+| custodiet         | Ultra vires detector - catches agents acting beyond authority    |
 | effectual-planner | Strategic planning under uncertainty (NOT implementation)        |
 | planner           | Implementation planning with memory context + critic review      |
 | prompt-hydrator   | Context gathering + workflow selection (invoked on every prompt) |
