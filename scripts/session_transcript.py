@@ -365,6 +365,8 @@ Examples:
         print(f"📊 Found {len(entries)} entries")
 
         # Check for meaningful content (user prompts or assistant responses)
+        # Require at least 2 meaningful entries to be worth transcribing
+        MIN_MEANINGFUL_ENTRIES = 2
         meaningful_count = sum(
             1
             for e in entries
@@ -375,8 +377,10 @@ Examples:
                 and e.message.get("subtype") in ("system", "informational")
             )
         )
-        if meaningful_count == 0:
-            print("⏭️  Skipping: no meaningful user/assistant content")
+        if meaningful_count < MIN_MEANINGFUL_ENTRIES:
+            print(
+                f"⏭️  Skipping: only {meaningful_count} meaningful entries (need {MIN_MEANINGFUL_ENTRIES}+)"
+            )
             return 2  # Exit 2 = skipped (no content), distinct from 0 (success) and 1 (error)
 
         # Generate full version
