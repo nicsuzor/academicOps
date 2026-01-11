@@ -208,7 +208,7 @@ Subagent reads temp file, generates complete execution plan
 ↓
 Main agent follows the plan
 
-```
+````
 **Why temp files:**
 
 - **Token efficiency**: Main agent sees ~100 tokens (instruction + path) vs ~500+ tokens (full embedded context)
@@ -253,6 +253,46 @@ The hydrator interprets these templates for specific user requests.
 6. Latency meets performance requirements
 7. Graceful degradation on errors
 
+### Session Context Sufficiency (Validated 2026-01-11)
+
+The hydrator receives sufficient session context to make routing decisions mid-session. Acceptance criteria:
+
+**Required context elements:**
+- Recent prompts: At least 5 prior user prompts (truncated to ~100 chars each)
+- Recent agent responses: Last 3 agent responses (for conversational continuity)
+- Recent tool calls: Last 10 tool calls with key parameters (Read/Edit file paths, Bash commands, Task subagent types)
+- TodoWrite state: Pending/in_progress/completed counts + current in_progress task name
+- Active skill: Most recent Skill invocation (if within lookback window)
+
+**Qualitative test**: Given these elements, the hydrator can:
+1. Understand what the session has been working on (via tool calls + agent responses)
+2. Know the current task structure (via TodoWrite state)
+3. See the trajectory of user intent (via recent prompts)
+4. Detect conversational continuity vs. new topic (via prompt sequence)
+
+**Evidence (from live session test):**
+```markdown
+## Session Context
+
+Recent prompts:
+1. "prove to me using your debug skills that, when run in the middle of a long sessoin..."
+
+Recent agent responses:
+1. "I can see `{session_context}` is right after `{prompt}` on line 17..."
+2. "Let me check where the debug file might be..."
+3. "Let me find the current session's JSONL file..."
+
+Recent tools:
+  - Read(session_reader.py)
+  - Read(prompt-hydrator-context.md)
+  - Bash(cat /home/nic/src/academicOps/.claude/hook-debug.j...)
+  ...
+
+Tasks: 4 pending, 1 in_progress ("Step 1: Inspect hydrator temp file..."), 0 completed
+````
+
+This context is sufficient for the hydrator to understand session trajectory and make informed workflow/skill routing decisions.
+
 ## Files
 
 | File                                              | Purpose                                                                     |
@@ -264,4 +304,6 @@ The hydrator interprets these templates for specific user requests.
 | `agents/prompt-hydrator.md`                       | Subagent that reads temp file and generates execution plan                  |
 | `WORKFLOWS.md`                                    | Workflow catalog with templates                                             |
 | `REMINDERS.md`                                    | Skill triggers for per-step assignment                                      |
+
+```
 ```
