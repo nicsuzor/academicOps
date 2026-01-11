@@ -27,10 +27,22 @@ Skill(skill="audit", args="session-effectiveness /path/to/transcript.md")
 
 ### Step 1: Load Transcript
 
-Read the transcript file. Check size:
+**CRITICAL: Use full transcript for token waste analysis.**
 
-- If <100K tokens: proceed with full transcript
-- If >100K tokens: use abridged version or chunk by `## User (Turn N)` boundaries
+The abridged transcript hides critical duplication patterns:
+
+| Hidden in Abridged          | Visible in Full                                                                                                    |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| Subagent output duplication | Each subagent's output appears twice: once summarized in main flow, once in full in "Subagent Transcripts" section |
+| Connection error tokens     | API retry messages scattered throughout                                                                            |
+| Context injection verbosity | Full skill/hook content injections                                                                                 |
+| JIT context gaps            | Subagent sections show what context they lacked                                                                    |
+
+**Transcript selection:**
+
+- For **token waste analysis**: Always use full transcript (chunk if needed)
+- For **workflow review**: Abridged is sufficient
+- If >100K tokens: chunk by `## User (Turn N)` boundaries
 
 ### Step 2: Qualitative Assessment
 
@@ -70,7 +82,14 @@ You are evaluating a Claude Code session transcript for framework effectiveness.
 - What ad-hoc workflows could become a skill?
 - What instructions are scattered that should be consolidated?
 
-**5. What Worked Well**
+**5. Token Waste Analysis** (requires full transcript)
+
+- Where does content appear more than once? (subagent outputs, retried prompts, duplicated context)
+- What connection errors or retries consumed tokens?
+- Which injected content was never referenced?
+- What verbose explanations could be condensed?
+
+**6. What Worked Well**
 
 - Which framework components demonstrably helped?
 - Where did JIT context arrive at exactly the right time?
@@ -103,7 +122,13 @@ You are evaluating a Claude Code session transcript for framework effectiveness.
 
 [Prioritized list with evidence]
 
-### 5. What Worked Well
+### 5. Token Waste Analysis
+
+**Duplicated content**: [list with locations]
+**Connection/retry waste**: [count and locations]
+**Unused injected context**: [list with evidence]
+
+### 6. What Worked Well
 
 [List with evidence]
 
@@ -128,10 +153,11 @@ Output the structured report for human review. The user decides which recommenda
 
 ## Success Criteria
 
-1. **Qualitative findings**: Substantive assessments for each of the 5 dimensions
+1. **Qualitative findings**: Substantive assessments for each of the 6 dimensions
 2. **Evidence-backed**: Each finding cites specific turns, quotes, or examples
 3. **Actionable**: Prioritized recommendations the user can act on
 4. **Handles scale**: Works on transcripts of varying sizes
+5. **Full transcript for waste**: Token waste analysis uses full transcript (not abridged)
 
 ## Notes
 
