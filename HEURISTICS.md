@@ -118,6 +118,26 @@ When encountering inadequate tooling:
 3. **PROPOSE** - How should this work for future agents?
 4. **WAIT** - Let user decide whether to build proper tool
 
+## H20: Understand System-Wide vs Repository-Local Scope
+
+When analyzing dotfiles or system configuration, distinguish between system-wide and repository-local resources.
+
+**System-wide resources** (affect entire system):
+
+- Environment variables exported in shell configs (.env, .zshrc, .bashrc)
+- PATH modifications
+- Shell aliases and functions
+- Global git config (~/.gitconfig)
+- System-wide installed binaries
+
+**Repository-local resources** (affect only the repo):
+
+- Scripts stored in the repo
+- Repo-specific config files
+- Documentation
+
+**Critical**: Searching only the current repository is insufficient to understand all uses of system-wide resources. An environment variable exported in dotfiles is available to ALL processes system-wide.
+
 ## Domain-Specific Heuristics
 
 Some heuristics apply only within specific domains. See the relevant skill or document:
