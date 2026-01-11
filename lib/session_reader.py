@@ -2022,7 +2022,8 @@ class SessionProcessor:
             if timing_info:
                 parts = []
                 if timing_info.is_first and timing_info.start_time_local:
-                    local_time = timing_info.start_time_local.strftime("%I:%M %p")
+                    # Use ISO format with timezone for full timestamp context
+                    local_time = timing_info.start_time_local.isoformat()
                     parts.append(local_time)
                 elif timing_info.offset_from_start:
                     parts.append(f"at +{timing_info.offset_from_start}")

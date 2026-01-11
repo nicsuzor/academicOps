@@ -16,8 +16,8 @@ EXTRACTION TASKS:
 6. FAILURES - mistakes requiring intervention
 7. SUCCESSES - tasks completed well
 8. USER MOOD/SATISFACTION - Subjective assessment: -1.0 (frustrated) to 1.0 (satisfied), 0.0 neutral
-9. CONVERSATION FLOW - List of [timestamp, role, content] tuples showing dialogue (user prompts verbatim, agent responses summarized)
-10. VERBATIM USER PROMPTS WITH CONTEXT - All user prompts with preceding agent message (format: [timestamp, role, content] tuples)
+9. CONVERSATION FLOW - List of [timestamp, role, content] tuples showing dialogue. Use ISO 8601 timestamps with timezone as shown in the transcript (e.g., "2026-01-07T02:47:00+11:00"). User prompts verbatim, agent responses summarized.
+10. VERBATIM USER PROMPTS WITH CONTEXT - All user prompts with preceding agent message (format: [timestamp, role, content] tuples, using ISO 8601 timestamps with timezone)
 
 Return JSON with this EXACT structure:
 {
@@ -30,6 +30,6 @@ Return JSON with this EXACT structure:
 "skill_compliance": {"suggested": [...], "invoked": [...], "compliance_rate": 0.0-1.0},
 "context_gaps": ["gap1", "gap2"],
 "user_mood": 0.3,
-"conversation_flow": [["timestamp", "user", "prompt text"], ["timestamp", "agent", "response summary"]],
-"user_prompts": [["timestamp", "agent", "preceding message"], ["timestamp", "user", "verbatim prompt"]]
+"conversation_flow": [["2026-01-07T02:47:00+11:00", "user", "prompt text"], ["2026-01-07T02:48:30+11:00", "agent", "response summary"]],
+"user_prompts": [["2026-01-07T02:47:00+11:00", "agent", "preceding message"], ["2026-01-07T02:48:00+11:00", "user", "verbatim prompt"]]
 }

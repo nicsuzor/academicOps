@@ -310,7 +310,7 @@ def save_task_to_file(
         "type": "task",  # consistent type
         "tags": task.tags,
         "created": task.created.isoformat(),
-        "modified": datetime.now(UTC).isoformat(),
+        "modified": datetime.now().astimezone().isoformat(),
         "task_id": task_id,
         "status": task.status,
         "aliases": [task_id],
@@ -674,7 +674,7 @@ def update_status_in_place(
 
     # Update status
     frontmatter["status"] = new_status
-    frontmatter["modified"] = datetime.now(UTC).isoformat()
+    frontmatter["modified"] = datetime.now().astimezone().isoformat()
 
     # Rebuild file content
     yaml_str = yaml.dump(frontmatter, default_flow_style=False, allow_unicode=True)

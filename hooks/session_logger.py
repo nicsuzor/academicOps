@@ -229,7 +229,7 @@ def write_session_log(
     # Create log entry
     log_entry = {
         "session_id": session_id,
-        "timestamp": datetime.datetime.now(datetime.UTC).isoformat(),
+        "timestamp": datetime.datetime.now().astimezone().isoformat(),
         "summary": summary,
         "transcript_summary": transcript_summary,
     }

@@ -56,7 +56,7 @@ def safe_log_to_debug_file(
 
         debug_data = {
             "hook_event": hook_event,
-            "timestamp": datetime.datetime.now(datetime.UTC).isoformat(),
+            "timestamp": datetime.datetime.now().astimezone().isoformat(),
             "input": input_data,
             "output": output_data,
         }

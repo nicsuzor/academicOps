@@ -400,7 +400,7 @@ def main() -> None:
         return
 
     # Content changed - set timestamp and write files
-    index["generated"] = datetime.now(UTC).isoformat()
+    index["generated"] = datetime.now().astimezone().isoformat()
 
     with open(index_json_path, "w", encoding="utf-8") as f:
         json.dump(index, f, indent=2, ensure_ascii=False)

@@ -11,7 +11,7 @@ Logs to ~/.claude/projects/<project>/<date>-<shorthash>-hooks.jsonl
 
 import json
 import sys
-from datetime import UTC, datetime
+from datetime import datetime
 from typing import Any
 
 from lib.paths import get_data_root
@@ -86,7 +86,7 @@ def log_hook_event(
         # Create log entry combining input and output data
         log_entry: dict[str, Any] = {
             "hook_event": hook_event,
-            "logged_at": datetime.now(UTC).isoformat(),
+            "logged_at": datetime.now().astimezone().isoformat(),
             "exit_code": exit_code,
             **input_data,  # Include ALL fields from input
         }
