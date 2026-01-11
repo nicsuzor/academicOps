@@ -335,6 +335,26 @@ def generate_index_md(index: dict, output_path: Path) -> None:
     output_path.write_text("\n".join(lines), encoding="utf-8")
 
 
+def content_changed(new_index: dict, existing_json_path: Path) -> bool:
+    """Check if index content has changed (ignoring timestamp).
+
+    Compares all fields except 'generated' to detect substantive changes.
+    """
+    if not existing_json_path.exists():
+        return True
+
+    try:
+        existing = json.loads(existing_json_path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return True
+
+    # Compare everything except 'generated' timestamp
+    new_copy = {k: v for k, v in new_index.items() if k != "generated"}
+    existing_copy = {k: v for k, v in existing.items() if k != "generated"}
+
+    return new_copy != existing_copy
+
+
 def main() -> None:
     """Main entry point."""
     data_dir = get_data_dir()
@@ -364,17 +384,24 @@ def main() -> None:
     # Sort tasks by priority, then by title
     tasks.sort(key=lambda t: (t.get("priority") or 999, t.get("title", "")))
 
-    # Build index
+    # Build index (without timestamp initially for comparison)
     index = {
-        "generated": datetime.now(UTC).isoformat(),
+        "generated": "",  # Placeholder, set below if content changed
         "total_tasks": len(tasks),
         "tasks": tasks,
         "priority_by_project": categorize_by_project(tasks),
         "priority_by_due": categorize_by_due(tasks),
     }
 
-    # Write JSON index
+    # Check if content actually changed before writing
     index_json_path = tasks_dir / "index.json"
+    if not content_changed(index, index_json_path):
+        print("No substantive changes detected, skipping index update")
+        return
+
+    # Content changed - set timestamp and write files
+    index["generated"] = datetime.now(UTC).isoformat()
+
     with open(index_json_path, "w", encoding="utf-8") as f:
         json.dump(index, f, indent=2, ensure_ascii=False)
     print(f"Wrote {index_json_path}")
