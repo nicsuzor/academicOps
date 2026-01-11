@@ -30,6 +30,9 @@ These are the **concrete absolute paths** for this session. Use them directly wi
 | Tasks          | `$ACA_DATA/tasks/`    |
 | Projects       | `$ACA_DATA/projects/` |
 | Library        | `$AOPS/lib/`          |
+| Sessions       | `$ACA_DATA/sessions/` |
+
+**CRITICAL - Session Log Location**: Session JSONL files are in `$ACA_DATA/sessions/`, NOT `$AOPS/data/sessions/` or `~/.claude/sessions/`. When working with session logs, always invoke `Skill(skill='transcript')` first to convert JSONL to markdown (90% token savings).
 
 **Common files you may need:**
 
