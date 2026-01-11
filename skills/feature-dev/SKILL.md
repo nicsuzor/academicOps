@@ -110,19 +110,19 @@ Feature development follows eight phases:
 3. Define success criteria (from Phase 2)
 4. Specify scope boundaries (what's in/out)
 5. Identify control state (current behavior without feature)
-6. Create experiment log: `data/projects/aops/experiments/YYYY-MM-DD_feature-name.md`
+6. **Create bd issue** (per AXIOM #28 - episodic content → bd issues): `bd create --title "experiment: [feature-name]" --label experiment --type task --description "[experiment plan content]"`
 
-**Experiment Log Required For**:
+**Experiment Tracking Required For**:
 
 - Features touching framework infrastructure
 - Significant new capabilities
 - Changes affecting multiple components
 - User explicitly requests formal experiment
 
-**Experiment Log Optional For**:
+**Experiment Tracking Optional For**:
 
 - Small, isolated features
-- Project-specific functionality (may log in project repo instead)
+- Project-specific functionality (may create issue in project repo instead)
 
 **Output**: Experiment plan document defining hypothesis, success criteria, and scope.
 
@@ -270,7 +270,7 @@ Feature development follows eight phases:
 
 **Objective**: Update the authoritative spec; delete implementation artifacts.
 
-**Rationale**: Per [[AXIOMS]] #29, one spec per feature. Implementation docs (experiments/) are temporal; specs are timeless. After validation, merge implementation knowledge into the spec and delete the artifacts. Episodic observations go to bd issues per AXIOM #28.
+**Rationale**: Per [[AXIOMS]] #29, one spec per feature. Experiment tracking (bd issues) is episodic; specs are timeless. After validation, merge implementation knowledge into the spec and close the experiment issue.
 
 **Actions**:
 
@@ -280,19 +280,19 @@ Feature development follows eight phases:
 2. **Merge implementation content**: Design decisions, key functions, UX patterns
 3. **Strip temporal content**: Remove "what was built" narrative, dates, deliberation
 4. **Verify spec is timeless**: Reads as "how it works" not "how it was built"
-5. **Delete orphan artifacts**: Remove experiments/*.md files about this feature
+5. **Close experiment issue**: `bd close [issue-id] --reason "Synthesized to spec: [spec-name]"`
 6. **Update spec index**: Ensure `specs/specs.md` lists the spec with correct status
-7. **Commit together**: Spec update + artifact deletion in one commit
+7. **Commit spec update**
 
 **TodoWrite items** (mandatory):
 
 ```
 - [ ] Update spec with implementation details
-- [ ] Delete orphan implementation docs
+- [ ] Close experiment bd issue
 - [ ] Verify specs/specs.md index updated
 ```
 
-**Output**: Updated timeless spec; no orphan implementation files.
+**Output**: Updated timeless spec; experiment issue closed with link to spec.
 
 **Fail-Fast**: If spec and implementation doc describe different behaviors, HALT - resolve the discrepancy before proceeding.
 
@@ -359,7 +359,7 @@ Use TodoWrite at key points:
 
 **This skill produces**:
 
-- Experiment logs in `data/projects/aops/experiments/`
+- Experiment tracking via bd issues (label: `experiment`)
 - Integration tests in `bots/skills/framework/tests/` or project tests
 - Features following framework principles
 
