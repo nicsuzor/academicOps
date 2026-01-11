@@ -115,6 +115,16 @@ On `PostToolUse` (every ~7 tool calls), spawns custodiet subagent to check:
 **What it does**: Catches drift and violations mid-execution before user has to intervene
 **What it can't do**: Force agent to follow corrections (still relies on agent compliance)
 
+#### Dormant: Random Reminders
+
+**Status**: Disabled (REMINDER_PROBABILITY = 0.0)
+
+The custodiet gate has a dormant random reminder injection mechanism that can inject reminders from `hooks/data/reminders.txt` at 30% probability between threshold checks.
+
+**Rationale for dormancy**: Enforcement should be high-signal, low-noise. Injecting reminders without evidence of agents forgetting instructions adds friction without demonstrated benefit.
+
+**Activation criteria**: Enable when behavioral data shows agents forgetting specific instructions mid-session. The mechanism is preserved in code (set `REMINDER_PROBABILITY = 0.3` in `custodiet_gate.py`) for rapid deployment when evidence justifies it.
+
 ### Layer 3: Observable Checkpoints
 
 TodoWrite and Plan Mode create visible artifacts user can review.

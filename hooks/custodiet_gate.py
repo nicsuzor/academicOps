@@ -45,7 +45,12 @@ TEMP_DIR = Path("/tmp/claude-compliance")
 
 # Configuration
 TOOL_CALL_THRESHOLD = 5  # Check every ~5 tool calls
-REMINDER_PROBABILITY = 0.3  # 30% chance of injecting a reminder on non-threshold calls
+
+# Random reminders: DORMANT (set to 0.0)
+# This mechanism is preserved as a potential enforcement tool if evidence shows
+# agents are forgetting instructions. Until then, avoid unnecessary injection noise.
+# To activate: set to 0.3 (30% probability) when behavioral data justifies it.
+REMINDER_PROBABILITY = 0.0
 CLEANUP_AGE_SECONDS = 60 * 60  # 1 hour
 
 

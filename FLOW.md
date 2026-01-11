@@ -60,7 +60,7 @@ The prompt-hydrator reads these files to make routing decisions:
 | ------------------- | --------------------------------------- | ------------------------- |
 | `WORKFLOWS.md`      | Workflow definitions (TDD, Debug, etc.) | Selecting execution track |
 | `skills/*/index.md` | Skill catalog                           | Matching skills to task   |
-| `guardrails.md`     | Guardrail definitions                   | Injecting constraints     |
+| `RULES.md`          | Guardrail registry + task mappings      | Injecting constraints     |
 
 ## Complete Execution Flow
 
@@ -205,12 +205,12 @@ The prompt-hydrator selects workflow based on task signals:
 
 ### PostToolUse Hooks (inject context)
 
-| Hook                  | Triggers On         | Action                                                                                 |
-| --------------------- | ------------------- | -------------------------------------------------------------------------------------- |
-| autocommit_state.py   | Write to data/      | Auto-commit to prevent data loss                                                       |
-| fail_fast_watchdog.py | Error patterns      | Inject fail-fast reminder                                                              |
-| custodiet_gate.py     | Every ~7 tool calls | Spawn custodiet agent for ultra vires detection; random reminders (30%) between checks |
-| request_scribe.py     | TodoWrite           | Memory documentation reminder                                                          |
+| Hook                  | Triggers On         | Action                                          |
+| --------------------- | ------------------- | ----------------------------------------------- |
+| autocommit_state.py   | Write to data/      | Auto-commit to prevent data loss                |
+| fail_fast_watchdog.py | Error patterns      | Inject fail-fast reminder                       |
+| custodiet_gate.py     | Every ~7 tool calls | Spawn custodiet agent for ultra vires detection |
+| request_scribe.py     | TodoWrite           | Memory documentation reminder                   |
 
 **What gets injected** (via `additionalContext` in hook output):
 
@@ -218,7 +218,7 @@ The prompt-hydrator selects workflow based on task signals:
 | --------------------- | ------------------------------------------------------------------------------ |
 | autocommit_state.py   | Confirmation message: "Auto-committed changes to data/"                        |
 | fail_fast_watchdog.py | Axiom reminder: "HALT if stuck, report infrastructure failure, no workarounds" |
-| custodiet_gate.py     | Either: custodiet spawn instruction OR random reminder from `reminders.txt`    |
+| custodiet_gate.py     | Custodiet spawn instruction when threshold reached                             |
 | request_scribe.py     | Reminder to invoke `Skill(skill='remember')` to persist key decisions          |
 
 ### Agent Behavior on Hook Feedback
@@ -319,27 +319,27 @@ Currently these rely on prompt-level guidance + periodic custodiet checks.
 
 > **Generated from hooks/router.py HOOK_REGISTRY** - Update router.py to change hooks.
 
-| Event                 | Script                      | Purpose                                                  |
-| --------------------- | --------------------------- | -------------------------------------------------------- |
-| SessionStart          | session_env_setup.sh        | Environment setup                                        |
-| SessionStart          | terminal_title.py           | Set terminal title                                       |
-| SessionStart          | sessionstart_load_axioms.py | Load AXIOMS, HEURISTICS, CORE                            |
-| SessionStart          | unified_logger.py           | Event logging                                            |
-| UserPromptSubmit      | user_prompt_submit.py       | Trigger prompt hydration                                 |
-| UserPromptSubmit      | unified_logger.py           | Event logging                                            |
-| PreToolUse            | hydration_gate.py           | Block ALL tools until prompt-hydrator invoked            |
-| PreToolUse            | policy_enforcer.py          | Block destructive operations                             |
-| PreToolUse            | criteria_gate.py            | Enforce /do Phase 1                                      |
-| PreToolUse            | unified_logger.py           | Event logging                                            |
-| PostToolUse           | unified_logger.py           | Event logging                                            |
-| PostToolUse           | autocommit_state.py         | Auto-commit data/                                        |
-| PostToolUse           | fail_fast_watchdog.py       | Detect errors                                            |
-| PostToolUse           | custodiet_gate.py           | Ultra vires detection (~7 tool calls) + random reminders |
-| PostToolUse:TodoWrite | request_scribe.py           | Memory documentation reminder                            |
-| SubagentStop          | unified_logger.py           | Event logging                                            |
-| Stop                  | unified_logger.py           | Event logging                                            |
-| Stop                  | request_scribe.py           | Memory reminder                                          |
-| Stop                  | session_reflect.py          | Reflection prompt                                        |
+| Event                 | Script                      | Purpose                                       |
+| --------------------- | --------------------------- | --------------------------------------------- |
+| SessionStart          | session_env_setup.sh        | Environment setup                             |
+| SessionStart          | terminal_title.py           | Set terminal title                            |
+| SessionStart          | sessionstart_load_axioms.py | Load AXIOMS, HEURISTICS, CORE                 |
+| SessionStart          | unified_logger.py           | Event logging                                 |
+| UserPromptSubmit      | user_prompt_submit.py       | Trigger prompt hydration                      |
+| UserPromptSubmit      | unified_logger.py           | Event logging                                 |
+| PreToolUse            | hydration_gate.py           | Block ALL tools until prompt-hydrator invoked |
+| PreToolUse            | policy_enforcer.py          | Block destructive operations                  |
+| PreToolUse            | criteria_gate.py            | Enforce /do Phase 1                           |
+| PreToolUse            | unified_logger.py           | Event logging                                 |
+| PostToolUse           | unified_logger.py           | Event logging                                 |
+| PostToolUse           | autocommit_state.py         | Auto-commit data/                             |
+| PostToolUse           | fail_fast_watchdog.py       | Detect errors                                 |
+| PostToolUse           | custodiet_gate.py           | Ultra vires detection (~7 tool calls)         |
+| PostToolUse:TodoWrite | request_scribe.py           | Memory documentation reminder                 |
+| SubagentStop          | unified_logger.py           | Event logging                                 |
+| Stop                  | unified_logger.py           | Event logging                                 |
+| Stop                  | request_scribe.py           | Memory reminder                               |
+| Stop                  | session_reflect.py          | Reflection prompt                             |
 
 **Exit codes**: PreToolUse `0`=allow, `2`=block. PostToolUse `0`=success.
 
