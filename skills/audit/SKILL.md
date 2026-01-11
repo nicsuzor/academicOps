@@ -27,7 +27,8 @@ TodoWrite(todos=[
   {content: "Phase 4b: Instruction justification - verify every instruction traces to RULES.md", status: "pending", activeForm: "Auditing instruction justifications"},
   {content: "Phase 5: Documentation accuracy - verify FLOW.md vs hooks", status: "pending", activeForm: "Verifying documentation"},
   {content: "Phase 6: Regenerate indices - invoke Skill(skill='flowchart') for FLOW.md", status: "pending", activeForm: "Regenerating indices"},
-  {content: "Phase 7: Other updates and final report", status: "pending", activeForm: "Finalizing audit"}
+  {content: "Phase 7: Other updates", status: "pending", activeForm: "Finalizing updates"},
+  {content: "Phase 8: Save audit report to $ACA_DATA/qa/aops/audit-YYYYMMDD-HHMMSS.md", status: "pending", activeForm: "Persisting report"}
 ])
 ```
 
@@ -316,48 +317,91 @@ Derive practical enforcement guide from:
 2. **Report orphans**: Flag for human review (do NOT auto-delete)
 3. **Report violations**: List with file:line refs
 
+### Phase 8: Persist Report (MANDATORY)
+
+**Every audit MUST save a written report to `$ACA_DATA/qa/aops/`.**
+
+```bash
+# Create directory if needed
+mkdir -p "$ACA_DATA/qa/aops"
+
+# Generate timestamped filename
+REPORT_PATH="$ACA_DATA/qa/aops/audit-$(date +%Y%m%d-%H%M%S).md"
+```
+
+Use the Write tool to save the complete audit report (see Report Format below) to `$REPORT_PATH`.
+
+**Report file MUST include:**
+
+- YAML frontmatter with date, duration, and summary stats
+- All phase results from Phase 0-7
+- Clear pass/fail status for each validation criterion
+
+After writing, confirm: `Audit report saved to: [path]`
+
 ## Report Format
 
-Output a structured report:
+Output a structured report with YAML frontmatter:
 
-```
-## Audit Report
+```markdown
+---
+title: Framework Audit Report
+date: YYYY-MM-DD HH:MM:SS
+duration_minutes: N
+summary:
+  structure_issues: N
+  skill_violations: N
+  orphan_files: N
+  indices_regenerated: N
+status: PASS | ISSUES_FOUND
+---
+
+# Audit Report
 
 ### Structure Issues
+
 - Missing from INDEX.md: skills/foo/
 - Broken wikilinks: [[nonexistent.md]] in X.md
 
 ### Skill Content Violations
+
 - skills/foo/SKILL.md:45-67 - explanatory content (move to spec)
 - skills/bar/SKILL.md - 623 lines (>500 limit)
 
 ### Execution Flow Drift
+
 - Hook in code, missing from diagram: unified_logger.py (PostToolUse)
 - Hook in diagram, not in router.py: old_hook.py
 
 ### Justification Status
 
 **Justified** (N files) - spec exists:
+
 - AXIOMS.md → specs/meta-framework.md
 - hooks/user_prompt_submit.py → specs/prompt-enricher.md
 
 **Implicit** (N files) - in docs, no dedicated spec:
+
 - FRAMEWORK.md → JIT-INJECTION.md
 - README.md → framework convention
 
 **Orphan candidates** (N files) - no reference found:
+
 - docs/OLD-FILE.md
 
 ### Generated Indices Regenerated
+
 - INDEX.md: [N] files mapped
 - RULES.md: [N] enforcement mechanisms
 - WORKFLOWS.md: [N] task types
 - FLOW.md: [N] hooks in flow diagram
 
 ### Other Actions Taken
+
 - Updated README.md commands table
 
 ### Requires Human Review
+
 - Orphan: docs/OLD-FILE.md - delete or create spec?
 ```
 

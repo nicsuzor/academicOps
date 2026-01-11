@@ -17,6 +17,6 @@
     "MD040": false,
     "MD041": false
   },
-  "customRules": [".markdownlint-rules/no-horizontal-rules.js"],
+  "customRules": [],
   "ignores": ["node_modules/**", ".git/**", ".agent/**", ".aops/**", ".venv/**", ".claude/**"]
 }
