@@ -21,6 +21,10 @@ Utility scripts for setup, packaging, and analysis.
 - [[migrate_log_entries.py]] - Log migration utilities
 - [[transcribe_recording.sh]] - Audio recording transcription
 
+## Integration
+
+- [[trigger-ios-capture.sh]] - Trigger iOS note capture workflow via GitHub API
+
 ## Analysis
 
 - [[measure_router_compliance.py]] - Router performance metrics
