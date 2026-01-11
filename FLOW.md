@@ -64,106 +64,118 @@ The prompt-hydrator reads these files to make routing decisions:
 
 ## Complete Execution Flow
 
-Every prompt goes through this flow. The **Main Agent** runs as a continuous vertical spine (left column). **Hooks** and **Subagents** appear alongside when invoked (right columns), with arrows showing interaction points.
+Every prompt goes through this flow. The **Main Agent** runs horizontally (center layer). **Hooks** appear above and **Subagents** below, creating a "sandwich" layout where time flows left-to-right and interactions flow vertically.
 
 ```mermaid
 %%{init: {
   'theme': 'base',
-  'flowchart': { 'nodeSpacing': 30, 'rankSpacing': 40 }
+  'themeVariables': {
+    'primaryColor': '#fff',
+    'primaryTextColor': '#333',
+    'lineColor': '#718096',
+    'fontSize': '14px'
+  },
+  'flowchart': { 'nodeSpacing': 60, 'rankSpacing': 70, 'curve': 'basis' }
 }}%%
-flowchart TB
-    %% Color definitions
-    classDef main fill:#e3f2fd,stroke:#1565c0,color:#0d47a1
-    classDef hook fill:#ffebee,stroke:#c62828,color:#b71c1c
-    classDef subagent fill:#f3e5f5,stroke:#7b1fa2,color:#4a148c
-    classDef tool fill:#eceff1,stroke:#607d8b,color:#37474f
-    classDef storage fill:#e0f7fa,stroke:#00838f,color:#006064
-    classDef planned fill:#fff3e0,stroke:#ef6c00,color:#e65100
-    classDef gate fill:#fff9c4,stroke:#f9a825,color:#f57f17
+flowchart LR
+    %% --- STYLING ---
+    linkStyle default stroke:#718096,stroke-width:1.5px,fill:none
 
-    subgraph MAIN["Main Agent"]
-        direction TB
-        M0([Session Start])
-        M1[Receive context injection]
-        M2[User prompt arrives]
-        M3[Receive hydration instruction]
-        M4[Spawn hydrator subagent]
-        M5[Receive workflow guidance]
-        M6{Plan mode?}
-        M7[Define acceptance criteria]
-        M8[Spawn critic for review]
-        M9[Create TodoWrite + gate]
-        M10[Mark todo in_progress]
-        M11[Call tool]
-        M12[Receive hook feedback]
-        M13{Checkpoint?}
-        M14[Continue work]
-        M15[Commit + push]
-        M16{QA needed?}
-        M17[Final cleanup]
-        M18([Session End])
+    classDef main fill:#fff,stroke:#333,stroke-width:2px,color:#333
+    classDef mainEnd fill:#333,stroke:#333,stroke-width:2px,color:#fff
+    classDef decision fill:#fff,stroke:#333,stroke-width:2px,color:#333
+    classDef hook fill:#ffebee,stroke:#c62828,stroke-width:2px,color:#b71c1c,stroke-dasharray: 5 5
+    classDef subagent fill:#e1bee7,stroke:#7b1fa2,stroke-width:2px,color:#4a148c
 
-        M0 --> M1 --> M2 --> M3 --> M4 --> M5 --> M6
-        M6 -->|Yes| M7 --> M8 --> M9 --> M10
-        M6 -->|No| M10
-        M10 --> M11 --> M12 --> M13
-        M13 -->|No| M14 --> M11
-        M13 -->|Yes| M15 --> M16
-        M16 -->|Yes| M17
-        M16 -->|No| M17
-        M17 --> M18
+    %% --- HOOKS (Top Layer) ---
+    subgraph HOOKS["HOOKS"]
+        direction LR
+        H1["SessionStart"]
+        H2["UserPrompt"]
+        H3["PreToolUse"]
+        H4["PostToolUse"]
+        H5["Stop"]
     end
 
-    subgraph HOOKS["Hooks"]
-        direction TB
-        H1["SessionStart<br/>─────────────<br/>sessionstart_load_axioms.py"]
-        H2["UserPromptSubmit<br/>─────────────<br/>user_prompt_submit.py"]
-        H3["PreToolUse<br/>─────────────<br/>hydration_gate.py<br/>policy_enforcer.py<br/>criteria_gate.py"]
-        H4["PostToolUse<br/>─────────────<br/>autocommit_state.py<br/>fail_fast_watchdog.py<br/>custodiet_gate.py"]
-        H5["Stop<br/>─────────────<br/>request_scribe.py<br/>session_reflect.py"]
-
-        H1 ~~~ H2 ~~~ H3 ~~~ H4 ~~~ H5
+    %% --- MAIN AGENT (Center Layer) ---
+    subgraph MAIN["MAIN AGENT"]
+        direction LR
+        M0([Start])
+        M1[Context]
+        M2[Prompt]
+        M3[Hydrate Instr]
+        M4[Spawn Hydrator]
+        M5[Guidance]
+        M6{Plan?}
+        M7[Criteria]
+        M8[Spawn Critic]
+        M9[TodoWrite]
+        M10[In Progress]
+        M11[Call Tool]
+        M12[Feedback]
+        M13{Done?}
+        M14[Continue]
+        M15[Commit]
+        M16{QA?}
+        M17[Cleanup]
+        M18([End])
     end
 
-    subgraph AGENTS["Subagents"]
-        direction TB
-        A1["prompt-hydrator<br/>(haiku)<br/>─────────────<br/>Workflow selection<br/>Skill matching<br/>Guardrail injection"]
-        A2["critic<br/>─────────────<br/>Plan review<br/>Criteria validation"]
-        A3["custodiet<br/>─────────────<br/>Ultra vires check<br/>Scope drift detection"]
-        A4["remember<br/>(haiku)<br/>─────────────<br/>Memory persistence"]
-
-        A1 ~~~ A2 ~~~ A3 ~~~ A4
+    %% --- SUBAGENTS (Bottom Layer) ---
+    subgraph AGENTS["SUBAGENTS"]
+        direction LR
+        A1("Hydrator")
+        A2("Critic")
+        A3("Custodiet")
+        A4("Remember")
     end
 
-    %% Cross-lane connections: Main ↔ Hooks
-    M0 --> H1
-    H1 -->|"AXIOMS, HEURISTICS,<br/>CORE"| M1
-    M2 --> H2
-    H2 -->|"'Spawn hydrator'"| M3
-    M11 --> H3
-    H3 -->|"allow/block"| M11
-    M11 --> H4
-    H4 -->|"context injection"| M12
-    M17 --> H5
+    %% --- MAIN FLOW (Spine) ---
+    M0 ==> M1 ==> M2 ==> M3 ==> M4 ==> M5 ==> M6
+    M6 -->|Yes| M7 ==> M8 ==> M9 ==> M10
+    M6 -->|No| M10
+    M10 ==> M11 ==> M12 ==> M13
+    M13 -->|No| M14 --> M11
+    M13 -->|Yes| M15 ==> M16
+    M16 -->|Yes| M17
+    M16 -->|No| M17
+    M17 ==> M18
 
-    %% Cross-lane connections: Main ↔ Subagents
-    M4 --> A1
-    A1 -->|"workflow + skill + guardrails"| M5
-    M8 --> A2
-    A2 -->|"approved/rejected"| M9
-    H4 -.->|"~7 tools"| A3
-    A3 -.->|"compliance check"| M12
-    H5 --> A4
+    %% --- HOOK INTERACTIONS (Top ↔ Center) ---
+    H1 -.-> M1
+    H2 -.-> M3
+    H3 -.-> M11
+    H4 -.-> M12
+    H5 -.-> M17
 
-    %% Styling
-    class M0,M1,M2,M3,M4,M5,M6,M7,M8,M9,M10,M11,M12,M13,M14,M15,M16,M17,M18 main
+    M0 -.-> H1
+    M2 -.-> H2
+    M11 -.-> H3
+    M11 -.-> H4
+    M17 -.-> H5
+
+    %% --- SUBAGENT INTERACTIONS (Center ↔ Bottom) ---
+    M4 <==> A1
+    M8 <==> A2
+    M12 <==> A3
+    M18 -.-> A4
+
+    %% --- APPLY CLASSES ---
+    class M1,M2,M3,M4,M5,M7,M8,M9,M10,M11,M12,M14,M15,M17 main
+    class M0,M18 mainEnd
+    class M6,M13,M16 decision
     class H1,H2,H3,H4,H5 hook
     class A1,A2,A3,A4 subagent
 
-    %% Subgraph styling
-    style MAIN fill:#e8f5e9,stroke:#2e7d32
-    style HOOKS fill:#ffebee,stroke:#c62828
-    style AGENTS fill:#f3e5f5,stroke:#7b1fa2
+    %% --- SUBGRAPH STYLING ---
+    style HOOKS fill:transparent,stroke:#c62828,stroke-dasharray: 5 5
+    style MAIN fill:#f5f5f5,stroke:#333,stroke-width:1px
+    style AGENTS fill:transparent,stroke:#7b1fa2
+
+    %% --- INVISIBLE LINKS (Layer Alignment) ---
+    H1 ~~~ M1 ~~~ A1
+    H3 ~~~ M11 ~~~ A3
+    H5 ~~~ M18 ~~~ A4
 ```
 
 ## Flow Legend
