@@ -177,12 +177,13 @@ Uses passive `additionalContext` format - agent may proceed without addressing.
 
 ## Path Protection (Deny Rules)
 
-| Category         | Pattern                                       | Blocked Tools           | Purpose                  | Axiom                               |
-| ---------------- | --------------------------------------------- | ----------------------- | ------------------------ | ----------------------------------- |
-| Task files       | `**/data/tasks/**`                            | Write, Edit, Bash       | Force `/tasks` skill     | [[axioms/categorical-imperative.md  |
-| Claude config    | `~/.claude/*.json`                            | Read, Write, Edit, Bash | Protect secrets          | [[axioms/data-boundaries.md         |
-| Claude runtime   | `~/.claude/{hooks,skills,commands,agents}/**` | Write, Edit, Bash       | Force edits via `$AOPS/` | [[axioms/skills-are-read-only.md    |
-| Research records | `**/tja/records/**`, `**/tox/records/**`      | Write, Edit, Bash       | Research data immutable  | [[axioms/research-data-immutable.md |
+| Category         | Pattern                                       | Blocked Tools           | Purpose                    | Axiom                               |
+| ---------------- | --------------------------------------------- | ----------------------- | -------------------------- | ----------------------------------- |
+| Task files       | `**/data/tasks/**`                            | Write, Edit, Bash       | Force `/tasks` skill       | [[axioms/categorical-imperative.md  |
+| Claude config    | `~/.claude/*.json`                            | Read, Write, Edit, Bash | Protect secrets            | [[axioms/data-boundaries.md         |
+| Claude runtime   | `~/.claude/{hooks,skills,commands,agents}/**` | Write, Edit, Bash       | Force edits via `$AOPS/`   | [[axioms/skills-are-read-only.md    |
+| Research records | `**/tja/records/**`, `**/tox/records/**`      | Write, Edit, Bash       | Research data immutable    | [[axioms/research-data-immutable.md |
+| Session state    | `/tmp/claude-session/**`                      | Write, Edit, Bash       | Hydration gate enforcement | Mechanical trigger integrity        |
 
 **Note**: Reading `~/.claude/hooks/**` etc IS allowed (skill invocation needs it).
 
@@ -240,7 +241,7 @@ Main agent has all tools except deny rules. Subagents are restricted:
 | ---------------- | ------------------------------------------------------------------------------- |
 | Deny rules       | `$AOPS/config/claude/settings.json` → `permissions.deny`                        |
 | Agent tools      | `$AOPS/agents/*.md` → `tools:` frontmatter                                      |
-| PreToolUse       | `$AOPS/hooks/policy_enforcer.py`                                                |
+| PreToolUse       | `$AOPS/hooks/hydration_gate.py`, `policy_enforcer.py`, `criteria_gate.py`       |
 | PostToolUse      | `$AOPS/hooks/fail_fast_watchdog.py`, `autocommit_state.py`, `custodiet_gate.py` |
 | UserPromptSubmit | `$AOPS/hooks/user_prompt_submit.py`                                             |
 | SessionStart     | `$AOPS/hooks/sessionstart_load_axioms.py`                                       |

@@ -28,6 +28,7 @@ Gate agents perform distinct functions across three execution phases:
 
 | Function            | Purpose                                    | Owner              | Type        |
 | ------------------- | ------------------------------------------ | ------------------ | ----------- |
+| **Hydration Gate**  | Block ALL tools until hydrator invoked     | hydration_gate.py  | Hard block  |
 | **Policy Enforcer** | Block mechanical violations (patterns)     | policy_enforcer.py | Hard block  |
 | **Skill Monitor**   | Detect domain drift, inject skill context  | skill_monitor.py   | Soft inject |
 | **Overdue Check**   | Block mutating tools if compliance overdue | pre_tool_use.py    | Hard block  |
@@ -239,9 +240,18 @@ Each module receives targeted context (not full transcript) for token efficiency
 
 | Module              | Inputs                                                                        | Token Budget | Output                              |
 | ------------------- | ----------------------------------------------------------------------------- | ------------ | ----------------------------------- |
+| **Hydration Gate**  | `hydration_pending` from hydrator state, tool name, tool args                 | 0 (no LLM)   | `block` or `allow`                  |
 | **Policy Enforcer** | Tool name, tool args (pattern match only)                                     | 0 (no LLM)   | `block` or `allow`                  |
 | **Skill Monitor**   | Tool name, tool args (file paths), current `active_skill` from hydrator state | ~50          | `inject: {skill context}` or `none` |
 | **Overdue Check**   | `tool_calls_since_compliance` from custodiet state                            | 0 (no LLM)   | `block` or `allow`                  |
+
+**Hydration Gate logic**:
+
+1. UserPromptSubmit sets `hydration_pending=true` in hydrator state (unless prompt starts with `/` or `.`)
+2. PreToolUse (`hydration_gate.py`) blocks ALL tools while `hydration_pending=true`
+3. When `Task(subagent_type="prompt-hydrator")` is detected, the gate clears and allows
+4. Agent cannot bypass: deny rules block Write/Edit to `/tmp/claude-session/**`
+5. Override: User can prefix next prompt with `.` to skip hydration
 
 **Skill Monitor domain signals** (no LLM, pattern matching):
 
@@ -323,9 +333,12 @@ Each gate owns its own state file. Cross-gate reads are read-only.
   },
   "active_skill": "framework",
   "intent_envelope": "fix the type error in parser.py",
-  "guardrails": ["verify_before_complete", "fix_within_design"]
+  "guardrails": ["verify_before_complete", "fix_within_design"],
+  "hydration_pending": false
 }
 ```
+
+**Note**: `hydration_pending` is set `true` by UserPromptSubmit (unless prompt starts with `/` or `.`). Cleared only when `hydration_gate.py` detects `Task(subagent_type="prompt-hydrator")`. This is a mechanical trigger the agent cannot bypass.
 
 ### Custodiet State
 
@@ -509,8 +522,9 @@ Task(
 | File                          | Purpose                                         |
 | ----------------------------- | ----------------------------------------------- |
 | `lib/session_reader.py`       | Transcript processor (`extract_gate_context()`) |
-| `lib/session_state.py`        | Session state management (new)                  |
-| `hooks/user_prompt_submit.py` | Pre-action gate hook                            |
+| `lib/session_state.py`        | Session state management                        |
+| `hooks/user_prompt_submit.py` | Pre-action gate hook (sets `hydration_pending`) |
+| `hooks/hydration_gate.py`     | PreToolUse gate (blocks until hydrator invoked) |
 | `hooks/custodiet_gate.py`     | Post-action gate hook                           |
 | `hooks/templates/*.j2`        | Jinja2 templates                                |
 | `hooks/templates/*.md`        | Simple markdown templates                       |
