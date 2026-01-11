@@ -111,6 +111,17 @@ classDef error fill:#ff0000,stroke:#000000,color:#ffffff,stroke-width:2px
 ✅ GOOD: 3-4 distinct colors with clear semantic meaning
 ```
 
+### Always Use Solid Backgrounds
+
+**Never use `fill:transparent`** for subgraphs or nodes. Users view charts in different themes (light/dark mode, custom CSS). Transparent backgrounds inherit unpredictably.
+
+```
+❌ BAD: style HOOKS fill:transparent,stroke:#c62828
+✅ GOOD: style HOOKS fill:#fff8e1,stroke:#f9a825,stroke-width:2px
+```
+
+Every visual element needs an explicit fill color for theme safety.
+
 ### Typography
 
 - Font size **14-16px** for readability
@@ -169,13 +180,15 @@ flowchart LR
 
 For complex multi-layer systems (hooks/main/agents, pipelines with phases):
 
-**1. Use LR Orientation for Multi-Layer "Sandwich" Layout**
+**1. Choose Orientation Based on Content Density**
 
-Multi-layer diagrams (3+ horizontal phases) benefit from `flowchart LR`:
+| Scenario                                     | Direction | Rationale                        |
+| -------------------------------------------- | --------- | -------------------------------- |
+| Simple phases (few nodes per layer)          | `LR`      | Clean horizontal separation      |
+| Complex layers (many nodes, detailed labels) | `TB`      | Vertical space for detail        |
+| Deep hierarchies with cross-links            | `TB`      | Avoids cramped horizontal layout |
 
-- Creates clean horizontal phase separation (hooks → main → agents)
-- Eliminates line crossing ("spaghetti column" effect in TB)
-- Natural left-to-right reading flow
+**LR "sandwich" layout** works well for simple phase diagrams:
 
 ```mermaid
 flowchart LR
@@ -190,6 +203,8 @@ flowchart LR
     end
     HOOKS --> MAIN --> AGENTS
 ```
+
+**TB with side columns** works better for complex flows with detailed nodes - keeps labels readable and provides vertical room for many steps.
 
 **2. Invisible Link Alignment Trick (`~~~`)**
 
