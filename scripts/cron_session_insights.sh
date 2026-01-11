@@ -19,8 +19,8 @@ set -euo pipefail
 export PATH="/opt/nic/bin:$PATH"
 
 # Source nvm and activate node (required for gemini CLI)
-# Try standard locations for nvm
-for nvm_path in "/opt/$USER/nvm" "$HOME/.nvm" "/opt/nvm"; do
+# Try standard locations for nvm (use ${USER:-} to handle unset USER in cron)
+for nvm_path in "/opt/${USER:-$(id -un)}/nvm" "$HOME/.nvm" "/opt/nvm"; do
     if [[ -s "$nvm_path/nvm.sh" ]]; then
         export NVM_DIR="$nvm_path"
         # shellcheck source=/dev/null
