@@ -57,6 +57,185 @@ def _read_task_output_file(output_path: str) -> str | None:
     return None
 
 
+def _is_subagent_jsonl(text: str) -> bool:
+    """Check if text content looks like subagent JSONL output.
+
+    Detects patterns like:
+    - Lines starting with line numbers followed by JSON with "isSidechain":true
+    - Raw JSONL with agentId field
+
+    Args:
+        text: Text content to check
+
+    Returns:
+        True if content appears to be subagent JSONL
+    """
+    if not text or len(text) < 50:
+        return False
+
+    # Check first few lines for subagent markers
+    lines = text.split("\n")[:5]
+    for line in lines:
+        # Strip line number prefix (e.g., "1→" or "     1→")
+        stripped = line.lstrip()
+        if "→" in stripped:
+            # Extract JSON part after arrow
+            json_part = stripped.split("→", 1)[-1].strip()
+        else:
+            json_part = stripped
+
+        if not json_part:
+            continue
+
+        # Check for subagent markers in JSON
+        if (
+            '"isSidechain":true' in json_part
+            or '"agentId":' in json_part
+            or ('"type":"user"' in json_part and '"sessionId":' in json_part)
+        ):
+            return True
+
+    return False
+
+
+def _adjust_heading_levels(text: str, increase_by: int = 2) -> str:
+    """Adjust markdown heading levels in text content.
+
+    Increases heading levels to nest subagent content properly.
+    E.g., ## becomes #### when increase_by=2
+
+    Args:
+        text: Markdown text content
+        increase_by: Number of levels to increase headings by
+
+    Returns:
+        Text with adjusted heading levels
+    """
+    if not text or increase_by <= 0:
+        return text
+
+    lines = text.split("\n")
+    adjusted = []
+
+    for line in lines:
+        # Check if line starts with markdown heading
+        if line.startswith("#"):
+            # Count existing heading level
+            level = 0
+            for char in line:
+                if char == "#":
+                    level += 1
+                else:
+                    break
+
+            # Only adjust if it looks like a heading (has space after #s)
+            if level > 0 and len(line) > level and line[level] == " ":
+                # Increase level, cap at 6 (max markdown heading)
+                new_level = min(level + increase_by, 6)
+                adjusted.append("#" * new_level + line[level:])
+            else:
+                adjusted.append(line)
+        else:
+            adjusted.append(line)
+
+    return "\n".join(adjusted)
+
+
+def _parse_subagent_output(
+    text: str, heading_level: int = 4
+) -> tuple[str, list["Entry"]] | None:
+    """Parse raw subagent JSONL output into formatted markdown.
+
+    Args:
+        text: Raw text containing subagent JSONL (possibly with line numbers)
+        heading_level: Base heading level for formatting (default 4 = ####)
+
+    Returns:
+        Tuple of (formatted_markdown, entries) or None if parsing fails
+    """
+    if not text:
+        return None
+
+    entries: list[Entry] = []
+    agent_id = None
+
+    for line in text.split("\n"):
+        # Strip line number prefix (e.g., "1→" or "     1→")
+        stripped = line.strip()
+        if not stripped:
+            continue
+
+        if "→" in stripped:
+            # Extract JSON part after arrow
+            json_part = stripped.split("→", 1)[-1].strip()
+        else:
+            json_part = stripped
+
+        if not json_part or not json_part.startswith("{"):
+            continue
+
+        try:
+            data = json.loads(json_part)
+            entry = Entry.from_dict(data)
+            entries.append(entry)
+
+            # Capture agent ID from first entry
+            if not agent_id and data.get("agentId"):
+                agent_id = data["agentId"]
+        except json.JSONDecodeError:
+            continue
+
+    if not entries:
+        return None
+
+    # Format entries using similar logic to _extract_sidechain but with heading levels
+    output_parts = []
+    heading_prefix = "#" * heading_level
+
+    for entry in entries:
+        if entry.type == "assistant" and entry.message:
+            content = entry.message.get("content", [])
+            if isinstance(content, list):
+                for block in content:
+                    if isinstance(block, dict):
+                        if block.get("type") == "text":
+                            text_content = block.get("text", "").strip()
+                            if text_content:
+                                # Adjust heading levels in subagent text
+                                adjusted = _adjust_heading_levels(text_content, 2)
+                                output_parts.append(adjusted + "\n")
+                        elif block.get("type") == "tool_use":
+                            tool_name = block.get("name", "Unknown")
+                            tool_input = block.get("input", {})
+                            # Compact tool representation
+                            if tool_name in ("Read", "Write", "Edit"):
+                                file_path = tool_input.get("file_path", "")
+                                short_path = (
+                                    file_path.split("/")[-1]
+                                    if "/" in file_path
+                                    else file_path
+                                )
+                                output_parts.append(f"- {tool_name}({short_path})\n")
+                            elif tool_name == "Bash":
+                                cmd = str(tool_input.get("command", ""))[:60]
+                                output_parts.append(f"- Bash({cmd}...)\n")
+                            else:
+                                output_parts.append(f"- {tool_name}(...)\n")
+
+    if not output_parts:
+        return None
+
+    # Build markdown with agent header
+    markdown = ""
+    if agent_id:
+        markdown = f"{heading_prefix} Subagent: {agent_id}\n\n"
+    else:
+        markdown = f"{heading_prefix} Subagent Output\n\n"
+
+    markdown += "".join(output_parts)
+    return markdown, entries
+
+
 def _extract_task_notifications(text: str) -> list[dict[str, str]]:
     """Extract task-notification tags from text content.
 
@@ -1967,14 +2146,27 @@ class SessionProcessor:
                         if notifications:
                             # Render original text first
                             markdown += f"{content}\n\n"
-                            # Then append task agent outputs
+                            # Then append task agent outputs with recursive parsing
                             for notif in notifications:
                                 task_output = _read_task_output_file(
                                     notif["output_file"]
                                 )
                                 if task_output:
-                                    markdown += f"### Task Agent Output ({notif['task_id']})\n\n"
-                                    markdown += f"{task_output}\n\n"
+                                    # Try to parse as subagent JSONL for nicer formatting
+                                    if _is_subagent_jsonl(task_output):
+                                        parsed = _parse_subagent_output(
+                                            task_output, heading_level=4
+                                        )
+                                        if parsed:
+                                            subagent_markdown, _ = parsed
+                                            markdown += f"### Task Agent ({notif['task_id']})\n\n"
+                                            markdown += subagent_markdown + "\n"
+                                        else:
+                                            markdown += f"### Task Agent Output ({notif['task_id']})\n\n"
+                                            markdown += f"{task_output}\n\n"
+                                    else:
+                                        markdown += f"### Task Agent Output ({notif['task_id']})\n\n"
+                                        markdown += f"{task_output}\n\n"
                         else:
                             markdown += f"{content}\n\n"
 
@@ -1992,14 +2184,29 @@ class SessionProcessor:
                             markdown += f"- **❌ ERROR:** {content.lstrip('- ')}: `{item['error']}`\n"
                         elif include_tool_results and item.get("result"):
                             result_text = item["result"]
-                            result_text = self._maybe_pretty_print_json(result_text)
-                            code_lang = (
-                                "json"
-                                if result_text.strip().startswith(("{", "["))
-                                else ""
-                            )
                             tool_call = content.strip().lstrip("- ").rstrip("\n")
-                            markdown += f"- **Tool:** {tool_call}\n```{code_lang}\n{result_text}\n```\n\n"
+
+                            # Check if result contains subagent JSONL output
+                            if _is_subagent_jsonl(result_text):
+                                parsed = _parse_subagent_output(
+                                    result_text, heading_level=4
+                                )
+                                if parsed:
+                                    subagent_markdown, _ = parsed
+                                    markdown += f"- **Tool:** {tool_call}\n\n"
+                                    markdown += subagent_markdown + "\n"
+                                else:
+                                    # Fallback to raw display if parsing fails
+                                    markdown += f"- **Tool:** {tool_call}\n```\n{result_text}\n```\n\n"
+                            else:
+                                # Standard tool result rendering
+                                result_text = self._maybe_pretty_print_json(result_text)
+                                code_lang = (
+                                    "json"
+                                    if result_text.strip().startswith(("{", "["))
+                                    else ""
+                                )
+                                markdown += f"- **Tool:** {tool_call}\n```{code_lang}\n{result_text}\n```\n\n"
                         else:
                             markdown += content
 
@@ -2018,8 +2225,11 @@ class SessionProcessor:
                                 )
                             else:
                                 markdown += f"\n### Subagent: {agent_type}\n\n"
-                            # Condense whitespace - join non-empty lines with single newlines
-                            lines = item["sidechain_summary"].split("\n")
+                            # Adjust heading levels in sidechain content and condense
+                            adjusted_summary = _adjust_heading_levels(
+                                item["sidechain_summary"], 2
+                            )
+                            lines = adjusted_summary.split("\n")
                             condensed = "\n".join(
                                 line for line in lines if line.strip()
                             )
