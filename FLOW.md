@@ -16,6 +16,52 @@ Where the framework injects control during a Claude Code session.
 
 **Spec**: [[specs/execution-flow-spec]]
 
+## Instruction Loading (Before Session)
+
+Before any hooks fire, Claude Code loads context files automatically. This happens at the platform level, not via academicOps hooks.
+
+### Files Loaded by Claude Code
+
+| File        | Location                                                        | Purpose                    |
+| ----------- | --------------------------------------------------------------- | -------------------------- |
+| `CLAUDE.md` | `~/.claude/CLAUDE.md` (global) or `.claude/CLAUDE.md` (project) | Primary instructions file  |
+| `AGENTS.md` | Referenced via `@AGENTS.md` in CLAUDE.md                        | Agent-specific conventions |
+| `GEMINI.md` | Gemini CLI equivalent                                           | For Gemini CLI sessions    |
+
+**@ Include Syntax**: Files can include others using `@filename` on a line by itself. Claude Code reads and inlines the referenced file.
+
+```markdown
+# Example CLAUDE.md
+
+@AGENTS.md
+@local-conventions.md
+```
+
+### What academicOps Hooks Add
+
+The `sessionstart_load_axioms.py` hook loads framework-specific context that lives in `$AOPS`:
+
+| Content       | Source                   | Purpose                                            |
+| ------------- | ------------------------ | -------------------------------------------------- |
+| AXIOMS.md     | `$AOPS/AXIOMS.md`        | Inviolable principles (fail-fast, trust VCS, etc.) |
+| HEURISTICS.md | `$AOPS/HEURISTICS.md`    | Soft guidance (prefer X over Y)                    |
+| CORE.md       | `$CWD/CORE.md` (project) | Project-specific core conventions                  |
+
+**Key distinction**:
+
+- **AXIOMS + HEURISTICS** = Universal framework rules (from `$AOPS`)
+- **CORE** = Project-specific conventions (from working directory)
+
+### Where Workflow/Skill/Guardrail Info Comes From
+
+The prompt-hydrator reads these files to make routing decisions:
+
+| File                | Content                                 | Used For                  |
+| ------------------- | --------------------------------------- | ------------------------- |
+| `WORKFLOWS.md`      | Workflow definitions (TDD, Debug, etc.) | Selecting execution track |
+| `skills/*/index.md` | Skill catalog                           | Matching skills to task   |
+| `guardrails.md`     | Guardrail definitions                   | Injecting constraints     |
+
 ## Complete Execution Flow
 
 Every prompt goes through this flow. The **Main Agent** runs as a continuous vertical spine (left column). **Hooks** and **Subagents** appear alongside when invoked (right columns), with arrows showing interaction points.
@@ -91,7 +137,7 @@ flowchart TB
 
     %% Cross-lane connections: Main ↔ Hooks
     M0 --> H1
-    H1 -->|"AXIOMS, HEURISTICS,<br/>FRAMEWORK, CORE"| M1
+    H1 -->|"AXIOMS, HEURISTICS,<br/>CORE"| M1
     M2 --> H2
     H2 -->|"'Spawn hydrator'"| M3
     M11 --> H3
@@ -171,6 +217,19 @@ The prompt-hydrator selects workflow based on task signals:
 | fail_fast_watchdog.py | Axiom reminder: "HALT if stuck, report infrastructure failure, no workarounds" |
 | custodiet_gate.py     | Either: custodiet spawn instruction OR random reminder from `reminders.txt`    |
 | request_scribe.py     | Reminder to invoke `Skill(skill='remember')` to persist key decisions          |
+
+### Agent Behavior on Hook Feedback
+
+When the agent receives hook feedback (M12 in diagram), it should:
+
+| Feedback Type                | Agent Response                                                                                           |
+| ---------------------------- | -------------------------------------------------------------------------------------------------------- |
+| **Block (exit 2)**           | Stop current action. Read error message. Comply with required action (e.g., spawn hydrator first).       |
+| **Context injection**        | Read injected content. Follow instructions if actionable (e.g., spawn custodiet, invoke remember skill). |
+| **Reminder**                 | Acknowledge mentally. Continue work but keep reminder in mind.                                           |
+| **Auto-commit confirmation** | No action needed. Informational only.                                                                    |
+
+**Key principle**: Hook feedback is authoritative. The agent should not argue with or work around hook blocks.
 
 ### Stop Hooks (cleanup)
 
@@ -261,7 +320,7 @@ Currently these rely on prompt-level guidance + periodic custodiet checks.
 | --------------------- | --------------------------- | -------------------------------------------------------- |
 | SessionStart          | session_env_setup.sh        | Environment setup                                        |
 | SessionStart          | terminal_title.py           | Set terminal title                                       |
-| SessionStart          | sessionstart_load_axioms.py | Load AXIOMS, HEURISTICS, FRAMEWORK, CORE                 |
+| SessionStart          | sessionstart_load_axioms.py | Load AXIOMS, HEURISTICS, CORE                            |
 | SessionStart          | unified_logger.py           | Event logging                                            |
 | UserPromptSubmit      | user_prompt_submit.py       | Trigger prompt hydration                                 |
 | UserPromptSubmit      | unified_logger.py           | Event logging                                            |
@@ -281,9 +340,98 @@ Currently these rely on prompt-level guidance + periodic custodiet checks.
 
 **Exit codes**: PreToolUse `0`=allow, `2`=block. PostToolUse `0`=success.
 
-## Quick Capture
+## Workflow Map
 
-`/q` saves a task for later; `/do` executes it.
+The prompt-hydrator selects a workflow track based on task signals. Each workflow has specific triggers, mandates, and execution patterns.
+
+### Available Workflows
+
+| Workflow             | Triggers                                        | Mandates                                  | Primary Skill |
+| -------------------- | ----------------------------------------------- | ----------------------------------------- | ------------- |
+| **TDD**              | "add", "create", "implement", new functionality | Write test first, run before/after        | `feature-dev` |
+| **Debugging**        | "fix", "broken", "doesn't work", error messages | Quote error exactly, verify-first, bisect | -             |
+| **Batch**            | Multiple items, "all", "each", patterns         | Dry-run first, checkpoint commits         | -             |
+| **Framework**        | `skills/`, `hooks/`, AXIOMS, HEURISTICS edits   | Plan mode required, critic review         | `framework`   |
+| **Question**         | "what", "how", "why", "explain"                 | Answer only, no unsolicited changes       | -             |
+| **QA/Investigation** | "check", "verify", "audit", uncertainty         | Evidence-based, no assumptions            | `qa`          |
+
+### Workflow Decision Tree
+
+```mermaid
+flowchart TD
+    P[User Prompt] --> Q{Question?}
+    Q -->|Yes| QA[Question Workflow]
+    Q -->|No| F{Framework<br/>files?}
+    F -->|Yes| FW[Framework Workflow]
+    F -->|No| B{Bug/Error?}
+    B -->|Yes| DB[Debugging Workflow]
+    B -->|No| M{Multiple<br/>items?}
+    M -->|Yes| BA[Batch Workflow]
+    M -->|No| N{New<br/>feature?}
+    N -->|Yes| TD[TDD Workflow]
+    N -->|No| DI[Direct Execution]
+
+    style QA fill:#e3f2fd
+    style FW fill:#f3e5f5
+    style DB fill:#ffebee
+    style BA fill:#fff3e0
+    style TD fill:#e8f5e9
+    style DI fill:#eceff1
+```
+
+### When Plans Are Created
+
+| Workflow      | Plan Mode?    | Who Plans                  | Criteria Gate |
+| ------------- | ------------- | -------------------------- | ------------- |
+| **TDD**       | Optional      | Main agent                 | Optional      |
+| **Debugging** | No            | Main agent                 | No            |
+| **Batch**     | Yes (dry-run) | Main agent                 | No            |
+| **Framework** | **Required**  | Main agent → critic review | Yes           |
+| **Question**  | No            | N/A                        | No            |
+| **QA**        | No            | Main agent                 | No            |
+
+**Plan mode triggers critic subagent**: When plan mode is required, the agent must define acceptance criteria and spawn the critic for review before any implementation.
+
+## Work Management
+
+### Primary: `bd` (Beads)
+
+`bd` is the primary work management system for multi-session tracking, dependencies, and strategic work.
+
+```mermaid
+flowchart LR
+    subgraph CREATE["Create Work"]
+        C1[bd create --title=...]
+        C2[bd ready]
+    end
+
+    subgraph EXECUTE["Execute"]
+        E1[bd update --status=in_progress]
+        E2[Work on task]
+        E3[bd close]
+    end
+
+    subgraph SYNC["Persist"]
+        S1[bd sync]
+    end
+
+    C1 --> C2 --> E1 --> E2 --> E3 --> S1
+
+    style CREATE fill:#e3f2fd
+    style EXECUTE fill:#e8f5e9
+    style SYNC fill:#fff3e0
+```
+
+**When to use `bd`**:
+
+- Multi-session work (spans multiple conversations)
+- Work with dependencies (blocked by / blocks)
+- Strategic planning and tracking
+- Discoverable by future sessions
+
+### Alternative: Task System (`/q`, `/do`)
+
+For quick single-session capture when `bd` feels heavyweight.
 
 ```mermaid
 flowchart LR
@@ -293,3 +441,19 @@ flowchart LR
     style T1 fill:#9e9e9e,color:#fff
     style D1 fill:#ff9800,color:#fff
 ```
+
+**When to use `/q`**:
+
+- Quick capture during focused work
+- Single-session items
+- Not worth creating a `bd` issue
+
+### Choosing Between Them
+
+| Signal                               | Use  |
+| ------------------------------------ | ---- |
+| "I'll get to this later" (vague)     | `/q` |
+| "This blocks X" or "After Y is done" | `bd` |
+| Quick note during work               | `/q` |
+| Needs to survive session end         | `bd` |
+| Discoverable by other sessions       | `bd` |
