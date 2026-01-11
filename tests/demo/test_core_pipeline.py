@@ -15,6 +15,8 @@ Related:
 - Task ns-t15: Demo: Core Pipeline (Hydration → Workflow → Execution)
 """
 
+import uuid
+
 import pytest
 
 
@@ -39,6 +41,10 @@ class TestCorePipelineDemo:
         print("CORE PIPELINE DEMO: Hydration → Workflow → Execution")
         print("=" * 80)
 
+        # Generate unique file path to avoid conflicts between parallel test runs
+        test_id = uuid.uuid4().hex[:8]
+        output_file = f"/tmp/claude-test/math_utils_{test_id}.py"
+
         # Task that should trigger the full pipeline:
         # - Hydrator classifies as "implementation" workflow
         # - TodoWrite plan created
@@ -46,10 +52,11 @@ class TestCorePipelineDemo:
         # - Code actually written
         prompt = (
             "Create a simple Python function called 'add_numbers' that takes two "
-            "integers and returns their sum. Save it to /tmp/claude-test/math_utils.py"
+            f"integers and returns their sum. Save it to {output_file}"
         )
 
         print(f"\n--- TASK ---\n{prompt}")
+        print(f"--- Output file: {output_file} ---")
         print("\n--- EXECUTING HEADLESS SESSION ---")
 
         result, session_id, tool_calls = claude_headless_tracked(
