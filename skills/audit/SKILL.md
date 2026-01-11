@@ -32,6 +32,18 @@ TodoWrite(todos=[
 
 **CRITICAL**: Work through EACH phase in sequence. When a phase requires a skill, invoke it explicitly as shown below.
 
+## Specialized Workflows
+
+### Session Effectiveness Audit
+
+Qualitative assessment of session transcripts to evaluate framework performance.
+
+```
+Skill(skill="audit", args="session-effectiveness /path/to/transcript.md")
+```
+
+See [[workflows/session-effectiveness.md]] for full workflow.
+
 ## Individual Scripts (Reference Only)
 
 These scripts run individual checks. They are NOT a substitute for the full workflow:
