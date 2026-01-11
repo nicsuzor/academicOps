@@ -46,7 +46,7 @@ This outputs the prompt with metadata substituted.
 
 ```
 mcp__gemini__ask-gemini(
-  model="gemini-2.5-flash",
+  model="gemini-3-flash-preview",
   prompt="@{transcript_path}\n\n[prepared prompt from Step 2]"
 )
 ```
