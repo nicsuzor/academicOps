@@ -229,13 +229,13 @@ class GitHubToBeads:
         ]
 
         # Priority labels (customize for your repo)
-        if any(l in label_names for l in ["critical", "p0", "urgent"]):
+        if any(lbl in label_names for lbl in ["critical", "p0", "urgent"]):
             return 0
-        elif any(l in label_names for l in ["high", "p1", "important"]):
+        elif any(lbl in label_names for lbl in ["high", "p1", "important"]):
             return 1
-        elif any(l in label_names for l in ["low", "p3", "minor"]):
+        elif any(lbl in label_names for lbl in ["low", "p3", "minor"]):
             return 3
-        elif any(l in label_names for l in ["backlog", "p4", "someday"]):
+        elif any(lbl in label_names for lbl in ["backlog", "p4", "someday"]):
             return 4
         else:
             return 2  # Default medium
@@ -248,13 +248,15 @@ class GitHubToBeads:
         ]
 
         # Type labels (customize for your repo)
-        if any(l in label_names for l in ["bug", "defect"]):
+        if any(lbl in label_names for lbl in ["bug", "defect"]):
             return "bug"
-        elif any(l in label_names for l in ["feature", "enhancement"]):
+        elif any(lbl in label_names for lbl in ["feature", "enhancement"]):
             return "feature"
-        elif any(l in label_names for l in ["epic", "milestone"]):
+        elif any(lbl in label_names for lbl in ["epic", "milestone"]):
             return "epic"
-        elif any(l in label_names for l in ["chore", "maintenance", "dependencies"]):
+        elif any(
+            lbl in label_names for lbl in ["chore", "maintenance", "dependencies"]
+        ):
             return "chore"
         else:
             return "task"
@@ -268,9 +270,9 @@ class GitHubToBeads:
 
         if state == "closed":
             return "closed"
-        elif any(l in label_names for l in ["in progress", "in-progress", "wip"]):
+        elif any(lbl in label_names for lbl in ["in progress", "in-progress", "wip"]):
             return "in_progress"
-        elif any(l in label_names for l in ["blocked"]):
+        elif any(lbl in label_names for lbl in ["blocked"]):
             return "blocked"
         else:
             return "open"
