@@ -1,0 +1,90 @@
+---
+name: annotations
+category: instruction
+description: Scan and process inline HTML comments for human-agent collaboration. Finds <!-- @nic: --> or <!-- @ns: --> comments and responds with dated <!-- @claude: --> replies.
+allowed-tools: Read,Grep,Glob,Edit
+version: 1.0.0
+permalink: skills-annotations
+---
+
+# Annotations
+
+Process inline HTML comments for asynchronous human-agent collaboration in markdown files.
+
+## Convention
+
+**Human comments:** `<!-- @nic: comment -->` or `<!-- @ns: comment -->`
+**Agent responses:** `<!-- @claude YYYY-MM-DD: response -->`
+
+Comments use HTML syntax for universal markdown compatibility (GitHub, Obsidian, VS Code, etc.). They render as invisible in all standard markdown viewers.
+
+## Modes
+
+### scan [path]
+
+Find all pending human annotations that need response.
+
+```bash
+Grep(pattern="<!--\\s*@(nic|ns):", path="$ACA_DATA", output_mode="content", -C=2)
+```
+
+Output: List of files with pending comments, showing context.
+
+### respond [file]
+
+Process annotations in a specific file:
+
+1. Read the file
+2. Find all `<!-- @nic:` or `<!-- @ns:` comments
+3. For each comment without a corresponding `<!-- @claude` response:
+   - Analyze the request in context
+   - Add response immediately after: `<!-- @claude YYYY-MM-DD: response -->`
+4. Save the file
+
+### clean [file]
+
+Remove resolved annotation threads (both comment and response) after user confirms resolution.
+
+## Example
+
+**Before:**
+
+```markdown
+The court held that platforms must provide notice. <!-- @ns: check if this applies post-DSA -->
+```
+
+**After:**
+
+```markdown
+The court held that platforms must provide notice. <!-- @ns: check if this applies post-DSA -->
+
+<!-- @claude 2026-01-11: This holding predates DSA. Art. 17 now requires explicit notice with reasoning. Your original cite remains valid for pre-2024 cases. -->
+```
+
+## Detection Patterns
+
+| Pattern                                      | Matches         |
+| -------------------------------------------- | --------------- |
+| `<!--\s*@(nic\|ns):`                         | Human comments  |
+| `<!--\s*@claude\s+\d{4}-\d{2}-\d{2}:`        | Agent responses |
+| Human comment NOT followed by agent response | Pending items   |
+
+## Workflow Integration
+
+This skill integrates with daily workflow:
+
+1. **Morning scan**: Run `scan $ACA_DATA` to find pending annotations
+2. **Batch respond**: Process files with pending comments
+3. **User review**: Human reviews responses, deletes resolved threads
+
+## Date Handling
+
+- Agent responses always include date: `<!-- @claude 2026-01-11: -->`
+- Human comments may or may not include dates
+- If human comment has date, preserve it; if not, infer from file mtime or mark "undated"
+
+## Boundaries
+
+- **Scope**: `$ACA_DATA` markdown files only
+- **Never modify**: Code files, configs, non-markdown content
+- **Response placement**: Immediately after the triggering comment, same line or next line
