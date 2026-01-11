@@ -258,7 +258,7 @@ The hydrator interprets these templates for specific user requests.
 The hydrator receives sufficient session context to make routing decisions mid-session. Acceptance criteria:
 
 **Required context elements:**
-- Recent prompts: At least 5 prior user prompts (truncated to ~100 chars each)
+- Recent prompts: At least 5 prior user prompts (truncated to ~400 chars each)
 - Recent agent responses: Last 3 agent responses (for conversational continuity)
 - Recent tool calls: Last 10 tool calls with key parameters (Read/Edit file paths, Bash commands, Task subagent types)
 - TodoWrite state: Pending/in_progress/completed counts + current in_progress task name

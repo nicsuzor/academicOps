@@ -26,7 +26,9 @@ from typing import Any
 # Configuration constants for router context extraction
 _MAX_TURNS = 5
 _SKILL_LOOKBACK = 10
-_PROMPT_TRUNCATE = 100
+_PROMPT_TRUNCATE = (
+    400  # Increased from 100 to preserve more context (validated 2026-01-11)
+)
 _MAX_TOOL_CALLS = 10  # Max recent tool calls to include in context
 
 
