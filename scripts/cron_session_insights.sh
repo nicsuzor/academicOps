@@ -18,6 +18,18 @@ set -euo pipefail
 # Ensure PATH includes uv (cron runs with minimal PATH)
 export PATH="/opt/nic/bin:$PATH"
 
+# Source nvm and activate node (required for gemini CLI)
+# Try standard locations for nvm
+for nvm_path in "/opt/$USER/nvm" "$HOME/.nvm" "/opt/nvm"; do
+    if [[ -s "$nvm_path/nvm.sh" ]]; then
+        export NVM_DIR="$nvm_path"
+        # shellcheck source=/dev/null
+        source "$NVM_DIR/nvm.sh"
+        nvm use node >/dev/null 2>&1 || true
+        break
+    fi
+done
+
 # Change to framework root
 cd "$(dirname "$0")/.."
 FRAMEWORK_ROOT="$(pwd)"
