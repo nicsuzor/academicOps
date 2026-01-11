@@ -31,17 +31,17 @@ Select the appropriate workflow based on task signals:
 
 ## Per-Step Skill Assignment
 
-Assign skills to individual steps based on domain:
+Assign skills based on domain. The "Not For" column disambiguates similar skills:
 
-| Step Domain                               | Skill                         |
-| ----------------------------------------- | ----------------------------- |
-| Python code, pytest, types                | `python-dev`                  |
-| Framework files (hooks/, skills/, AXIOMS) | `framework`                   |
-| New functionality                         | `feature-dev`                 |
-| Memory persistence                        | `remember`                    |
-| Data analysis, dbt, Streamlit             | `analyst`                     |
-| Claude Code hooks                         | `plugin-dev:hook-development` |
-| MCP servers                               | `plugin-dev:mcp-integration`  |
+| Use When                                                                            | Not For                                        | Skill                         |
+| ----------------------------------------------------------------------------------- | ---------------------------------------------- | ----------------------------- |
+| Python code, pytest, type hints, refactoring                                        | dbt models, Streamlit apps, research pipelines | `python-dev`                  |
+| Framework infrastructure (hooks/, skills/, AXIOMS), generalizable patterns          | User data operations, one-off scripts          | `framework`                   |
+| New user-facing feature with acceptance criteria                                    | Bug fixes, refactoring existing code           | `feature-dev`                 |
+| Persist knowledge to semantic memory                                                | Temporary notes, session-specific info         | `remember`                    |
+| dbt models, Streamlit dashboards, research data pipelines (look for dbt/ directory) | General Python scripts, non-research code      | `analyst`                     |
+| Claude Code hooks (PreToolUse, PostToolUse, SessionStart, etc.)                     | MCP servers, skills, commands                  | `plugin-dev:hook-development` |
+| MCP server integration, external service connections                                | Hooks, skills, commands                        | `plugin-dev:mcp-integration`  |
 
 Each step can invoke a different skill. Don't assign one skill to the whole task.
 
