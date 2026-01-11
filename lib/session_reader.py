@@ -531,12 +531,14 @@ def _extract_router_context_impl(transcript_path: Path, max_turns: int) -> str:
     if recent_prompts:
         lines.append("Recent prompts:")
         for i, prompt in enumerate(recent_prompts, 1):
-            # Truncate long prompts
+            # Truncate long prompts and escape code fences to prevent markdown breakage
             truncated = (
                 prompt[:_PROMPT_TRUNCATE] + "..."
                 if len(prompt) > _PROMPT_TRUNCATE
                 else prompt
             )
+            # Escape backticks to prevent code fence breakage in context display
+            truncated = truncated.replace("```", "'''")
             lines.append(f'{i}. "{truncated}"')
         lines.append("")
 
