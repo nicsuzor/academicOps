@@ -392,6 +392,61 @@ Before considering a flowchart complete:
 - Hardcoded colors without semantic meaning
 - IDs with spaces or special characters
 
+## Phase-Based Organization (Recommended for Complex Flows)
+
+For flows with many steps (10+ nodes), organize into **numbered phases** rather than one long chain:
+
+```mermaid
+flowchart TB
+    subgraph INIT["① INITIALIZATION"]
+        direction TB
+        S0([Start]) --> S1[Load Config]
+        S1 --> S2[Validate]
+    end
+
+    subgraph EXEC["② EXECUTION"]
+        direction TB
+        E1[Process] --> E2{Check}
+        E2 -->|OK| E3[Continue]
+        E2 -->|Fail| E1
+    end
+
+    subgraph END["③ CLEANUP"]
+        direction TB
+        C1[Save] --> C2([End])
+    end
+
+    INIT --> EXEC --> END
+
+    %% Side panels for auxiliary systems
+    subgraph AUX["⚡ AUXILIARY"]
+        A1[Helper 1]
+        A2[Helper 2]
+    end
+
+    E1 -.-> A1
+    C1 -.-> A2
+
+    style INIT fill:#ecfdf5,stroke:#059669,stroke-width:2px
+    style EXEC fill:#fefce8,stroke:#ca8a04,stroke-width:2px
+    style END fill:#f5f5f5,stroke:#737373,stroke-width:2px
+    style AUX fill:#fef2f2,stroke:#ef4444,stroke-width:1px,stroke-dasharray: 5 5
+```
+
+**Key principles:**
+
+1. **Numbered phase labels** (① ② ③) - Creates visual hierarchy and reading order
+2. **Phase subgraphs link to each other** - `INIT --> EXEC --> END` keeps main flow clean
+3. **Auxiliary systems in dashed side panels** - Hooks, agents, external services
+4. **Minimal cross-connections** - Only essential interactions, always dashed
+5. **Color-coded phases** - Distinct hues per phase (green → yellow → gray for start → process → end)
+
+**When to use this pattern:**
+
+- Flows with 10+ nodes that would otherwise be a long chain
+- Systems with auxiliary components (hooks, agents, external services)
+- Documentation that needs to be scannable at a glance
+
 ## Templates and Examples
 
 See [[references/templates-and-examples.md]] for complete templates including:
@@ -404,16 +459,17 @@ See [[references/templates-and-examples.md]] for complete templates including:
 
 **Layout First**:
 
-1. **Horizontal by default** - Use `LR` for most charts, `TD` only for heavy branching
-2. **Generous spacing** - `nodeSpacing: 60`, `rankSpacing: 70` minimum
-3. **Phases horizontal, steps vertical** - `direction TB` inside subgraphs
-4. **ELK for complexity** - Use `layout: elk` for 15+ nodes
+1. **Phase-based for complexity** - Group 10+ nodes into numbered phases
+2. **TB for deep flows, LR for simple pipelines** - Match direction to content
+3. **Generous spacing** - `nodeSpacing: 40+`, `rankSpacing: 35+`
+4. **Link subgraphs, not internal nodes** - Keep cross-connections clean
 
 **Visual Clarity**:
 
-1. **3-4 colors max** - One dominant, one accent, one highlight
-2. **Stroke-width for emphasis** - 2px for decisions and terminals
-3. **Avoid pastel soup** - Distinct colors, not 10 similar light fills
+1. **5 semantic colors max** - Phase, step, gate, hook, agent
+2. **Stroke-width for emphasis** - 2px for decisions and boundaries
+3. **Dashed for auxiliary** - Side panels and optional connections
+4. **Solid backgrounds always** - Never transparent (theme safety)
 
 **Quick Wins**:
 
