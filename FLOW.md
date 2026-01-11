@@ -163,12 +163,75 @@ The prompt-hydrator selects workflow based on task signals:
 | custodiet_gate.py     | Every ~7 tool calls | Spawn custodiet agent for ultra vires detection; random reminders (30%) between checks |
 | request_scribe.py     | TodoWrite           | Memory documentation reminder                                                          |
 
+**What gets injected** (via `additionalContext` in hook output):
+
+| Hook                  | Injection Content                                                              |
+| --------------------- | ------------------------------------------------------------------------------ |
+| autocommit_state.py   | Confirmation message: "Auto-committed changes to data/"                        |
+| fail_fast_watchdog.py | Axiom reminder: "HALT if stuck, report infrastructure failure, no workarounds" |
+| custodiet_gate.py     | Either: custodiet spawn instruction OR random reminder from `reminders.txt`    |
+| request_scribe.py     | Reminder to invoke `Skill(skill='remember')` to persist key decisions          |
+
 ### Stop Hooks (cleanup)
 
 | Hook               | Triggers    | Chain                                            |
 | ------------------ | ----------- | ------------------------------------------------ |
 | request_scribe.py  | Session end | -> remember skill -> $ACA_DATA + memory server   |
 | session_reflect.py | Session end | -> session-insights -> daily note + GitHub Issue |
+
+## Gate Flag Lifecycle
+
+Each gate maintains state that controls when it blocks. This section explains what each gate checks and who sets/clears its flags.
+
+### Hydration Gate (`hydration_gate.py`)
+
+**What it checks**: Is `hydration_pending == true` in `/tmp/claude-session/hydrator-{hash}.json`?
+
+| Action       | Who                           | When                                              |
+| ------------ | ----------------------------- | ------------------------------------------------- |
+| **Set flag** | `user_prompt_submit.py`       | Every user prompt (unless starts with `/` or `.`) |
+| **Clear**    | `hydration_gate.py`           | Detects `Task(subagent_type="prompt-hydrator")`   |
+| **Bypass**   | User prefixes prompt with `.` | UserPromptSubmit sets `hydration_pending=false`   |
+
+**Mechanical enforcement**: Agent cannot clear flag directly - deny rules block Write/Edit to `/tmp/claude-session/**`.
+
+### Policy Enforcer (`policy_enforcer.py`)
+
+**What it checks**: Pattern matching on tool name + arguments (no state file).
+
+| Pattern                       | Action | Notes                      |
+| ----------------------------- | ------ | -------------------------- |
+| `git reset --hard`            | Block  | Protects uncommitted work  |
+| `git push --force`            | Block  | Protects shared history    |
+| `git clean -f`                | Block  | Protects untracked files   |
+| Write to `*-GUIDE.md`         | Block  | Force README consolidation |
+| Write `.md` > 200 prose lines | Block  | Force chunking             |
+
+**No flag state** - purely pattern-based, always active.
+
+### Criteria Gate (`criteria_gate.py`)
+
+**What it checks**: Has the `/do` Phase 1 workflow been completed?
+
+| Action       | Who                | When                                                           |
+| ------------ | ------------------ | -------------------------------------------------------------- |
+| **Activate** | `/do` command      | When user invokes `/do [task]`                                 |
+| **Clear**    | `criteria_gate.py` | Detects: criteria defined + critic reviewed + TodoWrite exists |
+| **N/A**      | -                  | Gate inactive for normal prompts (only `/do` workflow)         |
+
+**Blocks**: Edit, Write, Bash until Phase 1 complete.
+
+### Custodiet Overdue Check (`custodiet_gate.py` + PreToolUse)
+
+**What it checks**: Is `tool_calls_since_compliance >= 7` in `/tmp/claude-session/custodiet-{hash}.json`?
+
+| Action         | Who                  | When                                   |
+| -------------- | -------------------- | -------------------------------------- |
+| **Increment**  | `custodiet_gate.py`  | Every non-read tool call (PostToolUse) |
+| **Reset to 0** | `custodiet_gate.py`  | After spawning custodiet check         |
+| **Block**      | PreToolUse (planned) | When counter >= 7 and tool is mutating |
+
+**Current state**: Soft reminder only. Hard block is planned.
 
 ## Key Principles
 
