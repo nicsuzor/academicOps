@@ -124,7 +124,7 @@ $AOPS/
 │   ├── sessionstart_load_axioms.py  # Injects AXIOMS.md, FRAMEWORK.md, HEURISTICS.md
 │   ├── session_env_setup.sh     # Environment setup at session start
 │   ├── user_prompt_submit.py    # Writes context to temp file, returns short instruction
-│   ├── autocommit_state.py      # Auto-commit data/ changes (Enforces: A#28)
+│   ├── autocommit_state.py      # Auto-commit data/ changes (Enforces: current-state-machine)
 │   ├── custodiet_gate.py             # Ultra vires check every ~7 tool calls
 │   ├── criteria_gate.py         # Acceptance criteria gate enforcement
 │   ├── policy_enforcer.py       # Block destructive operations (PreToolUse)

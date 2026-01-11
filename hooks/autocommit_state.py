@@ -6,7 +6,7 @@ This hook detects when operations modify the personal knowledge base or task
 database and automatically commits/pushes changes to prevent data loss and
 enable cross-device sync.
 
-Enforces: A#28 (Current State Machine - $ACA_DATA always up-to-date)
+Enforces: current-state-machine (Current State Machine - $ACA_DATA always up-to-date)
 
 Triggers:
 - After Bash tool executes task scripts (task_add.py, task_archive.py, etc.)
@@ -172,15 +172,6 @@ def pull_rebase_if_behind(repo_path: Path) -> tuple[bool, str]:
 
             return False, f"rebase failed: {result.stderr.strip()}"
 
-        # Verify not in partial rebase state
-        status_result = subprocess.run(
-            ["git", "status", "--porcelain"],
-            cwd=repo_path,
-            capture_output=True,
-            text=True,
-            timeout=2,
-            check=False,
-        )
         # Check for rebase in progress markers
         rebase_dir = repo_path / ".git" / "rebase-merge"
         rebase_apply = repo_path / ".git" / "rebase-apply"

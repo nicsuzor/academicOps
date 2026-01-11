@@ -172,11 +172,11 @@ Every hook that enforces an axiom MUST declare it in its module docstring:
 """
 Hook description.
 
-Enforces: A#28 (Current State Machine)
+Enforces: current-state-machine (Current State Machine)
 """
 ```
 
-Multiple axioms: `Enforces: A#7, A#15 (Fail-Fast, Trust Version Control)`
+Multiple axioms: `Enforces: fail-fast-code, trust-version-control (Fail-Fast, Trust Version Control)`
 
 **Derivation sources**:
 

@@ -148,10 +148,10 @@ The prompt-hydrator selects workflow based on task signals:
 
 ### PreToolUse Hooks (can block)
 
-| Hook               | Blocks                                                                       | Enforces                                      |
-| ------------------ | ---------------------------------------------------------------------------- | --------------------------------------------- |
-| policy_enforcer.py | `git reset --hard`, `push --force`, `*-GUIDE.md`, `.md` > 200 prose lines    | A#15 Trust Version Control, MINIMAL principle |
-| criteria_gate.py   | Edit/Write/Bash until criteria defined + critic reviewed + TodoWrite created | A#22 Acceptance Criteria, A#23 Plan-First     |
+| Hook               | Blocks                                                                       | Enforces                                    |
+| ------------------ | ---------------------------------------------------------------------------- | ------------------------------------------- |
+| policy_enforcer.py | `git reset --hard`, `push --force`, `*-GUIDE.md`, `.md` > 200 prose lines    | [[axioms/trust-version-control.md           |
+| criteria_gate.py   | Edit/Write/Bash until criteria defined + critic reviewed + TodoWrite created | [[axioms/acceptance-criteria-own-success.md |
 
 ### PostToolUse Hooks (inject context)
 
