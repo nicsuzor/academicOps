@@ -61,6 +61,12 @@ Note: AXIOMS.md and HEURISTICS.md and WORKFLOWS.md are already in the input file
 
 Refer to **`WORKFLOWS.md`** and select the track based on semantic intent (TDD, Batch, etc.).
 
+**Interactive workflow detection**: If the user prompt contains collaborative language ("one by one", "work through with me", "show me each", "let me review each"), this signals an INTERACTIVE workflow where the user wants to review/approve each iteration. For these prompts:
+
+- Insert AskUserQuestion checkpoints AFTER each iteration
+- Each checkpoint should ask: "Ready to proceed to [next item]?" or similar
+- Do NOT proceed to next iteration until user confirms
+
 Return a detailed **Execution Plan** that is appropriate for the selected workflow.
 
 ## Step 4: Per-Step Skill Assignment
