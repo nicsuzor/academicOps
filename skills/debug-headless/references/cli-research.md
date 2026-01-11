@@ -63,8 +63,8 @@ Four implementation pathways documented for the skill:
 
 ## Related Contexts
 
-[[debug-headless]] skill (under development)
-[[plugin-dev:skill-development]] - Framework skill creation guidelines
+`debug-headless` skill (under development)
+`plugin-dev:skill-development` - Framework skill creation guidelines (invoke via Skill tool)
 [[framework]] - academicOps framework architecture
 
 _Captured 2026-01-08 during debug-headless skill research phase._

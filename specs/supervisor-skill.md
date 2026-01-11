@@ -15,7 +15,7 @@ tags:
 # Supervisor Skill
 
 **Status**: Implemented
-See [[skills/supervisor/workflows/]] for workflow templates.
+See supervisor workflows section below for workflow templates.
 
 ## Workflow
 

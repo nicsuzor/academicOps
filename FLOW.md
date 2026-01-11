@@ -72,7 +72,7 @@ flowchart TB
         direction TB
         H1["SessionStart<br/>─────────────<br/>sessionstart_load_axioms.py"]
         H2["UserPromptSubmit<br/>─────────────<br/>user_prompt_submit.py"]
-        H3["PreToolUse<br/>─────────────<br/>policy_enforcer.py<br/>criteria_gate.py"]
+        H3["PreToolUse<br/>─────────────<br/>hydration_gate.py<br/>policy_enforcer.py<br/>criteria_gate.py"]
         H4["PostToolUse<br/>─────────────<br/>autocommit_state.py<br/>fail_fast_watchdog.py<br/>custodiet_gate.py"]
         H5["Stop<br/>─────────────<br/>request_scribe.py<br/>session_reflect.py"]
 
@@ -150,6 +150,7 @@ The prompt-hydrator selects workflow based on task signals:
 
 | Hook               | Blocks                                                                       | Enforces                                    |
 | ------------------ | ---------------------------------------------------------------------------- | ------------------------------------------- |
+| hydration_gate.py  | ALL tools until `Task(subagent_type="prompt-hydrator")` invoked              | Mechanical hydration enforcement            |
 | policy_enforcer.py | `git reset --hard`, `push --force`, `*-GUIDE.md`, `.md` > 200 prose lines    | [[axioms/trust-version-control.md           |
 | criteria_gate.py   | Edit/Write/Bash until criteria defined + critic reviewed + TodoWrite created | [[axioms/acceptance-criteria-own-success.md |
 
@@ -201,6 +202,7 @@ Currently these rely on prompt-level guidance + periodic custodiet checks.
 | SessionStart          | unified_logger.py           | Event logging                                            |
 | UserPromptSubmit      | user_prompt_submit.py       | Trigger prompt hydration                                 |
 | UserPromptSubmit      | unified_logger.py           | Event logging                                            |
+| PreToolUse            | hydration_gate.py           | Block ALL tools until prompt-hydrator invoked            |
 | PreToolUse            | policy_enforcer.py          | Block destructive operations                             |
 | PreToolUse            | criteria_gate.py            | Enforce /do Phase 1                                      |
 | PreToolUse            | unified_logger.py           | Event logging                                            |

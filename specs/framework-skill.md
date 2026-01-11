@@ -124,18 +124,22 @@ When encountering something that cannot be derived:
 
 ### Reference Documentation
 
-- [[../skills/framework/references/hooks_guide.md]] - Hook system architecture
-- [[../skills/framework/references/script-design-guide.md]] - Script design principles
-- [[../skills/framework/references/e2e-test-harness.md]] - Test harness infrastructure
-- [[../skills/framework/references/claude-code-config.md]] - Claude Code configuration
+See `skills/framework/references/` for:
+
+- Hook system architecture
+- Script design principles
+- Test harness infrastructure
+- Claude Code configuration
 
 ### Workflows
 
-- [[../skills/framework/workflows/01-design-new-component.md]] - Adding hooks, skills, scripts
-- [[../skills/framework/workflows/02-debug-framework-issue.md]] - Deep Root Cause Analysis
-- [[../skills/framework/workflows/03-experiment-design.md]] - Framework experiments
-- [[../skills/framework/workflows/04-monitor-prevent-bloat.md]] - Anti-bloat practices
-- [[../skills/framework/workflows/06-develop-specification.md]] - Writing specs
+See `skills/framework/workflows/` for:
+
+- Adding hooks, skills, scripts
+- Deep Root Cause Analysis
+- Framework experiments
+- Anti-bloat practices
+- Writing specs
 
 ## Relationships
 

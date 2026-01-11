@@ -26,4 +26,4 @@ Load the TDD workflow template and execute via /do pipeline:
    - Quality gates (critic review, fail-fast compliance)
    - Commit and push after each cycle
 
-See [[skills/supervisor/workflows/tdd.md]] for workflow details.
+See [[specs/supervisor-skill]] for workflow details.

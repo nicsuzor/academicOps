@@ -184,7 +184,7 @@ TodoWrite(todos=[
 - 2026-01-06: test-skill-chain validated pattern works
 - audit skill (v5.0.0) chains to framework and flowchart skills via TodoWrite
 
-**Lesson**: Solves "skills can't invoke skills" without hooks. Makes skill invocation a mandatory workflow step rather than an optional suggestion. See [[framework/SKILL.md]] for pattern details.
+**Lesson**: Solves "skills can't invoke skills" without hooks. Makes skill invocation a mandatory workflow step rather than an optional suggestion. See [[skills/framework/SKILL.md]] for pattern details.
 
 ### Level 4: Pre-Tool-Use Hooks
 

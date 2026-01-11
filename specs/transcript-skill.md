@@ -146,7 +146,7 @@ Full transcripts support framework debugging with:
 
 ### Used By
 
-- [[session-insights]] for daily transcript generation
+- [[skills/session-insights/]] for daily transcript generation
 - [[learning-log]] for session analysis
 - Manual session review
 

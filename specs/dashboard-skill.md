@@ -182,14 +182,14 @@ Gemini's per-session extraction must include enough for later synthesis:
 - Skill compliance signals
 - Context gaps identified
 
-See [[session-insights-skill]] for Gemini prompt and output format.
+See [[skills/session-insights/]] for Gemini prompt and output format.
 
 ## Relationships
 
 ### Depends On
 
 - [[tasks]] skill for task data loading
-- [[session-insights]] skill for `insights.json` generation
+- [[skills/session-insights/]] skill for `insights.json` generation
 - Streamlit for web rendering
 - `lib/session_reader.py` for session parsing
 

@@ -142,12 +142,12 @@ subtasks:              # optional, list of checklist items
 
 ## Features That Write to Index
 
-| Feature              | What it writes                               | Spec        |
-| -------------------- | -------------------------------------------- | ----------- |
-| [[email]] skill      | New tasks from emails                        | (exists)    |
-| [[session-insights]] | Activity updates, new tasks from transcripts | (exists)    |
-| [[tasks]] skill      | Manual task creation/updates                 | (exists)    |
-| [[daily]] file       | Priority changes, progress updates           | (to define) |
+| Feature                      | What it writes                               | Spec        |
+| ---------------------------- | -------------------------------------------- | ----------- |
+| [[email]] skill              | New tasks from emails                        | (exists)    |
+| [[skills/session-insights/]] | Activity updates, new tasks from transcripts | (exists)    |
+| [[tasks]] skill              | Manual task creation/updates                 | (exists)    |
+| [[daily]] file               | Priority changes, progress updates           | (to define) |
 
 ## Features That Read from Index
 

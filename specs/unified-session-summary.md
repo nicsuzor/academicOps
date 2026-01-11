@@ -82,4 +82,4 @@ Batch mode:
 ### Used By
 
 - [[dashboard-skill]] (reads session JSON)
-- [[daily-skill]] (aggregates for daily notes)
+- [[skills/daily/]] (aggregates for daily notes)

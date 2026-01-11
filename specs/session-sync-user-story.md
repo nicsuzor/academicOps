@@ -168,7 +168,7 @@ This maintains tasks skill authority for checklist operations while allowing pro
 
 ### Extends
 
-- [[session-insights-skill]] - Adds task sync to existing workflow (Step 3)
+- [[skills/session-insights/]] - Adds task sync to existing workflow (Step 3)
 
 ### Uses
 

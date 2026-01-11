@@ -67,7 +67,7 @@ Design documents for the academicOps framework. Per [[AXIOMS]] #29: one spec per
 - [[meta-framework]] - Strategic partner design (implemented)
 - [[knowledge-management-philosophy]] - Everything capture, just-in-time delivery
 - [[enforcement]] - Enforcement layers and mechanisms
-- [[spec-maintenance]] - Ensure specs remain single source of truth (implemented)
+- Spec maintenance - Ensure specs remain single source of truth (implemented)
 
 ## Agent Behavior
 
@@ -101,7 +101,7 @@ Design documents for the academicOps framework. Per [[AXIOMS]] #29: one spec per
 - [[python-dev-skill]] - Fail-fast Python with type safety (implemented)
 - [[feature-dev-skill]] - Test-first development workflow (implemented)
 - [[remember-skill]] - Knowledge persistence to markdown + memory server (implemented)
-- [[session-insights-skill]] - Session mining and heuristic evolution (implemented)
+- [[skills/session-insights/]] - Session mining and heuristic evolution (implemented)
 - [[supervisor-skill]] - Multi-agent orchestration with quality gates (implemented)
 - [[tasks-skill]] - Task lifecycle management (implemented)
 - [[transcript-skill]] - JSONL to markdown session transcripts (implemented)

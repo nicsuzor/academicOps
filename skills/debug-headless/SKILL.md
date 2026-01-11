@@ -133,5 +133,5 @@ ls -la $AOPS/hooks/*.py | head -10
 
 ## Related
 
-- [[session-insights]] - Analyzes session transcripts
+- [[skills/session-insights/]] - Analyzes session transcripts
 - [[transcript]] - Generates markdown from session logs

@@ -91,7 +91,7 @@ Validate that agents correctly discover and use task skill instead of silently w
 
 **Expected behavior**:
 
-- Agent references [[../../../README.md]] or [[CORE.md]]
+- Agent references [[README.md]] or [[CORE.md]]
 - Agent mentions [[task skill|skills/tasks/]] exists
 - Agent knows to use skill for task operations
 

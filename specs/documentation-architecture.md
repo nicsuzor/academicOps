@@ -155,8 +155,8 @@ Framework documentation suffered from overlap and underspecification. Multiple f
 **Related**:
 
 - [[audit-skill]] - enforces this architecture (verifies structure, maintains INDEX.md/README.md)
-- [[audit-plan]] Phase 3 (Framework-Wide Structure Review)
-- [[spec-maintenance]] for spec lifecycle
+- Audit Phase 3 (Framework-Wide Structure Review)
+- Spec lifecycle (maintained via audit skill)
 
 ## Completion Checklist
 

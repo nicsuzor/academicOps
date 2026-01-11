@@ -98,6 +98,6 @@ This command should handle:
 
 ## Related
 
-- [[commands/encode.md]] - Command definition
+- `/encode` command - Command definition (deprecated)
 - [[skills/framework/workflows/01-design-new-component.md]] - Pattern for creating components
 - [[HEURISTICS#H2]] - Skill-First Action Principle (encode patterns for reuse)
