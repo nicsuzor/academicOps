@@ -1,7 +1,7 @@
 ---
 name: edit-source-run-setup
 title: Edit Source, Run Setup
-number: 13
+priority: 28
 type: heuristic
 category: spec
 tags: [framework, heuristics, configuration]

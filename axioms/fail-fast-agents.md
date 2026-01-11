@@ -1,7 +1,7 @@
 ---
 name: fail-fast-agents
 title: Fail-Fast (Agents)
-number: 8
+priority: 9
 type: axiom
 category: spec
 inviolable: true

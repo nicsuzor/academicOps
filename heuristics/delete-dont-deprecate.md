@@ -1,7 +1,7 @@
 ---
 name: delete-dont-deprecate
 title: Delete, Don't Deprecate
-number: 32
+priority: 52
 type: heuristic
 category: spec
 tags: [framework, heuristics, cleanup]

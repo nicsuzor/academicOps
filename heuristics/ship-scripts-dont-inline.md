@@ -1,7 +1,7 @@
 ---
 name: ship-scripts-dont-inline
 title: Ship Scripts, Don't Inline Python
-number: 24
+priority: 44
 type: heuristic
 category: spec
 tags: [framework, heuristics, code]

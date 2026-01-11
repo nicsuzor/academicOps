@@ -136,6 +136,14 @@ Generated indices are root-level files for agent consumption. See [[specs/genera
 
 **Regenerate each deterministically from sources:**
 
+#### AXIOMS.md and HEURISTICS.md
+
+```bash
+cd $AOPS && uv run python scripts/generate_principle_indices.py
+```
+
+Reads `axioms/` and `heuristics/` folders, generates machine-readable indices sorted by priority (1-100 bands: 1-20 core, 21-40 behavioral, 41-60 domain, 61-80 derived, 81-100 experimental).
+
 #### INDEX.md
 
 - Scan `$AOPS/` directory structure

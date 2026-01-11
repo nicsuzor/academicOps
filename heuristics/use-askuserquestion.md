@@ -1,7 +1,7 @@
 ---
 name: use-askuserquestion
 title: Use AskUserQuestion Tool for User Decisions
-number: 16
+priority: 33
 type: heuristic
 category: spec
 tags: [framework, heuristics, interaction]

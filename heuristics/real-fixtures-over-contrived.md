@@ -1,7 +1,7 @@
 ---
 name: real-fixtures-over-contrived
 title: Real Fixtures Over Contrived Examples
-number: 37b
+priority: 59
 type: heuristic
 category: spec
 parent: llm-semantic-evaluation

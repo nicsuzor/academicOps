@@ -1,7 +1,7 @@
 ---
 name: single-purpose-files
 title: Single-Purpose Files
-number: 10
+priority: 11
 type: axiom
 category: spec
 inviolable: true

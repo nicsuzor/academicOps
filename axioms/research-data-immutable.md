@@ -1,7 +1,7 @@
 ---
 name: research-data-immutable
 title: Research Data Is Immutable
-number: 24
+priority: 42
 type: axiom
 category: spec
 inviolable: true

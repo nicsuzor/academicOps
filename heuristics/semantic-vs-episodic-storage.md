@@ -1,7 +1,7 @@
 ---
 name: semantic-vs-episodic-storage
 title: Semantic vs Episodic Storage
-number: 26
+priority: 46
 type: heuristic
 category: spec
 tags: [framework, heuristics, memory, knowledge]

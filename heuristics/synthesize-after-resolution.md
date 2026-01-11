@@ -1,7 +1,7 @@
 ---
 name: synthesize-after-resolution
 title: Synthesize After Resolution
-number: 23
+priority: 43
 type: heuristic
 category: spec
 tags: [framework, heuristics, documentation]

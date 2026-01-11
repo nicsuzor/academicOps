@@ -1,7 +1,7 @@
 ---
 name: streamlit-hot-reloads
 title: Streamlit Hot Reloads
-number: 15
+priority: 30
 type: heuristic
 category: spec
 tags: [framework, heuristics, streamlit, tooling]

@@ -1,7 +1,7 @@
 ---
 name: nothing-is-someone-elses-responsibility
 title: Nothing Is Someone Else's Responsibility
-number: 21
+priority: 30
 type: axiom
 category: spec
 inviolable: true

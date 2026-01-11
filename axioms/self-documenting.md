@@ -1,7 +1,7 @@
 ---
 name: self-documenting
 title: Self-Documenting
-number: 9
+priority: 10
 type: axiom
 category: spec
 inviolable: true

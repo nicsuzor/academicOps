@@ -1,7 +1,7 @@
 ---
 name: no-horizontal-dividers
 title: No Horizontal Line Dividers
-number: 39
+priority: 63
 type: heuristic
 category: spec
 tags: [framework, heuristics, markdown]

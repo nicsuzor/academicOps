@@ -1,7 +1,7 @@
 ---
 name: no-llm-calls-in-hooks
 title: No LLM Calls in Hooks
-number: 31
+priority: 51
 type: heuristic
 category: spec
 tags: [framework, heuristics, hooks]

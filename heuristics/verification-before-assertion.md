@@ -1,7 +1,7 @@
 ---
 name: verification-before-assertion
 title: Verification Before Assertion
-number: 3
+priority: 13
 type: heuristic
 category: spec
 tags: [framework, heuristics, verification]

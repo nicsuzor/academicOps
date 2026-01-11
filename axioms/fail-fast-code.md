@@ -1,7 +1,7 @@
 ---
 name: fail-fast-code
 title: Fail-Fast (Code)
-number: 7
+priority: 8
 type: axiom
 category: spec
 inviolable: true

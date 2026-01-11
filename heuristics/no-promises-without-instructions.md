@@ -1,7 +1,7 @@
 ---
 name: no-promises-without-instructions
 title: No Promises Without Instructions
-number: 11
+priority: 25
 type: heuristic
 category: spec
 tags: [framework, heuristics, commitments]

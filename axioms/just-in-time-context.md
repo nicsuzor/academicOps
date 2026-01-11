@@ -1,7 +1,7 @@
 ---
 name: just-in-time-context
 title: Just-In-Time Context
-number: 25
+priority: 43
 type: axiom
 category: spec
 inviolable: true

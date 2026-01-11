@@ -1,7 +1,7 @@
 ---
 name: no-other-truths
 title: No Other Truths
-number: 0
+priority: 1
 type: axiom
 category: spec
 inviolable: true

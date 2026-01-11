@@ -1,7 +1,7 @@
 ---
 name: plan-first-development
 title: Plan-First Development
-number: 23
+priority: 41
 type: axiom
 category: spec
 inviolable: true

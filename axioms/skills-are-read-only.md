@@ -1,7 +1,7 @@
 ---
 name: skills-are-read-only
 title: Skills Are Read-Only
-number: 14
+priority: 23
 type: axiom
 category: spec
 inviolable: true

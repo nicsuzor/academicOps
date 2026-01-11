@@ -1,7 +1,7 @@
 ---
 name: link-dont-repeat
 title: Link, Don't Repeat
-number: 7
+priority: 17
 type: heuristic
 category: spec
 tags: [framework, heuristics, documentation]

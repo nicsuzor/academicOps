@@ -1,7 +1,7 @@
 ---
 name: design-first-not-constraint-first
 title: Design-First, Not Constraint-First
-number: 30
+priority: 50
 type: heuristic
 category: spec
 tags: [framework, heuristics, design]

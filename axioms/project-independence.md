@@ -1,7 +1,7 @@
 ---
 name: project-independence
 title: Project Independence
-number: 6
+priority: 7
 type: axiom
 category: spec
 inviolable: true

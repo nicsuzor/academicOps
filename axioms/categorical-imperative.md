@@ -1,7 +1,7 @@
 ---
 name: categorical-imperative
 title: Categorical Imperative
-number: 1
+priority: 2
 type: axiom
 category: spec
 inviolable: true

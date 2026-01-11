@@ -1,7 +1,7 @@
 ---
 name: current-state-machine
 title: Current State Machine
-number: 28
+priority: 46
 type: axiom
 category: spec
 inviolable: true

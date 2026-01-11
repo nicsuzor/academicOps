@@ -1,7 +1,7 @@
 ---
 name: verify-first
 title: Verify First
-number: 17
+priority: 26
 type: axiom
 category: spec
 inviolable: true

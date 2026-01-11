@@ -1,7 +1,7 @@
 ---
 name: maintain-relational-integrity
 title: Maintain Relational Integrity
-number: 20
+priority: 29
 type: axiom
 category: spec
 inviolable: true

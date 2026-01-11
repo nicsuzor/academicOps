@@ -1,7 +1,7 @@
 ---
 name: spec-first-file-modification
 title: Spec-First File Modification
-number: 35
+priority: 55
 type: heuristic
 category: spec
 tags: [framework, heuristics, specifications]

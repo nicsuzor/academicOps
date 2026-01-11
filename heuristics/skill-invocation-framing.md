@@ -1,7 +1,7 @@
 ---
 name: skill-invocation-framing
 title: Skill Invocation Framing
-number: 1
+priority: 10
 type: heuristic
 category: spec
 tags: [framework, heuristics, skills]

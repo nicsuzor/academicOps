@@ -1,7 +1,7 @@
 ---
 name: minimal-instructions
 title: Minimal Instructions
-number: 26
+priority: 44
 type: axiom
 category: spec
 inviolable: true

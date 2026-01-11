@@ -1,7 +1,7 @@
 ---
 name: skill-first-action
 title: Skill-First Action
-number: 2
+priority: 12
 type: heuristic
 category: spec
 tags: [framework, heuristics, skills]

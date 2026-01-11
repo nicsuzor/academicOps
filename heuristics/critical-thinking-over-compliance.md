@@ -1,7 +1,7 @@
 ---
 name: critical-thinking-over-compliance
 title: Critical Thinking Over Blind Compliance
-number: 20
+priority: 37
 type: heuristic
 category: spec
 tags: [framework, heuristics, judgment]

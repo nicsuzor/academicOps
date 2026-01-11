@@ -1,7 +1,7 @@
 ---
 name: questions-require-answers
 title: Questions Require Answers, Not Actions
-number: 19
+priority: 36
 type: heuristic
 category: spec
 tags: [framework, heuristics, interaction]

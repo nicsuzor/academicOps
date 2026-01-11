@@ -1,7 +1,7 @@
 ---
 name: check-skill-conventions
 title: Check Skill Conventions Before File Creation
-number: 17
+priority: 34
 type: heuristic
 category: spec
 tags: [framework, heuristics, skills, files]

@@ -1,7 +1,7 @@
 ---
 name: no-workarounds
 title: No Workarounds
-number: 16
+priority: 25
 type: axiom
 category: spec
 inviolable: true

@@ -1,7 +1,7 @@
 ---
 name: mandatory-acceptance-testing
 title: Mandatory Acceptance Testing
-number: 28
+priority: 48
 type: heuristic
 category: spec
 tags: [framework, heuristics, testing]

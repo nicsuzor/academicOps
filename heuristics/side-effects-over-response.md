@@ -1,7 +1,7 @@
 ---
 name: side-effects-over-response
 title: Side-Effects Over Response Text
-number: 37d
+priority: 61
 type: heuristic
 category: spec
 parent: llm-semantic-evaluation

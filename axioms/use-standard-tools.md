@@ -1,7 +1,7 @@
 ---
 name: use-standard-tools
 title: Use Standard Tools
-number: 12
+priority: 21
 type: axiom
 category: spec
 inviolable: true

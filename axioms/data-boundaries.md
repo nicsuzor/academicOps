@@ -1,7 +1,7 @@
 ---
 name: data-boundaries
 title: Data Boundaries
-number: 5
+priority: 6
 type: axiom
 category: spec
 inviolable: true

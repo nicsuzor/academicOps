@@ -1,7 +1,7 @@
 ---
 name: light-instructions-via-reference
 title: Light Instructions via Reference
-number: 10
+priority: 20
 type: heuristic
 category: spec
 tags: [framework, heuristics, documentation]

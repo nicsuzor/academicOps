@@ -1,7 +1,7 @@
 ---
 name: dry-modular-explicit
 title: DRY, Modular, Explicit
-number: 11
+priority: 12
 type: axiom
 category: spec
 inviolable: true

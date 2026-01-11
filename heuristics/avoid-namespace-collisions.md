@@ -1,7 +1,7 @@
 ---
 name: avoid-namespace-collisions
 title: Avoid Namespace Collisions
-number: 8
+priority: 18
 type: heuristic
 category: spec
 tags: [framework, heuristics, naming]

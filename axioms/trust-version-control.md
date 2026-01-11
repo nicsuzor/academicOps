@@ -1,7 +1,7 @@
 ---
 name: trust-version-control
 title: Trust Version Control
-number: 15
+priority: 24
 type: axiom
 category: spec
 inviolable: true

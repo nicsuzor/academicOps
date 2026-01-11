@@ -1,7 +1,7 @@
 ---
 name: feedback-loops-for-uncertainty
 title: Feedback Loops For Uncertainty
-number: 27
+priority: 45
 type: axiom
 category: spec
 inviolable: true

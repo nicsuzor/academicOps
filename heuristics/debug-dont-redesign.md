@@ -1,7 +1,7 @@
 ---
 name: debug-dont-redesign
 title: Debug, Don't Redesign
-number: 27
+priority: 47
 type: heuristic
 category: spec
 tags: [framework, heuristics, debugging]

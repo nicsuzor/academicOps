@@ -1,7 +1,7 @@
 ---
 name: one-spec-per-feature
 title: One Spec Per Feature
-number: 29
+priority: 47
 type: axiom
 category: spec
 inviolable: true

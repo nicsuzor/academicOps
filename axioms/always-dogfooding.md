@@ -1,7 +1,7 @@
 ---
 name: always-dogfooding
 title: Always Dogfooding
-number: 13
+priority: 22
 type: axiom
 category: spec
 inviolable: true

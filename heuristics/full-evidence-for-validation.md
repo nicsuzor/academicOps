@@ -1,7 +1,7 @@
 ---
 name: full-evidence-for-validation
 title: Full Evidence for Human Validation
-number: 37a
+priority: 58
 type: heuristic
 category: spec
 parent: llm-semantic-evaluation

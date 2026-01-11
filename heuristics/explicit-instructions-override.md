@@ -1,7 +1,7 @@
 ---
 name: explicit-instructions-override
 title: Explicit Instructions Override Inference
-number: 4
+priority: 14
 type: heuristic
 category: spec
 tags: [framework, heuristics, instructions]

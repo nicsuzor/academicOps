@@ -1,7 +1,7 @@
 ---
 name: todowrite-vs-persistent-tasks
 title: TodoWrite vs Persistent Tasks
-number: 29
+priority: 49
 type: heuristic
 category: spec
 tags: [framework, heuristics, tasks]

@@ -1,7 +1,7 @@
 ---
 name: no-excuses
 title: No Excuses - Everything Must Work
-number: 18
+priority: 27
 type: axiom
 category: spec
 inviolable: true

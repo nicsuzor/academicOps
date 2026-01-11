@@ -1,7 +1,7 @@
 ---
 name: distinguish-script-vs-llm
 title: Distinguish Script Processing from LLM Reading
-number: 18
+priority: 35
 type: heuristic
 category: spec
 tags: [framework, heuristics, scripts]

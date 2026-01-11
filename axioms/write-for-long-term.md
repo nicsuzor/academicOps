@@ -1,7 +1,7 @@
 ---
 name: write-for-long-term
 title: Write For The Long Term
-number: 19
+priority: 28
 type: axiom
 category: spec
 inviolable: true

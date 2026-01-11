@@ -1,7 +1,7 @@
 ---
 name: core-first-expansion
 title: Core-First Incremental Expansion
-number: 21
+priority: 41
 type: heuristic
 category: spec
 tags: [framework, heuristics, development]

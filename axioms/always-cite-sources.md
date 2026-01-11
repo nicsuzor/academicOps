@@ -1,7 +1,7 @@
 ---
 name: always-cite-sources
 title: Always Cite Sources
-number: 3
+priority: 4
 type: axiom
 category: spec
 inviolable: true

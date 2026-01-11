@@ -1,7 +1,7 @@
 ---
 name: check-docs-before-guessing
 title: Check Documentation Before Guessing Syntax
-number: 3a
+priority: 50
 type: heuristic
 category: spec
 parent: verification-before-assertion

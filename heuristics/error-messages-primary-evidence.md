@@ -1,7 +1,7 @@
 ---
 name: error-messages-primary-evidence
 title: Error Messages Are Primary Evidence
-number: 5
+priority: 15
 type: heuristic
 category: spec
 tags: [framework, heuristics, debugging]

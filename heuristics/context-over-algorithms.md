@@ -1,7 +1,7 @@
 ---
 name: context-over-algorithms
 title: Context Over Algorithms
-number: 12a
+priority: 27
 type: heuristic
 category: spec
 parent: semantic-search-over-keyword

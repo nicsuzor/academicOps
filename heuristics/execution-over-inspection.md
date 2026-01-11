@@ -1,7 +1,7 @@
 ---
 name: execution-over-inspection
 title: Execution Over Inspection
-number: 37c
+priority: 60
 type: heuristic
 category: spec
 parent: llm-semantic-evaluation

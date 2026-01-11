@@ -1,7 +1,7 @@
 ---
 name: semantic-search-over-keyword
 title: Semantic Search Over Keyword Matching
-number: 12
+priority: 26
 type: heuristic
 category: spec
 tags: [framework, heuristics, search, memory]

@@ -1,7 +1,7 @@
 ---
 name: semantic-link-density
 title: Semantic Link Density
-number: 34
+priority: 54
 type: heuristic
 category: spec
 tags: [framework, heuristics, documentation, links]

@@ -1,7 +1,7 @@
 ---
 name: context-uncertainty-favors-skills
 title: Context Uncertainty Favors Skills
-number: 6
+priority: 16
 type: heuristic
 category: spec
 tags: [framework, heuristics, skills]

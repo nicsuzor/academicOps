@@ -1,7 +1,7 @@
 ---
 name: user-centric-acceptance
 title: User-Centric Acceptance Criteria
-number: 25
+priority: 45
 type: heuristic
 category: spec
 tags: [framework, heuristics, requirements]

@@ -1,7 +1,7 @@
 ---
 name: acceptance-criteria-own-success
 title: Acceptance Criteria Own Success
-number: 22
+priority: 31
 type: axiom
 category: spec
 inviolable: true

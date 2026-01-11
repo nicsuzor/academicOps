@@ -1,7 +1,7 @@
 ---
 name: file-category-classification
 title: File Category Classification
-number: 36
+priority: 56
 type: heuristic
 category: spec
 tags: [framework, heuristics, organization]

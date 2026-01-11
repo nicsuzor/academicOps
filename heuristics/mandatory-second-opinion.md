@@ -1,7 +1,7 @@
 ---
 name: mandatory-second-opinion
 title: Mandatory Second Opinion
-number: 14
+priority: 29
 type: heuristic
 category: spec
 tags: [framework, heuristics, planning, review]

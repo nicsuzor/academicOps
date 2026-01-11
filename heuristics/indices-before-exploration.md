@@ -1,7 +1,7 @@
 ---
 name: indices-before-exploration
 title: Indices Before Exploration
-number: 22
+priority: 42
 type: heuristic
 category: spec
 tags: [framework, heuristics, navigation]

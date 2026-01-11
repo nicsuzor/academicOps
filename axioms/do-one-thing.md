@@ -1,7 +1,7 @@
 ---
 name: do-one-thing
 title: Do One Thing
-number: 4
+priority: 5
 type: axiom
 category: spec
 inviolable: true

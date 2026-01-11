@@ -1,7 +1,7 @@
 ---
 name: llm-semantic-evaluation
 title: LLM Semantic Evaluation Over Keyword Matching
-number: 37
+priority: 57
 type: heuristic
 category: spec
 tags: [framework, heuristics, verification]

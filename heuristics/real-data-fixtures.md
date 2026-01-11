@@ -1,7 +1,7 @@
 ---
 name: real-data-fixtures
 title: Real Data Fixtures Over Fabrication
-number: 33
+priority: 53
 type: heuristic
 category: spec
 tags: [framework, heuristics, testing]

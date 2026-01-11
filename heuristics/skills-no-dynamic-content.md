@@ -1,7 +1,7 @@
 ---
 name: skills-no-dynamic-content
 title: Skills Contain No Dynamic Content
-number: 9
+priority: 19
 type: heuristic
 category: spec
 tags: [framework, heuristics, skills]

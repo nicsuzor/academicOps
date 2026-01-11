@@ -1,7 +1,7 @@
 ---
 name: test-failure-requires-user-decision
 title: Test Failure Requires User Decision
-number: 38
+priority: 62
 type: heuristic
 category: spec
 tags: [framework, heuristics, testing]

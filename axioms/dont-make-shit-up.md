@@ -1,7 +1,7 @@
 ---
 name: dont-make-shit-up
 title: Don't Make Shit Up
-number: 2
+priority: 3
 type: axiom
 category: spec
 inviolable: true
