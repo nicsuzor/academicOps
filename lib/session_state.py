@@ -26,6 +26,7 @@ class HydratorState(TypedDict):
     active_skill: str
     intent_envelope: str
     guardrails: list[str]
+    hydration_pending: bool  # True until prompt-hydrator is invoked
 
 
 class ErrorFlag(TypedDict):
@@ -298,3 +299,42 @@ def clear_error_flag(cwd: str) -> None:
 
     state["error_flag"] = None
     save_custodiet_state(cwd, state)
+
+
+# ============================================================================
+# Hydration Gate API (for PreToolUse blocking until hydrator invoked)
+# ============================================================================
+
+
+def is_hydration_pending(cwd: str) -> bool:
+    """Check if hydration is pending for this project.
+
+    Called by PreToolUse gate to block tools until prompt-hydrator is invoked.
+
+    Args:
+        cwd: Current working directory for project hash
+
+    Returns:
+        True if hydration_pending flag is set, False otherwise
+    """
+    state = load_hydrator_state(cwd)
+    if state is None:
+        return False
+    return state.get("hydration_pending", False)
+
+
+def clear_hydration_pending(cwd: str) -> None:
+    """Clear hydration_pending flag.
+
+    Called by PreToolUse gate when it sees Task(prompt-hydrator) invocation.
+    This is the mechanical trigger - only the hook can clear it.
+
+    Args:
+        cwd: Current working directory for project hash
+    """
+    state = load_hydrator_state(cwd)
+    if state is None:
+        return
+
+    state["hydration_pending"] = False
+    save_hydrator_state(cwd, state)

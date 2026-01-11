@@ -71,7 +71,7 @@ def get_cwd() -> str:
     return os.environ.get("CLAUDE_CWD", os.getcwd())
 
 
-def write_initial_hydrator_state(prompt: str) -> None:
+def write_initial_hydrator_state(prompt: str, hydration_pending: bool = True) -> None:
     """Write initial hydrator state with pending workflow.
 
     Called after processing prompt to persist intent_envelope for
@@ -79,6 +79,7 @@ def write_initial_hydrator_state(prompt: str) -> None:
 
     Args:
         prompt: User's original prompt (will be truncated for intent)
+        hydration_pending: Whether hydration gate should block until hydrator invoked
     """
     cwd = get_cwd()
 
@@ -97,6 +98,7 @@ def write_initial_hydrator_state(prompt: str) -> None:
         "active_skill": "",  # To be filled by prompt-hydrator
         "intent_envelope": intent,
         "guardrails": [],  # To be filled by prompt-hydrator
+        "hydration_pending": hydration_pending,  # Gate blocks until hydrator invoked
     }
 
     save_hydrator_state(cwd, state)
@@ -253,6 +255,8 @@ def main():
 
     # Skip hydration for system messages, skill invocations, and user ignore shortcut
     if should_skip_hydration(prompt):
+        # Write state with hydration_pending=False so gate doesn't block
+        write_initial_hydrator_state(prompt, hydration_pending=False)
         output_data = {
             "hookSpecificOutput": {
                 "hookEventName": "UserPromptSubmit",

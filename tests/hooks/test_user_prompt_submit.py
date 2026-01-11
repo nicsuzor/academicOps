@@ -323,6 +323,7 @@ class TestHydratorStateIntegration:
 
         assert exc_info.value.code == 0
 
-        # No state should be written
+        # State IS written, but with hydration_pending=False (so gate doesn't block)
         state = load_hydrator_state(cwd)
-        assert state is None
+        assert state is not None
+        assert state.get("hydration_pending") is False

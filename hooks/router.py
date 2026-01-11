@@ -38,6 +38,9 @@ HOOK_REGISTRY: dict[str, list[dict[str, Any]]] = {
         {"script": "unified_logger.py"},
     ],
     "PreToolUse": [
+        {
+            "script": "hydration_gate.py"
+        },  # Must run first - blocks until hydrator invoked
         {"script": "policy_enforcer.py"},
         {"script": "criteria_gate.py"},
         {"script": "unified_logger.py"},
