@@ -90,6 +90,9 @@ tags: [framework, principles, core]
     - Solutions emerge from accumulated evidence, not speculation
 
 22. **NO FUCKING KEYWORD MATCHING, YOU'RE A LLM.** Don't be stupid, don't be lazy, and don't use outdated NLP.
+    - **FORBIDDEN**: Tokenizers, word counts, regex keyword matching, bag-of-words NLP, any deductive/quantitative pattern matching for quality assessment
+    - **REQUIRED**: LLM semantic evaluation against qualitative criteria
+    - **WHY**: User is a qualitative humanities scholar. Quantitative methods from 1990s computational linguistics are inappropriate for humanistic assessment tasks that require interpretive judgment
 
 ## Domain-Specific Principles
 
