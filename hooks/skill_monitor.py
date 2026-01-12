@@ -33,12 +33,14 @@ DOMAIN_PATTERNS: dict[str, list[str]] = {
 DOMAIN_PRIORITY = ["framework", "analyst", "python-dev"]
 
 # Skill context summaries for injection (brief, not full skill files)
+# For framework, see skills/framework/conventions-summary.md for comprehensive version
 SKILL_SUMMARIES: dict[str, str] = {
-    "framework": """Key constraints:
+    "framework": """Key constraints (see conventions-summary.md for full context):
 - Categorical imperative: Every change must be justifiable as universal rule
+- HALT protocol: Stop, state, ask, document when uncertain
+- Skill delegation: User data ops require skill invocation
 - Plan-mode required for infrastructure changes
-- Follow TDD workflow for all modifications
-- Check CLAUDE.md in component directories""",
+Invoke Skill(skill='framework') for component patterns.""",
     "python-dev": """Key constraints:
 - Fail-fast: No defaults, no fallbacks, no silent failures
 - Type hints required on all functions
