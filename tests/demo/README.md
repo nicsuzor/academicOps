@@ -133,8 +133,36 @@ class TestMyDemo:
             pytest.fail(f"Criteria not met: {', '.join(failed)}")
 ```
 
-## Related
+## Demo Test Coverage Summary
 
-- [[HEURISTICS.md]] H37: LLM Semantic Evaluation
-- Epic ns-5n7: Test Infrastructure & H37 Enforcement
-- Epic ns-6fq: Self-Reflexive Loop Architecture
+| Test File                    | What It Proves                                                                                                                                                                                                                                               |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| [[test_reflexive_loop.py]]   | Custodiet fires during normal agent operation. Runs 6 bash commands → custodiet threshold reached → audit file created. Validates the self-reflexive monitoring loop works.                                                                                  |
+| [[test_skill_discovery.py]]  | Skills are correctly discovered and loaded. Invokes framework skill → agent demonstrates knowledge of workflow files (e.g., "design", "debug") that can only come from loaded skill content.                                                                 |
+| test_hook_sequence.py        | Hooks fire at correct lifecycle events: SessionStart (session completes), UserPromptSubmit (hydrator temp file created), PostToolUse (custodiet audit file created).                                                                                         |
+| test_memory_persistence.py   | Remember skill correctly persists knowledge. Validates three-stage flow: Skill tool invoked → mcp__memory__store_memory called → Write tool creates markdown file.                                                                                           |
+| test_multi_agent.py          | Subagents spawn correctly and return results. Task tool invoked with subagent_type='critic' → critic executes → main agent processes and reports subagent output.                                                                                            |
+| test_compliance_detection.py | Custodiet produces substantive, well-formed audit output. Uses semantic validation (not keyword matching): checks Session Context has ≥3 content lines, AXIOMS has ≥10 numbered items, HEURISTICS has ≥10 H-items, no repeated headers, content ≥1000 chars. |
+| test_core_pipeline.py        | Full hydration pipeline works end-to-end: Stage 1 prompt-hydrator invoked → Stage 2 TodoWrite plan created → Stage 3 python-dev skill invoked → Stage 4 code written via Write tool.                                                                         |
+| test_quality_gates.py        | Critic agent catches issues and provides feedback. Given a deliberately flawed plan ("run migration on production before testing"), verifies critic identifies concerns (risk, rollback, staging, test).                                                     |
+
+### Framework Feature Coverage Estimate
+
+| Category                       | Coverage | Notes                                                                                                                   |
+| ------------------------------ | -------- | ----------------------------------------------------------------------------------------------------------------------- |
+| Hooks Lifecycle                | ~85%     | SessionStart, UserPromptSubmit, PostToolUse all verified; Stop/PreCompact not tested                                    |
+| Custodiet                      | ~50%     | Threshold firing + audit structure verified; violation detection (drift, missing skills, axiom breaches) not yet tested |
+| Skill System                   | ~60%     | Discovery, loading, invocation verified; file references not deeply tested                                              |
+| Multi-Agent                    | ~50%     | Critic subagent verified; other subagents (planner, explore, etc.) not covered                                          |
+| Memory                         | ~70%     | Store + markdown persistence verified; retrieval/search not tested                                                      |
+| Core Pipeline                  | ~80%     | Hydration → workflow → TodoWrite → execution verified                                                                   |
+| Quality Gates                  | ~40%     | Critic review verified; other gates (qa, qa-eval) not covered                                                           |
+| Principles (Axioms/Heuristics) | ~30%     | Loading verified; violation detection not tested                                                                        |
+
+Overall Estimate: ~55-60% of documented framework capabilities are exercised by these 8 demo tests. Key gaps:
+
+- Violation detection semantics (scope drift, axiom breaches)
+- Other subagent types (planner, explore, custodiet variants)
+- Stop/PreCompact hooks
+- Memory retrieval workflows
+- QA/qa-eval quality gates
