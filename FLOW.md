@@ -328,6 +328,7 @@ Currently these rely on prompt-level guidance + periodic custodiet checks.
 | UserPromptSubmit      | user_prompt_submit.py       | Trigger prompt hydration                      |
 | UserPromptSubmit      | unified_logger.py           | Event logging                                 |
 | PreToolUse            | hydration_gate.py           | Block ALL tools until prompt-hydrator invoked |
+| PreToolUse            | sql_validator.py            | Validate SQL queries before execution         |
 | PreToolUse            | policy_enforcer.py          | Block destructive operations                  |
 | PreToolUse            | criteria_gate.py            | Enforce /do Phase 1                           |
 | PreToolUse            | unified_logger.py           | Event logging                                 |

@@ -13,55 +13,56 @@ tags: [framework, heuristics, empirical, generated]
 
 # Heuristics
 
-Working hypotheses validated by evidence. Full definitions: see [[heuristics/]].
+Working hypotheses validated by evidence. Full definitions: see `heuristics/` folder.
 
-| Pri | Name                                                | Statement                                        |
-| --- | --------------------------------------------------- | ------------------------------------------------ |
-| 10  | [[heuristics/skill-invocation-framing.md            | Skill Invocation Framing]]                       |
-| 12  | [[heuristics/skill-first-action.md                  | Skill-First Action]]                             |
-| 13  | [[heuristics/verification-before-assertion.md       | Verification Before Assertion]]                  |
-| 14  | [[heuristics/explicit-instructions-override.md      | Explicit Instructions Override Inference]]       |
-| 15  | [[heuristics/error-messages-primary-evidence.md     | Error Messages Are Primary Evidence]]            |
-| 16  | [[heuristics/context-uncertainty-favors-skills.md   | Context Uncertainty Favors Skills]]              |
-| 17  | [[heuristics/link-dont-repeat.md                    | Link, Don't Repeat]]                             |
-| 18  | [[heuristics/avoid-namespace-collisions.md          | Avoid Namespace Collisions]]                     |
-| 19  | [[heuristics/skills-no-dynamic-content.md           | Skills Contain No Dynamic Content]]              |
-| 20  | [[heuristics/light-instructions-via-reference.md    | Light Instructions via Reference]]               |
-| 25  | [[heuristics/no-promises-without-instructions.md    | No Promises Without Instructions]]               |
-| 26  | [[heuristics/semantic-search-over-keyword.md        | Semantic Search Over Keyword Matching]]          |
-| 27  | [[heuristics/context-over-algorithms.md             | Context Over Algorithms]]                        |
-| 28  | [[heuristics/edit-source-run-setup.md               | Edit Source, Run Setup]]                         |
-| 29  | [[heuristics/mandatory-second-opinion.md            | Mandatory Second Opinion]]                       |
-| 30  | [[heuristics/streamlit-hot-reloads.md               | Streamlit Hot Reloads]]                          |
-| 33  | [[heuristics/use-askuserquestion.md                 | Use AskUserQuestion Tool for User Decisions]]    |
-| 34  | [[heuristics/check-skill-conventions.md             | Check Skill Conventions Before File Creation]]   |
-| 35  | [[heuristics/distinguish-script-vs-llm.md           | Distinguish Script Processing from LLM Reading]] |
-| 36  | [[heuristics/questions-require-answers.md           | Questions Require Answers, Not Actions]]         |
-| 37  | [[heuristics/critical-thinking-over-compliance.md   | Critical Thinking Over Blind Compliance]]        |
-| 41  | [[heuristics/core-first-expansion.md                | Core-First Incremental Expansion]]               |
-| 42  | [[heuristics/indices-before-exploration.md          | Indices Before Exploration]]                     |
-| 43  | [[heuristics/synthesize-after-resolution.md         | Synthesize After Resolution]]                    |
-| 44  | [[heuristics/ship-scripts-dont-inline.md            | Ship Scripts, Don't Inline Python]]              |
-| 45  | [[heuristics/user-centric-acceptance.md             | User-Centric Acceptance Criteria]]               |
-| 46  | [[heuristics/semantic-vs-episodic-storage.md        | Semantic vs Episodic Storage]]                   |
-| 47  | [[heuristics/debug-dont-redesign.md                 | Debug, Don't Redesign]]                          |
-| 48  | [[heuristics/mandatory-acceptance-testing.md        | Mandatory Acceptance Testing]]                   |
-| 49  | [[heuristics/todowrite-vs-persistent-tasks.md       | TodoWrite vs Persistent Tasks]]                  |
-| 50  | [[heuristics/check-docs-before-guessing.md          | Check Documentation Before Guessing Syntax]]     |
-| 50  | [[heuristics/design-first-not-constraint-first.md   | Design-First, Not Constraint-First]]             |
-| 51  | [[heuristics/no-llm-calls-in-hooks.md               | No LLM Calls in Hooks]]                          |
-| 52  | [[heuristics/delete-dont-deprecate.md               | Delete, Don't Deprecate]]                        |
-| 53  | [[heuristics/real-data-fixtures.md                  | Real Data Fixtures Over Fabrication]]            |
-| 54  | [[heuristics/semantic-link-density.md               | Semantic Link Density]]                          |
-| 55  | [[heuristics/spec-first-file-modification.md        | Spec-First File Modification]]                   |
-| 56  | [[heuristics/file-category-classification.md        | File Category Classification]]                   |
-| 57  | [[heuristics/llm-semantic-evaluation.md             | LLM Semantic Evaluation Over Keyword Matching]]  |
-| 58  | [[heuristics/full-evidence-for-validation.md        | Full Evidence for Human Validation]]             |
-| 59  | [[heuristics/real-fixtures-over-contrived.md        | Real Fixtures Over Contrived Examples]]          |
-| 60  | [[heuristics/execution-over-inspection.md           | Execution Over Inspection]]                      |
-| 61  | [[heuristics/side-effects-over-response.md          | Side-Effects Over Response Text]]                |
-| 62  | [[heuristics/test-failure-requires-user-decision.md | Test Failure Requires User Decision]]            |
-| 63  | [[heuristics/no-horizontal-dividers.md              | No Horizontal Line Dividers]]                    |
+| Pri | Name                                    | Statement                                                                                               |
+| --- | --------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| 10  | [[skill-invocation-framing]]            | When directing an agent to use a skill, explain it provides needed context and use explicit syntax: ... |
+| 12  | [[skill-first-action]]                  | Almost all agent actions should follow skill invocation for repeatability.                              |
+| 13  | [[verification-before-assertion]]       | Agents must run verification commands BEFORE claiming success, not after.                               |
+| 14  | [[explicit-instructions-override]]      | When a user provides explicit instructions, follow them literally. Do not interpret, soften, or "imp... |
+| 15  | [[error-messages-primary-evidence]]     | When an error occurs, quote the error message exactly. Never paraphrase.                                |
+| 16  | [[context-uncertainty-favors-skills]]   | When uncertain whether a task requires a skill, invoke it. The cost of unnecessary context is lower ... |
+| 17  | [[link-dont-repeat]]                    | Reference information rather than restating it. Brief inline context OK; multi-line summaries are no... |
+| 18  | [[avoid-namespace-collisions]]          | Use unique names across all namespaces (skills, commands, hooks, agents).                               |
+| 19  | [[skills-no-dynamic-content]]           | Current state lives in $ACA_DATA, not in skills.                                                        |
+| 20  | [[light-instructions-via-reference]]    | Framework instructions should be brief and reference authoritative sources rather than hardcoding co... |
+| 25  | [[no-promises-without-instructions]]    | Create persistent instructions or don't promise. Verbal commitments without framework support will b... |
+| 26  | [[semantic-search-over-keyword]]        | Use memory server for semantic search, never grep markdown for knowledge retrieval.                     |
+| 27  | [[context-over-algorithms]]             | Give agents enough context to make decisions. Never use algorithmic matching (fuzzy, keyword, regex)... |
+| 28  | [[edit-source-run-setup]]               | Never modify runtime config directly. Edit source files and run setup to regenerate.                    |
+| 29  | [[mandatory-second-opinion]]            | Plans must be reviewed by critic agent before presenting to user.                                       |
+| 30  | [[streamlit-hot-reloads]]               | Don't restart Streamlit after changes. It hot-reloads automatically.                                    |
+| 33  | [[use-askuserquestion]]                 | When you need user input to proceed (clarification, choice between options, approval), use the AskUs... |
+| 34  | [[check-skill-conventions]]             | Check relevant skill for naming/format conventions before creating files in domain-specific location... |
+| 35  | [[distinguish-script-vs-llm]]           | Document whether content is for script processing or LLM reading. Workflow differs.                     |
+| 36  | [[questions-require-answers]]           | When user asks a question, ANSWER first. Do not jump to implementing or debugging. After reflection,... |
+| 37  | [[critical-thinking-over-compliance]]   | Apply judgment to instructions. When instructions seem wrong, say so.                                   |
+| 41  | [[core-first-expansion]]                | Only concern ourselves with the core. Expand slowly, one piece at a time.                               |
+| 42  | [[indices-before-exploration]]          | Check index files (ROADMAP.md, README.md, INDEX.md) before using glob/grep to explore.                  |
+| 43  | [[synthesize-after-resolution]]         | Strip deliberation from specs. Keep only the resolved decisions.                                        |
+| 44  | [[ship-scripts-dont-inline]]            | Create scripts, never inline Python in markdown or prompts.                                             |
+| 45  | [[user-centric-acceptance]]             | Describe USER outcomes, not implementation details.                                                     |
+| 46  | [[semantic-vs-episodic-storage]]        | Classify content before creating. Semantic (timeless truth) goes to $ACA_DATA. Episodic (observation... |
+| 47  | [[debug-dont-redesign]]                 | When debugging, propose fixes within current design. Don't pivot architectures without approval.        |
+| 48  | [[mandatory-acceptance-testing]]        | Feature development includes acceptance tests. No feature is complete without verification.             |
+| 49  | [[todowrite-vs-persistent-tasks]]       | TodoWrite for approved steps only. Use bd/tasks for work that spans sessions.                           |
+| 50  | [[check-docs-before-guessing]]          | When uncertain about tool/command syntax, CHECK documentation (--help, guides, MCP tools) instead of... |
+| 50  | [[design-first-not-constraint-first]]   | Start from "what do we need?" not "what do we have?" Current state is not a constraint.                 |
+| 51  | [[cynical-review-of-conclusions]]       | Before attributing failure to a specific cause (model, component, configuration), verify the attribu... |
+| 51  | [[no-llm-calls-in-hooks]]               | Hooks never call LLM directly. Spawn background subagent instead.                                       |
+| 52  | [[delete-dont-deprecate]]               | When consolidating files, DELETE old ones. Don't mark "superseded". Git has history.                    |
+| 53  | [[real-data-fixtures]]                  | Use real captured data for tests, not fabricated examples.                                              |
+| 54  | [[semantic-link-density]]               | Related files MUST link to each other. Orphan files break navigation.                                   |
+| 55  | [[spec-first-file-modification]]        | Check/update governing spec first before modifying framework files.                                     |
+| 56  | [[file-category-classification]]        | Every file has exactly one category (spec, ref, docs, script, instruction, template, state).            |
+| 57  | [[llm-semantic-evaluation]]             | When verifying outcomes, use LLM semantic understanding to evaluate whether the INTENT was satisfied... |
+| 58  | [[full-evidence-for-validation]]        | Demo tests must expose the ENTIRE INTERNAL WORKING of the feature being demonstrated - all intermedi... |
+| 59  | [[real-fixtures-over-contrived]]        | Test real scenarios, not contrived examples that pass surface checks.                                   |
+| 60  | [[execution-over-inspection]]           | Compliance verification REQUIRES actual execution. Comparing fields, validating YAML, pattern matchi... |
+| 61  | [[side-effects-over-response]]          | Use observable side-effects for verification, not response text parsing.                                |
+| 62  | [[test-failure-requires-user-decision]] | When a test fails during verification, agents MUST report failure and STOP. Agents cannot modify tes... |
+| 63  | [[no-horizontal-dividers]]              | Use headings for structure, not horizontal lines (`---`, `***`, `___`). Horizontal lines are visual ... |
 
 ## Domain-Specific Heuristics
 

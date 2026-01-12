@@ -13,40 +13,40 @@ tags: [framework, principles, core, generated]
 
 # Universal Principles
 
-Inviolable rules. Full definitions with evidence: see individual files in [[axioms/]].
+Inviolable rules. Full definitions with evidence: see individual files in `axioms/` folder.
 
-| Pri | Name                                                | Statement                                  |
-| --- | --------------------------------------------------- | ------------------------------------------ |
-| 1   | [[axioms/no-other-truths.md                         | No Other Truths]]                          |
-| 2   | [[axioms/categorical-imperative.md                  | Categorical Imperative]]                   |
-| 3   | [[axioms/dont-make-shit-up.md                       | Don't Make Shit Up]]                       |
-| 4   | [[axioms/always-cite-sources.md                     | Always Cite Sources]]                      |
-| 5   | [[axioms/do-one-thing.md                            | Do One Thing]]                             |
-| 6   | [[axioms/data-boundaries.md                         | Data Boundaries]]                          |
-| 7   | [[axioms/project-independence.md                    | Project Independence]]                     |
-| 8   | [[axioms/fail-fast-code.md                          | Fail-Fast (Code)]]                         |
-| 9   | [[axioms/fail-fast-agents.md                        | Fail-Fast (Agents)]]                       |
-| 10  | [[axioms/self-documenting.md                        | Self-Documenting]]                         |
-| 11  | [[axioms/single-purpose-files.md                    | Single-Purpose Files]]                     |
-| 12  | [[axioms/dry-modular-explicit.md                    | DRY, Modular, Explicit]]                   |
-| 21  | [[axioms/use-standard-tools.md                      | Use Standard Tools]]                       |
-| 22  | [[axioms/always-dogfooding.md                       | Always Dogfooding]]                        |
-| 23  | [[axioms/skills-are-read-only.md                    | Skills Are Read-Only]]                     |
-| 24  | [[axioms/trust-version-control.md                   | Trust Version Control]]                    |
-| 25  | [[axioms/no-workarounds.md                          | No Workarounds]]                           |
-| 26  | [[axioms/verify-first.md                            | Verify First]]                             |
-| 27  | [[axioms/no-excuses.md                              | No Excuses - Everything Must Work]]        |
-| 28  | [[axioms/write-for-long-term.md                     | Write For The Long Term]]                  |
-| 29  | [[axioms/maintain-relational-integrity.md           | Maintain Relational Integrity]]            |
-| 30  | [[axioms/nothing-is-someone-elses-responsibility.md | Nothing Is Someone Else's Responsibility]] |
-| 31  | [[axioms/acceptance-criteria-own-success.md         | Acceptance Criteria Own Success]]          |
-| 41  | [[axioms/plan-first-development.md                  | Plan-First Development]]                   |
-| 42  | [[axioms/research-data-immutable.md                 | Research Data Is Immutable]]               |
-| 43  | [[axioms/just-in-time-context.md                    | Just-In-Time Context]]                     |
-| 44  | [[axioms/minimal-instructions.md                    | Minimal Instructions]]                     |
-| 45  | [[axioms/feedback-loops-for-uncertainty.md          | Feedback Loops For Uncertainty]]           |
-| 46  | [[axioms/current-state-machine.md                   | Current State Machine]]                    |
-| 47  | [[axioms/one-spec-per-feature.md                    | One Spec Per Feature]]                     |
+| Pri | Name                                        | Statement                                                                                               |
+| --- | ------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| 1   | [[no-other-truths]]                         | You MUST NOT assume or decide ANYTHING that is not directly derivable from these axioms.                |
+| 2   | [[categorical-imperative]]                  | Every action taken must be justifiable as a universal rule derived from AXIOMS and the set of framew... |
+| 3   | [[dont-make-shit-up]]                       | If you don't know, say so. No guesses.                                                                  |
+| 4   | [[always-cite-sources]]                     | No plagiarism. Ever.                                                                                    |
+| 5   | [[do-one-thing]]                            | Complete the task requested, then STOP. Don't be so fucking eager.                                      |
+| 6   | [[data-boundaries]]                         | NEVER expose private data in public places. Everything in this repository is PRIVATE unless explicit... |
+| 7   | [[project-independence]]                    | Projects must work independently without cross-dependencies.                                            |
+| 8   | [[fail-fast-code]]                          | No defaults, no fallbacks, no workarounds, no silent failures.                                          |
+| 9   | [[fail-fast-agents]]                        | When YOUR instructions or tools fail, STOP immediately.                                                 |
+| 10  | [[self-documenting]]                        | Documentation-as-code first; never make separate documentation files.                                   |
+| 11  | [[single-purpose-files]]                    | Every file has ONE defined audience and ONE defined purpose. No cruft, no mixed concerns.               |
+| 12  | [[dry-modular-explicit]]                    | One golden path, no defaults, no guessing, no backwards compatibility.                                  |
+| 21  | [[use-standard-tools]]                      | Use uv, pytest, pre-commit, mypy, ruff for Python development.                                          |
+| 22  | [[always-dogfooding]]                       | Use real projects as development guides, test cases, and tutorials. Never create fake examples.         |
+| 23  | [[skills-are-read-only]]                    | Skills MUST NOT contain dynamic data. All mutable state lives in $ACA_DATA.                             |
+| 24  | [[trust-version-control]]                   | We work in git repositories - git is the backup system.                                                 |
+| 25  | [[no-workarounds]]                          | If your tooling or instructions don't work PRECISELY, log the failure and HALT. Don't work around bu... |
+| 26  | [[verify-first]]                            | Check actual state, never assume.                                                                       |
+| 27  | [[no-excuses]]                              | Never close issues or claim success without confirmation. No error is somebody else's problem.          |
+| 28  | [[write-for-long-term]]                     | NEVER create single-use scripts or tests. Build infrastructure that guarantees replicability.           |
+| 29  | [[maintain-relational-integrity]]           | Actively maintain the integrity of our relational database with atomic, canonical markdown files tha... |
+| 30  | [[nothing-is-someone-elses-responsibility]] | If you can't fix it, HALT. You DO NOT IGNORE PROBLEMS HERE.                                             |
+| 31  | [[acceptance-criteria-own-success]]         | Only user-defined acceptance criteria determine whether work is complete. Agents cannot modify, weak... |
+| 41  | [[plan-first-development]]                  | No coding without an approved plan.                                                                     |
+| 42  | [[research-data-immutable]]                 | Source datasets, ground truth labels, records/, and any files serving as evidence for research claim... |
+| 43  | [[just-in-time-context]]                    | Context surfaces automatically when relevant. Missing context is a framework bug.                       |
+| 44  | [[minimal-instructions]]                    | Framework instructions should be no more detailed than required.                                        |
+| 45  | [[feedback-loops-for-uncertainty]]          | When the solution is unknown, don't guess - set up a feedback loop.                                     |
+| 46  | [[current-state-machine]]                   | $ACA_DATA is a semantic memory store containing ONLY current state. Episodic memory (observations) l... |
+| 47  | [[one-spec-per-feature]]                    | One feature = one spec. Specs are timeless - no phases, dates, or migration notes.                      |
 
 ## Corollaries
 
