@@ -1,14 +1,43 @@
 ---
-name: qa-eval
-title: QA Evaluation Skill Specification
+title: QA Evaluation Skill
+type: spec
 category: spec
-type: specification
-description: Black-box quality assurance for verifying work against specifications and user requirements
-permalink: specs/qa-eval
-tags: [qa, verification, compliance, specification]
+status: implemented
+permalink: qa-eval-skill
+tags:
+  - spec
+  - skill
+  - qa
+  - verification
+  - compliance
 ---
 
-# QA Evaluation Skill Specification
+# QA Evaluation Skill
+
+**Status**: Implemented
+See [[skills/qa-eval/SKILL.md]] for full implementation.
+
+## Workflow
+
+```mermaid
+graph TD
+    A[Invoke Skill] --> B[Load Specification]
+    B --> C[Load Work Output]
+    C --> D[Output Quality Checks]
+    D --> E[Process Compliance Checks]
+    E --> F[Semantic Checks]
+    F --> G[Red Flag Detection]
+    G --> H{Any Red Flags?}
+    H -->|Yes| I[HALT - Investigate]
+    H -->|No| J{All Dimensions Pass?}
+    J -->|Yes| K[Verdict: PASS]
+    J -->|Minor Issues| L[Verdict: PASS WITH NOTES]
+    J -->|No| M[Verdict: FAIL]
+    I --> M
+    K --> N[Produce Report]
+    L --> N
+    M --> N
+```
 
 ## Purpose
 
@@ -33,13 +62,12 @@ Users need an independent verification process that:
 
 ## Axiom Derivations
 
-| Axiom                               | Application                                                 |
-| ----------------------------------- | ----------------------------------------------------------- |
-| #7 Fail-Fast                        | If verification cannot complete, HALT - don't rationalize   |
-| #13 Verify First                    | Check actual state, never assume from reports               |
-| #18 No Excuses                      | Everything must work - no partial success                   |
-| #22 Acceptance Criteria Own Success | Only user-defined criteria determine completion             |
-| H37c Execution Over Inspection      | The ONLY proof is running it and observing correct behavior |
+| Axiom                               | Application                                               |
+| ----------------------------------- | --------------------------------------------------------- |
+| #8 Fail-Fast (Code)                 | If verification cannot complete, HALT - don't rationalize |
+| #26 Verify First                    | Check actual state, never assume from reports             |
+| #27 No Excuses                      | Everything must work - no partial success                 |
+| #31 Acceptance Criteria Own Success | Only user-defined criteria determine completion           |
 
 ## Scope
 
@@ -144,7 +172,7 @@ The skill requires:
 - Issue 2: [description] → [suggested fix]
 ```
 
-## Workflow
+## Workflow Steps
 
 1. **Load specification** - Read the spec that defines expected behavior
 2. **Load work output** - Read what was actually produced
@@ -162,11 +190,43 @@ The skill requires:
 | **PASS WITH NOTES** | Minor issues in non-critical areas                    |
 | **FAIL**            | Any critical dimension fails OR any red flag detected |
 
-## Integration Points
+## Relationships
 
-- **Invoked by**: /qa command, QA agent, feature-dev skill (verification phase)
-- **Invokes**: Read (for specs/output), Grep (for pattern detection)
-- **Reports to**: User, memory server (for tracking verification history)
+### Depends On
+
+- Specifications to verify against (file paths or inline)
+- Work output to evaluate (files, command output)
+- Read tool for loading specs and output
+- Grep for pattern detection
+
+### Used By
+
+- [[feature-dev]] skill (verification phase)
+- [[framework-executor]] agent (post-work verification)
+- /qa command for manual verification
+- Any workflow requiring independent verification
+
+### Framework Integration
+
+QA-eval is the final gate before claiming work complete. Should be invoked after implementation, after tests pass, before committing.
+
+## Design Rationale
+
+**Why cynical by default?**
+
+Agents have incentive to claim success. Independent verification must assume failure until proven otherwise. This catches Volkswagen tests and surface-level checks.
+
+**Why three dimensions?**
+
+Output quality catches spec mismatches. Process compliance catches workflow violations. Semantic correctness catches garbage that technically matches format but is useless.
+
+**Why structured reports?**
+
+Actionable findings require traceability. Each issue must trace to a spec requirement or workflow step. Structured format enables systematic remediation.
+
+**Why red flags as HALT triggers?**
+
+Red flags indicate systemic problems, not edge cases. Template bugs, placeholder text, and silent errors require investigation before continuing.
 
 ## Anti-Patterns
 
