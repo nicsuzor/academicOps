@@ -16,6 +16,7 @@ When you see these domain signals, invoke the corresponding skill BEFORE startin
 | ------------------------------------------------------------------------- | ----------------------------- | -------------------------------------- |
 | Python code, pytest, type hints, mypy                                     | `python-dev`                  | Any Python coding work                 |
 | Framework files (skills/, hooks/, agents/, commands/, AXIOMS, HEURISTICS) | `framework`                   | Changes to framework infrastructure    |
+| Debug test failures, find session logs, investigate framework issues      | `framework`                   | Debugging (see workflow 02)            |
 | New functionality, "add", "create", feature requests                      | `feature-dev`                 | Building new features with TDD         |
 | Claude Code hooks, PreToolUse, PostToolUse, hook events                   | `plugin-dev:hook-development` | Hook development                       |
 | MCP servers, .mcp.json, tool integration                                  | `plugin-dev:mcp-integration`  | MCP server integration                 |
