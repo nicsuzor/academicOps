@@ -25,16 +25,35 @@ from lib.paths import get_sessions_dir  # noqa: E402
 def format_markdown(file_path: Path) -> bool:
     """Format markdown file with dprint.
 
-    Returns True if formatting succeeded, False otherwise.
+    Checks multiple locations for dprint, preferring local installs for speed.
+    Skips formatting if no local dprint found (npx is too slow).
+    Returns True if formatting succeeded or skipped, False on error.
     """
+    # Check locations in order of preference (fastest first)
+    dprint_locations = [
+        Path.home() / ".dprint" / "bin" / "dprint",  # Official installer
+        Path(__file__).parent.parent / "node_modules" / ".bin" / "dprint",  # Local npm
+    ]
+
+    dprint_path = None
+    for path in dprint_locations:
+        if path.exists():
+            dprint_path = path
+            break
+
+    if dprint_path is None:
+        # No local dprint found, skip formatting (npx is too slow)
+        return True
+
     try:
         result = subprocess.run(
-            ["npx", "dprint", "fmt", str(file_path)],
+            [str(dprint_path), "fmt", str(file_path)],
             capture_output=True,
             timeout=30,
             check=False,
         )
-        return result.returncode == 0
+        # Exit code 0 = success, 14 = no matching files (OK for external paths)
+        return result.returncode in (0, 14)
     except (subprocess.TimeoutExpired, FileNotFoundError):
         return False
 

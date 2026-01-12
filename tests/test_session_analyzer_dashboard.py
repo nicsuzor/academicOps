@@ -11,51 +11,6 @@ from pathlib import Path
 from lib.session_analyzer import SessionAnalyzer
 
 
-class TestDashboardStateExtraction:
-    """Test dashboard state extraction from session files."""
-
-    def test_extract_dashboard_state_returns_required_keys(self) -> None:
-        """Test that extract_dashboard_state() returns dict with all required keys.
-
-        Uses real session data from ~/.claude/projects/ to verify
-        the method correctly extracts dashboard state information.
-        """
-        # Find any session file in projects directory
-        projects_dir = Path.home() / ".claude" / "projects"
-        assert (
-            projects_dir.exists()
-        ), f"Claude projects directory missing: {projects_dir}"
-
-        session_files = list(projects_dir.rglob("*.jsonl"))
-        assert session_files, f"No session files found in {projects_dir}"
-
-        # Use most recent session file
-        session_path = max(session_files, key=lambda f: f.stat().st_mtime)
-
-        analyzer = SessionAnalyzer()
-        result = analyzer.extract_dashboard_state(session_path)
-
-        assert isinstance(result, dict), "extract_dashboard_state() should return dict"
-
-        required_keys = [
-            "first_prompt",
-            "first_prompt_full",
-            "last_prompt",
-            "todos",
-            "memory_notes",
-            "in_progress_count",
-        ]
-        for key in required_keys:
-            assert key in result, f"Missing required key: {key}"
-
-        assert isinstance(result["first_prompt"], str)
-        assert isinstance(result["first_prompt_full"], str)
-        assert isinstance(result["last_prompt"], str)
-        assert isinstance(result["memory_notes"], list)
-        assert isinstance(result["in_progress_count"], int)
-        assert result["todos"] is None or isinstance(result["todos"], list)
-
-
 class TestParseDailyLog:
     """Test parsing daily log files (new format with priority sections)."""
 

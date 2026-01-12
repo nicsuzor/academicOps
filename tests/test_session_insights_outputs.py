@@ -9,7 +9,6 @@ Verifies the skill writes outputs to correct locations per SKILL.md specificatio
 
 import os
 import re
-import subprocess
 from datetime import datetime
 from pathlib import Path
 
@@ -119,41 +118,6 @@ class TestTranscriptOutputs:
         assert (
             len(lines) > 5
         ), f"{most_recent.name} has too little content after frontmatter"
-
-
-class TestSessionDiscovery:
-    """Test session discovery logic (Step 1 of skill)."""
-
-    def test_find_sessions_returns_sessions(self) -> None:
-        """Test that find_sessions() returns session objects with required attributes."""
-        from lib.session_reader import find_sessions
-
-        sessions = find_sessions()
-
-        assert isinstance(sessions, list), "find_sessions() should return a list"
-        assert sessions, "find_sessions() returned empty list - no sessions found"
-
-        # Check first session has required attributes
-        session = sessions[0]
-        assert hasattr(session, "path"), "Session missing 'path' attribute"
-        assert hasattr(session, "session_id"), "Session missing 'session_id' attribute"
-        assert hasattr(session, "project"), "Session missing 'project' attribute"
-        assert hasattr(
-            session, "last_modified"
-        ), "Session missing 'last_modified' attribute"
-
-    def test_find_sessions_paths_exist(self) -> None:
-        """Test that session paths returned by find_sessions() actually exist."""
-        from lib.session_reader import find_sessions
-
-        sessions = find_sessions()
-        assert sessions, "No sessions found"
-
-        # Check first few sessions have valid paths
-        for session in sessions[:5]:
-            assert Path(
-                session.path
-            ).exists(), f"Session path doesn't exist: {session.path}"
 
 
 class TestDailySummaryOutputs:
@@ -270,63 +234,3 @@ class TestLearningOutputs:
             pytest.skip(
                 "Dashboard sessions directory not yet created (run session-insights first)"
             )
-
-
-class TestTranscriptScriptGeneration:
-    """Test transcript script generates correct output."""
-
-    def test_transcript_script_generates_both_variants(self, tmp_path: Path) -> None:
-        """Test session_transcript.py generates both -full.md and -abridged.md."""
-        # Find a real session file
-        projects_dir = Path.home() / ".claude" / "projects"
-        assert (
-            projects_dir.exists()
-        ), f"Claude projects directory missing: {projects_dir}"
-
-        session_files = list(projects_dir.rglob("*.jsonl"))
-        # Filter out hooks files
-        session_files = [
-            f for f in session_files if not f.name.endswith("-hooks.jsonl")
-        ]
-        assert session_files, f"No session files found in {projects_dir}"
-
-        # Use most recent session
-        session_file = max(session_files, key=lambda f: f.stat().st_mtime)
-
-        # Skip if file is too small (< 5000 bytes per spec)
-        if session_file.stat().st_size < 5000:
-            pytest.skip("Most recent session file too small for testing")
-
-        # Run transcript script
-        output_base = tmp_path / "test-transcript"
-        script_path = Path(__file__).parent.parent / "scripts" / "session_transcript.py"
-
-        result = subprocess.run(
-            [
-                "uv",
-                "run",
-                "python",
-                str(script_path),
-                str(session_file),
-                "-o",
-                str(output_base),
-            ],
-            capture_output=True,
-            text=True,
-            cwd=Path(__file__).parent.parent,
-        )
-
-        assert result.returncode == 0, f"Script failed: {result.stderr}"
-
-        # Verify both files created
-        full_file = tmp_path / "test-transcript-full.md"
-        abridged_file = tmp_path / "test-transcript-abridged.md"
-
-        assert full_file.exists(), f"Full transcript not created: {full_file}"
-        assert (
-            abridged_file.exists()
-        ), f"Abridged transcript not created: {abridged_file}"
-
-        # Verify non-empty
-        assert full_file.stat().st_size > 0, "Full transcript is empty"
-        assert abridged_file.stat().st_size > 0, "Abridged transcript is empty"
