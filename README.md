@@ -67,7 +67,6 @@ Academic support framework for Claude Code. Minimal, fight bloat aggressively.
 | garden               | Incremental PKM maintenance (weeding, linking)                                     |
 | ground-truth         | Establish ground truth labels for evaluation                                       |
 | introspect           | Test framework self-knowledge from session context alone                           |
-| learning-log         | Log patterns to thematic learning files                                            |
 | osb-drafting         | IRAC analysis for Oversight Board cases                                            |
 | pdf                  | Markdown → professional PDF                                                        |
 | python-dev           | Production Python (fail-fast, typed, TDD)                                          |
@@ -96,4 +95,4 @@ Academic support framework for Claude Code. Minimal, fight bloat aggressively.
 - **Skills**: Workflow instructions (`skills/`) - invoke via `Skill` tool
 - **Memory**: `mcp__memory__*` tools for knowledge persistence
 
-See [docs/HOOKS.md](docs/HOOKS.md), [[WORKFLOWS.md]], [[VISION.md]] for details.
+See [[RULES.md]], [[WORKFLOWS.md]], [[VISION.md]] for details.

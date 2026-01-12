@@ -232,6 +232,15 @@ Feature development follows eight phases:
 4. Verify bloat check passes (file size limits)
 5. Confirm framework principles followed
 6. Review code for security issues (injection, XSS, etc.)
+7. **MANDATORY: Spawn critic agent for independent review before commit**:
+   ```
+   Task(subagent_type="critic", model="haiku",
+        description="Critic review: [feature-name]",
+        prompt="Review this implementation against the acceptance criteria: [criteria]. Verify tests actually pass and output is correct. Report any gaps.")
+   ```
+   - Do NOT proceed to commit until critic review completes
+   - If critic finds issues, address them before proceeding
+   - "Tests pass" is necessary but NOT sufficient - critic must verify correctness
 
 **Decision Matrix**:
 

@@ -3,10 +3,61 @@ title: Claude Code Hooks Configuration Guide
 type: reference
 category: ref
 permalink: ref-hooks-guide
-description: Complete technical reference for Claude Code CLI SessionStart hooks, configuration hierarchy, and multi-project patterns
+description: Complete technical reference for Claude Code CLI hooks, configuration hierarchy, multi-project patterns, and academicOps implementation
 ---
 
-# Claude Code CLI SessionStart Hook System: Complete Technical Reference
+# Claude Code Hooks: Complete Technical Reference
+
+This document covers both Claude Code's hook system and the academicOps implementation. All hooks live in `$AOPS/hooks/`.
+
+## academicOps Active Hooks
+
+| File                          | Event            | Purpose                           |
+| ----------------------------- | ---------------- | --------------------------------- |
+| session_env_setup.sh          | SessionStart     | Environment setup                 |
+| sessionstart_load_axioms.py   | SessionStart     | Injects AXIOMS, FRAMEWORK, HEURISTICS |
+| user_prompt_submit.py         | UserPromptSubmit | Context enrichment via temp file  |
+| policy_enforcer.py            | PreToolUse       | Block destructive operations      |
+| autocommit_state.py           | PostToolUse      | Auto-commit data/ changes         |
+| unified_logger.py             | ALL events       | Universal event logging           |
+
+**Architecture principle**: Hooks inject context - they don't do LLM reasoning. Timeouts: 2-30 seconds. Hooks must NOT call the Claude/Anthropic API directly.
+
+## Router Architecture
+
+All hooks are dispatched through a single router (`hooks/router.py`). This consolidates multiple hook outputs into a single response.
+
+### Async Dispatch
+
+Hooks can run async to maximize execution time. Add `"async": True` to the hook config:
+
+1. Start async hook
+2. Run other hooks sync
+3. Collect async hook result
+4. Merge all outputs
+
+### Adding New Hooks
+
+Register hooks in `HOOK_REGISTRY` in `hooks/router.py`:
+
+```python
+HOOK_REGISTRY = {
+    "SessionStart": [
+        {"script": "session_env_setup.sh"},
+        {"script": "your_new_hook.py"},
+    ],
+}
+```
+
+For async execution, add `"async": True`:
+
+```python
+{"script": "slow_hook.py", "async": True}
+```
+
+---
+
+# Claude Code Hook System: Configuration Reference
 
 Claude Code CLI **can load SessionStart hooks from paths outside the current working directory**, but the mechanism differs from what many developers expect. Hooks are configured through a hierarchical settings system, not auto-discovered from directories, and commands within those hooks can reference scripts anywhere on the filesystem using absolute paths or the `$CLAUDE_PROJECT_DIR` environment variable.
 

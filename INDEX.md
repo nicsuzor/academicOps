@@ -76,7 +76,7 @@ $AOPS/
 │   ├── email.md                 # Email → task extraction
 │   ├── encode.md                # Capture work patterns as workflows/skills
 │   ├── learn.md                 # Minor instruction adjustments
-│   ├── log.md                   # → learning-log skill
+│   ├── log.md                   # → framework skill workflow 07
 │   ├── meta.md                  # Strategic brain + executor
 │   ├── next.md                  # Task recommendations (should/enjoy/quick)
 │   ├── parallel-batch.md        # Parallel file processing
@@ -111,7 +111,6 @@ $AOPS/
 ├── docs/                        # Extended documentation
 │   ├── ENFORCEMENT.md           # Enforcement mechanism selection guide
 │   ├── execution-flow.md        # Execution flow diagrams (Mermaid)
-│   ├── HOOKS.md                 # Hook architecture overview
 │   ├── JIT-INJECTION.md         # Just-in-time context injection
 │   ├── OBSERVABILITY.md         # Observability and logging schema
 │   ├── testing-patterns.md      # Testing patterns and conventions
@@ -270,14 +269,13 @@ $AOPS/
 │   │
 │   ├── framework/               # Convention reference for infrastructure
 │   │   ├── SKILL.md             # Paths, patterns, anti-bloat rules
-│   │   ├── SPEC-TEMPLATE.md     # Specification template
-│   │   ├── TASK-SPEC-TEMPLATE.md  # Task spec template
+│   │   ├── SPEC-TEMPLATE.md     # Specification template (user story + acceptance criteria first)
 │   │   ├── scripts/
 │   │   │   └── validate_docs.py     # Documentation validator
 │   │   ├── references/
 │   │   │   ├── claude-code-config.md     # Claude Code config guide
 │   │   │   ├── e2e-test-harness.md       # E2E test harness
-│   │   │   ├── hooks_guide.md            # Hooks development guide
+│   │   │   ├── hooks.md                  # Hooks technical reference (merged from docs/HOOKS.md)
 │   │   │   ├── script-design-guide.md    # Script design guide
 │   │   │   └── strategic-partner-mode.md # Strategic partner mode
 │   │   ├── workflows/
@@ -304,8 +302,6 @@ $AOPS/
 │   ├── ground-truth/            # Ground truth label management
 │   │   └── SKILL.md             # Main skill file
 │   │
-│   ├── learning-log/            # Pattern logging to thematic files
-│   │   └── SKILL.md             # → may invoke transcript skill
 │   │
 │   ├── daily/                   # Daily note lifecycle (morning briefing, task recs, session sync)
 │   │   └── SKILL.md             # SSoT for daily note structure and workflows
@@ -426,7 +422,7 @@ $AOPS/
 │   ├── hook-router.md               # Hook router spec
 │   ├── informed-improvement-options.md  # Improvement options spec
 │   ├── knowledge-management-philosophy.md  # KM philosophy
-│   ├── learning-log-skill.md        # Learning log skill spec
+│   ├── learning-log-skill.md        # Learning log workflow spec (now framework workflow 07)
 │   ├── meta-framework-advisor.md    # Meta framework spec
 │   ├── multi-terminal-sync.md       # Multi-terminal sync spec
 │   ├── parallel-batch-command.md    # Parallel batch spec
@@ -536,7 +532,7 @@ $AOPS/
 | /q          | tasks skill (delayed /do)                      |
 | /meta       | framework, python-dev skills                   |
 | /ttd        | TDD workflow (via /do)                         |
-| /log        | learning-log skill                             |
+| /log        | framework skill (workflow 07)                  |
 | /transcript | transcript skill                               |
 | /remember   | remember skill                                 |
 
@@ -545,15 +541,15 @@ $AOPS/
 | Location                       | Workflows                                             | Loaded By            |
 | ------------------------------ | ----------------------------------------------------- | -------------------- |
 | `skills/supervisor/workflows/` | tdd, batch-review                                     | `/ttd`, `/do`        |
-| `skills/framework/workflows/`  | 01-design, 02-debug, 03-experiment, 04-bloat, 06-spec | `Skill("framework")` |
+| `skills/framework/workflows/`  | 01-design, 02-debug, 03-experiment, 04-bloat, 06-spec, 07-learning-log | `Skill("framework")` |
 
 ### Skill → Skill Dependencies
 
 | Skill            | May Invoke                            |
 | ---------------- | ------------------------------------- |
-| log              | transcript (when given session JSONL) |
+| /log             | framework (workflow 07)               |
 | transcript       | (none - wraps script)                 |
-| session-insights | transcript, learning-log              |
+| session-insights | transcript                            |
 
 ### Agent → Skill Routing
 

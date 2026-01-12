@@ -84,7 +84,6 @@ Every framework file belongs to exactly one category. This classification determ
 **Examples**:
 
 - `docs/ENFORCEMENT.md` - How to choose enforcement mechanisms
-- `docs/HOOKS.md` - How to work with hooks
 - `docs/OBSERVABILITY.md` - How to observe framework behavior
 
 **Key distinction**: DOCS is HOW-TO content. SPEC is WHY/WHAT design. REF is external knowledge.
