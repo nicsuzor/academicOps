@@ -8,14 +8,26 @@ permalink: workflows
 tags: [framework, routing, workflows, enforcement]
 ---
 
-<!-- NS: this file has to be a lot clearer and easier to follow for a hydrator making a decision tree assessment. refactor and simplify. -->
-<!-- @claude 2026-01-12: Acknowledged. Issue ns-0a3 tracks refactoring this file for clarity and simplification. The goal is to make it easier for hydrators to follow the decision tree and assess which workflow applies to a given request. -->
-
 # Workflow Catalog & Agent Mandates
 
 **Purpose**: This file is the **OS Kernel** for the agent. It defines the strict, repeatable processes that MUST be followed to ensure quality, observability, and safety.
 
 **Philosophy**: We are an academic framework. We value **rigor over speed**, **verification over assumption**, and **observability over magic**.
+
+## Workflow Selection (Quick Reference)
+
+Select workflow by matching user intent to the first matching row:
+
+| Intent Signal                                        | Workflow                                          | Primary Delegation                        |
+| ---------------------------------------------------- | ------------------------------------------------- | ----------------------------------------- |
+| "implement", "create", "add feature", "refactor"     | [TDD](#1-tdd-feature-development)                 | `Skill(skill="feature-dev")` → subagents  |
+| "fix", "bug", "error", "broken"                      | [Debugging](#2-debugging-minor-edit--fix)         | `Skill(skill="[domain]")` → subagent      |
+| "all files", "for every", "batch", "process dataset" | [Batch](#3-batch-operations)                      | Parallel `Task()` subagents               |
+| "plan", "design", "structure", "system change"       | [Framework](#4-framework--architecture-plan-mode) | `EnterPlanMode()` → critic                |
+| "?", "how", "explain", "what is"                     | [Question](#5-question)                           | `Skill(skill="[domain]")` → answer & HALT |
+| "verify", "check", "investigate", "audit"            | [QA](#6-qa--investigation)                        | Evidence gathering → conclusion           |
+
+**Orchestrator principle**: The main agent coordinates. It does NOT implement. Every implementation step delegates to a subagent or skill.
 
 ## 🔴 Universal Mandates (The "Rules of Engagement")
 
@@ -77,10 +89,7 @@ When executing a task, you are the **Orchestrator**. Do not implement complex lo
 
 ## 🔵 Workflow Tracks
 
-Select the specific track based on the user's intent.
-
-<!-- NS: ensure that each step requires invoking the appropriate agent or skill -- main agent should do nothing itself if it can delegate -->
-<!-- @claude 2026-01-12: Acknowledged. Issue ns-pvs tracks ensuring proper delegation throughout these workflow templates. Every step should invoke an agent or skill where possible, with the main orchestrating agent only coordinating rather than implementing. -->
+Select the specific track based on the user's intent. See [Workflow Selection](#workflow-selection-quick-reference) matrix above.
 
 ### 1. TDD (Feature Development)
 
@@ -94,8 +103,8 @@ TodoWrite(todos=[
   {content: "Step 1: Invoke Skill(skill='feature-dev') for TDD guidance", status: "pending", activeForm: "Loading skill"},
   {content: "Step 2: Invoke Skill(skill='[domain]') for conventions", status: "pending", activeForm: "Loading skill"},
   {content: "Step 3: Define acceptance criteria (user outcomes)", status: "pending", activeForm: "Defining acceptance"},
-  {content: "Step 4: Write failing test that defines success", status: "pending", activeForm: "Writing test"},
-  {content: "Step 5: Implement to make test pass", status: "pending", activeForm: "Implementing"},
+  {content: "Step 4: Delegate test writing - Task(subagent_type='general-purpose', prompt='Write failing test for [criteria]')", status: "pending", activeForm: "Delegating test"},
+  {content: "Step 5: Delegate implementation - Task(subagent_type='general-purpose', prompt='Implement to pass test')", status: "pending", activeForm: "Delegating implementation"},
   {content: "CHECKPOINT: Run pytest to verify all tests pass", status: "pending", activeForm: "Verifying"},
   {content: "Step 7: Commit and push", status: "pending", activeForm: "Committing"}
 ])
@@ -112,8 +121,8 @@ TodoWrite(todos=[
 TodoWrite(todos=[
   {content: "Step 1: Reproduce error with a DURABLE test - run build, quote error message EXACTLY", status: "pending", activeForm: "Reproducing error"},
   {content: "Step 2: Invoke Skill(skill='[domain]') for conventions", status: "pending", activeForm: "Loading skill"},
-  {content: "Step 3: Read file and understand the error state", status: "pending", activeForm: "Understanding"},
-  {content: "Step 4: Implement fix following conventions", status: "pending", activeForm: "Implementing fix"},
+  {content: "Step 3: Read file and understand the error state (orchestrator context-gathering)", status: "pending", activeForm: "Understanding"},
+  {content: "Step 4: Delegate fix - Task(subagent_type='general-purpose', prompt='Fix [error] following [domain] conventions')", status: "pending", activeForm: "Delegating fix"},
   {content: "CHECKPOINT: Run build/repro to verify fix works", status: "pending", activeForm: "Verifying"},
   {content: "Step 6: Commit and push", status: "pending", activeForm: "Committing"}
 ])
