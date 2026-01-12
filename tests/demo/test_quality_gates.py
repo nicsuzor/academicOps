@@ -34,17 +34,19 @@ class TestQualityGatesDemo:
         print("=" * 80)
 
         # Present a flawed plan that critic should catch issues with
+        # NOTE: Must explicitly specify Task(subagent_type='critic') because
+        # "critic agent" alone is ambiguous - models may look for a skill instead
         prompt = (
             "I have this plan for implementing a new database migration: "
             "'1. Write migration script, 2. Run on production, 3. Test if it worked'. "
-            "Use the critic agent to review this plan and report any concerns."
+            "Use Task(subagent_type='critic') to review this plan and report any concerns."
         )
 
         print(f"\n--- TASK ---\n{prompt}")
         print("\n--- EXECUTING HEADLESS SESSION ---")
 
         result, session_id, tool_calls = claude_headless_tracked(
-            prompt, timeout_seconds=180, model="haiku"
+            prompt, timeout_seconds=360, model="haiku"
         )
 
         print(f"\nSession ID: {session_id}")
