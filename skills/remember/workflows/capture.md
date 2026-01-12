@@ -10,6 +10,7 @@ tags:
 ---
 
 <!-- NS: this should be merged into 'remember' skill -->
+<!-- @claude 2026-01-12: Issue ns-3p3 created to track merging this workflow into the remember skill -->
 
 # Capture Workflow
 

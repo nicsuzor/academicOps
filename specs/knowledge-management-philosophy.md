@@ -9,6 +9,7 @@ created: 2025-11-21
 ---
 
 <!-- NS: edit to remove bmem structure (observation sections etc) -->
+<!-- @claude 2026-01-12: Issue ns-cvs created to track removing the old bmem structure -->
 
 # Knowledge Management Philosophy
 

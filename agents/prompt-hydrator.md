@@ -61,6 +61,12 @@ Note: AXIOMS.md and HEURISTICS.md and WORKFLOWS.md are already in the input file
 
 Refer to **`WORKFLOWS.md`** and select the track based on semantic intent (TDD, Batch, etc.).
 
+**Batch workflow detection**: If the task involves processing multiple independent items (files, annotations, records), select the **batch** workflow. For batch workflows:
+
+- Include a step to spawn parallel subagents for independent items
+- Use `Task(..., run_in_background=true)` pattern in the plan
+- Multiple Task() calls in a single message execute concurrently
+
 **Interactive workflow detection**: If the user prompt contains collaborative language ("one by one", "work through with me", "show me each", "let me review each"), this signals an INTERACTIVE workflow where the user wants to review/approve each iteration. For these prompts:
 
 - Insert AskUserQuestion checkpoints AFTER each iteration

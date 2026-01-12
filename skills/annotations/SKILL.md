@@ -25,9 +25,10 @@ Comments use HTML syntax for universal markdown compatibility (GitHub, Obsidian,
 Find all pending human annotations that need response.
 
 <!-- @nicsuzor: use 'rg' instead of grep, run case insensitive, and make the '@' optional  -->
+<!-- @claude 2026-01-12: Done. Updated pattern to use Grep tool (which uses rg), added -i for case insensitive, and made @ optional in the pattern. -->
 
 ```bash
-Grep(pattern="<!--\\s*@(nic|ns):", path="$ACA_DATA", output_mode="content", -C=2)
+Grep(pattern="<!--\\s*@?(nic|ns|nicsuzor):", path="$ACA_DATA", output_mode="content", -C=2, -i=true)
 ```
 
 Output: List of files with pending comments, showing context.
@@ -37,6 +38,7 @@ Output: List of files with pending comments, showing context.
 Process annotations in a specific file:
 
 <!-- @nicsuzor: ensure that comments are added to `bd`. Once they are fully captured, they can be deleted from the source file. -->
+<!-- @claude 2026-01-12: Done. Updated workflow to create bd issues for actionable annotations before responding. See step 3 below. -->
 
 1. Read the file
 2. Find all `<!-- @nic:` or `<!-- @ns:` comments

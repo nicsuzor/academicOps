@@ -86,6 +86,9 @@ ls -la /path/to/output.md
 cat /path/to/output.md | head -100  # Then READ IT YOURSELF
 ```
 
+<!-- NS: Create a qa subagent that merges and replaces this and the qa skill  -->
+<!-- @claude 2026-01-12: Acknowledged. A dedicated qa subagent should consolidate the qa command (instructions/workflows) and qa skill (utility functions) into a single coherent agent with clear authority and responsibility for black-box quality assurance verification. This work is tracked in issue ns-njg. -->
+
 **YOU MUST READ THE OUTPUT.** Not grep for keywords. Not check file size. ACTUALLY READ IT.
 
 Ask yourself:

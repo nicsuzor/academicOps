@@ -148,7 +148,7 @@ For each subtask, determine:
 -
   3. [ ] Implement core [depends:: 2]
 -
-  4. [ ] Write tests [depends:: 2] <!-- NS: can parallel with 3 -->
+  4. [ ] Write tests [depends:: 2] <!-- NS: can parallel with 3 --> <!-- @claude 2026-01-12: Correct - step 4 depends only on step 2 (design), not on step 3 completion, enabling parallel execution with step 3 for efficient workflow pipelining -->
 -
   5. [ ] Integration testing [depends:: 3, 4]
 ```

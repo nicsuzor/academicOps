@@ -9,6 +9,7 @@ tags: [framework, routing, workflows, enforcement]
 ---
 
 <!-- NS: this file has to be a lot clearer and easier to follow for a hydrator making a decision tree assessment. refactor and simplify. -->
+<!-- @claude 2026-01-12: Acknowledged. Issue ns-0a3 tracks refactoring this file for clarity and simplification. The goal is to make it easier for hydrators to follow the decision tree and assess which workflow applies to a given request. -->
 
 # Workflow Catalog & Agent Mandates
 
@@ -79,6 +80,7 @@ When executing a task, you are the **Orchestrator**. Do not implement complex lo
 Select the specific track based on the user's intent.
 
 <!-- NS: ensure that each step requires invoking the appropriate agent or skill -- main agent should do nothing itself if it can delegate -->
+<!-- @claude 2026-01-12: Acknowledged. Issue ns-pvs tracks ensuring proper delegation throughout these workflow templates. Every step should invoke an agent or skill where possible, with the main orchestrating agent only coordinating rather than implementing. -->
 
 ### 1. TDD (Feature Development)
 
@@ -119,20 +121,29 @@ TodoWrite(todos=[
 
 ### 3. Batch Operations
 
-**Trigger**: "all files", "for every", "process dataset"
-**Mandate**: **Resumability**. Never rely on session memory for long-running tasks.
+**Trigger**: "all files", "for every", "process dataset", skill discovers multiple items
+**Mandate**: **Resumability + Parallel Delegation**. Never rely on session memory for long-running tasks. Spawn subagents for parallelizable items.
 
 **Execution Template**:
 
 ```javascript
 TodoWrite(todos=[
   {content: "Step 1: Identify all items to process: [description]", status: "pending", activeForm: "Identifying items"},
-  {content: "Step 2: Process first subset (items 1-N)", status: "pending", activeForm: "Processing batch 1"},
-  {content: "CHECKPOINT: Verify subset processed correctly", status: "pending", activeForm: "Verifying batch"},
-  // Repeat for each batch...
-  {content: "Step N: Aggregate QA - verify all items processed", status: "pending", activeForm: "Final verification"},
+  {content: "Step 2: Spawn parallel subagents for independent items", status: "pending", activeForm: "Delegating to subagents"},
+  {content: "CHECKPOINT: Verify all subagents completed successfully", status: "pending", activeForm: "Verifying batch"},
+  {content: "Step 3: Aggregate QA - verify all items processed", status: "pending", activeForm: "Final verification"},
   {content: "Final: Commit and push", status: "pending", activeForm: "Committing"}
 ])
+```
+
+**Parallel Delegation Pattern** (for independent items):
+
+```python
+# Spawn multiple subagents in a SINGLE message for parallel execution
+Task(subagent_type="general-purpose", prompt="Process item 1: [details]", run_in_background=true)
+Task(subagent_type="general-purpose", prompt="Process item 2: [details]", run_in_background=true)
+Task(subagent_type="general-purpose", prompt="Process item 3: [details]", run_in_background=true)
+# All run concurrently - check TaskOutput when done
 ```
 
 ### 4. Framework / Architecture (Plan Mode)

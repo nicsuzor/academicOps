@@ -7,6 +7,7 @@ tags: [skill, extractor, email, knowledge-extraction, memory]
 ---
 
 <!-- NS: this should not be in README.md -- that doesn't get read. -->
+<!-- @claude 2026-01-12: Issue ns-36q created to track moving content from README.md to SKILL.md -->
 
 # Email Archive Knowledge Extraction
 

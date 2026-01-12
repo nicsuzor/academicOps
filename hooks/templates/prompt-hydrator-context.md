@@ -20,14 +20,14 @@ Transform this user prompt into a complete execution plan.
 
 Select the appropriate workflow based on task signals:
 
-| Workflow       | Trigger Signals                       | Quality Gate            | Iteration Unit               |
-| -------------- | ------------------------------------- | ----------------------- | ---------------------------- |
-| **question**   | "?", "how", "what", "explain"         | Answer accuracy         | N/A (answer then stop)       |
-| **minor-edit** | Single file, clear change             | Verification            | Edit → verify → commit       |
-| **tdd**        | "implement", "add feature", "create"  | Tests pass              | Test → code → commit         |
-| **batch**      | Multiple files, "all", "each"         | Per-item + aggregate QA | Subset → apply → verify      |
-| **qa-proof**   | "verify", "check", "investigate"      | Evidence gathered       | Hypothesis → test → evidence |
-| **plan-mode**  | Framework, infrastructure, multi-step | User approval           | Plan → approve → execute     |
+| Workflow       | Trigger Signals                                               | Quality Gate            | Iteration Unit                    |
+| -------------- | ------------------------------------------------------------- | ----------------------- | --------------------------------- |
+| **question**   | "?", "how", "what", "explain"                                 | Answer accuracy         | N/A (answer then stop)            |
+| **minor-edit** | Single file, clear change                                     | Verification            | Edit → verify → commit            |
+| **tdd**        | "implement", "add feature", "create"                          | Tests pass              | Test → code → commit              |
+| **batch**      | Multiple files, "all", "each", skill discovers multiple items | Per-item + aggregate QA | Spawn parallel subagents → verify |
+| **qa-proof**   | "verify", "check", "investigate"                              | Evidence gathered       | Hypothesis → test → evidence      |
+| **plan-mode**  | Framework, infrastructure, multi-step                         | User approval           | Plan → approve → execute          |
 
 ## Per-Step Skill Assignment
 
@@ -47,14 +47,14 @@ Each step can invoke a different skill. Don't assign one skill to the whole task
 
 ## Guardrails by Workflow
 
-| Workflow   | Guardrails                                             |
-| ---------- | ------------------------------------------------------ |
-| question   | `answer_only`                                          |
-| minor-edit | `verify_before_complete`, `fix_within_design`          |
-| tdd        | `require_acceptance_test`, `verify_before_complete`    |
-| batch      | `per_item_verification`, `aggregate_qa`                |
-| qa-proof   | `evidence_required`, `quote_errors_exactly`            |
-| plan-mode  | `plan_mode`, `critic_review`, `user_approval_required` |
+| Workflow   | Guardrails                                                    |
+| ---------- | ------------------------------------------------------------- |
+| question   | `answer_only`                                                 |
+| minor-edit | `verify_before_complete`, `fix_within_design`                 |
+| tdd        | `require_acceptance_test`, `verify_before_complete`           |
+| batch      | `per_item_verification`, `aggregate_qa`, `parallel_subagents` |
+| qa-proof   | `evidence_required`, `quote_errors_exactly`                   |
+| plan-mode  | `plan_mode`, `critic_review`, `user_approval_required`        |
 
 ## Framework Paths
 
