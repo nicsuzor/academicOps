@@ -23,7 +23,7 @@ Extract accomplishments and learnings from session transcripts via Gemini.
 
 DO NOT PROCEED IF A SESSION FILE ALREADY EXISTS.
 
-- Check:`$ACA_DATA/dashboard/sessions/{session_id}.json`
+- Check:`$ACA_DATA/sessions/insights/{date}-{session_id}.json`
 
 ### Step 1: Generate Transcript
 
@@ -57,8 +57,10 @@ mcp__gemini__ask-gemini(
 Extract JSON from Gemini response and save to:
 
 ```
-$ACA_DATA/dashboard/sessions/{session_id}.json
+$ACA_DATA/sessions/insights/{date}-{session_id}.json
 ```
+
+Format: `YYYY-MM-DD-{session_id}.json` (e.g., `2025-01-12-a1b2c3d4.json`)
 
 ### Step 5: Report
 
@@ -86,7 +88,7 @@ For each transcript path:
 
 1. Run `mine_transcript.py` to prepare prompt
 2. Call Gemini MCP with transcript + prompt
-3. Save JSON to `$ACA_DATA/dashboard/sessions/{session_id}.json`
+3. Save JSON to `$ACA_DATA/sessions/insights/{date}-{session_id}.json`
 
 Limit to 3-5 per invocation to avoid timeouts.
 
@@ -160,6 +162,8 @@ bd close {issue_id} --reason="Learning integrated into HEURISTICS.md H##"
 
 ## Output
 
-`$ACA_DATA/dashboard/sessions/{session_id}.json`
+`$ACA_DATA/sessions/insights/{date}-{session_id}.json`
+
+Format: `YYYY-MM-DD-{session_id}.json` (e.g., `2025-01-12-a1b2c3d4.json`)
 
 Schema defined in `insights.md`.

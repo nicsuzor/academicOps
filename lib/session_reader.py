@@ -1301,14 +1301,17 @@ def get_session_state(session: SessionInfo, aca_data: Path) -> SessionState:
         return SessionState.PENDING_TRANSCRIPT
 
     # 2. Check for Mining JSON
-    # Pattern: $ACA_DATA/dashboard/sessions/{session_id}.json
-    dashboard_sessions = aca_data / "dashboard" / "sessions"
-    mining_json = dashboard_sessions / f"{session_id}.json"
-    has_mining = mining_json.exists()
+    # Pattern: $ACA_DATA/sessions/insights/{date}-{session_id}.json
+    insights_dir = aca_data / "sessions" / "insights"
+    has_mining = False
 
-    if not has_mining and len(session_id) > 8:
-        # Check for truncated ID (common in session-insights output)
-        has_mining = (dashboard_sessions / f"{session_prefix}.json").exists()
+    if insights_dir.exists():
+        # New format: {date}-{session_id}.json (e.g., 2025-01-12-a1b2c3d4.json)
+        pattern = str(insights_dir / f"*-{session_prefix}.json")
+        import glob as glob_module
+
+        matches = glob_module.glob(pattern)
+        has_mining = bool(matches)
 
     if not has_mining:
         return SessionState.PENDING_MINING

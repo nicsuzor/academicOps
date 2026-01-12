@@ -206,7 +206,7 @@ while IFS= read -r transcript_path; do
     echo "$(date '+%Y-%m-%d %H:%M:%S') - Mining: $transcript_path (session: $session_id, project: $project)"
 
     # Ensure output directory exists
-    mkdir -p "$ACA_DATA/dashboard/sessions"
+    mkdir -p "$ACA_DATA/sessions/insights"
 
     # Build prompt with substitutions (correct path to insights.md)
     PROMPT=$(cat "$FRAMEWORK_ROOT/skills/session-insights/insights.md" | \
@@ -217,7 +217,8 @@ while IFS= read -r transcript_path; do
     # Call Gemini to mine the transcript
     # Run from transcript directory so Gemini can access the file
     # Disable MCP servers for headless execution
-    OUTPUT_FILE="$ACA_DATA/dashboard/sessions/$session_id.json"
+    # Output format: [DATE]-[sessionhash].json (e.g., 2025-01-12-a1b2c3d4.json)
+    OUTPUT_FILE="$ACA_DATA/sessions/insights/${date_formatted}-${session_id}.json"
     TRANSCRIPT_DIR=$(dirname "$transcript_path")
     TEMP_OUTPUT=$(mktemp)
 
@@ -269,7 +270,7 @@ if [[ $GENERATED -gt 0 || $MINED -gt 0 ]]; then
     # Check if this is a git repo
     if [[ -d ".git" ]]; then
         # Add transcripts and session summaries
-        git add sessions/claude/*.md sessions/gemini/*.md dashboard/sessions/*.json 2>/dev/null || true
+        git add sessions/claude/*.md sessions/gemini/*.md sessions/insights/*.json 2>/dev/null || true
 
         # Check if there are staged changes
         if ! git diff --cached --quiet 2>/dev/null; then
