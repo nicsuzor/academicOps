@@ -2,12 +2,13 @@
 # See https://pre-commit.com for more info
 
 repos:
-  # Markdown/JSON/TOML formatting (dprint - fast, configurable)
+  # Markdown/JSON/TOML validation (dprint - check-only, no auto-fix)
+  # Run `./scripts/format.sh` to format files before staging
   - repo: local
     hooks:
       - id: dprint
-        name: dprint formatter
-        entry: /home/nic/.dprint/bin/dprint fmt --diff
+        name: dprint check
+        entry: /home/nic/.dprint/bin/dprint check
         language: system
         types_or: [markdown, json, toml]
         pass_filenames: true
@@ -31,13 +32,14 @@ repos:
       - id: check-added-large-files
         args: ['--maxkb=500']
 
-  # Python linting
+  # Python linting (check-only, no auto-fix)
+  # Run `./scripts/format.sh` to format files before staging
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.1.9
     hooks:
       - id: ruff
-        args: [--fix]
       - id: ruff-format
+        args: [--check]
 
   # Type checking
   - repo: https://github.com/pre-commit/mirrors-mypy
