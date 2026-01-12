@@ -15,6 +15,7 @@ Extract accomplishments and learnings from session transcripts via Gemini.
 
 1. **Current session** (default): Process the current session at session end
 2. **Batch**: Process multiple transcripts that lack JSON summaries
+3. **Issues**: Extract learnings from bd issues tagged with learning/experiment/bug labels
 
 ## Workflow: Current Session
 
@@ -88,6 +89,67 @@ For each transcript path:
 3. Save JSON to `$ACA_DATA/dashboard/sessions/{session_id}.json`
 
 Limit to 3-5 per invocation to avoid timeouts.
+
+## Workflow: Issues
+
+When invoked with `/session-insights issues`:
+
+Extract learnings from bd issues to identify patterns worth formalizing into HEURISTICS.md.
+
+### Step 1: List Learning Issues
+
+```bash
+bd list --status=open --limit 0 | grep -E "\[learning\]|\[experiment\]|\[bug\]"
+```
+
+### Step 2: For Each Issue
+
+For each issue ID from Step 1:
+
+1. Get full issue details: `bd show {issue_id}`
+2. Analyze the issue content to extract:
+   - **Pattern**: What behavior/failure pattern does this document?
+   - **Root cause**: Why did this happen?
+   - **Systemic insight**: What does this teach about agent behavior or framework gaps?
+   - **Heuristic candidate**: Should this become a formal heuristic? If so, draft it.
+   - **Related**: Which existing heuristics or axioms does this relate to?
+
+### Step 3: Synthesize
+
+Group findings by theme:
+
+- Agent compliance patterns
+- Tool usage patterns
+- Workflow gaps
+- Missing guardrails
+
+### Step 4: Output
+
+Report findings in format:
+
+```
+## Issue Learnings Synthesis
+
+### Heuristic Candidates
+- H??: [Draft heuristic from issue X]
+- H??: [Draft heuristic from issue Y]
+
+### Patterns Observed
+- [Pattern]: Seen in issues X, Y, Z
+
+### Recommended Actions
+- [ ] Add heuristic H?? to HEURISTICS.md
+- [ ] Update skill X to address gap
+- [ ] Close issues X, Y, Z after integration
+```
+
+### Step 5: Close Processed Issues
+
+After learnings are integrated into HEURISTICS.md or other framework docs:
+
+```bash
+bd close {issue_id} --reason="Learning integrated into HEURISTICS.md H##"
+```
 
 ## Files
 
