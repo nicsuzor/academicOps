@@ -283,7 +283,9 @@ $AOPS/
 │   │   │   ├── 02-debug-framework-issue.md # Debug workflow
 │   │   │   ├── 03-experiment-design.md     # Experiment workflow
 │   │   │   ├── 04-monitor-prevent-bloat.md # Anti-bloat workflow
-│   │   │   └── 06-develop-specification.md # Spec development workflow
+│   │   │   ├── 06-develop-specification.md # Spec development workflow
+│   │   │   ├── 07-learning-log.md          # Learning log workflow
+│   │   │   └── 08-decision-briefing.md     # Decision briefing workflow
 │   │   └── tests/
 │   │       ├── manual_test_skill_discovery.md  # Manual test guide
 │   │       ├── test_core_md_task_guidance.py   # Core.md tests
