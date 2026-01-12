@@ -99,7 +99,8 @@ FAILED=0
 MIN_SESSION_SIZE=1000  # bytes
 
 # Maximum transcripts per run (avoid long-running cron jobs)
-MAX_TRANSCRIPTS=5
+# Note: This counts only successfully processed transcripts, not skipped ones
+MAX_TRANSCRIPTS=10
 
 while IFS= read -r session_path; do
     [[ -z "$session_path" ]] && continue
