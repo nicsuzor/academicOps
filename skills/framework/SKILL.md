@@ -75,23 +75,21 @@ If ANY check fails → component is non-compliant → refactor or delete.
 - Placement is ambiguous (could go in multiple locations)
 - New pattern with no existing convention
 
-## Framework Introspection (MANDATORY - FIRST STEP)
+## Context Loading (JIT)
 
-**Before ANY action**, load the framework structure and verify consistency.
+This skill's instructions are sufficient for most framework operations. Load additional context only when the specific operation requires it:
 
-### Step 1: Load Authoritative Documents
+| When you need to...           | Read              |
+| ----------------------------- | ----------------- |
+| Verify axiom derivation       | [[AXIOMS.md]]     |
+| Check heuristic compliance    | [[HEURISTICS.md]] |
+| Determine file placement      | [[INDEX.md]]      |
+| Verify scope alignment        | [[VISION.md]]     |
+| Check current status/blockers | [[ROADMAP.md]]    |
 
-Read these files in order (use Read tool):
+**Wikilinks are references, not read instructions.** Only load documents when a specific check requires them.
 
-1. `$AOPS/AXIOMS.md` - Inviolable principles
-2. `$AOPS/HEURISTICS.md` - Empirically validated guidance
-3. `$AOPS/INDEX.md` - Authoritative file tree
-4. `$AOPS/VISION.md` - Goals and scope
-5. `$AOPS/ROADMAP.md` - Current status
-
-**Do NOT proceed until all 5 documents are loaded.** This ensures every action is informed by the complete framework state.
-
-### Step 2: Run Consistency Checks
+### Consistency Checks (Run When Relevant)
 
 Before accepting ANY proposed change, verify ALL of:
 
