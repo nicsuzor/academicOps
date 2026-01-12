@@ -91,20 +91,27 @@ When executing a task, you are the **Orchestrator**. Do not implement complex lo
 
 Select the specific track based on the user's intent. See [Workflow Selection](#workflow-selection-quick-reference) matrix above.
 
+**Important**: Subagents cannot invoke Skills via the `Skill` tool. The orchestrator must load skill context first, then pass relevant guidance to subagents in their prompts. Alternatively, use custom agents with skills pre-configured in their frontmatter.
+
 ### 1. TDD (Feature Development)
 
 **Trigger**: "implement", "create", "refactor", "add feature"
 **Mandate**: **Test-First**. No code without a failing test.
 
+**Delegation Note**: Subagents cannot invoke Skills. The orchestrator must either:
+
+- Load skill context first, then include relevant guidance in the subagent prompt
+- Use a custom agent with skills pre-configured in its frontmatter
+
 **Execution Template**:
 
 ```javascript
 TodoWrite(todos=[
-  {content: "Step 1: Invoke Skill(skill='feature-dev') for TDD guidance", status: "pending", activeForm: "Loading skill"},
-  {content: "Step 2: Invoke Skill(skill='[domain]') for conventions", status: "pending", activeForm: "Loading skill"},
+  {content: "Step 1: Invoke Skill(skill='feature-dev') to load TDD guidance into orchestrator context", status: "pending", activeForm: "Loading skill"},
+  {content: "Step 2: Invoke Skill(skill='[domain]') to load domain conventions", status: "pending", activeForm: "Loading skill"},
   {content: "Step 3: Define acceptance criteria (user outcomes)", status: "pending", activeForm: "Defining acceptance"},
-  {content: "Step 4: Delegate test writing - Task(subagent_type='general-purpose', prompt='Write failing test for [criteria]')", status: "pending", activeForm: "Delegating test"},
-  {content: "Step 5: Delegate implementation - Task(subagent_type='general-purpose', prompt='Implement to pass test')", status: "pending", activeForm: "Delegating implementation"},
+  {content: "Step 4: Delegate test writing - Task(prompt='Write failing test for [criteria]. Follow TDD: [include key guidance from skill]')", status: "pending", activeForm: "Delegating test"},
+  {content: "Step 5: Delegate implementation - Task(prompt='Implement to pass test. Follow [domain] conventions: [include key guidance]')", status: "pending", activeForm: "Delegating implementation"},
   {content: "CHECKPOINT: Run pytest to verify all tests pass", status: "pending", activeForm: "Verifying"},
   {content: "Step 7: Commit and push", status: "pending", activeForm: "Committing"}
 ])
@@ -120,9 +127,9 @@ TodoWrite(todos=[
 ```javascript
 TodoWrite(todos=[
   {content: "Step 1: Reproduce error with a DURABLE test - run build, quote error message EXACTLY", status: "pending", activeForm: "Reproducing error"},
-  {content: "Step 2: Invoke Skill(skill='[domain]') for conventions", status: "pending", activeForm: "Loading skill"},
+  {content: "Step 2: Invoke Skill(skill='[domain]') to load conventions into orchestrator context", status: "pending", activeForm: "Loading skill"},
   {content: "Step 3: Read file and understand the error state (orchestrator context-gathering)", status: "pending", activeForm: "Understanding"},
-  {content: "Step 4: Delegate fix - Task(subagent_type='general-purpose', prompt='Fix [error] following [domain] conventions')", status: "pending", activeForm: "Delegating fix"},
+  {content: "Step 4: Delegate fix - Task(prompt='Fix [error]. Conventions: [include key guidance from skill]')", status: "pending", activeForm: "Delegating fix"},
   {content: "CHECKPOINT: Run build/repro to verify fix works", status: "pending", activeForm: "Verifying"},
   {content: "Step 6: Commit and push", status: "pending", activeForm: "Committing"}
 ])
