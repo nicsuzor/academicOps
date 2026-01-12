@@ -25,6 +25,7 @@ import time
 from pathlib import Path
 from typing import Any
 
+from hooks.hook_logger import log_hook_event
 from lib.session_reader import extract_gate_context
 from lib.session_state import (
     CustodietState,
@@ -534,6 +535,16 @@ def main():
 
     # Save state
     save_state(session_id, state)
+
+    # Log to hooks JSONL for transcript visibility
+    if output_data:
+        log_hook_event(
+            session_id=session_id,
+            hook_event="PostToolUse",
+            input_data=input_data,
+            output_data=output_data,
+            exit_code=0,
+        )
 
     print(json.dumps(output_data))
     sys.exit(0)

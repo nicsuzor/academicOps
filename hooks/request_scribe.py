@@ -19,6 +19,8 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from hooks.hook_logger import log_hook_event
+
 
 def get_reminder_message() -> str:
     """Load reminder message from template file."""
@@ -66,6 +68,17 @@ def main():
             "additionalContext": message,
         }
     }
+
+    # Log to hooks JSONL for transcript visibility
+    session_id = input_data.get("session_id", "")
+    if session_id:
+        log_hook_event(
+            session_id=session_id,
+            hook_event=hook_event,
+            input_data=input_data,
+            output_data=output,
+            exit_code=0,
+        )
 
     print(json.dumps(output))
     sys.exit(0)

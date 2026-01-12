@@ -21,6 +21,8 @@ import json
 import sys
 from typing import Any
 
+from hooks.hook_logger import log_hook_event
+
 
 # Patterns that indicate a tool error
 ERROR_INDICATORS = [
@@ -128,6 +130,16 @@ def main():
                 "additionalContext": FAIL_FAST_REMINDER,
             }
         }
+        # Log to hooks JSONL for transcript visibility
+        session_id = input_data.get("session_id", "")
+        if session_id:
+            log_hook_event(
+                session_id=session_id,
+                hook_event="PostToolUse",
+                input_data=input_data,
+                output_data=output,
+                exit_code=0,
+            )
         print(json.dumps(output))
         sys.exit(0)
 

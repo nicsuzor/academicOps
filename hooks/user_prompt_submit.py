@@ -20,6 +20,7 @@ from pathlib import Path
 from typing import Any
 
 from hook_debug import safe_log_to_debug_file
+from hooks.hook_logger import log_hook_event
 from lib.paths import get_aops_root
 from lib.session_reader import extract_router_context
 from lib.session_state import HydratorState, save_hydrator_state
@@ -290,6 +291,13 @@ def main():
         safe_log_to_debug_file(
             "UserPromptSubmit", input_data, {"skipped": "system_message"}
         )
+        log_hook_event(
+            session_id=session_id,
+            hook_event="UserPromptSubmit",
+            input_data=input_data,
+            output_data=output_data,
+            exit_code=0,
+        )
         print(json.dumps(output_data))
         sys.exit(0)
 
@@ -320,6 +328,15 @@ def main():
 
     # Debug log hook execution
     safe_log_to_debug_file("UserPromptSubmit", input_data, output_data)
+
+    # Log to hooks JSONL for transcript visibility
+    log_hook_event(
+        session_id=session_id,
+        hook_event="UserPromptSubmit",
+        input_data=input_data,
+        output_data=output_data,
+        exit_code=exit_code,
+    )
 
     # Output JSON
     print(json.dumps(output_data))
