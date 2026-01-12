@@ -252,6 +252,7 @@ The hydrator interprets these templates for specific user requests.
 5. Main agent can execute plan without making routing decisions
 6. Latency meets performance requirements
 7. Graceful degradation on errors
+8. **Complex task decomposition**: Given a multi-step implementation task (tdd/plan-mode workflows), the hydrator produces a TodoWrite plan with at least 3 distinct steps, each assigned to an appropriate skill based on step domain (not one skill for the whole task)
 
 ### Session Context Sufficiency (Validated 2026-01-11)
 

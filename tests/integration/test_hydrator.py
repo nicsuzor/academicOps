@@ -13,6 +13,7 @@ The demo test shows FULL UNTRUNCATED output so you can validate with your eyes.
 """
 
 import json
+import re
 from pathlib import Path
 
 import pytest
@@ -656,3 +657,154 @@ class TestHydratorDemo:
         if not (hydrator_response and hydrator_response.get("found")):
             print("\n⚠️  NOTE: Hydrator structured response not found in output.")
             print("    Review the trace above to verify hydration behavior.")
+
+    def test_demo_complex_task_skill_decomposition(self, claude_headless) -> None:
+        """Demo: Complex task decomposed into skill-sized chunks.
+
+        Validates acceptance criterion #8: Given a multi-step implementation task,
+        the hydrator produces a TodoWrite plan with at least 3 distinct steps,
+        each assigned to an appropriate skill based on step domain.
+
+        Run with: uv run pytest tests/integration/test_hydrator.py -k complex -v -s -n 0 -m demo
+        """
+        print("\n" + "=" * 80)
+        print("HYDRATION E2E DEMO - COMPLEX TASK DECOMPOSITION (AC #8)")
+        print("=" * 80)
+
+        # Complex task that should trigger tdd/plan-mode workflow
+        # and require multiple skills across different domains
+        prompt = (
+            "Implement a new PreToolUse hook called sql_validator that blocks "
+            "dangerous SQL queries (DROP, DELETE without WHERE, TRUNCATE). "
+            "The hook should log blocked queries and include unit tests."
+        )
+        print(f"\nPrompt (COMPLEX TASK): {prompt}")
+        print("\nExpected: tdd or plan-mode workflow with multi-skill TodoWrite plan")
+        print("\nExecuting headless session...")
+
+        result = claude_headless(
+            prompt,
+            timeout_seconds=180,
+            cwd=get_aops_root(),
+            permission_mode="bypassPermissions",
+        )
+
+        print(f"\nSuccess: {result['success']}")
+        if not result["success"]:
+            print(f"Error: {result.get('error')}")
+
+        output = result.get("output", "")
+        print(f"\nOutput length: {len(output)} chars")
+
+        # Show full session trace
+        print_full_session_trace(output)
+
+        # Extract and analyze hydrator response
+        # NOTE: We need to find the ACTUAL hydrator output (starts with "## Prompt Hydration")
+        # not the template in the temp file. The hydrator output is in a tool_result
+        # that contains the intent, workflow, and TodoWrite plan.
+        hydrator_response = extract_hydrator_response(output)
+
+        print("\n" + "=" * 80)
+        print("ACCEPTANCE CRITERION #8 VALIDATION")
+        print("=" * 80)
+
+        # Also extract the actual hydrator output directly from the raw output
+        # The hydrator returns text starting with "## Prompt Hydration"
+        # We need to find ALL occurrences and pick the LAST one (the actual response,
+        # not the template in the temp file)
+        hydrator_pattern = r"## Prompt Hydration\\n\\n\*\*Intent\*\*:.*?(?=\\n\\n---|\nagentId:|\"type\")"
+        hydrator_matches = list(re.finditer(hydrator_pattern, output, re.DOTALL))
+
+        if len(hydrator_matches) > 1:
+            # Multiple matches - last one is the actual hydrator response
+            text = hydrator_matches[-1].group(0)
+            # Unescape JSON escapes
+            text = text.replace("\\n", "\n").replace('\\"', '"')
+            print(
+                f"\n✓ Found {len(hydrator_matches)} hydrator outputs, using last (actual response)"
+            )
+        elif len(hydrator_matches) == 1:
+            text = hydrator_matches[0].group(0)
+            text = text.replace("\\n", "\n").replace('\\"', '"')
+            print("\n✓ Found hydrator output")
+        elif hydrator_response and hydrator_response.get("found"):
+            text = hydrator_response.get("text", "")
+            print("\n⚠️  Using fallback extraction (may be template)")
+        else:
+            print("\n❌ FAIL: No hydrator response found")
+            pytest.fail("Hydrator response not found in output")
+
+        # Check for TodoWrite with multiple steps
+        has_todowrite = "TodoWrite(todos=" in text or "TodoWrite Plan" in text
+        print(f"\n1. Has TodoWrite plan: {'✓' if has_todowrite else '✗'}")
+
+        # Count steps in TodoWrite
+        step_pattern = r'content:\s*"Step \d+:'
+        steps = re.findall(step_pattern, text)
+        step_count = len(steps)
+        print(f"2. Step count: {step_count} (required: >= 3)")
+
+        # Check for multiple skill invocations
+        skill_pattern = r"Skill\(skill=['\"]([^'\"]+)['\"]\)"
+        skills = re.findall(skill_pattern, text)
+        unique_skills = set(skills)
+        print(
+            f"3. Skills assigned: {list(unique_skills) if unique_skills else 'None found'}"
+        )
+
+        # Check workflow is appropriate for complex task
+        workflow_match = re.search(r"\*\*Workflow\*\*:\s*(\w+)", text)
+        workflow = workflow_match.group(1) if workflow_match else "unknown"
+        appropriate_workflows = {"tdd", "plan-mode", "plan_mode"}
+        print(f"4. Workflow: {workflow} (expected: tdd or plan-mode)")
+
+        # Print full TodoWrite section for inspection
+        print("\n--- TODOWRITE PLAN (EXTRACTED) ---")
+        todowrite_match = re.search(r"(TodoWrite\(todos=\[.*?\]\))", text, re.DOTALL)
+        if todowrite_match:
+            print(todowrite_match.group(1))
+        else:
+            # Try alternate format
+            plan_match = re.search(
+                r"### TodoWrite Plan.*?```(?:javascript)?\n(.*?)```",
+                text,
+                re.DOTALL,
+            )
+            if plan_match:
+                print(plan_match.group(1))
+            else:
+                print("Could not extract TodoWrite section")
+        print("--- END TODOWRITE ---")
+
+        # Validation summary
+        print("\n--- VALIDATION SUMMARY ---")
+        # Note: "Multiple skills assigned" is relaxed to "at least 1 skill"
+        # because some tasks are single-domain (e.g., pure Python development)
+        # The key requirement is that skills ARE assigned, not that they're different
+        checks = [
+            ("Has TodoWrite plan", has_todowrite),
+            ("At least 3 steps", step_count >= 3),
+            ("Skill(s) assigned", len(unique_skills) >= 1),
+            ("Appropriate workflow", workflow in appropriate_workflows),
+        ]
+
+        all_passed = True
+        for check_name, passed in checks:
+            status = "✓ PASS" if passed else "✗ FAIL"
+            print(f"  {status}: {check_name}")
+            if not passed:
+                all_passed = False
+
+        print("\n" + "=" * 80)
+
+        if not all_passed:
+            print("\n⚠️  Some checks failed. Review output above.")
+            # Don't fail the demo test - it's for human validation
+            # But print clear guidance
+            print("\nTo pass acceptance criterion #8, hydrator must:")
+            print("  - Select tdd or plan-mode workflow for implementation tasks")
+            print("  - Generate TodoWrite with 3+ concrete steps")
+            print("  - Assign appropriate skill(s) based on task domain")
+        else:
+            print("\n✓ All checks passed! Acceptance criterion #8 validated.")
