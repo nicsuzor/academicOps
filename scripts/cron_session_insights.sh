@@ -259,4 +259,59 @@ done <<< "$MINING_SESSIONS"
 
 echo "$(date '+%Y-%m-%d %H:%M:%S') - Mining complete: $MINED mined, $MINE_FAILED failed"
 
+# Step 4: Commit and push generated files to git
+# Only commit if we generated or mined anything
+if [[ $GENERATED -gt 0 || $MINED -gt 0 ]]; then
+    echo "$(date '+%Y-%m-%d %H:%M:%S') - Committing generated files to git..."
+
+    cd "$ACA_DATA"
+
+    # Check if this is a git repo
+    if [[ -d ".git" ]]; then
+        # Add transcripts and session summaries
+        git add sessions/claude/*.md sessions/gemini/*.md dashboard/sessions/*.json 2>/dev/null || true
+
+        # Check if there are staged changes
+        if ! git diff --cached --quiet 2>/dev/null; then
+            # Build commit message
+            COMMIT_MSG="chore(sessions): Auto-commit transcripts and summaries"
+            if [[ $GENERATED -gt 0 ]]; then
+                COMMIT_MSG="$COMMIT_MSG ($GENERATED transcripts"
+                if [[ $MINED -gt 0 ]]; then
+                    COMMIT_MSG="$COMMIT_MSG, $MINED summaries)"
+                else
+                    COMMIT_MSG="$COMMIT_MSG)"
+                fi
+            elif [[ $MINED -gt 0 ]]; then
+                COMMIT_MSG="$COMMIT_MSG ($MINED summaries)"
+            fi
+
+            git commit -m "$COMMIT_MSG" 2>&1
+            COMMIT_EXIT=$?
+
+            if [[ $COMMIT_EXIT -eq 0 ]]; then
+                echo "$(date '+%Y-%m-%d %H:%M:%S') - Committed successfully"
+
+                # Push to remote
+                git push 2>&1
+                PUSH_EXIT=$?
+
+                if [[ $PUSH_EXIT -eq 0 ]]; then
+                    echo "$(date '+%Y-%m-%d %H:%M:%S') - Pushed to remote successfully"
+                else
+                    echo "$(date '+%Y-%m-%d %H:%M:%S') - Push failed (exit $PUSH_EXIT), will retry next run" >&2
+                fi
+            else
+                echo "$(date '+%Y-%m-%d %H:%M:%S') - Commit failed (exit $COMMIT_EXIT)" >&2
+            fi
+        else
+            echo "$(date '+%Y-%m-%d %H:%M:%S') - No new files to commit"
+        fi
+    else
+        echo "$(date '+%Y-%m-%d %H:%M:%S') - ACA_DATA is not a git repo, skipping commit"
+    fi
+
+    cd "$FRAMEWORK_ROOT"
+fi
+
 exit 0
