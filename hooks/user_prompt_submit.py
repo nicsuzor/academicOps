@@ -63,26 +63,31 @@ def load_framework_paths() -> str:
     return "(Path table not found in FRAMEWORK.md)"
 
 
-def get_cwd() -> str:
-    """Get current working directory from environment.
+def get_session_id() -> str:
+    """Get session ID from environment.
 
-    Returns CLAUDE_CWD if set, otherwise os.getcwd().
+    Returns CLAUDE_SESSION_ID if set, raises ValueError otherwise.
+    Session ID is required for state isolation.
     """
-    return os.environ.get("CLAUDE_CWD", os.getcwd())
+    session_id = os.environ.get("CLAUDE_SESSION_ID", "")
+    if not session_id:
+        raise ValueError("CLAUDE_SESSION_ID not set - cannot save session state")
+    return session_id
 
 
-def write_initial_hydrator_state(prompt: str, hydration_pending: bool = True) -> None:
+def write_initial_hydrator_state(
+    session_id: str, prompt: str, hydration_pending: bool = True
+) -> None:
     """Write initial hydrator state with pending workflow.
 
     Called after processing prompt to persist intent_envelope for
     downstream gates (custodiet, skill monitor).
 
     Args:
+        session_id: Claude Code session ID for state isolation
         prompt: User's original prompt (will be truncated for intent)
         hydration_pending: Whether hydration gate should block until hydrator invoked
     """
-    cwd = get_cwd()
-
     # Truncate prompt for intent_envelope
     intent = prompt[:INTENT_MAX_LENGTH]
     if len(prompt) > INTENT_MAX_LENGTH:
@@ -101,7 +106,7 @@ def write_initial_hydrator_state(prompt: str, hydration_pending: bool = True) ->
         "hydration_pending": hydration_pending,  # Gate blocks until hydrator invoked
     }
 
-    save_hydrator_state(cwd, state)
+    save_hydrator_state(session_id, state)
 
 
 def cleanup_old_temp_files() -> None:
@@ -155,13 +160,16 @@ def write_temp_file(content: str) -> Path:
         return Path(f.name)
 
 
-def build_hydration_instruction(prompt: str, transcript_path: str | None = None) -> str:
+def build_hydration_instruction(
+    session_id: str, prompt: str, transcript_path: str | None = None
+) -> str:
     """
     Build instruction for main agent to invoke prompt-hydrator.
 
     Writes full context to temp file, returns short instruction with file path.
 
     Args:
+        session_id: Claude Code session ID for state isolation
         prompt: The user's original prompt
         transcript_path: Path to session transcript for context extraction
 
@@ -200,7 +208,7 @@ def build_hydration_instruction(prompt: str, transcript_path: str | None = None)
     temp_path = write_temp_file(full_context)
 
     # Write initial hydrator state for downstream gates
-    write_initial_hydrator_state(prompt)
+    write_initial_hydrator_state(session_id, prompt)
 
     # Truncate prompt for description
     prompt_preview = prompt[:80].replace("\n", " ").strip()
@@ -252,11 +260,27 @@ def main():
 
     prompt = input_data.get("prompt", "")
     transcript_path = input_data.get("transcript_path")
+    session_id = input_data.get("session_id", "")
+
+    # Require session_id for state isolation
+    if not session_id:
+        # Fail gracefully - don't block agent if session_id missing
+        output_data = {
+            "hookSpecificOutput": {
+                "hookEventName": "UserPromptSubmit",
+                "additionalContext": "",
+            }
+        }
+        safe_log_to_debug_file(
+            "UserPromptSubmit", input_data, {"skipped": "no_session_id"}
+        )
+        print(json.dumps(output_data))
+        sys.exit(0)
 
     # Skip hydration for system messages, skill invocations, and user ignore shortcut
     if should_skip_hydration(prompt):
         # Write state with hydration_pending=False so gate doesn't block
-        write_initial_hydrator_state(prompt, hydration_pending=False)
+        write_initial_hydrator_state(session_id, prompt, hydration_pending=False)
         output_data = {
             "hookSpecificOutput": {
                 "hookEventName": "UserPromptSubmit",
@@ -275,7 +299,9 @@ def main():
 
     if prompt:
         try:
-            hydration_instruction = build_hydration_instruction(prompt, transcript_path)
+            hydration_instruction = build_hydration_instruction(
+                session_id, prompt, transcript_path
+            )
             output_data = {
                 "hookSpecificOutput": {
                     "hookEventName": "UserPromptSubmit",

@@ -43,9 +43,16 @@ The hydrator provides workflow guidance, context, and guardrails. Follow its out
 """
 
 
-def get_cwd() -> str:
-    """Get current working directory from environment."""
-    return os.environ.get("CLAUDE_CWD", os.getcwd())
+def get_session_id(input_data: dict[str, Any]) -> str:
+    """Get session ID from hook input data or environment.
+
+    Args:
+        input_data: Hook input data dict
+
+    Returns:
+        Session ID string, or empty string if not found
+    """
+    return input_data.get("session_id", "") or os.environ.get("CLAUDE_SESSION_ID", "")
 
 
 def is_hydrator_task(tool_input: dict[str, Any]) -> bool:
@@ -71,15 +78,15 @@ def main():
 
     tool_name = input_data.get("tool_name", "")
     tool_input = input_data.get("tool_input", {})
-    cwd = input_data.get("cwd", "") or get_cwd()
+    session_id = get_session_id(input_data)
 
-    # FAIL-OPEN: if no cwd, allow (don't break edge cases)
-    if not cwd:
+    # FAIL-OPEN: if no session_id, allow (don't break edge cases)
+    if not session_id:
         print(json.dumps({}))
         sys.exit(0)
 
     # Check if hydration is pending
-    if not is_hydration_pending(cwd):
+    if not is_hydration_pending(session_id):
         # Hydration complete or not required - allow all tools
         print(json.dumps({}))
         sys.exit(0)
@@ -87,7 +94,7 @@ def main():
     # Hydration is pending - check if this is the hydrator being invoked
     if tool_name == "Task" and is_hydrator_task(tool_input):
         # This is the hydrator being spawned - clear the gate and allow
-        clear_hydration_pending(cwd)
+        clear_hydration_pending(session_id)
         print(json.dumps({}))
         sys.exit(0)
 

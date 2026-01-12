@@ -54,9 +54,12 @@ Invoke Skill(skill='framework') for component patterns.""",
 }
 
 
-def get_cwd() -> str:
-    """Get current working directory from environment."""
-    return os.environ.get("CLAUDE_CWD", os.getcwd())
+def get_session_id() -> str:
+    """Get session ID from environment.
+
+    Returns empty string if not found (caller should handle gracefully).
+    """
+    return os.environ.get("CLAUDE_SESSION_ID", "")
 
 
 def detect_domain(tool_name: str, tool_input: dict[str, Any]) -> str | None:
@@ -154,10 +157,13 @@ def check_skill_monitor(tool_name: str, tool_input: dict[str, Any]) -> str | Non
     Returns:
         Skill context injection string if drift detected, None otherwise
     """
-    cwd = get_cwd()
+    session_id = get_session_id()
+    if not session_id:
+        # No session_id - fail-open, no drift detection
+        return None
 
     # Load hydrator state to get active skill
-    state = load_hydrator_state(cwd)
+    state = load_hydrator_state(session_id)
     if state is None:
         # No state = no active skill = no drift detection possible
         return None

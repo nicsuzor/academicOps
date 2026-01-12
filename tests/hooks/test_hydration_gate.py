@@ -6,6 +6,7 @@ Tests the mechanical trigger that blocks all tools until prompt-hydrator is invo
 
 import json
 import subprocess
+import uuid
 from pathlib import Path
 
 import pytest
@@ -15,6 +16,11 @@ from lib.session_state import (
     is_hydration_pending,
     save_hydrator_state,
 )
+
+
+def make_session_id() -> str:
+    """Generate a test session ID."""
+    return str(uuid.uuid4())
 
 
 @pytest.fixture
@@ -27,9 +33,9 @@ def temp_state_dir(monkeypatch, tmp_path):
 
 
 @pytest.fixture
-def test_cwd(tmp_path):
-    """Provide a test cwd for state file keying."""
-    return str(tmp_path / "test-project")
+def test_session_id():
+    """Provide a test session_id for state file keying."""
+    return make_session_id()
 
 
 def run_hook(input_data: dict) -> tuple[str, str, int]:
@@ -54,11 +60,11 @@ def run_hook(input_data: dict) -> tuple[str, str, int]:
 class TestHydrationPendingFlag:
     """Test hydration_pending flag management."""
 
-    def test_is_hydration_pending_no_state(self, temp_state_dir, test_cwd):
+    def test_is_hydration_pending_no_state(self, temp_state_dir, test_session_id):
         """No state file means not pending."""
-        assert is_hydration_pending(test_cwd) is False
+        assert is_hydration_pending(test_session_id) is False
 
-    def test_is_hydration_pending_true(self, temp_state_dir, test_cwd):
+    def test_is_hydration_pending_true(self, temp_state_dir, test_session_id):
         """hydration_pending=True in state means pending."""
         state = {
             "last_hydration_ts": 0,
@@ -68,10 +74,10 @@ class TestHydrationPendingFlag:
             "guardrails": [],
             "hydration_pending": True,
         }
-        save_hydrator_state(test_cwd, state)
-        assert is_hydration_pending(test_cwd) is True
+        save_hydrator_state(test_session_id, state)
+        assert is_hydration_pending(test_session_id) is True
 
-    def test_is_hydration_pending_false(self, temp_state_dir, test_cwd):
+    def test_is_hydration_pending_false(self, temp_state_dir, test_session_id):
         """hydration_pending=False in state means not pending."""
         state = {
             "last_hydration_ts": 0,
@@ -81,10 +87,10 @@ class TestHydrationPendingFlag:
             "guardrails": [],
             "hydration_pending": False,
         }
-        save_hydrator_state(test_cwd, state)
-        assert is_hydration_pending(test_cwd) is False
+        save_hydrator_state(test_session_id, state)
+        assert is_hydration_pending(test_session_id) is False
 
-    def test_clear_hydration_pending(self, temp_state_dir, test_cwd):
+    def test_clear_hydration_pending(self, temp_state_dir, test_session_id):
         """clear_hydration_pending sets flag to False."""
         state = {
             "last_hydration_ts": 0,
@@ -94,30 +100,30 @@ class TestHydrationPendingFlag:
             "guardrails": [],
             "hydration_pending": True,
         }
-        save_hydrator_state(test_cwd, state)
-        assert is_hydration_pending(test_cwd) is True
+        save_hydrator_state(test_session_id, state)
+        assert is_hydration_pending(test_session_id) is True
 
-        clear_hydration_pending(test_cwd)
-        assert is_hydration_pending(test_cwd) is False
+        clear_hydration_pending(test_session_id)
+        assert is_hydration_pending(test_session_id) is False
 
 
 class TestHydrationGateHook:
     """Test the PreToolUse hook behavior."""
 
-    def test_allow_when_not_pending(self, temp_state_dir, test_cwd):
+    def test_allow_when_not_pending(self, temp_state_dir, test_session_id):
         """Allow all tools when hydration is not pending."""
         # No state file = not pending
         input_data = {
             "tool_name": "Read",
             "tool_input": {"file_path": "/some/file"},
-            "cwd": test_cwd,
+            "session_id": test_session_id,
             "_state_dir": str(temp_state_dir),
         }
         stdout, stderr, code = run_hook(input_data)
         assert code == 0
         assert stderr == ""
 
-    def test_block_when_pending(self, temp_state_dir, test_cwd):
+    def test_block_when_pending(self, temp_state_dir, test_session_id):
         """Block tools when hydration is pending."""
         # Set hydration_pending=True
         state = {
@@ -128,12 +134,12 @@ class TestHydrationGateHook:
             "guardrails": [],
             "hydration_pending": True,
         }
-        save_hydrator_state(test_cwd, state)
+        save_hydrator_state(test_session_id, state)
 
         input_data = {
             "tool_name": "Read",
             "tool_input": {"file_path": "/some/file"},
-            "cwd": test_cwd,
+            "session_id": test_session_id,
             "_state_dir": str(temp_state_dir),
         }
         stdout, stderr, code = run_hook(input_data)
@@ -141,7 +147,7 @@ class TestHydrationGateHook:
         assert "HYDRATION GATE" in stderr
         assert "prompt-hydrator" in stderr
 
-    def test_allow_hydrator_task_and_clear(self, temp_state_dir, test_cwd):
+    def test_allow_hydrator_task_and_clear(self, temp_state_dir, test_session_id):
         """Allow Task(prompt-hydrator) and clear the pending flag."""
         # Set hydration_pending=True
         state = {
@@ -152,7 +158,7 @@ class TestHydrationGateHook:
             "guardrails": [],
             "hydration_pending": True,
         }
-        save_hydrator_state(test_cwd, state)
+        save_hydrator_state(test_session_id, state)
 
         input_data = {
             "tool_name": "Task",
@@ -161,7 +167,7 @@ class TestHydrationGateHook:
                 "description": "Hydrate: test task",
                 "prompt": "Read /tmp/claude-hydrator/test.md",
             },
-            "cwd": test_cwd,
+            "session_id": test_session_id,
             "_state_dir": str(temp_state_dir),
         }
         stdout, stderr, code = run_hook(input_data)
@@ -169,9 +175,9 @@ class TestHydrationGateHook:
         assert stderr == ""
 
         # Verify flag was cleared
-        assert is_hydration_pending(test_cwd) is False
+        assert is_hydration_pending(test_session_id) is False
 
-    def test_block_non_hydrator_task(self, temp_state_dir, test_cwd):
+    def test_block_non_hydrator_task(self, temp_state_dir, test_session_id):
         """Block Task with different subagent_type when pending."""
         state = {
             "last_hydration_ts": 0,
@@ -181,7 +187,7 @@ class TestHydrationGateHook:
             "guardrails": [],
             "hydration_pending": True,
         }
-        save_hydrator_state(test_cwd, state)
+        save_hydrator_state(test_session_id, state)
 
         input_data = {
             "tool_name": "Task",
@@ -190,7 +196,7 @@ class TestHydrationGateHook:
                 "description": "Explore codebase",
                 "prompt": "Find files",
             },
-            "cwd": test_cwd,
+            "session_id": test_session_id,
             "_state_dir": str(temp_state_dir),
         }
         stdout, stderr, code = run_hook(input_data)
@@ -213,12 +219,12 @@ class TestHydrationGateHook:
         )
         assert result.returncode == 0  # Fail open
 
-    def test_fail_open_on_missing_cwd(self, temp_state_dir):
-        """Fail open when cwd is missing."""
+    def test_fail_open_on_missing_session_id(self, temp_state_dir):
+        """Fail open when session_id is missing."""
         input_data = {
             "tool_name": "Read",
             "tool_input": {"file_path": "/some/file"},
-            # No cwd
+            # No session_id
             "_state_dir": str(temp_state_dir),
         }
         stdout, stderr, code = run_hook(input_data)

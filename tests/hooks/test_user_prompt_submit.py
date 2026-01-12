@@ -2,12 +2,16 @@
 
 TDD Phase 3: Session Start - Hydrator State Write
 Tests that UserPromptSubmit hook writes hydrator state after processing.
+
+Note: State is keyed by session_id (UUID-like string), NOT project cwd.
 """
 
 from __future__ import annotations
 
+import io
 import json
 import sys
+import uuid
 from pathlib import Path
 
 import pytest
@@ -16,6 +20,11 @@ import pytest
 # Add hooks directory to path for imports
 HOOKS_DIR = Path(__file__).parent.parent.parent / "hooks"
 sys.path.insert(0, str(HOOKS_DIR))
+
+
+def make_session_id() -> str:
+    """Generate a test session ID."""
+    return str(uuid.uuid4())
 
 
 class TestHydratorStateWrite:
@@ -30,17 +39,14 @@ class TestHydratorStateWrite:
         state_dir = tmp_path / "claude-session"
         monkeypatch.setenv("CLAUDE_SESSION_STATE_DIR", str(state_dir))
 
-        # Mock the cwd for project hash
-        cwd = "/home/user/test-project"
-        monkeypatch.setenv("CLAUDE_CWD", cwd)
-
+        session_id = make_session_id()
         prompt = "Fix the bug in parser.py"
 
         # Build instruction (should also write state)
-        build_hydration_instruction(prompt)
+        build_hydration_instruction(session_id, prompt)
 
         # Verify state file was created
-        state = load_hydrator_state(cwd)
+        state = load_hydrator_state(session_id)
         assert state is not None
 
     def test_hydrator_state_contains_intent_envelope(
@@ -53,13 +59,11 @@ class TestHydratorStateWrite:
         state_dir = tmp_path / "claude-session"
         monkeypatch.setenv("CLAUDE_SESSION_STATE_DIR", str(state_dir))
 
-        cwd = "/home/user/test-project"
-        monkeypatch.setenv("CLAUDE_CWD", cwd)
-
+        session_id = make_session_id()
         prompt = "Implement the new feature for user authentication"
-        build_hydration_instruction(prompt)
+        build_hydration_instruction(session_id, prompt)
 
-        state = load_hydrator_state(cwd)
+        state = load_hydrator_state(session_id)
         assert state is not None
         assert "intent_envelope" in state
         # Intent should contain the prompt (possibly truncated)
@@ -75,15 +79,13 @@ class TestHydratorStateWrite:
         state_dir = tmp_path / "claude-session"
         monkeypatch.setenv("CLAUDE_SESSION_STATE_DIR", str(state_dir))
 
-        cwd = "/home/user/test-project"
-        monkeypatch.setenv("CLAUDE_CWD", cwd)
-
+        session_id = make_session_id()
         # Create a very long prompt
         long_prompt = "Fix the bug. " * 100  # ~1300 chars
 
-        build_hydration_instruction(long_prompt)
+        build_hydration_instruction(session_id, long_prompt)
 
-        state = load_hydrator_state(cwd)
+        state = load_hydrator_state(session_id)
         assert state is not None
         # Intent should be truncated to reasonable length
         assert len(state["intent_envelope"]) <= 500
@@ -98,13 +100,11 @@ class TestHydratorStateWrite:
         state_dir = tmp_path / "claude-session"
         monkeypatch.setenv("CLAUDE_SESSION_STATE_DIR", str(state_dir))
 
-        cwd = "/home/user/test-project"
-        monkeypatch.setenv("CLAUDE_CWD", cwd)
-
+        session_id = make_session_id()
         prompt = "Simple task"
-        build_hydration_instruction(prompt)
+        build_hydration_instruction(session_id, prompt)
 
-        state = load_hydrator_state(cwd)
+        state = load_hydrator_state(session_id)
         assert state is not None
         assert "declared_workflow" in state
         # Workflow should be pending (to be filled by prompt-hydrator)
@@ -120,14 +120,12 @@ class TestHydratorStateWrite:
         state_dir = tmp_path / "claude-session"
         monkeypatch.setenv("CLAUDE_SESSION_STATE_DIR", str(state_dir))
 
-        cwd = "/home/user/test-project"
-        monkeypatch.setenv("CLAUDE_CWD", cwd)
-
+        session_id = make_session_id()
         before = time.time()
-        build_hydration_instruction("Test prompt")
+        build_hydration_instruction(session_id, "Test prompt")
         after = time.time()
 
-        state = load_hydrator_state(cwd)
+        state = load_hydrator_state(session_id)
         assert state is not None
         assert "last_hydration_ts" in state
         assert before <= state["last_hydration_ts"] <= after
@@ -142,12 +140,10 @@ class TestHydratorStateWrite:
         state_dir = tmp_path / "claude-session"
         monkeypatch.setenv("CLAUDE_SESSION_STATE_DIR", str(state_dir))
 
-        cwd = "/home/user/test-project"
-        monkeypatch.setenv("CLAUDE_CWD", cwd)
+        session_id = make_session_id()
+        build_hydration_instruction(session_id, "Test prompt")
 
-        build_hydration_instruction("Test prompt")
-
-        state = load_hydrator_state(cwd)
+        state = load_hydrator_state(session_id)
         assert state is not None
         assert "active_skill" in state
         # Initially empty, to be set by prompt-hydrator
@@ -163,12 +159,10 @@ class TestHydratorStateWrite:
         state_dir = tmp_path / "claude-session"
         monkeypatch.setenv("CLAUDE_SESSION_STATE_DIR", str(state_dir))
 
-        cwd = "/home/user/test-project"
-        monkeypatch.setenv("CLAUDE_CWD", cwd)
+        session_id = make_session_id()
+        build_hydration_instruction(session_id, "Test prompt")
 
-        build_hydration_instruction("Test prompt")
-
-        state = load_hydrator_state(cwd)
+        state = load_hydrator_state(session_id)
         assert state is not None
         assert "guardrails" in state
         assert state["guardrails"] == []
@@ -184,8 +178,7 @@ class TestHydratorStateSkip:
         state_dir = tmp_path / "claude-session"
         monkeypatch.setenv("CLAUDE_SESSION_STATE_DIR", str(state_dir))
 
-        cwd = "/home/user/test-project"
-        monkeypatch.setenv("CLAUDE_CWD", cwd)
+        session_id = make_session_id()
 
         # Import main to test full hook behavior
         from hooks.user_prompt_submit import should_skip_hydration
@@ -199,54 +192,45 @@ class TestHydratorStateSkip:
         )
 
         # No state should be written (would need to test via main())
-        state = load_hydrator_state(cwd)
+        state = load_hydrator_state(session_id)
         assert state is None
 
 
-class TestHydratorStateCwd:
-    """Test CWD handling for project hash."""
+class TestSessionIsolation:
+    """Test that different sessions have isolated state."""
 
-    def test_uses_cwd_env_var(self, tmp_path: Path, monkeypatch) -> None:
-        """Uses CLAUDE_CWD env var for project hash."""
+    def test_different_sessions_different_state(
+        self, tmp_path: Path, monkeypatch
+    ) -> None:
+        """Different session IDs produce different state files."""
         from hooks.user_prompt_submit import build_hydration_instruction
-        from lib.session_state import get_hydrator_state_path
+        from lib.session_state import get_hydrator_state_path, load_hydrator_state
 
         state_dir = tmp_path / "claude-session"
         monkeypatch.setenv("CLAUDE_SESSION_STATE_DIR", str(state_dir))
 
-        cwd = "/specific/project/path"
-        monkeypatch.setenv("CLAUDE_CWD", cwd)
+        # First session
+        session1 = make_session_id()
+        build_hydration_instruction(session1, "Prompt one")
+        path1 = get_hydrator_state_path(session1)
 
-        build_hydration_instruction("Test")
-
-        # Verify file was created with correct project hash
-        expected_path = get_hydrator_state_path(cwd)
-        assert expected_path.exists()
-
-    def test_different_cwd_different_state(self, tmp_path: Path, monkeypatch) -> None:
-        """Different CWD produces different state files."""
-        from hooks.user_prompt_submit import build_hydration_instruction
-        from lib.session_state import get_hydrator_state_path
-
-        state_dir = tmp_path / "claude-session"
-        monkeypatch.setenv("CLAUDE_SESSION_STATE_DIR", str(state_dir))
-
-        # First project
-        cwd1 = "/project/one"
-        monkeypatch.setenv("CLAUDE_CWD", cwd1)
-        build_hydration_instruction("Prompt one")
-        path1 = get_hydrator_state_path(cwd1)
-
-        # Second project
-        cwd2 = "/project/two"
-        monkeypatch.setenv("CLAUDE_CWD", cwd2)
-        build_hydration_instruction("Prompt two")
-        path2 = get_hydrator_state_path(cwd2)
+        # Second session
+        session2 = make_session_id()
+        build_hydration_instruction(session2, "Prompt two")
+        path2 = get_hydrator_state_path(session2)
 
         # Both should exist and be different files
         assert path1.exists()
         assert path2.exists()
         assert path1 != path2
+
+        # Each session should have its own intent
+        state1 = load_hydrator_state(session1)
+        state2 = load_hydrator_state(session2)
+        assert state1 is not None
+        assert state2 is not None
+        assert "one" in state1["intent_envelope"].lower()
+        assert "two" in state2["intent_envelope"].lower()
 
 
 class TestHydratorStateIntegration:
@@ -256,21 +240,18 @@ class TestHydratorStateIntegration:
         self, tmp_path: Path, monkeypatch
     ) -> None:
         """Full hook main() writes hydrator state for valid prompts."""
-        import io
-        import sys
-
         from lib.session_state import load_hydrator_state
 
         state_dir = tmp_path / "claude-session"
         monkeypatch.setenv("CLAUDE_SESSION_STATE_DIR", str(state_dir))
 
-        cwd = "/test/project"
-        monkeypatch.setenv("CLAUDE_CWD", cwd)
+        session_id = make_session_id()
 
-        # Simulate hook input
+        # Simulate hook input (with session_id)
         input_data = {
             "prompt": "Implement feature X",
             "transcript_path": None,
+            "session_id": session_id,
         }
 
         # Capture stdin/stdout
@@ -287,7 +268,7 @@ class TestHydratorStateIntegration:
         assert exc_info.value.code == 0
 
         # Verify state was written
-        state = load_hydrator_state(cwd)
+        state = load_hydrator_state(session_id)
         assert state is not None
         assert "Implement feature" in state["intent_envelope"]
 
@@ -295,21 +276,18 @@ class TestHydratorStateIntegration:
         self, tmp_path: Path, monkeypatch
     ) -> None:
         """Hook main() does NOT write state for skill invocations."""
-        import io
-        import sys
-
         from lib.session_state import load_hydrator_state
 
         state_dir = tmp_path / "claude-session"
         monkeypatch.setenv("CLAUDE_SESSION_STATE_DIR", str(state_dir))
 
-        cwd = "/test/project"
-        monkeypatch.setenv("CLAUDE_CWD", cwd)
+        session_id = make_session_id()
 
         # Skill invocation should skip hydration
         input_data = {
             "prompt": "/commit",
             "transcript_path": None,
+            "session_id": session_id,
         }
 
         monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps(input_data)))
@@ -324,6 +302,36 @@ class TestHydratorStateIntegration:
         assert exc_info.value.code == 0
 
         # State IS written, but with hydration_pending=False (so gate doesn't block)
-        state = load_hydrator_state(cwd)
+        state = load_hydrator_state(session_id)
         assert state is not None
         assert state.get("hydration_pending") is False
+
+    def test_main_graceful_without_session_id(
+        self, tmp_path: Path, monkeypatch
+    ) -> None:
+        """Hook main() handles missing session_id gracefully."""
+        state_dir = tmp_path / "claude-session"
+        monkeypatch.setenv("CLAUDE_SESSION_STATE_DIR", str(state_dir))
+
+        # No session_id in input
+        input_data = {
+            "prompt": "Test prompt",
+            "transcript_path": None,
+        }
+
+        monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps(input_data)))
+        captured_output = io.StringIO()
+        monkeypatch.setattr(sys, "stdout", captured_output)
+
+        from hooks.user_prompt_submit import main
+
+        with pytest.raises(SystemExit) as exc_info:
+            main()
+
+        # Should exit gracefully with code 0 (fail-open)
+        assert exc_info.value.code == 0
+
+        # Output should be valid JSON
+        output = captured_output.getvalue()
+        result = json.loads(output)
+        assert "hookSpecificOutput" in result

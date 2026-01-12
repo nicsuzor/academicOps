@@ -2,6 +2,8 @@
 
 TDD Phase 1: Foundation - Session State API
 Tests atomic CRUD operations for hydrator and custodiet state files.
+
+Note: State is keyed by session_id (UUID-like string), NOT project cwd.
 """
 
 from __future__ import annotations
@@ -9,36 +11,13 @@ from __future__ import annotations
 import json
 import multiprocessing
 import time
+import uuid
 from pathlib import Path
 
 
-class TestProjectHash:
-    """Test project hash generation."""
-
-    def test_same_cwd_produces_same_hash(self) -> None:
-        """Same cwd should always produce the same hash."""
-        from lib.session_state import get_project_hash
-
-        cwd = "/home/user/project"
-        hash1 = get_project_hash(cwd)
-        hash2 = get_project_hash(cwd)
-        assert hash1 == hash2
-
-    def test_different_cwd_produces_different_hash(self) -> None:
-        """Different cwds should produce different hashes."""
-        from lib.session_state import get_project_hash
-
-        hash1 = get_project_hash("/home/user/project1")
-        hash2 = get_project_hash("/home/user/project2")
-        assert hash1 != hash2
-
-    def test_hash_is_short_identifier(self) -> None:
-        """Hash should be a short identifier (12 chars)."""
-        from lib.session_state import get_project_hash
-
-        project_hash = get_project_hash("/home/user/project")
-        assert len(project_hash) == 12
-        assert project_hash.isalnum()
+def make_session_id() -> str:
+    """Generate a test session ID (UUID format)."""
+    return str(uuid.uuid4())
 
 
 class TestStatePaths:
@@ -46,30 +25,86 @@ class TestStatePaths:
 
     def test_hydrator_state_path_format(self, tmp_path: Path, monkeypatch) -> None:
         """Hydrator state path follows spec format."""
-        from lib.session_state import get_hydrator_state_path, get_project_hash
+        from lib.session_state import get_hydrator_state_path
 
         # Patch state dir to use tmp
         monkeypatch.setenv("CLAUDE_SESSION_STATE_DIR", str(tmp_path))
 
-        cwd = "/home/user/project"
-        path = get_hydrator_state_path(cwd)
-        project_hash = get_project_hash(cwd)
+        session_id = "abc123-def456-789"
+        path = get_hydrator_state_path(session_id)
 
-        assert path.name == f"hydrator-{project_hash}.json"
+        assert path.name == f"hydrator-{session_id}.json"
         assert path.parent == tmp_path
 
     def test_custodiet_state_path_format(self, tmp_path: Path, monkeypatch) -> None:
         """Custodiet state path follows spec format."""
-        from lib.session_state import get_custodiet_state_path, get_project_hash
+        from lib.session_state import get_custodiet_state_path
 
         monkeypatch.setenv("CLAUDE_SESSION_STATE_DIR", str(tmp_path))
 
-        cwd = "/home/user/project"
-        path = get_custodiet_state_path(cwd)
-        project_hash = get_project_hash(cwd)
+        session_id = "abc123-def456-789"
+        path = get_custodiet_state_path(session_id)
 
-        assert path.name == f"custodiet-{project_hash}.json"
+        assert path.name == f"custodiet-{session_id}.json"
         assert path.parent == tmp_path
+
+
+class TestSessionIsolation:
+    """Test that different sessions have isolated state."""
+
+    def test_different_sessions_have_different_state_files(
+        self, tmp_path: Path, monkeypatch
+    ) -> None:
+        """Different session IDs should produce different state file paths."""
+        from lib.session_state import get_hydrator_state_path
+
+        monkeypatch.setenv("CLAUDE_SESSION_STATE_DIR", str(tmp_path))
+
+        session1 = make_session_id()
+        session2 = make_session_id()
+
+        path1 = get_hydrator_state_path(session1)
+        path2 = get_hydrator_state_path(session2)
+
+        assert path1 != path2
+        assert session1 in str(path1)
+        assert session2 in str(path2)
+
+    def test_sessions_dont_share_state(self, tmp_path: Path, monkeypatch) -> None:
+        """State saved for one session should not be visible to another."""
+        from lib.session_state import (
+            HydratorState,
+            load_hydrator_state,
+            save_hydrator_state,
+        )
+
+        monkeypatch.setenv("CLAUDE_SESSION_STATE_DIR", str(tmp_path))
+
+        session1 = make_session_id()
+        session2 = make_session_id()
+
+        state1: HydratorState = {
+            "last_hydration_ts": 1.0,
+            "declared_workflow": {
+                "gate": "plan",
+                "pre_work": "none",
+                "approach": "tdd",
+            },
+            "active_skill": "skill1",
+            "intent_envelope": "session 1 intent",
+            "guardrails": ["g1"],
+            "hydration_pending": False,
+        }
+
+        save_hydrator_state(session1, state1)
+
+        # Session 2 should not see session 1's state
+        assert load_hydrator_state(session2) is None
+
+        # Session 1 should see its own state
+        loaded = load_hydrator_state(session1)
+        assert loaded is not None
+        assert loaded["active_skill"] == "skill1"
 
 
 class TestHydratorState:
@@ -81,7 +116,7 @@ class TestHydratorState:
 
         monkeypatch.setenv("CLAUDE_SESSION_STATE_DIR", str(tmp_path))
 
-        result = load_hydrator_state("/nonexistent/project")
+        result = load_hydrator_state(make_session_id())
         assert result is None
 
     def test_save_and_load_state(self, tmp_path: Path, monkeypatch) -> None:
@@ -94,7 +129,7 @@ class TestHydratorState:
 
         monkeypatch.setenv("CLAUDE_SESSION_STATE_DIR", str(tmp_path))
 
-        cwd = "/home/user/project"
+        session_id = make_session_id()
         state: HydratorState = {
             "last_hydration_ts": 1234567890.123,
             "declared_workflow": {
@@ -105,10 +140,11 @@ class TestHydratorState:
             "active_skill": "framework",
             "intent_envelope": "implement gate architecture",
             "guardrails": ["verify_before_complete", "require_acceptance_test"],
+            "hydration_pending": True,
         }
 
-        save_hydrator_state(cwd, state)
-        loaded = load_hydrator_state(cwd)
+        save_hydrator_state(session_id, state)
+        loaded = load_hydrator_state(session_id)
 
         assert loaded is not None
         assert loaded["last_hydration_ts"] == state["last_hydration_ts"]
@@ -134,9 +170,10 @@ class TestHydratorState:
             "active_skill": "",
             "intent_envelope": "",
             "guardrails": [],
+            "hydration_pending": False,
         }
 
-        save_hydrator_state("/project", state)
+        save_hydrator_state(make_session_id(), state)
         assert state_dir.exists()
 
     def test_save_is_atomic(self, tmp_path: Path, monkeypatch) -> None:
@@ -149,7 +186,7 @@ class TestHydratorState:
 
         monkeypatch.setenv("CLAUDE_SESSION_STATE_DIR", str(tmp_path))
 
-        cwd = "/project"
+        session_id = make_session_id()
         state: HydratorState = {
             "last_hydration_ts": 0.0,
             "declared_workflow": {
@@ -160,16 +197,17 @@ class TestHydratorState:
             "active_skill": "",
             "intent_envelope": "",
             "guardrails": [],
+            "hydration_pending": False,
         }
 
-        save_hydrator_state(cwd, state)
+        save_hydrator_state(session_id, state)
 
         # Verify no .tmp files left behind
         tmp_files = list(tmp_path.glob("*.tmp"))
         assert len(tmp_files) == 0
 
         # Verify final file is valid JSON
-        state_path = get_hydrator_state_path(cwd)
+        state_path = get_hydrator_state_path(session_id)
         loaded = json.loads(state_path.read_text())
         assert loaded["last_hydration_ts"] == 0.0
 
@@ -183,7 +221,7 @@ class TestCustodietState:
 
         monkeypatch.setenv("CLAUDE_SESSION_STATE_DIR", str(tmp_path))
 
-        result = load_custodiet_state("/nonexistent/project")
+        result = load_custodiet_state(make_session_id())
         assert result is None
 
     def test_save_and_load_state(self, tmp_path: Path, monkeypatch) -> None:
@@ -196,15 +234,16 @@ class TestCustodietState:
 
         monkeypatch.setenv("CLAUDE_SESSION_STATE_DIR", str(tmp_path))
 
-        cwd = "/home/user/project"
+        session_id = make_session_id()
         state: CustodietState = {
             "last_compliance_ts": 1234567890.456,
             "tool_calls_since_compliance": 5,
             "last_drift_warning": "drift detected at tool 3",
+            "error_flag": None,
         }
 
-        save_custodiet_state(cwd, state)
-        loaded = load_custodiet_state(cwd)
+        save_custodiet_state(session_id, state)
+        loaded = load_custodiet_state(session_id)
 
         assert loaded is not None
         assert loaded["last_compliance_ts"] == state["last_compliance_ts"]
@@ -224,14 +263,16 @@ class TestCustodietState:
 
         monkeypatch.setenv("CLAUDE_SESSION_STATE_DIR", str(tmp_path))
 
+        session_id = make_session_id()
         state: CustodietState = {
             "last_compliance_ts": 0.0,
             "tool_calls_since_compliance": 0,
             "last_drift_warning": None,
+            "error_flag": None,
         }
 
-        save_custodiet_state("/project", state)
-        loaded = load_custodiet_state("/project")
+        save_custodiet_state(session_id, state)
+        loaded = load_custodiet_state(session_id)
 
         assert loaded is not None
         assert loaded["last_drift_warning"] is None
@@ -251,7 +292,7 @@ class TestConcurrentAccess:
             save_custodiet_state,
         )
 
-        cwd = "/project"
+        session_id = make_session_id()
         num_processes = 10
         writes_per_process = 5
 
@@ -262,8 +303,9 @@ class TestConcurrentAccess:
                     "last_compliance_ts": float(process_id * 1000 + i),
                     "tool_calls_since_compliance": process_id * 10 + i,
                     "last_drift_warning": f"process_{process_id}_write_{i}",
+                    "error_flag": None,
                 }
-                save_custodiet_state(cwd, state)
+                save_custodiet_state(session_id, state)
                 time.sleep(0.001)  # Small delay to interleave writes
 
         # Run concurrent writers
@@ -277,7 +319,7 @@ class TestConcurrentAccess:
             p.join()
 
         # Final state should be valid JSON
-        final_state = load_custodiet_state(cwd)
+        final_state = load_custodiet_state(session_id)
         assert final_state is not None
         assert isinstance(final_state["tool_calls_since_compliance"], int)
         assert isinstance(final_state["last_compliance_ts"], float)
@@ -294,7 +336,7 @@ class TestConcurrentAccess:
             save_hydrator_state,
         )
 
-        cwd = "/project"
+        session_id = make_session_id()
 
         # Create initial state
         initial_state: HydratorState = {
@@ -307,8 +349,9 @@ class TestConcurrentAccess:
             "active_skill": "initial",
             "intent_envelope": "test",
             "guardrails": [],
+            "hydration_pending": False,
         }
-        save_hydrator_state(cwd, initial_state)
+        save_hydrator_state(session_id, initial_state)
 
         # Rapid read/write cycles
         errors = []
@@ -324,12 +367,13 @@ class TestConcurrentAccess:
                 "active_skill": f"skill_{i}",
                 "intent_envelope": f"intent_{i}",
                 "guardrails": [],
+                "hydration_pending": False,
             }
-            save_hydrator_state(cwd, new_state)
+            save_hydrator_state(session_id, new_state)
 
             # Immediate read - should not crash
             try:
-                result = load_hydrator_state(cwd)
+                result = load_hydrator_state(session_id)
                 if result is not None:
                     # If we got a result, it should be valid
                     assert isinstance(result["active_skill"], str)
@@ -349,10 +393,10 @@ class TestErrorFlag:
 
         monkeypatch.setenv("CLAUDE_SESSION_STATE_DIR", str(tmp_path))
 
-        cwd = "/home/user/project"
-        set_error_flag(cwd, "compliance_failure", "Agent violated H2")
+        session_id = make_session_id()
+        set_error_flag(session_id, "compliance_failure", "Agent violated H2")
 
-        flag = get_error_flag(cwd)
+        flag = get_error_flag(session_id)
         assert flag is not None
         assert flag["error_type"] == "compliance_failure"
         assert flag["message"] == "Agent violated H2"
@@ -367,7 +411,7 @@ class TestErrorFlag:
 
         monkeypatch.setenv("CLAUDE_SESSION_STATE_DIR", str(tmp_path))
 
-        flag = get_error_flag("/nonexistent/project")
+        flag = get_error_flag(make_session_id())
         assert flag is None
 
     def test_get_error_flag_returns_none_after_clear(
@@ -378,12 +422,12 @@ class TestErrorFlag:
 
         monkeypatch.setenv("CLAUDE_SESSION_STATE_DIR", str(tmp_path))
 
-        cwd = "/project"
-        set_error_flag(cwd, "intervention_required", "Test message")
-        assert get_error_flag(cwd) is not None
+        session_id = make_session_id()
+        set_error_flag(session_id, "intervention_required", "Test message")
+        assert get_error_flag(session_id) is not None
 
-        clear_error_flag(cwd)
-        assert get_error_flag(cwd) is None
+        clear_error_flag(session_id)
+        assert get_error_flag(session_id) is None
 
     def test_clear_error_flag_preserves_other_state(
         self, tmp_path: Path, monkeypatch
@@ -398,7 +442,7 @@ class TestErrorFlag:
 
         monkeypatch.setenv("CLAUDE_SESSION_STATE_DIR", str(tmp_path))
 
-        cwd = "/project"
+        session_id = make_session_id()
         # Set up initial state with other fields
         initial_state = {
             "last_compliance_ts": 1234567890.0,
@@ -406,16 +450,16 @@ class TestErrorFlag:
             "last_drift_warning": "some warning",
             "error_flag": None,
         }
-        save_custodiet_state(cwd, initial_state)
+        save_custodiet_state(session_id, initial_state)
 
         # Set error flag
-        set_error_flag(cwd, "cannot_assess", "Missing context")
+        set_error_flag(session_id, "cannot_assess", "Missing context")
 
         # Clear error flag
-        clear_error_flag(cwd)
+        clear_error_flag(session_id)
 
         # Other fields should be preserved
-        state = load_custodiet_state(cwd)
+        state = load_custodiet_state(session_id)
         assert state is not None
         assert state["last_compliance_ts"] == 1234567890.0
         assert state["tool_calls_since_compliance"] == 5
@@ -431,16 +475,16 @@ class TestErrorFlag:
 
         monkeypatch.setenv("CLAUDE_SESSION_STATE_DIR", str(tmp_path))
 
-        cwd = "/brand/new/project"
-        set_error_flag(cwd, "compliance_failure", "First flag")
+        session_id = make_session_id()
+        set_error_flag(session_id, "compliance_failure", "First flag")
 
         # Flag should be set
-        flag = get_error_flag(cwd)
+        flag = get_error_flag(session_id)
         assert flag is not None
         assert flag["error_type"] == "compliance_failure"
 
         # State should have been initialized
-        state = load_custodiet_state(cwd)
+        state = load_custodiet_state(session_id)
         assert state is not None
 
     def test_error_flag_types(self, tmp_path: Path, monkeypatch) -> None:
@@ -449,7 +493,7 @@ class TestErrorFlag:
 
         monkeypatch.setenv("CLAUDE_SESSION_STATE_DIR", str(tmp_path))
 
-        cwd = "/project"
+        session_id = make_session_id()
 
         # Test each documented error type
         for error_type in [
@@ -457,8 +501,8 @@ class TestErrorFlag:
             "intervention_required",
             "cannot_assess",
         ]:
-            set_error_flag(cwd, error_type, f"Test {error_type}")
-            flag = get_error_flag(cwd)
+            set_error_flag(session_id, error_type, f"Test {error_type}")
+            flag = get_error_flag(session_id)
             assert flag["error_type"] == error_type
 
     def test_error_flag_overwrites_previous(self, tmp_path: Path, monkeypatch) -> None:
@@ -467,11 +511,11 @@ class TestErrorFlag:
 
         monkeypatch.setenv("CLAUDE_SESSION_STATE_DIR", str(tmp_path))
 
-        cwd = "/project"
-        set_error_flag(cwd, "compliance_failure", "First error")
-        set_error_flag(cwd, "intervention_required", "Second error")
+        session_id = make_session_id()
+        set_error_flag(session_id, "compliance_failure", "First error")
+        set_error_flag(session_id, "intervention_required", "Second error")
 
-        flag = get_error_flag(cwd)
+        flag = get_error_flag(session_id)
         assert flag["error_type"] == "intervention_required"
         assert flag["message"] == "Second error"
 
@@ -496,3 +540,74 @@ class TestStateDirectory:
 
         state_dir = get_state_dir()
         assert state_dir == custom_dir
+
+
+class TestHydrationGate:
+    """Test hydration gate API."""
+
+    def test_is_hydration_pending_false_when_no_state(
+        self, tmp_path: Path, monkeypatch
+    ) -> None:
+        """is_hydration_pending returns False when no state exists."""
+        from lib.session_state import is_hydration_pending
+
+        monkeypatch.setenv("CLAUDE_SESSION_STATE_DIR", str(tmp_path))
+
+        assert is_hydration_pending(make_session_id()) is False
+
+    def test_is_hydration_pending_true(self, tmp_path: Path, monkeypatch) -> None:
+        """is_hydration_pending returns True when flag is set."""
+        from lib.session_state import (
+            HydratorState,
+            is_hydration_pending,
+            save_hydrator_state,
+        )
+
+        monkeypatch.setenv("CLAUDE_SESSION_STATE_DIR", str(tmp_path))
+
+        session_id = make_session_id()
+        state: HydratorState = {
+            "last_hydration_ts": 0.0,
+            "declared_workflow": {
+                "gate": "none",
+                "pre_work": "none",
+                "approach": "direct",
+            },
+            "active_skill": "",
+            "intent_envelope": "",
+            "guardrails": [],
+            "hydration_pending": True,
+        }
+        save_hydrator_state(session_id, state)
+
+        assert is_hydration_pending(session_id) is True
+
+    def test_clear_hydration_pending(self, tmp_path: Path, monkeypatch) -> None:
+        """clear_hydration_pending clears the flag."""
+        from lib.session_state import (
+            HydratorState,
+            clear_hydration_pending,
+            is_hydration_pending,
+            save_hydrator_state,
+        )
+
+        monkeypatch.setenv("CLAUDE_SESSION_STATE_DIR", str(tmp_path))
+
+        session_id = make_session_id()
+        state: HydratorState = {
+            "last_hydration_ts": 0.0,
+            "declared_workflow": {
+                "gate": "none",
+                "pre_work": "none",
+                "approach": "direct",
+            },
+            "active_skill": "",
+            "intent_envelope": "",
+            "guardrails": [],
+            "hydration_pending": True,
+        }
+        save_hydrator_state(session_id, state)
+
+        assert is_hydration_pending(session_id) is True
+        clear_hydration_pending(session_id)
+        assert is_hydration_pending(session_id) is False

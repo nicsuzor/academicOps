@@ -4,13 +4,16 @@ Provides atomic CRUD operations for hydrator and custodiet state files.
 State files enable cross-gate communication per specs/gate-agent-architecture.md.
 
 State files:
-- hydrator-{project_hash}.json: Written by UserPromptSubmit, read by PreToolUse/PostToolUse
-- custodiet-{project_hash}.json: Written by PostToolUse, read by PreToolUse for overdue check
+- hydrator-{session_id}.json: Written by UserPromptSubmit, read by PreToolUse/PostToolUse
+- custodiet-{session_id}.json: Written by PostToolUse, read by PreToolUse for overdue check
+
+IMPORTANT: State is keyed by session_id, NOT project cwd. Each Claude client session
+is independent - multiple sessions can run from the same project directory and must
+not share state. Session ID is the unique identifier provided by Claude Code.
 """
 
 from __future__ import annotations
 
-import hashlib
 import json
 import os
 import time
@@ -64,60 +67,43 @@ def get_state_dir() -> Path:
     return Path("/tmp/claude-session")
 
 
-def get_project_hash(cwd: str) -> str:
-    """Hash project cwd to stable 12-char identifier.
-
-    Same cwd always produces same hash, enabling state persistence
-    across subagents (which get new session_ids but share cwd).
+def get_hydrator_state_path(session_id: str) -> Path:
+    """Get hydrator state file path for session.
 
     Args:
-        cwd: Current working directory path
+        session_id: Claude Code session ID (unique per client session)
 
     Returns:
-        12-character hex string
+        Path to hydrator-{session_id}.json
     """
-    return hashlib.sha256(cwd.encode()).hexdigest()[:12]
+    return get_state_dir() / f"hydrator-{session_id}.json"
 
 
-def get_hydrator_state_path(cwd: str) -> Path:
-    """Get hydrator state file path for project.
+def get_custodiet_state_path(session_id: str) -> Path:
+    """Get custodiet state file path for session.
 
     Args:
-        cwd: Current working directory
+        session_id: Claude Code session ID (unique per client session)
 
     Returns:
-        Path to hydrator-{project_hash}.json
+        Path to custodiet-{session_id}.json
     """
-    project_hash = get_project_hash(cwd)
-    return get_state_dir() / f"hydrator-{project_hash}.json"
+    return get_state_dir() / f"custodiet-{session_id}.json"
 
 
-def get_custodiet_state_path(cwd: str) -> Path:
-    """Get custodiet state file path for project.
-
-    Args:
-        cwd: Current working directory
-
-    Returns:
-        Path to custodiet-{project_hash}.json
-    """
-    project_hash = get_project_hash(cwd)
-    return get_state_dir() / f"custodiet-{project_hash}.json"
-
-
-def load_hydrator_state(cwd: str, retries: int = 3) -> HydratorState | None:
-    """Load hydrator state for project.
+def load_hydrator_state(session_id: str, retries: int = 3) -> HydratorState | None:
+    """Load hydrator state for session.
 
     Uses retry logic to handle race conditions during concurrent writes.
 
     Args:
-        cwd: Current working directory
+        session_id: Claude Code session ID
         retries: Number of retry attempts on JSONDecodeError
 
     Returns:
         HydratorState dict or None if not found
     """
-    path = get_hydrator_state_path(cwd)
+    path = get_hydrator_state_path(session_id)
     if not path.exists():
         return None
 
@@ -135,14 +121,14 @@ def load_hydrator_state(cwd: str, retries: int = 3) -> HydratorState | None:
     return None
 
 
-def save_hydrator_state(cwd: str, state: HydratorState) -> None:
+def save_hydrator_state(session_id: str, state: HydratorState) -> None:
     """Atomically save hydrator state.
 
     Uses write-then-rename pattern for atomic updates.
     Unique temp file per write to avoid race conditions.
 
     Args:
-        cwd: Current working directory
+        session_id: Claude Code session ID
         state: HydratorState to save
     """
     import tempfile
@@ -150,7 +136,7 @@ def save_hydrator_state(cwd: str, state: HydratorState) -> None:
     state_dir = get_state_dir()
     state_dir.mkdir(parents=True, exist_ok=True)
 
-    state_path = get_hydrator_state_path(cwd)
+    state_path = get_hydrator_state_path(session_id)
 
     # Write to unique temp file to avoid race conditions
     fd, temp_path_str = tempfile.mkstemp(
@@ -170,19 +156,19 @@ def save_hydrator_state(cwd: str, state: HydratorState) -> None:
         raise
 
 
-def load_custodiet_state(cwd: str, retries: int = 3) -> CustodietState | None:
-    """Load custodiet state for project.
+def load_custodiet_state(session_id: str, retries: int = 3) -> CustodietState | None:
+    """Load custodiet state for session.
 
     Uses retry logic to handle race conditions during concurrent writes.
 
     Args:
-        cwd: Current working directory
+        session_id: Claude Code session ID
         retries: Number of retry attempts on JSONDecodeError
 
     Returns:
         CustodietState dict or None if not found
     """
-    path = get_custodiet_state_path(cwd)
+    path = get_custodiet_state_path(session_id)
     if not path.exists():
         return None
 
@@ -200,14 +186,14 @@ def load_custodiet_state(cwd: str, retries: int = 3) -> CustodietState | None:
     return None
 
 
-def save_custodiet_state(cwd: str, state: CustodietState) -> None:
+def save_custodiet_state(session_id: str, state: CustodietState) -> None:
     """Atomically save custodiet state.
 
     Uses write-then-rename pattern for atomic updates.
     Unique temp file per write to avoid race conditions.
 
     Args:
-        cwd: Current working directory
+        session_id: Claude Code session ID
         state: CustodietState to save
     """
     import tempfile
@@ -215,7 +201,7 @@ def save_custodiet_state(cwd: str, state: CustodietState) -> None:
     state_dir = get_state_dir()
     state_dir.mkdir(parents=True, exist_ok=True)
 
-    state_path = get_custodiet_state_path(cwd)
+    state_path = get_custodiet_state_path(session_id)
 
     # Write to unique temp file to avoid race conditions
     fd, temp_path_str = tempfile.mkstemp(
@@ -240,18 +226,18 @@ def save_custodiet_state(cwd: str, state: CustodietState) -> None:
 # ============================================================================
 
 
-def set_error_flag(cwd: str, error_type: str, message: str) -> None:
+def set_error_flag(session_id: str, error_type: str, message: str) -> None:
     """Set error flag in custodiet state.
 
     Called when custodiet detects compliance failure or needs intervention.
     Other hooks can read this via get_error_flag() to enforce blocking.
 
     Args:
-        cwd: Current working directory for project hash
+        session_id: Claude Code session ID
         error_type: Type of error (compliance_failure, intervention_required, cannot_assess)
         message: Human-readable error description
     """
-    state = load_custodiet_state(cwd)
+    state = load_custodiet_state(session_id)
     if state is None:
         state = {
             "last_compliance_ts": 0.0,
@@ -265,40 +251,40 @@ def set_error_flag(cwd: str, error_type: str, message: str) -> None:
         "message": message,
         "timestamp": time.time(),
     }
-    save_custodiet_state(cwd, state)
+    save_custodiet_state(session_id, state)
 
 
-def get_error_flag(cwd: str) -> ErrorFlag | None:
+def get_error_flag(session_id: str) -> ErrorFlag | None:
     """Get error flag from custodiet state.
 
     Called by other hooks to check if custodiet has flagged an issue.
 
     Args:
-        cwd: Current working directory for project hash
+        session_id: Claude Code session ID
 
     Returns:
         ErrorFlag dict or None if no flag set
     """
-    state = load_custodiet_state(cwd)
+    state = load_custodiet_state(session_id)
     if state is None:
         return None
     return state.get("error_flag")
 
 
-def clear_error_flag(cwd: str) -> None:
+def clear_error_flag(session_id: str) -> None:
     """Clear error flag from custodiet state.
 
     Called after intervention is resolved or compliance check passes.
 
     Args:
-        cwd: Current working directory for project hash
+        session_id: Claude Code session ID
     """
-    state = load_custodiet_state(cwd)
+    state = load_custodiet_state(session_id)
     if state is None:
         return
 
     state["error_flag"] = None
-    save_custodiet_state(cwd, state)
+    save_custodiet_state(session_id, state)
 
 
 # ============================================================================
@@ -306,35 +292,35 @@ def clear_error_flag(cwd: str) -> None:
 # ============================================================================
 
 
-def is_hydration_pending(cwd: str) -> bool:
-    """Check if hydration is pending for this project.
+def is_hydration_pending(session_id: str) -> bool:
+    """Check if hydration is pending for this session.
 
     Called by PreToolUse gate to block tools until prompt-hydrator is invoked.
 
     Args:
-        cwd: Current working directory for project hash
+        session_id: Claude Code session ID
 
     Returns:
         True if hydration_pending flag is set, False otherwise
     """
-    state = load_hydrator_state(cwd)
+    state = load_hydrator_state(session_id)
     if state is None:
         return False
     return state.get("hydration_pending", False)
 
 
-def clear_hydration_pending(cwd: str) -> None:
+def clear_hydration_pending(session_id: str) -> None:
     """Clear hydration_pending flag.
 
     Called by PreToolUse gate when it sees Task(prompt-hydrator) invocation.
     This is the mechanical trigger - only the hook can clear it.
 
     Args:
-        cwd: Current working directory for project hash
+        session_id: Claude Code session ID
     """
-    state = load_hydrator_state(cwd)
+    state = load_hydrator_state(session_id)
     if state is None:
         return
 
     state["hydration_pending"] = False
-    save_hydrator_state(cwd, state)
+    save_hydrator_state(session_id, state)

@@ -24,9 +24,12 @@ MUTATING_TOOLS = {"Edit", "Write", "Bash", "NotebookEdit"}
 READONLY_TOOLS = {"Read", "Glob", "Grep", "WebFetch", "WebSearch", "LSP"}
 
 
-def get_cwd() -> str:
-    """Get current working directory from environment."""
-    return os.environ.get("CLAUDE_CWD", os.getcwd())
+def get_session_id() -> str:
+    """Get session ID from environment.
+
+    Returns empty string if not found (caller should handle gracefully).
+    """
+    return os.environ.get("CLAUDE_SESSION_ID", "")
 
 
 def is_mutating_tool(tool_name: str) -> bool:
@@ -41,20 +44,26 @@ def is_mutating_tool(tool_name: str) -> bool:
     return tool_name in MUTATING_TOOLS
 
 
-def check_overdue(tool_name: str, tool_input: dict[str, Any]) -> dict[str, Any] | None:
+def check_overdue(
+    tool_name: str, tool_input: dict[str, Any], session_id: str | None = None
+) -> dict[str, Any] | None:
     """Check if compliance is overdue and block mutating tools if so.
 
     Args:
         tool_name: Name of tool being called
         tool_input: Tool input arguments (unused, for future extension)
+        session_id: Claude Code session ID (optional, falls back to env var)
 
     Returns:
         Block response dict if mutating tool blocked, None otherwise
     """
-    cwd = get_cwd()
+    sid = session_id or get_session_id()
+    if not sid:
+        # No session_id - fail-open, don't block
+        return None
 
     # Load custodiet state
-    state = load_custodiet_state(cwd)
+    state = load_custodiet_state(sid)
     if state is None:
         # No state = first session, no baseline to enforce against
         return None
