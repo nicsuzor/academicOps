@@ -80,11 +80,11 @@ Per AXIOMS #29: "ONE SPEC PER FEATURE". Skills need specs to justify existence a
 | annotations          | ❌        | P3 - utility            |
 | audit                | ✅        | `audit-skill.md`        |
 | convert-to-md        | ❌        | P3 - utility            |
-| daily                | ❌        | P2 - daily workflow     |
+| daily                | ✅        | `daily-skill.md`        |
 | dashboard            | ✅        | `dashboard-skill.md`    |
 | debug-headless       | ❌        | P3 - debugging          |
 | excalidraw           | ✅        | `excalidraw-skill.md`   |
-| extractor            | ❌        | P2 - email workflow     |
+| extractor            | ✅        | `extractor-skill.md`    |
 | fact-check           | ❌        | P2 - research           |
 | feature-dev          | ✅        | `feature-dev-skill.md`  |
 | flowchart            | ❌        | P3 - utility            |
@@ -96,7 +96,7 @@ Per AXIOMS #29: "ONE SPEC PER FEATURE". Skills need specs to justify existence a
 | osb-drafting         | ❌        | P2 - domain-specific    |
 | pdf                  | ❌        | P3 - utility            |
 | python-dev           | ✅        | `python-dev-skill.md`   |
-| qa-eval              | ❌        | P2 - verification       |
+| qa-eval              | ✅        | `qa-eval.md`            |
 | remember             | ✅        | `remember-skill.md`     |
 | review               | ✅        | `review-skill.md`       |
 | review-training      | ❌        | P3 - training data      |
@@ -106,8 +106,8 @@ Per AXIOMS #29: "ONE SPEC PER FEATURE". Skills need specs to justify existence a
 | training-set-builder | ❌        | P3 - training data      |
 | transcript           | ✅        | `transcript-skill.md`   |
 
-**Skills with specs**: 16 of 29
-**Skills needing specs**: 13 (mostly P3 utilities)
+**Skills with specs**: 19 of 29
+**Skills needing specs**: 10 (mostly P3 utilities)
 
 ## In Progress
 
