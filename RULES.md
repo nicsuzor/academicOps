@@ -14,85 +14,85 @@ tags: [framework, enforcement, moc]
 
 ## Axiom → Enforcement Mapping
 
-| Axiom                                               | Rule                                      | Enforcement                     | Point                                           | Level                |
-| --------------------------------------------------- | ----------------------------------------- | ------------------------------- | ----------------------------------------------- | -------------------- |
-| [[axioms/no-other-truths.md                         | no-other-truths]]                         | No Other Truths                 | AXIOMS.md injection                             | SessionStart         |
-| [[axioms/categorical-imperative.md                  | categorical-imperative]]                  | Categorical Imperative          | prompt-hydrator suggests skills                 | UserPromptSubmit     |
-| [[axioms/dont-make-shit-up.md                       | dont-make-shit-up]]                       | Don't Make Shit Up              | AXIOMS.md                                       | SessionStart         |
-| [[axioms/always-cite-sources.md                     | always-cite-sources]]                     | Always Cite Sources             | AXIOMS.md                                       | SessionStart         |
-| [[axioms/do-one-thing.md                            | do-one-thing]]                            | Do One Thing                    | TodoWrite visibility, custodiet drift detection | During execution     |
-| [[axioms/data-boundaries.md                         | data-boundaries]]                         | Data Boundaries                 | settings.json deny rules                        | PreToolUse           |
-| [[axioms/project-independence.md                    | project-independence]]                    | Project Independence            | AXIOMS.md                                       | SessionStart         |
-| [[axioms/fail-fast-code.md                          | fail-fast-code]]                          | Fail-Fast (Code)                | policy_enforcer.py blocks destructive git       | PreToolUse           |
-| [[axioms/fail-fast-agents.md                        | fail-fast-agents]]                        | Fail-Fast (Agents)              | fail_fast_watchdog.py injects reminder          | PostToolUse          |
-| [[axioms/self-documenting.md                        | self-documenting]]                        | Self-Documenting                | policy_enforcer.py blocks *-GUIDE.md            | PreToolUse           |
-| [[axioms/single-purpose-files.md                    | single-purpose-files]]                    | Single-Purpose Files            | policy_enforcer.py 200-line limit               | PreToolUse           |
-| [[axioms/dry-modular-explicit.md                    | dry-modular-explicit]]                    | DRY, Modular, Explicit          | AXIOMS.md                                       | SessionStart         |
-| [[axioms/use-standard-tools.md                      | use-standard-tools]]                      | Use Standard Tools              | pyproject.toml, pre-commit                      | Config               |
-| [[axioms/always-dogfooding.md                       | always-dogfooding]]                       | Always Dogfooding               | AXIOMS.md                                       | SessionStart         |
-| [[axioms/skills-are-read-only.md                    | skills-are-read-only]]                    | Skills are Read-Only            | settings.json denies skill writes               | PreToolUse           |
-| [[axioms/trust-version-control.md                   | trust-version-control]]                   | Trust Version Control           | policy_enforcer.py blocks backup patterns       | PreToolUse           |
-| [[axioms/no-workarounds.md                          | no-workarounds]]                          | No Workarounds                  | fail_fast_watchdog.py                           | PostToolUse          |
-| [[axioms/verify-first.md                            | verify-first]]                            | Verify First                    | TodoWrite checkpoint                            | During execution     |
-| [[axioms/no-excuses.md                              | no-excuses]]                              | No Excuses                      | AXIOMS.md                                       | SessionStart         |
-| [[axioms/write-for-long-term.md                     | write-for-long-term]]                     | Write for Long Term             | AXIOMS.md                                       | SessionStart         |
-| [[axioms/maintain-relational-integrity.md           | maintain-relational-integrity]]           | Relational Integrity            | wikilink conventions                            | Pre-commit (planned) |
-| [[axioms/nothing-is-someone-elses-responsibility.md | nothing-is-someone-elses-responsibility]] | Nothing Is Someone Else's       | AXIOMS.md                                       | SessionStart         |
-| [[axioms/acceptance-criteria-own-success.md         | acceptance-criteria-own-success]]         | Acceptance Criteria Own Success | /qa skill enforcement                           | Stop                 |
-| [[axioms/plan-first-development.md                  | plan-first-development]]                  | Plan-First Development          | EnterPlanMode tool                              | Before coding        |
-| [[axioms/research-data-immutable.md                 | research-data-immutable]]                 | Research Data Immutable         | settings.json denies records/**                 | PreToolUse           |
-| [[axioms/just-in-time-context.md                    | just-in-time-context]]                    | Just-In-Time Context            | sessionstart_load_axioms.py                     | SessionStart         |
-| [[axioms/minimal-instructions.md                    | minimal-instructions]]                    | Minimal Instructions            | policy_enforcer.py 200-line limit               | PreToolUse           |
-| [[axioms/feedback-loops-for-uncertainty.md          | feedback-loops-for-uncertainty]]          | Feedback Loops                  | AXIOMS.md                                       | SessionStart         |
-| [[axioms/current-state-machine.md                   | current-state-machine]]                   | Current State Machine           | autocommit_state.py (auto-commit+push)          | PostToolUse          |
-| [[axioms/one-spec-per-feature.md                    | one-spec-per-feature]]                    | One Spec Per Feature            | AXIOMS.md                                       | SessionStart         |
+| Axiom                                       | Rule                            | Enforcement                                     | Point                | Level |
+| ------------------------------------------- | ------------------------------- | ----------------------------------------------- | -------------------- | ----- |
+| [[no-other-truths]]                         | No Other Truths                 | AXIOMS.md injection                             | SessionStart         |       |
+| [[categorical-imperative]]                  | Categorical Imperative          | prompt-hydrator suggests skills                 | UserPromptSubmit     |       |
+| [[dont-make-shit-up]]                       | Don't Make Shit Up              | AXIOMS.md                                       | SessionStart         |       |
+| [[always-cite-sources]]                     | Always Cite Sources             | AXIOMS.md                                       | SessionStart         |       |
+| [[do-one-thing]]                            | Do One Thing                    | TodoWrite visibility, custodiet drift detection | During execution     |       |
+| [[data-boundaries]]                         | Data Boundaries                 | settings.json deny rules                        | PreToolUse           |       |
+| [[project-independence]]                    | Project Independence            | AXIOMS.md                                       | SessionStart         |       |
+| [[fail-fast-code]]                          | Fail-Fast (Code)                | policy_enforcer.py blocks destructive git       | PreToolUse           |       |
+| [[fail-fast-agents]]                        | Fail-Fast (Agents)              | fail_fast_watchdog.py injects reminder          | PostToolUse          |       |
+| [[self-documenting]]                        | Self-Documenting                | policy_enforcer.py blocks *-GUIDE.md            | PreToolUse           |       |
+| [[single-purpose-files]]                    | Single-Purpose Files            | policy_enforcer.py 200-line limit               | PreToolUse           |       |
+| [[dry-modular-explicit]]                    | DRY, Modular, Explicit          | AXIOMS.md                                       | SessionStart         |       |
+| [[use-standard-tools]]                      | Use Standard Tools              | pyproject.toml, pre-commit                      | Config               |       |
+| [[always-dogfooding]]                       | Always Dogfooding               | AXIOMS.md                                       | SessionStart         |       |
+| [[skills-are-read-only]]                    | Skills are Read-Only            | settings.json denies skill writes               | PreToolUse           |       |
+| [[trust-version-control]]                   | Trust Version Control           | policy_enforcer.py blocks backup patterns       | PreToolUse           |       |
+| [[no-workarounds]]                          | No Workarounds                  | fail_fast_watchdog.py                           | PostToolUse          |       |
+| [[verify-first]]                            | Verify First                    | TodoWrite checkpoint                            | During execution     |       |
+| [[no-excuses]]                              | No Excuses                      | AXIOMS.md                                       | SessionStart         |       |
+| [[write-for-long-term]]                     | Write for Long Term             | AXIOMS.md                                       | SessionStart         |       |
+| [[maintain-relational-integrity]]           | Relational Integrity            | wikilink conventions                            | Pre-commit (planned) |       |
+| [[nothing-is-someone-elses-responsibility]] | Nothing Is Someone Else's       | AXIOMS.md                                       | SessionStart         |       |
+| [[acceptance-criteria-own-success]]         | Acceptance Criteria Own Success | /qa skill enforcement                           | Stop                 |       |
+| [[plan-first-development]]                  | Plan-First Development          | EnterPlanMode tool                              | Before coding        |       |
+| [[research-data-immutable]]                 | Research Data Immutable         | settings.json denies records/**                 | PreToolUse           |       |
+| [[just-in-time-context]]                    | Just-In-Time Context            | sessionstart_load_axioms.py                     | SessionStart         |       |
+| [[minimal-instructions]]                    | Minimal Instructions            | policy_enforcer.py 200-line limit               | PreToolUse           |       |
+| [[feedback-loops-for-uncertainty]]          | Feedback Loops                  | AXIOMS.md                                       | SessionStart         |       |
+| [[current-state-machine]]                   | Current State Machine           | autocommit_state.py (auto-commit+push)          | PostToolUse          |       |
+| [[one-spec-per-feature]]                    | One Spec Per Feature            | AXIOMS.md                                       | SessionStart         |       |
 
 ## Heuristic → Enforcement Mapping
 
-| Heuristic                                           | Rule                                  | Enforcement                         | Point                                                  | Level                     |
-| --------------------------------------------------- | ------------------------------------- | ----------------------------------- | ------------------------------------------------------ | ------------------------- |
-| [[heuristics/skill-invocation-framing.md            | skill-invocation-framing]]            | Skill Invocation Framing            | prompt-hydrator guidance                               | UserPromptSubmit          |
-| [[heuristics/skill-first-action.md                  | skill-first-action]]                  | Skill-First Action                  | prompt-hydrator suggests skills                        | UserPromptSubmit          |
-| [[heuristics/verification-before-assertion.md       | verification-before-assertion]]       | Verification Before Assertion       | session_reflect.py detection, custodiet periodic check | Stop, PostToolUse         |
-| [[heuristics/explicit-instructions-override.md      | explicit-instructions-override]]      | Explicit Instructions Override      | HEURISTICS.md, custodiet periodic check                | SessionStart, PostToolUse |
-| [[heuristics/error-messages-primary-evidence.md     | error-messages-primary-evidence]]     | Error Messages Primary Evidence     | HEURISTICS.md                                          | SessionStart              |
-| [[heuristics/context-uncertainty-favors-skills.md   | context-uncertainty-favors-skills]]   | Context Uncertainty Favors Skills   | prompt-hydrator guidance                               | UserPromptSubmit          |
-| [[heuristics/link-dont-repeat.md                    | link-dont-repeat]]                    | Link, Don't Repeat                  | HEURISTICS.md                                          | SessionStart              |
-| [[heuristics/avoid-namespace-collisions.md          | avoid-namespace-collisions]]          | Avoid Namespace Collisions          | HEURISTICS.md                                          | SessionStart              |
-| [[heuristics/skills-no-dynamic-content.md           | skills-no-dynamic-content]]           | Skills No Dynamic Content           | settings.json denies skill writes                      | PreToolUse                |
-| [[heuristics/light-instructions-via-reference.md    | light-instructions-via-reference]]    | Light Instructions via Reference    | HEURISTICS.md                                          | SessionStart              |
-| [[heuristics/no-promises-without-instructions.md    | no-promises-without-instructions]]    | No Promises Without Instructions    | HEURISTICS.md                                          | SessionStart              |
-| [[heuristics/semantic-search-over-keyword.md        | semantic-search-over-keyword]]        | Semantic Search Over Keyword        | HEURISTICS.md                                          | SessionStart              |
-| [[heuristics/edit-source-run-setup.md               | edit-source-run-setup]]               | Edit Source, Run Setup              | HEURISTICS.md                                          | SessionStart              |
-| [[heuristics/mandatory-second-opinion.md            | mandatory-second-opinion]]            | Mandatory Second Opinion            | planner agent invokes critic                           | Planning                  |
-| [[heuristics/streamlit-hot-reloads.md               | streamlit-hot-reloads]]               | Streamlit Hot Reloads               | HEURISTICS.md                                          | SessionStart              |
-| [[heuristics/use-askuserquestion.md                 | use-askuserquestion]]                 | Use AskUserQuestion                 | HEURISTICS.md                                          | SessionStart              |
-| [[heuristics/check-skill-conventions.md             | check-skill-conventions]]             | Check Skill Conventions             | HEURISTICS.md                                          | SessionStart              |
-| [[heuristics/distinguish-script-vs-llm.md           | distinguish-script-vs-llm]]           | Distinguish Script vs LLM           | HEURISTICS.md                                          | SessionStart              |
-| [[heuristics/questions-require-answers.md           | questions-require-answers]]           | Questions Need Answers First        | HEURISTICS.md, custodiet periodic check                | SessionStart, PostToolUse |
-| [[heuristics/critical-thinking-over-compliance.md   | critical-thinking-over-compliance]]   | Critical Thinking Over Compliance   | HEURISTICS.md                                          | SessionStart              |
-| [[heuristics/core-first-expansion.md                | core-first-expansion]]                | Core-First Expansion                | HEURISTICS.md                                          | SessionStart              |
-| [[heuristics/indices-before-exploration.md          | indices-before-exploration]]          | Indices Before Exploration          | HEURISTICS.md                                          | SessionStart              |
-| [[heuristics/synthesize-after-resolution.md         | synthesize-after-resolution]]         | Synthesize After Resolution         | HEURISTICS.md                                          | SessionStart              |
-| [[heuristics/ship-scripts-dont-inline.md            | ship-scripts-dont-inline]]            | Ship Scripts, Don't Inline          | HEURISTICS.md                                          | SessionStart              |
-| [[heuristics/user-centric-acceptance.md             | user-centric-acceptance]]             | User-Centric Acceptance             | HEURISTICS.md                                          | SessionStart              |
-| [[heuristics/semantic-vs-episodic-storage.md        | semantic-vs-episodic-storage]]        | Semantic vs Episodic Storage        | HEURISTICS.md                                          | SessionStart              |
-| [[heuristics/debug-dont-redesign.md                 | debug-dont-redesign]]                 | Debug, Don't Redesign               | HEURISTICS.md                                          | SessionStart              |
-| [[heuristics/mandatory-acceptance-testing.md        | mandatory-acceptance-testing]]        | Mandatory Acceptance Testing        | /qa skill                                              | Stop                      |
-| [[heuristics/todowrite-vs-persistent-tasks.md       | todowrite-vs-persistent-tasks]]       | TodoWrite vs Persistent Tasks       | HEURISTICS.md                                          | SessionStart              |
-| [[heuristics/design-first-not-constraint-first.md   | design-first-not-constraint-first]]   | Design-First                        | HEURISTICS.md                                          | SessionStart              |
-| [[heuristics/no-llm-calls-in-hooks.md               | no-llm-calls-in-hooks]]               | No LLM Calls in Hooks               | HEURISTICS.md                                          | SessionStart              |
-| [[heuristics/delete-dont-deprecate.md               | delete-dont-deprecate]]               | Delete, Don't Deprecate             | HEURISTICS.md                                          | SessionStart              |
-| [[heuristics/real-data-fixtures.md                  | real-data-fixtures]]                  | Real Data Fixtures                  | HEURISTICS.md                                          | SessionStart              |
-| [[heuristics/semantic-link-density.md               | semantic-link-density]]               | Semantic Link Density               | check_orphan_files.py                                  | Pre-commit                |
-| [[heuristics/spec-first-file-modification.md        | spec-first-file-modification]]        | Spec-First File Modification        | HEURISTICS.md                                          | SessionStart              |
-| [[heuristics/file-category-classification.md        | file-category-classification]]        | File Category Classification        | check_file_taxonomy.py                                 | Pre-commit                |
-| [[heuristics/llm-semantic-evaluation.md             | llm-semantic-evaluation]]             | LLM Semantic Evaluation             | PR template checklist, critic agent                    | PR Review                 |
-| [[heuristics/full-evidence-for-validation.md        | full-evidence-for-validation]]        | Full Evidence for Validation        | @pytest.mark.demo requirement                          | Test design               |
-| [[heuristics/real-fixtures-over-contrived.md        | real-fixtures-over-contrived]]        | Real Fixtures Over Contrived        | docs/testing-patterns.md                               | Test design               |
-| [[heuristics/execution-over-inspection.md           | execution-over-inspection]]           | Execution Over Inspection           | framework skill compliance protocol                    | Skill invocation          |
-| [[heuristics/test-failure-requires-user-decision.md | test-failure-requires-user-decision]] | Test Failure Requires User Decision | HEURISTICS.md                                          | SessionStart              |
-| [[heuristics/no-horizontal-dividers.md              | no-horizontal-dividers]]              | No Horizontal Dividers              | markdownlint-cli2                                      | Pre-commit                |
+| Heuristic                               | Rule                                | Enforcement                                            | Point                     | Level |
+| --------------------------------------- | ----------------------------------- | ------------------------------------------------------ | ------------------------- | ----- |
+| [[skill-invocation-framing]]            | Skill Invocation Framing            | prompt-hydrator guidance                               | UserPromptSubmit          |       |
+| [[skill-first-action]]                  | Skill-First Action                  | prompt-hydrator suggests skills                        | UserPromptSubmit          |       |
+| [[verification-before-assertion]]       | Verification Before Assertion       | session_reflect.py detection, custodiet periodic check | Stop, PostToolUse         |       |
+| [[explicit-instructions-override]]      | Explicit Instructions Override      | HEURISTICS.md, custodiet periodic check                | SessionStart, PostToolUse |       |
+| [[error-messages-primary-evidence]]     | Error Messages Primary Evidence     | HEURISTICS.md                                          | SessionStart              |       |
+| [[context-uncertainty-favors-skills]]   | Context Uncertainty Favors Skills   | prompt-hydrator guidance                               | UserPromptSubmit          |       |
+| [[link-dont-repeat]]                    | Link, Don't Repeat                  | HEURISTICS.md                                          | SessionStart              |       |
+| [[avoid-namespace-collisions]]          | Avoid Namespace Collisions          | HEURISTICS.md                                          | SessionStart              |       |
+| [[skills-no-dynamic-content]]           | Skills No Dynamic Content           | settings.json denies skill writes                      | PreToolUse                |       |
+| [[light-instructions-via-reference]]    | Light Instructions via Reference    | HEURISTICS.md                                          | SessionStart              |       |
+| [[no-promises-without-instructions]]    | No Promises Without Instructions    | HEURISTICS.md                                          | SessionStart              |       |
+| [[semantic-search-over-keyword]]        | Semantic Search Over Keyword        | HEURISTICS.md                                          | SessionStart              |       |
+| [[edit-source-run-setup]]               | Edit Source, Run Setup              | HEURISTICS.md                                          | SessionStart              |       |
+| [[mandatory-second-opinion]]            | Mandatory Second Opinion            | planner agent invokes critic                           | Planning                  |       |
+| [[streamlit-hot-reloads]]               | Streamlit Hot Reloads               | HEURISTICS.md                                          | SessionStart              |       |
+| [[use-askuserquestion]]                 | Use AskUserQuestion                 | HEURISTICS.md                                          | SessionStart              |       |
+| [[check-skill-conventions]]             | Check Skill Conventions             | HEURISTICS.md                                          | SessionStart              |       |
+| [[distinguish-script-vs-llm]]           | Distinguish Script vs LLM           | HEURISTICS.md                                          | SessionStart              |       |
+| [[questions-require-answers]]           | Questions Need Answers First        | HEURISTICS.md, custodiet periodic check                | SessionStart, PostToolUse |       |
+| [[critical-thinking-over-compliance]]   | Critical Thinking Over Compliance   | HEURISTICS.md                                          | SessionStart              |       |
+| [[core-first-expansion]]                | Core-First Expansion                | HEURISTICS.md                                          | SessionStart              |       |
+| [[indices-before-exploration]]          | Indices Before Exploration          | HEURISTICS.md                                          | SessionStart              |       |
+| [[synthesize-after-resolution]]         | Synthesize After Resolution         | HEURISTICS.md                                          | SessionStart              |       |
+| [[ship-scripts-dont-inline]]            | Ship Scripts, Don't Inline          | HEURISTICS.md                                          | SessionStart              |       |
+| [[user-centric-acceptance]]             | User-Centric Acceptance             | HEURISTICS.md                                          | SessionStart              |       |
+| [[semantic-vs-episodic-storage]]        | Semantic vs Episodic Storage        | HEURISTICS.md                                          | SessionStart              |       |
+| [[debug-dont-redesign]]                 | Debug, Don't Redesign               | HEURISTICS.md                                          | SessionStart              |       |
+| [[mandatory-acceptance-testing]]        | Mandatory Acceptance Testing        | /qa skill                                              | Stop                      |       |
+| [[todowrite-vs-persistent-tasks]]       | TodoWrite vs Persistent Tasks       | HEURISTICS.md                                          | SessionStart              |       |
+| [[design-first-not-constraint-first]]   | Design-First                        | HEURISTICS.md                                          | SessionStart              |       |
+| [[no-llm-calls-in-hooks]]               | No LLM Calls in Hooks               | HEURISTICS.md                                          | SessionStart              |       |
+| [[delete-dont-deprecate]]               | Delete, Don't Deprecate             | HEURISTICS.md                                          | SessionStart              |       |
+| [[real-data-fixtures]]                  | Real Data Fixtures                  | HEURISTICS.md                                          | SessionStart              |       |
+| [[semantic-link-density]]               | Semantic Link Density               | check_orphan_files.py                                  | Pre-commit                |       |
+| [[spec-first-file-modification]]        | Spec-First File Modification        | HEURISTICS.md                                          | SessionStart              |       |
+| [[file-category-classification]]        | File Category Classification        | check_file_taxonomy.py                                 | Pre-commit                |       |
+| [[llm-semantic-evaluation]]             | LLM Semantic Evaluation             | PR template checklist, critic agent                    | PR Review                 |       |
+| [[full-evidence-for-validation]]        | Full Evidence for Validation        | @pytest.mark.demo requirement                          | Test design               |       |
+| [[real-fixtures-over-contrived]]        | Real Fixtures Over Contrived        | docs/testing-patterns.md                               | Test design               |       |
+| [[execution-over-inspection]]           | Execution Over Inspection           | framework skill compliance protocol                    | Skill invocation          |       |
+| [[test-failure-requires-user-decision]] | Test Failure Requires User Decision | HEURISTICS.md                                          | SessionStart              |       |
+| [[no-horizontal-dividers]]              | No Horizontal Dividers              | markdownlint-cli2                                      | Pre-commit                |       |
 
 ## Enforcement Level Summary
 
@@ -111,23 +111,23 @@ tags: [framework, enforcement, moc]
 
 ## Soft Gate Guardrails (Prompt Hydration)
 
-These guardrails are applied by [[specs/prompt-hydration]] based on task classification. Each maps to a heuristic and defines when/how to apply it.
+These guardrails are applied by [[prompt-hydration]] based on task classification. Each maps to a heuristic and defines when/how to apply it.
 
 ### Guardrail Registry
 
-| Guardrail                 | Heuristic                                       | Failure Prevented                                                                   | Instruction                                                               |
-| ------------------------- | ----------------------------------------------- | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
-| `verify_before_complete`  | [[heuristics/verification-before-assertion.md   | verification-before-assertion]]                                                     | Claiming success without checking                                         |
-| `answer_only`             | [[heuristics/questions-require-answers.md       | questions-require-answers]]                                                         | Jumping to implementation when asked a question                           |
-| `require_skill`           | [[heuristics/skill-first-action.md              | skill-first-action]]                                                                | Skipping skill for domain work                                            |
-| `plan_mode`               | [[axioms/plan-first-development.md              | plan-first-development]]                                                            | Framework changes without approval                                        |
-| `require_acceptance_test` | [[heuristics/mandatory-acceptance-testing.md    | mandatory-acceptance-testing]]                                                      | Claiming complete without e2e test                                        |
-| `quote_errors_exactly`    | [[heuristics/error-messages-primary-evidence.md | error-messages-primary-evidence]]                                                   | Paraphrasing errors                                                       |
-| `fix_within_design`       | [[heuristics/debug-dont-redesign.md             | debug-dont-redesign]]                                                               | Redesigning during debugging                                              |
-| `follow_literally`        | [[heuristics/explicit-instructions-override.md  | explicit-instructions-override]]                                                    | Interpreting user instructions                                            |
-| `critic_review`           | [[heuristics/mandatory-second-opinion.md        | mandatory-second-opinion]]                                                          | Presenting plans without review                                           |
-| `use_todowrite`           | [[heuristics/todowrite-vs-persistent-tasks.md   | todowrite-vs-persistent-tasks]]                                                     | Losing track of steps                                                     |
-| `criteria_gate`           | [[axioms/acceptance-criteria-own-success.md     | acceptance-criteria-own-success]], [[heuristics/no-promises-without-instructions.md | no-promises-without-instructions]], [[heuristics/edit-source-run-setup.md |
+| Guardrail                 | Heuristic                                                                                            | Failure Prevented                               |
+| ------------------------- | ---------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
+| `verify_before_complete`  | [[verification-before-assertion]]                                                                    | Claiming success without checking               |
+| `answer_only`             | [[questions-require-answers]]                                                                        | Jumping to implementation when asked a question |
+| `require_skill`           | [[skill-first-action]]                                                                               | Skipping skill for domain work                  |
+| `plan_mode`               | [[plan-first-development]]                                                                           | Framework changes without approval              |
+| `require_acceptance_test` | [[mandatory-acceptance-testing]]                                                                     | Claiming complete without e2e test              |
+| `quote_errors_exactly`    | [[error-messages-primary-evidence]]                                                                  | Paraphrasing errors                             |
+| `fix_within_design`       | [[debug-dont-redesign]]                                                                              | Redesigning during debugging                    |
+| `follow_literally`        | [[explicit-instructions-override]]                                                                   | Interpreting user instructions                  |
+| `critic_review`           | [[mandatory-second-opinion]]                                                                         | Presenting plans without review                 |
+| `use_todowrite`           | [[todowrite-vs-persistent-tasks]]                                                                    | Losing track of steps                           |
+| `criteria_gate`           | [[acceptance-criteria-own-success]], [[no-promises-without-instructions]], [[edit-source-run-setup]] | Missing acceptance criteria                     |
 
 ### Task Type → Guardrail Mapping
 
@@ -147,7 +147,7 @@ These guardrails are applied by [[specs/prompt-hydration]] based on task classif
 
 ## Periodic Compliance (Custodiet)
 
-The custodiet hook (`hooks/custodiet_gate.py`) provides periodic semantic compliance checking via [[specs/ultra-vires-custodiet]].
+The custodiet hook (`hooks/custodiet_gate.py`) provides periodic semantic compliance checking via [[ultra-vires-custodiet]].
 
 ### Mechanism
 
@@ -161,8 +161,8 @@ The custodiet hook (`hooks/custodiet_gate.py`) provides periodic semantic compli
 
 At threshold, spawns haiku subagent to review session transcript for:
 
-- Axiom violations ([[axioms/fail-fast-code.md|fail-fast-code]], [[axioms/verify-first.md|verify-first]], [[axioms/acceptance-criteria-own-success.md|acceptance-criteria-own-success]])
-- Heuristic violations ([[heuristics/verification-before-assertion.md|verification-before-assertion]], [[heuristics/explicit-instructions-override.md|explicit-instructions-override]], [[heuristics/questions-require-answers.md|questions-require-answers]])
+- Axiom violations ([[fail-fast-code]], [[verify-first]], [[acceptance-criteria-own-success]])
+- Heuristic violations ([[verification-before-assertion]], [[explicit-instructions-override]], [[questions-require-answers]])
 - Drift patterns (scope creep, plan deviation)
 
 Uses `decision: "block"` output format to force agent attention.
@@ -177,48 +177,48 @@ Uses passive `additionalContext` format - agent may proceed without addressing.
 
 ## Path Protection (Deny Rules)
 
-| Category         | Pattern                                       | Blocked Tools           | Purpose                    | Axiom                               |
-| ---------------- | --------------------------------------------- | ----------------------- | -------------------------- | ----------------------------------- |
-| Task files       | `**/data/tasks/**`                            | Write, Edit, Bash       | Force `/tasks` skill       | [[axioms/categorical-imperative.md  |
-| Claude config    | `~/.claude/*.json`                            | Read, Write, Edit, Bash | Protect secrets            | [[axioms/data-boundaries.md         |
-| Claude runtime   | `~/.claude/{hooks,skills,commands,agents}/**` | Write, Edit, Bash       | Force edits via `$AOPS/`   | [[axioms/skills-are-read-only.md    |
-| Research records | `**/tja/records/**`, `**/tox/records/**`      | Write, Edit, Bash       | Research data immutable    | [[axioms/research-data-immutable.md |
-| Session state    | `/tmp/claude-session/**`                      | Write, Edit, Bash       | Hydration gate enforcement | Mechanical trigger integrity        |
+| Category         | Pattern                                       | Blocked Tools           | Purpose                    | Axiom                        |
+| ---------------- | --------------------------------------------- | ----------------------- | -------------------------- | ---------------------------- |
+| Task files       | `**/data/tasks/**`                            | Write, Edit, Bash       | Force `/tasks` skill       | [[categorical-imperative]]   |
+| Claude config    | `~/.claude/*.json`                            | Read, Write, Edit, Bash | Protect secrets            | [[data-boundaries]]          |
+| Claude runtime   | `~/.claude/{hooks,skills,commands,agents}/**` | Write, Edit, Bash       | Force edits via `$AOPS/`   | [[skills-are-read-only]]     |
+| Research records | `**/tja/records/**`, `**/tox/records/**`      | Write, Edit, Bash       | Research data immutable    | [[research-data-immutable]]  |
+| Session state    | `/tmp/claude-session/**`                      | Write, Edit, Bash       | Hydration gate enforcement | Mechanical trigger integrity |
 
 **Note**: Reading `~/.claude/hooks/**` etc IS allowed (skill invocation needs it).
 
 ## Pattern Blocking (PreToolUse Hook)
 
-| Category          | Pattern             | Blocked Tools | Purpose                    | Axiom                            |
-| ----------------- | ------------------- | ------------- | -------------------------- | -------------------------------- |
-| Doc bloat         | `*-GUIDE.md`        | Write         | Force README consolidation | [[axioms/single-purpose-files.md |
-| Doc bloat         | `.md` > 200 lines   | Write         | Force chunking             | [[axioms/self-documenting.md     |
-| Git: hard reset   | `git reset --hard`  | Bash          | Preserve uncommitted work  | [[axioms/fail-fast-code.md       |
-| Git: clean        | `git clean -[fd]`   | Bash          | Preserve untracked files   | [[axioms/fail-fast-code.md       |
-| Git: force push   | `git push --force`  | Bash          | Protect shared history     | [[axioms/fail-fast-code.md       |
-| Git: checkout all | `git checkout -- .` | Bash          | Preserve local changes     | [[axioms/fail-fast-code.md       |
-| Git: stash drop   | `git stash drop`    | Bash          | Preserve stashed work      | [[axioms/fail-fast-code.md       |
+| Category          | Pattern             | Blocked Tools | Purpose                    | Axiom                    |
+| ----------------- | ------------------- | ------------- | -------------------------- | ------------------------ |
+| Doc bloat         | `*-GUIDE.md`        | Write         | Force README consolidation | [[single-purpose-files]] |
+| Doc bloat         | `.md` > 200 lines   | Write         | Force chunking             | [[self-documenting]]     |
+| Git: hard reset   | `git reset --hard`  | Bash          | Preserve uncommitted work  | [[fail-fast-code]]       |
+| Git: clean        | `git clean -[fd]`   | Bash          | Preserve untracked files   | [[fail-fast-code]]       |
+| Git: force push   | `git push --force`  | Bash          | Protect shared history     | [[fail-fast-code]]       |
+| Git: checkout all | `git checkout -- .` | Bash          | Preserve local changes     | [[fail-fast-code]]       |
+| Git: stash drop   | `git stash drop`    | Bash          | Preserve stashed work      | [[fail-fast-code]]       |
 
 ## Commit-Time Validation (Pre-commit)
 
-| Category         | Hook                                      | Purpose                | Axiom                                  |
-| ---------------- | ----------------------------------------- | ---------------------- | -------------------------------------- |
-| File hygiene     | trailing-whitespace, check-yaml/json/toml | Clean commits          | [[axioms/use-standard-tools.md         |
-| Code quality     | shellcheck, eslint, ruff                  | Catch errors           | [[axioms/use-standard-tools.md         |
-| Formatting       | dprint                                    | Consistent formatting  | [[axioms/use-standard-tools.md         |
-| Data integrity   | bmem-validate                             | Valid frontmatter      | [[axioms/current-state-machine.md      |
-| Data purity      | data-markdown-only                        | Only `.md` in data/    | [[axioms/current-state-machine.md      |
-| Framework health | check-skill-line-count                    | SKILL.md < 500 lines   | [[axioms/self-documenting.md           |
-| Framework health | check-orphan-files                        | Detect orphan files    | [[heuristics/semantic-link-density.md  |
-| Markdown style   | markdownlint                              | No horizontal dividers | [[heuristics/no-horizontal-dividers.md |
+| Category         | Hook                                      | Purpose                | Axiom                      |
+| ---------------- | ----------------------------------------- | ---------------------- | -------------------------- |
+| File hygiene     | trailing-whitespace, check-yaml/json/toml | Clean commits          | [[use-standard-tools]]     |
+| Code quality     | shellcheck, eslint, ruff                  | Catch errors           | [[use-standard-tools]]     |
+| Formatting       | dprint                                    | Consistent formatting  | [[use-standard-tools]]     |
+| Data integrity   | bmem-validate                             | Valid frontmatter      | [[current-state-machine]]  |
+| Data purity      | data-markdown-only                        | Only `.md` in data/    | [[current-state-machine]]  |
+| Framework health | check-skill-line-count                    | SKILL.md < 500 lines   | [[self-documenting]]       |
+| Framework health | check-orphan-files                        | Detect orphan files    | [[semantic-link-density]]  |
+| Markdown style   | markdownlint                              | No horizontal dividers | [[no-horizontal-dividers]] |
 
 ## CI/CD Validation (GitHub Actions)
 
-| Workflow             | Purpose                                  | Axiom                                     |
-| -------------------- | ---------------------------------------- | ----------------------------------------- |
-| test-setup.yml       | Validate symlinks exist and are relative | [[axioms/fail-fast-code.md                |
-| framework-health.yml | Framework health metrics and enforcement | [[axioms/maintain-relational-integrity.md |
-| claude.yml           | Claude Code bot integration              | -                                         |
+| Workflow             | Purpose                                  | Axiom                             |
+| -------------------- | ---------------------------------------- | --------------------------------- |
+| test-setup.yml       | Validate symlinks exist and are relative | [[fail-fast-code]]                |
+| framework-health.yml | Framework health metrics and enforcement | [[maintain-relational-integrity]] |
+| claude.yml           | Claude Code bot integration              | -                                 |
 
 ## Agent Tool Permissions
 

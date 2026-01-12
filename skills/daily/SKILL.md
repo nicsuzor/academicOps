@@ -63,7 +63,7 @@ If inbox email subject matches a sent reply (Re: prefix), classify as **Skip** (
 **Classify each email** (LLM semantic classification, not keyword matching per AXIOM #30):
 
 - **FYI**: Informational, no action needed, but should see before archiving
-- **Task**: Requires action AND no sent reply exists → flag for `/email` processing
+- **Task**: Requires action AND no sent reply exists → flag for `/email` processing. This includes emails with deliverables requiring processing (attached documents, spreadsheets, files to upload/integrate), even if the email tone is informational.
 - **Skip**: Automated, bulk, or already handled (sent reply exists)
 - **Uncertain**: Present to user for classification
 

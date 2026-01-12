@@ -120,7 +120,7 @@ def generate_axioms_md(principles: list[dict]) -> str:
         "",
         "# Universal Principles",
         "",
-        "Inviolable rules. Full definitions with evidence: see individual files in [[axioms/]].",
+        "Inviolable rules. Full definitions with evidence: see individual files in `axioms/` folder.",
         "",
         "| Pri | Name | Statement |",
         "|-----|------|-----------|",
@@ -128,7 +128,7 @@ def generate_axioms_md(principles: list[dict]) -> str:
 
     for p in principles:
         pri = p.get("priority", 50)
-        name_link = f"[[axioms/{p['file']}|{p['title']}]]"
+        name_link = f"[[{p['name']}]]"
         statement = (
             p["statement"][:100] + "..."
             if len(p["statement"]) > 100
@@ -177,7 +177,7 @@ def generate_heuristics_md(principles: list[dict]) -> str:
         "",
         "# Heuristics",
         "",
-        "Working hypotheses validated by evidence. Full definitions: see [[heuristics/]].",
+        "Working hypotheses validated by evidence. Full definitions: see `heuristics/` folder.",
         "",
         "| Pri | Name | Statement |",
         "|-----|------|-----------|",
@@ -185,7 +185,7 @@ def generate_heuristics_md(principles: list[dict]) -> str:
 
     for p in principles:
         pri = p.get("priority", 50)
-        name_link = f"[[heuristics/{p['file']}|{p['title']}]]"
+        name_link = f"[[{p['name']}]]"
         statement = (
             p["statement"][:100] + "..."
             if len(p["statement"]) > 100
