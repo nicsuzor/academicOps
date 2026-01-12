@@ -52,13 +52,13 @@ Fetch recent emails via Outlook MCP:
 mcp__outlook__messages_list_recent(limit=50, folder="inbox")
 ```
 
-**Before flagging as Task**: Check sent mail for replies to avoid flagging already-handled items:
+**CRITICAL - Check sent mail FIRST**: Before classifying ANY inbox email, you MUST fetch sent mail and cross-reference to avoid flagging already-handled items:
 
 ```
 mcp__outlook__messages_list_recent(limit=20, folder="sent")
 ```
 
-If inbox email subject matches a sent reply (Re: prefix), classify as **Skip** (already handled).
+**For EACH inbox email**: Compare subject line (ignoring Re:/Fwd: prefixes) against sent mail subjects. If a matching sent reply exists, classify as **Skip** (already handled). This cross-reference is MANDATORY - skipping it causes duplicate task creation.
 
 **Classify each email** (LLM semantic classification, not keyword matching per AXIOM #30):
 
