@@ -1018,6 +1018,7 @@ class Entry:
     skills_matched: list[str] | None = None
     files_loaded: list[str] | None = None
     tool_name: str | None = None
+    tool_input: dict | None = None  # Tool parameters for PreToolUse/PostToolUse hooks
     agent_id: str | None = None
 
     @classmethod
@@ -1047,6 +1048,7 @@ class Entry:
                 entry.skills_matched = hook_output.get("skillsMatched")
                 entry.files_loaded = hook_output.get("filesLoaded")
                 entry.tool_name = hook_output.get("toolName")
+                entry.tool_input = hook_output.get("toolInput")
                 entry.agent_id = hook_output.get("agentId")
             # Fall back to content.additionalContext
             if not entry.additional_context and isinstance(entry.content, dict):
@@ -1651,6 +1653,9 @@ class SessionProcessor:
                 if "tool_name" in data:
                     hook_output["toolName"] = data["tool_name"]
 
+                if "tool_input" in data:
+                    hook_output["toolInput"] = data["tool_input"]
+
                 if "agent_id" in data:
                     hook_output["agentId"] = data["agent_id"]
 
@@ -1736,6 +1741,7 @@ class SessionProcessor:
                     "skills_matched": entry.skills_matched,
                     "files_loaded": entry.files_loaded,
                     "tool_name": entry.tool_name,
+                    "tool_input": entry.tool_input,
                     "agent_id": entry.agent_id,
                     "start_time": entry.timestamp,
                     "end_time": entry.timestamp,
@@ -2077,8 +2083,11 @@ class SessionProcessor:
                         content = hook.get("content", "").strip()
                         skills_matched = hook.get("skills_matched")
                         files_loaded = hook.get("files_loaded")
+                        tool_input = hook.get("tool_input")
 
-                        has_useful_content = content or skills_matched or files_loaded
+                        has_useful_content = (
+                            content or skills_matched or files_loaded or tool_input
+                        )
                         is_error = exit_code is not None and exit_code != 0
 
                         # In full mode: show ALL hooks for complete visibility
@@ -2103,6 +2112,13 @@ class SessionProcessor:
                         hook_label = f"{event_name}{hook_detail}"
 
                         markdown += f"### Hook: {hook_label}{checkmark}\n\n"
+
+                        # Show tool input summary for PreToolUse/PostToolUse hooks
+                        if tool_input and tool_name:
+                            tool_summary = _summarize_tool_input(tool_name, tool_input)
+                            if tool_summary:
+                                markdown += f"**{tool_name}**: `{tool_summary}`\n\n"
+
                         if skills_matched:
                             skills_str = ", ".join(f"`{s}`" for s in skills_matched)
                             markdown += f"Skills matched: {skills_str}\n\n"
