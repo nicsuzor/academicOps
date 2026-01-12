@@ -29,7 +29,7 @@ Workflows
 
 - instructions: [[academicOps/skills/tasks/SKILL|SKILL]]
 
-* [[email-capture]]
+- [[email-capture]]
 
 ## Installation
 
@@ -392,16 +392,9 @@ aliases: [20251110-abc123]
 
 # Task title
 
-## Context
-
-Task description and context goes here. Can include multiple paragraphs and markdown formatting.
-
-## Observations
-
-- [task] Task title #status-inbox #priority-p1
-- [project] Project: project-slug #project-project-slug
-
-## Relations
+- Task description and context goes here.
+- Can include multiple paragraphs and markdown formatting.
+- Must use [[wikilinks]] to link related concepts together when mentioning concepts in prose.
 ```
 
 ### Field Descriptions
@@ -426,13 +419,6 @@ Task description and context goes here. Can include multiple paragraphs and mark
 - `archived_at`: ISO 8601 timestamp (set automatically)
 - `tags`: List of tags
 - `metadata`: Dict for custom metadata
-
-**Body structure:**
-
-- `# Title`: H1 heading with task title
-- `## Context`: Task description and details
-- `## Observations`: Categorized facts with #tags (auto-generated, don't duplicate metadata)
-- `## Relations`: Links to related entities (optional)
 
 ### Format Compliance
 

@@ -148,14 +148,10 @@ updated: {now}
 
 # {title}
 
-## Context
 Test task for integration testing with priority {priority}.
 
-## Observations
 This is a sample task created by the test fixture.
+- Supports project: {project}
 
-## Relations
-- Project: {project}
-- Status: inbox
 """
     filepath.write_text(content, encoding="utf-8")

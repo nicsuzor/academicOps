@@ -8,6 +8,8 @@ permalink: workflows
 tags: [framework, routing, workflows, enforcement]
 ---
 
+<!-- NS: this file has to be a lot clearer and easier to follow for a hydrator making a decision tree assessment. refactor and simplify. -->
+
 # Workflow Catalog & Agent Mandates
 
 **Purpose**: This file is the **OS Kernel** for the agent. It defines the strict, repeatable processes that MUST be followed to ensure quality, observability, and safety.
@@ -75,6 +77,8 @@ When executing a task, you are the **Orchestrator**. Do not implement complex lo
 ## 🔵 Workflow Tracks
 
 Select the specific track based on the user's intent.
+
+<!-- NS: ensure that each step requires invoking the appropriate agent or skill -- main agent should do nothing itself if it can delegate -->
 
 ### 1. TDD (Feature Development)
 

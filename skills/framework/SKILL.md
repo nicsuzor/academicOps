@@ -375,6 +375,7 @@ Step-by-step guides for common framework operations:
 - [[workflows/03-experiment-design.md]] - Creating framework experiments
 - [[workflows/04-monitor-prevent-bloat.md]] - Keeping framework lean
 - [[workflows/06-develop-specification.md]] - Writing specs for new features
+- [[workflows/07-learning-log.md]] - Document agent behavior patterns to bd issues (defers analysis to qa workflow)
 
 ## Framework Project Data (`$AOPS/`)
 

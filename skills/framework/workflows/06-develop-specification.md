@@ -26,8 +26,8 @@ description: Process for collaboratively developing task specifications before i
    - HALT if trying to skip stages
 
 1. **Create specification document**
-   - Copy `bots/skills/framework/TASK-SPEC-TEMPLATE.md` to working location
-   - Name: `data/tasks/inbox/[descriptive-name]-spec.md` (or similar temporary location)
+   - Copy `$AOPS/skills/framework/SPEC-TEMPLATE.md` to working location
+   - Name: `$AOPS/specs/[descriptive-name].md`
    - This is a collaborative working document
 
 1. **Fill Problem Statement section (collaborative)**

@@ -9,6 +9,8 @@ tags:
   - knowledge-management
 ---
 
+<!-- NS: this should be merged into 'remember' skill -->
+
 # Capture Workflow
 
 Session mining and note creation. Silently extracts information and maintains knowledge graph.

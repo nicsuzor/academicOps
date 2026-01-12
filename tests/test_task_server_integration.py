@@ -366,9 +366,11 @@ class TestCreateTask:
         assert "permalink:" in content
         assert "task_id:" in content
         assert "aliases:" in content
-        assert "## Context" in content
-        assert "## Observations" in content
-        assert "## Relations" in content
+
+        # <!-- NS: remove old bmem format headers -->
+        assert "## Context" not in content
+        assert "## Observations" not in content
+        assert "## Relations" not in content
 
     def test_create_task_with_all_fields(self, test_data_dir: Path):
         """Test creating task with all optional fields."""
@@ -566,12 +568,13 @@ class TestModifyTask:
         task_path = test_data_dir / "inbox" / task_filename
         content = task_path.read_text()
 
+        # <!-- NS: remove old bmem format headers -->
         assert "permalink:" in content
         assert "task_id:" in content
         assert "aliases:" in content
-        assert "## Context" in content
-        assert "## Observations" in content
-        assert "## Relations" in content
+        assert "## Context" not in content
+        assert "## Observations" not in content
+        assert "## Relations" not in content
         assert "Modified body content" in content
 
 

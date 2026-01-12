@@ -9,49 +9,49 @@ tags:
   - automation
 ---
 
-# AcademicOps Feature Specification Template
+# [Feature Name]
 
-Use this template to specify each academicops feature before implementation. This ensures clear scope, testability, and alignment with framework principles.
+## User Story
 
-# Task: [Descriptive Name]
+**As** an academic with ADHD managing research workflows,
+**I want** [specific capability this feature provides],
+**So that** [concrete benefit - how this advances zero-friction capture, consistent quality, nothing lost, fail-fast, or minimal maintenance].
+
+> **Coherence check**: This feature connects to the academicOps narrative by [explain how it serves the core mission]. If you cannot complete this sentence, the feature may not belong in the framework.
+
+## Acceptance Criteria
+
+**CRITICAL**: These criteria are USER-OWNED and define what "done" means. Agents CANNOT modify, weaken, or reinterpret these criteria (see [[AXIOMS.md]] #22).
+
+### Success Criteria (ALL must pass)
+
+1. [ ] [Specific, observable, testable outcome - what the USER can do/see]
+2. [ ] [Another observable outcome]
+3. [ ] [Measurable improvement if applicable]
+
+### Failure Modes (If ANY occur, implementation is WRONG)
+
+1. [ ] [Specific failure condition that would break the user story]
+2. [ ] [Error condition]
+3. [ ] [Performance or quality degradation]
+
+---
+
+## Context
 
 **Date**: YYYY-MM-DD
-**Stage**: [1-5 from ROADMAP.md]
-**Priority**: [P1/P2/P3 based on impact and effort]
+**Status**: [draft | approved | implemented | requirement]
+**Priority**: [P0-P4]
 
-## Problem Statement / User story
+## Problem Statement
 
-**What manual work are we automating?**
+**What problem does this solve?**
 
-[Clear, specific description of the current manual process that causes pain]
+[Clear, specific description of the current pain point]
 
 **Why does this matter?**
 
 [Impact: How much time/effort does this save? What quality improvements result?]
-
-**Who benefits?**
-
-[Usually Nic, but be specific about which aspect of his work]
-
-## Acceptance Criteria (MANDATORY)
-
-**CRITICAL**: These criteria are USER-OWNED and define what "done" means. Agents CANNOT modify, weaken, or reinterpret these criteria (see [[AXIOMS.md]] #21).
-
-### Success Tests (Must ALL pass for "done")
-
-1. [ ] [Specific, observable, testable criterion - e.g., "95% of captured tasks auto-categorized correctly"]
-2. [ ] [Observable outcome - e.g., "Zero manual filing needed for email-based tasks"]
-3. [ ] [Measurable improvement - e.g., "Categorization time reduced from 5min to <10sec per task"]
-
-### Failure Modes (If these occur, implementation is WRONG)
-
-1. [ ] [Specific failure condition - e.g., "Tasks categorized to wrong project"]
-2. [ ] [Error condition - e.g., "Automation crashes on malformed input"]
-3. [ ] [Performance degradation - e.g., "Processing time >1 minute per task"]
-
-**Quality threshold**: [What level of quality is acceptable? When should it fail-fast vs. make best effort?]
-
-**Test implementation**: Acceptance criteria MUST be implemented as automated tests. Success = tests pass. Agents implement the criteria as tests; they do not decide what "done" means.
 
 ## Scope
 

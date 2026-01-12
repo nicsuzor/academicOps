@@ -8,17 +8,6 @@ permalink: commands/learn
 
 # /learn - Graduated Framework Improvement
 
-**Run in background** - spawn asynchronously so the user can continue working:
-
-```
-Task(subagent_type="general-purpose", model="sonnet",
-     description="Framework learning: [brief summary]",
-     prompt="Invoke Skill(skill='framework') first, then follow the /learn workflow below to make a minimal intervention for: [USER'S FEEDBACK]\n\n**CRITICAL**: If you need to read session JSONL files, invoke Skill(skill='transcript') FIRST to convert to markdown. Raw JSONL wastes 10-70K tokens; transcripts are 90% smaller.\n\n[Include full /learn workflow instructions from this file]",
-     run_in_background=true)
-```
-
-Report to user: "Processing framework learning in background. Continue working."
-
 ## Core Principle: Generalisable, not specific
 
 **Don't hyperfocus**:
@@ -34,7 +23,7 @@ Report to user: "Processing framework learning in background. Continue working."
 
 ## Workflow
 
-### 0. Agents Are Stateless - You MUST Edit a File
+### 0. Agents Are Stateless - You MUST Edit a File or create a task/issue
 
 **This is the most important rule of /learn.**
 
@@ -68,11 +57,11 @@ See [[specs/enforcement.md]] "Component Responsibilities" for the full model.
 
 ### 2. Check for Prior Occurrences and Document in GitHub Issue
 
-Invoke the logging infrastructure to identify prior occurences and track the intervention:
+Invoke the logging workflow to identify prior occurrences and track the intervention:
 
-`Skill(skill='learning-log', args="[root cause summary]")`
+`Skill(skill='framework')` then follow workflow 07-learning-log.md with "[root cause summary]"
 
-The learning-log skill will search bd issues for related observations and return information about what interventions have been tried to date.
+The learning-log workflow will search bd issues for related observations and return information about what interventions have been tried to date.
 
 ### 3. Choose Intervention Level (Start at Bottom, Escalate with Evidence)
 

@@ -52,7 +52,7 @@ Per [[AXIOMS]] #28 (Current State Machine), reflexivity data has two types:
 
 ### Observing (What Happened)
 
-**Entry point**: `/log [observation]` or `Skill(skill="learning-log")`
+**Entry point**: `/log [observation]` or `Skill(skill="framework")` workflow 07
 
 **Flow**:
 
@@ -111,14 +111,13 @@ At session end:
 
 ## Integration Points
 
-| Component            | Role                                      |
-| -------------------- | ----------------------------------------- |
-| `/log` command       | Routes observations to bd issues          |
-| `/learn` command     | Makes tracked interventions               |
-| `learning-log` skill | Implements Issue search/create workflow   |
-| `framework` skill    | Governance for interventions              |
-| [[HEURISTICS]]       | Synthesis destination                     |
-| Memory server        | Semantic search (supplements `bd search`) |
+| Component         | Role                                      |
+| ----------------- | ----------------------------------------- |
+| `/log` command    | Routes observations to bd issues          |
+| `/learn` command  | Makes tracked interventions               |
+| `framework` skill | Governance + learning-log workflow (07)   |
+| [[HEURISTICS]]    | Synthesis destination                     |
+| Memory server     | Semantic search (supplements `bd search`) |
 
 ## HEURISTICS.md Format
 

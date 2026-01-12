@@ -538,18 +538,18 @@ $AOPS/
 
 ### Workflow Templates
 
-| Location                       | Workflows                                             | Loaded By            |
-| ------------------------------ | ----------------------------------------------------- | -------------------- |
-| `skills/supervisor/workflows/` | tdd, batch-review                                     | `/ttd`, `/do`        |
+| Location                       | Workflows                                                              | Loaded By            |
+| ------------------------------ | ---------------------------------------------------------------------- | -------------------- |
+| `skills/supervisor/workflows/` | tdd, batch-review                                                      | `/ttd`, `/do`        |
 | `skills/framework/workflows/`  | 01-design, 02-debug, 03-experiment, 04-bloat, 06-spec, 07-learning-log | `Skill("framework")` |
 
 ### Skill → Skill Dependencies
 
-| Skill            | May Invoke                            |
-| ---------------- | ------------------------------------- |
-| /log             | framework (workflow 07)               |
-| transcript       | (none - wraps script)                 |
-| session-insights | transcript                            |
+| Skill            | May Invoke              |
+| ---------------- | ----------------------- |
+| /log             | framework (workflow 07) |
+| transcript       | (none - wraps script)   |
+| session-insights | transcript              |
 
 ### Agent → Skill Routing
 

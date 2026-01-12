@@ -65,15 +65,24 @@ assert "success" in response.lower()
 # Let the test logic evaluate whether the response MEANS success
 ```
 
-### Anti-Pattern 3: Truncated Evidence
+### Anti-Pattern 3: Truncated Evidence or Hidden Internals
 
 ```python
 # WRONG - truncates evidence humans need
 print(response[:100])
 
-# CORRECT - show full output (H37a)
+# WRONG - shows final output but hides internal working
 print(response)
+
+# CORRECT - expose the feature's internal machinery (H37a)
+print("\n=== FEATURE INTERNALS ===")
+print(f"Step 1 - Loaded context: {context}")
+print(f"Step 2 - Applied transform: {intermediate_state}")
+print(f"Step 3 - Generated response: {response}")
+print(f"Internal state after processing: {processor.state}")
 ```
+
+**Why this matters**: Demo tests must make visible the ENTIRE INTERNAL WORKING of the feature - how it processes data step-by-step, what decisions it makes, what internal state changes occur. Printing just the final response (even untruncated) doesn't demonstrate how the feature works.
 
 ### Anti-Pattern 4: Ignoring Session Failure
 

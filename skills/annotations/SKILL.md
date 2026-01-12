@@ -13,7 +13,7 @@ Process inline HTML comments for asynchronous human-agent collaboration in markd
 
 ## Convention
 
-**Human comments:** `<!-- @nic: comment -->` or `<!-- @ns: comment -->`
+**Human comments:** `<!-- @nic: comment -->` or `<!-- @ns: comment -->` or `<!-- NS: comment -->` or '<!-- @nicsuzor: comment -->'
 **Agent responses:** `<!-- @claude YYYY-MM-DD: response -->`
 
 Comments use HTML syntax for universal markdown compatibility (GitHub, Obsidian, VS Code, etc.). They render as invisible in all standard markdown viewers.
@@ -24,6 +24,8 @@ Comments use HTML syntax for universal markdown compatibility (GitHub, Obsidian,
 
 Find all pending human annotations that need response.
 
+<!-- @nicsuzor: use 'rg' instead of grep, run case insensitive, and make the '@' optional  -->
+
 ```bash
 Grep(pattern="<!--\\s*@(nic|ns):", path="$ACA_DATA", output_mode="content", -C=2)
 ```
@@ -33,6 +35,8 @@ Output: List of files with pending comments, showing context.
 ### respond [file]
 
 Process annotations in a specific file:
+
+<!-- @nicsuzor: ensure that comments are added to `bd`. Once they are fully captured, they can be deleted from the source file. -->
 
 1. Read the file
 2. Find all `<!-- @nic:` or `<!-- @ns:` comments
@@ -65,7 +69,7 @@ The court held that platforms must provide notice. <!-- @ns: check if this appli
 
 | Pattern                                      | Matches         |
 | -------------------------------------------- | --------------- |
-| `<!--\s*@(nic\|ns):`                         | Human comments  |
+| `<!--\s*@?(nic\|ns):`                        | Human comments  |
 | `<!--\s*@claude\s+\d{4}-\d{2}-\d{2}:`        | Agent responses |
 | Human comment NOT followed by agent response | Pending items   |
 

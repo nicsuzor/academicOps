@@ -8,6 +8,8 @@ tags: [knowledge-management, bmem, design, philosophy, just-in-time]
 created: 2025-11-21
 ---
 
+<!-- NS: edit to remove bmem structure (observation sections etc) -->
+
 # Knowledge Management Philosophy
 
 **Status**: Active (guiding principles)

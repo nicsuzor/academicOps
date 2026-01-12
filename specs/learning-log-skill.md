@@ -1,20 +1,22 @@
 ---
-title: Learning-Log Skill
+title: Learning-Log Workflow
 type: spec
 category: spec
 status: implemented
 permalink: learning-log-skill
 tags:
   - spec
-  - skill
+  - workflow
   - learning
   - bd-issues
   - episodic
 ---
 
-# Learning-Log Skill
+# Learning-Log Workflow
 
-**Status**: Implemented
+**Status**: Implemented (as framework workflow 07)
+
+**Location**: `skills/framework/workflows/07-learning-log.md`
 
 ## Workflow
 
@@ -62,7 +64,7 @@ A skill that routes all observations to bd issues (per [[AXIOMS]] #28), enforces
 or
 
 ```
-Skill(skill="learning-log")
+Skill(skill="framework")  # then follow workflow 07-learning-log.md
 ```
 
 Invoke when documenting agent failures, success patterns, or framework observations.

@@ -41,6 +41,7 @@ HOOK_REGISTRY: dict[str, list[dict[str, Any]]] = {
         {
             "script": "hydration_gate.py"
         },  # Must run first - blocks until hydrator invoked
+        {"script": "sql_validator.py"},
         {"script": "policy_enforcer.py"},
         {"script": "criteria_gate.py"},
         {"script": "unified_logger.py"},

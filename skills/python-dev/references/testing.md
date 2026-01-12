@@ -157,7 +157,7 @@ Demo tests are **expensive** - they require:
 
 1. **Showcases framework behavior** - demonstrates a user-facing capability
 2. **Explanatory narrative** - clear headers, step-by-step output, teaches the reader
-3. **Full untruncated output** - uses `print()` for human validation (H37a)
+3. **Exposes internal working** - prints intermediate states, decision points, data transformations so humans can see HOW the feature works internally (H37a)
 4. **Real framework scenarios** - not contrived examples (H37b)
 5. **Structural validation** - visible pass/fail checks with explanations
 

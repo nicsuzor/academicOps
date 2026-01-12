@@ -12,14 +12,14 @@ This document covers both Claude Code's hook system and the academicOps implemen
 
 ## academicOps Active Hooks
 
-| File                          | Event            | Purpose                           |
-| ----------------------------- | ---------------- | --------------------------------- |
-| session_env_setup.sh          | SessionStart     | Environment setup                 |
-| sessionstart_load_axioms.py   | SessionStart     | Injects AXIOMS, FRAMEWORK, HEURISTICS |
-| user_prompt_submit.py         | UserPromptSubmit | Context enrichment via temp file  |
-| policy_enforcer.py            | PreToolUse       | Block destructive operations      |
-| autocommit_state.py           | PostToolUse      | Auto-commit data/ changes         |
-| unified_logger.py             | ALL events       | Universal event logging           |
+| File                        | Event            | Purpose                               |
+| --------------------------- | ---------------- | ------------------------------------- |
+| session_env_setup.sh        | SessionStart     | Environment setup                     |
+| sessionstart_load_axioms.py | SessionStart     | Injects AXIOMS, FRAMEWORK, HEURISTICS |
+| user_prompt_submit.py       | UserPromptSubmit | Context enrichment via temp file      |
+| policy_enforcer.py          | PreToolUse       | Block destructive operations          |
+| autocommit_state.py         | PostToolUse      | Auto-commit data/ changes             |
+| unified_logger.py           | ALL events       | Universal event logging               |
 
 **Architecture principle**: Hooks inject context - they don't do LLM reasoning. Timeouts: 2-30 seconds. Hooks must NOT call the Claude/Anthropic API directly.
 

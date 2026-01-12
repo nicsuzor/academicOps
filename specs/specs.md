@@ -1,57 +1,53 @@
 ---
-title: Technical Specifications
-permalink: aops-specs
-type: index
+title: Specification System
+permalink: spec-system
+type: spec
 category: spec
 tags: [aops, specs, architecture, design]
 ---
 
-# Technical Specifications
-
-**Status**: Index file (always current)
-
-Requirements:
-
-- Specs must prominently point to the files that give them effect in a bulleted list of [[wikilinks]] with brief explanation of what each file does and why it exists
-- Specs must state user stories that the are responsible for
-- ... (TODO NS: add spec definitions)
+# Specification System
 
 ## User Story
 
-**As** the user,
-**I want** specs automatically updated after implementation,
-**So that** one spec per feature remains the authoritative source (per AXIOMS #29).
+**As** an academic with ADHD managing research workflows,
+**I want** every framework feature to have a clear specification with user story and acceptance criteria,
+**So that** features justify their existence, remain maintainable, and I can verify they work correctly.
 
-## Spec Organization
+> **Coherence check**: This spec system ensures the framework stays focused on its core mission. Features that can't articulate a user story connected to the narrative are candidates for removal.
 
-```mermaid
-graph TD
-    A[Specs Index] --> B[Core Architecture]
-    A --> C[Agent Behavior]
-    A --> D[Features]
-    A --> E[Infrastructure]
-    A --> F[Skills]
+## Acceptance Criteria
 
-    B --> B1[meta-framework]
-    B --> B2[enforcement]
-    B --> B3[knowledge-management-philosophy]
+### Success Criteria (ALL must pass)
 
-    C --> C1[prompt-hydration]
-    C --> C2[ultra-vires-custodiet]
+1. [ ] Every spec has User Story and Acceptance Criteria at the top
+2. [ ] User stories connect to core narrative pillars (zero-friction capture, consistent quality, nothing lost, fail-fast, minimal maintenance)
+3. [ ] Specs include implementation pointers to files that give them effect
+4. [ ] Audit skill can validate spec structure
 
-    D --> D1[dashboard-skill]
-    D --> D2[task-list-overwhelm]
+### Failure Modes (If ANY occur, implementation is WRONG)
 
-    E --> E1[framework-health]
-    E --> E2[testing-framework-overview]
+1. [ ] Specs exist without user stories
+2. [ ] Features exist without specs (violates AXIOMS #29)
+3. [ ] Specs diverge from implementation
 
-    F --> F1[analyst-skill]
-    F --> F2[framework-skill]
-    F --> F3[session-insights-skill]
-    F --> F4[tasks-skill]
-```
+---
 
-Design documents for the academicOps framework. Per [[AXIOMS]] #29: one spec per feature, timeless.
+## Spec Requirements
+
+Every spec MUST have (in this order, at the top of the file):
+
+1. **User Story** - "As an academic with ADHD... I want... So that..." format
+   - Must connect to core narrative: zero-friction capture, consistent quality, nothing lost, fail-fast, or minimal maintenance
+   - Include coherence check explaining how feature serves the mission
+
+2. **Acceptance Criteria** - Observable, testable outcomes
+   - Success criteria (what USER can do/see when feature works)
+   - Failure modes (conditions that mean implementation is wrong)
+
+3. **Implementation pointers** - Bulleted list of [[wikilinks]] to files that implement the spec, with brief explanation of what each file does
+
+Features that cannot articulate a user story connected to the core narrative are candidates for removal or consolidation.
 
 ## Spec Lifecycle
 
@@ -62,47 +58,12 @@ Design documents for the academicOps framework. Per [[AXIOMS]] #29: one spec per
 | `implemented` | Built and working                        |
 | `requirement` | User story, not yet designed             |
 
-## Core Architecture
+## Implementation
 
-- [[meta-framework]] - Strategic partner design (implemented)
-- [[knowledge-management-philosophy]] - Everything capture, just-in-time delivery
-- [[enforcement]] - Enforcement layers and mechanisms
-- Spec maintenance - Ensure specs remain single source of truth (implemented)
+- [[SPEC-TEMPLATE]] - Template for new specs (in `skills/framework/`)
+- [[skills/framework/workflows/06-develop-specification]] - Workflow for developing specs collaboratively
+- [[audit-skill]] - Validates spec structure (to be extended with user story checks)
 
-## Agent Behavior
+## Discovery
 
-- [[specs/prompt-hydration]] - Context gathering, classification, workflow selection (draft)
-- [[ultra-vires-custodiet]] - Semantic authority enforcement (draft)
-- [[conclusion-verification-hook]] - Verify claims have evidence (draft)
-- [[plan-quality-gate]] - Critic review before presenting plans (requirement)
-- [[framework-aware-operations]] - Agents know framework architecture (requirement)
-
-## Features
-
-- [[task-list-overwhelm]] - Task state index and synthesis (in progress)
-- [[session-transcript-extractor]] - Generate readable transcripts (implemented as /transcript skill)
-- [[parallel-batch-command]] - Parallel file processing (implemented as /parallel-batch skill)
-- [[email-to-tasks-workflow]] - Email to task extraction (draft)
-- [[tasks-mcp-server]] - Task CRUD via MCP (draft)
-
-## Infrastructure
-
-- [[framework-health]] - Health metrics, pre-commit hooks, CI/CD enforcement (implemented)
-- [[testing-framework-overview]] - Test types and requirements
-- [[multi-terminal-sync]] - Cross-device state sync (requirement)
-- [[informed-improvement-options]] - Context7 + research before fixes (requirement)
-
-## Skills
-
-- [[analyst-skill]] - dbt/Streamlit data analysis with transformation boundaries (implemented)
-- [[dashboard-skill]] - Cognitive load dashboard for task and session monitoring (implemented)
-- [[framework-skill]] - Categorical governance for framework changes (implemented)
-- [[garden-skill]] - Incremental PKM maintenance (weeding, linking, synthesizing) (implemented)
-- [[python-dev-skill]] - Fail-fast Python with type safety (implemented)
-- [[feature-dev-skill]] - Test-first development workflow (implemented)
-- [[remember-skill]] - Knowledge persistence to markdown + memory server (implemented)
-- [[skills/session-insights/]] - Session mining and heuristic evolution (implemented)
-- [[supervisor-skill]] - Multi-agent orchestration with quality gates (implemented)
-- [[tasks-skill]] - Task lifecycle management (implemented)
-- [[transcript-skill]] - JSONL to markdown session transcripts (implemented)
-- [[learning-log-skill]] - Pattern documentation via bd issues (implemented)
+Specs live in `$AOPS/specs/`. Use glob patterns or the audit skill to find specs by status or domain.

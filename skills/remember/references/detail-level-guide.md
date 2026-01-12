@@ -4,15 +4,6 @@ title: Detail Level Guide
 category: ref
 ---
 
-title: Detail Level Guide: What to Capture Where
-type: reference
-permalink: detail-level-guide
-tags:
-
-- memory
-- reference
-- knowledge-management
-
 # Detail Level Guide: What to Capture Where
 
 Match detail level to file type and importance.
@@ -26,25 +17,6 @@ Match detail level to file type and importance.
 - Problems encountered and solutions
 - Code/configuration changes made
 - Full context for future resumption
-
-**Example (GOOD for task file)**:
-
-```markdown
-tags:
-
-- pytest
-- async
-- testing-strategy
-- technical-debt
-- test-organization
-
-## Observations
-
-- [solution] Fixed async fixture issue by adding @pytest_asyncio.fixture decorator
-- [decision] Chose to use real data instead of mocks for better integration coverage
-- [problem] Initial approach with sync fixtures caused event loop conflicts
-- [technique] Used conftest.py for shared fixtures across test modules
-```
 
 ## Project Files (Strategic Updates Only)
 

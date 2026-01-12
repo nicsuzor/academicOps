@@ -10,11 +10,11 @@ tags: [framework, heuristics, verification]
 
 # Full Evidence for Human Validation
 
-**Statement**: Demo tests and verification output must show FULL untruncated content so humans can visually validate. Truncating evidence defeats the purpose of verification.
+**Statement**: Demo tests must expose the ENTIRE INTERNAL WORKING of the feature being demonstrated - all intermediate states, decision points, and data transformations. "Full output" means making the feature's internal machinery visible, not just printing the final response without truncation.
 
 ## Derivation
 
-Truncated output hides failures. Full evidence enables human judgment.
+Hiding internal working prevents validation. Humans cannot judge correctness by seeing only final output - they need to see HOW the feature arrived at that output. Demo tests that only print final responses (even untruncated) are black boxes that don't demonstrate the feature's behavior.
 
 ## Evidence
 

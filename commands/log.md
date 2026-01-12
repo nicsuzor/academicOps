@@ -6,12 +6,12 @@ allowed-tools: Task
 permalink: commands/log
 ---
 
-**Run in background** - spawn the learning-log skill asynchronously so the user can continue working:
+**Run in background** - spawn the learning-log workflow asynchronously so the user can continue working:
 
 ```
 Task(subagent_type="general-purpose", model="haiku",
      description="Log observation to bd",
-     prompt="Invoke Skill(skill='learning-log') with this observation: [USER'S OBSERVATION]",
+     prompt="Invoke Skill(skill='framework') and follow workflow 07-learning-log.md with this observation: [USER'S OBSERVATION]",
      run_in_background=true)
 ```
 
@@ -37,4 +37,4 @@ See [[specs/enforcement.md]] "Component Responsibilities" for the full model.
 
 **Example**: `/log Router suggested framework skill but agent ignored it - instruction wasn't task-specific`
 
-The skill will trace to root cause category and responsible component.
+The workflow will categorize and create/update a bd issue. Root cause analysis is deferred to `/qa [issue-id]`.

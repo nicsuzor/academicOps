@@ -13,3 +13,5 @@ This performs:
 3. **Updates**: Fix missing entries, report orphans
 
 **Output**: Structured report with actions taken and items requiring human review.
+
+- Save this as a full markdown report in `${ACA_DATA}/projects/aops/audit/[date]-audit.md`

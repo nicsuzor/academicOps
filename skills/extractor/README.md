@@ -6,6 +6,8 @@ description: Automated system for extracting important professional knowledge fr
 tags: [skill, extractor, email, knowledge-extraction, memory]
 ---
 
+<!-- NS: this should not be in README.md -- that doesn't get read. -->
+
 # Email Archive Knowledge Extraction
 
 Automated system for extracting important professional knowledge from archived emails and converting them to properly formatted markdown knowledge base entries.
@@ -126,19 +128,6 @@ tags: [person, research-area, location, connection-type]
 ## Context
 
 [Who they are, their work, how Nic knows them]
-
-## Observations
-
-- [fact] [Position] at [Institution] #affiliation
-- [research] Focus on [topic] #research
-- [connection] Met at [Event] #meeting
-- [contact] Email: [email] #contact
-
-## Relations
-
-- met_at [[Event]]
-- affiliated_with [[Institution]]
-- researches [[Topic]]
 ```
 
 ### Collaboration/Project
@@ -148,7 +137,6 @@ tags: [person, research-area, location, connection-type]
 title: [Project Name]
 type: project
 status: [proposed|active|completed]
-tags: [collaboration, research-area, partners]
 ---
 
 # [Project Name]
@@ -156,17 +144,6 @@ tags: [collaboration, research-area, partners]
 ## Context
 
 [Description of collaboration]
-
-## Observations
-
-- [goal] [Objective] #objective
-- [fact] Partners: [list] #partners
-- [timeline] [dates] #timeline
-
-## Relations
-
-- involves [[Person]]
-- relates_to [[Topic]]
 ```
 
 ## Processing Log

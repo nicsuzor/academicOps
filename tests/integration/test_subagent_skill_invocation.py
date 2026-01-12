@@ -70,6 +70,9 @@ def retry_flaky_e2e(test_func, max_attempts: int = 3):
     raise AssertionError("Retry logic error")
 
 
+# <!-- NS: remove old bmem format headers from tests -- 'observations', 'relations' etc. -->
+
+
 @pytest.mark.integration
 @pytest.mark.slow
 def test_skill_invocation_produces_formatted_output(claude_headless) -> None:

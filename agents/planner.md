@@ -148,7 +148,7 @@ For each subtask, determine:
 -
   3. [ ] Implement core [depends:: 2]
 -
-  4. [ ] Write tests [depends:: 2] <!-- can parallel with 3 -->
+  4. [ ] Write tests [depends:: 2] <!-- NS: can parallel with 3 -->
 -
   5. [ ] Integration testing [depends:: 3, 4]
 ```
