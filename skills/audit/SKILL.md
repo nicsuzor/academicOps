@@ -28,7 +28,8 @@ TodoWrite(todos=[
   {content: "Phase 5: Documentation accuracy - verify FLOW.md vs hooks", status: "pending", activeForm: "Verifying documentation"},
   {content: "Phase 6: Regenerate indices - invoke Skill(skill='flowchart') for FLOW.md", status: "pending", activeForm: "Regenerating indices"},
   {content: "Phase 7: Other updates", status: "pending", activeForm: "Finalizing updates"},
-  {content: "Phase 8: Save audit report to $ACA_DATA/qa/aops/audit-YYYYMMDD-HHMMSS.md", status: "pending", activeForm: "Persisting report"}
+  {content: "Phase 8: Save audit report to $ACA_DATA/qa/aops/audit-YYYYMMDD-HHMMSS.md", status: "pending", activeForm: "Persisting report"},
+  {content: "Phase 9: Create bd issues for actionable findings", status: "pending", activeForm: "Creating issues"}
 ])
 ```
 
@@ -339,6 +340,62 @@ Use the Write tool to save the complete audit report (see Report Format below) t
 
 After writing, confirm: `Audit report saved to: [path]`
 
+### Phase 9: Create bd Issues for Actionable Findings
+
+**Create issues in bd for findings that require human action.**
+
+For each finding from Phases 0-7 that requires action:
+
+1. **Classify finding type** using the mapping below
+2. **Run bd create** with appropriate metadata
+3. **Track issue IDs** for summary
+
+#### Finding Type → Issue Mapping
+
+| Finding Type                           | Priority | Issue Type | Labels              |
+| -------------------------------------- | -------- | ---------- | ------------------- |
+| Broken wikilinks                       | P2       | bug        | audit,documentation |
+| Orphan files                           | P3       | chore      | audit,cleanup       |
+| Skill >500 lines                       | P2       | chore      | audit,refactor      |
+| Explanatory content in skill           | P2       | chore      | audit,refactor      |
+| Missing from INDEX.md                  | P3       | chore      | audit,documentation |
+| Orphan instruction (no RULES.md trace) | P2       | bug        | audit,governance    |
+| FLOW.md drift                          | P2       | bug        | audit,documentation |
+| Hook→Axiom mismatch                    | P2       | bug        | audit,governance    |
+
+#### bd create Command Pattern
+
+```bash
+bd create "[Finding Type]: [specific details]" \
+  --type [bug|chore] \
+  --priority [2|3] \
+  --labels audit,[category] \
+  --description "[context from audit]"
+```
+
+#### Skip Conditions
+
+Do NOT create issues for:
+
+- **Regenerated indices** (Phase 6 actions) - already handled
+- **Pass status** findings - no action needed
+- **Justified files** (Phase 4) - no action needed
+- **Implicit files** (Phase 4) - acceptable, no action needed
+
+#### Output Summary
+
+After creating issues, add to audit report:
+
+```markdown
+### Issues Created
+
+Created N issues in bd:
+
+- beads-xxx: Broken wikilink: [[foo.md]] in bar.md
+- beads-yyy: Orphan file: docs/old.md
+- beads-zzz: Skill over limit: skills/big/SKILL.md
+```
+
 ## Report Format
 
 Output a structured report with YAML frontmatter:
@@ -353,6 +410,7 @@ summary:
   skill_violations: N
   orphan_files: N
   indices_regenerated: N
+  issues_created: N
 status: PASS | ISSUES_FOUND
 ---
 
@@ -403,79 +461,18 @@ status: PASS | ISSUES_FOUND
 ### Requires Human Review
 
 - Orphan: docs/OLD-FILE.md - delete or create spec?
+
+### Issues Created
+
+Created N issues in bd:
+
+- beads-xxx: [title]
+- beads-yyy: [title]
 ```
 
-## README.md Structure Target
+## Output Targets
 
-Brief overview (~100-150 lines):
-
-```markdown
-# academicOps Framework
-
-Academic support framework for Claude Code. Minimal, fight bloat.
-
-## Quick Start
-
-[paths, principles links]
-
-## How Enforcement Works
-
-[Mermaid flowchart showing 7-level mechanism ladder]
-
-The framework influences agent behavior through layered defenses:
-
-| Level | Mechanism                            | When          | What It Does                            |
-| ----- | ------------------------------------ | ------------- | --------------------------------------- |
-| 1a-c  | Prompt text                          | Session start | Mention → Rule → Emphatic+Reasoned      |
-| 2     | Intent router                        | Before task   | Intelligent steering, skill suggestions |
-| 3a-b  | Tool restriction / Skill abstraction | Tool use      | Force correct workflow                  |
-| 4     | Pre-tool hooks                       | Before action | Block before damage                     |
-| 5     | Post-tool validation                 | After action  | Catch violations                        |
-| 6     | Deny rules                           | Tool use      | Hard block, no exceptions               |
-| 7     | Pre-commit                           | Git commit    | Last line of defense                    |
-
-See [[docs/ENFORCEMENT.md]] for practical guide, [[specs/enforcement.md]] for architecture.
-
-## Commands
-
-[table: command | purpose]
-
-## Skills
-
-[table: skill | purpose]
-
-## Hooks
-
-[table: hook | trigger | purpose]
-
-## Agents
-
-[table: agent | purpose]
-```
-
-**Enforcement flowchart requirement**: README.md MUST include a simplified Mermaid diagram derived from [[docs/ENFORCEMENT.md]] (the practical 7-level mechanism ladder). The diagram should show the enforcement levels (1a-7) in a way that helps new users understand when each mechanism operates. Note: `specs/enforcement.md` is architectural philosophy; `docs/ENFORCEMENT.md` is the practical guide.
-
-## INDEX.md Structure Target
-
-Complete file-to-function mapping:
-
-```markdown
-# Framework Index
-
-## File Tree
-
-$AOPS/
-├── AXIOMS.md # Inviolable principles
-├── [complete annotated tree...]
-
-## Cross-References
-
-### Command → Skill
-
-### Skill → Skill
-
-### Agent → Skill
-```
+See [[references/output-targets.md]] for README.md and INDEX.md structure targets.
 
 ## Validation Criteria
 
