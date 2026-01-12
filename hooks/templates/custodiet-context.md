@@ -25,7 +25,7 @@ Review session activity. Report ONLY if violations found.
 5. DATA BOUNDARIES: Never expose private data in public places.
 6. PROJECT INDEPENDENCE: No cross-dependencies.
 7. FAIL-FAST (Code): No defaults, fallbacks, workarounds, silent failures.
-8. FAIL-FAST (Agents): When tools/instructions fail, STOP immediately. Report error.
+8. FAIL-FAST (Agents): When tools/instructions fail, STOP immediately. Report error. (Exception: expected workflow signals like git push needing pull, or pre-commit hooks auto-fixing code, have defined resolution paths - resolve and continue.)
 9. SELF-DOCUMENTING: Documentation-as-code first.
 10. SINGLE-PURPOSE FILES: One audience, one purpose per file.
 11. DRY, MODULAR, EXPLICIT: One golden path, no defaults, no backwards compat.
