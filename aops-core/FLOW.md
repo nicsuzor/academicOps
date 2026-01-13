@@ -68,6 +68,59 @@ flowchart TD
     style AG fill:#66ff66
 ```
 
+## Session Initialization (SessionStart Hook)
+
+The core loop BEGINS with SessionStart, before any user prompt is processed.
+
+### SessionStart Hook Dispatch
+
+When a Claude Code session starts, `router.py` dispatches two hooks in sequence:
+
+1. **session_env_setup.sh** - Environment configuration
+   - Sets `$AOPS` to the academicOps root directory
+   - Adds `$AOPS` to `$PYTHONPATH` for Python imports
+   - Writes environment to `$CLAUDE_ENV_FILE` (persists for session)
+   - Validates path by checking for `AXIOMS.md`
+
+2. **unified_logger.py** - Session state initialization
+   - Creates session file at `/tmp/aops-{YYYY-MM-DD}-{session_id}.json`
+   - Records session start timestamp
+   - Initializes empty state for hydration, subagents, and insights
+
+### Initial File Injection (claudeMd)
+
+Claude Code's built-in `claudeMd` mechanism injects context at session start:
+
+1. **Project CLAUDE.md** (`.claude/CLAUDE.md`) - Contains `@AGENTS.md` reference
+2. **AGENTS.md** (repository root) - Dogfooding instructions loaded via `@` directive
+3. **Plugin context** - Any registered plugin instructions
+
+This injection happens BEFORE the first UserPromptSubmit, ensuring the agent has:
+
+- Framework development guidelines (dogfooding mode)
+- Reflection format requirements
+- Session close workflow requirements
+
+### Hook Registration
+
+SessionStart hooks are registered in `.claude/settings.json`:
+
+```json
+"SessionStart": [
+  {
+    "hooks": [{
+      "type": "command",
+      "command": "PYTHONPATH=$AOPS uv run python $AOPS/aops-core/hooks/router.py"
+    }]
+  },
+  {
+    "hooks": [{"type": "command", "command": "bd prime"}]
+  }
+]
+```
+
+The router dispatches to `session_env_setup.sh` and `unified_logger.py` based on `HOOK_REGISTRY` in `router.py`.
+
 ## What's IN (Core v1.0)
 
 ### Agents (5)
