@@ -86,11 +86,11 @@ Return this EXACT structure:
 
 ```javascript
 TodoWrite(todos=[
-  {{content: "Step 1: [action]", status: "pending", activeForm: "[present participle]"}},
-  {{content: "Step 2: [action]", status: "pending", activeForm: "[present participle]"}},
-  {{content: "CHECKPOINT: [verification with evidence]", status: "pending", activeForm: "Verifying"}},
-  {{content: "QA VERIFY: Spawn qa-verifier agent before completion", status: "pending", activeForm: "Verifying with qa-verifier"}},
-  {{content: "Commit and push", status: "pending", activeForm: "Committing"}}
+  {content: "Step 1: [action]", status: "pending", activeForm: "[present participle]"},
+  {content: "Step 2: [action]", status: "pending", activeForm: "[present participle]"},
+  {content: "CHECKPOINT: [verification with evidence]", status: "pending", activeForm: "Verifying"},
+  {content: "QA VERIFY: Spawn qa-verifier agent before completion", status: "pending", activeForm: "Verifying with qa-verifier"},
+  {content: "Commit and push", status: "pending", activeForm: "Committing"}
 ])
 ```
 ````
