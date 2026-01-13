@@ -11,6 +11,8 @@ permalink: skills-audit
 
 Comprehensive governance audit for the academicOps framework.
 
+**Specification**: See [[specs/audit-protocol.md]] for audit scope, report format, and validation criteria.
+
 **NO RATIONALIZATION**: An audit reports ALL discrepancies. Do NOT justify ignoring files as "generated", "acceptable", or "probably don't need to be tracked". Every gap is reported. The user decides what's acceptable - not the auditor.
 
 ## Workflow Entry Point
@@ -28,7 +30,7 @@ TodoWrite(todos=[
   {content: "Phase 5: Documentation accuracy - verify FLOW.md vs hooks", status: "pending", activeForm: "Verifying documentation"},
   {content: "Phase 6: Regenerate indices - invoke Skill(skill='flowchart') for FLOW.md", status: "pending", activeForm: "Regenerating indices"},
   {content: "Phase 7: Other updates", status: "pending", activeForm: "Finalizing updates"},
-  {content: "Phase 8: Save audit report to $ACA_DATA/qa/aops/audit-YYYYMMDD-HHMMSS.md", status: "pending", activeForm: "Persisting report"},
+  {content: "Phase 8: Save audit report to $ACA_DATA/projects/aops/audit/YYYY-MM-DD-HHMMSS-audit.md", status: "pending", activeForm: "Persisting report"},
   {content: "Phase 9: Create bd issues for actionable findings", status: "pending", activeForm: "Creating issues"}
 ])
 ```
@@ -74,7 +76,7 @@ This generates:
 - `/tmp/health-YYYYMMDD.json` - Machine-readable metrics
 - `/tmp/health-YYYYMMDD.md` - Human-readable report
 
-**Metrics tracked**: See [[specs/framework-health.md]]
+**Metrics tracked**: Component counts, hook coverage, skill sizes, wikilink validation
 
 **→ Continue to Phase 1** (do not stop here)
 
@@ -210,7 +212,7 @@ Verify `FLOW.md` reflects actual hook architecture:
 
 ### Phase 6: Regenerate Generated Indices
 
-Generated indices are root-level files for agent consumption. See [[specs/generated-indices]].
+Generated indices are root-level files for agent consumption (INDEX.md, RULES.md, WORKFLOWS.md, FLOW.md, AXIOMS.md, HEURISTICS.md, docs/ENFORCEMENT.md).
 
 **Regenerate each deterministically from sources:**
 
@@ -286,7 +288,7 @@ Regenerate from hook architecture sources:
    - Group by execution phase (SessionStart, UserPromptSubmit, PreToolUse, PostToolUse, Stop)
    - Label edges with event types and conditions
 
-**Structure** (per [[specs/execution-flow-spec.md]]):
+**Structure** (per [[specs/flow.md]]):
 
 - Vertical main flow showing session lifecycle
 - Horizontal insertion points for each hook event
@@ -347,14 +349,14 @@ Skills with multiple workflows/modes MUST have each sub-workflow documented sepa
 
 ### Phase 8: Persist Report (MANDATORY)
 
-**Every audit MUST save a written report to `$ACA_DATA/qa/aops/`.**
+**Every audit MUST save a written report to `$ACA_DATA/projects/aops/audit/`.**
 
 ```bash
 # Create directory if needed
-mkdir -p "$ACA_DATA/qa/aops"
+mkdir -p "$ACA_DATA/projects/aops/audit"
 
-# Generate timestamped filename
-REPORT_PATH="$ACA_DATA/qa/aops/audit-$(date +%Y%m%d-%H%M%S).md"
+# Generate timestamped filename (format: YYYY-MM-DD-HHMMSS-audit.md)
+REPORT_PATH="$ACA_DATA/projects/aops/audit/$(date +%Y-%m-%d-%H%M%S)-audit.md"
 ```
 
 Use the Write tool to save the complete audit report (see Report Format below) to `$REPORT_PATH`.
@@ -434,8 +436,8 @@ date: YYYY-MM-DD HH:MM:SS
 duration_minutes: N
 summary:
   structure_issues: N
+  justification_orphans: N
   skill_violations: N
-  orphan_files: N
   indices_regenerated: N
   issues_created: N
 status: PASS | ISSUES_FOUND
@@ -443,22 +445,16 @@ status: PASS | ISSUES_FOUND
 
 # Audit Report
 
-### Structure Issues
+## Executive Summary
+
+High-level findings and overall status. Brief description of what was audited, major findings, and recommendations.
+
+### Structure Audit Results
 
 - Missing from INDEX.md: skills/foo/
 - Broken wikilinks: [[nonexistent.md]] in X.md
 
-### Skill Content Violations
-
-- skills/foo/SKILL.md:45-67 - explanatory content (move to spec)
-- skills/bar/SKILL.md - 623 lines (>500 limit)
-
-### Execution Flow Drift
-
-- Hook in code, missing from diagram: unified_logger.py (PostToolUse)
-- Hook in diagram, not in router.py: old_hook.py
-
-### Justification Status
+### Justification Matrix
 
 **Justified** (N files) - spec exists:
 
@@ -474,20 +470,37 @@ status: PASS | ISSUES_FOUND
 
 - docs/OLD-FILE.md
 
-### Generated Indices Regenerated
+### Content Violations
 
+**Skill Content Issues**:
+- skills/foo/SKILL.md:45-67 - explanatory content (move to spec)
+- skills/bar/SKILL.md - 623 lines (>500 limit)
+
+**Execution Flow Drift**:
+- Hook in code, missing from diagram: unified_logger.py (PostToolUse)
+- Hook in diagram, not in router.py: old_hook.py
+
+**Hook→Axiom Mismatches**:
+- Hook declares axiom but RULES.md shows "Prompt" level only
+- Axiom has Hard/Soft Gate in RULES.md but no hook declares it
+
+### Actions Taken
+
+**Generated Indices Regenerated**:
 - INDEX.md: [N] files mapped
 - RULES.md: [N] enforcement mechanisms
 - WORKFLOWS.md: [N] task types
 - FLOW.md: [N] hooks in flow diagram
 
-### Other Actions Taken
-
+**Other Updates**:
 - Updated README.md commands table
+- Fixed broken wikilinks
+- Added missing entries to indices
 
-### Requires Human Review
+### Human Review Queue
 
 - Orphan: docs/OLD-FILE.md - delete or create spec?
+- Skill over size limit: skills/bar/SKILL.md - refactor or document exception?
 
 ### Issues Created
 
