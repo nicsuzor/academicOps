@@ -65,33 +65,11 @@ The learning-log workflow will search bd issues for related observations and ret
 
 ### 3. Choose Intervention Level (Start at Bottom, Escalate with Evidence)
 
-**Enforcement Ladder** (always start at lowest effective level):
+See @docs/ENFORCEMENT.md for mechanism details.
 
-| Level | Mechanism                     | When to Use                                |
-| ----- | ----------------------------- | ------------------------------------------ |
-| 1a    | Prompt text (mention)         | Nice-to-have suggestion                    |
-| 1b    | Prompt text (explicit rule)   | Stated rule, no emphasis                   |
-| 1c    | Prompt text (emphatic+reason) | Rule with WHY it matters for THIS task     |
-| 2a    | Intent router                 | Adaptive guidance for user prompts         |
-| 2b    | Command instructions          | Strengthen `/command` file (auto-injected) |
-| 3a    | Tool restriction (soft deny)  | Tool available only via specific workflow  |
-| 3b    | Skill abstraction             | Hide complexity, force workflow            |
-| 4     | Pre-tool-use hooks            | Block before damage occurs                 |
-| 5     | Post-tool-use validation      | Catch violations, demand correction        |
-| 6     | Deny rules (settings.json)    | Hard block, no exceptions                  |
-| 7     | Pre-commit hooks              | Last line of defense                       |
-
-**Match root cause to intervention**:
-
-| Root Cause        | Start At                                       |
-| ----------------- | ---------------------------------------------- |
-| Clarity Failure   | Level 1c, then 2b if in a /command             |
-| Context Failure   | Level 2a (router) or 2b (command instructions) |
-| Blocking Failure  | Level 4 (PreToolUse hook)                      |
-| Detection Failure | Level 5 (PostToolUse hook)                     |
-| Gap               | Lowest level that addresses the gap            |
-
-**Escalation rule**: Only move up when you have evidence that lower levels failed. See [[docs/ENFORCEMENT.md]] for mechanism details.
+- **Enforcement Ladder** (always start at lowest effective level). 
+- **Match root cause to intervention**
+- **Escalation rule**: Only move up when you have evidence that lower levels failed. 
 
 ### 4. Make the Minimal Change
 

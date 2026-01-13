@@ -17,7 +17,27 @@ import os
 import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any, TypedDict
+from typing import Any, TypedDict, cast
+
+
+class CustodietState(TypedDict, total=False):
+    """Backward compatibility for CustodietState."""
+
+    last_compliance_ts: float
+    tool_calls_since_compliance: int
+    last_drift_warning: str | None
+    error_flag: dict[str, Any] | None
+
+
+class HydratorState(TypedDict, total=False):
+    """Backward compatibility for HydratorState."""
+
+    last_hydration_ts: float
+    declared_workflow: dict[str, str]
+    active_skill: str
+    intent_envelope: str
+    guardrails: list[str]
+    hydration_pending: bool
 
 
 class SessionState(TypedDict, total=False):
@@ -57,7 +77,14 @@ def get_session_file_path(session_id: str, date: str | None = None) -> Path:
     """
     if date is None:
         date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    return Path("/tmp") / f"aops-{date}-{session_id}.json"
+
+    # Use environment variable for state directory (required for tests)
+    state_dir = Path(os.environ.get("CLAUDE_SESSION_STATE_DIR", "/tmp"))
+
+    # Sanitize session_id for file path (replace slashes for legacy test support)
+    safe_id = session_id.replace("/", "_").lstrip("_")
+
+    return state_dir / f"aops-{date}-{safe_id}.json"
 
 
 def load_session_state(session_id: str, retries: int = 3) -> SessionState | None:
@@ -114,8 +141,11 @@ def save_session_state(session_id: str, state: SessionState) -> None:
 
     path = get_session_file_path(session_id, state["date"])
 
+    # Ensure directory exists
+    path.parent.mkdir(parents=True, exist_ok=True)
+
     fd, temp_path_str = tempfile.mkstemp(
-        prefix=f"aops-{state['date']}-", suffix=".tmp", dir="/tmp"
+        prefix=f"aops-{state['date']}-", suffix=".tmp", dir=str(path.parent)
     )
     temp_path = Path(temp_path_str)
 
@@ -183,6 +213,137 @@ def get_or_create_session_state(session_id: str) -> SessionState:
         state = create_session_state(session_id)
         save_session_state(session_id, state)
     return state
+
+
+# ============================================================================
+# Backward Compatibility API
+# ============================================================================
+
+
+def load_custodiet_state(session_id: str) -> CustodietState | None:
+    """Backward compatibility for load_custodiet_state.
+
+    Args:
+        session_id: Claude Code session ID (historically CWD)
+
+    Returns:
+        CustodietState or None
+    """
+    state = load_session_state(session_id)
+    if state is None:
+        return None
+
+    # Map from SessionState["state"] to CustodietState
+    s = state.get("state", {})
+    return cast(
+        CustodietState,
+        {
+            "last_compliance_ts": s.get("last_compliance_ts", 0.0),
+            "tool_calls_since_compliance": s.get("tool_calls_since_compliance", 0),
+            "last_drift_warning": s.get("last_drift_warning"),
+        },
+    )
+
+
+def save_custodiet_state(session_id: str, custodiet_state: CustodietState) -> None:
+    """Backward compatibility for save_custodiet_state.
+
+    Args:
+        session_id: Claude Code session ID (historically CWD)
+        custodiet_state: Legacy CustodietState dict
+    """
+    state = get_or_create_session_state(session_id)
+    # Map from CustodietState back to SessionState["state"]
+    for k, v in custodiet_state.items():
+        state["state"][k] = v
+    save_session_state(session_id, state)
+
+
+def get_state_dir() -> Path:
+    """Backward compatibility for get_state_dir.
+
+    Returns:
+        Path to state directory
+    """
+    return Path(os.environ.get("CLAUDE_SESSION_STATE_DIR", "/tmp/claude-session"))
+
+
+def get_hydrator_state_path(session_id: str) -> Path:
+    """Backward compatibility for get_hydrator_state_path."""
+    state_dir = get_state_dir()
+    safe_id = session_id.replace("/", "_").lstrip("_")
+    return state_dir / f"hydrator-{safe_id}.json"
+
+
+def get_custodiet_state_path(session_id: str) -> Path:
+    """Backward compatibility for get_custodiet_state_path."""
+    state_dir = get_state_dir()
+    safe_id = session_id.replace("/", "_").lstrip("_")
+    return state_dir / f"custodiet-{safe_id}.json"
+
+
+def load_hydrator_state(session_id: str) -> HydratorState | None:
+    """Backward compatibility for load_hydrator_state."""
+    state = load_session_state(session_id)
+    if state is None:
+        return None
+
+    h = state.get("hydration", {})
+    s = state.get("state", {})
+    return cast(
+        HydratorState,
+        {
+            "last_hydration_ts": s.get("last_hydration_ts", 0.0),
+            "declared_workflow": {
+                "gate": s.get("current_workflow", "none"),
+                "approach": "direct",
+            },
+            "active_skill": s.get("active_skill", ""),
+            "intent_envelope": h.get("original_prompt", ""),
+            "guardrails": h.get("acceptance_criteria", []),
+            "hydration_pending": s.get("hydration_pending", False),
+        },
+    )
+
+
+def save_hydrator_state(session_id: str, hydrator_state: HydratorState) -> None:
+    """Backward compatibility for save_hydrator_state."""
+    state = get_or_create_session_state(session_id)
+    # Map back as best as possible
+    state["state"]["hydration_pending"] = hydrator_state.get("hydration_pending", False)
+    state["state"]["last_hydration_ts"] = hydrator_state.get("last_hydration_ts", 0.0)
+    state["hydration"]["original_prompt"] = hydrator_state.get("intent_envelope", "")
+    state["hydration"]["acceptance_criteria"] = hydrator_state.get("guardrails", [])
+    save_session_state(session_id, state)
+
+
+def get_error_flag(session_id: str) -> dict[str, Any] | None:
+    """Backward compatibility for get_error_flag."""
+    state = load_session_state(session_id)
+    if state is None:
+        return None
+    return state.get("state", {}).get("error_flag")
+
+
+def set_error_flag(session_id: str, error_type: str, message: str) -> None:
+    """Backward compatibility for set_error_flag."""
+    state = get_or_create_session_state(session_id)
+    state["state"]["error_flag"] = {
+        "error_type": error_type,
+        "message": message,
+        "timestamp": time.time(),
+    }
+    save_session_state(session_id, state)
+
+
+def clear_error_flag(session_id: str) -> None:
+    """Backward compatibility for clear_error_flag."""
+    state = load_session_state(session_id)
+    if state is None:
+        return
+    if "error_flag" in state["state"]:
+        del state["state"]["error_flag"]
+    save_session_state(session_id, state)
 
 
 # ============================================================================
