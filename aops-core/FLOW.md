@@ -87,9 +87,9 @@ When a Claude Code session starts, `router.py` dispatches two hooks in sequence:
    - Records session start timestamp
    - Initializes empty state for hydration, subagents, and insights
 
-### Initial File Injection (claudeMd)
+### Initial File Injection (claude.md)
 
-Claude Code's built-in `claudeMd` mechanism injects context at session start:
+Claude Code's built-in `claude.md` mechanism injects context at session start:
 
 1. **Project CLAUDE.md** (`.claude/CLAUDE.md`) - Contains `@AGENTS.md` reference
 2. **AGENTS.md** (repository root) - Dogfooding instructions loaded via `@` directive
