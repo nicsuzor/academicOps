@@ -13,6 +13,8 @@ tags: [framework, overview, features]
 
 Academic support framework for Claude Code. Minimal, fight bloat aggressively.
 
+See [[FLOW]](aops-core/FLOW.md) for an overview of the core flow.
+
 ## Quick Start
 
 ```bash
