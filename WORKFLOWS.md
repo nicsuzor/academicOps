@@ -1,96 +1,117 @@
 ---
 name: workflows
-title: Workflow Catalog
+title: Workflow Reference for Hydrator
 type: instruction
 category: instruction
-description: Universal workflow with plan mode as default, plus batch and TDD variants
+description: What the hydrator tells the main agent for each workflow type
 permalink: workflows
 tags: [framework, routing, workflows]
 ---
 
-# Workflow Catalog
+# Workflow Reference
 
-## Universal Workflow
+The hydrator selects a workflow and generates a TodoWrite plan for the main agent.
 
-**Every task follows this loop:**
+## Workflow Selection Table
 
-1. **Plan** - `EnterPlanMode()` → research → draft plan → critic review → user approval
-2. **Execute** - For each step: mark in_progress → delegate to subagent → verify → mark completed
-3. **Verify** - At CHECKPOINTs: gather evidence before proceeding
-4. **Commit** - Push changes at the end
+| Trigger Signals                      | Workflow       | Core Instruction to Main Agent                     |
+| ------------------------------------ | -------------- | -------------------------------------------------- |
+| "?", "how", "what", "explain"        | **question**   | Answer directly, no plan mode, no commit           |
+| Single file, clear change            | **minor-edit** | Skip plan mode, edit → verify → commit             |
+| "implement", "add feature", "create" | **tdd**        | Plan mode, test-first, delegate to subagents       |
+| "fix", "bug", "error"                | **debug**      | Plan mode, reproduce → hypothesis → fix → verify   |
+| Multiple items, "all", "each"        | **batch**      | Plan mode, spawn parallel subagents, aggregate QA  |
+| "verify", "check", "investigate"     | **qa-proof**   | Gather evidence, quote errors exactly, no guessing |
+| Complex, infrastructure, multi-step  | **plan-mode**  | Plan mode required, critic review, user approval   |
 
-**Orchestrator principle**: The main agent coordinates. It does NOT implement. Each implementation step delegates to a subagent with skill guidance embedded.
+## Fixed Execution Loop (All Except Questions)
 
-## Workflow Selection
+The main agent ALWAYS follows this sequence - hydrator doesn't repeat it:
 
-| Intent Signal                     | Workflow     | Delegation                      |
-| --------------------------------- | ------------ | ------------------------------- |
-| "implement", "create", "refactor" | **tdd**      | Plan → test-first via subagents |
-| "fix", "bug", "error"             | **debug**    | Plan → hypothesis → fix         |
-| "all files", "batch", "for every" | **batch**    | Plan → parallel subagents       |
-| "?", "how", "explain"             | **question** | Answer & HALT (no plan needed)  |
-| "verify", "check", "investigate"  | **qa**       | Evidence gathering → conclusion |
+1. Execute TodoWrite steps (delegate implementation to subagents)
+2. At CHECKPOINTs: gather evidence before proceeding
+3. QA verifier checks work independently before completion
+4. Commit and push (mandatory - work isn't done until pushed)
 
-**Default**: All implementation workflows use plan mode. Only questions skip planning.
+## What Hydrator Outputs
 
-## Universal Mandates
+For each workflow, hydrator generates:
 
-These apply to EVERY workflow (except questions):
+1. **Intent** - What user actually wants
+2. **Workflow** - One of the above
+3. **Acceptance criteria** - Specific, verifiable conditions for success
+4. **TodoWrite plan** - Steps for main agent to execute
 
-1. **Plan First** - Enter plan mode, get critic review, get user approval
-2. **Locked Acceptance Criteria** - Define success conditions upfront
-3. **Skill-First Steps** - Every implementation step invokes one skill
-4. **Agent Delegation** - Subagents execute; orchestrator coordinates
-5. **Verification** - CHECKPOINT steps with evidence
-6. **Atomic Commits** - Commit after each logical unit
-7. **Final Push** - Never leave work stranded locally
+### TodoWrite Structure by Workflow
 
-## Plan Mode (Required for Implementation)
+**question**: No TodoWrite. Just answer.
 
-All implementation tasks follow this pattern:
+**minor-edit**:
 
-1. `EnterPlanMode()` - Research and design
-2. Draft plan with TodoWrite steps
-3. Submit to critic - `Task(subagent_type='critic')`
-4. Get user approval via `ExitPlanMode()`
-5. Execute approved plan
-
-## TDD Variant
-
-**When**: "implement", "create", "add feature"
-
-After plan approval, execute with test-first pattern:
-
-```javascript
-TodoWrite(todos=[
-  {content: "Invoke Skill(skill='feature-dev') for TDD guidance", status: "pending", activeForm: "Loading skill"},
-  {content: "Delegate test writing - Task(prompt='Write failing test for [criteria]')", status: "pending", activeForm: "Delegating test"},
-  {content: "Delegate implementation - Task(prompt='Implement to pass test')", status: "pending", activeForm: "Delegating implementation"},
-  {content: "CHECKPOINT: Run tests to verify all pass", status: "pending", activeForm: "Verifying"},
-  {content: "Commit and push", status: "pending", activeForm: "Committing"}
-])
+```
+1. Edit [file] to [change]
+2. CHECKPOINT: Verify change works
+3. Commit and push
 ```
 
-## Batch Variant (Hypervisor)
+**tdd**:
 
-**When**: Multiple independent items to process
-
-After plan approval, orchestrator becomes a **hypervisor** - spawning parallel subagents:
-
-```python
-# Spawn multiple subagents in ONE message for parallel execution
-Task(subagent_type="general-purpose", prompt="Process item 1: [details]", run_in_background=true)
-Task(subagent_type="general-purpose", prompt="Process item 2: [details]", run_in_background=true)
-Task(subagent_type="general-purpose", prompt="Process item 3: [details]", run_in_background=true)
-# Check TaskOutput when all complete
+```
+1. Write failing test for [criterion]
+2. Implement to pass test
+3. CHECKPOINT: All tests pass
+4. Commit and push
 ```
 
-## Skill Matching Reference
+**debug**:
 
-| Task Type                | Skill                        |
-| ------------------------ | ---------------------------- |
-| Framework/plugin changes | `Skill(skill="framework")`   |
-| Feature implementation   | `Skill(skill="feature-dev")` |
-| Bug fix, debugging       | `Skill(skill="[domain]")`    |
-| Memory persistence       | `Skill(skill="remember")`    |
-| Process reflection       | `/reflect`                   |
+```
+1. Reproduce the bug
+2. Form hypothesis
+3. Implement fix
+4. CHECKPOINT: Bug no longer reproduces
+5. Commit and push
+```
+
+**batch**:
+
+```
+1. Spawn parallel subagents for items 1-N (use run_in_background=true)
+2. Collect results via TaskOutput
+3. CHECKPOINT: All items processed successfully
+4. Commit and push
+```
+
+**qa-proof**:
+
+```
+1. Gather evidence for [claim]
+2. CHECKPOINT: Evidence supports conclusion
+3. Report findings (no commit unless changes made)
+```
+
+**plan-mode**:
+
+```
+1. EnterPlanMode()
+2. Research and draft plan
+3. Get critic review
+4. ExitPlanMode() for user approval
+5. [Execute approved plan steps]
+6. CHECKPOINT: Acceptance criteria met
+7. Commit and push
+```
+
+## Guardrails by Workflow
+
+Include these in the hydration output:
+
+| Workflow   | Guardrails                                                    |
+| ---------- | ------------------------------------------------------------- |
+| question   | `answer_only`                                                 |
+| minor-edit | `verify_before_complete`, `fix_within_design`                 |
+| tdd        | `require_acceptance_test`, `verify_before_complete`           |
+| debug      | `reproduce_first`, `verify_before_complete`                   |
+| batch      | `per_item_verification`, `aggregate_qa`, `parallel_subagents` |
+| qa-proof   | `evidence_required`, `quote_errors_exactly`                   |
+| plan-mode  | `plan_mode`, `critic_review`, `user_approval_required`        |
