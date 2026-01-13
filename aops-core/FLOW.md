@@ -1,10 +1,13 @@
 ---
-title: v1.0 Core Loop - Design for Approval
-type: spec
-status: PENDING USER APPROVAL
+title: v1.0 Core Loop - Overview
+type: overview
+description: Concise overview of the v1.0 core loop with visual flow diagram
+see_also: aops-core/specs/flow.md (comprehensive specification)
 ---
 
-# v1.0 Core Loop
+# v1.0 Core Loop - Overview
+
+**For detailed specification, see**: [[aops-core/specs/flow.md]]
 
 **Goal**: The minimal viable framework with ONE complete, working loop.
 
@@ -32,8 +35,10 @@ flowchart TD
 
     subgraph "Plan Generation & Review"
         K --> L[Gather Context:<br>bd state + vector memory]
-        L --> M[Select Workflow]
-        M --> N[Generate TodoWrite Plan]
+        L --> L1[Read WORKFLOWS.md Index]
+        L1 --> M[Select Workflow]
+        M --> M1[Read Workflow File<br>workflows/workflow-id.md]
+        M1 --> N[Generate TodoWrite Plan<br>from workflow steps]
         N --> O[critic Agent<br>opus]
         O --> P{Critic Verdict}
         P -->|PROCEED| Q[Main Agent Receives Plan]
@@ -168,173 +173,48 @@ The router dispatches to `session_env_setup.sh` and `unified_logger.py` based on
 - Other agents: planner, effectual-planner, framework-executor
 - Unenforced axioms/heuristics
 
-## Workflow Catalog
+## Composable Workflow System
 
-The prompt-hydrator routes prompts to one of 6 workflows:
+**NEW in v1.0**: Workflows are now stored as YAML+Markdown files in `workflows/` directory.
 
-| Workflow       | Trigger Signals                      | Quality Gate            | Guardrails                                                    |
-| -------------- | ------------------------------------ | ----------------------- | ------------------------------------------------------------- |
-| **question**   | "?", "how", "what", "explain"        | Answer accuracy         | `answer_only`                                                 |
-| **minor-edit** | Single file, clear change            | Verification            | `verify_before_complete`, `fix_within_design`                 |
-| **tdd**        | "implement", "add feature", "create" | Tests pass              | `require_acceptance_test`, `verify_before_complete`           |
-| **batch**      | Multiple files, "all", "each"        | Per-item + aggregate QA | `per_item_verification`, `aggregate_qa`, `parallel_subagents` |
-| **qa-proof**   | "verify", "check", "investigate"     | Evidence gathered       | `evidence_required`, `quote_errors_exactly`                   |
-| **plan-mode**  | Complex, infrastructure, multi-step  | User approval           | `plan_mode`, `critic_review`, `user_approval_required`        |
+The prompt-hydrator selects from **9 composable workflows**:
 
-## QA Gate Specifications
+### Development Workflows
+- **[[workflows/feature-dev]]** - Full TDD feature development (critic → TDD → QA)
+- **[[workflows/minor-edit]]** - Streamlined for small, focused changes
+- **[[workflows/debugging]]** - Systematic debugging with reproducible tests
+- **[[workflows/tdd-cycle]]** - Classic red-green-refactor TDD cycle
 
-### 1. Critic (BEFORE Execution)
+### Planning & QA Workflows
+- **[[workflows/spec-review]]** - Critic feedback iteration loop
+- **[[workflows/qa-demo]]** - Independent QA verification
 
-**When**: After hydration generates plan, BEFORE main agent executes
+### Operations & Routing Workflows
+- **[[workflows/batch-processing]]** - Parallel processing for multiple items
+- **[[workflows/simple-question]]** - Minimal info-only workflow
+- **[[workflows/direct-skill]]** - Direct skill/command routing
 
-**Checks**:
+**Workflow selection**: See [[WORKFLOWS.md]] decision tree.
 
-1. Logical errors - Flawed reasoning, non-sequiturs
-2. Unstated assumptions - What's taken for granted?
-3. Missing verification - Claims without evidence
-4. Scope drift - Does plan address what was asked?
-5. Missing edge cases - What could go wrong?
-6. Feasibility - Can this plan actually be executed?
+**Composition**: Workflows can reference other workflows using `[[wikilinks]]`:
+- `feature-dev` includes `[[spec-review]]`, `[[tdd-cycle]]`, `[[qa-demo]]`
+- Each workflow file has YAML frontmatter with structured steps
+- Phase 1 complete: Basic reading. Phase 2: Recursive composition.
 
-**Output**: `PROCEED` | `REVISE` | `HALT`
+## Quality Gates
 
-### 2. Custodiet (BLOCKING Gate)
+Three mandatory quality gates ensure correctness:
 
-**When**: Random chance audit (~every 7 tool calls)
+1. **Critic** (BEFORE execution) - Reviews plan, outputs `PROCEED` | `REVISE` | `HALT`
+2. **Custodiet** (DURING execution) - Random audit, can BLOCK all hooks on violation
+3. **QA Verifier** (BEFORE completion) - Independent verification, outputs `VERIFIED` | `ISSUES`
 
-**On BLOCK**:
+**See**: [[aops-core/specs/flow.md]] for detailed specifications.
 
-- Sets `custodiet_blocked: true` in session state file
-- Immediate HALT - write up progress and error
-- ALL hooks check this flag and FAIL until cleared
-- Session cannot continue until user restarts
+## Session Close
 
-**Checks**:
+Work is NOT complete until `git push` succeeds. See AGENTS.md for full landing protocol.
 
-1. Axiom/heuristic compliance
-2. Scope drift from original request
-3. Ultra vires actions (beyond granted authority)
+---
 
-**Output**: `OK` | `BLOCK` (immediate HALT)
-
-### 3. QA Verifier (BEFORE Completion)
-
-**When**: After execution complete, before reflection
-
-**CRITICAL**: Must be INDEPENDENT agent, not the one that did the work
-
-**Input** (from session state file):
-
-- Original hydrated prompt
-- Acceptance criteria (as approved by Critic)
-- Current state of work
-
-**Checks**:
-
-1. Does output match original hydrated intent?
-2. Are all acceptance criteria met?
-3. Do tests pass?
-4. Is documentation updated?
-5. Are there any obvious errors?
-
-**Output**: `VERIFIED` | `ISSUES` (list problems to fix)
-
-## Reflection Format (MANDATORY)
-
-After completing work, output this structure:
-
-```
-## Framework Reflection
-
-**Request**: [Original user request in brief]
-**Guidance received**: [Hydrator/custodiet advice, or "N/A - direct execution"]
-**Followed**: [Yes/No/Partial - explain what was followed or skipped]
-**Outcome**: [Success/Partial/Failure]
-**Accomplishment**: [What was accomplished, if success/partial]
-**Root cause** (if not success): [Which framework component failed]
-**Proposed change**: [Specific improvement or "none needed"]
-```
-
-Then invoke `/log [reflection summary]` to persist.
-
-## Session State File
-
-Single temp file per session at `/tmp/aops-{YYYY-MM-DD}-{session_id}.json`:
-
-```json
-{
-  "session_id": "abc123",
-  "date": "2026-01-13",
-  "started_at": "2026-01-13T10:00:00Z",
-  "ended_at": null,
-
-  "state": {
-    "custodiet_blocked": false,
-    "custodiet_block_reason": null,
-    "current_workflow": "tdd",
-    "hydration_pending": false
-  },
-
-  "hydration": {
-    "original_prompt": "...",
-    "hydrated_intent": "...",
-    "acceptance_criteria": ["criterion 1", "criterion 2"],
-    "critic_verdict": "PROCEED"
-  },
-
-  "main_agent": {
-    "current_task": "ns-xyz",
-    "todos_completed": 3,
-    "todos_total": 5
-  },
-
-  "subagents": {
-    "prompt-hydrator": { "last_invoked": "...", "result": "..." },
-    "critic": { "last_invoked": "...", "verdict": "PROCEED" },
-    "custodiet": { "last_invoked": "...", "result": "OK" },
-    "qa-verifier": { "last_invoked": "...", "result": "VERIFIED" }
-  },
-
-  "insights": null
-}
-```
-
-## Session Close (MANDATORY)
-
-Work is NOT complete until `git push` succeeds.
-
-```bash
-./scripts/format.sh        # Format all files
-git add -A                  # Stage formatted files
-git commit -m "..."         # Pre-commit validates
-git pull --rebase           # Sync with remote
-bd sync                     # Sync beads
-git push                    # MANDATORY
-git status                  # MUST show "up to date with origin"
-```
-
-**CRITICAL**: Agent MUST push. Never say "ready to push when you are".
-
-## Success Criteria for v1.0
-
-- [ ] Fresh session triggers hydration automatically
-- [ ] Hydration includes bd state and vector memory context
-- [ ] Critic reviews plan BEFORE execution
-- [ ] Custodiet BLOCKS all hooks when violation detected
-- [ ] QA verifier independently checks work before completion
-- [ ] Framework agent generates reflection
-- [ ] Session insights written to single session file
-- [ ] Commit + push completes every session
-- [ ] All agents know to use bd for workflow management
-
-## Implementation Constraint
-
-**CRITICAL: NO NEW CODE**
-
-Everything described in this spec ALREADY EXISTS. The v1.0 implementation is about:
-
-1. **Wiring existing components** - connecting hooks, agents, tools
-2. **Configuration changes** - updating settings, templates, agent definitions
-3. **Moving files** - from archived/ to aops-core/ as needed
-
-**If something doesn't exist**: Stop, document the gap, request spec review.
+**For comprehensive details**, see [[aops-core/specs/flow.md]]

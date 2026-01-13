@@ -48,8 +48,9 @@ status: DRAFT - PENDING APPROVAL (v2)
 │    │ Prompt Hydrator     │  Reads temp file                                  │
 │    │ Agent (haiku)       │  Queries bd for work state                        │
 │    │                     │  Queries vector memory for user context           │
-│    │                     │  Selects workflow                                 │
-│    │                     │  Generates TodoWrite plan                         │
+│    │                     │  Reads WORKFLOWS.md index                         │
+│    │                     │  Selects workflow → reads workflow file           │
+│    │                     │  Generates TodoWrite plan from workflow steps     │
 │    └─────────────────────┘                                                   │
 │         │                                                                    │
 │         ▼                                                                    │
@@ -185,18 +186,80 @@ Contains:
 - Other agents (planner, effectual-planner, framework-executor)
 - Unenforced axioms/heuristics
 
-## Workflow Catalog
+## Composable Workflow System
 
-The prompt-hydrator routes prompts to one of 6 workflows:
+**Status**: Phase 1 (Foundation) completed. Workflows stored as YAML+Markdown files in `workflows/`.
 
-| Workflow       | Trigger Signals                      | Quality Gate            | Guardrails                                                    |
-| -------------- | ------------------------------------ | ----------------------- | ------------------------------------------------------------- |
-| **question**   | "?", "how", "what", "explain"        | Answer accuracy         | `answer_only`                                                 |
-| **minor-edit** | Single file, clear change            | Verification            | `verify_before_complete`, `fix_within_design`                 |
-| **tdd**        | "implement", "add feature", "create" | Tests pass              | `require_acceptance_test`, `verify_before_complete`           |
-| **batch**      | Multiple files, "all", "each"        | Per-item + aggregate QA | `per_item_verification`, `aggregate_qa`, `parallel_subagents` |
-| **qa-proof**   | "verify", "check", "investigate"     | Evidence gathered       | `evidence_required`, `quote_errors_exactly`                   |
-| **plan-mode**  | Complex, infrastructure, multi-step  | User approval           | `plan_mode`, `critic_review`, `user_approval_required`        |
+The prompt-hydrator selects from **9 composable workflows**:
+
+### Development Workflows
+
+| Workflow ID   | File                       | Purpose                                      | Quality Gates                          |
+| ------------- | -------------------------- | -------------------------------------------- | -------------------------------------- |
+| feature-dev   | workflows/feature-dev.md   | Full TDD feature development                 | Critic review, TDD, Tests pass, QA     |
+| minor-edit    | workflows/minor-edit.md    | Small, focused changes                       | TDD, Tests pass                        |
+| debugging     | workflows/debugging.md     | Systematic debugging with reproducible tests | Reproducible test                      |
+| tdd-cycle     | workflows/tdd-cycle.md     | Classic red-green-refactor cycle             | Tests pass, No regression              |
+
+### Planning & QA Workflows
+
+| Workflow ID  | File                      | Purpose                      | Quality Gates                          |
+| ------------ | ------------------------- | ---------------------------- | -------------------------------------- |
+| spec-review  | workflows/spec-review.md  | Critic feedback iteration    | Critic feedback, Convergence           |
+| qa-demo      | workflows/qa-demo.md      | Independent QA verification  | Functionality, Quality, Completeness   |
+
+### Operations & Routing Workflows
+
+| Workflow ID      | File                             | Purpose                         | Quality Gates                |
+| ---------------- | -------------------------------- | ------------------------------- | ---------------------------- |
+| batch-processing | workflows/batch-processing.md    | Parallel processing             | All items processed, Verified|
+| simple-question  | workflows/simple-question.md     | Info-only, no modifications     | None (information only)      |
+| direct-skill     | workflows/direct-skill.md        | Direct skill/command routing    | Delegated to skill           |
+
+### Workflow Selection
+
+**Decision tree**: See [[WORKFLOWS.md]] for complete selection guide with decision tree.
+
+**How hydrator uses workflows** (Phase 1 - Basic reading):
+
+1. Read WORKFLOWS.md index to see available workflows
+2. Match user intent to workflow using decision tree
+3. Read selected workflow file from `workflows/[workflow-id].md`
+4. Parse YAML frontmatter for structured steps
+5. Read Markdown body for detailed instructions
+6. Generate TodoWrite plan from workflow steps
+
+**Workflow composition** (Phase 1 - Basic reading):
+- Workflows reference other workflows using `[[wikilinks]]` in YAML frontmatter
+- Example: `feature-dev` step 4 has `workflow: "[[spec-review]]"`
+- Phase 1: Hydrator reads but doesn't recursively resolve wikilinks
+- Phase 2: Will implement recursive wikilink resolution and full composition
+
+### Workflow File Structure
+
+Each workflow file contains:
+
+**YAML Frontmatter:**
+```yaml
+---
+id: workflow-id
+title: Human Readable Title
+type: workflow
+category: development|planning|qa|operations|information|routing
+dependencies: []
+steps:
+  - id: step-id
+    name: Step Name
+    workflow: null  # Or "[[other-workflow]]" for composition
+    description: What this step does
+---
+```
+
+**Markdown Body:**
+- ## Overview
+- ## When to Use
+- ## Steps (detailed instructions for each)
+- ## Success Metrics
 
 ## Hydration Context Sources
 
