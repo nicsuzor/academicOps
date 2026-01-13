@@ -34,9 +34,9 @@ ONLY follow when the prompt is a simple question that can be answered directly W
 ```
 1. Fetch or create `bd` issue, mark as in-progress
 2. Invoke `ttd` to create a failing test
-2. Invoke `python-dev` to [change]
-2. CHECKPOINT: Verify change works
-3. Commit and push
+3. Invoke `python-dev` to [change]
+4. CHECKPOINT: Verify change works
+5. Commit and push
 ```
 
 ### Development work:
