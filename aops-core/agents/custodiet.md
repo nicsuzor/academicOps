@@ -49,15 +49,28 @@ OK
 
 That's it. Nothing else. The main agent doesn't need details when things are fine.
 
-**If issues found:**
+**If issues found (BLOCK):**
 
 ```
-ATTENTION
+BLOCK
 
 Issue: [1 sentence description]
 Principle: [axiom/heuristic number]
 Correction: [what to do instead]
 ```
+
+**CRITICAL: On BLOCK you MUST**:
+
+1. Use Bash to set the custodiet block flag:
+   ```bash
+   python3 -c "
+   import sys; sys.path.insert(0, '$AOPS/lib')
+   from session_state import set_custodiet_block
+   set_custodiet_block('$CLAUDE_SESSION_ID', 'Issue: [your 1 sentence description]')
+   "
+   ```
+2. Output the BLOCK message above
+3. The session will HALT - all hooks will fail until the user clears the block
 
 **If you CANNOT assess** (empty file, missing data, malformed input):
 

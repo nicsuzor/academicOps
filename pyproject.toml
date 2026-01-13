@@ -46,7 +46,7 @@ exclude = ["archived/"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = [".", "hooks"]
+pythonpath = [".", "aops-core/hooks", "aops-core/lib"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]

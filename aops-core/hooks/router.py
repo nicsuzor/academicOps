@@ -28,6 +28,24 @@ from typing import Any
 # Hook directory (same directory as this script)
 HOOK_DIR = Path(__file__).parent
 
+# Lazy import for session_state to avoid import errors in test environment
+_session_state_module = None
+
+
+def _get_session_state_module():
+    """Lazy import session_state module."""
+    global _session_state_module
+    if _session_state_module is None:
+        # Add lib to path for session_state imports
+        lib_path = str(Path(__file__).parent.parent / "lib")
+        if lib_path not in sys.path:
+            sys.path.insert(0, lib_path)
+        import session_state as ss
+
+        _session_state_module = ss
+    return _session_state_module
+
+
 # Registry of hooks per event type
 # Each entry can have {"script": "name.py", "async": True/False}
 # NOTE: Only hooks that exist in aops-core/hooks/ are registered here.
@@ -433,6 +451,42 @@ def dispatch_hooks(
     return outputs, exit_codes
 
 
+def check_custodiet_block(session_id: str | None) -> tuple[dict[str, Any], int] | None:
+    """
+    Check if session is blocked by custodiet.
+
+    Args:
+        session_id: Claude Code session ID (from CLAUDE_SESSION_ID env var)
+
+    Returns:
+        (error_output, exit_code=2) if blocked, None if not blocked
+    """
+    if not session_id:
+        return None
+
+    try:
+        ss = _get_session_state_module()
+    except ImportError:
+        # session_state not available - skip check
+        return None
+
+    if not ss.is_custodiet_blocked(session_id):
+        return None
+
+    # Session is blocked - get the reason
+    state = ss.load_session_state(session_id)
+    reason = "Unknown violation"
+    if state:
+        reason = state.get("state", {}).get("custodiet_block_reason") or reason
+
+    error_output = {
+        "systemMessage": f"""BLOCKED: Custodiet detected a compliance violation.
+Reason: {reason}
+To continue, user must restart the session after investigating.""",
+    }
+    return error_output, 2  # Exit code 2 = BLOCK
+
+
 def route_hooks(input_data: dict[str, Any]) -> tuple[dict[str, Any], int]:
     """
     Main routing function.
@@ -447,6 +501,13 @@ def route_hooks(input_data: dict[str, Any]) -> tuple[dict[str, Any], int]:
     if not event_name:
         # No event name - return empty (noop)
         return {}, 0
+
+    # CHECK CUSTODIET BLOCK FLAG FIRST
+    # Per flow.md: ALL hooks check this flag and FAIL if blocked
+    session_id = os.environ.get("CLAUDE_SESSION_ID")
+    block_result = check_custodiet_block(session_id)
+    if block_result is not None:
+        return block_result
 
     # Check for matcher (PostToolUse events)
     matcher = input_data.get("tool_name") if event_name == "PostToolUse" else None
