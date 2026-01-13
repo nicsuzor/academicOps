@@ -1,0 +1,10 @@
+{
+  "name": "aops-tools",
+  "version": "0.1.0",
+  "description": "Tools and utilities plugin for academicOps - planning, communication, visualization, data processing, and development",
+  "author": {
+    "name": "Nicolas Suzor"
+  },
+  "license": "MIT",
+  "keywords": ["academicOps", "tools", "utilities", "visualization", "development"]
+}
