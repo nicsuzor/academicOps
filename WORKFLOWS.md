@@ -3,7 +3,7 @@ name: workflows
 title: Workflow Catalog
 type: instruction
 category: instruction
-description: Universal workflow with optional extras for batch and TDD
+description: Universal workflow with plan mode as default, plus batch and TDD variants
 permalink: workflows
 tags: [framework, routing, workflows]
 ---
@@ -14,8 +14,8 @@ tags: [framework, routing, workflows]
 
 **Every task follows this loop:**
 
-1. **Plan** - Create TodoWrite with steps + CHECKPOINTs
-2. **Execute** - For each step: mark in_progress → do it → mark completed
+1. **Plan** - `EnterPlanMode()` → research → draft plan → critic review → user approval
+2. **Execute** - For each step: mark in_progress → delegate to subagent → verify → mark completed
 3. **Verify** - At CHECKPOINTs: gather evidence before proceeding
 4. **Commit** - Push changes at the end
 
@@ -23,29 +23,43 @@ tags: [framework, routing, workflows]
 
 ## Workflow Selection
 
-| Intent Signal                     | Workflow      | Delegation                       |
-| --------------------------------- | ------------- | -------------------------------- |
-| "implement", "create", "refactor" | **tdd**       | Test-first via subagents         |
-| "fix", "bug", "error"             | **debug**     | Hypothesis → fix via subagent    |
-| "all files", "batch", "for every" | **batch**     | Parallel subagents (hypervisor)  |
-| "plan", "design", "system change" | **plan-mode** | EnterPlanMode → critic → approve |
-| "?", "how", "explain"             | **question**  | Answer & HALT                    |
-| "verify", "check", "investigate"  | **qa**        | Evidence gathering → conclusion  |
+| Intent Signal                     | Workflow     | Delegation                      |
+| --------------------------------- | ------------ | ------------------------------- |
+| "implement", "create", "refactor" | **tdd**      | Plan → test-first via subagents |
+| "fix", "bug", "error"             | **debug**    | Plan → hypothesis → fix         |
+| "all files", "batch", "for every" | **batch**    | Plan → parallel subagents       |
+| "?", "how", "explain"             | **question** | Answer & HALT (no plan needed)  |
+| "verify", "check", "investigate"  | **qa**       | Evidence gathering → conclusion |
+
+**Default**: All implementation workflows use plan mode. Only questions skip planning.
 
 ## Universal Mandates
 
-These apply to EVERY workflow:
+These apply to EVERY workflow (except questions):
 
-1. **Locked Acceptance Criteria** - Define success conditions upfront
-2. **Skill-First Steps** - Every implementation step invokes one skill
-3. **Agent Delegation** - Subagents execute; orchestrator coordinates
-4. **Verification** - CHECKPOINT steps with evidence
-5. **Atomic Commits** - Commit after each logical unit
-6. **Final Push** - Never leave work stranded locally
+1. **Plan First** - Enter plan mode, get critic review, get user approval
+2. **Locked Acceptance Criteria** - Define success conditions upfront
+3. **Skill-First Steps** - Every implementation step invokes one skill
+4. **Agent Delegation** - Subagents execute; orchestrator coordinates
+5. **Verification** - CHECKPOINT steps with evidence
+6. **Atomic Commits** - Commit after each logical unit
+7. **Final Push** - Never leave work stranded locally
 
-## Optional: TDD Workflow
+## Plan Mode (Required for Implementation)
+
+All implementation tasks follow this pattern:
+
+1. `EnterPlanMode()` - Research and design
+2. Draft plan with TodoWrite steps
+3. Submit to critic - `Task(subagent_type='critic')`
+4. Get user approval via `ExitPlanMode()`
+5. Execute approved plan
+
+## TDD Variant
 
 **When**: "implement", "create", "add feature"
+
+After plan approval, execute with test-first pattern:
 
 ```javascript
 TodoWrite(todos=[
@@ -57,11 +71,11 @@ TodoWrite(todos=[
 ])
 ```
 
-## Optional: Batch Workflow (Hypervisor)
+## Batch Variant (Hypervisor)
 
 **When**: Multiple independent items to process
 
-The orchestrator becomes a **hypervisor** - spawning parallel subagents:
+After plan approval, orchestrator becomes a **hypervisor** - spawning parallel subagents:
 
 ```python
 # Spawn multiple subagents in ONE message for parallel execution
@@ -70,24 +84,6 @@ Task(subagent_type="general-purpose", prompt="Process item 2: [details]", run_in
 Task(subagent_type="general-purpose", prompt="Process item 3: [details]", run_in_background=true)
 # Check TaskOutput when all complete
 ```
-
-```javascript
-TodoWrite(todos=[
-  {content: "Identify all items to process", status: "pending", activeForm: "Identifying items"},
-  {content: "Spawn parallel subagents for independent items", status: "pending", activeForm: "Delegating to subagents"},
-  {content: "CHECKPOINT: Verify all subagents completed", status: "pending", activeForm: "Verifying batch"},
-  {content: "Aggregate results and commit", status: "pending", activeForm: "Committing"}
-])
-```
-
-## Optional: Plan Mode
-
-**When**: Complex, infrastructure, multi-step changes
-
-1. `EnterPlanMode()` - Research and design
-2. Submit to critic - `Task(subagent_type='critic')`
-3. Get user approval via `ExitPlanMode()`
-4. Execute approved plan
 
 ## Skill Matching Reference
 
