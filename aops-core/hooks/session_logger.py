@@ -20,14 +20,17 @@ def get_session_short_hash(session_id: str) -> str:
     """
     Generate a short hash from the session ID.
 
+    DEPRECATED: Use lib.session_paths.get_session_short_hash() instead.
+
     Args:
         session_id: Full session ID
 
     Returns:
         8-character hash
     """
-    hash_obj = hashlib.sha256(session_id.encode())
-    return hash_obj.hexdigest()[:8]
+    from lib.session_paths import get_session_short_hash as _get_hash
+
+    return _get_hash(session_id)
 
 
 def validate_date(date: str) -> bool:
@@ -47,14 +50,16 @@ def get_claude_project_folder() -> str:
     """
     Get Claude Code project folder name from cwd.
 
+    DEPRECATED: Use lib.session_paths.get_claude_project_folder() instead.
+
     Claude Code uses: /Users/suzor/src/aOps → -Users-suzor-src-aOps
 
     Returns:
         Project folder name matching Claude Code's convention
     """
-    cwd = Path.cwd().resolve()
-    # Replace leading / with -, then all / with -
-    return "-" + str(cwd).replace("/", "-")[1:]
+    from lib.session_paths import get_claude_project_folder as _get_folder
+
+    return _get_folder()
 
 
 def get_log_path(
@@ -63,6 +68,10 @@ def get_log_path(
     """
     Get the log file path for a session.
 
+    DEPRECATED: Use lib.session_paths.get_session_directory() instead.
+
+    Returns: ~/.claude/projects/<project>/{YYYYMMDD}-{hash}/{basename}.jsonl
+
     Args:
         project_dir: Project root directory (unused, kept for compatibility)
         session_id: Session ID
@@ -70,11 +79,13 @@ def get_log_path(
         suffix: Optional suffix to append before .jsonl (e.g., "-hooks")
 
     Returns:
-        Path to the log file
+        Path to the log file in session subdirectory
 
     Raises:
         ValueError: If date format is invalid
     """
+    from lib.session_paths import get_session_directory
+
     if date is None:
         date = datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d")
 
@@ -83,15 +94,17 @@ def get_log_path(
         msg = f"Invalid date format: {date}. Must be YYYY-MM-DD"
         raise ValueError(msg)
 
-    short_hash = get_session_short_hash(session_id)
-    filename = f"{date}-{short_hash}{suffix}.jsonl"
+    session_dir = get_session_directory(session_id, date)
 
-    # Write to same folder as Claude Code transcripts
-    project_folder = get_claude_project_folder()
-    log_dir = Path.home() / ".claude" / "projects" / project_folder
-    log_dir.mkdir(parents=True, exist_ok=True)
+    # Map old suffix format to new basename
+    if suffix == "-hooks":
+        filename = "hooks.jsonl"
+    elif suffix == "":
+        filename = "transcript.jsonl"
+    else:
+        filename = f"{suffix.lstrip('-')}.jsonl"
 
-    return log_dir / filename
+    return session_dir / filename
 
 
 def extract_transcript_summary(transcript_path: str) -> dict[str, Any]:  # noqa: C901, PLR0912

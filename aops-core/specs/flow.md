@@ -142,12 +142,12 @@ status: DRAFT - PENDING APPROVAL (v2)
 | **unified_logger.py**     | All              | Log events to session file                       |
 | **session_env_setup.sh**  | SessionStart     | Set $AOPS, $PYTHONPATH                           |
 
-### Execution State (Temp File)
+### Execution State (Session File)
 
-**Execution flags in /tmp**, identified by date and session ID:
+**Execution state in ~/.claude/projects**, organized by date and session hash:
 
 ```
-/tmp/aops-{YYYY-MM-DD}-{session_id}.json
+~/.claude/projects/<project>/{YYYYMMDD}-{hash}/session-state.json
 ```
 
 Contains:
@@ -369,7 +369,7 @@ git status                  # MUST show "up to date with origin"
 
 ## Execution State File Structure
 
-Single temp file per session at `/tmp/aops-{YYYY-MM-DD}-{session_id}.json`:
+Single state file per session at `~/.claude/projects/<project>/{YYYYMMDD}-{hash}/session-state.json`:
 
 ```json
 {
@@ -486,7 +486,7 @@ Stop (session end)
 2. **Vector memory**: Uses existing `mcp__memory__*` server. Runs parallel to $ACA_DATA markdown (complementary systems).
 3. **Framework agent state**: Stores all learnings in `bd` issues (reflections, patterns, improvements).
 4. **QA verifier input**: Gets original hydrated prompt + acceptance criteria (as approved by Critic) from execution state file.
-5. **Execution state location**: `/tmp/aops-{YYYY-MM-DD}-{session_id}.json` (ephemeral, not persistent).
+5. **Execution state location**: `~/.claude/projects/<project>/{YYYYMMDD}-{hash}/session-state.json` (organized by date and session).
 
 ## Implementation Constraint
 

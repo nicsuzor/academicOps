@@ -44,6 +44,8 @@ def log_hook_event(
     """
     Log a hook event to the session hooks log file.
 
+    Writes to: ~/.claude/projects/<project>/{YYYYMMDD}-{hash}/hooks.jsonl
+
     Combines input and output data into a single JSONL entry with timestamp.
     If session_id is missing or empty, raises ValueError immediately (fail-fast).
 
@@ -77,11 +79,15 @@ def log_hook_event(
         raise ValueError("session_id cannot be empty or None")
 
     try:
-        # Get data directory for session logs
-        project_dir = get_data_root()
+        # Get session directory for log files
+        from lib.session_paths import get_session_directory
 
-        # Get log path with -hooks suffix
-        log_path = get_log_path(project_dir, session_id, suffix="-hooks")
+        # Extract date from input or use today
+        date = input_data.get("date")
+        session_dir = get_session_directory(session_id, date)
+
+        # Hook logs stored in session subdirectory
+        log_path = session_dir / "hooks.jsonl"
 
         # Create log entry combining input and output data
         log_entry: dict[str, Any] = {

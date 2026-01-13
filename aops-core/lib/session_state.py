@@ -3,11 +3,14 @@
 Provides atomic CRUD operations for unified session state file.
 State enables cross-hook coordination per specs/flow.md.
 
-Session file: /tmp/aops-{YYYY-MM-DD}-{session_id}.json
+Session file: ~/.claude/projects/<project>/{YYYYMMDD}-{hash}/session-state.json
 
 IMPORTANT: State is keyed by session_id, NOT project cwd. Each Claude client session
 is independent - multiple sessions can run from the same project directory and must
 not share state. Session ID is the unique identifier provided by Claude Code.
+
+Location: Sessions are organized in subdirectories by date and session hash for easy
+chronological navigation and cleanup.
 """
 
 from __future__ import annotations
@@ -68,23 +71,19 @@ class SessionState(TypedDict, total=False):
 def get_session_file_path(session_id: str, date: str | None = None) -> Path:
     """Get unified session file path.
 
+    Returns: ~/.claude/projects/<project>/{YYYYMMDD}-{hash}/session-state.json
+
     Args:
         session_id: Claude Code session ID
-        date: Optional date string (YYYY-MM-DD). Defaults to today.
+        date: Optional date string (YYYY-MM-DD). Defaults to today UTC.
 
     Returns:
-        Path to /tmp/aops-{date}-{session_id}.json
+        Path to session state file in organized subdirectory structure
     """
-    if date is None:
-        date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    from lib.session_paths import get_session_directory
 
-    # Use environment variable for state directory (required for tests)
-    state_dir = Path(os.environ.get("CLAUDE_SESSION_STATE_DIR", "/tmp"))
-
-    # Sanitize session_id for file path (replace slashes for legacy test support)
-    safe_id = session_id.replace("/", "_").lstrip("_")
-
-    return state_dir / f"aops-{date}-{safe_id}.json"
+    session_dir = get_session_directory(session_id, date)
+    return session_dir / "session-state.json"
 
 
 def load_session_state(session_id: str, retries: int = 3) -> SessionState | None:
