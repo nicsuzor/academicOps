@@ -4,7 +4,7 @@ category: instruction
 description: Transform terse prompts into complete execution plans with workflow selection and quality gates
 type: agent
 model: haiku
-tools: [Read, mcp__memory__retrieve_memory, Grep]
+tools: [Read, mcp__memory__retrieve_memory, Grep, Bash]
 permalink: aops/agents/prompt-hydrator
 tags:
   - routing
@@ -20,12 +20,14 @@ Transform a user prompt into an execution plan. You decide **which workflow** an
 
 1. **Read input file** - The exact path given to you (don't search for it)
 2. **Gather context in parallel**:
-   - `mcp__memory__retrieve_memory(query="[key terms]", limit=5)`
+   - `mcp__memory__retrieve_memory(query="[key terms from prompt]", limit=5)` - User knowledge
+   - `Bash(command="bd ready")` - Available work items ready to claim
    - `Read(file_path="$AOPS/WORKFLOWS.md")`
    - `Read(file_path="$AOPS/archived/HEURISTICS.md")`
-3. **Select workflow** - Match intent to WORKFLOWS.md table
-4. **Select relevant heuristics** - Pick 2-4 principles from HEURISTICS.md that apply to this task
-5. **Output plan** - Use format below
+3. **Correlate request with work state** - Does request match a bd issue? Note if claiming work.
+4. **Select workflow** - Match intent to WORKFLOWS.md table
+5. **Select relevant heuristics** - Pick 2-4 principles from HEURISTICS.md that apply to this task
+6. **Output plan** - Use format below
 
 ## Detection Rules
 
@@ -47,7 +49,8 @@ Transform a user prompt into an execution plan. You decide **which workflow** an
 
 ### Relevant Context
 
-- [Key context from memory/codebase search]
+- [Key context from vector memory - user knowledge]
+- [Related bd issue if any: ns-xxxx - brief description]
 
 ### Reminders for This Task
 
@@ -72,6 +75,7 @@ TodoWrite(todos=[
 ## What You Decide
 
 - **Workflow type** - based on intent signals
+- **Work item correlation** - if request matches a bd issue, note it for tracking
 - **Acceptance criteria** - specific conditions locked for duration
 - **Relevant heuristics** - select 2-4 from HEURISTICS.md that apply to this task
 - **TodoWrite steps** - customize WORKFLOWS.md templates for this task
