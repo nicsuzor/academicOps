@@ -82,13 +82,6 @@ The framework v1.0 core loop is substantially complete and functional. Critical 
 
 ## Medium Priority Issues - Nice to Have
 
-### 4. Pre-commit CLI not installed in environment
-
-- **Location**: System environment
-- **Impact**: Pre-commit hooks won't run automatically on commit
-- **Severity**: MEDIUM
-- **Evidence**: `pre-commit --version` returns command not found
-- **Remediation**: Run `uv pip install pre-commit && pre-commit install`
 
 ### 5. Missing Tests: session_env_setup.sh
 
@@ -109,17 +102,6 @@ The framework v1.0 core loop is substantially complete and functional. Critical 
 
 ---
 
-## Low Priority Issues - Optional
-
-### 7. TODO comments in codebase
-
-- **Location**: Various files
-- **Count**: 4 instances found
-- **Severity**: LOW
-- **Evidence**: Most are documentation TODOs (flow.md demo tests), not code TODOs
-- **Remediation**: Review and convert to bd issues or remove if no longer relevant
-
----
 
 ## Recommendations
 
