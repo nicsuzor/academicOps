@@ -20,10 +20,10 @@ You transform a raw user prompt into a **complete execution plan** that the main
 
 1. **Read input** - Read the temp file you were given
 2. **Gather context** - Search memory, codebase in parallel
-3. **Understand intent** - What does the user actually want?
-4. **Select workflow** - Match to the workflow catalog
-5. **Match skills** - Identify which skills apply to each step
-6. **Generate plan** - Break into steps that each invoke ONE skill via ONE agent
+3. **Read WORKFLOWS.md** - Get current workflow definitions and skill mappings
+4. **Understand intent** - What does the user actually want?
+5. **Select workflow** - Match to the workflow catalog
+6. **Generate plan** - Break into steps per workflow requirements
 
 ## Step 1: Read the Input File
 
@@ -43,38 +43,21 @@ After reading the input file, gather additional context. **Call tools in a SINGL
 # PARALLEL: Include tool calls in ONE response block
 mcp__memory__retrieve_memory(query="[key terms from user prompt]", limit=5)
 Grep(pattern="[key term]", path="$AOPS", output_mode="files_with_matches", head_limit=10)
+Read(file_path="$AOPS/WORKFLOWS.md")  # REQUIRED: Get workflow definitions
 ```
 
-## Step 3: Workflow Selection
+## Step 3: Apply Workflow Definitions
 
-| Workflow       | Trigger Signals                      |
-| -------------- | ------------------------------------ |
-| **question**   | "?", "how", "what", "explain"        |
-| **minor-edit** | Single file, clear change            |
-| **tdd**        | "implement", "add feature", "create" |
-| **batch**      | Multiple files, "all", "each"        |
-| **qa-proof**   | "verify", "check", "investigate"     |
-| **plan-mode**  | Complex, infrastructure, multi-step  |
+WORKFLOWS.md contains:
 
-**Batch detection**: Multiple independent items → spawn parallel subagents with `Task(..., run_in_background=true)`.
+- **Workflow selection matrix** - Match intent signals to workflow type
+- **Universal mandates** - Rules that apply to every plan
+- **Skill matching reference** - Which skill to invoke for each task type
+- **Plan mode requirements** - All implementation workflows need plan mode
 
-**Interactive detection**: Collaborative language ("one by one", "work through with me") → insert `AskUserQuestion` checkpoints after each iteration.
+Use these definitions to construct your plan. Do not hardcode workflow logic here.
 
-## Step 4: Skill Matching (CRITICAL)
-
-**Every implementation step MUST invoke exactly ONE skill.** Match steps to skills:
-
-| Task Type                  | Skill to Invoke              |
-| -------------------------- | ---------------------------- |
-| Framework/plugin changes   | `Skill(skill="framework")`   |
-| Feature implementation     | `Skill(skill="feature-dev")` |
-| Bug fix, debugging         | `Skill(skill="[domain]")`    |
-| Memory/context persistence | `Skill(skill="remember")`    |
-| Process reflection         | `/reflect`                   |
-
-**If no skill matches**: The step is either (a) pure coordination (no skill needed), or (b) a framework gap to report.
-
-## Step 5: Agent Delegation (CRITICAL)
+## Step 4: Agent Delegation Principle
 
 **The main agent orchestrates. It does NOT implement.**
 
@@ -87,6 +70,12 @@ For each implementation step:
 
 **Key constraint**: Subagents cannot invoke Skills directly. The orchestrator must load skill context first, then pass relevant guidance in the subagent prompt.
 
+## Step 5: Special Detection Rules
+
+**Batch detection**: Multiple independent items -> spawn parallel subagents with `Task(..., run_in_background=true)`.
+
+**Interactive detection**: Collaborative language ("one by one", "work through with me") -> insert `AskUserQuestion` checkpoints after each iteration.
+
 ## Output Format
 
 Return this EXACT structure:
@@ -95,7 +84,7 @@ Return this EXACT structure:
 ## Prompt Hydration
 
 **Intent**: [what user actually wants]
-**Workflow**: [workflow name] ([quality gate])
+**Workflow**: [workflow name from WORKFLOWS.md]
 **Guardrails**: [comma-separated list]
 
 ### Relevant Context
@@ -112,8 +101,8 @@ Return this EXACT structure:
 
 ```javascript
 TodoWrite(todos=[
-  {content: "Step 1: Invoke Skill(skill='[name]') to load [domain] guidance", status: "pending", activeForm: "Loading skill"},
-  {content: "Step 2: Delegate to Task(subagent_type='[type]', prompt='[task with skill guidance embedded]')", status: "pending", activeForm: "Delegating"},
+  {content: "Step 1: [action per workflow]", status: "pending", activeForm: "[present participle]"},
+  {content: "Step 2: [action per workflow]", status: "pending", activeForm: "[present participle]"},
   {content: "CHECKPOINT: [verification with evidence]", status: "pending", activeForm: "Verifying"},
   {content: "Step N: Commit and push", status: "pending", activeForm: "Committing"}
 ])
