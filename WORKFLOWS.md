@@ -12,6 +12,26 @@ tags: [framework, routing, workflows]
 
 The hydrator selects a workflow and generates a TodoWrite plan for the main agent.
 
+## When TodoWrite is NOT Needed
+
+**CRITICAL**: Not every prompt needs a TodoWrite plan. Two scenarios should execute immediately without TodoWrite:
+
+### 1. Simple Questions
+When the prompt is a simple question that can be answered directly:
+- **Signals**: "?", "how does X work", "what is Y", "explain Z"
+- **Action**: Answer the question directly, then HALT
+- **No TodoWrite**: Questions don't require multi-step plans
+- **No commit**: Pure information requests don't modify code
+
+### 2. Direct Skill/Command Invocation
+When the prompt is a 1:1 match for an existing skill or command:
+- **Signals**: "generate transcript for today", "/commit", "create session insights"
+- **Action**: Invoke the skill/command directly without wrapping in TodoWrite
+- **Example**: "generate transcript for today" → `Task(subagent_type="...", prompt="Generate transcript for today's date")`
+- **Why**: Skills already contain their own workflows; wrapping adds no value
+
+**For all other workflows**, generate a TodoWrite plan as described below.
+
 ## Workflow Selection Table
 
 | Trigger Signals                      | Workflow       | Core Instruction to Main Agent                     |
@@ -147,3 +167,40 @@ For each workflow, hydrator generates:
 ## Heuristics Selection
 
 Instead of fixed guardrails, the hydrator reads `$AOPS/archived/HEURISTICS.md` and selects 2-4 principles relevant to the specific task. This provides task-specific guidance rather than workflow-generic rules.
+
+## Beads (bd) Workflow - Issue Tracking
+
+**When to use bd vs TodoWrite:**
+- **bd (beads issues)**: Strategic work spanning multiple sessions, with dependencies, or discovered during work
+- **TodoWrite**: Simple single-session execution tracking
+
+**Core principle**: When in doubt, prefer bd—persistence you don't need beats lost context.
+
+### Essential bd Commands
+
+**Finding work:**
+- `bd ready` - Show issues ready to work (no blockers)
+- `bd list --status=open` - All open issues
+- `bd show <id>` - Detailed issue view with dependencies
+
+**Creating & updating:**
+- `bd create --title="..." --type=task|bug|feature --priority=2` - New issue
+  - Priority: 0-4 or P0-P4 (0=critical, 2=medium, 4=backlog)
+- `bd update <id> --status=in_progress` - Claim work
+- `bd close <id>` - Mark complete
+- `bd close <id1> <id2> ...` - Close multiple (more efficient)
+
+**Dependencies:**
+- `bd dep add <issue> <depends-on>` - Add dependency (issue depends on depends-on)
+- `bd blocked` - Show all blocked issues
+
+**Sync:**
+- `bd sync` - Sync with git remote (run at session end)
+
+### bd Workflow Integration
+
+When hydrator identifies work that should be tracked as a bd issue:
+1. Check if related issue exists: `bd ready` or `bd list --status=open`
+2. If creating new issues for multi-step work, recommend parallel creation
+3. Include bd issue IDs in "Relevant Context" section
+4. For session completion, remind: `bd sync` before `git push`
