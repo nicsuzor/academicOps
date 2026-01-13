@@ -482,7 +482,7 @@ def check_custodiet_block(session_id: str | None) -> tuple[dict[str, Any], int] 
     error_output = {
         "systemMessage": f"""BLOCKED: Custodiet detected a compliance violation.
 Reason: {reason}
-To continue, user must restart the session after investigating.""",
+To continue, user must run: bd session clear-block""",
     }
     return error_output, 2  # Exit code 2 = BLOCK
 
