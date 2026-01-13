@@ -64,11 +64,10 @@ Correction: [what to do instead]
 1. Use Bash to set the custodiet block flag:
    ```bash
    python3 -c "
-   import sys; sys.path.insert(0, '$AOPS/lib')
+   import sys; sys.path.insert(0, '$AOPS/aops-core/lib')
    from session_state import set_custodiet_block
    set_custodiet_block('$CLAUDE_SESSION_ID', 'Issue: [your 1 sentence description]')
    "
-   ```
 2. Output the BLOCK message above
 3. The session will HALT - all hooks will fail until the user clears the block
 
