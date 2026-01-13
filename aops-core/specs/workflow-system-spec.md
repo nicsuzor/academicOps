@@ -12,8 +12,19 @@ created: 2026-01-14
 ## User Story
 
 **As a** framework developer
-**I want** a composable workflow system where workflows are defined as YAML+Markdown files with [[wikilinks]]
-**So that** I can systematically guide work through well-defined processes that are version-controlled, auditable, and continuously improvable
+**I want** a composable workflow system where workflows are simple markdown files that LLMs can read and compose
+**So that** I can systematically guide work through human-readable processes that are version-controlled, auditable, and continuously improvable
+
+## Key Insight: LLM-Native Design
+
+**Pre-LLM thinking**: Parse YAML frontmatter, deterministic ordering, structured data
+
+**LLM thinking**:
+- Workflows are markdown written for humans to read
+- LLMs are smart - they can read, understand, and compose workflows themselves
+- No need for deterministic code or complex parsing
+- [[Wikilinks]] work because the LLM reads the referenced file and understands it
+- Simple > Structured
 
 ### Example Invocation (Hybrid Approach)
 
@@ -36,13 +47,14 @@ User: "/workflow feature-dev --for='composable workflow system'"
 
 ## Acceptance Criteria
 
-1. ✅ Workflows stored as YAML+Markdown in git (e.g., `workflows/feature-dev.md`)
+1. ✅ Workflows stored as simple markdown in git (e.g., `workflows/feature-dev.md`)
 2. ✅ Index files exist: `AXIOMS.md`, `HEURISTICS.md`, `WORKFLOWS.md`
 3. ✅ Workflows can reference other workflows using `[[workflow-name]]` syntax
-4. ✅ Hydrator can select appropriate workflow based on prompt intent
-5. ✅ Each workflow step can be decomposed into bd issues
-6. ✅ Agents can pick up bd issues and follow workflow steps
-7. ✅ Visual graph representation shows workflow dependencies (via wikilink tools)
+4. ✅ Hydrator (LLM) reads and understands workflows without parsing
+5. ✅ Hydrator composes workflows by reading referenced files inline
+6. ✅ Workflows decompose into mid-grained bd issues (not every git command)
+7. ✅ Agents can pick up bd issues and follow workflow guidance
+8. ✅ Visual graph representation shows workflow dependencies (via wikilink tools)
 
 ## Current State → Desired State
 
@@ -74,70 +86,87 @@ HEURISTICS.md              # Practical patterns (H# references)
 WORKFLOWS.md               # Index of all workflows
 ```
 
-**Workflow Format (YAML frontmatter + Markdown):**
-```yaml
----
-id: feature-dev
-title: Feature Development Workflow
-type: workflow
-category: development
-dependencies: []
-steps:
-  - id: user-story
-    name: Define User Story
-    workflow: null
-    description: Gather user story with examples
-  - id: acceptance-criteria
-    name: Extract Acceptance Criteria
-    workflow: null
-    description: Define what constitutes success
-  - id: spec-review
-    name: Spec Review Loop
-    workflow: [[spec-review]]  # Compose other workflow
-    description: Design spec with critic feedback
-  - id: approval
-    name: Human Approval
-    workflow: null
-    description: Get user sign-off on approach
-  - id: tdd
-    name: Test-Driven Development
-    workflow: [[tdd-cycle]]
-    description: Implement with tests first
-  - id: qa-demo
-    name: QA Demo Test
-    workflow: [[qa-demo]]
-    description: Independent verification
----
-
+**Workflow Format (Simple Markdown):**
+```markdown
 # Feature Development Workflow
 
-## Overview
-Systematic feature development with user stories, spec review, TDD, and QA verification.
+Full TDD feature development with critic review and QA verification.
 
 ## When to Use
+
 - Adding new features
 - Complex modifications affecting multiple files
 - Work requiring architectural decisions
 
 ## Steps
 
-### 1. Define User Story
-[Detailed instructions for gathering user story...]
+### 1. Claim work in bd
 
-### 2. Extract Acceptance Criteria
-[Detailed instructions for defining success criteria...]
-
-### 3. Spec Review Loop ([[spec-review]])
-This step uses the [[spec-review]] workflow...
-
-[Continue for each step...]
+Find or create a bd issue and mark it in-progress:
+```bash
+bd ready                    # Find available work
+bd update <id> --status=in_progress
 ```
 
-**Prompt Hydrator:**
-- Reads workflow files from `workflows/` directory
-- Composes workflows by resolving [[wikilinks]]
-- Enriches with axioms (P#) and heuristics (H#) from index files
-- Returns TodoWrite plan derived from workflow steps
+### 2. Define acceptance criteria
+
+What constitutes success for this feature?
+- Specific, verifiable conditions
+- What functionality must work?
+- What tests must pass?
+
+### 3. Create a plan
+
+Design the implementation approach and document it in the bd issue.
+
+### 4. Get critic review
+
+Follow the [[spec-review]] workflow to get critic feedback on your plan before implementing.
+
+### 5. Implement with TDD
+
+Follow the [[tdd-cycle]] workflow:
+- Write failing tests
+- Minimal implementation
+- Refactor
+- Repeat until complete
+
+### 6. Verify with QA
+
+Follow the [[qa-demo]] workflow for independent verification before completing.
+
+### 7. Land the changes
+
+Format, commit, and push:
+```bash
+./scripts/format.sh
+git add -A
+git commit -m "..."
+git push
+bd close <id>
+```
+
+## Success Criteria
+
+- All acceptance criteria met
+- All tests pass
+- QA verifier approves
+- Changes pushed to remote
+```
+
+**Key points**:
+- Human-readable markdown
+- References other workflows with [[wikilinks]]
+- LLM reads and understands it
+- No parsing needed
+
+**Prompt Hydrator (LLM-Native Composition):**
+- Reads WORKFLOWS.md to select appropriate workflow
+- Reads the selected workflow file (e.g., `workflows/feature-dev.md`)
+- When it sees `[[spec-review]]`, reads `workflows/spec-review.md` inline
+- **Composes by understanding**: LLM reads all referenced workflows and generates a unified TodoWrite plan
+- No parsing - just reads markdown and understands it
+- Returns TodoWrite plan with mid-grained tasks (not every git command)
 - Logs workflow selection to bd for tracking
 
 ## Component Mapping
@@ -157,13 +186,15 @@ This step uses the [[spec-review]] workflow...
 
 | Component | Location | Purpose |
 |-----------|----------|---------|
-| Workflow directory | `workflows/` | Store workflow YAML+Markdown files |
-| Workflow index | `WORKFLOWS.md` | List all workflows with metadata |
-| Workflow parser | Python utility | Parse YAML frontmatter + Markdown content |
-| Wikilink resolver | Python utility | Resolve [[workflow-name]] references |
-| Workflow compositor | In hydrator | Compose workflows from [[wikilinks]] |
-| Workflow selector | In hydrator | Match prompt intent → workflow file |
-| Issue decomposer | New agent? | Create bd issues from workflow steps |
+| Workflow directory | `workflows/` | Store simple markdown workflow files |
+| Workflow index | `WORKFLOWS.md` | List all workflows with decision tree |
+| Workflow compositor | In hydrator (LLM) | Read and compose workflows by understanding markdown |
+| Workflow selector | In hydrator (LLM) | Match prompt intent → workflow file |
+
+**What we DON'T need**:
+- ❌ Workflow parser (LLM reads markdown directly)
+- ❌ Wikilink resolver utility (LLM reads referenced files)
+- ❌ Issue decomposer agent (hydrator generates TodoWrite at appropriate granularity)
 
 ## First Example: Feature Development Workflow
 
@@ -186,73 +217,98 @@ The feature-dev workflow will be the first implementation, using itself as the d
 
 ## Design Principles
 
-### Principle #1: Minimal Index Files
-- Only 3 index files: `AXIOMS.md`, `HEURISTICS.md`, `WORKFLOWS.md`
-- Everything else lives in `workflows/` directory
-- Indexes are generated/maintained by audit tools
+### Principle #1: LLM-Native Design
+- **Workflows are markdown for humans** - not structured data for parsers
+- **LLMs read and understand** - no parsing logic needed
+- **Composition by comprehension** - LLM reads [[spec-review]] and understands it
+- **Simple > Structured** - optimize for human editing and LLM understanding
 
 ### Principle #2: [[Wikilinks]] for Composition
 - Use `[[workflow-name]]` to reference other workflows
+- LLM sees the link and reads the referenced file
+- **Inline expansion**: Hydrator reads all referenced workflows and generates unified plan
 - Enables visual graph representation
-- Simple, familiar syntax (no custom DSL)
 - Works with existing wikilink tools (Obsidian, graph generators)
 
-### Principle #3: YAML + Markdown Hybrid
-- YAML frontmatter: structured metadata, step definitions
-- Markdown body: human-readable instructions, context
+### Principle #3: Human-Readable Markdown
+- Written for humans first, LLMs second
+- Clear explanations, not just commands
+- Code examples where helpful
+- Easy to edit, review, and understand
 - Version-controlled in git for auditability
-- Easy to edit, review, and diff
 
-### Principle #4: bd Issues as Work Units
-- Each workflow step can become a bd issue
-- Agents pick up issues and follow workflow steps
-- Progress tracked in bd (status, assignee, dependencies)
-- Work persistence across sessions
+### Principle #4: Mid-Grained bd Issues
+- **bd issues are mid-grained tasks** - not every git command
+- A task can include a list: "format, commit, push" without each being separate
+- If a list item needs expansion → make it a subtask/new issue
+- Example good granularity: "Implement user authentication" with steps like "create model, add JWT, write tests"
+- Example too fine: separate issues for "git add", "git commit", "git push"
 
-### Principle #5: Hydrator as Compositor
-- Hydrator reads workflow files
-- Resolves [[wikilinks]] recursively
-- Enriches with axioms (P#) and heuristics (H#)
-- Generates TodoWrite plan from composed workflow
-- Returns discrete steps for agent execution
+### Principle #5: Hydrator as Intelligent Compositor
+- Reads WORKFLOWS.md to select workflow
+- Reads selected workflow file
+- When it sees [[wikilink]], reads that file too
+- **Composes by understanding the content** - not by parsing structures
+- Generates TodoWrite plan at appropriate mid-grained level
+- Returns unified plan that includes all workflow guidance
 
 ## Implementation Phases
 
-### Phase 1: Foundation (This PR) ✓ COMPLETED
+### Phase 1: Foundation ✓ COMPLETED
 - [x] Create `workflows/` directory
 - [x] Create `WORKFLOWS.md` index file
-- [x] Design feature-dev workflow file format
-- [x] Write `workflows/feature-dev.md` (first example)
-- [x] Write additional workflow files (spec-review, tdd-cycle, qa-demo, minor-edit, debugging, batch-processing, simple-question, direct-skill)
-- [x] Update hydrator to read workflow files (basic)
-- [x] Add tests for workflow file parsing
+- [x] Write workflow files as simple markdown (feature-dev, spec-review, tdd-cycle, qa-demo, minor-edit, debugging, batch-processing, simple-question, direct-skill)
+- [x] Update hydrator to read WORKFLOWS.md and select workflows
+- [x] Update hydrator to read workflow files
+- [x] Add tests for workflow file structure
 
-### Phase 2: Composition
-- [ ] Implement wikilink resolver utility
-- [x] Create `workflows/spec-review.md` (completed in Phase 1)
-- [x] Create `workflows/tdd-cycle.md` (completed in Phase 1)
-- [x] Create `workflows/qa-demo.md` (completed in Phase 1)
-- [ ] Update hydrator to compose workflows (resolve [[wikilinks]] recursively)
+**Status**: Workflows exist but still have YAML frontmatter from pre-LLM design. Need to simplify.
 
-### Phase 3: Enrichment
-- [ ] Integrate axioms (P#) into workflow selection
-- [ ] Integrate heuristics (H#) into workflow steps
-- [ ] Add context from vector memory ($ACA_DATA)
-- [ ] Generate TodoWrite plans from composed workflows
+### Phase 2: LLM-Native Composition (NEXT)
+- [ ] **Simplify existing workflow files** - Remove YAML frontmatter, keep simple markdown
+- [ ] Update hydrator instructions: "When you see [[spec-review]], read workflows/spec-review.md"
+- [ ] **Inline expansion by understanding**: Hydrator reads all referenced workflows and generates unified TodoWrite plan
+- [ ] Test composition: Does feature-dev correctly expand [[spec-review]], [[tdd-cycle]], [[qa-demo]]?
+- [ ] Verify TodoWrite plans are mid-grained (not every git command)
 
-### Phase 4: Decomposition
-- [ ] Create issue decomposer agent/utility
-- [ ] Auto-create bd issues from workflow steps
-- [ ] Link issues with dependencies (bd dep add)
-- [ ] Enable agents to pick up and execute issues
+**Key insight**: No code needed - just update hydrator instructions and simplify workflow files.
+
+### Phase 3: Enrichment (FUTURE)
+- [ ] Integrate axioms (P#) references into workflow files
+- [ ] Integrate heuristics (H#) references into workflow files
+- [ ] Hydrator naturally includes these when reading workflows
+- [ ] Add vector memory context to hydration process
+
+**Key insight**: Enrichment happens naturally - LLM reads axioms/heuristics references and understands them.
+
+### Phase 4: Mid-Grained bd Issues (FUTURE)
+- [ ] Document bd issue granularity guidelines
+- [ ] Update hydrator to generate mid-grained TodoWrite plans
+- [ ] Hydrator creates bd issues for multi-session work
+- [ ] Tasks include lists of steps (not separate issues per step)
+
+**Key insight**: No decomposer agent needed - hydrator judges appropriate granularity.
 
 ## Open Questions
 
-1. **Workflow selection heuristics**: How does hydrator map prompt → workflow? (Pattern matching? LLM classification? Hybrid?)
-2. **Issue granularity**: When should a workflow step become one vs multiple bd issues?
-3. **Cross-workflow state**: How do we pass context between composed workflows?
-4. **Workflow versioning**: How do we handle workflow changes across sessions? (Git history sufficient?)
-5. **Workflow validation**: Should we validate workflow files on commit? (Pre-commit hook?)
+1. **Workflow selection**: How does hydrator map prompt → workflow?
+   - **Answer**: LLM reads WORKFLOWS.md decision tree and selects based on understanding user intent
+
+2. **bd issue granularity**: When is a task too fine-grained?
+   - **Guideline**: If it's a single command or < 30 seconds of work, include it in a list on another task
+   - **Guideline**: If it needs decision-making or > 5 minutes, make it a separate task
+   - **Examples**: "git push" = list item. "Implement JWT auth" = separate task.
+
+3. **Composition depth**: How deep do [[wikilink]] references go?
+   - **Current**: We have 2-level depth (feature-dev → spec-review, tdd-cycle, qa-demo)
+   - **Future**: Should we support deeper nesting? (Probably not needed)
+
+4. **Workflow versioning**: How do we handle workflow changes across sessions?
+   - **Answer**: Git history is sufficient - workflows evolve like any other documentation
+
+5. **Minimal YAML**: Do we need ANY frontmatter?
+   - **Proposal**: Optional minimal frontmatter for metadata only: `id`, `category` (no steps, no structure)
+   - **Reason**: Enables tooling (search, graph visualization) without dictating structure
 
 ## Success Metrics
 
