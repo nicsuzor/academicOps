@@ -4,7 +4,8 @@ title: Prompt Hydrator Context Template
 category: template
 description: |
   Template written to temp file by UserPromptSubmit hook for prompt-hydrator subagent.
-  Variables: {prompt} (user prompt), {session_context} (recent prompts, tools, tasks)
+  Variables: {prompt} (user prompt), {session_context} (recent prompts, tools, tasks),
+             {bd_state} (current work state from bd)
 ---
 
 # Prompt Hydration Request
@@ -45,6 +46,10 @@ Select the appropriate workflow based on task signals:
 {framework_paths}
 
 **Use these prefixes in TodoWrite plans** - never use relative paths like `specs/file.md`.
+
+## Current Work State
+
+{bd_state}
 
 ## Your Task
 

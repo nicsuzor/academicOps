@@ -11,7 +11,7 @@
       "type": "http",
       "url": "http://services.stoat-musical.ts.net:8026/mcp",
       "headers": {
-        "Authorization": "Bearer ${MEMORY_MCP_TOKEN}"
+        "Authorization": "Bearer ${MCP_MEMORY_API_KEY}"
       }
     },
     "zot": {

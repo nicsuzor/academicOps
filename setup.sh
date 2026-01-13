@@ -206,16 +206,16 @@ if [ -z "${GH_MCP_TOKEN:-}" ]; then
     echo -e "${YELLOW}⚠ GH_MCP_TOKEN not set - GitHub MCP server will not authenticate${NC}"
     echo "  Set in shell RC: export GH_MCP_TOKEN='your-github-token'"
 fi
-if [ -z "${MEMORY_MCP_TOKEN:-}" ]; then
-    echo -e "${YELLOW}⚠ MEMORY_MCP_TOKEN not set - Memory MCP server will not authenticate${NC}"
-    echo "  Set in shell RC: export MEMORY_MCP_TOKEN='your-memory-token'"
+if [ -z "${MCP_MEMORY_API_KEY:-}" ]; then
+    echo -e "${YELLOW}⚠ MCP_MEMORY_API_KEY not set - Memory MCP server will not authenticate${NC}"
+    echo "  Set in shell RC: export MCP_MEMORY_API_KEY='your-memory-token'"
 fi
 
 if [ -f "$mcp_base" ] && [ -f "$mcp_outlook" ] && command -v jq &> /dev/null; then
     # Deep merge: base + outlook fragment, then substitute env vars for tokens
     jq -s '.[0] * .[1]' "$mcp_base" "$mcp_outlook" | \
         sed -e "s|\${GH_MCP_TOKEN}|${GH_MCP_TOKEN:-}|g" \
-            -e "s|\${MEMORY_MCP_TOKEN}|${MEMORY_MCP_TOKEN:-}|g" \
+            -e "s|\${MCP_MEMORY_API_KEY}|${MCP_MEMORY_API_KEY:-}|g" \
         > "$mcp_source"
     echo -e "${GREEN}✓ Built mcp.json from base + outlook-${OUTLOOK_MODE}${NC}"
 elif [ ! -f "$mcp_base" ]; then

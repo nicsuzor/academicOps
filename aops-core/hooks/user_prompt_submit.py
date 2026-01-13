@@ -13,6 +13,7 @@ Exit codes:
 
 import json
 import os
+import subprocess
 import sys
 import tempfile
 import time
@@ -62,6 +63,51 @@ def load_framework_paths() -> str:
         return rest.strip()
 
     return "(Path table not found in FRAMEWORK.md)"
+
+
+def get_bd_work_state() -> str:
+    """Query bd for current work state.
+
+    Returns formatted markdown with:
+    - In-progress issues (what user is actively working on)
+    - Ready issues (available work with no blockers)
+
+    Gracefully returns empty string on failure.
+    """
+    try:
+        # Get in-progress work
+        in_progress_result = subprocess.run(
+            ["bd", "list", "--status=in_progress"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+        in_progress = in_progress_result.stdout.strip() if in_progress_result.returncode == 0 else ""
+
+        # Get ready work (no blockers)
+        ready_result = subprocess.run(
+            ["bd", "ready"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+        ready = ready_result.stdout.strip() if ready_result.returncode == 0 else ""
+
+        if not in_progress and not ready:
+            return ""
+
+        sections = []
+        if in_progress:
+            sections.append(f"### In-Progress Work\n\n{in_progress}")
+        if ready:
+            # Limit ready work to first 10 lines to avoid context bloat
+            ready_lines = ready.split("\n")[:12]
+            sections.append(f"### Ready Work (no blockers)\n\n" + "\n".join(ready_lines))
+
+        return "\n\n".join(sections)
+
+    except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
+        return ""  # Graceful degradation
 
 
 def get_session_id() -> str:
@@ -181,12 +227,16 @@ def build_hydration_instruction(
     # Load framework paths from FRAMEWORK.md (DRY - single source of truth)
     framework_paths = load_framework_paths()
 
+    # Get bd work state (in-progress and ready issues)
+    bd_state = get_bd_work_state()
+
     # Build full context for temp file
     context_template = load_template(CONTEXT_TEMPLATE_FILE)
     full_context = context_template.format(
         prompt=prompt,
         session_context=session_context,
         framework_paths=framework_paths,
+        bd_state=bd_state,
     )
 
     # Write to temp file (raises IOError on failure - fail-fast)

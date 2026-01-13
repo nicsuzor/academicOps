@@ -27,6 +27,8 @@ from typing import Any
 
 # Hook directory (same directory as this script)
 HOOK_DIR = Path(__file__).parent
+# aops-core root for PYTHONPATH (parent of hooks/)
+AOPS_CORE_DIR = HOOK_DIR.parent
 
 # Lazy import for session_state to avoid import errors in test environment
 _session_state_module = None
@@ -285,7 +287,10 @@ def run_hook_script(
             capture_output=True,
             text=True,
             timeout=timeout,
-            env={**os.environ, "PYTHONPATH": os.environ.get("PYTHONPATH", "")},
+            env={
+                **os.environ,
+                "PYTHONPATH": f"{AOPS_CORE_DIR}:{os.environ.get('PYTHONPATH', '')}",
+            },
             cwd=HOOK_DIR,
         )
 
@@ -336,7 +341,10 @@ def start_async_hook(
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         text=True,
-        env={**os.environ, "PYTHONPATH": os.environ.get("PYTHONPATH", "")},
+        env={
+            **os.environ,
+            "PYTHONPATH": f"{AOPS_CORE_DIR}:{os.environ.get('PYTHONPATH', '')}",
+        },
         cwd=HOOK_DIR,
     )
 
