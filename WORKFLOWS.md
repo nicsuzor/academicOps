@@ -14,6 +14,14 @@ tags: [framework, routing, workflows, enforcement]
 
 **Philosophy**: We are an academic framework. We value **rigor over speed**, **verification over assumption**, and **observability over magic**.
 
+## Instructions
+
+Your job is to determine the steps that the agent must follow to achieve the task.
+
+1. Carefully read the prompt to understand the task
+
+2.
+
 ## Workflow Selection (Quick Reference)
 
 Select workflow by matching user intent to the first matching row:

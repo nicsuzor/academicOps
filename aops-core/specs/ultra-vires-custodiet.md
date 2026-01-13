@@ -3,10 +3,9 @@ title: Ultra Vires Custodiet
 permalink: ultra-vires-custodiet
 type: spec
 category: spec
-status: draft
+status: partial
 tags:
   - framework
-  - hooks
   - agent-behavior
   - guardrails
   - enforcement
@@ -15,8 +14,9 @@ created: 2025-12-30
 
 # Ultra Vires Custodiet
 
-**Status**: DRAFT - architecture designed, ready for implementation
-**Priority**: P1 - core guardrail for agent autonomy
+**Status**: Partial - agent defined, automated gate archived
+**Current**: Custodiet agent available for manual invocation via `agents/custodiet.md`
+**Archived**: Automated PostToolUse gate (`custodiet_gate.py`) moved to `archived/hooks/`
 
 ## Purpose
 
@@ -24,7 +24,9 @@ Detect when agents act **ultra vires** - beyond the authority granted by the use
 
 The name draws from public law: "ultra vires" (beyond powers) describes acts outside granted authority. The watchdog is the _custodiet_ - the guardian that watches.
 
-**Scope**: This spec covers **semantic authority enforcement** - understanding whether an agent's actions align with the user's intent. Pattern-based mechanical violations (`--no-verify`, backup files, destructive git) are handled by PreToolUse hooks (`policy_enforcer.py`) and are NOT part of custodiet.
+**Scope**: This spec covers **semantic authority enforcement** - understanding whether an agent's actions align with the user's intent. Pattern-based mechanical violations (`--no-verify`, backup files, destructive git) are handled by mechanical hooks and are NOT part of custodiet.
+
+## Operation
 
 ## Failure Categories
 
@@ -187,15 +189,6 @@ No issues detected. Continue current work.
 **Correction**: [what to do instead]
 ```
 
-## Relationship to Other Components
-
-| Component                  | Purpose                       | Relationship                                 |
-| -------------------------- | ----------------------------- | -------------------------------------------- |
-| [[policy_enforcer.py]]     | Blocks mechanical violations  | Complementary - handles pattern matching     |
-| [[specs/prompt-hydration]] | Enriches prompts with context | Upstream - surfaces relevant skills          |
-| [[/qa]]                    | Verifies "does it work"       | Orthogonal - verifies outcomes not authority |
-| [[RULES.md]]               | Documents all enforcement     | Registry - custodiet entries there           |
-
 ## Implementation
 
 ### Current State
@@ -205,26 +198,6 @@ No issues detected. Continue current work.
 - `agents/custodiet.md` - Haiku agent that reads transcript
 - `hooks/templates/custodiet-context.j2` - Jinja2 context template (conditional axiom/heuristic injection)
 - `hooks/templates/custodiet-instruction.md` - Short instruction template
-
-### Template Migration (Jinja2)
-
-The context template migrates to Jinja2 for conditional axiom/heuristic injection:
-
-```jinja2
-{% if task_domain == 'framework' %}
-## Relevant Axioms
-- #1 Categorical Imperative
-- #14 Skills Are Read-Only
-{% endif %}
-
-{% if approach == 'tdd' %}
-## Relevant Heuristics
-- H28 Mandatory Acceptance Testing
-- H33 Real Data Fixtures
-{% endif %}
-```
-
-This reduces token waste from embedding all 29 axioms + 38 heuristics on every check.
 
 ### Hook Output Formats
 
@@ -241,11 +214,11 @@ The custodiet hook uses `decision: "block"` at threshold to ensure the agent spa
 
 Between threshold checks, the hook randomly injects soft reminders:
 
-| Parameter              | Value     | Location                   |
-| ---------------------- | --------- | -------------------------- |
-| `TOOL_CALL_THRESHOLD`  | 7         | `custodiet_gate.py`        |
-| `REMINDER_PROBABILITY` | 0.3 (30%) | `custodiet_gate.py`        |
-| Reminder lines         | Editable  | `hooks/data/reminders.txt` |
+| Parameter              | Value          | Location                   |
+| ---------------------- | -------------- | -------------------------- |
+| `TOOL_CALL_THRESHOLD`  | 7              | `custodiet_gate.py`        |
+| `REMINDER_PROBABILITY` | 0.0 (disabled) | `custodiet_gate.py`        |
+| Reminder lines         | Editable       | `hooks/data/reminders.txt` |
 
 **Behavior**:
 
@@ -286,7 +259,7 @@ Edit `hooks/data/reminders.txt` to add/modify reminders. One per line, `#` for c
 
 ## Acceptance Criteria
 
-1. When agent drifts from original request, warning appears within ~30s
+1. When agent drifts from original request, warning trips
 2. Agent receives clear message explaining the violation
 3. Agent directed to report issues and ask user for direction
 4. TodoWrite scope expansion caught BEFORE work begins

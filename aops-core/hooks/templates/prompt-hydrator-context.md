@@ -20,40 +20,14 @@ Transform this user prompt into a complete execution plan.
 
 Select the appropriate workflow based on task signals:
 
-| Workflow       | Trigger Signals                                               | Quality Gate            | Iteration Unit                    |
-| -------------- | ------------------------------------------------------------- | ----------------------- | --------------------------------- |
-| **question**   | "?", "how", "what", "explain"                                 | Answer accuracy         | N/A (answer then stop)            |
-| **minor-edit** | Single file, clear change                                     | Verification            | Edit → verify → commit            |
-| **tdd**        | "implement", "add feature", "create"                          | Tests pass              | Test → code → commit              |
-| **batch**      | Multiple files, "all", "each", skill discovers multiple items | Per-item + aggregate QA | Spawn parallel subagents → verify |
-| **qa-proof**   | "verify", "check", "investigate"                              | Evidence gathered       | Hypothesis → test → evidence      |
-| **plan-mode**  | Framework, infrastructure, multi-step                         | User approval           | Plan → approve → execute          |
-
-## Per-Step Skill Assignment
-
-**CRITICAL**: Match user intent to skills using these triggers:
-
-| Domain Signal                                                             | Skill                         |
-| ------------------------------------------------------------------------- | ----------------------------- |
-| Python code, pytest, type hints, mypy                                     | `python-dev`                  |
-| Framework files (skills/, hooks/, agents/, commands/, AXIOMS, HEURISTICS) | `framework`                   |
-| Debug test failures, find session logs, investigate framework issues      | `framework`                   |
-| New functionality, "add", "create", feature requests                      | `feature-dev`                 |
-| Claude Code hooks, PreToolUse, PostToolUse, hook events                   | `plugin-dev:hook-development` |
-| MCP servers, .mcp.json, tool integration                                  | `plugin-dev:mcp-integration`  |
-| "Remember", persist knowledge, save to memory                             | `remember`                    |
-| dbt, Streamlit, data analysis, statistics                                 | `analyst`                     |
-| Mermaid diagrams, flowcharts                                              | `flowchart`                   |
-| Excalidraw, visual diagrams, mind maps                                    | `excalidraw`                  |
-| Review academic work, papers, dissertations                               | `review`                      |
-| Convert documents to markdown                                             | `convert-to-md`               |
-| Generate PDF from markdown                                                | `pdf`                         |
-| Task management, create/update tasks                                      | `tasks`                       |
-| **Session insights, accomplishments, daily note, daily summary**          | `session-insights`            |
-| **Daily briefing, morning routine, task recommendations, email triage**   | `daily`                       |
-| Fact-check claims, verify sources                                         | `fact-check`                  |
-
-**Skill-first rule**: If user prompt matches a domain signal, the FIRST step must invoke that skill. Skills contain domain-specific guidance that supersedes generic workflows.
+| Workflow       | Trigger Signals                      | Quality Gate      | Iteration Unit                    |
+| -------------- | ------------------------------------ | ----------------- | --------------------------------- |
+| **question**   | "?", "how", "what", "explain"        | Answer accuracy   | N/A (answer then stop)            |
+| **minor-edit** | Single file, clear change            | Verification      | Edit → verify → commit            |
+| **tdd**        | "implement", "add feature", "create" | Tests pass        | Test → code → commit              |
+| **batch**      | Multiple files, "all", "each"        | Per-item + agg QA | Spawn parallel subagents → verify |
+| **qa-proof**   | "verify", "check", "investigate"     | Evidence gathered | Hypothesis → test → evidence      |
+| **plan-mode**  | Complex, infrastructure, multi-step  | User approval     | Plan → approve → execute          |
 
 ## Guardrails by Workflow
 
@@ -76,8 +50,8 @@ Select the appropriate workflow based on task signals:
 
 1. **Understand intent** - What does the user actually want?
 2. **Select workflow** - Which workflow from the catalog applies?
-3. **Generate TodoWrite plan** - Break into concrete steps with per-step skill assignments
-4. **Apply guardrails** - Select constraints based on workflow + domain
+3. **Generate TodoWrite plan** - Break into concrete steps
+4. **Apply guardrails** - Select constraints based on workflow
 
 ## Return Format
 
@@ -108,12 +82,11 @@ Return this EXACT structure:
 ```javascript
 TodoWrite(todos=[
   {{content: "Step 1: [action]", status: "pending", activeForm: "[present participle]"}},
-  {{content: "Step 2: Invoke Skill(skill='[skill-name]') to [purpose]", status: "pending", activeForm: "Loading [skill]"}},
-  {{content: "Step 3: [action following skill conventions]", status: "pending", activeForm: "[present participle]"}},
+  {{content: "Step 2: [action]", status: "pending", activeForm: "[present participle]"}},
   {{content: "CHECKPOINT: [verification with evidence]", status: "pending", activeForm: "Verifying"}},
   {{content: "Step N: Commit and push", status: "pending", activeForm: "Committing"}}
 ])
 ```
 ````
 
-**Key insight**: The workflow is NOT mechanical. INTERPRET the workflow template for the specific user request, generating concrete steps with appropriate skill invocations.
+**Key insight**: The workflow is NOT mechanical. INTERPRET the workflow template for the specific user request, generating concrete steps.

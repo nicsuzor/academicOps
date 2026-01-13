@@ -36,6 +36,14 @@ dev = [
   "types-pyyaml>=6.0.12.20250915",
 ]
 
+[tool.ruff]
+# Exclude archived files from linting - they are legacy code kept for reference
+exclude = ["archived/**"]
+
+[tool.mypy]
+# Exclude archived files from type checking - they are legacy code kept for reference
+exclude = ["archived/"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = [".", "hooks"]

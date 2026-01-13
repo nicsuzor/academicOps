@@ -30,23 +30,14 @@ class TestPluginStructure:
 
 
 class TestCoreSkills:
-    """Verify core skills are present."""
+    """Verify skills directory exists (empty in v1.0 minimal core - all skills archived)."""
 
-    CORE_SKILLS = ["tasks", "remember", "python-dev", "feature-dev", "framework", "audit"]
-
-    def test_all_core_skills_present(self) -> None:
-        """All 6 core skills must be present."""
+    def test_skills_directory_exists(self) -> None:
+        """Skills directory must exist (even if empty in v1.0 core)."""
         skills_dir = PLUGIN_ROOT / "skills"
-        for skill_name in self.CORE_SKILLS:
-            skill_dir = skills_dir / skill_name
-            assert skill_dir.is_dir(), f"Missing core skill: {skill_name}"
-
-    def test_skills_have_skill_md(self) -> None:
-        """Each skill must have a SKILL.md file."""
-        skills_dir = PLUGIN_ROOT / "skills"
-        for skill_name in self.CORE_SKILLS:
-            skill_md = skills_dir / skill_name / "SKILL.md"
-            assert skill_md.exists(), f"Missing SKILL.md for: {skill_name}"
+        assert skills_dir.is_dir(), "Missing skills directory"
+        # v1.0 minimal core has no skills - all archived
+        # Skills can be moved back from archived/ as needed
 
 
 class TestCoreAgents:
@@ -102,13 +93,17 @@ class TestGovernanceFiles:
         """Axioms directory must have enforced axiom files."""
         axioms_dir = PLUGIN_ROOT / "axioms"
         axiom_files = list(axioms_dir.glob("*.md"))
-        assert len(axiom_files) >= 5, f"Expected at least 5 enforced axioms, found {len(axiom_files)}"
+        assert len(axiom_files) >= 5, (
+            f"Expected at least 5 enforced axioms, found {len(axiom_files)}"
+        )
 
     def test_heuristics_directory_has_files(self) -> None:
         """Heuristics directory must have enforced heuristic files."""
         heuristics_dir = PLUGIN_ROOT / "heuristics"
         heuristic_files = list(heuristics_dir.glob("*.md"))
-        assert len(heuristic_files) >= 3, f"Expected at least 3 enforced heuristics, found {len(heuristic_files)}"
+        assert len(heuristic_files) >= 3, (
+            f"Expected at least 3 enforced heuristics, found {len(heuristic_files)}"
+        )
 
 
 class TestCoreSpecs:
@@ -118,7 +113,9 @@ class TestCoreSpecs:
         """Specs directory must have core spec files."""
         specs_dir = PLUGIN_ROOT / "specs"
         spec_files = list(specs_dir.glob("*.md"))
-        assert len(spec_files) >= 6, f"Expected at least 6 core specs, found {len(spec_files)}"
+        assert len(spec_files) >= 6, (
+            f"Expected at least 6 core specs, found {len(spec_files)}"
+        )
 
 
 if __name__ == "__main__":

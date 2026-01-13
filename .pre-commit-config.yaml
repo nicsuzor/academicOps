@@ -18,6 +18,7 @@ repos:
     rev: v0.12.1
     hooks:
       - id: markdownlint-cli2
+        exclude: '^archived/'
 
   # Standard hooks
   - repo: https://github.com/pre-commit/pre-commit-hooks
@@ -38,8 +39,10 @@ repos:
     rev: v0.1.9
     hooks:
       - id: ruff
+        exclude: '^archived/'
       - id: ruff-format
         args: [--check]
+        exclude: '^archived/'
 
   # Type checking
   - repo: https://github.com/pre-commit/mirrors-mypy
@@ -48,7 +51,7 @@ repos:
       - id: mypy
         additional_dependencies: [types-PyYAML]
         args: [--ignore-missing-imports]
-        exclude: 'tests/'
+        exclude: '^(tests/|archived/)'
 
   # Framework health checks (local)
   - repo: local

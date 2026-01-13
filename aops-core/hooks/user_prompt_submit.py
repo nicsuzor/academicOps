@@ -23,7 +23,7 @@ from hook_debug import safe_log_to_debug_file
 from hooks.hook_logger import log_hook_event
 from lib.paths import get_aops_root
 from lib.session_reader import extract_router_context
-from lib.session_state import HydratorState, save_hydrator_state
+from lib.session_state import set_hydration_pending, clear_hydration_pending
 
 # Paths
 HOOK_DIR = Path(__file__).parent
@@ -81,33 +81,17 @@ def write_initial_hydrator_state(
 ) -> None:
     """Write initial hydrator state with pending workflow.
 
-    Called after processing prompt to persist intent_envelope for
-    downstream gates (custodiet, skill monitor).
+    Called after processing prompt to set hydration pending flag.
 
     Args:
         session_id: Claude Code session ID for state isolation
-        prompt: User's original prompt (will be truncated for intent)
+        prompt: User's original prompt
         hydration_pending: Whether hydration gate should block until hydrator invoked
     """
-    # Truncate prompt for intent_envelope
-    intent = prompt[:INTENT_MAX_LENGTH]
-    if len(prompt) > INTENT_MAX_LENGTH:
-        intent = intent.rsplit(" ", 1)[0] + "..."  # Break at word boundary
-
-    state: HydratorState = {
-        "last_hydration_ts": time.time(),
-        "declared_workflow": {
-            "gate": "pending",
-            "pre_work": "pending",
-            "approach": "pending",
-        },
-        "active_skill": "",  # To be filled by prompt-hydrator
-        "intent_envelope": intent,
-        "guardrails": [],  # To be filled by prompt-hydrator
-        "hydration_pending": hydration_pending,  # Gate blocks until hydrator invoked
-    }
-
-    save_hydrator_state(session_id, state)
+    if hydration_pending:
+        set_hydration_pending(session_id, prompt)
+    else:
+        clear_hydration_pending(session_id)
 
 
 def cleanup_old_temp_files() -> None:

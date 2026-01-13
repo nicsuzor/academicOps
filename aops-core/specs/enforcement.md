@@ -17,8 +17,7 @@ tags: [enforcement, compliance, framework-architecture, verification]
 graph TD
     subgraph "Layer 1: Prompts"
         A[AXIOMS.md]
-        B[Skill SKILL.md]
-        C[Command .md]
+        B[Agent .md]
     end
 
     subgraph "Layer 2: Intent Router"
@@ -75,17 +74,16 @@ No single layer is reliable. We combine:
 
 ### Layer 1: Prompts (Instruction Surface)
 
-| Location       | Loaded When     | Scope            |
-| -------------- | --------------- | ---------------- |
-| AXIOMS.md      | Session start   | Universal        |
-| Skill SKILL.md | Skill invoked   | Task-specific    |
-| Command .md    | Command invoked | Command-specific |
+| Location  | Loaded When   | Scope         |
+| --------- | ------------- | ------------- |
+| AXIOMS.md | Session start | Universal     |
+| Agent .md | Agent spawned | Task-specific |
 
 **Limitation**: Agents can read and ignore.
 
 ### Layer 2: Prompt Hydration (Soft Gate)
 
-The [[specs/prompt-hydration]] process classifies prompts and suggests skills/workflows.
+The [[specs/prompt-hydration]] process classifies prompts and suggests workflows.
 
 **What it does**: Injects context, classification, and task-specific guidance
 **What it can't do**: Force agent to follow guidance
@@ -204,19 +202,19 @@ When failures occur, we distinguish:
 
 #### Pre-Execution Phase
 
-| Component             | Responsibility                                             | Verification                                          |
-| --------------------- | ---------------------------------------------------------- | ----------------------------------------------------- |
-| AXIOMS/HEURISTICS     | Rules stated unambiguously with reasoning                  | Each rule has single interpretation + WHY             |
-| Intent Router         | Correct classification, relevant context, skill suggestion | Classification matches human judgment                 |
-| Guardrails            | Task-specific emphasis applied                             | Guardrails in output match task type table            |
-| Intervention Reminder | User corrections take priority over in-progress work       | Agent halts current work on user intervention         |
-| Compliance Auditor    | Detect principle violations mid-execution                  | Check fires at threshold, returns relevant violations |
+| Component             | Responsibility                                                | Verification                                          |
+| --------------------- | ------------------------------------------------------------- | ----------------------------------------------------- |
+| AXIOMS/HEURISTICS     | Rules stated unambiguously with reasoning                     | Each rule has single interpretation + WHY             |
+| Intent Router         | Correct classification, relevant context, workflow suggestion | Classification matches human judgment                 |
+| Guardrails            | Task-specific emphasis applied                                | Guardrails in output match task type table            |
+| Intervention Reminder | User corrections take priority over in-progress work          | Agent halts current work on user intervention         |
+| Compliance Auditor    | Detect principle violations mid-execution                     | Check fires at threshold, returns relevant violations |
 
 #### Execution Phase
 
 | Component         | Responsibility                       | Verification                            |
 | ----------------- | ------------------------------------ | --------------------------------------- |
-| Skill Abstraction | Correct behavior when skill followed | Skill execution produces correct output |
+| Agent Abstraction | Correct behavior when agent followed | Agent execution produces correct output |
 | PreToolUse Hooks  | Block prohibited operations          | Hook fires on known bad input           |
 | Tool Restriction  | Wrong tools unavailable              | Tool not in allowed list                |
 
@@ -233,9 +231,9 @@ When failures occur, we distinguish:
 When analyzing a failure:
 
 1. **Was there a rule?** Check AXIOMS/HEURISTICS for applicable rule
-2. **Did router suggest correct skill?** Check hydrator output
-3. **Did agent use skill?** If yes, was skill output correct?
-4. **Should PreToolUse have blocked?** Check policy_enforcer rules
+2. **Did router suggest correct workflow?** Check hydrator output
+3. **Did agent follow workflow?** If yes, was output correct?
+4. **Should PreToolUse have blocked?** Check hook rules
 5. **Should PostToolUse have detected?** Check detection hooks
 6. **Should deny rule have blocked?** Check settings.json
 7. **Should pre-commit have caught?** Check .pre-commit-config.yaml
