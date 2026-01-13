@@ -56,7 +56,7 @@ Full TTD is required for all development work.
   - Repeat
 6. CHECKPOINT: All tests pass
 7. Invoke QA agent to validate against acceptance criteria
-5. Commit, push, update `bd` issue
+8. Commit, push, update `bd` issue
 ```
 
 ### Debugging:
