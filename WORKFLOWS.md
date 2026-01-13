@@ -146,11 +146,8 @@ Full TTD is required for all development work.
 0. Fetch or create `bd` issue, mark as in-progress
 1. Articulate clear acceptance criteria
 2. Use python-dev skill to design a durable test for success
-1. Reproduce the bug
-2. Form hypothesis
-3. Implement fix
-4. CHECKPOINT: Bug no longer reproduces
-5. Commit and push
+3. Report findings and save to `bd` issue
+4. Commit and push
 ```
 
 **batch**:
