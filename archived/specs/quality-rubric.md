@@ -29,7 +29,7 @@ _Does this further the framework's goals?_
 - [ ] **Zero Friction**: Does it minimize user effort (e.g., auto-capture)?
 - [ ] **Maintenance Free**: Does it avoid requiring constant "babysitting"?
 
-## 3. Operations & Architecture (From FRAMEWORK.md + Best Practices)
+## 3. Operations & Architecture (From FRAMEWORK-PATHS.md + Best Practices)
 
 _Is it built right?_
 

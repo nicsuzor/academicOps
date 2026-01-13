@@ -107,6 +107,16 @@ repos:
         verbose: true
         stages: [pre-commit]
 
+      # Framework paths validation - ensures FRAMEWORK-PATHS.md exists and is current
+      - id: validate-framework-paths
+        name: Validate FRAMEWORK-PATHS.md
+        entry: python3 aops-core/hooks/pre_commit_validate_paths.py
+        language: system
+        pass_filenames: false
+        always_run: true
+        verbose: true
+        stages: [pre-commit]
+
 # Note: These checks are disabled by default (too slow for every commit)
 # Run manually with: uv run python scripts/audit_framework_health.py -m
 #

@@ -10,11 +10,10 @@ tags: [framework, routing, workflows]
 
 # Workflow Reference
 
-The hydrator selects a workflow and generates a TodoWrite plan for the main agent.
+All work MUST follow one ofhe workflows in this file. No exceptions.
 
-## When TodoWrite is NOT Needed
 
-**CRITICAL**: Not every prompt needs a TodoWrite plan. Two scenarios should execute immediately without TodoWrite:
+Not every prompt needs a TodoWrite plan. Two scenarios should execute immediately without TodoWrite:
 
 ### 1. Simple Questions
 When the prompt is a simple question that can be answered directly:
@@ -25,9 +24,9 @@ When the prompt is a simple question that can be answered directly:
 
 ### 2. Direct Skill/Command Invocation
 When the prompt is a 1:1 match for an existing skill or command:
-- **Signals**: "generate transcript for today", "/commit", "create session insights"
+- **Signals**: "generate transcript for today", "commit", "create session insights"
 - **Action**: Invoke the skill/command directly without wrapping in TodoWrite
-- **Example**: "generate transcript for today" → `Task(subagent_type="...", prompt="Generate transcript for today's date")`
+- **Example**: "generate transcript for today" → `Task(subagent_type="framework", prompt="Generate transcript for today's date")`
 - **Why**: Skills already contain their own workflows; wrapping adds no value
 
 **For all other workflows**, generate a TodoWrite plan as described below.
@@ -37,12 +36,19 @@ When the prompt is a 1:1 match for an existing skill or command:
 | Trigger Signals                      | Workflow       | Core Instruction to Main Agent                     |
 | ------------------------------------ | -------------- | -------------------------------------------------- |
 | "?", "how", "what", "explain"        | **question**   | Answer directly, no plan mode, no commit           |
-| Single file, clear change            | **minor-edit** | Skip plan mode, edit → verify → commit             |
 | "implement", "add feature", "create" | **tdd**        | Plan mode, test-first, delegate to subagents       |
 | "fix", "bug", "error"                | **debug**      | Plan mode, reproduce → hypothesis → fix → verify   |
 | Multiple items, "all", "each"        | **batch**      | Plan mode, spawn parallel subagents, aggregate QA  |
 | "verify", "check", "investigate"     | **qa-proof**   | Gather evidence, quote errors exactly, no guessing |
 | Complex, infrastructure, multi-step  | **plan-mode**  | Plan mode required, critic review, user approval   |
+
+## Detection Rules
+
+- **No TodoWrite - Simple question**: "?", "how", "what", "explain" with no action needed → Just answer, no plan
+- **No TodoWrite - Direct skill/command**: 1:1 match with existing skill/command → Invoke directly, no wrapper
+- **Batch**: Multiple independent items → workflow=batch, parallel subagents
+- **Interactive**: "one by one", "work through" → AskUserQuestion checkpoints
+- **bd issue correlation**: Multi-session work or dependencies → Check `bd ready`, note relevant issues
 
 ## Fixed Execution Loop (All Except Questions)
 
@@ -95,23 +101,21 @@ Check all three dimensions and produce verdict.
 **If VERIFIED**: Proceed to commit and push
 **If ISSUES**: Fix the issues, then re-verify before completing
 
-## What Hydrator Outputs
 
-For each workflow, hydrator generates:
+## TodoWrite Structure by Workflow
 
-1. **Intent** - What user actually wants
-2. **Workflow** - One of the above
-3. **Acceptance criteria** - Specific, verifiable conditions for success
-4. **TodoWrite plan** - Steps for main agent to execute
+### Simple question:
+```
+1. Answer the user's question: 
+2. HALT after answering and await further instructions.
+```
 
-### TodoWrite Structure by Workflow
-
-**question**: No TodoWrite. Just answer.
-
-**minor-edit**:
+### Minor edit:
 
 ```
-1. Edit [file] to [change]
+1. Fetch or create `bd` issue, mark as in-progress
+2. Invoke `ttd` to create a failing test
+2. Invoke `python-dev` to [change]
 2. CHECKPOINT: Verify change works
 3. Commit and push
 ```
@@ -121,8 +125,9 @@ For each workflow, hydrator generates:
 ```
 1. Write failing test for [criterion]
 2. Implement to pass test
-3. CHECKPOINT: All tests pass
-4. Commit and push
+3. Commit and repeat
+4. CHECKPOINT: All tests pass
+5. Commit and push
 ```
 
 **debug**:

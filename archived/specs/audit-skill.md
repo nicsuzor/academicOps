@@ -189,7 +189,7 @@ Or via command:
 - AXIOMS.md → specs/meta-framework.md
 
 **Implicit** (N) - in docs, no dedicated spec:
-- FRAMEWORK.md → JIT-INJECTION.md
+- FRAMEWORK-PATHS.md → JIT-INJECTION.md
 
 **Orphan candidates** (N) - no reference found:
 - docs/OLD-FILE.md
@@ -206,7 +206,7 @@ Or via command:
 
 ### Depends On
 
-- [[documentation-architecture]] - Defines purpose of README.md, INDEX.md, FRAMEWORK.md
+- [[documentation-architecture]] - Defines purpose of README.md, INDEX.md, FRAMEWORK-PATHS.md
 - [[specs/framework-health.md|framework-health]] - Health metrics and CI/CD enforcement
 - [[INDEX.md]] - File accounting target
 - [[RULES.md]] - Enforcement mapping target

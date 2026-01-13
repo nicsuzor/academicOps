@@ -31,7 +31,7 @@ export MEMORY_MCP_TOKEN="your-memory-server-token"
 
 - [AXIOMS.md](AXIOMS.md) - Inviolable principles
 - [HEURISTICS.md](HEURISTICS.md) - Empirically validated rules
-- [FRAMEWORK.md](FRAMEWORK.md) - Paths and configuration
+- [FRAMEWORK-PATHS.md](FRAMEWORK-PATHS.md) - Paths and configuration (generated)
 
 ## Architecture
 

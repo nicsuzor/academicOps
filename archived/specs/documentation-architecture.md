@@ -21,7 +21,7 @@ tags:
 
 **What problem does this solve?**
 
-Framework documentation suffered from overlap and underspecification. Multiple files (README.md, INDEX.md, FRAMEWORK.md, specs/specs.md) served unclear purposes with mixed audiences. Agents received exhaustive file trees they didn't need; humans couldn't find how things fit together.
+Framework documentation suffered from overlap and underspecification. Multiple files (README.md, INDEX.md, FRAMEWORK-PATHS.md, specs/specs.md) served unclear purposes with mixed audiences. Agents received exhaustive file trees they didn't need; humans couldn't find how things fit together.
 
 **Why does this matter?**
 
@@ -32,7 +32,7 @@ Framework documentation suffered from overlap and underspecification. Multiple f
 
 **Who benefits?**
 
-- **Agents**: Get only the paths they need (FRAMEWORK.md)
+- **Agents**: Get only the paths they need (FRAMEWORK-PATHS.md)
 - **Humans**: Understand capabilities and relationships (README.md)
 - **Auditors/Maintainers**: Complete file accounting (INDEX.md)
 
@@ -40,7 +40,7 @@ Framework documentation suffered from overlap and underspecification. Multiple f
 
 ### Success Tests
 
-1. [ ] FRAMEWORK.md contains only agent-essential paths and key files (no exhaustive listing)
+1. [ ] FRAMEWORK-PATHS.md contains only agent-essential paths and key files (no exhaustive listing)
 2. [ ] INDEX.md clearly states "audit-only" purpose in frontmatter
 3. [ ] README.md serves as human feature guide with capability overview
 4. [ ] No content duplication between the three documents
@@ -57,7 +57,7 @@ Framework documentation suffered from overlap and underspecification. Multiple f
 ### In Scope
 
 - Define three-document architecture with clear separation
-- Update FRAMEWORK.md, INDEX.md, README.md frontmatter to clarify purposes
+- Update FRAMEWORK-PATHS.md, INDEX.md, README.md frontmatter to clarify purposes
 - Remove cross-reference tables from INDEX.md (move to README.md if needed)
 
 ### Out of Scope
@@ -84,11 +84,11 @@ Framework documentation suffered from overlap and underspecification. Multiple f
 
 | Document         | Purpose                                              | Audience                   | Injected to Agents? |
 | ---------------- | ---------------------------------------------------- | -------------------------- | ------------------- |
-| **FRAMEWORK.md** | Agent-focused paths and key files                    | Agents                     | Yes (SessionStart)  |
+| **FRAMEWORK-PATHS.md** | Agent-focused paths and key files                    | Agents                     | Yes (SessionStart)  |
 | **INDEX.md**     | Complete file accounting for audits                  | Maintainers, audit scripts | No                  |
 | **README.md**    | Human feature guide - capabilities and relationships | Humans                     | No                  |
 
-### FRAMEWORK.md (Agent-Focused)
+### FRAMEWORK-PATHS.md (Agent-Focused)
 
 **Contains**:
 
@@ -140,7 +140,7 @@ Framework documentation suffered from overlap and underspecification. Multiple f
 ### Manual Verification
 
 1. Read each document's frontmatter - purpose and audience must be clear
-2. Check SessionStart hook - only FRAMEWORK.md should be injected (plus AXIOMS, HEURISTICS)
+2. Check SessionStart hook - only FRAMEWORK-PATHS.md should be injected (plus AXIOMS, HEURISTICS)
 3. Verify INDEX.md lists every file in $AOPS (use `scripts/check_orphan_files.py`)
 
 ### Automated Verification (Future)
@@ -150,7 +150,7 @@ Framework documentation suffered from overlap and underspecification. Multiple f
 
 ## Notes and Context
 
-**Decision rationale**: The three-document split emerged from audit analysis showing overlap between INDEX.md (complete file tree) and README.md (feature inventory). Rather than merge them, we separated by audience: agents need paths (FRAMEWORK.md), auditors need completeness (INDEX.md), humans need understanding (README.md).
+**Decision rationale**: The three-document split emerged from audit analysis showing overlap between INDEX.md (complete file tree) and README.md (feature inventory). Rather than merge them, we separated by audience: agents need paths (FRAMEWORK-PATHS.md), auditors need completeness (INDEX.md), humans need understanding (README.md).
 
 **Related**:
 
@@ -161,7 +161,7 @@ Framework documentation suffered from overlap and underspecification. Multiple f
 ## Completion Checklist
 
 - [x] Architecture approved by user (2026-01-05)
-- [ ] FRAMEWORK.md updated with agent-focused content only
+- [ ] FRAMEWORK-PATHS.md updated with agent-focused content only
 - [ ] INDEX.md frontmatter updated to clarify audit-only purpose
 - [ ] README.md verified as human feature guide
 - [ ] Cross-reference tables in correct location (README.md only)

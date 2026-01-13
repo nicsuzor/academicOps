@@ -22,20 +22,20 @@ from hooks.hook_logger import log_hook_event
 
 def load_framework() -> str:
     """
-    Load FRAMEWORK.md content (paths - DO NOT GUESS).
+    Load FRAMEWORK-PATHS.md content (paths - DO NOT GUESS).
 
     Returns:
         FRAMEWORK content as string
 
     Raises:
-        FileNotFoundError: If FRAMEWORK.md doesn't exist (fail-fast)
+        FileNotFoundError: If FRAMEWORK-PATHS.md doesn't exist (fail-fast)
     """
     aops_root = get_aops_root()
-    framework_path = aops_root / "FRAMEWORK.md"
+    framework_path = aops_root / "FRAMEWORK-PATHS.md"
 
     if not framework_path.exists():
         msg = (
-            f"FATAL: FRAMEWORK.md missing at {framework_path}. "
+            f"FATAL: FRAMEWORK-PATHS.md missing at {framework_path}. "
             "SessionStart hook requires this file for framework paths."
         )
         raise FileNotFoundError(msg)
@@ -43,7 +43,7 @@ def load_framework() -> str:
     content = framework_path.read_text().strip()
 
     if not content:
-        msg = f"FATAL: FRAMEWORK.md at {framework_path} is empty."
+        msg = f"FATAL: FRAMEWORK-PATHS.md at {framework_path} is empty."
         raise ValueError(msg)
 
     return content
@@ -187,7 +187,7 @@ def main():
     aops_root = get_aops_root()
     data_root = get_data_root()
 
-    # Load FRAMEWORK.md (fail-fast if missing)
+    # Load FRAMEWORK-PATHS.md (fail-fast if missing)
     try:
         framework_content = load_framework()
         framework_content = expand_path_variables(
@@ -219,7 +219,7 @@ def main():
         sys.exit(1)
 
     # Build context - FRAMEWORK (paths), AXIOMS (principles), HEURISTICS (empirical), CORE (user)
-    additional_context = f"""# Framework Paths (FRAMEWORK.md)
+    additional_context = f"""# Framework Paths (FRAMEWORK-PATHS.md)
 
 {framework_content}
 
@@ -243,7 +243,7 @@ def main():
 """
 
     # Use already-resolved paths for logging
-    framework_path = aops_root / "FRAMEWORK.md"
+    framework_path = aops_root / "FRAMEWORK-PATHS.md"
     axioms_path = aops_root / "AXIOMS.md"
     heuristics_path = aops_root / "HEURISTICS.md"
     core_path = data_root / "CORE.md"
@@ -275,7 +275,7 @@ def main():
     print(json.dumps(output_data))
 
     # Status to stderr
-    print(f"✓ Loaded FRAMEWORK.md from {framework_path}", file=sys.stderr)
+    print(f"✓ Loaded FRAMEWORK-PATHS.md from {framework_path}", file=sys.stderr)
     print(f"✓ Loaded AXIOMS.md from {axioms_path}", file=sys.stderr)
     print(f"✓ Loaded HEURISTICS.md from {heuristics_path}", file=sys.stderr)
     print(f"✓ Loaded CORE.md from {core_path}", file=sys.stderr)

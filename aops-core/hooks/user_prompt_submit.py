@@ -40,15 +40,15 @@ INTENT_MAX_LENGTH = 500
 
 
 def load_framework_paths() -> str:
-    """Load the Resolved Paths section from FRAMEWORK.md.
+    """Load the Resolved Paths section from FRAMEWORK-PATHS.md.
 
     Returns just the path table, not the full file.
     """
     aops_root = get_aops_root()
-    framework_path = aops_root / "FRAMEWORK.md"
+    framework_path = aops_root / "FRAMEWORK-PATHS.md"
 
     if not framework_path.exists():
-        return "(FRAMEWORK.md not found - use $AOPS/ and $ACA_DATA/ prefixes)"
+        return "(FRAMEWORK-PATHS.md not found - run: python3 aops-core/scripts/generate_framework_paths.py)"
 
     content = framework_path.read_text()
 
@@ -62,7 +62,7 @@ def load_framework_paths() -> str:
             return rest[:end].strip()
         return rest.strip()
 
-    return "(Path table not found in FRAMEWORK.md)"
+    return "(Path table not found in FRAMEWORK-PATHS.md)"
 
 
 def get_bd_work_state() -> str:
@@ -224,7 +224,7 @@ def build_hydration_instruction(
         except Exception:
             pass  # Graceful degradation for context gathering only
 
-    # Load framework paths from FRAMEWORK.md (DRY - single source of truth)
+    # Load framework paths from FRAMEWORK-PATHS.md (DRY - single source of truth)
     framework_paths = load_framework_paths()
 
     # Get bd work state (in-progress and ready issues)

@@ -39,7 +39,7 @@ When you see these domain signals, invoke the corresponding skill BEFORE startin
 Invoke `EnterPlanMode()` before:
 
 - Modifying skills/, hooks/, agents/, commands/
-- Changes to AXIOMS.md, HEURISTICS.md, FRAMEWORK.md
+- Changes to AXIOMS.md, HEURISTICS.md, FRAMEWORK-PATHS.md
 - Multi-file refactors or architectural changes
 - Any change requiring user approval
 

@@ -59,7 +59,7 @@ How the aops framework influences agent behavior. We cannot force compliance - o
 
 **We cannot force agent behavior.** Claude Code has no mechanism to prevent an agent from skipping steps. Any "enforcement" is actually "encouragement with detection."
 
-**But prompt injection IS enforcement.** "Soft" doesn't mean "not real." Prompt-level rules (Level 1 in the enforcement ladder) are the most common enforcement mechanism - 43 rules use this level. When we say a rule is "enforced via FRAMEWORK.md injection at SessionStart," that IS the enforcement. Don't dismiss it as "no enforcement" just because there's no blocking hook.
+**But prompt injection IS enforcement.** "Soft" doesn't mean "not real." Prompt-level rules (Level 1 in the enforcement ladder) are the most common enforcement mechanism - 43 rules use this level. When we say a rule is "enforced via FRAMEWORK-PATHS.md injection at SessionStart," that IS the enforcement. Don't dismiss it as "no enforcement" just because there's no blocking hook.
 
 **The knowing-doing gap**: Agents read AXIOMS, understand them, and still skip steps due to:
 

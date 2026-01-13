@@ -94,7 +94,7 @@ When any agent works on framework-related issues (bugs, features, changes), it s
 
 ## Questions & Decisions
 
-- **Q**: Should this be a separate file or integrated into existing FRAMEWORK.md?
+- **Q**: Should this be a separate file or integrated into existing FRAMEWORK-PATHS.md?
   - **A**: TBD
 
 - **Q**: Which skills need this knowledge?

@@ -144,7 +144,7 @@ Unjustified instructions are bloat - they cost tokens and create confusion about
 
 **Sources to scan** (files injected at SessionStart or via hooks):
 
-- `FRAMEWORK.md` - core instructions
+- `FRAMEWORK-PATHS.md` - core instructions
 - `AXIOMS.md`, `HEURISTICS.md` - principle statements
 - `skills/*/SKILL.md` - skill-specific instructions
 - `commands/*.md` - command instructions
@@ -171,7 +171,7 @@ Unjustified instructions are bloat - they cost tokens and create confusion about
 **Example orphan** (discovered in session):
 
 ```
-FRAMEWORK.md:35 - "When working with session logs, always invoke Skill(skill='transcript') first"
+FRAMEWORK-PATHS.md:35 - "When working with session logs, always invoke Skill(skill='transcript') first"
 → NOT in RULES.md
 → No axiom/heuristic reference
 → ORPHAN - needs justification or removal
@@ -183,13 +183,13 @@ FRAMEWORK.md:35 - "When working with session logs, always invoke Skill(skill='tr
 ### Instruction Justification Status
 
 **Justified** (N instructions):
-- FRAMEWORK.md:78 "NEVER hardcode paths" → [[axioms/dry-modular-explicit.md]]
+- FRAMEWORK-PATHS.md:78 "NEVER hardcode paths" → [[axioms/dry-modular-explicit.md]]
 
 **Implicit** (N instructions):
 - skills/python-dev/SKILL.md:42 "use uv run" → derives from [[axioms/use-standard-tools.md]]
 
 **Orphan** (N instructions) - REQUIRES ACTION:
-- FRAMEWORK.md:35 "invoke transcript skill first for session logs" → NO JUSTIFICATION
+- FRAMEWORK-PATHS.md:35 "invoke transcript skill first for session logs" → NO JUSTIFICATION
 - commands/learn.md:56 "..." → NO JUSTIFICATION
 ```
 
@@ -467,7 +467,7 @@ status: PASS | ISSUES_FOUND
 
 **Implicit** (N files) - in docs, no dedicated spec:
 
-- FRAMEWORK.md → JIT-INJECTION.md
+- FRAMEWORK-PATHS.md → JIT-INJECTION.md
 - README.md → framework convention
 
 **Orphan candidates** (N files) - no reference found:

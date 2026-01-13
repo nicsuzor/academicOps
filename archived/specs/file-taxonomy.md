@@ -125,7 +125,7 @@ Every framework file belongs to exactly one category. This classification determ
 - `skills/*/workflows/*.md` - Multi-step workflows
 - `commands/*.md` - Slash commands
 - `agents/*.md` - Agent definitions
-- Root instructions: `AXIOMS.md`, `HEURISTICS.md`, `FRAMEWORK.md`, `WORKFLOWS.md` (injected to agents)
+- Root instructions: `AXIOMS.md`, `HEURISTICS.md`, `FRAMEWORK-PATHS.md`, `WORKFLOWS.md` (injected to agents)
 
 **Examples**:
 
@@ -179,7 +179,7 @@ Every framework file belongs to exactly one category. This classification determ
 | ------------------------------------------------------------ | ----------- | ------------------------------- |
 | `specs/`                                                     | SPEC        | Framework design specifications |
 | `VISION.md`, `README.md`, `INDEX.md`, `ROADMAP.md`           | SPEC        | Design/status for humans        |
-| `AXIOMS.md`, `HEURISTICS.md`, `FRAMEWORK.md`, `WORKFLOWS.md` | INSTRUCTION | Injected to agents              |
+| `AXIOMS.md`, `HEURISTICS.md`, `FRAMEWORK-PATHS.md`, `WORKFLOWS.md` | INSTRUCTION | Injected to agents              |
 | `docs/`                                                      | DOCS        | Implementation guides           |
 | `skills/*/references/`                                       | REF         | External domain knowledge       |
 | `scripts/`                                                   | SCRIPT      | Utility scripts                 |

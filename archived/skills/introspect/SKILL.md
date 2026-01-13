@@ -63,7 +63,7 @@ When invoked as just `/introspect`:
 ## Framework Self-Knowledge Report
 
 ### What Session Context Provides
-- Framework paths (FRAMEWORK.md)
+- Framework paths (FRAMEWORK-PATHS.md)
 - 29 inviolable axioms (AXIOMS.md)
 - 36 empirical heuristics (HEURISTICS.md)
 - User context and preferences (CORE.md)
@@ -81,7 +81,7 @@ The SessionStart hook (`hooks/sessionstart_load_axioms.py`) injects these files:
 
 | File          | Content                                      | Path Variables Expanded |
 | ------------- | -------------------------------------------- | ----------------------- |
-| FRAMEWORK.md  | Paths, environment vars, memory architecture | Yes                     |
+| FRAMEWORK-PATHS.md  | Paths, environment vars, memory architecture | Yes                     |
 | AXIOMS.md     | 29 inviolable principles                     | No                      |
 | HEURISTICS.md | 36 empirical rules with evidence links       | No                      |
 | CORE.md       | User profile, tools, workflow requirements   | No                      |

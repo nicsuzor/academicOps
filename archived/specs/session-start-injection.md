@@ -36,7 +36,7 @@ This is the **entry point** of the framework. Everything downstream assumes this
 
 SessionStart injection provides exactly four categories of information:
 
-### 1. Navigation (FRAMEWORK.md)
+### 1. Navigation (FRAMEWORK-PATHS.md)
 
 **Purpose**: WHERE things are - resolved paths for this session.
 
@@ -128,7 +128,7 @@ All four files are **mandatory**. If ANY file is:
 Files are concatenated with clear section headers:
 
 ```
-# Framework Paths (FRAMEWORK.md)
+# Framework Paths (FRAMEWORK-PATHS.md)
 [content with paths expanded]
 
 ---
@@ -188,7 +188,7 @@ This happens at runtime so content is session-specific.
 
 ```bash
 # Verify all files exist and are non-empty
-test -s $AOPS/FRAMEWORK.md
+test -s $AOPS/FRAMEWORK-PATHS.md
 test -s $AOPS/AXIOMS.md
 test -s $AOPS/HEURISTICS.md
 test -s $ACA_DATA/CORE.md
@@ -218,7 +218,7 @@ mv $AOPS/AXIOMS.md.bak $AOPS/AXIOMS.md
 - [[FLOW]] - Execution flow diagrams
 - [[AXIOMS.md]] - Inviolable principles
 - [[HEURISTICS.md]] - Empirical patterns
-- [[FRAMEWORK.md]] - Path configuration
+- [[FRAMEWORK-PATHS.md]] - Path configuration
 - [[CORE.md]] - User context
 
 ## Acceptance Criteria
