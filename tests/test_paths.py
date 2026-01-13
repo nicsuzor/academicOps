@@ -27,7 +27,7 @@ class TestGetWritingRoot:
         # Arrange
         aops_root = tmp_path / "academicOps"
         aops_root.mkdir()
-        (aops_root / "lib").mkdir()
+        (aops_root / "aops-core").mkdir()  # v1.0: validation checks for aops-core/
         monkeypatch.setenv("AOPS", str(aops_root))
 
         # Act
@@ -67,7 +67,7 @@ class TestGetBotsDir:
         # Arrange - get_bots_dir is now just an alias for get_aops_root()
         aops_root = tmp_path / "academicOps"
         aops_root.mkdir()
-        (aops_root / "lib").mkdir()
+        (aops_root / "aops-core").mkdir()  # v1.0: validation checks for aops-core/
         monkeypatch.setenv("AOPS", str(aops_root))
 
         # Act
@@ -100,12 +100,13 @@ class TestGetHooksDir:
     """Tests for get_hooks_dir() function."""
 
     def test_get_hooks_dir(self, tmp_path, monkeypatch):
-        """Test get_hooks_dir() returns aops_root / 'hooks'."""
-        # Arrange - Hooks are now directly under AOPS root
+        """Test get_hooks_dir() returns aops_root / 'aops-core' / 'hooks'."""
+        # Arrange - Hooks are now under AOPS/aops-core/ in v1.0
         aops_root = tmp_path / "academicOps"
-        hooks_dir = aops_root / "hooks"
+        aops_core = aops_root / "aops-core"
+        hooks_dir = aops_core / "hooks"
         aops_root.mkdir()
-        (aops_root / "lib").mkdir()
+        aops_core.mkdir()
         hooks_dir.mkdir()
         monkeypatch.setenv("AOPS", str(aops_root))
 
@@ -122,11 +123,13 @@ class TestGetHookScript:
 
     def test_get_hook_script_exists(self, tmp_path, monkeypatch):
         """Test get_hook_script(name) returns correct path for existing hook."""
-        # Arrange - Hooks are directly under AOPS/hooks/
+        # Arrange - Hooks are under AOPS/aops-core/hooks/ in v1.0
         aops_root = tmp_path / "academicOps"
-        hooks_dir = aops_root / "hooks"
-        hooks_dir.mkdir(parents=True)
-        (aops_root / "lib").mkdir()
+        aops_core = aops_root / "aops-core"
+        hooks_dir = aops_core / "hooks"
+        aops_root.mkdir()
+        aops_core.mkdir()
+        hooks_dir.mkdir()
 
         hook_script = hooks_dir / "session_start.py"
         hook_script.touch()
@@ -145,9 +148,11 @@ class TestGetHookScript:
         """Test RuntimeError when hook doesn't exist."""
         # Arrange
         aops_root = tmp_path / "academicOps"
-        hooks_dir = aops_root / "hooks"
-        hooks_dir.mkdir(parents=True)
-        (aops_root / "lib").mkdir()
+        aops_core = aops_root / "aops-core"
+        hooks_dir = aops_core / "hooks"
+        aops_root.mkdir()
+        aops_core.mkdir()
+        hooks_dir.mkdir()
         monkeypatch.setenv("AOPS", str(aops_root))
 
         # Act & Assert
@@ -162,10 +167,12 @@ class TestPathsUsePathlib:
         """Test all functions return Path objects, not strings."""
         # Arrange - Set up both AOPS and ACA_DATA environments
         aops_root = tmp_path / "academicOps"
+        aops_core = aops_root / "aops-core"
         data_dir = tmp_path / "data"
-        hooks_dir = aops_root / "hooks"
-        hooks_dir.mkdir(parents=True)
-        (aops_root / "lib").mkdir()
+        hooks_dir = aops_core / "hooks"
+        aops_root.mkdir()
+        aops_core.mkdir()
+        hooks_dir.mkdir()
         data_dir.mkdir()
 
         hook_script = hooks_dir / "test_hook.py"

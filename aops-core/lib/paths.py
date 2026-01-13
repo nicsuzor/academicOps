@@ -33,9 +33,10 @@ def get_aops_root() -> Path:
     aops_path = Path(aops).resolve()
     if not aops_path.exists():
         raise RuntimeError(f"$AOPS path doesn't exist: {aops_path}")
-    if not (aops_path / "lib").is_dir():
+    # v1.0: lib/ moved into aops-core plugin
+    if not (aops_path / "aops-core").is_dir():
         raise RuntimeError(
-            f"$AOPS doesn't look like aOps framework (missing lib/): {aops_path}"
+            f"$AOPS doesn't look like aOps framework (missing aops-core/): {aops_path}"
         )
 
     return aops_path
@@ -70,18 +71,18 @@ def get_data_root() -> Path:
 
 
 def get_skills_dir() -> Path:
-    """Get skills directory ($AOPS/skills)."""
-    return get_aops_root() / "skills"
+    """Get skills directory ($AOPS/aops-core/skills)."""
+    return get_aops_root() / "aops-core" / "skills"
 
 
 def get_hooks_dir() -> Path:
-    """Get hooks directory ($AOPS/hooks)."""
-    return get_aops_root() / "hooks"
+    """Get hooks directory ($AOPS/aops-core/hooks)."""
+    return get_aops_root() / "aops-core" / "hooks"
 
 
 def get_commands_dir() -> Path:
-    """Get commands directory ($AOPS/commands)."""
-    return get_aops_root() / "commands"
+    """Get commands directory ($AOPS/aops-core/commands)."""
+    return get_aops_root() / "aops-core" / "commands"
 
 
 def get_tests_dir() -> Path:

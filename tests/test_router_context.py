@@ -196,28 +196,28 @@ class TestExtractRouterContext:
         assert isinstance(result, str), "Result should be a markdown string"
 
         # Verify user prompts section exists with recent prompts
-        assert (
-            "login endpoint" in result.lower()
-        ), "Should contain most recent user prompt about login endpoint"
-        assert (
-            "testing patterns" in result.lower()
-        ), "Should contain user prompt about testing patterns"
+        assert "login endpoint" in result.lower(), (
+            "Should contain most recent user prompt about login endpoint"
+        )
+        assert "testing patterns" in result.lower(), (
+            "Should contain user prompt about testing patterns"
+        )
 
         # Verify active skill is shown
-        assert (
-            "framework" in result.lower()
-        ), "Should show 'framework' as the active/recent skill"
+        assert "framework" in result.lower(), (
+            "Should show 'framework' as the active/recent skill"
+        )
 
         # Verify TodoWrite summary shows status counts
-        assert (
-            "completed" in result.lower() or "2" in result
-        ), "Should show completed task count or status"
-        assert (
-            "in_progress" in result.lower() or "1" in result
-        ), "Should show in_progress task count or status"
-        assert (
-            "pending" in result.lower() or "1" in result
-        ), "Should show pending task count or status"
+        assert "completed" in result.lower() or "2" in result, (
+            "Should show completed task count or status"
+        )
+        assert "in_progress" in result.lower() or "1" in result, (
+            "Should show in_progress task count or status"
+        )
+        assert "pending" in result.lower() or "1" in result, (
+            "Should show pending task count or status"
+        )
 
     def test_extract_router_context_truncates_long_prompts(
         self, tmp_path: Path
@@ -240,9 +240,10 @@ class TestExtractRouterContext:
 
         result = extract_router_context(session_file)
 
-        # The original 500-char prompt should be truncated
-        # Check that we don't have 500 consecutive 'A's
-        assert "A" * 200 not in result, "Long prompts should be truncated to ~100 chars"
+        # The original 500-char prompt should be truncated to 400
+        # Check that we have 400 'A's but not 401
+        assert "A" * 400 in result, "Long prompts should include up to 400 chars"
+        assert "A" * 401 not in result, "Long prompts should be truncated at 400 chars"
 
     def test_extract_router_context_limits_to_recent_prompts(
         self, tmp_path: Path
@@ -269,12 +270,12 @@ class TestExtractRouterContext:
         result = extract_router_context(session_file)
 
         # Should NOT contain early prompts (0, 1, 2)
-        assert (
-            "prompt number 0" not in result.lower()
-        ), "Should not contain oldest prompts"
-        assert (
-            "prompt number 1" not in result.lower()
-        ), "Should not contain oldest prompts"
+        assert "prompt number 0" not in result.lower(), (
+            "Should not contain oldest prompts"
+        )
+        assert "prompt number 1" not in result.lower(), (
+            "Should not contain oldest prompts"
+        )
 
         # Should contain recent prompts (at least 8 or 9)
         assert "prompt number 9" in result.lower(), "Should contain most recent prompt"
@@ -320,14 +321,14 @@ class TestExtractRouterContext:
         # Should either be empty or not contain the slash commands
         # (implementation may vary - either skip them entirely or include them)
         # The key is it should NOT crash and should handle gracefully
-        assert isinstance(
-            result, str
-        ), "Should return a string even for slash-only session"
+        assert isinstance(result, str), (
+            "Should return a string even for slash-only session"
+        )
         # If not empty, verify it's well-formed (doesn't have parsing errors)
         if result:
-            assert (
-                "Recent prompts" in result or "prompt" in result.lower()
-            ), "If non-empty, should have standard format"
+            assert "Recent prompts" in result or "prompt" in result.lower(), (
+                "If non-empty, should have standard format"
+            )
 
     def test_extract_router_context_malformed_jsonl(self, tmp_path: Path) -> None:
         """Test that malformed JSONL lines are gracefully skipped.
@@ -355,18 +356,18 @@ class TestExtractRouterContext:
         result = extract_router_context(session_file)
 
         # Should not crash and should return a string
-        assert isinstance(
-            result, str
-        ), "Should return a string even with malformed lines"
+        assert isinstance(result, str), (
+            "Should return a string even with malformed lines"
+        )
         # Should still extract at least one valid prompt
         if result:
             # Should contain at least one of the valid prompts
             has_valid_content = (
                 "first valid" in result.lower() or "second valid" in result.lower()
             )
-            assert (
-                has_valid_content
-            ), "Should extract valid prompts despite malformed lines"
+            assert has_valid_content, (
+                "Should extract valid prompts despite malformed lines"
+            )
 
     def test_extract_router_context_no_todowrite(self, tmp_path: Path) -> None:
         """Test that session without TodoWrite omits 'Tasks:' line.
@@ -393,13 +394,13 @@ class TestExtractRouterContext:
         result = extract_router_context(session_file)
 
         # Should not contain Tasks line since no TodoWrite was called
-        assert (
-            "tasks:" not in result.lower()
-        ), "Should omit 'Tasks:' line when no TodoWrite calls in session"
+        assert "tasks:" not in result.lower(), (
+            "Should omit 'Tasks:' line when no TodoWrite calls in session"
+        )
         # But should still have other content
-        assert (
-            "python-dev" in result.lower() or "prompt" in result.lower()
-        ), "Should still have skill or prompt content"
+        assert "python-dev" in result.lower() or "prompt" in result.lower(), (
+            "Should still have skill or prompt content"
+        )
 
     def test_extract_router_context_no_skill_invocation(self, tmp_path: Path) -> None:
         """Test that session without Skill invocation omits 'Active:' line.
@@ -442,9 +443,9 @@ class TestExtractRouterContext:
         result = extract_router_context(session_file)
 
         # Should not contain Active line since no Skill was invoked
-        assert (
-            "active:" not in result.lower()
-        ), "Should omit 'Active:' line when no Skill invocations in session"
+        assert "active:" not in result.lower(), (
+            "Should omit 'Active:' line when no Skill invocations in session"
+        )
         # But should still have tasks content
         assert (
             "task" in result.lower()
@@ -491,15 +492,15 @@ class TestExtractRouterContext:
         result = extract_router_context(session_file)
 
         # Should extract prompts from BOTH formats
-        assert (
-            "fix the bug" in result.lower() or "/do" in result
-        ), "Should extract string-format command content"
-        assert (
-            "test the fix" in result.lower()
-        ), "Should extract list-format prompt content"
-        assert (
-            "save that" in result.lower() or "output directory" in result.lower()
-        ), "Should extract follow-up string-format prompt"
+        assert "fix the bug" in result.lower() or "/do" in result, (
+            "Should extract string-format command content"
+        )
+        assert "test the fix" in result.lower(), (
+            "Should extract list-format prompt content"
+        )
+        assert "save that" in result.lower() or "output directory" in result.lower(), (
+            "Should extract follow-up string-format prompt"
+        )
 
     def test_extract_router_context_mixed_format_ordering(self, tmp_path: Path) -> None:
         """Test that mixed format entries are extracted in correct order.
@@ -585,9 +586,9 @@ class TestExtractRouterContextDemo:
 
         # Analyze token efficiency
         assert len(context) < 2000, "Context should be compact (<2000 chars)"
-        assert (
-            "Session Context" in context or context == ""
-        ), "Should have header or be empty"
+        assert "Session Context" in context or context == "", (
+            "Should have header or be empty"
+        )
 
     def test_demo_show_raw_vs_extracted(self, tmp_path: Path) -> None:
         """Given mixed content formats, show what gets extracted vs filtered.
@@ -837,9 +838,9 @@ class TestCleanPromptExtraction:
         context = extract_router_context(session_file)
 
         # Should contain the actual command args, not XML markup
-        assert (
-            "fix the hydrator" in context.lower()
-        ), "Should extract command args content"
+        assert "fix the hydrator" in context.lower(), (
+            "Should extract command args content"
+        )
         # Should NOT contain XML tags
         assert "<command-message>" not in context, "Should strip <command-message> tag"
         assert "<command-name>" not in context, "Should strip <command-name> tag"
@@ -904,9 +905,9 @@ class TestCleanPromptExtraction:
         assert "run the tests" in context.lower(), "Should include real user prompt"
         assert "save that" in context.lower(), "Should include follow-up prompt"
         # Should NOT contain agent notification content
-        assert (
-            "agent-notification" not in context
-        ), "Should filter out agent notifications"
+        assert "agent-notification" not in context, (
+            "Should filter out agent notifications"
+        )
         assert "aa7d721" not in context, "Should not include agent IDs"
 
     def test_combined_cleaning(self, tmp_path: Path) -> None:
@@ -1143,17 +1144,17 @@ class TestCustodietContextFormat:
         assert "authentication bug" in context.lower(), "Should contain first prompt"
         assert "verify the fix" in context.lower(), "Should contain recent prompt"
         assert "python-dev" in context.lower(), "Should show active skill"
-        assert (
-            "1 completed" in context or "completed" in context.lower()
-        ), "Should show task counts"
-        assert (
-            "1 in_progress" in context or "in_progress" in context
-        ), "Should show in_progress"
+        assert "1 completed" in context or "completed" in context.lower(), (
+            "Should show task counts"
+        )
+        assert "1 in_progress" in context or "in_progress" in context, (
+            "Should show in_progress"
+        )
 
         # No duplicate headers
-        assert (
-            context.count("## Session Context") == 1
-        ), "Should have exactly one header"
+        assert context.count("## Session Context") == 1, (
+            "Should have exactly one header"
+        )
 
 
 class TestContextIncludesAgentActivity:
@@ -1242,9 +1243,9 @@ class TestContextIncludesAgentActivity:
         # Context MUST show recent tool calls
         assert "Read" in context, "Should show Read tool was called"
         assert "Edit" in context, "Should show Edit tool was called"
-        assert (
-            "Bash" in context or "pytest" in context
-        ), "Should show Bash/test execution"
+        assert "Bash" in context or "pytest" in context, (
+            "Should show Bash/test execution"
+        )
 
     def test_context_shows_files_touched(self, tmp_path: Path) -> None:
         """Context should indicate which files the agent has interacted with.
@@ -1335,9 +1336,9 @@ class TestContextIncludesAgentActivity:
         assert "what did you find" in context.lower(), "Should show second user prompt"
 
         # Should show agent activity (tool calls at minimum)
-        assert (
-            "Bash" in context or "log" in context
-        ), "Should show agent investigated logs"
+        assert "Bash" in context or "log" in context, (
+            "Should show agent investigated logs"
+        )
 
     def test_context_not_empty_for_active_session(self, tmp_path: Path) -> None:
         """A session with real activity should produce substantial context.
