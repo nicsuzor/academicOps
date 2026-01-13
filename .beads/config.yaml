@@ -63,11 +63,4 @@
 
 issue-prefix: "aops"
 repos:
-    primary: "/home/nic/writing/.beads"  # Primary repo (where this database lives)
-    additional:
-        - "/home/nic/writing/academicOps"
-        - "/home/nic/writing/buttermilk"
-
-routing:
-  mode: "explicit"
-  default: "/home/nic/writing/.beads"
+    primary: "."  # Primary repo (where this database lives)
