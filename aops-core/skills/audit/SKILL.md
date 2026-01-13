@@ -11,8 +11,6 @@ permalink: skills-audit
 
 Comprehensive governance audit for the academicOps framework.
 
-**Specification**: See [[specs/audit-protocol.md]] for audit scope, report format, and validation criteria.
-
 **NO RATIONALIZATION**: An audit reports ALL discrepancies. Do NOT justify ignoring files as "generated", "acceptable", or "probably don't need to be tracked". Every gap is reported. The user decides what's acceptable - not the auditor.
 
 ## Workflow Entry Point

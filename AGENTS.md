@@ -37,6 +37,14 @@ Almost all agent actions should follow skill invocation for repeatability. This 
 - **Just-In-Time Skill Reminders**: Agents should be reminded to invoke relevant skills just-in-time before required.
 - **Context Uncertainty Favors Skills**: When uncertain whether a task requires a skill, invoke it. The cost of unnecessary context is lower than missing it.
 
+## Agent Instructions Are Expensive
+
+Skills, commands, and agent .md files are loaded into context and cost tokens. Keep them concise and actionable:
+
+- **NO spec references** - `See [[specs/foo.md]]` adds no executable value for agents
+- **NO explanatory content** - "why" belongs in specs, not agent instructions
+- **ONLY actionable steps** - agents need to know WHAT to do, not background context
+
 ## Core-First Incremental Expansion
 
 Only concern ourselves with the core. Expand slowly, one piece at a time.
