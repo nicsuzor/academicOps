@@ -18,6 +18,7 @@ repos:
     rev: v0.12.1
     hooks:
       - id: markdownlint-cli2
+        exclude: '^archived/'
 
   # Standard hooks
   - repo: https://github.com/pre-commit/pre-commit-hooks
@@ -38,8 +39,10 @@ repos:
     rev: v0.1.9
     hooks:
       - id: ruff
+        exclude: '^archived/'
       - id: ruff-format
         args: [--check]
+        exclude: '^archived/'
 
   # Type checking
   - repo: https://github.com/pre-commit/mirrors-mypy
@@ -48,7 +51,7 @@ repos:
       - id: mypy
         additional_dependencies: [types-PyYAML]
         args: [--ignore-missing-imports]
-        exclude: 'tests/'
+        exclude: '^(tests/|archived/)'
 
   # Framework health checks (local)
   - repo: local
@@ -61,7 +64,7 @@ repos:
         language: system
         pass_filenames: false
         always_run: true
-        stages: [commit]
+        stages: [pre-commit]
         verbose: true
 
       # Orphan files check - WARNING only
@@ -72,7 +75,7 @@ repos:
         pass_filenames: false
         always_run: true
         verbose: true
-        stages: [commit]
+        stages: [pre-commit]
 
       # File taxonomy check - validates category frontmatter
       - id: check-file-taxonomy
@@ -82,7 +85,7 @@ repos:
         pass_filenames: false
         always_run: true
         verbose: true
-        stages: [commit]
+        stages: [pre-commit]
 
       # Namespace collision check - per H8, framework objects must have unique names
       - id: check-namespace-collision
@@ -92,7 +95,7 @@ repos:
         pass_filenames: false
         always_run: true
         verbose: true
-        stages: [commit]
+        stages: [pre-commit]
 
       # Demo test location check - per ns-0p7, demo tests must be in tests/demo/
       - id: check-demo-test-location
@@ -102,7 +105,17 @@ repos:
         pass_filenames: false
         always_run: true
         verbose: true
-        stages: [commit]
+        stages: [pre-commit]
+
+      # Framework paths validation - ensures FRAMEWORK-PATHS.md exists and is current
+      - id: validate-framework-paths
+        name: Validate FRAMEWORK-PATHS.md
+        entry: python3 aops-core/hooks/pre_commit_validate_paths.py
+        language: system
+        pass_filenames: false
+        always_run: true
+        verbose: true
+        stages: [pre-commit]
 
 # Note: These checks are disabled by default (too slow for every commit)
 # Run manually with: uv run python scripts/audit_framework_health.py -m

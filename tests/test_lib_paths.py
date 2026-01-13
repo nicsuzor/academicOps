@@ -28,7 +28,7 @@ class TestPathResolution:
         """Test that get_aops_root respects valid AOPS env var."""
         test_dir = tmp_path / "aops"
         test_dir.mkdir()
-        (test_dir / "lib").mkdir()
+        (test_dir / "aops-core").mkdir()  # v1.0: validation checks for aops-core/
         monkeypatch.setenv("AOPS", str(test_dir))
 
         result = paths.get_aops_root()
@@ -72,15 +72,15 @@ class TestPathResolution:
         assert result == test_dir.resolve()
 
     def test_get_skills_dir(self, monkeypatch, tmp_path):
-        """Test that get_skills_dir returns AOPS/skills."""
+        """Test that get_skills_dir returns AOPS/aops-core/skills."""
         test_dir = tmp_path / "aops"
         test_dir.mkdir()
-        (test_dir / "lib").mkdir()  # Needed for AOPS validation
+        (test_dir / "aops-core").mkdir()  # v1.0: validation checks for aops-core/
         monkeypatch.setenv("AOPS", str(test_dir))
 
         result = paths.get_skills_dir()
 
-        assert result == test_dir / "skills"
+        assert result == test_dir / "aops-core" / "skills"
 
     def test_get_tasks_dir(self, monkeypatch, tmp_path):
         """Test that get_tasks_dir returns ACA_DATA/tasks."""
@@ -97,7 +97,7 @@ class TestPathResolution:
         aops_dir = tmp_path / "aops"
         data_dir = tmp_path / "data"
         aops_dir.mkdir()
-        (aops_dir / "lib").mkdir()  # Needed for AOPS validation
+        (aops_dir / "aops-core").mkdir()  # v1.0: validation checks for aops-core/
         data_dir.mkdir()
 
         monkeypatch.setenv("AOPS", str(aops_dir))

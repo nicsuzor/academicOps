@@ -47,12 +47,17 @@ def create_mock_transcript(
 def create_mock_mining_json(
     aca_data: Path, session_id: str, mtime_offset: int = 0
 ) -> Path:
-    """Create a mock mining JSON file."""
-    mining_dir = aca_data / "dashboard" / "sessions"
+    """Create a mock mining JSON file.
+
+    v1.0: Mining JSON is at $ACA_DATA/sessions/insights/{date}-{session_prefix}.json
+    """
+    mining_dir = aca_data / "sessions" / "insights"
     mining_dir.mkdir(parents=True, exist_ok=True)
 
-    # Try both full and prefix
-    mining_path = mining_dir / f"{session_id}.json"
+    # v1.0 format: {date}-{session_prefix}.json
+    date_str = datetime.now(UTC).strftime("%Y-%m-%d")
+    session_prefix = session_id[:8] if len(session_id) >= 8 else session_id
+    mining_path = mining_dir / f"{date_str}-{session_prefix}.json"
     mining_path.write_text(json.dumps({"session_id": session_id}))
 
     # Set mtime

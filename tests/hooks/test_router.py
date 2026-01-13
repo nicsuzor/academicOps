@@ -23,7 +23,7 @@ class TestOutputMerging:
 
     def test_merge_additional_context_concatenates_with_separator(self):
         """additionalContext from multiple hooks should be joined with ---."""
-        from hooks.router import merge_outputs
+        from router import merge_outputs
 
         outputs = [
             {"hookSpecificOutput": {"additionalContext": "Context from hook 1"}},
@@ -39,7 +39,7 @@ class TestOutputMerging:
 
     def test_merge_skips_empty_additional_context(self):
         """Empty additionalContext should not add separators."""
-        from hooks.router import merge_outputs
+        from router import merge_outputs
 
         outputs = [
             {"hookSpecificOutput": {"additionalContext": "Context 1"}},
@@ -55,7 +55,7 @@ class TestOutputMerging:
 
     def test_merge_system_message_concatenates_with_newlines(self):
         """systemMessage from multiple hooks should be joined with newlines."""
-        from hooks.router import merge_outputs
+        from router import merge_outputs
 
         outputs = [
             {"systemMessage": "Message 1"},
@@ -68,7 +68,7 @@ class TestOutputMerging:
 
     def test_merge_empty_outputs_returns_empty(self):
         """Empty output list should return minimal valid output."""
-        from hooks.router import merge_outputs
+        from router import merge_outputs
 
         result = merge_outputs([], "SessionStart")
 
@@ -76,7 +76,7 @@ class TestOutputMerging:
 
     def test_merge_noop_outputs(self):
         """Empty dict outputs ({}) should merge cleanly."""
-        from hooks.router import merge_outputs
+        from router import merge_outputs
 
         outputs = [{}, {}, {}]
 
@@ -90,7 +90,7 @@ class TestPermissionDecisionPrecedence:
 
     def test_deny_wins_over_allow(self):
         """deny should take precedence over allow."""
-        from hooks.router import merge_permission_decisions
+        from router import merge_permission_decisions
 
         decisions = ["allow", "deny", "allow"]
 
@@ -100,7 +100,7 @@ class TestPermissionDecisionPrecedence:
 
     def test_deny_wins_over_ask(self):
         """deny should take precedence over ask."""
-        from hooks.router import merge_permission_decisions
+        from router import merge_permission_decisions
 
         decisions = ["ask", "deny", "ask"]
 
@@ -110,7 +110,7 @@ class TestPermissionDecisionPrecedence:
 
     def test_ask_wins_over_allow(self):
         """ask should take precedence over allow."""
-        from hooks.router import merge_permission_decisions
+        from router import merge_permission_decisions
 
         decisions = ["allow", "ask", "allow"]
 
@@ -120,7 +120,7 @@ class TestPermissionDecisionPrecedence:
 
     def test_all_allow_returns_allow(self):
         """All allow decisions should return allow."""
-        from hooks.router import merge_permission_decisions
+        from router import merge_permission_decisions
 
         decisions = ["allow", "allow", "allow"]
 
@@ -130,7 +130,7 @@ class TestPermissionDecisionPrecedence:
 
     def test_empty_decisions_returns_none(self):
         """No decisions should return None."""
-        from hooks.router import merge_permission_decisions
+        from router import merge_permission_decisions
 
         result = merge_permission_decisions([])
 
@@ -138,7 +138,7 @@ class TestPermissionDecisionPrecedence:
 
     def test_single_deny_in_many_allows(self):
         """Single deny among many allows should return deny."""
-        from hooks.router import merge_permission_decisions
+        from router import merge_permission_decisions
 
         decisions = ["allow"] * 10 + ["deny"] + ["allow"] * 10
 
@@ -152,7 +152,7 @@ class TestExitCodeAggregation:
 
     def test_all_zero_returns_zero(self):
         """All successful hooks should return 0."""
-        from hooks.router import aggregate_exit_codes
+        from router import aggregate_exit_codes
 
         codes = [0, 0, 0, 0]
 
@@ -162,7 +162,7 @@ class TestExitCodeAggregation:
 
     def test_one_failure_returns_worst(self):
         """Single failure should propagate."""
-        from hooks.router import aggregate_exit_codes
+        from router import aggregate_exit_codes
 
         codes = [0, 0, 1, 0]
 
@@ -172,7 +172,7 @@ class TestExitCodeAggregation:
 
     def test_block_code_wins(self):
         """Exit code 2 (block) should win over 1 (warn)."""
-        from hooks.router import aggregate_exit_codes
+        from router import aggregate_exit_codes
 
         codes = [0, 1, 2, 1, 0]
 
@@ -182,7 +182,7 @@ class TestExitCodeAggregation:
 
     def test_empty_codes_returns_zero(self):
         """No exit codes should return 0 (success)."""
-        from hooks.router import aggregate_exit_codes
+        from router import aggregate_exit_codes
 
         result = aggregate_exit_codes([])
 
@@ -194,7 +194,7 @@ class TestContinueLogic:
 
     def test_all_true_returns_true(self):
         """All continue=True should return True."""
-        from hooks.router import merge_continue_flags
+        from router import merge_continue_flags
 
         flags = [True, True, True]
 
@@ -204,7 +204,7 @@ class TestContinueLogic:
 
     def test_one_false_returns_false(self):
         """Single continue=False should return False."""
-        from hooks.router import merge_continue_flags
+        from router import merge_continue_flags
 
         flags = [True, True, False, True]
 
@@ -214,7 +214,7 @@ class TestContinueLogic:
 
     def test_empty_flags_returns_true(self):
         """No flags should default to True (continue)."""
-        from hooks.router import merge_continue_flags
+        from router import merge_continue_flags
 
         result = merge_continue_flags([])
 
@@ -226,7 +226,7 @@ class TestSuppressOutputLogic:
 
     def test_all_false_returns_false(self):
         """All suppressOutput=False should return False."""
-        from hooks.router import merge_suppress_flags
+        from router import merge_suppress_flags
 
         flags = [False, False, False]
 
@@ -236,7 +236,7 @@ class TestSuppressOutputLogic:
 
     def test_one_true_returns_true(self):
         """Single suppressOutput=True should return True."""
-        from hooks.router import merge_suppress_flags
+        from router import merge_suppress_flags
 
         flags = [False, False, True, False]
 
@@ -246,7 +246,7 @@ class TestSuppressOutputLogic:
 
     def test_empty_flags_returns_false(self):
         """No flags should default to False (don't suppress)."""
-        from hooks.router import merge_suppress_flags
+        from router import merge_suppress_flags
 
         result = merge_suppress_flags([])
 
@@ -258,35 +258,35 @@ class TestHookRegistry:
 
     def test_session_start_has_hooks(self):
         """SessionStart should have registered hooks."""
-        from hooks.router import HOOK_REGISTRY
+        from router import HOOK_REGISTRY
 
         assert "SessionStart" in HOOK_REGISTRY
         assert len(HOOK_REGISTRY["SessionStart"]) > 0
 
     def test_pre_tool_use_has_hooks(self):
         """PreToolUse should have registered hooks."""
-        from hooks.router import HOOK_REGISTRY
+        from router import HOOK_REGISTRY
 
         assert "PreToolUse" in HOOK_REGISTRY
         assert len(HOOK_REGISTRY["PreToolUse"]) > 0
 
     def test_post_tool_use_has_hooks(self):
         """PostToolUse should have registered hooks."""
-        from hooks.router import HOOK_REGISTRY
+        from router import HOOK_REGISTRY
 
         assert "PostToolUse" in HOOK_REGISTRY
         assert len(HOOK_REGISTRY["PostToolUse"]) > 0
 
     def test_user_prompt_submit_has_hooks(self):
         """UserPromptSubmit should have registered hooks."""
-        from hooks.router import HOOK_REGISTRY
+        from router import HOOK_REGISTRY
 
         assert "UserPromptSubmit" in HOOK_REGISTRY
         assert len(HOOK_REGISTRY["UserPromptSubmit"]) > 0
 
     def test_unknown_event_returns_empty(self):
         """Unknown hook event should return empty list."""
-        from hooks.router import get_hooks_for_event
+        from router import get_hooks_for_event
 
         hooks = get_hooks_for_event("UnknownEvent")
 
@@ -294,7 +294,7 @@ class TestHookRegistry:
 
     def test_matcher_variant_lookup(self):
         """PostToolUse:TodoWrite should return specific hooks."""
-        from hooks.router import get_hooks_for_event
+        from router import get_hooks_for_event
 
         hooks = get_hooks_for_event("PostToolUse", matcher="TodoWrite")
 
@@ -307,7 +307,7 @@ class TestAsyncDispatch:
 
     def test_async_hooks_dispatched_first(self):
         """Async hooks should be started before sync hooks run."""
-        from hooks.router import dispatch_hooks
+        from router import dispatch_hooks
 
         # This test verifies the dispatch order
         # Async hooks should be started, then sync hooks run, then async collected
@@ -331,9 +331,9 @@ class TestAsyncDispatch:
             {"script": "sync_hook2.py"},
         ]
 
-        with patch("hooks.router.start_async_hook", mock_start_async):
-            with patch("hooks.router.run_sync_hook", mock_run_sync):
-                with patch("hooks.router.collect_async_result", mock_collect_async):
+        with patch("router.start_async_hook", mock_start_async):
+            with patch("router.run_sync_hook", mock_run_sync):
+                with patch("router.collect_async_result", mock_collect_async):
                     dispatch_hooks(hooks, {})
 
         # Verify order: async started first, then sync hooks, then async collected
@@ -348,11 +348,11 @@ class TestFullRouter:
 
     def test_router_returns_valid_json(self):
         """Router should always return valid JSON."""
-        from hooks.router import route_hooks
+        from router import route_hooks
 
         input_data = {"hook_event_name": "SessionStart"}
 
-        with patch("hooks.router.run_hook_script") as mock_run:
+        with patch("router.run_hook_script") as mock_run:
             mock_run.return_value = ({}, 0)
             result, exit_code = route_hooks(input_data)
 
@@ -361,7 +361,7 @@ class TestFullRouter:
 
     def test_router_handles_missing_event_name(self):
         """Router should handle missing hook_event_name gracefully."""
-        from hooks.router import route_hooks
+        from router import route_hooks
 
         input_data = {}  # No hook_event_name
 

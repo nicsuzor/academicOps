@@ -18,7 +18,7 @@ tags:
 
 ### Core Infrastructure
 
-- ✅ **Session start loading** - AXIOMS.md, FRAMEWORK.md paths, user context injected
+- ✅ **Session start loading** - AXIOMS.md, FRAMEWORK-PATHS.md paths, user context injected
 - ✅ **Prompt router v4** - LLM-first routing; only slash commands get direct routing, everything else → Haiku classifier with full capability index
 - ✅ **Framework v3.0** - Categorical imperative, file boundary enforcement, skill delegation
 - ✅ **Hook architecture** - Hooks inject context, never call LLM APIs directly

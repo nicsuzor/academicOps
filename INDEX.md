@@ -3,7 +3,7 @@ name: index
 category: spec
 title: Framework Index
 type: reference
-description: Complete file accounting for audits. NOT injected to agents - use FRAMEWORK.md for paths.
+description: Complete file accounting for audits. NOT injected to agents - use FRAMEWORK-PATHS.md for paths.
 permalink: framework-index
 audience: maintainers, audit-scripts
 tags:
@@ -16,7 +16,7 @@ tags:
 
 Complete file accounting for audit processes. See [[documentation-architecture]] for document purposes.
 
-**Audience**: Maintainers and audit scripts only. Agents use [[FRAMEWORK.md]] for paths.
+**Audience**: Maintainers and audit scripts only. Agents use [[FRAMEWORK-PATHS.md]] for paths.
 
 For human-readable overview, see [[README]].
 
@@ -26,7 +26,7 @@ For human-readable overview, see [[README]].
 $AOPS/
 ├── [[AXIOMS.md]]                # Inviolable principles (injected at session start)
 ├── [[HEURISTICS.md]]            # Empirically validated rules (injected at session start)
-├── [[FRAMEWORK.md]]             # Resolved paths for this session (injected at session start)
+├── [[FRAMEWORK-PATHS.md]]       # Resolved paths for this session (injected at session start)
 ├── [[README.md]]                # Brief overview, feature inventory
 ├── [[INDEX.md]]                 # THIS FILE - complete file tree
 ├── [[RULES.md]]                 # Current enforcement rules (auto-generated)
@@ -120,7 +120,7 @@ $AOPS/
 │   ├── CLAUDE.md                # Hook design principles (JIT context)
 │   ├── hooks.md                 # Hook inventory and descriptions
 │   ├── router.py                # Central hook dispatcher
-│   ├── sessionstart_load_axioms.py  # Injects AXIOMS.md, FRAMEWORK.md, HEURISTICS.md
+│   ├── sessionstart_load_axioms.py  # Injects AXIOMS.md, FRAMEWORK-PATHS.md, HEURISTICS.md
 │   ├── session_env_setup.sh     # Environment setup at session start
 │   ├── user_prompt_submit.py    # Writes context to temp file, returns short instruction
 │   ├── autocommit_state.py      # Auto-commit data/ changes (Enforces: current-state-machine)

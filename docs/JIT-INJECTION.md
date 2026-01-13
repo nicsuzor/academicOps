@@ -30,7 +30,7 @@ Loads and injects as `additionalContext`:
 
 | File           | Path                | Content              |
 | -------------- | ------------------- | -------------------- |
-| [[FRAMEWORK.md | FRAMEWORK.md]]      | `$AOPS/FRAMEWORK.md` |
+| [[FRAMEWORK-PATHS.md | FRAMEWORK-PATHS.md]] | `$AOPS/FRAMEWORK-PATHS.md` |
 | [[AXIOMS.md    | AXIOMS.md]]         | `$AOPS/AXIOMS.md`    |
 | CORE.md        | `$ACA_DATA/CORE.md` | User context         |
 

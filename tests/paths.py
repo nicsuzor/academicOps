@@ -11,8 +11,10 @@ from pathlib import Path
 
 # Ensure academicOps is on path for lib imports
 _aops_root = Path(__file__).parent.parent
-if str(_aops_root) not in sys.path:
-    sys.path.insert(0, str(_aops_root))
+_aops_core = _aops_root / "aops-core"
+for path in [_aops_root, _aops_core]:
+    if str(path) not in sys.path:
+        sys.path.insert(0, str(path))
 
 from lib.paths import (
     get_aops_root as get_bots_dir,  # Framework root IS the old bots dir

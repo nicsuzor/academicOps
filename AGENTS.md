@@ -37,6 +37,14 @@ Almost all agent actions should follow skill invocation for repeatability. This 
 - **Just-In-Time Skill Reminders**: Agents should be reminded to invoke relevant skills just-in-time before required.
 - **Context Uncertainty Favors Skills**: When uncertain whether a task requires a skill, invoke it. The cost of unnecessary context is lower than missing it.
 
+## Agent Instructions Are Expensive
+
+Skills, commands, and agent .md files are loaded into context and cost tokens. Keep them concise and actionable:
+
+- **NO spec references** - `See [[specs/foo.md]]` adds no executable value for agents
+- **NO explanatory content** - "why" belongs in specs, not agent instructions
+- **ONLY actionable steps** - agents need to know WHAT to do, not background context
+
 ## Core-First Incremental Expansion
 
 Only concern ourselves with the core. Expand slowly, one piece at a time.
@@ -80,6 +88,35 @@ After completing work, output and save structured reflection.
 ```
 
 **Why always log?** Success patterns are as valuable as failure patterns. The metrics enable trend analysis.
+
+### Session Insights (Auto-Generated)
+
+Session insights are **automatically generated** when the session ends via the Stop hook.
+
+**What gets generated automatically**:
+- Metadata: session_id, date, project
+- Summary: "Session completed"
+- Outcome: "partial" (conservative default)
+- Operational metrics: workflows_used, subagents_invoked, custodiet_blocks
+- Written to: `$ACA_DATA/sessions/insights/{date}-{session_id}.json`
+
+**Optional: Output reflection text for user visibility**
+
+You MAY output a structured reflection at session end for user visibility, but persistence is automatic:
+
+```text
+## Session Insights
+
+**Summary**: [One sentence describing what was worked on]
+**Outcome**: [success/partial/failure]
+**Accomplishments**: [Bullet list of completed items]
+**Friction points**: [What was harder than expected, or empty]
+**Proposed changes**: [Framework improvements identified, or empty]
+```
+
+**Important**: This text output is for the USER to see. The actual insights JSON is saved automatically by the Stop hook. You do NOT need to "persist it to session state" - that happens automatically.
+
+**For rich analysis**: User can later invoke `/session-insights` skill to generate detailed insights with Gemini, including learning observations, skill compliance, and user satisfaction metrics.
 
 ## Step 4: Land the plane (Session Completion)
 
