@@ -81,6 +81,24 @@ After completing work, output and save structured reflection.
 
 **Why always log?** Success patterns are as valuable as failure patterns. The metrics enable trend analysis.
 
+### Save Session Insights (MANDATORY)
+
+After logging, save structured session insights. This captures session-level data for later analysis.
+
+**Session Insights Schema:**
+
+```text
+## Session Insights
+
+**Summary**: [One sentence describing what was worked on]
+**Outcome**: [success/partial/failure]
+**Accomplishments**: [Bullet list of completed items]
+**Friction points**: [What was harder than expected, or empty]
+**Proposed changes**: [Framework improvements identified, or empty]
+```
+
+Output this structured block at session end. The framework agent will persist it to session state.
+
 ## Step 4: Land the plane (Session Completion)
 
 ## Landing the Plane (Session Completion)
