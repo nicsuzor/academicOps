@@ -335,21 +335,80 @@ Reflection is stored in bd for trend analysis.
 
 ## Session Insights (Final Step)
 
-**Written to session file** as final step before close:
+Session insights are generated via **two workflows**:
+
+### Workflow A: Automatic (Stop Hook)
+
+When session ends, `unified_logger.py` automatically generates insights to:
+
+1. **Permanent storage**: `$ACA_DATA/sessions/insights/{date}-{session_id}.json`
+2. **Session state**: `session-state.json` (temporary, for QA verifier)
+
+Currently generates **operational metrics** with minimal required fields:
+- Metadata: session_id, date, project
+- Summary: "Session completed"
+- Outcome: "partial" (conservative default)
+- Operational: workflows_used, subagents_invoked, custodiet_blocks, stop_reason
+
+**Future**: LLM-based generation (when API integration available) will add rich insights.
+
+### Workflow B: Manual (Gemini Post-hoc)
+
+User invokes `/session-insights` skill to analyze transcripts with Gemini:
+
+```bash
+/session-insights {session_id}  # Specific session
+/session-insights              # Current session
+/session-insights batch        # Process multiple
+```
+
+Generates **rich insights**:
+- Learning observations
+- Skill compliance tracking
+- Context gaps
+- User mood/satisfaction
+- Conversation flow
+
+Overwrites automatic insights with more detailed analysis.
+
+### Unified Schema
+
+Both workflows write to same location with same schema:
 
 ```json
 {
-  "session_id": "...",
-  "insights": {
-    "workflows_used": ["tdd", "plan-mode"],
-    "issues_closed": ["ns-abc", "ns-def"],
-    "issues_created": ["ns-ghi"],
-    "custodiet_blocks": 0,
-    "qa_issues_found": 1,
-    "reflection_summary": "..."
-  }
+  "session_id": "a1b2c3d4",
+  "date": "2026-01-13",
+  "project": "academicOps",
+
+  "summary": "One sentence description",
+  "outcome": "success|partial|failure",
+  "accomplishments": ["item1", "item2"],
+  "friction_points": ["issue1"],
+  "proposed_changes": ["change1"],
+
+  "workflows_used": ["tdd"],
+  "subagents_invoked": ["prompt-hydrator", "critic"],
+  "subagent_count": 2,
+  "custodiet_blocks": 0,
+  "stop_reason": "end_turn",
+  "critic_verdict": "PROCEED",
+  "acceptance_criteria_count": 3,
+
+  "learning_observations": [...],
+  "skill_compliance": {...},
+  "context_gaps": [...],
+  "user_mood": 0.5,
+  "conversation_flow": [...],
+  "user_prompts": [...]
 }
 ```
+
+**Storage locations**:
+- **Permanent**: `$ACA_DATA/sessions/insights/{date}-{session_id}.json` (research data)
+- **Temporary**: `session-state.json["insights"]` (for QA verifier during session)
+
+See `aops-core/specs/session-insights-prompt.md` for full schema specification.
 
 ## Session Close (MANDATORY)
 

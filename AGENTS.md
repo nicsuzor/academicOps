@@ -81,11 +81,20 @@ After completing work, output and save structured reflection.
 
 **Why always log?** Success patterns are as valuable as failure patterns. The metrics enable trend analysis.
 
-### Save Session Insights (MANDATORY)
+### Session Insights (Auto-Generated)
 
-After logging, save structured session insights. This captures session-level data for later analysis.
+Session insights are **automatically generated** when the session ends via the Stop hook.
 
-**Session Insights Schema:**
+**What gets generated automatically**:
+- Metadata: session_id, date, project
+- Summary: "Session completed"
+- Outcome: "partial" (conservative default)
+- Operational metrics: workflows_used, subagents_invoked, custodiet_blocks
+- Written to: `$ACA_DATA/sessions/insights/{date}-{session_id}.json`
+
+**Optional: Output reflection text for user visibility**
+
+You MAY output a structured reflection at session end for user visibility, but persistence is automatic:
 
 ```text
 ## Session Insights
@@ -97,7 +106,9 @@ After logging, save structured session insights. This captures session-level dat
 **Proposed changes**: [Framework improvements identified, or empty]
 ```
 
-Output this structured block at session end. The framework agent will persist it to session state.
+**Important**: This text output is for the USER to see. The actual insights JSON is saved automatically by the Stop hook. You do NOT need to "persist it to session state" - that happens automatically.
+
+**For rich analysis**: User can later invoke `/session-insights` skill to generate detailed insights with Gemini, including learning observations, skill compliance, and user satisfaction metrics.
 
 ## Step 4: Land the plane (Session Completion)
 
