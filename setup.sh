@@ -120,6 +120,7 @@ create_symlink "CLAUDE.md" "$AOPS_PATH/CLAUDE.md"
 # Note: skills, commands, agents, hooks now live in the plugin (not top-level)
 mkdir -p "$CLAUDE_DIR/plugins"
 create_symlink "plugins/aops-core" "$AOPS_PATH/aops-core"
+create_symlink "plugins/aops-tools" "$AOPS_PATH/aops-tools"
 
 # Clean up legacy symlinks (content moved to aops-core plugin)
 for legacy in skills commands agents hooks; do
@@ -370,7 +371,7 @@ else
     REPO_CLAUDE="$AOPS_PATH/.claude"
     mkdir -p "$REPO_CLAUDE" "$REPO_CLAUDE/plugins"
     # Only link settings.json, CLAUDE.md, and the plugin (content moved to aops-core)
-    for item in settings.json:../config/claude/settings.json CLAUDE.md:../CLAUDE.md plugins/aops-core:../../aops-core; do
+    for item in settings.json:../config/claude/settings.json CLAUDE.md:../CLAUDE.md plugins/aops-core:../../aops-core plugins/aops-tools:../../aops-tools; do
         name="${item%%:*}"
         target="${item#*:}"
         [ -e "$REPO_CLAUDE/$name" ] && rm -rf "$REPO_CLAUDE/$name"
@@ -762,12 +763,19 @@ for link in settings.json CLAUDE.md; do
     fi
 done
 
-# Check plugin symlink
+# Check plugin symlinks
 if [ ! -L "$CLAUDE_DIR/plugins/aops-core" ]; then
     echo -e "${RED}✗ Plugin symlink missing: $CLAUDE_DIR/plugins/aops-core${NC}"
     VALIDATION_PASSED=false
 else
     echo -e "${GREEN}✓ Plugin aops-core linked${NC}"
+fi
+
+if [ ! -L "$CLAUDE_DIR/plugins/aops-tools" ]; then
+    echo -e "${RED}✗ Plugin symlink missing: $CLAUDE_DIR/plugins/aops-tools${NC}"
+    VALIDATION_PASSED=false
+else
+    echo -e "${GREEN}✓ Plugin aops-tools linked${NC}"
 fi
 
 # Check settings.local.json
