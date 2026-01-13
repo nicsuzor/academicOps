@@ -120,19 +120,32 @@ Check all three dimensions and produce verdict.
 3. Commit and push
 ```
 
-**tdd**:
+### Development work:
+
+Full TTD is required for all development work. 
 
 ```
-1. Write failing test for [criterion]
-2. Implement to pass test
-3. Commit and repeat
-4. CHECKPOINT: All tests pass
-5. Commit and push
+0. Fetch or create `bd` issue, mark as in-progress
+1. Articulate clear acceptance criteria
+2. Create a plan, save to `bd` issue
+3. Get critic review
+4. Execute plan steps:
+  - **Red**: Write failing test for [criterion]
+  - **Green**: Minimal implementation to pass
+  - **Evidence**: `uv run pytest -v` output
+  - **Commit**: Descriptive message with phase reference
+  - Repeat
+6. CHECKPOINT: All tests pass
+7. Invoke QA agent to validate against acceptance criteria
+5. Commit, push, update `bd` issue
 ```
 
 **debug**:
 
 ```
+0. Fetch or create `bd` issue, mark as in-progress
+1. Articulate clear acceptance criteria
+2. Use python-dev skill to design a durable test for success
 1. Reproduce the bug
 2. Form hypothesis
 3. Implement fix
