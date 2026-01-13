@@ -17,9 +17,9 @@ from pathlib import Path
 import pytest
 
 
-# Add hooks directory to path for imports
-HOOKS_DIR = Path(__file__).parent.parent.parent / "hooks"
-sys.path.insert(0, str(HOOKS_DIR))
+# Add aops-core directory to path for imports (hooks package lives here)
+AOPS_CORE_DIR = Path(__file__).parent.parent.parent / "aops-core"
+sys.path.insert(0, str(AOPS_CORE_DIR))
 
 
 def make_session_id() -> str:
