@@ -139,12 +139,57 @@ class TestHydrationPipelineDemo:
             print(f"  Quality indicators present: {quality_score}/4")
             print(f"  Response length: {len(response_text)} chars")
 
-            # Show response excerpt
-            print("\n  Response preview (first 500 chars):")
-            print("  " + "-" * 76)
-            preview = response_text[:500].replace("\n", "\n  ")
-            print(f"  {preview}...")
-            print("  " + "-" * 76)
+            # === HUMAN OPERATOR VALIDATION SECTION ===
+            print("\n" + "=" * 80)
+            print("HUMAN OPERATOR VALIDATION - Full Pipeline Output")
+            print("=" * 80)
+
+            # Check for TodoWrite usage
+            todowrite_calls = [c for c in tool_calls if c["name"] == "TodoWrite"]
+            print("\n--- TodoWrite Plan Detection ---")
+            if todowrite_calls:
+                print(f"  TodoWrite called: YES ({len(todowrite_calls)} times)")
+                first_todo = todowrite_calls[0].get("input", {})
+                todos = first_todo.get("todos", [])
+                if todos:
+                    print(f"  Plan structure:")
+                    for i, todo in enumerate(todos[:7]):  # Show first 7
+                        content = todo.get("content", "")
+                        status = todo.get("status", "")
+                        print(f"    [{i+1}] {content[:60]}... ({status})")
+            else:
+                print(f"  TodoWrite called: NO")
+
+            # Check for workflow indicators in response
+            print("\n--- Workflow Selection Evidence ---")
+            workflow_indicators = {
+                "question": "question" in response_lower and "workflow" in response_lower,
+                "minor-edit": "minor" in response_lower or "edit" in response_lower,
+                "tdd": "tdd" in response_lower or "test-driven" in response_lower,
+                "debug": "debug" in response_lower,
+                "batch": "batch" in response_lower or "parallel" in response_lower,
+                "qa-proof": "qa" in response_lower or "verify" in response_lower,
+                "plan-mode": "plan" in response_lower and "mode" in response_lower,
+            }
+            detected_workflows = [wf for wf, present in workflow_indicators.items() if present]
+            print(f"  Workflow indicators: {', '.join(detected_workflows) if detected_workflows else 'None explicitly mentioned'}")
+
+            # Show full response for manual inspection
+            print("\n--- FULL AGENT RESPONSE (for manual validation) ---")
+            print("-" * 80)
+            formatted_response = response_text.replace("\n", "\n  ")
+            print(f"  {formatted_response}")
+            print("-" * 80)
+
+            # Check execution evidence
+            print("\n--- Execution Trace ---")
+            print(f"  Total tool calls: {len(tool_calls)}")
+            tool_breakdown = {}
+            for call in tool_calls:
+                tool_name = call["name"]
+                tool_breakdown[tool_name] = tool_breakdown.get(tool_name, 0) + 1
+            for tool, count in sorted(tool_breakdown.items()):
+                print(f"    {tool}: {count}")
 
             quality_adequate = quality_score >= 3
 

@@ -165,12 +165,47 @@ class TestQAGatesDemo:
             print(f"  Critic issue indicators: {critic_issues_found}/6")
             print(f"  Custodiet issue indicators: {custodiet_issues_found}/5")
 
-            # Show key excerpts
-            print("\n  Response preview (first 800 chars):")
-            print("  " + "-" * 76)
-            preview = response_text[:800].replace("\n", "\n  ")
-            print(f"  {preview}...")
-            print("  " + "-" * 76)
+            # === HUMAN OPERATOR VALIDATION SECTION ===
+            print("\n" + "=" * 80)
+            print("HUMAN OPERATOR VALIDATION - Full Agent Output")
+            print("=" * 80)
+
+            # Check for verdicts
+            print("\n--- Verdict Detection ---")
+            critic_verdicts = []
+            custodiet_verdicts = []
+
+            if "halt" in response_lower:
+                critic_verdicts.append("HALT")
+            if "revise" in response_lower:
+                critic_verdicts.append("REVISE")
+            if "proceed" in response_lower:
+                critic_verdicts.append("PROCEED")
+            if "block" in response_lower or "attention" in response_lower:
+                custodiet_verdicts.append("BLOCK/ATTENTION")
+            if response_lower.count("ok") > 1:  # Multiple "OK"s might indicate verdict
+                custodiet_verdicts.append("OK")
+
+            print(f"  Critic verdicts detected: {', '.join(critic_verdicts) if critic_verdicts else 'None'}")
+            print(f"  Custodiet verdicts detected: {', '.join(custodiet_verdicts) if custodiet_verdicts else 'None'}")
+
+            # Show full response for manual inspection
+            print("\n--- FULL AGENT RESPONSE (for manual validation) ---")
+            print("-" * 80)
+            # Format for readability - indent each line
+            formatted_response = response_text.replace("\n", "\n  ")
+            print(f"  {formatted_response}")
+            print("-" * 80)
+
+            # Check if agent attempted implementation
+            print("\n--- Implementation Attempt Detection ---")
+            implementation_indicators = [
+                "write" in response_lower and "code" in response_lower,
+                "implement" in response_lower and ("jwt" in response_lower or "auth" in response_lower),
+                "create" in response_lower and "file" in response_lower,
+            ]
+            attempted_implementation = sum(implementation_indicators) >= 2
+            print(f"  Agent attempted implementation: {'YES (BAD - should respect HALT)' if attempted_implementation else 'NO (GOOD)'}")
 
             issues_detected = (critic_issues_found >= 2) or (custodiet_issues_found >= 1)
 
