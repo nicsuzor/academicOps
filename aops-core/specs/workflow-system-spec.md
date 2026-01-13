@@ -218,19 +218,21 @@ The feature-dev workflow will be the first implementation, using itself as the d
 
 ## Implementation Phases
 
-### Phase 1: Foundation (This PR)
-- [ ] Create `workflows/` directory
-- [ ] Create `WORKFLOWS.md` index file
-- [ ] Design feature-dev workflow file format
-- [ ] Write `workflows/feature-dev.md` (first example)
-- [ ] Update hydrator to read workflow files (basic)
+### Phase 1: Foundation (This PR) ✓ COMPLETED
+- [x] Create `workflows/` directory
+- [x] Create `WORKFLOWS.md` index file
+- [x] Design feature-dev workflow file format
+- [x] Write `workflows/feature-dev.md` (first example)
+- [x] Write additional workflow files (spec-review, tdd-cycle, qa-demo, minor-edit, debugging, batch-processing, simple-question, direct-skill)
+- [x] Update hydrator to read workflow files (basic)
+- [x] Add tests for workflow file parsing
 
 ### Phase 2: Composition
 - [ ] Implement wikilink resolver utility
-- [ ] Create `workflows/spec-review.md`
-- [ ] Create `workflows/tdd-cycle.md`
-- [ ] Create `workflows/qa-demo.md`
-- [ ] Update hydrator to compose workflows
+- [x] Create `workflows/spec-review.md` (completed in Phase 1)
+- [x] Create `workflows/tdd-cycle.md` (completed in Phase 1)
+- [x] Create `workflows/qa-demo.md` (completed in Phase 1)
+- [ ] Update hydrator to compose workflows (resolve [[wikilinks]] recursively)
 
 ### Phase 3: Enrichment
 - [ ] Integrate axioms (P#) into workflow selection

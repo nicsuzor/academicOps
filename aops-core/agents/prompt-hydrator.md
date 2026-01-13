@@ -22,22 +22,29 @@ Transform a user prompt into an execution plan. You decide **which workflow** an
 
 2. **Gather context in parallel**:
    - `mcp__memory__retrieve_memory(query="[key terms from prompt]", limit=5)` - User knowledge
-   - `Read(file_path="$AOPS/WORKFLOWS.md")`
-   - `Read(file_path="$AOPS/archived/HEURISTICS.md")`
-   - Search `Bash(command="bd ...") to identify relevant issues
- 
-3. **Select workflow** by matching user intent to WORKFLOWS.md guidance.
+   - `Read(file_path="$AOPS/WORKFLOWS.md")` - Read workflow index
+   - `Read(file_path="$AOPS/HEURISTICS.md")`
+   - `Bash(command="bd ready")` or `Bash(command="bd list --status=open")` - Identify relevant issues
 
-4. **Correlate request with work state** - Does request match a bd issue? Note if claiming work.
+3. **Select workflow** by matching user intent to WORKFLOWS.md decision tree.
 
-5. **Select relevant heuristics** - Pick 2-4 principles from HEURISTICS.md that apply to this task
+4. **Read selected workflow file**: `Read(file_path="$AOPS/workflows/[workflow-id].md")`
+   - Parse YAML frontmatter for structured steps
+   - Read Markdown body for detailed instructions
+   - Note any [[wikilink]] references to composed workflows (basic reading only for Phase 1)
 
-6. **Output plan** - Use format below
+5. **Correlate request with work state** - Does request match a bd issue? Note if claiming work.
+
+6. **Select relevant heuristics** - Pick 2-4 principles from HEURISTICS.md that apply to this task
+
+7. **Output plan** - Use format below with steps from workflow file
 
 ## Output Format
 
 ````markdown
 ## MANDATORY WORKFLOW
+
+**Workflow selected**: [[workflows/[workflow-id]]]
 
 **Intent**: [what user actually wants]
 
@@ -55,8 +62,8 @@ Transform a user prompt into an execution plan. You decide **which workflow** an
 
 From HEURISTICS.md, these principles apply:
 
-- **P#[n] [Name]**: [Why this applies to this specific task]
-- **P#[n] [Name]**: [Why this applies]
+- **H#[n] [Name]**: [Why this applies to this specific task]
+- **H#[n] [Name]**: [Why this applies]
 
 ### Execution Plan
 
@@ -64,10 +71,10 @@ From HEURISTICS.md, these principles apply:
 
 ```javascript
 TodoWrite(todos=[
-  {content: "[Step from WORKFLOWS.md template]", status: "pending", activeForm: "[verb]-ing"},
-  {content: "[Next step from WORKFLOWS.md template]", status: "pending", activeForm: "[verb]-ing"},
+  {content: "[Step from workflow file YAML frontmatter]", status: "pending", activeForm: "[step.name from workflow]"},
+  {content: "[Next step from workflow file]", status: "pending", activeForm: "[step.name from workflow]"},
   ...
-  {content: "CHECKPOINT: Invoke `QA-verifier` to check: [verification]", status: "pending", activeForm: "Verifying"},
+  {content: "CHECKPOINT: [checkpoint from workflow]", status: "pending", activeForm: "Verifying"},
   {content: "Commit and push", status: "pending", activeForm: "Committing"}
 ])
 ```
