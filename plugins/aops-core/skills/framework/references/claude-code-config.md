@@ -163,3 +163,41 @@ Set to `true` to enable extended thinking mode by default.
 | Memory server         | ✅ Yes - mcp__memory__* calls persist globally                 |
 
 **Practical implication**: If you need todos visible in the main session, the main agent must create them directly. Cannot delegate todo creation to subagents.
+
+### Subagent Output and Context Efficiency
+
+**Observed 2026-01-13**: Different retrieval methods have vastly different context costs.
+
+| Retrieval Method                   | What You Get          | Context Cost                                   |
+| ---------------------------------- | --------------------- | ---------------------------------------------- |
+| Task (foreground/blocking)         | Final message only    | Efficient (~1-2KB typical)                     |
+| TaskOutput or Read on .output file | Full JSONL transcript | Expensive (243KB observed for simple research) |
+
+**How it works**:
+
+- Output files are symlinks: `/tmp/claude/-{cwd}/tasks/{agentId}.output` → `~/.claude/projects/.../subagents/agent-{id}.jsonl`
+- The `.jsonl` contains ALL messages: user prompts, assistant responses, tool calls, tool results, metadata
+- Foreground Task returns only the subagent's final synthesized message
+
+**Best Practices for Background Subagents**:
+
+1. **Prefer foreground execution** when possible - automatic context efficiency
+2. **For background tasks**: Have subagent write results to a dedicated file, then Read that file (not the .output)
+3. **Avoid**: Using TaskOutput or Read on `.output` for large/verbose subagents
+4. **Consider**: Using `run_in_background=false` even for parallel work if context budget is a concern
+
+**Example - Efficient background pattern**:
+
+```
+Task(prompt="Research X and write results to /tmp/research-result.txt", run_in_background=true)
+# Later: Read(/tmp/research-result.txt) - gets only the curated output
+```
+
+**Example - Inefficient pattern** (what to avoid):
+
+```
+Task(prompt="Research X", run_in_background=true) → returns output_file path
+Read(output_file) → loads full 243KB transcript into context
+```
+
+**Official guidance**: "file-based coordination is recommended instead to preserve context budget" - Claude Code docs
