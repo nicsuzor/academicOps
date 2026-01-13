@@ -61,7 +61,7 @@ repos:
         language: system
         pass_filenames: false
         always_run: true
-        stages: [commit]
+        stages: [pre-commit]
         verbose: true
 
       # Orphan files check - WARNING only
@@ -72,7 +72,7 @@ repos:
         pass_filenames: false
         always_run: true
         verbose: true
-        stages: [commit]
+        stages: [pre-commit]
 
       # File taxonomy check - validates category frontmatter
       - id: check-file-taxonomy
@@ -82,7 +82,7 @@ repos:
         pass_filenames: false
         always_run: true
         verbose: true
-        stages: [commit]
+        stages: [pre-commit]
 
       # Namespace collision check - per H8, framework objects must have unique names
       - id: check-namespace-collision
@@ -92,7 +92,7 @@ repos:
         pass_filenames: false
         always_run: true
         verbose: true
-        stages: [commit]
+        stages: [pre-commit]
 
       # Demo test location check - per ns-0p7, demo tests must be in tests/demo/
       - id: check-demo-test-location
@@ -102,7 +102,7 @@ repos:
         pass_filenames: false
         always_run: true
         verbose: true
-        stages: [commit]
+        stages: [pre-commit]
 
 # Note: These checks are disabled by default (too slow for every commit)
 # Run manually with: uv run python scripts/audit_framework_health.py -m
