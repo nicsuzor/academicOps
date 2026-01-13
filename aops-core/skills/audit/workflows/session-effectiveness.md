@@ -56,7 +56,7 @@ Task(subagent_type="general-purpose", model="sonnet",
 
 #### EVALUATION_PROMPT
 
-You are evaluating a Claude Code session transcript for framework effectiveness. Read the transcript and assess it against these 5 dimensions. For EACH finding, cite specific evidence (turn numbers, quotes).
+You are evaluating a Claude Code session transcript for framework effectiveness. Read the transcript and assess it against these 6 dimensions. For EACH finding, cite specific evidence (turn numbers, quotes).
 
 **1. Framework Effectiveness**
 
