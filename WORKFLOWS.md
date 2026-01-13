@@ -30,8 +30,33 @@ The main agent ALWAYS follows this sequence - hydrator doesn't repeat it:
 
 1. Execute TodoWrite steps (delegate implementation to subagents)
 2. At CHECKPOINTs: gather evidence before proceeding
-3. QA verifier checks work independently before completion
+3. **QA VERIFICATION (MANDATORY)**: Spawn qa-verifier as independent Task subagent before completion
 4. Commit and push (mandatory - work isn't done until pushed)
+
+### QA Verification Step
+
+**CRITICAL**: Before completing work, the main agent MUST spawn qa-verifier:
+
+```javascript
+Task(subagent_type="qa-verifier", model="opus", prompt=`
+Verify the work is complete.
+
+**Original request**: [hydrated prompt/intent]
+
+**Acceptance criteria**:
+1. [criterion from plan]
+2. [criterion from plan]
+
+**Work completed**:
+- [files changed]
+- [todos marked complete]
+
+Check all three dimensions and produce verdict.
+`)
+```
+
+**If VERIFIED**: Proceed to commit and push
+**If ISSUES**: Fix the issues, then re-verify before completing
 
 ## What Hydrator Outputs
 

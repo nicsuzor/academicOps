@@ -89,9 +89,12 @@ TodoWrite(todos=[
   {{content: "Step 1: [action]", status: "pending", activeForm: "[present participle]"}},
   {{content: "Step 2: [action]", status: "pending", activeForm: "[present participle]"}},
   {{content: "CHECKPOINT: [verification with evidence]", status: "pending", activeForm: "Verifying"}},
-  {{content: "Step N: Commit and push", status: "pending", activeForm: "Committing"}}
+  {{content: "QA VERIFY: Spawn qa-verifier agent before completion", status: "pending", activeForm: "Verifying with qa-verifier"}},
+  {{content: "Commit and push", status: "pending", activeForm: "Committing"}}
 ])
 ```
 ````
 
 **Key insight**: The workflow is NOT mechanical. INTERPRET the workflow template for the specific user request, generating concrete steps.
+
+**MANDATORY**: Every plan (except `question` workflow) MUST include the "QA VERIFY" step. The main agent spawns qa-verifier as an independent Task subagent to verify work before committing.
