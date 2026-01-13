@@ -630,6 +630,10 @@ def claude_headless_tracked():
         """
         session_id = str(uuid.uuid4())
 
+        # Get aops-core plugin directory for agent availability
+        aops_root = get_aops_root()
+        plugin_dir = aops_root / "aops-core"
+
         cmd = [
             "claude",
             "-p",
@@ -642,6 +646,8 @@ def claude_headless_tracked():
             model,
             "--permission-mode",
             permission_mode,
+            "--plugin-dir",
+            str(plugin_dir),
         ]
 
         env = os.environ.copy()
