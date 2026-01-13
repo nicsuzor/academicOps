@@ -113,16 +113,21 @@ create_symlink() {
     echo -e "${GREEN}✓ $name → $target${NC}"
 }
 
-create_symlink "skills" "$AOPS_PATH/skills"
-create_symlink "commands" "$AOPS_PATH/commands"
-create_symlink "agents" "$AOPS_PATH/agents"
-create_symlink "hooks" "$AOPS_PATH/hooks"
 create_symlink "settings.json" "$AOPS_PATH/config/claude/settings.json"
 create_symlink "CLAUDE.md" "$AOPS_PATH/CLAUDE.md"
 
 # Create plugins directory and symlink aops-core plugin
+# Note: skills, commands, agents, hooks now live in the plugin (not top-level)
 mkdir -p "$CLAUDE_DIR/plugins"
 create_symlink "plugins/aops-core" "$AOPS_PATH/aops-core"
+
+# Clean up legacy symlinks (content moved to aops-core plugin)
+for legacy in skills commands agents hooks; do
+    if [ -L "$CLAUDE_DIR/$legacy" ]; then
+        rm "$CLAUDE_DIR/$legacy"
+        echo -e "${YELLOW}  Removed legacy symlink: $legacy${NC}"
+    fi
+done
 
 # Step 2a: Create settings.local.json with machine-specific env vars
 echo
@@ -363,8 +368,9 @@ if python3 "$AOPS_PATH/scripts/sync_web_bundle.py" --self > /dev/null 2>&1; then
 else
     echo -e "${YELLOW}⚠ sync_web_bundle.py failed - creating symlinks manually${NC}"
     REPO_CLAUDE="$AOPS_PATH/.claude"
-    mkdir -p "$REPO_CLAUDE"
-    for item in settings.json:../config/claude/settings.json agents:../agents skills:../skills commands:../commands hooks:../hooks CLAUDE.md:../CLAUDE.md; do
+    mkdir -p "$REPO_CLAUDE" "$REPO_CLAUDE/plugins"
+    # Only link settings.json, CLAUDE.md, and the plugin (content moved to aops-core)
+    for item in settings.json:../config/claude/settings.json CLAUDE.md:../CLAUDE.md plugins/aops-core:../../aops-core; do
         name="${item%%:*}"
         target="${item#*:}"
         [ -e "$REPO_CLAUDE/$name" ] && rm -rf "$REPO_CLAUDE/$name"
@@ -464,8 +470,9 @@ else
         echo -e "${GREEN}  $name → $target${NC}"
     }
 
-    gemini_create_symlink "hooks" "$AOPS_PATH/gemini/hooks"
-    gemini_create_symlink "commands" "$AOPS_PATH/gemini/commands"
+    # Only create symlinks for directories that exist
+    [ -d "$AOPS_PATH/gemini/hooks" ] && gemini_create_symlink "hooks" "$AOPS_PATH/gemini/hooks"
+    [ -d "$AOPS_PATH/gemini/commands" ] && gemini_create_symlink "commands" "$AOPS_PATH/gemini/commands"
 
     # GEMINI.md generation (injects actual paths)
     if [ -L "$GEMINI_DIR/GEMINI.md" ] || [ -f "$GEMINI_DIR/GEMINI.md" ]; then
@@ -572,9 +579,9 @@ GLOBAL_WORKFLOWS_DIR="$ANTIGRAVITY_DIR/global_workflows"
 # Create directories
 mkdir -p "$GLOBAL_WORKFLOWS_DIR"
 
-# Install core skills as global workflows
+# Install core skills as global workflows (skills now in aops-core plugin)
 echo "Installing core skills as Antigravity workflows..."
-for skill_dir in "$AOPS_PATH/skills"/*; do
+for skill_dir in "$AOPS_PATH/aops-core/skills"/*; do
     if [ -d "$skill_dir" ] && [ ! -L "$skill_dir" ]; then
         skill_name=$(basename "$skill_dir")
         # Skip __pycache__ and other non-skill dirs
@@ -747,13 +754,21 @@ if [ ! -d "$ACA_DATA_PATH" ]; then
     VALIDATION_PASSED=false
 fi
 
-# Check symlinks
-for link in skills commands agents hooks settings.json CLAUDE.md; do
+# Check symlinks (only settings.json, CLAUDE.md, and plugin remain at top level)
+for link in settings.json CLAUDE.md; do
     if [ ! -L "$CLAUDE_DIR/$link" ]; then
         echo -e "${RED}✗ Symlink missing: $CLAUDE_DIR/$link${NC}"
         VALIDATION_PASSED=false
     fi
 done
+
+# Check plugin symlink
+if [ ! -L "$CLAUDE_DIR/plugins/aops-core" ]; then
+    echo -e "${RED}✗ Plugin symlink missing: $CLAUDE_DIR/plugins/aops-core${NC}"
+    VALIDATION_PASSED=false
+else
+    echo -e "${GREEN}✓ Plugin aops-core linked${NC}"
+fi
 
 # Check settings.local.json
 if [ -f "$CLAUDE_DIR/settings.local.json" ]; then
@@ -791,12 +806,15 @@ fi
 if [ "${GEMINI_SKIPPED:-true}" = "false" ]; then
     echo
     echo "Gemini CLI validation:"
+    # Only validate symlinks for directories that exist in source
     for link in hooks commands; do
-        if [ -L "$GEMINI_DIR/$link" ]; then
-            echo -e "${GREEN}✓ Gemini $link symlink OK${NC}"
-        else
-            echo -e "${RED}✗ Gemini $link symlink missing${NC}"
-            VALIDATION_PASSED=false
+        if [ -d "$AOPS_PATH/gemini/$link" ]; then
+            if [ -L "$GEMINI_DIR/$link" ]; then
+                echo -e "${GREEN}✓ Gemini $link symlink OK${NC}"
+            else
+                echo -e "${RED}✗ Gemini $link symlink missing${NC}"
+                VALIDATION_PASSED=false
+            fi
         fi
     done
 

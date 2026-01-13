@@ -30,30 +30,18 @@ HOOK_DIR = Path(__file__).parent
 
 # Registry of hooks per event type
 # Each entry can have {"script": "name.py", "async": True/False}
+# NOTE: Only hooks that exist in aops-core/hooks/ are registered here.
+# Additional hooks can be added back from archived/hooks/ as needed.
 HOOK_REGISTRY: dict[str, list[dict[str, Any]]] = {
     "SessionStart": [
         {"script": "session_env_setup.sh"},
-        {"script": "terminal_title.py"},
-        {"script": "sessionstart_load_axioms.py"},
         {"script": "unified_logger.py"},
     ],
     "PreToolUse": [
-        {
-            "script": "hydration_gate.py"
-        },  # Must run first - blocks until hydrator invoked
-        {"script": "sql_validator.py"},
-        {"script": "policy_enforcer.py"},
-        {"script": "criteria_gate.py"},
         {"script": "unified_logger.py"},
     ],
     "PostToolUse": [
         {"script": "unified_logger.py"},
-        {"script": "autocommit_state.py"},
-        {"script": "fail_fast_watchdog.py"},
-        {"script": "custodiet_gate.py"},
-    ],
-    "PostToolUse:TodoWrite": [
-        {"script": "request_scribe.py"},
     ],
     "UserPromptSubmit": [
         {"script": "user_prompt_submit.py"},
@@ -64,8 +52,6 @@ HOOK_REGISTRY: dict[str, list[dict[str, Any]]] = {
     ],
     "Stop": [
         {"script": "unified_logger.py"},
-        {"script": "request_scribe.py"},
-        {"script": "session_reflect.py"},
     ],
 }
 

@@ -1,62 +1,43 @@
 ---
 title: Execution Flow
 type: spec
-description: Specifies how the framework injects control during a Claude Code session.
+description: Specifies how the aops-core plugin injects control during a Claude Code session.
 ---
 
-# academicOps Execution Flow
+# aops-core Execution Flow
 
-Where the framework injects control during a Claude Code session.
+How the plugin injects control during a Claude Code session.
 
-## Instruction Loading (Before Session)
+## Plugin Structure
 
-Before any hooks fire, Claude Code loads context files automatically. This happens at the platform level, not via academicOps hooks.
-
-### Files Loaded by Claude Code
-
-| File        | Location                                                        | Purpose                    |
-| ----------- | --------------------------------------------------------------- | -------------------------- |
-| `CLAUDE.md` | `~/.claude/CLAUDE.md` (global) or `.claude/CLAUDE.md` (project) | Primary instructions file  |
-| `AGENTS.md` | Referenced via `@AGENTS.md` in CLAUDE.md                        | Agent-specific conventions |
-| `GEMINI.md` | Gemini CLI equivalent                                           | For Gemini CLI sessions    |
-
-**@ Include Syntax**: Files can include others using `@filename` on a line by itself. Claude Code reads and inlines the referenced file.
-
-```markdown
-# Example CLAUDE.md
-
-@AGENTS.md
-@local-conventions.md
 ```
-
-### What academicOps Hooks Add
-
-The `sessionstart_load_axioms.py` hook loads framework-specific context that lives in `$AOPS`:
-
-| Content       | Source                   | Purpose                                            |
-| ------------- | ------------------------ | -------------------------------------------------- |
-| AXIOMS.md     | `$AOPS/AXIOMS.md`        | Inviolable principles (fail-fast, trust VCS, etc.) |
-| HEURISTICS.md | `$AOPS/HEURISTICS.md`    | Soft guidance (prefer X over Y)                    |
-| CORE.md       | `$CWD/CORE.md` (project) | Project-specific core conventions                  |
-
-**Key distinction**:
-
-- **AXIOMS + HEURISTICS** = Universal framework rules (from `$AOPS`)
-- **CORE** = Project-specific conventions (from working directory)
-
-### Where Workflow/Skill/Guardrail Info Comes From
-
-The prompt-hydrator reads these files to make routing decisions:
-
-| File                | Content                                 | Used For                  |
-| ------------------- | --------------------------------------- | ------------------------- |
-| `WORKFLOWS.md`      | Workflow definitions (TDD, Debug, etc.) | Selecting execution track |
-| `skills/*/index.md` | Skill catalog                           | Matching skills to task   |
-| `RULES.md`          | Guardrail registry + task mappings      | Injecting constraints     |
+aops-core/
+├── .claude-plugin/plugin.json   # Plugin manifest
+├── agents/                      # Subagent definitions
+│   ├── critic.md               # Plan review
+│   ├── custodiet.md            # Ultra vires detection
+│   ├── planner.md              # Task decomposition
+│   └── prompt-hydrator.md      # Workflow routing
+├── axioms/                      # Inviolable principles
+├── commands/                    # Slash commands (/q, /log, etc.)
+├── heuristics/                  # Soft guidance
+├── hooks/                       # Event handlers
+│   ├── router.py               # Central dispatcher
+│   └── templates/              # Prompt templates
+├── lib/                         # Shared Python utilities
+├── skills/                      # Domain context
+│   ├── audit/                  # Session auditing
+│   ├── feature-dev/            # Feature development
+│   ├── framework/              # Framework development
+│   ├── python-dev/             # Python conventions
+│   ├── remember/               # Memory persistence
+│   └── tasks/                  # Task management
+└── specs/                       # Specifications
+```
 
 ## Complete Execution Flow
 
-Every prompt flows through four phases: **① Initialization** → **② Planning** → **③ Execution** → **④ Cleanup**. Hooks fire at key points (dashed red panel), and subagents handle specialized work (dashed purple panel).
+Main flow (left) with hooks and their scripts (right column).
 
 ```mermaid
 %%{init: {
@@ -66,443 +47,227 @@ Every prompt flows through four phases: **① Initialization** → **② Plannin
     'primaryTextColor': '#eaeaea',
     'primaryBorderColor': '#4a4a6a',
     'lineColor': '#6b7280',
-    'fontSize': '13px'
+    'fontSize': '12px'
   },
-  'flowchart': { 'nodeSpacing': 40, 'rankSpacing': 35, 'curve': 'basis', 'padding': 15 }
+  'flowchart': { 'nodeSpacing': 25, 'rankSpacing': 35, 'curve': 'basis', 'padding': 10 }
 }}%%
-flowchart TB
+flowchart LR
     %% === STYLING ===
     classDef phase fill:#1e293b,stroke:#334155,stroke-width:2px,color:#f1f5f9,font-weight:bold
     classDef step fill:#f8fafc,stroke:#cbd5e1,stroke-width:1px,color:#1e293b
     classDef gate fill:#fef3c7,stroke:#d97706,stroke-width:2px,color:#92400e
     classDef hook fill:#fee2e2,stroke:#dc2626,stroke-width:1px,color:#991b1b
+    classDef script fill:#fecaca,stroke:#b91c1c,stroke-width:1px,color:#7f1d1d,font-size:11px
     classDef agent fill:#e0e7ff,stroke:#4f46e5,stroke-width:2px,color:#3730a3
 
-    %% === MAIN FLOW (Simplified) ===
-    subgraph INIT["① INITIALIZATION"]
+    %% === MAIN FLOW (vertical subgraph) ===
+    subgraph MAIN[" "]
         direction TB
-        S0([Start]) --> S1[Load AXIOMS + CORE]
-        S1 --> S2[User Prompt]
-        S2 --> S3[Hydrate]
+        S0([Session Begin]) --> H1[SessionStart]
+        H1 --> P1[User Prompt]
+        P1 --> H2[UserPromptSubmit]
+        H2 --> W1{Select Workflow}
+        W1 --> T1[TodoWrite Plan]
+        T1 --> E1[Call Tool]
+        E1 --> H3[PreToolUse]
+        H3 -->|block| E1
+        H3 -->|allow| E2[Tool Executes]
+        E2 --> H4[PostToolUse]
+        H4 --> E3{More Work?}
+        E3 -->|Yes| E1
+        E3 -->|No| E4[Commit Work]
+        E4 --> H5[Stop]
+        H5 --> C3([End])
     end
 
-    subgraph PLAN["② PLANNING"]
+    %% === HOOK SCRIPTS (right column) ===
+    subgraph SCRIPTS["Hook Scripts"]
         direction TB
-        P1{Plan<br/>Mode?}
-        P1 -->|Yes| P2[Define Criteria]
-        P2 --> P3[Critic Review]
-        P3 --> P4[TodoWrite]
-        P1 -->|No| P4
+        HS1[session_env_setup.sh<br/>unified_logger.py]
+        HS2[user_prompt_submit.py<br/>unified_logger.py]
+        HS2 -.-> A1[prompt-hydrator]
+        HS3[unified_logger.py]
+        HS4[unified_logger.py]
+        HS5[unified_logger.py]
     end
 
-    subgraph EXEC["③ EXECUTION"]
-        direction TB
-        E1[Call Tool] --> E2{Hook<br/>Feedback}
-        E2 -->|block| E1
-        E2 -->|allow| E3{Done?}
-        E3 -->|No| E1
-        E3 -->|Yes| E4[Commit]
-    end
-
-    subgraph END["④ CLEANUP"]
-        direction TB
-        C1{QA?} -->|Yes| C2[Verify]
-        C1 -->|No| C2
-        C2 --> C3([End])
-    end
-
-    %% === PHASE CONNECTIONS ===
-    INIT --> PLAN --> EXEC --> END
-
-    %% === HOOKS (Side Panel) ===
-    subgraph HOOKS["⚡ HOOKS"]
-        direction TB
-        H1[SessionStart]
-        H2[UserPromptSubmit]
-        H3[PreToolUse]
-        H4[PostToolUse]
-        H5[Stop]
-    end
-
-    %% === AGENTS (Side Panel) ===
-    subgraph AGENTS["🤖 AGENTS"]
-        direction TB
-        A1[Hydrator]
-        A2[Critic]
-        A3[Custodiet]
-        A4[Remember]
-    end
-
-    %% === CROSS-CONNECTIONS (minimal) ===
-    S3 -.->|spawns| A1
-    P3 -.->|spawns| A2
-    E2 -.->|~7 calls| A3
-    C3 -.->|persist| A4
-
-    H1 -.-> S1
-    H2 -.-> S3
-    H3 -.-> E1
-    H4 -.-> E2
-    H5 -.-> C2
+    %% === CONNECT HOOKS TO SCRIPTS ===
+    H1 --- HS1
+    H2 --- HS2
+    H3 --- HS3
+    H4 --- HS4
+    H5 --- HS5
 
     %% === APPLY STYLES ===
     class S0,C3 phase
-    class S1,S2,S3,P2,P3,P4,E1,E4,C2 step
-    class P1,E2,E3,C1 gate
+    class P1,T1,E1,E2,E4 step
+    class W1,E3 gate
     class H1,H2,H3,H4,H5 hook
-    class A1,A2,A3,A4 agent
+    class HS1,HS2,HS3,HS4,HS5 script
+    class A1 agent
 
     %% === SUBGRAPH STYLING ===
-    style INIT fill:#ecfdf5,stroke:#059669,stroke-width:2px
-    style PLAN fill:#eff6ff,stroke:#2563eb,stroke-width:2px
-    style EXEC fill:#fefce8,stroke:#ca8a04,stroke-width:2px
-    style END fill:#f5f5f5,stroke:#737373,stroke-width:2px
-    style HOOKS fill:#fef2f2,stroke:#ef4444,stroke-width:1px,stroke-dasharray: 5 5
-    style AGENTS fill:#eef2ff,stroke:#6366f1,stroke-width:1px,stroke-dasharray: 5 5
+    style MAIN fill:none,stroke:none
+    style SCRIPTS fill:#fef2f2,stroke:#fca5a5,stroke-width:1px,stroke-dasharray: 5 5
 ```
 
-## Flow Legend
+## Workflow Selection
 
-| Color           | Meaning                                  |
-| --------------- | ---------------------------------------- |
-| Green           | Entry/success points                     |
-| Blue            | User actions                             |
-| Purple          | Skill invocations                        |
-| Red             | Hook enforcement (can block)             |
-| Orange + dashed | Planned/in-progress (not yet enforced)   |
-| Gray            | Tool execution                           |
-| Cyan            | External storage (memory server, GitHub) |
+The prompt-hydrator routes to workflows based on task signals.
 
-## Workflow Selection (from WORKFLOWS.md)
+```mermaid
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'primaryColor': '#1a1a2e',
+    'primaryTextColor': '#eaeaea',
+    'lineColor': '#6b7280',
+    'fontSize': '13px'
+  }
+}}%%
+flowchart TB
+    %% === STYLING ===
+    classDef input fill:#dbeafe,stroke:#2563eb,stroke-width:2px,color:#1e40af
+    classDef decision fill:#fef3c7,stroke:#d97706,stroke-width:2px,color:#92400e
+    classDef workflow fill:#f8fafc,stroke:#cbd5e1,stroke-width:1px,color:#1e293b
+    classDef skill fill:#e0e7ff,stroke:#4f46e5,stroke-width:1px,color:#3730a3
+    classDef agent fill:#fce7f3,stroke:#db2777,stroke-width:1px,color:#9d174d
 
-The prompt-hydrator selects workflow based on task signals:
+    P[User Prompt] --> D1{Question?}
 
-| Task Signal                                 | Workflow     | Skill       | Guardrails                   |
-| ------------------------------------------- | ------------ | ----------- | ---------------------------- |
-| Framework changes (skills/, hooks/, AXIOMS) | plan-mode    | framework   | `plan_mode`, `critic_review` |
-| New functionality, "add", "create"          | tdd          | feature-dev | `require_acceptance_test`    |
-| Bug reports, "doesn't work"                 | verify-first | -           | `quote_errors_exactly`       |
-| Questions, explanations                     | answer-only  | -           | `answer_only`                |
-| Single-step clear scope                     | direct       | -           | `verify_before_complete`     |
+    D1 -->|Yes| WQ[Answer Only]
+    D1 -->|No| D2{Framework<br/>files?}
 
-## Hook Enforcement Details
+    D2 -->|Yes| WF[Plan Mode]
+    WF --> AF[planner agent]
+    AF --> AC[critic agent]
+    AC --> SF[framework skill]
 
-### PreToolUse Hooks (can block)
+    D2 -->|No| D3{Bug/Error?}
 
-| Hook               | Blocks                                                                       | Enforces                                    |
-| ------------------ | ---------------------------------------------------------------------------- | ------------------------------------------- |
-| hydration_gate.py  | ALL tools until `Task(subagent_type="prompt-hydrator")` invoked              | Mechanical hydration enforcement            |
-| policy_enforcer.py | `git reset --hard`, `push --force`, `*-GUIDE.md`, `.md` > 200 prose lines    | [[axioms/trust-version-control.md           |
-| criteria_gate.py   | Edit/Write/Bash until criteria defined + critic reviewed + TodoWrite created | [[axioms/acceptance-criteria-own-success.md |
+    D3 -->|Yes| WD[Debug]
 
-### PostToolUse Hooks (inject context)
+    D3 -->|No| D4{New<br/>feature?}
 
-| Hook                  | Triggers On         | Action                                          |
-| --------------------- | ------------------- | ----------------------------------------------- |
-| autocommit_state.py   | Write to data/      | Auto-commit to prevent data loss                |
-| fail_fast_watchdog.py | Error patterns      | Inject fail-fast reminder                       |
-| custodiet_gate.py     | Every ~7 tool calls | Spawn custodiet agent for ultra vires detection |
-| request_scribe.py     | TodoWrite           | Memory documentation reminder                   |
+    D4 -->|Yes| WT[TDD]
+    WT --> SFD[feature-dev skill]
 
-**What gets injected** (via `additionalContext` in hook output):
+    D4 -->|No| WX[Direct Execute]
 
-| Hook                  | Injection Content                                                              |
-| --------------------- | ------------------------------------------------------------------------------ |
-| autocommit_state.py   | Confirmation message: "Auto-committed changes to data/"                        |
-| fail_fast_watchdog.py | Axiom reminder: "HALT if stuck, report infrastructure failure, no workarounds" |
-| custodiet_gate.py     | Custodiet spawn instruction when threshold reached                             |
-| request_scribe.py     | Reminder to invoke `Skill(skill='remember')` to persist key decisions          |
+    %% === APPLY STYLES ===
+    class P input
+    class D1,D2,D3,D4 decision
+    class WQ,WF,WD,WT,WX workflow
+    class SF,SFD skill
+    class AF,AC agent
+```
 
-### Agent Behavior on Hook Feedback
+| Workflow        | Triggers                           | Agents          | Skill       |
+| --------------- | ---------------------------------- | --------------- | ----------- |
+| **Answer Only** | "what", "how", "why", questions    | -               | -           |
+| **Plan Mode**   | skills/, hooks/, axioms/ edits     | planner, critic | framework   |
+| **Debug**       | "fix", "broken", error messages    | -               | -           |
+| **TDD**         | "add", "create", new functionality | -               | feature-dev |
+| **Direct**      | Clear single-step scope            | -               | -           |
 
-When the agent receives hook feedback (M12 in diagram), it should:
+## Hook System
 
-| Feedback Type                | Agent Response                                                                                           |
-| ---------------------------- | -------------------------------------------------------------------------------------------------------- |
-| **Block (exit 2)**           | Stop current action. Read error message. Comply with required action (e.g., spawn hydrator first).       |
-| **Context injection**        | Read injected content. Follow instructions if actionable (e.g., spawn custodiet, invoke remember skill). |
-| **Reminder**                 | Acknowledge mentally. Continue work but keep reminder in mind.                                           |
-| **Auto-commit confirmation** | No action needed. Informational only.                                                                    |
+All hooks route through `hooks/router.py`, which dispatches to registered sub-scripts.
 
-**Key principle**: Hook feedback is authoritative. The agent should not argue with or work around hook blocks.
+### Hook Registry
 
-### Stop Hooks (cleanup)
+| Event                | Scripts                                  | Purpose                     |
+| -------------------- | ---------------------------------------- | --------------------------- |
+| **SessionStart**     | session_env_setup.sh, unified_logger.py  | Environment setup + logging |
+| **UserPromptSubmit** | user_prompt_submit.py, unified_logger.py | Trigger prompt hydration    |
+| **PreToolUse**       | unified_logger.py                        | Logging                     |
+| **PostToolUse**      | unified_logger.py                        | Logging                     |
+| **SubagentStop**     | unified_logger.py                        | Logging                     |
+| **Stop**             | unified_logger.py                        | Logging                     |
 
-| Hook               | Triggers    | Chain                                            |
-| ------------------ | ----------- | ------------------------------------------------ |
-| request_scribe.py  | Session end | -> remember skill -> $ACA_DATA + memory server   |
-| session_reflect.py | Session end | -> session-insights -> daily note + GitHub Issue |
+> **Note**: Additional hooks (hydration_gate.py, policy_enforcer.py, custodiet_gate.py, etc.) are available in `archived/hooks/` and can be restored as needed.
 
-## Gate Flag Lifecycle
+### Exit Codes
 
-Each gate maintains state that controls when it blocks. This section explains what each gate checks and who sets/clears its flags.
+- `0` = Allow/Success
+- `1` = Warning
+- `2` = Block (PreToolUse only)
 
-### Hydration Gate (`hydration_gate.py`)
+### Output Merging
 
-**What it checks**: Is `hydration_pending == true` in `/tmp/claude-session/hydrator-{hash}.json`?
+Router merges outputs from multiple scripts:
 
-| Action       | Who                           | When                                              |
-| ------------ | ----------------------------- | ------------------------------------------------- |
-| **Set flag** | `user_prompt_submit.py`       | Every user prompt (unless starts with `/` or `.`) |
-| **Clear**    | `hydration_gate.py`           | Detects `Task(subagent_type="prompt-hydrator")`   |
-| **Bypass**   | User prefixes prompt with `.` | UserPromptSubmit sets `hydration_pending=false`   |
+- `additionalContext`: Concatenate with separator
+- `permissionDecision`: Most restrictive wins (deny > ask > allow)
+- `continue`: AND logic
+- `suppressOutput`: OR logic
 
-**Mechanical enforcement**: Agent cannot clear flag directly - deny rules block Write/Edit to `/tmp/claude-session/**`.
+## Agents
 
-### Policy Enforcer (`policy_enforcer.py`)
+| Agent               | Purpose                                     | Spawned By             |
+| ------------------- | ------------------------------------------- | ---------------------- |
+| **prompt-hydrator** | Route prompt to workflow, inject guardrails | UserPromptSubmit       |
+| **planner**         | Decompose complex tasks                     | Framework workflow     |
+| **critic**          | Review plans before execution               | Framework workflow     |
+| **custodiet**       | Detect scope drift (ultra vires)            | PostToolUse (~7 calls) |
 
-**What it checks**: Pattern matching on tool name + arguments (no state file).
+Agent definitions in `agents/*.md`.
 
-| Pattern                       | Action | Notes                      |
-| ----------------------------- | ------ | -------------------------- |
-| `git reset --hard`            | Block  | Protects uncommitted work  |
-| `git push --force`            | Block  | Protects shared history    |
-| `git clean -f`                | Block  | Protects untracked files   |
-| Write to `*-GUIDE.md`         | Block  | Force README consolidation |
-| Write `.md` > 200 prose lines | Block  | Force chunking             |
+## Skills
 
-**No flag state** - purely pattern-based, always active.
+Skills provide domain-specific context. Loaded via `Skill(skill="name")`.
 
-### Criteria Gate (`criteria_gate.py`)
+| Skill           | Purpose                           |
+| --------------- | --------------------------------- |
+| **framework**   | Framework development conventions |
+| **feature-dev** | TDD, user stories, test specs     |
+| **python-dev**  | Python coding standards           |
+| **remember**    | Memory persistence patterns       |
+| **tasks**       | Task management workflows         |
+| **audit**       | Session auditing                  |
 
-**What it checks**: Has the `/do` Phase 1 workflow been completed?
+Skills are read-only context - they don't execute code.
 
-| Action       | Who                | When                                                           |
-| ------------ | ------------------ | -------------------------------------------------------------- |
-| **Activate** | `/do` command      | When user invokes `/do [task]`                                 |
-| **Clear**    | `criteria_gate.py` | Detects: criteria defined + critic reviewed + TodoWrite exists |
-| **N/A**      | -                  | Gate inactive for normal prompts (only `/do` workflow)         |
+## Axioms & Heuristics
 
-**Blocks**: Edit, Write, Bash until Phase 1 complete.
+### Axioms (Inviolable)
 
-### Custodiet Overdue Check (`custodiet_gate.py` + PreToolUse)
+| Axiom                   | Enforcement                                   |
+| ----------------------- | --------------------------------------------- |
+| trust-version-control   | policy_enforcer.py blocks destructive git ops |
+| fail-fast-code          | fail_fast_watchdog.py injects reminders       |
+| research-data-immutable | policy_enforcer.py blocks data/ edits         |
+| data-boundaries         | Prompt guidance                               |
+| single-purpose-files    | Prompt guidance                               |
+| skills-are-read-only    | Prompt guidance                               |
+| self-documenting        | Prompt guidance                               |
 
-**What it checks**: Is `tool_calls_since_compliance >= 7` in `/tmp/claude-session/custodiet-{hash}.json`?
+### Heuristics (Soft Guidance)
 
-| Action         | Who                  | When                                   |
-| -------------- | -------------------- | -------------------------------------- |
-| **Increment**  | `custodiet_gate.py`  | Every non-read tool call (PostToolUse) |
-| **Reset to 0** | `custodiet_gate.py`  | After spawning custodiet check         |
-| **Block**      | PreToolUse (planned) | When counter >= 7 and tool is mutating |
+- file-category-classification
+- no-horizontal-dividers
+- semantic-link-density
+- skills-no-dynamic-content
 
-**Current state**: Soft reminder only. Hard block is planned.
+## Commands
+
+Slash commands in `commands/*.md`:
+
+| Command   | Purpose               |
+| --------- | --------------------- |
+| /q        | Quick task capture    |
+| /log      | Learning log entry    |
+| /reflect  | Session reflection    |
+| /remind   | Set reminder          |
+| /email    | Email workflow        |
+| /qa       | Quality assurance     |
+| /strategy | Strategic planning    |
+| /meta     | Meta-level discussion |
 
 ## Key Principles
 
-1. **Hooks enforce axioms** - PreToolUse blocks violations before they happen
-2. **Skills provide context** - Domain skills load relevant conventions
-3. **Criteria are LOCKED** - Once defined in planning, cannot be weakened
-4. **CHECKPOINTs require evidence** - Can't mark complete without proof
-5. **Memory persists knowledge** - Stop hooks ensure learnings captured
-
-### Planned Features (Orange in diagram)
-
-Features shown with dashed lines are in development:
-
-| Feature               | Status                | Enforcement                            |
-| --------------------- | --------------------- | -------------------------------------- |
-| Scope drift detection | Building in custodiet | Will compare TodoWrite to actual edits |
-| Thrashing detection   | Building in custodiet | Count edits per file in session        |
-| Automatic HALT        | Planned               | Will exit 2 from hook to block         |
-
-Currently these rely on prompt-level guidance + periodic custodiet checks.
-
-## Hook Registry
-
-> **Generated from hooks/router.py HOOK_REGISTRY** - Update router.py to change hooks.
-
-| Event                 | Script                      | Purpose                                       |
-| --------------------- | --------------------------- | --------------------------------------------- |
-| SessionStart          | session_env_setup.sh        | Environment setup                             |
-| SessionStart          | terminal_title.py           | Set terminal title                            |
-| SessionStart          | sessionstart_load_axioms.py | Load AXIOMS, HEURISTICS, CORE                 |
-| SessionStart          | unified_logger.py           | Event logging                                 |
-| UserPromptSubmit      | user_prompt_submit.py       | Trigger prompt hydration                      |
-| UserPromptSubmit      | unified_logger.py           | Event logging                                 |
-| PreToolUse            | hydration_gate.py           | Block ALL tools until prompt-hydrator invoked |
-| PreToolUse            | sql_validator.py            | Validate SQL queries before execution         |
-| PreToolUse            | policy_enforcer.py          | Block destructive operations                  |
-| PreToolUse            | criteria_gate.py            | Enforce /do Phase 1                           |
-| PreToolUse            | unified_logger.py           | Event logging                                 |
-| PostToolUse           | unified_logger.py           | Event logging                                 |
-| PostToolUse           | autocommit_state.py         | Auto-commit data/                             |
-| PostToolUse           | fail_fast_watchdog.py       | Detect errors                                 |
-| PostToolUse           | custodiet_gate.py           | Ultra vires detection (~7 tool calls)         |
-| PostToolUse:TodoWrite | request_scribe.py           | Memory documentation reminder                 |
-| SubagentStop          | unified_logger.py           | Event logging                                 |
-| Stop                  | unified_logger.py           | Event logging                                 |
-| Stop                  | request_scribe.py           | Memory reminder                               |
-| Stop                  | session_reflect.py          | Reflection prompt                             |
-
-**Exit codes**: PreToolUse `0`=allow, `2`=block. PostToolUse `0`=success.
-
-## Workflow Map
-
-The prompt-hydrator selects a workflow track based on task signals. Each workflow has specific triggers, mandates, and execution patterns.
-
-### Available Workflows
-
-| Workflow             | Triggers                                        | Mandates                                  | Primary Skill |
-| -------------------- | ----------------------------------------------- | ----------------------------------------- | ------------- |
-| **TDD**              | "add", "create", "implement", new functionality | Write test first, run before/after        | `feature-dev` |
-| **Debugging**        | "fix", "broken", "doesn't work", error messages | Quote error exactly, verify-first, bisect | -             |
-| **Batch**            | Multiple items, "all", "each", patterns         | Dry-run first, checkpoint commits         | -             |
-| **Framework**        | `skills/`, `hooks/`, AXIOMS, HEURISTICS edits   | Plan mode required, critic review         | `framework`   |
-| **Question**         | "what", "how", "why", "explain"                 | Answer only, no unsolicited changes       | -             |
-| **QA/Investigation** | "check", "verify", "audit", uncertainty         | Evidence-based, no assumptions            | `qa`          |
-
-### Workflow Decision Tree
-
-```mermaid
-flowchart TD
-    P[User Prompt] --> Q{Question?}
-    Q -->|Yes| QA[Question Workflow]
-    Q -->|No| F{Framework<br/>files?}
-    F -->|Yes| FW[Framework Workflow]
-    F -->|No| B{Bug/Error?}
-    B -->|Yes| DB[Debugging Workflow]
-    B -->|No| M{Multiple<br/>items?}
-    M -->|Yes| BA[Batch Workflow]
-    M -->|No| N{New<br/>feature?}
-    N -->|Yes| TD[TDD Workflow]
-    N -->|No| DI[Direct Execution]
-
-    style QA fill:#e3f2fd
-    style FW fill:#f3e5f5
-    style DB fill:#ffebee
-    style BA fill:#fff3e0
-    style TD fill:#e8f5e9
-    style DI fill:#eceff1
-```
-
-### When Plans Are Created
-
-| Workflow      | Plan Mode?    | Who Plans                  | Criteria Gate |
-| ------------- | ------------- | -------------------------- | ------------- |
-| **TDD**       | Optional      | Main agent                 | Optional      |
-| **Debugging** | No            | Main agent                 | No            |
-| **Batch**     | Yes (dry-run) | Main agent                 | No            |
-| **Framework** | **Required**  | Main agent → critic review | Yes           |
-| **Question**  | No            | N/A                        | No            |
-| **QA**        | No            | Main agent                 | No            |
-
-**Plan mode triggers critic subagent**: When plan mode is required, the agent must define acceptance criteria and spawn the critic for review before any implementation.
-
-### Alternative: Task System (`/q`, `/do`)
-
-For quick single-session capture when `bd` feels heavyweight.
-
-```mermaid
-flowchart LR
-    U1[/"/q [task]"/] --> T1[("tasks/inbox/")] -.->|later| D1[/"/do [task]"/]
-
-    style U1 fill:#2196f3,color:#fff
-    style T1 fill:#9e9e9e,color:#fff
-    style D1 fill:#ff9800,color:#fff
-```
-
-**When to use `/q`**:
-
-- Quick capture during focused work
-- Single-session items
-- Not worth creating a `bd` issue
-
-### Choosing Between Them
-
-| Signal                               | Use  |
-| ------------------------------------ | ---- |
-| "I'll get to this later" (vague)     | `/q` |
-| "This blocks X" or "After Y is done" | `bd` |
-| Quick note during work               | `/q` |
-| Needs to survive session end         | `bd` |
-| Discoverable by other sessions       | `bd` |
-
-## Generating the flow map
-
-The execution flow document shows **where the framework injects control** during a Claude Code session. It is the architectural map for understanding how prompts flow through the system.
-
-### 1. Swimlane Layout: Main Agent with Parallel Subprocesses
-
-The diagram uses a three-lane swimlane structure:
-
-```
-┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐
-│   MAIN AGENT    │  │     HOOKS       │  │   SUBAGENTS     │
-│   (continuous   │  │   (discrete     │  │   (discrete     │
-│    vertical     │  │    invocations) │  │    invocations) │
-│    spine)       │  │                 │  │                 │
-├─────────────────┤  ├─────────────────┤  ├─────────────────┤
-│ Session Start   │──│ SessionStart    │  │                 │
-│       ↓         │←─│                 │  │                 │
-│ User prompt     │──│ UserPromptSubmit│  │                 │
-│       ↓         │←─│                 │  │                 │
-│ Spawn hydrator  │──│─────────────────│──│ prompt-hydrator │
-│       ↓         │←─│─────────────────│←─│                 │
-│ Call tool       │──│ PreToolUse      │  │                 │
-│       ↓         │←─│                 │  │                 │
-│ Receive result  │──│ PostToolUse     │──│ custodiet       │
-│       ↓         │←─│                 │←─│                 │
-│ Session End     │──│ Stop            │──│ remember        │
-└─────────────────┘  └─────────────────┘  └─────────────────┘
-```
-
-**Key principles**:
-
-1. **Main Agent is continuous**: A single vertical flow showing the agent's progression through a session
-2. **Hooks appear alongside**: Discrete boxes at the vertical level where they fire, with arrows showing data flow direction
-3. **Subagents appear alongside**: Discrete boxes showing when Task() spawns them, with return arrows for results
-4. **Cross-lane arrows show interaction**: Solid arrows for invocation, return arrows for responses
-5. **Vertical alignment indicates timing**: Components at the same vertical level interact at that point in execution
-
-**Rationale**: This layout shows the main agent's continuous flow while making hook/subagent intervention points visible. Reading down the left column gives the agent's journey; reading across at any row shows what external components are invoked.
-
-### 2. Separate Hard Tissue from Soft Tissue
-
-| Type        | Contains                                     | Location               |
-| ----------- | -------------------------------------------- | ---------------------- |
-| Hard tissue | Mechanics (Python, trigger logic)            | `hooks/*.py`           |
-| Soft tissue | Configurable content (prompts, instructions) | `hooks/templates/*.md` |
-
-**Rationale**: Editable content should be in markdown, not buried in code.
-
-### 3. Reference, Don't Duplicate
-
-- Link to `WORKFLOWS.md` for routing table (don't duplicate it)
-- Link to `RULES.md` for guardrail definitions
-- Link to `agents/*.md` for agent behavior
-- Link to specs for detailed behavior
-
-**Rationale**: Single source of truth. The flow doc shows structure, not content.
-
-### 4. Show Trigger Mechanisms
-
-For each hook, show the data flow:
-
-```
-Event fires → Hook receives JSON → Template loaded → Placeholders substituted → JSON returned
-```
-
-**Rationale**: Understanding HOW hooks work enables maintenance.
-
-### 5. Track Templates in Hook Registry
-
-The Hook Registry table must include a Template/Content column showing what configurable content each hook uses.
-
-### Required Sections
-
-1. **Universal Execution Flow** - Main diagram showing all prompts flow through boxes 1-4
-2. **Workflow Implementations** - Table of Box 4 variants with links to specs
-3. **Hook Trigger Mechanism** - How hooks receive input and return context
-4. **Hook Registry** - Table of all hooks with scripts, templates, and purposes
-5. **Session State** - Unified state file (`/tmp/claude-session/state-{hash}.json`) that coordinates gates
-6. **Quick Capture** - /q and /do relationship
-
-### Acceptance Criteria
-
-1. Main flow diagram uses swimlane layout: Main Agent (continuous vertical) | Hooks (discrete) | Subagents (discrete)
-2. Cross-lane arrows show invocation and return data flow
-3. Vertical alignment indicates when components interact in the execution timeline
-4. Every hook in registry has its template/content source identified
-5. No duplicated content from WORKFLOWS.md or RULES.md
-6. All implementation files are linked, not described inline
-7. Mermaid diagrams render correctly
+1. **Router consolidates hooks** - Single entry point reduces noise
+2. **Hooks enforce axioms** - PreToolUse blocks violations
+3. **Skills provide context** - Read-only, loaded on demand
+4. **Agents handle complexity** - Subagents for routing, planning, review
+5. **Custodiet detects drift** - Periodic ultra vires checks
