@@ -186,9 +186,15 @@ Contains:
 - Other agents (planner, effectual-planner, framework-executor)
 - Unenforced axioms/heuristics
 
-## Composable Workflow System
+## Composable Workflow System (LLM-Native Design)
 
-**Status**: Phase 1 (Foundation) completed. Workflows stored as YAML+Markdown files in `workflows/`.
+**Status**:
+- Phase 1 (Foundation) - COMPLETE
+- Phase 2 (LLM-Native Composition) - NEXT
+
+**Paradigm shift**: Pre-LLM structured parsing → LLM-native markdown comprehension
+
+**Key insight**: Workflows are simple markdown that LLMs read and understand. No parsing, no resolvers, no structured data - just readable markdown with [[wikilinks]].
 
 The prompt-hydrator selects from **9 composable workflows**:
 
@@ -218,48 +224,125 @@ The prompt-hydrator selects from **9 composable workflows**:
 
 ### Workflow Selection
 
-**Decision tree**: See [[WORKFLOWS.md]] for complete selection guide with decision tree.
+**Decision tree**: See [[WORKFLOWS.md]] for complete selection guide.
 
-**How hydrator uses workflows** (Phase 1 - Basic reading):
+**How hydrator uses workflows** (LLM-Native Composition):
 
-1. Read WORKFLOWS.md index to see available workflows
-2. Match user intent to workflow using decision tree
-3. Read selected workflow file from `workflows/[workflow-id].md`
-4. Parse YAML frontmatter for structured steps
-5. Read Markdown body for detailed instructions
-6. Generate TodoWrite plan from workflow steps
+1. Read WORKFLOWS.md index and match user intent to workflow
+2. Read selected workflow file (e.g., `workflows/feature-dev.md`)
+3. **LLM reads and understands** the markdown content
+4. When it sees "Follow [[spec-review]] workflow", **LLM reads that file too**
+5. **LLM composes by understanding** - generates unified TodoWrite plan
+6. No parsing code, no resolver utilities - just LLM reading markdown
 
-**Workflow composition** (Phase 1 - Basic reading):
-- Workflows reference other workflows using `[[wikilinks]]` in YAML frontmatter
-- Example: `feature-dev` step 4 has `workflow: "[[spec-review]]"`
-- Phase 1: Hydrator reads but doesn't recursively resolve wikilinks
-- Phase 2: Will implement recursive wikilink resolution and full composition
+**Composition example** (`feature-dev` → `spec-review`):
+
+```markdown
+# feature-dev.md says:
+### 4. Get critic review
+Follow the [[spec-review]] workflow to get feedback on your plan.
+
+# Hydrator reads spec-review.md and generates TodoWrite:
+{content: "Create initial specification", ...}
+{content: "Invoke critic agent for review", ...}
+{content: "Analyze critic feedback", ...}
+{content: "Iterate on spec based on feedback", ...}
+```
+
+**Inline expansion**: LLM reads all referenced workflows and flattens them into one unified plan.
 
 ### Workflow File Structure
 
-Each workflow file contains:
-
-**YAML Frontmatter:**
+**Current (Phase 1)** - Complex YAML frontmatter:
 ```yaml
 ---
 id: workflow-id
 title: Human Readable Title
 type: workflow
-category: development|planning|qa|operations|information|routing
+category: development
 dependencies: []
-steps:
+steps:  # ⚠️ Too structured for humans to edit
   - id: step-id
     name: Step Name
-    workflow: null  # Or "[[other-workflow]]" for composition
+    workflow: "[[other-workflow]]"
     description: What this step does
 ---
+
+# Markdown body...
 ```
 
-**Markdown Body:**
-- ## Overview
-- ## When to Use
-- ## Steps (detailed instructions for each)
-- ## Success Metrics
+**Target (Phase 2)** - Simple markdown:
+```yaml
+---
+id: workflow-id
+category: development
+---
+
+# Workflow Name
+
+Simple human-readable markdown.
+
+## Steps
+
+### 1. First step
+Do this thing.
+
+### 2. Get critic feedback
+Follow the [[spec-review]] workflow.
+
+### 3. Land changes
+```bash
+git add -A && git commit && git push
+```
+```
+
+**Key difference**: No structured steps in YAML. LLM reads markdown and understands it.
+
+### TodoWrite Plan Granularity (Mid-Grained bd Issues)
+
+**Goal**: TodoWrite plans should be mid-grained - neither too atomic nor too coarse.
+
+**Good granularity** (mid-grained tasks):
+```javascript
+TodoWrite(todos=[
+  {content: "Claim work: bd update <id> --status=in_progress", ...},
+  {content: "Define acceptance criteria for feature", ...},
+  {content: "Create implementation plan in bd issue", ...},
+  {content: "Get critic review (spec-review workflow)", ...},
+  {content: "Implement user authentication: create model, add JWT, write tests", ...},
+  {content: "Verify all tests pass", ...},
+  {content: "QA verification (qa-demo workflow)", ...},
+  {content: "Land changes: format, commit, push, close bd issue", ...}
+])
+```
+
+**Bad granularity** (too fine):
+```javascript
+// ❌ Don't do this - way too atomic
+TodoWrite(todos=[
+  {content: "Run bd ready", ...},
+  {content: "Run bd update", ...},
+  {content: "Open text editor", ...},
+  {content: "Write acceptance criterion 1", ...},
+  {content: "Write acceptance criterion 2", ...},
+  {content: "Run git add", ...},
+  {content: "Run git commit", ...},
+  {content: "Run git push", ...},
+  // 20+ micro-tasks that should be lists
+])
+```
+
+**Guidelines**:
+- **< 30 seconds or single command**: Include as list item in parent task
+- **Needs decision-making or > 5 minutes**: Separate task
+- **Example**: "format, commit, push" = list in one task. "Implement JWT auth" = separate task.
+- **Example**: Each git command separately = too fine. "Land changes" with list = good.
+
+**Why mid-grained matters**:
+- bd issues are for tracking meaningful work units
+- TodoWrite is for execution guidance within those units
+- Too fine = noise, lost in details
+- Mid-grained = clear progress, meaningful tracking
 
 ## Hydration Context Sources
 

@@ -173,33 +173,56 @@ The router dispatches to `session_env_setup.sh` and `unified_logger.py` based on
 - Other agents: planner, effectual-planner, framework-executor
 - Unenforced axioms/heuristics
 
-## Composable Workflow System
+## Composable Workflow System (LLM-Native)
 
-**NEW in v1.0**: Workflows are now stored as YAML+Markdown files in `workflows/` directory.
+**NEW in v1.0**: Simple markdown workflows that LLMs read and compose.
 
-The prompt-hydrator selects from **9 composable workflows**:
+**Key insight**: No parsing - LLMs read markdown and understand it.
 
-### Development Workflows
-- **[[workflows/feature-dev]]** - Full TDD feature development (critic → TDD → QA)
-- **[[workflows/minor-edit]]** - Streamlined for small, focused changes
-- **[[workflows/debugging]]** - Systematic debugging with reproducible tests
-- **[[workflows/tdd-cycle]]** - Classic red-green-refactor TDD cycle
+### Current Status
 
-### Planning & QA Workflows
-- **[[workflows/spec-review]]** - Critic feedback iteration loop
-- **[[workflows/qa-demo]]** - Independent QA verification
+**Phase 1 (Foundation) - COMPLETE**:
+- ✅ 9 workflow files in `workflows/` directory
+- ✅ WORKFLOWS.md index with decision tree
+- ✅ Hydrator reads and selects workflows
+- ⚠️ Workflows still have complex YAML frontmatter (legacy from pre-LLM design)
 
-### Operations & Routing Workflows
-- **[[workflows/batch-processing]]** - Parallel processing for multiple items
-- **[[workflows/simple-question]]** - Minimal info-only workflow
-- **[[workflows/direct-skill]]** - Direct skill/command routing
+**Phase 2 (LLM-Native Composition) - NEXT**:
+- 🔄 Simplify workflows: remove YAML structure, keep human-readable markdown
+- 🔄 Update hydrator: "When you see [[spec-review]], read that file"
+- 🔄 Inline expansion by LLM understanding (not parsing code)
+- 🔄 Mid-grained TodoWrite plans (not every git command)
 
-**Workflow selection**: See [[WORKFLOWS.md]] decision tree.
+### The 9 Workflows
 
-**Composition**: Workflows can reference other workflows using `[[wikilinks]]`:
-- `feature-dev` includes `[[spec-review]]`, `[[tdd-cycle]]`, `[[qa-demo]]`
-- Each workflow file has YAML frontmatter with structured steps
-- Phase 1 complete: Basic reading. Phase 2: Recursive composition.
+**Development**: feature-dev, minor-edit, debugging, tdd-cycle
+**Planning & QA**: spec-review, qa-demo
+**Operations & Routing**: batch-processing, simple-question, direct-skill
+
+**Composition**: Workflows reference each other with `[[wikilinks]]`
+- Example: `feature-dev` → Follow [[spec-review]] workflow for critic feedback
+- LLM reads referenced file and generates unified plan
+- No code needed - LLM composes by understanding
+
+### How It Works
+
+1. **Hydrator reads** WORKFLOWS.md and selects workflow
+2. **Hydrator reads** `workflows/feature-dev.md` (simple markdown)
+3. **Hydrator sees** "Follow [[spec-review]] workflow"
+4. **Hydrator reads** `workflows/spec-review.md` inline
+5. **Hydrator generates** unified TodoWrite plan with mid-grained tasks
+6. **No parsing** - just LLM reading markdown and understanding it
+
+### bd Issue Granularity
+
+**Mid-grained tasks** (good):
+- "Implement user auth" with list: create model, add JWT, write tests
+- "Land changes" with list: format, git add, commit, push
+
+**Too fine-grained** (bad):
+- Separate issues for "git add", "git commit", "git push"
+
+**Rule**: < 30 seconds = list item. Needs decision-making = separate task.
 
 ## Quality Gates
 
