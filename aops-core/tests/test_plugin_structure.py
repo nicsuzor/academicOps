@@ -43,10 +43,10 @@ class TestCoreSkills:
 class TestCoreAgents:
     """Verify core agents are present."""
 
-    CORE_AGENTS = ["planner", "prompt-hydrator", "critic", "custodiet"]
+    CORE_AGENTS = ["prompt-hydrator", "critic", "custodiet", "qa-verifier", "framework"]
 
     def test_all_core_agents_present(self) -> None:
-        """All 4 core agents must be present."""
+        """All 5 core agents must be present."""
         agents_dir = PLUGIN_ROOT / "agents"
         for agent_name in self.CORE_AGENTS:
             agent_file = agents_dir / f"{agent_name}.md"
