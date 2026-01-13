@@ -343,3 +343,11 @@ description: Historically significant but no longer active heuristics.
 **Derivation**: Agents cannot judge their own work. Test failures require human judgment about next steps.
 
 ---
+
+## No Horizontal Line Dividers (P#63)
+
+**Statement**: Use headings for structure, not horizontal lines (`---`, `***`, `___`). Horizontal lines are visual noise.
+
+**Derivation**: Headings provide semantic structure. Horizontal lines are purely visual and don't convey meaning.
+
+---

@@ -122,7 +122,7 @@ create_symlink "CLAUDE.md" "$AOPS_PATH/CLAUDE.md"
 
 # Create plugins directory and symlink aops-core plugin
 mkdir -p "$CLAUDE_DIR/plugins"
-create_symlink "plugins/aops-core" "$AOPS_PATH/plugins/aops-core"
+create_symlink "plugins/aops-core" "$AOPS_PATH/aops-core"
 
 # Step 2a: Create settings.local.json with machine-specific env vars
 echo

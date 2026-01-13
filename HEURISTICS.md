@@ -31,11 +31,3 @@ description: Working hypotheses validated by evidence.
 **Derivation**: Mixed-category files are hard to maintain. Clear classification enables appropriate handling.
 
 ---
-
-## No Horizontal Line Dividers (P#63)
-
-**Statement**: Use headings for structure, not horizontal lines (`---`, `***`, `___`). Horizontal lines are visual noise.
-
-**Derivation**: Headings provide semantic structure. Horizontal lines are purely visual and don't convey meaning.
-
----
