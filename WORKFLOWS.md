@@ -102,16 +102,6 @@ For each workflow, hydrator generates:
 7. Commit and push
 ```
 
-## Guardrails by Workflow
+## Heuristics Selection
 
-Include these in the hydration output:
-
-| Workflow   | Guardrails                                                    |
-| ---------- | ------------------------------------------------------------- |
-| question   | `answer_only`                                                 |
-| minor-edit | `verify_before_complete`, `fix_within_design`                 |
-| tdd        | `require_acceptance_test`, `verify_before_complete`           |
-| debug      | `reproduce_first`, `verify_before_complete`                   |
-| batch      | `per_item_verification`, `aggregate_qa`, `parallel_subagents` |
-| qa-proof   | `evidence_required`, `quote_errors_exactly`                   |
-| plan-mode  | `plan_mode`, `critic_review`, `user_approval_required`        |
+Instead of fixed guardrails, the hydrator reads `$AOPS/archived/HEURISTICS.md` and selects 2-4 principles relevant to the specific task. This provides task-specific guidance rather than workflow-generic rules.

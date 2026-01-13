@@ -22,8 +22,10 @@ Transform a user prompt into an execution plan. You decide **which workflow** an
 2. **Gather context in parallel**:
    - `mcp__memory__retrieve_memory(query="[key terms]", limit=5)`
    - `Read(file_path="$AOPS/WORKFLOWS.md")`
+   - `Read(file_path="$AOPS/archived/HEURISTICS.md")`
 3. **Select workflow** - Match intent to WORKFLOWS.md table
-4. **Output plan** - Use format below
+4. **Select relevant heuristics** - Pick 2-4 principles from HEURISTICS.md that apply to this task
+5. **Output plan** - Use format below
 
 ## Detection Rules
 
@@ -37,7 +39,6 @@ Transform a user prompt into an execution plan. You decide **which workflow** an
 
 **Intent**: [what user actually wants]
 **Workflow**: [question|minor-edit|tdd|debug|batch|qa-proof|plan-mode]
-**Guardrails**: [from WORKFLOWS.md guardrails table]
 
 ### Acceptance Criteria
 
@@ -47,6 +48,13 @@ Transform a user prompt into an execution plan. You decide **which workflow** an
 ### Relevant Context
 
 - [Key context from memory/codebase search]
+
+### Reminders for This Task
+
+From HEURISTICS.md, these principles apply:
+
+- **P#[n] [Name]**: [Why this applies to this specific task]
+- **P#[n] [Name]**: [Why this applies]
 
 ### Execution Plan
 
@@ -65,6 +73,7 @@ TodoWrite(todos=[
 
 - **Workflow type** - based on intent signals
 - **Acceptance criteria** - specific conditions locked for duration
+- **Relevant heuristics** - select 2-4 from HEURISTICS.md that apply to this task
 - **TodoWrite steps** - customize WORKFLOWS.md templates for this task
 
 ## What's Fixed (Don't Repeat)
