@@ -33,6 +33,23 @@ The main agent ALWAYS follows this sequence - hydrator doesn't repeat it:
 3. **QA VERIFICATION (MANDATORY)**: Spawn qa-verifier as independent Task subagent before completion
 4. Commit and push (mandatory - work isn't done until pushed)
 
+### Checkpoint vs QA Verifier - When to Use Each
+
+**CRITICAL**: These serve different purposes. Don't create redundant verification steps.
+
+**CHECKPOINTs** (interim validation during execution):
+- "All tests pass" after implementing feature
+- "Bug no longer reproduces" after applying fix
+- "Data migration completed successfully"
+- **Purpose**: Verify a specific step succeeded before proceeding to next step
+
+**qa-verifier** (final verification against acceptance criteria):
+- Automatically invoked by main agent before completion (see "QA Verification Step" below)
+- Replaces what would be a final "verify everything works" checkpoint
+- **Purpose**: Comprehensive check that ALL acceptance criteria met
+
+**Never create both a final CHECKPOINT and a qa-verifier step** - that's redundant. Use interim CHECKPOINTs during execution, and let the main agent handle final qa-verifier invocation.
+
 ### QA Verification Step
 
 **CRITICAL**: Before completing work, the main agent MUST spawn qa-verifier:

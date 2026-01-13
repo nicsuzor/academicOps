@@ -85,5 +85,7 @@ TodoWrite(todos=[
 The main agent already knows:
 
 - Delegate implementation to subagents
-- QA verifier checks before completion
+- QA verifier checks before completion (don't add "QA VERIFY" todo step)
 - Must commit and push when done
+
+**CRITICAL**: Don't create redundant verification. Use interim CHECKPOINTs during execution, but never add a final verification step - the main agent automatically invokes qa-verifier before completion. See WORKFLOWS.md "Checkpoint vs QA Verifier" section.
