@@ -201,3 +201,25 @@ Read(output_file) → loads full 243KB transcript into context
 ```
 
 **Official guidance**: "file-based coordination is recommended instead to preserve context budget" - Claude Code docs
+
+**Known Issue**: [GitHub #14118](https://github.com/anthropics/claude-code/issues/14118) - "Background subagent tool calls exposed in parent context window" (OPEN as of 2026-01-13). Multiple users confirm this behavior.
+
+**How to verify this behavior** (for future validation if Claude Code changes):
+
+```bash
+# 1. Create a background subagent that writes identifiable content
+Task(prompt="Write 'SECRET123' to /tmp/test.txt, respond only 'DONE'", run_in_background=true)
+# Returns: agentId, output_file path
+
+# 2. Check output file size (should be several KB, not ~50 bytes)
+wc -c /tmp/claude/-{cwd}/tasks/{agentId}.output
+
+# 3. Call TaskOutput - observe if full transcript or just "DONE" is returned
+TaskOutput(task_id="{agentId}")
+# If broken: returns full JSONL with SECRET123 visible in tool calls
+# If fixed: returns only "DONE"
+
+# 4. Compare to foreground Task (baseline - should return only final message)
+Task(prompt="Write 'TEST' to /tmp/test2.txt, respond 'DONE'")
+# Should return: "DONE" (not full transcript)
+```
