@@ -622,7 +622,7 @@ def claude_headless_tracked():
             model: Model to use (default: haiku)
             timeout_seconds: Command timeout
             permission_mode: Permission mode (default: bypassPermissions)
-            cwd: Working directory (defaults to aops root for hook access)
+            cwd: Working directory (defaults to /tmp/claude-test for exclusion from transcription)
             fail_on_error: If True (default), pytest.fail() on session failure
 
         Returns:
@@ -647,12 +647,13 @@ def claude_headless_tracked():
         env = os.environ.copy()
 
         try:
-            # Use aops root by default so hooks are available
-            # Hooks are configured in project .claude/ directory
+            # Use /tmp/claude-test by default to exclude test sessions from
+            # automated transcription (filtered by -tmp-claude-test pattern)
             if cwd:
                 test_dir = cwd
             else:
-                test_dir = get_aops_root()
+                test_dir = Path("/tmp/claude-test")
+                test_dir.mkdir(parents=True, exist_ok=True)
 
             result = subprocess.run(
                 cmd,

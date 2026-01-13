@@ -16,7 +16,15 @@ Academic support framework for Claude Code. Minimal, fight bloat aggressively.
 ## Quick Start
 
 ```bash
-./setup.sh  # Creates ~/.claude/ symlinks
+# Required environment variables (add to ~/.bashrc or ~/.zshrc)
+export AOPS="$HOME/src/academicOps"
+export ACA_DATA="$HOME/writing/data"
+
+# MCP server tokens (for GitHub and memory server authentication)
+export GH_MCP_TOKEN="your-github-copilot-mcp-token"
+export MEMORY_MCP_TOKEN="your-memory-server-token"
+
+./setup.sh  # Creates ~/.claude/ symlinks, substitutes tokens into MCP config
 ```
 
 **Core docs** (injected at session start):
@@ -24,6 +32,22 @@ Academic support framework for Claude Code. Minimal, fight bloat aggressively.
 - [AXIOMS.md](AXIOMS.md) - Inviolable principles
 - [HEURISTICS.md](HEURISTICS.md) - Empirically validated rules
 - [FRAMEWORK.md](FRAMEWORK.md) - Paths and configuration
+
+## Architecture
+
+The framework uses a **core + archived** structure:
+
+- **Core plugin** (`plugins/aops-core/`): Minimal proven components with mechanical enforcement
+- **Archived** (`archived/`): Non-core components preserved for reference
+
+### Core Components (~30 files)
+
+| Category   | Components                                                        |
+| ---------- | ----------------------------------------------------------------- |
+| Skills (6) | tasks, remember, python-dev, feature-dev, framework, audit        |
+| Agents (4) | planner, prompt-hydrator, critic, custodiet                       |
+| Hooks (3)  | router.py, unified_logger.py, user_prompt_submit.py               |
+| Governance | 7 enforced axioms, 4 enforced heuristics (with mechanical checks) |
 
 ## Commands
 
@@ -49,50 +73,42 @@ Academic support framework for Claude Code. Minimal, fight bloat aggressively.
 
 ## Skills
 
-| Skill                | Purpose                                                                            |
-| -------------------- | ---------------------------------------------------------------------------------- |
-| analyst              | Research data analysis (dbt, Streamlit, stats)                                     |
-| annotations          | Scan and process inline HTML comments for human-agent collaboration                |
-| audit                | Comprehensive framework governance (structure, justification, index updates)       |
-| convert-to-md        | Batch convert documents (DOCX, PDF, XLSX, etc.) to markdown                        |
-| daily                | Daily note lifecycle - morning briefing, task recommendations                      |
-| dashboard            | Live Streamlit dashboard for tasks + sessions                                      |
-| debug-headless       | Debug Claude Code or Gemini CLI in headless mode with full output capture          |
-| excalidraw           | Hand-drawn diagrams with organic layouts                                           |
-| extractor            | Extract knowledge from archive documents                                           |
-| fact-check           | Verify factual claims against authoritative sources                                |
-| feature-dev          | Test-first feature development workflow                                            |
-| flowchart            | Create clear, readable Mermaid flowcharts                                          |
-| framework            | Convention reference, categorical imperative                                       |
-| garden               | Incremental PKM maintenance (weeding, linking)                                     |
-| ground-truth         | Establish ground truth labels for evaluation                                       |
-| introspect           | Test framework self-knowledge from session context alone                           |
-| osb-drafting         | IRAC analysis for Oversight Board cases                                            |
-| pdf                  | Markdown → professional PDF                                                        |
-| python-dev           | Production Python (fail-fast, typed, TDD)                                          |
-| qa-eval              | Black-box quality assurance for verifying work against specifications              |
-| remember             | Persist knowledge to markdown + memory server                                      |
-| review               | Assist in reviewing academic work (papers, dissertations, drafts)                  |
-| review-training      | Extract training pairs from matched documents                                      |
-| session-insights     | Extract accomplishments + learnings; session-end reflection with heuristic updates |
-| tasks                | Task lifecycle management                                                          |
-| training-set-builder | Build LLM training datasets from documents                                         |
-| transcript           | Session JSONL → markdown                                                           |
+### Core Skills (Active)
+
+| Skill       | Purpose                                                       |
+| ----------- | ------------------------------------------------------------- |
+| audit       | Comprehensive framework governance (structure, justification) |
+| feature-dev | Test-first feature development workflow                       |
+| framework   | Convention reference, categorical imperative                  |
+| python-dev  | Production Python (fail-fast, typed, TDD)                     |
+| remember    | Persist knowledge to markdown + memory server                 |
+| tasks       | Task lifecycle management                                     |
+
+### Archived Skills
+
+Additional skills are preserved in `archived/skills/` for reference and potential reactivation:
+analyst, annotations, convert-to-md, daily, dashboard, debug-headless, excalidraw, extractor, fact-check, flowchart, garden, ground-truth, introspect, osb-drafting, pdf, qa-eval, review, review-training, session-insights, training-set-builder, transcript
 
 ## Agents
 
-| Agent             | Purpose                                               |
-| ----------------- | ----------------------------------------------------- |
-| prompt-hydrator   | Context gathering + workflow selection (every prompt) |
-| custodiet         | Ultra vires detector - authority checking             |
-| critic            | Second-opinion review of plans/conclusions            |
-| planner           | Implementation planning with memory + critic review   |
-| effectual-planner | Strategic planning under uncertainty                  |
+### Core Agents (Active)
 
-## Architecture
+| Agent           | Purpose                                               |
+| --------------- | ----------------------------------------------------- |
+| prompt-hydrator | Context gathering + workflow selection (every prompt) |
+| custodiet       | Ultra vires detector - authority checking             |
+| critic          | Second-opinion review of plans/conclusions            |
+| planner         | Implementation planning with memory + critic review   |
+
+### Archived Agents
+
+Preserved in `archived/agents/`: effectual-planner, framework-executor
+
+## Infrastructure
 
 - **Hooks**: Event-driven context injection (`hooks/`)
 - **Skills**: Workflow instructions (`skills/`) - invoke via `Skill` tool
 - **Memory**: `mcp__memory__*` tools for knowledge persistence
+- **Plugin**: Core components bundled in `plugins/aops-core/`
 
 See [[RULES.md]], [[WORKFLOWS.md]], [[VISION.md]] for details.

@@ -12,6 +12,7 @@ version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "anthropic" },
+    { name = "click" },
     { name = "fastmcp" },
     { name = "mcp-memory-service" },
     { name = "mypy" },
@@ -34,6 +35,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "anthropic", specifier = ">=0.75.0" },
+    { name = "click", specifier = ">=8.1.0" },
     { name = "fastmcp", specifier = ">=2.13.1" },
     { name = "mcp-memory-service", specifier = ">=8.52.2" },
     { name = "mypy", specifier = ">=1.19.1" },

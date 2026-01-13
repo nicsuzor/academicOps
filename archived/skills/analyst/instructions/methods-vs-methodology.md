@@ -307,14 +307,14 @@ to estimate the effect of policy change X.
 
 ## Maintenance Rules
 
-### Update METHODOLOGY.md When:
+### Update METHODOLOGY.md When
 
 - Research question changes
 - Research design changes
 - Conceptual definitions change
 - Theoretical framework evolves
 
-### Update methods/*.md When:
+### Update methods/*.md When
 
 - Algorithm changes
 - Code implementation changes
@@ -322,14 +322,14 @@ to estimate the effect of policy change X.
 - Validation approach changes
 - Bug fixes in implementation
 
-### Update BOTH When:
+### Update BOTH When
 
 - Changing what you're measuring (update METHODOLOGY for concept, methods/ for calculation)
 - Adding new analytical approach (update METHODOLOGY for justification, methods/ for implementation)
 
 ## Quality Checklist
 
-### METHODOLOGY.md Complete When:
+### METHODOLOGY.md Complete When
 
 - [ ] Research question clearly stated
 - [ ] Research design justified
@@ -338,7 +338,7 @@ to estimate the effect of policy change X.
 - [ ] All technical details referenced to methods/
 - [ ] No code or implementation details present
 
-### methods/*.md Complete When:
+### methods/*.md Complete When
 
 - [ ] Purpose clearly stated
 - [ ] Implementation fully documented

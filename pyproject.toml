@@ -16,10 +16,14 @@ dependencies = [
   "pytest>=8.0.0",
   "pytest-xdist>=3.8.0",
   "mcp-memory-service>=8.52.2",
+  "click>=8.1.0",
 ]
 
+[project.scripts]
+task = "scripts.task_cli:main"
+
 [tool.hatch.build.targets.wheel]
-packages = ["lib", "skills", "tests"]
+packages = ["lib", "skills", "tests", "scripts"]
 
 [build-system]
 requires = ["hatchling"]

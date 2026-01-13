@@ -13,7 +13,7 @@ from pathlib import Path
 import pytest
 
 # Add skills path to import
-sys.path.insert(0, str(Path(__file__).parent.parent / "skills" / "next" / "scripts"))
+sys.path.insert(0, str(Path(__file__).parent.parent / "skills" / "tasks" / "scripts"))
 
 from select_task import (  # noqa: E402
     calculate_priority_distribution,

@@ -29,6 +29,7 @@ When you see these domain signals, invoke the corresponding skill BEFORE startin
 | Generate PDF from markdown                                                | `pdf`                         | PDF generation with academic styling   |
 | Task management, create/update tasks                                      | `tasks`                       | Task lifecycle management              |
 | Session insights, accomplishments, daily note, daily summary              | `session-insights`            | Extract learnings from sessions        |
+| Daily briefing, morning routine, task recommendations, email triage       | `daily`                       | Daily note lifecycle management        |
 | Fact-check claims, verify sources                                         | `fact-check`                  | Verify factual claims                  |
 
 ## Operational Reminders

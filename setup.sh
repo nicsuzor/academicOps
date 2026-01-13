@@ -120,6 +120,10 @@ create_symlink "hooks" "$AOPS_PATH/hooks"
 create_symlink "settings.json" "$AOPS_PATH/config/claude/settings.json"
 create_symlink "CLAUDE.md" "$AOPS_PATH/CLAUDE.md"
 
+# Create plugins directory and symlink aops-core plugin
+mkdir -p "$CLAUDE_DIR/plugins"
+create_symlink "plugins/aops-core" "$AOPS_PATH/plugins/aops-core"
+
 # Step 2a: Create settings.local.json with machine-specific env vars
 echo
 echo "Creating settings.local.json for environment variables..."
@@ -192,9 +196,22 @@ mcp_base="$AOPS_PATH/config/claude/mcp-base.json"
 mcp_outlook="$AOPS_PATH/config/claude/mcp-outlook-${OUTLOOK_MODE}.json"
 mcp_source="$AOPS_PATH/config/claude/mcp.json"
 
+# Check for MCP tokens (required for gh and memory servers)
+if [ -z "${GH_MCP_TOKEN:-}" ]; then
+    echo -e "${YELLOW}⚠ GH_MCP_TOKEN not set - GitHub MCP server will not authenticate${NC}"
+    echo "  Set in shell RC: export GH_MCP_TOKEN='your-github-token'"
+fi
+if [ -z "${MEMORY_MCP_TOKEN:-}" ]; then
+    echo -e "${YELLOW}⚠ MEMORY_MCP_TOKEN not set - Memory MCP server will not authenticate${NC}"
+    echo "  Set in shell RC: export MEMORY_MCP_TOKEN='your-memory-token'"
+fi
+
 if [ -f "$mcp_base" ] && [ -f "$mcp_outlook" ] && command -v jq &> /dev/null; then
-    # Deep merge: base + outlook fragment
-    jq -s '.[0] * .[1]' "$mcp_base" "$mcp_outlook" > "$mcp_source"
+    # Deep merge: base + outlook fragment, then substitute env vars for tokens
+    jq -s '.[0] * .[1]' "$mcp_base" "$mcp_outlook" | \
+        sed -e "s|\${GH_MCP_TOKEN}|${GH_MCP_TOKEN:-}|g" \
+            -e "s|\${MEMORY_MCP_TOKEN}|${MEMORY_MCP_TOKEN:-}|g" \
+        > "$mcp_source"
     echo -e "${GREEN}✓ Built mcp.json from base + outlook-${OUTLOOK_MODE}${NC}"
 elif [ ! -f "$mcp_base" ]; then
     echo -e "${RED}✗ Missing $mcp_base${NC}"
