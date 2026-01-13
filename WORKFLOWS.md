@@ -140,7 +140,7 @@ Full TTD is required for all development work.
 5. Commit, push, update `bd` issue
 ```
 
-**debug**:
+### Debugging:
 
 ```
 0. Fetch or create `bd` issue, mark as in-progress
@@ -150,9 +150,10 @@ Full TTD is required for all development work.
 4. Commit and push
 ```
 
-**batch**:
+### Batch processing:
 
 ```
+
 1. Spawn parallel subagents for items 1-N (use run_in_background=true)
 2. Collect results via TaskOutput
 3. CHECKPOINT: All items processed successfully
