@@ -58,7 +58,7 @@ flowchart TD
     end
 
     subgraph "Verification & Close"
-        Y --> Z[qa-verifier Agent<br>opus - INDEPENDENT]
+        Y --> Z[qa Agent<br>opus - INDEPENDENT]
         Z --> AA{Verified?}
         AA -->|VERIFIED| AB[framework Agent<br>sonnet]
         AA -->|ISSUES| AC[Fix Issues]
@@ -135,7 +135,7 @@ The router dispatches to `session_env_setup.sh` and `unified_logger.py` based on
 | **prompt-hydrator** | haiku  | Transform prompts → execution plans                   | UserPromptSubmit hook        |
 | **critic**          | opus   | Review plans BEFORE execution                         | After hydration              |
 | **custodiet**       | haiku  | Detect scope drift, BLOCK on violation                | Random audit (~7 tool calls) |
-| **qa-verifier**     | opus   | Independent end-to-end verification                   | Before completion            |
+| **qa**     | opus   | Independent end-to-end verification                   | Before completion            |
 | **framework**       | sonnet | Stateful framework understanding, manages reflections | Before session close         |
 
 ### Hooks (3 + router)

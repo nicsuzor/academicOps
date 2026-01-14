@@ -1,8 +1,8 @@
 ---
-name: qa-verifier
+name: qa
 category: instruction
 description: Independent end-to-end verification before completion
-permalink: aops/agents/qa-verifier
+permalink: aops/agents/qa
 type: agent
 tags:
   - verification
@@ -154,7 +154,7 @@ No issues found. Work matches acceptance criteria.
 ## Example Invocation
 
 ```
-Task(subagent_type="qa-verifier", model="opus", prompt="
+Task(subagent_type="qa", model="opus", prompt="
 Verify the work is complete.
 
 **Original request**: [hydrated prompt]

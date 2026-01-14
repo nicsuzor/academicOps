@@ -28,7 +28,7 @@ Use these values EXACTLY in your response:
 These fields are typically provided by Claude at session end from session state. If analyzing a transcript post-hoc, extract what you can:
 
 - **workflows_used**: Array of workflow names (e.g., `["tdd"]`, `["plan-mode"]`, or `[]` if unknown)
-- **subagents_invoked**: Array of subagent names (e.g., `["prompt-hydrator", "critic", "qa-verifier"]`)
+- **subagents_invoked**: Array of subagent names (e.g., `["prompt-hydrator", "critic", "qa"]`)
 - **subagent_count**: Integer count of subagents invoked
 - **custodiet_blocks**: Integer count of custodiet blocks (0 if none)
 - **stop_reason**: String describing how session ended (e.g., `"end_turn"`, `"user_stopped"`, `"unknown"`)

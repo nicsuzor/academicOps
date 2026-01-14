@@ -142,7 +142,7 @@ If anything fails, fix it before proceeding.
 
 Spawn the QA verifier agent:
 ```javascript
-Task(subagent_type="qa-verifier", model="opus", prompt=`
+Task(subagent_type="qa", model="opus", prompt=`
 Verify the work is complete.
 
 **Original request**: [feature description]

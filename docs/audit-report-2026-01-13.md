@@ -91,14 +91,14 @@ The framework v1.0 core loop is substantially complete and functional. Critical 
 - **Evidence**: No test file found, though script is straightforward bash
 - **Remediation**: Create `tests/hooks/test_session_env_setup.sh` or integration test verifying AOPS and PYTHONPATH are set
 
-### 6. qa-verifier model not specified in FLOW.md table
+### 6. qa model not specified in FLOW.md table
 
 - **Location**: `aops-core/FLOW.md:128-134`
 - **Impact**: Minor documentation inconsistency
 - **Severity**: LOW
-- **Evidence**: FLOW.md agent table shows all models except qa-verifier shows blank in this read
-- **Actual state**: qa-verifier.md correctly specifies `model: opus`
-- **Remediation**: Verify FLOW.md table shows qa-verifier model as opus
+- **Evidence**: FLOW.md agent table shows all models except qa shows blank in this read
+- **Actual state**: qa.md correctly specifies `model: opus`
+- **Remediation**: Verify FLOW.md table shows qa model as opus
 
 ---
 
@@ -151,8 +151,8 @@ The framework v1.0 core loop is substantially complete and functional. Critical 
 
 - **FLOW.md status**: PENDING USER APPROVAL (audited as canonical)
 - **Hook registration**: ✓ All 6 v1.0 hooks registered in settings.json
-- **Agent definitions**: ✓ All 5 agents present (critic, custodiet, framework, prompt-hydrator, qa-verifier)
-- **Agent models**: ✓ critic=opus, custodiet=haiku, qa-verifier=opus as specified
+- **Agent definitions**: ✓ All 5 agents present (critic, custodiet, framework, prompt-hydrator, qa)
+- **Agent models**: ✓ critic=opus, custodiet=haiku, qa=opus as specified
 - **bd CLI**: ✓ Available (v0.47.0 dev)
 - **Archived script**: ✓ Works (`audit_framework_health.py`)
 
@@ -179,7 +179,7 @@ All 6 layers of enforcement.md model are implemented:
 3. **Layer 2.5 (JIT Compliance)**: ✓ overdue_enforcement.py blocks at 7 tool calls
 4. **Layer 3 (Checkpoints)**: ✓ TodoWrite (Claude Code built-in)
 5. **Layer 4 (Detection)**: ✓ unified_logger.py logs PostToolUse events
-6. **Layer 5 (Verification)**: ✓ qa-verifier.md and critic.md agents defined
+6. **Layer 5 (Verification)**: ✓ qa.md and critic.md agents defined
 7. **Layer 6 (User Habits)**: ✓ Documented in AGENTS.md
 
 ### Core Loop Alignment
@@ -190,7 +190,7 @@ All FLOW.md v1.0 sections verified:
 - **Prompt Processing**: ✓ UserPromptSubmit triggers hydration with skip conditions
 - **Plan Generation**: ✓ prompt-hydrator.md generates TodoWrite, critic reviews
 - **Execution**: ✓ overdue_enforcement.py blocks at 7 tools, custodiet can set BLOCK flag
-- **Verification**: ✓ qa-verifier.md is independent (opus model), framework.md generates reflections
+- **Verification**: ✓ qa.md is independent (opus model), framework.md generates reflections
 - **Reflection**: ✓ /log command exists, framework agent has reflection instructions
 
 ### Completeness Metrics

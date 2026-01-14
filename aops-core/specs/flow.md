@@ -121,7 +121,7 @@ status: DRAFT - PENDING APPROVAL (v2)
 | **prompt-hydrator** | haiku  | Transform prompts → execution plans                   | UserPromptSubmit hook           |
 | **critic**          | opus   | Review plans BEFORE execution                         | After hydration, before execute |
 | **custodiet**       | haiku  | Detect scope drift, BLOCK on violation                | Compliance checkpoints          |
-| **qa-verifier**     | opus   | Independent end-to-end verification                   | Before completion               |
+| **qa**     | opus   | Independent end-to-end verification                   | Before completion               |
 | **framework**       | sonnet | Stateful framework understanding, manages reflections | Before session close            |
 
 ### Tools Required
@@ -607,7 +607,7 @@ Single state file per session at `~/.claude/projects/<project>/{YYYYMMDD}-{hash}
     "prompt-hydrator": { "last_invoked": "...", "result": "..." },
     "critic": { "last_invoked": "...", "verdict": "PROCEED", "acceptance_criteria": [...] },
     "custodiet": { "last_invoked": "...", "result": "OK" },
-    "qa-verifier": { "last_invoked": "...", "result": "VERIFIED" }
+    "qa": { "last_invoked": "...", "result": "VERIFIED" }
   },
 
   "insights": null
@@ -676,7 +676,7 @@ Stop (session end)
 | prompt-hydrator.md    | EXISTS | Wire: add mcp__memory + bd tools to definition            |
 | critic.md             | EXISTS | Wire: output acceptance_criteria to state file            |
 | custodiet.md          | EXISTS | Wire: HALT behavior, write to state file                  |
-| qa-verifier.md        | EXISTS | Use archived/specs/qa-eval.md spec + create agent def     |
+| qa.md        | EXISTS | Use archived/specs/qa-eval.md spec + create agent def     |
 | framework.md          | EXISTS | Use archived/agents/framework-executor.md, adapt for v1.0 |
 | transcript skill      | EXISTS | In archived/skills/ - move to core if needed              |
 | mcp__memory__*        | EXISTS | Already available MCP tools                               |

@@ -42,13 +42,13 @@ All pre-flight checks passed successfully.
 ### Agent Definitions
 
 **Location**: `/home/nic/src/academicOps/aops-core/agents/`
-**Expected**: 5 agent files (critic, custodiet, framework, prompt-hydrator, qa-verifier)
+**Expected**: 5 agent files (critic, custodiet, framework, prompt-hydrator, qa)
 **Actual**: ✓ All 5 present
 
 **Model Assignments** (FLOW.md lines 128-134):
 - `critic.md`: model: opus ✓
 - `custodiet.md`: model: haiku ✓
-- `qa-verifier.md`: model: opus ✓
+- `qa.md`: model: opus ✓
 - `prompt-hydrator.md`: model: haiku ✓
 - `framework.md`: model: sonnet ✓
 
@@ -291,12 +291,12 @@ on:
 |-------|-------|---------|-------------|
 | critic | opus | Second-opinion review | ✓ model: opus (line 13) |
 | custodiet | haiku | Ultra vires detection | ✓ model: haiku (line 6) |
-| qa-verifier | opus | Independent end-to-end verification | ✓ model: opus (line 15) |
+| qa | opus | Independent end-to-end verification | ✓ model: opus (line 15) |
 
 **Validation**:
 - [✓] critic = opus (expected for deep review)
 - [✓] custodiet = haiku (expected for fast compliance checks)
-- [✓] qa-verifier = opus (expected for thorough verification)
+- [✓] qa = opus (expected for thorough verification)
 
 **Alignment**: ✓ ALIGNED
 
@@ -361,8 +361,8 @@ on:
 | Custodiet audit at ~7 tool calls | Lines 46, 203 | overdue_enforcement.py:18 | ✓ | `THRESHOLD = 7` |
 | Custodiet can set BLOCK flag | Line 48 | router.py:482-496 | ✓ | `is_custodiet_blocked()` |
 | BLOCK flag halts all hooks | Line 209 | router.py:514-519 | ✓ | Checked before dispatch |
-| QA-verifier runs AFTER execution | Line 55 | WORKFLOWS.md:84-102 | ✓ | CHECKPOINT step defined |
-| QA-verifier is INDEPENDENT | Line 57 | qa-verifier.md:27 | ✓ | "CRITICAL: You are INDEPENDENT" |
+| qa runs AFTER execution | Line 55 | WORKFLOWS.md:84-102 | ✓ | CHECKPOINT step defined |
+| qa is INDEPENDENT | Line 57 | qa.md:27 | ✓ | "CRITICAL: You are INDEPENDENT" |
 | Framework generates reflection | Line 61 | framework.md:29,57 | ✓ | "Generate structured reflections" |
 | Reflection stored via /log | Line 63 | aops-core/commands/log.md | ✓ | File exists |
 
@@ -383,7 +383,7 @@ on:
 | 2.5: JIT Compliance | enforcement.md:93-124 | overdue_enforcement.py | ⚠ PARTIAL | Implementation correct, spec references wrong file (custodiet_gate.py) |
 | 3: Checkpoints | enforcement.md:126-132 | TodoWrite (Claude Code built-in) | ✓ ALIGNED | Not verifiable (external tool) |
 | 4: Detection | enforcement.md:134-140 | unified_logger.py PostToolUse | ✓ ALIGNED | Logs all tool calls to session file |
-| 5: Verification | enforcement.md:142-148 | qa-verifier.md, critic.md | ✓ ALIGNED | Both agents defined with correct models |
+| 5: Verification | enforcement.md:142-148 | qa.md, critic.md | ✓ ALIGNED | Both agents defined with correct models |
 | 6: User Habits | enforcement.md:150-151 | AGENTS.md | ✓ ALIGNED | Documented in dogfooding instructions |
 
 **Violations**:
@@ -463,7 +463,7 @@ on:
 | prompt-hydrator | tests/integration/test_hydrator.py | ✓ EXISTS | E2E test |
 | critic | tests/demo/test_demo_qa_gates.py | ⚠ IMPLIED | Not isolated |
 | custodiet | tests/integration/test_custodiet_e2e.py | ✓ EXISTS | E2E test |
-| qa-verifier | tests/demo/test_demo_qa_gates.py | ⚠ IMPLIED | Not isolated |
+| qa | tests/demo/test_demo_qa_gates.py | ⚠ IMPLIED | Not isolated |
 | framework | tests/demo/test_framework_reflection.py | ✓ EXISTS | Demo test |
 
 **Missing Tests - Remediation**:
@@ -547,7 +547,7 @@ on:
 - **Breakdown**:
   - flow.md: "Demo tests | TODO | Use existing test infrastructure"
   - session_analyzer.py: Documentation TODO reference (not code)
-  - qa-verifier.md: TODO/FIXME mentioned as anti-patterns (not actual TODOs)
+  - qa.md: TODO/FIXME mentioned as anti-patterns (not actual TODOs)
 
 **Hardcoded Values**:
 
@@ -587,7 +587,7 @@ on:
 - `/home/nic/src/academicOps/aops-core/agents/prompt-hydrator.md` - Haiku, UserPromptSubmit
 - `/home/nic/src/academicOps/aops-core/agents/critic.md` - Opus, plan review
 - `/home/nic/src/academicOps/aops-core/agents/custodiet.md` - Haiku, compliance audit
-- `/home/nic/src/academicOps/aops-core/agents/qa-verifier.md` - Opus, independent verification
+- `/home/nic/src/academicOps/aops-core/agents/qa.md` - Opus, independent verification
 - `/home/nic/src/academicOps/aops-core/agents/framework.md` - Sonnet, reflection generation
 
 ### Test Files

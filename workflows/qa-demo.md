@@ -65,7 +65,7 @@ Collect all information needed for verification:
 Spawn the QA verifier agent with full context:
 
 ```javascript
-Task(subagent_type="aops-core:qa-verifier", model="opus", prompt=`
+Task(subagent_type="aops-core:qa", model="opus", prompt=`
 Verify the work is complete and correct.
 
 **Original request**: [describe what was asked for]
@@ -133,7 +133,7 @@ git commit -m "fix: address QA findings - [description]"
 If you made changes based on QA feedback, run verification again:
 
 ```javascript
-Task(subagent_type="aops-core:qa-verifier", model="opus", prompt=`
+Task(subagent_type="aops-core:qa", model="opus", prompt=`
 Re-verify after addressing previous issues.
 
 **Previous issues**:

@@ -170,7 +170,7 @@ Skill(skill="commit", args="-m 'feat: [description from context]'")
 What kind of review would you like?
 1. Pull request review (review-pr skill)
 2. Critical feedback on design (critic agent)
-3. QA verification of implementation (qa-verifier agent)
+3. QA verification of implementation (qa agent)
 ```
 
 ## Decision Tree
