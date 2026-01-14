@@ -25,6 +25,7 @@ Transform a user prompt into an execution plan. You decide **which workflow** an
    - `Read(file_path="$AOPS/WORKFLOWS.md")` - Read workflow index
    - `Read(file_path="$AOPS/HEURISTICS.md")`
    - `Bash(command="bd ready")` or `Bash(command="bd list --status=open")` - Identify relevant issues
+   - **CRITICAL for structural tasks**: If prompt involves plugin structure, MCP configuration, hook setup, or other framework infrastructure with uncertainty about paths/structure, include explicit documentation lookup step BEFORE execution steps. Use `Grep` to find relevant docs, then `Read` them. Without documentation, agent will guess incorrectly.
 
 3. **Select workflow** by matching user intent to WORKFLOWS.md decision tree.
 
