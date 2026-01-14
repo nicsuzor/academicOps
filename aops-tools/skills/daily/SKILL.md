@@ -44,6 +44,17 @@ Read last 3 daily notes to show project activity summary:
 
 ## 2. Update daily briefing
 
+### 2.0: Load User Context for Email Classification
+
+Before classifying emails, load domain context to filter by relevance:
+
+```bash
+Read $ACA_DATA/CORE.md        # User profile, research focus
+Read $ACA_DATA/context/strategy.md  # Active projects and domains
+```
+
+**Use this context during classification**: Emails about funding, CFPs, conferences, or opportunities OUTSIDE the user's research domains should be classified as **Skip** (domain-irrelevant), not FYI. The user's domains are visible in strategy.md under "Projects" and "Strategic Logic Model".
+
 ### 2.1: Email Triage
 
 Fetch recent emails via Outlook MCP:
@@ -64,7 +75,7 @@ mcp__outlook__messages_list_recent(limit=20, folder="sent")
 
 - **FYI**: Informational, no action needed, but should see before archiving
 - **Task**: Requires action AND no sent reply exists → flag for `/email` processing. This includes emails with deliverables requiring processing (attached documents, spreadsheets, files to upload/integrate), even if the email tone is informational.
-- **Skip**: Automated, bulk, or already handled (sent reply exists)
+- **Skip**: Automated, bulk, already handled (sent reply exists), OR domain-irrelevant (funding/CFPs/opportunities outside user's research domains)
 - **Uncertain**: Present to user for classification
 
 ### 2.2: FYI Content in Daily Note
