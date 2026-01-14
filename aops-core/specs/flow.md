@@ -465,29 +465,29 @@ The prompt-hydrator gathers context from:
 
 Framework reflection workflow is defined in **AGENTS.md Step 3**. Key points:
 
-- Session insights are **automatically persisted** by Stop hook (no agent action required)
-- Agents use `/log` command when framework friction/failures observed
-- Framework agent generates structured reflection and creates bd issues as needed
+- Stop hook **reminds** agents to reflect (does not automate it)
+- Agents MUST output Framework Reflection at end of every session (MANDATORY)
+- Agents use `/log` command when framework friction/failures observed during work
 - Reflection format and workflow details in AGENTS.md (single source of truth)
 
 ## Session Insights (Final Step)
 
 Session insights are generated via **two workflows**:
 
-### Workflow A: Automatic (Stop Hook)
+### Workflow A: Agent Reflection (MANDATORY)
 
-When session ends, `unified_logger.py` automatically generates insights to:
+At the end of every session, the agent MUST output Framework Reflection (see AGENTS.md "Hand off" section):
+- Summary of what was accomplished
+- Outcome (success/partial/failure)
+- Friction points observed
+- Proposed improvements
+- Next steps
 
-1. **Permanent storage**: `$ACA_DATA/sessions/insights/{date}-{session_id}.json`
-2. **Session state**: `session-state.json` (temporary, for QA verifier)
+The Stop hook provides a **reminder** to generate this reflection, but does not automate it.
 
-Currently generates **operational metrics** with minimal required fields:
-- Metadata: session_id, date, project
-- Summary: "Session completed"
-- Outcome: "partial" (conservative default)
-- Operational: workflows_used, subagents_invoked, custodiet_blocks, stop_reason
-
-**Future**: LLM-based generation (when API integration available) will add rich insights.
+Stop hook logs basic metadata to `$ACA_DATA/sessions/insights/{date}-{session_id}.json`:
+- session_id, date, project
+- Basic operational metrics (if available)
 
 ### Workflow B: Manual (Gemini Post-hoc)
 

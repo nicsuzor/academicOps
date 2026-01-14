@@ -24,7 +24,13 @@ This is not optional. The framework develops itself through use.
 
 ## Session Start Protocol
 
-Before significant work, read these files:
+Execute the start script to initialize session state:
+
+```bash
+./gemini/commands/session_start.sh
+```
+
+Then, before significant work, read these files:
 
 1. `$AOPS/AXIOMS.md` — Inviolable principles
 2. `$AOPS/HEURISTICS.md` — Empirically validated guidance
@@ -134,11 +140,16 @@ Select based on semantic understanding, not just keywords.
 
 ## Session End Protocol
 
-After completing work, reflect:
+After completing work:
 
-1. What worked / what didn't
-2. What friction existed (missing context, unclear process)
-3. Proposed change (or "none needed")
+1. **Run the end script**:
+   ```bash
+   ./gemini/commands/session_end.sh
+   ```
+2. **Follow its instructions** (Commit, Push).
+3. **Reflect**:
+   - What worked / what didn't
+   - What friction existed
 
 **Persist the reflection** — Per [[specs/reflexivity]], log observations to bd issues:
 
@@ -157,6 +168,18 @@ bd search "[keywords]"
 | `Task(...)`             | Use TODO List tool                   |
 | `Read`, `Edit`, `Write` | `read_file`, `replace`, `write_file` |
 | `Bash`                  | `run_shell_command`                  |
+
+## Agent Translation (Manual Simulation)
+
+Since you cannot spawn sub-agents, you must simulate them or delegate specialized tasks.
+
+| Claude Agent      | Gemini Equivalent                                      |
+| ----------------- | ------------------------------------------------------ |
+| `prompt-hydrator` | **SELF**: Analyze intent, read WORKFLOWS.md, plan steps |
+| `critic`          | **SELF**: "Critique this plan as a hostile reviewer"   |
+| `custodiet`       | **SELF**: "Am I violating any AXIOMS.md rules?"        |
+| `qa`              | **SELF**: "Verify: Does this match the user request?"  |
+| `codebase`        | `delegate_to_agent(codebase_investigator)`             |
 
 ## Fail-Fast Mandate (See [[AXIOMS.md]])
 

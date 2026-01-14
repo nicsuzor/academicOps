@@ -84,23 +84,18 @@ As you work, notice:
 - **Missing context**: What knowledge did you need that didn't surface?
 - **Guardrails**: What constraint would have prevented a mistake?
 
-## Step 3: Session Insights (Automatic)
+## Step 3: Session Insights
 
-Session insights are **automatically persisted** when the session ends via the Stop hook.
+The Stop hook will **remind you** to reflect when the session ends.
 
-**What happens automatically**:
-- Stop hook generates JSON insights with operational metrics
-- Written to: `$ACA_DATA/sessions/insights/{date}-{session_id}.json`
-- Contains: metadata, workflows_used, subagents_invoked, custodiet_blocks, outcome
+**What the Stop hook does**:
+- Provides a reminder to generate Framework Reflection
+- Logs basic session metadata
+- You still MUST output Framework Reflection at session end (see "Landing the Plane" below)
 
-**You do NOT need to**:
-- Manually persist insights to session state
-- Invoke any command to trigger this
-- Output reflection text unless something went wrong
+**Optional: Logging Framework Issues During Work**
 
-**Optional: Logging Framework Issues**
-
-If you observe framework friction or failures during work, use `/log` to create bd issues:
+If you observe framework friction or failures **during work** (not at session end), use `/log` to create bd issues:
 
 ```bash
 /log Router: Skill selection unclear when handling X requests
@@ -111,7 +106,7 @@ The `/log` command invokes the framework agent to:
 2. Determine if bd issue is needed (failures/improvements only)
 3. Create bd issue with proper categorization
 
-**Framework Reflection Format** (used by `/log` command):
+**Framework Reflection Format** (for `/log` command - used during work for framework issues):
 
 ```text
 ## Framework Reflection
