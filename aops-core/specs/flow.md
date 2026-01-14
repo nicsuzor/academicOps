@@ -461,23 +461,14 @@ The prompt-hydrator gathers context from:
 4. Store reflection in bd (linked to session)
 5. Identify framework improvements → create bd issues
 
-## Framework Reflection (MANDATORY)
-
-After completing work, framework agent MUST output:
-
-```
 ## Framework Reflection
 
-**Request**: [Original user request in brief]
-**Guidance received**: [Hydrator/custodiet advice, or "N/A - direct execution"]
-**Followed**: [Yes/No/Partial - explain what was followed or skipped]
-**Outcome**: [Success/Partial/Failure]
-**Accomplishment**: [What was accomplished, if success/partial]
-**Root cause** (if not success): [Which framework component failed]
-**Proposed change**: [Specific improvement or "none needed"]
-```
+Framework reflection workflow is defined in **AGENTS.md Step 3**. Key points:
 
-Reflection is stored in bd for trend analysis.
+- Session insights are **automatically persisted** by Stop hook (no agent action required)
+- Agents use `/log` command when framework friction/failures observed
+- Framework agent generates structured reflection and creates bd issues as needed
+- Reflection format and workflow details in AGENTS.md (single source of truth)
 
 ## Session Insights (Final Step)
 

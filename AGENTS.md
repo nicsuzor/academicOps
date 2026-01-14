@@ -65,9 +65,34 @@ As you work, notice:
 - **Missing context**: What knowledge did you need that didn't surface?
 - **Guardrails**: What constraint would have prevented a mistake?
 
-## Step 3: Output Reflection and Persist (MANDATORY - Always Log)
+## Step 3: Session Insights (Automatic)
 
-After completing work, output and save structured reflection.
+Session insights are **automatically persisted** when the session ends via the Stop hook.
+
+**What happens automatically**:
+- Stop hook generates JSON insights with operational metrics
+- Written to: `$ACA_DATA/sessions/insights/{date}-{session_id}.json`
+- Contains: metadata, workflows_used, subagents_invoked, custodiet_blocks, outcome
+
+**You do NOT need to**:
+- Manually persist insights to session state
+- Invoke any command to trigger this
+- Output reflection text unless something went wrong
+
+**Optional: Logging Framework Issues**
+
+If you observe framework friction or failures during work, use `/log` to create bd issues:
+
+```bash
+/log Router: Skill selection unclear when handling X requests
+```
+
+The `/log` command invokes the framework agent to:
+1. Generate structured Framework Reflection
+2. Determine if bd issue is needed (failures/improvements only)
+3. Create bd issue with proper categorization
+
+**Framework Reflection Format** (used by `/log` command):
 
 ```text
 ## Framework Reflection
@@ -77,46 +102,19 @@ After completing work, output and save structured reflection.
 **Followed**: [Yes/No/Partial - explain what was followed or skipped]
 **Outcome**: [Success/Partial/Failure]
 **Accomplishment**: [What was accomplished, if success/partial]
-**Root cause** (if not success): [Which framework component failed - see enforcement.md]
+**Root cause** (if not success): [Which framework component failed]
 **Proposed change**: [Specific improvement or "none needed"]
 ```
 
-**ALWAYS invoke `/log` after completing work** - not just when things go wrong.
+**When to use `/log`**:
+- Framework component failed (router, skill/agent def, guardrail, hook, gap)
+- Identified improvement opportunity
+- Observed friction worth tracking
 
-```text
-/log [reflection summary]
-```
-
-**Why always log?** Success patterns are as valuable as failure patterns. The metrics enable trend analysis.
-
-### Session Insights (Auto-Generated)
-
-Session insights are **automatically generated** when the session ends via the Stop hook.
-
-**What gets generated automatically**:
-- Metadata: session_id, date, project
-- Summary: "Session completed"
-- Outcome: "partial" (conservative default)
-- Operational metrics: workflows_used, subagents_invoked, custodiet_blocks
-- Written to: `$ACA_DATA/sessions/insights/{date}-{session_id}.json`
-
-**Optional: Output reflection text for user visibility**
-
-You MAY output a structured reflection at session end for user visibility, but persistence is automatic:
-
-```text
-## Session Insights
-
-**Summary**: [One sentence describing what was worked on]
-**Outcome**: [success/partial/failure]
-**Accomplishments**: [Bullet list of completed items]
-**Friction points**: [What was harder than expected, or empty]
-**Proposed changes**: [Framework improvements identified, or empty]
-```
-
-**Important**: This text output is for the USER to see. The actual insights JSON is saved automatically by the Stop hook. You do NOT need to "persist it to session state" - that happens automatically.
-
-**For rich analysis**: User can later invoke `/session-insights` skill to generate detailed insights with Gemini, including learning observations, skill compliance, and user satisfaction metrics.
+**When NOT to use `/log`**:
+- Everything worked as expected
+- User-level issues (not framework failures)
+- End of routine sessions with no issues
 
 ## Step 4: Land the plane (Session Completion)
 

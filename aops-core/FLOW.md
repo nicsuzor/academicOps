@@ -234,6 +234,27 @@ Three mandatory quality gates ensure correctness:
 
 **See**: [[aops-core/specs/flow.md]] for detailed specifications.
 
+## Session Reflection & Insights
+
+**Automatic Insights** (Stop Hook):
+- JSON insights automatically generated when session ends
+- Contains: operational metrics, workflows used, subagents invoked
+- Stored: `$ACA_DATA/sessions/insights/{date}-{session_id}.json`
+- No agent action required
+
+**Framework Issue Logging** (`/log` command):
+- Used when framework friction or failures observed during work
+- Invokes framework agent to generate structured reflection
+- Creates bd issue for tracking (failures/improvements only)
+- NOT for routine session ends with no issues
+
+**Rich Analysis** (`/session-insights` skill):
+- Optional post-hoc analysis with Gemini
+- Generates detailed insights: learning observations, skill compliance, context gaps
+- Overwrites automatic insights with richer data
+
+**User-facing workflow**: Work completes → Stop hook persists insights → (Optional) User runs `/session-insights` for deep analysis → Issues filed via `/log` as needed
+
 ## Session Close
 
 Work is NOT complete until `git push` succeeds. See AGENTS.md for full landing protocol.
