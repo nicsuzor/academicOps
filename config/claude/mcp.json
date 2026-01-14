@@ -1,0 +1,29 @@
+{
+  "mcpServers": {
+    "gh": {
+      "type": "http",
+      "url": "https://api.githubcopilot.com/mcp/",
+      "headers": {
+        "Authorization": "Bearer "
+      }
+    },
+    "zot": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": [
+        "fastmcp",
+        "run",
+        "http://services.stoat-musical.ts.net:8024/mcp"
+      ]
+    },
+    "osb": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": [
+        "fastmcp",
+        "run",
+        "http://services.stoat-musical.ts.net:8025/mcp"
+      ]
+    }
+  }
+}
