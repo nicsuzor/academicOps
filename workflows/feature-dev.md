@@ -18,23 +18,14 @@ Full test-driven development workflow for feature implementation. Ensures qualit
 
 ## Steps
 
-### 1. Fetch or create bd issue, mark as in-progress
+### 1. Track work in bd ([[bd-workflow]])
 
-Check if a related issue exists:
-```bash
-bd ready                    # Show issues ready to work
-bd list --status=open       # All open issues
-```
+Follow the [[bd-workflow]] to set up issue tracking:
+- Check for existing issues
+- Create issue if needed
+- Mark as in-progress
 
-Claim the issue:
-```bash
-bd update <id> --status=in_progress
-```
-
-Or create a new issue if needed:
-```bash
-bd create --title="..." --type=feature --priority=2
-```
+This ensures work is tracked and visible.
 
 ### 2. Articulate clear acceptance criteria
 
@@ -126,9 +117,9 @@ Check all three dimensions and produce verdict.
 **If VERIFIED**: Proceed to commit and push
 **If ISSUES**: Fix the issues, then re-verify before completing
 
-### 8. Commit, push, update bd issue
+### 8. Commit, push, close bd issue ([[bd-workflow]])
 
-Final commit and sync:
+Format, commit, and push:
 ```bash
 ./scripts/format.sh         # Format all files
 git add -A                   # Stage everything
@@ -137,15 +128,14 @@ git commit -m "feat: [description]
 Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
 
 git pull --rebase           # Get latest changes
-bd sync                      # Sync bd changes
+bd sync                      # Sync bd changes (per [[bd-workflow]])
 git push                     # Push to remote
-
-bd close <id>                # Close the issue
 ```
 
-Verify push succeeded:
+Close the issue per [[bd-workflow]]:
 ```bash
-git status                   # Should show "up to date with origin"
+bd close <id>                # Mark work complete
+git status                   # Verify "up to date with origin"
 ```
 
 ## Quality Gates

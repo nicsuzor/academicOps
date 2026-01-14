@@ -70,6 +70,14 @@ All work MUST follow one of the workflows in this index. No exceptions.
 
 ### Operations Workflows
 
+#### [[workflows/bd-workflow]]
+- **ID**: `bd-workflow`
+- **Title**: BD Issue Tracking Workflow
+- **Category**: operations
+- **When to use**: Beginning and end of any tracked work (features, bugs, planning, batch ops)
+- **Key steps**: Check for issues → Create if needed → Mark in-progress → Do work → Close and sync
+- **Quality gates**: Issue tracked, work completed, issue closed, bd synced
+
 #### [[workflows/batch-processing]]
 - **ID**: `batch-processing`
 - **Title**: Batch Processing Workflow

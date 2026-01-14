@@ -26,14 +26,12 @@ Efficient workflow for processing multiple similar items concurrently. Uses para
 
 ## Steps
 
-### 1. Fetch or create bd issue, mark as in-progress
+### 1. Track work in bd ([[bd-workflow]])
 
-Track the batch work:
-
-```bash
-bd create --title="Batch: [operation] on [items]" --type=task --priority=2
-bd update <id> --status=in_progress
-```
+Follow the [[bd-workflow]] to set up issue tracking:
+- Check for existing issues
+- Create issue if needed: `bd create --title="Batch: [operation] on [items]" --type=task --priority=2`
+- Mark as in-progress
 
 ### 2. Identify scope of work and create plan for concurrent execution
 
@@ -140,7 +138,7 @@ Failed: [P items]
 
 If anything failed, return to step 4 to process failures.
 
-### 6. Commit, push, update bd issue
+### 6. Commit, push, close bd issue ([[bd-workflow]])
 
 Land all changes:
 
@@ -158,10 +156,13 @@ Method: Parallel subagents (batch size: [X])
 Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
 
 git pull --rebase
-bd sync
+bd sync                       # Sync bd (per [[bd-workflow]])
 git push
+```
 
-bd close <id>
+Close the issue per [[bd-workflow]]:
+```bash
+bd close <id>                 # Mark work complete
 ```
 
 ## Parallel Processing Patterns

@@ -29,20 +29,12 @@ Use feature-dev workflow instead if:
 
 ## Steps
 
-### 1. Fetch or create bd issue, mark as in-progress
+### 1. Track work in bd ([[bd-workflow]])
 
-Track the work:
-
-```bash
-bd ready                    # Find available work
-bd update <id> --status=in_progress
-```
-
-Or create a new issue:
-
-```bash
-bd create --title="Fix: [brief description]" --type=bug --priority=3
-```
+Follow the [[bd-workflow]] to set up issue tracking:
+- Check for existing issues
+- Create issue if needed (typically `--type=bug --priority=3`)
+- Mark as in-progress
 
 ### 2. Invoke ttd to create a failing test
 
@@ -98,7 +90,7 @@ If tests fail:
 - Update tests if assumptions were wrong
 - Don't proceed until green
 
-### 5. Commit and push
+### 5. Commit, push, close bd issue ([[bd-workflow]])
 
 Land the change:
 
@@ -113,10 +105,13 @@ Change: [describe what changed]
 Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
 
 git pull --rebase            # Get latest
-bd sync                       # Sync bd
+bd sync                       # Sync bd (per [[bd-workflow]])
 git push                      # Push to remote
+```
 
-bd close <id>                 # Close issue
+Close the issue per [[bd-workflow]]:
+```bash
+bd close <id>                 # Mark work complete
 ```
 
 ## Differences from Feature Dev

@@ -172,6 +172,7 @@ class TestWorkflowFiles:
             "batch-processing.md",
             "simple-question.md",
             "direct-skill.md",
+            "bd-workflow.md",
         ]
 
         for workflow_name in expected_workflows:
@@ -208,6 +209,7 @@ class TestWorkflowFiles:
             "batch-processing",
             "simple-question",
             "direct-skill",
+            "bd-workflow",
         ],
     )
     def test_individual_workflow_parsing(self, workflow_id: str) -> None:
