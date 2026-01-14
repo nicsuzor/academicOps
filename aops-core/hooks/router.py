@@ -63,6 +63,7 @@ HOOK_REGISTRY: dict[str, list[dict[str, Any]]] = {
     ],
     "PostToolUse": [
         {"script": "unified_logger.py"},
+        {"script": "custodiet_gate.py"},
     ],
     "UserPromptSubmit": [
         {"script": "user_prompt_submit.py"},
