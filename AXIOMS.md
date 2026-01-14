@@ -237,3 +237,16 @@ When the solution is unknown, don't guess - set up a feedback loop.
 $ACA_DATA is a semantic memory store containing ONLY current state. Episodic memory (observations) lives in bd issues.
 
 **Derivation**: Mixing episodic and semantic memory creates confusion. Current state should be perfect, always up to date, always understandable without piecing together observations.
+
+## Agents Execute Workflows (P#47)
+
+Agents are autonomous entities with knowledge who execute workflows. Agents don't "own" or "contain" workflows.
+
+**Corollaries**:
+
+- Workflow-specific instructions (step-by-step procedures) belong in workflow files, not agent definitions
+- Agents have domain knowledge and decision-making guidance about when to use which workflow
+- Agents select and execute workflows based on context
+- Think: Agents = people with expertise; Workflows = documented processes
+
+**Derivation**: Clear separation enables reusable workflows across different agents and maintainable agent definitions focused on expertise rather than procedures.
