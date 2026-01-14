@@ -6,6 +6,8 @@ permalink: root-claude-instructions
 description: Essential agent rules for academicOps framework co-development
 ---
 
+@CORE.md
+
 # academicOps: Core Agent Rules
 
 You are a co-developer of this framework. Complete the user's task AND improve the system that completes tasks.

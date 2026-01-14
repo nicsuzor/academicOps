@@ -1,13 +1,4 @@
----
-name: feature-dev
-category: instruction
-description: Rigorous test-first feature development from idea to validated implementation.
-allowed-tools: Read,Edit,Write,Bash,Skill,TodoWrite
-version: 1.0.0
-permalink: skills-feature-dev-skill
----
-
-# Feature Development Skill
+# Feature Development Workflow
 
 **Purpose**: Guide rigorous, test-first feature development from idea to validated implementation.
 
@@ -31,7 +22,7 @@ No coding or development work without an approved plan:
 
 ## Core Principles
 
-This skill enforces framework principles from [[AXIOMS.md]]:
+This workflow enforces framework principles from [[AXIOMS.md]]:
 
 - **Plan-First**: Approved plan before any implementation
 - **Mandatory Second Opinion**: Plans and conclusions must be reviewed by critic agent before presenting to user
@@ -148,7 +139,7 @@ Feature development follows eight phases:
 
 **Test Location**:
 
-- Framework features: `bots/skills/framework/tests/`
+- Framework features: `aops-core/skills/framework/tests/`
 - Project features: Within project test directory
 - Cross-cutting features: Dedicated test directory with clear ownership
 
@@ -234,7 +225,7 @@ Feature development follows eight phases:
 6. Review code for security issues (injection, XSS, etc.)
 7. **MANDATORY: Spawn critic agent for independent review before commit**:
    ```
-   Task(subagent_type="critic", model="haiku",
+   Task(subagent_type="aops-core:critic", model="opus",
         description="Critic review: [feature-name]",
         prompt="Review this implementation against the acceptance criteria: [criteria]. Verify tests actually pass and output is correct. Report any gaps.")
    ```
@@ -330,6 +321,7 @@ Use TodoWrite at key points:
 - Plan development
 - Execute implementation
 - Validate and decide
+- Synthesize to spec
 ```
 
 **Development phase** (Phase 5): Break into specific implementation steps per dev-plan.md.
@@ -366,13 +358,13 @@ Use TodoWrite at key points:
 
 ## Integration with Framework
 
-**This skill produces**:
+**This workflow produces**:
 
 - Experiment tracking via bd issues (label: `experiment`)
-- Integration tests in `bots/skills/framework/tests/` or project tests
+- Integration tests in `aops-core/skills/framework/tests/` or project tests
 - Features following framework principles
 
-**This skill enforces**:
+**This workflow enforces**:
 
 - All axioms from [[AXIOMS.md]]
 - Test-first development
@@ -380,7 +372,7 @@ Use TodoWrite at key points:
 - Fail-fast behavior
 - Single source of truth
 
-**This skill supports**:
+**This workflow supports**:
 
 - ADHD accommodations from [[ACCOMMODATIONS.md]]
 - Zero-friction capture
@@ -392,14 +384,15 @@ Use TodoWrite at key points:
 
 **Starting feature development**:
 
-1. Invoke skill: "I want to build [feature]"
-2. Skill captures story (Phase 1)
-3. Skill analyzes requirements (Phase 2) - may ask clarifying questions
-4. Skill designs experiment (Phase 3)
-5. Skill writes tests (Phase 4) - should fail
-6. Skill plans development (Phase 5)
-7. Skill implements feature (Phase 6)
-8. Skill validates and decides (Phase 7)
+1. Invoke framework skill with feature request
+2. Capture story (Phase 1)
+3. Analyze requirements (Phase 2) - may ask clarifying questions
+4. Design experiment (Phase 3)
+5. Write tests (Phase 4) - should fail
+6. Plan development (Phase 5)
+7. Implement feature (Phase 6)
+8. Validate and decide (Phase 7)
+9. Synthesize to spec (Phase 8)
 
 **At each phase**:
 
