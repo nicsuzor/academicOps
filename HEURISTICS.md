@@ -31,3 +31,11 @@ description: Working hypotheses validated by evidence.
 **Derivation**: Mixed-category files are hard to maintain. Clear classification enables appropriate handling.
 
 ---
+
+## Never Bypass Locks Without User Direction (P#57)
+
+**Statement**: Agents must NOT remove or bypass lock files (sync locks, file locks, process locks) without explicit user authorization.
+
+**Derivation**: Locks exist to prevent data corruption from concurrent operations. Removing a lock without understanding whether another process is active risks corrupting git state, SQLite databases, or file systems. Multi-agent concurrency is not currently architected. When encountering locks, agents must HALT and ask the user rather than attempting workarounds.
+
+---
