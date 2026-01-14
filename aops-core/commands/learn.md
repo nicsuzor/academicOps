@@ -84,12 +84,40 @@ Include in the summary:
 - What enforcement level (see [[docs/ENFORCEMENT.md]])
 - What would trigger escalation
 
-### 5. Update GitHub issue and relevant framework documentation
+### 5. Create Regression Test (REQUIRED)
+
+**Every /learn MUST produce a test.** Tests verify the fix works and prevent regressions.
+
+1. **Capture the failure case as a fixture** - Extract the exact input that caused the failure (e.g., hook input JSON, agent prompt, tool parameters)
+2. **Write a failing test first** - The test should FAIL with the old behavior, demonstrating the bug exists
+3. **Verify test passes after fix** - Run the test to confirm the intervention works
+4. **Use slow tests for live interfaces** - Mark with `@pytest.mark.slow` if testing against live Claude/APIs
+
+**Test location**: `$AOPS/tests/` - choose appropriate subdirectory:
+- `tests/hooks/` - Hook behavior tests
+- `tests/integration/` - Cross-component tests
+- `tests/` - General framework tests
+
+**Example**: If custodiet was overly restrictive, find the exact input JSON it received and create:
+```python
+@pytest.mark.slow
+def test_custodiet_allows_legitimate_framework_work():
+    """Regression: custodiet blocked legitimate framework modification."""
+    input_fixture = {
+        "tool_name": "Edit",
+        "tool_input": {"file_path": "/home/nic/src/academicOps/skills/learn.md", ...},
+        # ... exact input that was incorrectly blocked
+    }
+    result = invoke_custodiet(input_fixture)
+    assert result["decision"] != "deny", "Should allow legitimate framework edits"
+```
+
+### 6. Update GitHub issue and relevant framework documentation
 
 - Make sure existing documentation is still up-to-date after changes
 - Log work done in comment on GitHub issue and reference commits.
 
-### 6. Report
+### 7. Report
 
 Tell the user:
 
