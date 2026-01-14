@@ -16,7 +16,7 @@ All work MUST follow one of the workflows in this index. No exceptions.
 
 ### Development Workflows
 
-#### [[workflows/feature-dev]]
+#### [[feature-dev]]
 - **ID**: `feature-dev`
 - **Title**: Feature Development Workflow
 - **Category**: development
@@ -24,7 +24,7 @@ All work MUST follow one of the workflows in this index. No exceptions.
 - **Key steps**: User story → Acceptance criteria → Spec review → Approval → TDD → QA verification
 - **Quality gates**: Critic review, TDD, QA verification
 
-#### [[workflows/minor-edit]]
+#### [[minor-edit]]
 - **ID**: `minor-edit`
 - **Title**: Minor Edit Workflow
 - **Category**: development
@@ -32,7 +32,7 @@ All work MUST follow one of the workflows in this index. No exceptions.
 - **Key steps**: Claim issue → Write test → Implement → Verify → Commit
 - **Quality gates**: TDD, test checkpoint
 
-#### [[workflows/debugging]]
+#### [[debugging]]
 - **ID**: `debugging`
 - **Title**: Debugging Workflow
 - **Category**: development
@@ -40,7 +40,7 @@ All work MUST follow one of the workflows in this index. No exceptions.
 - **Key steps**: Claim issue → Define success → Design durable test → Investigate → Report findings
 - **Quality gates**: Reproducible test
 
-#### [[workflows/tdd-cycle]]
+#### [[tdd-cycle]]
 - **ID**: `tdd-cycle`
 - **Title**: Test-Driven Development Cycle
 - **Category**: development
@@ -50,7 +50,7 @@ All work MUST follow one of the workflows in this index. No exceptions.
 
 ### Planning Workflows
 
-#### [[workflows/spec-review]]
+#### [[spec-review]]
 - **ID**: `spec-review`
 - **Title**: Spec Review Loop (Critic Feedback)
 - **Category**: planning
@@ -60,7 +60,7 @@ All work MUST follow one of the workflows in this index. No exceptions.
 
 ### Quality Assurance Workflows
 
-#### [[workflows/qa-demo]]
+#### [[qa-demo]]
 - **ID**: `qa-demo`
 - **Title**: QA Verification Demo
 - **Category**: quality-assurance
@@ -70,7 +70,7 @@ All work MUST follow one of the workflows in this index. No exceptions.
 
 ### Operations Workflows
 
-#### [[workflows/bd-workflow]]
+#### [[bd-workflow]]
 - **ID**: `bd-workflow`
 - **Title**: BD Issue Tracking Workflow
 - **Category**: operations
@@ -78,7 +78,7 @@ All work MUST follow one of the workflows in this index. No exceptions.
 - **Key steps**: Check for issues → Create if needed → Mark in-progress → Do work → Close and sync
 - **Quality gates**: Issue tracked, work completed, issue closed, bd synced
 
-#### [[workflows/batch-processing]]
+#### [[batch-processing]]
 - **ID**: `batch-processing`
 - **Title**: Batch Processing Workflow
 - **Category**: operations
@@ -88,7 +88,7 @@ All work MUST follow one of the workflows in this index. No exceptions.
 
 ### Information Workflows
 
-#### [[workflows/simple-question]]
+#### [[simple-question]]
 - **ID**: `simple-question`
 - **Title**: Simple Question Workflow
 - **Category**: information
@@ -98,7 +98,7 @@ All work MUST follow one of the workflows in this index. No exceptions.
 
 ### Routing Workflows
 
-#### [[workflows/direct-skill]]
+#### [[direct-skill]]
 - **ID**: `direct-skill`
 - **Title**: Direct Skill/Command Invocation
 - **Category**: routing
@@ -113,21 +113,21 @@ All work MUST follow one of the workflows in this index. No exceptions.
 ```
 User request
     │
-    ├─ Explicit skill mentioned? ─────────────> [[workflows/direct-skill]]
+    ├─ Explicit skill mentioned? ─────────────> [[direct-skill]]
     │
-    ├─ Simple question only? ─────────────────> [[workflows/simple-question]]
+    ├─ Simple question only? ─────────────────> [[simple-question]]
     │
-    ├─ Multiple similar items? ───────────────> [[workflows/batch-processing]]
+    ├─ Multiple similar items? ───────────────> [[batch-processing]]
     │
-    ├─ Investigating/debugging? ──────────────> [[workflows/debugging]]
+    ├─ Investigating/debugging? ──────────────> [[debugging]]
     │
-    ├─ Planning/designing? ───────────────────> [[workflows/spec-review]]
+    ├─ Planning/designing? ───────────────────> [[spec-review]]
     │
-    ├─ Small, focused change? ────────────────> [[workflows/minor-edit]]
+    ├─ Small, focused change? ────────────────> [[minor-edit]]
     │
-    ├─ New feature or complex work? ──────────> [[workflows/feature-dev]]
+    ├─ New feature or complex work? ──────────> [[feature-dev]]
     │
-    └─ Need QA verification? ─────────────────> [[workflows/qa-demo]]
+    └─ Need QA verification? ─────────────────> [[qa-demo]]
 ```
 
 ## Next Steps

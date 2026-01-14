@@ -95,6 +95,11 @@ def get_config_dir() -> Path:
     return get_aops_root() / "config"
 
 
+def get_workflows_dir() -> Path:
+    """Get workflows directory ($AOPS/workflows)."""
+    return get_aops_root() / "workflows"
+
+
 # Data directories
 
 

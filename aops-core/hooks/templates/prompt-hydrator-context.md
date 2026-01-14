@@ -30,8 +30,8 @@ Transform this user prompt into a complete execution plan.
 ## Your Task
 
 1. **Understand intent** - What does the user actually want?
-2. **Select workflow** - Read WORKFLOWS.md and select the appropriate workflow
-3. **Compose workflows** - Read workflow files (and any [[referenced workflows]]) as needed
+2. **Select workflow** - Read `$AOPS/WORKFLOWS.md` and select the appropriate workflow
+3. **Compose workflows** - Read workflow files in `$AOPS/workflows/` (and any [[referenced workflows]]) as needed
 4. **Generate TodoWrite plan** - Break into concrete steps following workflow guidance
 
 ## Return Format

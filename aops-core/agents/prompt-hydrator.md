@@ -90,7 +90,7 @@ From HEURISTICS.md, these principles apply:
 ```javascript
 TodoWrite(todos=[
   {content: "[Simple step - no agent needed]", status: "pending", activeForm: "[step.name]"},
-  {content: "Task(subagent_type='aops-core:critic', prompt='[specific prompt]')", status: "pending", activeForm: "[step.name]"},
+  {content: "Task(subagent_type='critic', prompt='[specific prompt]')", status: "pending", activeForm: "[step.name]"},
   ...
   {content: "CHECKPOINT: [checkpoint from workflow]", status: "pending", activeForm: "Verifying"},
   {content: "Commit and push", status: "pending", activeForm: "Committing"}
@@ -100,8 +100,8 @@ TodoWrite(todos=[
 **TodoWrite Content Rules:**
 
 1. **Steps requiring agent invocation**: Include literal `Task()` syntax
-   - `{content: "Task(subagent_type='aops-core:critic', prompt='Review spec at...')", ...}`
-   - `{content: "Task(subagent_type='qa-verifier', prompt='Verify against criteria...')", ...}`
+   - `{content: "Task(subagent_type='critic', prompt='Review spec at...')", ...}`
+   - `{content: "Task(subagent_type='qa', prompt='Verify against criteria...')", ...}`
 
 2. **Steps requiring skill invocation**: Include literal `Skill()` syntax
    - `{content: "Skill(skill='python-dev')", ...}`
@@ -110,5 +110,5 @@ TodoWrite(todos=[
    - `{content: "Run tests: uv run pytest", ...}`
    - `{content: "CHECKPOINT: All tests pass", ...}`
 
-**Why explicit syntax?** Makes execution unambiguous. "Get critic review" is vague; `Task(subagent_type='aops-core:critic', ...)` is executable.
+**Why explicit syntax?** Makes execution unambiguous. "Get critic review" is vague; `Task(subagent_type='critic', ...)` is executable.
 

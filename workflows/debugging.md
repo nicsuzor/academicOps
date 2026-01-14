@@ -162,12 +162,12 @@ git push
 Once you understand the bug:
 
 **For simple fixes:**
-- Switch to minor-edit workflow
+- Switch to [[minor-edit]] workflow
 - Implement fix
 - Verify test now passes
 
 **For complex fixes:**
-- Switch to feature-dev workflow
+- Switch to [[feature-dev]] workflow
 - Plan the fix
 - Get critic review if needed
 

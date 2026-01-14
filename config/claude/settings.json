@@ -62,7 +62,6 @@
     ],
     "defaultMode": "plan"
   },
-  "model": "sonnet",
   "hooks": {
     "PostToolUse": [
       {
@@ -85,8 +84,7 @@
         ]
       }
     ],
-    "PreCompact": [
-    ],
+    "PreCompact": [],
     "PreToolUse": [
       {
         "hooks": [
@@ -110,8 +108,7 @@
       },
       {
         "matcher": "",
-        "hooks": [
-        ]
+        "hooks": []
       }
     ],
     "Stop": [

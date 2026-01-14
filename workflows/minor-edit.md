@@ -36,9 +36,9 @@ Follow the [[bd-workflow]] to set up issue tracking:
 - Create issue if needed (typically `--type=bug --priority=3`)
 - Mark as in-progress
 
-### 2. Invoke ttd to create a failing test
+### 2. Invoke TDD cycle to create a failing test ([[tdd-cycle]])
 
-Write a test that demonstrates the bug or validates the change:
+Follow the [[tdd-cycle]] to write a test that demonstrates the bug or validates the change:
 
 ```python
 def test_fix_for_issue():

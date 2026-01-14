@@ -34,6 +34,7 @@ try:
         get_commands_dir,
         get_tests_dir,
         get_config_dir,
+        get_workflows_dir,
         get_tasks_dir,
         get_sessions_dir,
         get_projects_dir,
@@ -74,6 +75,7 @@ def generate_markdown() -> str:
     commands_dir = get_commands_dir()
     tests_dir = get_tests_dir()
     config_dir = get_config_dir()
+    workflows_dir = get_workflows_dir()
 
     tasks_dir = get_tasks_dir()
     sessions_dir = get_sessions_dir()
@@ -132,6 +134,7 @@ Framework component directories within $AOPS:
 | Commands  | {commands_dir} |
 | Tests     | {tests_dir}   |
 | Config    | {config_dir}  |
+| Workflows | {workflows_dir} |
 
 ## Data Directories
 
@@ -202,6 +205,7 @@ def main() -> int:
     except Exception as e:
         print(f"Unexpected error: {e}", file=sys.stderr)
         import traceback
+
         traceback.print_exc()
         return 1
 

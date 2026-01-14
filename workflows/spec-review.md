@@ -33,7 +33,7 @@ This can be a spec file, a plan in a bd issue, or a markdown document.
 
 Spawn the critic agent to review your plan:
 ```javascript
-Task(subagent_type="aops-core:critic", model="opus", prompt=`
+Task(subagent_type="critic", model="opus", prompt=`
 Review this [spec/plan/design] for issues.
 
 **Context**: [brief description]

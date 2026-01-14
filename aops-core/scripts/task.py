@@ -20,10 +20,20 @@ from __future__ import annotations
 
 import subprocess
 import sys
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import click
 
+# Add framework roots to path for lib imports
+SCRIPT_DIR = Path(__file__).parent.resolve()
+AOPS_CORE_ROOT = SCRIPT_DIR.parent
+FRAMEWORK_ROOT = AOPS_CORE_ROOT.parent
+
+sys.path.insert(0, str(FRAMEWORK_ROOT))
+sys.path.insert(0, str(AOPS_CORE_ROOT))
+
+# Now import from lib
 from lib.task_index import TaskIndex
 from lib.task_model import Task, TaskStatus, TaskType
 from lib.task_storage import TaskStorage
@@ -32,26 +42,30 @@ if TYPE_CHECKING:
     from lib.task_index import TaskIndexEntry
 
 
-def get_storage() -> TaskStorage:
-    """Get TaskStorage instance.
+from lib.task_graph import TaskGraph
 
-    Returns:
-        TaskStorage connected to $ACA_DATA
-    """
+
+def get_storage() -> TaskStorage:
+    """Get TaskStorage instance."""
     return TaskStorage()
 
 
 def get_index() -> TaskIndex:
-    """Get TaskIndex instance with loaded data.
-
-    Returns:
-        TaskIndex with data loaded from index.json
-    """
+    """Get TaskIndex instance."""
     index = TaskIndex()
     if not index.load():
-        click.echo("Index not found or outdated. Run: task index rebuild", err=True)
+        click.echo("Index not found or outdated. Rebuilding...", err=True)
         index.rebuild()
     return index
+
+
+def get_graph() -> TaskGraph:
+    """Get TaskGraph instance."""
+    graph = TaskGraph()
+    if not graph.load():
+        click.echo("Index not found or outdated. Rebuilding...", err=True)
+        graph.rebuild()
+    return graph
 
 
 def format_task_line(
@@ -61,17 +75,7 @@ def format_task_line(
     show_type: bool = True,
     indent: int = 0,
 ) -> str:
-    """Format task as single line for display.
-
-    Args:
-        task: Task or TaskIndexEntry to format
-        show_status: Include status indicator
-        show_type: Include type label
-        indent: Number of spaces to indent
-
-    Returns:
-        Formatted task line
-    """
+    """Format task as single line for display."""
     # Handle both Task and TaskIndexEntry
     status = task.status.value if isinstance(task.status, TaskStatus) else task.status
     task_type = task.type.value if isinstance(task.type, TaskType) else task.type
@@ -87,99 +91,18 @@ def format_task_line(
     }.get(status, " ")
 
     parts = []
-
-    # Checkbox style
     checkbox = f"[{status_char}]"
     parts.append(checkbox)
-
-    # Title
     parts.append(task.title)
 
-    # Type label
     if show_type:
         parts.append(f"[{task_type}]")
 
-    # Status label (if blocked or waiting)
     if show_status and status in ("blocked", "waiting"):
         parts.append(f"[{status}]")
 
     line = " ".join(parts)
     return " " * indent + line
-
-
-def format_tree(
-    task_id: str,
-    index: TaskIndex,
-    *,
-    indent: int = 0,
-    prefix: str = "",
-    is_last: bool = True,
-) -> list[str]:
-    """Format task tree recursively.
-
-    Args:
-        task_id: Root task ID
-        index: TaskIndex for lookups
-        indent: Current indentation level
-        prefix: Tree branch prefix
-        is_last: Whether this is last sibling
-
-    Returns:
-        List of formatted lines
-    """
-    entry = index.get_task(task_id)
-    if not entry:
-        return []
-
-    lines = []
-
-    # Build connector
-    if indent == 0:
-        connector = ""
-    elif is_last:
-        connector = prefix + "\\-- "
-    else:
-        connector = prefix + "|-- "
-
-    # Format this task
-    status_char = {
-        "inbox": " ",
-        "active": "*",
-        "blocked": "!",
-        "waiting": "?",
-        "done": "x",
-        "cancelled": "-",
-    }.get(entry.status, " ")
-
-    line = f"{connector}[{status_char}] {entry.title} [{entry.type}]"
-    if entry.depends_on:
-        line += " [blocked]"
-    lines.append(line)
-
-    # Recurse to children
-    children = index.get_children(task_id)
-    for i, child in enumerate(children):
-        is_last_child = i == len(children) - 1
-        if indent == 0:
-            child_prefix = ""
-        elif is_last:
-            child_prefix = prefix + "    "
-        else:
-            child_prefix = prefix + "|   "
-
-        child_lines = format_tree(
-            child.id,
-            index,
-            indent=indent + 1,
-            prefix=child_prefix,
-            is_last=is_last_child,
-        )
-        lines.extend(child_lines)
-
-    return lines
-
-
-# CLI Group
 
 
 @click.group()
@@ -258,18 +181,9 @@ def add(
 @cli.command()
 @click.argument("task_id")
 def show(task_id: str) -> None:
-    """Show task details with children.
-
-    Displays task metadata and hierarchical children tree.
-
-    Examples:
-        task show 20260112-write-book
-    """
-    index = get_index()
-    storage = get_storage()
-
-    # Load full task from file
-    task = storage.get_task(task_id)
+    """Show task details with children."""
+    graph = get_graph()
+    task = graph.get_task(task_id)
     if not task:
         click.echo(f"Task not found: {task_id}", err=True)
         sys.exit(1)
@@ -297,33 +211,24 @@ def show(task_id: str) -> None:
     if task.tags:
         click.echo(f"Tags:     {', '.join(task.tags)}")
 
-    if task.context:
-        click.echo(f"Context:  {task.context}")
-
     # Children tree
-    entry = index.get_task(task_id)
-    if entry and entry.children:
-        click.echo("\nChildren:")
-        children = index.get_children(task_id)
-        for i, child in enumerate(children):
-            is_last = i == len(children) - 1
-            connector = "\\--" if is_last else "|--"
-            click.echo(f"  {connector} {format_task_line(child, indent=0)}")
-
-        # Progress
-        total = len(children)
-        done = sum(1 for c in children if c.status in ("done", "cancelled"))
-        click.echo(f"\nProgress: {done}/{total} complete")
+    children = graph.get_children(task_id)
+    if children:
+        click.echo("\nSubtasks:")
+        tree_str = graph.format_tree_compact(task_id)
+        # Skip the first line (the task itself)
+        tree_lines = tree_str.splitlines()[1:]
+        for line in tree_lines:
+            click.echo(f"  {line}")
 
     # Body content
     if task.body.strip():
         click.echo("\n---")
-        # Skip title if it's just the H1
         body = task.body.strip()
         if body.startswith(f"# {task.title}"):
             body = body[len(f"# {task.title}") :].strip()
         if body:
-            click.echo(body[:500])  # Truncate long bodies
+            click.echo(body[:500])
             if len(task.body) > 500:
                 click.echo("...")
 
@@ -456,32 +361,9 @@ def blocked() -> None:
 @cli.command()
 @click.argument("task_id")
 def tree(task_id: str) -> None:
-    """Show decomposition tree.
-
-    Displays hierarchical tree of task and all descendants.
-
-    Examples:
-        task tree 20260112-write-book
-    """
-    index = get_index()
-
-    if not index.get_task(task_id):
-        click.echo(f"Task not found: {task_id}", err=True)
-        sys.exit(1)
-
-    lines = format_tree(task_id, index)
-    for line in lines:
-        click.echo(line)
-
-    # Summary
-    descendants = index.get_descendants(task_id)
-    total = len(descendants) + 1  # Include root
-    done_count = sum(1 for d in descendants if d.status in ("done", "cancelled"))
-    root = index.get_task(task_id)
-    if root and root.status in ("done", "cancelled"):
-        done_count += 1
-
-    click.echo(f"\nTotal: {total} tasks, {done_count} complete")
+    """Show decomposition tree."""
+    graph = get_graph()
+    click.echo(graph.format_tree(task_id))
 
 
 @cli.command()
@@ -538,7 +420,9 @@ def deps(task_id: str) -> None:
     default="action",
     help="Type for child tasks",
 )
-@click.option("--sequential", "-s", is_flag=True, help="Add dependencies between children")
+@click.option(
+    "--sequential", "-s", is_flag=True, help="Add dependencies between children"
+)
 def decompose(
     task_id: str,
     title: tuple[str, ...],
