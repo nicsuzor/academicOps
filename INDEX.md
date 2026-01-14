@@ -31,7 +31,6 @@ $AOPS/
 ├── [[INDEX.md]]                 # THIS FILE - complete file tree
 ├── [[RULES.md]]                 # Current enforcement rules (auto-generated)
 ├── [[WORKFLOWS.md]]             # Task routing and workflow selection
-├── [[ROADMAP.md]]               # Current development status
 ├── [[VISION.md]]                # End state vision
 ├── [[CLAUDE.md]]                # Repo instructions (@ syntax auto-loads)
 ├── [[AGENTS.md]]                # Agent context (shared by all agents)
@@ -575,7 +574,6 @@ $ACA_DATA/
 │   └── done/                    # Completed prompts (archived)
 └── projects/aops/
     ├── VISION.md                # End state
-    ├── ROADMAP.md               # Current status
     └── specs/                   # Design documents (timeless)
 
 # Episodic content → bd issues (.beads/issues.jsonl, git-tracked)

@@ -35,8 +35,7 @@ Then, before significant work, read these files:
 1. `$AOPS/AXIOMS.md` — Inviolable principles
 2. `$AOPS/HEURISTICS.md` — Empirically validated guidance
 3. `$AOPS/VISION.md` — End state
-4. `$AOPS/ROADMAP.md` — Current status
-5. `$ACA_DATA/CORE.md` — User context
+4. `$ACA_DATA/CORE.md` — User context
 
 ## Skill Activation Protocol
 

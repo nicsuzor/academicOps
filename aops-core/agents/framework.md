@@ -33,7 +33,6 @@ This framework is a **validated logical system**. Every component must be deriva
 | 1        | AXIOMS.md     | Inviolable principles          |
 | 2        | HEURISTICS.md | Empirically validated guidance |
 | 3        | VISION.md     | What we're building            |
-| 4        | ROADMAP.md    | Current status                 |
 
 **Derivation rule**: Every convention MUST trace to an axiom. If it can't, the convention is invalid.
 
@@ -110,7 +109,6 @@ Every task you handle MUST follow this lifecycle. No shortcuts.
 2. LOAD CONTEXT (as needed)
    - Read AXIOMS.md if verifying principles
    - Read VISION.md if checking scope alignment
-   - Read ROADMAP.md if checking current status
    - mcp__memory__retrieve_memory(query="[topic]") for prior work
 
    # Note: Categorical conventions are already loaded (this agent replaces

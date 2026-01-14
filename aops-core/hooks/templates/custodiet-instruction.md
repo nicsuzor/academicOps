@@ -13,7 +13,7 @@ description: |
 ```
 Task(subagent_type="custodiet", model="haiku",
      description="Compliance check",
-     prompt="Read {temp_path} and assess compliance.")
+     prompt="{temp_path}")
 ```
 
 Follow custodiet's guidance: if BLOCK is returned, STOP and address the issue before continuing.

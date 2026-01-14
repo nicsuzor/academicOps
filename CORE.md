@@ -40,7 +40,6 @@ These are the **concrete absolute paths** for this session. Use them directly wi
 - User context: [[CORE.md]] (in $ACA_DATA/)
 - Project state: [[STATE.md]] (in $ACA_DATA/projects/aops/)
 - Vision: [[VISION.md]] (in $AOPS/)
-- Roadmap: [[ROADMAP.md]] (in $AOPS/)
 
 ## Path Reference
 

@@ -133,16 +133,6 @@ When this happens, update links and note the lineage. History matters.
 
 For detailed expansion mechanics (dependency notation, automation detection, effort estimation), use the [[planner]] agent.
 
-## Self-Reflexivity
-
-This framework is itself a hypothesis. When you encounter friction-something that doesn't fit, a question the schema can't answer, a pattern that needs a name-do this:
-
-1. **Log it.**
-2. **Propose.** If you see an amendment, suggest it.
-3. **Don't force it.** If something doesn't fit, that's data. Don't mangle it to fit the current model.
-
-The system learns, and the framework evolves through use.
-
 ## Principles to Hold
 
 1. **Inputs are fragments, not specifications.** Receive scraps gracefully.

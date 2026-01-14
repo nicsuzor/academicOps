@@ -80,15 +80,9 @@ EOF
 )"
 ```
 
-### Phase 3: Link to User Stories (if applicable)
+### Phase 3: Link to Related Issues (if applicable)
 
-Read `$AOPS/ROADMAP.md` for User Stories table.
-
-If observation relates to a user story, add to issue body:
-
-```
-**User Story**: [story-name]
-```
+If observation relates to an existing issue, link to it in the issue body.
 
 ### Phase 4: Report and Exit
 

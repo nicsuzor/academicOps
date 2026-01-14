@@ -236,7 +236,6 @@ Each test should map to specific acceptance criteria from above. Reference which
 
 - [ ] Update relevant skill/workflow docs with automation
 - [ ] Document manual fallback if automation fails
-- [ ] Add to ROADMAP.md progress tracking
 - [ ] Create experiment log entry when complete
 
 ### Maintenance Documentation
@@ -315,7 +314,6 @@ Before marking this task as complete:
 - [ ] Code follows [[AXIOMS.md]] principles (fail-fast, DRY, explicit)
 - [ ] Monitoring in place and working
 - [ ] Rollout plan executed successfully
-- [ ] Framework ROADMAP.md updated with progress
 
 ## Post-Implementation Review
 

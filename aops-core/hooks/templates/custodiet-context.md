@@ -22,23 +22,17 @@ Compliance check triggered after tool: **{tool_name}**
 
 ## Compliance Checklist
 
-Check each principle against the session activity:
+Check session activity against framework principles. Read the authoritative sources:
 
-### Core Axioms
+- **AXIOMS.md**: Read `$AOPS/AXIOMS.md` for universal principles (P#1-P#28+)
+- **HEURISTICS.md**: Read `$AOPS/HEURISTICS.md` for validated working hypotheses
 
-1. **A1: SSOT** - Is information duplicated? Are there competing sources of truth?
-2. **A2: Progressive Disclosure** - Is context surfacing at the right time, or being injected prematurely?
-3. **A3: Derivation from Axioms** - Are conventions being followed, or ad-hoc solutions created?
-4. **A4: Fail-Fast** - Are errors being handled immediately, or papered over?
-5. **A5: Plan Mode** - Is complex work being planned first, or jumping straight to implementation?
-
-### Key Heuristics
-
-- **H1: Categorical Imperative** - Would this action make sense as a universal rule?
-- **H2: Trust Version Control** - Is git being used properly? No backup files?
-- **H3: Design Before Build** - Was there proper planning for complex work?
-- **H4: One Feature Per Spec** - Are specs focused and timeless?
-- **H5: Error Messages Are Primary Evidence** - Are errors being quoted exactly?
+Key areas to check:
+- SSOT violations (information duplication, competing sources of truth)
+- Progressive disclosure (context surfacing at right time vs premature injection)
+- Fail-fast behavior (errors handled immediately vs papered over)
+- Plan mode usage (complex work planned first vs jumping to implementation)
+- Derivation from axioms (following conventions vs ad-hoc solutions)
 
 ### Ultra Vires Detection
 

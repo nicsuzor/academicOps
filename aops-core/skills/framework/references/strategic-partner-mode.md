@@ -109,6 +109,6 @@ Use mcp__memory__retrieve_memory for:
 ## Output Format
 
 - **Answer**: Direct response to query
-- **Reasoning**: Trace to AXIOMS/VISION/ROADMAP/LOG
+- **Reasoning**: Trace to AXIOMS/VISION/LOG
 - **Recommendation**: Clear next action if applicable
 - **Considerations**: Tradeoffs and alternatives if uncertain

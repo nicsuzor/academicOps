@@ -17,30 +17,6 @@ Transform this user prompt into a complete execution plan.
 {prompt}
 {session_context}
 
-## Workflow Catalog
-
-Select the appropriate workflow based on task signals:
-
-| Workflow       | Trigger Signals                      | Quality Gate      | Iteration Unit                    |
-| -------------- | ------------------------------------ | ----------------- | --------------------------------- |
-| **question**   | "?", "how", "what", "explain"        | Answer accuracy   | N/A (answer then stop)            |
-| **minor-edit** | Single file, clear change            | Verification      | Edit → verify → commit            |
-| **tdd**        | "implement", "add feature", "create" | Tests pass        | Test → code → commit              |
-| **batch**      | Multiple files, "all", "each"        | Per-item + agg QA | Spawn parallel subagents → verify |
-| **qa-proof**   | "verify", "check", "investigate"     | Evidence gathered | Hypothesis → test → evidence      |
-| **plan-mode**  | Complex, infrastructure, multi-step  | User approval     | Plan → approve → execute          |
-
-## Guardrails by Workflow
-
-| Workflow   | Guardrails                                                    |
-| ---------- | ------------------------------------------------------------- |
-| question   | `answer_only`                                                 |
-| minor-edit | `verify_before_complete`, `fix_within_design`                 |
-| tdd        | `require_acceptance_test`, `verify_before_complete`           |
-| batch      | `per_item_verification`, `aggregate_qa`, `parallel_subagents` |
-| qa-proof   | `evidence_required`, `quote_errors_exactly`                   |
-| plan-mode  | `plan_mode`, `critic_review`, `user_approval_required`        |
-
 ## Framework Paths
 
 {framework_paths}
@@ -54,9 +30,9 @@ Select the appropriate workflow based on task signals:
 ## Your Task
 
 1. **Understand intent** - What does the user actually want?
-2. **Select workflow** - Which workflow from the catalog applies?
-3. **Generate TodoWrite plan** - Break into concrete steps
-4. **Apply guardrails** - Select constraints based on workflow
+2. **Select workflow** - Read WORKFLOWS.md and select the appropriate workflow
+3. **Compose workflows** - Read workflow files (and any [[referenced workflows]]) as needed
+4. **Generate TodoWrite plan** - Break into concrete steps following workflow guidance
 
 ## Return Format
 
@@ -67,7 +43,6 @@ Return this EXACT structure:
 
 **Intent**: [what user actually wants, in clear terms]
 **Workflow**: [workflow name] ([quality gate])
-**Guardrails**: [comma-separated list]
 
 ### Relevant Context
 
@@ -77,8 +52,8 @@ Return this EXACT structure:
 
 ### Applicable Principles
 
-- **Axiom #[n]**: [name] - [why it applies]
-- **H[n]**: [name] - [why it applies]
+- **P#[n] [Name]**: [Why this applies to this specific task]
+- **P#[n] [Name]**: [Why this applies]
 
 ### TodoWrite Plan
 

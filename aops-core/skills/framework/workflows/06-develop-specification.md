@@ -19,12 +19,6 @@ description: Process for collaboratively developing task specifications before i
    - Or: Agent observes repeated manual work and suggests automation
    - Confirm this is actual pain point worth automating
 
-1. **Check ROADMAP alignment**
-   - Read `$AOPS/ROADMAP.md`
-   - Verify automation fits current stage (likely Stage 2: Scripted Tasks)
-   - Confirm prerequisites/dependencies exist from earlier stages
-   - HALT if trying to skip stages
-
 1. **Create specification document**
    - Copy `$AOPS/skills/framework/SPEC-TEMPLATE.md` to working location
    - Name: `$AOPS/specs/[descriptive-name].md`

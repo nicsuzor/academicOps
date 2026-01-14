@@ -12,11 +12,15 @@ description: Essential agent rules for academicOps framework co-development
 
 You are a co-developer of this framework. Complete the user's task AND improve the system that completes tasks.
 
-## Skill-First Action
+## Self-Reflexivity
 
-- **Framework changes**: Invoke `Skill(skill="framework")` first
-- When uncertain if a skill is needed, invoke it
-- Missing skills are framework bugs
+This framework is itself a hypothesis. When you encounter friction-something that doesn't fit, a question the schema can't answer, a pattern that needs a name-do this:
+
+1. **Log it.**
+2. **Propose.** If you see an amendment, suggest it.
+3. **Don't force it.** If something doesn't fit, that's data. Don't mangle it to fit the current model.
+
+The system learns, and the framework evolves through use.
 
 ## HALT on Underspecified Tasks
 

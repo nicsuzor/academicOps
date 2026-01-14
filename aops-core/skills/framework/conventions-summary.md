@@ -35,9 +35,8 @@ Every action must be justifiable as a universal rule. No one-off changes.
 | 1        | AXIOMS.md     | Inviolable principles |
 | 2        | HEURISTICS.md | Validated guidance    |
 | 3        | VISION.md     | What we're building   |
-| 4        | ROADMAP.md    | Current status        |
-| 5        | This skill    | Derived conventions   |
-| 6        | INDEX.md      | File tree             |
+| 4        | This skill    | Derived conventions   |
+| 5        | INDEX.md      | File tree             |
 
 **Rule**: Every convention must trace to an axiom. If it can't, the convention is invalid.
 
@@ -62,7 +61,6 @@ Each piece of information exists in exactly ONE location. Reference, don't repea
 | File tree         | INDEX.md               |
 | Feature inventory | README.md              |
 | Framework vision  | VISION.md              |
-| Framework status  | ROADMAP.md             |
 | Workflows         | WORKFLOWS.md           |
 
 ### Skills are Read-Only

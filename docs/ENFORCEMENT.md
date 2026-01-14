@@ -214,7 +214,6 @@ TodoWrite(todos=[
 **Evidence**:
 
 - Autocommit hook: validates commit format after git commit
-- ROADMAP enforcement: prompt "did you update?" after framework changes
 
 **Lesson**: Good for verification and nudges, not prevention.
 
