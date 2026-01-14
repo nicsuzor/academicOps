@@ -50,7 +50,7 @@ Agent: outlook - get-emails (MCP)
   -> Error: Missing required configuration: tenant_id and client_id
 
 Agent: "Still failing-let me check what's configured:"   <- UNAUTHORIZED
-Agent: Read(~/src/academicOps/config/claude/mcp.json)    <- UNAUTHORIZED
+Agent: Read(~/src/academicOps/aops-tools/config/claude/mcp.json)    <- UNAUTHORIZED
 Agent: "Found it-needs Azure AD credentials:"            <- UNAUTHORIZED
 Agent: Web Search("outlook-mcp configuration setup")     <- UNAUTHORIZED
 ```
@@ -193,11 +193,21 @@ No issues detected. Continue current work.
 
 ### Current State
 
-- `hooks/custodiet_gate.py` - PostToolUse hook, triggers every N tool calls
+- `hooks/overdue_enforcement.py` - PostToolUse hook, triggers every N tool calls
 - `hooks/data/reminders.txt` - Soft-tissue file with editable reminder lines
 - `agents/custodiet.md` - Haiku agent that reads transcript
 - `hooks/templates/custodiet-context.j2` - Jinja2 context template (conditional axiom/heuristic injection)
 - `hooks/templates/custodiet-instruction.md` - Short instruction template
+
+### Implementation Evolution
+
+**Original**: `custodiet_gate.py` (archived)
+**Current**: `overdue_enforcement.py`
+
+The hook was renamed to better reflect its purpose: enforcing overdue compliance checks rather than acting as a "gate". The core functionality remains identical—periodic spawning of the custodiet agent to check for axiom/heuristic violations and plan drift.
+
+**What changed**: File name and semantic clarity
+**What didn't change**: Logic, thresholds, output formats, agent integration
 
 ### Hook Output Formats
 
@@ -216,8 +226,8 @@ Between threshold checks, the hook randomly injects soft reminders:
 
 | Parameter              | Value          | Location                   |
 | ---------------------- | -------------- | -------------------------- |
-| `TOOL_CALL_THRESHOLD`  | 7              | `custodiet_gate.py`        |
-| `REMINDER_PROBABILITY` | 0.0 (disabled) | `custodiet_gate.py`        |
+| `TOOL_CALL_THRESHOLD`  | 7              | `overdue_enforcement.py`   |
+| `REMINDER_PROBABILITY` | 0.0 (disabled) | `overdue_enforcement.py`   |
 | Reminder lines         | Editable       | `hooks/data/reminders.txt` |
 
 **Behavior**:

@@ -108,7 +108,7 @@ On `PostToolUse` (every ~7 tool calls), spawns custodiet subagent to check:
 - Heuristic violations (H3 Verification, H4 Explicit Instructions, H19 Questions)
 - Plan drift (doing something different from TodoWrite plan)
 
-**Implementation**: `hooks/custodiet_gate.py` tracks tool count in `/tmp/claude-compliance/state.json`, emits audit instruction when threshold reached.
+**Implementation**: `hooks/overdue_enforcement.py` tracks tool count in `/tmp/claude-compliance/state.json`, emits audit instruction when threshold reached.
 
 **What it does**: Catches drift and violations mid-execution before user has to intervene
 **What it can't do**: Force agent to follow corrections (still relies on agent compliance)
@@ -121,7 +121,7 @@ The custodiet gate has a dormant random reminder injection mechanism that can in
 
 **Rationale for dormancy**: Enforcement should be high-signal, low-noise. Injecting reminders without evidence of agents forgetting instructions adds friction without demonstrated benefit.
 
-**Activation criteria**: Enable when behavioral data shows agents forgetting specific instructions mid-session. The mechanism is preserved in code (set `REMINDER_PROBABILITY = 0.3` in `custodiet_gate.py`) for rapid deployment when evidence justifies it.
+**Activation criteria**: Enable when behavioral data shows agents forgetting specific instructions mid-session. The mechanism is preserved in code (set `REMINDER_PROBABILITY = 0.3` in `overdue_enforcement.py`) for rapid deployment when evidence justifies it.
 
 ### Layer 3: Observable Checkpoints
 
