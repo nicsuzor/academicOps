@@ -1,0 +1,21 @@
+{
+  "mcpServers": {
+    "gemini": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "gemini-mcp-tool",
+        "--debug"
+      ],
+      "env": {}
+    },
+    "memory": {
+      "type": "http",
+      "url": "http://services.stoat-musical.ts.net:8026/mcp",
+      "headers": {
+        "Authorization": "Bearer ${MCP_MEMORY_API_KEY}"
+      }
+    }
+  }
+}

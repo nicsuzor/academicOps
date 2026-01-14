@@ -7,13 +7,6 @@
         "Authorization": "Bearer ${GH_MCP_TOKEN}"
       }
     },
-    "memory": {
-      "type": "http",
-      "url": "http://services.stoat-musical.ts.net:8026/mcp",
-      "headers": {
-        "Authorization": "Bearer ${MCP_MEMORY_API_KEY}"
-      }
-    },
     "zot": {
       "type": "stdio",
       "command": "uvx",
@@ -24,23 +17,6 @@
       "command": "uvx",
       "args": ["fastmcp", "run", "http://services.stoat-musical.ts.net:8025/mcp"]
     },
-    "gemini": {
-      "type": "stdio",
-      "command": "npx",
-      "args": [
-        "-y",
-        "gemini-mcp-tool",
-        "--debug"
-      ],
-      "env": {}
-    },
-    "playwright": {
-      "type": "stdio",
-      "command": "npx",
-      "args": [
-        "@playwright/mcp@latest"
-      ]
-    },
     "task_manager": {
       "type": "stdio",
       "command": "bash",
@@ -48,17 +24,6 @@
         "-c",
         "cd $AOPS && PYTHONPATH=$AOPS python3 skills/tasks/server.py"
       ]
-    },
-    "context7": {
-      "type": "stdio",
-      "command": "npx",
-      "args": [
-        "-y",
-        "@upstash/context7-mcp"
-      ],
-      "env": {
-        "CONTEXT7_API_KEY": "${CONTEXT7_API_KEY}"
-      }
     }
   }
 }

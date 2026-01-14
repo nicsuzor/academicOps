@@ -271,6 +271,28 @@ if [ -f "$mcp_source" ] && command -v jq &> /dev/null; then
             ) | from_entries)
         ' "$HOME/.claude.json" > "$HOME/.claude.json.tmp" && mv "$HOME/.claude.json.tmp" "$HOME/.claude.json"
         echo "  Cleaned up stale project-specific MCP servers"
+
+        # Remove plugin-specific MCPs from global config (they're now in plugin .mcp.json files)
+        # Build list of MCPs that are in plugin templates
+        plugin_mcps=()
+        for plugin_name in aops-core aops-tools; do
+            template_file="$AOPS_PATH/$plugin_name/.mcp.json.template"
+            if [ -f "$template_file" ]; then
+                # Extract MCP server names from template
+                while IFS= read -r mcp_name; do
+                    plugin_mcps+=("$mcp_name")
+                done < <(jq -r '.mcpServers | keys[]' "$template_file" 2>/dev/null)
+            fi
+        done
+
+        # Remove plugin MCPs from global ~/.claude.json
+        if [ ${#plugin_mcps[@]} -gt 0 ]; then
+            plugin_mcps_json=$(printf '%s\n' "${plugin_mcps[@]}" | jq -R . | jq -s .)
+            jq --argjson remove "$plugin_mcps_json" '
+                .mcpServers |= (with_entries(select(.key | IN($remove[]) | not)))
+            ' "$HOME/.claude.json" > "$HOME/.claude.json.tmp" && mv "$HOME/.claude.json.tmp" "$HOME/.claude.json"
+            echo "  Removed ${#plugin_mcps[@]} plugin-specific MCPs from global config"
+        fi
     else
         echo -e "${YELLOW}⚠ ~/.claude.json doesn't exist - will be created on first Claude Code run${NC}"
         echo "  Re-run this script after using Claude Code once"
@@ -391,6 +413,28 @@ else
 
     echo -e "${GREEN}✓ Repository .claude/ configured (manual fallback)${NC}"
 fi
+
+# Step 2d-1: Generate plugin-specific MCP configs from templates
+echo
+echo "Generating plugin-specific MCP configs..."
+
+# List of plugins with MCP templates
+for plugin_name in aops-core aops-tools; do
+    plugin_dir="$AOPS_PATH/$plugin_name"
+    template_file="$plugin_dir/.mcp.json.template"
+    output_file="$plugin_dir/.mcp.json"
+
+    if [ -f "$template_file" ]; then
+        # Substitute environment variables in template
+        sed -e "s|\${CONTEXT7_API_KEY}|${CONTEXT7_API_KEY:-}|g" \
+            -e "s|\${MCP_MEMORY_API_KEY}|${MCP_MEMORY_API_KEY:-}|g" \
+            -e "s|\${GH_MCP_TOKEN}|${GH_MCP_TOKEN:-}|g" \
+            "$template_file" > "$output_file"
+        echo -e "${GREEN}✓ Generated $plugin_name/.mcp.json from template${NC}"
+    else
+        echo -e "${YELLOW}⚠ No template found: $template_file${NC}"
+    fi
+done
 
 # Step 2e: Configure memory server default project
 echo
