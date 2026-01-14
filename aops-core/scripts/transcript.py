@@ -30,6 +30,7 @@ import argparse
 import re
 import sys
 from pathlib import Path
+from datetime import datetime
 
 # Add framework roots to path for lib imports
 SCRIPT_DIR = Path(__file__).parent.resolve()
@@ -68,7 +69,6 @@ def find_session_by_id(session_id: str) -> Path | None:
 
 def is_session_id(value: str) -> bool:
     """Check if value looks like a session ID (hex string)."""
-    # Remove dashes and check if it's hex
     clean = value.replace("-", "")
     return len(clean) >= 8 and all(c in "0123456789abcdefABCDEF" for c in clean)
 
@@ -117,6 +117,7 @@ def generate_framework_summary(
     Returns:
         Markdown string optimized for framework agent analysis
     """
+
     lines = []
     lines.append(f"# Session Transcript: {session_summary.uuid[:8]}")
     lines.append("")
@@ -249,7 +250,14 @@ Examples:
 
     parser.add_argument(
         "session",
-        help="Session ID (8+ hex chars) or path to session JSONL/markdown file",
+        nargs="?",
+        default=None,
+        help="Session ID (8+ hex chars) or path to session JSONL/markdown file (optional when --all)",
+    )
+    parser.add_argument(
+        "--all",
+        action="store_true",
+        help="Process all sessions found in ~/.claude/projects and write transcripts to the output directory",
     )
     parser.add_argument(
         "--format",
@@ -266,16 +274,149 @@ Examples:
 
     args = parser.parse_args()
 
-    # Resolve session input
+    # Resolve session input / batch mode
     session_input = args.session
     session_path: Path | None = None
+
+    # Output dir default (matches previous script location)
+    default_output_dir = Path.home() / "writing" / "data" / "sessions" / "claude"
+    output_dir = Path(args.output).resolve() if args.output else default_output_dir
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    def _project_name_from_path(p: Path) -> str:
+        parts = list(p.parts)
+        if "projects" in parts:
+            idx = parts.index("projects")
+            if idx + 1 < len(parts):
+                return parts[idx + 1]
+        # fallback to parent directory name
+        return p.parent.name
+
+    def _session_id_from_path(p: Path) -> str:
+        # try to reuse Session ID if available via filename
+        name = p.stem
+        m = re.search(r"([0-9a-f]{8,})", name, re.IGNORECASE)
+        return m.group(1) if m else name
+
+    def _output_exists(out_dir: Path, sid: str, fmt: str) -> bool:
+        pattern = f"*{sid}*-{fmt}.md"
+        return any(out_dir.glob(pattern))
+
+    def _is_test_session(p: Path) -> bool:
+        """Heuristically detect obvious test/demo sessions to exclude from batch runs.
+
+        Excludes paths under /tmp and filenames or parent folders containing
+        keywords like test, demo, scratch, sample, example, tmp, local, dev.
+        """
+        s = str(p).lower()
+        name = p.name.lower()
+        parts = [part.lower() for part in p.parts]
+
+        # Exclude /tmp paths
+        if s.startswith("/tmp") or "/tmp/" in s:
+            return True
+
+        keywords = (
+            "test",
+            "tests",
+            "demo",
+            "scratch",
+            "sample",
+            "example",
+            "tmp",
+            "local",
+            "dev",
+        )
+        if any(k in name for k in keywords):
+            return True
+        if any(k in parts for k in keywords):
+            return True
+
+        return False
+
+    processor = SessionProcessor()
+
+    if args.all:
+        sessions = find_sessions()
+        if not sessions:
+            print("No sessions found.", file=sys.stderr)
+            return 0
+
+        # Exclude obvious test/demo sessions, then process newest-first
+        sessions = [
+            s
+            for s in sessions
+            if not _is_test_session(s.path if hasattr(s, "path") else Path(str(s)))
+        ]
+        # Process newest sessions first (reverse chronological)
+        sessions = sorted(
+            sessions,
+            key=lambda s: s.path.stat().st_mtime
+            if hasattr(s, "path") and s.path.exists()
+            else 0,
+            reverse=True,
+        )
+
+        processed = 0
+        skipped = 0
+        errors = 0
+
+        for s in sessions:
+            try:
+                session_path = s.path if hasattr(s, "path") else Path(str(s))
+                sid = getattr(s, "session_id", None) or _session_id_from_path(
+                    session_path
+                )
+                if _output_exists(output_dir, sid, args.format):
+                    skipped += 1
+                    continue
+
+                print(f"Processing: {session_path}", file=sys.stderr)
+                session_summary, entries, agent_entries = processor.parse_session_file(
+                    str(session_path)
+                )
+
+                # project and date metadata
+                project = _project_name_from_path(session_path)
+                date = (
+                    datetime.fromtimestamp(session_path.stat().st_mtime)
+                    .date()
+                    .isoformat()
+                )
+
+                output_file = (
+                    output_dir / f"{date}-{project}-{sid}-session-{args.format}.md"
+                )
+
+                markdown = generate_framework_summary(
+                    entries, session_summary, format_type=args.format
+                )
+                output_file.write_text(markdown, encoding="utf-8")
+                processed += 1
+                print(f"Written: {output_file}", file=sys.stderr)
+
+            except Exception as e:
+                errors += 1
+                print(f"Error processing {session_path}: {e}", file=sys.stderr)
+
+        print(f"Processed: {processed}", file=sys.stderr)
+        print(f"Skipped: {skipped}", file=sys.stderr)
+        print(f"Errors: {errors}", file=sys.stderr)
+        return 0
+
+    # Single session mode (existing behavior)
+    if not session_input:
+        print("Error: must provide a session or use --all", file=sys.stderr)
+        return 1
 
     if Path(session_input).exists():
         session_path = Path(session_input).resolve()
     elif is_session_id(session_input):
         session_path = find_session_by_id(session_input)
         if not session_path:
-            print(f"Error: No session found matching ID: {session_input}", file=sys.stderr)
+            print(
+                f"Error: No session found matching ID: {session_input}", file=sys.stderr
+            )
             return 1
     else:
         print(f"Error: Invalid input: {session_input}", file=sys.stderr)
@@ -302,19 +443,47 @@ Examples:
             str(session_path)
         )
 
-        # Generate framework-focused summary
-        markdown = generate_framework_summary(
-            entries,
-            session_summary,
-            format_type=args.format,
-        )
+        # Always generate both full and abridged transcripts for single session runs
+        formats = ["full", "abridged"]
+
+        # compute project/date/sid for filenames
+        project = _project_name_from_path(session_path)
+        sid = _session_id_from_path(session_path)
+        date = datetime.fromtimestamp(session_path.stat().st_mtime).date().isoformat()
 
         if args.output:
-            output_path = Path(args.output)
-            output_path.write_text(markdown, encoding="utf-8")
-            print(f"Written to: {output_path}", file=sys.stderr)
+            out = Path(args.output)
+            # if user provided a file path, use as base name and create sibling files
+            base = out
+            if out.is_dir():
+                base = out / f"{date}-{project}-{sid}-session"
+            else:
+                # strip extension
+                base = out.with_suffix("")
+            for fmt in formats:
+                output_file = base.with_name(f"{base.name}-{fmt}.md")
+                markdown = generate_framework_summary(
+                    entries, session_summary, format_type=fmt
+                )
+                output_file.write_text(markdown, encoding="utf-8")
+                print(f"Written to: {output_file}", file=sys.stderr)
+
         else:
-            print(markdown)
+            # no explicit output: write both to default output dir
+            default_output_dir = (
+                Path.home() / "writing" / "data" / "sessions" / "claude"
+            )
+            default_output_dir.mkdir(parents=True, exist_ok=True)
+            base = default_output_dir / f"{date}-{project}-{sid}-session"
+            for fmt in formats:
+                output_file = (
+                    default_output_dir / f"{date}-{project}-{sid}-session-{fmt}.md"
+                )
+                markdown = generate_framework_summary(
+                    entries, session_summary, format_type=fmt
+                )
+                output_file.write_text(markdown, encoding="utf-8")
+                print(f"Written to: {output_file}", file=sys.stderr)
 
         return 0
 
