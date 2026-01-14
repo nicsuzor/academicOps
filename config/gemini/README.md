@@ -77,7 +77,7 @@ $AOPS/gemini/
 
 ## MCP Server Conversion
 
-MCP servers are automatically converted from Claude's `config/claude/mcp.json` to Gemini format during setup. The conversion script (`scripts/convert_mcp_to_gemini.py`) handles:
+MCP servers are automatically converted from Claude's `aops-tools/config/claude/mcp.json` to Gemini format during setup. The conversion script (`scripts/convert_mcp_to_gemini.py`) handles:
 
 - **HTTP servers**: `type: "http"` → `url` field (Gemini infers type)
 - **Stdio servers**: `command` + `args` preserved as-is
@@ -87,7 +87,7 @@ MCP servers are automatically converted from Claude's `config/claude/mcp.json` t
 Manual conversion (for testing):
 
 ```bash
-python3 scripts/convert_mcp_to_gemini.py config/claude/mcp.json
+python3 scripts/convert_mcp_to_gemini.py aops-tools/config/claude/mcp.json
 ```
 
 ## Using Skills in Gemini

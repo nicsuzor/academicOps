@@ -147,7 +147,7 @@ def test_claude_json_has_user_mcp_servers() -> None:
     """Test that ~/.claude.json contains user-scoped MCP servers.
 
     User-scoped MCP servers are stored in ~/.claude.json mcpServers key.
-    setup.sh syncs from $AOPS/config/claude/mcp.json.
+    setup.sh syncs from $AOPS/aops-tools/config/claude/mcp.json.
 
     Project-scoped MCP servers should be in .mcp.json files, not ~/.claude.json.
 
@@ -165,14 +165,14 @@ def test_claude_json_has_user_mcp_servers() -> None:
     # Check root-level mcpServers exist (user-scoped MCP servers)
     assert "mcpServers" in data, (
         "~/.claude.json missing root-level mcpServers. "
-        "Run setup.sh to sync from $AOPS/config/claude/mcp.json"
+        "Run setup.sh to sync from $AOPS/aops-tools/config/claude/mcp.json"
     )
 
     assert isinstance(data["mcpServers"], dict), "mcpServers should be a dict"
 
     assert (
         len(data["mcpServers"]) > 0
-    ), "mcpServers is empty. Run setup.sh to sync from $AOPS/config/claude/mcp.json"
+    ), "mcpServers is empty. Run setup.sh to sync from $AOPS/aops-tools/config/claude/mcp.json"
 
     # Check project-level mcpServers (should NOT exist - use .mcp.json instead)
     projects_with_mcp = []

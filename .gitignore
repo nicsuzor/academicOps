@@ -325,4 +325,5 @@ reference-graph.json
 reference-graph.csv
 
 # Generated MCP config (built from fragments by setup.sh)
-config/claude/mcp.json
+aops-tools/config/claude/mcp.json
+aops-tools/config/gemini/mcp-servers.json

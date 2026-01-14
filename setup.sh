@@ -116,11 +116,17 @@ create_symlink() {
 create_symlink "settings.json" "$AOPS_PATH/config/claude/settings.json"
 create_symlink "CLAUDE.md" "$AOPS_PATH/CLAUDE.md"
 
-# Create plugins directory and symlink aops-core plugin
-# Note: skills, commands, agents, hooks now live in the plugin (not top-level)
+# Create plugins directory and symlink all aops plugins
+# Note: skills, commands, agents, hooks now live in plugins (not top-level)
 mkdir -p "$CLAUDE_DIR/plugins"
-create_symlink "plugins/aops-core" "$AOPS_PATH/aops-core"
-create_symlink "plugins/aops-tools" "$AOPS_PATH/aops-tools"
+
+# Auto-discover and link all aops-* plugins
+for plugin_dir in "$AOPS_PATH"/aops-*; do
+    if [ -d "$plugin_dir" ] && [ -f "$plugin_dir/.claude-plugin/plugin.json" ]; then
+        plugin_name=$(basename "$plugin_dir")
+        create_symlink "plugins/$plugin_name" "$plugin_dir"
+    fi
+done
 
 # Clean up legacy symlinks (content moved to aops-core plugin)
 for legacy in skills commands agents hooks; do
@@ -198,9 +204,9 @@ OUTLOOK_MODE=$(detect_outlook_mode)
 echo "  Platform outlook mode: $OUTLOOK_MODE"
 
 # Merge base config with outlook fragment
-mcp_base="$AOPS_PATH/config/claude/mcp-base.json"
-mcp_outlook="$AOPS_PATH/config/claude/mcp-outlook-${OUTLOOK_MODE}.json"
-mcp_source="$AOPS_PATH/config/claude/mcp.json"
+mcp_base="$AOPS_PATH/aops-tools/config/claude/mcp-base.json"
+mcp_outlook="$AOPS_PATH/aops-tools/config/claude/mcp-outlook-${OUTLOOK_MODE}.json"
+mcp_source="$AOPS_PATH/aops-tools/config/claude/mcp.json"
 
 # Check for MCP tokens (required for gh and memory servers)
 if [ -z "${GH_MCP_TOKEN:-}" ]; then
@@ -370,13 +376,19 @@ else
     echo -e "${YELLOW}⚠ sync_web_bundle.py failed - creating symlinks manually${NC}"
     REPO_CLAUDE="$AOPS_PATH/.claude"
     mkdir -p "$REPO_CLAUDE" "$REPO_CLAUDE/plugins"
-    # Only link settings.json, CLAUDE.md, and the plugin (content moved to aops-core)
-    for item in settings.json:../config/claude/settings.json CLAUDE.md:../CLAUDE.md plugins/aops-core:../../aops-core plugins/aops-tools:../../aops-tools; do
-        name="${item%%:*}"
-        target="${item#*:}"
-        [ -e "$REPO_CLAUDE/$name" ] && rm -rf "$REPO_CLAUDE/$name"
-        ln -s "$target" "$REPO_CLAUDE/$name"
+
+    # Link settings.json and CLAUDE.md
+    ln -sf ../config/claude/settings.json "$REPO_CLAUDE/settings.json"
+    ln -sf ../CLAUDE.md "$REPO_CLAUDE/CLAUDE.md"
+
+    # Auto-discover and link all aops-* plugins
+    for plugin_dir in "$AOPS_PATH"/aops-*; do
+        if [ -d "$plugin_dir" ] && [ -f "$plugin_dir/.claude-plugin/plugin.json" ]; then
+            plugin_name=$(basename "$plugin_dir")
+            ln -sf "../../$plugin_name" "$REPO_CLAUDE/plugins/$plugin_name"
+        fi
     done
+
     echo -e "${GREEN}✓ Repository .claude/ configured (manual fallback)${NC}"
 fi
 
@@ -512,8 +524,8 @@ else
     # Convert MCP servers from Claude format to Gemini format
     echo
     echo "Converting MCP servers..."
-    MCP_SOURCE="$AOPS_PATH/config/claude/mcp.json"
-    MCP_CONVERTED="$AOPS_PATH/gemini/config/mcp-servers.json"
+    MCP_SOURCE="$AOPS_PATH/aops-tools/config/claude/mcp.json"
+    MCP_CONVERTED="$AOPS_PATH/aops-tools/config/gemini/mcp-servers.json"
     if [ -f "$MCP_SOURCE" ]; then
         if python3 "$AOPS_PATH/scripts/convert_mcp_to_gemini.py" "$MCP_SOURCE" "$MCP_CONVERTED" 2>/dev/null; then
             MCP_COUNT=$(jq '.mcpServers | keys | length' "$MCP_CONVERTED" 2>/dev/null || echo "0")
@@ -580,40 +592,51 @@ GLOBAL_WORKFLOWS_DIR="$ANTIGRAVITY_DIR/global_workflows"
 # Create directories
 mkdir -p "$GLOBAL_WORKFLOWS_DIR"
 
-# Install core skills as global workflows (skills now in aops-core plugin)
-echo "Installing core skills as Antigravity workflows..."
-for skill_dir in "$AOPS_PATH/aops-core/skills"/*; do
-    if [ -d "$skill_dir" ] && [ ! -L "$skill_dir" ]; then
-        skill_name=$(basename "$skill_dir")
-        # Skip __pycache__ and other non-skill dirs
-        if [[ "$skill_name" == __* ]]; then
+# Install skills from all aops plugins as global workflows
+echo "Installing skills as Antigravity workflows..."
+for plugin_dir in "$AOPS_PATH"/aops-*; do
+    if [ -d "$plugin_dir" ] && [ -f "$plugin_dir/.claude-plugin/plugin.json" ]; then
+        plugin_name=$(basename "$plugin_dir")
+        skills_dir="$plugin_dir/skills"
+
+        if [ ! -d "$skills_dir" ]; then
             continue
         fi
 
-        skill_file="$skill_dir/SKILL.md"
-
-        if [ -f "$skill_file" ]; then
-            # Link as ~/.gemini/antigravity/global_workflows/<skill_name>.md
-            # This enables /<skill_name> invocation in Antigravity
-            target="$skill_file"
-            link_path="$GLOBAL_WORKFLOWS_DIR/$skill_name.md"
-
-            if [ -L "$link_path" ]; then
-                current_target="$(readlink "$link_path")"
-                if [ "$current_target" != "$target" ]; then
-                    rm "$link_path"
-                    ln -s "$target" "$link_path"
-                    echo "  Updated $skill_name"
-                else
-                    echo "  $skill_name (already linked)"
+        for skill_dir in "$skills_dir"/*; do
+            if [ -d "$skill_dir" ] && [ ! -L "$skill_dir" ]; then
+                skill_name=$(basename "$skill_dir")
+                # Skip __pycache__ and other non-skill dirs
+                if [[ "$skill_name" == __* ]]; then
+                    continue
                 fi
-            elif [ -e "$link_path" ]; then
-                echo -e "${YELLOW}⚠ $link_path exists and is not a symlink - skipping${NC}"
-            else
-                ln -s "$target" "$link_path"
-                echo "  Linked $skill_name"
+
+                skill_file="$skill_dir/SKILL.md"
+
+                if [ -f "$skill_file" ]; then
+                    # Link as ~/.gemini/antigravity/global_workflows/<skill_name>.md
+                    # This enables /<skill_name> invocation in Antigravity
+                    target="$skill_file"
+                    link_path="$GLOBAL_WORKFLOWS_DIR/$skill_name.md"
+
+                    if [ -L "$link_path" ]; then
+                        current_target="$(readlink "$link_path")"
+                        if [ "$current_target" != "$target" ]; then
+                            rm "$link_path"
+                            ln -s "$target" "$link_path"
+                            echo "  Updated $skill_name (from $plugin_name)"
+                        else
+                            echo "  $skill_name (already linked from $plugin_name)"
+                        fi
+                    elif [ -e "$link_path" ]; then
+                        echo -e "${YELLOW}⚠ $link_path exists and is not a symlink - skipping${NC}"
+                    else
+                        ln -s "$target" "$link_path"
+                        echo "  Linked $skill_name (from $plugin_name)"
+                    fi
+                fi
             fi
-        fi
+        done
     fi
 done
 
@@ -763,19 +786,23 @@ for link in settings.json CLAUDE.md; do
     fi
 done
 
-# Check plugin symlinks
-if [ ! -L "$CLAUDE_DIR/plugins/aops-core" ]; then
-    echo -e "${RED}✗ Plugin symlink missing: $CLAUDE_DIR/plugins/aops-core${NC}"
-    VALIDATION_PASSED=false
-else
-    echo -e "${GREEN}✓ Plugin aops-core linked${NC}"
-fi
+# Check plugin symlinks (auto-discover all aops-* plugins)
+plugin_count=0
+for plugin_dir in "$AOPS_PATH"/aops-*; do
+    if [ -d "$plugin_dir" ] && [ -f "$plugin_dir/.claude-plugin/plugin.json" ]; then
+        plugin_name=$(basename "$plugin_dir")
+        if [ ! -L "$CLAUDE_DIR/plugins/$plugin_name" ]; then
+            echo -e "${RED}✗ Plugin symlink missing: $CLAUDE_DIR/plugins/$plugin_name${NC}"
+            VALIDATION_PASSED=false
+        else
+            echo -e "${GREEN}✓ Plugin $plugin_name linked${NC}"
+            plugin_count=$((plugin_count + 1))
+        fi
+    fi
+done
 
-if [ ! -L "$CLAUDE_DIR/plugins/aops-tools" ]; then
-    echo -e "${RED}✗ Plugin symlink missing: $CLAUDE_DIR/plugins/aops-tools${NC}"
-    VALIDATION_PASSED=false
-else
-    echo -e "${GREEN}✓ Plugin aops-tools linked${NC}"
+if [ "$plugin_count" -eq 0 ]; then
+    echo -e "${YELLOW}⚠ No aops plugins found${NC}"
 fi
 
 # Check settings.local.json
