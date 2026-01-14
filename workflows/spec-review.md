@@ -1,30 +1,6 @@
 ---
 id: spec-review
-title: Spec Review Loop (Critic Feedback)
-type: workflow
 category: planning
-dependencies: []
-steps:
-  - id: create-spec
-    name: Create initial specification or plan
-    workflow: null
-    description: Document the proposed approach
-  - id: invoke-critic
-    name: "Task(subagent_type='aops-core:critic', prompt='Review [spec/plan]...')"
-    workflow: null
-    description: Get critical feedback on the plan
-  - id: analyze-feedback
-    name: Analyze critic feedback
-    workflow: null
-    description: Identify valid concerns and improvements
-  - id: iterate-spec
-    name: Iterate on spec based on feedback
-    workflow: null
-    description: Update the spec to address concerns
-  - id: convergence-check
-    name: Check for convergence
-    workflow: null
-    description: Determine if spec is ready or needs another iteration
 ---
 
 # Spec Review Loop (Critic Feedback)

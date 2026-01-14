@@ -1,30 +1,6 @@
 ---
 id: minor-edit
-title: Minor Edit Workflow
-type: workflow
 category: development
-dependencies: []
-steps:
-  - id: claim-issue
-    name: Fetch or create bd issue, mark as in-progress
-    workflow: null
-    description: Track the work item
-  - id: write-test
-    name: Invoke ttd to create a failing test
-    workflow: null
-    description: Test-first approach for the change
-  - id: implement
-    name: Invoke python-dev to make the change
-    workflow: null
-    description: Implement the minimal change
-  - id: checkpoint
-    name: CHECKPOINT - Verify change works
-    workflow: null
-    description: Run tests to confirm fix
-  - id: commit-push
-    name: Commit and push
-    workflow: null
-    description: Land the change
 ---
 
 # Minor Edit Workflow

@@ -87,8 +87,12 @@ class TestWorkflowFiles:
     def test_workflow_files_have_required_fields(
         self, workflow_files: list[Path]
     ) -> None:
-        """Verify workflow files contain required YAML fields."""
-        required_fields = ["id", "title", "type", "category", "steps"]
+        """Verify workflow files contain required YAML fields.
+
+        LLM-native design: Only minimal frontmatter for tooling (id, category).
+        All workflow content is in human-readable markdown prose.
+        """
+        required_fields = ["id", "category"]
 
         for workflow_file in workflow_files:
             content = workflow_file.read_text()
@@ -98,11 +102,6 @@ class TestWorkflowFiles:
                 assert field in yaml_data, (
                     f"{workflow_file.name}: Missing required field '{field}'"
                 )
-
-            # Verify type is 'workflow'
-            assert yaml_data["type"] == "workflow", (
-                f"{workflow_file.name}: type should be 'workflow', got '{yaml_data['type']}'"
-            )
 
             # Verify category is valid
             valid_categories = [
@@ -118,40 +117,33 @@ class TestWorkflowFiles:
                 f"Must be one of {valid_categories}"
             )
 
-    def test_workflow_steps_structure(self, workflow_files: list[Path]) -> None:
-        """Verify workflow steps have correct structure."""
-        required_step_fields = ["id", "name", "workflow", "description"]
-
-        for workflow_file in workflow_files:
-            content = workflow_file.read_text()
-            yaml_data, _ = extract_yaml_frontmatter(content)
-
-            steps = yaml_data.get("steps", [])
-            assert len(steps) > 0, (
-                f"{workflow_file.name}: Should have at least one step"
-            )
-
-            for i, step in enumerate(steps):
-                for field in required_step_fields:
-                    assert field in step, (
-                        f"{workflow_file.name} step {i}: Missing field '{field}'"
-                    )
-
-                # workflow field can be null or a string (wikilink)
-                workflow_ref = step["workflow"]
-                assert workflow_ref is None or isinstance(workflow_ref, str), (
-                    f"{workflow_file.name} step {i}: workflow field must be null "
-                    f"or string, got {type(workflow_ref)}"
+            # Verify no mechanistic fields remain (title, type, steps should not be in frontmatter)
+            mechanistic_fields = ["title", "type", "steps", "dependencies"]
+            for field in mechanistic_fields:
+                assert field not in yaml_data, (
+                    f"{workflow_file.name}: Should not have '{field}' in frontmatter. "
+                    "Workflow content should be in markdown prose, not YAML structure."
                 )
 
-                # If workflow is a string, it should be a wikilink
-                if isinstance(workflow_ref, str):
-                    assert workflow_ref.startswith("[[") and workflow_ref.endswith(
-                        "]]"
-                    ), (
-                        f"{workflow_file.name} step {i}: workflow reference should be "
-                        f"a [[wikilink]], got '{workflow_ref}'"
-                    )
+    def test_workflow_has_markdown_steps_section(self, workflow_files: list[Path]) -> None:
+        """Verify workflow files have steps in markdown prose (not YAML).
+
+        LLM-native design: Steps are human-readable markdown, not structured YAML.
+        The hydrator (LLM) reads and understands the prose directly.
+        """
+        for workflow_file in workflow_files:
+            content = workflow_file.read_text()
+            yaml_data, markdown_body = extract_yaml_frontmatter(content)
+
+            # Verify steps section exists in markdown
+            assert "## Steps" in markdown_body, (
+                f"{workflow_file.name}: Should have '## Steps' section in markdown body"
+            )
+
+            # Verify no steps in YAML frontmatter (LLM-native design)
+            assert "steps" not in yaml_data, (
+                f"{workflow_file.name}: Steps should be in markdown prose, not YAML frontmatter"
+            )
 
     def test_workflow_id_matches_filename(self, workflow_files: list[Path]) -> None:
         """Verify workflow ID matches filename (without .md extension)."""
@@ -219,7 +211,10 @@ class TestWorkflowFiles:
         ],
     )
     def test_individual_workflow_parsing(self, workflow_id: str) -> None:
-        """Test parsing each workflow file individually."""
+        """Test parsing each workflow file individually.
+
+        LLM-native design: Minimal frontmatter (id, category), all content in markdown.
+        """
         workflow_path = get_aops_root() / "workflows" / f"{workflow_id}.md"
 
         if not workflow_path.exists():
@@ -228,13 +223,14 @@ class TestWorkflowFiles:
         content = workflow_path.read_text()
         yaml_data, markdown_body = extract_yaml_frontmatter(content)
 
-        # Basic structure checks
+        # Basic structure checks - minimal frontmatter only
         assert yaml_data["id"] == workflow_id
-        assert yaml_data["type"] == "workflow"
-        assert "title" in yaml_data
         assert "category" in yaml_data
-        assert "steps" in yaml_data
-        assert len(yaml_data["steps"]) > 0
+
+        # Verify no mechanistic fields in frontmatter
+        assert "type" not in yaml_data, "type should not be in frontmatter"
+        assert "title" not in yaml_data, "title should not be in frontmatter"
+        assert "steps" not in yaml_data, "steps should be in markdown prose, not YAML"
 
         # Markdown body should have overview and steps sections
         assert "## Overview" in markdown_body

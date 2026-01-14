@@ -1,18 +1,6 @@
 ---
 id: simple-question
-title: Simple Question Workflow
-type: workflow
 category: information
-dependencies: []
-steps:
-  - id: answer
-    name: Answer the user's question
-    workflow: null
-    description: Provide clear, direct answer to the question
-  - id: halt
-    name: HALT after answering and await further instructions
-    workflow: null
-    description: Don't take additional actions unless asked
 ---
 
 # Simple Question Workflow

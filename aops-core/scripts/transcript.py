@@ -1,33 +1,18 @@
 #!/usr/bin/env python3
 """
-Session Transcript Generator for Framework Agent.
+Session Transcript Generator
 
-Generates markdown summaries of Claude Code sessions for framework agent analysis,
-including user prompts, agent responses, tool calls, workflow transitions, and QA results.
+Converts Claude Code JSONL and Gemini JSON session files to readable markdown transcripts.
 
 Usage:
-    uv run python aops-core/scripts/transcript.py <session_id_or_path>
-    uv run python aops-core/scripts/transcript.py <session_id_or_path> --format=abridged
-    uv run python aops-core/scripts/transcript.py <session_id_or_path> --output=transcript.md
-
-Input:
-    - Session ID (8+ hex chars) - finds matching session in ~/.claude/projects/
-    - Path to session JSONL file
-    - Path to existing transcript markdown file
-
-Output:
-    Markdown summary suitable for framework agent reflection, containing:
-    - User prompts
-    - Agent responses (summarized in abridged mode)
-    - Tool calls and results
-    - Workflow transitions
-    - QA gate results
+    uv run python aops-core/scripts/transcript.py session.jsonl
+    uv run python aops-core/scripts/transcript.py session.jsonl -o output.md
+    uv run python aops-core/scripts/transcript.py --all  # Process all sessions
 """
-
-from __future__ import annotations
 
 import argparse
 import re
+import subprocess
 import sys
 from pathlib import Path
 from datetime import datetime
@@ -41,301 +26,287 @@ sys.path.insert(0, str(FRAMEWORK_ROOT))
 sys.path.insert(0, str(AOPS_CORE_ROOT))
 
 from lib.session_reader import SessionProcessor, find_sessions  # noqa: E402
+from lib.paths import get_sessions_dir  # noqa: E402
 
 
-def find_session_by_id(session_id: str) -> Path | None:
-    """Find a session file by session ID prefix.
+def format_markdown(file_path: Path) -> bool:
+    """Format markdown file with dprint.
 
-    Args:
-        session_id: Full or partial session ID (UUID hex string)
-
-    Returns:
-        Path to session JSONL file, or None if not found
+    Checks multiple locations for dprint, preferring local installs for speed.
+    Skips formatting if no local dprint found (npx is too slow).
+    Returns True if formatting succeeded or skipped, False on error.
     """
-    # Normalize: remove dashes and lowercase
-    session_id = session_id.replace("-", "").lower()
-
-    # Find all sessions and match by ID prefix
-    sessions = find_sessions()
-
-    for session in sessions:
-        # Normalize session ID from file
-        file_id = session.session_id.replace("-", "").lower()
-        if file_id.startswith(session_id) or session_id.startswith(file_id[:8]):
-            return session.path
-
-    return None
-
-
-def is_session_id(value: str) -> bool:
-    """Check if value looks like a session ID (hex string)."""
-    clean = value.replace("-", "")
-    return len(clean) >= 8 and all(c in "0123456789abcdefABCDEF" for c in clean)
-
-
-def extract_workflow_markers(content: str) -> list[str]:
-    """Extract workflow transition markers from content.
-
-    Looks for patterns like:
-    - "Workflow: tdd"
-    - "## Workflow: research"
-    - Guardrail/QA gate markers
-    """
-    markers = []
-
-    # Workflow pattern
-    workflow_match = re.search(r"\*?\*?Workflow\*?\*?:\s*(\w+)", content, re.IGNORECASE)
-    if workflow_match:
-        markers.append(f"Workflow: {workflow_match.group(1)}")
-
-    # Guardrail patterns
-    guardrail_patterns = [
-        r"(require_acceptance_test)",
-        r"(verify_before_complete)",
-        r"(qa-verifier)",
-        r"CHECKPOINT",
+    # Check locations in order of preference (fastest first)
+    dprint_locations = [
+        Path.home() / ".dprint" / "bin" / "dprint",  # Official installer
+        Path(__file__).parent.parent / "node_modules" / ".bin" / "dprint",  # Local npm
     ]
-    for pattern in guardrail_patterns:
-        if re.search(pattern, content, re.IGNORECASE):
-            markers.append(pattern.strip("()"))
 
-    return markers
+    dprint_path = None
+    for path in dprint_locations:
+        if path.exists():
+            dprint_path = path
+            break
+
+    if dprint_path is None:
+        # No local dprint found, skip formatting (npx is too slow)
+        return True
+
+    try:
+        result = subprocess.run(
+            [str(dprint_path), "fmt", str(file_path)],
+            capture_output=True,
+            timeout=30,
+            check=False,
+        )
+        # Exit code 0 = success, 14 = no matching files (OK for external paths)
+        return result.returncode in (0, 14)
+    except (subprocess.TimeoutExpired, FileNotFoundError):
+        return False
 
 
-def generate_framework_summary(
-    entries: list,
-    session_summary,
-    format_type: str = "full",
-) -> str:
-    """Generate a framework-focused markdown summary.
+def generate_slug(entries: list, max_words: int = 3) -> str:
+    """Generate a brief slug from the first substantive user message.
 
     Args:
-        entries: Parsed session entries
-        session_summary: SessionSummary object
-        format_type: "full" or "abridged"
+        entries: List of Entry dataclass objects from SessionProcessor
+        max_words: Maximum words in slug (default 3)
 
     Returns:
-        Markdown string optimized for framework agent analysis
+        Kebab-case slug like 'session-storage-fix' or 'transcript-update'
     """
-
-    lines = []
-    lines.append(f"# Session Transcript: {session_summary.uuid[:8]}")
-    lines.append("")
-
-    # Session metadata
-    if session_summary.summary and session_summary.summary != "Claude Code Session":
-        lines.append(f"**Summary**: {session_summary.summary}")
-    if session_summary.edited_files:
-        files_str = ", ".join(f"`{f}`" for f in session_summary.edited_files[:5])
-        if len(session_summary.edited_files) > 5:
-            files_str += f" (+{len(session_summary.edited_files) - 5} more)"
-        lines.append(f"**Files edited**: {files_str}")
-    lines.append("")
-
-    # Track workflow markers found
-    workflow_markers = set()
-    qa_results = []
-    turn_count = 0
-
+    # Find first user message that isn't a command or tool result
     for entry in entries:
         entry_type = entry.type if hasattr(entry, "type") else entry.get("type", "")
-
         if entry_type == "user":
-            turn_count += 1
-            content = ""
+            # Get content from message dict or content dict
             if hasattr(entry, "message") and entry.message:
                 content = entry.message.get("content", "")
+                # Handle content that might be a list (tool results)
                 if isinstance(content, list):
-                    # Handle tool results list
-                    content = "[Tool results]"
+                    continue
             elif hasattr(entry, "content"):
                 content = str(entry.content)
-
-            # Skip system/hook injected content
-            if content.startswith("<system") or content.startswith("<local-command"):
+            else:
+                content = entry.get("content", "") if isinstance(entry, dict) else ""
+            # Skip command invocations, tool results, system messages, and empty tags
+            if (
+                content.startswith("<command")
+                or content.startswith("[{")
+                or content.startswith("Caveat:")
+                or content.startswith("<local-command")
+                or content.startswith("<system")
+            ):
+                continue
+            # Skip very short messages
+            if len(content) < 10:
                 continue
 
-            # Check for workflow markers
-            markers = extract_workflow_markers(content)
-            workflow_markers.update(markers)
+            # Extract meaningful words (skip common words)
+            stop_words = {
+                "the",
+                "a",
+                "an",
+                "is",
+                "are",
+                "was",
+                "were",
+                "be",
+                "been",
+                "to",
+                "of",
+                "and",
+                "in",
+                "that",
+                "have",
+                "i",
+                "it",
+                "for",
+                "not",
+                "on",
+                "with",
+                "he",
+                "as",
+                "you",
+                "do",
+                "at",
+                "this",
+                "but",
+                "his",
+                "by",
+                "from",
+                "they",
+                "we",
+                "say",
+                "her",
+                "she",
+                "or",
+                "will",
+                "my",
+                "one",
+                "all",
+                "would",
+                "there",
+                "their",
+                "what",
+                "so",
+                "up",
+                "out",
+                "if",
+                "about",
+                "who",
+                "get",
+                "which",
+                "go",
+                "me",
+                "when",
+                "make",
+                "can",
+                "like",
+                "time",
+                "no",
+                "just",
+                "him",
+                "know",
+                "take",
+                "people",
+                "into",
+                "year",
+                "your",
+                "good",
+                "some",
+                "could",
+                "them",
+                "see",
+                "other",
+                "than",
+                "then",
+                "now",
+                "look",
+                "only",
+                "come",
+                "its",
+                "over",
+                "think",
+                "also",
+                "back",
+                "after",
+                "use",
+                "two",
+                "how",
+                "our",
+                "work",
+                "first",
+                "well",
+                "way",
+                "even",
+                "new",
+                "want",
+                "because",
+                "any",
+                "these",
+                "give",
+                "day",
+                "most",
+                "us",
+                "please",
+                "help",
+                "let",
+                "need",
+                "should",
+            }
 
-            # Truncate long content in abridged mode
-            if format_type == "abridged" and len(content) > 500:
-                content = content[:500] + "..."
+            # Clean and tokenize
+            words = re.findall(r"[a-zA-Z]+", content.lower())
+            meaningful = [w for w in words if w not in stop_words and len(w) > 2]
 
-            lines.append(f"## User (Turn {turn_count})")
-            lines.append("")
-            lines.append(content)
-            lines.append("")
+            if meaningful:
+                slug_words = meaningful[:max_words]
+                return "-".join(slug_words)
 
-        elif entry_type == "assistant":
-            content = ""
-            if hasattr(entry, "message") and entry.message:
-                msg = entry.message
-                if "content" in msg:
-                    if isinstance(msg["content"], list):
-                        # Extract text blocks
-                        text_parts = []
-                        tool_calls = []
-                        for block in msg["content"]:
-                            if isinstance(block, dict):
-                                if block.get("type") == "text":
-                                    text_parts.append(block.get("text", ""))
-                                elif block.get("type") == "tool_use":
-                                    tool_calls.append(block.get("name", "unknown"))
-                        content = "\n".join(text_parts)
-                        if tool_calls:
-                            content += f"\n\n**Tools used**: {', '.join(tool_calls)}"
-                    else:
-                        content = str(msg["content"])
-
-            # Check for workflow markers
-            markers = extract_workflow_markers(content)
-            workflow_markers.update(markers)
-
-            # Check for QA results
-            if "qa-verifier" in content.lower() or "verification" in content.lower():
-                qa_match = re.search(
-                    r"(PASS|FAIL|WARNING)[:\s]+(.+?)(?:\n|$)", content, re.IGNORECASE
-                )
-                if qa_match:
-                    qa_results.append(f"{qa_match.group(1)}: {qa_match.group(2)[:100]}")
-
-            # Truncate in abridged mode
-            if format_type == "abridged" and len(content) > 1000:
-                content = content[:1000] + "..."
-
-            lines.append(f"## Assistant (Turn {turn_count})")
-            lines.append("")
-            lines.append(content)
-            lines.append("")
-
-    # Add summary section at end
-    lines.append("---")
-    lines.append("")
-    lines.append("## Session Summary")
-    lines.append("")
-    lines.append(f"- **Total turns**: {turn_count}")
-    if workflow_markers:
-        lines.append(f"- **Workflow markers**: {', '.join(sorted(workflow_markers))}")
-    if qa_results:
-        lines.append("- **QA Results**:")
-        for result in qa_results:
-            lines.append(f"  - {result}")
-    if session_summary.edited_files:
-        lines.append(f"- **Files modified**: {len(session_summary.edited_files)}")
-
-    return "\n".join(lines)
+    return "session"
 
 
-def main() -> int:
+def _is_test_session(p: Path) -> bool:
+    """Heuristically detect obvious test/demo sessions to exclude from batch runs.
+
+    Excludes paths under /tmp and filenames or parent folders containing
+    keywords like test, demo, scratch, sample, example, tmp, local, dev.
+    """
+    s = str(p).lower()
+    name = p.name.lower()
+    parts = [part.lower() for part in p.parts]
+
+    # Exclude /tmp paths
+    if s.startswith("/tmp") or "/tmp/" in s:
+        return True
+
+    keywords = (
+        "test",
+        "tests",
+        "demo",
+        "scratch",
+        "sample",
+        "example",
+        "tmp",
+        "local",
+        "dev",
+    )
+    if any(k in name for k in keywords):
+        return True
+    if any(k in parts for k in keywords):
+        return True
+
+    return False
+
+
+def _output_exists(out_dir: Path, slug: str) -> bool:
+    """Check if output files already exist for this session."""
+    pattern = f"*{slug}*-full.md"
+    return any(out_dir.glob(pattern))
+
+
+def main():
     parser = argparse.ArgumentParser(
-        description="Generate session transcript for framework agent analysis",
+        description="Convert Claude Code JSONL or Gemini JSON sessions to markdown transcripts",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-    # By session ID (prefix match)
-    uv run python aops-core/scripts/transcript.py a5234d3e
-
-    # By file path
-    uv run python aops-core/scripts/transcript.py ~/.claude/projects/foo/session.jsonl
-
-    # Abridged format (shorter, less detail)
-    uv run python aops-core/scripts/transcript.py a5234d3e --format=abridged
-
-    # Save to file
-    uv run python aops-core/scripts/transcript.py a5234d3e -o transcript.md
+  python transcript.py session.jsonl                    # Auto-names in sessions/claude/
+  python transcript.py session.json                     # Generates Gemini transcript
+  python transcript.py session.jsonl -o transcript      # Uses sessions/claude/transcript-{full,abridged}.md
+  python transcript.py session.jsonl -o /abs/path/name  # Uses absolute path
+  python transcript.py --all                            # Process all sessions in ~/.claude/projects/
         """,
     )
 
     parser.add_argument(
-        "session",
+        "session_file",
         nargs="?",
-        default=None,
-        help="Session ID (8+ hex chars) or path to session JSONL/markdown file (optional when --all)",
+        help="Path to Session file (Claude .jsonl or Gemini .json)",
+    )
+    parser.add_argument(
+        "-o", "--output", help="Output base name (generates -full.md and -abridged.md)"
+    )
+    parser.add_argument(
+        "--slug",
+        help="Brief slug describing session work (auto-generated if not provided)",
     )
     parser.add_argument(
         "--all",
         action="store_true",
-        help="Process all sessions found in ~/.claude/projects and write transcripts to the output directory",
-    )
-    parser.add_argument(
-        "--format",
-        "-f",
-        choices=["full", "abridged"],
-        default="full",
-        help="Output format: full (default) or abridged",
-    )
-    parser.add_argument(
-        "--output",
-        "-o",
-        help="Output file path (prints to stdout if not specified)",
+        help="Process all sessions found in ~/.claude/projects/ and write to sessions/claude/",
     )
 
     args = parser.parse_args()
 
-    # Resolve session input / batch mode
-    session_input = args.session
-    session_path: Path | None = None
-
-    # Output dir default (matches previous script location)
-    default_output_dir = Path.home() / "writing" / "data" / "sessions" / "claude"
-    output_dir = Path(args.output).resolve() if args.output else default_output_dir
-    output_dir.mkdir(parents=True, exist_ok=True)
-
-    def _project_name_from_path(p: Path) -> str:
-        parts = list(p.parts)
-        if "projects" in parts:
-            idx = parts.index("projects")
-            if idx + 1 < len(parts):
-                return parts[idx + 1]
-        # fallback to parent directory name
-        return p.parent.name
-
-    def _session_id_from_path(p: Path) -> str:
-        # try to reuse Session ID if available via filename
-        name = p.stem
-        m = re.search(r"([0-9a-f]{8,})", name, re.IGNORECASE)
-        return m.group(1) if m else name
-
-    def _output_exists(out_dir: Path, sid: str, fmt: str) -> bool:
-        pattern = f"*{sid}*-{fmt}.md"
-        return any(out_dir.glob(pattern))
-
-    def _is_test_session(p: Path) -> bool:
-        """Heuristically detect obvious test/demo sessions to exclude from batch runs.
-
-        Excludes paths under /tmp and filenames or parent folders containing
-        keywords like test, demo, scratch, sample, example, tmp, local, dev.
-        """
-        s = str(p).lower()
-        name = p.name.lower()
-        parts = [part.lower() for part in p.parts]
-
-        # Exclude /tmp paths
-        if s.startswith("/tmp") or "/tmp/" in s:
-            return True
-
-        keywords = (
-            "test",
-            "tests",
-            "demo",
-            "scratch",
-            "sample",
-            "example",
-            "tmp",
-            "local",
-            "dev",
-        )
-        if any(k in name for k in keywords):
-            return True
-        if any(k in parts for k in keywords):
-            return True
-
-        return False
+    # Default output directory
+    sessions_claude = get_sessions_dir() / "claude"
+    sessions_claude.mkdir(parents=True, exist_ok=True)
 
     processor = SessionProcessor()
 
+    # Batch mode: process all sessions
     if args.all:
         sessions = find_sessions()
         if not sessions:
@@ -364,131 +335,306 @@ Examples:
         for s in sessions:
             try:
                 session_path = s.path if hasattr(s, "path") else Path(str(s))
-                sid = getattr(s, "session_id", None) or _session_id_from_path(
-                    session_path
-                )
-                if _output_exists(output_dir, sid, args.format):
-                    skipped += 1
-                    continue
 
-                print(f"Processing: {session_path}", file=sys.stderr)
+                # Process the session
+                print(f"📝 Processing session: {session_path}")
                 session_summary, entries, agent_entries = processor.parse_session_file(
                     str(session_path)
                 )
 
-                # project and date metadata
-                project = _project_name_from_path(session_path)
-                date = (
-                    datetime.fromtimestamp(session_path.stat().st_mtime)
-                    .date()
-                    .isoformat()
+                # Check for meaningful content
+                MIN_MEANINGFUL_ENTRIES = 2
+                meaningful_count = sum(
+                    1
+                    for e in entries
+                    if e.type in ("user", "assistant")
+                    and not (
+                        hasattr(e, "message")
+                        and e.message
+                        and e.message.get("subtype") in ("system", "informational")
+                    )
                 )
+                if meaningful_count < MIN_MEANINGFUL_ENTRIES:
+                    print(
+                        f"⏭️  Skipping: only {meaningful_count} meaningful entries (need {MIN_MEANINGFUL_ENTRIES}+)"
+                    )
+                    skipped += 1
+                    continue
 
-                output_file = (
-                    output_dir / f"{date}-{project}-{sid}-session-{args.format}.md"
-                )
+                # Generate output name
+                date_str = None
+                for entry in entries:
+                    if entry.timestamp:
+                        date_str = entry.timestamp.strftime("%Y%m%d")
+                        break
+                if not date_str:
+                    date_str = datetime.fromtimestamp(
+                        session_path.stat().st_mtime
+                    ).strftime("%Y%m%d")
 
-                markdown = generate_framework_summary(
-                    entries, session_summary, format_type=args.format
+                # Get short project name
+                project = session_path.parent.name
+                if session_path.suffix == ".json":
+                    if project == "chats":
+                        hash_dir = session_path.parent.parent.name
+                        short_project = f"gemini-{hash_dir[:6]}"
+                    else:
+                        short_project = "gemini"
+                else:
+                    project_parts = project.strip("-").split("-")
+                    short_project = project_parts[-1] if project_parts else "unknown"
+
+                # Get session ID
+                session_id = session_path.stem
+                if len(session_id) > 8:
+                    if session_id.startswith("session-"):
+                        parts = session_id.split("-")
+                        session_id = parts[-1]
+                    else:
+                        session_id = session_id[:8]
+
+                # Get slug
+                slug = generate_slug(entries)
+                filename = f"{date_str}-{short_project}-{session_id}-{slug}"
+
+                # Check if already exists
+                if _output_exists(sessions_claude, slug):
+                    skipped += 1
+                    continue
+
+                base_name = str(sessions_claude / filename)
+
+                # Generate full version
+                full_path = Path(f"{base_name}-full.md")
+                markdown_full = processor.format_session_as_markdown(
+                    session_summary,
+                    entries,
+                    agent_entries,
+                    include_tool_results=True,
+                    variant="full",
+                    source_file=str(session_path.resolve()),
                 )
-                output_file.write_text(markdown, encoding="utf-8")
+                with open(full_path, "w", encoding="utf-8") as f:
+                    f.write(markdown_full)
+                format_markdown(full_path)
+                file_size = full_path.stat().st_size
+                print(f"✅ Full transcript: {full_path} ({file_size:,} bytes)")
+
+                # Generate abridged version
+                abridged_path = Path(f"{base_name}-abridged.md")
+                markdown_abridged = processor.format_session_as_markdown(
+                    session_summary,
+                    entries,
+                    agent_entries,
+                    include_tool_results=False,
+                    variant="abridged",
+                    source_file=str(session_path.resolve()),
+                )
+                with open(abridged_path, "w", encoding="utf-8") as f:
+                    f.write(markdown_abridged)
+                format_markdown(abridged_path)
+                file_size = abridged_path.stat().st_size
+                print(f"✅ Abridged transcript: {abridged_path} ({file_size:,} bytes)")
+
                 processed += 1
-                print(f"Written: {output_file}", file=sys.stderr)
 
             except Exception as e:
                 errors += 1
-                print(f"Error processing {session_path}: {e}", file=sys.stderr)
+                print(f"❌ Error processing {session_path}: {e}", file=sys.stderr)
 
         print(f"Processed: {processed}", file=sys.stderr)
         print(f"Skipped: {skipped}", file=sys.stderr)
         print(f"Errors: {errors}", file=sys.stderr)
         return 0
 
-    # Single session mode (existing behavior)
-    if not session_input:
-        print("Error: must provide a session or use --all", file=sys.stderr)
+    # Single session mode
+    if not args.session_file:
+        print("Error: must provide a session file or use --all", file=sys.stderr)
         return 1
 
-    if Path(session_input).exists():
-        session_path = Path(session_input).resolve()
-    elif is_session_id(session_input):
-        session_path = find_session_by_id(session_input)
-        if not session_path:
-            print(
-                f"Error: No session found matching ID: {session_input}", file=sys.stderr
-            )
-            return 1
-    else:
-        print(f"Error: Invalid input: {session_input}", file=sys.stderr)
-        print("Expected: session ID (hex) or path to session file", file=sys.stderr)
+    # Validate input file
+    session_path = Path(args.session_file)
+    if not session_path.exists():
+        print(f"❌ Error: File not found: {session_path}")
         return 1
 
-    # Check if input is already a markdown transcript
-    if session_path.suffix == ".md":
-        # Just read and optionally re-save
-        content = session_path.read_text(encoding="utf-8")
-        if args.output:
-            Path(args.output).write_text(content, encoding="utf-8")
-            print(f"Copied transcript to: {args.output}", file=sys.stderr)
-        else:
-            print(content)
-        return 0
+    # Check if this is a hooks file and find the actual session file
+    if session_path.name.endswith("-hooks.jsonl"):
+        import json
 
-    # Process JSONL session file
-    processor = SessionProcessor()
+        with open(session_path, "r") as f:
+            first_line = f.readline().strip()
+            if first_line:
+                try:
+                    data = json.loads(first_line)
+                    transcript_path = data.get("transcript_path")
+                    if transcript_path:
+                        actual_session = Path(transcript_path)
+                        if actual_session.exists():
+                            print(
+                                f"⚠️  Hooks file provided. Using actual session: {actual_session}"
+                            )
+                            session_path = actual_session
+                        else:
+                            print(
+                                f"❌ Error: Hooks file references missing session: {transcript_path}"
+                            )
+                            return 1
+                except json.JSONDecodeError:
+                    print("❌ Error: Could not parse hooks file")
+                    return 1
 
+    # Process the session
     try:
-        print(f"Processing: {session_path}", file=sys.stderr)
+        print(f"📝 Processing session: {session_path}")
         session_summary, entries, agent_entries = processor.parse_session_file(
             str(session_path)
         )
 
-        # Always generate both full and abridged transcripts for single session runs
-        formats = ["full", "abridged"]
-
-        # compute project/date/sid for filenames
-        project = _project_name_from_path(session_path)
-        sid = _session_id_from_path(session_path)
-        date = datetime.fromtimestamp(session_path.stat().st_mtime).date().isoformat()
-
+        # Generate output base name
         if args.output:
-            out = Path(args.output)
-            # if user provided a file path, use as base name and create sibling files
-            base = out
-            if out.is_dir():
-                base = out / f"{date}-{project}-{sid}-session"
-            else:
-                # strip extension
-                base = out.with_suffix("")
-            for fmt in formats:
-                output_file = base.with_name(f"{base.name}-{fmt}.md")
-                markdown = generate_framework_summary(
-                    entries, session_summary, format_type=fmt
-                )
-                output_file.write_text(markdown, encoding="utf-8")
-                print(f"Written to: {output_file}", file=sys.stderr)
+            output_base = args.output
+            # Strip .md suffix if provided
+            if output_base.endswith(".md"):
+                output_base = output_base[:-3]
+            # Strip -full or -abridged suffix if provided
+            if output_base.endswith("-full") or output_base.endswith("-abridged"):
+                output_base = output_base.rsplit("-", 1)[0]
 
+            # If output is just a basename (no directory), place in sessions/claude/
+            output_path = Path(output_base)
+            if not output_path.is_absolute() and output_path.parent == Path("."):
+                base_name = str(sessions_claude / output_base)
+            else:
+                base_name = output_base
         else:
-            # no explicit output: write both to default output dir
-            default_output_dir = (
-                Path.home() / "writing" / "data" / "sessions" / "claude"
+            # Auto-generate name: YYYYMMDD-shortproject-sessionid-slug
+            # Get date from first entry timestamp or file mtime
+            date_str = None
+            if session_path.suffix == ".json":
+                # Try to get timestamp from filename for Gemini: session-YYYY-MM-DDTHH-MM...
+                try:
+                    parts = session_path.stem.split("-")
+                    if len(parts) >= 4:
+                        # 2026-01-08T08
+                        date_part = "".join(parts[1:4])
+                        if date_part.isdigit():
+                            date_str = date_part
+                except Exception:
+                    pass
+
+            if not date_str:
+                for entry in entries:
+                    if entry.timestamp:
+                        date_str = entry.timestamp.strftime("%Y%m%d")
+                        break
+
+                    if hasattr(entry, "message") and entry.message:
+                        ts = entry.message.get("timestamp")
+                        if ts:
+                            try:
+                                date_str = datetime.fromisoformat(
+                                    ts.replace("Z", "+00:00")
+                                ).strftime("%Y%m%d")
+                                break
+                            except (ValueError, TypeError):
+                                continue
+            if not date_str:
+                date_str = datetime.fromtimestamp(
+                    session_path.stat().st_mtime
+                ).strftime("%Y%m%d")
+
+            # Get short project name
+            project = session_path.parent.name
+            if session_path.suffix == ".json":
+                # Gemini structure: hash/chats/session.json
+                # Parent is 'chats', grand-parent is hash.
+                if project == "chats":
+                    hash_dir = session_path.parent.parent.name
+                    short_project = f"gemini-{hash_dir[:6]}"
+                else:
+                    short_project = "gemini"
+            else:
+                # e.g., -opt-nic-buttermilk -> buttermilk
+                project_parts = project.strip("-").split("-")
+                short_project = project_parts[-1] if project_parts else "unknown"
+
+            # Get session ID from filename (first 8 chars of UUID)
+            # Gemini filenames might have uuid at end
+            session_id = session_path.stem
+            if len(session_id) > 8:
+                if session_id.startswith("session-"):
+                    # session-2026-01-08T08-18-a5234d3e -> a5234d3e
+                    parts = session_id.split("-")
+                    session_id = parts[-1]
+                else:
+                    session_id = session_id[:8]
+
+            # Get or generate slug
+            slug = args.slug if args.slug else generate_slug(entries)
+
+            filename = f"{date_str}-{short_project}-{session_id}-{slug}"
+
+            base_name = str(sessions_claude / filename)
+            print(f"📛 Generated filename: {filename}")
+
+        print(f"📊 Found {len(entries)} entries")
+
+        # Check for meaningful content (user prompts or assistant responses)
+        # Require at least 2 meaningful entries to be worth transcribing
+        MIN_MEANINGFUL_ENTRIES = 2
+        meaningful_count = sum(
+            1
+            for e in entries
+            if e.type in ("user", "assistant")
+            and not (
+                hasattr(e, "message")
+                and e.message
+                and e.message.get("subtype") in ("system", "informational")
             )
-            default_output_dir.mkdir(parents=True, exist_ok=True)
-            base = default_output_dir / f"{date}-{project}-{sid}-session"
-            for fmt in formats:
-                output_file = (
-                    default_output_dir / f"{date}-{project}-{sid}-session-{fmt}.md"
-                )
-                markdown = generate_framework_summary(
-                    entries, session_summary, format_type=fmt
-                )
-                output_file.write_text(markdown, encoding="utf-8")
-                print(f"Written to: {output_file}", file=sys.stderr)
+        )
+        if meaningful_count < MIN_MEANINGFUL_ENTRIES:
+            print(
+                f"⏭️  Skipping: only {meaningful_count} meaningful entries (need {MIN_MEANINGFUL_ENTRIES}+)"
+            )
+            return 2  # Exit 2 = skipped (no content), distinct from 0 (success) and 1 (error)
+
+        # Generate full version
+        full_path = Path(f"{base_name}-full.md")
+        markdown_full = processor.format_session_as_markdown(
+            session_summary,
+            entries,
+            agent_entries,
+            include_tool_results=True,
+            variant="full",
+            source_file=str(session_path.resolve()),
+        )
+        with open(full_path, "w", encoding="utf-8") as f:
+            f.write(markdown_full)
+        format_markdown(full_path)
+        file_size = full_path.stat().st_size
+        print(f"✅ Full transcript: {full_path} ({file_size:,} bytes)")
+
+        # Generate abridged version
+        abridged_path = Path(f"{base_name}-abridged.md")
+        markdown_abridged = processor.format_session_as_markdown(
+            session_summary,
+            entries,
+            agent_entries,
+            include_tool_results=False,
+            variant="abridged",
+            source_file=str(session_path.resolve()),
+        )
+        with open(abridged_path, "w", encoding="utf-8") as f:
+            f.write(markdown_abridged)
+        format_markdown(abridged_path)
+        file_size = abridged_path.stat().st_size
+        print(f"✅ Abridged transcript: {abridged_path} ({file_size:,} bytes)")
 
         return 0
 
     except Exception as e:
-        print(f"Error processing session: {e}", file=sys.stderr)
+        print(f"❌ Error processing session: {e}")
         return 1
 
 

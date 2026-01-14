@@ -29,10 +29,27 @@ Transform a user prompt into an execution plan. You decide **which workflow** an
 
 3. **Select workflow** by matching user intent to WORKFLOWS.md decision tree.
 
-4. **Read selected workflow file**: `Read(file_path="$AOPS/workflows/[workflow-id].md")`
-   - Parse YAML frontmatter for structured steps
-   - Read Markdown body for detailed instructions
-   - Note any [[wikilink]] references to composed workflows (basic reading only for Phase 1)
+4. **Read and compose workflow files** (LLM-native composition):
+
+   a. Read the selected workflow: `Read(file_path="$AOPS/workflows/[workflow-id].md")`
+
+   b. **Identify [[wikilink]] references** - Scan the markdown for `[[other-workflow]]` syntax
+
+   c. **Read referenced workflows** - For each [[wikilink]] found (e.g., `[[spec-review]]`):
+      - Extract the workflow ID from the link
+      - Read that workflow file: `Read(file_path="$AOPS/workflows/[referenced-id].md")`
+      - Understand its steps and incorporate them into your plan
+
+   d. **Compose by understanding** - You don't need to parse or merge YAML structures. Simply:
+      - Read all the workflow files (main + referenced)
+      - Understand the human-readable markdown prose in each
+      - Generate a unified TodoWrite plan that incorporates guidance from all workflows
+
+   **Example**: If `feature-dev.md` says "Get critic review via [[spec-review]]":
+   - You read `feature-dev.md` and see the `[[spec-review]]` reference
+   - You read `workflows/spec-review.md` to understand the critic review process
+   - You generate TodoWrite steps that reflect both workflows' guidance
+   - No parsing needed - you understand the prose and compose accordingly
 
 5. **Correlate request with work state** - Does request match a bd issue? Note if claiming work.
 

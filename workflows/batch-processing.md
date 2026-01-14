@@ -1,34 +1,6 @@
 ---
 id: batch-processing
-title: Batch Processing Workflow
-type: workflow
 category: operations
-dependencies: []
-steps:
-  - id: claim-issue
-    name: Fetch or create bd issue, mark as in-progress
-    workflow: null
-    description: Track the batch work
-  - id: identify-scope
-    name: Identify scope of work and create plan for concurrent execution
-    workflow: null
-    description: Determine items to process and parallelization strategy
-  - id: spawn-agents
-    name: Spawn parallel subagents for items 1-N (use run_in_background=true)
-    workflow: null
-    description: Launch concurrent workers
-  - id: monitor
-    name: Monitor progress and spawn additional agents when needed
-    workflow: null
-    description: Track completion and scale as needed
-  - id: checkpoint
-    name: CHECKPOINT - All items processed successfully
-    workflow: null
-    description: Verify all work completed correctly
-  - id: commit-push
-    name: Commit, push, update bd issue
-    workflow: null
-    description: Land all changes
 ---
 
 # Batch Processing Workflow

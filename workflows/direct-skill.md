@@ -1,18 +1,6 @@
 ---
 id: direct-skill
-title: Direct Skill/Command Invocation
-type: workflow
 category: routing
-dependencies: []
-steps:
-  - id: identify-skill
-    name: Identify matching skill or command
-    workflow: null
-    description: Match user prompt to exact skill/command
-  - id: invoke
-    name: Invoke the skill/command directly without wrapping in TodoWrite
-    workflow: null
-    description: Execute the skill with appropriate arguments
 ---
 
 # Direct Skill/Command Invocation

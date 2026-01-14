@@ -1,30 +1,6 @@
 ---
 id: qa-demo
-title: QA Verification Demo
-type: workflow
 category: quality-assurance
-dependencies: []
-steps:
-  - id: gather-context
-    name: Gather work context
-    workflow: null
-    description: Collect original request, acceptance criteria, and work completed
-  - id: invoke-qa
-    name: "Task(subagent_type='aops-core:qa-verifier', prompt='Verify work...')"
-    workflow: null
-    description: Spawn independent QA verification
-  - id: analyze-verdict
-    name: Analyze QA verdict
-    workflow: null
-    description: Review verification results
-  - id: fix-issues
-    name: Fix issues if needed
-    workflow: null
-    description: Address any problems found by QA
-  - id: re-verify
-    name: "Task(subagent_type='aops-core:qa-verifier', prompt='Re-verify after fixes...')"
-    workflow: null
-    description: Run QA again after fixes
 ---
 
 # QA Verification Demo

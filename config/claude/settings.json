@@ -86,15 +86,6 @@
       }
     ],
     "PreCompact": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bd prime"
-          }
-        ]
-      }
     ],
     "PreToolUse": [
       {
@@ -120,10 +111,6 @@
       {
         "matcher": "",
         "hooks": [
-          {
-            "type": "command",
-            "command": "bd prime"
-          }
         ]
       }
     ],

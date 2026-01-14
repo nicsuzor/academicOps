@@ -1,34 +1,6 @@
 ---
 id: debugging
-title: Debugging Workflow
-type: workflow
 category: development
-dependencies: []
-steps:
-  - id: claim-issue
-    name: Fetch or create bd issue, mark as in-progress
-    workflow: null
-    description: Track the debugging work
-  - id: acceptance-criteria
-    name: Articulate clear acceptance criteria
-    workflow: null
-    description: Define what "fixed" means
-  - id: design-test
-    name: Use python-dev skill to design a durable test for success
-    workflow: null
-    description: Create test that will verify the fix
-  - id: investigate
-    name: Investigate root cause
-    workflow: null
-    description: Find why the bug occurs
-  - id: report-findings
-    name: Report findings and save to bd issue
-    workflow: null
-    description: Document what was found
-  - id: commit-push
-    name: Commit and push
-    workflow: null
-    description: Land the investigation results
 ---
 
 # Debugging Workflow

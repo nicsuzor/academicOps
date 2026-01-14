@@ -262,16 +262,18 @@ The feature-dev workflow will be the first implementation, using itself as the d
 - [x] Update hydrator to read workflow files
 - [x] Add tests for workflow file structure
 
-**Status**: Workflows exist but still have YAML frontmatter from pre-LLM design. Need to simplify.
+**Status**: ✓ COMPLETED
 
-### Phase 2: LLM-Native Composition (NEXT)
-- [ ] **Simplify existing workflow files** - Remove YAML frontmatter, keep simple markdown
-- [ ] Update hydrator instructions: "When you see [[spec-review]], read workflows/spec-review.md"
-- [ ] **Inline expansion by understanding**: Hydrator reads all referenced workflows and generates unified TodoWrite plan
-- [ ] Test composition: Does feature-dev correctly expand [[spec-review]], [[tdd-cycle]], [[qa-demo]]?
-- [ ] Verify TodoWrite plans are mid-grained (not every git command)
+### Phase 2: LLM-Native Composition ✓ COMPLETED
+- [x] **Simplify existing workflow files** - Remove YAML frontmatter, keep simple markdown
+- [x] Update hydrator instructions: "When you see [[spec-review]], read workflows/spec-review.md"
+- [x] **Inline expansion by understanding**: Hydrator reads all referenced workflows and generates unified TodoWrite plan
+- [x] Updated tests to verify minimal frontmatter (id, category only)
+- [x] Updated WORKFLOWS.md to reflect simplified structure
+- [ ] Test composition in practice: Does feature-dev correctly expand [[spec-review]], [[tdd-cycle]], [[qa-demo]]? (To be validated in actual usage)
+- [ ] Verify TodoWrite plans are mid-grained (not every git command) (To be validated in actual usage)
 
-**Key insight**: No code needed - just update hydrator instructions and simplify workflow files.
+**Key insight**: No code needed - just update hydrator instructions and simplify workflow files. ✓ Confirmed.
 
 ### Phase 3: Enrichment (FUTURE)
 - [ ] Integrate axioms (P#) references into workflow files

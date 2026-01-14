@@ -1,42 +1,6 @@
 ---
 id: feature-dev
-title: Feature Development Workflow
-type: workflow
 category: development
-dependencies: []
-steps:
-  - id: claim-issue
-    name: Fetch or create bd issue, mark as in-progress
-    workflow: null
-    description: Identify and claim the work item in issue tracker
-  - id: acceptance-criteria
-    name: Articulate clear acceptance criteria
-    workflow: null
-    description: Define what constitutes success for this feature
-  - id: create-plan
-    name: Create a plan, save to bd issue
-    workflow: null
-    description: Design implementation approach and document it
-  - id: critic-review
-    name: "Task(subagent_type='aops-core:critic', prompt='Review plan for...')"
-    workflow: "[[spec-review]]"
-    description: Have critic agent review the plan for issues
-  - id: tdd-implementation
-    name: Execute plan steps with TDD
-    workflow: "[[tdd-cycle]]"
-    description: Implement using test-driven development
-  - id: checkpoint-tests
-    name: CHECKPOINT - All tests pass
-    workflow: null
-    description: Verify all tests are passing before QA
-  - id: qa-verification
-    name: "Task(subagent_type='qa-verifier', prompt='Verify against criteria...')"
-    workflow: "[[qa-demo]]"
-    description: Independent verification of implementation
-  - id: commit-push
-    name: Commit, push, update bd issue
-    workflow: null
-    description: Land changes and update issue tracking
 ---
 
 # Feature Development Workflow

@@ -1,38 +1,6 @@
 ---
 id: tdd-cycle
-title: Test-Driven Development Cycle
-type: workflow
 category: development
-dependencies: []
-steps:
-  - id: red
-    name: Red - Write failing test
-    workflow: null
-    description: Write a test that fails because the feature doesn't exist yet
-  - id: verify-red
-    name: Verify test fails
-    workflow: null
-    description: Run test suite to confirm the new test fails as expected
-  - id: green
-    name: Green - Minimal implementation
-    workflow: null
-    description: Write just enough code to make the test pass
-  - id: verify-green
-    name: Verify test passes
-    workflow: null
-    description: Run test suite to confirm the new test now passes
-  - id: refactor
-    name: Refactor - Clean up code (optional)
-    workflow: null
-    description: Improve code quality without changing behavior
-  - id: commit
-    name: Commit changes
-    workflow: null
-    description: Commit the red-green-refactor cycle
-  - id: next-check
-    name: Check if more tests needed
-    workflow: null
-    description: Determine if implementation is complete or needs more tests
 ---
 
 # Test-Driven Development Cycle
