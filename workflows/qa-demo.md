@@ -10,7 +10,7 @@ steps:
     workflow: null
     description: Collect original request, acceptance criteria, and work completed
   - id: invoke-qa
-    name: Invoke QA verifier agent
+    name: "Task(subagent_type='aops-core:qa-verifier', prompt='Verify work...')"
     workflow: null
     description: Spawn independent QA verification
   - id: analyze-verdict
@@ -22,7 +22,7 @@ steps:
     workflow: null
     description: Address any problems found by QA
   - id: re-verify
-    name: Re-verify if fixes made
+    name: "Task(subagent_type='aops-core:qa-verifier', prompt='Re-verify after fixes...')"
     workflow: null
     description: Run QA again after fixes
 ---

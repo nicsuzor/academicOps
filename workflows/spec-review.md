@@ -10,7 +10,7 @@ steps:
     workflow: null
     description: Document the proposed approach
   - id: invoke-critic
-    name: Invoke critic agent for review
+    name: "Task(subagent_type='aops-core:critic', prompt='Review [spec/plan]...')"
     workflow: null
     description: Get critical feedback on the plan
   - id: analyze-feedback

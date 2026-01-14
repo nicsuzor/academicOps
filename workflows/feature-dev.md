@@ -18,7 +18,7 @@ steps:
     workflow: null
     description: Design implementation approach and document it
   - id: critic-review
-    name: Get critic review
+    name: "Task(subagent_type='aops-core:critic', prompt='Review plan for...')"
     workflow: "[[spec-review]]"
     description: Have critic agent review the plan for issues
   - id: tdd-implementation
@@ -30,7 +30,7 @@ steps:
     workflow: null
     description: Verify all tests are passing before QA
   - id: qa-verification
-    name: Invoke QA agent to validate against acceptance criteria
+    name: "Task(subagent_type='qa-verifier', prompt='Verify against criteria...')"
     workflow: "[[qa-demo]]"
     description: Independent verification of implementation
   - id: commit-push
