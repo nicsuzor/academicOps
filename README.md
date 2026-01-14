@@ -13,8 +13,6 @@ tags: [framework, overview, features]
 
 Academic support framework for Claude Code. Minimal, fight bloat aggressively.
 
-See [[FLOW]](aops-core/FLOW.md) for an overview of the core flow.
-
 ## Quick Start
 
 ```bash
@@ -34,6 +32,74 @@ export MEMORY_MCP_TOKEN="your-memory-server-token"
 - [AXIOMS.md](AXIOMS.md) - Inviolable principles
 - [HEURISTICS.md](HEURISTICS.md) - Empirically validated rules
 - [FRAMEWORK-PATHS.md](FRAMEWORK-PATHS.md) - Paths and configuration (generated)
+
+## Core Loop
+
+**For detailed specification, see**: [[aops-core/specs/flow.md]]
+
+**Goal**: The minimal viable framework with ONE complete, working loop.
+
+**Philosophy**: Users don't have to use aops. But if they do, it's slow and thorough. The full workflow is MANDATORY.
+
+### Core Loop Diagram
+
+```mermaid
+flowchart TD
+    subgraph "Session Initialization"
+        A[Session Start] --> B[SessionStart Hook]
+        B --> C[Create Session File<br>/tmp/aops-DATE-ID.json]
+        C --> D[Set $AOPS, $PYTHONPATH]
+        D --> E[Inject AGENTS.md + Plugin Context]
+    end
+
+    subgraph "Prompt Processing"
+        E --> F[User Prompt]
+        F --> G[UserPromptSubmit Hook]
+        G --> H{Skip Hydration?}
+        H -->|Yes: /, ., notifications| I[Direct Execution]
+        H -->|No| J[Write Context to Temp File]
+        J --> K[prompt-hydrator Agent<br>haiku]
+    end
+
+    subgraph "Plan Generation & Review"
+        K --> L[Gather Context:<br>bd state + vector memory]
+        L --> L1[Read WORKFLOWS.md Index]
+        L1 --> M[Select Workflow]
+        M --> M1[Read Workflow File<br>workflows/workflow-id.md]
+        M1 --> N[Generate TodoWrite Plan<br>from workflow steps]
+        N --> O[critic Agent<br>opus]
+        O --> P{Critic Verdict}
+        P -->|PROCEED| Q[Main Agent Receives Plan]
+        P -->|REVISE| N
+        P -->|HALT| R[Stop - Present Issues]
+    end
+
+    subgraph "Execution"
+        Q --> S[Execute Plan via TodoWrite]
+        S --> T{Random Audit?}
+        T -->|Yes ~14%| U[custodiet Agent<br>haiku]
+        T -->|No| V[Continue Work]
+        U --> W{Custodiet Check}
+        W -->|OK| V
+        W -->|BLOCK| X[HALT - Set Block Flag<br>All Hooks Fail]
+        V --> Y[Mark Todos Complete]
+    end
+
+    subgraph "Verification & Close"
+        Y --> Z[qa Agent<br>opus - INDEPENDENT]
+        Z --> AA{Verified?}
+        AA -->|VERIFIED| AB[framework Agent<br>sonnet]
+        AA -->|ISSUES| AC[Fix Issues]
+        AC --> Y
+        AB --> AD[Generate Reflection]
+        AD --> AE[Store in bd Issues]
+        AE --> AF[Write Session Insights]
+        AF --> AG[Session Close:<br>format + commit + PUSH]
+    end
+
+    style X fill:#ff6666
+    style AG fill:#66ff66
+```
 
 ## Architecture
 

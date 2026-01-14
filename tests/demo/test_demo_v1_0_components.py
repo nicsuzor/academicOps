@@ -12,13 +12,13 @@ real session transcripts with an LLM that searches for evidence of:
 
 This test uses REAL transcript data from recent large sessions, not synthetic
 examples. The LLM performs semantic analysis to find evidence that proves
-each component is functioning as designed in FLOW.md.
+each component is functioning as designed in README.md (Core Loop section).
 
 Run with: uv run pytest tests/demo/test_demo_v1_0_components.py -v -s -n 0 -m demo
 
 Related:
 - Epic ns-6hm: v1.0 Core Loop - Hydration/Workflow/QA/Reflection
-- aops-core/FLOW.md: Complete v1.0 specification
+- README.md (Core Loop): Complete v1.0 specification
 - aops-core/specs/flow.md: Detailed flow specification
 """
 
@@ -417,7 +417,7 @@ class TestV1ComponentsDemo:
         print("VALIDATION CRITERIA")
         print("=" * 80)
 
-        # Core v1.0 requirements from FLOW.md
+        # Core v1.0 requirements from README.md (Core Loop)
         criteria = [
             ("Sessions analyzed", total_sessions >= 1),
             (

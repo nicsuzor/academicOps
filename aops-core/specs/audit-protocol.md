@@ -33,7 +33,7 @@ A complete framework audit validates three dimensions:
 
 **Traceability hierarchy** (checked in order):
 1. **Explicit spec**: Component has dedicated spec in `specs/`
-2. **FLOW.md reference**: Component documented in execution flow
+2. **README.md reference**: Component documented in Core Loop or architecture sections
 3. **Core doc reference**: Referenced in README.md, INDEX.md, or AGENTS.md
 4. **Inline documentation**: Component has frontmatter/docstring explaining purpose
 
@@ -49,7 +49,8 @@ A complete framework audit validates three dimensions:
 **Definition**: Audit actively fixes discrepancies and reports items requiring human decision.
 
 **Automated fixes**:
-- Regenerate index files (INDEX.md, RULES.md, WORKFLOWS.md, FLOW.md)
+- Regenerate index files (INDEX.md, RULES.md, WORKFLOWS.md)
+- Update README.md Core Loop flowchart from hook architecture
 - Update README.md tables with current component lists
 - Add missing entries to indices
 
