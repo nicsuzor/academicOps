@@ -24,6 +24,25 @@ Developing the framework means that EVERY action must be justifiable as a univer
 - Practical decisions drive framework development: formalise everything for consistent, repeatable behavior.
 - If something doesn't work, FAIL FAST, ESCALATE, and HALT -- we want WORKING TOOLS NOT WORKAROUNDS
 
+## HALT on Underspecified Tasks
+
+**CRITICAL**: Before starting execution on any task, verify you have sufficient specification:
+
+- **What** exactly needs to be done (not just category)?
+- **Where** does it apply (which files, components, systems)?
+- **Why** is this needed (context for decisions)?
+
+**If ANY of these are unclear, you MUST**:
+1. HALT execution immediately
+2. Use AskUserQuestion to clarify the ambiguity
+3. NEVER proceed with assumptions or exploration hoping to figure it out
+
+**Why this matters**: Starting work on underspecified tasks wastes effort on wrong assumptions, creates rework, and violates fail-fast principles. Clarification takes seconds; redoing work takes minutes.
+
+**Example**:
+- ❌ "add framework mcp servers to plugins" → HALT: Which servers? Which plugins?
+- ✅ "add memory and zot MCP servers to aops-tools plugin" → Clear, proceed
+
 ## Always Dogfooding
 
 Use our own research projects as development guides, test cases, and tutorials. Never create fake examples for tests or documentation.
@@ -106,17 +125,6 @@ The `/log` command invokes the framework agent to:
 **Proposed change**: [Specific improvement or "none needed"]
 ```
 
-**When to use `/log`**:
-- Framework component failed (router, skill/agent def, guardrail, hook, gap)
-- Identified improvement opportunity
-- Observed friction worth tracking
-
-**When NOT to use `/log`**:
-- Everything worked as expected
-- User-level issues (not framework failures)
-- End of routine sessions with no issues
-
-## Step 4: Land the plane (Session Completion)
 
 ## Landing the Plane (Session Completion)
 
@@ -142,7 +150,7 @@ The `/log` command invokes the framework agent to:
    ```
 6. **Clean up** - Clear stashes, prune remote branches
 7. **Verify** - All changes committed AND pushed
-8. **Hand off** - Provide context for next session
+8. **Hand off** - Provide reflection and context for next session
 
 **CRITICAL RULES:**
 
@@ -150,3 +158,21 @@ The `/log` command invokes the framework agent to:
 - NEVER stop before pushing - that leaves work stranded locally
 - NEVER say "ready to push when you are" - YOU must push
 - If push fails, resolve and retry until it succeeds
+
+
+### Hand off: Framework Reflection (MANDATORY)
+
+After completing work, output structured reflection:
+
+```
+## Framework Reflection
+
+**Request**: [Original request in brief]
+**Guidance received**: [Hydrator/custodiet advice, or "N/A"]
+**Followed**: [Yes/No/Partial - explain]
+**Outcome**: [Success/Partial/Failure]
+**Accomplishment**: [What was accomplished]
+**Root cause** (if not success): [Which component failed]
+**Proposed change**: [Improvement or "none needed"]
+**Next step**: [Context for next session]
+```
