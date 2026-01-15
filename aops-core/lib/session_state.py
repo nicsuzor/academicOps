@@ -80,7 +80,7 @@ def get_session_file_path(session_id: str, date: str | None = None) -> Path:
     Returns:
         Path to session state file in organized subdirectory structure
     """
-    from .session_paths import get_session_directory
+    from lib.session_paths import get_session_directory
 
     session_dir = get_session_directory(session_id, date)
     return session_dir / "session-state.json"
