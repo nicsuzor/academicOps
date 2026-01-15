@@ -640,13 +640,12 @@ mkdir -p "$GLOBAL_WORKFLOWS_DIR"
 ANTIGRAVITY_MCP_CONFIG="$ANTIGRAVITY_DIR/mcp_config.json"
 if [ -f "$MCP_CONVERTED" ] && command -v jq &> /dev/null; then
     # Convert Gemini format to Antigravity format (url -> serverUrl for HTTP servers)
-    jq '.mcpServers | to_entries | map(
+    jq '{mcpServers: (.mcpServers | to_entries | map(
         if .value.url then
-            {key: .key, value: {serverUrl: .value.url} + (if .value.headers then {headers: .value.headers} else {} end)}
-        else
-            .
+            {key: .key, value: ((.value | del(.url)) * {serverUrl: .value.url})}
+        else .
         end
-    ) | from_entries | {mcpServers: .}' "$MCP_CONVERTED" > "$ANTIGRAVITY_MCP_CONFIG"
+    ) | from_entries)}' "$MCP_CONVERTED" > "$ANTIGRAVITY_MCP_CONFIG"
     AG_MCP_COUNT=$(jq '.mcpServers | keys | length' "$ANTIGRAVITY_MCP_CONFIG" 2>/dev/null || echo "0")
     echo -e "${GREEN}✓ Generated Antigravity mcp_config.json with $AG_MCP_COUNT servers${NC}"
 else

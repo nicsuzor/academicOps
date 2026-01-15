@@ -1,0 +1,71 @@
+{
+  "mcpServers": {
+    "gh": {
+      "url": "https://api.githubcopilot.com/mcp/",
+      "headers": {
+        "Authorization": "Bearer "
+      }
+    },
+    "zot": {
+      "command": "uvx",
+      "args": [
+        "fastmcp",
+        "run",
+        "http://services.stoat-musical.ts.net:8024/mcp"
+      ]
+    },
+    "osb": {
+      "command": "uvx",
+      "args": [
+        "fastmcp",
+        "run",
+        "http://services.stoat-musical.ts.net:8025/mcp"
+      ]
+    },
+    "task_manager": {
+      "command": "bash",
+      "args": [
+        "-c",
+        "cd $AOPS && PYTHONPATH=$AOPS python3 skills/tasks/server.py"
+      ]
+    },
+    "outlook": {
+      "command": "uvx",
+      "args": [
+        "fastmcp",
+        "run",
+        "http://nicwin.stoat-musical.ts.net:8023/mcp"
+      ]
+    },
+    "gemini": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "gemini-mcp-tool",
+        "--debug"
+      ]
+    },
+    "memory": {
+      "url": "http://services.stoat-musical.ts.net:8026/mcp",
+      "headers": {
+        "Authorization": "Bearer 07f203bcc6fbe9a410d9850336f8ff9c73a64c3d0e7802e3450ce39b139f5d67"
+      }
+    },
+    "context7": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@upstash/context7-mcp"
+      ],
+      "env": {
+        "CONTEXT7_API_KEY": "ctx7sk-421e8cbf-f13c-4f64-9e93-a4e9f8b6d53e"
+      }
+    },
+    "playwright": {
+      "command": "npx",
+      "args": [
+        "@playwright/mcp@latest"
+      ]
+    }
+  }
+}
