@@ -635,6 +635,24 @@ GLOBAL_WORKFLOWS_DIR="$ANTIGRAVITY_DIR/global_workflows"
 # Create directories
 mkdir -p "$GLOBAL_WORKFLOWS_DIR"
 
+# Generate Antigravity mcp_config.json from converted MCPs
+# Antigravity uses 'serverUrl' for HTTP servers instead of 'url'
+ANTIGRAVITY_MCP_CONFIG="$ANTIGRAVITY_DIR/mcp_config.json"
+if [ -f "$MCP_CONVERTED" ] && command -v jq &> /dev/null; then
+    # Convert Gemini format to Antigravity format (url -> serverUrl for HTTP servers)
+    jq '.mcpServers | to_entries | map(
+        if .value.url then
+            {key: .key, value: {serverUrl: .value.url} + (if .value.headers then {headers: .value.headers} else {} end)}
+        else
+            .
+        end
+    ) | from_entries | {mcpServers: .}' "$MCP_CONVERTED" > "$ANTIGRAVITY_MCP_CONFIG"
+    AG_MCP_COUNT=$(jq '.mcpServers | keys | length' "$ANTIGRAVITY_MCP_CONFIG" 2>/dev/null || echo "0")
+    echo -e "${GREEN}✓ Generated Antigravity mcp_config.json with $AG_MCP_COUNT servers${NC}"
+else
+    echo -e "${YELLOW}⚠ Could not generate Antigravity mcp_config.json${NC}"
+fi
+
 # Install skills from all aops plugins as global workflows
 echo "Installing skills as Antigravity workflows..."
 for plugin_dir in "$AOPS_PATH"/aops-*; do

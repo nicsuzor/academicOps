@@ -53,7 +53,7 @@ This framework is a **validated logical system**. Every component must be deriva
 
 ## When to Invoke This Agent
 
-Invoke via `Task(subagent_type="framework-executor")` for:
+Invoke via `Task(subagent_type="framework")` for:
 
 - Any modification to `$AOPS/` (skills, hooks, agents, commands, specs)
 - Framework debugging and troubleshooting
