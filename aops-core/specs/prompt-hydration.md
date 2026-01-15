@@ -284,13 +284,13 @@ what workflows are available?
 ## Prompt Hydration
 
 **Intent**: List available workflow types in the framework
-**Workflow**: question (Answer accuracy)
+**Workflow**: simple-question (Answer accuracy)
 **Guardrails**: none
 
 ### Relevant Context
 
-- Workflow catalog defined in prompt-hydration spec
-- Available: question, minor-edit, tdd, batch, qa-proof, plan-mode
+- Workflow catalog defined in WORKFLOWS.md
+- See [[WORKFLOWS.md]] for available workflows
 
 ### TodoWrite Plan
 
