@@ -293,6 +293,7 @@ LAYER 2             ← Depends on layer 1
 - [ ] Labels/tags transferred
 - [ ] Description includes context
 - [ ] Source file handled (archived/deleted/flagged)
+- [ ] **Task assigned to parent epic** (no orphan tasks for project work)
 - [ ] Dependencies added for related tasks
 
 ## Success Metrics
