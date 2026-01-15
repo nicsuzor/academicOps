@@ -168,6 +168,59 @@ for f in data/tasks/inbox/*.md; do
 done
 ```
 
+## Establishing Hierarchies
+
+**Every task belongs somewhere.** Before creating tasks, identify or create the parent epic they belong to. Good hierarchies make work discoverable and show progress at a glance.
+
+### Hierarchy Principle
+
+```
+Epic (project/initiative)
+├── Task (workstream 1)
+│   └── Task (subtask)
+├── Task (workstream 2)
+└── Task (workstream 3)
+```
+
+- **Epics** group related work toward a goal (e.g., "Write TJA paper", "v1.0 Release")
+- **Tasks** are actionable items that belong to an epic
+- Use `--parent` when creating or `bd update --parent` to assign later
+
+### Creating Hierarchies
+
+```bash
+# Create epic first (or find existing one)
+bd create "Project Name" -t epic -p P1 -d "Goal description"
+
+# Create tasks under the epic
+bd create "Task title" -t task --parent <epic-id>
+
+# Or assign parent to existing tasks
+bd update <task-id> --parent <epic-id>
+
+# Bulk assign multiple tasks to an epic
+for id in task-1 task-2 task-3; do
+  bd update "$id" --parent <epic-id>
+done
+```
+
+### Finding the Right Parent
+
+Before creating orphan tasks, check for existing epics:
+
+```bash
+# List all epics
+bd list -t epic
+
+# Search for related work
+bd search "project keyword"
+
+# Check if similar tasks already have a parent
+bd show <similar-task-id>
+```
+
+If no epic exists and you're creating 3+ related tasks, **create an epic first**.
+
 ## Setting Up Dependencies
 
 When creating related tasks, **always add dependencies** to show execution order. This enables `bd graph` to visualize the work and helps agents understand what's blocked vs ready.
