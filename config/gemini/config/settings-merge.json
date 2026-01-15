@@ -46,17 +46,5 @@
         "timeout": 5000
       }]
     }]
-  },
-  "mcpServers": {
-    "memory": {
-      "url": "http://services.stoat-musical.ts.net:8026/mcp"
-    },
-    "context7": {
-      "command": "npx",
-      "args": ["-y", "@upstash/context7-mcp"],
-      "env": {
-        "CONTEXT7_API_KEY": "${CONTEXT7_API_KEY}"
-      }
-    }
   }
 }
