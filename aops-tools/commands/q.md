@@ -1,56 +1,88 @@
 ---
 name: q
 category: instruction
-description: Queue a task for later execution by creating a bd issue
-allowed-tools: Bash, Read, Grep
+description: Queue a task for later execution by creating bd issue(s) - expands prompt to identify discrete tasks
+allowed-tools: Task, Bash, Read, Grep
 permalink: commands/q
 ---
 
 # /q - Queue for Later
 
-**Purpose**: Capture a task for later execution as a beads issue.
+**Purpose**: Capture work for later execution as bd issue(s). One prompt may result in multiple issues.
 
 ## Workflow
 
-1. Review the current session for context about what needs to be done
-2. Search for related existing issues: `bd list --status=open`
-3. **If related issue exists**: Add a checklist item or comment to the existing issue
-4. **If no related issue**: Create a new issue using `bd create`
-5. DO NOT execute the task. It will be queued for execution later.
+### Step 1: Hydrate the Prompt
 
-## Commands
+Invoke the hydrator agent to expand and analyze the user's request:
 
-### Search for existing issues
+```
+Task(
+  subagent_type="aops-core:prompt-hydrator",
+  model="haiku",
+  description="Hydrate queue request",
+  prompt="Analyze this request for queueing (NOT immediate execution). Identify:\n1. Discrete tasks that should be separate bd issues\n2. Dependencies between tasks\n3. Appropriate priority and type for each\n4. Context needed for future execution\n\nUser request: <the user's prompt>"
+)
+```
+
+### Step 2: Check for Existing Issues
+
+Search for related open issues to avoid duplicates:
+
 ```bash
 bd list --status=open | grep -i "keyword"
 bd show <issue-id>  # View details of specific issue
 ```
 
-### Create new issue
+### Step 3: Create bd Issues
+
+For each discrete task identified by the hydrator:
+
 ```bash
-bd create --title="Task description" --type=task --priority=2
+bd create "<task title>" --type=<type> --priority=<0-4> --description="<context for future execution>"
 ```
 
-**Priority levels**: 0-4 or P0-P4
-- 0/P0: Critical (urgent, blocking)
-- 1/P1: High (important, soon)
-- 2/P2: Medium (default, normal workflow)
-- 3/P3: Low (nice to have)
-- 4/P4: Backlog (someday/maybe)
-
-**Issue types**: task, bug, feature, epic
-
-### Update existing issue
+If tasks have dependencies:
 ```bash
-# Add to issue description or create a dependent task
-bd create --title="Subtask description" --type=task --priority=2
-bd dep add <new-issue-id> <parent-issue-id>  # Make it depend on parent
+bd dep add <dependent-id> <blocking-id>
 ```
+
+## Priority Levels
+
+| Priority | Meaning                    |
+| -------- | -------------------------- |
+| 0 / P0   | Critical (urgent/blocking) |
+| 1 / P1   | High (important, soon)     |
+| 2 / P2   | Medium (default)           |
+| 3 / P3   | Low (nice to have)         |
+| 4 / P4   | Backlog (someday/maybe)    |
+
+## Issue Types
+
+- `task` - Default, general work item
+- `bug` - Something broken that needs fixing
+- `feature` - New functionality
+- `epic` - Large initiative (parent for multiple tasks)
 
 ## Key Rules
 
-- Always check for existing related issues first (avoid duplicates)
-- Use dependencies for sub-tasks that must wait for parent completion
-- Keep titles concise and actionable
-- Default to priority=2 (medium) unless user specifies otherwise
-- DO NOT start working on the issue - just create it for later
+- **Always hydrate first** - The prompt may contain multiple tasks
+- **Check for duplicates** - Search existing issues before creating
+- **Capture context** - Include enough detail for future execution without current session
+- **Set dependencies** - If tasks must be done in order, use `bd dep add`
+- **DO NOT execute** - Only queue; execution happens later via `/pull` or manual claim
+
+## Examples
+
+**Single task**:
+```
+/q fix the typo in README.md
+```
+→ Creates 1 issue
+
+**Multiple tasks in one prompt**:
+```
+/q refactor the auth module and add unit tests for it
+```
+→ Hydrator identifies 2 tasks: (1) refactor auth, (2) add tests (depends on #1)
+→ Creates 2 issues with dependency
