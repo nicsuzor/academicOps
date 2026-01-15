@@ -108,11 +108,6 @@ def get_workflows_dir() -> Path:
 # Data directories
 
 
-def get_tasks_dir() -> Path:
-    """Get tasks directory ($ACA_DATA/tasks)."""
-    return get_data_root() / "tasks"
-
-
 def get_sessions_dir() -> Path:
     """Get sessions directory ($ACA_DATA/sessions)."""
     return get_data_root() / "sessions"
