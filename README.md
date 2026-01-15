@@ -108,7 +108,7 @@ The framework uses a **core + archived** structure:
 
 | Category   | Components                                                                               |
 | ---------- | ---------------------------------------------------------------------------------------- |
-| Skills (5) | tasks, remember, framework, audit, session-insights                                      |
+| Skills (4) | remember, framework, audit, session-insights                                             |
 | Agents (5) | prompt-hydrator, critic, custodiet, qa, framework                                        |
 | Hooks (6)  | router.py, unified_logger.py, user_prompt_submit.py, session_env_setup.sh, overdue_enforcement.py, custodiet_gate.py |
 | Governance | 7 enforced axioms, 4 enforced heuristics (with mechanical checks)                        |
