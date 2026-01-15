@@ -27,7 +27,6 @@ When you see these domain signals, invoke the corresponding skill BEFORE startin
 | Review academic work, papers, dissertations                               | `review`                      | Academic review assistance             |
 | Convert documents to markdown                                             | `convert-to-md`               | Document conversion (DOCX, PDF, etc.)  |
 | Generate PDF from markdown                                                | `pdf`                         | PDF generation with academic styling   |
-| Task management, create/update tasks                                      | `tasks`                       | Task lifecycle management              |
 | Session insights, accomplishments, daily note, daily summary              | `session-insights`            | Extract learnings from sessions        |
 | Daily briefing, morning routine, task recommendations, email triage       | `daily`                       | Daily note lifecycle management        |
 | Fact-check claims, verify sources                                         | `fact-check`                  | Verify factual claims                  |
