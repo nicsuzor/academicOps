@@ -158,6 +158,70 @@ for f in data/tasks/inbox/*.md; do
 done
 ```
 
+## Setting Up Dependencies
+
+When creating related tasks, **always add dependencies** to show execution order. This enables `bd graph` to visualize the work and helps agents understand what's blocked vs ready.
+
+### Dependency Commands
+
+```bash
+# Add dependency: child depends on parent (parent blocks child)
+bd dep add <child-id> <parent-id>
+
+# View dependencies for an issue
+bd dep list <issue-id>
+
+# Visualize dependency graph
+bd graph <issue-id> --compact    # Tree format, one line per issue
+bd graph <issue-id> --box        # ASCII boxes (default)
+bd graph --all                   # All open issues
+```
+
+### When to Add Dependencies
+
+1. **Sequential tasks**: If task B can't start until task A completes
+   ```bash
+   bd dep add task-B task-A
+   ```
+
+2. **Workstream chains**: Link tasks in execution order
+   ```bash
+   # Validation chain: test → full run → compare → metrics → document
+   bd dep add full-run sanity-test
+   bd dep add compare full-run
+   bd dep add metrics compare
+   bd dep add document metrics
+   ```
+
+3. **Cross-workstream links**: When one workstream feeds into another
+   ```bash
+   # Paper depends on validation results
+   bd dep add write-results compute-metrics
+   # Dashboard depends on tool being ready
+   bd dep add build-dataset build-tool
+   ```
+
+### Dependency Patterns
+
+| Pattern | Example | Command |
+|---------|---------|---------|
+| Sequential | A → B → C | `bd dep add B A && bd dep add C B` |
+| Convergent | A,B → C | `bd dep add C A && bd dep add C B` |
+| Divergent | A → B,C | `bd dep add B A && bd dep add C A` |
+
+### Graph Interpretation
+
+```
+LAYER 0 (ready)     ← No dependencies, can start now
+LAYER 1             ← Depends on layer 0
+LAYER 2             ← Depends on layer 1
+...
+```
+
+- Issues in the same layer can run in parallel
+- Higher layers are blocked until lower layers complete
+- Use `bd graph <start-issue>` to see the full chain from any starting point
+
 ## Quality Gates
 
 - [ ] No duplicate issues created
@@ -166,6 +230,7 @@ done
 - [ ] Labels/tags transferred
 - [ ] Description includes context
 - [ ] Source file handled (archived/deleted/flagged)
+- [ ] Dependencies added for related tasks
 
 ## Success Metrics
 
