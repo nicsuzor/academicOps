@@ -33,6 +33,16 @@ If unclear: HALT, use AskUserQuestion, NEVER assume.
 - If something doesn't work: FAIL FAST, ESCALATE, HALT
 - WORKING TOOLS NOT WORKAROUNDS
 
+## Agent Instructions Are Expensive
+
+Skill, command, and agent instruction files (SKILL.md, commands/*.md, agents/*.md) are loaded into agent context and cost tokens.
+
+**Three rules:**
+
+1. **Actionable content only** - Every line should tell the agent WHAT TO DO
+2. **No spec references** - Specifications are for humans, not agent execution
+3. **No meta-commentary** - "This skill does X because Y" belongs in specs, not instructions
+
 ## Task Tracking
 
 Check beads (`bd`): `bd ready`, `bd list`, `bd update <id> --status=in_progress`, `bd close <id>`, `bd sync`
