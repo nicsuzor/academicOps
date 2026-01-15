@@ -8,9 +8,9 @@ permalink: skills-framework
 deprecated: true
 ---
 
-The framework-executor agent handles everything end-to-end.
+The framework agent handles everything end-to-end.
 
-1. invoke framework-executor subagent if you haven't already.
+1. invoke framework subagent if you haven't already.
 
 2. Read and follow the appropriate workflow:
 
