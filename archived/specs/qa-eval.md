@@ -202,7 +202,7 @@ The skill requires:
 ### Used By
 
 - [[feature-dev]] skill (verification phase)
-- [[framework-executor]] agent (post-work verification)
+- [[framework]] agent (post-work verification)
 - /qa command for manual verification
 - Any workflow requiring independent verification
 
