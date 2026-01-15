@@ -165,7 +165,6 @@ def print_environment() -> None:
         print(f"  Commands: {get_commands_dir()}")
         print(f"  Tests:    {get_tests_dir()}")
         print("\nData directories:")
-        print(f"  Tasks:    {get_tasks_dir()}")
         print(f"  Sessions: {get_sessions_dir()}")
         print(f"  Projects: {get_projects_dir()}")
         print(f"  Logs:     {get_logs_dir()}")
