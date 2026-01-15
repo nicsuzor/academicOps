@@ -17,7 +17,7 @@ Bypass conditions (gate always allows):
 - Subagent sessions (CLAUDE_AGENT_TYPE environment variable set)
 - First prompt from CLI (no session state exists yet)
 - Task invocations spawning prompt-hydrator
-- User bypass prefix (`.` handled by UserPromptSubmit, not here)
+- User bypass prefixes ('.' and '/' handled by UserPromptSubmit setting hydration_pending=False)
 
 Environment variables:
 - HYDRATION_GATE_MODE: "warn" (default) or "block"
@@ -53,7 +53,7 @@ Task(subagent_type="prompt-hydrator", model="haiku",
 
 The hydrator provides workflow guidance, context, and guardrails. Follow its output before continuing.
 
-**Override**: If hydrator fails, user can prefix next prompt with `.` to bypass.
+**Override**: If hydrator fails, user can prefix next prompt with `.` to bypass, or use `/` for slash commands.
 """
 
 WARN_MESSAGE = """⚠️  HYDRATION GATE (warn-only): Hydrator not invoked yet.
