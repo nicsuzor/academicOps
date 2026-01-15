@@ -27,7 +27,6 @@ These are the **concrete absolute paths** for this session. Use them directly wi
 | Hooks          | `$AOPS/hooks/`        |
 | Agents         | `$AOPS/agents/`       |
 | Tests          | `$AOPS/tests/`        |
-| Tasks          | `$ACA_DATA/tasks/`    |
 | Projects       | `$ACA_DATA/projects/` |
 | Library        | `$AOPS/lib/`          |
 | Sessions       | `$ACA_DATA/sessions/` |
