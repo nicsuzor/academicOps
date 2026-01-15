@@ -370,25 +370,6 @@ $AOPS/
 │   │       ├── batch-review.md  # Batch review workflow
 │   │       └── tdd.md           # TDD workflow
 │   │
-│   ├── tasks/                   # Task management (MCP server)
-│   │   ├── SKILL.md             # Main skill file
-│   │   ├── README.md            # Documentation
-│   │   ├── __init__.py          # Package init
-│   │   ├── server.py            # MCP server implementation
-│   │   ├── models.py            # Task data models
-│   │   ├── task_loader.py       # Task loading utilities
-│   │   ├── task_ops.py          # Task operations
-│   │   ├── scripts/
-│   │   │   ├── task_add.py      # Add task CLI
-│   │   │   ├── task_archive.py  # Archive task CLI
-│   │   │   ├── task_item_add.py # Add task item CLI
-│   │   │   ├── task_update.py   # Update task CLI
-│   │   │   ├── task_view.py     # View task CLI
-│   │   │   └── task_viz.py      # Visualize tasks CLI
-│   │   ├── workflows/
-│   │   │   └── email-capture.md # Email capture workflow
-│   │   └── tests/
-│   │       └── test_task_scripts.sh  # Task script tests
 │   │
 │   ├── training-set-builder/    # Training data extraction
 │   │   └── SKILL.md             # Main skill file
