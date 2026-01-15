@@ -48,6 +48,22 @@ Key areas to check:
 - Check: Are there design choices being made without user consultation?
 - Signal: New patterns, conventions, or architectural decisions without discussion
 
+### Insight Capture Check
+
+When the session involves discovery, investigation, or decision-making, check if insights are being captured appropriately:
+
+**Lost insights signal**: Agent discovers something significant (bug root cause, pattern, principle, decision rationale) but doesn't persist it anywhere.
+
+**Correct behavior**:
+- Operational findings (what happened, what was tried) → bd issue or comment
+- Knowledge discoveries (patterns, principles, facts) → `Skill(skill="remember")` for markdown + memory server
+- Both → bd for tracking, remember skill for knowledge
+
+**If insights appear lost**: Include in your assessment (but don't BLOCK for this alone - it's advisory):
+```
+Note: Session discovered [insight] but did not capture it. Consider: bd create for operational tracking, or Skill(skill="remember") for knowledge persistence.
+```
+
 ## Your Assessment
 
 Review the context above and determine:

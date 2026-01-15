@@ -54,14 +54,49 @@ These are the **concrete absolute paths** for this session. Use them directly wi
 
 User memories are strictly organised with a clear distinction between:
 
-- Episodic Memory (Observations): This system stores specific, context-rich past events (e.g., "I remember seeing a white crow yesterday").
-- Semantic Memory & Belief Networks (The Current State): This is where general knowledge and "truths" reside (e.g., "Crows are black").
+- **Episodic Memory** (Observations): Time-stamped events, what happened when. "I tried X and it failed." "Meeting decided Y."
+- **Semantic Memory** (Current State): Timeless truths, always up-to-date. "X doesn't work because Y." "Our approach is Z."
 
-The $ACA_DATA knowledge base is a CURRENT STATE MACHINE. The core framework priority is the current state machine: we want **perfect knowledge of everything the user needs, always up to date, always understandable** without having to piece together observations. $ACA_DATA is **markdown-first** and indexed semantically with a memory server.
+### Three Storage Systems
 
-**To persist knowledge**: Use `Skill(skill="remember")` (blocking) or spawn background Task with `run_in_background=true` (seamless). **To search**: Use `mcp__memory__retrieve_memory(query="...")`.
+| System | Purpose | When to Use |
+|--------|---------|-------------|
+| **bd issues** | Operational tracking | Tasks, bugs, observations, experiments, decisions-in-progress |
+| **$ACA_DATA markdown** | Knowledge SSoT | Synthesized truths, project context, goals, general knowledge |
+| **Memory server** | Semantic search index | Derivative of markdown - enables `mcp__memory__retrieve_memory` |
 
-All other long term memory is stored somewhere logical but OUTSIDE OF $ACA_DATA. We produce observations, and they are stored in logical places (git history, session files, meeting notes, etc).
+### Decision Tree
+
+```
+Is this a task or observation? (time-stamped, "agent did X")
+  → YES: bd create or bd update (NOT remember skill)
+
+Is this synthesized knowledge? (timeless truth, "X is Y")
+  → YES: Skill(skill="remember") → writes markdown + memory server
+
+Need to search existing knowledge?
+  → USE: mcp__memory__retrieve_memory(query="...")
+```
+
+### Key Rules
+
+1. **Markdown is SSoT** - Memory server is derived, not authoritative
+2. **Remember skill dual-writes** - Always use it for new knowledge (ensures sync)
+3. **bd for observations** - Don't create markdown files for time-stamped events
+4. **Synthesis flow**: bd observations → patterns emerge → remember skill → semantic docs → close bd issue
+
+### Insight Capture
+
+When you discover something worth preserving:
+- **Operational insight** (bug found, approach tried): `bd create` or comment on existing issue
+- **Knowledge insight** (pattern, principle, fact): `Skill(skill="remember")`
+- **Both**: Create bd issue for tracking, use remember skill for the knowledge
+
+**To persist knowledge**: Use `Skill(skill="remember")` (blocking) or spawn background Task with `run_in_background=true` (seamless).
+
+**To search**: Use `mcp__memory__retrieve_memory(query="...")`.
+
+**To repair sync**: Run remember skill's sync workflow (reconciles markdown → memory server).
 
 ## Environment Variable Architecture
 

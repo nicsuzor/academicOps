@@ -184,3 +184,24 @@ bd dep add [immediate-task-id] depends-on [decompose-task-id]
 
 **NOTE**: You do NOT invoke critic. The main agent does that after receiving your plan.
 
+### Insight Capture Advice
+
+When the task involves discovery, learning, or decision-making, include guidance on preserving insights:
+
+**In your output, add this section when relevant:**
+
+```markdown
+### Insight Capture
+
+If this work produces insights worth preserving:
+- **Operational findings** (bugs, failed approaches, decisions): Add to bd issue comments
+- **Knowledge discoveries** (patterns, principles, facts): Use `Skill(skill="remember")` to persist to markdown + memory server
+- **Both**: Log observation in bd, then synthesize knowledge via remember skill
+```
+
+**When to include this guidance:**
+- Debugging/investigation tasks (likely to discover root causes)
+- Design/architecture work (decisions and rationale)
+- Research/exploration (findings and patterns)
+- Any task where "what we learned" matters as much as "what we did"
+

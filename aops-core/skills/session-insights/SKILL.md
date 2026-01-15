@@ -2,13 +2,14 @@
 name: session-insights
 category: analysis
 description: Generate comprehensive session insights from transcripts using Gemini
-allowed-tools: Bash,Read,Write,mcp__gemini__ask-gemini
-version: 3.0.0
+allowed-tools: Bash,Read,Write,mcp__gemini__ask-gemini,mcp__memory__store_memory
+version: 3.1.0
 tags:
   - analysis
   - gemini
   - insights
   - sessions
+  - memory
 ---
 
 # Session Insights (Gemini Post-hoc Analysis)
@@ -217,6 +218,54 @@ if [ $? -ne 0 ]; then
 fi
 ```
 
+### Step 6.5: Sync to Memory Server
+
+Sync key insights to memory server for semantic search:
+
+```python
+# Extract summary content for memory
+summary = insights.get('summary', '')
+accomplishments = insights.get('accomplishments', [])
+learning_obs = insights.get('learning_observations', [])
+proposed_changes = insights.get('proposed_changes', [])
+
+# Build memory content - concise for embeddings
+memory_content = f"""Session {session_id} ({date}): {summary}
+
+Accomplishments: {', '.join(accomplishments[:5]) if accomplishments else 'None recorded'}
+
+Key learnings: {'; '.join([obs.get('evidence', '')[:100] for obs in learning_obs[:3]]) if learning_obs else 'None'}
+
+Proposed changes: {', '.join(proposed_changes[:3]) if proposed_changes else 'None'}"""
+
+# Sync to memory server
+mcp__memory__store_memory(
+    content=memory_content,
+    tags=["session-insights", f"session-{session_id}", project],
+    metadata={
+        "source": insights_file_path,
+        "type": "session-insights",
+        "date": date,
+        "session_id": session_id,
+        "outcome": insights.get('outcome', 'unknown')
+    }
+)
+```
+
+**Why sync to memory**: Enables semantic search for past session learnings (e.g., "what did we learn about testing?" or "sessions where auth was worked on").
+
+**What gets synced**:
+- Summary (what was worked on)
+- Accomplishments (concrete deliverables)
+- Learning observations (key insights only, truncated)
+- Proposed changes (framework improvements)
+
+**What stays in JSON only**:
+- Full learning observation details
+- Conversation flow
+- Verbatim prompts
+- Operational metrics
+
 ### Step 7: Display Summary
 
 ```bash
@@ -235,6 +284,7 @@ echo "Summary:         $SUMMARY"
 echo "Outcome:         $OUTCOME"
 echo "Accomplishments: $ACCOMPLISHMENTS"
 echo "Learnings:       $OBSERVATIONS"
+echo "Memory synced:   Yes"
 echo ""
 echo "Full insights: $INSIGHTS_FILE"
 ```
