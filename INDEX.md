@@ -79,7 +79,7 @@ $AOPS/
 │   ├── meta.md                  # Strategic brain + executor
 │   ├── next.md                  # Task recommendations (should/enjoy/quick)
 │   ├── parallel-batch.md        # Parallel file processing
-│   ├── q.md                     # Queue user task for later (→ task system)
+│   ├── q.md                     # Queue task for later (→ bd issues)
 │   ├── qa.md                    # Quality assurance verification
 │   ├── reflect.md               # Agent self-audit of process compliance
 │   ├── remind.md                # Queue agent work for later (→ bd issues)
