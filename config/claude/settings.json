@@ -5,13 +5,6 @@
       "Bash(uv run pytest:*)"
     ],
     "deny": [
-      "Write(**/data/tasks/**)",
-      "Edit(**/data/tasks/**)",
-      "Bash(rm **/data/tasks/**)",
-      "Bash(mv **/data/tasks/**)",
-      "Bash(cp **/data/tasks/**)",
-      "Bash(git mv **/data/tasks/**)",
-      "Bash(git rm **/data/tasks/**)",
       "Read(~/.claude/settings.json)",
       "Read(~/.claude/settings.local.json)",
       "Read(~/.claude/mcp.json)",
