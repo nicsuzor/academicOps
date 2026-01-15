@@ -14,7 +14,14 @@ from urllib.parse import quote
 aops_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(aops_root))
 
-from skills.tasks.task_loader import load_focus_tasks_from_index, load_task_index
+# Task system removed (2026-01-15) - stub functions return empty data
+def load_task_index():
+    """Stub: task system deprecated in favor of bd issues."""
+    return None
+
+def load_focus_tasks_from_index(task_index, count=20):
+    """Stub: task system deprecated in favor of bd issues."""
+    return []
 from lib.session_reader import find_sessions
 from lib.session_analyzer import SessionAnalyzer, extract_todowrite_from_session
 
