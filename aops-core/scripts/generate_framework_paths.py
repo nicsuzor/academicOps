@@ -35,15 +35,11 @@ try:
         get_tests_dir,
         get_config_dir,
         get_workflows_dir,
-        get_tasks_dir,
         get_sessions_dir,
         get_projects_dir,
         get_logs_dir,
         get_context_dir,
         get_goals_dir,
-        get_tasks_inbox_dir,
-        get_tasks_completed_dir,
-        get_tasks_archived_dir,
     )
 except ImportError as e:
     print(f"Error: Failed to import from paths.py: {e}", file=sys.stderr)
