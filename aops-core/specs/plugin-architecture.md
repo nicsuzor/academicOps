@@ -36,7 +36,7 @@ This document defines the component assignments for the academicOps plugin ecosy
 **Agents**:
 - `critic` - Second-opinion review of plans and conclusions
 - `custodiet` - Ultra vires detector (catches agents acting beyond authority)
-- `framework-executor` - Framework infrastructure work with explicit skill access
+- `framework` - Framework infrastructure work with explicit skill access
 - `prompt-hydrator` - Transform terse prompts into complete execution plans
 - `qa` - Independent end-to-end verification before completion
 
