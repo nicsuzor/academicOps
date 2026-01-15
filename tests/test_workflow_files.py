@@ -192,9 +192,10 @@ class TestWorkflowFiles:
         # Verify it's an index file
         assert yaml_data.get("type") == "index", "WORKFLOWS.md type should be 'index'"
 
-        # Verify it contains workflow references
-        assert "[[workflows/" in markdown_body, (
-            "WORKFLOWS.md should contain workflow wikilinks"
+        # Verify it contains workflow references (wikilinks to workflow IDs)
+        # Uses [[workflow-id]] format, not [[workflows/workflow-id]]
+        assert "[[feature-dev]]" in markdown_body, (
+            "WORKFLOWS.md should contain workflow wikilinks (e.g., [[feature-dev]])"
         )
 
     @pytest.mark.parametrize(
