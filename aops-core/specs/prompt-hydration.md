@@ -317,7 +317,7 @@ figure out why the memory server isn't returning results
 ## Prompt Hydration
 
 **Intent**: Diagnose memory server search failures and identify root cause
-**Workflow**: qa-proof (Evidence gathered)
+**Workflow**: debugging (Evidence gathered)
 **Guardrails**: evidence_before_conclusion, escalate_if_blocked
 
 ### Relevant Context
