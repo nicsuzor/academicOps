@@ -510,10 +510,6 @@ Created N issues in bd:
 - beads-yyy: [title]
 ```
 
-## Output Targets
-
-See [[references/output-targets.md]] for README.md and INDEX.md structure targets.
-
 ## Validation Criteria
 
 - README.md < 200 lines
