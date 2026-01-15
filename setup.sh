@@ -743,6 +743,25 @@ else
     echo "  Linked heuristics.md"
 fi
 
+# Link core.md (hydrator + bd workflow instructions)
+target="$AOPS_PATH/config/antigravity/rules/core.md"
+link_path="$PROJECT_RULES_DIR/core.md"
+if [ -L "$link_path" ]; then
+    current_target="$(readlink "$link_path")"
+    if [ "$current_target" != "$target" ]; then
+        rm "$link_path"
+        ln -s "$target" "$link_path"
+        echo "  Updated core.md link"
+    fi
+elif [ -e "$link_path" ]; then
+    rm "$link_path" # Replace file with symlink (enforce SSoT)
+    ln -s "$target" "$link_path"
+    echo -e "${GREEN}  Replaced core.md file with symlink${NC}"
+else
+    ln -s "$target" "$link_path"
+    echo "  Linked core.md"
+fi
+
 echo
 
 # Step 3b: Install cron job for task index regeneration
