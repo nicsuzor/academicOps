@@ -125,7 +125,7 @@ The framework uses a **core + archived** structure:
 | /log                 | Log agent patterns to thematic learning files                                                |
 | /meta                | Strategic brain + executor for framework work                                                |
 | /pull                | Get and run a task from the queue                                                            |
-| /q                   | Queue user task for later (→ task system)                                                    |
+| /q                   | Queue task for later (→ bd issues)                                                           |
 | /qa                  | Verify outcomes against acceptance criteria                                                  |
 | /reflect             | Self-audit process compliance; see also `/session-insights current` for automated reflection |
 | /remind              | Queue agent work for later (→ bd issues)                                                     |
