@@ -5,7 +5,7 @@ category: reference
 type: reference
 description: Resolved absolute paths for this framework instance (generated from paths.py)
 audience: agents
-generated: 2026-01-14T10:47:36.250709+00:00
+generated: 2026-01-15T02:49:50.391328+00:00
 permalink: framework-paths
 tags:
   - framework
@@ -17,7 +17,7 @@ tags:
 
 **⚠️ GENERATED FILE - DO NOT EDIT MANUALLY**
 
-Generated: 2026-01-14 10:47:36 UTC
+Generated: 2026-01-15 02:49:50 UTC
 Source: `aops-core/lib/paths.py`
 
 This file provides resolved absolute paths for agent use during sessions.
@@ -51,22 +51,11 @@ User data directories within $ACA_DATA:
 
 | Directory | Absolute Path |
 |-----------|---------------|
-| Tasks     | /home/nic/writing/data/tasks    |
 | Sessions  | /home/nic/writing/data/sessions |
 | Projects  | /home/nic/writing/data/projects |
 | Logs      | /home/nic/writing/data/logs     |
 | Context   | /home/nic/writing/data/context  |
 | Goals     | /home/nic/writing/data/goals    |
-
-## Task Subdirectories
-
-Task management subdirectories:
-
-| Directory | Absolute Path |
-|-----------|---------------|
-| Inbox     | /home/nic/writing/data/tasks/inbox     |
-| Completed | /home/nic/writing/data/tasks/completed |
-| Archived  | /home/nic/writing/data/tasks/archived  |
 
 ---
 
