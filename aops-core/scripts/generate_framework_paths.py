@@ -133,22 +133,11 @@ User data directories within $ACA_DATA:
 
 | Directory | Absolute Path |
 |-----------|---------------|
-| Tasks     | {tasks_dir}    |
 | Sessions  | {sessions_dir} |
 | Projects  | {projects_dir} |
 | Logs      | {logs_dir}     |
 | Context   | {context_dir}  |
 | Goals     | {goals_dir}    |
-
-## Task Subdirectories
-
-Task management subdirectories:
-
-| Directory | Absolute Path |
-|-----------|---------------|
-| Inbox     | {tasks_inbox_dir}     |
-| Completed | {tasks_completed_dir} |
-| Archived  | {tasks_archived_dir}  |
 
 ---
 
