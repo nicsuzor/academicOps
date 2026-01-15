@@ -88,6 +88,27 @@ The [[specs/prompt-hydration]] process classifies prompts and suggests workflows
 **What it does**: Injects context, classification, and task-specific guidance
 **What it can't do**: Force agent to follow guidance
 
+#### Hydration Gate (Mechanical Enforcement)
+
+**Hook**: `hydration_gate.py` (PreToolUse)
+**Status**: Active (warn-only mode by default)
+
+Blocks/warns when agent attempts to use tools before invoking prompt-hydrator subagent.
+
+**Gate Behavior**:
+- **Warn mode** (default, `HYDRATION_GATE_MODE=warn`): Logs warning to stderr, allows tool use
+- **Block mode** (`HYDRATION_GATE_MODE=block`): Blocks all tools (exit code 2) until hydrator invoked
+
+**Bypass Conditions**:
+- Subagent sessions (`CLAUDE_AGENT_TYPE` set) - subagents inherit hydration from parent
+- First prompt from CLI (no session state exists) - prevents blocking on session startup
+- User bypass prefix (`.` or `/`) - handled by UserPromptSubmit hook
+- Task invocation spawning prompt-hydrator - clears gate flag
+
+**Implementation**: Gate checks `hydration_pending` flag set by UserPromptSubmit hook. Flag is cleared when Task tool spawns prompt-hydrator subagent.
+
+**Rationale**: Mechanical enforcement ensures hydration happens before work begins, closing the gap where agents might skip workflow classification and context gathering.
+
 ### Layer 2.5: JIT Compliance Audit
 
 Haiku-based compliance checking at strategic checkpoints. Uses same temp-file pattern as prompt hydration.
