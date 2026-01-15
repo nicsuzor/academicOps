@@ -108,6 +108,7 @@ celerybeat.pid
 *.parquet
 *.sqlite3
 *.jsonl
+!.beads/*.jsonl
 *.pickle
 *.log
 tmp
