@@ -14,7 +14,6 @@ description: Hook logs, session transcripts, and observability data sources for 
 | ------------------- | -------------------------------------------------------- | ------------------------------------------- | ------------------------------- |
 | **Claude Sessions** | `~/.claude/projects/<project>/*.jsonl`                   | Full transcripts (messages, tools, results) | `/transcript`, external viewers |
 | **aOps Hook Logs**  | `~/.claude/projects/<project>/<date>-<hash>-hooks.jsonl` | Hook execution metadata                     | Direct file read                |
-| **Tasks**           | `$ACA_DATA/tasks/`                                       | Task markdown files                         | Dashboard, `task_view.py`       |
 
 ## Session Transcripts
 
