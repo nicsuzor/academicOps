@@ -9,7 +9,7 @@ permalink: skills-tasks
 
 # Task Management Skill (v2)
 
-Responsible for managing the hierarchical task system as defined in [[specs/tasks-v2|Tasks v2]].
+Manage hierarchical task lifecycle using the task CLI or MCP server.
 
 ## Design Philosophy
 
