@@ -165,32 +165,31 @@ Failed: [P items]
 
 If anything failed, return to step 4 to process failures.
 
-### 6. Commit, push, close bd issue ([[bd-workflow]])
+### 6. Coordinate push and close bd issues
 
-Land all changes:
+**If using hypervisor**: Hypervisor handles git coordination:
+- Collects all worker commits (local)
+- Runs combined test suite
+- Single `git pull --rebase && git push`
+- Closes all worker bd issues
+
+**If spawning workers directly**: Coordinate push yourself:
 
 ```bash
+# After all workers complete
 ./scripts/format.sh          # Format all changes
-git add -A                    # Stage everything
-git commit -m "feat: batch [operation] on [N items]
-
-Processed: [N] items
-Success: [M] items
-Deferred: [P] items
-
-Method: Parallel subagents (batch size: [X])
-
-Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
-
-git pull --rebase
-bd sync                       # Sync bd (per [[bd-workflow]])
+git pull --rebase            # Get any remote changes
+# Workers already committed, just push
 git push
+
+bd sync                       # Sync bd (per [[bd-workflow]])
+bd close <parent-id>          # Close parent issue if applicable
 ```
 
-Close the issue per [[bd-workflow]]:
-```bash
-bd close <id>                 # Mark work complete
-```
+**Why single push point?** Workers commit locally but don't push. This prevents:
+- Push conflicts between concurrent workers
+- Partial work on remote
+- Merge conflicts from interleaved pushes
 
 ## Parallel Processing Patterns
 
