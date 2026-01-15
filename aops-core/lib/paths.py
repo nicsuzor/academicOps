@@ -133,24 +133,6 @@ def get_goals_dir() -> Path:
     return get_data_root() / "goals"
 
 
-# Task subdirectories
-
-
-def get_tasks_inbox_dir() -> Path:
-    """Get tasks inbox directory ($ACA_DATA/tasks/inbox)."""
-    return get_tasks_dir() / "inbox"
-
-
-def get_tasks_completed_dir() -> Path:
-    """Get tasks completed directory ($ACA_DATA/tasks/completed)."""
-    return get_tasks_dir() / "completed"
-
-
-def get_tasks_archived_dir() -> Path:
-    """Get tasks archived directory ($ACA_DATA/tasks/archived)."""
-    return get_tasks_dir() / "archived"
-
-
 # Validation utilities
 
 
