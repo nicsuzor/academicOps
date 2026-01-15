@@ -106,34 +106,38 @@ Task(
 )
 ```
 
-**Best practices:**
-- Use `run_in_background=true` for parallelization
-- Give each agent a clear subset of work
-- Include verification in agent instructions
-- Request summary reports
+**Worker context file format** (generated before spawning):
 
-### 4. Monitor progress and spawn additional agents when needed
+```markdown
+## Worker Task Context
 
-Track agent completion:
+**BD Issue**: ns-abc
+**Title**: Refactor authentication module
+**Scope**: src/auth/*.py (can modify), tests/auth/*.py (can modify)
+**Out of scope**: src/core/*, config/*
+
+### Success Criteria
+1. All auth functions use new token format
+2. Tests pass
+3. No imports from deprecated module
+```
+
+### 4. Monitor progress (hypervisor handles this automatically)
+
+If using hypervisor, it manages monitoring. If spawning workers directly:
 
 ```bash
 # Check background task status
 /tasks
 
-# Read agent output files
-Read(file_path="[output_file from task]")
+# Check bd state for worker progress
+bd list --status=in_progress
 ```
 
-**Adjust as needed:**
-- Spawn more agents if some finish early
-- Re-run failed items with dedicated agents
-- Adjust batch sizes based on performance
-
 **Handle failures:**
-- Identify which items failed
-- Investigate common failure patterns
-- Re-process failed items
-- Document issues for follow-up
+- Worker reports failure with specific reason
+- Hypervisor retries once, then logs and continues
+- Failed tasks remain in bd with comments explaining failure
 
 ### 5. CHECKPOINT: All items processed successfully
 
