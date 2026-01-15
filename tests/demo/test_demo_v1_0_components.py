@@ -4,8 +4,8 @@
 Demonstrates that ALL v1.0 components are working correctly by analyzing
 real session transcripts with an LLM that searches for evidence of:
 
-1. **Agents (5)**: prompt-hydrator, critic, custodiet, qa-verifier, framework
-2. **Hooks (3)**: router, user_prompt_submit, unified_logger
+1. **Agents (5)**: prompt-hydrator, critic, custodiet, qa, framework
+2. **Hooks (6)**: router, user_prompt_submit, unified_logger, session_env_setup, custodiet_gate, overdue_enforcement
 3. **Workflows (6)**: question, minor-edit, tdd, batch, qa-proof, plan-mode
 4. **QA Gates (3)**: Critic (BEFORE), Custodiet (DURING), QA-verifier (AFTER)
 5. **Session Close**: Format, commit, push mandatory workflow

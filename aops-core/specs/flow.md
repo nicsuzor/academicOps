@@ -112,7 +112,7 @@ status: DRAFT - PENDING APPROVAL (v2)
 └──────────────────────────────────────────────────────────────────────────────┘
 ```
 
-## What's IN (Core v1.0)
+## Features (Core v1.0)
 
 ### Agents (5)
 
@@ -134,57 +134,62 @@ status: DRAFT - PENDING APPROVAL (v2)
 
 **Vector Memory**: Uses existing `mcp__memory__retrieve_memory` and `mcp__memory__store_memory` tools. The memory server runs parallel to `$ACA_DATA` markdown files - they are complementary systems, not integrated.
 
-### Hooks (3 + router)
+### Hooks (5 + router)
 
-| Hook                      | Event            | Purpose                                          |
-| ------------------------- | ---------------- | ------------------------------------------------ |
-| **router.py**             | All              | Central dispatcher, checks custodiet block flag  |
-| **user_prompt_submit.py** | UserPromptSubmit | Write context + bd state + vector memory to temp |
-| **unified_logger.py**     | All              | Log events to session file                       |
-| **session_env_setup.sh**  | SessionStart     | Set $AOPS, $PYTHONPATH                           |
+| Hook                        | Event            | Purpose                                              |
+| --------------------------- | ---------------- | ---------------------------------------------------- |
+| **router.py**               | All              | Central dispatcher, checks custodiet block flag      |
+| **user_prompt_submit.py**   | UserPromptSubmit | Write context + bd state + vector memory to temp     |
+| **unified_logger.py**       | All              | Log events to session file                           |
+| **session_env_setup.sh**    | SessionStart     | Set $AOPS, $PYTHONPATH                               |
+| **custodiet_gate.py**       | PostToolUse      | Periodic compliance check, triggers custodiet agent  |
+| **overdue_enforcement.py**  | PreToolUse       | Blocks mutating tools when compliance check overdue  |
 
 ### Execution State (Session File)
 
-**Execution state in ~/.claude/projects**, organized by date and session hash:
+**Execution state in ~/.claude/projects**, organized by date and session hash: 
+- `~/.claude/projects/<project>/{YYYYMMDD}-{hash}/session-state.json`.
 
+
+<!-- NS: schema should be in separate spec for session state management -->
+```json
+{
+  "session_id": "abc123",
+  "date": "2026-01-13",
+  "started_at": "2026-01-13T10:00:00Z",
+  "ended_at": null,
+
+  "state": {
+    "custodiet_blocked": false,
+    "custodiet_block_reason": null,
+    "current_workflow": "tdd",
+    "hydration_pending": false
+  },
+
+  "hydration": {
+    "original_prompt": "...",
+    "hydrated_intent": "...",
+    "acceptance_criteria": ["criterion 1", "criterion 2"],
+    "critic_verdict": "PROCEED"
+  },
+
+  "main_agent": {
+    "current_task": "ns-xyz",
+    "todos_completed": 3,
+    "todos_total": 5
+  },
+
+  "subagents": {
+    "prompt-hydrator": { "last_invoked": "...", "result": "..." },
+    "critic": { "last_invoked": "...", "verdict": "PROCEED", "acceptance_criteria": [...] },
+    "custodiet": { "last_invoked": "...", "result": "OK" },
+    "qa": { "last_invoked": "...", "result": "VERIFIED" }
+  },
+
+  "insights": null
+}
 ```
-~/.claude/projects/<project>/{YYYYMMDD}-{hash}/session-state.json
-```
 
-Contains:
-
-- Session ID
-- Date
-- Custodiet block flag (true/false)
-- Hook state for main agent
-- Hook state for subagents (if needed)
-- Hydrated prompt (for QA verifier)
-- Acceptance criteria (as approved by Critic)
-- Timestamps
-
-**Note**: This is ephemeral execution state, not persistent data.
-
-### Supporting Files
-
-| File                                         | Purpose                                  |
-| -------------------------------------------- | ---------------------------------------- |
-| `lib/paths.py`                               | Path resolution                          |
-| `lib/session_state.py`                       | Single session file management           |
-| `lib/session_reader.py`                      | Transcript context extraction            |
-| `scripts/transcript.py`                      | Generate transcript for framework agent  |
-| `hooks/templates/prompt-hydrator-context.md` | Hydration template with workflow catalog |
-| `AGENTS.md` (root)                           | Dogfooding instructions                  |
-
-### Skills
-
-**NONE in v1.0 core**. Skills are extensions, not the loop.
-
-## What's OUT (Archived)
-
-- All 28 skills
-- All other hooks (19 archived)
-- Other agents (planner, effectual-planner, framework-executor)
-- Unenforced axioms/heuristics
 
 ## Composable Workflow System (LLM-Native Design)
 
@@ -196,33 +201,7 @@ Contains:
 
 **Key insight**: Workflows are simple markdown that LLMs read and understand. No parsing, no resolvers, no structured data - just readable markdown with [[wikilinks]].
 
-The prompt-hydrator selects from **9 composable workflows**:
-
-### Development Workflows
-
-| Workflow ID   | File                       | Purpose                                      | Quality Gates                          |
-| ------------- | -------------------------- | -------------------------------------------- | -------------------------------------- |
-| feature-dev   | workflows/feature-dev.md   | Full TDD feature development                 | Critic review, TDD, Tests pass, QA     |
-| minor-edit    | workflows/minor-edit.md    | Small, focused changes                       | TDD, Tests pass                        |
-| debugging     | workflows/debugging.md     | Systematic debugging with reproducible tests | Reproducible test                      |
-| tdd-cycle     | workflows/tdd-cycle.md     | Classic red-green-refactor cycle             | Tests pass, No regression              |
-
-### Planning & QA Workflows
-
-| Workflow ID  | File                      | Purpose                      | Quality Gates                          |
-| ------------ | ------------------------- | ---------------------------- | -------------------------------------- |
-| spec-review  | workflows/spec-review.md  | Critic feedback iteration    | Critic feedback, Convergence           |
-| qa-demo      | workflows/qa-demo.md      | Independent QA verification  | Functionality, Quality, Completeness   |
-
-### Operations & Routing Workflows
-
-| Workflow ID      | File                             | Purpose                         | Quality Gates                |
-| ---------------- | -------------------------------- | ------------------------------- | ---------------------------- |
-| batch-processing | workflows/batch-processing.md    | Parallel processing             | All items processed, Verified|
-| simple-question  | workflows/simple-question.md     | Info-only, no modifications     | None (information only)      |
-| direct-skill     | workflows/direct-skill.md        | Direct skill/command routing    | Delegated to skill           |
-
-### Workflow Selection
+The prompt-hydrator selects from **composable workflows** in `./workflows/`.
 
 **Decision tree**: See [[WORKFLOWS.md]] for complete selection guide.
 
@@ -235,116 +214,7 @@ The prompt-hydrator selects from **9 composable workflows**:
 5. **LLM composes by understanding** - generates unified TodoWrite plan
 6. No parsing code, no resolver utilities - just LLM reading markdown
 
-**Composition example** (`feature-dev` → `spec-review`):
-
-```markdown
-# feature-dev.md says:
-### 4. Get critic review
-Follow the [[spec-review]] workflow to get feedback on your plan.
-
-# Hydrator reads spec-review.md and generates TodoWrite:
-{content: "Create initial specification", ...}
-{content: "Invoke critic agent for review", ...}
-{content: "Analyze critic feedback", ...}
-{content: "Iterate on spec based on feedback", ...}
-```
-
-**Inline expansion**: LLM reads all referenced workflows and flattens them into one unified plan.
-
-### Workflow File Structure
-
-**Current (Phase 1)** - Complex YAML frontmatter:
-```yaml
----
-id: workflow-id
-title: Human Readable Title
-type: workflow
-category: development
-dependencies: []
-steps:  # ⚠️ Too structured for humans to edit
-  - id: step-id
-    name: Step Name
-    workflow: "[[other-workflow]]"
-    description: What this step does
----
-
-# Markdown body...
-```
-
-**Target (Phase 2)** - Simple markdown:
-```yaml
----
-id: workflow-id
-category: development
----
-
-# Workflow Name
-
-Simple human-readable markdown.
-
-## Steps
-
-### 1. First step
-Do this thing.
-
-### 2. Get critic feedback
-Follow the [[spec-review]] workflow.
-
-### 3. Land changes
-```bash
-git add -A && git commit && git push
-```
-```
-
-**Key difference**: No structured steps in YAML. LLM reads markdown and understands it.
-
-### TodoWrite Plan Granularity (Mid-Grained bd Issues)
-
-**Goal**: TodoWrite plans should be mid-grained - neither too atomic nor too coarse.
-
-**Good granularity** (mid-grained tasks):
-```javascript
-TodoWrite(todos=[
-  {content: "Claim work: bd update <id> --status=in_progress", ...},
-  {content: "Define acceptance criteria for feature", ...},
-  {content: "Create implementation plan in bd issue", ...},
-  {content: "Get critic review (spec-review workflow)", ...},
-  {content: "Implement user authentication: create model, add JWT, write tests", ...},
-  {content: "Verify all tests pass", ...},
-  {content: "QA verification (qa-demo workflow)", ...},
-  {content: "Land changes: format, commit, push, close bd issue", ...}
-])
-```
-
-**Bad granularity** (too fine):
-```javascript
-// ❌ Don't do this - way too atomic
-TodoWrite(todos=[
-  {content: "Run bd ready", ...},
-  {content: "Run bd update", ...},
-  {content: "Open text editor", ...},
-  {content: "Write acceptance criterion 1", ...},
-  {content: "Write acceptance criterion 2", ...},
-  {content: "Run git add", ...},
-  {content: "Run git commit", ...},
-  {content: "Run git push", ...},
-  // 20+ micro-tasks that should be lists
-])
-```
-
-**Guidelines**:
-- **< 30 seconds or single command**: Include as list item in parent task
-- **Needs decision-making or > 5 minutes**: Separate task
-- **Example**: "format, commit, push" = list in one task. "Implement JWT auth" = separate task.
-- **Example**: Each git command separately = too fine. "Land changes" with list = good.
-
-**Why mid-grained matters**:
-- bd issues are for tracking meaningful work units
-- TodoWrite is for execution guidance within those units
-- Too fine = noise, lost in details
-- Mid-grained = clear progress, meaningful tracking
-
-## Hydration Context Sources
+### Hydration Context Sources
 
 The prompt-hydrator gathers context from:
 
@@ -461,18 +331,21 @@ The prompt-hydrator gathers context from:
 4. Store reflection in bd (linked to session)
 5. Identify framework improvements → create bd issues
 
-## Framework Reflection
+### Framework Reflection
 
-Framework reflection workflow is defined in **AGENTS.md Step 3**. Key points:
+<!-- NS: link missing -->
+Framework reflection workflow is defined in __MISSING__
 
 - Stop hook **reminds** agents to reflect (does not automate it)
 - Agents MUST output Framework Reflection at end of every session (MANDATORY)
 - Agents use `/log` command when framework friction/failures observed during work
 - Reflection format and workflow details in AGENTS.md (single source of truth)
 
-## Session Insights (Final Step)
+## Session Insights
 
-Session insights are generated via **two workflows**:
+Session insights are generated via **two workflows**.
+
+See `aops-core/specs/session-insights-prompt.md` for full schema specification.
 
 ### Workflow A: Agent Reflection (MANDATORY)
 
@@ -485,12 +358,11 @@ At the end of every session, the agent MUST output Framework Reflection (see AGE
 
 The Stop hook provides a **reminder** to generate this reflection, but does not automate it.
 
-Stop hook logs basic metadata to `$ACA_DATA/sessions/insights/{date}-{session_id}.json`:
-- session_id, date, project
-- Basic operational metrics (if available)
-
 ### Workflow B: Manual (Gemini Post-hoc)
 
+Gemini uses the **same prompt** as Workflow A (Claude in-stream) to generate rich insights.
+
+<!-- NS: invocation may be different now -->
 User invokes `/session-insights` skill to analyze transcripts with Gemini:
 
 ```bash
@@ -499,213 +371,7 @@ User invokes `/session-insights` skill to analyze transcripts with Gemini:
 /session-insights batch        # Process multiple
 ```
 
-Generates **rich insights**:
-- Learning observations
-- Skill compliance tracking
-- Context gaps
-- User mood/satisfaction
-- Conversation flow
-
-Overwrites automatic insights with more detailed analysis.
-
-### Unified Schema
-
-Both workflows write to same location with same schema:
-
-```json
-{
-  "session_id": "a1b2c3d4",
-  "date": "2026-01-13",
-  "project": "academicOps",
-
-  "summary": "One sentence description",
-  "outcome": "success|partial|failure",
-  "accomplishments": ["item1", "item2"],
-  "friction_points": ["issue1"],
-  "proposed_changes": ["change1"],
-
-  "workflows_used": ["tdd"],
-  "subagents_invoked": ["prompt-hydrator", "critic"],
-  "subagent_count": 2,
-  "custodiet_blocks": 0,
-  "stop_reason": "end_turn",
-  "critic_verdict": "PROCEED",
-  "acceptance_criteria_count": 3,
-
-  "learning_observations": [...],
-  "skill_compliance": {...},
-  "context_gaps": [...],
-  "user_mood": 0.5,
-  "conversation_flow": [...],
-  "user_prompts": [...]
-}
-```
-
-**Storage locations**:
-- **Permanent**: `$ACA_DATA/sessions/insights/{date}-{session_id}.json` (research data)
-- **Temporary**: `session-state.json["insights"]` (for QA verifier during session)
-
-See `aops-core/specs/session-insights-prompt.md` for full schema specification.
-
-## Session Close (MANDATORY)
-
-Work is NOT complete until `git push` succeeds.
-
-```bash
-./scripts/format.sh        # Format all files
-git add -A                  # Stage formatted files
-git commit -m "..."         # Pre-commit validates
-git pull --rebase           # Sync with remote
-bd sync                     # Sync beads
-git push                    # MANDATORY
-git status                  # MUST show "up to date with origin"
-```
-
-**CRITICAL**: Agent MUST push. Never say "ready to push when you are".
-
-## Execution State File Structure
-
-Single state file per session at `~/.claude/projects/<project>/{YYYYMMDD}-{hash}/session-state.json`:
-
-```json
-{
-  "session_id": "abc123",
-  "date": "2026-01-13",
-  "started_at": "2026-01-13T10:00:00Z",
-  "ended_at": null,
-
-  "state": {
-    "custodiet_blocked": false,
-    "custodiet_block_reason": null,
-    "current_workflow": "tdd",
-    "hydration_pending": false
-  },
-
-  "hydration": {
-    "original_prompt": "...",
-    "hydrated_intent": "...",
-    "acceptance_criteria": ["criterion 1", "criterion 2"],
-    "critic_verdict": "PROCEED"
-  },
-
-  "main_agent": {
-    "current_task": "ns-xyz",
-    "todos_completed": 3,
-    "todos_total": 5
-  },
-
-  "subagents": {
-    "prompt-hydrator": { "last_invoked": "...", "result": "..." },
-    "critic": { "last_invoked": "...", "verdict": "PROCEED", "acceptance_criteria": [...] },
-    "custodiet": { "last_invoked": "...", "result": "OK" },
-    "qa": { "last_invoked": "...", "result": "VERIFIED" }
-  },
-
-  "insights": null
-}
-```
-
-**Note**: This is ephemeral execution state in /tmp. Persistent data (reflections, learnings) goes to bd.
 
 ## Hook Event Flow
 
-```
-SessionStart
-    │
-    ├── [CHECK custodiet_blocked flag] → If blocked, FAIL
-    ├── session_env_setup.sh → Set environment
-    └── unified_logger.py → Log to session file
-
-UserPromptSubmit (each prompt)
-    │
-    ├── [CHECK custodiet_blocked flag] → If blocked, FAIL
-    ├── user_prompt_submit.py:
-    │     1. Load bd state (open issues, blockers)
-    │     2. Query vector memory for user context
-    │     3. Write temp file with full context
-    │     4. Return hydration instruction
-    └── unified_logger.py → Log to session file
-
-PreToolUse (each tool call)
-    │
-    ├── [CHECK custodiet_blocked flag] → If blocked, FAIL
-    └── unified_logger.py → Log to session file
-
-PostToolUse (each tool result)
-    │
-    ├── [CHECK custodiet_blocked flag] → If blocked, FAIL
-    └── unified_logger.py → Log to session file
-
-Stop (session end)
-    │
-    └── unified_logger.py → Write session insights, close session file
-```
-
-## Success Criteria for v1.0
-
-- [ ] Fresh session triggers hydration automatically
-- [ ] Hydration includes bd state and vector memory context
-- [ ] Critic reviews plan BEFORE execution
-- [ ] Custodiet BLOCKS all hooks when violation detected
-- [ ] User can clear custodiet block via bd command
-- [ ] QA verifier independently checks work before completion
-- [ ] Framework agent generates transcript and reflection
-- [ ] Session insights written to single session file
-- [ ] Commit + push completes every session
-- [ ] All agents know to use bd for workflow management
-
-## Implementation Status
-
-**Constraint**: NO NEW CODE - wiring only. Gaps require spec review.
-
-| Component             | Status | Wiring Task                                               |
-| --------------------- | ------ | --------------------------------------------------------- |
-| router.py             | EXISTS | Wire: add custodiet block flag check                      |
-| user_prompt_submit.py | EXISTS | Wire: call mcp__memory, call bd                           |
-| unified_logger.py     | EXISTS | Wire: write to /tmp execution state file                  |
-| Execution state file  | WIRE   | Create file in SessionStart, update throughout            |
-| prompt-hydrator.md    | EXISTS | Wire: add mcp__memory + bd tools to definition            |
-| critic.md             | EXISTS | Wire: output acceptance_criteria to state file            |
-| custodiet.md          | EXISTS | Wire: HALT behavior, write to state file                  |
-| qa.md        | EXISTS | Use archived/specs/qa-eval.md spec + create agent def     |
-| framework.md          | EXISTS | Use archived/agents/framework-executor.md, adapt for v1.0 |
-| transcript skill      | EXISTS | In archived/skills/ - move to core if needed              |
-| mcp__memory__*        | EXISTS | Already available MCP tools                               |
-| bd                    | EXISTS | CLI tool, agents already know it                          |
-| Demo tests            | TODO   | Use existing test infrastructure                          |
-
-**GAP = requires spec review before proceeding**
-
-## Resolved Questions
-
-1. **Custodiet on BLOCK**: Immediate HALT. No automatic clearing for now - user must restart session after investigating.
-2. **Vector memory**: Uses existing `mcp__memory__*` server. Runs parallel to $ACA_DATA markdown (complementary systems).
-3. **Framework agent state**: Stores all learnings in `bd` issues (reflections, patterns, improvements).
-4. **QA verifier input**: Gets original hydrated prompt + acceptance criteria (as approved by Critic) from execution state file.
-5. **Execution state location**: `~/.claude/projects/<project>/{YYYYMMDD}-{hash}/session-state.json` (organized by date and session).
-
-## Implementation Constraint
-
-**CRITICAL: NO NEW CODE**
-
-Everything described in this spec ALREADY EXISTS in the codebase. The v1.0 implementation is about:
-
-1. **Wiring existing components together** - connecting hooks, agents, tools that already exist
-2. **Configuration changes** - updating settings, templates, agent definitions
-3. **Moving files** - from archived/ to aops-core/ as needed
-
-**Where gaps are found**:
-
-- HALT implementation
-- Request full spec review from user
-- Do NOT write new code without explicit approval
-
-**Existing components to wire**:
-
-- `mcp__memory__retrieve_memory` / `mcp__memory__store_memory` - existing MCP tools
-- `bd` - existing CLI tool, agents already know how to use it
-- `scripts/transcript.py` - likely exists or has equivalent
-- Hooks in `aops-core/hooks/` - already implemented
-- Agents in `aops-core/agents/` - already defined
-
-**If something doesn't exist**: Stop, document the gap, request spec review.
+See [[README]]

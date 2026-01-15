@@ -20,11 +20,7 @@ Academic support framework for Claude Code. Minimal, fight bloat aggressively.
 export AOPS="$HOME/src/academicOps"
 export ACA_DATA="$HOME/writing/data"
 
-# MCP server tokens (for GitHub and memory server authentication)
-export GH_MCP_TOKEN="your-github-copilot-mcp-token"
-export MEMORY_MCP_TOKEN="your-memory-server-token"
-
-./setup.sh  # Creates ~/.claude/ symlinks, substitutes tokens into MCP config
+./setup.sh  # Creates ~/.claude/ symlinks, substitutes tokens from ENV VARS into MCP config
 ```
 
 **Core docs** (injected at session start):
@@ -105,17 +101,17 @@ flowchart TD
 
 The framework uses a **core + archived** structure:
 
-- **Core plugin** (`plugins/aops-core/`): Minimal proven components with mechanical enforcement
+- **Core plugin** (`aops-core/`): Minimal proven components with mechanical enforcement
 - **Archived** (`archived/`): Non-core components preserved for reference
 
-### Core Components (~30 files)
+### Core Components
 
-| Category   | Components                                                        |
-| ---------- | ----------------------------------------------------------------- |
-| Skills (6) | tasks, remember, python-dev, feature-dev, framework, audit        |
-| Agents (4) | planner, prompt-hydrator, critic, custodiet                       |
-| Hooks (3)  | router.py, unified_logger.py, user_prompt_submit.py               |
-| Governance | 7 enforced axioms, 4 enforced heuristics (with mechanical checks) |
+| Category   | Components                                                                               |
+| ---------- | ---------------------------------------------------------------------------------------- |
+| Skills (5) | tasks, remember, framework, audit, session-insights                                      |
+| Agents (5) | prompt-hydrator, critic, custodiet, qa, framework                                        |
+| Hooks (6)  | router.py, unified_logger.py, user_prompt_submit.py, session_env_setup.sh, overdue_enforcement.py, custodiet_gate.py |
+| Governance | 7 enforced axioms, 4 enforced heuristics (with mechanical checks)                        |
 
 ## Commands
 
@@ -139,38 +135,6 @@ The framework uses a **core + archived** structure:
 | /task-viz            | Task graph visualization (Excalidraw)                                                        |
 | /ttd                 | TDD workflow (alias for /supervise tdd)                                                      |
 
-## Skills
-
-### Core Skills (Active)
-
-| Skill       | Purpose                                                       |
-| ----------- | ------------------------------------------------------------- |
-| audit       | Comprehensive framework governance (structure, justification) |
-| feature-dev | Test-first feature development workflow                       |
-| framework   | Convention reference, categorical imperative                  |
-| python-dev  | Production Python (fail-fast, typed, TDD)                     |
-| remember    | Persist knowledge to markdown + memory server                 |
-| tasks       | Task lifecycle management                                     |
-
-### Archived Skills
-
-Additional skills are preserved in `archived/skills/` for reference and potential reactivation:
-analyst, annotations, convert-to-md, daily, dashboard, debug-headless, excalidraw, extractor, fact-check, flowchart, garden, ground-truth, introspect, osb-drafting, pdf, qa-eval, review, review-training, session-insights, training-set-builder, transcript
-
-## Agents
-
-### Core Agents (Active)
-
-| Agent           | Purpose                                               |
-| --------------- | ----------------------------------------------------- |
-| prompt-hydrator | Context gathering + workflow selection (every prompt) |
-| custodiet       | Ultra vires detector - authority checking             |
-| critic          | Second-opinion review of plans/conclusions            |
-| planner         | Implementation planning with memory + critic review   |
-
-### Archived Agents
-
-Preserved in `archived/agents/`: effectual-planner, framework-executor
 
 ## Infrastructure
 
@@ -178,5 +142,10 @@ Preserved in `archived/agents/`: effectual-planner, framework-executor
 - **Skills**: Workflow instructions (`skills/`) - invoke via `Skill` tool
 - **Memory**: `mcp__memory__*` tools for knowledge persistence
 - **Plugin**: Core components bundled in `plugins/aops-core/`
+- **Agents**: Purpose-built subagents in (`agents/`)
 
-See [[RULES.md]], [[WORKFLOWS.md]], [[VISION.md]] for details.
+## Details
+
+- [[RULES]] for mapping of rules to enforcement measures
+- [[WORKFLOWS]] all supported workflows
+- Framework [[VISION]].
