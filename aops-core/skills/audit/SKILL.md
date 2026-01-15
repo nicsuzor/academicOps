@@ -286,7 +286,7 @@ Regenerate the core loop flowchart section in README.md from hook architecture s
    - Group by execution phase (SessionStart, UserPromptSubmit, PreToolUse, PostToolUse, Stop)
    - Label edges with event types and conditions
 
-**Structure** (per [[specs/flow.md]]):
+**Structure**:
 
 - Vertical main flow showing session lifecycle
 - Horizontal insertion points for each hook event
