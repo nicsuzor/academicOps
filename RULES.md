@@ -179,7 +179,6 @@ Uses passive `additionalContext` format - agent may proceed without addressing.
 
 | Category         | Pattern                                       | Blocked Tools           | Purpose                    | Axiom                        |
 | ---------------- | --------------------------------------------- | ----------------------- | -------------------------- | ---------------------------- |
-| Task files       | `**/data/tasks/**`                            | Write, Edit, Bash       | Force `/tasks` skill       | [[categorical-imperative]]   |
 | Claude config    | `~/.claude/*.json`                            | Read, Write, Edit, Bash | Protect secrets            | [[data-boundaries]]          |
 | Claude runtime   | `~/.claude/{hooks,skills,commands,agents}/**` | Write, Edit, Bash       | Force edits via `$AOPS/`   | [[skills-are-read-only]]     |
 | Research records | `**/tja/records/**`, `**/tox/records/**`      | Write, Edit, Bash       | Research data immutable    | [[research-data-immutable]]  |
