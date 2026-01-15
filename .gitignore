@@ -108,7 +108,6 @@ celerybeat.pid
 *.parquet
 *.sqlite3
 *.jsonl
-!.beads/*.jsonl
 *.pickle
 *.log
 tmp
@@ -120,6 +119,9 @@ tmp*
 
 ## Except json files in our root writing data folder
 !/data/**/*.json*
+
+# Allow beads data files to ensure proper tracking of these important files. 
+!.beads/*.jsonl
 
 
 # secrets

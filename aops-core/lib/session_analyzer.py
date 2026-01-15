@@ -16,13 +16,8 @@ from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from lib.session_reader import (
-    ConversationTurn,
-    SessionProcessor,
-    TodoWriteState,
-    find_sessions,
-    parse_todowrite_state,
-)
+from lib.session_reader import find_sessions, parse_todowrite_state
+from lib.transcript_parser import ConversationTurn, SessionProcessor, TodoWriteState
 
 
 @dataclass
@@ -779,7 +774,9 @@ def progress_bar(completed: int, total: int, width: int = 20) -> str:
 class SectionProgress:
     """Progress data for a single priority section."""
 
-    heading: str  # Full heading line (e.g., "## 🎯 PRIMARY: TJA Paper → [[projects/tja]]")
+    heading: (
+        str  # Full heading line (e.g., "## 🎯 PRIMARY: TJA Paper → [[projects/tja]]")
+    )
     completed: int
     total: int
     start_pos: int  # Position in file where heading starts

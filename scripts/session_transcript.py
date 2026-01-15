@@ -18,7 +18,7 @@ from pathlib import Path
 # Add framework root to path for lib imports
 sys.path.insert(0, str(Path(__file__).parent.parent / "aops-core"))
 
-from lib.session_reader import SessionProcessor  # noqa: E402
+from lib.transcript_parser import SessionProcessor  # noqa: E402
 from lib.paths import get_sessions_dir  # noqa: E402
 
 
@@ -56,168 +56,6 @@ def format_markdown(file_path: Path) -> bool:
         return result.returncode in (0, 14)
     except (subprocess.TimeoutExpired, FileNotFoundError):
         return False
-
-
-def generate_slug(entries: list, max_words: int = 3) -> str:
-    """Generate a brief slug from the first substantive user message.
-
-    Args:
-        entries: List of Entry dataclass objects from SessionProcessor
-        max_words: Maximum words in slug (default 3)
-
-    Returns:
-        Kebab-case slug like 'session-storage-fix' or 'transcript-update'
-    """
-    # Find first user message that isn't a command or tool result
-    for entry in entries:
-        entry_type = entry.type if hasattr(entry, "type") else entry.get("type", "")
-        if entry_type == "user":
-            # Get content from message dict or content dict
-            if hasattr(entry, "message") and entry.message:
-                content = entry.message.get("content", "")
-                # Handle content that might be a list (tool results)
-                if isinstance(content, list):
-                    continue
-            elif hasattr(entry, "content"):
-                content = str(entry.content)
-            else:
-                content = entry.get("content", "") if isinstance(entry, dict) else ""
-            # Skip command invocations, tool results, system messages, and empty tags
-            if (
-                content.startswith("<command")
-                or content.startswith("[{")
-                or content.startswith("Caveat:")
-                or content.startswith("<local-command")
-                or content.startswith("<system")
-            ):
-                continue
-            # Skip very short messages
-            if len(content) < 10:
-                continue
-
-            # Extract meaningful words (skip common words)
-            stop_words = {
-                "the",
-                "a",
-                "an",
-                "is",
-                "are",
-                "was",
-                "were",
-                "be",
-                "been",
-                "to",
-                "of",
-                "and",
-                "in",
-                "that",
-                "have",
-                "i",
-                "it",
-                "for",
-                "not",
-                "on",
-                "with",
-                "he",
-                "as",
-                "you",
-                "do",
-                "at",
-                "this",
-                "but",
-                "his",
-                "by",
-                "from",
-                "they",
-                "we",
-                "say",
-                "her",
-                "she",
-                "or",
-                "will",
-                "my",
-                "one",
-                "all",
-                "would",
-                "there",
-                "their",
-                "what",
-                "so",
-                "up",
-                "out",
-                "if",
-                "about",
-                "who",
-                "get",
-                "which",
-                "go",
-                "me",
-                "when",
-                "make",
-                "can",
-                "like",
-                "time",
-                "no",
-                "just",
-                "him",
-                "know",
-                "take",
-                "people",
-                "into",
-                "year",
-                "your",
-                "good",
-                "some",
-                "could",
-                "them",
-                "see",
-                "other",
-                "than",
-                "then",
-                "now",
-                "look",
-                "only",
-                "come",
-                "its",
-                "over",
-                "think",
-                "also",
-                "back",
-                "after",
-                "use",
-                "two",
-                "how",
-                "our",
-                "work",
-                "first",
-                "well",
-                "way",
-                "even",
-                "new",
-                "want",
-                "because",
-                "any",
-                "these",
-                "give",
-                "day",
-                "most",
-                "us",
-                "please",
-                "help",
-                "let",
-                "need",
-                "should",
-            }
-
-            # Clean and tokenize
-            words = re.findall(r"[a-zA-Z]+", content.lower())
-            meaningful = [w for w in words if w not in stop_words and len(w) > 2]
-
-            if meaningful:
-                slug_words = meaningful[:max_words]
-                return "-".join(slug_words)
-
-    return "session"
 
 
 def main():
@@ -371,7 +209,7 @@ Examples:
                     session_id = session_id[:8]
 
             # Get or generate slug
-            slug = args.slug if args.slug else generate_slug(entries)
+            slug = args.slug if args.slug else processor.generate_session_slug(entries)
 
             filename = f"{date_str}-{short_project}-{session_id}-{slug}"
 

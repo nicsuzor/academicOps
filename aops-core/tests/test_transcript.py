@@ -40,7 +40,10 @@ class TestTranscriptCLI:
             timeout=10,
         )
         assert result.returncode == 0
-        assert "Convert Claude Code JSONL" in result.stdout or "transcript" in result.stdout.lower()
+        assert (
+            "Convert Claude Code JSONL" in result.stdout
+            or "transcript" in result.stdout.lower()
+        )
         assert "session" in result.stdout.lower()
         assert "--output" in result.stdout or "-o" in result.stdout
 
@@ -84,45 +87,53 @@ class TestTranscriptFunctions:
         spec.loader.exec_module(module)
         return module
 
-    def test_generate_slug_basic(self, transcript_module) -> None:
-        """generate_slug extracts meaningful words from user message."""
-        # Create mock entries matching the Entry dataclass structure
-        from dataclasses import dataclass
-        from typing import Any
+    def test_generate_session_slug_basic(self, transcript_module) -> None:
+        """generate_session_slug extracts meaningful words from user message."""
+        from lib.transcript_parser import Entry, SessionProcessor
 
-        @dataclass
-        class MockEntry:
-            type: str
-            message: dict[str, Any] | None = None
-
+        processor = SessionProcessor()
         entries = [
-            MockEntry(type="user", message={"content": "Fix the authentication bug in login"}),
+            Entry(
+                type="user", message={"content": "Fix the authentication bug in login"}
+            ),
         ]
-        slug = transcript_module.generate_slug(entries)
-        assert "fix" in slug or "authentication" in slug or "bug" in slug or "login" in slug
+        slug = processor.generate_session_slug(entries)
+        assert (
+            "fix" in slug
+            or "authentication" in slug
+            or "bug" in slug
+            or "login" in slug
+        )
 
-    def test_generate_slug_skips_commands(self, transcript_module) -> None:
-        """generate_slug skips command invocations."""
-        from dataclasses import dataclass
-        from typing import Any
+    def test_generate_session_slug_skips_commands(self, transcript_module) -> None:
+        """generate_session_slug skips command invocations."""
+        from lib.transcript_parser import Entry, SessionProcessor
 
-        @dataclass
-        class MockEntry:
-            type: str
-            message: dict[str, Any] | None = None
-
+        processor = SessionProcessor()
         entries = [
-            MockEntry(type="user", message={"content": "<command-name>/commit</command-name>"}),
-            MockEntry(type="user", message={"content": "Update the session storage module"}),
+            Entry(
+                type="user", message={"content": "<command-name>/commit</command-name>"}
+            ),
+            Entry(
+                type="user", message={"content": "Update the session storage module"}
+            ),
         ]
-        slug = transcript_module.generate_slug(entries)
+        slug = processor.generate_session_slug(entries)
         # Should skip the command and use the second message
-        assert "session" in slug or "storage" in slug or "update" in slug or "module" in slug
+        assert (
+            "session" in slug
+            or "storage" in slug
+            or "update" in slug
+            or "module" in slug
+        )
 
-    def test_generate_slug_fallback(self, transcript_module) -> None:
-        """generate_slug returns 'session' when no meaningful content."""
+    def test_generate_session_slug_fallback(self, transcript_module) -> None:
+        """generate_session_slug returns 'session' when no meaningful content."""
+        from lib.transcript_parser import SessionProcessor
+
+        processor = SessionProcessor()
         entries = []
-        slug = transcript_module.generate_slug(entries)
+        slug = processor.generate_session_slug(entries)
         assert slug == "session"
 
 
@@ -138,7 +149,7 @@ class TestSessionProcessor:
         sys.path.insert(0, str(framework_root))
         sys.path.insert(0, str(aops_core_root))
 
-        from lib.session_reader import SessionProcessor
+        from lib.transcript_parser import SessionProcessor
 
         return SessionProcessor()
 
@@ -162,9 +173,7 @@ class TestMarkdownTranscript:
 
     def test_process_empty_session_skips(self) -> None:
         """Processing a file with no meaningful content should return exit code 2."""
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".md", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False) as f:
             f.write("# Existing Transcript\n\nContent here")
             temp_path = f.name
 

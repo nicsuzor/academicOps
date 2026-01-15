@@ -201,7 +201,7 @@ def get_modified_repos(tool_name: str, tool_input: dict[str, Any]) -> set[str]:
         tool_input: Parameters passed to the tool
 
     Returns:
-        Set of repo types modified: "data", "aops", or both
+        Set of repo types modified: "data" (checks for "aops" are disabled)
     """
     modified = set()
 
@@ -240,14 +240,10 @@ def get_modified_repos(tool_name: str, tool_input: dict[str, Any]) -> set[str]:
         file_path = tool_input.get("file_path", "")
         if "data/" in file_path or file_path.startswith("data/"):
             modified.add("data")
-        if "academicOps/" in file_path or "/academicOps" in file_path:
-            modified.add("aops")
-        # Also check AOPS env var path
-        import os
 
-        aops_path = os.environ.get("AOPS", "")
-        if aops_path and file_path.startswith(aops_path):
-            modified.add("aops")
+        # AOPS tracking disabled: only sync knowledge base changes
+        # if "academicOps/" in file_path or "/academicOps" in file_path:
+        #     modified.add("aops")
 
     return modified
 
@@ -435,18 +431,10 @@ def main() -> None:
         except Exception as e:
             messages.append(f"data: error - {e}")
 
-    # Handle AOPS repo (framework repo)
-    if "aops" in modified_repos:
-        aops_root = get_aops_root()
-        if aops_root and aops_root.exists():
-            if has_repo_changes(aops_root):
-                success, message = commit_and_push_repo(
-                    aops_root, None, "update(framework)"
-                )
-                if success:
-                    messages.append("framework: committed")
-                else:
-                    messages.append(f"framework: {message}")
+    # AOPS framework auto-commit disabled - only sync data/ content
+    # if "aops" in modified_repos:
+    #     aops_root = get_aops_root()
+    #     ...
 
     # Build output message
     if not messages:

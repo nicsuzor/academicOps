@@ -53,24 +53,6 @@ Processes up to 5 sessions that have transcripts but no insights yet.
 
 ## Workflow
 
-### Step 0: Validate Input
-
-If session_id provided, validate format (8-char hex).
-If not provided, check CLAUDE_SESSION_ID or prompt user.
-
-```bash
-if [ -n "$1" ]; then
-    SESSION_ID="$1"
-elif [ -n "$CLAUDE_SESSION_ID" ]; then
-    SESSION_ID="$CLAUDE_SESSION_ID"
-else
-    echo "❌ Error: Session ID required"
-    echo "Usage: /session-insights {session_id}"
-    echo "       /session-insights batch"
-    exit 1
-fi
-```
-
 ### Step 1: Check if Insights Already Exist
 
 ```bash
@@ -83,7 +65,7 @@ if [ -f "$INSIGHTS_FILE" ]; then
     echo "Generated: $(jq -r '.date' "$INSIGHTS_FILE")"
     echo "Summary: $(jq -r '.summary' "$INSIGHTS_FILE")"
     echo ""
-    echo "Regenerate? (yes/no)"
+    echo "Update/Merge with existing? (yes/no)"
     # Ask user - if no, exit
 fi
 ```
@@ -201,26 +183,19 @@ result = mcp__gemini__ask_gemini(
 ### Step 5: Parse and Validate JSON
 
 ```bash
+
 # Extract JSON from Gemini response (may be in markdown fence)
-# Use extract_json_from_response() from insights_generator.py
+# Validate and normalize using process_response.py
 
-cd "$AOPS" && PYTHONPATH=aops-core uv run python -c "
-import json
-import sys
-from lib.insights_generator import extract_json_from_response, validate_insights_schema
+INSIGHTS_JSON=$(echo "$GEMINI_RESPONSE" | (cd "$AOPS" && PYTHONPATH=aops-core uv run python \
+    aops-core/skills/session-insights/scripts/process_response.py \
+    "$DATE" "$SESSION_ID"))
 
-response = sys.stdin.read()
-json_str = extract_json_from_response(response)
-
-try:
-    insights = json.loads(json_str)
-    validate_insights_schema(insights)
-    print(json.dumps(insights, indent=2))
-    sys.exit(0)
-except Exception as e:
-    print(f'ERROR: {e}', file=sys.stderr)
-    sys.exit(1)
-" <<< "$GEMINI_RESPONSE"
+if [ $? -ne 0 ]; then
+    # Error details are printed to stderr and debug file by the script
+    echo "❌ Failed to process insights response"
+    exit 1
+fi
 ```
 
 If JSON is invalid:
@@ -228,16 +203,16 @@ If JSON is invalid:
 - Show error message with path to debug file
 - Exit with error
 
-### Step 6: Write Insights File
+### Step 6: Update Insights File
 
 ```bash
-# Write insights to file atomically
-echo "$INSIGHTS_JSON" | jq '.' > "$INSIGHTS_FILE"
 
-if [ $? -eq 0 ]; then
-    echo "✓ Session insights written to: $INSIGHTS_FILE"
-else
-    echo "❌ Failed to write insights file"
+# Merge and write insights using merge_insights.py
+echo "$INSIGHTS_JSON" | (cd "$AOPS" && PYTHONPATH=aops-core uv run python \
+    aops-core/skills/session-insights/scripts/merge_insights.py \
+    "$INSIGHTS_FILE")
+
+if [ $? -ne 0 ]; then
     exit 1
 fi
 ```
@@ -270,28 +245,10 @@ When invoked with `batch`:
 
 ```bash
 # 1. Find sessions with transcripts but no insights
-PENDING_SESSIONS=$(cd "$AOPS" && PYTHONPATH=aops-core uv run python -c "
-import os
-from pathlib import Path
 
-aca_data = Path(os.environ['ACA_DATA'])
-transcripts_dir = aca_data / 'sessions' / 'claude'
-insights_dir = aca_data / 'sessions' / 'insights'
-
-# Find all transcript files
-for transcript in transcripts_dir.glob('*.md'):
-    # Extract session_id and date from filename
-    # Format: YYYYMMDD-{project}-{session_id}-{suffix}.md
-    parts = transcript.stem.split('-')
-    if len(parts) >= 3:
-        date = parts[0][:4] + '-' + parts[0][4:6] + '-' + parts[0][6:8]
-        session_id = parts[2]
-
-        # Check if insights exist
-        insights_file = insights_dir / f'{date}-{session_id}.json'
-        if not insights_file.exists():
-            print(f'{transcript}|{session_id}|{date}')
-")
+PENDING_SESSIONS=$(cd "$AOPS" && PYTHONPATH=aops-core uv run python \
+    aops-core/skills/session-insights/scripts/find_pending.py \
+    --limit 5)
 
 # 2. Process up to 5 sessions
 COUNT=0

@@ -455,11 +455,20 @@ def _build_session_context(transcript_path: str | None, session_id: str) -> str:
         conversation = ctx.get("conversation", [])
         if conversation:
             lines.append("**Recent Conversation** (last 5 turns):")
-            for turn in conversation[-5:]:
-                role = turn.get("role", "unknown")
-                content = turn.get("content", "")
-                prefix = "User" if role == "user" else "Agent"
-                lines.append(f"  [{prefix}]: {content}")
+            # Conversation is now list[str] from session_reader (formatted log)
+            # Or list of dicts (legacy). Handle both for safety.
+            for item in conversation[
+                -15:
+            ]:  # Show last 15 lines approx (5 turns * 3 lines/turn)
+                if isinstance(item, dict):
+                    # Legacy fallback
+                    role = item.get("role", "unknown")
+                    content = item.get("content", "")
+                    prefix = "User" if role == "user" else "Agent"
+                    lines.append(f"  [{prefix}]: {content}")
+                else:
+                    # New formatted string
+                    lines.append(f"  {item}")
             lines.append("")
 
     if not lines:

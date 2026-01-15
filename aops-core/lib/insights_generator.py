@@ -237,6 +237,35 @@ def get_insights_file_path(date: str, session_id: str) -> Path:
     return insights_dir / f"{date}-{session_id}.json"
 
 
+def merge_insights(existing: dict[str, Any], new: dict[str, Any]) -> dict[str, Any]:
+    """Merge new insights into existing insights.
+
+    Strategy:
+    1. Append list items (accomplishments, learnings, etc.)
+    2. Overwrite scalars (summary, outcome, etc.)
+
+    Args:
+        existing: Existing insights dictionary
+        new: New insights dictionary
+
+    Returns:
+        Merged insights dictionary
+    """
+    merged = existing.copy()
+
+    for key, value in new.items():
+        if key in merged and isinstance(merged[key], list) and isinstance(value, list):
+            # Append new items to existing list
+            # Avoid duplicates if possible? Simple append for now
+            # TODO: Add deduplication logic if needed
+            merged[key].extend(value)
+        else:
+            # Overwrite scalars or new keys
+            merged[key] = value
+
+    return merged
+
+
 def write_insights_file(path: Path, insights: dict[str, Any]) -> None:
     """Atomically write insights JSON file.
 
