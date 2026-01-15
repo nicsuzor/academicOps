@@ -81,16 +81,9 @@ Guardrails: verify_before_complete, fix_within_design
 
 ## Workflow Catalog
 
-The hydrator selects from a defined set of workflows:
+**Single Source of Truth**: See [[WORKFLOWS.md]] for the complete workflow index and decision tree.
 
-| Workflow       | Trigger Signals                      | Quality Gate            | Iteration Unit               |
-| -------------- | ------------------------------------ | ----------------------- | ---------------------------- |
-| **question**   | "?", "how", "what", "explain"        | Answer accuracy         | N/A (answer then stop)       |
-| **minor-edit** | Single file, clear change            | Verification            | Edit → verify → commit       |
-| **tdd**        | "implement", "add feature", "create" | Tests pass              | Test → code → commit         |
-| **batch**      | Multiple files, "all", "each"        | Per-item + aggregate QA | Subset → apply → verify      |
-| **qa-proof**   | "verify", "check", "investigate"     | Evidence gathered       | Hypothesis → test → evidence |
-| **plan-mode**  | Complex, infrastructure, multi-step  | User approval           | Plan → approve → execute     |
+The hydrator reads WORKFLOWS.md to select the appropriate workflow based on user intent. Each workflow is defined in `workflows/[workflow-id].md`.
 
 **Key insight**: The workflow is NOT mechanical. The hydrator INTERPRETS the workflow template for the specific user request, generating concrete steps.
 
