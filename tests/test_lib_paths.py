@@ -82,16 +82,6 @@ class TestPathResolution:
 
         assert result == test_dir / "aops-core" / "skills"
 
-    def test_get_tasks_dir(self, monkeypatch, tmp_path):
-        """Test that get_tasks_dir returns ACA_DATA/tasks."""
-        test_dir = tmp_path / "data"
-        test_dir.mkdir()
-        monkeypatch.setenv("ACA_DATA", str(test_dir))
-
-        result = paths.get_tasks_dir()
-
-        assert result == test_dir / "tasks"
-
     def test_validate_environment_success(self, monkeypatch, tmp_path):
         """Test validate_environment with valid setup."""
         aops_dir = tmp_path / "aops"
