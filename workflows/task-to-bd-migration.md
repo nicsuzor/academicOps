@@ -9,6 +9,16 @@ category: operations
 
 Convert markdown tasks from the legacy `data/tasks/inbox/` format to bd issues. This workflow handles the field mapping, issue creation, and optional cleanup of source files.
 
+**CRITICAL: Data Preservation Rule**
+
+"Convert" means SAFE transfer - ALL information from the source must be preserved in the destination. This is non-negotiable:
+
+- **Every field must be mapped** - title, priority, tags, AND description/context
+- **No data loss** - if the source has a Context section, it MUST appear in the bd issue description
+- **Checklist items preserved** - include in description or create as subtasks
+
+Skipping descriptions creates issues without context, requiring rework. Always capture the full source content.
+
 ## When to Use
 
 - Migrating legacy markdown tasks to bd
