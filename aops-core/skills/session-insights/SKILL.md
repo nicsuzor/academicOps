@@ -56,11 +56,19 @@ Processes up to 5 sessions that have transcripts but no insights yet.
 ### Step 0: Validate Input
 
 If session_id provided, validate format (8-char hex).
-If not provided, get current session ID from environment.
+If not provided, check CLAUDE_SESSION_ID or prompt user.
 
 ```bash
-# Current session ID is in CLAUDE_SESSION_ID env var
-echo "$CLAUDE_SESSION_ID"
+if [ -n "$1" ]; then
+    SESSION_ID="$1"
+elif [ -n "$CLAUDE_SESSION_ID" ]; then
+    SESSION_ID="$CLAUDE_SESSION_ID"
+else
+    echo "❌ Error: Session ID required"
+    echo "Usage: /session-insights {session_id}"
+    echo "       /session-insights batch"
+    exit 1
+fi
 ```
 
 ### Step 1: Check if Insights Already Exist

@@ -16,7 +16,7 @@ import sys
 from pathlib import Path
 
 # Add framework root to path for lib imports
-sys.path.insert(0, str(Path(__file__).parent.parent))
+sys.path.insert(0, str(Path(__file__).parent.parent / "aops-core"))
 
 from lib.session_reader import SessionProcessor  # noqa: E402
 from lib.paths import get_sessions_dir  # noqa: E402
