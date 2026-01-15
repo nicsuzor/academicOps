@@ -566,19 +566,18 @@ else
     fi
 
     # Convert MCP servers from Claude format to Gemini format
+    # This aggregates plugin MCPs + global mcp.json into Gemini format
     echo
-    echo "Converting MCP servers..."
+    echo "Converting MCP servers for Gemini..."
     MCP_SOURCE="$AOPS_PATH/aops-tools/config/claude/mcp.json"
-    MCP_CONVERTED="$AOPS_PATH/aops-tools/config/gemini/mcp-servers.json"
-    if [ -f "$MCP_SOURCE" ]; then
-        if python3 "$AOPS_PATH/scripts/convert_mcp_to_gemini.py" "$MCP_SOURCE" "$MCP_CONVERTED" 2>/dev/null; then
-            MCP_COUNT=$(jq '.mcpServers | keys | length' "$MCP_CONVERTED" 2>/dev/null || echo "0")
-            echo -e "${GREEN}✓ Converted $MCP_COUNT MCP servers to Gemini format${NC}"
-        else
-            echo -e "${YELLOW}⚠ MCP conversion failed - using fallback servers${NC}"
-        fi
+    MCP_CONVERTED="$AOPS_PATH/config/gemini/mcp-servers.json"
+    mkdir -p "$AOPS_PATH/config/gemini"
+
+    if AOPS="$AOPS_PATH" python3 "$AOPS_PATH/scripts/convert_mcp_to_gemini.py" "$MCP_SOURCE" "$MCP_CONVERTED" 2>&1; then
+        MCP_COUNT=$(jq '.mcpServers | keys | length' "$MCP_CONVERTED" 2>/dev/null || echo "0")
+        echo -e "${GREEN}✓ Converted $MCP_COUNT MCP servers to Gemini format${NC}"
     else
-        echo -e "${YELLOW}⚠ Claude mcp.json not found at $MCP_SOURCE${NC}"
+        echo -e "${YELLOW}⚠ MCP conversion failed - check script output above${NC}"
     fi
 
     # Merge settings
