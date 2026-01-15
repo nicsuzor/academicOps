@@ -45,7 +45,7 @@ Qualitative assessment of session transcripts to evaluate framework performance.
 Skill(skill="audit", args="session-effectiveness /path/to/transcript.md")
 ```
 
-See [[workflows/session-effectiveness.md]] for full workflow.
+Workflow defined in `workflows/session-effectiveness.md`.
 
 ## Individual Scripts (Reference Only)
 
