@@ -33,6 +33,7 @@ from lib.session_state import (
     load_hydrator_state,
     save_custodiet_state,
 )
+from lib.transcript_parser import SessionProcessor
 
 # Paths
 HOOK_DIR = Path(__file__).parent
@@ -357,7 +358,6 @@ def _build_session_context(transcript_path: str | None, session_id: str) -> str:
         ctx = extract_gate_context(
             Path(transcript_path),
             include={
-                "intent",
                 "prompts",
                 "todos",
                 "errors",
@@ -369,8 +369,13 @@ def _build_session_context(transcript_path: str | None, session_id: str) -> str:
         )
 
         # Show original intent from transcript if not from hydrator
+        # Use shared extraction logic from SessionProcessor (DRY)
         if not hydrator_state or not hydrator_state.get("intent_envelope"):
-            intent = ctx.get("intent")
+            processor = SessionProcessor()
+            _, entries, _ = processor.parse_session_file(
+                Path(transcript_path), load_agents=False, load_hooks=False
+            )
+            intent = processor._extract_first_user_request(entries)
             if intent:
                 lines.append("**Original User Request** (first prompt):")
                 # Full text, not truncated
