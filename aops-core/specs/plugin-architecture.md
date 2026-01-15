@@ -24,7 +24,7 @@ This document defines the component assignments for the academicOps plugin ecosy
 **Skills**:
 - `audit` - Framework governance audit with structure and justification checking
 - `feature-dev` - Test-first feature development from idea to validated implementation
-- `framework` - Framework infrastructure workflows (deprecated - delegates to framework-executor agent)
+- `framework` - Framework infrastructure workflows (deprecated - delegates to framework agent)
 - `remember` - Persist knowledge to markdown and memory server with semantic search
 - `session-insights` - Generate session insights from transcripts using Gemini
 - `tasks` - Task lifecycle management using scripts and MCP tools
