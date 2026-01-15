@@ -670,13 +670,9 @@ def _extract_errors(entries: list[dict], max_turns: int) -> list[dict[str, Any]]
                             "input_summary": tool_info.get("input_summary", ""),
                             "error": str(error_content)[:300],
                         }
-                )
+                    )
 
     return errors[-max_turns:] if errors else []
-
-
-            return v[:40] + "..." if len(v) > 40 else v
-    return ""
 
 
 def _extract_files_modified(entries: list[dict]) -> list[str]:
@@ -723,8 +719,6 @@ def _extract_text_from_content(content: Any) -> str:
                 return block.get("text", "").strip()
 
     return ""
-
-
 
 
 def find_sessions(
@@ -891,5 +885,3 @@ def get_session_state(session: SessionInfo, aca_data: Path) -> SessionState:
         return SessionState.PENDING_MINING
 
     return SessionState.PROCESSED
-
-
