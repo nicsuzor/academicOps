@@ -73,16 +73,11 @@ def generate_markdown() -> str:
     config_dir = get_config_dir()
     workflows_dir = get_workflows_dir()
 
-    tasks_dir = get_tasks_dir()
     sessions_dir = get_sessions_dir()
     projects_dir = get_projects_dir()
     logs_dir = get_logs_dir()
     context_dir = get_context_dir()
     goals_dir = get_goals_dir()
-
-    tasks_inbox_dir = get_tasks_inbox_dir()
-    tasks_completed_dir = get_tasks_completed_dir()
-    tasks_archived_dir = get_tasks_archived_dir()
 
     # Build markdown content
     content = f"""---
