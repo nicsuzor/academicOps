@@ -997,28 +997,36 @@ class SessionProcessor:
         self, entries: list[Entry], max_length: int = 500
     ) -> str | None:
         """Extract the first substantive user request from session entries."""
-        for entry in entries:
+        for i, entry in enumerate(entries):
             if entry.type != "user":
                 continue
 
-            content = ""
-            if entry.message:
-                raw_content = entry.message.get("content", "")
-                if isinstance(raw_content, list):
-                    continue
-                content = str(raw_content)
-
-            skip_prefixes = (
-                "<command",
-                "[{",
-                "Caveat:",
-                "<local-command",
-                "<system",
-                "<skill-invocation",
-            )
-            if any(content.startswith(prefix) for prefix in skip_prefixes):
+            # Skip meta messages
+            if entry.is_meta:
                 continue
 
+            # Extract content using standard helper
+            next_meta = ""
+            if i + 1 < len(entries) and entries[i + 1].is_meta:
+                next_meta = self._extract_user_content(entries[i + 1])
+
+            content = self._extract_user_content(entry, next_meta)
+            if not content:
+                continue
+
+            # Skip command-only messages (though _extract_user_content might have expanded them)
+            # If it's a command invocation, we want the ARGUMENTS part if possible.
+            if self._is_command_invocation(content):
+                # If it's something like /do, it might be the intent
+                if content.startswith("/do "):
+                    content = content[4:]
+                elif content.startswith("/ask "):
+                    content = content[5:]
+                else:
+                    # Skip other commands like /commit, /log etc
+                    continue
+
+            # Skip very short messages
             if len(content.strip()) < 10:
                 continue
 

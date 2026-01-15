@@ -18,6 +18,7 @@ This workflow guides the periodic cleanup and organization of the `bd` task list
 
 ## Principles
 - **Respect User Tasks**: Issues related to the user (e.g., Nic) must **NOT** be closed for staleness. The user operates on human timescales.
+- **Don't modify research tasks**: You can sort and reorder research tasks, but be VERY careful not to change their meaning (even unintentionally).
 - **Aggressive Stale Cleanup**: Technical assignments/bugs that are old (3+ months) and where the codebase has changed significantly should be closed.
 - **Hierarchy is Key**: Every task should generally belong to an Epic. Use dependencies to model this (`Epic` depends on `Task`).
 - **Standard Prefixes**: Ensure tasks have correct prefixes if the project uses them (though `bd` handles IDs, titles should be descriptive).

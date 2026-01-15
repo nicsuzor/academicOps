@@ -14,13 +14,36 @@ from urllib.parse import quote
 aops_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(aops_root))
 
-# Task system removed (2026-01-15) - stub functions return empty data
-def load_task_index():
-    """Stub: task system deprecated in favor of bd issues."""
-    return None
+# bd integration (2026-01-15) - using bd issues for task management
+def load_bd_issues(priority_max=2, status=None, limit=50):
+    """Load bd issues using JSON output.
 
-def load_focus_tasks_from_index(task_index, count=20):
-    """Stub: task system deprecated in favor of bd issues."""
+    Args:
+        priority_max: Maximum priority to include (0-4, inclusive)
+        status: Filter by status (e.g., 'open', 'in_progress', 'blocked')
+        limit: Maximum number of issues to return
+
+    Returns:
+        List of issue dicts from bd JSON output, or empty list on error.
+    """
+    import subprocess
+
+    cmd = ["bd", "list", "--json", f"--limit={limit}", f"--priority-max=P{priority_max}"]
+    if status:
+        cmd.append(f"--status={status}")
+
+    try:
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+        if result.returncode == 0:
+            import json
+            return json.loads(result.stdout)
+    except Exception:
+        pass
     return []
 from lib.session_reader import find_sessions
 from lib.session_analyzer import SessionAnalyzer, extract_todowrite_from_session
@@ -52,86 +75,45 @@ def load_synthesis() -> dict | None:
         return None
 
 
-def get_waiting_tasks(task_index: dict | None) -> list[dict]:
-    """Get tasks with waiting status from index."""
-    if not task_index:
-        return []
-
-    return [t for t in task_index.get("tasks", []) if t.get("status") == "waiting"]
+def get_waiting_tasks() -> list[dict]:
+    """Get tasks with blocked status from bd."""
+    return load_bd_issues(priority_max=4, status="blocked", limit=50)
 
 
 def get_priority_tasks() -> list[dict]:
-    """Get P0/P1 actionable tasks from task index.
+    """Get P0/P1 actionable tasks from bd issues.
 
-    Loads task index from $ACA_DATA/tasks/index.json and filters to
-    priority 0 or 1 tasks with non-terminal status (excludes archived,
-    done, completed). This includes inbox, pending, active, waiting, etc.
+    Queries bd for priority 0 or 1 tasks with non-closed status.
 
     Returns:
-        List of task dicts with keys: title, priority, project, status.
-        Returns empty list if task index cannot be loaded.
+        List of issue dicts from bd with keys: id, title, priority, status, etc.
+        Returns empty list if bd query fails.
     """
-    task_index = load_task_index()
-    if not task_index:
-        return []
+    # Get P0/P1 issues that are not closed
+    issues = load_bd_issues(priority_max=1, status=None, limit=50)
 
-    tasks = task_index.get("tasks", [])
-    result = []
-
-    for t in tasks:
-        priority = t.get("priority")
-        status = t.get("status")
-
-        # Filter to P0/P1 and non-terminal status
-        if priority is None or priority > 1:
-            continue
-        if status in ("archived", "done", "completed"):
-            continue
-
-        result.append(
-            {
-                "title": t.get("title", ""),
-                "priority": priority,
-                "project": t.get("project", ""),
-                "status": status,
-            }
-        )
+    # Filter out closed issues
+    result = [issue for issue in issues if issue.get("status") != "closed"]
 
     return result
 
 
-def get_next_actions(task_index: dict | None) -> list[dict]:
-    """Get P0/P1 tasks with incomplete subtasks - the concrete next actions."""
-    if not task_index:
-        return []
+def get_next_actions() -> list[dict]:
+    """Get P0/P1 tasks that are open or in_progress - the concrete next actions.
 
-    tasks = task_index.get("tasks", [])
+    Returns:
+        List of up to 5 top priority actionable issues.
+    """
+    issues = load_bd_issues(priority_max=1, status=None, limit=50)
 
-    # Filter to P0/P1 with incomplete work
-    actionable = []
-    for t in tasks:
-        priority = t.get("priority")
-        if priority is None or priority > 1:
-            continue
-        if t.get("status") in ("archived", "done"):
-            continue
+    # Filter to actionable statuses (open, in_progress)
+    actionable = [
+        issue for issue in issues
+        if issue.get("status") in ("open", "in_progress")
+    ]
 
-        # Has incomplete subtasks = has next action
-        done = t.get("subtasks_done", 0)
-        total = t.get("subtasks_total", 0)
-        if total > 0 and done < total:
-            actionable.append(t)
-        elif total == 0:
-            # No subtasks = task itself is the action
-            actionable.append(t)
-
-    # Sort by priority, then by completion %
-    actionable.sort(
-        key=lambda t: (
-            t.get("priority", 999),
-            t.get("subtasks_done", 0) / max(t.get("subtasks_total", 1), 1),
-        )
-    )
+    # Sort by priority (0 first, then 1)
+    actionable.sort(key=lambda t: t.get("priority", 999))
 
     return actionable[:5]  # Top 5
 
@@ -151,12 +133,12 @@ def get_primary_focus() -> dict:
     Checks in order:
     1. Daily log primary task
     2. synthesis.json next_action (if fresh)
-    3. First P0 task from task index
+    3. First P0 task from bd issues
 
     Returns:
         Dict with keys:
             - task_title: The primary task title (str)
-            - source: One of 'daily_log', 'synthesis', 'task_index', 'none'
+            - source: One of 'daily_log', 'synthesis', 'bd_issues', 'none'
     """
     from lib.session_analyzer import SessionAnalyzer
 
@@ -181,11 +163,11 @@ def get_primary_focus() -> dict:
                     "source": "synthesis",
                 }
 
-    # Fallback to first P0 task
+    # Fallback to first P0 task from bd
     priority_tasks = get_priority_tasks()
-    p0_tasks = [t for t in priority_tasks if t["priority"] == 0]
+    p0_tasks = [t for t in priority_tasks if t.get("priority") == 0]
     if p0_tasks:
-        return {"task_title": p0_tasks[0]["title"], "source": "task_index"}
+        return {"task_title": p0_tasks[0]["title"], "source": "bd_issues"}
 
     # No primary focus found
     return {
@@ -1469,8 +1451,7 @@ def clean_activity_text(raw_text: str) -> str:
 # Initialize analyzer for daily log
 analyzer = SessionAnalyzer()
 
-# Load task index and synthesis
-task_index = load_task_index()
+# Load synthesis
 synthesis = load_synthesis()
 
 # === LLM SYNTHESIS PANEL (if available) ===
@@ -1606,14 +1587,28 @@ try:
                 accomplishments_by_project[proj] = []
             accomplishments_by_project[proj].extend(session.get("accomplishments", []))
 
-    # Load priority tasks from pre-computed index (faster than parsing files)
-    focus_tasks = load_focus_tasks_from_index(task_index, count=20)
+    # Load priority tasks from bd (P0-P2)
+    bd_issues = load_bd_issues(priority_max=2, status=None, limit=50)
     tasks_by_project: dict[str, list] = {}
-    for task in focus_tasks:
-        proj = task.project or "unassigned"
+    for issue in bd_issues:
+        # Skip closed issues
+        if issue.get("status") == "closed":
+            continue
+
+        # Extract project from issue ID prefix (e.g., "aops-xxx" -> "aops")
+        issue_id = issue.get("id", "")
+        proj = issue_id.split("-")[0] if "-" in issue_id else "unassigned"
+
         if proj not in tasks_by_project:
             tasks_by_project[proj] = []
-        tasks_by_project[proj].append(task)
+
+        # Convert bd issue to task-like dict for compatibility
+        tasks_by_project[proj].append({
+            "title": issue.get("title", ""),
+            "priority": issue.get("priority"),
+            "status": issue.get("status"),
+            "subtasks": [],  # bd doesn't have subtasks in simple view
+        })
 
     # Group sessions by project
     projects: dict[str, dict] = {}

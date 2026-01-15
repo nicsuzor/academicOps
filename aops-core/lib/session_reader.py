@@ -413,7 +413,13 @@ def _extract_gate_context_impl(
                 continue
             for item in reversed(assistant_sequence):
                 if item.get("type") == "tool":
-                    tools.append(item.get("content", ""))
+                    tools.append(
+                        {
+                            "name": item.get("tool_name", "unknown"),
+                            "input": item.get("tool_input", {}),
+                            "content": item.get("content", ""),
+                        }
+                    )
             if len(tools) >= max_turns:  # approximate limits
                 break
         result["tools"] = list(reversed(tools[:max_turns]))
@@ -574,13 +580,16 @@ def _extract_gate_context_impl(
     return result
 
 
-def _extract_recent_skill(entries: list[dict]) -> str | None:
+def _extract_recent_skill(entries: list[Any]) -> str | None:
     """Extract most recent Skill invocation."""
     for entry in reversed(entries):
-        if entry.get("type") != "assistant":
+        etype = entry.type if hasattr(entry, "type") else entry.get("type")
+        if etype != "assistant":
             continue
 
-        message = entry.get("message", {})
+        message = (
+            entry.message if hasattr(entry, "message") else entry.get("message", {})
+        )
         content = message.get("content", [])
         if not isinstance(content, list):
             continue
@@ -610,7 +619,7 @@ def _extract_todos(entries: list[dict]) -> dict[str, Any] | None:
     }
 
 
-def _extract_errors(entries: list[dict], max_turns: int) -> list[dict[str, Any]]:
+def _extract_errors(entries: list[Any], max_turns: int) -> list[dict[str, Any]]:
     """Extract recent tool errors with tool name and input context.
 
     Correlates tool_result errors with their corresponding tool_use blocks
@@ -619,9 +628,12 @@ def _extract_errors(entries: list[dict], max_turns: int) -> list[dict[str, Any]]
     # First pass: build map of tool_use_id -> tool info
     tool_use_map: dict[str, dict[str, Any]] = {}
     for entry in entries:
-        if entry.get("type") != "assistant":
+        etype = entry.type if hasattr(entry, "type") else entry.get("type")
+        if etype != "assistant":
             continue
-        message = entry.get("message", {})
+        message = (
+            entry.message if hasattr(entry, "message") else entry.get("message", {})
+        )
         content = message.get("content", [])
         if not isinstance(content, list):
             continue
@@ -642,28 +654,24 @@ def _extract_errors(entries: list[dict], max_turns: int) -> list[dict[str, Any]]
     # Second pass: extract errors and correlate with tool info
     errors: list[dict[str, Any]] = []
     for entry in entries:
-        if entry.get("type") != "user":
+        etype = entry.type if hasattr(entry, "type") else entry.get("type")
+        if etype != "user":
             continue
 
-        message = entry.get("message", {})
+        message = (
+            entry.message if hasattr(entry, "message") else entry.get("message", {})
+        )
         content = message.get("content", [])
         if not isinstance(content, list):
             continue
 
-        for block in content:
-            if isinstance(block, dict) and block.get("type") == "tool_result":
-                if block.get("is_error"):
-                    tool_id = block.get("tool_use_id", "")
-                    error_content = block.get("content", "")
-                    if isinstance(error_content, list):
-                        error_content = " ".join(
-                            item.get("text", "")
-                            for item in error_content
-                            if isinstance(item, dict)
-                        )
-
-                    # Get tool info from map
+        for item in content:
+            if isinstance(item, dict) and item.get("type") == "tool_result":
+                if item.get("is_error") or item.get("isError"):
+                    tool_id = item.get("tool_use_id") or item.get("toolUseId")
                     tool_info = tool_use_map.get(tool_id, {})
+                    error_content = item.get("content", "")
+
                     errors.append(
                         {
                             "tool_name": tool_info.get("name", "unknown"),
@@ -675,7 +683,7 @@ def _extract_errors(entries: list[dict], max_turns: int) -> list[dict[str, Any]]
     return errors[-max_turns:] if errors else []
 
 
-def _extract_files_modified(entries: list[dict]) -> list[str]:
+def _extract_files_modified(entries: list[Any]) -> list[str]:
     """Extract unique list of files modified via Edit/Write tools.
 
     Used by custodiet for scope assessment - are we touching files
@@ -684,26 +692,27 @@ def _extract_files_modified(entries: list[dict]) -> list[str]:
     files: set[str] = set()
 
     for entry in entries:
-        if entry.get("type") != "assistant":
+        etype = entry.type if hasattr(entry, "type") else entry.get("type")
+        if etype != "assistant":
             continue
 
-        message = entry.get("message", {})
+        message = (
+            entry.message if hasattr(entry, "message") else entry.get("message", {})
+        )
         content = message.get("content", [])
         if not isinstance(content, list):
             continue
 
         for block in content:
-            if not isinstance(block, dict) or block.get("type") != "tool_use":
-                continue
+            if isinstance(block, dict) and block.get("type") == "tool_use":
+                tool_name = block.get("name", "")
+                tool_input = block.get("input", {})
 
-            tool_name = block.get("name", "")
-            tool_input = block.get("input", {})
-
-            # Track Edit and Write operations
-            if tool_name in ("Edit", "Write"):
-                file_path = tool_input.get("file_path", "")
-                if file_path:
-                    files.add(file_path)
+                # Track Edit and Write operations
+                if tool_name in ("Edit", "Write"):
+                    file_path = tool_input.get("file_path", "")
+                    if file_path:
+                        files.add(file_path)
 
     return sorted(files)
 

@@ -10,7 +10,7 @@ description: |
 
 # Prompt Hydration Request
 
-Transform this user prompt into a complete execution plan.
+Transform this user prompt into an execution plan with scope detection and bd task routing.
 
 ## User Prompt
 
@@ -30,50 +30,91 @@ Transform this user prompt into a complete execution plan.
 ## Your Task
 
 1. **Understand intent** - What does the user actually want?
-2. **Select workflow** - Read `$AOPS/WORKFLOWS.md` and select the appropriate workflow
-3. **Compose workflows** - Read workflow files in `$AOPS/workflows/` (and any [[referenced workflows]]) as needed
-4. **Generate TodoWrite plan** - Break into concrete steps following workflow guidance
+2. **Assess scope** - Single-session (bounded, path known) or multi-session (goal-level, uncertain path)?
+3. **Route to bd task** - Match to existing issue or specify new task creation
+4. **Select workflow** - Read `$AOPS/WORKFLOWS.md` and select the appropriate workflow
+5. **Compose workflows** - Read workflow files in `$AOPS/workflows/` (and any [[referenced workflows]])
+6. **Capture deferred work** - For multi-session scope, create decomposition task for future work
 
 ## Return Format
 
 Return this EXACT structure:
 
 ````markdown
-## Prompt Hydration
+## HYDRATION RESULT
 
 **Intent**: [what user actually wants, in clear terms]
-**Workflow**: [workflow name] ([quality gate])
+**Scope**: single-session | multi-session
+**Workflow**: [[workflows/[workflow-id]]]
+
+### BD Task Routing
+
+[Choose ONE:]
+
+**Existing issue found**: `[issue-id]` - [title]
+- Claim with: `bd update [issue-id] --status=in_progress`
+
+**OR**
+
+**New task needed**:
+- Create with: `bd create "[title]" --type=[task|epic] --priority=[0-3] [--parent=epic-id]`
+
+**OR**
+
+**No bd task needed** (simple-question only)
+
+### Acceptance Criteria
+
+1. [Specific, verifiable condition]
+2. [Another condition]
 
 ### Relevant Context
 
-- [context from memory/codebase search - what's relevant to this task?]
-- [finding 2]
-- [finding 3]
+- [Context from memory search]
+- [Related bd issues]
 
 ### Applicable Principles
 
-- **P#[n] [Name]**: [Why this applies to this specific task]
 - **P#[n] [Name]**: [Why this applies]
 
-### TodoWrite Plan
-
-**Main agent will call TodoWrite** with these steps after critic review:
+### Execution Plan
 
 ```javascript
 TodoWrite(todos=[
-  {content: "Step 1: [action]", status: "pending", activeForm: "[present participle]"},
-  {content: "Step 2: [action]", status: "pending", activeForm: "[present participle]"},
-  {content: "CHECKPOINT: [verification with evidence]", status: "pending", activeForm: "Verifying"},
-  {content: "QA VERIFY: Task(subagent_type='qa', prompt='...')", status: "pending", activeForm: "Verifying with qa"},
-  {content: "Commit and push", status: "pending", activeForm: "Committing"}
+  {content: "[bd claim/create from above]", status: "pending", activeForm: "Claiming work"},
+  {content: "[workflow step]", status: "pending", activeForm: "[participle]"},
+  {content: "CHECKPOINT: [verification]", status: "pending", activeForm: "Verifying"},
+  {content: "Task(subagent_type='qa', prompt='...')", status: "pending", activeForm: "QA verification"},
+  {content: "Close bd task and commit", status: "pending", activeForm: "Completing"}
 ])
+```
+
+### Deferred Work (multi-session only)
+
+Create decomposition task for work that can't be done now:
+
+```bash
+bd create "Decompose: [goal]" --type=task --priority=2 \
+  --description="Apply decompose workflow. Items:
+- [Deferred 1]
+- [Deferred 2]
+Context: [what future agent needs]"
+```
+
+If immediate task is step 1 of a sequence, block on decomposition:
+```bash
+bd dep add [immediate-id] depends-on [decompose-id]
 ```
 ````
 
-**Key insight**: The workflow is NOT mechanical. INTERPRET the workflow template for the specific user request, generating concrete steps.
+## Key Rules
 
-**Flow**: Your plan goes to main agent → critic reviews → main agent executes with TodoWrite.
+- **Scope detection**: Multi-session = goal-level, uncertain path, spans days+. Single-session = bounded, known steps.
+- **Prefer existing issues**: Search bd state before creating new tasks.
+- **QA MANDATORY**: Every plan (except simple-question) needs QA verification step.
+- **Deferred work**: Only for multi-session. Captures what can't be done now without losing it.
+- **Block when sequential**: If immediate work is meaningless without the rest, block on decomposition task.
 
-**MANDATORY**: Every plan (except `simple-question` workflow) MUST include the "QA VERIFY" step. The main agent spawns qa as an independent Task subagent to verify work before committing.
+**Flow**: Your plan → main agent → critic reviews → main agent executes.
 
-**NOTE**: You do NOT invoke critic. The main agent does that after receiving your plan (per the core loop). Focus on generating a good plan; critic will review it.
+**NOTE**: You do NOT invoke critic. Focus on generating a good plan.

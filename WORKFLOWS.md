@@ -53,6 +53,15 @@ All work MUST follow one of the workflows in this index. No exceptions.
 
 ### Planning Workflows
 
+#### [[decompose]]
+- **ID**: `decompose`
+- **Title**: Progressive Decomposition Workflow
+- **Category**: planning
+- **When to use**: Multi-month/year goals, uncertain path forward, need to figure out steps before acting
+- **Key steps**: Articulate goal → Surface assumptions → Identify coarse components → Sequence by information value → Expand just-in-time → Mark ready work
+- **Quality gates**: Goal articulated, assumptions surfaced, at least one actionable task identified
+- **Scope signals**: Goal-level requests, "write a paper", "build a feature", "plan the project"
+
 #### [[spec-review]]
 - **ID**: `spec-review`
 - **Title**: Spec Review Loop (Critic Feedback)
@@ -120,11 +129,15 @@ User request
     │
     ├─ Simple question only? ─────────────────> [[simple-question]]
     │
+    ├─ Goal-level / multi-month work? ────────> [[decompose]]
+    │   (uncertain path, need to figure out steps)
+    │
     ├─ Multiple similar items? ───────────────> [[batch-processing]]
     │
     ├─ Investigating/debugging? ──────────────> [[debugging]]
     │
-    ├─ Planning/designing? ───────────────────> [[spec-review]]
+    ├─ Planning/designing known work? ────────> [[spec-review]]
+    │   (know what to build, designing how)
     │
     ├─ Small, focused change? ────────────────> [[minor-edit]]
     │
@@ -132,3 +145,15 @@ User request
     │
     └─ Need QA verification? ─────────────────> [[qa-demo]]
 ```
+
+### Scope-Based Routing
+
+When hydrator detects **multi-session scope**, routing changes:
+
+| Signal | Indicates | Route to |
+|--------|-----------|----------|
+| "Write a paper", "Build X", "Plan the project" | Goal-level, uncertain path | [[decompose]] |
+| "Add feature X", "Fix bug Y" | Known deliverable, clear steps | [[feature-dev]] or [[minor-edit]] |
+| "How do I..." | Information need | [[simple-question]] |
+
+**Key distinction**: [[decompose]] is for "figure out what to do", [[spec-review]] is for "design how to do it".
