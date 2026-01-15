@@ -13,11 +13,11 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-# Add lib to path
-lib_path = Path(__file__).parent.parent / "lib"
-sys.path.insert(0, str(lib_path))
+# Add aops-core to path so lib is a proper package
+aops_core_path = Path(__file__).parent.parent
+sys.path.insert(0, str(aops_core_path))
 
-from session_state import is_custodiet_enabled, set_custodiet_block
+from lib.session_state import is_custodiet_enabled, set_custodiet_block
 
 
 def main() -> int:
