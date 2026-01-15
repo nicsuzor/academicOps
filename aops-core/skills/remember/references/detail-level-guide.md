@@ -55,8 +55,8 @@ Match detail level to file type and importance.
 - Configuration updates → git log or `data/<project-slug>/config-notes.md`
 - Framework improvements → git log
 - Routine meetings → omit (unless strategic decision made)
-- Minor task updates → task system tracks these
-- Implementation details → task files or `data/<project-slug>/`
+- Minor task updates → bd issues track these
+- Implementation details → bd issues or `data/<project-slug>/`
 
 **DO capture in `data/projects/<project>.md`**:
 
