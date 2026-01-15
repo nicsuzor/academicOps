@@ -7,7 +7,7 @@ category: operations
 
 ## Overview
 
-Efficient workflow for processing multiple similar items concurrently. Uses parallel subagents to maximize throughput while maintaining quality.
+Efficient workflow for processing multiple similar items concurrently. Uses the **worker-hypervisor architecture** (see [[specs/worker-hypervisor]]) for parallel execution with proper coordination.
 
 ## When to Use
 
@@ -15,7 +15,7 @@ Efficient workflow for processing multiple similar items concurrently. Uses para
 - Running tests across multiple modules
 - Batch updates or migrations
 - Generating multiple outputs
-- Any work that can be parallelized
+- Multiple independent bd tasks ready for parallel work
 
 ## When NOT to Use
 
@@ -24,63 +24,86 @@ Efficient workflow for processing multiple similar items concurrently. Uses para
 - Shared mutable state would cause conflicts
 - Serial processing is required
 
+## Architecture
+
+This workflow uses the **worker-hypervisor pattern**:
+
+- **Workers**: Autonomous agents that each execute ONE bd task
+- **Hypervisor**: Coordinator that manages worker pool (4-8 concurrent)
+- **bd**: Task queue that workers pull from
+
+```
+Hypervisor
+    │
+    ├─ Worker 1 (bd task A)
+    ├─ Worker 2 (bd task B)
+    ├─ Worker 3 (bd task C)
+    └─ Worker 4 (bd task D)
+```
+
 ## Steps
 
 ### 1. Track work in bd ([[bd-workflow]])
 
 Follow the [[bd-workflow]] to set up issue tracking:
-- Check for existing issues
-- Create issue if needed: `bd create --title="Batch: [operation] on [items]" --type=task --priority=2`
-- Mark as in-progress
+- Check for existing issues: `bd ready` to see tasks available
+- Create issues for each parallelizable unit of work
+- Mark parent issue as in-progress
 
-### 2. Identify scope of work and create plan for concurrent execution
+### 2. Identify scope and validate task independence
 
 **Determine items to process:**
-- List all files/items/targets
-- Group by similarity if needed
-- Estimate total work
+- List all bd tasks ready for parallel work: `bd ready`
+- Verify no task has blockers on another parallel task
+- Identify scope boundaries (which files each task will touch)
 
-**Create parallelization plan:**
-- How many items per agent?
-- How many concurrent agents?
-- What's the optimal batch size?
-- Are there resource constraints?
+**Validate independence:**
+- Tasks MUST NOT modify same files
+- Tasks MUST NOT have circular dependencies
+- Each task has clear success criteria
 
 **Example:**
 ```
-Total items: 50 files
-Batch size: 10 files per agent
-Concurrent agents: 5
-Expected time: ~5 minutes
+Ready tasks: ns-abc, ns-def, ns-ghi, ns-jkl
+All independent: Yes (different file scopes)
+Concurrent workers: 4
 ```
 
-### 3. Spawn parallel subagents for items 1-N
+### 3. Spawn hypervisor OR spawn workers directly
 
-Launch background agents for concurrent processing:
+**Option A: Use hypervisor (recommended for 5+ tasks)**
 
 ```javascript
-// Spawn first batch of agents
 Task(
-  subagent_type="general-purpose",
+  subagent_type="hypervisor",
+  prompt=`Manage parallel execution of ready bd tasks.
+
+  Tasks to process:
+  - ns-abc: [description]
+  - ns-def: [description]
+  - ns-ghi: [description]
+  - ns-jkl: [description]
+
+  Maintain pool of 4 concurrent workers.
+  Coordinate git push after all complete.`
+)
+```
+
+**Option B: Spawn workers directly (for 2-4 tasks)**
+
+```javascript
+// Each worker gets full task context
+Task(
+  subagent_type="worker",
   run_in_background=true,
-  prompt=`Process items 1-10: [list items]
-
-  For each item:
-  1. [operation description]
-  2. Verify success
-  3. Report completion
-
-  Return summary of results.`
+  prompt="/tmp/worker-context-ns-abc.md"  // Pre-generated context file
 )
 
 Task(
-  subagent_type="general-purpose",
+  subagent_type="worker",
   run_in_background=true,
-  prompt=`Process items 11-20: [list items]
-  ...`
+  prompt="/tmp/worker-context-ns-def.md"
 )
-
-// Spawn remaining batches...
 ```
 
 **Best practices:**
