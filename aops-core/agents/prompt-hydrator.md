@@ -90,25 +90,36 @@ From HEURISTICS.md, these principles apply:
 ```javascript
 TodoWrite(todos=[
   {content: "[Simple step - no agent needed]", status: "pending", activeForm: "[step.name]"},
-  {content: "Task(subagent_type='critic', prompt='[specific prompt]')", status: "pending", activeForm: "[step.name]"},
+  {content: "[Another step]", status: "pending", activeForm: "[step.name]"},
   ...
   {content: "CHECKPOINT: [checkpoint from workflow]", status: "pending", activeForm: "Verifying"},
+  {content: "Task(subagent_type='qa', prompt='[verification prompt]')", status: "pending", activeForm: "QA Verification"},
   {content: "Commit and push", status: "pending", activeForm: "Committing"}
 ])
 ```
 
+**NOTE**: You do NOT invoke critic. The main agent invokes critic to review your plan BEFORE executing it (per core loop). Focus on generating a good plan.
+
 **TodoWrite Content Rules:**
 
-1. **Steps requiring agent invocation**: Include literal `Task()` syntax
-   - `{content: "Task(subagent_type='critic', prompt='Review spec at...')", ...}`
-   - `{content: "Task(subagent_type='qa', prompt='Verify against criteria...')", ...}`
+1. **bd task first for file-modifying work**: If the task will modify files (not just answer a question), Step 1 should create a bd task:
+   - `{content: "Create bd task: bd add '[brief description]'", status: "pending", activeForm: "Creating issue"}`
+   - Skip if: (a) work already has a bd issue from context, or (b) task is pure question/lookup
+   - Why: Tracks work across sessions, provides audit trail, ensures completion includes closing task
 
-2. **Steps requiring skill invocation**: Include literal `Skill()` syntax
+2. **QA verification MANDATORY**: Every plan (except simple-question) must include QA step near the end:
+   - `{content: "Task(subagent_type='qa', prompt='Verify against criteria...')", ...}`
+   - QA runs BEFORE commit, as independent verification
+
+3. **Steps requiring skill invocation**: Include literal `Skill()` syntax
    - `{content: "Skill(skill='python-dev')", ...}`
 
-3. **Simple steps**: Plain description
+4. **Simple steps**: Plain description
    - `{content: "Run tests: uv run pytest", ...}`
    - `{content: "CHECKPOINT: All tests pass", ...}`
 
-**Why explicit syntax?** Makes execution unambiguous. "Get critic review" is vague; `Task(subagent_type='critic', ...)` is executable.
+5. **Close bd task at end**: If Step 1 created a task, final step should close it:
+   - `{content: "Close bd task: bd close [id]", status: "pending", activeForm: "Closing issue"}`
+
+**Why explicit syntax?** Makes execution unambiguous. "Run QA" is vague; `Task(subagent_type='qa', ...)` is executable.
 

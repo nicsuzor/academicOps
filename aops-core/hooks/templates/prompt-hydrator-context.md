@@ -57,14 +57,14 @@ Return this EXACT structure:
 
 ### TodoWrite Plan
 
-**IMMEDIATELY call TodoWrite** with these steps:
+**Main agent will call TodoWrite** with these steps after critic review:
 
 ```javascript
 TodoWrite(todos=[
   {content: "Step 1: [action]", status: "pending", activeForm: "[present participle]"},
   {content: "Step 2: [action]", status: "pending", activeForm: "[present participle]"},
   {content: "CHECKPOINT: [verification with evidence]", status: "pending", activeForm: "Verifying"},
-  {content: "QA VERIFY: Spawn qa agent before completion", status: "pending", activeForm: "Verifying with qa"},
+  {content: "QA VERIFY: Task(subagent_type='qa', prompt='...')", status: "pending", activeForm: "Verifying with qa"},
   {content: "Commit and push", status: "pending", activeForm: "Committing"}
 ])
 ```
@@ -72,4 +72,8 @@ TodoWrite(todos=[
 
 **Key insight**: The workflow is NOT mechanical. INTERPRET the workflow template for the specific user request, generating concrete steps.
 
-**MANDATORY**: Every plan (except `question` workflow) MUST include the "QA VERIFY" step. The main agent spawns qa as an independent Task subagent to verify work before committing.
+**Flow**: Your plan goes to main agent → critic reviews → main agent executes with TodoWrite.
+
+**MANDATORY**: Every plan (except `simple-question` workflow) MUST include the "QA VERIFY" step. The main agent spawns qa as an independent Task subagent to verify work before committing.
+
+**NOTE**: You do NOT invoke critic. The main agent does that after receiving your plan (per the core loop). Focus on generating a good plan; critic will review it.

@@ -116,13 +116,13 @@ status: DRAFT - PENDING APPROVAL (v2)
 
 ### Agents (5)
 
-| Agent               | Model  | Purpose                                               | Trigger                         |
-| ------------------- | ------ | ----------------------------------------------------- | ------------------------------- |
-| **prompt-hydrator** | haiku  | Transform prompts → execution plans                   | UserPromptSubmit hook           |
-| **critic**          | opus   | Review plans BEFORE execution                         | After hydration, before execute |
-| **custodiet**       | haiku  | Detect scope drift, BLOCK on violation                | Compliance checkpoints          |
-| **qa**     | opus   | Independent end-to-end verification                   | Before completion               |
-| **framework**       | sonnet | Stateful framework understanding, manages reflections | Before session close            |
+| Agent               | Model  | Purpose                                               | Trigger                                      |
+| ------------------- | ------ | ----------------------------------------------------- | -------------------------------------------- |
+| **prompt-hydrator** | haiku  | Transform prompts → execution plans                   | UserPromptSubmit hook instruction            |
+| **critic**          | opus   | Review plans BEFORE execution                         | Main agent after hydrator returns            |
+| **custodiet**       | haiku  | Detect scope drift, BLOCK on violation                | PostToolUse hook (periodic)                  |
+| **qa**              | opus   | Independent end-to-end verification                   | TodoWrite step before commit                 |
+| **framework**       | sonnet | Stateful framework understanding, manages reflections | Before session close                         |
 
 ### Tools Required
 

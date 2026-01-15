@@ -18,6 +18,22 @@ Task(subagent_type="prompt-hydrator", model="haiku",
      prompt="Read {temp_path} and provide workflow guidance.")
 ```
 
-Follow the hydrator's workflow guidance before proceeding.
+**After receiving the plan**, invoke critic to review BEFORE executing:
 
-**Why always invoke?** Hydration is fast (haiku model), costless, and can only improve outcomes. Even "simple" tasks benefit from context enrichment - agents cannot reliably judge task complexity upfront. Never skip.
+```
+Task(subagent_type="critic", model="opus",
+     description="Review hydrated plan",
+     prompt="Review this plan for errors, hidden assumptions, and missing verification:
+
+[PASTE THE HYDRATOR'S EXECUTION PLAN HERE]
+
+Return: PROCEED (execute as planned) | REVISE (list specific changes) | HALT (stop, explain why)")
+```
+
+- **PROCEED**: Call TodoWrite with the plan and execute
+- **REVISE**: Update the plan per critic feedback, then execute
+- **HALT**: Stop immediately, present the issue to user
+
+**Why always invoke hydrator?** Hydration is fast (haiku model), costless, and can only improve outcomes. Even "simple" tasks benefit from context enrichment.
+
+**Why critic review?** Plans reviewed before execution catch errors early. Critic uses opus for rigorous analysis.
