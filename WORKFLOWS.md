@@ -8,6 +8,9 @@ permalink: workflows
 tags: [framework, routing, workflows, index]
 ---
 
+
+<!-- NS: file should be dynamically generated after any change in workflows/. format should be revised to ensure agent has sufficient detail to make the choice between workflows -->
+
 # Workflow Index
 
 All work MUST follow one of the workflows in this index. No exceptions.
@@ -129,18 +132,3 @@ User request
     │
     └─ Need QA verification? ─────────────────> [[qa-demo]]
 ```
-
-## Next Steps
-
-Phase 2 (Composition):
-- Update hydrator to compose workflows
-
-Phase 3 (Enrichment):
-- Integrate axioms (P# references)
-- Integrate heuristics (H# references)
-- Add vector memory context
-
-Phase 4 (Decomposition):
-- Auto-create bd issues from workflow steps
-- Link issues with dependencies
-- Enable agents to execute issues

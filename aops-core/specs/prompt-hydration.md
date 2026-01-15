@@ -216,3 +216,134 @@ Main agent follows the plan
 | `hooks/templates/prompt-hydrator-context.md` | Full context template written to temp file                                  |
 | `lib/session_reader.py`                      | `extract_router_context()` - extracts session state from transcript         |
 | `agents/prompt-hydrator.md`                  | Subagent that reads temp file and generates execution plan                  |
+
+---
+
+## Appendix: Example Prompts and Expected Responses
+
+### Example 1: Framework Bug Fix
+
+**User prompt:**
+
+```
+check the custodiet agent -- make sure it doesn't use inline python:
+
+  ⎿  Bash(python3 -c "
+  import sys; sys.path.insert(0, '/home/nic/src/academicOps/lib')
+  from session_state import set_custodiet_block
+  set_custodiet_block('$CLAUDE_SESSION_ID', 'Agent modified setup.sh without user approval after discovering root cause - violates P#5 (Do One Thing) and
+  P#31
+  (Acceptance Criteria Own Success)')
+  "
+  )
+
+  it should package a script if required
+```
+
+**Expected hydration response:**
+
+````markdown
+## Prompt Hydration
+
+**Intent**: Audit custodiet agent implementation to ensure it uses packaged scripts instead of inline Python for operations like setting session state
+**Workflow**: minor-edit (Verification required)
+**Guardrails**: verify_before_complete, test_changes
+
+### Relevant Context
+
+- Custodiet agent: `$AOPS/aops-core/agents/custodiet.md`
+- Session state library: `$AOPS/aops-core/lib/session_state.py`
+- Framework rule: Tools should use packaged scripts, not inline code (maintainability, testability)
+
+### TodoWrite Plan
+
+```javascript
+TodoWrite(todos=[
+  {content: "Step 1: Create bd task to track this issue", status: "pending", activeForm: "Creating issue"},
+  {content: "Step 2: Read custodiet agent and identify inline Python usage", status: "pending", activeForm: "Auditing"},
+  {content: "Step 3: Create packaged script in lib/ for the operation", status: "pending", activeForm: "Implementing"},
+  {content: "Step 4: Update agent to call script instead of inline Python", status: "pending", activeForm: "Refactoring"},
+  {content: "CHECKPOINT: Run tests to verify agent still functions correctly", status: "pending", activeForm: "Verifying"},
+  {content: "Step 5: Commit and push", status: "pending", activeForm: "Committing"},
+  {content: "Step 6: Close bd task", status: "pending", activeForm: "Closing issue"}
+])
+```
+````
+
+**Key principle**: The hydrator always recommends creating a `bd` task as Step 1 for any work that modifies framework files. This ensures:
+
+1. Work is tracked even if the session is interrupted
+2. Other sessions can see work in progress
+3. The change has a clear audit trail
+4. Session completion includes closing the task
+
+### Example 2: Simple Question (No Task Needed)
+
+**User prompt:**
+
+```
+what workflows are available?
+```
+
+**Expected hydration response:**
+
+````markdown
+## Prompt Hydration
+
+**Intent**: List available workflow types in the framework
+**Workflow**: question (Answer accuracy)
+**Guardrails**: none
+
+### Relevant Context
+
+- Workflow catalog defined in prompt-hydration spec
+- Available: question, minor-edit, tdd, batch, qa-proof, plan-mode
+
+### TodoWrite Plan
+
+```javascript
+TodoWrite(todos=[
+  {content: "Answer the question about available workflows", status: "pending", activeForm: "Answering"}
+])
+```
+````
+
+**Key principle**: Questions don't need `bd` tasks — they're answered and done.
+
+### Example 3: Investigation That May Lead to Work
+
+**User prompt:**
+
+```
+figure out why the memory server isn't returning results
+```
+
+**Expected hydration response:**
+
+````markdown
+## Prompt Hydration
+
+**Intent**: Diagnose memory server search failures and identify root cause
+**Workflow**: qa-proof (Evidence gathered)
+**Guardrails**: evidence_before_conclusion, escalate_if_blocked
+
+### Relevant Context
+
+- Memory server MCP: `mcp__plugin_aops-core_memory__*`
+- Database health check available: `mcp__plugin_aops-core_memory__check_database_health`
+
+### TodoWrite Plan
+
+```javascript
+TodoWrite(todos=[
+  {content: "Step 1: Create bd task to track investigation", status: "pending", activeForm: "Creating issue"},
+  {content: "Step 2: Check memory server health with check_database_health", status: "pending", activeForm: "Checking health"},
+  {content: "Step 3: Test retrieve_memory with a known query", status: "pending", activeForm: "Testing retrieval"},
+  {content: "CHECKPOINT: Document findings - is this config, data, or code issue?", status: "pending", activeForm: "Documenting"},
+  {content: "Step 4: If fix needed, update task with scope and implement", status: "pending", activeForm: "Implementing fix"},
+  {content: "Step 5: Update and close bd task with resolution", status: "pending", activeForm: "Closing issue"}
+])
+```
+````
+
+**Key principle**: Investigations that may lead to changes get a `bd` task upfront. The task description can be updated as the investigation reveals the actual problem

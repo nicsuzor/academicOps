@@ -110,12 +110,22 @@ def load_session_state(session_id: str, retries: int = 3) -> SessionState | None
         for attempt in range(retries):
             try:
                 return json.loads(path.read_text())
-            except json.JSONDecodeError:
+            except json.JSONDecodeError as e:
                 if attempt < retries - 1:
                     time.sleep(0.01)
                     continue
+                # All retries exhausted - log the error
+                import logging
+                logging.getLogger(__name__).warning(
+                    f"Session state JSON decode failed after {retries} retries: {path}: {e}"
+                )
                 return None
-            except OSError:
+            except OSError as e:
+                # I/O error - log and return None
+                import logging
+                logging.getLogger(__name__).debug(
+                    f"Session state read failed (OSError): {path}: {e}"
+                )
                 return None
 
     return None
@@ -350,15 +360,32 @@ def clear_error_flag(session_id: str) -> None:
 # ============================================================================
 
 
+def is_custodiet_enabled() -> bool:
+    """Check if custodiet blocking is enabled.
+
+    Set CUSTODIET_DISABLED=1 to bypass blocking while keeping reporting.
+
+    Returns:
+        True if custodiet blocking is enabled (default)
+    """
+    disabled = os.environ.get("CUSTODIET_DISABLED", "").lower()
+    return disabled not in ("1", "true", "yes")
+
+
 def is_custodiet_blocked(session_id: str) -> bool:
     """Check if session is blocked by custodiet.
+
+    Returns False if CUSTODIET_DISABLED=1, even if a block is set.
+    This allows the agent to report issues without halting the session.
 
     Args:
         session_id: Claude Code session ID
 
     Returns:
-        True if custodiet_blocked flag is set
+        True if custodiet_blocked flag is set AND blocking is enabled
     """
+    if not is_custodiet_enabled():
+        return False
     state = load_session_state(session_id)
     if state is None:
         return False

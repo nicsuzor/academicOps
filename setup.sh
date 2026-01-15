@@ -528,8 +528,8 @@ else
     }
 
     # Only create symlinks for directories that exist
-    [ -d "$AOPS_PATH/gemini/hooks" ] && gemini_create_symlink "hooks" "$AOPS_PATH/gemini/hooks"
-    [ -d "$AOPS_PATH/gemini/commands" ] && gemini_create_symlink "commands" "$AOPS_PATH/gemini/commands"
+    [ -d "$AOPS_PATH/config/gemini/hooks" ] && gemini_create_symlink "hooks" "$AOPS_PATH/config/gemini/hooks"
+    [ -d "$AOPS_PATH/config/gemini/commands" ] && gemini_create_symlink "commands" "$AOPS_PATH/config/gemini/commands"
 
     # GEMINI.md generation (injects actual paths)
     if [ -L "$GEMINI_DIR/GEMINI.md" ] || [ -f "$GEMINI_DIR/GEMINI.md" ]; then
@@ -559,7 +559,7 @@ else
     echo
     echo "Converting commands to TOML..."
     if python3 "$AOPS_PATH/scripts/convert_commands_to_toml.py" 2>/dev/null; then
-        TOML_COUNT=$(ls -1 "$AOPS_PATH/gemini/commands/"*.toml 2>/dev/null | wc -l)
+        TOML_COUNT=$(ls -1 "$AOPS_PATH/config/gemini/commands/"*.toml 2>/dev/null | wc -l)
         echo -e "${GREEN}✓ Converted $TOML_COUNT commands to TOML${NC}"
     else
         echo -e "${YELLOW}⚠ Command conversion failed - Gemini commands may not work${NC}"
@@ -585,7 +585,7 @@ else
     echo
     echo "Merging Gemini settings..."
     GEMINI_SETTINGS="$GEMINI_DIR/settings.json"
-    MERGE_FILE="$AOPS_PATH/gemini/config/settings-merge.json"
+    MERGE_FILE="$AOPS_PATH/config/gemini/config/settings-merge.json"
 
     if [ ! -f "$GEMINI_SETTINGS" ]; then
         echo "{}" > "$GEMINI_SETTINGS"
@@ -621,7 +621,7 @@ else
     fi
 
     # Set permissions
-    chmod +x "$AOPS_PATH/gemini/hooks/router.py" 2>/dev/null || true
+    chmod +x "$AOPS_PATH/config/gemini/hooks/router.py" 2>/dev/null || true
 fi
 
 echo
@@ -887,7 +887,7 @@ if [ "${GEMINI_SKIPPED:-true}" = "false" ]; then
     echo "Gemini CLI validation:"
     # Only validate symlinks for directories that exist in source
     for link in hooks commands; do
-        if [ -d "$AOPS_PATH/gemini/$link" ]; then
+        if [ -d "$AOPS_PATH/config/gemini/$link" ]; then
             if [ -L "$GEMINI_DIR/$link" ]; then
                 echo -e "${GREEN}✓ Gemini $link symlink OK${NC}"
             else
@@ -907,7 +907,7 @@ if [ "${GEMINI_SKIPPED:-true}" = "false" ]; then
         echo -e "${GREEN}✓ Gemini settings.json has hooks${NC}"
     fi
 
-    TOML_COUNT=$(ls -1 "$AOPS_PATH/gemini/commands/"*.toml 2>/dev/null | wc -l)
+    TOML_COUNT=$(ls -1 "$AOPS_PATH/config/gemini/commands/"*.toml 2>/dev/null | wc -l)
     if [ "$TOML_COUNT" -gt 0 ]; then
         echo -e "${GREEN}✓ $TOML_COUNT Gemini TOML commands${NC}"
     fi

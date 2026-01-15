@@ -14,7 +14,6 @@ Exit codes:
     0: Success (always continues with noop response)
 """
 
-import contextlib
 import json
 import logging
 import sys
@@ -163,15 +162,24 @@ def handle_stop(session_id: str, input_data: dict[str, Any]) -> None:
 def main():
     """Main hook entry point - logs event to session file and returns noop."""
     input_data: dict[str, Any] = {}
-    with contextlib.suppress(Exception):
+    try:
         input_data = json.load(sys.stdin)
+    except json.JSONDecodeError as e:
+        # Expected failure: stdin may be empty or malformed
+        logger.debug(f"JSON decode failed (expected if no stdin): {e}")
+    except Exception as e:
+        # Unexpected failure: I/O errors, permissions, etc.
+        logger.warning(f"Unexpected error reading stdin: {type(e).__name__}: {e}")
 
     session_id = input_data.get("session_id", "unknown")
     hook_event = input_data.get("hook_event_name", "Unknown")
 
     # Log event to single session file
-    with contextlib.suppress(Exception):
+    try:
         log_event_to_session(session_id, hook_event, input_data)
+    except Exception as e:
+        # Log but don't fail - hook should continue with noop
+        logger.warning(f"Failed to log event to session: {type(e).__name__}: {e}")
 
     # Noop response - continue without modification
     print("{}")

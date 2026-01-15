@@ -65,10 +65,10 @@ These commands work but lose subagent delegation:
 ~/.gemini/
   GEMINI.md         # Symlink → $AOPS/GEMINI.md
   settings.json     # Merged with hooks + MCP
-  commands/         # Symlink → $AOPS/gemini/commands/
-  hooks/            # Symlink → $AOPS/gemini/hooks/
+  commands/         # Symlink → $AOPS/config/gemini/commands/
+  hooks/            # Symlink → $AOPS/config/gemini/hooks/
 
-$AOPS/gemini/
+$AOPS/config/gemini/
   README.md         # This file
   hooks/router.py   # Event translation wrapper
   commands/         # Generated TOML files

@@ -22,7 +22,7 @@ from typing import Any
 
 from hook_debug import safe_log_to_debug_file
 from hooks.hook_logger import log_hook_event
-from lib.paths import get_aops_root
+from lib.paths import get_aops_root, get_bd_path
 from lib.session_reader import extract_router_context
 from lib.session_state import set_hydration_pending, clear_hydration_pending
 
@@ -72,12 +72,21 @@ def get_bd_work_state() -> str:
     - In-progress issues (what user is actively working on)
     - Ready issues (available work with no blockers)
 
-    Gracefully returns empty string on failure.
+    Gracefully returns empty string if bd not found or on failure.
+    Uses validated bd path from lib.paths for security.
     """
+    # Resolve bd binary path (cached, validates existence and executability)
+    bd_path = get_bd_path()
+    if bd_path is None:
+        # bd not installed - graceful degradation (logged at DEBUG in get_bd_path)
+        return ""
+
+    bd_cmd = str(bd_path)
+
     try:
         # Get in-progress work
         in_progress_result = subprocess.run(
-            ["bd", "list", "--status=in_progress"],
+            [bd_cmd, "list", "--status=in_progress"],
             capture_output=True,
             text=True,
             timeout=5,
@@ -86,7 +95,7 @@ def get_bd_work_state() -> str:
 
         # Get ready work (no blockers)
         ready_result = subprocess.run(
-            ["bd", "ready"],
+            [bd_cmd, "ready"],
             capture_output=True,
             text=True,
             timeout=5,
@@ -106,7 +115,7 @@ def get_bd_work_state() -> str:
 
         return "\n\n".join(sections)
 
-    except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
+    except (subprocess.TimeoutExpired, OSError):
         return ""  # Graceful degradation
 
 
@@ -221,8 +230,16 @@ def build_hydration_instruction(
             if ctx:
                 # ctx already includes "## Session Context" header
                 session_context = f"\n\n{ctx}"
-        except Exception:
-            pass  # Graceful degradation for context gathering only
+        except FileNotFoundError:
+            # Expected: transcript may not exist yet for new sessions
+            pass
+        except Exception as e:
+            # Unexpected: I/O errors, parsing failures - log but continue
+            # Context is optional, so we degrade gracefully
+            import logging
+            logging.getLogger(__name__).debug(
+                f"Context extraction failed (degrading gracefully): {type(e).__name__}: {e}"
+            )
 
     # Load framework paths from FRAMEWORK-PATHS.md (DRY - single source of truth)
     framework_paths = load_framework_paths()

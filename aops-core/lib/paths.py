@@ -10,7 +10,12 @@ Required environment variables:
 from __future__ import annotations
 
 import os
+import shutil
+import logging
 from pathlib import Path
+from functools import lru_cache
+
+logger = logging.getLogger(__name__)
 
 
 def get_aops_root() -> Path:
@@ -190,6 +195,66 @@ def print_environment() -> None:
     except RuntimeError as e:
         print(f"Environment validation failed: {e}")
         raise
+
+
+# External binary resolution
+
+
+@lru_cache(maxsize=8)
+def resolve_binary(name: str) -> Path | None:
+    """
+    Resolve an external binary to its absolute path with caching.
+
+    Uses shutil.which() to find the binary in PATH, then validates it exists
+    and is executable. Results are cached to avoid repeated lookups.
+
+    Args:
+        name: Binary name to resolve (e.g., 'bd', 'git')
+
+    Returns:
+        Path: Absolute path to the binary if found and executable
+        None: If binary not found or not executable
+
+    Note:
+        Logs a warning at DEBUG level if binary not found.
+        This function intentionally returns None rather than raising
+        to support graceful degradation for optional dependencies.
+    """
+    binary_path = shutil.which(name)
+    if binary_path is None:
+        logger.debug(f"Binary '{name}' not found in PATH")
+        return None
+
+    resolved = Path(binary_path).resolve()
+    if not resolved.is_file():
+        logger.debug(f"Binary '{name}' resolved to non-file: {resolved}")
+        return None
+
+    if not os.access(resolved, os.X_OK):
+        logger.debug(f"Binary '{name}' not executable: {resolved}")
+        return None
+
+    logger.debug(f"Binary '{name}' resolved to: {resolved}")
+    return resolved
+
+
+def get_bd_path() -> Path | None:
+    """
+    Get the path to the 'bd' (beads) CLI binary.
+
+    Returns:
+        Path: Absolute path to bd binary if found
+        None: If bd not installed or not in PATH
+
+    Example:
+        bd = get_bd_path()
+        if bd:
+            subprocess.run([str(bd), "list"], ...)
+        else:
+            # Graceful degradation - bd not available
+            pass
+    """
+    return resolve_binary("bd")
 
 
 if __name__ == "__main__":

@@ -50,8 +50,13 @@ def _get_session_state_module():
 
 # Registry of hooks per event type
 # Each entry can have {"script": "name.py", "async": True/False}
-# NOTE: Only hooks that exist in aops-core/hooks/ are registered here.
-# Additional hooks can be added back from archived/hooks/ as needed.
+# Hooks are executed in order. Exit code 2 = BLOCK (PreToolUse only).
+#
+# Enforcement hooks (per RULES.md):
+# - policy_enforcer.py: Blocks *-GUIDE.md, >200 line .md, destructive git
+# - fail_fast_watchdog.py: Injects reminder on tool errors
+# - autocommit_state.py: Auto-commits data/ changes after state operations
+# - custodiet_gate.py: Periodic compliance checking via subagent
 HOOK_REGISTRY: dict[str, list[dict[str, Any]]] = {
     "SessionStart": [
         {"script": "session_env_setup.sh"},
@@ -59,11 +64,14 @@ HOOK_REGISTRY: dict[str, list[dict[str, Any]]] = {
     ],
     "PreToolUse": [
         {"script": "unified_logger.py"},
+        {"script": "policy_enforcer.py"},  # Blocks policy violations (RULES.md)
         {"script": "overdue_enforcement.py"},
     ],
     "PostToolUse": [
         {"script": "unified_logger.py"},
-        {"script": "custodiet_gate.py"},
+        {"script": "fail_fast_watchdog.py"},  # Injects fail-fast reminder on errors
+        {"script": "custodiet_gate.py"},  # Periodic compliance check
+        {"script": "autocommit_state.py"},  # Auto-commit data/ changes
     ],
     "UserPromptSubmit": [
         {"script": "user_prompt_submit.py"},

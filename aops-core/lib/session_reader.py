@@ -1915,6 +1915,58 @@ class SessionProcessor:
 
         return conversation_turns
 
+    def _extract_first_user_request(
+        self, entries: list[Entry], max_length: int = 500
+    ) -> str | None:
+        """Extract the first substantive user request from session entries.
+
+        Skips command invocations, tool results, system messages, and very short messages.
+        Used to provide context for custodiet compliance checking.
+
+        Args:
+            entries: List of Entry objects from the session
+            max_length: Maximum length of returned text (truncates with "...")
+
+        Returns:
+            First user request text, or None if not found
+        """
+        for entry in entries:
+            if entry.type != "user":
+                continue
+
+            # Get content from message dict
+            content = ""
+            if entry.message:
+                raw_content = entry.message.get("content", "")
+                # Handle content that might be a list (tool results)
+                if isinstance(raw_content, list):
+                    continue
+                content = str(raw_content)
+
+            # Skip command invocations, tool results, system messages
+            skip_prefixes = (
+                "<command",
+                "[{",
+                "Caveat:",
+                "<local-command",
+                "<system",
+                "<skill-invocation",
+            )
+            if any(content.startswith(prefix) for prefix in skip_prefixes):
+                continue
+
+            # Skip very short messages (likely just acknowledgments)
+            if len(content.strip()) < 10:
+                continue
+
+            # Return truncated if too long
+            content = content.strip()
+            if len(content) > max_length:
+                return content[:max_length] + "..."
+            return content
+
+        return None
+
     def format_session_as_markdown(
         self,
         session: SessionSummary,
@@ -2297,7 +2349,17 @@ session_id: {session_uuid}
 
         header = f"# {title}\n\n"
 
-        return frontmatter + header + markdown
+        # Build Session Context block for custodiet compliance checking
+        first_request = self._extract_first_user_request(entries)
+        session_context = "## Session Context\n\n"
+        session_context += "**Declared Workflow**: None\n"
+        session_context += "**Approach**: direct\n\n"
+        if first_request:
+            session_context += f"**Original User Request** (first prompt): {first_request}\n\n"
+        else:
+            session_context += "**Original User Request** (first prompt): (not found)\n\n"
+
+        return frontmatter + header + session_context + markdown
 
     # Helper methods
     def _group_sidechain_entries(

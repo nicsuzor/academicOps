@@ -146,3 +146,54 @@ class TestRealEnvironment:
         assert result.exists()
         assert result.is_dir()
         assert (result / "tasks").exists()
+
+
+class TestBinaryResolution:
+    """Test external binary resolution functions."""
+
+    def test_resolve_binary_finds_common_commands(self):
+        """Test that resolve_binary finds common system commands."""
+        # 'ls' should exist on all Unix-like systems
+        result = paths.resolve_binary("ls")
+        assert result is not None
+        assert result.is_file()
+        assert os.access(result, os.X_OK)
+
+    def test_resolve_binary_returns_none_for_nonexistent(self):
+        """Test that resolve_binary returns None for nonexistent commands."""
+        result = paths.resolve_binary("definitely_not_a_real_command_xyz123")
+        assert result is None
+
+    def test_resolve_binary_caches_results(self):
+        """Test that resolve_binary caches lookup results."""
+        # Clear cache first
+        paths.resolve_binary.cache_clear()
+
+        # First call
+        result1 = paths.resolve_binary("ls")
+
+        # Check cache info shows a miss then hit pattern
+        info1 = paths.resolve_binary.cache_info()
+        assert info1.misses >= 1
+
+        # Second call should hit cache
+        result2 = paths.resolve_binary("ls")
+        info2 = paths.resolve_binary.cache_info()
+
+        assert result1 == result2
+        assert info2.hits >= 1
+
+    def test_resolve_binary_returns_absolute_path(self):
+        """Test that resolve_binary returns absolute paths."""
+        result = paths.resolve_binary("ls")
+        if result is not None:
+            assert result.is_absolute()
+
+    def test_get_bd_path_returns_path_or_none(self):
+        """Test that get_bd_path returns a Path or None."""
+        result = paths.get_bd_path()
+        # bd may or may not be installed, but result should be correct type
+        assert result is None or isinstance(result, Path)
+        if result is not None:
+            assert result.is_file()
+            assert os.access(result, os.X_OK)

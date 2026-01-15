@@ -23,16 +23,23 @@ permalink: commands/learn
 
 ## Workflow
 
-### 0. Agents Are Stateless - You MUST Edit a File or create a task/issue
+### 0. Create/Update bd Issue FIRST
 
-**This is the most important rule of /learn.**
+**Before any fix, document in bd.** This is non-negotiable.
 
-❌ **WRONG**: "I understand now, I'll do better next time" (no file change)
-✅ **RIGHT**: Edit a framework file so future agents get the corrected instruction
+```bash
+bd create --type=task --title="[Learn] Root cause summary" --body="..."
+# OR if related issue exists:
+bd update <id> --comment="Adding learning observation: ..."
+```
 
-Agents are stateless. "Understanding" means nothing without a persistent change. If you complete /learn without using Edit or Write on a framework file, you have failed.
+The issue MUST contain:
+1. **Observation**: What went wrong (specific, not vague)
+2. **Root cause category**: Clarity/Context/Blocking/Detection/Gap
+3. **Proposed fix**: What you will change (file path, enforcement level)
+4. **Success metric**: How we know the fix worked (measurable)
 
-**Common failure mode**: Agent explains what it learned, promises to do better, but makes no file change. This is worthless - the next agent starts fresh with the same flawed instructions.
+**You do NOT need user permission** to make the fix if it's documented in the issue. The issue IS the approval - it creates accountability and traceability.
 
 ### 1. Identify Root Cause (Not Proximate Cause)
 
@@ -51,17 +58,33 @@ See [[specs/enforcement.md]] "Component Responsibilities" for the full model.
 **Wrong**: "Agent ignored instruction" (proximate cause - we can't fix the agent)
 **Right**: "Guardrail instruction too generic for this task type" (root cause - we can fix the guardrail)
 
+### Subagent Failure Root Causes
+
+When a subagent (custodiet, critic, qa, etc.) makes an incorrect decision:
+
+| Symptom | Wrong Fix | Right Fix |
+|---------|-----------|-----------|
+| Subagent blocks legitimate work | Add exception to subagent instructions | Enrich context the subagent receives |
+| Subagent misclassifies intent | Narrow the classification rules | Provide more user intent context |
+| Subagent false positive | "Don't do X in case Y" rule | Give subagent information to distinguish X from Y |
+
+**Key insight**: Subagents are haiku-class models with limited context windows. When they make wrong decisions, the root cause is almost always **insufficient context**, not **wrong instructions**. Adding rules/exceptions just papers over the real problem.
+
+**Fix location**: The hook or template that builds the subagent's context (e.g., `custodiet_gate.py:_build_session_context()`, `prompt-hydrator-context.md`).
+
 **CRITICAL**: "No framework change needed" is NEVER a valid conclusion. If an agent made an error, something in the framework failed to provide the right instruction at the right time. Find that component.
 
 **When you're tempted to say "I just failed to follow instructions"**: That's the proximate cause. Ask: WHY did you fail? What instruction was missing, unclear, or not salient enough? That's the root cause. Fix THAT.
 
-### 2. Check for Prior Occurrences and Document in GitHub Issue
+### 2. Check for Prior Occurrences
 
-Invoke the logging workflow to identify prior occurrences and track the intervention:
+Search bd for related issues before creating a new one:
 
-`Skill(skill='framework')` then follow workflow 07-learning-log.md with "[root cause summary]"
+```bash
+bd list --search="[relevant keywords]"
+```
 
-The learning-log workflow will search bd issues for related observations and return information about what interventions have been tried to date.
+If a related issue exists, update it with your observation. Pattern recognition across multiple occurrences informs escalation decisions.
 
 ### 3. Choose Intervention Level (Start at Bottom, Escalate with Evidence)
 
@@ -71,18 +94,20 @@ See @docs/ENFORCEMENT.md for mechanism details.
 - **Match root cause to intervention**
 - **Escalation rule**: Only move up when you have evidence that lower levels failed. 
 
-### 4. Make the Minimal Change
+### 4. Make the Fix (as an Experiment)
 
-Keep changes brief (1-3 sentences for soft interventions).
+**Fixes are experiments, not permanent solutions.** The bd issue tracks the hypothesis.
 
-If you need a bigger change, **ABORT** and update/create a Spec instead.
+Keep changes brief (1-3 sentences for soft interventions). If you need a bigger change, **ABORT** and update/create a Spec instead.
 
-Include in the summary:
+**After making the fix**, update the bd issue with:
+- Commit hash or file changed
+- Exact change made
+- How to verify (what behavior to observe)
 
-- Root cause category and responsible component
-- What was changed (with file path)
-- What enforcement level (see [[docs/ENFORCEMENT.md]])
-- What would trigger escalation
+```bash
+bd update <id> --comment="Fix applied: [commit hash]. Changed [file]. Verify by [observable behavior]."
+```
 
 ### 5. Create Regression Test (REQUIRED)
 
@@ -112,17 +137,16 @@ def test_custodiet_allows_legitimate_framework_work():
     assert result["decision"] != "deny", "Should allow legitimate framework edits"
 ```
 
-### 6. Update GitHub issue and relevant framework documentation
+### 6. Update Documentation if Needed
 
-- Make sure existing documentation is still up-to-date after changes
-- Log work done in comment on GitHub issue and reference commits.
+If the fix changes documented behavior, update the relevant docs. Don't create new docs unless necessary.
 
 ### 7. Report
 
 Tell the user:
 
-1. Root cause category and responsible component
-2. What you changed (with file path)
-3. What enforcement level
-4. Link to GitHub Issue tracking this
-5. What would trigger escalation
+1. **bd issue**: Link to the issue tracking this experiment
+2. **Root cause**: Category and responsible component
+3. **Fix**: What was changed (file path, enforcement level)
+4. **Success metric**: How we'll know it worked
+5. **Escalation trigger**: What would cause us to try a stronger intervention
