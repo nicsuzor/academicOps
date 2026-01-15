@@ -45,7 +45,7 @@ These are the **concrete absolute paths** for this session. Use them directly wi
 | Variable     | Purpose                                                  |
 | ------------ | -------------------------------------------------------- |
 | `$AOPS`      | Framework source (SSoT for all framework files)          |
-| `$ACA_DATA`  | User data (tasks, sessions, knowledge base)              |
+| `$ACA_DATA`  | User data (sessions, knowledge base)                     |
 | `~/.claude/` | Runtime directory (symlinks → `$AOPS`, DO NOT edit here) |
 
 **To edit framework files**: Always edit in `$AOPS/`, never in `~/.claude/` symlinks.
