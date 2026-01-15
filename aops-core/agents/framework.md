@@ -1,10 +1,10 @@
 ---
-name: framework-executor
-description: Primary entry point for framework infrastructure work in $AOPS. Full task lifecycle with explicit skill access. Replaces the framework skill.
+name: framework
+description: Primary entry point for framework infrastructure work in $AOPS. Full task lifecycle with explicit skill access.
 category: instruction
 type: agent
 model: opus
-permalink: aops/agents/framework-executor
+permalink: aops/agents/framework
 tags:
   - framework
   - execution
