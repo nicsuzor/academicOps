@@ -365,6 +365,44 @@ def _extract_task_notifications(text: str) -> list[dict[str, str]]:
     return notifications
 
 
+def _extract_exit_code_from_content(content: str, is_error: bool) -> int | None:
+    """Extract exit code from tool result content.
+
+    Exit codes appear in the content as "Exit code N\n..." prefix when is_error=True.
+    For successful commands (is_error=False), exit code is implicitly 0.
+
+    Args:
+        content: Tool result content string
+        is_error: Whether the tool result is marked as an error
+
+    Returns:
+        Exit code as integer, or None if not determinable
+    """
+    if not is_error:
+        return 0  # Successful commands have exit code 0
+
+    if not content:
+        return None
+
+    # Parse "Exit code N\n" prefix
+    if content.startswith("Exit code "):
+        # Find the number after "Exit code "
+        rest = content[10:]  # Skip "Exit code "
+        newline_pos = rest.find("\n")
+        if newline_pos > 0:
+            code_str = rest[:newline_pos].strip()
+        else:
+            code_str = rest.split()[0] if rest else ""
+
+        try:
+            return int(code_str)
+        except (ValueError, IndexError):
+            pass
+
+    # If is_error but no explicit exit code, it's a non-zero exit
+    return 1  # Default to 1 for errors without explicit code
+
+
 def _summarize_tool_input(tool_name: str, tool_input: dict) -> str:
     """Create a brief summary of tool input for error context."""
     if tool_name in ("Read", "Write", "Edit"):
@@ -883,17 +921,27 @@ class SessionProcessor:
                                 tool_name = block.get("name", "")
 
                                 if tool_id:
-                                    error_result = self._get_tool_error(
+                                    # Get comprehensive result info including exit code
+                                    result_info = self._get_tool_result_info(
                                         tool_id, entries
                                     )
-                                    if error_result:
-                                        tool_item["error"] = error_result
-                                    else:
-                                        tool_result = self._get_tool_result(
-                                            tool_id, entries
+                                    if result_info:
+                                        if result_info.get("is_error"):
+                                            tool_item["error"] = result_info.get(
+                                                "content", ""
+                                            )[:500]
+                                        else:
+                                            tool_item["result"] = result_info.get(
+                                                "content", ""
+                                            )
+                                        # Always capture exit code if available
+                                        if result_info.get("exit_code") is not None:
+                                            tool_item["exit_code"] = result_info[
+                                                "exit_code"
+                                            ]
+                                        tool_item["is_error"] = result_info.get(
+                                            "is_error", False
                                         )
-                                        if tool_result:
-                                            tool_item["result"] = tool_result
 
                                 if tool_name == "Task" and tool_id:
                                     agent_id = self._extract_agent_id_from_result(
@@ -1298,12 +1346,27 @@ class SessionProcessor:
                         if not in_actions_section:
                             in_actions_section = True
 
+                        # Format exit code suffix for display
+                        exit_code = item.get("exit_code")
+                        tool_name = item.get("tool_name", "")
+                        exit_suffix = ""
+                        if exit_code is not None and tool_name == "Bash":
+                            exit_suffix = f" → exit {exit_code}"
+
+                        # Track if we render subagent content from result
+                        # to avoid duplication with sidechain_summary
+                        rendered_subagent_from_result = False
+
                         if item.get("error"):
                             content = content.rstrip("\n")
-                            markdown += f"- **❌ ERROR:** {content.lstrip('- ')}: `{item['error']}`\n"
+                            # Include exit code in error display
+                            exit_info = f" (exit {exit_code})" if exit_code else ""
+                            markdown += f"- **❌ ERROR{exit_info}:** {content.lstrip('- ')}: `{item['error']}`\n"
                         elif include_tool_results and item.get("result"):
                             result_text = item["result"]
                             tool_call = content.strip().lstrip("- ").rstrip("\n")
+                            # Add exit code suffix for Bash commands
+                            display_call = f"{tool_call}{exit_suffix}"
 
                             if _is_subagent_jsonl(result_text):
                                 parsed = _parse_subagent_output(
@@ -1311,10 +1374,11 @@ class SessionProcessor:
                                 )
                                 if parsed:
                                     subagent_markdown, _ = parsed
-                                    markdown += f"- **Tool:** {tool_call}\n\n"
+                                    markdown += f"- **Tool:** {display_call}\n\n"
                                     markdown += subagent_markdown + "\n"
+                                    rendered_subagent_from_result = True
                                 else:
-                                    markdown += f"- **Tool:** {tool_call}\n```\n{result_text}\n```\n\n"
+                                    markdown += f"- **Tool:** {display_call}\n```\n{result_text}\n```\n\n"
                             else:
                                 result_text = self._maybe_pretty_print_json(result_text)
                                 code_lang = (
@@ -1322,11 +1386,26 @@ class SessionProcessor:
                                     if result_text.strip().startswith(("{", "["))
                                     else ""
                                 )
-                                markdown += f"- **Tool:** {tool_call}\n```{code_lang}\n{result_text}\n```\n\n"
+                                markdown += f"- **Tool:** {display_call}\n```{code_lang}\n{result_text}\n```\n\n"
                         else:
+                            # Abridged mode - show tool call with exit code suffix
+                            if exit_suffix:
+                                # Add exit code to the tool call line
+                                lines = content.rstrip("\n").split("\n")
+                                if lines:
+                                    lines[0] = lines[0].rstrip() + exit_suffix
+                                    content = "\n".join(lines) + "\n"
                             markdown += content
 
-                        if item.get("sidechain_summary"):
+                        # Only render sidechain_summary if we didn't already
+                        # render subagent content from the tool result
+                        # (avoids duplication when both exist)
+                        should_render_sidechain = (
+                            item.get("sidechain_summary")
+                            and not rendered_subagent_from_result
+                        )
+
+                        if should_render_sidechain:
                             tool_input = item.get("tool_input", {})
                             agent_type = tool_input.get("subagent_type", "unknown")
                             agent_desc = tool_input.get("description", "")
@@ -1558,6 +1637,58 @@ session_id: {session_uuid}
                             return "\n".join(texts)[:500]
                         if isinstance(result_content, str):
                             return result_content[:500]
+        return None
+
+    def _get_tool_result_info(
+        self, tool_id: str, all_entries: list[Entry]
+    ) -> dict[str, Any] | None:
+        """Get comprehensive tool result info including exit code.
+
+        Returns a dict with:
+            - content: The result content string
+            - is_error: Whether it was an error
+            - exit_code: Extracted exit code (int or None)
+        """
+        for entry in all_entries:
+            if entry.type != "user":
+                continue
+
+            message = entry.message or {}
+            content = message.get("content", [])
+            if not isinstance(content, list):
+                continue
+
+            for block in content:
+                if isinstance(block, dict):
+                    if (
+                        block.get("type") == "tool_result"
+                        and block.get("tool_use_id") == tool_id
+                    ):
+                        is_error = block.get("is_error", False)
+                        result_content = block.get("content", "")
+
+                        # Handle list content
+                        if isinstance(result_content, list):
+                            texts = []
+                            for item in result_content:
+                                if (
+                                    isinstance(item, dict)
+                                    and item.get("type") == "text"
+                                ):
+                                    texts.append(item.get("text", ""))
+                            result_content = "\n".join(texts)
+
+                        # Extract exit code
+                        exit_code = _extract_exit_code_from_content(
+                            result_content if isinstance(result_content, str) else "",
+                            is_error,
+                        )
+
+                        return {
+                            "content": result_content,
+                            "is_error": is_error,
+                            "exit_code": exit_code,
+                        }
         return None
 
     def _extract_user_content(self, entry: Entry, next_meta_content: str = "") -> str:

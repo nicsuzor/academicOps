@@ -471,3 +471,179 @@ class TestTranscriptValidity:
             "Transcript should maintain chronological order of events. "
             f"Found: Step1@{step1_pos}, Step2@{step2_pos}, Step3@{step3_pos}"
         )
+
+
+class TestExitCodeExtraction:
+    """Tests for exit code extraction and display."""
+
+    def test_bash_error_shows_exit_code(self, tmp_path: Path):
+        """Failed Bash commands should display exit code.
+
+        Acceptance Criterion: Error messages show exit code.
+        """
+        session_file = tmp_path / "session.jsonl"
+        entries = [
+            _create_user_entry("Run a failing command", offset=0),
+            _create_tool_use_entry(
+                "Bash", {"command": "exit 1"}, "tool-1", offset=1
+            ),
+            {
+                "type": "user",
+                "uuid": "result-2",
+                "timestamp": _make_timestamp(2),
+                "message": {
+                    "content": [
+                        {
+                            "type": "tool_result",
+                            "tool_use_id": "tool-1",
+                            "content": "Exit code 1\nCommand failed",
+                            "is_error": True,
+                        }
+                    ]
+                },
+            },
+        ]
+        _write_jsonl(session_file, entries)
+
+        processor = SessionProcessor()
+        session, parsed_entries, agent_entries = processor.parse_session_file(
+            session_file
+        )
+
+        markdown = processor.format_session_as_markdown(
+            session, parsed_entries, agent_entries=agent_entries, variant="full"
+        )
+
+        # Should show exit code in error display
+        assert "exit 1" in markdown.lower() or "exit code" in markdown.lower(), (
+            "Failed Bash commands should display their exit code in the transcript."
+        )
+
+    def test_successful_bash_shows_exit_0(self, tmp_path: Path):
+        """Successful Bash commands should display exit 0 in full mode.
+
+        Acceptance Criterion: Full transcripts show exit code for Bash.
+        """
+        session_file = tmp_path / "session.jsonl"
+        entries = [
+            _create_user_entry("Run a command", offset=0),
+            _create_tool_use_entry(
+                "Bash", {"command": "echo hello"}, "tool-1", offset=1
+            ),
+            {
+                "type": "user",
+                "uuid": "result-2",
+                "timestamp": _make_timestamp(2),
+                "message": {
+                    "content": [
+                        {
+                            "type": "tool_result",
+                            "tool_use_id": "tool-1",
+                            "content": "hello",
+                            "is_error": False,
+                        }
+                    ]
+                },
+            },
+        ]
+        _write_jsonl(session_file, entries)
+
+        processor = SessionProcessor()
+        session, parsed_entries, agent_entries = processor.parse_session_file(
+            session_file
+        )
+
+        markdown = processor.format_session_as_markdown(
+            session, parsed_entries, agent_entries=agent_entries, variant="full"
+        )
+
+        # Should show exit 0 for successful Bash commands
+        assert "exit 0" in markdown, (
+            "Successful Bash commands should show 'exit 0' in full transcripts."
+        )
+
+    def test_non_bash_tools_no_exit_code(self, tmp_path: Path):
+        """Non-Bash tools should not display exit codes.
+
+        Acceptance Criterion: Exit codes only shown for Bash.
+        """
+        session_file = tmp_path / "session.jsonl"
+        entries = [
+            _create_user_entry("Read a file", offset=0),
+            _create_tool_use_entry(
+                "Read", {"file_path": "/tmp/test.txt"}, "tool-1", offset=1
+            ),
+            {
+                "type": "user",
+                "uuid": "result-2",
+                "timestamp": _make_timestamp(2),
+                "message": {
+                    "content": [
+                        {
+                            "type": "tool_result",
+                            "tool_use_id": "tool-1",
+                            "content": "file contents",
+                            "is_error": False,
+                        }
+                    ]
+                },
+            },
+        ]
+        _write_jsonl(session_file, entries)
+
+        processor = SessionProcessor()
+        session, parsed_entries, agent_entries = processor.parse_session_file(
+            session_file
+        )
+
+        markdown = processor.format_session_as_markdown(
+            session, parsed_entries, agent_entries=agent_entries, variant="full"
+        )
+
+        # Non-Bash tools should not have "→ exit" suffix
+        assert "→ exit" not in markdown, (
+            "Non-Bash tools should not display exit codes."
+        )
+
+    def test_exit_code_128_extracted(self, tmp_path: Path):
+        """Exit code 128 (and other codes) should be correctly extracted.
+
+        Acceptance Criterion: Various exit codes are parsed correctly.
+        """
+        session_file = tmp_path / "session.jsonl"
+        entries = [
+            _create_user_entry("Push to git", offset=0),
+            _create_tool_use_entry(
+                "Bash", {"command": "git push"}, "tool-1", offset=1
+            ),
+            {
+                "type": "user",
+                "uuid": "result-2",
+                "timestamp": _make_timestamp(2),
+                "message": {
+                    "content": [
+                        {
+                            "type": "tool_result",
+                            "tool_use_id": "tool-1",
+                            "content": "Exit code 128\nPermission denied",
+                            "is_error": True,
+                        }
+                    ]
+                },
+            },
+        ]
+        _write_jsonl(session_file, entries)
+
+        processor = SessionProcessor()
+        session, parsed_entries, agent_entries = processor.parse_session_file(
+            session_file
+        )
+
+        markdown = processor.format_session_as_markdown(
+            session, parsed_entries, agent_entries=agent_entries, variant="full"
+        )
+
+        # Should extract and display exit code 128
+        assert "128" in markdown, (
+            "Exit code 128 should be extracted and displayed in transcript."
+        )
