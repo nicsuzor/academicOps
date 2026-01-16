@@ -16,8 +16,13 @@ tags: [framework, overview, features]
 * Graduated approach to enforcement: [RULES.md] sets out a full map of rules to enforcement mechanism, from gentle reminders to hard blocks.
 * Agent autonomy is limited to the authority they were granted: live ultra vires detection loop
 * Direct integration with beads for task memomory, memory mcp for vector search
+* Full personal knowledge base with gardening and continuous remembering skills
 * Human readable and portable Markdown files are the single sources of truth 
 * Everything in git for durability and observability
+* Strict separation of user data (not in this repo)
+* Optimised for long-term strategic planning under conditions of uncertainty
+* Includes integrated MCP tooling for email and calendar access
+
 
 ## Quick Start
 
