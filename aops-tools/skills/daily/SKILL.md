@@ -17,12 +17,18 @@ Location: `$ACA_DATA/sessions/YYYYMMDD-daily.md`
 
 | Section                 | Owner    | Updated By             |
 | ----------------------- | -------- | ---------------------- |
-| Focus                   | User     | `/daily` workflow      |
+| Focus                   | `/daily` | Morning briefing + task recommendations |
 | Today's Story           | `/daily` | Session JSON synthesis |
-| Focus Dashboard         | `/daily` | Script output          |
+| FYI                     | `/daily` | Email triage           |
 | Session Log/Timeline    | `/daily` | Session JSON synthesis |
 | Project Accomplishments | `/daily` | Session JSON synthesis |
 | Abandoned Todos         | `/daily` | End-of-day             |
+
+## Formatting Rules
+
+1. **No horizontal lines**: Never use `---` as section dividers in generated content (only valid in frontmatter)
+2. **Wikilink all names**: Person names, project names, and task titles use `[[wikilink]]` syntax (e.g., `[[Greg Austin]]`, `[[academicOps]]`)
+3. **Bead task IDs**: Always include bead IDs when referencing tasks (e.g., `[ns-abc] Task title`)
 
 ## 1. Create note
 
@@ -111,40 +117,52 @@ From [sender]: [Actual content or summary]
 
 **Empty state**: If no FYI emails, skip this section.
 
-## 3. Today's Focus - Task Recommendations
+## 3. Today's Focus
 
-Review tasks and update the template to spotlight focus items for the day.
+Populate the `## Focus` section with priority dashboard and task recommendations. This is the FIRST thing the user sees after frontmatter.
 
 ### 3.1: Load Task Data
 
 ```bash
-cd $AOPS && uv run python skills/tasks/scripts/select_task.py
+cd $AOPS && bd list --limit=100
 ```
 
-Output:
+Parse task data from bd output to identify:
 
-- `active_task_count`: Total active tasks
-- `todays_work`: Project → count mapping
-- `priority_distribution`: P0/P1/P2/P3 counts
-- `stale_candidates`: Tasks to suggest archiving
-- `active_tasks`: Full task list
+- Priority distribution (P0/P1/P2/P3 counts)
+- Overdue tasks (negative days_until_due)
+- Today's work by project
+- Blocked tasks
 
-### 3.2: Update Focus Dashboard
+### 3.2: Build Focus Section
 
-Update Focus Dashboard section in daily note using `priority_distribution`.
+The Focus section combines priority dashboard AND task recommendations in ONE place.
 
-**Reference-style wikilinks** for scannability:
+**Format** (all within `## Focus`):
+
+```markdown
+## Focus
 
 ```
-P0 ████░░░░░░  4/14 → [Task1], [Task2]
-P1 ██████░░░░  10/14 → [Task3] (-8d)
+P0 ░░░░░░░░░░  3/85  → No specific tasks tracked
+P1 █░░░░░░░░░  12/85 → [ns-abc] [[OSB-PAO]] (-3d), [ns-def] [[ADMS-Clever]] (-16d)
+P2 ██████████  55/85
+P3 ██░░░░░░░░  15/85
+```
 
-[Task1]: [[task-file-slug]]
+**SHOULD**: [ns-abc] [[OSB PAO 2025E Review]] - 3 days overdue
+**SHOULD**: [ns-def] [[ADMS Clever Reporting]] - 16 days overdue
+**DEEP**: [ns-ghi] [[Write TJA paper]] - Advances ARC Future Fellowship research goals
+**ENJOY**: [ns-jkl] [[Internet Histories article]] - [[Jeff Lazarus]] invitation on Santa Clara Principles
+**QUICK**: [ns-mno] [[ARC COI declaration]] - Simple form completion
+**UNBLOCK**: [ns-pqr] Framework CI - Address ongoing GitHub Actions failures
+
+*Suggested sequence*: Tackle overdue items first (OSB PAO highest priority given 3-day delay, then ADMS Clever).
 ```
 
 ### 3.3: Reason About Recommendations
 
-Select 10 recommendations using judgment (approx 2 per category):
+Select ~10 recommendations using judgment (approx 2 per category):
 
 **SHOULD (deadline/commitment pressure)**:
 
@@ -157,7 +175,6 @@ Select 10 recommendations using judgment (approx 2 per category):
 - Look for: research, design, architecture, foundational work
 - Prefer tasks that advance bigger goals, not just maintain status quo
 - Avoid immediate deadlines (prefer >7 days out or no deadline)
-- Should have meaningful impact on long-term outcomes
 
 **ENJOY (variety/energy)**:
 
@@ -174,43 +191,30 @@ Select 10 recommendations using judgment (approx 2 per category):
 **UNBLOCK (remove impediments)**:
 
 - Tasks that unblock other work or team members
-- Infrastructure/tooling improvements
-- Dependency resolution, blocked issues
-- Look for: tasks marked with blocker status, tasks other work depends on
-- Consider technical debt that's slowing down current work
+- Infrastructure/tooling improvements, blocked issues
+- Technical debt slowing down current work
 
 **Framework work warning**: If `academicOps`/`aops` has 3+ items in `todays_work`:
 
 1. Note: "Heavy framework day - consider actual tasks"
 2. ENJOY must be non-framework work
 
-### 3.4: Present Recommendations
+### 3.4: Engage User on Priorities
 
-```markdown
-## Task Recommendations
+After presenting recommendations, use `AskUserQuestion` to confirm priorities:
 
-**Today so far**: [N] [project] items, [M] [project] items
+- "What sounds right for today?"
+- Offer to adjust recommendations based on user context
 
-## Today's Focus
-
-**SHOULD**: [Task] - [deadline reason]
-**DEEP**: [Task] - [concrete task that moves us towards a bigger longer-term goal]
-**ENJOY**: [Task] - [variety reason]
-**QUICK**: [Task] - [momentum reason]
-**UNBLOCK**: [Task] - [concrete issue that is blocking us or others]
-
-[1-2 sentence rationale for suggested sequencing]
-```
-
-### 3.5: Present candidate tasks to archives
+### 3.5: Present candidate tasks to archive
 
 ```
-- **[Stale Task]** - [reason]
+- [ns-xyz] **[[Stale Task]]** - [reason: no activity in X days]
 ```
 
-Ask: "What sounds right?"
+Ask: "Any of these ready to archive?"
 
-When user picks, use `Skill(skill="tasks")` to update status.
+When user picks, use `bd update <id> --status=archived` to update status.
 
 ### 4. Daily progress
 
@@ -282,12 +286,6 @@ Write `$ACA_DATA/dashboard/synthesis.json`:
 }
 ```
 
-## Scripts
-
-| Script                   | Purpose                               |
-| ------------------------ | ------------------------------------- |
-| `scripts/select_task.py` | Prepare task data for recommendations |
-
 ## Error Handling
 
 - **Outlook unavailable**: Skip email triage, continue with recommendations
@@ -301,43 +299,63 @@ Write `$ACA_DATA/dashboard/synthesis.json`:
 
 ## Focus
 
-Priority items set by user. Morning briefing updates this.
+```
+P0 ░░░░░░░░░░  3/85  → No specific tasks tracked
+P1 █░░░░░░░░░  12/85 → [ns-abc] [[OSB-PAO]] (-3d), [ns-def] [[ADMS-Clever]] (-16d)
+P2 ██████████  55/85
+P3 ██░░░░░░░░  15/85
+```
+
+**SHOULD**: [ns-abc] [[OSB PAO 2025E Review]] - 3 days overdue
+**DEEP**: [ns-ghi] [[Write TJA paper]] - Advances ARC Future Fellowship research goals
+**ENJOY**: [ns-jkl] [[Internet Histories article]] - [[Jeff Lazarus]] invitation
+**QUICK**: [ns-mno] [[ARC COI declaration]] - Simple form completion
+**UNBLOCK**: [ns-pqr] Framework CI - Address ongoing GitHub Actions failures
+
+*Suggested sequence*: Tackle overdue items first, then deep work.
 
 ## Today's Story
 
 Synthesized narrative from session summaries (2-3 sentences).
 
-## Focus Dashboard
+## FYI
 
-P0 ████░░░░░░ 4/14 → [Task1], [Task2]
-P1 ██████░░░░ 10/14 → [Task3] (-8d)
+### [[Topic from Email]]
 
-[Task1]: [[task-file-slug]]
+[[Sender Name]] shared: [Key content summary]
+
+## Carryover from YYYY-MM-DD
+
+**From yesterday:**
+- [ns-abc] Task description - reason for carryover
 
 ## Session Log
 
-| Session | Project | Summary           |
-| ------- | ------- | ----------------- |
-| abc1234 | writing | Brief description |
+| Session | Project | Summary |
+|---------|---------|---------|
+| - | - | No sessions yet today |
 
 ## Session Timeline
 
-| Time  | Session | Terminal | Project | Activity     |
-| ----- | ------- | -------- | ------- | ------------ |
-| 10:15 | abc1234 | writing  | aops    | Started work |
+| Time | Session | Terminal | Project | Activity |
+|------|---------|----------|---------|----------|
+| - | - | - | - | - |
 
 ### Terminal Overwhelm Analysis
 
-Pattern analysis of context switches and interruptions.
+(Updated by /daily sync)
 
-## [[project-name]] → [[projects/project-name]]
+## Project Accomplishments
 
-Scheduled: ██████░░░░ 6/10 | Unscheduled: 3 items
+### [[academicOps]] → [[projects/aops]]
 
-- [x] Accomplishment from sessions
-- [ ] Pending task
+Scheduled: n/a | Unscheduled: 0 items
 
-## Abandoned tasks
+### [[writing]] → [[projects/writing]]
 
-Tasks not completed, carried to tomorrow.
+Scheduled: n/a | Unscheduled: 0 items
+
+## Abandoned Todos
+
+(Carried to tomorrow at end of day)
 ```
