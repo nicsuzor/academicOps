@@ -193,5 +193,50 @@ class TestMarkdownTranscript:
             Path(temp_path).unlink()
 
 
+class TestOutputPathHandling:
+    """Test -o flag output path handling."""
+
+    def test_output_directory_generates_filename(self) -> None:
+        """When -o is a directory, should auto-generate filename in that directory."""
+        # Create a minimal valid JSONL session
+        session_content = """{"type":"user","message":{"content":"Hello world"}}
+{"type":"assistant","message":{"content":"Hi there! How can I help?"}}
+{"type":"user","message":{"content":"Fix the bug please"}}
+{"type":"assistant","message":{"content":"I'll fix that bug now."}}
+"""
+        with tempfile.TemporaryDirectory() as output_dir:
+            with tempfile.NamedTemporaryFile(
+                mode="w", suffix=".jsonl", delete=False
+            ) as f:
+                f.write(session_content)
+                session_path = f.name
+
+            try:
+                result = subprocess.run(
+                    [sys.executable, str(SCRIPT_PATH), session_path, "-o", output_dir],
+                    capture_output=True,
+                    text=True,
+                    timeout=30,
+                )
+
+                # Should succeed
+                assert result.returncode == 0, f"Failed: {result.stderr}"
+
+                # Should create files in the output directory
+                output_files = list(Path(output_dir).glob("*.md"))
+                assert len(output_files) >= 1, (
+                    f"No output files in {output_dir}. "
+                    f"stdout: {result.stdout}, stderr: {result.stderr}"
+                )
+
+                # Files should have proper names (not just "-full.md")
+                for f in output_files:
+                    assert not f.name.startswith("-"), (
+                        f"File {f.name} starts with dash - missing filename prefix"
+                    )
+            finally:
+                Path(session_path).unlink(missing_ok=True)
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

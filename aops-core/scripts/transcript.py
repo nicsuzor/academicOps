@@ -11,7 +11,6 @@ Usage:
 """
 
 import argparse
-import re
 import subprocess
 import sys
 from pathlib import Path
@@ -332,90 +331,153 @@ Examples:
 
         # Generate output base name
         if args.output:
-            output_base = args.output
-            # Strip .md suffix if provided
-            if output_base.endswith(".md"):
-                output_base = output_base[:-3]
-            # Strip -full or -abridged suffix if provided
-            if output_base.endswith("-full") or output_base.endswith("-abridged"):
-                output_base = output_base.rsplit("-", 1)[0]
+            output_path = Path(args.output)
 
-            # If output is just a basename (no directory), place in sessions/claude/
-            output_path = Path(output_base)
-            if not output_path.is_absolute() and output_path.parent == Path("."):
-                base_name = str(sessions_claude / output_base)
+            # Check if -o is a directory path
+            if output_path.is_dir():
+                # Use the directory but auto-generate filename
+                output_dir = output_path
             else:
-                base_name = output_base
+                output_base = args.output
+                # Strip .md suffix if provided
+                if output_base.endswith(".md"):
+                    output_base = output_base[:-3]
+                # Strip -full or -abridged suffix if provided
+                if output_base.endswith("-full") or output_base.endswith("-abridged"):
+                    output_base = output_base.rsplit("-", 1)[0]
+
+                # If output is just a basename (no directory), place in sessions/claude/
+                output_path = Path(output_base)
+                if not output_path.is_absolute() and output_path.parent == Path("."):
+                    base_name = str(sessions_claude / output_base)
+                else:
+                    base_name = output_base
+
+                # Skip the auto-generation logic below
+                print(f"📊 Found {len(entries)} entries")
+
+                # Check for meaningful content
+                MIN_MEANINGFUL_ENTRIES = 2
+                meaningful_count = sum(
+                    1
+                    for e in entries
+                    if e.type in ("user", "assistant")
+                    and not (
+                        hasattr(e, "message")
+                        and e.message
+                        and e.message.get("subtype") in ("system", "informational")
+                    )
+                )
+                if meaningful_count < MIN_MEANINGFUL_ENTRIES:
+                    print(
+                        f"⏭️  Skipping: only {meaningful_count} meaningful entries (need {MIN_MEANINGFUL_ENTRIES}+)"
+                    )
+                    return 2
+
+                # Generate transcripts and return
+                full_path = Path(f"{base_name}-full.md")
+                markdown_full = processor.format_session_as_markdown(
+                    session_summary,
+                    entries,
+                    agent_entries,
+                    include_tool_results=True,
+                    variant="full",
+                    source_file=str(session_path.resolve()),
+                )
+                with open(full_path, "w", encoding="utf-8") as f:
+                    f.write(markdown_full)
+                format_markdown(full_path)
+                file_size = full_path.stat().st_size
+                print(f"✅ Full transcript: {full_path} ({file_size:,} bytes)")
+
+                abridged_path = Path(f"{base_name}-abridged.md")
+                markdown_abridged = processor.format_session_as_markdown(
+                    session_summary,
+                    entries,
+                    agent_entries,
+                    include_tool_results=False,
+                    variant="abridged",
+                    source_file=str(session_path.resolve()),
+                )
+                with open(abridged_path, "w", encoding="utf-8") as f:
+                    f.write(markdown_abridged)
+                format_markdown(abridged_path)
+                file_size = abridged_path.stat().st_size
+                print(f"✅ Abridged transcript: {abridged_path} ({file_size:,} bytes)")
+
+                return 0
         else:
-            # Auto-generate name: YYYYMMDD-shortproject-sessionid-slug
-            # Get date from first entry timestamp or file mtime
-            date_str = None
-            if session_path.suffix == ".json":
-                # Try to get timestamp from filename for Gemini: session-YYYY-MM-DDTHH-MM...
-                try:
-                    parts = session_path.stem.split("-")
-                    if len(parts) >= 4:
-                        # 2026-01-08T08
-                        date_part = "".join(parts[1:4])
-                        if date_part.isdigit():
-                            date_str = date_part
-                except Exception:
-                    pass
+            output_dir = sessions_claude
 
-            if not date_str:
-                for entry in entries:
-                    if entry.timestamp:
-                        date_str = entry.timestamp.strftime("%Y%m%d")
-                        break
+        # Auto-generate filename: YYYYMMDD-shortproject-sessionid-slug
+        # (Used when -o is a directory or not specified)
+        date_str = None
+        if session_path.suffix == ".json":
+            # Try to get timestamp from filename for Gemini: session-YYYY-MM-DDTHH-MM...
+            try:
+                parts = session_path.stem.split("-")
+                if len(parts) >= 4:
+                    # 2026-01-08T08
+                    date_part = "".join(parts[1:4])
+                    if date_part.isdigit():
+                        date_str = date_part
+            except Exception:
+                pass
 
-                    if hasattr(entry, "message") and entry.message:
-                        ts = entry.message.get("timestamp")
-                        if ts:
-                            try:
-                                date_str = datetime.fromisoformat(
-                                    ts.replace("Z", "+00:00")
-                                ).strftime("%Y%m%d")
-                                break
-                            except (ValueError, TypeError):
-                                continue
-            if not date_str:
-                date_str = datetime.fromtimestamp(
-                    session_path.stat().st_mtime
-                ).strftime("%Y%m%d")
+        if not date_str:
+            for entry in entries:
+                if entry.timestamp:
+                    date_str = entry.timestamp.strftime("%Y%m%d")
+                    break
 
-            # Get short project name
-            project = session_path.parent.name
-            if session_path.suffix == ".json":
-                # Gemini structure: hash/chats/session.json
-                # Parent is 'chats', grand-parent is hash.
-                if project == "chats":
-                    hash_dir = session_path.parent.parent.name
-                    short_project = f"gemini-{hash_dir[:6]}"
-                else:
-                    short_project = "gemini"
+                if hasattr(entry, "message") and entry.message:
+                    ts = entry.message.get("timestamp")
+                    if ts:
+                        try:
+                            date_str = datetime.fromisoformat(
+                                ts.replace("Z", "+00:00")
+                            ).strftime("%Y%m%d")
+                            break
+                        except (ValueError, TypeError):
+                            continue
+        if not date_str:
+            date_str = datetime.fromtimestamp(
+                session_path.stat().st_mtime
+            ).strftime("%Y%m%d")
+
+        # Get short project name
+        project = session_path.parent.name
+        if session_path.suffix == ".json":
+            # Gemini structure: hash/chats/session.json
+            # Parent is 'chats', grand-parent is hash.
+            if project == "chats":
+                hash_dir = session_path.parent.parent.name
+                short_project = f"gemini-{hash_dir[:6]}"
             else:
-                # e.g., -opt-nic-buttermilk -> buttermilk
-                project_parts = project.strip("-").split("-")
-                short_project = project_parts[-1] if project_parts else "unknown"
+                short_project = "gemini"
+        else:
+            # e.g., -opt-nic-buttermilk -> buttermilk
+            project_parts = project.strip("-").split("-")
+            short_project = project_parts[-1] if project_parts else "unknown"
 
-            # Get session ID from filename (first 8 chars of UUID)
-            # Gemini filenames might have uuid at end
-            session_id = session_path.stem
-            if len(session_id) > 8:
-                if session_id.startswith("session-"):
-                    # session-2026-01-08T08-18-a5234d3e -> a5234d3e
-                    parts = session_id.split("-")
-                    session_id = parts[-1]
-                else:
-                    session_id = session_id[:8]
+        # Get session ID from filename (first 8 chars of UUID)
+        # Gemini filenames might have uuid at end
+        session_id = session_path.stem
+        if len(session_id) > 8:
+            if session_id.startswith("session-"):
+                # session-2026-01-08T08-18-a5234d3e -> a5234d3e
+                parts = session_id.split("-")
+                session_id = parts[-1]
+            else:
+                session_id = session_id[:8]
 
-            # Get or generate slug
-            slug = args.slug if args.slug else processor.generate_session_slug(entries)
+        # Get or generate slug
+        slug = args.slug if args.slug else processor.generate_session_slug(entries)
 
-            filename = f"{date_str}-{short_project}-{session_id}-{slug}"
+        filename = f"{date_str}-{short_project}-{session_id}-{slug}"
 
-            base_name = str(sessions_claude / filename)
-            print(f"📛 Generated filename: {filename}")
+        base_name = str(output_dir / filename)
+        print(f"📛 Generated filename: {filename}")
 
         print(f"📊 Found {len(entries)} entries")
 
