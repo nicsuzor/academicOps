@@ -51,7 +51,8 @@
       "Edit(/tmp/claude-session/**)",
       "Bash(rm /tmp/claude-session/**)",
       "Bash(echo * > /tmp/claude-session/**)",
-      "Bash(cat * > /tmp/claude-session/**)"
+      "Bash(cat * > /tmp/claude-session/**)",
+      "Read(**/.beads/**/*.jsonl)"
     ],
     "defaultMode": "plan"
   },
