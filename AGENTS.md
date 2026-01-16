@@ -64,18 +64,27 @@ NEVER stop before pushing.
 
 ## Framework Reflection (Session End)
 
+**CRITICAL**: Use this EXACT format - session insights scripts parse this structure. Field names and syntax must match precisely.
+
 ```
 ## Framework Reflection
 
 **Request**: [Original request in brief]
 **Guidance received**: [Hydrator/custodiet advice, or "N/A"]
 **Followed**: [Yes/No/Partial - explain]
-**Outcome**: [Success/Partial/Failure]
-**Accomplishment**: [What was accomplished]
+**Outcome**: [success/partial/failure]
+**Accomplishments**: [What was accomplished - list key items]
+**Friction points**: [What was harder than expected, or "none"]
 **Root cause** (if not success): [Which component failed]
-**Proposed change**: [Improvement or "none needed"]
+**Proposed changes**: [Framework improvements identified, or "none"]
 **Next step**: [Context for next session]
 ```
+
+Field alignment with session-insights JSON schema:
+- `**Outcome**`: Must be lowercase: `success`, `partial`, or `failure`
+- `**Accomplishments**`: Maps to `accomplishments` array
+- `**Friction points**`: Maps to `friction_points` array
+- `**Proposed changes**`: Maps to `proposed_changes` array
 
 ## Landing the Plane (Session Completion)
 
