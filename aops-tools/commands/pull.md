@@ -121,20 +121,7 @@ git push
 
 ### Step 10: Session Reflection
 
-End with Framework Reflection format:
-
-```markdown
-## Framework Reflection
-
-**Request**: [Original issue title]
-**Guidance received**: [Hydrator advice summary]
-**Followed**: [Yes/No/Partial - explain]
-**Outcome**: [Success/Partial/Failure]
-**Accomplishment**: [What was accomplished]
-**Root cause** (if not success): [Which component failed]
-**Proposed change**: [Improvement or "none needed"]
-**Next step**: [Context for next session or follow-up issues]
-```
+End with Framework Reflection (see AGENTS.md "Framework Reflection (Session End)" for template).
 
 ## Arguments
 
