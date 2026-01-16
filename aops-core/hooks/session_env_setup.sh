@@ -16,6 +16,21 @@
 
 set -euo pipefail
 
+# Read input JSON from stdin and extract session_id
+INPUT=$(cat)
+SESSION_ID=$(echo "$INPUT" | jq -r '.session_id // empty')
+
+# Print session info for debugging
+echo "Session ID: ${SESSION_ID:-<not provided>}" >&2
+echo "CLAUDE_ENV_FILE: ${CLAUDE_ENV_FILE:-<not set>}" >&2
+
+# Persist session ID if available
+if [ -n "${SESSION_ID:-}" ] && [ -n "${CLAUDE_ENV_FILE:-}" ]; then
+    if ! grep -q "export CLAUDE_SESSION_ID=" "$CLAUDE_ENV_FILE" 2>/dev/null; then
+        echo "export CLAUDE_SESSION_ID=\"$SESSION_ID\"" >> "$CLAUDE_ENV_FILE"
+    fi
+fi
+
 # Determine the AOPS path
 # Priority:
 # 1. Already set in environment (from settings.local.json)
