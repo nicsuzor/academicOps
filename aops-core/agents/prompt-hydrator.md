@@ -57,7 +57,12 @@ Transform a user prompt into an execution plan. You decide **scope**, **workflow
 
 6. **Read and compose workflow files** (LLM-native composition):
 
-   a. Read the selected workflow: `Read(file_path="$AOPS/workflows/[workflow-id].md")`
+   **CRITICAL: You MUST Read() workflow files before referencing them. NEVER generate a plan based on the workflow name alone. Generic assumptions about what a workflow "probably contains" will contradict the actual documented architecture.**
+
+   a. **Read the selected workflow**: `Read(file_path="$AOPS/workflows/[workflow-id].md")`
+      - This is MANDATORY - do not skip this step
+      - Extract the workflow's key steps, architecture, and patterns
+      - Note any specific requirements (e.g., parallel agents, checkpoints)
 
    b. **Identify [[wikilink]] references** - Scan the markdown for `[[other-workflow]]` syntax
 
@@ -67,6 +72,10 @@ Transform a user prompt into an execution plan. You decide **scope**, **workflow
       - Understand its steps and incorporate them into your plan
 
    d. **Compose by understanding** - Read all workflow files, understand the prose, generate unified plan
+      - Your execution plan MUST reflect the actual workflow architecture you read
+      - If workflow says "spawn parallel agents" → plan should spawn parallel agents
+      - If workflow says "supervisor does X" → plan should have supervisor do X
+      - VERIFY your plan matches what you read, not what you assumed
 
 7. **Identify deferred work** (multi-session only) - What else needs to happen that isn't immediate?
    - These become a "decomposition task" that blocks future work
@@ -175,6 +184,13 @@ bd dep add [immediate-task-id] depends-on [decompose-task-id]
 2. **QA MANDATORY**: Every plan (except simple-question) includes QA verification step
 3. **Last step**: Close bd task + commit/push
 4. **Explicit syntax**: Use `Task(...)`, `Skill(...)` literally - not prose descriptions
+
+### Workflow Reading Rules
+
+1. **NEVER reference a workflow you haven't Read()** - If you mention `[[workflows/X]]` in your output, you MUST have called `Read(file_path="$AOPS/workflows/X.md")` first
+2. **Plans must derive from workflow content** - Your execution steps must match the actual workflow architecture, not generic assumptions about what the workflow name implies
+3. **Cite workflow steps** - When a workflow describes specific patterns (e.g., "spawn parallel agents", "run QA before close"), your plan must include those patterns
+4. **If unsure, read again** - If you're generating steps and aren't sure they match the workflow, re-read the workflow file
 
 ### Deferred Work Rules
 

@@ -14,20 +14,16 @@ Used by:
 
 from __future__ import annotations
 
+import glob
 import json
 import re
-import glob
-from itertools import islice
+from datetime import UTC, datetime
 from pathlib import Path
 
 from lib.transcript_parser import (
-    Entry,
-    SessionSummary,
-    TimingInfo,
-    ConversationTurn,
-    SessionState,
     SessionInfo,
     SessionProcessor,
+    SessionState,
     TodoWriteState,
     _summarize_tool_input,
 )
@@ -147,7 +143,6 @@ def _clean_prompt_text(text: str) -> str:
 
     This extracts just the args content.
     """
-    import re
 
     # Check for command XML format
     args_match = re.search(r"<command-args>(.*?)</command-args>", text, re.DOTALL)
@@ -851,7 +846,6 @@ def get_session_state(session: SessionInfo, aca_data: Path) -> SessionState:
 
     Authoritative logic for idempotency and re-processing requirements.
     """
-    import glob
 
     session_id = session.session_id
     session_prefix = session_id[:8] if len(session_id) >= 8 else session_id
