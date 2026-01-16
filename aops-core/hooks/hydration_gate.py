@@ -6,16 +6,19 @@ The hydration gate ensures agents invoke the prompt-hydrator subagent before
 proceeding with work. This is a mechanical trigger enforcing the v1.0 core loop.
 
 Gate logic:
-1. UserPromptSubmit sets hydration_pending=True (unless prompt starts with / or .)
-2. PreToolUse checks hydration_pending flag
-3. If pending:
+1. SessionStart creates session state with hydration_pending=True
+2. UserPromptSubmit clears pending for / or . prefixes (if it fires)
+3. PreToolUse checks hydration_pending flag
+4. If pending:
    - WARN mode: Log warning, allow (exit 0)
    - BLOCK mode: Block all tools except Task(prompt-hydrator) (exit 2)
-4. When Task tool is used with subagent_type="prompt-hydrator", the gate clears
+5. When Task tool is used with subagent_type="prompt-hydrator", the gate clears
+
+Note: UserPromptSubmit does NOT fire for the first prompt of a fresh session
+(Claude Code limitation), so we rely on SessionStart setting hydration_pending=True.
 
 Bypass conditions (gate always allows):
 - Subagent sessions (CLAUDE_AGENT_TYPE environment variable set)
-- First prompt from CLI (no session state exists yet)
 - Task invocations spawning prompt-hydrator
 - User bypass prefixes ('.' and '/' handled by UserPromptSubmit setting hydration_pending=False)
 
@@ -97,22 +100,24 @@ def is_subagent_session() -> bool:
 
 
 def is_first_prompt_from_cli(session_id: str) -> bool:
-    """Check if this is the first prompt from CLI (no session state exists).
+    """DEPRECATED: Check if this is the first prompt from CLI.
+
+    This bypass is no longer needed because:
+    1. SessionStart hook now creates session state with hydration_pending=True
+    2. UserPromptSubmit does NOT fire for first prompt (Claude Code limitation)
+    3. Therefore the gate must NOT bypass for first prompt - it should block
+
+    The gate now relies on SessionStart having run first to set hydration_pending.
 
     Args:
         session_id: Claude Code session ID
 
     Returns:
-        True if no session state file exists (first interaction)
+        Always False - bypass removed to enforce hydration on first prompt
     """
-    if not session_id:
-        return False
-
-    from lib.session_state import load_session_state
-
-    # If no session state exists, this is the first prompt
-    state = load_session_state(session_id)
-    return state is None
+    # Always return False - first prompt should NOT bypass the gate
+    # SessionStart sets hydration_pending=True, so the gate will block appropriately
+    return False
 
 
 def is_hydrator_task(tool_input: dict[str, Any]) -> bool:

@@ -174,6 +174,15 @@ def save_session_state(session_id: str, state: SessionState) -> None:
 def create_session_state(session_id: str) -> SessionState:
     """Create initial session state.
 
+    Sets hydration_pending=True by default to enforce the hydration gate.
+    This is cleared when:
+    - UserPromptSubmit sees / or . prefix (skip hydration)
+    - prompt-hydrator Task is invoked (normal flow)
+
+    Note: UserPromptSubmit does NOT fire for the first prompt of a fresh session
+    (Claude Code limitation), so we default to pending=True here in SessionStart
+    to ensure the gate blocks until hydrator runs.
+
     Args:
         session_id: Claude Code session ID
 
@@ -190,7 +199,7 @@ def create_session_state(session_id: str) -> SessionState:
             "custodiet_blocked": False,
             "custodiet_block_reason": None,
             "current_workflow": None,
-            "hydration_pending": False,
+            "hydration_pending": True,  # Default True - gate blocks until hydrator invoked
         },
         hydration={
             "original_prompt": None,

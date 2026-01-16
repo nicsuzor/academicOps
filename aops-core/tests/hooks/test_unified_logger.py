@@ -110,7 +110,9 @@ class TestSessionStartEvent:
         # Check state defaults
         assert state["state"]["custodiet_blocked"] is False
         assert state["state"]["current_workflow"] is None
-        assert state["state"]["hydration_pending"] is False
+        # hydration_pending defaults to True to enforce gate on first prompt
+        # (UserPromptSubmit doesn't fire for first prompt - Claude Code limitation)
+        assert state["state"]["hydration_pending"] is True
 
     def test_unknown_session_id_skipped(self, temp_session_dir):
         """Test that unknown session_id is gracefully skipped."""

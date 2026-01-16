@@ -79,15 +79,22 @@ class TestSessionIdExtraction:
 
 
 class TestFirstPromptDetection:
-    """Test is_first_prompt_from_cli logic."""
+    """Test is_first_prompt_from_cli logic.
 
-    def test_first_prompt_when_no_session_state(self):
-        """Test that missing session state indicates first prompt."""
+    Note: This function was changed to always return False because:
+    1. SessionStart hook now creates session state with hydration_pending=True
+    2. UserPromptSubmit does NOT fire for first prompt (Claude Code limitation)
+    3. Therefore the gate must NOT bypass for first prompt - it should block
+
+    The bypass is now DEPRECATED and the gate relies on SessionStart.
+    """
+
+    def test_first_prompt_always_returns_false(self):
+        """Test that is_first_prompt_from_cli always returns False (bypass disabled)."""
+        # With or without session state, should return False
         with patch("lib.session_state.load_session_state", return_value=None):
-            assert is_first_prompt_from_cli("test-session") is True
+            assert is_first_prompt_from_cli("test-session") is False
 
-    def test_not_first_prompt_when_session_state_exists(self):
-        """Test that existing session state indicates not first prompt."""
         with patch("lib.session_state.load_session_state", return_value={"some": "state"}):
             assert is_first_prompt_from_cli("test-session") is False
 
@@ -150,7 +157,15 @@ class TestGateBypass:
             assert "HYDRATION GATE" not in captured.err
 
     def test_bypass_for_first_prompt_from_cli(self, monkeypatch, capsys):
-        """Test that first prompt from CLI bypasses the gate."""
+        """Test that first prompt from CLI now BLOCKS (bypass disabled).
+
+        Note: is_first_prompt_from_cli now always returns False because
+        SessionStart sets hydration_pending=True and UserPromptSubmit doesn't
+        fire for first prompt. The gate must block to enforce hydration.
+
+        This test verifies the new behavior: first prompt should be blocked
+        when hydration is pending, NOT bypassed.
+        """
         import io
 
         input_data = {
@@ -159,20 +174,20 @@ class TestGateBypass:
             "session_id": "new-session",
         }
         monkeypatch.setattr("sys.stdin", io.StringIO(json.dumps(input_data)))
+        monkeypatch.setenv("HYDRATION_GATE_MODE", "block")
 
-        # Mock to indicate this is first prompt (no session state)
-        with patch("hydration_gate.is_first_prompt_from_cli", return_value=True), patch(
-            "hydration_gate.is_hydration_pending", return_value=True
-        ):
+        # With actual behavior (is_first_prompt_from_cli returns False),
+        # and hydration pending, the gate should BLOCK
+        with patch("hydration_gate.is_hydration_pending", return_value=True):
             with pytest.raises(SystemExit) as exc_info:
                 main()
 
-            # Should exit 0 (allow)
-            assert exc_info.value.code == 0
+            # Should exit 2 (block) because hydration is pending
+            assert exc_info.value.code == 2
 
             captured = capsys.readouterr()
-            output = json.loads(captured.out)
-            assert output == {}
+            # Block message should appear in stderr
+            assert "HYDRATION GATE" in captured.err
 
     def test_bypass_when_spawning_hydrator(self, monkeypatch, capsys):
         """Test that Task calls spawning hydrator clear the gate."""
