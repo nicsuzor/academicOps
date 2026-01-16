@@ -84,6 +84,15 @@ HOOK_REGISTRY: dict[str, list[dict[str, Any]]] = {
     "Stop": [
         {"script": "unified_logger.py"},
     ],
+    "SessionEnd": [
+        {"script": "unified_logger.py"},
+    ],
+    "PreCompact": [
+        {"script": "unified_logger.py"},
+    ],
+    "Notification": [
+        {"script": "unified_logger.py"},
+    ],
 }
 
 

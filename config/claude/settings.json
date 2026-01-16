@@ -78,7 +78,17 @@
         ]
       }
     ],
-    "PreCompact": [],
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "PYTHONPATH=$AOPS uv run python $AOPS/aops-core/hooks/router.py",
+            "timeout": 5000
+          }
+        ]
+      }
+    ],
     "PreToolUse": [
       {
         "hooks": [
@@ -130,6 +140,28 @@
             "type": "command",
             "command": "PYTHONPATH=$AOPS uv run python $AOPS/aops-core/hooks/router.py",
             "timeout": 20000
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "PYTHONPATH=$AOPS uv run python $AOPS/aops-core/hooks/router.py",
+            "timeout": 10000
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "PYTHONPATH=$AOPS uv run python $AOPS/aops-core/hooks/router.py",
+            "timeout": 5000
           }
         ]
       }
