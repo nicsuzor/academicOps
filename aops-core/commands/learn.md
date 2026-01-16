@@ -111,7 +111,18 @@ Keep changes brief (1-3 sentences for soft interventions). If you need a bigger 
 bd update <id> --comment="Fix applied: [commit hash]. Changed [file]. Verify by [observable behavior]."
 ```
 
-### 5. Create Regression Test (REQUIRED)
+### 5. Generalize the Pattern (REQUIRED)
+
+After fixing the immediate issue, ask: **What general class of error is this?**
+
+1. **Name the pattern** - e.g., "user data in framework files", "scope creep", "missing validation"
+2. **Check existing rules** - Does an axiom/heuristic already cover this? (Search AXIOMS.md, HEURISTICS.md, RULES.md)
+3. **If rule exists but wasn't followed** - Strengthen enforcement (add to bd issue notes)
+4. **If novel pattern** - Log it in the bd issue description for future tracking
+
+The immediate fix handles THIS instance. The pattern recognition prevents FUTURE instances.
+
+### 6. Create Regression Test (REQUIRED)
 
 **Every /learn MUST produce a test.** Tests verify the fix works and prevent regressions.
 
@@ -139,11 +150,11 @@ def test_custodiet_allows_legitimate_framework_work():
     assert result["decision"] != "deny", "Should allow legitimate framework edits"
 ```
 
-### 6. Update Documentation if Needed
+### 7. Update Documentation if Needed
 
 If the fix changes documented behavior, update the relevant docs. Don't create new docs unless necessary.
 
-### 7. Report
+### 8. Report
 
 Tell the user:
 
