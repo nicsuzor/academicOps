@@ -16,6 +16,254 @@ from pathlib import Path
 from typing import Any
 
 
+def parse_framework_reflection(text: str) -> dict[str, Any] | None:
+    """Parse Framework Reflection section from markdown text.
+
+    Extracts structured fields from the Framework Reflection format:
+    - Request, Guidance received, Followed, Outcome, Accomplishments,
+    - Friction points, Root cause, Proposed changes, Next step
+
+    Args:
+        text: Markdown text that may contain a Framework Reflection section
+
+    Returns:
+        Dict with parsed fields, or None if no reflection found
+    """
+    # Find the Framework Reflection section
+    reflection_match = re.search(
+        r"##\s*Framework Reflection\s*\n(.*?)(?=\n##\s|\Z)",
+        text,
+        re.DOTALL | re.IGNORECASE,
+    )
+    if not reflection_match:
+        return None
+
+    reflection_text = reflection_match.group(1)
+
+    # Parse individual fields
+    result: dict[str, Any] = {}
+
+    # Field patterns: **Field**: value or **Field** (if not success): value
+    field_patterns = [
+        (r"\*\*Request\*\*:\s*(.+?)(?=\n\*\*|\Z)", "request"),
+        (r"\*\*Guidance received\*\*:\s*(.+?)(?=\n\*\*|\Z)", "guidance_received"),
+        (r"\*\*Followed\*\*:\s*(.+?)(?=\n\*\*|\Z)", "followed"),
+        (r"\*\*Outcome\*\*:\s*(.+?)(?=\n\*\*|\Z)", "outcome"),
+        (r"\*\*Accomplishments?\*\*:\s*(.+?)(?=\n\*\*|\Z)", "accomplishments"),
+        (r"\*\*Friction points?\*\*:\s*(.+?)(?=\n\*\*|\Z)", "friction_points"),
+        (
+            r"\*\*Root cause\*\*(?:\s*\([^)]*\))?\s*:\s*(.+?)(?=\n\*\*|\Z)",
+            "root_cause",
+        ),
+        (r"\*\*Proposed changes?\*\*:\s*(.+?)(?=\n\*\*|\Z)", "proposed_changes"),
+        (r"\*\*Next step\*\*:\s*(.+?)(?=\n\*\*|\Z)", "next_step"),
+    ]
+
+    for pattern, field_name in field_patterns:
+        match = re.search(pattern, reflection_text, re.DOTALL | re.IGNORECASE)
+        if match:
+            value = match.group(1).strip()
+            # Parse list fields (accomplishments, friction_points, proposed_changes)
+            if field_name in ("accomplishments", "friction_points", "proposed_changes"):
+                result[field_name] = _parse_list_field(value)
+            else:
+                result[field_name] = value
+
+    return result if result else None
+
+
+def _parse_list_field(value: str) -> list[str]:
+    """Parse a field that may contain a list of items.
+
+    Handles:
+    - Single line comma-separated: "Item 1, Item 2, Item 3"
+    - Bullet list: "- Item 1\n- Item 2"
+    - Numbered list: "1. Item 1\n2. Item 2"
+    - Single value: "Single item"
+    - None values: "none", "N/A", "None needed"
+    """
+    # Check for "none" type values
+    if re.match(r"^\s*(none|n/?a|none needed|nothing)\s*$", value, re.IGNORECASE):
+        return []
+
+    # Check for bullet or numbered list
+    list_items = re.findall(r"^[\s]*[-*\d.]+\s*(.+)$", value, re.MULTILINE)
+    if list_items:
+        return [item.strip() for item in list_items if item.strip()]
+
+    # Check for comma-separated (only if contains commas and not a single sentence)
+    if "," in value and not re.search(r"\.\s", value):
+        items = [item.strip() for item in value.split(",")]
+        return [item for item in items if item]
+
+    # Single value
+    return [value] if value else []
+
+
+def _extract_text_from_entry(entry: "Entry") -> str:
+    """Extract text content from an Entry object."""
+    text = ""
+    if entry.message:
+        content = entry.message.get("content", "")
+        if isinstance(content, str):
+            text = content
+        elif isinstance(content, list):
+            # Handle content blocks
+            for block in content:
+                if isinstance(block, dict) and block.get("type") == "text":
+                    text += block.get("text", "")
+    elif entry.content:
+        text = str(entry.content.get("content", ""))
+    return text
+
+
+def extract_reflection_from_entries(
+    entries: list["Entry"],
+    agent_entries: dict[str, list["Entry"]] | None = None,
+) -> dict[str, Any] | None:
+    """Extract Framework Reflection from session entries.
+
+    Searches through assistant entries (from the end) for a Framework Reflection section.
+    Also searches through agent/subagent entries if provided.
+
+    Args:
+        entries: List of Entry objects from a parsed session
+        agent_entries: Optional dict mapping agent IDs to their entries
+
+    Returns:
+        Parsed reflection dict, or None if not found
+    """
+    # First, search main entries from the end
+    for entry in reversed(entries):
+        if entry.type != "assistant":
+            continue
+
+        text = _extract_text_from_entry(entry)
+        if not text:
+            continue
+
+        reflection = parse_framework_reflection(text)
+        if reflection:
+            return reflection
+
+    # If not found in main entries, search agent entries
+    if agent_entries:
+        # Collect all agent entries with their timestamps for sorting
+        all_agent_entries = []
+        for agent_id, agent_entry_list in agent_entries.items():
+            for entry in agent_entry_list:
+                if entry.type == "assistant":
+                    all_agent_entries.append(entry)
+
+        # Sort by timestamp (newest first) if available, otherwise use original order
+        all_agent_entries.sort(
+            key=lambda e: e.timestamp if e.timestamp else "",
+            reverse=True,
+        )
+
+        for entry in all_agent_entries:
+            text = _extract_text_from_entry(entry)
+            if not text:
+                continue
+
+            reflection = parse_framework_reflection(text)
+            if reflection:
+                return reflection
+
+    return None
+
+
+def reflection_to_insights(
+    reflection: dict[str, Any],
+    session_id: str,
+    date: str,
+    project: str,
+) -> dict[str, Any]:
+    """Convert parsed Framework Reflection to session insights format.
+
+    Args:
+        reflection: Parsed reflection dict from parse_framework_reflection
+        session_id: Session ID (8-char hash)
+        date: Date string (YYYY-MM-DD)
+        project: Project name
+
+    Returns:
+        Insights dict compatible with insights_generator schema
+    """
+    # Map outcome to lowercase
+    outcome = reflection.get("outcome", "partial")
+    if isinstance(outcome, str):
+        outcome = outcome.lower()
+        # Normalize variations
+        if outcome not in ("success", "partial", "failure"):
+            if "success" in outcome:
+                outcome = "success"
+            elif "fail" in outcome:
+                outcome = "failure"
+            else:
+                outcome = "partial"
+
+    return {
+        "session_id": session_id,
+        "date": date,
+        "project": project,
+        "summary": reflection.get("request", "Session completed"),
+        "outcome": outcome,
+        "accomplishments": reflection.get("accomplishments", []),
+        "friction_points": reflection.get("friction_points", []),
+        "proposed_changes": reflection.get("proposed_changes", []),
+        # Additional fields from reflection
+        "guidance_received": reflection.get("guidance_received"),
+        "followed": reflection.get("followed"),
+        "root_cause": reflection.get("root_cause"),
+        "next_step": reflection.get("next_step"),
+    }
+
+
+def format_reflection_header(reflection: dict[str, Any]) -> str:
+    """Format Framework Reflection as markdown header for transcript.
+
+    Args:
+        reflection: Parsed reflection dict
+
+    Returns:
+        Formatted markdown string to display at top of transcript
+    """
+    lines = ["## Session Reflection\n"]
+
+    if reflection.get("request"):
+        lines.append(f"**Request**: {reflection['request']}")
+
+    if reflection.get("outcome"):
+        outcome = reflection["outcome"]
+        # Add emoji indicator
+        emoji = {"success": "✅", "partial": "⚠️", "failure": "❌"}.get(
+            outcome.lower(), "❓"
+        )
+        lines.append(f"**Outcome**: {emoji} {outcome}")
+
+    if reflection.get("accomplishments"):
+        lines.append("**Accomplishments**:")
+        for item in reflection["accomplishments"]:
+            lines.append(f"  - {item}")
+
+    if reflection.get("friction_points"):
+        lines.append("**Friction points**:")
+        for item in reflection["friction_points"]:
+            lines.append(f"  - {item}")
+
+    if reflection.get("proposed_changes"):
+        lines.append("**Proposed changes**:")
+        for item in reflection["proposed_changes"]:
+            lines.append(f"  - {item}")
+
+    if reflection.get("next_step"):
+        lines.append(f"**Next step**: {reflection['next_step']}")
+
+    lines.append("\n---\n")
+    return "\n".join(lines)
+
+
 @dataclass
 class TodoWriteState:
     """Current state of TodoWrite items in a session."""

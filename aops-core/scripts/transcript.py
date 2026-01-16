@@ -25,8 +25,19 @@ sys.path.insert(0, str(FRAMEWORK_ROOT))
 sys.path.insert(0, str(AOPS_CORE_ROOT))
 
 from lib.session_reader import find_sessions  # noqa: E402
-from lib.transcript_parser import SessionProcessor  # noqa: E402
+from lib.transcript_parser import (  # noqa: E402
+    SessionProcessor,
+    extract_reflection_from_entries,
+    format_reflection_header,
+    reflection_to_insights,
+)
 from lib.paths import get_sessions_dir  # noqa: E402
+from lib.insights_generator import (  # noqa: E402
+    get_insights_file_path,
+    write_insights_file,
+    validate_insights_schema,
+    InsightsValidationError,
+)
 
 
 def format_markdown(file_path: Path) -> bool:
@@ -63,6 +74,49 @@ def format_markdown(file_path: Path) -> bool:
         return result.returncode in (0, 14)
     except (subprocess.TimeoutExpired, FileNotFoundError):
         return False
+
+
+def _process_reflection(
+    entries: list,
+    session_id: str,
+    date_str: str,
+    project: str,
+    agent_entries: dict | None = None,
+) -> tuple[str | None, dict | None]:
+    """Extract reflection from entries and save to insights JSON.
+
+    Args:
+        entries: List of parsed session entries
+        session_id: 8-char session ID
+        date_str: Date in YYYY-MM-DD format
+        project: Project name
+        agent_entries: Optional dict of agent/subagent entries
+
+    Returns:
+        Tuple of (reflection_header_markdown, reflection_dict)
+        Both are None if no reflection found
+    """
+    reflection = extract_reflection_from_entries(entries, agent_entries)
+    if not reflection:
+        return None, None
+
+    # Format header for display at top of transcript
+    header = format_reflection_header(reflection)
+
+    # Convert to insights format and save
+    insights = reflection_to_insights(reflection, session_id, date_str, project)
+
+    try:
+        validate_insights_schema(insights)
+        insights_path = get_insights_file_path(date_str, session_id)
+        write_insights_file(insights_path, insights)
+        print(f"💡 Reflection saved to: {insights_path}")
+    except InsightsValidationError as e:
+        print(f"⚠️  Reflection validation failed: {e}", file=sys.stderr)
+    except Exception as e:
+        print(f"⚠️  Failed to save reflection: {e}", file=sys.stderr)
+
+    return header, reflection
 
 
 def _is_test_session(p: Path) -> bool:
@@ -242,6 +296,13 @@ Examples:
 
                 base_name = str(sessions_claude / filename)
 
+                # Extract and process reflection (if present)
+                # Convert date format from YYYYMMDD to YYYY-MM-DD for insights
+                date_iso = f"{date_str[:4]}-{date_str[4:6]}-{date_str[6:8]}"
+                reflection_header, _ = _process_reflection(
+                    entries, session_id, date_iso, short_project, agent_entries
+                )
+
                 # Generate full version
                 full_path = Path(f"{base_name}-full.md")
                 markdown_full = processor.format_session_as_markdown(
@@ -252,6 +313,9 @@ Examples:
                     variant="full",
                     source_file=str(session_path.resolve()),
                 )
+                # Prepend reflection header if found
+                if reflection_header:
+                    markdown_full = reflection_header + markdown_full
                 with open(full_path, "w", encoding="utf-8") as f:
                     f.write(markdown_full)
                 format_markdown(full_path)
@@ -268,6 +332,9 @@ Examples:
                     variant="abridged",
                     source_file=str(session_path.resolve()),
                 )
+                # Prepend reflection header if found
+                if reflection_header:
+                    markdown_abridged = reflection_header + markdown_abridged
                 with open(abridged_path, "w", encoding="utf-8") as f:
                     f.write(markdown_abridged)
                 format_markdown(abridged_path)
@@ -374,6 +441,17 @@ Examples:
                     )
                     return 2
 
+                # Extract reflection (get date and project from path for insights)
+                date_iso = datetime.now().strftime("%Y-%m-%d")
+                for entry in entries:
+                    if entry.timestamp:
+                        date_iso = entry.timestamp.strftime("%Y-%m-%d")
+                        break
+                # Get session ID from path
+                sid = session_path.stem[:8]
+                proj = session_path.parent.name.split("-")[-1] if session_path.parent.name else "unknown"
+                reflection_header, _ = _process_reflection(entries, sid, date_iso, proj, agent_entries)
+
                 # Generate transcripts and return
                 full_path = Path(f"{base_name}-full.md")
                 markdown_full = processor.format_session_as_markdown(
@@ -384,6 +462,8 @@ Examples:
                     variant="full",
                     source_file=str(session_path.resolve()),
                 )
+                if reflection_header:
+                    markdown_full = reflection_header + markdown_full
                 with open(full_path, "w", encoding="utf-8") as f:
                     f.write(markdown_full)
                 format_markdown(full_path)
@@ -399,6 +479,8 @@ Examples:
                     variant="abridged",
                     source_file=str(session_path.resolve()),
                 )
+                if reflection_header:
+                    markdown_abridged = reflection_header + markdown_abridged
                 with open(abridged_path, "w", encoding="utf-8") as f:
                     f.write(markdown_abridged)
                 format_markdown(abridged_path)
@@ -500,6 +582,13 @@ Examples:
             )
             return 2  # Exit 2 = skipped (no content), distinct from 0 (success) and 1 (error)
 
+        # Extract and process reflection (if present)
+        # Convert date format from YYYYMMDD to YYYY-MM-DD for insights
+        date_iso = f"{date_str[:4]}-{date_str[4:6]}-{date_str[6:8]}"
+        reflection_header, _ = _process_reflection(
+            entries, session_id, date_iso, short_project, agent_entries
+        )
+
         # Generate full version
         full_path = Path(f"{base_name}-full.md")
         markdown_full = processor.format_session_as_markdown(
@@ -510,6 +599,9 @@ Examples:
             variant="full",
             source_file=str(session_path.resolve()),
         )
+        # Prepend reflection header if found
+        if reflection_header:
+            markdown_full = reflection_header + markdown_full
         with open(full_path, "w", encoding="utf-8") as f:
             f.write(markdown_full)
         format_markdown(full_path)
@@ -526,6 +618,9 @@ Examples:
             variant="abridged",
             source_file=str(session_path.resolve()),
         )
+        # Prepend reflection header if found
+        if reflection_header:
+            markdown_abridged = reflection_header + markdown_abridged
         with open(abridged_path, "w", encoding="utf-8") as f:
             f.write(markdown_abridged)
         format_markdown(abridged_path)
