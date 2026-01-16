@@ -9,6 +9,40 @@ category: operations
 
 Efficient workflow for processing multiple similar items concurrently. Uses the **worker-hypervisor architecture** (see [[specs/worker-hypervisor]]) for parallel execution with proper coordination.
 
+## Core Principle: Smart Subagent, Dumb Supervisor
+
+**The supervisor's job is to write one smart prompt, not to do pre-work.**
+
+Bad pattern (supervisor does discovery):
+```
+1. Supervisor searches for files
+2. Supervisor lists items
+3. Supervisor creates task list
+4. Supervisor spawns workers with pre-chewed data
+```
+
+Good pattern (subagent does discovery):
+```
+1. Supervisor writes ONE prompt with: what to find, where to look, what to do, where to put results
+2. Subagent discovers, processes, and reports
+3. Supervisor verifies
+```
+
+**Why?** The supervisor doesn't know what it will find. Discovery and processing are the same cognitive task - splitting them wastes tokens and creates coordination overhead.
+
+**Example prompt for haiku batch work:**
+```
+Task: Find and consolidate all [X] into individual markdown files.
+
+Your job (do this yourself):
+1. Search [source path] recursively for [pattern]
+2. For each item, create a separate file in [destination]
+3. Name files based on [naming scheme]
+4. Preserve [what to keep]
+
+Output: Report what you found and created.
+```
+
 ## When to Use
 
 - Processing multiple files/items with same operation
