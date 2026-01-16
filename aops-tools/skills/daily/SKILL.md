@@ -107,6 +107,8 @@ From [sender]: [Actual content or summary]
 
 **After presenting**: Use `AskUserQuestion` to ask which to archive.
 
+**Archiving emails**: Use `messages_move` with `folder_path="Archive"` (not "Deleted Items" - that's trash, not archive). If the Archive folder doesn't exist for an account, ask the user which folder to use.
+
 **Empty state**: If no FYI emails, skip this section.
 
 ## 3. Today's Focus - Task Recommendations
