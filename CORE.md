@@ -98,6 +98,18 @@ When you discover something worth preserving:
 
 **To repair sync**: Run remember skill's sync workflow (reconciles markdown → memory server).
 
+### Search Strategy: Indices Over Exploration
+
+**Prefer curated indices over raw filesystem searches.**
+
+| Query Type | Use | NOT |
+|------------|-----|-----|
+| Semantic/exploratory ("find related to X") | `mcp__memory__retrieve_memory`, zotero MCP, bd search | Broad grep across directories |
+| Known pattern ("find class Foo") | Grep with specific pattern + path | Grep with wildcards across large trees |
+| File by name | Glob with specific pattern | Grep for filename strings |
+
+**Grep is for needles, not fishing expeditions.** If you're searching for concepts, relationships, or "anything related to X", use semantic search. Reserve grep for when you know exactly what string you're looking for and roughly where it lives.
+
 ## Environment Variable Architecture
 
 **How hooks get environment variables:**
