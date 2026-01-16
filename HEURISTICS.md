@@ -39,3 +39,11 @@ description: Working hypotheses validated by evidence.
 **Derivation**: Locks exist to prevent data corruption from concurrent operations. Removing a lock without understanding whether another process is active risks corrupting git state, SQLite databases, or file systems. Multi-agent concurrency is not currently architected. When encountering locks, agents must HALT and ask the user rather than attempting workarounds.
 
 ---
+
+## Indices Before Exploration (P#58)
+
+**Statement**: Prefer curated indices (memory server, zotero, bd) over broad filesystem searches for exploratory queries.
+
+**Derivation**: Grep is for needles, not fishing expeditions. Semantic search tools exist precisely to answer "find things related to X" - broad pattern matching across directories is wasteful and may surface irrelevant or sensitive content.
+
+---
