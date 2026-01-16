@@ -18,6 +18,7 @@ import json
 import re
 import glob
 from itertools import islice
+from pathlib import Path
 
 from lib.transcript_parser import (
     Entry,
