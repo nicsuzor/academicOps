@@ -18,7 +18,15 @@ User memories are strictly organised with a clear distinction between:
 |--------|---------|-------------|
 | **bd issues** | Operational tracking | Tasks, bugs, observations, experiments, decisions-in-progress |
 | **$ACA_DATA markdown** | Knowledge SSoT | Synthesized truths, project context, goals, general knowledge |
-| **Memory server** | Semantic search index | Derivative of markdown - enables `mcp__memory__retrieve_memory` |
+| **Memory server** | Semantic search index | Markdown + closed bd issues with learnings - enables `mcp__memory__retrieve_memory` |
+
+### Automatic Sync: Closed Issues → Memory
+
+When a bd issue is closed with a `--reason` (documented learning), it's automatically synced to the memory server via PostToolUse hook. This makes learnings from closed issues searchable alongside synthesized knowledge.
+
+- **Tagged**: `bd-issue`, `closed`, `type:<issue_type>`, `priority:P<n>`
+- **Content**: Title, description, close_reason (learning), closed date
+- **Search**: `mcp__memory__retrieve_memory(query="...")` finds both markdown AND closed issue learnings
 
 ### Decision Tree
 
