@@ -14,16 +14,19 @@ permalink: commands/pull
 
 ### Step 1: Find Ready Work
 
-Run `bd ready` to see tasks available for work:
+Run `bd ready --assignee=bot` to see bot-assigned tasks available for work:
 
 ```bash
-bd ready
+bd ready --assignee=bot
 ```
 
 This shows issues that are:
+- Assigned to `bot` (agent-executable tasks)
 - Status: open (not in_progress, blocked, or closed)
 - No unresolved blockers
 - Sorted by priority (P0 first)
+
+**Note**: Tasks assigned to `nic` require human action and are not pulled by agents.
 
 ### Step 2: Present Options to User
 
@@ -152,7 +155,7 @@ End with Framework Reflection format:
 ```
 /pull
 ```
-1. Shows ready issues via `bd ready`
+1. Shows ready bot-assigned issues via `bd ready --assignee=bot`
 2. User selects `aops-xyz` (P1: Fix authentication bug)
 3. Claims issue: `bd update aops-xyz --status=in_progress`
 4. Hydrator analyzes issue, generates TodoWrite plan
