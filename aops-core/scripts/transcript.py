@@ -312,10 +312,8 @@ Examples:
                     include_tool_results=True,
                     variant="full",
                     source_file=str(session_path.resolve()),
+                    reflection_header=reflection_header,
                 )
-                # Prepend reflection header if found
-                if reflection_header:
-                    markdown_full = reflection_header + markdown_full
                 with open(full_path, "w", encoding="utf-8") as f:
                     f.write(markdown_full)
                 format_markdown(full_path)
@@ -331,10 +329,8 @@ Examples:
                     include_tool_results=False,
                     variant="abridged",
                     source_file=str(session_path.resolve()),
+                    reflection_header=reflection_header,
                 )
-                # Prepend reflection header if found
-                if reflection_header:
-                    markdown_abridged = reflection_header + markdown_abridged
                 with open(abridged_path, "w", encoding="utf-8") as f:
                     f.write(markdown_abridged)
                 format_markdown(abridged_path)
@@ -461,9 +457,8 @@ Examples:
                     include_tool_results=True,
                     variant="full",
                     source_file=str(session_path.resolve()),
+                    reflection_header=reflection_header,
                 )
-                if reflection_header:
-                    markdown_full = reflection_header + markdown_full
                 with open(full_path, "w", encoding="utf-8") as f:
                     f.write(markdown_full)
                 format_markdown(full_path)
@@ -478,9 +473,8 @@ Examples:
                     include_tool_results=False,
                     variant="abridged",
                     source_file=str(session_path.resolve()),
+                    reflection_header=reflection_header,
                 )
-                if reflection_header:
-                    markdown_abridged = reflection_header + markdown_abridged
                 with open(abridged_path, "w", encoding="utf-8") as f:
                     f.write(markdown_abridged)
                 format_markdown(abridged_path)
@@ -598,10 +592,8 @@ Examples:
             include_tool_results=True,
             variant="full",
             source_file=str(session_path.resolve()),
+            reflection_header=reflection_header,
         )
-        # Prepend reflection header if found
-        if reflection_header:
-            markdown_full = reflection_header + markdown_full
         with open(full_path, "w", encoding="utf-8") as f:
             f.write(markdown_full)
         format_markdown(full_path)
@@ -617,10 +609,8 @@ Examples:
             include_tool_results=False,
             variant="abridged",
             source_file=str(session_path.resolve()),
+            reflection_header=reflection_header,
         )
-        # Prepend reflection header if found
-        if reflection_header:
-            markdown_abridged = reflection_header + markdown_abridged
         with open(abridged_path, "w", encoding="utf-8") as f:
             f.write(markdown_abridged)
         format_markdown(abridged_path)

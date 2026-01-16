@@ -1341,6 +1341,7 @@ class SessionProcessor:
         include_tool_results: bool = True,
         variant: str = "full",
         source_file: str | Path | None = None,
+        reflection_header: str | None = None,
     ) -> str:
         """Format session entries as readable markdown."""
         session_uuid = session.uuid
@@ -1717,7 +1718,8 @@ session_id: {session_uuid}
                 "**Original User Request** (first prompt): (not found)\n\n"
             )
 
-        return frontmatter + header + session_context + markdown
+        reflection_section = reflection_header if reflection_header else ""
+        return frontmatter + header + session_context + reflection_section + markdown
 
     def _group_sidechain_entries(
         self, sidechain_entries: list[Entry]
