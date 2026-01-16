@@ -30,9 +30,8 @@ Transform a user prompt into an execution plan. You decide **scope**, **workflow
 2. **Gather context in parallel**:
    - `mcp__memory__retrieve_memory(query="[key terms from prompt]", limit=5)` - **CRITICAL**: This is your primary knowledge source. Always search memory first - it contains user knowledge, project context, learned patterns, and decisions. Don't guess or assume - check memory.
    - **NOTE**: When user asks to "search memory for X" or "use memory tool to find X", call `mcp__memory__retrieve_memory(query="X")` and report results. Don't search filesystem - USE the tool.
-   - `Read(file_path="$AOPS/WORKFLOWS.md")` - Read workflow index
-   - `Read(file_path="$AOPS/HEURISTICS.md")`
-   - `Bash(command="bd ready")` and `Bash(command="bd list --status=open")` - Current work state
+   - **WORKFLOWS.md and HEURISTICS.md are pre-loaded** in your input file - no Read() needed for these
+   - `Bash(command="bd ready")` and `Bash(command="bd list --status=open")` - Current work state (if not already in pre-loaded context)
    - **CRITICAL for structural tasks**: If prompt involves plugin structure, MCP configuration, hook setup, or other framework infrastructure with uncertainty about paths/structure, include explicit documentation lookup step BEFORE execution steps. Use `Grep` to find relevant docs, then `Read` them. Without documentation, agent will guess incorrectly.
 
 3. **Assess scope** - Is this single-session or multi-session work?

@@ -65,6 +65,52 @@ def load_framework_paths() -> str:
     return "(Path table not found in FRAMEWORK-PATHS.md)"
 
 
+def load_workflows_index() -> str:
+    """Load WORKFLOWS.md for hydrator context.
+
+    Pre-loads workflow index so hydrator doesn't need to Read() at runtime.
+    Returns content after frontmatter separator.
+    """
+    aops_root = get_aops_root()
+    workflows_path = aops_root / "WORKFLOWS.md"
+
+    if not workflows_path.exists():
+        return "(WORKFLOWS.md not found)"
+
+    content = workflows_path.read_text()
+
+    # Skip frontmatter if present
+    if content.startswith("---"):
+        parts = content.split("---", 2)
+        if len(parts) >= 3:
+            return parts[2].strip()
+
+    return content.strip()
+
+
+def load_heuristics() -> str:
+    """Load HEURISTICS.md for hydrator context.
+
+    Pre-loads heuristics so hydrator doesn't need to Read() at runtime.
+    Returns content after frontmatter separator.
+    """
+    aops_root = get_aops_root()
+    heuristics_path = aops_root / "HEURISTICS.md"
+
+    if not heuristics_path.exists():
+        return "(HEURISTICS.md not found)"
+
+    content = heuristics_path.read_text()
+
+    # Skip frontmatter if present
+    if content.startswith("---"):
+        parts = content.split("---", 2)
+        if len(parts) >= 3:
+            return parts[2].strip()
+
+    return content.strip()
+
+
 def get_bd_work_state() -> str:
     """Query bd for current work state.
 
@@ -244,6 +290,10 @@ def build_hydration_instruction(
     # Load framework paths from FRAMEWORK-PATHS.md (DRY - single source of truth)
     framework_paths = load_framework_paths()
 
+    # Pre-load stable framework docs (reduces hydrator runtime I/O)
+    workflows_index = load_workflows_index()
+    heuristics = load_heuristics()
+
     # Get bd work state (in-progress and ready issues)
     bd_state = get_bd_work_state()
 
@@ -253,6 +303,8 @@ def build_hydration_instruction(
         prompt=prompt,
         session_context=session_context,
         framework_paths=framework_paths,
+        workflows_index=workflows_index,
+        heuristics=heuristics,
         bd_state=bd_state,
     )
 

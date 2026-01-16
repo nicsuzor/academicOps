@@ -23,6 +23,14 @@ Transform this user prompt into an execution plan with scope detection and bd ta
 
 **Use these prefixes in TodoWrite plans** - never use relative paths like `specs/file.md`.
 
+## Workflow Index (Pre-loaded)
+
+{workflows_index}
+
+## Heuristics (Pre-loaded)
+
+{heuristics}
+
 ## Current Work State
 
 {bd_state}
@@ -32,7 +40,7 @@ Transform this user prompt into an execution plan with scope detection and bd ta
 1. **Understand intent** - What does the user actually want?
 2. **Assess scope** - Single-session (bounded, path known) or multi-session (goal-level, uncertain path)?
 3. **Route to bd task** - Match to existing issue or specify new task creation
-4. **Select workflow** - Read `$AOPS/WORKFLOWS.md` and select the appropriate workflow
+4. **Select workflow** - Use the pre-loaded Workflow Index above to select the appropriate workflow
 5. **Compose workflows** - Read workflow files in `$AOPS/workflows/` (and any [[referenced workflows]])
 6. **Capture deferred work** - For multi-session scope, create decomposition task for future work
 
