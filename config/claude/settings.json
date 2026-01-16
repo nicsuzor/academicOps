@@ -99,10 +99,6 @@
             "timeout": 15000
           }
         ]
-      },
-      {
-        "matcher": "",
-        "hooks": []
       }
     ],
     "Stop": [
