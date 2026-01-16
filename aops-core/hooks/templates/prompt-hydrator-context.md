@@ -52,6 +52,7 @@ Return this EXACT structure:
 [Choose ONE:]
 
 **Existing issue found**: `[issue-id]` - [title]
+- Verify first: `bd show [issue-id]` (confirm status=open/ready, not blocked/in_progress)
 - Claim with: `bd update [issue-id] --status=in_progress`
 
 **OR**
@@ -81,11 +82,11 @@ Return this EXACT structure:
 
 ```javascript
 TodoWrite(todos=[
-  {content: "[bd claim/create from above]", status: "pending", activeForm: "Claiming work"},
-  {content: "[workflow step]", status: "pending", activeForm: "[participle]"},
-  {content: "CHECKPOINT: [verification]", status: "pending", activeForm: "Verifying"},
-  {content: "Task(subagent_type='qa', prompt='...')", status: "pending", activeForm: "QA verification"},
-  {content: "Close bd task and commit", status: "pending", activeForm: "Completing"}
+  {{content: "[bd claim/create from above]", status: "pending", activeForm: "Claiming work"}},
+  {{content: "[workflow step]", status: "pending", activeForm: "[participle]"}},
+  {{content: "CHECKPOINT: [verification]", status: "pending", activeForm: "Verifying"}},
+  {{content: "Task(subagent_type='qa', prompt='...')", status: "pending", activeForm: "QA verification"}},
+  {{content: "Close bd task and commit", status: "pending", activeForm: "Completing"}}
 ])
 ```
 

@@ -88,6 +88,7 @@ Transform a user prompt into an execution plan. You decide **scope**, **workflow
 [ONE of these three options:]
 
 **Existing issue found**: `[issue-id]` - [title]
+- Verify first: `bd show [issue-id]` (confirm status=open, not blocked/in_progress)
 - Claim with: `bd update [issue-id] --status=in_progress`
 
 **OR**

@@ -238,6 +238,20 @@ $ACA_DATA is a semantic memory store containing ONLY current state. Episodic mem
 
 **Derivation**: Mixing episodic and semantic memory creates confusion. Current state should be perfect, always up to date, always understandable without piecing together observations.
 
+## Human Tasks Are Not Agent Tasks (P#48)
+
+Tasks requiring external communication (emails to non-users), unknown file locations, or human judgment about timing/wording are HUMAN tasks. Route them back to the user with a clear handoff, don't attempt execution.
+
+**Corollaries**:
+
+- "Send email to [external party]" → HALT, ask user to send or provide exact content
+- "Find [file with unknown location]" → HALT, ask user for path
+- "Schedule meeting" → HALT unless all details are explicit
+
+**Derivation**: Agent attempts at human tasks waste cycles and risk incorrect actions. Clear delegation boundaries prevent fishing expeditions.
+
+---
+
 ## Agents Execute Workflows (P#47)
 
 Agents are autonomous entities with knowledge who execute workflows. Agents don't "own" or "contain" workflows.
