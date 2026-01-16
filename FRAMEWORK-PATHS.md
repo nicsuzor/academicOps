@@ -15,6 +15,10 @@ tags:
 
 # Framework Paths
 
+**Before using Read, Glob, Grep, or Write tools**: Check this path table FIRST.
+**If you get "Error reading file"**: You guessed wrong. Return here, use correct path.
+**DO NOT fabricate paths** like `~/.config/aops/` - they don't exist.
+
 **⚠️ GENERATED FILE - DO NOT EDIT MANUALLY**
 
 Generated: 2026-01-15 02:49:50 UTC
@@ -56,10 +60,3 @@ User data directories within $ACA_DATA:
 | Logs      | /home/nic/writing/data/logs     |
 | Context   | /home/nic/writing/data/context  |
 | Goals     | /home/nic/writing/data/goals    |
-
----
-
-**Generation Command**: `python3 aops-core/scripts/generate_framework_paths.py`
-
-Run this script after changing $AOPS or $ACA_DATA environment variables,
-or after modifying the framework directory structure.
