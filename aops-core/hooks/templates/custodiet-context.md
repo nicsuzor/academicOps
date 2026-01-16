@@ -5,7 +5,9 @@ category: template
 description: |
   Template written to temp file by custodiet_gate.py for custodiet subagent.
   Variables: {session_context} (intent, prompts, todos, errors, files, tools),
-             {tool_name} (tool that triggered compliance check)
+             {tool_name} (tool that triggered compliance check),
+             {axioms_content} (full AXIOMS.md content),
+             {heuristics_content} (full HEURISTICS.md content)
 ---
 
 # Compliance Audit Request
@@ -20,12 +22,13 @@ Compliance check triggered after tool: **{tool_name}**
 
 {session_context}
 
+## Framework Principles
+
+{axioms_content}
+
+{heuristics_content}
+
 ## Compliance Checklist
-
-Check session activity against framework principles. Read the authoritative sources:
-
-- **AXIOMS.md**: Read `$AOPS/AXIOMS.md` for universal principles (P#1-P#28+)
-- **HEURISTICS.md**: Read `$AOPS/HEURISTICS.md` for validated working hypotheses
 
 Key areas to check:
 - SSOT violations (information duplication, competing sources of truth)

@@ -37,9 +37,12 @@ from lib.transcript_parser import SessionProcessor
 
 # Paths
 HOOK_DIR = Path(__file__).parent
+AOPS_ROOT = HOOK_DIR.parent.parent  # aops-core -> academicOps
 CONTEXT_TEMPLATE_FILE = HOOK_DIR / "templates" / "custodiet-context.md"
 INSTRUCTION_TEMPLATE_FILE = HOOK_DIR / "templates" / "custodiet-instruction.md"
 REMINDERS_FILE = HOOK_DIR / "data" / "reminders.txt"
+AXIOMS_FILE = AOPS_ROOT / "AXIOMS.md"
+HEURISTICS_FILE = AOPS_ROOT / "HEURISTICS.md"
 # Use /tmp like hydrator - subagents can reliably access /tmp but not project dirs
 TEMP_DIR = Path("/tmp/claude-compliance")
 
@@ -268,6 +271,20 @@ def load_template(template_path: Path) -> str:
     return content.strip()
 
 
+def load_framework_content() -> tuple[str, str]:
+    """Load AXIOMS.md and HEURISTICS.md content for custodiet.
+
+    Returns:
+        Tuple of (axioms_content, heuristics_content) with frontmatter stripped.
+
+    Raises:
+        FileNotFoundError: If either file is missing (fail-fast).
+    """
+    axioms = load_template(AXIOMS_FILE)
+    heuristics = load_template(HEURISTICS_FILE)
+    return axioms, heuristics
+
+
 def write_temp_file(content: str) -> Path:
     """Write content to temp file, return path."""
     TEMP_DIR.mkdir(parents=True, exist_ok=True)
@@ -303,11 +320,16 @@ def build_audit_instruction(
     # Extract rich session context
     session_context = _build_session_context(transcript_path, session_id)
 
+    # Load framework principles (fail-fast if missing)
+    axioms_content, heuristics_content = load_framework_content()
+
     # Build full context
     context_template = load_template(CONTEXT_TEMPLATE_FILE)
     full_context = context_template.format(
         session_context=session_context,
         tool_name=tool_name,
+        axioms_content=axioms_content,
+        heuristics_content=heuristics_content,
     )
 
     # Write to temp file

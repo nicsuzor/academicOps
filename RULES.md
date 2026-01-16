@@ -76,7 +76,7 @@ tags: [framework, enforcement, moc]
 | [[synthesize-after-resolution]]         | Synthesize After Resolution         | HEURISTICS.md                                          | SessionStart              |       |
 | [[ship-scripts-dont-inline]]            | Ship Scripts, Don't Inline          | HEURISTICS.md                                          | SessionStart              |       |
 | [[user-centric-acceptance]]             | User-Centric Acceptance             | HEURISTICS.md                                          | SessionStart              |       |
-| [[semantic-vs-episodic-storage]]        | Semantic vs Episodic Storage        | HEURISTICS.md                                          | SessionStart              |       |
+| [[semantic-vs-episodic-storage]]        | Semantic vs Episodic Storage        | HEURISTICS.md, hydrator advice, custodiet check        | SessionStart, PostToolUse |       |
 | [[debug-dont-redesign]]                 | Debug, Don't Redesign               | HEURISTICS.md                                          | SessionStart              |       |
 | [[mandatory-acceptance-testing]]        | Mandatory Acceptance Testing        | /qa skill                                              | Stop                      |       |
 | [[todowrite-vs-persistent-tasks]]       | TodoWrite vs Persistent Tasks       | HEURISTICS.md                                          | SessionStart              |       |
@@ -128,22 +128,23 @@ These guardrails are applied by [[prompt-hydration]] based on task classificatio
 | `critic_review`           | [[mandatory-second-opinion]]                                                                         | Presenting plans without review                 |
 | `use_todowrite`           | [[todowrite-vs-persistent-tasks]]                                                                    | Losing track of steps                           |
 | `criteria_gate`           | [[acceptance-criteria-own-success]], [[no-promises-without-instructions]], [[edit-source-run-setup]] | Missing acceptance criteria                     |
+| `capture_insights`        | [[semantic-vs-episodic-storage]]                                                                     | Losing discoveries (bd for ops, remember for knowledge) |
 
 ### Task Type → Guardrail Mapping
 
-| Task Type   | Guardrails Applied                                                                                         |
-| ----------- | ---------------------------------------------------------------------------------------------------------- |
-| `framework` | verify_before_complete, require_skill:framework, plan_mode, critic_review, criteria_gate, use_todowrite    |
-| `cc_hook`   | verify_before_complete, require_skill:plugin-dev:hook-development, plan_mode, criteria_gate, use_todowrite |
-| `cc_mcp`    | verify_before_complete, require_skill:plugin-dev:mcp-integration, plan_mode, criteria_gate, use_todowrite  |
-| `debug`     | verify_before_complete, quote_errors_exactly, fix_within_design, criteria_gate, use_todowrite              |
-| `feature`   | verify_before_complete, require_acceptance_test, criteria_gate, use_todowrite                              |
-| `python`    | verify_before_complete, require_skill:python-dev, require_acceptance_test, criteria_gate, use_todowrite    |
-| `question`  | answer_only                                                                                                |
-| `persist`   | require_skill:remember                                                                                     |
-| `analysis`  | require_skill:analyst, criteria_gate, use_todowrite                                                        |
-| `review`    | verify_before_complete, use_todowrite                                                                      |
-| `simple`    | verify_before_complete, criteria_gate                                                                      |
+| Task Type   | Guardrails Applied                                                                                                        |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `framework` | verify_before_complete, require_skill:framework, plan_mode, critic_review, criteria_gate, use_todowrite, capture_insights |
+| `cc_hook`   | verify_before_complete, require_skill:plugin-dev:hook-development, plan_mode, criteria_gate, use_todowrite                |
+| `cc_mcp`    | verify_before_complete, require_skill:plugin-dev:mcp-integration, plan_mode, criteria_gate, use_todowrite                 |
+| `debug`     | verify_before_complete, quote_errors_exactly, fix_within_design, criteria_gate, use_todowrite, capture_insights           |
+| `feature`   | verify_before_complete, require_acceptance_test, criteria_gate, use_todowrite, capture_insights                           |
+| `python`    | verify_before_complete, require_skill:python-dev, require_acceptance_test, criteria_gate, use_todowrite                   |
+| `question`  | answer_only                                                                                                               |
+| `persist`   | require_skill:remember                                                                                                    |
+| `analysis`  | require_skill:analyst, criteria_gate, use_todowrite, capture_insights                                                     |
+| `review`    | verify_before_complete, use_todowrite, capture_insights                                                                   |
+| `simple`    | verify_before_complete, criteria_gate                                                                                     |
 
 ## Periodic Compliance (Custodiet)
 
@@ -164,8 +165,9 @@ At threshold, spawns haiku subagent to review session transcript for:
 - Axiom violations ([[fail-fast-code]], [[verify-first]], [[acceptance-criteria-own-success]])
 - Heuristic violations ([[verification-before-assertion]], [[explicit-instructions-override]], [[questions-require-answers]])
 - Drift patterns (scope creep, plan deviation)
+- Insight capture (advisory) - flags when discoveries aren't persisted to bd or remember skill
 
-Uses `decision: "block"` output format to force agent attention.
+Uses `decision: "block"` output format to force agent attention. Insight capture is advisory only (no block).
 
 ### Random Reminders (Between Checks)
 
@@ -235,6 +237,23 @@ Main agent has all tools except deny rules. Subagents are restricted:
 
 **Note**: `tools:` in agent frontmatter RESTRICTS available tools - it cannot GRANT access beyond what settings.json allows. Deny rules apply globally.
 
+## Knowledge Persistence
+
+Enforcement of [[semantic-vs-episodic-storage]] and [[current-state-machine]].
+
+| Component | Purpose | Sync to Memory Server |
+|-----------|---------|----------------------|
+| Remember skill | Dual-write markdown + memory server | Yes (on invocation) |
+| Remember sync workflow | Reconcile markdown → memory server | Yes (repair/rebuild) |
+| Session-insights | Extract and persist session learnings | Yes (Step 6.5) |
+
+**Markdown is SSoT** - Memory server is derivative index for semantic search.
+
+**Insight capture flow**:
+- Operational findings → bd issues
+- Knowledge discoveries → `Skill(skill="remember")` → markdown + memory
+- Session learnings → `/session-insights` → JSON + memory
+
 ## Source Files
 
 | Mechanism        | Authoritative Source                                                            |
@@ -248,3 +267,6 @@ Main agent has all tools except deny rules. Subagents are restricted:
 | Stop             | `$AOPS/hooks/session_reflect.py`                                                |
 | Pre-commit       | `~/writing/.pre-commit-config.yaml`                                             |
 | CI/CD            | `$AOPS/.github/workflows/`                                                      |
+| Remember skill   | `$AOPS/aops-core/skills/remember/SKILL.md`                                      |
+| Memory sync      | `$AOPS/aops-core/skills/remember/workflows/sync.md`                             |
+| Session insights | `$AOPS/aops-core/skills/session-insights/SKILL.md`                              |

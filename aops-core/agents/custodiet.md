@@ -35,7 +35,7 @@ The file path you receive is correct. Just read it with the Read tool.
 
 After reading the file:
 
-1. **Check ALL axioms and heuristics** listed in that file
+1. **Check against framework principles** - AXIOMS and HEURISTICS are included in the file
 2. **Check for scope drift** against original request/plan
 3. **Return minimal output** - just "OK" or the issue
 
