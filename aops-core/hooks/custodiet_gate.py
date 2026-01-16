@@ -106,37 +106,6 @@ def get_random_reminder() -> str | None:
     return random.choice(reminders)
 
 
-def get_state_file(session_id: str) -> Path:
-    """Get the state file path for a given session.
-
-    State is per-session to track tool counts independently.
-    """
-    return TEMP_DIR / f"state-{session_id}.json"
-
-
-def load_state(session_id: str) -> dict[str, Any]:
-    """Load state for current session, or create fresh state."""
-    state_file = get_state_file(session_id)
-    try:
-        if state_file.exists():
-            return json.loads(state_file.read_text())
-    except (json.JSONDecodeError, OSError):
-        pass
-
-    # Fresh state for new session
-    return {
-        "tool_count": 0,
-        "last_check_ts": time.time(),
-    }
-
-
-def save_state(session_id: str, state: dict[str, Any]) -> None:
-    """Save state to file."""
-    TEMP_DIR.mkdir(parents=True, exist_ok=True)
-    state_file = get_state_file(session_id)
-    state_file.write_text(json.dumps(state))
-
-
 # ============================================================================
 # Shared State API Functions (for cross-gate coordination)
 # ============================================================================
@@ -536,14 +505,13 @@ def main():
         print(json.dumps({}))
         sys.exit(0)
 
-    # Load and update state
-    state = load_state(session_id)
-    state["tool_count"] += 1
+    # Increment shared tool counter (syncs with overdue_enforcement.py)
+    tool_count = increment_tool_count(session_id)
 
     output_data: dict[str, Any] = {}
 
     # Check if threshold reached
-    if state["tool_count"] >= TOOL_CALL_THRESHOLD:
+    if tool_count >= TOOL_CALL_THRESHOLD:
         try:
             instruction = build_audit_instruction(
                 transcript_path, tool_name, session_id
@@ -555,9 +523,8 @@ def main():
                     "additionalContext": f"<system-reminder>\n{instruction}\n</system-reminder>",
                 }
             }
-            # Reset counter
-            state["tool_count"] = 0
-            state["last_check_ts"] = time.time()
+            # Reset shared counter (syncs with overdue_enforcement.py)
+            reset_compliance_state(session_id)
         except (IOError, OSError) as e:
             # Fail-fast on infrastructure errors
             output_data = {
@@ -576,9 +543,6 @@ def main():
                     "additionalContext": f"<system-reminder>\n{reminder}\n</system-reminder>",
                 }
             }
-
-    # Save state
-    save_state(session_id, state)
 
     # Log to hooks JSONL for transcript visibility
     if output_data:
