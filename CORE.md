@@ -35,10 +35,11 @@ Need to search existing knowledge?
 
 ### Key Rules
 
-1. **Markdown is SSoT** - Memory server is derived, not authoritative
-2. **Remember skill dual-writes** - Always use it for new knowledge (ensures sync)
-3. **bd for observations** - Don't create markdown files for time-stamped events
-4. **Synthesis flow**: bd observations → patterns emerge → remember skill → semantic docs → close bd issue
+1. **Memory is the knowledge source** - Agents MUST check `mcp__memory__retrieve_memory` when starting tasks or needing context. This is how you access user knowledge, project history, and learned patterns. Don't guess - search memory first.
+2. **Markdown is SSoT** - Memory server is derived, not authoritative
+3. **Remember skill dual-writes** - Always use it for new knowledge (ensures sync)
+4. **bd for observations** - Don't create markdown files for time-stamped events
+5. **Synthesis flow**: bd observations → patterns emerge → remember skill → semantic docs → close bd issue
 
 ### Insight Capture
 

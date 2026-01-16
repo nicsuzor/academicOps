@@ -28,8 +28,8 @@ Transform a user prompt into an execution plan. You decide **scope**, **workflow
 1. **Read input file** - The exact path given to you (don't search for it)
 
 2. **Gather context in parallel**:
-   - `mcp__memory__retrieve_memory(query="[key terms from prompt]", limit=5)` - User knowledge
-   - **NOTE**: When user asks to "search memory for X" or "use memory tool to find X", they want YOU to call `mcp__memory__retrieve_memory(query="X")` and report results. Don't search filesystem for "memory" - USE the tool.
+   - `mcp__memory__retrieve_memory(query="[key terms from prompt]", limit=5)` - **CRITICAL**: This is your primary knowledge source. Always search memory first - it contains user knowledge, project context, learned patterns, and decisions. Don't guess or assume - check memory.
+   - **NOTE**: When user asks to "search memory for X" or "use memory tool to find X", call `mcp__memory__retrieve_memory(query="X")` and report results. Don't search filesystem - USE the tool.
    - `Read(file_path="$AOPS/WORKFLOWS.md")` - Read workflow index
    - `Read(file_path="$AOPS/HEURISTICS.md")`
    - `Bash(command="bd ready")` and `Bash(command="bd list --status=open")` - Current work state
