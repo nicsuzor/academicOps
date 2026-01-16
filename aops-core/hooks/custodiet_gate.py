@@ -388,7 +388,7 @@ def _build_session_context(transcript_path: str | None, session_id: str) -> str:
                 "conversation",
                 "skill",  # Active skill for Type B detection
             },
-            max_turns=10,  # More context than default 5
+            max_turns=15,  # Expanded for long-session drift detection
         )
 
         # Show original intent from transcript if not from hydrator
@@ -488,15 +488,13 @@ def _build_session_context(transcript_path: str | None, session_id: str) -> str:
                     lines.append(f"  - {name}")
             lines.append("")
 
-        # Recent conversation (critical for understanding agent reasoning)
+        # Recent conversation (critical for understanding agent reasoning and drift detection)
         conversation = ctx.get("conversation", [])
         if conversation:
-            lines.append("**Recent Conversation** (last 5 turns):")
-            # Conversation is now list[str] from session_reader (formatted log)
-            # Or list of dicts (legacy). Handle both for safety.
-            for item in conversation[
-                -15:
-            ]:  # Show last 15 lines approx (5 turns * 3 lines/turn)
+            lines.append(f"**Recent Conversation** (last {len(conversation)} entries):")
+            # Conversation is list[str] from session_reader (formatted [User]/[Agent]/[Tool] log)
+            # max_turns controls extraction; no additional slicing here to preserve context
+            for item in conversation:
                 if isinstance(item, dict):
                     # Legacy fallback
                     role = item.get("role", "unknown")
