@@ -31,8 +31,10 @@ Return: PROCEED (execute as planned) | REVISE (list specific changes) | HALT (st
 ```
 
 - **PROCEED**: Call TodoWrite with the plan and execute
-- **REVISE**: Update the plan per critic feedback, then execute
+- **REVISE**: Call TodoWrite with the REVISED plan (incorporating critic feedback), then execute
 - **HALT**: Stop immediately, present the issue to user
+
+**CRITICAL**: Both PROCEED and REVISE require TodoWrite BEFORE execution. Never start executing without tracked todos.
 
 **Why always invoke hydrator?** Hydration is fast (haiku model), costless, and can only improve outcomes. Even "simple" tasks benefit from context enrichment.
 
