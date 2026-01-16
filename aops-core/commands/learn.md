@@ -81,7 +81,7 @@ When a subagent (custodiet, critic, qa, etc.) makes an incorrect decision:
 Search bd for related issues before creating a new one:
 
 ```bash
-bd list --search="[relevant keywords]"
+bd list --title-contains="[keywords]"
 ```
 
 If a related issue exists, update it with your observation. Pattern recognition across multiple occurrences informs escalation decisions.
@@ -90,9 +90,18 @@ If a related issue exists, update it with your observation. Pattern recognition 
 
 See @docs/ENFORCEMENT.md for mechanism details.
 
-- **Enforcement Ladder** (always start at lowest effective level). 
+- **Enforcement Ladder** (always start at lowest effective level).
 - **Match root cause to intervention**
-- **Escalation rule**: Only move up when you have evidence that lower levels failed. 
+- **Escalation rule**: Only move up when you have evidence that lower levels failed.
+
+**File placement** (for Prompt-level fixes):
+
+| Fix Type | File | When to Use |
+|----------|------|-------------|
+| Hard rule, never violate | AXIOMS.md | Principles that apply universally |
+| Soft guidance, exceptions exist | HEURISTICS.md | Rules of thumb, "prefer X over Y" |
+| Enforcement wiring | RULES.md | Document how rule is enforced |
+| Session context | CORE.md | Paths, environment, "what exists" | 
 
 ### 4. Make the Fix (as an Experiment)
 
