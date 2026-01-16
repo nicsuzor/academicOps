@@ -226,6 +226,24 @@ Update daily note from session JSON files. Run after sessions complete or period
 ls $ACA_DATA/sessions/insights/YYYY-MM-DD-*.json 2>/dev/null
 ```
 
+### Step 4.1.5: Load Closure History
+
+Fetch recently closed bd issues to provide context for today's story synthesis:
+
+```bash
+cd $AOPS && bd list --status=closed --closed-after=$(date -d '7 days ago' +%Y-%m-%d) --limit=20
+```
+
+**Purpose**: Closed issues represent completed work that may not appear in session JSONs (e.g., tasks closed in previous sessions, or closed without a dedicated session). This context enriches the daily narrative.
+
+**Extract from closed issues**:
+
+- Issue ID, title, and project
+- Closure date
+- Brief description if available
+
+**Deduplication**: Closed issues that also appear as session accomplishments should be mentioned once (prefer session context which has richer detail).
+
 ### Step 4.2: Load and Merge Sessions
 
 Read each session JSON. Extract:
@@ -243,9 +261,11 @@ Read each session JSON. Extract:
 
 Using **Edit tool** (not Write) to preserve existing content:
 
-**Today's Story**: Synthesize narrative from session summaries.
+**Today's Story**: Synthesize narrative from session summaries AND closed issues.
 
-- format in dot points, but use prose to provide detail
+- Format in dot points, but use prose to provide detail
+- Include recently closed issues from Step 4.1.5 as context (e.g., "Closed [ns-xyz] completing the X feature")
+- Deduplicate: If a closed issue also appears as a session accomplishment, mention it once with session context
 
 **Session Log**: Add/update session entries.
 
