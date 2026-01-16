@@ -71,8 +71,9 @@ class TestSessionIdExtraction:
         input_data = {"session_id": "from-input"}
         assert get_session_id(input_data) == "from-input"
 
-    def test_session_id_empty_when_missing(self):
+    def test_session_id_empty_when_missing(self, monkeypatch):
         """Test that missing session ID returns empty string."""
+        monkeypatch.delenv("CLAUDE_SESSION_ID", raising=False)
         input_data = {}
         assert get_session_id(input_data) == ""
 
@@ -82,12 +83,12 @@ class TestFirstPromptDetection:
 
     def test_first_prompt_when_no_session_state(self):
         """Test that missing session state indicates first prompt."""
-        with patch("hydration_gate.load_session_state", return_value=None):
+        with patch("lib.session_state.load_session_state", return_value=None):
             assert is_first_prompt_from_cli("test-session") is True
 
     def test_not_first_prompt_when_session_state_exists(self):
         """Test that existing session state indicates not first prompt."""
-        with patch("hydration_gate.load_session_state", return_value={"some": "state"}):
+        with patch("lib.session_state.load_session_state", return_value={"some": "state"}):
             assert is_first_prompt_from_cli("test-session") is False
 
     def test_not_first_prompt_when_no_session_id(self):
@@ -288,11 +289,11 @@ class TestGateEnforcement:
             assert "MANDATORY" in captured.err
 
 
-class TestFailOpen:
-    """Test fail-open behavior on errors."""
+class TestFailClosed:
+    """Test fail-closed behavior on errors."""
 
-    def test_fail_open_on_json_parse_error(self, monkeypatch, capsys):
-        """Test that invalid JSON input results in exit 0 (allow)."""
+    def test_fail_closed_on_json_parse_error(self, monkeypatch, capsys):
+        """Test that invalid JSON input results in exit 2 (block)."""
         import io
 
         monkeypatch.setattr("sys.stdin", io.StringIO("not valid json"))
@@ -300,16 +301,19 @@ class TestFailOpen:
         with pytest.raises(SystemExit) as exc_info:
             main()
 
-        # Should exit 0 (fail-open)
-        assert exc_info.value.code == 0
+        # Should exit 2 (fail-closed)
+        assert exc_info.value.code == 2
 
         captured = capsys.readouterr()
-        output = json.loads(captured.out)
-        assert output == {}
+        assert "⛔ HYDRATION GATE" in captured.err
+        assert "parse" in captured.err.lower()
 
-    def test_fail_open_on_missing_session_id(self, monkeypatch, capsys):
-        """Test that missing session ID results in exit 0 (allow)."""
+    def test_fail_closed_on_missing_session_id(self, monkeypatch, capsys):
+        """Test that missing session ID results in exit 2 (block)."""
         import io
+
+        # Clear session ID from environment to ensure no fallback
+        monkeypatch.delenv("CLAUDE_SESSION_ID", raising=False)
 
         input_data = {
             "tool_name": "Read",
@@ -321,12 +325,12 @@ class TestFailOpen:
         with pytest.raises(SystemExit) as exc_info:
             main()
 
-        # Should exit 0 (fail-open)
-        assert exc_info.value.code == 0
+        # Should exit 2 (fail-closed)
+        assert exc_info.value.code == 2
 
         captured = capsys.readouterr()
-        output = json.loads(captured.out)
-        assert output == {}
+        assert "⛔ HYDRATION GATE" in captured.err
+        assert "session" in captured.err.lower()
 
 
 if __name__ == "__main__":

@@ -27,7 +27,7 @@ Exit codes:
     0: Allow (hydration complete, bypassed, or warn mode)
     2: Block (hydration pending in block mode)
 
-Failure mode: FAIL-OPEN (allow on error - don't break normal operation)
+Failure mode: FAIL-CLOSED (block on error/uncertainty - safety over convenience)
 """
 
 import json
@@ -37,8 +37,13 @@ from typing import Any
 
 from lib.session_state import clear_hydration_pending, is_hydration_pending
 
-# Gate mode from environment
-GATE_MODE = os.environ.get("HYDRATION_GATE_MODE", "warn").lower()
+# Default gate mode (can be overridden by HYDRATION_GATE_MODE env var)
+DEFAULT_GATE_MODE = "block"
+
+
+def get_gate_mode() -> str:
+    """Get gate mode from environment, evaluated at runtime for testability."""
+    return os.environ.get("HYDRATION_GATE_MODE", DEFAULT_GATE_MODE).lower()
 
 # Message shown when blocking/warning
 BLOCK_MESSAGE = """⛔ HYDRATION GATE: Invoke prompt-hydrator before proceeding.
@@ -128,18 +133,18 @@ def main():
     try:
         input_data = json.load(sys.stdin)
     except json.JSONDecodeError:
-        # FAIL-OPEN: allow on parse error (don't break normal operation)
-        print(json.dumps({}))
-        sys.exit(0)
+        # FAIL-CLOSED: block on parse error (safety over convenience)
+        print("⛔ HYDRATION GATE: Failed to parse hook input", file=sys.stderr)
+        sys.exit(2)
 
     tool_name = input_data.get("tool_name", "")
     tool_input = input_data.get("tool_input", {})
     session_id = get_session_id(input_data)
 
-    # FAIL-OPEN: if no session_id, allow (don't break edge cases)
+    # FAIL-CLOSED: if no session_id, block (safety over convenience)
     if not session_id:
-        print(json.dumps({}))
-        sys.exit(0)
+        print("⛔ HYDRATION GATE: No session ID available", file=sys.stderr)
+        sys.exit(2)
 
     # BYPASS: Subagent sessions (invoked by main agent)
     if is_subagent_session():
@@ -165,7 +170,8 @@ def main():
         sys.exit(0)
 
     # Hydration pending - enforce based on mode
-    if GATE_MODE == "block":
+    gate_mode = get_gate_mode()
+    if gate_mode == "block":
         # Block mode: exit 2 to block the tool
         print(BLOCK_MESSAGE, file=sys.stderr)
         sys.exit(2)
