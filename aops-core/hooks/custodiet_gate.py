@@ -386,6 +386,7 @@ def _build_session_context(transcript_path: str | None, session_id: str) -> str:
                 "tools",
                 "files",
                 "conversation",
+                "skill",  # Active skill for Type B detection
             },
             max_turns=10,  # More context than default 5
         )
@@ -457,6 +458,15 @@ def _build_session_context(transcript_path: str | None, session_id: str) -> str:
                 # Show just filename for readability
                 short = f.split("/")[-1] if "/" in f else f
                 lines.append(f"  - {short}")
+            lines.append("")
+
+        # Active skill (critical for Type B - distinguishes legitimate multi-step from scope creep)
+        skill = ctx.get("skill")
+        if skill:
+            lines.append(f"**Active Skill**: `{skill}`")
+            lines.append(
+                "  (Activities within the skill's documented workflow are NOT scope creep)"
+            )
             lines.append("")
 
         # Recent tools (for activity tracking)

@@ -46,6 +46,7 @@ Key areas to check:
 **Type B (Scope Creep)**: Work expands beyond original request without explicit approval.
 - Check: Does current activity match the original intent?
 - Signal: TodoWrite items that don't trace to original request
+- **Exception**: If an **Active Skill** is shown, multi-step operations documented in that skill's workflow are legitimate (e.g., /daily includes email triage + bd issue creation)
 
 **Type C (Authority Assumption)**: Agent makes decisions requiring user input.
 - Check: Are there design choices being made without user consultation?
