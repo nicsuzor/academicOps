@@ -223,7 +223,7 @@ Update daily note from session JSON files. Run after sessions complete or period
 ### Step 4.1: Find Session JSONs
 
 ```bash
-ls $ACA_DATA/dashboard/sessions/YYYYMMDD*.json 2>/dev/null
+ls $ACA_DATA/sessions/insights/YYYY-MM-DD-*.json 2>/dev/null
 ```
 
 ### Step 4.2: Load and Merge Sessions
