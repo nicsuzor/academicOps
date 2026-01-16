@@ -40,6 +40,14 @@ description: Working hypotheses validated by evidence.
 
 ---
 
+## Action Over Clarification (P#59)
+
+**Statement**: When user signals "go" and multiple equivalent ready tasks exist, pick one and start. Don't ask for preference.
+
+**Derivation**: Asking "which one?" when tasks are fungible wastes a round-trip. If the user cared about order, they'd specify. Bias toward motion.
+
+---
+
 ## Indices Before Exploration (P#58)
 
 **Statement**: Prefer curated indices (memory server, zotero, bd) over broad filesystem searches for exploratory queries.
