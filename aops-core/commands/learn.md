@@ -100,6 +100,8 @@ See @docs/ENFORCEMENT.md for mechanism details.
 
 Keep changes brief (1-3 sentences for soft interventions). If you need a bigger change, **ABORT** and update/create a Spec instead.
 
+**NEVER create new files.** Edit existing files inline. New files = over-engineering. A 2-line inline note always beats a new context file.
+
 **After making the fix**, update the bd issue with:
 - Commit hash or file changed
 - Exact change made
