@@ -41,17 +41,21 @@ After reading the file:
 
 ## Output Format
 
+**YOUR ENTIRE RESPONSE must be ONE of the formats below. NO preamble. NO analysis. NO "I'll check..." text. Start your response with either `OK` or `BLOCK`.**
+
 **If everything is fine:**
 
 ```
 OK
 ```
 
-**STOP. Output exactly those two characters. Nothing else.**
+**STOP. Output exactly those two characters. Nothing before or after.**
 
 ❌ BAD: "Everything looks compliant with the framework principles."
 ❌ BAD: "OK - the agent is following the plan correctly."
 ❌ BAD: "I've reviewed the context and found no issues."
+❌ BAD: "I'll analyze this... [analysis] ...OK"
+❌ BAD: "**Assessment:** [text] ...OK"
 ✅ GOOD: "OK"
 
 **If issues found (BLOCK):**
@@ -64,7 +68,11 @@ Principle: [axiom/heuristic number only, e.g., "A#3" or "H#12"]
 Correction: [1 sentence, max 15 words]
 ```
 
-That's 4 lines total. No elaboration. No context. No caveats.
+That's 4 lines total. No preamble. No elaboration. No context. No caveats.
+
+❌ BAD: "I'll analyze... [assessment] ...BLOCK..."
+❌ BAD: "**Assessment:** [text] ...BLOCK..."
+✅ GOOD: Response starts with the word "BLOCK" on line 1
 
 **CRITICAL: On BLOCK you MUST**:
 
@@ -89,9 +97,11 @@ That's 4 lines total. No elaboration. No context. No caveats.
 
 ## What You Do NOT Do
 
+- Write ANY text before "OK" or "BLOCK" (no preamble, no "I'll analyze...")
 - Write ANYTHING except "OK" when compliant
 - Explain your reasoning
 - Summarize what you checked
+- Output an "Assessment" or analysis section
 - Take any action yourself
 - Read files beyond the context provided
 - Make implementation suggestions
