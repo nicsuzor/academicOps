@@ -9,9 +9,15 @@ audience: humans
 tags: [framework, overview, features]
 ---
 
-# academicOps Framework
+# academicOps: A constitutional automation framework for academic work
 
-Academic support framework for Claude Code. Minimal, fight bloat aggressively.
+* Enforces a logical system: every rule derivable from [AXIOMS.md] with [HEURISTICS.md] supported by evidence.
+* Reflexive, self-improving agents must follow a CATEGORICAL IMPERATIVE: every action must be supported by a general rule.
+* Graduated approach to enforcement: [RULES.md] sets out a full map of rules to enforcement mechanism, from gentle reminders to hard blocks.
+* Agent autonomy is limited to the authority they were granted: live ultra vires detection loop
+* Direct integration with beads for task memomory, memory mcp for vector search
+* Human readable and portable Markdown files are the single sources of truth 
+* Everything in git for durability and observability
 
 ## Quick Start
 
