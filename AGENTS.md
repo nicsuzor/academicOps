@@ -47,6 +47,8 @@ Skill, command, and agent instruction files (SKILL.md, commands/*.md, agents/*.m
 
 Check beads (`bd`): `bd ready`, `bd list`, `bd update <id> --status=in_progress`, `bd close <id>`, `bd sync`
 
+**On interruption** (e.g., user triggers /learn mid-task): Mark current issue `--status=blocked`, create child issue for interrupt work with `--parent=<current-id>`.
+
 ## Session Completion
 
 **Work is NOT complete until `git push` succeeds.**
