@@ -47,9 +47,9 @@ issue-prefix: "aops"
 # Multi-repo configuration (experimental - bd-307)
 # Allows hydrating from multiple repositories and routing writes to the correct JSONL
 repos:
-  primary: "~/writing"  # Primary repo (where this database lives)
+  primary: "~/src/academicOps"  # Primary repo (where this database lives)
   additional:   # Additional repos to hydrate from (read-only)
-    - ~/src/academicOps
+    - "~/writing"
 #     - ~/work-planning   # Work planning repo
 
 # Integration settings (access with 'bd config get/set')
