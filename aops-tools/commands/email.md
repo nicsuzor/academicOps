@@ -22,14 +22,7 @@ permalink: commands/email
    - Store in appropriate location (reviews → `$ACA_DATA/reviews/{sender}/`)
    - Create bd issue with description containing summary, response needed, document links
 7. **Present all important information to user** (not just subject lines - actual content)
-8. Archive safe-to-ignore emails using correct folder per account (see [[context/email-accounts]])
-
-**Account-specific archive folders**:
-
-| Account | Archive Folder |
-|---------|----------------|
-| n.suzor@qut.edu.au | `Archive` |
-| nic@suzor.net | `archive` |
+8. Archive safe-to-ignore emails (use `mcp__outlook__messages_list_folders` to find correct archive folder per account - Gmail uses lowercase `archive`, Exchange uses `Archive`)
 
 **bd issue creation**:
 
