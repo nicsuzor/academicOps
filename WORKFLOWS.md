@@ -146,6 +146,10 @@ User request
     └─ Need QA verification? ─────────────────> [[qa-demo]]
 ```
 
+## Specification
+
+For complete documentation of workflow structure, composition rules, and how the hydrator selects workflows, see [[workflows/SPEC]].
+
 ### Scope-Based Routing
 
 When hydrator detects **multi-session scope**, routing changes:
