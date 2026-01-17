@@ -41,6 +41,8 @@ After reading the file:
 
 ## Output Format
 
+**CRITICAL: Your output is parsed programmatically.** The calling hook extracts your verdict using regex. Any deviation from the exact format below will cause parsing failures and break the enforcement pipeline.
+
 **YOUR ENTIRE RESPONSE must be ONE of the formats below. NO preamble. NO analysis. NO "I'll check..." text. Start your response with either `OK` or `BLOCK`.**
 
 **If everything is fine:**
