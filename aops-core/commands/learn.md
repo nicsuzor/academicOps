@@ -163,12 +163,26 @@ def test_custodiet_allows_legitimate_framework_work():
 
 If the fix changes documented behavior, update the relevant docs. Don't create new docs unless necessary.
 
-### 8. Report
+### 8. Report (Framework Reflection Format)
 
-Tell the user:
+Output in the standard Framework Reflection format so session-insights can parse it:
 
-1. **bd issue**: Link to the issue tracking this experiment
-2. **Root cause**: Category and responsible component
-3. **Fix**: What was changed (file path, enforcement level)
-4. **Success metric**: How we'll know it worked
-5. **Escalation trigger**: What would cause us to try a stronger intervention
+```
+## Framework Reflection
+
+**Request**: [The observation/feedback that triggered /learn]
+**Guidance received**: N/A
+**Followed**: Yes
+**Outcome**: success
+**Accomplishments**: [bd issue created: X], [Fix applied: file:line], [Test added: file]
+**Friction points**: [Any difficulties encountered, or "none"]
+**Root cause** (if not success): [Category: component that failed]
+**Proposed changes**: [Pattern generalized, escalation trigger noted]
+**Next step**: [If follow-up needed, must be filed as bd issue]
+```
+
+**Field mapping from /learn workflow:**
+- Request → The user feedback/observation
+- Accomplishments → bd issue + fix + test (the deliverables)
+- Root cause → From step 1 (Clarity/Context/Blocking/Detection/Gap)
+- Proposed changes → From step 5 (pattern generalization) + escalation triggers
