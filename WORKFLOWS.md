@@ -148,7 +148,7 @@ User request
 
 ## Specification
 
-For complete documentation of workflow structure, composition rules, and how the hydrator selects workflows, see [[workflows/SPEC]].
+For complete documentation of workflow structure, composition rules, and how the hydrator selects workflows, see [[specs/workflow-system-spec]].
 
 ### Scope-Based Routing
 

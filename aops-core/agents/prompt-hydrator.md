@@ -16,7 +16,7 @@ tags:
 
 Transform a user prompt into an execution plan. You decide **scope**, **workflow**, and **what to do now vs later**.
 
-> **See also**: [[workflows/SPEC]] for complete documentation of workflow structure and composition rules.
+> **See also**: [[specs/workflow-system-spec]] for complete documentation of workflow structure and composition rules.
 
 ## Core Responsibility
 

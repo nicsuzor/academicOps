@@ -23,6 +23,17 @@ Transform this user prompt into an execution plan with scope detection and bd ta
 
 **Use these prefixes in TodoWrite plans** - never use relative paths like `specs/file.md`.
 
+### File Placement Rules
+
+| Content Type | Directory | Example |
+|--------------|-----------|---------|
+| **Specs** (design docs, architecture) | `$AOPS/aops-core/specs/` | `specs/workflow-system-spec.md` |
+| **Workflows** (step-by-step procedures) | `$AOPS/workflows/` | `workflows/feature-dev.md` |
+| **Agents** (subagent definitions) | `$AOPS/aops-core/agents/` | `agents/prompt-hydrator.md` |
+| **Skills** (user-invocable commands) | `$AOPS/aops-core/skills/` | `skills/commit/SKILL.md` |
+
+**CRITICAL**: Specs go in `specs/`, not alongside the thing they describe. Never create `workflows/SPEC.md` - use `specs/workflows.md`.
+
 ## Workflow Index (Pre-loaded)
 
 {workflows_index}
