@@ -266,6 +266,83 @@ The feature-dev workflow will be the first implementation, using itself as the d
 - Generates TodoWrite plan at appropriate mid-grained level
 - Returns unified plan that includes all workflow guidance
 
+### Principle #6: Skill-Sized Minimum Granularity
+
+A task is **skill-sized** when it can be fully completed by invoking a single skill. This is the minimum actionable unit for agent-assigned ('bot') work.
+
+**Definition**: A skill-sized task has:
+- Clear input/output boundaries
+- Maps to exactly one skill (e.g., python-dev, pdf, excalidraw, analyst)
+- Can be verified independently
+- No decision points requiring human input mid-task
+
+**Examples**:
+
+| Task | Skill-Sized? | Why |
+|------|--------------|-----|
+| "Create a test for the hook" | ✅ Yes | → python-dev skill |
+| "Generate a flowchart of the process" | ✅ Yes | → flowchart skill |
+| "Debug the custodiet hook" | ❌ No | Multiple skills, unclear path |
+| "Analyze compliance rates from transcripts" | ✅ Yes | → analyst skill |
+| "Convert document to markdown" | ✅ Yes | → convert-to-md skill |
+
+**Agent rule**: When an agent claims a coarse-grained task, it must DECOMPOSE into skill-sized subtasks before executing. See [[decompose]] workflow.
+
+**Irreducible tasks**: If decomposition reveals a task that cannot map to any existing skill, invoke the [[skill-pilot]] workflow to build a new skill through supervised learning.
+
+### Principle #7: Agent Decision - EXECUTE or DECOMPOSE
+
+When an agent claims a task, apply this decision tree:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Agent Receives Task                       │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+              ┌───────────────────────────────┐
+              │  Is this task skill-sized?    │
+              │  (maps to single skill)       │
+              └───────────────────────────────┘
+                     │              │
+                    YES             NO
+                     │              │
+                     ▼              ▼
+              ┌──────────┐   ┌─────────────────────┐
+              │ EXECUTE  │   │ DECOMPOSE into      │
+              │ directly │   │ skill-sized subtasks│
+              │ via skill│   └─────────────────────┘
+              └──────────┘              │
+                                        ▼
+                         ┌────────────────────────────┐
+                         │ Can all subtasks map to    │
+                         │ existing skills?           │
+                         └────────────────────────────┘
+                                │              │
+                               YES             NO
+                                │              │
+                                ▼              ▼
+                         ┌──────────┐   ┌─────────────────┐
+                         │ Create   │   │ Invoke          │
+                         │ bd issues│   │ [[skill-pilot]] │
+                         │ per skill│   │ for new skill   │
+                         └──────────┘   └─────────────────┘
+```
+
+**Decomposition pattern**:
+1. Identify which skills are needed for the task
+2. Create one bd subtask per skill invocation
+3. Each subtask should name the skill: "Use [skill] to [action]"
+4. If no skill exists for a required action, that triggers skill-pilot
+
+**Example decomposition**:
+
+"Debug the custodiet hook" →
+1. "Use python-dev skill to create a reproducible test case"
+2. "Use analyst skill to analyze compliance rates from transcripts"
+3. "Use framework skill to identify hook configuration issues"
+4. "Create bd issue documenting findings"
+
 ## Implementation Phases
 
 ### Phase 1: Foundation ✓ COMPLETED

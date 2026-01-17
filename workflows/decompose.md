@@ -44,8 +44,11 @@ Not all tasks need the same level of detail:
 | **Coarse** | Clear inputs/outputs, path uncertain | "Write chapter 3" |
 | **Medium** | Some structure known, details fuzzy | "Draft methodology section" |
 | **Fine** | Ready to execute, next session's work | "Outline 5 key arguments" |
+| **Skill-sized** | Agent-assignable, single skill invocation | "Use python-dev to write tests" |
 
 Keep tasks coarse when you understand their *boundaries* but not their *internals*. Expand only when you have enough information to know *how* to do each part.
+
+**Agent rule**: Tasks assigned to 'bot' agents must be skill-sized. If decomposition produces a task that doesn't map to any existing skill, invoke [[skill-pilot]] to build a new skill through supervised learning.
 
 ## Artifacts
 
@@ -229,11 +232,27 @@ Epic: Write paper on X
 
 Components expand as work progresses and knowledge accumulates. Some areas stay coarse until needed.
 
+## Handling Irreducible Tasks
+
+When decomposition reaches a task that cannot map to any existing skill:
+
+1. **Recognize the signal**: You've hit a capability gap, not a decomposition failure
+2. **Don't force it**: Don't try to execute with general-purpose tooling
+3. **Invoke [[skill-pilot]]**: Build a new skill through supervised learning
+
+**Skill-pilot workflow summary**:
+- Pilot: Execute the task interactively with user guidance
+- Learn: Observe what works, capture the pattern
+- Save: Create a new SKILL.md with instructions for future use
+
+This turns capability gaps into framework improvements.
+
 ## Integration with Other Workflows
 
 - **bd-workflow**: Decompose produces bd issues; bd-workflow tracks execution
 - **feature-dev**: When decomposition identifies code tasks, hand off to feature-dev
 - **spec-review**: Complex components may need critic review before expansion
+- **skill-pilot**: When decomposition reveals missing skills, build them interactively
 
 ## Quality Gates
 

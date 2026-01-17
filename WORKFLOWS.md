@@ -118,6 +118,16 @@ All work MUST follow one of the workflows in this index. No exceptions.
 - **Key steps**: Identify skill → Invoke directly (no TodoWrite wrapping)
 - **Quality gates**: None (delegated to skill)
 
+### Meta Workflows
+
+#### [[skill-pilot]]
+- **ID**: `skill-pilot`
+- **Title**: Skill Pilot Workflow
+- **Category**: meta
+- **When to use**: Decomposition reveals capability gap (no existing skill for task), building new skills through supervised learning
+- **Key steps**: Articulate gap → Pilot with user → Reflect → Draft SKILL.md → Test → Index
+- **Quality gates**: User participated in pilot, skill tested, skill indexed
+
 ## Workflow Selection Guide
 
 ### Decision Tree
@@ -131,6 +141,9 @@ User request
     │
     ├─ Goal-level / multi-month work? ────────> [[decompose]]
     │   (uncertain path, need to figure out steps)
+    │       │
+    │       └─ Task doesn't map to any skill? ─> [[skill-pilot]]
+    │          (capability gap → build new skill)
     │
     ├─ Multiple similar items? ───────────────> [[batch-processing]]
     │
