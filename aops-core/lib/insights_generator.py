@@ -221,19 +221,26 @@ def validate_insights_schema(insights: dict[str, Any]) -> None:
             )
 
 
-def get_insights_file_path(date: str, session_id: str) -> Path:
+def get_insights_file_path(
+    date: str, session_id: str, index: int | None = None
+) -> Path:
     """Get path to insights JSON file in $ACA_DATA.
 
     Args:
         date: Date string (YYYY-MM-DD format)
         session_id: 8-character session hash
+        index: Optional index for multi-reflection sessions (0, 1, 2, etc.)
+               If None or 0 with single reflection, uses base filename.
 
     Returns:
         Path to insights file: $ACA_DATA/sessions/insights/{date}-{session_id}.json
+        or {date}-{session_id}-{index}.json for multi-reflection sessions
     """
     aca_data = Path(os.environ.get("ACA_DATA", Path.home() / "writing/data"))
     insights_dir = aca_data / "sessions" / "insights"
     insights_dir.mkdir(parents=True, exist_ok=True)
+    if index is not None and index > 0:
+        return insights_dir / f"{date}-{session_id}-{index}.json"
     return insights_dir / f"{date}-{session_id}.json"
 
 

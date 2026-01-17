@@ -120,21 +120,24 @@ def _extract_text_from_entry(entry: "Entry") -> str:
 def extract_reflection_from_entries(
     entries: list["Entry"],
     agent_entries: dict[str, list["Entry"]] | None = None,
-) -> dict[str, Any] | None:
-    """Extract Framework Reflection from session entries.
+) -> list[dict[str, Any]]:
+    """Extract all Framework Reflections from session entries.
 
-    Searches through assistant entries (from the end) for a Framework Reflection section.
+    Searches through assistant entries for Framework Reflection sections.
     Also searches through agent/subagent entries if provided.
+    Returns ALL reflections found, preserving order (earliest first).
 
     Args:
         entries: List of Entry objects from a parsed session
         agent_entries: Optional dict mapping agent IDs to their entries
 
     Returns:
-        Parsed reflection dict, or None if not found
+        List of parsed reflection dicts (may be empty if none found)
     """
-    # First, search main entries from the end
-    for entry in reversed(entries):
+    reflections = []
+
+    # Search main entries in order (earliest first)
+    for entry in entries:
         if entry.type != "assistant":
             continue
 
@@ -144,9 +147,9 @@ def extract_reflection_from_entries(
 
         reflection = parse_framework_reflection(text)
         if reflection:
-            return reflection
+            reflections.append(reflection)
 
-    # If not found in main entries, search agent entries
+    # Also search agent entries
     if agent_entries:
         # Collect all agent entries with their timestamps for sorting
         all_agent_entries = []
@@ -155,10 +158,10 @@ def extract_reflection_from_entries(
                 if entry.type == "assistant":
                     all_agent_entries.append(entry)
 
-        # Sort by timestamp (newest first) if available, otherwise use original order
+        # Sort by timestamp (oldest first) if available
         all_agent_entries.sort(
             key=lambda e: e.timestamp if e.timestamp else "",
-            reverse=True,
+            reverse=False,
         )
 
         for entry in all_agent_entries:
@@ -168,9 +171,9 @@ def extract_reflection_from_entries(
 
             reflection = parse_framework_reflection(text)
             if reflection:
-                return reflection
+                reflections.append(reflection)
 
-    return None
+    return reflections
 
 
 def reflection_to_insights(

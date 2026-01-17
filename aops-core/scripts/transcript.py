@@ -82,8 +82,8 @@ def _process_reflection(
     date_str: str,
     project: str,
     agent_entries: dict | None = None,
-) -> tuple[str | None, dict | None]:
-    """Extract reflection from entries and save to insights JSON.
+) -> tuple[str | None, list[dict] | None]:
+    """Extract reflections from entries and save to insights JSON files.
 
     Args:
         entries: List of parsed session entries
@@ -93,30 +93,40 @@ def _process_reflection(
         agent_entries: Optional dict of agent/subagent entries
 
     Returns:
-        Tuple of (reflection_header_markdown, reflection_dict)
-        Both are None if no reflection found
+        Tuple of (combined_reflection_header_markdown, list_of_reflection_dicts)
+        Both are None if no reflections found
     """
-    reflection = extract_reflection_from_entries(entries, agent_entries)
-    if not reflection:
+    reflections = extract_reflection_from_entries(entries, agent_entries)
+    if not reflections:
         return None, None
 
-    # Format header for display at top of transcript
-    header = format_reflection_header(reflection)
+    # Collect headers for all reflections
+    headers = []
+    for i, reflection in enumerate(reflections):
+        # Format header for display
+        header = format_reflection_header(reflection)
+        if len(reflections) > 1:
+            header = f"### Reflection {i + 1} of {len(reflections)}\n\n{header}"
+        headers.append(header)
 
-    # Convert to insights format and save
-    insights = reflection_to_insights(reflection, session_id, date_str, project)
+        # Convert to insights format and save
+        insights = reflection_to_insights(reflection, session_id, date_str, project)
 
-    try:
-        validate_insights_schema(insights)
-        insights_path = get_insights_file_path(date_str, session_id)
-        write_insights_file(insights_path, insights)
-        print(f"💡 Reflection saved to: {insights_path}")
-    except InsightsValidationError as e:
-        print(f"⚠️  Reflection validation failed: {e}", file=sys.stderr)
-    except Exception as e:
-        print(f"⚠️  Failed to save reflection: {e}", file=sys.stderr)
+        try:
+            validate_insights_schema(insights)
+            # Use index for multi-reflection sessions (index > 0 gets suffix)
+            idx = i if len(reflections) > 1 else None
+            insights_path = get_insights_file_path(date_str, session_id, idx)
+            write_insights_file(insights_path, insights)
+            print(f"💡 Reflection {i + 1}/{len(reflections)} saved to: {insights_path}")
+        except InsightsValidationError as e:
+            print(f"⚠️  Reflection {i + 1} validation failed: {e}", file=sys.stderr)
+        except Exception as e:
+            print(f"⚠️  Failed to save reflection {i + 1}: {e}", file=sys.stderr)
 
-    return header, reflection
+    # Combine headers with separator
+    combined_header = "\n\n---\n\n".join(headers)
+    return combined_header, reflections
 
 
 def _is_test_session(p: Path) -> bool:
