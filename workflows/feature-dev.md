@@ -16,6 +16,63 @@ Full test-driven development workflow for feature implementation. Ensures qualit
 - Work requiring architectural decisions
 - Any development work beyond minor edits
 
+## Phase 0: Spec Verification (Before Starting)
+
+Before executing any steps, verify you have clear requirements:
+
+**Do you have a specification with user stories and acceptance criteria?**
+
+- **YES**: Proceed to Step 1
+- **NO**: Create a SPEC task first
+
+```bash
+bd create "SPEC: [Feature name]" --type=task --priority=1 \
+  --description="Create specification with user stories and acceptance criteria.
+
+DELIVERABLE:
+- User story (role/goal/context)
+- Acceptance criteria (specific, verifiable)
+- Edge cases and error handling requirements
+
+This task BLOCKS implementation work."
+```
+
+**Why spec-first?** Without clear requirements, you cannot verify implementation. Agents must not guess feature behavior—extract from existing patterns or ask for clarification.
+
+## Complex Features: Task Decomposition
+
+For features touching multiple systems or requiring architectural decisions, decompose into discrete tasks with dependencies:
+
+**Pattern:**
+```
+SPEC (blocker) ──→ AUDIT (verify assumptions) ──→ IMPL (core logic)
+                                                      │
+                                                      └──→ TEST (E2E) ──→ INTEGRATE (hooks/automation)
+```
+
+**Guidelines:**
+- SPEC tasks are P1 blockers—nothing starts until requirements are clear
+- AUDIT tasks verify existing state matches assumptions before building
+- IMPL tasks have specific acceptance criteria and can run in parallel if independent
+- TEST tasks verify end-to-end behavior before integration
+- Use `bd dep add <dependent> <blocker>` to enforce ordering
+
+**When to decompose:**
+- Feature affects 3+ files or systems
+- Requirements are uncertain or evolving
+- Multiple agents or sessions will contribute
+- Integration points need separate validation
+
+## Decision Tree: Spec-First vs Direct Execution
+
+```
+Is the feature fully specified with acceptance criteria?
+├─ NO → Create SPEC task, HALT until approved
+└─ YES → Is it a complex multi-system change?
+         ├─ YES → Decompose into tasks with dependencies
+         └─ NO → Proceed to Step 1 (single-session execution)
+```
+
 ## Steps
 
 ### 1. Track work in bd ([[bd-workflow]])
