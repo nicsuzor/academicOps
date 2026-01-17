@@ -14,7 +14,7 @@ import argparse
 import subprocess
 import sys
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timedelta
 
 # Add framework roots to path for lib imports
 SCRIPT_DIR = Path(__file__).parent.resolve()
@@ -158,6 +158,28 @@ def _output_exists(out_dir: Path, slug: str) -> bool:
     return any(out_dir.glob(pattern))
 
 
+def _filter_recent_sessions(sessions: list, days: int = 7) -> list:
+    """Filter sessions to those modified within the last N days.
+
+    Args:
+        sessions: List of session objects (with .path attribute) or Path objects
+        days: Number of days to look back (default: 7)
+
+    Returns:
+        Filtered list of sessions with mtime within the cutoff period
+    """
+    # Cutoff: midnight N days ago (local timezone)
+    cutoff = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=days)
+    cutoff_ts = cutoff.timestamp()
+
+    filtered = []
+    for s in sessions:
+        session_path = s.path if hasattr(s, "path") else Path(str(s))
+        if session_path.exists() and session_path.stat().st_mtime >= cutoff_ts:
+            filtered.append(s)
+    return filtered
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Convert Claude Code JSONL or Gemini JSON sessions to markdown transcripts",
@@ -168,7 +190,8 @@ Examples:
   python transcript.py session.json                     # Generates Gemini transcript
   python transcript.py session.jsonl -o transcript      # Uses sessions/claude/transcript-{full,abridged}.md
   python transcript.py session.jsonl -o /abs/path/name  # Uses absolute path
-  python transcript.py --all                            # Process all sessions in ~/.claude/projects/
+  python transcript.py                                  # Process recent sessions (last 7 days, default)
+  python transcript.py --all                            # Process ALL sessions in ~/.claude/projects/
         """,
     )
 
@@ -185,9 +208,15 @@ Examples:
         help="Brief slug describing session work (auto-generated if not provided)",
     )
     parser.add_argument(
+        "--recent",
+        action="store_true",
+        default=True,
+        help="Process sessions from last 7 days (default behavior)",
+    )
+    parser.add_argument(
         "--all",
         action="store_true",
-        help="Process all sessions found in ~/.claude/projects/ and write to sessions/claude/",
+        help="Process ALL sessions (overrides --recent filter)",
     )
 
     args = parser.parse_args()
@@ -198,19 +227,28 @@ Examples:
 
     processor = SessionProcessor()
 
-    # Batch mode: process all sessions
-    if args.all:
+    # Batch mode: process sessions (default when no file specified)
+    # --recent (default): last 7 days only
+    # --all: all sessions regardless of date
+    if args.all or not args.session_file:
         sessions = find_sessions()
         if not sessions:
             print("No sessions found.", file=sys.stderr)
             return 0
 
-        # Exclude obvious test/demo sessions, then process newest-first
+        # Exclude obvious test/demo sessions
         sessions = [
             s
             for s in sessions
             if not _is_test_session(s.path if hasattr(s, "path") else Path(str(s)))
         ]
+
+        # Apply --recent filter (default) unless --all specified
+        if not args.all:
+            original_count = len(sessions)
+            sessions = _filter_recent_sessions(sessions, days=7)
+            print(f"📅 Filtering to last 7 days: {len(sessions)} of {original_count} sessions")
+
         # Process newest sessions first (reverse chronological)
         sessions = sorted(
             sessions,
@@ -348,11 +386,7 @@ Examples:
         print(f"Errors: {errors}", file=sys.stderr)
         return 0
 
-    # Single session mode
-    if not args.session_file:
-        print("Error: must provide a session file or use --all", file=sys.stderr)
-        return 1
-
+    # Single session mode (specific file provided)
     # Validate input file
     session_path = Path(args.session_file)
     if not session_path.exists():
