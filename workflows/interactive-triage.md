@@ -24,15 +24,21 @@ Triage bd issues through interactive discussion with the user. Present batches o
 
 ## Steps
 
-### 1. Gather Context
+### 1. Establish Baseline
 
-Get recent issues and available epics:
+Get counts and identify quick wins:
 
 ```bash
-cd "$ACA_DATA"                           # Aggregated view across projects
-bd list --sort=-created_at | head -20    # Newest issues first
+bd count --status=open                   # Total open issues
+bd list --status=open --limit 50         # Recent issues
+bd stale --limit 30                      # Issues not updated in 30+ days
 bd list --type=epic --status=open        # Available filing destinations
 ```
+
+**Stale issues are highest-value triage targets.** Old items are often:
+- Superseded by actual implementation
+- Roadmap items that changed
+- No longer relevant
 
 ### 2. Present Batch for Discussion
 
@@ -48,16 +54,17 @@ For each issue in the batch, assess:
 
 Present findings to user in a table or list format.
 
-### 3. Wait for User Approval
+### 3. Get User Decisions
 
-**Do not execute changes without explicit approval.**
+**Use AskUserQuestion tool** to present triage decisions. Do not present questions as plain text.
 
-User may respond with:
-- Approval: "looks good" / "go ahead"
-- Corrections: "ns-xyz should be P1 not P2"
-- Clarifications: questions that inform classification
+Structure questions around actionable decisions:
+- Duplicates to close
+- Priority changes needed
+- Assignments to make
+- Items to investigate
 
-Incorporate feedback before executing.
+User may respond with approvals, corrections, or clarifications. Incorporate feedback before executing.
 
 ### 4. Execute Approved Changes
 
@@ -69,7 +76,15 @@ bd update <id> --parent=<epic-id>             # Attach to epic
 bd update <id> --priority=1                   # Adjust priority
 bd update <id> --assignee=bot                 # Assign to worker
 bd update <id> --add-label=v1.0               # Add labels
+bd close <id> --reason="Superseded"           # Close with reason
 ```
+
+**Close reasons** (use consistently):
+- "Superseded by actual implementation"
+- "Roadmap changed"
+- "Stale - triage cleanup"
+- "No longer relevant"
+- "Duplicate of <id>"
 
 ### 5. Verify and Report
 
@@ -122,8 +137,30 @@ Route issues to epics based on domain:
 - [ ] All modified issues verified with `bd show`
 - [ ] No issues left in ambiguous state
 
+## Category Sweep Order
+
+Work through categories for efficient batching:
+
+| Order | Category | How to Find | Typical Actions |
+|-------|----------|-------------|-----------------|
+| 1 | **Stale (30+ days)** | `bd stale` | Close superseded items |
+| 2 | **P0 urgent** | `bd list --priority=0` | Verify still urgent |
+| 3 | **Human gates** | `bd list --type=gate` | Assign to @nic |
+| 4 | **Bot-assigned** | `bd list --assignee=bot` | Check blockers valid |
+| 5 | **Clusters** | Related issues (same labels) | Verify sequencing |
+
+**Dependencies are valid.** If an issue is blocked, that's correct behavior. Don't remove real blockers to "unblock" work.
+
+## Session Length
+
+15-30 minutes typical. Triage is sustainable when regular.
+
 ## Anti-Patterns
 
 - **Batch execution without approval**: Always wait for user confirmation
 - **Conflating assignment with scheduling**: Assignment is WHO, not WHEN
 - **Hardcoded epic IDs**: Epic affinity changes; use domain matching
+- **Trying to "fix" blockers**: Blockers are intentional constraints
+- **Individual review of every issue**: Batch by category for efficiency
+- **Doing work instead of organizing**: Triage assigns and closes, doesn't implement
+- **Closing without reason**: Always use `--reason="..."`
