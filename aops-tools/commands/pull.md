@@ -28,11 +28,11 @@ This shows issues that are:
 
 **Note**: Tasks assigned to `nic` require human action and are not pulled by agents.
 
-### Step 2: Claim the Top Issue (or Halt if None)
+### Step 2: Claim the Top Issue (or Triage if None Ready)
 
-**If no ready issues**: Report "No ready issues for bot" and HALT. Do not proceed.
+**If no ready issues**: Run `bd list --status=open --assignee=bot` to find open tasks that may need triage. If tasks exist but aren't ready (blocked, need decomposition, etc.), apply TRIAGE path to the highest priority one. If truly no bot tasks exist, report "No tasks for bot" and HALT.
 
-**If issues exist**: Auto-claim the first (highest priority) issue from `bd ready` output:
+**If ready issues exist**: Auto-claim the first (highest priority) issue from `bd ready` output:
 
 ```bash
 bd update <first-issue-id> --status=in_progress
@@ -219,8 +219,16 @@ End with Framework Reflection (see AGENTS.md "Framework Reflection (Session End)
    - `bd create "Update auth tests" --parent=aops-def --priority=2`
 6. Parent stays in_progress, subtasks are ready for future `/pull`
 
-**If no ready issues:**
+**If no ready issues but open tasks exist:**
 ```
 /pull
 ```
-→ "No ready issues for bot. HALT."
+1. `bd ready --assignee=bot` → no results
+2. `bd list --status=open --assignee=bot` → finds `aops-ghi` (blocked, needs decomposition)
+3. Claims and applies TRIAGE path to `aops-ghi`
+
+**If no bot tasks at all:**
+```
+/pull
+```
+→ "No tasks for bot. HALT."
