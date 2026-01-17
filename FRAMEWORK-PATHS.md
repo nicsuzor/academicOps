@@ -12,7 +12,7 @@ tags:
   - paths
   - generated
 ---
-
+<!-- NS: move index documents like this into $AOPS/docs/. -->
 # Framework Paths
 
 **Before using Read, Glob, Grep, or Write tools**: Check this path table FIRST.

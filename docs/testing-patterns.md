@@ -6,7 +6,7 @@ description: Patterns for testing LLM behavior without keyword matching
 permalink: testing-patterns
 tags: [testing, H37, patterns]
 ---
-
+<!-- NS: move this to a testing workflow and consolidate with other test writing instructions. -->
 # Test Design Patterns
 
 How to write tests that verify actual behavior, not surface patterns. Per H37: never use keyword/substring matching for verification.

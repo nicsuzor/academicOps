@@ -30,7 +30,12 @@ This shows issues that are:
 
 ### Step 2: Claim the Top Issue (or Triage if None Ready)
 
-**If no ready issues**: Run `bd list --status=open --assignee=bot` to find open tasks that may need triage. If tasks exist but aren't ready (blocked, need decomposition, etc.), apply TRIAGE path to the highest priority one. If truly no bot tasks exist, report "No tasks for bot" and HALT.
+**If no ready issues**: Follow this fallback sequence:
+
+1. Run `bd list --status=open --assignee=bot` to find open bot tasks that may need triage
+2. If none, run `bd list --status=open --assignee=` (unassigned) to find tasks needing assignment
+3. If tasks found in either step, apply TRIAGE path to the highest priority one
+4. If truly no tasks exist (bot or unassigned), report "No actionable tasks" and HALT
 
 **If ready issues exist**: Auto-claim the first (highest priority) issue from `bd ready` output:
 
@@ -219,7 +224,7 @@ End with Framework Reflection (see AGENTS.md "Framework Reflection (Session End)
    - `bd create "Update auth tests" --parent=aops-def --priority=2`
 6. Parent stays in_progress, subtasks are ready for future `/pull`
 
-**If no ready issues but open tasks exist:**
+**If no ready issues but open bot tasks exist:**
 ```
 /pull
 ```
@@ -227,8 +232,17 @@ End with Framework Reflection (see AGENTS.md "Framework Reflection (Session End)
 2. `bd list --status=open --assignee=bot` → finds `aops-ghi` (blocked, needs decomposition)
 3. Claims and applies TRIAGE path to `aops-ghi`
 
-**If no bot tasks at all:**
+**If no bot tasks but unassigned tasks exist:**
 ```
 /pull
 ```
-→ "No tasks for bot. HALT."
+1. `bd ready --assignee=bot` → no results
+2. `bd list --status=open --assignee=bot` → no results
+3. `bd list --status=open --assignee=` → finds `aops-jkl` (unassigned, P2)
+4. Claims `aops-jkl` and applies TRIAGE path (assigns to role or decomposes)
+
+**If no actionable tasks:**
+```
+/pull
+```
+→ "No actionable tasks. HALT."
