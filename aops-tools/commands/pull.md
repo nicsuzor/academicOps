@@ -44,7 +44,57 @@ If user provides an issue ID directly via `/pull <issue-id>`, claim that specifi
 
 Display the issue details with `bd show <issue-id>` to understand the full context before proceeding.
 
-### Step 4: Invoke Hydrator for Execution Plan
+### Step 4: Assess Task Path
+
+After reviewing the issue, determine which execution path applies:
+
+#### Path 1: EXECUTE
+**All criteria must be true:**
+- **What**: Task describes specific deliverable(s)
+- **Where**: Target files/systems are known or locatable within 5 minutes of search
+- **Why**: Context is sufficient to make implementation decisions
+- **How**: Steps are known or determinable from codebase/docs
+- **Scope**: Estimated completion within current session
+- **Blockers**: No external dependencies (human approval, external input, waiting)
+
+**Action**: Proceed to Step 5 (Hydrator) → Execute → Close.
+
+#### Path 2: TRIAGE
+**Any criterion is true:**
+- Task requires human judgment/approval
+- Task has unknowns requiring exploration beyond this session
+- Task is too vague to determine deliverables
+- Task depends on external input not yet available
+- Task exceeds session scope
+
+**Actions (in order):**
+1. **Assign to role**: `bd update <id> --assignee=nic` for human work
+2. **Subtask explosion** (if appropriate): Break into child issues when:
+   - You can identify discrete, actionable steps
+   - Each subtask passes EXECUTE criteria independently
+   - Each subtask is 15-60 minutes of work
+   - The breakdown covers the parent task's scope
+   ```bash
+   bd create "<subtask>" --type=task --parent=<parent-id> --priority=<n>
+   ```
+3. **If cannot explode**: Add comment explaining what's blocking, assign to `nic`
+   ```bash
+   bd comment <id> "Blocked: <reason>. Needs strategy review."
+   bd update <id> --assignee=nic
+   ```
+
+**After TRIAGE**: Mark original task appropriately (in_progress if subtasks created, or reassigned) and HALT. Do not proceed to execution.
+
+#### Mid-Execution Reclassification
+
+If during EXECUTE you hit an unexpected blocker:
+1. Stop work
+2. Update task with findings: `bd comment <id> "Attempted: X. Blocked by: Y"`
+3. Reclassify to TRIAGE path
+
+### Step 5: Invoke Hydrator for Execution Plan
+
+**(EXECUTE path only)**
 
 Call the hydrator with the issue context to generate an execution plan:
 
@@ -57,13 +107,13 @@ Task(
 )
 ```
 
-### Step 5: Execute the Plan
+### Step 6: Execute the Plan
 
 1. **Create TodoWrite** with the hydrator's plan
 2. **Work through each item** systematically
 3. **Run QA verification** before completion (if code changed)
 
-### Step 6: Handle Follow-up Work
+### Step 7: Handle Follow-up Work
 
 If the task generates follow-up work:
 
@@ -75,14 +125,14 @@ bd create "<follow-up title>" --type=task --priority=<n> --description="Follow-u
 bd dep add <new-issue-id> depends-on <completed-issue-id>
 ```
 
-### Step 7: Close the Issue
+### Step 8: Close the Issue
 
 ```bash
 bd update <issue-id> --status=closed
 bd sync
 ```
 
-### Step 8: Record Learnings
+### Step 9: Record Learnings
 
 If the work produced insights worth preserving:
 
@@ -95,7 +145,7 @@ Use this for:
 - Decisions and their rationale
 - Knowledge that will help future work
 
-### Step 9: Commit and Push
+### Step 10: Commit and Push
 
 ```bash
 git add -A
@@ -107,7 +157,7 @@ bd sync
 git push
 ```
 
-### Step 10: Session Reflection
+### Step 11: Session Reflection
 
 End with Framework Reflection (see AGENTS.md "Framework Reflection (Session End)" for template).
 
@@ -125,21 +175,49 @@ End with Framework Reflection (see AGENTS.md "Framework Reflection (Session End)
 5. **Always push** - Work is not complete until `git push` succeeds
 6. **Always reflect** - End with Framework Reflection for continuous improvement
 
-## Example
+## Examples
 
+### Example 1: EXECUTE Path (fully specified task)
 ```
 /pull
 ```
 1. Runs `bd ready --assignee=bot` → finds `aops-xyz` (P1: Fix authentication bug)
 2. Auto-claims: `bd update aops-xyz --status=in_progress`
 3. Shows issue details via `bd show aops-xyz`
-4. Hydrator analyzes issue, generates TodoWrite plan
-5. Agent executes plan, fixes bug
-6. Creates follow-up: `aops-abc` for adding tests
-7. Closes: `bd update aops-xyz --status=closed`
-8. Records learnings via remember skill
-9. Commits and pushes
-10. Outputs Framework Reflection
+4. **Assesses path**: What ✓, Where ✓, Why ✓, How ✓, Scope ✓, No blockers ✓ → **EXECUTE**
+5. Hydrator analyzes issue, generates TodoWrite plan
+6. Agent executes plan, fixes bug
+7. Creates follow-up: `aops-abc` for adding tests
+8. Closes: `bd update aops-xyz --status=closed`
+9. Records learnings via remember skill
+10. Commits and pushes
+11. Outputs Framework Reflection
+
+### Example 2: TRIAGE Path (needs human input)
+```
+/pull
+```
+1. Runs `bd ready --assignee=bot` → finds `aops-abc` (P1: Book progress checkpoint)
+2. Auto-claims: `bd update aops-abc --status=in_progress`
+3. Shows issue details → requires human assessment of creative work
+4. **Assesses path**: Requires human judgment → **TRIAGE**
+5. Assigns to human: `bd update aops-abc --assignee=nic`
+6. Adds comment: `bd comment aops-abc "Requires human assessment of completion percentage"`
+7. **HALT** - does not proceed to execution
+
+### Example 3: TRIAGE with Subtask Explosion
+```
+/pull
+```
+1. Runs `bd ready --assignee=bot` → finds `aops-def` (P1: Refactor auth system)
+2. Auto-claims: `bd update aops-def --status=in_progress`
+3. Shows issue details → large scope but decomposable
+4. **Assesses path**: Exceeds session scope → **TRIAGE**
+5. Creates subtasks:
+   - `bd create "Extract auth middleware" --parent=aops-def --priority=1`
+   - `bd create "Add JWT validation" --parent=aops-def --priority=1`
+   - `bd create "Update auth tests" --parent=aops-def --priority=2`
+6. Parent stays in_progress, subtasks are ready for future `/pull`
 
 **If no ready issues:**
 ```

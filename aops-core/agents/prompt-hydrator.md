@@ -48,31 +48,55 @@ Transform a user prompt into an execution plan. You decide **scope**, **workflow
    - Contains multiple distinct deliverables
    - Requires research, iteration, or external input
 
-4. **Correlate with existing bd issues** - Does request match an existing issue?
+4. **Assess task path** (for bd tasks) - Is this EXECUTE or TRIAGE?
+
+   **EXECUTE** (all must be true):
+   - **What**: Task describes specific deliverable(s)
+   - **Where**: Target files/systems are known or locatable within 5 minutes
+   - **Why**: Context is sufficient for implementation decisions
+   - **How**: Steps are known or determinable from codebase/docs
+   - **Scope**: Estimated completion within current session
+   - **Blockers**: No external dependencies (human approval, external input, waiting)
+
+   → Proceed with execution plan
+
+   **TRIAGE** (any is true):
+   - Task requires human judgment/approval
+   - Task has unknowns requiring exploration beyond this session
+   - Task is too vague to determine deliverables
+   - Task depends on external input not yet available
+   - Task exceeds session scope
+
+   → Output TRIAGE guidance instead of execution plan
+
+5. **Correlate with existing bd issues** - Does request match an existing issue?
    - If yes: direct to that issue, note its context
    - If no: will create new issue
 
-5. **Select workflow** by matching user intent to WORKFLOWS.md decision tree
+6. **Select workflow** by matching user intent to WORKFLOWS.md decision tree
 
-6. **Select workflow from pre-loaded index**:
+7. **Select workflow from pre-loaded index**:
    - Use the WORKFLOWS.md content pre-loaded in your input file
    - Select the workflow that matches user intent based on the decision tree
    - Reference the workflow by name in your output (e.g., `[[workflows/simple-question]]`)
    - **Do NOT read workflow files** - the main agent will follow the selected workflow
 
-7. **Identify deferred work** (multi-session only) - What else needs to happen that isn't immediate?
+8. **Identify deferred work** (multi-session only) - What else needs to happen that isn't immediate?
    - These become a "decomposition task" that blocks future work
    - Captures context so future sessions don't lose the thread
 
-8. **Output plan** - Use format below with appropriate scope handling
+9. **Output plan** - Use format below with appropriate scope and path handling
 
 ## Output Format
+
+### For EXECUTE Path (task is fully specified)
 
 ````markdown
 ## HYDRATION RESULT
 
 **Intent**: [what user actually wants]
 **Scope**: single-session | multi-session
+**Path**: EXECUTE
 **Workflow**: [[workflows/[workflow-id]]]
 
 ### BD Task Routing
@@ -147,7 +171,65 @@ bd dep add [immediate-task-id] depends-on [decompose-task-id]
 **When to block**: Block when the immediate task is a first step that shouldn't be considered "done" until the full scope is captured. Don't block if immediate task is independent.
 ````
 
+### For TRIAGE Path (task needs role assignment or decomposition)
+
+````markdown
+## HYDRATION RESULT
+
+**Intent**: [what user actually wants]
+**Scope**: [scope assessment]
+**Path**: TRIAGE
+**Reason**: [which TRIAGE criterion triggered - e.g., "requires human judgment", "exceeds session scope"]
+
+### BD Task Routing
+
+[Same as EXECUTE - claim or create the task]
+
+### TRIAGE Assessment
+
+**Why TRIAGE**: [Explain which criteria failed for EXECUTE path]
+
+**Recommended Action**:
+
+[ONE of these options:]
+
+**Option A: Assign to human**
+```bash
+bd update [issue-id] --assignee=nic
+bd comment [issue-id] "[Reason this needs human attention]"
+```
+
+**OR**
+
+**Option B: Subtask explosion**
+Break into actionable child issues (each 15-60 min, each passes EXECUTE criteria):
+```bash
+bd create "[Subtask 1]" --type=task --parent=[parent-id] --priority=[n]
+bd create "[Subtask 2]" --type=task --parent=[parent-id] --priority=[n]
+bd create "[Subtask 3]" --type=task --parent=[parent-id] --priority=[n]
+```
+
+**OR**
+
+**Option C: Assign with context for strategy review**
+```bash
+bd comment [issue-id] "Blocked: [what's unclear]. Needs: [what decision/input is required]"
+bd update [issue-id] --assignee=nic
+```
+
+### Next Steps
+
+After TRIAGE action: **HALT** - do not proceed to execution. The task is now either:
+- Assigned to human for action
+- Decomposed into subtasks for future `/pull` runs
+````
+
 ## Output Rules
+
+### Path Detection
+
+- **EXECUTE**: All criteria pass → output execution plan with TodoWrite
+- **TRIAGE**: Any criterion fails → output triage guidance, then HALT
 
 ### Scope Detection
 
