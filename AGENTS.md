@@ -77,8 +77,10 @@ NEVER stop before pushing.
 **Friction points**: [What was harder than expected, or "none"]
 **Root cause** (if not success): [Which component failed]
 **Proposed changes**: [Framework improvements identified, or "none"]
-**Next step**: [Context for next session]
+**Next step**: [Context for next session - MUST be filed as bd issue if actionable]
 ```
+
+**Next step rule**: If Next step contains actionable work, file it as a bd issue before ending the session. Don't just document it - track it.
 
 Field alignment with session-insights JSON schema:
 - `**Outcome**`: Must be lowercase: `success`, `partial`, or `failure`
