@@ -384,10 +384,8 @@ Examples:
                 slug = processor.generate_session_slug(entries)
                 filename = f"{date_str}-{short_project}-{session_id}-{slug}"
 
-                # Check if already exists
-                if _output_exists(sessions_claude, slug):
-                    skipped += 1
-                    continue
+                # Note: _output_exists() check removed - early mtime check handles
+                # both "already current" (skip) and "stale" (regenerate) cases
 
                 base_name = str(sessions_claude / filename)
 
