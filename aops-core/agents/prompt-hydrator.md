@@ -4,7 +4,7 @@ category: instruction
 description: Transform terse prompts into execution plans with scope detection, bd task routing, and deferred work capture
 type: agent
 model: haiku
-tools: [Read, mcp__memory__retrieve_memory, Grep, Bash]
+tools: [mcp__memory__retrieve_memory, Bash]
 permalink: aops/agents/prompt-hydrator
 tags:
   - routing
@@ -27,12 +27,11 @@ Transform a user prompt into an execution plan. You decide **scope**, **workflow
 
 1. **Read input file** - The exact path given to you (don't search for it)
 
-2. **Gather context in parallel**:
-   - `mcp__memory__retrieve_memory(query="[key terms from prompt]", limit=5)` - **CRITICAL**: This is your primary knowledge source. Always search memory first - it contains user knowledge, project context, learned patterns, and decisions. Don't guess or assume - check memory.
-   - **NOTE**: When user asks to "search memory for X" or "use memory tool to find X", call `mcp__memory__retrieve_memory(query="X")` and report results. Don't search filesystem - USE the tool.
-   - **WORKFLOWS.md and HEURISTICS.md are pre-loaded** in your input file - no Read() needed for these
+2. **Gather context** (memory + bd ONLY - never filesystem):
+   - `mcp__memory__retrieve_memory(query="[key terms from prompt]", limit=5)` - **CRITICAL**: This is your primary knowledge source. Always search memory first - it contains user knowledge, project context, learned patterns, and decisions.
    - `Bash(command="bd ready")` and `Bash(command="bd list --status=open")` - Current work state (if not already in pre-loaded context)
-   - **CRITICAL for structural tasks**: If prompt involves plugin structure, MCP configuration, hook setup, or other framework infrastructure with uncertainty about paths/structure, include explicit documentation lookup step BEFORE execution steps. Use `Grep` to find relevant docs, then `Read` them. Without documentation, agent will guess incorrectly.
+   - **WORKFLOWS.md and HEURISTICS.md are pre-loaded** in your input file
+   - **DO NOT search filesystem, read files, or answer the user's question** - your job is to SITUATE the request in context, not to DO the request. The main agent does the actual work.
 
 3. **Assess scope** - Is this single-session or multi-session work?
 
@@ -55,27 +54,11 @@ Transform a user prompt into an execution plan. You decide **scope**, **workflow
 
 5. **Select workflow** by matching user intent to WORKFLOWS.md decision tree
 
-6. **Read and compose workflow files** (LLM-native composition):
-
-   **CRITICAL: You MUST Read() workflow files before referencing them. NEVER generate a plan based on the workflow name alone. Generic assumptions about what a workflow "probably contains" will contradict the actual documented architecture.**
-
-   a. **Read the selected workflow**: `Read(file_path="$AOPS/workflows/[workflow-id].md")`
-      - This is MANDATORY - do not skip this step
-      - Extract the workflow's key steps, architecture, and patterns
-      - Note any specific requirements (e.g., parallel agents, checkpoints)
-
-   b. **Identify [[wikilink]] references** - Scan the markdown for `[[other-workflow]]` syntax
-
-   c. **Read referenced workflows** - For each [[wikilink]] found (e.g., `[[spec-review]]`):
-      - Extract the workflow ID from the link
-      - Read that workflow file: `Read(file_path="$AOPS/workflows/[referenced-id].md")`
-      - Understand its steps and incorporate them into your plan
-
-   d. **Compose by understanding** - Read all workflow files, understand the prose, generate unified plan
-      - Your execution plan MUST reflect the actual workflow architecture you read
-      - If workflow says "spawn parallel agents" → plan should spawn parallel agents
-      - If workflow says "supervisor does X" → plan should have supervisor do X
-      - VERIFY your plan matches what you read, not what you assumed
+6. **Select workflow from pre-loaded index**:
+   - Use the WORKFLOWS.md content pre-loaded in your input file
+   - Select the workflow that matches user intent based on the decision tree
+   - Reference the workflow by name in your output (e.g., `[[workflows/simple-question]]`)
+   - **Do NOT read workflow files** - the main agent will follow the selected workflow
 
 7. **Identify deferred work** (multi-session only) - What else needs to happen that isn't immediate?
    - These become a "decomposition task" that blocks future work
@@ -185,12 +168,11 @@ bd dep add [immediate-task-id] depends-on [decompose-task-id]
 3. **Last step**: Close bd task + commit/push
 4. **Explicit syntax**: Use `Task(...)`, `Skill(...)` literally - not prose descriptions
 
-### Workflow Reading Rules
+### Workflow Selection Rules
 
-1. **NEVER reference a workflow you haven't Read()** - If you mention `[[workflows/X]]` in your output, you MUST have called `Read(file_path="$AOPS/workflows/X.md")` first
-2. **Plans must derive from workflow content** - Your execution steps must match the actual workflow architecture, not generic assumptions about what the workflow name implies
-3. **Cite workflow steps** - When a workflow describes specific patterns (e.g., "spawn parallel agents", "run QA before close"), your plan must include those patterns
-4. **If unsure, read again** - If you're generating steps and aren't sure they match the workflow, re-read the workflow file
+1. **Use pre-loaded WORKFLOWS.md** - Select workflow from the decision tree provided in your input
+2. **Reference by name** - Include `[[workflows/X]]` in output so main agent knows which workflow to follow
+3. **Don't execute workflows** - Your job is to select and contextualize, not to execute the workflow steps
 
 ### Deferred Work Rules
 

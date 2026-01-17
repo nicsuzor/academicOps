@@ -349,6 +349,94 @@ def semantic_validate_hydration(hydrator_response: dict, prompt_type: str) -> di
 
 @pytest.mark.slow
 @pytest.mark.integration
+def test_hydrator_does_not_answer_user_questions(
+    claude_headless_tracked,
+) -> None:
+    """Regression: Hydrator should SITUATE requests, not EXECUTE them.
+
+    BUG (aops-gtn7): When user asked "what is my tmux binding for X", the hydrator
+    searched the filesystem, found the answer, and returned it - doing the main
+    agent's job instead of just providing context and workflow selection.
+
+    The hydrator's role is to:
+    1. Search memory for relevant context
+    2. Check bd for related work
+    3. Select appropriate workflow
+    4. Return plan for main agent to execute
+
+    The hydrator should NOT:
+    - Read user config files
+    - Search the filesystem for answers
+    - Directly answer user questions
+
+    Fix: Removed Read and Grep from hydrator's tool list.
+    """
+    # Send a prompt that COULD be answered by reading a config file
+    # The hydrator should NOT read the file - it should route to simple-question workflow
+    prompt = "What is my shell PS1 prompt configured to?"
+
+    result, session_id, tool_calls = claude_headless_tracked(
+        prompt, timeout_seconds=180
+    )
+
+    assert result["success"], f"Execution failed: {result.get('error')}"
+
+    # Find all tool calls made by the hydrator subagent
+    # The hydrator output appears in a Task tool result
+    output = result.get("output", "")
+
+    # Check if hydrator used Read or Grep (which it shouldn't have access to anymore)
+    # These patterns would indicate the bug is still present
+    bug_indicators = [
+        # Hydrator reading config files
+        ".zshrc",
+        ".bashrc",
+        ".config/",
+        "PS1=",
+        # Evidence of filesystem search within hydrator context
+        "Read(file_path=",
+        "Grep(pattern=",
+    ]
+
+    # Look specifically within the hydrator's output (Task result)
+    # The hydrator response appears after "prompt-hydrator" Task call
+    for indicator in bug_indicators:
+        # Check if indicator appears in the hydrator's section of output
+        # (after Task call, before main agent resumes)
+        if f'subagent_type":"aops-core:prompt-hydrator"' in output or 'subagent_type":"prompt-hydrator"' in output:
+            # Find hydrator result section
+            import re
+            hydrator_result_pattern = r'"type":"tool_result".*?"content":"(.*?)"'
+            matches = re.findall(hydrator_result_pattern, output, re.DOTALL)
+            for match in matches:
+                if "HYDRATION RESULT" in match and indicator in match:
+                    pytest.fail(
+                        f"Hydrator scope violation: found '{indicator}' in hydrator output.\n"
+                        f"The hydrator should only use memory + bd tools, not filesystem access.\n"
+                        f"Session: {session_id}"
+                    )
+
+    # Verify hydrator WAS called (positive check)
+    hydrator_calls = [
+        c
+        for c in tool_calls
+        if c["name"] == "Task"
+        and "prompt-hydrator" in str(c.get("input", {}).get("subagent_type", ""))
+    ]
+
+    assert len(hydrator_calls) > 0, (
+        f"prompt-hydrator should have been spawned. Session: {session_id}"
+    )
+
+    # Verify hydrator selected simple-question workflow (not executed the answer)
+    assert "simple-question" in output.lower() or "workflow" in output.lower(), (
+        f"Hydrator should have selected a workflow, not answered directly. "
+        f"Session: {session_id}"
+    )
+
+
+@pytest.mark.slow
+@pytest.mark.integration
 def test_hydrator_does_not_glob_when_given_specific_file(
     claude_headless_tracked,
 ) -> None:

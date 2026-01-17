@@ -1,0 +1,6 @@
+[submodule "lib/beads"]
+	path = lib/beads
+	url = git@github.com:steveyegge/beads.git
+[submodule "lib/omcp"]
+	path = lib/omcp
+	url = git@github.com:nicsuzor/omcp.git
