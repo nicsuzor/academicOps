@@ -185,6 +185,66 @@ class TestSchemaValidation:
         ):
             validate_insights_schema(insights)
 
+    def test_valid_with_bead_tracking(self):
+        """Test that insights with bead tracking fields pass validation."""
+        insights = {
+            "session_id": "a1b2c3d4",
+            "date": "2026-01-13",
+            "project": "test",
+            "summary": "Test session",
+            "outcome": "success",
+            "accomplishments": ["task1"],
+            "current_bead_id": "aops-kdl0",
+            "worker_name": "Claude Opus 4.5",
+        }
+        validate_insights_schema(insights)  # Should not raise
+
+    def test_bead_tracking_fields_accept_null(self):
+        """Test that bead tracking fields accept null values."""
+        insights = {
+            "session_id": "a1b2c3d4",
+            "date": "2026-01-13",
+            "project": "test",
+            "summary": "Test session",
+            "outcome": "success",
+            "accomplishments": [],
+            "current_bead_id": None,
+            "worker_name": None,
+        }
+        validate_insights_schema(insights)  # Should not raise
+
+    def test_current_bead_id_type_validation(self):
+        """Test that current_bead_id must be string or null."""
+        insights = {
+            "session_id": "a1b2c3d4",
+            "date": "2026-01-13",
+            "project": "test",
+            "summary": "Test",
+            "outcome": "success",
+            "accomplishments": [],
+            "current_bead_id": 123,  # Should be string
+        }
+        with pytest.raises(
+            InsightsValidationError, match="current_bead_id.*must be a string or null"
+        ):
+            validate_insights_schema(insights)
+
+    def test_worker_name_type_validation(self):
+        """Test that worker_name must be string or null."""
+        insights = {
+            "session_id": "a1b2c3d4",
+            "date": "2026-01-13",
+            "project": "test",
+            "summary": "Test",
+            "outcome": "success",
+            "accomplishments": [],
+            "worker_name": ["list", "not", "string"],  # Should be string
+        }
+        with pytest.raises(
+            InsightsValidationError, match="worker_name.*must be a string or null"
+        ):
+            validate_insights_schema(insights)
+
 
 class TestInsightsFilePath:
     """Test insights file path generation."""

@@ -220,6 +220,16 @@ def validate_insights_schema(insights: dict[str, Any]) -> None:
                 f"Field 'user_mood' must be between -1.0 and 1.0, got {mood}"
             )
 
+    # Validate bead tracking fields (optional, must be string or null)
+    bead_tracking_fields = ["current_bead_id", "worker_name"]
+    for field in bead_tracking_fields:
+        if field in insights and insights[field] is not None:
+            if not isinstance(insights[field], str):
+                raise InsightsValidationError(
+                    f"Field '{field}' must be a string or null, "
+                    f"got {type(insights[field]).__name__}"
+                )
+
 
 def get_insights_file_path(
     date: str, session_id: str, index: int | None = None
