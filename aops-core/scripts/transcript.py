@@ -180,6 +180,56 @@ def _filter_recent_sessions(sessions: list, days: int = 7) -> list:
     return filtered
 
 
+def _get_session_id(session_path: Path) -> str:
+    """Extract session ID from filename without parsing the file.
+
+    Args:
+        session_path: Path to session file
+
+    Returns:
+        8-character session ID
+    """
+    session_id = session_path.stem
+    if len(session_id) > 8:
+        if session_id.startswith("session-"):
+            # Gemini format: session-2026-01-08T08-18-a5234d3e -> a5234d3e
+            parts = session_id.split("-")
+            session_id = parts[-1]
+        else:
+            # Claude format: UUID -> first 8 chars
+            session_id = session_id[:8]
+    return session_id
+
+
+def _find_existing_transcript(out_dir: Path, session_id: str) -> Path | None:
+    """Find existing transcript file by session ID.
+
+    Args:
+        out_dir: Output directory to search
+        session_id: 8-character session ID
+
+    Returns:
+        Path to existing -full.md transcript if found, None otherwise
+    """
+    # Glob for any transcript with this session_id
+    pattern = f"*-{session_id}-*-full.md"
+    matches = list(out_dir.glob(pattern))
+    return matches[0] if matches else None
+
+
+def _transcript_is_current(session_path: Path, transcript_path: Path) -> bool:
+    """Check if transcript is current (newer than session file).
+
+    Args:
+        session_path: Path to source session file
+        transcript_path: Path to transcript file
+
+    Returns:
+        True if transcript mtime >= session mtime
+    """
+    return transcript_path.stat().st_mtime >= session_path.stat().st_mtime
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Convert Claude Code JSONL or Gemini JSON sessions to markdown transcripts",
@@ -265,6 +315,13 @@ Examples:
         for s in sessions:
             try:
                 session_path = s.path if hasattr(s, "path") else Path(str(s))
+
+                # Early mtime check: skip if transcript already exists and is current
+                session_id = _get_session_id(session_path)
+                existing_transcript = _find_existing_transcript(sessions_claude, session_id)
+                if existing_transcript and _transcript_is_current(session_path, existing_transcript):
+                    skipped += 1
+                    continue
 
                 # Process the session
                 print(f"📝 Processing session: {session_path}")
