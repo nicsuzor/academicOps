@@ -28,33 +28,21 @@ This shows issues that are:
 
 **Note**: Tasks assigned to `nic` require human action and are not pulled by agents.
 
-### Step 2: Present Options to User
+### Step 2: Claim the Top Issue (or Halt if None)
 
-Use AskUserQuestion to let the user choose which issue to claim:
+**If no ready issues**: Report "No ready issues for bot" and HALT. Do not proceed.
 
-```
-AskUserQuestion(
-  questions=[{
-    question: "Which issue would you like to work on?",
-    header: "Select task",
-    options: [
-      {label: "[issue-id] - [title]", description: "[priority] - [brief context]"},
-      // ... up to 4 options from bd ready output
-    ],
-    multiSelect: false
-  }]
-)
-```
-
-If user provides an issue ID directly via `/pull <issue-id>`, skip to Step 3.
-
-### Step 3: Claim the Issue
-
-Mark the selected issue as in-progress:
+**If issues exist**: Auto-claim the first (highest priority) issue from `bd ready` output:
 
 ```bash
-bd update <issue-id> --status=in_progress
+bd update <first-issue-id> --status=in_progress
 ```
+
+If user provides an issue ID directly via `/pull <issue-id>`, claim that specific issue instead.
+
+### Step 3: Show Claimed Issue
+
+Display the issue details with `bd show <issue-id>` to understand the full context before proceeding.
 
 ### Step 4: Invoke Hydrator for Execution Plan
 
@@ -125,7 +113,7 @@ End with Framework Reflection (see AGENTS.md "Framework Reflection (Session End)
 
 ## Arguments
 
-- `/pull` - Interactive mode: presents ready issues for selection
+- `/pull` - Auto-claim mode: claims highest priority ready issue (or halts if none)
 - `/pull <issue-id>` - Direct mode: claims and executes specific issue
 
 ## Key Rules
@@ -142,13 +130,19 @@ End with Framework Reflection (see AGENTS.md "Framework Reflection (Session End)
 ```
 /pull
 ```
-1. Shows ready bot-assigned issues via `bd ready --assignee=bot`
-2. User selects `aops-xyz` (P1: Fix authentication bug)
-3. Claims issue: `bd update aops-xyz --status=in_progress`
+1. Runs `bd ready --assignee=bot` → finds `aops-xyz` (P1: Fix authentication bug)
+2. Auto-claims: `bd update aops-xyz --status=in_progress`
+3. Shows issue details via `bd show aops-xyz`
 4. Hydrator analyzes issue, generates TodoWrite plan
 5. Agent executes plan, fixes bug
 6. Creates follow-up: `aops-abc` for adding tests
 7. Closes: `bd update aops-xyz --status=closed`
-8. Records: `Skill(skill="remember")` for the pattern discovered
+8. Records learnings via remember skill
 9. Commits and pushes
 10. Outputs Framework Reflection
+
+**If no ready issues:**
+```
+/pull
+```
+→ "No ready issues for bot. HALT."

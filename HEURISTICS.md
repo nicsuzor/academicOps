@@ -55,3 +55,11 @@ description: Working hypotheses validated by evidence.
 **Derivation**: Grep is for needles, not fishing expeditions. Semantic search tools exist precisely to answer "find things related to X" - broad pattern matching across directories is wasteful and may surface irrelevant or sensitive content.
 
 ---
+
+## Local AGENTS.md Over Central Docs (P#60)
+
+**Statement**: Place agent instructions in the directory where agents will work, not in central docs.
+
+**Derivation**: `lib/AGENTS.md` is discovered when an agent enters `lib/`. A `docs/SUBMODULES.md` linked from root requires agents to know the link exists. Discoverability beats indirection.
+
+---
