@@ -75,6 +75,22 @@ Each axiom and heuristic is stored as an individual file in `aops-core/axioms/` 
 
 The difference: axioms cannot be violated; heuristics can be revised when evidence shows they're wrong.
 
+### Skills vs Workflows
+
+The framework distinguishes between **what** to do and **how** to do it:
+
+| | Skills | Workflows |
+|---|--------|-----------|
+| **Answer** | "How do I do X?" | "What should I do?" |
+| **Nature** | Fungible instructions | Composable chains of steps |
+| **Examples** | Create a PDF, generate a mindmap | Feature development, TDD cycle |
+
+**Skills** are interchangeable recipes—any skill that creates a PDF can substitute for another. They're the building blocks.
+
+**Workflows** orchestrate those building blocks into coherent processes. A workflow defines the sequence (spec review → implementation → QA), while skills handle each step's mechanics.
+
+For full specification, see [[aops-core/specs/workflow-system-spec]].
+
 ### Enforcement Levels
 
 Rules aren't just documented—they're enforced at multiple levels:

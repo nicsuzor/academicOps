@@ -217,6 +217,20 @@ The feature-dev workflow will be the first implementation, using itself as the d
 
 ## Design Principles
 
+### Principle #0: Skills vs Workflows
+
+**Skills** and **Workflows** serve fundamentally different purposes:
+
+| Aspect | Skills | Workflows |
+|--------|--------|-----------|
+| **Purpose** | HOW to do a known thing | WHAT to do (sequence of steps) |
+| **Nature** | Fungible instructions | Composable chains |
+| **Examples** | Create a PDF, generate a mindmap, format code | Feature development, debugging, TDD cycle |
+| **Reusability** | Interchangeable - any skill can be swapped for another that does the same thing | Compositional - workflows reference other workflows |
+| **Invocation** | Direct: `Skill(skill="pdf")` | Selected by hydrator based on intent |
+
+**Key insight**: Skills are the building blocks (the "how"); workflows orchestrate them into coherent processes (the "what"). A workflow might use multiple skills, but a skill never contains a workflow.
+
 ### Principle #1: LLM-Native Design
 - **Workflows are markdown for humans** - not structured data for parsers
 - **LLMs read and understand** - no parsing logic needed
