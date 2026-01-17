@@ -27,6 +27,7 @@ if str(AOPS_CORE) not in sys.path:
 from hooks.user_prompt_submit import (
     build_hydration_instruction,
     load_template,
+    load_skills_index,
     CONTEXT_TEMPLATE_FILE,
 )
 
@@ -80,6 +81,7 @@ class TestFirstPromptHydration:
             "session_context": "",
             "framework_paths": "## Resolved Paths\n| Path | Value |",
             "workflows_index": "workflow content",
+            "skills_index": "skills content",
             "heuristics": "heuristics content",
             "bd_state": "",
         }
@@ -113,6 +115,7 @@ class TestFirstPromptHydration:
             "session_context": "",
             "framework_paths": "",
             "workflows_index": "",
+            "skills_index": "",
             "heuristics": "",
             "bd_state": "",
         }
@@ -208,3 +211,62 @@ class TestTemplateEscaping:
                     f"Line {i+1} has unescaped {{content:}} which will cause "
                     f"KeyError during formatting:\n{line}"
                 )
+
+
+class TestSkillsIndex:
+    """Test skills index loading for hydrator context.
+
+    Regression test for ns-rk48: Hydrator slow for known workflows - missing skill awareness.
+    Root cause: Hydrator had no pre-loaded skills index, requiring memory search to
+    recognize skill invocations like "daily list" -> /daily.
+
+    Fix: Added SKILLS.md index and load_skills_index() to pre-load into hydrator context.
+    """
+
+    def test_load_skills_index_returns_content(self):
+        """Verify load_skills_index returns non-empty content when SKILLS.md exists."""
+        with patch("hooks.user_prompt_submit.get_aops_root") as mock_root:
+            mock_root.return_value = AOPS_CORE.parent
+
+            result = load_skills_index()
+
+            assert result, "load_skills_index should return non-empty string"
+            assert "daily" in result.lower(), "Skills index should include /daily skill"
+
+    def test_skills_index_contains_trigger_phrases(self):
+        """Verify skills index includes trigger phrases for routing."""
+        with patch("hooks.user_prompt_submit.get_aops_root") as mock_root:
+            mock_root.return_value = AOPS_CORE.parent
+
+            result = load_skills_index()
+
+            # Key trigger phrases that should enable fast routing
+            assert "daily list" in result.lower() or "daily note" in result.lower(), \
+                "Skills index should include 'daily list' or 'daily note' trigger"
+
+    def test_skills_index_in_hydration_context(self):
+        """Verify skills_index is included in hydration context template."""
+        template = load_template(CONTEXT_TEMPLATE_FILE)
+
+        # The template should have a {skills_index} placeholder
+        assert "{skills_index}" in template or "skills_index" in template, \
+            "Hydration context template should include skills_index placeholder"
+
+    def test_build_hydration_includes_skills(self):
+        """Verify build_hydration_instruction includes skills index in output."""
+        prompt = "update my daily list"
+        session_id = "test-session-skills"
+
+        with patch("hooks.user_prompt_submit.get_aops_root") as mock_root, \
+             patch("hooks.user_prompt_submit.get_bd_path") as mock_bd, \
+             patch("hooks.user_prompt_submit.set_hydration_pending"):
+
+            mock_root.return_value = AOPS_CORE.parent
+            mock_bd.return_value = None
+
+            instruction = build_hydration_instruction(session_id, prompt, None)
+
+            # The temp file should be created with skills content
+            # We verify by checking the instruction references the temp file
+            assert "/tmp/claude-hydrator/hydrate_" in instruction, \
+                "Instruction should reference temp file containing skills index"

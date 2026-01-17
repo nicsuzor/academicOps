@@ -111,6 +111,29 @@ def load_heuristics() -> str:
     return content.strip()
 
 
+def load_skills_index() -> str:
+    """Load SKILLS.md for hydrator context.
+
+    Pre-loads skills index so hydrator can immediately recognize skill invocations
+    without needing to search memory. Returns content after frontmatter separator.
+    """
+    aops_root = get_aops_root()
+    skills_path = aops_root / "SKILLS.md"
+
+    if not skills_path.exists():
+        return "(SKILLS.md not found - hydrator will use memory search for skill recognition)"
+
+    content = skills_path.read_text()
+
+    # Skip frontmatter if present
+    if content.startswith("---"):
+        parts = content.split("---", 2)
+        if len(parts) >= 3:
+            return parts[2].strip()
+
+    return content.strip()
+
+
 def get_bd_work_state() -> str:
     """Query bd for current work state.
 
@@ -292,6 +315,7 @@ def build_hydration_instruction(
 
     # Pre-load stable framework docs (reduces hydrator runtime I/O)
     workflows_index = load_workflows_index()
+    skills_index = load_skills_index()
     heuristics = load_heuristics()
 
     # Get bd work state (in-progress and ready issues)
@@ -304,6 +328,7 @@ def build_hydration_instruction(
         session_context=session_context,
         framework_paths=framework_paths,
         workflows_index=workflows_index,
+        skills_index=skills_index,
         heuristics=heuristics,
         bd_state=bd_state,
     )

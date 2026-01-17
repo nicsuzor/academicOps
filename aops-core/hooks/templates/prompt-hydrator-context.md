@@ -27,6 +27,10 @@ Transform this user prompt into an execution plan with scope detection and bd ta
 
 {workflows_index}
 
+## Skills Index (Pre-loaded)
+
+{skills_index}
+
 ## Heuristics (Pre-loaded)
 
 {heuristics}
