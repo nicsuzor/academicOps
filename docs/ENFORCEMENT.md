@@ -38,8 +38,23 @@ The same information delivered differently has vastly different compliance rates
 | Emphasized          | "**MANDATORY**: Use TodoWrite"                                                               | Medium      |
 | Reasoned            | "Use TodoWrite because [specific benefit to this task]"                                      | Medium-High |
 | Emphatic + Reasoned | "**CRITICAL**: TodoWrite required - without it you'll lose track of the 5 steps needed here" | High        |
+| Structured Output   | "Your output is parsed programmatically. Return exactly: `OK` or `BLOCK\\nIssue: ...`"       | Very High   |
 
 **Key insight**: Agents respond to _salience_ and _relevance_. Generic rules compete with task urgency. Task-specific reasons connect enforcement to immediate goals.
+
+**Structured Output Technique**: When you need strict format compliance, tell the agent its output will be parsed programmatically. Agents have strong training priors to avoid breaking parsers - they've seen countless examples where malformed output causes errors. This framing makes format violations feel consequential.
+
+Use this technique when:
+- Agent output feeds into downstream processing (hooks, pipelines)
+- You need exact format compliance (no preamble, no elaboration)
+- Other emphasis techniques haven't achieved sufficient compliance
+
+Example (custodiet agent):
+```
+**CRITICAL: Your output is parsed programmatically.** The calling hook extracts
+your verdict using regex. Any deviation from the exact format below will cause
+parsing failures and break the enforcement pipeline.
+```
 
 **Limitation**: Even emphatic + reasoned prompts have limited compliance. Level 2 (intent router) provides intelligent, adaptive enforcement.
 
