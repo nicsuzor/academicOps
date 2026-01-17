@@ -4,3 +4,6 @@
 [submodule "lib/omcp"]
 	path = lib/omcp
 	url = git@github.com:nicsuzor/omcp.git
+[submodule "lib/gastown"]
+	path = lib/gastown
+	url = git@github.com:steveyegge/gastown.git

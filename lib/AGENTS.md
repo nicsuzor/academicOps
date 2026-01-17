@@ -5,6 +5,7 @@ This directory contains git submodules pointing to upstream repositories. academ
 | Path | Upstream | Owner |
 |------|----------|-------|
 | `beads/` | steveyegge/beads | Steve Yegge |
+| `gastown/` | steveyegge/gastown | Steve Yegge |
 | `omcp/` | nicsuzor/omcp | Nic Suzor |
 
 ## Rules
