@@ -118,6 +118,7 @@ bd dep add [immediate-id] depends-on [decompose-id]
 
 ## Key Rules
 
+- **Short confirmations**: If prompt is very short (≤10 chars: "yes", "ok", "do it", "sure"), check the MOST RECENT agent response and tools. The user is likely confirming/proceeding with what was just proposed, NOT requesting new work from bd queue.
 - **Scope detection**: Multi-session = goal-level, uncertain path, spans days+. Single-session = bounded, known steps.
 - **Prefer existing issues**: Search bd state before creating new tasks.
 - **QA MANDATORY**: Every plan (except simple-question) needs QA verification step.

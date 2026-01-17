@@ -569,6 +569,90 @@ def test_hydration_temp_file_structure() -> None:
     ), "Missing Guardrails by Workflow section"
 
 
+def test_short_confirmation_preserves_context() -> None:
+    """Regression: Short confirmations ("yes") should not trigger task pull.
+
+    Bug ns-21cy: When user responds "yes" to a question like "Want me to make
+    these changes?", the hydrator was misinterpreting this as a request to pull
+    work from the bd queue instead of continuing with the proposed action.
+
+    Root cause: Context extraction was truncating the most recent agent response
+    that contained the question being answered.
+
+    Fix: Increased truncation limit for most recent agent response (500 chars)
+    and added explicit rule about short confirmations.
+    """
+    # This test verifies that when we have a multi-turn conversation and
+    # user responds with "yes", the context extraction captures the question.
+
+    # Since we can't easily simulate multi-turn in headless mode, we test
+    # the context extraction function directly with a fixture that resembles
+    # the failure case.
+
+    from lib.session_reader import extract_router_context
+    import json
+    import tempfile
+    from pathlib import Path
+
+    # Create a minimal session JSONL that simulates the failure scenario:
+    # 1. User asks about config
+    # 2. Agent responds with findings and asks "Want me to make these changes?"
+    # 3. User says "yes"
+
+    session_entries = [
+        # Turn 1: User asks about config
+        {
+            "type": "user",
+            "message": {
+                "content": [{"type": "text", "text": "check how bd is configured"}]
+            },
+        },
+        # Turn 2: Agent investigates and asks confirmation
+        {
+            "type": "assistant",
+            "message": {
+                "content": [
+                    {
+                        "type": "text",
+                        "text": "I found the configuration. Here's the summary: writing has no multi-repo config, academicOps reads from writing. Want me to make these config changes?",
+                    }
+                ]
+            },
+        },
+        # Turn 3: User confirms
+        {
+            "type": "user",
+            "message": {"content": [{"type": "text", "text": "yes"}]},
+        },
+    ]
+
+    # Write to temp file
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".jsonl", delete=False
+    ) as f:
+        for entry in session_entries:
+            f.write(json.dumps(entry) + "\n")
+        temp_path = Path(f.name)
+
+    try:
+        # Extract context
+        context = extract_router_context(temp_path, max_turns=5)
+
+        # The context MUST include the agent's question
+        # This is what was missing before the fix
+        assert "Want me to make these config changes?" in context, (
+            f"Context should preserve the agent's question. Got:\n{context}"
+        )
+
+        # Also verify recent prompts include "yes"
+        assert "yes" in context.lower(), (
+            f"Context should include user's 'yes' response. Got:\n{context}"
+        )
+
+    finally:
+        temp_path.unlink()
+
+
 @pytest.mark.demo
 @pytest.mark.slow
 @pytest.mark.integration

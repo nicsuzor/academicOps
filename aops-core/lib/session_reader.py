@@ -217,6 +217,7 @@ def _extract_router_context_impl(transcript_path: Path, max_turns: int) -> str:
             continue
 
         # Collect response text for context (limit to 3 turns)
+        # IMPORTANT: We iterate reversed, so first responses found are MOST RECENT
         if len(agent_responses) < 3:
             # Join text parts
             texts = [
@@ -226,9 +227,11 @@ def _extract_router_context_impl(transcript_path: Path, max_turns: int) -> str:
             ]
             if texts:
                 full_text = " ".join(texts)
-                # Truncate if too long
-                if len(full_text) > 300:
-                    full_text = full_text[:300] + "..."
+                # Truncate - but preserve more for the most recent (first found)
+                # This ensures short user prompts like "yes" can see the question
+                max_len = 500 if len(agent_responses) == 0 else 300
+                if len(full_text) > max_len:
+                    full_text = full_text[:max_len] + "..."
                 agent_responses.append(full_text)
 
         # Scan for tools
