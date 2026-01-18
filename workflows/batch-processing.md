@@ -6,7 +6,7 @@ category: operations
 # Batch Processing Workflow
 
 ## Overview
-
+<!-- NS: instruction files should only contain instructions. Design notes belong in the specs or user documentation. Link from specs TO instructions, not the other way around. -->
 Efficient workflow for processing multiple similar items concurrently. Uses the **worker-hypervisor architecture** (see [[specs/worker-hypervisor]]) for parallel execution with proper coordination.
 
 ## Core Principle: Smart Subagent, Dumb Supervisor
@@ -227,9 +227,37 @@ bd close <parent-id>          # Close parent issue if applicable
 
 ## Parallel Processing Patterns
 
+### Lazy Batching (Recommended)
+
+Best for large/unknown item counts where exhaustive enumeration is expensive:
+
+**Supervisor role:**
+1. Define coarse batch boundaries (by time, category, etc.)
+2. Create bd subtask per batch
+3. Decide execution model: parallel (spawn all) or sequential (over time / via `/pull`)
+
+**Agent role (per subtask):**
+1. Query items within assigned batch boundary
+2. Process items, create child tasks as needed
+3. Log completion, close subtask
+
+**Example (email review by month):**
+```bash
+# Supervisor creates subtasks (doesn't enumerate emails)
+bd create "Process Jan 2026 batch" --parent=ns-epic --description="Query emails from Jan 2026, classify, create tasks for actionable items"
+bd create "Process Dec 2025 batch" --parent=ns-epic --description="..."
+bd create "Process Nov 2025 batch" --parent=ns-epic --description="..."
+
+# Then either:
+# A) Parallel: spawn agents on all subtasks simultaneously
+# B) Sequential: process one at a time, or let users /pull over time
+```
+
+**Why lazy?** Supervisor doesn't know item count or complexity per batch. Let agents discover within their boundary rather than forcing upfront enumeration.
+
 ### Fixed Batches
 
-Best for known item count:
+Best for known item count with uniform items:
 - Divide items into equal batches
 - Spawn all agents upfront
 - Wait for all to complete
