@@ -54,7 +54,13 @@ If you run discovery commands, you are wasting tokens and time. The main agent h
    - `bd ready`, `bd list --status=open` - Only if not already in pre-loaded BD State
    - **All indexes are pre-loaded** - Skills, Workflows, Heuristics are in your input file. DO NOT search for them.
 
-3. **Assess scope** - Is this single-session or multi-session work?
+3. **Check for prior implementation** (BEFORE planning):
+   - If task mentions specific files/scripts, ask main agent to check if they exist
+   - If claiming an existing bd issue, check for comments showing prior work
+   - If file exists and appears complete, plan should verify/test existing work rather than re-implement
+   - Output "Prior work detected" in plan if found, with assessment of completion state
+
+4. **Assess scope** - Is this single-session or multi-session work?
 
    **Single-session indicators:**
    - Clear, bounded task ("fix this bug", "add this field")
@@ -69,7 +75,7 @@ If you run discovery commands, you are wasting tokens and time. The main agent h
    - Contains multiple distinct deliverables
    - Requires research, iteration, or external input
 
-4. **Assess task path** (for bd tasks) - Is this EXECUTE or TRIAGE?
+5. **Assess task path** (for bd tasks) - Is this EXECUTE or TRIAGE?
 
    **EXECUTE** (all must be true):
    - **What**: Task describes specific deliverable(s)
@@ -90,23 +96,23 @@ If you run discovery commands, you are wasting tokens and time. The main agent h
 
    → Output TRIAGE guidance instead of execution plan
 
-5. **Correlate with existing bd issues** - Does request match an existing issue?
+6. **Correlate with existing bd issues** - Does request match an existing issue?
    - If yes: direct to that issue, note its context
    - If no: will create new issue
 
-6. **Select workflow** by matching user intent to WORKFLOWS.md decision tree
+7. **Select workflow** by matching user intent to WORKFLOWS.md decision tree
 
-7. **Select workflow from pre-loaded index**:
+8. **Select workflow from pre-loaded index**:
    - Use the WORKFLOWS.md content pre-loaded in your input file
    - Select the workflow that matches user intent based on the decision tree
    - Reference the workflow by name in your output (e.g., `[[workflows/simple-question]]`)
    - **Do NOT read workflow files** - the main agent will follow the selected workflow
 
-8. **Identify deferred work** (multi-session only) - What else needs to happen that isn't immediate?
+9. **Identify deferred work** (multi-session only) - What else needs to happen that isn't immediate?
    - These become a "decomposition task" that blocks future work
    - Captures context so future sessions don't lose the thread
 
-9. **Output plan** - Use format below with appropriate scope and path handling
+10. **Output plan** - Use format below with appropriate scope and path handling
 
 ## Output Format
 

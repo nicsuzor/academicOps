@@ -173,6 +173,7 @@
   },
   "enabledPlugins": {
     "plugin-dev@claude-plugins-official": true,
-    "academicOps@inline": false
+    "academicOps@inline": false,
+    "canvas@claude-canvas": true
   }
 }

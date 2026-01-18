@@ -47,10 +47,12 @@ For each issue in the batch, assess:
 | Aspect | Question |
 |--------|----------|
 | **Type** | Is the type correct (task/bug/epic/molecule)? |
+| **Project** | Does it have a `project:*` label? (REQUIRED) |
 | **Epic** | Should it be parented to an open epic? |
+| **Dependencies** | Does it depend on or block other tasks? |
 | **Priority** | Is P0-P3 appropriate for urgency? |
 | **Assignee** | Who should own this (nic/bot/unassigned)? |
-| **Labels** | Does it need tags (v1.0, project names)? |
+| **Tags** | Does it need descriptive tags (v1.0, topic names)? |
 
 Present findings to user in a table or list format.
 
@@ -119,9 +121,31 @@ An issue is ready for bot assignment when:
 - Edge cases considered
 - No human judgment required
 
-### Epic Affinity
+### Project Labels (REQUIRED for Visualization)
 
-Route issues to epics based on domain:
+**Every task MUST have a `project:*` label** linking it to a project in `data/projects/`. This enables goal→project→task visualization.
+
+```bash
+# Add project label during triage
+bd update <id> --add-label=project:buttermilk
+bd update <id> --add-label=project:aops
+bd update <id> --add-label=project:tja
+```
+
+**Common project slugs**: `aops`, `buttermilk`, `tja`, `oversight-board`, `computational-legal-studies`, `hdr`
+
+If unsure which project, check:
+1. What goal does this work serve?
+2. Which project under that goal is most relevant?
+3. If no project fits, consider creating one or using a catch-all like `project:misc`
+
+**Descriptive tags are NOT project links.** Tags like `blog`, `data-analysis`, `framework` describe content but don't establish hierarchy. Tasks need BOTH:
+- `project:*` label (structural - for visualization)
+- Descriptive tags (topical - for filtering)
+
+### Epic Affinity and Parent Chains
+
+Route issues to epics based on domain. **Epics should also have `project:*` labels** so their children inherit the project connection.
 
 | Domain | Candidate Epics |
 |--------|-----------------|
@@ -131,11 +155,39 @@ Route issues to epics based on domain:
 | Public release | ns-ny5b (aops release) |
 | Paper writing | aops-5t3c (TJA paper) |
 
+### Dependency Chains
+
+Use dependencies to express sequencing and blocking relationships:
+
+```bash
+# Task B depends on Task A (B blocked until A done)
+bd dep add <task-B> depends-on <task-A>
+
+# Parent-child relationship (task belongs to epic)
+bd update <task-id> --parent=<epic-id>
+```
+
+**When to use each**:
+- **Parent-child**: Grouping/organization (epic contains related tasks)
+- **depends-on**: Sequencing (can't start B until A is done)
+- **blocks**: Explicit blocker (A is blocking B for a specific reason)
+
+**Chain structure for complex work**:
+```
+Epic: "Implement feature X"           [project:aops]
+  ├── Task: "Design API"              (inherits project from epic)
+  ├── Task: "Implement backend"       depends-on "Design API"
+  ├── Task: "Implement frontend"      depends-on "Implement backend"
+  └── Task: "Write tests"             depends-on "Implement frontend"
+```
+
 ## Quality Gates
 
 - [ ] User explicitly approved changes before execution
 - [ ] All modified issues verified with `bd show`
 - [ ] No issues left in ambiguous state
+- [ ] All triaged issues have `project:*` label (or explicit reason why not)
+- [ ] Complex work has dependency chains established
 
 ## Category Sweep Order
 

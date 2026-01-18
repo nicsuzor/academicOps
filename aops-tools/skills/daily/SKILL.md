@@ -117,6 +117,18 @@ From [sender]: [Actual content or summary]
 
 **Empty state**: If no FYI emails, skip this section.
 
+### 2.3: Persist FYI to Knowledge Systems
+
+FYI content captured in the daily note MUST be linked/persisted, not siloed:
+
+1. **Link to existing bd issues**: If FYI references a known task/PR/issue (e.g., "Steve responded to PR #1132"), update the related bd issue with this info via `bd update <id> --notes="..."`.
+
+2. **Persist to memory**: For FYI items worth future recall (external responses, decisions, key info), use `mcp__memory__store_memory` with tags like `fyi`, `daily`, `external-response`.
+
+3. **Create follow-up tasks**: If FYI implies action (e.g., "worth reviewing"), create a bd task or update existing one.
+
+**Rule**: Information captured but not persisted is information lost. Daily note is ephemeral; memory and bd are durable.
+
 ## 3. Today's Focus
 
 Populate the `## Focus` section with priority dashboard and task recommendations. This is the FIRST thing the user sees after frontmatter.
