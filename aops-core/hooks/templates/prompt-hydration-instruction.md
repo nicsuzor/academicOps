@@ -18,7 +18,17 @@ Task(subagent_type="prompt-hydrator", model="haiku",
      prompt="Read {temp_path} and provide workflow guidance.")
 ```
 
-**After receiving the plan**, invoke critic to review BEFORE executing:
+**After receiving the plan**, check if critic review is needed:
+
+**SKIP critic review for**:
+- `simple-question` workflow (no execution, just answering)
+- Direct skill routes (hydrator output says "No bd task needed" and references a skill)
+- Trivial single-step tasks
+
+**INVOKE critic review for**:
+- Multi-step execution plans
+- Plans creating/modifying files
+- Plans with architectural decisions or tradeoffs
 
 ```
 Task(subagent_type="critic", model="opus",
@@ -36,6 +46,6 @@ Return: PROCEED (execute as planned) | REVISE (list specific changes) | HALT (st
 
 **CRITICAL**: Both PROCEED and REVISE require TodoWrite BEFORE execution. Never start executing without tracked todos.
 
-**Why always invoke hydrator?** Hydration is fast (haiku model), costless, and can only improve outcomes. Even "simple" tasks benefit from context enrichment.
+**Why hydrator always?** Hydration is fast (haiku model), costless, improves outcomes. Even "simple" tasks benefit from context enrichment.
 
-**Why critic review?** Plans reviewed before execution catch errors early. Critic uses opus for rigorous analysis.
+**Why conditional critic?** Critic (opus) is expensive. Simple skill routes have well-defined workflows that don't benefit from review. Complex plans catch errors early with rigorous analysis.

@@ -140,6 +140,8 @@ bd dep add [immediate-id] depends-on [decompose-id]
 - **Deferred work**: Only for multi-session. Captures what can't be done now without losing it.
 - **Block when sequential**: If immediate work is meaningless without the rest, block on decomposition task.
 
-**Flow**: Your plan → main agent → critic reviews → main agent executes.
+**Flow**: Your plan → main agent → (optional critic review) → main agent executes.
 
-**NOTE**: You do NOT invoke critic. Focus on generating a good plan.
+**NOTE**: You do NOT invoke critic. Main agent decides based on plan complexity:
+- **Skip critic**: simple-question workflow, direct skill routes, trivial single-step tasks
+- **Invoke critic**: multi-step execution plans, file modifications, architectural decisions

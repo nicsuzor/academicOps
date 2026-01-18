@@ -284,7 +284,9 @@ After TRIAGE action: **HALT** - do not proceed to execution. The task is now eit
 3. **List concrete items** - "Deferred item 1, 2, 3" not vague "other stuff"
 4. **Block when sequential** - if immediate work is step 1 of a sequence, block on decomposition
 
-**NOTE**: You do NOT invoke critic. The main agent does that after receiving your plan.
+**NOTE**: You do NOT invoke critic. The main agent decides whether to invoke critic based on plan complexity:
+- **Skip critic**: simple-question workflow, direct skill routes, trivial single-step tasks
+- **Invoke critic**: multi-step execution plans, file modifications, architectural decisions
 
 ### Insight Capture Advice
 
