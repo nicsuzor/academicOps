@@ -80,6 +80,10 @@ NEVER stop before pushing.
 **Root cause** (if not success): [Which component failed]
 **Proposed changes**: [Framework improvements identified, or "none"]
 **Next step**: [Context for next session - MUST be filed as bd issue if actionable]
+**Workflow improvements**: [Changes to make this type of task easier in future, or "none"]
+**JIT context needed**: [Info that would have saved time if provided earlier, or "none"]
+**Context distractions**: [Irrelevant info that added noise, or "none"]
+**User tone**: [Float -1.0 to 1.0: 1.0=effusive, 0.0=neutral, -0.5=disappointed, -1.0=furious]
 ```
 
 **Next step rule**: If Next step contains actionable work, file it as a bd issue before ending the session. Don't just document it - track it.
@@ -89,6 +93,10 @@ Field alignment with session-insights JSON schema:
 - `**Accomplishments**`: Maps to `accomplishments` array
 - `**Friction points**`: Maps to `friction_points` array
 - `**Proposed changes**`: Maps to `proposed_changes` array
+- `**Workflow improvements**`: Maps to `workflow_improvements` array
+- `**JIT context needed**`: Maps to `jit_context_needed` array
+- `**Context distractions**`: Maps to `context_distractions` array
+- `**User tone**`: Maps to `user_mood` float (-1.0 to 1.0, default 0.0)
 
 ## Landing the Plane (Session Completion)
 

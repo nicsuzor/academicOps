@@ -195,6 +195,9 @@ def validate_insights_schema(insights: dict[str, Any]) -> None:
         "context_gaps",
         "conversation_flow",
         "user_prompts",
+        "workflow_improvements",
+        "jit_context_needed",
+        "context_distractions",
     ]
     for field in array_fields:
         if field in insights and not isinstance(insights[field], list):

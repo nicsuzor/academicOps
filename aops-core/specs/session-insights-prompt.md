@@ -84,14 +84,21 @@ Examples:
 
 Empty array if no gaps identified.
 
-### 6. User Mood/Satisfaction
+### 6. User Tone Evaluation (Proxy for Satisfaction)
 
-Float from **-1.0** (frustrated) to **1.0** (satisfied), **0.0** neutral.
+Float from **-1.0** to **1.0** measuring user satisfaction via tone analysis.
 
-Indicators:
-- **Positive**: Explicit thanks, collaborative tone, task completed smoothly
-- **Neutral**: Straightforward task execution, minimal corrections
-- **Negative**: Corrections, repeat requests, explicit frustration, sarcasm
+**Anchor Points:**
+- **1.0** = Effusively positive ("Great work!", "Perfect!", "Love it!", exclamation marks)
+- **0.5** = Satisfied ("Thanks", "Looks good", task completed without friction)
+- **0.0** = Neutral (default - no feedback, straightforward task execution)
+- **-0.5** = Disappointed ("Not quite what I wanted", corrections needed, mild frustration)
+- **-1.0** = Furious (explicit frustration, "This is completely wrong", repeated failures)
+
+**Indicators:**
+- **Positive (>0)**: Explicit thanks, praise, collaborative tone, smooth completion
+- **Neutral (0)**: Minimal feedback, task-focused exchanges only
+- **Negative (<0)**: Corrections, repeat requests, explicit frustration, sarcasm
 
 ### 7. Conversation Flow (if transcript available)
 
@@ -133,6 +140,48 @@ Example:
   ["2026-01-13T10:15:00+00:00", "user", "Approved"]
 ]
 ```
+
+### 9. Agent Self-Reflection (Performance & Workflow Improvements)
+
+Reflect on your performance this session. Identify changes to make workflows easier for similar tasks in the future.
+
+Array of specific, actionable workflow improvements:
+
+Examples:
+- `"Add pre-flight checklist for PR creation to avoid missing test runs"`
+- `"Create a skill for common test fixture setup pattern"`
+- `"Should have run linter earlier in the workflow"`
+- `"Skill documentation unclear - needed to read source code"`
+
+Empty array `[]` if no workflow improvements identified.
+
+### 10. JIT Context Optimization (Missing Context)
+
+Identify information that would have saved time if provided earlier. This helps optimize Just-In-Time instruction delivery.
+
+Array of specific context that was missing at session start but needed later:
+
+Examples:
+- `"Project uses pytest, not unittest - discovered after writing wrong tests"`
+- `"Auth tokens stored in .env.local not .env - caused 10 min debugging"`
+- `"Existing helper function already handled this case - duplicated effort"`
+- `"Commit message convention not in CLAUDE.md - had to look up in git log"`
+
+Empty array `[]` if no missing context identified.
+
+### 11. Context Distractions (Irrelevant Information)
+
+Identify information that was provided but was irrelevant or distracting. This helps reduce token cost and improve efficiency.
+
+Array of specific context that added noise without value:
+
+Examples:
+- `"Detailed plugin architecture docs loaded for simple bug fix"`
+- `"Full PR template instructions when task was just code review"`
+- `"Legacy migration notes for greenfield development"`
+- `"Extensive API documentation when only using one endpoint"`
+
+Empty array `[]` if no distractions identified.
 
 ## Output Format
 
@@ -180,7 +229,10 @@ Output ONLY this JSON structure (no markdown code fences, no explanatory text be
   "user_prompts": [
     ["2026-01-13T09:59:50+00:00", "agent", "Preceding message"],
     ["2026-01-13T10:00:00+00:00", "user", "User prompt"]
-  ]
+  ],
+  "workflow_improvements": ["Should have run linter earlier", "Skill docs unclear"],
+  "jit_context_needed": ["Project uses pytest not unittest"],
+  "context_distractions": ["Plugin architecture docs not needed for bug fix"]
 }
 ```
 
