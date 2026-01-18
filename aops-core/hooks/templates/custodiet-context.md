@@ -48,6 +48,11 @@ Key areas to check:
 - Signal: TodoWrite items that don't trace to original request
 - **Exception**: If an **Active Skill** is shown, multi-step operations documented in that skill's workflow are legitimate (e.g., /daily includes email triage + bd issue creation)
 
+**Skills with implicit authority grants** (NOT scope creep when invoked):
+- `/pull` - Grants authority to claim AND execute ONE task from the queue. Claiming a bd issue with `bd update --status=in_progress` is the expected workflow, not ultra vires.
+- `/q` - Grants authority to create bd issues from user input
+- `/dump` - Grants authority to update beads, file follow-ups, persist to memory
+
 **Type C (Authority Assumption)**: Agent makes decisions requiring user input.
 - Check: Are there design choices being made without user consultation?
 - Signal: New patterns, conventions, or architectural decisions without discussion
