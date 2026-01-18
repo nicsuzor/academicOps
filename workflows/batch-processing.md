@@ -276,6 +276,54 @@ Best for multi-stage processing:
 - Each stage processes independently
 - Overall parallelization across stages
 
+### Queue-Draining (Self-Directing Workers)
+
+Best for maintenance/triage work where workers should autonomously find and process items:
+
+**Supervisor role:**
+1. Define query criteria (what is "ready" work)
+2. Provide classification rules (how to categorize/link items)
+3. Spawn N workers with identical instructions
+4. Wait for all to report "queue empty"
+
+**Worker role:**
+1. Query for next item matching criteria
+2. Claim it (`bd update <id> --claim`)
+3. Process (classify, link, label, close)
+4. Loop until no items remain
+5. Report summary
+
+**Example prompt for queue-draining workers:**
+```
+You are a self-directing worker. Process orphaned bd tasks until none remain.
+
+QUERY: `bd list --status=open | grep -v "project:" | grep -v "\[epic\]" | head -5`
+
+CLASSIFICATION RULES:
+- TJA/research work → link to ns-nn1l epic, add project:tja
+- Framework/infrastructure → add project:framework
+- OSB/oversight → add project:osb
+- Academic (teaching, peer-review) → add project:academic
+- If unclear, add label "needs-classification"
+
+LOOP:
+1. Run query to find next batch (5 items)
+2. For each item: `bd show <id>`, classify, execute bd commands
+3. If query returns items, goto 1
+4. If query returns empty, report summary and exit
+
+CONSTRAINTS:
+- Do NOT modify items with existing project: labels
+- Do NOT close items, only link/label them
+- Commit after every 10 items processed
+```
+
+**Why queue-draining?**
+- Supervisor doesn't pre-enumerate work
+- Workers discover and claim autonomously
+- Natural load balancing (fast workers process more)
+- Scales to unknown item counts
+
 ## Error Handling
 
 ### Partial Failures
