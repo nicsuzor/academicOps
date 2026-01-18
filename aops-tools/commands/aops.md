@@ -1,5 +1,5 @@
 ---
-name: aops-command
+name: aops
 category: instruction
 description: Show framework capabilities - commands, skills, agents, and how to use them
 ---

@@ -210,7 +210,7 @@ Verify README.md flowchart reflects actual hook architecture:
 
 ### Phase 6: Regenerate Generated Indices
 
-Generated indices are root-level files for agent consumption (INDEX.md, RULES.md, WORKFLOWS.md, AXIOMS.md, HEURISTICS.md, docs/ENFORCEMENT.md). The core loop flowchart is maintained in README.md.
+Generated indices are root-level files for agent consumption (INDEX.md, RULES.md, WORKFLOWS.md, SKILLS.md, AXIOMS.md, HEURISTICS.md, docs/ENFORCEMENT.md). The core loop flowchart is maintained in README.md.
 
 **Regenerate each deterministically from sources:**
 
@@ -221,6 +221,14 @@ cd $AOPS && uv run python scripts/generate_principle_indices.py
 ```
 
 Reads `axioms/` and `heuristics/` folders, generates machine-readable indices sorted by priority (1-100 bands: 1-20 core, 21-40 behavioral, 41-60 domain, 61-80 derived, 81-100 experimental).
+
+#### SKILLS.md
+
+```bash
+cd $AOPS && uv run python scripts/generate_skills_index.py
+```
+
+Scans `aops-core/` and `aops-tools/` for skills and commands, extracts frontmatter (name, description), and generates routing index. Preserves existing triggers from previous SKILLS.md. Reports components missing triggers.
 
 #### INDEX.md
 

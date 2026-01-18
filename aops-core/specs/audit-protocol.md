@@ -49,7 +49,7 @@ A complete framework audit validates three dimensions:
 **Definition**: Audit actively fixes discrepancies and reports items requiring human decision.
 
 **Automated fixes**:
-- Regenerate index files (INDEX.md, RULES.md, WORKFLOWS.md)
+- Regenerate index files (INDEX.md, RULES.md, WORKFLOWS.md, SKILLS.md)
 - Update README.md Core Loop flowchart from hook architecture
 - Update README.md tables with current component lists
 - Add missing entries to indices
