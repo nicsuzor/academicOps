@@ -253,14 +253,16 @@ class TestInsightsFilePath:
         """Test that file path follows correct format."""
         path = get_insights_file_path("2026-01-13", "a1b2c3d4")
         assert path.name == "2026-01-13-a1b2c3d4.json"
-        assert "sessions/insights" in str(path)
+        # Unified path: sessions/ (not sessions/insights/)
+        assert str(path).endswith("sessions/2026-01-13-a1b2c3d4.json")
 
     def test_file_path_uses_aca_data(self, monkeypatch, tmp_path):
         """Test that file path uses ACA_DATA env var."""
         monkeypatch.setenv("ACA_DATA", str(tmp_path))
         path = get_insights_file_path("2026-01-13", "a1b2c3d4")
         assert str(tmp_path) in str(path)
-        assert path == tmp_path / "sessions/insights/2026-01-13-a1b2c3d4.json"
+        # Unified path: sessions/{date}-{session_id}.json
+        assert path == tmp_path / "sessions" / "2026-01-13-a1b2c3d4.json"
 
 
 class TestWriteInsightsFile:

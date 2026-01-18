@@ -237,7 +237,7 @@ def validate_insights_schema(insights: dict[str, Any]) -> None:
 def get_insights_file_path(
     date: str, session_id: str, index: int | None = None
 ) -> Path:
-    """Get path to insights JSON file in $ACA_DATA.
+    """Get path to unified session JSON file in $ACA_DATA.
 
     Args:
         date: Date string (YYYY-MM-DD format)
@@ -246,15 +246,19 @@ def get_insights_file_path(
                If None or 0 with single reflection, uses base filename.
 
     Returns:
-        Path to insights file: $ACA_DATA/sessions/insights/{date}-{session_id}.json
+        Path to unified session file: $ACA_DATA/sessions/{date}-{session_id}.json
         or {date}-{session_id}-{index}.json for multi-reflection sessions
+
+    Note:
+        As of v3.2.0, uses unified path combining insights + dashboard data.
+        Legacy paths (sessions/insights/, sessions/dashboard/) are deprecated.
     """
     aca_data = Path(os.environ.get("ACA_DATA", Path.home() / "writing/data"))
-    insights_dir = aca_data / "sessions" / "insights"
-    insights_dir.mkdir(parents=True, exist_ok=True)
+    sessions_dir = aca_data / "sessions"
+    sessions_dir.mkdir(parents=True, exist_ok=True)
     if index is not None and index > 0:
-        return insights_dir / f"{date}-{session_id}-{index}.json"
-    return insights_dir / f"{date}-{session_id}.json"
+        return sessions_dir / f"{date}-{session_id}-{index}.json"
+    return sessions_dir / f"{date}-{session_id}.json"
 
 
 def merge_insights(existing: dict[str, Any], new: dict[str, Any]) -> dict[str, Any]:

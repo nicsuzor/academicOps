@@ -99,7 +99,7 @@ def handle_stop(session_id: str, input_data: dict[str, Any]) -> None:
     """Handle Stop event - write session insights and close session.
 
     Generates structured session insights and writes to both:
-    1. Permanent storage: $ACA_DATA/sessions/insights/{date}-{session_id}.json
+    1. Permanent storage: $ACA_DATA/sessions/{date}-{session_id}.json (unified file)
     2. Session state: For backward compatibility and QA verifier access
 
     Args:
@@ -142,7 +142,7 @@ def handle_stop(session_id: str, input_data: dict[str, Any]) -> None:
         f"outcome={insights['outcome']}, accomplishments={len(insights['accomplishments'])}"
     )
 
-    # Write to permanent storage ($ACA_DATA/sessions/insights/)
+    # Write to permanent storage ($ACA_DATA/sessions/)
     try:
         insights_path = get_insights_file_path(insights["date"], insights["session_id"])
         write_insights_file(insights_path, insights)

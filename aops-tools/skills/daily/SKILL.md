@@ -235,7 +235,7 @@ Update daily note from session JSON files. Run after sessions complete or period
 ### Step 4.1: Find Session JSONs
 
 ```bash
-ls $ACA_DATA/sessions/insights/YYYY-MM-DD-*.json 2>/dev/null
+ls $ACA_DATA/sessions/YYYY-MM-DD-*.json 2>/dev/null
 ```
 
 ### Step 4.1.5: Load Closure History

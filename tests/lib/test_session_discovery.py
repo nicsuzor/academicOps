@@ -49,9 +49,9 @@ def create_mock_mining_json(
 ) -> Path:
     """Create a mock mining JSON file.
 
-    v1.0: Mining JSON is at $ACA_DATA/sessions/insights/{date}-{session_prefix}.json
+    v3.2: Unified session file at $ACA_DATA/sessions/{date}-{session_prefix}.json
     """
-    mining_dir = aca_data / "sessions" / "insights"
+    mining_dir = aca_data / "sessions"
     mining_dir.mkdir(parents=True, exist_ok=True)
 
     # v1.0 format: {date}-{session_prefix}.json

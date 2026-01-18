@@ -31,7 +31,7 @@ def main():
         aca_data = Path(aca_data_env)
 
     transcripts_dir = aca_data / "sessions" / "claude"
-    insights_dir = aca_data / "sessions" / "insights"
+    insights_dir = aca_data / "sessions"  # Unified session files
 
     if not transcripts_dir.exists():
         print(
