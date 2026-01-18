@@ -437,6 +437,95 @@ def test_hydrator_does_not_answer_user_questions(
 
 @pytest.mark.slow
 @pytest.mark.integration
+def test_hydrator_does_not_search_for_skills_or_workflows(
+    claude_headless_tracked,
+) -> None:
+    """Regression: Hydrator should use pre-loaded indexes, not filesystem discovery.
+
+    BUG (aops-j9yy): When user asked "run the daily skill", the hydrator ran
+    multiple find/ls commands to discover skills and workflows instead of using
+    the pre-loaded Skills Index and Workflows Index in its input file.
+
+    Evidence from bug report:
+    - find -name '*daily*' across multiple directories
+    - ls -la on skills directory
+    - Multiple file reads to discover what exists
+
+    Root cause: Hydrator instructions were too weak about not using filesystem
+    discovery. Added HARD CONSTRAINT section prohibiting find/ls/cat commands.
+
+    Fix: Added explicit "HARD CONSTRAINT: No Filesystem Discovery" section
+    to prompt-hydrator.md with FORBIDDEN/ALLOWED tool lists.
+    """
+    # A prompt that directly mentions a skill - hydrator should recognize it
+    # from the pre-loaded Skills Index, not search the filesystem
+    prompt = "run the daily skill"
+
+    result, session_id, tool_calls = claude_headless_tracked(
+        prompt, timeout_seconds=180
+    )
+
+    assert result["success"], f"Execution failed: {result.get('error')}"
+
+    output = result.get("output", "")
+
+    # These patterns indicate the bug is still present - hydrator searching
+    # instead of using pre-loaded indexes
+    bug_indicators = [
+        # Filesystem discovery commands
+        'find -name',
+        'find . -name',
+        'ls -la',
+        'ls -l ',
+        # Evidence of searching for skills/workflows
+        'name "*daily*"',
+        '*daily*',
+        # Searching skill directories
+        '/skills/',
+        '/workflows/',
+    ]
+
+    # Look for these patterns within hydrator's execution context
+    # The hydrator output appears after Task(prompt-hydrator) and before main agent resumes
+    hydrator_section_start = output.find('prompt-hydrator')
+    if hydrator_section_start > 0:
+        # Find the tool result that contains hydrator's work
+        hydrator_context = output[hydrator_section_start:hydrator_section_start + 10000]
+
+        for indicator in bug_indicators:
+            if indicator in hydrator_context:
+                # Check if this is actual hydrator behavior, not just context
+                # (the indicator might appear in the prompt itself)
+                if f'command":"{indicator}' in hydrator_context or \
+                   f"command': '{indicator}" in hydrator_context or \
+                   f'Bash(command="{indicator}' in hydrator_context:
+                    pytest.fail(
+                        f"Hydrator used filesystem discovery: found '{indicator}' command.\n"
+                        f"The hydrator should use pre-loaded Skills Index and Workflows Index,\n"
+                        f"not search the filesystem. Session: {session_id}"
+                    )
+
+    # Verify hydrator WAS called
+    hydrator_calls = [
+        c for c in tool_calls
+        if c["name"] == "Task"
+        and "prompt-hydrator" in str(c.get("input", {}).get("subagent_type", ""))
+    ]
+
+    assert len(hydrator_calls) > 0, (
+        f"prompt-hydrator should have been spawned. Session: {session_id}"
+    )
+
+    # Verify the hydrator recognized the skill (positive check)
+    # Output should mention /daily or daily skill without extensive discovery
+    assert "daily" in output.lower(), (
+        f"Hydrator should have recognized 'daily' skill from pre-loaded index. "
+        f"Session: {session_id}"
+    )
+
+
+@pytest.mark.slow
+@pytest.mark.integration
 def test_hydrator_does_not_glob_when_given_specific_file(
     claude_headless_tracked,
 ) -> None:
