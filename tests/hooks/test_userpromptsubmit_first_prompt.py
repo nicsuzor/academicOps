@@ -270,3 +270,35 @@ class TestSkillsIndex:
             # We verify by checking the instruction references the temp file
             assert "/tmp/claude-hydrator/hydrate_" in instruction, \
                 "Instruction should reference temp file containing skills index"
+
+    def test_task_viz_skill_has_triggers(self):
+        """Verify task-viz skill has trigger phrases for routing.
+
+        Regression test for aops-ec9n: User asked 'run the task viz script' but
+        hydrator routed to raw script execution instead of /task-viz skill because
+        the skill had no triggers in SKILLS.md.
+
+        Fix: Added triggers 'task visualization', 'visualize tasks', etc.
+        """
+        with patch("hooks.user_prompt_submit.get_aops_root") as mock_root:
+            mock_root.return_value = AOPS_CORE.parent
+
+            result = load_skills_index()
+
+            # task-viz row should have actual triggers, not just "—"
+            assert "/task-viz" in result, "Skills index should include /task-viz skill"
+
+            # Find the task-viz row and verify it has triggers
+            lines = result.split("\n")
+            task_viz_line = next((l for l in lines if "/task-viz" in l), None)
+            assert task_viz_line is not None, "Could not find /task-viz line"
+
+            # Should NOT have empty triggers (just "—")
+            assert "| — |" not in task_viz_line, \
+                "task-viz skill must have trigger phrases, not empty triggers"
+
+            # Should have at least one meaningful trigger
+            meaningful_triggers = ["task visualization", "visualize tasks", "bd visualization"]
+            has_trigger = any(t in task_viz_line.lower() for t in meaningful_triggers)
+            assert has_trigger, \
+                f"task-viz should have routing triggers like {meaningful_triggers}"
