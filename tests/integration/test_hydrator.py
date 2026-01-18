@@ -589,7 +589,7 @@ def test_hydrator_does_not_glob_when_given_specific_file(
         c
         for c in tool_calls
         if c["name"] == "Task"
-        and c.get("input", {}).get("subagent_type") == "prompt-hydrator"
+        and "prompt-hydrator" in str(c.get("input", {}).get("subagent_type", ""))
     ]
 
     assert len(hydrator_calls) > 0, (
@@ -678,7 +678,7 @@ def test_hydrator_task_is_spawned(claude_headless_tracked) -> None:
         call
         for call in tool_calls
         if call["name"] == "Task"
-        and call.get("input", {}).get("subagent_type") == "prompt-hydrator"
+        and "prompt-hydrator" in str(call.get("input", {}).get("subagent_type", ""))
     ]
 
     assert len(hydrator_calls) > 0, (
@@ -728,22 +728,18 @@ def test_hydration_temp_file_structure() -> None:
     assert "## Return Format" in content, "Missing Return Format section"
     assert len(content) > 500, "Temp file should contain substantial content"
 
-    # New format: workflow catalog should be present
-    assert "## Workflow Catalog" in content, "Missing Workflow Catalog section"
-    # Verify all 6 workflows are present
-    workflows = ["question", "minor-edit", "tdd", "batch", "qa-proof", "plan-mode"]
+    # Workflow index should be present (pre-loaded from WORKFLOWS.md)
+    assert "## Workflow Index" in content, "Missing Workflow Index section"
+    # Verify key workflows are present
+    workflows = ["simple-question", "minor-edit", "feature-dev", "debugging", "decompose"]
     for workflow in workflows:
-        assert f"**{workflow}**" in content, f"Missing workflow: {workflow}"
+        assert f"[[{workflow}]]" in content, f"Missing workflow: {workflow}"
 
-    # Per-step skill assignment table
-    assert (
-        "## Per-Step Skill Assignment" in content
-    ), "Missing Per-Step Skill Assignment section"
+    # Skills index should be present (pre-loaded from SKILLS.md)
+    assert "## Skills Index" in content, "Missing Skills Index section"
 
-    # Guardrails by workflow
-    assert (
-        "## Guardrails by Workflow" in content
-    ), "Missing Guardrails by Workflow section"
+    # Heuristics should be present (pre-loaded from HEURISTICS.md)
+    assert "## Heuristics" in content, "Missing Heuristics section"
 
 
 def test_short_confirmation_preserves_context() -> None:

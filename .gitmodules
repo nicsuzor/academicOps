@@ -7,3 +7,6 @@
 [submodule "lib/gastown"]
 	path = lib/gastown
 	url = git@github.com:steveyegge/gastown.git
+[submodule "lib/markdown-links"]
+	path = lib/markdown-links
+	url = https://github.com/tchayen/markdown-links.git
