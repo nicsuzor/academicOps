@@ -11,7 +11,7 @@ import requests
 from urllib.parse import quote
 
 # Add aOps root to path for imports
-aops_root = Path(__file__).parent.parent.parent
+aops_root = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(aops_root))
 # Also add aops-core for lib/ imports (session_reader, session_analyzer)
 aops_core = aops_root.parent / "aops-core"
