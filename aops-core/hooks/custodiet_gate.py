@@ -26,7 +26,7 @@ from pathlib import Path
 from typing import Any
 
 from hooks.hook_logger import log_hook_event
-from lib.session_reader import extract_gate_context
+from lib.session_reader import extract_gate_context, load_skill_scope
 from lib.session_state import (
     CustodietState,
     load_custodiet_state,
@@ -432,10 +432,20 @@ def _build_session_context(transcript_path: str | None, session_id: str) -> str:
         # Active skill (critical for Type B - distinguishes legitimate multi-step from scope creep)
         skill = ctx.get("skill")
         if skill:
-            lines.append(f"**Active Skill**: `{skill}`")
-            lines.append(
-                "  (Activities within the skill's documented workflow are NOT scope creep)"
-            )
+            lines.append(f"**Active Skill**: `/{skill}`")
+            # Load skill's authorized scope so custodiet knows what's legitimate
+            skill_scope = load_skill_scope(skill)
+            if skill_scope:
+                lines.append("**Skill Authorized Scope**:")
+                for scope_line in skill_scope.split("\n"):
+                    lines.append(f"  {scope_line}")
+                lines.append(
+                    "  ⚠️ Activities matching this workflow are NOT scope creep"
+                )
+            else:
+                lines.append(
+                    "  (Activities within the skill's documented workflow are NOT scope creep)"
+                )
             lines.append("")
 
         # Recent tools (for activity tracking)

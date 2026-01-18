@@ -601,6 +601,86 @@ def _extract_recent_skill(entries: list[Any]) -> str | None:
     return None
 
 
+def load_skill_scope(skill_name: str) -> str | None:
+    """Load a skill/command's authorized scope from its definition file.
+
+    Searches for skill definitions in standard locations and extracts
+    the workflow section to provide context for compliance checking.
+
+    Args:
+        skill_name: Name of the skill (e.g., "learn", "daily", "task-viz")
+
+    Returns:
+        Brief description of what the skill authorizes, or None if not found.
+    """
+    import os
+
+    aops_root = Path(os.environ.get("AOPS", "")) or Path(__file__).parent.parent.parent
+
+    # Search locations for skill/command definitions
+    search_paths = [
+        aops_root / "aops-core" / "commands" / f"{skill_name}.md",
+        aops_root / "aops-core" / f"skills/{skill_name}/SKILL.md",
+        aops_root / "aops-tools" / f"skills/{skill_name}/SKILL.md",
+    ]
+
+    for path in search_paths:
+        if path.exists():
+            return _extract_skill_scope_from_file(path)
+
+    return None
+
+
+def _extract_skill_scope_from_file(path: Path) -> str | None:
+    """Extract authorized scope summary from a skill/command definition file.
+
+    Looks for:
+    1. Frontmatter 'description' field
+    2. First ## Workflow section (first 500 chars)
+
+    Returns a brief summary suitable for custodiet context.
+    """
+    try:
+        content = path.read_text()
+    except OSError:
+        return None
+
+    lines: list[str] = []
+
+    # Extract description from YAML frontmatter
+    if content.startswith("---"):
+        parts = content.split("---", 2)
+        if len(parts) >= 3:
+            frontmatter = parts[1]
+            for line in frontmatter.split("\n"):
+                if line.startswith("description:"):
+                    desc = line[len("description:") :].strip().strip('"\'')
+                    lines.append(f"**Purpose**: {desc}")
+                    break
+
+    # Look for ## Workflow section and extract first few steps
+    workflow_match = re.search(
+        r"## Workflow\s*\n(.*?)(?=\n## |\Z)", content, re.DOTALL | re.IGNORECASE
+    )
+    if workflow_match:
+        workflow_text = workflow_match.group(1).strip()
+        # Extract numbered steps or subsections
+        steps = re.findall(r"### \d+\.\s*([^\n]+)", workflow_text)
+        if steps:
+            lines.append("**Workflow steps**: " + ", ".join(steps[:6]))
+        elif len(workflow_text) > 0:
+            # Fallback: first 300 chars of workflow
+            summary = workflow_text[:300].replace("\n", " ")
+            if len(workflow_text) > 300:
+                summary += "..."
+            lines.append(f"**Workflow**: {summary}")
+
+    if not lines:
+        return None
+
+    return "\n".join(lines)
+
+
 def _extract_todos(entries: list[dict]) -> dict[str, Any] | None:
     """Extract current TodoWrite state with full todo list.
 
