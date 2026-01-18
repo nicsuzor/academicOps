@@ -46,6 +46,8 @@ This workflow guides the periodic cleanup and organization of the `bd` task list
    - **Update Metadata**:
      - Ensure semantic type is correct: `bd update <id> --type=task|bug|feature`
      - Adjust priority if needed: `bd update <id> --priority=<0-4>`
+   - **Link to project**: `bd update <id> --add-label project:<project-name>`
+
 
 5. **Sync**
    - Run `bd sync` to persist changes to the remote.
@@ -61,4 +63,8 @@ bd dep add <epic_id> <task_id>
 
 # Check what an issue blocks/depends on
 bd show <id>
+
+# Chain update commands together:
+bd update <id> --add-label label1 --add-label label2 --type=task
+
 ```

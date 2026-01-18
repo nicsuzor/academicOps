@@ -22,15 +22,6 @@ Apply this workflow during:
 
 **Key signal**: "This is harder than it should be" or "I had to work around something."
 
-## Core Principle
-
-**We don't control agents** - they're probabilistic. Framework improvement targets the system, not agent behavior.
-
-| Wrong (Proximate) | Right (Root Cause) |
-|-------------------|---------------------|
-| "Agent skipped skill" | "Router didn't explain WHY skill needed" |
-| "Agent didn't verify" | "Guardrail instruction too generic" |
-| "I forgot to check X" | "Instruction for X not salient at decision point" |
 
 ## Decision Tree
 

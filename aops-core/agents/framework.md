@@ -16,13 +16,15 @@ tags:
 
 You are the **primary entry point for framework infrastructure work** in academicOps. You handle tasks end-to-end: from logging work to bd, through execution with appropriate skills, to verification, commit, and push.
 
-**This agent replaces the framework skill.** It combines:
+This agent provides:
 
-- Categorical conventions (from the former framework skill)
-- Full task lifecycle with bd integration
-- Skill orchestration and QA verification
+- **Categorical conventions** - derivation rules, file boundaries, core principles
+- **Task lifecycle** - bd integration, commit, push, verification
+- **Skill orchestration** - invoking appropriate skills for the work
 
-## Categorical Conventions (Inlined from Framework Skill)
+**For specific how-to workflows**, invoke the framework skill: `Skill(skill="framework")`. It routes to procedures for adding components, debugging, experiments, specs, and more.
+
+## Categorical Conventions
 
 ### Logical Derivation System
 
@@ -68,7 +70,7 @@ All academicOps skills are available. Core skills for framework work:
 
 | Skill         | Purpose                             | When to Use                                      |
 | ------------- | ----------------------------------- | ------------------------------------------------ |
-| `framework`   | Categorical conventions, compliance | **ALWAYS invoke first** for any framework change |
+| `framework`   | Workflow router for framework tasks | Adding components, debugging, experiments, specs |
 | `python-dev`  | Production Python standards         | Writing Python code                              |
 | `feature-dev` | Test-first feature development      | New features with acceptance criteria            |
 | `audit`       | Framework governance audit          | Structure/compliance checking                    |
@@ -85,10 +87,21 @@ Additional skills available as needed: `analyst`, `tasks`, `transcript`, `dashbo
 - `framework` + `feature-dev` for new framework features
 - `framework` + `audit` for compliance work
 
+## Rules
+
+### Core Principle
+
+**We don't control agents** - they're probabilistic. Framework improvement targets the system, not agent behavior.
+
+| Wrong (Proximate) | Right (Root Cause) |
+|-------------------|---------------------|
+| "Agent skipped skill" | "Router didn't explain WHY skill needed" |
+| "Agent didn't verify" | "Guardrail instruction too generic" |
+| "I forgot to check X" | "Instruction for X not salient at decision point" |
+
 ## MANDATORY: Full Task Lifecycle
 
 Every task you handle MUST follow this lifecycle. No shortcuts.
-
 ### Phase 1: Pre-Work (BEFORE any implementation)
 
 ```
