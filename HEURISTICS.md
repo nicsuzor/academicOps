@@ -63,3 +63,11 @@ description: Working hypotheses validated by evidence.
 **Derivation**: `lib/AGENTS.md` is discovered when an agent enters `lib/`. A `docs/SUBMODULES.md` linked from root requires agents to know the link exists. Discoverability beats indirection.
 
 ---
+
+## Internal Records Before External APIs (P#61)
+
+**Statement**: When user asks "do we have a record" or "what do we know about X", search bd and memory FIRST before querying external APIs.
+
+**Derivation**: "Do we have" implies checking our knowledge stores, not fetching new data. Internal-first respects the question's scope and avoids unnecessary API calls.
+
+---
