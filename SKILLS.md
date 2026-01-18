@@ -47,7 +47,7 @@ These skills activate based on task context, not explicit invocation:
 | `/python-dev` | Python code, .py files, type safety | Write production-quality Python code following fail-fast philosophy, type safety, and modern best practices. Enforces rigorous standards for academic and research code where correctness and replicability are paramount. |
 | `/remember` | "remember this", "save to memory", "store knowledge" | Write knowledge to markdown AND sync to memory server. MUST invoke - do not write markdown directly. |
 | `/session-insights` | "session summary", "generate insights" | Generate comprehensive session insights from transcripts using Gemini |
-| `/task-viz` | — | Generate visual mind-map of bd issues using force-directed layout via excalidraw |
+| `/task-viz` | "task visualization", "visualize tasks", "bd visualization", "task chart", "issue mind map" | Generate visual mind-map of bd issues using force-directed layout via excalidraw |
 
 ## Routing Rules
 
