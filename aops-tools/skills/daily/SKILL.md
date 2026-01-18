@@ -252,6 +252,7 @@ Read each session JSON. Extract:
 - Accomplishments
 - Timeline entries
 - Skill compliance metrics
+- Framework feedback: workflow_improvements, jit_context_needed, context_distractions, user_mood
 
 ### Step 4.3: Verify Descriptions
 
@@ -301,7 +302,14 @@ Write `$ACA_DATA/dashboard/synthesis.json`:
   "next_action": {"task": "P0 task", "reason": "Highest priority"},
   "alignment": {"status": "on_track|blocked|drifted", "note": "..."},
   "waiting_on": [{"task": "...", "blocker": "..."}],
-  "skill_insights": {"compliance_rate": 0.75, "top_context_gaps": []},
+  "skill_insights": {
+    "compliance_rate": 0.75,
+    "top_context_gaps": [],
+    "workflow_improvements": [],
+    "jit_context_needed": [],
+    "context_distractions": [],
+    "avg_user_tone": 0.0
+  },
   "session_timeline": [{"time": "10:15", "session": "...", "activity": "..."}]
 }
 ```
