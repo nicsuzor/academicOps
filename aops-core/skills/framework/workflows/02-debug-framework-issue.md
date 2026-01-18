@@ -161,7 +161,7 @@ Search transcripts for skill invocations and errors:
 
 ```bash
 # Find skill invocations
-grep -l "Skill.*skillname\|/skillname" data/sessions/claude/*.md
+grep -l "Skill.*skillname\|/skillname" $ACA_DATA/../sessions/claude/*.md
 
 # Find errors in a transcript
 grep -B5 -A15 "❌ ERROR\|Traceback\|AttributeError" <transcript>
@@ -236,7 +236,7 @@ ls -lt ~/.claude/projects/-home-nic-src-academicOps/*.jsonl | head -10
 Raw JSONL is unreadable. Always convert first:
 
 ```bash
-# Generate transcript (saves to $ACA_DATA/sessions/claude/)
+# Generate transcript (saves to $ACA_DATA/../sessions/claude/)
 cd $AOPS && uv run python scripts/session_transcript.py \
   ~/.claude/projects/-home-nic-src-academicOps/SESSION_ID.jsonl
 

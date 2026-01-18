@@ -24,7 +24,7 @@ This skill analyzes Claude Code session transcripts to extract structured insigh
 - Context gaps and user satisfaction
 - Conversation flow and verbatim prompts
 
-Insights are saved to `$ACA_DATA/sessions/{date}-{session_id}.json` using the unified schema (combining insights + dashboard data).
+Insights are saved to `$ACA_DATA/../sessions/{date}-{session_id}.json` using the unified schema (combining insights + dashboard data).
 
 ## Usage
 
@@ -59,7 +59,7 @@ Processes up to 5 sessions that have transcripts but no insights yet.
 ```bash
 SESSION_ID="a1b2c3d4"
 DATE="2026-01-13"  # Extract from transcript filename
-INSIGHTS_FILE="$ACA_DATA/sessions/${DATE}-${SESSION_ID}.json"
+INSIGHTS_FILE="$ACA_DATA/../sessions/${DATE}-${SESSION_ID}.json"
 
 if [ -f "$INSIGHTS_FILE" ]; then
     echo "⚠️  Insights already exist for session ${SESSION_ID}"
@@ -76,18 +76,18 @@ fi
 ### Step 2: Locate Transcript
 
 Transcripts are typically stored in:
-- `$ACA_DATA/sessions/claude/{transcript}.md` (Claude sessions)
-- `$ACA_DATA/sessions/gemini/{transcript}.md` (Gemini sessions)
+- `$ACA_DATA/../sessions/claude/{transcript}.md` (Claude sessions)
+- `$ACA_DATA/../sessions/gemini/{transcript}.md` (Gemini sessions)
 
 Transcript filename format: `YYYYMMDD-{project}-{session_id}-{suffix}.md`
 
 ```bash
 # Find transcript for session
-TRANSCRIPT=$(find "$ACA_DATA/sessions/claude" -name "*-${SESSION_ID}-*.md" | head -1)
+TRANSCRIPT=$(find "$ACA_DATA/../sessions/claude" -name "*-${SESSION_ID}-*.md" | head -1)
 
 if [ -z "$TRANSCRIPT" ]; then
     echo "❌ No transcript found for session ${SESSION_ID}"
-    echo "Transcript should be in: $ACA_DATA/sessions/claude/"
+    echo "Transcript should be in: $ACA_DATA/../sessions/claude/"
     echo ""
     echo "Generate transcript now? (yes/no)"
     # If yes, continue to Step 2a
@@ -121,8 +121,8 @@ echo "Generating transcript from: $SESSION_PATH"
 # Generate transcript
 cd "$AOPS" && uv run python scripts/session_transcript.py "$SESSION_PATH"
 
-# Transcript is now in $ACA_DATA/sessions/claude/
-TRANSCRIPT=$(find "$ACA_DATA/sessions/claude" -name "*-${SESSION_ID}-*.md" | head -1)
+# Transcript is now in $ACA_DATA/../sessions/claude/
+TRANSCRIPT=$(find "$ACA_DATA/../sessions/claude" -name "*-${SESSION_ID}-*.md" | head -1)
 ```
 
 ### Step 3: Extract Metadata and Prepare Prompt
@@ -200,7 +200,7 @@ fi
 ```
 
 If JSON is invalid:
-- Save raw response to `$ACA_DATA/sessions/{date}-{session_id}.debug.txt`
+- Save raw response to `$ACA_DATA/../sessions/{date}-{session_id}.debug.txt`
 - Show error message with path to debug file
 - Exit with error
 
@@ -326,7 +326,7 @@ echo "✓ Batch processing complete: $COUNT sessions"
 ```
 ❌ No transcript found for session a1b2c3d4
 
-Transcript should be in: $ACA_DATA/sessions/claude/
+Transcript should be in: $ACA_DATA/../sessions/claude/
 
 Generate transcript now? (yes/no)
 > yes
@@ -355,7 +355,7 @@ Transcript: /path/to/transcript.md (125 KB)
 Error: Expecting ',' delimiter: line 15 column 5 (char 432)
 
 Raw response saved to:
-$ACA_DATA/sessions/2026-01-13-a1b2c3d4.debug.txt
+$ACA_DATA/../sessions/2026-01-13-a1b2c3d4.debug.txt
 
 Please review and report if this is a bug.
 ```
@@ -385,7 +385,7 @@ Aborted. Existing insights preserved.
 - Map corrections to framework heuristics (H2, H3, H4, etc.)
 
 **For Debugging**:
-- Check `$ACA_DATA/sessions/*.debug.txt` for raw Gemini responses
+- Check `$ACA_DATA/../sessions/*.debug.txt` for raw Gemini responses
 - Verify transcript format matches expected structure
 - Ensure ACA_DATA environment variable is set correctly
 

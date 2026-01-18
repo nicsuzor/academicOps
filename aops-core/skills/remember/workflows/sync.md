@@ -79,7 +79,7 @@ for (file of files) {
 - `$ACA_DATA/knowledge/**/*.md`
 
 **Exclude:**
-- `$ACA_DATA/sessions/*.md` (daily notes, not semantic knowledge)
+- `$ACA_DATA/../sessions/*.md` (daily notes, not semantic knowledge - now outside $ACA_DATA)
 - Files with `sync: false` in frontmatter
 - Empty files
 

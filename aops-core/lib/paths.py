@@ -109,8 +109,8 @@ def get_workflows_dir() -> Path:
 
 
 def get_sessions_dir() -> Path:
-    """Get sessions directory ($ACA_DATA/sessions)."""
-    return get_data_root() / "sessions"
+    """Get sessions directory (sibling of $ACA_DATA, not inside it)."""
+    return get_data_root().parent / "sessions"
 
 
 def get_projects_dir() -> Path:

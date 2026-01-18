@@ -31,7 +31,7 @@ Claude Code writes complete transcripts including:
 
 ```bash
 # Via /transcript command
-# Output: $ACA_DATA/sessions/claude/YYYYMMDD-<project>-<slug>-{full,abridged}.md
+# Output: $ACA_DATA/../sessions/claude/YYYYMMDD-<project>-<slug>-{full,abridged}.md
 ```
 
 **External viewers** (browser-based):
