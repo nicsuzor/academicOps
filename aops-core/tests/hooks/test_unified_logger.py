@@ -212,10 +212,14 @@ class TestSubagentStopEvent:
 
 
 class TestStopEvent:
-    """Test Stop event writes session insights."""
+    """Test Stop event records operational metrics to session state.
 
-    def test_stop_event_writes_insights(self, temp_session_dir):
-        """Test that Stop event generates and writes insights."""
+    Note: Stop event no longer writes to permanent storage. Permanent session
+    insights are extracted from Framework Reflection by transcript.py.
+    """
+
+    def test_stop_event_updates_session_state(self, temp_session_dir):
+        """Test that Stop event updates session state with operational metrics."""
         session_id = "test-stop-event"
 
         # Create session with some data
@@ -237,29 +241,19 @@ class TestStopEvent:
             "stop_reason": "end_turn",
         }
 
-        # Mock the insights file path to use temp dir - patch where it's used
-        insights_file = Path(temp_session_dir) / "test-insights.json"
-        with patch(
-            "unified_logger.get_insights_file_path", return_value=insights_file
-        ), patch("unified_logger.write_insights_file") as mock_write:
-            handle_stop(session_id, input_data)
+        handle_stop(session_id, input_data)
 
-            # Verify write_insights_file was called
-            assert mock_write.called, "write_insights_file should be called"
-            call_args = mock_write.call_args
-            assert call_args[0][0] == insights_file
+        # Verify session state has insights
+        from lib.session_state import load_session_state
 
-            # Verify insights structure passed to write_insights_file
-            insights = call_args[0][1]
-            assert "session_id" in insights
-            assert "date" in insights
-            assert "project" in insights
-            assert "outcome" in insights
-            assert "stop_reason" in insights
-            assert insights["stop_reason"] == "end_turn"
+        state = load_session_state(session_id)
+        assert state["insights"] is not None
+        assert "outcome" in state["insights"]
+        assert "stop_reason" in state["insights"]
+        assert state["insights"]["stop_reason"] == "end_turn"
 
-    def test_stop_event_updates_session_state(self, temp_session_dir):
-        """Test that Stop event updates session state with insights."""
+    def test_stop_event_records_ended_at(self, temp_session_dir):
+        """Test that Stop event records ended_at timestamp."""
         session_id = "test-stop-state"
 
         # Create session
@@ -271,23 +265,16 @@ class TestStopEvent:
             "stop_reason": "user_exit",
         }
 
-        # Mock insights file path and write function
-        insights_file = Path(temp_session_dir) / "insights.json"
-        with patch(
-            "unified_logger.get_insights_file_path", return_value=insights_file
-        ), patch("unified_logger.write_insights_file"):
-            handle_stop(session_id, input_data)
+        handle_stop(session_id, input_data)
 
-        # Verify session state has insights and ended_at
+        # Verify session state has ended_at
         from lib.session_state import load_session_state
 
         state = load_session_state(session_id)
-        assert state["insights"] is not None
         assert state["ended_at"] is not None
-        assert "outcome" in state["insights"]
 
     def test_stop_includes_operational_metrics(self, temp_session_dir):
-        """Test that Stop event includes operational metrics in insights."""
+        """Test that Stop event includes operational metrics in session state."""
         session_id = "test-metrics"
 
         # Create session
@@ -303,21 +290,19 @@ class TestStopEvent:
                 },
             )
 
-        # Trigger Stop - mock write functions
-        insights_file = Path(temp_session_dir) / "metrics-insights.json"
-        with patch(
-            "unified_logger.get_insights_file_path", return_value=insights_file
-        ), patch("unified_logger.write_insights_file") as mock_write:
-            handle_stop(session_id, {"stop_reason": "end_turn"})
+        # Trigger Stop
+        handle_stop(session_id, {"stop_reason": "end_turn"})
 
-            # Verify metrics in insights passed to write_insights_file
-            assert mock_write.called
-            insights = mock_write.call_args[0][1]
-            assert insights["subagent_count"] == 3
-            assert len(insights["subagents_invoked"]) == 3
-            assert "critic" in insights["subagents_invoked"]
-            assert "qa-verifier" in insights["subagents_invoked"]
-            assert "custodiet" in insights["subagents_invoked"]
+        # Verify metrics in session state insights
+        from lib.session_state import load_session_state
+
+        state = load_session_state(session_id)
+        insights = state["insights"]
+        assert insights["subagent_count"] == 3
+        assert len(insights["subagents_invoked"]) == 3
+        assert "critic" in insights["subagents_invoked"]
+        assert "qa-verifier" in insights["subagents_invoked"]
+        assert "custodiet" in insights["subagents_invoked"]
 
 
 class TestMainHookEntry:

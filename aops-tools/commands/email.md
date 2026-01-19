@@ -12,7 +12,7 @@ permalink: commands/email
 
 1. Fetch recent emails: Call `mcp__outlook__messages_list_recent(limit=20)` - if it works, proceed; if error, HALT and report
 2. **Check Sent folder** for existing responses (skip issues for emails already dealt with)
-3. Classify emails: Actionable → bd issue | Important FYI → Extract info | Safe to ignore → Archive candidate
+3. Classify emails using [[workflows/triage-email]] criteria: Task → bd issue | FYI → Extract info | Skip → Archive candidate
 4. **Read Important FYI email bodies** and extract key information (dates, amounts, outcomes)
 5. Query [[skills/remember/SKILL.md|remember]] for context to categorize actions
 6. **Create "ready for action" bd issues**:
