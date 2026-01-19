@@ -287,7 +287,104 @@ Using **Edit tool** (not Write) to preserve existing content:
 - **Unscheduled**: Accomplishments not matching scheduled tasks
 - Format: `Scheduled: ██████░░░░ 6/10 | Unscheduled: 3 items`
 
-### Step 4.5: Update synthesis.json
+### Step 4.5: Task Matching (Session → Task Sync)
+
+Match session accomplishments to related tasks using semantic search.
+
+**Per spec** ([[session-sync-user-story]]): The agent receives accomplishments + candidate task files and decides which tasks match. Agent-driven matching, NOT algorithmic.
+
+**4.5.1: Search for Candidate Tasks**
+
+For each accomplishment from session JSONs:
+
+```python
+# Semantic search via memory server
+candidates = mcp__memory__retrieve_memory(
+    query=accomplishment_text,
+    limit=5,
+    similarity_threshold=0.6
+)
+```
+
+**4.5.2: Agent-Driven Matching Decision**
+
+For each accomplishment with candidates:
+
+1. **High confidence match** (agent is certain):
+   - Accomplishment clearly relates to a specific task
+   - Example: "Implemented session-sync" matches task "Add session-end sync feature"
+   - Action: Update task file (Step 4.6) + add task link to daily.md
+
+2. **Low confidence match** (possible but uncertain):
+   - Accomplishment might relate to a task but agent is unsure
+   - Action: Note in daily.md as "possibly related to [[task]]?" - NO task file update
+
+3. **No match** (no relevant candidates):
+   - Accomplishment in daily.md only, no link
+   - Action: Continue to next accomplishment
+
+**Matching heuristics**:
+- Prefer no match over wrong match (conservative)
+- Consider task title, body, project alignment
+- "Implemented X" accomplishment matches "Add X feature" or "X" task
+- Framework work → framework tasks; project work → project tasks
+
+**4.5.3: Graceful Degradation**
+
+| Scenario | Behavior |
+|----------|----------|
+| Memory server unavailable | Skip semantic matching, continue processing |
+| Task file not found | Log warning, continue to next |
+| Unexpected task format | Skip that task, log warning |
+
+### Step 4.6: Update Task Files (Cross-Linking)
+
+For each **high-confidence match** from Step 4.5:
+
+**4.6.1: Update Task Checklist**
+
+If accomplishment matches a specific checklist item in the task:
+
+```markdown
+# Before
+- [ ] Implement feature X
+
+# After
+- [x] Implement feature X [completion:: 2026-01-19]
+```
+
+Use Edit tool to add `[x]` and `[completion:: YYYY-MM-DD]`.
+
+**Constraints**:
+- ✅ Mark sub-task checklist items complete
+- ❌ NEVER mark parent tasks complete automatically
+- ❌ NEVER delete any task content
+
+**4.6.2: Append Progress Section**
+
+Add progress note to task file body:
+
+```markdown
+## Progress
+
+- 2026-01-19: [accomplishment text]. See [[sessions/20260119-daily.md]]
+```
+
+If `## Progress` section exists, append to it. Otherwise, create it at end of task body.
+
+**4.6.3: Update Daily.md Cross-Links**
+
+In the Project Accomplishments section, add task links:
+
+```markdown
+### [[academicOps]] → [[projects/aops]]
+
+- [x] Implemented session-sync → [[tasks/inbox/ns-whue-impl-aggregate-session-insights-to-dailymd.md]]
+- [x] Fixed authentication bug (possibly related to [[tasks/inbox/ns-abc-auth-refactor.md]]?)
+- [x] Added new endpoint (no task match)
+```
+
+### Step 4.7: Update synthesis.json
 
 Write `$ACA_DATA/dashboard/synthesis.json`:
 
@@ -326,6 +423,9 @@ Write `$ACA_DATA/dashboard/synthesis.json`:
 - **Outlook unavailable**: Skip email triage, continue with recommendations
 - **No session JSONs**: Skip sync, note "No sessions to sync"
 - **No tasks**: Present empty state, offer to run `/tasks`
+- **Memory server unavailable**: Skip semantic task matching (Step 4.5), continue with daily.md updates
+- **Task file not found**: Log warning "Task file missing: {path}", continue to next accomplishment
+- **Unexpected task format**: Log warning "Skipping task {id}: unexpected format", continue processing
 
 ## Daily Note Structure (SSoT)
 
