@@ -214,25 +214,5 @@ def resolve_binary(name: str) -> Path | None:
     return resolved
 
 
-def get_bd_path() -> Path | None:
-    """
-    DEPRECATED: bd CLI is replaced by tasks MCP.
-
-    Use mcp__plugin_aops-core_tasks__* functions instead.
-    This function is kept for backwards compatibility but will be removed.
-
-    Returns:
-        Path: Absolute path to bd binary if found (deprecated)
-        None: If bd not installed or not in PATH
-    """
-    import warnings
-    warnings.warn(
-        "get_bd_path() is deprecated. Use tasks MCP functions instead.",
-        DeprecationWarning,
-        stacklevel=2
-    )
-    return resolve_binary("bd")
-
-
 if __name__ == "__main__":
     print_environment()

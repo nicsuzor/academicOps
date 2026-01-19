@@ -178,12 +178,3 @@ class TestBinaryResolution:
         result = paths.resolve_binary("ls")
         if result is not None:
             assert result.is_absolute()
-
-    def test_get_bd_path_returns_path_or_none(self):
-        """Test that get_bd_path returns a Path or None."""
-        result = paths.get_bd_path()
-        # bd may or may not be installed, but result should be correct type
-        assert result is None or isinstance(result, Path)
-        if result is not None:
-            assert result.is_file()
-            assert os.access(result, os.X_OK)

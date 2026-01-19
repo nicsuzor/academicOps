@@ -47,12 +47,10 @@ class TestFirstPromptHydration:
 
         # Mock external dependencies to isolate the test
         with patch("hooks.user_prompt_submit.get_aops_root") as mock_root, \
-             patch("hooks.user_prompt_submit.get_bd_path") as mock_bd, \
              patch("hooks.user_prompt_submit.set_hydration_pending") as mock_pending:
 
             # Set up mocks
             mock_root.return_value = AOPS_CORE.parent
-            mock_bd.return_value = None  # Skip bd queries
 
             # Call the function under test
             instruction = build_hydration_instruction(session_id, prompt, None)
@@ -83,7 +81,7 @@ class TestFirstPromptHydration:
             "workflows_index": "workflow content",
             "skills_index": "skills content",
             "heuristics": "heuristics content",
-            "bd_state": "",
+            "task_state": "",
         }
 
         # This should NOT raise KeyError
@@ -117,7 +115,7 @@ class TestFirstPromptHydration:
             "workflows_index": "",
             "skills_index": "",
             "heuristics": "",
-            "bd_state": "",
+            "task_state": "",
         }
 
         result = template.format(**test_values)
@@ -150,12 +148,10 @@ class TestFirstPromptHydration:
         session_id = "test-session-67890"
 
         with patch("hooks.user_prompt_submit.get_aops_root") as mock_root, \
-             patch("hooks.user_prompt_submit.get_bd_path") as mock_bd, \
              patch("hooks.user_prompt_submit.set_hydration_pending") as mock_set, \
              patch("hooks.user_prompt_submit.clear_hydration_pending") as mock_clear:
 
             mock_root.return_value = AOPS_CORE.parent
-            mock_bd.return_value = None
 
             build_hydration_instruction(session_id, prompt, None)
 
@@ -258,11 +254,9 @@ class TestSkillsIndex:
         session_id = "test-session-skills"
 
         with patch("hooks.user_prompt_submit.get_aops_root") as mock_root, \
-             patch("hooks.user_prompt_submit.get_bd_path") as mock_bd, \
              patch("hooks.user_prompt_submit.set_hydration_pending"):
 
             mock_root.return_value = AOPS_CORE.parent
-            mock_bd.return_value = None
 
             instruction = build_hydration_instruction(session_id, prompt, None)
 
