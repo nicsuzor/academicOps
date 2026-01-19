@@ -198,6 +198,7 @@ class TaskStorage:
 
         Creates parent directories if needed.
         Updates parent task's leaf status if this task has a parent.
+        Populates inverse relationships (children, blocks) for rendering.
 
         Args:
             task: Task to save
@@ -205,6 +206,9 @@ class TaskStorage:
         Returns:
             Path where task was saved
         """
+        # Populate inverse relationships for markdown rendering
+        self._populate_inverse_relationships(task)
+
         path = self._get_task_path(task)
         self._atomic_write(path, task)
 
@@ -213,11 +217,41 @@ class TaskStorage:
             parent = self.get_task(task.parent)
             if parent:
                 parent.add_child(task.id)
+                self._populate_inverse_relationships(parent)
                 parent_path = self._find_task_path(task.parent)
                 if parent_path:
                     self._atomic_write(parent_path, parent)
 
         return path
+
+    def _populate_inverse_relationships(self, task: Task) -> None:
+        """Populate inverse relationships (children, blocks) for a task.
+
+        Scans all tasks to compute:
+        - children: tasks that have this task as parent
+        - blocks: tasks that depend on this task
+
+        Args:
+            task: Task to populate relationships for
+        """
+        children = []
+        blocks = []
+
+        for other_task in self._iter_all_tasks():
+            # Skip self
+            if other_task.id == task.id:
+                continue
+
+            # Children: tasks that have this task as parent
+            if other_task.parent == task.id:
+                children.append(other_task.id)
+
+            # Blocks: tasks that depend on this task
+            if task.id in other_task.depends_on:
+                blocks.append(other_task.id)
+
+        task.children = children
+        task.blocks = blocks
 
     def _atomic_write(self, path: Path, task: Task) -> None:
         """Write task to file atomically with file locking.
