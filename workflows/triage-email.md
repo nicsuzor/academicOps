@@ -92,23 +92,23 @@ When creating tasks from emails, infer priority from signals:
 
 ### Task (correctly classified)
 
-> **Subject**: Happy New Year, AI Council
-> **From**: Toby Walsh
-> **Body**: "wanted to see if other members... were interested in this idea... organise a zoom discussion"
+> **Subject**: Interest in joining working group?
+> **From**: Dr. Jane Smith
+> **Body**: "wanted to see if you'd be interested in this idea... organise a zoom discussion"
 
 **Classification**: Task (P1) - Personal invitation requesting participation, from known contact, strategic interest
 
 ### FYI (correctly classified)
 
 > **Subject**: Thank you for your peer review
-> **From**: ANU Law Journal
+> **From**: Academic Law Journal
 > **Body**: "We greatly appreciate the time you have taken to review"
 
 **Classification**: FYI - Thank-you for completed work, no action needed
 
 ### Skip (correctly classified)
 
-> **Subject**: [nicsuzor/academicOps] Run failed: Framework Health
+> **Subject**: [username/project] Run failed: CI Pipeline
 > **From**: GitHub notifications
 
 **Classification**: Skip - Automated CI notification
