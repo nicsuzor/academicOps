@@ -14,7 +14,7 @@ description: Process for monitoring file sizes and preventing framework bloat
 
 1. **Check file sizes**
    ```bash
-   find /home/nic/src/academicOps -name "*.md" -exec wc -l {} \; | sort -rn
+   find "$AOPS" -name "*.md" -exec wc -l {} \; | sort -rn
    ```
 
 2. **Flag approaching limits**

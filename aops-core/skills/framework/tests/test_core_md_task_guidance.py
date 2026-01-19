@@ -4,7 +4,10 @@ Integration test validating that agent instructions include proper guidance
 for task-related operations to use the task skill.
 """
 
+import os
 from pathlib import Path
+
+AOPS = os.environ.get("AOPS", os.path.expanduser("~/src/academicOps"))
 
 
 def test_core_md_references_task_skill():
@@ -18,7 +21,7 @@ def test_core_md_references_task_skill():
     The test will fail if CORE.md lacks this critical guidance.
     """
     # Arrange: Locate CORE.md
-    core_md_path = Path("/home/nic/src/academicOps/CORE.md")
+    core_md_path = Path(AOPS) / "CORE.md"
     assert core_md_path.exists(), f"CORE.md not found at {core_md_path}"
 
     # Act: Read CORE.md content

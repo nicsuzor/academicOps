@@ -11,7 +11,7 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 NC='\033[0m' # No Color
 
-BOTS_DIR="/home/nic/src/academicOps"
+BOTS_DIR="${AOPS:-$HOME/src/academicOps}"
 SCRIPT_DIR="$(dirname "$0")/../scripts"
 
 # Test 1: Validate documentation integrity
@@ -31,7 +31,7 @@ REQUIRED_FILES=(
     "${BOTS_DIR}/AXIOMS.md"
     "${BOTS_DIR}/CORE.md"
     "${BOTS_DIR}/ACCOMMODATIONS.md"
-    "/home/nic/src/academicOps/README.md"
+    "${BOTS_DIR}/README.md"
 )
 
 for file in "${REQUIRED_FILES[@]}"; do

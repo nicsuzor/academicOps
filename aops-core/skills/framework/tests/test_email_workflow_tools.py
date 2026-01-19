@@ -4,7 +4,10 @@ Validates that email-capture.md includes explicit MCP tool names
 and parameter structures, not just generic descriptions.
 """
 
+import os
 from pathlib import Path
+
+AOPS = os.environ.get("AOPS", os.path.expanduser("~/src/academicOps"))
 
 
 def test_email_workflow_has_explicit_tool_examples() -> None:
@@ -22,9 +25,7 @@ def test_email_workflow_has_explicit_tool_examples() -> None:
 
     This ensures agents can directly invoke tools without guessing API structure.
     """
-    workflow_file = Path(
-        "/home/nic/src/academicOps/skills/tasks/workflows/email-capture.md"
-    )
+    workflow_file = Path(AOPS) / "skills/tasks/workflows/email-capture.md"
     assert workflow_file.exists(), f"Workflow file not found: {workflow_file}"
 
     content = workflow_file.read_text()
