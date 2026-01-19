@@ -49,3 +49,9 @@ Return: PROCEED (execute as planned) | REVISE (list specific changes) | HALT (st
 **Why hydrator always?** Hydration is fast (haiku model), costless, improves outcomes. Even "simple" tasks benefit from context enrichment.
 
 **Why conditional critic?** Critic (opus) is expensive. Simple skill routes have well-defined workflows that don't benefit from review. Complex plans catch errors early with rigorous analysis.
+
+**CRITICAL - Do NOT skip hydration for perceived "simple questions":**
+- Imperatives disguised as questions ("allow X to do Y", "make it so X works") are DIRECTIVES requiring feature-dev workflow
+- Discussion of feature design ("should we add X?") followed by agreement is a DIRECTIVE
+- Only pure information requests with no implementation intent skip to simple-question
+- When in doubt, hydrate - the hydrator will route correctly

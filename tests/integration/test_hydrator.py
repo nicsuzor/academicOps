@@ -826,6 +826,91 @@ def test_short_confirmation_preserves_context() -> None:
         temp_path.unlink()
 
 
+@pytest.mark.slow
+@pytest.mark.integration
+def test_directive_disguised_as_question_routes_to_feature_dev(
+    claude_headless_tracked,
+) -> None:
+    """Regression (aops-kyvu): Imperatives disguised as questions must route to feature-dev.
+
+    BUG: User prompt "allow the agent to skip hydrator step if the prompt is JUST
+    a question" was misclassified as a simple question. The main agent answered
+    directly without spawning hydrator or routing to feature-dev workflow.
+
+    Root cause: No guidance distinguishing imperative statements (directives requiring
+    action) from interrogative statements (questions requiring answers only).
+
+    Fix: Added explicit guidance to prompt-hydration-instruction.md about detecting
+    imperatives ("allow", "add", "fix", "implement") vs. pure information requests.
+
+    This test verifies:
+    1. Hydrator IS spawned (main agent doesn't skip it)
+    2. Hydrator routes to feature-dev workflow (not simple-question)
+    3. Output contains TodoWrite plan (not just an answer)
+    """
+    # This prompt looks like a question but is actually a directive
+    # Key indicators: imperative verb "allow", implementation intent
+    prompt = (
+        "allow the agent to skip hydrator step if the prompt is JUST a question, "
+        "in which case the workflow has to be: ANSWER and HALT"
+    )
+
+    result, session_id, tool_calls = claude_headless_tracked(
+        prompt, timeout_seconds=180
+    )
+
+    assert result["success"], f"Execution failed: {result.get('error')}"
+
+    output = result.get("output", "")
+
+    # 1. Verify hydrator WAS spawned (main agent didn't bypass it)
+    hydrator_calls = [
+        c
+        for c in tool_calls
+        if c["name"] == "Task"
+        and "prompt-hydrator" in str(c.get("input", {}).get("subagent_type", ""))
+    ]
+
+    assert len(hydrator_calls) > 0, (
+        f"prompt-hydrator should have been spawned for directive prompt. "
+        f"Main agent may have incorrectly classified this as a 'simple question'. "
+        f"Session: {session_id}"
+    )
+
+    # 2. Verify hydrator selected appropriate workflow (NOT simple-question)
+    # Look for workflow selection in hydrator output
+    hydrator_routed_correctly = (
+        "feature-dev" in output.lower()
+        or "feature_dev" in output.lower()
+        or "minor-edit" in output.lower()
+        or "minor_edit" in output.lower()
+        # Also acceptable: decompose for multi-session scope
+        or "decompose" in output.lower()
+    )
+
+    # Check that simple-question was NOT selected
+    simple_question_selected = (
+        'workflow": "simple-question"' in output.lower()
+        or "**workflow**: simple-question" in output.lower()
+        or "workflow: simple-question" in output.lower()
+    )
+
+    assert not simple_question_selected, (
+        f"Hydrator incorrectly routed to simple-question workflow. "
+        f"Imperative prompts ('allow X', 'add Y') are directives, not questions. "
+        f"Session: {session_id}"
+    )
+
+    # 3. Verify TodoWrite plan exists (not just an answer)
+    has_todowrite = "TodoWrite" in output or "todo" in output.lower()
+
+    assert has_todowrite or hydrator_routed_correctly, (
+        f"Expected either TodoWrite plan or feature-dev/minor-edit workflow selection. "
+        f"Directive prompts should produce execution plans, not direct answers. "
+        f"Session: {session_id}"
+    )
+
+
 @pytest.mark.demo
 @pytest.mark.slow
 @pytest.mark.integration
