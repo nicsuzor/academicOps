@@ -24,23 +24,23 @@ User memories are strictly organised with a clear distinction between:
 
 | System | Purpose | When to Use |
 |--------|---------|-------------|
-| **bd issues** | Operational tracking | Tasks, bugs, observations, experiments, decisions-in-progress |
+| **Tasks MCP** | Operational tracking | Tasks, bugs, observations, experiments, decisions-in-progress |
 | **$ACA_DATA markdown** | Knowledge SSoT | Synthesized truths, project context, goals, general knowledge |
-| **Memory server** | Semantic search index | Markdown + closed bd issues with learnings - enables `mcp__memory__retrieve_memory` |
+| **Memory server** | Semantic search index | Markdown + completed tasks with learnings - enables `mcp__memory__retrieve_memory` |
 
-### Automatic Sync: Closed Issues → Memory
+### Automatic Sync: Completed Tasks → Memory
 
-When a bd issue is closed with a `--reason` (documented learning), it's automatically synced to the memory server via PostToolUse hook. This makes learnings from closed issues searchable alongside synthesized knowledge.
+When a task is completed with documented learning, it's searchable alongside synthesized knowledge.
 
-- **Tagged**: `bd-issue`, `closed`, `type:<issue_type>`, `priority:P<n>`
-- **Content**: Title, description, close_reason (learning), closed date
-- **Search**: `mcp__memory__retrieve_memory(query="...")` finds both markdown AND closed issue learnings
+- **Tagged**: `task`, `completed`, `type:<task_type>`, `priority:P<n>`
+- **Content**: Title, body, completion context
+- **Search**: `mcp__memory__retrieve_memory(query="...")` finds both markdown AND task learnings
 
 ### Decision Tree
 
 ```
 Is this a task or observation? (time-stamped, "agent did X")
-  → YES: bd create or bd update (NOT remember skill)
+  → YES: mcp__plugin_aops-core_tasks__create_task() or update_task() (NOT remember skill)
 
 Is this synthesized knowledge? (timeless truth, "X is Y")
   → YES: Skill(skill="remember") → writes markdown + memory server
@@ -54,15 +54,15 @@ Need to search existing knowledge?
 1. **Memory is the knowledge source** - Agents MUST check `mcp__memory__retrieve_memory` when starting tasks or needing context. This is how you access user knowledge, project history, and learned patterns. Don't guess - search memory first.
 2. **Markdown is SSoT** - Memory server is derived, not authoritative
 3. **Remember skill dual-writes** - Always use it for new knowledge (ensures sync)
-4. **bd for observations** - Don't create markdown files for time-stamped events
-5. **Synthesis flow**: bd observations → patterns emerge → remember skill → semantic docs → close bd issue
+4. **Tasks for observations** - Don't create markdown files for time-stamped events
+5. **Synthesis flow**: task observations → patterns emerge → remember skill → semantic docs → complete task
 
 ### Insight Capture
 
 When you discover something worth preserving:
-- **Operational insight** (bug found, approach tried): `bd create` or comment on existing issue
+- **Operational insight** (bug found, approach tried): `mcp__plugin_aops-core_tasks__create_task()` or update existing task
 - **Knowledge insight** (pattern, principle, fact): `Skill(skill="remember")`
-- **Both**: Create bd issue for tracking, use remember skill for the knowledge
+- **Both**: Create task for tracking, use remember skill for the knowledge
 
 **To persist knowledge**: Use `Skill(skill="remember")` (blocking) or spawn background Task with `run_in_background=true` (seamless).
 

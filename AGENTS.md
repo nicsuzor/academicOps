@@ -45,11 +45,16 @@ Skill, command, and agent instruction files (SKILL.md, commands/*.md, agents/*.m
 
 ## Task Tracking
 
-**Run `bd` from your working directory** - never `cd` to academicOps. bd uses CWD to determine project prefix.
+Use the **tasks MCP server** for work tracking:
 
-Check beads (`bd`): `bd ready`, `bd list`, `bd update <id> --status=in_progress`, `bd close <id>`, `bd sync`
+- `mcp__plugin_aops-core_tasks__get_ready_tasks()` - Find available work
+- `mcp__plugin_aops-core_tasks__create_task(title, type, project, parent, depends_on, priority, body)` - Create tasks
+- `mcp__plugin_aops-core_tasks__update_task(id, status, ...)` - Update task status
+- `mcp__plugin_aops-core_tasks__complete_task(id)` - Mark task done
+- `mcp__plugin_aops-core_tasks__list_tasks(project, status, type)` - List/filter tasks
+- `mcp__plugin_aops-core_tasks__search_tasks(query)` - Search tasks
 
-**On interruption** (e.g., user triggers /learn mid-task): Mark current issue `--status=blocked`, create child issue for interrupt work with `--parent=<current-id>`.
+**On interruption** (e.g., user triggers /learn mid-task): Update current task `status="blocked"`, create child task for interrupt work with `parent=<current-id>`.
 
 ## Session Completion
 
@@ -59,7 +64,7 @@ Check beads (`bd`): `bd ready`, `bd list`, `bd update <id> --status=in_progress`
 2. Run quality gates (tests, linters)
 3. Update issue status
 4. Format: `./scripts/format.sh && git add -A && git commit -m "..."`
-5. **Push**: `git pull --rebase && bd sync && git push && git status`
+5. **Push**: `git pull --rebase && git push && git status`
 6. **Output Framework Reflection** (MANDATORY - see format below)
 
 NEVER stop before pushing. NEVER skip the Framework Reflection.
@@ -83,14 +88,16 @@ Use this EXACT format - field names and syntax must match precisely:
 **Friction points**: [What was harder than expected, or "none"]
 **Root cause** (if not success): [Which component failed]
 **Proposed changes**: [Framework improvements identified, or "none"]
-**Next step**: [Context for next session - MUST be filed as bd issue if actionable]
+**Next step**: [Context for next session - MUST be filed as task if actionable]
 **Workflow improvements**: [Changes to make this type of task easier in future, or "none"]
 **JIT context needed**: [Info that would have saved time if provided earlier, or "none"]
 **Context distractions**: [Irrelevant info that added noise, or "none"]
 **User tone**: [Float -1.0 to 1.0: 1.0=effusive, 0.0=neutral, -0.5=disappointed, -1.0=furious]
 ```
 
-**Next step rule**: If Next step contains actionable work, file it as a bd issue before ending the session. Don't just document it - track it.
+**Next step rule**: If Next step contains actionable work, file it as a task before ending the session. Don't just document it - track it.
+
+**Task creation rule**: If you forgot to create a task for your work this session, create one now and mark it complete. This is how we track work. Set parent/child/dependencies as appropriate.
 
 Field alignment with session-insights JSON schema:
 - `**Prompts**`: Maps to `prompts` array - verbatim user prompts in order
@@ -116,7 +123,6 @@ Field alignment with session-insights JSON schema:
 5. **PUSH TO REMOTE** - This is MANDATORY:
    ```bash
    git pull --rebase
-   bd sync
    git push
    git status  # MUST show "up to date with origin"
    ```
