@@ -80,6 +80,14 @@ All work MUST follow one of the workflows in this index. No exceptions.
 - **Key steps**: Gather context → Invoke QA → Analyze verdict → Fix issues → Re-verify
 - **Quality gates**: QA verification (functionality, quality, completeness)
 
+#### [[prove-feature]]
+- **ID**: `prove-feature`
+- **Title**: Prove Feature Workflow
+- **Category**: quality-assurance
+- **When to use**: Validating framework features integrate correctly (not just run without error)
+- **Key steps**: Establish baseline → Execute feature → Verify structural changes → Report evidence
+- **Quality gates**: Baseline captured, structural integration verified, evidence table produced
+
 ### Operations Workflows
 
 #### [[bd-workflow]]
