@@ -24,6 +24,7 @@ Usage:
 from __future__ import annotations
 
 import re
+import uuid
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from enum import Enum
@@ -104,10 +105,13 @@ class Task:
             raise ValueError("Task id is required")
         if not self.title:
             raise ValueError("Task title is required")
-        # Accept either date-slug format (YYYYMMDD-slug) or simple slug (permalink)
-        if not re.match(r"^(\d{8}-)?[\w-]+$", self.id):
+        # Accept:
+        # - New format: <project>-<hash8> (e.g., aops-a1b2c3d4, ns-12345678)
+        # - Legacy format: YYYYMMDD-slug (e.g., 20260119-my-task)
+        # - Simple slug for permalinks (e.g., my-task-id)
+        if not re.match(r"^[\w]+-[\w-]+$", self.id):
             raise ValueError(
-                f"Task id must be slug format (optional YYYYMMDD- prefix): {self.id}"
+                f"Task id must be slug format: {self.id}"
             )
         if not 0 <= self.priority <= 4:
             raise ValueError(f"Priority must be 0-4, got {self.priority}")
@@ -115,27 +119,37 @@ class Task:
             raise ValueError(f"Depth must be non-negative, got {self.depth}")
 
     @classmethod
-    def generate_id(cls, title: str, date: datetime | None = None) -> str:
-        """Generate a task ID from title and optional date.
+    def generate_id(cls, title: str, project: str | None = None) -> str:
+        """Generate a task ID using project prefix and UUID hash.
+
+        Args:
+            title: Task title (used for slug in filename, not ID)
+            project: Project slug (defaults to 'ns' for no-project)
+
+        Returns:
+            ID in format <project>-<uuid[:8]>
+        """
+        prefix = project if project else "ns"
+        hash_part = uuid.uuid4().hex[:8]
+        return f"{prefix}-{hash_part}"
+
+    @classmethod
+    def slugify_title(cls, title: str, max_length: int = 50) -> str:
+        """Generate a URL-safe slug from title.
 
         Args:
             title: Task title to slugify
-            date: Date for prefix (defaults to now)
+            max_length: Maximum slug length
 
         Returns:
-            ID in format YYYYMMDD-slugified-title
+            Slugified title for use in filenames
         """
-        if date is None:
-            date = datetime.now(UTC)
-
-        # Slugify title
         slug = title.lower()
         slug = re.sub(r"[^\w\s-]", "", slug)  # Remove non-word chars
         slug = re.sub(r"[\s_]+", "-", slug)  # Replace spaces/underscores
         slug = re.sub(r"-+", "-", slug)  # Collapse multiple dashes
-        slug = slug.strip("-")[:50]  # Limit length
-
-        return f"{date.strftime('%Y%m%d')}-{slug}"
+        slug = slug.strip("-")[:max_length]
+        return slug
 
     def to_frontmatter(self) -> dict[str, Any]:
         """Convert task to frontmatter dictionary.

@@ -97,12 +97,14 @@ class TaskStorage:
             Path where task file should be stored
         """
         tasks_dir = self._get_project_tasks_dir(task.project)
-        return tasks_dir / f"{task.id}.md"
+        slug = Task.slugify_title(task.title)
+        return tasks_dir / f"{task.id}-{slug}.md"
 
     def _find_task_path(self, task_id: str) -> Path | None:
         """Find existing task file by ID.
 
         Searches all project directories and inbox for task file.
+        Supports both new format (<id>-<slug>.md) and legacy format (<id>.md).
 
         Args:
             task_id: Task ID to find
@@ -110,12 +112,12 @@ class TaskStorage:
         Returns:
             Path if found, None otherwise
         """
-        filename = f"{task_id}.md"
-
         # Search inbox first
-        inbox_path = self.data_root / "tasks" / "inbox" / filename
-        if inbox_path.exists():
-            return inbox_path
+        inbox_dir = self.data_root / "tasks" / "inbox"
+        if inbox_dir.exists():
+            for path in inbox_dir.glob(f"{task_id}*.md"):
+                if path.stem == task_id or path.stem.startswith(f"{task_id}-"):
+                    return path
 
         # Search all project directories
         for project_dir in self.data_root.iterdir():
@@ -126,9 +128,11 @@ class TaskStorage:
             if project_dir.name == "tasks":
                 continue  # Skip global tasks dir
 
-            task_path = project_dir / "tasks" / filename
-            if task_path.exists():
-                return task_path
+            tasks_dir = project_dir / "tasks"
+            if tasks_dir.exists():
+                for path in tasks_dir.glob(f"{task_id}*.md"):
+                    if path.stem == task_id or path.stem.startswith(f"{task_id}-"):
+                        return path
 
         return None
 
@@ -161,7 +165,7 @@ class TaskStorage:
         Returns:
             New Task instance (not yet saved)
         """
-        task_id = Task.generate_id(title)
+        task_id = Task.generate_id(title, project=project)
 
         # Compute depth from parent
         depth = 0

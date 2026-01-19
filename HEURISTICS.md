@@ -79,3 +79,11 @@ description: Working hypotheses validated by evidence.
 **Derivation**: Tasks created mid-session often share properties with the session's focus. A bug found during bot-triage is likely bot-fixable. Carrying context forward reduces manual re-tagging.
 
 ---
+
+## Task Output Includes IDs (P#63)
+
+**Statement**: When displaying tasks to users (lists, trees, summaries), always include the task ID.
+
+**Derivation**: Task IDs are required for all task operations (update, complete, get). Omitting IDs forces users to look up what they just saw. Format: `Title (id: task-id)` or table with ID column.
+
+---
