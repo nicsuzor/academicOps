@@ -254,14 +254,15 @@ def get_insights_file_path(
         Legacy paths (sessions/insights/, sessions/dashboard/) are deprecated.
         v3.3.0: Uses $ACA_SESSIONS (sibling of $ACA_DATA, not inside it).
     """
-    # Use $ACA_SESSIONS if set, otherwise derive from $ACA_DATA parent
+    # Require $ACA_SESSIONS to be set - fail fast if not configured
     aca_sessions = os.environ.get("ACA_SESSIONS")
-    if aca_sessions:
-        sessions_dir = Path(aca_sessions)
-    else:
-        # Fallback: sessions is sibling of $ACA_DATA, not inside it
-        aca_data = Path(os.environ.get("ACA_DATA", Path.home() / "writing/data"))
-        sessions_dir = aca_data.parent / "sessions"
+    if not aca_sessions:
+        raise RuntimeError(
+            "$ACA_SESSIONS environment variable not set.\n"
+            "Add to ~/.bashrc or ~/.zshrc:\n"
+            "  export ACA_SESSIONS='$HOME/writing/sessions'"
+        )
+    sessions_dir = Path(aca_sessions)
     sessions_dir.mkdir(parents=True, exist_ok=True)
     if index is not None and index > 0:
         return sessions_dir / f"{date}-{session_id}-{index}.json"

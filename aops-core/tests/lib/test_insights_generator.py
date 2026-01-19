@@ -249,8 +249,10 @@ class TestSchemaValidation:
 class TestInsightsFilePath:
     """Test insights file path generation."""
 
-    def test_file_path_format(self):
+    def test_file_path_format(self, monkeypatch, tmp_path):
         """Test that file path follows correct format."""
+        sessions_dir = tmp_path / "sessions"
+        monkeypatch.setenv("ACA_SESSIONS", str(sessions_dir))
         path = get_insights_file_path("2026-01-13", "a1b2c3d4")
         assert path.name == "2026-01-13-a1b2c3d4.json"
         # Unified path: sessions/ (not sessions/insights/)
@@ -263,17 +265,11 @@ class TestInsightsFilePath:
         path = get_insights_file_path("2026-01-13", "a1b2c3d4")
         assert path == sessions_dir / "2026-01-13-a1b2c3d4.json"
 
-    def test_file_path_falls_back_to_aca_data_parent(self, monkeypatch, tmp_path):
-        """Test that file path uses ACA_DATA parent when ACA_SESSIONS not set."""
-        # Create a data subdir to simulate $ACA_DATA
-        data_dir = tmp_path / "data"
-        data_dir.mkdir()
+    def test_file_path_raises_when_aca_sessions_not_set(self, monkeypatch):
+        """Test that missing ACA_SESSIONS raises RuntimeError."""
         monkeypatch.delenv("ACA_SESSIONS", raising=False)
-        monkeypatch.setenv("ACA_DATA", str(data_dir))
-        path = get_insights_file_path("2026-01-13", "a1b2c3d4")
-        # Sessions should be sibling of data, not inside it
-        expected = tmp_path / "sessions" / "2026-01-13-a1b2c3d4.json"
-        assert path == expected
+        with pytest.raises(RuntimeError, match=r"\$ACA_SESSIONS environment variable not set"):
+            get_insights_file_path("2026-01-13", "a1b2c3d4")
 
 
 class TestWriteInsightsFile:
