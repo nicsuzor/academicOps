@@ -8,50 +8,51 @@ permalink: commands/pull
 
 # /pull - Pull and Execute a Task
 
-**Purpose**: Pull a ready task from the bd queue, claim it, execute it with hydrator guidance, and complete with proper session reflection. The counterpart to `/q` (queue).
+**Purpose**: Pull a ready task from the queue, claim it, execute it with hydrator guidance, and complete with proper session reflection. The counterpart to `/q` (queue).
 
 ## Workflow
 
 ### Step 1: Find Ready Work
 
-Run `bd ready --assignee=bot` to see bot-assigned tasks available for work:
+Get ready tasks (leaves with no unmet dependencies):
 
-```bash
-bd ready --assignee=bot
+```
+mcp__plugin_aops-core_tasks__get_ready_tasks()
 ```
 
-This shows issues that are:
-- Assigned to `bot` (agent-executable tasks)
-- Status: open (not in_progress, blocked, or closed)
-- No unresolved blockers
+This returns tasks that are:
+- Leaf tasks (no children)
+- No unresolved dependencies
+- Status: inbox or active
 - Sorted by priority (P0 first)
 
-**Note**: Tasks assigned to `nic` require human action and are not pulled by agents.
+### Step 2: Claim the Top Task (or Triage if None Ready)
 
-### Step 2: Claim the Top Issue (or Triage if None Ready)
+**If no ready tasks**: Follow this fallback sequence:
 
-**If no ready issues**: Follow this fallback sequence:
+1. Run `mcp__plugin_aops-core_tasks__list_tasks(status="inbox")` to find tasks needing triage
+2. If tasks found, apply TRIAGE path to the highest priority one
+3. If truly no tasks exist, report "No actionable tasks" and HALT
 
-1. Run `bd list --status=open --assignee=bot` to find open bot tasks that may need triage
-2. If none, run `bd list --status=open --assignee=` (unassigned) to find tasks needing assignment
-3. If tasks found in either step, apply TRIAGE path to the highest priority one
-4. If truly no tasks exist (bot or unassigned), report "No actionable tasks" and HALT
+**If ready tasks exist**: Auto-claim the first (highest priority) task:
 
-**If ready issues exist**: Auto-claim the first (highest priority) issue from `bd ready` output:
-
-```bash
-bd update <first-issue-id> --status=in_progress
+```
+mcp__plugin_aops-core_tasks__update_task(id="<task-id>", status="active")
 ```
 
-If user provides an issue ID directly via `/pull <issue-id>`, claim that specific issue instead.
+If user provides a task ID directly via `/pull <task-id>`, claim that specific task instead.
 
-### Step 3: Show Claimed Issue
+### Step 3: Show Claimed Task
 
-Display the issue details with `bd show <issue-id>` to understand the full context before proceeding.
+Display the task details to understand the full context:
+
+```
+mcp__plugin_aops-core_tasks__get_task(id="<task-id>")
+```
 
 ### Step 4: Assess Task Path
 
-After reviewing the issue, determine which execution path applies:
+After reviewing the task, determine which execution path applies:
 
 #### Path 1: EXECUTE
 **All criteria must be true:**
@@ -62,7 +63,7 @@ After reviewing the issue, determine which execution path applies:
 - **Scope**: Estimated completion within current session
 - **Blockers**: No external dependencies (human approval, external input, waiting)
 
-**Action**: Proceed to Step 5 (Hydrator) → Execute → Close.
+**Action**: Proceed to Step 5 (Hydrator) -> Execute -> Complete.
 
 #### Path 2: TRIAGE
 **Any criterion is true:**
@@ -73,42 +74,50 @@ After reviewing the issue, determine which execution path applies:
 - Task exceeds session scope
 
 **Actions (in order):**
-1. **Assign to role**: `bd update <id> --assignee=nic` for human work
-2. **Subtask explosion** (if appropriate): Break into child issues when:
+1. **Subtask explosion** (if appropriate): Break into child tasks when:
    - You can identify discrete, actionable steps
    - Each subtask passes EXECUTE criteria independently
    - Each subtask is 15-60 minutes of work
    - The breakdown covers the parent task's scope
-   ```bash
-   bd create "<subtask>" --type=task --parent=<parent-id> --priority=<n>
    ```
-3. **If cannot explode**: Add comment explaining what's blocking, assign to `nic`
-   ```bash
-   bd comment <id> "Blocked: <reason>. Needs strategy review."
-   bd update <id> --assignee=nic
+   mcp__plugin_aops-core_tasks__decompose_task(
+     id="<parent-id>",
+     children=[
+       {"title": "<subtask 1>", "type": "action"},
+       {"title": "<subtask 2>", "type": "action", "depends_on": ["<subtask-1-id>"]}
+     ]
+   )
+   ```
+2. **If cannot decompose**: Update task with blocking reason
+   ```
+   mcp__plugin_aops-core_tasks__update_task(
+     id="<id>",
+     status="blocked",
+     body="## Blocked\n\n<reason>. Needs strategy review."
+   )
    ```
 
-**After TRIAGE**: Mark original task appropriately (in_progress if subtasks created, or reassigned) and HALT. Do not proceed to execution.
+**After TRIAGE**: HALT. Do not proceed to execution.
 
 #### Mid-Execution Reclassification
 
 If during EXECUTE you hit an unexpected blocker:
 1. Stop work
-2. Update task with findings: `bd comment <id> "Attempted: X. Blocked by: Y"`
+2. Update task with findings
 3. Reclassify to TRIAGE path
 
 ### Step 5: Invoke Hydrator for Execution Plan
 
 **(EXECUTE path only)**
 
-Call the hydrator with the issue context to generate an execution plan:
+Call the hydrator with the task context to generate an execution plan:
 
 ```
 Task(
   subagent_type="aops-core:prompt-hydrator",
   model="haiku",
-  description="Hydrate claimed issue",
-  prompt="Generate execution plan for claimed issue. Issue context:\n\n<issue details from bd show>\n\nProvide TodoWrite plan with acceptance criteria, relevant context, and verification steps."
+  description="Hydrate claimed task",
+  prompt="Generate execution plan for claimed task. Task context:\n\n<task details>\n\nProvide TodoWrite plan with acceptance criteria, relevant context, and verification steps."
 )
 ```
 
@@ -122,19 +131,19 @@ Task(
 
 If the task generates follow-up work:
 
-```bash
-# Create follow-up issues
-bd create "<follow-up title>" --type=task --priority=<n> --description="Follow-up from <original-issue-id>: <context>"
-
-# Link as dependency if appropriate
-bd dep add <new-issue-id> depends-on <completed-issue-id>
+```
+mcp__plugin_aops-core_tasks__create_task(
+  title="<follow-up title>",
+  type="task",
+  priority=2,
+  body="Follow-up from <original-task-id>: <context>"
+)
 ```
 
-### Step 8: Close the Issue
+### Step 8: Complete the Task
 
-```bash
-bd update <issue-id> --status=closed
-bd sync
+```
+mcp__plugin_aops-core_tasks__complete_task(id="<task-id>")
 ```
 
 ### Step 9: Record Learnings
@@ -158,7 +167,6 @@ git commit -m "<meaningful commit message>
 
 Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
 git pull --rebase
-bd sync
 git push
 ```
 
@@ -168,14 +176,14 @@ End with Framework Reflection (see AGENTS.md "Framework Reflection (Session End)
 
 ## Arguments
 
-- `/pull` - Auto-claim mode: claims highest priority ready issue (or halts if none)
-- `/pull <issue-id>` - Direct mode: claims and executes specific issue
+- `/pull` - Auto-claim mode: claims highest priority ready task (or halts if none)
+- `/pull <task-id>` - Direct mode: claims and executes specific task
 
 ## Key Rules
 
-1. **Always claim before working** - Never start work without `bd update --status=in_progress`
-2. **Always hydrate** - Let the hydrator analyze the issue and generate the plan
-3. **Always verify** - QA step before closing for code changes
+1. **Always claim before working** - Never start work without updating status to active
+2. **Always hydrate** - Let the hydrator analyze the task and generate the plan
+3. **Always verify** - QA step before completing for code changes
 4. **Always record** - Use remember skill for insights worth preserving
 5. **Always push** - Work is not complete until `git push` succeeds
 6. **Always reflect** - End with Framework Reflection for continuous improvement
@@ -186,63 +194,33 @@ End with Framework Reflection (see AGENTS.md "Framework Reflection (Session End)
 ```
 /pull
 ```
-1. Runs `bd ready --assignee=bot` → finds `aops-xyz` (P1: Fix authentication bug)
-2. Auto-claims: `bd update aops-xyz --status=in_progress`
-3. Shows issue details via `bd show aops-xyz`
-4. **Assesses path**: What ✓, Where ✓, Why ✓, How ✓, Scope ✓, No blockers ✓ → **EXECUTE**
-5. Hydrator analyzes issue, generates TodoWrite plan
+1. Runs `get_ready_tasks()` -> finds task (P1: Fix authentication bug)
+2. Auto-claims: `update_task(id=..., status="active")`
+3. Shows task details via `get_task(id=...)`
+4. **Assesses path**: What, Where, Why, How, Scope, No blockers -> **EXECUTE**
+5. Hydrator analyzes task, generates TodoWrite plan
 6. Agent executes plan, fixes bug
-7. Creates follow-up: `aops-abc` for adding tests
-8. Closes: `bd update aops-xyz --status=closed`
+7. Creates follow-up task for adding tests
+8. Completes: `complete_task(id=...)`
 9. Records learnings via remember skill
 10. Commits and pushes
 11. Outputs Framework Reflection
 
-### Example 2: TRIAGE Path (needs human input)
+### Example 2: TRIAGE Path (needs decomposition)
 ```
 /pull
 ```
-1. Runs `bd ready --assignee=bot` → finds `aops-abc` (P1: Book progress checkpoint)
-2. Auto-claims: `bd update aops-abc --status=in_progress`
-3. Shows issue details → requires human assessment of creative work
-4. **Assesses path**: Requires human judgment → **TRIAGE**
-5. Assigns to human: `bd update aops-abc --assignee=nic`
-6. Adds comment: `bd comment aops-abc "Requires human assessment of completion percentage"`
+1. Runs `get_ready_tasks()` -> finds task (P1: Refactor auth system)
+2. Auto-claims: `update_task(id=..., status="active")`
+3. Shows task details -> large scope but decomposable
+4. **Assesses path**: Exceeds session scope -> **TRIAGE**
+5. Decomposes:
+   ```
+   decompose_task(id=..., children=[
+     {"title": "Extract auth middleware", "type": "action"},
+     {"title": "Add JWT validation", "type": "action"},
+     {"title": "Update auth tests", "type": "action"}
+   ])
+   ```
+6. Parent stays active, subtasks are ready for future `/pull`
 7. **HALT** - does not proceed to execution
-
-### Example 3: TRIAGE with Subtask Explosion
-```
-/pull
-```
-1. Runs `bd ready --assignee=bot` → finds `aops-def` (P1: Refactor auth system)
-2. Auto-claims: `bd update aops-def --status=in_progress`
-3. Shows issue details → large scope but decomposable
-4. **Assesses path**: Exceeds session scope → **TRIAGE**
-5. Creates subtasks:
-   - `bd create "Extract auth middleware" --parent=aops-def --priority=1`
-   - `bd create "Add JWT validation" --parent=aops-def --priority=1`
-   - `bd create "Update auth tests" --parent=aops-def --priority=2`
-6. Parent stays in_progress, subtasks are ready for future `/pull`
-
-**If no ready issues but open bot tasks exist:**
-```
-/pull
-```
-1. `bd ready --assignee=bot` → no results
-2. `bd list --status=open --assignee=bot` → finds `aops-ghi` (blocked, needs decomposition)
-3. Claims and applies TRIAGE path to `aops-ghi`
-
-**If no bot tasks but unassigned tasks exist:**
-```
-/pull
-```
-1. `bd ready --assignee=bot` → no results
-2. `bd list --status=open --assignee=bot` → no results
-3. `bd list --status=open --assignee=` → finds `aops-jkl` (unassigned, P2)
-4. Claims `aops-jkl` and applies TRIAGE path (assigns to role or decomposes)
-
-**If no actionable tasks:**
-```
-/pull
-```
-→ "No actionable tasks. HALT."

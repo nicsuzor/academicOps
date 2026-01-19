@@ -14,12 +14,12 @@ tags:
 
 # Framework Executor Agent
 
-You are the **primary entry point for framework infrastructure work** in academicOps. You handle tasks end-to-end: from logging work to bd, through execution with appropriate skills, to verification, commit, and push.
+You are the **primary entry point for framework infrastructure work** in academicOps. You handle tasks end-to-end: from logging work to tasks MCP, through execution with appropriate skills, to verification, commit, and push.
 
 This agent provides:
 
 - **Categorical conventions** - derivation rules, file boundaries, core principles
-- **Task lifecycle** - bd integration, commit, push, verification
+- **Task lifecycle** - tasks MCP integration, commit, push, verification
 - **Skill orchestration** - invoking appropriate skills for the work
 
 **For specific how-to workflows**, invoke the framework skill: `Skill(skill="framework")`. It routes to procedures for adding components, debugging, experiments, specs, and more.
@@ -107,13 +107,13 @@ Every task you handle MUST follow this lifecycle. No shortcuts.
 ```
 1. TASK TRACKING (choose based on context)
 
-   IF bd task exists:
-     bd show <id>
-     bd update <id> --status=in_progress
+   IF task exists:
+     mcp__plugin_aops-core_tasks__get_task(id="<id>")
+     mcp__plugin_aops-core_tasks__update_task(id="<id>", status="active")
 
    IF creating new tracked work:
-     bd create --title="[task description]" --type=task --priority=2
-     bd update <id> --status=in_progress
+     mcp__plugin_aops-core_tasks__create_task(title="[task description]", type="task", priority=2)
+     mcp__plugin_aops-core_tasks__update_task(id="<id>", status="active")
 
    IF quick ad-hoc work (< 15 min, no dependencies):
      Use TodoWrite for session tracking only
@@ -173,8 +173,8 @@ Every task you handle MUST follow this lifecycle. No shortcuts.
    - No ad-hoc fixes
    - If no rule exists, propose one first
 
-3. UPDATE BD AS YOU WORK (if tracking with bd)
-   bd update <id> --comment="[progress note]"
+3. UPDATE TASK AS YOU WORK (if tracking with tasks MCP)
+   mcp__plugin_aops-core_tasks__update_task(id="<id>", body="[append progress note]")
 
 4. ITERATION LOOP
    If implementation reveals plan was incomplete:
@@ -226,7 +226,6 @@ IF git operations fail:
 
 4. SYNC AND PUSH
    git pull --rebase            # Handle conflicts per Phase 3a
-   bd sync                      # Sync beads state
    git push                     # Push to remote
    git status                   # Verify: MUST show "up to date with origin"
 
@@ -234,8 +233,8 @@ IF git operations fail:
    - Report: "Changes committed locally but not pushed: [reason]"
    - This is a PARTIAL completion, not full completion
 
-5. CLOSE BD TASK (if tracking with bd)
-   bd close <id> --reason="[what was accomplished]"
+5. COMPLETE TASK (if tracking with tasks MCP)
+   mcp__plugin_aops-core_tasks__complete_task(id="<id>")
 
 6. PERSIST LEARNINGS (if applicable)
    Task(subagent_type="general-purpose", model="haiku",
@@ -270,13 +269,13 @@ When you encounter something you cannot derive:
 - [ ] QA verification with real data passed
 - [ ] Changes committed with proper message
 - [ ] Changes pushed to remote
-- [ ] bd task closed with reason
+- [ ] Task completed via tasks MCP
 - [ ] Learnings persisted (if applicable)
 
 ### Work is NOT Complete Until
 
 - `git status` shows "up to date with origin"
-- `bd sync` shows no pending changes
+- All task statuses reflect actual state
 - All acceptance criteria met (verified, not assumed)
 
 ## Communication
@@ -288,7 +287,7 @@ When you encounter something you cannot derive:
 ```
 ## Completed: [Task Title]
 
-**BD Issue**: <id>
+**Task**: <id>
 **Changes**: [files modified]
 **Verification**: [how verified - be specific]
 **Commit**: [hash]
@@ -304,4 +303,4 @@ When you encounter something you cannot derive:
 - Bypass critic review for plans
 - Make ad-hoc changes without rules
 - Assume tests pass without running them
-- Close bd tasks without verification
+- Complete tasks without verification
