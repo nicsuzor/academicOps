@@ -22,7 +22,7 @@ from typing import Any
 
 from hook_debug import safe_log_to_debug_file
 from hooks.hook_logger import log_hook_event
-from lib.paths import get_aops_root, get_bd_path
+from lib.paths import get_aops_root
 from lib.session_reader import extract_router_context
 from lib.session_state import set_hydration_pending, clear_hydration_pending
 
@@ -134,53 +134,51 @@ def load_skills_index() -> str:
     return content.strip()
 
 
-def get_bd_work_state() -> str:
-    """Query bd for current work state.
+def get_task_work_state() -> str:
+    """Query task system for current work state.
 
     Returns formatted markdown with:
-    - In-progress issues (what user is actively working on)
-    - Ready issues (available work with no blockers)
+    - Active tasks (what user is actively working on)
+    - Ready tasks (available work with no blockers)
 
-    Gracefully returns empty string if bd not found or on failure.
-    Uses validated bd path from lib.paths for security.
+    Gracefully returns empty string if task CLI not found or on failure.
     """
-    # Resolve bd binary path (cached, validates existence and executability)
-    bd_path = get_bd_path()
-    if bd_path is None:
-        # bd not installed - graceful degradation (logged at DEBUG in get_bd_path)
+    # Get task CLI path
+    aops_root = get_aops_root()
+    task_cli_path = aops_root / "scripts" / "task_cli.py"
+
+    if not task_cli_path.exists():
         return ""
 
-    bd_cmd = str(bd_path)
-
     try:
-        # Get in-progress work
-        in_progress_result = subprocess.run(
-            [bd_cmd, "list", "--status=in_progress"],
+        # Get active work
+        active_result = subprocess.run(
+            ["python", str(task_cli_path), "list", "--status=active"],
             capture_output=True,
             text=True,
             timeout=5,
         )
-        in_progress = in_progress_result.stdout.strip() if in_progress_result.returncode == 0 else ""
+        active = active_result.stdout.strip() if active_result.returncode == 0 else ""
 
-        # Get ready work (no blockers)
-        ready_result = subprocess.run(
-            [bd_cmd, "ready"],
+        # Get inbox work (ready to pick up)
+        inbox_result = subprocess.run(
+            ["python", str(task_cli_path), "list", "--status=inbox"],
             capture_output=True,
             text=True,
             timeout=5,
         )
-        ready = ready_result.stdout.strip() if ready_result.returncode == 0 else ""
+        inbox = inbox_result.stdout.strip() if inbox_result.returncode == 0 else ""
 
-        if not in_progress and not ready:
+        if not active and not inbox:
             return ""
 
         sections = []
-        if in_progress:
-            sections.append(f"### In-Progress Work\n\n{in_progress}")
-        if ready:
-            # Limit ready work to first 10 lines to avoid context bloat
-            ready_lines = ready.split("\n")[:12]
-            sections.append(f"### Ready Work (no blockers)\n\n" + "\n".join(ready_lines))
+        if active:
+            sections.append(f"### Active Tasks\n\n{active}")
+        if inbox:
+            # Limit inbox work to first 10 lines to avoid context bloat
+            inbox_lines = inbox.split("\n")[:12]
+            sections.append(f"### Ready Tasks (inbox)\n\n" + "\n".join(inbox_lines))
 
         return "\n\n".join(sections)
 
@@ -318,8 +316,8 @@ def build_hydration_instruction(
     skills_index = load_skills_index()
     heuristics = load_heuristics()
 
-    # Get bd work state (in-progress and ready issues)
-    bd_state = get_bd_work_state()
+    # Get task work state (active and inbox tasks)
+    task_state = get_task_work_state()
 
     # Build full context for temp file
     context_template = load_template(CONTEXT_TEMPLATE_FILE)
@@ -330,7 +328,7 @@ def build_hydration_instruction(
         workflows_index=workflows_index,
         skills_index=skills_index,
         heuristics=heuristics,
-        bd_state=bd_state,
+        task_state=task_state,
     )
 
     # Write to temp file (raises IOError on failure - fail-fast)

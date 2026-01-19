@@ -3,68 +3,66 @@ title: Decision Briefing Workflow
 type: instruction
 category: instruction
 permalink: workflow-decision-briefing
-description: Generate user-facing briefing for bd issues requiring approval or decision
+description: Generate user-facing briefing for tasks requiring approval or decision
 ---
 
 # Workflow 8: Decision Briefing
 
-**When**: User needs to review and make decisions on bd issues blocking progress.
+**When**: User needs to review and make decisions on tasks blocking progress.
 
 **Key principle**: Surface issues requiring human judgment with complete context so the user can make informed decisions quickly. Per AXIOMS #22 (Acceptance Criteria Own Success) - agents cannot make decisions that modify requirements or weaken criteria.
 
 **CRITICAL**: This workflow generates briefings, not recommendations. Per categorical imperative, agents must not make subjective recommendations - instead provide structured consequence analysis for each option.
 
-## Issue Categories Requiring User Decision
+## Task Categories Requiring User Decision
 
-| Category            | Detection Pattern                             | Decision Needed                |
-| ------------------- | --------------------------------------------- | ------------------------------ |
-| **RFC**             | Title starts with "RFC:"                      | Approve/reject proposed change |
-| **Blocked**         | Has dependencies shown in `bd blocked` output | Prioritize resolution or defer |
-| **Design Decision** | Description contains "Design decision needed" | Choose implementation approach |
-| **Experiment**      | Label `experiment`, status `open`             | Direct next steps or close     |
-| **Investigation**   | Title contains "Investigate:"                 | Approve proposed solution      |
+| Category            | Detection Pattern                                | Decision Needed                |
+| ------------------- | ------------------------------------------------ | ------------------------------ |
+| **RFC**             | Title starts with "RFC:"                         | Approve/reject proposed change |
+| **Blocked**         | Has dependencies shown in `get_blocked_tasks()`  | Prioritize resolution or defer |
+| **Design Decision** | Body contains "Design decision needed"           | Choose implementation approach |
+| **Experiment**      | Tag `experiment`, status `active`                | Direct next steps or complete  |
+| **Investigation**   | Title contains "Investigate:"                    | Approve proposed solution      |
 
-## Verified bd Commands
+## Tasks MCP Commands
 
-These commands are confirmed to work (verified 2026-01-12):
-
-```bash
-bd search "[query]" --status open --json    # Searches title, description, ID
-bd blocked --json                            # Shows issues with unmet dependencies
-bd list --label [label] --status open --json # Filter by label
-bd close [ID] --reason "[text]"              # Close with reason
-bd defer [ID]                                # Defer for later
-bd comments add [ID] "[text]"                # Add comment to issue
+```python
+mcp__plugin_aops-core_tasks__search_tasks(query="[query]")           # Search tasks
+mcp__plugin_aops-core_tasks__get_blocked_tasks()                      # Tasks with unmet dependencies
+mcp__plugin_aops-core_tasks__list_tasks(status="active")              # Filter by status
+mcp__plugin_aops-core_tasks__complete_task(id="[ID]")                 # Complete task
+mcp__plugin_aops-core_tasks__update_task(id="[ID]", status="waiting") # Defer for later
+mcp__plugin_aops-core_tasks__update_task(id="[ID]", body="...")       # Add notes to task
 ```
 
 ## Workflow
 
-### Phase 1: Gather Issues Needing Decision
+### Phase 1: Gather Tasks Needing Decision
 
-```bash
-# RFC issues (awaiting approval)
-bd search "RFC" --status open --json
+```python
+# RFC tasks (awaiting approval)
+mcp__plugin_aops-core_tasks__search_tasks(query="RFC")
 
-# Issues explicitly marked as needing approval
-bd search "approval" --status open --json
+# Tasks explicitly marked as needing approval
+mcp__plugin_aops-core_tasks__search_tasks(query="approval")
 
-# Blocked issues (something is in the way)
-bd blocked --json
+# Blocked tasks (something is in the way)
+mcp__plugin_aops-core_tasks__get_blocked_tasks()
 
-# Experiments needing direction
-bd list --label experiment --status open --json
+# Experiments needing direction - search for experiment tag
+mcp__plugin_aops-core_tasks__search_tasks(query="experiment")
 
 # Investigations with proposed solutions
-bd search "Investigate" --status open --json
+mcp__plugin_aops-core_tasks__search_tasks(query="Investigate")
 ```
 
-**If ALL searches return empty**: Report "No issues currently require decision" and exit workflow.
+**If ALL searches return empty**: Report "No tasks currently require decision" and exit workflow.
 
 **If ANY search returns results**: Continue to Phase 2.
 
 ### Phase 2: Categorize and Deduplicate
 
-Group issues by decision type. An issue may match multiple patterns - assign to highest-priority category:
+Group tasks by decision type. A task may match multiple patterns - assign to highest-priority category:
 
 **Priority order** (highest first):
 
@@ -74,21 +72,21 @@ Group issues by decision type. An issue may match multiple patterns - assign to 
 4. **Design Decision** - Needs approach choice
 5. **Experiment** - Needs direction
 
-If issue appears in multiple searches, include only once under highest-priority category.
+If task appears in multiple searches, include only once under highest-priority category.
 
 ### Phase 3: Generate Briefing Document
 
-For each issue requiring decision, extract and structure:
+For each task requiring decision, extract and structure:
 
-1. **Issue ID and Title** - From bd output
+1. **Task ID and Title** - From tasks MCP output
 2. **Category** - From Phase 2 classification
 3. **Summary** - First sentence of description, or agent-written one-liner
-4. **Context** - What blocks this issue / what this issue blocks
+4. **Context** - What blocks this task / what this task blocks
 5. **Options** - If multiple approaches in description, list them; otherwise "Approve / Reject / Defer"
 6. **Consequence Matrix** - For each option: what happens if chosen (factual, not opinion)
-7. **Dependent Issues** - What gets unblocked if this is resolved
+7. **Dependent Tasks** - What gets unblocked if this is resolved
 
-**Structure requirement**: Briefing must be actionable. User should be able to respond with just issue ID and action.
+**Structure requirement**: Briefing must be actionable. User should be able to respond with just task ID and action.
 
 ### Phase 4: Present to User
 
@@ -146,32 +144,34 @@ Then use AskUserQuestion with multiSelect to capture batch decisions.
 
 Parse user response and execute. Handle one decision at a time with verification:
 
-```bash
+```python
 # For approved RFCs
-bd show [ID]  # Verify still open
-bd close [ID] --reason "Approved by user [DATE]"
+task = mcp__plugin_aops-core_tasks__get_task(id="[ID]")  # Verify still active
+mcp__plugin_aops-core_tasks__update_task(id="[ID]", body=task["body"] + "\n\nApproved by user [DATE]")
+mcp__plugin_aops-core_tasks__complete_task(id="[ID]")
 # Note: Implementation task creation is SEPARATE work, not part of this workflow
 
 # For rejected RFCs
-bd close [ID] --reason "Rejected: [user-provided reason if any]"
+mcp__plugin_aops-core_tasks__update_task(id="[ID]", body="Rejected: [user-provided reason if any]", status="cancelled")
 
 # For deferred items
-bd defer [ID]
+mcp__plugin_aops-core_tasks__update_task(id="[ID]", status="waiting")
 
-# For prioritization decisions - add comment documenting decision
-bd comments add [ID] "User decision [DATE]: [decision text]"
+# For prioritization decisions - add note documenting decision
+task = mcp__plugin_aops-core_tasks__get_task(id="[ID]")
+mcp__plugin_aops-core_tasks__update_task(id="[ID]", body=task["body"] + "\n\nUser decision [DATE]: [decision text]")
 ```
 
-**Error handling**: If any bd command fails, report error and continue to next decision. Do not halt entire workflow for single failure.
+**Error handling**: If any MCP call fails, report error and continue to next decision. Do not halt entire workflow for single failure.
 
-**State verification**: Before executing each decision, verify issue is still open. If already closed, skip and report.
+**State verification**: Before executing each decision, verify task is still active. If already completed, skip and report.
 
 ## Acceptance Criteria for Briefing
 
 A good briefing must:
 
-- [ ] Include ALL open issues matching decision patterns (verified via bd search)
-- [ ] Deduplicate issues appearing in multiple searches
+- [ ] Include ALL active tasks matching decision patterns (verified via tasks MCP search)
+- [ ] Deduplicate tasks appearing in multiple searches
 - [ ] Provide enough context to decide without reading full issue
 - [ ] Clearly separate categories with headers
 - [ ] Show consequence matrix (not subjective recommendations)
@@ -181,14 +181,14 @@ A good briefing must:
 
 ## Empty State Handling
 
-If no issues need decision after all searches:
+If no tasks need decision after all searches:
 
 ```markdown
 # Decision Briefing: [DATE]
 
-**No issues currently require user decision.**
+**No tasks currently require user decision.**
 
-All RFCs have been processed, no blocked issues, and no experiments need direction.
+All RFCs have been processed, no blocked tasks, and no experiments need direction.
 
 Next briefing recommended: [suggest when to check again based on project activity]
 ```
@@ -204,9 +204,9 @@ Next briefing recommended: [suggest when to check again based on project activit
 
 **VERIFY-FIRST**:
 
-- Verify issue still needs decision before including in briefing
-- Verify issue still open before executing decision
-- Check bd command success before proceeding
+- Verify task still needs decision before including in briefing
+- Verify task still active before executing decision
+- Check MCP call success before proceeding
 
 ## Example Session
 
@@ -215,14 +215,14 @@ User: Generate a decision briefing
 
 Agent:
 1. Runs Phase 1 searches
-2. Finds: 3 RFCs, 2 blocked issues, 1 experiment
+2. Finds: 3 RFCs, 2 blocked tasks, 1 experiment
 3. Generates briefing document
 4. Presents with AskUserQuestion
 
 ---
 # Decision Briefing: 2026-01-12
 
-**Total issues requiring decision**: 6
+**Total tasks requiring decision**: 6
 **Categories**: 3 RFCs, 2 Blocked, 1 Experiment
 
 ## RFCs Awaiting Approval
@@ -232,10 +232,10 @@ Agent:
 **Blocks**: ns-y8v (Hydrator Classification Failures epic)
 **Options**:
 - **Approve**: Creates implementation task, unblocks ns-y8v
-- **Reject**: Issue closed, hydrator behavior unchanged
-- **Defer**: Remains open for future consideration
+- **Reject**: Task cancelled, hydrator behavior unchanged
+- **Defer**: Remains active for future consideration
 
-[... more issues ...]
+[... more tasks ...]
 ---
 
 Agent: [Uses AskUserQuestion]
@@ -244,11 +244,11 @@ Agent: [Uses AskUserQuestion]
 User: approve ns-p8n, reject ns-0ct, defer ns-tme
 
 Agent:
-1. bd show ns-p8n → still open ✓
-2. bd close ns-p8n --reason "Approved by user 2026-01-12"
-3. bd show ns-0ct → still open ✓
-4. bd close ns-0ct --reason "Rejected by user"
-5. bd defer ns-tme
+1. mcp__plugin_aops-core_tasks__get_task(id="ns-p8n") → still active ✓
+2. mcp__plugin_aops-core_tasks__complete_task(id="ns-p8n")  # with approval note
+3. mcp__plugin_aops-core_tasks__get_task(id="ns-0ct") → still active ✓
+4. mcp__plugin_aops-core_tasks__update_task(id="ns-0ct", status="cancelled")
+5. mcp__plugin_aops-core_tasks__update_task(id="ns-tme", status="waiting")
 
 Reports: "Executed 3 decisions: ns-p8n approved, ns-0ct rejected, ns-tme deferred"
 ```

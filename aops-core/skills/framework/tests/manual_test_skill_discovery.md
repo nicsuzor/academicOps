@@ -126,4 +126,4 @@ After Test 2, ensure [[skills/tasks/]] is restored
 
 - This is a MANUAL test requiring human observation of agent behavior
 - Automated testing would require instrumentation of agent decision-making
-- Log any failures to bd issues (label: `learning`)
+- Log any failures to tasks (tag: `learning`)

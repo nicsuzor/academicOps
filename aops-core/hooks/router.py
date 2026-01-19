@@ -73,7 +73,7 @@ HOOK_REGISTRY: dict[str, list[dict[str, Any]]] = {
         {"script": "fail_fast_watchdog.py"},  # Injects fail-fast reminder on errors
         {"script": "custodiet_gate.py"},  # Periodic compliance check
         {"script": "autocommit_state.py"},  # Auto-commit data/ changes
-        {"script": "memory_sync_closed_issues.py"},  # Sync closed bd issues to memory
+        {"script": "memory_sync_closed_issues.py"},  # Sync completed tasks to memory
     ],
     "UserPromptSubmit": [
         {"script": "user_prompt_submit.py"},
@@ -511,7 +511,7 @@ def check_custodiet_block(session_id: str | None) -> tuple[dict[str, Any], int] 
     error_output = {
         "systemMessage": f"""BLOCKED: Custodiet detected a compliance violation.
 Reason: {reason}
-To continue, user must run: bd session clear-block""",
+To continue, user must clear the session block via the session state manager.""",
     }
     return error_output, 2  # Exit code 2 = BLOCK
 

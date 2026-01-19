@@ -15,9 +15,9 @@ Persist knowledge to markdown + memory server. **Both writes required** for sema
 `$ACA_DATA` contains ONLY semantic memory - timeless truths, always up-to-date:
 
 - **Semantic memory** (current state): What IS true now. Understandable without history. Lives in `$ACA_DATA`.
-- **Episodic memory** (observations): Time-stamped events. Lives in **bd issues** (`.beads/issues.jsonl`, git-tracked).
+- **Episodic memory** (observations): Time-stamped events. Lives in **tasks** (`data/tasks/`, managed via tasks MCP).
 - **Episodic content includes**: Bug investigations, experiment observations, development logs, code change discussions, decision rationales, any observation at a point in time
-- **Synthesis flow**: Observations accumulate in bd issues → patterns emerge → synthesize to semantic docs (HEURISTICS, specs) → close issue with link to synthesized content
+- **Synthesis flow**: Observations accumulate in tasks → patterns emerge → synthesize to semantic docs (HEURISTICS, specs) → complete task with link to synthesized content
 - If you must read multiple files or piece together history to understand truth, it's not properly synthesized
 - Git history preserves the record; `$ACA_DATA` reflects only what's current
 
@@ -25,7 +25,7 @@ Persist knowledge to markdown + memory server. **Both writes required** for sema
 
 ```
 Is this a time-stamped observation? (what agent did, found, tried)
-  → YES: Use `bd create` or `bd update` - NOT this skill
+  → YES: Use tasks MCP (create_task or update_task) - NOT this skill
   → NO: Continue...
 
 Is this about the user? (projects, goals, context, tasks)
@@ -45,17 +45,17 @@ Is this about the user? (projects, goals, context, tasks)
 | Tasks                 | Delegate to [[tasks]] | Use scripts          |
 | **General knowledge** | `knowledge/<topic>/`  | Facts NOT about user |
 
-## PROHIBITED → Use `bd` Instead
+## PROHIBITED → Use Tasks MCP Instead
 
 **NEVER create files for:**
 
-- What an agent did: "Completed X on DATE" → `bd create --type=task`
-- What an agent found: "Discovered bug in Y" → `bd create --type=bug`
-- Observations: "Noticed pattern Z" → `bd create --type=task --title="Learning: Z"`
-- Experiments: "Tried approach A" → bd issue comment
-- Decisions: "Chose B over C" → bd issue comment, synthesize to HEURISTICS.md later
+- What an agent did: "Completed X on DATE" → `mcp__plugin_aops-core_tasks__create_task(title="...", type="task")`
+- What an agent found: "Discovered bug in Y" → `mcp__plugin_aops-core_tasks__create_task(type="task", tags=["bug"])`
+- Observations: "Noticed pattern Z" → `mcp__plugin_aops-core_tasks__create_task(title="Learning: Z")`
+- Experiments: "Tried approach A" → `mcp__plugin_aops-core_tasks__update_task(id="...", body="...")`
+- Decisions: "Chose B over C" → update task body, synthesize to HEURISTICS.md later
 
-**Rule**: If it has a timestamp or describes agent activity, it's episodic → bd.
+**Rule**: If it has a timestamp or describes agent activity, it's episodic → tasks MCP.
 
 ## Workflow
 

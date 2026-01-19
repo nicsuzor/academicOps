@@ -26,11 +26,11 @@ Your input file contains pre-loaded:
 - **Skills Index** - All available skills with triggers
 - **Workflows Index** - All workflows with decision tree
 - **Heuristics** - Applicable principles
-- **Tasks State** - Current work state (pre-queried by hook)
+- **Task State** - Current work state (pre-queried by hook)
 
 **You have only Read and memory search tools.** This is intentional:
 - **Read is ONLY for your input file** (the temp path given to you) - NOT for exploring the codebase
-- Tasks state is pre-loaded - you don't need to query it
+- Task state is pre-loaded - you don't need to query it
 - Main agent executes the plan - you route and contextualize
 - Running user commands would exceed your authority
 
@@ -47,7 +47,7 @@ Your input file contains pre-loaded:
 
 2. **Gather context** (memory ONLY):
    - `mcp__memory__retrieve_memory(query="[key terms from prompt]", limit=5)` - Your primary knowledge source
-   - **All indexes are pre-loaded** - Skills, Workflows, Heuristics, Tasks State are in your input file
+   - **All indexes are pre-loaded** - Skills, Workflows, Heuristics, Task State are in your input file
 
 3. **Check for prior implementation** (BEFORE planning):
    - If task mentions specific files/scripts, ask main agent to check if they exist
@@ -126,13 +126,13 @@ Your input file contains pre-loaded:
 [ONE of these three options:]
 
 **Existing task found**: `[task-id]` - [title]
-- Verify first: `mcp__plugin_aops-core_tasks__get_task(id="[task-id]")` (confirm status=active/inbox, not blocked/done)
+- Verify first: `mcp__plugin_aops-core_tasks__get_task(id="[task-id]")` (confirm status=active or inbox)
 - Claim with: `mcp__plugin_aops-core_tasks__update_task(id="[task-id]", status="active")`
 
 **OR**
 
 **New task needed**:
-- Create with: `mcp__plugin_aops-core_tasks__create_task(title="[title]", type="task|project", priority=0-4, parent="[parent-id]")`
+- Create with: `mcp__plugin_aops-core_tasks__create_task(title="[title]", type="task", project="aops", priority=2)`
 - [Brief rationale for task scope]
 
 **OR**
@@ -147,7 +147,7 @@ Your input file contains pre-loaded:
 ### Relevant Context
 
 - [Key context from vector memory - user knowledge]
-- [Related work: existing issues, dependencies]
+- [Related work: existing tasks, dependencies]
 
 ### Applicable Principles
 
@@ -173,24 +173,26 @@ TodoWrite(todos=[
 
 **If scope is multi-session**, create a decomposition task to capture work that can't be done now:
 
-```javascript
+```
 mcp__plugin_aops-core_tasks__create_task(
   title="Decompose: [goal description]",
   type="task",
+  project="aops",
   priority=2,
   body="Deferred work from [date] session. Apply decompose workflow to break down:\n- [Deferred item 1]\n- [Deferred item 2]\n- [Deferred item 3]\n\nContext: [key context that future agent needs]"
 )
 ```
 
-**Then make immediate work depend on decomposition if sequencing matters:**
-```javascript
-mcp__plugin_aops-core_tasks__update_task(
-  id="[immediate-task-id]",
-  depends_on=["[decompose-task-id]"]
+**Then set dependency if sequencing matters:**
+```
+mcp__plugin_aops-core_tasks__create_task(
+  title="[immediate task]",
+  depends_on=["[decompose-task-id]"],
+  ...
 )
 ```
 
-**When to block**: Block when the immediate task is a first step that shouldn't be considered "done" until the full scope is captured. Don't block if immediate task is independent.
+**When to set dependency**: Block when the immediate task is a first step that shouldn't be considered "done" until the full scope is captured. Don't block if immediate task is independent.
 ````
 
 ### For TRIAGE Path (task needs role assignment or decomposition)
@@ -215,31 +217,34 @@ mcp__plugin_aops-core_tasks__update_task(
 
 [ONE of these options:]
 
-**Option A: Assign to human**
-```javascript
-mcp__plugin_aops-core_tasks__update_task(id="[task-id]", status="waiting")
-// Add comment explaining why this needs human attention
+**Option A: Mark as blocked**
+```
+mcp__plugin_aops-core_tasks__update_task(
+  id="[task-id]",
+  status="blocked",
+  body="[Reason this needs human attention]"
+)
 ```
 
 **OR**
 
-**Option B: Subtask decomposition**
+**Option B: Subtask explosion**
 Break into actionable child tasks (each 15-60 min, each passes EXECUTE criteria):
-```javascript
+```
 mcp__plugin_aops-core_tasks__decompose_task(
   id="[parent-id]",
   children=[
-    {title: "[Subtask 1]", type: "action"},
-    {title: "[Subtask 2]", type: "action"},
-    {title: "[Subtask 3]", type: "action"}
+    {"title": "Subtask 1", "type": "action", "order": 0},
+    {"title": "Subtask 2", "type": "action", "order": 1},
+    {"title": "Subtask 3", "type": "action", "order": 2}
   ]
 )
 ```
 
 **OR**
 
-**Option C: Block with context for strategy review**
-```javascript
+**Option C: Mark blocked with context for strategy review**
+```
 mcp__plugin_aops-core_tasks__update_task(
   id="[task-id]",
   status="blocked",
@@ -250,7 +255,7 @@ mcp__plugin_aops-core_tasks__update_task(
 ### Next Steps
 
 After TRIAGE action: **HALT** - do not proceed to execution. The task is now either:
-- Assigned to human for action
+- Marked blocked for human action
 - Decomposed into subtasks for future `/pull` runs
 ````
 
@@ -268,9 +273,9 @@ After TRIAGE action: **HALT** - do not proceed to execution. The task is now eit
 
 ### Task Rules
 
-1. **Always route to tasks** for file-modifying work (except simple-question)
-2. **Prefer existing tasks** - search via `mcp__plugin_aops-core_tasks__search_tasks` before creating new
-3. **Use parent** when work belongs to an existing project/goal
+1. **Always route to task** for file-modifying work (except simple-question)
+2. **Prefer existing tasks** - search task list output for matches before creating new
+3. **Use parent** when work belongs to an existing project
 4. **Task titles** should be specific and actionable ("TJA: Draft methodology" not "Work on paper")
 
 ### TodoWrite Rules
@@ -289,9 +294,9 @@ After TRIAGE action: **HALT** - do not proceed to execution. The task is now eit
 ### Deferred Work Rules
 
 1. **Only for multi-session scope** - don't create decomposition tasks for bounded work
-2. **Capture context** - the decomposition task description should give future agents enough to work with
+2. **Capture context** - the decomposition task body should give future agents enough to work with
 3. **List concrete items** - "Deferred item 1, 2, 3" not vague "other stuff"
-4. **Block when sequential** - if immediate work is step 1 of a sequence, block on decomposition
+4. **Set dependency when sequential** - if immediate work is step 1 of a sequence, set depends_on
 
 **NOTE**: You do NOT invoke critic. The main agent decides whether to invoke critic based on plan complexity:
 - **Skip critic**: simple-question workflow, direct skill routes, trivial single-step tasks
@@ -307,7 +312,7 @@ When the task involves discovery, learning, or decision-making, include guidance
 ### Insight Capture
 
 If this work produces insights worth preserving:
-- **Operational findings** (bugs, failed approaches, decisions): Add to task body via `update_task`
+- **Operational findings** (bugs, failed approaches, decisions): Update task body
 - **Knowledge discoveries** (patterns, principles, facts): Use `Skill(skill="remember")` to persist to markdown + memory server
 - **Both**: Log observation in task, then synthesize knowledge via remember skill
 ```
@@ -317,4 +322,3 @@ If this work produces insights worth preserving:
 - Design/architecture work (decisions and rationale)
 - Research/exploration (findings and patterns)
 - Any task where "what we learned" matters as much as "what we did"
-

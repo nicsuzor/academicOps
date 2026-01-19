@@ -1,8 +1,8 @@
 ---
 name: q
 category: instruction
-description: Queue a task for later execution by creating task(s) via tasks MCP - expands prompt to identify discrete tasks
-allowed-tools: Task, Read, Grep
+description: Queue a task for later execution by creating task(s) - expands prompt to identify discrete tasks
+allowed-tools: Task, Bash, Read, Grep
 permalink: commands/q
 ---
 
@@ -31,7 +31,7 @@ Search for related open tasks to avoid duplicates:
 
 ```
 mcp__plugin_aops-core_tasks__search_tasks(query="keyword")
-mcp__plugin_aops-core_tasks__get_task(id="task-id")  # View details of specific task
+mcp__plugin_aops-core_tasks__get_task(id="<task-id>")  # View details of specific task
 ```
 
 ### Step 3: Create Tasks
@@ -41,9 +41,9 @@ For each discrete task identified by the hydrator:
 ```
 mcp__plugin_aops-core_tasks__create_task(
   title="<task title>",
-  type="task",  # or "goal", "project", "action"
-  priority=2,   # 0-4
-  project="<project-slug>",
+  type="task",  # or "bug", "action", "project", "goal"
+  project="aops",
+  priority=2,  # 0-4
   body="<context for future execution>"
 )
 ```
@@ -52,7 +52,8 @@ If tasks have dependencies:
 ```
 mcp__plugin_aops-core_tasks__create_task(
   title="<dependent task>",
-  depends_on=["<blocking-task-id>"]
+  depends_on=["<blocking-task-id>"],
+  ...
 )
 ```
 
@@ -68,10 +69,10 @@ mcp__plugin_aops-core_tasks__create_task(
 
 ## Task Types
 
-- `task` - Default, general work item
-- `action` - Small, atomic unit of work
-- `project` - Multi-step initiative (parent for tasks)
-- `goal` - High-level objective (parent for projects)
+- `action` - Small, discrete work item (default for leaf tasks)
+- `task` - General work item
+- `project` - Collection of related tasks
+- `goal` - High-level objective
 
 ## Key Rules
 
@@ -87,11 +88,11 @@ mcp__plugin_aops-core_tasks__create_task(
 ```
 /q fix the typo in README.md
 ```
--> Creates 1 task
+→ Creates 1 task
 
 **Multiple tasks in one prompt**:
 ```
 /q refactor the auth module and add unit tests for it
 ```
--> Hydrator identifies 2 tasks: (1) refactor auth, (2) add tests (depends on #1)
--> Creates 2 tasks with dependency
+→ Hydrator identifies 2 tasks: (1) refactor auth, (2) add tests (depends on #1)
+→ Creates 2 tasks with dependency

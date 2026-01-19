@@ -216,11 +216,11 @@ class TestHydrationContext:
         ) as mock_load, patch(
             "user_prompt_submit.load_framework_paths", return_value="# Paths\n..."
         ), patch(
-            "user_prompt_submit.get_bd_work_state", return_value=""
+            "user_prompt_submit.get_task_work_state", return_value=""
         ):
             # Set up template mocks
             mock_load.side_effect = [
-                "Context: {prompt}\n{session_context}\n{framework_paths}\n{bd_state}",
+                "Context: {prompt}\n{session_context}\n{framework_paths}\n{task_state}",
                 "Instruction: {prompt_preview}\nFile: {temp_path}",
             ]
 
@@ -249,10 +249,10 @@ class TestHydrationContext:
         ) as mock_load, patch(
             "user_prompt_submit.load_framework_paths", return_value=""
         ), patch(
-            "user_prompt_submit.get_bd_work_state", return_value=""
+            "user_prompt_submit.get_task_work_state", return_value=""
         ):
             mock_load.side_effect = [
-                "{prompt}\n{session_context}\n{framework_paths}\n{bd_state}",
+                "{prompt}\n{session_context}\n{framework_paths}\n{task_state}",
                 "{prompt_preview}\n{temp_path}",
             ]
 
@@ -283,13 +283,13 @@ class TestHydrationContext:
             ) as mock_load, patch(
                 "user_prompt_submit.load_framework_paths", return_value="# Paths"
             ), patch(
-                "user_prompt_submit.get_bd_work_state", return_value="# BD State"
+                "user_prompt_submit.get_task_work_state", return_value="# BD State"
             ), patch(
                 "user_prompt_submit.extract_router_context",
                 return_value="## Session Context\nRecent activity...",
             ):
                 mock_load.side_effect = [
-                    "Prompt: {prompt}\nContext: {session_context}\nPaths: {framework_paths}\nBD: {bd_state}",
+                    "Prompt: {prompt}\nContext: {session_context}\nPaths: {framework_paths}\nBD: {task_state}",
                     "Preview: {prompt_preview}\nFile: {temp_path}",
                 ]
 
@@ -321,13 +321,13 @@ class TestHydrationContext:
         ) as mock_load, patch(
             "user_prompt_submit.load_framework_paths", return_value=""
         ), patch(
-            "user_prompt_submit.get_bd_work_state", return_value=""
+            "user_prompt_submit.get_task_work_state", return_value=""
         ), patch(
             "user_prompt_submit.extract_router_context",
             side_effect=Exception("Context extraction failed"),
         ):
             mock_load.side_effect = [
-                "{prompt}{session_context}{framework_paths}{bd_state}",
+                "{prompt}{session_context}{framework_paths}{task_state}",
                 "{prompt_preview}\n{temp_path}",
             ]
 
@@ -351,12 +351,12 @@ class TestHydrationContext:
         ) as mock_load, patch(
             "user_prompt_submit.load_framework_paths", return_value=""
         ), patch(
-            "user_prompt_submit.get_bd_work_state", return_value=""
+            "user_prompt_submit.get_task_work_state", return_value=""
         ), patch(
             "user_prompt_submit.write_temp_file", side_effect=IOError("Disk full")
         ):
             mock_load.side_effect = [
-                "{prompt}{session_context}{framework_paths}{bd_state}",
+                "{prompt}{session_context}{framework_paths}{task_state}",
                 "{prompt_preview}\n{temp_path}",
             ]
 

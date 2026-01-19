@@ -3,26 +3,26 @@ title: Learning Log Workflow
 type: instruction
 category: instruction
 permalink: workflow-learning-log
-description: Document agent behavior patterns as bd issues for later synthesis
+description: Document agent behavior patterns as tasks for later synthesis
 ---
 
 # Workflow 7: Learning Log
 
 **When**: After observing agent behavior patterns, errors, or framework gaps that should be tracked.
 
-**Key principle**: Per AXIOMS #28 (Current State Machine) - episodic observations go to bd issues, not direct file edits. Analysis happens later via workflow 05 (QA Verification).
+**Key principle**: Per AXIOMS #28 (Current State Machine) - episodic observations go to tasks, not direct file edits. Analysis happens later via workflow 05 (QA Verification).
 
 **CRITICAL**: If you need to read session JSONL files, invoke `Skill(skill='transcript')` FIRST to convert to markdown. Raw JSONL wastes 10-70K tokens; transcripts are 90% smaller.
 
 ## Workflow
 
-### Phase 1: Search for Existing Issue
+### Phase 1: Search for Existing Task
 
-**First**: Search for existing issue that matches this observation:
+**First**: Search for existing task that matches this observation:
 
-```bash
-bd list --label "[category]" --status open
-bd search "[keywords]"
+```python
+mcp__plugin_aops-core_tasks__list_tasks(status="active")
+mcp__plugin_aops-core_tasks__search_tasks(query="[keywords]")
 ```
 
 Categories/labels:
@@ -32,32 +32,34 @@ Categories/labels:
 - `experiment` - Systemic investigations (infrastructure issues)
 - `devlog` - Development observations
 
-### Phase 2: Create or Update Issue
+### Phase 2: Create or Update Task
 
-**If matching issue exists**: Update with new observation (append to description)
+**If matching task exists**: Update with new observation (append to body)
 
-```bash
-bd show [ISSUE_ID]  # Get current description
-bd update [ISSUE_ID] --description "$(cat <<'EOF'
-[existing description]
+```python
+task = mcp__plugin_aops-core_tasks__get_task(id="[TASK_ID]")
+# Append new observation to existing body
+mcp__plugin_aops-core_tasks__update_task(
+    id="[TASK_ID]",
+    body=task["body"] + """
 
 ## Observation [DATE]
 
 **What**: [description]
 **Context**: [when/where]
 **Evidence**: [specifics]
-EOF
-)"
+"""
+)
 ```
 
-**If no matching issue**: Create new issue
+**If no matching task**: Create new task
 
-```bash
-bd create --title "[category]: [descriptive-title]" \
-  --label "[category]" \
-  --type task \
-  --description "$(cat <<'EOF'
-## Initial Observation
+```python
+mcp__plugin_aops-core_tasks__create_task(
+    title="[category]: [descriptive-title]",
+    type="task",
+    tags=["[category]"],
+    body="""## Initial Observation
 
 **Date**: YYYY-MM-DD
 **Session ID**: [session-id if available]
@@ -75,34 +77,34 @@ bd create --title "[category]: [descriptive-title]" \
 - [ ] Generate transcript (session_id above)
 - [ ] Root cause analysis
 - [ ] Reflection on framework component failure
-- [ ] Create proposal issues for changes
-EOF
-)"
+- [ ] Create proposal tasks for changes
+"""
+)
 ```
 
-### Phase 3: Link to Related Issues (if applicable)
+### Phase 3: Link to Related Tasks (if applicable)
 
-If observation relates to an existing issue, link to it in the issue body.
+If observation relates to an existing task, use `depends_on` to link it.
 
 ### Phase 4: Report and Exit
 
 Report to user:
 
-1. Issue ID created/updated
+1. Task ID created/updated
 2. Category assigned
-3. Next step: "Run `/qa [issue-id]` to perform full analysis"
+3. Next step: "Run `/qa [task-id]` to perform full analysis"
 
 **DO NOT perform root cause analysis immediately.** The `/qa` command (workflow 05) handles transcript generation, analysis, and proposal creation.
 
-## Issue Labels (Categories)
+## Task Tags (Categories)
 
-| Label        | Use For                  | Example Title                                 |
+| Tag          | Use For                  | Example Title                                 |
 | ------------ | ------------------------ | --------------------------------------------- |
 | `bug`        | Component-level bugs     | `bug: task_view.py KeyError on missing field` |
 | `learning`   | Agent behavior patterns  | `learning: agents ignoring explicit scope`    |
 | `experiment` | Systemic investigations  | `experiment: hook context injection timing`   |
 | `devlog`     | Development observations | `devlog: session-insights workflow`           |
-| `decision`   | Architectural choices    | `decision: bd issues for episodic storage`    |
+| `decision`   | Architectural choices    | `decision: tasks for episodic storage`        |
 
 **Default**: `learning` if unclear.
 
@@ -135,30 +137,31 @@ We don't control agents - they're probabilistic. Root causes must be framework c
 User: /log agent ignored my explicit request to run ALL tests, only ran 3
 
 Phase 1 - Search:
-bd list --label learning --status open
-bd search "instruction scope"
+mcp__plugin_aops-core_tasks__search_tasks(query="instruction scope learning")
 → Found: aops-42 "learning: agents ignoring explicit scope instructions"
 
-Phase 2 - Update existing issue:
-bd show aops-42  # Get current description
-bd update aops-42 --description "[existing + new observation]"
+Phase 2 - Update existing task:
+task = mcp__plugin_aops-core_tasks__get_task(id="aops-42")
+mcp__plugin_aops-core_tasks__update_task(id="aops-42", body="[existing + new observation]")
 
 Report: "Added observation to aops-42 - recurring pattern. Run `/qa aops-42` to perform full analysis."
 ```
 
-### Example: New Issue
+### Example: New Task
 
 ```
 User: /log hook crashed with TypeError in prompt_router.py
 
 Phase 1 - Search:
-bd list --label bug --status open
-bd search "prompt_router TypeError"
-→ No matching issues
+mcp__plugin_aops-core_tasks__search_tasks(query="prompt_router TypeError bug")
+→ No matching tasks
 
-Phase 2 - Create new issue:
-bd create --title "bug: prompt_router.py TypeError on None response" \
-  --label bug --type bug --description "## Initial Observation
+Phase 2 - Create new task:
+mcp__plugin_aops-core_tasks__create_task(
+    title="bug: prompt_router.py TypeError on None response",
+    type="task",
+    tags=["bug"],
+    body="""## Initial Observation
 
 **Date**: 2025-12-26
 **Session ID**: abc123
@@ -175,7 +178,8 @@ Stack trace:
 
 - [ ] Generate transcript
 - [ ] Root cause analysis
-- [ ] Create fix proposal"
+- [ ] Create fix proposal"""
+)
 
 Report: "Created aops-47 for prompt_router bug. Run `/qa aops-47` to analyze."
 ```

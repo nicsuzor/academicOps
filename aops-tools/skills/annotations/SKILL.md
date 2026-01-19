@@ -37,8 +37,8 @@ Output: List of files with pending comments, showing context.
 
 Process annotations in a specific file:
 
-<!-- @nicsuzor: ensure that comments are added to `bd`. Once they are fully captured, they can be deleted from the source file. -->
-<!-- @claude 2026-01-12: Done. Updated workflow to create bd issues for actionable annotations before responding. See step 3 below. -->
+<!-- @nicsuzor: ensure that comments are added to tasks. Once they are fully captured, they can be deleted from the source file. -->
+<!-- @claude 2026-01-12: Done. Updated workflow to create tasks for actionable annotations before responding. See step 3 below. -->
 
 1. Read the file
 2. Find all `<!-- @nic:` or `<!-- @ns:` comments

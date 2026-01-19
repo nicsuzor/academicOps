@@ -1,18 +1,17 @@
 ---
 name: log
 category: instruction
-description: Log framework observations to bd issues for continuous improvement
+description: Log framework observations to tasks for continuous improvement
 allowed-tools: Task
 permalink: aops/commands/log
 tags:
   - reflection
   - learning
-  - bd
 ---
 
 # /log Command
 
-Log framework observations to bd issues. Runs in background so you can continue working.
+Log framework observations to tasks. Runs in background so you can continue working.
 
 ## Usage
 
@@ -29,7 +28,7 @@ Spawn the framework agent in background to process the observation:
 ```javascript
 Task(subagent_type="aops-core:framework", model="sonnet",
      description="Log: [brief summary]",
-     prompt="Process this observation and create a bd issue if warranted: [USER'S OBSERVATION]",
+     prompt="Process this observation and create a task if warranted: [USER'S OBSERVATION]",
      run_in_background=true)
 ```
 
@@ -41,8 +40,8 @@ The framework agent will:
 
 1. Categorize the observation by root cause component
 2. Generate a structured reflection
-3. Create a bd issue if the observation indicates a framework problem
-4. Return the reflection and issue ID (if created)
+3. Create a task if the observation indicates a framework problem
+4. Return the reflection and task ID (if created)
 
 ## Root Cause Focus
 

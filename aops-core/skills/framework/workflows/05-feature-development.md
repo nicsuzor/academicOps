@@ -101,7 +101,7 @@ Feature development follows eight phases:
 3. Define success criteria (from Phase 2)
 4. Specify scope boundaries (what's in/out)
 5. Identify control state (current behavior without feature)
-6. **Create bd issue** (per AXIOM #28 - episodic content → bd issues): `bd create --title "experiment: [feature-name]" --label experiment --type task --description "[experiment plan content]"`
+6. **Create task** (per AXIOM #28 - episodic content → tasks): `mcp__plugin_aops-core_tasks__create_task(title="experiment: [feature-name]", tags=["experiment"], body="[experiment plan content]")`
 
 **Experiment Tracking Required For**:
 
@@ -270,7 +270,7 @@ Feature development follows eight phases:
 
 **Objective**: Update the authoritative spec; delete implementation artifacts.
 
-**Rationale**: Per [[AXIOMS]] #29, one spec per feature. Experiment tracking (bd issues) is episodic; specs are timeless. After validation, merge implementation knowledge into the spec and close the experiment issue.
+**Rationale**: Per [[AXIOMS]] #29, one spec per feature. Experiment tracking (tasks) is episodic; specs are timeless. After validation, merge implementation knowledge into the spec and complete the experiment task.
 
 **Actions**:
 
@@ -280,7 +280,7 @@ Feature development follows eight phases:
 2. **Merge implementation content**: Design decisions, key functions, UX patterns
 3. **Strip temporal content**: Remove "what was built" narrative, dates, deliberation
 4. **Verify spec is timeless**: Reads as "how it works" not "how it was built"
-5. **Close experiment issue**: `bd close [issue-id] --reason "Synthesized to spec: [spec-name]"`
+5. **Complete experiment task**: `mcp__plugin_aops-core_tasks__complete_task(id="[task-id]")` with body noting "Synthesized to spec: [spec-name]"
 6. **Update spec index**: Ensure `specs/specs.md` lists the spec with correct status
 7. **Commit spec update**
 
@@ -288,7 +288,7 @@ Feature development follows eight phases:
 
 ```
 - [ ] Update spec with implementation details
-- [ ] Close experiment bd issue
+- [ ] Complete experiment task
 - [ ] Verify specs/specs.md index updated
 ```
 
@@ -360,7 +360,7 @@ Use TodoWrite at key points:
 
 **This workflow produces**:
 
-- Experiment tracking via bd issues (label: `experiment`)
+- Experiment tracking via tasks (tag: `experiment`)
 - Integration tests in `aops-core/skills/framework/tests/` or project tests
 - Features following framework principles
 

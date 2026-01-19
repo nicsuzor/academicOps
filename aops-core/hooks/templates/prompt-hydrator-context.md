@@ -5,12 +5,12 @@ category: template
 description: |
   Template written to temp file by UserPromptSubmit hook for prompt-hydrator subagent.
   Variables: {prompt} (user prompt), {session_context} (recent prompts, tools, tasks),
-             {bd_state} (current work state from bd)
+             {task_state} (current work state from tasks MCP)
 ---
 
 # Prompt Hydration Request
 
-Transform this user prompt into an execution plan with scope detection and bd task routing.
+Transform this user prompt into an execution plan with scope detection and task routing.
 
 ## User Prompt
 
@@ -48,13 +48,13 @@ Transform this user prompt into an execution plan with scope detection and bd ta
 
 ## Current Work State
 
-{bd_state}
+{task_state}
 
 ## Your Task
 
 1. **Understand intent** - What does the user actually want?
 2. **Assess scope** - Single-session (bounded, path known) or multi-session (goal-level, uncertain path)?
-3. **Route to bd task** - Match to existing issue or specify new task creation
+3. **Route to task** - Match to existing task or specify new task creation
 4. **Select workflow** - Use the pre-loaded Workflow Index above to select the appropriate workflow
 5. **Compose workflows** - Read workflow files in `$AOPS/workflows/` (and any [[referenced workflows]])
 6. **Capture deferred work** - For multi-session scope, create decomposition task for future work
@@ -70,22 +70,22 @@ Return this EXACT structure:
 **Scope**: single-session | multi-session
 **Workflow**: [[workflows/[workflow-id]]]
 
-### BD Task Routing
+### Task Routing
 
 [Choose ONE:]
 
-**Existing issue found**: `[issue-id]` - [title]
-- Verify first: `bd show [issue-id]` (confirm status=open/ready, not blocked/in_progress)
-- Claim with: `bd update [issue-id] --status=in_progress`
+**Existing task found**: `[task-id]` - [title]
+- Verify first: `mcp__plugin_aops-core_tasks__get_task(id="[task-id]")` (confirm status=active or inbox)
+- Claim with: `mcp__plugin_aops-core_tasks__update_task(id="[task-id]", status="active")`
 
 **OR**
 
 **New task needed**:
-- Create with: `bd create "[title]" --type=[task|epic] --priority=[0-3] [--parent=epic-id]`
+- Create with: `mcp__plugin_aops-core_tasks__create_task(title="[title]", type="task", project="aops", priority=2)`
 
 **OR**
 
-**No bd task needed** (simple-question only)
+**No task needed** (simple-question only)
 
 ### Acceptance Criteria
 
@@ -95,7 +95,7 @@ Return this EXACT structure:
 ### Relevant Context
 
 - [Context from memory search]
-- [Related bd issues]
+- [Related tasks]
 
 ### Applicable Principles
 
@@ -105,11 +105,11 @@ Return this EXACT structure:
 
 ```javascript
 TodoWrite(todos=[
-  {{content: "[bd claim/create from above]", status: "pending", activeForm: "Claiming work"}},
+  {{content: "[task claim/create from above]", status: "pending", activeForm: "Claiming work"}},
   {{content: "[workflow step]", status: "pending", activeForm: "[participle]"}},
   {{content: "CHECKPOINT: [verification]", status: "pending", activeForm: "Verifying"}},
   {{content: "Task(subagent_type='qa', prompt='...')", status: "pending", activeForm: "QA verification"}},
-  {{content: "Close bd task and commit", status: "pending", activeForm: "Completing"}}
+  {{content: "Complete task and commit", status: "pending", activeForm: "Completing"}}
 ])
 ```
 
@@ -117,17 +117,23 @@ TodoWrite(todos=[
 
 Create decomposition task for work that can't be done now:
 
-```bash
-bd create "Decompose: [goal]" --type=task --priority=2 \
-  --description="Apply decompose workflow. Items:
-- [Deferred 1]
-- [Deferred 2]
-Context: [what future agent needs]"
+```
+mcp__plugin_aops-core_tasks__create_task(
+  title="Decompose: [goal]",
+  type="task",
+  project="aops",
+  priority=2,
+  body="Apply decompose workflow. Items:\n- [Deferred 1]\n- [Deferred 2]\nContext: [what future agent needs]"
+)
 ```
 
-If immediate task is step 1 of a sequence, block on decomposition:
-```bash
-bd dep add [immediate-id] depends-on [decompose-id]
+If immediate task depends on decomposition, set dependency:
+```
+mcp__plugin_aops-core_tasks__create_task(
+  title="[immediate task]",
+  depends_on=["[decompose-task-id]"],
+  ...
+)
 ```
 ````
 
@@ -141,12 +147,12 @@ These scripts exist but aren't user-invocable skills. Provide exact invocation w
 
 ## Key Rules
 
-- **Short confirmations**: If prompt is very short (≤10 chars: "yes", "ok", "do it", "sure"), check the MOST RECENT agent response and tools. The user is likely confirming/proceeding with what was just proposed, NOT requesting new work from bd queue.
+- **Short confirmations**: If prompt is very short (≤10 chars: "yes", "ok", "do it", "sure"), check the MOST RECENT agent response and tools. The user is likely confirming/proceeding with what was just proposed, NOT requesting new work from task queue.
 - **Scope detection**: Multi-session = goal-level, uncertain path, spans days+. Single-session = bounded, known steps.
-- **Prefer existing issues**: Search bd state before creating new tasks.
+- **Prefer existing tasks**: Search task state before creating new tasks.
 - **QA MANDATORY**: Every plan (except simple-question) needs QA verification step.
 - **Deferred work**: Only for multi-session. Captures what can't be done now without losing it.
-- **Block when sequential**: If immediate work is meaningless without the rest, block on decomposition task.
+- **Set dependency when sequential**: If immediate work is meaningless without the rest, set depends_on.
 
 **Flow**: Your plan → main agent → (optional critic review) → main agent executes.
 

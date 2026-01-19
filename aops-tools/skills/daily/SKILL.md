@@ -39,7 +39,7 @@ Location: `$ACA_DATA/../sessions/YYYYMMDD-daily.md`
 
 1. **No horizontal lines**: Never use `---` as section dividers in generated content (only valid in frontmatter)
 2. **Wikilink all names**: Person names, project names, and task titles use `[[wikilink]]` syntax (e.g., `[[Greg Austin]]`, `[[academicOps]]`)
-3. **Bead task IDs**: Always include bead IDs when referencing tasks (e.g., `[ns-abc] Task title`)
+3. **Task IDs**: Always include task IDs when referencing tasks (e.g., `[ns-abc] Task title`)
 
 ## 1. Create note
 
@@ -127,13 +127,13 @@ From [sender]: [Actual content or summary]
 
 FYI content captured in the daily note MUST be linked/persisted, not siloed:
 
-1. **Link to existing bd issues**: If FYI references a known task/PR/issue (e.g., "Steve responded to PR #1132"), update the related bd issue with this info via `bd update <id> --notes="..."`.
+1. **Link to existing tasks**: If FYI references a known task/PR/issue (e.g., "Steve responded to PR #1132"), update the related task with this info via `mcp__plugin_aops-core_tasks__update_task(id="<id>", body="...")`.
 
 2. **Persist to memory**: For FYI items worth future recall (external responses, decisions, key info), use `mcp__memory__store_memory` with tags like `fyi`, `daily`, `external-response`.
 
-3. **Create follow-up tasks**: If FYI implies action (e.g., "worth reviewing"), create a bd task or update existing one.
+3. **Create follow-up tasks**: If FYI implies action (e.g., "worth reviewing"), create a task via `mcp__plugin_aops-core_tasks__create_task()` or update existing one.
 
-**Rule**: Information captured but not persisted is information lost. Daily note is ephemeral; memory and bd are durable.
+**Rule**: Information captured but not persisted is information lost. Daily note is ephemeral; memory and tasks are durable.
 
 ## 3. Today's Focus
 
@@ -141,11 +141,11 @@ Populate the `## Focus` section with priority dashboard and task recommendations
 
 ### 3.1: Load Task Data
 
-```bash
-cd $AOPS && bd list --limit=100
+```python
+mcp__plugin_aops-core_tasks__list_tasks(limit=100)
 ```
 
-Parse task data from bd output to identify:
+Parse task data from output to identify:
 
 - Priority distribution (P0/P1/P2/P3 counts)
 - Overdue tasks (negative days_until_due)
@@ -238,7 +238,7 @@ After presenting recommendations, use `AskUserQuestion` to confirm priorities:
 
 Ask: "Any of these ready to archive?"
 
-When user picks, use `bd update <id> --status=archived` to update status.
+When user picks, use `mcp__plugin_aops-core_tasks__update_task(id="<id>", status="cancelled")` to archive.
 
 ### 4. Daily progress
 
@@ -252,15 +252,15 @@ ls $ACA_DATA/../sessions/YYYY-MM-DD-*.json 2>/dev/null
 
 ### Step 4.1.5: Load Closure History
 
-Fetch recently closed bd issues to provide context for today's story synthesis:
+Fetch recently completed tasks to provide context for today's story synthesis:
 
-```bash
-cd $AOPS && bd list --status=closed --closed-after=$(date -d '7 days ago' +%Y-%m-%d) --limit=20
+```python
+mcp__plugin_aops-core_tasks__list_tasks(status="done", limit=20)
 ```
 
-**Purpose**: Closed issues represent completed work that may not appear in session JSONs (e.g., tasks closed in previous sessions, or closed without a dedicated session). This context enriches the daily narrative.
+**Purpose**: Completed tasks represent work that may not appear in session JSONs (e.g., tasks completed in previous sessions, or completed without a dedicated session). This context enriches the daily narrative.
 
-**Extract from closed issues**:
+**Extract from completed tasks**:
 
 - Issue ID, title, and project
 - Closure date

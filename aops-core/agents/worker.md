@@ -33,14 +33,14 @@ You receive a task context file path. Read it first. It contains:
 Read(file_path="<context_path>")
 ```
 
-If context is incomplete (missing issue ID, unclear scope, no success criteria):
+If context is incomplete (missing task ID, unclear scope, no success criteria):
 
 - **FAIL FAST**: Report missing info immediately
 - Do NOT guess or assume
 
 ### 2. Claim Task
 
-```javascript
+```
 mcp__plugin_aops-core_tasks__update_task(id="<id>", status="active")
 ```
 
@@ -62,7 +62,7 @@ TodoWrite(todos=[
 Follow the assigned workflow. Key rules:
 
 - **Stay in scope**: Only modify files within your scope boundaries
-- **Progress notes**: `mcp__plugin_aops-core_tasks__update_task(id="<id>", body="[progress]")`
+- **Progress notes**: `mcp__plugin_aops-core_tasks__update_task(id="<id>", body="Completed X")`
 - **Fail fast**: If blocked or confused, stop and report
 
 ### 5. Quality Gates
@@ -79,7 +79,7 @@ Before marking complete:
 git add -A
 git commit -m "<descriptive message>
 
-Task: <task-id>
+Closes: <task-id>
 
 Co-Authored-By: Claude Sonnet 4 <noreply@anthropic.com>"
 ```
@@ -88,7 +88,7 @@ Co-Authored-By: Claude Sonnet 4 <noreply@anthropic.com>"
 
 ### 7. Complete Task
 
-```javascript
+```
 mcp__plugin_aops-core_tasks__complete_task(id="<id>")
 ```
 

@@ -13,33 +13,45 @@ permalink: commands/learn
 **Don't hyperfocus**:
 
 ❌ **WRONG**: User says 'color' should be spelt 'colour' → Create 'AXIOM: HOW TO SPELL COLOR'
-✅ **RIGHT**: User says 'color' should be spelt 'colour' → Consider root cause, track in issue about 'localization', consider escalation only if necessary, note that large issues likely need SPEC updates.
+✅ **RIGHT**: User says 'color' should be spelt 'colour' → Consider root cause, track in task about 'localization', consider escalation only if necessary, note that large issues likely need SPEC updates.
 
 **Don't overreact**:
 ❌ **WRONG**: User mentions spelling → Create SPELLING AXIOM + spell-check hook + prominent warning
-✅ **RIGHT**: User mentions spelling → Add brief note in relevant location, track in Issue, escalate only if necessary
+✅ **RIGHT**: User mentions spelling → Add brief note in relevant location, track in task, escalate only if necessary
 
 **Start small. If we need a heavier intervention, update the Specs.**
 
 ## Workflow
 
-### 0. Create/Update bd Issue FIRST
+### 0. Create/Update Task FIRST
 
-**Before any fix, document in bd.** This is non-negotiable.
+**Before any fix, document in a task.** This is non-negotiable.
 
-```bash
-bd create --type=task --title="[Learn] Root cause summary" --body="..."
-# OR if related issue exists:
-bd update <id> --comment="Adding learning observation: ..."
+```
+mcp__plugin_aops-core_tasks__create_task(
+  title="[Learn] Root cause summary",
+  type="task",
+  project="aops",
+  priority=2,
+  body="1. Observation: ...\n2. Root cause category: ...\n3. Proposed fix: ...\n4. Success metric: ..."
+)
 ```
 
-The issue MUST contain:
+OR if related task exists:
+```
+mcp__plugin_aops-core_tasks__update_task(
+  id="<id>",
+  body="<existing body>\n\nAdding learning observation: ..."
+)
+```
+
+The task MUST contain:
 1. **Observation**: What went wrong (specific, not vague)
 2. **Root cause category**: Clarity/Context/Blocking/Detection/Gap
 3. **Proposed fix**: What you will change (file path, enforcement level)
 4. **Success metric**: How we know the fix worked (measurable)
 
-**You do NOT need user permission** to make the fix if it's documented in the issue. The issue IS the approval - it creates accountability and traceability.
+**You do NOT need user permission** to make the fix if it's documented in the task. The task IS the approval - it creates accountability and traceability.
 
 ### 1. Identify Root Cause (Not Proximate Cause)
 
@@ -78,13 +90,13 @@ When a subagent (custodiet, critic, qa, etc.) makes an incorrect decision:
 
 ### 2. Check for Prior Occurrences
 
-Search bd for related issues before creating a new one:
+Search tasks for related issues before creating a new one:
 
-```bash
-bd list --title-contains="[keywords]"
+```
+mcp__plugin_aops-core_tasks__search_tasks(query="[keywords]")
 ```
 
-If a related issue exists, update it with your observation. Pattern recognition across multiple occurrences informs escalation decisions.
+If a related task exists, update it with your observation. Pattern recognition across multiple occurrences informs escalation decisions.
 
 ### 3. Choose Intervention Level (Start at Bottom, Escalate with Evidence)
 
@@ -101,23 +113,26 @@ See @docs/ENFORCEMENT.md for mechanism details.
 | Hard rule, never violate | AXIOMS.md | Principles that apply universally |
 | Soft guidance, exceptions exist | HEURISTICS.md | Rules of thumb, "prefer X over Y" |
 | Enforcement wiring | RULES.md | Document how rule is enforced |
-| Session context | CORE.md | Paths, environment, "what exists" | 
+| Session context | CORE.md | Paths, environment, "what exists" |
 
 ### 4. Make the Fix (as an Experiment)
 
-**Fixes are experiments, not permanent solutions.** The bd issue tracks the hypothesis.
+**Fixes are experiments, not permanent solutions.** The task tracks the hypothesis.
 
 Keep changes brief (1-3 sentences for soft interventions). If you need a bigger change, **ABORT** and update/create a Spec instead.
 
 **NEVER create new files.** Edit existing files inline. New files = over-engineering. A 2-line inline note always beats a new context file.
 
-**After making the fix**, update the bd issue with:
+**After making the fix**, update the task with:
 - Commit hash or file changed
 - Exact change made
 - How to verify (what behavior to observe)
 
-```bash
-bd update <id> --comment="Fix applied: [commit hash]. Changed [file]. Verify by [observable behavior]."
+```
+mcp__plugin_aops-core_tasks__update_task(
+  id="<id>",
+  body="<existing>\n\nFix applied: [commit hash]. Changed [file]. Verify by [observable behavior]."
+)
 ```
 
 ### 5. Generalize the Pattern (REQUIRED)
@@ -126,8 +141,8 @@ After fixing the immediate issue, ask: **What general class of error is this?**
 
 1. **Name the pattern** - e.g., "user data in framework files", "scope creep", "missing validation"
 2. **Check existing rules** - Does an axiom/heuristic already cover this? (Search AXIOMS.md, HEURISTICS.md, RULES.md)
-3. **If rule exists but wasn't followed** - Strengthen enforcement (add to bd issue notes)
-4. **If novel pattern** - Log it in the bd issue description for future tracking
+3. **If rule exists but wasn't followed** - Strengthen enforcement (add to task notes)
+4. **If novel pattern** - Log it in the task body for future tracking
 
 The immediate fix handles THIS instance. The pattern recognition prevents FUTURE instances.
 
@@ -147,7 +162,7 @@ Tests verify the fix works and prevent regressions. **But only when the fix is t
 4. **Use slow tests for live interfaces** - Mark with `@pytest.mark.slow` if testing against live Claude/APIs
 
 **For prompt/instruction fixes (not testable):**
-- Document the expected behavior change in the bd issue
+- Document the expected behavior change in the task
 - The fix itself (clearer instructions) IS the intervention
 - Do NOT create placeholder tests that pass unconditionally - that's worse than no test
 
@@ -181,19 +196,19 @@ Output in the standard Framework Reflection format so session-insights can parse
 ```
 ## Framework Reflection
 
-**Request**: [The observation/feedback that triggered /learn]
+**Prompts**: [The observation/feedback that triggered /learn]
 **Guidance received**: N/A
 **Followed**: Yes
 **Outcome**: success
-**Accomplishments**: [bd issue created: X], [Fix applied: file:line], [Test added: file]
+**Accomplishments**: [Task created: X], [Fix applied: file:line], [Test added: file]
 **Friction points**: [Any difficulties encountered, or "none"]
 **Root cause** (if not success): [Category: component that failed]
 **Proposed changes**: [Pattern generalized, escalation trigger noted]
-**Next step**: [If follow-up needed, must be filed as bd issue]
+**Next step**: [If follow-up needed, must be filed as task]
 ```
 
 **Field mapping from /learn workflow:**
-- Request → The user feedback/observation
-- Accomplishments → bd issue + fix + test (the deliverables)
+- Prompts → The user feedback/observation
+- Accomplishments → Task + fix + test (the deliverables)
 - Root cause → From step 1 (Clarity/Context/Blocking/Detection/Gap)
 - Proposed changes → From step 5 (pattern generalization) + escalation triggers

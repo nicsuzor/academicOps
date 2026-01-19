@@ -29,7 +29,7 @@ TodoWrite(todos=[
   {content: "Phase 6: Regenerate indices - invoke Skill(skill='flowchart') for README.md flowchart", status: "pending", activeForm: "Regenerating indices"},
   {content: "Phase 7: Other updates", status: "pending", activeForm: "Finalizing updates"},
   {content: "Phase 8: Save audit report to $ACA_DATA/projects/aops/audit/YYYY-MM-DD-HHMMSS-audit.md", status: "pending", activeForm: "Persisting report"},
-  {content: "Phase 9: Create bd issues for actionable findings", status: "pending", activeForm: "Creating issues"}
+  {content: "Phase 9: Create tasks for actionable findings", status: "pending", activeForm: "Creating tasks"}
 ])
 ```
 
@@ -377,15 +377,15 @@ Use the Write tool to save the complete audit report (see Report Format below) t
 
 After writing, confirm: `Audit report saved to: [path]`
 
-### Phase 9: Create bd Issues for Actionable Findings
+### Phase 9: Create Tasks for Actionable Findings
 
-**Create issues in bd for findings that require human action.**
+**Create tasks for findings that require human action.**
 
 For each finding from Phases 0-7 that requires action:
 
 1. **Classify finding type** using the mapping below
-2. **Run bd create** with appropriate metadata
-3. **Track issue IDs** for summary
+2. **Create task** with appropriate metadata via tasks MCP
+3. **Track task IDs** for summary
 
 #### Finding Type → Issue Mapping
 
@@ -400,14 +400,16 @@ For each finding from Phases 0-7 that requires action:
 | README.md flowchart drift              | P2       | bug        | audit,documentation |
 | Hook→Axiom mismatch                    | P2       | bug        | audit,governance    |
 
-#### bd create Command Pattern
+#### Task Creation Pattern
 
-```bash
-bd create "[Finding Type]: [specific details]" \
-  --type [bug|chore] \
-  --priority [2|3] \
-  --labels audit,[category] \
-  --description "[context from audit]"
+```python
+mcp__plugin_aops-core_tasks__create_task(
+    title="[Finding Type]: [specific details]",
+    type="task",
+    priority=[2|3],
+    tags=["audit", "[category]"],
+    body="[context from audit]"
+)
 ```
 
 #### Skip Conditions
@@ -421,16 +423,16 @@ Do NOT create issues for:
 
 #### Output Summary
 
-After creating issues, add to audit report:
+After creating tasks, add to audit report:
 
 ```markdown
-### Issues Created
+### Tasks Created
 
-Created N issues in bd:
+Created N tasks:
 
-- beads-xxx: Broken wikilink: [[foo.md]] in bar.md
-- beads-yyy: Orphan file: docs/old.md
-- beads-zzz: Skill over limit: skills/big/SKILL.md
+- ns-xxx: Broken wikilink: [[foo.md]] in bar.md
+- ns-yyy: Orphan file: docs/old.md
+- ns-zzz: Skill over limit: skills/big/SKILL.md
 ```
 
 ## Report Format
@@ -510,12 +512,12 @@ High-level findings and overall status. Brief description of what was audited, m
 - Orphan: docs/OLD-FILE.md - delete or create spec?
 - Skill over size limit: skills/bar/SKILL.md - refactor or document exception?
 
-### Issues Created
+### Tasks Created
 
-Created N issues in bd:
+Created N tasks:
 
-- beads-xxx: [title]
-- beads-yyy: [title]
+- ns-xxx: [title]
+- ns-yyy: [title]
 ```
 
 ## Validation Criteria

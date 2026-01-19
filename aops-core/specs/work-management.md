@@ -1,52 +1,108 @@
-# Work Management: `bd` (Beads)
+# Work Management: Tasks MCP
 
-`bd` is the primary work management system for multi-session tracking, dependencies, and strategic work.
+Tasks MCP is the primary work management system for multi-session tracking, dependencies, and strategic work.
 
 ```mermaid
 flowchart LR
     subgraph CREATE["Create Work"]
-        C1[bd create --title=...]
-        C2[bd ready]
+        C1[create_task]
+        C2[get_ready_tasks]
     end
 
     subgraph EXECUTE["Execute"]
-        E1[bd update --status=in_progress]
+        E1[update_task status=active]
         E2[Work on task]
-        E3[bd close]
+        E3[complete_task]
     end
 
-    subgraph SYNC["Persist"]
-        S1[bd sync]
+    subgraph TRACK["Track"]
+        T1[list_tasks]
+        T2[get_blocked_tasks]
     end
 
-    C1 --> C2 --> E1 --> E2 --> E3 --> S1
+    C1 --> C2 --> E1 --> E2 --> E3
+    T1 -.-> E1
+    T2 -.-> E1
 
     style CREATE fill:#e3f2fd
     style EXECUTE fill:#e8f5e9
-    style SYNC fill:#fff3e0
+    style TRACK fill:#fff3e0
 ```
 
-**When to use `bd`**:
+**When to use Tasks MCP**:
 
 - Multi-session work (spans multiple conversations)
 - Work with dependencies (blocked by / blocks)
 - Strategic planning and tracking
 - Discoverable by future sessions
 
-#### Multi-Project Prefix Routing
+## Core Functions
 
-This project uses a **shared beads database** at `~/writing/.beads/` with different prefixes per project. When creating issues, use the `--rig` flag to ensure correct prefix assignment:
+| Function | Purpose |
+|----------|---------|
+| `mcp__plugin_aops-core_tasks__create_task()` | Create new task |
+| `mcp__plugin_aops-core_tasks__get_task(id)` | Get task details |
+| `mcp__plugin_aops-core_tasks__update_task(id, ...)` | Update task fields |
+| `mcp__plugin_aops-core_tasks__complete_task(id)` | Mark task done |
+| `mcp__plugin_aops-core_tasks__list_tasks(...)` | List/filter tasks |
+| `mcp__plugin_aops-core_tasks__search_tasks(query)` | Search tasks |
+| `mcp__plugin_aops-core_tasks__get_ready_tasks()` | Get actionable tasks |
+| `mcp__plugin_aops-core_tasks__get_blocked_tasks()` | Get blocked tasks |
+| `mcp__plugin_aops-core_tasks__decompose_task(id, children)` | Break down task |
 
-| CWD                | Command                              | Prefix          |
-| ------------------ | ------------------------------------ | --------------- |
-| `$AOPS`            | `bd create --rig aops --title="..."` | `aops-`         |
-| `~/src/buttermilk` | `bd create --rig bm --title="..."`   | `bm-`           |
-| `~/writing`        | `bd create --title="..."`            | `ns-` (default) |
+## Task Lifecycle
 
-**Why this matters**: Without `--rig`, all issues get the database's default prefix (`ns-`), regardless of which project directory you're in. The routing system can find issues by prefix, but cannot auto-detect which prefix to use when creating.
-
-**Alternative**: Use `--prefix` for one-off prefix overrides without route lookup:
-
-```bash
-bd create --prefix aops --title="One-off with custom prefix"
 ```
+inbox → active → done
+         ↓
+      blocked/waiting
+```
+
+**Statuses**:
+- `inbox`: New, not started
+- `active`: Currently being worked on
+- `blocked`: Waiting on dependencies
+- `waiting`: Deferred for later
+- `done`: Completed
+- `cancelled`: Abandoned
+
+## Multi-Project Organization
+
+Tasks are organized by `project` field:
+
+| Project | Use For |
+|---------|---------|
+| `aops` | Framework tasks |
+| `writing` | Writing project tasks |
+| (custom) | Other projects |
+
+**Create with project**:
+```python
+mcp__plugin_aops-core_tasks__create_task(
+    title="Task title",
+    type="task",
+    project="aops",
+    priority=2
+)
+```
+
+## Dependencies
+
+Tasks can depend on other tasks:
+
+```python
+# Create dependent task
+mcp__plugin_aops-core_tasks__create_task(
+    title="Implement feature",
+    depends_on=["task-id-of-prerequisite"]
+)
+
+# Check what's blocked
+mcp__plugin_aops-core_tasks__get_blocked_tasks()
+```
+
+## Task Storage
+
+Tasks are stored as markdown files in `data/tasks/`:
+- `data/tasks/inbox/` - New tasks
+- `data/tasks/index.json` - Task index for fast queries

@@ -216,20 +216,21 @@ def resolve_binary(name: str) -> Path | None:
 
 def get_bd_path() -> Path | None:
     """
-    Get the path to the 'bd' (beads) CLI binary.
+    DEPRECATED: bd CLI is replaced by tasks MCP.
+
+    Use mcp__plugin_aops-core_tasks__* functions instead.
+    This function is kept for backwards compatibility but will be removed.
 
     Returns:
-        Path: Absolute path to bd binary if found
+        Path: Absolute path to bd binary if found (deprecated)
         None: If bd not installed or not in PATH
-
-    Example:
-        bd = get_bd_path()
-        if bd:
-            subprocess.run([str(bd), "list"], ...)
-        else:
-            # Graceful degradation - bd not available
-            pass
     """
+    import warnings
+    warnings.warn(
+        "get_bd_path() is deprecated. Use tasks MCP functions instead.",
+        DeprecationWarning,
+        stacklevel=2
+    )
     return resolve_binary("bd")
 
 

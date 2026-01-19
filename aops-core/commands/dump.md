@@ -1,7 +1,7 @@
 ---
 name: dump
 category: instruction
-description: Emergency work handover - update bead, file follow-ups, persist to memory, output reflection, halt
+description: Emergency work handover - update task, file follow-ups, persist to memory, output reflection, halt
 allowed-tools: Bash, mcp__memory__store_memory, TodoWrite, AskUserQuestion
 permalink: commands/dump
 ---
@@ -18,40 +18,40 @@ Use when:
 
 ## Workflow
 
-### Step 1: Identify Current Bead
+### Step 1: Identify Current Task
 
-Check if a bead is currently being worked:
+Check if a task is currently being worked:
 
-```bash
-bd list --status=in_progress --limit=5
+```
+mcp__plugin_aops-core_tasks__list_tasks(status="active", limit=5)
 ```
 
-If no bead is in_progress, skip to Step 3.
+If no task is active, skip to Step 3.
 
-### Step 2: Update Bead with Progress
+### Step 2: Update Task with Progress
 
-Add a progress checkpoint to the current bead:
+Add a progress checkpoint to the current task:
 
-```bash
-bd update <bead-id> --status=in_progress --comment="DUMP checkpoint: <summary of progress made>"
+```
+mcp__plugin_aops-core_tasks__update_task(
+  id="<task-id>",
+  body="DUMP checkpoint: <summary of progress made>\n\n- What was accomplished\n- What remains to be done\n- Any blockers or decisions needed"
+)
 ```
 
-Include in the comment:
-- What was accomplished
-- What remains to be done
-- Any blockers or decisions needed
-
-### Step 3: File Follow-up Issues
+### Step 3: File Follow-up Tasks
 
 For each incomplete work item from the current TodoWrite list:
 
-```bash
-bd create "<incomplete task>" --type=task --priority=<n> --description="Follow-up from /dump on <date>. Context: <what the next agent needs to know>"
 ```
-
-Link to parent bead if applicable:
-```bash
-bd dep add <new-id> <parent-bead-id>
+mcp__plugin_aops-core_tasks__create_task(
+  title="<incomplete task>",
+  type="task",
+  project="aops",
+  priority=2,
+  body="Follow-up from /dump on <date>. Context: <what the next agent needs to know>",
+  parent="<parent-task-id>"  # if applicable
+)
 ```
 
 ### Step 4: Persist to Memory (Optional)
@@ -62,7 +62,7 @@ If discoveries or learnings should be preserved:
 mcp__memory__store_memory(
   content="Session dump <date>: <key learnings>",
   tags=["dump", "handover"],
-  metadata={"bead_id": "<current-bead>", "reason": "emergency handover"}
+  metadata={"task_id": "<current-task>", "reason": "emergency handover"}
 )
 ```
 
@@ -75,7 +75,7 @@ Output the reflection in **exact AGENTS.md format**:
 ```markdown
 ## Framework Reflection
 
-**Request**: [Original request in brief]
+**Prompts**: [Original request in brief]
 **Guidance received**: [Hydrator/custodiet advice, or "N/A"]
 **Followed**: [Yes/No/Partial - explain]
 **Outcome**: partial
@@ -101,33 +101,33 @@ Output this message:
 ---
 DUMP COMPLETE. Work paused at checkpoint.
 
-To resume: `/pull <bead-id>` or claim the follow-up issues created above.
+To resume: `/pull <task-id>` or claim the follow-up tasks created above.
 ---
 ```
 
 ## Edge Cases
 
-### No bead currently claimed
+### No task currently claimed
 - Skip Step 2
 - Still file follow-ups for any incomplete todos
-- Note in reflection: "No bead was active"
+- Note in reflection: "No task was active"
 
 ### Memory server unreachable
 - Log warning: "Memory persistence skipped (server unreachable)"
 - Continue with remaining steps
 
-### Multiple beads in_progress
+### Multiple tasks active
 - Update all with dump checkpoint
-- Note in reflection which beads were active
+- Note in reflection which tasks were active
 
 ### No incomplete work
-- Skip follow-up issue creation
+- Skip follow-up task creation
 - Reflection outcome can be `success` if work was actually complete
 
 ## Key Rules
 
 1. **Always reflect** - Framework Reflection is mandatory even for dumps
-2. **Always checkpoint** - Update bead before halting
+2. **Always checkpoint** - Update task before halting
 3. **Always file follow-ups** - Don't leave work orphaned
 4. **Actually halt** - Don't continue working after dump completes
 
@@ -137,8 +137,8 @@ To resume: `/pull <bead-id>` or claim the follow-up issues created above.
 /dump
 ```
 
-1. Finds `aops-xyz` in_progress
-2. Updates: `bd update aops-xyz --comment="DUMP: Completed auth refactor, tests remain"`
+1. Finds `aops-xyz` active
+2. Updates: `update_task(id="aops-xyz", body="DUMP: Completed auth refactor, tests remain")`
 3. Creates: `aops-abc` "Add auth tests (follow-up from dump)"
 4. Persists: Key pattern discovered about token refresh
 5. Outputs Framework Reflection with `Outcome: partial`

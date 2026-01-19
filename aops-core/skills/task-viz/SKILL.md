@@ -1,11 +1,11 @@
 ---
 name: task-viz
-description: Generate visual mind-map of bd issues using force-directed layout via excalidraw
+description: Generate visual mind-map of tasks using force-directed layout via excalidraw
 ---
 
 # Task Visualization
 
-Generate a force-directed visualization of bd issues as an excalidraw file.
+Generate a force-directed visualization of tasks as an excalidraw file.
 
 ## Usage
 

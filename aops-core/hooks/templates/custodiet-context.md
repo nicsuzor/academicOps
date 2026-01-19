@@ -64,13 +64,13 @@ When the session involves discovery, investigation, or decision-making, check if
 **Lost insights signal**: Agent discovers something significant (bug root cause, pattern, principle, decision rationale) but doesn't persist it anywhere.
 
 **Correct behavior**:
-- Operational findings (what happened, what was tried) → bd issue or comment
+- Operational findings (what happened, what was tried) → task body update
 - Knowledge discoveries (patterns, principles, facts) → `Skill(skill="remember")` for markdown + memory server
-- Both → bd for tracking, remember skill for knowledge
+- Both → task for tracking, remember skill for knowledge
 
 **If insights appear lost**: Include in your assessment (but don't BLOCK for this alone - it's advisory):
 ```
-Note: Session discovered [insight] but did not capture it. Consider: bd create for operational tracking, or Skill(skill="remember") for knowledge persistence.
+Note: Session discovered [insight] but did not capture it. Consider: mcp__plugin_aops-core_tasks__update_task for operational tracking, or Skill(skill="remember") for knowledge persistence.
 ```
 
 ## Your Assessment

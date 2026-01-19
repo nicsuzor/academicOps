@@ -14,25 +14,22 @@ permalink: commands/pull
 
 ### Step 1: Find Ready Work
 
-Get ready tasks (leaves with no unmet dependencies):
-
-```
-mcp__plugin_aops-core_tasks__get_ready_tasks()
-```
+Call `mcp__plugin_aops-core_tasks__get_ready_tasks(project="aops")` to see tasks available for work.
 
 This returns tasks that are:
-- Leaf tasks (no children)
-- No unresolved dependencies
-- Status: inbox or active
+- Leaves (no children)
+- No unmet dependencies
+- Status: active or inbox
 - Sorted by priority (P0 first)
 
 ### Step 2: Claim the Top Task (or Triage if None Ready)
 
 **If no ready tasks**: Follow this fallback sequence:
 
-1. Run `mcp__plugin_aops-core_tasks__list_tasks(status="inbox")` to find tasks needing triage
-2. If tasks found, apply TRIAGE path to the highest priority one
-3. If truly no tasks exist, report "No actionable tasks" and HALT
+1. Call `mcp__plugin_aops-core_tasks__list_tasks(status="active")` to find active tasks that may need triage
+2. If none, call `mcp__plugin_aops-core_tasks__list_tasks(status="inbox")` to find inbox tasks needing attention
+3. If tasks found in either step, apply TRIAGE path to the highest priority one
+4. If truly no tasks exist, report "No actionable tasks" and HALT
 
 **If ready tasks exist**: Auto-claim the first (highest priority) task:
 
@@ -44,11 +41,7 @@ If user provides a task ID directly via `/pull <task-id>`, claim that specific t
 
 ### Step 3: Show Claimed Task
 
-Display the task details to understand the full context:
-
-```
-mcp__plugin_aops-core_tasks__get_task(id="<task-id>")
-```
+Call `mcp__plugin_aops-core_tasks__get_task(id="<task-id>")` to get full task details before proceeding.
 
 ### Step 4: Assess Task Path
 
@@ -63,7 +56,7 @@ After reviewing the task, determine which execution path applies:
 - **Scope**: Estimated completion within current session
 - **Blockers**: No external dependencies (human approval, external input, waiting)
 
-**Action**: Proceed to Step 5 (Hydrator) -> Execute -> Complete.
+**Action**: Proceed to Step 5 (Hydrator) → Execute → Complete.
 
 #### Path 2: TRIAGE
 **Any criterion is true:**
@@ -74,27 +67,21 @@ After reviewing the task, determine which execution path applies:
 - Task exceeds session scope
 
 **Actions (in order):**
-1. **Subtask explosion** (if appropriate): Break into child tasks when:
+1. **Update status to blocked**: `mcp__plugin_aops-core_tasks__update_task(id="<id>", status="blocked")`
+2. **Subtask explosion** (if appropriate): Break into child tasks when:
    - You can identify discrete, actionable steps
    - Each subtask passes EXECUTE criteria independently
    - Each subtask is 15-60 minutes of work
    - The breakdown covers the parent task's scope
    ```
-   mcp__plugin_aops-core_tasks__decompose_task(
-     id="<parent-id>",
-     children=[
-       {"title": "<subtask 1>", "type": "action"},
-       {"title": "<subtask 2>", "type": "action", "depends_on": ["<subtask-1-id>"]}
-     ]
-   )
+   mcp__plugin_aops-core_tasks__decompose_task(id="<parent-id>", children=[
+     {"title": "Subtask 1", "type": "action", "order": 0},
+     {"title": "Subtask 2", "type": "action", "order": 1, "depends_on": ["<subtask1-id>"]},
+   ])
    ```
-2. **If cannot decompose**: Update task with blocking reason
+3. **If cannot decompose**: Update task body explaining what's blocking
    ```
-   mcp__plugin_aops-core_tasks__update_task(
-     id="<id>",
-     status="blocked",
-     body="## Blocked\n\n<reason>. Needs strategy review."
-   )
+   mcp__plugin_aops-core_tasks__update_task(id="<id>", status="blocked", body="Blocked: <reason>. Needs strategy review.")
    ```
 
 **After TRIAGE**: HALT. Do not proceed to execution.
@@ -103,7 +90,7 @@ After reviewing the task, determine which execution path applies:
 
 If during EXECUTE you hit an unexpected blocker:
 1. Stop work
-2. Update task with findings
+2. Update task with findings: `mcp__plugin_aops-core_tasks__update_task(id="<id>", body="Attempted: X. Blocked by: Y")`
 3. Reclassify to TRIAGE path
 
 ### Step 5: Invoke Hydrator for Execution Plan
@@ -117,7 +104,7 @@ Task(
   subagent_type="aops-core:prompt-hydrator",
   model="haiku",
   description="Hydrate claimed task",
-  prompt="Generate execution plan for claimed task. Task context:\n\n<task details>\n\nProvide TodoWrite plan with acceptance criteria, relevant context, and verification steps."
+  prompt="Generate execution plan for claimed task. Task context:\n\n<task details from get_task>\n\nProvide TodoWrite plan with acceptance criteria, relevant context, and verification steps."
 )
 ```
 
@@ -135,6 +122,7 @@ If the task generates follow-up work:
 mcp__plugin_aops-core_tasks__create_task(
   title="<follow-up title>",
   type="task",
+  project="aops",
   priority=2,
   body="Follow-up from <original-task-id>: <context>"
 )
@@ -194,33 +182,57 @@ End with Framework Reflection (see AGENTS.md "Framework Reflection (Session End)
 ```
 /pull
 ```
-1. Runs `get_ready_tasks()` -> finds task (P1: Fix authentication bug)
-2. Auto-claims: `update_task(id=..., status="active")`
-3. Shows task details via `get_task(id=...)`
-4. **Assesses path**: What, Where, Why, How, Scope, No blockers -> **EXECUTE**
+1. Calls `get_ready_tasks()` → finds `aops-xyz` (P1: Fix authentication bug)
+2. Auto-claims: `update_task(id="aops-xyz", status="active")`
+3. Gets task details via `get_task(id="aops-xyz")`
+4. **Assesses path**: What ✓, Where ✓, Why ✓, How ✓, Scope ✓, No blockers ✓ → **EXECUTE**
 5. Hydrator analyzes task, generates TodoWrite plan
 6. Agent executes plan, fixes bug
-7. Creates follow-up task for adding tests
-8. Completes: `complete_task(id=...)`
+7. Creates follow-up: `aops-abc` for adding tests
+8. Completes: `complete_task(id="aops-xyz")`
 9. Records learnings via remember skill
 10. Commits and pushes
 11. Outputs Framework Reflection
 
-### Example 2: TRIAGE Path (needs decomposition)
+### Example 2: TRIAGE Path (needs human input)
 ```
 /pull
 ```
-1. Runs `get_ready_tasks()` -> finds task (P1: Refactor auth system)
-2. Auto-claims: `update_task(id=..., status="active")`
-3. Shows task details -> large scope but decomposable
-4. **Assesses path**: Exceeds session scope -> **TRIAGE**
+1. Calls `get_ready_tasks()` → finds `aops-abc` (P1: Book progress checkpoint)
+2. Auto-claims: `update_task(id="aops-abc", status="active")`
+3. Gets task details → requires human assessment of creative work
+4. **Assesses path**: Requires human judgment → **TRIAGE**
+5. Updates status: `update_task(id="aops-abc", status="blocked", body="Requires human assessment")`
+6. **HALT** - does not proceed to execution
+
+### Example 3: TRIAGE with Subtask Explosion
+```
+/pull
+```
+1. Calls `get_ready_tasks()` → finds `aops-def` (P1: Refactor auth system)
+2. Auto-claims: `update_task(id="aops-def", status="active")`
+3. Gets task details → large scope but decomposable
+4. **Assesses path**: Exceeds session scope → **TRIAGE**
 5. Decomposes:
    ```
-   decompose_task(id=..., children=[
-     {"title": "Extract auth middleware", "type": "action"},
-     {"title": "Add JWT validation", "type": "action"},
-     {"title": "Update auth tests", "type": "action"}
+   decompose_task(id="aops-def", children=[
+     {"title": "Extract auth middleware", "type": "action", "order": 0},
+     {"title": "Add JWT validation", "type": "action", "order": 1},
+     {"title": "Update auth tests", "type": "action", "order": 2}
    ])
    ```
-6. Parent stays active, subtasks are ready for future `/pull`
-7. **HALT** - does not proceed to execution
+6. Parent status updated, subtasks are ready for future `/pull`
+
+**If no ready tasks but active tasks exist:**
+```
+/pull
+```
+1. `get_ready_tasks()` → no results
+2. `list_tasks(status="active")` → finds `aops-ghi` (blocked, needs decomposition)
+3. Claims and applies TRIAGE path to `aops-ghi`
+
+**If no actionable tasks:**
+```
+/pull
+```
+→ "No actionable tasks. HALT."
