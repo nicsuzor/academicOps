@@ -34,6 +34,15 @@ mcp__plugin_aops-core_tasks__search_tasks(query="keyword")
 mcp__plugin_aops-core_tasks__get_task(id="<task-id>")  # View details of specific task
 ```
 
+### Step 2.5: Place in Hierarchy
+
+New work should connect to the task graph, not float as orphans.
+
+1. **List existing goals**: `mcp__plugin_aops-core_tasks__list_tasks(type="goal")`
+2. **Check if work supports a goal** - If yes, set `parent=<goal-id>` or appropriate child project
+3. **If independent/lower priority** - Create as standalone project (type="project", no parent) and document why it's not linked
+4. **Document placement** - Add brief note in task body explaining hierarchy decision
+
 ### Step 3: Create Tasks
 
 For each discrete task identified by the hydrator:
@@ -78,6 +87,7 @@ mcp__plugin_aops-core_tasks__create_task(
 
 - **Always hydrate first** - The prompt may contain multiple tasks
 - **Check for duplicates** - Search existing tasks before creating
+- **Place in hierarchy** - Connect to goals/projects; no floating orphans
 - **Capture context** - Include enough detail for future execution without current session
 - **Set dependencies** - If tasks must be done in order, use `depends_on`
 - **DO NOT execute** - Only queue; execution happens later via `/pull` or manual claim
