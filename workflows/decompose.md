@@ -154,10 +154,27 @@ Take the highest-priority component that's ready to work. Decompose it one level
 - What decision points exist within this component?
 - Where might I get stuck? (those become their own tasks)
 
-Create finer-grained children:
-```bash
-bd create "[Subtask]" --parent=[component-id] --priority=2
+**Human review gate (REQUIRED):**
+
+When decomposing, ALWAYS create a review task that blocks all other subtasks:
+
+```python
+# Using MCP tasks
+mcp__plugin_aops-core_tasks__decompose_task(
+    id="[parent-id]",
+    children=[
+        {"title": "REVIEW: Approve decomposition of [parent]", "type": "action", "order": 0},
+        {"title": "[Subtask 1]", "type": "action", "order": 1, "depends_on": ["[review-task-id]"]},
+        {"title": "[Subtask 2]", "type": "action", "order": 2, "depends_on": ["[review-task-id]"]},
+        # ... all other subtasks depend on review
+    ]
+)
 ```
+
+This ensures:
+- Human sees the full decomposition before any work begins
+- Subtasks don't appear in `get_ready_tasks()` until review is complete
+- Opportunity to refine decomposition before committing resources
 
 ### 6. Mark Ready Work
 
@@ -217,7 +234,8 @@ Epic: Write paper on X
 ```
 Epic: Write paper on X
 ├── Literature review
-│   ├── Search databases for [terms] (ready)
+│   ├── REVIEW: Approve lit review decomposition (ready)
+│   ├── Search databases for [terms] (depends on REVIEW)
 │   ├── Screen 50 abstracts (depends on search)
 │   └── Synthesize themes (depends on screening)
 ├── Data collection (still coarse - waiting on access)
@@ -225,6 +243,8 @@ Epic: Write paper on X
 ├── Writing (still coarse)
 └── Submission (still coarse)
 ```
+
+**Note:** REVIEW task is the only ready task. Human must approve decomposition before subtasks become workable.
 
 **Learned:** Database access requires ethics amendment. New task added.
 
