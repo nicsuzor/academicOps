@@ -13,6 +13,17 @@ Manage daily note lifecycle: morning briefing, task recommendations, and session
 
 Location: `$ACA_DATA/../sessions/YYYYMMDD-daily.md`
 
+## CRITICAL BOUNDARY: Planning Only
+
+**This skill is for PLANNING, not EXECUTION.**
+
+- `/daily` captures priorities in the daily note
+- `/daily` does NOT execute tasks, even if user states priorities
+- When user answers "what sounds right for today?" → record in Focus section, then COMPLETE
+- After daily note is updated: output "Daily planning complete. Use `/pull` to start work." and HALT
+
+**User stating a priority ≠ authorization to execute that priority.**
+
 ## Section Ownership
 
 | Section                 | Owner    | Updated By             |
@@ -212,6 +223,12 @@ After presenting recommendations, use `AskUserQuestion` to confirm priorities:
 
 - "What sounds right for today?"
 - Offer to adjust recommendations based on user context
+
+**IMPORTANT**: User's response states their PRIORITY for the day. This goes into the daily note's Focus section. It is NOT a command to execute those tasks. After recording the priority:
+
+1. Update the Focus section with user's stated priority
+2. Output: "Daily planning complete. Use `/pull` to start work."
+3. HALT - do not proceed to task execution
 
 ### 3.5: Present candidate tasks to archive
 
