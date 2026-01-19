@@ -43,6 +43,7 @@ INSTRUCTION_TEMPLATE_FILE = HOOK_DIR / "templates" / "custodiet-instruction.md"
 REMINDERS_FILE = HOOK_DIR / "data" / "reminders.txt"
 AXIOMS_FILE = AOPS_ROOT / "AXIOMS.md"
 HEURISTICS_FILE = AOPS_ROOT / "HEURISTICS.md"
+SKILLS_FILE = AOPS_ROOT / "SKILLS.md"
 # Use /tmp like hydrator - subagents can reliably access /tmp but not project dirs
 TEMP_DIR = Path("/tmp/claude-compliance")
 
@@ -240,18 +241,19 @@ def load_template(template_path: Path) -> str:
     return content.strip()
 
 
-def load_framework_content() -> tuple[str, str]:
-    """Load AXIOMS.md and HEURISTICS.md content for custodiet.
+def load_framework_content() -> tuple[str, str, str]:
+    """Load AXIOMS.md, HEURISTICS.md, and SKILLS.md content for custodiet.
 
     Returns:
-        Tuple of (axioms_content, heuristics_content) with frontmatter stripped.
+        Tuple of (axioms_content, heuristics_content, skills_content) with frontmatter stripped.
 
     Raises:
-        FileNotFoundError: If either file is missing (fail-fast).
+        FileNotFoundError: If any file is missing (fail-fast).
     """
     axioms = load_template(AXIOMS_FILE)
     heuristics = load_template(HEURISTICS_FILE)
-    return axioms, heuristics
+    skills = load_template(SKILLS_FILE)
+    return axioms, heuristics, skills
 
 
 def write_temp_file(content: str) -> Path:
@@ -290,7 +292,7 @@ def build_audit_instruction(
     session_context = _build_session_context(transcript_path, session_id)
 
     # Load framework principles (fail-fast if missing)
-    axioms_content, heuristics_content = load_framework_content()
+    axioms_content, heuristics_content, skills_content = load_framework_content()
 
     # Build full context
     context_template = load_template(CONTEXT_TEMPLATE_FILE)
@@ -299,6 +301,7 @@ def build_audit_instruction(
         tool_name=tool_name,
         axioms_content=axioms_content,
         heuristics_content=heuristics_content,
+        skills_content=skills_content,
     )
 
     # Write to temp file

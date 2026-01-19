@@ -131,6 +131,14 @@ bd dep add [immediate-id] depends-on [decompose-id]
 ```
 ````
 
+## Utility Scripts (Not Skills)
+
+These scripts exist but aren't user-invocable skills. Provide exact invocation when relevant:
+
+| Request | Script | Invocation |
+|---------|--------|------------|
+| "save transcript", "export session" | `session_transcript.py` | `uv run python $AOPS/scripts/session_transcript.py <session.jsonl> -o output.md` |
+
 ## Key Rules
 
 - **Short confirmations**: If prompt is very short (≤10 chars: "yes", "ok", "do it", "sure"), check the MOST RECENT agent response and tools. The user is likely confirming/proceeding with what was just proposed, NOT requesting new work from bd queue.
