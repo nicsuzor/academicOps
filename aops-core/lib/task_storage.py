@@ -34,12 +34,28 @@ Usage:
 
 from __future__ import annotations
 
+import tempfile
 from datetime import datetime
 from pathlib import Path
 from typing import Iterator
 
+from filelock import FileLock
+
 from lib.paths import get_data_root
 from lib.task_model import Task, TaskStatus, TaskType
+
+# Directories to exclude from recursive task scanning
+# These contain non-task data that shouldn't be indexed
+EXCLUDED_DIRS = frozenset({
+    "archive",      # Historical data, not active tasks
+    "sessions",     # Session transcripts
+    "contacts",     # Contact information
+    "assets",       # Media files
+    "diagrams",     # Diagram files
+    "dotfiles",     # Configuration files
+    "metrics",      # Metrics data
+    "qa",           # QA test data
+})
 
 
 class TaskStorage:
@@ -171,7 +187,10 @@ class TaskStorage:
         )
 
     def save_task(self, task: Task) -> Path:
-        """Save task to file.
+        """Save task to file with file locking and atomic writes.
+
+        Uses file locking to prevent concurrent modification conflicts.
+        Writes to temp file first, then renames for atomicity.
 
         Creates parent directories if needed.
         Updates parent task's leaf status if this task has a parent.
@@ -183,7 +202,7 @@ class TaskStorage:
             Path where task was saved
         """
         path = self._get_task_path(task)
-        task.to_file(path)
+        self._atomic_write(path, task)
 
         # Update parent's leaf status
         if task.parent:
@@ -192,9 +211,48 @@ class TaskStorage:
                 parent.add_child(task.id)
                 parent_path = self._find_task_path(task.parent)
                 if parent_path:
-                    parent.to_file(parent_path)
+                    self._atomic_write(parent_path, parent)
 
         return path
+
+    def _atomic_write(self, path: Path, task: Task) -> None:
+        """Write task to file atomically with file locking.
+
+        Uses a .lock file to coordinate concurrent access.
+        Writes to temp file first, then renames for atomicity.
+
+        Args:
+            path: Target file path
+            task: Task to write
+        """
+        import os
+
+        lock_path = path.with_suffix(path.suffix + ".lock")
+        lock = FileLock(lock_path, timeout=10)
+
+        with lock:
+            # Update modified timestamp
+            task.modified = task.modified.__class__.now(task.modified.tzinfo)
+
+            # Create parent directory if needed
+            path.parent.mkdir(parents=True, exist_ok=True)
+
+            # Write to temp file in same directory (for atomic rename)
+            fd, temp_path = tempfile.mkstemp(
+                suffix=".tmp",
+                prefix=path.stem + "_",
+                dir=path.parent,
+            )
+            try:
+                os.close(fd)  # Close the file descriptor from mkstemp
+                temp = Path(temp_path)
+                temp.write_text(task.to_markdown(), encoding="utf-8")
+                # Atomic rename (on POSIX systems)
+                temp.rename(path)
+            except Exception:
+                # Clean up temp file on error
+                Path(temp_path).unlink(missing_ok=True)
+                raise
 
     def get_task(self, task_id: str) -> Task | None:
         """Load task by ID.
@@ -256,38 +314,46 @@ class TaskStorage:
         return tasks
 
     def _iter_all_tasks(self) -> Iterator[Task]:
-        """Iterate over all task files.
+        """Iterate over all task files in $ACA_DATA.
+
+        Recursively scans all markdown files with valid task frontmatter
+        (type: goal|project|task|action). Skips excluded directories
+        and files that fail to parse as valid tasks.
 
         Yields:
-            Task instances from all project directories and inbox
+            Task instances from anywhere in $ACA_DATA
         """
-        # Search inbox
-        inbox_dir = self.data_root / "tasks" / "inbox"
-        if inbox_dir.exists():
-            for md_file in inbox_dir.glob("*.md"):
-                try:
-                    yield Task.from_file(md_file)
-                except (ValueError, OSError):
-                    continue
+        valid_types = {t.value for t in TaskType}
 
-        # Search all project directories
-        for project_dir in self.data_root.iterdir():
-            if not project_dir.is_dir():
-                continue
-            if project_dir.name.startswith("."):
-                continue
-            if project_dir.name == "tasks":
+        for md_file in self._iter_markdown_files():
+            try:
+                task = Task.from_file(md_file)
+                # Verify it has a valid task type
+                if task.type.value in valid_types:
+                    yield task
+            except (ValueError, OSError, KeyError):
+                # Skip files that aren't valid tasks
                 continue
 
-            tasks_dir = project_dir / "tasks"
-            if not tasks_dir.exists():
-                continue
+    def _iter_markdown_files(self) -> Iterator[Path]:
+        """Iterate over all markdown files in $ACA_DATA.
 
-            for md_file in tasks_dir.glob("*.md"):
-                try:
-                    yield Task.from_file(md_file)
-                except (ValueError, OSError):
-                    continue
+        Recursively walks the data directory, skipping excluded
+        directories and hidden files/folders.
+
+        Yields:
+            Path to each .md file
+        """
+        for root, dirs, files in self.data_root.walk():
+            # Filter out excluded and hidden directories (in-place modification)
+            dirs[:] = [
+                d for d in dirs
+                if not d.startswith(".") and d not in EXCLUDED_DIRS
+            ]
+
+            for filename in files:
+                if filename.endswith(".md") and not filename.startswith("."):
+                    yield root / filename
 
     def get_children(self, task_id: str) -> list[Task]:
         """Get direct children of a task.

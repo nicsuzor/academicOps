@@ -17,6 +17,7 @@ dependencies = [
   "pytest-xdist>=3.8.0",
   "mcp-memory-service>=8.52.2",
   "click>=8.1.0",
+  "filelock>=3.13.0",
 ]
 
 [project.scripts]

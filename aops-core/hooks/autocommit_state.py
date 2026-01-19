@@ -235,6 +235,20 @@ def get_modified_repos(tool_name: str, tool_input: dict[str, Any]) -> set[str]:
     if tool_name in memory_write_tools:
         modified.add("data")
 
+    # tasks-v2 MCP tools (task management) -> data repo
+    tasks_write_tools = [
+        "mcp__tasks__create_task",
+        "mcp__tasks__update_task",
+        "mcp__tasks__complete_task",
+        "mcp__tasks__delete_task",
+        "mcp__tasks__decompose_task",
+        "mcp__tasks__complete_tasks",
+        "mcp__tasks__reorder_children",
+        "mcp__tasks__rebuild_index",
+    ]
+    if tool_name in tasks_write_tools:
+        modified.add("data")
+
     # Write/Edit operations - check path to determine repo
     if tool_name in ["Write", "Edit"]:
         file_path = tool_input.get("file_path", "")
