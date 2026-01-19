@@ -7,8 +7,12 @@ Session file: /tmp/aops-{YYYY-MM-DD}-{session_id}.json
 
 Event-specific behavior:
 - SubagentStop: Updates subagent states in session file
-- Stop: Writes session insights and closes session
+- Stop: Records operational metrics to session state
 - All others: Basic event logging (updates session file timestamps)
+
+Note: Permanent session insights are extracted from Framework Reflection
+by transcript.py, not by this hook. This hook only records operational
+metrics to the temporary session state file.
 
 Exit codes:
     0: Success (always continues with noop response)
@@ -24,8 +28,6 @@ from lib.insights_generator import (
     extract_project_name,
     extract_short_hash,
     generate_fallback_insights,
-    get_insights_file_path,
-    write_insights_file,
 )
 from lib.session_state import (
     get_or_create_session_state,
@@ -96,11 +98,11 @@ def handle_subagent_stop(session_id: str, input_data: dict[str, Any]) -> None:
 
 
 def handle_stop(session_id: str, input_data: dict[str, Any]) -> None:
-    """Handle Stop event - write session insights and close session.
+    """Handle Stop event - record operational metrics to session state.
 
-    Generates structured session insights and writes to both:
-    1. Permanent storage: $ACA_DATA/sessions/{date}-{session_id}.json (unified file)
-    2. Session state: For backward compatibility and QA verifier access
+    Records basic operational metrics to session state for QA verifier access.
+    Does NOT write to permanent storage - that's handled by transcript.py which
+    extracts the Framework Reflection from the session transcript.
 
     Args:
         session_id: Claude Code session ID
@@ -132,31 +134,22 @@ def handle_stop(session_id: str, input_data: dict[str, Any]) -> None:
         "acceptance_criteria_count": len(hydration.get("acceptance_criteria", [])),
     }
 
-    # Generate insights (currently using fallback approach)
-    # TODO: Implement LLM-based generation when API integration is available
-    # For now, we generate operational metrics with minimal required fields
+    # Generate minimal insights for session state only
+    # Full insights are extracted from Framework Reflection by transcript.py
     insights = generate_fallback_insights(metadata, operational_metrics)
 
     logger.info(
-        f"Generated session insights for {metadata['session_id']}: "
-        f"outcome={insights['outcome']}, accomplishments={len(insights['accomplishments'])}"
+        f"Session stopped: {metadata['session_id']} "
+        f"(subagents={len(subagents)}, custodiet_blocks={operational_metrics['custodiet_blocks']})"
     )
 
-    # Write to permanent storage ($ACA_DATA/sessions/)
-    try:
-        insights_path = get_insights_file_path(insights["date"], insights["session_id"])
-        write_insights_file(insights_path, insights)
-        logger.info(f"Wrote insights to permanent storage: {insights_path}")
-    except Exception as e:
-        logger.error(f"Failed to write insights to permanent storage: {e}")
-        # Continue - at least save to session state
-
-    # Write to session state (backward compatibility + QA verifier access)
+    # Write to session state only (for QA verifier access during session)
+    # Permanent storage is handled by transcript.py extracting Framework Reflection
     try:
         set_session_insights(session_id, insights)
-        logger.info("Updated session state with insights")
+        logger.info("Updated session state with operational metrics")
     except Exception as e:
-        logger.error(f"Failed to update session state insights: {e}")
+        logger.error(f"Failed to update session state: {e}")
 
 
 def main():

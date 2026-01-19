@@ -53,20 +53,24 @@ Check beads (`bd`): `bd ready`, `bd list`, `bd update <id> --status=in_progress`
 
 ## Session Completion
 
-**Work is NOT complete until `git push` succeeds.**
+**Work is NOT complete until `git push` succeeds AND Framework Reflection is output.**
 
 1. File issues for remaining work
 2. Run quality gates (tests, linters)
 3. Update issue status
 4. Format: `./scripts/format.sh && git add -A && git commit -m "..."`
 5. **Push**: `git pull --rebase && bd sync && git push && git status`
-6. Hand off with Framework Reflection
+6. **Output Framework Reflection** (MANDATORY - see format below)
 
-NEVER stop before pushing.
+NEVER stop before pushing. NEVER skip the Framework Reflection.
 
 ## Framework Reflection (Session End)
 
-**CRITICAL**: Use this EXACT format - session insights scripts parse this structure. Field names and syntax must match precisely.
+**MANDATORY**: You MUST output a Framework Reflection at the end of EVERY session. This is not optional.
+
+The reflection is extracted by `transcript.py` and stored in `$ACA_SESSIONS/{date}-{session_id}.json`. Without this output, session insights are lost.
+
+Use this EXACT format - field names and syntax must match precisely:
 
 ```
 ## Framework Reflection
