@@ -71,7 +71,7 @@ NEVER stop before pushing.
 ```
 ## Framework Reflection
 
-**Request**: [Original request in brief]
+**Prompts**: [Verbatim user prompts from session, chronologically. Include ALL prompts, not just the final one.]
 **Guidance received**: [Hydrator/custodiet advice, or "N/A"]
 **Followed**: [Yes/No/Partial - explain]
 **Outcome**: [success/partial/failure]
@@ -89,6 +89,7 @@ NEVER stop before pushing.
 **Next step rule**: If Next step contains actionable work, file it as a bd issue before ending the session. Don't just document it - track it.
 
 Field alignment with session-insights JSON schema:
+- `**Prompts**`: Maps to `prompts` array - verbatim user prompts in order
 - `**Outcome**`: Must be lowercase: `success`, `partial`, or `failure`
 - `**Accomplishments**`: Maps to `accomplishments` array
 - `**Friction points**`: Maps to `friction_points` array

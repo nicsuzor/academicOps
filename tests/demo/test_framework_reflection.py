@@ -36,7 +36,7 @@ class TestFrameworkReflectionDemo:
             "Create a simple Python function in /tmp/test_reflection_func.py "
             "that adds two numbers. Then generate a Framework Reflection "
             "following the AGENTS.md format with these fields: "
-            "Request, Guidance received, Followed, Outcome, Accomplishment, "
+            "Prompts (or Request), Guidance received, Followed, Outcome, Accomplishment,"
             "Root cause (if not success), Proposed change."
         )
 
@@ -103,7 +103,7 @@ class TestFrameworkReflectionDemo:
         has_reflection_header = "Framework Reflection" in response_text.lower().replace(
             " ", ""
         ) or "## framework reflection" in response_text.lower()
-        has_request_field = "**request**:" in response_text.lower()
+        has_request_field = "**prompts**:" in response_text.lower() or "**request**:" in response_text.lower()
         has_outcome_field = "**outcome**:" in response_text.lower()
 
         # Check for framework agent or /log invocation
@@ -117,7 +117,7 @@ class TestFrameworkReflectionDemo:
         criteria = [
             ("Session completed successfully", result["success"]),
             ("Reflection header present", has_reflection_header),
-            ("Request field present", has_request_field),
+            ("Prompts/Request field present", has_request_field),
             ("Outcome field present", has_outcome_field),
             ("Framework agent or /log invoked", framework_invoked or log_invoked),
         ]
