@@ -20,8 +20,8 @@ def parse_framework_reflection(text: str) -> dict[str, Any] | None:
     """Parse Framework Reflection section from markdown text.
 
     Extracts structured fields from the Framework Reflection format:
-    - Prompts (or legacy Request), Guidance received, Followed, Outcome,
-    - Accomplishments, Friction points, Root cause, Proposed changes, Next step
+    - Prompts, Guidance received, Followed, Outcome, Accomplishments,
+    - Friction points, Root cause, Proposed changes, Next step
 
     Args:
         text: Markdown text that may contain a Framework Reflection section
@@ -46,7 +46,6 @@ def parse_framework_reflection(text: str) -> dict[str, Any] | None:
     # Field patterns: **Field**: value or **Field** (if not success): value
     field_patterns = [
         (r"\*\*Prompts\*\*:\s*(.+?)(?=\n\*\*|\Z)", "prompts"),
-        (r"\*\*Request\*\*:\s*(.+?)(?=\n\*\*|\Z)", "request"),  # legacy
         (r"\*\*Guidance received\*\*:\s*(.+?)(?=\n\*\*|\Z)", "guidance_received"),
         (r"\*\*Followed\*\*:\s*(.+?)(?=\n\*\*|\Z)", "followed"),
         (r"\*\*Outcome\*\*:\s*(.+?)(?=\n\*\*|\Z)", "outcome"),
@@ -211,7 +210,7 @@ def reflection_to_insights(
         "session_id": session_id,
         "date": date,
         "project": project,
-        "summary": reflection.get("prompts") or reflection.get("request", "Session completed"),
+        "summary": reflection.get("prompts", "Session completed"),
         "prompts": reflection.get("prompts"),  # verbatim user prompts
         "outcome": outcome,
         "accomplishments": reflection.get("accomplishments", []),
@@ -238,8 +237,6 @@ def format_reflection_header(reflection: dict[str, Any]) -> str:
 
     if reflection.get("prompts"):
         lines.append(f"**Prompts**: {reflection['prompts']}")
-    elif reflection.get("request"):
-        lines.append(f"**Request**: {reflection['request']}")
 
     if reflection.get("outcome"):
         outcome = reflection["outcome"]
