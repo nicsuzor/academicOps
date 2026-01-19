@@ -182,13 +182,11 @@ class TaskIndex:
         self._ready = []
         self._blocked = []
 
-        # Load all tasks
-        for task in self.storage._iter_all_tasks():
-            path = self.storage._find_task_path(task.id)
-            if path:
-                rel_path = str(path.relative_to(self.data_root))
-                entry = TaskIndexEntry.from_task(task, rel_path)
-                self._tasks[task.id] = entry
+        # Load all tasks with their paths
+        for task, path in self.storage._iter_all_tasks_with_paths():
+            rel_path = str(path.relative_to(self.data_root))
+            entry = TaskIndexEntry.from_task(task, rel_path)
+            self._tasks[task.id] = entry
 
         # Compute children (inverse of parent)
         for task_id, entry in self._tasks.items():

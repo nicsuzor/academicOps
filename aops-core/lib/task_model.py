@@ -104,9 +104,10 @@ class Task:
             raise ValueError("Task id is required")
         if not self.title:
             raise ValueError("Task title is required")
-        if not re.match(r"^\d{8}-[\w-]+$", self.id):
+        # Accept either date-slug format (YYYYMMDD-slug) or simple slug (permalink)
+        if not re.match(r"^(\d{8}-)?[\w-]+$", self.id):
             raise ValueError(
-                f"Task id must be date-slug format (YYYYMMDD-slug): {self.id}"
+                f"Task id must be slug format (optional YYYYMMDD- prefix): {self.id}"
             )
         if not 0 <= self.priority <= 4:
             raise ValueError(f"Priority must be 0-4, got {self.priority}")
@@ -171,6 +172,17 @@ class Task:
 
         return fm
 
+    # Status aliases for backwards compatibility
+    STATUS_ALIASES = {
+        "todo": "inbox",
+        "open": "inbox",
+        "in_progress": "active",
+        "in-progress": "active",
+        "complete": "done",
+        "completed": "done",
+        "closed": "done",
+    }
+
     @classmethod
     def from_frontmatter(cls, fm: dict[str, Any], body: str = "") -> Task:
         """Create Task from frontmatter dictionary.
@@ -182,6 +194,11 @@ class Task:
         Returns:
             Task instance
         """
+        # Resolve ID: prefer id > task_id > permalink
+        task_id = fm.get("id") or fm.get("task_id") or fm.get("permalink")
+        if not task_id:
+            raise ValueError("Task frontmatter missing id, task_id, or permalink")
+
         # Parse timestamps
         created = fm.get("created")
         if isinstance(created, str):
@@ -189,7 +206,7 @@ class Task:
         elif created is None:
             created = datetime.now(UTC)
 
-        modified = fm.get("modified")
+        modified = fm.get("modified") or fm.get("updated")
         if isinstance(modified, str):
             modified = datetime.fromisoformat(modified)
         elif modified is None:
@@ -204,22 +221,35 @@ class Task:
         if isinstance(task_type, str):
             task_type = TaskType(task_type)
 
+        # Map status aliases
         status = fm.get("status", "inbox")
         if isinstance(status, str):
+            status = cls.STATUS_ALIASES.get(status, status)
             status = TaskStatus(status)
 
+        # Parse numeric fields (may come as strings from YAML)
+        priority = fm.get("priority", 2)
+        if isinstance(priority, str):
+            priority = int(priority) if priority.isdigit() else 2
+        order = fm.get("order", 0)
+        if isinstance(order, str):
+            order = int(order) if order.isdigit() else 0
+        depth = fm.get("depth", 0)
+        if isinstance(depth, str):
+            depth = int(depth) if depth.isdigit() else 0
+
         return cls(
-            id=fm["id"],
+            id=task_id,
             title=fm["title"],
             type=task_type,
             status=status,
-            priority=fm.get("priority", 2),
-            order=fm.get("order", 0),
+            priority=priority,
+            order=order,
             created=created,
             modified=modified,
             parent=fm.get("parent"),
             depends_on=fm.get("depends_on", []),
-            depth=fm.get("depth", 0),
+            depth=depth,
             leaf=fm.get("leaf", True),
             due=due,
             project=fm.get("project"),
@@ -277,8 +307,9 @@ class Task:
 
         if not fm:
             raise ValueError("Empty frontmatter")
-        if "id" not in fm:
-            raise ValueError("Task frontmatter missing required field: id")
+        # Accept id, task_id, or permalink as the ID field
+        if "id" not in fm and "task_id" not in fm and "permalink" not in fm:
+            raise ValueError("Task frontmatter missing required field: id, task_id, or permalink")
         if "title" not in fm:
             raise ValueError("Task frontmatter missing required field: title")
 

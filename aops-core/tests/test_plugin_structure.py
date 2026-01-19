@@ -86,6 +86,23 @@ class TestCoreLib:
             assert lib_file.exists(), f"Missing core lib file: {lib_name}"
 
 
+class TestCoreInstructions:
+    """Verify core instruction files contain required content."""
+
+    def test_core_md_has_uv_instructions(self) -> None:
+        """CORE.md must have uv run instructions.
+
+        Regression: Agents were using 'python' instead of 'uv run python'.
+        See issue aops-i4pz.1.
+        """
+        core_md = PLUGIN_ROOT.parent / "CORE.md"
+        assert core_md.exists(), "Missing CORE.md"
+        content = core_md.read_text()
+        assert "uv run" in content, "CORE.md must contain 'uv run' instructions"
+        assert "uv run python" in content, "CORE.md must specify 'uv run python'"
+        assert "uv run pytest" in content, "CORE.md must specify 'uv run pytest'"
+
+
 class TestGovernanceFiles:
     """Verify enforced axioms and heuristics are present."""
 

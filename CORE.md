@@ -4,6 +4,14 @@ type: instruction
 description: Session-resolved paths and environment configuration. Injected at session start.
 ---
 
+## Python Tooling
+
+**Always use `uv run`** for Python commands in this framework:
+- `uv run python script.py` (not `python script.py`)
+- `uv run pytest tests/` (not `pytest tests/`)
+- `uv run ruff check .` (not `ruff check .`)
+
+This ensures the correct virtual environment and dependencies are used without manual activation.
 
 ## Memory System
 

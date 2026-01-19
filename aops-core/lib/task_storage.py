@@ -323,6 +323,15 @@ class TaskStorage:
         Yields:
             Task instances from anywhere in $ACA_DATA
         """
+        for task, _path in self._iter_all_tasks_with_paths():
+            yield task
+
+    def _iter_all_tasks_with_paths(self) -> Iterator[tuple[Task, Path]]:
+        """Iterate over all task files with their paths.
+
+        Yields:
+            Tuples of (Task, Path) for each valid task file
+        """
         valid_types = {t.value for t in TaskType}
 
         for md_file in self._iter_markdown_files():
@@ -330,7 +339,7 @@ class TaskStorage:
                 task = Task.from_file(md_file)
                 # Verify it has a valid task type
                 if task.type.value in valid_types:
-                    yield task
+                    yield task, md_file
             except (ValueError, OSError, KeyError):
                 # Skip files that aren't valid tasks
                 continue
