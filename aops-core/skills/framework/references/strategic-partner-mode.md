@@ -85,7 +85,7 @@ Use mcp__memory__retrieve_memory for:
 - Other technical docs by topic
 ```
 
-**Critical**: User constraints (ACCOMMODATIONS) come BEFORE framework aspirations. Current state establishes reality before reading vision documents.
+**Critical**: User constraints ([[ACCOMMODATIONS]]) come BEFORE framework aspirations. Current state establishes reality before reading vision documents.
 
 **Why memory server**: Knowledge base uses semantic search. Use memory server to find relevant context efficiently rather than reading arbitrary files.
 
@@ -109,6 +109,6 @@ Use mcp__memory__retrieve_memory for:
 ## Output Format
 
 - **Answer**: Direct response to query
-- **Reasoning**: Trace to AXIOMS/VISION/LOG
+- **Reasoning**: Trace to [[AXIOMS]]/[[VISION]]/[[LOG]]
 - **Recommendation**: Clear next action if applicable
 - **Considerations**: Tradeoffs and alternatives if uncertain

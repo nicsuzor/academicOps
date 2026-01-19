@@ -5,6 +5,7 @@ description: Write production-quality Python code following fail-fast philosophy
 allowed-tools: Read,Grep,Glob,Edit,Write,Bash
 version: 3.0.0
 permalink: skills-python-dev
+title: Python-Dev Skill
 ---
 
 # Python Development
