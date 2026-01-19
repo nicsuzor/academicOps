@@ -71,3 +71,11 @@ description: Working hypotheses validated by evidence.
 **Derivation**: "Do we have" implies checking our knowledge stores, not fetching new data. Internal-first respects the question's scope and avoids unnecessary API calls.
 
 ---
+
+## Tasks Inherit Session Context (P#62)
+
+**Statement**: When creating tasks during a session, apply relevant session context (e.g., `bot-assigned` tag during triage, project tag during project work).
+
+**Derivation**: Tasks created mid-session often share properties with the session's focus. A bug found during bot-triage is likely bot-fixable. Carrying context forward reduces manual re-tagging.
+
+---
