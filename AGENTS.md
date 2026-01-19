@@ -97,6 +97,8 @@ Use this EXACT format - field names and syntax must match precisely:
 
 **Next step rule**: If Next step contains actionable work, file it as a task before ending the session. Don't just document it - track it.
 
+**Unfinished work rule**: If you discovered work that couldn't be completed this session (scope exceeded, blocked, deferred), you MUST create a follow-up task. The next agent needs a task to claim - don't leave work orphaned in prose.
+
 **Task creation rule**: If you forgot to create a task for your work this session, create one now and mark it complete. This is how we track work. Set parent/child/dependencies as appropriate.
 
 Field alignment with session-insights JSON schema:
@@ -116,7 +118,7 @@ Field alignment with session-insights JSON schema:
 
 **MANDATORY WORKFLOW:**
 
-1. **File issues for remaining work** - Create issues for anything that needs follow-up
+1. **File tasks for unfinished work** - If work couldn't be completed (scope exceeded, blocked, deferred), create a follow-up task. The next agent needs something to claim.
 2. **Run quality gates** (if code changed) - Tests, linters, builds
 3. **Update issue status** - Close finished work, update in-progress items
 4. **Persist key insights** (if learned something) - Use `Skill(skill="remember")` for discoveries worth preserving. Git commits aren't searchable; memory is.
