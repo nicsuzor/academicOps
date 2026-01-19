@@ -157,9 +157,18 @@ class Task:
         Returns:
             Dictionary suitable for YAML serialization
         """
+        # Generate permalink (stable identifier)
+        permalink = self.id
+
+        # Generate alias list (filename slug + id for multiple link resolution)
+        slug = self.slugify_title(self.title)
+        alias = [f"{self.id}-{slug}", self.id]
+
         fm: dict[str, Any] = {
             "id": self.id,
             "title": self.title,
+            "permalink": permalink,
+            "alias": alias,
             "type": self.type.value,
             "status": self.status.value,
             "priority": self.priority,
@@ -273,6 +282,35 @@ class Task:
             body=body,
         )
 
+    def _render_relationships(self) -> str:
+        """Render relationships section as markdown.
+
+        Returns:
+            Markdown string with relationship links, or empty string if no relationships
+        """
+        lines = []
+
+        # depends_on: tasks this task depends on (from frontmatter)
+        for dep_id in self.depends_on:
+            lines.append(f"- [depends_on] [[{dep_id}]]")
+
+        # blocks: tasks that depend on this task (computed inverse)
+        for block_id in self.blocks:
+            lines.append(f"- [blocks] [[{block_id}]]")
+
+        # parent: parent task (from frontmatter)
+        if self.parent:
+            lines.append(f"- [parent] [[{self.parent}]]")
+
+        # children: child tasks (computed inverse)
+        for child_id in self.children:
+            lines.append(f"- [child] [[{child_id}]]")
+
+        if not lines:
+            return ""
+
+        return "## Relationships\n\n" + "\n".join(lines)
+
     def to_markdown(self) -> str:
         """Convert task to markdown with YAML frontmatter.
 
@@ -289,10 +327,35 @@ class Task:
             parts.append(f"# {self.title}")
             parts.append("")
 
+        # Add body content (strip any existing Relationships section)
         if self.body:
-            parts.append(self.body)
+            body_clean = self._strip_relationships_section(self.body)
+            parts.append(body_clean)
+
+        # Add relationships section at the end
+        relationships = self._render_relationships()
+        if relationships:
+            parts.append("")
+            parts.append(relationships)
 
         return "\n".join(parts)
+
+    def _strip_relationships_section(self, body: str) -> str:
+        """Remove existing Relationships section from body.
+
+        Args:
+            body: Markdown body content
+
+        Returns:
+            Body with Relationships section removed
+        """
+        # Match ## Relationships followed by content until next ## or end
+        # Use lookahead to preserve the next section's newlines
+        pattern = r"\n*## Relationships\n[\s\S]*?(?=\n\n## |\Z)"
+        result = re.sub(pattern, "", body)
+        # Normalize multiple newlines and strip trailing whitespace
+        result = re.sub(r"\n{3,}", "\n\n", result)
+        return result.rstrip()
 
     @classmethod
     def from_markdown(cls, content: str) -> Task:
