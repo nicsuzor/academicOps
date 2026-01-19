@@ -77,12 +77,7 @@ mcp__outlook__messages_list_recent(limit=20, folder="sent")
 
 **For EACH inbox email**: Compare subject line (ignoring Re:/Fwd: prefixes) against sent mail subjects. If a matching sent reply exists, classify as **Skip** (already handled). This cross-reference is MANDATORY - skipping it causes duplicate task creation.
 
-**Classify each email** (LLM semantic classification, not keyword matching per AXIOM #30):
-
-- **FYI**: Informational, no action needed, but should see before archiving
-- **Task**: Requires action AND no sent reply exists → flag for `/email` processing. This includes emails with deliverables requiring processing (attached documents, spreadsheets, files to upload/integrate), even if the email tone is informational.
-- **Skip**: Automated, bulk, already handled (sent reply exists), OR domain-irrelevant (funding/CFPs/opportunities outside user's research domains)
-- **Uncertain**: Present to user for classification
+**Classify each email** using [[workflows/triage-email]] criteria (LLM semantic classification, not keyword matching).
 
 ### 2.2: FYI Content in Daily Note
 

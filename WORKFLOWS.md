@@ -98,6 +98,14 @@ All work MUST follow one of the workflows in this index. No exceptions.
 - **Key steps**: Claim issue → Identify scope → Spawn parallel agents → Monitor → Checkpoint → Commit
 - **Quality gates**: All items processed, results verified
 
+#### [[triage-email]]
+- **ID**: `triage-email`
+- **Title**: Email Triage Workflow
+- **Category**: operations
+- **When to use**: Classifying emails during daily briefing or email processing
+- **Key steps**: Check sent mail → Cross-reference → Classify (Task/FYI/Skip/Uncertain) → Infer priority
+- **Quality gates**: Sent mail checked first, semantic classification applied
+
 ### Information Workflows
 
 #### [[simple-question]]

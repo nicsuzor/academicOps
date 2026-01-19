@@ -131,14 +131,25 @@ After fixing the immediate issue, ask: **What general class of error is this?**
 
 The immediate fix handles THIS instance. The pattern recognition prevents FUTURE instances.
 
-### 6. Create Regression Test (REQUIRED)
+### 6. Create Regression Test (WHEN TESTABLE)
 
-**Every /learn MUST produce a test.** Tests verify the fix works and prevent regressions.
+Tests verify the fix works and prevent regressions. **But only when the fix is testable.**
 
-1. **Capture the failure case as a fixture** - Extract the exact input that caused the failure (e.g., hook input JSON, agent prompt, tool parameters)
-2. **Write a failing test first** - The test should FAIL with the old behavior, demonstrating the bug exists
+**When to create a test:**
+- Fix modifies code (hooks, scripts, libraries) → YES, create test
+- Fix modifies hook behavior with deterministic input/output → YES, create test
+- Fix modifies prompts/instructions for LLM behavior → NO test possible, skip with justification
+
+**For testable fixes:**
+1. **Capture the failure case as a fixture** - Extract the exact input that caused the failure
+2. **Write a failing test first** - The test should FAIL with the old behavior
 3. **Verify test passes after fix** - Run the test to confirm the intervention works
 4. **Use slow tests for live interfaces** - Mark with `@pytest.mark.slow` if testing against live Claude/APIs
+
+**For prompt/instruction fixes (not testable):**
+- Document the expected behavior change in the bd issue
+- The fix itself (clearer instructions) IS the intervention
+- Do NOT create placeholder tests that pass unconditionally - that's worse than no test
 
 **Test location**: `$AOPS/tests/` - choose appropriate subdirectory:
 - `tests/hooks/` - Hook behavior tests
