@@ -15,6 +15,7 @@ Tend the personal knowledge base incrementally. Small regular attention beats ma
 
 | Activity       | What to Do                                          |
 | -------------- | --------------------------------------------------- |
+| **Lint**       | Validate frontmatter structure and YAML syntax      |
 | **Weed**       | Remove dead links, outdated content, duplicates     |
 | **Prune**      | Archive stale notes, trim bloated files             |
 | **Compost**    | Merge fragments into richer notes                   |
@@ -25,6 +26,40 @@ Tend the personal knowledge base incrementally. Small regular attention beats ma
 | **Synthesize** | Strip deliberation artifacts from implemented specs |
 
 ## Modes
+
+### lint [area]
+
+Validate frontmatter structure and YAML validity. Uses `scripts/lint_frontmatter.py`.
+
+```bash
+uv run python $AOPS/aops-tools/skills/garden/scripts/lint_frontmatter.py <path> [--recursive] [--fix] [--errors-only]
+```
+
+**What it checks:**
+
+| Code | Severity | Issue |
+|------|----------|-------|
+| FM003 | error | Opening `---` not on its own line (e.g., `---title:`) |
+| FM005 | error | Missing closing `---` delimiter |
+| FM008 | error | Invalid YAML syntax |
+| FM009 | warning | Missing identifier (id/task_id/permalink) |
+| FM010 | warning | Missing title field |
+
+**Common YAML issues requiring manual fix:**
+
+- `title: [Learn] something` - brackets parsed as YAML array; quote the title
+- `aliases: [x]` followed by `- x` - conflicting YAML syntax
+- Wikilinks in values - `[[link|alias]]` can break YAML parsing
+
+**Usage:**
+
+```bash
+# Scan for issues
+uv run python lint_frontmatter.py data/tasks/ --recursive --errors-only
+
+# Fix delimiter issues automatically
+uv run python lint_frontmatter.py data/tasks/inbox/ --fix
+```
 
 ### scan [area]
 
@@ -184,6 +219,7 @@ Default: highest-activity areas (recent modifications).
 
 | Metric                                    | Target      |
 | ----------------------------------------- | ----------- |
+| Frontmatter errors                        | 0           |
 | Orphan rate                               | <5%         |
 | Link density                              | >2 per note |
 | Broken links                              | 0           |
