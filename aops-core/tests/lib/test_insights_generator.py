@@ -256,13 +256,24 @@ class TestInsightsFilePath:
         # Unified path: sessions/ (not sessions/insights/)
         assert str(path).endswith("sessions/2026-01-13-a1b2c3d4.json")
 
-    def test_file_path_uses_aca_data(self, monkeypatch, tmp_path):
-        """Test that file path uses ACA_DATA env var."""
-        monkeypatch.setenv("ACA_DATA", str(tmp_path))
+    def test_file_path_uses_aca_sessions(self, monkeypatch, tmp_path):
+        """Test that file path uses ACA_SESSIONS env var when set."""
+        sessions_dir = tmp_path / "sessions"
+        monkeypatch.setenv("ACA_SESSIONS", str(sessions_dir))
         path = get_insights_file_path("2026-01-13", "a1b2c3d4")
-        assert str(tmp_path) in str(path)
-        # Unified path: sessions/{date}-{session_id}.json
-        assert path == tmp_path / "sessions" / "2026-01-13-a1b2c3d4.json"
+        assert path == sessions_dir / "2026-01-13-a1b2c3d4.json"
+
+    def test_file_path_falls_back_to_aca_data_parent(self, monkeypatch, tmp_path):
+        """Test that file path uses ACA_DATA parent when ACA_SESSIONS not set."""
+        # Create a data subdir to simulate $ACA_DATA
+        data_dir = tmp_path / "data"
+        data_dir.mkdir()
+        monkeypatch.delenv("ACA_SESSIONS", raising=False)
+        monkeypatch.setenv("ACA_DATA", str(data_dir))
+        path = get_insights_file_path("2026-01-13", "a1b2c3d4")
+        # Sessions should be sibling of data, not inside it
+        expected = tmp_path / "sessions" / "2026-01-13-a1b2c3d4.json"
+        assert path == expected
 
 
 class TestWriteInsightsFile:

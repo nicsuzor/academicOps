@@ -237,7 +237,7 @@ def validate_insights_schema(insights: dict[str, Any]) -> None:
 def get_insights_file_path(
     date: str, session_id: str, index: int | None = None
 ) -> Path:
-    """Get path to unified session JSON file in $ACA_DATA.
+    """Get path to unified session JSON file in $ACA_SESSIONS.
 
     Args:
         date: Date string (YYYY-MM-DD format)
@@ -246,15 +246,22 @@ def get_insights_file_path(
                If None or 0 with single reflection, uses base filename.
 
     Returns:
-        Path to unified session file: $ACA_DATA/sessions/{date}-{session_id}.json
+        Path to unified session file: $ACA_SESSIONS/{date}-{session_id}.json
         or {date}-{session_id}-{index}.json for multi-reflection sessions
 
     Note:
         As of v3.2.0, uses unified path combining insights + dashboard data.
         Legacy paths (sessions/insights/, sessions/dashboard/) are deprecated.
+        v3.3.0: Uses $ACA_SESSIONS (sibling of $ACA_DATA, not inside it).
     """
-    aca_data = Path(os.environ.get("ACA_DATA", Path.home() / "writing/data"))
-    sessions_dir = aca_data / "sessions"
+    # Use $ACA_SESSIONS if set, otherwise derive from $ACA_DATA parent
+    aca_sessions = os.environ.get("ACA_SESSIONS")
+    if aca_sessions:
+        sessions_dir = Path(aca_sessions)
+    else:
+        # Fallback: sessions is sibling of $ACA_DATA, not inside it
+        aca_data = Path(os.environ.get("ACA_DATA", Path.home() / "writing/data"))
+        sessions_dir = aca_data.parent / "sessions"
     sessions_dir.mkdir(parents=True, exist_ok=True)
     if index is not None and index > 0:
         return sessions_dir / f"{date}-{session_id}-{index}.json"
