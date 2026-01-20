@@ -65,10 +65,63 @@ def load_framework_paths() -> str:
     return "(Path table not found in FRAMEWORK-PATHS.md)"
 
 
+def _strip_frontmatter(content: str) -> str:
+    """Strip YAML frontmatter from markdown content."""
+    if content.startswith("---"):
+        parts = content.split("---", 2)
+        if len(parts) >= 3:
+            return parts[2].strip()
+    return content.strip()
+
+
+def _load_project_workflows() -> str:
+    """Load project-specific workflows from .agent/workflows/ in cwd.
+
+    Projects can define their own workflows in .agent/workflows/*.md.
+    If a WORKFLOWS.md index exists in .agent/, use that; otherwise
+    list available workflow files.
+
+    Returns:
+        Project workflows section, or empty string if none found.
+    """
+    cwd = Path.cwd()
+    project_agent_dir = cwd / ".agent"
+
+    if not project_agent_dir.exists():
+        return ""
+
+    # Check for project workflow index first
+    project_index = project_agent_dir / "WORKFLOWS.md"
+    if project_index.exists():
+        content = project_index.read_text()
+        return f"\n\n## Project-Specific Workflows ({cwd.name})\n\n{_strip_frontmatter(content)}"
+
+    # Otherwise, list workflow files in .agent/workflows/
+    workflows_dir = project_agent_dir / "workflows"
+    if not workflows_dir.exists():
+        return ""
+
+    workflow_files = sorted(workflows_dir.glob("*.md"))
+    if not workflow_files:
+        return ""
+
+    # Build a simple index from the files
+    lines = [f"\n\n## Project-Specific Workflows ({cwd.name})", ""]
+    lines.append(f"Location: `{workflows_dir}`\n")
+    lines.append("| Workflow | File |")
+    lines.append("|----------|------|")
+    for wf in workflow_files:
+        name = wf.stem.replace("-", " ").replace("_", " ").title()
+        lines.append(f"| {name} | `{wf.name}` |")
+
+    return "\n".join(lines)
+
+
 def load_workflows_index() -> str:
     """Load WORKFLOWS.md for hydrator context.
 
     Pre-loads workflow index so hydrator doesn't need to Read() at runtime.
+    Also checks for project-specific workflows in .agent/workflows/.
     Returns content after frontmatter separator.
     """
     aops_root = get_aops_root()
@@ -78,14 +131,12 @@ def load_workflows_index() -> str:
         return "(WORKFLOWS.md not found)"
 
     content = workflows_path.read_text()
+    base_workflows = _strip_frontmatter(content)
 
-    # Skip frontmatter if present
-    if content.startswith("---"):
-        parts = content.split("---", 2)
-        if len(parts) >= 3:
-            return parts[2].strip()
+    # Append project-specific workflows if present
+    project_workflows = _load_project_workflows()
 
-    return content.strip()
+    return base_workflows + project_workflows
 
 
 def load_heuristics() -> str:
