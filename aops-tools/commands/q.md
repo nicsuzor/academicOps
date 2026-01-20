@@ -34,24 +34,26 @@ mcp__plugin_aops-core_tasks__search_tasks(query="keyword")
 mcp__plugin_aops-core_tasks__get_task(id="<task-id>")  # View details of specific task
 ```
 
-### Step 2.5: Place in Hierarchy
+### Step 2.5: Place in Hierarchy (BEFORE creating)
 
-New work should connect to the task graph, not float as orphans.
+**MUST determine parent and/or depends_on BEFORE calling create_task.** Never create first, then connect.
 
 1. **List existing goals**: `mcp__plugin_aops-core_tasks__list_tasks(type="goal")`
-2. **Check if work supports a goal** - If yes, set `parent=<goal-id>` or appropriate child project
-3. **If independent/lower priority** - Create as standalone project (type="project", no parent) and document why it's not linked
-4. **Document placement** - Add brief note in task body explaining hierarchy decision
+2. **Check if work supports a goal** - If yes, note `parent=<goal-id>` or appropriate child project
+3. **Check for blocking relationships** - If this work depends on other tasks, note `depends_on=[...]`
+4. **If truly independent** - Document WHY in the task body (rare - most work connects somewhere)
 
-### Step 3: Create Tasks
+### Step 3: Create Tasks (with placement)
 
-For each discrete task identified by the hydrator:
+For each discrete task identified by the hydrator, include parent/depends_on determined in Step 2.5:
 
 ```
 mcp__plugin_aops-core_tasks__create_task(
   title="<task title>",
   type="task",  # or "bug", "action", "project", "goal"
   project="aops",
+  parent="<goal-or-project-id>",  # From Step 2.5
+  depends_on=["<blocking-task-id>"],  # If applicable
   priority=2,  # 0-4
   body="<context for future execution>"
 )
