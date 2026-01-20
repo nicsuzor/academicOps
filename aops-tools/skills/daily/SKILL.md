@@ -117,23 +117,30 @@ mcp__outlook__messages_list_recent(limit=20, folder="sent")
 From [sender]: [Actual content or summary]
 ```
 
+**CRITICAL - For each FYI item, IMMEDIATELY after writing it:**
+1. **If action required** (feedback, review, response, decision) → `mcp__plugin_aops-core_tasks__create_task()` NOW
+2. **If links to existing task** → `mcp__plugin_aops-core_tasks__update_task()` with the info
+3. **If worth future recall** → `mcp__memory__store_memory()` with tags
+
+Do NOT batch these to a later step. Task creation happens AS you process each email, not after.
+
 **After presenting**: Use `AskUserQuestion` to ask which to archive.
 
 **Archiving emails**: Use `messages_move` with `folder_path="Archive"` (not "Deleted Items" - that's trash, not archive). If the Archive folder doesn't exist for an account, ask the user which folder to use.
 
 **Empty state**: If no FYI emails, skip this section.
 
-### 2.3: Persist FYI to Knowledge Systems
+### 2.3: Verify FYI Persistence (Checkpoint)
 
-FYI content captured in the daily note MUST be linked/persisted, not siloed:
+Before moving to section 3, verify you completed the inline persistence from 2.2:
 
-1. **Link to existing tasks**: If FYI references a known task/PR/issue (e.g., "Steve responded to PR #1132"), update the related task with this info via `mcp__plugin_aops-core_tasks__update_task(id="<id>", body="...")`.
-
-2. **Persist to memory**: For FYI items worth future recall (external responses, decisions, key info), use `mcp__memory__store_memory` with tags like `fyi`, `daily`, `external-response`.
-
-3. **Create follow-up tasks**: If FYI implies action (e.g., "worth reviewing"), create a task via `mcp__plugin_aops-core_tasks__create_task()` or update existing one.
+- [ ] Each action-requiring FYI has a task created
+- [ ] Relevant existing tasks updated with new info
+- [ ] High-value FYI items stored in memory
 
 **Rule**: Information captured but not persisted is information lost. Daily note is ephemeral; memory and tasks are durable.
+
+If you skipped any, go back and create tasks NOW before proceeding.
 
 ## 3. Today's Focus
 

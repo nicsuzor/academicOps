@@ -31,7 +31,7 @@ def main():
         aca_data = Path(aca_data_env)
 
     transcripts_dir = aca_data / "sessions" / "claude"
-    insights_dir = aca_data / "sessions"  # Unified session files
+    insights_dir = aca_data / "sessions" / "summaries"  # v3.4.0: summaries subdirectory
 
     if not transcripts_dir.exists():
         print(
@@ -69,8 +69,8 @@ def main():
                 # Standard format: YYYYMMDD-project-session_id
                 session_id = parts[2]
 
-                # Check if insights exist
-                insights_file = insights_dir / f"{date_formatted}-{session_id}.json"
+                # Check if insights exist (v3.4.0: YYYYMMDD format)
+                insights_file = insights_dir / f"{date_str}-{session_id}.json"
 
                 if not insights_file.exists():
                     print(f"{transcript}|{session_id}|{date_formatted}")
