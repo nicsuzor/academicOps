@@ -1,52 +1,48 @@
 ---
 name: task-viz
-description: Generate visual mind-map of tasks using force-directed layout (excalidraw, JSON, GraphML, DOT)
+description: Generate network graph of notes/tasks using fast-indexer (JSON, GraphML, DOT)
 ---
 
-# Task Visualization
+# Task/Note Visualization
 
-Generate a force-directed visualization of tasks in multiple formats.
+Generate a network graph of markdown files showing wikilink connections.
 
 ## Usage
 
 ```bash
-uv run python $AOPS/aops-core/skills/task-viz/scripts/task_viz_bd.py output [--format FORMAT] [--include-closed] [--prefix PREFIX]
+$AOPS/scripts/bin/fast-indexer [DIRECTORY] -o OUTPUT -f FORMAT
 ```
 
 ## Options
 
-- `--format FORMAT`: Output format - `excalidraw` (default), `json`, `graphml`, `dot`, or `all`
-- `--include-closed`: Include closed issues (excluded by default)
-- `--prefix PREFIX`: Filter issues by ID prefix (e.g., `ns-`, `aops-`)
+- `-o, --output OUTPUT`: Output file path (extension auto-added based on format)
+- `-f, --format FORMAT`: Output format - `json` (default), `graphml`, `dot`
 
 ## Output Formats
 
 | Format | Extension | Compatible Tools |
 |--------|-----------|------------------|
-| `excalidraw` | `.excalidraw` | Excalidraw, VS Code plugin |
 | `json` | `.json` | D3.js, Cytoscape.js, vis.js |
 | `graphml` | `.graphml` | yEd, Gephi, Cytoscape |
 | `dot` | `.dot` | Graphviz (neato, fdp, dot) |
 
-## Visual Encoding
+## Features
 
-- Epics: Large green ellipses
-- Tasks/bugs: Rectangles colored by priority (P0=red, P1=orange, P2=yellow, P3=gray)
-- Arrows: Parent-child relationships
-- Legend: Color key in corner (excalidraw only)
+- Respects `.gitignore` files
+- Extracts tags from frontmatter and inline hashtags
+- Resolves wikilinks and markdown links
+- Parallel processing for speed (3800+ files in seconds)
 
 ## Examples
 
 ```bash
-# Generate excalidraw (default)
-uv run python $AOPS/aops-core/skills/task-viz/scripts/task_viz_bd.py ~/tasks.excalidraw
+# Generate JSON graph of all notes
+$AOPS/scripts/bin/fast-indexer ./data -o graph -f json
 
-# Generate JSON for D3/Cytoscape
-uv run python $AOPS/aops-core/skills/task-viz/scripts/task_viz_bd.py ~/tasks --format json
+# Generate GraphML for yEd/Gephi
+$AOPS/scripts/bin/fast-indexer ./data -o graph -f graphml
 
-# Generate all formats
-uv run python $AOPS/aops-core/skills/task-viz/scripts/task_viz_bd.py ~/tasks --format all --prefix aops-
-
-# Render DOT with Graphviz
-dot -Tpng tasks.dot -o tasks.png
+# Generate DOT and render with Graphviz
+$AOPS/scripts/bin/fast-indexer ./data -o graph -f dot
+dot -Tpng graph.dot -o graph.png
 ```
