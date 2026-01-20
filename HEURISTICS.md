@@ -87,3 +87,19 @@ description: Working hypotheses validated by evidence.
 **Derivation**: Task IDs are required for all task operations (update, complete, get). Omitting IDs forces users to look up what they just saw. Format: `Title (id: task-id)` or table with ID column.
 
 ---
+
+## Planning Guidance Goes to Daily Note (P#64)
+
+**Statement**: When effectual-planner or similar prioritization agents provide guidance, write output to daily note. Do NOT execute the recommended tasks.
+
+**Derivation**: User asking "help me prioritize" wants GUIDANCE FOR THEMSELVES, not automated execution. The agent's job is to surface the plan, not act on it. User controls execution timing. Write marching orders to daily note via /daily skill, then STOP.
+
+---
+
+## Enforcement Changes Require RULES.md Update (P#65)
+
+**Statement**: When adding enforcement measures (AXIOMS, HEURISTICS, CORE.md context, hooks), update RULES.md to document the new rule.
+
+**Derivation**: RULES.md is the enforcement index - it tracks what's shown to agents, when, and why. Undocumented enforcement creates invisible constraints. All information-forcing measures must be auditable.
+
+---

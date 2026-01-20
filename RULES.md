@@ -93,6 +93,7 @@ tags: [framework, enforcement, moc]
 | [[execution-over-inspection]]           | Execution Over Inspection           | framework skill compliance protocol                    | Skill invocation          |       |
 | [[test-failure-requires-user-decision]] | Test Failure Requires User Decision | HEURISTICS.md                                          | SessionStart              |       |
 | [[no-horizontal-dividers]]              | No Horizontal Dividers              | markdownlint-cli2                                      | Pre-commit                |       |
+| [[enforcement-changes-require-rules-md-update]] | Enforcement Changes Require RULES.md Update | HEURISTICS.md                              | SessionStart              |       |
 
 ## Enforcement Level Summary
 
@@ -253,6 +254,18 @@ Enforcement of [[semantic-vs-episodic-storage]] and [[current-state-machine]].
 - Operational findings → bd issues
 - Knowledge discoveries → `Skill(skill="remember")` → markdown + memory
 - Session learnings → `/session-insights` → JSON + memory
+
+## File Location Conventions
+
+Context injected via CORE.md at SessionStart. Guides where agents place files.
+
+| Content Type | Location | Example |
+|-------------|----------|---------|
+| aops feature specs | `$AOPS/specs/` | `$AOPS/specs/task-graph-network-v1.0.md` |
+| User knowledge/designs | `$ACA_DATA/designs/` | `$ACA_DATA/designs/my-project-design.md` |
+| Generated outputs | `$ACA_DATA/outputs/` | `$ACA_DATA/outputs/task-viz.excalidraw` |
+
+**Enforcement**: Prompt-level (CORE.md). No mechanical gate.
 
 ## Source Files
 
