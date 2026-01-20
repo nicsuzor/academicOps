@@ -135,3 +135,11 @@ description: Working hypotheses validated by evidence.
 **Derivation**: Large JSON, logs, or structured data are better inspected with user tooling (jq, IDE, grep). Attempting workarounds (chunked reads, head/tail) wastes cycles. Recognize handoff scenarios on first attempt: user says "show me the full X" + data is large = provide path and commands.
 
 ---
+
+## Trust Version Control (P#70)
+
+**Statement**: When removing or modifying files, delete them outright rather than creating backup copies. Trust git.
+
+**Derivation**: Git history preserves all prior versions. Creating `.backup`, `.old`, or `.bak` copies adds noise and implies distrust in the recovery mechanism already in place. If content is recoverable via `git checkout` or `git show`, the backup is redundant. Delete cleanly.
+
+---
