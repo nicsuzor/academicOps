@@ -27,6 +27,12 @@ Make NO changes that are not controlled by a general process explicitly defined 
 
 NEVER expose private data in public places. Everything in this repository is PRIVATE unless explicitly marked otherwise.
 
+**Corollaries**:
+
+- User-specific data (names, projects, personal details) MUST NOT appear in framework files ($AOPS)
+- Framework examples use generic placeholders: `[[Client Name]]`, `[[Project X]]`, not real data
+- When creating examples from real work, anonymize first
+
 **Derivation**: Privacy is a fundamental right. Accidental exposure of private data causes irreversible harm.
 
 ## Fail-Fast (Code) (P#8)
@@ -116,6 +122,7 @@ We work in git repositories - git is the backup system.
 - NEVER preserve directories/files "for reference" - git history IS the reference
 - Edit files directly, rely on git to track changes
 - Commit AND push after completing logical work units
+- Commit promptly - don't hesitate or wait for review. Git makes reversion trivial.
 
 **Derivation**: Backup files create clutter and confusion. Git provides complete history with branching, diffing, and recovery.
 

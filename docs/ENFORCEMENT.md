@@ -19,6 +19,7 @@ Agents are intelligent. They don't ignore instructions arbitrarily - they weigh 
 | 1a    | Prompt text (mention)               | Weakest       | Nice-to-have suggestion                   |
 | 1b    | Prompt text (explicit rule)         | Weak          | Stated rule but no emphasis               |
 | 1c    | Prompt text (emphasized + reasoned) | Medium-Weak   | Rule with WHY it matters                  |
+| 1d    | Structured justification format     | Medium        | Framework changes requiring reasoning     |
 | 2     | **Intent router**                   | Medium-Strong | First intelligent intervention point      |
 | 3a    | Tool restriction (soft deny)        | Medium-Strong | Tool available only via specific workflow |
 | 3b    | Skill abstraction                   | Strong        | Hide complexity, force workflow           |
@@ -57,6 +58,71 @@ parsing failures and break the enforcement pipeline.
 ```
 
 **Limitation**: Even emphatic + reasoned prompts have limited compliance. Level 2 (intent router) provides intelligent, adaptive enforcement.
+
+### Level 1d: Structured Justification Format
+
+**Works when**: Agent is modifying framework files (AXIOMS.md, HEURISTICS.md, RULES.md, hooks/*.py, settings.json deny rules).
+
+**How it works**: Before any framework modification, agent must emit a structured justification block. The tight format forces explicit reasoning through each checkpoint.
+
+**Schema** (all fields required):
+
+```yaml
+## Rule Change Justification
+
+**Scope**: [AXIOMS.md | HEURISTICS.md | RULES.md | hooks/*.py | settings.json]
+
+**Rules Loaded**:
+- AXIOMS.md: [P#X, P#Y - or "not relevant"]
+- HEURISTICS.md: [H#X, H#Y - or "not relevant"]
+- RULES.md: [enforcement entry name - or "not relevant"]
+
+**Prior Art**:
+- Search query: "[keywords used in task search]"
+- Related tasks: [task IDs found, or "none"]
+- Pattern: [existing pattern | novel pattern]
+
+**Intervention**:
+- Type: [corollary to P#X | new axiom | new heuristic | enforcement hook | deny rule]
+- Level: [1a | 1b | 1c | 2 | 3a | 3b | 4 | 5 | 6 | 7]
+- Change: [exact content, max 3 sentences]
+
+**Minimality**:
+- Why not lower level: [explanation]
+- Why not narrower scope: [explanation]
+
+**Spec Location**: [specs/enforcement.md | task body | N/A]
+
+**Escalation**: [auto | critic | custodiet | human]
+```
+
+**Escalation Matrix**:
+
+| Change Type | Default Escalation | Override Conditions |
+|-------------|-------------------|---------------------|
+| Corollary to existing axiom/heuristic | auto | None - always allowed |
+| New heuristic (soft guidance) | critic | Human if affects multiple workflows |
+| New axiom (hard rule) | human | Never auto-approve |
+| Enforcement hook (Level 4-5) | critic | Human if blocking behavior |
+| Deny rule (Level 6) | human | Never auto-approve |
+| settings.json modification | human | Never auto-approve |
+
+**Why this works**: The structured format:
+1. **Forces context loading** - Can't fill "Rules Loaded" without reading the files
+2. **Requires prior art search** - Prevents reinventing existing patterns
+3. **Demands minimality justification** - Catches over-engineering
+4. **Enables automatic routing** - Escalation field parsed for approval workflow
+
+**Integration points**:
+- `/learn` command requires this format before framework edits
+- PreToolUse hook can validate format presence for framework file edits
+- Critic/custodiet receive the justification block as input
+
+**Fails when**:
+- Agent fabricates "Rules Loaded" without actually reading
+- Format becomes boilerplate (agent copy-pastes without reasoning)
+
+**Mitigation**: Custodiet can spot-check that claimed principles are actually relevant to the change.
 
 ## When Each Mechanism Works
 

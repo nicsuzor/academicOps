@@ -26,6 +26,7 @@ from typing import Any, TypedDict, cast
 class CustodietState(TypedDict, total=False):
     """Backward compatibility for CustodietState."""
 
+    # <!-- @NS: remove backwards compatability -->
     last_compliance_ts: float
     tool_calls_since_compliance: int
     last_drift_warning: str | None
@@ -34,6 +35,8 @@ class CustodietState(TypedDict, total=False):
 
 class HydratorState(TypedDict, total=False):
     """Backward compatibility for HydratorState."""
+
+    # <!-- @NS: remove backwards compatability -->
 
     last_hydration_ts: float
     declared_workflow: dict[str, str]

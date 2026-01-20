@@ -34,10 +34,11 @@ AOPS_CORE_DIR = HOOK_DIR.parent
 _session_state_module = None
 
 
-def _get_session_state_module():
+def _get_session_state_module() -> Any:
     """Lazy import session_state module."""
     global _session_state_module
     if _session_state_module is None:
+        # <!-- @NS: tech debt. create a proper  python module -->
         # Add lib to path for session_state imports
         lib_path = str(Path(__file__).parent.parent / "lib")
         if lib_path not in sys.path:
@@ -558,7 +559,7 @@ def route_hooks(input_data: dict[str, Any]) -> tuple[dict[str, Any], int]:
     return merged_output, final_exit_code
 
 
-def main():
+def main() -> None:
     """Main entry point."""
     # Read input from stdin
     input_data: dict[str, Any] = {}

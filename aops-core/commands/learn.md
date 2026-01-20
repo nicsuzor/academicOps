@@ -23,7 +23,19 @@ permalink: commands/learn
 
 ## Workflow
 
-### 0. Create/Update Task FIRST
+### 0. Load Governance Context (MANDATORY)
+
+**Before any framework change, read these files:**
+
+```
+Read AXIOMS.md
+Read HEURISTICS.md
+Read RULES.md
+```
+
+You CANNOT proceed without loading this context. Note which principles are relevant.
+
+### 0.5. Create/Update Task FIRST
 
 **Before any fix, document in a task.** This is non-negotiable.
 
@@ -115,7 +127,47 @@ See @docs/ENFORCEMENT.md for mechanism details.
 | Enforcement wiring | RULES.md | Document how rule is enforced |
 | Session context | CORE.md | Paths, environment, "what exists" |
 
-### 4. Make the Fix (as an Experiment)
+### 4. Emit Structured Justification (MANDATORY)
+
+Before editing ANY framework file, output this exact format:
+
+```yaml
+## Rule Change Justification
+
+**Scope**: [AXIOMS.md | HEURISTICS.md | RULES.md | hooks/*.py | settings.json]
+
+**Rules Loaded**:
+- AXIOMS.md: [P#X, P#Y - or "not relevant"]
+- HEURISTICS.md: [H#X, H#Y - or "not relevant"]
+- RULES.md: [enforcement entry name - or "not relevant"]
+
+**Prior Art**:
+- Search query: "[keywords used in task search]"
+- Related tasks: [task IDs found, or "none"]
+- Pattern: [existing pattern | novel pattern]
+
+**Intervention**:
+- Type: [corollary to P#X | new axiom | new heuristic | enforcement hook | deny rule]
+- Level: [1a | 1b | 1c | 1d | 2 | 3a | 3b | 4 | 5 | 6 | 7]
+- Change: [exact content, max 3 sentences]
+
+**Minimality**:
+- Why not lower level: [explanation]
+- Why not narrower scope: [explanation]
+
+**Spec Location**: [specs/enforcement.md | task body | N/A]
+
+**Escalation**: [auto | critic | custodiet | human]
+```
+
+**Escalation routing**:
+- `auto`: Corollaries only - proceed immediately
+- `critic`: New heuristics, Level 4-5 hooks - get critic approval
+- `human`: New axioms, deny rules, settings.json - use AskUserQuestion
+
+See [[framework-change]] workflow for full escalation matrix.
+
+### 5. Make the Fix (as an Experiment)
 
 **Fixes are experiments, not permanent solutions.** The task tracks the hypothesis.
 
@@ -135,7 +187,7 @@ mcp__plugin_aops-core_tasks__update_task(
 )
 ```
 
-### 5. Generalize the Pattern (REQUIRED)
+### 6. Generalize the Pattern (REQUIRED)
 
 After fixing the immediate issue, ask: **What general class of error is this?**
 
@@ -146,7 +198,7 @@ After fixing the immediate issue, ask: **What general class of error is this?**
 
 The immediate fix handles THIS instance. The pattern recognition prevents FUTURE instances.
 
-### 6. Create Regression Test (WHEN TESTABLE)
+### 7. Create Regression Test (WHEN TESTABLE)
 
 Tests verify the fix works and prevent regressions. **But only when the fix is testable.**
 
@@ -185,11 +237,11 @@ def test_custodiet_allows_legitimate_framework_work():
     assert result["decision"] != "deny", "Should allow legitimate framework edits"
 ```
 
-### 7. Update Documentation if Needed
+### 8. Update Documentation if Needed
 
 If the fix changes documented behavior, update the relevant docs. Don't create new docs unless necessary.
 
-### 8. Report (Framework Reflection Format)
+### 9. Report (Framework Reflection Format)
 
 Output in the standard Framework Reflection format so session-insights can parse it:
 

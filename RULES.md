@@ -95,6 +95,7 @@ tags: [framework, enforcement, moc]
 | [[no-horizontal-dividers]]              | No Horizontal Dividers              | markdownlint-cli2                                      | Pre-commit                |       |
 | [[enforcement-changes-require-rules-md-update]] | Enforcement Changes Require RULES.md Update | HEURISTICS.md                              | SessionStart              |       |
 | [[just-in-time-information]]            | Just-In-Time Information              | HEURISTICS.md                                          | SessionStart              |       |
+| [[structured-justification-format]]     | Structured Justification Format         | /learn command, PreToolUse hook (planned)              | Before framework edit     | 1d    |
 | [[extract-implies-persist]]             | Extract Implies Persist in PKM Context | prompt-hydrator guidance                              | UserPromptSubmit          |       |
 | [[background-agent-visibility]]         | Background Agent Visibility            | HEURISTICS.md                                         | SessionStart              |       |
 
