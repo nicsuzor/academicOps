@@ -77,15 +77,21 @@ def parse_task_frontmatter(file_path: Path) -> dict | None:
         return None
 
 
-def read_task_files(include_closed: bool = False, prefix: str | None = None) -> list[dict[str, Any]]:
-    """Read task files from $ACA_DATA/tasks/ directory."""
-    # Get task directory from environment
-    aca_data = os.environ.get("ACA_DATA")
-    if not aca_data:
-        print("Error: ACA_DATA environment variable not set", file=sys.stderr)
-        return []
+def read_task_files(
+    directory: str | None = None,
+    include_closed: bool = False,
+    prefix: str | None = None,
+) -> list[dict[str, Any]]:
+    """Read task files from specified directory or $ACA_DATA/aops/tasks/ by default."""
+    if directory:
+        tasks_dir = Path(directory)
+    else:
+        aca_data = os.environ.get("ACA_DATA")
+        if not aca_data:
+            print("Error: ACA_DATA environment variable not set", file=sys.stderr)
+            return []
+        tasks_dir = Path(aca_data) / "aops" / "tasks"
 
-    tasks_dir = Path(aca_data) / "aops" / "tasks"
     if not tasks_dir.exists():
         print(f"Error: Tasks directory not found: {tasks_dir}", file=sys.stderr)
         return []
@@ -540,11 +546,15 @@ def main() -> int:
         "--prefix",
         help="Filter tasks by ID prefix (e.g., 'ns-', 'aops-')",
     )
+    parser.add_argument(
+        "--directory", "-d",
+        help="Directory containing task markdown files (default: $ACA_DATA/aops/tasks/)",
+    )
     args = parser.parse_args()
 
     # Read task files
-    print("Reading task files...")
-    issues = read_task_files(args.include_closed, args.prefix)
+    print(f"Reading task files from {args.directory or '$ACA_DATA/aops/tasks/'}...")
+    issues = read_task_files(args.directory, args.include_closed, args.prefix)
     print(f"  Found {len(issues)} tasks")
 
     if not issues:
