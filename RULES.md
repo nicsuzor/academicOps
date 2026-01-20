@@ -193,6 +193,14 @@ Uses passive `additionalContext` format - agent may proceed without addressing.
 
 **Note**: Reading `~/.claude/hooks/**` etc IS allowed (skill invocation needs it).
 
+## API Validation (Tasks MCP Server)
+
+| Rule                         | API          | Validation                                            | Override      | Reference                |
+| ---------------------------- | ------------ | ----------------------------------------------------- | ------------- | ------------------------ |
+| Parent task completion guard | complete_task | Reject if task has incomplete children (not done/cancelled) | `force=True` | [[aops-45392b53]] |
+
+**Note**: Technical enforcement prevents accidental premature completion. Agents must either complete children first or explicitly override with force flag.
+
 ## Pattern Blocking (PreToolUse Hook)
 
 | Category          | Pattern             | Blocked Tools | Purpose                    | Axiom                    |

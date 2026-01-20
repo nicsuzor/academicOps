@@ -73,17 +73,6 @@ When work X blocks work Y:
 **Don't**: Add "BLOCKING: Y" notes to X's body - that's prose, not structure.
 **Do**: Create Y with `depends_on=[X]` - that's queryable via `get_blocked_tasks()`.
 
-### Parent Task Completion
-
-**CRITICAL**: A parent task (one with children) must NEVER be marked done until ALL children are complete.
-
-- **Decomposition ≠ completion**: Creating subtasks doesn't complete the parent
-- **Design ≠ completion**: Completing a design document doesn't complete a design task that has implementation children
-- **Parent stays active**: While children are being worked, parent remains `active`
-- **Only done when**: ALL children are `done` or `cancelled`
-
-**Incident reference**: Session `b42281e3` (2026-01-20) incorrectly marked parent `aops-aef91c36` done after decomposition. See task `aops-966e80cb` for full analysis.
-
 ### Insight Capture
 
 When you discover something worth preserving:
