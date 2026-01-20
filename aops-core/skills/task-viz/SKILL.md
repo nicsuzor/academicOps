@@ -16,7 +16,8 @@ $AOPS/scripts/bin/fast-indexer [DIRECTORY] -o OUTPUT -f FORMAT
 ## Options
 
 - `-o, --output OUTPUT`: Output file path (extension auto-added based on format)
-- `-f, --format FORMAT`: Output format - `json` (default), `graphml`, `dot`
+- `-f, --format FORMAT`: Output format - `json`, `graphml`, `dot`, `all` (default: all)
+- `-t, --filter-type TYPE`: Filter by frontmatter type (e.g., `task,project,goal`)
 
 ## Output Formats
 
@@ -33,16 +34,37 @@ $AOPS/scripts/bin/fast-indexer [DIRECTORY] -o OUTPUT -f FORMAT
 - Resolves wikilinks and markdown links
 - Parallel processing for speed (3800+ files in seconds)
 
+## Styled Task Graphs
+
+For color-coded visualizations based on status/priority/type:
+
+```bash
+# 1. Generate JSON with type filter
+$AOPS/scripts/bin/fast-indexer ./data -o graph -f json -t task,project,goal
+
+# 2. Apply styling and render SVG
+python3 $AOPS/scripts/task_graph.py graph.json -o styled --layout sfdp
+```
+
+Color coding:
+- **Fill**: Status (green=done, blue=active, red=blocked, yellow=waiting, white=inbox)
+- **Border**: Priority (thick red=P0, thick orange=P1, gray=P2+)
+- **Shape**: Type (ellipse=goal, box3d=project, box=task, note=action)
+
 ## Examples
 
 ```bash
-# Generate JSON graph of all notes
-$AOPS/scripts/bin/fast-indexer ./data -o graph -f json
+# Generate all formats
+$AOPS/scripts/bin/fast-indexer ./data -o graph
 
 # Generate GraphML for yEd/Gephi
 $AOPS/scripts/bin/fast-indexer ./data -o graph -f graphml
 
 # Generate DOT and render with Graphviz
 $AOPS/scripts/bin/fast-indexer ./data -o graph -f dot
-dot -Tpng graph.dot -o graph.png
+sfdp -Tsvg -Goverlap=prism -Gsplines=true graph.dot -o graph.svg
+
+# Full workflow: tasks/projects/goals with styling
+$AOPS/scripts/bin/fast-indexer ./data -o tasks -f json -t task,project,goal
+python3 $AOPS/scripts/task_graph.py tasks.json -o tasks-styled
 ```
