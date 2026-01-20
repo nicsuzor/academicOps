@@ -50,6 +50,96 @@ def load_bd_issues(priority_max=2, status=None, limit=50):
     return []
 from lib.session_reader import find_sessions
 from lib.session_analyzer import SessionAnalyzer, extract_todowrite_from_session
+from lib.session_state import load_session_state, SessionState as SessionStateDict
+from lib.session_paths import get_session_short_hash
+
+
+def find_active_session_states(hours: int = 4) -> list[dict]:
+    """Find and load active session states from dated subdirectories.
+
+    Session state files are stored at:
+    ~/.claude/projects/<project>/{YYYYMMDD}-{hash}/session-state.json
+
+    Args:
+        hours: Only include sessions active within this many hours
+
+    Returns:
+        List of dicts with:
+            - session_id: Full session ID
+            - session_short: First 8 chars for display
+            - project: Project folder name
+            - state: Full SessionState dict
+            - time_ago: Human-readable time since last activity
+            - is_active: True if session has recent activity (< 10 min)
+    """
+    from datetime import timedelta
+
+    results = []
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
+
+    claude_projects = Path.home() / ".claude" / "projects"
+    if not claude_projects.exists():
+        return results
+
+    for project_dir in claude_projects.iterdir():
+        if not project_dir.is_dir():
+            continue
+
+        # Skip temp directories
+        if "-tmp" in project_dir.name or "-var-folders" in project_dir.name:
+            continue
+
+        # Find dated session directories: {YYYYMMDD}-{hash}
+        for session_dir in project_dir.iterdir():
+            if not session_dir.is_dir():
+                continue
+
+            # Match pattern: YYYYMMDD-hashcode
+            if not session_dir.name[0].isdigit():
+                continue
+
+            state_file = session_dir / "session-state.json"
+            if not state_file.exists():
+                continue
+
+            # Check file modification time
+            mtime = datetime.fromtimestamp(state_file.stat().st_mtime, tz=timezone.utc)
+            if mtime < cutoff:
+                continue
+
+            try:
+                state_data = json.loads(state_file.read_text())
+            except (json.JSONDecodeError, OSError):
+                continue
+
+            session_id = state_data.get("session_id", session_dir.name.split("-")[-1])
+            time_ago = _format_time_ago(mtime)
+            minutes_ago = (datetime.now(timezone.utc) - mtime).total_seconds() / 60
+
+            results.append({
+                "session_id": session_id,
+                "session_short": session_id[:8] if len(session_id) >= 8 else session_id,
+                "project": project_dir.name,
+                "project_display": _format_project_name(project_dir.name),
+                "state": state_data,
+                "last_modified": mtime,
+                "time_ago": time_ago,
+                "is_active": minutes_ago < 10,
+            })
+
+    # Sort by last modified, newest first
+    results.sort(key=lambda x: x["last_modified"], reverse=True)
+    return results
+
+
+def _format_project_name(project_folder: str) -> str:
+    """Convert folder name to display name.
+
+    -home-nic-writing -> writing
+    -Users-suzor-src-buttermilk -> buttermilk
+    """
+    parts = project_folder.strip("-").split("-")
+    return parts[-1] if parts else project_folder
 
 
 def load_synthesis() -> dict | None:
@@ -1398,6 +1488,162 @@ st.markdown(
         margin-bottom: 4px;
     }
 
+    /* Live Agent Status Panel */
+    .agent-status-panel {
+        background: linear-gradient(135deg, #0a1a0a 0%, #1a2d1a 100%);
+        border: 2px solid #22c55e;
+        border-radius: 8px;
+        padding: 16px 20px;
+        margin-bottom: 16px;
+    }
+
+    .agent-status-title {
+        color: #4ade80;
+        font-size: 1.1em;
+        font-weight: bold;
+        margin-bottom: 12px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .agent-status-title .pulse {
+        width: 10px;
+        height: 10px;
+        background: #22c55e;
+        border-radius: 50%;
+        animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+        0% { opacity: 1; box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); }
+        50% { opacity: 0.7; box-shadow: 0 0 0 6px rgba(34, 197, 94, 0); }
+        100% { opacity: 1; box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+    }
+
+    .agent-card {
+        background: rgba(34, 197, 94, 0.1);
+        border-left: 3px solid #22c55e;
+        border-radius: 0 6px 6px 0;
+        padding: 10px 14px;
+        margin: 8px 0;
+    }
+
+    .agent-card.idle {
+        border-left-color: #64748b;
+        background: rgba(100, 116, 139, 0.1);
+    }
+
+    .agent-card.blocked {
+        border-left-color: #ef4444;
+        background: rgba(239, 68, 68, 0.1);
+    }
+
+    .agent-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 6px;
+    }
+
+    .agent-project {
+        font-weight: bold;
+        font-size: 0.95em;
+    }
+
+    .agent-session-id {
+        font-family: monospace;
+        font-size: 0.75em;
+        background: rgba(255, 255, 255, 0.1);
+        padding: 2px 6px;
+        border-radius: 3px;
+        color: #94a3b8;
+    }
+
+    .agent-status-badge {
+        font-size: 0.75em;
+        padding: 2px 8px;
+        border-radius: 10px;
+        font-weight: bold;
+    }
+
+    .agent-status-badge.active {
+        background: #22c55e;
+        color: #000;
+    }
+
+    .agent-status-badge.idle {
+        background: #64748b;
+        color: #fff;
+    }
+
+    .agent-status-badge.blocked {
+        background: #ef4444;
+        color: #fff;
+    }
+
+    .agent-status-badge.hydrating {
+        background: #8b5cf6;
+        color: #fff;
+    }
+
+    .agent-task-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 6px;
+    }
+
+    .agent-task-label {
+        color: #94a3b8;
+        font-size: 0.8em;
+    }
+
+    .agent-task-name {
+        color: #e0e0e0;
+        font-size: 0.9em;
+        flex: 1;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .agent-progress {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 8px;
+    }
+
+    .agent-progress-bar {
+        flex: 1;
+        height: 6px;
+        background: #333;
+        border-radius: 3px;
+        overflow: hidden;
+    }
+
+    .agent-progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #4ade80, #22c55e);
+        border-radius: 3px;
+        transition: width 0.3s ease;
+    }
+
+    .agent-progress-text {
+        color: #4ade80;
+        font-size: 0.8em;
+        font-weight: bold;
+        min-width: 45px;
+        text-align: right;
+    }
+
+    .agent-workflow {
+        font-size: 0.8em;
+        color: #a78bfa;
+        margin-top: 4px;
+    }
+
 </style>
 """,
     unsafe_allow_html=True,
@@ -1569,6 +1815,85 @@ if synthesis:
 
     synth_html += "</div>"  # End panel
     st.markdown(synth_html, unsafe_allow_html=True)
+
+# === LIVE AGENT STATUS PANEL ===
+active_sessions = find_active_session_states(hours=4)
+if active_sessions:
+    agent_html = "<div class='agent-status-panel'>"
+    agent_html += "<div class='agent-status-title'><div class='pulse'></div>LIVE AGENT STATUS</div>"
+
+    for session in active_sessions[:5]:  # Limit to 5 most recent
+        state = session["state"]
+        state_data = state.get("state", {})
+        main_agent = state.get("main_agent", {})
+        hydration = state.get("hydration", {})
+
+        # Determine status
+        is_blocked = state_data.get("custodiet_blocked", False)
+        is_hydrating = state_data.get("hydration_pending", False)
+        is_active = session["is_active"]
+
+        if is_blocked:
+            status_class = "blocked"
+            status_text = "BLOCKED"
+            card_class = "blocked"
+        elif is_hydrating:
+            status_class = "hydrating"
+            status_text = "HYDRATING"
+            card_class = ""
+        elif is_active:
+            status_class = "active"
+            status_text = "ACTIVE"
+            card_class = ""
+        else:
+            status_class = "idle"
+            status_text = session["time_ago"]
+            card_class = "idle"
+
+        # Get project color
+        color = get_project_color(session["project_display"])
+
+        agent_html += f"<div class='agent-card {card_class}'>"
+        agent_html += "<div class='agent-card-header'>"
+        agent_html += f"<span class='agent-project' style='color: {color};'>{esc(session['project_display'])}</span>"
+        agent_html += f"<span class='agent-session-id'>{esc(session['session_short'])}</span>"
+        agent_html += f"<span class='agent-status-badge {status_class}'>{status_text}</span>"
+        agent_html += "</div>"
+
+        # Show current task if available
+        current_task = main_agent.get("current_task")
+        if current_task:
+            agent_html += "<div class='agent-task-row'>"
+            agent_html += "<span class='agent-task-label'>Task:</span>"
+            agent_html += f"<span class='agent-task-name'>{esc(current_task)}</span>"
+            agent_html += "</div>"
+
+        # Show workflow if available
+        workflow = state_data.get("current_workflow")
+        if workflow:
+            agent_html += f"<div class='agent-workflow'>Workflow: {esc(workflow)}</div>"
+
+        # Show todo progress if available
+        todos_completed = main_agent.get("todos_completed", 0)
+        todos_total = main_agent.get("todos_total", 0)
+        if todos_total > 0:
+            progress_pct = int((todos_completed / todos_total) * 100)
+            agent_html += "<div class='agent-progress'>"
+            agent_html += "<div class='agent-progress-bar'>"
+            agent_html += f"<div class='agent-progress-fill' style='width: {progress_pct}%;'></div>"
+            agent_html += "</div>"
+            agent_html += f"<span class='agent-progress-text'>{todos_completed}/{todos_total}</span>"
+            agent_html += "</div>"
+
+        # Show block reason if blocked
+        if is_blocked:
+            block_reason = state_data.get("custodiet_block_reason", "Unknown reason")
+            agent_html += f"<div style='color: #fca5a5; font-size: 0.8em; margin-top: 4px;'>⚠ {esc(block_reason)}</div>"
+
+        agent_html += "</div>"  # End agent-card
+
+    agent_html += "</div>"  # End panel
+    st.markdown(agent_html, unsafe_allow_html=True)
 
 # Check for blockers from daily log
 daily_log = analyzer.parse_daily_log()
