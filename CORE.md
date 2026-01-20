@@ -79,3 +79,13 @@ When you discover something worth preserving:
 **To search**: Use `mcp__memory__retrieve_memory(query="...")`.
 
 **To repair sync**: Run remember skill's sync workflow (reconciles markdown → memory server).
+
+## File Location Conventions
+
+| Content Type | Location | Example |
+|-------------|----------|---------|
+| aops feature specs | `$AOPS/specs/` | `$AOPS/specs/task-graph-network-v1.0.md` |
+| User knowledge/designs | `$ACA_DATA/designs/` | `$ACA_DATA/designs/my-project-design.md` |
+| Generated outputs | `$ACA_DATA/outputs/` | `$ACA_DATA/outputs/task-viz.excalidraw` |
+
+**Rule**: aops framework features follow the feature-development workflow and specs go in `$AOPS/specs/`. User project designs go in `$ACA_DATA/designs/`.
