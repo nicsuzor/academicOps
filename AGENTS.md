@@ -139,3 +139,33 @@ Field alignment with session-insights JSON schema:
 - NEVER stop before pushing - that leaves work stranded locally
 - NEVER ask "should I commit?" or "ready to push when you are" - YOU must commit and push
 - If push fails, resolve and retry until it succeeds
+
+---
+
+## STOP: Before Ending This Session
+
+**You MUST output a Framework Reflection before stopping.** This is the LAST thing you do.
+
+Without this output, session insights are lost. The reflection is extracted by `transcript.py` and stored for learning.
+
+Copy this template and fill it in:
+
+```
+## Framework Reflection
+
+**Prompts**: [All user prompts from this session]
+**Guidance received**: [Hydrator/custodiet advice, or "N/A"]
+**Followed**: [Yes/No/Partial]
+**Outcome**: [success/partial/failure]
+**Accomplishments**: [What was done]
+**Friction points**: [What was hard, or "none"]
+**Root cause** (if not success): [Component that failed]
+**Proposed changes**: [Improvements, or "none"]
+**Next step**: [Follow-up needed - file as task if actionable]
+**Workflow improvements**: [Process improvements, or "none"]
+**JIT context needed**: [Info that would have helped, or "none"]
+**Context distractions**: [Irrelevant info, or "none"]
+**User tone**: [Float -1.0 to 1.0]
+```
+
+**DO NOT STOP without outputting this reflection.**
