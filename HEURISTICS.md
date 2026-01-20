@@ -103,3 +103,11 @@ description: Working hypotheses validated by evidence.
 **Derivation**: RULES.md is the enforcement index - it tracks what's shown to agents, when, and why. Undocumented enforcement creates invisible constraints. All information-forcing measures must be auditable.
 
 ---
+
+## Just-In-Time Information (P#66)
+
+**Statement**: Never present information that is not necessary to the task at hand.
+
+**Derivation**: Cognitive load degrades performance. Context should be loaded on-demand when relevant, not front-loaded speculatively. This enables focused work and supports the hydrator's JIT context loading pattern.
+
+---

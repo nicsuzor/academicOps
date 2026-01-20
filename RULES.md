@@ -94,6 +94,7 @@ tags: [framework, enforcement, moc]
 | [[test-failure-requires-user-decision]] | Test Failure Requires User Decision | HEURISTICS.md                                          | SessionStart              |       |
 | [[no-horizontal-dividers]]              | No Horizontal Dividers              | markdownlint-cli2                                      | Pre-commit                |       |
 | [[enforcement-changes-require-rules-md-update]] | Enforcement Changes Require RULES.md Update | HEURISTICS.md                              | SessionStart              |       |
+| [[just-in-time-information]]            | Just-In-Time Information              | HEURISTICS.md                                          | SessionStart              |       |
 
 ## Enforcement Level Summary
 
