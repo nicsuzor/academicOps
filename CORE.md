@@ -57,6 +57,12 @@ Need to search existing knowledge?
 4. **Tasks for observations** - Don't create markdown files for time-stamped events
 5. **Synthesis flow**: task observations → patterns emerge → remember skill → semantic docs → complete task
 
+### Graph Connectivity
+
+Tasks must use `[[wikilinks]]` in the body for entities that should be connected in the knowledge graph. Tags alone are insufficient for graph connectivity.
+
+**Example**: "Recovered database for [[Client Name]]" - not just tagging with "Client Name".
+
 ### Blocking Relationships
 
 When work X blocks work Y:
@@ -79,6 +85,19 @@ When you discover something worth preserving:
 **To search**: Use `mcp__memory__retrieve_memory(query="...")`.
 
 **To repair sync**: Run remember skill's sync workflow (reconciles markdown → memory server).
+
+### Task Queries
+
+When looking for tasks:
+
+| Intent | Tool | Example |
+|--------|------|---------|
+| Find by keyword | `search_tasks(query="...")` | Find tasks mentioning "observability" |
+| List all in project | `list_tasks(project="aops")` | See all tasks regardless of status |
+| List ready to work on | `get_ready_tasks()` | Leaves with no blockers |
+| List blocked | `get_blocked_tasks()` | Tasks waiting on dependencies |
+
+**Caution**: `list_tasks(status="active")` returns ONLY tasks explicitly marked "active". Most tasks are "inbox" (default) or "done". Use `search_tasks` for keyword search or omit status filter to see all.
 
 ## Submodule Handling
 
