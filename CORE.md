@@ -80,6 +80,13 @@ When you discover something worth preserving:
 
 **To repair sync**: Run remember skill's sync workflow (reconciles markdown → memory server).
 
+## Submodule Handling
+
+`$AOPS` (aops/) is a **git submodule**. When modifying files in aops/:
+- Run git commands from within the submodule: `cd $AOPS && git status`
+- Commit in the submodule first, then update the parent repo's submodule reference
+- Parent repo's `git status` won't show aops changes (submodule is `ignore = all`)
+
 ## File Location Conventions
 
 | Content Type | Location | Example |
