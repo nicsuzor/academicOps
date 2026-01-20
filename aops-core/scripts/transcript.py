@@ -371,7 +371,10 @@ Examples:
 
                 # Get short project name
                 project = session_path.parent.name
-                if session_path.suffix == ".json":
+                if session_path.is_dir():
+                    # Antigravity brain directory
+                    short_project = "antigravity"
+                elif session_path.suffix == ".json":
                     if project == "chats":
                         hash_dir = session_path.parent.parent.name
                         short_project = f"gemini-{hash_dir[:6]}"
@@ -382,13 +385,17 @@ Examples:
                     short_project = project_parts[-1] if project_parts else "unknown"
 
                 # Get session ID
-                session_id = session_path.stem
-                if len(session_id) > 8:
-                    if session_id.startswith("session-"):
-                        parts = session_id.split("-")
-                        session_id = parts[-1]
-                    else:
-                        session_id = session_id[:8]
+                if session_path.is_dir():
+                    # Antigravity brain directory - use directory name
+                    session_id = session_path.name[:8]
+                else:
+                    session_id = session_path.stem
+                    if len(session_id) > 8:
+                        if session_id.startswith("session-"):
+                            parts = session_id.split("-")
+                            session_id = parts[-1]
+                        else:
+                            session_id = session_id[:8]
 
                 # Get slug
                 slug = processor.generate_session_slug(entries)

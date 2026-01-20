@@ -814,15 +814,17 @@ def find_sessions(
     since: datetime | None = None,
     claude_projects_dir: Path | None = None,
     include_gemini: bool = True,
+    include_antigravity: bool = True,
 ) -> list[SessionInfo]:
     """
-    Find all Claude Code and optionally Gemini sessions.
+    Find all Claude Code, Gemini, and optionally Antigravity sessions.
 
     Args:
         project: Filter to specific project (partial match)
         since: Only sessions modified after this time
         claude_projects_dir: Override default ~/.claude/projects/
         include_gemini: Whether to include sessions from ~/.gemini/tmp/
+        include_antigravity: Whether to include sessions from ~/.gemini/antigravity/brain/
 
     Returns:
         List of SessionInfo, sorted by last_modified descending (newest first)
@@ -916,6 +918,53 @@ def find_sessions(
                         session_id=session_id,
                         last_modified=mtime,
                         source="gemini",
+                    )
+                )
+
+    # 3. Find Antigravity brain sessions
+    if include_antigravity:
+        antigravity_brain_dir = Path.home() / ".gemini" / "antigravity" / "brain"
+        if antigravity_brain_dir.exists():
+            # Antigravity structure: ~/.gemini/antigravity/brain/{uuid}/
+            # Contains: task.md, implementation_plan.md, walkthrough.md
+            for brain_dir in antigravity_brain_dir.iterdir():
+                if not brain_dir.is_dir():
+                    continue
+
+                # Check if directory has any .md files (non-empty brain)
+                md_files = list(brain_dir.glob("*.md"))
+                if not md_files:
+                    continue
+
+                # Session ID is the directory name (UUID)
+                session_id = brain_dir.name
+                if len(session_id) > 8:
+                    session_id = session_id[:8]
+
+                # Project name from Antigravity
+                project_name = "antigravity"
+
+                # Filter by project if specified
+                if project and project.lower() not in project_name.lower():
+                    continue
+
+                # Get modification time from most recently modified .md file
+                mtime = max(
+                    datetime.fromtimestamp(f.stat().st_mtime, tz=UTC)
+                    for f in md_files
+                )
+
+                # Filter by time if specified
+                if since and mtime < since:
+                    continue
+
+                sessions.append(
+                    SessionInfo(
+                        path=brain_dir,  # Path to brain directory
+                        project=project_name,
+                        session_id=session_id,
+                        last_modified=mtime,
+                        source="antigravity",
                     )
                 )
 

@@ -424,7 +424,7 @@ class SessionInfo:
     project: str
     session_id: str
     last_modified: datetime
-    source: str = "claude"  # "claude" or "gemini"
+    source: str = "claude"  # "claude", "gemini", or "antigravity"
 
     @property
     def project_display(self) -> str:
@@ -689,7 +689,7 @@ class SessionProcessor:
         load_hooks: bool = True,
     ) -> tuple[SessionSummary, list[Entry], dict[str, list[Entry]]]:
         """
-        Parse session file (Claude JSONL or Gemini JSON) into structured data.
+        Parse session file (Claude JSONL, Gemini JSON, or Antigravity brain dir).
 
         Also loads related agent files and hook files.
 
@@ -697,6 +697,9 @@ class SessionProcessor:
             (session_summary, entries, agent_entries)
         """
         file_path = Path(file_path)
+        # Handle Antigravity brain directories
+        if file_path.is_dir():
+            return self._parse_antigravity_brain(file_path)
         if file_path.suffix.lower() == ".json":
             return self._parse_gemini_json(file_path)
         return self._parse_jsonl_file(
@@ -909,6 +912,113 @@ class SessionProcessor:
                 )
 
         return session_summary, entries, agent_entries
+
+    def _parse_antigravity_brain(
+        self, brain_dir: Path
+    ) -> tuple[SessionSummary, list[Entry], dict[str, list[Entry]]]:
+        """Parse Antigravity brain directory into structured data.
+
+        Antigravity brain directories contain markdown artifacts:
+        - task.md: Task checklist
+        - implementation_plan.md: Implementation details
+        - walkthrough.md: Session walkthrough (optional)
+        - audit_report.md: Audit report (optional)
+        - requirements_rubric.md: Requirements (optional)
+
+        These are combined into a transcript-like format.
+        """
+        entries: list[Entry] = []
+        session_id = brain_dir.name
+
+        # Get modification time for timestamp
+        md_files = list(brain_dir.glob("*.md"))
+        if not md_files:
+            return SessionSummary(uuid=session_id, summary="Empty Antigravity Session"), [], {}
+
+        # Use earliest file mtime as session start
+        start_time = min(
+            datetime.fromtimestamp(f.stat().st_mtime, tz=UTC) for f in md_files
+        )
+
+        # Define the order of files to process
+        file_order = [
+            "task.md",
+            "implementation_plan.md",
+            "walkthrough.md",
+            "audit_report.md",
+            "requirements_rubric.md",
+        ]
+
+        # Collect content from each file
+        combined_content = []
+        for filename in file_order:
+            file_path = brain_dir / filename
+            if file_path.exists():
+                try:
+                    content = file_path.read_text(encoding="utf-8").strip()
+                    if content:
+                        # Add section header
+                        section_name = filename.replace(".md", "").replace("_", " ").title()
+                        combined_content.append(f"## {section_name}\n\n{content}")
+                except OSError:
+                    continue
+
+        # Also include any other .md files not in the standard list
+        for md_file in md_files:
+            if md_file.name not in file_order:
+                try:
+                    content = md_file.read_text(encoding="utf-8").strip()
+                    if content:
+                        section_name = md_file.stem.replace("_", " ").title()
+                        combined_content.append(f"## {section_name}\n\n{content}")
+                except OSError:
+                    continue
+
+        if not combined_content:
+            return SessionSummary(uuid=session_id, summary="Empty Antigravity Session"), [], {}
+
+        # Create a single assistant entry with all content
+        full_content = "\n\n---\n\n".join(combined_content)
+
+        # Create entries that simulate a conversation
+        # User entry: the task/request
+        task_file = brain_dir / "task.md"
+        user_prompt = "Antigravity session"
+        if task_file.exists():
+            try:
+                task_content = task_file.read_text(encoding="utf-8").strip()
+                # Extract first line or first 100 chars as the "prompt"
+                first_line = task_content.split("\n")[0].strip()
+                if first_line:
+                    user_prompt = first_line[:200]
+            except OSError:
+                pass
+
+        user_entry = Entry(
+            type="user",
+            uuid=f"{session_id}-user",
+            message={"content": [{"type": "text", "text": user_prompt}]},
+            timestamp=start_time,
+        )
+        entries.append(user_entry)
+
+        # Assistant entry: the full content
+        assistant_entry = Entry(
+            type="assistant",
+            uuid=f"{session_id}-assistant",
+            message={"content": [{"type": "text", "text": full_content}]},
+            timestamp=start_time,
+        )
+        entries.append(assistant_entry)
+
+        # Create session summary
+        session_summary = SessionSummary(
+            uuid=session_id,
+            summary=f"Antigravity Session: {user_prompt[:50]}",
+            created_at=start_time.isoformat() if start_time else "",
+        )
+
+        return session_summary, entries, {}
 
     def _load_agent_files(self, main_file_path: Path) -> dict[str, list[Entry]]:
         """Load agent-*.jsonl files that belong to this session."""
