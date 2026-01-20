@@ -143,3 +143,11 @@ description: Working hypotheses validated by evidence.
 **Derivation**: Git history preserves all prior versions. Creating `.backup`, `.old`, or `.bak` copies adds noise and implies distrust in the recovery mechanism already in place. If content is recoverable via `git checkout` or `git show`, the backup is redundant. Delete cleanly.
 
 ---
+
+## No Commit Hesitation (P#24)
+
+**Statement**: After making bounded changes, commit immediately. Never ask permission to commit in any form.
+
+**Derivation**: Asking "should I commit?", "want me to commit?", "ready to push?", or any variant wastes a round-trip and signals uncertainty. Bounded, low-risk changes (single-file edits, config tweaks, rollbacks) should be committed as part of the action. User controls via git - they can revert if needed.
+
+---
