@@ -20,7 +20,7 @@ tags: [framework, enforcement, moc]
 | [[categorical-imperative]]                  | Categorical Imperative          | prompt-hydrator suggests skills                 | UserPromptSubmit     |       |
 | [[dont-make-shit-up]]                       | Don't Make Shit Up              | AXIOMS.md                                       | SessionStart         |       |
 | [[always-cite-sources]]                     | Always Cite Sources             | AXIOMS.md                                       | SessionStart         |       |
-| [[do-one-thing]]                            | Do One Thing                    | TodoWrite visibility, custodiet drift detection | During execution     |       |
+| [[do-one-thing]]                            | Do One Thing                    | TodoWrite visibility, custodiet drift detection, verbatim prompt comparison | During execution     |       |
 | [[data-boundaries]]                         | Data Boundaries                 | settings.json deny rules                        | PreToolUse           |       |
 | [[project-independence]]                    | Project Independence            | AXIOMS.md                                       | SessionStart         |       |
 | [[fail-fast-code]]                          | Fail-Fast (Code)                | policy_enforcer.py blocks destructive git       | PreToolUse           |       |
