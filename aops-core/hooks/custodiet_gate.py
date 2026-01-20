@@ -325,13 +325,27 @@ def _build_session_context(transcript_path: str | None, session_id: str) -> str:
     """
     lines: list[str] = []
 
-    # 1. Get intent envelope from hydrator state (primary source of authority)
+    # 1. ALWAYS extract verbatim first user prompt from transcript
+    # This is the ultimate authority baseline - what the user actually asked for.
+    # Critical for detecting scope creep that starts at hydration time.
+    if transcript_path:
+        processor = SessionProcessor()
+        _, entries, _ = processor.parse_session_file(
+            Path(transcript_path), load_agents=False, load_hooks=False
+        )
+        raw_prompt = processor._extract_first_user_request(entries)
+        if raw_prompt:
+            lines.append("**Verbatim User Prompt** (what user actually typed):")
+            lines.append(f"> {raw_prompt}")
+            lines.append("")
+
+    # 2. Get intent envelope from hydrator state (expanded/interpreted intent)
     hydrator_state = load_hydrator_state(session_id)
     if hydrator_state:
         intent = hydrator_state.get("intent_envelope")
         if intent:
-            lines.append("**Original User Request** (from hydrator):")
-            # Show full intent, not truncated - this is the authority baseline
+            lines.append("**Hydrated Intent** (hydrator's interpretation):")
+            # Show full intent - but custodiet should compare against verbatim prompt above
             lines.append(f"> {intent}")
             lines.append("")
 
@@ -363,19 +377,9 @@ def _build_session_context(transcript_path: str | None, session_id: str) -> str:
             max_turns=15,  # Expanded for long-session drift detection
         )
 
-        # Show original intent from transcript if not from hydrator
-        # Use shared extraction logic from SessionProcessor (DRY)
-        if not hydrator_state or not hydrator_state.get("intent_envelope"):
-            processor = SessionProcessor()
-            _, entries, _ = processor.parse_session_file(
-                Path(transcript_path), load_agents=False, load_hooks=False
-            )
-            intent = processor._extract_first_user_request(entries)
-            if intent:
-                lines.append("**Original User Request** (first prompt):")
-                # Full text, not truncated
-                lines.append(f"> {intent}")
-                lines.append("")
+        # NOTE: Verbatim first prompt is now extracted earlier (before hydrator state),
+        # ensuring it ALWAYS appears regardless of hydrator state.
+        # This gives custodiet the raw user intent for scope creep detection.
 
         # Recent prompts (for context, less truncated)
         prompts = ctx.get("prompts", [])
