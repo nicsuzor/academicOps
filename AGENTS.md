@@ -54,6 +54,8 @@ Use the **tasks MCP server** for work tracking:
 - `mcp__plugin_aops-core_tasks__list_tasks(project, status, type)` - List/filter tasks
 - `mcp__plugin_aops-core_tasks__search_tasks(query)` - Search tasks
 
+**Agent owns task structure.** You are autonomous on: setting parents, adding dependencies, reordering, fixing orphans. These are structural improvements with no meaningful user choice. Don't ask "should I?" - just do it.
+
 **On interruption** (e.g., user triggers /learn mid-task): Update current task `status="blocked"`, create child task for interrupt work with `parent=<current-id>`.
 
 ## Session Completion
