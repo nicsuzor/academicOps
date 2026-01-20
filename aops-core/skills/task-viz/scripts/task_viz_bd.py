@@ -97,7 +97,7 @@ def read_task_files(
         return []
 
     tasks = []
-    for task_file in tasks_dir.glob("*.md"):
+    for task_file in tasks_dir.glob("**/*.md"):
         frontmatter = parse_task_frontmatter(task_file)
         if not frontmatter:
             continue
