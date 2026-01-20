@@ -27,8 +27,12 @@ sys.path.insert(0, str(AOPS_CORE_ROOT))
 from lib.session_reader import find_sessions  # noqa: E402
 from lib.transcript_parser import (  # noqa: E402
     SessionProcessor,
+    decode_claude_project_path,
     extract_reflection_from_entries,
+    extract_working_dir_from_content,
+    extract_working_dir_from_entries,
     format_reflection_header,
+    infer_project_from_working_dir,
     reflection_to_insights,
 )
 from lib.paths import get_sessions_dir  # noqa: E402
@@ -240,6 +244,83 @@ def _transcript_is_current(session_path: Path, transcript_path: Path) -> bool:
     return transcript_path.stat().st_mtime >= session_path.stat().st_mtime
 
 
+def _infer_project(
+    session_path: Path,
+    entries: list | None = None,
+) -> str:
+    """Infer project name from session path and/or entries.
+
+    Uses multiple strategies:
+    1. For Claude sessions: decode the project folder name (-home-nic-src-myproject)
+    2. For Antigravity brain directories: try to extract from content
+    3. For Gemini sessions: use hash prefix
+    4. Fallback: extract from path or use "unknown"
+
+    Args:
+        session_path: Path to session file or directory
+        entries: Optional list of parsed session entries for content-based extraction
+
+    Returns:
+        Project name string
+    """
+    # Handle Antigravity brain directories
+    if session_path.is_dir():
+        # Try to extract working dir from brain content
+        if entries:
+            working_dir = extract_working_dir_from_entries(entries)
+            if working_dir:
+                project = infer_project_from_working_dir(working_dir)
+                if project:
+                    return project
+
+        # Try to extract from markdown content in the brain directory
+        for md_file in ["task.md", "implementation_plan.md"]:
+            md_path = session_path / md_file
+            if md_path.exists():
+                try:
+                    content = md_path.read_text(encoding="utf-8")
+                    working_dir = extract_working_dir_from_content(content)
+                    if working_dir:
+                        project = infer_project_from_working_dir(working_dir)
+                        if project:
+                            return project
+                except OSError:
+                    continue
+
+        return "antigravity"  # Default for brain directories
+
+    # Handle Gemini JSON sessions
+    if session_path.suffix == ".json":
+        project = session_path.parent.name
+        if project == "chats":
+            hash_dir = session_path.parent.parent.name
+            return f"gemini-{hash_dir[:6]}"
+        return "gemini"
+
+    # Handle Claude JSONL sessions
+    project = session_path.parent.name
+
+    # Try to extract project from entries first
+    if entries:
+        working_dir = extract_working_dir_from_entries(entries)
+        if working_dir:
+            inferred = infer_project_from_working_dir(working_dir)
+            if inferred:
+                return inferred
+
+    # Decode Claude project path format: -home-nic-src-myproject
+    if project.startswith("-"):
+        decoded = decode_claude_project_path(project)
+        if decoded:
+            inferred = infer_project_from_working_dir(decoded)
+            if inferred:
+                return inferred
+
+    # Fallback: extract last segment
+    project_parts = project.strip("-").split("-")
+    return project_parts[-1] if project_parts else "unknown"
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Convert Claude Code JSONL or Gemini JSON sessions to markdown transcripts",
@@ -369,20 +450,8 @@ Examples:
                         session_path.stat().st_mtime
                     ).strftime("%Y%m%d")
 
-                # Get short project name
-                project = session_path.parent.name
-                if session_path.is_dir():
-                    # Antigravity brain directory
-                    short_project = "antigravity"
-                elif session_path.suffix == ".json":
-                    if project == "chats":
-                        hash_dir = session_path.parent.parent.name
-                        short_project = f"gemini-{hash_dir[:6]}"
-                    else:
-                        short_project = "gemini"
-                else:
-                    project_parts = project.strip("-").split("-")
-                    short_project = project_parts[-1] if project_parts else "unknown"
+                # Get short project name (using entries for working dir extraction)
+                short_project = _infer_project(session_path, entries)
 
                 # Get session ID
                 if session_path.is_dir():
@@ -627,20 +696,8 @@ Examples:
                 session_path.stat().st_mtime
             ).strftime("%Y%m%d")
 
-        # Get short project name
-        project = session_path.parent.name
-        if session_path.suffix == ".json":
-            # Gemini structure: hash/chats/session.json
-            # Parent is 'chats', grand-parent is hash.
-            if project == "chats":
-                hash_dir = session_path.parent.parent.name
-                short_project = f"gemini-{hash_dir[:6]}"
-            else:
-                short_project = "gemini"
-        else:
-            # e.g., -opt-nic-buttermilk -> buttermilk
-            project_parts = project.strip("-").split("-")
-            short_project = project_parts[-1] if project_parts else "unknown"
+        # Get short project name (using entries for working dir extraction)
+        short_project = _infer_project(session_path, entries)
 
         # Get session ID from filename (first 8 chars of UUID)
         # Gemini filenames might have uuid at end

@@ -16,6 +16,137 @@ from pathlib import Path
 from typing import Any
 
 
+def extract_working_dir_from_entries(entries: list["Entry"]) -> str | None:
+    """Extract working directory from session entries.
+
+    Looks for working directory information in:
+    1. System messages with <env>Working directory: /path</env> format
+    2. Early user messages that contain environment context
+
+    Args:
+        entries: List of Entry objects from a parsed session
+
+    Returns:
+        Working directory path string, or None if not found
+    """
+    # Pattern to match <env>Working directory: /path</env>
+    env_pattern = re.compile(
+        r"<env>.*?Working directory:\s*([^\n<]+)", re.DOTALL | re.IGNORECASE
+    )
+
+    # Also match standalone "Working directory: /path" lines
+    standalone_pattern = re.compile(r"Working directory:\s*(/[^\n]+)")
+
+    for entry in entries[:20]:  # Only check first 20 entries for efficiency
+        # Check message content
+        text = ""
+        if entry.message:
+            content = entry.message.get("content", "")
+            if isinstance(content, str):
+                text = content
+            elif isinstance(content, list):
+                for block in content:
+                    if isinstance(block, dict) and block.get("type") == "text":
+                        text += block.get("text", "")
+
+        if not text:
+            continue
+
+        # Try env pattern first
+        match = env_pattern.search(text)
+        if match:
+            return match.group(1).strip()
+
+        # Try standalone pattern
+        match = standalone_pattern.search(text)
+        if match:
+            return match.group(1).strip()
+
+    return None
+
+
+def extract_working_dir_from_content(content: str) -> str | None:
+    """Extract working directory from text content.
+
+    Looks for path patterns that suggest working directory, such as:
+    - Explicit "Working directory: /path" statements
+    - File path references that suggest a project root
+
+    Args:
+        content: Text content to search
+
+    Returns:
+        Working directory path string, or None if not found
+    """
+    # Match Working directory lines
+    wd_match = re.search(r"Working directory:\s*(/[^\n<]+)", content, re.IGNORECASE)
+    if wd_match:
+        return wd_match.group(1).strip()
+
+    # Match cwd or current directory references
+    cwd_match = re.search(r"(?:cwd|current directory):\s*(/[^\n<]+)", content, re.IGNORECASE)
+    if cwd_match:
+        return cwd_match.group(1).strip()
+
+    return None
+
+
+def infer_project_from_working_dir(working_dir: str | None) -> str | None:
+    """Infer project name from a working directory path.
+
+    Extracts the final meaningful directory name from a path.
+    Handles common patterns like:
+    - /home/user/src/myproject -> myproject
+    - /home/user/projects/client-work -> client-work
+    - /opt/user/code -> code
+
+    Args:
+        working_dir: Full path to working directory
+
+    Returns:
+        Project name string, or None if cannot be inferred
+    """
+    if not working_dir:
+        return None
+
+    # Normalize path
+    path = Path(working_dir)
+    parts = path.parts
+
+    if len(parts) < 2:
+        return None
+
+    # Get the last non-empty part
+    project = parts[-1]
+
+    # Skip generic names and try parent
+    generic_names = {"src", "code", "projects", "repos", "work", "dev", "home", "opt"}
+    if project.lower() in generic_names and len(parts) > 2:
+        project = parts[-2]
+
+    return project if project else None
+
+
+def decode_claude_project_path(encoded_path: str) -> str | None:
+    """Decode a Claude projects directory name to get the working directory.
+
+    Claude Code stores sessions in ~/.claude/projects/{encoded-path}/ where
+    the encoded path replaces / with - (e.g., -home-nic-src-myproject).
+
+    Args:
+        encoded_path: Encoded path like "-home-nic-src-myproject"
+
+    Returns:
+        Decoded path like "/home/nic/src/myproject", or None if invalid
+    """
+    if not encoded_path or not encoded_path.startswith("-"):
+        return None
+
+    # Replace leading - and all subsequent - with /
+    decoded = encoded_path.replace("-", "/")
+    return decoded
+
+
 def parse_framework_reflection(text: str) -> dict[str, Any] | None:
     """Parse Framework Reflection section from markdown text.
 
