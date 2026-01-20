@@ -73,6 +73,7 @@ HOOK_REGISTRY: dict[str, list[dict[str, Any]]] = {
         {"script": "unified_logger.py"},
         {"script": "fail_fast_watchdog.py"},  # Injects fail-fast reminder on errors
         {"script": "custodiet_gate.py"},  # Periodic compliance check
+        {"script": "task_binding.py"},  # Bind task to session on create/claim
         {"script": "autocommit_state.py"},  # Auto-commit data/ changes
         {"script": "memory_sync_closed_issues.py"},  # Sync completed tasks to memory
     ],

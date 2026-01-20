@@ -584,10 +584,13 @@ def set_session_insights(session_id: str, insights: dict[str, Any]) -> None:
 def set_current_task(session_id: str, task_id: str, source: str = "unknown") -> bool:
     """Bind a task to the current session.
 
+    Called by hooks when task routing occurs. Enables observability:
+    every session has a linked task after hydration.
+
     Args:
         session_id: Claude Code session ID
         task_id: Task ID to bind (e.g., "aops-abc123")
-        source: Binding source ("hydrator" | "fallback_hook" | "unknown")
+        source: Binding source ("hydrator" | "fallback_hook" | "manual")
 
     Returns:
         True if binding succeeded
@@ -602,7 +605,7 @@ def set_current_task(session_id: str, task_id: str, source: str = "unknown") -> 
     state["main_agent"]["task_binding_ts"] = datetime.now(timezone.utc).isoformat()
     save_session_state(session_id, state)
 
-    logger.info(f"Task binding: session={session_id} task={task_id} source={source}")
+    logger.info(f"Task bound to session: {task_id} (source={source})")
     return True
 
 
@@ -613,7 +616,7 @@ def get_current_task(session_id: str) -> str | None:
         session_id: Claude Code session ID
 
     Returns:
-        Task ID or None
+        Task ID string or None if no task bound
     """
     state = load_session_state(session_id)
     if state is None:
