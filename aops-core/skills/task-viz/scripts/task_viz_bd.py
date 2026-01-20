@@ -2,15 +2,22 @@
 """Generate task visualization from task markdown files with force-directed layout.
 
 Reads task files from $ACA_DATA/tasks/, computes layout using networkx,
-and outputs a valid excalidraw JSON file.
+and outputs in various formats (excalidraw, JSON, GraphML, DOT).
 
 Usage:
-    python task_viz_bd.py output.excalidraw [--include-closed] [--prefix PREFIX]
+    python task_viz_bd.py output [--format FORMAT] [--include-closed] [--prefix PREFIX]
+
+Formats:
+    excalidraw  - Excalidraw JSON file (default)
+    json        - Cytoscape/D3 compatible JSON (nodes + edges)
+    graphml     - GraphML format (yEd, Gephi, Cytoscape)
+    dot         - Graphviz DOT format (neato, fdp)
+    all         - Generate all formats
 
 Examples:
     python task_viz_bd.py tasks.excalidraw
-    python task_viz_bd.py tasks.excalidraw --include-closed
-    python task_viz_bd.py tasks.excalidraw --prefix aops-
+    python task_viz_bd.py tasks --format json
+    python task_viz_bd.py tasks --format all --prefix aops-
 """
 
 import argparse
@@ -412,11 +419,118 @@ def make_legend(x: int, y: int) -> list[dict]:
     return elements
 
 
+def export_json(G: nx.DiGraph, output_path: str, positions: dict | None = None) -> None:
+    """Export graph as JSON in Cytoscape/D3 compatible format."""
+    nodes = []
+    for node_id, attrs in G.nodes(data=True):
+        node_data = {
+            "id": node_id,
+            "label": attrs.get("title", node_id),
+            "type": attrs.get("issue_type", "task"),
+            "status": attrs.get("status", "inbox"),
+            "priority": attrs.get("priority", 2),
+            "labels": attrs.get("labels", []),
+        }
+        if positions and node_id in positions:
+            node_data["x"] = positions[node_id][0]
+            node_data["y"] = positions[node_id][1]
+        nodes.append(node_data)
+
+    edges = []
+    for source, target, attrs in G.edges(data=True):
+        edges.append({
+            "source": source,
+            "target": target,
+            "weight": attrs.get("weight", 1.0),
+        })
+
+    doc = {
+        "nodes": nodes,
+        "edges": edges,
+        "metadata": {
+            "generated": time.strftime("%Y-%m-%dT%H:%M:%S"),
+            "node_count": len(nodes),
+            "edge_count": len(edges),
+        },
+    }
+
+    with open(output_path, "w") as f:
+        json.dump(doc, f, indent=2)
+
+    print(f"  JSON written to {output_path}")
+
+
+def export_graphml(G: nx.DiGraph, output_path: str) -> None:
+    """Export graph as GraphML (yEd, Gephi, Cytoscape compatible)."""
+    # Convert list attributes to strings for GraphML compatibility
+    G_copy = G.copy()
+    for node_id in G_copy.nodes():
+        if "labels" in G_copy.nodes[node_id]:
+            G_copy.nodes[node_id]["labels"] = ",".join(G_copy.nodes[node_id]["labels"])
+
+    nx.write_graphml(G_copy, output_path)
+    print(f"  GraphML written to {output_path}")
+
+
+def export_dot(G: nx.DiGraph, output_path: str) -> None:
+    """Export graph as DOT (Graphviz compatible)."""
+    lines = ["digraph tasks {"]
+    lines.append('    rankdir=TB;')
+    lines.append('    node [shape=box, style=filled];')
+    lines.append('')
+
+    # Priority to color mapping for DOT
+    priority_colors = {
+        0: "#f8d7da",  # red
+        1: "#ffe5d0",  # orange
+        2: "#fff3cd",  # yellow
+        3: "#e9ecef",  # gray
+    }
+
+    type_colors = {
+        "epic": "#d4edda",
+        "molecule": "#e2d5f1",
+    }
+
+    # Add nodes
+    for node_id, attrs in G.nodes(data=True):
+        title = attrs.get("title", node_id).replace('"', '\\"')
+        issue_type = attrs.get("issue_type", "task")
+        priority = attrs.get("priority", 2)
+
+        if issue_type in type_colors:
+            color = type_colors[issue_type]
+        else:
+            color = priority_colors.get(priority, "#fff3cd")
+
+        shape = "ellipse" if issue_type == "epic" else "box"
+        lines.append(f'    "{node_id}" [label="{title}", fillcolor="{color}", shape={shape}];')
+
+    lines.append('')
+
+    # Add edges
+    for source, target in G.edges():
+        lines.append(f'    "{source}" -> "{target}";')
+
+    lines.append("}")
+
+    with open(output_path, "w") as f:
+        f.write("\n".join(lines))
+
+    print(f"  DOT written to {output_path}")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description="Generate task visualization from task markdown files"
     )
-    parser.add_argument("output", help="Output excalidraw file path")
+    parser.add_argument("output", help="Output file path (extension auto-added for non-excalidraw formats)")
+    parser.add_argument(
+        "--format",
+        choices=["excalidraw", "json", "graphml", "dot", "all"],
+        default="excalidraw",
+        help="Output format (default: excalidraw)",
+    )
     parser.add_argument(
         "--include-closed",
         action="store_true",
@@ -453,7 +567,36 @@ def main() -> int:
     G = build_graph(issues)
     positions = compute_layout(G)
 
-    # Generate excalidraw elements
+    # Determine output paths based on format
+    output_base = args.output
+    if output_base.endswith(".excalidraw"):
+        output_base = output_base[:-11]
+    elif output_base.endswith(".json"):
+        output_base = output_base[:-5]
+    elif output_base.endswith(".graphml"):
+        output_base = output_base[:-8]
+    elif output_base.endswith(".dot"):
+        output_base = output_base[:-4]
+
+    formats_to_generate = (
+        ["excalidraw", "json", "graphml", "dot"] if args.format == "all" else [args.format]
+    )
+
+    # Export non-excalidraw formats first (simpler)
+    if "json" in formats_to_generate:
+        export_json(G, f"{output_base}.json", positions)
+
+    if "graphml" in formats_to_generate:
+        export_graphml(G, f"{output_base}.graphml")
+
+    if "dot" in formats_to_generate:
+        export_dot(G, f"{output_base}.dot")
+
+    # Generate excalidraw if requested
+    if "excalidraw" not in formats_to_generate:
+        print(f"Done. Generated {len(formats_to_generate)} format(s).")
+        return 0
+
     print("Generating excalidraw...")
     elements = []
     sizes = {}
@@ -552,12 +695,16 @@ def main() -> int:
         "files": {},
     }
 
-    # Write output
-    with open(args.output, "w") as f:
+    # Write excalidraw output
+    excalidraw_path = f"{output_base}.excalidraw"
+    with open(excalidraw_path, "w") as f:
         json.dump(doc, f, indent=2)
 
-    print(f"  Written to {args.output}")
+    print(f"  Excalidraw written to {excalidraw_path}")
     print(f"  {len(elements)} elements, canvas ~{int(max_x)}px wide")
+
+    if args.format == "all":
+        print(f"\nGenerated all formats: {output_base}.{{excalidraw,json,graphml,dot}}")
 
     return 0
 
