@@ -24,6 +24,19 @@ This returns tasks that are:
 
 ### Step 2: Claim the Top Task (or Triage if None Ready)
 
+**If user provides a task ID directly via `/pull <task-id>`**:
+
+1. Call `mcp__plugin_aops-core_tasks__get_task(id="<task-id>")` to get task details
+2. Check if the task has children (is it a leaf?):
+   - If `leaf=true`: Proceed to claim this task directly
+   - If `leaf=false` (has children): Navigate to a ready leaf subtask:
+     a. Call `mcp__plugin_aops-core_tasks__get_task_tree(id="<task-id>")` to get the full subtree
+     b. Find the first ready leaf task in the tree (status: active/inbox, no unmet dependencies)
+     c. If no ready leaves exist, report "No ready leaves in subtree for <task-id>. Consider `/pull` to triage."
+     d. Claim the ready leaf task (not the parent)
+
+**If no task ID provided** (auto-claim mode):
+
 **If no ready tasks**: Follow this fallback sequence:
 
 1. Call `mcp__plugin_aops-core_tasks__list_tasks(status="active")` to find active tasks that may need triage
@@ -36,8 +49,6 @@ This returns tasks that are:
 ```
 mcp__plugin_aops-core_tasks__update_task(id="<task-id>", status="active")
 ```
-
-If user provides a task ID directly via `/pull <task-id>`, claim that specific task instead.
 
 ### Step 3: Show Claimed Task
 
@@ -165,7 +176,7 @@ End with Framework Reflection (see AGENTS.md "Framework Reflection (Session End)
 ## Arguments
 
 - `/pull` - Auto-claim mode: claims highest priority ready task (or halts if none)
-- `/pull <task-id>` - Direct mode: claims and executes specific task
+- `/pull <task-id>` - Direct mode: if task is a leaf, claims it; if task has children, navigates to and claims the first ready leaf subtask in that tree
 
 ## Key Rules
 
@@ -222,6 +233,17 @@ End with Framework Reflection (see AGENTS.md "Framework Reflection (Session End)
    ])
    ```
 6. Parent status updated, subtasks are ready for future `/pull`
+
+### Example 4: Direct Mode with Parent Task (navigates to leaf)
+```
+/pull aops-def
+```
+1. `get_task(id="aops-def")` → task has `leaf=false` (has children from earlier decomposition)
+2. `get_task_tree(id="aops-def")` → returns tree with 3 children
+3. Scans tree for ready leaves → finds "Extract auth middleware" (status: inbox, no deps)
+4. Auto-claims the leaf: `update_task(id="aops-def-child1", status="active")`
+5. Reports: "Task aops-def has children. Claiming leaf subtask: Extract auth middleware"
+6. Proceeds to Step 3 with the leaf task
 
 **If no ready tasks but active tasks exist:**
 ```
