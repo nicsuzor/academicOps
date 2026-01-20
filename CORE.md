@@ -57,6 +57,16 @@ Need to search existing knowledge?
 4. **Tasks for observations** - Don't create markdown files for time-stamped events
 5. **Synthesis flow**: task observations → patterns emerge → remember skill → semantic docs → complete task
 
+### Blocking Relationships
+
+When work X blocks work Y:
+1. Create task for Y (the blocked work) if it doesn't exist
+2. Set Y's `depends_on=["<X-task-id>"]`
+3. Optionally note context in Y's body about why it's blocked
+
+**Don't**: Add "BLOCKING: Y" notes to X's body - that's prose, not structure.
+**Do**: Create Y with `depends_on=[X]` - that's queryable via `get_blocked_tasks()`.
+
 ### Insight Capture
 
 When you discover something worth preserving:
