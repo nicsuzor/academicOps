@@ -111,3 +111,11 @@ description: Working hypotheses validated by evidence.
 **Derivation**: Cognitive load degrades performance. Context should be loaded on-demand when relevant, not front-loaded speculatively. This enables focused work and supports the hydrator's JIT context loading pattern.
 
 ---
+
+## Extract Implies Persist in PKM Context (P#67)
+
+**Statement**: When user asks to "extract information from X", route to remember/persist workflow, not simple-question.
+
+**Derivation**: "Extract" is ambiguous - it can mean "tell me" or "file away." In a PKM system with remember capability, extract + named entities (projects, people, bugs) + document source implies knowledge should be STORED, not just displayed. Simple-question is only appropriate when the user clearly wants information returned to them without persistence.
+
+---
