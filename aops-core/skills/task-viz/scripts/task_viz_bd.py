@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Generate task visualization from bd issues with force-directed layout.
+"""Generate task visualization from task markdown files with force-directed layout.
 
-Queries bd for issues, computes layout using networkx,
+Reads task files from $ACA_DATA/tasks/, computes layout using networkx,
 and outputs a valid excalidraw JSON file.
 
 Usage:
@@ -10,17 +10,19 @@ Usage:
 Examples:
     python task_viz_bd.py tasks.excalidraw
     python task_viz_bd.py tasks.excalidraw --include-closed
-    python task_viz_bd.py tasks.excalidraw --prefix ns-
+    python task_viz_bd.py tasks.excalidraw --prefix aops-
 """
 
 import argparse
 import json
-import subprocess
+import os
 import sys
 import time
+from pathlib import Path
 from typing import Any
 
 import networkx as nx
+import yaml
 
 # Priority colors (P0-P3)
 PRIORITY_COLORS = {
@@ -47,66 +49,71 @@ STATUS_OPACITY = {
 }
 
 
-def query_bd_issues(include_closed: bool = False, prefix: str | None = None) -> list[dict]:
-    """Query bd for issues."""
-    cmd = ["bd", "list", "--json", "--limit", "0"]
-
+def parse_task_frontmatter(file_path: Path) -> dict | None:
+    """Parse YAML frontmatter from a task markdown file."""
     try:
-        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
-        issues = json.loads(result.stdout)
-    except subprocess.CalledProcessError as e:
-        print(f"Error running bd: {e.stderr}", file=sys.stderr)
-        return []
-    except json.JSONDecodeError as e:
-        print(f"Error parsing bd JSON: {e}", file=sys.stderr)
-        return []
+        with open(file_path, "r", encoding="utf-8") as f:
+            content = f.read()
 
-    # Filter out closed issues unless requested
-    if not include_closed:
-        issues = [i for i in issues if i.get("status") != "closed"]
+        # Extract YAML frontmatter between --- delimiters
+        if not content.startswith("---"):
+            return None
 
-    # Filter by prefix if specified
-    if prefix:
-        issues = [i for i in issues if i["id"].startswith(prefix)]
+        parts = content.split("---", 2)
+        if len(parts) < 3:
+            return None
 
-    return issues
-
-
-def get_issue_details(issue_id: str) -> dict | None:
-    """Get detailed info for a single issue (includes parent)."""
-    cmd = ["bd", "show", issue_id, "--json"]
-    try:
-        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
-        issues = json.loads(result.stdout)
-        return issues[0] if issues else None
-    except (subprocess.CalledProcessError, json.JSONDecodeError):
+        frontmatter = yaml.safe_load(parts[1])
+        return frontmatter
+    except Exception as e:
+        print(f"Error parsing {file_path}: {e}", file=sys.stderr)
         return None
 
 
-def discover_issues_with_parents(
-    include_closed: bool = False, prefix: str | None = None
-) -> list[dict[str, Any]]:
-    """Get all issues with parent information."""
-    issues = query_bd_issues(include_closed, prefix)
+def read_task_files(include_closed: bool = False, prefix: str | None = None) -> list[dict[str, Any]]:
+    """Read task files from $ACA_DATA/tasks/ directory."""
+    # Get task directory from environment
+    aca_data = os.environ.get("ACA_DATA")
+    if not aca_data:
+        print("Error: ACA_DATA environment variable not set", file=sys.stderr)
+        return []
 
-    # Get parent info for each issue
-    enriched = []
-    for issue in issues:
-        # Get detailed info to find parent
-        details = get_issue_details(issue["id"])
-        parent = details.get("parent") if details else None
+    tasks_dir = Path(aca_data) / "aops" / "tasks"
+    if not tasks_dir.exists():
+        print(f"Error: Tasks directory not found: {tasks_dir}", file=sys.stderr)
+        return []
 
-        enriched.append({
-            "id": issue["id"],
-            "title": issue["title"][:60],  # Truncate long titles
-            "priority": issue.get("priority", 2),
-            "status": issue.get("status", "open"),
-            "issue_type": issue.get("issue_type", "task"),
-            "labels": issue.get("labels", []),
-            "parent": parent,
+    tasks = []
+    for task_file in tasks_dir.glob("*.md"):
+        frontmatter = parse_task_frontmatter(task_file)
+        if not frontmatter:
+            continue
+
+        task_id = frontmatter.get("id")
+        if not task_id:
+            continue
+
+        # Filter by status
+        status = frontmatter.get("status", "inbox")
+        if not include_closed and status in ("done", "closed", "cancelled"):
+            continue
+
+        # Filter by prefix
+        if prefix and not task_id.startswith(prefix):
+            continue
+
+        # Map task fields to expected format
+        tasks.append({
+            "id": task_id,
+            "title": frontmatter.get("title", "Untitled")[:60],  # Truncate long titles
+            "priority": frontmatter.get("priority", 2),
+            "status": status,
+            "issue_type": frontmatter.get("type", "task"),
+            "labels": frontmatter.get("tags", []),
+            "parent": frontmatter.get("parent"),
         })
 
-    return enriched
+    return tasks
 
 
 def build_graph(issues: list[dict]) -> nx.DiGraph:
@@ -407,27 +414,27 @@ def make_legend(x: int, y: int) -> list[dict]:
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Generate task visualization from bd issues"
+        description="Generate task visualization from task markdown files"
     )
     parser.add_argument("output", help="Output excalidraw file path")
     parser.add_argument(
         "--include-closed",
         action="store_true",
-        help="Include closed issues (excluded by default)",
+        help="Include closed/done tasks (excluded by default)",
     )
     parser.add_argument(
         "--prefix",
-        help="Filter issues by ID prefix (e.g., 'ns-', 'aops-')",
+        help="Filter tasks by ID prefix (e.g., 'ns-', 'aops-')",
     )
     args = parser.parse_args()
 
-    # Discover issues
-    print("Querying bd issues...")
-    issues = discover_issues_with_parents(args.include_closed, args.prefix)
-    print(f"  Found {len(issues)} issues")
+    # Read task files
+    print("Reading task files...")
+    issues = read_task_files(args.include_closed, args.prefix)
+    print(f"  Found {len(issues)} tasks")
 
     if not issues:
-        print("No issues found. Nothing to visualize.")
+        print("No tasks found. Nothing to visualize.")
         return 1
 
     # Count by type
