@@ -574,3 +574,48 @@ def set_session_insights(session_id: str, insights: dict[str, Any]) -> None:
     state["insights"] = insights
     state["ended_at"] = datetime.now(timezone.utc).isoformat()
     save_session_state(session_id, state)
+
+
+# ============================================================================
+# Current Task API
+# ============================================================================
+
+
+def set_current_task(session_id: str, task_id: str, source: str = "unknown") -> bool:
+    """Bind a task to the current session.
+
+    Args:
+        session_id: Claude Code session ID
+        task_id: Task ID to bind (e.g., "aops-abc123")
+        source: Binding source ("hydrator" | "fallback_hook" | "unknown")
+
+    Returns:
+        True if binding succeeded
+    """
+    import logging
+
+    logger = logging.getLogger(__name__)
+
+    state = get_or_create_session_state(session_id)
+    state["main_agent"]["current_task"] = task_id
+    state["main_agent"]["task_binding_source"] = source
+    state["main_agent"]["task_binding_ts"] = datetime.now(timezone.utc).isoformat()
+    save_session_state(session_id, state)
+
+    logger.info(f"Task binding: session={session_id} task={task_id} source={source}")
+    return True
+
+
+def get_current_task(session_id: str) -> str | None:
+    """Get the task bound to this session.
+
+    Args:
+        session_id: Claude Code session ID
+
+    Returns:
+        Task ID or None
+    """
+    state = load_session_state(session_id)
+    if state is None:
+        return None
+    return state.get("main_agent", {}).get("current_task")
