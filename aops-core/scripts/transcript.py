@@ -85,7 +85,9 @@ def _process_reflection(
     session_id: str,
     date_str: str,
     project: str,
+    slug: str = "",
     agent_entries: dict | None = None,
+    timestamp: datetime | None = None,
 ) -> tuple[str | None, list[dict] | None]:
     """Extract reflections from entries and save to insights JSON files.
 
@@ -94,7 +96,9 @@ def _process_reflection(
         session_id: 8-char session ID
         date_str: Date in YYYY-MM-DD format
         project: Project name
+        slug: Short descriptive slug for the session filename
         agent_entries: Optional dict of agent/subagent entries
+        timestamp: Optional datetime for ISO 8601 timestamp in insights
 
     Returns:
         Tuple of (combined_reflection_header_markdown, list_of_reflection_dicts)
@@ -114,13 +118,15 @@ def _process_reflection(
         headers.append(header)
 
         # Convert to insights format and save
-        insights = reflection_to_insights(reflection, session_id, date_str, project)
+        insights = reflection_to_insights(
+            reflection, session_id, date_str, project, timestamp=timestamp
+        )
 
         try:
             validate_insights_schema(insights)
             # Use index for multi-reflection sessions (index > 0 gets suffix)
             idx = i if len(reflections) > 1 else None
-            insights_path = get_insights_file_path(date_str, session_id, idx)
+            insights_path = get_insights_file_path(date_str, session_id, slug, idx)
             write_insights_file(insights_path, insights)
             print(f"💡 Reflection {i + 1}/{len(reflections)} saved to: {insights_path}")
         except InsightsValidationError as e:
@@ -478,8 +484,15 @@ Examples:
                 # Extract and process reflection (if present)
                 # Convert date format from YYYYMMDD to YYYY-MM-DD for insights
                 date_iso = f"{date_str[:4]}-{date_str[4:6]}-{date_str[6:8]}"
+                # Get timestamp from entries for ISO 8601 output
+                session_timestamp = None
+                for entry in entries:
+                    if entry.timestamp:
+                        session_timestamp = entry.timestamp
+                        break
                 reflection_header, _ = _process_reflection(
-                    entries, session_id, date_iso, short_project, agent_entries
+                    entries, session_id, date_iso, short_project, slug,
+                    agent_entries, session_timestamp
                 )
 
                 # Generate full version
@@ -614,14 +627,19 @@ Examples:
 
                 # Extract reflection (get date and project from path for insights)
                 date_iso = datetime.now().strftime("%Y-%m-%d")
+                session_timestamp = None
                 for entry in entries:
                     if entry.timestamp:
                         date_iso = entry.timestamp.strftime("%Y-%m-%d")
+                        session_timestamp = entry.timestamp
                         break
                 # Get session ID from path
                 sid = session_path.stem[:8]
                 proj = session_path.parent.name.split("-")[-1] if session_path.parent.name else "unknown"
-                reflection_header, _ = _process_reflection(entries, sid, date_iso, proj, agent_entries)
+                slug = processor.generate_session_slug(entries)
+                reflection_header, _ = _process_reflection(
+                    entries, sid, date_iso, proj, slug, agent_entries, session_timestamp
+                )
 
                 # Generate transcripts and return
                 full_path = Path(f"{base_name}-full.md")
@@ -742,8 +760,15 @@ Examples:
         # Extract and process reflection (if present)
         # Convert date format from YYYYMMDD to YYYY-MM-DD for insights
         date_iso = f"{date_str[:4]}-{date_str[4:6]}-{date_str[6:8]}"
+        # Get timestamp from entries for ISO 8601 output
+        session_timestamp = None
+        for entry in entries:
+            if entry.timestamp:
+                session_timestamp = entry.timestamp
+                break
         reflection_header, _ = _process_reflection(
-            entries, session_id, date_iso, short_project, agent_entries
+            entries, session_id, date_iso, short_project, slug,
+            agent_entries, session_timestamp
         )
 
         # Generate full version

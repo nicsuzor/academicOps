@@ -178,10 +178,15 @@ def validate_insights_schema(insights: dict[str, Any]) -> None:
             f"got '{insights['outcome']}'"
         )
 
-    # Validate date format (YYYY-MM-DD)
-    if not re.match(r"^\d{4}-\d{2}-\d{2}$", insights["date"]):
+    # Validate date format (ISO 8601: YYYY-MM-DD or full timestamp with tz)
+    date_val = insights["date"]
+    # Accept YYYY-MM-DD or full ISO 8601 (e.g., 2026-01-20T14:30:00+00:00)
+    if not (
+        re.match(r"^\d{4}-\d{2}-\d{2}$", date_val)
+        or re.match(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}", date_val)
+    ):
         raise InsightsValidationError(
-            f"Field 'date' must be YYYY-MM-DD format, got '{insights['date']}'"
+            f"Field 'date' must be ISO 8601 format (YYYY-MM-DD or full timestamp), got '{date_val}'"
         )
 
     # Validate optional array fields
@@ -235,24 +240,23 @@ def validate_insights_schema(insights: dict[str, Any]) -> None:
 
 
 def get_insights_file_path(
-    date: str, session_id: str, index: int | None = None
+    date: str, session_id: str, slug: str = "", index: int | None = None
 ) -> Path:
-    """Get path to unified session JSON file in $ACA_SESSIONS.
+    """Get path to unified session JSON file in $ACA_SESSIONS/summaries/.
 
     Args:
-        date: Date string (YYYY-MM-DD format)
+        date: Date string (YYYY-MM-DD format, used for YYYYMMDD in filename)
         session_id: 8-character session hash
+        slug: Short descriptive slug for the session (e.g., "refactor-insights")
         index: Optional index for multi-reflection sessions (0, 1, 2, etc.)
                If None or 0 with single reflection, uses base filename.
 
     Returns:
-        Path to unified session file: $ACA_SESSIONS/{date}-{session_id}.json
-        or {date}-{session_id}-{index}.json for multi-reflection sessions
+        Path to session file: $ACA_SESSIONS/summaries/YYYYMMDD-{slug}.json
+        or YYYYMMDD-{slug}-{index}.json for multi-reflection sessions
 
     Note:
-        As of v3.2.0, uses unified path combining insights + dashboard data.
-        Legacy paths (sessions/insights/, sessions/dashboard/) are deprecated.
-        v3.3.0: Uses $ACA_SESSIONS (sibling of $ACA_DATA, not inside it).
+        v3.4.0: Output moved to summaries/ subdirectory, filename uses YYYYMMDD-slug format.
     """
     # Require $ACA_SESSIONS to be set - fail fast if not configured
     aca_sessions = os.environ.get("ACA_SESSIONS")
@@ -262,11 +266,21 @@ def get_insights_file_path(
             "Add to ~/.bashrc or ~/.zshrc:\n"
             "  export ACA_SESSIONS='$HOME/writing/sessions'"
         )
-    sessions_dir = Path(aca_sessions)
-    sessions_dir.mkdir(parents=True, exist_ok=True)
+    summaries_dir = Path(aca_sessions) / "summaries"
+    summaries_dir.mkdir(parents=True, exist_ok=True)
+
+    # Convert YYYY-MM-DD to YYYYMMDD
+    date_compact = date.replace("-", "")
+
+    # Build filename: YYYYMMDD-slug.json (or YYYYMMDD-slug-index.json)
+    if slug:
+        base = f"{date_compact}-{slug}"
+    else:
+        base = f"{date_compact}-{session_id}"
+
     if index is not None and index > 0:
-        return sessions_dir / f"{date}-{session_id}-{index}.json"
-    return sessions_dir / f"{date}-{session_id}.json"
+        return summaries_dir / f"{base}-{index}.json"
+    return summaries_dir / f"{base}.json"
 
 
 def merge_insights(existing: dict[str, Any], new: dict[str, Any]) -> dict[str, Any]:

@@ -150,7 +150,7 @@ class TestSchemaValidation:
             "accomplishments": [],
         }
         with pytest.raises(
-            InsightsValidationError, match="date.*must be YYYY-MM-DD format"
+            InsightsValidationError, match="date.*must be ISO 8601 format"
         ):
             validate_insights_schema(insights)
 
@@ -254,16 +254,18 @@ class TestInsightsFilePath:
         sessions_dir = tmp_path / "sessions"
         monkeypatch.setenv("ACA_SESSIONS", str(sessions_dir))
         path = get_insights_file_path("2026-01-13", "a1b2c3d4")
-        assert path.name == "2026-01-13-a1b2c3d4.json"
-        # Unified path: sessions/ (not sessions/insights/)
-        assert str(path).endswith("sessions/2026-01-13-a1b2c3d4.json")
+        # v3.4.0: Uses YYYYMMDD format and session_id as default slug
+        assert path.name == "20260113-a1b2c3d4.json"
+        # v3.4.0: Output in summaries/ subdirectory
+        assert str(path).endswith("sessions/summaries/20260113-a1b2c3d4.json")
 
     def test_file_path_uses_aca_sessions(self, monkeypatch, tmp_path):
         """Test that file path uses ACA_SESSIONS env var when set."""
         sessions_dir = tmp_path / "sessions"
         monkeypatch.setenv("ACA_SESSIONS", str(sessions_dir))
         path = get_insights_file_path("2026-01-13", "a1b2c3d4")
-        assert path == sessions_dir / "2026-01-13-a1b2c3d4.json"
+        # v3.4.0: Output in summaries/ subdirectory with YYYYMMDD format
+        assert path == sessions_dir / "summaries" / "20260113-a1b2c3d4.json"
 
     def test_file_path_raises_when_aca_sessions_not_set(self, monkeypatch):
         """Test that missing ACA_SESSIONS raises RuntimeError."""

@@ -307,19 +307,65 @@ def extract_reflection_from_entries(
     return reflections
 
 
+def _synthesize_summary(reflection: dict[str, Any], outcome: str, project: str) -> str:
+    """Synthesize a human-readable summary from reflection data.
+
+    Args:
+        reflection: Parsed reflection dict
+        outcome: Normalized outcome (success/partial/failure)
+        project: Project name
+
+    Returns:
+        Human-readable narrative summary of the session
+    """
+    accomplishments = reflection.get("accomplishments", [])
+    friction_points = reflection.get("friction_points", [])
+
+    # Build narrative based on outcome and accomplishments
+    if not accomplishments:
+        if outcome == "failure":
+            return f"Session in {project} encountered issues without completing objectives."
+        return f"Session in {project} completed."
+
+    # Summarize accomplishments into a narrative
+    if len(accomplishments) == 1:
+        summary = accomplishments[0]
+    else:
+        # Combine first accomplishment with count of others
+        summary = f"{accomplishments[0]}; plus {len(accomplishments) - 1} other accomplishment{'s' if len(accomplishments) > 2 else ''}"
+
+    # Add outcome context
+    if outcome == "success":
+        prefix = "Successfully completed: "
+    elif outcome == "partial":
+        prefix = "Partially completed: "
+    else:
+        prefix = "Attempted: "
+
+    # Add friction note if present
+    if friction_points and outcome != "success":
+        suffix = f" (encountered friction: {friction_points[0][:50]}...)" if len(friction_points[0]) > 50 else f" (encountered friction: {friction_points[0]})"
+    else:
+        suffix = ""
+
+    return f"{prefix}{summary}{suffix}"
+
+
 def reflection_to_insights(
     reflection: dict[str, Any],
     session_id: str,
     date: str,
     project: str,
+    timestamp: datetime | None = None,
 ) -> dict[str, Any]:
     """Convert parsed Framework Reflection to session insights format.
 
     Args:
         reflection: Parsed reflection dict from parse_framework_reflection
         session_id: Session ID (8-char hash)
-        date: Date string (YYYY-MM-DD)
+        date: Date string (YYYY-MM-DD) - kept for filename generation
         project: Project name
+        timestamp: Optional datetime for full ISO 8601 timestamp with tz
 
     Returns:
         Insights dict compatible with insights_generator schema
@@ -337,12 +383,22 @@ def reflection_to_insights(
             else:
                 outcome = "partial"
 
+    # Generate ISO 8601 timestamp with timezone
+    if timestamp:
+        date_iso = timestamp.isoformat()
+    else:
+        # Fall back to UTC now if no timestamp provided
+        date_iso = datetime.now(timezone.utc).isoformat()
+
+    # Synthesize human-readable summary from accomplishments
+    summary = _synthesize_summary(reflection, outcome, project)
+
     return {
         "session_id": session_id,
-        "date": date,
+        "date": date_iso,
         "project": project,
-        "summary": reflection.get("prompts", "Session completed"),
-        "prompts": reflection.get("prompts"),  # verbatim user prompts
+        "summary": summary,
+        "prompts": reflection.get("prompts"),  # verbatim user prompts (separate field)
         "outcome": outcome,
         "accomplishments": reflection.get("accomplishments", []),
         "friction_points": reflection.get("friction_points", []),
