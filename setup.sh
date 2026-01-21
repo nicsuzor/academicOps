@@ -84,29 +84,6 @@ echo -e "${GREEN}✓ AOPS=$AOPS${NC}"
 echo -e "${GREEN}✓ ACA_DATA=$ACA_DATA${NC}"
 echo
 
-# Step 1b: Install beads (bd) task tracker
-echo "Step 1b: Installing beads task tracker"
-echo "---------------------------------------"
-
-if command -v bd &> /dev/null; then
-    BD_VERSION=$(bd --version 2>/dev/null | head -1 || echo "unknown")
-    echo -e "${GREEN}✓ bd already installed: $BD_VERSION${NC}"
-else
-    echo "Installing beads (@beads/bd)..."
-    if command -v npm &> /dev/null; then
-        if npm install -g @beads/bd; then
-            echo -e "${GREEN}✓ bd installed successfully${NC}"
-        else
-            echo -e "${RED}✗ Failed to install @beads/bd${NC}"
-            echo "  Try manually: npm install -g @beads/bd"
-        fi
-    else
-        echo -e "${RED}✗ npm not found - cannot install beads${NC}"
-        echo "  Install Node.js first, then run: npm install -g @beads/bd"
-    fi
-fi
-echo
-
 # Step 2: Create symlinks in ~/.claude/
 echo "Step 2: Creating symlinks"
 echo "-------------------------"
@@ -766,7 +743,7 @@ else
     echo "  Linked heuristics.md"
 fi
 
-# Link core.md (hydrator + bd workflow instructions)
+# Link core.md (hydrator workflow instructions)
 target="$AOPS_PATH/config/antigravity/rules/core.md"
 link_path="$PROJECT_RULES_DIR/core.md"
 if [ -L "$link_path" ]; then

@@ -36,12 +36,14 @@ mcp__plugin_aops-core_tasks__get_task(id="<task-id>")  # View details of specifi
 
 ### Step 2.5: Place in Hierarchy (BEFORE creating)
 
-**MUST determine parent and/or depends_on BEFORE calling create_task.** Never create first, then connect.
+**MUST determine parent BEFORE calling create_task.** Tasks without parents are orphans - they break graph connectivity.
 
-1. **List existing goals**: `mcp__plugin_aops-core_tasks__list_tasks(type="goal")`
-2. **Check if work supports a goal** - If yes, note `parent=<goal-id>` or appropriate child project
-3. **Check for blocking relationships** - If this work depends on other tasks, note `depends_on=[...]`
-4. **If truly independent** - Document WHY in the task body (rare - most work connects somewhere)
+1. **List existing goals/projects**: `mcp__plugin_aops-core_tasks__list_tasks(type="goal")` or `list_tasks(type="project")`
+2. **Find the parent** - Every task supports some goal or project. Find it.
+3. **If no obvious parent exists** - Create an epic/project first, then create tasks under it
+4. **Check for blocking relationships** - If this work depends on other tasks, note `depends_on=[...]`
+
+**No orphans**: `depends_on` links are NOT a substitute for `parent`. A task can have both.
 
 ### Step 3: Create Tasks (with placement)
 

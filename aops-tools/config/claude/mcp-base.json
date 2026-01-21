@@ -19,11 +19,16 @@
     },
     "task_manager": {
       "type": "stdio",
-      "command": "bash",
+      "command": "uv",
       "args": [
-        "-c",
-        "cd $AOPS && PYTHONPATH=$AOPS python3 skills/tasks/server.py"
-      ]
+        "run",
+        "python",
+        "aops-core/mcp_servers/tasks_server.py"
+      ],
+      "env": {
+        "AOPS": "$AOPS",
+        "ACA_DATA": "$ACA_DATA"
+      }
     }
   }
 }

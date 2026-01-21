@@ -238,5 +238,148 @@ class TestOutputPathHandling:
                 Path(session_path).unlink(missing_ok=True)
 
 
+class TestReflectionExtraction:
+    """Test Framework Reflection extraction from session logs.
+
+    CRITICAL: These tests verify transcript.py can find and parse reflections.
+    They must pass BEFORE making changes to the reflection format.
+    """
+
+    @pytest.fixture
+    def parser_module(self):
+        """Import the transcript_parser module."""
+        framework_root = SCRIPT_PATH.parent.parent.parent
+        aops_core_root = SCRIPT_PATH.parent.parent
+        sys.path.insert(0, str(framework_root))
+        sys.path.insert(0, str(aops_core_root))
+        from lib import transcript_parser
+        return transcript_parser
+
+    def test_parse_framework_reflection_basic(self, parser_module) -> None:
+        """parse_framework_reflection extracts fields from valid reflection."""
+        text = """
+## Framework Reflection
+
+**Prompts**: Fix the authentication bug
+**Guidance received**: N/A
+**Followed**: Yes
+**Outcome**: success
+**Accomplishments**: Fixed the bug, added tests
+**Friction points**: none
+**Root cause** (if not success): N/A
+**Proposed changes**: none
+**Next step**: Deploy to production
+**Workflow improvements**: none
+**JIT context needed**: none
+**Context distractions**: none
+**User tone**: 0.5
+"""
+        result = parser_module.parse_framework_reflection(text)
+        assert result is not None, "Failed to parse valid reflection"
+        assert result.get("outcome") == "success"
+        assert "Fix the authentication bug" in result.get("prompts", "")
+        assert "Deploy to production" in result.get("next_step", "")
+
+    def test_parse_framework_reflection_with_lists(self, parser_module) -> None:
+        """parse_framework_reflection handles bullet-list fields."""
+        text = """
+## Framework Reflection
+
+**Prompts**: Multiple prompts here
+**Outcome**: partial
+**Accomplishments**:
+- Completed task A
+- Completed task B
+- Started task C
+**Friction points**:
+- Issue with API
+- Slow build times
+**Next step**: Continue work tomorrow
+"""
+        result = parser_module.parse_framework_reflection(text)
+        assert result is not None
+        assert len(result.get("accomplishments", [])) == 3
+        assert len(result.get("friction_points", [])) == 2
+        assert "Completed task A" in result["accomplishments"]
+
+    def test_parse_framework_reflection_missing_returns_none(self, parser_module) -> None:
+        """parse_framework_reflection returns None for text without reflection."""
+        text = """
+# Regular Session Content
+
+This is just normal session content with no reflection section.
+
+## Some Other Header
+
+More content here.
+"""
+        result = parser_module.parse_framework_reflection(text)
+        assert result is None, "Should return None when no reflection present"
+
+    def test_parse_framework_reflection_case_insensitive(self, parser_module) -> None:
+        """Reflection header matching is case-insensitive."""
+        text = """
+## framework reflection
+
+**Outcome**: success
+**Accomplishments**: Did the thing
+"""
+        result = parser_module.parse_framework_reflection(text)
+        assert result is not None, "Should match case-insensitive header"
+        assert result.get("outcome") == "success"
+
+    def test_extract_reflection_from_live_logs(self, parser_module) -> None:
+        """CRITICAL: Verify extraction works on actual live session logs.
+
+        This test finds recent session logs that contain reflections and
+        verifies the extraction pipeline works end-to-end.
+        """
+        import glob
+        from pathlib import Path
+
+        # Find session transcripts with Framework Reflections
+        sessions_dir = Path.home() / "writing" / "sessions" / "claude"
+        reflection_files = []
+
+        if sessions_dir.exists():
+            for md_file in sessions_dir.glob("*-full.md"):
+                try:
+                    content = md_file.read_text(encoding="utf-8")
+                    if "## Framework Reflection" in content or "## framework reflection" in content.lower():
+                        reflection_files.append(md_file)
+                        if len(reflection_files) >= 3:
+                            break
+                except Exception:
+                    continue
+
+        # We must have at least one session with a reflection to test against
+        assert len(reflection_files) > 0, (
+            "CRITICAL: No live session logs with Framework Reflections found! "
+            f"Searched in {sessions_dir}. "
+            "Cannot verify extraction works on real data."
+        )
+
+        # Test extraction on each found file
+        successful_extractions = 0
+        extraction_details = []
+        for md_file in reflection_files:
+            content = md_file.read_text(encoding="utf-8")
+            result = parser_module.parse_framework_reflection(content)
+            if result is not None and len(result) > 0:
+                successful_extractions += 1
+                extraction_details.append(
+                    f"{md_file.name}: extracted {len(result)} fields ({list(result.keys())})"
+                )
+
+        assert successful_extractions > 0, (
+            f"Found {len(reflection_files)} files with reflection headers but "
+            "failed to extract any reflections. Parser may be broken."
+        )
+        # Log what we found for visibility
+        print(f"\n✅ Successfully extracted reflections from {successful_extractions} live logs:")
+        for detail in extraction_details:
+            print(f"   {detail}")
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
