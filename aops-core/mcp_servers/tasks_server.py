@@ -975,6 +975,8 @@ def rebuild_index() -> dict[str, Any]:
     Scans all task files and rebuilds the JSON index with computed
     relationships (children, blocks, ready, blocked).
 
+    Prefers fast-indexer Rust binary when available for better performance.
+
     Returns:
         Dictionary with:
         - success: True if rebuild succeeded
@@ -983,15 +985,19 @@ def rebuild_index() -> dict[str, Any]:
     """
     try:
         index = TaskIndex(get_data_root())
-        index.rebuild()
+        # Try fast rebuild first, fall back to Python
+        used_fast = index.rebuild_fast()
+        if not used_fast:
+            index.rebuild()
         stats = index.stats()
 
-        logger.info(f"rebuild_index: {stats['total']} tasks indexed")
+        method = "fast-indexer" if used_fast else "Python"
+        logger.info(f"rebuild_index ({method}): {stats['total']} tasks indexed")
 
         return {
             "success": True,
             "stats": stats,
-            "message": f"Indexed {stats['total']} tasks",
+            "message": f"Indexed {stats['total']} tasks (via {method})",
         }
 
     except Exception as e:
