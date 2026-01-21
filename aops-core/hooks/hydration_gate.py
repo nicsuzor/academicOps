@@ -36,46 +36,34 @@ Failure mode: FAIL-CLOSED (block on error/uncertainty - safety over convenience)
 import json
 import os
 import sys
+from pathlib import Path
 from typing import Any
 
 from lib.session_state import clear_hydration_pending, is_hydration_pending
+from lib.template_loader import load_template
 
 # Default gate mode (can be overridden by HYDRATION_GATE_MODE env var)
 DEFAULT_GATE_MODE = "block"
+
+# Template paths
+HOOK_DIR = Path(__file__).parent
+BLOCK_TEMPLATE = HOOK_DIR / "templates" / "hydration-gate-block.md"
+WARN_TEMPLATE = HOOK_DIR / "templates" / "hydration-gate-warn.md"
 
 
 def get_gate_mode() -> str:
     """Get gate mode from environment, evaluated at runtime for testability."""
     return os.environ.get("HYDRATION_GATE_MODE", DEFAULT_GATE_MODE).lower()
 
-# Message shown when blocking/warning
-BLOCK_MESSAGE = """⛔ HYDRATION GATE: Invoke prompt-hydrator before proceeding.
 
-**MANDATORY**: Spawn the hydrator subagent FIRST:
+def get_block_message() -> str:
+    """Load block message from template."""
+    return load_template(BLOCK_TEMPLATE)
 
-```
-Task(subagent_type="prompt-hydrator", model="haiku",
-     description="Hydrate user request",
-     prompt="<path from UserPromptSubmit hook>")
-```
 
-The hydrator provides workflow guidance, context, and guardrails. Follow its output before continuing.
-
-**Override**: If hydrator fails, user can prefix next prompt with `.` to bypass, or use `/` for slash commands.
-"""
-
-WARN_MESSAGE = """⚠️  HYDRATION GATE (warn-only): Hydrator not invoked yet.
-
-This session is in WARN mode for testing. In production, this would BLOCK all tools.
-
-To proceed correctly, spawn the hydrator subagent:
-
-```
-Task(subagent_type="prompt-hydrator", model="haiku",
-     description="Hydrate user request",
-     prompt="<path from UserPromptSubmit hook>")
-```
-"""
+def get_warn_message() -> str:
+    """Load warn message from template."""
+    return load_template(WARN_TEMPLATE)
 
 
 def get_session_id(input_data: dict[str, Any]) -> str:
@@ -178,11 +166,11 @@ def main():
     gate_mode = get_gate_mode()
     if gate_mode == "block":
         # Block mode: exit 2 to block the tool
-        print(BLOCK_MESSAGE, file=sys.stderr)
+        print(get_block_message(), file=sys.stderr)
         sys.exit(2)
     else:
         # Warn mode (default): log warning but allow (exit 0)
-        print(WARN_MESSAGE, file=sys.stderr)
+        print(get_warn_message(), file=sys.stderr)
         print(json.dumps({}))
         sys.exit(0)
 

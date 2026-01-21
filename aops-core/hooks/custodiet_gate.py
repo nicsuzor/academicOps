@@ -33,6 +33,7 @@ from lib.session_state import (
     load_hydrator_state,
     save_custodiet_state,
 )
+from lib.template_loader import load_template
 from lib.transcript_parser import SessionProcessor
 
 # Paths
@@ -213,32 +214,6 @@ def set_drift_warning(session_id: str, warning: str) -> None:
 
     state["last_drift_warning"] = warning
     save_custodiet_state(session_id, state)
-
-
-def load_template(template_path: Path) -> str:
-    """Load template, extracting content after YAML frontmatter.
-
-    Only strips the YAML frontmatter block (first --- to closing ---).
-    Preserves any --- horizontal rules in content.
-    """
-    if not template_path.exists():
-        raise FileNotFoundError(f"Template not found: {template_path}")
-
-    content = template_path.read_text()
-    # Handle YAML frontmatter: ---\nmetadata\n---\ncontent
-    if content.startswith("---\n"):
-        # Find ONLY the closing frontmatter --- (first occurrence after opening)
-        # Split once to get frontmatter + rest, preserving any --- in content
-        first_newline = content.index("\n")  # Skip opening ---
-        rest = content[first_newline + 1 :]
-        if "\n---\n" in rest:
-            # Take everything after the closing frontmatter delimiter
-            closing_idx = rest.index("\n---\n")
-            content = rest[closing_idx + 5 :]  # Skip \n---\n (5 chars)
-        elif "\n---" in rest and rest.rstrip().endswith("---"):
-            # Edge case: frontmatter only, no content after
-            content = ""
-    return content.strip()
 
 
 def load_framework_content() -> tuple[str, str, str]:

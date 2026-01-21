@@ -30,6 +30,7 @@ from lib.session_state import (
     set_gates_bypassed,
     clear_reflection_output,
 )
+from lib.template_loader import load_template
 
 # Paths
 HOOK_DIR = Path(__file__).parent
@@ -287,20 +288,6 @@ def cleanup_old_temp_files() -> None:
                 f.unlink()
         except OSError:
             pass  # Ignore cleanup errors
-
-
-def load_template(template_path: Path) -> str:
-    """Load template from file, extracting content after --- separator."""
-    if not template_path.exists():
-        raise FileNotFoundError(f"Template not found: {template_path}")
-
-    content = template_path.read_text()
-
-    # Extract content after the --- separator (skip frontmatter/docs)
-    if "\n---\n" in content:
-        content = content.split("\n---\n", 1)[1]
-
-    return content.strip()
 
 
 def write_temp_file(content: str) -> Path:

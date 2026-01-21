@@ -168,12 +168,13 @@ class TestTempFileCreation:
 
 
 class TestTemplateLoading:
-    """Test template loading logic."""
+    """Test template loading logic (uses shared lib.template_loader)."""
 
     def test_load_template_extracts_content(self):
-        """Test that load_template extracts content after --- separator."""
+        """Test that load_template extracts content after YAML frontmatter."""
         with tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False) as f:
-            f.write("Frontmatter docs here\n---\nActual content here")
+            # YAML frontmatter format: starts with ---, ends with ---
+            f.write("---\nname: test\n---\nActual content here")
             temp_path = Path(f.name)
 
         try:
