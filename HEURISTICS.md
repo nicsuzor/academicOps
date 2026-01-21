@@ -172,3 +172,17 @@ description: Working hypotheses validated by evidence.
 **Derivation**: Empty child tasks duplicate information without adding value. They create task sprawl and make the queue harder to navigate. Decomposition should be triggered by need (claiming work, adding detail), not by reflex.
 
 ---
+
+## Task Sequencing on Insert (P#73)
+
+**Statement**: When creating tasks, check for an existing project branch and insert with appropriate parent/depends_on. Projects should grow as long branches, not unconnected roots.
+
+**Corollaries**:
+- Before `create_task()`, search for related tasks in the same project
+- Set `parent` to the most relevant existing task, or `depends_on` if sequential
+- Root-level orphans ("thorns") fragment project coherence
+- The agent is autonomous on structural improvements - don't ask "should I set parent?"
+
+**Derivation**: Orphan tasks at the root level create disconnected work items. Sequential branches show progression and enable `/pull` to find contextually related work.
+
+---

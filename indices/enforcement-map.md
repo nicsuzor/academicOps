@@ -100,6 +100,7 @@ tags: [framework, enforcement, moc]
 | [[background-agent-visibility]]         | Background Agent Visibility            | HEURISTICS.md                                         | SessionStart              |       |
 | [[imminent-deadline-surfacing]]         | Imminent Deadline Surfacing            | daily skill DEADLINE TODAY category                   | /daily invocation         | 1a    |
 | [[decomposed-tasks-complete]]           | Decomposed Tasks Are Complete          | HEURISTICS.md                                         | SessionStart              |       |
+| [[task-sequencing-on-insert]]           | Task Sequencing on Insert              | HEURISTICS.md                                         | SessionStart              |       |
 
 ## Enforcement Level Summary
 

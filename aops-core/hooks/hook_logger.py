@@ -6,13 +6,17 @@ Provides centralized logging for hook events, consolidating duplicated logging
 logic across multiple hooks. All hooks should use log_hook_event() instead of
 implementing their own logging.
 
-Logs to ~/writing/sessions/status/hooks.jsonl
+Logs to ~/.claude/projects/<project>/<date>-<shorthash>-hooks.jsonl
+(per-session file alongside Claude transcripts)
 """
 
 import json
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
+
+from lib.session_paths import get_claude_project_folder, get_session_short_hash
 
 
 def _json_serializer(obj: Any) -> str:
@@ -39,10 +43,11 @@ def log_hook_event(
     exit_code: int = 0,
 ) -> None:
     """
-    Log a hook event to the session hooks log file.
+    Log a hook event to the per-session hooks log file.
 
-    Writes to: ~/writing/sessions/status/hooks.jsonl
+    Writes to: ~/.claude/projects/<project>/<date>-<shorthash>-hooks.jsonl
 
+    Per-session hook logs are stored alongside Claude transcripts for easy correlation.
     Combines input and output data into a single JSONL entry with timestamp.
     If session_id is missing or empty, raises ValueError immediately (fail-fast).
 
@@ -76,15 +81,22 @@ def log_hook_event(
         raise ValueError("session_id cannot be empty or None")
 
     try:
-        # Get session directory for log files
-        from lib.session_paths import get_session_directory
-
-        # Extract date from input or use today
+        # Build per-session hook log path:
+        # ~/.claude/projects/<project>/<date>-<shorthash>-hooks.jsonl
         date = input_data.get("date")
-        session_dir = get_session_directory(session_id, date)
+        if date is None:
+            date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
-        # Hook logs stored in session subdirectory
-        log_path = session_dir / "hooks.jsonl"
+        project_folder = get_claude_project_folder()
+        short_hash = get_session_short_hash(session_id)
+        date_compact = date.replace("-", "")  # YYYY-MM-DD -> YYYYMMDD
+
+        # Claude projects directory
+        claude_projects_dir = Path.home() / ".claude" / "projects" / project_folder
+        claude_projects_dir.mkdir(parents=True, exist_ok=True)
+
+        # Per-session hooks file
+        log_path = claude_projects_dir / f"{date_compact}-{short_hash}-hooks.jsonl"
 
         # Create log entry combining input and output data
         log_entry: dict[str, Any] = {
