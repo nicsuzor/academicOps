@@ -14,9 +14,6 @@ import sys
 from datetime import datetime
 from typing import Any
 
-from lib.paths import get_data_root
-from hooks.session_logger import get_log_path
-
 
 def _json_serializer(obj: Any) -> str:
     """
