@@ -30,7 +30,7 @@ permalink: commands/learn
 ```
 Read AXIOMS.md
 Read HEURISTICS.md
-Read RULES.md
+Read enforcement-map.md
 ```
 
 You CANNOT proceed without loading this context. Note which principles are relevant.
@@ -124,7 +124,7 @@ See @docs/ENFORCEMENT.md for mechanism details.
 |----------|------|-------------|
 | Hard rule, never violate | AXIOMS.md | Principles that apply universally |
 | Soft guidance, exceptions exist | HEURISTICS.md | Rules of thumb, "prefer X over Y" |
-| Enforcement wiring | RULES.md | Document how rule is enforced |
+| Enforcement wiring | enforcement-map.md | Document how rule is enforced |
 | Session context | CORE.md | Paths, environment, "what exists" |
 
 ### 4. Emit Structured Justification (MANDATORY)
@@ -134,12 +134,12 @@ Before editing ANY framework file, output this exact format:
 ```yaml
 ## Rule Change Justification
 
-**Scope**: [AXIOMS.md | HEURISTICS.md | RULES.md | hooks/*.py | settings.json]
+**Scope**: [AXIOMS.md | HEURISTICS.md | enforcement-map.md | hooks/*.py | settings.json]
 
 **Rules Loaded**:
 - AXIOMS.md: [P#X, P#Y - or "not relevant"]
 - HEURISTICS.md: [H#X, H#Y - or "not relevant"]
-- RULES.md: [enforcement entry name - or "not relevant"]
+- enforcement-map.md: [enforcement entry name - or "not relevant"]
 
 **Prior Art**:
 - Search query: "[keywords used in task search]"
@@ -192,7 +192,7 @@ mcp__plugin_aops-core_tasks__update_task(
 After fixing the immediate issue, ask: **What general class of error is this?**
 
 1. **Name the pattern** - e.g., "user data in framework files", "scope creep", "missing validation"
-2. **Check existing rules** - Does an axiom/heuristic already cover this? (Search AXIOMS.md, HEURISTICS.md, RULES.md)
+2. **Check existing rules** - Does an axiom/heuristic already cover this? (Search AXIOMS.md, HEURISTICS.md, enforcement-map.md)
 3. **If rule exists but wasn't followed** - Strengthen enforcement (add to task notes)
 4. **If novel pattern** - Log it in the task body for future tracking
 

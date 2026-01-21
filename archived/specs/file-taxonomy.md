@@ -169,7 +169,7 @@ Every framework file belongs to exactly one category. This classification determ
 
 **Examples**:
 
-- `RULES.md` - Current enforcement rules (auto-generated)
+- `enforcement-map.md` - Current enforcement rules (auto-generated)
 
 **Note**: Currently most "state-like" files (INDEX.md, README.md feature list) are manually maintained. These are treated as SPEC until automation exists.
 
@@ -193,7 +193,7 @@ Every framework file belongs to exactly one category. This classification determ
 | `commands/`                                                  | INSTRUCTION | Slash commands                  |
 | `agents/`                                                    | INSTRUCTION | Agent definitions               |
 | `*/templates/`                                               | TEMPLATE    | Output patterns                 |
-| `RULES.md`                                                   | STATE       | Auto-generated                  |
+| `enforcement-map.md`                                                   | STATE       | Auto-generated                  |
 
 ## Frontmatter Convention
 

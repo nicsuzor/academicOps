@@ -8,4 +8,4 @@ description: Reference to hooks documentation and architecture
 For hook development guidance, see:
 
 - [[skills/framework/references/hooks.md]] - Complete technical reference
-- [[RULES.md]] - Current enforcement rules mapped to hooks
+- [[enforcement-map.md]] - Current enforcement rules mapped to hooks

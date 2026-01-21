@@ -93,7 +93,7 @@ tags: [framework, enforcement, moc]
 | [[execution-over-inspection]]           | Execution Over Inspection           | framework skill compliance protocol                    | Skill invocation          |       |
 | [[test-failure-requires-user-decision]] | Test Failure Requires User Decision | HEURISTICS.md                                          | SessionStart              |       |
 | [[no-horizontal-dividers]]              | No Horizontal Dividers              | markdownlint-cli2                                      | Pre-commit                |       |
-| [[enforcement-changes-require-rules-md-update]] | Enforcement Changes Require RULES.md Update | HEURISTICS.md                              | SessionStart              |       |
+| [[enforcement-changes-require-rules-md-update]] | Enforcement Changes Require enforcement-map.md Update | HEURISTICS.md                              | SessionStart              |       |
 | [[just-in-time-information]]            | Just-In-Time Information              | HEURISTICS.md                                          | SessionStart              |       |
 | [[structured-justification-format]]     | Structured Justification Format         | /learn command, PreToolUse hook (planned)              | Before framework edit     | 1d    |
 | [[extract-implies-persist]]             | Extract Implies Persist in PKM Context | prompt-hydrator guidance                              | UserPromptSubmit          |       |
@@ -128,7 +128,7 @@ Any modification to files that are fed to agents at session start is a prompt-le
 | `AGENTS.md` | Agent routing and aops rules | CLAUDE.md reference |
 | Agent frontmatter (`agents/*.md`) | Agent-specific context | Task tool invocation |
 
-**Rule**: When adding instructions to ANY of these files, you MUST document the enforcement in RULES.md. This applies to:
+**Rule**: When adding instructions to ANY of these files, you MUST document the enforcement in enforcement-map.md. This applies to:
 - New axiom or heuristic → Add row to mapping table
 - Convention in CORE.md → Add to "File Location Conventions" or create new section
 - Agent-specific rule → Document in "Agent Tool Permissions" or relevant section

@@ -209,7 +209,7 @@ Or via command:
 - [[documentation-architecture]] - Defines purpose of README.md, INDEX.md, FRAMEWORK-PATHS.md
 - [[specs/framework-health.md|framework-health]] - Health metrics and CI/CD enforcement
 - [[INDEX.md]] - File accounting target
-- [[RULES.md]] - Enforcement mapping target
+- [[enforcement-map.md]] - Enforcement mapping target
 
 ### Used By
 

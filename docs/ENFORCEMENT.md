@@ -61,7 +61,7 @@ parsing failures and break the enforcement pipeline.
 
 ### Level 1d: Structured Justification Format
 
-**Works when**: Agent is modifying framework files (AXIOMS.md, HEURISTICS.md, RULES.md, hooks/*.py, settings.json deny rules).
+**Works when**: Agent is modifying framework files (AXIOMS.md, HEURISTICS.md, enforcement-map.md, hooks/*.py, settings.json deny rules).
 
 **How it works**: Before any framework modification, agent must emit a structured justification block. The tight format forces explicit reasoning through each checkpoint.
 
@@ -70,12 +70,12 @@ parsing failures and break the enforcement pipeline.
 ```yaml
 ## Rule Change Justification
 
-**Scope**: [AXIOMS.md | HEURISTICS.md | RULES.md | hooks/*.py | settings.json]
+**Scope**: [AXIOMS.md | HEURISTICS.md | enforcement-map.md | hooks/*.py | settings.json]
 
 **Rules Loaded**:
 - AXIOMS.md: [P#X, P#Y - or "not relevant"]
 - HEURISTICS.md: [H#X, H#Y - or "not relevant"]
-- RULES.md: [enforcement entry name - or "not relevant"]
+- enforcement-map.md: [enforcement entry name - or "not relevant"]
 
 **Prior Art**:
 - Search query: "[keywords used in task search]"

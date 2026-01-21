@@ -27,4 +27,4 @@ Evidence of violations and corrections tracked in bd issues (label: `learning`).
 
 ## Enforcement
 
-Hard gate via `policy_enforcer.py` blocking destructive git commands at PreToolUse. See [[RULES.md]].
+Hard gate via `policy_enforcer.py` blocking destructive git commands at PreToolUse. See [[enforcement-map.md]].

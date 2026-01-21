@@ -25,7 +25,7 @@ Generated indices are root-level markdown files designed for direct agent consum
 | File                  | Purpose                                           | Derived From                            |
 | --------------------- | ------------------------------------------------- | --------------------------------------- |
 | `INDEX.md`            | File tree and locations                           | Directory structure                     |
-| `RULES.md`            | Enforcement mechanisms                            | Hooks, settings.json, pre-commit        |
+| `enforcement-map.md`            | Enforcement mechanisms                            | Hooks, settings.json, pre-commit        |
 | `WORKFLOWS.md`        | Task classification and routing                   | Skills, agents, guardrails              |
 | `docs/ENFORCEMENT.md` | Practical enforcement guide + root cause analysis | specs/enforcement.md, observed patterns |
 
@@ -36,7 +36,7 @@ Source files (skills/, agents/, hooks/, specs/)
     ↓
 Audit skill reads sources, computes indices
     ↓
-Generated indices (INDEX.md, RULES.md, WORKFLOWS.md, docs/ENFORCEMENT.md)
+Generated indices (INDEX.md, enforcement-map.md, WORKFLOWS.md, docs/ENFORCEMENT.md)
     ↓
 Agents read indices for decisions
 ```
@@ -77,7 +77,7 @@ Derives file tree from:
 - File purposes from frontmatter/headers
 - Category assignments
 
-## RULES.md
+## enforcement-map.md
 
 Derives enforcement from:
 
@@ -92,7 +92,7 @@ The `/audit` skill (or a dedicated regeneration command) must:
 1. **Read sources**: Scan skills/, agents/, hooks/, specs/
 2. **Extract metadata**: Frontmatter, descriptions, relationships
 3. **Compute indices**: Generate structured tables
-4. **Write indices**: Overwrite INDEX.md, RULES.md, WORKFLOWS.md
+4. **Write indices**: Overwrite INDEX.md, enforcement-map.md, WORKFLOWS.md
 5. **Verify consistency**: Flag if sources have conflicts
 
 **Trigger**: Run audit after any structural change to framework.
@@ -111,7 +111,7 @@ The `/audit` skill (or a dedicated regeneration command) must:
 Current state:
 
 - `INDEX.md` exists (manually maintained)
-- `RULES.md` exists (manually maintained)
+- `enforcement-map.md` exists (manually maintained)
 - `WORKFLOWS.md` exists (generated)
 - `docs/ENFORCEMENT.md` exists (manually maintained, needs generation)
 

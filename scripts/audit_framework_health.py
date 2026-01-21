@@ -223,10 +223,10 @@ def check_skill_spec_coverage(root: Path, metrics: HealthMetrics) -> None:
 
 
 def check_enforcement_mapping(root: Path, metrics: HealthMetrics) -> None:
-    """Check if axioms and heuristics are mapped to enforcement in RULES.md."""
+    """Check if axioms and heuristics are mapped to enforcement in enforcement-map.md."""
     axioms_path = root / "AXIOMS.md"
     heuristics_path = root / "HEURISTICS.md"
-    rules_path = root / "RULES.md"
+    rules_path = root / "indices/enforcement-map.md"
 
     if not rules_path.exists():
         return
@@ -241,7 +241,7 @@ def check_enforcement_mapping(root: Path, metrics: HealthMetrics) -> None:
         axiom_count = len(axiom_pattern.findall(axioms_content))
 
         for i in range(1, axiom_count + 1):
-            # Check if axiom is mentioned in RULES.md
+            # Check if axiom is mentioned in enforcement-map.md
             patterns = [f"a#{i}", f"axiom #{i}", f"axiom {i}", f"##{i}"]
             if not any(p in rules_content for p in patterns):
                 # Also check for "axiom x" placeholder

@@ -22,4 +22,4 @@ Evidence of violations and corrections tracked in bd issues (label: `learning`).
 
 ## Enforcement
 
-Hard gate via `policy_enforcer.py` enforcing 200-line limit at PreToolUse. See [[RULES.md]].
+Hard gate via `policy_enforcer.py` enforcing 200-line limit at PreToolUse. See [[enforcement-map.md]].

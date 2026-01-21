@@ -14,7 +14,7 @@ Structured workflow for modifying framework governance files. Requires explicit 
 Any modification to:
 - AXIOMS.md (hard rules)
 - HEURISTICS.md (soft guidance)
-- RULES.md (enforcement wiring)
+- enforcement-map.md (enforcement wiring)
 - hooks/*.py (blocking/detection mechanisms)
 - settings.json deny rules
 
@@ -34,7 +34,7 @@ Before any framework change, read the governance files:
 ```
 Read AXIOMS.md
 Read HEURISTICS.md
-Read RULES.md
+Read enforcement-map.md
 ```
 
 Note which principles and heuristics are relevant to your change. You cannot proceed without this step.
@@ -59,12 +59,12 @@ Check if:
 ```yaml
 ## Rule Change Justification
 
-**Scope**: [AXIOMS.md | HEURISTICS.md | RULES.md | hooks/*.py | settings.json]
+**Scope**: [AXIOMS.md | HEURISTICS.md | enforcement-map.md | hooks/*.py | settings.json]
 
 **Rules Loaded**:
 - AXIOMS.md: [P#X, P#Y - or "not relevant"]
 - HEURISTICS.md: [H#X, H#Y - or "not relevant"]
-- RULES.md: [enforcement entry name - or "not relevant"]
+- enforcement-map.md: [enforcement entry name - or "not relevant"]
 
 **Prior Art**:
 - Search query: "[keywords used in task search]"
@@ -124,7 +124,7 @@ Now execute the edit. Keep it minimal:
 - No scope creep
 - No "while I'm here" additions
 
-### 7. Update RULES.md
+### 7. Update enforcement-map.md
 
 Per [[enforcement-changes-require-rules-md-update]], add an entry:
 
@@ -164,5 +164,5 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 - [ ] Structured justification emitted
 - [ ] Appropriate approval obtained
 - [ ] Change matches justification exactly
-- [ ] RULES.md updated
+- [ ] enforcement-map.md updated
 - [ ] Committed with justification reference

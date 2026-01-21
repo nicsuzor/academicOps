@@ -22,4 +22,4 @@ Evidence of violations and corrections tracked in bd issues (label: `learning`).
 
 ## Enforcement
 
-Hard gate via `policy_enforcer.py` blocking `*-GUIDE.md` files at PreToolUse. See [[RULES.md]].
+Hard gate via `policy_enforcer.py` blocking `*-GUIDE.md` files at PreToolUse. See [[enforcement-map.md]].

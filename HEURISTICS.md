@@ -96,11 +96,11 @@ description: Working hypotheses validated by evidence.
 
 ---
 
-## Enforcement Changes Require RULES.md Update (P#65)
+## Enforcement Changes Require enforcement-map.md Update (P#65)
 
-**Statement**: When adding enforcement measures (AXIOMS, HEURISTICS, CORE.md context, hooks), update RULES.md to document the new rule.
+**Statement**: When adding enforcement measures (AXIOMS, HEURISTICS, CORE.md context, hooks), update enforcement-map.md to document the new rule.
 
-**Derivation**: RULES.md is the enforcement index - it tracks what's shown to agents, when, and why. Undocumented enforcement creates invisible constraints. All information-forcing measures must be auditable.
+**Derivation**: enforcement-map.md is the enforcement index - it tracks what's shown to agents, when, and why. Undocumented enforcement creates invisible constraints. All information-forcing measures must be auditable.
 
 ---
 

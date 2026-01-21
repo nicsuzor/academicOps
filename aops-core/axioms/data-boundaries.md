@@ -22,4 +22,4 @@ Evidence of violations and corrections tracked in bd issues (label: `learning`).
 
 ## Enforcement
 
-Hard gate via `settings.json` deny rules at PreToolUse. See [[RULES.md]].
+Hard gate via `settings.json` deny rules at PreToolUse. See [[enforcement-map.md]].

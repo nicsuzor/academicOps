@@ -13,7 +13,7 @@ tags: [framework, overview, features]
 
 * Enforces a logical system: every rule derivable from [AXIOMS.md] with [HEURISTICS.md] supported by evidence.
 * Reflexive, self-improving agents must follow a CATEGORICAL IMPERATIVE: every action must be supported by a general rule.
-* Graduated approach to enforcement: [RULES.md] sets out a full map of rules to enforcement mechanism, from gentle reminders to hard blocks.
+* Graduated approach to enforcement: [enforcement-map.md] sets out a full map of rules to enforcement mechanism, from gentle reminders to hard blocks.
 * Agent autonomy is limited to the authority they were granted: live ultra vires detection loop
 * Direct integration with beads for task memomory, memory mcp for vector search
 * Full personal knowledge base with gardening and continuous remembering skills
@@ -38,7 +38,7 @@ export ACA_DATA="$HOME/writing/data"
 
 - [AXIOMS.md](AXIOMS.md) - Inviolable principles
 - [HEURISTICS.md](HEURISTICS.md) - Empirically validated rules
-- [RULES.md](RULES.md) - Enforcement mechanisms mapping rules to controls
+- [enforcement-map.md](indices/enforcement-map.md) - Enforcement mechanisms mapping rules to controls
 - [FRAMEWORK-PATHS.md](FRAMEWORK-PATHS.md) - Paths and configuration (generated)
 
 ## Core Concepts
@@ -51,7 +51,7 @@ academicOps is built as a **validated logical system**. Every rule traces back t
 |-------|----------|----------|--------|
 | 1 | **AXIOMS.md** | Inviolable principles | Cannot be violated |
 | 2 | **HEURISTICS.md** | Empirically validated rules | Can be revised with evidence |
-| 3 | **RULES.md** | Enforcement mechanisms | Maps rules to technical controls |
+| 3 | **enforcement-map.md** | Enforcement mechanisms | Maps rules to technical controls |
 
 **The derivation rule**: Every convention MUST trace to an axiom. If it can't be derived, the convention is invalid.
 

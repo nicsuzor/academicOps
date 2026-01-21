@@ -21,4 +21,4 @@ Evidence of violations and corrections tracked in bd issues (label: `learning`).
 
 ## Enforcement
 
-Hard gate via markdownlint-cli2 at Pre-commit. See [[RULES.md]].
+Hard gate via markdownlint-cli2 at Pre-commit. See [[enforcement-map.md]].

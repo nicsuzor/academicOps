@@ -22,7 +22,7 @@ Gate agents perform distinct functions across three execution phases:
 | **Context Gather**   | Retrieve relevant info (memory, codebase, session)  | prompt-hydrator |
 | **Workflow Select**  | Choose approach dimensions (gate/pre-work/approach) | prompt-hydrator |
 | **Initial Skill**    | Identify domain expertise needed for prompt         | prompt-hydrator |
-| **Guardrail Select** | Pick applicable constraints from RULES.md           | prompt-hydrator |
+| **Guardrail Select** | Pick applicable constraints from enforcement-map.md           | prompt-hydrator |
 
 ### Continuous Enforcement (PreToolUse) - Parallel Execution
 
@@ -512,7 +512,7 @@ Task(
 | [[specs/prompt-hydration]]      | Pre-action gate implementation       |
 | [[specs/ultra-vires-custodiet]] | Post-action gate implementation      |
 | [[specs/execution-flow-spec]]   | Shows where gates fit in flow        |
-| [[RULES.md]]                    | Guardrail definitions                |
+| [[enforcement-map.md]]                    | Guardrail definitions                |
 | [[REMINDERS.md]]                | Skill invocation triggers (static)   |
 | [[AXIOMS.md]]                   | Inviolable principles for compliance |
 | [[HEURISTICS.md]]               | Empirical patterns for drift checks  |

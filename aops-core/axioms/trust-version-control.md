@@ -29,4 +29,4 @@ Evidence of violations and corrections tracked in bd issues (label: `learning`).
 
 ## Enforcement
 
-Hard gate via `policy_enforcer.py` blocking backup patterns at PreToolUse. See [[RULES.md]].
+Hard gate via `policy_enforcer.py` blocking backup patterns at PreToolUse. See [[enforcement-map.md]].

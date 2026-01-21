@@ -24,7 +24,7 @@ TodoWrite(todos=[
   {content: "Phase 2: Reference graph - invoke Skill(skill='framework') then run link audit scripts", status: "pending", activeForm: "Building reference graph"},
   {content: "Phase 3: Skill content audit - check size and actionability", status: "pending", activeForm: "Auditing skill content"},
   {content: "Phase 4: Justification audit - check specs for file references", status: "pending", activeForm: "Auditing file justifications"},
-  {content: "Phase 4b: Instruction justification - verify every instruction traces to RULES.md", status: "pending", activeForm: "Auditing instruction justifications"},
+  {content: "Phase 4b: Instruction justification - verify every instruction traces to enforcement-map.md", status: "pending", activeForm: "Auditing instruction justifications"},
   {content: "Phase 5: Documentation accuracy - verify README.md flowchart vs hooks", status: "pending", activeForm": "Verifying documentation"},
   {content: "Phase 6: Regenerate indices - invoke Skill(skill='flowchart') for README.md flowchart", status: "pending", activeForm: "Regenerating indices"},
   {content: "Phase 7: Other updates", status: "pending", activeForm: "Finalizing updates"},
@@ -138,7 +138,7 @@ For each significant file in `$AOPS/`:
 
 ### Phase 4b: Instruction Justification Audit
 
-**Every behavioral instruction injected to agents must trace to RULES.md.**
+**Every behavioral instruction injected to agents must trace to enforcement-map.md.**
 
 Unjustified instructions are bloat - they cost tokens and create confusion about what's actually enforced.
 
@@ -159,20 +159,20 @@ Unjustified instructions are bloat - they cost tokens and create confusion about
 **Validation process:**
 
 1. Extract behavioral instructions from each source file (look for imperatives, MUSTs, SHOULDs, "always", "never", "before", "first")
-2. For each instruction, search RULES.md for:
+2. For each instruction, search enforcement-map.md for:
    - Direct reference to the instruction text
    - Reference to the source file + line number
    - Mapping to an axiom or heuristic that covers this instruction
 3. Classify each instruction:
-   - **Justified**: Appears in RULES.md with axiom/heuristic mapping
-   - **Implicit**: Derives from a documented axiom/heuristic but not explicitly in RULES.md
+   - **Justified**: Appears in enforcement-map.md with axiom/heuristic mapping
+   - **Implicit**: Derives from a documented axiom/heuristic but not explicitly in enforcement-map.md
    - **Orphan**: No traceability - FLAG FOR REVIEW
 
 **Example orphan** (discovered in session):
 
 ```
 FRAMEWORK-PATHS.md:35 - "When working with session logs, always invoke Skill(skill='transcript') first"
-→ NOT in RULES.md
+→ NOT in enforcement-map.md
 → No axiom/heuristic reference
 → ORPHAN - needs justification or removal
 ```
@@ -196,7 +196,7 @@ FRAMEWORK-PATHS.md:35 - "When working with session logs, always invoke Skill(ski
 **Resolution for orphans:**
 
 1. Create heuristic if rule is valuable
-2. Add to RULES.md with axiom/heuristic mapping
+2. Add to enforcement-map.md with axiom/heuristic mapping
 3. Or DELETE the instruction if it's not worth formalizing
 
 ### Phase 5: Documentation Accuracy
@@ -210,7 +210,7 @@ Verify README.md flowchart reflects actual hook architecture:
 
 ### Phase 6: Regenerate Generated Indices
 
-Generated indices are root-level files for agent consumption (INDEX.md, RULES.md, WORKFLOWS.md, SKILLS.md, AXIOMS.md, HEURISTICS.md, docs/ENFORCEMENT.md). The core loop flowchart is maintained in README.md.
+Generated indices are root-level files for agent consumption (INDEX.md, enforcement-map.md, WORKFLOWS.md, SKILLS.md, AXIOMS.md, HEURISTICS.md, docs/ENFORCEMENT.md). The core loop flowchart is maintained in README.md.
 
 **Regenerate each deterministically from sources:**
 
@@ -236,7 +236,7 @@ Scans `aops-core/` and `aops-tools/` for skills and commands, extracts frontmatt
 - Extract file purposes from frontmatter/headers
 - Output annotated file tree
 
-#### RULES.md
+#### enforcement-map.md
 
 **Hook→Axiom Declaration Convention**:
 
@@ -261,11 +261,11 @@ Multiple axioms: `Enforces: fail-fast-code, trust-version-control (Fail-Fast, Tr
 **Cross-reference validation**:
 
 1. Parse all hooks for "Enforces:" declarations
-2. Compare against RULES.md Axiom→Enforcement table
+2. Compare against enforcement-map.md Axiom→Enforcement table
 3. Flag discrepancies:
-   - Hook declares axiom but RULES.md shows "Prompt" level only
-   - RULES.md lists hook but hook lacks "Enforces:" declaration
-   - Axiom has Hard/Soft Gate in RULES.md but no hook declares it
+   - Hook declares axiom but enforcement-map.md shows "Prompt" level only
+   - enforcement-map.md lists hook but hook lacks "Enforces:" declaration
+   - Axiom has Hard/Soft Gate in enforcement-map.md but no hook declares it
 
 **Output**: Table mapping each axiom to its enforcement mechanism, hook, trigger point, and level.
 
@@ -275,7 +275,7 @@ Derive task routing from:
 
 - `skills/*/SKILL.md` frontmatter - what task types each skill handles
 - `agents/*.md` - what workflows each agent uses
-- `RULES.md` (Soft Gate Guardrails section) - type→guardrail mappings
+- `enforcement-map.md` (Soft Gate Guardrails section) - type→guardrail mappings
 
 Output: Table of task types, when to use each, workflow, and skill.
 
@@ -396,7 +396,7 @@ For each finding from Phases 0-7 that requires action:
 | Skill >500 lines                       | P2       | chore      | audit,refactor      |
 | Explanatory content in skill           | P2       | chore      | audit,refactor      |
 | Missing from INDEX.md                  | P3       | chore      | audit,documentation |
-| Orphan instruction (no RULES.md trace) | P2       | bug        | audit,governance    |
+| Orphan instruction (no enforcement-map.md trace) | P2       | bug        | audit,governance    |
 | README.md flowchart drift              | P2       | bug        | audit,documentation |
 | Hook→Axiom mismatch                    | P2       | bug        | audit,governance    |
 
@@ -491,14 +491,14 @@ High-level findings and overall status. Brief description of what was audited, m
 - Hook in diagram, not in router.py: old_hook.py
 
 **Hook→Axiom Mismatches**:
-- Hook declares axiom but RULES.md shows "Prompt" level only
-- Axiom has Hard/Soft Gate in RULES.md but no hook declares it
+- Hook declares axiom but enforcement-map.md shows "Prompt" level only
+- Axiom has Hard/Soft Gate in enforcement-map.md but no hook declares it
 
 ### Actions Taken
 
 **Generated Indices Regenerated**:
 - INDEX.md: [N] files mapped
-- RULES.md: [N] enforcement mechanisms
+- enforcement-map.md: [N] enforcement mechanisms
 - WORKFLOWS.md: [N] task types
 - README.md flowchart: [N] hooks in flow diagram
 
@@ -532,8 +532,8 @@ Created N tasks:
 - No explanatory content in SKILL.md files
 - Orphan count reported (0 ideal)
 - README.md flowchart matches hooks/router.py dispatch table (regenerated via flowchart skill)
-- Generated indices (INDEX.md, RULES.md, WORKFLOWS.md) include "Generated by audit" header
+- Generated indices (INDEX.md, enforcement-map.md, WORKFLOWS.md) include "Generated by audit" header
 - Generated indices reflect current source file state
-- **Hook→Axiom accuracy**: Every hook with "Enforces:" declaration is in RULES.md with correct level (not just "Prompt")
-- **Enforcement completeness**: Every axiom with Hard/Soft Gate in RULES.md has a corresponding hook with "Enforces:" declaration
+- **Hook→Axiom accuracy**: Every hook with "Enforces:" declaration is in enforcement-map.md with correct level (not just "Prompt")
+- **Enforcement completeness**: Every axiom with Hard/Soft Gate in enforcement-map.md has a corresponding hook with "Enforces:" declaration
 - **Sub-workflow coverage**: Skills with `## Workflow:` headers or `workflows/` subdirectories have all workflows listed in README.md

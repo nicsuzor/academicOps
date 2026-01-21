@@ -21,4 +21,4 @@ Evidence of violations and corrections tracked in bd issues (label: `learning`).
 
 ## Enforcement
 
-Hard gate via `settings.json` denying skill writes at PreToolUse. See [[RULES.md]].
+Hard gate via `settings.json` denying skill writes at PreToolUse. See [[enforcement-map.md]].

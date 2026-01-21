@@ -101,7 +101,7 @@ Disabled for speed (run manually):
 ### Depends On
 
 - [[INDEX.md]] for file accounting
-- [[RULES.md]] for enforcement mapping
+- [[enforcement-map.md]] for enforcement mapping
 - [[specs/specs.md]] for spec standards
 
 ### Used By

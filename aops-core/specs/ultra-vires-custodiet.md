@@ -280,4 +280,4 @@ Edit `hooks/data/reminders.txt` to add/modify reminders. One per line, `#` for c
 - [[AXIOMS]] #4 (Do One Thing)
 - [[AXIOMS]] #22 (Acceptance Criteria Own Success)
 - [[HEURISTICS#H31]] (No LLM Calls in Hooks)
-- [[RULES.md]] (Enforcement registry)
+- [[enforcement-map.md]] (Enforcement registry)

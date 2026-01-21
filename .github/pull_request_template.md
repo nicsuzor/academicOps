@@ -26,7 +26,7 @@
 ### If modifying framework infrastructure
 
 - [ ] Changes traced to axiom/heuristic
-- [ ] RULES.md updated if adding enforcement
+- [ ] enforcement-map.md updated if adding enforcement
 - [ ] INDEX.md updated if adding files
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)

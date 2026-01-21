@@ -21,4 +21,4 @@ Evidence of violations and corrections tracked in bd issues (label: `learning`).
 
 ## Enforcement
 
-Detection via `check_orphan_files.py` at Pre-commit. See [[RULES.md]].
+Detection via `check_orphan_files.py` at Pre-commit. See [[enforcement-map.md]].

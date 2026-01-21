@@ -29,7 +29,6 @@ $AOPS/
 ├── [[FRAMEWORK-PATHS.md]]       # Resolved paths for this session (injected at session start)
 ├── [[README.md]]                # Brief overview, feature inventory
 ├── [[INDEX.md]]                 # THIS FILE - complete file tree
-├── [[RULES.md]]                 # Current enforcement rules (auto-generated)
 ├── [[WORKFLOWS.md]]             # Task routing and workflow selection
 ├── [[VISION.md]]                # End state vision
 ├── [[CLAUDE.md]]                # Repo instructions (@ syntax auto-loads)
@@ -148,6 +147,9 @@ $AOPS/
 │       ├── prompt-hydration-instruction.md    # Short instruction template for main agent
 │       ├── custodiet-context.md               # Custodiet context template
 │       └── custodiet-instruction.md           # Custodiet instruction template
+│
+├── indices/                     # Internal lookup indices (not user-facing)
+│   └── [[enforcement-map.md]]   # Axiom/heuristic → enforcement mechanism mapping
 │
 ├── lib/                         # Shared Python
 │   ├── __init__.py              # Package init

@@ -53,7 +53,7 @@ def _get_session_state_module() -> Any:
 # Each entry can have {"script": "name.py", "async": True/False}
 # Hooks are executed in order. Exit code 2 = BLOCK (PreToolUse only).
 #
-# Enforcement hooks (per RULES.md):
+# Enforcement hooks (per enforcement-map.md):
 # - policy_enforcer.py: Blocks *-GUIDE.md, >200 line .md, destructive git
 # - fail_fast_watchdog.py: Injects reminder on tool errors
 # - autocommit_state.py: Auto-commits data/ changes after state operations
@@ -67,7 +67,7 @@ HOOK_REGISTRY: dict[str, list[dict[str, Any]]] = {
         {"script": "unified_logger.py"},
         {"script": "hydration_gate.py"},  # Blocks/warns until prompt-hydrator invoked
         {"script": "task_required_gate.py"},  # Blocks destructive ops without task binding
-        {"script": "policy_enforcer.py"},  # Blocks policy violations (RULES.md)
+        {"script": "policy_enforcer.py"},  # Blocks policy violations (enforcement-map.md)
         {"script": "overdue_enforcement.py"},
     ],
     "PostToolUse": [
