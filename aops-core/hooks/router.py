@@ -87,6 +87,7 @@ HOOK_REGISTRY: dict[str, list[dict[str, Any]]] = {
         {"script": "unified_logger.py"},
     ],
     "Stop": [
+        {"script": "reflection_check.py"},  # Check for Framework Reflection before session end
         {"script": "unified_logger.py"},
     ],
     "SessionEnd": [

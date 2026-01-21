@@ -56,7 +56,8 @@ class SessionState(TypedDict, total=False):
     ended_at: str | None
 
     # Execution state
-    state: dict[str, Any]  # custodiet_blocked, current_workflow, hydration_pending
+    state: dict[str, Any]  # custodiet_blocked, current_workflow, hydration_pending,
+    # reflection_output_since_prompt
 
     # Hydration data
     hydration: dict[
@@ -658,3 +659,52 @@ def is_gates_bypassed(session_id: str) -> bool:
     if state is None:
         return False
     return state.get("state", {}).get("gates_bypassed", False)
+
+
+# ============================================================================
+# Reflection Output Tracking API
+# ============================================================================
+
+
+def set_reflection_output(session_id: str, value: bool = True) -> None:
+    """Set reflection_output_since_prompt flag.
+
+    Called when a Framework Reflection is detected in assistant output.
+
+    Args:
+        session_id: Claude Code session ID
+        value: Whether reflection has been output (default True)
+    """
+    state = get_or_create_session_state(session_id)
+    state["state"]["reflection_output_since_prompt"] = value
+    save_session_state(session_id, state)
+
+
+def clear_reflection_output(session_id: str) -> None:
+    """Clear reflection_output_since_prompt flag.
+
+    Called on UserPromptSubmit to reset tracking for new prompt.
+
+    Args:
+        session_id: Claude Code session ID
+    """
+    state = load_session_state(session_id)
+    if state is None:
+        return
+    state["state"]["reflection_output_since_prompt"] = False
+    save_session_state(session_id, state)
+
+
+def has_reflection_output(session_id: str) -> bool:
+    """Check if reflection has been output since last user prompt.
+
+    Args:
+        session_id: Claude Code session ID
+
+    Returns:
+        True if reflection_output_since_prompt flag is set
+    """
+    state = load_session_state(session_id)
+    if state is None:
+        return False
+    return state.get("state", {}).get("reflection_output_since_prompt", False)

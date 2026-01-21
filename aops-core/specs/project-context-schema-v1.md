@@ -2,12 +2,12 @@
 title: Project Context Schema v1
 type: spec
 status: DRAFT
-description: Schema for PROJECT.md files that provide project-specific context to worker agents
+description: Schema for CORE.md files that provide project-specific context to worker agents
 ---
 
 # Project Context Schema v1
 
-**Goal**: Define a schema for PROJECT.md files that give worker agents (~16K token budget) the project-specific context they need to execute single tasks without wasting tokens on exploration.
+**Goal**: Define a schema for project `CORE.md` files that give worker agents (~16K token budget) the project-specific context they need to execute single tasks without wasting tokens on exploration.
 
 ## Problem Statement
 
@@ -22,7 +22,7 @@ Without this context, agents waste tokens on broad exploration ("mewling baby gr
 
 ## Token Budget
 
-PROJECT.md must fit within worker context alongside other elements:
+CORE.md must fit within worker context alongside other elements:
 
 | Component | Target Tokens |
 |-----------|---------------|
@@ -30,21 +30,22 @@ PROJECT.md must fit within worker context alongside other elements:
 | Task details | ~1-2K |
 | Relevant files | ~4-6K |
 | Workflow reference | ~1K |
-| **PROJECT.md** | **~2-3K** |
+| **CORE.md** | **~2-3K** |
 | Buffer | ~2-3K |
 | **Total** | **~16K** |
 
-**Hard constraint**: PROJECT.md should be 1000-1500 words max.
+**Hard constraint**: CORE.md should be 1000-1500 words max.
 
 ## Schema
 
 ### Location
 
 ```
-<project-root>/.claude/PROJECT.md
+<project-root>/CORE.md          # Primary location
+<project-root>/.agent/CORE.md   # Alternative (parallels .agent/workflows/)
 ```
 
-The file lives in `.claude/` directory at project root, alongside other Claude Code configuration.
+The hydrator checks both locations, with `.agent/CORE.md` taking precedence if both exist. This parallels the `.agent/workflows/` pattern for project-specific workflow overrides.
 
 ### Structure
 
@@ -134,19 +135,19 @@ For deeper context, reference (don't inline):
 | Key Files | Yes | ~200 | Navigation shortcuts |
 | Context References | No | ~100 | Pointers for deep dives |
 
-## Decision Tree: What Goes in PROJECT.md?
+## Decision Tree: What Goes in CORE.md?
 
 ```
 Is this information needed for MOST tasks in this project?
-├── Yes: Include in PROJECT.md
+├── Yes: Include in CORE.md
 │   └── Is it a fact or a reference?
 │       ├── Fact (term, command, path): Include inline
 │       └── Reference (doc, spec): Include path only
-└── No: Do NOT include in PROJECT.md
+└── No: Do NOT include in CORE.md
     └── Task-specific context goes in task body or relevant files
 ```
 
-### Belongs in PROJECT.md
+### Belongs in CORE.md
 
 - Project summary (always needed)
 - Domain vocabulary (task descriptions use these terms)
@@ -154,7 +155,7 @@ Is this information needed for MOST tasks in this project?
 - Key file paths (navigation shortcuts)
 - Skill availability (what tools work here)
 
-### Does NOT Belong in PROJECT.md
+### Does NOT Belong in CORE.md
 
 - Task-specific implementation details (goes in task body)
 - Full API documentation (reference path only)
@@ -164,7 +165,7 @@ Is this information needed for MOST tasks in this project?
 
 ## Integration with Worker Context Injection
 
-PROJECT.md is loaded by the hydrator when generating worker context. It becomes a new section in the context chunk:
+CORE.md is loaded by the hydrator when generating worker context. It becomes a new section in the context chunk:
 
 ```markdown
 ## Worker Task Context
@@ -173,7 +174,7 @@ PROJECT.md is loaded by the hydrator when generating worker context. It becomes 
 
 ### Project Context
 
-<contents of PROJECT.md, without frontmatter>
+<contents of CORE.md, without frontmatter>
 
 ### Issue Details
 
@@ -181,14 +182,14 @@ PROJECT.md is loaded by the hydrator when generating worker context. It becomes 
 ```
 
 The hydrator:
-1. Locates PROJECT.md from task's project field
+1. Locates CORE.md from task's project field (checks `.agent/CORE.md` first, then `CORE.md`)
 2. Reads and strips frontmatter
 3. Inserts as "Project Context" section
 4. Includes before issue details (establishes context first)
 
 ## Validation Rules
 
-A valid PROJECT.md must:
+A valid CORE.md must:
 
 1. Have all required frontmatter fields
 2. Have all required sections (Summary, Domain Concepts, Architecture, Debugging, Key Files)
@@ -196,7 +197,7 @@ A valid PROJECT.md must:
 4. Use relative paths in Key Files section
 5. Not duplicate content from CLAUDE.md or AGENTS.md
 
-## Example: Buttermilk PROJECT.md
+## Example: Buttermilk CORE.md
 
 ```markdown
 ---
@@ -264,16 +265,16 @@ Key boundary: Flows must be stateless. State lives in the trace, not the flow.
 |------|---------|-------------|
 | CLAUDE.md | Global user preferences | Every session |
 | AGENTS.md | Framework rules | Every agent |
-| PROJECT.md | Project-specific context | Worker task injection |
+| CORE.md | Project-specific context | Worker task injection |
 
-PROJECT.md complements but does not replace CLAUDE.md. They serve different purposes:
+CORE.md complements but does not replace CLAUDE.md. They serve different purposes:
 
 - **CLAUDE.md**: User preferences, global rules, session configuration
-- **PROJECT.md**: Project facts, domain vocabulary, debugging commands
+- **CORE.md**: Project facts, domain vocabulary, debugging commands
 
 ## Success Criteria
 
-1. Worker agents receiving PROJECT.md context can execute tasks without broad exploration
-2. PROJECT.md fits within 2-3K token budget consistently
+1. Worker agents receiving CORE.md context can execute tasks without broad exploration
+2. CORE.md fits within 2-3K token budget consistently
 3. Schema is simple enough to create manually in 10 minutes
-4. Schema supports monorepo projects (multiple PROJECT.md files)
+4. Schema supports monorepo projects (multiple CORE.md files in subdirectories)

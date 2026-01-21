@@ -24,7 +24,12 @@ from hook_debug import safe_log_to_debug_file
 from hooks.hook_logger import log_hook_event
 from lib.paths import get_aops_root
 from lib.session_reader import extract_router_context
-from lib.session_state import set_hydration_pending, clear_hydration_pending, set_gates_bypassed
+from lib.session_state import (
+    set_hydration_pending,
+    clear_hydration_pending,
+    set_gates_bypassed,
+    clear_reflection_output,
+)
 
 # Paths
 HOOK_DIR = Path(__file__).parent
@@ -454,6 +459,10 @@ def main():
         )
         print(json.dumps(output_data))
         sys.exit(0)
+
+    # Clear reflection tracking flag for new user prompt
+    # This tracks whether the agent outputs a Framework Reflection before session end
+    clear_reflection_output(session_id)
 
     # Skip hydration for system messages, skill invocations, and user ignore shortcut
     if should_skip_hydration(prompt):
