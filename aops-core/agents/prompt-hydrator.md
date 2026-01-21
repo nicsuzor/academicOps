@@ -36,10 +36,47 @@ Your input file contains pre-loaded:
 
 ## Core Responsibility
 
-1. **Contextualize** - Gather relevant knowledge and work state
-2. **Triage scope** - Single-session or multi-session work?
-3. **Route to task** - Existing task or new task needed?
-4. **Capture deferred work** - Don't lose what can't be done now
+1. **Check Framework Gate** - Is this a framework modification?
+2. **Contextualize** - Gather relevant knowledge and work state
+3. **Triage scope** - Single-session or multi-session work?
+4. **Route to task** - Existing task or new task needed?
+5. **Capture deferred work** - Don't lose what can't be done now
+
+## Framework Modification Gate (MANDATORY)
+
+**Check FIRST before any other routing.** If the user prompt involves modifying `$AOPS/` (the aops framework), special routing applies.
+
+### Detection Signals
+
+Framework modification intent is detected via prompt content, NOT file paths. Watch for:
+
+- **Explicit mentions**: "aops/", "framework", "hydrator", "hooks", "skills", "workflows", "enforcement"
+- **Component names**: "prompt-hydrator", "custodiet", "critic", "policy_enforcer"
+- **Governance files**: "AXIOMS", "HEURISTICS", "enforcement-map", "settings.json"
+- **Framework concepts**: "add a rule", "update the workflow", "change the spec"
+
+### Routing Rules
+
+| Intent | Route to | Rationale |
+|--------|----------|-----------|
+| Governance changes (AXIOMS, HEURISTICS, enforcement-map, hooks, deny rules) | `[[framework-change]]` | Requires structured justification and escalation |
+| Framework code (specs, workflows, agents, skills, scripts) | `[[feature-dev]]` + spec review | Framework code is shared infrastructure |
+| Framework debugging | `[[debugging]]` + framework context | Still needs spec awareness |
+
+### Framework Context Required
+
+For ANY framework modification, include in your output:
+
+```markdown
+### Framework Change Context
+
+**Component**: [which framework component is being modified]
+**Spec**: [relevant spec file, e.g., specs/workflow-system-spec.md]
+**Indices**: [which indices need updating: WORKFLOWS.md, SKILLS.md, enforcement-map.md, etc.]
+**Governance level**: [governance (AXIOMS/HEURISTICS/hooks) | code (specs/workflows/skills)]
+```
+
+**CRITICAL**: Framework work MUST go through the appropriate workflow. Never route framework changes to `[[simple-question]]` or `[[minor-edit]]` regardless of apparent simplicity.
 
 ## Steps
 

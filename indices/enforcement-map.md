@@ -143,6 +143,7 @@ These guardrails are applied by [[prompt-hydration]] based on task classificatio
 
 | Guardrail                 | Heuristic                                                                                            | Failure Prevented                               |
 | ------------------------- | ---------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
+| `framework_gate`          | [[spec-first-file-modification]], [[one-spec-per-feature]]                                           | Framework changes bypassing workflow (spec review, indices) |
 | `verify_before_complete`  | [[verification-before-assertion]]                                                                    | Claiming success without checking               |
 | `answer_only`             | [[questions-require-answers]]                                                                        | Jumping to implementation when asked a question |
 | `require_skill`           | [[skill-first-action]]                                                                               | Skipping skill for domain work                  |
@@ -161,7 +162,7 @@ These guardrails are applied by [[prompt-hydration]] based on task classificatio
 
 | Task Type   | Guardrails Applied                                                                                                        |
 | ----------- | ------------------------------------------------------------------------------------------------------------------------- |
-| `framework` | verify_before_complete, require_skill:framework, plan_mode, critic_review, criteria_gate, use_todowrite, capture_insights |
+| `framework` | framework_gate, verify_before_complete, require_skill:framework, plan_mode, critic_review, criteria_gate, use_todowrite, capture_insights |
 | `cc_hook`   | verify_before_complete, require_skill:plugin-dev:hook-development, plan_mode, criteria_gate, use_todowrite                |
 | `cc_mcp`    | verify_before_complete, require_skill:plugin-dev:mcp-integration, plan_mode, criteria_gate, use_todowrite                 |
 | `debug`     | verify_before_complete, quote_errors_exactly, fix_within_design, criteria_gate, use_todowrite, capture_insights           |
