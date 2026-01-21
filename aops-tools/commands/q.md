@@ -38,6 +38,8 @@ mcp__plugin_aops-core_tasks__get_task(id="<task-id>")  # View details of specifi
 
 **MUST determine parent BEFORE calling create_task.** Tasks without parents are orphans - they break graph connectivity.
 
+**If you override hydrator guidance** (simplify multiple tasks to one, change decomposition), you STILL must complete this step for your simplified version.
+
 1. **List existing goals/projects**: `mcp__plugin_aops-core_tasks__list_tasks(type="goal")` or `list_tasks(type="project")`
 2. **Find the parent** - Every task supports some goal or project. Find it.
 3. **If no obvious parent exists** - Create an epic/project first, then create tasks under it
