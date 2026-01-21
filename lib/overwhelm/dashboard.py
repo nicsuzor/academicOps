@@ -291,55 +291,6 @@ def get_primary_focus() -> dict:
     }
 
 
-def get_session_display_info(
-    session_info: "SessionInfo",
-    analyzer: SessionAnalyzer | None = None,
-) -> dict:
-    """Extract displayable session identity from SessionInfo.
-
-    Enables users to distinguish between multiple terminal sessions (AC-U1).
-
-    Args:
-        session_info: SessionInfo object from lib/session_reader.py
-        analyzer: Optional SessionAnalyzer to extract activity context
-
-    Returns:
-        Dict with keys:
-            - session_id_short: First 7 characters of session UUID
-            - project: Project name from the session
-            - last_activity: Timestamp of last session activity (datetime)
-            - activity: Description of session activity (truncated to 50 chars)
-
-    Raises:
-        ValueError: If session_info is None or session_id is None
-    """
-    if session_info is None:
-        raise ValueError("session_info cannot be None")
-    if session_info.session_id is None:
-        raise ValueError("session_info.session_id cannot be None")
-
-    # Extract activity from session if analyzer provided
-    activity = ""
-    if analyzer is not None:
-        try:
-            state = analyzer.extract_dashboard_state(session_info.path)
-            # Use first_prompt as activity description, truncate to 50 chars
-            prompt = state.get("first_prompt", "") or state.get("last_prompt", "")
-            if prompt:
-                activity = prompt[:50]
-                if len(prompt) > 50:
-                    activity += "..."
-        except Exception:
-            activity = ""
-
-    return {
-        "session_id_short": session_info.session_id[:7],
-        "project": session_info.project,
-        "last_activity": session_info.last_modified,
-        "activity": activity,
-    }
-
-
 def get_project_color(project: str) -> str:
     """Get color for project, matching Peacock scheme."""
     project_lower = project.lower()
@@ -449,80 +400,6 @@ def get_todays_accomplishments() -> list[dict]:
                 )
 
     return accomplishments
-
-
-def get_dashboard_layout() -> dict:
-    """Get structured dashboard data organized by the three core questions.
-
-    Aggregates data from multiple sources into a layout suitable for
-    dashboard rendering:
-    - What to do: Primary focus and priority tasks
-    - What doing: Currently active sessions (max 10, last 24 hours)
-    - What done: Today's accomplishments
-
-    Returns:
-        Dict with three keys:
-            - what_to_do: dict with 'primary_focus' and 'priority_tasks'
-            - what_doing: dict with 'active_sessions' (list of session display dicts)
-            - what_done: dict with 'accomplishments'
-    """
-    # Gather data from existing functions
-    primary_focus = get_primary_focus()
-    priority_tasks = get_priority_tasks()
-    accomplishments = get_todays_accomplishments()
-
-    # Get active sessions (last 24 hours, max 10)
-    sessions = find_sessions()
-    active_sessions: list[dict] = []
-    now = datetime.now(timezone.utc)
-    analyzer = SessionAnalyzer()
-
-    for session in sessions:
-        age = now - session.last_modified
-        # Only include sessions from last 24 hours
-        if age.total_seconds() > 86400:
-            continue
-        # Skip temp directories
-        if "-tmp" in session.project or "-var-folders" in session.project:
-            continue
-
-        session_display = get_session_display_info(session, analyzer)
-        active_sessions.append(session_display)
-
-        # Limit to 10 sessions to avoid overwhelm
-        if len(active_sessions) >= 10:
-            break
-
-    return {
-        "what_to_do": {
-            "primary_focus": primary_focus,
-            "priority_tasks": priority_tasks,
-        },
-        "what_doing": {
-            "active_sessions": active_sessions,
-        },
-        "what_done": {
-            "accomplishments": accomplishments,
-        },
-    }
-
-
-def get_session_state(session_info, analyzer: SessionAnalyzer) -> dict:
-    """Extract current state from a session for display."""
-    try:
-        state = analyzer.extract_dashboard_state(session_info.path)
-        # Return last 3 memory notes max (matching old behavior)
-        if state.get("memory_notes"):
-            state["memory_notes"] = state["memory_notes"][-3:]
-        return state
-    except Exception:
-        return {
-            "first_prompt": "Unable to parse session",
-            "first_prompt_full": "Unable to parse session",
-            "last_prompt": "Unable to parse session",
-            "todos": None,
-            "memory_notes": [],
-        }
 
 
 def get_activity_status(last_modified: datetime) -> tuple[str, str]:
@@ -724,24 +601,160 @@ def fetch_session_activity(hours: int = 2) -> list[dict]:
     for ls in local_sessions:
         sid = ls["session_id"]
         if sid not in sessions:
+            # Extract best available prompt from state
+            state = ls.get("state", {})
+            prompt = "Local activity"
+
+            # Priority 1: Current Task (most relevant context)
+            current_task = state.get("main_agent", {}).get("current_task")
+            if current_task:
+                prompt = f"[Task] {current_task}"
+
+            # Priority 2: Last Prompt (actual last turn)
+            if prompt == "Local activity":
+                last_p = state.get("main_agent", {}).get("last_prompt")
+                if last_p:
+                    prompt = last_p
+
+            # Priority 3: Hydration Original Prompt (User Intent)
+            if prompt == "Local activity":
+                orig_p = state.get("hydration", {}).get("original_prompt")
+                if orig_p:
+                    prompt = orig_p
+
+            # Truncate
+            if len(prompt) > 100:
+                prompt = prompt[:97] + "..."
+
             # Add local session
             sessions[sid] = {
                 "session_id": sid,
                 "session_short": ls["session_short"],
                 "hostname": "localhost",  # Assume local
                 "project": ls["project_display"],
-                "last_prompt": ls.get("state", {})
-                .get("main_agent", {})
-                .get("last_prompt", "Local activity"),
+                "last_prompt": prompt,
                 "timestamp": ls["last_modified"].isoformat(),
                 "time_ago": ls["time_ago"],
-                "todowrite": None,  # Could extract from ls["state"] if available?
+                "todowrite": None,
                 "source": "local",
             }
-            # Try to get todowrite from state or file
-            # ls["state"] is load_session_state() result.
-            # It might have what we need?
+
+            # Try to populate todowrite from state if available involves reading jsonl again?
+            # find_active_session_states already reads session-state.json.
+            # todowrite is usually in .jsonl file.
             pass
+
+    # 3. Add sessions from new status directories (~/writing/sessions/status)
+    # User migration: /home/nic/writing/sessions/status/YYYYMMDD-sessionID.json
+    status_dirs = [
+        Path.home() / "writing" / "sessions" / "status",
+        Path.home()
+        / "writing"
+        / "session"
+        / "status",  # Handle singular typo possibility
+    ]
+
+    for status_dir in status_dirs:
+        if not status_dir.exists():
+            continue
+
+        for status_file in status_dir.glob("*.json"):
+            try:
+                # Parse filename: YYYYMMDD-sessionID.json
+                # sessionID might be a hash or UUID
+                stem = status_file.stem  # YYYYMMDD-sessionID
+
+                parts = stem.split("-")
+                if len(parts) >= 2 and len(parts[0]) == 8 and parts[0].isdigit():
+                    # Likely YYYYMMDD-hash
+                    date_str = parts[0]
+                    sid = "-".join(parts[1:])
+                else:
+                    # Maybe just sessionID?
+                    sid = stem
+
+                # Read content
+                try:
+                    state = json.loads(status_file.read_text())
+                except json.JSONDecodeError:
+                    continue
+
+                # If we already have this session from R2 or .claude, we might want to update it
+                # The status file is likely the most up-to-date source for State
+
+                # Extract timestamps
+                # state usually has "started_at", "last_compliance_ts" inside "state"?
+                # or top level "started_at"?
+                # Based on viewed file: top level "started_at", "ended_at"
+
+                ts_str = state.get("started_at", "")
+                timestamp = ts_str
+
+                # Check for recent activity based on file mtime or content
+                mtime = status_file.stat().st_mtime
+                dt_mtime = datetime.fromtimestamp(mtime, tz=timezone.utc)
+
+                # formatted time ago
+                time_ago = _format_time_ago(dt_mtime)
+
+                # Extract Prompt
+                prompt = "Active status"
+
+                main_agent = state.get("main_agent") or {}
+                current_task = main_agent.get("current_task")
+                if current_task:
+                    prompt = f"[Task] {current_task}"
+                else:
+                    last_p = main_agent.get("last_prompt")
+                    if last_p:
+                        prompt = last_p
+                    else:
+                        hydration = state.get("hydration") or {}
+                        orig_p = hydration.get("original_prompt")
+                        if orig_p:
+                            prompt = orig_p
+                        else:
+                            intent = hydration.get("hydrated_intent")
+                            if intent:
+                                prompt = intent
+
+                # Truncate prompt
+                if len(prompt) > 100:
+                    prompt = prompt[:97] + "..."
+
+                # Extract Project
+                # Insights might have project
+                insights = state.get("insights") or {}
+                project = insights.get("project", "unknown")
+
+                # Merge or Add
+                if sid in sessions:
+                    # Update existing with better data?
+                    sessions[sid]["todowrite"] = sessions[sid].get(
+                        "todowrite"
+                    )  # Preserve if we had it
+                    if project != "unknown":
+                        sessions[sid]["project"] = project
+                    sessions[sid]["last_prompt"] = prompt
+                    sessions[sid]["time_ago"] = (
+                        time_ago  # prefer file mtime for status?
+                    )
+                    sessions[sid]["source"] = "local-status"
+                else:
+                    sessions[sid] = {
+                        "session_id": sid,
+                        "session_short": sid[:7],
+                        "hostname": "localhost",
+                        "project": project,
+                        "last_prompt": prompt,
+                        "timestamp": timestamp or dt_mtime.isoformat(),
+                        "time_ago": time_ago,
+                        "todowrite": None,
+                        "source": "local-status",
+                    }
+
+            except Exception:
+                continue
 
     # Sort by timestamp descending
     result = sorted(
