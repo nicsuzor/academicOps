@@ -58,10 +58,15 @@ def _get_storage() -> TaskStorage:
 
 
 def _get_index() -> TaskIndex:
-    """Get TaskIndex instance, loading from cache or rebuilding."""
+    """Get TaskIndex instance, loading from cache or rebuilding.
+
+    Prefers fast-indexer Rust binary when available, falls back to Python.
+    """
     index = TaskIndex(get_data_root())
     if not index.load():
-        index.rebuild()
+        # Try fast rebuild first, fall back to Python
+        if not index.rebuild_fast():
+            index.rebuild()
     return index
 
 

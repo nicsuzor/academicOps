@@ -1,5 +1,5 @@
 use anyhow::Result;
-use chrono::{DateTime, Utc};
+use chrono::Utc;
 use clap::Parser;
 use gray_matter::engine::YAML;
 use gray_matter::Matter;
@@ -67,6 +67,43 @@ struct Graph {
     edges: Vec<Edge>,
 }
 
+// MCP Task Index structures (matches task_index.py schema)
+#[derive(Serialize, Deserialize, Debug, Clone)]
+struct McpIndexEntry {
+    id: String,
+    title: String,
+    #[serde(rename = "type")]
+    task_type: String,
+    status: String,
+    priority: i32,
+    order: i32,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    parent: Option<String>,
+    children: Vec<String>,      // Computed: inverse of parent
+    depends_on: Vec<String>,
+    blocks: Vec<String>,        // Computed: inverse of depends_on
+    depth: i32,
+    leaf: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    project: Option<String>,
+    path: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    due: Option<String>,
+    #[serde(default)]
+    tags: Vec<String>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct McpIndex {
+    version: i32,
+    generated: String,
+    tasks: HashMap<String, McpIndexEntry>,
+    by_project: HashMap<String, Vec<String>>,
+    roots: Vec<String>,
+    ready: Vec<String>,
+    blocked: Vec<String>,
+}
+
 #[derive(Clone)]
 struct FileData {
     path: PathBuf,
@@ -80,11 +117,17 @@ struct FileData {
     node_type: Option<String>,
     status: Option<String>,
     priority: Option<i32>,
+    order: i32,
     parent: Option<String>,
     depends_on: Vec<String>,
     children: Vec<String>,
     blocks: Vec<String>,
     project: Option<String>,
+    due: Option<String>,
+    depth: i32,
+    leaf: bool,
+    // Task ID (from frontmatter id field, distinct from hash id)
+    task_id: Option<String>,
 }
 
 fn compute_id(path: &Path) -> String {
@@ -198,6 +241,7 @@ fn parse_file(path: PathBuf) -> Option<FileData> {
     let node_type = fm_data.as_ref().and_then(|fm| fm.get("type").and_then(|v| v.as_str()).map(String::from));
     let status = fm_data.as_ref().and_then(|fm| fm.get("status").and_then(|v| v.as_str()).map(String::from));
     let priority = fm_data.as_ref().and_then(|fm| fm.get("priority").and_then(|v| v.as_i64()).map(|v| v as i32));
+    let order = fm_data.as_ref().and_then(|fm| fm.get("order").and_then(|v| v.as_i64()).map(|v| v as i32)).unwrap_or(0);
     let parent = fm_data.as_ref().and_then(|fm| fm.get("parent").and_then(|v| v.as_str()).map(String::from));
     let depends_on = fm_data.as_ref()
         .and_then(|fm| fm.get("depends_on"))
@@ -215,6 +259,10 @@ fn parse_file(path: PathBuf) -> Option<FileData> {
         .map(|arr| arr.iter().filter_map(|v| v.as_str().map(String::from)).collect())
         .unwrap_or_default();
     let project = fm_data.as_ref().and_then(|fm| fm.get("project").and_then(|v| v.as_str()).map(String::from));
+    let due = fm_data.as_ref().and_then(|fm| fm.get("due").and_then(|v| v.as_str()).map(String::from));
+    let depth = fm_data.as_ref().and_then(|fm| fm.get("depth").and_then(|v| v.as_i64()).map(|v| v as i32)).unwrap_or(0);
+    let leaf = fm_data.as_ref().and_then(|fm| fm.get("leaf").and_then(|v| v.as_bool())).unwrap_or(true);
+    let task_id = fm_data.as_ref().and_then(|fm| fm.get("id").and_then(|v| v.as_str()).map(String::from));
 
     Some(FileData {
         id: compute_id(&path),
@@ -227,11 +275,16 @@ fn parse_file(path: PathBuf) -> Option<FileData> {
         node_type,
         status,
         priority,
+        order,
         parent,
         depends_on,
         children,
         blocks,
         project,
+        due,
+        depth,
+        leaf,
+        task_id,
     })
 }
 
@@ -318,6 +371,162 @@ fn output_dot(graph: &Graph, path: &str) -> Result<()> {
 
     dot.push_str("}\n");
     fs::write(path, dot)?;
+    Ok(())
+}
+
+/// Build MCP task index from parsed task files.
+///
+/// This produces the exact schema expected by tasks_server.py:
+/// - version: 2
+/// - generated: ISO timestamp
+/// - tasks: {task_id: {id, title, type, status, priority, order, parent, children, depends_on, blocks, depth, leaf, project, path, due, tags}}
+/// - by_project: {project: [task_ids]}
+/// - roots: [task_ids with no parent]
+/// - ready: [leaf tasks with no unmet deps and status active/inbox]
+/// - blocked: [tasks with unmet deps or status blocked]
+fn build_mcp_index(files: &[FileData], data_root: &Path) -> McpIndex {
+    // Build lookup by task_id (from frontmatter id field)
+    let mut task_id_to_file: HashMap<String, &FileData> = HashMap::new();
+    for f in files {
+        if let Some(ref tid) = f.task_id {
+            task_id_to_file.insert(tid.clone(), f);
+        }
+    }
+
+    // Build initial entries with direct fields
+    let mut entries: HashMap<String, McpIndexEntry> = HashMap::new();
+    for f in files {
+        if let Some(ref tid) = f.task_id {
+            let rel_path = f.path.strip_prefix(data_root)
+                .map(|p| p.to_string_lossy().to_string())
+                .unwrap_or_else(|_| f.path.to_string_lossy().to_string());
+
+            entries.insert(tid.clone(), McpIndexEntry {
+                id: tid.clone(),
+                title: f.label.clone(),
+                task_type: f.node_type.clone().unwrap_or_else(|| "task".to_string()),
+                status: f.status.clone().unwrap_or_else(|| "inbox".to_string()),
+                priority: f.priority.unwrap_or(2),
+                order: f.order,
+                parent: f.parent.clone(),
+                children: Vec::new(),    // Computed below
+                depends_on: f.depends_on.clone(),
+                blocks: Vec::new(),      // Computed below
+                depth: f.depth,
+                leaf: f.leaf,
+                project: f.project.clone(),
+                path: rel_path,
+                due: f.due.clone(),
+                tags: f.tags.clone(),
+            });
+        }
+    }
+
+    // Compute children (inverse of parent) - collect updates first to avoid borrow issues
+    let task_ids: Vec<String> = entries.keys().cloned().collect();
+    let mut child_updates: Vec<(String, String)> = Vec::new(); // (parent_id, child_id)
+    for tid in &task_ids {
+        if let Some(entry) = entries.get(tid) {
+            if let Some(parent_id) = entry.parent.clone() {
+                if entries.contains_key(&parent_id) {
+                    child_updates.push((parent_id, tid.clone()));
+                }
+            }
+        }
+    }
+    for (parent_id, child_id) in child_updates {
+        if let Some(parent_entry) = entries.get_mut(&parent_id) {
+            parent_entry.children.push(child_id);
+        }
+    }
+
+    // Compute blocks (inverse of depends_on) - collect updates first
+    let mut block_updates: Vec<(String, String)> = Vec::new(); // (dep_id, blocker_id)
+    for tid in &task_ids {
+        if let Some(entry) = entries.get(tid) {
+            for dep_id in &entry.depends_on {
+                if entries.contains_key(dep_id) {
+                    block_updates.push((dep_id.clone(), tid.clone()));
+                }
+            }
+        }
+    }
+    for (dep_id, blocker_id) in block_updates {
+        if let Some(dep_entry) = entries.get_mut(&dep_id) {
+            dep_entry.blocks.push(blocker_id);
+        }
+    }
+
+    // Update leaf status based on computed children
+    for tid in &task_ids {
+        if let Some(entry) = entries.get_mut(tid) {
+            entry.leaf = entry.children.is_empty();
+        }
+    }
+
+    // Build by_project groupings
+    let mut by_project: HashMap<String, Vec<String>> = HashMap::new();
+    for (tid, entry) in &entries {
+        let project = entry.project.clone().unwrap_or_else(|| "inbox".to_string());
+        by_project.entry(project).or_default().push(tid.clone());
+    }
+
+    // Identify roots (no parent)
+    let roots: Vec<String> = entries.iter()
+        .filter(|(_, e)| e.parent.is_none())
+        .map(|(tid, _)| tid.clone())
+        .collect();
+
+    // Compute ready and blocked
+    let completed_statuses: HashSet<&str> = ["done", "cancelled"].into_iter().collect();
+    let completed_ids: HashSet<String> = entries.iter()
+        .filter(|(_, e)| completed_statuses.contains(e.status.as_str()))
+        .map(|(tid, _)| tid.clone())
+        .collect();
+
+    let mut ready: Vec<String> = Vec::new();
+    let mut blocked: Vec<String> = Vec::new();
+
+    for (tid, entry) in &entries {
+        // Skip completed tasks
+        if completed_statuses.contains(entry.status.as_str()) {
+            continue;
+        }
+
+        // Check if blocked
+        let unmet_deps: Vec<&String> = entry.depends_on.iter()
+            .filter(|d| !completed_ids.contains(*d))
+            .collect();
+
+        if !unmet_deps.is_empty() || entry.status == "blocked" {
+            blocked.push(tid.clone());
+        } else if entry.leaf && (entry.status == "active" || entry.status == "inbox") {
+            ready.push(tid.clone());
+        }
+    }
+
+    // Sort ready by priority, order, title
+    ready.sort_by(|a, b| {
+        let ea = entries.get(a).unwrap();
+        let eb = entries.get(b).unwrap();
+        (ea.priority, ea.order, &ea.title).cmp(&(eb.priority, eb.order, &eb.title))
+    });
+
+    McpIndex {
+        version: 2,
+        generated: Utc::now().to_rfc3339(),
+        tasks: entries,
+        by_project,
+        roots,
+        ready,
+        blocked,
+    }
+}
+
+fn output_mcp_index(files: &[FileData], path: &str, data_root: &Path) -> Result<()> {
+    let index = build_mcp_index(files, data_root);
+    let json = serde_json::to_string_pretty(&index)?;
+    fs::write(path, json)?;
     Ok(())
 }
 
@@ -471,7 +680,27 @@ fn main() -> Result<()> {
         })
         .collect();
 
-    // 5. Construct Graph Nodes
+    // 5. Output based on format
+    let output_base = args.output.trim_end_matches(".json")
+        .trim_end_matches(".graphml")
+        .trim_end_matches(".dot");
+
+    // Handle mcp-index format specially (doesn't use graph structure, needs files before consumption)
+    if args.format.to_lowercase() == "mcp-index" {
+        let path = format!("{}.json", output_base);
+        output_mcp_index(&files, &path, &root)?;
+        println!("  Saved MCP task index: {}", path);
+        let index = build_mcp_index(&files, &root);
+        println!(
+            "MCP index generated: {} tasks, {} ready, {} blocked",
+            index.tasks.len(),
+            index.ready.len(),
+            index.blocked.len(),
+        );
+        return Ok(());
+    }
+
+    // 6. Construct Graph Nodes (consumes files)
     let nodes: Vec<Node> = files
         .into_iter()
         .map(|f| {
@@ -490,11 +719,6 @@ fn main() -> Result<()> {
         .collect();
 
     let graph = Graph { nodes, edges };
-
-    // 6. Output based on format
-    let output_base = args.output.trim_end_matches(".json")
-        .trim_end_matches(".graphml")
-        .trim_end_matches(".dot");
 
     let formats: Vec<&str> = match args.format.to_lowercase().as_str() {
         "json" => vec!["json"],
