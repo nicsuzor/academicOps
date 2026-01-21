@@ -254,14 +254,14 @@ class TestInsightsFilePath:
         path = get_insights_file_path("2026-01-13", "a1b2c3d4")
         # Uses YYYYMMDD format and session_id as default slug
         assert path.name == "20260113-a1b2c3d4.json"
-        # Output in centralized ~/writing/session/summaries/
-        assert str(path).endswith("session/summaries/20260113-a1b2c3d4.json")
+        # Output in centralized ~/writing/sessions/summaries/
+        assert str(path).endswith("sessions/summaries/20260113-a1b2c3d4.json")
 
     def test_file_path_uses_centralized_location(self):
-        """Test that file path uses centralized ~/writing/session/summaries/ location."""
+        """Test that file path uses centralized ~/writing/sessions/summaries/ location."""
         path = get_insights_file_path("2026-01-13", "a1b2c3d4")
         # Centralized location, no env var dependency
-        assert "writing/session/summaries" in str(path)
+        assert "writing/sessions/summaries" in str(path)
 
 
 class TestWriteInsightsFile:

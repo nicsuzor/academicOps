@@ -242,12 +242,12 @@ def validate_insights_schema(insights: dict[str, Any]) -> None:
 def get_summaries_dir() -> Path:
     """Get summaries directory.
 
-    Returns ~/writing/session/summaries/ (centralized location for all session summaries).
+    Returns ~/writing/sessions/summaries/ (centralized location for all session summaries).
 
     Returns:
         Path to summaries directory
     """
-    summaries_dir = Path.home() / "writing" / "session" / "summaries"
+    summaries_dir = Path.home() / "writing" / "sessions" / "summaries"
     summaries_dir.mkdir(parents=True, exist_ok=True)
     return summaries_dir
 

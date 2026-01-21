@@ -3,7 +3,7 @@
 This module provides centralized path generation for session files to avoid
 circular dependencies and ensure consistent path structure across all components.
 
-Session files are stored in ~/writing/session/status/ as YYYYMMDD-sessionID.json
+Session files are stored in ~/writing/sessions/status/ as YYYYMMDD-sessionID.json
 """
 
 import hashlib
@@ -44,14 +44,14 @@ def get_session_short_hash(session_id: str) -> str:
 def get_session_status_dir() -> Path:
     """Get centralized session status directory.
 
-    Returns ~/writing/session/status/ by default, or CLAUDE_SESSION_STATE_DIR if set.
+    Returns ~/writing/sessions/status/ by default, or CLAUDE_SESSION_STATE_DIR if set.
 
     Returns:
         Path to session status directory (created if doesn't exist)
     """
     status_dir = Path(
         os.environ.get(
-            "CLAUDE_SESSION_STATE_DIR", str(Path.home() / "writing" / "session" / "status")
+            "CLAUDE_SESSION_STATE_DIR", str(Path.home() / "writing" / "sessions" / "status")
         )
     )
     status_dir.mkdir(parents=True, exist_ok=True)
@@ -61,7 +61,7 @@ def get_session_status_dir() -> Path:
 def get_session_file_path_direct(session_id: str, date: str | None = None) -> Path:
     """Get session state file path (flat structure).
 
-    Returns: ~/writing/session/status/YYYYMMDD-sessionID.json
+    Returns: ~/writing/sessions/status/YYYYMMDD-sessionID.json
 
     Args:
         session_id: Session identifier from CLAUDE_SESSION_ID
@@ -84,7 +84,7 @@ def get_session_directory(
 ) -> Path:
     """Get session directory path (single source of truth).
 
-    Returns: ~/writing/session/status/ (centralized flat directory)
+    Returns: ~/writing/sessions/status/ (centralized flat directory)
 
     NOTE: This function now returns the centralized status directory.
     Session files are named YYYYMMDD-sessionID.json directly in this directory.
@@ -100,7 +100,7 @@ def get_session_directory(
 
     Examples:
         >>> get_session_directory("abc123")
-        PosixPath('/home/user/writing/session/status')
+        PosixPath('/home/user/writing/sessions/status')
     """
     if base_dir is not None:
         # Test isolation mode - use old structure for compatibility

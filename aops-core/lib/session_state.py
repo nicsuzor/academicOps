@@ -3,7 +3,7 @@
 Provides atomic CRUD operations for unified session state file.
 State enables cross-hook coordination per specs/flow.md.
 
-Session file: ~/writing/session/status/YYYYMMDD-sessionID.json
+Session file: ~/writing/sessions/status/YYYYMMDD-sessionID.json
 
 IMPORTANT: State is keyed by session_id, NOT project cwd. Each Claude client session
 is independent - multiple sessions can run from the same project directory and must
