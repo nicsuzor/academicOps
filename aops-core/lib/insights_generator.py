@@ -240,27 +240,14 @@ def validate_insights_schema(insights: dict[str, Any]) -> None:
 
 
 def get_summaries_dir() -> Path:
-    """Get summaries directory, using paths.py for consistency.
+    """Get summaries directory.
 
-    Falls back to $ACA_SESSIONS/summaries if paths.py unavailable.
+    Returns ~/writing/session/summaries/ (centralized location for all session summaries).
 
     Returns:
         Path to summaries directory
     """
-    try:
-        from lib.paths import get_sessions_dir
-        summaries_dir = get_sessions_dir() / "summaries"
-    except (ImportError, RuntimeError):
-        # Fallback to direct env var
-        aca_sessions = os.environ.get("ACA_SESSIONS")
-        if not aca_sessions:
-            raise RuntimeError(
-                "$ACA_SESSIONS environment variable not set.\n"
-                "Add to ~/.bashrc or ~/.zshrc:\n"
-                "  export ACA_SESSIONS='$HOME/writing/sessions'"
-            )
-        summaries_dir = Path(aca_sessions) / "summaries"
-
+    summaries_dir = Path.home() / "writing" / "session" / "summaries"
     summaries_dir.mkdir(parents=True, exist_ok=True)
     return summaries_dir
 

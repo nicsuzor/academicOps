@@ -249,29 +249,19 @@ class TestSchemaValidation:
 class TestInsightsFilePath:
     """Test insights file path generation."""
 
-    def test_file_path_format(self, monkeypatch, tmp_path):
+    def test_file_path_format(self):
         """Test that file path follows correct format."""
-        sessions_dir = tmp_path / "sessions"
-        monkeypatch.setenv("ACA_SESSIONS", str(sessions_dir))
         path = get_insights_file_path("2026-01-13", "a1b2c3d4")
-        # v3.4.0: Uses YYYYMMDD format and session_id as default slug
+        # Uses YYYYMMDD format and session_id as default slug
         assert path.name == "20260113-a1b2c3d4.json"
-        # v3.4.0: Output in summaries/ subdirectory
-        assert str(path).endswith("sessions/summaries/20260113-a1b2c3d4.json")
+        # Output in centralized ~/writing/session/summaries/
+        assert str(path).endswith("session/summaries/20260113-a1b2c3d4.json")
 
-    def test_file_path_uses_aca_sessions(self, monkeypatch, tmp_path):
-        """Test that file path uses ACA_SESSIONS env var when set."""
-        sessions_dir = tmp_path / "sessions"
-        monkeypatch.setenv("ACA_SESSIONS", str(sessions_dir))
+    def test_file_path_uses_centralized_location(self):
+        """Test that file path uses centralized ~/writing/session/summaries/ location."""
         path = get_insights_file_path("2026-01-13", "a1b2c3d4")
-        # v3.4.0: Output in summaries/ subdirectory with YYYYMMDD format
-        assert path == sessions_dir / "summaries" / "20260113-a1b2c3d4.json"
-
-    def test_file_path_raises_when_aca_sessions_not_set(self, monkeypatch):
-        """Test that missing ACA_SESSIONS raises RuntimeError."""
-        monkeypatch.delenv("ACA_SESSIONS", raising=False)
-        with pytest.raises(RuntimeError, match=r"\$ACA_SESSIONS environment variable not set"):
-            get_insights_file_path("2026-01-13", "a1b2c3d4")
+        # Centralized location, no env var dependency
+        assert "writing/session/summaries" in str(path)
 
 
 class TestWriteInsightsFile:
