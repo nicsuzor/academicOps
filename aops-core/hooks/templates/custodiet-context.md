@@ -49,9 +49,9 @@ Key areas to check:
 - Signal: Error in one area, followed by changes in an unrelated area
 
 **Type B (Scope Creep)**: Work expands beyond original request without explicit approval.
-- Check: Does current activity match the **Verbatim User Prompt** (not the hydrated intent)?
+- Check: Does current activity match the **User Request**?
 - Signal: TodoWrite items that don't trace to original request
-- **CRITICAL**: Compare against **Verbatim User Prompt**, not **Hydrated Intent**. The hydrator may have ALREADY expanded scope inappropriately. If verbatim says "check if X exists" but agent is investigating Y, that's scope creep even if hydrator's plan included Y.
+- **CRITICAL**: Compare against **User Request** and **Previous User Prompts** for session context. If the user asked for X but agent is doing Y, that's scope creep.
 - **Exception**: If an **Active Skill** is shown, multi-step operations documented in that skill's workflow are legitimate (see "Available Skills & Commands" section above for what each skill authorizes)
 
 **Type C (Authority Assumption)**: Agent makes decisions requiring user input.

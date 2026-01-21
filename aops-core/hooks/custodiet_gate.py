@@ -325,27 +325,12 @@ def _build_session_context(transcript_path: str | None, session_id: str) -> str:
     """
     lines: list[str] = []
 
-    # 1. ALWAYS extract verbatim first user prompt from transcript
-    # This is the ultimate authority baseline - what the user actually asked for.
-    # Critical for detecting scope creep that starts at hydration time.
-    if transcript_path:
-        processor = SessionProcessor()
-        _, entries, _ = processor.parse_session_file(
-            Path(transcript_path), load_agents=False, load_hooks=False
-        )
-        raw_prompt = processor._extract_first_user_request(entries)
-        if raw_prompt:
-            lines.append("**Verbatim User Prompt** (what user actually typed):")
-            lines.append(f"> {raw_prompt}")
-            lines.append("")
-
-    # 2. Get intent envelope from hydrator state (expanded/interpreted intent)
+    # 1. Get intent envelope from hydrator state (the user's request as interpreted)
     hydrator_state = load_hydrator_state(session_id)
     if hydrator_state:
         intent = hydrator_state.get("intent_envelope")
         if intent:
-            lines.append("**Hydrated Intent** (hydrator's interpretation):")
-            # Show full intent - but custodiet should compare against verbatim prompt above
+            lines.append("**User Request**:")
             lines.append(f"> {intent}")
             lines.append("")
 
@@ -381,11 +366,12 @@ def _build_session_context(transcript_path: str | None, session_id: str) -> str:
         # ensuring it ALWAYS appears regardless of hydrator state.
         # This gives custodiet the raw user intent for scope creep detection.
 
-        # Recent prompts (for context, less truncated)
+        # Previous prompts (for context, excludes most recent which is the user request)
         prompts = ctx.get("prompts", [])
-        if prompts:
-            lines.append("**Recent User Prompts**:")
-            for i, prompt in enumerate(prompts[-5:], 1):
+        previous_prompts = prompts[:-1] if len(prompts) > 1 else []
+        if previous_prompts:
+            lines.append("**Previous User Prompts**:")
+            for i, prompt in enumerate(previous_prompts[-5:], 1):
                 # Truncate at 300 chars instead of 100
                 display = prompt[:300] + "..." if len(prompt) > 300 else prompt
                 lines.append(f"{i}. {display}")
