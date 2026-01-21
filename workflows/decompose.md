@@ -282,8 +282,24 @@ This turns capability gaps into framework improvements.
 - [ ] At least one task is actionable (ready in bd)
 - [ ] Assumption probes identified for critical unknowns
 
+## Handling Uncertainty
+
+**Decomposition must always produce tasks.** Never stop to ask clarifying questions.
+
+When facing ambiguity:
+
+1. **Make safe inferences**: Default to broader scope (can prune later). If unclear whether to include X, include it.
+2. **Create placeholder tasks**: For genuinely uncertain areas, create tasks prefixed with `[TBD]` or `[CLARIFY]`:
+   - `[TBD] Determine output format for audit index`
+   - `[CLARIFY] Scope: full archive vs skills-only`
+3. **Document assumptions inline**: Note what you assumed in the task body, e.g., "Assuming full scope per safe-inference rule"
+4. **Mark uncertainty in hierarchy**: Placeholder tasks can be parents of real work - they represent decision points, not blockers
+
+**The goal is motion, not perfection.** A decomposition with placeholder tasks is infinitely more useful than a blocked session waiting for clarification. The user can refine placeholders; they can't act on questions.
+
 ## Anti-Patterns
 
+- **Blocking on ambiguity**: Stopping to ask questions instead of creating placeholder tasks.
 - **Premature detail**: Expanding everything at once. Only expand what you need to act on.
 - **Hidden assumptions**: Planning as if everything is known. Surface the bets.
 - **Urgency-driven sequencing**: Prioritizing by deadline instead of learning value.
