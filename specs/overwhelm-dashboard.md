@@ -145,6 +145,22 @@ Shows per-session context for "where did I leave off" recovery:
 - **In-progress**: Current TodoWrite item
 - **Pending**: Count of remaining todos
 
+#### Session Card Parameters
+
+| Parameter | Value | Rationale |
+|-----------|-------|-----------|
+| **Truncation length** | 120 chars | 60 chars loses key entities; 120 captures verb + object + context |
+| **Time window (Active Now)** | 4 hours | 24h too wide; 4h = realistic "recently touched" window |
+| **Fallback context** | Empty or real git context | "Local activity" is noise; show nothing or extract `git branch`, touched files |
+
+**Context extraction priority** (from `dashboard.py:604+`):
+1. Current Task (`state.main_agent.current_task`)
+2. Last Prompt (`state.main_agent.last_prompt`)
+3. Hydration Original Prompt (`state.hydration.original_prompt`)
+4. **Fallback**: Show git branch + modified files, OR show nothing
+
+**Do not**: Display "Local activity" placeholder. It adds noise without information.
+
 ## Design Principles
 
 ### Context Recovery, Not Decision Support
@@ -159,18 +175,73 @@ It does NOT try to:
 - Hide options or force single-focus mode
 - Make decisions for the user
 
+### Scale Considerations
+
+The problem changes at scale:
+
+| Session Count | Primary Problem | Solution |
+|--------------|-----------------|----------|
+| 1-10 sessions | **Memory**: "What was I doing?" | Context recovery (current design) |
+| 10+ sessions | **Prioritization**: "Which one matters?" | Session triage (see below) |
+
+At 10+ active sessions, displaying a flat list creates decision paralysis. The dashboard must shift from pure context recovery to **context recovery with triage assistance**.
+
+### Session Triage
+
+When session count exceeds threshold (default: 10), apply recency-based triage:
+
+| Bucket | Definition | Display |
+|--------|-----------|---------|
+| **Active Now** | Activity within 4 hours | Full session cards, expanded |
+| **Paused** | 4-24 hours since activity | Collapsed cards, click to expand |
+| **Stale** | >24 hours since activity | Grouped summary: "X stale sessions" |
+
+Within buckets, group by project for orientation.
+
+**Implementation**: `fetch_session_activity(hours=4)` for Active Now bucket.
+
 ### Anti-Patterns
 
 - GPS/directive mode that hides options
 - Single-focus design that ignores multitasking reality
-- Over-indexing on "recommend ONE thing"
-- Assuming decision paralysis when the problem is memory
+- Over-indexing on "recommend ONE thing" *at baseline scale*
+- Assuming decision paralysis when the problem is memory *at baseline scale*
+- **Ignoring scale transitions**: Flat lists work for 5 sessions, not 50
 
 ### Information Density
 
 - Show top priorities with "X more" indicators
 - Group by project for orientation
 - LLM synthesis for human-readable summaries (pre-computed, not in render path)
+
+## Implementation Phasing
+
+### Phase 1: Parameter Tuning (Non-Breaking)
+
+Quick wins that don't change UI structure:
+
+| Change | File | Line | Effort |
+|--------|------|------|--------|
+| Truncation 60→120 chars | `dashboard.py` | 1782 | 1 line |
+| Time window 24h→4h | `dashboard.py` | 1916 | 1 line |
+| Kill "Local activity" fallback | `dashboard.py` | 604 | Replace with `""` or git context |
+
+### Phase 2: Session Triage UI (Breaking)
+
+Structural changes requiring new components:
+
+1. **Recency bucket logic**: Categorize sessions into Active Now / Paused / Stale
+2. **Collapsible cards**: Implement expand/collapse for Paused bucket
+3. **Grouped summary**: "X stale sessions" with drill-down
+4. **Project grouping**: Within-bucket organization
+
+### Phase 3: Rich Fallback Context (Optional)
+
+If Phase 1 fallback removal leaves too many empty cards:
+
+1. Extract git branch from session state
+2. Show recently modified files
+3. Parse working directory for project indicators
 
 ## Acceptance Criteria
 
@@ -180,6 +251,10 @@ It does NOT try to:
 - [ ] Mobile/tablet accessible via browser
 - [ ] Graceful degradation when data sources unavailable
 - [ ] No LLM calls in render path (pre-computed synthesis only)
+- [ ] Truncation length ≥120 chars for session prompts
+- [ ] Active sessions use 4h window (not 24h)
+- [ ] No "Local activity" placeholder displayed
+- [ ] Session triage buckets visible when count >10
 
 ## Related
 
