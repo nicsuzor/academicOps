@@ -48,7 +48,7 @@ Task state is scattered and not visible where needed. User returns to terminal a
 **I want** one place that shows all my tasks and what I was working on,
 **So that** I can recover context quickly and stay oriented.
 
-## Streamlist dashboard
+## Streamlit Dashboard
 ### Data source
 index.json (created by [[fast-indexer]])
 **Consumers**:
