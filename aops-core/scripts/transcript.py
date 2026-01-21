@@ -231,9 +231,11 @@ def _find_existing_transcript(out_dir: Path, session_id: str) -> Path | None:
     Returns:
         Path to existing -full.md transcript if found, None otherwise
     """
-    # Glob for any transcript with this session_id
-    pattern = f"*-{session_id}-*-full.md"
-    matches = list(out_dir.glob(pattern))
+    # Search for transcripts with this session_id
+    # Pattern 1: with slug (e.g., 20260105-writing-3bf94f77-session-full.md)
+    # Pattern 2: without slug (e.g., 20260105-writing-3bf94f77-full.md)
+    matches = list(out_dir.glob(f"*-{session_id}-*-full.md"))
+    matches.extend(out_dir.glob(f"*-{session_id}-full.md"))
     return matches[0] if matches else None
 
 
