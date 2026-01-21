@@ -159,3 +159,16 @@ description: Working hypotheses validated by evidence.
 **Derivation**: Parent completion guard blocks completing parents with *incomplete subtasks of the same work*. But decomposition for learn/design/spike tasks creates *follow-up* work - the parent task IS done once decomposition is complete. Don't confuse "has children" with "work incomplete."
 
 ---
+
+## Decompose Only When Adding Value (P#72)
+
+**Statement**: Create child tasks only when they add information beyond the parent's bullet points - acceptance criteria, dependencies, distinct ownership, or execution context. Until then, keep items as bullets in the parent body.
+
+**Corollaries**:
+- A child task with an empty body (just title) is a sign of premature decomposition
+- Decompose when work is claimed OR when subtasks need independent tracking
+- Numbered lists in parent body are sufficient for planning; tasks are for execution
+
+**Derivation**: Empty child tasks duplicate information without adding value. They create task sprawl and make the queue harder to navigate. Decomposition should be triggered by need (claiming work, adding detail), not by reflex.
+
+---
