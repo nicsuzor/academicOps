@@ -155,6 +155,7 @@ These guardrails are applied by [[prompt-hydration]] based on task classificatio
 | `use_todowrite`           | [[todowrite-vs-persistent-tasks]]                                                                    | Losing track of steps                           |
 | `criteria_gate`           | [[acceptance-criteria-own-success]], [[no-promises-without-instructions]], [[edit-source-run-setup]] | Missing acceptance criteria                     |
 | `capture_insights`        | [[semantic-vs-episodic-storage]]                                                                     | Losing discoveries (bd for ops, remember for knowledge) |
+| `zero_friction_capture`   | [[action-over-clarification]]                                                                        | Asking questions on exploratory ideas instead of capturing |
 
 ### Task Type → Guardrail Mapping
 

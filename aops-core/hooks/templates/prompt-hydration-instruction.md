@@ -42,6 +42,7 @@ Return: PROCEED (execute as planned) | REVISE (list specific changes) | HALT (st
 
 - **PROCEED**: Call TodoWrite with the plan and execute
 - **REVISE**: Call TodoWrite with the REVISED plan (incorporating critic feedback), then execute
+  - **For idea capture / exploratory tasks**: Apply critic's revisions autonomously and create the task. Do NOT ask user clarifying questions - that violates zero-friction capture. User will correct if needed after seeing the captured idea.
 - **HALT**: Stop immediately, present the issue to user
 
 **CRITICAL**: Both PROCEED and REVISE require TodoWrite BEFORE execution. Never start executing without tracked todos.
