@@ -134,7 +134,7 @@ def _process_reflection(
                 print(f"⏭️  Insights already exist for session {session_id}: {existing.name}")
                 continue
 
-            insights_path = get_insights_file_path(date_str, session_id, slug, idx)
+            insights_path = get_insights_file_path(date_str, session_id, slug, idx, project)
             write_insights_file(insights_path, insights)
             print(f"💡 Reflection {i + 1}/{len(reflections)} saved to: {insights_path}")
         except InsightsValidationError as e:

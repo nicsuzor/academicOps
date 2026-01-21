@@ -5,9 +5,7 @@ category: development
 
 # Minor Edit Workflow
 
-## Overview
-
-Streamlined workflow for small, targeted changes. Includes test-first development but skips heavyweight processes like critic review and QA verification.
+Streamlined workflow for small, targeted changes. Includes TDD but skips critic review and QA verification.
 
 ## When to Use
 
@@ -20,133 +18,36 @@ Streamlined workflow for small, targeted changes. Includes test-first developmen
 
 ## When NOT to Use
 
-Use feature-dev workflow instead if:
+Use feature-dev or design workflow if:
 - Change affects multiple files
 - Architectural decisions required
 - Complex logic changes
 - New features (not bug fixes)
 - User-facing behavior changes
 
-## Steps
+## Scope Signals
 
-### 1. Track work in bd ([[bd-workflow]])
+| Signal | Indicates |
+|--------|-----------|
+| Single file, obvious fix | Minor edit |
+| "Quick change", "simple fix" | Minor edit |
+| Multiple files, design decisions | Feature-dev |
 
-Follow the [[bd-workflow]] to set up issue tracking:
-- Check for existing issues
-- Create issue if needed (typically `--type=bug --priority=3`)
-- Mark as in-progress
+## Key Steps
 
-### 2. Invoke TDD cycle to create a failing test ([[tdd-cycle]])
+1. Track work (create/claim task)
+2. Write failing test (TDD)
+3. Make minimal change
+4. Verify tests pass
+5. Commit and push
 
-Follow the [[tdd-cycle]] to write a test that demonstrates the bug or validates the change:
+## Quality Gates
 
-```python
-def test_fix_for_issue():
-    """Test that [issue] is fixed."""
-    # Arrange
-    setup = create_test_case()
+- Change is minimal and focused
+- Tests pass (including new test)
+- Code formatted and linted
+- Task completed
 
-    # Act
-    result = function_being_fixed(setup)
+## Upgrade Signal
 
-    # Assert
-    assert result == expected_behavior
-```
-
-Run to confirm it fails:
-
-```bash
-uv run pytest -v test_file.py::test_fix_for_issue
-```
-
-### 3. Invoke python-dev to make the change
-
-Make the minimal change needed:
-
-```python
-def function_being_fixed(input):
-    """Fix implementation."""
-    # Make the change
-    return corrected_behavior
-```
-
-Keep changes focused:
-- Fix only what's needed
-- Don't refactor surrounding code
-- Don't add extra features
-
-### 4. CHECKPOINT: Verify change works
-
-Run tests to confirm:
-
-```bash
-uv run pytest -v              # All tests should pass
-./scripts/format.sh           # Format code
-uv run ruff check .           # Check linting
-```
-
-If tests fail:
-- Fix the implementation
-- Update tests if assumptions were wrong
-- Don't proceed until green
-
-### 5. Commit, push, close bd issue ([[bd-workflow]])
-
-Land the change:
-
-```bash
-./scripts/format.sh          # Format
-git add -A                    # Stage changes
-git commit -m "fix: [description]
-
-Fixes: [describe what was wrong]
-Change: [describe what changed]
-
-Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
-
-git pull --rebase            # Get latest
-bd sync                       # Sync bd (per [[bd-workflow]])
-git push                      # Push to remote
-```
-
-Close the issue per [[bd-workflow]]:
-```bash
-bd close <id>                 # Mark work complete
-```
-
-## Differences from Feature Dev
-
-**Minor Edit skips:**
-- Critic review (too lightweight)
-- QA verification (test coverage sufficient)
-- Detailed planning (change is obvious)
-
-**Minor Edit keeps:**
-- Test-first development (TDD)
-- bd issue tracking
-- Checkpoint before commit
-- Format and lint checks
-
-## When to Upgrade to Feature Dev
-
-If during implementation you discover:
-- Change is more complex than expected
-- Multiple files need changes
-- Architectural decisions needed
-- Edge cases are non-trivial
-
-Then stop and switch to feature-dev workflow:
-
-```bash
-bd update <id> --status=open    # Release the issue
-```
-
-Then follow feature-dev workflow instead.
-
-## Success Metrics
-
-- [ ] Change is minimal and focused
-- [ ] Tests pass (including new test)
-- [ ] Code formatted and linted
-- [ ] Committed and pushed
-- [ ] bd issue closed
+If during implementation you discover complexity (multiple files, architectural decisions, edge cases), stop and switch to feature-dev workflow.

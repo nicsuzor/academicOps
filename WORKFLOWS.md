@@ -8,185 +8,111 @@ permalink: workflows
 tags: [framework, routing, workflows, index]
 ---
 
-
-<!-- NS: file should be dynamically generated after any change in workflows/. format should be revised to ensure agent has sufficient detail to make the choice between workflows -->
-
 # Workflow Index
 
-All work MUST follow one of the workflows in this index. No exceptions.
+All work MUST follow one of the workflows in this index.
 
-## Available Workflows
-
-### Development Workflows
-
-#### [[feature-dev]]
-- **ID**: `feature-dev`
-- **Title**: Feature Development Workflow
-- **Category**: development
-- **When to use**: Adding new features, complex modifications, architectural decisions
-- **Key steps**: User story → Acceptance criteria → Spec review → Approval → TDD → QA verification
-- **Quality gates**: Critic review, TDD, QA verification
-
-#### [[minor-edit]]
-- **ID**: `minor-edit`
-- **Title**: Minor Edit Workflow
-- **Category**: development
-- **When to use**: Small bug fixes, typo fixes, minor refactoring, simple one-file changes
-- **Key steps**: Claim issue → Write test → Implement → Verify → Commit
-- **Quality gates**: TDD, test checkpoint
-
-#### [[debugging]]
-- **ID**: `debugging`
-- **Title**: Debugging Workflow
-- **Category**: development
-- **When to use**: Investigating bugs, root cause analysis, reproducing issues
-- **Key steps**: Claim issue → Define success → Design durable test → Investigate → Report findings
-- **Quality gates**: Reproducible test
-
-#### [[tdd-cycle]]
-- **ID**: `tdd-cycle`
-- **Title**: Test-Driven Development Cycle
-- **Category**: development
-- **When to use**: Implementing features, fixing bugs, any testable code change
-- **Key steps**: Red (failing test) → Green (minimal implementation) → Refactor → Commit
-- **Quality gates**: Tests pass, no regression
-
-### Planning Workflows
-
-#### [[decompose]]
-- **ID**: `decompose`
-- **Title**: Progressive Decomposition Workflow
-- **Category**: planning
-- **When to use**: Multi-month/year goals, uncertain path forward, need to figure out steps before acting
-- **Key steps**: Articulate goal → Surface assumptions → Identify coarse components → Sequence by information value → Expand just-in-time → Mark ready work
-- **Quality gates**: Goal articulated, assumptions surfaced, at least one actionable task identified
-- **Scope signals**: Goal-level requests, "write a paper", "build a feature", "plan the project"
-
-#### [[spec-review]]
-- **ID**: `spec-review`
-- **Title**: Spec Review Loop (Critic Feedback)
-- **Category**: planning
-- **When to use**: Designing features, planning refactoring, architectural decisions
-- **Key steps**: Create spec → Invoke critic → Analyze feedback → Iterate → Converge
-- **Quality gates**: Critic approval, convergence criteria
-
-### Quality Assurance Workflows
-
-#### [[qa-demo]]
-- **ID**: `qa-demo`
-- **Title**: QA Verification Demo
-- **Category**: quality-assurance
-- **When to use**: Before completing features, after tests pass, for user-facing changes
-- **Key steps**: Gather context → Invoke QA → Analyze verdict → Fix issues → Re-verify
-- **Quality gates**: QA verification (functionality, quality, completeness)
-
-#### [[prove-feature]]
-- **ID**: `prove-feature`
-- **Title**: Prove Feature Workflow
-- **Category**: quality-assurance
-- **When to use**: Validating framework features integrate correctly (not just run without error)
-- **Key steps**: Establish baseline → Execute feature → Verify structural changes → Report evidence
-- **Quality gates**: Baseline captured, structural integration verified, evidence table produced
-
-### Operations Workflows
-
-#### [[bd-workflow]]
-- **ID**: `bd-workflow`
-- **Title**: BD Issue Tracking Workflow
-- **Category**: operations
-- **When to use**: Beginning and end of any tracked work (features, bugs, planning, batch ops)
-- **Key steps**: Check for issues → Create if needed → Mark in-progress → Do work → Close and sync
-- **Quality gates**: Issue tracked, work completed, issue closed, bd synced
-
-#### [[batch-processing]]
-- **ID**: `batch-processing`
-- **Title**: Batch Processing Workflow
-- **Category**: operations
-- **When to use**: Processing multiple similar items, batch updates, parallel work
-- **Key steps**: Claim issue → Identify scope → Spawn parallel agents → Monitor → Checkpoint → Commit
-- **Quality gates**: All items processed, results verified
-
-#### [[triage-email]]
-- **ID**: `triage-email`
-- **Title**: Email Triage Workflow
-- **Category**: operations
-- **When to use**: Classifying emails during daily briefing or email processing
-- **Key steps**: Check sent mail → Cross-reference → Classify (Task/FYI/Skip/Uncertain) → Infer priority
-- **Quality gates**: Sent mail checked first, semantic classification applied
-
-### Information Workflows
-
-#### [[simple-question]]
-- **ID**: `simple-question`
-- **Title**: Simple Question Workflow
-- **Category**: information
-- **When to use**: Pure informational questions, no modifications needed
-- **Key steps**: Answer question → HALT
-- **Quality gates**: None (information only)
-
-### Routing Workflows
-
-#### [[direct-skill]]
-- **ID**: `direct-skill`
-- **Title**: Direct Skill/Command Invocation
-- **Category**: routing
-- **When to use**: User request maps 1:1 to existing skill/command
-- **Key steps**: Identify skill → Invoke directly (no TodoWrite wrapping)
-- **Quality gates**: None (delegated to skill)
-
-### Meta Workflows
-
-#### [[skill-pilot]]
-- **ID**: `skill-pilot`
-- **Title**: Skill Pilot Workflow
-- **Category**: meta
-- **When to use**: Decomposition reveals capability gap (no existing skill for task), building new skills through supervised learning
-- **Key steps**: Articulate gap → Pilot with user → Reflect → Draft SKILL.md → Test → Index
-- **Quality gates**: User participated in pilot, skill tested, skill indexed
-
-## Workflow Selection Guide
-
-### Decision Tree
+## Decision Tree
 
 ```
 User request
     │
-    ├─ Explicit skill mentioned? ─────────────> [[direct-skill]]
+    ├─ Explicit skill mentioned? ──────────────> direct-skill
     │
-    ├─ Simple question only? ─────────────────> [[simple-question]]
+    ├─ Simple question only? ──────────────────> simple-question
     │
-    ├─ Goal-level / multi-month work? ────────> [[decompose]]
+    ├─ Goal-level / multi-month work? ─────────> decompose
     │   (uncertain path, need to figure out steps)
-    │       │
-    │       └─ Task doesn't map to any skill? ─> [[skill-pilot]]
-    │          (capability gap → build new skill)
+    │       └─ Task doesn't map to any skill? ─> skill-pilot
     │
-    ├─ Multiple similar items? ───────────────> [[batch-processing]]
+    ├─ Multiple similar items? ────────────────> batch-processing
     │
-    ├─ Investigating/debugging? ──────────────> [[debugging]]
+    ├─ Investigating/debugging? ───────────────> debugging
     │
-    ├─ Planning/designing known work? ────────> [[spec-review]]
+    ├─ Planning/designing known work? ─────────> design
     │   (know what to build, designing how)
     │
-    ├─ Small, focused change? ────────────────> [[minor-edit]]
+    ├─ Small, focused change? ─────────────────> minor-edit
     │
-    ├─ New feature or complex work? ──────────> [[feature-dev]]
+    ├─ Need QA verification? ──────────────────> qa-demo
     │
-    └─ Need QA verification? ─────────────────> [[qa-demo]]
+    └─ Framework governance change? ───────────> framework-change
 ```
 
-## Specification
+## Scope-Based Routing
 
-For complete documentation of workflow structure, composition rules, and how the hydrator selects workflows, see [[specs/workflow-system-spec]].
+| Signal | Route to |
+|--------|----------|
+| "Write a paper", "Build X", "Plan the project" | decompose |
+| "Add feature X", "Fix bug Y" (clear steps) | design → minor-edit |
+| "How do I..." (information only) | simple-question |
+| "Process all X", "batch update" | batch-processing |
+| "/commit", "/email" (skill name) | direct-skill |
 
-### Scope-Based Routing
+## Available Workflows
 
-When hydrator detects **multi-session scope**, routing changes:
+### Development
 
-| Signal | Indicates | Route to |
-|--------|-----------|----------|
-| "Write a paper", "Build X", "Plan the project" | Goal-level, uncertain path | [[decompose]] |
-| "Add feature X", "Fix bug Y" | Known deliverable, clear steps | [[feature-dev]] or [[minor-edit]] |
-| "How do I..." | Information need | [[simple-question]] |
+| Workflow | When to Use | Routing Signal |
+|----------|-------------|----------------|
+| **minor-edit** | Typo/bug fixes, one-file changes, simple refactoring | "quick fix", single file, obvious change |
+| **tdd-cycle** | Any testable code change, feature implementation | Code change requiring tests |
+| **debugging** | Investigating bugs, root cause analysis | "why doesn't this work?", cause unknown |
 
-**Key distinction**: [[decompose]] is for "figure out what to do", [[spec-review]] is for "design how to do it".
+### Planning
+
+| Workflow | When to Use | Routing Signal |
+|----------|-------------|----------------|
+| **decompose** | Multi-month projects, unclear path, goal-level work | "write a paper", "build X", uncertain deliverables |
+| **design** | Features needing spec, architectural decisions | "add feature", requirements unclear |
+
+### Quality Assurance
+
+| Workflow | When to Use | Routing Signal |
+|----------|-------------|----------------|
+| **qa-demo** | Pre-completion verification, user-facing changes | Feature complete, before final commit |
+| **prove-feature** | Validating framework integration | "does it integrate correctly?" |
+
+### Operations
+
+| Workflow | When to Use | Routing Signal |
+|----------|-------------|----------------|
+| **batch-processing** | Multiple similar items, parallel work | "process all", multiple independent tasks |
+| **triage-email** | Email classification during daily/email processing | Inbox processing, email skill |
+| **email-reply** | Drafting email replies for tasks | Task title starts with "Reply to" |
+| **interactive-triage** | Backlog grooming, task organization | Periodic review, batch classification |
+| **peer-review** | Grant/fellowship application reviews | Assessment packages, review templates |
+
+### Information
+
+| Workflow | When to Use | Routing Signal |
+|----------|-------------|----------------|
+| **simple-question** | Pure information request, no modifications | "what is...", "how does...", no action needed |
+
+### Routing
+
+| Workflow | When to Use | Routing Signal |
+|----------|-------------|----------------|
+| **direct-skill** | Request maps 1:1 to existing skill | "/commit", explicit skill name |
+
+### Meta
+
+| Workflow | When to Use | Routing Signal |
+|----------|-------------|----------------|
+| **skill-pilot** | Building new skills from capability gaps | Decomposition reveals no matching skill |
+| **dogfooding** | Framework self-improvement during work | Friction noticed, "harder than it should be" |
+
+### Governance
+
+| Workflow | When to Use | Routing Signal |
+|----------|-------------|----------------|
+| **framework-change** | Modifying AXIOMS/HEURISTICS/enforcement | Governance file modification |
+
+## Key Distinctions
+
+| If you're unsure between... | Ask... |
+|-----------------------------|--------|
+| **decompose** vs **design** | "Figure out what to do" vs "design how to do it" |
+| **qa-demo** vs **prove-feature** | "Does it run?" vs "Does it integrate correctly?" |
+| **minor-edit** vs **design** | Single file, obvious fix vs multi-file, decisions needed |
+| **simple-question** vs **debugging** | Pure info vs leads to investigation |

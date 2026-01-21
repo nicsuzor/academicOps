@@ -266,15 +266,16 @@ def find_existing_insights(date: str, session_id: str) -> Path | None:
     date_compact = date.replace("-", "")
 
     # Search for insights with this session_id
-    # Pattern 1: YYYYMMDD-session_id-slug.json (v3.5.0+ format with slug)
-    # Pattern 2: YYYYMMDD-session_id.json (no slug)
-    # Pattern 3: YYYYMMDD-slug.json where slug contains session_id (legacy)
-    # Pattern 4: YYYY-MM-DD-session_id.json (old format)
+    # v3.6.0+ format: YYYYMMDD-project-session_id-slug.json
+    # v3.5.0 format: YYYYMMDD-session_id-slug.json
+    # Legacy formats also supported for backwards compatibility
     patterns = [
-        f"{date_compact}-{session_id}-*.json",  # New format: date-sessionid-slug
-        f"{date_compact}-{session_id}.json",  # No slug
+        f"{date_compact}-*-{session_id}-*.json",  # v3.6.0: date-project-sessionid-slug
+        f"{date_compact}-*-{session_id}.json",  # v3.6.0: date-project-sessionid (no slug)
+        f"{date_compact}-{session_id}-*.json",  # v3.5.0: date-sessionid-slug
+        f"{date_compact}-{session_id}.json",  # v3.5.0: date-sessionid (no slug)
         f"{date_compact}-*{session_id}*.json",  # Legacy: session_id anywhere
-        f"{date}-{session_id}.json",  # Old format
+        f"{date}-{session_id}.json",  # Old format with dashes in date
     ]
 
     for pattern in patterns:
@@ -284,8 +285,28 @@ def find_existing_insights(date: str, session_id: str) -> Path | None:
     return None
 
 
+def _sanitize_filename_segment(segment: str) -> str:
+    """Sanitize a string for use in filenames.
+
+    Args:
+        segment: Raw string (e.g., project name)
+
+    Returns:
+        Lowercase string with only alphanumeric chars and hyphens
+    """
+    # Replace spaces and underscores with hyphens
+    sanitized = segment.lower().replace(" ", "-").replace("_", "-")
+    # Keep only alphanumeric and hyphens
+    sanitized = re.sub(r"[^a-z0-9-]", "", sanitized)
+    # Collapse multiple hyphens
+    sanitized = re.sub(r"-+", "-", sanitized)
+    # Strip leading/trailing hyphens
+    return sanitized.strip("-")
+
+
 def get_insights_file_path(
-    date: str, session_id: str, slug: str = "", index: int | None = None
+    date: str, session_id: str, slug: str = "", index: int | None = None,
+    project: str = ""
 ) -> Path:
     """Get path to unified session JSON file in summaries/.
 
@@ -295,25 +316,35 @@ def get_insights_file_path(
         slug: Short descriptive slug for the session (e.g., "refactor-insights")
         index: Optional index for multi-reflection sessions (0, 1, 2, etc.)
                If None or 0 with single reflection, uses base filename.
+        project: Project name to include in filename for traceability
 
     Returns:
-        Path to session file: summaries/YYYYMMDD-{session_id}-{slug}.json
-        or YYYYMMDD-{session_id}-{slug}-{index}.json for multi-reflection sessions
+        Path to session file: summaries/YYYYMMDD-{project}-{session_id}-{slug}.json
+        or YYYYMMDD-{project}-{session_id}-{slug}-{index}.json for multi-reflection sessions
 
     Note:
         v3.4.0: Output moved to summaries/ subdirectory, filename uses YYYYMMDD-slug format.
         v3.5.0: Always include session_id in filename to prevent collisions.
+        v3.6.0: Include project name for relationship traceability with transcripts.
     """
     summaries_dir = get_summaries_dir()
 
     # Convert YYYY-MM-DD to YYYYMMDD
     date_compact = date.replace("-", "")
 
-    # Build filename: YYYYMMDD-session_id-slug.json (always include session_id for uniqueness)
+    # Sanitize project name for filesystem safety
+    safe_project = _sanitize_filename_segment(project) if project else ""
+
+    # Build filename: YYYYMMDD-project-session_id-slug.json
+    # Matches transcript format: YYYYMMDD-project-sessionid-slug-full.md
+    parts = [date_compact]
+    if safe_project:
+        parts.append(safe_project)
+    parts.append(session_id)
     if slug:
-        base = f"{date_compact}-{session_id}-{slug}"
-    else:
-        base = f"{date_compact}-{session_id}"
+        parts.append(slug)
+
+    base = "-".join(parts)
 
     if index is not None and index > 0:
         return summaries_dir / f"{base}-{index}.json"

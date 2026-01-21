@@ -21,7 +21,10 @@ permalink: commands/email
    - Convert documents to markdown for repo storage
    - Store in appropriate location (reviews → `$ACA_DATA/reviews/{sender}/`)
    - Create task with body containing summary, response needed, document links
-7. **Present all important information to user** (not just subject lines - actual content)
+7. **Present all important information to user**:
+   - **Tasks created**: Table with title, priority, project
+   - **FYI emails**: MUST include content summary (key dates, amounts, outcomes, decisions) - NOT just subject/sender metadata
+   - **Archived**: List what was archived
 8. Archive safe-to-ignore emails (use `mcp__plugin_aops-tools_outlook__messages_list_folders` to find correct archive folder per account - Gmail uses lowercase `archive`, Exchange uses `Archive`)
 
 **Task creation**:
