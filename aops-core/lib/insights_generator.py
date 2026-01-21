@@ -278,14 +278,16 @@ def find_existing_insights(date: str, session_id: str) -> Path | None:
     summaries_dir = get_summaries_dir()
     date_compact = date.replace("-", "")
 
-    # Search for insights with this session_id (may have different slugs)
-    # Pattern 1: YYYYMMDD-slug.json where slug contains session_id
+    # Search for insights with this session_id
+    # Pattern 1: YYYYMMDD-session_id-slug.json (v3.5.0+ format with slug)
     # Pattern 2: YYYYMMDD-session_id.json (no slug)
-    # Pattern 3: YYYY-MM-DD-session_id.json (old format)
+    # Pattern 3: YYYYMMDD-slug.json where slug contains session_id (legacy)
+    # Pattern 4: YYYY-MM-DD-session_id.json (old format)
     patterns = [
-        f"{date_compact}-*{session_id}*.json",
-        f"{date_compact}-{session_id}.json",
-        f"{date}-{session_id}.json",
+        f"{date_compact}-{session_id}-*.json",  # New format: date-sessionid-slug
+        f"{date_compact}-{session_id}.json",  # No slug
+        f"{date_compact}-*{session_id}*.json",  # Legacy: session_id anywhere
+        f"{date}-{session_id}.json",  # Old format
     ]
 
     for pattern in patterns:
@@ -308,20 +310,21 @@ def get_insights_file_path(
                If None or 0 with single reflection, uses base filename.
 
     Returns:
-        Path to session file: summaries/YYYYMMDD-{slug}.json
-        or YYYYMMDD-{slug}-{index}.json for multi-reflection sessions
+        Path to session file: summaries/YYYYMMDD-{session_id}-{slug}.json
+        or YYYYMMDD-{session_id}-{slug}-{index}.json for multi-reflection sessions
 
     Note:
         v3.4.0: Output moved to summaries/ subdirectory, filename uses YYYYMMDD-slug format.
+        v3.5.0: Always include session_id in filename to prevent collisions.
     """
     summaries_dir = get_summaries_dir()
 
     # Convert YYYY-MM-DD to YYYYMMDD
     date_compact = date.replace("-", "")
 
-    # Build filename: YYYYMMDD-slug.json (or YYYYMMDD-slug-index.json)
+    # Build filename: YYYYMMDD-session_id-slug.json (always include session_id for uniqueness)
     if slug:
-        base = f"{date_compact}-{slug}"
+        base = f"{date_compact}-{session_id}-{slug}"
     else:
         base = f"{date_compact}-{session_id}"
 
