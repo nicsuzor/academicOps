@@ -90,6 +90,64 @@ After initial observations, the reviewer drafts assessment comments. Agent assis
 5. **Agent revises** based on feedback
 6. **Verify**: Character counts meet minimums, all scores filled
 
+### Naming Convention
+
+**Always use the candidate's name/title**, never generic references:
+- ✓ "Dr Albright is a capable researcher" / "A/Prof Ng's track record demonstrates"
+- ✗ "The candidate is capable" / "This researcher's track record"
+
+Use appropriate title (Dr, A/Prof, Prof) with surname throughout. This makes the review feel personalised and engaged rather than bureaucratic.
+
+### Constructive Framing
+
+Frame concerns as opportunities for improvement, not failures:
+
+| Instead of | Write |
+|------------|-------|
+| "fails to explain" | "would benefit from clearer articulation" |
+| "does not adequately demonstrate" | "could more clearly demonstrate" |
+| "cannot credibly claim" | "is ambitious for the proposed scope" |
+| "the application is weak on" | "the application could be strengthened by" |
+
+### Strengths-First in Critical Assessments
+
+Even when giving a low score, lead with genuine strengths before raising concerns:
+
+**Before** (concern-first):
+> The project has not clearly identified its regulatory target. Misinformation is a thorny problem...
+
+**After** (strengths-first):
+> The project addresses a genuine problem—the timing dilemma in technology regulation is real, and the insight that focusing on enduring values might provide more stable regulatory foundations is conceptually appealing. The backcasting workshops are methodologically creative... However, the pathway from theoretical framework to concrete recommendations would benefit from further elaboration.
+
+### Lead with Distinctive Experience
+
+Open paragraphs with what makes THIS candidate unique, not generic assertions:
+
+**Before**:
+> Strong candidate with a notable track record in digital forensics.
+
+**After**:
+> Dr Albright is a capable researcher with a strong track record in digital forensics and platform accountability. His work on Russian disinformation operations attracted significant attention and has had demonstrable policy impact—contributing to the Honest Ads Act and forcing Facebook to implement its Ad Library in response to his findings.
+
+### Redundancy Avoidance
+
+Don't repeat in Overall Comments what's already stated in criterion sections. If the same point appears in both places, either:
+1. Remove it from criterion sections and save for Overall (if it's a cross-cutting theme)
+2. Keep it in criterion sections and reference briefly in Overall ("As noted above...")
+3. Fold the Overall section's content into the other criteria to avoid repetition entirely
+
+### Measured Qualifiers
+
+Use precise, measured language:
+
+| Instead of | Write |
+|------------|-------|
+| "high confidence" | "reasonable confidence" |
+| "exceptional" | "strong" |
+| "seminal work" | "work that has been well received" |
+| "eight times the expected rate" | "approximately eight times" |
+| "zero transition risk" | "minimal transition risk" |
+
 ### Common Revision Requests
 
 | Feedback | Action |
@@ -98,3 +156,6 @@ After initial observations, the reviewer drafts assessment comments. Agent assis
 | "Don't quote the application" | Remove quoted praise, replace with evaluative statements |
 | "Expand this section" | Add substantive analysis, not padding |
 | "Stay in my voice" | Re-read style guide, match sentence patterns |
+| "Use their name" | Replace "the candidate" with name/title throughout |
+| "Lead with strengths" | Restructure to acknowledge positives before concerns |
+| "Too harsh" | Reframe with constructive language ("would benefit from") |
