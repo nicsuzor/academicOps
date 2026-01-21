@@ -32,6 +32,7 @@ Create task or flag for `/email` processing when ANY of these signals present:
 - Questions directed at recipient expecting response
 - Emails from known contacts about user's strategic interests (check strategy.md)
 - Deliverables requiring processing: attached documents, spreadsheets, files to upload/integrate
+- **Event/webinar invitations from real people** (not noreply@) addressed to user personally - these override the Skip classification for generic webinars
 
 **Key rule**: If an email asks for the user's opinion, participation, or response - even phrased as a question or "just sharing" - it's a **Task**, not FYI.
 
