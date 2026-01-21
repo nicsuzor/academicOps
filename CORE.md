@@ -99,6 +99,14 @@ When looking for tasks:
 
 **Caution**: `list_tasks(status="active")` returns ONLY tasks explicitly marked "active". Most tasks are "inbox" (default) or "done". Use `search_tasks` for keyword search or omit status filter to see all.
 
+### Task Assignment
+
+Use **tags** for task assignment:
+- `tags: ["bot"]` - automated/agent work
+- `tags: ["human"]` - manual/user work
+
+Don't use the `context` field for assignment - it's for general task context notes.
+
 ## Submodule Handling
 
 `$AOPS` (aops/) is a **git submodule**. When modifying files in aops/:

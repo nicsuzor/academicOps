@@ -107,7 +107,7 @@ tags: [framework, enforcement, moc]
 | ---------- | ----- | ---------------------------------------------------------- |
 | Hard Gate  | 11    | Blocks action (PreToolUse hooks, deny rules, pre-commit)   |
 | Soft Gate  | 8     | Injects guidance, agent can proceed                        |
-| Prompt     | 43    | Instructional (AXIOMS.md or HEURISTICS.md at SessionStart) |
+| Prompt     | 43    | Instructional (AXIOMS.md, HEURISTICS.md, CORE.md, AGENTS.md at SessionStart) |
 | Observable | 2     | Creates visible artifact (TodoWrite)                       |
 | Detection  | 3     | Logs for post-hoc analysis                                 |
 | Review     | 1     | Human/LLM review at PR time                                |
@@ -115,6 +115,25 @@ tags: [framework, enforcement, moc]
 | Config     | 1     | External tool config (pyproject.toml, pre-commit)          |
 
 **Note**: "Prompt" level rules are injected at session start via `sessionstart_load_axioms.py`. Agents receive them automatically but compliance is not mechanically enforced.
+
+### What Constitutes Prompt-Level Enforcement
+
+Any modification to files that are fed to agents at session start is a prompt-level enforcement mechanism:
+
+| File | Purpose | Loaded Via |
+|------|---------|------------|
+| `AXIOMS.md` | Inviolable principles | `sessionstart_load_axioms.py` |
+| `HEURISTICS.md` | Operational defaults | `sessionstart_load_axioms.py` |
+| `CORE.md` | Operational conventions (memory, tooling, git) | `AGENTS.md` → CLAUDE.md |
+| `AGENTS.md` | Agent routing and aops rules | CLAUDE.md reference |
+| Agent frontmatter (`agents/*.md`) | Agent-specific context | Task tool invocation |
+
+**Rule**: When adding instructions to ANY of these files, you MUST document the enforcement in RULES.md. This applies to:
+- New axiom or heuristic → Add row to mapping table
+- Convention in CORE.md → Add to "File Location Conventions" or create new section
+- Agent-specific rule → Document in "Agent Tool Permissions" or relevant section
+
+This ensures [[enforcement-changes-require-rules-md-update]] is followed.
 
 ## Soft Gate Guardrails (Prompt Hydration)
 
@@ -291,6 +310,19 @@ Enforcement of [[semantic-vs-episodic-storage]] and [[current-state-machine]].
 - Operational findings → bd issues
 - Knowledge discoveries → `Skill(skill="remember")` → markdown + memory
 - Session learnings → `/session-insights` → JSON + memory
+
+## Task Assignment Convention
+
+Context injected via CORE.md at SessionStart.
+
+| Assignment | Tag | Purpose |
+|------------|-----|---------|
+| Bot/agent work | `tags: ["bot"]` | Automated tasks for agent execution |
+| Human/user work | `tags: ["human"]` | Manual tasks requiring user action |
+
+**Rule**: Use tags for task assignment, not the `context` field.
+
+**Enforcement**: Prompt-level (CORE.md). No mechanical gate.
 
 ## File Location Conventions
 
