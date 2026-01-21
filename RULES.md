@@ -98,6 +98,7 @@ tags: [framework, enforcement, moc]
 | [[structured-justification-format]]     | Structured Justification Format         | /learn command, PreToolUse hook (planned)              | Before framework edit     | 1d    |
 | [[extract-implies-persist]]             | Extract Implies Persist in PKM Context | prompt-hydrator guidance                              | UserPromptSubmit          |       |
 | [[background-agent-visibility]]         | Background Agent Visibility            | HEURISTICS.md                                         | SessionStart              |       |
+| [[imminent-deadline-surfacing]]         | Imminent Deadline Surfacing            | daily skill DEADLINE TODAY category                   | /daily invocation         | 1a    |
 
 ## Enforcement Level Summary
 

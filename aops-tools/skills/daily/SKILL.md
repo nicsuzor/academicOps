@@ -175,6 +175,7 @@ P2 ██████████  55/85
 P3 ██░░░░░░░░  15/85
 ```
 
+🚨 **DEADLINE TODAY**: [ns-xyz] [[ARC FT26 Reviews]] - Due 23:59 AEDT (8 reviews)
 **SHOULD**: [ns-abc] [[OSB PAO 2025E Review]] - 3 days overdue
 **SHOULD**: [ns-def] [[ADMS Clever Reporting]] - 16 days overdue
 **DEEP**: [ns-ghi] [[Write TJA paper]] - Advances ARC Future Fellowship research goals
@@ -189,10 +190,17 @@ P3 ██░░░░░░░░  15/85
 
 Select ~10 recommendations using judgment (approx 2 per category):
 
+**🚨 DEADLINE TODAY (CRITICAL - always check first)**:
+
+- Tasks with `due` date matching TODAY (within 24h)
+- Format: `🚨 **DEADLINE TODAY**: [id] [[Title]] - Due HH:MM TZ (detail)`
+- This category is NON-OPTIONAL - if ANY task has `due` within 24h, it MUST appear first
+- Even if task seems low priority, imminent deadline overrides priority ranking
+
 **SHOULD (deadline/commitment pressure)**:
 
 - Check `days_until_due` - negative = overdue
-- Priority: overdue → due today → due this week → P0 without dates
+- Priority: overdue → due this week → P0 without dates (note: "due today" now goes to DEADLINE TODAY)
 
 **DEEP (long-term goal advancement)**:
 
