@@ -1,21 +1,22 @@
 {
   "mcpServers": {
-    "gh": {
-      "type": "http",
-      "url": "https://api.githubcopilot.com/mcp/",
-      "headers": {
-        "Authorization": "Bearer ${GH_MCP_TOKEN}"
-      }
-    },
     "zot": {
       "type": "stdio",
       "command": "uvx",
-      "args": ["fastmcp", "run", "http://services.stoat-musical.ts.net:8024/mcp"]
+      "args": [
+        "fastmcp",
+        "run",
+        "http://services.stoat-musical.ts.net:8024/mcp"
+      ]
     },
     "osb": {
       "type": "stdio",
       "command": "uvx",
-      "args": ["fastmcp", "run", "http://services.stoat-musical.ts.net:8025/mcp"]
+      "args": [
+        "fastmcp",
+        "run",
+        "http://services.stoat-musical.ts.net:8025/mcp"
+      ]
     },
     "task_manager": {
       "type": "stdio",
@@ -23,7 +24,7 @@
       "args": [
         "run",
         "python",
-        "aops-core/mcp_servers/tasks_server.py"
+        "$AOPS/aops-core/mcp_servers/tasks_server.py"
       ],
       "env": {
         "AOPS": "$AOPS",

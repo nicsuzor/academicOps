@@ -7,16 +7,21 @@ from datetime import datetime, timezone
 from pathlib import Path
 import json
 import os
+import time
 import sys
 import requests
 from urllib.parse import quote
 
 # Add aOps root to path for imports
 aops_root = Path(__file__).resolve().parent.parent.parent
-sys.path.insert(0, str(aops_root))
+# sys.path.insert(0, str(aops_root))
 # Also add aops-core for lib/ imports (session_reader, session_analyzer)
 aops_core = aops_root / "aops-core"
 sys.path.insert(0, str(aops_core))
+
+
+from lib.session_reader import find_sessions
+from lib.session_analyzer import SessionAnalyzer, extract_todowrite_from_session
 
 
 # index.json integration (2026-01-21)
@@ -65,12 +70,6 @@ def load_bd_issues(priority_max=2, status=None, limit=50):
     filtered.sort(key=lambda x: (x.get("priority", 99), x.get("id", "")))
 
     return filtered[:limit]
-
-
-from lib.session_reader import find_sessions
-from lib.session_analyzer import SessionAnalyzer, extract_todowrite_from_session
-from lib.session_state import load_session_state, SessionState as SessionStateDict
-from lib.session_paths import get_session_short_hash
 
 
 def find_active_session_states(hours: int = 4) -> list[dict]:
@@ -543,7 +542,7 @@ def fetch_session_activity(hours: int = 2) -> list[dict]:
                 "session_short": session_id[:7],
                 "hostname": p.get("hostname", "unknown"),
                 "project": p.get("project", "unknown"),
-                "last_prompt": p.get("prompt", "")[:100],
+                "last_prompt": clean_activity_text(p.get("prompt", "")),
                 "timestamp": ts_str,
                 "time_ago": _format_time_ago(ts),
                 "todowrite": None,
@@ -558,7 +557,7 @@ def fetch_session_activity(hours: int = 2) -> list[dict]:
         for session_id, session_data in sessions.items():
             # Search for session file in known project if we have it, or all projects
             # For now scan all projects as we don't know mapping effectively without strict structure
-            found = False
+
             for project_dir in claude_projects.iterdir():
                 if not project_dir.is_dir():
                     continue
@@ -566,7 +565,6 @@ def fetch_session_activity(hours: int = 2) -> list[dict]:
                 if session_file.exists():
                     todowrite = extract_todowrite_from_session(session_file)
                     session_data["todowrite"] = todowrite
-                    found = True
                     break
 
     # 2. Add local-only active sessions (not in R2)
@@ -622,9 +620,8 @@ def fetch_session_activity(hours: int = 2) -> list[dict]:
                 if orig_p:
                     prompt = orig_p
 
-            # Truncate
-            if len(prompt) > 100:
-                prompt = prompt[:97] + "..."
+            # Clean and truncate
+            prompt = clean_activity_text(prompt)
 
             # Add local session
             sessions[sid] = {
@@ -667,7 +664,6 @@ def fetch_session_activity(hours: int = 2) -> list[dict]:
                 parts = stem.split("-")
                 if len(parts) >= 2 and len(parts[0]) == 8 and parts[0].isdigit():
                     # Likely YYYYMMDD-hash
-                    date_str = parts[0]
                     sid = "-".join(parts[1:])
                 else:
                     # Maybe just sessionID?
@@ -694,14 +690,12 @@ def fetch_session_activity(hours: int = 2) -> list[dict]:
                 mtime = status_file.stat().st_mtime
                 dt_mtime = datetime.fromtimestamp(mtime, tz=timezone.utc)
 
-                # formatted time ago
-                time_ago = _format_time_ago(dt_mtime)
-
                 # Extract Prompt
-                prompt = "Active status"
+                prompt = ""
 
                 main_agent = state.get("main_agent") or {}
                 current_task = main_agent.get("current_task")
+
                 if current_task:
                     prompt = f"[Task] {current_task}"
                 else:
@@ -710,17 +704,24 @@ def fetch_session_activity(hours: int = 2) -> list[dict]:
                         prompt = last_p
                     else:
                         hydration = state.get("hydration") or {}
-                        orig_p = hydration.get("original_prompt")
-                        if orig_p:
-                            prompt = orig_p
+                        # Try hydrated intent first as it's cleaner
+                        intent = hydration.get("hydrated_intent")
+                        if intent:
+                            prompt = intent
                         else:
-                            intent = hydration.get("hydrated_intent")
-                            if intent:
-                                prompt = intent
+                            orig_p = hydration.get("original_prompt")
+                            if orig_p:
+                                prompt = orig_p
 
-                # Truncate prompt
-                if len(prompt) > 100:
-                    prompt = prompt[:97] + "..."
+                # Handle empty prompts (new sessions)
+                if not prompt:
+                    if state.get("state", {}).get("hydration_pending"):
+                        prompt = "New Session (Waiting for input)"
+                    else:
+                        prompt = "Idle"
+
+                # Clean and truncate prompt (removes keys, headers, markdown)
+                prompt = clean_activity_text(prompt)
 
                 # Extract Project
                 # Insights might have project
@@ -752,7 +753,6 @@ def fetch_session_activity(hours: int = 2) -> list[dict]:
                         "todowrite": None,
                         "source": "local-status",
                     }
-
             except Exception:
                 continue
 
@@ -2134,7 +2134,7 @@ st.markdown(
 )
 
 # Auto-refresh every 5 minutes
-import time
+
 
 if "last_refresh" not in st.session_state:
     st.session_state.last_refresh = time.time()

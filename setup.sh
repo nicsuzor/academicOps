@@ -588,6 +588,13 @@ else
 
     if [ ! -f "$GEMINI_SETTINGS" ]; then
         echo "{}" > "$GEMINI_SETTINGS"
+    else
+        # Validate existing settings.json
+        if ! jq . "$GEMINI_SETTINGS" > /dev/null 2>&1; then
+            echo -e "${YELLOW}⚠ Existing Gemini settings.json is invalid - backing up and resetting${NC}"
+            mv "$GEMINI_SETTINGS" "$GEMINI_SETTINGS.bak.$(date +%s)"
+            echo "{}" > "$GEMINI_SETTINGS"
+        fi
     fi
 
     if [ -f "$MERGE_FILE" ]; then

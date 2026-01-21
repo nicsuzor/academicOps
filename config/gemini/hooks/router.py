@@ -44,7 +44,7 @@ EVENT_MAP = {
 }
 
 # Claude router location (relative to this file)
-CLAUDE_ROUTER = Path(__file__).parent.parent.parent / "hooks" / "router.py"
+CLAUDE_ROUTER = Path(__file__).parent.parent.parent.parent / "aops-core" / "hooks" / "router.py"
 
 # Session ID file location
 SESSION_ID_FILE = Path.home() / ".gemini" / "tmp" / "current_session_id"

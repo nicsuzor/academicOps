@@ -1,12 +1,5 @@
 {
   "mcpServers": {
-    "gh": {
-      "type": "http",
-      "url": "https://api.githubcopilot.com/mcp/",
-      "headers": {
-        "Authorization": "Bearer "
-      }
-    },
     "zot": {
       "type": "stdio",
       "command": "uvx",

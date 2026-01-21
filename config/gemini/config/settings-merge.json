@@ -6,7 +6,7 @@
       "hooks": [{
         "name": "aops-sessionstart",
         "type": "command",
-        "command": "PYTHONPATH=$AOPS python3 $AOPS/gemini/hooks/router.py SessionStart",
+        "command": "PYTHONPATH=$AOPS python3 $AOPS/config/gemini/hooks/router.py SessionStart",
         "timeout": 15000
       }]
     }],
@@ -15,7 +15,7 @@
       "hooks": [{
         "name": "aops-beforetool",
         "type": "command",
-        "command": "PYTHONPATH=$AOPS python3 $AOPS/gemini/hooks/router.py BeforeTool",
+        "command": "PYTHONPATH=$AOPS python3 $AOPS/config/gemini/hooks/router.py BeforeTool",
         "timeout": 5000
       }]
     }],
@@ -24,7 +24,7 @@
       "hooks": [{
         "name": "aops-aftertool",
         "type": "command",
-        "command": "PYTHONPATH=$AOPS python3 $AOPS/gemini/hooks/router.py AfterTool",
+        "command": "PYTHONPATH=$AOPS python3 $AOPS/config/gemini/hooks/router.py AfterTool",
         "timeout": 55000
       }]
     }],
@@ -33,7 +33,7 @@
       "hooks": [{
         "name": "aops-beforeagent",
         "type": "command",
-        "command": "PYTHONPATH=$AOPS python3 $AOPS/gemini/hooks/router.py BeforeAgent",
+        "command": "PYTHONPATH=$AOPS python3 $AOPS/config/gemini/hooks/router.py BeforeAgent",
         "timeout": 20000
       }]
     }],
@@ -42,7 +42,7 @@
       "hooks": [{
         "name": "aops-afteragent",
         "type": "command",
-        "command": "PYTHONPATH=$AOPS python3 $AOPS/gemini/hooks/router.py AfterAgent",
+        "command": "PYTHONPATH=$AOPS python3 $AOPS/config/gemini/hooks/router.py AfterAgent",
         "timeout": 5000
       }]
     }]

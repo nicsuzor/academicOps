@@ -1,11 +1,5 @@
 {
   "mcpServers": {
-    "gh": {
-      "url": "https://api.githubcopilot.com/mcp/",
-      "headers": {
-        "Authorization": "Bearer "
-      }
-    },
     "zot": {
       "command": "uvx",
       "args": [
@@ -27,7 +21,7 @@
       "args": [
         "run",
         "python",
-        "aops-core/mcp_servers/tasks_server.py"
+        "$AOPS/aops-core/mcp_servers/tasks_server.py"
       ],
       "env": {
         "AOPS": "$AOPS",

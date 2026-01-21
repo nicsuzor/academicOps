@@ -18,6 +18,7 @@ dependencies = [
   "mcp-memory-service>=8.52.2",
   "click>=8.1.0",
   "filelock>=3.13.0",
+  "pdfminer-six>=20260107",
 ]
 
 [project.scripts]
