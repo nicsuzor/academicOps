@@ -28,7 +28,7 @@ permalink: commands/email
 
 ```
 mcp__plugin_aops-core_tasks__create_task(
-  title="Email: <subject summary>",
+  title="Reply to <sender name>: <subject summary>",
   type="task",
   project="aops",
   priority=2,  # 1-3 for emails
@@ -36,12 +36,20 @@ mcp__plugin_aops-core_tasks__create_task(
 )
 ```
 
-Body should include:
+Body MUST include (in this order):
+- **entry_id**: `<entry_id>` (REQUIRED - enables direct email lookup, must be first line)
+- **From**: Sender name and email
+- **Date**: When received
 - **Context**: Brief who/what/when
 - **Summary**: What you need to respond to
 - **Response Needed**: Concrete action checklist
-- **Associated Documents**: Links to downloaded/converted files
-- **Original Email**: Entry ID for reference
+- **Associated Documents**: Links to downloaded/converted files (if any)
+
+**CRITICAL**: The `entry_id` line must use exactly this format for parsing:
+```
+**entry_id**: `000000009A3C5E42...`
+```
+This enables `/pull` to retrieve the email in 1 API call instead of searching.
 
 **Document handling**:
 

@@ -104,6 +104,34 @@ If during EXECUTE you hit an unexpected blocker:
 2. Update task with findings: `mcp__plugin_aops-core_tasks__update_task(id="<id>", body="Attempted: X. Blocked by: Y")`
 3. Reclassify to TRIAGE path
 
+#### Email Reply Tasks
+
+If task title starts with "Reply to" (email reply task created by `/email`):
+
+1. **Extract entry_id from task body**:
+   - Look for line: `**entry_id**: \`<id>\``
+   - Parse the ID from the backticks
+
+2. **Retrieve email directly** (if entry_id found):
+   ```
+   mcp__plugin_aops-tools_outlook__messages_get(entry_id="<extracted-id>", format="text")
+   ```
+
+3. **Fallback search** (if entry_id missing - legacy tasks):
+   - Extract sender name from title ("Reply to <name>: ...")
+   - Search: `mcp__plugin_aops-tools_outlook__messages_search(person="<name>", limit=10)`
+   - Match by subject if multiple results
+
+4. **Handle missing email**:
+   - If email not found (archived/deleted): Update task as blocked
+   - Don't create orphaned drafts
+
+5. **Draft reply workflow**:
+   - Check calendar if scheduling request: `mcp__plugin_aops-tools_outlook__calendar_list_upcoming()`
+   - Create draft: `mcp__plugin_aops-tools_outlook__messages_reply(entry_id="<id>", body="<draft>")`
+   - Task stays `active` - user sends manually
+   - Report: "Draft created in Outlook. Task remains active until you send and confirm."
+
 ### Step 5: Invoke Hydrator for Execution Plan
 
 **(EXECUTE path only)**
