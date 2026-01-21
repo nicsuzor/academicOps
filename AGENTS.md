@@ -77,6 +77,8 @@ NEVER stop before pushing. NEVER skip the Framework Reflection.
 
 The reflection is extracted by `transcript.py` and stored in `$ACA_SESSIONS/{date}-{session_id}.json`. Without this output, session insights are lost.
 
+**Every token costs money.** The JIT and distraction fields below exist to continuously improve context efficiency. Be aggressive: identify specific content that wasted tokens (verbose explanations, irrelevant sections, unused examples) so we can remove it.
+
 Use this EXACT format - field names and syntax must match precisely:
 
 ```
@@ -92,8 +94,8 @@ Use this EXACT format - field names and syntax must match precisely:
 **Proposed changes**: [Framework improvements identified, or "none"]
 **Next step**: [Context for next session - MUST be filed as task if actionable]
 **Workflow improvements**: [Changes to make this type of task easier in future, or "none"]
-**JIT context needed**: [Info that would have saved time if provided earlier, or "none"]
-**Context distractions**: [Irrelevant info that added noise, or "none"]
+**JIT context needed**: [What specific info would have helped? Be precise - file paths, field names, concepts.]
+**Context distractions**: [What loaded context was NOT useful? Name specific sections/files to consider removing or shrinking. Every KB of unused context = wasted money.]
 **User tone**: [Float -1.0 to 1.0: 1.0=effusive, 0.0=neutral, -0.5=disappointed, -1.0=furious]
 ```
 
@@ -110,8 +112,8 @@ Field alignment with session-insights JSON schema:
 - `**Friction points**`: Maps to `friction_points` array
 - `**Proposed changes**`: Maps to `proposed_changes` array
 - `**Workflow improvements**`: Maps to `workflow_improvements` array
-- `**JIT context needed**`: Maps to `jit_context_needed` array
-- `**Context distractions**`: Maps to `context_distractions` array
+- `**JIT context needed**`: Maps to `jit_context_needed` array - be specific (file paths, concepts)
+- `**Context distractions**`: Maps to `context_distractions` array - name files/sections to remove/shrink
 - `**User tone**`: Maps to `user_mood` float (-1.0 to 1.0, default 0.0)
 
 ## Landing the Plane (Session Completion)
@@ -148,6 +150,8 @@ Field alignment with session-insights JSON schema:
 
 Without this output, session insights are lost. The reflection is extracted by `transcript.py` and stored for learning.
 
+**Tokens = money.** Use JIT/distraction fields to flag specific content to add or remove from context.
+
 Copy this template and fill it in:
 
 ```
@@ -163,8 +167,8 @@ Copy this template and fill it in:
 **Proposed changes**: [Improvements, or "none"]
 **Next step**: [Follow-up needed - file as task if actionable]
 **Workflow improvements**: [Process improvements, or "none"]
-**JIT context needed**: [Info that would have helped, or "none"]
-**Context distractions**: [Irrelevant info, or "none"]
+**JIT context needed**: [Specific info that would have helped - be precise]
+**Context distractions**: [Name specific sections/files to remove or shrink - every KB = wasted $]
 **User tone**: [Float -1.0 to 1.0]
 ```
 
