@@ -76,7 +76,7 @@ HOOK_REGISTRY: dict[str, list[dict[str, Any]]] = {
         {"script": "custodiet_gate.py"},  # Periodic compliance check
         {"script": "task_binding.py"},  # Bind task to session on create/claim
         # {"script": "todowrite_fallback.py"},  # DISABLED: Proving main path first
-        {"script": "autocommit_state.py"},  # Auto-commit data/ changes
+        # {"script": "autocommit_state.py"},  # DISABLED: Auto-commit data/ changes
         {"script": "memory_sync_closed_issues.py"},  # Sync completed tasks to memory
     ],
     "UserPromptSubmit": [
@@ -219,6 +219,10 @@ def merge_outputs(outputs: list[dict[str, Any]], event_name: str) -> dict[str, A
     if not outputs:
         return {}
 
+    # Only these events support hookSpecificOutput per Claude Code schema
+    HOOK_SPECIFIC_EVENTS = {"PreToolUse", "PostToolUse", "UserPromptSubmit"}
+    supports_hook_specific = event_name in HOOK_SPECIFIC_EVENTS
+
     result: dict[str, Any] = {}
 
     # Collect values for merging
@@ -255,7 +259,8 @@ def merge_outputs(outputs: list[dict[str, Any]], event_name: str) -> dict[str, A
             suppress_flags.append(output["suppressOutput"])
 
     # Build merged result
-    if additional_contexts or permission_decisions:
+    # Only include hookSpecificOutput for events that support it
+    if supports_hook_specific and (additional_contexts or permission_decisions):
         result["hookSpecificOutput"] = {
             "hookEventName": event_name,  # Required field per Claude Code schema
         }
@@ -268,6 +273,9 @@ def merge_outputs(outputs: list[dict[str, Any]], event_name: str) -> dict[str, A
         merged_perm = merge_permission_decisions(permission_decisions)
         if merged_perm:
             result["hookSpecificOutput"]["permissionDecision"] = merged_perm
+    elif not supports_hook_specific and additional_contexts:
+        # For events without hookSpecificOutput support, merge contexts into systemMessage
+        system_messages.extend(additional_contexts)
 
     if system_messages:
         result["systemMessage"] = "\n".join(system_messages)

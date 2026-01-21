@@ -162,14 +162,13 @@ def main():
             if not found:
                 # Optionally warn that no reflection was found
                 # This is informational - don't block the session
+                # Note: Stop events only support top-level fields (systemMessage, continue, etc.)
+                # not hookSpecificOutput (which is only for PreToolUse, PostToolUse, UserPromptSubmit)
                 output_data = {
-                    "hookSpecificOutput": {
-                        "hookEventName": "Stop",
-                        "additionalContext": (
-                            "Note: No Framework Reflection detected in this session. "
-                            "Framework Reflections help capture session insights for learning."
-                        ),
-                    }
+                    "systemMessage": (
+                        "Note: No Framework Reflection detected in this session. "
+                        "Framework Reflections help capture session insights for learning."
+                    ),
                 }
         except Exception as e:
             logger.warning(f"Reflection check failed: {type(e).__name__}: {e}")
