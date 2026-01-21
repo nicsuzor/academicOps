@@ -6,7 +6,7 @@ Provides centralized logging for hook events, consolidating duplicated logging
 logic across multiple hooks. All hooks should use log_hook_event() instead of
 implementing their own logging.
 
-Logs to ~/.claude/projects/<project>/<date>-<shorthash>-hooks.jsonl
+Logs to ~/writing/sessions/status/hooks.jsonl
 """
 
 import json
@@ -41,7 +41,7 @@ def log_hook_event(
     """
     Log a hook event to the session hooks log file.
 
-    Writes to: ~/.claude/projects/<project>/{YYYYMMDD}-{hash}/hooks.jsonl
+    Writes to: ~/writing/sessions/status/hooks.jsonl
 
     Combines input and output data into a single JSONL entry with timestamp.
     If session_id is missing or empty, raises ValueError immediately (fail-fast).
