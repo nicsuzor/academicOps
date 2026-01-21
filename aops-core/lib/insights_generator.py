@@ -239,10 +239,66 @@ def validate_insights_schema(insights: dict[str, Any]) -> None:
                 )
 
 
+def get_summaries_dir() -> Path:
+    """Get summaries directory, using paths.py for consistency.
+
+    Falls back to $ACA_SESSIONS/summaries if paths.py unavailable.
+
+    Returns:
+        Path to summaries directory
+    """
+    try:
+        from lib.paths import get_sessions_dir
+        summaries_dir = get_sessions_dir() / "summaries"
+    except (ImportError, RuntimeError):
+        # Fallback to direct env var
+        aca_sessions = os.environ.get("ACA_SESSIONS")
+        if not aca_sessions:
+            raise RuntimeError(
+                "$ACA_SESSIONS environment variable not set.\n"
+                "Add to ~/.bashrc or ~/.zshrc:\n"
+                "  export ACA_SESSIONS='$HOME/writing/sessions'"
+            )
+        summaries_dir = Path(aca_sessions) / "summaries"
+
+    summaries_dir.mkdir(parents=True, exist_ok=True)
+    return summaries_dir
+
+
+def find_existing_insights(date: str, session_id: str) -> Path | None:
+    """Find existing insights file for a session ID.
+
+    Args:
+        date: Date string (YYYY-MM-DD format)
+        session_id: 8-character session hash
+
+    Returns:
+        Path to existing insights file if found, None otherwise
+    """
+    summaries_dir = get_summaries_dir()
+    date_compact = date.replace("-", "")
+
+    # Search for insights with this session_id (may have different slugs)
+    # Pattern 1: YYYYMMDD-slug.json where slug contains session_id
+    # Pattern 2: YYYYMMDD-session_id.json (no slug)
+    # Pattern 3: YYYY-MM-DD-session_id.json (old format)
+    patterns = [
+        f"{date_compact}-*{session_id}*.json",
+        f"{date_compact}-{session_id}.json",
+        f"{date}-{session_id}.json",
+    ]
+
+    for pattern in patterns:
+        matches = list(summaries_dir.glob(pattern))
+        if matches:
+            return matches[0]
+    return None
+
+
 def get_insights_file_path(
     date: str, session_id: str, slug: str = "", index: int | None = None
 ) -> Path:
-    """Get path to unified session JSON file in $ACA_SESSIONS/summaries/.
+    """Get path to unified session JSON file in summaries/.
 
     Args:
         date: Date string (YYYY-MM-DD format, used for YYYYMMDD in filename)
@@ -252,22 +308,13 @@ def get_insights_file_path(
                If None or 0 with single reflection, uses base filename.
 
     Returns:
-        Path to session file: $ACA_SESSIONS/summaries/YYYYMMDD-{slug}.json
+        Path to session file: summaries/YYYYMMDD-{slug}.json
         or YYYYMMDD-{slug}-{index}.json for multi-reflection sessions
 
     Note:
         v3.4.0: Output moved to summaries/ subdirectory, filename uses YYYYMMDD-slug format.
     """
-    # Require $ACA_SESSIONS to be set - fail fast if not configured
-    aca_sessions = os.environ.get("ACA_SESSIONS")
-    if not aca_sessions:
-        raise RuntimeError(
-            "$ACA_SESSIONS environment variable not set.\n"
-            "Add to ~/.bashrc or ~/.zshrc:\n"
-            "  export ACA_SESSIONS='$HOME/writing/sessions'"
-        )
-    summaries_dir = Path(aca_sessions) / "summaries"
-    summaries_dir.mkdir(parents=True, exist_ok=True)
+    summaries_dir = get_summaries_dir()
 
     # Convert YYYY-MM-DD to YYYYMMDD
     date_compact = date.replace("-", "")

@@ -37,6 +37,7 @@ from lib.transcript_parser import (  # noqa: E402
 )
 from lib.paths import get_sessions_dir  # noqa: E402
 from lib.insights_generator import (  # noqa: E402
+    find_existing_insights,
     get_insights_file_path,
     write_insights_file,
     validate_insights_schema,
@@ -126,6 +127,13 @@ def _process_reflection(
             validate_insights_schema(insights)
             # Use index for multi-reflection sessions (index > 0 gets suffix)
             idx = i if len(reflections) > 1 else None
+
+            # Check for existing insights (avoid duplicates with different slugs)
+            existing = find_existing_insights(date_str, session_id)
+            if existing:
+                print(f"⏭️  Insights already exist for session {session_id}: {existing.name}")
+                continue
+
             insights_path = get_insights_file_path(date_str, session_id, slug, idx)
             write_insights_file(insights_path, insights)
             print(f"💡 Reflection {i + 1}/{len(reflections)} saved to: {insights_path}")
