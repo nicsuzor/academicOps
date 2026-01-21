@@ -151,3 +151,11 @@ description: Working hypotheses validated by evidence.
 **Derivation**: Asking "should I commit?", "want me to commit?", "ready to push?", or any variant wastes a round-trip and signals uncertainty. Bounded, low-risk changes (single-file edits, config tweaks, rollbacks) should be committed as part of the action. User controls via git - they can revert if needed.
 
 ---
+
+## Decomposed Tasks Are Complete (P#71)
+
+**Statement**: When you decompose a task into children representing separate follow-up work, complete the parent immediately. Children can be siblings (next work), not blockers.
+
+**Derivation**: Parent completion guard blocks completing parents with *incomplete subtasks of the same work*. But decomposition for learn/design/spike tasks creates *follow-up* work - the parent task IS done once decomposition is complete. Don't confuse "has children" with "work incomplete."
+
+---
