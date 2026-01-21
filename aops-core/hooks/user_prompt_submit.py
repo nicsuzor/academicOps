@@ -24,7 +24,7 @@ from hook_debug import safe_log_to_debug_file
 from hooks.hook_logger import log_hook_event
 from lib.paths import get_aops_root
 from lib.session_reader import extract_router_context
-from lib.session_state import set_hydration_pending, clear_hydration_pending
+from lib.session_state import set_hydration_pending, clear_hydration_pending, set_gates_bypassed
 
 # Paths
 HOOK_DIR = Path(__file__).parent
@@ -459,6 +459,9 @@ def main():
     if should_skip_hydration(prompt):
         # Write state with hydration_pending=False so gate doesn't block
         write_initial_hydrator_state(session_id, prompt, hydration_pending=False)
+        # If '.' prefix, also set gates_bypassed for task_required_gate
+        if prompt.strip().startswith("."):
+            set_gates_bypassed(session_id, True)
         output_data = {
             "hookSpecificOutput": {
                 "hookEventName": "UserPromptSubmit",

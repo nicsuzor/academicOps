@@ -154,6 +154,18 @@ These scripts exist but aren't user-invocable skills. Provide exact invocation w
 - **Deferred work**: Only for multi-session. Captures what can't be done now without losing it.
 - **Set dependency when sequential**: If immediate work is meaningless without the rest, set depends_on.
 
+## ⛔ Task-Gated Permissions (ENFORCED)
+
+**Write/Edit operations will be BLOCKED** until a task is bound to the session.
+
+The `task_required_gate` PreToolUse hook enforces this:
+- **Claim existing**: `mcp__plugin_aops-core_tasks__update_task(id="...", status="active")`
+- **Create new**: `mcp__plugin_aops-core_tasks__create_task(...)`
+
+Until one of these runs, the agent CANNOT modify files. This is architectural enforcement, not a suggestion.
+
+**Bypass**: User prefix `.` bypasses this gate for emergency/trivial fixes.
+
 **Flow**: Your plan → main agent → (optional critic review) → main agent executes.
 
 **NOTE**: You do NOT invoke critic. Main agent decides based on plan complexity:

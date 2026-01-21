@@ -1,0 +1,249 @@
+#!/usr/bin/env python3
+"""
+PreToolUse hook: Block destructive operations without active task binding.
+
+Enforces task-gated permissions model per specs/permission-model-v1.md.
+Destructive operations (Write, Edit, destructive Bash) require a task bound
+to the session. This ensures all work is tracked.
+
+Bypass conditions:
+- Subagent sessions (CLAUDE_AGENT_TYPE set)
+- User bypass prefix '.' (gates_bypassed flag in session state)
+- Task operations themselves (create_task, update_task)
+- Read-only tools (Read, Glob, Grep, etc.)
+
+Exit codes:
+    0: Allow (task bound, bypassed, or read-only operation)
+    2: Block (destructive operation without task)
+
+Environment variables:
+- TASK_GATE_MODE: "warn" (default) or "block"
+- CLAUDE_AGENT_TYPE: If set, this is a subagent session (bypass gate)
+
+Failure mode: FAIL-CLOSED (block on error/uncertainty - safety over convenience)
+"""
+
+import json
+import os
+import re
+import sys
+from typing import Any
+
+from lib.session_state import get_current_task, load_session_state
+
+# Default gate mode - start with warn for validation
+DEFAULT_GATE_MODE = "warn"
+
+# Destructive Bash command patterns (require task)
+DESTRUCTIVE_BASH_PATTERNS = [
+    r"\brm\b",  # remove files
+    r"\bmv\b",  # move files
+    r"\bcp\b",  # copy files (creates new)
+    r"\bmkdir\b",  # create directories
+    r"\btouch\b",  # create files
+    r"\bchmod\b",  # change permissions
+    r"\bchown\b",  # change ownership
+    r"\bgit\s+commit\b",  # git commit
+    r"\bgit\s+push\b",  # git push
+    r"\bgit\s+reset\b",  # git reset
+    r"\bgit\s+checkout\b.*--",  # git checkout with file paths
+    r"\bnpm\s+install\b",  # npm install
+    r"\bpip\s+install\b",  # pip install
+    r"\buv\s+add\b",  # uv add
+    r"\bsed\s+-i\b",  # sed in-place
+    r"\bawk\s+-i\b",  # awk in-place
+    r">\s*[^&]",  # redirect to file (but not >& which is fd redirect)
+    r">>\s*",  # append to file
+]
+
+# Safe Bash command patterns (explicitly allowed without task)
+SAFE_BASH_PATTERNS = [
+    r"^\s*cat\s",  # cat (read)
+    r"^\s*head\s",  # head (read)
+    r"^\s*tail\s",  # tail (read)
+    r"^\s*less\s",  # less (read)
+    r"^\s*more\s",  # more (read)
+    r"^\s*ls\b",  # ls (read)
+    r"^\s*find\s",  # find (read)
+    r"^\s*grep\s",  # grep (read)
+    r"^\s*rg\s",  # ripgrep (read)
+    r"^\s*echo\s",  # echo (output only, unless redirected - caught by redirect pattern)
+    r"^\s*pwd\b",  # pwd (read)
+    r"^\s*which\s",  # which (read)
+    r"^\s*type\s",  # type (read)
+    r"^\s*git\s+status\b",  # git status (read)
+    r"^\s*git\s+diff\b",  # git diff (read)
+    r"^\s*git\s+log\b",  # git log (read)
+    r"^\s*git\s+show\b",  # git show (read)
+    r"^\s*git\s+branch\b",  # git branch (list)
+    r"^\s*npm\s+list\b",  # npm list (read)
+    r"^\s*pip\s+list\b",  # pip list (read)
+    r"^\s*uv\s+pip\s+list\b",  # uv pip list (read)
+]
+
+# Task MCP tools that should always be allowed (they establish binding)
+TASK_BINDING_TOOLS = {
+    "mcp__plugin_aops-core_tasks__create_task",
+    "mcp__plugin_aops-core_tasks__update_task",
+    "mcp__plugin_aops-core_tasks__complete_task",
+    "mcp__plugin_aops-core_tasks__decompose_task",
+}
+
+BLOCK_MESSAGE = """⛔ TASK REQUIRED: No active task bound to this session.
+
+Before modifying files, you must claim or create a task:
+
+1. Search for existing task: `mcp__plugin_aops-core_tasks__search_tasks(query="...")`
+2. Claim it: `mcp__plugin_aops-core_tasks__update_task(id="...", status="active")`
+   Or create new: `mcp__plugin_aops-core_tasks__create_task(...)`
+
+This ensures all work is tracked. For emergency/trivial fixes, user can prefix prompt with `.`
+"""
+
+WARN_MESSAGE = """⚠️  TASK GATE (warn-only): Destructive operation without task binding.
+
+This session is in WARN mode for testing. In production, this would BLOCK.
+
+To proceed correctly, claim or create a task first. See hydrator guidance.
+"""
+
+
+def get_gate_mode() -> str:
+    """Get gate mode from environment, evaluated at runtime for testability."""
+    return os.environ.get("TASK_GATE_MODE", DEFAULT_GATE_MODE).lower()
+
+
+def get_session_id(input_data: dict[str, Any]) -> str:
+    """Get session ID from hook input data or environment."""
+    return input_data.get("session_id", "") or os.environ.get("CLAUDE_SESSION_ID", "")
+
+
+def is_subagent_session() -> bool:
+    """Check if this is a subagent session."""
+    return bool(os.environ.get("CLAUDE_AGENT_TYPE"))
+
+
+def is_gates_bypassed(session_id: str) -> bool:
+    """Check if gates are bypassed for this session (. prefix)."""
+    state = load_session_state(session_id)
+    if state is None:
+        return False
+    return state.get("state", {}).get("gates_bypassed", False)
+
+
+def is_destructive_bash(command: str) -> bool:
+    """Check if a Bash command is destructive (modifies state).
+
+    Uses a two-pass approach:
+    1. Check if command matches safe patterns (allow without task)
+    2. Check if command matches destructive patterns (require task)
+
+    Args:
+        command: The Bash command string
+
+    Returns:
+        True if command is destructive, False if read-only
+    """
+    # Normalize command for matching
+    cmd = command.strip()
+
+    # First check: explicitly safe patterns
+    for pattern in SAFE_BASH_PATTERNS:
+        if re.search(pattern, cmd, re.IGNORECASE):
+            # But check if there's a redirect that makes it destructive
+            if not re.search(r">\s*[^&]|>>\s*", cmd):
+                return False
+
+    # Second check: destructive patterns
+    for pattern in DESTRUCTIVE_BASH_PATTERNS:
+        if re.search(pattern, cmd, re.IGNORECASE):
+            return True
+
+    # Default: allow (fail-open for unknown commands - they're likely read-only)
+    return False
+
+
+def should_require_task(tool_name: str, tool_input: dict[str, Any]) -> bool:
+    """Determine if this tool call requires task binding.
+
+    Args:
+        tool_name: Name of the tool being invoked
+        tool_input: Tool input parameters
+
+    Returns:
+        True if task binding required, False otherwise
+    """
+    # Task binding tools always allowed (they establish binding)
+    if tool_name in TASK_BINDING_TOOLS:
+        return False
+
+    # File modification tools always require task
+    if tool_name in ("Write", "Edit", "NotebookEdit"):
+        return True
+
+    # Bash commands: check for destructive patterns
+    if tool_name == "Bash":
+        command = tool_input.get("command", "")
+        return is_destructive_bash(command)
+
+    # All other tools (Read, Glob, Grep, Task, MCP reads, etc.) don't require task
+    return False
+
+
+def main() -> None:
+    """Main hook entry point."""
+    try:
+        input_data = json.load(sys.stdin)
+    except json.JSONDecodeError:
+        # FAIL-CLOSED: block on parse error
+        print("⛔ TASK GATE: Failed to parse hook input", file=sys.stderr)
+        sys.exit(2)
+
+    tool_name = input_data.get("tool_name", "")
+    tool_input = input_data.get("tool_input", {})
+    session_id = get_session_id(input_data)
+
+    # FAIL-CLOSED: if no session_id, block for destructive ops
+    if not session_id:
+        if should_require_task(tool_name, tool_input):
+            print("⛔ TASK GATE: No session ID available", file=sys.stderr)
+            sys.exit(2)
+        # Non-destructive ops can proceed
+        print(json.dumps({}))
+        sys.exit(0)
+
+    # BYPASS: Subagent sessions
+    if is_subagent_session():
+        print(json.dumps({}))
+        sys.exit(0)
+
+    # BYPASS: User prefix '.'
+    if is_gates_bypassed(session_id):
+        print(json.dumps({}))
+        sys.exit(0)
+
+    # Check if this operation requires task binding
+    if not should_require_task(tool_name, tool_input):
+        print(json.dumps({}))
+        sys.exit(0)
+
+    # Task binding required - check for active task
+    current_task = get_current_task(session_id)
+    if current_task:
+        print(json.dumps({}))
+        sys.exit(0)
+
+    # No task - enforce based on mode
+    gate_mode = get_gate_mode()
+    if gate_mode == "block":
+        print(BLOCK_MESSAGE, file=sys.stderr)
+        sys.exit(2)
+    else:
+        # Warn mode: log but allow
+        print(WARN_MESSAGE, file=sys.stderr)
+        print(json.dumps({}))
+        sys.exit(0)
+
+
+if __name__ == "__main__":
+    main()

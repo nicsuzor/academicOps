@@ -202,6 +202,29 @@ Uses passive `additionalContext` format - agent may proceed without addressing.
 
 **Note**: Technical enforcement prevents accidental premature completion. Agents must either complete children first or explicitly override with force flag.
 
+## Task-Gated Permissions (PreToolUse Hook)
+
+Destructive operations require an active task binding. See [[specs/permission-model-v1]].
+
+| Operation Type | Tool | Requires Task | Bypass |
+|----------------|------|---------------|--------|
+| File creation/modification | Write, Edit, NotebookEdit | Yes | `.` prefix, subagent |
+| Destructive Bash | `rm`, `mv`, `git commit`, etc. | Yes | `.` prefix, subagent |
+| Read-only | Read, Glob, Grep, `git status` | No | N/A |
+| Task operations | create_task, update_task | No (they establish binding) | N/A |
+
+**Enforcement**: `task_required_gate.py` PreToolUse hook (currently in WARN mode, BLOCK mode planned).
+
+**Binding flow**:
+1. Hydrator guides: "claim existing or create new task"
+2. Agent calls `update_task(status="active")` or `create_task(...)`
+3. `task_binding.py` PostToolUse hook sets `current_task` in session state
+4. `task_required_gate.py` allows destructive operations
+
+**Bypass conditions**:
+- User prefix `.` (sets `gates_bypassed` flag via UserPromptSubmit)
+- Subagent sessions (`CLAUDE_AGENT_TYPE` env var set)
+
 ## Pattern Blocking (PreToolUse Hook)
 
 | Category          | Pattern             | Blocked Tools | Purpose                    | Axiom                    |
@@ -286,7 +309,7 @@ Context injected via CORE.md at SessionStart. Guides where agents place files.
 | ---------------- | ------------------------------------------------------------------------------- |
 | Deny rules       | `$AOPS/config/claude/settings.json` → `permissions.deny`                        |
 | Agent tools      | `$AOPS/agents/*.md` → `tools:` frontmatter                                      |
-| PreToolUse       | `$AOPS/hooks/hydration_gate.py`, `policy_enforcer.py`, `criteria_gate.py`       |
+| PreToolUse       | `$AOPS/hooks/hydration_gate.py`, `task_required_gate.py`, `policy_enforcer.py`  |
 | PostToolUse      | `$AOPS/hooks/fail_fast_watchdog.py`, `autocommit_state.py`, `custodiet_gate.py` |
 | UserPromptSubmit | `$AOPS/hooks/user_prompt_submit.py`                                             |
 | SessionStart     | `$AOPS/hooks/sessionstart_load_axioms.py`                                       |

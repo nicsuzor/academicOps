@@ -622,3 +622,39 @@ def get_current_task(session_id: str) -> str | None:
     if state is None:
         return None
     return state.get("main_agent", {}).get("current_task")
+
+
+# ============================================================================
+# Gates Bypass API
+# ============================================================================
+
+
+def set_gates_bypassed(session_id: str, bypassed: bool = True) -> None:
+    """Set gates bypass flag for emergency/trivial operations.
+
+    Called when user prefix '.' is detected - bypasses all enforcement gates.
+
+    Args:
+        session_id: Claude Code session ID
+        bypassed: Whether gates are bypassed (default True)
+    """
+    state = get_or_create_session_state(session_id)
+    state["state"]["gates_bypassed"] = bypassed
+    save_session_state(session_id, state)
+
+
+def is_gates_bypassed(session_id: str) -> bool:
+    """Check if gates are bypassed for this session.
+
+    Returns True when user has used '.' prefix for emergency/trivial operations.
+
+    Args:
+        session_id: Claude Code session ID
+
+    Returns:
+        True if gates_bypassed flag is set
+    """
+    state = load_session_state(session_id)
+    if state is None:
+        return False
+    return state.get("state", {}).get("gates_bypassed", False)
