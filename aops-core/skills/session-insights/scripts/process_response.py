@@ -32,6 +32,7 @@ def main():
     )
     parser.add_argument("date", help="Session date (YYYY-MM-DD)")
     parser.add_argument("session_id", help="Session ID (8-char hash)")
+    parser.add_argument("--project", default="", help="Project name for filename")
     args = parser.parse_args()
 
     # Read raw response from stdin
@@ -60,7 +61,7 @@ def main():
         # We need to construct path manually or use library helper (but helper returns .json)
         # We want .debug.txt alongside where the json would be
         try:
-            target_path = get_insights_file_path(args.date, args.session_id)
+            target_path = get_insights_file_path(args.date, args.session_id, project=args.project)
             # E.g. .../YYYY-MM-DD-hash.json -> .../YYYY-MM-DD-hash.debug.txt
             debug_path = target_path.parent / f"{args.date}-{args.session_id}.debug.txt"
 

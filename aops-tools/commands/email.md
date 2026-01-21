@@ -10,7 +10,7 @@ permalink: commands/email
 
 **What you'll do**:
 
-1. Fetch recent emails: Call `mcp__plugin_aops-tools_outlook__messages_list_recent(limit=20)` - if it works, proceed; if error, HALT and report
+1. Fetch recent emails: Call `mcp__plugin_aops-tools_outlook__messages_list_recent(limit=50)` - if it works, proceed; if error, HALT and report
 2. **Check Sent folder** for existing responses (skip tasks for emails already dealt with)
 3. Classify emails using [[workflows/triage-email]] criteria: Task → create task | FYI → Extract info | Skip → Archive candidate
 4. **Read Important FYI email bodies** and extract key information (dates, amounts, outcomes)

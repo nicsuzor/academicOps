@@ -249,17 +249,35 @@ class TestSchemaValidation:
 class TestInsightsFilePath:
     """Test insights file path generation."""
 
-    def test_file_path_format(self):
-        """Test that file path follows correct format."""
+    def test_file_path_format_without_project(self):
+        """Test that file path follows correct format without project."""
         path = get_insights_file_path("2026-01-13", "a1b2c3d4")
-        # Uses YYYYMMDD format and session_id as default slug
+        # Without project: YYYYMMDD-session_id.json
         assert path.name == "20260113-a1b2c3d4.json"
-        # Output in centralized ~/writing/sessions/summaries/
         assert str(path).endswith("sessions/summaries/20260113-a1b2c3d4.json")
+
+    def test_file_path_format_with_project(self):
+        """Test that file path includes project name when provided."""
+        path = get_insights_file_path("2026-01-13", "a1b2c3d4", project="writing")
+        # With project: YYYYMMDD-project-session_id.json
+        assert path.name == "20260113-writing-a1b2c3d4.json"
+        assert str(path).endswith("sessions/summaries/20260113-writing-a1b2c3d4.json")
+
+    def test_file_path_format_with_project_and_slug(self):
+        """Test that file path includes project and slug."""
+        path = get_insights_file_path("2026-01-13", "a1b2c3d4", slug="review", project="aops")
+        # With project and slug: YYYYMMDD-project-session_id-slug.json
+        assert path.name == "20260113-aops-a1b2c3d4-review.json"
+
+    def test_file_path_sanitizes_project_name(self):
+        """Test that project name is sanitized for filesystem safety."""
+        path = get_insights_file_path("2026-01-13", "a1b2c3d4", project="My Project!")
+        # Special chars removed, lowercase
+        assert path.name == "20260113-my-project-a1b2c3d4.json"
 
     def test_file_path_uses_centralized_location(self):
         """Test that file path uses centralized ~/writing/sessions/summaries/ location."""
-        path = get_insights_file_path("2026-01-13", "a1b2c3d4")
+        path = get_insights_file_path("2026-01-13", "a1b2c3d4", project="test")
         # Centralized location, no env var dependency
         assert "writing/sessions/summaries" in str(path)
 
