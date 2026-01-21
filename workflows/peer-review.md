@@ -1,14 +1,6 @@
----
-name: peer-review
-category: instruction
-description: Scaffold peer review workflow for grant/fellowship applications. Creates workspace, downloads criteria, generates review template, and creates bot-assigned subtasks for each application.
-allowed-tools: Read,Write,Edit,Bash,Glob,WebFetch,WebSearch,mcp__plugin_aops-core_tasks__create_task,mcp__plugin_aops-core_tasks__update_task,mcp__plugin_aops-core_tasks__get_task,mcp__plugin_aops-core_tasks__decompose_task
-version: 1.0.0
----
-
 # Peer Review Workflow
 
-Scaffold structured peer review for grant or fellowship applications with bot-assigned subtasks for parallel processing.
+Structured peer review for grant or fellowship applications with bot-assigned subtasks for parallel processing.
 
 ## Inputs
 
@@ -171,6 +163,52 @@ After scaffolding, bot-assigned subtasks can be processed:
 3. Flag gaps or concerns
 4. Append observations to review doc
 5. Mark task complete
+
+## Phase 4: Composition (Human + Agent)
+
+After initial observations, the reviewer drafts assessment comments. Agent assists with redrafting in reviewer's voice.
+
+### Composition Principles
+
+**Tone**: Professional positive assessment
+- Enthusiastic where evidence warrants, but measured not effusive
+- "Strong track record" not "exceptional and outstanding track record"
+- "Reasonable confidence" not "high confidence"
+- "Timely and important" not "urgent, not merely timely"
+
+**Voice**: Reviewer's independent critique
+- Do NOT quote application material back ("seminal", "unique", "world-leading")
+- Evaluate claims, don't restate them
+- The reviewer's job is assessment, not summarization
+
+**Structure**: Balance across sections
+- Shorter sections (Benefit, Feasibility) need expansion to avoid looking thin
+- Aim for comparable depth across all criteria
+- Character count check: each section should meet minimum, Overall Comments substantially exceeds minimum
+
+**Style**: Apply reviewer's style guide if available
+- Load `STYLE.md` or equivalent before composition
+- Sharp topic sentences that deliver complete thoughts
+- Evidence before abstractions
+- Acknowledge complexity without paralysis
+
+### Composition Workflow
+
+1. **Human completes initial assessment** with notes and scores
+2. **Agent reads style guide** and review template
+3. **Agent redrafts** in reviewer's voice, applying composition principles
+4. **Human reviews** and provides feedback (tone calibration, balance)
+5. **Agent revises** based on feedback
+6. **Verify**: Character counts meet minimums, all scores filled
+
+### Common Revision Requests
+
+| Feedback | Action |
+|----------|--------|
+| "Too enthusiastic" | Dial down superlatives, use measured language |
+| "Don't quote the application" | Remove quoted praise, replace with evaluative statements |
+| "Expand this section" | Add substantive analysis, not padding |
+| "Stay in my voice" | Re-read style guide, match sentence patterns |
 
 ## Assignment Convention
 
