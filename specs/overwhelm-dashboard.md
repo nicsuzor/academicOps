@@ -48,55 +48,23 @@ Task state is scattered and not visible where needed. User returns to terminal a
 **I want** one place that shows all my tasks and what I was working on,
 **So that** I can recover context quickly and stay oriented.
 
-## Components
-
-### 1. fast-indexer (Rust)
-
-Location: `aops/libs/fast-indexer`
-
-High-performance task file scanner that generates `index.json`:
-
-```bash
-fast-indexer --tasks-dir $ACA_DATA/tasks --output index.json
-```
-
-**Output format**:
-```json
-{
-  "generated": "2026-01-21T10:00:00Z",
-  "total_tasks": 42,
-  "tasks": [
-    {
-      "id": "aops-abc123",
-      "title": "Task title",
-      "status": "active",
-      "priority": 2,
-      "project": "aops",
-      "parent": null,
-      "depends_on": [],
-      "due": "2026-01-25",
-      "file": "aops/aops-abc123.md"
-    }
-  ],
-  "ready": ["aops-abc123"],
-  "blocked": []
-}
-```
-
+## Streamlist dashboard
+### Data source
+index.json (created by [[fast-indexer]])
 **Consumers**:
 - [[Task MCP server]] - `rebuild_index()` wraps fast-indexer
 - [[Overwhelm dashboard]] - reads index.json directly
 - [[task-viz]] - generates graph visualizations
 
-### 2. Streamlit Dashboard
+### Streamlit Dashboard
 
-Location: `aops-core/skills/dashboard/`
+Location: `aops/lib/overwhelm/`
 
 Renders task state and session context. No LLM calls in render path.
 
 **Invocation**:
 ```bash
-cd $AOPS && uv run streamlit run skills/dashboard/dashboard.py
+cd $AOPS && uv run streamlit run lib/overwhelm/dashboard.py
 ```
 
 **Panels**:
@@ -107,15 +75,17 @@ cd $AOPS && uv run streamlit run skills/dashboard/dashboard.py
 | Priority Tasks | P0/P1 tasks grouped by project |
 | Blockers | Tasks with unmet dependencies |
 | Done Today | Completed items |
-| Active Sessions | Cross-machine context from R2 |
+| Active Sessions | What current sessions are working on and what they've recently completed |
 
-### 3. Data Flow
+### Data Flow
 
 ```
 Task files ──> fast-indexer ──> index.json ──> Dashboard
                                     │
                                     └──> Task MCP server
                                     └──> task-viz
+
+Agent sessions --> session state json files --> Dashboard
 ```
 
 **Key principle**: Dashboard is pure rendering. All computation happens in fast-indexer or pre-computed synthesis.
