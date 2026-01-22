@@ -1431,6 +1431,7 @@ class SessionProcessor:
                     "end_time": entry.timestamp,
                     "hook_context": entry.hook_context,
                     "inline_hooks": [],
+                    "turn_entries": [entry],  # Track entries for token aggregation
                 }
 
             elif entry.type == "system_reminder":
@@ -1566,6 +1567,10 @@ class SessionProcessor:
                 if entry.timestamp and current_turn:
                     current_turn["end_time"] = entry.timestamp
 
+                # Track assistant entry for token aggregation
+                if current_turn and "turn_entries" in current_turn:
+                    current_turn["turn_entries"].append(entry)
+
         if current_turn and (
             current_turn.get("user_message") or current_turn.get("assistant_sequence")
         ):
@@ -1576,6 +1581,19 @@ class SessionProcessor:
         for turn in turns:
             if conversation_start_time and turn.get("start_time"):
                 is_user_turn = turn.get("type") not in ("hook_context", "summary")
+
+                # Aggregate tokens from turn entries
+                turn_entries = turn.get("turn_entries", [])
+                total_input_tokens, total_output_tokens = self._aggregate_turn_tokens(
+                    turn_entries
+                )
+
+                # Store input/output tokens separately for display
+                if total_input_tokens is not None:
+                    turn["input_tokens"] = total_input_tokens
+                if total_output_tokens is not None:
+                    turn["output_tokens"] = total_output_tokens
+
                 if is_user_turn and not first_user_turn_found:
                     first_user_turn_found = True
                     turn["timing_info"] = TimingInfo(
@@ -1780,6 +1798,21 @@ class SessionProcessor:
                     parts.append(f"at +{timing_info.offset_from_start}")
                 if timing_info.duration:
                     parts.append(f"took {timing_info.duration}")
+
+                # Add token counts if available
+                input_tokens = (
+                    turn.get("input_tokens")
+                    if not isinstance(turn, ConversationTurn)
+                    else None
+                )
+                output_tokens = (
+                    turn.get("output_tokens")
+                    if not isinstance(turn, ConversationTurn)
+                    else None
+                )
+                if input_tokens is not None and output_tokens is not None:
+                    parts.append(f"{input_tokens} in / {output_tokens} out tokens")
+
                 if parts:
                     timing_str = f" ({', '.join(parts)})"
 
@@ -2444,6 +2477,35 @@ session_id: {session_uuid}
     def _format_time_offset(self, seconds: float) -> str:
         """Format time offset from conversation start."""
         return self._format_duration(seconds)
+
+    def _aggregate_turn_tokens(
+        self, turn_entries: list[Entry]
+    ) -> tuple[int | None, int | None]:
+        """Sum input and output tokens from entries in a turn.
+
+        Returns (total_input, total_output) or (None, None) if no tokens found.
+        """
+        total_input = 0
+        total_output = 0
+        has_tokens = False
+
+        for entry in turn_entries:
+            if entry.input_tokens is not None:
+                total_input += entry.input_tokens
+                has_tokens = True
+            if entry.output_tokens is not None:
+                total_output += entry.output_tokens
+                has_tokens = True
+
+        if has_tokens:
+            return (total_input, total_output)
+        return (None, None)
+
+    def _estimate_tokens(self, text: str) -> int:
+        """Estimate token count from text (~1 token per 4 characters)."""
+        if not text:
+            return 0
+        return max(1, len(text) // 4)
 
     def _format_compact_args(
         self, tool_input: dict[str, Any], max_length: int = 60
