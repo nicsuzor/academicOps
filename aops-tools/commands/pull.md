@@ -14,13 +14,16 @@ permalink: commands/pull
 
 ### Step 1: Get a Task
 
-Call `mcp__plugin_aops-core_tasks__get_ready_tasks(project="aops")` to get available tasks.
+Call `mcp__plugin_aops-core_tasks__get_ready_tasks(project="aops", caller="bot")` to get available tasks.
 
 Returns tasks that are:
 - Leaves (no children)
 - No unmet dependencies
 - Status: active or inbox
+- Assignee is unset OR assigned to "bot"
 - Sorted by priority
+
+**Note**: The `caller="bot"` filter ensures agents only see tasks meant for automation. Tasks assigned to "nic" (human) are filtered out. Unassigned tasks are included for backwards compatibility.
 
 **If a specific task ID is provided** (`/pull <task-id>`):
 - Call `mcp__plugin_aops-core_tasks__get_task(id="<task-id>")` to load it
@@ -147,9 +150,18 @@ Only call this after successful execution (EXECUTE path). TRIAGE path should hal
 
 ## Arguments
 
-- `/pull` - Get highest priority ready task and claim it
+- `/pull` - Get highest priority ready task for bot (unassigned or assigned to "bot")
 - `/pull <task-id>` - Claim a specific task (or its first ready leaf if it has children)
+- `/pull --caller=nic` - Get ready tasks assigned to nic (human) or unassigned
 
 ## Implementation Note
 
 How you execute the task, how you verify it, how you commit/push—those are agent responsibilities, not `/pull` responsibilities. This skill just manages the queue state: get, claim, complete.
+
+## Main Session Requirement
+
+**This command must run in the main Claude Code session**, not in worker agents spawned via `Task(subagent_type=...)`.
+
+Worker agents lack MCP tool access. Tasks requiring Outlook (email), Zotero, memory, calendar, or browser automation will fail if executed by workers. See HEURISTICS.md P#77.
+
+For parallel task processing, use the hypervisor pattern with queue filtering to ensure workers only receive MCP-independent tasks (file edits, git operations, code changes).

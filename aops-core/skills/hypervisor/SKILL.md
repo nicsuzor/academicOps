@@ -112,6 +112,7 @@ Tested spawning 5 parallel haiku workers on aops framework tasks:
 2. **Missing notifications**: ~20% of notifications may not arrive at all
 3. **Output file cleanup**: Worker output files at `/tmp/claude/.../tasks/*.output` are cleaned up after completion, making post-hoc analysis difficult
 4. **No batch status view**: Must check `git log` or task status individually to verify completions
+5. **Worker agents lack MCP tools**: Workers cannot call MCP tools (Outlook, Zotero, memory, calendar, browser). Only file operations, git, and code edits work. Filter queue to MCP-independent tasks before spawning workers. See HEURISTICS.md P#77.
 
 ### Monitoring Workarounds
 

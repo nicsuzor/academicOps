@@ -204,6 +204,21 @@ description: Working hypotheses validated by evidence.
 
 ---
 
+## External Integration Debugging (P#76)
+
+**Statement**: For bugs involving external APIs/tools that reject your input, research known failure patterns FIRST (GitHub issues, docs, web search) before diving into code.
+
+**Corollaries**:
+- External systems have opaque validation logic you cannot read
+- Trial-and-error is expensive when each test requires external calls
+- Known issues lists are goldmines - search "tool X error Y" before debugging
+- Create a checklist of documented failure modes, then audit systematically
+- Extract actual evidence (e.g., generated schemas) to match against patterns
+
+**Derivation**: You cannot debug code you cannot see. External tool errors require external knowledge. Research-then-audit is 100x faster than guess-and-test.
+
+---
+
 ## Tasks Have Single Objectives (P#75)
 
 **Statement**: Each task should have one primary objective. When work spans multiple concerns (execute work + improve framework, verify fix + document pattern), create separate tasks with dependency relationships.
@@ -219,5 +234,21 @@ description: Working hypotheses validated by evidence.
 - Task B: "[Learn] Task structure - separate verification from framework improvement" (meta-work, depends_on: A)
 
 **Derivation**: Mixed-objective tasks obscure completion criteria and make it unclear whether the task is done. Single-objective tasks with explicit dependencies create clear accountability and enable proper sequencing of work vs. meta-work.
+
+---
+
+## Worker Agents Lack MCP Tools (P#77)
+
+**Statement**: Worker agents spawned via `Task(subagent_type=...)` have only standard tools (Read, Write, Edit, Bash, Glob, Grep). They cannot call MCP tools directly.
+
+**Corollaries**:
+- Email tasks (Outlook MCP) → main session only
+- Memory operations (store/retrieve) → main session only
+- Zotero, calendar, browser automation → main session only
+- File operations, git, code edits → worker agents OK
+- `/pull` must run in main session when tasks may require MCP tools
+- Hypervisor should filter queue to MCP-independent tasks before spawning workers
+
+**Derivation**: MCP tools are loaded as function calls in the main Claude Code session via plugin configuration. Worker agents run in isolated contexts without plugin tool injection. Task delegation must match capabilities to requirements.
 
 ---
