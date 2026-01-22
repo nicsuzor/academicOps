@@ -88,6 +88,7 @@ HOOK_REGISTRY: dict[str, list[dict[str, Any]]] = {
     ],
     "Stop": [
         {"script": "reflection_check.py"},  # Check for Framework Reflection before session end
+        {"script": "session_end_commit_check.py"},  # Enforce uncommitted work detection + auto-commit
         {"script": "unified_logger.py"},
     ],
     "SessionEnd": [
