@@ -182,7 +182,10 @@ description: Working hypotheses validated by evidence.
 - Set `parent` to the most relevant existing task, or `depends_on` if sequential
 - Root-level orphans ("thorns") fragment project coherence
 - The agent is autonomous on structural improvements - don't ask "should I set parent?"
+- Prefer appending at branch ENDS rather than mid-branch insertion
+- Attach new work to epics/projects that are themselves at branch ends (away from trunk)
+- Priority flows from tree position: tasks closer to trunk are more immediate
 
-**Derivation**: Orphan tasks at the root level create disconnected work items. Sequential branches show progression and enable `/pull` to find contextually related work.
+**Derivation**: Orphan tasks at the root level create disconnected work items. Sequential branches show progression and enable `/pull` to find contextually related work. Branch-end insertion keeps the tree coherent and makes priority implicit in structure.
 
 ---
