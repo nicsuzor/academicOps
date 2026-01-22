@@ -132,3 +132,54 @@ tail -f /tmp/claude/-home-nic-writing/tasks/*.output
 2. **Persist worker summaries**: Write completion reports to task body or memory
 3. **Batch coordinator**: Add a status aggregator that tracks parallel workers
 4. **Output retention**: Keep output files for N minutes after completion
+
+### Design Improvements (from parallel experiments)
+
+**1. Structured completion summary**
+
+Hypervisor should return aggregated results, not require manual TaskOutput polling:
+
+```json
+{
+  "workers": [
+    {"task_id": "aops-f7458c85", "status": "success", "outcome": "verified complete"},
+    {"task_id": "aops-45528fa7", "status": "blocked", "reason": "lock file"},
+    {"task_id": "aops-2fff499a", "status": "success", "commit": "caecab8b"}
+  ],
+  "runtime_seconds": 427,
+  "total_tokens": 156000
+}
+```
+
+**2. Pre-flight task validation**
+
+Check task state before spawning workers to avoid wasted tokens:
+- Skip tasks already `done` or `cancelled`
+- Check for existing lock files
+- Report "N tasks skipped (already complete)" upfront
+
+**3. Atomic claiming**
+
+Prevent duplicate work if multiple hypervisors run simultaneously:
+
+```python
+def claim_task(task_id: str) -> bool:
+    """Returns True if claimed, False if already claimed by another worker."""
+    lock_path = Path(f"/tmp/hypervisor/locks/{task_id}.lock")
+    try:
+        lock_path.touch(exist_ok=False)
+        return True
+    except FileExistsError:
+        return False
+```
+
+**4. Context injection**
+
+Pre-read task bodies and inject into worker prompts to save redundant reads:
+
+```python
+task = get_task(task_id)
+prompt = f"/pull {task_id}\n\n[TASK CONTEXT]\n{task['body']}"
+```
+
+This saves ~500-1000 tokens per worker on task file reads.
