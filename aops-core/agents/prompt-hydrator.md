@@ -254,38 +254,57 @@ mcp__plugin_aops-core_tasks__create_task(
 
 [ONE of these options:]
 
-**Option A: Mark as blocked**
+**Option A: Assign to Role**
+
+If task needs specific expertise or human judgment:
 ```
 mcp__plugin_aops-core_tasks__update_task(
   id="[task-id]",
+  assignee="[role]",  # e.g., "nic", "bot", "human"
   status="blocked",
-  body="[Reason this needs human attention]"
+  body="Blocked: [what's unclear]. Needs: [what decision/input is required]"
 )
 ```
+
+**Role assignment logic:**
+- `assignee="nic"` - Requires human judgment, strategic decisions, or external context
+- `assignee="human"` - Generic human tasks (emails, scheduling, etc.)
+- `assignee="bot"` - Can be automated but needs clarification on scope/approach
+- Leave unassigned if role unclear
 
 **OR**
 
 **Option B: Subtask explosion**
+
 Break into actionable child tasks (each 15-60 min, each passes EXECUTE criteria):
 ```
 mcp__plugin_aops-core_tasks__decompose_task(
   id="[parent-id]",
   children=[
-    {"title": "Subtask 1", "type": "action", "order": 0},
-    {"title": "Subtask 2", "type": "action", "order": 1},
-    {"title": "Subtask 3", "type": "action", "order": 2}
+    {"title": "Subtask 1: [specific action]", "type": "action", "order": 0},
+    {"title": "Subtask 2: [specific action]", "type": "action", "order": 1},
+    {"title": "Subtask 3: [specific action]", "type": "action", "order": 2}
   ]
 )
 ```
 
+**Subtask explosion heuristics:**
+- Each subtask should pass EXECUTE criteria (15-60 min, clear deliverable)
+- Break by natural boundaries: files, features, or dependencies
+- Order subtasks logically (dependencies first)
+- Don't over-decompose: 3-7 subtasks is ideal
+- If > 7 subtasks needed, create intermediate grouping tasks
+
 **OR**
 
-**Option C: Mark blocked with context for strategy review**
+**Option C: Block for Clarification**
+
+If task is fundamentally unclear:
 ```
 mcp__plugin_aops-core_tasks__update_task(
   id="[task-id]",
   status="blocked",
-  body="Blocked: [what's unclear]. Needs: [what decision/input is required]"
+  body="Blocked: [specific questions]. Context: [what's known so far]."
 )
 ```
 

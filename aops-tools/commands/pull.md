@@ -38,11 +38,112 @@ mcp__plugin_aops-core_tasks__update_task(id="<task-id>", status="active")
 
 That's it. The task is now claimed.
 
-### Step 3: Mark Complete When Done
+### Step 3: Assess Task Path - EXECUTE or TRIAGE
+
+After claiming, determine whether to execute immediately or triage first.
+
+#### EXECUTE Path (all must be true)
+
+Proceed with execution when:
+
+- **What**: Task describes specific deliverable(s)
+- **Where**: Target files/systems are known or locatable within 5 minutes
+- **Why**: Context is sufficient for implementation decisions
+- **How**: Steps are known or determinable from codebase/docs
+- **Scope**: Estimated completion within current session
+- **Blockers**: No external dependencies (human approval, external input, waiting)
+
+→ Proceed to Step 4: Execute
+
+#### TRIAGE Path (any is true)
+
+Triage instead of executing when:
+
+- Task requires human judgment/approval
+- Task has unknowns requiring exploration beyond this session
+- Task is too vague to determine deliverables
+- Task depends on external input not yet available
+- Task exceeds session scope
+
+→ Proceed to Step 4: Triage
+
+### Step 4A: Execute (EXECUTE Path)
+
+Follow the task's workflow or use standard execution pattern:
+
+1. Read task body for context and acceptance criteria
+2. Implement the changes
+3. Verify against acceptance criteria
+4. Run tests if applicable
+5. Commit changes
+6. Complete task (see Step 5)
+
+### Step 4B: Triage (TRIAGE Path)
+
+Take appropriate action based on what's needed:
+
+#### Option A: Assign to Role
+
+If task needs specific expertise or human judgment:
+
+```
+mcp__plugin_aops-core_tasks__update_task(
+  id="<task-id>",
+  assignee="<role>",  # e.g., "nic", "bot", "human"
+  status="blocked",
+  body="Blocked: [what's unclear]. Needs: [what decision/input is required]"
+)
+```
+
+**Role assignment logic:**
+- `assignee="nic"` - Requires human judgment, strategic decisions, or external context
+- `assignee="human"` - Generic human tasks (emails, scheduling, etc.)
+- `assignee="bot"` - Can be automated but needs clarification on scope/approach
+- Leave unassigned if role unclear
+
+#### Option B: Decompose into Subtasks
+
+If task is too large but scope is clear:
+
+```
+mcp__plugin_aops-core_tasks__decompose_task(
+  id="<parent-id>",
+  children=[
+    {"title": "Subtask 1: [specific action]", "type": "action", "order": 0},
+    {"title": "Subtask 2: [specific action]", "type": "action", "order": 1},
+    {"title": "Subtask 3: [specific action]", "type": "action", "order": 2}
+  ]
+)
+```
+
+**Subtask explosion heuristics:**
+- Each subtask should pass EXECUTE criteria (15-60 min, clear deliverable)
+- Break by natural boundaries: files, features, or dependencies
+- Order subtasks logically (dependencies first)
+- Don't over-decompose: 3-7 subtasks is ideal
+- If > 7 subtasks needed, create intermediate grouping tasks
+
+#### Option C: Block for Clarification
+
+If task is fundamentally unclear:
+
+```
+mcp__plugin_aops-core_tasks__update_task(
+  id="<task-id>",
+  status="blocked",
+  body="Blocked: [specific questions]. Context: [what's known so far]."
+)
+```
+
+After triaging, **HALT** - do not proceed to execution. The task is now either assigned, decomposed, or blocked.
+
+### Step 5: Mark Complete When Done
 
 ```
 mcp__plugin_aops-core_tasks__complete_task(id="<task-id>")
 ```
+
+Only call this after successful execution (EXECUTE path). TRIAGE path should halt before completion.
 
 ## Arguments
 
