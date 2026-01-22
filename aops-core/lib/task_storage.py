@@ -112,7 +112,14 @@ class TaskStorage:
         Returns:
             Path if found, None otherwise
         """
-        # Search inbox first
+        # Search top-level tasks/ directory (legacy location)
+        tasks_dir = self.data_root / "tasks"
+        if tasks_dir.exists():
+            for path in tasks_dir.glob(f"{task_id}*.md"):
+                if path.is_file() and (path.stem == task_id or path.stem.startswith(f"{task_id}-")):
+                    return path
+
+        # Search inbox
         inbox_dir = self.data_root / "tasks" / "inbox"
         if inbox_dir.exists():
             for path in inbox_dir.glob(f"{task_id}*.md"):
