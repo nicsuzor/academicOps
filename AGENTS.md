@@ -1,163 +1,44 @@
 ---
-title: Framework Development Instructions
+title: Framework Agent Instructions
 type: instruction
 category: instruction
 permalink: root-claude-instructions
-description: Essential agent rules for academicOps framework co-development
+description: Entry point for academicOps framework. Loads CORE.md and project context.
 ---
 
 @CORE.md
 
-# academicOps: Core Agent Rules
+# academicOps Agent Rules
 
-You are a co-developer of this framework. Complete the user's task AND improve the system that completes tasks.
+You are working with the academicOps framework. These rules apply to all framework-aware agents.
 
-## Self-Reflexivity
+## Core Behaviors
 
-This framework is itself a hypothesis. When you encounter friction-something that doesn't fit, a question the schema can't answer, a pattern that needs a name-do this:
-
-1. **Log it.**
-2. **Propose.** If you see an amendment, suggest it.
-3. **Don't force it.** If something doesn't fit, that's data. Don't mangle it to fit the current model.
-
-The system learns, and the framework evolves through use.
-
-## HALT on Underspecified Tasks
-
-Before starting, verify: **What** (exact task), **Where** (files/systems), **Why** (context).
-
-If unclear: HALT, use AskUserQuestion, NEVER assume.
-
-## Fail Fast
-
-- If something doesn't work: FAIL FAST, ESCALATE, HALT
-- WORKING TOOLS NOT WORKAROUNDS
-
-## Agent Instructions Are Expensive
-
-Skill, command, and agent instruction files (SKILL.md, commands/*.md, agents/*.md) are loaded into agent context and cost tokens.
-
-**Three rules:**
-
-1. **Actionable content only** - Every line should tell the agent WHAT TO DO
-2. **No spec references** - Specifications are for humans, not agent execution
-3. **No meta-commentary** - "This skill does X because Y" belongs in specs, not instructions
+- **HALT on underspecified tasks**: Verify What, Where, Why before starting. If unclear, use AskUserQuestion.
+- **Fail fast**: If something doesn't work, ESCALATE. No workarounds.
+- **Agent instructions are expensive**: Every line should tell agent WHAT TO DO. No meta-commentary.
 
 ## Task Tracking
 
-Use the **tasks MCP server** for work tracking:
-
-- `mcp__plugin_aops-core_tasks__get_ready_tasks()` - Find available work
-- `mcp__plugin_aops-core_tasks__create_task(title, type, project, parent, depends_on, priority, body)` - Create tasks
-- `mcp__plugin_aops-core_tasks__update_task(id, status, ...)` - Update task status
-- `mcp__plugin_aops-core_tasks__complete_task(id)` - Mark task done
-- `mcp__plugin_aops-core_tasks__list_tasks(project, status, type)` - List/filter tasks
-- `mcp__plugin_aops-core_tasks__search_tasks(query)` - Search tasks
-
-**Agent owns task structure.** You are autonomous on: setting parents, adding dependencies, reordering, fixing orphans. These are structural improvements with no meaningful user choice. Don't ask "should I?" - just do it.
-
-**On interruption** (e.g., user triggers /learn mid-task): Update current task `status="blocked"`, create child task for interrupt work with `parent=<current-id>`.
+Use the **tasks MCP server** for all work tracking. Agent owns task structure - set parents, dependencies, reorder as needed without asking.
 
 ## Session Completion
 
-**Work is NOT complete until `git push` succeeds AND Framework Reflection is output.**
+**Work is NOT complete until `git push` succeeds.**
 
-1. File issues for remaining work
-2. Run quality gates (tests, linters)
-3. Update issue status
-4. Format: `./scripts/format.sh && git add -A && git commit -m "..."`
-5. **Push**: `git pull --rebase && git push && git status`
-6. **Output Framework Reflection** (MANDATORY - see format below)
+1. File tasks for unfinished work
+2. Run quality gates (if code changed)
+3. Push: `git pull --rebase && git push`
+4. Output Framework Reflection
 
-NEVER stop before pushing. NEVER skip the Framework Reflection.
+## Framework Reflection (MANDATORY)
 
-## Framework Reflection (Session End)
-
-**MANDATORY**: You MUST output a Framework Reflection at the end of EVERY session. This is not optional.
-
-The reflection is extracted by `transcript.py` and stored in `$ACA_SESSIONS/{date}-{session_id}.json`. Without this output, session insights are lost.
-
-**Every token costs money.** The JIT and distraction fields below exist to continuously improve context efficiency. Be aggressive: identify specific content that wasted tokens (verbose explanations, irrelevant sections, unused examples) so we can remove it.
-
-Use this EXACT format - field names and syntax must match precisely:
+At session end, output this EXACT format (extracted by transcript.py):
 
 ```
 ## Framework Reflection
 
-**Prompts**: [Verbatim user prompts from session, chronologically. Include ALL prompts, not just the final one.]
-**Guidance received**: [Hydrator/custodiet advice, or "N/A"]
-**Followed**: [Yes/No/Partial - explain]
-**Outcome**: [success/partial/failure]
-**Accomplishments**: [What was accomplished - list key items]
-**Friction points**: [What was harder than expected, or "none"]
-**Root cause** (if not success): [Which component failed]
-**Proposed changes**: [Framework improvements identified, or "none"]
-**Next step**: [Context for next session - MUST be filed as task if actionable]
-**Workflow improvements**: [Changes to make this type of task easier in future, or "none"]
-**JIT context needed**: [What specific info would have helped? Be precise - file paths, field names, concepts.]
-**Context distractions**: [What loaded context was NOT useful? Name specific sections/files to consider removing or shrinking. Every KB of unused context = wasted money.]
-**User tone**: [Float -1.0 to 1.0: 1.0=effusive, 0.0=neutral, -0.5=disappointed, -1.0=furious]
-```
-
-**Next step rule**: If Next step contains actionable work, file it as a task before ending the session. Don't just document it - track it.
-
-**Unfinished work rule**: If you discovered work that couldn't be completed this session (scope exceeded, blocked, deferred), you MUST create a follow-up task. The next agent needs a task to claim - don't leave work orphaned in prose.
-
-**Task creation rule**: If you forgot to create a task for your work this session, create one now and mark it complete. This is how we track work. Set parent/child/dependencies as appropriate.
-
-Field alignment with session-insights JSON schema:
-- `**Prompts**`: Maps to `prompts` array - verbatim user prompts in order
-- `**Outcome**`: Must be lowercase: `success`, `partial`, or `failure`
-- `**Accomplishments**`: Maps to `accomplishments` array
-- `**Friction points**`: Maps to `friction_points` array
-- `**Proposed changes**`: Maps to `proposed_changes` array
-- `**Workflow improvements**`: Maps to `workflow_improvements` array
-- `**JIT context needed**`: Maps to `jit_context_needed` array - be specific (file paths, concepts)
-- `**Context distractions**`: Maps to `context_distractions` array - name files/sections to remove/shrink
-- `**User tone**`: Maps to `user_mood` float (-1.0 to 1.0, default 0.0)
-
-## Landing the Plane (Session Completion)
-
-**When ending a work session**, you MUST complete ALL steps below. Work is NOT complete until `git push` succeeds.
-
-**MANDATORY WORKFLOW:**
-
-1. **File tasks for unfinished work** - If work couldn't be completed (scope exceeded, blocked, deferred), create a follow-up task. The next agent needs something to claim.
-2. **Run quality gates** (if code changed) - Tests, linters, builds
-3. **Update issue status** - Close finished work, update in-progress items
-4. **Persist key insights** (if learned something) - Use `Skill(skill="remember")` for discoveries worth preserving. Git commits aren't searchable; memory is.
-5. **PUSH TO REMOTE** - This is MANDATORY:
-   ```bash
-   git pull --rebase
-   git push
-   git status  # MUST show "up to date with origin"
-   ```
-6. **Clean up** - Clear stashes, prune remote branches
-7. **Verify** - All changes committed AND pushed
-8. **Hand off** - Provide context for next session
-
-**CRITICAL RULES:**
-- Work is NOT complete until `git push` succeeds
-- NEVER stop before pushing - that leaves work stranded locally
-- NEVER ask "should I commit?" or "ready to push when you are" - YOU must commit and push
-- If push fails, resolve and retry until it succeeds
-
----
-
-## STOP: Before Ending This Session
-
-**You MUST output a Framework Reflection before stopping.** This is the LAST thing you do.
-
-Without this output, session insights are lost. The reflection is extracted by `transcript.py` and stored for learning.
-
-**Tokens = money.** Use JIT/distraction fields to flag specific content to add or remove from context.
-
-Copy this template and fill it in:
-
-```
-## Framework Reflection
-
-**Prompts**: [All user prompts from this session]
+**Prompts**: [User prompts from this session]
 **Guidance received**: [Hydrator/custodiet advice, or "N/A"]
 **Followed**: [Yes/No/Partial]
 **Outcome**: [success/partial/failure]
@@ -165,10 +46,10 @@ Copy this template and fill it in:
 **Friction points**: [What was hard, or "none"]
 **Root cause** (if not success): [Component that failed]
 **Proposed changes**: [Improvements, or "none"]
-**Next step**: [Follow-up needed - file as task if actionable]
+**Next step**: [Follow-up - file as task if actionable]
 **Workflow improvements**: [Process improvements, or "none"]
-**JIT context needed**: [Specific info that would have helped - be precise]
-**Context distractions**: [Name specific sections/files to remove or shrink - every KB = wasted $]
+**JIT context needed**: [Info that would have helped]
+**Context distractions**: [Files/sections to remove or shrink]
 **User tone**: [Float -1.0 to 1.0]
 ```
 

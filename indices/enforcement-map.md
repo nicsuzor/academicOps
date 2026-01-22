@@ -119,13 +119,22 @@ tags: [framework, enforcement, moc]
 
 ### What Constitutes Prompt-Level Enforcement
 
-Any modification to files that are fed to agents at session start is a prompt-level enforcement mechanism:
+Context loading follows a **three-tier architecture** (see [[session-start-injection]]):
+
+| Tier | File | Purpose | When Loaded |
+|------|------|---------|-------------|
+| 1 | `$AOPS/CORE.md` | Framework tools (essential only) | SessionStart (ALL agents) |
+| 2 | `$cwd/.agent/CORE.md` | Project-specific context | SessionStart (if exists) |
+| 3 | `AXIOMS.md`, `HEURISTICS.md`, workflows, skills | Detailed guidance | JIT via prompt-hydrator |
+
+**Design principle**: Minimal baseline, maximal JIT. Agents start with only what they need to understand the framework and project. Everything else loads on-demand.
 
 | File | Purpose | Loaded Via |
 |------|---------|------------|
-| `AXIOMS.md` | Inviolable principles | `sessionstart_load_axioms.py` |
-| `HEURISTICS.md` | Operational defaults | `sessionstart_load_axioms.py` |
-| `CORE.md` | Operational conventions (memory, tooling, git) | `AGENTS.md` → CLAUDE.md |
+| `$AOPS/CORE.md` | Framework tool inventory (~2KB) | SessionStart hook |
+| `$cwd/.agent/CORE.md` | Project conventions | SessionStart hook (if exists) |
+| `AXIOMS.md` | Inviolable principles | JIT (prompt-hydrator) |
+| `HEURISTICS.md` | Operational defaults | JIT (prompt-hydrator) |
 | `AGENTS.md` | Agent routing and aops rules | CLAUDE.md reference |
 | Agent frontmatter (`agents/*.md`) | Agent-specific context | Task tool invocation |
 
