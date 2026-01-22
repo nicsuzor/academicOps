@@ -114,7 +114,7 @@ create_symlink() {
 }
 
 create_symlink "settings.json" "$AOPS_PATH/config/claude/settings.json"
-create_symlink "CLAUDE.md" "$AOPS_PATH/CLAUDE.md"
+create_symlink "CLAUDE.md" "$AOPS_PATH/config/claude/CLAUDE.md"
 
 # Create plugins directory and symlink all aops plugins
 # Note: skills, commands, agents, hooks now live in plugins (not top-level)
@@ -401,7 +401,7 @@ else
 
     # Link settings.json and CLAUDE.md
     ln -sf ../config/claude/settings.json "$REPO_CLAUDE/settings.json"
-    ln -sf ../CLAUDE.md "$REPO_CLAUDE/CLAUDE.md"
+    ln -sf ../config/claude/CLAUDE.md "$REPO_CLAUDE/CLAUDE.md"
 
     # Auto-discover and link all aops-* plugins
     for plugin_dir in "$AOPS_PATH"/aops-*; do
@@ -537,9 +537,10 @@ else
     fi
 
     # Read source and inject paths
+    #<!-- @NS: remove this hardcoded path from this and source files -->
     sed -e "s|~/src/academicOps|$AOPS_PATH|g" \
         -e "s|~/writing/data|$ACA_DATA_PATH|g" \
-        "$AOPS_PATH/GEMINI.md" > "$GEMINI_DIR/GEMINI.md"
+        "$AOPS_PATH/config/gemini/GEMINI.md" > "$GEMINI_DIR/GEMINI.md"
 
     echo -e "${GREEN}  Generated ~/.gemini/GEMINI.md with paths injected${NC}"
 

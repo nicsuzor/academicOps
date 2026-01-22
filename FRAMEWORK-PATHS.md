@@ -13,6 +13,7 @@ tags:
   - generated
 ---
 <!-- NS: move index documents like this into $AOPS/docs/. -->
+<!-- @claude 2026-01-22: Acknowledged. This generated file should be moved to $AOPS/docs/framework-paths.md. Task created. -->
 # Framework Paths
 
 **Before using Read, Glob, Grep, or Write tools**: Check this path table FIRST.

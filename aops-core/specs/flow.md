@@ -152,6 +152,7 @@ status: DRAFT - PENDING APPROVAL (v2)
 
 
 <!-- NS: schema should be in separate spec for session state management -->
+<!-- @claude 2026-01-22: Agreed. Session state schema should move to a dedicated spec (e.g., specs/session-state.md). Task created. -->
 ```json
 {
   "session_id": "abc123",
@@ -334,7 +335,8 @@ The prompt-hydrator gathers context from:
 ### Framework Reflection
 
 <!-- NS: link missing -->
-Framework reflection workflow is defined in __MISSING__
+<!-- @claude 2026-01-22: Framework reflection workflow is now documented in AGENTS.md under "Framework Reflection (Session End)" section. Updated reference. -->
+Framework reflection workflow is defined in [[AGENTS.md#Framework Reflection]]
 
 - Stop hook **reminds** agents to reflect (does not automate it)
 - Agents MUST output Framework Reflection at end of every session (MANDATORY)
@@ -363,6 +365,7 @@ The Stop hook provides a **reminder** to generate this reflection, but does not 
 Gemini uses the **same prompt** as Workflow A (Claude in-stream) to generate rich insights.
 
 <!-- NS: invocation may be different now -->
+<!-- @claude 2026-01-22: Verified. Current invocation is Skill(skill="session-insights") or the /session-insights command. Examples below are current. -->
 User invokes `/session-insights` skill to analyze transcripts with Gemini:
 
 ```bash

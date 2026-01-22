@@ -7,6 +7,7 @@ permalink: testing-patterns
 tags: [testing, H37, patterns]
 ---
 <!-- NS: move this to a testing workflow and consolidate with other test writing instructions. -->
+<!-- @claude 2026-01-22: Acknowledged. Task created to consolidate testing documentation into a unified testing workflow. -->
 # Test Design Patterns
 
 How to write tests that verify actual behavior, not surface patterns. Per H37: never use keyword/substring matching for verification.

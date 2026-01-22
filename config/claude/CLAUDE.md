@@ -1,0 +1,1 @@
+@${AOPS}/.agent/CORE.md

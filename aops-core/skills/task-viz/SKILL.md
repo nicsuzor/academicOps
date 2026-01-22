@@ -40,10 +40,10 @@ For color-coded visualizations based on status/priority/type:
 
 ```bash
 # 1. Generate JSON with type filter
-$AOPS/scripts/bin/fast-indexer ./data -o graph -f json -t task,project,goal
+$AOPS/scripts/bin/fast-indexer ${ACA_DATA} -o data/aops/outputs/graph -f json -t task,project,goal
 
 # 2. Apply styling and render SVG
-python3 $AOPS/scripts/task_graph.py graph.json -o styled --layout sfdp
+python3 $AOPS/scripts/task_graph.py data/aops/outputs/graph.json -o data/aops/outputs/styled --layout sfdp
 ```
 
 Color coding:
@@ -55,16 +55,16 @@ Color coding:
 
 ```bash
 # Generate all formats
-$AOPS/scripts/bin/fast-indexer ./data -o graph
+$AOPS/scripts/bin/fast-indexer  ${ACA_DATA} -o graph
 
 # Generate GraphML for yEd/Gephi
-$AOPS/scripts/bin/fast-indexer ./data -o graph -f graphml
+$AOPS/scripts/bin/fast-indexer  ${ACA_DATA} -o graph -f graphml
 
 # Generate DOT and render with Graphviz
-$AOPS/scripts/bin/fast-indexer ./data -o graph -f dot
-sfdp -Tsvg -Goverlap=prism -Gsplines=true graph.dot -o graph.svg
+$AOPS/scripts/bin/fast-indexer  ${ACA_DATA} -o graph -f dot
+sfdp -Tsvg -Goverlap=prism -Gsplines=true ${ACA_DATA}/aops/outputs/graph.dot -o ${ACA_DATA}/aops/outputs/graph.svg
 
 # Full workflow: tasks/projects/goals with styling
-$AOPS/scripts/bin/fast-indexer ./data -o tasks -f json -t task,project,goal
-python3 $AOPS/scripts/task_graph.py tasks.json -o tasks-styled
+$AOPS/scripts/bin/fast-indexer  ${ACA_DATA} -o  ${ACA_DATA}/aops/outputs/tasks -t task,project,goal
+python3 $AOPS/scripts/task_graph.py  ${ACA_DATA}/aops/outputs/tasks.json -o tasks-styled
 ```

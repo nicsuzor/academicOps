@@ -175,5 +175,6 @@
     "plugin-dev@claude-plugins-official": true,
     "academicOps@inline": false,
     "canvas@claude-canvas": true
-  }
+  },
+  "model": "haiku"
 }
