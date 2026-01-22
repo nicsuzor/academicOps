@@ -491,9 +491,18 @@ class Entry:
     tool_input: dict | None = None  # Tool parameters for PreToolUse/PostToolUse hooks
     agent_id: str | None = None
 
+    # Token tracking fields
+    input_tokens: int | None = None
+    output_tokens: int | None = None
+
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> Entry:
         """Create Entry from JSONL dict."""
+        # Extract tokens from message.usage if present
+        usage = data.get("message", {}).get("usage", {})
+        input_tokens = usage.get("input_tokens")
+        output_tokens = usage.get("output_tokens")
+
         entry = cls(
             type=data.get("type", "unknown"),
             uuid=data.get("uuid", ""),
@@ -506,6 +515,8 @@ class Entry:
             hook_context=data.get("hook_context", {}),
             subagent_id=data.get("subagentId"),
             summary_text=data.get("summary"),
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
         )
 
         # Extract hook data from system_reminder entries
@@ -577,6 +588,8 @@ class TimingInfo:
     start_time_local: datetime | None = None
     offset_from_start: str | None = None
     duration: str | None = None
+    total_tokens: int | None = None
+    estimated_tokens: bool = False
 
 
 @dataclass
@@ -593,6 +606,7 @@ class ConversationTurn:
     is_meta: bool = (
         False  # True if this is system-injected context, not actual user input
     )
+    tool_timings: dict[str, dict] = field(default_factory=dict)
 
 
 class SessionState(Enum):
