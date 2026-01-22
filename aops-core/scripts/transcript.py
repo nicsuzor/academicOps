@@ -139,7 +139,7 @@ def _process_reflection(
             insights_path = get_insights_file_path(
                 date_str, session_id, slug, idx, project
             )
-            write_insights_file(insights_path, insights)
+            write_insights_file(insights_path, insights, session_id=session_id)
             print(f"💡 Reflection {i + 1}/{len(reflections)} saved to: {insights_path}")
         except InsightsValidationError as e:
             print(f"⚠️  Reflection {i + 1} validation failed: {e}", file=sys.stderr)

@@ -380,18 +380,65 @@ def merge_insights(existing: dict[str, Any], new: dict[str, Any]) -> dict[str, A
     return merged
 
 
-def write_insights_file(path: Path, insights: dict[str, Any]) -> None:
+def write_insights_file(path: Path, insights: dict[str, Any], session_id: str | None = None) -> None:
     """Atomically write insights JSON file.
 
     Uses temp file + rename pattern for atomic writes.
+    Optionally loads and merges base information from session status file.
 
     Args:
         path: Target file path
         insights: Insights dictionary to write
+        session_id: Optional session ID to load status file for enrichment
 
     Raises:
         Exception: If write fails
     """
+    # Merge with status file data if session_id provided
+    if session_id:
+        status_dir = Path.home() / "writing" / "sessions" / "status"
+        # Try to find status file by session_id with various naming patterns
+        # Status files may be named YYYYMMDD-sessionid.json or just sessionid.json
+        status_path = None
+
+        # First, extract date from insights if available for pattern matching
+        date_str = insights.get("date", "")
+        date_compact = date_str.replace("-", "") if date_str else ""
+
+        # Try patterns (with date first since that's more specific)
+        patterns_to_try = []
+        if date_compact:
+            patterns_to_try.append(status_dir / f"{date_compact}-{session_id}.json")
+        patterns_to_try.append(status_dir / f"{session_id}.json")
+        # Fallback: search with glob for pattern matching (handles renamed files)
+        if date_compact:
+            patterns_to_try.extend(status_dir.glob(f"{date_compact}-*{session_id}*.json"))
+        patterns_to_try.extend(status_dir.glob(f"*{session_id}*.json"))
+
+        for path in patterns_to_try:
+            if isinstance(path, Path) and path.exists():
+                status_path = path
+                break
+
+        if status_path:
+            try:
+                with open(status_path, "r", encoding="utf-8") as f:
+                    status_data = json.load(f)
+                # Extract insights from status and merge into insights dict
+                # Handle both formats:
+                # - New format: {"session_id": ..., "insights": {...}}
+                # - Old format: {"session_id": ..., "outcome": ..., "accomplishments": ...}
+                if "insights" in status_data:
+                    # New format: nested insights object
+                    status_insights = status_data["insights"]
+                else:
+                    # Old format: insights data at top level
+                    status_insights = status_data
+                # Merge: status insights provide base info, new insights override
+                insights = {**status_insights, **insights}
+            except (json.JSONDecodeError, OSError) as e:
+                print(f"⚠️  Warning: Could not load status file {status_path}: {e}")
+
     # Ensure parent directory exists
     path.parent.mkdir(parents=True, exist_ok=True)
 
