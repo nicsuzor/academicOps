@@ -148,6 +148,7 @@ These scripts exist but aren't user-invocable skills. Provide exact invocation w
 ## Key Rules
 
 - **Framework Gate (CHECK FIRST)**: If prompt involves modifying `$AOPS/` (framework files), route to `[[framework-change]]` (governance) or `[[feature-dev]]` (code). NEVER route framework work to `[[simple-question]]` or `[[minor-edit]]`. Include Framework Change Context in output.
+- **Python Code Changes → TDD**: When debugging or fixing Python code (`.py` files), include `Skill(skill="python-dev")` in the execution plan. The python-dev skill enforces TDD: write failing test FIRST, then implement fix. No trial-and-error edits.
 - **Short confirmations**: If prompt is very short (≤10 chars: "yes", "ok", "do it", "sure"), check the MOST RECENT agent response and tools. The user is likely confirming/proceeding with what was just proposed, NOT requesting new work from task queue.
 - **Scope detection**: Multi-session = goal-level, uncertain path, spans days+. Single-session = bounded, known steps.
 - **Prefer existing tasks**: Search task state before creating new tasks.

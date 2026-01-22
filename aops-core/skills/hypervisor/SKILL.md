@@ -172,14 +172,3 @@ def claim_task(task_id: str) -> bool:
     except FileExistsError:
         return False
 ```
-
-**4. Context injection**
-
-Pre-read task bodies and inject into worker prompts to save redundant reads:
-
-```python
-task = get_task(task_id)
-prompt = f"/pull {task_id}\n\n[TASK CONTEXT]\n{task['body']}"
-```
-
-This saves ~500-1000 tokens per worker on task file reads.

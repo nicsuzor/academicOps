@@ -501,7 +501,7 @@ def complete_task(id: str) -> dict[str, Any]:
 
 
 @mcp.tool()
-def get_ready_tasks(project: Optional[str] = None) -> dict[str, Any]:
+def get_ready_tasks(project: str) -> dict[str, Any]:
     """Get tasks ready to work on.
 
     Ready tasks are:
@@ -510,7 +510,7 @@ def get_ready_tasks(project: Optional[str] = None) -> dict[str, Any]:
     - Status is "active" or "inbox"
 
     Args:
-        project: Filter by project slug (optional)
+        project: Filter by project slug, or empty string "" for all projects
 
     Returns:
         Dictionary with:
@@ -521,7 +521,7 @@ def get_ready_tasks(project: Optional[str] = None) -> dict[str, Any]:
     """
     try:
         index = _get_index()
-        ready = index.get_ready_tasks(project=project)
+        ready = index.get_ready_tasks(project=project or None)
 
         return {
             "success": True,
@@ -542,13 +542,13 @@ def get_ready_tasks(project: Optional[str] = None) -> dict[str, Any]:
 
 
 @mcp.tool()
-def get_blocked_tasks(project: Optional[str] = None) -> dict[str, Any]:
+def get_blocked_tasks(project: str) -> dict[str, Any]:
     """Get tasks blocked by dependencies.
 
     Returns tasks that have unmet dependencies or status "blocked".
 
     Args:
-        project: Filter by project slug (optional)
+        project: Filter by project slug, or empty string "" for all projects
 
     Returns:
         Dictionary with:
@@ -1147,6 +1147,94 @@ def search_tasks(query: str, limit: int = 20) -> dict[str, Any]:
             "tasks": [],
             "count": 0,
             "message": f"Failed to search tasks: {e}",
+        }
+
+
+# =============================================================================
+# INDEX OPERATIONS
+# =============================================================================
+
+
+@mcp.tool()
+def rebuild_index(force: bool) -> dict[str, Any]:
+    """Rebuild the task index from files.
+
+    Scans all task files and rebuilds the JSON index with computed
+    relationships (children, blocks, ready, blocked).
+
+    Prefers fast-indexer Rust binary when available for better performance.
+
+    Args:
+        force: Force rebuild even if index is fresh (pass false for normal rebuild)
+
+    Returns:
+        Dictionary with:
+        - success: True if rebuild succeeded
+        - stats: Index statistics
+        - message: Status message
+    """
+    try:
+        index = TaskIndex(get_data_root())
+        # Try fast rebuild first, fall back to Python
+        if not index.rebuild_fast():
+            index.rebuild()
+        stats = index.stats()
+
+        logger.info(f"rebuild_index: {stats['total']} tasks indexed")
+
+        return {
+            "success": True,
+            "stats": stats,
+            "message": f"Indexed {stats['total']} tasks",
+        }
+
+    except Exception as e:
+        logger.exception("rebuild_index failed")
+        return {
+            "success": False,
+            "stats": {},
+            "message": f"Failed to rebuild index: {e}",
+        }
+
+
+@mcp.tool()
+def get_index_stats(include_projects: bool) -> dict[str, Any]:
+    """Get task index statistics.
+
+    Returns counts and status information about the task index.
+
+    Args:
+        include_projects: Include per-project breakdown (pass true for full stats)
+
+    Returns:
+        Dictionary with:
+        - success: True
+        - stats: Index statistics including:
+            - total: Total task count
+            - ready: Ready task count
+            - blocked: Blocked task count
+            - roots: Root task count
+            - projects: Project count
+            - by_status: Counts by status
+            - by_type: Counts by type
+        - message: Status message
+    """
+    try:
+        index = _get_index()
+        stats = index.stats()
+
+        return {
+            "success": True,
+            "stats": stats,
+            "message": f"Index has {stats['total']} tasks",
+        }
+
+    except Exception as e:
+        logger.exception("get_index_stats failed")
+        return {
+            "success": False,
+            "stats": {},
+            "message": f"Failed to get index stats: {e}",
         }
 
 
