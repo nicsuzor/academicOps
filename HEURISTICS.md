@@ -203,3 +203,21 @@ description: Working hypotheses validated by evidence.
 **Derivation**: Users have ground-truth about their own system. Over-investigation violates P#5 (Do One Thing) by wasting context on "proving" what the user already knows. Verification ≠ Investigation. One test: reproduce the bug, fix it, stop. P#5's warning applies: "I'll just [investigate a bit more]" is the exact friction the axiom exists to prevent.
 
 ---
+
+## Tasks Have Single Objectives (P#75)
+
+**Statement**: Each task should have one primary objective. When work spans multiple concerns (execute work + improve framework, verify fix + document pattern), create separate tasks with dependency relationships.
+
+**Corollaries**:
+- Executing work is separate from reflecting on/improving the framework that guided it
+- Verification work is separate from documenting patterns learned
+- If task description contains "AND THEN" or combines action + meta-work, decompose
+- Use depends_on to create accountability chain: primary work completes first, then reflection/improvement
+
+**Example**:
+- Task A: "Verify Unicode fix resolves Gemini error" (primary work)
+- Task B: "[Learn] Task structure - separate verification from framework improvement" (meta-work, depends_on: A)
+
+**Derivation**: Mixed-objective tasks obscure completion criteria and make it unclear whether the task is done. Single-objective tasks with explicit dependencies create clear accountability and enable proper sequencing of work vs. meta-work.
+
+---
