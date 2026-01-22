@@ -84,6 +84,7 @@ HOOK_REGISTRY: dict[str, list[dict[str, Any]]] = {
         {"script": "unified_logger.py"},
     ],
     "SubagentStop": [
+        {"script": "reflection_check.py"},  # Remind subagents to include Framework Reflection
         {"script": "unified_logger.py"},
     ],
     "Stop": [

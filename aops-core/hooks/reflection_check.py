@@ -160,14 +160,30 @@ def main():
         try:
             found = check_for_reflection(session_id, transcript_path)
             if not found:
-                # Optionally warn that no reflection was found
+                # Remind agent to include Framework Reflection
                 # This is informational - don't block the session
                 # Note: Stop events only support top-level fields (systemMessage, continue, etc.)
                 # not hookSpecificOutput (which is only for PreToolUse, PostToolUse, UserPromptSubmit)
                 output_data = {
                     "systemMessage": (
-                        "Note: No Framework Reflection detected in this session. "
-                        "Framework Reflections help capture session insights for learning."
+                        "REMINDER: Please include a Framework Reflection in your final response.\n\n"
+                        "Required format (from CORE.md):\n"
+                        "```\n"
+                        "## Framework Reflection\n\n"
+                        "**Prompts**: [User prompts from this session]\n"
+                        "**Guidance received**: [Hydrator/custodiet advice, or \"N/A\"]\n"
+                        "**Followed**: [Yes/No/Partial]\n"
+                        "**Outcome**: [success/partial/failure]\n"
+                        "**Accomplishments**: [What was done]\n"
+                        "**Friction points**: [What was hard, or \"none\"]\n"
+                        "**Root cause** (if not success): [Component that failed]\n"
+                        "**Proposed changes**: [Improvements, or \"none\"]\n"
+                        "**Next step**: [Follow-up - file as task if actionable]\n"
+                        "**Workflow improvements**: [Process improvements, or \"none\"]\n"
+                        "**JIT context needed**: [Info that would have helped]\n"
+                        "**Context distractions**: [Files/sections to remove or shrink]\n"
+                        "**User tone**: [Float -1.0 to 1.0]\n"
+                        "```"
                     ),
                 }
         except Exception as e:
