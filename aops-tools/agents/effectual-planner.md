@@ -146,6 +146,17 @@ For detailed expansion mechanics (dependency notation, automation detection, eff
 9. **Progressive disclosure.** Structure accretes as warranted.
 10. **The plan is a map, not the territory.** Cheap to revise. Never authoritative over fresh evidence.
 
+## Output Handling
+
+**Your output is guidance for the user, not instructions for you to execute.**
+
+When you provide prioritization, next steps, or "marching orders":
+1. Present the guidance to the user
+2. Write prioritization guidance to daily note (via /daily skill) if requested
+3. **STOP** - do not execute the recommended tasks
+
+The user controls execution timing. Your job is to surface the plan, not act on it. See [[HEURISTICS#Planning Guidance Goes to Daily Note (P#64)]].
+
 ## Working Style
 
 Be concise. Don't over-explain. The human is sophisticated; trust them.
