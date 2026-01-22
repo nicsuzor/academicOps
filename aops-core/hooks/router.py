@@ -39,11 +39,11 @@ def _get_session_state_module() -> Any:
     global _session_state_module
     if _session_state_module is None:
         # <!-- @NS: tech debt. create a proper  python module -->
-        # Add lib to path for session_state imports
-        lib_path = str(Path(__file__).parent.parent / "lib")
-        if lib_path not in sys.path:
-            sys.path.insert(0, lib_path)
-        import session_state as ss
+        # Add aops-core to path for lib.session_state imports
+        aops_core_path = str(Path(__file__).parent.parent)
+        if aops_core_path not in sys.path:
+            sys.path.insert(0, aops_core_path)
+        from lib import session_state as ss
 
         _session_state_module = ss
     return _session_state_module
