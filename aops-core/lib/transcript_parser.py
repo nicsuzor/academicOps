@@ -1682,6 +1682,90 @@ class SessionProcessor:
 
         return None
 
+    def _generate_context_summary(
+        self, entries: list[Entry], agent_entries: dict[str, list[Entry]] | None = None
+    ) -> str | None:
+        """Generate enhanced Context Summary with aggregated session metadata.
+
+        Analyzes session entries to extract and summarize:
+        - Skills/workflows invoked
+        - Tasks claimed/completed
+        - Files modified
+        - Key tools used
+        - Subagents spawned
+
+        Returns formatted markdown string or None if no useful metadata found.
+        """
+        # Aggregate metadata
+        skills_invoked = set()
+        files_modified = set()
+        key_tools: dict[str, int] = {}
+        task_operations = []
+
+        # Scan entries for metadata
+        for entry in entries:
+            # Extract skills/workflows from tool use
+            if entry.type == "assistant" and entry.message:
+                content = entry.message.get("content", [])
+                if isinstance(content, list):
+                    for block in content:
+                        if isinstance(block, dict) and block.get("type") == "tool_use":
+                            tool_name = block.get("name", "")
+                            tool_input = block.get("input", {})
+
+                            # Track tool usage
+                            if tool_name:
+                                key_tools[tool_name] = key_tools.get(tool_name, 0) + 1
+
+                            # Track skills invoked
+                            if tool_name == "Skill":
+                                skill = tool_input.get("skill", "")
+                                if skill:
+                                    skills_invoked.add(skill)
+
+                            # Track file modifications
+                            if tool_name in ["Edit", "Write"]:
+                                file_path = tool_input.get("file_path", "")
+                                if file_path:
+                                    # Store basename only for readability
+                                    files_modified.add(Path(file_path).name)
+
+                            # Track task operations (simplified - just check for task-related tools)
+                            if "task" in tool_name.lower():
+                                task_operations.append(tool_name)
+
+        # Build summary sections
+        summary_parts = []
+
+        if skills_invoked:
+            skills_str = ", ".join(f"`{s}`" for s in sorted(skills_invoked))
+            summary_parts.append(f"**Skills/Workflows**: {skills_str}")
+
+        if key_tools:
+            # Show top 5 most used tools
+            top_tools = sorted(key_tools.items(), key=lambda x: x[1], reverse=True)[:5]
+            tools_str = ", ".join([f"{name} ({count})" for name, count in top_tools])
+            summary_parts.append(f"**Tools Used**: {tools_str}")
+
+        if files_modified:
+            if len(files_modified) <= 5:
+                files_str = ", ".join(f"`{f}`" for f in sorted(files_modified))
+                summary_parts.append(f"**Files Modified**: {files_str}")
+            else:
+                shown = list(sorted(files_modified))[:3]
+                files_str = ", ".join(f"`{f}`" for f in shown)
+                summary_parts.append(
+                    f"**Files Modified**: {files_str} (+{len(files_modified)-3} more)"
+                )
+
+        if agent_entries and len(agent_entries) > 0:
+            summary_parts.append(f"**Subagents**: {len(agent_entries)} spawned")
+
+        if not summary_parts:
+            return None
+
+        return "**Context Summary**\n\n" + "\n".join(summary_parts) + "\n\n"
+
     def format_session_as_markdown(
         self,
         session: SessionSummary,
@@ -1769,18 +1853,9 @@ class SessionProcessor:
                 markdown += "\n"
                 continue
 
+            # Skip old-style summary entries (now handled by _generate_context_summary)
             if isinstance(turn, dict) and turn.get("type") == "summary":
-                content = turn.get("content", "").strip()
-                if content:
-                    if not context_summary_started:
-                        markdown += "**Context Summary**\n\n"
-                        context_summary_started = True
-                    markdown += f"- {content}\n"
                 continue
-
-            if context_summary_started:
-                markdown += "\n"
-                context_summary_started = False
 
             turn_number += 1
             timing_info = (
@@ -2087,6 +2162,11 @@ session_id: {session_uuid}
             session_context += (
                 "**Original User Request** (first prompt): (not found)\n\n"
             )
+
+        # Add enhanced context summary
+        context_summary = self._generate_context_summary(entries, agent_entries)
+        if context_summary:
+            session_context += context_summary
 
         reflection_section = reflection_header if reflection_header else ""
         return frontmatter + header + session_context + reflection_section + markdown
