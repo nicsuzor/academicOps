@@ -22,6 +22,7 @@ Event mapping:
 """
 
 import json
+import os
 import subprocess
 import sys
 import uuid
@@ -43,11 +44,29 @@ EVENT_MAP = {
     "PreCompress": None,
 }
 
-# Claude router location (relative to this file)
-CLAUDE_ROUTER = Path(__file__).parent.parent.parent.parent / "aops-core" / "hooks" / "router.py"
+# Claude router location (from $AOPS environment variable)
+def get_claude_router() -> Path:
+    """Get Claude router path from $AOPS environment variable."""
+    aops_root = Path(os.getenv("AOPS", ""))
+    if not aops_root.name:
+        raise EnvironmentError("$AOPS environment variable not set")
+    return aops_root / "aops-core" / "hooks" / "router.py"
 
-# Session ID file location
-SESSION_ID_FILE = Path.home() / ".gemini" / "tmp" / "current_session_id"
+# Session ID file location (from $AOPS_SESSIONS environment variable)
+def get_session_id_file() -> Path:
+    """Get session ID file path from $AOPS_SESSIONS environment variable.
+
+    Uses a temporary file per process to avoid conflicts with concurrent instances.
+    """
+    aops_sessions = Path(os.getenv("AOPS_SESSIONS", ""))
+    if not aops_sessions.name:
+        raise EnvironmentError("$AOPS_SESSIONS environment variable not set")
+
+    # Create directory if needed
+    aops_sessions.mkdir(parents=True, exist_ok=True)
+
+    # Use process ID to create unique file per invocation
+    return aops_sessions / f"session-{os.getpid()}.txt"
 
 
 def get_session_id(event_name: str) -> str:
@@ -58,9 +77,14 @@ def get_session_id(event_name: str) -> str:
     On other events, reads the existing ID.
     Fallback: Generates a temporary ID if file is missing.
     """
-    # Create dir if needed
-    if not SESSION_ID_FILE.parent.exists():
-        SESSION_ID_FILE.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        session_id_file = get_session_id_file()
+    except EnvironmentError as e:
+        print(f"WARNING: {e}", file=sys.stderr)
+        # Fallback: generate session ID without persistence
+        timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+        short_uuid = str(uuid.uuid4())[:8]
+        return f"gemini-{timestamp}-{short_uuid}"
 
     if event_name == "SessionStart":
         # Generate new session ID: YYYYMMDD-HHMMSS-uuid
@@ -69,16 +93,16 @@ def get_session_id(event_name: str) -> str:
         session_id = f"gemini-{timestamp}-{short_uuid}"
 
         try:
-            SESSION_ID_FILE.write_text(session_id)
+            session_id_file.write_text(session_id)
         except Exception as e:
             print(f"WARNING: Failed to write session ID: {e}", file=sys.stderr)
 
         return session_id
 
     # Read existing ID
-    if SESSION_ID_FILE.exists():
+    if session_id_file.exists():
         try:
-            return SESSION_ID_FILE.read_text().strip()
+            return session_id_file.read_text().strip()
         except Exception:
             pass
 
@@ -86,7 +110,7 @@ def get_session_id(event_name: str) -> str:
     # Generate and persist a new ID so subsequent events in this session use it
     fallback_id = f"gemini-fallback-{str(uuid.uuid4())[:8]}"
     try:
-        SESSION_ID_FILE.write_text(fallback_id)
+        session_id_file.write_text(fallback_id)
     except Exception as e:
         print(f"WARNING: Failed to write fallback session ID: {e}", file=sys.stderr)
 
@@ -145,20 +169,26 @@ def call_claude_router(claude_input: dict) -> tuple[dict, int]:
     """
     Call the Claude router and return its output.
     """
-    if not CLAUDE_ROUTER.exists():
-        print(f"ERROR: Claude router not found at {CLAUDE_ROUTER}", file=sys.stderr)
+    try:
+        claude_router = get_claude_router()
+    except EnvironmentError as e:
+        print(f"ERROR: {e}", file=sys.stderr)
+        return {}, 1
+
+    if not claude_router.exists():
+        print(f"ERROR: Claude router not found at {claude_router}", file=sys.stderr)
         return {}, 1
 
     try:
         result = subprocess.run(
-            ["python3", str(CLAUDE_ROUTER)],
+            ["python3", str(claude_router)],
             input=json.dumps(claude_input),
             capture_output=True,
             text=True,
             timeout=30,
             env={
-                **dict(__import__("os").environ),
-                "PYTHONPATH": str(CLAUDE_ROUTER.parent.parent),
+                **dict(os.environ),
+                "PYTHONPATH": str(claude_router.parent.parent),
             },
         )
 
