@@ -25,7 +25,7 @@ Quick reference for routing user requests to skills/commands. When a request mat
 | `/email` | "process email", "email to task", "handle this email" | Create "ready for action" tasks from emails - with summaries, downloaded documents, and clear response requirements |
 | `/learn` | "framework issue", "fix this pattern", "improve the system" | Make minimal, graduated framework tweaks with experiment tracking |
 | `/log` | "log observation", "note this", "framework feedback" | Log framework observations to tasks for continuous improvement |
-| `/pull` | "pull task", "get work", "what should I work on", "next task" | Pull a task from the queue, execute it with hydrator guidance, and complete with session reflection |
+| `/pull` | "pull task", "get work", "what should I work on", "next task" | Pull a task from queue, claim it (mark active), and mark complete when done |
 
 ## Skills (Auto-Triggered)
 
