@@ -189,3 +189,17 @@ description: Working hypotheses validated by evidence.
 **Derivation**: Orphan tasks at the root level create disconnected work items. Sequential branches show progression and enable `/pull` to find contextually related work. Branch-end insertion keeps the tree coherent and makes priority implicit in structure.
 
 ---
+
+## User System Expertise > Agent Hypotheses (P#74)
+
+**Statement**: When user makes specific, repeated assertions about their own codebase or system behavior, trust the assertion and verify with ONE minimal test. Do NOT spawn investigation/critic/custodiet to "validate" user claims about their own system.
+
+**Corollaries**:
+- User's role: report observations from their environment
+- Agent's role: verify with minimal steps, then act or report findings
+- Investigate root cause ONLY if user asks "why" or if minimal verification fails
+- Do NOT explain investigation reasoning ("I had to rule out X...") - just report the result
+
+**Derivation**: Users have ground-truth about their own system. Over-investigation violates P#5 (Do One Thing) by wasting context on "proving" what the user already knows. Verification ≠ Investigation. One test: reproduce the bug, fix it, stop. P#5's warning applies: "I'll just [investigate a bit more]" is the exact friction the axiom exists to prevent.
+
+---
