@@ -22,7 +22,7 @@ An academic support framework for Claude Code. It provides:
 1. **Consistent agent behavior** - Principles ([[AXIOMS.md|AXIOMS]]) loaded every session
 2. **Intelligent routing** - Prompts hydrated into complete execution plans
 3. **Quality enforcement** - Workflows embed appropriate quality gates for each task type
-4. **Knowledge persistence** - Memory server + [[specs/remember-skill.md|remember skill]] for institutional memory
+4. **Knowledge persistence** - Memory server + [[archived/specs/remember-skill.md|remember skill]] for institutional memory
 
 **Scope**: Supports academic work across ALL repositories.
 
@@ -67,16 +67,16 @@ The hydrator receives the user prompt along with session history and memory cont
 
 ### Currently Working
 
-| Capability                 | Implementation               | How Invoked            |
-| -------------------------- | ---------------------------- | ---------------------- |
-| Research data analysis     | [[specs/analyst-skill.md     | analyst]] skill        |
-| Citation management        | zotmcp + Zotero              | MCP tools              |
-| Task capture from email    | [[specs/tasks-skill.md       | tasks]] skill + /email |
-| Task visualization         | [[skills/excalidraw/SKILL.md | excalidraw]] skill     |
-| Writing style enforcement  | Style guides                 | Agents follow guides   |
-| Knowledge capture          | [[specs/remember-skill.md    | remember]] skill       |
-| Session transcripts        | [[specs/transcript-skill.md  | transcript]] skill     |
-| Markdown to PDF generation | [[skills/pdf/SKILL.md        | pdf]] skill            |
+| Capability                 | Implementation                                  | How Invoked          |
+| -------------------------- | ----------------------------------------------- | -------------------- |
+| Research data analysis     | [[archived/specs/analyst-skill.md\|analyst]] skill        | analyst skill        |
+| Citation management        | zotmcp + Zotero                                 | MCP tools            |
+| Task capture from email    | [[archived/specs/tasks-skill.md\|tasks]] skill + /email   | tasks skill + /email |
+| Task visualization         | [[aops-tools/skills/excalidraw/SKILL.md\|excalidraw]] skill | excalidraw skill     |
+| Writing style enforcement  | Style guides                                    | Agents follow guides |
+| Knowledge capture          | [[archived/specs/remember-skill.md\|remember]] skill      | remember skill       |
+| Session transcripts        | [[archived/specs/transcript-skill.md\|transcript]] skill  | transcript skill     |
+| Markdown to PDF generation | [[aops-tools/skills/pdf/SKILL.md\|pdf]] skill             | pdf skill            |
 
 ### Enforcement Mechanisms
 
@@ -159,6 +159,6 @@ The framework should become increasingly self-aware and self-improving:
 1. **Agent-ready instructions** - Core docs ([[AXIOMS.md|AXIOMS]], [[HEURISTICS.md|HEURISTICS]]) contain only actionable rules, no explanations or evidence
 2. **Evidence-informed changes** - Framework changes are motivated by consolidated diagnostic data, not ad-hoc observations
 3. **Closed-loop learning** - Observations → bd issues → Diagnostics → Changes → Validation
-4. **Framework introspection** - The [[specs/framework-skill.md|framework skill]] understands the whole system and enforces consistency before accepting additions
+4. **Framework introspection** - The [[archived/specs/framework-skill.md|framework skill]] understands the whole system and enforces consistency before accepting additions
 5. **Bounded growth** - Logs don't grow forever; they consolidate into actionable diagnostics then archive
 6. **Session-end reflection** - At session end, automatically analyze behavior patterns and suggest heuristic updates. User approves with one click, no manual observation writing. Zero friction for framework improvement.
