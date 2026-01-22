@@ -237,23 +237,27 @@ echo "Syncing MCP servers to ~/.claude.json..."
 
 if [ -f "$mcp_source" ] && command -v jq &> /dev/null; then
     if [ -f "$HOME/.claude.json" ]; then
-        # Read MCP config, patch container runtime, expand $HOME
+        # Read MCP config, patch container runtime, expand $HOME/$AOPS/$ACA_DATA
         if [ -n "$CONTAINER_RUNTIME" ]; then
-            mcp_patched=$(jq --arg runtime "$CONTAINER_RUNTIME" --arg home "$HOME" '
+            mcp_patched=$(jq --arg runtime "$CONTAINER_RUNTIME" --arg home "$HOME" --arg aops "$AOPS_PATH" --arg aca_data "$ACA_DATA_PATH" '
                 .mcpServers | to_entries | map(
                     if .value.command == "podman" or .value.command == "docker" then
                         .value.command = $runtime
                     else . end
-                    | .value.args = (.value.args // [] | map(gsub("\\$HOME"; $home)))
+                    | .value.args = (.value.args // [] | map(gsub("\\$HOME"; $home) | gsub("\\$AOPS"; $aops) | gsub("\\$ACA_DATA"; $aca_data)))
+                    | .value.env = ((.value.env // {}) | with_entries(.value |= (gsub("\\$AOPS"; $aops) | gsub("\\$ACA_DATA"; $aca_data) | gsub("\\$HOME"; $home))))
                 ) | from_entries | {mcpServers: .}
             ' "$mcp_source")
             echo "  Using container runtime: $CONTAINER_RUNTIME"
         else
             # No container runtime - filter out container-based servers entirely
-            mcp_patched=$(jq --arg home "$HOME" '
+            mcp_patched=$(jq --arg home "$HOME" --arg aops "$AOPS_PATH" --arg aca_data "$ACA_DATA_PATH" '
                 .mcpServers | to_entries
                 | map(select(.value.command != "podman" and .value.command != "docker"))
-                | map(.value.args = (.value.args // [] | map(gsub("\\$HOME"; $home))))
+                | map(
+                    .value.args = (.value.args // [] | map(gsub("\\$HOME"; $home) | gsub("\\$AOPS"; $aops) | gsub("\\$ACA_DATA"; $aca_data)))
+                    | .value.env = ((.value.env // {}) | with_entries(.value |= (gsub("\\$AOPS"; $aops) | gsub("\\$ACA_DATA"; $aca_data) | gsub("\\$HOME"; $home))))
+                )
                 | from_entries | {mcpServers: .}
             ' "$mcp_source")
             echo -e "${YELLOW}  No container runtime - excluding container-based MCP servers (zot, osb)${NC}"
@@ -395,23 +399,8 @@ echo "Setting up repository .claude/ (for remote coding)..."
 if python3 "$AOPS_PATH/scripts/sync_web_bundle.py" --self > /dev/null 2>&1; then
     echo -e "${GREEN}✓ Repository .claude/ configured via sync_web_bundle.py --self${NC}"
 else
-    echo -e "${YELLOW}⚠ sync_web_bundle.py failed - creating symlinks manually${NC}"
-    REPO_CLAUDE="$AOPS_PATH/.claude"
-    mkdir -p "$REPO_CLAUDE" "$REPO_CLAUDE/plugins"
-
-    # Link settings.json and CLAUDE.md
-    ln -sf ../config/claude/settings.json "$REPO_CLAUDE/settings.json"
-    ln -sf ../config/claude/CLAUDE.md "$REPO_CLAUDE/CLAUDE.md"
-
-    # Auto-discover and link all aops-* plugins
-    for plugin_dir in "$AOPS_PATH"/aops-*; do
-        if [ -d "$plugin_dir" ] && [ -f "$plugin_dir/.claude-plugin/plugin.json" ]; then
-            plugin_name=$(basename "$plugin_dir")
-            ln -sf "../../$plugin_name" "$REPO_CLAUDE/plugins/$plugin_name"
-        fi
-    done
-
-    echo -e "${GREEN}✓ Repository .claude/ configured (manual fallback)${NC}"
+    echo -e "${YELLOW}⚠ sync_web_bundle.py not found - skipping repository .claude/ setup${NC}"
+    echo "  Create scripts/sync_web_bundle.py if remote coding support is needed"
 fi
 
 # Step 2d-1: Generate plugin-specific MCP configs from templates
