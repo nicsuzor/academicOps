@@ -1962,9 +1962,15 @@ class SessionProcessor:
                         # Format exit code suffix for display
                         exit_code = item.get("exit_code")
                         tool_name = item.get("tool_name", "")
+                        is_error = item.get("is_error", False)
                         exit_suffix = ""
-                        if exit_code is not None and tool_name == "Bash":
+
+                        # Show exit code for all tools when available
+                        if exit_code is not None:
                             exit_suffix = f" → exit {exit_code}"
+                        # Show error indicator when no exit code but is_error is True
+                        elif is_error:
+                            exit_suffix = " → error"
 
                         # Track if we render subagent content from result
                         # to avoid duplication with sidechain_summary
@@ -2145,10 +2151,15 @@ session_id: {session_uuid}
         return "; ".join(summary_parts) if summary_parts else "Parallel task execution"
 
     def _extract_sidechain(self, sidechain_entries: list[Entry]) -> str:
-        """Extract full conversation from sidechain entries."""
+        """Extract full conversation from sidechain entries.
+
+        Deduplicates text content and tool operations to avoid showing the same content twice.
+        """
         if not sidechain_entries:
             return "No sidechain details available"
         output_parts = []
+        seen_texts = set()  # Track seen text content to avoid duplicates
+        seen_tools = set()  # Track seen tool operations to avoid duplicates
         for entry in sidechain_entries:
             if entry.type == "assistant" and entry.message:
                 content = entry.message.get("content", [])
@@ -2157,12 +2168,17 @@ session_id: {session_uuid}
                         if isinstance(block, dict):
                             if block.get("type") == "text":
                                 text = block.get("text", "").strip()
-                                if text:
+                                # Only add if we haven't seen this exact text before
+                                if text and text not in seen_texts:
+                                    seen_texts.add(text)
                                     output_parts.append(text + "\n")
                             elif block.get("type") == "tool_use":
                                 formatted_tool = self._format_tool_operation(block)
                                 if formatted_tool:
-                                    output_parts.append(formatted_tool)
+                                    # Only add if we haven't seen this exact tool operation before
+                                    if formatted_tool not in seen_tools:
+                                        seen_tools.add(formatted_tool)
+                                        output_parts.append(formatted_tool)
         return "\n".join(output_parts)
 
     def _extract_agent_id_from_result(

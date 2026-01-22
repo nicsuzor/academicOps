@@ -381,5 +381,146 @@ More content here.
             print(f"   {detail}")
 
 
+class TestExitCodeExtraction:
+    """Test exit code extraction from Bash tool results.
+
+    Verifies that exit codes are properly extracted from tool results
+    and displayed in transcripts.
+    """
+
+    @pytest.fixture
+    def parser_module(self):
+        """Import transcript_parser module."""
+        framework_root = SCRIPT_PATH.parent.parent.parent
+        aops_core_root = SCRIPT_PATH.parent.parent
+        sys.path.insert(0, str(framework_root))
+        sys.path.insert(0, str(aops_core_root))
+
+        from lib import transcript_parser
+
+        return transcript_parser
+
+    def test_extract_exit_code_from_success(self, parser_module) -> None:
+        """Successful commands should return exit code 0."""
+        exit_code = parser_module._extract_exit_code_from_content(
+            "Output from successful command", is_error=False
+        )
+        assert exit_code == 0
+
+    def test_extract_exit_code_from_error_with_prefix(self, parser_module) -> None:
+        """Error messages with 'Exit code N' prefix should be parsed."""
+        exit_code = parser_module._extract_exit_code_from_content(
+            "Exit code 1\nCommand failed", is_error=True
+        )
+        assert exit_code == 1
+
+    def test_extract_exit_code_from_error_no_prefix(self, parser_module) -> None:
+        """Error messages without exit code prefix should default to 1."""
+        exit_code = parser_module._extract_exit_code_from_content(
+            "Some error message", is_error=True
+        )
+        assert exit_code == 1  # Default for errors without explicit code
+
+    def test_extract_exit_code_various_codes(self, parser_module) -> None:
+        """Should correctly parse various exit codes."""
+        test_cases = [
+            ("Exit code 0\nSuccess", True, 0),
+            ("Exit code 127\nCommand not found", True, 127),
+            ("Exit code 255\nFatal error", True, 255),
+            ("Exit code 2\nMisuse of command", True, 2),
+        ]
+
+        for content, is_error, expected_code in test_cases:
+            result = parser_module._extract_exit_code_from_content(content, is_error)
+            assert result == expected_code, (
+                f"Failed for content: {content[:50]}, "
+                f"expected {expected_code}, got {result}"
+            )
+
+    def test_tool_result_info_includes_exit_code(self, parser_module) -> None:
+        """_get_tool_result_info should include exit code in result."""
+        from lib.transcript_parser import Entry, SessionProcessor
+
+        processor = SessionProcessor()
+
+        # Create mock entries with tool_use and tool_result
+        tool_id = "test_tool_123"
+        entries = [
+            Entry(
+                type="assistant",
+                message={
+                    "content": [
+                        {
+                            "type": "tool_use",
+                            "id": tool_id,
+                            "name": "Bash",
+                            "input": {"command": "ls /nonexistent"},
+                        }
+                    ]
+                },
+            ),
+            Entry(
+                type="user",
+                message={
+                    "content": [
+                        {
+                            "type": "tool_result",
+                            "tool_use_id": tool_id,
+                            "is_error": True,
+                            "content": "Exit code 2\nls: cannot access '/nonexistent': No such file or directory",
+                        }
+                    ]
+                },
+            ),
+        ]
+
+        result_info = processor._get_tool_result_info(tool_id, entries)
+
+        assert result_info is not None
+        assert result_info["is_error"] is True
+        assert result_info["exit_code"] == 2
+        assert "cannot access" in result_info["content"]
+
+    def test_extract_sidechain_deduplicates(self, parser_module) -> None:
+        """_extract_sidechain should not show duplicate text content."""
+        from lib.transcript_parser import Entry, SessionProcessor
+
+        processor = SessionProcessor()
+
+        # Create entries with duplicate text
+        entries = [
+            Entry(
+                type="assistant",
+                message={
+                    "content": [
+                        {"type": "text", "text": "Processing task..."},
+                    ]
+                },
+            ),
+            Entry(
+                type="assistant",
+                message={
+                    "content": [
+                        {"type": "text", "text": "Processing task..."},  # Duplicate
+                    ]
+                },
+            ),
+            Entry(
+                type="assistant",
+                message={
+                    "content": [
+                        {"type": "text", "text": "Task completed."},
+                    ]
+                },
+            ),
+        ]
+
+        result = processor._extract_sidechain(entries)
+
+        # Should only contain "Processing task..." once, not twice
+        assert result.count("Processing task...") == 1
+        assert "Task completed." in result
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
