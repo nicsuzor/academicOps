@@ -21,7 +21,7 @@ import logging
 from dataclasses import asdict
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
 from fastmcp import FastMCP
 
@@ -124,13 +124,13 @@ def _index_entry_to_dict(entry: TaskIndexEntry) -> dict[str, Any]:
 def create_task(
     title: str,
     type: str = "task",
-    project: str | None = None,
-    parent: str | None = None,
-    depends_on: list[str] | None = None,
+    project: Optional[str] = None,
+    parent: Optional[str] = None,
+    depends_on: Optional[list[str]] = None,
     order: int = 0,
     priority: int = 2,
-    due: str | None = None,
-    tags: list[str] | None = None,
+    due: Optional[str] = None,
+    tags: Optional[list[str]] = None,
     body: str = "",
 ) -> dict[str, Any]:
     """Create a new task in the hierarchical task system.
@@ -275,19 +275,19 @@ def get_task(id: str) -> dict[str, Any]:
 @mcp.tool()
 def update_task(
     id: str,
-    title: str | None = None,
-    type: str | None = None,
-    status: str | None = None,
-    priority: int | None = None,
-    order: int | None = None,
-    parent: str | None = None,
-    depends_on: list[str] | None = None,
-    due: str | None = None,
-    project: str | None = None,
-    tags: list[str] | None = None,
-    effort: str | None = None,
-    context: str | None = None,
-    body: str | None = None,
+    title: Optional[str] = None,
+    type: Optional[str] = None,
+    status: Optional[str] = None,
+    priority: Optional[int] = None,
+    order: Optional[int] = None,
+    parent: Optional[str] = None,
+    depends_on: Optional[list[str]] = None,
+    due: Optional[str] = None,
+    project: Optional[str] = None,
+    tags: Optional[list[str]] = None,
+    effort: Optional[str] = None,
+    context: Optional[str] = None,
+    body: Optional[str] = None,
 ) -> dict[str, Any]:
     """Update an existing task.
 
@@ -501,7 +501,7 @@ def complete_task(id: str) -> dict[str, Any]:
 
 
 @mcp.tool()
-def get_ready_tasks(project: str | None = None) -> dict[str, Any]:
+def get_ready_tasks(project: Optional[str] = None) -> dict[str, Any]:
     """Get tasks ready to work on.
 
     Ready tasks are:
@@ -542,10 +542,13 @@ def get_ready_tasks(project: str | None = None) -> dict[str, Any]:
 
 
 @mcp.tool()
-def get_blocked_tasks() -> dict[str, Any]:
+def get_blocked_tasks(project: Optional[str] = None) -> dict[str, Any]:
     """Get tasks blocked by dependencies.
 
     Returns tasks that have unmet dependencies or status "blocked".
+
+    Args:
+        project: Filter by project slug (optional)
 
     Returns:
         Dictionary with:
@@ -558,11 +561,16 @@ def get_blocked_tasks() -> dict[str, Any]:
         index = _get_index()
         blocked = index.get_blocked_tasks()
 
+        # Filter by project if specified
+        if project:
+            blocked = [e for e in blocked if e.project == project]
+
         return {
             "success": True,
             "tasks": [_index_entry_to_dict(e) for e in blocked],
             "count": len(blocked),
-            "message": f"Found {len(blocked)} blocked tasks",
+            "message": f"Found {len(blocked)} blocked tasks"
+            + (f" in project {project}" if project else ""),
         }
 
     except Exception as e:
@@ -730,7 +738,7 @@ def get_dependencies(id: str) -> dict[str, Any]:
 
 
 @mcp.tool()
-def decompose_task(id: str, children: list[dict[str, Any]]) -> dict[str, Any]:
+def decompose_task(id: str, children: list) -> dict[str, Any]:
     """Decompose a task into children.
 
     Creates child tasks and updates parent's leaf status to false.
@@ -964,99 +972,15 @@ def reorder_children(parent_id: str, order: list[str]) -> dict[str, Any]:
 
 
 # =============================================================================
-# UTILITY OPERATIONS
-# =============================================================================
-
-
-@mcp.tool()
-def rebuild_index() -> dict[str, Any]:
-    """Rebuild the task index from files.
-
-    Scans all task files and rebuilds the JSON index with computed
-    relationships (children, blocks, ready, blocked).
-
-    Prefers fast-indexer Rust binary when available for better performance.
-
-    Returns:
-        Dictionary with:
-        - success: True if rebuild succeeded
-        - stats: Index statistics
-        - message: Status message
-    """
-    try:
-        index = TaskIndex(get_data_root())
-        # Try fast rebuild first, fall back to Python
-        used_fast = index.rebuild_fast()
-        if not used_fast:
-            index.rebuild()
-        stats = index.stats()
-
-        method = "fast-indexer" if used_fast else "Python"
-        logger.info(f"rebuild_index ({method}): {stats['total']} tasks indexed")
-
-        return {
-            "success": True,
-            "stats": stats,
-            "message": f"Indexed {stats['total']} tasks (via {method})",
-        }
-
-    except Exception as e:
-        logger.exception("rebuild_index failed")
-        return {
-            "success": False,
-            "stats": {},
-            "message": f"Failed to rebuild index: {e}",
-        }
-
-
-@mcp.tool()
-def get_index_stats() -> dict[str, Any]:
-    """Get task index statistics.
-
-    Returns counts and status information about the task index.
-
-    Returns:
-        Dictionary with:
-        - success: True
-        - stats: Index statistics including:
-            - total: Total task count
-            - ready: Ready task count
-            - blocked: Blocked task count
-            - roots: Root task count
-            - projects: Project count
-            - by_status: Counts by status
-            - by_type: Counts by type
-        - message: Status message
-    """
-    try:
-        index = _get_index()
-        stats = index.stats()
-
-        return {
-            "success": True,
-            "stats": stats,
-            "message": f"Index has {stats['total']} tasks",
-        }
-
-    except Exception as e:
-        logger.exception("get_index_stats failed")
-        return {
-            "success": False,
-            "stats": {},
-            "message": f"Failed to get index stats: {e}",
-        }
-
-
-# =============================================================================
 # LIST AND SEARCH OPERATIONS
 # =============================================================================
 
 
 @mcp.tool()
 def list_tasks(
-    project: str | None = None,
-    status: str | None = None,
-    type: str | None = None,
+    project: Optional[str] = None,
+    status: Optional[str] = None,
+    type: Optional[str] = None,
     limit: int = 50,
 ) -> dict[str, Any]:
     """List tasks with optional filters.
