@@ -318,6 +318,41 @@ User request mentions "batch" or multiple tasks
 5. Combined test suite passes before push
 6. bd state accurately reflects work state
 
+## Empirical Findings (2026-01-22)
+
+Tested parallel worker spawning with 5 haiku workers on aops framework tasks:
+
+### Results
+
+| Metric | Result |
+|--------|--------|
+| Spawn success | 5/5 (100%) |
+| Execution success | 5/5 (100%) |
+| Conflicts/collisions | 0 |
+| Commits produced | 5 |
+| Notification delivery | 4/5 (80%) |
+
+### Confirmed Working
+
+- Raw `Task()` parallel spawning works without conflicts
+- Workers execute independently and produce commits
+- No resource contention observed
+- Task status updates are reliable (can verify via MCP)
+
+### Issues Identified
+
+1. **Notification reliability**: 20% of task-notification messages never arrived
+2. **Notification latency**: Delivered notifications were 2-5 minutes delayed
+3. **Output file cleanup**: `/tmp/claude/.../tasks/*.output` files deleted after completion
+4. **No real-time visibility**: Must poll git log or task status to verify completions
+
+### Recommendations
+
+1. Investigate notification delivery pipeline for reliability
+2. Add worker summary persistence (to task body or memory)
+3. Consider batch status aggregator for parallel operations
+4. Retain output files for configurable duration post-completion
+
 ## Future Enhancements
 
 1. **Worker specialization**: Different worker types for different task categories
@@ -325,6 +360,8 @@ User request mentions "batch" or multiple tasks
 3. **Priority-aware scheduling**: High-priority tasks get workers first
 4. **Cross-repository coordination**: Workers spanning multiple repos
 5. **Persistent hypervisor**: Long-running hypervisor that monitors bd continuously
+6. **Notification reliability**: Fix missing/delayed completion notifications
+7. **Batch status dashboard**: Real-time view of parallel worker progress
 
 ## Implementation Phases
 

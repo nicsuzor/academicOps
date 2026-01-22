@@ -80,3 +80,55 @@ uv run python $AOPS/aops-tools/skills/hypervisor/scripts/batch_worker.py --batch
 - Processing 50+ items that don't depend on each other
 - Operations where duplicate processing would cause problems
 - Batch operations that benefit from parallelism
+
+## Parallel Task Agent Pattern
+
+For executing multiple framework tasks in parallel (e.g., from an epic's children):
+
+```python
+# Spawn 4-5 worker agents in parallel
+Task(subagent_type="aops-core:worker", model="haiku",
+     description="Worker 1: <task-summary>",
+     prompt="/pull <task-id-1>",
+     run_in_background=True)
+# Repeat for each task...
+```
+
+### Experiment Results (2026-01-22)
+
+Tested spawning 5 parallel haiku workers on aops framework tasks:
+
+| Metric | Result |
+|--------|--------|
+| Spawn success | 5/5 (100%) |
+| Execution success | 5/5 (100%) |
+| Conflicts/collisions | 0 |
+| Commits produced | 5 |
+| Notification delivery | 4/5 (80%) |
+
+### Known Issues
+
+1. **Notification delays**: Task completion notifications arrive 2-5 minutes late, not real-time
+2. **Missing notifications**: ~20% of notifications may not arrive at all
+3. **Output file cleanup**: Worker output files at `/tmp/claude/.../tasks/*.output` are cleaned up after completion, making post-hoc analysis difficult
+4. **No batch status view**: Must check `git log` or task status individually to verify completions
+
+### Monitoring Workarounds
+
+```bash
+# Check recent commits for worker output
+git log --oneline -10
+
+# Check task completion status directly
+mcp__plugin_aops-core_tasks__get_task(id="<task-id>")
+
+# Poll output files while workers run (before cleanup)
+tail -f /tmp/claude/-home-nic-writing/tasks/*.output
+```
+
+### Recommendations for Improvement
+
+1. **Notification reliability**: Investigate why 20% of notifications fail
+2. **Persist worker summaries**: Write completion reports to task body or memory
+3. **Batch coordinator**: Add a status aggregator that tracks parallel workers
+4. **Output retention**: Keep output files for N minutes after completion
