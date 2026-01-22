@@ -21,12 +21,11 @@ Quick reference for routing user requests to skills/commands. When a request mat
 |---------|----------|-------------|
 | `/aops` | "show capabilities", "what can you do", "help with framework" | Show framework capabilities - commands, skills, agents, and how to use them |
 | `/diag` | "what's loaded", "session status", "diagnostic" | Quick diagnostic check of what's currently loaded in this session |
-| `/dump` | "emergency handoff", "save work", "interrupted" | Emergency work handover - update bead, file follow-ups, persist to memory, output reflection, halt |
-| `/email` | "process email", "email to task", "handle this email" | Create "ready for action" bd issues from emails - with summaries, downloaded documents, and clear response requirements |
+| `/dump` | "emergency handoff", "save work", "interrupted" | Emergency work handover - update task, file follow-ups, persist to memory, output reflection, halt |
+| `/email` | "process email", "email to task", "handle this email" | Create "ready for action" tasks from emails - with summaries, downloaded documents, and clear response requirements |
 | `/learn` | "framework issue", "fix this pattern", "improve the system" | Make minimal, graduated framework tweaks with experiment tracking |
-| `/log` | "log observation", "note this", "framework feedback" | Log framework observations to bd issues for continuous improvement |
+| `/log` | "log observation", "note this", "framework feedback" | Log framework observations to tasks for continuous improvement |
 | `/pull` | "pull task", "get work", "what should I work on", "next task" | Pull a task from the queue, execute it with hydrator guidance, and complete with session reflection |
-| `/q` | "queue this", "add to queue", "do this later", "file task" | Queue a task for later execution by creating bd issue(s) - expands prompt to identify discrete tasks |
 
 ## Skills (Auto-Triggered)
 
@@ -38,16 +37,17 @@ These skills activate based on task context, not explicit invocation:
 | `/audit` | "framework audit", "check structure" | Comprehensive framework governance audit - structure checking, justification checking, and index file updates. |
 | `/convert-to-md` | "convert document", DOCX/PDF/XLSX conversion | Batch convert documents (DOCX, PDF, XLSX, TXT, PPTX, MSG, DOC) to markdown, preserving tracked changes and comments. |
 | `/daily` | "daily list", "daily note", "morning briefing", "update daily", "daily update" | Daily note lifecycle - morning briefing, task recommendations, session sync. SSoT for daily note structure. |
-| `/dashboard` | "show dashboard", "task visibility" | Cognitive Load Dashboard - Live Streamlit dashboard for task visibility and session activity monitoring. |
 | `/excalidraw` | "draw diagram", "mind map", "visual diagram" | Creating visually compelling, hand-drawn diagrams with organic mind-map layouts and accessibility-focused design. |
 | `/flowchart` | "create flowchart", "mermaid diagram", process flow | Creating clear, readable, and attractive Mermaid flowcharts with best practices for accessibility, layout, and maintainability. |
-| `/framework` | framework development, hooks, agents | academicOps related framework skills |
+| `/framework` | framework development, hooks, agents | Framework development workflows - routing to specific procedures for hooks, skills, experiments, debugging, and specs |
 | `/garden` | "prune knowledge", "consolidate notes", PKM maintenance | Incremental PKM maintenance - weeding, pruning, linking, consolidating. Tends the knowledge base bit by bit. |
+| `/hypervisor` | — | Batch parallel task processing with atomic locking. Spawns multiple worker agents that pull from shared queue without duplication. |
 | `/pdf` | "convert to PDF", "make PDF", markdown to PDF | Convert markdown documents to professionally formatted PDFs with academic-style typography, Roboto fonts, proper page layouts, and styling suitable for research documents, reviews, reports, and academic writing. |
+| `/peer-review` | — | Scaffold peer review workflow for grant/fellowship applications. Creates workspace, downloads criteria, generates review template, and creates bot-assigned subtasks for each application. |
 | `/python-dev` | Python code, .py files, type safety | Write production-quality Python code following fail-fast philosophy, type safety, and modern best practices. Enforces rigorous standards for academic and research code where correctness and replicability are paramount. |
 | `/remember` | "remember this", "save to memory", "store knowledge" | Write knowledge to markdown AND sync to memory server. MUST invoke - do not write markdown directly. |
 | `/session-insights` | "session summary", "generate insights" | Generate comprehensive session insights from transcripts using Gemini |
-| `/task-viz` | "task visualization", "visualize tasks", "bd visualization", "task chart", "issue mind map" | Generate visual mind-map of bd issues using force-directed layout via excalidraw |
+| `/task-viz` | "task visualization", "visualize tasks", "bd visualization", "task chart", "issue mind map" | Generate network graph of notes/tasks using fast-indexer (JSON, GraphML, DOT) |
 
 ## Routing Rules
 
