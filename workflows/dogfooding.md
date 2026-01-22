@@ -32,7 +32,7 @@ Blocking current task?
   → Fix minimally, document, use /learn for tracked intervention
 
 Session end?
-  → Framework Reflection (see AGENTS.md)
+  → Framework Reflection (see [[REMINDERS.md#Session End Requirements]])
 ```
 
 ## During-Task Checklist

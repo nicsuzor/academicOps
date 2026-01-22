@@ -108,7 +108,7 @@ tags: [framework, enforcement, moc]
 | ---------- | ----- | ---------------------------------------------------------- |
 | Hard Gate  | 11    | Blocks action (PreToolUse hooks, deny rules, pre-commit)   |
 | Soft Gate  | 8     | Injects guidance, agent can proceed                        |
-| Prompt     | 43    | Instructional (AXIOMS.md, HEURISTICS.md, CORE.md, AGENTS.md at SessionStart) |
+| Prompt     | 43    | Instructional (AXIOMS.md, HEURISTICS.md, CORE.md, REMINDERS.md at SessionStart) |
 | Observable | 2     | Creates visible artifact (TodoWrite)                       |
 | Detection  | 3     | Logs for post-hoc analysis                                 |
 | Review     | 1     | Human/LLM review at PR time                                |
@@ -135,7 +135,7 @@ Context loading follows a **three-tier architecture** (see [[session-start-injec
 | `$cwd/.agent/CORE.md` | Project conventions | SessionStart hook (if exists) |
 | `AXIOMS.md` | Inviolable principles | JIT (prompt-hydrator) |
 | `HEURISTICS.md` | Operational defaults | JIT (prompt-hydrator) |
-| `AGENTS.md` | Agent routing and aops rules | CLAUDE.md reference |
+| `REMINDERS.md` | Skill triggers and operational habits | CLAUDE.md reference |
 | Agent frontmatter (`agents/*.md`) | Agent-specific context | Task tool invocation |
 
 **Rule**: When adding instructions to ANY of these files, you MUST document the enforcement in enforcement-map.md. This applies to:

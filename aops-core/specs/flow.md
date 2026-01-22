@@ -334,14 +334,12 @@ The prompt-hydrator gathers context from:
 
 ### Framework Reflection
 
-<!-- NS: link missing -->
-<!-- @claude 2026-01-22: Framework reflection workflow is now documented in AGENTS.md under "Framework Reflection (Session End)" section. Updated reference. -->
-Framework reflection workflow is defined in [[AGENTS.md#Framework Reflection]]
+Framework reflection format is defined in [[aops-core/commands/dump.md#Step 5: Output Framework Reflection]]
 
 - Stop hook **reminds** agents to reflect (does not automate it)
 - Agents MUST output Framework Reflection at end of every session (MANDATORY)
 - Agents use `/log` command when framework friction/failures observed during work
-- Reflection format and workflow details in AGENTS.md (single source of truth)
+- Reflection format is in `/dump` command (single source of truth)
 
 ## Session Insights
 
@@ -351,7 +349,7 @@ See `aops-core/specs/session-insights-prompt.md` for full schema specification.
 
 ### Workflow A: Agent Reflection (MANDATORY)
 
-At the end of every session, the agent MUST output Framework Reflection (see AGENTS.md "Hand off" section):
+At the end of every session, the agent MUST output Framework Reflection (see [[aops-core/commands/dump.md]]):
 - Summary of what was accomplished
 - Outcome (success/partial/failure)
 - Friction points observed

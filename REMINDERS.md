@@ -81,6 +81,17 @@ Before claiming success:
 - Quote evidence in your response
 - Don't claim success based on "should work"
 
+### Session End Requirements
+
+**Before ending any session**, complete these steps:
+
+1. **Commit all work**: `git add <files> && git commit -m "..."` + push
+2. **Output Framework Reflection**: Structured summary for session-insights parsing
+
+See [[aops-core/commands/dump.md]] for the exact Framework Reflection format (search "## Framework Reflection").
+
+Stop hooks will remind you if you forget, but it's better to do this proactively.
+
 ## What This File Is NOT
 
 - **Not principles**: Those are in [[AXIOMS.md]]
