@@ -120,10 +120,6 @@ tmp*
 ## Except json files in our root writing data folder
 !/data/**/*.json*
 
-# Allow beads data files to ensure proper tracking of these important files. 
-!.beads/*.jsonl
-
-
 # secrets
 authorized_keys
 models.json
