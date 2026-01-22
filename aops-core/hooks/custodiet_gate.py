@@ -293,19 +293,38 @@ def _build_session_context(transcript_path: str | None, session_id: str) -> str:
     """Build rich session context for custodiet analysis.
 
     Extracts all signals needed for compliance checking:
-    - Original intent (critical for drift detection)
+    - Most recent user prompt (CRITICAL - this is the active request)
+    - Original intent from hydrator (may be stale if new command invoked)
     - Full todo plan (critical for scope checking)
     - Tool errors (critical for Type A detection)
     - Files modified (for scope assessment)
     """
     lines: list[str] = []
 
-    # 1. Get intent envelope from hydrator state (the user's request as interpreted)
+    # 1. Extract MOST RECENT user prompt first (this is the active request)
+    # Commands like /learn are injected by Claude Code and don't update hydrator state,
+    # so we need the raw prompt to detect when a NEW command has been invoked.
+    most_recent_prompt = None
+    if transcript_path:
+        ctx = extract_gate_context(
+            Path(transcript_path),
+            include={"prompts"},
+            max_turns=5,
+        )
+        prompts = ctx.get("prompts", [])
+        if prompts:
+            most_recent_prompt = prompts[-1]
+            lines.append("**Most Recent User Request** (active intent):")
+            lines.append(f"> {most_recent_prompt}")
+            lines.append("")
+
+    # 2. Get intent envelope from hydrator state (may be stale if new command invoked)
     hydrator_state = load_hydrator_state(session_id)
     if hydrator_state:
         intent = hydrator_state.get("intent_envelope")
-        if intent:
-            lines.append("**User Request**:")
+        # Only show if different from most recent prompt (avoids duplication)
+        if intent and intent != most_recent_prompt:
+            lines.append("**Original Session Intent** (from hydrator, may be stale):")
             lines.append(f"> {intent}")
             lines.append("")
 
@@ -321,7 +340,7 @@ def _build_session_context(transcript_path: str | None, session_id: str) -> str:
             lines.append(f"**Active Guardrails**: {', '.join(guardrails)}")
             lines.append("")
 
-    # 2. Extract from transcript
+    # 3. Extract from transcript
     if transcript_path:
         ctx = extract_gate_context(
             Path(transcript_path),
