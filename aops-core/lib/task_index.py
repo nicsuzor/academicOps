@@ -164,7 +164,14 @@ def _find_fast_indexer() -> Path | None:
 
     # 2. Relative to module (development location)
     module_dir = Path(__file__).parent
-    dev_binary = module_dir.parent.parent / "lib" / "fast-indexer" / "target" / "release" / "fast-indexer"
+    dev_binary = (
+        module_dir.parent.parent
+        / "lib"
+        / "fast-indexer"
+        / "target"
+        / "release"
+        / "fast-indexer"
+    )
     if dev_binary.exists():
         return dev_binary
 
@@ -285,7 +292,7 @@ class TaskIndex:
             )
         )
 
-        self._generated = datetime.now().astimezone().isoformat()
+        self._generated = datetime.now().astimezone().replace(microsecond=0).isoformat()
         self._save()
 
     def _save(self) -> None:
@@ -329,8 +336,10 @@ class TaskIndex:
         cmd = [
             str(self._fast_indexer_path),
             str(tasks_dir),
-            "-f", "mcp-index",
-            "-o", output_base,
+            "-f",
+            "mcp-index",
+            "-o",
+            output_base,
         ]
 
         try:

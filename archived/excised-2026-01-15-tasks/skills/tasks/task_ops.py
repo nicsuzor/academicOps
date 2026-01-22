@@ -309,8 +309,8 @@ def save_task_to_file(
         "permalink": f"{task_id}-1",  # permalink format
         "type": "task",  # consistent type
         "tags": task.tags,
-        "created": task.created.isoformat(),
-        "modified": datetime.now().astimezone().isoformat(),
+        "created": task.created.astimezone().replace(microsecond=0).isoformat(),
+        "modified": datetime.now().astimezone().replace(microsecond=0).isoformat(),
         "task_id": task_id,
         "status": task.status,
         "aliases": [task_id],

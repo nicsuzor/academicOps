@@ -18,7 +18,7 @@ from __future__ import annotations
 import json
 import os
 import time
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, TypedDict, cast
 
@@ -102,8 +102,10 @@ def load_session_state(session_id: str, retries: int = 3) -> SessionState | None
     Returns:
         SessionState dict or None if not found
     """
-    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    yesterday = (datetime.now(timezone.utc) - timedelta(days=1)).strftime("%Y-%m-%d")
+    # Use local time for file lookup to match local-time-based storage
+    now = datetime.now()
+    today = now.strftime("%Y-%m-%d")
+    yesterday = (now - timedelta(days=1)).strftime("%Y-%m-%d")
 
     for date in [today, yesterday]:
         path = get_session_file_path(session_id, date)
@@ -119,6 +121,7 @@ def load_session_state(session_id: str, retries: int = 3) -> SessionState | None
                     continue
                 # All retries exhausted - log the error
                 import logging
+
                 logging.getLogger(__name__).warning(
                     f"Session state JSON decode failed after {retries} retries: {path}: {e}"
                 )
@@ -126,6 +129,7 @@ def load_session_state(session_id: str, retries: int = 3) -> SessionState | None
             except OSError as e:
                 # I/O error - log and return None
                 import logging
+
                 logging.getLogger(__name__).debug(
                     f"Session state read failed (OSError): {path}: {e}"
                 )
@@ -147,11 +151,13 @@ def save_session_state(session_id: str, state: SessionState) -> None:
 
     # Ensure date is set
     if "date" not in state:
-        state["date"] = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        # Standard format with TZ info in local time (e.g., 2026-01-22T16:25:17+10:00)
+        state["date"] = datetime.now().astimezone().replace(microsecond=0).isoformat()
     if "session_id" not in state:
         state["session_id"] = session_id
 
-    path = get_session_file_path(session_id, state["date"])
+    # Path uses the compact YYYY-MM-DD part of the date string
+    path = get_session_file_path(session_id, state["date"][:10])
 
     # Ensure directory exists
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -192,10 +198,11 @@ def create_session_state(session_id: str) -> SessionState:
     Returns:
         New SessionState with defaults
     """
-    now = datetime.now(timezone.utc)
+    # Use local time with TZ info for date and started_at
+    now = datetime.now().astimezone().replace(microsecond=0)
     return SessionState(
         session_id=session_id,
-        date=now.strftime("%Y-%m-%d"),
+        date=now.isoformat(),
         started_at=now.isoformat(),
         ended_at=None,
         state={
@@ -552,7 +559,7 @@ def record_subagent_invocation(
     """
     state = get_or_create_session_state(session_id)
     state["subagents"][agent_name] = {
-        "last_invoked": datetime.now(timezone.utc).isoformat(),
+        "last_invoked": datetime.now().astimezone().replace(microsecond=0).isoformat(),
         **result,
     }
     save_session_state(session_id, state)
@@ -572,7 +579,7 @@ def set_session_insights(session_id: str, insights: dict[str, Any]) -> None:
     """
     state = get_or_create_session_state(session_id)
     state["insights"] = insights
-    state["ended_at"] = datetime.now(timezone.utc).isoformat()
+    state["ended_at"] = datetime.now().astimezone().replace(microsecond=0).isoformat()
     save_session_state(session_id, state)
 
 
@@ -602,7 +609,9 @@ def set_current_task(session_id: str, task_id: str, source: str = "unknown") -> 
     state = get_or_create_session_state(session_id)
     state["main_agent"]["current_task"] = task_id
     state["main_agent"]["task_binding_source"] = source
-    state["main_agent"]["task_binding_ts"] = datetime.now(timezone.utc).isoformat()
+    state["main_agent"]["task_binding_ts"] = (
+        datetime.now().astimezone().replace(microsecond=0).isoformat()
+    )
     save_session_state(session_id, state)
 
     logger.info(f"Task bound to session: {task_id} (source={source})")

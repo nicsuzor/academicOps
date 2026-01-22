@@ -91,7 +91,9 @@ def handle_subagent_stop(session_id: str, input_data: dict[str, Any]) -> None:
         result_data = {"raw": str(subagent_result)}
 
     # Add metadata
-    result_data["stopped_at"] = datetime.now(timezone.utc).isoformat()
+    result_data["stopped_at"] = (
+        datetime.now().astimezone().replace(microsecond=0).isoformat()
+    )
 
     # Record to session file
     record_subagent_invocation(session_id, subagent_type, result_data)
@@ -114,7 +116,9 @@ def handle_stop(session_id: str, input_data: dict[str, Any]) -> None:
     # Extract metadata
     metadata = {
         "session_id": extract_short_hash(session_id),
-        "date": state.get("date", datetime.now(timezone.utc).strftime("%Y-%m-%d")),
+        "date": state.get(
+            "date", datetime.now().astimezone().replace(microsecond=0).isoformat()
+        ),
         "project": extract_project_name(),
     }
 

@@ -315,7 +315,7 @@ def build_graph(root: Path) -> dict:
 
     # Build output structure
     return {
-        "generated": datetime.now(timezone.utc).isoformat(),
+        "generated": datetime.now().astimezone().replace(microsecond=0).isoformat(),
         "framework_root": str(root.resolve()),
         "nodes": [{"id": node} for node in sorted(real_nodes)],
         "links": [

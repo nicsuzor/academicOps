@@ -65,7 +65,7 @@ def format_checklist_item(
 
     # Add completion date if done
     if done:
-        parts.append(f"[completion:: {datetime.now().strftime('%Y-%m-%d')}]")
+        parts.append(f"[completion:: {datetime.now().astimezone().replace(microsecond=0).isoformat()}]")
 
     return " ".join(parts)
 

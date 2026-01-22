@@ -84,7 +84,9 @@ def extract_working_dir_from_content(content: str) -> str | None:
         return wd_match.group(1).strip()
 
     # Match cwd or current directory references
-    cwd_match = re.search(r"(?:cwd|current directory):\s*(/[^\n<]+)", content, re.IGNORECASE)
+    cwd_match = re.search(
+        r"(?:cwd|current directory):\s*(/[^\n<]+)", content, re.IGNORECASE
+    )
     if cwd_match:
         return cwd_match.group(1).strip()
 
@@ -344,7 +346,11 @@ def _synthesize_summary(reflection: dict[str, Any], outcome: str, project: str) 
 
     # Add friction note if present
     if friction_points and outcome != "success":
-        suffix = f" (encountered friction: {friction_points[0][:50]}...)" if len(friction_points[0]) > 50 else f" (encountered friction: {friction_points[0]})"
+        suffix = (
+            f" (encountered friction: {friction_points[0][:50]}...)"
+            if len(friction_points[0]) > 50
+            else f" (encountered friction: {friction_points[0]})"
+        )
     else:
         suffix = ""
 
@@ -387,8 +393,8 @@ def reflection_to_insights(
     if timestamp:
         date_iso = timestamp.isoformat()
     else:
-        # Fall back to UTC now if no timestamp provided
-        date_iso = datetime.now(timezone.utc).isoformat()
+        # Fall back to now if no timestamp provided
+        date_iso = datetime.now().astimezone().replace(microsecond=0).isoformat()
 
     # Synthesize human-readable summary from accomplishments
     summary = _synthesize_summary(reflection, outcome, project)
@@ -1134,7 +1140,11 @@ class SessionProcessor:
         # Get modification time for timestamp
         md_files = list(brain_dir.glob("*.md"))
         if not md_files:
-            return SessionSummary(uuid=session_id, summary="Empty Antigravity Session"), [], {}
+            return (
+                SessionSummary(uuid=session_id, summary="Empty Antigravity Session"),
+                [],
+                {},
+            )
 
         # Use earliest file mtime as session start
         start_time = min(
@@ -1159,7 +1169,9 @@ class SessionProcessor:
                     content = file_path.read_text(encoding="utf-8").strip()
                     if content:
                         # Add section header
-                        section_name = filename.replace(".md", "").replace("_", " ").title()
+                        section_name = (
+                            filename.replace(".md", "").replace("_", " ").title()
+                        )
                         combined_content.append(f"## {section_name}\n\n{content}")
                 except OSError:
                     continue
@@ -1176,7 +1188,11 @@ class SessionProcessor:
                     continue
 
         if not combined_content:
-            return SessionSummary(uuid=session_id, summary="Empty Antigravity Session"), [], {}
+            return (
+                SessionSummary(uuid=session_id, summary="Empty Antigravity Session"),
+                [],
+                {},
+            )
 
         # Create a single assistant entry with all content
         full_content = "\n\n---\n\n".join(combined_content)

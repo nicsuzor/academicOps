@@ -245,7 +245,7 @@ class TaskIndex:
             )
         )
 
-        self._generated = datetime.now().astimezone().isoformat()
+        self._generated = datetime.now().astimezone().replace(microsecond=0).isoformat()
         self._save()
 
     def _save(self) -> None:

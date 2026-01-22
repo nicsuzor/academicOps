@@ -131,10 +131,14 @@ def _process_reflection(
             # Check for existing insights (avoid duplicates with different slugs)
             existing = find_existing_insights(date_str, session_id)
             if existing:
-                print(f"⏭️  Insights already exist for session {session_id}: {existing.name}")
+                print(
+                    f"⏭️  Insights already exist for session {session_id}: {existing.name}"
+                )
                 continue
 
-            insights_path = get_insights_file_path(date_str, session_id, slug, idx, project)
+            insights_path = get_insights_file_path(
+                date_str, session_id, slug, idx, project
+            )
             write_insights_file(insights_path, insights)
             print(f"💡 Reflection {i + 1}/{len(reflections)} saved to: {insights_path}")
         except InsightsValidationError as e:
@@ -197,7 +201,9 @@ def _filter_recent_sessions(sessions: list, days: int = 7) -> list:
         Filtered list of sessions with mtime within the cutoff period
     """
     # Cutoff: midnight N days ago (local timezone)
-    cutoff = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=days)
+    cutoff = datetime.now().replace(
+        hour=0, minute=0, second=0, microsecond=0
+    ) - timedelta(days=days)
     cutoff_ts = cutoff.timestamp()
 
     filtered = []
@@ -259,7 +265,11 @@ def _find_existing_transcript(out_dir: Path, session_id: str) -> Path | None:
     Returns:
         Path to existing -full.md transcript if found, None otherwise
     """
-    matches = [p for p in _find_existing_transcripts(out_dir, session_id) if p.name.endswith("-full.md")]
+    matches = [
+        p
+        for p in _find_existing_transcripts(out_dir, session_id)
+        if p.name.endswith("-full.md")
+    ]
     return matches[0] if matches else None
 
 
@@ -420,7 +430,9 @@ Examples:
         if not args.all:
             original_count = len(sessions)
             sessions = _filter_recent_sessions(sessions, days=7)
-            print(f"📅 Filtering to last 7 days: {len(sessions)} of {original_count} sessions")
+            print(
+                f"📅 Filtering to last 7 days: {len(sessions)} of {original_count} sessions"
+            )
 
         # Process newest sessions first (reverse chronological)
         sessions = sorted(
@@ -441,15 +453,21 @@ Examples:
 
                 # Early mtime check: skip if transcript already exists and is current
                 session_id = _get_session_id(session_path)
-                existing_transcript = _find_existing_transcript(sessions_claude, session_id)
-                if existing_transcript and _transcript_is_current(session_path, existing_transcript):
+                existing_transcript = _find_existing_transcript(
+                    sessions_claude, session_id
+                )
+                if existing_transcript and _transcript_is_current(
+                    session_path, existing_transcript
+                ):
                     skipped += 1
                     continue
 
                 # Delete stale transcripts before regenerating (prevents duplicates
                 # when filename format changes, e.g., slug added/changed)
                 if existing_transcript:
-                    stale_files = _find_existing_transcripts(sessions_claude, session_id)
+                    stale_files = _find_existing_transcripts(
+                        sessions_claude, session_id
+                    )
                     for stale in stale_files:
                         print(f"🗑️  Removing stale transcript: {stale.name}")
                         stale.unlink()
@@ -525,8 +543,13 @@ Examples:
                         session_timestamp = entry.timestamp
                         break
                 reflection_header, _ = _process_reflection(
-                    entries, session_id, date_iso, short_project, slug,
-                    agent_entries, session_timestamp
+                    entries,
+                    session_id,
+                    date_iso,
+                    short_project,
+                    slug,
+                    agent_entries,
+                    session_timestamp,
                 )
 
                 # Generate full version
@@ -660,7 +683,9 @@ Examples:
                     return 2
 
                 # Extract reflection (get date and project from path for insights)
-                date_iso = datetime.now().strftime("%Y-%m-%d")
+                date_iso = (
+                    datetime.now().astimezone().replace(microsecond=0).isoformat()
+                )
                 session_timestamp = None
                 for entry in entries:
                     if entry.timestamp:
@@ -669,7 +694,11 @@ Examples:
                         break
                 # Get session ID from path
                 sid = session_path.stem[:8]
-                proj = session_path.parent.name.split("-")[-1] if session_path.parent.name else "unknown"
+                proj = (
+                    session_path.parent.name.split("-")[-1]
+                    if session_path.parent.name
+                    else "unknown"
+                )
                 slug = processor.generate_session_slug(entries)
                 reflection_header, _ = _process_reflection(
                     entries, sid, date_iso, proj, slug, agent_entries, session_timestamp
@@ -744,9 +773,9 @@ Examples:
                         except (ValueError, TypeError):
                             continue
         if not date_str:
-            date_str = datetime.fromtimestamp(
-                session_path.stat().st_mtime
-            ).strftime("%Y%m%d")
+            date_str = datetime.fromtimestamp(session_path.stat().st_mtime).strftime(
+                "%Y%m%d"
+            )
 
         # Get short project name (using entries for working dir extraction)
         short_project = _infer_project(session_path, entries)
@@ -801,8 +830,13 @@ Examples:
                 session_timestamp = entry.timestamp
                 break
         reflection_header, _ = _process_reflection(
-            entries, session_id, date_iso, short_project, slug,
-            agent_entries, session_timestamp
+            entries,
+            session_id,
+            date_iso,
+            short_project,
+            slug,
+            agent_entries,
+            session_timestamp,
         )
 
         # Generate full version

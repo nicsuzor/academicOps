@@ -101,7 +101,7 @@ def log_hook_event(
         # Create log entry combining input and output data
         log_entry: dict[str, Any] = {
             "hook_event": hook_event,
-            "logged_at": datetime.now().astimezone().isoformat(),
+            "logged_at": datetime.now().astimezone().replace(microsecond=0).isoformat(),
             "exit_code": exit_code,
             **input_data,  # Include ALL fields from input
         }
