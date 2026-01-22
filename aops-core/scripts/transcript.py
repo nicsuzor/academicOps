@@ -229,6 +229,26 @@ def _get_session_id(session_path: Path) -> str:
     return session_id
 
 
+def _find_existing_transcripts(out_dir: Path, session_id: str) -> list[Path]:
+    """Find all existing transcript files by session ID.
+
+    Args:
+        out_dir: Output directory to search
+        session_id: 8-character session ID
+
+    Returns:
+        List of all matching transcript files (both -full.md and -abridged.md)
+    """
+    # Search for transcripts with this session_id
+    # Pattern 1: with slug (e.g., 20260105-writing-3bf94f77-session-full.md)
+    # Pattern 2: without slug (e.g., 20260105-writing-3bf94f77-full.md)
+    matches = []
+    for suffix in ("-full.md", "-abridged.md"):
+        matches.extend(out_dir.glob(f"*-{session_id}-*{suffix}"))
+        matches.extend(out_dir.glob(f"*-{session_id}{suffix}"))
+    return matches
+
+
 def _find_existing_transcript(out_dir: Path, session_id: str) -> Path | None:
     """Find existing transcript file by session ID.
 
@@ -239,11 +259,7 @@ def _find_existing_transcript(out_dir: Path, session_id: str) -> Path | None:
     Returns:
         Path to existing -full.md transcript if found, None otherwise
     """
-    # Search for transcripts with this session_id
-    # Pattern 1: with slug (e.g., 20260105-writing-3bf94f77-session-full.md)
-    # Pattern 2: without slug (e.g., 20260105-writing-3bf94f77-full.md)
-    matches = list(out_dir.glob(f"*-{session_id}-*-full.md"))
-    matches.extend(out_dir.glob(f"*-{session_id}-full.md"))
+    matches = [p for p in _find_existing_transcripts(out_dir, session_id) if p.name.endswith("-full.md")]
     return matches[0] if matches else None
 
 
@@ -429,6 +445,14 @@ Examples:
                 if existing_transcript and _transcript_is_current(session_path, existing_transcript):
                     skipped += 1
                     continue
+
+                # Delete stale transcripts before regenerating (prevents duplicates
+                # when filename format changes, e.g., slug added/changed)
+                if existing_transcript:
+                    stale_files = _find_existing_transcripts(sessions_claude, session_id)
+                    for stale in stale_files:
+                        print(f"🗑️  Removing stale transcript: {stale.name}")
+                        stale.unlink()
 
                 # Process the session
                 print(f"📝 Processing session: {session_path}")
