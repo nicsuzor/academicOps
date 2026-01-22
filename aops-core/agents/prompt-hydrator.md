@@ -169,7 +169,7 @@ For ANY framework modification, include in your output:
 **OR**
 
 **New task needed**:
-- Create with: `mcp__plugin_aops-core_tasks__create_task(title="[title]", type="task", project="aops", priority=2)`
+- Create with: `mcp__plugin_aops-core_tasks__create_task(task_title="[title]", type="task", project="aops", priority=2)`
 - [Brief rationale for task scope]
 
 **OR**

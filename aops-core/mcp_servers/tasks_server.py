@@ -122,7 +122,7 @@ def _index_entry_to_dict(entry: TaskIndexEntry) -> dict[str, Any]:
 
 @mcp.tool()
 def create_task(
-    title: str,
+    task_title: str,
     type: str = "task",
     project: Optional[str] = None,
     parent: Optional[str] = None,
@@ -139,7 +139,7 @@ def create_task(
     Tasks are stored as markdown files with YAML frontmatter.
 
     Args:
-        title: Task title (required)
+        task_title: Task title (required)
         type: Task type - "goal", "project", "task", or "action" (default: "task")
         project: Project slug for organization (determines storage location)
         parent: Parent task ID for hierarchical relationships
@@ -158,7 +158,7 @@ def create_task(
 
     Example:
         create_task(
-            title="Write Chapter 1",
+            task_title="Write Chapter 1",
             type="project",
             project="book",
             parent="20260112-write-book"
@@ -189,7 +189,7 @@ def create_task(
 
         # Create task
         task = storage.create_task(
-            title=title,
+            title=task_title,
             project=project,
             type=task_type,
             parent=parent,
@@ -275,7 +275,7 @@ def get_task(id: str) -> dict[str, Any]:
 @mcp.tool()
 def update_task(
     id: str,
-    title: Optional[str] = None,
+    task_title: Optional[str] = None,
     type: Optional[str] = None,
     status: Optional[str] = None,
     priority: Optional[int] = None,
@@ -295,7 +295,7 @@ def update_task(
 
     Args:
         id: Task ID to update (required)
-        title: New title
+        task_title: New title
         type: New type - "goal", "project", "task", or "action"
         status: New status - "inbox", "active", "blocked", "waiting", "done", "cancelled"
         priority: New priority 0-4
@@ -331,8 +331,8 @@ def update_task(
         modified_fields = []
 
         # Update fields if provided
-        if title is not None:
-            task.title = title
+        if task_title is not None:
+            task.title = task_title
             modified_fields.append("title")
 
         if type is not None:
@@ -738,7 +738,7 @@ def get_dependencies(id: str) -> dict[str, Any]:
 
 
 @mcp.tool()
-def decompose_task(id: str, children: list) -> dict[str, Any]:
+def decompose_task(id: str, children: list[dict]) -> dict[str, Any]:
     """Decompose a task into children.
 
     Creates child tasks and updates parent's leaf status to false.
