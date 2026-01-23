@@ -127,7 +127,30 @@ For ANY framework modification, include in your output:
    - Contains multiple distinct deliverables
    - Requires research, iteration, or external input
 
-5. **Assess task path** (for tasks) - Is this EXECUTE or TRIAGE?
+5. **Determine execution path** - Should this be `direct` or `enqueue`?
+
+   **Direct execution** (bypass queue) when ANY is true:
+   - User invoked a `/command` or `/skill` (e.g., `/commit`, `/pdf`, `/daily`)
+   - Pure information request (e.g., "what is X?", "how does Y work?")
+   - Conversational (e.g., "thanks", "can you explain...")
+   - User invoked `/pull` (this IS the execution path)
+   - No file modifications needed
+
+   **Enqueue** (default for work) when:
+   - Work will modify files
+   - Work requires planning or multi-step execution
+   - Work has dependencies or verification requirements
+   - Work benefits from task-level audit trail
+
+   **Detection heuristic**:
+   1. Starts with `/` → `direct` (command or skill)
+   2. Workflow is `simple-question` or `direct-skill` → `direct`
+   3. No file modifications implied → likely `direct`
+   4. Everything else → `enqueue`
+
+   **Output `Execution Path: direct | enqueue`** in your result.
+
+6. **Assess task path** (for tasks) - Is this EXECUTE or TRIAGE?
 
    **EXECUTE** (all must be true):
    - **What**: Task describes specific deliverable(s)
@@ -148,7 +171,7 @@ For ANY framework modification, include in your output:
 
    → Output TRIAGE guidance instead of execution plan
 
-6. **Classify complexity** - Based on path and scope, determine complexity:
+7. **Classify complexity** - Based on path and scope, determine complexity:
 
    | Path | Scope | Condition | Complexity |
    |------|-------|-----------|------------|
@@ -167,28 +190,28 @@ For ANY framework modification, include in your output:
 
    > **See [[workflows/classify-task]]** for full routing rules including agent type (model selection) and workflow refinement by complexity.
 
-7. **Correlate with existing tasks** - Does request match an existing task?
+8. **Correlate with existing tasks** - Does request match an existing task?
    - If yes: direct to that task, note its context
    - If no: will create new task
 
-8. **Select workflow** by matching user intent to WORKFLOWS.md decision tree
+9. **Select workflow** by matching user intent to WORKFLOWS.md decision tree
 
-9. **Select workflow from pre-loaded index**:
-   - Use the WORKFLOWS.md content pre-loaded in your input file
-   - Select the workflow that matches user intent based on the decision tree
-   - Reference the workflow by name in your output (e.g., `[[workflows/simple-question]]`)
-   - **Do NOT read workflow files** - the main agent will follow the selected workflow
+10. **Select workflow from pre-loaded index**:
+    - Use the WORKFLOWS.md content pre-loaded in your input file
+    - Select the workflow that matches user intent based on the decision tree
+    - Reference the workflow by name in your output (e.g., `[[workflows/simple-question]]`)
+    - **Do NOT read workflow files** - the main agent will follow the selected workflow
 
-10. **Identify deferred work** (multi-session only) - What else needs to happen that isn't immediate?
+11. **Identify deferred work** (multi-session only) - What else needs to happen that isn't immediate?
     - These become a "decomposition task" that blocks future work
     - Captures context so future sessions don't lose the thread
 
-11. **Verify workflow constraints** - Check that the proposed plan satisfies the selected workflow's rules
+12. **Verify workflow constraints** - Check that the proposed plan satisfies the selected workflow's rules
     - See "Constraint Checking" section below for verification process
     - Report any violations with suggested remediation
     - This is constraint-CHECKING, not constraint-SOLVING (you verify, not synthesize)
 
-12. **Output plan** - Use format below with appropriate scope and path handling
+13. **Output plan** - Use format below with appropriate scope and path handling
 
 ## Constraint Checking
 
@@ -355,6 +378,7 @@ For runtime predicates, verify the plan includes the CHECK step, not that the pr
 **Intent**: [what user actually wants]
 **Scope**: single-session | multi-session
 **Path**: EXECUTE
+**Execution Path**: direct | enqueue
 **Complexity**: [mechanical | requires-judgment | multi-step]
 **Workflow**: [[workflows/[workflow-id]]]
 

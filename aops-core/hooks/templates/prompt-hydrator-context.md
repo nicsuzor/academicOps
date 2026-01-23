@@ -61,10 +61,27 @@ Transform this user prompt into an execution plan with scope detection and task 
 
 1. **Understand intent** - What does the user actually want?
 2. **Assess scope** - Single-session (bounded, path known) or multi-session (goal-level, uncertain path)?
-3. **Route to task** - Match to existing task or specify new task creation
-4. **Select workflow** - Use the pre-loaded Workflow Index above to select the appropriate workflow
-5. **Compose workflows** - Read workflow files in `$AOPS/workflows/` (and any [[referenced workflows]])
-6. **Capture deferred work** - For multi-session scope, create decomposition task for future work
+3. **Determine execution path** - Should this be `direct` or `enqueue`?
+4. **Route to task** - Match to existing task or specify new task creation
+5. **Select workflow** - Use the pre-loaded Workflow Index above to select the appropriate workflow
+6. **Compose workflows** - Read workflow files in `$AOPS/workflows/` (and any [[referenced workflows]])
+7. **Capture deferred work** - For multi-session scope, create decomposition task for future work
+
+### Execution Path Decision
+
+**Direct** (bypass queue) when ANY is true:
+- User invoked a `/command` or `/skill` (e.g., `/commit`, `/pdf`)
+- Pure information request (e.g., "what is X?", "how does Y work?")
+- Conversational (e.g., "thanks", "can you explain...")
+- No file modifications needed
+- Workflow is `simple-question` or `direct-skill`
+
+**Enqueue** (default for work) when:
+- Work will modify files
+- Work requires planning or multi-step execution
+- Work has dependencies or verification requirements
+
+**Detection heuristic**: Starts with `/` → direct. No file changes → direct. Everything else → enqueue.
 
 ## Return Format
 
@@ -75,6 +92,7 @@ Return this EXACT structure:
 
 **Intent**: [what user actually wants, in clear terms]
 **Scope**: single-session | multi-session
+**Execution Path**: direct | enqueue
 **Workflow**: [[workflows/[workflow-id]]]
 
 ### Task Routing
