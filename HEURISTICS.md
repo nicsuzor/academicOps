@@ -175,18 +175,18 @@ description: Working hypotheses validated by evidence.
 
 ## Task Sequencing on Insert (P#73)
 
-**Statement**: When creating tasks, check for an existing project branch and insert with appropriate parent/depends_on. Projects should grow as long branches, not unconnected roots.
+**Statement**: The creating agent is responsible for inserting tasks onto the work graph. Every task MUST connect to the hierarchy: `task → epic → chain → project → strategic priority`. Disconnected tasks are violations.
 
 **Corollaries**:
-- Before `create_task()`, search for related tasks in the same project
-- Set `parent` to the most relevant existing task, or `depends_on` if sequential
-- Root-level orphans ("thorns") fragment project coherence
-- The agent is autonomous on structural improvements - don't ask "should I set parent?"
-- Prefer appending at branch ENDS rather than mid-branch insertion
-- Attach new work to epics/projects that are themselves at branch ends (away from trunk)
+- Before `create_task()`, search for the parent epic in the project
+- Set `depends_on` to link to parent epic (or create one if none exists)
+- Root-level orphans ("thorns") are invisible to prioritization and sequencing
+- The agent is autonomous on structural decisions - don't ask "should I set parent?"
+- If no suitable epic exists, create one that links to the project
+- Attach new work to epics/chains that are themselves connected to projects
 - Priority flows from tree position: tasks closer to trunk are more immediate
 
-**Derivation**: Orphan tasks at the root level create disconnected work items. Sequential branches show progression and enable `/pull` to find contextually related work. Branch-end insertion keeps the tree coherent and makes priority implicit in structure.
+**Derivation**: Orphan tasks fragment project coherence and become invisible to prioritization. The task graph visualization reveals structural gaps - 15 disconnected components instead of 3-5 indicates missing links. Agents must maintain graph integrity on every insert.
 
 ---
 
