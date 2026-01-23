@@ -110,6 +110,21 @@ Example: Instead of creating 5 separate "bug fix" tasks at trunk level, group th
 4. **Parallel when independent** - Don't serialize work that can run concurrently
 5. **One actionable task NOW** - Every decomposition should produce at least one ready task
 
+### Task Granularity (Anti-Over-Decomposition)
+
+**Tasks are work units, not tool calls.** A single task may comprise many execution steps.
+
+| Level | What it is | Decompose to this? |
+|-------|-----------|-------------------|
+| **Task** | Tracked work item with complexity | ✅ Yes - decompose goals → tasks |
+| **TodoWrite step** | Progress tracking within execution | ❌ No - these are execution, not tasks |
+| **Task() call** | Subagent invocation | ❌ No - these are execution mechanisms |
+
+**Right granularity**: "Add pagination to API endpoint" (1 task, many steps)
+**Over-decomposed**: "Write test file", "Add page parameter", "Update response format" (3 tasks for 1 feature)
+
+**Rule of thumb**: If work can be completed in one session by one agent, it's probably ONE task with multiple execution steps, not multiple tasks.
+
 ### Project Assignment
 
 **Project is REQUIRED** - Always set a project value:
@@ -121,6 +136,79 @@ Example: Instead of creating 5 separate "bug fix" tasks at trunk level, group th
 **Standard projects**: `aops`, `tja`, `osb`, `buttermilk`, `ns`, etc.
 
 **Default**: Use `ns` if no specific project fits
+
+## Part 3: Agent Type Routing
+
+Complexity determines which model executes the work:
+
+| Complexity | Model | Rationale |
+|------------|-------|-----------|
+| `mechanical` | haiku | Fast, cheap; known steps require no judgment |
+| `requires-judgment` | sonnet | Balanced capability for investigation within bounds |
+| `multi-step` | sonnet | Orchestration across sessions; escalate to opus for architectural complexity |
+| `needs-decomposition` | opus | Deep planning capability for breakdown; or human if strategic |
+| `blocked-human` | N/A | Human handles; no model execution |
+
+### Escalation Rules
+
+- **haiku → sonnet**: Task hits unexpected complexity during execution
+- **sonnet → opus**: Architectural decisions, framework changes, or multi-system impact
+- **Any → human**: Strategic decisions, external dependencies, or policy questions
+
+### Model Selection in Practice
+
+When spawning `Task()` subagents, use complexity to set the model:
+
+```python
+# mechanical task
+Task(subagent_type="worker", model="haiku", prompt="...")
+
+# requires-judgment task
+Task(subagent_type="worker", model="sonnet", prompt="...")
+
+# needs-decomposition task (planning phase)
+Task(subagent_type="Plan", model="opus", prompt="...")
+```
+
+## Part 4: Workflow Guidance
+
+Complexity and workflow are related but not 1:1. The relationship:
+
+1. **Workflow** is selected from [[WORKFLOWS]] decision tree based on **request type**
+2. **Complexity** determines **how** to execute that workflow
+
+### Complexity × Workflow Matrix
+
+| Complexity | Typical Workflows | Execution Style |
+|------------|-------------------|-----------------|
+| `mechanical` | [[minor-edit]], [[direct-skill]] | Skip optional verification; fast path |
+| `requires-judgment` | [[debugging]], [[design]], [[feature-dev]] | Standard execution with checkpoints |
+| `multi-step` | [[decompose]] then [[feature-dev]] | Break into sessions; track cross-session |
+| `needs-decomposition` | [[decompose]] | TRIAGE: decompose first, don't execute |
+| `blocked-human` | None | TRIAGE: assign and halt |
+
+### Workflow Refinement by Complexity
+
+**mechanical + minor-edit**:
+- Skip detailed critic (use fast critic or none)
+- Minimal verification checkpoint
+- Direct commit after change
+
+**requires-judgment + debugging**:
+- Standard verification checkpoints
+- Fast critic review
+- Document findings in task body
+
+**multi-step + feature-dev**:
+- Detailed critic review
+- Multiple verification gates
+- Session handoff documentation
+- Cross-session state tracking
+
+**needs-decomposition**:
+- Use [[decompose]] workflow
+- Output is subtasks, not implementation
+- Each subtask should be `mechanical` or `requires-judgment`
 
 ## Decision Flow
 

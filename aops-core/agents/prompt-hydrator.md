@@ -555,6 +555,36 @@ After TRIAGE action: **HALT** - do not proceed to execution. The task is now eit
 3. **Use parent** when work belongs to an existing project
 4. **Task titles** should be specific and actionable ("TJA: Draft methodology" not "Work on paper")
 
+### Task vs Execution Hierarchy
+
+**Critical distinction** - these are different levels of abstraction:
+
+| Level | What it is | Example |
+|-------|-----------|---------|
+| **Task** | Work item in task system with complexity classification | "Implement user authentication" |
+| **Task() tool** | Execution mechanism - spawns subagent to do work | `Task(subagent_type="worker", ...)` |
+| **TodoWrite()** | Progress tracking within a session | Steps like "Write tests", "Implement feature" |
+
+**Default behavior: Enqueue + Classify**
+
+For non-trivial work, prefer creating a **classified task** over immediate ad-hoc execution:
+
+- **DO**: `create_task(title="...", complexity="requires-judgment")` → then execute via workflow
+- **AVOID**: `Task(subagent_type="general-purpose", prompt="do X")` for work that should be tracked
+
+**When ad-hoc Task() delegation is appropriate:**
+- Lightweight background operations (e.g., persisting to memory)
+- Single-step mechanical work within an already-tracked task
+- Subagent calls that are steps OF a task, not new tasks themselves
+
+**Anti-pattern: Over-decomposition**
+
+Don't decompose tasks to individual tool calls. A task may comprise many `Task()` calls and `TodoWrite()` steps - that's normal execution, not decomposition.
+
+- **Task**: "Add pagination to API" (work unit)
+- **TodoWrite steps**: "Write tests", "Implement endpoint", "Update docs" (execution tracking)
+- **Task() calls**: Subagent invocations within those steps (execution mechanism)
+
 ### TodoWrite Rules
 
 1. **First step**: Claim existing task OR create new task
