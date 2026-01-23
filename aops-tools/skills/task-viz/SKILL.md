@@ -88,8 +88,9 @@ python3 $AOPS/scripts/task_graph.py INPUT.json [-o OUTPUT] [--layout LAYOUT]
 - `-o, --output`: Output base name (default: `tasks`)
 - `--layout`: Graphviz layout engine: `dot`, `neato`, `sfdp`, `fdp`, `circo`, `twopi` (default: `sfdp`)
 - `--include-orphans`: Include unconnected nodes
-- `--exclude-done`: Filter out all tasks with status `done` or `completed`
-- `--smart-filter`: Smart filter - removes completed leaf tasks but keeps completed parents that have active children (displayed as box3d with dashed border)
+- `--no-filter`: Disable smart filtering (show all tasks including completed)
+
+**Default behavior**: Smart filtering is enabled by default - removes completed leaf tasks but keeps completed parents that have active children (displayed as box3d with dashed border).
 
 **Color Coding**:
 

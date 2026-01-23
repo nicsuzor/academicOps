@@ -197,9 +197,8 @@ def main():
     parser.add_argument("input", help="Input JSON file from fast-indexer")
     parser.add_argument("-o", "--output", default="tasks", help="Output base name")
     parser.add_argument("--include-orphans", action="store_true", help="Include unconnected nodes")
-    parser.add_argument("--exclude-done", action="store_true", help="Exclude all tasks with status done/completed")
-    parser.add_argument("--smart-filter", action="store_true",
-                        help="Smart filter: remove completed leaves but keep completed parents with active children (shown as box3d)")
+    parser.add_argument("--no-filter", action="store_true",
+                        help="Disable smart filtering (show all tasks including completed)")
     parser.add_argument("--layout", default="sfdp", choices=["dot", "neato", "sfdp", "fdp", "circo", "twopi"],
                         help="Graphviz layout engine (default: sfdp)")
     args = parser.parse_args()
@@ -218,23 +217,14 @@ def main():
 
     print(f"Loaded {len(nodes)} nodes, {len(edges)} edges from {input_path}")
 
-    # Filter completed tasks
+    # Smart filter by default: remove completed leaves, keep structural parents
     structural_ids = set()
-    if args.smart_filter:
-        # Smart filter: keep completed parents with active children
+    if not args.no_filter:
         original_count = len(nodes)
         nodes, structural_ids = filter_completed_smart(nodes, edges)
         excluded_leaves = original_count - len(nodes)
         if excluded_leaves > 0 or structural_ids:
-            print(f"  Smart filter: excluded {excluded_leaves} completed leaves, kept {len(structural_ids)} structural")
-    elif args.exclude_done:
-        # Simple filter: remove all completed
-        done_statuses = {"done", "completed"}
-        original_count = len(nodes)
-        nodes = [n for n in nodes if n.get("status", "").lower() not in done_statuses]
-        excluded = original_count - len(nodes)
-        if excluded > 0:
-            print(f"  Excluded {excluded} done/completed tasks")
+            print(f"  Filtered: {excluded_leaves} completed leaves removed, {len(structural_ids)} structural kept")
 
     # Count by type and status
     by_type = {}
