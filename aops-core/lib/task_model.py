@@ -8,7 +8,7 @@ Implements the Task model per specs/tasks-v2.md with:
 - Validation and type safety
 
 Usage:
-    from lib.task_model import Task, TaskType, TaskStatus
+    from lib.task_model import Task, TaskType, TaskStatus, TaskComplexity
 
     task = Task(
         id="20260112-write-book",
@@ -57,6 +57,22 @@ class TaskStatus(Enum):
     CANCELLED = "cancelled"  # Abandoned
 
 
+class TaskComplexity(Enum):
+    """Task complexity classification for routing decisions.
+
+    Used by hydrator to determine execution strategy:
+    - mechanical/requires-judgment → EXECUTE path
+    - multi-step → EXECUTE with orchestration
+    - needs-decomposition/blocked-human → TRIAGE path
+    """
+
+    MECHANICAL = "mechanical"  # Clear deliverable, known path, single session
+    REQUIRES_JUDGMENT = "requires-judgment"  # Needs exploration within bounds
+    MULTI_STEP = "multi-step"  # Multi-session orchestration
+    NEEDS_DECOMPOSITION = "needs-decomposition"  # Must break down first
+    BLOCKED_HUMAN = "blocked-human"  # Requires human decision/input
+
+
 @dataclass
 class Task:
     """Task model with graph relationships for hierarchical decomposition.
@@ -91,6 +107,7 @@ class Task:
     effort: str | None = None  # Estimated effort
     context: str | None = None  # @home, @computer, etc.
     assignee: str | None = None  # Task owner: 'nic' or 'bot'
+    complexity: TaskComplexity | None = None  # Routing classification (set by hydrator)
 
     # Body content (markdown below frontmatter)
     body: str = ""
@@ -198,6 +215,8 @@ class Task:
             fm["context"] = self.context
         if self.assignee:
             fm["assignee"] = self.assignee
+        if self.complexity:
+            fm["complexity"] = self.complexity.value
 
         return fm
 
@@ -267,6 +286,11 @@ class Task:
         if isinstance(depth, str):
             depth = int(depth) if depth.isdigit() else 0
 
+        # Parse complexity
+        complexity = fm.get("complexity")
+        if isinstance(complexity, str):
+            complexity = TaskComplexity(complexity)
+
         return cls(
             id=task_id,
             title=fm["title"],
@@ -286,6 +310,7 @@ class Task:
             effort=fm.get("effort"),
             context=fm.get("context"),
             assignee=fm.get("assignee"),
+            complexity=complexity,
             body=body,
         )
 
