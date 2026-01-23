@@ -193,14 +193,24 @@ def update(task_id: str, status: str | None, title: str | None, priority: int | 
 
 @main.command()
 @click.option("--project", "-p", help="Filter by project")
-def ready(project: str | None):
-    """List tasks ready to work on (leaf + no blockers)."""
+@click.option("--all", "-a", "show_all", is_flag=True, help="Show all ready tasks (default: 1)")
+@click.option("--limit", "-n", type=int, default=1, help="Number of tasks to show (default: 1)")
+def ready(project: str | None, show_all: bool, limit: int):
+    """List tasks ready to work on (leaf + no blockers).
+
+    By default shows only the highest priority task (matching MCP behavior).
+    Use --all or --limit to show more.
+    """
     storage = get_storage()
     tasks = storage.get_ready_tasks(project=project)
 
     if not tasks:
         click.echo("No ready tasks.")
         return
+
+    # Apply limit (--all overrides --limit)
+    if not show_all:
+        tasks = tasks[:limit]
 
     for task in tasks:
         project_str = f"[{task.project}]" if task.project else "[inbox]"

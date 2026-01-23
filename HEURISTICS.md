@@ -222,6 +222,19 @@ description: Working hypotheses validated by evidence.
 
 ---
 
+## CLI-MCP Interface Parity (P#77)
+
+**Statement**: CLI commands and MCP tools exposing the same functionality MUST have identical default behavior. Users should get the same result whether using CLI or MCP.
+
+**Corollaries**:
+- Same function, same defaults: If MCP `get_ready_tasks` defaults to `limit=1`, CLI `task ready` must too
+- CLI may offer convenience flags (`--all`) but defaults must match MCP
+- When adding features to one interface, update the other
+
+**Derivation**: Divergent interfaces cause user confusion and enable agent lies. "The CLI shows all tasks" vs "MCP shows one task" creates false claims about system behavior. Single source of truth requires interface parity.
+
+---
+
 ## Commands Dispatch, Workflows Execute (P#76)
 
 **Statement**: Command files define invocation syntax and route to workflows. Step-by-step procedural logic lives in `workflows/` directories.
