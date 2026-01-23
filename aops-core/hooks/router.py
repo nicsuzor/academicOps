@@ -322,7 +322,9 @@ def run_hook_script(
         if script_path.suffix == ".sh":
             cmd = ["bash", str(script_path)]
         else:
-            cmd = ["python", str(script_path)]
+            # Use sys.executable to ensure we use the same Python that's running router
+            # (avoids venv/system Python mismatch when invoked via uv run python)
+            cmd = [sys.executable, str(script_path)]
 
         # Run with input on stdin
         result = subprocess.run(
@@ -377,7 +379,8 @@ def start_async_hook(
     if script_path.suffix == ".sh":
         cmd = ["bash", str(script_path)]
     else:
-        cmd = ["python", str(script_path)]
+        # Use sys.executable to ensure we use the same Python that's running router
+        cmd = [sys.executable, str(script_path)]
 
     proc = subprocess.Popen(
         cmd,

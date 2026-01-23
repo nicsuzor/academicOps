@@ -142,7 +142,7 @@ def check_for_reflection(session_id: str, transcript_path: str | None) -> bool:
 
 
 def main():
-    """Main hook entry point - checks for reflection and returns noop."""
+    """Main hook entry point - blocks session if Framework Reflection missing."""
     input_data: dict[str, Any] = {}
     try:
         input_data = json.load(sys.stdin)
@@ -158,16 +158,44 @@ def main():
 
     if session_id:
         try:
-            # Check for reflection and update session state
-            # Note: We don't output a reminder message because Stop hook systemMessage
-            # displays to user terminal but is NOT visible to agent context, making
-            # reminders ineffective (they spam user without agent acting on them).
-            # See task aops-9a6610a2 for details.
-            check_for_reflection(session_id, transcript_path)
+            has_reflection = check_for_reflection(session_id, transcript_path)
+
+            if not has_reflection:
+                # Block session - Framework Reflection is mandatory per CORE.md
+                # Use hookSpecificOutput.additionalContext so agent sees the message
+                # (reason and systemMessage only show to user terminal, not agent)
+                agent_message = (
+                    "BLOCKED: Framework Reflection required before session end.\n\n"
+                    "Please include a Framework Reflection section in your response. "
+                    "Format (from CORE.md):\n\n"
+                    "## Framework Reflection\n\n"
+                    "**Prompts**: [User prompts from this session]\n"
+                    "**Guidance received**: [Hydrator/custodiet advice, or \"N/A\"]\n"
+                    "**Followed**: [Yes/No/Partial]\n"
+                    "**Outcome**: [success/partial/failure]\n"
+                    "**Accomplishments**: [What was done]\n"
+                    "**Friction points**: [What was hard, or \"none\"]\n"
+                    "**Root cause** (if not success): [Component that failed]\n"
+                    "**Proposed changes**: [Improvements, or \"none\"]\n"
+                    "**Next step**: [Follow-up - file as task if actionable]\n"
+                    "**Workflow improvements**: [Process improvements, or \"none\"]\n"
+                    "**JIT context needed**: [Info that would have helped]\n"
+                    "**Context distractions**: [Files/sections to remove or shrink]\n"
+                    "**User tone**: [Float -1.0 to 1.0]"
+                )
+                output_data = {
+                    "decision": "block",
+                    "reason": "Framework Reflection required before session end",
+                    "hookSpecificOutput": {
+                        "hookEventName": "Stop",
+                        "additionalContext": agent_message,
+                    },
+                }
+                logger.info("Session blocked: Framework Reflection not found")
         except Exception as e:
             logger.warning(f"Reflection check failed: {type(e).__name__}: {e}")
 
-    # Noop response - continue without blocking
+    # Exit 0 so JSON is processed; decision:block handles the blocking
     print(json.dumps(output_data))
     sys.exit(0)
 
