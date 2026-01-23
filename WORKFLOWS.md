@@ -9,7 +9,7 @@ tags: [framework, routing, workflows, index]
 ---
 
 # Workflow Index
-
+<!-- @nic: general rule: self-documenting files are good, but documentation should NOT be in template text that goes to a LLM. We EITHER have to delineate this markdown or move it into the frontmatter or spec file.  -->
 Workflows are **hydrator hints**, not complete instructions. They tell the hydrator:
 1. When this workflow applies (routing signals)
 2. What's unique to this workflow
@@ -94,6 +94,7 @@ User request
 | Workflow | When to Use | Bases |
 |----------|-------------|-------|
 | [[batch-processing]] | Multiple independent items | task-tracking |
+| [[classify-task]] | Complexity + graph positioning for new tasks | - |
 | [[triage-email]] | Email classification | - |
 | [[email-reply]] | Drafting replies | task-tracking |
 | [[interactive-triage]] | Backlog grooming | - |
