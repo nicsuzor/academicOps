@@ -224,11 +224,22 @@ New work arrives
     ├─ 3. Identify dependencies (Part 2)
     │       What must complete before this can start?
     │
-    └─ 4. Create task with:
+    ├─ 4. Determine model (Part 3)
+    │       Which model executes based on complexity?
+    │
+    ├─ 5. Select workflow (Part 4 + WORKFLOWS.md)
+    │       What workflow applies? How does complexity refine it?
+    │
+    └─ 6. Create task with:
             - complexity: [classification]
             - parent: [if applicable]
             - depends_on: [blocking tasks]
             - project: [domain slug]
+
+    Then execute with:
+            - model: [from Part 3 routing]
+            - workflow: [from WORKFLOWS.md decision tree]
+            - refinements: [from Part 4 guidance]
 ```
 
 ## Example: Classifying Real Work

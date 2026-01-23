@@ -165,6 +165,8 @@ For ANY framework modification, include in your output:
    - **needs-decomposition**: "Build feature X" (vague), "Improve performance" (needs analysis first)
    - **blocked-human**: "Which API should we use?", "Need approval for..."
 
+   > **See [[workflows/classify-task]]** for full routing rules including agent type (model selection) and workflow refinement by complexity.
+
 7. **Correlate with existing tasks** - Does request match an existing task?
    - If yes: direct to that task, note its context
    - If no: will create new task
