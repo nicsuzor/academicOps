@@ -109,7 +109,7 @@ def is_first_prompt_from_cli(session_id: str) -> bool:
 
 
 def is_hydrator_task(tool_input: dict[str, Any]) -> bool:
-    """Check if this Task invocation is spawning prompt-hydrator.
+    """Check if this is a Task invocation is spawning prompt-hydrator.
 
     Args:
         tool_input: The tool input parameters
@@ -119,6 +119,31 @@ def is_hydrator_task(tool_input: dict[str, Any]) -> bool:
     """
     subagent_type = tool_input.get("subagent_type", "")
     return subagent_type == "prompt-hydrator"
+
+
+def is_gemini_hydration_attempt(tool_name: str, tool_input: dict[str, Any]) -> bool:
+    """Check if this is a Gemini agent attempting to read hydration context.
+
+    Gemini CLI doesn't support Task(), so it reads the hydration file directly.
+
+    Args:
+        tool_name: Name of the tool being used
+        tool_input: The tool input parameters
+
+    Returns:
+        True if the tool use matches a hydration context read attempt
+    """
+    # Check for direct file read
+    if tool_name == "read_file":
+        path = str(tool_input.get("file_path", ""))
+        return path.startswith("/tmp/claude-hydrator/")
+
+    # Check for shell commands (cat, etc) on the hydration file
+    if tool_name == "run_shell_command":
+        cmd = str(tool_input.get("command", ""))
+        return "/tmp/claude-hydrator/" in cmd
+
+    return False
 
 
 def main():
@@ -155,9 +180,12 @@ def main():
         print(json.dumps({}))
         sys.exit(0)
 
-    # Hydration is pending - check if this is the hydrator being invoked
-    if tool_name == "Task" and is_hydrator_task(tool_input):
-        # This is the hydrator being spawned - clear the gate and allow
+    # Hydration pending - check if this is the hydrator being invoked
+    # 1. Claude: Task(subagent_type="prompt-hydrator")
+    # 2. Gemini: Reading hydration file directly
+    if (tool_name == "Task" and is_hydrator_task(tool_input)) or \
+       is_gemini_hydration_attempt(tool_name, tool_input):
+        # This is the hydrator being spawned/consumed - clear the gate and allow
         clear_hydration_pending(session_id)
         print(json.dumps({}))
         sys.exit(0)

@@ -21,6 +21,7 @@ sys.path.insert(0, str(hooks_dir))
 from hydration_gate import (
     get_session_id,
     is_first_prompt_from_cli,
+    is_gemini_hydration_attempt,
     is_hydrator_task,
     is_subagent_session,
     main,
@@ -122,6 +123,34 @@ class TestHydratorTaskDetection:
         assert is_hydrator_task(tool_input) is False
 
 
+class TestGeminiHydrationDetection:
+    """Test is_gemini_hydration_attempt logic."""
+
+    def test_read_file_on_hydrator_path(self):
+        """Test that read_file on a hydrator path is detected."""
+        tool_name = "read_file"
+        tool_input = {"file_path": "/tmp/claude-hydrator/hydrate_abc.md"}
+        assert is_gemini_hydration_attempt(tool_name, tool_input) is True
+
+    def test_read_file_on_other_path(self):
+        """Test that read_file on other paths is not detected."""
+        tool_name = "read_file"
+        tool_input = {"file_path": "/home/nic/writing/aops/README.md"}
+        assert is_gemini_hydration_attempt(tool_name, tool_input) is False
+
+    def test_cat_command_on_hydrator_path(self):
+        """Test that run_shell_command with cat on a hydrator path is detected."""
+        tool_name = "run_shell_command"
+        tool_input = {"command": "cat /tmp/claude-hydrator/hydrate_abc.md"}
+        assert is_gemini_hydration_attempt(tool_name, tool_input) is True
+
+    def test_other_shell_command(self):
+        """Test that other shell commands are not detected as hydration."""
+        tool_name = "run_shell_command"
+        tool_input = {"command": "ls -la"}
+        assert is_gemini_hydration_attempt(tool_name, tool_input) is False
+
+
 class TestGateBypass:
     """Test the main gate bypass logic."""
 
@@ -196,6 +225,34 @@ class TestGateBypass:
         input_data = {
             "tool_name": "Task",
             "tool_input": {"subagent_type": "prompt-hydrator", "prompt": "test"},
+            "session_id": "test-session",
+        }
+        monkeypatch.setattr("sys.stdin", io.StringIO(json.dumps(input_data)))
+
+        # Mock to indicate hydration is pending
+        with patch("hydration_gate.is_hydration_pending", return_value=True), patch(
+            "hydration_gate.clear_hydration_pending"
+        ) as mock_clear:
+            with pytest.raises(SystemExit) as exc_info:
+                main()
+
+            # Should exit 0 (allow)
+            assert exc_info.value.code == 0
+
+            # Should clear the gate
+            mock_clear.assert_called_once_with("test-session")
+
+            captured = capsys.readouterr()
+            output = json.loads(captured.out)
+            assert output == {}
+
+    def test_bypass_for_gemini_hydration(self, monkeypatch, capsys):
+        """Test that Gemini reading the hydrator file clears the gate."""
+        import io
+
+        input_data = {
+            "tool_name": "read_file",
+            "tool_input": {"file_path": "/tmp/claude-hydrator/hydrate_abc.md"},
             "session_id": "test-session",
         }
         monkeypatch.setattr("sys.stdin", io.StringIO(json.dumps(input_data)))
