@@ -34,5 +34,3 @@ Execute the [[handover-workflow]]:
 5. Commit changes
 6. Output Framework Reflection
 7. Halt
-
-See `$AOPS/workflows/handover.md` for step-by-step procedure.
