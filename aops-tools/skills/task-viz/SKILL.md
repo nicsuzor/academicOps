@@ -88,6 +88,7 @@ python3 $AOPS/scripts/task_graph.py INPUT.json [-o OUTPUT] [--layout LAYOUT]
 - `-o, --output`: Output base name (default: `tasks`)
 - `--layout`: Graphviz layout engine: `dot`, `neato`, `sfdp`, `fdp`, `circo`, `twopi` (default: `sfdp`)
 - `--include-orphans`: Include unconnected nodes
+- `--exclude-done`: Filter out tasks with status `done` or `completed`
 
 **Color Coding**:
 

@@ -120,6 +120,7 @@ def main():
     parser.add_argument("input", help="Input JSON file from fast-indexer")
     parser.add_argument("-o", "--output", default="tasks", help="Output base name")
     parser.add_argument("--include-orphans", action="store_true", help="Include unconnected nodes")
+    parser.add_argument("--exclude-done", action="store_true", help="Exclude tasks with status done/completed")
     parser.add_argument("--layout", default="sfdp", choices=["dot", "neato", "sfdp", "fdp", "circo", "twopi"],
                         help="Graphviz layout engine (default: sfdp)")
     args = parser.parse_args()
@@ -137,6 +138,15 @@ def main():
     edges = data.get("edges", [])
 
     print(f"Loaded {len(nodes)} nodes, {len(edges)} edges from {input_path}")
+
+    # Filter out completed tasks if requested
+    if args.exclude_done:
+        done_statuses = {"done", "completed"}
+        original_count = len(nodes)
+        nodes = [n for n in nodes if n.get("status", "").lower() not in done_statuses]
+        excluded = original_count - len(nodes)
+        if excluded > 0:
+            print(f"  Excluded {excluded} done/completed tasks")
 
     # Count by type and status
     by_type = {}
