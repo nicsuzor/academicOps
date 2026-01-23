@@ -1,0 +1,90 @@
+# Direct Skill Workflow - Constraint Format
+# Converted from: workflows/direct-skill.md
+# Conversion date: 2026-01-23
+
+workflow: direct-skill
+description: Request maps 1:1 to existing skill - skills contain their own workflows
+
+context:
+  applies_when:
+    - explicit skill invocation ("/commit", "/email", "run /daily")
+    - implicit match (request matches skill description exactly)
+  not_when:
+    - multiple skills needed (use appropriate workflow)
+    - context composition required (use design)
+    - ambiguous mapping (ask user)
+
+# ============================================================================
+# CONSTRAINTS
+# ============================================================================
+
+constraints:
+  # ---------------------------------------------------------------------------
+  # CORE RULES
+  # ---------------------------------------------------------------------------
+
+  # Invoke skill directly without wrapping
+  - ALWAYS: invoke_directly
+
+  # Trust skill to handle the request
+  - ALWAYS: trust_skill
+
+  # ---------------------------------------------------------------------------
+  # PROHIBITIONS
+  # ---------------------------------------------------------------------------
+
+  # No TodoWrite wrapping
+  - NEVER: todowrite_wrapping
+
+  # No added ceremony
+  - NEVER: added_ceremony
+
+  # No interception of skill workflow
+  - NEVER: intercept_skill_workflow
+
+# ============================================================================
+# TRIGGERS
+# ============================================================================
+
+triggers:
+  - ON explicit_skill_invocation: INVOKE skill_directly
+  - ON implicit_skill_match: INVOKE skill_directly
+
+# ============================================================================
+# PREDICATES
+# ============================================================================
+
+predicates:
+  invoke_directly:
+    check: skill invoked without wrapper or preprocessing
+
+  trust_skill:
+    check: skill's internal workflow followed without override
+
+  todowrite_wrapping:
+    check: skill invocation wrapped in TodoWrite tracking
+
+  added_ceremony:
+    check: extra steps added around skill invocation
+
+  intercept_skill_workflow:
+    check: overriding or modifying skill's internal behavior
+
+  explicit_skill_invocation:
+    check: user message starts with "/" or says "run /<skill>"
+
+  implicit_skill_match:
+    check: request matches exactly one skill's description
+
+# ============================================================================
+# CONVERSION NOTES
+# ============================================================================
+
+# What was preserved:
+# - Direct invocation without wrapping
+# - Trust the skill principle
+# - Routing signals (explicit vs implicit)
+
+# What was clarified:
+# - Prohibitions against ceremony/wrapping are explicit
+# - Detection of explicit vs implicit invocation

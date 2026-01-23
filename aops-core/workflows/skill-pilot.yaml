@@ -1,0 +1,143 @@
+# Skill Pilot Workflow - Constraint Format
+# Converted from: workflows/skill-pilot.md
+# Conversion date: 2026-01-23
+
+workflow: skill-pilot
+description: Build new skills when decompose reveals capability gaps
+extends: [base-task-tracking]
+
+context:
+  applies_when:
+    - decomposition reaches task with no matching skill
+    - recurring pattern without standardized approach
+    - first-time task worth capturing
+  not_when:
+    - task maps to existing skill (use it)
+    - one-off unlikely to recur (just do it)
+    - task unclear (use decompose first)
+
+# ============================================================================
+# CONSTRAINTS
+# ============================================================================
+
+constraints:
+  # ---------------------------------------------------------------------------
+  # SKILL CREATION SEQUENCING
+  # ---------------------------------------------------------------------------
+
+  # Must articulate gap before piloting
+  - BEFORE pilot: gap_articulated
+
+  # Must pilot with user before reflecting
+  - BEFORE reflect: pilot_complete
+
+  # Must reflect before drafting skill
+  - BEFORE draft_skill: reflection_complete
+
+  # Must draft before testing
+  - BEFORE test_skill: skill_drafted
+
+  # Must test before indexing
+  - BEFORE index_skill: skill_tested
+
+  # ---------------------------------------------------------------------------
+  # QUALITY GATES
+  # ---------------------------------------------------------------------------
+
+  # Skill must be indexed to exist
+  - AFTER draft_skill: index_in_plugin_json
+
+  # ---------------------------------------------------------------------------
+  # PROHIBITIONS (Anti-Patterns)
+  # ---------------------------------------------------------------------------
+
+  # No premature abstraction
+  - NEVER: skill_after_one_use
+
+  # No kitchen sink skills
+  - NEVER: too_much_in_one_skill
+
+  # No orphan skills
+  - NEVER: skill_not_indexed
+
+# ============================================================================
+# TRIGGERS
+# ============================================================================
+
+triggers:
+  - ON capability_gap_found: INVOKE articulate_gap
+  - ON gap_articulated: INVOKE pilot_with_user
+  - ON pilot_complete: INVOKE reflect_on_steps
+  - ON reflection_complete: INVOKE draft_skill
+  - ON skill_drafted: INVOKE test_skill
+  - ON skill_tested: INVOKE index_skill
+
+# ============================================================================
+# SKILL CREATION STEPS
+# ============================================================================
+
+steps:
+  1_articulate_gap:
+    question: "What? Why no existing skill?"
+
+  2_pilot_with_user:
+    method: "Interactive, supervised learning"
+
+  3_reflect:
+    question: "Essential vs incidental steps?"
+
+  4_draft_skill:
+    output: "SKILL.md with when-to-use, steps, quality gates"
+
+  5_test:
+    method: "Apply to similar task without guidance"
+
+  6_index:
+    action: "Add to plugin.json"
+
+# ============================================================================
+# PREDICATES
+# ============================================================================
+
+predicates:
+  gap_articulated:
+    check: clear statement of what's missing and why no existing skill fits
+
+  pilot_complete:
+    check: task performed interactively with user supervision
+
+  reflection_complete:
+    check: essential steps distinguished from incidental ones
+
+  skill_drafted:
+    check: SKILL.md exists with when-to-use, steps, quality gates
+
+  skill_tested:
+    check: skill applied to similar task successfully without guidance
+
+  index_in_plugin_json:
+    check: skill listed in plugin.json skills array
+
+  skill_after_one_use:
+    check: creating skill after only one occurrence
+
+  too_much_in_one_skill:
+    check: skill tries to do multiple distinct things
+
+  skill_not_indexed:
+    check: skill exists but not in plugin.json
+
+# ============================================================================
+# CONVERSION NOTES
+# ============================================================================
+
+# What was preserved:
+# - Six-step skill creation process
+# - Anti-patterns as prohibitions
+# - Gap articulation as first step
+# - User piloting requirement
+
+# What was clarified:
+# - Sequencing between steps is explicit
+# - Anti-patterns are NEVER rules with predicates
+# - "Orphan skill doesn't exist" is now: skill_not_indexed prohibition

@@ -1,0 +1,91 @@
+# Simple Question Workflow - Constraint Format
+# Converted from: workflows/simple-question.md
+# Conversion date: 2026-01-23
+
+workflow: simple-question
+description: Answer and HALT - no modifications
+
+context:
+  applies_when:
+    - "what is...", "how does...", "where is..."
+    - pure information request
+    - no actions required
+  not_when:
+    - "can you...", "please...", "fix..." (action required)
+    - leads to investigation (use debugging)
+    - needs file modifications (use minor-edit or design)
+
+# ============================================================================
+# CONSTRAINTS
+# ============================================================================
+
+constraints:
+  # ---------------------------------------------------------------------------
+  # CORE RULES
+  # ---------------------------------------------------------------------------
+
+  # Must answer clearly and concisely
+  - ALWAYS: answer_clearly
+
+  # Must HALT after answering
+  - AFTER answer: halt
+
+  # ---------------------------------------------------------------------------
+  # CRITICAL PROHIBITION
+  # ---------------------------------------------------------------------------
+
+  # No unsolicited actions
+  - NEVER: unsolicited_actions
+
+  # No file modifications
+  - NEVER: file_modifications
+
+  # No task creation
+  - NEVER: task_creation
+
+  # No follow-up suggestions
+  - NEVER: suggest_next_steps
+
+# ============================================================================
+# TRIGGERS
+# ============================================================================
+
+triggers:
+  - ON question_received: INVOKE answer
+  - ON answer_given: INVOKE halt
+
+# ============================================================================
+# PREDICATES
+# ============================================================================
+
+predicates:
+  answer_clearly:
+    check: response directly addresses the question asked
+
+  halt:
+    check: agent stops and awaits next user instruction
+
+  unsolicited_actions:
+    check: any action not directly requested by user
+
+  file_modifications:
+    check: any Write, Edit, or NotebookEdit tool use
+
+  task_creation:
+    check: any create_task MCP call
+
+  suggest_next_steps:
+    check: offering to do additional work
+
+# ============================================================================
+# CONVERSION NOTES
+# ============================================================================
+
+# What was preserved:
+# - Answer and HALT pattern
+# - No unsolicited actions rule
+# - Clear routing signals
+
+# What was clarified:
+# - All prohibited actions are explicit NEVER rules
+# - HALT is a concrete trigger, not just guidance

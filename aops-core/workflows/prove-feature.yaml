@@ -1,0 +1,99 @@
+# Prove Feature Workflow - Constraint Format
+# Converted from: workflows/prove-feature.md
+# Conversion date: 2026-01-23
+
+workflow: prove-feature
+description: Validate framework integration - "does it integrate correctly?"
+
+context:
+  applies_when:
+    - validating new framework capabilities
+    - verifying structural changes (relationships, computed fields)
+    - "does it connect properly?"
+  not_when:
+    - general functionality testing (use qa-demo)
+    - unit testing (use tdd-cycle)
+    - bug investigation (use debugging)
+
+# ============================================================================
+# CONSTRAINTS
+# ============================================================================
+
+constraints:
+  # ---------------------------------------------------------------------------
+  # VERIFICATION SEQUENCING
+  # ---------------------------------------------------------------------------
+
+  # Must capture baseline before execution
+  - BEFORE execute_feature: baseline_captured
+
+  # Must execute feature as user would
+  - BEFORE verify: feature_executed
+
+  # Must verify structural changes after execution
+  - AFTER execute_feature: verify_structural_changes
+
+  # Must produce evidence report
+  - AFTER verify: evidence_report_produced
+
+  # ---------------------------------------------------------------------------
+  # INVARIANTS
+  # ---------------------------------------------------------------------------
+
+  - ALWAYS: evidence_based_verification
+  - ALWAYS: expected_vs_actual_comparison
+
+# ============================================================================
+# TRIGGERS
+# ============================================================================
+
+triggers:
+  - ON validation_request: INVOKE capture_baseline
+  - ON baseline_captured: INVOKE execute_feature
+  - ON feature_executed: INVOKE verify_changes
+  - ON verification_complete: INVOKE produce_evidence_report
+
+# ============================================================================
+# EVIDENCE FORMAT
+# ============================================================================
+
+evidence_template: |
+  | Field | Expected | Actual | Correct? |
+  |-------|----------|--------|----------|
+  | [key] | [value]  | [value]| ✅/❌    |
+
+# ============================================================================
+# PREDICATES
+# ============================================================================
+
+predicates:
+  baseline_captured:
+    check: state snapshot exists before feature execution
+
+  feature_executed:
+    check: feature run as user would invoke it
+
+  verify_structural_changes:
+    check: structural elements (relationships, fields) inspected
+
+  evidence_report_produced:
+    check: evidence table with expected vs actual exists
+
+  evidence_based_verification:
+    check: all claims backed by observable evidence
+
+  expected_vs_actual_comparison:
+    check: each verification point has expected and actual values
+
+# ============================================================================
+# CONVERSION NOTES
+# ============================================================================
+
+# What was preserved:
+# - Four-step process: baseline → execute → verify → report
+# - Evidence table format
+# - Focus on structural/integration verification
+
+# What was clarified:
+# - Evidence-based verification is explicit invariant
+# - Expected vs actual comparison is mandatory

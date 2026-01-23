@@ -44,13 +44,23 @@ EVENT_MAP = {
     "PreCompress": None,
 }
 
-# Claude router location (from $AOPS environment variable)
-def get_claude_router() -> Path:
-    """Get Claude router path from $AOPS environment variable."""
+# Hook paths (from $AOPS environment variable)
+def get_aops_root() -> Path:
+    """Get AOPS root path from $AOPS environment variable."""
     aops_root = Path(os.getenv("AOPS", ""))
     if not aops_root.name:
         raise EnvironmentError("$AOPS environment variable not set")
-    return aops_root / "aops-core" / "hooks" / "router.py"
+    return aops_root
+
+
+def get_claude_router() -> Path:
+    """Get Claude router path from $AOPS environment variable."""
+    return get_aops_root() / "aops-core" / "hooks" / "router.py"
+
+
+def get_gemini_user_prompt_hook() -> Path:
+    """Get Gemini-specific user_prompt_submit hook path."""
+    return get_aops_root() / "config" / "gemini" / "hooks" / "user_prompt_submit.py"
 
 # Session ID file location (from $AOPS_SESSIONS environment variable)
 def get_session_id_file() -> Path:
@@ -165,12 +175,64 @@ def map_claude_output(claude_output: dict, gemini_event: str) -> dict:
     return gemini_output
 
 
+def call_gemini_user_prompt_hook(gemini_input: dict) -> tuple[dict, int]:
+    """
+    Call Gemini-specific user_prompt_submit hook directly.
+
+    Used for BeforeAgent events instead of delegating to Claude router.
+    Returns Gemini-compatible output (no Task subagent instructions).
+    """
+    try:
+        hook_path = get_gemini_user_prompt_hook()
+        aops_root = get_aops_root()
+    except EnvironmentError as e:
+        print(f"ERROR: {e}", file=sys.stderr)
+        return {}, 1
+
+    if not hook_path.exists():
+        print(f"ERROR: Gemini hook not found at {hook_path}", file=sys.stderr)
+        return {}, 1
+
+    try:
+        result = subprocess.run(
+            ["python3", str(hook_path)],
+            input=json.dumps(gemini_input),
+            capture_output=True,
+            text=True,
+            timeout=30,
+            env={
+                **dict(os.environ),
+                "PYTHONPATH": str(aops_root / "aops-core"),
+            },
+        )
+
+        output = {}
+        if result.stdout.strip():
+            try:
+                output = json.loads(result.stdout)
+            except json.JSONDecodeError:
+                pass
+
+        if result.stderr:
+            print(result.stderr, file=sys.stderr)
+
+        return output, result.returncode
+
+    except subprocess.TimeoutExpired:
+        print("ERROR: Gemini user_prompt hook timed out", file=sys.stderr)
+        return {}, 1
+    except Exception as e:
+        print(f"ERROR: Failed to call Gemini hook: {e}", file=sys.stderr)
+        return {}, 1
+
+
 def call_claude_router(claude_input: dict) -> tuple[dict, int]:
     """
     Call the Claude router and return its output.
     """
     try:
         claude_router = get_claude_router()
+        aops_root = get_aops_root()
     except EnvironmentError as e:
         print(f"ERROR: {e}", file=sys.stderr)
         return {}, 1
@@ -188,7 +250,7 @@ def call_claude_router(claude_input: dict) -> tuple[dict, int]:
             timeout=30,
             env={
                 **dict(os.environ),
-                "PYTHONPATH": str(claude_router.parent.parent),
+                "PYTHONPATH": str(aops_root / "aops-core"),
             },
         )
 
@@ -240,7 +302,19 @@ def main():
     except Exception:
         pass
 
-    # Map to Claude format
+    # Special handling for BeforeAgent (UserPromptSubmit)
+    # Use Gemini-specific hook that doesn't require Task() subagents
+    if gemini_event == "BeforeAgent":
+        # Inject session_id if not present
+        if "session_id" not in gemini_input:
+            gemini_input["session_id"] = get_session_id(gemini_event)
+
+        # Call Gemini-specific hook directly
+        gemini_output, exit_code = call_gemini_user_prompt_hook(gemini_input)
+        print(json.dumps(gemini_output))
+        sys.exit(exit_code)
+
+    # For all other events, delegate to Claude router
     claude_input = map_gemini_input(gemini_event, gemini_input)
     if not claude_input:
         print("{}")

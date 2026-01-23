@@ -46,6 +46,7 @@ tags: [framework, enforcement, moc]
 | [[feedback-loops-for-uncertainty]]          | Feedback Loops                  | AXIOMS.md                                       | SessionStart         |       |
 | [[current-state-machine]]                   | Current State Machine           | autocommit_state.py (auto-commit+push)          | PostToolUse          |       |
 | [[one-spec-per-feature]]                    | One Spec Per Feature            | AXIOMS.md                                       | SessionStart         |       |
+| [[mandatory-handover]]                      | Mandatory Handover Workflow     | CORE.md injection (Session Completion Rules)    | SessionStart         |       |
 
 ## Heuristic → Enforcement Mapping
 
@@ -130,13 +131,33 @@ Context loading follows a **three-tier architecture** (see [[session-start-injec
 
 **Design principle**: Minimal baseline, maximal JIT. Agents start with only what they need to understand the framework and project. Everything else loads on-demand.
 
+### Selective Instruction Injection (Default Mechanism)
+
+**See**: [[specs/selective-instruction-injection]] for full spec.
+
+Main agents do NOT receive full AXIOMS.md or HEURISTICS.md. Instead:
+
+1. **Hydrator (haiku)** receives full files in temp file (~3000 tokens)
+2. **Hydrator selects** 3-7 relevant principles for the task
+3. **Main agent** receives ONLY the selected principles (~100-200 tokens)
+
+This is the **default enforcement mechanism** for instructions. Principles surface JIT based on task type and workflow.
+
+| Stage | Recipient | Content |
+|-------|-----------|---------|
+| Pre-hydration | Haiku (cheap) | Full AXIOMS.md + HEURISTICS.md |
+| Post-hydration | Main agent (expensive) | "Applicable Principles" section only |
+
+**Token economics**: Haiku filtering costs ~$0.0003/prompt. Saves ~2800 tokens for main agent.
+
+### File Loading Summary
+
 | File | Purpose | Loaded Via |
 |------|---------|------------|
 | `$AOPS/CORE.md` | Framework tool inventory (~2KB) | SessionStart hook |
 | `$cwd/.agent/CORE.md` | Project conventions | SessionStart hook (if exists) |
-| `AXIOMS.md` | Inviolable principles | JIT (prompt-hydrator) |
-| `HEURISTICS.md` | Operational defaults | JIT (prompt-hydrator) |
-| `REMINDERS.md` | Skill triggers and operational habits | CLAUDE.md reference |
+| `AXIOMS.md` | Inviolable principles | Hydrator temp file → filtered output |
+| `HEURISTICS.md` | Operational defaults | Hydrator temp file → filtered output |
 | Agent frontmatter (`agents/*.md`) | Agent-specific context | Task tool invocation |
 
 **Rule**: When adding instructions to ANY of these files, you MUST document the enforcement in enforcement-map.md. This applies to:

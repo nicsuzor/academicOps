@@ -419,7 +419,9 @@ def get_activity_status(last_modified: datetime) -> tuple[str, str]:
         return "⚪", f"{int(days)}d ago"
 
 
-def post_quick_capture(content: str, tags: str = "dashboard,quick-capture") -> tuple[bool, str]:
+def post_quick_capture(
+    content: str, tags: str = "dashboard,quick-capture"
+) -> tuple[bool, str]:
     """Post a quick capture note to the GitHub webhook.
 
     Uses the same endpoint as the iPhone integration to create notes.
@@ -523,7 +525,7 @@ def group_prompts_by_machine(prompts: list[dict]) -> dict[str, list[dict]]:
 _session_activity_cache: dict = {"data": None, "timestamp": 0}
 
 
-def fetch_session_activity(hours: int = 2) -> list[dict]:
+def fetch_session_activity(hours: int = 4) -> list[dict]:
     """Fetch active sessions with prompts from R2 and TodoWrite from local JSONL.
 
     Combines cross-machine prompt data from R2 with local session TodoWrite state.
@@ -643,8 +645,9 @@ def fetch_session_activity(hours: int = 2) -> list[dict]:
         sid = ls["session_id"]
         if sid not in sessions:
             # Extract best available prompt from state
+            # Extract best available prompt from state
             state = ls.get("state", {})
-            prompt = "Local activity"
+            prompt = ""
 
             # Priority 1: Current Task (most relevant context)
             current_task = state.get("main_agent", {}).get("current_task")
@@ -652,13 +655,13 @@ def fetch_session_activity(hours: int = 2) -> list[dict]:
                 prompt = f"[Task] {current_task}"
 
             # Priority 2: Last Prompt (actual last turn)
-            if prompt == "Local activity":
+            if not prompt:
                 last_p = state.get("main_agent", {}).get("last_prompt")
                 if last_p:
                     prompt = last_p
 
             # Priority 3: Hydration Original Prompt (User Intent)
-            if prompt == "Local activity":
+            if not prompt:
                 orig_p = state.get("hydration", {}).get("original_prompt")
                 if orig_p:
                     prompt = orig_p
@@ -741,20 +744,24 @@ def fetch_session_activity(hours: int = 2) -> list[dict]:
 
                 if current_task:
                     prompt = f"[Task] {current_task}"
-                else:
+
+                # Try hydrated intent next - usually better than raw last prompt
+                if not prompt:
+                    hydration = state.get("hydration") or {}
+                    # Try hydrated intent first as it's cleaner
+                    intent = hydration.get("hydrated_intent")
+                    if intent:
+                        prompt = intent
+                    else:
+                        orig_p = hydration.get("original_prompt")
+                        if orig_p:
+                            prompt = orig_p
+
+                # Fallback to last prompt if no task/intent
+                if not prompt:
                     last_p = main_agent.get("last_prompt")
                     if last_p:
                         prompt = last_p
-                    else:
-                        hydration = state.get("hydration") or {}
-                        # Try hydrated intent first as it's cleaner
-                        intent = hydration.get("hydrated_intent")
-                        if intent:
-                            prompt = intent
-                        else:
-                            orig_p = hydration.get("original_prompt")
-                            if orig_p:
-                                prompt = orig_p
 
                 # Handle empty prompts (new sessions)
                 if not prompt:
@@ -791,8 +798,8 @@ def fetch_session_activity(hours: int = 2) -> list[dict]:
                         "hostname": "localhost",
                         "project": project,
                         "last_prompt": prompt,
-                        "timestamp": timestamp or dt_mtime.isoformat(),
-                        "time_ago": time_ago,
+                        "timestamp": dt_mtime.isoformat(),
+                        "time_ago": _format_time_ago(dt_mtime),
                         "todowrite": None,
                         "source": "local-status",
                     }
@@ -1277,521 +1284,141 @@ st.markdown(
         border-radius: 0 4px 4px 0;
     }
 
+    /* ==========================================================================
+     * THEME VARIABLES - PREMIMUM DARK MODE
+     * ========================================================================== */
+    :root {
+        /* Base Colors */
+        --bg-app: #0f1117;
+        --bg-panel: #1e293b;
+        --bg-card: #0f172a;
+        --bg-card-light: #1e293b;
+
+        /* Text Colors */
+        --text-primary: #e2e8f0;
+        --text-secondary: #94a3b8;
+        --text-muted: #64748b;
+        --text-accent: #818cf8;
+        --text-success: #4ade80;
+        --text-warning: #fbbf24;
+        --text-error: #f87171;
+
+        /* Borders */
+        --border-subtle: #334155;
+        --border-accent: #4f46e5;
+        --border-success: #22c55e;
+
+        /* Status Colors */
+        --status-success-bg: rgba(34, 197, 94, 0.1);
+        --status-success-border: #22c55e;
+        --status-warning-bg: rgba(245, 158, 11, 0.1);
+        --status-warning-border: #f59e0b;
+        --status-error-bg: rgba(239, 68, 68, 0.1);
+        --status-error-border: #ef4444;
+        --status-info-bg: rgba(59, 130, 246, 0.1);
+        --status-info-border: #3b82f6;
+    }
+
+    /* Force App Background (Streamlit override) */
+    .stApp {
+        background-color: var(--bg-app);
+    }
+
+    /* Global Typography */
+    .stMarkdown, .stText, p, li, span, div {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    /* ==========================================================================
+     * LAYOUT COMPONENTS
+     * ========================================================================== */
+
+    /* Generic Panel Container */
+    .dashboard-panel {
+        background-color: var(--bg-panel);
+        border: 1px solid var(--border-subtle);
+        border-radius: 8px;
+        padding: 16px;
+        margin-bottom: 16px;
+    }
+
+    /* Active Sessions Panel */
+    .active-sessions-panel {
+        background: linear-gradient(to right, #0f172a, #1e293b);
+        border-left: 4px solid var(--text-accent);
+        border-radius: 0 8px 8px 0;
+        padding: 12px 16px;
+        margin-top: 24px;
+        margin-bottom: 24px;
+    }
+
+    .active-sessions-title {
+        color: var(--text-accent);
+        font-weight: 700;
+        font-size: 1em;
+        margin-bottom: 8px;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+    }
+
+    .session-item {
+        margin-bottom: 8px;
+        padding: 8px 0;
+        border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+
+    .session-item:last-child {
+        border-bottom: none;
+    }
+
     .session-header {
         display: flex;
+        justify-content: space-between;
         align-items: center;
-        gap: 8px;
         margin-bottom: 4px;
     }
 
     .session-id {
-        font-family: monospace;
-        color: #818cf8;
+        font-family: 'JetBrains Mono', monospace;
+        color: var(--text-muted);
         font-size: 0.8em;
-        background: rgba(99, 102, 241, 0.2);
-        padding: 2px 6px;
-        border-radius: 3px;
     }
 
     .session-meta {
-        color: #64748b;
+        color: var(--text-muted);
         font-size: 0.75em;
     }
 
     .session-prompt {
-        color: #94a3b8;
-        font-size: 0.85em;
-        padding: 4px 0;
-        font-style: italic;
+        color: var(--text-primary);
+        font-size: 0.9em;
+        line-height: 1.4;
     }
 
     .session-todo {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        padding: 4px 0;
-    }
-
-    .session-todo-active {
-        color: #22c55e;
+        margin-top: 4px;
         font-size: 0.85em;
-    }
-
-    .session-todo-pending {
-        color: #64748b;
-        font-size: 0.8em;
-    }
-
-    /* What Now panel - synthesized status */
-    .what-now-panel {
-        background: linear-gradient(135deg, #1a1a2d 0%, #0d0d1a 100%);
-        border: 2px solid #8b5cf6;
-        border-radius: 8px;
-        padding: 16px 20px;
-        margin-bottom: 16px;
-    }
-
-    .what-now-title {
-        color: #a78bfa;
-        font-size: 1.1em;
-        font-weight: bold;
-        margin-bottom: 12px;
-    }
-
-    .what-now-section {
-        margin-bottom: 12px;
-    }
-
-    .what-now-section-title {
-        color: #7c3aed;
-        font-size: 0.85em;
-        font-weight: bold;
-        margin-bottom: 4px;
-    }
-
-    .what-now-item {
-        color: #c4b5fd;
-        font-size: 0.9em;
-        padding: 4px 0 4px 16px;
-        border-left: 2px solid #6d28d9;
-        margin: 2px 0;
-    }
-
-    .what-now-item.action {
-        color: #a78bfa;
-        border-left-color: #8b5cf6;
-    }
-
-    .what-now-item.waiting {
-        color: #fbbf24;
-        border-left-color: #d97706;
-    }
-
-    .what-now-progress {
-        font-size: 0.75em;
-        color: #6d28d9;
-        margin-left: 8px;
-    }
-
-    /* LLM Synthesis panels */
-    .synthesis-panel {
-        background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
-        border: 2px solid #6366f1;
-        border-radius: 12px;
-        padding: 20px;
-        margin-bottom: 16px;
-    }
-
-    .synthesis-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 16px;
-    }
-
-    .synthesis-title {
-        color: #a5b4fc;
-        font-size: 1.2em;
-        font-weight: bold;
-    }
-
-    .synthesis-age {
-        color: #64748b;
-        font-size: 0.75em;
-    }
-
-    .synthesis-next {
-        background: linear-gradient(135deg, #312e81 0%, #1e1b4b 100%);
-        border-left: 4px solid #818cf8;
-        padding: 12px 16px;
-        margin-bottom: 12px;
-        border-radius: 0 8px 8px 0;
-    }
-
-    .synthesis-next-label {
-        color: #818cf8;
-        font-size: 0.8em;
-        font-weight: bold;
-        margin-bottom: 4px;
-    }
-
-    .synthesis-next-task {
-        color: #e0e7ff;
-        font-size: 1.1em;
-        font-weight: 600;
-    }
-
-    .synthesis-next-reason {
-        color: #94a3b8;
-        font-size: 0.85em;
-        margin-top: 6px;
+        color: var(--text-secondary);
         font-style: italic;
     }
 
-    .synthesis-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 12px;
-    }
-
-    .synthesis-card {
-        background: rgba(30, 27, 75, 0.5);
-        border-radius: 8px;
-        padding: 12px;
-    }
-
-    .synthesis-card-title {
-        font-size: 0.75em;
-        font-weight: bold;
-        margin-bottom: 6px;
-    }
-
-    .synthesis-card-content {
-        font-size: 0.85em;
-    }
-
-    .synthesis-card.done .synthesis-card-title { color: #4ade80; }
-    .synthesis-card.done .synthesis-card-content { color: #86efac; }
-
-    .synthesis-card.alignment .synthesis-card-title { color: #fbbf24; }
-    .synthesis-card.alignment .synthesis-card-content { color: #fde68a; }
-    .synthesis-card.alignment.on_track .synthesis-card-title { color: #4ade80; }
-    .synthesis-card.alignment.on_track .synthesis-card-content { color: #86efac; }
-    .synthesis-card.alignment.blocked .synthesis-card-title { color: #f87171; }
-    .synthesis-card.alignment.blocked .synthesis-card-content { color: #fca5a5; }
-
-    .synthesis-card.context .synthesis-card-title { color: #60a5fa; }
-    .synthesis-card.context .synthesis-card-content { color: #93c5fd; }
-
-    .synthesis-card.waiting .synthesis-card-title { color: #f87171; }
-    .synthesis-card.waiting .synthesis-card-content { color: #fca5a5; }
-
-    .synthesis-card.insights .synthesis-card-title { color: #38bdf8; }
-    .synthesis-card.insights .synthesis-card-content { color: #7dd3fc; }
-
-    .insights-panel {
-        background: linear-gradient(135deg, #0c1929 0%, #0f172a 100%);
-        border: 1px solid #0ea5e9;
-        border-radius: 8px;
-        padding: 12px 16px;
-        margin-top: 12px;
-    }
-
-    .insights-title {
-        color: #38bdf8;
-        font-size: 0.9em;
-        font-weight: bold;
-        margin-bottom: 8px;
-    }
-
-    .insights-stat {
-        display: inline-block;
-        background: rgba(14, 165, 233, 0.15);
-        padding: 4px 10px;
-        border-radius: 4px;
-        margin: 2px 4px 2px 0;
-        font-size: 0.8em;
-    }
-
-    .insights-stat-label {
-        color: #7dd3fc;
-    }
-
-    .insights-stat-value {
-        color: #f0f9ff;
-        font-weight: bold;
-    }
-
-    .insights-gap {
-        color: #fbbf24;
-        font-size: 0.8em;
-        padding: 2px 0;
-        padding-left: 12px;
-    }
-
-    .insights-gap::before {
-        content: "⚠ ";
-        color: #f59e0b;
-    }
-
-    .synthesis-suggestion {
-        background: rgba(99, 102, 241, 0.2);
-        border-radius: 6px;
-        padding: 10px 12px;
-        margin-top: 12px;
-        color: #a5b4fc;
-        font-size: 0.85em;
-    }
-
-    .synthesis-suggestion::before {
-        content: "💡 ";
-    }
-
-    /* Project cards - integrated with synthesis panel */
-    .project-grid {
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        gap: 12px;
-        margin-top: 16px;
-    }
-
-    .project-card {
-        background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
-        border: 1px solid #4f46e5;
-        border-radius: 8px;
-        padding: 12px 14px;
-    }
-
-    .project-card-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 8px;
-        padding-bottom: 6px;
-        border-bottom: 1px solid rgba(99, 102, 241, 0.3);
-    }
-
-    .project-card-name {
-        font-size: 0.95em;
-        font-weight: bold;
-    }
-
-    .project-card-meta {
-        color: #64748b;
-        font-size: 0.75em;
-    }
-
-    .project-task {
-        display: flex;
-        align-items: flex-start;
-        gap: 8px;
-        padding: 4px 0;
-        font-size: 0.85em;
-        color: #e0e7ff;
-    }
-
-    .project-task-priority {
-        background: #4f46e5;
-        color: #fff;
-        padding: 1px 5px;
-        border-radius: 3px;
-        font-size: 0.75em;
-        font-weight: bold;
-        flex-shrink: 0;
-    }
-
-    .project-task-priority.p0 { background: #ef4444; }
-    .project-task-priority.p1 { background: #f97316; }
-    .project-task-priority.p2 { background: #6366f1; }
-
-    .project-done {
-        color: #4ade80;
-        font-size: 0.8em;
-        padding: 2px 0;
-    }
-
-    .project-done::before {
-        content: "✓ ";
-    }
-
-    /* Narrative section - day's story */
-    .synthesis-narrative {
-        background: rgba(139, 92, 246, 0.15);
-        border-left: 3px solid #a78bfa;
-        border-radius: 0 8px 8px 0;
-        padding: 12px 16px;
-        margin-bottom: 16px;
-    }
-
-    .synthesis-narrative-title {
-        color: #c4b5fd;
-        font-weight: 600;
-        font-size: 0.9em;
-        margin-bottom: 8px;
-        letter-spacing: 0.5px;
-    }
-
-    .synthesis-narrative-list {
-        margin: 0;
-        padding-left: 20px;
-        color: #e9d5ff;
-        font-size: 0.9em;
-        line-height: 1.6;
-    }
-
-    .synthesis-narrative-list li {
-        margin-bottom: 4px;
-    }
-
-    /* Live Agent Status Panel */
-    .agent-status-panel {
-        background: linear-gradient(135deg, #0a1a0a 0%, #1a2d1a 100%);
-        border: 2px solid #22c55e;
-        border-radius: 8px;
-        padding: 16px 20px;
-        margin-bottom: 16px;
-    }
-
-    .agent-status-title {
-        color: #4ade80;
-        font-size: 1.1em;
-        font-weight: bold;
-        margin-bottom: 12px;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }
-
-    .agent-status-title .pulse {
-        width: 10px;
-        height: 10px;
-        background: #22c55e;
-        border-radius: 50%;
-        animation: pulse 2s infinite;
-    }
-
-    @keyframes pulse {
-        0% { opacity: 1; box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); }
-        50% { opacity: 0.7; box-shadow: 0 0 0 6px rgba(34, 197, 94, 0); }
-        100% { opacity: 1; box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
-    }
-
-    .agent-card {
-        background: rgba(34, 197, 94, 0.1);
-        border-left: 3px solid #22c55e;
-        border-radius: 0 6px 6px 0;
-        padding: 10px 14px;
-        margin: 8px 0;
-    }
-
-    .agent-card.idle {
-        border-left-color: #64748b;
-        background: rgba(100, 116, 139, 0.1);
-    }
-
-    .agent-card.blocked {
-        border-left-color: #ef4444;
-        background: rgba(239, 68, 68, 0.1);
-    }
-
-    .agent-card-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 6px;
-    }
-
-    .agent-project {
-        font-weight: bold;
-        font-size: 0.95em;
-    }
-
-    .agent-session-id {
-        font-family: monospace;
-        font-size: 0.75em;
-        background: rgba(255, 255, 255, 0.1);
-        padding: 2px 6px;
-        border-radius: 3px;
-        color: #94a3b8;
-    }
-
-    .agent-status-badge {
-        font-size: 0.75em;
-        padding: 2px 8px;
-        border-radius: 10px;
-        font-weight: bold;
-    }
-
-    .agent-status-badge.active {
-        background: #22c55e;
-        color: #000;
-    }
-
-    .agent-status-badge.idle {
-        background: #64748b;
-        color: #fff;
-    }
-
-    .agent-status-badge.blocked {
-        background: #ef4444;
-        color: #fff;
-    }
-
-    .agent-status-badge.hydrating {
-        background: #8b5cf6;
-        color: #fff;
-    }
-
-    .agent-task-row {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        margin-top: 6px;
-    }
-
-    .agent-task-label {
-        color: #94a3b8;
-        font-size: 0.8em;
-    }
-
-    .agent-task-name {
-        color: #e0e0e0;
-        font-size: 0.9em;
-        flex: 1;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-
-    .agent-progress {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        margin-top: 8px;
-    }
-
-    .agent-progress-bar {
-        flex: 1;
-        height: 6px;
-        background: #333;
-        border-radius: 3px;
-        overflow: hidden;
-    }
-
-    .agent-progress-fill {
-        height: 100%;
-        background: linear-gradient(90deg, #4ade80, #22c55e);
-        border-radius: 3px;
-        transition: width 0.3s ease;
-    }
-
-    .agent-progress-text {
-        color: #4ade80;
-        font-size: 0.8em;
-        font-weight: bold;
-        min-width: 45px;
-        text-align: right;
-    }
-
-    .agent-workflow {
-        font-size: 0.8em;
-        color: #a78bfa;
-        margin-top: 4px;
+    .session-todo-active {
+        color: var(--text-accent);
     }
 
     /* Quick Capture Panel */
     .quick-capture-panel {
-        background: linear-gradient(135deg, #1a1a2d 0%, #0d0d1a 100%);
-        border: 1px solid #6366f1;
+        background-color: var(--bg-card);
+        border: 1px solid var(--border-subtle);
         border-radius: 8px;
         padding: 16px 20px;
         margin: 16px 0;
     }
 
     .quick-capture-title {
-        color: #a5b4fc;
-        font-size: 0.95em;
-        font-weight: bold;
+        color: var(--text-primary);
+        font-size: 1em;
+        font-weight: 700;
         margin-bottom: 12px;
         display: flex;
         align-items: center;
@@ -1799,24 +1426,306 @@ st.markdown(
     }
 
     .quick-capture-success {
-        background: rgba(34, 197, 94, 0.2);
-        border: 1px solid #22c55e;
+        background: var(--status-success-bg);
+        border: 1px solid var(--status-success-border);
+        color: var(--text-success);
+        padding: 10px;
         border-radius: 6px;
-        padding: 10px 14px;
-        color: #4ade80;
-        font-size: 0.9em;
-        margin-top: 8px;
+        margin-top: 10px;
     }
 
     .quick-capture-error {
-        background: rgba(239, 68, 68, 0.2);
-        border: 1px solid #ef4444;
+        background: var(--status-error-bg);
+        border: 1px solid var(--status-error-border);
+        color: var(--text-error);
+        padding: 10px;
         border-radius: 6px;
-        padding: 10px 14px;
-        color: #fca5a5;
-        font-size: 0.9em;
-        margin-top: 8px;
+        margin-top: 10px;
     }
+
+    /* ==========================================================================
+     * SYNTHESIS & INSIGHTS
+     * ========================================================================== */
+
+    /* Synthesis Panel */
+    .synthesis-panel {
+        padding: 4px 0;
+    }
+
+    .synthesis-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        margin-bottom: 16px;
+        border-bottom: 2px solid var(--border-subtle);
+        padding-bottom: 8px;
+    }
+
+    .synthesis-title {
+        font-size: 1.25em;
+        font-weight: 800;
+        color: var(--text-primary);
+        letter-spacing: -0.02em;
+    }
+
+    .synthesis-age {
+        color: var(--text-muted);
+        font-size: 0.85em;
+    }
+
+    /* Narrative Section */
+    .synthesis-narrative {
+        background-color: rgba(99, 102, 241, 0.05); /* Very subtle accent tint */
+        border-left: 3px solid var(--text-accent);
+        padding: 16px;
+        margin-bottom: 20px;
+        border-radius: 0 8px 8px 0;
+    }
+
+    .synthesis-narrative-title {
+        color: var(--text-accent);
+        font-weight: 700;
+        font-size: 0.9em;
+        margin-bottom: 8px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .synthesis-narrative-list {
+        margin: 0;
+        padding-left: 20px;
+        color: var(--text-primary); /* High contrast */
+        font-size: 0.95em;
+        line-height: 1.6;
+    }
+
+    .synthesis-narrative-list li {
+        margin-bottom: 6px;
+    }
+
+    /* Synthesis Grid */
+    .synthesis-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 16px;
+        margin-bottom: 16px;
+    }
+
+    .synthesis-card {
+        background-color: var(--bg-card-light);
+        border: 1px solid var(--border-subtle);
+        border-radius: 8px;
+        padding: 16px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    }
+
+    .synthesis-card-title {
+        font-size: 0.8em;
+        font-weight: 700;
+        margin-bottom: 8px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .synthesis-card-content {
+        font-size: 0.9em;
+        line-height: 1.5;
+        color: var(--text-secondary);
+    }
+
+    /* Card States */
+    .synthesis-card.done .synthesis-card-title { color: var(--text-success); }
+    .synthesis-card.done .synthesis-card-content { color: var(--text-primary); }
+
+    .synthesis-card.alignment .synthesis-card-title { color: var(--text-warning); }
+    .synthesis-card.alignment.on_track .synthesis-card-title { color: var(--text-success); }
+    .synthesis-card.alignment.blocked .synthesis-card-title { color: var(--text-error); }
+
+    .synthesis-card.context .synthesis-card-title { color: #38bdf8; }
+    .synthesis-card.context .synthesis-card-content { color: var(--text-primary); }
+
+    .synthesis-card.waiting .synthesis-card-title { color: var(--text-error); }
+    .synthesis-card.waiting .synthesis-card-content { color: var(--text-primary); opacity: 0.9; }
+
+    /* Insights Panel */
+    .insights-panel {
+        background-color: #0f172a;
+        border: 1px solid #1e293b;
+        border-radius: 8px;
+        padding: 16px;
+        margin-top: 16px;
+    }
+
+    .insights-title {
+        color: #94a3b8;
+        font-size: 0.85em;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 12px;
+    }
+
+    .insights-stat {
+        display: inline-block;
+        background: #1e293b;
+        padding: 4px 12px;
+        border-radius: 4px;
+        margin: 0 8px 8px 0;
+        font-size: 0.85em;
+        border: 1px solid #334155;
+    }
+
+    .insights-stat-label { color: #94a3b8; margin-right: 6px; }
+    .insights-stat-value { font-weight: 700; color: #f1f5f9; }
+
+    .insights-gap {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        background: rgba(251, 191, 36, 0.05);
+        border: 1px solid rgba(251, 191, 36, 0.2);
+        border-radius: 4px;
+        padding: 8px 12px;
+        margin-top: 8px;
+        font-size: 0.9em;
+        color: #fbbf24;
+    }
+
+    .synthesis-suggestion {
+        background: rgba(99, 102, 241, 0.1);
+        border: 1px solid rgba(99, 102, 241, 0.3);
+        border-radius: 6px;
+        padding: 12px 16px;
+        margin-top: 16px;
+        color: #e0e7ff;
+        font-size: 0.9em;
+        display: flex;
+        gap: 8px;
+        align-items: flex-start;
+    }
+    
+    /* ==========================================================================
+     * PROJECT & TASK LISTS
+     * ========================================================================== */
+
+    .project-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+        gap: 16px;
+        margin-top: 24px;
+    }
+
+    .project-card {
+        background-color: var(--bg-card);
+        border: 1px solid var(--border-subtle);
+        border-radius: 8px;
+        padding: 0; 
+        overflow: hidden;
+    }
+
+    .project-card-header {
+        background-color: var(--bg-card-light);
+        padding: 10px 16px;
+        border-bottom: 1px solid var(--border-subtle);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .project-card-name {
+        color: var(--text-primary);
+        font-weight: 700;
+        font-size: 0.95em;
+    }
+
+    .project-card-meta {
+        color: var(--text-muted);
+        font-size: 0.8em;
+    }
+
+    .project-card-body {
+        padding: 12px 16px;
+    }
+
+    /* Task Items */
+    .project-task {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        padding: 6px 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+    }
+    
+    .project-task:last-child {
+        border-bottom: none;
+    }
+
+    .project-task-text {
+        font-size: 0.9em;
+        color: var(--text-secondary);
+        line-height: 1.4;
+    }
+    
+    .project-task-text strong, .project-task-text b {
+        color: var(--text-primary);
+        font-weight: 600;
+    }
+
+    /* Priority Badges */
+    .project-task-priority {
+        display: inline-block;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-size: 0.7em;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .project-task-priority.p0 { 
+        background: rgba(239, 68, 68, 0.2); 
+        color: #ef4444; 
+        border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+    .project-task-priority.p1 { 
+        background: rgba(249, 115, 22, 0.2); 
+        color: #f97316; 
+        border: 1px solid rgba(249, 115, 22, 0.3);
+    }
+    .project-task-priority.p2 { 
+        background: rgba(99, 102, 241, 0.2); 
+        color: #818cf8; 
+        border: 1px solid rgba(99, 102, 241, 0.3);
+    }
+    
+    /* Agent Status Panel */
+    .agent-status-panel {
+        background-color: #0f172a;
+        border: 1px solid #1e293b;
+        border-radius: 8px;
+        padding: 16px;
+    }
+
+    .agent-status-title {
+        color: #4ade80;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 12px;
+    }
+
+    .agent-card {
+        background: rgba(34, 197, 94, 0.05);
+        border-left: 3px solid #22c55e;
+        padding: 12px;
+        margin-bottom: 8px;
+        border-radius: 0 4px 4px 0;
+    }
+    
+    .agent-project { font-weight: 600; color: #e2e8f0; }
+    .agent-task-name { color: #cbd5e1; }
+    .agent-progress-text { color: #4ade80; font-weight: bold; }
 
 </style>
 """,
@@ -1860,182 +1769,666 @@ def clean_activity_text(raw_text: str) -> str:
     while "  " in text:
         text = text.replace("  ", " ")
 
-    # Take first 60 chars
-    if len(text) > 60:
-        text = text[:57] + "..."
+    # Take first 120 chars
+    if len(text) > 120:
+        text = text[:117] + "..."
 
     return text if text else "Working..."
+
+
+# ============================================================================
+# TASK GRAPH HEALTH METRICS
+# ============================================================================
+
+
+def load_task_graph() -> dict | None:
+    """Load the most recent task graph JSON from outputs directory."""
+    outputs_dir = (
+        Path(os.environ.get("ACA_DATA", str(Path.home() / "writing/data"))) / "outputs"
+    )
+
+    # Try graph.json first (standard output)
+    graph_path = outputs_dir / "graph.json"
+    if graph_path.exists():
+        try:
+            return json.loads(graph_path.read_text())
+        except Exception:
+            pass
+    return None
+
+
+def find_latest_svg() -> Path | None:
+    """Find the most recent task-viz SVG file."""
+    outputs_dir = (
+        Path(os.environ.get("ACA_DATA", str(Path.home() / "writing/data"))) / "outputs"
+    )
+
+    svgs = list(outputs_dir.glob("task-viz*.svg"))
+    if not svgs:
+        svgs = list(outputs_dir.glob("*.svg"))
+
+    if svgs:
+        return max(svgs, key=lambda p: p.stat().st_mtime)
+    return None
+
+
+def calculate_graph_health(graph: dict) -> dict:
+    """Calculate health metrics for the task graph.
+
+    Metrics:
+    1. Level width distribution (sequencing vs clumping)
+    2. Branching factor (average children per node)
+    3. Dependency chain length (max path length)
+    4. Priority inheritance violations (children with lower priority than parent)
+    5. Connected components (orphan detection)
+    6. Strategic reachability (% of tasks reaching a goal)
+    """
+    from collections import defaultdict, deque
+
+    nodes = graph.get("nodes", [])
+    edges = graph.get("edges", [])
+
+    # Build adjacency lists
+    children = defaultdict(list)  # parent -> [children]
+    parents = defaultdict(list)  # child -> [parents]
+
+    node_map = {n["id"]: n for n in nodes}
+
+    for e in edges:
+        src, tgt = e.get("source"), e.get("target")
+        if src and tgt:
+            children[src].append(tgt)
+            parents[tgt].append(src)
+
+    # Identify goals (root nodes)
+    goals = [n["id"] for n in nodes if n.get("node_type") == "goal"]
+    tasks = [n["id"] for n in nodes if n.get("node_type") == "task"]
+
+    # 1. Branching factor (average out-degree for non-leaf nodes)
+    non_leaf_degrees = [len(children[n["id"]]) for n in nodes if children[n["id"]]]
+    avg_branching = (
+        sum(non_leaf_degrees) / len(non_leaf_degrees) if non_leaf_degrees else 0
+    )
+    max_branching = max(non_leaf_degrees) if non_leaf_degrees else 0
+
+    # 2. Level width distribution (BFS from goals)
+    level_widths = []
+    visited = set()
+    frontier = set(goals)
+
+    while frontier:
+        level_widths.append(len(frontier))
+        visited.update(frontier)
+        next_frontier = set()
+        for node_id in frontier:
+            for child in children.get(node_id, []):
+                if child not in visited:
+                    next_frontier.add(child)
+        frontier = next_frontier
+
+    # Clumping indicator: max level width vs average
+    avg_level_width = sum(level_widths) / len(level_widths) if level_widths else 0
+    max_level_width = max(level_widths) if level_widths else 0
+    clumping_ratio = max_level_width / avg_level_width if avg_level_width > 0 else 0
+
+    # 3. Dependency chain length (longest path from any goal)
+    def longest_path_from(start_id: str, memo: dict, path: set) -> int:
+        if start_id in memo:
+            return memo[start_id]
+        # Cycle detection
+        if start_id in path:
+            return 0
+
+        if not children.get(start_id):
+            memo[start_id] = 0
+            return 0
+
+        path.add(start_id)
+        try:
+            max_child = max(
+                longest_path_from(c, memo, path) for c in children[start_id]
+            )
+            memo[start_id] = 1 + max_child
+            return memo[start_id]
+        finally:
+            path.remove(start_id)
+
+    memo = {}
+    max_chain = max((longest_path_from(g, memo, set()) for g in goals), default=0)
+    avg_chain = sum(memo.values()) / len(memo) if memo else 0
+
+    # 4. Priority inheritance violations
+    violations = []
+    for node_id, child_ids in children.items():
+        parent_node = node_map.get(node_id, {})
+        parent_priority = parent_node.get("priority")
+        if parent_priority is None:
+            continue
+
+        for child_id in child_ids:
+            child_node = node_map.get(child_id, {})
+            child_priority = child_node.get("priority")
+            if child_priority is not None and child_priority > parent_priority:
+                # Lower number = higher priority, so child > parent means violation
+                violations.append(
+                    {
+                        "parent": parent_node.get("label", node_id)[:40],
+                        "parent_priority": parent_priority,
+                        "child": child_node.get("label", child_id)[:40],
+                        "child_priority": child_priority,
+                    }
+                )
+
+    # 5. Connected components / Strategic reachability
+    # Find nodes reachable from goals (going down the tree)
+    reachable_from_goals = set()
+    to_visit = deque(goals)
+    while to_visit:
+        current = to_visit.popleft()
+        if current in reachable_from_goals:
+            continue
+        reachable_from_goals.add(current)
+        for child in children.get(current, []):
+            to_visit.append(child)
+
+    # Orphans: nodes not reachable from any goal
+    all_node_ids = set(n["id"] for n in nodes)
+    orphans = all_node_ids - reachable_from_goals
+    orphan_tasks = [
+        node_map[o].get("label", o)[:50]
+        for o in orphans
+        if node_map.get(o, {}).get("node_type") == "task"
+    ]
+
+    strategic_reachability = (
+        len(reachable_from_goals) / len(all_node_ids) * 100 if all_node_ids else 100
+    )
+
+    # 6. Count disconnected components
+    def find_components():
+        visited = set()
+        components = 0
+        for node_id in all_node_ids:
+            if node_id in visited:
+                continue
+            # BFS to find all connected nodes (undirected)
+            components += 1
+            queue = deque([node_id])
+            while queue:
+                current = queue.popleft()
+                if current in visited:
+                    continue
+                visited.add(current)
+                # Add neighbors (both directions)
+                for child in children.get(current, []):
+                    if child not in visited:
+                        queue.append(child)
+                for parent in parents.get(current, []):
+                    if parent not in visited:
+                        queue.append(parent)
+        return components
+
+    num_components = find_components()
+
+    return {
+        "total_nodes": len(nodes),
+        "total_edges": len(edges),
+        "goals": len(goals),
+        "tasks": len(tasks),
+        # Sequencing metrics
+        "avg_branching_factor": round(avg_branching, 2),
+        "max_branching_factor": max_branching,
+        "branching_healthy": max_branching <= 10,
+        "max_chain_length": max_chain,
+        "avg_chain_length": round(avg_chain, 2),
+        "depth_levels": len(level_widths),
+        # Clumping metrics
+        "level_widths": level_widths[:10],  # First 10 levels
+        "clumping_ratio": round(clumping_ratio, 2),
+        "clumping_healthy": clumping_ratio < 3,
+        # Priority inheritance
+        "priority_violations": len(violations),
+        "priority_violation_examples": violations[:5],
+        "priority_healthy": len(violations) == 0,
+        # Connectivity
+        "connected_components": num_components,
+        "components_healthy": num_components == 1,
+        "strategic_reachability": round(strategic_reachability, 1),
+        "reachability_healthy": strategic_reachability >= 95,
+        "orphan_count": len(orphan_tasks),
+        "orphan_examples": orphan_tasks[:5],
+    }
+
+
+def render_task_graph_tab():
+    """Render the Task Graph tab with visualization and health metrics."""
+    st.markdown(
+        "<h2 style='color: #a5b4fc;'>📊 Task Network Health</h2>",
+        unsafe_allow_html=True,
+    )
+
+    # Load graph data
+    graph = load_task_graph()
+    if not graph:
+        st.warning("No task graph found. Run `/task-viz` to generate one.")
+        return
+
+    # Calculate health metrics
+    health = calculate_graph_health(graph)
+
+    # Display SVG if available
+    svg_path = find_latest_svg()
+    if svg_path:
+        st.markdown(
+            f"**Graph:** `{svg_path.name}` (generated {_format_time_ago(datetime.fromtimestamp(svg_path.stat().st_mtime, tz=timezone.utc))})"
+        )
+
+        # Read and display SVG with scrollable container
+        svg_content = svg_path.read_text()
+        st.markdown(
+            f"""<div style="max-height: 400px; overflow: auto; border: 1px solid #333; border-radius: 8px; padding: 10px; background: #0a0a0a;">
+            {svg_content}
+            </div>""",
+            unsafe_allow_html=True,
+        )
+    else:
+        st.info(
+            "No SVG visualization found. Run `python3 $AOPS/scripts/task_graph.py` to generate one."
+        )
+
+    # Health Metrics Section
+    st.markdown(
+        "<h3 style='color: #818cf8; margin-top: 24px;'>Health Metrics</h3>",
+        unsafe_allow_html=True,
+    )
+
+    # Summary stats
+    col1, col2, col3, col4 = st.columns(4)
+    with col1:
+        st.metric("Nodes", health["total_nodes"])
+    with col2:
+        st.metric("Edges", health["total_edges"])
+    with col3:
+        st.metric("Goals", health["goals"])
+    with col4:
+        st.metric("Tasks", health["tasks"])
+
+    # Health indicators in cards
+    metrics_html = "<div style='display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 16px;'>"
+
+    # 1. Sequencing vs Clumping
+    clump_status = "✅" if health["clumping_healthy"] else "⚠️"
+    clump_color = "#4ade80" if health["clumping_healthy"] else "#fbbf24"
+    metrics_html += f"""
+    <div style='background: linear-gradient(135deg, #1a1a2d 0%, #0d0d1a 100%); border: 1px solid {clump_color}; border-radius: 8px; padding: 12px;'>
+        <div style='color: {clump_color}; font-weight: bold; font-size: 0.9em;'>{clump_status} SEQUENCING</div>
+        <div style='color: #e0e0e0; font-size: 0.85em; margin-top: 6px;'>
+            Clumping ratio: <b>{health["clumping_ratio"]}</b> (target: &lt;3)<br>
+            Max level width: {max(health["level_widths"]) if health["level_widths"] else 0}<br>
+            Depth levels: {health["depth_levels"]}
+        </div>
+    </div>"""
+
+    # 2. Branching Factor
+    branch_status = "✅" if health["branching_healthy"] else "⚠️"
+    branch_color = "#4ade80" if health["branching_healthy"] else "#fbbf24"
+    metrics_html += f"""
+    <div style='background: linear-gradient(135deg, #1a1a2d 0%, #0d0d1a 100%); border: 1px solid {branch_color}; border-radius: 8px; padding: 12px;'>
+        <div style='color: {branch_color}; font-weight: bold; font-size: 0.9em;'>{branch_status} BRANCHING</div>
+        <div style='color: #e0e0e0; font-size: 0.85em; margin-top: 6px;'>
+            Avg branching: <b>{health["avg_branching_factor"]}</b><br>
+            Max branching: <b>{health["max_branching_factor"]}</b> (target: ≤10)<br>
+            Avg chain length: {health["avg_chain_length"]}
+        </div>
+    </div>"""
+
+    # 3. Priority Inheritance
+    priority_status = "✅" if health["priority_healthy"] else "🚫"
+    priority_color = "#4ade80" if health["priority_healthy"] else "#ef4444"
+    metrics_html += f"""
+    <div style='background: linear-gradient(135deg, #1a1a2d 0%, #0d0d1a 100%); border: 1px solid {priority_color}; border-radius: 8px; padding: 12px;'>
+        <div style='color: {priority_color}; font-weight: bold; font-size: 0.9em;'>{priority_status} PRIORITY INHERITANCE</div>
+        <div style='color: #e0e0e0; font-size: 0.85em; margin-top: 6px;'>
+            Violations: <b>{health["priority_violations"]}</b> (target: 0)<br>
+            Max chain: {health["max_chain_length"]} levels
+        </div>
+    </div>"""
+
+    # 4. Connected Components
+    conn_status = "✅" if health["components_healthy"] else "🚫"
+    conn_color = "#4ade80" if health["components_healthy"] else "#ef4444"
+    metrics_html += f"""
+    <div style='background: linear-gradient(135deg, #1a1a2d 0%, #0d0d1a 100%); border: 1px solid {conn_color}; border-radius: 8px; padding: 12px;'>
+        <div style='color: {conn_color}; font-weight: bold; font-size: 0.9em;'>{conn_status} CONNECTIVITY</div>
+        <div style='color: #e0e0e0; font-size: 0.85em; margin-top: 6px;'>
+            Components: <b>{health["connected_components"]}</b> (target: 1)<br>
+            All tasks should connect to one graph
+        </div>
+    </div>"""
+
+    # 5. Strategic Reachability
+    reach_status = "✅" if health["reachability_healthy"] else "⚠️"
+    reach_color = "#4ade80" if health["reachability_healthy"] else "#fbbf24"
+    metrics_html += f"""
+    <div style='background: linear-gradient(135deg, #1a1a2d 0%, #0d0d1a 100%); border: 1px solid {reach_color}; border-radius: 8px; padding: 12px;'>
+        <div style='color: {reach_color}; font-weight: bold; font-size: 0.9em;'>{reach_status} STRATEGIC REACHABILITY</div>
+        <div style='color: #e0e0e0; font-size: 0.85em; margin-top: 6px;'>
+            Reachable: <b>{health["strategic_reachability"]}%</b> (target: 100%)<br>
+            Orphan tasks: {health["orphan_count"]}
+        </div>
+    </div>"""
+
+    # 6. Chain Depth
+    metrics_html += f"""
+    <div style='background: linear-gradient(135deg, #1a1a2d 0%, #0d0d1a 100%); border: 1px solid #818cf8; border-radius: 8px; padding: 12px;'>
+        <div style='color: #818cf8; font-weight: bold; font-size: 0.9em;'>📏 CHAIN DEPTH</div>
+        <div style='color: #e0e0e0; font-size: 0.85em; margin-top: 6px;'>
+            Max chain: <b>{health["max_chain_length"]}</b> levels<br>
+            Avg chain: {health["avg_chain_length"]}<br>
+            Longer = better sequencing
+        </div>
+    </div>"""
+
+    metrics_html += "</div>"
+    st.markdown(metrics_html, unsafe_allow_html=True)
+
+    # Show violation details if any
+    if health["priority_violation_examples"]:
+        st.markdown(
+            "<h4 style='color: #ef4444; margin-top: 20px;'>Priority Violations</h4>",
+            unsafe_allow_html=True,
+        )
+        for v in health["priority_violation_examples"]:
+            st.markdown(
+                f"- **{esc(v['parent'])}** (P{v['parent_priority']}) → **{esc(v['child'])}** (P{v['child_priority']})",
+                unsafe_allow_html=True,
+            )
+
+    # Show orphan examples if any
+    if health["orphan_examples"]:
+        st.markdown(
+            "<h4 style='color: #fbbf24; margin-top: 20px;'>Orphan Tasks (not connected to goals)</h4>",
+            unsafe_allow_html=True,
+        )
+        for orphan in health["orphan_examples"]:
+            st.markdown(f"- {esc(orphan)}")
+        if health["orphan_count"] > 5:
+            st.markdown(f"*...and {health['orphan_count'] - 5} more*")
 
 
 # ============================================================================
 # UNIFIED FOCUS DASHBOARD - Single glanceable view
 # ============================================================================
 
-# Initialize analyzer for daily log
-analyzer = SessionAnalyzer()
+# Create tabs
+tab_dashboard, tab_graph = st.tabs(["📊 Dashboard", "🕸️ Task Graph"])
 
-# Load synthesis
-synthesis = load_synthesis()
+with tab_graph:
+    render_task_graph_tab()
 
-# === LLM SYNTHESIS PANEL (if available) ===
-if synthesis:
-    # Calculate age and staleness
-    age_minutes = synthesis.get("_age_minutes", 0)
-    age_str = f"{int(age_minutes)}m ago"
-    is_stale = age_minutes > 60
+with tab_dashboard:
+    # Initialize analyzer for daily log
+    analyzer = SessionAnalyzer()
 
-    # Stale indicator styling
-    stale_class = "stale" if is_stale else ""
-    stale_badge = (
-        " <span style='background: #f59e0b; color: #000; padding: 2px 6px; border-radius: 3px; font-size: 0.7em; margin-left: 8px;'>STALE - re-run /session-insights</span>"
-        if is_stale
-        else ""
-    )
+    # Load synthesis
+    synthesis = load_synthesis()
 
-    synth_html = "<div class='synthesis-panel'>"
-    synth_html += f"<div class='synthesis-header'><div class='synthesis-title'>🧠 FOCUS SYNTHESIS{stale_badge}</div><div class='synthesis-age'>{age_str}</div></div>"
+    # === LLM SYNTHESIS PANEL (if available) ===
+    if synthesis:
+        # Calculate age and staleness
+        age_minutes = synthesis.get("_age_minutes", 0)
+        age_str = f"{int(age_minutes)}m ago"
+        is_stale = age_minutes > 60
 
-    # Narrative section - tell the day's story
-    narrative = synthesis.get("narrative", [])
-    if narrative:
-        synth_html += "<div class='synthesis-narrative'>"
-        synth_html += "<div class='synthesis-narrative-title'>📖 TODAY'S STORY</div>"
-        synth_html += "<ul class='synthesis-narrative-list'>"
-        for bullet in narrative:
-            synth_html += f"<li>{esc(bullet)}</li>"
-        synth_html += "</ul></div>"
-
-    # Grid of status cards
-    synth_html += "<div class='synthesis-grid'>"
-
-    # Done card
-    accomplishments = synthesis.get("accomplishments", {})
-    if accomplishments.get("summary"):
-        synth_html += "<div class='synthesis-card done'>"
-        synth_html += f"<div class='synthesis-card-title'>✅ DONE ({accomplishments.get('count', 0)})</div>"
-        synth_html += f"<div class='synthesis-card-content'>{esc(accomplishments.get('summary', ''))}</div>"
-        synth_html += "</div>"
-
-    # Alignment card
-    alignment = synthesis.get("alignment", {})
-    if alignment.get("note"):
-        status = alignment.get("status", "drifted")
-        status_class = f"alignment {status}"
-        status_icon = (
-            "✅" if status == "on_track" else "⚠️" if status == "drifted" else "🚫"
+        # Stale indicator styling
+        stale_class = "stale" if is_stale else ""
+        stale_badge = (
+            " <span style='background: #f59e0b; color: #000; padding: 2px 6px; border-radius: 3px; font-size: 0.7em; margin-left: 8px;'>STALE - re-run /session-insights</span>"
+            if is_stale
+            else ""
         )
-        synth_html += f"<div class='synthesis-card {status_class}'>"
-        synth_html += f"<div class='synthesis-card-title'>{status_icon} ALIGNMENT</div>"
-        synth_html += f"<div class='synthesis-card-content'>{esc(alignment.get('note', ''))}</div>"
-        synth_html += "</div>"
 
-    # Context card
-    context = synthesis.get("context", {})
-    if context.get("recent_threads"):
-        threads = ", ".join(context.get("recent_threads", [])[:2])
-        synth_html += "<div class='synthesis-card context'>"
-        synth_html += "<div class='synthesis-card-title'>📍 CONTEXT</div>"
-        synth_html += f"<div class='synthesis-card-content'>{esc(threads)}</div>"
-        synth_html += "</div>"
+        synth_html = "<div class='synthesis-panel'>"
+        synth_html += f"<div class='synthesis-header'><div class='synthesis-title'>🧠 FOCUS SYNTHESIS{stale_badge}</div><div class='synthesis-age'>{age_str}</div></div>"
 
-    # Waiting card
-    waiting_on = synthesis.get("waiting_on", [])
-    if waiting_on:
-        first_blocker = waiting_on[0]
-        synth_html += "<div class='synthesis-card waiting'>"
-        synth_html += (
-            f"<div class='synthesis-card-title'>⏳ BLOCKED ({len(waiting_on)})</div>"
-        )
-        synth_html += f"<div class='synthesis-card-content'>{esc(first_blocker.get('task', ''))}</div>"
-        synth_html += "</div>"
+        # Narrative section - tell the day's story
+        narrative = synthesis.get("narrative", [])
+        if narrative:
+            synth_html += "<div class='synthesis-narrative'>"
+            synth_html += (
+                "<div class='synthesis-narrative-title'>📖 TODAY'S STORY</div>"
+            )
+            synth_html += "<ul class='synthesis-narrative-list'>"
+            for bullet in narrative:
+                synth_html += f"<li>{esc(bullet)}</li>"
+            synth_html += "</ul></div>"
 
-    synth_html += "</div>"  # End grid
+        # Grid of status cards
+        synth_html += "<div class='synthesis-grid'>"
 
-    # Session Insights panel (skill compliance, context gaps)
-    skill_insights = synthesis.get("skill_insights", {})
-    if skill_insights:
-        synth_html += "<div class='insights-panel'>"
-        synth_html += "<div class='insights-title'>🔍 SESSION INSIGHTS</div>"
-
-        # Stats row
-        compliance = skill_insights.get("compliance_rate")
-        if compliance is not None:
-            pct = int(compliance * 100)
-            color = "#4ade80" if pct >= 70 else "#fbbf24" if pct >= 40 else "#f87171"
-            synth_html += f"<span class='insights-stat'><span class='insights-stat-label'>Skill Compliance:</span> <span class='insights-stat-value' style='color: {color};'>{pct}%</span></span>"
-
-        corrections = skill_insights.get("corrections_count", 0)
-        if corrections > 0:
-            synth_html += f"<span class='insights-stat'><span class='insights-stat-label'>Corrections:</span> <span class='insights-stat-value'>{corrections}</span></span>"
-
-        failures = skill_insights.get("failures_count", 0)
-        if failures > 0:
-            synth_html += f"<span class='insights-stat'><span class='insights-stat-label'>Failures:</span> <span class='insights-stat-value' style='color: #f87171;'>{failures}</span></span>"
-
-        successes = skill_insights.get("successes_count", 0)
-        if successes > 0:
-            synth_html += f"<span class='insights-stat'><span class='insights-stat-label'>Successes:</span> <span class='insights-stat-value' style='color: #4ade80;'>{successes}</span></span>"
-
-        # Context gaps
-        context_gaps = skill_insights.get("top_context_gaps", [])
-        if context_gaps:
-            synth_html += "<div style='margin-top: 8px;'>"
-            for gap in context_gaps[:3]:
-                synth_html += f"<div class='insights-gap'>{esc(gap)}</div>"
+        # Done card
+        accomplishments = synthesis.get("accomplishments", {})
+        if accomplishments.get("summary"):
+            synth_html += "<div class='synthesis-card done'>"
+            synth_html += f"<div class='synthesis-card-title'>✅ DONE ({accomplishments.get('count', 0)})</div>"
+            synth_html += f"<div class='synthesis-card-content'>{esc(accomplishments.get('summary', ''))}</div>"
             synth_html += "</div>"
 
-        synth_html += "</div>"
+        # Alignment card
+        alignment = synthesis.get("alignment", {})
+        if alignment.get("note"):
+            status = alignment.get("status", "drifted")
+            status_class = f"alignment {status}"
+            status_icon = (
+                "✅" if status == "on_track" else "⚠️" if status == "drifted" else "🚫"
+            )
+            synth_html += f"<div class='synthesis-card {status_class}'>"
+            synth_html += (
+                f"<div class='synthesis-card-title'>{status_icon} ALIGNMENT</div>"
+            )
+            synth_html += f"<div class='synthesis-card-content'>{esc(alignment.get('note', ''))}</div>"
+            synth_html += "</div>"
 
-    # Suggestion
-    suggestion = synthesis.get("suggestion")
-    if suggestion:
-        synth_html += f"<div class='synthesis-suggestion'>{esc(suggestion)}</div>"
+        # Context card
+        context = synthesis.get("context", {})
+        if context.get("recent_threads"):
+            threads = ", ".join(context.get("recent_threads", [])[:2])
+            synth_html += "<div class='synthesis-card context'>"
+            synth_html += "<div class='synthesis-card-title'>📍 CONTEXT</div>"
+            synth_html += f"<div class='synthesis-card-content'>{esc(threads)}</div>"
+            synth_html += "</div>"
 
-    synth_html += "</div>"  # End panel
-    st.markdown(synth_html, unsafe_allow_html=True)
+        # Waiting card
+        waiting_on = synthesis.get("waiting_on", [])
+        if waiting_on:
+            first_blocker = waiting_on[0]
+            synth_html += "<div class='synthesis-card waiting'>"
+            synth_html += f"<div class='synthesis-card-title'>⏳ BLOCKED ({len(waiting_on)})</div>"
+            synth_html += f"<div class='synthesis-card-content'>{esc(first_blocker.get('task', ''))}</div>"
+            synth_html += "</div>"
+
+        synth_html += "</div>"  # End grid
+
+        # Session Insights panel (skill compliance, context gaps)
+        skill_insights = synthesis.get("skill_insights", {})
+        if skill_insights:
+            synth_html += "<div class='insights-panel'>"
+            synth_html += "<div class='insights-title'>🔍 SESSION INSIGHTS</div>"
+
+            # Stats row
+            compliance = skill_insights.get("compliance_rate")
+            if compliance is not None:
+                pct = int(compliance * 100)
+                color = (
+                    "#4ade80" if pct >= 70 else "#fbbf24" if pct >= 40 else "#f87171"
+                )
+                synth_html += f"<span class='insights-stat'><span class='insights-stat-label'>Skill Compliance:</span> <span class='insights-stat-value' style='color: {color};'>{pct}%</span></span>"
+
+            corrections = skill_insights.get("corrections_count", 0)
+            if corrections > 0:
+                synth_html += f"<span class='insights-stat'><span class='insights-stat-label'>Corrections:</span> <span class='insights-stat-value'>{corrections}</span></span>"
+
+            failures = skill_insights.get("failures_count", 0)
+            if failures > 0:
+                synth_html += f"<span class='insights-stat'><span class='insights-stat-label'>Failures:</span> <span class='insights-stat-value' style='color: #f87171;'>{failures}</span></span>"
+
+            successes = skill_insights.get("successes_count", 0)
+            if successes > 0:
+                synth_html += f"<span class='insights-stat'><span class='insights-stat-label'>Successes:</span> <span class='insights-stat-value' style='color: #4ade80;'>{successes}</span></span>"
+
+            # Context gaps
+            context_gaps = skill_insights.get("top_context_gaps", [])
+            if context_gaps:
+                synth_html += "<div style='margin-top: 8px;'>"
+                for gap in context_gaps[:3]:
+                    synth_html += f"<div class='insights-gap'>{esc(gap)}</div>"
+                synth_html += "</div>"
+
+            synth_html += "</div>"
+
+        # Suggestion
+        suggestion = synthesis.get("suggestion")
+        if suggestion:
+            synth_html += f"<div class='synthesis-suggestion'>{esc(suggestion)}</div>"
+
+        synth_html += "</div>"  # End panel
+        st.markdown(synth_html, unsafe_allow_html=True)
 
 # === ACTIVE SESSIONS PANEL ===
-active_sessions = fetch_session_activity(hours=24)
+# Fetch 7 days of history to support "Stale" bucket
+active_sessions = fetch_session_activity(hours=168)
+
 if active_sessions:
-    st.markdown(
-        f"<div class='active-sessions-panel'><div class='active-sessions-title'>📍 ACTIVE SESSIONS ({len(active_sessions)})</div>",
-        unsafe_allow_html=True,
-    )
+    # Bucket sessions
+    now_utc = datetime.now(timezone.utc)
+    buckets = {
+        "active": [],  # < 4h
+        "paused": [],  # 4h - 24h
+        "stale": [],  # > 24h
+    }
 
-    for session in active_sessions[:5]:
-        # Extract data
-        sess_id = session.get("session_short", "")
-        hostname = session.get("hostname", "unknown")
-        project = session.get("project", "unknown")
-        time_ago = session.get("time_ago", "")
-        prompt = session.get("last_prompt", "")
+    for sess in active_sessions:
+        try:
+            ts_str = sess.get("timestamp")
+            if not ts_str:
+                continue
 
-        # Format todowrite
-        todowrite = session.get("todowrite")
-        todo_html = ""
-        if todowrite:
-            current = todowrite.get("current_task")
-            if current:
-                todo_html += f"<div class='session-todo'><span class='session-todo-active'>▶ {esc(current)}</span></div>"
+            # handle timezone if missing (assume UTC as per fetch logic)
+            if ts_str.endswith("Z"):
+                ts_str = ts_str[:-1] + "+00:00"
 
-            pending = todowrite.get("pending_tasks", [])
-            if pending:
-                count = len(pending)
-                label = f"+{count} pending" if count > 0 else "No pending tasks"
-                todo_html += f"<div class='session-todo'><span class='session-todo-pending'>□ {label}</span></div>"
+            dt = datetime.fromisoformat(ts_str)
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
 
-        # Render card
-        card_html = f"""
-        <div class='session-card'>
-            <div class='session-header'>
-                <span class='session-id'>{esc(sess_id)}</span>
-                <span class='session-meta'>@ {esc(hostname)} | {esc(project)} | {esc(time_ago)}</span>
-            </div>
-            <div class='session-prompt'>"{esc(prompt)}"</div>
-            {todo_html}
-        </div>
-        """
-        st.markdown(card_html, unsafe_allow_html=True)
+            age_seconds = (now_utc - dt).total_seconds()
+
+            if age_seconds < 4 * 3600:
+                buckets["active"].append(sess)
+            elif age_seconds < 24 * 3600:
+                buckets["paused"].append(sess)
+            else:
+                buckets["stale"].append(sess)
+        except Exception:
+            continue
+
+    # Render Main Container
+    st.markdown(f"<div class='active-sessions-panel'>", unsafe_allow_html=True)
+
+    # Helper to group by project
+    def render_grouped_sessions(sessions, show_details=True):
+        by_project = {}
+        for s in sessions:
+            p = s.get("project", "unknown")
+            if p not in by_project:
+                by_project[p] = []
+            by_project[p].append(s)
+
+        for proj, items in sorted(
+            by_project.items(), key=lambda x: x[0]
+        ):  # Sort by project name
+            st.markdown(
+                f"<div style='color: #818cf8; font-weight: bold; margin: 12px 0 4px 0; font-size: 0.9em; text-transform: uppercase;'>{esc(proj)}</div>",
+                unsafe_allow_html=True,
+            )
+            for session in items:
+                sess_id = session.get("session_short", "")
+                hostname = session.get("hostname", "unknown")
+                time_ago = session.get("time_ago", "")
+                prompt = session.get("last_prompt", "")
+
+                # Format todowrite
+                todowrite = session.get("todowrite")
+                todo_html = ""
+                if todowrite:
+                    current = todowrite.get("current_task")
+                    if current:
+                        todo_html += f"<div class='session-todo'><span class='session-todo-active'>▶ {esc(current)}</span></div>"
+
+                    pending = todowrite.get("pending_tasks", [])
+                    if pending:
+                        count = len(pending)
+                        label = f"+{count} pending" if count > 0 else "No pending tasks"
+                        todo_html += f"<div class='session-todo'><span class='session-todo-pending'>□ {label}</span></div>"
+
+                if show_details:
+                    card_html = f"""
+                    <div class='session-card'>
+                        <div class='session-header'>
+                            <span class='session-id'>{esc(sess_id)}</span>
+                            <span class='session-meta'>@ {esc(hostname)} | {esc(time_ago)}</span>
+                        </div>
+                        <div class='session-prompt'>"{esc(prompt)}"</div>
+                        {todo_html}
+                    </div>
+                    """
+                    st.markdown(card_html, unsafe_allow_html=True)
+                else:
+                    # Compact view
+                    st.markdown(
+                        f"""
+                        <div style='padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.05);'>
+                            <span style='font-family: monospace; color: #94a3b8; font-size: 0.8em; margin-right: 8px;'>{esc(sess_id)}</span>
+                            <span style='color: #e2e8f0; font-size: 0.9em;'>"{esc(prompt)}"</span>
+                            <span style='color: #64748b; font-size: 0.8em; float: right;'>{esc(time_ago)}</span>
+                        </div>
+                        """,
+                        unsafe_allow_html=True,
+                    )
+
+    # 1. Active Now (< 4h)
+    if buckets["active"]:
+        st.markdown(
+            f"<div class='active-sessions-title'>⚡ ACTIVE NOW ({len(buckets['active'])})</div>",
+            unsafe_allow_html=True,
+        )
+        render_grouped_sessions(buckets["active"], show_details=True)
+
+    # 2. Paused (4-24h)
+    if buckets["paused"]:
+        st.markdown(
+            f"<div class='active-sessions-title' style='margin-top: 16px; color: #fbbf24;'>⏸️ PAUSED ({len(buckets['paused'])})</div>",
+            unsafe_allow_html=True,
+        )
+        # Use Streamlit expander for collapsed view
+        with st.expander("Show paused sessions", expanded=False):
+            render_grouped_sessions(buckets["paused"], show_details=False)
+
+    # 3. Stale (>24h)
+    if buckets["stale"]:
+        st.markdown(
+            f"<div class='active-sessions-title' style='margin-top: 16px; color: #94a3b8;'>🕸️ STALE (>24h) ({len(buckets['stale'])})</div>",
+            unsafe_allow_html=True,
+        )
+        # Just a summary count or list
+        with st.expander("Show stale sessions"):
+            for session in buckets["stale"][:10]:  # Limit stale listing
+                sess_id = session.get("session_short", "")
+                time_ago = session.get("time_ago", "")
+                project = session.get("project", "unknown")
+                st.markdown(f"- **{esc(sess_id)}** ({esc(project)}) - {esc(time_ago)}")
+            if len(buckets["stale"]) > 10:
+                st.markdown(f"*...and {len(buckets['stale']) - 10} more*")
 
     st.markdown("</div>", unsafe_allow_html=True)
 

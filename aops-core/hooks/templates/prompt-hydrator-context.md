@@ -5,7 +5,10 @@ category: template
 description: |
   Template written to temp file by UserPromptSubmit hook for prompt-hydrator subagent.
   Variables: {prompt} (user prompt), {session_context} (recent prompts, tools, tasks),
+             {axioms} (full AXIOMS.md), {heuristics} (full HEURISTICS.md),
              {task_state} (current work state from tasks MCP)
+  NOTE: Hydrator selects relevant principles from axioms/heuristics for main agent.
+  Main agent receives ONLY selected principles, not full files.
 ---
 
 # Prompt Hydration Request
@@ -41,6 +44,10 @@ Transform this user prompt into an execution plan with scope detection and task 
 ## Skills Index (Pre-loaded)
 
 {skills_index}
+
+## Axioms (Pre-loaded)
+
+{axioms}
 
 ## Heuristics (Pre-loaded)
 

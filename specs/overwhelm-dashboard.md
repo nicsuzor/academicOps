@@ -119,10 +119,15 @@ Agent sessions --> session state json files --> Dashboard
 | Panel | Purpose | Data Source |
 |-------|---------|-------------|
 | **NOW** | Current focus from daily notes | Daily note parsing |
+| **Task log**  | What's been happening | tasks mcp |
 | **Priority Tasks** | P0/P1 tasks grouped by project | index.json |
 | **Blockers** | Tasks with unmet dependencies (red-themed) | index.json computed relationships |
 | **Done Today** | Completed items | index.json + daily notes |
 | **Active Sessions** | What sessions are working on | R2 prompts + local JSONL |
+
+### Task log
+
+Shows real-time view of tasks checked out, completed, added.
 
 ### Active Sessions Panel
 
@@ -135,13 +140,14 @@ Shows per-session context for "where did I leave off" recovery:
 │ abc1234 @ macbook | writing | 5m ago                │
 │ "Review implementation plan..."                      │
 │ ▶ Update dashboard session panel                    │
+| x Read implementation plan                          |
 │ □ +3 pending                                        │
 └─────────────────────────────────────────────────────┘
 ```
 
 - **Session ID**: First 7 chars of UUID
 - **Meta**: hostname | project | time ago
-- **Last prompt**: Most recent user prompt (truncated)
+- **Last prompt**: Most recent user prompt
 - **In-progress**: Current TodoWrite item
 - **Pending**: Count of remaining todos
 
@@ -160,6 +166,31 @@ Shows per-session context for "where did I leave off" recovery:
 4. **Fallback**: Show git branch + modified files, OR show nothing
 
 **Do not**: Display "Local activity" placeholder. It adds noise without information.
+
+### Task Graph Tab
+
+Visualizes the task network and calculates health metrics. Accessible via the "🕸️ Task Graph" tab.
+
+**Data Sources**:
+- `graph.json` from fast-indexer (node-link format)
+- Most recent `task-viz*.svg` for visualization
+
+**Health Metrics Displayed**:
+
+| Metric | What it measures | Healthy signal |
+|--------|------------------|----------------|
+| **Sequencing (Clumping Ratio)** | Max level width ÷ avg level width | < 3.0 |
+| **Branching Factor** | Avg/max children per node | Max ≤ 10 |
+| **Priority Inheritance** | Children with lower priority than parent | 0 violations |
+| **Connectivity** | Number of disconnected subgraphs | 1 component |
+| **Strategic Reachability** | % of tasks reachable from goals | ≥ 95% |
+| **Chain Depth** | Longest goal→task path | Longer = better sequencing |
+
+**Features**:
+- Scrollable SVG graph display (max-height 400px)
+- Color-coded health cards (green=healthy, yellow=warning, red=problem)
+- Lists specific priority violations if any
+- Lists orphan tasks not connected to goals
 
 ## Design Principles
 

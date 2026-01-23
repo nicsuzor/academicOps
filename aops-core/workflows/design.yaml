@@ -1,0 +1,129 @@
+# Design Workflow - Constraint Format
+# Converted from: workflows/design.md
+# Conversion date: 2026-01-23
+
+workflow: design
+description: Specification and planning for known work
+extends: [base-task-tracking]
+
+context:
+  applies_when:
+    - "add feature X" with unclear requirements
+    - complex modifications needing architecture decisions
+    - "how should we build this?"
+  not_when:
+    - obvious scope (use minor-edit)
+    - uncertain path (use decompose first)
+    - simple bug (use debugging)
+
+# ============================================================================
+# CONSTRAINTS
+# ============================================================================
+
+constraints:
+  # ---------------------------------------------------------------------------
+  # SPEC REQUIREMENT
+  # ---------------------------------------------------------------------------
+
+  # Must verify spec exists before planning
+  - BEFORE create_plan: spec_verified
+
+  # If no spec, create SPEC task that blocks implementation
+  - IF no_spec THEN create_spec_task_first
+
+  # ---------------------------------------------------------------------------
+  # DESIGN SEQUENCING
+  # ---------------------------------------------------------------------------
+
+  # Must have acceptance criteria before planning
+  - BEFORE create_plan: acceptance_criteria_defined
+
+  # Must have plan before implementation
+  - BEFORE implement: plan_exists
+
+  # Must have critic review before implementation
+  - BEFORE implement: critic_reviewed
+
+  # ---------------------------------------------------------------------------
+  # CRITIC GATES
+  # ---------------------------------------------------------------------------
+
+  - IF critic_proceeds THEN proceed_to_implementation
+  - IF critic_revises THEN revise_plan
+  - IF critic_halts THEN halt_and_report
+
+  # ---------------------------------------------------------------------------
+  # EXIT ROUTING
+  # ---------------------------------------------------------------------------
+
+  # Route to appropriate implementation workflow after design approval
+  - IF general_code THEN route_to base-tdd
+  - IF python_code THEN route_to python-dev_skill
+  - IF framework_code THEN route_to framework_skill
+
+# ============================================================================
+# TRIGGERS
+# ============================================================================
+
+triggers:
+  - ON design_request: INVOKE verify_spec
+  - ON spec_verified: INVOKE define_acceptance_criteria
+  - ON acceptance_criteria_defined: INVOKE create_plan
+  - ON plan_created: INVOKE critic_review
+  - ON critic_proceeds: PROCEED_TO implementation
+  - ON critic_revises: INVOKE revise_plan
+  - ON critic_halts: INVOKE halt_and_report
+
+# ============================================================================
+# PREDICATES
+# ============================================================================
+
+predicates:
+  spec_verified:
+    check: spec document exists with user stories and acceptance criteria
+
+  no_spec:
+    check: NOT spec_verified
+
+  acceptance_criteria_defined:
+    check: task.body contains "## Acceptance Criteria" with measurable items
+
+  plan_exists:
+    check: task.body contains "## Implementation Plan"
+
+  critic_reviewed:
+    check: critic agent spawned AND returned verdict
+
+  critic_proceeds:
+    check: critic verdict == "PROCEED"
+
+  critic_revises:
+    check: critic verdict == "REVISE"
+
+  critic_halts:
+    check: critic verdict == "HALT"
+
+  general_code:
+    check: implementation is general purpose code
+
+  python_code:
+    check: implementation is Python-specific
+
+  framework_code:
+    check: implementation modifies framework components
+
+# ============================================================================
+# CONVERSION NOTES
+# ============================================================================
+
+# What was preserved:
+# - Spec verification as first step
+# - SPEC task creation when spec missing
+# - Acceptance criteria requirement
+# - Critic review gate (PROCEED/REVISE/HALT)
+# - Exit routing to implementation workflows
+
+# What was clarified:
+# - "Verify spec exists" now has explicit predicate
+# - Critic outcomes are explicit conditionals
+# - Exit routing conditions are concrete

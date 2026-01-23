@@ -145,6 +145,29 @@ def load_workflows_index() -> str:
     return base_workflows + project_workflows
 
 
+def load_axioms() -> str:
+    """Load AXIOMS.md for hydrator context.
+
+    Pre-loads axioms so hydrator can select relevant principles.
+    Returns content after frontmatter separator.
+    """
+    aops_root = get_aops_root()
+    axioms_path = aops_root / "AXIOMS.md"
+
+    if not axioms_path.exists():
+        return "(AXIOMS.md not found)"
+
+    content = axioms_path.read_text()
+
+    # Skip frontmatter if present
+    if content.startswith("---"):
+        parts = content.split("---", 2)
+        if len(parts) >= 3:
+            return parts[2].strip()
+
+    return content.strip()
+
+
 def load_heuristics() -> str:
     """Load HEURISTICS.md for hydrator context.
 
@@ -357,6 +380,7 @@ def build_hydration_instruction(
     # Pre-load stable framework docs (reduces hydrator runtime I/O)
     workflows_index = load_workflows_index()
     skills_index = load_skills_index()
+    axioms = load_axioms()
     heuristics = load_heuristics()
 
     # Get task work state (active and inbox tasks)
@@ -370,6 +394,7 @@ def build_hydration_instruction(
         framework_paths=framework_paths,
         workflows_index=workflows_index,
         skills_index=skills_index,
+        axioms=axioms,
         heuristics=heuristics,
         task_state=task_state,
     )
