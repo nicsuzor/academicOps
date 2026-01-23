@@ -124,7 +124,12 @@ From [sender]: [Actual content or summary]
 
 Do NOT batch these to a later step. Task creation happens AS you process each email, not after.
 
-**After presenting**: Use `AskUserQuestion` to ask which to archive.
+**Archive flow (user confirmation required)**:
+1. Present FYI content in daily note (complete section 2.2)
+2. **DO NOT offer to archive yet** - user needs time to read and process the content
+3. **Wait for user signal** - user will indicate when they've read the content (e.g., responds to the briefing, asks a question, or says "ok" / "got it")
+4. Only AFTER user has acknowledged the content, use `AskUserQuestion` to ask which to archive
+5. Exception: Obvious spam (promotional, irrelevant newsletters) can be offered for archive immediately
 
 **Archiving emails**: Use `messages_move` with `folder_path="Archive"` (not "Deleted Items" - that's trash, not archive). If the Archive folder doesn't exist for an account, ask the user which folder to use.
 
