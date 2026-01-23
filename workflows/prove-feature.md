@@ -5,7 +5,7 @@ bases: []
 ---
 
 # Prove Feature
-
+<!-- NS: this is just the QA skill/feature/command. consolidate -->
 Validate framework integration. "Does it integrate correctly?"
 
 ## Routing Signals

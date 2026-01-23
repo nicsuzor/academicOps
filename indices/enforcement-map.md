@@ -117,6 +117,7 @@ tags: [framework, enforcement, moc]
 | Convention | 3     | Documented pattern, no mechanical check                    |
 | Config     | 1     | External tool config (pyproject.toml, pre-commit)          |
 
+<!-- @NS: no longer correct: -->
 **Note**: "Prompt" level rules are injected at session start via `sessionstart_load_axioms.py`. Agents receive them automatically but compliance is not mechanically enforced.
 
 ### What Constitutes Prompt-Level Enforcement

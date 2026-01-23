@@ -28,18 +28,18 @@ Classify based on execution path and scope:
 
 ### Classification Heuristics
 
-**mechanical** (haiku, immediate):
+**mechanical** (immediate):
 - "Rename X to Y across files"
 - "Add field Z to model"
 - "Fix typo in documentation"
 - Single file, obvious change
 
-**requires-judgment** (sonnet, execute with discretion):
+**requires-judgment** (execute with discretion):
 - "Debug why X fails" (known symptom, unknown cause)
 - "Implement feature Y" (bounded scope, some design decisions)
 - "Review and fix test failures" (investigation within session)
 
-**multi-step** (sonnet, TodoWrite plan):
+**multi-step** (plan with independent review):
 - "Refactor system X" (clear goal, multiple sessions)
 - "Migrate from A to B" (known destination, staged execution)
 - "Complete feature with tests" (multiple phases)
@@ -59,12 +59,13 @@ Classify based on execution path and scope:
 Every task exists on a work graph. Position it correctly:
 
 ### Parent Selection
-
+<!-- NS: this needs to include a search step -->
 **Set `parent` when**:
 - Task is a subtask of existing project/goal
 - Work contributes to a larger deliverable
 - Task naturally belongs under umbrella work
 
+<!-- NS: NO ORPHANS! we want tasks SEQUENCED, even if they're going to be at the same level; we don't want a CLUMP of tasks attached to the trunk. Graph MUST have STRUCTURE. -->
 **Leave `parent` null when**:
 - Standalone work (bug fixes, quick tasks)
 - No obvious parent exists
@@ -93,7 +94,7 @@ Every task exists on a work graph. Position it correctly:
 5. **One actionable task NOW** - Every decomposition should produce at least one ready task
 
 ### Project Assignment
-
+<!-- MUST set project (default to 'ns') -->
 **Set `project` when**:
 - Work clearly belongs to a specific domain
 - Multiple related tasks exist or will exist

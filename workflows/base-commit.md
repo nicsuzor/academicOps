@@ -9,6 +9,7 @@ category: base
 
 ## Pattern
 
+After EVERY chunk of work:
 1. Stage specific files (not `git add -A`)
 2. Commit with clear message (why, not what)
 3. Push to remote

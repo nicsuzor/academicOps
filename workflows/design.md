@@ -21,7 +21,7 @@ Specification and planning for known work.
 - Simple bug → [[debugging]]
 
 ## Unique Steps
-
+<!-- NS: spec requirement is for framework only. maybe merge this entire file into framework-change.md? -->
 1. Verify spec exists (user stories, acceptance criteria)
    - If no spec → create SPEC task first (blocks implementation)
 2. Articulate clear acceptance criteria

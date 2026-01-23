@@ -10,10 +10,12 @@ category: base
 ## Pattern
 
 1. Search existing tasks for match
-2. If match: claim it (status=active)
-3. If no match: create task with clear title
-4. Update task body with findings during work
-5. Complete task when done
+2. If no match: create task with clear title
+3. Claim the task to lock it.
+4. Undertake work ...
+  - [ WORK ]
+  - Update task body with findings during work
+5. Mark task as complete when done
 
 ## When to Skip
 

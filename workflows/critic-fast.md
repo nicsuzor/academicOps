@@ -15,9 +15,8 @@ Quick sanity check. Default critic invocation.
 
 ## NOT This Workflow
 
-- Framework changes → [[critic-detailed]]
-- Architectural decisions → [[critic-detailed]]
-- Multi-file refactors → [[critic-detailed]]
+- Research projects → [[critic-detailed]]
+- High risk / high value work → [[critic-detailed]]
 
 ## Invocation
 

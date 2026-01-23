@@ -10,9 +10,7 @@ Framework self-improvement during any task.
 
 ## When to Apply
 
-- Working on framework itself
-- Instructions feel unclear
-- Friction noticed ("harder than it should be")
+- Working under uncertainty. If we don't know how to do it, but we want to try, we have to learn from the experiment.
 
 ## Decision Tree
 

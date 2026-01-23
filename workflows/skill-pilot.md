@@ -5,7 +5,7 @@ bases: [base-task-tracking]
 ---
 
 # Skill Pilot
-
+<!-- NS: merge into 'dogfooding', covers same ground. -->
 Build new skills when [[decompose]] reveals capability gaps.
 
 ## Routing Signals

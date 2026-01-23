@@ -1,15 +1,17 @@
 ---
-title: Emergency Handover Workflow
+title: Handover Workflow
 type: automation
 category: instruction
-permalink: emergency-handover-workflow
+permalink: handover-workflow
 tags:
   - dump
   - handover
   - workflow
+  - emergency-handover-workflow
 ---
 
-# Emergency Handover Workflow
+<!-- NS: make this a 'base' workflow and require just about EVERY task to go through the session end process. MANDATORY. also add git commit and cleanup. -->
+# Task end handover workflow
 
 Graceful session handover when work must stop immediately.
 

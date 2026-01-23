@@ -5,13 +5,13 @@ category: base
 
 # Base: Verification
 
-**Composable base pattern.** Most workflows include this.
+**Composable base pattern.** Most workflows include this. Avoids shifting goalposts during work.
 
 ## Pattern
 
-1. CHECKPOINT step before completion
-2. Evidence gathered (tests pass, behavior observed, output verified)
-3. No completion without verification
+1. BEFORE starting work, lock in clear, testable ACCEPTANCE CRITERIA
+...[ after work ] ...
+2. Confirm according to evidence gathered (tests pass, behavior observed, output verified) against locked ORIGINAL criteria.
 
 ## Escalation
 

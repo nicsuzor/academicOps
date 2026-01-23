@@ -15,7 +15,7 @@ Draft email replies. Agent drafts, user sends.
 
 ## Pre-Requisites
 
-1. Load user voice from STYLE.md
+1. Load user voice from [[STYLE.md]]
 2. If scheduling: check calendar availability
 
 ## Unique Steps
