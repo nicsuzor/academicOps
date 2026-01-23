@@ -81,7 +81,6 @@ HOOK_REGISTRY: dict[str, list[dict[str, Any]]] = {
         {"script": "task_binding.py"},  # Bind task to session on create/claim
         # {"script": "todowrite_fallback.py"},  # DISABLED: Proving main path first
         # {"script": "autocommit_state.py"},  # DISABLED: Auto-commit data/ changes
-        {"script": "memory_sync_closed_issues.py"},  # Sync completed tasks to memory
     ],
     "UserPromptSubmit": [
         {"script": "user_prompt_submit.py"},
