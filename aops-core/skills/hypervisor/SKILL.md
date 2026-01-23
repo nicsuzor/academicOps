@@ -1,6 +1,10 @@
 ---
 name: hypervisor
 description: Batch parallel task processing with atomic locking. Spawns multiple worker agents that pull from shared queue without duplication.
+triggers:
+  - "batch tasks"
+  - "parallel processing"
+  - "process queue in parallel"
 ---
 
 # Hypervisor - Batch Parallel Processing

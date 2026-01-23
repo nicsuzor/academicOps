@@ -5,6 +5,11 @@ category: instruction
 allowed-tools: Read,Grep,Glob,Edit,Write,Bash,Skill
 version: 2.0.0
 permalink: skills-analyst-skill
+triggers:
+  - "data analysis"
+  - "dbt project"
+  - "streamlit app"
+  - "research pipeline"
 ---
 
 # Analyst
