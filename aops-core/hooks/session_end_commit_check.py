@@ -311,25 +311,16 @@ def check_uncommitted_work(session_id: str, transcript_path: str | None) -> dict
         result["should_block"] = True
 
         if git_status.get("staged_changes"):
-            result["message"] = (
-                "Session ending with staged changes. Attempting auto-commit..."
-            )
+            result["message"] = "Staged changes detected. Attempting auto-commit..."
             # Try to auto-commit
             if attempt_auto_commit():
                 result["should_block"] = False
-                result["message"] = "Auto-committed staged changes. Session can proceed."
+                result["message"] = "Auto-committed. Session can proceed."
             else:
-                result["message"] = (
-                    "ERROR: Session ending with staged changes that failed to auto-commit. "
-                    "Please commit manually: git commit -m '<message>'\n\n"
-                    "Changed files:\n" + git_status.get("status_output", "")
-                )
+                result["message"] = "Commit staged changes before ending session"
         else:
             result["message"] = (
-                "ERROR: Session ending with uncommitted changes. "
-                "Tests passed but work was not committed. "
-                "Please commit: git add -A && git commit -m '<message>'\n\n"
-                "Changed files:\n" + git_status.get("status_output", "")
+                "Uncommitted changes detected. Commit before ending session"
             )
 
     return result
@@ -362,12 +353,11 @@ def main():
 
             if check_result["should_block"]:
                 # Block the session and require commit
-                # CRITICAL: Use "decision": "block" with "reason" for Claude to see
-                # Exit code must be 0 for JSON to be processed (exit 2 ignores JSON)
+                # Note: Stop hooks can't send messages to agent (hookSpecificOutput
+                # not supported for Stop event). Keep reason concise to avoid spam.
                 output_data = {
                     "decision": "block",
-                    "reason": check_result["message"],  # Claude sees this
-                    "stopReason": check_result["message"],  # User sees this
+                    "reason": check_result["message"],
                 }
                 logger.info(f"Session end blocked: {check_result['message'][:80]}...")
 

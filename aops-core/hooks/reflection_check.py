@@ -162,34 +162,11 @@ def main():
 
             if not has_reflection:
                 # Block session - Framework Reflection is mandatory per CORE.md
-                # Use hookSpecificOutput.additionalContext so agent sees the message
-                # (reason and systemMessage only show to user terminal, not agent)
-                agent_message = (
-                    "BLOCKED: Framework Reflection required before session end.\n\n"
-                    "Please include a Framework Reflection section in your response. "
-                    "Format (from CORE.md):\n\n"
-                    "## Framework Reflection\n\n"
-                    "**Prompts**: [User prompts from this session]\n"
-                    "**Guidance received**: [Hydrator/custodiet advice, or \"N/A\"]\n"
-                    "**Followed**: [Yes/No/Partial]\n"
-                    "**Outcome**: [success/partial/failure]\n"
-                    "**Accomplishments**: [What was done]\n"
-                    "**Friction points**: [What was hard, or \"none\"]\n"
-                    "**Root cause** (if not success): [Component that failed]\n"
-                    "**Proposed changes**: [Improvements, or \"none\"]\n"
-                    "**Next step**: [Follow-up - file as task if actionable]\n"
-                    "**Workflow improvements**: [Process improvements, or \"none\"]\n"
-                    "**JIT context needed**: [Info that would have helped]\n"
-                    "**Context distractions**: [Files/sections to remove or shrink]\n"
-                    "**User tone**: [Float -1.0 to 1.0]"
-                )
+                # Note: Stop hooks can't send messages to agent (hookSpecificOutput
+                # not supported for Stop event). Keep reason concise to avoid spam.
                 output_data = {
                     "decision": "block",
-                    "reason": "Framework Reflection required before session end",
-                    "hookSpecificOutput": {
-                        "hookEventName": "Stop",
-                        "additionalContext": agent_message,
-                    },
+                    "reason": "Add ## Framework Reflection before ending session",
                 }
                 logger.info("Session blocked: Framework Reflection not found")
         except Exception as e:
