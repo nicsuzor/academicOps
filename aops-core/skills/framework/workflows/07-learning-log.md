@@ -3,7 +3,7 @@ title: Learning Log Workflow
 type: instruction
 category: instruction
 permalink: workflow-learning-log
-description: Document agent behavior patterns as tasks for later synthesis
+description: Document agent behavior patterns as learn-type tasks for later synthesis
 ---
 
 # Workflow 7: Learning Log
@@ -11,6 +11,8 @@ description: Document agent behavior patterns as tasks for later synthesis
 **When**: After observing agent behavior patterns, errors, or framework gaps that should be tracked.
 
 **Key principle**: Per AXIOMS #28 (Current State Machine) - episodic observations go to tasks, not direct file edits. Analysis happens later via workflow 05 (QA Verification).
+
+**IMPORTANT**: This workflow creates `type="learn"` tasks for **observational tracking only**. To make actual framework changes, use `/learn` instead - it combines logging with graduated fixes.
 
 **CRITICAL**: If you need to read session JSONL files, invoke `Skill(skill='transcript')` FIRST to convert to markdown. Raw JSONL wastes 10-70K tokens; transcripts are 90% smaller.
 
@@ -52,12 +54,12 @@ mcp__plugin_aops-core_tasks__update_task(
 )
 ```
 
-**If no matching task**: Create new task
+**If no matching task**: Create new learn task
 
 ```python
 mcp__plugin_aops-core_tasks__create_task(
     title="[category]: [descriptive-title]",
-    type="task",
+    type="learn",  # Learn tasks are for observation/tracking, NOT execution
     tags=["[category]"],
     body="""## Initial Observation
 
@@ -156,10 +158,10 @@ Phase 1 - Search:
 mcp__plugin_aops-core_tasks__search_tasks(query="prompt_router TypeError bug")
 → No matching tasks
 
-Phase 2 - Create new task:
+Phase 2 - Create new learn task:
 mcp__plugin_aops-core_tasks__create_task(
     title="bug: prompt_router.py TypeError on None response",
-    type="task",
+    type="learn",  # Observational - NOT for direct execution
     tags=["bug"],
     body="""## Initial Observation
 

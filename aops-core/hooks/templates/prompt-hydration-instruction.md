@@ -10,6 +10,23 @@ Variables:
 
 ---
 
+## Direct Questions: Answer and STOP
+
+**If the user prompt is a pure information request** (e.g., "what is X?", "how does Y work?", "where is Z?"):
+
+1. **Answer the question directly** - no hydration needed
+2. **STOP and wait for further direction** - do NOT:
+   - Suggest related tasks
+   - Offer to implement anything
+   - Chain into execution
+   - Ask follow-up questions about next steps
+
+The user asked a question. Answer it. Then wait. Nothing more.
+
+---
+
+## All Other Prompts: Hydrate First
+
 **MANDATORY**: Spawn prompt-hydrator (do NOT read the temp file yourself):
 
 ```
@@ -47,12 +64,12 @@ Return: PROCEED (execute as planned) | REVISE (list specific changes) | HALT (st
 
 **CRITICAL**: Both PROCEED and REVISE require TodoWrite BEFORE execution. Never start executing without tracked todos.
 
-**Why hydrator always?** Hydration is fast (haiku model), costless, improves outcomes. Even "simple" tasks benefit from context enrichment.
+**Why hydrator for tasks?** Hydration is fast (haiku model), costless, improves outcomes. Even "simple" tasks benefit from context enrichment.
 
 **Why conditional critic?** Critic (opus) is expensive. Simple skill routes have well-defined workflows that don't benefit from review. Complex plans catch errors early with rigorous analysis.
 
-**CRITICAL - Do NOT skip hydration for perceived "simple questions":**
-- Imperatives disguised as questions ("allow X to do Y", "make it so X works") are DIRECTIVES requiring feature-dev workflow
-- Discussion of feature design ("should we add X?") followed by agreement is a DIRECTIVE
-- Only pure information requests with no implementation intent skip to simple-question
-- When in doubt, hydrate - the hydrator will route correctly
+**CRITICAL - Distinguishing Questions from Directives:**
+- **Pure information requests** ("what is X?", "how does Y work?") → Answer directly, then STOP
+- **Imperatives disguised as questions** ("allow X to do Y", "make it so X works") → These are DIRECTIVES, hydrate them
+- **Discussion of feature design** ("should we add X?") followed by agreement → This is a DIRECTIVE, hydrate it
+- **When in doubt**: If there's ANY implementation intent, hydrate. If it's purely "tell me about X", answer and stop.

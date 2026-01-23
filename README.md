@@ -24,15 +24,101 @@ tags: [framework, overview, features]
 * Includes integrated MCP tooling for email and calendar access
 
 
-## Quick Start
+## Installation
+
+### Prerequisites
+
+- **Environment variables** in `~/.bashrc` or `~/.zshrc`:
+  ```bash
+  export AOPS="$HOME/src/academicOps"      # Framework code (this repo)
+  export ACA_DATA="$HOME/writing/data"     # Your data (NOT in git)
+  ```
+- **jq** installed (`sudo apt install jq` or `brew install jq`)
+- Optional: `gemini` CLI for Gemini support, Docker/Podman for container-based MCP servers
+
+### Running Setup
 
 ```bash
-# Required environment variables (add to ~/.bashrc or ~/.zshrc)
-export AOPS="$HOME/src/academicOps"
-export ACA_DATA="$HOME/writing/data"
-
-./setup.sh  # Creates ~/.claude/ symlinks, substitutes tokens from ENV VARS into MCP config
+./setup.sh
 ```
+
+### What Gets Installed
+
+The script configures three tools with distinct scoping:
+
+| Tool | Scope | Configuration Location |
+|------|-------|----------------------|
+| **Claude Code** | User | `~/.claude/`, `~/.claude.json` |
+| **Gemini CLI** | User | `~/.gemini/` |
+| **Antigravity** | User + Project | `~/.gemini/antigravity/` + `$AOPS/.agent/rules/` |
+
+#### Claude Code (User-scoped)
+
+Creates symlinks in `~/.claude/` pointing to framework components:
+
+```
+~/.claude/
+├── settings.json      → $AOPS/config/claude/settings.json
+├── CLAUDE.md          → $AOPS/config/claude/CLAUDE.md
+├── settings.local.json   (generated - contains AOPS/ACA_DATA paths)
+└── plugins/
+    ├── aops-core      → $AOPS/aops-core
+    └── aops-tools     → $AOPS/aops-tools
+```
+
+MCP servers are merged into `~/.claude.json` (the user-level Claude Code config). Plugin-specific MCPs are generated from templates in each plugin's `.mcp.json`.
+
+#### Gemini CLI (User-scoped)
+
+Creates symlinks in `~/.gemini/`:
+
+```
+~/.gemini/
+├── hooks             → $AOPS/config/gemini/hooks
+├── commands          → $AOPS/config/gemini/commands
+├── GEMINI.md            (generated - paths injected from env vars)
+└── settings.json        (merged - hooks + MCP servers added)
+```
+
+Commands are converted to TOML format. MCP servers are converted from Claude format to Gemini format.
+
+#### Antigravity (User + Project-scoped)
+
+**User-scoped** (`~/.gemini/antigravity/`):
+```
+~/.gemini/antigravity/
+├── global_workflows/    (skills linked as /<skill_name>.md)
+│   ├── remember.md   → $AOPS/aops-core/skills/remember/SKILL.md
+│   ├── framework.md  → $AOPS/aops-core/skills/framework/SKILL.md
+│   └── ...
+├── mcp_config.json      (generated - MCP servers for Antigravity)
+└── GEMINI.md         → ~/.gemini/GEMINI.md
+```
+
+**Project-scoped** (`$AOPS/.agent/rules/`):
+```
+$AOPS/.agent/rules/
+├── axioms.md         → $AOPS/AXIOMS.md
+├── heuristics.md     → $AOPS/HEURISTICS.md
+└── core.md           → $AOPS/config/antigravity/rules/core.md
+```
+
+#### Additional Setup
+
+- **Memory server**: Configures `~/.memory/config.json` with project 'main' pointing to `$ACA_DATA`
+- **Cron jobs**: Task index regeneration (5 min), session insights (30 min)
+
+### Key Paths Summary
+
+| Path | Purpose | Scope |
+|------|---------|-------|
+| `$AOPS` | Framework code (this repo) | Shared |
+| `$ACA_DATA` | User data, notes, tasks | User |
+| `~/.claude/` | Claude Code symlinks & settings | User |
+| `~/.claude.json` | Claude Code MCP servers | User |
+| `~/.gemini/` | Gemini CLI config | User |
+| `~/.gemini/antigravity/` | Antigravity global workflows | User |
+| `$AOPS/.agent/rules/` | Antigravity project rules | Project |
 
 **Core docs** (injected at session start):
 
