@@ -42,7 +42,7 @@ from typing import Iterator
 from filelock import FileLock
 
 from lib.paths import get_data_root
-from lib.task_model import Task, TaskStatus, TaskType
+from lib.task_model import Task, TaskComplexity, TaskStatus, TaskType
 
 # Directories to exclude from recursive task scanning
 # These contain non-task data that shouldn't be indexed
@@ -156,6 +156,7 @@ class TaskStorage:
         tags: list[str] | None = None,
         body: str = "",
         assignee: str | None = None,
+        complexity: TaskComplexity | None = None,
     ) -> Task:
         """Create a new task with auto-generated ID.
 
@@ -170,6 +171,7 @@ class TaskStorage:
             tags: Optional tags
             body: Markdown body content
             assignee: Task owner - typically 'nic' (human) or 'bot' (agent)
+            complexity: Task complexity for routing decisions (set by hydrator)
 
         Returns:
             New Task instance (not yet saved)
@@ -198,6 +200,7 @@ class TaskStorage:
             tags=tags or [],
             body=body,
             assignee=assignee,
+            complexity=complexity,
         )
 
     def save_task(self, task: Task) -> Path:

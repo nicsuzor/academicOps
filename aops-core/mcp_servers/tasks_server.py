@@ -39,7 +39,7 @@ sys.path.insert(0, str(AOPS_CORE_ROOT))
 
 from lib.paths import get_data_root
 from lib.task_index import TaskIndex, TaskIndexEntry
-from lib.task_model import Task, TaskStatus, TaskType
+from lib.task_model import Task, TaskComplexity, TaskStatus, TaskType
 from lib.task_storage import TaskStorage
 
 # Configure logging
@@ -99,6 +99,7 @@ def _task_to_dict(task: Task) -> dict[str, Any]:
         "effort": task.effort,
         "context": task.context,
         "assignee": task.assignee,
+        "complexity": task.complexity.value if task.complexity else None,
         "body": task.body,
         "children": task.children,
         "blocks": task.blocks,
@@ -135,6 +136,7 @@ def create_task(
     tags: Optional[list[str]] = None,
     body: str = "",
     assignee: Optional[str] = None,
+    complexity: Optional[str] = None,
 ) -> dict[str, Any]:
     """Create a new task in the hierarchical task system.
 
@@ -153,6 +155,8 @@ def create_task(
         tags: List of tags for categorization
         body: Markdown body content
         assignee: Task owner - typically 'nic' (human) or 'bot' (agent)
+        complexity: Task complexity for routing - "mechanical", "requires-judgment",
+            "multi-step", "needs-decomposition", or "blocked-human" (default: None)
 
     Returns:
         Dictionary with:
@@ -166,7 +170,8 @@ def create_task(
             type="project",
             project="book",
             parent="20260112-write-book",
-            assignee="nic"
+            assignee="nic",
+            complexity="multi-step"
         )
     """
     try:
@@ -192,6 +197,17 @@ def create_task(
                     "message": f"Invalid due date format: {e}. Use ISO format: YYYY-MM-DDTHH:MM:SSZ",
                 }
 
+        # Parse complexity
+        task_complexity = None
+        if complexity:
+            try:
+                task_complexity = TaskComplexity(complexity)
+            except ValueError:
+                return {
+                    "success": False,
+                    "message": f"Invalid complexity: {complexity}. Must be one of: mechanical, requires-judgment, multi-step, needs-decomposition, blocked-human",
+                }
+
         # Create task
         task = storage.create_task(
             title=task_title,
@@ -204,6 +220,7 @@ def create_task(
             tags=tags,
             body=body,
             assignee=assignee,
+            complexity=task_complexity,
         )
         task.order = order
 
@@ -295,6 +312,7 @@ def update_task(
     context: Optional[str] = None,
     body: Optional[str] = None,
     assignee: Optional[str] = None,
+    complexity: Optional[str] = None,
 ) -> dict[str, Any]:
     """Update an existing task.
 
@@ -316,6 +334,8 @@ def update_task(
         context: New context (or "" to clear)
         body: New body content
         assignee: Task owner - 'nic' or 'bot' (or "" to clear)
+        complexity: Task complexity - "mechanical", "requires-judgment", "multi-step",
+            "needs-decomposition", or "blocked-human" (or "" to clear)
 
     Returns:
         Dictionary with:
@@ -428,6 +448,21 @@ def update_task(
         if assignee is not None:
             task.assignee = assignee if assignee else None
             modified_fields.append("assignee")
+
+        if complexity is not None:
+            if complexity == "":
+                task.complexity = None
+            else:
+                try:
+                    task.complexity = TaskComplexity(complexity)
+                except ValueError:
+                    return {
+                        "success": False,
+                        "task": None,
+                        "modified_fields": [],
+                        "message": f"Invalid complexity: {complexity}. Must be one of: mechanical, requires-judgment, multi-step, needs-decomposition, blocked-human",
+                    }
+            modified_fields.append("complexity")
 
         # Save if anything changed
         if modified_fields:

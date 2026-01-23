@@ -148,23 +148,40 @@ For ANY framework modification, include in your output:
 
    → Output TRIAGE guidance instead of execution plan
 
-6. **Correlate with existing tasks** - Does request match an existing task?
+6. **Classify complexity** - Based on path and scope, determine complexity:
+
+   | Path | Scope | Condition | Complexity |
+   |------|-------|-----------|------------|
+   | EXECUTE | single-session | Known steps, clear deliverable | `mechanical` |
+   | EXECUTE | single-session | Some unknowns, needs exploration | `requires-judgment` |
+   | EXECUTE | multi-session | Sequential orchestration needed | `multi-step` |
+   | TRIAGE | any | Task too vague, needs breakdown | `needs-decomposition` |
+   | TRIAGE | any | Requires human decision or input | `blocked-human` |
+
+   **Classification heuristics:**
+   - **mechanical**: "Rename X to Y", "Add field Z to model", "Fix typo in..."
+   - **requires-judgment**: "Debug why X fails", "Implement feature Y" (known scope, some investigation)
+   - **multi-step**: "Refactor system X", "Migrate from A to B" (clear steps, multiple sessions)
+   - **needs-decomposition**: "Build feature X" (vague), "Improve performance" (needs analysis first)
+   - **blocked-human**: "Which API should we use?", "Need approval for..."
+
+7. **Correlate with existing tasks** - Does request match an existing task?
    - If yes: direct to that task, note its context
    - If no: will create new task
 
-7. **Select workflow** by matching user intent to WORKFLOWS.md decision tree
+8. **Select workflow** by matching user intent to WORKFLOWS.md decision tree
 
-8. **Select workflow from pre-loaded index**:
+9. **Select workflow from pre-loaded index**:
    - Use the WORKFLOWS.md content pre-loaded in your input file
    - Select the workflow that matches user intent based on the decision tree
    - Reference the workflow by name in your output (e.g., `[[workflows/simple-question]]`)
    - **Do NOT read workflow files** - the main agent will follow the selected workflow
 
-9. **Identify deferred work** (multi-session only) - What else needs to happen that isn't immediate?
-   - These become a "decomposition task" that blocks future work
-   - Captures context so future sessions don't lose the thread
+10. **Identify deferred work** (multi-session only) - What else needs to happen that isn't immediate?
+    - These become a "decomposition task" that blocks future work
+    - Captures context so future sessions don't lose the thread
 
-10. **Output plan** - Use format below with appropriate scope and path handling
+11. **Output plan** - Use format below with appropriate scope and path handling
 
 ## Output Format
 
@@ -176,6 +193,7 @@ For ANY framework modification, include in your output:
 **Intent**: [what user actually wants]
 **Scope**: single-session | multi-session
 **Path**: EXECUTE
+**Complexity**: [mechanical | requires-judgment | multi-step]
 **Workflow**: [[workflows/[workflow-id]]]
 
 ### Task Routing
@@ -184,12 +202,12 @@ For ANY framework modification, include in your output:
 
 **Existing task found**: `[task-id]` - [title]
 - Verify first: `mcp__plugin_aops-core_tasks__get_task(id="[task-id]")` (confirm status=active or inbox)
-- Claim with: `mcp__plugin_aops-core_tasks__update_task(id="[task-id]", status="active")`
+- Claim with: `mcp__plugin_aops-core_tasks__update_task(id="[task-id]", status="active", complexity="[complexity]")`
 
 **OR**
 
 **New task needed**:
-- Create with: `mcp__plugin_aops-core_tasks__create_task(task_title="[title]", type="task", project="aops", priority=2)`
+- Create with: `mcp__plugin_aops-core_tasks__create_task(task_title="[title]", type="task", project="aops", priority=2, complexity="[complexity]")`
 - [Brief rationale for task scope]
 
 **OR**
@@ -208,9 +226,21 @@ For ANY framework modification, include in your output:
 
 ### Applicable Principles
 
-From HEURISTICS.md:
-- **P#[n] [Name]**: [Why this applies]
-- **P#[n] [Name]**: [Why this applies]
+**CRITICAL**: This section IS the enforcement mechanism. Main agent receives ONLY these selected principles - never the full AXIOMS/HEURISTICS files.
+
+Select 3-7 principles relevant to THIS task. Format:
+
+From AXIOMS:
+- **P#[n] [Name]**: [1-sentence why this applies to this task]
+
+From HEURISTICS:
+- **P#[n] [Name]**: [1-sentence why this applies to this task]
+
+**Selection guidance**:
+- Universal tasks: P#5 (Do One Thing), P#3 (Don't Make Shit Up)
+- Framework changes: P#65 (enforcement-map update), P#12 (DRY, Modular, Explicit)
+- Debugging: P#26 (Verify First), P#74 (User System Expertise)
+- Code changes: P#8 (Fail-Fast), P#27 (No Excuses)
 
 ### Execution Plan
 
@@ -260,6 +290,7 @@ mcp__plugin_aops-core_tasks__create_task(
 **Intent**: [what user actually wants]
 **Scope**: [scope assessment]
 **Path**: TRIAGE
+**Complexity**: [needs-decomposition | blocked-human]
 **Reason**: [which TRIAGE criterion triggered - e.g., "requires human judgment", "exceeds session scope"]
 
 ### Task Routing
