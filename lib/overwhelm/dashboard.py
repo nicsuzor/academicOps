@@ -787,9 +787,9 @@ def fetch_session_activity(hours: int = 4) -> list[dict]:
                     if project != "unknown":
                         sessions[sid]["project"] = project
                     sessions[sid]["last_prompt"] = prompt
-                    sessions[sid]["time_ago"] = (
-                        time_ago  # prefer file mtime for status?
-                    )
+                    sessions[sid]["time_ago"] = _format_time_ago(
+                        dt_mtime
+                    )  # prefer file mtime for status?
                     sessions[sid]["source"] = "local-status"
                 else:
                     sessions[sid] = {
@@ -1450,6 +1450,45 @@ st.markdown(
     /* Synthesis Panel */
     .synthesis-panel {
         padding: 4px 0;
+    }
+
+    .session-project {
+        color: #fbbf24;
+        font-weight: 600;
+        font-size: 0.9em;
+        text-transform: lowercase;
+    }
+    .session-sep {
+        color: var(--text-muted);
+        margin: 0 4px;
+        font-weight: 300;
+    }
+    .session-meta-right {
+        margin-left: auto;
+        font-size: 0.8em;
+        color: var(--text-muted);
+    }
+    .session-body {
+        margin-top: 8px;
+    }
+    .session-bullet {
+        margin-bottom: 3px;
+        font-size: 0.9em;
+        color: var(--text-body);
+        line-height: 1.4;
+    }
+    .session-bullet.active {
+        color: #4ade80;
+        font-weight: 500;
+    }
+    .session-bullet.muted {
+        color: var(--text-muted);
+        font-size: 0.8em;
+        margin-left: 14px;
+    }
+    .session-bullet.context {
+        color: var(--text-muted);
+        font-style: italic;
     }
 
     .synthesis-header {
@@ -2335,66 +2374,74 @@ if active_sessions:
     # Render Main Container
     st.markdown(f"<div class='active-sessions-panel'>", unsafe_allow_html=True)
 
-    # Helper to group by project
-    def render_grouped_sessions(sessions, show_details=True):
-        by_project = {}
-        for s in sessions:
-            p = s.get("project", "unknown")
-            if p not in by_project:
-                by_project[p] = []
-            by_project[p].append(s)
+    # Filter idle sessions from active/paused
+    def is_interesting(s):
+        p = s.get("last_prompt", "")
+        return p and p not in ("Idle", "New Session (Waiting for input)")
 
-        for proj, items in sorted(
-            by_project.items(), key=lambda x: x[0]
-        ):  # Sort by project name
-            st.markdown(
-                f"<div style='color: #818cf8; font-weight: bold; margin: 12px 0 4px 0; font-size: 0.9em; text-transform: uppercase;'>{esc(proj)}</div>",
-                unsafe_allow_html=True,
-            )
-            for session in items:
-                sess_id = session.get("session_short", "")
-                hostname = session.get("hostname", "unknown")
-                time_ago = session.get("time_ago", "")
-                prompt = session.get("last_prompt", "")
+    buckets["active"] = [s for s in buckets["active"] if is_interesting(s)]
+    buckets["paused"] = [s for s in buckets["paused"] if is_interesting(s)]
 
-                # Format todowrite
-                todowrite = session.get("todowrite")
-                todo_html = ""
-                if todowrite:
-                    current = todowrite.get("current_task")
-                    if current:
-                        todo_html += f"<div class='session-todo'><span class='session-todo-active'>▶ {esc(current)}</span></div>"
+    # Sort by timestamp (newest first)
+    buckets["active"].sort(key=lambda x: x.get("timestamp", ""), reverse=True)
+    buckets["paused"].sort(key=lambda x: x.get("timestamp", ""), reverse=True)
 
-                    pending = todowrite.get("pending_tasks", [])
-                    if pending:
-                        count = len(pending)
-                        label = f"+{count} pending" if count > 0 else "No pending tasks"
-                        todo_html += f"<div class='session-todo'><span class='session-todo-pending'>□ {label}</span></div>"
+    # Render Main Container
+    st.markdown(f"<div class='active-sessions-panel'>", unsafe_allow_html=True)
 
-                if show_details:
-                    card_html = f"""
-                    <div class='session-card'>
-                        <div class='session-header'>
-                            <span class='session-id'>{esc(sess_id)}</span>
-                            <span class='session-meta'>@ {esc(hostname)} | {esc(time_ago)}</span>
-                        </div>
-                        <div class='session-prompt'>"{esc(prompt)}"</div>
-                        {todo_html}
-                    </div>
-                    """
-                    st.markdown(card_html, unsafe_allow_html=True)
-                else:
-                    # Compact view
-                    st.markdown(
-                        f"""
-                        <div style='padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.05);'>
-                            <span style='font-family: monospace; color: #94a3b8; font-size: 0.8em; margin-right: 8px;'>{esc(sess_id)}</span>
-                            <span style='color: #e2e8f0; font-size: 0.9em;'>"{esc(prompt)}"</span>
-                            <span style='color: #64748b; font-size: 0.8em; float: right;'>{esc(time_ago)}</span>
-                        </div>
-                        """,
-                        unsafe_allow_html=True,
+    # Helper to render linear list
+    def render_session_list(sessions):
+        for session in sessions:
+            sess_id = session.get("session_short", "")
+            hostname = session.get("hostname", "unknown")
+            project = session.get("project", "unknown")
+            time_ago = session.get("time_ago", "")
+            prompt = session.get("last_prompt", "")
+
+            # Format Bullets (Activity) from TodoWrite
+            todowrite = session.get("todowrite")
+            bullets_html = ""
+
+            if todowrite:
+                # 1. Current Task
+                current = todowrite.get("current_task")
+                if current:
+                    bullets_html += (
+                        f"<div class='session-bullet active'>▶ {esc(current)}</div>"
                     )
+
+                # 2. Pending Tasks (limit 2)
+                pending = todowrite.get("pending_tasks", [])
+                for p in pending[:2]:
+                    bullets_html += f"<div class='session-bullet'>• {esc(p)}</div>"
+
+                if len(pending) > 2:
+                    bullets_html += f"<div class='session-bullet muted'>+ {len(pending) - 2} more</div>"
+
+            # If no todowrite, use prompt as the main bullet/context
+            if not bullets_html:
+                bullets_html = (
+                    f"<div class='session-bullet context'>\"{esc(prompt)}\"</div>"
+                )
+            elif prompt and prompt != "Local activity":
+                # If we have bullets, show prompt as secondary context if significant
+                # (User said "rather than just prompt", implying prompt is less important)
+                pass
+
+            card_html = f"""
+            <div class='session-card'>
+                <div class='session-header'>
+                    <span class='session-project'>{esc(project)}</span>
+                    <span class='session-sep'>/</span>
+                    <span class='session-id'>{esc(sess_id)}</span>
+                    <span class='session-meta-right'>{esc(time_ago)}</span>
+                </div>
+                <div class='session-body'>
+                    {bullets_html}
+                </div>
+            </div>
+            """
+            st.markdown(card_html, unsafe_allow_html=True)
 
     # 1. Active Now (< 4h)
     if buckets["active"]:
@@ -2402,7 +2449,7 @@ if active_sessions:
             f"<div class='active-sessions-title'>⚡ ACTIVE NOW ({len(buckets['active'])})</div>",
             unsafe_allow_html=True,
         )
-        render_grouped_sessions(buckets["active"], show_details=True)
+        render_session_list(buckets["active"])
 
     # 2. Paused (4-24h)
     if buckets["paused"]:
@@ -2410,9 +2457,8 @@ if active_sessions:
             f"<div class='active-sessions-title' style='margin-top: 16px; color: #fbbf24;'>⏸️ PAUSED ({len(buckets['paused'])})</div>",
             unsafe_allow_html=True,
         )
-        # Use Streamlit expander for collapsed view
         with st.expander("Show paused sessions", expanded=False):
-            render_grouped_sessions(buckets["paused"], show_details=False)
+            render_session_list(buckets["paused"])
 
     # 3. Stale (>24h)
     if buckets["stale"]:
@@ -2420,15 +2466,17 @@ if active_sessions:
             f"<div class='active-sessions-title' style='margin-top: 16px; color: #94a3b8;'>🕸️ STALE (>24h) ({len(buckets['stale'])})</div>",
             unsafe_allow_html=True,
         )
-        # Just a summary count or list
-        with st.expander("Show stale sessions"):
-            for session in buckets["stale"][:10]:  # Limit stale listing
-                sess_id = session.get("session_short", "")
-                time_ago = session.get("time_ago", "")
-                project = session.get("project", "unknown")
-                st.markdown(f"- **{esc(sess_id)}** ({esc(project)}) - {esc(time_ago)}")
-            if len(buckets["stale"]) > 10:
-                st.markdown(f"*...and {len(buckets['stale']) - 10} more*")
+        with st.expander(
+            f"Show {len(buckets['stale'])} stale sessions", expanded=False
+        ):
+            # Simple table for stale
+            for s in buckets["stale"][:15]:
+                proj = s.get("project", "unknown")
+                sid = s.get("session_short", "")
+                ago = s.get("time_ago", "")
+                st.markdown(f"- `{proj}/{sid}` - {ago}")
+            if len(buckets["stale"]) > 15:
+                st.markdown(f"*...and {len(buckets['stale']) - 15} more*")
 
     st.markdown("</div>", unsafe_allow_html=True)
 

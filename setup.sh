@@ -220,44 +220,13 @@ else
     echo -e "${GREEN}✓ Created settings.local.json${NC}"
 fi
 
-# Step 2b: Build and sync MCP servers to ~/.claude.json
-# Note: Claude Code reads user-scoped MCP servers from ~/.claude.json mcpServers key,
-# NOT from ~/.mcp.json. We merge our authoritative config into ~/.claude.json.
+# Step 2b: Build and sync MCP servers
+# Note: Claude Code reads user-scoped MCP servers from ~/.claude.json mcpServers key.
+# However, since we use plugins (symlinked to ~/.claude/plugins/), Claude Code will automatically
+# load MCP servers defined in each plugin's mcp.json file.
+# We no longer write to ~/.claude.json to avoid conflicts.
 echo
 echo "Building MCP configuration..."
-
-# Detect platform for outlook config selection
-detect_outlook_mode() {
-    # Allow env override
-    if [ -n "${MCP_OUTLOOK_MODE:-}" ]; then
-        echo "$MCP_OUTLOOK_MODE"
-        return
-    fi
-
-    case "$(uname -s)" in
-        Darwin)
-            echo "macos"
-            ;;
-        MINGW*|MSYS*|CYGWIN*)
-            echo "windows"
-            ;;
-        Linux)
-            # Linux uses proxy (could be dev3 server or WSL client)
-            echo "proxy"
-            ;;
-        *)
-            echo "proxy"
-            ;;
-    esac
-}
-
-OUTLOOK_MODE=$(detect_outlook_mode)
-echo "  Platform outlook mode: $OUTLOOK_MODE"
-
-# Merge base config with outlook fragment
-mcp_base="$AOPS_PATH/aops-tools/config/claude/mcp-base.json"
-mcp_outlook="$AOPS_PATH/aops-tools/config/claude/mcp-outlook-${OUTLOOK_MODE}.json"
-mcp_source="$AOPS_PATH/aops-tools/config/claude/mcp.json"
 
 # Check for MCP tokens (required for gh and memory servers)
 if [ -z "${GH_MCP_TOKEN:-}" ]; then
@@ -269,105 +238,12 @@ if [ -z "${MCP_MEMORY_API_KEY:-}" ]; then
     echo "  Set in shell RC: export MCP_MEMORY_API_KEY='your-memory-token'"
 fi
 
-if [ -f "$mcp_base" ] && [ -f "$mcp_outlook" ] && command -v jq &> /dev/null; then
-    # Deep merge: base + outlook fragment, then substitute env vars for tokens
-    jq -s '.[0] * .[1]' "$mcp_base" "$mcp_outlook" | \
-        sed -e "s|\${GH_MCP_TOKEN}|${GH_MCP_TOKEN:-}|g" \
-            -e "s|\${MCP_MEMORY_API_KEY}|${MCP_MEMORY_API_KEY:-}|g" \
-        > "$mcp_source"
-    echo -e "${GREEN}✓ Built mcp.json from base + outlook-${OUTLOOK_MODE}${NC}"
-elif [ ! -f "$mcp_base" ]; then
-    echo -e "${RED}✗ Missing $mcp_base${NC}"
-    exit 1
-elif [ ! -f "$mcp_outlook" ]; then
-    echo -e "${RED}✗ Missing $mcp_outlook${NC}"
-    exit 1
-fi
-
-echo "Syncing MCP servers to ~/.claude.json..."
-
-if [ -f "$mcp_source" ] && command -v jq &> /dev/null; then
-    if [ -f "$HOME/.claude.json" ]; then
-        # Read MCP config, patch container runtime, expand $HOME/$AOPS/$ACA_DATA
-        if [ -n "$CONTAINER_RUNTIME" ]; then
-            mcp_patched=$(jq --arg runtime "$CONTAINER_RUNTIME" --arg home "$HOME" --arg aops "$AOPS_PATH" --arg aca_data "$ACA_DATA_PATH" '
-                .mcpServers | to_entries | map(
-                    if .value.command == "podman" or .value.command == "docker" then
-                        .value.command = $runtime
-                    else . end
-                    | .value.args = (.value.args // [] | map(gsub("\\$HOME"; $home) | gsub("\\$AOPS"; $aops) | gsub("\\$ACA_DATA"; $aca_data)))
-                    | .value.env = ((.value.env // {}) | with_entries(.value |= (gsub("\\$AOPS"; $aops) | gsub("\\$ACA_DATA"; $aca_data) | gsub("\\$HOME"; $home))))
-                ) | from_entries | {mcpServers: .}
-            ' "$mcp_source")
-            echo "  Using container runtime: $CONTAINER_RUNTIME"
-        else
-            # No container runtime - filter out container-based servers entirely
-            mcp_patched=$(jq --arg home "$HOME" --arg aops "$AOPS_PATH" --arg aca_data "$ACA_DATA_PATH" '
-                .mcpServers | to_entries
-                | map(select(.value.command != "podman" and .value.command != "docker"))
-                | map(
-                    .value.args = (.value.args // [] | map(gsub("\\$HOME"; $home) | gsub("\\$AOPS"; $aops) | gsub("\\$ACA_DATA"; $aca_data)))
-                    | .value.env = ((.value.env // {}) | with_entries(.value |= (gsub("\\$AOPS"; $aops) | gsub("\\$ACA_DATA"; $aca_data) | gsub("\\$HOME"; $home))))
-                )
-                | from_entries | {mcpServers: .}
-            ' "$mcp_source")
-            echo -e "${YELLOW}  No container runtime - excluding container-based MCP servers (zot, osb)${NC}"
-        fi
-        # Replace mcpServers in ~/.claude.json (authoritative source wins, stale servers removed)
-        echo "$mcp_patched" | jq -s '.[0] + .[1]' "$HOME/.claude.json" - > "$HOME/.claude.json.tmp" \
-            && mv "$HOME/.claude.json.tmp" "$HOME/.claude.json"
-        echo -e "${GREEN}✓ Synced MCP servers to ~/.claude.json${NC}"
-
-        # Clean up stale project-specific MCP servers (remove servers not in authoritative source)
-        valid_servers=$(jq -r '.mcpServers | keys | @json' "$mcp_source")
-        jq --argjson valid "$valid_servers" '
-            .projects |= (to_entries | map(
-                .value.mcpServers |= (if . then with_entries(select(.key | IN($valid[]))) else . end)
-            ) | from_entries)
-        ' "$HOME/.claude.json" > "$HOME/.claude.json.tmp" && mv "$HOME/.claude.json.tmp" "$HOME/.claude.json"
-        echo "  Cleaned up stale project-specific MCP servers"
-
-        # Remove plugin-specific MCPs from global config (they're now in plugin .mcp.json files)
-        # Build list of MCPs that are in plugin templates
-        plugin_mcps=()
-        for plugin_name in aops-core aops-tools; do
-            template_file="$AOPS_PATH/$plugin_name/.mcp.json.template"
-            if [ -f "$template_file" ]; then
-                # Extract MCP server names from template
-                while IFS= read -r mcp_name; do
-                    plugin_mcps+=("$mcp_name")
-                done < <(jq -r '.mcpServers | keys[]' "$template_file" 2>/dev/null)
-            fi
-        done
-
-        # Remove plugin MCPs from global ~/.claude.json
-        if [ ${#plugin_mcps[@]} -gt 0 ]; then
-            plugin_mcps_json=$(printf '%s\n' "${plugin_mcps[@]}" | jq -R . | jq -s .)
-            jq --argjson remove "$plugin_mcps_json" '
-                .mcpServers |= (with_entries(select(.key | IN($remove[]) | not)))
-            ' "$HOME/.claude.json" > "$HOME/.claude.json.tmp" && mv "$HOME/.claude.json.tmp" "$HOME/.claude.json"
-            echo "  Removed ${#plugin_mcps[@]} plugin-specific MCPs from global config"
-        fi
-    else
-        echo -e "${YELLOW}⚠ ~/.claude.json doesn't exist - will be created on first Claude Code run${NC}"
-        echo "  Re-run this script after using Claude Code once"
-    fi
-elif [ ! -f "$mcp_source" ]; then
-    echo -e "${YELLOW}⚠ MCP source not found: $mcp_source${NC}"
-else
-    echo -e "${RED}✗ jq not installed - cannot sync MCP servers${NC}"
-    echo "  Install jq: brew install jq"
-fi
-
-# Clean up legacy ~/.mcp.json symlink if it exists (no longer used)
-if [ -L "$HOME/.mcp.json" ]; then
-    rm "$HOME/.mcp.json"
-    echo "  Removed legacy ~/.mcp.json symlink"
-fi
-
 # Step 2c: Configure Claude Desktop
 echo
 echo "Configuring Claude Desktop..."
+
+# For Claude Desktop, we still need to generate a config file because it doesn't support plugins yet.
+# We will aggregate all plugin MCPs into claude_desktop_config.json.
 
 # Detect Claude Desktop config location (cross-platform)
 case "$(uname -s)" in
@@ -384,65 +260,6 @@ case "$(uname -s)" in
         CLAUDE_DESKTOP_DIR=""
         ;;
 esac
-
-if [ -n "$CLAUDE_DESKTOP_DIR" ] && [ -d "$CLAUDE_DESKTOP_DIR" ] && command -v jq &> /dev/null; then
-    CLAUDE_DESKTOP_CONFIG="$CLAUDE_DESKTOP_DIR/claude_desktop_config.json"
-
-    # Remove existing config (symlink or file)
-    [ -e "$CLAUDE_DESKTOP_CONFIG" ] && rm -f "$CLAUDE_DESKTOP_CONFIG"
-
-    # Find uvx path
-    UVX_PATH=$(command -v uvx 2>/dev/null || echo "uvx")
-
-    # Build PATH for GUI apps (they don't inherit shell PATH)
-    GUI_PATH="$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
-
-    # Generate config: filter http servers and container servers (if no runtime), expand $HOME/$AOPS
-    if [ -n "$CONTAINER_RUNTIME" ]; then
-        jq --arg uvx "$UVX_PATH" --arg path "$GUI_PATH" --arg runtime "$CONTAINER_RUNTIME" \
-           --arg home "$HOME" --arg aops "$AOPS" --arg aca_data "$ACA_DATA" '
-            .mcpServers | to_entries
-            | map(select(.value.type != "http"))  # Filter out http transport (not supported)
-            | map(
-                if .value.command == "uvx" then
-                    .value.command = $uvx |
-                    .value.env = (.value.env // {}) + {"PATH": $path}
-                elif .value.command == "podman" or .value.command == "docker" then
-                    .value.command = $runtime
-                else . end
-                | .value.args = (.value.args // [] | map(gsub("\\$HOME"; $home) | gsub("\\$AOPS"; $aops)))
-                | .value.env = ((.value.env // {}) + {"AOPS": $aops, "ACA_DATA": $aca_data})
-            ) | from_entries | {mcpServers: .}
-        ' "$mcp_source" > "$CLAUDE_DESKTOP_CONFIG"
-    else
-        # No container runtime - exclude container-based servers
-        jq --arg uvx "$UVX_PATH" --arg path "$GUI_PATH" \
-           --arg home "$HOME" --arg aops "$AOPS" --arg aca_data "$ACA_DATA" '
-            .mcpServers | to_entries
-            | map(select(.value.type != "http"))  # Filter out http transport (not supported)
-            | map(select(.value.command != "podman" and .value.command != "docker"))  # No container runtime
-            | map(
-                if .value.command == "uvx" then
-                    .value.command = $uvx |
-                    .value.env = (.value.env // {}) + {"PATH": $path}
-                else . end
-                | .value.args = (.value.args // [] | map(gsub("\\$HOME"; $home) | gsub("\\$AOPS"; $aops)))
-                | .value.env = ((.value.env // {}) + {"AOPS": $aops, "ACA_DATA": $aca_data})
-            ) | from_entries | {mcpServers: .}
-        ' "$mcp_source" > "$CLAUDE_DESKTOP_CONFIG"
-    fi
-
-    echo -e "${GREEN}✓ Created $CLAUDE_DESKTOP_CONFIG${NC}"
-    echo "  uvx path: $UVX_PATH"
-elif [ -z "$CLAUDE_DESKTOP_DIR" ]; then
-    echo -e "${YELLOW}⚠ Unknown platform - skipping Claude Desktop config${NC}"
-elif [ ! -d "$CLAUDE_DESKTOP_DIR" ]; then
-    echo -e "${YELLOW}⚠ Claude Desktop not installed - skipping${NC}"
-else
-    echo -e "${YELLOW}⚠ jq not installed - cannot configure Claude Desktop${NC}"
-fi
-
-echo
 
 # Step 2d: Create repo-local .claude/ for remote coding (using sync_web_bundle.py)
 echo "Setting up repository .claude/ (for remote coding)..."
@@ -466,6 +283,7 @@ for plugin_name in aops-core aops-tools; do
 
     if [ -f "$template_file" ]; then
         # Substitute environment variables in template
+        # Note: We use absolute paths for placeholders like CLAUDE_PLUGIN_ROOT
         sed -e "s|\${CONTEXT7_API_KEY}|${CONTEXT7_API_KEY:-}|g" \
             -e "s|\${MCP_MEMORY_API_KEY}|${MCP_MEMORY_API_KEY:-}|g" \
             -e "s|\${GH_MCP_TOKEN}|${GH_MCP_TOKEN:-}|g" \
@@ -476,6 +294,73 @@ for plugin_name in aops-core aops-tools; do
         echo -e "${YELLOW}⚠ No template found: $template_file${NC}"
     fi
 done
+
+# Now that we have plugin .mcp.json files, we can aggregate them for Claude Desktop and Gemini
+echo "Aggregating plugin MCPs..."
+AGGREGATED_MCP="$AOPS_PATH/config/gemini/aggregated_mcp.json"
+mkdir -p "$AOPS_PATH/config/gemini"
+
+if command -v jq &> /dev/null; then
+    # Start with empty mcpServers object
+    echo '{"mcpServers": {}}' > "$AGGREGATED_MCP"
+    
+    # Merge each plugin's mcp.json
+    for plugin_name in aops-core aops-tools; do
+        plugin_mcp="$AOPS_PATH/$plugin_name/.mcp.json"
+        if [ -f "$plugin_mcp" ]; then
+            jq -s '.[0] * .[1]' "$AGGREGATED_MCP" "$plugin_mcp" > "$AGGREGATED_MCP.tmp" && mv "$AGGREGATED_MCP.tmp" "$AGGREGATED_MCP"
+        fi
+    done
+    
+    echo -e "${GREEN}✓ Aggregated plugin MCPs to $AGGREGATED_MCP${NC}"
+    
+    # Configure Claude Desktop with aggregated MCPs
+    if [ -n "$CLAUDE_DESKTOP_DIR" ] && [ -d "$CLAUDE_DESKTOP_DIR" ]; then
+        CLAUDE_DESKTOP_CONFIG="$CLAUDE_DESKTOP_DIR/claude_desktop_config.json"
+        
+        # Remove existing config
+        [ -e "$CLAUDE_DESKTOP_CONFIG" ] && rm -f "$CLAUDE_DESKTOP_CONFIG"
+
+        # Find uvx path
+        UVX_PATH=$(command -v uvx 2>/dev/null || echo "uvx")
+        GUI_PATH="$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
+
+        # Filter and configure for Desktop
+        if [ -n "$CONTAINER_RUNTIME" ]; then
+            jq --arg uvx "$UVX_PATH" --arg path "$GUI_PATH" --arg runtime "$CONTAINER_RUNTIME" \
+               --arg home "$HOME" --arg aops "$AOPS" --arg aca_data "$ACA_DATA" '
+                .mcpServers | to_entries
+                | map(select(.value.type != "http"))
+                | map(
+                    if .value.command == "uvx" then
+                        .value.command = $uvx |
+                        .value.env = (.value.env // {}) + {"PATH": $path}
+                    elif .value.command == "podman" or .value.command == "docker" then
+                        .value.command = $runtime
+                    else . end
+                ) | from_entries | {mcpServers: .}
+            ' "$AGGREGATED_MCP" > "$CLAUDE_DESKTOP_CONFIG"
+        else
+             jq --arg uvx "$UVX_PATH" --arg path "$GUI_PATH" \
+               --arg home "$HOME" --arg aops "$AOPS" --arg aca_data "$ACA_DATA" '
+                .mcpServers | to_entries
+                | map(select(.value.type != "http"))
+                | map(select(.value.command != "podman" and .value.command != "docker"))
+                | map(
+                    if .value.command == "uvx" then
+                        .value.command = $uvx |
+                        .value.env = (.value.env // {}) + {"PATH": $path}
+                    else . end
+                ) | from_entries | {mcpServers: .}
+            ' "$AGGREGATED_MCP" > "$CLAUDE_DESKTOP_CONFIG"
+        fi
+        echo -e "${GREEN}✓ Created $CLAUDE_DESKTOP_CONFIG from aggregated plugin MCPs${NC}"
+    elif [ -n "$CLAUDE_DESKTOP_DIR" ]; then
+         echo -e "${YELLOW}⚠ Claude Desktop directory not found - skipping config${NC}"
+    fi
+else
+    echo -e "${RED}✗ jq not installed - cannot aggregate MCPs${NC}"
+fi
 
 # Step 2e: Configure memory server default project
 echo
@@ -608,25 +493,34 @@ else
     fi
 
     # Convert MCP servers from Claude format to Gemini format
-    # This aggregates plugin MCPs + global mcp.json into Gemini format
+    # We use the aggregated plugin MCPs generated in Step 2
     echo
     echo "Converting MCP servers for Gemini..."
-    MCP_SOURCE="$AOPS_PATH/aops-tools/config/claude/mcp.json"
+    MCP_SOURCE="$AOPS_PATH/config/gemini/aggregated_mcp.json"
     MCP_CONVERTED="$AOPS_PATH/config/gemini/mcp-servers.json"
     mkdir -p "$AOPS_PATH/config/gemini"
 
-    if AOPS="$AOPS_PATH" python3 "$AOPS_PATH/scripts/convert_mcp_to_gemini.py" "$MCP_SOURCE" "$MCP_CONVERTED" 2>&1; then
-        MCP_COUNT=$(jq '.mcpServers | keys | length' "$MCP_CONVERTED" 2>/dev/null || echo "0")
-        echo -e "${GREEN}✓ Converted $MCP_COUNT MCP servers to Gemini format${NC}"
+    if [ -f "$MCP_SOURCE" ]; then
+        if AOPS="$AOPS_PATH" python3 "$AOPS_PATH/scripts/convert_mcp_to_gemini.py" "$MCP_SOURCE" "$MCP_CONVERTED" 2>&1; then
+            MCP_COUNT=$(jq '.mcpServers | keys | length' "$MCP_CONVERTED" 2>/dev/null || echo "0")
+            echo -e "${GREEN}✓ Converted $MCP_COUNT MCP servers to Gemini format${NC}"
+        else
+            echo -e "${YELLOW}⚠ MCP conversion failed - check script output above${NC}"
+        fi
     else
-        echo -e "${YELLOW}⚠ MCP conversion failed - check script output above${NC}"
+        echo -e "${YELLOW}⚠ No aggregated MCP source found at $MCP_SOURCE${NC}"
     fi
 
     # Merge settings
     echo
     echo "Merging Gemini settings..."
     GEMINI_SETTINGS="$GEMINI_DIR/settings.json"
-    MERGE_FILE="$AOPS_PATH/config/gemini/config/settings-merge.json"
+    # Prefer .template if it exists
+    if [ -f "$AOPS_PATH/config/gemini/config/settings.json.template" ]; then
+        MERGE_FILE="$AOPS_PATH/config/gemini/config/settings.json.template"
+    else
+        MERGE_FILE="$AOPS_PATH/config/gemini/config/settings-merge.json"
+    fi
 
     if [ ! -f "$GEMINI_SETTINGS" ]; then
         echo "{}" > "$GEMINI_SETTINGS"
@@ -640,7 +534,8 @@ else
     fi
 
     if [ -f "$MERGE_FILE" ]; then
-        MERGE_CONTENT=$(cat "$MERGE_FILE" | sed "s|\\\$AOPS|$AOPS_PATH|g")
+        # Substitute both ${AOPS} and $AOPS for backward compatibility
+        MERGE_CONTENT=$(cat "$MERGE_FILE" | sed -e "s|\${AOPS}|$AOPS_PATH|g" -e "s|\\\$AOPS|$AOPS_PATH|g")
 
         # Also merge converted MCP servers if available
         if [ -f "$MCP_CONVERTED" ]; then
@@ -650,6 +545,7 @@ else
                 .[1] as $new |
                 .[2] as $mcp |
                 $existing * {
+                    hooksConfig: (($existing.hooksConfig // {}) * ($new.hooksConfig // {})),
                     hooks: (($existing.hooks // {}) * ($new.hooks // {})),
                     mcpServers: (($existing.mcpServers // {}) * ($new.mcpServers // {}) * ($mcp.mcpServers // {}))
                 } | del(.["$comment"])
@@ -659,6 +555,7 @@ else
                 .[0] as $existing |
                 .[1] as $new |
                 $existing * {
+                    hooksConfig: (($existing.hooksConfig // {}) * ($new.hooksConfig // {})),
                     hooks: (($existing.hooks // {}) * ($new.hooks // {})),
                     mcpServers: (($existing.mcpServers // {}) * ($new.mcpServers // {}))
                 } | del(.["$comment"])

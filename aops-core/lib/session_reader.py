@@ -840,32 +840,25 @@ def find_sessions(
             if not project_dir.is_dir():
                 continue
 
+            # Skip hook log directories (e.g., -home-nic-writing-aops-hooks)
+            if project_dir.name.endswith("-hooks"):
+                continue
+
             project_name = project_dir.name
 
             # Filter by project if specified
             if project and project.lower() not in project_name.lower():
                 continue
 
-            # Find session files (exclude agent-* files)
+            # Find session files (exclude agent-* and *-hooks.jsonl files)
             for session_file in project_dir.glob("*.jsonl"):
                 if session_file.name.startswith("agent-"):
+                    continue
+                if session_file.name.endswith("-hooks.jsonl"):
                     continue
 
                 # Determine session_id
                 session_id = session_file.stem
-
-                # For hook logs, the filename is a date-hash, not the full session ID.
-                if session_file.name.endswith("-hooks.jsonl"):
-                    try:
-                        with open(session_file, encoding="utf-8") as f:
-                            first_line = f.readline()
-                            if first_line:
-                                data = json.loads(first_line)
-                                internal_id = data.get("session_id", "")
-                                if internal_id:
-                                    session_id = internal_id
-                    except (OSError, json.JSONDecodeError):
-                        pass
 
                 # Get modification time
                 mtime = datetime.fromtimestamp(session_file.stat().st_mtime, tz=UTC)

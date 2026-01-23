@@ -1,0 +1,72 @@
+{
+  "hooksConfig": {
+    "enabled": true
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup",
+        "hooks": [
+          {
+            "name": "aops-router",
+            "type": "command",
+            "command": "AOPS=${AOPS} AOPS_SESSIONS=${AOPS}/.gemini/sessions python3 ${AOPS}/config/gemini/hooks/router.py SessionStart",
+            "timeout": 15000
+          }
+        ]
+      }
+    ],
+    "BeforeAgent": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "name": "aops-router",
+            "type": "command",
+            "command": "AOPS=${AOPS} AOPS_SESSIONS=${AOPS}/.gemini/sessions python3 ${AOPS}/config/gemini/hooks/router.py BeforeAgent",
+            "timeout": 20000
+          }
+        ]
+      }
+    ],
+    "BeforeTool": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "name": "aops-router",
+            "type": "command",
+            "command": "AOPS=${AOPS} AOPS_SESSIONS=${AOPS}/.gemini/sessions python3 ${AOPS}/config/gemini/hooks/router.py BeforeTool",
+            "timeout": 5000
+          }
+        ]
+      }
+    ],
+    "AfterTool": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "name": "aops-router",
+            "type": "command",
+            "command": "AOPS=${AOPS} AOPS_SESSIONS=${AOPS}/.gemini/sessions python3 ${AOPS}/config/gemini/hooks/router.py AfterTool",
+            "timeout": 55000
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "matcher": "exit|logout",
+        "hooks": [
+          {
+            "name": "aops-router",
+            "type": "command",
+            "command": "AOPS=${AOPS} AOPS_SESSIONS=${AOPS}/.gemini/sessions python3 ${AOPS}/config/gemini/hooks/router.py SessionEnd",
+            "timeout": 5000
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -471,6 +471,99 @@ class TodoWriteState:
 
 
 @dataclass
+class UsageStats:
+    """Aggregated token usage statistics from a session or turn."""
+
+    input_tokens: int = 0
+    output_tokens: int = 0
+    cache_creation_input_tokens: int = 0
+    cache_read_input_tokens: int = 0
+
+    # Breakdowns by category
+    by_model: dict[str, dict[str, int]] = field(default_factory=dict)
+    by_tool: dict[str, dict[str, int]] = field(default_factory=dict)
+    by_agent: dict[str, dict[str, int]] = field(default_factory=dict)
+
+    def add_entry(
+        self,
+        entry: "Entry",
+        tool_name: str | None = None,
+        agent_id: str | None = None,
+    ) -> None:
+        """Add token usage from an entry to the aggregate stats."""
+        if entry.input_tokens:
+            self.input_tokens += entry.input_tokens
+        if entry.output_tokens:
+            self.output_tokens += entry.output_tokens
+        if entry.cache_creation_input_tokens:
+            self.cache_creation_input_tokens += entry.cache_creation_input_tokens
+        if entry.cache_read_input_tokens:
+            self.cache_read_input_tokens += entry.cache_read_input_tokens
+
+        # Aggregate by model
+        if entry.model:
+            if entry.model not in self.by_model:
+                self.by_model[entry.model] = {
+                    "input": 0,
+                    "output": 0,
+                    "cache_create": 0,
+                    "cache_read": 0,
+                }
+            self.by_model[entry.model]["input"] += entry.input_tokens or 0
+            self.by_model[entry.model]["output"] += entry.output_tokens or 0
+            self.by_model[entry.model]["cache_create"] += (
+                entry.cache_creation_input_tokens or 0
+            )
+            self.by_model[entry.model]["cache_read"] += (
+                entry.cache_read_input_tokens or 0
+            )
+
+        # Aggregate by tool
+        if tool_name:
+            if tool_name not in self.by_tool:
+                self.by_tool[tool_name] = {"count": 0, "input": 0, "output": 0}
+            self.by_tool[tool_name]["count"] += 1
+            self.by_tool[tool_name]["input"] += entry.input_tokens or 0
+            self.by_tool[tool_name]["output"] += entry.output_tokens or 0
+
+        # Aggregate by agent (main vs subagents)
+        agent_key = agent_id or "main"
+        if agent_key not in self.by_agent:
+            self.by_agent[agent_key] = {
+                "input": 0,
+                "output": 0,
+                "cache_create": 0,
+                "cache_read": 0,
+            }
+        self.by_agent[agent_key]["input"] += entry.input_tokens or 0
+        self.by_agent[agent_key]["output"] += entry.output_tokens or 0
+        self.by_agent[agent_key]["cache_create"] += (
+            entry.cache_creation_input_tokens or 0
+        )
+        self.by_agent[agent_key]["cache_read"] += entry.cache_read_input_tokens or 0
+
+    def has_data(self) -> bool:
+        """Check if any usage data has been recorded."""
+        return (
+            self.input_tokens > 0
+            or self.output_tokens > 0
+            or self.cache_creation_input_tokens > 0
+            or self.cache_read_input_tokens > 0
+        )
+
+    def format_summary(self) -> str:
+        """Format usage stats as a compact summary string."""
+        parts = []
+        if self.input_tokens or self.output_tokens:
+            parts.append(f"{self.input_tokens:,} in / {self.output_tokens:,} out")
+        if self.cache_read_input_tokens:
+            parts.append(f"{self.cache_read_input_tokens:,} cache read")
+        if self.cache_creation_input_tokens:
+            parts.append(f"{self.cache_creation_input_tokens:,} cache created")
+        return ", ".join(parts) if parts else ""
+
+
+@dataclass
 class Entry:
     """Represents a single JSONL entry from any source."""
 
@@ -500,14 +593,21 @@ class Entry:
     # Token tracking fields
     input_tokens: int | None = None
     output_tokens: int | None = None
+    cache_creation_input_tokens: int | None = None
+    cache_read_input_tokens: int | None = None
+    model: str | None = None
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> Entry:
         """Create Entry from JSONL dict."""
         # Extract tokens from message.usage if present
-        usage = data.get("message", {}).get("usage", {})
+        message = data.get("message", {})
+        usage = message.get("usage", {})
         input_tokens = usage.get("input_tokens")
         output_tokens = usage.get("output_tokens")
+        cache_creation_input_tokens = usage.get("cache_creation_input_tokens")
+        cache_read_input_tokens = usage.get("cache_read_input_tokens")
+        model = message.get("model")
 
         entry = cls(
             type=data.get("type", "unknown"),
@@ -523,6 +623,9 @@ class Entry:
             summary_text=data.get("summary"),
             input_tokens=input_tokens,
             output_tokens=output_tokens,
+            cache_creation_input_tokens=cache_creation_input_tokens,
+            cache_read_input_tokens=cache_read_input_tokens,
+            model=model,
         )
 
         # Extract hook data from system_reminder entries
@@ -613,6 +716,11 @@ class ConversationTurn:
         False  # True if this is system-injected context, not actual user input
     )
     tool_timings: dict[str, dict] = field(default_factory=dict)
+    # Token usage fields
+    input_tokens: int | None = None
+    output_tokens: int | None = None
+    cache_create_tokens: int | None = None
+    cache_read_tokens: int | None = None
 
 
 class SessionState(Enum):
@@ -1584,15 +1692,17 @@ class SessionProcessor:
 
                 # Aggregate tokens from turn entries
                 turn_entries = turn.get("turn_entries", [])
-                total_input_tokens, total_output_tokens = self._aggregate_turn_tokens(
-                    turn_entries
-                )
+                token_stats = self._aggregate_turn_tokens(turn_entries)
 
-                # Store input/output tokens separately for display
-                if total_input_tokens is not None:
-                    turn["input_tokens"] = total_input_tokens
-                if total_output_tokens is not None:
-                    turn["output_tokens"] = total_output_tokens
+                # Store all token types for display
+                if token_stats["input"] is not None:
+                    turn["input_tokens"] = token_stats["input"]
+                if token_stats["output"] is not None:
+                    turn["output_tokens"] = token_stats["output"]
+                if token_stats["cache_create"] is not None:
+                    turn["cache_create_tokens"] = token_stats["cache_create"]
+                if token_stats["cache_read"] is not None:
+                    turn["cache_read_tokens"] = token_stats["cache_read"]
 
                 if is_user_turn and not first_user_turn_found:
                     first_user_turn_found = True
@@ -1633,6 +1743,10 @@ class SessionProcessor:
                         hook_context=turn.get("hook_context", {}),
                         inline_hooks=turn.get("inline_hooks", []),
                         is_meta=turn.get("is_meta", False),
+                        input_tokens=turn.get("input_tokens"),
+                        output_tokens=turn.get("output_tokens"),
+                        cache_create_tokens=turn.get("cache_create_tokens"),
+                        cache_read_tokens=turn.get("cache_read_tokens"),
                     )
                 )
 
@@ -1761,6 +1875,35 @@ class SessionProcessor:
         if agent_entries and len(agent_entries) > 0:
             summary_parts.append(f"**Subagents**: {len(agent_entries)} spawned")
 
+        # Aggregate and display usage stats
+        usage_stats = self._aggregate_session_usage(entries, agent_entries)
+        if usage_stats.has_data():
+            usage_summary = usage_stats.format_summary()
+            summary_parts.append(f"**Token Usage**: {usage_summary}")
+
+            # Add model breakdown if multiple models used
+            if len(usage_stats.by_model) > 1:
+                model_parts = []
+                for model, stats in sorted(usage_stats.by_model.items()):
+                    total = stats["input"] + stats["output"]
+                    if total > 0:
+                        # Shorten model names for display
+                        short_name = model.replace("claude-", "").replace("-20251001", "")
+                        model_parts.append(f"{short_name}: {total:,}")
+                if model_parts:
+                    summary_parts.append(f"**By Model**: {', '.join(model_parts)}")
+
+            # Add agent breakdown if subagents used
+            if len(usage_stats.by_agent) > 1:
+                agent_parts = []
+                for agent_id, stats in sorted(usage_stats.by_agent.items()):
+                    total = stats["input"] + stats["output"]
+                    if total > 0:
+                        display_id = "main" if agent_id == "main" else agent_id[:7]
+                        agent_parts.append(f"{display_id}: {total:,}")
+                if agent_parts:
+                    summary_parts.append(f"**By Agent**: {', '.join(agent_parts)}")
+
         if not summary_parts:
             return None
 
@@ -1875,18 +2018,23 @@ class SessionProcessor:
                     parts.append(f"took {timing_info.duration}")
 
                 # Add token counts if available
-                input_tokens = (
-                    turn.get("input_tokens")
-                    if not isinstance(turn, ConversationTurn)
-                    else None
-                )
-                output_tokens = (
-                    turn.get("output_tokens")
-                    if not isinstance(turn, ConversationTurn)
-                    else None
-                )
+                if isinstance(turn, ConversationTurn):
+                    input_tokens = turn.input_tokens
+                    output_tokens = turn.output_tokens
+                    cache_read = turn.cache_read_tokens
+                    cache_create = turn.cache_create_tokens
+                else:
+                    input_tokens = turn.get("input_tokens")
+                    output_tokens = turn.get("output_tokens")
+                    cache_read = turn.get("cache_read_tokens")
+                    cache_create = turn.get("cache_create_tokens")
                 if input_tokens is not None and output_tokens is not None:
-                    parts.append(f"{input_tokens} in / {output_tokens} out tokens")
+                    token_parts = [f"{input_tokens:,} in / {output_tokens:,} out"]
+                    if cache_read:
+                        token_parts.append(f"{cache_read:,} cache↓")
+                    if cache_create:
+                        token_parts.append(f"{cache_create:,} cache↑")
+                    parts.append(" ".join(token_parts) + " tokens")
 
                 if parts:
                     timing_str = f" ({', '.join(parts)})"
@@ -2576,13 +2724,16 @@ session_id: {session_uuid}
 
     def _aggregate_turn_tokens(
         self, turn_entries: list[Entry]
-    ) -> tuple[int | None, int | None]:
-        """Sum input and output tokens from entries in a turn.
+    ) -> dict[str, int | None]:
+        """Sum all token types from entries in a turn.
 
-        Returns (total_input, total_output) or (None, None) if no tokens found.
+        Returns dict with input, output, cache_create, cache_read token counts.
+        Values are None if no tokens found for that type.
         """
         total_input = 0
         total_output = 0
+        total_cache_create = 0
+        total_cache_read = 0
         has_tokens = False
 
         for entry in turn_entries:
@@ -2592,10 +2743,75 @@ session_id: {session_uuid}
             if entry.output_tokens is not None:
                 total_output += entry.output_tokens
                 has_tokens = True
+            if entry.cache_creation_input_tokens is not None:
+                total_cache_create += entry.cache_creation_input_tokens
+            if entry.cache_read_input_tokens is not None:
+                total_cache_read += entry.cache_read_input_tokens
 
         if has_tokens:
-            return (total_input, total_output)
-        return (None, None)
+            return {
+                "input": total_input,
+                "output": total_output,
+                "cache_create": total_cache_create if total_cache_create > 0 else None,
+                "cache_read": total_cache_read if total_cache_read > 0 else None,
+            }
+        return {"input": None, "output": None, "cache_create": None, "cache_read": None}
+
+    def _aggregate_session_usage(
+        self,
+        entries: list[Entry],
+        agent_entries: dict[str, list[Entry]] | None = None,
+    ) -> UsageStats:
+        """Aggregate token usage across all entries in a session.
+
+        Scans all main and subagent entries to compute:
+        - Total input/output/cache tokens
+        - Breakdown by model
+        - Breakdown by tool (extracted from tool_use blocks)
+        - Breakdown by agent (main vs subagent IDs)
+
+        Args:
+            entries: Main session entries
+            agent_entries: Optional dict mapping agent IDs to their entries
+
+        Returns:
+            UsageStats with aggregated data
+        """
+        stats = UsageStats()
+
+        # Process main entries
+        for entry in entries:
+            tool_name = None
+            # Extract tool name from assistant tool_use blocks
+            if entry.type == "assistant" and entry.message:
+                content = entry.message.get("content", [])
+                if isinstance(content, list):
+                    for block in content:
+                        if isinstance(block, dict) and block.get("type") == "tool_use":
+                            tool_name = block.get("name")
+                            break
+
+            stats.add_entry(entry, tool_name=tool_name, agent_id=None)
+
+        # Process subagent entries
+        if agent_entries:
+            for agent_id, agent_entry_list in agent_entries.items():
+                for entry in agent_entry_list:
+                    tool_name = None
+                    if entry.type == "assistant" and entry.message:
+                        content = entry.message.get("content", [])
+                        if isinstance(content, list):
+                            for block in content:
+                                if (
+                                    isinstance(block, dict)
+                                    and block.get("type") == "tool_use"
+                                ):
+                                    tool_name = block.get("name")
+                                    break
+
+                    stats.add_entry(entry, tool_name=tool_name, agent_id=agent_id)
+
+        return stats
 
     def _estimate_tokens(self, text: str) -> int:
         """Estimate token count from text (~1 token per 4 characters)."""
