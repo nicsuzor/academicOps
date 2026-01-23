@@ -39,6 +39,7 @@
       "Bash(mv ~/.claude/skills)",
       "Bash(mv ~/.claude/commands)",
       "Bash(mv ~/.claude/agents)",
+      "Read(.venv/**)",
       "Write(**/tja/records/**)",
       "Edit(**/tja/records/**)",
       "Write(**/tox/records/**)",
