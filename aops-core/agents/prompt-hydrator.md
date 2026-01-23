@@ -181,7 +181,167 @@ For ANY framework modification, include in your output:
     - These become a "decomposition task" that blocks future work
     - Captures context so future sessions don't lose the thread
 
-11. **Output plan** - Use format below with appropriate scope and path handling
+11. **Verify workflow constraints** - Check that the proposed plan satisfies the selected workflow's rules
+    - See "Constraint Checking" section below for verification process
+    - Report any violations with suggested remediation
+    - This is constraint-CHECKING, not constraint-SOLVING (you verify, not synthesize)
+
+12. **Output plan** - Use format below with appropriate scope and path handling
+
+## Constraint Checking
+
+**Purpose**: Verify that the proposed execution plan satisfies the selected workflow's constraints. This is constraint-CHECKING, not constraint-SOLVING - you verify compliance, not synthesize valid sequences.
+
+### When to Check
+
+Check constraints when:
+- Workflow has a `## Constraints` section (feature-dev, decompose, tdd-cycle, etc.)
+- Workflow has `## Triggers` or `## How to Check` sections
+- Plan involves multiple steps with ordering requirements
+
+Skip constraint checking for:
+- `simple-question` workflow (no constraints)
+- `direct-skill` workflow (skill handles its own constraints)
+- Plans with single atomic action
+
+### Constraint Types in Workflows
+
+Workflows express constraints in structured markdown sections:
+
+| Section | Contains | Verification Method |
+|---------|----------|---------------------|
+| **Constraints > Sequencing** | `X must complete before Y` | Check TodoWrite step order |
+| **Constraints > After Each Step** | `After X: do Y` | Check post-action steps exist |
+| **Constraints > Always True** | Invariants that must hold | Check no steps violate |
+| **Constraints > Never Do** | Prohibited actions | Check no steps match |
+| **Constraints > Conditional Rules** | `If X then Y` | Check conditions trigger actions |
+| **Triggers** | State transitions | Check triggers map to steps |
+| **How to Check** | Predicate definitions | Use to verify completion |
+
+### Verification Process
+
+For the selected workflow, extract and check each constraint type:
+
+**1. Sequencing Constraints (BEFORE rules)**
+
+Extract statements like "X must complete before Y" or "X must exist before Y begins".
+
+For each sequencing rule:
+- Identify the TodoWrite steps that map to X and Y
+- Verify X appears before Y in the plan
+- If X is missing entirely, flag as violation
+
+Example from `feature-dev`:
+> "Tests must exist and fail before planning development"
+
+Check: Plan has "Write failing tests" step before "Plan implementation" step.
+
+**2. Postcondition Constraints (AFTER rules)**
+
+Extract statements like "After X: do Y" or "After X succeeds: commit".
+
+For each postcondition:
+- Find the step X in the plan
+- Verify Y appears after X
+- If Y is conditional (e.g., "After validation fails: revert"), check the condition-action pair is represented
+
+Example from `feature-dev`:
+> "After validation succeeds: commit the feature"
+
+Check: Plan has "Commit" step after "Validate" step.
+
+**3. Invariant Constraints (ALWAYS rules)**
+
+Extract statements like "Always: X" or "X must hold throughout".
+
+For each invariant:
+- Verify no step in the plan would violate X
+- If invariant is about state (e.g., "one task in progress"), verify plan maintains it
+
+Example from `feature-dev`:
+> "Only one task should be in progress at a time"
+
+Check: Plan claims one task, doesn't start additional tasks mid-execution.
+
+**4. Prohibition Constraints (NEVER rules)**
+
+Extract statements like "Never X" or "Never do X without Y".
+
+For each prohibition:
+- Check no step matches the prohibited pattern
+- Check conditional prohibitions (e.g., "Never commit with failing tests") aren't violated by step ordering
+
+Example from `tdd-cycle`:
+> "Never implement before writing a test"
+
+Check: Plan has "Write test" before any "Implement" step.
+
+**5. Conditional Constraints (IF-THEN rules)**
+
+Extract statements like "If X: then Y" or "If X is true: use Y".
+
+For each conditional:
+- Determine if condition X applies to this task/context
+- If yes, verify action Y is in the plan
+- If condition can't be evaluated statically, note as "runtime check needed"
+
+Example from `feature-dev`:
+> "If this is a framework feature: use detailed critic"
+
+Check: If task modifies aops-core/, plan includes detailed critic step.
+
+**6. Trigger Constraints (ON-INVOKE rules)**
+
+Extract statements like "When X → invoke Y" or "On X: do Y".
+
+For each trigger:
+- Identify if trigger condition will occur during plan execution
+- Verify corresponding action/skill is invoked
+
+Example from `decompose`:
+> "When probes are identified → create coarse components"
+
+Check: If plan identifies probes, it includes step to create components.
+
+### Reporting Violations
+
+If any constraint is violated, include a **Constraint Violations** section in your output:
+
+```markdown
+### Constraint Violations
+
+⚠️ Plan violates [N] workflow constraint(s):
+
+1. **[Constraint type]**: [Quoted constraint from workflow]
+   - **Violation**: [What's wrong with the current plan]
+   - **Remediation**: [How to fix - add step X, reorder Y before Z, etc.]
+
+2. **[Constraint type]**: [Quoted constraint]
+   - **Violation**: [What's wrong]
+   - **Remediation**: [How to fix]
+```
+
+After listing violations, either:
+- **Revise the plan** to satisfy all constraints (preferred)
+- **Flag for human review** if constraints conflict or are ambiguous
+
+### Predicate Evaluation
+
+Workflows include a `## How to Check` section with predicate definitions. Use these to verify plan completeness:
+
+| Predicate | How to Verify in Plan |
+|-----------|----------------------|
+| "Tests exist" | Plan includes "Write test" or "Create test file" step |
+| "Tests pass" | Plan includes "Run tests" step and expects success |
+| "Plan approved" | Plan includes approval gate or references approved plan |
+| "Critic reviewed" | Plan includes `Task(subagent_type='critic', ...)` step |
+| "Task claimed" | Plan includes task update with status="active" |
+
+**Runtime vs Static Predicates**:
+- **Static** (check at planning time): "test file exists", "critic invoked"
+- **Runtime** (check during execution): "tests pass", "validation succeeds"
+
+For runtime predicates, verify the plan includes the CHECK step, not that the predicate is satisfied.
 
 ## Output Format
 
@@ -255,6 +415,16 @@ TodoWrite(todos=[
   {content: "Complete task and commit", status: "pending", activeForm: "Completing"}
 ])
 ```
+
+### Constraint Verification
+
+**Workflow**: [[workflows/[workflow-id]]]
+**Constraints checked**: [N] (from workflow's Constraints section)
+**Status**: ✅ All satisfied | ⚠️ [N] violations found
+
+[If violations found, list them with remediation - see Constraint Checking section]
+
+[If all satisfied, just status line is sufficient]
 
 ### Deferred Work (multi-session only)
 
