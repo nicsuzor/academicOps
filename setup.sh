@@ -42,6 +42,57 @@ fi
 ACA_DATA_PATH="${ACA_DATA}"
 CLAUDE_DIR="$HOME/.claude"
 
+# Check for emergency disable flag
+if [[ "${1:-}" == "--disable" ]]; then
+    echo -e "${RED}EMERGENCY DISABLE TRIGGERED${NC}"
+    echo "Removing aOps configuration..."
+
+    # Remove cron jobs
+    if command -v crontab &> /dev/null; then
+        echo "Removing cron jobs..."
+        # Use a temporary file to avoid pipefail issues
+        TEMP_CRON=$(mktemp)
+        crontab -l 2>/dev/null > "$TEMP_CRON" || true
+        # Filter out aOps jobs
+        grep -v "# aOps task index" "$TEMP_CRON" | grep -v "scripts/regenerate_task_index.py" | \
+        grep -v "# aOps session insights" | grep -v "scripts/cron_session_insights.sh" > "$TEMP_CRON.new"
+        crontab "$TEMP_CRON.new"
+        rm "$TEMP_CRON" "$TEMP_CRON.new"
+        echo -e "${GREEN}✓ Cron jobs removed${NC}"
+    fi
+
+    # Remove Claude symlinks
+    echo "Removing Claude symlinks..."
+    rm -f "$CLAUDE_DIR/settings.json"
+    rm -f "$CLAUDE_DIR/CLAUDE.md"
+    rm -rf "$CLAUDE_DIR/plugins"
+    rm -f "$CLAUDE_DIR/settings.local.json"
+    # Clean up legacy symlinks
+    rm -f "$CLAUDE_DIR/skills" "$CLAUDE_DIR/commands" "$CLAUDE_DIR/agents" "$CLAUDE_DIR/hooks"
+    echo -e "${GREEN}✓ Claude symlinks removed${NC}"
+
+    # Remove Gemini config
+    echo "Removing Gemini configuration..."
+    GEMINI_DIR="$HOME/.gemini"
+    rm -f "$GEMINI_DIR/hooks"
+    rm -f "$GEMINI_DIR/commands"
+    rm -f "$GEMINI_DIR/GEMINI.md"
+    rm -rf "$GEMINI_DIR/antigravity/global_workflows"
+    echo -e "${YELLOW}Note: ~/.gemini/settings.json was not removed. Please check it manually.${NC}"
+    echo -e "${GREEN}✓ Gemini symlinks removed${NC}"
+
+    # Remove Project Rules
+    echo "Removing Project Rules..."
+    rm -rf "$AOPS_PATH/.agent/rules"
+    echo -e "${GREEN}✓ Project rules removed${NC}"
+
+    echo
+    echo -e "${GREEN}aOps framework disabled.${NC}"
+    echo "Note: ~/.claude.json and ~/.claude/claude_desktop_config.json were not modified."
+    echo "      You may want to manually review them."
+    exit 0
+fi
+
 # Detect container runtime (docker, podman, orbstack all provide 'docker' CLI)
 detect_container_runtime() {
     if command -v docker &> /dev/null && docker info &> /dev/null; then

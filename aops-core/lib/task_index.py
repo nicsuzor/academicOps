@@ -76,6 +76,7 @@ class TaskIndexEntry:
     path: str
     due: str | None = None
     tags: list[str] = field(default_factory=list)
+    assignee: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
@@ -96,6 +97,7 @@ class TaskIndexEntry:
             "path": self.path,
             "due": self.due,
             "tags": self.tags,
+            "assignee": self.assignee,
         }
 
     @classmethod
@@ -118,6 +120,7 @@ class TaskIndexEntry:
             path=data["path"],
             due=data.get("due"),
             tags=data.get("tags", []),
+            assignee=data.get("assignee"),
         )
 
     @classmethod
@@ -140,6 +143,7 @@ class TaskIndexEntry:
             path=path,
             due=task.due.isoformat() if task.due else None,
             tags=task.tags,
+            assignee=task.assignee,
         )
 
 
@@ -491,11 +495,20 @@ class TaskIndex:
             return ancestors[-1]
         return self._tasks.get(task_id)
 
-    def get_ready_tasks(self, project: str | None = None) -> list[TaskIndexEntry]:
+    # Tags that indicate human-assigned tasks (excluded when caller is 'bot')
+    HUMAN_TAGS = {"nic", "human"}
+
+    def get_ready_tasks(
+        self, project: str | None = None, caller: str | None = None
+    ) -> list[TaskIndexEntry]:
         """Get tasks ready to work on.
 
         Args:
             project: Filter by project
+            caller: Filter by assignee - returns tasks where assignee is None
+                    or assignee matches caller. If caller is None, returns all.
+                    When caller is 'bot', also excludes tasks with human tags
+                    ('nic', 'human') in their tags list.
 
         Returns:
             List of ready task entries
@@ -504,6 +517,16 @@ class TaskIndex:
 
         if project is not None:
             entries = [e for e in entries if e.project == project]
+
+        # Filter by assignee: show if unassigned OR assigned to caller
+        if caller is not None:
+            entries = [e for e in entries if e.assignee is None or e.assignee == caller]
+
+            # When caller is 'bot', also exclude tasks with human tags
+            if caller == "bot":
+                entries = [
+                    e for e in entries if not (set(e.tags) & self.HUMAN_TAGS)
+                ]
 
         return entries
 

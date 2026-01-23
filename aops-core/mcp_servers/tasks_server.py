@@ -17,6 +17,7 @@ Usage:
 
 from __future__ import annotations
 
+import fcntl
 import logging
 from dataclasses import asdict
 from datetime import datetime
@@ -97,6 +98,7 @@ def _task_to_dict(task: Task) -> dict[str, Any]:
         "tags": task.tags,
         "effort": task.effort,
         "context": task.context,
+        "assignee": task.assignee,
         "body": task.body,
         "children": task.children,
         "blocks": task.blocks,
@@ -132,6 +134,7 @@ def create_task(
     due: Optional[str] = None,
     tags: Optional[list[str]] = None,
     body: str = "",
+    assignee: Optional[str] = None,
 ) -> dict[str, Any]:
     """Create a new task in the hierarchical task system.
 
@@ -140,7 +143,7 @@ def create_task(
 
     Args:
         task_title: Task title (required)
-        type: Task type - "goal", "project", "task", or "action" (default: "task")
+        type: Task type - "goal", "project", "task", "action", "bug", "feature", or "learn" (default: "task")
         project: Project slug for organization (determines storage location)
         parent: Parent task ID for hierarchical relationships
         depends_on: List of task IDs this task depends on
@@ -149,6 +152,7 @@ def create_task(
         due: Due date in ISO format (YYYY-MM-DDTHH:MM:SSZ)
         tags: List of tags for categorization
         body: Markdown body content
+        assignee: Task owner - typically 'nic' (human) or 'bot' (agent)
 
     Returns:
         Dictionary with:
@@ -161,7 +165,8 @@ def create_task(
             task_title="Write Chapter 1",
             type="project",
             project="book",
-            parent="20260112-write-book"
+            parent="20260112-write-book",
+            assignee="nic"
         )
     """
     try:
@@ -173,7 +178,7 @@ def create_task(
         except ValueError:
             return {
                 "success": False,
-                "message": f"Invalid task type: {type}. Must be one of: goal, project, task, action",
+                "message": f"Invalid task type: {type}. Must be one of: goal, project, task, action, bug, feature, learn",
             }
 
         # Parse due date
@@ -198,6 +203,7 @@ def create_task(
             due=due_datetime,
             tags=tags,
             body=body,
+            assignee=assignee,
         )
         task.order = order
 
@@ -288,6 +294,7 @@ def update_task(
     effort: Optional[str] = None,
     context: Optional[str] = None,
     body: Optional[str] = None,
+    assignee: Optional[str] = None,
 ) -> dict[str, Any]:
     """Update an existing task.
 
@@ -296,7 +303,7 @@ def update_task(
     Args:
         id: Task ID to update (required)
         task_title: New title
-        type: New type - "goal", "project", "task", or "action"
+        type: New type - "goal", "project", "task", "action", "bug", "feature", or "learn"
         status: New status - "inbox", "active", "blocked", "waiting", "done", "cancelled"
         priority: New priority 0-4
         order: New sibling order
@@ -308,6 +315,7 @@ def update_task(
         effort: New effort estimate (or "" to clear)
         context: New context (or "" to clear)
         body: New body content
+        assignee: Task owner - 'nic' or 'bot' (or "" to clear)
 
     Returns:
         Dictionary with:
@@ -417,6 +425,10 @@ def update_task(
             task.body = body
             modified_fields.append("body")
 
+        if assignee is not None:
+            task.assignee = assignee if assignee else None
+            modified_fields.append("assignee")
+
         # Save if anything changed
         if modified_fields:
             storage.save_task(task)
@@ -501,34 +513,46 @@ def complete_task(id: str) -> dict[str, Any]:
 
 
 @mcp.tool()
-def get_ready_tasks(project: str) -> dict[str, Any]:
+def get_ready_tasks(
+    project: str, caller: Optional[str] = None, limit: int = 1
+) -> dict[str, Any]:
     """Get tasks ready to work on.
 
     Ready tasks are:
     - Leaves (no children)
     - No unmet dependencies (all depends_on are done/cancelled)
     - Status is "active" or "inbox"
+    - Assignee is unset OR matches caller (if caller specified)
 
     Args:
         project: Filter by project slug, or empty string "" for all projects
+        caller: Filter by assignee - 'nic' or 'bot'. Returns tasks where
+                assignee is None or matches caller. If not specified, returns all.
+        limit: Maximum number of tasks to return (default: 1 for highest priority task)
 
     Returns:
         Dictionary with:
         - success: True
-        - tasks: List of ready task entries (sorted by priority)
-        - count: Number of ready tasks
+        - tasks: List of ready task entries (sorted by priority, limited)
+        - count: Number of tasks returned
+        - total: Total number of ready tasks available
         - message: Status message
     """
     try:
         index = _get_index()
-        ready = index.get_ready_tasks(project=project or None)
+        ready = index.get_ready_tasks(project=project or None, caller=caller)
+        total = len(ready)
+        ready = ready[:limit] if limit > 0 else ready
 
         return {
             "success": True,
             "tasks": [_index_entry_to_dict(e) for e in ready],
             "count": len(ready),
-            "message": f"Found {len(ready)} ready tasks"
-            + (f" in project {project}" if project else ""),
+            "total": total,
+            "message": f"Found {len(ready)} ready task(s)"
+            + (f" (of {total} total)" if total > len(ready) else "")
+            + (f" in project {project}" if project else "")
+            + (f" for {caller}" if caller else ""),
         }
 
     except Exception as e:
@@ -538,6 +562,115 @@ def get_ready_tasks(project: str) -> dict[str, Any]:
             "tasks": [],
             "count": 0,
             "message": f"Failed to get ready tasks: {e}",
+        }
+
+
+@mcp.tool()
+def claim_next_task(caller: str, project: str = "") -> dict[str, Any]:
+    """Claim the next ready task atomically.
+
+    Finds one ready task, atomically claims it by setting status to "active"
+    and assignee to caller. Uses file locking to prevent race conditions
+    where multiple workers might claim the same task.
+
+    Args:
+        caller: Who is claiming the task - typically 'nic' or 'bot'
+        project: Filter by project slug, or empty string "" for all projects
+
+    Returns:
+        Dictionary with:
+        - success: True if a task was claimed
+        - task: The claimed task data (or None if no tasks available)
+        - message: Status message
+    """
+    try:
+        storage = _get_storage()
+        index = _get_index()
+
+        # Get ready tasks for this caller
+        ready = index.get_ready_tasks(project=project or None, caller=caller)
+
+        if not ready:
+            return {
+                "success": True,
+                "task": None,
+                "message": "No ready tasks available"
+                + (f" in project {project}" if project else "")
+                + f" for {caller}",
+            }
+
+        # Try to claim tasks in priority order
+        for entry in ready:
+            task_path = storage._find_task_path(entry.id)
+            if task_path is None:
+                continue
+
+            lock_path = task_path.with_suffix(".lock")
+
+            try:
+                # Try to acquire exclusive lock (non-blocking)
+                with open(lock_path, "w") as lock_file:
+                    try:
+                        fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+                    except BlockingIOError:
+                        # Another process has the lock, try next task
+                        continue
+
+                    try:
+                        # Re-load task to check it's still claimable
+                        task = storage.get_task(entry.id)
+                        if task is None:
+                            continue
+
+                        # Check still ready (status inbox/active, no assignee or matches caller)
+                        if task.status not in (TaskStatus.INBOX, TaskStatus.ACTIVE):
+                            continue
+                        if task.assignee and task.assignee != caller:
+                            continue
+
+                        # Claim it
+                        task.status = TaskStatus.ACTIVE
+                        task.assignee = caller
+                        storage.save_task(task)
+
+                        # Rebuild index to reflect the change
+                        new_index = TaskIndex(get_data_root())
+                        new_index.rebuild()
+
+                        logger.info(f"claim_next_task: {entry.id} claimed by {caller}")
+
+                        return {
+                            "success": True,
+                            "task": _task_to_dict(task),
+                            "message": f"Claimed task: {task.title}",
+                        }
+                    finally:
+                        # Release lock
+                        fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
+
+            except Exception as e:
+                logger.warning(f"Failed to claim {entry.id}: {e}")
+                continue
+            finally:
+                # Clean up lock file
+                try:
+                    lock_path.unlink(missing_ok=True)
+                except Exception:
+                    pass
+
+        # No task could be claimed (all locked or claimed by others)
+        return {
+            "success": True,
+            "task": None,
+            "message": "No tasks available to claim (all locked or already assigned)",
+        }
+
+    except Exception as e:
+        logger.exception("claim_next_task failed")
+        return {
+            "success": False,
+            "task": None,
+            "message": f"Failed to claim task: {e}",
         }
 
 
@@ -988,7 +1121,7 @@ def list_tasks(
     Args:
         project: Filter by project slug
         status: Filter by status - "inbox", "active", "blocked", "waiting", "done", "cancelled"
-        type: Filter by type - "goal", "project", "task", "action"
+        type: Filter by type - "goal", "project", "task", "action", "bug", "feature", "learn"
         limit: Maximum number of tasks to return (default: 50)
 
     Returns:

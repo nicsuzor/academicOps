@@ -1,40 +1,34 @@
-# Email Reply Workflow
+---
+id: email-reply
+category: operations
+bases: [base-task-tracking]
+---
 
-Drafting email replies for tasks created by `/email`. Agent creates drafts, user sends.
+# Email Reply
 
-**Used by**: pull command (when task title starts with "Reply to")
+Draft email replies. Agent drafts, user sends.
+
+## Routing Signals
+
+- Task title starts with "Reply to"
+- Email task created by /email skill
 
 ## Pre-Requisites
 
-1. **Load user voice**: Read `$ACA_DATA/STYLE.md` for writing voice and tone
-2. **Check calendar**: If scheduling-related, check upcoming events for availability
+1. Load user voice from STYLE.md
+2. If scheduling: check calendar availability
 
-## Retrieve Original Email
+## Unique Steps
 
-**Primary**: Extract `entry_id` from task body, fetch with messages_get
-**Fallback**: Search by sender name and match by subject
+1. Retrieve original email (entry_id or search)
+2. Draft using user's voice
+3. Create draft via messages_reply (**never send**)
+4. Task stays `active` until user confirms sent
 
-## Draft Reply
+## Complexity Routing
 
-1. Draft using user's voice from STYLE.md
-2. Create draft via messages_reply (NOT send)
-3. Report: "Draft created in Outlook Drafts folder"
-
-**Never send emails directly** - always create drafts for user approval.
-
-## Completion Semantics
-
-| State | Task Status |
-|-------|-------------|
-| Draft created | `active` (await user) |
-| Email not found | `blocked` |
-| Complex/sensitive | `blocked`, tag `human` |
-| User confirms sent | `done` |
-
-## Complexity Decision Tree
-
-| Type | Examples | Action |
-|------|----------|--------|
-| Simple | "Thanks!", quick ack | Direct reply, no task |
-| Medium | Scheduling, requests | Agent drafts |
-| Complex | Sensitive, negotiation | User drafts |
+| Type | Action |
+|------|--------|
+| Simple ack | Direct reply |
+| Scheduling, requests | Agent drafts |
+| Sensitive, negotiation | Block for user |

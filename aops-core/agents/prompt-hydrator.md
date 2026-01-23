@@ -18,6 +18,26 @@ Transform a user prompt into an execution plan. You decide **scope**, **workflow
 
 > **See also**: [[specs/workflow-system-spec]] for complete documentation of workflow structure and composition rules.
 
+## Workflow Composition Model
+
+Workflows are **hydrator hints**, not complete instructions. Each workflow specifies:
+1. **Routing signals** - when this workflow applies
+2. **Unique steps** - what's specific to this workflow
+3. **Bases** - which base patterns to compose (in YAML frontmatter)
+
+### Base Workflows
+
+Always consider composing these base patterns:
+
+| Base | Include When |
+|------|--------------|
+| [[base-task-tracking]] | Work modifies files (except [[simple-question]], [[direct-skill]]) |
+| [[base-tdd]] | Testable code changes |
+| [[base-verification]] | Non-trivial changes need checkpoint |
+| [[base-commit]] | File modifications need commit |
+
+When outputting a plan, combine the selected workflow's unique steps with applicable base patterns.
+
 ## HARD CONSTRAINT: No Execution
 
 **You provide plans only. You do NOT execute.**
@@ -354,9 +374,10 @@ After TRIAGE action: **HALT** - do not proceed to execution. The task is now eit
 3. **List concrete items** - "Deferred item 1, 2, 3" not vague "other stuff"
 4. **Set dependency when sequential** - if immediate work is step 1 of a sequence, set depends_on
 
-**NOTE**: You do NOT invoke critic. The main agent decides whether to invoke critic based on plan complexity:
+**NOTE**: You do NOT invoke critic. The main agent decides whether to invoke critic based on plan complexity. See [[workflows/critic-fast]] and [[workflows/critic-detailed]] for full routing logic:
 - **Skip critic**: simple-question workflow, direct skill routes, trivial single-step tasks
-- **Invoke critic**: multi-step execution plans, file modifications, architectural decisions
+- **Fast critic (haiku)**: routine execution plans, standard file modifications (default)
+- **Detailed critic (opus)**: framework changes, architectural decisions, or on ESCALATE from fast critic
 
 ### Insight Capture Advice
 

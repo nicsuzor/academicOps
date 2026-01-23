@@ -123,12 +123,14 @@ def create_backup(data_root: Path) -> Path:
 def migrate_tasks(
     project: str | None = None,
     dry_run: bool = True,
+    limit: int | None = None,
 ) -> Tuple[int, int, Dict[str, str]]:
     """Migrate tasks from legacy IDs to v2 format.
 
     Args:
         project: Only migrate tasks for this project (None = all)
         dry_run: If True, only preview changes without modifying files
+        limit: Maximum number of tasks to migrate (None = all)
 
     Returns:
         Tuple of (migrated_count, total_count, id_mapping)
@@ -153,6 +155,10 @@ def migrate_tasks(
 
         # Check if needs migration
         if is_legacy_id(task.id):
+            # Check limit before adding more tasks
+            if limit is not None and len(tasks_to_migrate) >= limit:
+                continue
+
             old_id = task.id
             new_id = generate_new_id(task.project)
             id_mapping[old_id] = new_id
@@ -279,6 +285,11 @@ def main():
         "--project",
         type=str,
         help="Only migrate tasks for specific project",
+    )
+    parser.add_argument(
+        "--limit",
+        type=int,
+        help="Maximum number of tasks to migrate (for testing)",
     )
 
     args = parser.parse_args()

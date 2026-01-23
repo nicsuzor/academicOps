@@ -1,63 +1,34 @@
 ---
 id: interactive-triage
 category: operations
+bases: []
 ---
 
-# Interactive Triage Workflow
+# Interactive Triage
 
-Triage tasks through interactive discussion with user. Present batches, propose classifications, wait for approval, execute.
+Triage tasks through user discussion. Present, propose, confirm, execute.
 
-## When to Use
+## Routing Signals
 
-- Reviewing newly created tasks for proper filing
-- Periodic backlog grooming
-- Batch assignment of work to workers
-- Epic organization and parent assignment
+- Reviewing newly created tasks
+- Backlog grooming
+- Periodic organization
 
-## When NOT to Use
+## NOT This Workflow
 
-- Automated worker pipelines (use `/pull`)
-- Single-task updates (use task tools directly)
-- Emergency work (skip triage)
+- Automated pipelines → /pull
+- Single task → task tools directly
 
-## Key Steps
+## Unique Steps
 
-1. **Establish baseline**: Get counts, identify stale items
-2. **Present batch**: Assess type, project, epic, dependencies, priority, assignee
-3. **Get decisions**: Use AskUserQuestion for actionable decisions
-4. **Execute approved changes**: Update tasks per user approval
-5. **Verify and report**: Confirm changes applied
-
-## Assessment Questions
-
-| Aspect | Question |
-|--------|----------|
-| **Type** | Correct (task/bug/epic)? |
-| **Project** | Has `project:*` label? (REQUIRED) |
-| **Epic** | Should be parented to an epic? |
-| **Dependencies** | Blocks or depends on other tasks? |
-| **Priority** | P0-P3 appropriate? |
-| **Assignee** | nic/bot/unassigned? |
+1. Present batch with assessment (type, project, priority, assignee)
+2. Use AskUserQuestion for decisions
+3. Execute approved changes
+4. Verify changes applied
 
 ## Bot-Readiness Criteria
 
-Task ready for bot assignment when:
+Task ready for bot when:
 - Clear acceptance criteria
-- Specific files/locations identified
-- Edge cases considered
+- Specific files identified
 - No human judgment required
-
-## Sweep Order
-
-1. Stale (30+ days) → close superseded
-2. P0 urgent → verify still urgent
-3. Human gates → assign to nic
-4. Bot-assigned → check blockers valid
-5. Clusters → verify sequencing
-
-## Quality Gates
-
-- User explicitly approved changes
-- All modified tasks verified
-- All triaged tasks have `project:*` label
-- Complex work has dependency chains

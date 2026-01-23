@@ -1,51 +1,34 @@
 ---
 id: prove-feature
 category: quality-assurance
+bases: []
 ---
 
-# Prove Feature Workflow
+# Prove Feature
 
-Validate framework features integrate correctly by establishing baseline, executing operation, and verifying structural changes.
+Validate framework integration. "Does it integrate correctly?"
 
-**Key distinction**: qa-demo checks "does it run without error?" This workflow checks "does it integrate correctly?"
-
-## When to Use
+## Routing Signals
 
 - Validating new framework capabilities
-- Testing operations produce expected data structures
-- Verifying components connect properly (not orphaned)
-- Features where "correct" means "properly integrated"
+- Verifying structural changes (relationships, computed fields)
+- "Does it connect properly?"
 
-## When NOT to Use
+## NOT This Workflow
 
-- General functionality testing (use qa-demo)
-- Unit testing (use tdd-cycle)
-- Bug investigation (use debugging)
+- General functionality testing → [[qa-demo]]
+- Unit testing → [[tdd-cycle]]
+- Bug investigation → [[debugging]]
 
-## Scope Signals
+## Unique Steps
 
-| Signal | Indicates |
-|--------|-----------|
-| "Does it integrate correctly?" | Prove feature |
-| "Does it run without error?" | QA demo |
-| Structural verification needed | Prove feature |
-
-## Key Steps
-
-1. **Baseline**: Capture existing state before running feature
+1. **Baseline**: Capture state before running feature
 2. **Execute**: Run feature as user would
-3. **Verify**: Check structural changes (relationships, computed fields)
-4. **Report**: Present evidence table (expected vs actual)
+3. **Verify**: Check structural changes
+4. **Report**: Evidence table (expected vs actual)
 
 ## Evidence Format
 
 | Field | Expected | Actual | Correct? |
 |-------|----------|--------|----------|
-| [key] | [value] | [value] | ✅/❌ |
-
-## Quality Gates
-
-- Baseline captured before execution
-- Feature executed normally (no test modifications)
-- Structural integration verified
-- Evidence table produced
+| [key] | [value]  | [value]| ✅/❌    |

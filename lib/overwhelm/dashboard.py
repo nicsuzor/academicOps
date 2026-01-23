@@ -419,6 +419,49 @@ def get_activity_status(last_modified: datetime) -> tuple[str, str]:
         return "⚪", f"{int(days)}d ago"
 
 
+def post_quick_capture(content: str, tags: str = "dashboard,quick-capture") -> tuple[bool, str]:
+    """Post a quick capture note to the GitHub webhook.
+
+    Uses the same endpoint as the iPhone integration to create notes.
+
+    Args:
+        content: Note content to capture
+        tags: Comma-separated tags (default: dashboard,quick-capture)
+
+    Returns:
+        Tuple of (success: bool, message: str)
+    """
+    token = os.environ.get("GITHUB_PERSONAL_ACCESS_TOKEN")
+    if not token:
+        return False, "GITHUB_PERSONAL_ACCESS_TOKEN not set"
+
+    try:
+        response = requests.post(
+            "https://api.github.com/repos/nicsuzor/writing/dispatches",
+            headers={
+                "Accept": "application/vnd.github+json",
+                "Authorization": f"Bearer {token}",
+                "X-GitHub-Api-Version": "2022-11-28",
+            },
+            json={
+                "event_type": "capture-note",
+                "client_payload": {
+                    "content": content,
+                    "tags": tags,
+                    "source": "dashboard",
+                },
+            },
+            timeout=10,
+        )
+
+        if response.status_code == 204:
+            return True, "Note captured successfully"
+        else:
+            return False, f"GitHub API error: {response.status_code}"
+    except requests.RequestException as e:
+        return False, f"Request failed: {e}"
+
+
 def fetch_cross_machine_prompts() -> list[dict]:
     """Fetch recent prompts from Cloudflare R2 endpoint."""
     api_key = os.environ.get("PROMPT_LOG_API_KEY")
@@ -1736,6 +1779,45 @@ st.markdown(
         margin-top: 4px;
     }
 
+    /* Quick Capture Panel */
+    .quick-capture-panel {
+        background: linear-gradient(135deg, #1a1a2d 0%, #0d0d1a 100%);
+        border: 1px solid #6366f1;
+        border-radius: 8px;
+        padding: 16px 20px;
+        margin: 16px 0;
+    }
+
+    .quick-capture-title {
+        color: #a5b4fc;
+        font-size: 0.95em;
+        font-weight: bold;
+        margin-bottom: 12px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .quick-capture-success {
+        background: rgba(34, 197, 94, 0.2);
+        border: 1px solid #22c55e;
+        border-radius: 6px;
+        padding: 10px 14px;
+        color: #4ade80;
+        font-size: 0.9em;
+        margin-top: 8px;
+    }
+
+    .quick-capture-error {
+        background: rgba(239, 68, 68, 0.2);
+        border: 1px solid #ef4444;
+        border-radius: 6px;
+        padding: 10px 14px;
+        color: #fca5a5;
+        font-size: 0.9em;
+        margin-top: 8px;
+    }
+
 </style>
 """,
     unsafe_allow_html=True,
@@ -2126,6 +2208,62 @@ try:
 except Exception as e:
     st.error(f"Error loading projects: {e}")
     st.exception(e)
+
+# === QUICK CAPTURE PANEL ===
+st.markdown(
+    "<div class='quick-capture-panel'><div class='quick-capture-title'>📝 QUICK CAPTURE</div></div>",
+    unsafe_allow_html=True,
+)
+
+# Initialize session state for capture form
+if "capture_submitted" not in st.session_state:
+    st.session_state.capture_submitted = False
+if "capture_result" not in st.session_state:
+    st.session_state.capture_result = None
+
+# Text input and submit button
+capture_content = st.text_area(
+    "Capture a note",
+    placeholder="Type a quick note, idea, or task...",
+    height=80,
+    key="quick_capture_input",
+    label_visibility="collapsed",
+)
+
+col1, col2 = st.columns([3, 1])
+with col1:
+    capture_tags = st.text_input(
+        "Tags",
+        value="dashboard,quick-capture",
+        key="quick_capture_tags",
+        label_visibility="collapsed",
+        placeholder="Tags (comma-separated)",
+    )
+with col2:
+    submit_capture = st.button("📤 Capture", use_container_width=True)
+
+# Handle submission
+if submit_capture and capture_content.strip():
+    success, message = post_quick_capture(capture_content.strip(), capture_tags)
+    st.session_state.capture_submitted = True
+    st.session_state.capture_result = (success, message)
+
+# Show result
+if st.session_state.capture_submitted and st.session_state.capture_result:
+    success, message = st.session_state.capture_result
+    if success:
+        st.markdown(
+            f"<div class='quick-capture-success'>✓ {esc(message)}</div>",
+            unsafe_allow_html=True,
+        )
+        # Clear the result after showing
+        st.session_state.capture_submitted = False
+        st.session_state.capture_result = None
+    else:
+        st.markdown(
+            f"<div class='quick-capture-error'>✗ {esc(message)}</div>",
+            unsafe_allow_html=True,
+        )
 
 # Timestamp
 st.markdown(

@@ -29,9 +29,9 @@ status: DRAFT - PENDING APPROVAL (v2)
 │         ▼                                                                    │
 │    ┌─────────────────────┐                                                   │
 │    │ Initial Context     │  AGENTS.md injected (dogfooding instructions)     │
-│    │ Injection           │  Inject CORE.md if it exists in CWD               │
-│    │                     │  Plugin context loaded                            │
-│    └─────────────────────┘  Inject AXIOMS.md from $AOPS                      │
+│    │ Injection           │  Plugin context loaded                            │
+│    │                     │  (AXIOMS/HEURISTICS loaded by Hydrator)           │
+│    └─────────────────────┘                                                   │
 │         │                                                                    │
 │         ▼                                                                    │
 │    User Prompt                                                               │

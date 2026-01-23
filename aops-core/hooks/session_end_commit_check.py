@@ -13,12 +13,13 @@ The hook checks for:
 
 When all conditions are met:
 - If changes are staged: auto-commits with message
-- If changes are unstaged: warns user to stage and commit manually
+- If changes are unstaged: blocks session and tells Claude to commit
 - Otherwise: allows session to proceed normally
 
-Exit codes:
-    0: Success (continues or allows session to end)
-    2: Block (Stop only) - uncommitted work detected, requires commit
+Output format (for Stop hooks):
+- decision: "block" with reason field - Claude sees the reason
+- stopReason: User sees this message
+- Exit code 0 required for JSON processing (exit 2 ignores JSON!)
 """
 
 import json
@@ -361,9 +362,12 @@ def main():
 
             if check_result["should_block"]:
                 # Block the session and require commit
+                # CRITICAL: Use "decision": "block" with "reason" for Claude to see
+                # Exit code must be 0 for JSON to be processed (exit 2 ignores JSON)
                 output_data = {
-                    "systemMessage": check_result["message"],
-                    "continue": False,  # Block session from ending
+                    "decision": "block",
+                    "reason": check_result["message"],  # Claude sees this
+                    "stopReason": check_result["message"],  # User sees this
                 }
                 logger.info(f"Session end blocked: {check_result['message'][:80]}...")
 
@@ -373,10 +377,10 @@ def main():
                     hook_event="Stop",
                     input_data=input_data,
                     output_data=output_data,
-                    exit_code=2,
+                    exit_code=0,  # Must be 0 for JSON processing
                 )
                 print(json.dumps(output_data))
-                sys.exit(2)  # BLOCK exit code
+                sys.exit(0)  # Exit 0 so JSON is processed; decision:block does the blocking
             else:
                 # Allow session to proceed, but log findings
                 if check_result["message"]:

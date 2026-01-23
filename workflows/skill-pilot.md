@@ -1,53 +1,36 @@
 ---
 id: skill-pilot
 category: meta
+bases: [base-task-tracking]
 ---
 
-# Skill Pilot Workflow
+# Skill Pilot
 
-Build new skills through supervised learning when decomposition reveals capability gaps.
+Build new skills when [[decompose]] reveals capability gaps.
 
-**Key insight**: When you can't decompose a task into existing skills, that's a signal the framework needs a new skill.
+## Routing Signals
 
-## When to Use
+- Decomposition reaches task with no matching skill
+- Recurring pattern without standardized approach
+- First-time task worth capturing
 
-- Decomposition reaches irreducible task with no matching skill
-- Task pattern recurs but has no standardized approach
-- First-time task where you want to capture learning
+## NOT This Workflow
 
-## When NOT to Use
+- Task maps to existing skill → use it
+- One-off unlikely to recur → just do it
+- Task unclear → [[decompose]] first
 
-- Task maps to existing skill (just use it)
-- One-off task unlikely to recur (just do it)
-- Task unclear (use decompose first)
+## Unique Steps
 
-## Prerequisites
-
-- Task well-understood enough to attempt
-- User available for interactive guidance
-- Clear success criteria
-
-## Key Steps
-
-1. **Articulate gap**: What task? Why no existing skill fits?
-2. **Pilot with user**: Execute interactively, user guides decisions
-3. **Reflect**: Key insights, essential vs incidental steps
-4. **Draft SKILL.md**: Minimal skill file with when-to-use, steps, quality gates
-5. **Test**: Apply to similar task without guidance
-6. **Index**: Add to plugin.json, verify discoverable
-
-## Quality Gates
-
-- Gap articulated before piloting
-- User participated (supervised learning)
-- Reflection captured key insights
-- SKILL.md created with actionable instructions
-- Skill tested on at least one task
-- Skill indexed and discoverable
+1. Articulate gap: What? Why no existing skill?
+2. Pilot with user: Interactive, supervised learning
+3. Reflect: Essential vs incidental steps
+4. Draft SKILL.md: when-to-use, steps, quality gates
+5. Test: Apply to similar task without guidance
+6. Index: Add to plugin.json
 
 ## Anti-Patterns
 
-- Premature abstraction (creating skill after one use)
-- Kitchen sink skill (too much in one skill)
-- Orphan skill (not indexed → doesn't exist)
-- Ivory tower skill (writing without piloting)
+- Premature abstraction (skill after one use)
+- Kitchen sink (too much in one skill)
+- Orphan skill (not indexed = doesn't exist)

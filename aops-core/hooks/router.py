@@ -66,8 +66,12 @@ HOOK_REGISTRY: dict[str, list[dict[str, Any]]] = {
     "PreToolUse": [
         {"script": "unified_logger.py"},
         {"script": "hydration_gate.py"},  # Blocks/warns until prompt-hydrator invoked
-        {"script": "task_required_gate.py"},  # Blocks destructive ops without task binding
-        {"script": "policy_enforcer.py"},  # Blocks policy violations (enforcement-map.md)
+        {
+            "script": "task_required_gate.py"
+        },  # Blocks destructive ops without task binding
+        {
+            "script": "policy_enforcer.py"
+        },  # Blocks policy violations (enforcement-map.md)
         {"script": "overdue_enforcement.py"},
     ],
     "PostToolUse": [
@@ -84,12 +88,16 @@ HOOK_REGISTRY: dict[str, list[dict[str, Any]]] = {
         {"script": "unified_logger.py"},
     ],
     "SubagentStop": [
-        {"script": "reflection_check.py"},  # Remind subagents to include Framework Reflection
+        # {"script": "reflection_check.py"},  # Remind subagents to include Framework Reflection
         {"script": "unified_logger.py"},
     ],
     "Stop": [
-        {"script": "reflection_check.py"},  # Check for Framework Reflection before session end
-        {"script": "session_end_commit_check.py"},  # Enforce uncommitted work detection + auto-commit
+        {
+            "script": "reflection_check.py"
+        },  # Check for Framework Reflection before session end
+        {
+            "script": "session_end_commit_check.py"
+        },  # Enforce uncommitted work detection + auto-commit
         {"script": "unified_logger.py"},
     ],
     "SessionEnd": [

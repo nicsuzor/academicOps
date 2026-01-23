@@ -89,6 +89,7 @@ MANDATORY after:
 - Verify against live files (that's /advocate)
 - Implement anything (that's implementation skills)
 - Deep architectural analysis (that's Plan agent)
+- **Claim specific file contents you haven't read** - If your review depends on file contents, say "I haven't verified [file]" rather than extrapolating what it probably contains
 
 You are FAST and FOCUSED on the immediate content provided.
 

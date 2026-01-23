@@ -1,53 +1,33 @@
 ---
 id: qa-demo
 category: quality-assurance
+bases: []
 ---
 
-# QA Verification Demo
+# QA Verification
 
-Independent end-to-end verification before work completion. QA agent checks that work meets acceptance criteria and quality standards.
+Independent verification before completion. "Does it run without error?"
 
-## When to Use
+## Routing Signals
 
-- Before completing any feature or bug fix
-- After all tests pass but before final commit
-- When work affects user-facing functionality
+- Feature complete, tests pass, before final commit
+- User-facing functionality changes
 - Complex changes with multiple acceptance criteria
 
-## When NOT to Use
+## NOT This Workflow
 
-- Trivial changes (typo fixes, comment updates)
-- Changes already reviewed by user
-- Work explicitly marked as draft/WIP
-- Emergency hotfixes (but note QA was skipped)
+- Trivial changes (typo fixes)
+- Already reviewed by user
+- Integration validation → [[prove-feature]]
 
-## Scope Signals
+## Invocation
 
-| Signal | Indicates |
-|--------|-----------|
-| Feature complete, tests pass | Ready for QA |
-| User-facing change | QA required |
-| "Verify before commit" | QA workflow |
+```
+Task(subagent_type="qa",
+     prompt="Verify work meets acceptance criteria: [CRITERIA]. Check functionality, quality, completeness.")
+```
 
-## Key Steps
+## Verdicts
 
-1. Gather work context (request, acceptance criteria, changes made)
-2. Invoke QA verifier agent with full context
-3. Analyze verdict (VERIFIED or ISSUES)
-4. Fix critical/major issues if needed
-5. Re-verify if fixes made
-
-## Verification Dimensions
-
-| Dimension | Question |
-|-----------|----------|
-| **Functionality** | Does it do what was requested? |
-| **Quality** | Does it meet code standards? |
-| **Completeness** | Are all criteria met? |
-
-## Quality Gates
-
-- QA produces clear VERIFIED or ISSUES verdict
-- All three dimensions checked
-- Critical/major issues fixed before completion
-- No regressions introduced by fixes
+- **VERIFIED**: Proceed to completion
+- **ISSUES**: Fix critical/major issues, re-verify

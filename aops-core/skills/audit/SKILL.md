@@ -274,10 +274,21 @@ Multiple axioms: `Enforces: fail-fast-code, trust-version-control (Fail-Fast, Tr
 Derive task routing from:
 
 - `skills/*/SKILL.md` frontmatter - what task types each skill handles
+- `skills/*/workflows/*.md` - skill-specific workflow files (e.g., `skills/framework/workflows/05-feature-development.md`)
 - `agents/*.md` - what workflows each agent uses
 - `enforcement-map.md` (Soft Gate Guardrails section) - type→guardrail mappings
 
-Output: Table of task types, when to use each, workflow, and skill.
+**Skill workflow discovery**: Scan all `skills/*/workflows/*.md` files and extract:
+- Workflow name from filename (e.g., `05-feature-development.md` → `feature-development`)
+- Purpose from first heading or frontmatter description
+- Parent skill from directory path (e.g., `skills/framework/workflows/` → `framework` skill)
+
+**Include in output**:
+- A "Skill Workflows" section listing all discovered workflow files
+- Path reference for each (e.g., `[[skills/framework/workflows/05-feature-development]]`)
+- Brief description extracted from file
+
+Output: Table of task types, when to use each, workflow, and skill. Plus skill workflow index.
 
 #### README.md (Core Loop Flowchart)
 
@@ -499,7 +510,7 @@ High-level findings and overall status. Brief description of what was audited, m
 **Generated Indices Regenerated**:
 - INDEX.md: [N] files mapped
 - enforcement-map.md: [N] enforcement mechanisms
-- WORKFLOWS.md: [N] task types
+- WORKFLOWS.md: [N] task types, [M] skill workflows
 - README.md flowchart: [N] hooks in flow diagram
 
 **Other Updates**:
@@ -536,4 +547,4 @@ Created N tasks:
 - Generated indices reflect current source file state
 - **Hook→Axiom accuracy**: Every hook with "Enforces:" declaration is in enforcement-map.md with correct level (not just "Prompt")
 - **Enforcement completeness**: Every axiom with Hard/Soft Gate in enforcement-map.md has a corresponding hook with "Enforces:" declaration
-- **Sub-workflow coverage**: Skills with `## Workflow:` headers or `workflows/` subdirectories have all workflows listed in README.md
+- **Sub-workflow coverage**: Skills with `## Workflow:` headers or `workflows/` subdirectories have all workflows listed in README.md AND WORKFLOWS.md

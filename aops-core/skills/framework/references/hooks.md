@@ -625,21 +625,52 @@ All hooks receive JSON on stdin with these common fields:
 }
 ```
 
-**Output**:
+**Output** (CRITICAL - must exit 0 for JSON to be processed!):
 
 ```json
 {
-  "decision": "block" | null,
-  "reason": "Required when decision='block'",
-  "continue": true | false
+  "decision": "block",
+  "reason": "Explanation shown to CLAUDE - tells agent what to do",
+  "stopReason": "Message shown to USER"
 }
 ```
 
-**Exit codes**:
+**Field visibility:**
 
-- `0` - Allow stop
-- `1` - Warn but allow
-- `2` - Block stop
+| Field | Shown to | Purpose |
+| --- | --- | --- |
+| `reason` | **Claude only** | Instructions for the agent when blocked |
+| `stopReason` | **User only** | Explains why session was blocked |
+| `systemMessage` | **User only** | Warning message (optional) |
+
+**Exit codes (CRITICAL):**
+
+| Exit | JSON processed? | Result |
+| --- | --- | --- |
+| `0` | ✅ Yes | `decision: "block"` blocks, `reason` shown to Claude |
+| `1` | ❌ No | Warn but allow, stderr shown to user |
+| `2` | ❌ **No - JSON ignored!** | Only stderr used, agent sees stderr text |
+
+**IMPORTANT**: Exit code 2 completely ignores stdout JSON. If you want Claude to see your message, you MUST:
+1. Use `"decision": "block"` with `"reason": "..."` in JSON
+2. Exit with code 0 (not 2!)
+
+**Example - Correct blocking pattern:**
+
+```python
+# CORRECT: Exit 0 with decision:block
+output = {
+    "decision": "block",
+    "reason": "Please commit your changes before ending: git add -A && git commit",
+    "stopReason": "Session blocked: uncommitted changes detected"
+}
+print(json.dumps(output))
+sys.exit(0)  # Must be 0 for JSON to be processed!
+
+# WRONG: Exit 2 ignores JSON entirely
+print(json.dumps({"continue": False, "reason": "..."}))
+sys.exit(2)  # Claude never sees the JSON - only stderr!
+```
 
 ### Environment Variables Available in Hooks
 

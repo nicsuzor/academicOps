@@ -23,8 +23,8 @@ Quick reference for routing user requests to skills/commands. When a request mat
 | `/diag` | "what's loaded", "session status", "diagnostic" | Quick diagnostic check of what's currently loaded in this session |
 | `/dump` | "emergency handoff", "save work", "interrupted" | Emergency work handover - update task, file follow-ups, persist to memory, output reflection, halt |
 | `/email` | "process email", "email to task", "handle this email" | Create "ready for action" tasks from emails - with summaries, downloaded documents, and clear response requirements |
-| `/learn` | "framework issue", "fix this pattern", "improve the system" | Make minimal, graduated framework tweaks with experiment tracking |
-| `/log` | "log observation", "note this", "framework feedback" | Log framework observations to tasks for continuous improvement |
+| `/learn` | "framework issue", "fix this pattern", "improve the system" | Log observation AND make graduated framework change. Creates task, identifies root cause, applies minimal fix. |
+| `/log` | "log observation", "note this", "framework feedback" | Log framework observation only (no changes). Creates learn-type task for tracking and later analysis. |
 | `/pull` | "pull task", "get work", "what should I work on", "next task" | Pull a task from queue, claim it (mark active), and mark complete when done |
 
 ## Skills (Auto-Triggered)
@@ -43,7 +43,6 @@ These skills activate based on task context, not explicit invocation:
 | `/garden` | "prune knowledge", "consolidate notes", PKM maintenance | Incremental PKM maintenance - weeding, pruning, linking, consolidating. Tends the knowledge base bit by bit. |
 | `/hypervisor` | — | Batch parallel task processing with atomic locking. Spawns multiple worker agents that pull from shared queue without duplication. |
 | `/pdf` | "convert to PDF", "make PDF", markdown to PDF | Convert markdown documents to professionally formatted PDFs with academic-style typography, Roboto fonts, proper page layouts, and styling suitable for research documents, reviews, reports, and academic writing. |
-| `/peer-review` | — | Scaffold peer review workflow for grant/fellowship applications. Creates workspace, downloads criteria, generates review template, and creates bot-assigned subtasks for each application. |
 | `/python-dev` | Python code, .py files, type safety | Write production-quality Python code following fail-fast philosophy, type safety, and modern best practices. Enforces rigorous standards for academic and research code where correctness and replicability are paramount. |
 | `/remember` | "remember this", "save to memory", "store knowledge" | Write knowledge to markdown AND sync to memory server. MUST invoke - do not write markdown directly. |
 | `/session-insights` | "session summary", "generate insights" | Generate comprehensive session insights from transcripts using Gemini |

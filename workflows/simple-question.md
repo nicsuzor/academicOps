@@ -1,46 +1,30 @@
 ---
 id: simple-question
 category: information
+bases: []
 ---
 
-# Simple Question Workflow
+# Simple Question
 
-Minimal workflow for answering informational questions that don't require modifications.
+Answer and HALT. No modifications.
 
-## When to Use
+## Routing Signals
 
-ONLY when ALL true:
-- Question can be answered directly
-- No file modifications needed
-- No data changes needed
-- No actions required
+- "What is...", "How does...", "Where is..."
 - Pure information request
+- No actions required
 
-## When NOT to Use
+## NOT This Workflow
 
-- Question leads to action (use appropriate workflow)
-- Files need to be read/modified (use feature-dev or minor-edit)
-- Question is exploratory (might need Explore agent)
+- "Can you...", "Please...", "Fix..." → action required
+- Leads to investigation → [[debugging]]
+- Needs file modifications → [[minor-edit]] or [[design]]
 
-## Scope Signals
+## Unique Steps
 
-| Signal | Indicates |
-|--------|-----------|
-| "What is...", "How does...", "Where is..." | Simple question |
-| "Can you...", "Please...", "Fix..." | Action request (different workflow) |
-
-## Steps
-
-1. Answer the question clearly and concisely
-2. **HALT** - await further instructions
+1. Answer clearly and concisely
+2. **HALT** - await user's next instruction
 
 ## Critical Rule
 
-**Do NOT take unsolicited actions.** Answer the question, then stop. Let user decide next steps.
-
-## Quality Gates
-
-- Question answered clearly and correctly
-- No unsolicited actions taken
-- No file modifications made
-- Awaiting user's next instruction
+**No unsolicited actions.** Answer the question, then stop.

@@ -86,79 +86,65 @@ HEURISTICS.md              # Practical patterns (H# references)
 WORKFLOWS.md               # Index of all workflows
 ```
 
-**Workflow Format (Simple Markdown):**
+**Workflow Format (Minimal Hydrator Hints):**
+
+Workflows are **hydrator hints**, not complete agent instructions. They specify:
+1. **Routing signals** - when this workflow applies
+2. **Unique steps** - what's specific to this workflow (not covered by bases)
+3. **Bases** - which composable patterns to include (in YAML frontmatter)
+
 ```markdown
-# Feature Development Workflow
+---
+id: design
+category: planning
+bases: [base-task-tracking]
+---
 
-Full TDD feature development with critic review and QA verification.
+# Design
 
-## When to Use
+Specification and planning for known work.
 
-- Adding new features
-- Complex modifications affecting multiple files
-- Work requiring architectural decisions
+## Routing Signals
 
-## Steps
+- "Add feature X" with unclear requirements
+- Complex modifications needing architecture decisions
 
-### 1. Claim work in bd
+## NOT This Workflow
 
-Find or create a bd issue and mark it in-progress:
-```bash
-bd ready                    # Find available work
-bd update <id> --status=in_progress
-```
+- Obvious scope → [[minor-edit]]
+- Uncertain path → [[decompose]] first
 
-### 2. Define acceptance criteria
+## Unique Steps
 
-What constitutes success for this feature?
-- Specific, verifiable conditions
-- What functionality must work?
-- What tests must pass?
+1. Verify spec exists (user stories, acceptance criteria)
+2. Create implementation plan
+3. Get critic review (PROCEED / REVISE / HALT)
 
-### 3. Create a plan
+## Exit Routing
 
-Design the implementation approach and document it in the bd issue.
-
-### 4. Get critic review
-
-Follow the [[spec-review]] workflow to get critic feedback on your plan before implementing.
-
-### 5. Implement with TDD
-
-Follow the [[tdd-cycle]] workflow:
-- Write failing tests
-- Minimal implementation
-- Refactor
-- Repeat until complete
-
-### 6. Verify with QA
-
-Follow the [[qa-demo]] workflow for independent verification before completing.
-
-### 7. Land the changes
-
-Format, commit, and push:
-```bash
-./scripts/format.sh
-git add -A
-git commit -m "..."
-git push
-bd close <id>
-```
-
-## Success Criteria
-
-- All acceptance criteria met
-- All tests pass
-- QA verifier approves
-- Changes pushed to remote
+Once design approved:
+- General code → [[base-tdd]]
+- Python → python-dev skill
 ```
 
 **Key points**:
-- Human-readable markdown
+- Minimal - only what's unique to this workflow
 - References other workflows with [[wikilinks]]
-- LLM reads and understands it
-- No parsing needed
+- Bases in frontmatter declare composable patterns
+- LLM composes base patterns + unique steps into full plan
+
+### Base Workflows (Composable Patterns)
+
+Base workflows are reusable patterns that specialized workflows compose:
+
+| Base | Pattern | Skip When |
+|------|---------|-----------|
+| [[base-task-tracking]] | Claim/create task, update progress, complete | [[simple-question]], [[direct-skill]] |
+| [[base-tdd]] | Red-green-refactor cycle | Non-code changes |
+| [[base-verification]] | Checkpoint before completion | Trivial changes |
+| [[base-commit]] | Stage, commit (why not what), push | No file modifications |
+
+**Composition rule**: The hydrator reads the selected workflow's `bases` frontmatter and composes those patterns with the workflow's unique steps.
 
 **Prompt Hydrator (LLM-Native Composition):**
 - Reads WORKFLOWS.md to select appropriate workflow

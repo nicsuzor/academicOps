@@ -224,12 +224,22 @@ Feature development follows eight phases:
 5. Confirm framework principles followed
 6. Review code for security issues (injection, XSS, etc.)
 7. **MANDATORY: Spawn critic agent for independent review before commit**:
+
+   For routine features, use fast critic (see [[workflows/critic-fast]]):
+   ```
+   Task(subagent_type="aops-core:critic", model="haiku",
+        description="Quick review: [feature-name]",
+        prompt="Quick sanity check: Implementation for [feature-name] against criteria: [criteria]. Check scope, missing requirements, obvious errors. Return: PROCEED | ESCALATE | HALT")
+   ```
+
+   For framework features or on ESCALATE, use detailed critic (see [[workflows/critic-detailed]]):
    ```
    Task(subagent_type="aops-core:critic", model="opus",
-        description="Critic review: [feature-name]",
+        description="Detailed review: [feature-name]",
         prompt="Review this implementation against the acceptance criteria: [criteria]. Verify tests actually pass and output is correct. Report any gaps.")
    ```
    - Do NOT proceed to commit until critic review completes
+   - If critic returns ESCALATE, re-invoke with detailed critic
    - If critic finds issues, address them before proceeding
    - "Tests pass" is necessary but NOT sufficient - critic must verify correctness
 

@@ -155,6 +155,7 @@ class TaskStorage:
         due: datetime | None = None,
         tags: list[str] | None = None,
         body: str = "",
+        assignee: str | None = None,
     ) -> Task:
         """Create a new task with auto-generated ID.
 
@@ -168,6 +169,7 @@ class TaskStorage:
             due: Optional due date
             tags: Optional tags
             body: Markdown body content
+            assignee: Task owner - typically 'nic' (human) or 'bot' (agent)
 
         Returns:
             New Task instance (not yet saved)
@@ -195,6 +197,7 @@ class TaskStorage:
             due=due,
             tags=tags or [],
             body=body,
+            assignee=assignee,
         )
 
     def save_task(self, task: Task) -> Path:

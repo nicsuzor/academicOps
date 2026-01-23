@@ -41,6 +41,9 @@ class TaskType(Enum):
     PROJECT = "project"  # Coherent body of work
     TASK = "task"  # Discrete deliverable
     ACTION = "action"  # Single work session
+    BUG = "bug"  # Defect to fix
+    FEATURE = "feature"  # New functionality
+    LEARN = "learn"  # Observational tracking (not actionable)
 
 
 class TaskStatus(Enum):
@@ -87,6 +90,7 @@ class Task:
     tags: list[str] = field(default_factory=list)
     effort: str | None = None  # Estimated effort
     context: str | None = None  # @home, @computer, etc.
+    assignee: str | None = None  # Task owner: 'nic' or 'bot'
 
     # Body content (markdown below frontmatter)
     body: str = ""
@@ -192,6 +196,8 @@ class Task:
             fm["effort"] = self.effort
         if self.context:
             fm["context"] = self.context
+        if self.assignee:
+            fm["assignee"] = self.assignee
 
         return fm
 
@@ -279,6 +285,7 @@ class Task:
             tags=fm.get("tags", []),
             effort=fm.get("effort"),
             context=fm.get("context"),
+            assignee=fm.get("assignee"),
             body=body,
         )
 
