@@ -101,6 +101,44 @@ mcp__plugin_aops-core_tasks__create_task(
 mcp__plugin_aops-core_tasks__get_blocked_tasks()
 ```
 
+## Graph Insertion Responsibility
+
+**The creating agent is responsible for inserting tasks onto the work graph.**
+
+Every task must be connected to the hierarchy:
+
+```
+task → epic → chain → project → strategic priority
+```
+
+When creating a task, the agent MUST:
+
+1. **Identify the parent epic** - Search for existing epics in the project
+2. **Link the task** - Use `depends_on` or wikilinks to connect to parent
+3. **Create intermediates if needed** - If no suitable epic exists, create one that links to a project
+
+**Why this matters:**
+- Disconnected tasks become invisible to prioritization
+- Orphaned work cannot be sequenced for delivery
+- The task graph visualization reveals structural gaps
+
+**Anti-pattern:** Creating standalone tasks without graph connections. If a task has no parent, it's not properly inserted.
+
+```python
+# WRONG: Orphaned task
+mcp__plugin_aops-core_tasks__create_task(
+    title="Fix login bug",
+    project="webapp"
+)
+
+# RIGHT: Connected to parent epic
+mcp__plugin_aops-core_tasks__create_task(
+    title="Fix login bug",
+    project="webapp",
+    depends_on=["webapp-auth-epic"]  # Links to parent
+)
+```
+
 ## Task Assignment
 
 Tasks can be assigned to a specific actor:
