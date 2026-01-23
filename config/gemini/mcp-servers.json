@@ -20,12 +20,14 @@
       "command": "uv",
       "args": [
         "run",
+        "--directory",
+        "/home/nic/writing/aops/aops-tools/../aops-core",
         "python",
-        "$AOPS/aops-core/mcp_servers/tasks_server.py"
+        "mcp_servers/tasks_server.py"
       ],
       "env": {
-        "AOPS": "$AOPS",
-        "ACA_DATA": "$ACA_DATA"
+        "AOPS": "/home/nic/writing/aops/aops-tools/..",
+        "ACA_DATA": "/home/nic/writing/data"
       }
     },
     "outlook": {

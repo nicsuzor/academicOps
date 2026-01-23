@@ -469,6 +469,7 @@ for plugin_name in aops-core aops-tools; do
         sed -e "s|\${CONTEXT7_API_KEY}|${CONTEXT7_API_KEY:-}|g" \
             -e "s|\${MCP_MEMORY_API_KEY}|${MCP_MEMORY_API_KEY:-}|g" \
             -e "s|\${GH_MCP_TOKEN}|${GH_MCP_TOKEN:-}|g" \
+            -e "s|\${CLAUDE_PLUGIN_ROOT}|$plugin_dir|g" \
             "$template_file" > "$output_file"
         echo -e "${GREEN}✓ Generated $plugin_name/.mcp.json from template${NC}"
     else

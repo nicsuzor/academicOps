@@ -27,6 +27,21 @@
       "args": [
         "@playwright/mcp@latest"
       ]
+    },
+    "task_manager": {
+      "type": "stdio",
+      "command": "uv",
+      "args": [
+        "run",
+        "--directory",
+        "${CLAUDE_PLUGIN_ROOT}/../aops-core",
+        "python",
+        "mcp_servers/tasks_server.py"
+      ],
+      "env": {
+        "AOPS": "${CLAUDE_PLUGIN_ROOT}/..",
+        "ACA_DATA": "/home/nic/writing/data"
+      }
     }
   }
 }
