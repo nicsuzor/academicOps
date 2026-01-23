@@ -59,17 +59,34 @@ Classify based on execution path and scope:
 Every task exists on a work graph. Position it correctly:
 
 ### Parent Selection
-<!-- NS: this needs to include a search step -->
+
+**Before setting parent, search for candidate parents**:
+1. Use graph search or task index to find existing work related to this task
+2. Look for umbrella tasks, project containers, or feature groups that would logically contain this work
+3. Check task titles and bodies for matching keywords or scope areas
+4. Only assign parent if a clear relationship exists
+
 **Set `parent` when**:
 - Task is a subtask of existing project/goal
 - Work contributes to a larger deliverable
 - Task naturally belongs under umbrella work
+- Search confirmed a relevant parent exists
 
-<!-- NS: NO ORPHANS! we want tasks SEQUENCED, even if they're going to be at the same level; we don't want a CLUMP of tasks attached to the trunk. Graph MUST have STRUCTURE. -->
 **Leave `parent` null when**:
 - Standalone work (bug fixes, quick tasks)
-- No obvious parent exists
 - Creating a new root-level goal
+- Work genuinely has no logical parent
+
+**Graph Structure Principle: NO ORPHANS**
+
+Avoid creating a clump of tasks all hanging off the trunk. Tasks must be SEQUENCED on the graph with clear structure:
+
+- **Group related work**: If you create multiple standalone tasks in the same area, consider grouping them under an umbrella task
+- **Create intermediate containers**: For coherent work areas, create a parent task that holds related subtasks
+- **Sequencing matters**: Tasks at the same level should be ordered by dependency or logical sequence, not just randomly grouped
+- **Result**: The task graph should have STRUCTURE with depth and relationships, not a flat pile of work at the top level
+
+Example: Instead of creating 5 separate "bug fix" tasks at trunk level, group them under a "Bug fixes: Q1" task with subtasks for each bug.
 
 ### Dependency Selection
 
@@ -94,13 +111,16 @@ Every task exists on a work graph. Position it correctly:
 5. **One actionable task NOW** - Every decomposition should produce at least one ready task
 
 ### Project Assignment
-<!-- MUST set project (default to 'ns') -->
-**Set `project` when**:
-- Work clearly belongs to a specific domain
-- Multiple related tasks exist or will exist
+
+**Project is REQUIRED** - Always set a project value:
+- Work clearly belongs to a specific domain (use that project slug)
+- No obvious domain match? Default to `ns` (namespace for general infrastructure/framework work)
+- Multiple related tasks exist or will exist (project groups them)
 - Project provides useful organizational context
 
-**Standard projects**: `aops`, `tja`, `osb`, `buttermilk`, etc.
+**Standard projects**: `aops`, `tja`, `osb`, `buttermilk`, `ns`, etc.
+
+**Default**: Use `ns` if no specific project fits
 
 ## Decision Flow
 
