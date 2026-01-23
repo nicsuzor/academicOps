@@ -46,9 +46,75 @@ TYPE_SHAPES = {
     "action": "note",
 }
 
+# Structural completed nodes (completed parents with active children)
+STRUCTURAL_STYLE = {
+    "shape": "box3d",
+    "fillcolor": "#c3e6cb",  # muted green
+    "style": "filled,dashed",
+}
 
-def generate_dot(nodes: list[dict], edges: list[dict], include_orphans: bool = False) -> str:
-    """Generate DOT format graph with styling."""
+
+def filter_completed_smart(nodes: list[dict], edges: list[dict]) -> tuple[list[dict], set[str]]:
+    """Filter completed tasks, keeping structural parents with active descendants.
+
+    Returns:
+        (filtered_nodes, structural_ids) where structural_ids are completed nodes
+        kept because they have active descendants (displayed differently).
+    """
+    done_statuses = {"done", "completed"}
+
+    # Build node lookup and identify completed nodes
+    node_by_id = {n["id"]: n for n in nodes}
+    completed_ids = {n["id"] for n in nodes if n.get("status", "").lower() in done_statuses}
+    active_ids = {n["id"] for n in nodes if n.get("status", "").lower() not in done_statuses}
+
+    # Build adjacency: for each node, find its neighbors (bidirectional for wikilinks)
+    neighbors = {n["id"]: set() for n in nodes}
+    for e in edges:
+        src, tgt = e["source"], e["target"]
+        if src in neighbors and tgt in neighbors:
+            neighbors[src].add(tgt)
+            neighbors[tgt].add(src)
+
+    # Find completed nodes that have a path to any active node
+    # (these are "structural" - they connect active parts of the graph)
+    structural_ids = set()
+
+    def has_active_neighbor(node_id: str, visited: set) -> bool:
+        """Check if node has any active node reachable through the graph."""
+        if node_id in visited:
+            return False
+        visited.add(node_id)
+
+        for neighbor in neighbors.get(node_id, []):
+            if neighbor in active_ids:
+                return True
+            if neighbor in completed_ids and neighbor not in visited:
+                if has_active_neighbor(neighbor, visited):
+                    return True
+        return False
+
+    for node_id in completed_ids:
+        if has_active_neighbor(node_id, set()):
+            structural_ids.add(node_id)
+
+    # Keep: all active nodes + structural completed nodes
+    keep_ids = active_ids | structural_ids
+    filtered_nodes = [n for n in nodes if n["id"] in keep_ids]
+
+    return filtered_nodes, structural_ids
+
+
+def generate_dot(nodes: list[dict], edges: list[dict], include_orphans: bool = False,
+                 structural_ids: set[str] | None = None) -> str:
+    """Generate DOT format graph with styling.
+
+    Args:
+        structural_ids: Set of node IDs that are completed but kept for structure.
+                       These get box3d shape with dashed style.
+    """
+    structural_ids = structural_ids or set()
+
     # Build node lookup by id
     node_by_id = {n["id"]: n for n in nodes}
 
@@ -74,6 +140,7 @@ def generate_dot(nodes: list[dict], edges: list[dict], include_orphans: bool = F
         "        legend_project [label=\"Project\" shape=box3d fillcolor=\"#cce5ff\"];",
         "        legend_task [label=\"Task\" shape=box fillcolor=\"#cce5ff\"];",
         "        legend_done [label=\"Done\" shape=box fillcolor=\"#d4edda\"];",
+        "        legend_structural [label=\"Done (structural)\" shape=box3d style=\"filled,dashed\" fillcolor=\"#c3e6cb\"];",
         "        legend_blocked [label=\"Blocked\" shape=box fillcolor=\"#f8d7da\"];",
         "    }",
         "",
@@ -81,12 +148,21 @@ def generate_dot(nodes: list[dict], edges: list[dict], include_orphans: bool = F
 
     # Add nodes
     for node in nodes:
+        node_id = node["id"]
         node_type = node.get("node_type", "task")
         status = node.get("status", "inbox")
         priority = node.get("priority", 2)
 
-        shape = TYPE_SHAPES.get(node_type, "box")
-        fillcolor = STATUS_COLORS.get(status, "#ffffff")
+        # Check if this is a structural completed node
+        if node_id in structural_ids:
+            shape = STRUCTURAL_STYLE["shape"]
+            fillcolor = STRUCTURAL_STYLE["fillcolor"]
+            style = STRUCTURAL_STYLE["style"]
+        else:
+            shape = TYPE_SHAPES.get(node_type, "box")
+            fillcolor = STATUS_COLORS.get(status, "#ffffff")
+            style = "filled"
+
         priority = priority if isinstance(priority, int) else 2
         pencolor = PRIORITY_BORDERS.get(priority, "#6c757d")
         penwidth = 3 if priority <= 1 else 1
@@ -94,9 +170,10 @@ def generate_dot(nodes: list[dict], edges: list[dict], include_orphans: bool = F
         label = node.get("label", node["id"])[:50].replace('"', '\\"')
 
         lines.append(
-            f'    "{node["id"]}" ['
+            f'    "{node_id}" ['
             f'label="{label}" '
             f'shape={shape} '
+            f'style="{style}" '
             f'fillcolor="{fillcolor}" '
             f'color="{pencolor}" '
             f'penwidth={penwidth}'
@@ -120,7 +197,9 @@ def main():
     parser.add_argument("input", help="Input JSON file from fast-indexer")
     parser.add_argument("-o", "--output", default="tasks", help="Output base name")
     parser.add_argument("--include-orphans", action="store_true", help="Include unconnected nodes")
-    parser.add_argument("--exclude-done", action="store_true", help="Exclude tasks with status done/completed")
+    parser.add_argument("--exclude-done", action="store_true", help="Exclude all tasks with status done/completed")
+    parser.add_argument("--smart-filter", action="store_true",
+                        help="Smart filter: remove completed leaves but keep completed parents with active children (shown as box3d)")
     parser.add_argument("--layout", default="sfdp", choices=["dot", "neato", "sfdp", "fdp", "circo", "twopi"],
                         help="Graphviz layout engine (default: sfdp)")
     args = parser.parse_args()
@@ -139,8 +218,17 @@ def main():
 
     print(f"Loaded {len(nodes)} nodes, {len(edges)} edges from {input_path}")
 
-    # Filter out completed tasks if requested
-    if args.exclude_done:
+    # Filter completed tasks
+    structural_ids = set()
+    if args.smart_filter:
+        # Smart filter: keep completed parents with active children
+        original_count = len(nodes)
+        nodes, structural_ids = filter_completed_smart(nodes, edges)
+        excluded_leaves = original_count - len(nodes)
+        if excluded_leaves > 0 or structural_ids:
+            print(f"  Smart filter: excluded {excluded_leaves} completed leaves, kept {len(structural_ids)} structural")
+    elif args.exclude_done:
+        # Simple filter: remove all completed
         done_statuses = {"done", "completed"}
         original_count = len(nodes)
         nodes = [n for n in nodes if n.get("status", "").lower() not in done_statuses]
@@ -160,7 +248,7 @@ def main():
     print(f"  Status: {by_status}")
 
     # Generate DOT
-    dot_content = generate_dot(nodes, edges, args.include_orphans)
+    dot_content = generate_dot(nodes, edges, args.include_orphans, structural_ids)
     dot_path = f"{args.output}.dot"
     Path(dot_path).write_text(dot_content)
     print(f"  Written {dot_path}")
