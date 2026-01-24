@@ -381,21 +381,18 @@ class TestMainHookEntry:
         }
         monkeypatch.setattr("sys.stdin", io.StringIO(json.dumps(input_data)))
 
-        with patch("user_prompt_submit.log_hook_event"), patch(
-            "user_prompt_submit.safe_log_to_debug_file"
-        ):
-            with pytest.raises(SystemExit) as exc_info:
-                main()
+        with pytest.raises(SystemExit) as exc_info:
+            main()
 
-            assert exc_info.value.code == 0
+        assert exc_info.value.code == 0
 
-            # Verify output has empty additionalContext
-            captured = capsys.readouterr()
-            output = json.loads(captured.out)
-            assert output["hookSpecificOutput"]["additionalContext"] == ""
+        # Verify output has empty additionalContext
+        captured = capsys.readouterr()
+        output = json.loads(captured.out)
+        assert output["hookSpecificOutput"]["additionalContext"] == ""
 
-            # Verify hydration_pending was cleared
-            mock_session_state["clear"].assert_called_once()
+        # Verify hydration_pending was cleared
+        mock_session_state["clear"].assert_called_once()
 
     def test_main_skips_hydration_for_dot_prefix(
         self, temp_hydrator_dir, mock_session_state, monkeypatch, capsys
@@ -409,17 +406,14 @@ class TestMainHookEntry:
         }
         monkeypatch.setattr("sys.stdin", io.StringIO(json.dumps(input_data)))
 
-        with patch("user_prompt_submit.log_hook_event"), patch(
-            "user_prompt_submit.safe_log_to_debug_file"
-        ):
-            with pytest.raises(SystemExit) as exc_info:
-                main()
+        with pytest.raises(SystemExit) as exc_info:
+            main()
 
-            assert exc_info.value.code == 0
+        assert exc_info.value.code == 0
 
-            captured = capsys.readouterr()
-            output = json.loads(captured.out)
-            assert output["hookSpecificOutput"]["additionalContext"] == ""
+        captured = capsys.readouterr()
+        output = json.loads(captured.out)
+        assert output["hookSpecificOutput"]["additionalContext"] == ""
 
     def test_main_builds_hydration_for_normal_prompt(
         self, temp_hydrator_dir, mock_session_state, monkeypatch, capsys
@@ -433,9 +427,7 @@ class TestMainHookEntry:
         }
         monkeypatch.setattr("sys.stdin", io.StringIO(json.dumps(input_data)))
 
-        with patch("user_prompt_submit.log_hook_event"), patch(
-            "user_prompt_submit.safe_log_to_debug_file"
-        ), patch(
+        with patch(
             "user_prompt_submit.build_hydration_instruction",
             return_value="Hydration instruction with temp file path",
         ):
@@ -460,16 +452,15 @@ class TestMainHookEntry:
         }
         monkeypatch.setattr("sys.stdin", io.StringIO(json.dumps(input_data)))
 
-        with patch("user_prompt_submit.safe_log_to_debug_file"):
-            with pytest.raises(SystemExit) as exc_info:
-                main()
+        with pytest.raises(SystemExit) as exc_info:
+            main()
 
-            # Should exit 0 (graceful degradation)
-            assert exc_info.value.code == 0
+        # Should exit 0 (graceful degradation)
+        assert exc_info.value.code == 0
 
-            captured = capsys.readouterr()
-            output = json.loads(captured.out)
-            assert output["hookSpecificOutput"]["additionalContext"] == ""
+        captured = capsys.readouterr()
+        output = json.loads(captured.out)
+        assert output["hookSpecificOutput"]["additionalContext"] == ""
 
     def test_main_handles_invalid_json(self, temp_hydrator_dir, monkeypatch, capsys):
         """Test that main() handles invalid JSON input gracefully."""
@@ -477,12 +468,11 @@ class TestMainHookEntry:
 
         monkeypatch.setattr("sys.stdin", io.StringIO("not valid json"))
 
-        with patch("user_prompt_submit.safe_log_to_debug_file"):
-            with pytest.raises(SystemExit) as exc_info:
-                main()
+        with pytest.raises(SystemExit) as exc_info:
+            main()
 
-            # Should exit 0 even with bad input
-            assert exc_info.value.code == 0
+        # Should exit 0 even with bad input
+        assert exc_info.value.code == 0
 
     def test_main_fails_fast_on_io_error(
         self, temp_hydrator_dir, mock_session_state, monkeypatch, capsys
@@ -496,9 +486,7 @@ class TestMainHookEntry:
         }
         monkeypatch.setattr("sys.stdin", io.StringIO(json.dumps(input_data)))
 
-        with patch("user_prompt_submit.log_hook_event"), patch(
-            "user_prompt_submit.safe_log_to_debug_file"
-        ), patch(
+        with patch(
             "user_prompt_submit.build_hydration_instruction",
             side_effect=IOError("Disk full"),
         ):
@@ -525,19 +513,16 @@ class TestMainHookEntry:
         }
         monkeypatch.setattr("sys.stdin", io.StringIO(json.dumps(input_data)))
 
-        with patch("user_prompt_submit.log_hook_event"), patch(
-            "user_prompt_submit.safe_log_to_debug_file"
-        ):
-            with pytest.raises(SystemExit) as exc_info:
-                main()
+        with pytest.raises(SystemExit) as exc_info:
+            main()
 
-            assert exc_info.value.code == 0
+        assert exc_info.value.code == 0
 
-            # Empty prompt results in empty output dict (doesn't enter if prompt: block)
-            captured = capsys.readouterr()
-            output = json.loads(captured.out)
-            # When prompt is empty, output_data is initialized as {} and stays that way
-            assert output == {}
+        # Empty prompt results in empty output dict (doesn't enter if prompt: block)
+        captured = capsys.readouterr()
+        output = json.loads(captured.out)
+        # When prompt is empty, output_data is initialized as {} and stays that way
+        assert output == {}
 
 
 if __name__ == "__main__":

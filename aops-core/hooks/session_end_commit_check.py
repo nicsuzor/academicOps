@@ -29,7 +29,6 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from hooks.hook_logger import log_hook_event
 from lib.reflection_detector import has_reflection
 from lib.transcript_parser import SessionProcessor
 
@@ -360,15 +359,6 @@ def main():
                     "reason": check_result["message"],
                 }
                 logger.info(f"Session end blocked: {check_result['message'][:80]}...")
-
-                # Log the enforcement action
-                log_hook_event(
-                    session_id=session_id,
-                    hook_event="Stop",
-                    input_data=input_data,
-                    output_data=output_data,
-                    exit_code=0,  # Must be 0 for JSON processing
-                )
                 print(json.dumps(output_data))
                 sys.exit(0)  # Exit 0 so JSON is processed; decision:block does the blocking
             else:
