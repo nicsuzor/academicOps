@@ -175,15 +175,24 @@ description: Working hypotheses validated by evidence.
 
 ## Task Sequencing on Insert (P#73)
 
-**Statement**: The creating agent is responsible for inserting tasks onto the work graph. Every task MUST connect to the hierarchy: `task → epic → chain → project → strategic priority`. Disconnected tasks are violations.
+**Statement**: The creating agent is responsible for inserting tasks onto the work graph. Every task MUST connect to the hierarchy: `action → task → epic → project → goal`. Disconnected tasks are violations.
+
+**Hierarchy definitions**:
+- **Goal**: Long-term outcome (months/years) - "Finish PhD", "Launch product"
+- **Project**: Bounded initiative with deliverables (weeks/months) - "Migrate to tasks-mcp"
+- **Epic**: Group of tasks toward a milestone (days/weeks) - "Implement batch processing"
+- **Task**: Discrete piece of work (hours/days) - "Fix hydrator bug"
+- **Action**: Single atomic step (minutes) - "Run tests"
+
+**Sequencing principle**: Work on one epic at a time when possible. Epics are the unit of focus - completing an epic before starting another reduces context-switching and makes progress visible.
 
 **Corollaries**:
 - Before `create_task()`, search for the parent epic in the project
-- Set `depends_on` to link to parent epic (or create one if none exists)
+- Set `parent` to link to epic (or create one if none exists)
+- Use `depends_on` for explicit sequencing between tasks within an epic
 - Root-level orphans ("thorns") are invisible to prioritization and sequencing
 - The agent is autonomous on structural decisions - don't ask "should I set parent?"
 - If no suitable epic exists, create one that links to the project
-- Attach new work to epics/chains that are themselves connected to projects
 - Priority flows from tree position: tasks closer to trunk are more immediate
 
 **Derivation**: Orphan tasks fragment project coherence and become invisible to prioritization. The task graph visualization reveals structural gaps - 15 disconnected components instead of 3-5 indicates missing links. Agents must maintain graph integrity on every insert.
@@ -249,5 +258,19 @@ description: Working hypotheses validated by evidence.
 - When a command exceeds ~30 lines, check if procedural logic should move to a workflow
 
 **Derivation**: Commands are UI (invocation interface). Workflows are business logic (procedure). Mixing them creates non-reusable, non-configurable procedures tightly coupled to one entry point. P#47 (Agents Execute Workflows) establishes that workflows are the unit of reusable procedure.
+
+---
+
+## Deterministic Computation Stays in Code (P#78)
+
+**Statement**: LLMs are bad at counting, aggregation, and numerical computation. Use Python/scripts for deterministic operations; LLMs for judgment, classification, and generation.
+
+**Examples**:
+- Token counting → transcript_parser.py UsageStats (not LLM)
+- File counts, line counts → glob/wc (not LLM)
+- Data aggregation → pandas/SQL (not LLM)
+- Pattern matching on logs → Python (not LLM)
+
+**Derivation**: LLMs hallucinate numbers and fail at counting. Deterministic operations have exact solutions that code computes reliably. Session logs and hook logs already exist - process them with Python, not inference.
 
 ---
