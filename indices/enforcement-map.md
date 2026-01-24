@@ -189,13 +189,14 @@ These guardrails are applied by [[prompt-hydration]] based on task classificatio
 | `criteria_gate`           | [[acceptance-criteria-own-success]], [[no-promises-without-instructions]], [[edit-source-run-setup]] | Missing acceptance criteria                     |
 | `capture_insights`        | [[semantic-vs-episodic-storage]]                                                                     | Losing discoveries (bd for ops, remember for knowledge) |
 | `zero_friction_capture`   | [[action-over-clarification]]                                                                        | Asking questions on exploratory ideas instead of capturing |
+| `hook_docs_first`         | [[verify-first]]                                                                                     | Modifying hook output fields without reading hooks.md      |
 
 ### Task Type → Guardrail Mapping
 
 | Task Type   | Guardrails Applied                                                                                                        |
 | ----------- | ------------------------------------------------------------------------------------------------------------------------- |
 | `framework` | framework_gate, verify_before_complete, require_skill:framework, plan_mode, critic_review, criteria_gate, use_todowrite, capture_insights |
-| `cc_hook`   | verify_before_complete, require_skill:plugin-dev:hook-development, plan_mode, criteria_gate, use_todowrite                |
+| `cc_hook`   | verify_before_complete, require_skill:plugin-dev:hook-development, plan_mode, criteria_gate, use_todowrite, hook_docs_first |
 | `cc_mcp`    | verify_before_complete, require_skill:plugin-dev:mcp-integration, plan_mode, criteria_gate, use_todowrite                 |
 | `debug`     | verify_before_complete, quote_errors_exactly, fix_within_design, criteria_gate, use_todowrite, capture_insights           |
 | `feature`   | verify_before_complete, require_acceptance_test, criteria_gate, use_todowrite, capture_insights                           |
