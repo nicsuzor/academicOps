@@ -7,8 +7,8 @@ when task routing happens. The session state records current_task, allowing
 queries like "what task was this session working on?"
 
 Triggers (bind):
-- After create_task MCP tool (new task created)
 - After update_task MCP tool with status="active" (task claimed)
+- After claim_next_task MCP tool (task claimed from queue)
 
 Triggers (unbind):
 - After complete_task MCP tool (task completed)
@@ -42,8 +42,10 @@ def should_bind_task(tool_name: str, tool_input: dict[str, Any]) -> bool:
     """Determine if this tool call should trigger task binding.
 
     Binding occurs for:
-    - create_task: New task created (agent taking ownership)
     - update_task with status="active": Task being claimed
+    - claim_next_task: Task claimed from queue
+
+    Note: create_task does NOT bind - creating a task doesn't mean claiming it.
 
     Args:
         tool_name: Name of the tool being invoked
@@ -52,14 +54,14 @@ def should_bind_task(tool_name: str, tool_input: dict[str, Any]) -> bool:
     Returns:
         True if task binding should occur
     """
-    # Create task - always bind (agent is creating work to track)
-    if tool_name == "mcp__plugin_aops-tools_task_manager__create_task":
-        return True
-
     # Update task - only bind if claiming (status -> active)
     if tool_name == "mcp__plugin_aops-tools_task_manager__update_task":
         new_status = tool_input.get("status", "")
         return new_status == "active"
+
+    # Claim next task - always bind (explicitly claiming from queue)
+    if tool_name == "mcp__plugin_aops-tools_task_manager__claim_next_task":
+        return True
 
     return False
 
@@ -137,7 +139,7 @@ def main() -> None:
         sys.exit(0)
 
     # Determine binding source
-    source = "create" if "create_task" in tool_name else "claim"
+    source = "claim"
 
     # Bind task to session
     try:
