@@ -1388,6 +1388,104 @@ def search_tasks(query: str, limit: int = 20) -> dict[str, Any]:
         }
 
 
+@mcp.tool()
+def dedup_tasks(delete: bool = False) -> dict[str, Any]:
+    """Find and optionally remove duplicate tasks.
+
+    Identifies tasks with identical titles. When delete=True,
+    keeps the task that is 'done' (if any), otherwise keeps the newest.
+
+    Args:
+        delete: If True, delete duplicates (keeps done or newest). Default: False (dry run)
+
+    Returns:
+        Dictionary with:
+        - success: True
+        - duplicates: List of duplicate groups, each with:
+            - title: The duplicate title
+            - keep: Task ID to keep
+            - remove: List of task IDs that are/would be deleted
+        - total_duplicates: Total number of duplicate tasks found
+        - deleted_ids: List of deleted task IDs (only if delete=True)
+        - message: Status message
+    """
+    try:
+        storage = _get_storage()
+
+        # Group tasks by title
+        from collections import defaultdict
+        by_title: dict[str, list[Task]] = defaultdict(list)
+
+        for task in storage._iter_all_tasks():
+            by_title[task.title].append(task)
+
+        # Find duplicates (titles with >1 task)
+        duplicates = {title: tasks for title, tasks in by_title.items() if len(tasks) > 1}
+
+        if not duplicates:
+            return {
+                "success": True,
+                "duplicates": [],
+                "total_duplicates": 0,
+                "deleted_ids": [],
+                "message": "No duplicate tasks found",
+            }
+
+        result_groups = []
+        to_delete = []
+
+        for title, tasks in sorted(duplicates.items()):
+            # Sort: done status first, then by modified date (newest first)
+            tasks.sort(key=lambda t: (
+                0 if t.status.value == "done" else 1,
+                -t.modified.timestamp()
+            ))
+
+            keep = tasks[0]
+            remove = tasks[1:]
+            to_delete.extend(remove)
+
+            result_groups.append({
+                "title": title,
+                "keep": keep.id,
+                "keep_status": keep.status.value,
+                "remove": [t.id for t in remove],
+            })
+
+        deleted_ids = []
+        if delete and to_delete:
+            for task in to_delete:
+                if storage.delete_task(task.id):
+                    deleted_ids.append(task.id)
+
+            # Rebuild index after deletions
+            index = TaskIndex(get_data_root())
+            index.rebuild()
+
+            logger.info(f"dedup_tasks: deleted {len(deleted_ids)} duplicates")
+
+        total_dups = sum(len(g["remove"]) for g in result_groups)
+
+        return {
+            "success": True,
+            "duplicates": result_groups,
+            "total_duplicates": total_dups,
+            "deleted_ids": deleted_ids,
+            "message": f"Found {len(duplicates)} titles with {total_dups} duplicate(s)"
+            + (f", deleted {len(deleted_ids)}" if delete else ", use delete=True to remove"),
+        }
+
+    except Exception as e:
+        logger.exception("dedup_tasks failed")
+        return {
+            "success": False,
+            "duplicates": [],
+            "total_duplicates": 0,
+            "deleted_ids": [],
+            "message": f"Failed to deduplicate tasks: {e}",
+        }
+
+
 # =============================================================================
 # INDEX OPERATIONS
 # =============================================================================
