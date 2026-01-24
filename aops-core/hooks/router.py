@@ -139,7 +139,9 @@ def get_hooks_for_event(
         if key in HOOK_REGISTRY:
             return HOOK_REGISTRY[key]
 
-    return HOOK_REGISTRY.get(event_name, [])
+    if event_name not in HOOK_REGISTRY:
+        raise ValueError(f"Required hook event '{event_name}' not found in registry")
+    return HOOK_REGISTRY[event_name]
 
 
 def merge_permission_decisions(decisions: list[str]) -> str | None:
@@ -267,7 +269,7 @@ def merge_outputs(outputs: list[dict[str, Any]], event_name: str) -> dict[str, A
             continue
 
         # Extract hookSpecificOutput fields
-        hook_specific = output.get("hookSpecificOutput", {})
+        hook_specific = output.get("hookSpecificOutput") if "hookSpecificOutput" in output else {}
         if hook_specific:
             ctx = hook_specific.get("additionalContext")
             if ctx:
@@ -370,6 +372,13 @@ def run_hook_script(
             cmd = [sys.executable, str(script_path)]
 
         # Run with input on stdin
+        # Build PYTHONPATH explicitly
+        current_pythonpath = os.environ.get("PYTHONPATH")
+        if current_pythonpath is None:
+            pythonpath = str(AOPS_CORE_DIR)
+        else:
+            pythonpath = f"{AOPS_CORE_DIR}:{current_pythonpath}"
+
         result = subprocess.run(
             cmd,
             input=json.dumps(input_data),
@@ -378,7 +387,7 @@ def run_hook_script(
             timeout=timeout,
             env={
                 **os.environ,
-                "PYTHONPATH": f"{AOPS_CORE_DIR}:{os.environ.get('PYTHONPATH', '')}",
+                "PYTHONPATH": pythonpath,
             },
             cwd=HOOK_DIR,
         )
@@ -425,6 +434,13 @@ def start_async_hook(
         # Use sys.executable to ensure we use the same Python that's running router
         cmd = [sys.executable, str(script_path)]
 
+    # Build PYTHONPATH explicitly
+    current_pythonpath = os.environ.get("PYTHONPATH")
+    if current_pythonpath is None:
+        pythonpath = str(AOPS_CORE_DIR)
+    else:
+        pythonpath = f"{AOPS_CORE_DIR}:{current_pythonpath}"
+
     proc = subprocess.Popen(
         cmd,
         stdin=subprocess.PIPE,
@@ -433,7 +449,7 @@ def start_async_hook(
         text=True,
         env={
             **os.environ,
-            "PYTHONPATH": f"{AOPS_CORE_DIR}:{os.environ.get('PYTHONPATH', '')}",
+            "PYTHONPATH": pythonpath,
         },
         cwd=HOOK_DIR,
     )
@@ -575,7 +591,11 @@ def check_custodiet_block(session_id: str | None) -> tuple[dict[str, Any], int] 
     state = ss.load_session_state(session_id)
     reason = "Unknown violation"
     if state:
-        reason = state.get("state", {}).get("custodiet_block_reason") or reason
+        state_section = state.get("state")
+        if state_section and "custodiet_block_reason" in state_section:
+            block_reason = state_section["custodiet_block_reason"]
+            if block_reason:
+                reason = block_reason
 
     error_output = {
         "systemMessage": f"""BLOCKED: Custodiet detected a compliance violation.
@@ -595,9 +615,13 @@ def route_hooks(input_data: dict[str, Any]) -> tuple[dict[str, Any], int]:
     Returns:
         Tuple of (merged output, aggregated exit code)
     """
-    event_name = input_data.get("hook_event_name", "")
+    # hook_event_name is required - be explicit about what's missing
+    if "hook_event_name" not in input_data:
+        raise ValueError("Required field 'hook_event_name' missing from input_data")
+    event_name = input_data["hook_event_name"]
+
     if not event_name:
-        # No event name - return empty (noop)
+        # Empty event name - return empty (noop)
         return {}, 0
 
     # CHECK CUSTODIET BLOCK FLAG FIRST
