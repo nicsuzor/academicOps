@@ -217,7 +217,7 @@ These scripts exist but aren't user-invocable skills. Provide exact invocation w
 
 **Include in execution plan**:
 ```javascript
-{content: "Complete task, commit, and output Framework Reflection", status: "pending", activeForm: "Completing session"}
+{{content: "Complete task, commit, and output Framework Reflection", status: "pending", activeForm: "Completing session"}}
 ```
 
 ## ⛔ Task-Gated Permissions (ENFORCED)
