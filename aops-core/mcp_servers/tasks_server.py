@@ -197,7 +197,7 @@ def create_task(
     Args:
         task_title: Task title (required)
         type: Task type - "goal", "project", "epic", "task", "action", "bug", "feature", or "learn" (default: "task")
-        status: Task status - "inbox", "active", "blocked", "waiting", "done", or "cancelled" (default: "inbox")
+        status: Task status - "inbox", "active", "blocked", "waiting", "review", "done", or "cancelled" (default: "inbox")
         project: Project slug for organization (determines storage location)
         parent: Parent task ID for hierarchical relationships
         depends_on: List of task IDs this task depends on
@@ -246,7 +246,7 @@ def create_task(
             except ValueError:
                 return {
                     "success": False,
-                    "message": f"Invalid status: {status}. Must be one of: inbox, active, blocked, waiting, done, cancelled",
+                    "message": f"Invalid status: {status}. Must be one of: inbox, active, blocked, waiting, review, done, cancelled",
                 }
 
         # Parse due date
@@ -387,7 +387,7 @@ def update_task(
         id: Task ID to update (required)
         task_title: New title
         type: New type - "goal", "project", "epic", "task", "action", "bug", "feature", or "learn"
-        status: New status - "inbox", "active", "blocked", "waiting", "done", "cancelled"
+        status: New status - "inbox", "active", "blocked", "waiting", "review", "done", "cancelled"
         priority: New priority 0-4
         order: New sibling order
         parent: New parent task ID (or "" to clear)
@@ -893,6 +893,60 @@ def get_blocked_tasks(project: str) -> dict[str, Any]:
 
 
 @mcp.tool()
+def get_review_tasks(project: str = "") -> dict[str, Any]:
+    """Get tasks awaiting human review.
+
+    Returns tasks with status "review" that are waiting for human verification
+    before being marked complete.
+
+    Args:
+        project: Filter by project slug, or empty string "" for all projects
+
+    Returns:
+        Dictionary with:
+        - success: True
+        - tasks: List of review task entries
+        - count: Number of review tasks
+        - message: Status message
+    """
+    try:
+        storage = _get_storage()
+        index = _get_index()
+
+        # Get all tasks in review status
+        review_tasks = [
+            entry for entry in index._tasks.values()
+            if entry.status == TaskStatus.REVIEW.value
+        ]
+
+        # Filter by project if specified
+        if project:
+            review_tasks = [e for e in review_tasks if e.project == project]
+
+        # Sort by priority, then order, then title
+        review_tasks.sort(key=lambda e: (e.priority, e.order, e.title))
+
+        task_dicts = [_index_entry_to_dict(e) for e in review_tasks]
+        return {
+            "success": True,
+            "tasks": task_dicts,
+            "count": len(review_tasks),
+            "formatted": _format_task_list(task_dicts),
+            "message": f"Found {len(review_tasks)} tasks in review"
+            + (f" in project {project}" if project else ""),
+        }
+
+    except Exception as e:
+        logger.exception("get_review_tasks failed")
+        return {
+            "success": False,
+            "tasks": [],
+            "count": 0,
+            "message": f"Failed to get review tasks: {e}",
+        }
+
+
+@mcp.tool()
 def get_task_tree(id: Optional[str] = None) -> dict[str, Any]:
     """Get the decomposition tree for a task, or all root tasks.
 
@@ -1332,7 +1386,7 @@ def list_tasks(
 
     Args:
         project: Filter by project slug
-        status: Filter by status - "inbox", "active", "blocked", "waiting", "done", "cancelled"
+        status: Filter by status - "inbox", "active", "blocked", "waiting", "review", "done", "cancelled"
         type: Filter by type - "goal", "project", "epic", "task", "action", "bug", "feature", "learn"
         limit: Maximum number of tasks to return (default: 10)
 

@@ -54,6 +54,7 @@ class TaskStatus(Enum):
     ACTIVE = "active"  # Currently workable (no blockers)
     BLOCKED = "blocked"  # Waiting on dependencies
     WAITING = "waiting"  # Waiting on external input
+    REVIEW = "review"  # Awaiting human review before completion
     DONE = "done"  # Completed
     CANCELLED = "cancelled"  # Abandoned
 
@@ -227,6 +228,8 @@ class Task:
         "open": "inbox",
         "in_progress": "active",
         "in-progress": "active",
+        "in_review": "review",
+        "in-review": "review",
         "complete": "done",
         "completed": "done",
         "closed": "done",
