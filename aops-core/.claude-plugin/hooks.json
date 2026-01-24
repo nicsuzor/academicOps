@@ -1,0 +1,111 @@
+{
+  "SessionStart": [
+    {
+      "hooks": [
+        {
+          "type": "command",
+          "command": "PYTHONPATH=${CLAUDE_PLUGIN_ROOT} uv run python ${CLAUDE_PLUGIN_ROOT}/hooks/router.py",
+          "timeout": 15000
+        }
+      ]
+    }
+  ],
+  "PreToolUse": [
+    {
+      "hooks": [
+        {
+          "type": "command",
+          "command": "PYTHONPATH=${CLAUDE_PLUGIN_ROOT} uv run python ${CLAUDE_PLUGIN_ROOT}/hooks/router.py",
+          "timeout": 5000
+        }
+      ]
+    }
+  ],
+  "PostToolUse": [
+    {
+      "hooks": [
+        {
+          "type": "command",
+          "command": "PYTHONPATH=${CLAUDE_PLUGIN_ROOT} uv run python ${CLAUDE_PLUGIN_ROOT}/hooks/router.py",
+          "timeout": 55000
+        }
+      ]
+    },
+    {
+      "matcher": "TodoWrite",
+      "hooks": [
+        {
+          "type": "command",
+          "command": "PYTHONPATH=${CLAUDE_PLUGIN_ROOT} uv run python ${CLAUDE_PLUGIN_ROOT}/hooks/router.py",
+          "timeout": 5000
+        }
+      ]
+    }
+  ],
+  "UserPromptSubmit": [
+    {
+      "hooks": [
+        {
+          "type": "command",
+          "command": "PYTHONPATH=${CLAUDE_PLUGIN_ROOT} uv run python ${CLAUDE_PLUGIN_ROOT}/hooks/router.py",
+          "timeout": 20000
+        }
+      ]
+    }
+  ],
+  "Stop": [
+    {
+      "hooks": [
+        {
+          "type": "command",
+          "command": "PYTHONPATH=${CLAUDE_PLUGIN_ROOT} uv run python ${CLAUDE_PLUGIN_ROOT}/hooks/router.py",
+          "timeout": 5000
+        }
+      ]
+    }
+  ],
+  "SubagentStop": [
+    {
+      "hooks": [
+        {
+          "type": "command",
+          "command": "PYTHONPATH=${CLAUDE_PLUGIN_ROOT} uv run python ${CLAUDE_PLUGIN_ROOT}/hooks/router.py",
+          "timeout": 5000
+        }
+      ]
+    }
+  ],
+  "SessionEnd": [
+    {
+      "hooks": [
+        {
+          "type": "command",
+          "command": "PYTHONPATH=${CLAUDE_PLUGIN_ROOT} uv run python ${CLAUDE_PLUGIN_ROOT}/hooks/router.py",
+          "timeout": 10000
+        }
+      ]
+    }
+  ],
+  "PreCompact": [
+    {
+      "hooks": [
+        {
+          "type": "command",
+          "command": "PYTHONPATH=${CLAUDE_PLUGIN_ROOT} uv run python ${CLAUDE_PLUGIN_ROOT}/hooks/router.py",
+          "timeout": 5000
+        }
+      ]
+    }
+  ],
+  "Notification": [
+    {
+      "hooks": [
+        {
+          "type": "command",
+          "command": "PYTHONPATH=${CLAUDE_PLUGIN_ROOT} uv run python ${CLAUDE_PLUGIN_ROOT}/hooks/router.py",
+          "timeout": 5000
+        }
+      ]
+    }
+  ]
+}

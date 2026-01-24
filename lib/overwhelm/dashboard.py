@@ -105,8 +105,12 @@ def find_active_session_states(hours: int = 4) -> list[dict]:
         if not project_dir.is_dir():
             continue
 
-        # Skip temp directories
-        if "-tmp" in project_dir.name or "-var-folders" in project_dir.name:
+        # Skip temp directories and hooks
+        if (
+            "-tmp" in project_dir.name
+            or "-var-folders" in project_dir.name
+            or project_dir.name.endswith("-hooks")
+        ):
             continue
 
         # Find dated session directories: {YYYYMMDD}-{hash}
@@ -142,8 +146,8 @@ def find_active_session_states(hours: int = 4) -> list[dict]:
                     "session_short": session_id[:8]
                     if len(session_id) >= 8
                     else session_id,
-                    "project": project_dir.name,
-                    "project_display": _format_project_name(project_dir.name),
+                    "project": state_data.get("insights", {}).get("project") or state_data.get("project") or project_dir.name,
+                    "project_display": (state_data.get("insights", {}).get("project") or state_data.get("project") or _format_project_name(project_dir.name)),
                     "state": state_data,
                     "last_modified": mtime,
                     "time_ago": time_ago,
@@ -162,8 +166,26 @@ def _format_project_name(project_folder: str) -> str:
     -home-nic-writing -> writing
     -Users-suzor-src-buttermilk -> buttermilk
     """
-    parts = project_folder.strip("-").split("-")
-    return parts[-1] if parts else project_folder
+    """Convert folder name to display name.
+
+    -home-nic-writing -> writing
+    -Users-suzor-src-buttermilk -> buttermilk
+    -home-nic-writing-academicOps-hooks -> academicOps
+    """
+    # Remove common suffixes that aren't the main project name
+    folder = project_folder
+    suffixes = ["-hooks", "-core", "-src", "-lib", "-tools"]
+    for suffix in suffixes:
+        if folder.endswith(suffix):
+            folder = folder[: -len(suffix)]
+
+    parts = folder.strip("-").split("-")
+
+    # Handle edge case where stripping left nothing
+    if not parts or parts == [""]:
+        return project_folder.strip("-").split("-")[-1]
+
+    return parts[-1]
 
 
 def load_synthesis() -> dict | None:
@@ -853,10 +875,12 @@ def fetch_session_activity(hours: int = 4) -> list[dict]:
                     sessions[sid]["todowrite"] = sessions[sid].get(
                         "todowrite"
                     )  # Preserve if we had it
-                    if project != "unknown":
-                        sessions[sid]["project"] = project
-                    sessions[sid]["last_prompt"] = prompt
-                    sessions[sid]["time_ago"] = _format_time_ago(
+                if project != "unknown":
+                    sessions[sid]["project"] = project
+                
+                # Trust the project from the status file (insights)
+                real_project = project if project != "unknown" else ls.get("project_display", "unknown")
+                sessions[sid]["project"] = real_project
                         dt_mtime
                     )  # prefer file mtime for status?
                     sessions[sid]["source"] = "local-status"
@@ -1854,6 +1878,98 @@ st.markdown(
     .agent-task-name { color: #cbd5e1; }
     .agent-progress-text { color: #4ade80; font-weight: bold; }
 
+    /* Project Grid Styles */
+    .project-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+        gap: 16px;
+        margin-top: 20px;
+    }
+    .project-box {
+        background: #1e293b;
+        border: 1px solid #334155;
+        border-radius: 8px;
+        padding: 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+    .pkey-header {
+        font-size: 1.1em;
+        font-weight: 700;
+        text-transform: uppercase;
+        padding-bottom: 8px;
+        margin-bottom: 4px;
+    }
+    .p-section-title {
+        font-size: 0.75em;
+        color: #94a3b8;
+        font-weight: 600;
+        letter-spacing: 0.05em;
+        margin-top: 8px;
+        margin-bottom: 4px;
+    }
+    .agent-card {
+        background: #0f172a;
+        border-left: 2px solid #38bdf8;
+        padding: 8px;
+        border-radius: 4px;
+        margin-bottom: 4px;
+    }
+    .agent-meta {
+        font-size: 0.7em;
+        color: #64748b;
+        font-family: monospace;
+        margin-bottom: 4px;
+    }
+    .agent-history-item {
+        font-size: 0.85em;
+        color: #cbd5e1;
+        line-height: 1.3;
+        margin-bottom: 2px;
+    }
+    .agent-history-item.current {
+        color: #38bdf8;
+        font-weight: 500;
+    }
+    .agent-history-item.context {
+        font-style: italic;
+        color: #94a3b8;
+    }
+    .task-row {
+        display: flex;
+        gap: 6px;
+        align-items: baseline;
+        margin-bottom: 4px;
+        font-size: 0.9em;
+    }
+    .task-prio {
+        font-size: 0.7em;
+        font-weight: bold;
+        padding: 1px 4px;
+        border-radius: 3px;
+    }
+    .task-prio.p0 { background: #ef4444; color: white; }
+    .task-prio.p1 { background: #f97316; color: white; }
+    .task-prio.p2 { background: #334155; color: #94a3b8; }
+    .task-title {
+        color: #e2e8f0;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .more-row {
+        font-size: 0.8em;
+        color: #64748b;
+        margin-top: 2px;
+    }
+    .acc-row {
+        font-size: 0.85em;
+        color: #10b981;
+        margin-bottom: 3px;
+        line-height: 1.3;
+    }
+
 </style>
 """,
     unsafe_allow_html=True,
@@ -2377,7 +2493,9 @@ with tab_dashboard:
         # Token usage card
         token_metrics = load_token_metrics()
         if token_metrics:
-            total_tokens = token_metrics["input_tokens"] + token_metrics["output_tokens"]
+            total_tokens = (
+                token_metrics["input_tokens"] + token_metrics["output_tokens"]
+            )
             # Format tokens: K for thousands, M for millions
             if total_tokens >= 1_000_000:
                 tokens_str = f"{total_tokens / 1_000_000:.1f}M"
@@ -2431,7 +2549,11 @@ with tab_dashboard:
                 synth_html += f"<span class='insights-stat'><span class='insights-stat-label'>Successes:</span> <span class='insights-stat-value' style='color: #4ade80;'>{successes}</span></span>"
 
             # Token stats (reuse token_metrics if already loaded, or load now)
-            tm = token_metrics if 'token_metrics' in dir() and token_metrics else load_token_metrics()
+            tm = (
+                token_metrics
+                if "token_metrics" in dir() and token_metrics
+                else load_token_metrics()
+            )
             if tm:
                 # Format helper for tokens
                 def fmt_tokens(n):
@@ -2617,7 +2739,8 @@ try:
         # 2. Active Agents (The "Working Now" section)
         if p_sessions:
             card_parts.append("<div class='p-section-title'>⚡ WORKING NOW</div>")
-            for s in p_sessions:
+            # Limit to 3 most recent active agents
+            for s in p_sessions[:3]:
                 sid = s.get("session_short", "")
                 ago = s.get("time_ago", "")
                 prompt = s.get("last_prompt", "")
@@ -2641,6 +2764,11 @@ try:
                     f"<div class='agent-card'><div class='agent-meta'>{esc(sid)} · {esc(ago)}</div>{history_html}</div>"
                 )
 
+            if len(p_sessions) > 3:
+                card_parts.append(
+                    f"<div class='more-row'>+ {len(p_sessions) - 3} more active sessions</div>"
+                )
+
         # 3. Priority Tasks (Backlog)
         # We only show top 3-5 incomplete tasks to save space
         incomplete_tasks = [
@@ -2648,16 +2776,16 @@ try:
         ]
         if incomplete_tasks:
             card_parts.append(f"<div class='p-section-title'>📌 UP NEXT</div>")
-            for t in incomplete_tasks[:5]:
+            for t in incomplete_tasks[:3]:
                 prio = t.get("priority", 2)
                 prio_cls = f"p{prio}" if prio <= 1 else "p2"
                 title = t.get("title")
                 card_parts.append(
                     f"<div class='task-row'><span class='task-prio {prio_cls}'>P{prio}</span><span class='task-title'>{esc(title)}</span></div>"
                 )
-            if len(incomplete_tasks) > 5:
+            if len(incomplete_tasks) > 3:
                 card_parts.append(
-                    f"<div class='more-row'>+ {len(incomplete_tasks) - 5} more tasks</div>"
+                    f"<div class='more-row'>+ {len(incomplete_tasks) - 3} more tasks</div>"
                 )
 
         # 4. Recent Accomplishments
@@ -2681,104 +2809,9 @@ try:
 
     # Render Grid
     if project_cards:
+        # CSS is already loaded in main block
         st.markdown(
-            textwrap.dedent(f"""
-        <style>
-            .project-grid {{
-                display: grid;
-                grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-                gap: 16px;
-                margin-top: 20px;
-            }}
-            .project-box {{
-                background: #1e293b;
-                border: 1px solid #334155;
-                border-radius: 8px;
-                padding: 12px;
-                display: flex;
-                flex-direction: column;
-                gap: 8px;
-            }}
-            .pkey-header {{
-                font-size: 1.1em;
-                font-weight: 700;
-                text-transform: uppercase;
-                padding-bottom: 8px;
-                margin-bottom: 4px;
-            }}
-            .p-section-title {{
-                font-size: 0.75em;
-                color: #94a3b8;
-                font-weight: 600;
-                letter-spacing: 0.05em;
-                margin-top: 8px;
-                margin-bottom: 4px;
-            }}
-            .agent-card {{
-                background: #0f172a;
-                border-left: 2px solid #38bdf8;
-                padding: 8px;
-                border-radius: 4px;
-                margin-bottom: 4px;
-            }}
-            .agent-meta {{
-                font-size: 0.7em;
-                color: #64748b;
-                font-family: monospace;
-                margin-bottom: 4px;
-            }}
-            .agent-history-item {{
-                font-size: 0.85em;
-                color: #cbd5e1;
-                line-height: 1.3;
-                margin-bottom: 2px;
-            }}
-            .agent-history-item.current {{
-                color: #38bdf8;
-                font-weight: 500;
-            }}
-            .agent-history-item.context {{
-                font-style: italic;
-                color: #94a3b8;
-            }}
-            .task-row {{
-                display: flex;
-                gap: 6px;
-                align-items: baseline;
-                margin-bottom: 4px;
-                font-size: 0.9em;
-            }}
-            .task-prio {{
-                font-size: 0.7em;
-                font-weight: bold;
-                padding: 1px 4px;
-                border-radius: 3px;
-            }}
-            .task-prio.p0 {{ background: #ef4444; color: white; }}
-            .task-prio.p1 {{ background: #f97316; color: white; }}
-            .task-prio.p2 {{ background: #334155; color: #94a3b8; }}
-            .task-title {{
-                color: #e2e8f0;
-                white-space: nowrap;
-                overflow: hidden;
-                text-overflow: ellipsis;
-            }}
-            .more-row {{
-                font-size: 0.8em;
-                color: #64748b;
-                margin-top: 2px;
-            }}
-            .acc-row {{
-                font-size: 0.85em;
-                color: #10b981;
-                margin-bottom: 3px;
-                line-height: 1.3;
-            }}
-        </style>
-        <div class='project-grid'>
-            {"".join(project_cards)}
-        </div>
-        """),
+            f"<div class='project-grid'>{''.join(project_cards)}</div>",
             unsafe_allow_html=True,
         )
     else:

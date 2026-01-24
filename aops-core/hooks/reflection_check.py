@@ -184,6 +184,7 @@ def main():
                         "   **Outcome**: success/partial/failure\n"
                         "   **Accomplishments**: what was done\n"
                         "   **Next step**: what to do next\n\n"
+                        "If you need user input before finishing, use AskUserQuestion.\n\n"
                         "See: workflows/handover.md for full workflow"
                     ),
                 }
