@@ -24,6 +24,7 @@ tags: [framework, enforcement, moc]
 | [[data-boundaries]]                         | Data Boundaries                 | settings.json deny rules                        | PreToolUse           |       |
 | [[project-independence]]                    | Project Independence            | AXIOMS.md                                       | SessionStart         |       |
 | [[fail-fast-code]]                          | Fail-Fast (Code)                | policy_enforcer.py blocks destructive git       | PreToolUse           |       |
+| [[fail-fast-code]]                          | Fail-Fast (Code) - No Fallbacks | check_no_fallbacks.py blocks silent fallbacks   | Pre-commit (planned) |       |
 | [[fail-fast-agents]]                        | Fail-Fast (Agents)              | fail_fast_watchdog.py injects reminder          | PostToolUse          |       |
 | [[self-documenting]]                        | Self-Documenting                | policy_enforcer.py blocks *-GUIDE.md            | PreToolUse           |       |
 | [[single-purpose-files]]                    | Single-Purpose Files            | policy_enforcer.py 200-line limit               | PreToolUse           |       |
