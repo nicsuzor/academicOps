@@ -176,10 +176,12 @@ def check_file_accounting(root: Path, metrics: HealthMetrics) -> None:
     actual_files: set[str] = set()
     for path in iter_framework_files(root):
         rel = str(path.relative_to(root))
-        # Skip test files and data directories
+        # Skip test files, data directories, and lib/ (submodules/imported libraries)
         if rel.startswith("tests/") and not rel.endswith("conftest.py"):
             continue
         if "/data/" in rel:
+            continue
+        if rel.startswith("lib/"):
             continue
         actual_files.add(rel)
 
