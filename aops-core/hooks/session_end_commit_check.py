@@ -317,10 +317,14 @@ def check_uncommitted_work(session_id: str, transcript_path: str | None) -> dict
                 result["should_block"] = False
                 result["message"] = "Auto-committed. Session can proceed."
             else:
-                result["message"] = "Commit staged changes before ending session"
+                result["message"] = (
+                    "Commit staged changes before ending session, "
+                    "or use AskUserQuestion to request permission to end without committing."
+                )
         else:
             result["message"] = (
-                "Uncommitted changes detected. Commit before ending session"
+                "Uncommitted changes detected. Commit before ending session, "
+                "or use AskUserQuestion to request permission to end without committing."
             )
 
     return result
@@ -354,7 +358,10 @@ def main():
             if current_task:
                 output_data = {
                     "decision": "block",
-                    "reason": f"Active task bound to session: {current_task}. Complete or unassign the task before ending.",
+                    "reason": (
+                        f"Active task bound to session: {current_task}. "
+                        "Complete the task or use AskUserQuestion to request permission to end without completing."
+                    ),
                 }
                 logger.info(f"Session end blocked: active task {current_task}")
                 print(json.dumps(output_data))
