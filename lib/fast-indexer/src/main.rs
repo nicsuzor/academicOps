@@ -7,7 +7,7 @@
 //! The tool produces graphs with the following metadata fields per node:
 //!
 //! ### Core Fields
-//! - `id`: Unique identifier (MD5 hash of file path)
+//! - `id`: Unique identifier (from YAML frontmatter "id" field, or MD5 hash of file path if not present)
 //! - `path`: Absolute file path
 //! - `label`: Human-readable title (from frontmatter "title" field or filename)
 //!
@@ -273,6 +273,10 @@ fn parse_file(path: PathBuf) -> Option<FileData> {
         if let Some(pl) = fm.get("permalink").and_then(|v| v.as_str()) {
             permalinks.push(pl.trim().to_lowercase());
         }
+        // Frontmatter id for task resolution (enables parent/depends_on to reference by task ID)
+        if let Some(fid) = fm.get("id").and_then(|v| v.as_str()) {
+            permalinks.push(fid.trim().to_lowercase());
+        }
     }
     // Task ID prefixes (e.g. "aops-123")
     let stem_str = path.file_stem()?.to_string_lossy();
@@ -338,7 +342,8 @@ fn parse_file(path: PathBuf) -> Option<FileData> {
     let complexity = fm_data.as_ref().and_then(|fm| fm.get("complexity").and_then(|v| v.as_str()).map(String::from));
 
     Some(FileData {
-        id: compute_id(&path),
+        // Use frontmatter id as node identifier when present, fall back to path hash
+        id: task_id.clone().unwrap_or_else(|| compute_id(&path)),
         path,
         content: String::new(), // Don't keep heavy content in memory
         label,
