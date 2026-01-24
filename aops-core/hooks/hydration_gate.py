@@ -53,8 +53,12 @@ WARN_TEMPLATE = HOOK_DIR / "templates" / "hydration-gate-warn.md"
 
 
 def get_gate_mode() -> str:
-    """Get gate mode from environment, evaluated at runtime for testability."""
-    return os.environ.get("HYDRATION_GATE_MODE", DEFAULT_GATE_MODE).lower()
+    """Get gate mode from environment, evaluated at runtime for testability.
+
+    Returns DEFAULT_GATE_MODE if env var is unset or empty.
+    """
+    mode = os.environ.get("HYDRATION_GATE_MODE", "").strip().lower()
+    return mode if mode else DEFAULT_GATE_MODE
 
 
 def get_block_message() -> str:

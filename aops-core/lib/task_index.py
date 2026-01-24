@@ -336,9 +336,11 @@ class TaskIndex:
             logger.debug("fast-indexer binary not found, falling back to Python")
             return False
 
-        tasks_dir = self.data_root / "tasks"
-        if not tasks_dir.exists():
-            logger.warning("Tasks directory does not exist: %s", tasks_dir)
+        # Scan from data_root to find tasks in all project directories
+        # (e.g., aops/tasks/, academic/tasks/, hdr/tasks/, tasks/inbox/)
+        scan_dir = self.data_root
+        if not scan_dir.exists():
+            logger.warning("Data root does not exist: %s", scan_dir)
             return False
 
         # Run fast-indexer with mcp-index format
@@ -346,7 +348,7 @@ class TaskIndex:
         output_base = str(self.index_path).removesuffix(".json")
         cmd = [
             str(self._fast_indexer_path),
-            str(tasks_dir),
+            str(scan_dir),
             "-f",
             "mcp-index",
             "-o",
