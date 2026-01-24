@@ -17,8 +17,8 @@ from pathlib import Path
 from typing import Any
 
 from lib.reflection_detector import has_reflection
-from lib.session_state import set_reflection_output, has_reflection_output
-from lib.transcript_parser import SessionProcessor
+from lib.session_state import has_reflection_output, set_reflection_output
+from lib.transcript_parser import SessionProcessor, parse_framework_reflection
 
 # Set up logging
 logging.basicConfig(
@@ -101,44 +101,53 @@ def _extract_text_from_entry(entry: Any) -> str:
     return text
 
 
-def check_for_reflection(session_id: str, transcript_path: str | None) -> bool:
-    """Check if session has Framework Reflection output.
+def check_for_reflection(session_id: str, transcript_path: str | None) -> tuple[bool, dict[str, Any] | None]:
+    """Check if session has valid parseable Framework Reflection output.
 
-    Searches recent assistant messages for a Framework Reflection section.
-    Updates session state flag if found.
+    Searches recent assistant messages for a Framework Reflection section
+    and validates it can be parsed into structured fields using the same
+    parser as transcript.py.
 
     Args:
         session_id: Claude Code session ID
         transcript_path: Path to session transcript file
 
     Returns:
-        True if reflection found, False otherwise
+        Tuple of (found, parsed_reflection) where parsed_reflection is the
+        structured dict from parse_framework_reflection or None
     """
     # Check if already marked as having reflection
     if has_reflection_output(session_id):
         logger.info("Reflection already detected in session state")
-        return True
+        return True, None
 
     if not transcript_path:
         logger.debug("No transcript path provided")
-        return False
+        return False, None
 
     path = Path(transcript_path)
     messages = extract_recent_assistant_messages(path)
 
     if not messages:
         logger.debug("No assistant messages found in transcript")
-        return False
+        return False, None
 
-    # Check each message for reflection
+    # Check each message for parseable reflection using parse_framework_reflection
+    # This ensures the reflection is in the correct format for transcript.py
     for message in messages:
-        if has_reflection(message):
-            logger.info("Framework Reflection detected in session")
-            set_reflection_output(session_id, True)
-            return True
+        parsed = parse_framework_reflection(message)
+        if parsed:
+            # Validate minimum required fields
+            required_fields = ["outcome"]  # At minimum, outcome must be present
+            if any(parsed.get(field) for field in required_fields):
+                logger.info(f"Valid Framework Reflection detected: outcome={parsed.get('outcome')}")
+                set_reflection_output(session_id, True)
+                return True, parsed
+            else:
+                logger.warning("Framework Reflection found but missing required fields")
 
-    logger.debug(f"No Framework Reflection found in {len(messages)} recent messages")
-    return False
+    logger.debug(f"No parseable Framework Reflection found in {len(messages)} recent messages")
+    return False, None
 
 
 def main():
@@ -158,17 +167,23 @@ def main():
 
     if session_id:
         try:
-            has_reflection = check_for_reflection(session_id, transcript_path)
+            found, parsed = check_for_reflection(session_id, transcript_path)
 
-            if not has_reflection:
-                # Block session - Framework Reflection is mandatory per CORE.md
-                # Note: Stop hooks can't send messages to agent (hookSpecificOutput
-                # not supported for Stop event). Keep reason concise to avoid spam.
+            if not found:
+                # Block session - Framework Reflection is mandatory
+                # The reflection must be parseable by parse_framework_reflection
+                # Note: Due to timing, reflection must be output BEFORE the stopping turn
                 output_data = {
                     "decision": "block",
-                    "reason": "Add ## Framework Reflection before ending session",
+                    "reason": (
+                        "Output ## Framework Reflection with parseable format:\n"
+                        "**Outcome**: success/partial/failure\n"
+                        "**Accomplishments**: what was done\n"
+                        "**Next step**: what to do next\n\n"
+                        "Note: Output reflection BEFORE saying 'session complete'"
+                    ),
                 }
-                logger.info("Session blocked: Framework Reflection not found")
+                logger.info("Session blocked: Parseable Framework Reflection not found")
         except Exception as e:
             logger.warning(f"Reflection check failed: {type(e).__name__}: {e}")
 

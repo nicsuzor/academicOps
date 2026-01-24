@@ -314,6 +314,49 @@ All three gates must pass before destructive operations are allowed:
 | Git: checkout all | `git checkout -- .` | Bash          | Preserve local changes     | [[fail-fast-code]]       |
 | Git: stash drop   | `git stash drop`    | Bash          | Preserve stashed work      | [[fail-fast-code]]       |
 
+## Session-End Validation (Stop Hooks)
+
+Session end is blocked until requirements are met. Two-phase validation ensures proper handover.
+
+### Framework Reflection Validation
+
+**Enforcement**: `reflection_check.py` Stop hook using `parse_framework_reflection` from transcript_parser.py.
+
+| Requirement | Validation | Block Message |
+|-------------|------------|---------------|
+| `## Framework Reflection` header | Regex match | "Output ## Framework Reflection..." |
+| Parseable fields | `parse_framework_reflection()` returns non-None | Shows required format |
+| Minimum fields | `outcome` field present | Shows required format |
+
+**Required format** (parseable by transcript.py):
+```markdown
+## Framework Reflection
+
+**Outcome**: success/partial/failure
+**Accomplishments**: what was done
+**Next step**: what to do next
+```
+
+**Timing constraint**: Due to transcript timing, reflection must be output BEFORE the stopping turn. The transcript file isn't updated until after the Stop hook completes, so reflection in the final message cannot be detected.
+
+**Workflow**:
+1. Agent completes work
+2. Agent outputs Framework Reflection in a message
+3. Agent attempts to end session (triggers Stop event)
+4. Hook reads transcript, finds reflection in earlier message
+5. If found and parseable: session ends
+6. If not found: blocks with format instructions, agent retries
+
+### Uncommitted Work Check
+
+**Enforcement**: `session_end_commit_check.py` Stop hook.
+
+Blocks session end if:
+- Framework Reflection or test success detected in transcript
+- AND uncommitted changes exist in git
+
+Auto-commits staged changes. Blocks if unstaged changes require manual commit.
+
 ## Commit-Time Validation (Pre-commit)
 
 | Category         | Hook                                      | Purpose                | Axiom                      |
@@ -404,7 +447,7 @@ Context injected via CORE.md at SessionStart. Guides where agents place files.
 | SubagentStop     | `$AOPS/hooks/unified_logger.py` (sets `critic_invoked` flag)                    |
 | UserPromptSubmit | `$AOPS/hooks/user_prompt_submit.py`                                             |
 | SessionStart     | `$AOPS/hooks/sessionstart_load_axioms.py`                                       |
-| Stop             | `$AOPS/hooks/session_reflect.py`                                                |
+| Stop             | `$AOPS/hooks/reflection_check.py`, `session_end_commit_check.py`                |
 | Pre-commit       | `~/writing/.pre-commit-config.yaml`                                             |
 | CI/CD            | `$AOPS/.github/workflows/`                                                      |
 | Remember skill   | `$AOPS/aops-core/skills/remember/SKILL.md`                                      |
