@@ -563,6 +563,67 @@ def _skill_was_invoked(tool_calls: list[dict], skill_name: str) -> bool:
     return False
 
 
+def extract_subagent_tool_calls(tool_calls: list[dict]) -> list[dict]:
+    """Extract subagent tool calls from a list of main agent tool calls.
+
+    When a main agent invokes a Skill tool, that skill may itself invoke tools
+    (subagent tool calls). This helper extracts information about subagent
+    invocations for cleaner test assertions.
+
+    Args:
+        tool_calls: List of parsed tool calls from main agent session
+                   (output of parse_tool_calls())
+
+    Returns:
+        List of subagent tool call information dicts with keys:
+        - skill: Name of the skill that was invoked
+        - args: Arguments passed to the Skill tool (may include nested skill names)
+        - input: Raw input dict from the Skill tool call
+        - index: Position in the main agent's tool call sequence
+
+    Example:
+        # In a test:
+        result, session_id, tool_calls = claude_headless_tracked(
+            "Use the framework skill to do something"
+        )
+        subagent_calls = extract_subagent_tool_calls(tool_calls)
+
+        # Check that a specific skill was invoked
+        assert any(call["skill"] == "framework" for call in subagent_calls)
+
+        # Check skill arguments
+        framework_calls = [c for c in subagent_calls if c["skill"] == "framework"]
+        assert all("args" in c for c in framework_calls)
+    """
+    subagent_calls = []
+
+    for index, call in enumerate(tool_calls):
+        # Only Skill tool invocations represent subagent calls
+        if call["name"] != "Skill":
+            continue
+
+        input_data = call.get("input", {})
+        skill_name = input_data.get("skill", "")
+
+        if not skill_name:
+            # Malformed Skill invocation - skip it
+            continue
+
+        # Extract arguments if present (args key contains additional parameters)
+        args = input_data.get("args", "")
+
+        subagent_calls.append(
+            {
+                "skill": skill_name,
+                "args": args,
+                "input": input_data,
+                "index": index,
+            }
+        )
+
+    return subagent_calls
+
+
 @pytest.fixture
 def skill_was_invoked():
     """Pytest fixture providing skill invocation checker.
@@ -576,6 +637,30 @@ def skill_was_invoked():
             assert skill_was_invoked(tool_calls, "framework")
     """
     return _skill_was_invoked
+
+
+@pytest.fixture
+def extract_subagent_calls():
+    """Pytest fixture providing subagent tool call extractor.
+
+    Returns:
+        Callable that extracts subagent tool calls from main agent tool calls.
+
+    Example:
+        def test_skill_invocation(claude_headless_tracked, extract_subagent_calls):
+            result, _, tool_calls = claude_headless_tracked("prompt")
+            subagent_calls = extract_subagent_calls(tool_calls)
+
+            # Check if a specific skill was invoked as subagent
+            framework_calls = [c for c in subagent_calls if c["skill"] == "framework"]
+            assert len(framework_calls) > 0
+
+            # Check skill arguments
+            for call in framework_calls:
+                assert "input" in call
+                assert "args" in call
+    """
+    return extract_subagent_tool_calls
 
 
 @pytest.fixture
