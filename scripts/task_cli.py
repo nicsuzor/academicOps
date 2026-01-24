@@ -124,6 +124,7 @@ def build_task_tree(
         pri_label, pri_style = PRIORITY_STYLE.get(child.priority, ("P?", "white"))
 
         label = Text()
+        label.append(f"[{child.id}] ", style="dim")
         label.append(f"{icon} ", style=style)
         label.append(f"{type_icon} ", style="dim")
         label.append(child.title, style=style if child.status in ("done", "cancelled") else "white")
@@ -264,6 +265,7 @@ def tree(project: str | None, show_all: bool, roots_only: bool):
         pri_label, pri_style = PRIORITY_STYLE.get(root.priority, ("P?", "white"))
 
         label = Text()
+        label.append(f"[{root.id}] ", style="dim")
         label.append(f"{icon} ", style=style)
         label.append(f"{type_icon} ", style="dim")
         label.append(root.title, style="bold" if root.type in ("goal", "project") else "white")
