@@ -335,13 +335,17 @@ def _find_existing_transcripts(out_dir: Path, session_id: str) -> list[Path]:
         List of all matching transcript files (both -full.md and -abridged.md)
     """
     # Search for transcripts with this session_id
-    # Pattern 1: with slug (e.g., 20260105-writing-3bf94f77-session-full.md)
-    # Pattern 2: without slug (e.g., 20260105-writing-3bf94f77-full.md)
+    # v3.7.0+ Pattern: with hour (e.g., 20260105-17-writing-3bf94f77-session-full.md)
+    # Legacy Pattern: without hour (e.g., 20260105-writing-3bf94f77-session-full.md)
     matches = []
     for suffix in ("-full.md", "-abridged.md"):
+        # New format with hour
+        matches.extend(out_dir.glob(f"*-??-*-{session_id}-*{suffix}"))
+        matches.extend(out_dir.glob(f"*-??-*-{session_id}{suffix}"))
+        # Legacy format without hour
         matches.extend(out_dir.glob(f"*-{session_id}-*{suffix}"))
         matches.extend(out_dir.glob(f"*-{session_id}{suffix}"))
-    return matches
+    return list(set(matches))  # Deduplicate
 
 
 def _find_existing_transcript(out_dir: Path, session_id: str) -> Path | None:
@@ -586,16 +590,18 @@ Examples:
                     skipped += 1
                     continue
 
-                # Generate output name
+                # Generate output name with date and hour for better sorting
                 date_str = None
+                hour_str = None
                 for entry in entries:
                     if entry.timestamp:
                         date_str = entry.timestamp.strftime("%Y%m%d")
+                        hour_str = entry.timestamp.strftime("%H")
                         break
                 if not date_str:
-                    date_str = datetime.fromtimestamp(
-                        session_path.stat().st_mtime
-                    ).strftime("%Y%m%d")
+                    mtime = datetime.fromtimestamp(session_path.stat().st_mtime)
+                    date_str = mtime.strftime("%Y%m%d")
+                    hour_str = mtime.strftime("%H")
 
                 # Get short project name (using entries for working dir extraction)
                 short_project = _infer_project(session_path, entries)
@@ -615,7 +621,7 @@ Examples:
 
                 # Get slug
                 slug = processor.generate_session_slug(entries)
-                filename = f"{date_str}-{short_project}-{session_id}-{slug}"
+                filename = f"{date_str}-{hour_str}-{short_project}-{session_id}-{slug}"
 
                 # Note: _output_exists() check removed - early mtime check handles
                 # both "already current" (skip) and "stale" (regenerate) cases
@@ -734,6 +740,9 @@ Examples:
         )
 
         # Generate output base name
+        output_dir = None
+        base_name = None
+
         if args.output:
             output_path = Path(args.output)
 
@@ -741,6 +750,7 @@ Examples:
             if output_path.is_dir():
                 # Use the directory but auto-generate filename
                 output_dir = output_path
+                # Will fall through to auto-generation logic below
             else:
                 output_base = args.output
                 # Strip .md suffix if provided
@@ -757,102 +767,106 @@ Examples:
                 else:
                     base_name = output_base
 
-                # Skip the auto-generation logic below
-                print(f"📊 Found {len(entries)} entries")
+        # If base_name was set (explicit output file specified), use explicit path logic
+        if base_name:
+            print(f"📊 Found {len(entries)} entries")
 
-                # Check for meaningful content
-                MIN_MEANINGFUL_ENTRIES = 2
-                meaningful_count = sum(
-                    1
-                    for e in entries
-                    if e.type in ("user", "assistant")
-                    and not (
-                        hasattr(e, "message")
-                        and e.message
-                        and e.message.get("subtype") in ("system", "informational")
-                    )
+            # Check for meaningful content
+            MIN_MEANINGFUL_ENTRIES = 2
+            meaningful_count = sum(
+                1
+                for e in entries
+                if e.type in ("user", "assistant")
+                and not (
+                    hasattr(e, "message")
+                    and e.message
+                    and e.message.get("subtype") in ("system", "informational")
                 )
-                if meaningful_count < MIN_MEANINGFUL_ENTRIES:
-                    print(
-                        f"⏭️  Skipping: only {meaningful_count} meaningful entries (need {MIN_MEANINGFUL_ENTRIES}+)"
-                    )
-                    return 2
-
-                # Extract reflection (get date and project from path for insights)
-                date_iso = (
-                    datetime.now().astimezone().replace(microsecond=0).isoformat()
+            )
+            if meaningful_count < MIN_MEANINGFUL_ENTRIES:
+                print(
+                    f"⏭️  Skipping: only {meaningful_count} meaningful entries (need {MIN_MEANINGFUL_ENTRIES}+)"
                 )
-                session_timestamp = None
-                for entry in entries:
-                    if entry.timestamp:
-                        date_iso = entry.timestamp.strftime("%Y-%m-%d")
-                        session_timestamp = entry.timestamp
-                        break
-                # Get session ID from path
-                sid = session_path.stem[:8]
-                proj = (
-                    session_path.parent.name.split("-")[-1]
-                    if session_path.parent.name
-                    else "unknown"
-                )
-                slug = processor.generate_session_slug(entries)
+                return 2
 
-                # Compute usage stats and session duration for token_metrics
-                usage_stats = processor._aggregate_session_usage(entries, agent_entries)
-                session_duration_minutes = _compute_session_duration(entries)
+            # Extract reflection (get date and project from path for insights)
+            date_iso = (
+                datetime.now().astimezone().replace(microsecond=0).isoformat()
+            )
+            session_timestamp = None
+            for entry in entries:
+                if entry.timestamp:
+                    date_iso = entry.timestamp.strftime("%Y-%m-%d")
+                    session_timestamp = entry.timestamp
+                    break
+            # Get session ID from path
+            sid = session_path.stem[:8]
+            proj = (
+                session_path.parent.name.split("-")[-1]
+                if session_path.parent.name
+                else "unknown"
+            )
+            slug = processor.generate_session_slug(entries)
 
-                reflection_header, _ = _process_reflection(
-                    entries,
-                    sid,
-                    date_iso,
-                    proj,
-                    slug,
-                    agent_entries,
-                    session_timestamp,
-                    usage_stats,
-                    session_duration_minutes,
-                )
+            # Compute usage stats and session duration for token_metrics
+            usage_stats = processor._aggregate_session_usage(entries, agent_entries)
+            session_duration_minutes = _compute_session_duration(entries)
 
-                # Generate transcripts and return
-                full_path = Path(f"{base_name}-full.md")
-                markdown_full = processor.format_session_as_markdown(
-                    session_summary,
-                    entries,
-                    agent_entries,
-                    include_tool_results=True,
-                    variant="full",
-                    source_file=str(session_path.resolve()),
-                    reflection_header=reflection_header,
-                )
-                with open(full_path, "w", encoding="utf-8") as f:
-                    f.write(markdown_full)
-                format_markdown(full_path)
-                file_size = full_path.stat().st_size
-                print(f"✅ Full transcript: {full_path} ({file_size:,} bytes)")
+            reflection_header, _ = _process_reflection(
+                entries,
+                sid,
+                date_iso,
+                proj,
+                slug,
+                agent_entries,
+                session_timestamp,
+                usage_stats,
+                session_duration_minutes,
+            )
 
-                abridged_path = Path(f"{base_name}-abridged.md")
-                markdown_abridged = processor.format_session_as_markdown(
-                    session_summary,
-                    entries,
-                    agent_entries,
-                    include_tool_results=False,
-                    variant="abridged",
-                    source_file=str(session_path.resolve()),
-                    reflection_header=reflection_header,
-                )
-                with open(abridged_path, "w", encoding="utf-8") as f:
-                    f.write(markdown_abridged)
-                format_markdown(abridged_path)
-                file_size = abridged_path.stat().st_size
-                print(f"✅ Abridged transcript: {abridged_path} ({file_size:,} bytes)")
+            # Generate transcripts and return
+            full_path = Path(f"{base_name}-full.md")
+            markdown_full = processor.format_session_as_markdown(
+                session_summary,
+                entries,
+                agent_entries,
+                include_tool_results=True,
+                variant="full",
+                source_file=str(session_path.resolve()),
+                reflection_header=reflection_header,
+            )
+            with open(full_path, "w", encoding="utf-8") as f:
+                f.write(markdown_full)
+            format_markdown(full_path)
+            file_size = full_path.stat().st_size
+            print(f"✅ Full transcript: {full_path} ({file_size:,} bytes)")
 
-                return 0
-        else:
+            abridged_path = Path(f"{base_name}-abridged.md")
+            markdown_abridged = processor.format_session_as_markdown(
+                session_summary,
+                entries,
+                agent_entries,
+                include_tool_results=False,
+                variant="abridged",
+                source_file=str(session_path.resolve()),
+                reflection_header=reflection_header,
+            )
+            with open(abridged_path, "w", encoding="utf-8") as f:
+                f.write(markdown_abridged)
+            format_markdown(abridged_path)
+            file_size = abridged_path.stat().st_size
+            print(f"✅ Abridged transcript: {abridged_path} ({file_size:,} bytes)")
+
+            return 0
+
+        # If output_dir not set yet (no -o specified), use default
+        if not output_dir:
             output_dir = sessions_claude
 
-        # Auto-generate filename: YYYYMMDD-shortproject-sessionid-slug
+        # Auto-generate filename: YYYYMMDD-HH-shortproject-sessionid-slug
         # (Used when -o is a directory or not specified)
         date_str = None
+        hour_str = None
         if session_path.suffix == ".json":
             # Try to get timestamp from filename for Gemini: session-YYYY-MM-DDTHH-MM...
             try:
@@ -862,6 +876,9 @@ Examples:
                     date_part = "".join(parts[1:4])
                     if date_part.isdigit():
                         date_str = date_part
+                    # Extract hour from Gemini filename format
+                    if len(parts) >= 5 and parts[4][:2].isdigit():
+                        hour_str = parts[4][:2]
             except Exception:
                 pass
 
@@ -869,22 +886,25 @@ Examples:
             for entry in entries:
                 if entry.timestamp:
                     date_str = entry.timestamp.strftime("%Y%m%d")
+                    hour_str = entry.timestamp.strftime("%H")
                     break
 
                 if hasattr(entry, "message") and entry.message:
                     ts = entry.message.get("timestamp")
                     if ts:
                         try:
-                            date_str = datetime.fromisoformat(
-                                ts.replace("Z", "+00:00")
-                            ).strftime("%Y%m%d")
+                            parsed = datetime.fromisoformat(ts.replace("Z", "+00:00"))
+                            date_str = parsed.strftime("%Y%m%d")
+                            hour_str = parsed.strftime("%H")
                             break
                         except (ValueError, TypeError):
                             continue
         if not date_str:
-            date_str = datetime.fromtimestamp(session_path.stat().st_mtime).strftime(
-                "%Y%m%d"
-            )
+            mtime = datetime.fromtimestamp(session_path.stat().st_mtime)
+            date_str = mtime.strftime("%Y%m%d")
+            hour_str = mtime.strftime("%H")
+        if not hour_str:
+            hour_str = datetime.now().astimezone().strftime("%H")
 
         # Get short project name (using entries for working dir extraction)
         short_project = _infer_project(session_path, entries)
@@ -903,7 +923,7 @@ Examples:
         # Get or generate slug
         slug = args.slug if args.slug else processor.generate_session_slug(entries)
 
-        filename = f"{date_str}-{short_project}-{session_id}-{slug}"
+        filename = f"{date_str}-{hour_str}-{short_project}-{session_id}-{slug}"
 
         base_name = str(output_dir / filename)
         print(f"📛 Generated filename: {filename}")
