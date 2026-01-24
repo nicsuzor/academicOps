@@ -10,6 +10,8 @@ tags: [framework, routing, workflows, index]
 
 # Workflow Index
 <!-- @nic: general rule: self-documenting files are good, but documentation should NOT be in template text that goes to a LLM. We EITHER have to delineate this markdown or move it into the frontmatter or spec file.  -->
+<!-- @claude 2026-01-24: This file is type:index - it's for human reference and hydrator routing, not direct LLM injection. Individual workflow files (e.g., workflows/minor-edit.md) are what get loaded. Those should stay lean. This index can remain self-documenting. -->
+
 Workflows are **hydrator hints**, not complete instructions. They tell the hydrator:
 1. When this workflow applies (routing signals)
 2. What's unique to this workflow

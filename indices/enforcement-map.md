@@ -46,7 +46,7 @@ tags: [framework, enforcement, moc]
 | [[feedback-loops-for-uncertainty]]          | Feedback Loops                  | AXIOMS.md                                       | SessionStart         |       |
 | [[current-state-machine]]                   | Current State Machine           | autocommit_state.py (auto-commit+push)          | PostToolUse          |       |
 | [[one-spec-per-feature]]                    | One Spec Per Feature            | AXIOMS.md                                       | SessionStart         |       |
-| [[mandatory-handover]]                      | Mandatory Handover Workflow     | CORE.md injection (Session Completion Rules)    | SessionStart         |       |
+| [[mandatory-handover]]                      | Mandatory Handover Workflow     | prompt-hydrator-context.md (Session Completion Rules section) | UserPromptSubmit     |       |
 
 ## Heuristic → Enforcement Mapping
 
@@ -118,7 +118,9 @@ tags: [framework, enforcement, moc]
 | Config     | 1     | External tool config (pyproject.toml, pre-commit)          |
 
 <!-- @NS: no longer correct: -->
-**Note**: "Prompt" level rules are injected at session start via `sessionstart_load_axioms.py`. Agents receive them automatically but compliance is not mechanically enforced.
+<!-- @claude 2026-01-24: Agreed. The statement below is outdated - AXIOMS.md and HEURISTICS.md are NOT injected at SessionStart. They're loaded JIT via prompt-hydrator (see three-tier architecture in lines 125-133). Only CORE.md loads at SessionStart. Updating the note to reflect current architecture. -->
+
+**Note**: "Prompt" level rules are enforced via selective instruction injection. The hydrator (haiku) receives full AXIOMS.md and HEURISTICS.md, then selects relevant principles for the main agent. See "Selective Instruction Injection" below for details. Compliance is not mechanically enforced but is checked periodically by custodiet.
 
 ### What Constitutes Prompt-Level Enforcement
 
