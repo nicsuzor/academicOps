@@ -134,7 +134,7 @@ TodoWrite(todos=[
   {{content: "[workflow step]", status: "pending", activeForm: "[participle]"}},
   {{content: "CHECKPOINT: [verification]", status: "pending", activeForm: "Verifying"}},
   {{content: "Task(subagent_type='qa', prompt='...')", status: "pending", activeForm: "QA verification"}},
-  {{content: "Complete task and commit", status: "pending", activeForm: "Completing"}}
+  {{content: "Complete task, commit, and output Framework Reflection", status: "pending", activeForm: "Completing session"}}
 ])
 ```
 
@@ -180,6 +180,35 @@ These scripts exist but aren't user-invocable skills. Provide exact invocation w
 - **QA MANDATORY**: Every plan (except simple-question) needs QA verification step.
 - **Deferred work**: Only for multi-session. Captures what can't be done now without losing it.
 - **Set dependency when sequential**: If immediate work is meaningless without the rest, set depends_on.
+
+## ⚠️ Session Completion Rules (MANDATORY)
+
+**Every file-modifying execution plan MUST include these final steps:**
+
+1. **Complete task**: `mcp__plugin_aops-core_tasks__complete_task(id="<task-id>")`
+2. **Commit and push**: `git add -A && git commit -m "..." && git push` (use Skill(skill="commit") if available)
+3. **Output Framework Reflection** in this exact format:
+
+```markdown
+## Framework Reflection
+
+**Prompts**: [Original request in brief]
+**Guidance received**: [Hydrator advice, or "N/A"]
+**Followed**: [Yes/No/Partial - explain]
+**Outcome**: success | partial | failure
+**Accomplishments**: [What was completed]
+**Friction points**: [Issues encountered, or "none"]
+**Root cause** (if not success): [Why work was incomplete]
+**Proposed changes**: [Framework improvements, or "none"]
+**Next step**: [Follow-up needed, or "none"]
+```
+
+**Why**: Session insights parsing depends on this format. Work without reflection is invisible to aggregation.
+
+**Include in execution plan**:
+```javascript
+{content: "Complete task, commit, and output Framework Reflection", status: "pending", activeForm: "Completing session"}
+```
 
 ## ⛔ Task-Gated Permissions (ENFORCED)
 
