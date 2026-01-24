@@ -146,12 +146,12 @@ def main():
     pass
 
 
-@main.command()
+@main.command(name="list")
 @click.option("--status", "-s", help="Filter by status (inbox, active, done, etc.)")
 @click.option("--project", "-p", help="Filter by project")
 @click.option("--type", "-t", "task_type", help="Filter by type (goal, project, task, action)")
 @click.option("--plain", is_flag=True, help="Plain output without formatting")
-def list(status: str | None, project: str | None, task_type: str | None, plain: bool):
+def list_tasks(status: str | None, project: str | None, task_type: str | None, plain: bool):
     """List tasks with optional filters."""
     storage = get_storage()
 
