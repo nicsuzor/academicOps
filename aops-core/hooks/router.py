@@ -103,9 +103,7 @@ HOOK_REGISTRY: dict[str, list[dict[str, Any]]] = {
         # stopping turn due to transcript timing. The hook validates that a parseable
         # Framework Reflection exists using parse_framework_reflection.
         {"script": "reflection_check.py"},  # Validate parseable Framework Reflection
-        {
-            "script": "session_end_commit_check.py"
-        },  # Enforce uncommitted work detection + auto-commit
+        # {"script": "session_end_commit_check.py"},  # DISABLED: Uncommitted work detection
         {"script": "unified_logger.py"},
     ],
     "SessionEnd": [
