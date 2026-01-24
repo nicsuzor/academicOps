@@ -672,6 +672,8 @@ print(json.dumps({"continue": False, "reason": "..."}))
 sys.exit(2)  # Claude never sees the JSON - only stderr!
 ```
 
+**Router consolidation warning**: If using a router to dispatch multiple Stop hooks, the router's `merge_outputs` function must explicitly preserve `decision`, `reason`, and `stopReason` fields. These are NOT part of `hookSpecificOutput` (which only applies to PreToolUse, PostToolUse, UserPromptSubmit). A router that only handles `hookSpecificOutput` will silently strip Stop hook response fields, causing messages to never reach the agent. See `aops-core/hooks/router.py` for the correct implementation pattern.
+
 ### Environment Variables Available in Hooks
 
 - `$CLAUDE_PROJECT_DIR` - Absolute path to project root (where Claude Code started)
