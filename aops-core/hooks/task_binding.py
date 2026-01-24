@@ -1,14 +1,18 @@
 #!/usr/bin/env python3
 """
-PostToolUse hook: Bind task to session when task MCP operations occur.
+PostToolUse hook: Bind/unbind task to session when task MCP operations occur.
 
 Enables session observability by automatically linking every session to a task
 when task routing happens. The session state records current_task, allowing
 queries like "what task was this session working on?"
 
-Triggers:
+Triggers (bind):
 - After create_task MCP tool (new task created)
 - After update_task MCP tool with status="active" (task claimed)
+
+Triggers (unbind):
+- After complete_task MCP tool (task completed)
+- After complete_tasks MCP tool (batch completion)
 
 Exit codes:
     0: Success (always - this hook doesn't block)
@@ -49,13 +53,38 @@ def should_bind_task(tool_name: str, tool_input: dict[str, Any]) -> bool:
         True if task binding should occur
     """
     # Create task - always bind (agent is creating work to track)
-    if tool_name == "mcp__plugin_aops-core_tasks__create_task":
+    if tool_name == "mcp__plugin_aops-tools_task_manager__create_task":
         return True
 
     # Update task - only bind if claiming (status -> active)
-    if tool_name == "mcp__plugin_aops-core_tasks__update_task":
+    if tool_name == "mcp__plugin_aops-tools_task_manager__update_task":
         new_status = tool_input.get("status", "")
         return new_status == "active"
+
+    return False
+
+
+def should_unbind_task(tool_name: str, tool_result: dict[str, Any]) -> bool:
+    """Determine if this tool call should trigger task unbinding.
+
+    Unbinding occurs for:
+    - complete_task: Task completed (session work done)
+    - complete_tasks: Batch completion
+
+    Args:
+        tool_name: Name of the tool being invoked
+        tool_result: Result from the tool
+
+    Returns:
+        True if task unbinding should occur
+    """
+    # Complete task - unbind if successful
+    if tool_name == "mcp__plugin_aops-tools_task_manager__complete_task":
+        return tool_result.get("success", False)
+
+    # Complete tasks (batch) - unbind if any succeeded
+    if tool_name == "mcp__plugin_aops-tools_task_manager__complete_tasks":
+        return tool_result.get("success_count", 0) > 0
 
     return False
 
@@ -74,14 +103,30 @@ def main() -> None:
     tool_input = input_data.get("tool_input") or input_data.get("toolInput", {})
     tool_result = input_data.get("tool_result") or input_data.get("toolResult", {})
 
-    # Check if this tool call should trigger binding
-    if not should_bind_task(tool_name, tool_input):
-        print(json.dumps({}))
-        sys.exit(0)
-
     # Get session ID from environment
     session_id = os.environ.get("CLAUDE_SESSION_ID")
     if not session_id:
+        print(json.dumps({}))
+        sys.exit(0)
+
+    # Check if this tool call should trigger unbinding (task completion)
+    if should_unbind_task(tool_name, tool_result):
+        try:
+            from lib.session_state import clear_current_task, get_current_task
+
+            current = get_current_task(session_id)
+            if current:
+                clear_current_task(session_id)
+                output = {"systemMessage": f"Task completed and unbound from session: {current}"}
+                print(json.dumps(output))
+                sys.exit(0)
+        except Exception as e:
+            print(f"task_binding unbind error: {e}", file=sys.stderr)
+        print(json.dumps({}))
+        sys.exit(0)
+
+    # Check if this tool call should trigger binding
+    if not should_bind_task(tool_name, tool_input):
         print(json.dumps({}))
         sys.exit(0)
 

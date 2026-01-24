@@ -86,6 +86,7 @@ HOOK_REGISTRY: dict[str, list[dict[str, Any]]] = {
         {"script": "fail_fast_watchdog.py"},  # Injects fail-fast reminder on errors
         {"script": "custodiet_gate.py"},  # Periodic compliance check
         {"script": "task_binding.py"},  # Bind task to session on create/claim
+        {"script": "todowrite_handover_gate.py"},  # Set todo_with_handover gate on TodoWrite
         # {"script": "todowrite_fallback.py"},  # DISABLED: Proving main path first
         # {"script": "autocommit_state.py"},  # DISABLED: Auto-commit data/ changes
     ],

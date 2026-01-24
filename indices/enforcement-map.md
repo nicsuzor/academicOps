@@ -261,22 +261,42 @@ Uses passive `additionalContext` format - agent may proceed without addressing.
 
 ## Task-Gated Permissions (PreToolUse Hook)
 
-Destructive operations require an active task binding. See [[specs/permission-model-v1]].
+Destructive operations require ALL THREE gates to pass. See [[specs/permission-model-v1]].
 
-| Operation Type | Tool | Requires Task | Bypass |
-|----------------|------|---------------|--------|
-| File creation/modification | Write, Edit, NotebookEdit | Yes | `.` prefix, subagent |
-| Destructive Bash | `rm`, `mv`, `git commit`, etc. | Yes | `.` prefix, subagent |
-| Read-only | Read, Glob, Grep, `git status` | No | N/A |
-| Task operations | create_task, update_task | No (they establish binding) | N/A |
+| Operation Type | Tool | Requires Gates | Bypass |
+|----------------|------|----------------|--------|
+| File creation/modification | Write, Edit, NotebookEdit | All 3 gates | `.` prefix, subagent |
+| Destructive Bash | `rm`, `mv`, `git commit`, etc. | All 3 gates | `.` prefix, subagent |
+| Read-only | Read, Glob, Grep, `git status` | None | N/A |
+| Task operations | create_task, update_task | None (they establish gate a) | N/A |
 
-**Enforcement**: `task_required_gate.py` PreToolUse hook (currently in WARN mode, BLOCK mode planned).
+**Enforcement**: `task_required_gate.py` PreToolUse hook.
+
+### Three-Gate Requirement
+
+All three gates must pass before destructive operations are allowed:
+
+| Gate | Requirement | How Set | Session State Flag |
+|------|-------------|---------|-------------------|
+| (a) Task bound | Session has active task | `update_task(status="active")` or `create_task(...)` | `main_agent.current_task` |
+| (b) Critic invoked | Critic agent reviewed plan | SubagentStop with `subagent_type="critic"` | `state.critic_invoked` |
+| (c) Todo with handover | Todo list has session end step | TodoWrite with handover pattern detected | `state.todo_with_handover` |
 
 **Binding flow**:
 1. Hydrator guides: "claim existing or create new task"
-2. Agent calls `update_task(status="active")` or `create_task(...)`
+2. Agent calls `update_task(status="active")` or `create_task(...)` → gate (a) set
 3. `task_binding.py` PostToolUse hook sets `current_task` in session state
-4. `task_required_gate.py` allows destructive operations
+4. Agent invokes critic: `Task(subagent_type="aops-core:critic", ...)` → gate (b) set
+5. `unified_logger.py` SubagentStop handler sets `critic_invoked` flag
+6. Agent creates todo list with handover step → gate (c) set
+7. `todowrite_handover_gate.py` PostToolUse hook sets `todo_with_handover` flag
+8. `task_required_gate.py` checks all three gates before allowing destructive operations
+
+**Handover patterns detected** (case-insensitive):
+- "session end", "session close", "session handover"
+- "handover", "hand over", "hand-over"
+- "commit and push", "final commit"
+- "wrap up", "framework reflection"
 
 **Bypass conditions**:
 - User prefix `.` (sets `gates_bypassed` flag via UserPromptSubmit)
@@ -380,7 +400,8 @@ Context injected via CORE.md at SessionStart. Guides where agents place files.
 | Deny rules       | `$AOPS/config/claude/settings.json` → `permissions.deny`                        |
 | Agent tools      | `$AOPS/agents/*.md` → `tools:` frontmatter                                      |
 | PreToolUse       | `$AOPS/hooks/hydration_gate.py`, `task_required_gate.py`, `policy_enforcer.py`  |
-| PostToolUse      | `$AOPS/hooks/fail_fast_watchdog.py`, `autocommit_state.py`, `custodiet_gate.py` |
+| PostToolUse      | `$AOPS/hooks/fail_fast_watchdog.py`, `autocommit_state.py`, `custodiet_gate.py`, `todowrite_handover_gate.py` |
+| SubagentStop     | `$AOPS/hooks/unified_logger.py` (sets `critic_invoked` flag)                    |
 | UserPromptSubmit | `$AOPS/hooks/user_prompt_submit.py`                                             |
 | SessionStart     | `$AOPS/hooks/sessionstart_load_axioms.py`                                       |
 | Stop             | `$AOPS/hooks/session_reflect.py`                                                |
@@ -389,3 +410,4 @@ Context injected via CORE.md at SessionStart. Guides where agents place files.
 | Remember skill   | `$AOPS/aops-core/skills/remember/SKILL.md`                                      |
 | Memory sync      | `$AOPS/aops-core/skills/remember/workflows/sync.md`                             |
 | Session insights | `$AOPS/aops-core/skills/session-insights/SKILL.md`                              |
+| Session state    | `$AOPS/aops-core/lib/session_state.py` (gate flags: critic_invoked, todo_with_handover) |

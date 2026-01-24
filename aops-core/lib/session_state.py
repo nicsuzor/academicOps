@@ -633,6 +633,39 @@ def get_current_task(session_id: str) -> str | None:
     return state.get("main_agent", {}).get("current_task")
 
 
+def clear_current_task(session_id: str) -> bool:
+    """Clear the task binding from this session.
+
+    Called when task is completed or session ends normally.
+
+    Args:
+        session_id: Claude Code session ID
+
+    Returns:
+        True if task was cleared, False if no task was bound
+    """
+    import logging
+
+    logger = logging.getLogger(__name__)
+
+    state = load_session_state(session_id)
+    if state is None:
+        return False
+
+    current_task = state.get("main_agent", {}).get("current_task")
+    if not current_task:
+        return False
+
+    state["main_agent"]["current_task"] = None
+    state["main_agent"]["task_cleared_ts"] = (
+        datetime.now().astimezone().replace(microsecond=0).isoformat()
+    )
+    save_session_state(session_id, state)
+
+    logger.info(f"Task cleared from session: {current_task}")
+    return True
+
+
 # ============================================================================
 # Gates Bypass API
 # ============================================================================
@@ -716,3 +749,119 @@ def has_reflection_output(session_id: str) -> bool:
     if state is None:
         return False
     return state.get("state", {}).get("reflection_output_since_prompt", False)
+
+
+# ============================================================================
+# Critic Invocation Tracking API
+# ============================================================================
+
+
+def set_critic_invoked(session_id: str, verdict: str | None = None) -> None:
+    """Set critic_invoked flag when critic agent completes.
+
+    Part of the three-gate requirement for destructive operations:
+    (a) task claimed, (b) critic invoked, (c) todo with handover.
+
+    Args:
+        session_id: Claude Code session ID
+        verdict: Optional critic verdict (PROCEED/REVISE/HALT)
+    """
+    state = get_or_create_session_state(session_id)
+    state["state"]["critic_invoked"] = True
+    if verdict:
+        state["hydration"]["critic_verdict"] = verdict
+    save_session_state(session_id, state)
+
+
+def is_critic_invoked(session_id: str) -> bool:
+    """Check if critic agent has been invoked for this session.
+
+    Args:
+        session_id: Claude Code session ID
+
+    Returns:
+        True if critic_invoked flag is set
+    """
+    state = load_session_state(session_id)
+    if state is None:
+        return False
+    return state.get("state", {}).get("critic_invoked", False)
+
+
+# ============================================================================
+# Todo Handover Validation API
+# ============================================================================
+
+
+def set_todo_with_handover(session_id: str, handover_content: str | None = None) -> None:
+    """Set todo_with_handover flag when todo list includes handover step.
+
+    Part of the three-gate requirement for destructive operations:
+    (a) task claimed, (b) critic invoked, (c) todo with handover.
+
+    Args:
+        session_id: Claude Code session ID
+        handover_content: Optional content of the handover todo item
+    """
+    state = get_or_create_session_state(session_id)
+    state["state"]["todo_with_handover"] = True
+    if handover_content:
+        state["state"]["handover_step_content"] = handover_content
+    save_session_state(session_id, state)
+
+
+def has_todo_with_handover(session_id: str) -> bool:
+    """Check if todo list includes a handover/session-end step.
+
+    Args:
+        session_id: Claude Code session ID
+
+    Returns:
+        True if todo_with_handover flag is set
+    """
+    state = load_session_state(session_id)
+    if state is None:
+        return False
+    return state.get("state", {}).get("todo_with_handover", False)
+
+
+def clear_todo_handover(session_id: str) -> None:
+    """Clear todo_with_handover flag (e.g., when todos are reset).
+
+    Args:
+        session_id: Claude Code session ID
+    """
+    state = load_session_state(session_id)
+    if state is None:
+        return
+    state["state"]["todo_with_handover"] = False
+    state["state"]["handover_step_content"] = None
+    save_session_state(session_id, state)
+
+
+# ============================================================================
+# Gate Status Check API
+# ============================================================================
+
+
+def check_all_gates(session_id: str) -> dict[str, bool]:
+    """Check status of all three gates for destructive operations.
+
+    Returns status of: task_bound, critic_invoked, todo_with_handover.
+
+    Args:
+        session_id: Claude Code session ID
+
+    Returns:
+        Dict with gate statuses and overall 'all_passed' flag
+    """
+    task_bound = get_current_task(session_id) is not None
+    critic_invoked = is_critic_invoked(session_id)
+    todo_handover = has_todo_with_handover(session_id)
+
+    return {
+        "task_bound": task_bound,
+        "critic_invoked": critic_invoked,
+        "todo_with_handover": todo_handover,
+        "all_passed": task_bound and critic_invoked and todo_handover,
+    }

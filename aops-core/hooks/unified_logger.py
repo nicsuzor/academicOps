@@ -32,6 +32,7 @@ from lib.insights_generator import (
 from lib.session_state import (
     get_or_create_session_state,
     record_subagent_invocation,
+    set_critic_invoked,
     set_session_insights,
 )
 
@@ -72,7 +73,7 @@ def handle_subagent_stop(session_id: str, input_data: dict[str, Any]) -> None:
     """Handle SubagentStop event - update subagent state in session file.
 
     Extracts subagent information and records it in the session file's
-    subagents section.
+    subagents section. For critic agents, also sets the critic_invoked gate.
 
     Args:
         session_id: Claude Code session ID
@@ -97,6 +98,22 @@ def handle_subagent_stop(session_id: str, input_data: dict[str, Any]) -> None:
 
     # Record to session file
     record_subagent_invocation(session_id, subagent_type, result_data)
+
+    # Set critic_invoked gate when critic agent completes
+    # This is part of the three-gate requirement for destructive operations
+    if subagent_type == "critic":
+        # Extract verdict from result if available
+        verdict = None
+        if isinstance(subagent_result, dict):
+            verdict = subagent_result.get("verdict")
+        elif isinstance(subagent_result, str):
+            # Try to extract verdict from output text
+            for v in ["PROCEED", "REVISE", "HALT"]:
+                if v in subagent_result.upper():
+                    verdict = v
+                    break
+        set_critic_invoked(session_id, verdict)
+        logger.info(f"Critic gate set: verdict={verdict}")
 
 
 def handle_stop(session_id: str, input_data: dict[str, Any]) -> None:

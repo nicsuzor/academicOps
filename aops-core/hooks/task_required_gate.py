@@ -1,10 +1,15 @@
 #!/usr/bin/env python3
 """
-PreToolUse hook: Block destructive operations without active task binding.
+PreToolUse hook: Block destructive operations without three-gate compliance.
 
-Enforces task-gated permissions model per specs/permission-model-v1.md.
-Destructive operations (Write, Edit, destructive Bash) require a task bound
-to the session. This ensures all work is tracked.
+Enforces task-gated permissions model. Destructive operations (Write, Edit,
+destructive Bash) require ALL THREE gates to pass:
+
+  (a) Task bound - session has an active task via update_task or create_task
+  (b) Critic invoked - critic agent has reviewed the plan (SubagentStop tracked)
+  (c) Todo with handover - TodoWrite includes a session end/handover step
+
+This ensures all work is tracked, reviewed, and has a proper completion plan.
 
 Bypass conditions:
 - Subagent sessions (CLAUDE_AGENT_TYPE set)
@@ -13,8 +18,8 @@ Bypass conditions:
 - Read-only tools (Read, Glob, Grep, etc.)
 
 Exit codes:
-    0: Allow (task bound, bypassed, or read-only operation)
-    2: Block (destructive operation without task)
+    0: Allow (all gates passed, bypassed, or read-only operation)
+    2: Block (destructive operation without gate compliance)
 
 Environment variables:
 - TASK_GATE_MODE: "warn" (default) or "block"
@@ -29,7 +34,7 @@ import re
 import sys
 from typing import Any
 
-from lib.session_state import get_current_task, load_session_state
+from lib.session_state import check_all_gates, get_current_task, load_session_state
 
 # Default gate mode - start with warn for validation
 DEFAULT_GATE_MODE = "warn"
@@ -89,6 +94,58 @@ TASK_BINDING_TOOLS = {
     "mcp__plugin_aops-core_tasks__decompose_task",
 }
 
+def build_block_message(gates: dict[str, bool]) -> str:
+    """Build a detailed block message showing which gates are missing.
+
+    Args:
+        gates: Dict from check_all_gates() with gate statuses
+
+    Returns:
+        Formatted block message
+    """
+    missing = []
+    if not gates["task_bound"]:
+        missing.append("(a) Claim a task: `mcp__plugin_aops-core_tasks__update_task(id=\"...\", status=\"active\")`")
+    if not gates["critic_invoked"]:
+        missing.append("(b) Invoke critic: `Task(subagent_type=\"aops-core:critic\", prompt=\"Review this plan: ...\")`")
+    if not gates["todo_with_handover"]:
+        missing.append("(c) Create todo list with handover step: Include 'Session handover' or 'Commit and push' in TodoWrite")
+
+    return f"""⛔ THREE-GATE CHECK FAILED: Cannot perform destructive operations.
+
+All three gates must pass before modifying files:
+✓/✗ Task bound: {"✓" if gates["task_bound"] else "✗"}
+✓/✗ Critic invoked: {"✓" if gates["critic_invoked"] else "✗"}
+✓/✗ Todo with handover: {"✓" if gates["todo_with_handover"] else "✗"}
+
+Missing gates:
+{chr(10).join(missing)}
+
+For emergency/trivial fixes, user can prefix prompt with `.`
+"""
+
+
+def build_warn_message(gates: dict[str, bool]) -> str:
+    """Build a warning message for warn-only mode.
+
+    Args:
+        gates: Dict from check_all_gates() with gate statuses
+
+    Returns:
+        Formatted warning message
+    """
+    return f"""⚠️  THREE-GATE CHECK (warn-only): Destructive operation without full gate compliance.
+
+Gate status:
+- Task bound: {"✓" if gates["task_bound"] else "✗"}
+- Critic invoked: {"✓" if gates["critic_invoked"] else "✗"}
+- Todo with handover: {"✓" if gates["todo_with_handover"] else "✗"}
+
+This session is in WARN mode for testing. In production, this would BLOCK.
+"""
+
+
+# Legacy messages for backward compatibility
 BLOCK_MESSAGE = """⛔ TASK REQUIRED: No active task bound to this session.
 
 Before modifying files, you must claim or create a task:
@@ -227,20 +284,21 @@ def main() -> None:
         print(json.dumps({}))
         sys.exit(0)
 
-    # Task binding required - check for active task
-    current_task = get_current_task(session_id)
-    if current_task:
+    # Three-gate check: task bound, critic invoked, todo with handover
+    gates = check_all_gates(session_id)
+
+    if gates["all_passed"]:
         print(json.dumps({}))
         sys.exit(0)
 
-    # No task - enforce based on mode
+    # Gates not passed - enforce based on mode
     gate_mode = get_gate_mode()
     if gate_mode == "block":
-        print(BLOCK_MESSAGE, file=sys.stderr)
+        print(build_block_message(gates), file=sys.stderr)
         sys.exit(2)
     else:
         # Warn mode: log but allow
-        print(WARN_MESSAGE, file=sys.stderr)
+        print(build_warn_message(gates), file=sys.stderr)
         print(json.dumps({}))
         sys.exit(0)
 

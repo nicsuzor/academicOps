@@ -30,6 +30,7 @@ from pathlib import Path
 from typing import Any
 
 from lib.reflection_detector import has_reflection
+from lib.session_state import get_current_task
 from lib.transcript_parser import SessionProcessor
 
 # Set up logging
@@ -347,6 +348,21 @@ def main():
     output_data: dict[str, Any] = {}
 
     if session_id:
+        # Check 1: Block if there's an active task bound to this session
+        try:
+            current_task = get_current_task(session_id)
+            if current_task:
+                output_data = {
+                    "decision": "block",
+                    "reason": f"Active task bound to session: {current_task}. Complete or unassign the task before ending.",
+                }
+                logger.info(f"Session end blocked: active task {current_task}")
+                print(json.dumps(output_data))
+                sys.exit(0)
+        except Exception as e:
+            logger.warning(f"Task binding check failed: {type(e).__name__}: {e}")
+
+        # Check 2: Block if uncommitted work after passing tests
         try:
             check_result = check_uncommitted_work(session_id, transcript_path)
 
