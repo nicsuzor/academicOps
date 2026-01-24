@@ -39,13 +39,17 @@ Process annotations in a specific file:
 
 <!-- @nicsuzor: ensure that comments are added to tasks. Once they are fully captured, they can be deleted from the source file. -->
 <!-- @claude 2026-01-12: Done. Updated workflow to create tasks for actionable annotations before responding. See step 3 below. -->
+<!-- @claude 2026-01-24: Updated respond workflow to include step 4: capture annotation threads to bd (backup/documentation) before deletion to ensure full context is preserved. -->
 
 1. Read the file
 2. Find all `<!-- @nic:` or `<!-- @ns:` comments
 3. For each comment without a corresponding `<!-- @claude` response:
    - Analyze the request in context
    - Add response immediately after: `<!-- @claude YYYY-MM-DD: response -->`
-4. Save the file
+4. Before deleting resolved annotation threads:
+   - Capture the full comment thread (original comment + response) to bd (backup/documentation)
+   - Verify the context is preserved for future reference
+5. Save the file
 
 ### clean [file]
 
