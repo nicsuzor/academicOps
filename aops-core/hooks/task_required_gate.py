@@ -173,7 +173,13 @@ def get_gate_mode() -> str:
 
 def get_session_id(input_data: dict[str, Any]) -> str:
     """Get session ID from hook input data or environment."""
-    return input_data.get("session_id", "") or os.environ.get("CLAUDE_SESSION_ID", "")
+    session_id = input_data.get("session_id")
+    if session_id is not None:
+        return session_id
+    session_id = os.environ.get("CLAUDE_SESSION_ID")
+    if session_id is not None:
+        return session_id
+    return ""
 
 
 def is_subagent_session() -> bool:
@@ -186,7 +192,13 @@ def is_gates_bypassed(session_id: str) -> bool:
     state = load_session_state(session_id)
     if state is None:
         return False
-    return state.get("state", {}).get("gates_bypassed", False)
+    inner_state = state.get("state")
+    if inner_state is None:
+        return False
+    gates_bypassed = inner_state.get("gates_bypassed")
+    if gates_bypassed is None:
+        return False
+    return gates_bypassed
 
 
 def is_destructive_bash(command: str) -> bool:
@@ -241,7 +253,9 @@ def should_require_task(tool_name: str, tool_input: dict[str, Any]) -> bool:
 
     # Bash commands: check for destructive patterns
     if tool_name == "Bash":
-        command = tool_input.get("command", "")
+        command = tool_input.get("command")
+        if command is None:
+            raise ValueError("Bash tool_input missing required 'command' field")
         return is_destructive_bash(command)
 
     # All other tools (Read, Glob, Grep, Task, MCP reads, etc.) don't require task
@@ -257,8 +271,12 @@ def main() -> None:
         print("⛔ TASK GATE: Failed to parse hook input", file=sys.stderr)
         sys.exit(2)
 
-    tool_name = input_data.get("tool_name", "")
-    tool_input = input_data.get("tool_input", {})
+    tool_name = input_data.get("tool_name")
+    if tool_name is None:
+        raise ValueError("hook input missing required 'tool_name' field")
+    tool_input = input_data.get("tool_input")
+    if tool_input is None:
+        raise ValueError("hook input missing required 'tool_input' field")
     session_id = get_session_id(input_data)
 
     # FAIL-CLOSED: if no session_id, block for destructive ops
