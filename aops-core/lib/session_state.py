@@ -770,6 +770,41 @@ def has_reflection_output(session_id: str) -> bool:
 
 
 # ============================================================================
+# Stop Hook Reflection Validation API
+# ============================================================================
+
+
+def set_stop_reflection_validated(session_id: str) -> None:
+    """Set stop_reflection_validated flag when Stop hook validates reflection.
+
+    This flag is NOT cleared by UserPromptSubmit, unlike reflection_output_since_prompt.
+    Once the Stop hook has validated a reflection exists, the session can end
+    even if additional prompts are sent.
+
+    Args:
+        session_id: Claude Code session ID
+    """
+    state = get_or_create_session_state(session_id)
+    state["state"]["stop_reflection_validated"] = True
+    save_session_state(session_id, state)
+
+
+def is_stop_reflection_validated(session_id: str) -> bool:
+    """Check if Stop hook has validated a reflection for this session.
+
+    Args:
+        session_id: Claude Code session ID
+
+    Returns:
+        True if stop_reflection_validated flag is set
+    """
+    state = load_session_state(session_id)
+    if state is None:
+        return False
+    return state.get("state", {}).get("stop_reflection_validated", False)
+
+
+# ============================================================================
 # Critic Invocation Tracking API
 # ============================================================================
 

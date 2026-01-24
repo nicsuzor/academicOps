@@ -17,7 +17,12 @@ from pathlib import Path
 from typing import Any
 
 from lib.reflection_detector import has_reflection
-from lib.session_state import has_reflection_output, set_reflection_output
+from lib.session_state import (
+    has_reflection_output,
+    is_stop_reflection_validated,
+    set_reflection_output,
+    set_stop_reflection_validated,
+)
 from lib.transcript_parser import SessionProcessor, parse_framework_reflection
 
 # Set up logging
@@ -118,7 +123,14 @@ def check_for_reflection(
         Tuple of (found, parsed_reflection) where parsed_reflection is the
         structured dict from parse_framework_reflection or None
     """
-    # Check if already marked as having reflection
+    # Check if Stop hook already validated a reflection (persistent flag)
+    # This flag is NOT cleared by UserPromptSubmit, so it persists through
+    # multiple Stop invocations even if user sends additional prompts
+    if is_stop_reflection_validated(session_id):
+        logger.info("Reflection already validated by Stop hook")
+        return True, None
+
+    # Check if already marked as having reflection (cleared on new prompt)
     if has_reflection_output(session_id):
         logger.info("Reflection already detected in session state")
         return True, None
@@ -146,6 +158,8 @@ def check_for_reflection(
                     f"Valid Framework Reflection detected: outcome={parsed.get('outcome')}"
                 )
                 set_reflection_output(session_id, True)
+                # Set persistent flag that won't be cleared by UserPromptSubmit
+                set_stop_reflection_validated(session_id)
                 return True, parsed
             else:
                 logger.warning("Framework Reflection found but missing required fields")

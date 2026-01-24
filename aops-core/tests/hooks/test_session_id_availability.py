@@ -268,15 +268,31 @@ class TestSessionStateApiWithSessionId:
         sessions_dir = tmp_path / "sessions" / "status"
         sessions_dir.mkdir(parents=True)
 
-        # Mock the session file path function
+        # Mock the session file path function (used by save_session_state)
         def mock_get_path(session_id, date=None):
             from datetime import datetime
+            from lib.session_paths import get_session_short_hash
 
             if date is None:
-                date = datetime.now().strftime("%Y-%m-%d")
-            return sessions_dir / f"{date[:10].replace('-', '')}-{session_id}.json"
+                now = datetime.now().astimezone()
+                date_compact = now.strftime("%Y%m%d")
+                hour = now.strftime("%H")
+            elif "T" in date:
+                date_compact = date[:10].replace("-", "")
+                hour = date[11:13]
+            else:
+                date_compact = date.replace("-", "")
+                hour = datetime.now().astimezone().strftime("%H")
 
-        with patch("lib.session_state.get_session_file_path", mock_get_path):
+            short_hash = get_session_short_hash(session_id)
+            return sessions_dir / f"{date_compact}-{hour}-{short_hash}.json"
+
+        # Mock get_session_status_dir to return temp directory (used by load_session_state)
+        def mock_get_status_dir():
+            return sessions_dir
+
+        with patch("lib.session_state.get_session_file_path", mock_get_path), \
+             patch("lib.session_paths.get_session_status_dir", mock_get_status_dir):
             yield sessions_dir
 
     def test_create_session_state_requires_session_id(self, temp_session_dir):
@@ -473,6 +489,7 @@ class TestRegressionSessionIdNotAvailable:
     def test_session_state_operations_with_real_session_id(self, tmp_path, monkeypatch):
         """Integration test: session state operations work end-to-end."""
         from datetime import datetime
+        from lib.session_paths import get_session_short_hash
 
         # Set up temp directory for session files
         sessions_dir = tmp_path / "sessions" / "status"
@@ -480,10 +497,24 @@ class TestRegressionSessionIdNotAvailable:
 
         def mock_get_path(session_id, date=None):
             if date is None:
-                date = datetime.now().strftime("%Y-%m-%d")
-            return sessions_dir / f"{date[:10].replace('-', '')}-{session_id}.json"
+                now = datetime.now().astimezone()
+                date_compact = now.strftime("%Y%m%d")
+                hour = now.strftime("%H")
+            elif "T" in date:
+                date_compact = date[:10].replace("-", "")
+                hour = date[11:13]
+            else:
+                date_compact = date.replace("-", "")
+                hour = datetime.now().astimezone().strftime("%H")
 
-        with patch("lib.session_state.get_session_file_path", mock_get_path):
+            short_hash = get_session_short_hash(session_id)
+            return sessions_dir / f"{date_compact}-{hour}-{short_hash}.json"
+
+        def mock_get_status_dir():
+            return sessions_dir
+
+        with patch("lib.session_state.get_session_file_path", mock_get_path), \
+             patch("lib.session_paths.get_session_status_dir", mock_get_status_dir):
             from lib.session_state import (
                 get_or_create_session_state,
                 set_hydration_pending,
@@ -508,6 +539,72 @@ class TestRegressionSessionIdNotAvailable:
             set_current_task(session_id, "test-task-123", source="test")
             task = get_current_task(session_id)
             assert task == "test-task-123"
+
+
+class TestStopHookReflectionPersistence:
+    """Regression tests for Stop hook reflection flag persistence.
+
+    Bug: Stop hook fires, validates reflection, but then fires again and blocks
+    because UserPromptSubmit cleared the reflection_output_since_prompt flag.
+
+    Fix: Added stop_reflection_validated flag that persists through UserPromptSubmit.
+    """
+
+    def test_stop_reflection_validated_persists_through_prompt_submit(self, tmp_path, monkeypatch):
+        """Test that stop_reflection_validated flag isn't cleared by UserPromptSubmit.
+
+        Regression: Stop hook approves, user sends another prompt, Stop hook blocks.
+        """
+        from datetime import datetime
+
+        # Set up temp directory for session files
+        sessions_dir = tmp_path / "sessions" / "status"
+        sessions_dir.mkdir(parents=True)
+
+        def mock_get_path(session_id, date=None):
+            from lib.session_paths import get_session_short_hash
+
+            if date is None:
+                now = datetime.now().astimezone()
+                date_compact = now.strftime("%Y%m%d")
+                hour = now.strftime("%H")
+            elif "T" in date:
+                date_compact = date[:10].replace("-", "")
+                hour = date[11:13]
+            else:
+                date_compact = date.replace("-", "")
+                hour = datetime.now().astimezone().strftime("%H")
+
+            short_hash = get_session_short_hash(session_id)
+            return sessions_dir / f"{date_compact}-{hour}-{short_hash}.json"
+
+        def mock_get_status_dir():
+            return sessions_dir
+
+        with patch("lib.session_state.get_session_file_path", mock_get_path), \
+             patch("lib.session_paths.get_session_status_dir", mock_get_status_dir):
+            from lib.session_state import (
+                get_or_create_session_state,
+                set_stop_reflection_validated,
+                is_stop_reflection_validated,
+                clear_reflection_output,
+            )
+
+            session_id = "regression-stop-hook-test"
+
+            # 1. Create session state
+            state = get_or_create_session_state(session_id)
+
+            # 2. Stop hook validates reflection (sets persistent flag)
+            set_stop_reflection_validated(session_id)
+            assert is_stop_reflection_validated(session_id) is True
+
+            # 3. UserPromptSubmit clears reflection_output (simulates user sending prompt)
+            clear_reflection_output(session_id)
+
+            # 4. Stop hook fires again - should still see validated flag
+            assert is_stop_reflection_validated(session_id) is True, \
+                "stop_reflection_validated should persist through clear_reflection_output"
 
 
 if __name__ == "__main__":
