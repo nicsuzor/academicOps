@@ -72,11 +72,16 @@ class TestSessionIdExtraction:
         input_data = {"session_id": "from-input"}
         assert get_session_id(input_data) == "from-input"
 
-    def test_session_id_empty_when_missing(self, monkeypatch):
-        """Test that missing session ID returns empty string."""
+    def test_session_id_raises_when_missing(self, monkeypatch):
+        """Test that missing session ID raises ValueError (fail-closed).
+
+        This is the correct fail-closed behavior: missing session_id should
+        raise an error rather than silently returning empty string.
+        """
         monkeypatch.delenv("CLAUDE_SESSION_ID", raising=False)
         input_data = {}
-        assert get_session_id(input_data) == ""
+        with pytest.raises(ValueError, match="session_id is required"):
+            get_session_id(input_data)
 
 
 class TestFirstPromptDetection:

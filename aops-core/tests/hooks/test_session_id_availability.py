@@ -57,24 +57,32 @@ class TestRouterSessionIdHandling:
             assert exit_code == 0
 
     def test_router_warns_when_session_id_missing(self, monkeypatch, capsys):
-        """Test that router logs warning when session_id is missing."""
+        """Test that router logs warning when session_id is missing.
+
+        The warning is logged AFTER hook dispatch, so we need to mock
+        a hook that will be dispatched but doesn't require actual execution.
+        """
         from router import route_hooks
 
         input_data = {
             "hook_event_name": "SessionStart",
-            # No session_id
+            # No session_id - this is what we're testing
         }
 
-        # Mock to avoid running actual hooks
-        with patch("router.get_hooks_for_event", return_value=[]), patch(
-            "router.check_custodiet_block", return_value=None
+        # Mock a hook to be dispatched (warning happens after dispatch)
+        with patch(
+            "router.get_hooks_for_event", return_value=[{"script": "mock.py"}]
+        ), patch("router.check_custodiet_block", return_value=None), patch(
+            "router.run_sync_hook", return_value=({}, 0)
         ):
             output, exit_code = route_hooks(input_data)
 
             # Should succeed but with warning
             assert exit_code == 0
             captured = capsys.readouterr()
-            assert "WARNING" in captured.err or "session_id" in captured.err.lower()
+            # Warning goes to stdout (print() default)
+            full_output = captured.out + captured.err
+            assert "WARNING" in full_output or "session_id" in full_output.lower()
 
     def test_router_passes_session_id_to_hooks(self, monkeypatch):
         """Test that router passes session_id in input_data to dispatched hooks."""
