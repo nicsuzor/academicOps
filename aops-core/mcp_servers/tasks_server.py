@@ -177,6 +177,7 @@ def _format_tree(node: dict[str, Any], indent: int = 0) -> str:
 def create_task(
     task_title: str,
     type: str = "task",
+    status: Optional[str] = None,
     project: Optional[str] = None,
     parent: Optional[str] = None,
     depends_on: Optional[list[str]] = None,
@@ -196,6 +197,7 @@ def create_task(
     Args:
         task_title: Task title (required)
         type: Task type - "goal", "project", "epic", "task", "action", "bug", "feature", or "learn" (default: "task")
+        status: Task status - "inbox", "active", "blocked", "waiting", "done", or "cancelled" (default: "inbox")
         project: Project slug for organization (determines storage location)
         parent: Parent task ID for hierarchical relationships
         depends_on: List of task IDs this task depends on
@@ -236,6 +238,17 @@ def create_task(
                 "message": f"Invalid task type: {type}. Must be one of: goal, project, epic, task, action, bug, feature, learn",
             }
 
+        # Parse status
+        task_status = TaskStatus.INBOX
+        if status:
+            try:
+                task_status = TaskStatus(status)
+            except ValueError:
+                return {
+                    "success": False,
+                    "message": f"Invalid status: {status}. Must be one of: inbox, active, blocked, waiting, done, cancelled",
+                }
+
         # Parse due date
         due_datetime = None
         if due:
@@ -263,6 +276,7 @@ def create_task(
             title=task_title,
             project=project,
             type=task_type,
+            status=task_status,
             parent=parent,
             depends_on=depends_on,
             priority=priority,
@@ -361,6 +375,7 @@ def update_task(
     effort: Optional[str] = None,
     context: Optional[str] = None,
     body: Optional[str] = None,
+    replace_body: bool = False,
     assignee: Optional[str] = None,
     complexity: Optional[str] = None,
 ) -> dict[str, Any]:
@@ -382,7 +397,8 @@ def update_task(
         tags: New tags list (replaces existing)
         effort: New effort estimate (or "" to clear)
         context: New context (or "" to clear)
-        body: New body content
+        body: Body content to append (default) or replace. Appended with double newline separator.
+        replace_body: If True, replace body instead of appending (default: False)
         assignee: Task owner - 'nic' or 'bot' (or "" to clear)
         complexity: Task complexity - "mechanical", "requires-judgment", "multi-step",
             "needs-decomposition", or "blocked-human" (or "" to clear)
@@ -492,7 +508,10 @@ def update_task(
             modified_fields.append("context")
 
         if body is not None:
-            task.body = body
+            if replace_body or not task.body:
+                task.body = body
+            else:
+                task.body = task.body + "\n\n" + body
             modified_fields.append("body")
 
         if assignee is not None:
