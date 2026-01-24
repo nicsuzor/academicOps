@@ -183,17 +183,23 @@ def is_gemini_hydration_attempt(tool_name: str, tool_input: dict[str, Any]) -> b
     
     # Check for direct file read
     if tool_name == "read_file":
-        path = str(tool_input.get("file_path", ""))
+        file_path = tool_input.get("file_path")
+        if file_path is None:
+            return False
+        path = str(file_path)
         return (
-            path.startswith("/tmp/claude-hydrator/") or 
+            path.startswith("/tmp/claude-hydrator/") or
             path.startswith(temp_dir)
         )
 
     # Check for shell commands (cat, etc) on the hydration file
     if tool_name == "run_shell_command":
-        cmd = str(tool_input.get("command", ""))
+        command = tool_input.get("command")
+        if command is None:
+            return False
+        cmd = str(command)
         return (
-            "/tmp/claude-hydrator/" in cmd or 
+            "/tmp/claude-hydrator/" in cmd or
             temp_dir in cmd
         )
 
@@ -209,8 +215,12 @@ def main():
         print("⛔ HYDRATION GATE: Failed to parse hook input", file=sys.stderr)
         sys.exit(2)
 
-    tool_name = input_data.get("tool_name", "")
-    tool_input = input_data.get("tool_input", {})
+    tool_name = input_data.get("tool_name")
+    if tool_name is None:
+        raise ValueError("hook input missing required 'tool_name' field")
+    tool_input = input_data.get("tool_input")
+    if tool_input is None:
+        raise ValueError("hook input missing required 'tool_input' field")
 
     try:
         session_id = get_session_id(input_data)

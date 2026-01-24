@@ -53,8 +53,12 @@ def validate_minimal_documentation(
     if tool_name != "Write":
         return None
 
-    file_path = args.get("file_path", "")
-    content = args.get("content", "")
+    if "file_path" not in args:
+        raise ValueError("Write tool args requires 'file_path' parameter (P#8: fail-fast)")
+    if "content" not in args:
+        raise ValueError("Write tool args requires 'content' parameter (P#8: fail-fast)")
+    file_path = args["file_path"]
+    content = args["content"]
 
     if file_path.endswith("-GUIDE.md") or "GUIDE.md" in file_path.upper():
         return {
@@ -87,7 +91,9 @@ def validate_safe_git_usage(
     if tool_name != "Bash":
         return None
 
-    command = args.get("command", "")
+    if "command" not in args:
+        raise ValueError("Bash tool args requires 'command' parameter (P#8: fail-fast)")
+    command = args["command"]
 
     for pattern in DESTRUCTIVE_GIT_PATTERNS:
         if re.search(pattern, command, re.IGNORECASE):
@@ -109,8 +115,12 @@ def main():
     with contextlib.suppress(Exception):
         input_data = json.load(sys.stdin)
 
-    tool_name = input_data.get("tool_name", "")
-    args = input_data.get("tool_input", {})
+    if "tool_name" not in input_data:
+        raise ValueError("input_data requires 'tool_name' parameter (P#8: fail-fast)")
+    if "tool_input" not in input_data:
+        raise ValueError("input_data requires 'tool_input' parameter (P#8: fail-fast)")
+    tool_name = input_data["tool_name"]
+    args = input_data["tool_input"]
 
     # Check policies in order
     result = validate_minimal_documentation(tool_name, args)
@@ -124,7 +134,9 @@ def main():
         sys.exit(2)
 
     # Allow: output JSON to stdout, exit 0
-    print(json.dumps(result or {}))
+    if result is None:
+        result = {}
+    print(json.dumps(result))
     sys.exit(0)
 
 
