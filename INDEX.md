@@ -46,6 +46,33 @@ $AOPS/
 ├── reference-graph.csv          # Framework reference graph (wrong location)
 ├── current-tasks.excalidraw     # Visual task board (orphan - flagged)
 │
+├── workflows/                   # Workflow templates and procedures
+│   ├── base-commit.md           # Base commit workflow
+│   ├── base-task-tracking.md    # Base task tracking workflow
+│   ├── base-tdd.md              # Base TDD workflow
+│   ├── base-verification.md     # Base verification workflow
+│   ├── batch-processing.md      # Batch processing workflow
+│   ├── batch-task-processing.md # Batch task processing workflow
+│   ├── classify-task.md         # Task classification workflow
+│   ├── critic-detailed.md       # Detailed critic workflow
+│   ├── critic-fast.md           # Fast critic workflow
+│   ├── debugging.md             # Debugging workflow
+│   ├── decompose.md             # Task decomposition workflow
+│   ├── design.md                # Design workflow
+│   ├── direct-skill.md          # Direct skill invocation workflow
+│   ├── dogfooding.md            # Dogfooding workflow
+│   ├── email-classify.md        # Email classification workflow
+│   ├── email-reply.md           # Email reply workflow
+│   ├── framework-change.md      # Framework change workflow
+│   ├── handover.md              # Work handover workflow
+│   ├── minor-edit.md            # Minor edit workflow
+│   ├── peer-review.md           # Peer review workflow
+│   ├── prove-feature.md         # Prove feature workflow
+│   ├── qa.md                    # Quality assurance workflow
+│   ├── simple-question.md       # Simple question workflow
+│   ├── skill-pilot.md           # Skill pilot workflow
+│   └── strategy.md              # Strategy workflow
+│
 ├── .github/
 │   ├── pull_request_template.md # PR template
 │   └── workflows/               # CI/CD workflows
