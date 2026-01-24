@@ -822,24 +822,53 @@ def get_blocked_tasks(project: str) -> dict[str, Any]:
 
 
 @mcp.tool()
-def get_task_tree(id: str) -> dict[str, Any]:
-    """Get the decomposition tree for a task.
+def get_task_tree(id: Optional[str] = None) -> dict[str, Any]:
+    """Get the decomposition tree for a task, or all root tasks.
 
     Returns the task and all its descendants in a tree structure.
+    If no ID is provided, returns trees for all root tasks.
 
     Args:
-        id: Root task ID to get tree for
+        id: Root task ID to get tree for. If not provided, returns all root trees.
 
     Returns:
         Dictionary with:
-        - success: True if task found
-        - tree: Tree node with structure:
+        - success: True if task found (or roots exist)
+        - tree: Tree node (if id provided) or list of tree nodes (if no id)
+            Each node has structure:
             - task: Task data
             - children: List of child tree nodes (recursive)
         - message: Status message
     """
     try:
         index = _get_index()
+
+        # If no ID provided, return all root trees
+        if id is None:
+            roots = index.get_roots()
+            if not roots:
+                return {
+                    "success": True,
+                    "tree": [],
+                    "message": "No root tasks found",
+                }
+
+            def build_tree(entry: TaskIndexEntry) -> dict[str, Any]:
+                """Recursively build tree structure."""
+                children = index.get_children(entry.id)
+                return {
+                    "task": _index_entry_to_dict(entry),
+                    "children": [build_tree(child) for child in children],
+                }
+
+            trees = [build_tree(root) for root in roots]
+            return {
+                "success": True,
+                "tree": trees,
+                "message": f"Found {len(trees)} root task trees",
+            }
+
+        # Single task tree
         root = index.get_task(id)
 
         if root is None:
@@ -1219,7 +1248,7 @@ def list_tasks(
     project: Optional[str] = None,
     status: Optional[str] = None,
     type: Optional[str] = None,
-    limit: int = 50,
+    limit: int = 10,
 ) -> dict[str, Any]:
     """List tasks with optional filters.
 
@@ -1227,7 +1256,7 @@ def list_tasks(
         project: Filter by project slug
         status: Filter by status - "inbox", "active", "blocked", "waiting", "done", "cancelled"
         type: Filter by type - "goal", "project", "epic", "task", "action", "bug", "feature", "learn"
-        limit: Maximum number of tasks to return (default: 50)
+        limit: Maximum number of tasks to return (default: 10)
 
     Returns:
         Dictionary with:
