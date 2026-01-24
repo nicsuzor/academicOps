@@ -14,11 +14,20 @@ Examples:
 
 import argparse
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
 
 # Color schemes
+ASSIGNEE_COLORS = {
+    "bot": "#17a2b8",     # cyan/teal - AI agent
+    "claude": "#17a2b8",  # same as bot
+    "worker": "#fd7e14",  # orange - background worker
+    "nic": "#6f42c1",     # purple - human
+}
+ASSIGNEE_DEFAULT = "#6c757d"  # gray for unassigned
+
 STATUS_COLORS = {
     "done": "#d4edda",      # green
     "completed": "#d4edda",
@@ -52,6 +61,31 @@ STRUCTURAL_STYLE = {
     "fillcolor": "#c3e6cb",  # muted green
     "style": "filled,dashed",
 }
+
+# Statuses considered incomplete (assignee coloring applies)
+INCOMPLETE_STATUSES = {"inbox", "active", "in_progress", "blocked", "waiting", "todo", "pending"}
+
+
+def extract_assignee(file_path: str) -> str | None:
+    """Extract assignee from markdown frontmatter."""
+    try:
+        path = Path(file_path)
+        if not path.exists():
+            return None
+        content = path.read_text(errors="ignore")[:2000]  # Only read start
+        if not content.startswith("---"):
+            return None
+        # Find end of frontmatter
+        end = content.find("\n---", 3)
+        if end == -1:
+            return None
+        frontmatter = content[3:end]
+        match = re.search(r"^assignee:\s*(.+)$", frontmatter, re.MULTILINE)
+        if match:
+            return match.group(1).strip()
+    except Exception:
+        pass
+    return None
 
 
 def filter_completed_smart(nodes: list[dict], edges: list[dict]) -> tuple[list[dict], set[str]]:
@@ -142,6 +176,9 @@ def generate_dot(nodes: list[dict], edges: list[dict], include_orphans: bool = F
         "        legend_done [label=\"Done\" shape=box fillcolor=\"#d4edda\"];",
         "        legend_structural [label=\"Done (structural)\" shape=box3d style=\"filled,dashed\" fillcolor=\"#c3e6cb\"];",
         "        legend_blocked [label=\"Blocked\" shape=box fillcolor=\"#f8d7da\"];",
+        "        legend_bot [label=\"@bot\" shape=box fillcolor=\"#ffffff\" color=\"#17a2b8\" penwidth=3];",
+        "        legend_nic [label=\"@nic\" shape=box fillcolor=\"#ffffff\" color=\"#6f42c1\" penwidth=3];",
+        "        legend_worker [label=\"@worker\" shape=box fillcolor=\"#ffffff\" color=\"#fd7e14\" penwidth=3];",
         "    }",
         "",
     ]
@@ -152,6 +189,7 @@ def generate_dot(nodes: list[dict], edges: list[dict], include_orphans: bool = F
         node_type = node.get("node_type", "task")
         status = node.get("status", "inbox")
         priority = node.get("priority", 2)
+        file_path = node.get("path", "")
 
         # Check if this is a structural completed node
         if node_id in structural_ids:
@@ -164,8 +202,20 @@ def generate_dot(nodes: list[dict], edges: list[dict], include_orphans: bool = F
             style = "filled"
 
         priority = priority if isinstance(priority, int) else 2
-        pencolor = PRIORITY_BORDERS.get(priority, "#6c757d")
-        penwidth = 3 if priority <= 1 else 1
+
+        # For incomplete tasks, use assignee color for border; otherwise priority color
+        is_incomplete = status.lower() in INCOMPLETE_STATUSES
+        if is_incomplete and file_path:
+            assignee = extract_assignee(file_path)
+            if assignee:
+                pencolor = ASSIGNEE_COLORS.get(assignee, ASSIGNEE_DEFAULT)
+                penwidth = 3  # Thick border for assigned tasks
+            else:
+                pencolor = PRIORITY_BORDERS.get(priority, "#6c757d")
+                penwidth = 3 if priority <= 1 else 1
+        else:
+            pencolor = PRIORITY_BORDERS.get(priority, "#6c757d")
+            penwidth = 3 if priority <= 1 else 1
 
         label = node.get("label", node["id"])[:50].replace('"', '\\"')
 
