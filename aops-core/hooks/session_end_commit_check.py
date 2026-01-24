@@ -229,6 +229,105 @@ def get_git_status(cwd: str | None = None) -> dict[str, Any]:
         }
 
 
+def get_git_push_status(cwd: str | None = None) -> dict[str, Any]:
+    """Get git push status information (commits ahead of remote).
+
+    Args:
+        cwd: Working directory for git command
+
+    Returns:
+        Dictionary with:
+        - branch_ahead: bool - current branch is ahead of remote
+        - commits_ahead: int - number of commits ahead
+        - current_branch: str - current branch name
+        - tracking_branch: str - remote tracking branch (e.g., origin/main)
+    """
+    try:
+        # Get current branch name
+        result = subprocess.run(
+            ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+            cwd=cwd,
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+
+        if result.returncode != 0:
+            logger.warning(f"Failed to get current branch: {result.stderr}")
+            return {
+                "branch_ahead": False,
+                "commits_ahead": 0,
+                "current_branch": "",
+                "tracking_branch": "",
+            }
+
+        current_branch = result.stdout.strip()
+
+        # Get tracking branch
+        result = subprocess.run(
+            ["git", "rev-parse", "--abbrev-ref", f"{current_branch}@{{u}}"],
+            cwd=cwd,
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+
+        if result.returncode != 0:
+            logger.debug(f"No tracking branch configured for {current_branch}")
+            return {
+                "branch_ahead": False,
+                "commits_ahead": 0,
+                "current_branch": current_branch,
+                "tracking_branch": "",
+            }
+
+        tracking_branch = result.stdout.strip()
+
+        # Count commits ahead of remote
+        result = subprocess.run(
+            ["git", "rev-list", "--count", f"{tracking_branch}..HEAD"],
+            cwd=cwd,
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+
+        if result.returncode != 0:
+            logger.debug(f"Failed to count commits ahead: {result.stderr}")
+            return {
+                "branch_ahead": False,
+                "commits_ahead": 0,
+                "current_branch": current_branch,
+                "tracking_branch": tracking_branch,
+            }
+
+        commits_ahead = int(result.stdout.strip())
+
+        return {
+            "branch_ahead": commits_ahead > 0,
+            "commits_ahead": commits_ahead,
+            "current_branch": current_branch,
+            "tracking_branch": tracking_branch,
+        }
+
+    except ValueError:
+        logger.warning("Failed to parse commits ahead count")
+        return {
+            "branch_ahead": False,
+            "commits_ahead": 0,
+            "current_branch": "",
+            "tracking_branch": "",
+        }
+    except Exception as e:
+        logger.warning(f"Failed to get git push status: {e}")
+        return {
+            "branch_ahead": False,
+            "commits_ahead": 0,
+            "current_branch": "",
+            "tracking_branch": "",
+        }
+
+
 def attempt_auto_commit() -> bool:
     """Attempt to auto-commit staged changes.
 
@@ -260,7 +359,7 @@ def attempt_auto_commit() -> bool:
 
 
 def check_uncommitted_work(session_id: str, transcript_path: str | None) -> dict[str, Any]:
-    """Check if session has uncommitted work after passing tests.
+    """Check if session has uncommitted work or unpushed commits.
 
     Args:
         session_id: Claude Code session ID
@@ -272,6 +371,8 @@ def check_uncommitted_work(session_id: str, transcript_path: str | None) -> dict
         - has_reflection: bool - Framework Reflection found
         - has_test_success: bool - Test success patterns found
         - git_status: dict - git status information
+        - push_status: dict - git push status information
+        - reminder_needed: bool - if reminder should be shown (even if not blocking)
         - message: str - human-readable message
     """
     result = {
@@ -279,6 +380,8 @@ def check_uncommitted_work(session_id: str, transcript_path: str | None) -> dict
         "has_reflection": False,
         "has_test_success": False,
         "git_status": {},
+        "push_status": {},
+        "reminder_needed": False,
         "message": "",
     }
 
@@ -305,8 +408,29 @@ def check_uncommitted_work(session_id: str, transcript_path: str | None) -> dict
     git_status = get_git_status()
     result["git_status"] = git_status
 
-    # Determine if we should block
-    # Block if: has reflection OR has test success, AND has uncommitted changes
+    # Get git push status
+    push_status = get_git_push_status()
+    result["push_status"] = push_status
+
+    # Build reminder message for any uncommitted work or unpushed commits
+    reminder_parts = []
+
+    # Check for uncommitted changes
+    if git_status.get("has_changes"):
+        if git_status.get("staged_changes"):
+            reminder_parts.append("Staged changes detected")
+        if git_status.get("unstaged_changes"):
+            reminder_parts.append("Unstaged changes detected")
+        if git_status.get("untracked_files"):
+            reminder_parts.append("Untracked files detected")
+
+    # Check for unpushed commits
+    if push_status.get("branch_ahead"):
+        reminder_parts.append(
+            f"{push_status.get('commits_ahead', 1)} unpushed commit(s) on {push_status.get('current_branch', 'current branch')}"
+        )
+
+    # Only trigger blocking if: (has reflection OR has test success) AND has uncommitted changes
     if (has_reflection or has_tests) and git_status.get("has_changes"):
         result["should_block"] = True
 
@@ -316,6 +440,10 @@ def check_uncommitted_work(session_id: str, transcript_path: str | None) -> dict
             if attempt_auto_commit():
                 result["should_block"] = False
                 result["message"] = "Auto-committed. Session can proceed."
+                # Update reminder for any unpushed commits
+                if push_status.get("branch_ahead"):
+                    result["reminder_needed"] = True
+                    result["message"] += f"\nReminder: Push {push_status.get('commits_ahead', 1)} unpushed commit(s) on {push_status.get('current_branch', 'current branch')}"
             else:
                 result["message"] = (
                     "Commit staged changes before ending session, "
@@ -326,6 +454,10 @@ def check_uncommitted_work(session_id: str, transcript_path: str | None) -> dict
                 "Uncommitted changes detected. Commit before ending session, "
                 "or use AskUserQuestion to request permission to end without committing."
             )
+    elif reminder_parts:
+        # Non-blocking reminder for unpushed commits or other git state
+        result["reminder_needed"] = True
+        result["message"] = "Reminder: " + " and ".join(reminder_parts) + ". Consider committing and pushing before ending session."
 
     return result
 
@@ -369,7 +501,7 @@ def main():
         except Exception as e:
             logger.warning(f"Task binding check failed: {type(e).__name__}: {e}")
 
-        # Check 2: Block if uncommitted work after passing tests
+        # Check 2: Block if uncommitted work after passing tests, or remind about unpushed commits
         try:
             check_result = check_uncommitted_work(session_id, transcript_path)
 
@@ -384,19 +516,19 @@ def main():
                 logger.info(f"Session end blocked: {check_result['message'][:80]}...")
                 print(json.dumps(output_data))
                 sys.exit(0)  # Exit 0 so JSON is processed; decision:block does the blocking
-            else:
-                # Allow session to proceed, but log findings
-                if check_result["message"]:
-                    output_data = {
-                        "systemMessage": check_result["message"],
-                    }
-                    logger.info(check_result["message"])
+            elif check_result["reminder_needed"]:
+                # Allow session to proceed, but include reminder message
+                output_data = {
+                    "systemMessage": check_result["message"],
+                }
+                logger.info(f"Reminder shown: {check_result['message'][:80]}...")
 
         except Exception as e:
             logger.warning(f"Uncommitted work check failed: {type(e).__name__}: {e}")
 
-    # Allow session to proceed normally - add verification message for user
-    output_data["systemMessage"] = "✓ handover verified"
+    # Allow session to proceed normally - add verification message for user if not already set
+    if "systemMessage" not in output_data:
+        output_data["systemMessage"] = "✓ handover verified"
     print(json.dumps(output_data))
     sys.exit(0)
 

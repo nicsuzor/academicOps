@@ -23,6 +23,7 @@ from session_end_commit_check import (
     has_framework_reflection,
     has_test_success,
     get_git_status,
+    get_git_push_status,
     check_uncommitted_work,
 )
 
@@ -321,6 +322,146 @@ class TestGetGitStatus:
             assert status["staged_changes"] is False
 
 
+class TestGetGitPushStatus:
+    """Test git push status checking."""
+
+    def test_no_tracking_branch(self) -> None:
+        """Should handle case when branch has no tracking branch."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # Initialize a git repo
+            subprocess.run(
+                ["git", "init"],
+                cwd=tmpdir,
+                capture_output=True,
+                check=True,
+            )
+            subprocess.run(
+                ["git", "config", "user.email", "test@example.com"],
+                cwd=tmpdir,
+                capture_output=True,
+                check=True,
+            )
+            subprocess.run(
+                ["git", "config", "user.name", "Test User"],
+                cwd=tmpdir,
+                capture_output=True,
+                check=True,
+            )
+
+            # Create and commit a file
+            test_file = Path(tmpdir) / "test.txt"
+            test_file.write_text("content")
+            subprocess.run(
+                ["git", "add", "."],
+                cwd=tmpdir,
+                capture_output=True,
+                check=True,
+            )
+            subprocess.run(
+                ["git", "commit", "-m", "initial"],
+                cwd=tmpdir,
+                capture_output=True,
+                check=True,
+            )
+
+            # No remote tracking branch configured yet
+            status = get_git_push_status(tmpdir)
+            assert status["branch_ahead"] is False
+            assert status["commits_ahead"] == 0
+            assert status["current_branch"]  # Should have current branch name
+
+    def test_commits_ahead_of_remote(self) -> None:
+        """Should detect commits ahead of remote tracking branch."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # Initialize a local repo
+            subprocess.run(
+                ["git", "init"],
+                cwd=tmpdir,
+                capture_output=True,
+                check=True,
+            )
+            subprocess.run(
+                ["git", "config", "user.email", "test@example.com"],
+                cwd=tmpdir,
+                capture_output=True,
+                check=True,
+            )
+            subprocess.run(
+                ["git", "config", "user.name", "Test User"],
+                cwd=tmpdir,
+                capture_output=True,
+                check=True,
+            )
+
+            # Create and commit initial file
+            test_file = Path(tmpdir) / "test.txt"
+            test_file.write_text("initial")
+            subprocess.run(
+                ["git", "add", "."],
+                cwd=tmpdir,
+                capture_output=True,
+                check=True,
+            )
+            subprocess.run(
+                ["git", "commit", "-m", "initial"],
+                cwd=tmpdir,
+                capture_output=True,
+                check=True,
+            )
+
+            # Create a "remote" repo to test against
+            with tempfile.TemporaryDirectory() as remote_dir:
+                subprocess.run(
+                    ["git", "init", "--bare"],
+                    cwd=remote_dir,
+                    capture_output=True,
+                    check=True,
+                )
+
+                # Add remote and push initial commit
+                subprocess.run(
+                    ["git", "remote", "add", "origin", remote_dir],
+                    cwd=tmpdir,
+                    capture_output=True,
+                    check=True,
+                )
+                # Get current branch name (might be master or main)
+                result = subprocess.run(
+                    ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+                    cwd=tmpdir,
+                    capture_output=True,
+                    text=True,
+                    check=True,
+                )
+                current_branch = result.stdout.strip()
+                subprocess.run(
+                    ["git", "push", "-u", "origin", current_branch],
+                    cwd=tmpdir,
+                    capture_output=True,
+                    check=True,
+                )
+
+                # Make a new local commit
+                test_file.write_text("updated")
+                subprocess.run(
+                    ["git", "add", "."],
+                    cwd=tmpdir,
+                    capture_output=True,
+                    check=True,
+                )
+                subprocess.run(
+                    ["git", "commit", "-m", "new commit"],
+                    cwd=tmpdir,
+                    capture_output=True,
+                    check=True,
+                )
+
+                # Check push status - should show 1 commit ahead
+                status = get_git_push_status(tmpdir)
+                assert status["branch_ahead"] is True
+                assert status["commits_ahead"] == 1
+
+
 class TestCheckUncommittedWork:
     """Test uncommitted work detection logic."""
 
@@ -457,6 +598,43 @@ class TestCheckUncommittedWork:
         result = check_uncommitted_work("session123", "/tmp/transcript.jsonl")
         assert result["should_block"] is True
         assert "staged" in result["message"].lower()
+
+    @patch("session_end_commit_check.extract_recent_messages")
+    @patch("session_end_commit_check.has_framework_reflection")
+    @patch("session_end_commit_check.has_test_success")
+    @patch("session_end_commit_check.get_git_status")
+    @patch("session_end_commit_check.get_git_push_status")
+    def test_unpushed_commits_reminder(
+        self,
+        mock_push_status,
+        mock_git_status,
+        mock_test_success,
+        mock_reflection,
+        mock_extract,
+    ) -> None:
+        """Should show reminder for unpushed commits even without blocking."""
+        mock_extract.return_value = ["message"]
+        mock_reflection.return_value = False
+        mock_test_success.return_value = False
+        mock_git_status.return_value = {
+            "has_changes": False,
+            "staged_changes": False,
+            "unstaged_changes": False,
+            "untracked_files": False,
+            "status_output": "",
+        }
+        mock_push_status.return_value = {
+            "branch_ahead": True,
+            "commits_ahead": 2,
+            "current_branch": "main",
+            "tracking_branch": "origin/main",
+        }
+
+        result = check_uncommitted_work("session123", "/tmp/transcript.jsonl")
+        assert result["should_block"] is False
+        assert result["reminder_needed"] is True
+        assert "unpushed" in result["message"].lower()
+        assert "2" in result["message"]
 
 
 class TestHookIntegration:

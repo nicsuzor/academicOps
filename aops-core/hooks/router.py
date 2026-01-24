@@ -74,7 +74,7 @@ HOOK_REGISTRY: dict[str, list[dict[str, Any]]] = {
     ],
     "PreToolUse": [
         {"script": "unified_logger.py"},
-        # {"script": "hydration_gate.py"},  # Blocks/warns until prompt-hydrator invoked
+        {"script": "hydration_gate.py"},  # Blocks/warns until prompt-hydrator invoked
         {
             "script": "task_required_gate.py"
         },  # Blocks destructive ops without task binding
@@ -105,7 +105,7 @@ HOOK_REGISTRY: dict[str, list[dict[str, Any]]] = {
         # stopping turn due to transcript timing. The hook validates that a parseable
         # Framework Reflection exists using parse_framework_reflection.
         {"script": "reflection_check.py"},  # Validate parseable Framework Reflection
-        # {"script": "session_end_commit_check.py"},  # DISABLED: Uncommitted work detection
+        {"script": "session_end_commit_check.py"},  # Uncommitted work and unpushed commits reminder
         {"script": "unified_logger.py"},
     ],
     "SessionEnd": [
