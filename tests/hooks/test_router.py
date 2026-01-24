@@ -31,11 +31,12 @@ class TestOutputMerging:
             {"hookSpecificOutput": {"additionalContext": "Context from hook 3"}},
         ]
 
-        result = merge_outputs(outputs, "SessionStart")
+        # Use PostToolUse which supports hookSpecificOutput (SessionStart doesn't)
+        result = merge_outputs(outputs, "PostToolUse")
 
         expected_context = "Context from hook 1\n\n---\n\nContext from hook 2\n\n---\n\nContext from hook 3"
         assert result["hookSpecificOutput"]["additionalContext"] == expected_context
-        assert result["hookSpecificOutput"]["hookEventName"] == "SessionStart"
+        assert result["hookSpecificOutput"]["hookEventName"] == "PostToolUse"
 
     def test_merge_skips_empty_additional_context(self):
         """Empty additionalContext should not add separators."""
@@ -83,6 +84,66 @@ class TestOutputMerging:
         result = merge_outputs(outputs, "Stop")
 
         assert result == {}
+
+    def test_merge_stop_hook_decision_and_reason(self):
+        """Stop hook decision/reason fields should be preserved."""
+        from router import merge_outputs
+
+        outputs = [
+            {"decision": "block", "reason": "Please add reflection"},
+            {},  # Second hook has no output
+        ]
+
+        result = merge_outputs(outputs, "Stop")
+
+        assert result["decision"] == "block"
+        assert result["reason"] == "Please add reflection"
+
+    def test_merge_stop_hook_multiple_reasons(self):
+        """Multiple Stop hooks with reasons should concatenate."""
+        from router import merge_outputs
+
+        outputs = [
+            {"decision": "block", "reason": "Missing reflection"},
+            {"decision": "block", "reason": "Uncommitted changes"},
+        ]
+
+        result = merge_outputs(outputs, "Stop")
+
+        assert result["decision"] == "block"
+        assert "Missing reflection" in result["reason"]
+        assert "Uncommitted changes" in result["reason"]
+
+    def test_merge_stop_hook_stopReason(self):
+        """Stop hook stopReason should be preserved for user display."""
+        from router import merge_outputs
+
+        outputs = [
+            {
+                "decision": "block",
+                "reason": "Add reflection before ending",
+                "stopReason": "Session blocked: missing reflection",
+            },
+        ]
+
+        result = merge_outputs(outputs, "Stop")
+
+        assert result["decision"] == "block"
+        assert result["reason"] == "Add reflection before ending"
+        assert result["stopReason"] == "Session blocked: missing reflection"
+
+    def test_merge_subagent_stop_hook_fields(self):
+        """SubagentStop hooks should also preserve decision/reason fields."""
+        from router import merge_outputs
+
+        outputs = [
+            {"decision": "block", "reason": "Subagent needs reflection"},
+        ]
+
+        result = merge_outputs(outputs, "SubagentStop")
+
+        assert result["decision"] == "block"
+        assert result["reason"] == "Subagent needs reflection"
 
 
 class TestPermissionDecisionPrecedence:

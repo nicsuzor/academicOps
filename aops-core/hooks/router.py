@@ -217,6 +217,9 @@ def merge_outputs(outputs: list[dict[str, Any]], event_name: str) -> dict[str, A
     - permissionDecision: Most restrictive wins
     - continue: AND logic
     - suppressOutput: OR logic
+    - decision (Stop hooks): "block" wins over absent
+    - reason (Stop hooks): Concatenate with newlines
+    - stopReason (Stop hooks): Concatenate with newlines
 
     Args:
         outputs: List of hook outputs
@@ -232,6 +235,10 @@ def merge_outputs(outputs: list[dict[str, Any]], event_name: str) -> dict[str, A
     HOOK_SPECIFIC_EVENTS = {"PreToolUse", "PostToolUse", "UserPromptSubmit"}
     supports_hook_specific = event_name in HOOK_SPECIFIC_EVENTS
 
+    # Stop/SubagentStop use decision/reason/stopReason instead of hookSpecificOutput
+    STOP_EVENTS = {"Stop", "SubagentStop"}
+    is_stop_event = event_name in STOP_EVENTS
+
     result: dict[str, Any] = {}
 
     # Collect values for merging
@@ -240,6 +247,11 @@ def merge_outputs(outputs: list[dict[str, Any]], event_name: str) -> dict[str, A
     permission_decisions: list[str] = []
     continue_flags: list[bool] = []
     suppress_flags: list[bool] = []
+
+    # Stop hook specific fields
+    has_block_decision = False
+    reasons: list[str] = []
+    stop_reasons: list[str] = []
 
     for output in outputs:
         if not output:
@@ -267,6 +279,20 @@ def merge_outputs(outputs: list[dict[str, Any]], event_name: str) -> dict[str, A
         if "suppressOutput" in output:
             suppress_flags.append(output["suppressOutput"])
 
+        # Extract Stop hook fields (decision/reason/stopReason)
+        if is_stop_event:
+            decision = output.get("decision")
+            if decision == "block":
+                has_block_decision = True
+
+            reason = output.get("reason")
+            if reason:
+                reasons.append(reason)
+
+            stop_reason = output.get("stopReason")
+            if stop_reason:
+                stop_reasons.append(stop_reason)
+
     # Build merged result
     # Only include hookSpecificOutput for events that support it
     if supports_hook_specific and (additional_contexts or permission_decisions):
@@ -285,6 +311,15 @@ def merge_outputs(outputs: list[dict[str, Any]], event_name: str) -> dict[str, A
     elif not supports_hook_specific and additional_contexts:
         # For events without hookSpecificOutput support, merge contexts into systemMessage
         system_messages.extend(additional_contexts)
+
+    # Add Stop hook fields if present
+    if is_stop_event:
+        if has_block_decision:
+            result["decision"] = "block"
+        if reasons:
+            result["reason"] = "\n".join(reasons)
+        if stop_reasons:
+            result["stopReason"] = "\n".join(stop_reasons)
 
     if system_messages:
         result["systemMessage"] = "\n".join(system_messages)
