@@ -26,65 +26,16 @@ from lib.session_state import (
 from lib.transcript_parser import SessionProcessor, parse_framework_reflection
 
 
-def load_reflection_instructions() -> str:
-    """Load reflection format instructions from handover workflow.
+def get_status_instructions() -> str:
+    """Return brief status format instructions.
 
-    Extracts the 'Quick Exit' and 'Step 5: Output Framework Reflection' sections
-    from workflows/handover.md to provide agents with full format guidance.
-
-    Returns:
-        Formatted instruction string, or fallback if file not found.
+    Kept minimal since this runs frequently and adds to output tokens.
     """
-    aops_path = os.environ.get("AOPS", "")
-    if not aops_path:
-        return _fallback_instructions()
-
-    handover_path = Path(aops_path) / "workflows" / "handover.md"
-    if not handover_path.exists():
-        return _fallback_instructions()
-
-    try:
-        content = handover_path.read_text()
-
-        # Extract Quick Exit section (lines 18-28 area)
-        quick_exit_match = re.search(
-            r"## Quick Exit: No Work Done\n\n(.*?)(?=\n---|\n## Step 1)",
-            content,
-            re.DOTALL,
-        )
-
-        # Extract Step 5 section (lines 88-106 area)
-        step5_match = re.search(
-            r"## Step 5: Output Framework Reflection\n\n(.*?)(?=\n## Step 6|\Z)",
-            content,
-            re.DOTALL,
-        )
-
-        parts = []
-        if quick_exit_match:
-            parts.append("**Quick sessions (no code changes):**\n" + quick_exit_match.group(1).strip())
-        if step5_match:
-            parts.append("**Work sessions:**\n" + step5_match.group(1).strip())
-
-        if parts:
-            return "\n\n".join(parts)
-
-        return _fallback_instructions()
-
-    except Exception:
-        return _fallback_instructions()
-
-
-def _fallback_instructions() -> str:
-    """Fallback if handover.md cannot be read."""
-    return (
-        "Minimum format:\n"
-        "```\n"
-        "## Framework Reflection\n"
-        "**Outcome**: success|partial|failure\n"
-        "**Friction points**: [any issues, or 'none']\n"
-        "```"
-    )
+    return """Output session status:
+```
+## Framework Reflection
+AOPS status: done|in progress|interrupted|error
+```"""
 
 # Set up logging
 logging.basicConfig(
@@ -246,15 +197,11 @@ def main():
 
             if not found:
                 # Block session - Framework Reflection is mandatory
-                # The reflection must be parseable by parse_framework_reflection
-                # Load full instructions from handover.md dynamically
-                instructions = load_reflection_instructions()
+                # Brief instructions since this runs frequently
+                instructions = get_status_instructions()
                 output_data = {
                     "decision": "block",
-                    "reason": (
-                        "Session requires parseable Framework Reflection (for transcript mining).\n\n"
-                        f"{instructions}\n"
-                    ),
+                    "reason": f"Missing status. {instructions}",
                 }
                 logger.info("Session blocked: Parseable Framework Reflection not found")
         except Exception as e:

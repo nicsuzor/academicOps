@@ -217,6 +217,28 @@ def parse_framework_reflection(text: str) -> dict[str, Any] | None:
                 "quick_exit": True,  # Marker for Q&A-only sessions
             }
 
+    # Check for brief status format: "AOPS status: [done|in progress|interrupted|error]"
+    # This can appear within the reflection section
+    if not result:
+        status_match = re.search(
+            r"AOPS status:\s*(done|in progress|interrupted|error)",
+            reflection_text,
+            re.IGNORECASE,
+        )
+        if status_match:
+            status_value = status_match.group(1).lower()
+            # Map status values to standard outcome values
+            outcome_map = {
+                "done": "success",
+                "in progress": "partial",
+                "interrupted": "partial",
+                "error": "failure",
+            }
+            result = {
+                "outcome": outcome_map.get(status_value, status_value),
+                "brief_status": True,  # Marker for brief status format
+            }
+
     return result if result else None
 
 
