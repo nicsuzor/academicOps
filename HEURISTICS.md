@@ -287,3 +287,5 @@ description: Working hypotheses validated by evidence.
 **Derivation**: LLMs hallucinate numbers and fail at counting. Deterministic operations have exact solutions that code computes reliably. Session logs and hook logs already exist - process them with Python, not inference.
 
 ---
+
+<!-- NS: don't truncate descriptions for skills etc in these tables. When referencing skills in tables or matrices in HEURISTICS.md or any documentation, ensure full descriptions are displayed rather than truncated versions. This maintains clarity and prevents users from missing important context about skill capabilities and usage. -->
