@@ -3,12 +3,13 @@
 This module provides centralized path generation for session files to avoid
 circular dependencies and ensure consistent path structure across all components.
 
-Session files are stored in ~/writing/sessions/status/ as YYYYMMDD-sessionID.json
+Session files are stored in ~/writing/sessions/status/ as YYYYMMDD-HH-sessionID.json
+where HH is the 24-hour local time when the session was created.
 """
 
 import hashlib
 import os
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
 
 
@@ -61,22 +62,33 @@ def get_session_status_dir() -> Path:
 def get_session_file_path_direct(session_id: str, date: str | None = None) -> Path:
     """Get session state file path (flat structure).
 
-    Returns: ~/writing/sessions/status/YYYYMMDD-sessionID.json
+    Returns: ~/writing/sessions/status/YYYYMMDD-HH-sessionID.json
 
     Args:
         session_id: Session identifier from CLAUDE_SESSION_ID
-        date: Date in YYYY-MM-DD format (defaults to today UTC)
+        date: Date in YYYY-MM-DD format or ISO 8601 with timezone (defaults to now local time).
+              The hour component is extracted from ISO 8601 dates (e.g., 2026-01-24T17:30:00+10:00).
+              For simple YYYY-MM-DD dates, the current hour (local time) is used.
 
     Returns:
         Path to session state file
     """
     if date is None:
-        date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        now = datetime.now().astimezone()
+        date_compact = now.strftime("%Y%m%d")
+        hour = now.strftime("%H")
+    elif "T" in date:
+        # ISO 8601 format with time: 2026-01-24T17:30:00+10:00
+        date_compact = date[:10].replace("-", "")  # Extract YYYY-MM-DD -> YYYYMMDD
+        hour = date[11:13]  # Extract HH from time portion
+    else:
+        # Simple YYYY-MM-DD format - use current hour
+        date_compact = date.replace("-", "")
+        hour = datetime.now().astimezone().strftime("%H")
 
     short_hash = get_session_short_hash(session_id)
-    date_compact = date.replace("-", "")  # YYYY-MM-DD -> YYYYMMDD
 
-    return get_session_status_dir() / f"{date_compact}-{short_hash}.json"
+    return get_session_status_dir() / f"{date_compact}-{hour}-{short_hash}.json"
 
 
 def get_session_directory(
@@ -87,12 +99,12 @@ def get_session_directory(
     Returns: ~/writing/sessions/status/ (centralized flat directory)
 
     NOTE: This function now returns the centralized status directory.
-    Session files are named YYYYMMDD-sessionID.json directly in this directory.
+    Session files are named YYYYMMDD-HH-sessionID.json directly in this directory.
     The base_dir parameter is preserved for test isolation only.
 
     Args:
         session_id: Session identifier from CLAUDE_SESSION_ID
-        date: Date in YYYY-MM-DD format (defaults to today UTC)
+        date: Date in YYYY-MM-DD or ISO 8601 format (defaults to now local time)
         base_dir: Override base directory (primarily for test isolation)
 
     Returns:
@@ -105,11 +117,18 @@ def get_session_directory(
     if base_dir is not None:
         # Test isolation mode - use old structure for compatibility
         if date is None:
-            date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+            now = datetime.now().astimezone()
+            date_compact = now.strftime("%Y%m%d")
+            hour = now.strftime("%H")
+        elif "T" in date:
+            date_compact = date[:10].replace("-", "")
+            hour = date[11:13]
+        else:
+            date_compact = date.replace("-", "")
+            hour = datetime.now().astimezone().strftime("%H")
         project_folder = get_claude_project_folder()
         short_hash = get_session_short_hash(session_id)
-        date_compact = date.replace("-", "")
-        session_dir = base_dir / project_folder / f"{date_compact}-{short_hash}"
+        session_dir = base_dir / project_folder / f"{date_compact}-{hour}-{short_hash}"
         session_dir.mkdir(parents=True, exist_ok=True)
         return session_dir
 

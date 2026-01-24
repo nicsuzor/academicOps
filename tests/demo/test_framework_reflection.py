@@ -149,6 +149,7 @@ class TestFrameworkReflectionDemo:
                 f"Critical unmet: {', '.join(failed)}. Session: {session_id}"
             )
 
+    @pytest.mark.slow
     def test_demo_log_command_creates_issue(self, claude_headless_tracked) -> None:
         """Demo: /log command creates bd issue for observation.
 

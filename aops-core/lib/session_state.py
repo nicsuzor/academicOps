@@ -92,8 +92,9 @@ def get_session_file_path(session_id: str, date: str | None = None) -> Path:
 def load_session_state(session_id: str, retries: int = 3) -> SessionState | None:
     """Load unified session state.
 
-    Searches for session file with today's date first, then tries yesterday
-    (for sessions spanning midnight).
+    Searches for session file matching session_id hash. Checks today's files first,
+    then yesterday's (for sessions spanning midnight). Handles both new format
+    (YYYYMMDD-HH-hash.json) and legacy format (YYYYMMDD-hash.json).
 
     Args:
         session_id: Claude Code session ID
@@ -102,38 +103,50 @@ def load_session_state(session_id: str, retries: int = 3) -> SessionState | None
     Returns:
         SessionState dict or None if not found
     """
+    from lib.session_paths import get_session_short_hash, get_session_status_dir
+
     # Use local time for file lookup to match local-time-based storage
     now = datetime.now()
-    today = now.strftime("%Y-%m-%d")
-    yesterday = (now - timedelta(days=1)).strftime("%Y-%m-%d")
+    today = now.strftime("%Y%m%d")
+    yesterday = (now - timedelta(days=1)).strftime("%Y%m%d")
 
-    for date in [today, yesterday]:
-        path = get_session_file_path(session_id, date)
-        if not path.exists():
-            continue
+    short_hash = get_session_short_hash(session_id)
+    status_dir = get_session_status_dir()
 
-        for attempt in range(retries):
-            try:
-                return json.loads(path.read_text())
-            except json.JSONDecodeError as e:
-                if attempt < retries - 1:
-                    time.sleep(0.01)
-                    continue
-                # All retries exhausted - log the error
-                import logging
+    # Search for files matching this session_id on today or yesterday
+    for date_compact in [today, yesterday]:
+        # New format: YYYYMMDD-HH-hash.json (try all hours)
+        new_pattern = f"{date_compact}-??-{short_hash}.json"
+        # Legacy format: YYYYMMDD-hash.json
+        legacy_pattern = f"{date_compact}-{short_hash}.json"
 
-                logging.getLogger(__name__).warning(
-                    f"Session state JSON decode failed after {retries} retries: {path}: {e}"
-                )
-                return None
-            except OSError as e:
-                # I/O error - log and return None
-                import logging
+        for pattern in [new_pattern, legacy_pattern]:
+            matches = list(status_dir.glob(pattern))
+            if matches:
+                # Use the most recent file if multiple matches
+                path = max(matches, key=lambda p: p.stat().st_mtime)
+                for attempt in range(retries):
+                    try:
+                        return json.loads(path.read_text())
+                    except json.JSONDecodeError as e:
+                        if attempt < retries - 1:
+                            time.sleep(0.01)
+                            continue
+                        # All retries exhausted - log the error
+                        import logging
 
-                logging.getLogger(__name__).debug(
-                    f"Session state read failed (OSError): {path}: {e}"
-                )
-                return None
+                        logging.getLogger(__name__).warning(
+                            f"Session state JSON decode failed after {retries} retries: {path}: {e}"
+                        )
+                        return None
+                    except OSError as e:
+                        # I/O error - log and return None
+                        import logging
+
+                        logging.getLogger(__name__).debug(
+                            f"Session state read failed (OSError): {path}: {e}"
+                        )
+                        return None
 
     return None
 

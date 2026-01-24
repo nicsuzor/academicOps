@@ -154,6 +154,39 @@ def _clean_prompt_text(text: str) -> str:
     return text
 
 
+def _extract_questions_from_text(text: str) -> list[str]:
+    """Extract sentences ending with '?' from agent response text.
+
+    Identifies questions in agent messages to help hydrator understand
+    short user responses in context (e.g., user says "all" in response
+    to agent's "which tasks?").
+
+    Args:
+        text: Agent response text
+
+    Returns:
+        List of question sentences found, deduplicated
+    """
+    if not text:
+        return []
+
+    # Split on common sentence boundaries, preserving question marks
+    # Match sentences ending with ? (with possible punctuation/whitespace)
+    questions = []
+    # Look for text ending with ? - capture the full sentence leading up to it
+    # Using regex to find sentence-like patterns ending with ?
+    pattern = r'[^.!?\n]*\?'
+    matches = re.findall(pattern, text)
+
+    for match in matches:
+        # Clean up the match - remove leading/trailing whitespace
+        question = match.strip()
+        if question and question not in questions:  # Deduplicate
+            questions.append(question)
+
+    return questions
+
+
 def _extract_router_context_impl(transcript_path: Path, max_turns: int) -> str:
     """Implementation of router context extraction."""
     # Use SessionProcessor to parse and group turns (DRY compliant)
@@ -205,6 +238,7 @@ def _extract_router_context_impl(transcript_path: Path, max_turns: int) -> str:
     # Extract recent tool calls
     recent_tools: list[str] = []
     agent_responses: list[str] = []
+    agent_questions: list[str] = []  # Track questions separately for clarity
 
     # Iterate reversed for recent tools/skills
     # We iterate turns reversed
@@ -228,6 +262,21 @@ def _extract_router_context_impl(transcript_path: Path, max_turns: int) -> str:
             ]
             if texts:
                 full_text = " ".join(texts)
+                # Extract questions from this agent response (especially important for most recent)
+                # This helps hydrator understand short user responses like "yes" or "all"
+                questions = _extract_questions_from_text(full_text)
+                if questions:
+                    # For the most recent response, prioritize questions
+                    if len(agent_responses) == 0:
+                        # Most recent: add all unique questions found
+                        for q in questions:
+                            if q not in agent_questions:
+                                agent_questions.append(q)
+                    else:
+                        # Older responses: add just first question if any
+                        if questions[0] not in agent_questions:
+                            agent_questions.append(questions[0])
+
                 # Truncate - but preserve more for the most recent (first found)
                 # This ensures short user prompts like "yes" can see the question
                 max_len = 500 if len(agent_responses) == 0 else 300
@@ -263,6 +312,7 @@ def _extract_router_context_impl(transcript_path: Path, max_turns: int) -> str:
 
     # Reverse back to chronological
     agent_responses.reverse()
+    agent_questions.reverse()
     recent_tools.reverse()
 
     # Format output (same as before)
@@ -272,6 +322,7 @@ def _extract_router_context_impl(transcript_path: Path, max_turns: int) -> str:
         and not todo_counts
         and not recent_tools
         and not agent_responses
+        and not agent_questions
     ):
         return ""
 
@@ -289,6 +340,15 @@ def _extract_router_context_impl(transcript_path: Path, max_turns: int) -> str:
             # Escape backticks
             truncated = truncated.replace("```", "'''")
             lines.append(f'{i}. "{truncated}"')
+        lines.append("")
+
+    # Show agent questions separately for clarity when responding to short prompts
+    if agent_questions:
+        lines.append("Agent questions (recent):")
+        for i, question in enumerate(agent_questions, 1):
+            # Ensure question ends with ? for clarity
+            q = question if question.endswith("?") else question + "?"
+            lines.append(f'{i}. {q}')
         lines.append("")
 
     if agent_responses:

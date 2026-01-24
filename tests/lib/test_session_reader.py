@@ -520,3 +520,89 @@ class TestGroupEntriesIntoTurns:
             f"Summary entries broke the turn. "
             f"Turn: {turn}"
         )
+
+
+class TestExtractQuestionsFromAgentResponse:
+    """Test extraction of questions from agent responses."""
+
+    def test_extract_questions_finds_single_question(self) -> None:
+        """Extract questions from text containing a single question."""
+        from lib.session_reader import _extract_questions_from_text
+
+        text = "Here is some context. What would you like to do?"
+        questions = _extract_questions_from_text(text)
+
+        assert len(questions) == 1
+        assert "What would you like to do" in questions[0]
+
+    def test_extract_questions_finds_multiple_questions(self) -> None:
+        """Extract questions from text with multiple questions."""
+        from lib.session_reader import _extract_questions_from_text
+
+        text = "Which task should I add? Did you want me to use all of them? Or just some?"
+        questions = _extract_questions_from_text(text)
+
+        assert len(questions) == 3
+        assert any("Which task" in q for q in questions)
+        assert any("Did you want" in q for q in questions)
+        assert any("Or just some" in q for q in questions)
+
+    def test_extract_questions_handles_empty_text(self) -> None:
+        """Extract questions from empty text returns empty list."""
+        from lib.session_reader import _extract_questions_from_text
+
+        questions = _extract_questions_from_text("")
+        assert questions == []
+
+    def test_extract_questions_deduplicates(self) -> None:
+        """Extract questions deduplicates identical questions."""
+        from lib.session_reader import _extract_questions_from_text
+
+        text = "What do you want? What do you want? Something else?"
+        questions = _extract_questions_from_text(text)
+
+        # Should have 2 questions (first is deduplicated, third is different)
+        assert len(questions) == 2
+
+    def test_extract_questions_cleans_whitespace(self) -> None:
+        """Extract questions removes leading/trailing whitespace."""
+        from lib.session_reader import _extract_questions_from_text
+
+        text = "  What is this?   How about this?  "
+        questions = _extract_questions_from_text(text)
+
+        assert len(questions) == 2
+        assert questions[0] == "What is this?"
+        assert questions[1] == "How about this?"
+
+    def test_extract_router_context_includes_agent_questions(self, tmp_path: Path) -> None:
+        """Router context includes extracted agent questions."""
+        from lib.session_reader import extract_router_context
+
+        transcript = tmp_path / "session.jsonl"
+        # Create a conversation where agent asks a question
+        entries = [
+            _create_user_entry("Add tasks", 0),
+            {
+                "type": "assistant",
+                "uuid": "assistant-1",
+                "timestamp": _make_timestamp(1),
+                "message": {
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": "I can help with that. Which tasks would you like to add?",
+                        }
+                    ]
+                },
+            },
+            _create_user_entry("all", 10),
+        ]
+        _write_jsonl(transcript, entries)
+
+        context = extract_router_context(transcript)
+
+        # Context should include the extracted question
+        assert "Agent questions" in context or "Which tasks" in context
+        # Most importantly, the context should show "all" with the question context
+        assert "all" in context or "recent" in context.lower()

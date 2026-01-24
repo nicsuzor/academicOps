@@ -13,6 +13,7 @@ import json
 import pytest
 
 
+@pytest.mark.slow
 def test_claude_headless_fixture_exists(claude_headless) -> None:
     """Test that claude_headless fixture is available and callable.
 

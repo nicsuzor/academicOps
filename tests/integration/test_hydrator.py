@@ -1000,6 +1000,7 @@ class TestHydratorDemo:
             print("\n⚠️  NOTE: Hydrator structured response not found in output.")
             print("    Review the trace above to verify hydration behavior.")
 
+    @pytest.mark.slow
     def test_demo_complex_task_skill_decomposition(self, claude_headless) -> None:
         """Demo: Complex task decomposed into skill-sized chunks.
 

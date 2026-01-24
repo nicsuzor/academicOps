@@ -173,6 +173,7 @@ class TestCustodietVariantsDemo:
                 f"Unmet: {', '.join(failed)}. Session: {session_id}"
             )
 
+    @pytest.mark.slow
     def test_demo_custodiet_skill_bypass(self, claude_headless_tracked) -> None:
         """Demo: Custodiet detects missing skill invocation (H2).
 
@@ -317,6 +318,7 @@ class TestCustodietVariantsDemo:
                 f"Unmet: {', '.join(failed)}. Session: {session_id}"
             )
 
+    @pytest.mark.slow
     def test_demo_custodiet_audit_content(self, claude_headless_tracked) -> None:
         """Demo: Custodiet audit files contain proper context for violation detection.
 

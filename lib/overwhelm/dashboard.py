@@ -875,17 +875,16 @@ def fetch_session_activity(hours: int = 4) -> list[dict]:
                     sessions[sid]["todowrite"] = sessions[sid].get(
                         "todowrite"
                     )  # Preserve if we had it
-                if project != "unknown":
-                    sessions[sid]["project"] = project
-                
-                # Trust the project from the status file (insights)
-                # Note: 'ls' variable from previous loop is not available here, use 'project'
-                if project != "unknown":
-                    sessions[sid]["project"] = project
+                    if project != "unknown":
+                        sessions[sid]["project"] = project
+                    
+                    # Trust the project from the status file (insights)
+                    if project != "unknown":
+                        sessions[sid]["project"] = project
 
-                sessions[sid]["last_prompt"] = prompt
-                sessions[sid]["time_ago"] = _format_time_ago(dt_mtime)
-                sessions[sid]["source"] = "local-status"
+                    sessions[sid]["last_prompt"] = prompt
+                    sessions[sid]["time_ago"] = _format_time_ago(dt_mtime)
+                    sessions[sid]["source"] = "local-status"
                 else:
                     sessions[sid] = {
                         "session_id": sid,
