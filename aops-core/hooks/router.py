@@ -91,9 +91,12 @@ HOOK_REGISTRY: dict[str, list[dict[str, Any]]] = {
         {"script": "unified_logger.py"},
     ],
     "Stop": [
-        {
-            "script": "reflection_check.py"
-        },  # Check for Framework Reflection before session end
+        # DISABLED: reflection_check.py has a timing bug - it reads the transcript
+        # file to detect "## Framework Reflection", but the current message isn't
+        # written to the transcript until AFTER the Stop hook completes. This creates
+        # a race condition where the hook can never detect reflection in the stopping
+        # message. See: 2026-01-24 session debugging this issue.
+        # {"script": "reflection_check.py"},
         {
             "script": "session_end_commit_check.py"
         },  # Enforce uncommitted work detection + auto-commit
