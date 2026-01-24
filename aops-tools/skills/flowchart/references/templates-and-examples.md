@@ -8,7 +8,9 @@ permalink: skills-flowchart-templates
 
 Reference templates for common Mermaid flowchart patterns.
 
-## Template: Horizontal Process Flow (Recommended)
+## Template: Horizontal Process Flow (MOST COMMON - Use This for 80% of Charts)
+
+Use this template for any linear or mostly-linear process. It spreads nicely across screens.
 
 ```mermaid
 %%{init: {
@@ -18,7 +20,7 @@ Reference templates for common Mermaid flowchart patterns.
     'lineColor': '#718096',
     'fontSize': '14px'
   },
-  'flowchart': { 'nodeSpacing': 60, 'rankSpacing': 70, 'padding': 20 }
+  'flowchart': { 'nodeSpacing': 70, 'rankSpacing': 80, 'padding': 20 }
 }}%%
 flowchart LR
     classDef default fill:#2d3748,stroke:#4a5568,color:#e2e8f0
@@ -38,15 +40,46 @@ flowchart LR
     CHECK -->|No| ERR -.-> INIT
 ```
 
-## Template: Horizontal Multi-Phase Workflow
+**Why this works**: With `LR` direction and adequate spacing (70/80), steps arrange left-to-right naturally, fitting modern wide screens. This is the default choice for any process you can sketch linearly.
 
-For complex workflows, arrange phases horizontally with vertical steps inside:
+## Template: Wide Decision Tree (Branches Spread Horizontally)
+
+For diagrams with many branches, use `TD` layout to let branches spread horizontally:
 
 ```mermaid
 %%{init: {
   'theme': 'base',
   'themeVariables': { 'lineColor': '#718096', 'fontSize': '14px' },
-  'flowchart': { 'nodeSpacing': 50, 'rankSpacing': 60, 'padding': 15 }
+  'flowchart': { 'nodeSpacing': 60, 'rankSpacing': 70, 'padding': 20, 'curve': 'basis' }
+}}%%
+flowchart TD
+    classDef default fill:#2d3748,stroke:#4a5568,color:#e2e8f0
+    classDef decision fill:#6b46c1,stroke:#9f7aea,color:#faf5ff,stroke-width:2px
+    classDef result fill:#276749,stroke:#48bb78,color:#f0fff4
+
+    Q1{First check?}:::decision
+    Y1[Proceed A]:::result
+    N1{Second check?}:::decision
+    Y2[Proceed B]:::result
+    N2[Fallback]:::default
+
+    Q1 -->|Yes| Y1
+    Q1 -->|No| N1
+    N1 -->|Yes| Y2
+    N1 -->|No| N2
+```
+
+**Why this works**: `TD` (top-down) lets branches fan out horizontally. Pairs well with proper spacing to avoid cramping.
+
+## Template: Horizontal Multi-Phase Workflow
+
+For complex workflows with distinct phases, arrange phases left-to-right with steps flowing top-to-bottom inside:
+
+```mermaid
+%%{init: {
+  'theme': 'base',
+  'themeVariables': { 'lineColor': '#718096', 'fontSize': '14px' },
+  'flowchart': { 'nodeSpacing': 60, 'rankSpacing': 70, 'padding': 20 }
 }}%%
 flowchart LR
     classDef phase fill:#1a202c,stroke:#4a5568,color:#e2e8f0
@@ -159,3 +192,47 @@ flowchart LR
 - 4 colors only: default (slate), entry (green), gate (purple), state (blue)
 - Links between subgraphs, not internal nodes
 - Generous spacing (50/55) with padding
+
+## Quick Reference: When to Use Which Template
+
+| Your Diagram | Template to Use | Layout | Spacing |
+|---|---|---|---|
+| Simple pipeline (6-10 steps in a line) | Horizontal Process Flow | `LR` | `70/80` |
+| Process with branches/conditions | Wide Decision Tree | `TD` | `60/70` |
+| Distinct phases + steps in each phase | Horizontal Multi-Phase | `LR` + `TB` subgraphs | `60/70` |
+| Complex with many interconnections | Complex System Flow with ELK | `LR` + `TB` subgraphs + ELK | `50+` |
+
+## Horizontal Space Best Practices Checklist
+
+Before finalizing any flowchart, check these spacing items:
+
+**SPACING (Critical for readability)**:
+- [ ] `nodeSpacing: 60` minimum (increase to 70-80 for clarity)
+- [ ] `rankSpacing: 70` minimum (increase to 80+ for multi-phase)
+- [ ] `padding: 20` to prevent label cutoff
+- [ ] For horizontal layouts, prioritize nodeSpacing over rankSpacing
+
+**LAYOUT (Use screen real estate effectively)**:
+- [ ] Using `LR` for linear/mostly-linear diagrams (DEFAULT choice)
+- [ ] Using `TD` only when branches need horizontal spread
+- [ ] Subgraph phasing arranges left-to-right, internals top-to-bottom
+- [ ] Links go between subgraphs, not leaking out of internal nodes
+
+**COLOR & VISUALS**:
+- [ ] 4-5 colors maximum (one dominant 60%, accent 30%, highlight 10%)
+- [ ] Color has semantic meaning (not just decoration)
+- [ ] Solid backgrounds always (never transparent)
+- [ ] `stroke-width: 2px` for emphasis on decisions/starts
+
+**LABELS**:
+- [ ] 3-9 words per node (move long text to notes/subgraphs)
+- [ ] Verbs at start ("Process data", "Check valid", not just "Data" or "Valid")
+- [ ] Consistent casing (sentence case for labels, CAPS for subgraph titles)
+- [ ] Font size 14px minimum
+
+**ANTI-PATTERNS TO AVOID**:
+- ❌ Using default spacing (35/45) - always feels cramped
+- ❌ TD layout for everything - creates tall, scrolly charts
+- ❌ Mixing LR and TD at same level - confusing flow direction
+- ❌ Links crossing main flow - use subgraph boundaries instead
+- ❌ 8+ distinct colors - visual noise, no hierarchy

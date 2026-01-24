@@ -102,6 +102,36 @@ classDef decision fill:#ffff00,stroke:#000000,color:#000000,stroke-width:3px
 classDef error fill:#ff0000,stroke:#000000,color:#ffffff,stroke-width:2px
 ```
 
+**Warm Professional** (modern, approachable):
+
+```
+classDef default fill:#f5f5f5,stroke:#d4a574,color:#333333
+classDef start fill:#d4a574,stroke:#8b6f47,color:#ffffff,stroke-width:2px
+classDef process fill:#e8d4c0,stroke:#a0826d,color:#333333
+classDef decision fill:#c4a46f,stroke:#8b6f47,color:#f5f5f5,stroke-width:2px
+classDef error fill:#a0534f,stroke:#6b3b38,color:#ffffff
+```
+
+**Ocean Blue** (calm, professional):
+
+```
+classDef default fill:#e8f4f8,stroke:#4a90a4,color:#1a3a42
+classDef start fill:#2c5aa0,stroke:#1a3a6a,color:#e8f4f8,stroke-width:2px
+classDef process fill:#d0e8f2,stroke:#4a90a4,color:#1a3a42
+classDef decision fill:#5a7ab8,stroke:#3a5a88,color:#e8f4f8,stroke-width:2px
+classDef error fill:#c44444,stroke:#8a2a2a,color:#f5f5f5
+```
+
+**Sunset** (warm, energetic):
+
+```
+classDef default fill:#fff8e8,stroke:#e8a85c,color:#3a2a1a
+classDef start fill:#d97706,stroke:#a85a2a,color:#fff8e8,stroke-width:2px
+classDef process fill:#ffe4c0,stroke:#d4915a,color:#3a2a1a
+classDef decision fill:#f59e0b,stroke:#d97706,color:#1a1a1a,stroke-width:2px
+classDef error fill:#dc2626,stroke:#991b1b,color:#f5f5f5
+```
+
 ### Anti-Pattern: Pastel Soup
 
 **Avoid** charts with 8+ similar pastel colors - they create visual noise without hierarchy:
@@ -130,16 +160,18 @@ Every visual element needs an explicit fill color for theme safety.
 
 ## Layout Strategy: Horizontal Space First
 
-**Default assumption**: Charts are too tall. Optimize for horizontal spread.
+**Default assumption**: Charts are too tall. Optimize for horizontal spread - most users' screens are wider than tall.
 
 ### Choose Direction Based on Content
 
-| Content Type              | Direction                          | Rationale                            |
-| ------------------------- | ---------------------------------- | ------------------------------------ |
-| Linear process (≤8 steps) | `LR`                               | Reads like a sentence                |
-| Branching/decisions       | `TD`                               | Branches spread horizontally         |
-| Parallel workflows        | `LR` with `direction TB` subgraphs | Phases left-to-right, steps top-down |
-| Complex systems           | `LR` + ELK layout                  | Best automatic distribution          |
+| Content Type              | Direction                          | When to Use                          | Result |
+| ------------------------- | ---------------------------------- | ------------------------------------ | ------ |
+| Linear process (≤8 steps) | `LR`                               | Simple pipelines, single thread | 1 tall row, many columns (BEST) |
+| Branching/decisions       | `TD`                               | Multiple branches, complex logic | Wider at branch points |
+| Parallel workflows        | `LR` with `direction TB` subgraphs | Phases left-to-right, steps top-down | Compact horizontal grouping |
+| Complex systems (>15)     | `LR` + ELK layout                  | Systems with cross-links, multi-layer | Optimal automatic distribution |
+
+**PRINCIPLE: Prefer LR layout for 80% of use cases.** It naturally spreads horizontally, matching screen dimensions.
 
 ### Use ELK for Complex Diagrams
 
@@ -243,6 +275,8 @@ linkStyle default stroke:#718096,stroke-width:1.5px
 
 ### Start with Init Block for Theme and Spacing
 
+**CRITICAL**: Proper spacing is the #1 factor for readability. Default Mermaid spacing is cramped.
+
 ```mermaid
 %%{init: {
   'theme': 'base',
@@ -262,11 +296,29 @@ linkStyle default stroke:#718096,stroke-width:1.5px
 }}%%
 ```
 
-**Spacing guidelines**:
+**Spacing Configuration Strategy**:
 
-- `nodeSpacing: 60` (minimum) - prevents cramped horizontal layout
-- `rankSpacing: 70` (minimum) - gives breathing room between ranks
-- For LR layouts, these values affect vertical/horizontal spacing respectively
+| Layout | nodeSpacing | rankSpacing | Rationale |
+|--------|-------------|-------------|-----------|
+| **LR (left-right)** | 60-80 | 70-90 | Horizontal space for nodes, vertical for ranks |
+| **TD (top-down)** | 50-70 | 60-80 | Vertical space for nodes, horizontal for ranks |
+| **Dense LR** | 40-50 | 50-60 | For 6-8 node chains |
+| **Spacious LR** | 80-100 | 100+ | For complex systems (>15 nodes) |
+
+**Spacing guidelines - ALWAYS**:
+
+- `nodeSpacing: minimum 50` - prevents cramped horizontal layout; increase to 70+ for clarity
+- `rankSpacing: minimum 60` - gives breathing room between vertical ranks; increase to 80+ for multi-phase layouts
+- `padding: 15-25` - buffer space around chart edge, prevents label cutoff
+- For LR layouts: nodeSpacing affects horizontal distance, rankSpacing affects vertical
+- For TD layouts: nodeSpacing affects vertical distance between nodes, rankSpacing affects horizontal spread
+
+**Common spacing mistakes**:
+
+- `nodeSpacing: 30` (Mermaid default) → ALWAYS increase to 50+
+- `rankSpacing: 50` (Mermaid default) → ALWAYS increase to 60+
+- No `padding` → Labels get clipped on edges, especially in Chrome
+- Inconsistent spacing across subgraphs → Use same values everywhere
 
 ### Use classDef + class Over Many style Lines
 
