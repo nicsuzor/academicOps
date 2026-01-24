@@ -461,11 +461,14 @@ class Task:
         - It's a leaf (has no children)
         - It has no unmet dependencies
         - Status is active or inbox
+        - Type is not LEARN (observational, not actionable)
         """
         if not self.leaf:
             return False
         if self.depends_on:
             return False  # Index should filter by completed deps
+        if self.type == TaskType.LEARN:
+            return False  # Learn tasks are observational, not actionable
         return self.status in (TaskStatus.ACTIVE, TaskStatus.INBOX)
 
     def is_blocked(self) -> bool:

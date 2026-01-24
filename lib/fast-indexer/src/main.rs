@@ -609,7 +609,10 @@ fn build_mcp_index(files: &[FileData], data_root: &Path) -> McpIndex {
         if !unmet_deps.is_empty() || entry.status == "blocked" {
             blocked.push(tid.clone());
         } else if entry.leaf && (entry.status == "active" || entry.status == "inbox") {
-            ready.push(tid.clone());
+            // Learn tasks are observational, not actionable - exclude from ready
+            if entry.task_type != "learn" {
+                ready.push(tid.clone());
+            }
         }
     }
 
