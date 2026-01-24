@@ -5,6 +5,7 @@ category: architecture
 status: draft
 related_issues: ns-6hm
 created: 2026-01-14
+related: [[framework-observability]], [[feedback-loops]], [[enforcement]]
 ---
 
 # Composable Workflow System Specification
@@ -388,6 +389,42 @@ When an agent claims a task, apply this decision tree:
 5. **Minimal YAML**: Do we need ANY frontmatter?
    - **Proposal**: Optional minimal frontmatter for metadata only: `id`, `category` (no steps, no structure)
    - **Reason**: Enables tooling (search, graph visualization) without dictating structure
+
+## Self-Improvement Integration
+
+The workflow system is part of a larger **self-reflexive framework** that observes its own execution and improves over time.
+
+### How Workflows Feed Self-Improvement
+
+1. **Observability** - Every workflow execution generates observables:
+   - Framework Reflections (outcome, friction points, proposed changes)
+   - Token metrics (by workflow, by agent)
+   - Skill compliance (suggested vs invoked)
+
+   See: [[framework-observability]]
+
+2. **Feedback loops** - Observations flow into improvement processes:
+   - `/learn` analyzes root causes and makes targeted fixes
+   - `/audit` verifies governance health
+   - Humans review insights and tune workflows
+
+   See: [[feedback-loops]]
+
+3. **Continuous refinement** - Workflows evolve based on evidence:
+   - Low skill compliance → update routing signals
+   - Recurring friction → simplify or decompose steps
+   - High token cost → optimize base workflow composition
+
+### Workflow-Level Metrics
+
+Track these per workflow to identify improvement opportunities:
+
+| Metric | Source | Action if Low |
+|--------|--------|---------------|
+| Selection accuracy | insights.workflows_used | Improve routing signals |
+| Completion rate | insights.outcome | Simplify or decompose |
+| Skill compliance | insights.skill_compliance | Clarify skill triggers |
+| Token efficiency | insights.token_metrics | Optimize base composition |
 
 ## Success Metrics
 

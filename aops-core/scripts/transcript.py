@@ -27,6 +27,7 @@ sys.path.insert(0, str(AOPS_CORE_ROOT))
 from lib.session_reader import find_sessions  # noqa: E402
 from lib.transcript_parser import (  # noqa: E402
     SessionProcessor,
+    UsageStats,
     decode_claude_project_path,
     extract_reflection_from_entries,
     extract_working_dir_from_content,
@@ -89,6 +90,8 @@ def _process_reflection(
     slug: str = "",
     agent_entries: dict | None = None,
     timestamp: datetime | None = None,
+    usage_stats: "UsageStats | None" = None,
+    session_duration_minutes: float | None = None,
 ) -> tuple[str | None, list[dict] | None]:
     """Extract reflections from entries and save to insights JSON files.
 
@@ -100,6 +103,8 @@ def _process_reflection(
         slug: Short descriptive slug for the session filename
         agent_entries: Optional dict of agent/subagent entries
         timestamp: Optional datetime for ISO 8601 timestamp in insights
+        usage_stats: Optional UsageStats for token_metrics field in insights
+        session_duration_minutes: Optional session duration for efficiency metrics
 
     Returns:
         Tuple of (combined_reflection_header_markdown, list_of_reflection_dicts)
@@ -120,7 +125,13 @@ def _process_reflection(
 
         # Convert to insights format and save
         insights = reflection_to_insights(
-            reflection, session_id, date_str, project, timestamp=timestamp
+            reflection,
+            session_id,
+            date_str,
+            project,
+            timestamp=timestamp,
+            usage_stats=usage_stats,
+            session_duration_minutes=session_duration_minutes,
         )
 
         try:
@@ -182,6 +193,31 @@ def _is_test_session(p: Path) -> bool:
         return True
 
     return False
+
+
+def _compute_session_duration(entries: list) -> float | None:
+    """Compute session duration in minutes from entry timestamps.
+
+    Args:
+        entries: List of parsed session entries
+
+    Returns:
+        Duration in minutes, or None if timestamps unavailable
+    """
+    first_ts = None
+    last_ts = None
+
+    for entry in entries:
+        if entry.timestamp:
+            if first_ts is None:
+                first_ts = entry.timestamp
+            last_ts = entry.timestamp
+
+    if first_ts and last_ts and first_ts != last_ts:
+        delta = last_ts - first_ts
+        return delta.total_seconds() / 60.0
+
+    return None
 
 
 def _output_exists(out_dir: Path, slug: str) -> bool:
@@ -542,6 +578,11 @@ Examples:
                     if entry.timestamp:
                         session_timestamp = entry.timestamp
                         break
+
+                # Compute usage stats and session duration for token_metrics
+                usage_stats = processor._aggregate_session_usage(entries, agent_entries)
+                session_duration_minutes = _compute_session_duration(entries)
+
                 reflection_header, _ = _process_reflection(
                     entries,
                     session_id,
@@ -550,6 +591,8 @@ Examples:
                     slug,
                     agent_entries,
                     session_timestamp,
+                    usage_stats,
+                    session_duration_minutes,
                 )
 
                 # Generate full version
@@ -700,8 +743,21 @@ Examples:
                     else "unknown"
                 )
                 slug = processor.generate_session_slug(entries)
+
+                # Compute usage stats and session duration for token_metrics
+                usage_stats = processor._aggregate_session_usage(entries, agent_entries)
+                session_duration_minutes = _compute_session_duration(entries)
+
                 reflection_header, _ = _process_reflection(
-                    entries, sid, date_iso, proj, slug, agent_entries, session_timestamp
+                    entries,
+                    sid,
+                    date_iso,
+                    proj,
+                    slug,
+                    agent_entries,
+                    session_timestamp,
+                    usage_stats,
+                    session_duration_minutes,
                 )
 
                 # Generate transcripts and return
@@ -829,6 +885,11 @@ Examples:
             if entry.timestamp:
                 session_timestamp = entry.timestamp
                 break
+
+        # Compute usage stats and session duration for token_metrics
+        usage_stats = processor._aggregate_session_usage(entries, agent_entries)
+        session_duration_minutes = _compute_session_duration(entries)
+
         reflection_header, _ = _process_reflection(
             entries,
             session_id,
@@ -837,6 +898,8 @@ Examples:
             slug,
             agent_entries,
             session_timestamp,
+            usage_stats,
+            session_duration_minutes,
         )
 
         # Generate full version

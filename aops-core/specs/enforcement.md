@@ -5,6 +5,7 @@ category: spec
 status: implemented
 permalink: enforcement
 tags: [enforcement, compliance, framework-architecture, verification]
+related: [[framework-observability]], [[feedback-loops]], [[workflow-system-spec]]
 ---
 
 # Enforcement Architecture

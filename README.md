@@ -210,6 +210,30 @@ The framework **evolves through use**. When agents hit friction:
 
 This creates a feedback loop: the framework improves based on real usage, not theoretical design.
 
+### How the Framework Improves Itself
+
+The self-improvement cycle has three phases:
+
+**1. Observe** - Every session generates observables:
+- **Framework Reflections**: Agent self-reports at session end (outcome, friction, proposals)
+- **Token metrics**: Usage by model, agent, and tool (cache efficiency, throughput)
+- **Skill compliance**: Which suggested skills were actually invoked
+- **Learning observations**: Mistakes and corrections with root cause categories
+
+These are processed into **insights JSON** files for human review. See [[specs/framework-observability]].
+
+**2. Analyze** - Humans identify patterns:
+- Recurring friction points → systemic problems
+- Low skill compliance → discovery or routing issues
+- Token inefficiency → optimize hydration or caching
+
+**3. Intervene** - Apply graduated fixes via `/learn`:
+- Start at lowest effective level (corollary, then heuristic, then hook)
+- Document root cause and intervention in a task
+- Verify improvement in subsequent sessions
+
+See [[specs/feedback-loops]] for the complete improvement workflow.
+
 ### Memory Architecture
 
 The framework distinguishes between two types of knowledge:
