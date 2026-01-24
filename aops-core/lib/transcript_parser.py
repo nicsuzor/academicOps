@@ -202,6 +202,21 @@ def parse_framework_reflection(text: str) -> dict[str, Any] | None:
             else:
                 result[field_name] = value
 
+    # If no structured fields found, check for Quick Exit format:
+    # "Answered user's question: <summary>"
+    if not result:
+        quick_exit_match = re.search(
+            r"Answered user's question:\s*[\"']?(.+?)[\"']?\s*$",
+            reflection_text,
+            re.IGNORECASE | re.MULTILINE,
+        )
+        if quick_exit_match:
+            result = {
+                "outcome": "success",
+                "prompts": quick_exit_match.group(1).strip(),
+                "quick_exit": True,  # Marker for Q&A-only sessions
+            }
+
     return result if result else None
 
 

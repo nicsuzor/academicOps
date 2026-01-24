@@ -41,6 +41,7 @@ def find_recent_hydrator_files(max_age_seconds: int = 300) -> list[Path]:
 
 
 @pytest.mark.demo
+@pytest.mark.slow
 class TestHookSequenceDemo:
     """Demo test for hook firing sequence."""
 

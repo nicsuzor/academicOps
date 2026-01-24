@@ -19,6 +19,7 @@ import pytest
 
 
 @pytest.mark.demo
+@pytest.mark.slow
 class TestMemoryPersistenceDemo:
     """Demo test for memory persistence."""
 

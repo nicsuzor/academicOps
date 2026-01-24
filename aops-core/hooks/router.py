@@ -65,6 +65,8 @@ def _get_session_state_module() -> Any:
 # - fail_fast_watchdog.py: Injects reminder on tool errors
 # - autocommit_state.py: Auto-commits data/ changes after state operations
 # - custodiet_gate.py: Periodic compliance checking via subagent
+
+#<!-- @NS: remove unified_logger from5he hook registry, we should just log every time. -->
 HOOK_REGISTRY: dict[str, list[dict[str, Any]]] = {
     "SessionStart": [
         {"script": "session_env_setup.sh"},
@@ -72,7 +74,7 @@ HOOK_REGISTRY: dict[str, list[dict[str, Any]]] = {
     ],
     "PreToolUse": [
         {"script": "unified_logger.py"},
-        {"script": "hydration_gate.py"},  # Blocks/warns until prompt-hydrator invoked
+        # {"script": "hydration_gate.py"},  # Blocks/warns until prompt-hydrator invoked
         {
             "script": "task_required_gate.py"
         },  # Blocks destructive ops without task binding
@@ -552,7 +554,7 @@ def check_custodiet_block(session_id: str | None) -> tuple[dict[str, Any], int] 
     Check if session is blocked by custodiet.
 
     Args:
-        session_id: Claude Code session ID (from CLAUDE_SESSION_ID env var)
+        session_id: Claude Code session ID (from input_data)
 
     Returns:
         (error_output, exit_code=2) if blocked, None if not blocked
@@ -600,7 +602,7 @@ def route_hooks(input_data: dict[str, Any]) -> tuple[dict[str, Any], int]:
 
     # CHECK CUSTODIET BLOCK FLAG FIRST
     # Per flow.md: ALL hooks check this flag and FAIL if blocked
-    session_id = os.environ.get("CLAUDE_SESSION_ID")
+    session_id = input_data.get("session_id")
     block_result = check_custodiet_block(session_id)
     if block_result is not None:
         return block_result
@@ -632,9 +634,11 @@ def route_hooks(input_data: dict[str, Any]) -> tuple[dict[str, Any], int]:
                 output_data=merged_output,
                 exit_code=final_exit_code,
             )
-        except Exception:
-            # Never crash the router due to logging failures
-            pass
+        except Exception as e:
+            # Never crash the router, but DO emit diagnostics
+            print(f"[router] Hook logging failed: {e}", file=sys.stderr)
+    else:
+        print(f"[router] WARNING! No session_id found.")
 
     return merged_output, final_exit_code
 

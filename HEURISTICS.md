@@ -261,6 +261,19 @@ description: Working hypotheses validated by evidence.
 
 ---
 
+## Prefer fd Over ls for File Finding (P#79)
+
+**Statement**: Use `fd` for file finding operations instead of `ls | grep/tail` pipelines. Use specific patterns to avoid false positives.
+
+**Examples**:
+- Find recent hook logs: `fd -l --newer 1h "hook.*jsonl"` (not `ls *.jsonl | tail`)
+- Find files by type: `fd -e py` (not `ls *.py`)
+- Find with time filter: `fd --changed-within 1d` (not `find -mtime`)
+
+**Derivation**: fd is faster, has built-in time filtering, and respects .gitignore. Generic `ls *.jsonl` matches unintended files (transcripts vs hooks). Specific patterns prevent deceptive results.
+
+---
+
 ## Deterministic Computation Stays in Code (P#78)
 
 **Statement**: LLMs are bad at counting, aggregation, and numerical computation. Use Python/scripts for deterministic operations; LLMs for judgment, classification, and generation.

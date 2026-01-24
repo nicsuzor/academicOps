@@ -18,6 +18,7 @@ import pytest
 
 
 @pytest.mark.demo
+@pytest.mark.slow
 class TestSkillDiscoveryDemo:
     """Demo test for skill discovery and loading."""
 

@@ -154,8 +154,8 @@ def run_claude_headless(
             "error": "claude CLI not found in PATH - these tests require Claude Code CLI installed",
         }
 
-    # Build command with --debug flag
-    cmd = ["claude", "-p", prompt, "--output-format", "json", "--debug"]
+    # Build command with --debug flag and --no-session-persistence for test isolation
+    cmd = ["claude", "-p", prompt, "--output-format", "json", "--debug", "--no-session-persistence"]
 
     if model:
         cmd.extend(["--model", model])
@@ -648,6 +648,7 @@ def claude_headless_tracked():
             permission_mode,
             "--plugin-dir",
             str(plugin_dir),
+            "--no-session-persistence",
         ]
 
         env = os.environ.copy()

@@ -183,6 +183,12 @@ Never close issues or claim success without confirmation. No error is somebody e
 
 NEVER create single-use scripts or tests. Build infrastructure that guarantees replicability.
 
+**Corollaries**:
+
+- Inline verification commands (`python -c`, `bash -c`) ARE single-use artifacts - they're the lazy path
+- If you're verifying behavior, write a test file in `tests/` that can catch regressions
+- "Let me just test this quickly" with inline commands = violation; write the damn test
+
 **Derivation**: Single-use artifacts waste effort and don't compound. Reusable infrastructure pays dividends across sessions.
 
 ## Maintain Relational Integrity (P#29)

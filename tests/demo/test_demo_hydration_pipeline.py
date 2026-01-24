@@ -25,6 +25,7 @@ import pytest
 
 
 @pytest.mark.demo
+@pytest.mark.slow
 class TestHydrationPipelineDemo:
     """Demo test for the complete prompt hydration pipeline."""
 

@@ -21,6 +21,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from lib.transcript_parser import (
+    Entry,
     SessionInfo,
     SessionProcessor,
     SessionState,

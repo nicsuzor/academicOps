@@ -270,8 +270,12 @@ class TaskIndex:
                 self._by_project[project] = []
             self._by_project[project].append(task_id)
 
-        # Identify roots (no parent)
-        self._roots = [tid for tid, e in self._tasks.items() if e.parent is None]
+        # Identify roots (no parent OR parent doesn't exist in index)
+        # Orphan tasks (with non-existent parents) are treated as roots
+        self._roots = [
+            tid for tid, e in self._tasks.items()
+            if e.parent is None or e.parent not in self._tasks
+        ]
 
         # Compute ready and blocked
         completed_statuses = {TaskStatus.DONE.value, TaskStatus.CANCELLED.value}
@@ -520,7 +524,7 @@ class TaskIndex:
                     ('nic', 'human') in their tags list.
 
         Returns:
-            List of ready task entries
+            List of ready task entries sorted by priority (P0 first), then order, then title
         """
         entries = [self._tasks[tid] for tid in self._ready if tid in self._tasks]
 
@@ -537,6 +541,8 @@ class TaskIndex:
                     e for e in entries if not (set(e.tags) & self.HUMAN_TAGS)
                 ]
 
+        # Sort by priority (lower is higher priority), then order, then title
+        entries.sort(key=lambda e: (e.priority, e.order, e.title))
         return entries
 
     def get_blocked_tasks(self) -> list[TaskIndexEntry]:

@@ -38,6 +38,7 @@ def get_newest_audit_file(audit_files: set[Path]) -> Path | None:
 
 
 @pytest.mark.demo
+@pytest.mark.slow
 class TestCustodietVariantsDemo:
     """Demo tests for custodiet detecting various violation types."""
 

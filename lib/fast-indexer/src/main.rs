@@ -471,9 +471,15 @@ fn build_mcp_index(files: &[FileData], data_root: &Path) -> McpIndex {
         by_project.entry(project).or_default().push(tid.clone());
     }
 
-    // Identify roots (no parent)
+    // Identify roots (no parent OR parent doesn't exist in index)
+    // Orphan tasks (with non-existent parents) are treated as roots
     let roots: Vec<String> = entries.iter()
-        .filter(|(_, e)| e.parent.is_none())
+        .filter(|(_, e)| {
+            match &e.parent {
+                None => true,
+                Some(parent_id) => !entries.contains_key(parent_id),
+            }
+        })
         .map(|(tid, _)| tid.clone())
         .collect();
 

@@ -42,6 +42,30 @@ Key areas to check:
 - Plan mode usage (complex work planned first vs jumping to implementation)
 - Derivation from axioms (following conventions vs ad-hoc solutions)
 
+### Infrastructure Failure Detection (P#9, P#25)
+
+**When tooling fails unexpectedly, agents must HALT and file an issue - NO WORKAROUNDS.**
+
+**Pattern to detect**: Tool returns unexpected result (empty when data exists, error, malformed output) → agent uses alternative tool/approach instead of halting.
+
+**Violation signals**:
+- Tool A fails/returns unexpected result → immediately tries Tool B for same data
+- CLI command returns empty → switches to MCP tool (or vice versa)
+- Error encountered → continues without filing task/issue
+
+**Correct behavior**:
+1. Tool fails → HALT
+2. File task: `[Bug] <tool> <failure description>`
+3. Report to user: "Infrastructure issue - filed task, cannot proceed"
+4. Do NOT attempt workarounds
+
+**If you see workaround attempt after infrastructure failure**: BLOCK with message:
+```
+Issue: Infrastructure failure followed by workaround attempt
+Principle: P#9 (Fail-Fast Agents), P#25 (No Workarounds)
+Correction: File a task for the infrastructure bug, then halt. Do not work around broken tools.
+```
+
 ### Ultra Vires Detection
 
 **Type A (Reactive Helpfulness)**: Agent encounters error, "helpfully" fixes something the user didn't ask about.

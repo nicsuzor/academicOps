@@ -149,6 +149,7 @@ class TaskStorage:
         *,
         project: str | None = None,
         type: TaskType = TaskType.TASK,
+        status: TaskStatus = TaskStatus.INBOX,
         parent: str | None = None,
         depends_on: list[str] | None = None,
         priority: int = 2,
@@ -164,6 +165,7 @@ class TaskStorage:
             title: Task title
             project: Project slug (None for inbox)
             type: Task type (goal, project, epic, task, action, bug, feature, learn)
+            status: Task status (inbox, active, blocked, waiting, done, cancelled)
             parent: Parent task ID for hierarchy
             depends_on: List of dependency task IDs
             priority: Priority 0-4 (0=critical, 4=someday)
@@ -189,7 +191,7 @@ class TaskStorage:
             id=task_id,
             title=title,
             type=type,
-            status=TaskStatus.INBOX,
+            status=status,
             priority=priority,
             project=project,
             parent=parent,

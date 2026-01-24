@@ -15,22 +15,30 @@ tags:
 
 Graceful session handover when work must stop immediately.
 
-## Step 1: Identify Current Task
+## Quick Exit: No Work Done
 
+If the session only involved answering user questions with no code changes, task work, or meaningful framework work:
+
+```markdown
+## Framework Reflection
+Answered user's question: "<brief summary of question/topic>"
 ```
-mcp__plugin_aops-core_tasks__list_tasks(status="active", limit=5)
-```
 
-If no task is active, evaluate whether meaningful work was done (see Edge Cases).
+Then **stop** - skip all other steps.
 
-## Step 2: Update Task with Progress
+---
 
-Add a progress checkpoint to the current task:
+## Step 1: Update Task with Progress
 
+If you DID NOT claim a task AND you did meaningful work:
+- You shouldn't have, but fix that now by creating a task to document your work.
+
+Update your claimed task with progress and release it.
+
+<!--@NS: add proper syntax here for updating and releasing the task. -->
 ```
 mcp__plugin_aops-core_tasks__update_task(
   id="<task-id>",
-  body="DUMP checkpoint: <summary of progress made>\n\n- What was accomplished\n- What remains to be done\n- Any blockers or decisions needed"
 )
 ```
 
@@ -44,24 +52,23 @@ mcp__plugin_aops-core_tasks__create_task(
   type="task",
   project="aops",
   priority=2,
-  body="Follow-up from /dump on <date>. Context: <what the next agent needs to know>",
+  body="Follow-up from <session id> on <date>. Context: <what the next agent needs to know>",
   parent="<parent-task-id>"  # if applicable
 )
 ```
 
-## Step 4: Persist to Memory (Optional)
+## Step 4: Persist to Memory
 
-If discoveries or learnings should be preserved:
+For each task complete and learning to persist:
 
 ```
 mcp__memory__store_memory(
-  content="Session dump <date>: <key learnings>",
+  content="<work done and key learnings>",
   tags=["dump", "handover"],
-  metadata={"task_id": "<current-task>", "reason": "emergency handover"}
+  metadata={"task_id": "<current-task>", "reason": "<reason (interrupted|complete|other|...)>"}
 )
 ```
 
-Skip if no significant learnings to persist.
 
 ## Step 5: Output Framework Reflection
 
@@ -94,9 +101,9 @@ Output this message:
 
 ```
 ---
-DUMP COMPLETE. Work paused at checkpoint.
+Work COMPLETE: [One line summary]
 
-To resume: `/pull <task-id>` or claim the follow-up tasks created above.
+Next: `/pull <task-id>` to resume.
 ---
 ```
 
@@ -119,26 +126,28 @@ mcp__plugin_aops-core_tasks__create_task(
 
 This ensures all sessions leave an audit trail in the task system. Note in reflection: "Created historical task for session work"
 
-### No task currently claimed AND no meaningful work done
 
-- Skip Step 2
-- Still file follow-ups for any incomplete todos
-- Note in reflection: "No task was active"
+### Blocked by infrastructure bug (P#9/P#25)
 
-### Memory server unreachable
+When session ends because tooling failed and a bug was filed:
 
-- Log warning: "Memory persistence skipped (server unreachable)"
-- Continue with remaining steps
+1. **Mark original task as blocked**:
+```
+mcp__plugin_aops-core_tasks__update_task(
+  id="<original-task-id>",
+  status="blocked",
+  depends_on=["<bug-task-id>"]
+)
+```
 
-### Multiple tasks active
+2. **Reflection outcome**: `partial` with friction point explaining the infrastructure failure
 
-- Update all with dump checkpoint
-- Note in reflection which tasks were active
+3. **Do NOT leave task as "active"** - blocked tasks should be visible as blocked, not appear claimed
 
-### No incomplete work
-
-- Skip follow-up task creation
-- Reflection outcome can be `success` if work was actually complete
+This ensures:
+- Task tree shows blocking relationship
+- Future sessions don't re-claim blocked work
+- Bug must be fixed before original task can resume
 
 ## Key Rules
 

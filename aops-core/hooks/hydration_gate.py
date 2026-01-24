@@ -78,9 +78,18 @@ def get_session_id(input_data: dict[str, Any]) -> str:
         input_data: Hook input data dict
 
     Returns:
-        Session ID string, or empty string if not found
+        Session ID string
+
+    Raises:
+        ValueError: If session_id is not found in input_data or environment
     """
-    return input_data.get("session_id", "") or os.environ.get("CLAUDE_SESSION_ID", "")
+    session_id = input_data.get("session_id") or os.environ.get("CLAUDE_SESSION_ID")
+    if not session_id:
+        raise ValueError(
+            "session_id is required in hook input_data or CLAUDE_SESSION_ID env var. "
+            "If you're seeing this error, the hook invocation is missing required context."
+        )
+    return session_id
 
 
 def is_subagent_session() -> bool:
@@ -197,11 +206,12 @@ def main():
 
     tool_name = input_data.get("tool_name", "")
     tool_input = input_data.get("tool_input", {})
-    session_id = get_session_id(input_data)
 
-    # FAIL-CLOSED: if no session_id, block (safety over convenience)
-    if not session_id:
-        print("⛔ HYDRATION GATE: No session ID available", file=sys.stderr)
+    try:
+        session_id = get_session_id(input_data)
+    except ValueError as e:
+        # FAIL-CLOSED: block on missing session_id (safety over convenience)
+        print(f"⛔ HYDRATION GATE: {e}", file=sys.stderr)
         sys.exit(2)
 
     # BYPASS: Subagent sessions (invoked by main agent)

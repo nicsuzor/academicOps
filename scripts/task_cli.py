@@ -73,12 +73,11 @@ def get_storage() -> TaskStorage:
 
 
 def get_index() -> TaskIndex:
-    """Get task index instance, loading or rebuilding as needed."""
+    """Get task index instance, always rebuilding for freshness."""
     index = TaskIndex()
-    if not index.load():
-        # Try fast indexer first, fall back to Python
-        if not index.rebuild_fast():
-            index.rebuild()
+    # Always rebuild - fast-indexer is quick enough
+    if not index.rebuild_fast():
+        index.rebuild()
     return index
 
 

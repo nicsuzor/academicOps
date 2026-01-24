@@ -879,11 +879,13 @@ def fetch_session_activity(hours: int = 4) -> list[dict]:
                     sessions[sid]["project"] = project
                 
                 # Trust the project from the status file (insights)
-                real_project = project if project != "unknown" else ls.get("project_display", "unknown")
-                sessions[sid]["project"] = real_project
-                        dt_mtime
-                    )  # prefer file mtime for status?
-                    sessions[sid]["source"] = "local-status"
+                # Note: 'ls' variable from previous loop is not available here, use 'project'
+                if project != "unknown":
+                    sessions[sid]["project"] = project
+
+                sessions[sid]["last_prompt"] = prompt
+                sessions[sid]["time_ago"] = _format_time_ago(dt_mtime)
+                sessions[sid]["source"] = "local-status"
                 else:
                     sessions[sid] = {
                         "session_id": sid,

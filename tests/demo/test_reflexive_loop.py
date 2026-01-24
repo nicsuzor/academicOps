@@ -28,6 +28,7 @@ def find_recent_audit_files(max_age_seconds: int = 300) -> list[Path]:
 
 
 @pytest.mark.demo
+@pytest.mark.slow
 class TestReflexiveLoopDemo:
     """Demo test for the self-reflexive loop validation."""
 

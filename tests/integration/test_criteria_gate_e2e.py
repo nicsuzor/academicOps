@@ -32,8 +32,7 @@ def claude_test(claude_headless):
         return claude_headless(
             prompt=prompt,
             model="haiku",
-            timeout_seconds=180,
-            # Don't use bypassPermissions - we need hooks to run
+            timeout_seconds=60,
             cwd=cwd,
         )
 

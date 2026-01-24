@@ -101,7 +101,9 @@ def _extract_text_from_entry(entry: Any) -> str:
     return text
 
 
-def check_for_reflection(session_id: str, transcript_path: str | None) -> tuple[bool, dict[str, Any] | None]:
+def check_for_reflection(
+    session_id: str, transcript_path: str | None
+) -> tuple[bool, dict[str, Any] | None]:
     """Check if session has valid parseable Framework Reflection output.
 
     Searches recent assistant messages for a Framework Reflection section
@@ -140,13 +142,17 @@ def check_for_reflection(session_id: str, transcript_path: str | None) -> tuple[
             # Validate minimum required fields
             required_fields = ["outcome"]  # At minimum, outcome must be present
             if any(parsed.get(field) for field in required_fields):
-                logger.info(f"Valid Framework Reflection detected: outcome={parsed.get('outcome')}")
+                logger.info(
+                    f"Valid Framework Reflection detected: outcome={parsed.get('outcome')}"
+                )
                 set_reflection_output(session_id, True)
                 return True, parsed
             else:
                 logger.warning("Framework Reflection found but missing required fields")
 
-    logger.debug(f"No parseable Framework Reflection found in {len(messages)} recent messages")
+    logger.debug(
+        f"No parseable Framework Reflection found in {len(messages)} recent messages"
+    )
     return False, None
 
 
@@ -176,16 +182,8 @@ def main():
                 output_data = {
                     "decision": "block",
                     "reason": (
-                        "Run the session handover workflow before ending:\n"
-                        "1. Update active task with progress checkpoint\n"
-                        "2. File follow-up tasks for incomplete work\n"
-                        "3. Persist key learnings to memory (if any)\n"
-                        "4. Output ## Framework Reflection with:\n"
-                        "   **Outcome**: success/partial/failure\n"
-                        "   **Accomplishments**: what was done\n"
-                        "   **Next step**: what to do next\n\n"
+                        "Run the session handover workflow ($AOPS/workflows/handover.md) before ending.\n\n"
                         "If you need user input before finishing, use AskUserQuestion.\n\n"
-                        "See: workflows/handover.md for full workflow"
                     ),
                 }
                 logger.info("Session blocked: Parseable Framework Reflection not found")
