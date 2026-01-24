@@ -395,7 +395,8 @@ def main():
         except Exception as e:
             logger.warning(f"Uncommitted work check failed: {type(e).__name__}: {e}")
 
-    # Allow session to proceed normally
+    # Allow session to proceed normally - add verification message for user
+    output_data["systemMessage"] = "✓ handover verified"
     print(json.dumps(output_data))
     sys.exit(0)
 
