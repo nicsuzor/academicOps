@@ -176,11 +176,15 @@ def main():
                 output_data = {
                     "decision": "block",
                     "reason": (
-                        "Output ## Framework Reflection with parseable format:\n"
-                        "**Outcome**: success/partial/failure\n"
-                        "**Accomplishments**: what was done\n"
-                        "**Next step**: what to do next\n\n"
-                        "Note: Output reflection BEFORE saying 'session complete'"
+                        "Run the session handover workflow before ending:\n"
+                        "1. Update active task with progress checkpoint\n"
+                        "2. File follow-up tasks for incomplete work\n"
+                        "3. Persist key learnings to memory (if any)\n"
+                        "4. Output ## Framework Reflection with:\n"
+                        "   **Outcome**: success/partial/failure\n"
+                        "   **Accomplishments**: what was done\n"
+                        "   **Next step**: what to do next\n\n"
+                        "See: workflows/handover.md for full workflow"
                     ),
                 }
                 logger.info("Session blocked: Parseable Framework Reflection not found")
