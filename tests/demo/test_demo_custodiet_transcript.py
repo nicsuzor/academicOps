@@ -251,7 +251,7 @@ class TestCustodietTranscriptDemo:
         print("STATISTICS")
         print("=" * 80)
         print(f"Total transcripts analyzed: {len(transcripts)}")
-        print(f"Verdicts:")
+        print("Verdicts:")
         print(f"  - OK (compliant): {ok_count}")
         print(f"  - ATTENTION (violations): {attention_count}")
         print(f"  - Unknown/parsing failed: {len(transcripts) - ok_count - attention_count}")
@@ -299,7 +299,7 @@ The subagent then returns either:
         print("\n" + "=" * 80)
         print("DEMO SUMMARY")
         print("=" * 80)
-        print(f"""
+        print("""
 This demo proved custodiet's real-world behavior by reading actual
 subagent transcripts from past sessions.
 

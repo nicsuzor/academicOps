@@ -403,7 +403,7 @@ def test_hydrator_does_not_answer_user_questions(
     for indicator in bug_indicators:
         # Check if indicator appears in the hydrator's section of output
         # (after Task call, before main agent resumes)
-        if f'subagent_type":"aops-core:prompt-hydrator"' in output or 'subagent_type":"prompt-hydrator"' in output:
+        if 'subagent_type":"aops-core:prompt-hydrator"' in output or 'subagent_type":"prompt-hydrator"' in output:
             # Find hydrator result section
             import re
             hydrator_result_pattern = r'"type":"tool_result".*?"content":"(.*?)"'

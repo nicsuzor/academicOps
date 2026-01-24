@@ -12,10 +12,9 @@ Related:
 - Feature ns-1h65: Block progress until prompt hydrator has run
 """
 
-import json
 import sys
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 import pytest
 
@@ -24,7 +23,7 @@ AOPS_CORE = Path(__file__).parent.parent.parent / "aops-core"
 if str(AOPS_CORE) not in sys.path:
     sys.path.insert(0, str(AOPS_CORE))
 
-from hooks.user_prompt_submit import (
+from hooks.user_prompt_submit import (  # noqa: E402
     build_hydration_instruction,
     load_template,
     load_skills_index,
@@ -284,7 +283,7 @@ class TestSkillsIndex:
 
             # Find the task-viz row and verify it has triggers
             lines = result.split("\n")
-            task_viz_line = next((l for l in lines if "/task-viz" in l), None)
+            task_viz_line = next((line for line in lines if "/task-viz" in line), None)
             assert task_viz_line is not None, "Could not find /task-viz line"
 
             # Should NOT have empty triggers (just "—")

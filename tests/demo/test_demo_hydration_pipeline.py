@@ -88,7 +88,7 @@ class TestHydrationPipelineDemo:
             if c["name"] == "Task"
             and c.get("input", {}).get("subagent_type") == "aops-core:prompt-hydrator"
         ]
-        print(f"\n--- STAGE 1: Hydrator Invocation ---")
+        print("\n--- STAGE 1: Hydrator Invocation ---")
         print(f"  Hydrator calls: {len(hydrator_calls)}")
 
         if hydrator_calls:
@@ -101,7 +101,7 @@ class TestHydrationPipelineDemo:
 
         # Stage 2: Workflow Guidance Received (hydrator provides guidance)
         # The hydrator's job is to provide workflow guidance, which the main agent uses
-        print(f"\n--- STAGE 2: Workflow Guidance ---")
+        print("\n--- STAGE 2: Workflow Guidance ---")
         # If hydrator was invoked, workflow guidance was provided
         guidance_received = hydrator_invoked
         print(f"  Workflow guidance received: {guidance_received}")
@@ -109,7 +109,7 @@ class TestHydrationPipelineDemo:
         # Stage 3: Main Agent Execution (any substantive tool use after hydrator)
         # Count non-Task tool calls as evidence of execution
         execution_calls = [c for c in tool_calls if c["name"] not in ["Task"]]
-        print(f"\n--- STAGE 3: Main Agent Execution ---")
+        print("\n--- STAGE 3: Main Agent Execution ---")
         print(f"  Execution tool calls: {len(execution_calls)}")
 
         # Show tool usage breakdown
@@ -120,7 +120,7 @@ class TestHydrationPipelineDemo:
         execution_happened = len(execution_calls) >= 1
 
         # Stage 4: Response Quality (semantic check)
-        print(f"\n--- STAGE 4: Response Quality ---")
+        print("\n--- STAGE 4: Response Quality ---")
         try:
             from tests.integration.conftest import extract_response_text
 
@@ -152,13 +152,13 @@ class TestHydrationPipelineDemo:
                 first_todo = todowrite_calls[0].get("input", {})
                 todos = first_todo.get("todos", [])
                 if todos:
-                    print(f"  Plan structure:")
+                    print("  Plan structure:")
                     for i, todo in enumerate(todos[:7]):  # Show first 7
                         content = todo.get("content", "")
                         status = todo.get("status", "")
                         print(f"    [{i+1}] {content[:60]}... ({status})")
             else:
-                print(f"  TodoWrite called: NO")
+                print("  TodoWrite called: NO")
 
             # Check for workflow indicators in response
             print("\n--- Workflow Selection Evidence ---")

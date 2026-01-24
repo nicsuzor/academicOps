@@ -7,14 +7,11 @@ and saved to session state per the simplified workflow.
 
 from __future__ import annotations
 
-import json
 from datetime import datetime, timezone
-from pathlib import Path
 
 import pytest
 
 from lib.session_state import (
-    SessionState,
     create_session_state,
     get_session_file_path,
     load_session_state,

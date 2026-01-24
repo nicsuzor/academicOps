@@ -19,7 +19,6 @@ Run with demo output:
 """
 
 import pytest
-from pathlib import Path
 
 # ============================================================================
 # CONSTRAINT TEST CASES
@@ -578,12 +577,12 @@ def test_print_all_test_cases():
             status = "✓ VALID" if tc["expected_pass"] else "✗ INVALID"
             print(f"\n### {tc['id']} ({status})")
             print(f"Scenario: {tc['scenario']}")
-            print(f"Steps:")
+            print("Steps:")
             for i, step in enumerate(tc["plan_steps"], 1):
                 print(f"  {i}. {step}")
 
             if tc["expected_violations"]:
-                print(f"Expected violations:")
+                print("Expected violations:")
                 for v in tc["expected_violations"]:
                     print(f"  - {v}")
 

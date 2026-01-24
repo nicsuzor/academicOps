@@ -203,7 +203,7 @@ class TestFrameworkReflectionDemo:
         )
         framework_called = len(framework_agent_calls) > 0
 
-        print(f"\n--- Log/Framework Invocation ---")
+        print("\n--- Log/Framework Invocation ---")
         print(f"  Skill(log) called: {log_skill_called}")
         print(f"  Framework agent called: {framework_called}")
 

@@ -12,14 +12,13 @@ Related:
 import sys
 from pathlib import Path
 
-import pytest
 
 # Add aops-core to path for hook imports
 AOPS_CORE = Path(__file__).parent.parent.parent / "aops-core"
 if str(AOPS_CORE) not in sys.path:
     sys.path.insert(0, str(AOPS_CORE))
 
-from hooks.user_prompt_submit import should_skip_hydration
+from hooks.user_prompt_submit import should_skip_hydration  # noqa: E402
 
 
 class TestHydrationBypass:

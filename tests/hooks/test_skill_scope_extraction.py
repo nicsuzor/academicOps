@@ -12,16 +12,14 @@ custodiet_gate.py includes it in the context for compliance checking.
 
 import sys
 from pathlib import Path
-from unittest.mock import patch
 
-import pytest
 
 # Add aops-core to path for imports
 AOPS_CORE = Path(__file__).parent.parent.parent / "aops-core"
 if str(AOPS_CORE) not in sys.path:
     sys.path.insert(0, str(AOPS_CORE))
 
-from lib.session_reader import load_skill_scope, _extract_skill_scope_from_file
+from lib.session_reader import load_skill_scope, _extract_skill_scope_from_file  # noqa: E402
 
 
 class TestLoadSkillScope:
@@ -159,6 +157,6 @@ class TestCustodietIntegration:
         This is a smoke test - if the import fails, custodiet is broken.
         """
         # This import should work after our changes
-        from hooks.custodiet_gate import _build_session_context, load_skill_scope
+        from hooks.custodiet_gate import load_skill_scope
 
         assert callable(load_skill_scope), "load_skill_scope should be callable"

@@ -5,24 +5,19 @@ category: reference
 type: reference
 description: Resolved absolute paths for this framework instance (generated from paths.py)
 audience: agents
-generated: 2026-01-15T02:49:50.391328+00:00
+generated: 2026-01-24T01:47:41.796000+00:00
 permalink: framework-paths
 tags:
   - framework
   - paths
   - generated
 ---
-<!-- NS: move index documents like this into $AOPS/docs/. -->
-<!-- @claude 2026-01-22: Acknowledged. This generated file should be moved to $AOPS/docs/framework-paths.md. Task created. -->
-# Framework Paths
 
-**Before using Read, Glob, Grep, or Write tools**: Check this path table FIRST.
-**If you get "Error reading file"**: You guessed wrong. Return here, use correct path.
-**DO NOT fabricate paths** like `~/.config/aops/` - they don't exist.
+# Framework Paths
 
 **⚠️ GENERATED FILE - DO NOT EDIT MANUALLY**
 
-Generated: 2026-01-15 02:49:50 UTC
+Generated: 2026-01-24 01:47:41 UTC
 Source: `aops-core/lib/paths.py`
 
 This file provides resolved absolute paths for agent use during sessions.
@@ -34,7 +29,7 @@ These are the concrete absolute paths for this framework instance:
 
 | Path Variable | Resolved Path |
 |--------------|---------------|
-| $AOPS        | /home/nic/src/academicOps   |
+| $AOPS        | /home/nic/writing/aops   |
 | $ACA_DATA    | /home/nic/writing/data   |
 
 ## Framework Directories
@@ -43,12 +38,12 @@ Framework component directories within $AOPS:
 
 | Directory | Absolute Path |
 |-----------|---------------|
-| Skills    | /home/nic/src/academicOps/aops-core/skills  |
-| Hooks     | /home/nic/src/academicOps/aops-core/hooks   |
-| Commands  | /home/nic/src/academicOps/aops-core/commands |
-| Tests     | /home/nic/src/academicOps/tests   |
-| Config    | /home/nic/src/academicOps/config  |
-| Workflows | /home/nic/src/academicOps/workflows |
+| Skills    | /home/nic/writing/aops/aops-core/skills  |
+| Hooks     | /home/nic/writing/aops/aops-core/hooks   |
+| Commands  | /home/nic/writing/aops/aops-core/commands |
+| Tests     | /home/nic/writing/aops/tests   |
+| Config    | /home/nic/writing/aops/config  |
+| Workflows | /home/nic/writing/aops/workflows |
 
 ## Data Directories
 
@@ -56,8 +51,15 @@ User data directories within $ACA_DATA:
 
 | Directory | Absolute Path |
 |-----------|---------------|
-| Sessions  | /home/nic/writing/data/sessions |
+| Sessions  | /home/nic/writing/sessions |
 | Projects  | /home/nic/writing/data/projects |
 | Logs      | /home/nic/writing/data/logs     |
 | Context   | /home/nic/writing/data/context  |
 | Goals     | /home/nic/writing/data/goals    |
+
+---
+
+**Generation Command**: `python3 aops-core/scripts/generate_framework_paths.py`
+
+Run this script after changing $AOPS or $ACA_DATA environment variables,
+or after modifying the framework directory structure.

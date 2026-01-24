@@ -88,7 +88,7 @@ class TestQAGatesDemo:
 
         # Gate 1: Critic Invocation
         task_calls = [c for c in tool_calls if c["name"] == "Task"]
-        print(f"\n--- GATE 1: Critic Review ---")
+        print("\n--- GATE 1: Critic Review ---")
         print(f"  Task tool calls: {len(task_calls)}")
 
         critic_invoked = False
@@ -111,7 +111,7 @@ class TestQAGatesDemo:
         print(f"  Critic verdict: {critic_verdict or 'N/A (check response)'}")
 
         # Gate 2: Custodiet Invocation
-        print(f"\n--- GATE 2: Custodiet Compliance ---")
+        print("\n--- GATE 2: Custodiet Compliance ---")
 
         custodiet_invoked = False
         custodiet_verdict = None
@@ -134,7 +134,7 @@ class TestQAGatesDemo:
         print(f"  Custodiet verdict: {custodiet_verdict or 'N/A (check response)'}")
 
         # Gate 3: Response Analysis (semantic check for issues found)
-        print(f"\n--- GATE 3: Issue Detection ---")
+        print("\n--- GATE 3: Issue Detection ---")
         try:
             from tests.integration.conftest import extract_response_text
 
