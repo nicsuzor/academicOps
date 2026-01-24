@@ -74,7 +74,9 @@ def main():
     with contextlib.suppress(Exception):
         input_data = json.load(sys.stdin)
 
-    hook_event = input_data.get("hook_event_name", "")
+    if "hook_event_name" not in input_data:
+        raise ValueError("input_data requires 'hook_event_name' parameter (P#8: fail-fast)")
+    hook_event = input_data["hook_event_name"]
 
     # Only process PostToolUse events
     if hook_event != "PostToolUse":
@@ -85,8 +87,12 @@ def main():
     # Note: The field is tool_response, not tool_result
     # For Bash: {stdout, stderr, ...}
     # For other tools: varies
-    tool_response = input_data.get("tool_response", {})
-    tool_name = input_data.get("tool_name", "")
+    tool_response = input_data.get("tool_response")
+    if tool_response is None:
+        tool_response = {}
+    if "tool_name" not in input_data:
+        raise ValueError("input_data requires 'tool_name' parameter (P#8: fail-fast)")
+    tool_name = input_data["tool_name"]
 
     # Determine if this is an error based on tool type
     is_error = False
@@ -94,8 +100,8 @@ def main():
     if isinstance(tool_response, dict):
         if tool_name == "Bash":
             # For Bash: check stderr (not stdout - stdout may contain code with "error" strings)
-            stderr = tool_response.get("stderr", "")
-            if stderr and contains_error(stderr):
+            stderr = tool_response.get("stderr")
+            if stderr is not None and isinstance(stderr, str) and contains_error(stderr):
                 is_error = True
         else:
             # For other tools: check if there's an explicit error field or type
@@ -105,18 +111,19 @@ def main():
                 is_error = True
             # For MCP tools, errors often have specific patterns
             elif isinstance(tool_response.get("content"), str):
-                content = tool_response.get("content", "")
-                # Only check if it looks like an error message, not code
-                if contains_error(content) and len(content) < 500:
-                    is_error = True
+                content = tool_response.get("content")
+                if content is not None:
+                    # Only check if it looks like an error message, not code
+                    if contains_error(content) and len(content) < 500:
+                        is_error = True
 
     # Handle MCP tool responses which are arrays: [{type: "text", text: "..."}]
     elif isinstance(tool_response, list):
         for item in tool_response:
             if isinstance(item, dict) and item.get("type") == "text":
-                text = item.get("text", "")
+                text = item.get("text")
                 # Check for error patterns in short messages (not code/docs)
-                if text and len(text) < 500 and contains_error(text):
+                if text is not None and isinstance(text, str) and len(text) < 500 and contains_error(text):
                     is_error = True
                     break
 

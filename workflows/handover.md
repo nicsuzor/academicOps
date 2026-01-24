@@ -42,6 +42,21 @@ mcp__plugin_aops-core_tasks__update_task(
 )
 ```
 
+## Step 2: Commit Changes (MANDATORY)
+
+**Per P#24 (Trust Version Control)**: Commit AND push after completing logical work units.
+
+If you made ANY changes (code, config, docs), commit them NOW before memory/reflection:
+
+```bash
+git status  # Review changes
+git add <specific-files>  # Stage relevant changes
+git commit -m "<type>: <description>"
+git push  # Push to remote
+```
+
+**No uncommitted work is allowed at session end.** The commit message should summarize what was accomplished. Skip only if `git status` shows no changes.
+
 ## Step 3: File Follow-up Tasks
 
 For each incomplete work item from the current TodoWrite list:

@@ -207,7 +207,9 @@ def get_modified_repos(tool_name: str, tool_input: dict[str, Any]) -> set[str]:
 
     # Task script patterns (Bash commands) -> data repo
     if tool_name == "Bash":
-        command = tool_input.get("command", "")
+        if "command" not in tool_input:
+            raise ValueError("Bash tool_input requires 'command' parameter (P#8: fail-fast)")
+        command = tool_input["command"]
         task_script_patterns = [
             "task_add.py",
             "task_archive.py",
@@ -251,7 +253,9 @@ def get_modified_repos(tool_name: str, tool_input: dict[str, Any]) -> set[str]:
 
     # Write/Edit operations - check path to determine repo
     if tool_name in ["Write", "Edit"]:
-        file_path = tool_input.get("file_path", "")
+        if "file_path" not in tool_input:
+            raise ValueError("Write/Edit tool_input requires 'file_path' parameter (P#8: fail-fast)")
+        file_path = tool_input["file_path"]
         if "data/" in file_path or file_path.startswith("data/"):
             modified.add("data")
 
@@ -408,8 +412,12 @@ def main() -> None:
 
     # Extract tool name and input
     # Support both toolName/toolInput (old) and tool_name/tool_input (new router format)
-    tool_name = input_data.get("tool_name") or input_data.get("toolName", "")
-    tool_input = input_data.get("tool_input") or input_data.get("toolInput", {})
+    tool_name = input_data.get("tool_name") or input_data.get("toolName")
+    if not tool_name:
+        raise ValueError("input_data requires 'tool_name' or 'toolName' parameter (P#8: fail-fast)")
+    tool_input = input_data.get("tool_input") or input_data.get("toolInput")
+    if tool_input is None:
+        raise ValueError("input_data requires 'tool_input' or 'toolInput' parameter (P#8: fail-fast)")
 
     # Check which repos were modified
     modified_repos = get_modified_repos(tool_name, tool_input)

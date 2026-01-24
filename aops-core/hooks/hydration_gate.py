@@ -57,8 +57,11 @@ def get_gate_mode() -> str:
 
     Returns DEFAULT_GATE_MODE if env var is unset or empty.
     """
-    mode = os.environ.get("HYDRATION_GATE_MODE", "").strip().lower()
-    return mode if mode else DEFAULT_GATE_MODE
+    mode = os.environ.get("HYDRATION_GATE_MODE")
+    if mode is None:
+        return DEFAULT_GATE_MODE
+    mode_stripped = mode.strip().lower()
+    return mode_stripped if mode_stripped else DEFAULT_GATE_MODE
 
 
 def get_block_message() -> str:
@@ -131,7 +134,9 @@ def is_hydrator_task(tool_input: dict[str, Any]) -> bool:
     Returns:
         True if this is a Task call with subagent_type="prompt-hydrator"
     """
-    subagent_type = tool_input.get("subagent_type", "")
+    subagent_type = tool_input.get("subagent_type")
+    if subagent_type is None:
+        return False
     return subagent_type == "prompt-hydrator"
 
 
