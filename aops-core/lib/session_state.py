@@ -449,15 +449,20 @@ def clear_custodiet_block(session_id: str) -> None:
 def is_hydration_pending(session_id: str) -> bool:
     """Check if hydration is pending for this session.
 
+    FAIL-CLOSED: Returns True if state doesn't exist (assumes pending).
+    This handles the case where UserPromptSubmit doesn't fire for the
+    first prompt of a session (Claude Code limitation).
+
     Args:
         session_id: Claude Code session ID
 
     Returns:
-        True if hydration_pending flag is set
+        True if hydration_pending flag is set OR state doesn't exist
     """
     state = load_session_state(session_id)
     if state is None:
-        return False
+        # FAIL-CLOSED: No state means first prompt, assume hydration pending
+        return True
     return state.get("state", {}).get("hydration_pending", False)
 
 
