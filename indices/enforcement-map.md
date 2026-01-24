@@ -117,9 +117,6 @@ tags: [framework, enforcement, moc]
 | Convention | 3     | Documented pattern, no mechanical check                    |
 | Config     | 1     | External tool config (pyproject.toml, pre-commit)          |
 
-<!-- @NS: no longer correct: -->
-<!-- @claude 2026-01-24: Agreed. The statement below is outdated - AXIOMS.md and HEURISTICS.md are NOT injected at SessionStart. They're loaded JIT via prompt-hydrator (see three-tier architecture in lines 125-133). Only CORE.md loads at SessionStart. Updating the note to reflect current architecture. -->
-
 **Note**: "Prompt" level rules are enforced via selective instruction injection. The hydrator (haiku) receives full AXIOMS.md and HEURISTICS.md, then selects relevant principles for the main agent. See "Selective Instruction Injection" below for details. Compliance is not mechanically enforced but is checked periodically by custodiet.
 
 ### What Constitutes Prompt-Level Enforcement
