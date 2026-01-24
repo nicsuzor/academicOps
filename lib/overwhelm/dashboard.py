@@ -10,6 +10,7 @@ import os
 import time
 import sys
 import requests
+import textwrap
 from urllib.parse import quote
 
 # Add aOps root to path for imports
@@ -22,6 +23,7 @@ sys.path.insert(0, str(aops_core))
 
 from lib.session_reader import find_sessions
 from lib.session_analyzer import SessionAnalyzer, extract_todowrite_from_session
+from collections import defaultdict
 
 
 # index.json integration (2026-01-21)
@@ -682,10 +684,19 @@ def fetch_session_activity(hours: int = 4) -> list[dict]:
                 "source": "local",
             }
 
-            # Try to populate todowrite from state if available involves reading jsonl again?
-            # find_active_session_states already reads session-state.json.
-            # todowrite is usually in .jsonl file.
-            pass
+            # Try to populate todowrite from state if available
+            # Assume session JSONL is at {project_root}/{session_id}.jsonl
+            try:
+                # Reconstruct project path from known root
+                project_path = claude_projects / ls["project"]
+                session_file = project_path / f"{sid}.jsonl"
+
+                if session_file.exists():
+                    sessions[sid]["todowrite"] = extract_todowrite_from_session(
+                        session_file
+                    )
+            except Exception:
+                pass
 
     # 3. Add sessions from new status directories (~/writing/sessions/status)
     # User migration: /home/nic/writing/sessions/status/YYYYMMDD-sessionID.json
@@ -2333,158 +2344,24 @@ with tab_dashboard:
         synth_html += "</div>"  # End panel
         st.markdown(synth_html, unsafe_allow_html=True)
 
-# === ACTIVE SESSIONS PANEL ===
-# Fetch 7 days of history to support "Stale" bucket
+# === PROJECT-CENTRIC DASHBOARD ===
+# Fetch Data
+# Fetch Data
+
 active_sessions = fetch_session_activity(hours=168)
+sessions_by_project = defaultdict(list)
+for s in active_sessions:
+    p = s.get("project", "unknown")
+    if s.get("last_prompt") not in ("Idle", "New Session (Waiting for input)"):
+        sessions_by_project[p].append(s)
 
-if active_sessions:
-    # Bucket sessions
-    now_utc = datetime.now(timezone.utc)
-    buckets = {
-        "active": [],  # < 4h
-        "paused": [],  # 4h - 24h
-        "stale": [],  # > 24h
-    }
-
-    for sess in active_sessions:
-        try:
-            ts_str = sess.get("timestamp")
-            if not ts_str:
-                continue
-
-            # handle timezone if missing (assume UTC as per fetch logic)
-            if ts_str.endswith("Z"):
-                ts_str = ts_str[:-1] + "+00:00"
-
-            dt = datetime.fromisoformat(ts_str)
-            if dt.tzinfo is None:
-                dt = dt.replace(tzinfo=timezone.utc)
-
-            age_seconds = (now_utc - dt).total_seconds()
-
-            if age_seconds < 4 * 3600:
-                buckets["active"].append(sess)
-            elif age_seconds < 24 * 3600:
-                buckets["paused"].append(sess)
-            else:
-                buckets["stale"].append(sess)
-        except Exception:
-            continue
-
-    # Render Main Container
-    st.markdown(f"<div class='active-sessions-panel'>", unsafe_allow_html=True)
-
-    # Filter idle sessions from active/paused
-    def is_interesting(s):
-        p = s.get("last_prompt", "")
-        return p and p not in ("Idle", "New Session (Waiting for input)")
-
-    buckets["active"] = [s for s in buckets["active"] if is_interesting(s)]
-    buckets["paused"] = [s for s in buckets["paused"] if is_interesting(s)]
-
-    # Sort by timestamp (newest first)
-    buckets["active"].sort(key=lambda x: x.get("timestamp", ""), reverse=True)
-    buckets["paused"].sort(key=lambda x: x.get("timestamp", ""), reverse=True)
-
-    # Render Main Container
-    st.markdown(f"<div class='active-sessions-panel'>", unsafe_allow_html=True)
-
-    # Helper to render linear list
-    def render_session_list(sessions):
-        for session in sessions:
-            sess_id = session.get("session_short", "")
-            hostname = session.get("hostname", "unknown")
-            project = session.get("project", "unknown")
-            time_ago = session.get("time_ago", "")
-            prompt = session.get("last_prompt", "")
-
-            # Format Bullets (Activity) from TodoWrite
-            todowrite = session.get("todowrite")
-            bullets_html = ""
-
-            if todowrite:
-                # 1. Current Task
-                current = todowrite.get("current_task")
-                if current:
-                    bullets_html += (
-                        f"<div class='session-bullet active'>▶ {esc(current)}</div>"
-                    )
-
-                # 2. Pending Tasks (limit 2)
-                pending = todowrite.get("pending_tasks", [])
-                for p in pending[:2]:
-                    bullets_html += f"<div class='session-bullet'>• {esc(p)}</div>"
-
-                if len(pending) > 2:
-                    bullets_html += f"<div class='session-bullet muted'>+ {len(pending) - 2} more</div>"
-
-            # If no todowrite, use prompt as the main bullet/context
-            if not bullets_html:
-                bullets_html = (
-                    f"<div class='session-bullet context'>\"{esc(prompt)}\"</div>"
-                )
-            elif prompt and prompt != "Local activity":
-                # If we have bullets, show prompt as secondary context if significant
-                # (User said "rather than just prompt", implying prompt is less important)
-                pass
-
-            card_html = f"""
-            <div class='session-card'>
-                <div class='session-header'>
-                    <span class='session-project'>{esc(project)}</span>
-                    <span class='session-sep'>/</span>
-                    <span class='session-id'>{esc(sess_id)}</span>
-                    <span class='session-meta-right'>{esc(time_ago)}</span>
-                </div>
-                <div class='session-body'>
-                    {bullets_html}
-                </div>
-            </div>
-            """
-            st.markdown(card_html, unsafe_allow_html=True)
-
-    # 1. Active Now (< 4h)
-    if buckets["active"]:
-        st.markdown(
-            f"<div class='active-sessions-title'>⚡ ACTIVE NOW ({len(buckets['active'])})</div>",
-            unsafe_allow_html=True,
-        )
-        render_session_list(buckets["active"])
-
-    # 2. Paused (4-24h)
-    if buckets["paused"]:
-        st.markdown(
-            f"<div class='active-sessions-title' style='margin-top: 16px; color: #fbbf24;'>⏸️ PAUSED ({len(buckets['paused'])})</div>",
-            unsafe_allow_html=True,
-        )
-        with st.expander("Show paused sessions", expanded=False):
-            render_session_list(buckets["paused"])
-
-    # 3. Stale (>24h)
-    if buckets["stale"]:
-        st.markdown(
-            f"<div class='active-sessions-title' style='margin-top: 16px; color: #94a3b8;'>🕸️ STALE (>24h) ({len(buckets['stale'])})</div>",
-            unsafe_allow_html=True,
-        )
-        with st.expander(
-            f"Show {len(buckets['stale'])} stale sessions", expanded=False
-        ):
-            # Simple table for stale
-            for s in buckets["stale"][:15]:
-                proj = s.get("project", "unknown")
-                sid = s.get("session_short", "")
-                ago = s.get("time_ago", "")
-                st.markdown(f"- `{proj}/{sid}` - {ago}")
-            if len(buckets["stale"]) > 15:
-                st.markdown(f"*...and {len(buckets['stale']) - 15} more*")
-
-    st.markdown("</div>", unsafe_allow_html=True)
+# Group Tasks by Project (already done earlier in tasks_by_project)
+# Group Accomplishments (already done in accomplishments_by_project)
+# Projects metadata (already done in projects dict)
 
 # Check for blockers from daily log
 daily_log = analyzer.parse_daily_log()
 has_blockers = daily_log and daily_log.get("blockers")
-
-# === PROJECTS (integrated into dashboard) ===
 
 try:
     sessions = find_sessions()
@@ -2538,7 +2415,7 @@ try:
         if "-tmp" in session.project or "-var-folders" in session.project:
             continue
 
-        proj = session.project_display
+        proj = _format_project_name(session.project)
 
         if proj not in projects:
             projects[proj] = {
@@ -2550,100 +2427,244 @@ try:
         if session.last_modified > projects[proj]["last_modified"]:
             projects[proj]["last_modified"] = session.last_modified
 
-    # Ensure all projects with tasks or accomplishments are included
+    # Define All Projects Union
     all_projects = (
         set(projects.keys())
         | set(tasks_by_project.keys())
         | set(accomplishments_by_project.keys())
+        | set(sessions_by_project.keys())
     )
 
-    # Build project cards
+    # Project Card Renderer
     project_cards = []
 
-    # Sort projects
-    # Priority: Projects with P0/P1 tasks, then recent activity
-    def project_sort_key(p):
+    def get_project_sort_score(p):
+        # Active agents = highest priority (1000 pts per agent)
+        # P0 tasks = high priority (100 pts)
+        # Recent modification = tie breaker
+        score = 0
+        score += len(sessions_by_project.get(p, [])) * 1000
+
         tasks = tasks_by_project.get(p, [])
         has_p0 = any(t.get("priority") == 0 for t in tasks)
-        has_p1 = any(t.get("priority") == 1 for t in tasks)
-        task_count = len(tasks)
-        last_mod = projects.get(p, {}).get(
-            "last_modified", datetime.min.replace(tzinfo=timezone.utc)
-        )
-        return (has_p0, has_p1, task_count, last_mod)
+        if has_p0:
+            score += 100
 
-    sorted_projects = sorted(all_projects, key=project_sort_key, reverse=True)
+        # Recency (days ago invert)
+        data = projects.get(p, {})
+        last_mod = data.get("last_modified")
+        if last_mod:
+            days_ago = (datetime.now(timezone.utc) - last_mod).days
+            score += max(0, 10 - days_ago)
+
+        return score
+
+    sorted_projects = sorted(all_projects, key=get_project_sort_score, reverse=True)
 
     for proj in sorted_projects:
-        data = projects.get(proj, {})
-        color = get_project_color(proj)
-        project_tasks = tasks_by_project.get(proj, [])
-        accomplishments = accomplishments_by_project.get(proj, [])
+        # Gather Data
+        p_sessions = sessions_by_project.get(proj, [])
+        p_tasks = tasks_by_project.get(proj, [])
+        p_acc = accomplishments_by_project.get(proj, [])
 
-        # Skip boring projects (no tasks, no recent activity, no accomplishments)
-        if not project_tasks and not accomplishments and not data.get("session_count"):
+        # sorting tasks
+        p_tasks.sort(key=lambda t: t.get("priority", 99))
+
+        # Identify "Active" tasks (in progress) vs "Queued"
+        # For now, assumption: Sessions might be working on them, but TJA doesn't strictly link yet.
+        # We'll list Top P0/P1 as "Priority" and maybe a separate list for "Done" if we had it.
+
+        # Filter out dull projects
+        if (
+            not p_sessions
+            and not p_tasks
+            and not p_acc
+            and not projects.get(proj, {}).get("session_count")
+        ):
             continue
 
-        # Build card
-        content_parts = []
+        color = get_project_color(proj)
 
-        # Sort tasks by priority
-        project_tasks.sort(key=lambda t: t.get("priority", 99))
+        # --- HTML Building ---
+        card_parts = []
 
-        # Show top 5 tasks
-        for task in project_tasks[:5]:
-            priority = task.get("priority", 2)
-            priority_class = f"p{priority}" if priority <= 1 else "p2"
-            priority_text = f"P{priority}"
-
-            # Check for subtask progress (if available in schema)
-            # index.json tasks might have 'subtasks' or children count?
-            # For now assume simple title
-
-            content_parts.append(
-                f"<div class='project-task'><span class='project-task-priority {priority_class}'>{priority_text}</span>{esc(task.get('title'))}</div>"
-            )
-
-        if len(project_tasks) > 5:
-            content_parts.append(
-                f"<div style='color: #64748b; font-size: 0.8em; margin-left: 4px;'>+{len(project_tasks) - 5} more tasks</div>"
-            )
-
-        # Accomplishments
-        if accomplishments:
-            content_parts.append(
-                "<div style='border-top: 1px solid rgba(255,255,255,0.1); margin: 6px 0 4px 0;'></div>"
-            )
-            for acc in accomplishments[:2]:
-                content_parts.append(f"<div class='project-done'>{esc(acc[:60])}</div>")
-
-        # Status line
-        status_parts = []
-        if data.get("session_count"):
-            _, status_text = get_activity_status(data["last_modified"])
-            status_parts.append(status_text)
-
-        status_line = " · ".join(status_parts)
-        content_html = "\n".join(content_parts)
-
-        project_cards.append(
-            f"""<div class='project-card' style='border-left: 3px solid {color};'>
-            <div class='project-card-header'>
-                <span class='project-card-name' style='color: {color};'>{esc(proj)}</span>
-                <span class='project-card-meta'>{esc(status_line)}</span>
-            </div>
-            {content_html}
-        </div>"""
+        # 1. Header is handled by the container style, but let's add a title block
+        card_parts.append(
+            f"<div class='pkey-header' style='color:{color}; border-bottom: 2px solid {color}'>{esc(proj)}</div>"
         )
 
-        if len(project_cards) >= 12:
+        # 2. Active Agents (The "Working Now" section)
+        if p_sessions:
+            card_parts.append("<div class='p-section-title'>⚡ WORKING NOW</div>")
+            for s in p_sessions:
+                sid = s.get("session_short", "")
+                ago = s.get("time_ago", "")
+                prompt = s.get("last_prompt", "")
+                todowrite = s.get("todowrite")
+
+                # Agent Chronology / Status
+                history_html = ""
+                if todowrite:
+                    curr = todowrite.get("current_task")
+                    if curr:
+                        history_html += f"<div class='agent-history-item current'>▶ {esc(curr)}</div>"
+                    for pending in todowrite.get("pending_tasks", [])[:2]:
+                        history_html += (
+                            f"<div class='agent-history-item'>• {esc(pending)}</div>"
+                        )
+                else:
+                    # Fallback to prompt if no structured plan
+                    history_html += f"<div class='agent-history-item context'>\"{esc(prompt)}\"</div>"
+
+                card_parts.append(
+                    f"<div class='agent-card'><div class='agent-meta'>{esc(sid)} · {esc(ago)}</div>{history_html}</div>"
+                )
+
+        # 3. Priority Tasks (Backlog)
+        # We only show top 3-5 incomplete tasks to save space
+        incomplete_tasks = [
+            t for t in p_tasks if t.get("status") not in ("done", "closed")
+        ]
+        if incomplete_tasks:
+            card_parts.append(f"<div class='p-section-title'>📌 UP NEXT</div>")
+            for t in incomplete_tasks[:5]:
+                prio = t.get("priority", 2)
+                prio_cls = f"p{prio}" if prio <= 1 else "p2"
+                title = t.get("title")
+                card_parts.append(
+                    f"<div class='task-row'><span class='task-prio {prio_cls}'>P{prio}</span><span class='task-title'>{esc(title)}</span></div>"
+                )
+            if len(incomplete_tasks) > 5:
+                card_parts.append(
+                    f"<div class='more-row'>+ {len(incomplete_tasks) - 5} more tasks</div>"
+                )
+
+        # 4. Recent Accomplishments
+        if p_acc:
+            card_parts.append("<div class='p-section-title'>✅ RECENTLY</div>")
+            for acc in p_acc[:3]:
+                card_parts.append(f"<div class='acc-row'>✓ {esc(acc)}</div>")
+
+        # Wrap in Project Card Div
+        # Wrap in Project Card Div
+        project_cards.append(
+            textwrap.dedent(f"""
+        <div class='project-box'>
+            {"".join(card_parts)}
+        </div>
+        """)
+        )
+
+        if len(project_cards) >= 20:  # Limit total boxes to avoid crashing browser
             break
 
+    # Render Grid
     if project_cards:
-        grid_html = "<div class='project-grid'>" + "\n".join(project_cards) + "</div>"
-        st.markdown(grid_html, unsafe_allow_html=True)
+        st.markdown(
+            textwrap.dedent(f"""
+        <style>
+            .project-grid {{
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+                gap: 16px;
+                margin-top: 20px;
+            }}
+            .project-box {{
+                background: #1e293b;
+                border: 1px solid #334155;
+                border-radius: 8px;
+                padding: 12px;
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+            }}
+            .pkey-header {{
+                font-size: 1.1em;
+                font-weight: 700;
+                text-transform: uppercase;
+                padding-bottom: 8px;
+                margin-bottom: 4px;
+            }}
+            .p-section-title {{
+                font-size: 0.75em;
+                color: #94a3b8;
+                font-weight: 600;
+                letter-spacing: 0.05em;
+                margin-top: 8px;
+                margin-bottom: 4px;
+            }}
+            .agent-card {{
+                background: #0f172a;
+                border-left: 2px solid #38bdf8;
+                padding: 8px;
+                border-radius: 4px;
+                margin-bottom: 4px;
+            }}
+            .agent-meta {{
+                font-size: 0.7em;
+                color: #64748b;
+                font-family: monospace;
+                margin-bottom: 4px;
+            }}
+            .agent-history-item {{
+                font-size: 0.85em;
+                color: #cbd5e1;
+                line-height: 1.3;
+                margin-bottom: 2px;
+            }}
+            .agent-history-item.current {{
+                color: #38bdf8;
+                font-weight: 500;
+            }}
+            .agent-history-item.context {{
+                font-style: italic;
+                color: #94a3b8;
+            }}
+            .task-row {{
+                display: flex;
+                gap: 6px;
+                align-items: baseline;
+                margin-bottom: 4px;
+                font-size: 0.9em;
+            }}
+            .task-prio {{
+                font-size: 0.7em;
+                font-weight: bold;
+                padding: 1px 4px;
+                border-radius: 3px;
+            }}
+            .task-prio.p0 {{ background: #ef4444; color: white; }}
+            .task-prio.p1 {{ background: #f97316; color: white; }}
+            .task-prio.p2 {{ background: #334155; color: #94a3b8; }}
+            .task-title {{
+                color: #e2e8f0;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }}
+            .more-row {{
+                font-size: 0.8em;
+                color: #64748b;
+                margin-top: 2px;
+            }}
+            .acc-row {{
+                font-size: 0.85em;
+                color: #10b981;
+                margin-bottom: 3px;
+                line-height: 1.3;
+            }}
+        </style>
+        <div class='project-grid'>
+            {"".join(project_cards)}
+        </div>
+        """),
+            unsafe_allow_html=True,
+        )
     else:
         st.info("No active projects found")
+
+    # Spacer
+    st.write("")
 
 
 except Exception as e:

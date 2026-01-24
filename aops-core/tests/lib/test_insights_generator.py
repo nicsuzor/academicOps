@@ -410,3 +410,175 @@ Some text after"""
         """
         result = extract_json_from_response(response)
         assert result == '{"key": "value"}'
+
+
+class TestTokenMetricsValidation:
+    """Test token_metrics field validation."""
+
+    def _minimal_insights(self, **extra):
+        """Create minimal valid insights with optional extra fields."""
+        base = {
+            "session_id": "a1b2c3d4",
+            "date": "2026-01-13",
+            "project": "test",
+            "summary": "Test session",
+            "outcome": "success",
+            "accomplishments": [],
+        }
+        base.update(extra)
+        return base
+
+    def test_valid_token_metrics_full(self):
+        """Test that full token_metrics structure passes validation."""
+        insights = self._minimal_insights(
+            token_metrics={
+                "totals": {
+                    "input_tokens": 45000,
+                    "output_tokens": 12000,
+                    "cache_read_tokens": 30000,
+                    "cache_create_tokens": 5000,
+                },
+                "by_model": {
+                    "claude-opus-4-5-20251101": {"input": 40000, "output": 10000},
+                    "claude-3-5-haiku-20241022": {"input": 5000, "output": 2000},
+                },
+                "by_agent": {
+                    "main": {"input": 35000, "output": 8000},
+                    "prompt-hydrator": {"input": 3000, "output": 1000},
+                },
+                "efficiency": {
+                    "cache_hit_rate": 0.67,
+                    "tokens_per_minute": 2500,
+                    "session_duration_minutes": 23,
+                },
+            }
+        )
+        validate_insights_schema(insights)  # Should not raise
+
+    def test_valid_token_metrics_partial(self):
+        """Test that partial token_metrics (only some sub-objects) passes."""
+        insights = self._minimal_insights(
+            token_metrics={
+                "totals": {"input_tokens": 1000, "output_tokens": 500},
+            }
+        )
+        validate_insights_schema(insights)  # Should not raise
+
+    def test_token_metrics_accepts_null(self):
+        """Test that token_metrics accepts null value."""
+        insights = self._minimal_insights(token_metrics=None)
+        validate_insights_schema(insights)  # Should not raise
+
+    def test_token_metrics_must_be_dict(self):
+        """Test that token_metrics must be a dict if present."""
+        insights = self._minimal_insights(token_metrics="not a dict")
+        with pytest.raises(
+            InsightsValidationError, match="token_metrics.*must be a dict"
+        ):
+            validate_insights_schema(insights)
+
+    def test_token_metrics_totals_must_be_dict(self):
+        """Test that token_metrics.totals must be a dict."""
+        insights = self._minimal_insights(token_metrics={"totals": "not a dict"})
+        with pytest.raises(
+            InsightsValidationError, match="token_metrics.totals.*must be a dict"
+        ):
+            validate_insights_schema(insights)
+
+    def test_token_metrics_totals_numeric_fields(self):
+        """Test that totals numeric fields must be numeric."""
+        insights = self._minimal_insights(
+            token_metrics={"totals": {"input_tokens": "not a number"}}
+        )
+        with pytest.raises(
+            InsightsValidationError, match="token_metrics.totals.input_tokens.*must be numeric"
+        ):
+            validate_insights_schema(insights)
+
+    def test_token_metrics_by_model_must_be_dict(self):
+        """Test that token_metrics.by_model must be a dict."""
+        insights = self._minimal_insights(token_metrics={"by_model": ["list", "not", "dict"]})
+        with pytest.raises(
+            InsightsValidationError, match="token_metrics.by_model.*must be a dict"
+        ):
+            validate_insights_schema(insights)
+
+    def test_token_metrics_by_model_entries_must_be_dict(self):
+        """Test that each by_model entry must be a dict."""
+        insights = self._minimal_insights(
+            token_metrics={"by_model": {"claude-opus": "not a dict"}}
+        )
+        with pytest.raises(
+            InsightsValidationError, match="token_metrics.by_model.claude-opus.*must be a dict"
+        ):
+            validate_insights_schema(insights)
+
+    def test_token_metrics_by_agent_must_be_dict(self):
+        """Test that token_metrics.by_agent must be a dict."""
+        insights = self._minimal_insights(token_metrics={"by_agent": 123})
+        with pytest.raises(
+            InsightsValidationError, match="token_metrics.by_agent.*must be a dict"
+        ):
+            validate_insights_schema(insights)
+
+    def test_token_metrics_by_agent_entries_must_be_dict(self):
+        """Test that each by_agent entry must be a dict."""
+        insights = self._minimal_insights(
+            token_metrics={"by_agent": {"main": [1, 2, 3]}}
+        )
+        with pytest.raises(
+            InsightsValidationError, match="token_metrics.by_agent.main.*must be a dict"
+        ):
+            validate_insights_schema(insights)
+
+    def test_token_metrics_efficiency_must_be_dict(self):
+        """Test that token_metrics.efficiency must be a dict."""
+        insights = self._minimal_insights(token_metrics={"efficiency": True})
+        with pytest.raises(
+            InsightsValidationError, match="token_metrics.efficiency.*must be a dict"
+        ):
+            validate_insights_schema(insights)
+
+    def test_token_metrics_efficiency_numeric_fields(self):
+        """Test that efficiency numeric fields must be numeric."""
+        insights = self._minimal_insights(
+            token_metrics={"efficiency": {"tokens_per_minute": "fast"}}
+        )
+        with pytest.raises(
+            InsightsValidationError, match="token_metrics.efficiency.tokens_per_minute.*must be numeric"
+        ):
+            validate_insights_schema(insights)
+
+    def test_token_metrics_cache_hit_rate_range(self):
+        """Test that cache_hit_rate must be between 0.0 and 1.0."""
+        insights = self._minimal_insights(
+            token_metrics={"efficiency": {"cache_hit_rate": 1.5}}
+        )
+        with pytest.raises(
+            InsightsValidationError, match="cache_hit_rate.*must be between 0.0 and 1.0"
+        ):
+            validate_insights_schema(insights)
+
+    def test_token_metrics_cache_hit_rate_valid_bounds(self):
+        """Test that cache_hit_rate at boundaries (0.0 and 1.0) passes."""
+        # Test 0.0
+        insights = self._minimal_insights(
+            token_metrics={"efficiency": {"cache_hit_rate": 0.0}}
+        )
+        validate_insights_schema(insights)  # Should not raise
+
+        # Test 1.0
+        insights = self._minimal_insights(
+            token_metrics={"efficiency": {"cache_hit_rate": 1.0}}
+        )
+        validate_insights_schema(insights)  # Should not raise
+
+    def test_token_metrics_with_null_sub_fields(self):
+        """Test that numeric fields in token_metrics accept null."""
+        insights = self._minimal_insights(
+            token_metrics={
+                "totals": {"input_tokens": None, "output_tokens": None},
+                "efficiency": {"cache_hit_rate": None, "tokens_per_minute": None},
+            }
+        )
+        validate_insights_schema(insights)  # Should not raise

@@ -9,8 +9,10 @@ Usage:
     task create TITLE [--project PROJECT] [--type TYPE]
     task show TASK_ID
     task complete TASK_ID
+    task ready CALLER [--project PROJECT]
 """
 
+import fcntl
 import sys
 from pathlib import Path
 
@@ -192,29 +194,75 @@ def update(task_id: str, status: str | None, title: str | None, priority: int | 
 
 
 @main.command()
-@click.option("--project", "-p", help="Filter by project")
-@click.option("--all", "-a", "show_all", is_flag=True, help="Show all ready tasks (default: 1)")
-@click.option("--limit", "-n", type=int, default=1, help="Number of tasks to show (default: 1)")
-def ready(project: str | None, show_all: bool, limit: int):
-    """List tasks ready to work on (leaf + no blockers).
+@click.argument("caller")
+@click.option("--project", "-p", default="", help="Filter by project (empty for all)")
+def ready(caller: str, project: str):
+    """Get next ready task and claim it atomically.
 
-    By default shows only the highest priority task (matching MCP behavior).
-    Use --all or --limit to show more.
+    Finds one ready task (leaf + no blockers), claims it by setting
+    status to "active" and assignee to CALLER. Uses file locking to
+    prevent race conditions.
+
+    CALLER is who is claiming the task - typically 'nic' or 'bot'.
+
+    Mirrors MCP claim_next_task behavior exactly.
     """
     storage = get_storage()
-    tasks = storage.get_ready_tasks(project=project)
+    tasks = storage.get_ready_tasks(project=project or None)
 
     if not tasks:
-        click.echo("No ready tasks.")
+        click.echo("No ready tasks available" + (f" in project {project}" if project else ""))
         return
 
-    # Apply limit (--all overrides --limit)
-    if not show_all:
-        tasks = tasks[:limit]
-
+    # Try to claim tasks in priority order
     for task in tasks:
-        project_str = f"[{task.project}]" if task.project else "[inbox]"
-        click.echo(f"P{task.priority}  {task.id}  {project_str}  {task.title}")
+        task_path = storage._find_task_path(task.id)
+        if task_path is None:
+            continue
+
+        lock_path = task_path.with_suffix(".lock")
+
+        try:
+            with open(lock_path, "w") as lock_file:
+                try:
+                    fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+                except BlockingIOError:
+                    continue  # Another process has lock, try next
+
+                try:
+                    # Re-load task to check still claimable
+                    fresh_task = storage.get_task(task.id)
+                    if fresh_task is None:
+                        continue
+
+                    if fresh_task.status not in (TaskStatus.INBOX, TaskStatus.ACTIVE):
+                        continue
+                    if fresh_task.assignee and fresh_task.assignee != caller:
+                        continue
+
+                    # Claim it
+                    fresh_task.status = TaskStatus.ACTIVE
+                    fresh_task.assignee = caller
+                    storage.save_task(fresh_task)
+
+                    project_str = f"[{fresh_task.project}]" if fresh_task.project else "[inbox]"
+                    click.echo(f"{fresh_task.id}")
+                    click.echo(f"P{fresh_task.priority}  {project_str}  {fresh_task.title}")
+                    return
+
+                finally:
+                    fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
+
+        except Exception as e:
+            click.echo(f"Warning: Failed to claim {task.id}: {e}", err=True)
+            continue
+        finally:
+            try:
+                lock_path.unlink(missing_ok=True)
+            except Exception:
+                pass
+
+    click.echo("No tasks available to claim (all locked or already assigned)")
 
 
 if __name__ == "__main__":

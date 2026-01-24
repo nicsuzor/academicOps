@@ -36,7 +36,42 @@ from lib.template_loader import load_template
 HOOK_DIR = Path(__file__).parent
 CONTEXT_TEMPLATE_FILE = HOOK_DIR / "templates" / "prompt-hydrator-context.md"
 INSTRUCTION_TEMPLATE_FILE = HOOK_DIR / "templates" / "prompt-hydration-instruction.md"
-TEMP_DIR = Path("/tmp/claude-hydrator")
+import hashlib
+
+def get_hydration_temp_dir() -> Path:
+    """Get the temporary directory for hydration context.
+
+    1. Checks TMPDIR (provided by host CLI)
+    2. If GEMINI_CLI set, calculates project-specific temp dir: ~/.gemini/tmp/sha256(AOPS)
+    3. Fallback to /tmp/claude-hydrator
+    """
+    # 1. Check for standard temp dir env var
+    tmpdir = os.environ.get("TMPDIR")
+    if tmpdir:
+        return Path(tmpdir)
+
+    # 2. Gemini-specific discovery logic
+    if os.environ.get("GEMINI_CLI"):
+        try:
+            # Determine project root (AOPS is set by setup.sh/settings.json)
+            project_root = os.environ.get("AOPS")
+            if not project_root:
+                project_root = str(Path.cwd())
+            
+            # Calculate SHA256 hash of absolute project path (Gemini convention)
+            abs_root = str(Path(project_root).resolve())
+            project_hash = hashlib.sha256(abs_root.encode()).hexdigest()
+            
+            gemini_tmp = Path.home() / ".gemini" / "tmp" / project_hash
+            if gemini_tmp.exists():
+                return gemini_tmp
+        except Exception:
+            pass
+
+    # 3. Default fallback for Claude Code
+    return Path("/tmp/claude-hydrator")
+
+TEMP_DIR = get_hydration_temp_dir()
 
 # Cleanup threshold: 1 hour in seconds
 CLEANUP_AGE_SECONDS = 60 * 60
@@ -80,12 +115,15 @@ def _strip_frontmatter(content: str) -> str:
     return content.strip()
 
 
-def _load_project_workflows() -> str:
+def _load_project_workflows(prompt: str = "") -> str:
     """Load project-specific workflows from .agent/workflows/ in cwd.
 
     Projects can define their own workflows in .agent/workflows/*.md.
     If a WORKFLOWS.md index exists in .agent/, use that; otherwise
-    list available workflow files.
+    list available workflow files and include relevant content based on prompt.
+
+    Args:
+        prompt: User prompt to detect relevant workflow types
 
     Returns:
         Project workflows section, or empty string if none found.
@@ -120,15 +158,41 @@ def _load_project_workflows() -> str:
         name = wf.stem.replace("-", " ").replace("_", " ").title()
         lines.append(f"| {name} | `{wf.name}` |")
 
+    # Detect and include relevant workflow content based on prompt keywords
+    prompt_lower = prompt.lower()
+    workflow_keywords = {
+        "TESTING.md": ["test", "pytest", "e2e", "unit test", "mock"],
+        "DEBUGGING.md": ["debug", "investigate", "error", "traceback", "fix bug"],
+        "DEVELOPMENT.md": ["develop", "implement", "feature", "add", "create"],
+    }
+
+    included_workflows = []
+    for wf_file in workflow_files:
+        keywords = workflow_keywords.get(wf_file.name, [])
+        if any(kw in prompt_lower for kw in keywords):
+            try:
+                content = wf_file.read_text()
+                included_workflows.append(
+                    f"\n\n### {wf_file.stem} (Project Instructions)\n\n{_strip_frontmatter(content)}"
+                )
+            except (IOError, OSError):
+                pass  # Skip unreadable files
+
+    if included_workflows:
+        lines.append("\n" + "".join(included_workflows))
+
     return "\n".join(lines)
 
 
-def load_workflows_index() -> str:
+def load_workflows_index(prompt: str = "") -> str:
     """Load WORKFLOWS.md for hydrator context.
 
     Pre-loads workflow index so hydrator doesn't need to Read() at runtime.
     Also checks for project-specific workflows in .agent/workflows/.
     Returns content after frontmatter separator.
+
+    Args:
+        prompt: User prompt to detect relevant workflow types for project workflows
     """
     aops_root = get_aops_root()
     workflows_path = aops_root / "WORKFLOWS.md"
@@ -139,8 +203,8 @@ def load_workflows_index() -> str:
     content = workflows_path.read_text()
     base_workflows = _strip_frontmatter(content)
 
-    # Append project-specific workflows if present
-    project_workflows = _load_project_workflows()
+    # Append project-specific workflows if present (passing prompt for relevance detection)
+    project_workflows = _load_project_workflows(prompt)
 
     return base_workflows + project_workflows
 
@@ -378,7 +442,7 @@ def build_hydration_instruction(
     framework_paths = load_framework_paths()
 
     # Pre-load stable framework docs (reduces hydrator runtime I/O)
-    workflows_index = load_workflows_index()
+    workflows_index = load_workflows_index(prompt)
     skills_index = load_skills_index()
     axioms = load_axioms()
     heuristics = load_heuristics()

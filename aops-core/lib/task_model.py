@@ -39,6 +39,7 @@ class TaskType(Enum):
 
     GOAL = "goal"  # Multi-month/year outcome
     PROJECT = "project"  # Coherent body of work
+    EPIC = "epic"  # Group of tasks aimed at a milestone
     TASK = "task"  # Discrete deliverable
     ACTION = "action"  # Single work session
     BUG = "bug"  # Defect to fix

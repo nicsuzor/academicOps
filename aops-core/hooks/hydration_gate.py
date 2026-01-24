@@ -36,6 +36,7 @@ Failure mode: FAIL-CLOSED (block on error/uncertainty - safety over convenience)
 import json
 import os
 import sys
+import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -121,6 +122,33 @@ def is_hydrator_task(tool_input: dict[str, Any]) -> bool:
     return subagent_type == "prompt-hydrator"
 
 
+import hashlib
+
+def get_hydration_temp_dir() -> Path:
+    """Get the temporary directory for hydration context (synchronized with user_prompt_submit)."""
+    # 1. Check for standard temp dir env var
+    tmpdir = os.environ.get("TMPDIR")
+    if tmpdir:
+        return Path(tmpdir)
+
+    # 2. Gemini-specific discovery logic
+    if os.environ.get("GEMINI_CLI"):
+        try:
+            project_root = os.environ.get("AOPS")
+            if not project_root:
+                project_root = str(Path.cwd())
+            abs_root = str(Path(project_root).resolve())
+            project_hash = hashlib.sha256(abs_root.encode()).hexdigest()
+            gemini_tmp = Path.home() / ".gemini" / "tmp" / project_hash
+            if gemini_tmp.exists():
+                return gemini_tmp
+        except Exception:
+            pass
+
+    # 3. Default fallback for Claude Code
+    return Path("/tmp/claude-hydrator")
+
+
 def is_gemini_hydration_attempt(tool_name: str, tool_input: dict[str, Any]) -> bool:
     """Check if this is a Gemini agent attempting to read hydration context.
 
@@ -133,15 +161,23 @@ def is_gemini_hydration_attempt(tool_name: str, tool_input: dict[str, Any]) -> b
     Returns:
         True if the tool use matches a hydration context read attempt
     """
+    temp_dir = str(get_hydration_temp_dir())
+    
     # Check for direct file read
     if tool_name == "read_file":
         path = str(tool_input.get("file_path", ""))
-        return path.startswith("/tmp/claude-hydrator/")
+        return (
+            path.startswith("/tmp/claude-hydrator/") or 
+            path.startswith(temp_dir)
+        )
 
     # Check for shell commands (cat, etc) on the hydration file
     if tool_name == "run_shell_command":
         cmd = str(tool_input.get("command", ""))
-        return "/tmp/claude-hydrator/" in cmd
+        return (
+            "/tmp/claude-hydrator/" in cmd or 
+            temp_dir in cmd
+        )
 
     return False
 

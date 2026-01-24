@@ -145,7 +145,7 @@ def create_task(
 
     Args:
         task_title: Task title (required)
-        type: Task type - "goal", "project", "task", "action", "bug", "feature", or "learn" (default: "task")
+        type: Task type - "goal", "project", "epic", "task", "action", "bug", "feature", or "learn" (default: "task")
         project: Project slug for organization (determines storage location)
         parent: Parent task ID for hierarchical relationships
         depends_on: List of task IDs this task depends on
@@ -183,7 +183,7 @@ def create_task(
         except ValueError:
             return {
                 "success": False,
-                "message": f"Invalid task type: {type}. Must be one of: goal, project, task, action, bug, feature, learn",
+                "message": f"Invalid task type: {type}. Must be one of: goal, project, epic, task, action, bug, feature, learn",
             }
 
         # Parse due date
@@ -321,7 +321,7 @@ def update_task(
     Args:
         id: Task ID to update (required)
         task_title: New title
-        type: New type - "goal", "project", "task", "action", "bug", "feature", or "learn"
+        type: New type - "goal", "project", "epic", "task", "action", "bug", "feature", or "learn"
         status: New status - "inbox", "active", "blocked", "waiting", "done", "cancelled"
         priority: New priority 0-4
         order: New sibling order
@@ -547,11 +547,10 @@ def complete_task(id: str) -> dict[str, Any]:
 # =============================================================================
 
 
-@mcp.tool()
-def get_ready_tasks(
+def _get_ready_tasks(
     project: str, caller: Optional[str] = None, limit: int = 1
 ) -> dict[str, Any]:
-    """Get tasks ready to work on.
+    """Internal helper: Get tasks ready to work on.
 
     Ready tasks are:
     - Leaves (no children)
@@ -1156,7 +1155,7 @@ def list_tasks(
     Args:
         project: Filter by project slug
         status: Filter by status - "inbox", "active", "blocked", "waiting", "done", "cancelled"
-        type: Filter by type - "goal", "project", "task", "action", "bug", "feature", "learn"
+        type: Filter by type - "goal", "project", "epic", "task", "action", "bug", "feature", "learn"
         limit: Maximum number of tasks to return (default: 50)
 
     Returns:

@@ -12,33 +12,26 @@ permalink: commands/pull
 
 ## Workflow
 
-### Step 1: Get a Task
+### Step 1: Get and Claim a Task (Atomic)
 
-Call `mcp__plugin_aops-core_tasks__get_ready_tasks(project="aops")` to get available tasks.
+Call `mcp__plugin_aops-tools_task_manager__claim_next_task(caller="bot", project="aops")` to atomically get and claim a task.
 
-Returns tasks that are:
-- Leaves (no children)
-- No unmet dependencies
-- Status: active or inbox
-- Sorted by priority
+This single call:
+- Finds the highest priority ready task (leaf, no blockers, inbox/active)
+- Atomically claims it (sets status="active", assignee=caller)
+- Uses file locking to prevent race conditions
+- Returns the claimed task
 
 **If a specific task ID is provided** (`/pull <task-id>`):
-- Call `mcp__plugin_aops-core_tasks__get_task(id="<task-id>")` to load it
+- Call `mcp__plugin_aops-tools_task_manager__get_task(id="<task-id>")` to load it
 - If the task has children (leaf=false), navigate to the first ready leaf subtask instead
+- Claim with `mcp__plugin_aops-tools_task_manager__update_task(id="<task-id>", status="active", assignee="bot")`
 
 **If no tasks are ready**:
 - Check active/inbox tasks for any that can be worked on
 - If none exist, report and halt
 
-### Step 2: Claim the Task (Mark Active)
-
-```
-mcp__plugin_aops-core_tasks__update_task(id="<task-id>", status="active")
-```
-
-That's it. The task is now claimed.
-
-### Step 3: Assess Task Path - EXECUTE or TRIAGE
+### Step 2: Assess Task Path - EXECUTE or TRIAGE
 
 After claiming, determine whether to execute immediately or triage first.
 
@@ -53,7 +46,7 @@ Proceed with execution when:
 - **Scope**: Estimated completion within current session
 - **Blockers**: No external dependencies (human approval, external input, waiting)
 
-→ Proceed to Step 4: Execute
+→ Proceed to Step 3: Execute
 
 #### TRIAGE Path (any is true)
 
@@ -65,9 +58,9 @@ Triage instead of executing when:
 - Task depends on external input not yet available
 - Task exceeds session scope
 
-→ Proceed to Step 4: Triage
+→ Proceed to Step 3: Triage
 
-### Step 4A: Execute (EXECUTE Path)
+### Step 3A: Execute (EXECUTE Path)
 
 Follow the task's workflow or use standard execution pattern:
 
@@ -76,9 +69,9 @@ Follow the task's workflow or use standard execution pattern:
 3. Verify against acceptance criteria
 4. Run tests if applicable
 5. Commit changes
-6. Complete task (see Step 5)
+6. Complete task (see Step 4)
 
-### Step 4B: Triage (TRIAGE Path)
+### Step 3B: Triage (TRIAGE Path)
 
 Take appropriate action based on what's needed:
 
@@ -105,7 +98,7 @@ Note: Use `mcp__task_manager__update_task` (not `mcp__plugin_aops-core_tasks`) f
 If task is too large but scope is clear:
 
 ```
-mcp__plugin_aops-core_tasks__decompose_task(
+mcp__plugin_aops-tools_task_manager__decompose_task(
   id="<parent-id>",
   children=[
     {"title": "Subtask 1: [specific action]", "type": "action", "order": 0},
@@ -127,7 +120,7 @@ mcp__plugin_aops-core_tasks__decompose_task(
 If task is fundamentally unclear:
 
 ```
-mcp__plugin_aops-core_tasks__update_task(
+mcp__plugin_aops-tools_task_manager__update_task(
   id="<task-id>",
   status="blocked",
   body="Blocked: [specific questions]. Context: [what's known so far]."
@@ -136,10 +129,10 @@ mcp__plugin_aops-core_tasks__update_task(
 
 After triaging, **HALT** - do not proceed to execution. The task is now either assigned, decomposed, or blocked.
 
-### Step 5: Mark Complete When Done
+### Step 4: Mark Complete When Done
 
 ```
-mcp__plugin_aops-core_tasks__complete_task(id="<task-id>")
+mcp__plugin_aops-tools_task_manager__complete_task(id="<task-id>")
 ```
 
 Only call this after successful execution (EXECUTE path). TRIAGE path should halt before completion.

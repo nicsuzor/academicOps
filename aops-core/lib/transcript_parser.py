@@ -363,6 +363,8 @@ def reflection_to_insights(
     date: str,
     project: str,
     timestamp: datetime | None = None,
+    usage_stats: "UsageStats | None" = None,
+    session_duration_minutes: float | None = None,
 ) -> dict[str, Any]:
     """Convert parsed Framework Reflection to session insights format.
 
@@ -372,6 +374,8 @@ def reflection_to_insights(
         date: Date string (YYYY-MM-DD) - kept for filename generation
         project: Project name
         timestamp: Optional datetime for full ISO 8601 timestamp with tz
+        usage_stats: Optional UsageStats for token_metrics field
+        session_duration_minutes: Optional session duration for efficiency metrics
 
     Returns:
         Insights dict compatible with insights_generator schema
@@ -399,6 +403,11 @@ def reflection_to_insights(
     # Synthesize human-readable summary from accomplishments
     summary = _synthesize_summary(reflection, outcome, project)
 
+    # Build token_metrics if usage_stats provided
+    token_metrics = None
+    if usage_stats and usage_stats.has_data():
+        token_metrics = usage_stats.to_token_metrics(session_duration_minutes)
+
     return {
         "session_id": session_id,
         "date": date_iso,
@@ -414,6 +423,8 @@ def reflection_to_insights(
         "followed": reflection.get("followed"),
         "root_cause": reflection.get("root_cause"),
         "next_step": reflection.get("next_step"),
+        # Token usage metrics (optional)
+        "token_metrics": token_metrics,
     }
 
 
@@ -561,6 +572,54 @@ class UsageStats:
         if self.cache_creation_input_tokens:
             parts.append(f"{self.cache_creation_input_tokens:,} cache created")
         return ", ".join(parts) if parts else ""
+
+    def to_token_metrics(
+        self, session_duration_minutes: float | None = None
+    ) -> dict[str, Any]:
+        """Convert UsageStats to token_metrics schema for insights JSON.
+
+        Args:
+            session_duration_minutes: Optional session duration for efficiency calculations
+
+        Returns:
+            Dictionary matching token_metrics schema:
+            {
+                "totals": {"input_tokens": int, ...},
+                "by_model": {"model_id": {"input": int, "output": int}, ...},
+                "by_agent": {"agent_name": {"input": int, "output": int}, ...},
+                "efficiency": {"cache_hit_rate": float, ...}
+            }
+        """
+        total_input = self.input_tokens + self.cache_read_input_tokens
+        cache_hit_rate = (
+            self.cache_read_input_tokens / total_input if total_input > 0 else 0.0
+        )
+
+        metrics: dict[str, Any] = {
+            "totals": {
+                "input_tokens": self.input_tokens,
+                "output_tokens": self.output_tokens,
+                "cache_read_tokens": self.cache_read_input_tokens,
+                "cache_create_tokens": self.cache_creation_input_tokens,
+            },
+            "by_model": self.by_model,
+            "by_agent": self.by_agent,
+            "efficiency": {
+                "cache_hit_rate": round(cache_hit_rate, 3),
+            },
+        }
+
+        # Add tokens_per_minute if duration is available
+        if session_duration_minutes and session_duration_minutes > 0:
+            total_tokens = self.input_tokens + self.output_tokens
+            metrics["efficiency"]["tokens_per_minute"] = round(
+                total_tokens / session_duration_minutes, 1
+            )
+            metrics["efficiency"]["session_duration_minutes"] = round(
+                session_duration_minutes, 1
+            )
+
+        return metrics
 
 
 @dataclass

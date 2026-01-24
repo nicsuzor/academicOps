@@ -163,7 +163,7 @@ class TaskStorage:
         Args:
             title: Task title
             project: Project slug (None for inbox)
-            type: Task type (goal, project, task, action)
+            type: Task type (goal, project, epic, task, action, bug, feature, learn)
             parent: Parent task ID for hierarchy
             depends_on: List of dependency task IDs
             priority: Priority 0-4 (0=critical, 4=someday)
@@ -368,7 +368,7 @@ class TaskStorage:
         """Iterate over all task files in $ACA_DATA.
 
         Recursively scans all markdown files with valid task frontmatter
-        (type: goal|project|task|action). Skips excluded directories
+        (type: goal|project|epic|task|action|bug|feature|learn). Skips excluded directories
         and files that fail to parse as valid tasks.
 
         Yields:

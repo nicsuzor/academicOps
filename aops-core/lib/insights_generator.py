@@ -141,6 +141,105 @@ def call_claude_for_insights(
     )
 
 
+def _validate_token_metrics(token_metrics: dict[str, Any]) -> None:
+    """Validate token_metrics nested structure.
+
+    Expected structure:
+    {
+        "totals": {"input_tokens": int, "output_tokens": int, ...},
+        "by_model": {"model_name": {"input": int, "output": int}, ...},
+        "by_agent": {"agent_name": {"input": int, "output": int}, ...},
+        "efficiency": {"cache_hit_rate": float, "tokens_per_minute": float, ...}
+    }
+
+    Args:
+        token_metrics: token_metrics dictionary to validate
+
+    Raises:
+        InsightsValidationError: If validation fails
+    """
+    if not isinstance(token_metrics, dict):
+        raise InsightsValidationError(
+            f"Field 'token_metrics' must be a dict, got {type(token_metrics).__name__}"
+        )
+
+    # Validate 'totals' sub-object (optional but must be dict if present)
+    if "totals" in token_metrics:
+        totals = token_metrics["totals"]
+        if not isinstance(totals, dict):
+            raise InsightsValidationError(
+                f"Field 'token_metrics.totals' must be a dict, got {type(totals).__name__}"
+            )
+        # Validate numeric fields in totals
+        totals_numeric_fields = [
+            "input_tokens",
+            "output_tokens",
+            "cache_read_tokens",
+            "cache_create_tokens",
+        ]
+        for field in totals_numeric_fields:
+            if field in totals and totals[field] is not None:
+                if not isinstance(totals[field], (int, float)):
+                    raise InsightsValidationError(
+                        f"Field 'token_metrics.totals.{field}' must be numeric"
+                    )
+
+    # Validate 'by_model' sub-object (optional but must be dict if present)
+    if "by_model" in token_metrics:
+        by_model = token_metrics["by_model"]
+        if not isinstance(by_model, dict):
+            raise InsightsValidationError(
+                f"Field 'token_metrics.by_model' must be a dict, got {type(by_model).__name__}"
+            )
+        # Each model entry should be a dict with numeric values
+        for model_name, model_data in by_model.items():
+            if not isinstance(model_data, dict):
+                raise InsightsValidationError(
+                    f"Field 'token_metrics.by_model.{model_name}' must be a dict"
+                )
+
+    # Validate 'by_agent' sub-object (optional but must be dict if present)
+    if "by_agent" in token_metrics:
+        by_agent = token_metrics["by_agent"]
+        if not isinstance(by_agent, dict):
+            raise InsightsValidationError(
+                f"Field 'token_metrics.by_agent' must be a dict, got {type(by_agent).__name__}"
+            )
+        # Each agent entry should be a dict with numeric values
+        for agent_name, agent_data in by_agent.items():
+            if not isinstance(agent_data, dict):
+                raise InsightsValidationError(
+                    f"Field 'token_metrics.by_agent.{agent_name}' must be a dict"
+                )
+
+    # Validate 'efficiency' sub-object (optional but must be dict if present)
+    if "efficiency" in token_metrics:
+        efficiency = token_metrics["efficiency"]
+        if not isinstance(efficiency, dict):
+            raise InsightsValidationError(
+                f"Field 'token_metrics.efficiency' must be a dict, got {type(efficiency).__name__}"
+            )
+        # Validate numeric fields in efficiency
+        efficiency_numeric_fields = [
+            "cache_hit_rate",
+            "tokens_per_minute",
+            "session_duration_minutes",
+        ]
+        for field in efficiency_numeric_fields:
+            if field in efficiency and efficiency[field] is not None:
+                if not isinstance(efficiency[field], (int, float)):
+                    raise InsightsValidationError(
+                        f"Field 'token_metrics.efficiency.{field}' must be numeric"
+                    )
+        # Validate cache_hit_rate range if present (0.0 to 1.0)
+        if "cache_hit_rate" in efficiency and efficiency["cache_hit_rate"] is not None:
+            rate = efficiency["cache_hit_rate"]
+            if isinstance(rate, (int, float)) and not (0.0 <= rate <= 1.0):
+                raise InsightsValidationError(
+                    f"Field 'token_metrics.efficiency.cache_hit_rate' must be between 0.0 and 1.0, got {rate}"
+                )
+
+
 def validate_insights_schema(insights: dict[str, Any]) -> None:
     """Validate insights structure and types.
 
@@ -237,6 +336,10 @@ def validate_insights_schema(insights: dict[str, Any]) -> None:
                     f"Field '{field}' must be a string or null, "
                     f"got {type(insights[field]).__name__}"
                 )
+
+    # Validate token_metrics structure (optional)
+    if "token_metrics" in insights and insights["token_metrics"] is not None:
+        _validate_token_metrics(insights["token_metrics"])
 
 
 def get_summaries_dir() -> Path:

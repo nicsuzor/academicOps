@@ -34,15 +34,17 @@ Execute immediately WITHOUT creating a task for:
 |---------|---------|------------|
 | `/command` invocations | `/commit`, `/help`, `/daily` | User explicitly requested |
 | `/skill` invocations | `/pdf`, `/remember` | User explicitly invoked skill |
+| **Hydrator identifies skill match** | "run a framework audit" → `/audit` | Skill is the answer |
 | Simple questions | "What is X?", "How does Y work?" | No state changes needed |
 | Conversational | "Thanks", "Can you explain..." | Dialog, not work |
 | `/pull` | `/pull`, `/pull <task-id>` | This IS the execution path |
 
 **Detection heuristic**:
 1. Starts with `/` → direct (command or skill)
-2. Pure information request → direct (answer and stop)
-3. No file modifications implied → likely direct
-4. Everything else → enqueue
+2. **Hydrator output identifies matching skill** → direct (invoke the skill)
+3. Pure information request → direct (answer and stop)
+4. No file modifications implied → likely direct
+5. Everything else → enqueue
 
 ### Path 2: Enqueue (Default for Work)
 

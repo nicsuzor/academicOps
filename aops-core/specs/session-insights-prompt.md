@@ -183,6 +183,58 @@ Examples:
 
 Empty array `[]` if no distractions identified.
 
+### 12. Token Metrics (Usage Tracking)
+
+Object containing token usage statistics for observability. This data helps humans analyze patterns and tune JIT hydrator behavior.
+
+Structure:
+
+```json
+{
+  "token_metrics": {
+    "totals": {
+      "input_tokens": 45000,
+      "output_tokens": 12000,
+      "cache_read_tokens": 30000,
+      "cache_create_tokens": 5000
+    },
+    "by_model": {
+      "claude-opus-4-5-20251101": {"input": 40000, "output": 10000},
+      "claude-3-5-haiku-20241022": {"input": 5000, "output": 2000}
+    },
+    "by_agent": {
+      "main": {"input": 35000, "output": 8000},
+      "prompt-hydrator": {"input": 3000, "output": 1000},
+      "custodiet": {"input": 2000, "output": 500}
+    },
+    "efficiency": {
+      "cache_hit_rate": 0.67,
+      "tokens_per_minute": 2500,
+      "session_duration_minutes": 23
+    }
+  }
+}
+```
+
+**Field descriptions:**
+
+- **totals**: Aggregate token counts across the session
+  - `input_tokens`: Total input tokens consumed
+  - `output_tokens`: Total output tokens generated
+  - `cache_read_tokens`: Tokens read from cache (cost savings)
+  - `cache_create_tokens`: Tokens written to cache
+- **by_model**: Token breakdown by model used (keys are model IDs)
+  - Each model has `input` and `output` counts
+- **by_agent**: Token breakdown by agent/subagent
+  - `main`: Primary agent tokens
+  - Other keys: Subagent names (e.g., `prompt-hydrator`, `custodiet`, `critic`)
+- **efficiency**: Derived metrics for analysis
+  - `cache_hit_rate`: Float 0.0-1.0, ratio of cache reads to total input
+  - `tokens_per_minute`: Average token throughput
+  - `session_duration_minutes`: Total session length
+
+Use `null` for the entire object if token data is unavailable.
+
 ## Output Format
 
 Output ONLY this JSON structure (no markdown code fences, no explanatory text before or after):
@@ -232,7 +284,29 @@ Output ONLY this JSON structure (no markdown code fences, no explanatory text be
   ],
   "workflow_improvements": ["Should have run linter earlier", "Skill docs unclear"],
   "jit_context_needed": ["Project uses pytest not unittest"],
-  "context_distractions": ["Plugin architecture docs not needed for bug fix"]
+  "context_distractions": ["Plugin architecture docs not needed for bug fix"],
+  "token_metrics": {
+    "totals": {
+      "input_tokens": 45000,
+      "output_tokens": 12000,
+      "cache_read_tokens": 30000,
+      "cache_create_tokens": 5000
+    },
+    "by_model": {
+      "claude-opus-4-5-20251101": {"input": 40000, "output": 10000},
+      "claude-3-5-haiku-20241022": {"input": 5000, "output": 2000}
+    },
+    "by_agent": {
+      "main": {"input": 35000, "output": 8000},
+      "prompt-hydrator": {"input": 3000, "output": 1000},
+      "custodiet": {"input": 2000, "output": 500}
+    },
+    "efficiency": {
+      "cache_hit_rate": 0.67,
+      "tokens_per_minute": 2500,
+      "session_duration_minutes": 23
+    }
+  }
 }
 ```
 
