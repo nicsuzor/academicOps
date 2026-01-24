@@ -251,35 +251,41 @@ class TestInsightsFilePath:
 
     def test_file_path_format_without_project(self):
         """Test that file path follows correct format without project."""
-        path = get_insights_file_path("2026-01-13", "a1b2c3d4")
-        # Without project: YYYYMMDD-session_id.json
-        assert path.name == "20260113-a1b2c3d4.json"
-        assert str(path).endswith("sessions/summaries/20260113-a1b2c3d4.json")
+        path = get_insights_file_path("2026-01-13", "a1b2c3d4", hour="09")
+        # Without project: YYYYMMDD-HH-session_id.json
+        assert path.name == "20260113-09-a1b2c3d4.json"
+        assert str(path).endswith("sessions/summaries/20260113-09-a1b2c3d4.json")
 
     def test_file_path_format_with_project(self):
         """Test that file path includes project name when provided."""
-        path = get_insights_file_path("2026-01-13", "a1b2c3d4", project="writing")
-        # With project: YYYYMMDD-project-session_id.json
-        assert path.name == "20260113-writing-a1b2c3d4.json"
-        assert str(path).endswith("sessions/summaries/20260113-writing-a1b2c3d4.json")
+        path = get_insights_file_path("2026-01-13", "a1b2c3d4", project="writing", hour="14")
+        # With project: YYYYMMDD-HH-project-session_id.json
+        assert path.name == "20260113-14-writing-a1b2c3d4.json"
+        assert str(path).endswith("sessions/summaries/20260113-14-writing-a1b2c3d4.json")
 
     def test_file_path_format_with_project_and_slug(self):
         """Test that file path includes project and slug."""
-        path = get_insights_file_path("2026-01-13", "a1b2c3d4", slug="review", project="aops")
-        # With project and slug: YYYYMMDD-project-session_id-slug.json
-        assert path.name == "20260113-aops-a1b2c3d4-review.json"
+        path = get_insights_file_path("2026-01-13", "a1b2c3d4", slug="review", project="aops", hour="17")
+        # With project and slug: YYYYMMDD-HH-project-session_id-slug.json
+        assert path.name == "20260113-17-aops-a1b2c3d4-review.json"
 
     def test_file_path_sanitizes_project_name(self):
         """Test that project name is sanitized for filesystem safety."""
-        path = get_insights_file_path("2026-01-13", "a1b2c3d4", project="My Project!")
+        path = get_insights_file_path("2026-01-13", "a1b2c3d4", project="My Project!", hour="23")
         # Special chars removed, lowercase
-        assert path.name == "20260113-my-project-a1b2c3d4.json"
+        assert path.name == "20260113-23-my-project-a1b2c3d4.json"
 
     def test_file_path_uses_centralized_location(self):
         """Test that file path uses centralized ~/writing/sessions/summaries/ location."""
-        path = get_insights_file_path("2026-01-13", "a1b2c3d4", project="test")
+        path = get_insights_file_path("2026-01-13", "a1b2c3d4", project="test", hour="08")
         # Centralized location, no env var dependency
         assert "writing/sessions/summaries" in str(path)
+
+    def test_file_path_extracts_hour_from_iso8601(self):
+        """Test that hour is extracted from ISO 8601 date format."""
+        path = get_insights_file_path("2026-01-13T15:30:00+10:00", "a1b2c3d4", project="test")
+        # Hour extracted from ISO 8601 timestamp
+        assert path.name == "20260113-15-test-a1b2c3d4.json"
 
 
 class TestWriteInsightsFile:
