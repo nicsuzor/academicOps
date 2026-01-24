@@ -88,10 +88,11 @@ SAFE_BASH_PATTERNS = [
 
 # Task MCP tools that should always be allowed (they establish binding)
 TASK_BINDING_TOOLS = {
-    "mcp__plugin_aops-core_tasks__create_task",
-    "mcp__plugin_aops-core_tasks__update_task",
-    "mcp__plugin_aops-core_tasks__complete_task",
-    "mcp__plugin_aops-core_tasks__decompose_task",
+    "mcp__plugin_aops-tools_task_manager__create_task",
+    "mcp__plugin_aops-tools_task_manager__update_task",
+    "mcp__plugin_aops-tools_task_manager__complete_task",
+    "mcp__plugin_aops-tools_task_manager__decompose_task",
+    "mcp__plugin_aops-tools_task_manager__claim_next_task",
 }
 
 def build_block_message(gates: dict[str, bool]) -> str:
