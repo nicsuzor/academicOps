@@ -113,6 +113,8 @@ The main agent receives the hydrator's output and follows the plan:
 
 The agent doesn't need to make routing decisions — the hydrator already made them.
 
+> **Note on CHECKPOINTs**: The `CHECKPOINT:` prefix in TodoWrite steps is **behavioral guidance**, not programmatic enforcement. The agent is expected to gather evidence and verify before proceeding, but no code blocks progress if verification is skipped or fails. Reliability depends on agent instruction-following. This is an intentional design choice favoring simplicity over enforcement complexity.
+
 ## Output Format
 
 The hydrator returns structured guidance:
