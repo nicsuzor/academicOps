@@ -1,3 +1,43 @@
+//! Fast-indexer: High-performance markdown file indexing tool
+//!
+//! Scans markdown files and extracts frontmatter metadata to build knowledge graphs.
+//!
+//! ## Output Schema
+//!
+//! The tool produces graphs with the following metadata fields per node:
+//!
+//! ### Core Fields
+//! - `id`: Unique identifier (MD5 hash of file path)
+//! - `path`: Absolute file path
+//! - `label`: Human-readable title (from frontmatter "title" field or filename)
+//!
+//! ### Extracted Metadata Fields (from YAML frontmatter)
+//! - `node_type`: Type of node - "task", "project", "goal", "action", etc.
+//! - `status`: Current status - "active", "done", "blocked", "waiting", "inbox"
+//! - `priority`: Priority level (integer, 0=critical, 1=high, 2=medium, 3=low, 4=someday)
+//! - `parent`: Reference to parent task (task ID or filename)
+//! - `project`: Project context (project name or ID)
+//! - `assignee`: Person responsible for this task
+//! - `complexity`: Complexity estimation (e.g., "low", "medium", "high")
+//!
+//! ### Derived Metadata Fields
+//! - `tags`: Extracted from frontmatter "tags" array or inline #hashtags
+//! - `depends_on`: Dependencies (task IDs or filenames)
+//! - `depth`: Nesting depth in hierarchy
+//! - `leaf`: Whether this node has children
+//!
+//! ### Relationship Fields
+//! - `due`: Due date (ISO format)
+//! - `blocks`: Computed inverse of depends_on
+//! - `children`: Computed inverse of parent
+//!
+//! ## Output Formats
+//!
+//! - **JSON**: Standard node-link format with all metadata fields
+//! - **GraphML**: XML format compatible with yEd, Gephi, Cytoscape (includes all metadata as node attributes)
+//! - **DOT**: Graphviz format (text-based, suitable for Graphviz layout engines)
+//! - **MCP Index**: JSON task index matching task_index.py schema
+
 use anyhow::Result;
 use chrono::Utc;
 use clap::Parser;
@@ -53,6 +93,12 @@ struct Node {
     parent: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     depends_on: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    assignee: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    complexity: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    project: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -91,6 +137,10 @@ struct McpIndexEntry {
     due: Option<String>,
     #[serde(default)]
     tags: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    assignee: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    complexity: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -128,6 +178,9 @@ struct FileData {
     leaf: bool,
     // Task ID (from frontmatter id field, distinct from hash id)
     task_id: Option<String>,
+    // Additional metadata fields
+    assignee: Option<String>,
+    complexity: Option<String>,
 }
 
 fn compute_id(path: &Path) -> String {
@@ -263,6 +316,8 @@ fn parse_file(path: PathBuf) -> Option<FileData> {
     let depth = fm_data.as_ref().and_then(|fm| fm.get("depth").and_then(|v| v.as_i64()).map(|v| v as i32)).unwrap_or(0);
     let leaf = fm_data.as_ref().and_then(|fm| fm.get("leaf").and_then(|v| v.as_bool())).unwrap_or(true);
     let task_id = fm_data.as_ref().and_then(|fm| fm.get("id").and_then(|v| v.as_str()).map(String::from));
+    let assignee = fm_data.as_ref().and_then(|fm| fm.get("assignee").and_then(|v| v.as_str()).map(String::from));
+    let complexity = fm_data.as_ref().and_then(|fm| fm.get("complexity").and_then(|v| v.as_str()).map(String::from));
 
     Some(FileData {
         id: compute_id(&path),
@@ -285,6 +340,8 @@ fn parse_file(path: PathBuf) -> Option<FileData> {
         depth,
         leaf,
         task_id,
+        assignee,
+        complexity,
     })
 }
 
@@ -329,6 +386,12 @@ fn output_graphml(graph: &Graph, path: &str) -> Result<()> {
   <key id="d0" for="node" attr.name="label" attr.type="string"/>
   <key id="d1" for="node" attr.name="path" attr.type="string"/>
   <key id="d2" for="node" attr.name="tags" attr.type="string"/>
+  <key id="d3" for="node" attr.name="type" attr.type="string"/>
+  <key id="d4" for="node" attr.name="status" attr.type="string"/>
+  <key id="d5" for="node" attr.name="priority" attr.type="int"/>
+  <key id="d6" for="node" attr.name="project" attr.type="string"/>
+  <key id="d7" for="node" attr.name="assignee" attr.type="string"/>
+  <key id="d8" for="node" attr.name="complexity" attr.type="string"/>
   <graph id="G" edgedefault="directed">
 "#);
 
@@ -336,11 +399,39 @@ fn output_graphml(graph: &Graph, path: &str) -> Result<()> {
         let label_escaped = node.label.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;");
         let path_escaped = node.path.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;");
         let tags_str = node.tags.as_ref().map(|t| t.join(",")).unwrap_or_default();
+        let node_type = node.node_type.as_ref().map(|s| s.as_str()).unwrap_or("");
+        let status = node.status.as_ref().map(|s| s.as_str()).unwrap_or("");
+        let priority = node.priority.map(|p| p.to_string()).unwrap_or_default();
+        let project = node.project.as_ref().map(|s| s.as_str()).unwrap_or("");
+        let assignee = node.assignee.as_ref().map(|s| s.as_str()).unwrap_or("");
+        let complexity = node.complexity.as_ref().map(|s| s.as_str()).unwrap_or("");
 
-        xml.push_str(&format!(
-            "    <node id=\"{}\">\n      <data key=\"d0\">{}</data>\n      <data key=\"d1\">{}</data>\n      <data key=\"d2\">{}</data>\n    </node>\n",
+        let mut node_str = format!(
+            "    <node id=\"{}\">\n      <data key=\"d0\">{}</data>\n      <data key=\"d1\">{}</data>\n      <data key=\"d2\">{}</data>\n",
             node.id, label_escaped, path_escaped, tags_str
-        ));
+        );
+
+        if !node_type.is_empty() {
+            node_str.push_str(&format!("      <data key=\"d3\">{}</data>\n", node_type));
+        }
+        if !status.is_empty() {
+            node_str.push_str(&format!("      <data key=\"d4\">{}</data>\n", status));
+        }
+        if !priority.is_empty() {
+            node_str.push_str(&format!("      <data key=\"d5\">{}</data>\n", priority));
+        }
+        if !project.is_empty() {
+            node_str.push_str(&format!("      <data key=\"d6\">{}</data>\n", project));
+        }
+        if !assignee.is_empty() {
+            node_str.push_str(&format!("      <data key=\"d7\">{}</data>\n", assignee));
+        }
+        if !complexity.is_empty() {
+            node_str.push_str(&format!("      <data key=\"d8\">{}</data>\n", complexity));
+        }
+
+        node_str.push_str("    </node>\n");
+        xml.push_str(&node_str);
     }
 
     for (i, edge) in graph.edges.iter().enumerate() {
@@ -379,11 +470,20 @@ fn output_dot(graph: &Graph, path: &str) -> Result<()> {
 /// This produces the exact schema expected by tasks_server.py:
 /// - version: 2
 /// - generated: ISO timestamp
-/// - tasks: {task_id: {id, title, type, status, priority, order, parent, children, depends_on, blocks, depth, leaf, project, path, due, tags}}
+/// - tasks: {task_id: {id, title, type, status, priority, order, parent, children, depends_on,
+///   blocks, depth, leaf, project, path, due, tags, assignee, complexity}}
 /// - by_project: {project: [task_ids]}
 /// - roots: [task_ids with no parent]
 /// - ready: [leaf tasks with no unmet deps and status active/inbox]
 /// - blocked: [tasks with unmet deps or status blocked]
+///
+/// ## Metadata Fields
+/// - project: Project context (from "project" field)
+/// - assignee: Person responsible (from "assignee" field)
+/// - complexity: Complexity level (from "complexity" field)
+/// - status: "active", "done", "blocked", "waiting", "inbox"
+/// - priority: 0-4 (0=critical, 4=someday)
+/// - tags: Array of tags from frontmatter or inline #hashtags
 fn build_mcp_index(files: &[FileData], data_root: &Path) -> McpIndex {
     // Build lookup by task_id (from frontmatter id field)
     let mut task_id_to_file: HashMap<String, &FileData> = HashMap::new();
@@ -418,6 +518,8 @@ fn build_mcp_index(files: &[FileData], data_root: &Path) -> McpIndex {
                 path: rel_path,
                 due: f.due.clone(),
                 tags: f.tags.clone(),
+                assignee: f.assignee.clone(),
+                complexity: f.complexity.clone(),
             });
         }
     }
@@ -720,6 +822,9 @@ fn main() -> Result<()> {
                 priority: f.priority,
                 parent: f.parent,
                 depends_on: if f.depends_on.is_empty() { None } else { Some(f.depends_on) },
+                assignee: f.assignee,
+                complexity: f.complexity,
+                project: f.project,
             }
         })
         .collect();
