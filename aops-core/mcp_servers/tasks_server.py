@@ -42,6 +42,12 @@ from lib.task_index import TaskIndex, TaskIndexEntry
 from lib.task_model import Task, TaskComplexity, TaskStatus, TaskType
 from lib.task_storage import TaskStorage
 
+
+def _resolve_status_alias(status: str) -> str:
+    """Resolve status aliases to canonical status values."""
+    return Task.STATUS_ALIASES.get(status, status)
+
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
@@ -197,7 +203,7 @@ def create_task(
     Args:
         task_title: Task title (required)
         type: Task type - "goal", "project", "epic", "task", "action", "bug", "feature", or "learn" (default: "task")
-        status: Task status - "inbox", "active", "blocked", "waiting", "review", "done", or "cancelled" (default: "inbox")
+        status: Task status - "active", "in_progress", "blocked", "waiting", "review", "done", or "cancelled" (default: "active")
         project: Project slug for organization (determines storage location)
         parent: Parent task ID for hierarchical relationships
         depends_on: List of task IDs this task depends on
@@ -238,15 +244,16 @@ def create_task(
                 "message": f"Invalid task type: {type}. Must be one of: goal, project, epic, task, action, bug, feature, learn",
             }
 
-        # Parse status
-        task_status = TaskStatus.INBOX
+        # Parse status (with alias support)
+        task_status = TaskStatus.ACTIVE
         if status:
             try:
-                task_status = TaskStatus(status)
+                resolved_status = _resolve_status_alias(status)
+                task_status = TaskStatus(resolved_status)
             except ValueError:
                 return {
                     "success": False,
-                    "message": f"Invalid status: {status}. Must be one of: inbox, active, blocked, waiting, review, done, cancelled",
+                    "message": f"Invalid status: {status}. Must be one of: active, in_progress, blocked, waiting, review, done, cancelled",
                 }
 
         # Parse due date
@@ -387,7 +394,7 @@ def update_task(
         id: Task ID to update (required)
         task_title: New title
         type: New type - "goal", "project", "epic", "task", "action", "bug", "feature", or "learn"
-        status: New status - "inbox", "active", "blocked", "waiting", "review", "done", "cancelled"
+        status: New status - "active", "in_progress", "blocked", "waiting", "review", "done", "cancelled"
         priority: New priority 0-4
         order: New sibling order
         parent: New parent task ID (or "" to clear)
@@ -443,7 +450,8 @@ def update_task(
 
         if status is not None:
             try:
-                task.status = TaskStatus(status)
+                resolved_status = _resolve_status_alias(status)
+                task.status = TaskStatus(resolved_status)
                 modified_fields.append("status")
             except ValueError:
                 return {
@@ -710,7 +718,7 @@ def _is_task_truly_ready(index: TaskIndex, entry: TaskIndexEntry, storage: TaskS
         return False
 
     # Status must be actionable
-    if entry.status not in (TaskStatus.INBOX.value, TaskStatus.ACTIVE.value):
+    if entry.status != TaskStatus.ACTIVE.value:
         return False
 
     # All dependencies must be satisfied (done or cancelled)
@@ -730,7 +738,7 @@ def _is_task_truly_ready(index: TaskIndex, entry: TaskIndexEntry, storage: TaskS
 def claim_next_task(caller: str, project: str = "") -> dict[str, Any]:
     """Claim the next ready task atomically.
 
-    Finds one ready task, atomically claims it by setting status to "active"
+    Finds one ready task, atomically claims it by setting status to "in_progress"
     and assignee to caller. Uses file locking to prevent race conditions
     where multiple workers might claim the same task.
 
@@ -796,14 +804,14 @@ def claim_next_task(caller: str, project: str = "") -> dict[str, Any]:
                         if task is None:
                             continue
 
-                        # Check still ready (status inbox/active, not already claimed)
-                        if task.status not in (TaskStatus.INBOX, TaskStatus.ACTIVE):
+                        # Check still ready (status active, not already claimed)
+                        if task.status != TaskStatus.ACTIVE:
                             continue
                         if task.assignee:
                             continue  # Already claimed by someone, skip
 
-                        # Claim it
-                        task.status = TaskStatus.ACTIVE
+                        # Claim it - set to in_progress
+                        task.status = TaskStatus.IN_PROGRESS
                         task.assignee = caller
                         storage.save_task(task)
 
@@ -1386,7 +1394,7 @@ def list_tasks(
 
     Args:
         project: Filter by project slug
-        status: Filter by status - "inbox", "active", "blocked", "waiting", "review", "done", "cancelled"
+        status: Filter by status - "active", "in_progress", "blocked", "waiting", "review", "done", "cancelled"
         type: Filter by type - "goal", "project", "epic", "task", "action", "bug", "feature", "learn"
         limit: Maximum number of tasks to return (default: 10)
 
@@ -1400,11 +1408,12 @@ def list_tasks(
     try:
         storage = _get_storage()
 
-        # Parse optional filters
+        # Parse optional filters (with alias support)
         task_status = None
         if status:
             try:
-                task_status = TaskStatus(status)
+                resolved_status = _resolve_status_alias(status)
+                task_status = TaskStatus(resolved_status)
             except ValueError:
                 return {
                     "success": False,

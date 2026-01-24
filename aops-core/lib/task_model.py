@@ -50,8 +50,8 @@ class TaskType(Enum):
 class TaskStatus(Enum):
     """Task lifecycle states."""
 
-    INBOX = "inbox"  # Captured but not committed
-    ACTIVE = "active"  # Currently workable (no blockers)
+    ACTIVE = "active"  # Ready to be claimed (no blockers)
+    IN_PROGRESS = "in_progress"  # Currently being worked on (claimed)
     BLOCKED = "blocked"  # Waiting on dependencies
     WAITING = "waiting"  # Waiting on external input
     REVIEW = "review"  # Awaiting human review before completion
@@ -88,7 +88,7 @@ class Task:
 
     # Core metadata
     type: TaskType = TaskType.TASK
-    status: TaskStatus = TaskStatus.INBOX
+    status: TaskStatus = TaskStatus.ACTIVE
     priority: int = 2  # 0-4 (0=critical, 4=someday)
     order: int = 0  # Sibling ordering (lower = first)
     created: datetime = field(default_factory=lambda: datetime.now(UTC))
@@ -224,10 +224,10 @@ class Task:
 
     # Status aliases for backwards compatibility
     STATUS_ALIASES = {
-        "todo": "inbox",
-        "open": "inbox",
-        "in_progress": "active",
-        "in-progress": "active",
+        "todo": "active",
+        "open": "active",
+        "inbox": "active",  # Legacy: inbox now maps to active
+        "in-progress": "in_progress",
         "in_review": "review",
         "in-review": "review",
         "complete": "done",
@@ -460,7 +460,7 @@ class Task:
         A task is ready if:
         - It's a leaf (has no children)
         - It has no unmet dependencies
-        - Status is active or inbox
+        - Status is active (not in_progress, blocked, etc.)
         - Type is not LEARN (observational, not actionable)
         """
         if not self.leaf:
@@ -469,7 +469,7 @@ class Task:
             return False  # Index should filter by completed deps
         if self.type == TaskType.LEARN:
             return False  # Learn tasks are observational, not actionable
-        return self.status in (TaskStatus.ACTIVE, TaskStatus.INBOX)
+        return self.status == TaskStatus.ACTIVE
 
     def is_blocked(self) -> bool:
         """Check if task is blocked by dependencies."""

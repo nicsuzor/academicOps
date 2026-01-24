@@ -292,10 +292,7 @@ class TaskIndex:
             unmet_deps = [d for d in entry.depends_on if d not in completed_ids]
             if unmet_deps or entry.status == TaskStatus.BLOCKED.value:
                 self._blocked.append(task_id)
-            elif entry.leaf and entry.status in (
-                TaskStatus.ACTIVE.value,
-                TaskStatus.INBOX.value,
-            ):
+            elif entry.leaf and entry.status == TaskStatus.ACTIVE.value:
                 self._ready.append(task_id)
 
         # Sort ready by priority

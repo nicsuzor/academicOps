@@ -149,7 +149,7 @@ class TaskStorage:
         *,
         project: str | None = None,
         type: TaskType = TaskType.TASK,
-        status: TaskStatus = TaskStatus.INBOX,
+        status: TaskStatus = TaskStatus.ACTIVE,
         parent: str | None = None,
         depends_on: list[str] | None = None,
         priority: int = 2,
@@ -522,8 +522,8 @@ class TaskStorage:
             if not task.leaf:
                 continue
 
-            # Must be active or inbox
-            if task.status not in (TaskStatus.ACTIVE, TaskStatus.INBOX):
+            # Must be active (ready to claim)
+            if task.status != TaskStatus.ACTIVE:
                 continue
 
             # All dependencies must be completed

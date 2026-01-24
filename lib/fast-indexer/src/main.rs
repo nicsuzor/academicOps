@@ -13,7 +13,7 @@
 //!
 //! ### Extracted Metadata Fields (from YAML frontmatter)
 //! - `node_type`: Type of node - "task", "project", "goal", "action", etc.
-//! - `status`: Current status - "active", "done", "blocked", "waiting", "inbox"
+//! - `status`: Current status - "active", "in_progress", "done", "blocked", "waiting"
 //! - `priority`: Priority level (integer, 0=critical, 1=high, 2=medium, 3=low, 4=someday)
 //! - `parent`: Reference to parent task (task ID or filename)
 //! - `project`: Project context (project name or ID)
@@ -190,6 +190,23 @@ fn compute_id(path: &Path) -> String {
     format!("{:x}", md5::compute(key.as_bytes()))
 }
 
+/// Resolve status aliases for backwards compatibility.
+/// Maps legacy statuses like "inbox" to canonical values like "active".
+fn resolve_status_alias(status: &str) -> &str {
+    match status {
+        "inbox" => "active",
+        "todo" => "active",
+        "open" => "active",
+        "in-progress" => "in_progress",
+        "in_review" => "review",
+        "in-review" => "review",
+        "complete" => "done",
+        "completed" => "done",
+        "closed" => "done",
+        other => other,
+    }
+}
+
 fn extract_tags(frontmatter: &Option<serde_json::Value>, content: &str) -> Vec<String> {
     let mut tags = HashSet::new();
 
@@ -292,7 +309,8 @@ fn parse_file(path: PathBuf) -> Option<FileData> {
 
     // Extract task-related frontmatter fields
     let node_type = fm_data.as_ref().and_then(|fm| fm.get("type").and_then(|v| v.as_str()).map(String::from));
-    let status = fm_data.as_ref().and_then(|fm| fm.get("status").and_then(|v| v.as_str()).map(String::from));
+    // Resolve status aliases (e.g., "inbox" -> "active") for backwards compatibility
+    let status = fm_data.as_ref().and_then(|fm| fm.get("status").and_then(|v| v.as_str()).map(|s| resolve_status_alias(s).to_string()));
     let priority = fm_data.as_ref().and_then(|fm| fm.get("priority").and_then(|v| v.as_i64()).map(|v| v as i32));
     let order = fm_data.as_ref().and_then(|fm| fm.get("order").and_then(|v| v.as_i64()).map(|v| v as i32)).unwrap_or(0);
     let parent = fm_data.as_ref().and_then(|fm| fm.get("parent").and_then(|v| v.as_str()).map(String::from));
@@ -474,14 +492,14 @@ fn output_dot(graph: &Graph, path: &str) -> Result<()> {
 ///   blocks, depth, leaf, project, path, due, tags, assignee, complexity}}
 /// - by_project: {project: [task_ids]}
 /// - roots: [task_ids with no parent]
-/// - ready: [leaf tasks with no unmet deps and status active/inbox]
+/// - ready: [leaf tasks with no unmet deps and status active]
 /// - blocked: [tasks with unmet deps or status blocked]
 ///
 /// ## Metadata Fields
 /// - project: Project context (from "project" field)
 /// - assignee: Person responsible (from "assignee" field)
 /// - complexity: Complexity level (from "complexity" field)
-/// - status: "active", "done", "blocked", "waiting", "inbox"
+/// - status: "active", "in_progress", "done", "blocked", "waiting"
 /// - priority: 0-4 (0=critical, 4=someday)
 /// - tags: Array of tags from frontmatter or inline #hashtags
 fn build_mcp_index(files: &[FileData], data_root: &Path) -> McpIndex {
@@ -505,7 +523,7 @@ fn build_mcp_index(files: &[FileData], data_root: &Path) -> McpIndex {
                 id: tid.clone(),
                 title: f.label.clone(),
                 task_type: f.node_type.clone().unwrap_or_else(|| "task".to_string()),
-                status: f.status.clone().unwrap_or_else(|| "inbox".to_string()),
+                status: f.status.clone().unwrap_or_else(|| "active".to_string()),
                 priority: f.priority.unwrap_or(2),
                 order: f.order,
                 parent: f.parent.clone(),
@@ -569,7 +587,7 @@ fn build_mcp_index(files: &[FileData], data_root: &Path) -> McpIndex {
     // Build by_project groupings
     let mut by_project: HashMap<String, Vec<String>> = HashMap::new();
     for (tid, entry) in &entries {
-        let project = entry.project.clone().unwrap_or_else(|| "inbox".to_string());
+        let project = entry.project.clone().unwrap_or_else(|| "_no_project".to_string());
         by_project.entry(project).or_default().push(tid.clone());
     }
 
@@ -608,7 +626,7 @@ fn build_mcp_index(files: &[FileData], data_root: &Path) -> McpIndex {
 
         if !unmet_deps.is_empty() || entry.status == "blocked" {
             blocked.push(tid.clone());
-        } else if entry.leaf && (entry.status == "active" || entry.status == "inbox") {
+        } else if entry.leaf && entry.status == "active" {
             // Learn tasks are observational, not actionable - exclude from ready
             if entry.task_type != "learn" {
                 ready.push(tid.clone());

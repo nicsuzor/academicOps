@@ -502,13 +502,13 @@ def ready(caller: str, project: str):
                     if fresh_task is None:
                         continue
 
-                    if fresh_task.status not in (TaskStatus.INBOX, TaskStatus.ACTIVE):
+                    if fresh_task.status != TaskStatus.ACTIVE:
                         continue
                     if fresh_task.assignee and fresh_task.assignee != caller:
                         continue
 
-                    # Claim it
-                    fresh_task.status = TaskStatus.ACTIVE
+                    # Claim it - set to in_progress
+                    fresh_task.status = TaskStatus.IN_PROGRESS
                     fresh_task.assignee = caller
                     storage.save_task(fresh_task)
 
