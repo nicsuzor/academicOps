@@ -12,14 +12,13 @@ Exit codes:
 
 import json
 import logging
+import os
 import sys
 from pathlib import Path
 from typing import Any
 
 from lib.reflection_detector import has_reflection
 from lib.session_state import (
-    has_reflection_output,
-    is_stop_reflection_validated,
     set_reflection_output,
     set_stop_reflection_validated,
 )
@@ -123,17 +122,11 @@ def check_for_reflection(
         Tuple of (found, parsed_reflection) where parsed_reflection is the
         structured dict from parse_framework_reflection or None
     """
-    # Check if Stop hook already validated a reflection (persistent flag)
-    # This flag is NOT cleared by UserPromptSubmit, so it persists through
-    # multiple Stop invocations even if user sends additional prompts
-    if is_stop_reflection_validated(session_id):
-        logger.info("Reflection already validated by Stop hook")
-        return True, None
-
-    # Check if already marked as having reflection (cleared on new prompt)
-    if has_reflection_output(session_id):
-        logger.info("Reflection already detected in session state")
-        return True, None
+    # FIXED: Removed early returns based on stale session state flags.
+    # These flags (reflection_output_since_prompt, stop_reflection_validated)
+    # could persist from previous stop invocations, causing the hook to think
+    # reflection was already provided when it wasn't in the current stop.
+    # Now we ALWAYS check fresh reflection in the transcript messages.
 
     if not transcript_path:
         logger.debug("No transcript path provided")
@@ -193,11 +186,12 @@ def main():
                 # Block session - Framework Reflection is mandatory
                 # The reflection must be parseable by parse_framework_reflection
                 # Note: Due to timing, reflection must be output BEFORE the stopping turn
+                aops_path = os.environ.get("AOPS", "$AOPS")
                 output_data = {
                     "decision": "block",
                     "reason": (
                         "All sessions are logged for transcript processing - even quick ones.\n\n"
-                        "Complete the handover workflow ($AOPS/workflows/handover.md):\n"
+                        f"Complete the handover workflow ({aops_path}/workflows/handover.md):\n"
                         "- Quick sessions: Output a brief Framework Reflection and stop\n"
                         "- Work sessions: Update tasks, commit changes, then reflect\n\n"
                         "If you need user input before finishing, use AskUserQuestion.\n"
