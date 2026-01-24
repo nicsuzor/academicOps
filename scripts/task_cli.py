@@ -596,10 +596,10 @@ def reindex(force: bool):
     console.print(f"  [dim]{s['total']} tasks indexed[/dim]")
 
 
-@main.command()
+@main.command(name="dedup")
 @click.option("--delete", "-d", is_flag=True, help="Delete duplicates (keeps newest or done)")
 @click.option("--plain", is_flag=True, help="Plain output for scripting")
-def dedup(delete: bool, plain: bool):
+def find_duplicates(delete: bool, plain: bool):
     """Find and optionally remove duplicate tasks.
 
     Identifies tasks with identical titles. When --delete is used,

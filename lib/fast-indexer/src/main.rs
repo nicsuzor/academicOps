@@ -665,12 +665,12 @@ fn main() -> Result<()> {
     
     println!("Scanning directory: {:?}", root);
 
-    // 1. Find all markdown files (respects .gitignore)
+    // 1. Find all markdown files (ignores .gitignore for complete task indexing)
     let walker = WalkBuilder::new(&root)
         .hidden(false)      // Include hidden files
-        .git_ignore(true)   // Respect .gitignore
-        .git_global(true)   // Respect global gitignore
-        .git_exclude(true)  // Respect .git/info/exclude
+        .git_ignore(false)  // Ignore .gitignore (index all tasks regardless of git status)
+        .git_global(false)  // Ignore global gitignore
+        .git_exclude(false) // Ignore .git/info/exclude
         .build();
 
     let entries: Vec<PathBuf> = walker

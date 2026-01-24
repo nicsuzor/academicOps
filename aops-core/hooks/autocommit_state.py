@@ -302,9 +302,9 @@ def get_aops_root() -> Path | None:
     import os
 
     aops_path = os.environ.get("AOPS")
-    if aops_path:
-        return Path(aops_path)
-    return None
+    if aops_path is None:
+        return None
+    return Path(aops_path)
 
 
 def commit_and_push_repo(
