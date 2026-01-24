@@ -190,11 +190,14 @@ def main():
                 output_data = {
                     "decision": "block",
                     "reason": (
-                        "All sessions are logged for transcript processing - even quick ones.\n\n"
-                        f"Complete the handover workflow ({aops_path}/workflows/handover.md):\n"
-                        "- Quick sessions: Output a brief Framework Reflection and stop\n"
-                        "- Work sessions: Update tasks, commit changes, then reflect\n\n"
-                        "If you need user input before finishing, use AskUserQuestion.\n"
+                        "Session requires parseable Framework Reflection (for transcript mining).\n\n"
+                        "Minimum format:\n"
+                        "```\n"
+                        "## Framework Reflection\n"
+                        "**Outcome**: success|partial|failure\n"
+                        "**Friction points**: [any issues, or 'none']\n"
+                        "```\n\n"
+                        f"Full format: {aops_path}/workflows/handover.md\n"
                     ),
                 }
                 logger.info("Session blocked: Parseable Framework Reflection not found")
