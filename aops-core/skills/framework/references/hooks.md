@@ -785,13 +785,10 @@ sys.exit(0)
 
 ### Debugging Hook Execution
 
-Enable debug logging to see actual hook I/O:
+All hook I/O is automatically logged by the router to per-session JSONL files:
 
-```python
-from hook_debug import safe_log_to_debug_file
-
-# Logs to /tmp/claude_{hook_event}_{timestamp}.json
-safe_log_to_debug_file("PreToolUse", input_data, output_data)
+```
+~/.claude/projects/<project>/<date>-<shorthash>-hooks.jsonl
 ```
 
 Run Claude Code with debug flag to see hook execution:
@@ -800,11 +797,11 @@ Run Claude Code with debug flag to see hook execution:
 claude --debug
 ```
 
-Check logs in `/tmp/`:
+View hook logs for the current session:
 
 ```bash
-ls -lt /tmp/claude_* | head
-cat /tmp/claude_pretooluse_TIMESTAMP.json
+ls -lt ~/.claude/projects/*/202*-hooks.jsonl | head
+cat ~/.claude/projects/<project>/<date>-<hash>-hooks.jsonl | jq .
 ```
 
 ## Python Hook Implementation Conventions (academicOps)
@@ -907,8 +904,9 @@ except Exception:
 | Utility              | Purpose                          | Import                                                  |
 | -------------------- | -------------------------------- | ------------------------------------------------------- |
 | `lib.paths`          | Path resolution (NEVER hardcode) | `from lib.paths import get_aops_root, get_data_root`    |
-| `hook_debug.py`      | Safe debug logging               | `from hook_debug import safe_log_to_debug_file`         |
 | `lib.session_reader` | Transcript parsing               | `from lib.session_reader import extract_router_context` |
+
+**Note**: Hook logging is centralized in `router.py` - individual hooks don't need to log.
 
 ### Router Integration
 
@@ -927,7 +925,7 @@ HOOK_REGISTRY: dict[str, list[dict[str, Any]]] = {
 ❌ **Hardcoded paths**: Use `lib.paths`
 ❌ **Silent critical failures**: Exit 1 on config/I/O errors
 ❌ **Assume JSON structure**: Always `.get()` with defaults
-❌ **Logging crashes hook**: Use `safe_log_to_debug_file`
+❌ **Per-hook logging**: Router handles logging centrally
 ❌ **LLM calls in hooks**: Spawn background subagent instead (H31)
 
 ### Checklist: Before Adding a Hook
