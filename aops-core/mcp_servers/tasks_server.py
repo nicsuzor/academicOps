@@ -118,6 +118,56 @@ def _index_entry_to_dict(entry: TaskIndexEntry) -> dict[str, Any]:
     return entry.to_dict()
 
 
+def _format_task_line(task: dict[str, Any], include_status: bool = True) -> str:
+    """Format a single task as a readable line with ID.
+
+    Args:
+        task: Task dictionary (from _task_to_dict or _index_entry_to_dict)
+        include_status: Whether to include status in output
+
+    Returns:
+        Formatted string like "[id] title (status)"
+    """
+    status_str = f" ({task['status']})" if include_status else ""
+    return f"[{task['id']}] {task['title']}{status_str}"
+
+
+def _format_task_list(tasks: list[dict[str, Any]], include_status: bool = True) -> str:
+    """Format a list of tasks as readable lines with IDs.
+
+    Args:
+        tasks: List of task dictionaries
+        include_status: Whether to include status in output
+
+    Returns:
+        Newline-separated formatted task lines
+    """
+    if not tasks:
+        return "(no tasks)"
+    return "\n".join(_format_task_line(t, include_status) for t in tasks)
+
+
+def _format_tree(node: dict[str, Any], indent: int = 0) -> str:
+    """Format a tree node recursively with IDs.
+
+    Args:
+        node: Tree node with 'task' and 'children' keys
+        indent: Current indentation level
+
+    Returns:
+        Formatted tree string
+    """
+    task = node["task"]
+    prefix = "  " * indent
+    line = f"{prefix}[{task['id']}] {task['title']} ({task['status']})"
+    lines = [line]
+
+    for child in node.get("children", []):
+        lines.append(_format_tree(child, indent + 1))
+
+    return "\n".join(lines)
+
+
 # =============================================================================
 # CRUD OPERATIONS
 # =============================================================================
@@ -803,10 +853,12 @@ def get_blocked_tasks(project: str) -> dict[str, Any]:
         if project:
             blocked = [e for e in blocked if e.project == project]
 
+        task_dicts = [_index_entry_to_dict(e) for e in blocked]
         return {
             "success": True,
-            "tasks": [_index_entry_to_dict(e) for e in blocked],
+            "tasks": task_dicts,
             "count": len(blocked),
+            "formatted": _format_task_list(task_dicts),
             "message": f"Found {len(blocked)} blocked tasks"
             + (f" in project {project}" if project else ""),
         }
@@ -862,9 +914,11 @@ def get_task_tree(id: Optional[str] = None) -> dict[str, Any]:
                 }
 
             trees = [build_tree(root) for root in roots]
+            formatted_trees = "\n\n".join(_format_tree(t) for t in trees)
             return {
                 "success": True,
                 "tree": trees,
+                "formatted": formatted_trees,
                 "message": f"Found {len(trees)} root task trees",
             }
 
@@ -891,6 +945,7 @@ def get_task_tree(id: Optional[str] = None) -> dict[str, Any]:
         return {
             "success": True,
             "tree": tree,
+            "formatted": _format_tree(tree),
             "message": f"Tree for: {root.title}",
         }
 
@@ -934,10 +989,12 @@ def get_children(id: str) -> dict[str, Any]:
 
         children = index.get_children(id)
 
+        task_dicts = [_index_entry_to_dict(e) for e in children]
         return {
             "success": True,
-            "tasks": [_index_entry_to_dict(e) for e in children],
+            "tasks": task_dicts,
             "count": len(children),
+            "formatted": _format_task_list(task_dicts),
             "message": f"Found {len(children)} children for: {parent.title}",
         }
 
@@ -982,10 +1039,12 @@ def get_dependencies(id: str) -> dict[str, Any]:
 
         deps = index.get_dependencies(id)
 
+        task_dicts = [_index_entry_to_dict(e) for e in deps]
         return {
             "success": True,
-            "tasks": [_index_entry_to_dict(e) for e in deps],
+            "tasks": task_dicts,
             "count": len(deps),
+            "formatted": _format_task_list(task_dicts),
             "message": f"Found {len(deps)} dependencies for: {task.title}",
         }
 
@@ -1296,10 +1355,12 @@ def list_tasks(
         tasks = storage.list_tasks(project=project, status=task_status, type=task_type)
         tasks = tasks[:limit]
 
+        task_dicts = [_task_to_dict(t) for t in tasks]
         return {
             "success": True,
-            "tasks": [_task_to_dict(t) for t in tasks],
+            "tasks": task_dicts,
             "count": len(tasks),
+            "formatted": _format_task_list(task_dicts),
             "message": f"Found {len(tasks)} tasks",
         }
 
@@ -1400,10 +1461,12 @@ def search_tasks(query: str, limit: int = 20) -> dict[str, Any]:
         # Sort by priority then title
         matches.sort(key=lambda t: (t.priority, t.title))
 
+        task_dicts = [_task_to_dict(t) for t in matches]
         return {
             "success": True,
-            "tasks": [_task_to_dict(t) for t in matches],
+            "tasks": task_dicts,
             "count": len(matches),
+            "formatted": _format_task_list(task_dicts),
             "message": f"Found {len(matches)} tasks matching '{query}'",
         }
 
