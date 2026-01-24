@@ -3,7 +3,7 @@ name: worker
 description: Autonomous task executor that pulls and completes tasks with full context injection
 type: agent
 model: sonnet
-tools: [Read, Write, Edit, Bash, Glob, Grep, TodoWrite, Task, Skill]
+tools: [Read, Write, Edit, Bash, Glob, Grep, TodoWrite, Task, Skill, mcp__plugin_aops-tools_task_manager__*]
 permalink: aops/agents/worker
 tags:
   - execution
