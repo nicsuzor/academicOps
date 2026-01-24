@@ -25,6 +25,13 @@ import sys
 from pathlib import Path
 from typing import Any
 
+# Add aops-core to path before importing hooks modules
+_AOPS_CORE_DIR = Path(__file__).parent.parent
+if str(_AOPS_CORE_DIR) not in sys.path:
+    sys.path.insert(0, str(_AOPS_CORE_DIR))
+
+from hooks.hook_logger import log_hook_event
+
 # Hook directory (same directory as this script)
 HOOK_DIR = Path(__file__).parent
 # aops-core root for PYTHONPATH (parent of hooks/)
@@ -617,6 +624,20 @@ def route_hooks(input_data: dict[str, Any]) -> tuple[dict[str, Any], int]:
 
     # Aggregate exit codes
     final_exit_code = aggregate_exit_codes(exit_codes)
+
+    # Centralized logging - log all hook events to JSONL
+    if session_id:
+        try:
+            log_hook_event(
+                session_id=session_id,
+                hook_event=event_name,
+                input_data=input_data,
+                output_data=merged_output,
+                exit_code=final_exit_code,
+            )
+        except Exception:
+            # Never crash the router due to logging failures
+            pass
 
     return merged_output, final_exit_code
 
