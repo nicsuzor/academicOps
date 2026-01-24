@@ -239,6 +239,7 @@ IMPORTANT: Return ONLY the JSON, no other text.
 
 
 @pytest.mark.demo
+@pytest.mark.slow
 class TestV1ComponentsDemo:
     """Demo test for comprehensive v1.0 component verification."""
 

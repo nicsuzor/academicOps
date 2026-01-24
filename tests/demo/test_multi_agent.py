@@ -18,6 +18,7 @@ import pytest
 
 
 @pytest.mark.demo
+@pytest.mark.slow
 class TestMultiAgentDemo:
     """Demo test for multi-agent workflows."""
 

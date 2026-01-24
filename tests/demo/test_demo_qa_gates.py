@@ -23,6 +23,7 @@ import pytest
 
 
 @pytest.mark.demo
+@pytest.mark.slow
 class TestQAGatesDemo:
     """Demo test for QA gates via critic and custodiet verification."""
 

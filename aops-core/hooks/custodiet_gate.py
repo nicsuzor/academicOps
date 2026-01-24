@@ -310,7 +310,7 @@ def _build_session_context(transcript_path: str | None, session_id: str) -> str:
             include={"prompts"},
             max_turns=5,
         )
-        prompts = ctx.get("prompts", [])
+        prompts = ctx["prompts"]
         if prompts:
             most_recent_prompt = prompts[-1]
             lines.append("**Most Recent User Request** (active intent):")
@@ -329,9 +329,13 @@ def _build_session_context(transcript_path: str | None, session_id: str) -> str:
 
         workflow = hydrator_state.get("declared_workflow")
         if workflow:
-            lines.append(f"**Declared Workflow**: {workflow.get('gate', 'unknown')}")
-            if workflow.get("approach"):
-                lines.append(f"**Approach**: {workflow.get('approach')}")
+            gate = workflow.get("gate")
+            if gate is None:
+                raise ValueError("workflow missing required 'gate' field")
+            lines.append(f"**Declared Workflow**: {gate}")
+            approach = workflow.get("approach")
+            if approach:
+                lines.append(f"**Approach**: {approach}")
             lines.append("")
 
         guardrails = hydrator_state.get("guardrails")
@@ -360,7 +364,7 @@ def _build_session_context(transcript_path: str | None, session_id: str) -> str:
         # This gives custodiet the raw user intent for scope creep detection.
 
         # Previous prompts (for context, excludes most recent which is the user request)
-        prompts = ctx.get("prompts", [])
+        prompts = ctx["prompts"]
         previous_prompts = prompts[:-1] if len(prompts) > 1 else []
         if previous_prompts:
             lines.append("**Previous User Prompts**:")
@@ -373,16 +377,33 @@ def _build_session_context(transcript_path: str | None, session_id: str) -> str:
         # Full TodoWrite plan (critical for scope checking)
         todos = ctx.get("todos")
         if todos:
-            todo_list = todos.get("todos", [])
-            counts = todos.get("counts", {})
+            todo_list = todos.get("todos")
+            if todo_list is None:
+                raise ValueError("todos missing required 'todos' field")
+            counts = todos.get("counts")
+            if counts is None:
+                raise ValueError("todos missing required 'counts' field")
+            pending_count = counts.get("pending")
+            if pending_count is None:
+                raise ValueError("counts missing required 'pending' field")
+            in_progress_count = counts.get("in_progress")
+            if in_progress_count is None:
+                raise ValueError("counts missing required 'in_progress' field")
+            completed_count = counts.get("completed")
+            if completed_count is None:
+                raise ValueError("counts missing required 'completed' field")
             lines.append(
-                f"**TodoWrite Plan** ({counts.get('pending', 0)} pending, "
-                f"{counts.get('in_progress', 0)} in_progress, "
-                f"{counts.get('completed', 0)} completed):"
+                f"**TodoWrite Plan** ({pending_count} pending, "
+                f"{in_progress_count} in_progress, "
+                f"{completed_count} completed):"
             )
             for todo in todo_list:
-                status = todo.get("status", "pending")
-                content = todo.get("content", "")
+                status = todo.get("status")
+                if status is None:
+                    raise ValueError("todo missing required 'status' field")
+                content = todo.get("content")
+                if content is None:
+                    raise ValueError("todo missing required 'content' field")
                 symbol = {
                     "completed": "[x]",
                     "in_progress": "[>]",
@@ -392,13 +413,22 @@ def _build_session_context(transcript_path: str | None, session_id: str) -> str:
             lines.append("")
 
         # Tool errors (critical for Type A detection)
-        errors = ctx.get("errors", [])
+        errors = ctx.get("errors")
+        if errors is None:
+            errors = []
         if errors:
             lines.append("**Tool Errors** (watch for reactive helpfulness):")
             for error in errors[-5:]:
-                tool_name = error.get("tool_name", "unknown")
-                input_summary = error.get("input_summary", "")
-                error_msg = error.get("error", "")[:150]
+                tool_name = error.get("tool_name")
+                if tool_name is None:
+                    raise ValueError("error missing required 'tool_name' field")
+                input_summary = error.get("input_summary")
+                if input_summary is None:
+                    raise ValueError("error missing required 'input_summary' field")
+                error_msg = error.get("error")
+                if error_msg is None:
+                    raise ValueError("error missing required 'error' field")
+                error_msg = error_msg[:150]
                 if input_summary:
                     lines.append(f"  - {tool_name}({input_summary}): {error_msg}")
                 else:
@@ -406,7 +436,9 @@ def _build_session_context(transcript_path: str | None, session_id: str) -> str:
             lines.append("")
 
         # Files modified (for scope assessment)
-        files = ctx.get("files", [])
+        files = ctx.get("files")
+        if files is None:
+            files = []
         if files:
             lines.append("**Files Modified**:")
             for f in files:
@@ -435,35 +467,52 @@ def _build_session_context(transcript_path: str | None, session_id: str) -> str:
             lines.append("")
 
         # Recent tools (for activity tracking)
-        tools = ctx.get("tools", [])
+        tools = ctx.get("tools")
+        if tools is None:
+            tools = []
         if tools:
             lines.append("**Recent Tools**:")
             for tool in tools[-10:]:
-                name = tool.get("name", "unknown")
-                args = tool.get("args", {})
+                name = tool.get("name")
+                if name is None:
+                    raise ValueError("tool missing required 'name' field")
+                args = tool.get("args")
+                if args is None:
+                    raise ValueError("tool missing required 'args' field")
                 # Compact display
                 if name in ("Read", "Write", "Edit"):
-                    path = args.get("file_path", "")
+                    path = args.get("file_path")
+                    if path is None:
+                        raise ValueError("tool args missing required 'file_path' field")
                     short = path.split("/")[-1] if "/" in path else path
                     lines.append(f"  - {name}({short})")
                 elif name == "Bash":
-                    cmd = str(args.get("command", ""))[:50]
+                    command = args.get("command")
+                    if command is None:
+                        raise ValueError("tool args missing required 'command' field")
+                    cmd = str(command)[:50]
                     lines.append(f"  - Bash({cmd}...)")
                 else:
                     lines.append(f"  - {name}")
             lines.append("")
 
         # Recent conversation (critical for understanding agent reasoning and drift detection)
-        conversation = ctx.get("conversation", [])
+        conversation = ctx.get("conversation")
+        if conversation is None:
+            conversation = []
         if conversation:
             lines.append(f"**Recent Conversation** (last {len(conversation)} entries):")
             # Conversation is list[str] from session_reader (formatted [User]/[Agent]/[Tool] log)
             # max_turns controls extraction; no additional slicing here to preserve context
             for item in conversation:
                 if isinstance(item, dict):
-                    # Legacy fallback
-                    role = item.get("role", "unknown")
-                    content = item.get("content", "")
+                    # Legacy fallback - requires explicit None checks
+                    role = item.get("role")
+                    if role is None:
+                        raise ValueError("conversation item missing required 'role' field")
+                    content = item.get("content")
+                    if content is None:
+                        raise ValueError("conversation item missing required 'content' field")
                     prefix = "User" if role == "user" else "Agent"
                     lines.append(f"  [{prefix}]: {content}")
                 else:
@@ -486,9 +535,13 @@ def main():
         pass
 
     # Get session_id and tool info
-    session_id = input_data.get("session_id", "")
+    session_id = input_data.get("session_id")
+    if session_id is None:
+        session_id = ""
     transcript_path = input_data.get("transcript_path")
-    tool_name = input_data.get("tool_name", "unknown")
+    tool_name = input_data.get("tool_name")
+    if tool_name is None:
+        tool_name = "unknown"
 
     # Skip for certain tools that shouldn't count toward threshold
     skip_tools = {"Read", "Glob", "Grep", "mcp__memory__retrieve_memory"}

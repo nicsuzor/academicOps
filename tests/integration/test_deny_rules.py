@@ -13,7 +13,7 @@ The deny rules tested:
 
 import pytest
 
-pytestmark = [pytest.mark.integration]
+pytestmark = [pytest.mark.integration, pytest.mark.slow]
 
 
 @pytest.mark.skip(reason="Test design issue: SessionStart hook injects context containing 'sessionstart', 'pretooluse' etc. which triggers false positive. See GitHub Issue for redesign. The deny rules themselves work - this test's assertion logic is flawed.")

@@ -65,6 +65,7 @@ Respond with a JSON object:
 
 
 @pytest.mark.demo
+@pytest.mark.slow
 class TestComplianceDetectionDemo:
     """Demo test for custodiet compliance detection.
 

@@ -16,6 +16,7 @@ import pytest
 
 
 @pytest.mark.demo
+@pytest.mark.slow
 class TestFrameworkReflectionDemo:
     """Demo test for the framework reflection loop."""
 
