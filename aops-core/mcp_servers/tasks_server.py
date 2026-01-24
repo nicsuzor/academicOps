@@ -575,6 +575,10 @@ def _get_ready_tasks(
     try:
         index = _get_index()
         ready = index.get_ready_tasks(project=project or None, caller=caller)
+
+        # Validate each task is genuinely ready (defensive against stale index)
+        ready = [e for e in ready if _is_task_truly_ready(index, e)]
+
         total = len(ready)
         ready = ready[:limit] if limit > 0 else ready
 
@@ -597,6 +601,42 @@ def _get_ready_tasks(
             "count": 0,
             "message": f"Failed to get ready tasks: {e}",
         }
+
+
+def _is_task_truly_ready(index: TaskIndex, entry: TaskIndexEntry) -> bool:
+    """Validate that an index entry is genuinely ready to work on.
+
+    Performs real-time validation beyond the cached _ready list:
+    - Task must be a leaf (no children)
+    - All dependencies must be done or cancelled
+    - Status must be inbox or active (not blocked, waiting, done, cancelled)
+
+    Args:
+        index: TaskIndex for looking up dependencies
+        entry: TaskIndexEntry to validate
+
+    Returns:
+        True if task is ready, False otherwise
+    """
+    # Must be a leaf (no children) - use computed children list from index
+    if entry.children:
+        return False
+
+    # Status must be actionable
+    if entry.status not in (TaskStatus.INBOX.value, TaskStatus.ACTIVE.value):
+        return False
+
+    # All dependencies must be satisfied (done or cancelled)
+    completed_statuses = {TaskStatus.DONE.value, TaskStatus.CANCELLED.value}
+    for dep_id in entry.depends_on:
+        dep = index.get_task(dep_id)
+        if dep is None:
+            # Missing dependency - treat as blocking (fail-safe)
+            return False
+        if dep.status not in completed_statuses:
+            return False
+
+    return True
 
 
 @mcp.tool()
@@ -629,6 +669,19 @@ def claim_next_task(caller: str, project: str = "") -> dict[str, Any]:
                 "success": True,
                 "task": None,
                 "message": "No ready tasks available"
+                + (f" in project {project}" if project else "")
+                + f" for {caller}",
+            }
+
+        # Filter to only tasks that are genuinely ready (defensive validation)
+        # The _ready list can be stale if the index wasn't rebuilt after changes
+        ready = [e for e in ready if _is_task_truly_ready(index, e)]
+
+        if not ready:
+            return {
+                "success": True,
+                "task": None,
+                "message": "No ready tasks available (all candidates filtered)"
                 + (f" in project {project}" if project else "")
                 + f" for {caller}",
             }

@@ -430,7 +430,7 @@ From HEURISTICS:
 
 ### Execution Plan
 
-**Call TodoWrite with these steps:**
+**MANDATORY - Call TodoWrite with EXACTLY these steps (do not omit or simplify):**
 
 ```javascript
 TodoWrite(todos=[
