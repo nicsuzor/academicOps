@@ -301,6 +301,62 @@ class TestGateBypass:
 class TestGateEnforcement:
     """Test gate enforcement in warn and block modes."""
 
+    def test_empty_env_var_defaults_to_block(self, monkeypatch, capsys):
+        """Test that empty HYDRATION_GATE_MODE defaults to block mode.
+
+        Regression test: Empty string was incorrectly treated as "warn" mode.
+        """
+        import io
+
+        monkeypatch.setenv("HYDRATION_GATE_MODE", "")  # Empty string
+
+        input_data = {
+            "tool_name": "Read",
+            "tool_input": {"file_path": "/some/file.txt"},
+            "session_id": "test-session",
+        }
+        monkeypatch.setattr("sys.stdin", io.StringIO(json.dumps(input_data)))
+
+        # Mock to indicate hydration is pending and no bypass conditions
+        with patch("hydration_gate.is_hydration_pending", return_value=True), patch(
+            "hydration_gate.is_subagent_session", return_value=False
+        ), patch("hydration_gate.is_first_prompt_from_cli", return_value=False):
+            with pytest.raises(SystemExit) as exc_info:
+                main()
+
+            # Should exit 2 (block) because empty string defaults to block
+            assert exc_info.value.code == 2
+
+            captured = capsys.readouterr()
+            # Should have block message in stderr
+            assert "⛔ HYDRATION GATE" in captured.err
+
+    def test_unset_env_var_defaults_to_block(self, monkeypatch, capsys):
+        """Test that unset HYDRATION_GATE_MODE defaults to block mode."""
+        import io
+
+        monkeypatch.delenv("HYDRATION_GATE_MODE", raising=False)
+
+        input_data = {
+            "tool_name": "Read",
+            "tool_input": {"file_path": "/some/file.txt"},
+            "session_id": "test-session",
+        }
+        monkeypatch.setattr("sys.stdin", io.StringIO(json.dumps(input_data)))
+
+        # Mock to indicate hydration is pending and no bypass conditions
+        with patch("hydration_gate.is_hydration_pending", return_value=True), patch(
+            "hydration_gate.is_subagent_session", return_value=False
+        ), patch("hydration_gate.is_first_prompt_from_cli", return_value=False):
+            with pytest.raises(SystemExit) as exc_info:
+                main()
+
+            # Should exit 2 (block) - default mode
+            assert exc_info.value.code == 2
+
+            captured = capsys.readouterr()
+            assert "⛔ HYDRATION GATE" in captured.err
+
     def test_warn_mode_allows_with_warning(self, monkeypatch, capsys):
         """Test that warn mode (default) logs warning but allows."""
         import io
