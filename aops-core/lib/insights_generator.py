@@ -518,9 +518,9 @@ def write_insights_file(path: Path, insights: dict[str, Any], session_id: str | 
             patterns_to_try.extend(status_dir.glob(f"{date_compact}-*{session_id}*.json"))
         patterns_to_try.extend(status_dir.glob(f"*{session_id}*.json"))
 
-        for path in patterns_to_try:
-            if isinstance(path, Path) and path.exists():
-                status_path = path
+        for candidate in patterns_to_try:
+            if isinstance(candidate, Path) and candidate.exists():
+                status_path = candidate
                 break
 
         if status_path:

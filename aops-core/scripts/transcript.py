@@ -82,6 +82,53 @@ def format_markdown(file_path: Path) -> bool:
         return False
 
 
+def _save_minimal_token_summary(
+    session_id: str,
+    date_str: str,
+    project: str,
+    slug: str,
+    timestamp: datetime | None,
+    usage_stats: "UsageStats",
+    session_duration_minutes: float | None,
+) -> None:
+    """Save minimal summary with just token_metrics when no reflection exists.
+
+    This ensures token usage data is captured even for sessions without
+    a Framework Reflection output.
+    """
+    # Generate ISO 8601 timestamp
+    if timestamp:
+        date_iso = timestamp.isoformat()
+    else:
+        date_iso = datetime.now().astimezone().replace(microsecond=0).isoformat()
+
+    # Build minimal insights with token_metrics
+    insights = {
+        "session_id": session_id,
+        "date": date_iso,
+        "project": project,
+        "summary": None,  # No reflection = no summary
+        "outcome": None,  # No reflection = unknown outcome
+        "accomplishments": [],
+        "friction_points": [],
+        "proposed_changes": [],
+        "token_metrics": usage_stats.to_token_metrics(session_duration_minutes),
+    }
+
+    try:
+        # Check for existing insights
+        existing = find_existing_insights(date_str, session_id)
+        if existing:
+            print(f"⏭️  Insights already exist for session {session_id}: {existing.name}")
+            return
+
+        insights_path = get_insights_file_path(date_str, session_id, slug, None, project)
+        write_insights_file(insights_path, insights, session_id=session_id)
+        print(f"📊 Token metrics saved (no reflection): {insights_path}")
+    except Exception as e:
+        print(f"⚠️  Failed to save token metrics: {e}", file=sys.stderr)
+
+
 def _process_reflection(
     entries: list,
     session_id: str,
@@ -112,6 +159,12 @@ def _process_reflection(
     """
     reflections = extract_reflection_from_entries(entries, agent_entries)
     if not reflections:
+        # No reflection found, but still save token_metrics if available
+        if usage_stats and usage_stats.has_data():
+            _save_minimal_token_summary(
+                session_id, date_str, project, slug, timestamp,
+                usage_stats, session_duration_minutes
+            )
         return None, None
 
     # Collect headers for all reflections
