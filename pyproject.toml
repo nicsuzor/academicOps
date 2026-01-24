@@ -19,6 +19,7 @@ dependencies = [
   "click>=8.1.0",
   "filelock>=3.13.0",
   "pdfminer-six>=20260107",
+  "rich>=13.0.0",
 ]
 
 [project.scripts]

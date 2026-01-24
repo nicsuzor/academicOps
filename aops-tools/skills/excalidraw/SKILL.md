@@ -24,20 +24,6 @@ uv run python skills/tasks/scripts/task_viz.py $ACA_DATA current-tasks.excalidra
 
 The script generates a complete force-directed layout of goals, projects, and tasks. Only invoke this excalidraw skill AFTER the script runs if manual refinement or customization is needed.
 
-## When to Use This Skill
-
-You **MUST use this skill to create or edit ANY excalidraw files**.
-
-Use the excalidraw skill when:
-
-- Creating diagrams, flowcharts, or visual explanations
-- Designing system architecture visualizations
-- Building concept maps or process flows
-- Visualizing relationships and hierarchies
-- Any task requiring visual communication
-
-**The user expects**: Diagrams that feel hand-drawn, organic, and spatially organized like mind maps—not rigid, corporate flowcharts.
-
 ## Aesthetic Defaults (CRITICAL)
 
 **Always use these settings for the hand-drawn feel**:

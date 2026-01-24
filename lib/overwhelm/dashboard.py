@@ -192,6 +192,64 @@ def load_synthesis() -> dict | None:
         return None
 
 
+def load_token_metrics() -> dict | None:
+    """Load and aggregate token metrics from today's session summaries.
+
+    Scans ~/writing/sessions/summaries/ for files matching today's date (YYYYMMDD prefix).
+    Aggregates token_metrics from each file.
+
+    Returns:
+        Dict with aggregated metrics, or None if no data available:
+        - input_tokens: Total input tokens
+        - output_tokens: Total output tokens
+        - cache_read: Total cache read tokens
+        - cache_create: Total cache creation tokens
+        - cache_hit_rate: Percentage of tokens from cache (0-100)
+        - session_count: Number of sessions with token data
+    """
+    summaries_dir = Path.home() / "writing" / "sessions" / "summaries"
+    if not summaries_dir.exists():
+        return None
+
+    today = datetime.now().strftime("%Y%m%d")
+
+    totals = {
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "cache_read": 0,
+        "cache_create": 0,
+        "session_count": 0,
+    }
+
+    for json_file in summaries_dir.glob(f"{today}*.json"):
+        try:
+            data = json.loads(json_file.read_text())
+            token_metrics = data.get("token_metrics")
+            if not token_metrics:
+                continue
+
+            tm_totals = token_metrics.get("totals", {})
+            totals["input_tokens"] += tm_totals.get("input_tokens", 0)
+            totals["output_tokens"] += tm_totals.get("output_tokens", 0)
+            totals["cache_read"] += tm_totals.get("cache_read_tokens", 0)
+            totals["cache_create"] += tm_totals.get("cache_create_tokens", 0)
+            totals["session_count"] += 1
+        except (json.JSONDecodeError, OSError):
+            continue
+
+    if totals["session_count"] == 0:
+        return None
+
+    # Calculate cache hit rate
+    total_potential = totals["input_tokens"] + totals["cache_read"]
+    if total_potential > 0:
+        totals["cache_hit_rate"] = (totals["cache_read"] / total_potential) * 100
+    else:
+        totals["cache_hit_rate"] = 0
+
+    return totals
+
+
 def get_waiting_tasks() -> list[dict]:
     """Get tasks with blocked status from bd."""
     return load_bd_issues(priority_max=4, status="blocked", limit=50)
@@ -1597,6 +1655,25 @@ st.markdown(
     .synthesis-card.waiting .synthesis-card-title { color: var(--text-error); }
     .synthesis-card.waiting .synthesis-card-content { color: var(--text-primary); opacity: 0.9; }
 
+    .synthesis-card.tokens .synthesis-card-title { color: #a78bfa; }
+    .synthesis-card.tokens .synthesis-card-content { color: var(--text-primary); }
+
+    .cache-gauge {
+        display: inline-block;
+        width: 60px;
+        height: 8px;
+        background: #1e293b;
+        border-radius: 4px;
+        overflow: hidden;
+        vertical-align: middle;
+        margin-left: 6px;
+    }
+    .cache-gauge-fill {
+        height: 100%;
+        border-radius: 4px;
+        transition: width 0.3s ease;
+    }
+
     /* Insights Panel */
     .insights-panel {
         background-color: #0f172a;
@@ -2297,6 +2374,33 @@ with tab_dashboard:
             synth_html += f"<div class='synthesis-card-content'>{esc(first_blocker.get('task', ''))}</div>"
             synth_html += "</div>"
 
+        # Token usage card
+        token_metrics = load_token_metrics()
+        if token_metrics:
+            total_tokens = token_metrics["input_tokens"] + token_metrics["output_tokens"]
+            # Format tokens: K for thousands, M for millions
+            if total_tokens >= 1_000_000:
+                tokens_str = f"{total_tokens / 1_000_000:.1f}M"
+            elif total_tokens >= 1_000:
+                tokens_str = f"{total_tokens / 1_000:.0f}K"
+            else:
+                tokens_str = str(total_tokens)
+
+            cache_rate = token_metrics["cache_hit_rate"]
+            # Color coding: green >70%, yellow 40-70%, red <40%
+            if cache_rate >= 70:
+                gauge_color = "#4ade80"
+            elif cache_rate >= 40:
+                gauge_color = "#fbbf24"
+            else:
+                gauge_color = "#f87171"
+
+            session_count = token_metrics["session_count"]
+            synth_html += "<div class='synthesis-card tokens'>"
+            synth_html += f"<div class='synthesis-card-title'>📊 TOKENS ({session_count} sessions)</div>"
+            synth_html += f"<div class='synthesis-card-content'>{tokens_str} total <span class='cache-gauge'><span class='cache-gauge-fill' style='width: {cache_rate:.0f}%; background: {gauge_color};'></span></span> {cache_rate:.0f}% cache</div>"
+            synth_html += "</div>"
+
         synth_html += "</div>"  # End grid
 
         # Session Insights panel (skill compliance, context gaps)
@@ -2325,6 +2429,23 @@ with tab_dashboard:
             successes = skill_insights.get("successes_count", 0)
             if successes > 0:
                 synth_html += f"<span class='insights-stat'><span class='insights-stat-label'>Successes:</span> <span class='insights-stat-value' style='color: #4ade80;'>{successes}</span></span>"
+
+            # Token stats (reuse token_metrics if already loaded, or load now)
+            tm = token_metrics if 'token_metrics' in dir() and token_metrics else load_token_metrics()
+            if tm:
+                # Format helper for tokens
+                def fmt_tokens(n):
+                    if n >= 1_000_000:
+                        return f"{n / 1_000_000:.1f}M"
+                    elif n >= 1_000:
+                        return f"{n / 1_000:.0f}K"
+                    return str(n)
+
+                in_tokens = fmt_tokens(tm["input_tokens"])
+                out_tokens = fmt_tokens(tm["output_tokens"])
+                cache_read = fmt_tokens(tm["cache_read"])
+                synth_html += f"<span class='insights-stat'><span class='insights-stat-label'>In/Out:</span> <span class='insights-stat-value' style='color: #a78bfa;'>{in_tokens}/{out_tokens}</span></span>"
+                synth_html += f"<span class='insights-stat'><span class='insights-stat-label'>Cache Read:</span> <span class='insights-stat-value' style='color: #a78bfa;'>{cache_read}</span></span>"
 
             # Context gaps
             context_gaps = skill_insights.get("top_context_gaps", [])

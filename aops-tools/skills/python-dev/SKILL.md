@@ -14,24 +14,6 @@ Production-quality Python development with fail-fast philosophy, type safety, an
 
 Follows principles from [[AXIOMS.md]].
 
-## When to Use This Skill
-
-Use python-dev when:
-
-1. **Writing new Python code** - Functions, classes, modules
-2. **Refactoring existing code** - Improving quality and maintainability
-3. **Code review** - Validating Python code against standards
-4. **Debugging Python issues** - Following systematic debugging workflow
-5. **API design** - Creating Python interfaces and libraries
-
-**Trigger examples**:
-
-- "Write a function to process research data"
-- "Refactor this module to use Pydantic"
-- "Add type hints to this code"
-- "Review this Python code for quality"
-- "Fix this bug in the data pipeline"
-
 ## Framework Repository Enforcement
 
 **When working in the aOps framework repository ($AOPS)**:

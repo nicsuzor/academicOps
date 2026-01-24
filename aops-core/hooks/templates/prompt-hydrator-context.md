@@ -26,6 +26,14 @@ Transform this user prompt into an execution plan with scope detection and task 
 
 **Use these prefixes in TodoWrite plans** - never use relative paths like `specs/file.md`.
 
+## Relevant Files (Selective Injection)
+
+Based on prompt keywords, these specific files may be relevant:
+
+{relevant_files}
+
+**Usage**: Reference these paths in your output when main agent needs to read specific files for context.
+
 ### File Placement Rules
 
 | Content Type | Directory | Example |
@@ -174,6 +182,7 @@ These scripts exist but aren't user-invocable skills. Provide exact invocation w
 
 - **Framework Gate (CHECK FIRST)**: If prompt involves modifying `$AOPS/` (framework files), route to `[[framework-change]]` (governance) or `[[feature-dev]]` (code). NEVER route framework work to `[[simple-question]]` or `[[minor-edit]]`. Include Framework Change Context in output.
 - **Python Code Changes → TDD**: When debugging or fixing Python code (`.py` files), include `Skill(skill="python-dev")` in the execution plan. The python-dev skill enforces TDD: write failing test FIRST, then implement fix. No trial-and-error edits.
+- **Token/Session Analysis → Use Tooling**: When prompt involves "token", "efficiency", "usage", or "session analysis", surface `/session-insights` skill and `transcript_parser.py`. Per P#78, deterministic computation (token counting, aggregation) stays in Python, not LLM exploration.
 - **Short confirmations**: If prompt is very short (≤10 chars: "yes", "ok", "do it", "sure"), check the MOST RECENT agent response and tools. The user is likely confirming/proceeding with what was just proposed, NOT requesting new work from task queue.
 - **Scope detection**: Multi-session = goal-level, uncertain path, spans days+. Single-session = bounded, known steps.
 - **Prefer existing tasks**: Search task state before creating new tasks.

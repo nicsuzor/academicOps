@@ -504,6 +504,197 @@ $AOPS/
     └── tools/
         ├── __init__.py          # Package init
         └── conftest.py          # Tools fixtures
+
+├── aops-core/                   # Claude Code plugin (aops-core)
+│   ├── .claude-plugin/
+│   │   └── plugin.json          # Plugin manifest
+│   │
+│   ├── agents/                  # Plugin-specific subagents
+│   │   ├── critic.md            # Second-opinion review agent
+│   │   ├── custodiet.md         # Ultra vires detector agent
+│   │   ├── framework.md         # Framework development agent
+│   │   ├── prompt-hydrator.md   # Context hydration agent
+│   │   ├── qa.md                # Quality assurance agent
+│   │   └── worker.md            # Autonomous task worker agent
+│   │
+│   ├── axioms/                  # Inviolable principles
+│   │   ├── data-boundaries.md   # Data boundary rules
+│   │   ├── fail-fast-code.md    # Fail-fast principles
+│   │   ├── research-data-immutable.md  # Research data immutability
+│   │   ├── self-documenting.md  # Self-documenting code
+│   │   ├── single-purpose-files.md     # Single-purpose files
+│   │   ├── skills-are-read-only.md     # Skills read-only
+│   │   └── trust-version-control.md    # Version control trust
+│   │
+│   ├── commands/                # Plugin slash commands
+│   │   ├── dump.md              # Emergency work handover
+│   │   ├── learn.md             # Minor instruction adjustments
+│   │   └── log.md               # Learning log entry
+│   │
+│   ├── heuristics/              # Empirically validated rules
+│   │   ├── file-category-classification.md  # File categorization
+│   │   ├── no-horizontal-dividers.md        # No HR dividers
+│   │   ├── semantic-link-density.md         # Link density rules
+│   │   └── skills-no-dynamic-content.md     # Skills static content
+│   │
+│   ├── hooks/                   # Plugin hooks (Python)
+│   │   ├── hydration_gate.py            # Hydration gate hook
+│   │   ├── overdue_enforcement.py       # Overdue task enforcement
+│   │   ├── pre_commit_validate_paths.py # Pre-commit path validation
+│   │   ├── reflection_check.py          # Reflection check hook
+│   │   ├── session_end_commit_check.py  # Session end commit check
+│   │   ├── task_binding.py              # Task binding hook
+│   │   ├── task_required_gate.py        # Task required gate
+│   │   ├── todowrite_fallback.py        # TodoWrite fallback hook
+│   │   └── templates/           # Hook prompt templates
+│   │       ├── custodiet-context.md         # Custodiet context
+│   │       ├── custodiet-instruction.md     # Custodiet instruction
+│   │       ├── hydration-gate-block.md      # Hydration block template
+│   │       ├── hydration-gate-warn.md       # Hydration warn template
+│   │       ├── prompt-hydration-instruction.md  # Hydration instruction
+│   │       └── prompt-hydrator-context.md   # Hydrator context
+│   │
+│   ├── lib/                     # Plugin library modules
+│   │   ├── insights_generator.py        # Insights generation
+│   │   ├── reflection_detector.py       # Reflection detection
+│   │   ├── session_paths.py             # Session path utilities
+│   │   ├── session_state.py             # Session state management
+│   │   ├── session_summary.py           # Session summary generation
+│   │   ├── task_index.py                # Task index operations
+│   │   ├── task_model.py                # Task data model
+│   │   ├── task_storage.py              # Task storage layer
+│   │   ├── template_loader.py           # Template loading utilities
+│   │   └── transcript_parser.py         # Transcript parsing
+│   │
+│   ├── mcp_servers/             # MCP server implementations
+│   │   └── tasks_server.py              # Tasks MCP server
+│   │
+│   ├── scripts/                 # Plugin utility scripts
+│   │   ├── backfill_closed_issues_to_memory.py  # Backfill issues to memory
+│   │   ├── custodiet_block.py           # Custodiet block script
+│   │   ├── generate_framework_paths.py  # Framework paths generator
+│   │   ├── migrate_insights_filenames.py  # Insights filename migration
+│   │   ├── migrate_task_ids.py          # Task ID migration
+│   │   └── transcript.py                # Transcript processing
+│   │
+│   ├── skills/
+│   │   ├── .gitkeep                         # Git placeholder
+│   │   ├── audit/
+│   │   │   ├── references/
+│   │   │   │   ├── output-targets.md        # Audit output targets
+│   │   │   │   └── report-format.md         # Audit report format
+│   │   │   └── workflows/
+│   │   │       └── session-effectiveness.md # Session effectiveness audit
+│   │   │
+│   │   ├── garden/
+│   │   │   └── scripts/
+│   │   │       └── lint_frontmatter.py      # Frontmatter linting
+│   │   │
+│   │   ├── hypervisor/
+│   │   │   └── scripts/
+│   │   │       └── batch_worker.py          # Batch worker script
+│   │   │
+│   │   ├── session-insights/
+│   │   │   └── scripts/
+│   │   │       ├── find_pending.py          # Find pending sessions
+│   │   │       ├── merge_insights.py        # Merge insights
+│   │   │       ├── prepare_prompt.py        # Prepare prompt
+│   │   │       └── process_response.py      # Process response
+│   │   │
+│   │   ├── framework/
+│   │   │   ├── SPEC-TEMPLATE.md             # Spec template
+│   │   │   ├── conventions-summary.md       # Convention summary
+│   │   │   ├── references/
+│   │   │   │   ├── claude-code-config.md    # Claude Code config
+│   │   │   │   ├── e2e-test-harness.md      # E2E test harness
+│   │   │   │   ├── hooks.md                 # Hooks reference
+│   │   │   │   ├── script-design-guide.md   # Script design guide
+│   │   │   │   └── strategic-partner-mode.md  # Strategic partner mode
+│   │   │   ├── templates/
+│   │   │   │   ├── dev-plan.md              # Development plan
+│   │   │   │   ├── experiment-plan.md       # Experiment plan
+│   │   │   │   ├── test-spec.md             # Test specification
+│   │   │   │   └── user-story.md            # User story template
+│   │   │   ├── tests/
+│   │   │   │   └── manual_test_skill_discovery.md  # Manual test guide
+│   │   │   └── workflows/
+│   │   │       ├── 01-design-new-component.md  # Design workflow
+│   │   │       ├── 02-debug-framework-issue.md # Debug workflow
+│   │   │       ├── 03-experiment-design.md     # Experiment workflow
+│   │   │       ├── 04-monitor-prevent-bloat.md # Anti-bloat workflow
+│   │   │       ├── 05-feature-development.md   # Feature development
+│   │   │       ├── 06-develop-specification.md # Spec development
+│   │   │       ├── 07-learning-log.md          # Learning log workflow
+│   │   │       └── 08-decision-briefing.md     # Decision briefing
+│   │   │
+│   │   └── remember/
+│   │       ├── references/
+│   │       │   ├── detail-level-guide.md    # Detail level guide
+│   │       │   └── obsidian-format-spec.md  # Obsidian format spec
+│   │       └── workflows/
+│   │           ├── capture.md               # Capture workflow
+│   │           ├── prune.md                 # Prune workflow
+│   │           ├── sync.md                  # Sync workflow
+│   │           └── validate.md              # Validate workflow
+│   │
+│   ├── specs/                   # Plugin specifications
+│   │   ├── audit-protocol.md            # Audit protocol
+│   │   ├── bd-markdown-integration.md   # BD markdown integration
+│   │   ├── constraint-checking-tests.md # Constraint checking tests
+│   │   ├── enforcement.md               # Enforcement spec
+│   │   ├── feedback-loops.md            # Feedback loops
+│   │   ├── framework-observability.md   # Framework observability
+│   │   ├── hook-router.md               # Hook router spec
+│   │   ├── permission-model-v1.md       # Permission model v1
+│   │   ├── plugin-architecture.md       # Plugin architecture
+│   │   ├── predicate-registry.md        # Predicate registry
+│   │   ├── project-context-schema-v1.md # Project context schema
+│   │   ├── prompt-hydration.md          # Prompt hydration spec
+│   │   ├── selective-instruction-injection.md  # Selective injection
+│   │   ├── session-insights-prompt.md   # Session insights prompt
+│   │   ├── session-start-injection.md   # Session start injection
+│   │   ├── ultra-vires-custodiet.md     # Ultra vires custodiet
+│   │   ├── verification-system.md       # Verification system
+│   │   ├── worker-hypervisor.md         # Worker hypervisor
+│   │   ├── workflow-constraints.md      # Workflow constraints
+│   │   ├── workflow-system-spec.md      # Workflow system spec
+│   │   ├── flow.md                      # Flow spec
+│   │   └── work-management.md           # Work management
+│   │
+│   ├── tests/                   # Plugin tests
+│   │   ├── test_plugin_structure.py             # Plugin structure tests
+│   │   ├── test_transcript.py                   # Transcript tests
+│   │   ├── agents/
+│   │   │   └── CONSTRAINT_CHECKING_VERIFICATION.md  # Agent constraint tests
+│   │   ├── hooks/
+│   │   │   ├── HYDRATION_GATE_VERIFICATION.md       # Hook verification tests
+│   │   │   ├── manual_test_subagent_bypass.sh       # Manual subagent bypass test
+│   │   │   ├── test_hydration_gate.py               # Hydration gate tests
+│   │   │   ├── test_session_end_commit_check.py     # Session end commit tests
+│   │   │   ├── test_session_env_setup.py            # Session env setup tests
+│   │   │   ├── test_task_required_gate.py           # Task required gate tests
+│   │   │   ├── test_unified_logger.py               # Unified logger tests
+│   │   │   └── test_user_prompt_submit.py           # User prompt submit tests
+│   │   └── lib/
+│   │       ├── test_insights_generator.py           # Insights generator tests
+│   │       └── test_token_tracking.py               # Token tracking tests
+│   │
+│   └── workflows/               # Plugin workflows
+│       ├── audit.md             # Audit workflow
+│       ├── batch-processing.md  # Batch processing
+│       ├── debugging.md         # Debugging workflow
+│       ├── decompose.md         # Task decomposition
+│       ├── design.md            # Design workflow
+│       ├── direct-skill.md      # Direct skill invocation
+│       ├── email-capture.md     # Email capture workflow
+│       ├── feature-dev.md       # Feature development
+│       ├── minor-edit.md        # Minor edit workflow
+│       ├── prove-feature.md     # Prove feature workflow
+│       ├── qa-demo.md           # QA demo workflow
+│       ├── simple-question.md   # Simple question workflow
+│       ├── skill-pilot.md       # Skill pilot workflow
+│       ├── tdd-cycle.md         # TDD cycle workflow
+│       └── triage-email.md      # Email triage workflow
 ```
 
 ## Cross-References

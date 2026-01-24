@@ -69,7 +69,7 @@ tags: [framework, enforcement, moc]
 | [[streamlit-hot-reloads]]               | Streamlit Hot Reloads               | HEURISTICS.md                                          | SessionStart              |       |
 | [[use-askuserquestion]]                 | Use AskUserQuestion                 | HEURISTICS.md                                          | SessionStart              |       |
 | [[check-skill-conventions]]             | Check Skill Conventions             | HEURISTICS.md                                          | SessionStart              |       |
-| [[deterministic-computation-in-code]]   | Deterministic Computation in Code   | HEURISTICS.md                                          | SessionStart              |       |
+| [[deterministic-computation-in-code]]   | Deterministic Computation in Code   | HEURISTICS.md, prompt-hydrator-context.md              | SessionStart, UserPromptSubmit |       |
 | [[questions-require-answers]]           | Questions Need Answers First        | HEURISTICS.md, custodiet periodic check                | SessionStart, PostToolUse |       |
 | [[critical-thinking-over-compliance]]   | Critical Thinking Over Compliance   | HEURISTICS.md                                          | SessionStart              |       |
 | [[core-first-expansion]]                | Core-First Expansion                | HEURISTICS.md                                          | SessionStart              |       |

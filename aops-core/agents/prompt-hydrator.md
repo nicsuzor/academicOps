@@ -410,6 +410,15 @@ For runtime predicates, verify the plan includes the CHECK step, not that the pr
 - [Key context from vector memory - user knowledge]
 - [Related work: existing tasks, dependencies]
 
+### Relevant Files
+
+List specific files main agent should read for context. Use paths from "Relevant Files (Selective Injection)" section in your input:
+
+- `[path]`: [Why main agent should read this file]
+- `[path]`: [Specific section or information to look for]
+
+**Only include files that are genuinely needed** - don't echo all injected paths, just the ones main agent needs.
+
 ### Applicable Principles
 
 **CRITICAL**: This section IS the enforcement mechanism. Main agent receives ONLY these selected principles - never the full AXIOMS/HEURISTICS files.

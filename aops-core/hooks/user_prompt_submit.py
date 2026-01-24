@@ -23,6 +23,7 @@ from typing import Any
 from hook_debug import safe_log_to_debug_file
 from hooks.hook_logger import log_hook_event
 from lib.paths import get_aops_root
+from lib.file_index import get_formatted_relevant_paths
 from lib.session_reader import extract_router_context
 from lib.session_state import (
     set_hydration_pending,
@@ -450,12 +451,16 @@ def build_hydration_instruction(
     # Get task work state (active and inbox tasks)
     task_state = get_task_work_state()
 
+    # Get relevant file paths based on prompt keywords (selective injection)
+    relevant_files = get_formatted_relevant_paths(prompt, max_files=10)
+
     # Build full context for temp file
     context_template = load_template(CONTEXT_TEMPLATE_FILE)
     full_context = context_template.format(
         prompt=prompt,
         session_context=session_context,
         framework_paths=framework_paths,
+        relevant_files=relevant_files,
         workflows_index=workflows_index,
         skills_index=skills_index,
         axioms=axioms,

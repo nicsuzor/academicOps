@@ -18,17 +18,6 @@ Convert markdown documents to professionally formatted PDFs with appropriate typ
 
 The skill automatically detects document type based on content structure.
 
-## When to Use This Skill
-
-Use this skill when:
-
-- User requests converting a markdown file to PDF
-- User asks to create a "nice looking PDF" or "professional PDF"
-- User mentions wanting academic-style or professional formatting
-- User needs a PDF with custom typography or styling
-- User requests PDF generation with specific fonts
-- User needs to generate a letter or reference with proper formatting
-
 ## Quick Start
 
 For most PDF generation tasks, use the bundled script:

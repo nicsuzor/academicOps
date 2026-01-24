@@ -573,11 +573,12 @@ def _get_ready_tasks(
         - message: Status message
     """
     try:
+        storage = _get_storage()
         index = _get_index()
         ready = index.get_ready_tasks(project=project or None, caller=caller)
 
         # Validate each task is genuinely ready (defensive against stale index)
-        ready = [e for e in ready if _is_task_truly_ready(index, e)]
+        ready = [e for e in ready if _is_task_truly_ready(index, e, storage)]
 
         total = len(ready)
         ready = ready[:limit] if limit > 0 else ready
@@ -603,23 +604,40 @@ def _get_ready_tasks(
         }
 
 
-def _is_task_truly_ready(index: TaskIndex, entry: TaskIndexEntry) -> bool:
+def _is_task_truly_ready(index: TaskIndex, entry: TaskIndexEntry, storage: TaskStorage) -> bool:
     """Validate that an index entry is genuinely ready to work on.
 
     Performs real-time validation beyond the cached _ready list:
-    - Task must be a leaf (no children)
+    - Task must be a leaf (no children in index AND leaf=true in file)
     - All dependencies must be done or cancelled
     - Status must be inbox or active (not blocked, waiting, done, cancelled)
+    - Task type must be actionable (not goal, project, or epic)
 
     Args:
         index: TaskIndex for looking up dependencies
         entry: TaskIndexEntry to validate
+        storage: TaskStorage for loading task file
 
     Returns:
         True if task is ready, False otherwise
     """
     # Must be a leaf (no children) - use computed children list from index
     if entry.children:
+        return False
+
+    # Defensive: load task file to check its actual leaf field
+    # A task with leaf=false in frontmatter is a parent even if children aren't linked
+    task = storage.get_task(entry.id)
+    if task is None:
+        # Task file missing - not ready
+        return False
+    if not task.leaf:
+        # Task explicitly marked as non-leaf (parent task)
+        return False
+
+    # Task type check: goals, projects, and epics should not be directly actionable
+    non_actionable_types = {TaskType.GOAL.value, TaskType.PROJECT.value, TaskType.EPIC.value}
+    if entry.type in non_actionable_types:
         return False
 
     # Status must be actionable
@@ -675,7 +693,7 @@ def claim_next_task(caller: str, project: str = "") -> dict[str, Any]:
 
         # Filter to only tasks that are genuinely ready (defensive validation)
         # The _ready list can be stale if the index wasn't rebuilt after changes
-        ready = [e for e in ready if _is_task_truly_ready(index, e)]
+        ready = [e for e in ready if _is_task_truly_ready(index, e, storage)]
 
         if not ready:
             return {
@@ -709,11 +727,11 @@ def claim_next_task(caller: str, project: str = "") -> dict[str, Any]:
                         if task is None:
                             continue
 
-                        # Check still ready (status inbox/active, no assignee or matches caller)
+                        # Check still ready (status inbox/active, not already claimed)
                         if task.status not in (TaskStatus.INBOX, TaskStatus.ACTIVE):
                             continue
-                        if task.assignee and task.assignee != caller:
-                            continue
+                        if task.assignee:
+                            continue  # Already claimed by someone, skip
 
                         # Claim it
                         task.status = TaskStatus.ACTIVE

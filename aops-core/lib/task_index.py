@@ -252,9 +252,16 @@ class TaskIndex:
                 if dep_id in self._tasks:
                     self._tasks[dep_id].blocks.append(task_id)
 
-        # Update leaf status based on computed children
+        # Update leaf status based on computed children AND frontmatter
+        # A task is a leaf only if:
+        # 1. It has no computed children, AND
+        # 2. Its frontmatter says leaf=True (respects explicit non-leaf declarations)
         for task_id, entry in self._tasks.items():
-            entry.leaf = len(entry.children) == 0
+            has_children = len(entry.children) > 0
+            # If frontmatter said leaf=False, keep it False (declared parent)
+            # If we found children, set to False
+            # Only True if both: frontmatter=True AND no children found
+            entry.leaf = not has_children and entry.leaf
 
         # Compute project groupings
         for task_id, entry in self._tasks.items():
