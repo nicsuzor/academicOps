@@ -13,6 +13,8 @@ tags:
 
 Log framework observations to tasks. Runs in background so you can continue working.
 
+**Implementation**: Invoke via [[skills-log]] skill or follow the execution pattern below.
+
 ## Usage
 
 ```

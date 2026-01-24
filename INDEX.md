@@ -305,6 +305,11 @@ $AOPS/
 │   ├── ground-truth/            # Ground truth label management
 │   │   └── SKILL.md             # Main skill file
 │   │
+│   ├── log/                     # Log framework observations in background
+│   │   ├── SKILL.md             # Main skill file
+│   │   ├── test_log_skill_background.py  # Integration test
+│   │   └── workflows/
+│   │       └── log-observation.md   # Background observation logging workflow
 │   │
 │   ├── daily/                   # Daily note lifecycle (morning briefing, task recs, session sync)
 │   │   └── SKILL.md             # SSoT for daily note structure and workflows
