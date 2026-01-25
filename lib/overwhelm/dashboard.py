@@ -23,6 +23,8 @@ sys.path.insert(0, str(aops_core))
 
 from lib.session_reader import find_sessions
 from lib.session_analyzer import SessionAnalyzer, extract_todowrite_from_session
+from lib.task_storage import TaskStorage
+from lib.task_model import TaskStatus
 from collections import defaultdict
 
 
@@ -146,8 +148,8 @@ def find_active_session_states(hours: int = 4) -> list[dict]:
                     "session_short": session_id[:8]
                     if len(session_id) >= 8
                     else session_id,
-                    "project": state_data.get("insights", {}).get("project") or state_data.get("project") or project_dir.name,
-                    "project_display": (state_data.get("insights", {}).get("project") or state_data.get("project") or _format_project_name(project_dir.name)),
+                    "project": (state_data.get("insights") or {}).get("project") or state_data.get("project") or project_dir.name,
+                    "project_display": ((state_data.get("insights") or {}).get("project") or state_data.get("project") or _format_project_name(project_dir.name)),
                     "state": state_data,
                     "last_modified": mtime,
                     "time_ago": time_ago,
@@ -161,11 +163,6 @@ def find_active_session_states(hours: int = 4) -> list[dict]:
 
 
 def _format_project_name(project_folder: str) -> str:
-    """Convert folder name to display name.
-
-    -home-nic-writing -> writing
-    -Users-suzor-src-buttermilk -> buttermilk
-    """
     """Convert folder name to display name.
 
     -home-nic-writing -> writing
@@ -2025,20 +2022,24 @@ def clean_activity_text(raw_text: str) -> str:
 # ============================================================================
 
 
-def load_task_graph() -> dict | None:
-    """Load the most recent task graph JSON from outputs directory."""
+
+def load_graph_data(filename: str = "graph.json") -> dict | None:
+    """Load graph JSON from outputs directory."""
     outputs_dir = (
         Path(os.environ.get("ACA_DATA", str(Path.home() / "writing/data"))) / "outputs"
     )
 
-    # Try graph.json first (standard output)
-    graph_path = outputs_dir / "graph.json"
+    graph_path = outputs_dir / filename
     if graph_path.exists():
         try:
             return json.loads(graph_path.read_text())
         except Exception:
             pass
     return None
+
+def load_task_graph() -> dict | None:
+    """Load the most recent task graph JSON (shim)."""
+    return load_graph_data("graph.json")
 
 
 def find_latest_svg() -> Path | None:
@@ -2243,6 +2244,346 @@ def calculate_graph_health(graph: dict) -> dict:
         "orphan_examples": orphan_tasks[:5],
     }
 
+@st.cache_resource(ttl=60)
+def get_task_lookup_maps() -> tuple[dict[str, Task], dict[str, Task]]:
+    """Build lookup maps for tasks by ID and by Path.
+    
+    Returns:
+        Tuple of (id_map, path_map)
+    """
+    storage = TaskStorage()
+    id_map = {}
+    path_map = {}
+    
+    # Iterate all tasks that storage can find
+    for task, path in storage._iter_all_tasks_with_paths():
+        id_map[task.id] = task
+        path_map[str(path.resolve())] = task
+        
+    return id_map, path_map
+
+def get_task_by_graph_node(node_id: str, graph_nodes: list[dict]) -> Task | None:
+    """Resolve a graph node ID to a Task object."""
+    id_map, path_map = get_task_lookup_maps()
+    
+    # 1. Try direct ID match (if graph uses semantic IDs)
+    if node_id in id_map:
+        return id_map[node_id]
+        
+    # 2. Try Path match (if graph has path info)
+    # Find the node definition
+    node_def = next((n for n in graph_nodes if n["id"] == node_id), None)
+    if node_def and "path" in node_def:
+        # Normalize path
+        try:
+            graph_path = Path(node_def["path"]).resolve()
+            return path_map.get(str(graph_path))
+        except Exception:
+            pass
+            
+    return None
+def render_interactive_task_graph(graph: dict, view_mode: str = "Tasks"):
+    """
+    Render interactive graph using streamlit-agraph and handle task management.
+    
+    Args:
+        graph: The graph data dict
+        view_mode: "Tasks" or "Knowledge Base" to adjust styling defaults
+    """
+    try:
+        from streamlit_agraph import agraph, Node, Edge, Config
+    except ImportError:
+        st.error("streamlit-agraph not installed. Please run `uv pip install streamlit-agraph`.")
+        return
+
+    # --- Controls Section ---
+    with st.expander("⚙️ Graph Controls", expanded=False):
+        c1, c2, c3 = st.columns(3)
+        with c1:
+            # Physics controls
+            physics = st.checkbox("Enable Physics", value=True)
+            gravity = st.slider("Gravity", -200, 0, -50, 10)
+        with c2:
+            # Layout filtering
+            if view_mode == "Tasks":
+                show_done = st.checkbox("Show Done", value=False)
+                show_blocked = st.checkbox("Show Blocked", value=True)
+                hide_orphans = st.checkbox("Hide Orphans", value=True)
+            else:
+                # KB filtering
+                show_tags = st.checkbox("Show Tags", value=False)
+                hide_orphans = st.checkbox("Hide Orphans", value=True)
+                
+        with c3:
+            # Visuals
+            node_size = st.slider("Base Node Size", 10, 50, 25)
+
+    # Handle task selection from agraph return value
+    # We don't use query params for agraph selection as it returns the value directly
+    
+    # Create layout
+    col_viz, col_detail = st.columns([3, 1])
+    
+    with col_viz:
+        # Transform graph for agraph
+        nodes = []
+        visible_nodes = graph.get("nodes", [])
+
+        # --- Filtering Logic ---
+        if view_mode == "Tasks":
+            filtered_nodes = []
+            for n in visible_nodes:
+                status = n.get("status", "active")
+                if not show_done and status in ("done", "completed"):
+                    continue
+                if not show_blocked and status == "blocked":
+                    continue
+                filtered_nodes.append(n)
+            visible_nodes = filtered_nodes
+
+        # --- Orphan Filtering ---
+        if hide_orphans:
+            # Build set of connected node IDs (nodes with at least one edge)
+            edges = graph.get("edges", [])
+            connected_ids = set()
+            for e in edges:
+                connected_ids.add(e["source"])
+                connected_ids.add(e["target"])
+            # Filter to only connected nodes
+            visible_nodes = [n for n in visible_nodes if n["id"] in connected_ids]
+
+        # Build ID set for edge filtering
+        visible_ids = {n["id"] for n in visible_nodes}
+
+        for n in visible_nodes:
+            status = n.get("status", "active")
+            ntype = n.get("node_type", "task")
+            
+            # Colors
+            color = "#64748b" # default slate
+            
+            if view_mode == "Tasks":
+                if status == "done": color = "#22c55e"
+                elif status == "active": color = "#3b82f6"
+                elif status == "blocked": color = "#ef4444" 
+                elif status == "waiting": color = "#eab308"
+                elif status == "review": color = "#a855f7"
+                elif status == "cancelled": color = "#94a3b8"
+            else:
+                # KB Mode Colors - Universal scheme by file/node type
+                # Tasks hierarchy (consistent with Tasks view)
+                if ntype == "goal": color = "#ef4444"       # red - top-level objectives
+                elif ntype == "project": color = "#a855f7"  # purple - collections of work
+                elif ntype == "epic": color = "#8b5cf6"     # violet - large initiatives
+                elif ntype == "task": color = "#3b82f6"     # blue - actionable items
+                elif ntype == "action": color = "#06b6d4"   # cyan - atomic actions
+                elif ntype == "bug": color = "#f97316"      # orange - issues/bugs
+                elif ntype == "feature": color = "#22c55e"  # green - new capabilities
+                elif ntype == "learn": color = "#eab308"    # yellow - learnings/observations
+                # Knowledge types
+                elif ntype == "contact": color = "#ec4899"  # pink - people
+                elif ntype == "note": color = "#64748b"     # slate - generic notes
+                elif ntype == "spec": color = "#0ea5e9"     # sky - specifications
+                elif ntype == "workflow": color = "#14b8a6" # teal - processes
+                elif ntype == "reference": color = "#84cc16" # lime - reference docs
+                else: color = "#94a3b8"  # gray - untyped files
+            
+            # Types/Shapes
+            # agraph supports: ellipse, box, database, image, circularImage, diamond, dot, star, triangle, triangleDown, hexagon, square, icon
+            shape = "box" # Default for task
+            if ntype == "goal": shape = "ellipse"
+            elif ntype == "project": shape = "dot" # larger presence? or "database"
+            elif ntype == "action": shape = "box" # text not supported directly as shape, use box
+            elif ntype == "file": shape = "box" # KB generic file
+            
+            # Adjust size based on type/priority
+            size = node_size
+            if ntype == "goal": size = node_size + 15
+            if ntype == "project": size = node_size + 5
+            prio = n.get("priority", 2)
+            if prio == 0: size += 10
+            
+            nodes.append(Node(
+                id=n["id"],
+                label=n.get("label", n["id"])[:20],
+                title=n.get("label", n["id"]), # Tooltip
+                shape=shape,
+                color=color,
+                size=size,
+                font={ "color": "#f1f5f9", "face": "Inter" },
+                borderWidth=1
+            ))
+            
+        edges = []
+        for e in graph.get("edges", []):
+            if e["source"] in visible_ids and e["target"] in visible_ids:
+                edges.append(Edge(
+                    source=e["source"],
+                    target=e["target"],
+                    color="#334155",
+                    type="STRAIGHT",
+                ))
+            
+        config = Config(
+            width="100%",
+            height=600,
+            directed=True, 
+            physics=physics, 
+            hierarchical=False,
+            nodeHighlightBehavior=True,
+            highlightColor="#F7A7A6",
+            collapsible=False,
+            # Physics settings for spacing
+            physicsOptions={
+                "forceAtlas2Based": {
+                    "gravitationalConstant": gravity,
+                    "centralGravity": 0.01,
+                    "springLength": 100,
+                    "springConstant": 0.08,
+                    "damping": 0.4,
+                    "avoidOverlap": 0
+                },
+                "minVelocity": 0.75,
+                "solver": "forceAtlas2Based",
+                "stabilization": {
+                    "enabled": True,
+                    "iterations": 1000,
+                    "updateInterval": 25,
+                    "onlyDynamicEdges": False,
+                    "fit": True
+                }
+            }
+        )
+        
+        selected_node_id = agraph(nodes=nodes, edges=edges, config=config)
+        
+    with col_detail:
+        if selected_node_id:
+            try:
+                storage = TaskStorage()
+                
+                # Check if it's a known task first
+                task = get_task_by_graph_node(selected_node_id, graph.get("nodes", []))
+                
+                # Get raw node data regardless
+                node_def = next((n for n in graph.get("nodes", []) if n["id"] == selected_node_id), None)
+                
+                if task:
+                    st.markdown(f"### {task.title}")
+                    st.caption(f"ID: `{task.id}`")
+                    
+                    status_emoji = {
+                        "active": "▶", "done": "✅", "blocked": "🔒", "waiting": "⏳"
+                    }.get(task.status.value, "•")
+                    
+                    st.markdown(f"**Status:** {status_emoji} {task.status.value}")
+                    st.markdown(f"**Priority:** P{task.priority}")
+                    if task.project:
+                        st.markdown(f"**Project:** {task.project}")
+                        
+                    st.divider()
+                    
+                    # Quick Actions
+                    if task.status != TaskStatus.DONE:
+                        if st.button("✅ Complete", use_container_width=True, key="btn_comp"):
+                            task.status = TaskStatus.DONE
+                            storage.save_task(task)
+                            st.rerun()
+                            
+                    if task.status == TaskStatus.DONE:
+                         if st.button("↩ Reactivate", use_container_width=True, key="btn_react"):
+                            task.status = TaskStatus.ACTIVE
+                            storage.save_task(task)
+                            st.rerun()
+                            
+                    if task.status != TaskStatus.ACTIVE and task.status != TaskStatus.DONE:
+                        if st.button("▶ Start", use_container_width=True, key="btn_start"):
+                            task.status = TaskStatus.ACTIVE
+                            storage.save_task(task)
+                            st.rerun()
+
+                elif node_def:
+                    # Generic Node Display (for KB items)
+                    label = node_def.get("label", selected_node_id)
+                    st.markdown(f"### {label}")
+                    st.caption(f"Type: {node_def.get('node_type', 'unknown')}")
+                    
+                    if "tags" in node_def and node_def["tags"]:
+                        st.markdown("**Tags:** " + ", ".join(f"`{t}`" for t in node_def["tags"]))
+
+                    st.divider()
+
+                # Links (Common for both Task and KB)
+                if node_def and "path" in node_def:
+                    import urllib.parse
+                    import os
+                    
+                    file_path = node_def["path"]
+                    # Get distro from env or default to Debian
+                    distro = os.environ.get("WSL_DISTRO_NAME", "Debian")
+                    # Encode path for URI
+                    encoded_path = urllib.parse.quote(file_path)
+                    
+                    # VS Code Insiders URI (matches user's wlink script)
+                    # Format: vscode-insiders://vscode-remote/wsl+<DISTRO><PATH>
+                    insiders_url = f"vscode-insiders://vscode-remote/wsl+{distro}{encoded_path}"
+                    
+                    st.markdown(f"""
+                    <a href="{insiders_url}" style="
+                        display: block; 
+                        text-align: center; 
+                        background: #0f172a; 
+                        color: #22d3ee; 
+                        padding: 8px; 
+                        border-radius: 4px; 
+                        text-decoration: none; 
+                        margin-top: 8px;
+                        border: 1px solid #1e293b;
+                        font-weight: 500;
+                    ">Open in VS Code (Insiders)</a>
+                    """, unsafe_allow_html=True)
+
+                    # Obsidian Link
+                    # Use label as title approximation if needed, or filename
+                    title = node_def.get("label", Path(file_path).stem)
+                    # Project guess from path if not in node
+                    path_obj = Path(file_path)
+                    try:
+                        # naive project guess: .../writing/PROJECT/...
+                        parts = path_obj.parts
+                        if "writing" in parts:
+                            idx = parts.index("writing")
+                            if idx + 1 < len(parts):
+                                project_guess = parts[idx+1]
+                            else:
+                                project_guess = "inbox"
+                        else:
+                            project_guess = "inbox"
+                    except:
+                        project_guess = "inbox"
+
+                    obs_url = make_obsidian_url(title, project_guess)
+                    st.markdown(f"""
+                    <a href="{obs_url}" target="_blank" style="
+                        display: block; 
+                        text-align: center; 
+                        background: #1e293b; 
+                        color: #a78bfa; 
+                        padding: 8px; 
+                        border-radius: 4px; 
+                        text-decoration: none; 
+                        margin-top: 8px;
+                    ">Open in Obsidian</a>
+                    """, unsafe_allow_html=True)
+                    
+                else:
+                    st.warning("Node not found")
+            except Exception as e:
+                st.error(f"Error loading details: {e}")
+        else:
+            st.info("Select a node on the map to view details.")
+
+
 
 def render_task_graph_tab():
     """Render the Task Graph tab with visualization and health metrics."""
@@ -2252,33 +2593,24 @@ def render_task_graph_tab():
     )
 
     # Load graph data
-    graph = load_task_graph()
+    # View Selection
+    view_mode = st.radio("Graph View", ["Tasks", "Knowledge Base"], horizontal=True)
+
+    # Load graph data based on selection
+    filename = "graph.json" # Default task graph
+    if view_mode == "Knowledge Base":
+        filename = "knowledge-graph.json"
+        
+    graph = load_graph_data(filename)
     if not graph:
-        st.warning("No task graph found. Run `/task-viz` to generate one.")
+        st.warning(f"No graph found for {view_mode} ({filename}). Run `/task-viz` to generate one.")
         return
 
-    # Calculate health metrics
+    # Calculate health metrics (keeping it for Tasks mainly, but it runs safely on any graph)
     health = calculate_graph_health(graph)
 
-    # Display SVG if available
-    svg_path = find_latest_svg()
-    if svg_path:
-        st.markdown(
-            f"**Graph:** `{svg_path.name}` (generated {_format_time_ago(datetime.fromtimestamp(svg_path.stat().st_mtime, tz=timezone.utc))})"
-        )
-
-        # Read and display SVG with scrollable container
-        svg_content = svg_path.read_text()
-        st.markdown(
-            f"""<div style="max-height: 400px; overflow: auto; border: 1px solid #333; border-radius: 8px; padding: 10px; background: #0a0a0a;">
-            {svg_content}
-            </div>""",
-            unsafe_allow_html=True,
-        )
-    else:
-        st.info(
-            "No SVG visualization found. Run `python3 $AOPS/scripts/task_graph.py` to generate one."
-        )
+    # Interactive Graph
+    render_interactive_task_graph(graph, view_mode)
 
     # Health Metrics Section
     st.markdown(

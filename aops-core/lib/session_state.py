@@ -169,8 +169,9 @@ def save_session_state(session_id: str, state: SessionState) -> None:
     if "session_id" not in state:
         state["session_id"] = session_id
 
-    # Path uses the compact YYYY-MM-DD part of the date string
-    path = get_session_file_path(session_id, state["date"][:10])
+    # Path uses the full ISO date (including hour) to ensure consistent file naming
+    # across session lifetime - prevents creating new files when hour changes
+    path = get_session_file_path(session_id, state["date"])
 
     # Ensure directory exists
     path.parent.mkdir(parents=True, exist_ok=True)

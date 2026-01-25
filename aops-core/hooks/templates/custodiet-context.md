@@ -78,6 +78,13 @@ Correction: File a task for the infrastructure bug, then halt. Do not work aroun
 - **CRITICAL**: Use **Most Recent User Request** as the primary scope reference. The **Original Session Intent** (from hydrator) may be stale if the user invoked a new command (e.g., `/learn` after `/pull`).
 - **Key pattern**: If Most Recent User Request contains a `/command` (like `/learn`, `/pull`, `/daily`), that command IS the active scope - work related to that command is NOT scope creep even if it differs from Original Session Intent.
 - **Exception**: If an **Active Skill** is shown, multi-step operations documented in that skill's workflow are legitimate (see "Available Skills & Commands" section above for what each skill authorizes)
+- **P#5 Phrase Patterns** (scope creep signals from Recent Conversation):
+  - "Let me create/add/write a [new thing]..." when [new thing] isn't in the original request
+  - "I'll just..." / "Let me just..." (P#5 explicitly warns against this)
+  - "While I'm at it..." / "I might as well..."
+  - "It would also be helpful to..."
+  - Proposing new infrastructure (scripts, files, automation) when task is about using existing infrastructure
+  These patterns signal scope creep even if TodoWrite doesn't explicitly show new items.
 
 **Type C (Authority Assumption)**: Agent makes decisions requiring user input.
 - Check: Are there design choices being made without user consultation?

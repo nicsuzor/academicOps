@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-PreToolUse hook: Block or warn when prompt-hydrator hasn't been invoked.
+PreToolUse hook: Block when prompt-hydrator hasn't been invoked.
 
 The hydration gate ensures agents invoke the prompt-hydrator subagent before
 proceeding with work. This is a mechanical trigger enforcing the v1.0 core loop.
@@ -9,9 +9,7 @@ Gate logic:
 1. SessionStart creates session state with hydration_pending=True
 2. UserPromptSubmit clears pending for / or . prefixes (if it fires)
 3. PreToolUse checks hydration_pending flag
-4. If pending:
-   - WARN mode: Log warning, allow (exit 0)
-   - BLOCK mode: Block all tools except Task(prompt-hydrator) (exit 2)
+4. If pending: BLOCK all tools except Task(prompt-hydrator) (exit 2)
 5. When Task tool is used with subagent_type="prompt-hydrator", the gate clears
 
 Note: UserPromptSubmit does NOT fire for the first prompt of a fresh session
@@ -23,12 +21,12 @@ Bypass conditions (gate always allows):
 - User bypass prefixes ('.' and '/' handled by UserPromptSubmit setting hydration_pending=False)
 
 Environment variables:
-- HYDRATION_GATE_MODE: "warn" (default) or "block"
 - CLAUDE_AGENT_TYPE: If set, this is a subagent session (bypass gate)
+- HYDRATION_GATE_DEBUG: If "1", emit verbose debug output to stderr
 
 Exit codes:
-    0: Allow (hydration complete, bypassed, or warn mode)
-    2: Block (hydration pending in block mode)
+    0: Allow (hydration complete or bypassed)
+    2: Block (hydration pending)
 
 Failure mode: FAIL-CLOSED (block on error/uncertainty - safety over convenience)
 """
@@ -41,37 +39,28 @@ from pathlib import Path
 from typing import Any
 
 from lib.session_state import clear_hydration_pending, is_hydration_pending
+from lib.session_paths import get_session_file_path_direct, get_session_short_hash
 from lib.template_loader import load_template
-
-# Default gate mode (can be overridden by HYDRATION_GATE_MODE env var)
-DEFAULT_GATE_MODE = "block"
 
 # Template paths
 HOOK_DIR = Path(__file__).parent
 BLOCK_TEMPLATE = HOOK_DIR / "templates" / "hydration-gate-block.md"
-WARN_TEMPLATE = HOOK_DIR / "templates" / "hydration-gate-warn.md"
 
 
-def get_gate_mode() -> str:
-    """Get gate mode from environment, evaluated at runtime for testability.
+def is_debug_enabled() -> bool:
+    """Check if debug output is enabled."""
+    return os.environ.get("HYDRATION_GATE_DEBUG", "").strip() == "1"
 
-    Returns DEFAULT_GATE_MODE if env var is unset or empty.
-    """
-    mode = os.environ.get("HYDRATION_GATE_MODE")
-    if mode is None:
-        return DEFAULT_GATE_MODE
-    mode_stripped = mode.strip().lower()
-    return mode_stripped if mode_stripped else DEFAULT_GATE_MODE
+
+def debug(msg: str) -> None:
+    """Print debug message to stderr if debug is enabled."""
+    if is_debug_enabled():
+        print(f"[hydration_gate] {msg}", file=sys.stderr)
 
 
 def get_block_message() -> str:
     """Load block message from template."""
     return load_template(BLOCK_TEMPLATE)
-
-
-def get_warn_message() -> str:
-    """Load warn message from template."""
-    return load_template(WARN_TEMPLATE)
 
 
 def get_session_id(input_data: dict[str, Any]) -> str:
@@ -143,27 +132,36 @@ def is_hydrator_task(tool_input: dict[str, Any]) -> bool:
 import hashlib
 
 def get_hydration_temp_dir() -> Path:
-    """Get the temporary directory for hydration context (synchronized with user_prompt_submit)."""
+    """Get the temporary directory for hydration context (synchronized with user_prompt_submit).
+
+    Raises:
+        RuntimeError: If Gemini path discovery fails (no silent fallbacks)
+    """
     # 1. Check for standard temp dir env var
     tmpdir = os.environ.get("TMPDIR")
     if tmpdir:
+        debug(f"Using TMPDIR: {tmpdir}")
         return Path(tmpdir)
 
     # 2. Gemini-specific discovery logic
     if os.environ.get("GEMINI_CLI"):
-        try:
-            project_root = os.environ.get("AOPS")
-            if not project_root:
-                project_root = str(Path.cwd())
-            abs_root = str(Path(project_root).resolve())
-            project_hash = hashlib.sha256(abs_root.encode()).hexdigest()
-            gemini_tmp = Path.home() / ".gemini" / "tmp" / project_hash
-            if gemini_tmp.exists():
-                return gemini_tmp
-        except Exception:
-            pass
+        project_root = os.environ.get("AOPS")
+        if not project_root:
+            project_root = str(Path.cwd())
+        abs_root = str(Path(project_root).resolve())
+        project_hash = hashlib.sha256(abs_root.encode()).hexdigest()
+        gemini_tmp = Path.home() / ".gemini" / "tmp" / project_hash
+        if gemini_tmp.exists():
+            debug(f"Using Gemini temp dir: {gemini_tmp}")
+            return gemini_tmp
+        # FAIL-CLOSED: Gemini temp dir doesn't exist, raise instead of falling back
+        raise RuntimeError(
+            f"GEMINI_CLI is set but temp dir does not exist: {gemini_tmp}. "
+            "Create the directory or unset GEMINI_CLI."
+        )
 
-    # 3. Default fallback for Claude Code
+    # 3. Default for Claude Code (not a fallback - this is the expected path)
+    debug("Using default Claude temp dir: /tmp/claude-hydrator")
     return Path("/tmp/claude-hydrator")
 
 
@@ -207,20 +205,27 @@ def is_gemini_hydration_attempt(tool_name: str, tool_input: dict[str, Any]) -> b
 
 
 def main():
-    """Main hook entry point - checks hydration status and blocks/warns if needed."""
+    """Main hook entry point - checks hydration status and blocks if needed.
+
+    FAIL-CLOSED: All error paths exit 2 (block). No silent fallbacks.
+    """
     try:
         input_data = json.load(sys.stdin)
-    except json.JSONDecodeError:
+    except json.JSONDecodeError as e:
         # FAIL-CLOSED: block on parse error (safety over convenience)
-        print("⛔ HYDRATION GATE: Failed to parse hook input", file=sys.stderr)
+        print(f"⛔ HYDRATION GATE: Failed to parse hook input: {e}", file=sys.stderr)
         sys.exit(2)
 
     tool_name = input_data.get("tool_name")
     if tool_name is None:
-        raise ValueError("hook input missing required 'tool_name' field")
+        print("⛔ HYDRATION GATE: hook input missing required 'tool_name' field", file=sys.stderr)
+        sys.exit(2)
     tool_input = input_data.get("tool_input")
     if tool_input is None:
-        raise ValueError("hook input missing required 'tool_input' field")
+        print("⛔ HYDRATION GATE: hook input missing required 'tool_input' field", file=sys.stderr)
+        sys.exit(2)
+
+    debug(f"Tool: {tool_name}")
 
     try:
         session_id = get_session_id(input_data)
@@ -229,43 +234,51 @@ def main():
         print(f"⛔ HYDRATION GATE: {e}", file=sys.stderr)
         sys.exit(2)
 
+    short_hash = get_session_short_hash(session_id)
+    debug(f"Session: {short_hash} (full: {session_id[:8]}...)")
+
     # BYPASS: Subagent sessions (invoked by main agent)
     if is_subagent_session():
+        debug("ALLOW: Subagent session (CLAUDE_AGENT_TYPE set)")
         print(json.dumps({}))
         sys.exit(0)
 
-    # BYPASS: First prompt from CLI (no state exists yet)
+    # BYPASS: First prompt from CLI (no state exists yet) - DEPRECATED, always False
     if is_first_prompt_from_cli(session_id):
+        debug("ALLOW: First prompt from CLI (deprecated bypass)")
         print(json.dumps({}))
         sys.exit(0)
 
     # Check if hydration is pending
-    if not is_hydration_pending(session_id):
+    hydration_pending = is_hydration_pending(session_id)
+    state_file = get_session_file_path_direct(session_id)
+    debug(f"State file: {state_file}")
+    debug(f"Hydration pending: {hydration_pending}")
+
+    if not hydration_pending:
         # Hydration complete or not required - allow all tools
+        debug("ALLOW: Hydration not pending (already complete or bypassed)")
         print(json.dumps({}))
         sys.exit(0)
 
     # Hydration pending - check if this is the hydrator being invoked
     # 1. Claude: Task(subagent_type="prompt-hydrator")
     # 2. Gemini: Reading hydration file directly
-    if (tool_name == "Task" and is_hydrator_task(tool_input)) or \
-       is_gemini_hydration_attempt(tool_name, tool_input):
+    is_hydrator = (tool_name == "Task" and is_hydrator_task(tool_input))
+    is_gemini = is_gemini_hydration_attempt(tool_name, tool_input)
+    debug(f"Is hydrator task: {is_hydrator}, Is Gemini hydration: {is_gemini}")
+
+    if is_hydrator or is_gemini:
         # This is the hydrator being spawned/consumed - clear the gate and allow
+        debug("ALLOW: Hydrator being invoked - clearing gate")
         clear_hydration_pending(session_id)
         print(json.dumps({}))
         sys.exit(0)
 
-    # Hydration pending - enforce based on mode
-    gate_mode = get_gate_mode()
-    if gate_mode == "block":
-        # Block mode: exit 2 to block the tool
-        print(get_block_message(), file=sys.stderr)
-        sys.exit(2)
-    else:
-        # Warn mode (default): log warning but allow (exit 0)
-        print(get_warn_message(), file=sys.stderr)
-        print(json.dumps({}))
-        sys.exit(0)
+    # FAIL-CLOSED: Hydration pending and not invoking hydrator - BLOCK
+    debug(f"BLOCK: Hydration pending, tool={tool_name} is not hydrator")
+    print(get_block_message(), file=sys.stderr)
+    sys.exit(2)
 
 
 if __name__ == "__main__":

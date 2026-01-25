@@ -18,8 +18,9 @@ Generate network graphs of markdown files showing wikilink connections. Uses the
 ## Quick Start
 
 ```bash
-# All notes → all formats
-$AOPS/scripts/bin/fast-indexer ${ACA_DATA} -o graph
+# Dashboard graphs (both needed for Overwhelm Dashboard)
+$AOPS/scripts/bin/fast-indexer ${ACA_DATA} -o ${ACA_DATA}/outputs/graph -f json
+$AOPS/scripts/bin/fast-indexer ${ACA_DATA} -o ${ACA_DATA}/outputs/knowledge-graph -f json
 
 # Tasks only → styled SVG
 $AOPS/scripts/bin/fast-indexer ${ACA_DATA} -o tasks -f json -t task,project,goal

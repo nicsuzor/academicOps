@@ -362,10 +362,15 @@ class TestGateEnforcement:
             captured = capsys.readouterr()
             assert "⛔ HYDRATION GATE" in captured.err
 
-    def test_warn_mode_allows_with_warning(self, monkeypatch, capsys):
-        """Test that warn mode (default) logs warning but allows."""
+    def test_legacy_warn_mode_env_var_ignored_blocks_anyway(self, monkeypatch, capsys):
+        """Test that legacy warn mode env var is ignored - gate always blocks when pending.
+
+        FAIL-CLOSED: The warn mode fallback was removed. Setting HYDRATION_GATE_MODE=warn
+        no longer has any effect - the gate blocks whenever hydration is pending.
+        """
         import io
 
+        # Set legacy warn mode env var (should be ignored)
         monkeypatch.setenv("HYDRATION_GATE_MODE", "warn")
 
         input_data = {
@@ -382,16 +387,12 @@ class TestGateEnforcement:
             with pytest.raises(SystemExit) as exc_info:
                 main()
 
-            # Should exit 0 (allow in warn mode)
-            assert exc_info.value.code == 0
+            # Should exit 2 (block) even with legacy warn mode set - FAIL-CLOSED
+            assert exc_info.value.code == 2
 
             captured = capsys.readouterr()
-            output = json.loads(captured.out)
-            assert output == {}
-
-            # Should have warning in stderr
-            assert "⚠️  HYDRATION GATE (warn-only)" in captured.err
-            assert "warn mode" in captured.err.lower()
+            # Should have block message in stderr
+            assert "HYDRATION GATE" in captured.err or "prompt-hydrator" in captured.err
 
     def test_block_mode_blocks_with_error(self, monkeypatch, capsys):
         """Test that block mode exits with code 2 to block tool."""
