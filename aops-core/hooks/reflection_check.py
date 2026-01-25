@@ -13,6 +13,7 @@ Exit codes:
 """
 
 import json
+import os
 import sys
 from typing import Any
 
@@ -27,7 +28,8 @@ def main():
     except Exception:
         pass
 
-    session_id = input_data.get("session_id", "")
+    # Check both stdin and environment for session_id
+    session_id = input_data.get("session_id", "") or os.environ.get("CLAUDE_SESSION_ID", "")
     output_data: dict[str, Any] = {}
 
     if session_id:
