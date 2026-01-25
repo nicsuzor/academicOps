@@ -105,7 +105,7 @@ HOOK_REGISTRY: dict[str, list[dict[str, Any]]] = {
     "Stop": [
         #{"script": "reflection_check.py"},  # Validate parseable Framework Reflection
         # {"script": "session_end_commit_check.py"},  
-        {"script": "unified_logger.py"},
+      #  {"script": "unified_logger.py"},
     ],
     "SessionEnd": [
         {"script": "unified_logger.py"},

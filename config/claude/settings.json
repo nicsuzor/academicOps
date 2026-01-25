@@ -66,6 +66,8 @@
   "enabledPlugins": {
     "plugin-dev@claude-plugins-official": true,
     "academicOps@inline": false,
-    "canvas@claude-canvas": true
+    "canvas@claude-canvas": true,
+    "aops-core@aops": true,
+    "aops-tools@aops": true
   }
 }

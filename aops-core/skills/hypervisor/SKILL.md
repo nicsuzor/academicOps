@@ -191,9 +191,11 @@ mcp__plugin_aops-tools_task_manager__get_index_stats --include_projects true
 ### Known Limitations
 
 1. **No MCP tool access**: Gemini cannot use Outlook, Zotero, memory, calendar, browser MCP tools
-2. **Sandbox mode is read-only**: Use for testing, not actual execution
+2. **Sandbox mode requires catatonit**: May fail on systems without this dependency
 3. **YOLO mode auto-approves all**: High trust, review git history for rollback
 4. **Sequential only**: Gemini CLI doesn't support parallel execution like Claude agents
+5. **AfterTool hook errors**: custodiet_gate.py has compatibility issues with Gemini's tool format (non-blocking)
+6. **Workspace sandbox**: File access restricted to cwd and .gemini/tmp - run from `$AOPS` root
 
 ### Design Improvements (from parallel experiments)
 
