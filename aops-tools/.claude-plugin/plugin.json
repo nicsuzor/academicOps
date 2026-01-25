@@ -1,10 +1,10 @@
 {
   "name": "aops-tools",
   "version": "0.1.0",
-  "description": "Tools and utilities plugin for academicOps - planning, communication, visualization, data processing, and development",
+  "description": "Generic document and visualization tools - PDF generation, Excalidraw diagrams, Mermaid flowcharts, and document conversion",
   "author": {
     "name": "Nicolas Suzor"
   },
   "license": "MIT",
-  "keywords": ["academicOps", "tools", "utilities", "visualization", "development"]
+  "keywords": ["pdf", "excalidraw", "flowchart", "mermaid", "document-conversion", "visualization"]
 }
