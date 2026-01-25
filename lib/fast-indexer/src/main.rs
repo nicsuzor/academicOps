@@ -722,6 +722,8 @@ fn main() -> Result<()> {
     }
     if duplicate_count > 0 {
         eprintln!("Found {} duplicate ID(s). Run 'task dedup' to resolve.", duplicate_count);
+        eprintln!("ERROR: Refusing to generate graph with duplicate IDs (fail-fast).");
+        std::process::exit(1);
     }
 
     // 3b. Build Lookup Maps
