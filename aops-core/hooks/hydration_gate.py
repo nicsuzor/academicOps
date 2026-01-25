@@ -25,8 +25,7 @@ Environment variables:
 - HYDRATION_GATE_DEBUG: If "1", emit verbose debug output to stderr
 
 Exit codes:
-    0: Allow (hydration complete or bypassed)
-    2: Block (hydration pending)
+    0: Always (JSON output determines allow/deny via permissionDecision field)
 
 Failure mode: FAIL-CLOSED (block on error/uncertainty - safety over convenience)
 """
@@ -207,23 +206,45 @@ def is_gemini_hydration_attempt(tool_name: str, tool_input: dict[str, Any]) -> b
 def main():
     """Main hook entry point - checks hydration status and blocks if needed.
 
-    FAIL-CLOSED: All error paths exit 2 (block). No silent fallbacks.
+    FAIL-CLOSED: All error paths output permissionDecision:deny. No silent fallbacks.
     """
     try:
         input_data = json.load(sys.stdin)
     except json.JSONDecodeError as e:
         # FAIL-CLOSED: block on parse error (safety over convenience)
-        print(f"⛔ HYDRATION GATE: Failed to parse hook input: {e}", file=sys.stderr)
-        sys.exit(2)
+        # Use JSON permissionDecision:deny with exit 0 so Claude Code processes it
+        output = {
+            "hookSpecificOutput": {
+                "hookEventName": "PreToolUse",
+                "permissionDecision": "deny",
+                "additionalContext": f"⛔ HYDRATION GATE: Failed to parse hook input: {e}"
+            }
+        }
+        print(json.dumps(output))
+        sys.exit(0)
 
     tool_name = input_data.get("tool_name")
     if tool_name is None:
-        print("⛔ HYDRATION GATE: hook input missing required 'tool_name' field", file=sys.stderr)
-        sys.exit(2)
+        output = {
+            "hookSpecificOutput": {
+                "hookEventName": "PreToolUse",
+                "permissionDecision": "deny",
+                "additionalContext": "⛔ HYDRATION GATE: hook input missing required 'tool_name' field"
+            }
+        }
+        print(json.dumps(output))
+        sys.exit(0)
     tool_input = input_data.get("tool_input")
     if tool_input is None:
-        print("⛔ HYDRATION GATE: hook input missing required 'tool_input' field", file=sys.stderr)
-        sys.exit(2)
+        output = {
+            "hookSpecificOutput": {
+                "hookEventName": "PreToolUse",
+                "permissionDecision": "deny",
+                "additionalContext": "⛔ HYDRATION GATE: hook input missing required 'tool_input' field"
+            }
+        }
+        print(json.dumps(output))
+        sys.exit(0)
 
     debug(f"Tool: {tool_name}")
 
@@ -231,8 +252,15 @@ def main():
         session_id = get_session_id(input_data)
     except ValueError as e:
         # FAIL-CLOSED: block on missing session_id (safety over convenience)
-        print(f"⛔ HYDRATION GATE: {e}", file=sys.stderr)
-        sys.exit(2)
+        output = {
+            "hookSpecificOutput": {
+                "hookEventName": "PreToolUse",
+                "permissionDecision": "deny",
+                "additionalContext": f"⛔ HYDRATION GATE: {e}"
+            }
+        }
+        print(json.dumps(output))
+        sys.exit(0)
 
     short_hash = get_session_short_hash(session_id)
     debug(f"Session: {short_hash} (full: {session_id[:8]}...)")
@@ -276,9 +304,17 @@ def main():
         sys.exit(0)
 
     # FAIL-CLOSED: Hydration pending and not invoking hydrator - BLOCK
+    # Use JSON permissionDecision:deny with exit 0 so Claude Code processes it
     debug(f"BLOCK: Hydration pending, tool={tool_name} is not hydrator")
-    print(get_block_message(), file=sys.stderr)
-    sys.exit(2)
+    output = {
+        "hookSpecificOutput": {
+            "hookEventName": "PreToolUse",
+            "permissionDecision": "deny",
+            "additionalContext": get_block_message()
+        }
+    }
+    print(json.dumps(output))
+    sys.exit(0)
 
 
 if __name__ == "__main__":
