@@ -26,15 +26,17 @@ from lib.session_state import (
 from lib.transcript_parser import SessionProcessor, parse_framework_reflection
 
 
-def get_status_instructions() -> str:
-    """Return brief status format instructions.
+def get_reflection_instructions() -> str:
+    """Return Framework Reflection format instructions.
 
-    Kept minimal since this runs frequently and adds to output tokens.
+    Requires proper structured reflection, not just a status line.
     """
-    return """Output session status:
+    return """Output Framework Reflection:
 ```
 ## Framework Reflection
-AOPS status: done|in progress|interrupted|error
+**Outcome**: success|partial|failure
+**Accomplishments**: [What was completed]
+**Friction points**: [Issues encountered, or "none"]
 ```"""
 
 # Set up logging
@@ -197,11 +199,10 @@ def main():
 
             if not found:
                 # Block session - Framework Reflection is mandatory
-                # Brief instructions since this runs frequently
-                instructions = get_status_instructions()
+                instructions = get_reflection_instructions()
                 output_data = {
                     "decision": "block",
-                    "reason": f"Missing status. {instructions}",
+                    "reason": f"Missing Framework Reflection. {instructions}",
                 }
                 logger.info("Session blocked: Parseable Framework Reflection not found")
         except Exception as e:
