@@ -21,7 +21,7 @@ INPUT=$(cat)
 SESSION_ID=$(echo "$INPUT" | jq -r '.session_id // empty')
 
 # Print session info for debugging
-echo "Session ID: ${SESSION_ID:-<not provided>}" >&2
+echo "session: ${SESSION_ID:-<not provided>}  ACA_DATA=${ACA_DATA:-<not set>}  AOPS=${AOPS:-<not set>}" >&2
 echo "CLAUDE_ENV_FILE: ${CLAUDE_ENV_FILE:-<not set>}" >&2
 
 # Persist session ID if available
@@ -69,6 +69,19 @@ else
         # Only add to PYTHONPATH if not already present
         if ! grep -q "PYTHONPATH.*$AOPS" "$CLAUDE_ENV_FILE" 2>/dev/null; then
             echo "export PYTHONPATH=\"$AOPS:\${PYTHONPATH:-}\"" >> "$CLAUDE_ENV_FILE"
+        fi
+
+        # Add additional environment variables
+        if ! grep -q "export NODE_ENV=" "$CLAUDE_ENV_FILE" 2>/dev/null; then
+            echo 'export NODE_ENV=production' >> "$CLAUDE_ENV_FILE"
+        fi
+
+        if ! grep -q "export API_KEY=" "$CLAUDE_ENV_FILE" 2>/dev/null; then
+            echo 'export API_KEY=your-api-key' >> "$CLAUDE_ENV_FILE"
+        fi
+
+        if ! grep -q "node_modules/.bin" "$CLAUDE_ENV_FILE" 2>/dev/null; then
+            echo 'export PATH="$PATH:./node_modules/.bin"' >> "$CLAUDE_ENV_FILE"
         fi
     fi
 
