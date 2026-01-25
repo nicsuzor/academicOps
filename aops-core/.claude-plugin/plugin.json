@@ -6,6 +6,5 @@
     "name": "Nicolas Suzor"
   },
   "license": "MIT",
-  "keywords": ["academicOps", "research", "framework", "workflow"],
-  "hooks": "./hooks/hooks.json"
+  "keywords": ["academicOps", "research", "framework", "workflow"]
 }
