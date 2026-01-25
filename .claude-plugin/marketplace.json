@@ -1,17 +1,31 @@
 {
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "aops",
   "description": "academicOps - Research workflow automation framework",
-  "version": "0.1.0",
+  "owner": {
+    "name": "Nicolas Suzor",
+    "email": "nic@suzor.net"
+  },
   "plugins": [
     {
       "name": "aops-core",
-      "path": "../aops-core",
-      "description": "Core academicOps framework - skills, agents, and hooks for research workflow automation"
+      "description": "Core academicOps framework - skills, agents, and hooks for research workflow automation",
+      "version": "0.1.0",
+      "author": {
+        "name": "Nicolas Suzor"
+      },
+      "source": "./aops-core",
+      "category": "productivity"
     },
     {
       "name": "aops-tools",
-      "path": "../aops-tools",
-      "description": "Generic document and visualization tools - PDF generation, Excalidraw diagrams, Mermaid flowcharts, and document conversion"
+      "description": "Generic document and visualization tools - PDF generation, Excalidraw diagrams, Mermaid flowcharts, and document conversion",
+      "version": "0.1.0",
+      "author": {
+        "name": "Nicolas Suzor"
+      },
+      "source": "./aops-tools",
+      "category": "productivity"
     }
   ]
 }
