@@ -1,15 +1,16 @@
 #!/usr/bin/env python3
 """
-PreToolUse hook: Block destructive operations without three-gate compliance.
+PreToolUse hook: Block destructive operations without four-gate compliance.
 
 Enforces task-gated permissions model. Destructive operations (Write, Edit,
-destructive Bash) require ALL THREE gates to pass:
+destructive Bash) require ALL FOUR gates to pass:
 
   (a) Task bound - session has an active task via update_task or create_task
-  (b) Critic invoked - critic agent has reviewed the plan (SubagentStop tracked)
-  (c) Todo with handover - TodoWrite includes a session end/handover step
+  (b) Plan mode invoked - EnterPlanMode has been called to design approach
+  (c) Critic invoked - critic agent has reviewed the plan (SubagentStop tracked)
+  (d) Todo with handover - TodoWrite includes a session end/handover step
 
-This ensures all work is tracked, reviewed, and has a proper completion plan.
+This ensures all work is planned, tracked, reviewed, and has a proper completion plan.
 
 Bypass conditions:
 - Subagent sessions (CLAUDE_AGENT_TYPE set)
@@ -119,14 +120,17 @@ def build_block_message(gates: dict[str, bool]) -> str:
     """
     missing = []
     if not gates["task_bound"]:
-        missing.append("(a) Claim a task: `mcp__plugin_aops-core_tasks__update_task(id=\"...\", status=\"active\")`")
+        missing.append("(a) Claim a task: `mcp__plugin_aops-tools_task_manager__update_task(id=\"...\", status=\"active\")`")
+    if not gates["plan_mode_invoked"]:
+        missing.append("(b) Enter plan mode: `EnterPlanMode()` - design your implementation approach first")
     if not gates["critic_invoked"]:
-        missing.append("(b) Invoke critic: `Task(subagent_type=\"aops-core:critic\", prompt=\"Review this plan: ...\")`")
+        missing.append("(c) Invoke critic: `Task(subagent_type=\"aops-core:critic\", prompt=\"Review this plan: ...\")`")
     if not gates["todo_with_handover"]:
-        missing.append("(c) Create todo list with handover step: Include 'Session handover' or 'Commit and push' in TodoWrite")
+        missing.append("(d) Create todo list with handover step: Include 'Session handover' or 'Commit and push' in TodoWrite")
 
     return load_template(BLOCK_TEMPLATE, {
         "task_bound_status": _gate_status(gates["task_bound"]),
+        "plan_mode_invoked_status": _gate_status(gates["plan_mode_invoked"]),
         "critic_invoked_status": _gate_status(gates["critic_invoked"]),
         "todo_with_handover_status": _gate_status(gates["todo_with_handover"]),
         "missing_gates": "\n".join(missing),
@@ -144,6 +148,7 @@ def build_warn_message(gates: dict[str, bool]) -> str:
     """
     return load_template(WARN_TEMPLATE, {
         "task_bound_status": _gate_status(gates["task_bound"]),
+        "plan_mode_invoked_status": _gate_status(gates["plan_mode_invoked"]),
         "critic_invoked_status": _gate_status(gates["critic_invoked"]),
         "todo_with_handover_status": _gate_status(gates["todo_with_handover"]),
     })

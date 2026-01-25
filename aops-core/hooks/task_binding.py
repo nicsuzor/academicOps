@@ -91,6 +91,18 @@ def should_unbind_task(tool_name: str, tool_result: dict[str, Any]) -> bool:
     return False
 
 
+def should_track_plan_mode(tool_name: str) -> bool:
+    """Check if this tool call is EnterPlanMode.
+
+    Args:
+        tool_name: Name of the tool being invoked
+
+    Returns:
+        True if EnterPlanMode was called
+    """
+    return tool_name == "EnterPlanMode"
+
+
 def main() -> None:
     """Main hook entry point."""
     # Read input from stdin
@@ -108,6 +120,21 @@ def main() -> None:
     # Get session ID from environment
     session_id = os.environ.get("CLAUDE_SESSION_ID")
     if not session_id:
+        print(json.dumps({}))
+        sys.exit(0)
+
+    # Track EnterPlanMode invocation (four-gate requirement)
+    if should_track_plan_mode(tool_name):
+        try:
+            from lib.session_state import is_plan_mode_invoked, set_plan_mode_invoked
+
+            if not is_plan_mode_invoked(session_id):
+                set_plan_mode_invoked(session_id)
+                output = {"systemMessage": "Plan mode gate passed ✓"}
+                print(json.dumps(output))
+                sys.exit(0)
+        except Exception as e:
+            print(f"task_binding plan_mode error: {e}", file=sys.stderr)
         print(json.dumps({}))
         sys.exit(0)
 

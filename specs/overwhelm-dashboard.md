@@ -114,83 +114,61 @@ Agent sessions --> session state json files --> Dashboard
 }
 ```
 
-## Dashboard Panels
+## Page Layout
 
-| Panel | Purpose | Data Source |
-|-------|---------|-------------|
-| **NOW** | Current focus from daily notes | Daily note parsing |
-| **Task log**  | What's been happening | tasks mcp |
-| **Priority Tasks** | P0/P1 tasks grouped by project | index.json |
-| **Blockers** | Tasks with unmet dependencies (red-themed) | index.json computed relationships |
-| **Done Today** | Completed items | index.json + daily notes |
-| **Active Sessions** | What sessions are working on | R2 prompts + local JSONL |
+Single-page layout (no tabs). Content flows top-to-bottom:
 
-### Task log
+1. **Task Graph** - Interactive network visualization
+2. **Project Boxes** - One box per project with context
 
-Shows real-time view of tasks checked out, completed, added.
+### Task Graph Section
 
-### Active Sessions Panel
+Interactive force-directed graph at the top of the page.
 
-Shows per-session context for "where did I leave off" recovery:
+**Renderer**: Force-Graph (WebGL/Canvas)
+- Replaced vis.js (slow) and Cytoscape (removed for simplicity)
+- GPU-accelerated, handles large graphs smoothly
 
-```
-📍 ACTIVE SESSIONS (3)
+**Controls**:
 
-┌─────────────────────────────────────────────────────┐
-│ abc1234 @ macbook | writing | 5m ago                │
-│ "Review implementation plan..."                      │
-│ ▶ Update dashboard session panel                    │
-| x Read implementation plan                          |
-│ □ +3 pending                                        │
-└─────────────────────────────────────────────────────┘
-```
+| Control | Options |
+|---------|---------|
+| **View** | Tasks, Knowledge Base |
+| **Layout** | ↓ Top-Down, → Left-Right, ◎ Radial, ⚛ Force |
 
-- **Session ID**: First 7 chars of UUID
-- **Meta**: hostname | project | time ago
-- **Last prompt**: Most recent user prompt
-- **In-progress**: Current TodoWrite item
-- **Pending**: Count of remaining todos
-
-#### Session Card Parameters
-
-| Parameter | Value | Rationale |
-|-----------|-------|-----------|
-| **Truncation length** | 120 chars | 60 chars loses key entities; 120 captures verb + object + context |
-| **Time window (Active Now)** | 4 hours | 24h too wide; 4h = realistic "recently touched" window |
-| **Fallback context** | Empty or real git context | "Local activity" is noise; show nothing or extract `git branch`, touched files |
-
-**Context extraction priority** (from `dashboard.py:604+`):
-1. Current Task (`state.main_agent.current_task`)
-2. Last Prompt (`state.main_agent.last_prompt`)
-3. Hydration Original Prompt (`state.hydration.original_prompt`)
-4. **Fallback**: Show git branch + modified files, OR show nothing
-
-**Do not**: Display "Local activity" placeholder. It adds noise without information.
-
-### Task Graph Tab
-
-Visualizes the task network and calculates health metrics. Accessible via the "🕸️ Task Graph" tab.
+**Layout modes** (DAG layouts for hierarchical task trees):
+- `td` - Top-down: goals at top, actions at bottom
+- `lr` - Left-right: horizontal hierarchy
+- `radial-out` - Radial: goals in center, tasks radiate outward
+- `force` - Organic force-directed (default)
 
 **Data Sources**:
-- `graph.json` from fast-indexer (node-link format)
-- Most recent `task-viz*.svg` for visualization
+- Tasks view: `$ACA_DATA/outputs/graph.json`
+- Knowledge Base view: `$ACA_DATA/outputs/knowledge-graph.json`
 
-**Health Metrics Displayed**:
+**Node colors** (Tasks view by status):
+- Blue: active
+- Green: done
+- Red: blocked
+- Yellow: waiting
+- Purple: review
 
-| Metric | What it measures | Healthy signal |
-|--------|------------------|----------------|
-| **Sequencing (Clumping Ratio)** | Max level width ÷ avg level width | < 3.0 |
-| **Branching Factor** | Avg/max children per node | Max ≤ 10 |
-| **Priority Inheritance** | Children with lower priority than parent | 0 violations |
-| **Connectivity** | Number of disconnected subgraphs | 1 component |
-| **Strategic Reachability** | % of tasks reachable from goals | ≥ 95% |
-| **Chain Depth** | Longest goal→task path | Longer = better sequencing |
+### Project Boxes
 
-**Features**:
-- Scrollable SVG graph display (max-height 400px)
-- Color-coded health cards (green=healthy, yellow=warning, red=problem)
-- Lists specific priority violations if any
-- Lists orphan tasks not connected to goals
+Grid of project cards below the graph. Each box contains:
+
+| Section | Content | Data Source |
+|---------|---------|-------------|
+| **⚡ WORKING NOW** | Active agent sessions | Session state files |
+| **📌 UP NEXT** | Top 3 priority tasks | index.json |
+| **✅ RECENTLY** | Recent accomplishments | Daily notes |
+
+**Sorting**: Projects sorted by activity score:
+- +1000 per active session
+- +100 if has P0 task
+- +recency bonus
+
+**Filtering**: Empty projects (no sessions, tasks, or accomplishments) are hidden.
 
 ## Design Principles
 
@@ -274,30 +252,24 @@ If Phase 1 fallback removal leaves too many empty cards:
 2. Show recently modified files
 3. Parse working directory for project indicators
 
-## Knowledge Base Graph Tab
+## Knowledge Base View
 
-The Task Graph tab includes a toggle to switch between Tasks and Knowledge Base views.
+The graph section includes a View toggle to switch between Tasks and Knowledge Base.
 
-### Data Sources
-
-| View | Data File | Generator |
-|------|-----------|-----------|
-| Tasks | `graph.json` | fast-indexer |
-| Knowledge Base | `knowledge-graph.json` | TBD (garden skill or dedicated indexer) |
-
-### KB Graph Content
+**Node colors** (Knowledge Base view by type):
+- Red: goal
+- Purple: project
+- Blue: task
+- Cyan: action
+- Orange: bug
+- Pink: contact
+- Teal: workflow
+- Sky: spec
 
 The Knowledge Base graph visualizes:
 - Notes and documents as nodes
-- Wikilinks as edges (bidirectional)
-- Clusters by folder/project
-- Tags as grouping attribute
-
-**Implementation approach**:
-1. Index markdown files in `data/` directory
-2. Parse wikilinks `[[target]]` from each file
-3. Generate node-link JSON in same format as task graph
-4. Health metrics: orphan notes, broken links, cluster density
+- Wikilinks as edges
+- Color-coded by frontmatter `type` field
 
 ## Task Management Interface
 

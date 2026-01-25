@@ -894,14 +894,48 @@ def clear_todo_handover(session_id: str) -> None:
 
 
 # ============================================================================
+# Plan Mode Invocation Tracking API
+# ============================================================================
+
+
+def set_plan_mode_invoked(session_id: str) -> None:
+    """Set plan_mode_invoked flag when EnterPlanMode tool is called.
+
+    Part of the four-gate requirement for destructive operations:
+    (a) task claimed, (b) plan mode invoked, (c) critic invoked, (d) todo with handover.
+
+    Args:
+        session_id: Claude Code session ID
+    """
+    state = get_or_create_session_state(session_id)
+    state["state"]["plan_mode_invoked"] = True
+    save_session_state(session_id, state)
+
+
+def is_plan_mode_invoked(session_id: str) -> bool:
+    """Check if EnterPlanMode has been invoked for this session.
+
+    Args:
+        session_id: Claude Code session ID
+
+    Returns:
+        True if plan_mode_invoked flag is set
+    """
+    state = load_session_state(session_id)
+    if state is None:
+        return False
+    return state.get("state", {}).get("plan_mode_invoked", False)
+
+
+# ============================================================================
 # Gate Status Check API
 # ============================================================================
 
 
 def check_all_gates(session_id: str) -> dict[str, bool]:
-    """Check status of all three gates for destructive operations.
+    """Check status of all four gates for destructive operations.
 
-    Returns status of: task_bound, critic_invoked, todo_with_handover.
+    Returns status of: task_bound, plan_mode_invoked, critic_invoked, todo_with_handover.
 
     Args:
         session_id: Claude Code session ID
@@ -910,14 +944,16 @@ def check_all_gates(session_id: str) -> dict[str, bool]:
         Dict with gate statuses and overall 'all_passed' flag
     """
     task_bound = get_current_task(session_id) is not None
+    plan_mode = is_plan_mode_invoked(session_id)
     critic_invoked = is_critic_invoked(session_id)
     todo_handover = has_todo_with_handover(session_id)
 
     return {
         "task_bound": task_bound,
+        "plan_mode_invoked": plan_mode,
         "critic_invoked": critic_invoked,
         "todo_with_handover": todo_handover,
-        "all_passed": task_bound and critic_invoked and todo_handover,
+        "all_passed": task_bound and plan_mode and critic_invoked and todo_handover,
     }
 
 

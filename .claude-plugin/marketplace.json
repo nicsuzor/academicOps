@@ -5,12 +5,12 @@
   "plugins": [
     {
       "name": "aops-core",
-      "path": "./aops-core",
+      "path": "../aops-core",
       "description": "Core academicOps framework - skills, agents, and hooks for research workflow automation"
     },
     {
       "name": "aops-tools",
-      "path": "./aops-tools",
+      "path": "../aops-tools",
       "description": "Generic document and visualization tools - PDF generation, Excalidraw diagrams, Mermaid flowcharts, and document conversion"
     }
   ]

@@ -56,7 +56,7 @@ The planning web lives in `${ACA_DATA}/`. Everything is a markdown file with YAM
 
 **Projects** (`${ACA_DATA}/projects/`): Bounded efforts toward goals. Have scope, even if fuzzy.
 
-**Tasks** (`${ACA_DATA}/tasks/`): Executable actions. Can contain subtask lists. Can divide, merge, or emit children.
+**Tasks** (mcp server): Executable actions. Can contain subtask lists. Can divide, merge, or emit children.
 
 ### Minimal Schema
 
@@ -155,7 +155,7 @@ When you provide prioritization, next steps, or "marching orders":
 2. Write prioritization guidance to daily note (via /daily skill) if requested
 3. **STOP** - do not execute the recommended tasks
 
-The user controls execution timing. Your job is to surface the plan, not act on it. See [[HEURISTICS#Planning Guidance Goes to Daily Note (P#64)]].
+The user controls execution timing. Your job is to surface the plan, not act on it. 
 
 ## Working Style
 

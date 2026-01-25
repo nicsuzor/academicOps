@@ -30,12 +30,12 @@ MUTATING_TOOLS = {"Edit", "Write", "Bash", "NotebookEdit"}
 READONLY_TOOLS = {"Read", "Glob", "Grep", "WebFetch", "WebSearch", "LSP"}
 
 
-def get_session_id() -> str:
+def get_session_id() -> str | None:
     """Get session ID from environment.
 
-    Returns empty string if not found (caller should handle gracefully).
+    Returns None if not found.
     """
-    return os.environ.get("CLAUDE_SESSION_ID") or os.environ.get("CLAUDE_CWD") or ""
+    return os.environ.get("CLAUDE_SESSION_ID") or os.environ.get("CLAUDE_CWD")
 
 
 def is_mutating_tool(tool_name: str) -> bool:

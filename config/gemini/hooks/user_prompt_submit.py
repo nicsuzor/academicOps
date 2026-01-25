@@ -37,16 +37,23 @@ from hooks.user_prompt_submit import (
     load_axioms,
     load_heuristics,
     get_task_work_state,
+    get_formatted_relevant_paths,
     should_skip_hydration,
     write_initial_hydrator_state,
     clear_reflection_output,
     CONTEXT_TEMPLATE_FILE,
     TEMP_DIR,
 )
-from hooks.hook_debug import safe_log_to_debug_file
 from hooks.hook_logger import log_hook_event
+
+
 from lib.session_reader import extract_router_context
 from lib.template_loader import load_template
+
+
+def safe_log_to_debug_file(event: str, input_data: Any, output_data: Any) -> None:
+    """No-op debug logging stub (hook_debug module removed)."""
+    pass
 
 # Gemini-specific paths
 HOOK_DIR = Path(__file__).parent
@@ -83,6 +90,7 @@ def build_gemini_hydration_instruction(
     axioms = load_axioms()
     heuristics = load_heuristics()
     task_state = get_task_work_state()
+    relevant_files = get_formatted_relevant_paths(prompt, max_files=10)
 
     # Build full context for temp file (same as Claude)
     context_template = load_template(CONTEXT_TEMPLATE_FILE)
@@ -95,13 +103,16 @@ def build_gemini_hydration_instruction(
         axioms=axioms,
         heuristics=heuristics,
         task_state=task_state,
+        relevant_files=relevant_files,
     )
 
     # Write to temp file
     temp_path = write_temp_file(full_context)
 
-    # Write initial hydrator state for downstream gates
-    write_initial_hydrator_state(session_id, prompt)
+    # Write hydrator state for downstream gates
+    # For Gemini, hydration is "complete" when we return additionalContext
+    # (no separate Task subagent like Claude uses)
+    write_initial_hydrator_state(session_id, prompt, hydration_pending=False)
 
     # Truncate prompt for preview
     prompt_preview = prompt[:80].replace("\n", " ").strip()

@@ -138,6 +138,63 @@ tail -f /tmp/claude/-home-nic-writing/tasks/*.output
 3. **Batch coordinator**: Add a status aggregator that tracks parallel workers
 4. **Output retention**: Keep output files for N minutes after completion
 
+## Gemini CLI Task Offloading
+
+Use Gemini CLI to process mechanical tasks from the queue with YOLO mode (auto-approve all tools).
+
+### Configuration
+
+Gemini has `task_manager` MCP server configured at `~/.gemini/settings.json`. Verify with:
+
+```bash
+gemini mcp list
+# Should show: ✓ task_manager: ... - Connected
+```
+
+### Worker Prompt
+
+Located at `prompts/gemini-task-worker.md`. Key features:
+- Atomic claiming via `claim_next_task(caller="gemini")`
+- Fail-fast on errors (mark blocked instead of retrying)
+- Scope boundaries (no git, no external changes)
+- Clear completion/block output format
+
+### Single Task Execution
+
+```bash
+# Test run with one task (sandbox mode for safety)
+gemini --sandbox -p "@prompts/gemini-task-worker.md Claim and complete one mechanical task from aops project"
+
+# Production run (yolo mode)
+gemini --yolo -p "@prompts/gemini-task-worker.md Claim and complete one mechanical task from aops project"
+```
+
+### Batch Processing
+
+```bash
+# Process multiple tasks sequentially
+for i in $(seq 1 5); do
+  gemini --yolo -p "@prompts/gemini-task-worker.md Claim and complete one mechanical task from aops project"
+done
+```
+
+### Verification
+
+```bash
+# Check which tasks Gemini completed
+grep -l "assignee: gemini" data/aops/tasks/*.md
+
+# Check task completion rate
+mcp__plugin_aops-tools_task_manager__get_index_stats --include_projects true
+```
+
+### Known Limitations
+
+1. **No MCP tool access**: Gemini cannot use Outlook, Zotero, memory, calendar, browser MCP tools
+2. **Sandbox mode is read-only**: Use for testing, not actual execution
+3. **YOLO mode auto-approves all**: High trust, review git history for rollback
+4. **Sequential only**: Gemini CLI doesn't support parallel execution like Claude agents
+
 ### Design Improvements (from parallel experiments)
 
 **1. Structured completion summary**

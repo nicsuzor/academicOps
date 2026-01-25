@@ -38,7 +38,7 @@ def extract_task_title_from_todos(tool_input: dict[str, Any]) -> str:
     Returns:
         Task title (max 60 chars) or default
     """
-    todos = tool_input.get("todos", [])
+    todos = tool_input.get("todos")
     if not todos:
         return "Ad-hoc work session"
 
@@ -101,11 +101,11 @@ def main() -> None:
         sys.exit(0)
 
     # Extract tool info (support both naming conventions)
-    tool_name = input_data.get("tool_name") or input_data.get("toolName", "")
-    tool_input = input_data.get("tool_input") or input_data.get("toolInput", {})
+    tool_name = input_data.get("tool_name") or input_data.get("toolName")
+    tool_input = input_data.get("tool_input") or input_data.get("toolInput")
 
-    # Only handle TodoWrite
-    if tool_name != "TodoWrite":
+    # Only handle TodoWrite (requires both name and input)
+    if tool_name != "TodoWrite" or tool_input is None:
         print(json.dumps({}))
         sys.exit(0)
 

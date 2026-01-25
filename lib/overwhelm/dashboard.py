@@ -2280,678 +2280,389 @@ def get_task_by_graph_node(node_id: str, graph_nodes: list[dict]) -> Task | None
             return path_map.get(str(graph_path))
         except Exception:
             pass
-            
+
     return None
-def render_interactive_task_graph(graph: dict, view_mode: str = "Tasks"):
-    """
-    Render interactive graph using streamlit-agraph and handle task management.
 
-    Args:
-        graph: The graph data dict
-        view_mode: "Tasks" or "Knowledge Base" to adjust styling defaults
-    """
-    try:
-        from streamlit_agraph import agraph, Node, Edge, Config
-    except ImportError:
-        st.error("streamlit-agraph not installed. Please run `uv pip install streamlit-agraph`.")
-        return
 
-    # Assignee color scheme (border colors for ownership visualization)
-    ASSIGNEE_COLORS = {
-        "bot": "#17a2b8",     # cyan/teal - AI agent
-        "claude": "#17a2b8",  # same as bot
-        "worker": "#fd7e14",  # orange - background worker
-        "nic": "#6f42c1",     # purple - human
+def render_force_graph(
+    graph: dict,
+    view_mode: str = "Tasks",
+    layout: str = "force",
+    node_size: int = 6,
+    link_width: float = 1.0,
+    show_labels: bool = True,
+    link_opacity: float = 0.6,
+):
+    """
+    Render graph using force-graph (Canvas/WebGL).
+
+    Fast force-directed layout, good for large graphs.
+    Uses d3-force under the hood with canvas rendering.
+    """
+    import streamlit.components.v1 as components
+
+    nodes = graph.get("nodes", [])
+    edges = graph.get("edges", [])
+
+    # Status color mapping (hex with #)
+    status_colors = {
+        "done": "#22c55e", "active": "#3b82f6", "blocked": "#ef4444",
+        "waiting": "#eab308", "review": "#a855f7", "cancelled": "#94a3b8"
     }
-    ASSIGNEE_DEFAULT = "#475569"  # slate for unassigned
+    type_colors = {
+        "goal": "#ef4444", "project": "#a855f7", "epic": "#8b5cf6",
+        "task": "#3b82f6", "action": "#06b6d4", "bug": "#f97316",
+    }
 
-    # --- Controls Section ---
-    with st.expander("⚙️ Graph Controls", expanded=False):
-        c1, c2, c3 = st.columns(3)
-        with c1:
-            # Physics controls
-            physics = st.checkbox("Enable Physics", value=True)
-            gravity = st.slider("Gravity", -200, 0, -50, 10)
-        with c2:
-            # Layout filtering
-            if view_mode == "Tasks":
-                show_done = st.checkbox("Show Done", value=False)
-                show_blocked = st.checkbox("Show Blocked", value=True)
-                hide_orphans = st.checkbox("Hide Orphans", value=True)
-            else:
-                # KB filtering
-                show_tags = st.checkbox("Show Tags", value=False)
-                hide_orphans = st.checkbox("Hide Orphans", value=True)
-                
-        with c3:
-            # Visuals
-            node_size = st.slider("Base Node Size", 10, 50, 25)
-            show_assignee = st.checkbox("Show Assignee Borders", value=True,
-                help="Color borders by assignee: purple=nic, cyan=bot, orange=worker")
+    # Build nodes
+    fg_nodes = []
+    node_ids = set()
+    for n in nodes:
+        node_ids.add(n["id"])
+        status = n.get("status", "active")
+        ntype = n.get("node_type", "task")
 
-    # Handle task selection from agraph return value
-    # We don't use query params for agraph selection as it returns the value directly
-    
-    # Create layout
-    col_viz, col_detail = st.columns([3, 1])
-    
-    with col_viz:
-        # Transform graph for agraph
-        nodes = []
-        visible_nodes = graph.get("nodes", [])
-
-        # --- Filtering Logic ---
         if view_mode == "Tasks":
-            filtered_nodes = []
-            for n in visible_nodes:
-                status = n.get("status", "active")
-                if not show_done and status in ("done", "completed"):
-                    continue
-                if not show_blocked and status == "blocked":
-                    continue
-                filtered_nodes.append(n)
-            visible_nodes = filtered_nodes
-
-        # --- Orphan Filtering ---
-        if hide_orphans:
-            # Build set of connected node IDs (nodes with at least one edge)
-            edges = graph.get("edges", [])
-            connected_ids = set()
-            for e in edges:
-                connected_ids.add(e["source"])
-                connected_ids.add(e["target"])
-            # Filter to only connected nodes
-            visible_nodes = [n for n in visible_nodes if n["id"] in connected_ids]
-
-        # Build ID set for edge filtering
-        visible_ids = {n["id"] for n in visible_nodes}
-
-        for n in visible_nodes:
-            status = n.get("status", "active")
-            ntype = n.get("node_type", "task")
-            
-            # Colors
-            color = "#64748b" # default slate
-            
-            if view_mode == "Tasks":
-                if status == "done": color = "#22c55e"
-                elif status == "active": color = "#3b82f6"
-                elif status == "blocked": color = "#ef4444" 
-                elif status == "waiting": color = "#eab308"
-                elif status == "review": color = "#a855f7"
-                elif status == "cancelled": color = "#94a3b8"
-            else:
-                # KB Mode Colors - Universal scheme by file/node type
-                # Tasks hierarchy (consistent with Tasks view)
-                if ntype == "goal": color = "#ef4444"       # red - top-level objectives
-                elif ntype == "project": color = "#a855f7"  # purple - collections of work
-                elif ntype == "epic": color = "#8b5cf6"     # violet - large initiatives
-                elif ntype == "task": color = "#3b82f6"     # blue - actionable items
-                elif ntype == "action": color = "#06b6d4"   # cyan - atomic actions
-                elif ntype == "bug": color = "#f97316"      # orange - issues/bugs
-                elif ntype == "feature": color = "#22c55e"  # green - new capabilities
-                elif ntype == "learn": color = "#eab308"    # yellow - learnings/observations
-                # Knowledge types
-                elif ntype == "contact": color = "#ec4899"  # pink - people
-                elif ntype == "note": color = "#64748b"     # slate - generic notes
-                elif ntype == "spec": color = "#0ea5e9"     # sky - specifications
-                elif ntype == "workflow": color = "#14b8a6" # teal - processes
-                elif ntype == "reference": color = "#84cc16" # lime - reference docs
-                else: color = "#94a3b8"  # gray - untyped files
-            
-            # Types/Shapes
-            # agraph supports: ellipse, box, database, image, circularImage, diamond, dot, star, triangle, triangleDown, hexagon, square, icon
-            shape = "box" # Default for task
-            if ntype == "goal": shape = "ellipse"
-            elif ntype == "project": shape = "dot" # larger presence? or "database"
-            elif ntype == "action": shape = "box" # text not supported directly as shape, use box
-            elif ntype == "file": shape = "box" # KB generic file
-            
-            # Adjust size based on type/priority
-            size = node_size
-            if ntype == "goal": size = node_size + 15
-            if ntype == "project": size = node_size + 5
-            prio = n.get("priority", 2)
-            if prio == 0: size += 10
-
-            # Determine border color (assignee-based if enabled)
-            assignee = n.get("assignee")
-            if show_assignee and assignee:
-                border_color = ASSIGNEE_COLORS.get(assignee, ASSIGNEE_DEFAULT)
-                border_width = 3
-            else:
-                border_color = "#334155"  # default slate border
-                border_width = 1
-
-            # Build color dict for vis.js (background + border)
-            node_color = {
-                "background": color,
-                "border": border_color,
-                "highlight": {
-                    "background": color,
-                    "border": "#f1f5f9"
-                }
-            }
-
-            nodes.append(Node(
-                id=n["id"],
-                label=n.get("label", n["id"])[:20],
-                title=n.get("label", n["id"]), # Tooltip
-                shape=shape,
-                color=node_color,
-                size=size,
-                font={ "color": "#f1f5f9", "face": "Inter" },
-                borderWidth=border_width
-            ))
-            
-        edges = []
-        for e in graph.get("edges", []):
-            if e["source"] in visible_ids and e["target"] in visible_ids:
-                edges.append(Edge(
-                    source=e["source"],
-                    target=e["target"],
-                    color="#334155",
-                    type="STRAIGHT",
-                ))
-            
-        config = Config(
-            width="100%",
-            height=600,
-            directed=True, 
-            physics=physics, 
-            hierarchical=False,
-            nodeHighlightBehavior=True,
-            highlightColor="#F7A7A6",
-            collapsible=False,
-            # Physics settings for spacing
-            physicsOptions={
-                "forceAtlas2Based": {
-                    "gravitationalConstant": gravity,
-                    "centralGravity": 0.01,
-                    "springLength": 100,
-                    "springConstant": 0.08,
-                    "damping": 0.4,
-                    "avoidOverlap": 0
-                },
-                "minVelocity": 0.75,
-                "solver": "forceAtlas2Based",
-                "stabilization": {
-                    "enabled": True,
-                    "iterations": 1000,
-                    "updateInterval": 25,
-                    "onlyDynamicEdges": False,
-                    "fit": True
-                }
-            }
-        )
-        
-        selected_node_id = agraph(nodes=nodes, edges=edges, config=config)
-        
-    with col_detail:
-        if selected_node_id:
-            try:
-                storage = TaskStorage()
-                
-                # Check if it's a known task first
-                task = get_task_by_graph_node(selected_node_id, graph.get("nodes", []))
-                
-                # Get raw node data regardless
-                node_def = next((n for n in graph.get("nodes", []) if n["id"] == selected_node_id), None)
-                
-                if task:
-                    st.markdown(f"### {task.title}")
-                    st.caption(f"ID: `{task.id}`")
-                    
-                    status_emoji = {
-                        "active": "▶", "done": "✅", "blocked": "🔒", "waiting": "⏳"
-                    }.get(task.status.value, "•")
-                    
-                    st.markdown(f"**Status:** {status_emoji} {task.status.value}")
-                    st.markdown(f"**Priority:** P{task.priority}")
-                    if task.project:
-                        st.markdown(f"**Project:** {task.project}")
-                    if hasattr(task, 'assignee') and task.assignee:
-                        assignee_emoji = {"nic": "👤", "bot": "🤖", "claude": "🤖", "worker": "⚙️"}.get(task.assignee, "")
-                        st.markdown(f"**Assignee:** {assignee_emoji} {task.assignee}")
-
-                    st.divider()
-                    
-                    # Quick Actions
-                    if task.status != TaskStatus.DONE:
-                        if st.button("✅ Complete", use_container_width=True, key="btn_comp"):
-                            task.status = TaskStatus.DONE
-                            storage.save_task(task)
-                            st.rerun()
-                            
-                    if task.status == TaskStatus.DONE:
-                         if st.button("↩ Reactivate", use_container_width=True, key="btn_react"):
-                            task.status = TaskStatus.ACTIVE
-                            storage.save_task(task)
-                            st.rerun()
-                            
-                    if task.status != TaskStatus.ACTIVE and task.status != TaskStatus.DONE:
-                        if st.button("▶ Start", use_container_width=True, key="btn_start"):
-                            task.status = TaskStatus.ACTIVE
-                            storage.save_task(task)
-                            st.rerun()
-
-                elif node_def:
-                    # Generic Node Display (for KB items)
-                    label = node_def.get("label", selected_node_id)
-                    st.markdown(f"### {label}")
-                    st.caption(f"Type: {node_def.get('node_type', 'unknown')}")
-                    
-                    if "tags" in node_def and node_def["tags"]:
-                        st.markdown("**Tags:** " + ", ".join(f"`{t}`" for t in node_def["tags"]))
-
-                    st.divider()
-
-                # Links (Common for both Task and KB)
-                if node_def and "path" in node_def:
-                    import urllib.parse
-                    import os
-                    
-                    file_path = node_def["path"]
-                    # Get distro from env or default to Debian
-                    distro = os.environ.get("WSL_DISTRO_NAME", "Debian")
-                    # Encode path for URI
-                    encoded_path = urllib.parse.quote(file_path)
-                    
-                    # VS Code Insiders URI (matches user's wlink script)
-                    # Format: vscode-insiders://vscode-remote/wsl+<DISTRO><PATH>
-                    insiders_url = f"vscode-insiders://vscode-remote/wsl+{distro}{encoded_path}"
-                    
-                    st.markdown(f"""
-                    <a href="{insiders_url}" style="
-                        display: block; 
-                        text-align: center; 
-                        background: #0f172a; 
-                        color: #22d3ee; 
-                        padding: 8px; 
-                        border-radius: 4px; 
-                        text-decoration: none; 
-                        margin-top: 8px;
-                        border: 1px solid #1e293b;
-                        font-weight: 500;
-                    ">Open in VS Code (Insiders)</a>
-                    """, unsafe_allow_html=True)
-
-                    # Obsidian Link
-                    # Use label as title approximation if needed, or filename
-                    title = node_def.get("label", Path(file_path).stem)
-                    # Project guess from path if not in node
-                    path_obj = Path(file_path)
-                    try:
-                        # naive project guess: .../writing/PROJECT/...
-                        parts = path_obj.parts
-                        if "writing" in parts:
-                            idx = parts.index("writing")
-                            if idx + 1 < len(parts):
-                                project_guess = parts[idx+1]
-                            else:
-                                project_guess = "inbox"
-                        else:
-                            project_guess = "inbox"
-                    except:
-                        project_guess = "inbox"
-
-                    obs_url = make_obsidian_url(title, project_guess)
-                    st.markdown(f"""
-                    <a href="{obs_url}" target="_blank" style="
-                        display: block; 
-                        text-align: center; 
-                        background: #1e293b; 
-                        color: #a78bfa; 
-                        padding: 8px; 
-                        border-radius: 4px; 
-                        text-decoration: none; 
-                        margin-top: 8px;
-                    ">Open in Obsidian</a>
-                    """, unsafe_allow_html=True)
-                    
-                else:
-                    st.warning("Node not found")
-            except Exception as e:
-                st.error(f"Error loading details: {e}")
+            color = status_colors.get(status, "#64748b")
         else:
-            st.info("Select a node on the map to view details.")
+            color = type_colors.get(ntype, "#64748b")
+
+        fg_nodes.append({
+            "id": n["id"],
+            "label": n.get("label", n["id"])[:30],
+            "color": color,
+        })
+
+    # Filter edges to only include valid nodes (keep string IDs for force-graph)
+    fg_links = []
+    for e in edges:
+        if e["source"] in node_ids and e["target"] in node_ids:
+            fg_links.append({
+                "source": e["source"],
+                "target": e["target"],
+            })
+
+    nodes_json = json.dumps(fg_nodes)
+    links_json = json.dumps(fg_links)
+
+    # DAG mode config
+    dag_mode = "null"  # force-directed default
+    if layout == "td":
+        dag_mode = "'td'"
+    elif layout == "bu":
+        dag_mode = "'bu'"
+    elif layout == "lr":
+        dag_mode = "'lr'"
+    elif layout == "rl":
+        dag_mode = "'rl'"
+    elif layout == "radial-in":
+        dag_mode = "'radialin'"
+    elif layout == "radial-out":
+        dag_mode = "'radialout'"
+
+    # Compute arrow length based on link width
+    arrow_length = max(3, link_width * 2)
+
+    html = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <script src="https://unpkg.com/force-graph@1.43.4/dist/force-graph.min.js"></script>
+        <style>
+            body {{ margin: 0; padding: 0; background: #0d0d1a; overflow: hidden; }}
+            #container {{ width: 100%; height: 580px; }}
+        </style>
+    </head>
+    <body>
+        <div id="container"></div>
+        <script>
+            const nodes = {nodes_json};
+            const links = {links_json};
+
+            const showLabels = {'true' if show_labels else 'false'};
+
+            const Graph = ForceGraph()
+                (document.getElementById('container'))
+                .backgroundColor('#0d0d1a')
+                .graphData({{ nodes: nodes, links: links }})
+                .nodeId('id')
+                .nodeLabel(showLabels ? 'label' : null)
+                .nodeColor('color')
+                .nodeVal({node_size})
+                .nodeCanvasObject(showLabels ? (node, ctx, globalScale) => {{
+                    // Draw circle
+                    const size = {node_size};
+                    ctx.beginPath();
+                    ctx.arc(node.x, node.y, size, 0, 2 * Math.PI);
+                    ctx.fillStyle = node.color;
+                    ctx.fill();
+
+                    // Draw label if zoom level sufficient
+                    if (globalScale > 0.5) {{
+                        const label = node.label || '';
+                        const fontSize = Math.max(10 / globalScale, 3);
+                        ctx.font = `${{fontSize}}px Sans-Serif`;
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        ctx.fillStyle = '#fff';
+                        ctx.fillText(label, node.x, node.y + size + fontSize);
+                    }}
+                }} : null)
+                .nodePointerAreaPaint((node, color, ctx) => {{
+                    ctx.beginPath();
+                    ctx.arc(node.x, node.y, {node_size}, 0, 2 * Math.PI);
+                    ctx.fillStyle = color;
+                    ctx.fill();
+                }})
+                .linkColor(() => 'rgba(71, 85, 105, {link_opacity})')
+                .linkWidth({link_width})
+                .linkDirectionalArrowLength({arrow_length})
+                .linkDirectionalArrowRelPos(1)
+                .dagMode({dag_mode})
+                .dagLevelDistance(50)
+                .onNodeClick(node => {{
+                    window.parent.postMessage({{type: 'nodeClick', id: node.id}}, '*');
+                }})
+                .cooldownTicks(100)
+                .onEngineStop(() => Graph.zoomToFit(400));
+        </script>
+    </body>
+    </html>
+    """
+
+    components.html(html, height=600)
 
 
+def render_graph_section():
+    """Render the task/knowledge graph with controls."""
+    # Controls row
+    col_view, col_layout = st.columns(2)
+    with col_view:
+        view_mode = st.radio("View", ["Tasks", "Knowledge Base"], horizontal=True)
+    with col_layout:
+        layout = st.radio(
+            "Layout",
+            ["td", "lr", "radial-out", "force"],
+            horizontal=True,
+            format_func=lambda x: {"td": "↓ Top-Down", "lr": "→ Left-Right", "radial-out": "◎ Radial", "force": "⚛ Force"}.get(x, x),
+        )
 
-def render_task_graph_tab():
-    """Render the Task Graph tab with visualization and health metrics."""
-    st.markdown(
-        "<h2 style='color: #a5b4fc;'>📊 Task Network Health</h2>",
-        unsafe_allow_html=True,
-    )
-
-    # Load graph data
-    # View Selection
-    view_mode = st.radio("Graph View", ["Tasks", "Knowledge Base"], horizontal=True)
+    # Visual controls in expander
+    with st.expander("⚙️ Visual Settings", expanded=False):
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            node_size = st.slider("Node Size", min_value=1, max_value=20, value=6, step=1)
+        with col2:
+            link_width = st.slider("Link Width", min_value=0.5, max_value=5.0, value=1.0, step=0.5)
+        with col3:
+            show_labels = st.checkbox("Show Labels", value=True)
+        with col4:
+            link_opacity = st.slider("Link Opacity", min_value=0.1, max_value=1.0, value=0.6, step=0.1)
 
     # Load graph data based on selection
-    filename = "graph.json" # Default task graph
+    filename = "graph.json"
     if view_mode == "Knowledge Base":
         filename = "knowledge-graph.json"
-        
+
     graph = load_graph_data(filename)
     if not graph:
-        st.warning(f"No graph found for {view_mode} ({filename}). Run `/task-viz` to generate one.")
+        st.warning(f"No graph found ({filename}). Run `/task-viz` to generate.")
         return
 
-    # Calculate health metrics (keeping it for Tasks mainly, but it runs safely on any graph)
-    health = calculate_graph_health(graph)
-
-    # Interactive Graph
-    render_interactive_task_graph(graph, view_mode)
-
-    # Health Metrics Section
-    st.markdown(
-        "<h3 style='color: #818cf8; margin-top: 24px;'>Health Metrics</h3>",
-        unsafe_allow_html=True,
+    # Render graph with visual settings
+    render_force_graph(
+        graph, view_mode, layout,
+        node_size=node_size,
+        link_width=link_width,
+        show_labels=show_labels,
+        link_opacity=link_opacity,
     )
 
-    # Summary stats
-    col1, col2, col3, col4 = st.columns(4)
-    with col1:
-        st.metric("Nodes", health["total_nodes"])
-    with col2:
-        st.metric("Edges", health["total_edges"])
-    with col3:
-        st.metric("Goals", health["goals"])
-    with col4:
-        st.metric("Tasks", health["tasks"])
-
-    # Health indicators in cards
-    metrics_html = "<div style='display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 16px;'>"
-
-    # 1. Sequencing vs Clumping
-    clump_status = "✅" if health["clumping_healthy"] else "⚠️"
-    clump_color = "#4ade80" if health["clumping_healthy"] else "#fbbf24"
-    metrics_html += f"""
-    <div style='background: linear-gradient(135deg, #1a1a2d 0%, #0d0d1a 100%); border: 1px solid {clump_color}; border-radius: 8px; padding: 12px;'>
-        <div style='color: {clump_color}; font-weight: bold; font-size: 0.9em;'>{clump_status} SEQUENCING</div>
-        <div style='color: #e0e0e0; font-size: 0.85em; margin-top: 6px;'>
-            Clumping ratio: <b>{health["clumping_ratio"]}</b> (target: &lt;3)<br>
-            Max level width: {max(health["level_widths"]) if health["level_widths"] else 0}<br>
-            Depth levels: {health["depth_levels"]}
-        </div>
-    </div>"""
-
-    # 2. Branching Factor
-    branch_status = "✅" if health["branching_healthy"] else "⚠️"
-    branch_color = "#4ade80" if health["branching_healthy"] else "#fbbf24"
-    metrics_html += f"""
-    <div style='background: linear-gradient(135deg, #1a1a2d 0%, #0d0d1a 100%); border: 1px solid {branch_color}; border-radius: 8px; padding: 12px;'>
-        <div style='color: {branch_color}; font-weight: bold; font-size: 0.9em;'>{branch_status} BRANCHING</div>
-        <div style='color: #e0e0e0; font-size: 0.85em; margin-top: 6px;'>
-            Avg branching: <b>{health["avg_branching_factor"]}</b><br>
-            Max branching: <b>{health["max_branching_factor"]}</b> (target: ≤10)<br>
-            Avg chain length: {health["avg_chain_length"]}
-        </div>
-    </div>"""
-
-    # 3. Priority Inheritance
-    priority_status = "✅" if health["priority_healthy"] else "🚫"
-    priority_color = "#4ade80" if health["priority_healthy"] else "#ef4444"
-    metrics_html += f"""
-    <div style='background: linear-gradient(135deg, #1a1a2d 0%, #0d0d1a 100%); border: 1px solid {priority_color}; border-radius: 8px; padding: 12px;'>
-        <div style='color: {priority_color}; font-weight: bold; font-size: 0.9em;'>{priority_status} PRIORITY INHERITANCE</div>
-        <div style='color: #e0e0e0; font-size: 0.85em; margin-top: 6px;'>
-            Violations: <b>{health["priority_violations"]}</b> (target: 0)<br>
-            Max chain: {health["max_chain_length"]} levels
-        </div>
-    </div>"""
-
-    # 4. Connected Components
-    conn_status = "✅" if health["components_healthy"] else "🚫"
-    conn_color = "#4ade80" if health["components_healthy"] else "#ef4444"
-    metrics_html += f"""
-    <div style='background: linear-gradient(135deg, #1a1a2d 0%, #0d0d1a 100%); border: 1px solid {conn_color}; border-radius: 8px; padding: 12px;'>
-        <div style='color: {conn_color}; font-weight: bold; font-size: 0.9em;'>{conn_status} CONNECTIVITY</div>
-        <div style='color: #e0e0e0; font-size: 0.85em; margin-top: 6px;'>
-            Components: <b>{health["connected_components"]}</b> (target: 1)<br>
-            All tasks should connect to one graph
-        </div>
-    </div>"""
-
-    # 5. Strategic Reachability
-    reach_status = "✅" if health["reachability_healthy"] else "⚠️"
-    reach_color = "#4ade80" if health["reachability_healthy"] else "#fbbf24"
-    metrics_html += f"""
-    <div style='background: linear-gradient(135deg, #1a1a2d 0%, #0d0d1a 100%); border: 1px solid {reach_color}; border-radius: 8px; padding: 12px;'>
-        <div style='color: {reach_color}; font-weight: bold; font-size: 0.9em;'>{reach_status} STRATEGIC REACHABILITY</div>
-        <div style='color: #e0e0e0; font-size: 0.85em; margin-top: 6px;'>
-            Reachable: <b>{health["strategic_reachability"]}%</b> (target: 100%)<br>
-            Orphan tasks: {health["orphan_count"]}
-        </div>
-    </div>"""
-
-    # 6. Chain Depth
-    metrics_html += f"""
-    <div style='background: linear-gradient(135deg, #1a1a2d 0%, #0d0d1a 100%); border: 1px solid #818cf8; border-radius: 8px; padding: 12px;'>
-        <div style='color: #818cf8; font-weight: bold; font-size: 0.9em;'>📏 CHAIN DEPTH</div>
-        <div style='color: #e0e0e0; font-size: 0.85em; margin-top: 6px;'>
-            Max chain: <b>{health["max_chain_length"]}</b> levels<br>
-            Avg chain: {health["avg_chain_length"]}<br>
-            Longer = better sequencing
-        </div>
-    </div>"""
-
-    metrics_html += "</div>"
-    st.markdown(metrics_html, unsafe_allow_html=True)
-
-    # Show violation details if any
-    if health["priority_violation_examples"]:
-        st.markdown(
-            "<h4 style='color: #ef4444; margin-top: 20px;'>Priority Violations</h4>",
-            unsafe_allow_html=True,
-        )
-        for v in health["priority_violation_examples"]:
-            st.markdown(
-                f"- **{esc(v['parent'])}** (P{v['parent_priority']}) → **{esc(v['child'])}** (P{v['child_priority']})",
-                unsafe_allow_html=True,
-            )
-
-    # Show orphan examples if any
-    if health["orphan_examples"]:
-        st.markdown(
-            "<h4 style='color: #fbbf24; margin-top: 20px;'>Orphan Tasks (not connected to goals)</h4>",
-            unsafe_allow_html=True,
-        )
-        for orphan in health["orphan_examples"]:
-            st.markdown(f"- {esc(orphan)}")
-        if health["orphan_count"] > 5:
-            st.markdown(f"*...and {health['orphan_count'] - 5} more*")
-
 
 # ============================================================================
-# UNIFIED FOCUS DASHBOARD - Single glanceable view
+# UNIFIED DASHBOARD - Single page: Graph + Project boxes
 # ============================================================================
 
-# Create tabs
-tab_dashboard, tab_graph = st.tabs(["📊 Dashboard", "🕸️ Task Graph"])
+# Graph section first
+render_graph_section()
 
-with tab_graph:
-    render_task_graph_tab()
+# Then project-centric content
+# Initialize analyzer for daily log
+analyzer = SessionAnalyzer()
 
-with tab_dashboard:
-    # Initialize analyzer for daily log
-    analyzer = SessionAnalyzer()
+# Load synthesis
+synthesis = load_synthesis()
 
-    # Load synthesis
-    synthesis = load_synthesis()
+# === LLM SYNTHESIS PANEL (if available) ===
+if synthesis:
+    # Calculate age and staleness
+    age_minutes = synthesis.get("_age_minutes", 0)
+    age_str = f"{int(age_minutes)}m ago"
+    is_stale = age_minutes > 60
 
-    # === LLM SYNTHESIS PANEL (if available) ===
-    if synthesis:
-        # Calculate age and staleness
-        age_minutes = synthesis.get("_age_minutes", 0)
-        age_str = f"{int(age_minutes)}m ago"
-        is_stale = age_minutes > 60
+    # Stale indicator styling
+    stale_class = "stale" if is_stale else ""
+    stale_badge = (
+        " <span style='background: #f59e0b; color: #000; padding: 2px 6px; border-radius: 3px; font-size: 0.7em; margin-left: 8px;'>STALE - re-run /session-insights</span>"
+        if is_stale
+        else ""
+    )
 
-        # Stale indicator styling
-        stale_class = "stale" if is_stale else ""
-        stale_badge = (
-            " <span style='background: #f59e0b; color: #000; padding: 2px 6px; border-radius: 3px; font-size: 0.7em; margin-left: 8px;'>STALE - re-run /session-insights</span>"
-            if is_stale
-            else ""
+    synth_html = "<div class='synthesis-panel'>"
+    synth_html += f"<div class='synthesis-header'><div class='synthesis-title'>🧠 FOCUS SYNTHESIS{stale_badge}</div><div class='synthesis-age'>{age_str}</div></div>"
+
+    # Narrative section - tell the day's story
+    narrative = synthesis.get("narrative", [])
+    if narrative:
+        synth_html += "<div class='synthesis-narrative'>"
+        synth_html += (
+            "<div class='synthesis-narrative-title'>📖 TODAY'S STORY</div>"
         )
+        synth_html += "<ul class='synthesis-narrative-list'>"
+        for bullet in narrative:
+            synth_html += f"<li>{esc(bullet)}</li>"
+        synth_html += "</ul></div>"
 
-        synth_html = "<div class='synthesis-panel'>"
-        synth_html += f"<div class='synthesis-header'><div class='synthesis-title'>🧠 FOCUS SYNTHESIS{stale_badge}</div><div class='synthesis-age'>{age_str}</div></div>"
+    # Grid of status cards
+    synth_html += "<div class='synthesis-grid'>"
 
-        # Narrative section - tell the day's story
-        narrative = synthesis.get("narrative", [])
-        if narrative:
-            synth_html += "<div class='synthesis-narrative'>"
-            synth_html += (
-                "<div class='synthesis-narrative-title'>📖 TODAY'S STORY</div>"
+    # Done card
+    accomplishments = synthesis.get("accomplishments", {})
+    if accomplishments.get("summary"):
+        synth_html += "<div class='synthesis-card done'>"
+        synth_html += f"<div class='synthesis-card-title'>✅ DONE ({accomplishments.get('count', 0)})</div>"
+        synth_html += f"<div class='synthesis-card-content'>{esc(accomplishments.get('summary', ''))}</div>"
+        synth_html += "</div>"
+
+    # Alignment card
+    alignment = synthesis.get("alignment", {})
+    if alignment.get("note"):
+        status = alignment.get("status", "drifted")
+        status_class = f"alignment {status}"
+        status_icon = (
+            "✅" if status == "on_track" else "⚠️" if status == "drifted" else "🚫"
+        )
+        synth_html += f"<div class='synthesis-card {status_class}'>"
+        synth_html += (
+            f"<div class='synthesis-card-title'>{status_icon} ALIGNMENT</div>"
+        )
+        synth_html += f"<div class='synthesis-card-content'>{esc(alignment.get('note', ''))}</div>"
+        synth_html += "</div>"
+
+    # Context card
+    context = synthesis.get("context", {})
+    if context.get("recent_threads"):
+        threads = ", ".join(context.get("recent_threads", [])[:2])
+        synth_html += "<div class='synthesis-card context'>"
+        synth_html += "<div class='synthesis-card-title'>📍 CONTEXT</div>"
+        synth_html += f"<div class='synthesis-card-content'>{esc(threads)}</div>"
+        synth_html += "</div>"
+
+    # Waiting card
+    waiting_on = synthesis.get("waiting_on", [])
+    if waiting_on:
+        first_blocker = waiting_on[0]
+        synth_html += "<div class='synthesis-card waiting'>"
+        synth_html += f"<div class='synthesis-card-title'>⏳ BLOCKED ({len(waiting_on)})</div>"
+        synth_html += f"<div class='synthesis-card-content'>{esc(first_blocker.get('task', ''))}</div>"
+        synth_html += "</div>"
+
+    # Token usage card
+    token_metrics = load_token_metrics()
+    if token_metrics:
+        total_tokens = (
+            token_metrics["input_tokens"] + token_metrics["output_tokens"]
+        )
+        # Format tokens: K for thousands, M for millions
+        if total_tokens >= 1_000_000:
+            tokens_str = f"{total_tokens / 1_000_000:.1f}M"
+        elif total_tokens >= 1_000:
+            tokens_str = f"{total_tokens / 1_000:.0f}K"
+        else:
+            tokens_str = str(total_tokens)
+
+        cache_rate = token_metrics["cache_hit_rate"]
+        # Color coding: green >70%, yellow 40-70%, red <40%
+        if cache_rate >= 70:
+            gauge_color = "#4ade80"
+        elif cache_rate >= 40:
+            gauge_color = "#fbbf24"
+        else:
+            gauge_color = "#f87171"
+
+        session_count = token_metrics["session_count"]
+        synth_html += "<div class='synthesis-card tokens'>"
+        synth_html += f"<div class='synthesis-card-title'>📊 TOKENS ({session_count} sessions)</div>"
+        synth_html += f"<div class='synthesis-card-content'>{tokens_str} total <span class='cache-gauge'><span class='cache-gauge-fill' style='width: {cache_rate:.0f}%; background: {gauge_color};'></span></span> {cache_rate:.0f}% cache</div>"
+        synth_html += "</div>"
+
+    synth_html += "</div>"  # End grid
+
+    # Session Insights panel (skill compliance, context gaps)
+    skill_insights = synthesis.get("skill_insights", {})
+    if skill_insights:
+        synth_html += "<div class='insights-panel'>"
+        synth_html += "<div class='insights-title'>🔍 SESSION INSIGHTS</div>"
+
+        # Stats row
+        compliance = skill_insights.get("compliance_rate")
+        if compliance is not None:
+            pct = int(compliance * 100)
+            color = (
+                "#4ade80" if pct >= 70 else "#fbbf24" if pct >= 40 else "#f87171"
             )
-            synth_html += "<ul class='synthesis-narrative-list'>"
-            for bullet in narrative:
-                synth_html += f"<li>{esc(bullet)}</li>"
-            synth_html += "</ul></div>"
+            synth_html += f"<span class='insights-stat'><span class='insights-stat-label'>Skill Compliance:</span> <span class='insights-stat-value' style='color: {color};'>{pct}%</span></span>"
 
-        # Grid of status cards
-        synth_html += "<div class='synthesis-grid'>"
+        corrections = skill_insights.get("corrections_count", 0)
+        if corrections > 0:
+            synth_html += f"<span class='insights-stat'><span class='insights-stat-label'>Corrections:</span> <span class='insights-stat-value'>{corrections}</span></span>"
 
-        # Done card
-        accomplishments = synthesis.get("accomplishments", {})
-        if accomplishments.get("summary"):
-            synth_html += "<div class='synthesis-card done'>"
-            synth_html += f"<div class='synthesis-card-title'>✅ DONE ({accomplishments.get('count', 0)})</div>"
-            synth_html += f"<div class='synthesis-card-content'>{esc(accomplishments.get('summary', ''))}</div>"
+        failures = skill_insights.get("failures_count", 0)
+        if failures > 0:
+            synth_html += f"<span class='insights-stat'><span class='insights-stat-label'>Failures:</span> <span class='insights-stat-value' style='color: #f87171;'>{failures}</span></span>"
+
+        successes = skill_insights.get("successes_count", 0)
+        if successes > 0:
+            synth_html += f"<span class='insights-stat'><span class='insights-stat-label'>Successes:</span> <span class='insights-stat-value' style='color: #4ade80;'>{successes}</span></span>"
+
+        # Token stats (reuse token_metrics if already loaded, or load now)
+        tm = (
+            token_metrics
+            if "token_metrics" in dir() and token_metrics
+            else load_token_metrics()
+        )
+        if tm:
+            # Format helper for tokens
+            def fmt_tokens(n):
+                if n >= 1_000_000:
+                    return f"{n / 1_000_000:.1f}M"
+                elif n >= 1_000:
+                    return f"{n / 1_000:.0f}K"
+                return str(n)
+
+            in_tokens = fmt_tokens(tm["input_tokens"])
+            out_tokens = fmt_tokens(tm["output_tokens"])
+            cache_read = fmt_tokens(tm["cache_read"])
+            synth_html += f"<span class='insights-stat'><span class='insights-stat-label'>In/Out:</span> <span class='insights-stat-value' style='color: #a78bfa;'>{in_tokens}/{out_tokens}</span></span>"
+            synth_html += f"<span class='insights-stat'><span class='insights-stat-label'>Cache Read:</span> <span class='insights-stat-value' style='color: #a78bfa;'>{cache_read}</span></span>"
+
+        # Context gaps
+        context_gaps = skill_insights.get("top_context_gaps", [])
+        if context_gaps:
+            synth_html += "<div style='margin-top: 8px;'>"
+            for gap in context_gaps[:3]:
+                synth_html += f"<div class='insights-gap'>{esc(gap)}</div>"
             synth_html += "</div>"
 
-        # Alignment card
-        alignment = synthesis.get("alignment", {})
-        if alignment.get("note"):
-            status = alignment.get("status", "drifted")
-            status_class = f"alignment {status}"
-            status_icon = (
-                "✅" if status == "on_track" else "⚠️" if status == "drifted" else "🚫"
-            )
-            synth_html += f"<div class='synthesis-card {status_class}'>"
-            synth_html += (
-                f"<div class='synthesis-card-title'>{status_icon} ALIGNMENT</div>"
-            )
-            synth_html += f"<div class='synthesis-card-content'>{esc(alignment.get('note', ''))}</div>"
-            synth_html += "</div>"
+        synth_html += "</div>"
 
-        # Context card
-        context = synthesis.get("context", {})
-        if context.get("recent_threads"):
-            threads = ", ".join(context.get("recent_threads", [])[:2])
-            synth_html += "<div class='synthesis-card context'>"
-            synth_html += "<div class='synthesis-card-title'>📍 CONTEXT</div>"
-            synth_html += f"<div class='synthesis-card-content'>{esc(threads)}</div>"
-            synth_html += "</div>"
+    # Suggestion
+    suggestion = synthesis.get("suggestion")
+    if suggestion:
+        synth_html += f"<div class='synthesis-suggestion'>{esc(suggestion)}</div>"
 
-        # Waiting card
-        waiting_on = synthesis.get("waiting_on", [])
-        if waiting_on:
-            first_blocker = waiting_on[0]
-            synth_html += "<div class='synthesis-card waiting'>"
-            synth_html += f"<div class='synthesis-card-title'>⏳ BLOCKED ({len(waiting_on)})</div>"
-            synth_html += f"<div class='synthesis-card-content'>{esc(first_blocker.get('task', ''))}</div>"
-            synth_html += "</div>"
-
-        # Token usage card
-        token_metrics = load_token_metrics()
-        if token_metrics:
-            total_tokens = (
-                token_metrics["input_tokens"] + token_metrics["output_tokens"]
-            )
-            # Format tokens: K for thousands, M for millions
-            if total_tokens >= 1_000_000:
-                tokens_str = f"{total_tokens / 1_000_000:.1f}M"
-            elif total_tokens >= 1_000:
-                tokens_str = f"{total_tokens / 1_000:.0f}K"
-            else:
-                tokens_str = str(total_tokens)
-
-            cache_rate = token_metrics["cache_hit_rate"]
-            # Color coding: green >70%, yellow 40-70%, red <40%
-            if cache_rate >= 70:
-                gauge_color = "#4ade80"
-            elif cache_rate >= 40:
-                gauge_color = "#fbbf24"
-            else:
-                gauge_color = "#f87171"
-
-            session_count = token_metrics["session_count"]
-            synth_html += "<div class='synthesis-card tokens'>"
-            synth_html += f"<div class='synthesis-card-title'>📊 TOKENS ({session_count} sessions)</div>"
-            synth_html += f"<div class='synthesis-card-content'>{tokens_str} total <span class='cache-gauge'><span class='cache-gauge-fill' style='width: {cache_rate:.0f}%; background: {gauge_color};'></span></span> {cache_rate:.0f}% cache</div>"
-            synth_html += "</div>"
-
-        synth_html += "</div>"  # End grid
-
-        # Session Insights panel (skill compliance, context gaps)
-        skill_insights = synthesis.get("skill_insights", {})
-        if skill_insights:
-            synth_html += "<div class='insights-panel'>"
-            synth_html += "<div class='insights-title'>🔍 SESSION INSIGHTS</div>"
-
-            # Stats row
-            compliance = skill_insights.get("compliance_rate")
-            if compliance is not None:
-                pct = int(compliance * 100)
-                color = (
-                    "#4ade80" if pct >= 70 else "#fbbf24" if pct >= 40 else "#f87171"
-                )
-                synth_html += f"<span class='insights-stat'><span class='insights-stat-label'>Skill Compliance:</span> <span class='insights-stat-value' style='color: {color};'>{pct}%</span></span>"
-
-            corrections = skill_insights.get("corrections_count", 0)
-            if corrections > 0:
-                synth_html += f"<span class='insights-stat'><span class='insights-stat-label'>Corrections:</span> <span class='insights-stat-value'>{corrections}</span></span>"
-
-            failures = skill_insights.get("failures_count", 0)
-            if failures > 0:
-                synth_html += f"<span class='insights-stat'><span class='insights-stat-label'>Failures:</span> <span class='insights-stat-value' style='color: #f87171;'>{failures}</span></span>"
-
-            successes = skill_insights.get("successes_count", 0)
-            if successes > 0:
-                synth_html += f"<span class='insights-stat'><span class='insights-stat-label'>Successes:</span> <span class='insights-stat-value' style='color: #4ade80;'>{successes}</span></span>"
-
-            # Token stats (reuse token_metrics if already loaded, or load now)
-            tm = (
-                token_metrics
-                if "token_metrics" in dir() and token_metrics
-                else load_token_metrics()
-            )
-            if tm:
-                # Format helper for tokens
-                def fmt_tokens(n):
-                    if n >= 1_000_000:
-                        return f"{n / 1_000_000:.1f}M"
-                    elif n >= 1_000:
-                        return f"{n / 1_000:.0f}K"
-                    return str(n)
-
-                in_tokens = fmt_tokens(tm["input_tokens"])
-                out_tokens = fmt_tokens(tm["output_tokens"])
-                cache_read = fmt_tokens(tm["cache_read"])
-                synth_html += f"<span class='insights-stat'><span class='insights-stat-label'>In/Out:</span> <span class='insights-stat-value' style='color: #a78bfa;'>{in_tokens}/{out_tokens}</span></span>"
-                synth_html += f"<span class='insights-stat'><span class='insights-stat-label'>Cache Read:</span> <span class='insights-stat-value' style='color: #a78bfa;'>{cache_read}</span></span>"
-
-            # Context gaps
-            context_gaps = skill_insights.get("top_context_gaps", [])
-            if context_gaps:
-                synth_html += "<div style='margin-top: 8px;'>"
-                for gap in context_gaps[:3]:
-                    synth_html += f"<div class='insights-gap'>{esc(gap)}</div>"
-                synth_html += "</div>"
-
-            synth_html += "</div>"
-
-        # Suggestion
-        suggestion = synthesis.get("suggestion")
-        if suggestion:
-            synth_html += f"<div class='synthesis-suggestion'>{esc(suggestion)}</div>"
-
-        synth_html += "</div>"  # End panel
-        st.markdown(synth_html, unsafe_allow_html=True)
+    synth_html += "</div>"  # End panel
+    st.markdown(synth_html, unsafe_allow_html=True)
 
 # === PROJECT-CENTRIC DASHBOARD ===
 # Fetch Data
@@ -2975,7 +2686,7 @@ has_blockers = daily_log and daily_log.get("blockers")
 try:
     sessions = find_sessions()
     # analyzer already initialized above for daily log
-
+    
     # Load daily note accomplishments
     daily_note = analyzer.read_daily_note()
     accomplishments_by_project: dict[str, list] = {}
@@ -2985,16 +2696,16 @@ try:
             if proj not in accomplishments_by_project:
                 accomplishments_by_project[proj] = []
             accomplishments_by_project[proj].extend(session.get("accomplishments", []))
-
+    
     # Load priority tasks from index
     all_tasks = load_tasks_from_index()
     tasks_by_project: dict[str, list] = {}
-
+    
     for task in all_tasks:
         # Skip closed/done tasks
         if task.get("status") in ("closed", "done", "completed"):
             continue
-
+    
         # Determine project
         # 1. explicit project field
         proj = task.get("project")
@@ -3005,15 +2716,15 @@ try:
                 proj = tid.split("-")[0]
             else:
                 proj = "inbox"
-
+    
         if not proj:
             proj = "inbox"
-
+    
         if proj not in tasks_by_project:
             tasks_by_project[proj] = []
-
+    
         tasks_by_project[proj].append(task)
-
+    
     # Group sessions by project locally for "Project Status" indicators
     projects: dict[str, dict] = {}
     for session in sessions:
@@ -3023,19 +2734,19 @@ try:
             continue
         if "-tmp" in session.project or "-var-folders" in session.project:
             continue
-
+    
         proj = _format_project_name(session.project)
-
+    
         if proj not in projects:
             projects[proj] = {
                 "last_modified": session.last_modified,
                 "session_count": 0,
             }
-
+    
         projects[proj]["session_count"] += 1
         if session.last_modified > projects[proj]["last_modified"]:
             projects[proj]["last_modified"] = session.last_modified
-
+    
     # Define All Projects Union
     all_projects = (
         set(projects.keys())
@@ -3043,46 +2754,46 @@ try:
         | set(accomplishments_by_project.keys())
         | set(sessions_by_project.keys())
     )
-
+    
     # Project Card Renderer
     project_cards = []
-
+    
     def get_project_sort_score(p):
         # Active agents = highest priority (1000 pts per agent)
         # P0 tasks = high priority (100 pts)
         # Recent modification = tie breaker
         score = 0
         score += len(sessions_by_project.get(p, [])) * 1000
-
+    
         tasks = tasks_by_project.get(p, [])
         has_p0 = any(t.get("priority") == 0 for t in tasks)
         if has_p0:
             score += 100
-
+    
         # Recency (days ago invert)
         data = projects.get(p, {})
         last_mod = data.get("last_modified")
         if last_mod:
             days_ago = (datetime.now(timezone.utc) - last_mod).days
             score += max(0, 10 - days_ago)
-
+    
         return score
-
+    
     sorted_projects = sorted(all_projects, key=get_project_sort_score, reverse=True)
-
+    
     for proj in sorted_projects:
         # Gather Data
         p_sessions = sessions_by_project.get(proj, [])
         p_tasks = tasks_by_project.get(proj, [])
         p_acc = accomplishments_by_project.get(proj, [])
-
+    
         # sorting tasks
         p_tasks.sort(key=lambda t: t.get("priority", 99))
-
+    
         # Identify "Active" tasks (in progress) vs "Queued"
         # For now, assumption: Sessions might be working on them, but TJA doesn't strictly link yet.
         # We'll list Top P0/P1 as "Priority" and maybe a separate list for "Done" if we had it.
-
+    
         # Filter out dull projects
         if (
             not p_sessions
@@ -3091,17 +2802,17 @@ try:
             and not projects.get(proj, {}).get("session_count")
         ):
             continue
-
+    
         color = get_project_color(proj)
-
+    
         # --- HTML Building ---
         card_parts = []
-
+    
         # 1. Header is handled by the container style, but let's add a title block
         card_parts.append(
             f"<div class='pkey-header' style='color:{color}; border-bottom: 2px solid {color}'>{esc(proj)}</div>"
         )
-
+    
         # 2. Active Agents (The "Working Now" section)
         if p_sessions:
             card_parts.append("<div class='p-section-title'>⚡ WORKING NOW</div>")
@@ -3111,7 +2822,7 @@ try:
                 ago = s.get("time_ago", "")
                 prompt = s.get("last_prompt", "")
                 todowrite = s.get("todowrite")
-
+    
                 # Agent Chronology / Status
                 history_html = ""
                 if todowrite:
@@ -3125,16 +2836,16 @@ try:
                 else:
                     # Fallback to prompt if no structured plan
                     history_html += f"<div class='agent-history-item context'>\"{esc(prompt)}\"</div>"
-
+    
                 card_parts.append(
                     f"<div class='agent-card'><div class='agent-meta'>{esc(sid)} · {esc(ago)}</div>{history_html}</div>"
                 )
-
+    
             if len(p_sessions) > 3:
                 card_parts.append(
                     f"<div class='more-row'>+ {len(p_sessions) - 3} more active sessions</div>"
                 )
-
+    
         # 3. Priority Tasks (Backlog)
         # We only show top 3-5 incomplete tasks to save space
         incomplete_tasks = [
@@ -3153,13 +2864,13 @@ try:
                 card_parts.append(
                     f"<div class='more-row'>+ {len(incomplete_tasks) - 3} more tasks</div>"
                 )
-
+    
         # 4. Recent Accomplishments
         if p_acc:
             card_parts.append("<div class='p-section-title'>✅ RECENTLY</div>")
             for acc in p_acc[:3]:
                 card_parts.append(f"<div class='acc-row'>✓ {esc(acc)}</div>")
-
+    
         # Wrap in Project Card Div
         # Wrap in Project Card Div
         project_cards.append(
@@ -3169,10 +2880,10 @@ try:
         </div>
         """)
         )
-
+    
         if len(project_cards) >= 20:  # Limit total boxes to avoid crashing browser
             break
-
+    
     # Render Grid
     if project_cards:
         # CSS is already loaded in main block
@@ -3182,11 +2893,11 @@ try:
         )
     else:
         st.info("No active projects found")
-
+    
     # Spacer
     st.write("")
-
-
+    
+    
 except Exception as e:
     st.error(f"Error loading projects: {e}")
     st.exception(e)
