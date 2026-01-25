@@ -47,6 +47,10 @@ content = load_template(
 | `hydration-gate-warn.md` | `hydration_gate.py` | Warning when hydration skipped (warn mode) |
 | `prompt-hydrator-context.md` | `user_prompt_submit.py` | Full context for prompt hydration |
 | `prompt-hydration-instruction.md` | `user_prompt_submit.py` | Short instruction to spawn hydrator |
+| `fail-fast-reminder.md` | `fail_fast_watchdog.py` | Reminder when tool returns error |
+| `task-gate-block.md` | `task_required_gate.py` | Block message for three-gate check failure |
+| `task-gate-warn.md` | `task_required_gate.py` | Warning message for warn-only mode |
+| `overdue-enforcement-block.md` | `overdue_enforcement.py` | Block when compliance check overdue |
 
 ## Adding New Templates
 

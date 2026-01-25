@@ -33,9 +33,16 @@ import json
 import os
 import re
 import sys
+from pathlib import Path
 from typing import Any
 
 from lib.session_state import check_all_gates, get_current_task, load_session_state
+from lib.template_loader import load_template
+
+# Template paths
+HOOK_DIR = Path(__file__).parent
+BLOCK_TEMPLATE = HOOK_DIR / "templates" / "task-gate-block.md"
+WARN_TEMPLATE = HOOK_DIR / "templates" / "task-gate-warn.md"
 
 # Default gate mode - start with warn for validation
 DEFAULT_GATE_MODE = "warn"
@@ -96,6 +103,11 @@ TASK_BINDING_TOOLS = {
     "mcp__plugin_aops-tools_task_manager__claim_next_task",
 }
 
+def _gate_status(passed: bool) -> str:
+    """Return gate status indicator."""
+    return "\u2713" if passed else "\u2717"
+
+
 def build_block_message(gates: dict[str, bool]) -> str:
     """Build a detailed block message showing which gates are missing.
 
@@ -113,18 +125,12 @@ def build_block_message(gates: dict[str, bool]) -> str:
     if not gates["todo_with_handover"]:
         missing.append("(c) Create todo list with handover step: Include 'Session handover' or 'Commit and push' in TodoWrite")
 
-    return f"""⛔ THREE-GATE CHECK FAILED: Cannot perform destructive operations.
-
-All three gates must pass before modifying files:
-✓/✗ Task bound: {"✓" if gates["task_bound"] else "✗"}
-✓/✗ Critic invoked: {"✓" if gates["critic_invoked"] else "✗"}
-✓/✗ Todo with handover: {"✓" if gates["todo_with_handover"] else "✗"}
-
-Missing gates:
-{chr(10).join(missing)}
-
-For emergency/trivial fixes, user can prefix prompt with `.`
-"""
+    return load_template(BLOCK_TEMPLATE, {
+        "task_bound_status": _gate_status(gates["task_bound"]),
+        "critic_invoked_status": _gate_status(gates["critic_invoked"]),
+        "todo_with_handover_status": _gate_status(gates["todo_with_handover"]),
+        "missing_gates": "\n".join(missing),
+    })
 
 
 def build_warn_message(gates: dict[str, bool]) -> str:
@@ -136,35 +142,11 @@ def build_warn_message(gates: dict[str, bool]) -> str:
     Returns:
         Formatted warning message
     """
-    return f"""⚠️  THREE-GATE CHECK (warn-only): Destructive operation without full gate compliance.
-
-Gate status:
-- Task bound: {"✓" if gates["task_bound"] else "✗"}
-- Critic invoked: {"✓" if gates["critic_invoked"] else "✗"}
-- Todo with handover: {"✓" if gates["todo_with_handover"] else "✗"}
-
-This session is in WARN mode for testing. In production, this would BLOCK.
-"""
-
-
-# Legacy messages for backward compatibility
-BLOCK_MESSAGE = """⛔ TASK REQUIRED: No active task bound to this session.
-
-Before modifying files, you must claim or create a task:
-
-1. Search for existing task: `mcp__plugin_aops-core_tasks__search_tasks(query="...")`
-2. Claim it: `mcp__plugin_aops-core_tasks__update_task(id="...", status="active")`
-   Or create new: `mcp__plugin_aops-core_tasks__create_task(...)`
-
-This ensures all work is tracked. For emergency/trivial fixes, user can prefix prompt with `.`
-"""
-
-WARN_MESSAGE = """⚠️  TASK GATE (warn-only): Destructive operation without task binding.
-
-This session is in WARN mode for testing. In production, this would BLOCK.
-
-To proceed correctly, claim or create a task first. See hydrator guidance.
-"""
+    return load_template(WARN_TEMPLATE, {
+        "task_bound_status": _gate_status(gates["task_bound"]),
+        "critic_invoked_status": _gate_status(gates["critic_invoked"]),
+        "todo_with_handover_status": _gate_status(gates["todo_with_handover"]),
+    })
 
 
 def get_gate_mode() -> str:

@@ -10,9 +10,15 @@ This is a hard enforcement gate - it blocks mutating operations.
 from __future__ import annotations
 
 import os
+from pathlib import Path
 from typing import Any
 
 from lib.session_state import load_custodiet_state
+from lib.template_loader import load_template
+
+# Template path
+HOOK_DIR = Path(__file__).parent
+BLOCK_TEMPLATE = HOOK_DIR / "templates" / "overdue-enforcement-block.md"
 
 # Threshold: Block after this many tool calls without compliance check
 THRESHOLD = 7
@@ -78,10 +84,7 @@ def check_overdue(
     if is_mutating_tool(tool_name):
         return {
             "decision": "block",
-            "reason": (
-                f"Compliance check overdue ({tool_calls} tool calls since last check). "
-                "Spawn custodiet agent before continuing with mutating operations."
-            ),
+            "reason": load_template(BLOCK_TEMPLATE, {"tool_calls": str(tool_calls)}),
         }
 
     # Read-only tools: allow (soft reminder handled elsewhere if needed)

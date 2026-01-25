@@ -148,6 +148,10 @@ description: Working hypotheses validated by evidence.
 
 **Statement**: After making bounded changes, commit immediately. Never ask permission to commit in any form.
 
+**Corollaries**:
+- NEVER output: "Would you like me to commit?", "Ready to commit?", "Should I push?", or any variant
+- Complete the work → commit → report what you did. No pause for permission.
+
 **Derivation**: Asking "should I commit?", "want me to commit?", "ready to push?", or any variant wastes a round-trip and signals uncertainty. Bounded, low-risk changes (single-file edits, config tweaks, rollbacks) should be committed as part of the action. User controls via git - they can revert if needed.
 
 ---

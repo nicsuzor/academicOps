@@ -19,8 +19,18 @@ Exit codes:
 import contextlib
 import json
 import sys
+from pathlib import Path
 from typing import Any
 
+# Add framework lib to path for template_loader
+HOOK_DIR = Path(__file__).parent
+AOPS_CORE_ROOT = HOOK_DIR.parent
+sys.path.insert(0, str(AOPS_CORE_ROOT))
+
+from lib.template_loader import load_template
+
+# Template path
+FAIL_FAST_TEMPLATE = HOOK_DIR / "templates" / "fail-fast-reminder.md"
 
 # Patterns that indicate a tool error
 ERROR_INDICATORS = [
@@ -47,18 +57,9 @@ ERROR_INDICATORS = [
     "Cannot access",
 ]
 
-FAIL_FAST_REMINDER = """⚠️ FAIL-FAST REMINDER: This tool returned an error.
-
-Per AXIOMS #7-8 (Fail-Fast):
-- DO NOT investigate infrastructure or configuration
-- DO NOT search for solutions or workarounds
-- DO NOT try to fix the underlying problem
-
-Instead:
-- Report the error clearly to the user
-- Ask what the user wants you to do
-
-The user may want to fix it themselves, ask you to investigate, or try something else entirely. That's THEIR decision, not yours."""
+def load_fail_fast_reminder() -> str:
+    """Load the fail-fast reminder message from template."""
+    return load_template(FAIL_FAST_TEMPLATE)
 
 
 def contains_error(text: str) -> bool:
@@ -132,7 +133,7 @@ def main():
         output: dict[str, Any] = {
             "hookSpecificOutput": {
                 "hookEventName": hook_event,
-                "additionalContext": FAIL_FAST_REMINDER,
+                "additionalContext": load_fail_fast_reminder(),
             }
         }
         print(json.dumps(output))
