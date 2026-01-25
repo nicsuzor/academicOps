@@ -288,4 +288,17 @@ description: Working hypotheses validated by evidence.
 
 ---
 
+## Fixes Preserve Spec Behavior (P#80)
+
+**Statement**: Bug fixes must not remove functionality required by acceptance criteria. When a proposed fix would remove spec-required behavior, either ask user for clarification or find a fix that preserves the behavior.
+
+**Corollaries**:
+- Before proposing a fix, check the spec's acceptance criteria
+- "Node selection shows task details" in spec → fix cannot remove click interaction
+- If the only fix removes required functionality → ask user about acceptable tradeoffs
+
+**Derivation**: Specs define required behavior. A "fix" that removes required functionality is a design change requiring user approval, not a bug fix. P#31 (Acceptance Criteria Own Success) establishes that only user-defined criteria determine completion.
+
+---
+
 <!-- NS: don't truncate descriptions for skills etc in these tables. When referencing skills in tables or matrices in HEURISTICS.md or any documentation, ensure full descriptions are displayed rather than truncated versions. This maintains clarity and prevents users from missing important context about skill capabilities and usage. -->
