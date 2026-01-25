@@ -310,7 +310,7 @@ def _build_session_context(transcript_path: str | None, session_id: str) -> str:
             include={"prompts"},
             max_turns=5,
         )
-        prompts = ctx["prompts"]
+        prompts = ctx.get("prompts", [])
         if prompts:
             most_recent_prompt = prompts[-1]
             lines.append("**Most Recent User Request** (active intent):")
@@ -330,9 +330,8 @@ def _build_session_context(transcript_path: str | None, session_id: str) -> str:
         workflow = hydrator_state.get("declared_workflow")
         if workflow:
             gate = workflow.get("gate")
-            if gate is None:
-                raise ValueError("workflow missing required 'gate' field")
-            lines.append(f"**Declared Workflow**: {gate}")
+            if gate:
+                lines.append(f"**Declared Workflow**: {gate}")
             approach = workflow.get("approach")
             if approach:
                 lines.append(f"**Approach**: {approach}")
@@ -364,7 +363,7 @@ def _build_session_context(transcript_path: str | None, session_id: str) -> str:
         # This gives custodiet the raw user intent for scope creep detection.
 
         # Previous prompts (for context, excludes most recent which is the user request)
-        prompts = ctx["prompts"]
+        prompts = ctx.get("prompts", [])
         previous_prompts = prompts[:-1] if len(prompts) > 1 else []
         if previous_prompts:
             lines.append("**Previous User Prompts**:")
