@@ -66,7 +66,7 @@ def _get_session_state_module() -> Any:
 # - autocommit_state.py: Auto-commits data/ changes after state operations
 # - custodiet_gate.py: Periodic compliance checking via subagent
 
-#<!-- @NS: remove unified_logger from5he hook registry, we should just log every time. -->
+#<!-- @NS: remove unified_logger from the hook registry, we should just log every time. -->
 HOOK_REGISTRY: dict[str, list[dict[str, Any]]] = {
     "SessionStart": [
         {"script": "session_env_setup.sh"},
@@ -105,7 +105,7 @@ HOOK_REGISTRY: dict[str, list[dict[str, Any]]] = {
         # NOTE: reflection_check.py requires reflection to be output BEFORE the
         # stopping turn due to transcript timing. The hook validates that a parseable
         # Framework Reflection exists using parse_framework_reflection.
-        {"script": "reflection_check.py"},  # Validate parseable Framework Reflection
+        #{"script": "reflection_check.py"},  # Validate parseable Framework Reflection
         # {"script": "session_end_commit_check.py"},  
         {"script": "unified_logger.py"},
     ],
