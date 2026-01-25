@@ -75,6 +75,7 @@ HOOK_REGISTRY: dict[str, list[dict[str, Any]]] = {
     "PreToolUse": [
         {"script": "unified_logger.py"},
         {"script": "hydration_gate.py"},  # Blocks/warns until prompt-hydrator invoked
+        {"script": "command_intercept.py"},  # Transform tool inputs (e.g., Glob excludes)
         {
             "script": "task_required_gate.py"
         },  # Blocks destructive ops without task binding
