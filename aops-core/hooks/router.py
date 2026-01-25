@@ -15,7 +15,7 @@ Architecture:
 Exit codes:
     0: Success (all hooks succeeded)
     1: Warning (at least one hook warned)
-    2: Block (at least one hook blocked - PreToolUse only)
+    2: Block/Error (hook blocked or failed - fail-fast, no silent failures)
 """
 
 import json
@@ -409,11 +409,11 @@ def run_hook_script(
         return output, result.returncode
 
     except subprocess.TimeoutExpired:
-        print(f"WARNING: Hook {script_path.name} timed out", file=sys.stderr)
-        return {}, 1
+        print(f"ERROR: Hook {script_path.name} timed out", file=sys.stderr)
+        return {}, 2
     except Exception as e:
-        print(f"WARNING: Hook {script_path.name} failed: {e}", file=sys.stderr)
-        return {}, 1
+        print(f"ERROR: Hook {script_path.name} failed: {e}", file=sys.stderr)
+        return {}, 2
 
 
 def start_async_hook(
@@ -499,8 +499,8 @@ def collect_async_result(
     except subprocess.TimeoutExpired:
         proc.kill()
         proc.wait()
-        print("WARNING: Async hook timed out", file=sys.stderr)
-        return {}, 1
+        print("ERROR: Async hook timed out", file=sys.stderr)
+        return {}, 2
 
 
 def run_sync_hook(
@@ -674,8 +674,10 @@ def main() -> None:
     input_data: dict[str, Any] = {}
     try:
         input_data = json.load(sys.stdin)
-    except Exception:
-        pass
+    except Exception as e:
+        # Fail-fast: no silent failures (P#8, P#25)
+        print(f"ERROR: Hook router failed to parse stdin JSON: {e}", file=sys.stderr)
+        sys.exit(2)
 
     # Route to appropriate hooks
     output, exit_code = route_hooks(input_data)

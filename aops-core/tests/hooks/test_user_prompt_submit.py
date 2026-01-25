@@ -443,7 +443,7 @@ class TestMainHookEntry:
     def test_main_handles_missing_session_id(
         self, temp_hydrator_dir, monkeypatch, capsys
     ):
-        """Test that main() handles missing session_id gracefully."""
+        """Test that main() fails fast on missing session_id (P#8, P#25)."""
         import io
 
         input_data = {
@@ -455,15 +455,14 @@ class TestMainHookEntry:
         with pytest.raises(SystemExit) as exc_info:
             main()
 
-        # Should exit 0 (graceful degradation)
-        assert exc_info.value.code == 0
+        # Fail-fast: exit 2 on missing required field
+        assert exc_info.value.code == 2
 
         captured = capsys.readouterr()
-        output = json.loads(captured.out)
-        assert output["hookSpecificOutput"]["additionalContext"] == ""
+        assert "session_id" in captured.err
 
     def test_main_handles_invalid_json(self, temp_hydrator_dir, monkeypatch, capsys):
-        """Test that main() handles invalid JSON input gracefully."""
+        """Test that main() fails fast on invalid JSON input (P#8, P#25)."""
         import io
 
         monkeypatch.setattr("sys.stdin", io.StringIO("not valid json"))
@@ -471,13 +470,16 @@ class TestMainHookEntry:
         with pytest.raises(SystemExit) as exc_info:
             main()
 
-        # Should exit 0 even with bad input
-        assert exc_info.value.code == 0
+        # Fail-fast: exit 2 on malformed input
+        assert exc_info.value.code == 2
+
+        captured = capsys.readouterr()
+        assert "JSON" in captured.err
 
     def test_main_fails_fast_on_io_error(
         self, temp_hydrator_dir, mock_session_state, monkeypatch, capsys
     ):
-        """Test that main() exits with code 1 on temp file write failure."""
+        """Test that main() exits with code 2 on temp file write failure (P#8, P#25)."""
         import io
 
         input_data = {
@@ -493,13 +495,11 @@ class TestMainHookEntry:
             with pytest.raises(SystemExit) as exc_info:
                 main()
 
-            # Should exit 1 for infrastructure failure (fail-fast)
-            assert exc_info.value.code == 1
+            # Fail-fast: exit 2 for infrastructure failure
+            assert exc_info.value.code == 2
 
             captured = capsys.readouterr()
-            output = json.loads(captured.out)
-            assert "error" in output["hookSpecificOutput"]
-            assert "Disk full" in output["hookSpecificOutput"]["error"]
+            assert "Disk full" in captured.err
 
     def test_main_handles_empty_prompt(
         self, temp_hydrator_dir, monkeypatch, capsys

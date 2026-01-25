@@ -517,8 +517,10 @@ def main():
     try:
         input_data = json.load(sys.stdin)
         input_data["argv"] = sys.argv
-    except Exception:
-        pass
+    except Exception as e:
+        # Fail-fast: no silent failures (P#8, P#25)
+        print(f"ERROR: UserPromptSubmit hook failed to parse stdin JSON: {e}", file=sys.stderr)
+        sys.exit(2)
 
     prompt = input_data.get("prompt", "")
     transcript_path = input_data.get("transcript_path")
@@ -526,15 +528,9 @@ def main():
 
     # Require session_id for state isolation
     if not session_id:
-        # Fail gracefully - don't block agent if session_id missing
-        output_data = {
-            "hookSpecificOutput": {
-                "hookEventName": "UserPromptSubmit",
-                "additionalContext": "",
-            }
-        }
-        print(json.dumps(output_data))
-        sys.exit(0)
+        # Fail-fast: session_id is required for state management (P#8, P#25)
+        print("ERROR: UserPromptSubmit hook requires session_id for state isolation", file=sys.stderr)
+        sys.exit(2)
 
     # Clear reflection tracking flag for new user prompt
     # This tracks whether the agent outputs a Framework Reflection before session end
@@ -572,14 +568,9 @@ def main():
                 }
             }
         except (IOError, OSError) as e:
-            # Fail-fast on infrastructure errors
-            output_data = {
-                "hookSpecificOutput": {
-                    "hookEventName": "UserPromptSubmit",
-                    "error": f"Temp file write failed: {e}",
-                }
-            }
-            exit_code = 1
+            # Fail-fast on infrastructure errors (P#8, P#25)
+            print(f"ERROR: UserPromptSubmit hook temp file write failed: {e}", file=sys.stderr)
+            sys.exit(2)
 
     # Output JSON
     print(json.dumps(output_data))

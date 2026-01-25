@@ -11,6 +11,7 @@ Tests cover:
 """
 
 import json
+import pytest
 from unittest.mock import patch, MagicMock
 
 
@@ -345,13 +346,14 @@ class TestHookRegistry:
         assert "UserPromptSubmit" in HOOK_REGISTRY
         assert len(HOOK_REGISTRY["UserPromptSubmit"]) > 0
 
-    def test_unknown_event_returns_empty(self):
-        """Unknown hook event should return empty list."""
+    def test_unknown_event_raises_error(self):
+        """Unknown hook event should raise ValueError (fail-fast, P#8)."""
         from router import get_hooks_for_event
 
-        hooks = get_hooks_for_event("UnknownEvent")
+        with pytest.raises(ValueError) as exc_info:
+            get_hooks_for_event("UnknownEvent")
 
-        assert hooks == []
+        assert "UnknownEvent" in str(exc_info.value)
 
     def test_matcher_variant_lookup(self):
         """PostToolUse:TodoWrite should return specific hooks."""
@@ -421,12 +423,12 @@ class TestFullRouter:
         json.dumps(result)  # Should not raise
 
     def test_router_handles_missing_event_name(self):
-        """Router should handle missing hook_event_name gracefully."""
+        """Router should raise ValueError for missing hook_event_name (fail-fast, P#8)."""
         from router import route_hooks
 
         input_data = {}  # No hook_event_name
 
-        result, exit_code = route_hooks(input_data)
+        with pytest.raises(ValueError) as exc_info:
+            route_hooks(input_data)
 
-        # Should return empty result, exit 0 (no hooks to run)
-        assert exit_code == 0
+        assert "hook_event_name" in str(exc_info.value)
