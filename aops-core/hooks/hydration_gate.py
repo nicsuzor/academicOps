@@ -33,10 +33,16 @@ Failure mode: FAIL-CLOSED (block on error/uncertainty - safety over convenience)
 import json
 import os
 import sys
-import tempfile
 from pathlib import Path
 from typing import Any
 
+from lib.hook_utils import (
+    get_hook_temp_dir,
+    get_session_id as _get_session_id,
+    is_subagent_session as _is_subagent_session,
+    make_deny_output,
+    make_empty_output,
+)
 from lib.session_state import clear_hydration_pending, is_hydration_pending
 from lib.session_paths import get_session_file_path_direct, get_session_short_hash
 from lib.template_loader import load_template
@@ -44,6 +50,9 @@ from lib.template_loader import load_template
 # Template paths
 HOOK_DIR = Path(__file__).parent
 BLOCK_TEMPLATE = HOOK_DIR / "templates" / "hydration-gate-block.md"
+
+# Temp directory category for hydration files
+TEMP_CATEGORY = "hydrator"
 
 
 def is_debug_enabled() -> bool:
@@ -63,33 +72,13 @@ def get_block_message() -> str:
 
 
 def get_session_id(input_data: dict[str, Any]) -> str:
-    """Get session ID from hook input data or environment.
-
-    Args:
-        input_data: Hook input data dict
-
-    Returns:
-        Session ID string
-
-    Raises:
-        ValueError: If session_id is not found in input_data or environment
-    """
-    session_id = input_data.get("session_id") or os.environ.get("CLAUDE_SESSION_ID")
-    if not session_id:
-        raise ValueError(
-            "session_id is required in hook input_data or CLAUDE_SESSION_ID env var. "
-            "If you're seeing this error, the hook invocation is missing required context."
-        )
-    return session_id
+    """Get session ID from hook input data or environment (wrapper for compatibility)."""
+    return _get_session_id(input_data, require=True)
 
 
 def is_subagent_session() -> bool:
-    """Check if this is a subagent session.
-
-    Returns:
-        True if CLAUDE_AGENT_TYPE is set (indicating subagent context)
-    """
-    return bool(os.environ.get("CLAUDE_AGENT_TYPE"))
+    """Check if this is a subagent session (wrapper for test compatibility)."""
+    return _is_subagent_session()
 
 
 def is_first_prompt_from_cli(session_id: str) -> bool:
@@ -131,40 +120,17 @@ def is_hydrator_task(tool_input: dict[str, Any]) -> bool:
         return True
     return False
 
-import hashlib
-
 def get_hydration_temp_dir() -> Path:
-    """Get the temporary directory for hydration context (synchronized with user_prompt_submit).
+    """Get the temporary directory for hydration context.
+
+    Uses shared hook_utils for consistent temp directory resolution.
 
     Raises:
         RuntimeError: If Gemini path discovery fails (no silent fallbacks)
     """
-    # 1. Check for standard temp dir env var
-    tmpdir = os.environ.get("TMPDIR")
-    if tmpdir:
-        debug(f"Using TMPDIR: {tmpdir}")
-        return Path(tmpdir)
-
-    # 2. Gemini-specific discovery logic
-    if os.environ.get("GEMINI_CLI"):
-        project_root = os.environ.get("AOPS")
-        if not project_root:
-            project_root = str(Path.cwd())
-        abs_root = str(Path(project_root).resolve())
-        project_hash = hashlib.sha256(abs_root.encode()).hexdigest()
-        gemini_tmp = Path.home() / ".gemini" / "tmp" / project_hash
-        if gemini_tmp.exists():
-            debug(f"Using Gemini temp dir: {gemini_tmp}")
-            return gemini_tmp
-        # FAIL-CLOSED: Gemini temp dir doesn't exist, raise instead of falling back
-        raise RuntimeError(
-            f"GEMINI_CLI is set but temp dir does not exist: {gemini_tmp}. "
-            "Create the directory or unset GEMINI_CLI."
-        )
-
-    # 3. Default for Claude Code (not a fallback - this is the expected path)
-    debug("Using default Claude temp dir: /tmp/claude-hydrator")
-    return Path("/tmp/claude-hydrator")
+    temp_dir = get_hook_temp_dir(TEMP_CATEGORY)
+    debug(f"Using temp dir: {temp_dir}")
+    return temp_dir
 
 
 def is_gemini_hydration_attempt(tool_name: str, tool_input: dict[str, Any]) -> bool:
@@ -179,18 +145,19 @@ def is_gemini_hydration_attempt(tool_name: str, tool_input: dict[str, Any]) -> b
     Returns:
         True if the tool use matches a hydration context read attempt
     """
-    temp_dir = str(get_hydration_temp_dir())
-    
+    try:
+        temp_dir = str(get_hydration_temp_dir())
+    except RuntimeError:
+        return False
+
     # Check for direct file read
     if tool_name == "read_file":
         file_path = tool_input.get("file_path")
         if file_path is None:
             return False
         path = str(file_path)
-        return (
-            path.startswith("/tmp/claude-hydrator/") or
-            path.startswith(temp_dir)
-        )
+        # Check current temp dir and legacy location
+        return path.startswith(temp_dir) or path.startswith("/tmp/claude-hydrator/")
 
     # Check for shell commands (cat, etc) on the hydration file
     if tool_name == "run_shell_command":
@@ -198,10 +165,8 @@ def is_gemini_hydration_attempt(tool_name: str, tool_input: dict[str, Any]) -> b
         if command is None:
             return False
         cmd = str(command)
-        return (
-            "/tmp/claude-hydrator/" in cmd or
-            temp_dir in cmd
-        )
+        # Check current temp dir and legacy location
+        return temp_dir in cmd or "/tmp/claude-hydrator/" in cmd
 
     return False
 
@@ -215,37 +180,18 @@ def main():
         input_data = json.load(sys.stdin)
     except json.JSONDecodeError as e:
         # FAIL-CLOSED: block on parse error (safety over convenience)
-        # Use JSON permissionDecision:deny with exit 0 so Claude Code processes it
-        output = {
-            "hookSpecificOutput": {
-                "hookEventName": "PreToolUse",
-                "permissionDecision": "deny",
-                "additionalContext": f"⛔ HYDRATION GATE: Failed to parse hook input: {e}"
-            }
-        }
+        output = make_deny_output(f"⛔ HYDRATION GATE: Failed to parse hook input: {e}")
         print(json.dumps(output))
         sys.exit(0)
 
     tool_name = input_data.get("tool_name")
     if tool_name is None:
-        output = {
-            "hookSpecificOutput": {
-                "hookEventName": "PreToolUse",
-                "permissionDecision": "deny",
-                "additionalContext": "⛔ HYDRATION GATE: hook input missing required 'tool_name' field"
-            }
-        }
+        output = make_deny_output("⛔ HYDRATION GATE: hook input missing required 'tool_name' field")
         print(json.dumps(output))
         sys.exit(0)
     tool_input = input_data.get("tool_input")
     if tool_input is None:
-        output = {
-            "hookSpecificOutput": {
-                "hookEventName": "PreToolUse",
-                "permissionDecision": "deny",
-                "additionalContext": "⛔ HYDRATION GATE: hook input missing required 'tool_input' field"
-            }
-        }
+        output = make_deny_output("⛔ HYDRATION GATE: hook input missing required 'tool_input' field")
         print(json.dumps(output))
         sys.exit(0)
 
@@ -255,13 +201,7 @@ def main():
         session_id = get_session_id(input_data)
     except ValueError as e:
         # FAIL-CLOSED: block on missing session_id (safety over convenience)
-        output = {
-            "hookSpecificOutput": {
-                "hookEventName": "PreToolUse",
-                "permissionDecision": "deny",
-                "additionalContext": f"⛔ HYDRATION GATE: {e}"
-            }
-        }
+        output = make_deny_output(f"⛔ HYDRATION GATE: {e}")
         print(json.dumps(output))
         sys.exit(0)
 
@@ -271,13 +211,13 @@ def main():
     # BYPASS: Subagent sessions (invoked by main agent)
     if is_subagent_session():
         debug("ALLOW: Subagent session (CLAUDE_AGENT_TYPE set)")
-        print(json.dumps({}))
+        print(json.dumps(make_empty_output()))
         sys.exit(0)
 
     # BYPASS: First prompt from CLI (no state exists yet) - DEPRECATED, always False
     if is_first_prompt_from_cli(session_id):
         debug("ALLOW: First prompt from CLI (deprecated bypass)")
-        print(json.dumps({}))
+        print(json.dumps(make_empty_output()))
         sys.exit(0)
 
     # Check if hydration is pending
@@ -289,7 +229,7 @@ def main():
     if not hydration_pending:
         # Hydration complete or not required - allow all tools
         debug("ALLOW: Hydration not pending (already complete or bypassed)")
-        print(json.dumps({}))
+        print(json.dumps(make_empty_output()))
         sys.exit(0)
 
     # Hydration pending - check if this is the hydrator being invoked
@@ -303,19 +243,12 @@ def main():
         # This is the hydrator being spawned/consumed - clear the gate and allow
         debug("ALLOW: Hydrator being invoked - clearing gate")
         clear_hydration_pending(session_id)
-        print(json.dumps({}))
+        print(json.dumps(make_empty_output()))
         sys.exit(0)
 
     # FAIL-CLOSED: Hydration pending and not invoking hydrator - BLOCK
-    # Use JSON permissionDecision:deny with exit 0 so Claude Code processes it
     debug(f"BLOCK: Hydration pending, tool={tool_name} is not hydrator")
-    output = {
-        "hookSpecificOutput": {
-            "hookEventName": "PreToolUse",
-            "permissionDecision": "deny",
-            "additionalContext": get_block_message()
-        }
-    }
+    output = make_deny_output(get_block_message())
     print(json.dumps(output))
     sys.exit(0)
 

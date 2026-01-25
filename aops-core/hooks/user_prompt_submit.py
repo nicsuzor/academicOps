@@ -15,11 +15,14 @@ import json
 import os
 import subprocess
 import sys
-import tempfile
-import time
 from pathlib import Path
 from typing import Any
 
+from lib.hook_utils import (
+    cleanup_old_temp_files as _cleanup_temp,
+    get_hook_temp_dir,
+    write_temp_file as _write_temp,
+)
 from lib.paths import get_aops_root
 from lib.file_index import get_formatted_relevant_paths
 from lib.session_reader import extract_router_context
@@ -35,45 +38,18 @@ from lib.template_loader import load_template
 HOOK_DIR = Path(__file__).parent
 CONTEXT_TEMPLATE_FILE = HOOK_DIR / "templates" / "prompt-hydrator-context.md"
 INSTRUCTION_TEMPLATE_FILE = HOOK_DIR / "templates" / "prompt-hydration-instruction.md"
-import hashlib
+
+# Temp directory category (matches hydration_gate.py)
+TEMP_CATEGORY = "hydrator"
+FILE_PREFIX = "hydrate_"
+
 
 def get_hydration_temp_dir() -> Path:
     """Get the temporary directory for hydration context.
 
-    1. Checks TMPDIR (provided by host CLI)
-    2. If GEMINI_CLI set, calculates project-specific temp dir: ~/.gemini/tmp/sha256(AOPS)
-    3. Fallback to /tmp/claude-hydrator
+    Uses shared hook_utils for consistent temp directory resolution.
     """
-    # 1. Check for standard temp dir env var
-    tmpdir = os.environ.get("TMPDIR")
-    if tmpdir:
-        return Path(tmpdir)
-
-    # 2. Gemini-specific discovery logic
-    if os.environ.get("GEMINI_CLI"):
-        try:
-            # Determine project root (AOPS is set by setup.sh/settings.json)
-            project_root = os.environ.get("AOPS")
-            if not project_root:
-                project_root = str(Path.cwd())
-            
-            # Calculate SHA256 hash of absolute project path (Gemini convention)
-            abs_root = str(Path(project_root).resolve())
-            project_hash = hashlib.sha256(abs_root.encode()).hexdigest()
-            
-            gemini_tmp = Path.home() / ".gemini" / "tmp" / project_hash
-            if gemini_tmp.exists():
-                return gemini_tmp
-        except Exception:
-            pass
-
-    # 3. Default fallback for Claude Code
-    return Path("/tmp/claude-hydrator")
-
-TEMP_DIR = get_hydration_temp_dir()
-
-# Cleanup threshold: 1 hour in seconds
-CLEANUP_AGE_SECONDS = 60 * 60
+    return get_hook_temp_dir(TEMP_CATEGORY)
 
 # Intent envelope max length
 INTENT_MAX_LENGTH = 500
@@ -364,16 +340,11 @@ def cleanup_old_temp_files() -> None:
 
     Called on each hook invocation to prevent disk accumulation.
     """
-    if not TEMP_DIR.exists():
-        return
-
-    cutoff = time.time() - CLEANUP_AGE_SECONDS
-    for f in TEMP_DIR.glob("hydrate_*.md"):
-        try:
-            if f.stat().st_mtime < cutoff:
-                f.unlink()
-        except OSError:
-            pass  # Ignore cleanup errors
+    try:
+        temp_dir = get_hydration_temp_dir()
+        _cleanup_temp(temp_dir, FILE_PREFIX)
+    except RuntimeError:
+        pass  # Graceful degradation if temp dir resolution fails
 
 
 def write_temp_file(content: str) -> Path:
@@ -382,18 +353,8 @@ def write_temp_file(content: str) -> Path:
     Raises:
         IOError: If temp file cannot be written (fail-fast)
     """
-    TEMP_DIR.mkdir(parents=True, exist_ok=True)
-
-    # Use NamedTemporaryFile for unique names and proper handling
-    with tempfile.NamedTemporaryFile(
-        mode="w",
-        prefix="hydrate_",
-        suffix=".md",
-        dir=TEMP_DIR,
-        delete=False,
-    ) as f:
-        f.write(content)
-        return Path(f.name)
+    temp_dir = get_hydration_temp_dir()
+    return _write_temp(content, temp_dir, FILE_PREFIX)
 
 
 def build_hydration_instruction(

@@ -18,10 +18,10 @@ Bypass conditions:
 - Task operations themselves (create_task, update_task)
 - Read-only tools (Read, Glob, Grep, etc.)
 
-Output format (JSON on stdout, always exit 0):
-- Allow: {} (empty JSON)
-- Block: {"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "deny", "additionalContext": "..."}}
-- Warn: {"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow", "additionalContext": "..."}}
+Output format (JSON on stdout):
+- Allow: {} (empty JSON), exit 0
+- Block: {"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "deny", "additionalContext": "..."}}, exit 2
+- Warn: {"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow", "additionalContext": "..."}}, exit 0
 
 Environment variables:
 - TASK_GATE_MODE: "warn" (default) or "block"
@@ -37,6 +37,13 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from lib.hook_utils import (
+    get_session_id as _get_session_id,
+    is_subagent_session,
+    make_allow_output,
+    make_deny_output,
+    make_empty_output,
+)
 from lib.session_state import check_all_gates, get_current_task, load_session_state
 from lib.template_loader import load_template
 
@@ -46,7 +53,7 @@ BLOCK_TEMPLATE = HOOK_DIR / "templates" / "task-gate-block.md"
 WARN_TEMPLATE = HOOK_DIR / "templates" / "task-gate-warn.md"
 
 # Default gate mode - start with warn for validation
-DEFAULT_GATE_MODE = "warn"
+DEFAULT_GATE_MODE = "block"
 
 # Destructive Bash command patterns (require task)
 DESTRUCTIVE_BASH_PATTERNS = [
@@ -160,19 +167,8 @@ def get_gate_mode() -> str:
 
 
 def get_session_id(input_data: dict[str, Any]) -> str:
-    """Get session ID from hook input data or environment."""
-    session_id = input_data.get("session_id")
-    if session_id is not None:
-        return session_id
-    session_id = os.environ.get("CLAUDE_SESSION_ID")
-    if session_id is not None:
-        return session_id
-    return ""
-
-
-def is_subagent_session() -> bool:
-    """Check if this is a subagent session."""
-    return bool(os.environ.get("CLAUDE_AGENT_TYPE"))
+    """Get session ID from hook input data or environment (wrapper for compatibility)."""
+    return _get_session_id(input_data, require=False)
 
 
 def is_gates_bypassed(session_id: str) -> bool:
@@ -252,24 +248,12 @@ def should_require_task(tool_name: str, tool_input: dict[str, Any]) -> bool:
 
 def _make_deny_output(message: str) -> dict:
     """Build JSON output for deny/block decision."""
-    return {
-        "hookSpecificOutput": {
-            "hookEventName": "PreToolUse",
-            "permissionDecision": "deny",
-            "additionalContext": message
-        }
-    }
+    return make_deny_output(message, "PreToolUse")
 
 
 def _make_warn_output(message: str) -> dict:
     """Build JSON output for warn (allow with warning) decision."""
-    return {
-        "hookSpecificOutput": {
-            "hookEventName": "PreToolUse",
-            "permissionDecision": "allow",
-            "additionalContext": message
-        }
-    }
+    return make_allow_output(message, "PreToolUse")
 
 
 def main() -> None:
@@ -301,29 +285,29 @@ def main() -> None:
             print(json.dumps(output))
             sys.exit(0)
         # Non-destructive ops can proceed
-        print(json.dumps({}))
+        print(json.dumps(make_empty_output()))
         sys.exit(0)
 
     # BYPASS: Subagent sessions
     if is_subagent_session():
-        print(json.dumps({}))
+        print(json.dumps(make_empty_output()))
         sys.exit(0)
 
     # BYPASS: User prefix '.'
     if is_gates_bypassed(session_id):
-        print(json.dumps({}))
+        print(json.dumps(make_empty_output()))
         sys.exit(0)
 
     # Check if this operation requires task binding
     if not should_require_task(tool_name, tool_input):
-        print(json.dumps({}))
+        print(json.dumps(make_empty_output()))
         sys.exit(0)
 
     # Three-gate check: task bound, critic invoked, todo with handover
     gates = check_all_gates(session_id)
 
     if gates["all_passed"]:
-        print(json.dumps({}))
+        print(json.dumps(make_empty_output()))
         sys.exit(0)
 
     # Gates not passed - enforce based on mode
@@ -331,7 +315,7 @@ def main() -> None:
     if gate_mode == "block":
         output = _make_deny_output(build_block_message(gates))
         print(json.dumps(output))
-        sys.exit(0)
+        sys.exit(2)  # Exit 2 = BLOCK per router.py
     else:
         # Warn mode: allow but inject warning as context
         output = _make_warn_output(build_warn_message(gates))

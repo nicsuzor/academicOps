@@ -20,11 +20,16 @@ Exit codes:
 import json
 import random
 import sys
-import tempfile
-import time
 from pathlib import Path
 from typing import Any
 
+from lib.hook_utils import (
+    cleanup_old_temp_files as _cleanup_temp,
+    get_hook_temp_dir,
+    make_context_output,
+    make_empty_output,
+    write_temp_file as _write_temp,
+)
 from lib.session_reader import extract_gate_context, load_skill_scope
 from lib.session_state import (
     CustodietState,
@@ -33,7 +38,6 @@ from lib.session_state import (
     save_custodiet_state,
 )
 from lib.template_loader import load_template
-from lib.transcript_parser import SessionProcessor
 
 # Paths
 HOOK_DIR = Path(__file__).parent
@@ -44,8 +48,10 @@ REMINDERS_FILE = HOOK_DIR / "data" / "reminders.txt"
 AXIOMS_FILE = AOPS_ROOT / "AXIOMS.md"
 HEURISTICS_FILE = AOPS_ROOT / "HEURISTICS.md"
 SKILLS_FILE = AOPS_ROOT / "SKILLS.md"
-# Use /tmp like hydrator - subagents can reliably access /tmp but not project dirs
-TEMP_DIR = Path("/tmp/claude-compliance")
+
+# Temp directory for audit context files (uses shared hook_utils)
+TEMP_CATEGORY = "compliance"
+FILE_PREFIX = "audit_"
 
 # Configuration
 TOOL_CALL_THRESHOLD = 7  # Check every ~7 tool calls
@@ -55,21 +61,15 @@ TOOL_CALL_THRESHOLD = 7  # Check every ~7 tool calls
 # agents are forgetting instructions. Until then, avoid unnecessary injection noise.
 # To activate: set to 0.3 (30% probability) when behavioral data justifies it.
 REMINDER_PROBABILITY = 0.0
-CLEANUP_AGE_SECONDS = 60 * 60  # 1 hour
 
 
 def cleanup_old_temp_files() -> None:
     """Delete temp files older than 1 hour."""
-    if not TEMP_DIR.exists():
-        return
-
-    cutoff = time.time() - CLEANUP_AGE_SECONDS
-    for f in TEMP_DIR.glob("audit_*.md"):
-        try:
-            if f.stat().st_mtime < cutoff:
-                f.unlink()
-        except OSError:
-            pass
+    try:
+        temp_dir = get_hook_temp_dir(TEMP_CATEGORY)
+        _cleanup_temp(temp_dir, FILE_PREFIX)
+    except RuntimeError:
+        pass  # Graceful degradation if temp dir resolution fails
 
 
 def load_reminders() -> list[str]:
@@ -232,17 +232,8 @@ def load_framework_content() -> tuple[str, str, str]:
 
 def write_temp_file(content: str) -> Path:
     """Write content to temp file, return path."""
-    TEMP_DIR.mkdir(parents=True, exist_ok=True)
-
-    with tempfile.NamedTemporaryFile(
-        mode="w",
-        prefix="audit_",
-        suffix=".md",
-        dir=TEMP_DIR,
-        delete=False,
-    ) as f:
-        f.write(content)
-        return Path(f.name)
+    temp_dir = get_hook_temp_dir(TEMP_CATEGORY)
+    return _write_temp(content, temp_dir, FILE_PREFIX)
 
 
 def build_audit_instruction(
@@ -545,18 +536,18 @@ def main():
     # Skip for certain tools that shouldn't count toward threshold
     skip_tools = {"Read", "Glob", "Grep", "mcp__memory__retrieve_memory"}
     if tool_name in skip_tools:
-        print(json.dumps({}))
+        print(json.dumps(make_empty_output()))
         sys.exit(0)
 
     # Require session_id for state tracking (fail-open if missing)
     if not session_id:
-        print(json.dumps({}))
+        print(json.dumps(make_empty_output()))
         sys.exit(0)
 
     # Increment shared tool counter (syncs with overdue_enforcement.py)
     tool_count = increment_tool_count(session_id)
 
-    output_data: dict[str, Any] = {}
+    output_data: dict[str, Any] = make_empty_output()
 
     # Check if threshold reached
     if tool_count >= TOOL_CALL_THRESHOLD:
@@ -564,13 +555,7 @@ def main():
             instruction = build_audit_instruction(
                 transcript_path, tool_name, session_id
             )
-            # Use hookSpecificOutput.additionalContext - the only format router passes through
-            output_data = {
-                "hookSpecificOutput": {
-                    "hookEventName": "PostToolUse",
-                    "additionalContext": f"<system-reminder>\n{instruction}\n</system-reminder>",
-                }
-            }
+            output_data = make_context_output(instruction, "PostToolUse", wrap_in_reminder=True)
             # Reset shared counter (syncs with overdue_enforcement.py)
             reset_compliance_state(session_id)
         except (IOError, OSError) as e:
@@ -583,12 +568,7 @@ def main():
         # On non-threshold calls, maybe inject a random reminder (passive, not blocking)
         reminder = get_random_reminder()
         if reminder:
-            output_data = {
-                "hookSpecificOutput": {
-                    "hookEventName": "PostToolUse",
-                    "additionalContext": f"<system-reminder>\n{reminder}\n</system-reminder>",
-                }
-            }
+            output_data = make_context_output(reminder, "PostToolUse", wrap_in_reminder=True)
 
     print(json.dumps(output_data))
     sys.exit(0)
