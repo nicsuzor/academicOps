@@ -705,7 +705,26 @@ fn main() -> Result<()> {
         println!("Filtered to {} files with type in {:?}", files.len(), filter_types);
     }
 
-    // 3. Build Lookup Maps
+    // 3a. Detect duplicate IDs (same frontmatter id in multiple files)
+    let mut id_to_paths: HashMap<String, Vec<PathBuf>> = HashMap::new();
+    for f in &files {
+        id_to_paths.entry(f.id.clone()).or_default().push(f.path.clone());
+    }
+    let mut duplicate_count = 0;
+    for (id, paths) in &id_to_paths {
+        if paths.len() > 1 {
+            duplicate_count += 1;
+            eprintln!("WARNING: Duplicate ID '{}' found in {} files:", id, paths.len());
+            for p in paths {
+                eprintln!("  - {}", p.display());
+            }
+        }
+    }
+    if duplicate_count > 0 {
+        eprintln!("Found {} duplicate ID(s). Run 'task dedup' to resolve.", duplicate_count);
+    }
+
+    // 3b. Build Lookup Maps
     // Map: Key (filename/permalink) -> Absolute Path
     let mut id_map: HashMap<String, String> = HashMap::new();
     // Map: Absolute Path -> ID (for edge construction)

@@ -1566,8 +1566,9 @@ def search_tasks(query: str, limit: int = 20) -> dict[str, Any]:
 def dedup_tasks(delete: bool = False) -> dict[str, Any]:
     """Find and optionally remove duplicate tasks.
 
-    Identifies tasks with identical titles. When delete=True,
-    keeps the task that is 'done' (if any), otherwise keeps the newest.
+    Identifies tasks with identical titles OR identical IDs (different files
+    with same frontmatter id). When delete=True, keeps the task that is 'done'
+    (if any), otherwise keeps the newest.
 
     Args:
         delete: If True, delete duplicates (keeps done or newest). Default: False (dry run)
@@ -1576,7 +1577,7 @@ def dedup_tasks(delete: bool = False) -> dict[str, Any]:
         Dictionary with:
         - success: True
         - duplicates: List of duplicate groups, each with:
-            - title: The duplicate title
+            - title: The duplicate title (or ID for ID duplicates)
             - keep: Task ID to keep
             - remove: List of task IDs that are/would be deleted
         - total_duplicates: Total number of duplicate tasks found
@@ -1586,15 +1587,46 @@ def dedup_tasks(delete: bool = False) -> dict[str, Any]:
     try:
         storage = _get_storage()
 
-        # Group tasks by title
         from collections import defaultdict
-        by_title: dict[str, list[Task]] = defaultdict(list)
 
-        for task in storage._iter_all_tasks():
-            by_title[task.title].append(task)
+        # Group tasks by title AND by ID (using file path as unique key)
+        by_title: dict[str, list[tuple[Task, Path]]] = defaultdict(list)
+        by_id: dict[str, list[tuple[Task, Path]]] = defaultdict(list)
 
-        # Find duplicates (titles with >1 task)
-        duplicates = {title: tasks for title, tasks in by_title.items() if len(tasks) > 1}
+        for task, path in storage._iter_all_tasks_with_paths():
+            by_title[task.title].append((task, path))
+            by_id[task.id].append((task, path))
+
+        # Find title duplicates (same title, different files)
+        title_duplicates = {
+            title: tasks for title, tasks in by_title.items() if len(tasks) > 1
+        }
+
+        # Find ID duplicates (same ID in frontmatter, different files)
+        # These are MORE serious - they indicate data corruption
+        id_duplicates = {
+            task_id: tasks for task_id, tasks in by_id.items()
+            if len(tasks) > 1
+        }
+
+        # Merge: ID duplicates take precedence (use ID as key)
+        duplicates: dict[str, list[tuple[Task, Path]]] = {}
+
+        # Add ID duplicates first (keyed by "ID: {id}")
+        for task_id, tasks in id_duplicates.items():
+            duplicates[f"ID: {task_id}"] = tasks
+
+        # Add title duplicates that aren't already covered by ID duplicates
+        covered_paths = set()
+        for tasks in id_duplicates.values():
+            for _, path in tasks:
+                covered_paths.add(path)
+
+        for title, tasks in title_duplicates.items():
+            # Filter out tasks already in ID duplicates
+            remaining = [(t, p) for t, p in tasks if p not in covered_paths]
+            if len(remaining) > 1:
+                duplicates[title] = remaining
 
         if not duplicates:
             return {
@@ -1606,31 +1638,41 @@ def dedup_tasks(delete: bool = False) -> dict[str, Any]:
             }
 
         result_groups = []
-        to_delete = []
+        to_delete: list[tuple[Task, Path]] = []
 
-        for title, tasks in sorted(duplicates.items()):
+        for key, task_path_pairs in sorted(duplicates.items()):
             # Sort: done status first, then by modified date (newest first)
-            tasks.sort(key=lambda t: (
-                0 if t.status.value == "done" else 1,
-                -t.modified.timestamp()
+            task_path_pairs.sort(key=lambda tp: (
+                0 if tp[0].status.value == "done" else 1,
+                -tp[0].modified.timestamp()
             ))
 
-            keep = tasks[0]
-            remove = tasks[1:]
-            to_delete.extend(remove)
+            keep_task, keep_path = task_path_pairs[0]
+            remove_pairs = task_path_pairs[1:]
+            to_delete.extend(remove_pairs)
 
             result_groups.append({
-                "title": title,
-                "keep": keep.id,
-                "keep_status": keep.status.value,
-                "remove": [t.id for t in remove],
+                "title": key,
+                "keep": keep_task.id,
+                "keep_path": str(keep_path),
+                "keep_status": keep_task.status.value,
+                "remove": [
+                    {"id": t.id, "path": str(p), "title": t.title}
+                    for t, p in remove_pairs
+                ],
             })
 
         deleted_ids = []
+        deleted_paths = []
         if delete and to_delete:
-            for task in to_delete:
-                if storage.delete_task(task.id):
+            for task, path in to_delete:
+                # Delete by path (file), not by ID (since IDs may be duplicated)
+                try:
+                    path.unlink()
                     deleted_ids.append(task.id)
+                    deleted_paths.append(str(path))
+                except OSError as e:
+                    logger.warning(f"Failed to delete {path}: {e}")
 
             # Rebuild index after deletions
             index = TaskIndex(get_data_root())
@@ -1639,13 +1681,22 @@ def dedup_tasks(delete: bool = False) -> dict[str, Any]:
             logger.info(f"dedup_tasks: deleted {len(deleted_ids)} duplicates")
 
         total_dups = sum(len(g["remove"]) for g in result_groups)
+        id_dup_count = sum(1 for k in duplicates.keys() if k.startswith("ID: "))
+        title_dup_count = len(duplicates) - id_dup_count
+
+        msg_parts = []
+        if id_dup_count:
+            msg_parts.append(f"{id_dup_count} ID duplicate(s)")
+        if title_dup_count:
+            msg_parts.append(f"{title_dup_count} title duplicate(s)")
 
         return {
             "success": True,
             "duplicates": result_groups,
             "total_duplicates": total_dups,
             "deleted_ids": deleted_ids,
-            "message": f"Found {len(duplicates)} titles with {total_dups} duplicate(s)"
+            "deleted_paths": deleted_paths if delete else [],
+            "message": f"Found {' and '.join(msg_parts)} ({total_dups} files to remove)"
             + (f", deleted {len(deleted_ids)}" if delete else ", use delete=True to remove"),
         }
 
