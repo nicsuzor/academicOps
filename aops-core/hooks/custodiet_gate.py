@@ -575,11 +575,9 @@ def main():
             reset_compliance_state(session_id)
         except (IOError, OSError) as e:
             # Fail-fast on infrastructure errors
-            output_data = {
-                "decision": "block",
-                "reason": f"Custodiet infrastructure error: {e}. Fix before continuing.",
-            }
-            print(json.dumps(output_data))
+            # Exit 1 means hook failure - JSON not processed by Claude Code
+            # Output to stderr for debugging, not stdout with misleading format
+            print(f"Custodiet infrastructure error: {e}", file=sys.stderr)
             sys.exit(1)
     else:
         # On non-threshold calls, maybe inject a random reminder (passive, not blocking)
